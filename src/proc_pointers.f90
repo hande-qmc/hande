@@ -19,28 +19,32 @@ abstract interface
         integer(i0), intent(in) :: f(sys%basis%string_len)
         type(det_info_t), intent(inout) :: d
     end subroutine i_decoder
-    pure subroutine i_update_proj_energy(sys, f0, wfn_dat, d, pop, D0_pop_sum, proj_energy_sum, excitation, hmatel)
+    pure subroutine i_update_proj_energy(sys, f0, wfn_dat, d, pop, estimators, excitation, hmatel)
         use system, only: sys_t
+        use hamiltonian_data, only: hmatel_t
+        use qmc_data, only: estimators_t
         import :: det_info_t, p, i0, excit_t
         implicit none
         type(sys_t), intent(in) :: sys
         integer(i0), intent(in) :: f0(:)
         real(p), intent(in) :: wfn_dat(:)
         type(det_info_t), intent(in) :: d
-        real(p), intent(in) :: pop
-        real(p), intent(inout) :: D0_pop_sum, proj_energy_sum
+        real(p), intent(in) :: pop(:)
+        type(estimators_t), intent(inout) :: estimators
         type(excit_t), intent(inout) :: excitation
-        real(p), intent(out) :: hmatel
+        type(hmatel_t), intent(out) :: hmatel
     end subroutine i_update_proj_energy
     subroutine i_update_proj_hfs(sys, f, fpop, f_hfpop, fdata, excitation, hmatel,&
                                      D0_hf_pop,proj_hf_O_hpsip, proj_hf_H_hfpsip)
         use system, only: sys_t
+        use hamiltonian_data, only: hmatel_t
         import :: i0, p, excit_t
         implicit none
         type(sys_t), intent(in) :: sys
         integer(i0), intent(in) :: f(:)
         integer, intent(in) :: fpop, f_hfpop
-        real(p), intent(in) :: fdata(:), hmatel
+        real(p), intent(in) :: fdata(:)
+        type(hmatel_t), intent(in) :: hmatel
         type(excit_t), intent(in) :: excitation
         real(p), intent(inout) :: D0_hf_pop, proj_hf_O_hpsip, proj_hf_H_hfpsip
     end subroutine i_update_proj_hfs
@@ -82,26 +86,29 @@ abstract interface
     subroutine i_gen_excit(rng, sys, excit_gen_data, d, pgen, connection, hmatel, allowed)
         use dSFMT_interface, only: dSFMT_t
         use system, only: sys_t
+        use hamiltonian_data, only: hmatel_t
         import :: det_info_t, excit_t, p, excit_gen_data_t
         implicit none
         type(dSFMT_t), intent(inout) :: rng
         type(sys_t), intent(in) :: sys
         type(excit_gen_data_t), intent(in) :: excit_gen_data
         type(det_info_t), intent(in) :: d
-        real(p), intent(out) :: pgen, hmatel
+        real(p), intent(out) :: pgen
+        type(hmatel_t), intent(out) :: hmatel
         type(excit_t), intent(out) :: connection
         logical, intent(out) :: allowed
     end subroutine i_gen_excit
     subroutine i_gen_excit_finalise(rng, sys, d, connection, hmatel)
         use dSFMT_interface, only: dSFMT_t
         use system, only: sys_t
+        use hamiltonian_data, only: hmatel_t
         import :: det_info_t, excit_t, p
         implicit none
         type(dSFMT_t), intent(inout) :: rng
         type(sys_t), intent(in) :: sys
         type(det_info_t), intent(in) :: d
         type(excit_t), intent(inout) :: connection
-        real(p), intent(out) :: hmatel
+        type(hmatel_t), intent(out) :: hmatel
     end subroutine i_gen_excit_finalise
     pure function i_sc0(sys, f) result(hmatel)
         use system, only: sys_t

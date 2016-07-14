@@ -309,11 +309,12 @@ contains
         use spawn_data, only: calc_events_spawn_t, write_memcheck_report
 
         use qmc_data, only: qmc_in_t, ccmc_in_t, semi_stoch_in_t, restart_in_t
-        use qmc_data, only: load_bal_in_t, qmc_state_t, annihilation_flags_t
+        use qmc_data, only: load_bal_in_t, qmc_state_t, annihilation_flags_t, estimators_t
         use qmc_data, only: qmc_in_t_json, ccmc_in_t_json, semi_stoch_in_t_json, restart_in_t_json
         use reference_determinant, only: reference_t, reference_t_json
         use check_input, only: check_qmc_opts, check_ccmc_opts
         use json_out, only: json_out_t, json_object_init, json_object_end
+        use hamiltonian_data
 
         type(sys_t), intent(in) :: sys
         type(qmc_in_t), intent(in) :: qmc_in
@@ -339,7 +340,8 @@ contains
         type(cluster_t), allocatable :: left_cluster(:), right_cluster(:)
         type(multispawn_stats_t), allocatable :: ms_stats(:)
         type(dSFMT_t), allocatable :: rng(:)
-        real(p) :: junk, bloom_threshold
+        type(hmatel_t) :: hmatel
+        real(p) :: bloom_threshold
         type(json_out_t) :: js
         type(qmc_in_t) :: qmc_in_loc
 
@@ -353,6 +355,8 @@ contains
         type(annihilation_flags_t) :: annihilation_flags
         type(restart_info_t) :: ri, ri_shift
         character(36) :: uuid_restart
+        type(estimators_t) :: estimators_cycle
+        real(p) :: proj_energy_cycle, D0_population_cycle
 
         real :: t1, t2
 
@@ -362,7 +366,7 @@ contains
 
         integer(i0) :: fexcit(sys%basis%string_len)
         logical :: seen_D0
-        real(p) :: D0_population_cycle, proj_energy_cycle, proj_energy_old
+        real(p) :: proj_energy_old
 
         if (parent) then
             write (6,'(1X,"CCMC")')
@@ -604,23 +608,26 @@ contains
                 ! errors relate to the procedure pointers...
                 !$omp parallel &
                 ! --DEFAULT(NONE) DISABLED-- !$omp default(none) &
-                !$omp private(it, iexcip_pos, nspawned, connection, junk,       &
+                !$omp private(it, iexcip_pos, nspawned, connection, hmatel,       &
                 !$omp         nspawnings_total, fexcit, i,     &
                 !$omp         seen_D0) &
                 !$omp shared(nattempts, rng, cumulative_abs_nint_pops, tot_abs_nint_pop,  &
                 !$omp        max_cluster_size, cdet, cluster, &
                 !$omp        D0_normalisation, D0_pos, nD0_select, qs,               &
                 !$omp        sys, bloom_threshold, bloom_stats,                      &
-                !$omp        proj_energy_cycle, min_cluster_size,       &
+                !$omp        estimators_cycle, min_cluster_size,       &
+                !$omp        proj_energy_cycle, D0_population_cycle,   &
                 !$omp        nclusters, nstochastic_clusters, nattempts_spawn,       &
                 !$omp        nsingle_excitors, ccmc_in, ldet, rdet, left_cluster,    &
                 !$omp        right_cluster, nprocs, ms_stats, qmc_in, load_bal_in,   &
-                !$omp        nparticles_change, ndeath, D0_population_cycle)
+                !$omp        nparticles_change, ndeath)
                 it = get_thread_id()
                 iexcip_pos = 0
                 seen_D0 = .false.
-                D0_population_cycle = 0.0_p
+                estimators_cycle%D0_population = 0.0_p
+                estimators_cycle%proj_energy = 0.0_p
                 proj_energy_cycle = 0.0_p
+                D0_population_cycle = 0.0_p
                 !$omp do schedule(dynamic,200) reduction(+:D0_population_cycle,proj_energy_cycle,nattempts_spawn)
                 do iattempt = 1, nclusters
 
@@ -669,8 +676,10 @@ contains
                             ! the cluster.
                             connection = get_excitation(sys%nel, sys%basis, cdet(it)%f, qs%ref%f0)
                             call update_proj_energy_ptr(sys, qs%ref%f0, qs%trial%wfn_dat, cdet(it), &
-                                     cluster(it)%cluster_to_det_sign*cluster(it)%amplitude/cluster(it)%pselect, &
-                                     D0_population_cycle, proj_energy_cycle, connection, junk)
+                                     [cluster(it)%cluster_to_det_sign*cluster(it)%amplitude/cluster(it)%pselect], &
+                                     estimators_cycle, connection, hmatel)
+                            D0_population_cycle = estimators_cycle%D0_population
+                            proj_energy_cycle = estimators_cycle%proj_energy
                         end if
 
                         ! Spawning
@@ -1457,6 +1466,7 @@ contains
         use system, only: sys_t
         use const, only: depsilon
         use qmc_data, only: qmc_in_t, qmc_state_t
+        use hamiltonian_data
 
         type(sys_t), intent(in) :: sys
         type(qmc_state_t), intent(in) :: qs
@@ -1474,7 +1484,8 @@ contains
         ! element, so we 'pretend' to attempt_to_spawn that all excips are
         ! actually spawned by positive excips.
         integer(int_p), parameter :: parent_sign = 1_int_p
-        real(p) :: hmatel, pgen
+        type(hmatel_t) :: hmatel
+        real(p) :: pgen
         integer(i0) :: fexcit(sys%basis%string_len), funlinked(sys%basis%string_len)
         integer :: excitor_sign, excitor_level
         logical :: linked, single_unlinked, allowed_excitation
@@ -1495,22 +1506,22 @@ contains
                 ! no spawning is attempted
                 call linked_excitation(sys%basis, qs%ref%f0, connection, cluster, linked, single_unlinked, funlinked)
                 if (.not. linked) then
-                    hmatel = 0.0_p
+                    hmatel%r = 0.0_p
                 else if (single_unlinked) then
                     ! Single excitation: need to modify the matrix element
                     ! Subtract off the matrix element from the cluster without
                     ! the unlinked a_i operator
-                    hmatel = hmatel - unlinked_commutator(sys, qs%ref%f0, connection, cluster, cdet%f, funlinked)
+                    hmatel%r = hmatel%r - unlinked_commutator(sys, qs%ref%f0, connection, cluster, cdet%f, funlinked)
                 end if
             end if
         end if
 
         ! 2, Apply additional factors.
-        hmatel = hmatel*cluster%amplitude*cluster%cluster_to_det_sign
+        hmatel%r = hmatel%r*cluster%amplitude*cluster%cluster_to_det_sign
         pgen = pgen*cluster%pselect*nspawnings_total
 
         ! 3. Attempt spawning.
-        nspawn = attempt_to_spawn(rng, qs%tau, spawn_cutoff, qs%psip_list%pop_real_factor, hmatel, pgen, parent_sign)
+        nspawn = attempt_to_spawn(rng, qs%tau, spawn_cutoff, qs%psip_list%pop_real_factor, hmatel%r, pgen, parent_sign)
 
         if (nspawn /= 0_int_p) then
             ! 4. Convert the random excitation from a determinant into an
@@ -2103,6 +2114,7 @@ contains
         use excitations, only: excit_t, create_excited_det, get_excitation_level
         use ccmc_data, only: cluster_t
         use hamiltonian, only: get_hmatel
+        use hamiltonian_data
 
         type(sys_t), intent(in) :: sys
         integer(i0), intent(in) :: f0(sys%basis%string_len)
@@ -2111,6 +2123,7 @@ contains
         integer(i0), intent(in) :: cdet(sys%basis%string_len)
         integer(i0), intent(in) :: funlinked(sys%basis%string_len)
         real(p) :: hmatel
+        type(hmatel_t) :: dummy_hmatel
 
         integer(i0) :: deti(sys%basis%string_len), detj(sys%basis%string_len)
         integer(i0) :: temp(sys%basis%string_len)
@@ -2144,7 +2157,8 @@ contains
         call create_excited_det(sys%basis, deti, connection, detj)
         ! [todo] - general case call is slow.  Improvements: Slater--Condon procedure for
         ! [todo] - the relevant excitation level and system-specific procedures.
-        hmatel = get_hmatel(sys, deti, detj)
+        dummy_hmatel = get_hmatel(sys, deti, detj)
+        hmatel = dummy_hmatel%r
 
         ! hmatel will be multiplied by cluster%amplitude and cluster%cluster_to_det_sign which
         ! potentially introduce unwanted sign changes, so we deal with them here
@@ -2221,6 +2235,7 @@ contains
         use hamiltonian, only: get_hmatel
         use bit_utils, only: count_set_bits
         use qmc_data, only: qmc_in_t, qmc_state_t
+        use hamiltonian_data
 
         type(sys_t), intent(in) :: sys
         type(qmc_in_t), intent(in) :: qmc_in
@@ -2243,7 +2258,8 @@ contains
         integer :: excitor_sign, excitor_level
 
         integer :: i, j, npartitions, orb, bit_pos, bit_element
-        real(p) :: ppart, pgen, hmatel, pop, delta_h
+        real(p) :: ppart, pgen, pop
+        type(hmatel_t) :: hmatel, delta_h
         logical :: allowed, sign_change, linked, single_unlinked
         integer(i0) :: new_det(sys%basis%string_len)
         integer(i0) :: excitor(sys%basis%string_len)
@@ -2285,7 +2301,7 @@ contains
             ! 3) Evaluate commutator and pgen
             ! pgen and hmatel need recalculating to account for other permutations
             npartitions = nint(1.0/ppart)
-            hmatel = 0.0_p
+            hmatel%r = 0.0_p
             pgen = 0.0_p
             do i = 1, npartitions
                 ! Iterate over all allowed partitions and get contribution to
@@ -2327,19 +2343,19 @@ contains
                     ! Need <D_right|right_cluster|D0> and <D_spawn|left_cluster|D>
                     delta_h = get_hmatel(sys, rdet%f, new_det)
 
-                    if (mod(left_cluster%nexcitors,2) /= 0) delta_h = -delta_h
+                    if (mod(left_cluster%nexcitors,2) /= 0) delta_h%r = -delta_h%r
 
                     excitor_level = get_excitation_level(qs%ref%f0, rdet%f)
                     call convert_excitor_to_determinant(rdet%f, excitor_level, excitor_sign, qs%ref%f0)
-                    if (excitor_sign < 0) delta_h = -delta_h
+                    if (excitor_sign < 0) delta_h%r = -delta_h%r
 
                     excitor_level = get_excitation_level(fexcit, new_det)
                     call convert_excitor_to_determinant(fexcit, excitor_level, excitor_sign, new_det)
-                    if (excitor_sign < 0) delta_h = -delta_h
+                    if (excitor_sign < 0) delta_h%r = -delta_h%r
 
-                    if (sign_change) delta_h = -delta_h
+                    if (sign_change) delta_h%r = -delta_h%r
 
-                    hmatel = hmatel + delta_h
+                    hmatel%r = hmatel%r + delta_h%r
                 end if
             end do
 
@@ -2347,13 +2363,13 @@ contains
             pgen = pgen*cluster%pselect*nspawnings_total/npartitions
 
             ! correct hmatel for cluster amplitude
-            hmatel = hmatel*cluster%amplitude
+            hmatel%r = hmatel%r*cluster%amplitude
             excitor_level = get_excitation_level(fexcit, qs%ref%f0)
             call convert_excitor_to_determinant(fexcit, excitor_level, excitor_sign, qs%ref%f0)
-            if (excitor_sign < 0) hmatel = -hmatel
+            if (excitor_sign < 0) hmatel%r = -hmatel%r
 
             ! 4) Attempt to spawn
-            nspawn = attempt_to_spawn(rng, qs%tau, spawn_cutoff, qs%psip_list%pop_real_factor, hmatel, pgen, parent_sign)
+            nspawn = attempt_to_spawn(rng, qs%tau, spawn_cutoff, qs%psip_list%pop_real_factor, hmatel%r, pgen, parent_sign)
 
         else
             nspawn = 0

@@ -28,6 +28,7 @@ contains
         use parallel, only: parent, nprocs, blacs_info, get_blacs_info
         use utils, only: int_fmt
         use check_input, only: check_fci_opts
+        use hamiltonian_data
 
         type(sys_t), intent(inout) :: sys
         type(fci_in_t), intent(in) :: fci_in
@@ -41,6 +42,7 @@ contains
         integer :: ndets, ierr, i, nfound, block_size
         type(blacs_info) :: proc_blacs_info
         type(hamil_t) :: hamil
+        type(hmatel_t) :: hmatel
 
         if (parent) call check_fci_opts(sys, fci_in, .true.)
 
@@ -76,7 +78,8 @@ contains
 
         if (ndets == 1) then
             ! The trivial case seems to trip things up...
-            eigv(1) = get_hmatel(sys, dets(:,1), dets(:,1))
+            hmatel = get_hmatel(sys, dets(:,1), dets(:,1))
+            eigv(1) = hmatel%r
             nfound = 1
         else
             if (nprocs == 1) then

@@ -73,6 +73,7 @@ contains
         use system, only: sys_t
         use proc_pointers, only: gen_excit_ptr_t
         use dSFMT_interface, only: dSFMT_t
+        use hamiltonian_data
 
         type(dSFMT_t), intent(inout) :: rng
         type(sys_t), intent(in) :: sys
@@ -86,7 +87,8 @@ contains
         integer(int_p), intent(out) :: nspawn, nspawn_im
         type(excit_t), intent(out) :: connection
 
-        real(p) :: pgen, hmatel
+        real(p) :: pgen
+        type(hmatel_t) :: hmatel
         logical :: allowed
 
         nspawn_im = 0_int_p
@@ -95,7 +97,7 @@ contains
         call gen_excit_ptr%full(rng, sys, qmc_state%excit_gen_data, cdet, pgen, connection, hmatel, allowed)
 
         ! 2. Attempt spawning.
-        nspawn = attempt_to_spawn(rng, qmc_state%tau, spawn_cutoff, real_factor, hmatel, pgen, parent_sign)
+        nspawn = attempt_to_spawn(rng, qmc_state%tau, spawn_cutoff, real_factor, hmatel%r, pgen, parent_sign)
 
     end subroutine spawn_standard
 
@@ -146,6 +148,7 @@ contains
         use proc_pointers, only: gen_excit_ptr_t
         use qmc_data, only: qmc_state_t
         use dSFMT_interface, only: dSFMT_t
+        use hamiltonian_data
 
         type(dSFMT_t), intent(inout) :: rng
         type(sys_t), intent(in) :: sys
@@ -159,7 +162,8 @@ contains
         integer(int_p), intent(out) :: nspawn, nspawn_im
         type(excit_t), intent(out) :: connection
 
-        real(p) :: pgen, hmatel
+        real(p) :: pgen
+        type(hmatel_t) :: hmatel
         logical :: allowed
 
         nspawn_im = 0_int_p
@@ -168,10 +172,10 @@ contains
         call gen_excit_ptr%full(rng, sys, qmc_state%excit_gen_data, cdet, pgen, connection, hmatel, allowed)
 
         ! 2. Transform Hamiltonian matrix element by trial function.
-        call gen_excit_ptr%trial_fn(sys, cdet, connection, weights, hmatel)
+        call gen_excit_ptr%trial_fn(sys, cdet, connection, weights, hmatel%r)
 
         ! 3. Attempt spawning.
-        nspawn = attempt_to_spawn(rng, qmc_state%tau, spawn_cutoff, real_factor, hmatel, pgen, parent_sign)
+        nspawn = attempt_to_spawn(rng, qmc_state%tau, spawn_cutoff, real_factor, hmatel%r, pgen, parent_sign)
 
     end subroutine spawn_importance_sampling
 
@@ -233,6 +237,7 @@ contains
         use stoch_utils, only: stochastic_round_spawned_particle
         use qmc_data, only: qmc_state_t
         use dSFMT_interface, only: dSFMT_t
+        use hamiltonian_data
 
         type(dSFMT_t), intent(inout) :: rng
         type(sys_t), intent(in) :: sys
@@ -246,7 +251,8 @@ contains
         integer(int_p), intent(out) :: nspawn, nspawn_im
         type(excit_t), intent(out) :: connection
 
-        real(p) :: pgen, abs_hmatel, hmatel
+        real(p) :: pgen
+        type(hmatel_t) :: abs_hmatel, hmatel
         logical :: allowed
 
         nspawn_im = 0_int_p
@@ -256,7 +262,7 @@ contains
         call gen_excit_ptr%init(rng, sys, qmc_state%excit_gen_data, cdet, pgen, connection, abs_hmatel, allowed)
 
         ! 2. Attempt spawning.
-        nspawn = stochastic_round_spawned_particle(spawn_cutoff, real_factor*qmc_state%tau*abs_hmatel/pgen, rng)
+        nspawn = stochastic_round_spawned_particle(spawn_cutoff, real_factor*qmc_state%tau*abs_hmatel%r/pgen, rng)
 
         if (nspawn /= 0_int_p) then
 
@@ -264,7 +270,7 @@ contains
             call gen_excit_ptr%finalise(rng, sys, cdet, connection, hmatel)
 
             ! 4. Find sign of offspring.
-            call set_child_sign(hmatel, parent_sign, nspawn)
+            call set_child_sign(hmatel%r, parent_sign, nspawn)
 
         end if
 
@@ -325,6 +331,7 @@ contains
         use qmc_data, only: qmc_state_t
         use stoch_utils, only: stochastic_round_spawned_particle
         use dSFMT_interface, only: dSFMT_t
+        use hamiltonian_data
 
         type(dSFMT_t), intent(inout) :: rng
         type(sys_t), intent(in) :: sys
@@ -338,7 +345,8 @@ contains
         integer(int_p), intent(out) :: nspawn, nspawn_im
         type(excit_t), intent(out) :: connection
 
-        real(p) :: pgen, tilde_hmatel, hmatel
+        real(p) :: pgen
+        type(hmatel_t) :: tilde_hmatel, hmatel
         logical :: allowed
 
         nspawn_im = 0_int_p
@@ -348,10 +356,10 @@ contains
         call gen_excit_ptr%init(rng, sys, qmc_state%excit_gen_data, cdet, pgen, connection, tilde_hmatel, allowed)
 
         ! 2. Transform Hamiltonian matrix element by trial function.
-        call gen_excit_ptr%trial_fn(sys, cdet, connection, weights, tilde_hmatel)
+        call gen_excit_ptr%trial_fn(sys, cdet, connection, weights, tilde_hmatel%r)
 
         ! 3. Attempt spawning.
-        nspawn = stochastic_round_spawned_particle(spawn_cutoff, real_factor*qmc_state%tau*abs(tilde_hmatel)/pgen, rng)
+        nspawn = stochastic_round_spawned_particle(spawn_cutoff, real_factor*qmc_state%tau*abs(tilde_hmatel%r)/pgen, rng)
 
         if (nspawn /= 0_int_p) then
 
@@ -363,7 +371,7 @@ contains
             ! 5. Find sign of offspring.
             ! Note that we don't care about the value of H_ij at this step, only
             ! the sign.
-            call set_child_sign(tilde_hmatel*hmatel, parent_sign, nspawn)
+            call set_child_sign(tilde_hmatel%r*hmatel%r, parent_sign, nspawn)
 
         end if
 
@@ -479,6 +487,7 @@ contains
         use dSFMT_interface, only: dSFMT_t
 
         use errors, only: stop_all
+        use hamiltonian_data
 
         type(dSFMT_t), intent(inout) :: rng
         type(sys_t), intent(in) :: sys
@@ -494,7 +503,7 @@ contains
 
         real(p) :: pgen
         logical :: allowed
-        complex(p) :: hmatel
+        type(hmatel_t) :: hmatel
 
         ! 1. Generate random excitation.
         if (sys%system/=read_in) then
@@ -503,8 +512,8 @@ contains
         call gen_excit_mol_complex(rng, sys, qmc_state%excit_gen_data, cdet, pgen, connection, hmatel, allowed)
 
         ! 2. Attempt spawning.
-        nspawn = attempt_to_spawn(rng, qmc_state%tau, spawn_cutoff, real_factor, real(hmatel, p), pgen, parent_sign)
-        nspawn_im = attempt_to_spawn(rng, qmc_state%tau, spawn_cutoff, real_factor, aimag(hmatel), pgen, parent_sign)
+        nspawn = attempt_to_spawn(rng, qmc_state%tau, spawn_cutoff, real_factor, real(hmatel%c, p), pgen, parent_sign)
+        nspawn_im = attempt_to_spawn(rng, qmc_state%tau, spawn_cutoff, real_factor, aimag(hmatel%c), pgen, parent_sign)
 
     end subroutine spawn_complex
 

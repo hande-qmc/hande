@@ -50,13 +50,14 @@ contains
         use dSFMT_interface, only: dSFMT_t, get_rand_close_open
         use excit_gen_mol, only: choose_ia_mol, choose_ij_mol, choose_ab_mol, &
                                 calc_pgen_single_mol, calc_pgen_double_mol
+        use hamiltonian_data
 
         type(sys_t), intent(in) :: sys
         type(excit_gen_data_t), intent(in) :: excit_gen_data
         type(det_info_t), intent(in) :: cdet
         type(dSFMT_t), intent(inout) :: rng
         real(p), intent(out) :: pgen
-        complex(p), intent(out) :: hmatel
+        type(hmatel_t), intent(out) :: hmatel
         type(excit_t), intent(out) :: connection
         logical, intent(out) :: allowed_excitation
 
@@ -80,14 +81,14 @@ contains
                 call find_excitation_permutation1(sys%basis%excit_mask, cdet%f, connection)
 
                 ! 5a. Find the connecting matrix element.
-                hmatel = slater_condon1_mol_excit_complex(sys, cdet%occ_list, connection%from_orb(1), connection%to_orb(1), &
+                hmatel%c = slater_condon1_mol_excit_complex(sys, cdet%occ_list, connection%from_orb(1), connection%to_orb(1), &
                                                   connection%perm)
             else
                 ! We have a highly restrained system and this det has no single
                 ! excitations at all.  To avoid reweighting pattempt_single and
                 ! pattempt_double (an O(N^3) operation), we simply return a null
                 ! excitation
-                hmatel = cmplx(0.0_p, 0.0_p, p)
+                hmatel%c = cmplx(0.0_p, 0.0_p, p)
                 pgen = 1.0_p
             end if
 
@@ -106,18 +107,19 @@ contains
                                                                                    connection%to_orb(2), ij_spin, cdet%symunocc)
 
                 ! 4b. Parity of permutation required to line up determinants.
+
                 ! NOTE: connection%from_orb and connection%to_orb *must* be ordered.
                 call find_excitation_permutation2(sys%basis%excit_mask, cdet%f, connection)
 
                 ! 5b. Find the connecting matrix element.
-                hmatel = slater_condon2_mol_excit_complex(sys, connection%from_orb(1), connection%from_orb(2), &
+                hmatel%c = slater_condon2_mol_excit_complex(sys, connection%from_orb(1), connection%from_orb(2), &
                                                   connection%to_orb(1), connection%to_orb(2), connection%perm)
             else
                 ! Carelessly selected ij with no possible excitations.  Such
                 ! events are not worth the cost of renormalising the generation
                 ! probabilities.
                 ! Return a null excitation.
-                hmatel = cmplx(0.0_p, 0.0_p, p)
+                hmatel%c = cmplx(0.0_p, 0.0_p, p)
                 pgen = 1.0_p
             end if
 

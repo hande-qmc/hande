@@ -1,6 +1,7 @@
 module hamiltonian
 
 use const
+use hamiltonian_data
 
 implicit none
 
@@ -33,7 +34,7 @@ contains
         use hamiltonian_ringium, only: get_hmatel_ringium
         use system
 
-        real(p) :: hmatel
+        type(hmatel_t) :: hmatel
         type(sys_t), intent(in) :: sys
         integer(i0), intent(in) :: f1(:), f2(:)
 
@@ -91,7 +92,7 @@ contains
         use hamiltonian_molecular_complex, only: get_hmatel_mol_comp
         use system
 
-        complex(p) :: hmatel
+        type(hmatel_t) :: hmatel
         type(sys_t), intent(in) :: sys
         integer(i0), intent(in) :: f1(:), f2(:)
 

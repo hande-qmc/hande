@@ -4,6 +4,8 @@ module energy_evaluation
 ! a system based upon the population dynamics of an FCIQMC calculation.
 
 use const
+use hamiltonian_data
+use qmc_data, only: estimators_t
 
 implicit none
 
@@ -606,7 +608,7 @@ contains
 
 !--- Projected estimator updates ---
 
-    pure subroutine update_proj_energy_hub_k(sys, f0, wfn_dat, cdet, pop, D0_pop_sum, proj_energy_sum, excitation, hmatel)
+    pure subroutine update_proj_energy_hub_k(sys, f0, wfn_dat, cdet, pop, estimators, excitation, hmatel)
 
         ! Add the contribution of the current determinant to the projected
         ! energy.
@@ -625,10 +627,8 @@ contains
         !        from.  Only the bit string field needs to be set.
         !    pop: population on current determinant.
         ! In/Out:
-        !    D0_pop_sum: running total of N_0, the population on the reference
-        !        determinant, |D_0>.  Updated only if cdet is |D_0>.
-        !    proj_energy_sum: running total of \sum_{i \neq 0} <D_i|H|D_0> N_i.
-        !        Updated only if <D_i|H|D_0> is non-zero.
+        !    estimators: estimators_t object containing running totals of N_0
+        !        and proj energy contribution.
         !    excitation: excitation connecting the determinant to the reference determinant.
         ! Out:
         !    hmatel: <D_i|H|D_0>, the Hamiltonian matrix element between the
@@ -646,25 +646,25 @@ contains
         integer(i0), intent(in) :: f0(:)
         real(p), intent(in) :: wfn_dat(:)
         type(det_info_t), intent(in) :: cdet
-        real(p), intent(in) :: pop
-        real(p), intent(inout) :: D0_pop_sum, proj_energy_sum
+        real(p), intent(in) :: pop(:)
+        type(estimators_t), intent(inout) :: estimators
         type(excit_t), intent(inout) :: excitation
-        real(p), intent(out) :: hmatel
+        type(hmatel_t), intent(out) :: hmatel
 
         if (excitation%nexcit == 0) then
             ! Have reference determinant.
-            D0_pop_sum = D0_pop_sum + pop
+            estimators%D0_population = estimators%D0_population + pop(1)
         else if (excitation%nexcit == 2) then
             ! Have a determinant connected to the reference determinant: add to
             ! projected energy.
-            hmatel = slater_condon2_hub_k(sys, excitation%from_orb(1), excitation%from_orb(2), &
+            hmatel%r = slater_condon2_hub_k(sys, excitation%from_orb(1), excitation%from_orb(2), &
                                        & excitation%to_orb(1), excitation%to_orb(2),excitation%perm)
-            proj_energy_sum = proj_energy_sum + hmatel*pop
+            estimators%proj_energy = estimators%proj_energy + hmatel%r*pop(1)
         end if
 
     end subroutine update_proj_energy_hub_k
 
-    pure subroutine update_proj_energy_hub_real(sys, f0, wfn_dat, cdet, pop, D0_pop_sum, proj_energy_sum, excitation, hmatel)
+    pure subroutine update_proj_energy_hub_real(sys, f0, wfn_dat, cdet, pop, estimators, excitation, hmatel)
 
         ! Add the contribution of the current determinant to the projected
         ! energy.
@@ -683,10 +683,8 @@ contains
         !        from.  Only the bit string field needs to be set.
         !    pop: population on current determinant.
         ! In/Out:
-        !    D0_pop_sum: running total of N_0, the population on the reference
-        !        determinant, |D_0>.  Updated only if cdet is |D_0>.
-        !    proj_energy_sum: running total of \sum_{i \neq 0} <D_i|H|D_0> N_i.
-        !        Updated only if <D_i|H|D_0> is non-zero.
+        !    estimators: estimators_t object containing running totals of N_0
+        !        and proj energy contribution.
         !    excitation: excitation connecting the determinant to the reference determinant.
         ! Out:
         !    hmatel: <D_i|H|D_0>, the Hamiltonian matrix element between the
@@ -704,24 +702,24 @@ contains
         integer(i0), intent(in) :: f0(:)
         real(p), intent(in) :: wfn_dat(:)
         type(det_info_t), intent(in) :: cdet
-        real(p), intent(in) :: pop
-        real(p), intent(inout) :: D0_pop_sum, proj_energy_sum
+        real(p), intent(in) :: pop(:)
+        type(estimators_t), intent(inout) :: estimators
         type(excit_t), intent(inout) :: excitation
-        real(p), intent(out) :: hmatel
+        type(hmatel_t), intent(out) :: hmatel
 
         if (excitation%nexcit == 0) then
             ! Have reference determinant.
-            D0_pop_sum = D0_pop_sum + pop
+            estimators%D0_population = estimators%D0_population + pop(1)
         else if (excitation%nexcit == 1) then
             ! Have a determinant connected to the reference determinant: add to
             ! projected energy.
-            hmatel = slater_condon1_hub_real(sys, excitation%from_orb(1), excitation%to_orb(1), excitation%perm)
-            proj_energy_sum = proj_energy_sum + hmatel*pop
+            hmatel%r = slater_condon1_hub_real(sys, excitation%from_orb(1), excitation%to_orb(1), excitation%perm)
+            estimators%proj_energy = estimators%proj_energy + hmatel%r*pop(1)
         end if
 
     end subroutine update_proj_energy_hub_real
 
-    pure subroutine update_proj_energy_mol(sys, f0, wfn_dat, cdet, pop, D0_pop_sum, proj_energy_sum, excitation, hmatel)
+    pure subroutine update_proj_energy_mol(sys, f0, wfn_dat, cdet, pop, estimators, excitation, hmatel)
 
         ! Add the contribution of the current determinant to the projected
         ! energy.
@@ -741,10 +739,8 @@ contains
         !        from.  Only the bit string field needs to be set.
         !    pop: population on current determinant.
         ! In/Out:
-        !    D0_pop_sum: running total of N_0, the population on the reference
-        !        determinant, |D_0>.  Updated only if cdet is |D_0>.
-        !    proj_energy_sum: running total of \sum_{i \neq 0} <D_i|H|D_0> N_i.
-        !        Updated only if <D_i|H|D_0> is non-zero.
+        !    estimators: estimators_t object containing running totals of N_0
+        !        and proj energy contribution.
         !    excitation: excitation connecting the determinant to the reference determinant.
         ! Out:
         !    hmatel: <D_i|H|D_0>, the Hamiltonian matrix element between the
@@ -763,28 +759,28 @@ contains
         integer(i0), intent(in) :: f0(:)
         real(p), intent(in) :: wfn_dat(:)
         type(det_info_t), intent(in) :: cdet
-        real(p), intent(in) :: pop
-        real(p), intent(inout) :: D0_pop_sum, proj_energy_sum
+        real(p), intent(in) :: pop(:)
+        type(estimators_t), intent(inout) :: estimators
         type(excit_t), intent(inout) :: excitation
-        real(p), intent(out) :: hmatel
+        type(hmatel_t), intent(out) :: hmatel
 
         integer :: ij_sym, ab_sym
 
-        hmatel = 0.0_p
+        hmatel%r = 0.0_p
 
         select case(excitation%nexcit)
         case (0)
             ! Have reference determinant.
-            D0_pop_sum = D0_pop_sum + pop
+            estimators%D0_population = estimators%D0_population + pop(1)
         case(1)
             ! Have a determinant connected to the reference determinant by
             ! a single excitation: add to projected energy.
             ! Is excitation symmetry allowed?
             if (sys%basis%basis_fns(excitation%from_orb(1))%Ms == sys%basis%basis_fns(excitation%to_orb(1))%Ms .and. &
                     sys%basis%basis_fns(excitation%from_orb(1))%sym == sys%basis%basis_fns(excitation%to_orb(1))%sym) then
-                hmatel = slater_condon1_mol_excit(sys, cdet%occ_list, excitation%from_orb(1), excitation%to_orb(1), &
+                hmatel%r = slater_condon1_mol_excit(sys, cdet%occ_list, excitation%from_orb(1), excitation%to_orb(1), &
                                                   excitation%perm)
-                proj_energy_sum = proj_energy_sum + hmatel*pop
+                estimators%proj_energy = estimators%proj_energy + hmatel%r*pop(1)
             end if
         case(2)
             ! Have a determinant connected to the reference determinant by
@@ -796,18 +792,17 @@ contains
                                                 sys%basis%basis_fns)
                 ab_sym = cross_product_pg_basis(sys%read_in%pg_sym, excitation%to_orb(1), excitation%to_orb(2), sys%basis%basis_fns)
                 if (ij_sym == ab_sym) then
-                    hmatel = slater_condon2_mol_excit(sys, excitation%from_orb(1), excitation%from_orb(2), &
+                    hmatel%r = slater_condon2_mol_excit(sys, excitation%from_orb(1), excitation%from_orb(2), &
                                                       excitation%to_orb(1), excitation%to_orb(2),     &
                                                       excitation%perm)
-                    proj_energy_sum = proj_energy_sum + hmatel*pop
+                    estimators%proj_energy = estimators%proj_energy + hmatel%r*pop(1)
                 end if
             end if
         end select
 
     end subroutine update_proj_energy_mol
 
-    pure subroutine update_proj_energy_mol_complex(sys, f0, wfn_dat, cdet, pop, D0_pop_sum_comp,&
-                             proj_energy_sum_comp, excitation, hmatel)
+    pure subroutine update_proj_energy_mol_complex(sys, f0, wfn_dat, cdet, pop, estimators, excitation, hmatel)
 
         ! Add the contribution of the current determinant to the projected
         ! energy. This function is specifically for systems with complex
@@ -828,10 +823,8 @@ contains
         !        from.  Only the bit string field needs to be set.
         !    pop: population on current determinant.
         ! In/Out:
-        !    D0_pop_sum_comp: running total of N_0, the population on the reference
-        !        determinant, |D_0>.  Updated only if cdet is |D_0>.
-        !    proj_energy_sum_comp: running total of \sum_{i \neq 0} <D_i|H|D_0> N_i.
-        !        Updated only if <D_i|H|D_0> is non-zero.
+        !    estimators: estimators_t object containing running totals of N_0
+        !        and proj energy contribution.
         !    excitation: excitation connecting the determinant to the reference determinant.
         ! Out:
         !    hmatel_comp: <D_i|H|D_0>, the Hamiltonian matrix element between the
@@ -850,28 +843,28 @@ contains
         integer(i0), intent(in) :: f0(:)
         real(p), intent(in) :: wfn_dat(:)
         type(det_info_t), intent(in) :: cdet
-        complex(p), intent(in) :: pop
-        complex(p), intent(inout) :: D0_pop_sum_comp, proj_energy_sum_comp
+        real(p), intent(in) :: pop(:)
+        type(estimators_t), intent(inout) :: estimators
         type(excit_t), intent(inout) :: excitation
-        complex(p), intent(out) :: hmatel
+        type(hmatel_t), intent(out) :: hmatel
 
         integer :: ij_sym, ab_sym
 
-        hmatel = cmplx(0.0, 0.0, p)
+        hmatel%c = cmplx(0.0, 0.0, p)
 
         select case(excitation%nexcit)
         case (0)
             ! Have reference determinant.
-            D0_pop_sum_comp = D0_pop_sum_comp + pop
+            estimators%D0_population_comp = estimators%D0_population_comp + cmplx(pop(1),pop(2),p)
         case(1)
             ! Have a determinant connected to the reference determinant by
             ! a single excitation: add to projected energy.
             ! Is excitation symmetry allowed?
             if (sys%basis%basis_fns(excitation%from_orb(1))%Ms == sys%basis%basis_fns(excitation%to_orb(1))%Ms .and. &
                     sys%basis%basis_fns(excitation%from_orb(1))%sym == sys%basis%basis_fns(excitation%to_orb(1))%sym) then
-                hmatel = slater_condon1_mol_excit_complex(sys, cdet%occ_list, excitation%from_orb(1), excitation%to_orb(1), &
+                hmatel%c = slater_condon1_mol_excit_complex(sys, cdet%occ_list, excitation%from_orb(1), excitation%to_orb(1), &
                                                   excitation%perm)
-                proj_energy_sum_comp = proj_energy_sum_comp + hmatel * pop
+                estimators%proj_energy_comp = estimators%proj_energy_comp + hmatel%c*cmplx(pop(1),pop(2),p)
             end if
         case(2)
             ! Have a determinant connected to the reference determinant by
@@ -883,17 +876,17 @@ contains
                                                 sys%basis%basis_fns)
                 ab_sym = cross_product_pg_basis(sys%read_in%pg_sym, excitation%to_orb(1), excitation%to_orb(2), sys%basis%basis_fns)
                 if (ij_sym == ab_sym) then
-                    hmatel = slater_condon2_mol_excit_complex(sys, excitation%from_orb(1), excitation%from_orb(2), &
+                    hmatel%c = slater_condon2_mol_excit_complex(sys, excitation%from_orb(1), excitation%from_orb(2), &
                                                       excitation%to_orb(1), excitation%to_orb(2),     &
                                                       excitation%perm)
-                    proj_energy_sum_comp = proj_energy_sum_comp + hmatel * pop
+                    estimators%proj_energy_comp = estimators%proj_energy_comp + hmatel%c*cmplx(pop(1),pop(2),p)
                 end if
             end if
         end select
 
     end subroutine update_proj_energy_mol_complex
 
-    pure subroutine update_proj_energy_ueg(sys, f0, wfn_dat, cdet, pop, D0_pop_sum, proj_energy_sum, excitation, hmatel)
+    pure subroutine update_proj_energy_ueg(sys, f0, wfn_dat, cdet, pop, estimators, excitation, hmatel)
 
         ! Add the contribution of the current determinant to the projected
         ! energy.
@@ -911,10 +904,8 @@ contains
         !        from.  Only the bit string field needs to be set.
         !    pop: population on current determinant.
         ! In/Out:
-        !    D0_pop_sum: running total of N_0, the population on the reference
-        !        determinant, |D_0>.  Updated only if cdet is |D_0>.
-        !    proj_energy_sum: running total of \sum_{i \neq 0} <D_i|H|D_0> N_i.
-        !        Updated only if <D_i|H|D_0> is non-zero.
+        !    estimators: estimators_t object containing running totals of N_0
+        !        and proj energy contribution.
         !    excitation: excitation connecting the determinant to the reference determinant.
         ! Out:
         !    hmatel: <D_i|H|D_0>, the Hamiltonian matrix element between the
@@ -932,27 +923,27 @@ contains
         integer(i0), intent(in) :: f0(:)
         real(p), intent(in) :: wfn_dat(:)
         type(det_info_t), intent(in) :: cdet
-        real(p), intent(in) :: pop
-        real(p), intent(inout) :: D0_pop_sum, proj_energy_sum
+        real(p), intent(in) :: pop(:)
+        type(estimators_t), intent(inout) :: estimators
         type(excit_t), intent(inout) :: excitation
-        real(p), intent(out) :: hmatel
+        type(hmatel_t), intent(out) :: hmatel
 
-        hmatel = 0.0_p
+        hmatel%r = 0.0_p
 
         if (excitation%nexcit == 0) then
             ! Have reference determinant.
-            D0_pop_sum = D0_pop_sum + pop
+            estimators%D0_population = estimators%D0_population + pop(1)
         else if (excitation%nexcit == 2) then
             ! Have a determinant connected to the reference determinant: add to
             ! projected energy.
-            hmatel = slater_condon2_ueg(sys, excitation%from_orb(1), excitation%from_orb(2), &
+            hmatel%r = slater_condon2_ueg(sys, excitation%from_orb(1), excitation%from_orb(2), &
                                        & excitation%to_orb(1), excitation%to_orb(2),excitation%perm)
-            proj_energy_sum = proj_energy_sum + hmatel*pop
+            estimators%proj_energy = estimators%proj_energy + hmatel%r*pop(1)
         end if
 
     end subroutine update_proj_energy_ueg
 
-    pure subroutine update_proj_energy_ringium(sys, f0, wfn_dat, cdet, pop, D0_pop_sum, proj_energy_sum, excitation, hmatel)
+    pure subroutine update_proj_energy_ringium(sys, f0, wfn_dat, cdet, pop, estimators, excitation, hmatel)
 
         ! Add the contribution of the current determinant to the projected
         ! energy.
@@ -970,10 +961,8 @@ contains
         !        from.  Only the bit string field needs to be set.
         !    pop: population on current determinant.
         ! In/Out:
-        !    D0_pop_sum: running total of N_0, the population on the reference
-        !        determinant, |D_0>.  Updated only if cdet is |D_0>.
-        !    proj_energy_sum: running total of \sum_{i \neq 0} <D_i|H|D_0> N_i.
-        !        Updated only if <D_i|H|D_0> is non-zero.
+        !    estimators: estimators_t object containing running totals of N_0
+        !        and proj energy contribution.
         ! Out:
         !    excitation: excitation connecting the determinant to the reference determinant.
         !    hmatel: <D_i|H|D_0>, the Hamiltonian matrix element between the
@@ -992,23 +981,23 @@ contains
         integer(i0), intent(in) :: f0(:)
         real(p), intent(in) :: wfn_dat(:)
         type(det_info_t), intent(in) :: cdet
-        real(p), intent(in) :: pop
-        real(p), intent(inout) :: D0_pop_sum, proj_energy_sum
+        real(p), intent(in) :: pop(:)
+        type(estimators_t), intent(inout) :: estimators
         type(excit_t), intent(inout) :: excitation
-        real(p), intent(out) :: hmatel
+        type(hmatel_t), intent(out) :: hmatel
 
         excitation = get_excitation(sys%nel, sys%basis, cdet%f, f0)
-        hmatel = 0.0_p
+        hmatel%r = 0.0_p
 
         if (excitation%nexcit == 0) then
             ! Have reference determinant.
-            D0_pop_sum = D0_pop_sum + pop
+            estimators%D0_population = estimators%D0_population + pop(1)
         else if (excitation%nexcit == 2) then
             ! Have a determinant connected to the reference determinant: add to
             ! projected energy.
-            hmatel = slater_condon2_ringium(sys, excitation%from_orb(1), excitation%from_orb(2), &
+            hmatel%r = slater_condon2_ringium(sys, excitation%from_orb(1), excitation%from_orb(2), &
                                        & excitation%to_orb(1), excitation%to_orb(2),excitation%perm)
-            proj_energy_sum = proj_energy_sum + hmatel*pop
+            estimators%proj_energy = estimators%proj_energy + hmatel%r*pop(1)
         end if
 
     end subroutine update_proj_energy_ringium
@@ -1053,7 +1042,8 @@ contains
         type(sys_t), intent(in) :: sys
         integer(i0), intent(in) :: f(:)
         integer, intent(in) :: fpop, f_hfpop
-        real(p), intent(in) :: fdata(:), hmatel
+        real(p), intent(in) :: fdata(:)
+        type(hmatel_t), intent(in) :: hmatel
         type(excit_t), intent(in) :: excitation
         real(p), intent(inout) :: D0_hf_pop, proj_hf_O_hpsip, proj_hf_H_hfpsip
 
@@ -1065,9 +1055,9 @@ contains
             ! projected estimators.
             ! DEBUG/TESTING: For now, just using O=H
             ! In this case, \sum_j O_0j c_j = proj_energy
-            proj_hf_O_hpsip = proj_hf_O_hpsip + hmatel*fpop
+            proj_hf_O_hpsip = proj_hf_O_hpsip + hmatel%r*fpop
             ! \sum_j H_0j \tilde{c}_j is similarly easy to evaluate
-            proj_hf_H_hfpsip = proj_hf_H_hfpsip + hmatel*f_hfpop
+            proj_hf_H_hfpsip = proj_hf_H_hfpsip + hmatel%r*f_hfpop
         end if
 
     end subroutine update_proj_hfs_hamiltonian
@@ -1108,7 +1098,8 @@ contains
         type(sys_t), intent(in) :: sys
         integer(i0), intent(in) :: f(:)
         integer, intent(in) :: fpop, f_hfpop
-        real(p), intent(in) :: fdata(:), hmatel
+        real(p), intent(in) :: fdata(:)
+        type(hmatel_t), intent(in) :: hmatel
         type(excit_t), intent(in) :: excitation
         real(p), intent(inout) :: D0_hf_pop, proj_hf_O_hpsip, proj_hf_H_hfpsip
 
@@ -1123,7 +1114,7 @@ contains
             ! sampling O - <D0|O|D0>, this means that \sum_j O_j0 c_j = 0.
 
             ! \sum_j H_0j \tilde{c}_j is similarly easy to evaluate
-            proj_hf_H_hfpsip = proj_hf_H_hfpsip + hmatel*f_hfpop
+            proj_hf_H_hfpsip = proj_hf_H_hfpsip + hmatel%r*f_hfpop
         end if
 
     end subroutine update_proj_hfs_diagonal
@@ -1163,10 +1154,10 @@ contains
         type(sys_t), intent(in) :: sys
         integer(i0), intent(in) :: f(:)
         integer, intent(in) :: fpop, f_hfpop
-        real(p), intent(in) :: fdata(:), hmatel
+        real(p), intent(in) :: fdata(:)
+        type(hmatel_t), intent(in) :: hmatel
         type(excit_t), intent(in) :: excitation
         real(p), intent(inout) :: D0_hf_pop, proj_hf_O_hpsip, proj_hf_H_hfpsip
-
         ! Note: two-electron operator.
 
         select case(excitation%nexcit)
@@ -1179,10 +1170,10 @@ contains
 
             !\hat{O}_0j = H_0j / (U L), where L is the number of sites.
             ! sampling \hat{O} - <D0|O|D0>, this means that \sum_j O_j0 c_j = 0.
-            proj_hf_O_hpsip = proj_hf_O_hpsip + (hmatel/(sys%hubbard%u*sys%lattice%nsites))*fpop
+            proj_hf_O_hpsip = proj_hf_O_hpsip + (hmatel%r/(sys%hubbard%u*sys%lattice%nsites))*fpop
 
             ! \sum_j H_0j \tilde{c}_j is similarly easy to evaluate
-            proj_hf_H_hfpsip = proj_hf_H_hfpsip + hmatel*f_hfpop
+            proj_hf_H_hfpsip = proj_hf_H_hfpsip + hmatel%r*f_hfpop
         end select
 
     end subroutine update_proj_hfs_double_occ_hub_k
@@ -1223,7 +1214,8 @@ contains
         type(sys_t), intent(in) :: sys
         integer(i0), intent(in) :: f(:)
         integer, intent(in) :: fpop, f_hfpop
-        real(p), intent(in) :: fdata(:), hmatel
+        real(p), intent(in) :: fdata(:)
+        type(hmatel_t), intent(in) :: hmatel
         type(excit_t), intent(in) :: excitation
         real(p), intent(inout) :: D0_hf_pop, proj_hf_O_hpsip, proj_hf_H_hfpsip
 
@@ -1244,13 +1236,13 @@ contains
             proj_hf_O_hpsip = proj_hf_O_hpsip + matel*fpop
 
             ! \sum_j H_0j \tilde{c}_j
-            proj_hf_H_hfpsip = proj_hf_H_hfpsip + hmatel*f_hfpop
+            proj_hf_H_hfpsip = proj_hf_H_hfpsip + hmatel%r*f_hfpop
         case(2)
             ! O is a one-body operator => no contributions from double
             ! excitations to \sum_j O_0j c_j.
 
             ! \sum_j H_0j \tilde{c}_j
-            proj_hf_H_hfpsip = proj_hf_H_hfpsip + hmatel*f_hfpop
+            proj_hf_H_hfpsip = proj_hf_H_hfpsip + hmatel%r*f_hfpop
         end select
 
     end subroutine update_proj_hfs_one_body_mol

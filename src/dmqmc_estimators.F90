@@ -491,7 +491,7 @@ contains
         use determinants, only: det_info_t
         use system, only: sys_t
         use excitations, only: excit_t
-        use proc_pointers, only: update_proj_energy_ptr
+        use hamiltonian_data
 
         type(sys_t), intent(in) :: sys
         type(excit_t), intent(inout) :: excitation
@@ -501,12 +501,12 @@ contains
         real(p), intent(inout) :: trace(:)
         real(p), intent(inout) :: energy
 
-        real(p) :: hmatel
+        type(hmatel_t) :: hmatel
         ! Importance sampling (in the FCIQMC-sense) isn't used in DMQMC...
         real(p) :: trial_wfn_dat(0)
 
         ! Update trace and off-diagonal contributions to the total enegy
-        call update_proj_energy_ptr(sys, cdet%f2, trial_wfn_dat, cdet, pop, trace(1), energy, excitation, hmatel)
+        call update_proj_energy_dmqmc(sys, cdet%f2, trial_wfn_dat, cdet, pop, trace(1), energy, excitation, hmatel)
 
         ! Update diagaonal contribution to the total energy
         if (excitation%nexcit == 0) energy = energy + (diagonal_contribution+H00)*pop
@@ -537,7 +537,8 @@ contains
         use determinants, only: det_info_t
         use system, only: sys_t
         use excitations, only: excit_t
-        use proc_pointers, only: update_proj_energy_ptr, sc0_ptr
+        use proc_pointers, only: sc0_ptr
+        use hamiltonian_data
 
         type(sys_t), intent(in) :: sys
         type(excit_t), intent(inout) :: excitation
@@ -547,12 +548,12 @@ contains
         real(p), intent(inout) :: trace(:)
         real(p), intent(inout) :: energy
 
-        real(p) :: hmatel
+        type(hmatel_t) :: hmatel
         ! Importance sampling (in the FCIQMC-sense) isn't used in DMQMC...
         real(p) :: trial_wfn_dat(0)
 
         ! Update trace and off-diagonal contributions to the total enegy
-        call update_proj_energy_ptr(sys, cdet%f2, trial_wfn_dat, cdet, pop, trace(1), energy, excitation, hmatel)
+        call update_proj_energy_dmqmc(sys, cdet%f2, trial_wfn_dat, cdet, pop, trace(1), energy, excitation, hmatel)
 
         ! Update diagaonal contribution to the total energy
         if (excitation%nexcit == 0) energy = energy + sc0_ptr(sys, cdet%f)*pop
@@ -564,6 +565,7 @@ contains
         ! For the Heisenberg model only.
         ! Add the contribution from the current density matrix element to the
         ! thermal energy squared estimate.
+
 
         ! In:
         !    sys: system being studied.
@@ -1405,7 +1407,8 @@ contains
         use determinants, only: det_info_t
         use system, only: sys_t
         use excitations, only: excit_t
-        use proc_pointers, only: sc0_ptr, update_proj_energy_ptr, trial_dm_ptr
+        use proc_pointers, only: sc0_ptr, trial_dm_ptr
+        use hamiltonian_data
 
         type(sys_t), intent(in) :: sys
         type(det_info_t), intent(in) :: cdet
@@ -1414,7 +1417,8 @@ contains
         real(p), intent(in) :: tdiff
         real(p), intent(inout) :: HI_energy
 
-        real(p) :: diff_ijab, hmatel, trace(2), energy
+        real(p) :: diff_ijab, trace(2), energy
+        type(hmatel_t) :: hmatel
         ! Importance sampling (in the FCIQMC-sense) isn't used in DMQMC...
         real(p) :: trial_wfn_dat(0)
 
@@ -1423,14 +1427,14 @@ contains
         energy = 0.0_p
 
         ! Hamiltonian matrix element.
-        call update_proj_energy_ptr(sys, cdet%f2, trial_wfn_dat, cdet, pop, trace(1), energy, excitation, hmatel)
+        call update_proj_energy_dmqmc(sys, cdet%f2, trial_wfn_dat, cdet, pop, trace(1), energy, excitation, hmatel)
         if (excitation%nexcit == 0) then
-            hmatel = sc0_ptr(sys, cdet%f)
+            hmatel%r = sc0_ptr(sys, cdet%f)
         else
             diff_ijab = trial_dm_ptr(sys, cdet%f) - trial_dm_ptr(sys, cdet%f2)
         end if
 
-        HI_energy = HI_energy + exp(-tdiff*diff_ijab)*hmatel*pop
+        HI_energy = HI_energy + exp(-tdiff*diff_ijab)*hmatel%r*pop
 
     end subroutine update_dmqmc_HI_energy
 
@@ -1465,5 +1469,52 @@ contains
         potential_energy = potential_energy + pop*potential_energy_ptr(sys, cdet%f, cdet%f2, excitation)
 
     end subroutine update_dmqmc_potential_energy
+
+    subroutine update_proj_energy_dmqmc(sys, f, trial_wfn_dat, cdet, pop, trace, energy, excitation, hmatel)
+
+        ! Update projected energy contribution from current density matrix element.
+
+        ! In:
+        !    sys: system being studied.
+        !    f: one bit string of density matrix element under consideration.
+        !    trial_wfn_dat: info on trial wavefunction in use.
+        !    cdet: det_info_t object containing bit strings of densitry matrix
+        !    pop: number of particles on the current density matrix
+        !        element.
+        ! In/Out:
+        !    trace: total population on diagonal elements of density matrix
+        !    energy: current thermal energy estimate.
+        ! Out:
+        !    excitation: excit_t type variable which stores information on
+        !        the excitation between the two bitstring ends, corresponding
+        !        to the two labels for the density matrix element.
+        !    hmatel: Hamiltonian matrix element between f and the reference.
+
+        use determinants, only: det_info_t
+        use system, only: sys_t
+        use excitations, only: excit_t
+        use proc_pointers, only: update_proj_energy_ptr
+        use hamiltonian, only: hmatel_t
+        use qmc_data, only: estimators_t
+
+        type(sys_t), intent(in) :: sys
+        integer(i0), intent(in) :: f(:)
+        type(det_info_t), intent(in) :: cdet
+        type(excit_t), intent(out) :: excitation
+        real(p), intent(in) :: pop
+        real(p), intent(inout) :: trace, energy
+        type(hmatel_t), intent(out) :: hmatel
+        type(estimators_t) :: dummy_estimators
+        real(p), intent(in) :: trial_wfn_dat(0)
+
+        dummy_estimators%proj_energy = energy
+        dummy_estimators%D0_population = trace
+
+        call update_proj_energy_ptr(sys, f, trial_wfn_dat, cdet, [pop], dummy_estimators, excitation, hmatel)
+
+        energy = dummy_estimators%proj_energy
+        trace = dummy_estimators%D0_population
+
+    end subroutine update_proj_energy_dmqmc
 
 end module dmqmc_estimators

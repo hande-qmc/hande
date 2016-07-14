@@ -504,6 +504,7 @@ contains
         use parallel
         use system, only: sys_t
         use utils, only: int_fmt
+        use hamiltonian_data
 
         type(semi_stoch_t), intent(inout) :: determ
         type(sys_t), intent(in) :: sys
@@ -514,7 +515,7 @@ contains
 
         integer :: i, j, nnz, imode
         integer :: mem_reqd, max_mem_reqd
-        real(p) :: hmatel
+        type(hmatel_t) :: hmatel
         real :: t1, t2
         logical :: diag_elem
 #ifdef PARALLEL
@@ -536,11 +537,11 @@ contains
                         hmatel = get_hmatel(sys, determ%dets(:,i), dets_this_proc(:,j))
                         diag_elem = i == j + displs(iproc)
                         ! Take the Hartree-Fock energy off the diagonal elements.
-                        if (diag_elem) hmatel = hmatel - H00
-                        if (abs(hmatel) > depsilon) then
+                        if (diag_elem) hmatel%r = hmatel%r - H00
+                        if (abs(hmatel%r) > depsilon) then
                             nnz = nnz + 1
                             if (imode == 2) then
-                                hamil%mat(nnz) = hmatel
+                                hamil%mat(nnz) = hmatel%r
                                 hamil%col_ind(nnz) = j
                                 if (hamil%row_ptr(i) == 0) hamil%row_ptr(i) = nnz
                             end if

@@ -45,17 +45,18 @@ contains
         use hamiltonian_hub_real, only: slater_condon1_hub_real_excit
         use system, only: sys_t
         use dSFMT_interface, only: dSFMT_t
+        use hamiltonian_data
 
         type(sys_t), intent(in) :: sys
         type(excit_gen_data_t), intent(in) :: excit_gen_data
         type(det_info_t), intent(in) :: cdet
         type(dSFMT_t), intent(inout) :: rng
-        real(p), intent(out) :: pgen, hmatel
+        real(p), intent(out) :: pgen
+        type(hmatel_t), intent(out) :: hmatel
         type(excit_t), intent(out) :: connection
         logical, intent(out) :: allowed_excitation
 
         integer :: nvirt_avail
-
         ! Double excitations are not connected determinants within the
         ! real space formulation of the Hubbard model.
         connection%nexcit = 1
@@ -68,7 +69,7 @@ contains
         allowed_excitation = .true.
 
         ! 3. find the connecting matrix element.
-        call slater_condon1_hub_real_excit(sys, cdet%f, connection, hmatel)
+        call slater_condon1_hub_real_excit(sys, cdet%f, connection, hmatel%r)
 
     end subroutine gen_excit_hub_real
 
@@ -111,13 +112,15 @@ contains
         use system, only: sys_t
         use hamiltonian_hub_real, only: slater_condon1_hub_real_excit
         use spawning, only: attempt_to_spawn
+        use hamiltonian_data
 
         type(sys_t), intent(in) :: sys
         type(excit_gen_data_t), intent(in) :: excit_gen_data
         type(det_info_t), intent(in) :: cdet
         type(dSFMT_t), intent(inout) :: rng
         type(excit_t), intent(out) :: connection
-        real(p), intent(out) :: pgen, hmatel
+        real(p), intent(out) :: pgen
+        type(hmatel_t), intent(out) :: hmatel
         logical, intent(out) :: allowed_excitation
 
         integer :: i, iel, ipos
@@ -138,7 +141,7 @@ contains
 
             ! a is occupied; forbidden excitation
             pgen = 1.0_p
-            hmatel = 0.0_p
+            hmatel%r = 0.0_p
 
             allowed_excitation = .false.
 
@@ -147,7 +150,7 @@ contains
             connection%nexcit=1
 
             ! 2. find the connecting matrix element.
-            call slater_condon1_hub_real_excit(sys, cdet%f, connection, hmatel)
+            call slater_condon1_hub_real_excit(sys, cdet%f, connection, hmatel%r)
 
             ! 3. Probability of spawning...
             ! For single excitations
@@ -189,12 +192,14 @@ contains
         use excit_gens, only: excit_gen_data_t
         use system, only: sys_t
         use dSFMT_interface, only: dSFMT_t
+        use hamiltonian_data
 
         type(sys_t), intent(in) :: sys
         type(excit_gen_data_t), intent(in) :: excit_gen_data
         type(det_info_t), intent(in) :: cdet
         type(dSFMT_t), intent(inout) :: rng
-        real(p), intent(out) :: pgen, hmatel
+        real(p), intent(out) :: pgen
+        type(hmatel_t), intent(out) :: hmatel
         type(excit_t), intent(out) :: connection
         logical, intent(out) :: allowed_excitation
 
@@ -215,7 +220,7 @@ contains
 
         ! 3. find the connecting matrix element.
         ! Non-zero off-diagonal elements are always -J/2 for Heisenebrg model
-        hmatel = -sys%heisenberg%J/2
+        hmatel%r = -sys%heisenberg%J/2
 
     end subroutine gen_excit_heisenberg
 
@@ -253,6 +258,7 @@ contains
         use excitations, only: excit_t
         use excit_gens, only: excit_gen_data_t
         use system, only: sys_t
+        use hamiltonian_data
 
         use dSFMT_interface, only: dSFMT_t, get_rand_close_open
 
@@ -260,7 +266,8 @@ contains
         type(excit_gen_data_t), intent(in) :: excit_gen_data
         type(det_info_t), intent(in) :: cdet
         type(dSFMT_t), intent(inout) :: rng
-        real(p), intent(out) :: pgen, hmatel
+        real(p), intent(out) :: pgen
+        type(hmatel_t), intent(out) :: hmatel
         type(excit_t), intent(out) :: connection
         logical, intent(out) :: allowed_excitation
 
@@ -285,7 +292,7 @@ contains
             ! null event means setting hmatel = 0.
             ! also set pgen to avoid potential division by an undefined quantity
             ! causing issues.
-            hmatel = 0.0_p
+            hmatel%r = 0.0_p
             pgen = 1.0_p
 
             allowed_excitation = .false.
@@ -302,7 +309,7 @@ contains
 
             ! 3. find the connecting matrix element.
             ! Non-zero off-diagonal elements are always -J/2 for Heisenebrg model
-            hmatel = -sys%heisenberg%J/2
+            hmatel%r = -sys%heisenberg%J/2
 
             allowed_excitation = .true.
 

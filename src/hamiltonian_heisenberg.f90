@@ -23,8 +23,9 @@ contains
 
         use excitations, only: excit_t, get_excitation
         use system, only: sys_t
+        use hamiltonian_data
 
-        real(p) :: hmatel
+        type(hmatel_t) :: hmatel
         type(sys_t), intent(in) :: sys
         integer(i0), intent(in) :: f1(sys%basis%string_len), f2(sys%basis%string_len)
         type(excit_t) :: excitation
@@ -41,18 +42,18 @@ contains
 
             ! < D | H | D > = \sum_i < i | h(i) | i > + \sum_i \sum_{j>i} < ij || ij >
             if (abs(sys%heisenberg%staggered_magnetic_field) > depsilon) then
-                hmatel = diagonal_element_heisenberg_staggered(sys, f1)
+                hmatel%r = diagonal_element_heisenberg_staggered(sys, f1)
             else
-                hmatel = diagonal_element_heisenberg(sys, f1)
+                hmatel%r = diagonal_element_heisenberg(sys, f1)
             end if
 
         case(1)
 
-            hmatel = offdiagonal_element_heisenberg(sys, excitation%from_orb(1), excitation%to_orb(1))
+            hmatel%r = offdiagonal_element_heisenberg(sys, excitation%from_orb(1), excitation%to_orb(1))
 
         case default
 
-            hmatel = 0.0_p
+            hmatel%r = 0.0_p
 
         end select
 

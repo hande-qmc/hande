@@ -54,13 +54,15 @@ contains
         use excit_gens, only: excit_gen_data_t
         use system, only: sys_t
         use dSFMT_interface, only: dSFMT_t
+        use hamiltonian_data
 
         type(sys_t), intent(in) :: sys
         type(excit_gen_data_t), intent(in) :: excit_gen_data
         type(det_info_t), intent(in) :: cdet
         type(dSFMT_t), intent(inout) :: rng
         type(excit_t), intent(out) :: connection
-        real(p), intent(out) :: pgen, abs_hmatel
+        real(p), intent(out) :: pgen
+        type(hmatel_t), intent(out) :: abs_hmatel
         logical, intent(out) :: allowed_excitation
 
         integer :: ij_sym
@@ -98,7 +100,7 @@ contains
         ! so
         !   |H_ij| = U/\Omega
         ! for allowed excitations.
-        abs_hmatel = abs(sys%hubbard%coulomb_k)
+        abs_hmatel%r = abs(sys%hubbard%coulomb_k)
 
     end subroutine gen_excit_init_hub_k
 
@@ -128,12 +130,13 @@ contains
         use hamiltonian_hub_k, only: slater_condon2_hub_k_excit
         use system, only: sys_t
         use dSFMT_interface, only: dSFMT_t
+        use hamiltonian_data
 
         type(sys_t), intent(in) :: sys
         type(det_info_t), intent(in) :: cdet
         type(dSFMT_t), intent(inout) :: rng
         type(excit_t), intent(inout) :: connection
-        real(p), intent(out) :: hmatel
+        type(hmatel_t), intent(out) :: hmatel
 
         integer :: ij_sym
 
@@ -151,7 +154,7 @@ contains
         ! 5. Is connecting matrix element positive (in which case we spawn with
         ! negative walkers) or negative (in which case we spawn with positive
         ! walkers)?
-        call slater_condon2_hub_k_excit(sys, cdet%f, connection, hmatel)
+        call slater_condon2_hub_k_excit(sys, cdet%f, connection, hmatel%r)
 
     end subroutine gen_excit_finalise_hub_k
 
@@ -191,13 +194,15 @@ contains
         use hamiltonian_hub_k, only: slater_condon2_hub_k_excit
         use qmc_data, only: qmc_state_t
         use system, only: sys_t
+        use hamiltonian_data
 
         type(sys_t), intent(in) :: sys
         type(excit_gen_data_t), intent(in) :: excit_gen_data
         type(det_info_t), intent(in) :: cdet
         type(dSFMT_t), intent(inout) :: rng
         type(excit_t), intent(out) :: connection
-        real(p), intent(out) :: pgen, abs_hmatel
+        real(p), intent(out) :: pgen
+        type(hmatel_t), intent(out) :: abs_hmatel
         logical, intent(out) :: allowed_excitation
 
         integer :: ij_sym
@@ -249,13 +254,13 @@ contains
             pgen = 1.0_p/(sys%nalpha*sys%nbeta*sys%nvirt_alpha)
 
             ! 4. |H_ij| is constant for this system.
-            abs_hmatel = abs(sys%hubbard%coulomb_k)
+            abs_hmatel%r = abs(sys%hubbard%coulomb_k)
 
         else
 
             ! Forbidden excitation.
             pgen = 1.0_p ! just to avoid division by zero issues
-            abs_hmatel = 0.0_p
+            abs_hmatel%r = 0.0_p
 
         end if
 
@@ -284,19 +289,20 @@ contains
         use hamiltonian_hub_k, only: slater_condon2_hub_k_excit
         use system, only: sys_t
         use dSFMT_interface, only: dSFMT_t
+        use hamiltonian_data
 
         type(sys_t), intent(in) :: sys
         type(det_info_t), intent(in) :: cdet
         type(dSFMT_t), intent(inout) :: rng
         type(excit_t), intent(inout) :: connection ! inout for interface compatibility
-        real(p), intent(out) :: hmatel
+        type(hmatel_t), intent(out) :: hmatel
 
         ! Continuing on from gen_excit_init_hub_k_no_renorm now the spawning
         ! event has been accepted.
 
         ! For no_renorm the excitation has been completely specified, so we just
         ! need to find the exact connecting matrix element.
-        call slater_condon2_hub_k_excit(sys, cdet%f, connection, hmatel)
+        call slater_condon2_hub_k_excit(sys, cdet%f, connection, hmatel%r)
 
     end subroutine gen_excit_finalise_hub_k_no_renorm
 
@@ -329,12 +335,14 @@ contains
         use system, only: sys_t
         use hamiltonian_hub_k, only: slater_condon2_hub_k_excit
         use dSFMT_interface, only: dSFMT_t
+        use hamiltonian_data
 
         type(sys_t), intent(in) :: sys
         type(excit_gen_data_t), intent(in) :: excit_gen_data
         type(det_info_t), intent(in) :: cdet
         type(dSFMT_t), intent(inout) :: rng
-        real(p), intent(out) :: pgen, hmatel
+        real(p), intent(out) :: pgen
+        type(hmatel_t), intent(out) :: hmatel
         type(excit_t), intent(out) :: connection
         logical, intent(out) :: allowed_excitation
 
@@ -364,11 +372,11 @@ contains
                                  connection%to_orb(1), connection%to_orb(2))
 
             ! 4. find the connecting matrix element.
-            call slater_condon2_hub_k_excit(sys, cdet%f, connection, hmatel)
+            call slater_condon2_hub_k_excit(sys, cdet%f, connection, hmatel%r)
             allowed_excitation = .true.
         else
             ! No allowed excitations from (i,j)
-            hmatel = 0.0_p
+            hmatel%r = 0.0_p
             pgen = 1.0_p
             allowed_excitation = .false.
         end if
@@ -410,12 +418,14 @@ contains
         use system, only: sys_t
         use hamiltonian_hub_k, only: slater_condon2_hub_k_excit
         use dSFMT_interface, only: dSFMT_t
+        use hamiltonian_data
 
         type(sys_t), intent(in) :: sys
         type(excit_gen_data_t), intent(in) :: excit_gen_data
         type(det_info_t), intent(in) :: cdet
         type(dSFMT_t), intent(inout) :: rng
-        real(p), intent(out) :: pgen, hmatel
+        real(p), intent(out) :: pgen
+        type(hmatel_t), intent(out) :: hmatel
         type(excit_t), intent(out) :: connection
         logical, intent(out) :: allowed_excitation
 
@@ -442,12 +452,12 @@ contains
 
             ! 4. find the connecting matrix element.
             connection%nexcit = 2
-            call slater_condon2_hub_k_excit(sys, cdet%f, connection, hmatel)
+            call slater_condon2_hub_k_excit(sys, cdet%f, connection, hmatel%r)
 
         else
 
             ! Generated a forbidden excitation (b is already occupied)
-            hmatel = 0.0_p
+            hmatel%r = 0.0_p
             pgen = 1.0_p
 
         end if

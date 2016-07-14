@@ -1,12 +1,13 @@
 module heisenberg_estimators
 
 use const
+use qmc_data, only: estimators_t
 
 implicit none
 
 contains
 
-    pure subroutine update_proj_energy_heisenberg_basic(sys, f0, wfn_dat, cdet, pop, D0_pop_sum, proj_energy_sum, excitation, &
+    pure subroutine update_proj_energy_heisenberg_basic(sys, f0, wfn_dat, cdet, pop, estimators, excitation, &
                                                         hmatel)
 
         ! Add the contribution of the current basis function to the
@@ -41,23 +42,24 @@ contains
         use determinants, only: det_info_t
         use excitations, only: excit_t
         use system, only: sys_t
+        use hamiltonian_data
 
         type(sys_t), intent(in) :: sys
         integer(i0), intent(in) :: f0(:)
         real(p), intent(in) :: wfn_dat(:)
         type(det_info_t), intent(in) :: cdet
-        real(p), intent(in) :: pop
-        real(p), intent(inout) :: D0_pop_sum, proj_energy_sum
+        real(p), intent(in) :: pop(:)
+        type(estimators_t), intent(inout) :: estimators
         type(excit_t), intent(inout) :: excitation
-        real(p), intent(out) :: hmatel
+        type(hmatel_t), intent(out) :: hmatel
 
         integer :: bit_position, bit_element
 
-        hmatel = 0.0_p
+        hmatel%r = 0.0_p
 
         if (excitation%nexcit == 0) then
             ! Have reference determinant.
-            D0_pop_sum = D0_pop_sum + pop
+            estimators%D0_population = estimators%D0_population + pop(1)
         else if (excitation%nexcit == 1) then
             ! Have a determinant connected to the reference determinant: add to
             ! projected energy.
@@ -66,14 +68,14 @@ contains
             bit_element = sys%basis%bit_lookup(2,excitation%from_orb(1))
 
             if (btest(sys%real_lattice%connected_orbs(bit_element, excitation%to_orb(1)), bit_position)) then
-                 hmatel = -sys%heisenberg%J/2
-                 proj_energy_sum = proj_energy_sum + hmatel*pop
+                 hmatel%r = -sys%heisenberg%J/2
+                 estimators%proj_energy = estimators%proj_energy + hmatel%r*pop(1)
              end if
         end if
 
     end subroutine update_proj_energy_heisenberg_basic
 
-    pure subroutine update_proj_energy_heisenberg_neel_singlet(sys, f0, wfn_dat, cdet, pop, D0_pop_sum, proj_energy_sum, &
+    pure subroutine update_proj_energy_heisenberg_neel_singlet(sys, f0, wfn_dat, cdet, pop, estimators, &
                                                                excitation, hmatel)
 
         ! Add the contribution of the current basis function to the
@@ -121,15 +123,16 @@ contains
         use determinants, only: det_info_t
         use excitations, only: excit_t
         use system, only: sys_t
+        use hamiltonian_data
 
         type(sys_t), intent(in) :: sys
         integer(i0), intent(in) :: f0(:)
         real(p), intent(in) :: wfn_dat(-1:)
         type(det_info_t), intent(in) :: cdet
-        real(p), intent(in) :: pop
-        real(p), intent(inout) :: D0_pop_sum, proj_energy_sum
+        real(p), intent(in) :: pop(:)
+        type(estimators_t), intent(inout) :: estimators
         type(excit_t), intent(inout) :: excitation
-        real(p), intent(out) :: hmatel
+        type(hmatel_t), intent(out) :: hmatel
 
         integer :: n, lattice_1_up, lattice_2_up
 
@@ -158,7 +161,7 @@ contains
 
         ! Firstly, consider the diagonal term:
         ! We have <D_j|H|D_j> stored, so this is simple:
-        hmatel = wfn_dat(n) * cdet%data(1)
+        hmatel%r = wfn_dat(n) * cdet%data(1)
 
         ! Now consider off-diagonal contributions, |D_i> /= |D_j>.
         ! To create a connected |D_i> from |D_j>, simply find a pair of anti-parallel
@@ -176,19 +179,19 @@ contains
         ! matrix element is -J/2, and we can put this together...
 
         ! From 0-1 bonds where the 1 is on sublattice 1, we have:
-        hmatel = hmatel - (sys%heisenberg%J * lattice_1_up * wfn_dat(n-1))/2
+        hmatel%r = hmatel%r - (sys%heisenberg%J * lattice_1_up * wfn_dat(n-1))/2
 
         ! And from 1-0 bond where the 1 is on sublattice 2, we have:
-        hmatel = hmatel - (sys%heisenberg%J * lattice_2_up * wfn_dat(n+1))/2
+        hmatel%r = hmatel%r - (sys%heisenberg%J * lattice_2_up * wfn_dat(n+1))/2
 
-        proj_energy_sum = proj_energy_sum + hmatel * pop
+        estimators%proj_energy = estimators%proj_energy + hmatel%r * pop(1)
 
         ! Now we just need to find the contribution to the denominator. The total
         ! denominator is
         ! \sum_{i} (a_i * n_i)
         ! Hence from this particular basis function, |D_j>, we just add (a_j * n_j)
 
-        D0_pop_sum = D0_pop_sum + pop*wfn_dat(n)
+        estimators%D0_population = estimators%D0_population + pop(1)*wfn_dat(n)
 
     end subroutine update_proj_energy_heisenberg_neel_singlet
 

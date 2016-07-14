@@ -602,8 +602,7 @@ contains
         !       non-blocking calculations.
 
         use determinants, only: det_info_t, alloc_det_info_t, dealloc_det_info_t, decode_det
-        use energy_evaluation, only: local_energy_estimators, update_energy_estimators_send, &
-                                    update_proj_energy_mol_complex
+        use energy_evaluation, only: local_energy_estimators, update_energy_estimators_send
         use excitations, only: excit_t, get_excitation
         use fciqmc_data, only: write_fciqmc_report
         use importance_sampling, only: importance_sampling_weight
@@ -611,6 +610,7 @@ contains
         use proc_pointers, only: update_proj_energy_ptr
         use qmc_data, only: qmc_in_t, qmc_state_t, nb_rep_t
         use system, only: sys_t
+        use hamiltonian_data
 
 
         type(sys_t), intent(in) :: sys
@@ -623,8 +623,7 @@ contains
         real(dp) :: ntot_particles(qs%psip_list%nspaces)
         real(p) :: real_population(qs%psip_list%nspaces), weighted_population(qs%psip_list%nspaces)
         type(det_info_t) :: cdet
-        real(p) :: hmatel
-        complex(p) :: hmatel_comp
+        type(hmatel_t) :: hmatel
         type(excit_t) :: D0_excit
         logical :: nb_comm_local
 #ifdef PARALLEL
@@ -651,16 +650,8 @@ contains
             ! WARNING!  We assume only the bit string, occ list and data field
             ! are required to update the projected estimator.
             D0_excit = get_excitation(sys%nel, sys%basis, cdet%f, qs%ref%f0)
-            if (sys%read_in%comp) then
-                call update_proj_energy_mol_complex(sys, qs%ref%f0, qs%trial%wfn_dat, cdet, &
-                            cmplx(weighted_population(1), weighted_population(2), p), &
-                            qs%estimators%D0_population_comp, qs%estimators%proj_energy_comp, &
-                            D0_excit, hmatel_comp)
-            else
-                call update_proj_energy_ptr(sys, qs%ref%f0, qs%trial%wfn_dat, cdet, weighted_population(1), &
-                                        qs%estimators%D0_population, qs%estimators%proj_energy, D0_excit, &
-                                        hmatel)
-            end if
+            call update_proj_energy_ptr(sys, qs%ref%f0, qs%trial%wfn_dat, cdet, weighted_population, &
+                                    qs%estimators, D0_excit, hmatel)
         end do
         call dealloc_det_info_t(cdet)
 

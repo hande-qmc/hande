@@ -307,7 +307,7 @@ contains
 
         case(read_in)
             if (sys%read_in%comp) then
-                update_proj_energy_ptr => null()
+                update_proj_energy_ptr => update_proj_energy_mol_complex
                 sc0_ptr => slater_condon0_mol_complex
                 energy_diff_ptr => null()
                 spawner_ptr => spawn_complex

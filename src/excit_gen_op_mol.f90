@@ -52,6 +52,7 @@ contains
         use excit_gen_mol, only: choose_ia_mol, calc_pgen_single_mol
         use operators, only: one_body1_mol_excit
         use system, only: sys_t
+        use hamiltonian_data
 
         use dSFMT_interface, only: dSFMT_t
 
@@ -61,7 +62,7 @@ contains
         type(det_info_t), intent(in) :: cdet
         real(p), intent(out) :: pgen
         type(excit_t), intent(out) :: connection
-        real(p), intent(out) :: matel
+        type(hmatel_t), intent(out) :: matel
         logical, intent(out) :: allowed_excitation
 
         integer :: op_sym
@@ -81,13 +82,13 @@ contains
             call find_excitation_permutation1(sys%basis%excit_mask, cdet%f, connection)
 
             ! 4. Find the connecting matrix element.
-            matel = one_body1_mol_excit(sys, connection%from_orb(1), connection%to_orb(1), connection%perm)
+            matel%r = one_body1_mol_excit(sys, connection%from_orb(1), connection%to_orb(1), connection%perm)
         else
             ! We have a highly restrained system and this det has no single
             ! excitations at all.  To avoid reweighting pattempt_single and
             ! pattempt_double (an O(N^3) operation), we simply return a null
             ! excitation
-            matel = 0.0_p
+            matel%r = 0.0_p
             pgen = 1.0_p
         end if
 
@@ -131,6 +132,7 @@ contains
         use operators, only: one_body1_mol_excit
         use system, only: sys_t
         use dSFMT_interface, only: dSFMT_t
+        use hamiltonian_data
 
         type(dSFMT_t), intent(inout) :: rng
         type(sys_t), intent(in) :: sys
@@ -138,7 +140,7 @@ contains
         type(det_info_t), intent(in) :: cdet
         real(p), intent(out) :: pgen
         type(excit_t), intent(out) :: connection
-        real(p), intent(out) :: matel
+        type(hmatel_t), intent(out) :: matel
         logical, intent(out) :: allowed_excitation
 
         integer :: op_sym
@@ -158,13 +160,14 @@ contains
             call find_excitation_permutation1(sys%basis%excit_mask, cdet%f, connection)
 
             ! 4. Find the connecting matrix element.
-            matel = one_body1_mol_excit(sys, connection%from_orb(1), connection%to_orb(1), connection%perm)
+            matel%r = one_body1_mol_excit(sys, connection%from_orb(1), connection%to_orb(1), connection%perm)
         else
             ! We have a highly restrained system and this det has no single
             ! excitations at all.  To avoid reweighting pattempt_single and
             ! pattempt_double (an O(N^3) operation), we simply return a null
+
             ! excitation
-            matel = 0.0_p
+            matel%r = 0.0_p
             pgen = 1.0_p
         end if
 
