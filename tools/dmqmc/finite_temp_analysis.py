@@ -367,11 +367,11 @@ None.
     # The data that we are going to use.
     estimates = data.loc[:,'Shift':'# H psips']
 
-    if 'DMQMC' in md['calc_type'] and options.with_free_energy:
+    if options.with_free_energy:
         # Set up estimator we need to integrate wrt time/temperature to evaluate
         # free energy difference.
-        if md['ipdmqmc']['propagate_to_beta']:
-            if md['ipdmqmc']['symmetric']:
+        if metadata[0]['ipdmqmc']['propagate_to_beta']:
+            if metadata[0]['ipdmqmc']['symmetric']:
                 estimates['\\sum\\rho_{ij}VI_{ji}'] = (
                                                  data['\\sum\\rho_{ij}HI{ji}'] -
                                                  data['\\sum\\rho_{ij}H0{ji}']
