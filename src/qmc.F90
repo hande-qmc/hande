@@ -49,7 +49,7 @@ contains
         use energy_evaluation, only: nparticles_start_ind
         use load_balancing, only: init_parallel_t
         use particle_t_utils, only: init_particle_t
-        use system, only: sys_t, read_in
+        use system
         use restart_hdf5, only: read_restart_hdf5, restart_info_t, init_restart_info_t, get_reference_hdf5
 
         use qmc_data, only: qmc_in_t, fciqmc_in_t, restart_in_t, load_bal_in_t, annihilation_flags_t, qmc_state_t, &
@@ -182,15 +182,16 @@ contains
         end if
 
         if (qmc_in%excit_gen==excit_gen_cauchy_schwarz) then
-            call init_excit_mol_cauchy_schwarz_occ_ref(sys, qmc_state%ref, qmc_state%excit_gen_data%excit_gen_cs)
-            ! [review] - JSS: see deallocation hooks for qmc_state_t.
-            ! TODO this needs to be deallocated somewhere
-        endif
-        if (qmc_in%excit_gen==excit_gen_cauchy_schwarz) then
-            call init_excit_ueg_cauchy_schwarz(sys, qmc_state%ref, qmc_state%excit_gen_data%excit_gen_cs)
-            ! [review] - JSS: see deallocation hooks for qmc_state_t.
-            ! TODO this needs to be deallocated somewhere
-        endif
+            if (sys%system == read_in) then
+               call init_excit_mol_cauchy_schwarz_occ_ref(sys, qmc_state%ref, qmc_state%excit_gen_data%excit_gen_cs)
+               ! [review] - JSS: see deallocation hooks for qmc_state_t.
+               ! TODO this needs to be deallocated somewhere
+            else if (sys%system == ueg) then 
+               call init_excit_ueg_cauchy_schwarz(sys, qmc_state%ref, qmc_state%excit_gen_data%excit_gen_cs)
+               ! [review] - JSS: see deallocation hooks for qmc_state_t.
+               ! TODO this needs to be deallocated somewhere
+            end if
+        end if
     end subroutine init_qmc
 
     subroutine init_proc_pointers(sys, qmc_in, reference, io_unit, dmqmc_in, fciqmc_in)
