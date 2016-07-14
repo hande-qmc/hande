@@ -139,7 +139,7 @@ contains
             call encode_det(sys%basis, ref%occ_list0, f0)
             if (sys%read_in%comp) then
                 hmatel = get_hmatel_complex(sys, f0, f0)
-                ref%H00 = hmatel%c
+                ref%H00 = real(hmatel%c, p)
             else
                 hmatel = get_hmatel(sys, f0, f0)
                 ref%H00 = hmatel%r
