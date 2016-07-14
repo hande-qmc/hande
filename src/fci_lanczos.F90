@@ -392,14 +392,14 @@ contains
             
             ! NOTE: sys is used from the scope of lanczos_diagonalisation.
 
-            use hamiltonian, only: get_hmatel
+            use hamiltonian, only: get_hmatel, hmatel_t
 
             integer, intent(in) :: nrow, ncol, ldx, ldy
             real(dp), intent(in) :: xin(ldx,ncol)
             real(dp), intent(out) :: yout(ldy,ncol)
             integer :: i, j, k
             real(dp) :: tmp
-            real(p) :: hmatel
+            type(hmatel_t) :: hmatel
 
             yout = 0.0_dp
             do k = 1, ncol
@@ -412,10 +412,11 @@ contains
                     tmp = 0.0_p
                     do i = 1, j-1
                         hmatel = get_hmatel(sys, dets(:,i), dets(:,j))
-                        yout(i,k) = yout(i,k) + hmatel*xin(j, k)
-                        tmp = tmp + hmatel*xin(i,k)
+                        yout(i,k) = yout(i,k) + hmatel%r*xin(j, k)
+                        tmp = tmp + hmatel%r*xin(i,k)
                     end do
-                    yout(j,k) = get_hmatel(sys, dets(:,j), dets(:,j))*xin(j,k) + tmp
+                    hmatel = get_hmatel(sys, dets(:,j), dets(:,j))
+                    yout(j,k) = hmatel%r*xin(j,k) + tmp
                 end do
             end do
 
