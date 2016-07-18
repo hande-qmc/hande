@@ -18,13 +18,14 @@ enum, bind(c)
     enumerator :: ground_rdm_trace_ind
     enumerator :: inst_rdm_trace_ind
     enumerator :: rdm_r2_ind
+    enumerator :: mom_dist_ind
     enumerator :: final_ind ! ensure this remains the last index.
 end enum
 
 contains
 
-    subroutine dmqmc_estimate_comms(dmqmc_in, error, nspawn_events, max_num_excits, ncycles, psip_list, qs, &
-                                    accumulated_probs_old, dmqmc_estimates)
+    subroutine dmqmc_estimate_comms(dmqmc_in, error, nspawn_events, max_num_excits, ncycles, nkpoints, &
+                                    psip_list, qs, accumulated_probs_old, dmqmc_estimates)
 
         ! Sum together the contributions to the various DMQMC estimators (and
         ! some other non-physical quantities such as the rate of spawning and
@@ -39,6 +40,7 @@ contains
         !        studied.
         !    ncycles: the number of monte carlo cycles.
         !    accumulated_probs_old: the value of accumulated_probs on the last report cycle.
+        !    nkpoints : number of kpoints accumulated for momentum distribution.
         ! In/Out:
         !    error: true if an error has occured on this processor. On output, true if an
         !        error has occured on any processor.
@@ -54,7 +56,7 @@ contains
 
         type(dmqmc_in_t), intent(in) :: dmqmc_in
         logical, intent(inout) :: error
-        integer, intent(in) :: nspawn_events, max_num_excits, ncycles
+        integer, intent(in) :: nspawn_events, max_num_excits, ncycles, nkpoints
         real(p), intent(in) :: accumulated_probs_old(0:)
         type(particle_t), intent(inout) :: psip_list
         type(qmc_state_t), intent(inout) :: qs
@@ -83,6 +85,7 @@ contains
         nelems(ground_rdm_trace_ind) = 1
         nelems(inst_rdm_trace_ind) = psip_list%nspaces*dmqmc_estimates%inst_rdm%nrdms
         nelems(rdm_r2_ind) = dmqmc_estimates%inst_rdm%nrdms
+        nelems(mom_dist_ind) = nkpoints + 1
 
         ! The total number of elements in the array to be communicated.
         tot_nelems = sum(nelems)
@@ -143,7 +146,7 @@ contains
         ! Out:
         !    rep_loop_loc: array containing local quantities to be communicated.
 
-        use calc, only: doing_dmqmc_calc, dmqmc_rdm_r2
+        use calc, only: doing_dmqmc_calc, dmqmc_rdm_r2, dmqmc_mom_dist
         use dmqmc_data, only: dmqmc_in_t, dmqmc_estimates_t
 
         type(dmqmc_in_t), intent(in) :: dmqmc_in
@@ -181,6 +184,9 @@ contains
         if (doing_dmqmc_calc(dmqmc_rdm_r2)) then
             rep_loop_loc(min_ind(rdm_r2_ind):max_ind(rdm_r2_ind)) = dmqmc_estimates%inst_rdm%renyi_2
         end if
+        if (doing_dmqmc_calc(dmqmc_mom_dist)) then
+            rep_loop_loc(min_ind(mom_dist_ind):max_ind(mom_dist_ind)) = dmqmc_estimates%mom_dist
+        end if
 
     end subroutine local_dmqmc_estimators
 
@@ -208,7 +214,7 @@ contains
         !       processors.
         !    error: whether an error occured on any processor.
 
-        use calc, only: doing_dmqmc_calc, dmqmc_rdm_r2
+        use calc, only: doing_dmqmc_calc, dmqmc_rdm_r2, dmqmc_mom_dist
         use dmqmc_data, only: dmqmc_in_t, dmqmc_estimates_t
         use parallel, only: nprocs
         use qmc_data, only: qmc_state_t
@@ -241,6 +247,10 @@ contains
         if (doing_dmqmc_calc(dmqmc_rdm_r2)) then
             dmqmc_estimates%inst_rdm%renyi_2 = real(rep_loop_sum(min_ind(rdm_r2_ind):max_ind(rdm_r2_ind)), p)
         end if
+        if (doing_dmqmc_calc(dmqmc_mom_dist)) then
+            dmqmc_estimates%mom_dist = real(rep_loop_sum(min_ind(mom_dist_ind):max_ind(mom_dist_ind)), p)
+        end if
+
 
         ! Average the spawning rate.
         qs%spawn_store%rspawn = qs%spawn_store%rspawn/(ncycles*nprocs)

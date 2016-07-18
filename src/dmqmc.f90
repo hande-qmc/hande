@@ -360,7 +360,7 @@ contains
                 ! Sum all quantities being considered across all MPI processes.
                 error = qs%spawn_store%spawn%error .or. qs%psip_list%error .or. rdm_error
                 call dmqmc_estimate_comms(dmqmc_in, error, nspawn_events, sys%max_number_excitations, qmc_in%ncycles, &
-                                          qs%psip_list, qs, weighted_sampling%probs_old, dmqmc_estimates)
+                                          nkpoints, qs%psip_list, qs, weighted_sampling%probs_old, dmqmc_estimates)
                 if (error) exit outer_loop
 
                 call update_shift_dmqmc(qmc_in, qs, qs%psip_list%tot_nparticles, tot_nparticles_old)

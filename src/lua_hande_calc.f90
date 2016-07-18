@@ -1280,6 +1280,7 @@ contains
         !     H0_energy = true/false,
         !     potential_energy = true/false,
         !     HI_energy = true/false,
+        !     mom_dist = kmax,
         ! }
         ! rdm = {
         !     spawned_state_size = X,
@@ -1333,9 +1334,9 @@ contains
         character(30), parameter :: ip_keys(6)    = [character(30) :: 'target_beta', 'initial_beta', 'initial_matrix',           &
                                                                       'grand_canonical_initialisation', 'metropolis_attempts',   &
                                                                       'symmetric']
-        character(30), parameter :: op_keys(10)    = [character(30) :: 'renyi2', 'energy', 'energy2', 'staggered_magnetisation',  &
+        character(30), parameter :: op_keys(11)    = [character(30) :: 'renyi2', 'energy', 'energy2', 'staggered_magnetisation',  &
                                                                        'correlation', 'excit_dist', 'kinetic_energy',             &
-                                                                       'H0_energy', 'potential_energy', 'HI_energy']
+                                                                       'H0_energy', 'potential_energy', 'HI_energy', 'mom_dist']
         character(30), parameter :: rdm_keys(9)   = [character(30) :: 'spawned_state_size', 'rdms', 'ground_state',              &
                                                                       'ground_state_start', 'instantaneous', 'write',              &
                                                                       'concurrence', 'von_neumann', 'renyi2']
@@ -1419,6 +1420,10 @@ contains
             if (aot_exists(lua_state, table, 'correlation')) then
                 dmqmc_calc_type = dmqmc_calc_type + dmqmc_correlation
                 call aot_get_val(dmqmc_in%correlation_sites, err_arr, nbasis, lua_state, table, 'correlation')
+            end if
+            if (aot_exists(lua_state, table, 'mom_dist')) then
+                dmqmc_calc_type = dmqmc_calc_type + dmqmc_mom_dist
+                call aot_get_val(dmqmc_in%kmax, err, lua_state, table, 'mom_dist')
             end if
             call aot_get_val(dmqmc_in%calc_excit_dist, err, lua_state, table, 'excit_dist')
             call warn_unused_args(lua_state, op_keys, table)
