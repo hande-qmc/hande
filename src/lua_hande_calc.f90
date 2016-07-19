@@ -1422,8 +1422,8 @@ contains
                 call aot_get_val(dmqmc_in%correlation_sites, err_arr, nbasis, lua_state, table, 'correlation')
             end if
             if (aot_exists(lua_state, table, 'mom_dist')) then
-                dmqmc_calc_type = dmqmc_calc_type + dmqmc_mom_dist
-                call aot_get_val(dmqmc_in%kmax, err, lua_state, table, 'mom_dist')
+                call aot_get_val(dmqmc_in%mom_dist_kmax, err, lua_state, table, 'mom_dist')
+                dmqmc_in%calc_mom_dist = .true.
             end if
             call aot_get_val(dmqmc_in%calc_excit_dist, err, lua_state, table, 'excit_dist')
             call warn_unused_args(lua_state, op_keys, table)

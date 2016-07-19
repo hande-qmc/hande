@@ -17,7 +17,6 @@ enum, bind(c)
     enumerator :: H0_ind
     enumerator :: potential_ind
     enumerator :: HI_ind
-    enumerator :: mom_dist_ind
     enumerator :: terminator ! unused except in num_dmqmc_operators
    ! NOTE: if you add a new estimator then you must insert it before terminator.
 end enum
@@ -204,8 +203,10 @@ type dmqmc_in_t
     ! by itself.
     integer :: initiator_level = -1
 
+    ! If true the momentum distribution will be calculated, i.e., <n_k>.
+    logical :: calc_mom_dist = .false.
     ! Maximum kvector momentum distribution is evaluated at (in terms of the Fermi wavevector).
-    real(p) :: kmax = 0.0
+    real(p) :: mom_dist_kmax = 0.0
 
 end type dmqmc_in_t
 
@@ -269,7 +270,7 @@ type dmqmc_estimates_t
     ! level of the density matrix.
     real(p), allocatable :: excit_dist(:) ! (0:max_number_excitations)
 
-    ! Holds the momentum distribution at various kpoints.
+    ! Holds the (numerator of the) momentum distribution at various kpoints.
     ! The length of the array is determined by the number of kpoints whose
     ! magnitude is less than dmqmc_in%kmax.
     real(p), allocatable :: mom_dist(:)
@@ -351,8 +352,8 @@ contains
         end if
         call json_write_key(js, 'finish_varying_weights', dmqmc%finish_varying_weights)
         call json_write_key(js, 'fermi_temperature', dmqmc%fermi_temperature)
-        call json_write_key(js, 'target_beta', dmqmc%target_beta, terminal=.true.)
-        call json_write_key(js, 'kmax', dmqmc%kmax, terminal=.true.)
+        call json_write_key(js, 'target_beta', dmqmc%target_beta)
+        call json_write_key(js, 'mom_dist_kmax', dmqmc%mom_dist_kmax, terminal=.true.)
         call json_object_end(js, terminal)
 
     end subroutine dmqmc_in_t_json
@@ -422,7 +423,7 @@ contains
 
     end subroutine rdm_in_t_json
 
-    subroutine operators_in_t_json(js, terminal)
+    subroutine operators_in_t_json(js, dmqmc, terminal)
 
         ! serialise operators in json format.
         ! options.
@@ -430,14 +431,16 @@ contains
         ! in/out:
         !   js: json_out_t controlling the output unit and handling json internal state.  unchanged on output.
         ! in:
+        !   dmqmc : dmqmc_in type containing input information.
         !   terminal (optional): if true, this is the last entry in the enclosing json object.  default: false.
 
         use json_out
         use calc, only: doing_dmqmc_calc, dmqmc_energy, dmqmc_energy_squared, dmqmc_correlation, &
                         dmqmc_staggered_magnetisation, dmqmc_rdm_r2, dmqmc_full_r2, dmqmc_kinetic_energy, &
-                        dmqmc_potential_energy, dmqmc_H0_energy, dmqmc_HI_energy, dmqmc_mom_dist
+                        dmqmc_potential_energy, dmqmc_H0_energy, dmqmc_HI_energy
 
         type(json_out_t), intent(inout) :: js
+        type(dmqmc_in_t), intent(in) :: dmqmc
         logical, intent(in), optional :: terminal
 
         call json_object_init(js, 'operators')
@@ -451,7 +454,7 @@ contains
         call json_write_key(js, 'staggered_mad_ind', doing_dmqmc_calc(dmqmc_staggered_magnetisation))
         call json_write_key(js, 'rdm_r2', doing_dmqmc_calc(dmqmc_rdm_r2))
         call json_write_key(js, 'full_r2', doing_dmqmc_calc(dmqmc_full_r2))
-        call json_write_key(js, 'mom_dist', doing_dmqmc_calc(dmqmc_mom_dist), terminal=.true.)
+        call json_write_key(js, 'mom_dist', dmqmc%calc_mom_dist, terminal=.true.)
         call json_object_end(js, terminal)
 
     end subroutine operators_in_t_json

@@ -20,8 +20,9 @@ contains
         !        sampling.
 
         use calc, only: doing_dmqmc_calc, dmqmc_correlation
+        use errors, only: stop_all
         use checking, only: check_allocate
-        use system, only: sys_t
+        use system, only: sys_t, ueg
 
         use qmc_data, only: qmc_in_t, qmc_state_t
         use dmqmc_data, only: dmqmc_in_t, dmqmc_estimates_t, dmqmc_weighted_sampling_t
@@ -34,7 +35,7 @@ contains
         type(dmqmc_estimates_t), intent(inout) :: dmqmc_estimates
         type(dmqmc_weighted_sampling_t), intent(inout) :: weighted_sampling
 
-        integer :: ierr, i, bit_position, bit_element
+        integer :: ierr, i, bit_position, bit_element, iorb
 
         allocate(dmqmc_estimates%trace(nreplicas), stat=ierr)
         call check_allocate('dmqmc_estimates%trace', nreplicas, ierr)
@@ -164,6 +165,20 @@ contains
         if (dmqmc_in%rdm%doing_rdm) call setup_rdm_arrays(sys, .true., dmqmc_estimates%subsys_info, &
                                                           dmqmc_estimates%ground_rdm%rdm, qmc_in, dmqmc_in%rdm, &
                                                           dmqmc_estimates%inst_rdm, nreplicas, qs%psip_list%pop_real_factor)
+        if (dmqmc_in%calc_mom_dist) then
+            select case(sys%system)
+            case (ueg)
+                ! Look for maximum kpoint which is less than user defined maximum multiple of Fermi vector.
+                do iorb = 1, sys%basis%nbasis
+                    if (sys%basis%basis_fns(iorb)%sp_eigv > 0.5*(dmqmc_in%mom_dist_kmax*sys%ueg%kf)**2.0) exit
+                end do
+                ! Really want iorb - 1.
+                allocate(dmqmc_estimates%mom_dist(iorb-1), stat=ierr)
+                call check_allocate('tmp_basis_fns', iorb-1, ierr)
+            case default
+                call stop_all('init_dmqmc', 'Momentum distribution not implemented for this system.')
+            end select
+        end if
 
     end subroutine init_dmqmc
 

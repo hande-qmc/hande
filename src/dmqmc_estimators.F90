@@ -146,7 +146,7 @@ contains
         ! Out:
         !    rep_loop_loc: array containing local quantities to be communicated.
 
-        use calc, only: doing_dmqmc_calc, dmqmc_rdm_r2, dmqmc_mom_dist
+        use calc, only: doing_dmqmc_calc, dmqmc_rdm_r2
         use dmqmc_data, only: dmqmc_in_t, dmqmc_estimates_t
 
         type(dmqmc_in_t), intent(in) :: dmqmc_in
@@ -184,7 +184,7 @@ contains
         if (doing_dmqmc_calc(dmqmc_rdm_r2)) then
             rep_loop_loc(min_ind(rdm_r2_ind):max_ind(rdm_r2_ind)) = dmqmc_estimates%inst_rdm%renyi_2
         end if
-        if (doing_dmqmc_calc(dmqmc_mom_dist)) then
+        if (dmqmc_in%calc_mom_dist) then
             rep_loop_loc(min_ind(mom_dist_ind):max_ind(mom_dist_ind)) = dmqmc_estimates%mom_dist
         end if
 
@@ -214,7 +214,7 @@ contains
         !       processors.
         !    error: whether an error occured on any processor.
 
-        use calc, only: doing_dmqmc_calc, dmqmc_rdm_r2, dmqmc_mom_dist
+        use calc, only: doing_dmqmc_calc, dmqmc_rdm_r2
         use dmqmc_data, only: dmqmc_in_t, dmqmc_estimates_t
         use parallel, only: nprocs
         use qmc_data, only: qmc_state_t
@@ -247,7 +247,7 @@ contains
         if (doing_dmqmc_calc(dmqmc_rdm_r2)) then
             dmqmc_estimates%inst_rdm%renyi_2 = real(rep_loop_sum(min_ind(rdm_r2_ind):max_ind(rdm_r2_ind)), p)
         end if
-        if (doing_dmqmc_calc(dmqmc_mom_dist)) then
+        if (dmqmc_in%calc_mom_dist) then
             dmqmc_estimates%mom_dist = real(rep_loop_sum(min_ind(mom_dist_ind):max_ind(mom_dist_ind)), p)
         end if
 
@@ -400,9 +400,6 @@ contains
 
         type(excit_t) :: excitation
         real(p) :: unweighted_walker_pop(psip_list%nspaces)
-        real(dp), allocatable :: number_operator_numerator(:)
-    	allocate (number_operator_numerator(sys%nel))
-        
 
         ! Get excitation.
         excitation = get_excitation(sys%nel, sys%basis, psip_list%states(:sys%basis%string_len,idet), &
@@ -423,7 +420,6 @@ contains
             if (abs(unweighted_walker_pop(1)) > 0) then
                 ! See which estimators are to be calculated, and call the
                 ! corresponding procedures.
-                call dmqmc_momentum_distr_diag(sys, cdet, excitation, H00, unweighted_walker_pop(1), number_operator_numerator)
                 ! Energy
                 if (doing_dmqmc_calc(dmqmc_energy)) call update_dmqmc_energy_and_trace_ptr&
                         &(sys, excitation, cdet, H00, unweighted_walker_pop(1), psip_list%dat(1, idet), &
@@ -458,6 +454,8 @@ contains
                 ! Excitation distribtuion for calculating importance sampling weights.
                 if (dmqmc_in%find_weights .and. iteration > dmqmc_in%find_weights_start) est%excit_dist(excitation%nexcit) = &
                     est%excit_dist(excitation%nexcit) + real(abs(psip_list%pops(1,idet)),p)/psip_list%pop_real_factor
+                if (dmqmc_in%calc_mom_dist) call update_dmqmc_momentum_distribution(sys, cdet, excitation, H00,&
+                                                                                      &unweighted_walker_pop(1), est%mom_dist)
             end if
 
             ! Full Renyi entropy (S_2).
@@ -617,7 +615,7 @@ contains
             ! flip the same pair of spins twice. The Hamiltonian element for doing
             ! nothing is just the diagonal element. For each possible pairs of
             ! spins which can be flipped, there is a mtarix element of -J/2, so
-            ! we just need to count the number of such pairs, which can be found 
+            ! we just need to count the number of such pairs, which can be found
             ! simply from the diagonal element.
 
             sum_H1_H2 = (cdet%data(1)+H00)**2
@@ -635,7 +633,7 @@ contains
             ! the pair on the first bond, then flip the pair on the second bond.
             ! This flipping can only be done in exactly one order, not both - the
             ! two spins which change are opposite, so the middle spin will
-            ! initially only be the same as one or the other spin. This is nice, 
+            ! initially only be the same as one or the other spin. This is nice,
             ! because we don't have check which way up the intermediate spin is -
             ! there will always be one order which contributes. If there are two
             ! such paths, then this could happen by either paths, but again, the
@@ -1212,7 +1210,7 @@ contains
         call geev_wrapper('N', 'N', 4, rdm_spin_flip, 4, reigv, ieigv, VL, 1, VR, 1, info)
         ! Calculate the concurrence. Take abs of eigenvalues so that this is
         ! equivalant to sqauring and then square-rooting.
-        concurrence = 2.0_p*maxval(abs(reigv)) - sum(abs(reigv)) 
+        concurrence = 2.0_p*maxval(abs(reigv)) - sum(abs(reigv))
         concurrence = max(0.0_p, concurrence)
         write (6,'(1x,"# Unnormalised concurrence =",1X,es17.10)') concurrence
 
@@ -1347,10 +1345,8 @@ contains
         if (excitation%nexcit == 0) kinetic_energy = kinetic_energy + pop*kinetic_diag_ptr(sys, cdet%f)
 
     end subroutine dmqmc_kinetic_energy_diag
-    
-       
-    
-    subroutine dmqmc_momentum_distr_diag(sys, cdet, excitation, H00, pop, number_operator_numerator)
+
+    subroutine update_dmqmc_momentum_distribution(sys, cdet, excitation, H00, pop, momentum_dist)
 
         ! Add the contribution for the current density matrix element to the thermal
         ! momentum distribution estimate.
@@ -1366,9 +1362,10 @@ contains
         !       interface consistency, not used.
         !    pop: number of particles on the current density matrix
         !        element.
-        ! In/Out: 
-        !    number_operator_numerator: array expressing the number operator numerator for each k point
-        
+        ! In/Out:
+        !    momentum_dist: array expressing the number operator numerator
+        !        for each k point
+
 
         use determinants, only: det_info_t
         use system, only: sys_t
@@ -1379,18 +1376,16 @@ contains
         type(det_info_t), intent(in) :: cdet
         type(excit_t), intent(in) :: excitation
         real(p), intent(in) :: H00, pop
-        real(dp), intent(inout) :: number_operator_numerator(:)
-        integer :: occ_list(sys%nel)     
-        integer :: iloop   
+        real(p), intent(inout) :: momentum_dist(:)
+        integer :: occ_list(sys%nel)
+        integer :: iocc
 
         if (excitation%nexcit == 0) then
-           call decode_det(sys%basis, cdet%f, occ_list)
-              do iloop=1,size(occ_list)
-                 number_operator_numerator(occ_list(iloop))=number_operator_numerator(occ_list(iloop))+pop
-              enddo
-        endif      
-        		
-    end subroutine dmqmc_momentum_distr_diag
+            call decode_det(sys%basis, cdet%f, occ_list)
+            forall(iocc=1:sys%nel) momentum_dist(occ_list(iocc)) = momentum_dist(occ_list(iocc)) + pop
+        endif
+
+    end subroutine update_dmqmc_momentum_distribution
 
     subroutine update_dmqmc_H0_energy(sys, cdet, excitation, pop, H0_energy)
 
