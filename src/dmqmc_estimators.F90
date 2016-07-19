@@ -85,7 +85,7 @@ contains
         nelems(ground_rdm_trace_ind) = 1
         nelems(inst_rdm_trace_ind) = psip_list%nspaces*dmqmc_estimates%inst_rdm%nrdms
         nelems(rdm_r2_ind) = dmqmc_estimates%inst_rdm%nrdms
-        nelems(mom_dist_ind) = nkpoints + 1
+        nelems(mom_dist_ind) = nkpoints
 
         ! The total number of elements in the array to be communicated.
         tot_nelems = sum(nelems)
