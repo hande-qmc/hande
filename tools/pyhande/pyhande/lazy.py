@@ -311,7 +311,7 @@ calcs : list of :class:`pandas.DataFrame`
     return calcs_metadata, calcs
 
 def find_starting_iteration(data, md, frac_screen_interval=500,
-    number_of_reblockings=50, number_of_reblocks_to_cut_off=1, pos_min_frac=0.5,
+    number_of_reblockings=50, number_of_reblocks_to_cut_off=1, pos_min_frac=0.8,
     verbose=False, show_graph=False):
     '''Find the best iteration to start analysing CCMC/FCIQMC data.
 
@@ -439,7 +439,7 @@ starting_iteration: integer
             else:
                 s_err_err = info.opt_block["standard error error"]["Shift"]
                 err_err = info.opt_block.loc[err_keys, 'standard error error']
-                if (err_err <= min_error_error).all():
+                if (err_err <= min_error_error).any():
                     min_index = j
                     min_error_error = err_err.copy()
                     opt_ind = pyblock.pd_utils.optimal_block(info.reblock[err_keys])
@@ -454,7 +454,7 @@ starting_iteration: integer
                     % (','.join(err_keys))
                 )
 
-        if int(min_index * pos_min_frac) < j:
+        if min_index < int(pos_min_frac * j):
             # Also discard the frst n=number_of_reblocks_to_cut_off of data to
             # be conservative.  This amounts to removing n autocorrelation
             # lengths.
