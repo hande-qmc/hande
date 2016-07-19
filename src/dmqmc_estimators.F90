@@ -400,6 +400,9 @@ contains
 
         type(excit_t) :: excitation
         real(p) :: unweighted_walker_pop(psip_list%nspaces)
+        real(dp), allocatable :: number_operator_numerator(:)
+    	allocate (number_operator_numerator(sys%nel))
+        
 
         ! Get excitation.
         excitation = get_excitation(sys%nel, sys%basis, psip_list%states(:sys%basis%string_len,idet), &
@@ -420,6 +423,7 @@ contains
             if (abs(unweighted_walker_pop(1)) > 0) then
                 ! See which estimators are to be calculated, and call the
                 ! corresponding procedures.
+                call dmqmc_momentum_distr_diag(sys, cdet, excitation, H00, unweighted_walker_pop(1), number_operator_numerator)
                 ! Energy
                 if (doing_dmqmc_calc(dmqmc_energy)) call update_dmqmc_energy_and_trace_ptr&
                         &(sys, excitation, cdet, H00, unweighted_walker_pop(1), psip_list%dat(1, idet), &
@@ -1343,6 +1347,50 @@ contains
         if (excitation%nexcit == 0) kinetic_energy = kinetic_energy + pop*kinetic_diag_ptr(sys, cdet%f)
 
     end subroutine dmqmc_kinetic_energy_diag
+    
+       
+    
+    subroutine dmqmc_momentum_distr_diag(sys, cdet, excitation, H00, pop, number_operator_numerator)
+
+        ! Add the contribution for the current density matrix element to the thermal
+        ! momentum distribution estimate.
+
+        ! In:
+        !    sys: system being studied.
+        !    cdet: det_info_t object containing bit strings of densitry matrix
+        !       element under consideration.
+        !    excitation: excit_t type variable which stores information on
+        !        the excitation between the two bitstring ends, corresponding
+        !        to the two labels for the density matrix element.
+        !    H00: diagonal hamiltonian element for the reference. only for
+        !       interface consistency, not used.
+        !    pop: number of particles on the current density matrix
+        !        element.
+        ! In/Out: 
+        !    number_operator_numerator: array expressing the number operator numerator for each k point
+        
+
+        use determinants, only: det_info_t
+        use system, only: sys_t
+        use excitations, only: excit_t
+        use determinants, only: decode_det
+
+        type(sys_t), intent(in) :: sys
+        type(det_info_t), intent(in) :: cdet
+        type(excit_t), intent(in) :: excitation
+        real(p), intent(in) :: H00, pop
+        real(dp), intent(inout) :: number_operator_numerator(:)
+        integer :: occ_list(sys%nel)     
+        integer :: iloop   
+
+        if (excitation%nexcit == 0) then
+           call decode_det(sys%basis, cdet%f, occ_list)
+              do iloop=1,size(occ_list)
+                 number_operator_numerator(occ_list(iloop))=number_operator_numerator(occ_list(iloop))+pop
+              enddo
+        endif      
+        		
+    end subroutine dmqmc_momentum_distr_diag
 
     subroutine update_dmqmc_H0_energy(sys, cdet, excitation, pop, H0_energy)
 
