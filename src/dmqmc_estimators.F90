@@ -1382,7 +1382,11 @@ contains
 
         if (excitation%nexcit == 0) then
             call decode_det(sys%basis, cdet%f, occ_list)
-            forall(iocc=1:sys%nel) momentum_dist(occ_list(iocc)) = momentum_dist(occ_list(iocc)) + pop
+            do iocc = 1, sys%nel
+                if (occ_list(iocc) <= size(momentum_dist)) then
+                    momentum_dist(occ_list(iocc)) = momentum_dist(occ_list(iocc)) + pop
+                end if
+            end do
         endif
 
     end subroutine update_dmqmc_momentum_distribution
