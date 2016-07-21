@@ -57,29 +57,18 @@ contains
 
     !--- Output procedures ---
 
-    subroutine write_fciqmc_report_header(ntypes, dmqmc_in, max_excit, comp)
+    subroutine write_fciqmc_report_header(ntypes, comp)
 
         ! In:
         !    ntypes: number of particle types being sampled.
         ! In (optional):
-        !    dmqmc_in: input options relating to DMQMC.
-        !    max_excit: The maximum number of excitations for the system.
+        !    comp: Print out information of complex estimators.
 
-        use calc, only: doing_calc, hfs_fciqmc_calc, dmqmc_calc, doing_dmqmc_calc
-        use calc, only: dmqmc_energy, dmqmc_energy_squared, dmqmc_staggered_magnetisation
-        use calc, only: dmqmc_correlation, dmqmc_full_r2, dmqmc_rdm_r2, dmqmc_kinetic_energy
-        use calc, only: dmqmc_H0_energy, dmqmc_potential_energy, dmqmc_HI_energy
-        use dmqmc_data, only: dmqmc_in_t
-        use utils, only: int_fmt
+        use calc, only: doing_calc, hfs_fciqmc_calc
 
         integer, intent(in) :: ntypes
-        type(dmqmc_in_t), optional, intent(in) :: dmqmc_in
-        integer, optional, intent(in) :: max_excit
         logical, optional, intent(in) :: comp
         logical :: comp_set
-
-        integer :: i, j
-        character(16) :: excit_header
 
         comp_set = .false.
         if (present(comp)) comp_set = comp
@@ -87,55 +76,12 @@ contains
         ! Data table info.
         write (6,'(1X,"Information printed out every QMC report loop:",/)')
         write (6,'(1X,"Shift: the energy offset calculated at the end of the report loop.")')
-        if (.not. doing_calc(dmqmc_calc)) then
-            write (6,'(1X,"H_0j: <D_0|H|D_j>, Hamiltonian matrix element.")')
-            write (6,'(1X,"N_j: population of Hamiltonian particles on determinant D_j.")')
-            if (doing_calc(hfs_fciqmc_calc)) then
-                write (6,'(1X,"O_0j: <D_0|O|D_j>, operator matrix element.")')
-                write (6,'(1X,a67)') "N'_j: population of Hellmann--Feynman particles on determinant D_j."
-                write (6,'(1X,"# HF psips: current total population of Hellmann--Feynman particles.")')
-            end if
-        else
-            if (doing_dmqmc_calc(dmqmc_full_r2)) then
-                write (6, '(1X,a104)') 'Trace: The current total population on the diagonal elements of the &
-                                     &first replica of the density matrix.'
-                write (6, '(1X,a107)') 'Trace 2: The current total population on the diagonal elements of the &
-                                     &second replica of the density matrix.'
-            else
-                write (6, '(1X,a83)') 'Trace: The current total population on the diagonal elements of the &
-                                     &density matrix.'
-            end if
-            if (doing_dmqmc_calc(dmqmc_full_r2)) then
-                write (6, '(1X,a81)') 'Full S2: The numerator of the estimator for the Renyi entropy of the &
-                                      &full system.'
-            end if
-            if (doing_dmqmc_calc(dmqmc_energy)) then
-                write (6, '(1X,a92)') '\sum\rho_{ij}H_{ji}: The numerator of the estimator for the expectation &
-                                     &value of the energy.'
-            end if
-            if (doing_dmqmc_calc(dmqmc_energy_squared)) then
-                write (6, '(1X,a100)') '\sum\rho_{ij}H2{ji}: The numerator of the estimator for the expectation &
-                                     &value of the energy squared.'
-            end if
-            if (doing_dmqmc_calc(dmqmc_correlation)) then
-                write (6, '(1X,a111)') '\sum\rho_{ij}S_{ji}: The numerator of the estimator for the expectation &
-                                     &value of the spin correlation function.'
-            end if
-            if (doing_dmqmc_calc(dmqmc_staggered_magnetisation)) then
-                write (6, '(1X,a109)') '\sum\rho_{ij}M2{ji}: The numerator of the estimator for the expectation &
-                                     &value of the staggered magnetisation.'
-            end if
-            if (doing_dmqmc_calc(dmqmc_rdm_r2)) then
-                write (6, '(1x,a73)') 'RDM(n) S2: The numerator of the estimator for the Renyi entropy of RDM n.'
-            end if
-            if (dmqmc_in%rdm%calc_inst_rdm) then
-                write (6, '(1x,a83)') 'RDM(n) trace m: The current total population on the diagonal of replica m &
-                                      &of RDM n.'
-            end if
-            if (present(dmqmc_in)) then
-                if (dmqmc_in%calc_excit_dist) write (6, '(1x,a86)') &
-                    'Excit. level n: The fraction of particles on excitation level n of the density matrix.'
-            end if
+        write (6,'(1X,"H_0j: <D_0|H|D_j>, Hamiltonian matrix element.")')
+        write (6,'(1X,"N_j: population of Hamiltonian particles on determinant D_j.")')
+        if (doing_calc(hfs_fciqmc_calc)) then
+            write (6,'(1X,"O_0j: <D_0|O|D_j>, operator matrix element.")')
+            write (6,'(1X,a67)') "N'_j: population of Hellmann--Feynman particles on determinant D_j."
+            write (6,'(1X,"# HF psips: current total population of Hellmann--Feynman particles.")')
         end if
 
         write (6,'(1X,"# H psips: current total population of Hamiltonian particles.")')
@@ -145,62 +91,7 @@ contains
         write (6,'(1X,"time: average time per Monte Carlo cycle.",/)')
         write (6,'(1X,"Note that all particle populations are averaged over the report loop.",/)')
 
-        ! Header of data table.
-        if (doing_calc(dmqmc_calc)) then
-           write (6,'(1X,a12,3X,a13,17X,a5)', advance = 'no') &
-           '# iterations','Instant shift','Trace'
-
-            if (doing_dmqmc_calc(dmqmc_full_r2)) then
-                write (6, '(13X,a7,14X,a7)', advance = 'no') 'Trace 2','Full S2'
-            end if
-            if (doing_dmqmc_calc(dmqmc_energy)) then
-                write (6, '(2X,a19)', advance = 'no') '\sum\rho_{ij}H_{ji}'
-            end if
-            if (doing_dmqmc_calc(dmqmc_energy_squared)) then
-                write (6, '(2X,a19)', advance = 'no') '\sum\rho_{ij}H2{ji}'
-            end if
-            if (doing_dmqmc_calc(dmqmc_correlation)) then
-                write (6, '(2X,a19)', advance = 'no') '\sum\rho_{ij}S_{ji}'
-            end if
-            if (doing_dmqmc_calc(dmqmc_staggered_magnetisation)) then
-                write (6, '(2X,a19)', advance = 'no') '\sum\rho_{ij}M2{ji}'
-            end if
-            if (doing_dmqmc_calc(dmqmc_kinetic_energy)) then
-                write (6, '(2X,a19)', advance = 'no') '\sum\rho_{ij}T_{ji}'
-            end if
-            if (doing_dmqmc_calc(dmqmc_H0_energy)) then
-                write (6, '(2X,a19)', advance = 'no') '\sum\rho_{ij}H0{ji}'
-            end if
-            if (doing_dmqmc_calc(dmqmc_HI_energy)) then
-                write (6, '(2X,a19)', advance = 'no') '\sum\rho_{ij}HI{ji}'
-            end if
-            if (doing_dmqmc_calc(dmqmc_potential_energy)) then
-                write (6, '(2X,a19)', advance = 'no') '\sum\rho_{ij}U_{ji}'
-            end if
-            if (doing_dmqmc_calc(dmqmc_rdm_r2)) then
-                do i = 1, dmqmc_in%rdm%nrdms
-                    write (6, '(16X,a3,'//int_fmt(i,0)//',1x,a2)', advance = 'no') 'RDM', i, 'S2'
-                end do
-            end if
-            if (dmqmc_in%rdm%calc_inst_rdm) then
-                do i = 1, dmqmc_in%rdm%nrdms
-                    do j = 1, ntypes
-                        write (6, '(7X,a3,'//int_fmt(i,0)//',1x,a5,1x,'//int_fmt(j,0)//')', advance = 'no') &
-                                'RDM', i, 'trace', j
-                    end do
-                end do
-            end if
-            if (present(dmqmc_in)) then
-                if (dmqmc_in%calc_excit_dist) then
-                    do i = 0, max_excit
-                        write (excit_header, '("Excit. level",1X,'//int_fmt(i,0)//')') i
-                        write (6, '(5X,a16)', advance='no') excit_header
-                    end do
-                end if
-            end if
-
-            write (6, '(3X,a11,6X)', advance='no') '# particles'
-        else if (comp_set) then
+        if (comp_set) then
             write (6,'(1X,a13,(2X,a17),2(2X,a20),2(2X,a17))', advance='no') &
                      "# iterations ", "Shift            ", "Re{\sum H_0j N_j}  ", "Im{\sum H_0j N_j}  ", "Re{N_0}  ", "Im{N_0}  "
             write (6,'(4X,a9,8X)', advance='no') "# H psips"

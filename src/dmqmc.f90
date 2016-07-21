@@ -56,7 +56,7 @@ contains
                             qmc_in_t_json, restart_in_t_json, load_bal_in_t_json
         use reference_determinant, only: reference_t, reference_t_json
         use dmqmc_data, only: dmqmc_in_t, dmqmc_estimates_t, dmqmc_weighted_sampling_t, dmqmc_in_t_json, ipdmqmc_in_t_json, &
-                              rdm_in_t_json, operators_in_t_json, hartree_fock_dm
+                              rdm_in_t_json, operators_in_t_json, hartree_fock_dm, write_dmqmc_report_header
         use check_input, only: check_qmc_opts, check_dmqmc_opts
         use spawn_data, only: write_memcheck_report, dealloc_spawn_t
         use idmqmc, only: set_parent_flag_dmqmc
@@ -180,7 +180,7 @@ contains
 
         ! Main DMQMC loop.
         if (parent) then
-            call write_fciqmc_report_header(qs%psip_list%nspaces, dmqmc_in, sys%max_number_excitations)
+            call write_dmqmc_report_header(qs%psip_list%nspaces, dmqmc_in, sys%max_number_excitations)
         end if
         ! Initialise timer.
         call cpu_time(t1)
