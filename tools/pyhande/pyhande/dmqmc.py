@@ -335,7 +335,7 @@ results : :class:`pandas.DataFrame`
             df['Beta'] = df['Beta']*tau
             data.append(df)
     if data:
-        if options.calc_number:
+        if options.calc_number is not None:
             data = data[options.calc_number]
         else:
             data = pd.concat(data)
