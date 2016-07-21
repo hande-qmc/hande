@@ -34,7 +34,7 @@ files : list of list of strings
     names of files containing HANDE QMC calculation output.  Each list contains
     the a set of files which are analysed together (ie a series of calculations
     restarted from the previous calculation).
-start_iteration : int
+start_iteration : int or None
     QMC iteration from which statistics are gathered.
 reblock_plot : string
     Filename to which the reblocking convergence plot (standard error vs reblock
@@ -110,7 +110,9 @@ opt_block: :class:`pandas.DataFrame`
                 if verbose >= v_analysis:
                     msg = 'Analysing file(s): %s.' % (' '.join(calc))
                     if len(info) > 1:
-                        msg += '\nCalculation: %i' % (i,)
+                        msg += '\nCalculation: %i.' % (i,)
+                    msg += ('\nReblocking from iteration: %i.' %
+                                (i_info.metadata['pyhande']['reblock_start'],))
                     print(msg)
                 if verbose >= v_meta:
                     md = i_info.metadata
@@ -197,6 +199,9 @@ reblock_plot : string
         cols = -1
 
     parser = argparse.ArgumentParser(description = __doc__)
+    parser.add_argument('-a', '--auto-reblock', default=False,
+                        action='store_true', help='Attempt to automatically '
+                        'determine the iteration to start blocking from.')
     parser.add_argument('-m', '--merge', default=False, action='store_true',
                         help='Combine data from each file before analysing. '
                         'Separate calculations can be denoted by placing \'--\''
@@ -230,6 +235,9 @@ reblock_plot : string
                         help='Space-separated list of files to analyse.')
 
     options = parser.parse_args(args)
+
+    if options.auto_reblock:
+        options.start_iteration=None
 
     if not options.filenames:
         parser.print_help()
