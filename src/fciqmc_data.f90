@@ -110,8 +110,7 @@ contains
 
     end subroutine write_fciqmc_report_header
 
-    subroutine write_fciqmc_report(qmc_in, qs, ireport, ntot_particles, elapsed_time, comment, non_blocking_comm, &
-                                   dmqmc_in, dmqmc_estimates, comp)
+    subroutine write_fciqmc_report(qmc_in, qs, ireport, ntot_particles, elapsed_time, comment, non_blocking_comm, comp)
 
         ! Write the report line at the end of a report loop.
 
@@ -124,18 +123,10 @@ contains
         !    comment: if true, then prefix the line with a #.
         !    non_blocking_comm: true if using non-blocking communications
         ! In (optional):
-        !    dmqmc_in: input options relating to DMQMC.
-        !    dmqmc_estimates: type containing all DMQMC estimates to be printed.
         !    comp: if true, doing calculation with real and imaginary walkers
         !       so need to print extra parameters.
 
-        use calc, only: doing_calc, dmqmc_calc, hfs_fciqmc_calc, doing_dmqmc_calc
-        use calc, only: dmqmc_energy, dmqmc_energy_squared, dmqmc_full_r2, dmqmc_rdm_r2
-        use calc, only: dmqmc_correlation, dmqmc_staggered_magnetisation, dmqmc_kinetic_energy
-        use calc, only: dmqmc_H0_energy, dmqmc_potential_energy, dmqmc_HI_energy
-        use dmqmc_data, only: dmqmc_in_t, dmqmc_estimates_t, energy_ind, energy_squared_ind
-        use dmqmc_data, only: correlation_fn_ind, staggered_mag_ind, full_r2_ind, kinetic_ind
-        use dmqmc_data, only: H0_ind, potential_ind, HI_ind
+        use calc, only: doing_calc, hfs_fciqmc_calc
         use qmc_data, only: qmc_in_t, qmc_state_t
 
         type(qmc_in_t), intent(in) :: qmc_in
@@ -145,8 +136,6 @@ contains
         real, intent(in) :: elapsed_time
         logical, intent(in) :: comment, non_blocking_comm
         logical, intent(in), optional :: comp
-        type(dmqmc_in_t), optional, intent(in) :: dmqmc_in
-        type(dmqmc_estimates_t), optional, intent(in) :: dmqmc_estimates
 
         logical :: comp_set
         integer :: mc_cycles, i, j, ntypes
@@ -175,89 +164,7 @@ contains
 
         ! See also the format used in inital_fciqmc_status if this is changed.
 
-        ! DMQMC output.
-        if (doing_calc(dmqmc_calc)) then
-            write (6,'(i10,2X,es17.10,2X,es17.10)',advance = 'no') &
-                (qs%mc_cycles_done+mc_cycles-qmc_in%ncycles), qs%shift(1), dmqmc_estimates%trace(1)
-            ! The trace on the second replica.
-            if (doing_dmqmc_calc(dmqmc_full_r2)) then
-                write(6, '(3X,es17.10)',advance = 'no') dmqmc_estimates%trace(2)
-            end if
-
-            ! Renyi-2 entropy for the full density matrix.
-            if (doing_dmqmc_calc(dmqmc_full_r2)) then
-                write (6, '(4X,es17.10)', advance = 'no') dmqmc_estimates%numerators(full_r2_ind)
-            end if
-
-            ! Energy.
-            if (doing_dmqmc_calc(dmqmc_energy)) then
-                write (6, '(4X,es17.10)', advance = 'no') dmqmc_estimates%numerators(energy_ind)
-            end if
-
-            ! Energy squared.
-            if (doing_dmqmc_calc(dmqmc_energy_squared)) then
-                write (6, '(4X,es17.10)', advance = 'no') dmqmc_estimates%numerators(energy_squared_ind)
-            end if
-
-            ! Correlation function.
-            if (doing_dmqmc_calc(dmqmc_correlation)) then
-                write (6, '(4X,es17.10)', advance = 'no') dmqmc_estimates%numerators(correlation_fn_ind)
-            end if
-
-            ! Staggered magnetisation.
-            if (doing_dmqmc_calc(dmqmc_staggered_magnetisation)) then
-                write (6, '(4X,es17.10)', advance = 'no') dmqmc_estimates%numerators(staggered_mag_ind)
-            end if
-
-            ! Kinetic energy
-            if (doing_dmqmc_calc(dmqmc_kinetic_energy)) then
-                write (6, '(4X,es17.10)', advance = 'no') dmqmc_estimates%numerators(kinetic_ind)
-            end if
-
-            ! H^0 energy, where H = H^0 + V.
-            if (doing_dmqmc_calc(dmqmc_H0_energy)) then
-                write (6, '(4X,es17.10)', advance = 'no') dmqmc_estimates%numerators(H0_ind)
-            end if
-
-            ! H^I energy, where H^I = exp(-(beta-tau)/2 H^0) H exp(-(beta-tau)/2. H^0).
-            if (doing_dmqmc_calc(dmqmc_HI_energy)) then
-                write (6, '(4X,es17.10)', advance = 'no') dmqmc_estimates%numerators(HI_ind)
-            end if
-
-            ! Potential energy.
-            if (doing_dmqmc_calc(dmqmc_potential_energy)) then
-                write (6, '(4X,es17.10)', advance = 'no') dmqmc_estimates%numerators(potential_ind)
-            end if
-
-            ! Renyi-2 entropy for all RDMs being sampled.
-            if (doing_dmqmc_calc(dmqmc_rdm_r2)) then
-                do i = 1, dmqmc_in%rdm%nrdms
-                    write (6, '(6X,es17.10)', advance = 'no') dmqmc_estimates%inst_rdm%renyi_2(i)
-                end do
-            end if
-
-            ! Traces for instantaneous RDM estimates.
-            if (dmqmc_in%rdm%calc_inst_rdm) then
-                do i = 1, dmqmc_in%rdm%nrdms
-                    do j = 1, ntypes
-                        write (6, '(2x,es17.10)', advance = 'no') dmqmc_estimates%inst_rdm%traces(j,i)
-                    end do
-                end do
-            end if
-
-            ! The distribution of walkers on different excitation levels of the
-            ! density matrix.
-            if (present(dmqmc_in)) then
-                if (dmqmc_in%calc_excit_dist) then
-                    do i = 0, ubound(dmqmc_estimates%excit_dist,1)
-                        write (6, '(4X,es17.10)', advance = 'no') dmqmc_estimates%excit_dist(i)/ntot_particles(1)
-                    end do
-                end if
-            end if
-
-            write (6, '(2X,es17.10)', advance='no') ntot_particles(1)
-
-        else if (doing_calc(hfs_fciqmc_calc)) then
+        if (doing_calc(hfs_fciqmc_calc)) then
             write (6,'(i10,2X,6(es17.10,2X),es17.10,4X,es17.10,1X,es17.10)', advance = 'no') &
                                              qs%mc_cycles_done+mc_cycles, qs%shift(1),   &
                                              qs%estimators%proj_energy, qs%estimators%D0_population, &

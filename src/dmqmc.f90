@@ -56,7 +56,7 @@ contains
                             qmc_in_t_json, restart_in_t_json, load_bal_in_t_json
         use reference_determinant, only: reference_t, reference_t_json
         use dmqmc_data, only: dmqmc_in_t, dmqmc_estimates_t, dmqmc_weighted_sampling_t, dmqmc_in_t_json, ipdmqmc_in_t_json, &
-                              rdm_in_t_json, operators_in_t_json, hartree_fock_dm, write_dmqmc_report_header
+                              rdm_in_t_json, operators_in_t_json, hartree_fock_dm, write_dmqmc_report_header, write_dmqmc_report
         use check_input, only: check_qmc_opts, check_dmqmc_opts
         use spawn_data, only: write_memcheck_report, dealloc_spawn_t
         use idmqmc, only: set_parent_flag_dmqmc
@@ -359,8 +359,8 @@ contains
                 call cpu_time(t2)
                 if (parent) then
                     if (bloom_stats%nblooms_curr > 0) call bloom_stats_warning(bloom_stats)
-                    call write_fciqmc_report(qmc_in, qs, ireport, tot_nparticles_old, t2-t1, .false., &
-                                             .false., dmqmc_in, dmqmc_estimates)
+                    call write_dmqmc_report(qmc_in, qs, ireport, tot_nparticles_old, t2-t1, .false., &
+                                            dmqmc_in, dmqmc_estimates)
                 end if
 
                 ! Update the time for the start of the next iteration.

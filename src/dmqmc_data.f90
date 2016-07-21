@@ -599,4 +599,128 @@ contains
 
     end subroutine write_dmqmc_report_header
 
+    subroutine write_dmqmc_report(qmc_in, qs, ireport, ntot_particles, elapsed_time, comment, &
+                                  dmqmc_in, dmqmc_estimates)
+
+        ! Write the report line at the end of a report loop.
+
+        ! In:
+        !    qmc_in: input options relating to QMC methods.
+        !    qs: QMC state (containing shift and various estimators).
+        !    ireport: index of the report loop.
+        !    ntot_particles: total number of particles in main walker list.
+        !    elapsed_time: time taken for the report loop.
+        !    comment: if true, then prefix the line with a #.
+        !    dmqmc_in: input options relating to DMQMC.
+        !    dmqmc_estimates: type containing all DMQMC estimates to be printed.
+
+        use calc, only: doing_calc, dmqmc_calc, doing_dmqmc_calc
+        use calc, only: dmqmc_energy, dmqmc_energy_squared, dmqmc_full_r2, dmqmc_rdm_r2
+        use calc, only: dmqmc_correlation, dmqmc_staggered_magnetisation, dmqmc_kinetic_energy
+        use calc, only: dmqmc_H0_energy, dmqmc_potential_energy, dmqmc_HI_energy
+        use qmc_data, only: qmc_in_t, qmc_state_t
+
+        type(qmc_in_t), intent(in) :: qmc_in
+        type(qmc_state_t), intent(in) :: qs
+        integer, intent(in) :: ireport
+        real(dp), intent(in) :: ntot_particles(:)
+        real, intent(in) :: elapsed_time
+        logical, intent(in) :: comment
+        type(dmqmc_in_t), intent(in) :: dmqmc_in
+        type(dmqmc_estimates_t), intent(in) :: dmqmc_estimates
+
+        integer :: mc_cycles, i, j, ntypes
+
+        ntypes = size(ntot_particles)
+
+        mc_cycles = ireport*qmc_in%ncycles
+
+        if (comment) then
+            write (6,'(1X,"#",1X)', advance='no')
+        else
+            write (6,'(3X)', advance='no')
+        end if
+
+        write (6,'(i10,2X,es17.10,2X,es17.10)',advance = 'no') &
+            (qs%mc_cycles_done+mc_cycles-qmc_in%ncycles), qs%shift(1), dmqmc_estimates%trace(1)
+        ! The trace on the second replica.
+        if (doing_dmqmc_calc(dmqmc_full_r2)) then
+            write(6, '(3X,es17.10)',advance = 'no') dmqmc_estimates%trace(2)
+        end if
+
+        ! Renyi-2 entropy for the full density matrix.
+        if (doing_dmqmc_calc(dmqmc_full_r2)) then
+            write (6, '(4X,es17.10)', advance = 'no') dmqmc_estimates%numerators(full_r2_ind)
+        end if
+
+        ! Energy.
+        if (doing_dmqmc_calc(dmqmc_energy)) then
+            write (6, '(4X,es17.10)', advance = 'no') dmqmc_estimates%numerators(energy_ind)
+        end if
+
+        ! Energy squared.
+        if (doing_dmqmc_calc(dmqmc_energy_squared)) then
+            write (6, '(4X,es17.10)', advance = 'no') dmqmc_estimates%numerators(energy_squared_ind)
+        end if
+
+        ! Correlation function.
+        if (doing_dmqmc_calc(dmqmc_correlation)) then
+            write (6, '(4X,es17.10)', advance = 'no') dmqmc_estimates%numerators(correlation_fn_ind)
+        end if
+
+        ! Staggered magnetisation.
+        if (doing_dmqmc_calc(dmqmc_staggered_magnetisation)) then
+            write (6, '(4X,es17.10)', advance = 'no') dmqmc_estimates%numerators(staggered_mag_ind)
+        end if
+
+        ! Kinetic energy
+        if (doing_dmqmc_calc(dmqmc_kinetic_energy)) then
+            write (6, '(4X,es17.10)', advance = 'no') dmqmc_estimates%numerators(kinetic_ind)
+        end if
+
+        ! H^0 energy, where H = H^0 + V.
+        if (doing_dmqmc_calc(dmqmc_H0_energy)) then
+            write (6, '(4X,es17.10)', advance = 'no') dmqmc_estimates%numerators(H0_ind)
+        end if
+
+        ! H^I energy, where H^I = exp(-(beta-tau)/2 H^0) H exp(-(beta-tau)/2. H^0).
+        if (doing_dmqmc_calc(dmqmc_HI_energy)) then
+            write (6, '(4X,es17.10)', advance = 'no') dmqmc_estimates%numerators(HI_ind)
+        end if
+
+        ! Potential energy.
+        if (doing_dmqmc_calc(dmqmc_potential_energy)) then
+            write (6, '(4X,es17.10)', advance = 'no') dmqmc_estimates%numerators(potential_ind)
+        end if
+
+        ! Renyi-2 entropy for all RDMs being sampled.
+        if (doing_dmqmc_calc(dmqmc_rdm_r2)) then
+            do i = 1, dmqmc_in%rdm%nrdms
+                write (6, '(6X,es17.10)', advance = 'no') dmqmc_estimates%inst_rdm%renyi_2(i)
+            end do
+        end if
+
+        ! Traces for instantaneous RDM estimates.
+        if (dmqmc_in%rdm%calc_inst_rdm) then
+            do i = 1, dmqmc_in%rdm%nrdms
+                do j = 1, ntypes
+                    write (6, '(2x,es17.10)', advance = 'no') dmqmc_estimates%inst_rdm%traces(j,i)
+                end do
+            end do
+        end if
+
+        ! The distribution of walkers on different excitation levels of the
+        ! density matrix.
+        if (dmqmc_in%calc_excit_dist) then
+            do i = 0, ubound(dmqmc_estimates%excit_dist,1)
+                write (6, '(4X,es17.10)', advance = 'no') dmqmc_estimates%excit_dist(i)/ntot_particles(1)
+            end do
+        end if
+
+        write (6, '(2X,es17.10)', advance='no') ntot_particles(1)
+        write (6,'(2X,i10,4X,i12,2X,f7.4,2X,f7.3)') qs%estimators%tot_nstates, qs%estimators%tot_nspawn_events, &
+                                             qs%spawn_store%rspawn, elapsed_time/qmc_in%ncycles
+
+    end subroutine write_dmqmc_report
+
 end module dmqmc_data
