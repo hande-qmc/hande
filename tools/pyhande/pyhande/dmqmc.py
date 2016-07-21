@@ -3,7 +3,7 @@
 import pandas as pd
 import numpy as np
 import warnings
-import optparse
+import argparse
 import scipy.interpolate
 import scipy.integrate
 import pyblock
@@ -270,35 +270,36 @@ Returns
 -------
 filenames : list of strings
     list of HANDE DMQMC output files.
-options : :class:`OptionParser`
+options : :class:`ArgumentParser`
     Options read in from command line.
 '''
 
-    parser = optparse.OptionParser(usage = __doc__)
-    parser.add_option('-s', '--with-shift', action='store_true', dest='with_shift',
+    parser = argparse.ArgumentParser(usage = __doc__)
+    parser.add_argument('-s', '--with-shift', action='store_true', dest='with_shift',
                       default=False, help='Output the averaged shift profile and '
                       'the standard deviation of these profiles across beta loops.')
-    parser.add_option('-t', '--with-trace', action='store_true', dest='with_trace',
+    parser.add_argument('-t', '--with-trace', action='store_true', dest='with_trace',
                       default=False, help='Output the averaged traces and the '
                       'standard deviation of these traces, for all replicas present.')
-    parser.add_option('-b', '--with-spline', action='store_true', dest='with_spline',
+    parser.add_argument('-b', '--with-spline', action='store_true', dest='with_spline',
                       default=False, help='Output a B-spline fit for each of '
                       ' estimates calculated')
-    parser.add_option('-c', '--calc-number', action='store', default=None, type=int,
+    parser.add_argument('-c', '--calc-number', action='store', default=None, type=int,
                       dest='calc_number', help='Calculation number to analyse. '
                       'Note any simulation using find_weights option should not '
                       'be included.')
-    parser.add_option('-f', '--with-free-energy', action='store_true',
+    parser.add_argument('-f', '--with-free-energy', action='store_true',
                       dest='with_free_energy', default=False,
                       help='Calculate Free energy')
+    parser.add_argument('filenames', nargs='+', help='HANDE files to analyse.')
 
-    (options, filenames) = parser.parse_args(args)
+    options = parser.parse_args(args)
 
-    if not filenames:
+    if not options.filenames:
         parser.print_help()
         sys.exit(1)
 
-    return (filenames, options)
+    return (options.filenames, options)
 
 
 def analyse_data(hande_out, options=None):
