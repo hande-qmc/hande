@@ -24,7 +24,7 @@ end enum
 
 contains
 
-    subroutine dmqmc_estimate_comms(dmqmc_in, error, nspawn_events, max_num_excits, ncycles, nkpoints, &
+    subroutine dmqmc_estimate_comms(dmqmc_in, error, nspawn_events, max_num_excits, ncycles, &
                                     psip_list, qs, accumulated_probs_old, dmqmc_estimates)
 
         ! Sum together the contributions to the various DMQMC estimators (and
@@ -40,7 +40,6 @@ contains
         !        studied.
         !    ncycles: the number of monte carlo cycles.
         !    accumulated_probs_old: the value of accumulated_probs on the last report cycle.
-        !    nkpoints : number of kpoints accumulated for momentum distribution.
         ! In/Out:
         !    error: true if an error has occured on this processor. On output, true if an
         !        error has occured on any processor.
@@ -56,7 +55,7 @@ contains
 
         type(dmqmc_in_t), intent(in) :: dmqmc_in
         logical, intent(inout) :: error
-        integer, intent(in) :: nspawn_events, max_num_excits, ncycles, nkpoints
+        integer, intent(in) :: nspawn_events, max_num_excits, ncycles
         real(p), intent(in) :: accumulated_probs_old(0:)
         type(particle_t), intent(inout) :: psip_list
         type(qmc_state_t), intent(inout) :: qs
@@ -85,7 +84,7 @@ contains
         nelems(ground_rdm_trace_ind) = 1
         nelems(inst_rdm_trace_ind) = psip_list%nspaces*dmqmc_estimates%inst_rdm%nrdms
         nelems(rdm_r2_ind) = dmqmc_estimates%inst_rdm%nrdms
-        nelems(mom_dist_ind) = nkpoints
+        nelems(mom_dist_ind) = size(dmqmc_estimates%mom_dist%n_k)
 
         ! The total number of elements in the array to be communicated.
         tot_nelems = sum(nelems)
@@ -185,7 +184,7 @@ contains
             rep_loop_loc(min_ind(rdm_r2_ind):max_ind(rdm_r2_ind)) = dmqmc_estimates%inst_rdm%renyi_2
         end if
         if (dmqmc_in%calc_mom_dist) then
-            rep_loop_loc(min_ind(mom_dist_ind):max_ind(mom_dist_ind)) = dmqmc_estimates%mom_dist
+            rep_loop_loc(min_ind(mom_dist_ind):max_ind(mom_dist_ind)) = dmqmc_estimates%mom_dist%n_k
         end if
 
     end subroutine local_dmqmc_estimators
@@ -248,7 +247,7 @@ contains
             dmqmc_estimates%inst_rdm%renyi_2 = real(rep_loop_sum(min_ind(rdm_r2_ind):max_ind(rdm_r2_ind)), p)
         end if
         if (dmqmc_in%calc_mom_dist) then
-            dmqmc_estimates%mom_dist = real(rep_loop_sum(min_ind(mom_dist_ind):max_ind(mom_dist_ind)), p)
+            dmqmc_estimates%mom_dist%n_k = real(rep_loop_sum(min_ind(mom_dist_ind):max_ind(mom_dist_ind)), p)
         end if
 
 
@@ -455,7 +454,7 @@ contains
                 if (dmqmc_in%find_weights .and. iteration > dmqmc_in%find_weights_start) est%excit_dist(excitation%nexcit) = &
                     est%excit_dist(excitation%nexcit) + real(abs(psip_list%pops(1,idet)),p)/psip_list%pop_real_factor
                 if (dmqmc_in%calc_mom_dist) call update_dmqmc_momentum_distribution(sys, cdet, excitation, H00,&
-                                                                                      &unweighted_walker_pop(1), est%mom_dist)
+                                                                                      &unweighted_walker_pop(1), est%mom_dist%n_k)
             end if
 
             ! Full Renyi entropy (S_2).

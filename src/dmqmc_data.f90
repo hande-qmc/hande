@@ -249,6 +249,14 @@ type dmqmc_ground_rdm_t
     real(p) :: trace
 end type dmqmc_ground_rdm_t
 
+!--- Type for momentum distribution
+type momentum_dist_t
+    ! Stores the momentum distribution numerator at each value of k < kmax.
+    real(p), allocatable :: n_k(:)
+    ! Magnitude of kpoints used in momentum distribution calculation, useful for compression purposes.
+    real(p), allocatable :: kpoints(:)
+end type momentum_dist_t
+
 type dmqmc_estimates_t
     ! numerators stores the numerators for the estimators in DMQMC. These
     ! are, for a general operator O which we wish to find the thermal average of:
@@ -270,10 +278,8 @@ type dmqmc_estimates_t
     ! level of the density matrix.
     real(p), allocatable :: excit_dist(:) ! (0:max_number_excitations)
 
-    ! Holds the (numerator of the) momentum distribution at various kpoints.
-    ! The length of the array is determined by the number of kpoints whose
-    ! magnitude is less than dmqmc_in%kmax.
-    real(p), allocatable :: mom_dist(:)
+    ! Momentum distribution.
+    type(momentum_dist_t) :: mom_dist
 
     ! correlation_mask is a bit string with a 1 at positions i and j which
     ! are considered when finding the spin correlation function, C(r_{i,j}).

@@ -174,12 +174,12 @@ contains
                 end do
                 ! We want to average over spin, so we'll map the (spin) orbital index back to the given kpoint.
                 iorb = (iorb - 1) / 2
-                allocate(dmqmc_estimates%mom_dist(iorb), stat=ierr)
-                call check_allocate('dmqmc_estimates%mom_dist', iorb, ierr)
-                allocate(dmqmc_estimates%kpoints(iorb), stat=ierr)
+                allocate(dmqmc_estimates%mom_dist%n_k(iorb), stat=ierr)
+                call check_allocate('dmqmc_estimates%mom_dist%n_k', iorb, ierr)
+                allocate(dmqmc_estimates%mom_dist%kpoints(iorb), stat=ierr)
                 call check_allocate('dmqmc_estimates%kpoints', iorb, ierr)
-                do iorb = 1, size(dmqmc_estimates%mom_dist)
-                    dmqmc_estimates%kpoints(iorb) = (2.0*sys%basis%basis_fns(2*iorb)%sp_eigv)**0.5
+                do iorb = 1, size(dmqmc_estimates%mom_dist%n_k)
+                    dmqmc_estimates%mom_dist%kpoints(iorb) = (2.0*sys%basis%basis_fns(2*iorb)%sp_eigv)**0.5
                 end do
             case default
                 call stop_all('init_dmqmc', 'Momentum distribution not implemented for this system.')

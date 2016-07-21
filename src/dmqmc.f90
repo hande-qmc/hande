@@ -361,8 +361,7 @@ contains
                 ! Sum all quantities being considered across all MPI processes.
                 error = qs%spawn_store%spawn%error .or. qs%psip_list%error .or. rdm_error
                 call dmqmc_estimate_comms(dmqmc_in, error, nspawn_events, sys%max_number_excitations, qmc_in%ncycles, &
-                                          size(dmqmc_estimates%mom_dist), qs%psip_list, qs, &
-                                          weighted_sampling%probs_old, dmqmc_estimates)
+                                          &qs%psip_list, qs, weighted_sampling%probs_old, dmqmc_estimates)
                 if (error) exit outer_loop
 
                 call update_shift_dmqmc(qmc_in, qs, qs%psip_list%tot_nparticles, tot_nparticles_old)
@@ -532,7 +531,7 @@ contains
         if (calc_excit_dist) dmqmc_estimates%excit_dist = 0.0_p
         dmqmc_estimates%trace = 0.0_p
         dmqmc_estimates%numerators = 0.0_p
-        if (calc_mom_dist) dmqmc_estimates%mom_dist = 0.0_p
+        if (calc_mom_dist) dmqmc_estimates%mom_dist%n_k = 0.0_p
 
     end subroutine init_dmqmc_report_loop
 
