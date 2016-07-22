@@ -20,9 +20,8 @@ contains
         !        sampling.
 
         use calc, only: doing_dmqmc_calc, dmqmc_correlation
-        use errors, only: stop_all
+        use system, only: sys_t
         use checking, only: check_allocate
-        use system, only: sys_t, ueg
 
         use qmc_data, only: qmc_in_t, qmc_state_t
         use dmqmc_data, only: dmqmc_in_t, dmqmc_estimates_t, dmqmc_weighted_sampling_t
@@ -165,28 +164,12 @@ contains
         if (dmqmc_in%rdm%doing_rdm) call setup_rdm_arrays(sys, .true., dmqmc_estimates%subsys_info, &
                                                           dmqmc_estimates%ground_rdm%rdm, qmc_in, dmqmc_in%rdm, &
                                                           dmqmc_estimates%inst_rdm, nreplicas, qs%psip_list%pop_real_factor)
-        if (dmqmc_in%calc_mom_dist) then
-            select case(sys%system)
-            case (ueg)
-                ! Look for maximum kpoint which is less than user defined maximum multiple of Fermi vector.
-                do iorb = 1, sys%basis%nbasis
-                    if (sys%basis%basis_fns(iorb)%sp_eigv > 0.5*(dmqmc_in%mom_dist_kmax*sys%ueg%kf)**2.0) then
-                        max_orb = (iorb - 1) / 2
-                        exit
-                    end if
-                end do
-                ! We want to average over spin, so we'll map the (spin) orbital index back to the given kpoint.
-                allocate(dmqmc_estimates%mom_dist%n_k(max_orb), stat=ierr)
-                call check_allocate('dmqmc_estimates%mom_dist%n_k', max_orb, ierr)
-                allocate(dmqmc_estimates%mom_dist%kpoints(max_orb), stat=ierr)
-                call check_allocate('dmqmc_estimates%kpoints', max_orb, ierr)
-                do max_orb = 1, size(dmqmc_estimates%mom_dist%n_k)
-                    dmqmc_estimates%mom_dist%kpoints(max_orb) = (2.0*sys%basis%basis_fns(2*max_orb)%sp_eigv)**0.5
-                end do
-            case default
-                call stop_all('init_dmqmc', 'Momentum distribution not implemented for this system.')
-            end select
-        end if
+        if (dmqmc_in%calc_mom_dist) call allocate_kspace_correlation_functions(sys, dmqmc_in%mom_dist_kmax, .true., &
+                                                                               dmqmc_estimates%mom_dist%f_k, &
+                                                                               dmqmc_estimates%mom_dist%kpoints)
+        if (dmqmc_in%calc_struc_fac) call allocate_kspace_correlation_functions(sys, dmqmc_in%struc_fac_qmax, .false., &
+                                                                               dmqmc_estimates%struc_fac%f_k, &
+                                                                               dmqmc_estimates%struc_fac%kpoints)
 
     end subroutine init_dmqmc
 
@@ -849,5 +832,53 @@ contains
         end if
 
     end subroutine output_and_alter_weights
+
+    subroutine allocate_kspace_correlation_functions(sys, kmax, spin_av, numerator, mag_grid_points)
+
+        ! Allocate correlation functions arrays depending on user defined maximum k or q value.
+
+        ! In:
+        !    sys: system being studied.
+        !    kmax: maximum kvalue to consider (in magnitude in terms of Fermi wave vector).
+        !    spin_av: if true then average quantities over spin.
+        ! In/Out:
+        !    numerator: numerator for correlation function.
+        !    mag_grid_points: magnitude of single particle grid points.
+
+        use system, only: sys_t, ueg
+        use checking, only: check_allocate
+        use errors, only: stop_all
+
+        type(sys_t), intent(in) :: sys
+        real(p), intent(in) :: kmax
+        logical, intent(in) :: spin_av
+        real(p), allocatable, intent(inout) :: numerator(:), mag_grid_points(:)
+
+        integer :: iorb, ierr
+
+        select case(sys%system)
+        case (ueg)
+            ! Look for maximum kpoint which is less than user defined maximum multiple of Fermi vector.
+            do iorb = 1, sys%basis%nbasis
+                if (sys%basis%basis_fns(iorb)%sp_eigv > 0.5*(kmax*sys%ueg%kf)**2.0) exit
+            end do
+            if (spin_av) then
+                ! We want to average over spin, so we'll map the (spin) orbital index back to the given kpoint.
+                iorb = (iorb - 1) / 2
+            else
+                iorb = iorb - 1
+            end if
+            allocate(numerator(iorb), stat=ierr)
+            call check_allocate('numerator', iorb, ierr)
+            allocate(mag_grid_points(iorb), stat=ierr)
+            call check_allocate('mag_grid_points', iorb, ierr)
+            do iorb = 1, size(numerator)
+                mag_grid_points(iorb) = (2.0*sys%basis%basis_fns(2*iorb)%sp_eigv)**0.5
+            end do
+        case default
+            call stop_all('init_dmqmc', 'Correlation function not implemented for this system.')
+        end select
+
+    end subroutine allocate_kspace_correlation_functions
 
 end module dmqmc_procedures
