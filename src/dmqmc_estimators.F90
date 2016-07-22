@@ -470,6 +470,8 @@ contains
                     est%excit_dist(excitation%nexcit) + real(abs(psip_list%pops(1,idet)),p)/psip_list%pop_real_factor
                 if (dmqmc_in%calc_mom_dist) call update_dmqmc_momentum_distribution(sys, cdet, excitation, H00,&
                                                                                       &unweighted_walker_pop(1), est%mom_dist%f_k)
+                if (dmqmc_in%calc_struc_fac) call update_dmqmc_structure_factor_ueg(sys, cdet, excitation, H00,&
+                                                                                      &unweighted_walker_pop(1), est%struc_fac%f_k)
             end if
 
             ! Full Renyi entropy (S_2).
@@ -1415,6 +1417,157 @@ contains
         endif
 
     end subroutine update_dmqmc_momentum_distribution
+
+    subroutine update_dmqmc_structure_factor_ueg(sys, cdet, excitation, H00, pop, structure_factor)
+
+        ! Add the contribution for the current density matrix element to the thermal
+        ! structure factor estimate.
+
+        ! The structure factor is given as:
+        !   S_{sigma,sigma'}(q) = N_{sigma}delta_{sigma,sigma'}/N +
+        !   1/N sum_{kp} <c^{dagger}_{k+q,sigma}c^{dagger}_{p-q,sigma'}c_{p,sigma'}c_{k,sigma}>
+        ! This is closely related to the the evaluation of the potential energy as
+        !     V = -N/(2V) \sum_{q} v_q (S(q)-1)
+        ! Note the constant term and the factors of 1/N are accounted for during output and
+        ! in post-processing.
+
+        ! In:
+        !    sys: system being studied.
+        !    cdet: det_info_t object containing bit strings of densitry matrix
+        !       element under consideration.
+        !    excitation: excit_t type variable which stores information on
+        !        the excitation between the two bitstring ends, corresponding
+        !        to the two labels for the density matrix element.
+        !    H00: diagonal hamiltonian element for the reference. only for
+        !       interface consistency, not used.
+        !    pop: number of particles on the current density matrix
+        !        element.
+        ! In/Out:
+        !    structure_factor : array expressing the numerator for the estimator of the
+        !        structure factor (up to a few constants (see above)) for each k point.
+
+        use determinants, only: det_info_t
+        use system, only: sys_t
+        use excitations, only: excit_t
+        use determinants, only: decode_det
+
+        type(sys_t), intent(in) :: sys
+        type(det_info_t), intent(in) :: cdet
+        type(excit_t), intent(in) :: excitation
+        real(p), intent(in) :: H00, pop
+        real(dp), intent(inout) :: structure_factor(:)
+
+        integer :: occ_list(sys%nel)
+        integer :: i, j, a, b, indx, sign_factor
+        integer :: q(sys%lattice%ndim)
+        logical :: in_basis
+
+        ! Due to momentum conservation only need to consider diagonal contributions
+        ! and those from double excitations.
+        ! We store S_{up,up}(q) + S_{down,down} in odd indices, and
+        ! S_{up,down}(q) + S_{down,up} in even indices i.e.,
+        ! S = (S_{uu}(k1)+S_{dd}(k1), S_{ud}(k1) + S_{du}(k1),...)
+        ! The index of S_{uu}+S_{dd} is ueg_basis%lookup(q) + 0,
+        ! while for S_{ud} + S_{du} is ueg_basis%lookup(q) + 1
+        ! Note ueg_basis%lookup only returns the up spin index.
+        associate(ueg_basis => sys%ueg%basis, bs => sys%basis)
+            call decode_det(sys%basis, cdet%f, occ_list)
+            select case(excitation%nexcit)
+            case(0)
+                ! Hartree--Fock-like contribution to the structure factor.
+                do i = 1, sys%nel
+                    do j = i+1, sys%nel
+                        if (mod(occ_list(i),2) == mod(occ_list(j),2)) then
+                            q = bs%basis_fns(occ_list(i))%l - bs%basis_fns(occ_list(j))%l
+                            call q_in_basis(ueg_basis, q, in_basis, indx)
+                            if (in_basis) then
+                                ! The factor of two accounts for only summing j > i.
+                                structure_factor(indx) = structure_factor(indx) - 2.0_p*pop
+                            end if
+                        end if
+                    end do
+                end do
+            case(2)
+                ! This is an allowed excitation by virtue of it exisiting as a density
+                ! matrix element so don't need to check for momentum conservation.
+                i = excitation%from_orb(1)
+                j = excitation%from_orb(2)
+                a = excitation%to_orb(1)
+                b = excitation%to_orb(2)
+                if (excitation%perm) then
+                    sign_factor = -1
+                else
+                    sign_factor = 1
+                end if
+                ! The factors of two account for the possible ways the creation an
+                ! annihilation operators appearing in the expectation value can be
+                ! ordered yielding a non-zero result for a given excitation ij->ab.
+                if (bs%basis_fns(i)%ms == bs%basis_fns(j)%ms) then
+                    ! There are two contributions for matrix elements involving like spins:
+                    ! q = k_i - k_a, and q = k_i - k_b
+                    q = bs%basis_fns(i)%l - bs%basis_fns(a)%l
+                    call q_in_basis(ueg_basis, q, in_basis, indx)
+                    if (in_basis) then
+                        ! Contribution from like spins goes in the odd indices.
+                        structure_factor(indx) = structure_factor(indx) + 2.0_p*sign_factor*pop
+                    end if
+                    q = bs%basis_fns(i)%l - bs%basis_fns(b)%l
+                    call q_in_basis(ueg_basis, q, in_basis, indx)
+                    if (in_basis) then
+                        structure_factor(indx) = structure_factor(indx) - 2.0_p*sign_factor*pop
+                    end if
+                else
+                    ! Only one contribution for unlike spins.
+                    if (bs%basis_fns(i)%ms == bs%basis_fns(a)%ms) then
+                        q = bs%basis_fns(i)%l - bs%basis_fns(a)%l
+                        call q_in_basis(ueg_basis, q, in_basis, indx)
+                        if (in_basis) then
+                            ! Contribution from un-like spins goes in the even indices.
+                            structure_factor(indx+1) = structure_factor(indx+1) + 2.0_p*sign_factor*pop
+                        end if
+                    else if (bs%basis_fns(i)%ms == bs%basis_fns(b)%ms) then
+                        q = bs%basis_fns(i)%l - bs%basis_fns(b)%l
+                        call q_in_basis(ueg_basis, q, in_basis, indx)
+                        if (in_basis) then
+                            structure_factor(indx+1) = structure_factor(indx+1) - 2.0_p*sign_factor*pop
+                        end if
+                    end if
+                end if
+            end select
+        end associate
+
+        contains
+
+            subroutine q_in_basis(ueg_basis, q, in_basis, indx)
+
+                ! Check if momentum transfer is in our basis set, and less than
+                ! the size of the structure factor.
+
+                ! In:
+                !    ueg_basis: ueg_basis_t
+                !    q: momentum transfer vector
+                ! Out:
+                !    in_basis: true if transfer is in the basis set
+                !    indx: index of momentum transfer
+
+                use ueg_types, only: ueg_basis_t
+                type(ueg_basis_t), intent(in) :: ueg_basis
+                integer, intent(in) :: q(:)
+                logical, intent(out) :: in_basis
+                integer, intent(out) :: indx
+
+                in_basis = .false.
+
+                if (all(abs(q) <= ueg_basis%kmax)) then
+                    indx = ueg_basis%lookup(dot_product(q,ueg_basis%offset_inds) + ueg_basis%offset)
+                    if (indx > 0 .and. indx <= size(structure_factor)) then
+                        in_basis = .true.
+                    end if
+                end if
+
+            end subroutine q_in_basis
+
+    end subroutine update_dmqmc_structure_factor_ueg
 
     subroutine update_dmqmc_H0_energy(sys, cdet, excitation, pop, H0_energy)
 

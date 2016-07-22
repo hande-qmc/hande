@@ -873,7 +873,11 @@ contains
             allocate(mag_grid_points(iorb), stat=ierr)
             call check_allocate('mag_grid_points', iorb, ierr)
             do iorb = 1, size(numerator)
-                mag_grid_points(iorb) = (2.0*sys%basis%basis_fns(2*iorb)%sp_eigv)**0.5
+                if (spin_av) then
+                    mag_grid_points(iorb) = (2.0*sys%basis%basis_fns(2*iorb)%sp_eigv)**0.5
+                else
+                    mag_grid_points(iorb) = (2.0*sys%basis%basis_fns(iorb)%sp_eigv)**0.5
+                end if
             end do
         case default
             call stop_all('init_dmqmc', 'Correlation function not implemented for this system.')
