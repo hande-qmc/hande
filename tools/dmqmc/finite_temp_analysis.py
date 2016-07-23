@@ -334,11 +334,6 @@ None.
                 # New style JSON-based metadata
                 tau = md['qmc']['tau']
                 cycles = md['qmc']['ncycles']
-            if 'dmqmc' in md:
-                target_beta = md['dmqmc']['target_beta']
-            else:
-                # Grudgingly support hacked old metadata extraction.
-                tau = md['tau']
             df.rename(columns={'iterations' : 'Beta'}, inplace=True)
             df['Beta'] = df['Beta']*tau
             data.append(df)
