@@ -12,6 +12,7 @@ import optparse
 import numpy as np
 import scipy.interpolate
 import warnings
+import scipy.integrate
 
 _script_dir = os.path.dirname(os.path.abspath(__file__))
 if not pkgutil.find_loader('pyhande'):
@@ -56,6 +57,7 @@ None.
         ('Tr[Up]/Tr[p]','\\sum\\rho_{ij}U_{ji}'),
         ('Tr[H0p]/Tr[p]','\\sum\\rho_{ij}H0{ji}'),
         ('Tr[HIp]/Tr[p]','\\sum\\rho_{ij}HI{ji}'),
+        ('VI', '\\sum\\rho_{ij}VI_{ji}'),
     ])
 
     # DataFrame to hold the final mean and error estimates.
@@ -80,6 +82,52 @@ None.
             results[k+'_error'] = stats['standard error']
 
     return results
+
+
+def free_energy_error_analysis(data, results, dtau):
+    '''Calculate the mean and error estimates for the exchange correlation
+       free energy (appropriately defined)
+
+Parameters
+----------
+data : :class:`pandas.DataFrame`
+    Raw dmqmc data.
+results : :class:`pandas.DataFrame`
+    The mean estimates, obtained by averaging over beta loops, as a function of
+    beta, which is used as the index. On output estimates for f_xc and its error
+    are appended.
+dtau : float
+    Time step used in simulation.
+'''
+    # Integral is evaulated as cumulative integral of integral for each
+    # temperature/imaginary time value. Naturally I(tau=0) = 0.
+    I = scipy.integrate.cumtrapz(results['VI'], dx=dtau, initial=0)
+
+    # An estimate for the error can be found by considering the variance of each
+    # simulations estimate for the Integral.
+    grouped = pyhande.utils.groupby_beta_loops(data.reset_index(), name='Beta')
+    I_single = [scipy.integrate.cumtrapz(d[r'\sum\rho_{ij}VI_{ji}']/d['Trace'],
+                dx=dtau, initial=0) for (i, d) in grouped]
+
+    # Place cumulative integrals in frame so variance can be easily calculated.
+    frame = pd.DataFrame(I_single)
+    I_single_mean = frame.mean()
+    I_error = ((frame.var() / len(grouped)))**0.5
+
+    # Some sort of check for poor estimation of mean/error.
+    # Check if last point's 'ratio' error (not quite the normal definition) is
+    # significant (so comparible to the stochastic error).
+    err = abs(I[-1]-I_single_mean.iloc[-1])
+    if (abs(err) > I_error.iloc[-1]):
+        warnings.warn("Ratio error of %f is not insignificant - check results."
+                      %err)
+
+    # Need to multiply integral by kT. Any scaling factor drops out due to
+    # presence in timestep as well.
+    results.reset_index(drop=True, inplace=True)
+    results['f_xc'] = I / results['Beta'].iloc[-1]
+    results['f_xc_error'] = I_error/results['Beta'].iloc[-1]
+
 
 def analyse_renyi_entropy(means, covariances, nsamples):
     '''Calculate the mean and error estimates for the Renyi entropy (S2), for
@@ -244,6 +292,8 @@ options : :class:`OptionParser`
     parser.add_option('-t', '--with-trace', action='store_true', dest='with_trace',
                       default=False, help='Output the averaged traces and the '
                       'standard deviation of these traces, for all replicas present.')
+    parser.add_option('-f', '--with-free-energy', action='store_true', dest='with_free_energy',
+                      default=False, help='Calculate Free energy')
     parser.add_option('-b', '--with-spline', action='store_true', dest='with_spline',
                       default=False, help='Output a B-spline fit for each of '
                       ' estimates calculated')
@@ -283,6 +333,7 @@ None.
             metadata.append(md)
             # Convert the iteration number to the beta value.
             tau = md['qmc']['tau']
+            cycles = md['qmc']['ncycles']
             df.rename(columns={'iterations' : 'Beta'}, inplace=True)
             df['Beta'] = df['Beta']*tau
             data.append(df)
@@ -300,6 +351,12 @@ None.
             if 'tau' in md['qmc'] and md['qmc']['tau'] != tau:
                 warnings.warn('Tau values in input files not consistent.')
 
+    # Discard beta loops which didn't reach final iteration.
+    grouped = pyhande.utils.groupby_beta_loops(data, name='Beta')
+    niterations = len(grouped.get_group(0))
+    last_group = len(grouped) - 1
+    if len(grouped.get_group(last_group) < niterations):
+        data.drop(grouped.get_group(last_group).index, inplace=True)
     # Make the Beta column a MultiIndex.
     data.set_index('Beta', inplace=True, append=True)
     # The number of beta loops contributing to each beta value.
@@ -307,6 +364,25 @@ None.
     beta_values = nsamples.index.values
     # The data that we are going to use.
     estimates = data.loc[:,'Shift':'# H psips']
+
+    if options.with_free_energy:
+        # Set up estimator we need to integrate wrt time/temperature to evaluate
+        # free energy difference.
+        if metadata[0]['ipdmqmc']['propagate_to_beta']:
+            if metadata[0]['ipdmqmc']['symmetric']:
+                estimates['\\sum\\rho_{ij}VI_{ji}'] = (
+                                                 data['\\sum\\rho_{ij}HI{ji}'] -
+                                                 data['\\sum\\rho_{ij}H0{ji}']
+                                                 )
+            else:
+                estimates['\\sum\\rho_{ij}VI_{ji}'] = (
+                                                  data['\\sum\\rho_{ij}H_{ji}'] -
+                                                  data['\\sum\\rho_{ij}H0{ji}']
+                                                  )
+        else:
+            estimates['\\sum\\rho_{ij}VI_{ji}'] = data['\\sum\\rho_{ij}H{ji}']
+
+
     # Compute the mean of all estimates across all beta loops.
     means = estimates.groupby(level=1).mean()
     # Compute the covariances between all pairs of columns.
@@ -338,6 +414,10 @@ None.
         for column in results_columns:
             if ('Tr[p]' in column or 'S2' in column) and (not 'error' in column):
                 results[column+' spline'] = calc_spline_fit(column, results)
+
+    # If requested, calculate excess free-energy.
+    if options.with_free_energy:
+        free_energy_error_analysis(estimates, results, cycles*tau)
 
     # Finally, output the results!
     # For anal-retentiveness, print the energy first after beta and then all

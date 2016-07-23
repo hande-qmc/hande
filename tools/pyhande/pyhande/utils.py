@@ -2,7 +2,7 @@
 
 import numpy as np
 
-def groupby_beta_loops(data):
+def groupby_beta_loops(data, name='iterations'):
     '''Group a HANDE DMQMC data table by beta loop.
 
 Parameters
@@ -18,7 +18,7 @@ grouped : :class:`pandas.DataFrameGroupBy`
 
     # Exploit the fact that (except for possibly the last beta loop due to wall
     # time) each beta loop contains the same set of iterations.
-    indx = np.arange(len(data)) // len(data['iterations']).unique()
+    indx = np.arange(len(data)) // len(data[name].unique())
     return data.groupby(indx)
 
 def groupby_iterations(data):
