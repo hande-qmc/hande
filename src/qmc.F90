@@ -190,7 +190,7 @@ contains
         use hamiltonian_hub_k, only: slater_condon0_hub_k
         use hamiltonian_hub_real, only: slater_condon0_hub_real
         use hamiltonian_heisenberg, only: diagonal_element_heisenberg, diagonal_element_heisenberg_staggered
-        use hamiltonian_molecular, only: slater_condon0_mol, double_counting_correction_mol
+        use hamiltonian_molecular, only: slater_condon0_mol, double_counting_correction_mol, hf_hamiltonian_energy_mol
         use hamiltonian_molecular_complex, only: slater_condon0_mol_complex
         use hamiltonian_ringium, only: slater_condon0_ringium
         use hamiltonian_ueg, only: slater_condon0_ueg, kinetic_energy_ueg, exchange_energy_ueg, potential_energy_ueg
@@ -501,7 +501,11 @@ contains
                 end if
             case(read_in)
                 if (dmqmc_in%propagate_to_beta) then
-                    trial_dm_ptr => slater_condon0_mol
+                    if (dmqmc_in%initial_matrix == free_electron_dm) then
+                        trial_dm_ptr => hf_hamiltonian_energy_mol
+                    else
+                        trial_dm_ptr => slater_condon0_mol
+                    end if
                 end if
             end select
 
