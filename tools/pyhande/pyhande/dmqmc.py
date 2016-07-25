@@ -3,7 +3,6 @@
 import pandas as pd
 import numpy as np
 import warnings
-import argparse
 import scipy.interpolate
 import scipy.integrate
 import pyblock
@@ -258,51 +257,8 @@ spline_fit : :class:`pandas.Series`
     return pd.Series(spline_fit, index=beta_values)
 
 
-def parse_args(args):
-    '''Parse command-line arguments.
-
-Parameters
-----------
-args : list of strings
-    command-line arguments.
-
-Returns
--------
-filenames : list of strings
-    list of HANDE DMQMC output files.
-options : :class:`ArgumentParser`
-    Options read in from command line.
-'''
-
-    parser = argparse.ArgumentParser(usage = __doc__)
-    parser.add_argument('-s', '--with-shift', action='store_true', dest='with_shift',
-                      default=False, help='Output the averaged shift profile and '
-                      'the standard deviation of these profiles across beta loops.')
-    parser.add_argument('-t', '--with-trace', action='store_true', dest='with_trace',
-                      default=False, help='Output the averaged traces and the '
-                      'standard deviation of these traces, for all replicas present.')
-    parser.add_argument('-b', '--with-spline', action='store_true', dest='with_spline',
-                      default=False, help='Output a B-spline fit for each of '
-                      ' estimates calculated')
-    parser.add_argument('-c', '--calc-number', action='store', default=None, type=int,
-                      dest='calc_number', help='Calculation number to analyse. '
-                      'Note any simulation using find_weights option should not '
-                      'be included.')
-    parser.add_argument('-f', '--with-free-energy', action='store_true',
-                      dest='with_free_energy', default=False,
-                      help='Calculate Free energy')
-    parser.add_argument('filenames', nargs='+', help='HANDE files to analyse.')
-
-    options = parser.parse_args(args)
-
-    if not options.filenames:
-        parser.print_help()
-        sys.exit(1)
-
-    return (options.filenames, options)
-
-
-def analyse_data(hande_out, options=None):
+def analyse_data(hande_out, shift=False, free_energy=False, spline=False,
+                 trace=False, calc_number=None):
     '''Clean up Hande output so that analysis can be performed.
 
 Parameters
@@ -312,8 +268,17 @@ hande_out : list of (dict, :class:`pandas.DataFrame` or :class:`pandas.Series`)
     of metadata (dict) and a :class:`pandas.DataFrame` (MC calculations) or
     :class:`pandas.Series` (other calculations) containing the calculation
     output/results.
-options : :class:`argparse.ArgumentParser`
-    User specified command line arguments (see parse_args for available options).
+shift : bool
+    Perform analysis on the shift.
+free_energy : bool
+    Perform free energy error analysis, requires appropriate column in HANDE
+    output.
+spline : bool
+    Fit splines to analysed data.
+trace : bool
+    Perform analysis on the trace of the density matrix.
+calc_number : int or None
+    If not None then only perform analysis on the calc_number calculation.
 
 Returns
 -------
@@ -335,8 +300,9 @@ results : :class:`pandas.DataFrame`
             df['Beta'] = df['Beta']*tau
             data.append(df)
     if data:
-        if options.calc_number is not None:
-            data = data[options.calc_number]
+        if calc_number is not None:
+            data = data[calc_number]
+            metadata = metadata[calc_number]
         else:
             data = pd.concat(data)
 
@@ -362,7 +328,7 @@ results : :class:`pandas.DataFrame`
     # The data that we are going to use.
     estimates = data.loc[:,'Shift':'# H psips']
 
-    if options.with_free_energy:
+    if free_energy:
         # Set up estimator we need to integrate wrt time/temperature to evaluate
         # free energy difference.
         if metadata[0]['ipdmqmc']['propagate_to_beta']:
@@ -393,19 +359,19 @@ results : :class:`pandas.DataFrame`
     results = results.join(analyse_renyi_entropy(means, covariances, nsamples))
 
     # If requested, add the averaged shift profile to results.
-    if options.with_shift:
+    if shift:
         results['Shift'] = means['Shift']
         results['Shift s.d.'] = np.sqrt(covariances.xs('Shift',level=1)['Shift'])
 
     # If requested, calculate a spline fit for all mean estimates.
-    if options.with_spline:
+    if spline:
         results_columns = list(results.columns.values)
         for column in results_columns:
             if ('Tr[p]' in column or 'S2' in column) and (not 'error' in column):
                 results[column+' spline'] = calc_spline_fit(column, results)
 
     # If requested, add the averaged trace profiles to results.
-    if options.with_trace:
+    if trace:
         results['Trace'] = means['Trace']
         results['Trace s.d.'] = np.sqrt(covariances.xs('Trace',level=1)['Trace'])
         if 'Trace 2' in columns:
@@ -413,7 +379,7 @@ results : :class:`pandas.DataFrame`
             results['Trace 2 s.d.'] = np.sqrt(covariances.xs('Trace 2',level=1)['Trace 2'])
 
     # If requested, calculate excess free-energy.
-    if options.with_free_energy:
+    if free_energy:
         free_energy_error_analysis(estimates, results, cycles*tau)
 
     return (metadata, results)
