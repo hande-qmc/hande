@@ -16,6 +16,7 @@ if not pkgutil.find_loader('pyhande'):
 
 import pyhande
 
+
 def parse_args(args):
     '''Parse command-line arguments.
 
@@ -102,12 +103,20 @@ None.
     columns = sorted(remove_observable(results.columns.values, 'n_'))
     # For anal-retentiveness, print the energy first after beta and then all
     # columns in alphabetical order.
+    columns = sorted([c for c in results.columns.values if ('n_' not in c) and ('S_'
+                      not in c) and ('Suu_' not in c) and ('Sud_' not in c)])
+
     columns.insert(1, columns.pop(columns.index('Tr[Hp]/Tr[p]')))
     columns.insert(2, columns.pop(columns.index('Tr[Hp]/Tr[p]_error')))
     momentum_dist = pyhande.dmqmc.sort_momentum([c for c in
                                                  results.columns.values
                                                  if 'n_' in c])
-    print(results.to_string(index=False, columns=columns+momentum_dist))
+    structure_factor = pyhande.dmqmc.sort_momentum([c for c in
+                                                    results.columns.values
+                                                    if ('S_' in c) or
+                                                    ('Suu_' in c) or
+                                                    ('Sud_' in c)])
+    print(results.to_string(index=False, columns=columns+momentum_dist+structure_factor))
 
 
 if __name__ == '__main__':
