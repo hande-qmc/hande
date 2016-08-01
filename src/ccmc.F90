@@ -659,13 +659,13 @@ contains
                                                           cumulative_abs_nint_pops, tot_abs_nint_pop, cdet(it), cluster(it))
                     end if
 
-                    if (qs%quasi_newton) cdet(it)%fock_sum = sum_sp_eigenvalues_occ_list(sys, cdet(it)%occ_list) - qs%ref%fock_sum
-
                     if (cluster(it)%excitation_level <= qs%ref%ex_level+2 .or. &
                             (ccmc_in%linked .and. cluster(it)%excitation_level == huge(0))) then
                         ! cluster%excitation_level == huge(0) indicates a cluster
                         ! where two excitors share an elementary operator
 
+                        if (qs%quasi_newton) cdet(it)%fock_sum = sum_sp_eigenvalues_occ_list(sys, cdet(it)%occ_list) &
+                                                                    - qs%ref%fock_sum
                         if (cluster(it)%excitation_level /= huge(0)) then
                             ! FCIQMC calculates the projected energy exactly.  To do
                             ! so in CCMC would involve enumerating over all pairs of
