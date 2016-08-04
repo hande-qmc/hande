@@ -319,6 +319,33 @@ contains
 
     end function slater_condon2_mol_excit
 
+    pure function hf_hamiltonian_energy_mol(sys, f) result(hf_energy)
+
+        ! Work out expectation value of Hartree-Fock Hamiltonian between
+        ! two determinants:
+        !    i.e. <f|H^HF|f> = \sum_{i_occ} epsilon^{HF}_i.
+
+        ! In:
+        !    sys: system being studied.
+        !    occ_list: list of occupied orbitals in determinant.
+        ! Returns:
+        !    H0_energy: sum of hf eigenvalues
+
+        use system, only: sys_t
+        use determinants, only: decode_det, sum_sp_eigenvalues
+
+        type(sys_t), intent(in) :: sys
+        integer(i0), intent(in) :: f(sys%basis%string_len)
+
+        integer :: occ_list(sys%nel)
+        real(p) :: hf_energy
+
+        call decode_det(sys%basis, f, occ_list)
+
+        hf_energy = sum_sp_eigenvalues(sys, occ_list) + sys%read_in%Ecore
+
+    end function hf_hamiltonian_energy_mol
+
     pure function double_counting_correction_mol(sys, occ_list) result(double_count)
 
         ! Work out the double counting correction between the Hartree-Fock
@@ -342,7 +369,7 @@ contains
         sc0 = slater_condon0_mol_orb_list(sys, occ_list)
         sum_hf = sum_sp_eigenvalues(sys, occ_list) + sys%read_in%Ecore
 
-        double_count = sc0-sum_hf
+        double_count = sc0 - sum_hf
 
     end function double_counting_correction_mol
 
