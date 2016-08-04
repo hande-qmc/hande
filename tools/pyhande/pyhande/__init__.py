@@ -17,3 +17,4 @@ import pyhande.extract
 import pyhande.lazy
 import pyhande.utils
 import pyhande.weight
+import pyhande.dmqmc
