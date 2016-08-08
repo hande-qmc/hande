@@ -987,8 +987,6 @@ contains
         ! In/Out:
         !    rspawn: running total of spawning rate.
 
-        use fciqmc_data, only: spawning_rate
-
         integer, intent(in) :: nspawn_events
         integer(int_p), intent(in) :: ndeath, real_factor
         integer(int_64), intent(in) :: nattempts
@@ -999,6 +997,46 @@ contains
         rspawn = rspawn + spawning_rate(nspawn_events, ndeath, real_factor, nattempts)
 
     end subroutine end_mc_cycle
+
+    function spawning_rate(nspawn_events, ndeath, real_factor, nattempts) result(rate)
+
+        ! Calculate the rate of spawning on the current processor.
+        ! In:
+        !    nspawn_events: number of successful spawning events during the
+        !       MC cycle.
+        !    ndeath: (unscaled) number of particles that were killed/cloned
+        !       during the MC cycle.
+        !    real_factor: The factor by which populations are multiplied to
+        !        enable non-integer populations.
+        !    nattempts: The number of attempts to spawn made in order to
+        !       generate the current population of walkers in the spawned arrays.
+
+        real(p) :: rate
+        integer, intent(in) :: nspawn_events
+        integer(int_p), intent(in) :: ndeath, real_factor
+        integer(int_64), intent(in) :: nattempts
+        real(p) :: ndeath_real
+
+        ! Death is not scaled when using reals.
+        ndeath_real = real(ndeath,p)/real_factor
+
+        ! The total spawning rate is
+        !   (nspawn + ndeath) / nattempts
+        ! In, for example, the timestep algorithm each particle has 2 attempts
+        ! (one to spawn on a different determinant and one to clone/die).
+        ! ndeath is the number of particles that died, which hence equals the
+        ! number of successful death attempts (assuming the timestep is not so
+        ! large that death creates more than one particle).
+        ! By ignoring the number of particles spawned in a single event, we
+        ! hence are treating the death and spawning events on the same footing.
+        if (nattempts > 0) then
+            rate = (nspawn_events + ndeath_real)/nattempts
+        else
+            ! Can't have done anything.
+            rate = 0.0_p
+        end if
+
+    end function spawning_rate
 
     subroutine rescale_tau(tau, factor)
 
