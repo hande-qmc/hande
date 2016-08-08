@@ -3,7 +3,7 @@ module fciqmc
 ! Module for performing optimised (hopefully!) full configuration interaction
 ! quantum monte carlo (FCIQMC) calculations.
 
-use fciqmc_data
+use qmc_io
 use proc_pointers
 implicit none
 

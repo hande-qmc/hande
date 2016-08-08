@@ -3,7 +3,7 @@ module ct_fciqmc
 ! Evolve the walker population using a continuous time algorithm (i.e. jump
 ! directly to the next spawning event without a timestep).
 
-use fciqmc_data
+use qmc_io
 use const, only: p, int_64
 
 implicit none

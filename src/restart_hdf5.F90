@@ -57,7 +57,7 @@ module restart_hdf5
     !                reference population  # population on reference
     !                Hilbert space reference determinant # reference determinant
     !                                  # defining Hilbert space (see comments in
-    !                                  # fciqmc_data for details).
+    !                                  # qmc_io for details).
     !  basis/
     !      nbasis                      # Number of basis functions
     !

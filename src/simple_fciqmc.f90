@@ -210,7 +210,7 @@ contains
 
         use energy_evaluation, only: update_shift
         use parallel, only: parent, iproc
-        use fciqmc_data, only: write_fciqmc_report_header, write_fciqmc_report
+        use qmc_io, only: write_fciqmc_report_header, write_fciqmc_report
         use qmc_data, only: qmc_in_t, restart_in_t, particle_t, qmc_state_t, qmc_in_t_json, restart_in_t_json
         use reference_determinant, only: reference_t, reference_t_json
         use spawn_data, only: spawn_t
@@ -557,7 +557,7 @@ contains
         ! During a MC cycle we store
         !   \sum_{i \neq 0} <D_i|H|D_0> N_i
         ! If the current determinant is the reference determinant, then
-        ! N_0 is stored as D0_population (defined in fciqmc_data).  This makes
+        ! N_0 is stored as D0_population (defined in qs%estimators).  This makes
         ! normalisation very efficient.
         ! This procedure is only for the simple fciqmc algorithm, where the
         ! Hamiltonian matrix is explicitly stored.

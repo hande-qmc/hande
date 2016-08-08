@@ -1,4 +1,4 @@
-module fciqmc_data
+module qmc_io
 
 ! Data for fciqmc calculations and procedures which manipulate fciqmc and only
 ! fciqmc data.
@@ -142,4 +142,4 @@ contains
                                              qs%spawn_store%rspawn, elapsed_time/qmc_in%ncycles
     end subroutine write_fciqmc_report
 
-end module fciqmc_data
+end module qmc_io

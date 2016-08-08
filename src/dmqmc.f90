@@ -3,7 +3,7 @@ module dmqmc
 ! Main loop for performing DMQMC calculations.
 ! [todo] - Top level comments explaining various dmqmc algorithms.
 
-use fciqmc_data
+use qmc_io
 use proc_pointers
 implicit none
 

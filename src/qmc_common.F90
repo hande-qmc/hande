@@ -604,7 +604,7 @@ contains
         use determinants, only: det_info_t, alloc_det_info_t, dealloc_det_info_t, decode_det
         use energy_evaluation, only: local_energy_estimators, update_energy_estimators_send
         use excitations, only: excit_t, get_excitation
-        use fciqmc_data, only: write_fciqmc_report
+        use qmc_io, only: write_fciqmc_report
         use importance_sampling, only: importance_sampling_weight
         use parallel
         use proc_pointers, only: update_proj_energy_ptr

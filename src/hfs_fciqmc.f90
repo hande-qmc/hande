@@ -49,7 +49,7 @@ contains
         use determinants, only:det_info_t, alloc_det_info_t, dealloc_det_info_t
         use energy_evaluation, only: update_energy_estimators
         use excitations, only: excit_t, get_excitation
-        use fciqmc_data, only: write_fciqmc_report_header, write_fciqmc_report
+        use qmc_io, only: write_fciqmc_report_header, write_fciqmc_report
         use hfs_data
         use ifciqmc
         use interact, only: calc_interact, check_comms_file

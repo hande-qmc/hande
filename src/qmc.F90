@@ -2,7 +2,7 @@ module qmc
 
 ! Launcher and initialisation routines for the various QMC algorithms.
 
-use fciqmc_data
+use qmc_io
 
 implicit none
 

@@ -297,7 +297,7 @@ contains
         use ccmc_data
         use determinants, only: det_info_t, dealloc_det_info_t
         use excitations, only: excit_t, get_excitation_level, get_excitation
-        use fciqmc_data, only: write_fciqmc_report, &
+        use qmc_io, only: write_fciqmc_report, &
                                write_fciqmc_report_header
         use qmc, only: init_qmc
         use qmc_common, only: initial_fciqmc_status, cumulative_population, load_balancing_report, &
