@@ -416,6 +416,7 @@ contains
         use excitations, only: excit_t, get_excitation
         use ifciqmc
         use qmc_data, only: qmc_in_t, qmc_state_t
+        use spawn_data, only: spawn_t
         use system, only: sys_t
         use qmc_common, only: decide_nattempts
         use hamiltonian_data

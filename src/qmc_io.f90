@@ -7,9 +7,8 @@ use spawn_data, only: spawn_t
 
 implicit none
 
-! [todo] - fix compilation so we can make module private by default -- too many modules implicitly reuse the module level imports here.
-!private
-!public :: write_qmc_report_header, write_qmc_report
+private
+public :: write_qmc_report_header, write_qmc_report
 
 interface write_qmc_var
     module procedure :: write_qmc_var_int
