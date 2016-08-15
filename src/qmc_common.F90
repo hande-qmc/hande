@@ -604,7 +604,7 @@ contains
         use determinants, only: det_info_t, alloc_det_info_t, dealloc_det_info_t, decode_det
         use energy_evaluation, only: local_energy_estimators, update_energy_estimators_send
         use excitations, only: excit_t, get_excitation
-        use qmc_io, only: write_fciqmc_report
+        use qmc_io, only: write_qmc_report
         use importance_sampling, only: importance_sampling_weight
         use parallel
         use proc_pointers, only: update_proj_energy_ptr
@@ -692,10 +692,7 @@ contains
         qs%estimators%D0_population_old = qs%estimators%D0_population
 
         if (.not. nb_comm_local .and. parent) then
-            ! See also the format used in write_fciqmc_report if this is changed.
-            ! We prepend a # to make it easy to skip this point when do data
-            ! analysis.
-            call write_fciqmc_report(qmc_in, qs, 0, ntot_particles, 0.0, .true., .false., comp=sys%read_in%comp)
+            call write_qmc_report(qmc_in, qs, 0, ntot_particles, 0.0, .true., .false., cmplx_est=sys%read_in%comp)
         end if
 
     end subroutine initial_fciqmc_status
@@ -746,6 +743,7 @@ contains
         !       Carlo cycle.  Reset to 0 on output.
 
         use calc, only: doing_calc, ct_fciqmc_calc, ccmc_calc, dmqmc_calc
+        use const, only: int_64, int_p
         use qmc_data, only: particle_t
         use spawn_data, only: spawn_t
 
@@ -1010,6 +1008,8 @@ contains
         !        enable non-integer populations.
         !    nattempts: The number of attempts to spawn made in order to
         !       generate the current population of walkers in the spawned arrays.
+
+        use const, only: p, int_p, int_64
 
         real(p) :: rate
         integer, intent(in) :: nspawn_events

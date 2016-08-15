@@ -49,7 +49,7 @@ contains
         use determinants, only:det_info_t, alloc_det_info_t, dealloc_det_info_t
         use energy_evaluation, only: update_energy_estimators
         use excitations, only: excit_t, get_excitation
-        use qmc_io, only: write_fciqmc_report_header, write_fciqmc_report
+        use qmc_io, only: write_qmc_report_header, write_qmc_report
         use hfs_data
         use ifciqmc
         use interact, only: calc_interact, check_comms_file
@@ -114,7 +114,7 @@ contains
 
         ! Main fciqmc loop.
 
-        if (parent) call write_fciqmc_report_header(qs%psip_list%nspaces)
+        if (parent) call write_qmc_report_header(qs%psip_list%nspaces)
         call initial_fciqmc_status(sys, qmc_in, qs)
 
         ! Initialise timer.
@@ -292,7 +292,7 @@ contains
 
             ! t1 was the time at the previous iteration, t2 the current time.
             ! t2-t1 is thus the time taken by this report loop.
-            if (parent) call write_fciqmc_report(qmc_in, qs, ireport, nparticles_old, t2-t1, .false., .false.)
+            if (parent) call write_qmc_report(qmc_in, qs, ireport, nparticles_old, t2-t1, .false., .false.)
 
             ! Write restart file if required.
 !            if (mod(ireport,write_restart_file_every_nreports) == 0) &

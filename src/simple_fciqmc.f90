@@ -210,7 +210,7 @@ contains
 
         use energy_evaluation, only: update_shift
         use parallel, only: parent, iproc
-        use qmc_io, only: write_fciqmc_report_header, write_fciqmc_report
+        use qmc_io, only: write_qmc_report_header, write_qmc_report
         use qmc_data, only: qmc_in_t, restart_in_t, particle_t, qmc_state_t, qmc_in_t_json, restart_in_t_json
         use reference_determinant, only: reference_t, reference_t_json
         use spawn_data, only: spawn_t
@@ -268,7 +268,7 @@ contains
         nparticles = real(sum(abs(psip_list%pops(1,:))),p)
         nparticles_old = nparticles
 
-        call write_fciqmc_report_header(1)
+        call write_qmc_report_header(1)
 
         call cpu_time(t1)
         write_restart_shift = restart_in%write_restart_shift
@@ -354,7 +354,7 @@ contains
             call cpu_time(t2)
 
             ! Output stats
-            call write_fciqmc_report(qmc_in, qs, ireport, (/nparticles/), t2-t1, .false., .false.)
+            call write_qmc_report(qmc_in, qs, ireport, (/nparticles/), t2-t1, .false., .false.)
 
             ! Write restart file if required.
             call dump_restart_file_wrapper(qs, write_restart_shift, restart_in%write_freq, [nparticles_old], &

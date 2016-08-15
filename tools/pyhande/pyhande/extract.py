@@ -242,8 +242,9 @@ Returns
     data = pd.DataFrame()
     comment_data = None
     data_csv = None
+    iteration_pattern = re.compile('^ #  *iterations')
     for line in fhandle:
-        if ' # iterations' in line:
+        if iteration_pattern.match(line):
             # Columns are separated by at least two spaces but each
             # column name can contain words separated by just one space.
             column_names = re.split('   *', line[3:].strip())
