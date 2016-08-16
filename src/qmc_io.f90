@@ -62,6 +62,7 @@ contains
             call write_column_title(6, 'Im{\sum H_0j N_j}')
             call write_column_title(6, 'Re{N_0}')
             call write_column_title(6, 'Im{N_0}')
+            call write_column_title(6, '# H psips')
         else
             call write_column_title(6, '\sum H_0j N_j')
             call write_column_title(6, 'N_0')
@@ -101,7 +102,7 @@ contains
                 logical, intent(in), optional :: int_val, low_prec_val
                 integer, intent(in), optional :: justify
                 logical :: int_val_loc, low_prec_val_loc
-                character(17) :: key_str
+                character(18) :: key_str
                 integer :: justify_loc, str_len
 
                 int_val_loc = .false.
@@ -263,7 +264,7 @@ contains
         if (low_prec_loc) then
             write (io, '(f8.4,2X)', advance='no') val
         else
-            write (io, '(es17.10,2X)', advance='no') val
+            write (io, '(es17.10,3X)', advance='no') val
         end if
 
     end subroutine write_qmc_var_real_dp
