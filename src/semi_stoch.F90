@@ -541,6 +541,8 @@ contains
                         diag_elem = i == j + displs(iproc)
                         ! Take the Hartree-Fock energy off the diagonal elements.
                         ! [review] - JSS: what's the plan with compex FCIQMC and semi-stochastic?
+                        ! [reply] - CJCS: That's been implemented on another branch- I'll tidy+send it
+                        ! [reply] - CJCS: out once we've rounded off this work.
                         if (diag_elem) hmatel%r = hmatel%r - H00
                         if (abs(hmatel%r) > depsilon) then
                             nnz = nnz + 1

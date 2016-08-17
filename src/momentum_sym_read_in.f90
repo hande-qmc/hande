@@ -154,6 +154,9 @@ contains
     end function cross_product_periodic_read_in
 
     ! [review] - FDM: Is this function just a duplicate of the one above?
+    ! [reply] - CJCS: It's a utility function to avoid a lot of more complicated calls to
+    ! [reply] - CJCS: the function above with basis function symmetries. There's a
+    ! [reply] - CJCS: corresponding pg_sym function.
     pure function cross_product_periodic_basis(mom_sym, b1, b2, basis_fns) result(prod)
 
         ! In:
@@ -178,13 +181,13 @@ contains
 
     ! [review] - FDM: I think this (and the following two) function(s) could do with an expanded explanation.
     ! [review] - JSS: Some examples would be indeed be welcome.
-    ! [review] - JSS: Translational symmetry is not Abelian!
 
-    pure subroutine decompose_abelian_sym(isym, propbitlen, abel_sym)
+    pure subroutine decompose_trans_sym(isym, propbitlen, abel_sym)
 
         ! [review] - JSS: I think you'll find it's in accordance with JSS and AJWT efforts in CPMD and VASP...
+        ! [reply] - CJCS: Apologies, I've only come across the NECI implementation!
         ! Takes symmetry index for translationally symmetric wavefunction and
-        ! returns abelian representation of three "quantum numbers". In accordance
+        ! returns representation of three "quantum numbers". In accordance
         ! with approach used in NECI, values stored according to:
         !   isym = 1 + \sum_i sym(i) * 2 ** (propbitlen * (i-1))
 
@@ -209,7 +212,7 @@ contains
                             2_int_64 ** (propbitlen) - 1), int_32)
         abel_sym(3) = int(Ishft(isym, -(propbitlen * 2)), int_32)
 
-    end subroutine decompose_abelian_sym
+    end subroutine decompose_trans_sym
 
     ! [review] - FDM: I think this module could do with some more linebreaks to
     ! [review] - FDM: keep formatting consistent (between function names and docstrings and
@@ -218,7 +221,6 @@ contains
 
     pure function get_kpoint_index(a, nprop) result(ind)
 
-        ! [review] - JSS: Translational symmetry is not Abelian!
         ! Converts from abelian symmetry quantum numbers into unique index.
         ! If we know size of unit cell, can calculate unique index by tiling
         ! first along axis 1, then 2, then 3 in 3 dimensions.
@@ -236,8 +238,7 @@ contains
 
     end function get_kpoint_index
 
-    ! [review] - JSS: this is a horrible name.  What about get_kpoint_vector (more descriptive)?
-    pure subroutine get_kpoint_numbers(ind, nprop, a)
+    pure subroutine get_kpoint_vector(ind, nprop, a)
 
         ! Get kpoint index, in 3D array, from index defined in get_kpoint_index.
         ! In:
@@ -257,6 +258,6 @@ contains
         a(2) = int(real(scratch)/real(nprop(1)))
         a(1) = scratch - a(2) * nprop(1)
 
-    end subroutine get_kpoint_numbers
+    end subroutine get_kpoint_vector
 
 end module momentum_sym_read_in

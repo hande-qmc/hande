@@ -322,7 +322,7 @@ module hdf5_system
                                 [int(nbasis, kind=int_64)],  sys%basis%basis_fns(:)%sym_spin_index)
                     call hdf5_write(subgroup_id, dbasis_ms, kinds, [int(nbasis, kind=int_64)],&
                                 sys%basis%basis_fns(:)%ms)
-                    call hdf5_write(subgroup_id, dbasis_lz, kinds, [int(nbasis, kind=int_64)],&
+                    call hdf5_write(subgroup_id, dbasis_lz, kinds, [int(nbasis, kind=int_64)], &
                                 sys%basis%basis_fns(:)%lz)
                     call hdf5_write(subgroup_id, dbasis_sp_eigv, kinds, [int(nbasis, kind=int_64)],&
                                 sys%basis%basis_fns(:)%sp_eigv)
@@ -359,6 +359,8 @@ module hdf5_system
 
                 ! [review] - JSS: probably best to print out information for both point groups so
                 ! [review] - JSS: one need not check if a data group exists when doing batch processing.
+                ! [reply] - CJCS: What's this likely to be used for? Are we planning to use the hdf5
+                ! [reply] - CJCS: files for anything other than reading back in?
                 ! Need to pass this values to be able to reinitiate symmetry
                 if (sys%momentum_space) then
                     call hdf5_write(subgroup_id, dnprop, kinds, [3_int_64], &
@@ -593,52 +595,48 @@ module hdf5_system
 
             ! Allocate basis on non-parent processors.
             if (.not. parent) then
-                ! [review] - JSS: some very odd indentation going on here.
-                ! [review] - JSS: e.g. the start and end of this if block don't line up!
-                ! [review] - JSS: the lines from here to '! Do system initialisation that ...' (inclusive)
-                ! [review] - JSS: need to be dshifted one level in (4 spaces).
-                    allocate(sys%basis%basis_fns(sys%basis%nbasis),  stat = ierr)
-                    call check_allocate('sys%basis%basis_fns', sys%basis%nbasis, ierr)
-                    sys%nvirt = sys%basis%nbasis - sys%nel
-                    if (sys%momentum_space) then
-                        allocate(lscratch(sys%basis%nbasis, 3), stat=ierr)
-                        call check_allocate('lscratch', sys%basis%nbasis*3, ierr)
-                    end if
+                allocate(sys%basis%basis_fns(sys%basis%nbasis),  stat = ierr)
+                call check_allocate('sys%basis%basis_fns', sys%basis%nbasis, ierr)
+                sys%nvirt = sys%basis%nbasis - sys%nel
+                if (sys%momentum_space) then
+                    allocate(lscratch(sys%basis%nbasis, 3), stat=ierr)
+                    call check_allocate('lscratch', sys%basis%nbasis*3, ierr)
                 end if
-                ! Broadcast basis.
-                associate(nbasis=>sys%basis%nbasis)
-                    call MPI_BCast(sys%basis%basis_fns(:)%spatial_index, nbasis, MPI_INTEGER, root, MPI_COMM_WORLD, ierr)
-                    call MPI_BCast(sys%basis%basis_fns(:)%sym, nbasis, MPI_INTEGER, root, MPI_COMM_WORLD, ierr)
-                    call MPI_BCast(sys%basis%basis_fns(:)%sym_index, nbasis, MPI_INTEGER, root, MPI_COMM_WORLD, ierr)
-                    call MPI_BCast(sys%basis%basis_fns(:)%sym_spin_index, nbasis, MPI_INTEGER, root, MPI_COMM_WORLD, ierr)
-                    call MPI_BCast(sys%basis%basis_fns(:)%ms, nbasis, MPI_INTEGER, root, MPI_COMM_WORLD, ierr)
-                    call MPI_BCast(sys%basis%basis_fns(:)%lz, nbasis, MPI_INTEGER, root, MPI_COMM_WORLD, ierr)
-                    call MPI_BCast(sys%basis%basis_fns(:)%sp_eigv, nbasis, MPI_PREAL, root, MPI_COMM_WORLD, ierr)
-                    if (sys%momentum_space) then
-                        call MPI_BCast(lscratch, nbasis*3, MPI_INTEGER, root, MPI_COMM_WORLD, ierr)
-                        do ibasis = 1, nbasis
-                            allocate(sys%basis%basis_fns(ibasis)%l(1:3), stat=ierr)
-                            call check_allocate('sys%basis%basis_fns(ibasis)%l', 3, ierr)
-                            sys%basis%basis_fns(ibasis)%l(:) = lscratch(ibasis,:)
-                        end do
-                        deallocate(lscratch, stat=ierr)
-                        call check_deallocate('lscratch', ierr)
-                        sys%lattice%ndim = 3
-                    else
-                        do ibasis = 1, nbasis
-                            allocate(sys%basis%basis_fns(ibasis)%l(0), stat=ierr)
-                            call check_allocate('sys%basis%basis_fns(ibasis)%l', 0, ierr)
-                        end do
-                    end if
-                end associate
+            end if
+            ! Broadcast basis.
+            associate(nbasis=>sys%basis%nbasis)
+                call MPI_BCast(sys%basis%basis_fns(:)%spatial_index, nbasis, MPI_INTEGER, root, MPI_COMM_WORLD, ierr)
+                call MPI_BCast(sys%basis%basis_fns(:)%sym, nbasis, MPI_INTEGER, root, MPI_COMM_WORLD, ierr)
+                call MPI_BCast(sys%basis%basis_fns(:)%sym_index, nbasis, MPI_INTEGER, root, MPI_COMM_WORLD, ierr)
+                call MPI_BCast(sys%basis%basis_fns(:)%sym_spin_index, nbasis, MPI_INTEGER, root, MPI_COMM_WORLD, ierr)
+                call MPI_BCast(sys%basis%basis_fns(:)%ms, nbasis, MPI_INTEGER, root, MPI_COMM_WORLD, ierr)
+                call MPI_BCast(sys%basis%basis_fns(:)%lz, nbasis, MPI_INTEGER, root, MPI_COMM_WORLD, ierr)
+                call MPI_BCast(sys%basis%basis_fns(:)%sp_eigv, nbasis, MPI_PREAL, root, MPI_COMM_WORLD, ierr)
+                if (sys%momentum_space) then
+                    call MPI_BCast(lscratch, nbasis*3, MPI_INTEGER, root, MPI_COMM_WORLD, ierr)
+                    do ibasis = 1, nbasis
+                        allocate(sys%basis%basis_fns(ibasis)%l(1:3), stat=ierr)
+                        call check_allocate('sys%basis%basis_fns(ibasis)%l', 3, ierr)
+                        sys%basis%basis_fns(ibasis)%l(:) = lscratch(ibasis,:)
+                    end do
+                    deallocate(lscratch, stat=ierr)
+                    call check_deallocate('lscratch', ierr)
+                    sys%lattice%ndim = 3
+                else
+                    do ibasis = 1, nbasis
+                        allocate(sys%basis%basis_fns(ibasis)%l(0), stat=ierr)
+                        call check_allocate('sys%basis%basis_fns(ibasis)%l', 0, ierr)
+                    end do
+                end if
+            end associate
 
-                ! Broadcast read_in parameters.
-                call MPI_BCast(sys%read_in%Ecore, 1, MPI_PREAL, root, MPI_COMM_WORLD, ierr)
-                call MPI_BCast(sys%read_in%uselz, 1, MPI_LOGICAL, root, MPI_COMM_WORLD, ierr)
-                call MPI_BCast(sys%read_in%comp, 1, MPI_LOGICAL, root, MPI_COMM_WORLD, ierr)
+            ! Broadcast read_in parameters.
+            call MPI_BCast(sys%read_in%Ecore, 1, MPI_PREAL, root, MPI_COMM_WORLD, ierr)
+            call MPI_BCast(sys%read_in%uselz, 1, MPI_LOGICAL, root, MPI_COMM_WORLD, ierr)
+            call MPI_BCast(sys%read_in%comp, 1, MPI_LOGICAL, root, MPI_COMM_WORLD, ierr)
 #endif
-                ! Initialise various system parameters on all nodes simultaneously.
-                ! Do system initialisation that hasn't been read in, hopefully
+            ! Initialise various system parameters on all nodes simultaneously.
+            ! Do system initialisation that hasn't been read in, hopefully
             ! in same order as in conventional initialisation. Also write
             ! out read_in info for easy checking to compare to original.
             call init_basis_strings(sys%basis)

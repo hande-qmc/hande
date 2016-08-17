@@ -64,15 +64,17 @@ type mom_sym_t
     ! Index of the symmetry corresponding to the Gamma-point, or if periodic real system the
     ! symmetry corresponding to gamma sym itself.
     ! [review] - JSS: what about if the gamma-point isn't included in the grid (e.g. Monkhorst-Pack)?
+    ! [reply] - CJCS: Not currently sure about the formatting for this within the FCIDUMP. Will change
+    ! [reply] - CJCS: to enable flexibility on gamma-point position and email George to find out if there's
+    ! [reply] - CJCS: a convention for FCIDUMPs using MH grids.
     integer(int_64) :: gamma_sym
 
     ! sym_table(i,j) = k means that k_i + k_j = k_k to within a primitive reciprocal lattice vector.
-    ! [review] - FDM: Is this still true?
-    ! Only used for Hubbard model.
+    ! Used for Hubbard model and non-model periodic systems.
     integer, allocatable :: sym_table(:,:) ! (nsym, nsym)
 
     ! inv_sym(i) = j means that k_i + k_j = 0 (ie k_j is the inverse of k_i).
-    ! Only used for Hubbard model.
+    ! Used for Hubbard model and non-model periodic systems.
     integer, allocatable :: inv_sym(:) ! nsym
 
     ! Index of gamma point in real periodic systems.

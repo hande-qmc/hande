@@ -38,7 +38,18 @@ contains
 
     subroutine init_one_body_t(sys, op_sym, imag, store)
         
-        ! [review] - JSS: docs.
+        ! Wrapper around more specific initialisation routines for one-body
+        ! integral storage for different symmetries.
+        ! In:
+        !    sys: object containing information on system.
+        !    op_sym: bit string representations of irreducible representations
+        !       of a point group.  See point_group_symmetry.
+        !    imag: whether integral store contains the imaginary component of
+        !       complex integrals.
+        ! Out:
+        !    store: one-body integral store with components allocated to hold
+        !       interals.  Note that the integral store is *not* zeroed.
+
 
         use system, only: sys_t
 

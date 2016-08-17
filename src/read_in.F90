@@ -842,7 +842,7 @@ contains
         use basis, only: basis_fn_t, init_basis_fn
         use system, only: sys_t
         use const, only: int_32, int_64
-        use momentum_sym_read_in, only: decompose_abelian_sym, get_kpoint_index
+        use momentum_sym_read_in, only: decompose_trans_sym, get_kpoint_index
 
         type(sys_t), intent(in) :: sys
         integer, intent(in) :: norb
@@ -869,7 +869,7 @@ contains
                 ! Need to initialise both up- and down-spin basis functions.
                 ! If we have translational symmetry to account for want to have different basis function info.
                 if (sys%momentum_space) then
-                    call decompose_abelian_sym(orbsym(rank), sys%read_in%mom_sym%propbitlen, l)
+                    call decompose_trans_sym(orbsym(rank), sys%read_in%mom_sym%propbitlen, l)
                     ksym_index = get_kpoint_index(l, sys%read_in%mom_sym%nprop)
                     call init_basis_fn(sys, basis_arr(2*i), l=l, lz=lz(rank), sym=ksym_index, ms=-1)
                     call init_basis_fn(sys, basis_arr(2*i-1), l=l, lz=lz(rank), sym=ksym_index, ms=1)

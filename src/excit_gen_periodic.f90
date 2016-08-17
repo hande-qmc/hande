@@ -300,6 +300,8 @@ contains
             ! [review] - FDM: Not so familiar with conventions but is this
             ! [review] - FDM: (Gamma_i x Gamma_op)* or (Gamma_i* Gamma_op)* (so is * the complex
             ! [review] - FDM: conjugate in both cases?
+            ! [reply] - CJCS: The * is complex conjugate in both cases, so we don't have to
+            ! [reply] - CJCS: make the same assumption for Gamma_i as Gamma_op.
             ! In principle here we should have (Gamma_i* Gamma_op)*.  We'll assume Gamma_op*=Gamma_op
             isym = cross_product_periodic_read_in(sys%read_in%mom_sym, sys%basis%basis_fns(occ_list(i))%sym, op_sym)
             if (symunocc(ims, isym) /= 0) then

@@ -5,13 +5,9 @@ module momentum_symmetry
 ! non-initiated, especially with a contrast to point group symmetry.
 
 ! NOTE:
-! [review] - JSS: this is no longer true.
-! Currently implemented assuming that there is one band per k-point (as in the
-! Hubbard model or UEG, for instance).  Generalising to multiple bands would be
-! relatively straightforward.
+! Currently implemented assuming that there are constant nbands per k-point.
 
-! [review] - JSS: this is no longer true.
-! Stored symmetry information *only* for the Hubbard model.  UEG symmetry is
+! Stored symmetry information for the Hubbard model and non-model periodic systems.  UEG symmetry is
 ! done on the fly due to the size of the basis---see ueg module.
 
 use system
@@ -35,7 +31,7 @@ contains
         use checking, only: check_allocate
         use errors, only: stop_all
         use ueg_system, only: init_ueg_indexing
-        use momentum_sym_read_in, only: get_kpoint_index, get_kpoint_numbers, &
+        use momentum_sym_read_in, only: get_kpoint_index, get_kpoint_vector, &
                                         is_gamma_sym_periodic_read_in, &
                                         init_basis_momentum_symmetry_info
 
@@ -136,7 +132,7 @@ contains
 
             sys%read_in%mom_sym%gamma_sym = 0
             do i = 1, sys%nsym
-                call get_kpoint_numbers(i, sys%read_in%mom_sym%nprop, a)
+                call get_kpoint_vector(i, sys%read_in%mom_sym%nprop, a)
 
                 if (all(a == 0)) sys%read_in%mom_sym%gamma_sym = i
             end do
@@ -144,11 +140,11 @@ contains
 
             do i = sys%sym0, sys%nsym
                 do j = i, sys%nsym
-                    call get_kpoint_numbers(i, sys%read_in%mom_sym%nprop, a)
-                    call get_kpoint_numbers(j, sys%read_in%mom_sym%nprop, ksum)
+                    call get_kpoint_vector(i, sys%read_in%mom_sym%nprop, a)
+                    call get_kpoint_vector(j, sys%read_in%mom_sym%nprop, ksum)
                     ksum = modulo(ksum + a, sys%read_in%mom_sym%nprop)
                     do k = 1, sys%nsym
-                        call get_kpoint_numbers(k, sys%read_in%mom_sym%nprop, a)
+                        call get_kpoint_vector(k, sys%read_in%mom_sym%nprop, a)
                         if (is_gamma_sym_periodic_read_in(sys%read_in%mom_sym, ksum - a)) then
                             sys%read_in%mom_sym%sym_table(i,j) = k
                             sys%read_in%mom_sym%sym_table(j,i) = k

@@ -309,6 +309,10 @@ contains
         case(read_in)
             ! [review] - FDM: Will it always be the case that a complex read in
             ! [review] - FDM: file will be for a calculation on a periodic system?
+            ! [reply] - CJCS: Probably for the forseeable future. If we implement
+            ! [reply] - CJCS: NOCI with holomorphic solutions within HANDE this'll
+            ! [reply] - CJCS: need to be changed, but would just need to account for
+            ! [reply] - CJCS: whatever parameters that uses.
             if (sys%read_in%comp) then
                 update_proj_energy_ptr => update_proj_energy_periodic_complex
                 sc0_ptr => slater_condon0_periodic_complex
