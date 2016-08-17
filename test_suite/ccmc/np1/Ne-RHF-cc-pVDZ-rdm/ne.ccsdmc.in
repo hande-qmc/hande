@@ -1,0 +1,26 @@
+sys = read_in {
+    int_file = "INTDUMP",
+    nel = 10,
+    ms = 0,
+    sym = 0,
+}
+
+ccmc {
+    sys = sys,
+    qmc = {
+        tau = 0.01,
+        rng_seed = 2358,
+        init_pop = 10,
+        mc_cycles = 10,
+        nreports = 1000,
+        target_population = 2000,
+        state_size = -100,
+        spawned_state_size = -50,
+    },
+    reference = {
+        ex_level = 2,
+    },
+    ccmc = {
+        density_matrices = true,
+    },
+}
