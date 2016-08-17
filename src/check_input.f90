@@ -303,7 +303,7 @@ contains
         !   ccmc_in: CCMC options
 
         use qmc_data, only: ccmc_in_t
-        use system, only: sys_t
+        use system, only: sys_t, read_in
         use errors, only: stop_all
 
         type(sys_t), intent(in) :: sys
@@ -319,6 +319,10 @@ contains
 
         if (ccmc_in%cluster_multispawn_threshold <= 0) then
             call stop_all(this, "cluster_multispawn_threshold must be positive")
+        end if
+
+        if (ccmc_in%density_matrices .and. sys%system /= read_in) then
+            call stop_all(this, "CCMC density matrices not implemented for this system type.")
         end if
 
         if (sys%read_in%comp) call stop_all(this, 'Complex CCMC not yet implemented')

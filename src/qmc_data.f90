@@ -228,6 +228,8 @@ type ccmc_in_t
     logical :: vary_shift_reference = .false.
     ! Calculate the (unrelaxed) density matrices?
     logical :: density_matrices = .false.
+    ! Filename to write density matrix to
+    character(255) :: density_matrix_file = 'RDM'
 end type ccmc_in_t
 
 type restart_in_t
@@ -745,7 +747,9 @@ contains
         call json_write_key(js, 'cluster_multispawn_threshold', ccmc%cluster_multispawn_threshold)
         call json_write_key(js, 'full_nc', ccmc%full_nc)
         call json_write_key(js, 'linked', ccmc%linked)
-        call json_write_key(js, 'vary_shift_reference', ccmc%vary_shift_reference, .true.)
+        call json_write_key(js, 'vary_shift_reference', ccmc%vary_shift_reference)
+        call json_write_key(js, 'density_matrices', ccmc%density_matrices)
+        call json_write_key(js, 'density_matrix_file', ccmc%density_matrix_file, .true.)
         call json_object_end(js, terminal)
 
     end subroutine ccmc_in_t_json

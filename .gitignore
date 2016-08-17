@@ -38,3 +38,4 @@ build/
 *.combine
 *.egg-info/
 *.H5
+RDM
