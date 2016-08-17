@@ -107,6 +107,7 @@ contains
 
         integer :: i, j
         character(16) :: excit_header
+        character(10) :: header_iidx, header_jidx
 
         write (6,'(1X,"Information printed out every QMC report loop:",/)')
         write (6,'(1X,"Shift: the energy offset calculated at the end of the report loop.")')
@@ -193,21 +194,23 @@ contains
         end if
         if (doing_dmqmc_calc(dmqmc_rdm_r2)) then
             do i = 1, dmqmc_in%rdm%nrdms
-                write (6, '(16X,a3,'//int_fmt(i,0)//',1x,a2)', advance = 'no') 'RDM', i, 'S2'
+                write(header_iidx, '('//int_fmt(i,0)//')') i
+                call write_column_title(6, 'RDM'//trim(header_iidx)//' S2')
             end do
         end if
         if (dmqmc_in%rdm%calc_inst_rdm) then
             do i = 1, dmqmc_in%rdm%nrdms
                 do j = 1, ntypes
-                    write (6, '(7X,a3,'//int_fmt(i,0)//',1x,a5,1x,'//int_fmt(j,0)//')', advance = 'no') &
-                            'RDM', i, 'trace', j
+                    write(header_iidx, '('//int_fmt(i,0)//')') i
+                    write(header_jidx, '('//int_fmt(j,0)//')') j
+                    call write_column_title(6, 'RDM'//trim(header_iidx)//' trace '//trim(header_jidx)//'')
                 end do
             end do
         end if
         if (dmqmc_in%calc_excit_dist) then
             do i = 0, max_excit
                 write (excit_header, '("Excit. level",1X,'//int_fmt(i,0)//')') i
-                write (6, '(5X,a16)', advance='no') excit_header
+                call write_column_title(6, excit_header)
             end do
         end if
 
