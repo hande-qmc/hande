@@ -79,7 +79,7 @@ contains
         call write_column_title(6, '# states', int_val=.true., justify=1)
         call write_column_title(6, '# spawn_events', int_val=.true., justify=1)
         call write_column_title(6, 'R_spawn', low_prec_val=.true.)
-        call write_column_title(6, '  time', low_prec_val=.true., justify=2)
+        call write_column_title(6, '   time', low_prec_val=.true., justify=2)
 
         write (6,'()')
 
@@ -215,7 +215,7 @@ contains
         call write_column_title(6, '# states', int_val=.true., justify=1)
         call write_column_title(6, '# spawn_events', int_val=.true., justify=1)
         call write_column_title(6, 'R_spawn', low_prec_val=.true.)
-        call write_column_title(6, '  time', low_prec_val=.true., justify=2)
+        call write_column_title(6, '   time', low_prec_val=.true., justify=2)
 
         write (6,'()')
 
@@ -253,7 +253,7 @@ contains
         if (int_val_loc) then
             str_len = 14
         end if
-        if (low_prec_val_loc) str_len = 11
+        if (low_prec_val_loc) str_len = 8
         select case(justify_loc)
         case(1)
             ! Right justify.
