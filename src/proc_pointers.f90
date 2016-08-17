@@ -175,6 +175,21 @@ abstract interface
         real(p) :: opmatel
     end function i_operator
 
+    pure function i_get_one_e_int(sys, i, a) result(intgrl)
+        use system, only: sys_t
+        import :: p
+        type(sys_t), intent(in) :: sys
+        integer, intent(in) :: i, a
+        real(p) :: intgrl
+    end function i_get_one_e_int
+    pure function i_get_two_e_int(sys, i, j, a, b) result(intgrl)
+        use system, only: sys_t
+        import :: p
+        type(sys_t), intent(in) :: sys
+        integer, intent(in) :: i, j, a, b
+        real(p) :: intgrl
+    end function i_get_two_e_int
+
     ! generic procedures...
     subroutine i_sub()
     end subroutine i_sub
@@ -204,6 +219,9 @@ procedure(i_sub), pointer :: dmqmc_initial_distribution_ptr => null()
 
 procedure(i_create_spawned_particle), pointer :: create_spawned_particle_ptr => null()
 procedure(i_create_spawned_particle_dm), pointer :: create_spawned_particle_dm_ptr => null()
+
+procedure(i_get_one_e_int), pointer :: get_one_e_int_ptr => null()
+procedure(i_get_two_e_int), pointer :: get_two_e_int_ptr => null()
 
 ! Single structure for all types of excitation generator so we can use the same
 ! interface for spawning routines which use different types of generator.
