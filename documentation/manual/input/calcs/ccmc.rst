@@ -143,3 +143,19 @@ ccmc options
     (or an equivalently low ``reference_target`` is specified) then, whilst the reference
     population will be controlled, the total population will continue to grow until a stable
     distribution is reached.
+``density_matrices``
+    type: boolean.
+
+    Optional.  Default: false.
+
+    Calculate the (unrelaxed) two-electron coupled cluster density matrix, given by:
+
+    .. math::
+
+        d_{PQRS} = \langle \psi_{HF} | P^{\dagger} R^{\dagger} S Q | \psi_{CC} \rangle
+``density_matrix_file``
+    type: string.
+
+    Optional.  Default: 'RDM'.
+
+    Filename to which the reduced density matrix is written.
