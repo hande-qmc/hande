@@ -300,7 +300,7 @@ contains
         logical, intent(in), optional :: cmplx_est
 
         logical :: cmplx_est_set
-        integer :: mc_cycles, i, j, ntypes
+        integer :: mc_cycles, ntypes
 
         ntypes = size(ntot_particles)
 
@@ -509,7 +509,6 @@ contains
         integer, intent(in) :: io
         real(sp), intent(in) :: val
         logical, intent(in), optional :: low_prec
-        logical :: low_prec_loc
 
         ! Just forward to dp version to keep identical formatting.
         call write_qmc_var(io, real(val, dp), low_prec)
