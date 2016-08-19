@@ -133,7 +133,7 @@ contains
                               annihilate_wrapper_non_blocking_spawn
         use energy_evaluation, only: update_energy_estimators_recv
         use system, only: sys_t
-        use fciqmc_data, only: write_fciqmc_report
+        use qmc_io, only: write_qmc_report
         use parallel, only: parent
         use qmc_data, only: qmc_in_t, load_bal_in_t, annihilation_flags_t, qmc_state_t
 
@@ -171,7 +171,7 @@ contains
         shift_save = shift
         call update_energy_estimators_recv(qmc_in, qs, qs%psip_list%nspaces, request_rep, ntot_particles, &
                                            qs%psip_list%nparticles_proc, load_bal_in)
-        if (parent) call write_fciqmc_report(qmc_in, qs, ireport, ntot_particles, curr_time-report_time, .false., .true.)
+        if (parent) call write_qmc_report(qmc_in, qs, ireport, ntot_particles, curr_time-report_time, .false., .true.)
         ! The call to update_energy_estimators updates the shift and ntot_particles.
         ! When restarting a calculation we actually need the old (before the call)
         ! values of these quantites to be written to the restart file, so reset

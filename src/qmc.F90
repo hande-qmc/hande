@@ -2,8 +2,6 @@ module qmc
 
 ! Launcher and initialisation routines for the various QMC algorithms.
 
-use fciqmc_data
-
 implicit none
 
 contains
@@ -725,6 +723,7 @@ contains
         ! Out:
         !   excit_gen_data: pre-computed data for fast excitation generation.
 
+        use const, only: p
         use system, only: sys_t, ueg
         use qmc_data, only: qmc_in_t
         use excit_gens, only: excit_gen_data_t
@@ -962,8 +961,10 @@ contains
         !   reference: reference determinant.  H00 is reset on exit if using neel singlet trial function.
         !   pl: main particle list.  On exit, the initial distribution is set.
 
+        use const, only: i0, i0_end, int_p, p
         use qmc_data, only: particle_t, fciqmc_in_t, neel_singlet, single_basis
         use parallel, only: iproc, nprocs
+        use spawn_data, only: spawn_t
         use system, only: sys_t, heisenberg
         use proc_pointers, only: sc0_ptr
         use reference_determinant, only: reference_t

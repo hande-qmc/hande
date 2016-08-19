@@ -604,7 +604,7 @@ contains
         use determinants, only: det_info_t, alloc_det_info_t, dealloc_det_info_t, decode_det
         use energy_evaluation, only: local_energy_estimators, update_energy_estimators_send
         use excitations, only: excit_t, get_excitation
-        use fciqmc_data, only: write_fciqmc_report
+        use qmc_io, only: write_qmc_report
         use importance_sampling, only: importance_sampling_weight
         use parallel
         use proc_pointers, only: update_proj_energy_ptr
@@ -692,10 +692,7 @@ contains
         qs%estimators%D0_population_old = qs%estimators%D0_population
 
         if (.not. nb_comm_local .and. parent) then
-            ! See also the format used in write_fciqmc_report if this is changed.
-            ! We prepend a # to make it easy to skip this point when do data
-            ! analysis.
-            call write_fciqmc_report(qmc_in, qs, 0, ntot_particles, 0.0, .true., .false., comp=sys%read_in%comp)
+            call write_qmc_report(qmc_in, qs, 0, ntot_particles, 0.0, .true., .false., cmplx_est=sys%read_in%comp)
         end if
 
     end subroutine initial_fciqmc_status
@@ -746,6 +743,7 @@ contains
         !       Carlo cycle.  Reset to 0 on output.
 
         use calc, only: doing_calc, ct_fciqmc_calc, ccmc_calc, dmqmc_calc
+        use const, only: int_64, int_p
         use qmc_data, only: particle_t
         use spawn_data, only: spawn_t
 
@@ -987,8 +985,6 @@ contains
         ! In/Out:
         !    rspawn: running total of spawning rate.
 
-        use fciqmc_data, only: spawning_rate
-
         integer, intent(in) :: nspawn_events
         integer(int_p), intent(in) :: ndeath, real_factor
         integer(int_64), intent(in) :: nattempts
@@ -999,6 +995,48 @@ contains
         rspawn = rspawn + spawning_rate(nspawn_events, ndeath, real_factor, nattempts)
 
     end subroutine end_mc_cycle
+
+    function spawning_rate(nspawn_events, ndeath, real_factor, nattempts) result(rate)
+
+        ! Calculate the rate of spawning on the current processor.
+        ! In:
+        !    nspawn_events: number of successful spawning events during the
+        !       MC cycle.
+        !    ndeath: (unscaled) number of particles that were killed/cloned
+        !       during the MC cycle.
+        !    real_factor: The factor by which populations are multiplied to
+        !        enable non-integer populations.
+        !    nattempts: The number of attempts to spawn made in order to
+        !       generate the current population of walkers in the spawned arrays.
+
+        use const, only: p, int_p, int_64
+
+        real(p) :: rate
+        integer, intent(in) :: nspawn_events
+        integer(int_p), intent(in) :: ndeath, real_factor
+        integer(int_64), intent(in) :: nattempts
+        real(p) :: ndeath_real
+
+        ! Death is not scaled when using reals.
+        ndeath_real = real(ndeath,p)/real_factor
+
+        ! The total spawning rate is
+        !   (nspawn + ndeath) / nattempts
+        ! In, for example, the timestep algorithm each particle has 2 attempts
+        ! (one to spawn on a different determinant and one to clone/die).
+        ! ndeath is the number of particles that died, which hence equals the
+        ! number of successful death attempts (assuming the timestep is not so
+        ! large that death creates more than one particle).
+        ! By ignoring the number of particles spawned in a single event, we
+        ! hence are treating the death and spawning events on the same footing.
+        if (nattempts > 0) then
+            rate = (nspawn_events + ndeath_real)/nattempts
+        else
+            ! Can't have done anything.
+            rate = 0.0_p
+        end if
+
+    end function spawning_rate
 
     subroutine rescale_tau(tau, factor)
 

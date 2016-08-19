@@ -297,8 +297,7 @@ contains
         use ccmc_data
         use determinants, only: det_info_t, dealloc_det_info_t
         use excitations, only: excit_t, get_excitation_level, get_excitation
-        use fciqmc_data, only: write_fciqmc_report, &
-                               write_fciqmc_report_header
+        use qmc_io, only: write_qmc_report, write_qmc_report_header
         use qmc, only: init_qmc
         use qmc_common, only: initial_fciqmc_status, cumulative_population, load_balancing_report, &
                               init_report_loop, init_mc_cycle, end_report_loop, end_mc_cycle,      &
@@ -452,7 +451,7 @@ contains
         D0_pos = 1
 
         ! Main fciqmc loop.
-        if (parent) call write_fciqmc_report_header(qs%psip_list%nspaces)
+        if (parent) call write_qmc_report_header(qs%psip_list%nspaces)
         call initial_fciqmc_status(sys, qmc_in, qs)
         ! Initialise timer.
         call cpu_time(t1)
@@ -791,7 +790,7 @@ contains
             call cpu_time(t2)
             if (parent) then
                 if (bloom_stats%nblooms_curr > 0) call bloom_stats_warning(bloom_stats)
-                call write_fciqmc_report(qmc_in, qs, ireport, nparticles_old, t2-t1, .false., .false.)
+                call write_qmc_report(qmc_in, qs, ireport, nparticles_old, t2-t1, .false., .false.)
             end if
 
             ! Update the time for the start of the next iteration.

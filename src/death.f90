@@ -3,7 +3,7 @@ module death
 ! Module for performing the death part of the FCIQMC algorithm.
 
 use const
-use fciqmc_data
+use qmc_io
 implicit none
 
 contains
