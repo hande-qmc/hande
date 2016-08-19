@@ -494,14 +494,6 @@ contains
 
     end subroutine write_qmc_var_int
 
-    subroutine write_qmc_var_int_64(io, val)
-
-        use const, only: int_64
-        integer(int_64), intent(in) :: io, val
-        write (io, '(i14,2X)', advance='no') val
-
-    end subroutine write_qmc_var_int_64
-
     subroutine write_qmc_var_real_sp(io, val, low_prec)
 
         use const, only: sp, dp
