@@ -553,6 +553,7 @@ contains
         use lua_hande_utils, only: warn_unused_args, register_timing
         use hdf5_helper, only: ishdf5_wrapper
         use point_group_symmetry, only: print_pg_symmetry_info
+        use momentum_symmetry, only: print_mom_sym_info
         use read_in_system, only: read_in_integrals
         use system, only: sys_t, read_in, init_system
         use check_input, only: check_sys
@@ -604,7 +605,11 @@ contains
             call init_system(sys)
             call read_system_hdf5(sys, verbose)
             if (parent) call check_sys(sys)
-            new_basis = .true.
+            if (sys%momentum_space) then
+                call print_mom_sym_info(sys)
+            else
+                call print_pg_symmetry_info(sys)
+            end if
         else
 
             call aot_get_val(sys%read_in%useLz, err, lua_state, opts, 'Lz')
@@ -620,8 +625,12 @@ contains
                 if (parent) call check_sys(sys)
                 call read_in_integrals(sys, verbose=verbose)
                 call init_generic_system_basis(sys)
-                ! [review] - JSS: no translational symmetry info?
-                if (.not. sys%momentum_space) call print_pg_symmetry_info(sys)
+
+                if (sys%momentum_space) then
+                    call print_mom_sym_info(sys)
+                else
+                    call print_pg_symmetry_info(sys)
+                end if
             end if
         end if
 

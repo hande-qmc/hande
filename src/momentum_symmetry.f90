@@ -135,7 +135,9 @@ contains
                 call get_kpoint_vector(i, sys%read_in%mom_sym%nprop, a)
 
                 if (all(a == 0)) sys%read_in%mom_sym%gamma_sym = i
+
             end do
+            sys%read_in%pg_sym%gamma_sym = sys%read_in%mom_sym%gamma_sym
             if (sys%read_in%mom_sym%gamma_sym == 0) call stop_all('init_momentum_symmetry', 'Gamma-point symmetry not found.')
 
             do i = sys%sym0, sys%nsym
@@ -157,31 +159,6 @@ contains
                     end do
                 end do
             end do
-
-            if (parent) then
-                write (6,'(1X,a20,/,1X,20("-"),/)') "Symmetry information"
-                write (6,'(1X,a63,/)') 'The table below gives the label and inverse of each wavevector.'
-                write (6,'(1X,a5,4X,a7)', advance='no') 'Index','k-point'
-                do i = 1, sys%lattice%ndim
-                    write (6,'(3X)', advance='no')
-                end do
-                write (6,'(a7)') 'Inverse'
-                do i = 1, sys%nsym
-                    write (6,'(i4,5X)', advance='no') i
-                    call write_basis_fn(sys, sys%basis%basis_fns(2*i), new_line=.false., print_full=.false.)
-                    write (6,'(5X,i4)') sys%read_in%mom_sym%inv_sym(i)
-                end do
-                write (6,'()')
-                write (6,'(1X,a83,/)') &
-                    "The matrix below gives the result of k_i+k_j to within a reciprocal lattice vector."
-                do i = 1, sys%nsym
-                    do j = 1, sys%nsym
-                        write (6,'(2X,i0)', advance='no') sys%read_in%mom_sym%sym_table(j,i)
-                    end do
-                    write (6,'()')
-                end do
-                write (6,'()')
-            end if
 
         case(ueg)
 
@@ -214,6 +191,45 @@ contains
         end select
 
     end subroutine init_momentum_symmetry
+
+    subroutine print_mom_sym_info(sys)
+        ! Write out momentum symmetry info (for non-model periodic systems).
+        ! In:
+        !    sys: system to be studied, with all symmetry components set.
+
+        use system, only: sys_t
+        use parallel, only: parent
+        use basis, only: write_basis_fn
+
+        type(sys_t), intent(in) :: sys
+        integer :: i, j
+
+        if (parent) then
+            write (6,'(1X,a20,/,1X,20("-"),/)') "Symmetry information"
+            write (6,'(1X,a63,/)') 'The table below gives the label and inverse of each wavevector.'
+            write (6,'(1X,a5,4X,a7)', advance='no') 'Index','k-point'
+            do i = 1, sys%lattice%ndim
+                write (6,'(3X)', advance='no')
+            end do
+            write (6,'(a7)') 'Inverse'
+            do i = 1, sys%nsym
+                write (6,'(i4,5X)', advance='no') i
+                call write_basis_fn(sys, sys%basis%basis_fns(2*i), new_line=.false., print_full=.false.)
+                write (6,'(5X,i4)') sys%read_in%mom_sym%inv_sym(i)
+            end do
+            write (6,'()')
+            write (6,'(1X,a83,/)') &
+                "The matrix below gives the result of k_i+k_j to within a reciprocal lattice vector."
+            do i = 1, sys%nsym
+                do j = 1, sys%nsym
+                    write (6,'(2X,i0)', advance='no') sys%read_in%mom_sym%sym_table(j,i)
+                end do
+                write (6,'()')
+            end do
+            write (6,'()')
+        end if
+
+    end subroutine print_mom_sym_info
 
     elemental function cross_product_k(sys, s1, s2) result(prod)
 

@@ -180,7 +180,6 @@ contains
         use dmqmc_data, only: hartree_fock_dm
         use energy_evaluation
         use excit_gen_mol
-        use excit_gen_periodic
         use excit_gen_op_mol
         use excit_gen_hub_k
         use excit_gen_op_hub_k
@@ -326,18 +325,10 @@ contains
 
             select case(qmc_in%excit_gen)
             case(excit_gen_no_renorm)
-                if (sys%momentum_space .and. sys%read_in%comp) then
-                    gen_excit_ptr%full => gen_excit_periodic_complex_no_renorm
-                else
-                    gen_excit_ptr%full => gen_excit_mol_no_renorm
-                end if
+                gen_excit_ptr%full => gen_excit_mol_no_renorm
                 decoder_ptr => decode_det_occ
             case(excit_gen_renorm)
-                if (sys%momentum_space .and. sys%read_in%comp) then
-                    gen_excit_ptr%full => gen_excit_periodic_complex
-                else
-                    gen_excit_ptr%full => gen_excit_mol
-                end if
+                gen_excit_ptr%full => gen_excit_mol
                 decoder_ptr => decode_det_occ_symunocc
             case default
                 call stop_all('init_proc_pointers', 'Selected excitation generator not implemented.')

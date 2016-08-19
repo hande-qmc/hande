@@ -20,73 +20,55 @@ contains
         use errors, only: stop_all
 
         type(sys_t), intent(inout) :: sys
-        integer, allocatable :: nbasis_sym(:), current_index(:)
-        integer :: i, ierr
+        integer, allocatable :: current_index(:,:)
+        integer :: i, ierr, ims
 
-        allocate(nbasis_sym(1:sys%nsym), stat=ierr)
+        allocate(sys%read_in%pg_sym%nbasis_sym_spin(2,1:sys%nsym), stat=ierr)
+        call check_allocate('nbasis_sym_spin',sys%nsym,ierr)
+
+        allocate(sys%read_in%pg_sym%nbasis_sym(1:sys%nsym), stat=ierr)
         call check_allocate('nbasis_sym',sys%nsym,ierr)
 
-        nbasis_sym = 0
+        sys%read_in%pg_sym%nbasis_sym = 0
+        sys%read_in%pg_sym%nbasis_sym_spin = 0
 
-        do i = 1, sys%basis%nbasis/2
-            nbasis_sym(sys%basis%basis_fns(2*i-1)%sym) = &
-                nbasis_sym(sys%basis%basis_fns(2*i-1)%sym) + 1
-        end do
-        if (.not. all(nbasis_sym == nbasis_sym(1))) call stop_all('init_basis_momentum_sym_info', 'Read in system has different &
-                    &number of bands per kpoint.')
-        sys%read_in%mom_sym%nbands = nbasis_sym(1)
+        associate(basis_fns=>sys%basis%basis_fns, &
+                    nbasis_sym_spin=>sys%read_in%pg_sym%nbasis_sym_spin, &
+                    nbasis_sym=>sys%read_in%pg_sym%nbasis_sym)
+            do i = 1, sys%basis%nbasis
+                ims = (basis_fns(i)%Ms+3)/2
+                nbasis_sym_spin(ims, basis_fns(i)%sym) = &
+                            nbasis_sym_spin(ims, basis_fns(i)%sym) + 1
+                nbasis_sym(basis_fns(i)%sym) = nbasis_sym(basis_fns(i)%sym) + 1
+            end do
+        end associate
 
-        deallocate(nbasis_sym, stat=ierr)
-        call check_deallocate('nbasis_sym',ierr)
+        allocate(sys%read_in%pg_sym%sym_spin_basis_fns(maxval(sys%read_in%pg_sym%nbasis_sym_spin), &
+                        2, sys%sym0_tot:sys%sym_max_tot), stat=ierr)
+        call check_allocate('nbasis_sym_spin', &
+                sys%nsym*maxval(sys%read_in%pg_sym%nbasis_sym_spin)*2, ierr)
 
-        allocate(sys%read_in%mom_sym%sym_spin_basis(sys%read_in%mom_sym%nbands, 2, sys%nsym), stat=ierr)
-        call check_allocate('basis_sym',sys%nsym*sys%read_in%mom_sym%nbands*2, ierr)
 
-        allocate(current_index(sys%nsym), stat=ierr)
+        allocate(current_index(sys%sym0_tot:sys%sym_max_tot, 2), stat=ierr)
         call check_allocate('current_index',sys%nsym,ierr)
         current_index = 1
 
-        associate(sym_spin_basis=>sys%read_in%mom_sym%sym_spin_basis, basis_fns=>sys%basis%basis_fns)
-            do i = 1, sys%basis%nbasis/2
-                sym_spin_basis(current_index(basis_fns(2*i-1)%sym), 2, basis_fns(2*i-1)%sym) = 2*i-1
-                sym_spin_basis(current_index(basis_fns(2*i)%sym), 1, basis_fns(2*i)%sym) = 2*i
-                basis_fns(2*i-1:2*i)%sym_spin_index = current_index(basis_fns(2*i-1)%sym)
-                current_index(basis_fns(2*i-1)%sym) = current_index(basis_fns(2*i-1)%sym) + 1
+        associate(sym_spin_basis_fns=>sys%read_in%pg_sym%sym_spin_basis_fns, basis_fns=>sys%basis%basis_fns)
+            do i = 1, sys%basis%nbasis
+                ims = (basis_fns(i)%Ms+3)/2
+                sym_spin_basis_fns(current_index(basis_fns(i)%sym, ims), ims, basis_fns(i)%sym) = i
+                basis_fns(i)%sym_spin_index = current_index(basis_fns(i)%sym, ims)
+                current_index(basis_fns(i)%sym, ims) = current_index(basis_fns(i)%sym, ims) + 1
             end do
         end associate
 
         deallocate(current_index, stat=ierr)
         call check_deallocate('current_index',ierr)
 
+        sys%read_in%cross_product_sym_ptr => cross_product_periodic_read_in
+        sys%read_in%sym_conj_ptr => mom_sym_conj
+
     end subroutine init_basis_momentum_symmetry_info
-
-    pure function symmetry_orb_list_periodic_read_in(mom_sym, basis, orb_list) result(isym)
-
-        ! In:
-        !   mom_sym: basis function symmetry information.
-        !   orb_list: list of orbitals (eg. in determinant).
-        ! Returns:
-        !   symmetry index of list (direct product of representation of all
-        !       substituent orbitals.
-
-        ! For momentum symmetry in real (read in from an FCIDUMP), periodic
-        ! systems.
-
-        use const, only: int_64, p
-        use symmetry_types, only: mom_sym_t
-        type(mom_sym_t), intent(in) :: mom_sym
-        type(basis_t), intent(in) :: basis
-        integer, intent(in) :: orb_list(:)
-        integer :: isym
-
-        integer :: i
-
-        isym = int(mom_sym%gamma_sym)
-        do i = lbound(orb_list, dim = 1), ubound(orb_list, dim = 1)
-            isym = cross_product_periodic_read_in(mom_sym, basis%basis_fns(orb_list(i))%sym, isym)
-        end do
-
-    end function symmetry_orb_list_periodic_read_in
 
     pure function is_gamma_sym_periodic_read_in(mom_sym, sym) result(is_gamma_sym)
 
@@ -110,14 +92,15 @@ contains
 
     end function is_gamma_sym_periodic_read_in
 
-    pure function mom_sym_conj(mom_sym, sym) result(rsym)
+    pure function mom_sym_conj(read_in, sym) result(rsym)
 
         ! Returns symmetry of complex conjugate of provided sym.
         ! Since using complex plane waves, e^(ik.r), this will in
         ! general be e^(-ik.r) so just return inverse symmetry.
 
         ! In:
-        !   mom_sym: basis function symmetry information.
+        !   sys: information about system being studied. We use the
+        !       momentum symmetry information.
         !   sym: symmetry to compare.
         ! Returns:
         !   Symmetry of complex conjugate of sym.
@@ -125,18 +108,19 @@ contains
         ! For momentum symmetry in real (read in from an FCIDUMP), periodic
         ! systems.
 
-        use symmetry_types, only: mom_sym_t
-        type(mom_sym_t), intent(in) :: mom_sym
+        use system, only: sys_read_in_t
+
+        type(sys_read_in_t), intent(in) :: read_in
         integer, intent(in) :: sym
         integer :: rsym
 
-        rsym = mom_sym%inv_sym(sym)
+        rsym = read_in%mom_sym%inv_sym(sym)
 
     end function mom_sym_conj
 
 !--- Cross products ---
 
-    pure function cross_product_periodic_read_in(mom_sym, a1, a2) result(prod)
+    pure function cross_product_periodic_read_in(read_in, a1, a2) result(prod)
 
         ! In:
         !   mom_sym: basis function symmetry information.
@@ -144,38 +128,14 @@ contains
         ! Returns:
         !   Direct product of symmetries a1 & a2.
 
-        use symmetry_types, only: mom_sym_t
-        type(mom_sym_t), intent(in) :: mom_sym
+        use system, only: sys_read_in_t
+        type(sys_read_in_t), intent(in) :: read_in
         integer, intent(in) :: a1, a2
         integer :: prod
 
-        prod = mom_sym%sym_table(a1, a2)
+        prod = read_in%mom_sym%sym_table(a1, a2)
 
     end function cross_product_periodic_read_in
-
-    ! [review] - FDM: Is this function just a duplicate of the one above?
-    ! [reply] - CJCS: It's a utility function to avoid a lot of more complicated calls to
-    ! [reply] - CJCS: the function above with basis function symmetries. There's a
-    ! [reply] - CJCS: corresponding pg_sym function.
-    pure function cross_product_periodic_basis(mom_sym, b1, b2, basis_fns) result(prod)
-
-        ! In:
-        !   mom_sym: basis function symmetry information.
-        !   b1, b2: indicies of spinorbitals.
-        ! Returns:
-        !   Symmetry index corresponding to the product of
-        !       symmetries of b1 & b2.
-
-        use basis_types, only: basis_fn_t
-        use symmetry_types, only: mom_sym_t
-        type(mom_sym_t), intent(in) :: mom_sym
-        integer, intent(in) :: b1, b2
-        type(basis_fn_t), intent(in) :: basis_fns(:)
-        integer :: prod
-
-        prod = cross_product_periodic_read_in(mom_sym, basis_fns(b1)%sym, basis_fns(b2)%sym)
-
-    end function cross_product_periodic_basis
 
 !--- Indexing conversion routines: ---
 
@@ -224,6 +184,7 @@ contains
         ! Converts from abelian symmetry quantum numbers into unique index.
         ! If we know size of unit cell, can calculate unique index by tiling
         ! first along axis 1, then 2, then 3 in 3 dimensions.
+
         ! In:
         !   a: array containing representation of kpoint wavevectors.
         !   nprop: condition of periodic bounary conditions used, ie the
@@ -233,6 +194,7 @@ contains
 
         integer, intent(in) :: a(3), nprop(3)
         integer :: ind
+
         ! Want to start from index 1 at gamma point (0,0,0)
         ind = 1 + a(1) + nprop(1) * a(2) + nprop(1) * nprop(2) * a(3)
 

@@ -37,6 +37,7 @@ abstract interface
         type(basis_t), intent(in) :: b
         integer, intent(in) :: i, a
     end function i_int_ueg
+    ! Read-in symmetry pointer interfaces.
 end interface
 
 ! --- System type constants ---
@@ -296,7 +297,31 @@ type sys_read_in_t
     ! 32 bit integer.
     integer :: max_broadcast_chunk = (2_int_64**31)-1_int_64
 
+    ! Pointers to symmetry-specific functions (pg_sym or mom_sym):
+    ! 1) Cross product.
+    procedure(i_cross_product_sym), pointer, nopass :: cross_product_sym_ptr => null()
+    ! 2) Symmetry conjugate.
+    procedure(i_sym_conj), pointer, nopass :: sym_conj_ptr => null()
+
+    contains
+
 end type sys_read_in_t
+
+! Interfaces for pointers to symmetry-specific functions.
+abstract interface
+    pure function i_cross_product_sym(read_in, sym_i, sym_j) result (sym_ij)
+        import :: sys_read_in_t
+        type(sys_read_in_t), intent(in) :: read_in
+        integer, intent(in) :: sym_i, sym_j
+        integer :: sym_ij
+    end function i_cross_product_sym
+    pure function i_sym_conj(read_in, sym) result (rsym)
+        import :: sys_read_in_t
+        type(sys_read_in_t), intent(in) :: read_in
+        integer, intent(in) :: sym
+        integer :: rsym
+    end function i_sym_conj
+end interface
 
 type sys_ringium_t
 

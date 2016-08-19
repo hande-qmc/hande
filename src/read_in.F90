@@ -31,8 +31,7 @@ contains
         use basis, only: write_basis_fn, write_basis_fn_header, write_basis_fn_title
         use basis_types, only: basis_fn_t, dealloc_basis_fn_t_array
         use molecular_integrals
-        use point_group_symmetry, only: init_pg_symmetry, cross_product_pg_sym, &
-                                        is_gamma_irrep_pg_sym, pg_sym_conj
+        use point_group_symmetry, only: init_pg_symmetry, is_gamma_irrep_pg_sym
         use momentum_symmetry, only: init_momentum_symmetry
         use system, only: sys_t
 
@@ -692,8 +691,9 @@ contains
                                         ! accept.
                                         if (seen_iaib(core(1), tri_ind_reorder(active(1),active(2))) < 2 .and. &
                                             is_gamma_irrep_pg_sym(sys%read_in%pg_sym, &
-                                                cross_product_pg_sym(sys%read_in%pg_sym, &
-                                                            pg_sym_conj(sys%read_in%pg_sym, sys%basis%basis_fns(active(1))%sym), &
+                                                sys%read_in%cross_product_sym_ptr(sys%read_in, &
+                                                            sys%read_in%sym_conj_ptr(sys%read_in, &
+                                                            sys%basis%basis_fns(active(1))%sym), &
                                                             sys%basis%basis_fns(active(2))%sym))) then
                                             ! Update <j|h|a> with contribution <ij|ai>.
                                             x = get_one_body_int_mol_real(sys%read_in%one_e_h_integrals, active(1), active(2), &
@@ -921,10 +921,10 @@ contains
         !         frozen core orbitals and the nucleii.
 
         use basis_types, only: basis_fn_t
-        use point_group_symmetry, only: cross_product_pg_basis
+        use point_group_symmetry, only: cross_product_basis
         use symmetry_types, only: pg_sym_t
         use molecular_integrals, only: one_body_t, init_one_body_t,              &
-                                       end_one_body_t, store_one_body_int_pg_sym, &
+                                       end_one_body_t, store_one_body_int, &
                                        zero_one_body_int_store, broadcast_one_body_t
 
         use errors, only: stop_all
@@ -979,7 +979,7 @@ contains
             end do
             ! We only use Abelian symmetries so all representations are their own
             ! inverse.
-            op_sym = cross_product_pg_basis(sys%read_in%pg_sym, ii,aa,sys%basis%basis_fns)
+            op_sym = cross_product_basis(sys, ii,aa)
         else
             ! We'll broadcast the symmetry and the integrals to all other
             ! processors later.
@@ -1036,7 +1036,7 @@ contains
                 else if (ii < 1 .and. ii == aa) then
                     core_term = core_term + rhf_fac*x
                 else if (min(ii,aa) >= 1 .and. max(ii,aa) <= sys%basis%nbasis) then
-                    call store_one_body_int_pg_sym(ii, aa, x, sys%basis%basis_fns, sys%read_in%pg_sym, &
+                    call store_one_body_int(ii, aa, x, sys, &
                                             int_err > max_err_msg, store, ierr)
                     int_err = int_err + ierr
                 end if

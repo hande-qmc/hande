@@ -499,7 +499,6 @@ contains
         use qmc_data, only: qmc_state_t
         use system, only: sys_t, read_in
         use proc_pointers, only: gen_excit_ptr_t
-        use excit_gen_periodic, only: gen_excit_periodic_complex
         use dSFMT_interface, only: dSFMT_t
 
         use errors, only: stop_all

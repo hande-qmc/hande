@@ -174,7 +174,6 @@ abstract interface
         type(excit_t), intent(in) :: connection
         real(p) :: opmatel
     end function i_operator
-
     ! generic procedures...
     subroutine i_sub()
     end subroutine i_sub

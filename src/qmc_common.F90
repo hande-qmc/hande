@@ -165,9 +165,7 @@ contains
         !             connected to D by a double excitation.
 
         use system
-        use point_group_symmetry, only: cross_product_pg_basis, cross_product_pg_sym
         use symmetry, only: cross_product
-        use momentum_sym_read_in, only: mom_sym_conj
 
         type(sys_t), intent(in) :: sys
         integer, intent(in) :: occ_list(sys%nel)
@@ -187,11 +185,7 @@ contains
         case(read_in)
 
             ! Count number of basis functions in each symmetry.
-            if (sys%momentum_space) then
-                virt_syms(:,:) = sys%read_in%mom_sym%nbands
-            else
-                virt_syms = sys%read_in%pg_sym%nbasis_sym_spin
-            end if
+            virt_syms = sys%read_in%pg_sym%nbasis_sym_spin
             do i = 1, sys%nel
                 ! Convert -1->1 and 1->2 for spin index in arrays.
                 ims1 = (sys%basis%basis_fns(occ_list(i))%ms+3)/2

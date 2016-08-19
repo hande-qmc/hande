@@ -40,6 +40,8 @@ contains
         use excitations, only: find_excitation_permutation1, find_excitation_permutation2
         use excit_gens, only: excit_gen_data_t
         use hamiltonian_molecular, only: slater_condon1_mol_excit, slater_condon2_mol_excit
+        use hamiltonian_periodic_complex, only: slater_condon1_periodic_excit_complex, &
+                                                slater_condon2_periodic_excit_complex
         use system, only: sys_t
         use hamiltonian_data
 
@@ -74,14 +76,23 @@ contains
                 call find_excitation_permutation1(sys%basis%excit_mask, cdet%f, connection)
 
                 ! 5a. Find the connecting matrix element.
-                hmatel%r = slater_condon1_mol_excit(sys, cdet%occ_list, connection%from_orb(1), connection%to_orb(1), &
-                                                  connection%perm)
+                if (sys%read_in%comp) then
+                    hmatel%c = slater_condon1_periodic_excit_complex(sys, cdet%occ_list, connection%from_orb(1), &
+                                              connection%to_orb(1), connection%perm)
+                else
+                    hmatel%r = slater_condon1_mol_excit(sys, cdet%occ_list, connection%from_orb(1), connection%to_orb(1), &
+                                              connection%perm)
+                end if
             else
                 ! We have a highly restrained system and this det has no single
                 ! excitations at all.  To avoid reweighting pattempt_single and
                 ! pattempt_double (an O(N^3) operation), we simply return a null
                 ! excitation
-                hmatel%r = 0.0_p
+                if (sys%read_in%comp) then
+                    hmatel%c = cmplx(0.0_p, 0.0_p, p)
+                else
+                    hmatel%r = 0.0_p
+                end if
                 pgen = 1.0_p
             end if
 
@@ -104,14 +115,23 @@ contains
                 call find_excitation_permutation2(sys%basis%excit_mask, cdet%f, connection)
 
                 ! 5b. Find the connecting matrix element.
-                hmatel%r = slater_condon2_mol_excit(sys, connection%from_orb(1), connection%from_orb(2), &
-                                                  connection%to_orb(1), connection%to_orb(2), connection%perm)
+                if (sys%read_in%comp) then
+                    hmatel%c = slater_condon2_periodic_excit_complex(sys, connection%from_orb(1), connection%from_orb(2), &
+                                                      connection%to_orb(1), connection%to_orb(2), connection%perm)
+                else
+                    hmatel%r = slater_condon2_mol_excit(sys, connection%from_orb(1), connection%from_orb(2), &
+                                                      connection%to_orb(1), connection%to_orb(2), connection%perm)
+                end if
             else
                 ! Carelessly selected ij with no possible excitations.  Such
                 ! events are not worth the cost of renormalising the generation
                 ! probabilities.
                 ! Return a null excitation.
-                hmatel%r = 0.0_p
+                if (sys%read_in%comp) then
+                    hmatel%c = cmplx(0.0_p, 0.0_p, p)
+                else
+                    hmatel%r = 0.0_p
+                end if
                 pgen = 1.0_p
             end if
 
@@ -153,6 +173,8 @@ contains
         use excitations, only: find_excitation_permutation1, find_excitation_permutation2
         use excit_gens, only: excit_gen_data_t
         use hamiltonian_molecular, only: slater_condon1_mol_excit, slater_condon2_mol_excit
+        use hamiltonian_periodic_complex, only: slater_condon1_periodic_excit_complex, &
+                                                slater_condon2_periodic_excit_complex
         use system, only: sys_t
         use hamiltonian_data
 
@@ -186,11 +208,20 @@ contains
                 call find_excitation_permutation1(sys%basis%excit_mask, cdet%f, connection)
 
                 ! 5a. Find the connecting matrix element.
-                hmatel%r = slater_condon1_mol_excit(sys, cdet%occ_list, connection%from_orb(1), connection%to_orb(1), &
-                                                    connection%perm)
+                if (sys%read_in%comp) then
+                    hmatel%c = slater_condon1_periodic_excit_complex(sys, cdet%occ_list, connection%from_orb(1), &
+                                              connection%to_orb(1), connection%perm)
+                else
+                    hmatel%r = slater_condon1_mol_excit(sys, cdet%occ_list, connection%from_orb(1), connection%to_orb(1), &
+                                              connection%perm)
+                end if
             else
                 ! Forbidden---connection%to_orb(1) is already occupied.
-                hmatel%r = 0.0_p
+                if (sys%read_in%comp) then
+                    hmatel%c = cmplx(0.0_p, 0.0_p, p)
+                else
+                    hmatel%r = 0.0_p
+                end if
                 pgen = 1.0_p ! Avoid any dangerous division by pgen by returning a sane (but cheap) value.
             end if
 
@@ -198,7 +229,7 @@ contains
 
             ! 2b. Select orbitals to excite from and orbitals to excite into.
             call choose_ij_mol(rng, sys, cdet%occ_list, connection%from_orb(1), connection%from_orb(2), ij_sym, ij_spin)
-            call find_ab_mol(rng, cdet%f, ij_sym, ij_spin, sys%basis, sys%read_in%pg_sym,  &
+            call find_ab_mol(rng, cdet%f, ij_sym, ij_spin, sys,  &
                              connection%to_orb(1), connection%to_orb(2), &
                              allowed_excitation)
             connection%nexcit = 2
@@ -213,11 +244,20 @@ contains
                 call find_excitation_permutation2(sys%basis%excit_mask, cdet%f, connection)
 
                 ! 5b. Find the connecting matrix element.
-                hmatel%r = slater_condon2_mol_excit(sys, connection%from_orb(1), connection%from_orb(2), &
-                                                  connection%to_orb(1), connection%to_orb(2), connection%perm)
+                if (sys%read_in%comp) then
+                    hmatel%c = slater_condon2_periodic_excit_complex(sys, connection%from_orb(1), connection%from_orb(2), &
+                                                      connection%to_orb(1), connection%to_orb(2), connection%perm)
+                else
+                    hmatel%r = slater_condon2_mol_excit(sys, connection%from_orb(1), connection%from_orb(2), &
+                                                      connection%to_orb(1), connection%to_orb(2), connection%perm)
+                end if
             else
                 ! Forbidden---connection%to_orb(2) is already occupied.
-                hmatel%r = 0.0_p
+                if (sys%read_in%comp) then
+                    hmatel%c = cmplx(0.0_p, 0.0_p, p)
+                else
+                    hmatel%r = 0.0_p
+                end if
                 pgen = 1.0_p ! Avoid any dangerous division by pgen by returning a sane (but cheap) value.
             end if
 
@@ -252,7 +292,6 @@ contains
         !        excitations from the determinant which conserve spin and spatial
         !        symmetry.
 
-        use point_group_symmetry, only: cross_product_pg_sym, pg_sym_conj
         use system, only: sys_t
 
         use dSFMT_interface, only: dSFMT_t, get_rand_close_open
@@ -272,7 +311,8 @@ contains
         do i = 1, sys%nel
             ims = (sys%basis%basis_fns(occ_list(i))%Ms+3)/2
             ! In principle here we should have (Gamma_i* Gamma_op)*.  We'll assume Gamma_op*=Gamma_op
-            isym = cross_product_pg_sym(sys%read_in%pg_sym, sys%basis%basis_fns(occ_list(i))%sym, op_sym)
+            isym = sys%read_in%cross_product_sym_ptr(sys%read_in, &
+                    sys%basis%basis_fns(occ_list(i))%sym, op_sym)
             if (symunocc(ims, isym) /= 0) then
                 allowed_excitation = .true.
                 exit
@@ -290,7 +330,7 @@ contains
                 ! Conserve symmetry (spatial and spin) in selecting a.
                 ims = (sys%basis%basis_fns(i)%Ms+3)/2
                 ! Assume op_sym is self-conjugate.
-                isym = cross_product_pg_sym(sys%read_in%pg_sym, sys%basis%basis_fns(i)%sym, op_sym)
+                isym = sys%read_in%cross_product_sym_ptr(sys%read_in, sys%basis%basis_fns(i)%sym, op_sym)
                 if (symunocc(ims, isym) /= 0) then
                     ! Found i.  Now find a...
                         ! It's cheaper to draw additional random numbers than
@@ -334,9 +374,8 @@ contains
         !                =  2   i,j both up
 
         use system, only: sys_t
-        use point_group_symmetry, only: cross_product_pg_basis,pg_sym_conj
-
         use dSFMT_interface, only: dSFMT_t, get_rand_close_open
+        use point_group_symmetry, only: cross_product_basis
 
         type(sys_t), intent(in) :: sys
         integer, intent(in) :: occ_list(:)
@@ -363,7 +402,8 @@ contains
         i = occ_list(i)
         j = occ_list(j)
 
-        ij_sym = pg_sym_conj(sys%read_in%pg_sym, cross_product_pg_basis(sys%read_in%pg_sym, i,j,sys%basis%basis_fns))
+        ij_sym = sys%read_in%sym_conj_ptr(sys%read_in, &
+                    cross_product_basis(sys, i,j))
         ! ij_spin = -2 (down, down), 0 (up, down or down, up), +2 (up, up)
         ij_spin = sys%basis%basis_fns(i)%Ms + sys%basis%basis_fns(j)%Ms
 
@@ -396,7 +436,6 @@ contains
         !        (i,j).
 
         use system, only: sys_t
-        use point_group_symmetry, only: cross_product_pg_sym, pg_sym_conj
 
         use dSFMT_interface, only: dSFMT_t, get_rand_close_open
 
@@ -417,7 +456,8 @@ contains
         select case(spin)
         case(-2)
             do isyma = sys%sym0, sys%sym_max
-                isymb = pg_sym_conj(sys%read_in%pg_sym, cross_product_pg_sym(sys%read_in%pg_sym, isyma, sym))
+                isymb = sys%read_in%sym_conj_ptr(sys%read_in, &
+                    sys%read_in%cross_product_sym_ptr(sys%read_in, isyma, sym))
                 if ( symunocc(1,isyma) > 0 .and. &
                         ( symunocc(1,isymb) > 1 .or. &
                         ( symunocc(1,isymb) == 1 .and. (isyma /= isymb))) ) then
@@ -435,7 +475,8 @@ contains
             na = sys%basis%nbasis/2
         case(0)
             do isyma = sys%sym0, sys%sym_max
-                isymb = pg_sym_conj(sys%read_in%pg_sym, cross_product_pg_sym(sys%read_in%pg_sym, isyma, sym))
+                isymb = sys%read_in%sym_conj_ptr(sys%read_in, &
+                        sys%read_in%cross_product_sym_ptr(sys%read_in, isyma, sym))
                 if ( (symunocc(1,isyma) > 0 .and. symunocc(2,isymb) > 0) .or. &
                      (symunocc(2,isyma) > 0 .and. symunocc(1,isymb) > 0) ) then
                     allowed_excitation = .true.
@@ -451,7 +492,8 @@ contains
             na = sys%basis%nbasis
         case(2)
             do isyma = sys%sym0, sys%sym_max
-                isymb = pg_sym_conj(sys%read_in%pg_sym, cross_product_pg_sym(sys%read_in%pg_sym, isyma, sym))
+                isymb = sys%read_in%sym_conj_ptr(sys%read_in, &
+                        sys%read_in%cross_product_sym_ptr(sys%read_in, isyma, sym))
                 if ( symunocc(2,isyma) > 0 .and. &
                         ( symunocc(2,isymb) > 1 .or. &
                         ( symunocc(2,isymb) == 1 .and. (isyma /= isymb))) ) then
@@ -484,8 +526,8 @@ contains
                 if (.not.btest(f(sys%basis%bit_lookup(2,a)), sys%basis%bit_lookup(1,a))) then
                     ! b must conserve spatial and spin symmetry.
                     imsb = (spin-sys%basis%basis_fns(a)%Ms+3)/2
-                    isymb = pg_sym_conj(sys%read_in%pg_sym, &
-                                        cross_product_pg_sym(sys%read_in%pg_sym, sym, sys%basis%basis_fns(a)%sym))
+                    isymb = sys%read_in%sym_conj_ptr(sys%read_in, &
+                                    sys%read_in%cross_product_sym_ptr(sys%read_in, sym, sys%basis%basis_fns(a)%sym))
                     ! Is there a possible b?
                     if ( (symunocc(imsb,isymb) > 1) .or. &
                             (symunocc(imsb,isymb) == 1 .and. (isymb /= sys%basis%basis_fns(a)%sym .or. spin == 0)) ) then
@@ -541,7 +583,6 @@ contains
         !        excitations from the determinant which conserve spin and spatial
         !        symmetry or if a is already occupied.
 
-        use point_group_symmetry, only: cross_product_pg_sym
         use system, only: sys_t
 
         use dSFMT_interface, only: dSFMT_t, get_rand_close_open
@@ -561,7 +602,7 @@ contains
 
         ! Conserve symmetry (spatial and spin) in selecting a.
         ims = (sys%basis%basis_fns(i)%Ms+3)/2
-        isym = cross_product_pg_sym(sys%read_in%pg_sym, sys%basis%basis_fns(i)%sym,op_sym)
+        isym = sys%read_in%cross_product_sym_ptr(sys%read_in, sys%basis%basis_fns(i)%sym,op_sym)
         ind = int(sys%read_in%pg_sym%nbasis_sym_spin(ims,isym)*get_rand_close_open(rng))+1
         if (sys%read_in%pg_sym%nbasis_sym_spin(ims,isym) == 0) then
             ! No orbitals with the correct symmetry.
@@ -577,7 +618,7 @@ contains
 
 !--- Select random orbitals in double excitations ---
 
-    subroutine find_ab_mol(rng, f, sym, spin, basis, pg_sym, a, b, allowed_excitation)
+    subroutine find_ab_mol(rng, f, sym, spin, sys, a, b, allowed_excitation)
 
         ! Select a random pair of orbitals to excite into as part of a double
         ! excitation, given that the (i,j) pair of orbitals to excite from have
@@ -609,16 +650,12 @@ contains
         !        which conserve spin and spatial symmetry given the choice of
         !        (i,j) or given the choice of (i,j,a).
 
-        use basis_types, only: basis_t
-        use point_group_symmetry, only: cross_product_pg_sym, pg_sym_conj
-        use symmetry_types, only: pg_sym_t 
-
+        use system, only: sys_t
         use dSFMT_interface, only: dSFMT_t, get_rand_close_open
 
-        type(basis_t), intent(in) :: basis
-        integer(i0), intent(in) :: f(basis%string_len)
         integer, intent(in) :: sym, spin
-        type(pg_sym_t), intent(in) :: pg_sym
+        type(sys_t), intent(in) :: sys
+        integer(i0), intent(in) :: f(sys%basis%string_len)
         type(dSFMT_t), intent(inout) :: rng
         integer, intent(out) :: a, b
         logical, intent(out) :: allowed_excitation
@@ -634,21 +671,21 @@ contains
             ! [1,nbasis] using 2*x
             fac = 2
             shift = 0
-            na = basis%nbasis/2
+            na = sys%basis%nbasis/2
         case(0)
             ! a can be up or down.
             ! Convert number, x, in range [1,nbasis] to any number in range
             ! [1,nbasis] using simply x (for compatibility with spin=-2,2).
             fac = 1
             shift = 0
-            na = basis%nbasis
+            na = sys%basis%nbasis
         case(2)
             ! a must be up.
             ! Convert number, x, in range [1,nbasis/2] to odd number in range
             ! [1,nbasis] using 2*x-1
             fac = 2
             shift = 1
-            na = basis%nbasis/2
+            na = sys%basis%nbasis/2
         end select
 
         do
@@ -662,32 +699,34 @@ contains
             ! or to any orbital.
             a = fac*a-shift
             ! If a is unoccupied, then have found first orbital to excite into.
-            if (.not.btest(f(basis%bit_lookup(2,a)), basis%bit_lookup(1,a))) exit
+            if (.not.btest(f(sys%basis%bit_lookup(2,a)), sys%basis%bit_lookup(1,a))) exit
         end do
 
         ! Conserve symmetry (spatial and spin) in selecting the fourth orbital.
         ! Ms_i + Ms_j = Ms_a + Ms_b (Ms_i = -1,+1)
         ! => Ms_b = Ms_i + Ms_j - Ms_a
-        ims = (spin-basis%basis_fns(a)%Ms+3)/2
+        ims = (spin-sys%basis%basis_fns(a)%Ms+3)/2
         ! (sym_i* x sym_j* x sym_a)* = sym_b
         ! (at least for Abelian point groups)
-        isym = pg_sym_conj(pg_sym, cross_product_pg_sym(pg_sym, sym, basis%basis_fns(a)%sym))
+        isym = sys%read_in%sym_conj_ptr(sys%read_in, &
+                sys%read_in%cross_product_sym_ptr(sys%read_in, sym, sys%basis%basis_fns(a)%sym))
 
-        if (pg_sym%nbasis_sym_spin(ims,isym) == 0) then
+        if (sys%read_in%pg_sym%nbasis_sym_spin(ims,isym) == 0) then
             ! No orbitals with the correct symmetry.
             allowed_excitation = .false.
-        else if (spin /= 0 .and. isym == basis%basis_fns(a)%sym .and. pg_sym%nbasis_sym_spin(ims,isym) == 1) then
+        else if (spin /= 0 .and. isym == sys%basis%basis_fns(a)%sym .and. &
+                    sys%read_in%pg_sym%nbasis_sym_spin(ims,isym) == 1) then
             allowed_excitation = .false.
         else
             do
-                ind = int(pg_sym%nbasis_sym_spin(ims,isym)*get_rand_close_open(rng))+1
-                b = pg_sym%sym_spin_basis_fns(ind,ims,isym)
+                ind = int(sys%read_in%pg_sym%nbasis_sym_spin(ims,isym)*get_rand_close_open(rng))+1
+                b = sys%read_in%pg_sym%sym_spin_basis_fns(ind,ims,isym)
                 if (b /= a) exit
             end do
 
             ! Is b already occupied in the determinant f?  If so, the excitation is
             ! not permitted.
-            allowed_excitation = .not.btest(f(basis%bit_lookup(2,b)), basis%bit_lookup(1,b))
+            allowed_excitation = .not.btest(f(sys%basis%bit_lookup(2,b)), sys%basis%bit_lookup(1,b))
 
             ! It is useful to return a,b ordered (e.g. for the find_excitation_permutation2 routine).
             if (a > b) then
@@ -728,7 +767,6 @@ contains
         ! excitations correctly take into account such rejected events.
 
         use system, only: sys_t
-        use point_group_symmetry, only: cross_product_pg_sym, pg_sym_conj
 
         real(p) :: pgen
         type(sys_t), intent(in) :: sys
@@ -746,7 +784,7 @@ contains
         ni = sys%nel
         do i = 1, sys%nel
             ims = (sys%basis%basis_fns(occ_list(i))%Ms+3)/2
-            isym = cross_product_pg_sym(sys%read_in%pg_sym, sys%basis%basis_fns(occ_list(i))%sym, op_sym)
+            isym = sys%read_in%cross_product_sym_ptr(sys%read_in, sys%basis%basis_fns(occ_list(i))%sym, op_sym)
             if (symunocc(ims,isym) == 0) ni = ni - 1
         end do
 
@@ -788,7 +826,6 @@ contains
         ! events.
 
         use system, only: sys_t
-        use point_group_symmetry, only: cross_product_pg_sym, pg_sym_conj
 
         real(p) :: pgen
         type(sys_t), intent(in) :: sys
@@ -821,7 +858,8 @@ contains
             n_aij = sys%nvirt_beta
             do isyma = sys%sym0, sys%sym_max
                 ! find corresponding isymb.
-                isymb = pg_sym_conj(sys%read_in%pg_sym, cross_product_pg_sym(sys%read_in%pg_sym, isyma, ij_sym))
+                isymb = sys%read_in%sym_conj_ptr(sys%read_in, &
+                            sys%read_in%cross_product_sym_ptr(sys%read_in, isyma, ij_sym))
                 if (symunocc(1, isymb) == 0) then
                     n_aij = n_aij - symunocc(1,isyma)
                 else if (isyma == isymb .and. symunocc(1, isymb) == 1) then
@@ -842,7 +880,8 @@ contains
             n_aij = sys%nvirt
             do isyma = sys%sym0, sys%sym_max
                 ! find corresponding isymb.
-                isymb = pg_sym_conj(sys%read_in%pg_sym, cross_product_pg_sym(sys%read_in%pg_sym, isyma, ij_sym))
+                isymb = sys%read_in%sym_conj_ptr(sys%read_in, &
+                            sys%read_in%cross_product_sym_ptr(sys%read_in, isyma, ij_sym))
                 if (symunocc(1, isymb) == 0) then
                     n_aij = n_aij - symunocc(2,isyma)
                 end if
@@ -858,7 +897,8 @@ contains
             n_aij = sys%nvirt_alpha
             do isyma = sys%sym0, sys%sym_max
                 ! find corresponding isymb.
-                isymb = pg_sym_conj(sys%read_in%pg_sym, cross_product_pg_sym(sys%read_in%pg_sym, isyma, ij_sym))
+                isymb = sys%read_in%sym_conj_ptr(sys%read_in, &
+                            sys%read_in%cross_product_sym_ptr(sys%read_in, isyma, ij_sym))
                 if (symunocc(2, isymb) == 0) then
                     n_aij = n_aij - symunocc(2,isyma)
                 else if (isyma == isymb .and. symunocc(2, isymb) == 1) then

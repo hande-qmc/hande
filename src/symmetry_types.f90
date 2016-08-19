@@ -91,13 +91,6 @@ type mom_sym_t
     ! Used only in read_in translationally symmetric systems.
     integer :: propbitlen = 0
 
-    ! Number of bands per kpoint. Only used for read_in periodic systems.
-    integer :: nbands
-    ! [review] - JSS: basis'?
-    ! [review] - JSS: what about UHF?
-    ! Indexes of basis' of sym index. Done by spatial index, assuming using RHF.
-    ! Only used for read_in periodic systems.
-    integer, allocatable :: sym_spin_basis(:,:,:) ! (nbands,2,nsym)
 end type mom_sym_t
 
 contains
@@ -128,7 +121,6 @@ contains
 
         if (allocated(mom_sym%sym_table)) deallocate(mom_sym%sym_table)
         if (allocated(mom_sym%inv_sym)) deallocate(mom_sym%inv_sym)
-        if (allocated(mom_sym%sym_spin_basis)) deallocate(mom_sym%sym_spin_basis)
 
     end subroutine dealloc_mom_sym_t
 

@@ -419,7 +419,7 @@ module hdf5_system
             use const
             use errors, only: stop_all, warning
             use system, only: sys_t
-            use point_group_symmetry, only: init_pg_symmetry, print_pg_symmetry_info
+            use point_group_symmetry, only: init_pg_symmetry
             use checking, only: check_allocate, check_deallocate
             use basis, only: write_basis_fn_header, write_basis_fn, write_basis_fn_title
             use basis_types, only: init_basis_strings, print_basis_metadata
@@ -701,7 +701,6 @@ module hdf5_system
                 end if
 
                 call print_basis_metadata(sys%basis, sys%nel, .false.)
-                if (.not.sys%momentum_space) call print_pg_symmetry_info(sys)
             end if
 
             if (sys%read_in%dipole_int_file /= '') then
