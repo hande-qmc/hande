@@ -12,7 +12,6 @@ public :: write_qmc_report_header, write_qmc_report, write_dmqmc_report_header, 
 
 interface write_qmc_var
     module procedure :: write_qmc_var_int
-    module procedure :: write_qmc_var_int_64
     module procedure :: write_qmc_var_real_sp
     module procedure :: write_qmc_var_real_dp
 end interface
