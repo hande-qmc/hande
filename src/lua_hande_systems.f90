@@ -605,6 +605,7 @@ contains
             call init_system(sys)
             call read_system_hdf5(sys, verbose)
             if (parent) call check_sys(sys)
+            new_basis = .true.
             if (sys%momentum_space) then
                 call print_mom_sym_info(sys)
             else

@@ -55,7 +55,6 @@ contains
         ! namelist, so have to hardcode the array sizes.
         ! It's reasonably safe to assume that we'll never use more than 1000
         ! orbitals!
-        ! [review] - JSS: please add check that norb <= 1000...
         integer :: norb, nelec, ms2,  isym, syml(1000), symlz(1000), nprop(3), propbitlen
         integer(int_64) :: orbsym(1000)
         ! all basis functions, including inactive ones.
@@ -191,7 +190,8 @@ contains
             sys%read_in%uhf = uhf
             if (norb == 0) call stop_all('read_in_integrals', &
                 'norb not provided in FCIDUMP header.')
-
+            if (norb > 1000) call stop_all('read_in_integrals', &
+                'norb > 1000. Please increase hard-coded limits within read_in.F90!')
         end if
 
 #ifdef PARALLEL
