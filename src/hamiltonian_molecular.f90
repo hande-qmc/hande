@@ -203,8 +203,9 @@ contains
 
         use molecular_integrals, only: get_one_body_int_mol_nonzero, get_two_body_int_mol_nonzero
         use system, only: sys_t
+        use hamiltonian_data, only: hmatel_t
 
-        real(p) :: hmatel
+        type(hmatel_t) :: hmatel
         type(sys_t), intent(in) :: sys
         integer, intent(in) :: occ_list(sys%nel), i, a
         logical, intent(in) :: perm
@@ -216,20 +217,20 @@ contains
         associate(basis_fns=>sys%basis%basis_fns, &
                   one_e_ints=>sys%read_in%one_e_h_integrals, &
                   coulomb_ints=>sys%read_in%coulomb_integrals)
-            hmatel = get_one_body_int_mol_nonzero(one_e_ints, i, a, basis_fns)
+            hmatel%r = get_one_body_int_mol_nonzero(one_e_ints, i, a, basis_fns)
 
             do iel = 1, sys%nel
                 if (occ_list(iel) /= i) then
-                    hmatel = hmatel &
+                    hmatel%r = hmatel%r &
                                 + get_two_body_int_mol_nonzero(coulomb_ints, i, occ_list(iel), a, occ_list(iel), basis_fns)
                     if (basis_fns(occ_list(iel))%Ms == basis_fns(i)%Ms) &
-                        hmatel = hmatel &
+                        hmatel%r = hmatel%r &
                                     - get_two_body_int_mol_nonzero(coulomb_ints, i, occ_list(iel), occ_list(iel), a, basis_fns)
                 end if
             end do
         end associate
 
-        if (perm) hmatel = -hmatel
+        if (perm) hmatel%r = -hmatel%r
 
     end function slater_condon1_mol_excit
 
@@ -272,7 +273,7 @@ contains
 
     end function slater_condon2_mol
 
-    elemental function slater_condon2_mol_excit(sys, i, j, a, b, perm) result(hmatel)
+    pure function slater_condon2_mol_excit(sys, i, j, a, b, perm) result(hmatel)
 
         ! In:
         !    sys: system to be studied.
@@ -300,22 +301,23 @@ contains
 
         use molecular_integrals, only: get_two_body_int_mol_nonzero
         use system, only: sys_t
+        use hamiltonian_data, only: hmatel_t
 
-        real(p) :: hmatel
+        type(hmatel_t) :: hmatel
         type(sys_t), intent(in) :: sys
         integer, intent(in) :: i, j, a, b
         logical, intent(in) :: perm
 
         ! < D | H | D_{ij}^{ab} > = < ij || ab >
 
-        hmatel = 0.0_p
+        hmatel%r = 0.0_p
 
         if (sys%basis%basis_fns(i)%Ms == sys%basis%basis_fns(a)%Ms) &
-            hmatel = get_two_body_int_mol_nonzero(sys%read_in%coulomb_integrals, i, j, a, b, sys%basis%basis_fns)
+            hmatel%r = get_two_body_int_mol_nonzero(sys%read_in%coulomb_integrals, i, j, a, b, sys%basis%basis_fns)
         if (sys%basis%basis_fns(i)%Ms == sys%basis%basis_fns(b)%Ms) &
-            hmatel = hmatel - get_two_body_int_mol_nonzero(sys%read_in%coulomb_integrals, i, j, b, a, sys%basis%basis_fns)
+            hmatel%r = hmatel%r - get_two_body_int_mol_nonzero(sys%read_in%coulomb_integrals, i, j, b, a, sys%basis%basis_fns)
 
-        if (perm) hmatel = -hmatel
+        if (perm) hmatel%r = -hmatel%r
 
     end function slater_condon2_mol_excit
 

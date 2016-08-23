@@ -231,8 +231,9 @@ contains
 
         use molecular_integrals, only: get_one_body_int_mol_nonzero, get_two_body_int_mol_nonzero
         use system, only: sys_t
+        use hamiltonian_data, only: hmatel_t
 
-        complex(p) :: hmatel
+        type(hmatel_t) :: hmatel
         type(sys_t), intent(in) :: sys
         integer, intent(in) :: occ_list(sys%nel), i, a
         logical, intent(in) :: perm
@@ -250,22 +251,22 @@ contains
 
             re = get_one_body_int_mol_nonzero(one_e_ints, i, a, basis_fns)
             im = get_one_body_int_mol_nonzero(one_e_ints_im, i, a, basis_fns)
-            hmatel = cmplx(re, im, p)
+            hmatel%c = cmplx(re, im, p)
             do iel = 1, sys%nel
                 if (occ_list(iel) /= i) then
                     re = get_two_body_int_mol_nonzero(coulomb_ints, i, occ_list(iel), a, occ_list(iel), basis_fns)
                     im = get_two_body_int_mol_nonzero(coulomb_ints_im, i, occ_list(iel), a, occ_list(iel), basis_fns)
-                    hmatel = hmatel + cmplx(re, im, p)
+                    hmatel%c = hmatel%c + cmplx(re, im, p)
                     if (basis_fns(occ_list(iel))%Ms == basis_fns(i)%Ms) then
                         re = get_two_body_int_mol_nonzero(coulomb_ints, i, occ_list(iel), occ_list(iel), a, basis_fns)
                         im = get_two_body_int_mol_nonzero(coulomb_ints_im, i, occ_list(iel), occ_list(iel), a, basis_fns)
-                        hmatel = hmatel - cmplx(re, im, p)
+                        hmatel%c = hmatel%c - cmplx(re, im, p)
                     end if
                 end if
             end do
         end associate
 
-        if (perm) hmatel = -hmatel
+        if (perm) hmatel%c = -hmatel%c
 
     end function slater_condon1_periodic_excit_complex
 
@@ -310,7 +311,7 @@ contains
 
     end function slater_condon2_periodic_complex
 
-    elemental function slater_condon2_periodic_excit_complex(sys, i, j, a, b, perm) result(hmatel)
+    pure function slater_condon2_periodic_excit_complex(sys, i, j, a, b, perm) result(hmatel)
 
         ! In:
         !    sys: system to be studied.
@@ -338,8 +339,9 @@ contains
 
         use molecular_integrals, only: get_two_body_int_mol_nonzero
         use system, only: sys_t
+        use hamiltonian_data, only: hmatel_t
 
-        complex(p) :: hmatel
+        type(hmatel_t) :: hmatel
         real(p) :: re, im
         type(sys_t), intent(in) :: sys
         integer, intent(in) :: i, j, a, b
@@ -347,19 +349,19 @@ contains
 
         ! < D | H | D_{ij}^{ab} > = < ij || ab >
 
-        hmatel = cmplx(0.0, 0.0)
+        hmatel%c = cmplx(0.0, 0.0)
 
         if (sys%basis%basis_fns(i)%Ms == sys%basis%basis_fns(a)%Ms) then
             re = get_two_body_int_mol_nonzero(sys%read_in%coulomb_integrals, i, j, a, b, sys%basis%basis_fns)
             im = get_two_body_int_mol_nonzero(sys%read_in%coulomb_integrals_imag, i, j, a, b, sys%basis%basis_fns)
-            hmatel = cmplx(re, im, p)
+            hmatel%c = cmplx(re, im, p)
         end if
         if (sys%basis%basis_fns(i)%Ms == sys%basis%basis_fns(b)%Ms) then
             re =  get_two_body_int_mol_nonzero(sys%read_in%coulomb_integrals, i, j, b, a, sys%basis%basis_fns)
             im =  get_two_body_int_mol_nonzero(sys%read_in%coulomb_integrals_imag, i, j, b, a, sys%basis%basis_fns)
-            hmatel = hmatel - cmplx(re, im, p)
+            hmatel%c = hmatel%c - cmplx(re, im, p)
         end if
-        if (perm) hmatel = -hmatel
+        if (perm) hmatel%c = -hmatel%c
 
     end function slater_condon2_periodic_excit_complex
 

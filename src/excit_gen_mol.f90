@@ -39,11 +39,9 @@ contains
         use excitations, only: excit_t
         use excitations, only: find_excitation_permutation1, find_excitation_permutation2
         use excit_gens, only: excit_gen_data_t
-        use hamiltonian_molecular, only: slater_condon1_mol_excit, slater_condon2_mol_excit
-        use hamiltonian_periodic_complex, only: slater_condon1_periodic_excit_complex, &
-                                                slater_condon2_periodic_excit_complex
         use system, only: sys_t
         use hamiltonian_data
+        use proc_pointers, only: slater_condon1_excit_ptr, slater_condon2_excit_ptr
 
         use dSFMT_interface, only: dSFMT_t, get_rand_close_open
 
@@ -76,23 +74,15 @@ contains
                 call find_excitation_permutation1(sys%basis%excit_mask, cdet%f, connection)
 
                 ! 5a. Find the connecting matrix element.
-                if (sys%read_in%comp) then
-                    hmatel%c = slater_condon1_periodic_excit_complex(sys, cdet%occ_list, connection%from_orb(1), &
-                                              connection%to_orb(1), connection%perm)
-                else
-                    hmatel%r = slater_condon1_mol_excit(sys, cdet%occ_list, connection%from_orb(1), connection%to_orb(1), &
-                                              connection%perm)
-                end if
+                hmatel = slater_condon1_excit_ptr(sys, cdet%occ_list, connection%from_orb(1), &
+                                          connection%to_orb(1), connection%perm)
             else
                 ! We have a highly restrained system and this det has no single
                 ! excitations at all.  To avoid reweighting pattempt_single and
                 ! pattempt_double (an O(N^3) operation), we simply return a null
                 ! excitation
-                if (sys%read_in%comp) then
-                    hmatel%c = cmplx(0.0_p, 0.0_p, p)
-                else
-                    hmatel%r = 0.0_p
-                end if
+                hmatel%c = cmplx(0.0_p, 0.0_p, p)
+                hmatel%r = 0.0_p
                 pgen = 1.0_p
             end if
 
@@ -115,23 +105,15 @@ contains
                 call find_excitation_permutation2(sys%basis%excit_mask, cdet%f, connection)
 
                 ! 5b. Find the connecting matrix element.
-                if (sys%read_in%comp) then
-                    hmatel%c = slater_condon2_periodic_excit_complex(sys, connection%from_orb(1), connection%from_orb(2), &
-                                                      connection%to_orb(1), connection%to_orb(2), connection%perm)
-                else
-                    hmatel%r = slater_condon2_mol_excit(sys, connection%from_orb(1), connection%from_orb(2), &
-                                                      connection%to_orb(1), connection%to_orb(2), connection%perm)
-                end if
+                hmatel = slater_condon2_excit_ptr(sys, connection%from_orb(1), connection%from_orb(2), &
+                                                  connection%to_orb(1), connection%to_orb(2), connection%perm)
             else
                 ! Carelessly selected ij with no possible excitations.  Such
                 ! events are not worth the cost of renormalising the generation
                 ! probabilities.
                 ! Return a null excitation.
-                if (sys%read_in%comp) then
-                    hmatel%c = cmplx(0.0_p, 0.0_p, p)
-                else
-                    hmatel%r = 0.0_p
-                end if
+                hmatel%c = cmplx(0.0_p, 0.0_p, p)
+                hmatel%r = 0.0_p
                 pgen = 1.0_p
             end if
 
@@ -172,11 +154,9 @@ contains
         use excitations, only: excit_t
         use excitations, only: find_excitation_permutation1, find_excitation_permutation2
         use excit_gens, only: excit_gen_data_t
-        use hamiltonian_molecular, only: slater_condon1_mol_excit, slater_condon2_mol_excit
-        use hamiltonian_periodic_complex, only: slater_condon1_periodic_excit_complex, &
-                                                slater_condon2_periodic_excit_complex
+        use proc_pointers, only: slater_condon1_excit_ptr, slater_condon2_excit_ptr
         use system, only: sys_t
-        use hamiltonian_data
+        use hamiltonian_data, only: hmatel_t
 
         use dSFMT_interface, only: dSFMT_t, get_rand_close_open
 
@@ -208,20 +188,12 @@ contains
                 call find_excitation_permutation1(sys%basis%excit_mask, cdet%f, connection)
 
                 ! 5a. Find the connecting matrix element.
-                if (sys%read_in%comp) then
-                    hmatel%c = slater_condon1_periodic_excit_complex(sys, cdet%occ_list, connection%from_orb(1), &
-                                              connection%to_orb(1), connection%perm)
-                else
-                    hmatel%r = slater_condon1_mol_excit(sys, cdet%occ_list, connection%from_orb(1), connection%to_orb(1), &
-                                              connection%perm)
-                end if
+                hmatel = slater_condon1_excit_ptr(sys, cdet%occ_list, connection%from_orb(1), &
+                                          connection%to_orb(1), connection%perm)
             else
                 ! Forbidden---connection%to_orb(1) is already occupied.
-                if (sys%read_in%comp) then
-                    hmatel%c = cmplx(0.0_p, 0.0_p, p)
-                else
-                    hmatel%r = 0.0_p
-                end if
+                hmatel%c = cmplx(0.0_p, 0.0_p, p)
+                hmatel%r = 0.0_p
                 pgen = 1.0_p ! Avoid any dangerous division by pgen by returning a sane (but cheap) value.
             end if
 
@@ -244,20 +216,12 @@ contains
                 call find_excitation_permutation2(sys%basis%excit_mask, cdet%f, connection)
 
                 ! 5b. Find the connecting matrix element.
-                if (sys%read_in%comp) then
-                    hmatel%c = slater_condon2_periodic_excit_complex(sys, connection%from_orb(1), connection%from_orb(2), &
-                                                      connection%to_orb(1), connection%to_orb(2), connection%perm)
-                else
-                    hmatel%r = slater_condon2_mol_excit(sys, connection%from_orb(1), connection%from_orb(2), &
-                                                      connection%to_orb(1), connection%to_orb(2), connection%perm)
-                end if
+                hmatel = slater_condon2_excit_ptr(sys, connection%from_orb(1), connection%from_orb(2), &
+                                                  connection%to_orb(1), connection%to_orb(2), connection%perm)
             else
                 ! Forbidden---connection%to_orb(2) is already occupied.
-                if (sys%read_in%comp) then
-                    hmatel%c = cmplx(0.0_p, 0.0_p, p)
-                else
-                    hmatel%r = 0.0_p
-                end if
+                hmatel%c = cmplx(0.0_p, 0.0_p, p)
+                hmatel%r = 0.0_p
                 pgen = 1.0_p ! Avoid any dangerous division by pgen by returning a sane (but cheap) value.
             end if
 

@@ -778,7 +778,7 @@ contains
             ! Is excitation symmetry allowed?
             if (sys%basis%basis_fns(excitation%from_orb(1))%Ms == sys%basis%basis_fns(excitation%to_orb(1))%Ms .and. &
                     sys%basis%basis_fns(excitation%from_orb(1))%sym == sys%basis%basis_fns(excitation%to_orb(1))%sym) then
-                hmatel%r = slater_condon1_mol_excit(sys, cdet%occ_list, excitation%from_orb(1), excitation%to_orb(1), &
+                hmatel = slater_condon1_mol_excit(sys, cdet%occ_list, excitation%from_orb(1), excitation%to_orb(1), &
                                                   excitation%perm)
                 estimators%proj_energy = estimators%proj_energy + hmatel%r*pop(1)
             end if
@@ -791,7 +791,7 @@ contains
                 ij_sym = cross_product_basis(sys, excitation%from_orb(1), excitation%from_orb(2))
                 ab_sym = cross_product_basis(sys, excitation%to_orb(1), excitation%to_orb(2))
                 if (ij_sym == ab_sym) then
-                    hmatel%r = slater_condon2_mol_excit(sys, excitation%from_orb(1), excitation%from_orb(2), &
+                    hmatel = slater_condon2_mol_excit(sys, excitation%from_orb(1), excitation%from_orb(2), &
                                                       excitation%to_orb(1), excitation%to_orb(2),     &
                                                       excitation%perm)
                     estimators%proj_energy = estimators%proj_energy + hmatel%r*pop(1)
@@ -862,7 +862,7 @@ contains
             ! Is excitation symmetry allowed?
             if (sys%basis%basis_fns(excitation%from_orb(1))%Ms == sys%basis%basis_fns(excitation%to_orb(1))%Ms .and. &
                     sys%basis%basis_fns(excitation%from_orb(1))%sym == sys%basis%basis_fns(excitation%to_orb(1))%sym) then
-                hmatel%c = slater_condon1_periodic_excit_complex(sys, cdet%occ_list, excitation%from_orb(1), excitation%to_orb(1), &
+                hmatel = slater_condon1_periodic_excit_complex(sys, cdet%occ_list, excitation%from_orb(1), excitation%to_orb(1), &
                                                   excitation%perm)
                 estimators%proj_energy_comp = estimators%proj_energy_comp + hmatel%c*cmplx(pop(1),pop(2),p)
             end if
@@ -875,7 +875,7 @@ contains
                 ij_sym = cross_product_basis(sys, excitation%from_orb(1), excitation%from_orb(2))
                 ab_sym = cross_product_basis(sys, excitation%to_orb(1), excitation%to_orb(2))
                 if (ij_sym == ab_sym) then
-                    hmatel%c = slater_condon2_periodic_excit_complex(sys, excitation%from_orb(1), excitation%from_orb(2), &
+                    hmatel = slater_condon2_periodic_excit_complex(sys, excitation%from_orb(1), excitation%from_orb(2), &
                                                       excitation%to_orb(1), excitation%to_orb(2),     &
                                                       excitation%perm)
                     estimators%proj_energy_comp = estimators%proj_energy_comp + hmatel%c*cmplx(pop(1),pop(2),p)

@@ -289,7 +289,9 @@ type sys_read_in_t
     logical :: comp = .false.
     ! Are we using translational symmetry (for periodic systems).
     logical :: translational_symmetry = .false.
-    ! Data about momentum/translational symmetry.
+    ! Data about momentum/translational symmetry. Some momentum symmetry
+    ! information is also stored within pg_sym to avoid duplication of
+    ! data strunctures.
     type(mom_sym_t) :: mom_sym
 
     ! Size above which to use custom MPI type for broadcasting integer arrays.
@@ -303,11 +305,9 @@ type sys_read_in_t
     ! 2) Symmetry conjugate.
     procedure(i_sym_conj), pointer, nopass :: sym_conj_ptr => null()
 
-    contains
-
 end type sys_read_in_t
 
-! Interfaces for pointers to symmetry-specific functions.
+! Interfaces for pointers to symmetry-specific functions within sys_read_in_t.
 abstract interface
     pure function i_cross_product_sym(read_in, sym_i, sym_j) result (sym_ij)
         import :: sys_read_in_t
@@ -322,6 +322,7 @@ abstract interface
         integer :: rsym
     end function i_sym_conj
 end interface
+
 
 type sys_ringium_t
 
