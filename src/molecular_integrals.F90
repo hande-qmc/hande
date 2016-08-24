@@ -452,7 +452,6 @@ contains
         !    It is also faster to call RHF- or UHF-specific routines.
 
         use system, only: sys_t
-        use point_group_symmetry, only: pg_sym_conj, cross_product_pg_sym, is_gamma_irrep_pg_sym
 
         real(p) :: intgrl
         type(sys_t), intent(in) :: sys
@@ -460,17 +459,15 @@ contains
         integer, intent(in) :: i, j
         integer :: sym
 
-        associate(pg_sym=>sys%read_in%pg_sym, basis_fns=>sys%basis%basis_fns)
-            sym = cross_product_pg_sym(sys%read_in, &
-                    pg_sym_conj(sys%read_in, basis_fns(i)%sym),basis_fns(j)%sym)
-            sym = cross_product_pg_sym(sys%read_in, sym, store%op_sym)
+        sym = sys%read_in%cross_product_sym_ptr(sys%read_in, &
+                sys%read_in%sym_conj_ptr(sys%read_in, sys%basis%basis_fns(i)%sym),sys%basis%basis_fns(j)%sym)
 
-            if (is_gamma_irrep_pg_sym(pg_sym, sym) .and. basis_fns(i)%ms == basis_fns(j)%ms) then
-                intgrl = get_one_body_int_mol_nonzero(store, i, j, basis_fns)
-            else
-                intgrl = 0.0_p
-            end if
-        end associate
+        if (sym == store%op_sym .and. &
+                sys%basis%basis_fns(i)%ms == sys%basis%basis_fns(j)%ms) then
+            intgrl = get_one_body_int_mol_nonzero(store, i, j, sys%basis%basis_fns)
+        else
+            intgrl = 0.0_p
+        end if
     end function get_one_body_int_mol_real
 
     pure function get_one_body_int_mol_complex(store, im_store, i, j, sys) result(intgrl)
