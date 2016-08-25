@@ -462,7 +462,7 @@ contains
         sym = sys%read_in%cross_product_sym_ptr(sys%read_in, &
                 sys%read_in%sym_conj_ptr(sys%read_in, sys%basis%basis_fns(i)%sym),sys%basis%basis_fns(j)%sym)
 
-        if (sym == store%op_sym .and. &
+        if (sym == sys%read_in%sym_conj_ptr(sys%read_in, store%op_sym) .and. &
                 sys%basis%basis_fns(i)%ms == sys%basis%basis_fns(j)%ms) then
             intgrl = get_one_body_int_mol_nonzero(store, i, j, sys%basis%basis_fns)
         else
@@ -497,9 +497,10 @@ contains
 
         ! As dealing with complex plane waves conj(sym_i) = inv(sym_i).
         ! So need:
-        !       conj(sym_i) = inv(sym_j)
-        !             sym_i = sym_j
-        if (sys%basis%basis_fns(i)%sym == sys%basis%basis_fns(j)%sym .and. &
+        !       conj(sym_i) = inv(op_sym cross sym_j)
+        !             sym_i = op_sym cross sym_j
+        if (sys%basis%basis_fns(i)%sym == sys%read_in%cross_product_sym_ptr(sys%read_in, &
+                store%op_sym, sys%basis%basis_fns(j)%sym) .and. &
                 sys%basis%basis_fns(i)%ms == sys%basis%basis_fns(j)%ms) then
             re = get_one_body_int_mol_nonzero(store, i, j, sys%basis%basis_fns)
             im = get_one_body_int_mol_nonzero(im_store, i, j, sys%basis%basis_fns)
