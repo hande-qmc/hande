@@ -354,10 +354,11 @@ contains
         logical, optional, intent(in) :: reduce
 
         integer :: i
-        logical :: exists, reduce_loc
+        logical :: exists
 
 #ifdef PARALLEL
         integer :: max_i, ierr
+        logical :: reduce_loc
 #endif
 
         if (istart >= 0) then
