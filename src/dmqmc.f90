@@ -62,7 +62,6 @@ contains
         use idmqmc, only: set_parent_flag_dmqmc
         use hash_table, only: free_hash_table
         use chem_pot, only: find_chem_pot
-        use energy_evaluation, only: get_sanitized_projected_energy
         use errors, only: stop_all
 
         type(sys_t), intent(inout) :: sys
@@ -218,9 +217,11 @@ contains
             ! this condition is met.
             qs%vary_shift = qs%psip_list%tot_nparticles >= qs%target_particles
 
+            ! DMQMC quasi-newton not functional, so we artificially set this value to 0 which should not affect non-QN calcs.
+            proj_energy_old = 0_p
+
             do ireport = 1, nreport
 
-                proj_energy_old = get_sanitized_projected_energy(qs)
                 call init_dmqmc_report_loop(dmqmc_in%calc_excit_dist, bloom_stats, dmqmc_estimates, qs%spawn_store%rspawn)
                 tot_nparticles_old = qs%psip_list%tot_nparticles
 
