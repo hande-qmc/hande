@@ -746,8 +746,7 @@ contains
         ni = sys%nel
         do i = 1, sys%nel
             ims = (sys%basis%basis_fns(occ_list(i))%Ms+3)/2
-            isym = pg_sym_conj(sys%read_in%pg_sym, &
-                               cross_product_pg_sym(sys%read_in%pg_sym, sys%basis%basis_fns(occ_list(i))%sym, op_sym))
+            isym = cross_product_pg_sym(sys%read_in%pg_sym, sys%basis%basis_fns(occ_list(i))%sym, op_sym)
             if (symunocc(ims,isym) == 0) ni = ni - 1
         end do
 
