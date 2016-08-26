@@ -13,6 +13,8 @@ implicit none
 type pg_sym_t
     ! The totally symmetric representation is given by the null bit string (with some Lz
     ! symmetry which is added later)
+    ! Also used for non-model periodic systems, where it gives the index corresponding to
+    ! the symmetry of gamma sym.
     integer :: gamma_sym = 0
 
     ! The following arrays are used to store information about number of basis functions
@@ -25,18 +27,21 @@ type pg_sym_t
     !
     ! nbasis_sym(i) gives the number of (spin) basis functions in the i-th symmetry,
     ! where i is the bit string describing the irreducible representation.
+    ! Also used for non-model periodic systems in a similar manner.
     integer, allocatable :: nbasis_sym(:) ! (sym0_tot:sym_max_tot)
 
     ! nbasis_sym_spin(1,i) gives the number of spin-down basis functions in the i-th
     ! symmetry where i is the bit string describing the irreducible representation.
     ! Similarly, j=2 gives the analagous quantity for spin-up basis functions.
     ! For RHF calculations nbasis_sym_spin(:,i) = nbasis_sym(i)/2.
+    ! Also used for non-model periodic systems in a similar manner.
     integer, allocatable :: nbasis_sym_spin(:,:) ! (2,sym0_tot:sym_max_tot)
 
     ! sym_spin_basis_fns(:,ims,isym) gives the list of spin functions (ims=1 for
     ! down, ims=2 for up) with symmetry isym.  We merrily waste some memory (not all
     ! symmetries will have the same number of basis functions), so a 0 entry
     ! indicates no more basis functions with the given spin and spatial symmetries.
+    ! Also used for non-model periodic systems in a similar manner.
     integer, allocatable :: sym_spin_basis_fns(:,:,:) ! (max(nbasis_sym_spin),2,sym0_tot:sym_max_tot)
 
     ! The following masks are used to extract the point-group symmetry from the symmetry of a basis fn.
@@ -58,11 +63,7 @@ type pg_sym_t
 end type pg_sym_t
 
 type mom_sym_t
-    ! [review] - JSS: the different behaviour for periodic 'real' (suggest use non-model instead to avoid
-    ! [review] - JSS: confusion with real vs complex) vs other momentum symmetries is unclear.
-    ! [review] - JSS: Is it that gamma_sym can be an index to basis_fns?
-    ! Index of the symmetry corresponding to the Gamma-point, or if periodic real system the
-    ! symmetry corresponding to gamma sym itself.
+    ! Index of the symmetry corresponding to the Gamma-point.
     ! [review] - JSS: what about if the gamma-point isn't included in the grid (e.g. Monkhorst-Pack)?
     ! [reply] - CJCS: Not currently sure about the formatting for this within the FCIDUMP. Will change
     ! [reply] - CJCS: to enable flexibility on gamma-point position and email George to find out if there's
@@ -81,14 +82,19 @@ type mom_sym_t
     integer :: gamma_point(3) = [0, 0, 0]
     ! [review] - FDM: Does this have units?
     ! Dimensions of supercell used in translationally symmetric systems.
-    ! Used only in read_in translationally symmetric systems.
+    ! This corresponds to the periodicity of the kpoint lattice in each
+    ! dimension.
+    ! Used only in non-model translationally symmetric systems.
     integer :: nprop(3) = [0, 0, 0]
 
-    ! [review] - FDM: I think a more detailed description of both propbitlen and nbands would be useful.
     ! Bit length of each symmetry property within isym for translationally
-    ! symmetric systems.
-    ! [review] - JSS: think we need an example of both nprop and propbitlen.
-    ! Used only in read_in translationally symmetric systems.
+    ! symmetric systems. Used to convert information in FCIDUMP into
+    ! descriptions of a systems kpoints.
+    ! For example, when reading in a FCIDUMP we may have an ORBSYM value of
+    ! 1073741825 and PROPBITLEN value of 15. To obtain the kpoint position
+    ! we take the integer value of the 1st-15th bits, then the 16-30th bits,
+    ! then the 31st-45th bits. This gives the position as 1,0,1.
+    ! Used only in non-model translationally symmetric systems.
     integer :: propbitlen = 0
 
 end type mom_sym_t

@@ -12,6 +12,9 @@ contains
 
         ! Initialises all required information for use of basis kpoint symmetry.
 
+        ! Specifically, allocates and sets pg_sym%nbasis_sym,
+        ! pg_sym%nbasis_sym_spin and pg_sym%sym_spin_basis_fns appropriately.
+
         ! In/Out:
         !   sys: system being studied. On output all information about basis function
         !       symmetry in read_in%mom_sym set as required.
@@ -94,7 +97,8 @@ contains
 
     pure function mom_sym_conj(read_in, sym) result(rsym)
 
-        ! Returns symmetry of complex conjugate of provided sym.
+        ! Returns symmetry index of complex conjugate of provided
+        ! sym index.
         ! Since using complex plane waves, e^(ik.r), this will in
         ! general be e^(-ik.r) so just return inverse symmetry.
 
@@ -122,13 +126,17 @@ contains
 
     pure function cross_product_periodic_read_in(read_in, a1, a2) result(prod)
 
+        ! Return the index of the symmetry resulting from the cross
+        ! product of the symmetries of indexes a1 and a2
+
         ! In:
         !   mom_sym: basis function symmetry information.
-        !   a1, a2: symmetries to return cross product of.
+        !   a1, a2: symmetry indexes to return cross product of.
         ! Returns:
-        !   Direct product of symmetries a1 & a2.
+        !   Index of direct product of symmetries a1 & a2.
 
         use system, only: sys_read_in_t
+
         type(sys_read_in_t), intent(in) :: read_in
         integer, intent(in) :: a1, a2
         integer :: prod
@@ -139,17 +147,14 @@ contains
 
 !--- Indexing conversion routines: ---
 
-    ! [review] - FDM: I think this (and the following two) function(s) could do with an expanded explanation.
-    ! [review] - JSS: Some examples would be indeed be welcome.
-
     pure subroutine decompose_trans_sym(isym, propbitlen, abel_sym)
 
-        ! [review] - JSS: I think you'll find it's in accordance with JSS and AJWT efforts in CPMD and VASP...
-        ! [reply] - CJCS: Apologies, I've only come across the NECI implementation!
         ! Takes symmetry index for translationally symmetric wavefunction and
         ! returns representation of three "quantum numbers". In accordance
         ! with approach used in NECI, values stored according to:
         !   isym = 1 + \sum_i sym(i) * 2 ** (propbitlen * (i-1))
+
+        ! For an example of this in practice see symmetry_types.f90
 
         ! In:
         !   isym: symmetry index provided in FCIDUMP file.
@@ -174,16 +179,20 @@ contains
 
     end subroutine decompose_trans_sym
 
-    ! [review] - FDM: I think this module could do with some more linebreaks to
-    ! [review] - FDM: keep formatting consistent (between function names and docstrings and
-    ! [review] - FDM: module use statements and variable declarations for instance.
-    ! [review] - JSS: I agree.  I think I inserted several of these whilst reviewing...
-
     pure function get_kpoint_index(a, nprop) result(ind)
 
         ! Converts from abelian symmetry quantum numbers into unique index.
         ! If we know size of unit cell, can calculate unique index by tiling
         ! first along axis 1, then 2, then 3 in 3 dimensions.
+
+        ! By defining a unique mapping between the kpoint grid and a contiguous
+        ! indexes we can refer to symmetry via only this index and arrays
+        ! specifying the resultant products and conjugates/inverses. This
+        ! enables easy compatibility with much of the pg_sym functionality
+        ! once these arrays are constructed.
+
+        ! As such this functonality is mainly for use when initialising
+        ! symmetry information within read_in%mom_sym.
 
         ! In:
         !   a: array containing representation of kpoint wavevectors.
@@ -203,6 +212,10 @@ contains
     pure subroutine get_kpoint_vector(ind, nprop, a)
 
         ! Get kpoint index, in 3D array, from index defined in get_kpoint_index.
+
+        ! this functonality is mainly for use when initialising symmetry
+        ! information within read_in%mom_sym.
+
         ! In:
         !   ind: index to decode.
         !   nprop: condition of periodic bounary conditions used, ie the

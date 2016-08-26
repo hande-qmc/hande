@@ -114,15 +114,19 @@ contains
             end if
 
         case(read_in)
-            sys%nsym = product(sys%read_in%mom_sym%nprop) ! two spin orbitals per wavevector
+            sys%nsym = product(sys%read_in%mom_sym%nprop)
             sys%sym_max = sys%nsym
             sys%nsym_tot = sys%nsym
             sys%sym_max_tot = sys%sym_max
-            ! Multiple wavevectors in each irrep; constant number per kpoint
-            ! though. Number of wavevectors depends on kpoint grid used, but
-            ! absolute maximum less than 1000 (10x10x10) due to hard coded
-            ! limits in read_in.
-            ! Storing product table and inverse also feasible.
+            ! Multiple wavevectors in each irrep. Number of wavevectors
+            ! depends on kpoint grid used, but absolute maximum less than
+            ! 1000 (10x10x10) due to hard coded limits in read_in.
+
+            ! Feasible to calculate and store product and inverse tables,
+            ! so we do so to avoid repeated calculation and enable abstraction
+            ! of interfaces for various functions. This gives easier sharing of
+            ! logic with pg_sym functionality in eg. excit_gen_mol.f90 or
+            ! molecular _integrals.F90.
             allocate(sys%read_in%mom_sym%sym_table(sys%nsym, sys%nsym), stat=ierr)
             call check_allocate('sym_table',sys%nsym*sys%nsym,ierr)
             allocate(sys%read_in%mom_sym%inv_sym(sys%nsym), stat=ierr)

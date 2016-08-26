@@ -117,7 +117,7 @@ contains
         !  * MS2: spin polarisation.
         !       Must be provided either in FCIDUMP or input file.
         !  * ORBSYM: array containing symmetry label of each orbital.  See
-        !    symmetry notes below and in pg_symmetry.
+        !    symmetry notes below and in pg_symmetry/momentum_sym_read_in.
         !       If not provided in FCIDUMP assume no symmetry in system.
         !  * UHF: true if FCIDUMP file was produced from an unrestricted
         !    Hartree-Fock calculation.  See note on basis indices below.
@@ -174,6 +174,10 @@ contains
         ! irreducible representation spanned by the i-th orbital.
         ! See notes in pg_symmetry about the symmetry label for Abelian point
         ! groups.
+        !
+        ! For periodic systems basis symmetries are defined by their kpoint
+        ! vector. This is converted into a single index within the space of
+        ! allowed kpoints, and this index used during calculations.
 
         ! Only do i/o on root processor.
         if (parent) then
@@ -207,7 +211,6 @@ contains
         call MPI_BCast(propbitlen, 1, MPI_INTEGER, root, MPI_COMM_WORLD, ierr)
         call MPI_BCast(nprop, 3, MPI_INTEGER, root, MPI_COMM_WORLD, ierr)
 #endif
-
 
         ! NOTE: nbasis is currently the number of spin-orbitals in the FCIDUMP file.
         ! This is changed to the number of spin-orbitals active the calculation
