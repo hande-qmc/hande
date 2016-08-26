@@ -1,0 +1,30 @@
+sys = read_in {
+    int_file = "INTDUMP",
+    nel = 10,
+    ms = 0,
+    sym = 0,
+}
+
+ccmc {
+    sys = sys,
+    qmc = {
+        tau = 0.015,
+        rng_seed = 1660032958,
+        init_pop = 500,
+        mc_cycles = 5,
+        nreports =  200,
+        target_population = 70000,
+        state_size = -100,
+        spawned_state_size = -50,
+        quasi_newton = true,
+    },
+    ccmc={
+        linked = true,
+        full_non_composite = true,
+    },
+    reference = {
+        ex_level = 3,
+    },
+}
+
+-- cf the version without quasi_newton which is only stable up to tau=0.001
