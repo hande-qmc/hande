@@ -832,6 +832,7 @@ contains
         use proc_pointers, only: sc0_ptr, op0_ptr
         use checking, only: check_allocate
         use determinants, only: decode_det
+        use determinants, only: sum_sp_eigenvalues_occ_list
 
         type(sys_t), intent(in) :: sys
         type(reference_t), intent(in) :: reference_in
@@ -855,6 +856,7 @@ contains
         call decode_det(sys%basis, reference%hs_f0, reference%hs_occ_list0)
         reference%H00 = sc0_ptr(sys, reference%f0)
         if (doing_calc(hfs_fciqmc_calc)) reference%O00 = op0_ptr(sys, reference%f0)
+        reference%fock_sum = sum_sp_eigenvalues_occ_list(sys, reference%occ_list0)
 
         reference%ex_level = reference_in%ex_level
 
