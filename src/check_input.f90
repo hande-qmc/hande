@@ -321,6 +321,7 @@ contains
             call stop_all(this, "cluster_multispawn_threshold must be positive")
         end if
 
+        ! [review] - JSS: why this restriction?
         if (ccmc_in%density_matrices .and. sys%system /= read_in) then
             call stop_all(this, "CCMC density matrices not implemented for this system type.")
         end if

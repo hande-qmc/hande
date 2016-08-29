@@ -477,6 +477,7 @@ contains
 
         if (ccmc_in%density_matrices) then
             associate(nbasis=>sys%basis%nbasis)
+                ! [review] - JSS: "Can't ..."?
                 if (ccmc_in%linked) call stop_all('do_ccmc','Can''t sample density matrix within linked CCMC')
                 allocate(rdm(nbasis*(nbasis-1)/2,nbasis*(nbasis-1)/2), stat=ierr)
                 call check_allocate('rdm', nbasis**2*(nbasis-1)**2/4, ierr)
@@ -801,6 +802,7 @@ contains
 
             update_tau = bloom_stats%nblooms_curr > 0
 
+            ! [review] - JSS: should this logic be part of the energy estimation?
             if (ccmc_in%density_matrices .and. qs%vary_shift(1)) call calc_rdm_energy(sys, qs%ref, rdm, qs%estimators%rdm_energy, &
                                                                                       qs%estimators%rdm_trace)
 

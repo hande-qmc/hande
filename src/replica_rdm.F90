@@ -1,13 +1,17 @@
 module replica_rdm
 
+! [review] - JSS: this is the only mention of the 1-RDM in this module...
 ! Procedures relating to the accumulation of the 1- and 2-RDM
-! from replica sampling with FCIQMC.
+! from replica sampling with FCIQMC and CCMC.
 
 use const
 
 implicit none
 
 contains
+
+! [review] - JSS: rdm_ind and orbs_from_index overlap with (e.g.) choose_ij_k.
+! [review] - JSS: Perhaps suitable to be moved into utils?
 
     pure function rdm_ind(p, q)
 
@@ -79,6 +83,7 @@ contains
         select case(excit%nexcit)
         case(0)
             ! Diagonal elements.
+            ! [review] - JSS: decode is quite expensive and can be avoided by passing in the det_info_t object...
             call decode_det(sys%basis, f1, occ_list)
             do i = 1, sys%nel
                 do j = i+1, sys%nel
@@ -89,9 +94,13 @@ contains
             end do
         case(1)
             ! Single excitation contributes to one term for each orbital in common
+            ! [review] - JSS: this decode can be avoided by passing in det_info_t and looping over the list of occupied orbitals
+            ! [review] - JSS: and skipping the one which equals excit%from_orb(1). Think that would be faster...
             call decode_det(sys%basis, iand(f1,f2), occ_list)
             do i = 1, sys%nel-1
                 associate(p => excit%to_orb(1), q => excit%from_orb(1), orb => occ_list(i))
+                    ! [review] - JSS: occ_list is ordered and so this can be split into separate loops.
+                    ! [review] - JSS: not sure if that would be faster though...
                     if (orb<p .and. orb<q) then
                         rdm(rdm_ind(orb,p),rdm_ind(orb,q)) = rdm(rdm_ind(orb,p),rdm_ind(orb,q)) + matel
                     else if (orb<p .and. orb>q) then
@@ -232,10 +241,9 @@ contains
         !   nbasis: Number of basis fns
         !   filename: file to write to
         ! In/Out:
+        ! [review] - JSS: and the root processor holds the sum over all processors...
         !   rdm: Sampled two particle reduced density matrix. On exit it has been
         !        normalised and made Hermitian
-
-        use parallel
 
         use parallel
 
