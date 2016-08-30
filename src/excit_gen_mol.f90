@@ -268,12 +268,12 @@ contains
         integer, intent(out) :: i, a
         logical, intent(out) :: allowed_excitation
 
-        integer :: ims, isym, ind
+        integer :: imsa, isyma, ind
 
         ! Does this determinant have any possible single excitations?
         allowed_excitation = .false.
         do i = 1, sys%nel
-            ims = (sys%basis%basis_fns(occ_list(i))%Ms+3)/2
+            imsa = (sys%basis%basis_fns(occ_list(i))%Ms+3)/2
             ! In principle here we should have (Gamma_i* Gamma_op)*.  We'll assume Gamma_op*=Gamma_op
             ! We want
             !   Gamma_totsym = Gamma_<D|o|D_i^a>
@@ -281,9 +281,9 @@ contains
             !                = Gamma_i^-1 Gamma_op Gamma_a
             ! Thus we require
             !   Gamma_a = Gamma_i Gamma_op
-            isym = sys%read_in%cross_product_sym_ptr(sys%read_in, &
+            isyma = sys%read_in%cross_product_sym_ptr(sys%read_in, &
                     sys%basis%basis_fns(occ_list(i))%sym, op_sym)
-            if (symunocc(ims, isym) /= 0) then
+            if (symunocc(imsa, isyma) /= 0) then
                 allowed_excitation = .true.
                 exit
             end if
@@ -298,7 +298,7 @@ contains
                 ! Select an occupied orbital at random.
                 i = occ_list(int(get_rand_close_open(rng)*sys%nel)+1)
                 ! Conserve symmetry (spatial and spin) in selecting a.
-                ims = (sys%basis%basis_fns(i)%Ms+3)/2
+                imsa = (sys%basis%basis_fns(i)%Ms+3)/2
                 ! Assume op_sym is self-conjugate.
                 ! We want
                 !   Gamma_totsym = Gamma_<D|o|D_i^a>
@@ -306,16 +306,16 @@ contains
                 !                = Gamma_i^-1 Gamma_op Gamma_a
                 ! Thus we require
                 !   Gamma_a = Gamma_i Gamma_op
-                isym = sys%read_in%cross_product_sym_ptr(sys%read_in, sys%basis%basis_fns(i)%sym, op_sym)
-                if (symunocc(ims, isym) /= 0) then
+                isyma = sys%read_in%cross_product_sym_ptr(sys%read_in, sys%basis%basis_fns(i)%sym, op_sym)
+                if (symunocc(imsa, isyma) /= 0) then
                     ! Found i.  Now find a...
                         ! It's cheaper to draw additional random numbers than
                         ! decode the full list of unoccupied orbitals,
                         ! especially as the number of basis functions is usually
                         ! much larger than the number of electrons.
                         do
-                            ind = int(sys%read_in%pg_sym%nbasis_sym_spin(ims,isym)*get_rand_close_open(rng))+1
-                            a = sys%read_in%pg_sym%sym_spin_basis_fns(ind,ims,isym)
+                            ind = int(sys%read_in%pg_sym%nbasis_sym_spin(imsa,isyma)*get_rand_close_open(rng))+1
+                            a = sys%read_in%pg_sym%sym_spin_basis_fns(ind,imsa,isyma)
                             if (.not.btest(f(sys%basis%bit_lookup(2,a)), sys%basis%bit_lookup(1,a))) exit
                         end do
                     exit
@@ -571,26 +571,26 @@ contains
         integer, intent(out) :: i, a
         logical, intent(out) :: allowed_excitation
 
-        integer :: ims, isym, ind
+        integer :: imsa, isyma, ind
 
         ! Select an occupied orbital at random.
         i = occ_list(int(get_rand_close_open(rng)*sys%nel)+1)
 
         ! Conserve symmetry (spatial and spin) in selecting a.
-        ims = (sys%basis%basis_fns(i)%Ms+3)/2
+        imsa = (sys%basis%basis_fns(i)%Ms+3)/2
         ! We want
         !   Gamma_totsym = Gamma_<D|o|D_i^a>
         !                = Gamma_D* Gamma_op Gamma_i^-1 Gamma_a Gamma_D
         !                = Gamma_i^-1 Gamma_op Gamma_a
         ! Thus we require
         !   Gamma_a = Gamma_i Gamma_op
-        isym = sys%read_in%cross_product_sym_ptr(sys%read_in, sys%basis%basis_fns(i)%sym,op_sym)
-        ind = int(sys%read_in%pg_sym%nbasis_sym_spin(ims,isym)*get_rand_close_open(rng))+1
-        if (sys%read_in%pg_sym%nbasis_sym_spin(ims,isym) == 0) then
+        isyma = sys%read_in%cross_product_sym_ptr(sys%read_in, sys%basis%basis_fns(i)%sym,op_sym)
+        ind = int(sys%read_in%pg_sym%nbasis_sym_spin(imsa,isyma)*get_rand_close_open(rng))+1
+        if (sys%read_in%pg_sym%nbasis_sym_spin(imsa,isyma) == 0) then
             ! No orbitals with the correct symmetry.
             allowed_excitation = .false.
         else
-            a = sys%read_in%pg_sym%sym_spin_basis_fns(ind,ims,isym)
+            a = sys%read_in%pg_sym%sym_spin_basis_fns(ind,imsa,isyma)
             ! Is a already occupied in the determinant f?  If so, the excitation is
             ! not permitted.
             allowed_excitation = .not.btest(f(sys%basis%bit_lookup(2,a)), sys%basis%bit_lookup(1,a))
@@ -642,7 +642,7 @@ contains
         integer, intent(out) :: a, b
         logical, intent(out) :: allowed_excitation
 
-        integer :: ims, isym, ind, shift, na, fac
+        integer :: imsb, isymb, ind, shift, na, fac
 
         ! Select a virtual orbital at random.
         ! Ensure spin can be conserved...
@@ -687,22 +687,22 @@ contains
         ! Conserve symmetry (spatial and spin) in selecting the fourth orbital.
         ! Ms_i + Ms_j = Ms_a + Ms_b (Ms_i = -1,+1)
         ! => Ms_b = Ms_i + Ms_j - Ms_a
-        ims = (spin-sys%basis%basis_fns(a)%Ms+3)/2
+        imsb = (spin-sys%basis%basis_fns(a)%Ms+3)/2
         ! (sym_i* x sym_j* x sym_a)* = sym_b
         ! (at least for Abelian point groups)
-        isym = sys%read_in%sym_conj_ptr(sys%read_in, &
+        isymb = sys%read_in%sym_conj_ptr(sys%read_in, &
                 sys%read_in%cross_product_sym_ptr(sys%read_in, sym, sys%basis%basis_fns(a)%sym))
 
-        if (sys%read_in%pg_sym%nbasis_sym_spin(ims,isym) == 0) then
+        if (sys%read_in%pg_sym%nbasis_sym_spin(imsb,isymb) == 0) then
             ! No orbitals with the correct symmetry.
             allowed_excitation = .false.
-        else if (spin /= 0 .and. isym == sys%basis%basis_fns(a)%sym .and. &
-                    sys%read_in%pg_sym%nbasis_sym_spin(ims,isym) == 1) then
+        else if (spin /= 0 .and. isymb == sys%basis%basis_fns(a)%sym .and. &
+                    sys%read_in%pg_sym%nbasis_sym_spin(imsb,isymb) == 1) then
             allowed_excitation = .false.
         else
             do
-                ind = int(sys%read_in%pg_sym%nbasis_sym_spin(ims,isym)*get_rand_close_open(rng))+1
-                b = sys%read_in%pg_sym%sym_spin_basis_fns(ind,ims,isym)
+                ind = int(sys%read_in%pg_sym%nbasis_sym_spin(imsb,isymb)*get_rand_close_open(rng))+1
+                b = sys%read_in%pg_sym%sym_spin_basis_fns(ind,imsb,isymb)
                 if (b /= a) exit
             end do
 
@@ -755,7 +755,8 @@ contains
         integer, intent(in) :: op_sym
         integer, intent(in) :: occ_list(:), symunocc(:,sys%sym0_tot:), a
 
-        integer :: ims, isym, i, ni
+        integer :: imsi, isymi, imsa, isyma
+        integer :: i, ni
 
         ! The generation probability, pgen, is:
         !   pgen = p_single p(i) p(a|i)
@@ -765,20 +766,20 @@ contains
 
         ni = sys%nel
         do i = 1, sys%nel
-            ims = (sys%basis%basis_fns(occ_list(i))%Ms+3)/2
+            imsa = (sys%basis%basis_fns(occ_list(i))%Ms+3)/2
             ! We want
             !   Gamma_totsym = Gamma_<D|o|D_i^a>
             !                = Gamma_D* Gamma_op Gamma_i^-1 Gamma_a Gamma_D
             !                = Gamma_i^-1 Gamma_op Gamma_a
             ! Thus we require
             !   Gamma_a = Gamma_i Gamma_op
-            isym = sys%read_in%cross_product_sym_ptr(sys%read_in, sys%basis%basis_fns(occ_list(i))%sym, op_sym)
-            if (symunocc(ims,isym) == 0) ni = ni - 1
+            isyma = sys%read_in%cross_product_sym_ptr(sys%read_in, sys%basis%basis_fns(occ_list(i))%sym, op_sym)
+            if (symunocc(imsa,isyma) == 0) ni = ni - 1
         end do
 
-        ims = (sys%basis%basis_fns(a)%Ms+3)/2
-        isym = sys%basis%basis_fns(a)%sym
-        pgen = 1.0_p/(ni*symunocc(ims,isym))
+        imsi = (sys%basis%basis_fns(a)%Ms+3)/2
+        isymi = sys%basis%basis_fns(a)%sym
+        pgen = 1.0_p/(ni*symunocc(imsi,isymi))
 
     end function calc_pgen_single_mol
 
@@ -934,16 +935,16 @@ contains
         type(sys_t), intent(in) :: sys
         integer, intent(in) :: a
 
-        integer :: ims, isym
+        integer :: imsi, isymi
 
         ! We explicitly reject excitations i->a where a is already
         ! occupied, so the generation probability, pgen, is simple:
         !   pgen = p_single p(i) p(a|i)
         !        = p_single 1/nel 1/nbasis_sym_spin(ms_i, sym_i)
 
-        ims = (sys%basis%basis_fns(a)%Ms+3)/2
-        isym = sys%basis%basis_fns(a)%sym
-        pgen = 1.0_p/(sys%nel*sys%read_in%pg_sym%nbasis_sym_spin(ims,isym))
+        imsi = (sys%basis%basis_fns(a)%Ms+3)/2
+        isymi = sys%basis%basis_fns(a)%sym
+        pgen = 1.0_p/(sys%nel*sys%read_in%pg_sym%nbasis_sym_spin(imsi,isymi))
 
     end function calc_pgen_single_mol_no_renorm
 
