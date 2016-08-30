@@ -275,6 +275,12 @@ contains
         do i = 1, sys%nel
             ims = (sys%basis%basis_fns(occ_list(i))%Ms+3)/2
             ! In principle here we should have (Gamma_i* Gamma_op)*.  We'll assume Gamma_op*=Gamma_op
+            ! We want
+            !   Gamma_totsym = Gamma_<D|o|D_i^a>
+            !                = Gamma_D* Gamma_op Gamma_i^-1 Gamma_a Gamma_D
+            !                = Gamma_i^-1 Gamma_op Gamma_a
+            ! Thus we require
+            !   Gamma_a = Gamma_i Gamma_op
             isym = sys%read_in%cross_product_sym_ptr(sys%read_in, &
                     sys%basis%basis_fns(occ_list(i))%sym, op_sym)
             if (symunocc(ims, isym) /= 0) then
@@ -294,6 +300,12 @@ contains
                 ! Conserve symmetry (spatial and spin) in selecting a.
                 ims = (sys%basis%basis_fns(i)%Ms+3)/2
                 ! Assume op_sym is self-conjugate.
+                ! We want
+                !   Gamma_totsym = Gamma_<D|o|D_i^a>
+                !                = Gamma_D* Gamma_op Gamma_i^-1 Gamma_a Gamma_D
+                !                = Gamma_i^-1 Gamma_op Gamma_a
+                ! Thus we require
+                !   Gamma_a = Gamma_i Gamma_op
                 isym = sys%read_in%cross_product_sym_ptr(sys%read_in, sys%basis%basis_fns(i)%sym, op_sym)
                 if (symunocc(ims, isym) /= 0) then
                     ! Found i.  Now find a...
@@ -383,7 +395,7 @@ contains
         !    sys: system object being studied.
         !    f: bit string representation of the Slater determinant from which
         !        an electron is excited.
-        !    sym: irreducible representation spanned by the (i,j) codensity.
+        !    sym: irreducible representation spanned by the <ij| codensity.
         !    spin: spin label of the selected (i,j) pair.  Set to -2 if both ia
         !        and j are down, +2 if both are up and 0 otherwise.
         !    symunocc: number of unoccupied orbitals of each spin and
@@ -566,6 +578,12 @@ contains
 
         ! Conserve symmetry (spatial and spin) in selecting a.
         ims = (sys%basis%basis_fns(i)%Ms+3)/2
+        ! We want
+        !   Gamma_totsym = Gamma_<D|o|D_i^a>
+        !                = Gamma_D* Gamma_op Gamma_i^-1 Gamma_a Gamma_D
+        !                = Gamma_i^-1 Gamma_op Gamma_a
+        ! Thus we require
+        !   Gamma_a = Gamma_i Gamma_op
         isym = sys%read_in%cross_product_sym_ptr(sys%read_in, sys%basis%basis_fns(i)%sym,op_sym)
         ind = int(sys%read_in%pg_sym%nbasis_sym_spin(ims,isym)*get_rand_close_open(rng))+1
         if (sys%read_in%pg_sym%nbasis_sym_spin(ims,isym) == 0) then
@@ -748,6 +766,12 @@ contains
         ni = sys%nel
         do i = 1, sys%nel
             ims = (sys%basis%basis_fns(occ_list(i))%Ms+3)/2
+            ! We want
+            !   Gamma_totsym = Gamma_<D|o|D_i^a>
+            !                = Gamma_D* Gamma_op Gamma_i^-1 Gamma_a Gamma_D
+            !                = Gamma_i^-1 Gamma_op Gamma_a
+            ! Thus we require
+            !   Gamma_a = Gamma_i Gamma_op
             isym = sys%read_in%cross_product_sym_ptr(sys%read_in, sys%basis%basis_fns(occ_list(i))%sym, op_sym)
             if (symunocc(ims,isym) == 0) ni = ni - 1
         end do
@@ -762,7 +786,7 @@ contains
 
         ! In:
         !    sys: system object being studied.
-        !    ij_sym: irreducible representation spanned by the (i,j) codensity.
+        !    ij_sym: irreducible representation spanned by the <i,j| codensity.
         !        As symmetry is conserved in allowed excitations, this is also
         !        the irreducible representation spanned by the (a, b) codensity.
         !    a, b: unoccupied orbitals into which electrons are excited.
