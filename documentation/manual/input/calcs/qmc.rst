@@ -302,6 +302,7 @@ algorithms and control the core settings in the algorithms.
     .. note::
 
         Not currently available for DMQMC.
+        For semistochastic FCIQMC, determinants in the deterministic space are given weighting 1.
 
 ``quasi_newton_threshold``
     type: float.
