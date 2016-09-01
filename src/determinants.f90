@@ -34,7 +34,10 @@ type det_info_t
     integer :: initiator_flag
     ! \sum_i F_i - F_0, where F_i is the single-particle eigenvalue of the i-th occupied orbital 
     ! and F_0 is the corresponding sum for the reference determinant.
-    real(p) :: fock_sum
+    ! Initialize this as a signalling nan just in case
+    real(p) :: fock_sum = huge(1.0_p) 
+    ! TODO when appropriate more universal fortran support is available, use some sort of NaN above.
+
     ! Pointer (never allocated) to corresponding elements in particle_t%dat array.
     real(p), pointer :: data(:) => NULL()
     ! Pointer to an existing cluster_t variable.  Used *only* in CCMC and so

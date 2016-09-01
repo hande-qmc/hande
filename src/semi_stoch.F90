@@ -534,6 +534,9 @@ contains
                 do i = 1, determ%tot_size
                     ! Over all deterministic states on this process (all columns).
                     do j = 1, determ%sizes(iproc)
+                        ! TODO: Here we implicitly assume that we are not weighting the semi-stochastic
+                        ! space for quasi-newton steps.  It could be included by multipying the element
+                        ! below by the quasi_newton weight for i (and modifying the shift application in determ_proj_*)
                         hmatel = get_hmatel(sys, determ%dets(:,i), dets_this_proc(:,j))
                         diag_elem = i == j + displs(iproc)
                         ! Take the Hartree-Fock energy off the diagonal elements.
@@ -875,6 +878,13 @@ contains
         ! timestep, H is the determinstic Hamiltonian, v is the vector of
         ! deterministic amplitudes and S is the shift. We therefore begin by
         ! setting the vector used to store the output to tau*S*v.
+
+        ! TODO For QuasiNewton instead of tau * H_ii * v_i - tau * S * v_i  
+        !                       (the last bit is done just below)
+        ! we will need tau * (H_ii) * w_i * v_i - tau * (E_proj * (1-w_i) - S) * v_i
+        !                       (where w_i is the quasi_newton weight).
+        ! For now we will simply set w_i = 1 in the semistochastic space.
+         
         determ%vector = qs%tau*qs%shift(1)*determ%vector
 
         ! Perform the multiplication of the deterministic Hamiltonian on the
