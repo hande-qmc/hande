@@ -282,32 +282,36 @@ calcs : list of :class:`pandas.DataFrame`
                 calc.append(data.pop(indx))
                 metadata.pop(indx)
             calcs.append(pd.concat(calc[::-1]))
-
-    else:
-        # Don't have UUID information.
-        # Assume any restarted calculations are in the right order and contiguous
-        # Check concatenating data is at least possibly sane.
-        step = data[0]['iterations'].iloc[-1] - data[0]['iterations'].iloc[-2]
-        prev_iteration = data[0]['iterations'].iloc[-1]
-        calc_type = metadata[0]['calc_type']
-        calcs = []
-        calcs_metadata = [metadata[0]]
-        xcalc = [data[0]]
-        for i in range(1, len(data)):
-            if metadata[i]['calc_type'] != calc_type or \
-                    data[i]['iterations'].iloc[0] - step != prev_iteration or \
-                    data[i]['iterations'].iloc[-1] - data[i]['iterations'].iloc[-2] != step:
-                # Different calculation
-                step = data[i]['iterations'].iloc[-1] - data[i]['iterations'].iloc[-2]
-                calc_type = metadata[i]['calc_type']
-                calcs.append(pd.concat(xcalc))
-                xcalc = [data[i]]
-                calcs_metadata.append(metadata[i])
-            else:
-                # Continuation of same calculation (probably)
-                xcalc.append(data[i])
-            prev_iteration = data[i]['iterations'].iloc[-1]
-        calcs.append(pd.concat(xcalc, ignore_index=True))
+        data = calcs
+        metadata = calcs_metadata
+        del calcs
+        del calcs_metadata
+    
+    # Don't have UUID information in all calculations.
+    # Assume any restarted calculations/set of calculations if sorted by uuids
+    # above are in the right order from here and contiguous.
+    # Check concatenating data is at least possibly sane.
+    step = data[0]['iterations'].iloc[-1] - data[0]['iterations'].iloc[-2]
+    prev_iteration = data[0]['iterations'].iloc[-1]
+    calc_type = metadata[0]['calc_type']
+    calcs = []
+    calcs_metadata = [metadata[0]]
+    xcalc = [data[0]]
+    for i in range(1, len(data)):
+        if metadata[i]['calc_type'] != calc_type or \
+                data[i]['iterations'].iloc[0] - step != prev_iteration or \
+                data[i]['iterations'].iloc[-1] - data[i]['iterations'].iloc[-2] != step:
+            # Different (set of) calculation(s)
+            step = data[i]['iterations'].iloc[-1] - data[i]['iterations'].iloc[-2]
+            calc_type = metadata[i]['calc_type']
+            calcs.append(pd.concat(xcalc))
+            xcalc = [data[i]]
+            calcs_metadata.append(metadata[i])
+        else:
+            # Continuation of same (set of) calculation(s) (probably)
+            xcalc.append(data[i])
+        prev_iteration = data[i]['iterations'].iloc[-1]
+    calcs.append(pd.concat(xcalc, ignore_index=True))
     return calcs_metadata, calcs
 
 def find_starting_iteration(data, md, frac_screen_interval=500,
