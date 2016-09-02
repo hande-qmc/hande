@@ -295,7 +295,7 @@ contains
         use bloom_handler, only: init_bloom_stats_t, bloom_stats_t, bloom_mode_fractionn, &
                                  accumulate_bloom_stats, write_bloom_report, bloom_stats_warning
         use ccmc_data
-        use determinants, only: det_info_t, dealloc_det_info_t
+        use determinants, only: det_info_t, dealloc_det_info_t, sum_sp_eigenvalues_occ_list, sum_sp_eigenvalues_bit_string
         use excitations, only: excit_t, get_excitation_level, get_excitation
         use qmc_io, only: write_qmc_report, write_qmc_report_header
         use qmc, only: init_qmc
@@ -314,6 +314,7 @@ contains
         use check_input, only: check_qmc_opts, check_ccmc_opts
         use json_out, only: json_out_t, json_object_init, json_object_end
         use hamiltonian_data
+        use energy_evaluation, only: get_sanitized_projected_energy
 
         type(sys_t), intent(in) :: sys
         type(qmc_in_t), intent(in) :: qmc_in
@@ -355,7 +356,6 @@ contains
         type(restart_info_t) :: ri, ri_shift
         character(36) :: uuid_restart
         type(estimators_t) :: estimators_cycle
-        real(p) :: proj_energy_cycle, D0_population_cycle
 
         real :: t1, t2
 
@@ -365,7 +365,7 @@ contains
 
         integer(i0) :: fexcit(sys%basis%string_len)
         logical :: seen_D0
-        real(p) :: proj_energy_old
+        real(p) :: D0_population_cycle, proj_energy_cycle, proj_energy_old, dfock
 
         if (parent) then
             write (6,'(1X,"CCMC")')
@@ -474,7 +474,7 @@ contains
         do ireport = 1, qmc_in%nreport
 
             ! Projected energy from last report loop to correct death
-            proj_energy_old = qs%estimators%proj_energy/qs%estimators%D0_population
+            proj_energy_old = get_sanitized_projected_energy(qs)
 
             call init_report_loop(qs, bloom_stats)
 
@@ -663,6 +663,8 @@ contains
                         ! cluster%excitation_level == huge(0) indicates a cluster
                         ! where two excitors share an elementary operator
 
+                        if (qs%quasi_newton) cdet(it)%fock_sum = sum_sp_eigenvalues_occ_list(sys, cdet(it)%occ_list) &
+                                                                    - qs%ref%fock_sum
                         if (cluster(it)%excitation_level /= huge(0)) then
                             ! FCIQMC calculates the projected energy exactly.  To do
                             ! so in CCMC would involve enumerating over all pairs of
@@ -700,7 +702,7 @@ contains
                                 ! a different spawning routine
                                 call linked_spawner_ccmc(rng(it), sys, qmc_in, qs, qs%spawn_store%spawn%cutoff, &
                                           cluster(it), gen_excit_ptr, nspawned, connection, nspawnings_total, &
-                                          fexcit, ldet(it), rdet(it), left_cluster(it), right_cluster(it))
+                                          fexcit, cdet(it), ldet(it), rdet(it), left_cluster(it), right_cluster(it))
                             else
                                 call spawner_ccmc(rng(it), sys, qs, qs%spawn_store%spawn%cutoff, &
                                           ccmc_in%linked, cdet(it), cluster(it), gen_excit_ptr, nspawned, connection, &
@@ -741,12 +743,15 @@ contains
 
                 if (ccmc_in%full_nc .and. qs%psip_list%nstates > 0) then
                     ! Do death exactly and directly for non-composite clusters
-                    !$omp do schedule(dynamic,200) reduction(+:ndeath,nparticles_change)
+                    !$omp do schedule(dynamic,200) private(dfock) reduction(+:ndeath,nparticles_change)
                     do iattempt = 1, qs%psip_list%nstates
                         ! Note we use the (encoded) population directly in stochastic_ccmc_death_nc
                         ! (unlike the stochastic_ccmc_death) to avoid unnecessary decoding/encoding
                         ! steps (cf comments in stochastic_death for FCIQMC).
-                        call stochastic_ccmc_death_nc(rng(it), ccmc_in%linked, qs, iattempt==D0_pos, &
+                        if (qs%quasi_newton) then
+                            dfock = sum_sp_eigenvalues_bit_string(sys, qs%psip_list%states(:,iattempt)) - qs%ref%fock_sum
+                        end if
+                        call stochastic_ccmc_death_nc(rng(it), ccmc_in%linked, sys, qs, iattempt==D0_pos, dfock, &
                                               qs%psip_list%dat(1,iattempt), proj_energy_old, qs%psip_list%pops(1, iattempt), &
                                               nparticles_change(1), ndeath)
                     end do
@@ -979,7 +984,7 @@ contains
         !        output all fields in cluster have been set.
 
         use determinants, only: det_info_t
-        use ccmc_data, only: cluster_t
+        use ccmc_data, only: cluster_t, convert_excitor_to_determinant
         use excitations, only: get_excitation_level
         use dSFMT_interface, only: dSFMT_t, get_rand_close_open
         use qmc_data, only: particle_t
@@ -1304,7 +1309,7 @@ contains
 
         use system, only: sys_t
         use determinants, only: det_info_t
-        use ccmc_data, only: cluster_t
+        use ccmc_data, only: cluster_t, convert_excitor_to_determinant
         use excitations, only: get_excitation_level
         use qmc_data, only: particle_t
         use search, only: binary_search
@@ -1456,12 +1461,12 @@ contains
         !    connection: excitation connection between the current excitor
         !        and the child excitor, on which progeny are spawned.
 
-        use ccmc_data, only: cluster_t
+        use ccmc_data, only: cluster_t, convert_excitor_to_determinant
         use determinants, only: det_info_t
         use dSFMT_interface, only: dSFMT_t
         use excitations, only: excit_t, create_excited_det, get_excitation_level
         use proc_pointers, only: gen_excit_ptr_t
-        use spawning, only: attempt_to_spawn
+        use spawning, only: attempt_to_spawn, calc_qn_spawned_weighting
         use system, only: sys_t
         use const, only: depsilon
         use qmc_data, only: qmc_in_t, qmc_state_t
@@ -1488,6 +1493,7 @@ contains
         integer(i0) :: fexcit(sys%basis%string_len), funlinked(sys%basis%string_len)
         integer :: excitor_sign, excitor_level
         logical :: linked, single_unlinked, allowed_excitation
+        real(p) :: invdiagel
 
         ! 1. Generate random excitation.
         ! Note CCMC is not (yet, if ever) compatible with the 'split' excitation
@@ -1495,28 +1501,32 @@ contains
         ! least for now) is left as an exercise to the interested reader.
         call gen_excit_ptr%full(rng, sys, qs%excit_gen_data, cdet, pgen, connection, hmatel, allowed_excitation)
 
-        if (linked_ccmc .and. allowed_excitation) then
-            ! For Linked Coupled Cluster we reject any spawning where the
-            ! Hamiltonian is not linked to every cluster operator
-            ! The matrix element to be evaluated is not <D_j|H a_i|D0> but <D_j|[H,a_i]|D0>
-            ! (and similarly for composite clusters)
-            if (cluster%nexcitors > 0) then
-                ! Check whether this is an unlinked diagram - if so, the matrix element is 0 and
-                ! no spawning is attempted
-                call linked_excitation(sys%basis, qs%ref%f0, connection, cluster, linked, single_unlinked, funlinked)
-                if (.not. linked) then
-                    hmatel%r = 0.0_p
-                else if (single_unlinked) then
-                    ! Single excitation: need to modify the matrix element
-                    ! Subtract off the matrix element from the cluster without
-                    ! the unlinked a_i operator
-                    hmatel%r = hmatel%r - unlinked_commutator(sys, qs%ref%f0, connection, cluster, cdet%f, funlinked)
+        if (allowed_excitation) then
+            if (linked_ccmc) then
+                ! For Linked Coupled Cluster we reject any spawning where the
+                ! Hamiltonian is not linked to every cluster operator
+                ! The matrix element to be evaluated is not <D_j|H a_i|D0> but <D_j|[H,a_i]|D0>
+                ! (and similarly for composite clusters)
+                if (cluster%nexcitors > 0) then
+                    ! Check whether this is an unlinked diagram - if so, the matrix element is 0 and
+                    ! no spawning is attempted
+                    call linked_excitation(sys%basis, qs%ref%f0, connection, cluster, linked, single_unlinked, funlinked)
+                    if (.not. linked) then
+                        hmatel%r = 0.0_p
+                    else if (single_unlinked) then
+                        ! Single excitation: need to modify the matrix element
+                        ! Subtract off the matrix element from the cluster without
+                        ! the unlinked a_i operator
+                        hmatel%r = hmatel%r - unlinked_commutator(sys, qs%ref%f0, connection, cluster, cdet%f, funlinked)
+                    end if
                 end if
             end if
+            invdiagel = calc_qn_spawned_weighting(sys, qs, cdet%fock_sum, connection)
+        else
+            invdiagel = 1
         end if
-
         ! 2, Apply additional factors.
-        hmatel%r = hmatel%r*cluster%amplitude*cluster%cluster_to_det_sign
+        hmatel%r = hmatel%r*cluster%amplitude*invdiagel*cluster%cluster_to_det_sign
         pgen = pgen*cluster%pselect*nspawnings_total
 
         ! 3. Attempt spawning.
@@ -1554,6 +1564,11 @@ contains
         ! which changes the death probabilities, and also means the shift only
         ! applies on the reference determinant.
 
+        ! Quasinewtwon approaches scale this death step, but doing this naively
+        ! would break population control.  Instead, we split H-S into 
+        ! (H - E_proj) + (E_proj - S).
+        ! The former is scaled and produces the step.  The latter effects the population control.
+
         ! In:
         !    sys: system being studied.
         !    qs: qmc_state_t containing information about the reference and estimators.
@@ -1573,9 +1588,9 @@ contains
         use proc_pointers, only: sc0_ptr, create_spawned_particle_ptr
         use dSFMT_interface, only: dSFMT_t, get_rand_close_open
         use spawn_data, only: spawn_t
+        use spawning, only: calc_qn_weighting
         use system, only: sys_t
         use qmc_data, only: qmc_state_t
-
         type(sys_t), intent(in) :: sys
         type(qmc_state_t), intent(in) :: qs
         logical, intent(in) :: linked_ccmc
@@ -1589,19 +1604,23 @@ contains
         integer(int_p) :: nkill
         type(excit_t), parameter :: null_excit = excit_t( 0, [0,0], [0,0], .false.)
 
+        real(p) :: invdiagel
+
         ! Spawning onto the same excitor so no change in sign due to
         ! a difference in the sign of the determinant formed from applying the
         ! parent excitor to the qs%ref and that formed from applying the
         ! child excitor.
+        invdiagel = calc_qn_weighting(qs, cdet%fock_sum)
         if (linked_ccmc) then
             select case (cluster%nexcitors)
             case(0)
-                ! Death on the reference is unchanged
-                KiiAi = (-qs%shift(1))*cluster%amplitude
+                ! Death on the reference has H_ii - E_HF = 0.
+                KiiAi = (( - proj_energy)*invdiagel + (proj_energy - qs%shift(1)))*cluster%amplitude
             case(1)
                 ! Evaluating the commutator gives
                 ! <D1|[H,a1]|D0> = <D1|H|D1> - <D0|H|D0>
-                KiiAi = (cdet%data(1) + proj_energy - qs%shift(1))*cluster%amplitude
+                ! (this is scaled for quasinewton approaches)
+                KiiAi = (cdet%data(1) * invdiagel + proj_energy - qs%shift(1))*cluster%amplitude
             case(2)
                 ! Evaluate the commutator
                 ! The cluster operators are a1 and a2 (with a1 D0 = D1, a2 D0 = D2,
@@ -1609,6 +1628,8 @@ contains
                 ! <D3|[[H,a1],a2]|D0> = <D3|H|D3> - <D2|H|D2> - <D1|H|D1> + <D0|H|D0>
                 KiiAi = (sc0_ptr(sys, cdet%f) - sc0_ptr(sys, cluster%excitors(1)%f) &
                     - sc0_ptr(sys, cluster%excitors(2)%f) + qs%ref%H00)*cluster%amplitude
+                ! (this is scaled for quasinewton approaches)
+                KiiAi = KiiAi*invdiagel                                             
             case default
                 ! At most two cluster operators can be linked to the diagonal
                 ! part of H so this must be an unlinked cluster
@@ -1617,11 +1638,12 @@ contains
         else
             select case (cluster%nexcitors)
             case(0)
-                KiiAi = (-qs%shift(1))*cluster%amplitude
+                ! Death on the reference has H_ii - E_HF = 0.
+                KiiAi = (( - proj_energy)*invdiagel + (proj_energy - qs%shift(1)))*cluster%amplitude
             case(1)
-                KiiAi = (cdet%data(1) - qs%shift(1))*cluster%amplitude
+                KiiAi = ((cdet%data(1) - proj_energy)*invdiagel + (proj_energy - qs%shift(1)))*cluster%amplitude
             case default
-                KiiAi = (sc0_ptr(sys, cdet%f) - qs%ref%H00 - proj_energy)*cluster%amplitude
+                KiiAi = ((sc0_ptr(sys, cdet%f) - qs%ref%H00) - proj_energy)*invdiagel *cluster%amplitude
             end select
         end if
 
@@ -1667,7 +1689,8 @@ contains
 
     end subroutine stochastic_ccmc_death
 
-    subroutine stochastic_ccmc_death_nc(rng, linked_ccmc, qs, D0, Hii, proj_energy, population, tot_population, ndeath)
+    subroutine stochastic_ccmc_death_nc(rng, linked_ccmc,  sys, qs, isD0, dfock, Hii, proj_energy, population, &
+                                        tot_population, ndeath)
 
         ! Attempt to 'die' (ie create an excip on the current excitor, cdet%f)
         ! with probability
@@ -1692,9 +1715,11 @@ contains
         ! In:
         !    linked_ccmc: if true then only sample linked clusters.
         !    qs: qmc_state_t object. The shift and timestep are used.
-        !    D0: true if the current excip is the null (reference) excitor
-        !    Hii: the diagonal matrix element of the determinant formed by applying the excip to the
-        !       reference
+        !    isD0: true if the current excip is the null (reference) excitor
+        !    dfock: difference in the Fock energy of the determinant formed by applying the excitor to
+        !       the reference and the Fock energy of the reference.
+        !    Hii: the diagonal matrix element of the determinant formed by applying the excitor to the
+        !       reference.
         !    proj_energy: projected energy.  This should be the average value from the last
         !        report loop, not the running total in qs%estimators.
         ! In/Out:
@@ -1705,30 +1730,35 @@ contains
 
         use dSFMT_interface, only: dSFMT_t, get_rand_close_open
         use qmc_data, only: qmc_state_t
+        use system, only: sys_t
+        use spawning, only: calc_qn_weighting
 
+        type(sys_t), intent(in) :: sys
         logical, intent(in) :: linked_ccmc
         type(qmc_state_t), intent(in) :: qs
-        logical, intent(in) :: D0
-        real(p), intent(in) :: Hii, proj_energy
+        logical, intent(in) :: isD0
+        real(p), intent(in) :: Hii, dfock, proj_energy
         type(dSFMT_t), intent(inout) :: rng
         integer(int_p), intent(inout) :: population, ndeath
         real(dp), intent(inout) :: tot_population
 
         real(p) :: pdeath, KiiAi
         integer(int_p) :: nkill, old_pop
+        real(p) :: invdiagel
 
         ! Spawning onto the same excitor so no change in sign due to
         ! a difference in the sign of the determinant formed from applying the
         ! parent excitor to the reference and that formed from applying the
         ! child excitor.
 
-        if (D0) then
-            KiiAi = (-qs%shift(1))*population
+        invdiagel = calc_qn_weighting(qs, dfock)
+        if (isD0) then
+            KiiAi = ((- proj_energy)*invdiagel + (proj_energy - qs%shift(1)))*population
         else
             if (linked_ccmc) then
-                KiiAi = (Hii + proj_energy - qs%shift(1))*population
+                KiiAi = (Hii*invdiagel + proj_energy - qs%shift(1))*population
             else
-                KiiAi = (Hii - qs%shift(1))*population
+                KiiAi = ((Hii - proj_energy)*invdiagel + (proj_energy - qs%shift(1)))*population
             end if
         end if
 
@@ -1881,123 +1911,6 @@ contains
 
     end subroutine collapse_cluster
 
-    pure subroutine convert_excitor_to_determinant(excitor, excitor_level, excitor_sign, f)
-
-        ! We usually consider an excitor as a bit string representation of the
-        ! determinant formed by applying the excitor (a group of annihilation
-        ! and creation operators) to the reference determinant; indeed the
-        ! determinant form is required when constructing Hamiltonian matrix
-        ! elements.  However, the resulting determinant might actually contain
-        ! a sign change, which needs to be absorbed into the (signed) population
-        ! of excips on the excitor.
-
-        ! This results from the fact that a determinant, |D>, is defined as:
-        !   |D> = a^+_i a^+_j ... a^+_k |0>,
-        ! where |0> is the vacuum, a^+_i creates an electron in the i-th
-        ! orbital, i<j<...<k and |0> is the vacuum.  An excitor is defined as
-        !   t_{ij...k}^{ab...c} = a^+_a a^+_b ... a^+_c a_k ... a_j a_i
-        ! where i<j<...<k and a<b<...<c.  (This definition is somewhat
-        ! arbitrary; the key thing is to be consistent.)  Hence applying an
-        ! excitor to the reference might result in a change of sign, i.e.
-        ! t_{ij}^{ab} |D_0> = -|D_{ij}^{ab}>.  As a more concrete example,
-        ! consider a set of spin states (as the extension to fermions is
-        ! irrelevant to the argument), with the reference:
-        !   |D_0> = | 1 2 3 >
-        ! and the excitor
-        !   t_{13}^{58}
-        ! Thus, using |0> to denote the vacuum:
-        !   t_{13}^{58} | 1 2 3 > = + a^+_5 a^+_8 a_3 a_1 a^+_1 a^+_2 a^+_3 |0>
-        !                         = + a^+_5 a^+_8 a_3 a^+_2 a^+_3 |0>
-        !                         = - a^+_5 a^+_8 a_3 a^+_3 a^+_2 |0>
-        !                         = - a^+_5 a^+_8 a^+_2 |0>
-        !                         = + a^+_5 a^+_2 a^+_8 |0>
-        !                         = - a^+_2 a^+_5 a^+_8 |0>
-        !                         = - | 2 5 8 >
-        ! Similarly
-        !   t_{12}^{58} | 1 2 3 > = + a^+_5 a^+_8 a_2 a_1 a^+_1 a^+_2 a^+_3 |0>
-        !                         = + a^+_5 a^+_8 a_2 a^+_2 a^+_3 |0>
-        !                         = + a^+_5 a^+_8 a^+_3 |0>
-        !                         = - a^+_5 a^+_3 a^+_8 |0>
-        !                         = + a^+_3 a^+_5 a^+_8 |0>
-        !                         = + | 3 5 8 >
-
-        ! This potential sign change must be taken into account; we do so by
-        ! absorbing the sign into the signed population of excips on the
-        ! excitor.
-
-        ! Essentially taken from Alex Thom's original implementation.
-
-        ! In:
-        !    excitor: bit string of the Slater determinant formed by applying
-        !        the excitor to the reference determinant.
-        !    excitor_level: excitation level, relative to the determinant f,
-        !        of the excitor.  Equal to the number of
-        !        annihilation (or indeed creation) operators in the excitor.
-        !    f: bit string of determinant to which excitor is
-        !       applied to generate a new determinant.
-        ! Out:
-        !    excitor_sign: sign due to applying the excitor to the
-        !       determinant f to form a Slater determinant, i.e. < D_i | a_i D_f >,
-        !       which is +1 or -1, where D_i is the determinant formed from
-        !       applying the cluster of excitors, a_i, to D_f
-
-        use const, only: i0_end
-
-        integer(i0), intent(in) :: excitor(:)
-        integer, intent(in) :: excitor_level
-        integer, intent(inout) :: excitor_sign
-        integer(i0), intent(in) :: f(:)
-
-        integer(i0) :: excitation(size(excitor))
-        integer :: ibasis, ibit, ncreation, nannihilation
-
-        ! Bits involved in the excitation from the reference determinant.
-        excitation = ieor(f, excitor)
-
-        nannihilation = excitor_level
-        ncreation = excitor_level
-
-        excitor_sign = 1
-
-        ! Obtain sign change by (implicitly) constructing the determinant formed
-        ! by applying the excitor to the reference determinant.
-        do ibasis = 1, size(excitor)
-            do ibit = 0, i0_end
-                if (btest(f(ibasis),ibit)) then
-                    ! Occupied orbital in reference.
-                    if (btest(excitation(ibasis),ibit)) then
-                        ! Orbital excited from...annihilate electron.
-                        ! This amounts to one fewer operator in the cluster through
-                        ! which the other creation operators in the determinant must
-                        ! permute.
-                        nannihilation = nannihilation - 1
-                    else
-                        ! Orbital is occupied in the reference and once the
-                        ! excitor has been applied.
-                        ! Permute the corresponding creation operator through
-                        ! the remaining creation and annihilation operators of
-                        ! the excitor (which operate on orbitals with a higher
-                        ! index than the current orbital).
-                        ! If the permutation is odd, then we incur a sign
-                        ! change.
-                        if (mod(nannihilation+ncreation,2) == 1) &
-                            excitor_sign = -excitor_sign
-                    end if
-                else if (btest(excitation(ibasis),ibit)) then
-                    ! Orbital excited to...create electron.
-                    ! This amounts to one fewer operator in the cluster through
-                    ! which the creation operators in the determinant must
-                    ! permute.
-                    ! Note due to definition of the excitor, it is guaranteed
-                    ! that this is created in the correct place, ie there are no
-                    ! other operators in the excitor it needs to be interchanged
-                    ! with.
-                    ncreation = ncreation - 1
-                end if
-            end do
-        end do
-
-    end subroutine convert_excitor_to_determinant
 
     pure subroutine linked_excitation(basis, f0, connection, cluster, linked, single_unlinked, excitor)
 
@@ -2111,7 +2024,7 @@ contains
 
         use system, only: sys_t
         use excitations, only: excit_t, create_excited_det, get_excitation_level
-        use ccmc_data, only: cluster_t
+        use ccmc_data, only: cluster_t, convert_excitor_to_determinant
         use hamiltonian, only: get_hmatel
         use hamiltonian_data
 
@@ -2184,7 +2097,7 @@ contains
     end function unlinked_commutator
 
     subroutine linked_spawner_ccmc(rng, sys, qmc_in, qs, spawn_cutoff, cluster, gen_excit_ptr, nspawn, &
-                            connection, nspawnings_total, fexcit, ldet, rdet, left_cluster, right_cluster)
+                            connection, nspawnings_total, fexcit, cdet, ldet, rdet, left_cluster, right_cluster)
 
         ! When sampling e^-T H e^T, clusters need to be considered where two
         ! operators excite from/to the same orbital (one in the "left cluster"
@@ -2223,12 +2136,12 @@ contains
         !    fexcit: the bitstring of the determinant to spawn on to (as it is
         !        not necessarily easy to get from the connection)
 
-        use ccmc_data, only: cluster_t
-        use determinants, only: det_info_t
+        use ccmc_data, only: cluster_t, convert_excitor_to_determinant
+        use determinants, only: det_info_t, sum_sp_eigenvalues_bit_string
         use dSFMT_interface, only: dSFMT_t
         use excitations, only: excit_t, create_excited_det, get_excitation_level
         use proc_pointers, only: gen_excit_ptr_t, decoder_ptr
-        use spawning, only: attempt_to_spawn
+        use spawning, only: attempt_to_spawn, calc_qn_weighting, calc_qn_spawned_weighting
         use system, only: sys_t
         use const, only: depsilon
         use hamiltonian, only: get_hmatel
@@ -2248,6 +2161,7 @@ contains
         type(excit_t), intent(out) :: connection
         integer(i0), intent(out) :: fexcit(sys%basis%string_len)
         type(det_info_t), intent(inout) :: ldet, rdet
+        type(det_info_t), intent(in) :: cdet
         type(cluster_t), intent(inout) :: left_cluster, right_cluster
 
         ! We incorporate the sign of the amplitude into the Hamiltonian matrix
@@ -2262,7 +2176,7 @@ contains
         logical :: allowed, sign_change, linked, single_unlinked
         integer(i0) :: new_det(sys%basis%string_len)
         integer(i0) :: excitor(sys%basis%string_len)
-
+        real(p) :: invdiagel, fock_sum
 
         ! 1) Choose an order for the excitors
         ! The number of clusters with disallowed partitions is relatively small (20% in
@@ -2361,20 +2275,22 @@ contains
             ! apply additional factors to pgen
             pgen = pgen*cluster%pselect*nspawnings_total/npartitions
 
+            fock_sum = sum_sp_eigenvalues_bit_string(sys, fexcit)
+            invdiagel = calc_qn_weighting(qs, fock_sum - qs%ref%fock_sum)
             ! correct hmatel for cluster amplitude
-            hmatel%r = hmatel%r*cluster%amplitude
+            hmatel%r = hmatel%r * invdiagel * cluster%amplitude
             excitor_level = get_excitation_level(fexcit, qs%ref%f0)
             call convert_excitor_to_determinant(fexcit, excitor_level, excitor_sign, qs%ref%f0)
             if (excitor_sign < 0) hmatel%r = -hmatel%r
 
             ! 4) Attempt to spawn
             nspawn = attempt_to_spawn(rng, qs%tau, spawn_cutoff, qs%psip_list%pop_real_factor, hmatel%r, pgen, parent_sign)
-
         else
             nspawn = 0
         end if
 
     end subroutine linked_spawner_ccmc
+
 
     subroutine partition_cluster(rng, sys, f0, cluster, left_cluster, right_cluster, ppart, &
                                  ldet, rdet, allowed, sign_change, part_number)

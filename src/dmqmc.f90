@@ -63,6 +63,7 @@ contains
         use idmqmc, only: set_parent_flag_dmqmc
         use hash_table, only: free_hash_table
         use chem_pot, only: find_chem_pot
+        use errors, only: stop_all
 
         type(sys_t), intent(inout) :: sys
         type(qmc_in_t), intent(in) :: qmc_in
@@ -101,6 +102,7 @@ contains
         type(qmc_in_t) :: qmc_in_loc
         type(dmqmc_in_t) :: dmqmc_in_loc
         character(36) :: uuid_restart
+        real(p) :: proj_energy_old
 
         if (parent) then
             write (6,'(1X,"DMQMC")')
@@ -111,6 +113,7 @@ contains
             restarting = present(qmc_state_restart) .or. restart_in%read_restart
             call check_qmc_opts(qmc_in, .not. present(qmc_state_restart), restarting)
             call check_dmqmc_opts(sys, dmqmc_in)
+            if (qmc_in%quasi_newton) call stop_all('do_dmqmc', 'Quasi-Newton not implemented for DMQMC.')
         end if
 
         ! Initialise data.
@@ -215,6 +218,9 @@ contains
             ! this condition is met.
             qs%vary_shift = qs%psip_list%tot_nparticles >= qs%target_particles
 
+            ! DMQMC quasi-newton not functional, so we artificially set this value to 0 which should not affect non-QN calcs.
+            proj_energy_old = 0_p
+
             do ireport = 1, nreport
 
                 call init_dmqmc_report_loop(dmqmc_in%calc_excit_dist, bloom_stats, dmqmc_estimates, qs%spawn_store%rspawn)
@@ -245,6 +251,9 @@ contains
                         ! to refer to the correct element in the density matrix.
                         call decoder_ptr(sys, cdet1%f, cdet1)
                         call decoder_ptr(sys, cdet2%f, cdet2)
+                        ! Quasi-Newton not yet implemented -- see also stochastic_death call.
+                        cdet1%fock_sum = 1.0_p
+                        cdet2%fock_sum = 1.0_p
 
                         ! If using multiple symmetry sectors then find the
                         ! symmetry labels of this particular det.
@@ -319,8 +328,9 @@ contains
                             ! when running a DMQMC algorithm, stores the average
                             ! of the two diagonal elements corresponding to the
                             ! two indicies of the density matrix.
-                            call stochastic_death(rng, qs, qs%psip_list%dat(ireplica,idet), qs%shift(ireplica), &
-                                           qs%psip_list%pops(ireplica,idet), qs%psip_list%nparticles(ireplica), ndeath)
+                            call stochastic_death(rng, sys, qs, cdet1%fock_sum, qs%psip_list%dat(ireplica,idet), proj_energy_old, &
+                                                  qs%shift(ireplica), qs%psip_list%pops(ireplica,idet), &
+                                                  qs%psip_list%nparticles(ireplica), ndeath)
                         end do
                     end do
 

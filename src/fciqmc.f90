@@ -40,7 +40,7 @@ contains
 
         use bloom_handler, only: init_bloom_stats_t, bloom_mode_fixedn, bloom_stats_warning, &
                                  bloom_stats_t, accumulate_bloom_stats, write_bloom_report
-        use determinants, only: det_info_t, alloc_det_info_t, dealloc_det_info_t
+        use determinants, only: det_info_t, alloc_det_info_t, dealloc_det_info_t, sum_sp_eigenvalues_occ_list
         use excitations, only: excit_t, create_excited_det, get_excitation
         use annihilation, only: direct_annihilation, direct_annihilation_received_list, &
                                 direct_annihilation_spawned_list, deterministic_annihilation
@@ -66,6 +66,7 @@ contains
         use reference_determinant, only: reference_t, reference_t_json
         use check_input, only: check_qmc_opts, check_fciqmc_opts, check_load_bal_opts
         use hamiltonian_data
+        use energy_evaluation, only: update_proj_energy_mol_complex, get_sanitized_projected_energy
 
         type(sys_t), intent(in) :: sys
         type(qmc_in_t), intent(in) :: qmc_in
@@ -107,6 +108,8 @@ contains
         real :: t1, t2
 
         logical :: update_tau, restarting
+
+        real(p) :: proj_energy_old
 
         if (parent) then
             write (6,'(1X,"FCIQMC")')
@@ -188,6 +191,8 @@ contains
 
         do ireport = 1, qmc_in%nreport
 
+            proj_energy_old = get_sanitized_projected_energy(qs)
+
             ! Zero report cycle quantities.
             call init_report_loop(qs, bloom_stats)
 
@@ -215,6 +220,7 @@ contains
                     cdet%data => qs%psip_list%dat(:,idet)
 
                     call decoder_ptr(sys, cdet%f, cdet)
+                    if (qs%quasi_newton) cdet%fock_sum = sum_sp_eigenvalues_occ_list(sys, cdet%occ_list) - qs%ref%fock_sum
 
                     ! Extract the real sign from the encoded sign.
                     do ispace = 1, qs%psip_list%nspaces
@@ -284,11 +290,11 @@ contains
 
                     ! Clone or die.
                     if (.not. determ_parent) then
-                        call stochastic_death(rng, qs, qs%psip_list%dat(1,idet), qs%shift(1), &
+                        call stochastic_death(rng, sys, qs, cdet%fock_sum, qs%psip_list%dat(1,idet),proj_energy_old, qs%shift(1), &
                                        qs%psip_list%pops(1,idet), qs%psip_list%nparticles(1), ndeath)
                         if (sys%read_in%comp) then
-                            call stochastic_death(rng, qs, qs%psip_list%dat(1,idet), qs%shift(1), &
-                                           qs%psip_list%pops(2,idet), qs%psip_list%nparticles(2), ndeath_im)
+                            call stochastic_death(rng, sys,  qs, cdet%fock_sum, qs%psip_list%dat(1,idet), proj_energy_old, &
+                                            qs%shift(1), qs%psip_list%pops(2,idet), qs%psip_list%nparticles(2), ndeath_im)
                             ndeath = abs(ndeath) + abs(ndeath_im)
                             ndeath_im = 0_int_p
                         end if
@@ -299,7 +305,7 @@ contains
                 associate(pl=>qs%psip_list, spawn=>qs%spawn_store%spawn, spawn_recv=>qs%spawn_store%spawn_recv)
                     if (fciqmc_in%non_blocking_comm) then
                         call receive_spawned_walkers(spawn_recv, req_data_s)
-                        call evolve_spawned_walkers(sys, qmc_in, qs, spawn_recv, spawn, cdet, rng, ndeath)
+                        call evolve_spawned_walkers(sys, qmc_in, qs, spawn_recv, spawn, cdet, rng, ndeath, proj_energy_old)
                         call direct_annihilation_received_list(sys, rng, qs%ref, annihilation_flags, pl, spawn_recv)
                         ! Need to add walkers which have potentially moved processor to the spawned walker list.
                         if (qs%par_info%load%needed) then
@@ -393,7 +399,7 @@ contains
 
     end subroutine do_fciqmc
 
-    subroutine evolve_spawned_walkers(sys, qmc_in, qs, spawn_recv, spawn_to_send, cdet, rng, ndeath)
+    subroutine evolve_spawned_walkers(sys, qmc_in, qs, spawn_recv, spawn_to_send, cdet, rng, ndeath, proj_energy_old)
 
         ! Evolve spawned list of walkers one time step.
         ! Used for non-blocking communications.
@@ -401,6 +407,8 @@ contains
         ! In:
         !   sys: system being studied.
         !   qmc_in: input options relating to QMC methods.
+        !   proj_energy_old: an estimate of the projected energy to allow for
+        !                     unbiased QN death
         ! In/Out:
         !   qs: qmc_state_t containing information about the reference det and estimators.
         !   spawn: spawn_t object containing walkers spawned onto this processor during previous time step.
@@ -411,7 +419,7 @@ contains
 
         use proc_pointers, only: sc0_ptr
         use death, only: stochastic_death
-        use determinants, only: det_info_t
+        use determinants, only: det_info_t, sum_sp_eigenvalues_occ_list
         use dSFMT_interface, only: dSFMT_t
         use excitations, only: excit_t, get_excitation
         use ifciqmc
@@ -428,6 +436,7 @@ contains
         type(dSFMT_t), intent(inout) :: rng
         type(det_info_t), intent(inout) :: cdet
         integer(int_p), intent(inout) :: ndeath
+        real(p), intent(in) :: proj_energy_old
 
         type(excit_t) :: connection
         type(hmatel_t) :: hmatel
@@ -450,6 +459,7 @@ contains
             cdet%data(1) = sc0_ptr(sys, cdet%f) - qs%ref%H00
 
             call decoder_ptr(sys, cdet%f, cdet)
+            if (qs%quasi_newton) cdet%fock_sum = sum_sp_eigenvalues_occ_list(sys, cdet%occ_list) - qs%ref%fock_sum
 
             ! It is much easier to evaluate the projected energy at the
             ! start of the i-FCIQMC cycle than at the end, as we're
@@ -491,7 +501,8 @@ contains
 
                 ! Clone or die.
                 ! list_pop is meaningless as particle_t%nparticles is updated upon annihilation.
-                call stochastic_death(rng, qs, cdet%data(1), qs%shift(1), int_pop(ispace), list_pop, ndeath)
+                call stochastic_death(rng, sys, qs, cdet%fock_sum, cdet%data(1), proj_energy_old,  qs%shift(1), int_pop(ispace), &
+                                      list_pop, ndeath)
 
                 ! Update population of walkers on current determinant.
                 spawn_recv%sdata(spawn_recv%bit_str_len+1:spawn_recv%bit_str_len+spawn_recv%ntypes, idet) = int_pop

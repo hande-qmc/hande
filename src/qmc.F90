@@ -144,7 +144,9 @@ contains
         call init_estimators(sys, qmc_in, restart_in%read_restart.and.fciqmc_in_loc%non_blocking_comm, qmc_state)
         if (present(qmc_state_restart)) call dealloc_excit_gen_data_t(qmc_state_restart%excit_gen_data)
         call init_excit_gen(sys, qmc_in, qmc_state%ref, qmc_state%excit_gen_data)
-
+        qmc_state%quasi_newton = qmc_in%quasi_newton
+        qmc_state%quasi_newton_threshold = qmc_in%quasi_newton_threshold
+        qmc_state%quasi_newton_value = qmc_in%quasi_newton_value
     end subroutine init_qmc
 
     subroutine init_proc_pointers(sys, qmc_in, reference, dmqmc_in, fciqmc_in)
@@ -771,7 +773,7 @@ contains
         use calc, only: doing_calc, hfs_fciqmc_calc
         use reference_determinant, only: reference_t, set_reference_det
         use checking, only: check_allocate
-        use determinants, only: encode_det
+        use determinants, only: encode_det, sum_sp_eigenvalues_occ_list
 
         type(sys_t), intent(in) :: sys
         type(reference_t), intent(in) :: reference_in
@@ -811,6 +813,7 @@ contains
         ! Energy of reference determinant.
         reference%H00 = sc0_ptr(sys, reference%f0)
         if (doing_calc(hfs_fciqmc_calc)) reference%O00 = op0_ptr(sys, reference%f0)
+        reference%fock_sum = sum_sp_eigenvalues_occ_list(sys, reference%occ_list0)
 
     end subroutine init_reference
 
@@ -832,6 +835,7 @@ contains
         use proc_pointers, only: sc0_ptr, op0_ptr
         use checking, only: check_allocate
         use determinants, only: decode_det
+        use determinants, only: sum_sp_eigenvalues_occ_list
 
         type(sys_t), intent(in) :: sys
         type(reference_t), intent(in) :: reference_in
@@ -855,6 +859,7 @@ contains
         call decode_det(sys%basis, reference%hs_f0, reference%hs_occ_list0)
         reference%H00 = sc0_ptr(sys, reference%f0)
         if (doing_calc(hfs_fciqmc_calc)) reference%O00 = op0_ptr(sys, reference%f0)
+        reference%fock_sum = sum_sp_eigenvalues_occ_list(sys, reference%occ_list0)
 
         reference%ex_level = reference_in%ex_level
 

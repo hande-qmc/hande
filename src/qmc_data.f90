@@ -141,6 +141,16 @@ type qmc_in_t
     ! If true then allow the use of MPI barrier calls.
     logical :: use_mpi_barriers = .false.
 
+    ! If true, use a quasiNewton step
+    logical :: quasi_newton = .false.
+
+    ! The lower threshold for a quasiNewton enegy difference
+    real(p) :: quasi_newton_threshold = 1.e-5_p
+
+    ! The value to set the quasiNewton energy difference to if lower than the
+    ! threshold
+    real(p) :: quasi_newton_value = 1_p
+
 end type qmc_in_t
 
 type fciqmc_in_t
@@ -226,6 +236,8 @@ type ccmc_in_t
     logical :: linked = .false.
     ! If true, vary shift to control reference, not total, population
     logical :: vary_shift_reference = .false.
+    ! If true, use a quasiNewton step
+    logical :: qn = .false.
 end type ccmc_in_t
 
 type restart_in_t
@@ -536,6 +548,13 @@ type qmc_state_t
     real(p) :: target_particles = huge(1.0_p)
     ! Stores information used by the excitation generator
     type(excit_gen_data_t) :: excit_gen_data
+    ! If true, use a quasiNewton step
+    logical :: quasi_newton = .false.
+    ! The lower threshold for a quasiNewton enegy difference
+    real(p) :: quasi_newton_threshold = 1.e-5_p
+    ! The value to set the quasiNewton energy difference to if lower than the
+    ! threshold
+    real(p) :: quasi_newton_value = 1_p
     ! Value of beta which we propagate the density matrix to. Only used for DMQMC.
     real(p) :: target_beta = 1.0
     ! Convenience handles.
@@ -622,6 +641,9 @@ contains
         call json_write_key(js, 'quadrature_initiator', qmc%quadrature_initiator)
         call json_write_key(js, 'ncycles', qmc%ncycles)
         call json_write_key(js, 'nreport', qmc%nreport)
+        call json_write_key(js, 'quasi_newton', qmc%quasi_newton)
+        call json_write_key(js, 'quasi_newton_threshold', qmc%quasi_newton_threshold)
+        call json_write_key(js, 'quasi_newton_value', qmc%quasi_newton_value)
         call json_write_key(js, 'use_mpi_barriers', qmc%use_mpi_barriers, .true.)
         call json_object_end(js, terminal)
 

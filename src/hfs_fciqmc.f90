@@ -46,7 +46,7 @@ contains
 
         use annihilation, only: direct_annihilation
         use death, only: stochastic_death, stochastic_hf_cloning
-        use determinants, only:det_info_t, alloc_det_info_t, dealloc_det_info_t
+        use determinants, only:det_info_t, alloc_det_info_t, dealloc_det_info_t, sum_sp_eigenvalues_occ_list
         use energy_evaluation, only: update_energy_estimators
         use excitations, only: excit_t, get_excitation
         use qmc_io, only: write_qmc_report_header, write_qmc_report
@@ -62,6 +62,7 @@ contains
         use qmc_data, only: qmc_in_t, restart_in_t, load_bal_in_t, qmc_state_t, annihilation_flags_t
         use reference_determinant, only: reference_t
         use hamiltonian_data
+        use energy_evaluation, only: get_sanitized_projected_energy
 
         type(sys_t), intent(in) :: sys
         type(qmc_in_t), intent(in) :: qmc_in
@@ -90,6 +91,8 @@ contains
         logical :: soft_exit, comms_found, error
 
         real :: t1, t2
+        
+        real(p) :: proj_energy_old
 
         if (parent) then
             write (6,'(1X,"FCIQMC (with Hellmann-Feynman sampling")')
@@ -124,6 +127,7 @@ contains
 
         do ireport = 1, qmc_in%nreport
 
+            proj_energy_old = get_sanitized_projected_energy(qs)
             ! Zero report cycle quantities.
             qs%estimators%proj_energy = 0.0_p
             qs%estimators%proj_hf_O_hpsip = 0.0_p
@@ -155,6 +159,7 @@ contains
                     cdet%data => qs%psip_list%dat(:,idet)
 
                     call decoder_ptr(sys, cdet%f, cdet)
+                    if (qs%quasi_newton) cdet%fock_sum = sum_sp_eigenvalues_occ_list(sys, cdet%occ_list) - qs%ref%fock_sum
 
                     ! Extract the real sign from the encoded sign.
                     real_population = real(qs%psip_list%pops(1,idet),p)/qs%psip_list%pop_real_factor
@@ -254,7 +259,7 @@ contains
                     ! created don't get an additional death/cloning opportunity.
 
                     ! Clone or die: Hellmann--Feynman walkers.
-                    call stochastic_death(rng, qs, qs%psip_list%dat(1,idet), qs%shift(1), &
+                    call stochastic_death(rng, sys, qs, cdet%fock_sum, qs%psip_list%dat(2,idet), proj_energy_old, qs%shift(2), &
                                           qs%psip_list%pops(2,idet), qs%psip_list%nparticles(2), ndeath)
 
                     ! Clone Hellmann--Feynman walkers from Hamiltonian walkers.
@@ -270,7 +275,7 @@ contains
                     end if
 
                     ! Clone or die: Hamiltonian walkers.
-                    call stochastic_death(rng, qs, qs%psip_list%dat(1,idet), qs%shift(1), &
+                    call stochastic_death(rng, sys, qs, cdet%fock_sum, qs%psip_list%dat(1,idet), proj_energy_old, qs%shift(1), &
                                           qs%psip_list%pops(1,idet), qs%psip_list%nparticles(1), ndeath)
 
                 end do

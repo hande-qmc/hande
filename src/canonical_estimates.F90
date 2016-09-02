@@ -69,7 +69,7 @@ contains
 
         use hamiltonian_ueg, only: exchange_energy_ueg
         use hamiltonian_molecular, only: double_counting_correction_mol
-        use determinants, only: sum_sp_eigenvalues
+        use determinants, only: sum_sp_eigenvalues_occ_list
         use interact, only: calc_interact, check_comms_file
         use proc_pointers, only: energy_diff_ptr
         use errors, only: stop_all
@@ -191,7 +191,7 @@ contains
                 if (ngen /= sys%nel) cycle
                 local_estimators(naccept_idx) = local_estimators(naccept_idx) + 1
                 ! Calculate Kinetic and Hartree-Fock exchange energies.
-                energy(ke_idx) = sum_sp_eigenvalues(sys, occ_list)
+                energy(ke_idx) = sum_sp_eigenvalues_occ_list(sys, occ_list)
                 ! Add in the core contribution here for molecular systems.
                 energy(pe_idx) = energy_diff_ptr(sys, occ_list)
                 ! We generate determinants with probability p(i1,..,iN) =

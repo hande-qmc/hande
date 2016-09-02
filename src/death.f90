@@ -8,7 +8,7 @@ implicit none
 
 contains
 
-    subroutine stochastic_death(rng, qs, Kii, loc_shift, population, tot_population, ndeath)
+    subroutine stochastic_death(rng, sys, qs, dfock, Kii, proj_energy, loc_shift, population, tot_population, ndeath)
 
         ! Particles will attempt to die with probability
         !  p_d = tau*M_ii
@@ -18,9 +18,13 @@ contains
         !  K_ii =  < D_i | H | D_i > - E_0.
 
         ! In:
+        !    sys: the system
         !    qs: qmc_state_t object. tau and dmqmc_factor are used.
+        !    dfock: \sum_i (f_i - f^0_i), where f_i (f^0_i) is the Fock eigenvalue of the i-th orbital occupied in D_i (D_0).
         !    Kii: < D_i | H | D_i > - E_0, where D_i is the determinant on
         !         which the particles reside.
+        !    proj_energy: projected energy.  This should be the average value from the last
+        !        report loop, not the running total in qs%estimators.
         !    loc_shift: The value of the shift to be used in the death step.
         ! In/Out:
         !    rng: random number generator.
@@ -39,8 +43,11 @@ contains
 
         use dSFMT_interface, only: dSFMT_t, get_rand_close_open
         use qmc_data, only: qmc_state_t
+        use system, only: sys_t
+        use spawning, only: calc_qn_weighting
 
-        real(p), intent(in) :: Kii
+        type(sys_t), intent(in) :: sys
+        real(p), intent(in) :: Kii, dfock, proj_energy
         type(qmc_state_t), intent(in) :: qs
         type(dSFMT_t), intent(inout) :: rng
         real(p), intent(in) :: loc_shift
@@ -50,6 +57,7 @@ contains
         real(p) :: pd
         real(dp) :: r
         integer(int_p) :: kill, old_population
+        real(p) :: weight
 
         ! Optimisation: the number of particles on a given determinant can die
         ! stochastically...
@@ -67,7 +75,8 @@ contains
         ! has a factor of 1/2 included for convenience already, for conveniece elsewhere.
         ! Hence we have to multiply by an extra factor of 2 to account for the extra 1/2 in tau.
 
-        pd = qs%tau*(Kii-loc_shift)*qs%dmqmc_factor
+        weight = calc_qn_weighting(qs, dfock)
+        pd = qs%tau*((Kii-proj_energy)*weight+(proj_energy-loc_shift))*qs%dmqmc_factor
 
         ! This will be the same for all particles on the determinant, so we can
         ! attempt all deaths in one shot.

@@ -332,7 +332,7 @@ contains
         !    H0_energy: sum of hf eigenvalues
 
         use system, only: sys_t
-        use determinants, only: decode_det, sum_sp_eigenvalues
+        use determinants, only: decode_det, sum_sp_eigenvalues_occ_list
 
         type(sys_t), intent(in) :: sys
         integer(i0), intent(in) :: f(sys%basis%string_len)
@@ -342,7 +342,7 @@ contains
 
         call decode_det(sys%basis, f, occ_list)
 
-        hf_energy = sum_sp_eigenvalues(sys, occ_list) + sys%read_in%Ecore
+        hf_energy = sum_sp_eigenvalues_occ_list(sys, occ_list) + sys%read_in%Ecore
 
     end function hf_hamiltonian_energy_mol
 
@@ -359,7 +359,7 @@ contains
         !    i.e. <D|H|D> - \sum_{i_occ} epsilon_i.
 
         use system, only: sys_t
-        use determinants, only: sum_sp_eigenvalues
+        use determinants, only: sum_sp_eigenvalues_occ_list
 
         type(sys_t), intent(in) :: sys
         integer, intent(in) :: occ_list(:)
@@ -367,7 +367,7 @@ contains
         real(p) :: sc0, sum_hf, double_count
 
         sc0 = slater_condon0_mol_orb_list(sys, occ_list)
-        sum_hf = sum_sp_eigenvalues(sys, occ_list) + sys%read_in%Ecore
+        sum_hf = sum_sp_eigenvalues_occ_list(sys, occ_list) + sys%read_in%Ecore
 
         double_count = sc0 - sum_hf
 

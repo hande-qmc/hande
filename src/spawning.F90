@@ -96,6 +96,9 @@ contains
         ! 1. Generate random excitation.
         call gen_excit_ptr%full(rng, sys, qmc_state%excit_gen_data, cdet, pgen, connection, hmatel, allowed)
 
+        if (allowed) then
+           hmatel%r = hmatel%r * calc_qn_spawned_weighting(sys, qmc_state, cdet%fock_sum, connection)
+        end if
         ! 2. Attempt spawning.
         nspawn = attempt_to_spawn(rng, qmc_state%tau, spawn_cutoff, real_factor, hmatel%r, pgen, parent_sign)
 
@@ -173,6 +176,10 @@ contains
 
         ! 2. Transform Hamiltonian matrix element by trial function.
         call gen_excit_ptr%trial_fn(sys, cdet, connection, weights, hmatel%r)
+
+        if (allowed) then
+           hmatel%r = hmatel%r * calc_qn_spawned_weighting(sys, qmc_state, cdet%fock_sum, connection)
+        end if
 
         ! 3. Attempt spawning.
         nspawn = attempt_to_spawn(rng, qmc_state%tau, spawn_cutoff, real_factor, hmatel%r, pgen, parent_sign)
@@ -260,6 +267,10 @@ contains
         ! 1. Generate enough of a random excitation to determinant the
         ! generation probability and |H_ij|.
         call gen_excit_ptr%init(rng, sys, qmc_state%excit_gen_data, cdet, pgen, connection, abs_hmatel, allowed)
+
+        if (allowed) then
+           abs_hmatel%r = abs_hmatel%r * calc_qn_spawned_weighting(sys, qmc_state, cdet%fock_sum, connection)
+        end if
 
         ! 2. Attempt spawning.
         nspawn = stochastic_round_spawned_particle(spawn_cutoff, real_factor*qmc_state%tau*abs_hmatel%r/pgen, rng)
@@ -357,6 +368,11 @@ contains
 
         ! 2. Transform Hamiltonian matrix element by trial function.
         call gen_excit_ptr%trial_fn(sys, cdet, connection, weights, tilde_hmatel%r)
+
+        if (allowed) then
+           tilde_hmatel%r = tilde_hmatel%r * calc_qn_spawned_weighting(sys, qmc_state, cdet%fock_sum, connection)
+        end if
+
 
         ! 3. Attempt spawning.
         nspawn = stochastic_round_spawned_particle(spawn_cutoff, real_factor*qmc_state%tau*abs(tilde_hmatel%r)/pgen, rng)
@@ -510,6 +526,10 @@ contains
             call stop_all('spawn_complex', 'Attempting to use complex spawning in non-read_in system. Not currently implemented.')
         end if
         call gen_excit_mol_complex(rng, sys, qmc_state%excit_gen_data, cdet, pgen, connection, hmatel, allowed)
+
+        if (allowed) then
+           hmatel%r = hmatel%r * calc_qn_spawned_weighting(sys, qmc_state, cdet%fock_sum, connection)
+        end if
 
         ! 2. Attempt spawning.
         nspawn = attempt_to_spawn(rng, qmc_state%tau, spawn_cutoff, real_factor, real(hmatel%c, p), pgen, parent_sign)
@@ -1817,5 +1837,84 @@ contains
         end associate
 
     end subroutine create_spawned_particle_rdm
+
+    pure function calc_qn_spawned_weighting(sys, qs, spawner_dfock, connection) result(weight)
+
+        ! The step in FCIQMC-like methods can be modified by a non-identity transformation
+        ! to weight the particles being created to take a quasi-Newton step.
+        ! This routine determines the weight to apply to the the resulting particle from this.
+
+        ! In:
+        !   sys:    specifies the system
+        !   qs:     specifies the qmc_state to determine if weighting is needed
+        !   spawner_dfock: \sum_i (f_i - f^0_i) where f_i (f^0_i) is the Fock eigenvalue of the i-th occupied
+        !       orbital in the spawner (reference) determinant.
+        !   connection: the connection (excitation) from the spawner required to make the actual spawnee.
+        !
+        ! Returns:
+        !   weight: The weighting required.
+
+        ! At present this uses the weight is 1/(F(spawnee)-F(reference)).
+        ! If the difference in Fock energy between the reference and the spawnee is less than
+        ! qs%quasi_newton_threshold then the weight 1/(qs%quasi_newton_value) is used instead.
+    
+        use qmc_data, only:  qmc_state_t
+        use system, only: sys_t
+        use determinants, only: decode_det, det_info_t
+        use excitations, only: excit_t, create_excited_det, get_excitation_level
+
+        real(p) :: weight
+        type(sys_t), intent(in) :: sys
+        type(qmc_state_t), intent(in) :: qs
+        real(p), intent(in) :: spawner_dfock
+        type(excit_t), intent(in) :: connection
+        real(p) :: diagel
+        integer :: iel
+
+        if (qs%quasi_newton) then
+            diagel = spawner_dfock
+            associate(basis_fns=>sys%basis%basis_fns, to=>connection%to_orb, from=>connection%from_orb)
+                do iel = 1, connection%nexcit
+                    diagel = diagel + basis_fns(to(iel))%sp_eigv - basis_fns(from(iel))%sp_eigv
+                end do
+            end associate
+            if (diagel < qs%quasi_newton_threshold) diagel = qs%quasi_newton_value
+            weight = 1.0_p / diagel
+        else
+            weight = 1.0_p
+        end if
+
+    end function calc_qn_spawned_weighting
+
+    pure function calc_qn_weighting(qs, dfock) result(weight)
+
+        ! In:
+        !    qs: qmc_state_t object containing Quasi-Newton parameters.
+        !    dfock: difference in the Fock energy of a given determinant and the reference, i.e. \sum_i (f_i - f^0_i).
+        ! Returns:
+        !     Weighting for the determinant.
+
+        ! If Quasi-Newton is disabled, the weight is unity.  Otherwise, we use a simple weight 1/dfock.  If dfock is
+        ! less than quasi_newton_threshold, 1/quasi_newton_value is used instead.
+
+        ! See also calc_qn_spawned_weighting.
+
+        use qmc_data, only:  qmc_state_t
+
+        real(p) :: weight
+        type(qmc_state_t), intent(in) :: qs
+        real(p), intent(in) :: dfock
+
+        if (qs%quasi_newton) then
+            if (dfock < qs%quasi_newton_threshold) then
+                weight = 1.0_p / qs%quasi_newton_value
+            else
+                weight = 1.0_p / dfock
+            end if
+        else
+            weight = 1.0_p
+        end if
+
+    end function calc_qn_weighting
 
 end module spawning
