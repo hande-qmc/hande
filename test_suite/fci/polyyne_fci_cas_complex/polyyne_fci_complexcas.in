@@ -1,0 +1,12 @@
+sys = read_in {
+    int_file = "FCIDUMP",
+    nel = 24,
+    ms = 0,
+    sym = 0,
+    CAS = {8,8},
+    complex = true,
+}
+
+fci {
+    sys = sys,
+}
