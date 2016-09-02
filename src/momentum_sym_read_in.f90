@@ -1,6 +1,62 @@
 module momentum_sym_read_in
 
 ! Module for handing crystal momentum symmetry routines unique to real, periodic systems.
+!
+! We provide here a very brief overview of the theory underlying the general area
+! of solid state electronic structure, as well as a more thorough description of
+! the approach taken to impement this within HANDE.
+!
+! Momentum symmetry for non-model periodic systems
+! ------------------------------------------------
+!
+! When performing calculations within a periodic system we use a basis constructed
+! of Bloch functions with periodicity dictated by the underlying Bravais lattice.
+! These functions satisfy the Bloch condition given by
+!
+!           Psi_k (x + t_n) = e^{i k.t_n} \Psi_k(x)     (1)
+!
+! where t_n is an integer multiple of the underlying lattice periodicity and k is
+! a vector describing the behaviour of the function under translation. This gives
+! a general functional form of
+!
+!           Psi(r) =  e^{i k.r} u(r)               (2)
+!
+! where u(r) is function with the periodicity of the lattice.
+!
+! Defining a reciprocal (kspace) lattice in the usual way, we have certain
+! allowed values of k and can relate all point within the space to those within
+! the first Brillouin zone.
+!
+! Utilising expression (2) and the properties of periodic functions and their
+! integrals we obtain a neccessary but not sufficient condition that an integral
+! between such functions be nonzero- that the sum of all kvectors be 0 (modulo
+! the periodicity of the lattice). Bearing in mind the effect of conjugation and
+! lattice periodicity, this condition is:
+!
+!           <i|a> = 0           if                  k_a - k_i /= 0
+!           <ij|ab> = 0         if      k_a + k_b - k_i - k_j /= 0
+!
+! We can use this knowledge of integral values to reduce integral storage costs and
+! improve our excitation generation.
+!
+! Implementation within HANDE
+! ---------------------------
+!
+! To implement this in a way compatible with the existing symmetry framework within
+! hande requires a mapping of all possible kpoint values onto a single (preferably
+! contiguous) index. This minimises code duplication between momentum and pg sym.
+! This mapping is defined within get_kpoint_index, with the reverse mapping defined
+! in get_kpoint_vector. This index is what will be utilised to within our
+! calculations, enabling us to avoid actually manipulating kpoint vectors.
+!
+! With our indexing defined we can then store our inverses and cross products within
+! lookup tables (sys%read_in%mom_sym%inv_sym and sys%read_in%mom_sym%sym_table
+! respectively) initialised within init_momentum_symmetry within momentum_symmetry.f90
+! and obtain the relevant values from a lookup rather than calculation. The size of
+! these lookup tables scales as N_sym and N_sym^2 respectively, so for a hypothetical
+! 10x10x10 kpoint grid we would only require storing 1 million integer values within
+! sym_table. At this point we would have much bigger issues with our two-body integral
+! storage and application of our actual method to the system.
 
 use system
 
@@ -181,7 +237,7 @@ contains
 
     pure function get_kpoint_index(a, nprop) result(ind)
 
-        ! Converts from abelian symmetry quantum numbers into unique index.
+        ! Converts from kpoint symmetry vector into unique index.
         ! If we know size of unit cell, can calculate unique index by tiling
         ! first along axis 1, then 2, then 3 in 3 dimensions.
 
