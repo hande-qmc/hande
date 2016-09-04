@@ -575,7 +575,7 @@ contains
 
     end subroutine redistribute_particles
 
-    subroutine redistribute_semi_stoch_t(sys, reference, annihilation_flags, psip_list, spawn, determ)
+    subroutine redistribute_semi_stoch_t(sys, qs, reference, annihilation_flags, psip_list, spawn, determ)
 
         ! Recreate the semi_stoch_t object (if a non-empty space is in use).
         ! This requires sending deterministic states to their new processes
@@ -584,6 +584,7 @@ contains
 
         ! In:
         !    sys: system being studied.
+        !    qs: qmc_state_t object containing quasinewton parameters
         !    reference: information on the current reference determinant.
         !    annihilation_flags: calculation specific annihilation flags.
         !    psip_list: list of particles and their locations.
@@ -598,11 +599,12 @@ contains
         use spawn_data, only: spawn_t
         use system, only: sys_t
         use qmc_data, only: semi_stoch_t, empty_determ_space, reuse_determ_space, particle_t
-        use qmc_data, only: annihilation_flags_t, semi_stoch_in_t
+        use qmc_data, only: annihilation_flags_t, semi_stoch_in_t, qmc_state_t
         use reference_determinant, only: reference_t
 
         type(sys_t), intent(in) :: sys
         type(annihilation_flags_t), intent(in) :: annihilation_flags
+        type(qmc_state_t), intent(in) :: qs
         type(reference_t), intent(in) :: reference
         type(particle_t), intent(inout) :: psip_list
         type(spawn_t), intent(in) :: spawn
@@ -621,7 +623,7 @@ contains
             call dealloc_semi_stoch_t(determ, keep_dets=.true.)
             ! Recreate the semi_stoch_t instance, by reusing the deterministic
             ! space already generated, but with states on their new processes.
-            call init_semi_stoch_t(determ, ss_in_new, sys, psip_list, reference, annihilation_flags, spawn, .false.)
+            call init_semi_stoch_t(determ, ss_in_new, sys, qs, psip_list, reference, annihilation_flags, spawn, .false.)
         end if
 
     end subroutine redistribute_semi_stoch_t
@@ -838,7 +840,7 @@ contains
 
     end subroutine init_mc_cycle
 
-    subroutine load_balancing_wrapper(sys, reference, load_bal_in, annihilation_flags, nb_comm, rng, psip_list, spawn, &
+    subroutine load_balancing_wrapper(sys, qs, reference, load_bal_in, annihilation_flags, nb_comm, rng, psip_list, spawn, &
                                       par_info, determ)
 
         ! In:
@@ -868,13 +870,14 @@ contains
 
         use system, only: sys_t
         use qmc_data, only: load_bal_in_t, annihilation_flags_t, particle_t
-        use qmc_data, only: parallel_t, semi_stoch_t
+        use qmc_data, only: parallel_t, semi_stoch_t, qmc_state_t
         use spawn_data, only: spawn_t
         use dSFMT_interface, only: dSFMT_t
         use load_balancing, only: do_load_balancing
         use reference_determinant, only: reference_t
 
         type(sys_t), intent(in) :: sys
+        type(qmc_state_t), intent(in) :: qs
         type(reference_t), intent(in) :: reference
         type(load_bal_in_t), intent(in) :: load_bal_in
         type(annihilation_flags_t), intent(in) :: annihilation_flags
@@ -887,7 +890,7 @@ contains
 
         if (par_info%load%needed) then
             call do_load_balancing(psip_list, spawn, par_info, load_bal_in)
-            call redistribute_load_balancing_dets(rng, sys, reference, determ, psip_list, spawn, annihilation_flags)
+            call redistribute_load_balancing_dets(rng, sys, qs, reference, determ, psip_list, spawn, annihilation_flags)
             ! If using non-blocking communications we still need this flag to
             ! be set.
             if (.not. nb_comm) par_info%load%needed = .false.
@@ -1106,7 +1109,7 @@ contains
 
     end subroutine rescale_tau
 
-    subroutine redistribute_load_balancing_dets(rng, sys, reference, determ, psip_list, spawn, annihilation_flags)
+    subroutine redistribute_load_balancing_dets(rng, sys, qs, reference, determ, psip_list, spawn, annihilation_flags)
 
         ! When doing load balancing we need to redistribute chosen sections of
         ! main list to be sent to their new processors. This is a wrapper which
@@ -1135,13 +1138,14 @@ contains
 
         use annihilation, only: direct_annihilation
         use dSFMT_interface, only: dSFMT_t
-        use qmc_data, only: semi_stoch_t, particle_t, annihilation_flags_t
+        use qmc_data, only: semi_stoch_t, particle_t, annihilation_flags_t, qmc_state_t
         use reference_determinant, only: reference_t
         use spawn_data, only: spawn_t
         use system, only: sys_t
 
         type(dSFMT_t), intent(inout) :: rng
         type(sys_t), intent(in) :: sys
+        type(qmc_state_t), intent(in) :: qs
         type(reference_t), intent(in) :: reference
         type(semi_stoch_t), optional, intent(inout) :: determ
         type(particle_t), intent(inout) :: psip_list
@@ -1157,7 +1161,7 @@ contains
         call direct_annihilation(sys, rng, reference, annihilation_flags, psip_list, spawn)
         spawn%head = spawn%head_start
 
-        if (present(determ)) call redistribute_semi_stoch_t(sys, reference, annihilation_flags, psip_list, spawn, determ)
+        if (present(determ)) call redistribute_semi_stoch_t(sys, qs, reference, annihilation_flags, psip_list, spawn, determ)
 
     end subroutine redistribute_load_balancing_dets
 

@@ -127,7 +127,7 @@ contains
 
     end subroutine init_semi_stoch_t_flags
 
-    subroutine init_semi_stoch_t(determ, ss_in, sys, psip_list, reference, annihilation_flags, &
+    subroutine init_semi_stoch_t(determ, ss_in, sys, qs, psip_list, reference, annihilation_flags, &
                                  spawn, mpi_barriers)
 
         ! Create a semi_stoch_t object which holds all of the necessary
@@ -140,6 +140,7 @@ contains
         ! In:
         !    ss_in: Type containing various input semi-stochastic input options.
         !    sys: system being studied
+        !    qs: qmc_state_t containing information about the quasinewton parameter.
         !    reference: current reference determinant.
         !    annihilation_flags: calculation specific annihilation flags.
         !    spawn: spawn_t object to which deterministic spawning will occur.
@@ -148,7 +149,7 @@ contains
 
         use checking, only: check_allocate, check_deallocate
         use qmc_data, only: empty_determ_space, high_pop_determ_space, read_determ_space, reuse_determ_space, ci_determ_space, &
-                            semi_stoch_separate_annihilation, particle_t, annihilation_flags_t, semi_stoch_in_t
+                            semi_stoch_separate_annihilation, particle_t, annihilation_flags_t, semi_stoch_in_t, qmc_state_t
         use parallel
         use sort, only: qsort
         use spawn_data, only: spawn_t
@@ -159,6 +160,7 @@ contains
         type(semi_stoch_t), intent(inout) :: determ
         type(semi_stoch_in_t), intent(in) :: ss_in
         type(sys_t), intent(in) :: sys
+        type(qmc_state_t), intent(in) :: qs
         type(particle_t), intent(inout) :: psip_list
         type(reference_t), intent(in) :: reference
         type(annihilation_flags_t), intent(in) :: annihilation_flags
@@ -273,6 +275,12 @@ contains
         call check_allocate('determ%vector', determ%sizes(iproc), ierr)
         determ%vector = 0.0_p
 
+        ! Vector to hold the residual weighting for each determinant 
+        ! for quasinewton propagation.
+        allocate(determ%one_minus_weight(determ%sizes(iproc)), stat=ierr)
+        call check_allocate('determ%one_minus_weight', determ%sizes(iproc), ierr)
+        determ%one_minus_weight = 0.0_p
+
         ! Vector to hold deterministic amplitudes from all processes.
         if (determ%projection_mode == semi_stoch_separate_annihilation) then
             allocate(determ%full_vector(determ%tot_size), stat=ierr)
@@ -311,7 +319,8 @@ contains
 
         call create_determ_hash_table(determ, print_info)
 
-        call create_determ_hamil(determ, sys, reference%H00, displs, dets_this_proc, print_info)
+
+        call create_determ_hamil(determ, sys, qs, reference%H00, displs, dets_this_proc, print_info)
 
         ! All deterministic states on this processor are always stored in
         ! particle_t%states, even if they have a population of zero, so they are
@@ -483,7 +492,7 @@ contains
 
     end subroutine create_determ_hash_table
 
-    subroutine create_determ_hamil(determ, sys, H00, displs, dets_this_proc, print_info)
+    subroutine create_determ_hamil(determ, sys, qs, H00, displs, dets_this_proc, print_info)
 
         ! In/Out:
         !    determ: Deterministic space being used. On input, determ%sizes,
@@ -491,6 +500,7 @@ contains
         !        output, determ%hamil will have been created.
         ! In:
         !    sys: system being studied
+        !    qs: qmc_state_t containing information about the quasinewton parameter.
         !    H00: energy of the reference determinant (subtracted from diagonal elements)
         !    displs: displs(i) holds the cumulative sum of the number of
         !        deterministic states belonging to processor numbers 0 to i-1.
@@ -505,9 +515,13 @@ contains
         use system, only: sys_t
         use utils, only: int_fmt
         use hamiltonian_data
+        use determinants, only: sum_sp_eigenvalues_bit_string
+        use qmc_data, only: qmc_state_t
+        use spawning, only: calc_qn_weighting
 
         type(semi_stoch_t), intent(inout) :: determ
         type(sys_t), intent(in) :: sys
+        type(qmc_state_t), intent(in) :: qs
         real(p), intent(in) :: H00
         integer, intent(in) :: displs(0:nprocs-1)
         integer(i0), intent(in) :: dets_this_proc(:,:)
@@ -518,6 +532,7 @@ contains
         type(hmatel_t) :: hmatel
         real :: t1, t2
         logical :: diag_elem
+        real(p) :: fock_sum, weight
 #ifdef PARALLEL
         integer :: ierr
 #endif
@@ -532,15 +547,20 @@ contains
                 nnz = 0
                 ! Over all deterministic states on all processes (all rows).
                 do i = 1, determ%tot_size
+                    fock_sum = sum_sp_eigenvalues_bit_string(sys, determ%dets(:,i))
+                    weight = calc_qn_weighting(qs, fock_sum - qs%ref%fock_sum)
                     ! Over all deterministic states on this process (all columns).
                     do j = 1, determ%sizes(iproc)
                         ! TODO: Here we implicitly assume that we are not weighting the semi-stochastic
                         ! space for quasi-newton steps.  It could be included by multipying the element
                         ! below by the quasi_newton weight for i (and modifying the shift application in determ_proj_*)
-                        hmatel = get_hmatel(sys, determ%dets(:,i), dets_this_proc(:,j))
+                        hmatel = weight * get_hmatel(sys, determ%dets(:,i), dets_this_proc(:,j))
                         diag_elem = i == j + displs(iproc)
                         ! Take the Hartree-Fock energy off the diagonal elements.
-                        if (diag_elem) hmatel%r = hmatel%r - H00
+                        if (diag_elem) then
+                           hmatel%r = hmatel%r - H00
+                           determ%one_minus_weight(j) = 1._p - weight
+                        endif
                         if (abs(hmatel%r) > depsilon) then
                             nnz = nnz + 1
                             if (imode == 2) then
@@ -797,6 +817,11 @@ contains
                     call csrpgemv_single_row(determ%hamil, determ%vector, row, out_vec)
                     ! For states on this processor (proc == iproc), add the
                     ! contribution from the shift.
+                    ! TODO For QuasiNewton instead of tau * H_ii * v_i - tau * S * v_i  
+                    !                       (the last bit is done just below)
+                    ! we will need tau * (H_ii) * w_i * v_i - tau * (E_proj * (1-w_i) - S) * v_i
+                    !                       (where w_i is the quasi_newton weight).
+                    ! For now we will simply set w_i = 1 in the semistochastic space.
                     out_vec = -out_vec + qs%shift(1)*determ%vector(i)
                     out_vec = out_vec*qs%tau
                     call create_spawned_particle_determ(determ%dets(:,row), out_vec, qs%psip_list%pop_real_factor, proc, &

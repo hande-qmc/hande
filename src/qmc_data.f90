@@ -377,6 +377,11 @@ type semi_stoch_t
     ! If separate_annihilation is not true then this array will remain
     ! deallocated.
     real(p), allocatable :: full_vector(:) ! tot_size
+    ! For the quasi_newton approach, each determinant in the deterministic space
+    ! takes a weight for being spawned to.  This is included in the Hamiltonian
+    ! directly, but must also be used when modifying the shift.  1-w_i is stored
+    ! for all determinants on this processor in the deterministic space.
+    real(p), allocatable :: one_minus_weight(:) ! sizes(iproc)
     ! If separate_annihilation is true then this array will hold the indices
     ! of the deterministic states in the main list. This prevents having to
     ! search the whole of the main list for the deterministic states.
