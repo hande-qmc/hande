@@ -372,6 +372,10 @@ contains
             deallocate(determ%vector, stat=ierr)
             call check_deallocate('determ%vector', ierr)
         end if
+        if (allocated(determ%one_minus_weight)) then
+            deallocate(determ%one_minus_weight, stat=ierr)
+            call check_deallocate('determ%one_minus_weight', ierr)
+        end if
         if (allocated(determ%full_vector)) then
             deallocate(determ%full_vector, stat=ierr)
             call check_deallocate('determ%full_vector', ierr)
