@@ -284,9 +284,6 @@ calcs : list of :class:`pandas.DataFrame`
             calcs.append(pd.concat(calc[::-1]))
         data = calcs
         metadata = calcs_metadata
-# [review] - AJWT: Why do you need to del these? Garbage collection should work things out automagically.
-        del calcs
-        del calcs_metadata
     
     # Don't have UUID information in all calculations.
     # Assume any restarted calculations/set of calculations if sorted by uuids
