@@ -537,6 +537,17 @@ contains
         integer :: ierr
 #endif
 
+        ! Start by evaluating the QN weights.  We store them in one_minus_weight
+        ! and then modify one_minus_weight to be 1-w after calculating H
+        if (qs%quasi_newton) then
+            do j = 1, determ%sizes(iproc)
+                fock_sum = sum_sp_eigenvalues_bit_string(sys, dets_this_proc(:,j))
+                weight = calc_qn_weighting(qs, fock_sum - qs%ref%fock_sum)
+                determ%one_minus_weight(j) =  weight
+            enddo
+        else
+            determ%one_minus_weight(:)=1.0_p
+        endif
         if (print_info) write(6,'(1X,a74)') '# Counting number of non-zero deterministic Hamiltonian elements to store.'
 
         associate(hamil => determ%hamil)
@@ -547,20 +558,22 @@ contains
                 nnz = 0
                 ! Over all deterministic states on all processes (all rows).
                 do i = 1, determ%tot_size
-                    fock_sum = sum_sp_eigenvalues_bit_string(sys, determ%dets(:,i))
-                    weight = calc_qn_weighting(qs, fock_sum - qs%ref%fock_sum)
                     ! Over all deterministic states on this process (all columns).
                     do j = 1, determ%sizes(iproc)
-                        ! TODO: Here we implicitly assume that we are not weighting the semi-stochastic
-                        ! space for quasi-newton steps.  It could be included by multipying the element
-                        ! below by the quasi_newton weight for i (and modifying the shift application in determ_proj_*)
-                        hmatel = weight * get_hmatel(sys, determ%dets(:,i), dets_this_proc(:,j))
+                        ! The matrix element is applied from i to j (i.e. from
+                        ! i (all deterministics) to j (only this proc).
+                        ! The spawnee is j so this gets the quasinewton weight.
+                        
+                        hmatel = get_hmatel(sys, determ%dets(:,i), dets_this_proc(:,j))
                         diag_elem = i == j + displs(iproc)
                         ! Take the Hartree-Fock energy off the diagonal elements.
                         if (diag_elem) then
                            hmatel%r = hmatel%r - H00
-                           determ%one_minus_weight(j) = 1._p - weight
                         endif
+                        ! Recall one_minus_weight currently contains the acutal
+                        ! weight
+                        weight = determ%one_minus_weight(j)
+                        hmatel = weight * hmatel
                         if (abs(hmatel%r) > depsilon) then
                             nnz = nnz + 1
                             if (imode == 2) then
@@ -607,6 +620,8 @@ contains
                     hamil%row_ptr(1:determ%tot_size) = 0
                 end if
             end do
+            ! Now actually store 1-w in one_minus_weight
+            determ%one_minus_weight(:) = 1.0_p - determ%one_minus_weight(:)
 
         end associate
 
@@ -821,14 +836,14 @@ contains
                     call csrpgemv_single_row(determ%hamil, determ%vector, row, out_vec)
                     ! For states on this processor (proc == iproc), add the
                     ! contribution from the shift.
-                    ! For QuasiNewton instead of tau * H_ii * v_i - tau * S * v_i  
-                    !                       (the last bit is done just below)
-                    ! we will need tau * (H_ii) * w_i * v_i - tau * (E_proj * (1-w_i) - S) * v_i
+                    ! For QuasiNewton instead of - tau * H_ii * v_i - tau * S * v_i  
+                    ! we will need   - tau *((H_ii - E_proj) *w_i + (E_proj - S)) * v_i
+                    !           so   - tau * (H_ii) * w_i * v_i
+                    !                - tau * (E_proj * (1-w_i) + S) * v_i
                     !                       (where w_i is the quasi_newton weight).
                     ! w_i is subsumed into H_ii already, so we now just include
                     ! the shift/projE component.
-                    out_vec = -out_vec - (proj_energy * determ%one_minus_weight(i) - qs%shift(1)) * determ%vector(i)
-                    out_vec = out_vec*qs%tau
+                    out_vec = -qs%tau * (out_vec + (proj_energy * determ%one_minus_weight(i) - qs%shift(1)) * determ%vector(i))
                     call create_spawned_particle_determ(determ%dets(:,row), out_vec, qs%psip_list%pop_real_factor, proc, &
                                                         qmc_in%initiator_approx, rng, spawn)
                 end do
@@ -911,14 +926,15 @@ contains
         ! deterministic amplitudes and S is the shift. We therefore begin by
         ! setting the vector used to store the output to tau*S*v.
 
-        ! For QuasiNewton instead of tau * H_ii * v_i - tau * S * v_i  
-        !                       (the last bit is done just below)
-        ! we will need tau * (H_ii) * w_i * v_i - tau * (E_proj * (1-w_i) - S) * v_i
+        ! For QuasiNewton instead of - tau * H_ii * v_i - tau * S * v_i  
+        ! we will need   - tau *((H_ii - E_proj) *w_i + (E_proj - S)) * v_i
+        !           so   - tau * (H_ii) * w_i * v_i
+        !                - tau * (E_proj * (1-w_i) - S) * v_i
         !                       (where w_i is the quasi_newton weight).
         ! w_i is subsumed into H_ii already, so we now just include
         ! the shift/projE component.
 
-        determ%vector(:) = qs%tau*(proj_energy*determ%one_minus_weight(:)-qs%shift(1))*determ%vector(:)
+        determ%vector(:) = (-qs%tau * (proj_energy*determ%one_minus_weight(:)-qs%shift(1)))*determ%vector(:)
 
         ! Perform the multiplication of the deterministic Hamiltonian on the
         ! full deterministic vector. A factor of minus one is applied to the
