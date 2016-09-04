@@ -885,7 +885,7 @@ contains
                                                                  'shift_damping', 'initiator', 'initiator_threshold', &
                                                                  'use_mpi_barriers', 'vary_shift_from', &
                                                                  'excit_gen', 'reference_target', 'vary_shift', &
-                                                                 'quasi_newton','quasi_newton_thresh', 'quasi_newton_value']
+                                                                 'quasi_newton','quasi_newton_threshold', 'quasi_newton_value']
 
         if (present(short)) then
             skip = short
