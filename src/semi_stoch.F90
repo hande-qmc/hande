@@ -743,7 +743,7 @@ contains
 
     end subroutine set_determ_info
 
-    subroutine determ_projection(rng, qmc_in, qs, spawn, determ)
+    subroutine determ_projection(rng, qmc_in, qs, proj_energy, spawn, determ)
 
         ! A wrapper function for calling the correct routine for deterministic
         ! projection.
@@ -755,6 +755,7 @@ contains
         ! In:
         !    qmc_in: input options relating to QMC methods.
         !    qs: state of the QMC calculation. Timestep and shift are used.
+        !    proj_energy: the projected energy used for quasinewton spawning
 
         use dSFMT_interface, only: dSFMT_t
         use qmc_data, only: qmc_in_t, qmc_state_t
@@ -764,19 +765,20 @@ contains
         type(dSFMT_t), intent(inout) :: rng
         type(qmc_in_t), intent(in) :: qmc_in
         type(qmc_state_t), intent(in) :: qs
+        real(p), intent(in) :: proj_energy
         type(spawn_t), intent(inout) :: spawn
         type(semi_stoch_t), intent(inout) :: determ
 
         select case(determ%projection_mode)
         case(semi_stoch_separate_annihilation)
-            call determ_proj_separate_annihil(determ, qs)
+            call determ_proj_separate_annihil(determ, qs, proj_energy)
         case(semi_stoch_combined_annihilation)
-            call determ_proj_combined_annihil(rng, qmc_in, qs, spawn, determ)
+            call determ_proj_combined_annihil(rng, qmc_in, qs, proj_energy, spawn, determ)
         end select
 
     end subroutine determ_projection
 
-    subroutine determ_proj_combined_annihil(rng, qmc_in, qs, spawn, determ)
+    subroutine determ_proj_combined_annihil(rng, qmc_in, qs, proj_energy, spawn, determ)
 
         ! Apply the deterministic part of the FCIQMC projector to the
         ! amplitudes in the deterministic space. The corresponding spawned
@@ -788,6 +790,7 @@ contains
         ! In:
         !    qmc_in: input options relating to QMC methods.
         !    qs: state of the QMC calculation. Timestep and shift are used.
+        !    proj_energy: the projected energy used for quasinewton spawning
         !    determ: deterministic space being used.
 
         use csr, only: csrpgemv_single_row
@@ -799,6 +802,7 @@ contains
         type(dSFMT_t), intent(inout) :: rng
         type(qmc_in_t), intent(in) :: qmc_in
         type(qmc_state_t), intent(in) :: qs
+        real(p), intent(in) :: proj_energy
         type(spawn_t), intent(inout) :: spawn
         type(semi_stoch_t), intent(in) :: determ
 
@@ -817,12 +821,13 @@ contains
                     call csrpgemv_single_row(determ%hamil, determ%vector, row, out_vec)
                     ! For states on this processor (proc == iproc), add the
                     ! contribution from the shift.
-                    ! TODO For QuasiNewton instead of tau * H_ii * v_i - tau * S * v_i  
+                    ! For QuasiNewton instead of tau * H_ii * v_i - tau * S * v_i  
                     !                       (the last bit is done just below)
                     ! we will need tau * (H_ii) * w_i * v_i - tau * (E_proj * (1-w_i) - S) * v_i
                     !                       (where w_i is the quasi_newton weight).
-                    ! For now we will simply set w_i = 1 in the semistochastic space.
-                    out_vec = -out_vec + qs%shift(1)*determ%vector(i)
+                    ! w_i is subsumed into H_ii already, so we now just include
+                    ! the shift/projE component.
+                    out_vec = -out_vec - (proj_energy * determ%one_minus_weight(i) - qs%shift(1)) * determ%vector(i)
                     out_vec = out_vec*qs%tau
                     call create_spawned_particle_determ(determ%dets(:,row), out_vec, qs%psip_list%pop_real_factor, proc, &
                                                         qmc_in%initiator_approx, rng, spawn)
@@ -841,7 +846,7 @@ contains
 
     end subroutine determ_proj_combined_annihil
 
-    subroutine determ_proj_separate_annihil(determ, qs)
+    subroutine determ_proj_separate_annihil(determ, qs, proj_energy)
 
         ! Perform the deterministic part of the projection. This is done here
         ! without adding deterministic spawnings to the spawned list, but
@@ -850,6 +855,7 @@ contains
 
         ! In:
         !    qs: state of QMC calculation. Shift and timestep are used.
+        !    proj_energy: the projected energy used for quasinewton spawning
         ! In/Out:
         !    determ: Deterministic space being used. On input determ%vector
         !       should hold the amplitudes of deterministic states on this
@@ -867,6 +873,7 @@ contains
 
         type(semi_stoch_t), intent(inout) :: determ
         type(qmc_state_t), intent(in) :: qs
+        real(p), intent(in) :: proj_energy
 
 #ifdef PARALLEL
         integer :: i, ierr
@@ -904,13 +911,14 @@ contains
         ! deterministic amplitudes and S is the shift. We therefore begin by
         ! setting the vector used to store the output to tau*S*v.
 
-        ! TODO For QuasiNewton instead of tau * H_ii * v_i - tau * S * v_i  
+        ! For QuasiNewton instead of tau * H_ii * v_i - tau * S * v_i  
         !                       (the last bit is done just below)
         ! we will need tau * (H_ii) * w_i * v_i - tau * (E_proj * (1-w_i) - S) * v_i
         !                       (where w_i is the quasi_newton weight).
-        ! For now we will simply set w_i = 1 in the semistochastic space.
-         
-        determ%vector = qs%tau*qs%shift(1)*determ%vector
+        ! w_i is subsumed into H_ii already, so we now just include
+        ! the shift/projE component.
+
+        determ%vector(:) = qs%tau*(proj_energy*determ%one_minus_weight(:)-qs%shift(1))*determ%vector(:)
 
         ! Perform the multiplication of the deterministic Hamiltonian on the
         ! full deterministic vector. A factor of minus one is applied to the

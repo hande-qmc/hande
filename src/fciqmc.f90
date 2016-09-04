@@ -340,7 +340,7 @@ contains
                                           qs%spawn_store%rspawn)
                     else
                         ! If using semi-stochastic then perform the deterministic projection step.
-                        if (determ%doing_semi_stoch) call determ_projection(rng, qmc_in, qs, spawn, determ)
+                        if (determ%doing_semi_stoch) call determ_projection(rng, qmc_in, qs, proj_energy_old,  spawn, determ)
 
                         call direct_annihilation(sys, rng, qs%ref, annihilation_flags, pl, spawn, nspawn_events, determ)
                         if (debug) call write_logging_calc_fciqmc(logging_info, iter, nspawn_events, ndeath, nattempts)
