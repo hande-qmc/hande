@@ -450,11 +450,16 @@ starting_iteration: integer
                 s_err_err = info.opt_block["standard error error"]["Shift"]
                 s_err = info.opt_block["standard error"]["Shift"]
                 s_err_upper = s_err + s_err_err
-                data_left = ((frac_screen_interval-j)/frac_screen_interval)*(data['Shift'].size - shift_variation_indx)
+                data_left = float((1.0*(frac_screen_interval-j)/1.0*frac_screen_interval))*(data['Shift'].size - shift_variation_indx)
+                print data['Shift'].size - shift_variation_indx
+                print (frac_screen_interval-j)/frac_screen_interval
+                print data_left
                 err_err = info.opt_block.loc[err_keys, 'standard error error']
                 err = info.opt_block.loc[err_keys, 'standard error']
                 err_frac = err_err.divide(err)
+                print err_frac
                 err_frac_weighted = err_frac.divide(math.sqrt(data_left))
+                print err_frac_weighted
                 s_err_frac_weighted = err_frac_weighted['Shift']
                 if (err_frac_weighted <= min_error_frac_weighted).any():
                     min_index = j
