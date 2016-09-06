@@ -2,7 +2,7 @@ sys = read_in {
     int_file = "INTDUMP",
     nel = 10,
     ms = 0,
-    sym = 0,
+    sym = 'aufbau',
 }
 
 fci {
