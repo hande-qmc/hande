@@ -3,7 +3,7 @@
 sys = hubbard_k {
     electrons = 18,
     ms = 0,
-    sym = 0,
+    sym = 'aufbau',
     U = 0.5,
     lattice = { {3,3},{3,-3} },
 }

@@ -2,7 +2,7 @@ system = {
     int_file = "FCIDUMP",
     nel = 2,
     ms = 0,
-    sym = 0,
+    sym = 'aufbau',
     Lz = true,
 }
 
