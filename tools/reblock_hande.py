@@ -34,7 +34,7 @@ files : list of list of strings
     names of files containing HANDE QMC calculation output.  Each list contains
     the a set of files which are analysed together (ie a series of calculations
     restarted from the previous calculation).
-start_iteration : int or None
+start_iteration : int or None (Default)
     QMC iteration from which statistics are gathered.
 reblock_plot : string
     Filename to which the reblocking convergence plot (standard error vs reblock
@@ -221,8 +221,9 @@ reblock_plot : string
                         help='Output only the final summary table.  '
                         'Overrides --verbose.')
     parser.add_argument('-s', '--start', type=int, dest='start_iteration',
-                        default=0, help='Iteration number from which to gather '
-                        'statistics.  Default: %(default)s.')
+                        default=None, help='Iteration number from which to '
+                        'gather statistics.  Default: Try finding starting ' 
+                        'iteration automatically. ')
     parser.add_argument('-v', '--verbose', dest='verbose', action='count',
                         default=1, help='Increase verbosity of the output.  Can '
                         'be specified multiple times.')

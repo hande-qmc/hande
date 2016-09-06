@@ -17,7 +17,7 @@ import pyhande.extract
 import pyhande.analysis
 import pyhande.weight
 
-def std_analysis(datafiles, start=0, select_function=None, 
+def std_analysis(datafiles, start=None, select_function=None, 
         extract_psips=False, reweight_history=0, mean_shift=0.0, 
         arith_mean=False, calc_inefficiency=False, verbosity = 1):
     '''Perform a 'standard' analysis of HANDE output files.
