@@ -17,9 +17,9 @@ import pyhande.extract
 import pyhande.analysis
 import pyhande.weight
 
-def std_analysis(datafiles, start=0, select_function=None, extract_psips=False,
-                reweight_history=0, mean_shift=0.0, arith_mean=False,
-                calc_inefficiency=False ):
+def std_analysis(datafiles, start=0, select_function=None, 
+        extract_psips=False, reweight_history=0, mean_shift=0.0, 
+        arith_mean=False, calc_inefficiency=False, verbosity = 1):
     '''Perform a 'standard' analysis of HANDE output files.
 
 Parameters
@@ -41,6 +41,11 @@ reweight_history : integer
     [Umrigar93]_ this should be set to be a few correlation times.
 mean_shift : float
     prevent the weights from beoming to large.
+verbosity : int
+    values greater than 1 print out blocking information when automatically 
+    finding the starting iteration. 0 and 1 print out the starting iteration if 
+    automatically found. Negative values print out nothing from the automatic 
+    starting point search. 
 
 Returns
 -------
@@ -82,9 +87,10 @@ Umrigar93
     for (calc, md) in zip(calcs, calcs_md):
         calc_start = start
         if calc_start is None:
-            calc_start = find_starting_iteration(calc, md, verbose=True)
+            calc_start = find_starting_iteration(calc, md, verbose=verbosity)
         md['pyhande'] = {'reblock_start': calc_start}
-        print('Block from: %i' % calc_start)
+        if (verbosity > -1) :
+            print('Block from: %i' % calc_start)
         infos.append(lazy_block(calc, md, calc_start, select_function,
                      extract_psips, calc_inefficiency))
     return infos
@@ -314,7 +320,7 @@ calcs : list of :class:`pandas.DataFrame`
 
 def find_starting_iteration(data, md, frac_screen_interval=500,
     number_of_reblockings=50, number_of_reblocks_to_cut_off=1, pos_min_frac=0.8,
-    verbose=False, show_graph=False):
+    verbose=0, show_graph=False):
     '''Find the best iteration to start analysing CCMC/FCIQMC data.
 
 .. warning::
@@ -372,8 +378,9 @@ pos_min_frac : float
     The minimum has to be in the first pos_min_frac part of the tested data to
     be taken as the true minimum. Has be to greater than a small number (here
     0.00001) and can at most be equal to one.
-verbose : bool
-    Determines whether extra information is printed out.
+verbose : int
+    If greater than 1, prints out which blocking attempt is currently being 
+    performed.
 show_graph : bool
     Determines whether a window showing the shift vs iteration graph pops up
     highlighting where the minimum was found and - after also excluding some

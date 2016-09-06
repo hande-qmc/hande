@@ -46,8 +46,10 @@ verbose : int
     <0: print nothing
     0: print only the estimate from the optimal block length.
     1: print only the recommended statistics from the optimal block length.
-    2: print blocking analysis and recommended statistics.
-    3: print calculation metadata, blocking analysis and recommended statistics.
+    2: print search for automatic starting iteration (if required), blocking 
+    analysis and recommended statistics.
+    3: print calculation metadata, search for automatic starting iteration 
+    (if required), blocking analysis and recommended statistics.
 
 width : int
     Maximum width (in characters) of lines to print out for
@@ -105,7 +107,8 @@ opt_block: :class:`pandas.DataFrame`
         try:
             info = pyhande.lazy.std_analysis(calc, start_iteration,
                                              extract_psips=True,
-                                             calc_inefficiency=inefficiency)
+                                             calc_inefficiency=inefficiency,
+                                             verbosity = verbose)
             for (i, i_info) in enumerate(info):
                 if verbose >= v_analysis:
                     msg = 'Analysing file(s): %s.' % (' '.join(calc))
