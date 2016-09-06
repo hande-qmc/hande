@@ -137,11 +137,8 @@ contains
 
                 ! Perform a Monte Carlo sampling of the space.
 
-                if (sys%symmetry < sys%sym_max) then
-                    call set_reference_det(sys, occ_list0, .false., sys%symmetry)
-                else
-                    call set_reference_det(sys, occ_list0, .false.)
-                end if
+                call set_reference_det(sys, occ_list0, .false., sys%symmetry)
+
                 call encode_det(sys%basis, occ_list0, f0)
 
                 ! Symmetry of the reference determinant.

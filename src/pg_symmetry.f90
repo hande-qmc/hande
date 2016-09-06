@@ -161,10 +161,12 @@ contains
         sys%read_in%pg_sym%Lz_offset = 3*maxLz*sys%read_in%pg_sym%Lz_divisor
         sys%read_in%pg_sym%gamma_sym = sys%read_in%pg_sym%Lz_offset
 
-        if(sys%symmetry /= huge(1)) then
+        if(sys%symmetry < huge(0)) then
             ! If one wished to specify Lz in sys%symmetry, it would be added in here.
             ! Need to modify to include Lz:
             sys%symmetry = sys%symmetry + sys%read_in%pg_sym%Lz_offset
+        else if (sys%tot_sym) then
+            sys%symmetry = sys%read_in%pg_sym%gamma_sym
         endif
 
         ! nsym, sym0 and sym_max allow one to iterate over the symmetries that occur in

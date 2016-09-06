@@ -135,7 +135,7 @@ contains
         ! Out:
         !    verbose: set verbosity of output for basis information.
 
-        use aot_table_module, only: aot_get_val
+        use aot_table_module, only: aot_get_val, aot_exists
         use aot_vector_module, only: aot_get_val
         use parallel, only: parent
         use errors, only: stop_all
@@ -150,12 +150,29 @@ contains
 
         integer, allocatable :: cas(:), err_arr(:)
         integer :: err
+        character(len=10) :: str
 
         call aot_get_val(sys%nel, err, lua_state, opts, 'electrons')
         call aot_get_val(sys%nel, err, lua_state, opts, 'nel')
         call aot_get_val(sys%Ms, err, lua_state, opts, 'ms')
-        call aot_get_val(sys%symmetry, err, lua_state, opts, 'sym')
+
         call aot_get_val(verbose, err, lua_state, opts, 'verbose', default=.true.)
+        ! Treat sym more carefully for various options.
+        if (aot_exists(lua_state, opts, 'sym')) then
+            call aot_get_val(sys%symmetry, err, lua_state, opts, 'sym')
+            if (err /= 0) then
+                sys%symmetry = huge(0)
+                ! Might have passed string in?
+                call aot_get_val(str, err, lua_state, opts, 'sym')
+                sys%tot_sym = trim(str) == 'tot_sym'
+                sys%aufbau_sym = trim(str) == 'aufbau'
+            else
+                sys%aufbau_sym = .false.
+            end if
+            if (.not. (sys%tot_sym .or. sys%aufbau_sym .or. sys%symmetry < huge(0))) &
+                call stop_all('set_common_sys_options', 'sym input not recognised. Please &
+                    &refer to the documentation for guidelines to valid input.')
+        end if
 
         call aot_get_val(cas, err_arr, 2, lua_state, opts, key='CAS')
         ! AOTUS returns a vector of size 0 to denote a non-existent vector.
@@ -349,7 +366,7 @@ contains
 
         if (parent) then
             ! This check can't go with the rest of check_sys as it has to happen after the basis is initialised.
-            if (sys%symmetry /= 0 .and. (sys%symmetry > sys%sym_max .or. sys%symmetry < sys%sym0)) &
+            if (sys%symmetry < huge(0) .and. (sys%symmetry > sys%sym_max .or. sys%symmetry < sys%sym0)) &
                 call stop_all('lua_hubbard_k', 'Symmetry out of range.')
         end if
 
@@ -607,7 +624,7 @@ contains
 
         if (parent) then
             ! This check can't go with the rest of check_sys as it has to happen after the basis is initialised.
-            if (sys%symmetry /= 0 .and. (sys%symmetry > sys%sym_max .or. sys%symmetry < sys%sym0)) &
+            if (sys%symmetry < huge(0) .and. (sys%symmetry > sys%sym_max .or. sys%symmetry < sys%sym0)) &
                 call stop_all('lua_read_in', 'Symmetry out of range.')
         end if
 
@@ -790,7 +807,7 @@ contains
 
         if (parent) then
             ! This check can't go with the rest of check_sys as it has to happen after the basis is initialised.
-            if (sys%symmetry /= 0 .and. (sys%symmetry > sys%sym_max .or. sys%symmetry < sys%sym0)) &
+            if (sys%symmetry < huge(0) .and. (sys%symmetry > sys%sym_max .or. sys%symmetry < sys%sym0)) &
                 call stop_all('lua_ueg', 'Symmetry out of range.')
         end if
 

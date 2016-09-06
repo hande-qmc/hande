@@ -339,8 +339,17 @@ type sys_t
     ! # number of virtual alpha, beta spin-orbitals
     integer :: nvirt_alpha, nvirt_beta
 
-    ! The specific symmetry sector to be used.
-    integer :: symmetry = 0
+    ! There are three possible ways to specify the specific symmetry sector used
+    ! within a calculation. For details of how to specify each approach see the
+    ! documentation of set_common_sys_options in lua_hande_systems.
+
+    ! 1) Specify the index of the required symmetry directly.
+    integer :: symmetry = huge(0)
+    ! 2) Use the totally symmetric representation, whatever its index.
+    logical :: tot_sym = .false.
+    ! 3) Use a best-guess symmetry of the wavefunction obtained via the Aufbau
+    !    principle-suggested reference determinant. This is the default.
+    logical :: aufbau_sym = .true.
 
     ! Number of symmetries.  These are specified for orbitals.
     integer :: nsym = 1
