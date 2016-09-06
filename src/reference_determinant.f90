@@ -203,6 +203,10 @@ contains
 
                         end if
                     end if
+                else
+                    sym = symmetry_orb_list(sys, occ_list)
+                    write (6, '(1X,"Using reference determinant selected using Aufbau principle to determine symmetry sector.")')
+                    write (6, '(1X,"Determinant is of symmetry ",i2)') sym
                 end if
             case(hub_real)
                 ! Attempt to keep electrons on different sites where possible.

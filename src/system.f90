@@ -800,6 +800,8 @@ contains
         call json_write_key(js, 'sym0_tot', sys%sym0_tot)
         call json_write_key(js, 'sym_max_tot', sys%sym_max_tot)
         call json_write_key(js, 'symmetry', sys%symmetry)
+        call json_write_key(js, 'tot_sym', sys%tot_sym)
+        call json_write_key(js, 'aufbau_sym', sys%aufbau_sym)
         call json_write_key(js, 'max_number_excitations', sys%max_number_excitations)
 
         if (lattice_system) then
