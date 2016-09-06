@@ -432,7 +432,7 @@ starting_iteration: integer
 
     min_index = -1
     err_keys = ['Shift',  'N_0', '\sum H_0j N_j', '# H psips']
-    min_error_upper = pd.Series([float('inf')]*len(err_keys), index=err_keys)
+    min_error_frac_weighted = pd.Series([float('inf')]*len(err_keys), index=err_keys)
     starting_iteration_found = False
 
     for k in range(int(frac_screen_interval/number_of_reblockings)):
@@ -445,21 +445,25 @@ starting_iteration: integer
                 # Not enough data to get a best estimate for some values.
                 # Don't include, even if the shift is estimated.
                 s_err_err = float('inf')
+                s_err_frac_weighted = float('inf')
             else:
                 s_err_err = info.opt_block["standard error error"]["Shift"]
                 s_err = info.opt_block["standard error"]["Shift"]
                 s_err_upper = s_err + s_err_err
+                data_left = ((frac_screen_interval-j)/frac_screen_interval)*(data['Shift'].size - shift_variation_indx)
                 err_err = info.opt_block.loc[err_keys, 'standard error error']
                 err = info.opt_block.loc[err_keys, 'standard error']
-                err_upper = err.add(err_err)
-                if (err_upper <= min_error_upper).any():
+                err_frac = err_err.divide(err)
+                err_frac_weighted = err_frac.divide(math.sqrt(data_left))
+                s_err_frac_weighted = err_frac_weighted['Shift']
+                if (err_frac_weighted <= min_error_frac_weighted).any():
                     min_index = j
-                    min_error_upper = err_upper.copy()
+                    min_error_frac_weighted = err_frac_weighted.copy()
                     opt_ind = pyblock.pd_utils.optimal_block(info.reblock[err_keys])
 
             if verbose:
                 print("Blocking attempt: %i. Blocking from: %i. "
-                      "Upper bound on shift error: %f" % (j, start, s_err_upper))
+                      "Upper bound on shift fractional weighted error: %f" % (j, start, s_err_frac_weighted))
 
         if min_index == -1:
             raise ValueError(
