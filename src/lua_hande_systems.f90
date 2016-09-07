@@ -318,7 +318,7 @@ contains
         use aot_table_module, only: aot_table_top, aot_get_val, aot_exists, aot_table_close
 
         use lua_hande_utils, only: warn_unused_args, register_timing
-        use system, only: sys_t, hub_k, init_system
+        use system, only: sys_t, hub_k, init_system, set_spin_polarisation
         use basis, only: init_model_basis_fns
         use momentum_symmetry, only: init_momentum_symmetry
         use check_input, only: check_sys

@@ -125,7 +125,7 @@ contains
                 ! to find a determinant of different symmetry?
                 ! This needs only be called for initialisation, so don't attempt
                 ! to be clever and efficient...
-                if (.not. sys%aufbau_sym) then
+                if (ref_sym /= huge(0)) then
                     if (ref_sym >= sys%sym0 .and. ref_sym <= sys%sym_max) then
                         call encode_det(sys%basis, occ_list, f)
                         ! If occ_list is already of the correct symmetry, then
@@ -206,7 +206,7 @@ contains
                 else
                     sym = symmetry_orb_list(sys, occ_list)
                     write (6, '(1X)')
-                    write (6, '(1X,"Reference determinant+ symmetry sector selected using the Aufbau principle.")')
+                    write (6, '(1X,"Reference determinant and so symmetry sector selected using the Aufbau principle.")')
                     write (6, '(1X,"Selected symmetry ",i2,".")') sym
                     write (6, '(1X)')
                 end if

@@ -7,6 +7,30 @@ implicit none
 
 contains
 
+    subroutine set_symmetry_aufbau(sys)
+
+        ! If initialising symmetry using Aufbau principle-chosen determinant
+        ! find this determinant and determine its symmetry.
+
+        ! In/Out:
+        !   sys: object containing information about system under consideration.
+        !       Must have initialised basis and symmetry.
+
+        use reference_determinant, only: set_reference_det
+        use symmetry, only: symmetry_orb_list
+        use system, only: sys_t
+
+        type(sys_t), intent(inout) :: sys
+        integer, allocatable :: occ_list(:)
+
+        ! Find the approximate lowest energy determinant.
+        call set_reference_det(sys, occ_list, .false., sys%symmetry)
+
+        ! Set symmetry sector equal to that of lowest energy determinant.
+        sys%symmetry= symmetry_orb_list(sys, occ_list)
+
+    end subroutine set_symmetry_aufbau
+
     ! --- Calculation wrappers ---
 
     function lua_fci(L) result(nresult) bind(c)
@@ -263,6 +287,8 @@ contains
         call get_sys_t(lua_state, sys)
         ! [todo] - do spin polarisation in system setup.
         call set_spin_polarisation(sys%basis%nbasis, sys)
+        ! If using Aufbau determined symmetry need to do after setting spin polarisation.
+        if (sys%aufbau_sym) call set_symmetry_aufbau(sys)
 
         ! Get main table.
         opts = aot_table_top(lua_state)
@@ -353,6 +379,8 @@ contains
         call get_sys_t(lua_state, sys)
         ! [todo] - do spin polarisation in system setup.
         call set_spin_polarisation(sys%basis%nbasis, sys)
+        ! If using Aufbau determined symmetry need to do after setting spin polarisation.
+        if (sys%aufbau_sym) call set_symmetry_aufbau(sys)
 
         ! Get main table.
         opts = aot_table_top(lua_state)
@@ -446,6 +474,8 @@ contains
         call get_sys_t(lua_state, sys)
         ! [todo] - do spin polarisation in system setup.
         call set_spin_polarisation(sys%basis%nbasis, sys)
+        ! If using Aufbau determined symmetry need to do after setting spin polarisation.
+        if (sys%aufbau_sym) call set_symmetry_aufbau(sys)
 
         ! Get main table.
         opts = aot_table_top(lua_state)
@@ -565,6 +595,8 @@ contains
         else
             call set_spin_polarisation(sys%basis%nbasis, sys)
         end if
+        ! If using Aufbau determined symmetry need to do after setting spin polarisation.
+        if (sys%aufbau_sym) call set_symmetry_aufbau(sys)
 
         ! Now system initialisation is complete (boo), act on the other options.
         call read_restart_in(lua_state, opts, restart_in)
