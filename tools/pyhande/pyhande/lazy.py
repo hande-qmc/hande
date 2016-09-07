@@ -89,7 +89,7 @@ Umrigar93
         if calc_start is None:
             calc_start = find_starting_iteration(calc, md, verbose=verbosity)
         md['pyhande'] = {'reblock_start': calc_start}
-        if (verbosity > -1) :
+        if (verbosity > 1) :
             print('Block from: %i' % calc_start)
         infos.append(lazy_block(calc, md, calc_start, select_function,
                      extract_psips, calc_inefficiency))
