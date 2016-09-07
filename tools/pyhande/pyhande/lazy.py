@@ -318,8 +318,8 @@ calcs : list of :class:`pandas.DataFrame`
     calcs.append(pd.concat(xcalc, ignore_index=True))
     return calcs_metadata, calcs
 
-def find_starting_iteration(data, md, frac_screen_interval=500,
-    number_of_reblockings=50, number_of_reblocks_to_cut_off=1, pos_min_frac=0.8,
+def find_starting_iteration(data, md, frac_screen_interval=300,
+    number_of_reblockings=30, number_of_reblocks_to_cut_off=1, pos_min_frac=0.8,
     verbose=0, show_graph=False):
     '''Find the best iteration to start analysing CCMC/FCIQMC data.
 
