@@ -328,13 +328,9 @@ def find_starting_iteration(data, md, frac_screen_interval=500,
     Use with caution, check whether output is sensible and adjust parameters if
     necessary.
 
-First, consider only data from when the shift begins to vary.  The error in the
-error on the shift is artificially high due to the equilibration period.  The
-error in the error hence initially decreases as the start of the blocking
-analysis is increased before beginning to increase once data from after
-equilibration begins to be discarded.  We are thus interested in finding the
-minimum in the error in the error of the shift. To be more conservative, we also
-find the minimum in the error in the error of # H psips, N_0, \sum H_0j N_j. We 
+First, consider only data from when the shift begins to vary. We are interested in finding the
+minimum in the fractional error in the error of the shift weighted by 1/sqrt(number of data points left). The error in the error of the shift and the error in the shift vary as 1/sqrt(number of data points to analyse) with the number of data points to analyse. If we were looking for the minimum in either of these quantities, the minimum would therefore be biased to the lower iterations as then more data points are included in the analysis. However, we have noticed that the error in the shift and its error fluctuate as we have less iterations to analyse which means that our search for the minimum could get trapped easily in a local minimum. We therefore consider their fraction. As they are divided by each other in the fractional error, the 1/sqrt(number of data points to analyse) gets removed. It is therefore artificially included as a weight. To be more conservative, we also
+find the minimum in the weighted fractional error in the error of # H psips, N_0, \sum H_0j N_j. We 
 then consider the minimum out of these four minima which is at the highest 
 number of iterations.
 
@@ -430,6 +426,9 @@ starting_iteration: integer
     step = int((data['iterations'].iloc[-1] - \
             iteration_shift_variation_start )/frac_screen_interval)
 
+    step_indx = int((data['iterations'].index[-1]-\
+            shift_variation_indx)/frac_screen_interval)
+
     min_index = -1
     err_keys = ['Shift',  'N_0', '\sum H_0j N_j', '# H psips']
     min_error_frac_weighted = pd.Series([float('inf')]*len(err_keys), index=err_keys)
@@ -444,17 +443,13 @@ starting_iteration: integer
             if info.no_opt_block:
                 # Not enough data to get a best estimate for some values.
                 # Don't include, even if the shift is estimated.
-                s_err_err = float('inf')
                 s_err_frac_weighted = float('inf')
             else:
-                s_err_err = info.opt_block["standard error error"]["Shift"]
-                s_err = info.opt_block["standard error"]["Shift"]
-                s_err_upper = s_err + s_err_err
-                data_left = float((1.0*(frac_screen_interval-j)/1.0*frac_screen_interval))*(data['Shift'].size - shift_variation_indx)
+                number_of_data_left = data['Shift'].index[-1] - shift_variation_indx - j*step_indx + 1
                 err_err = info.opt_block.loc[err_keys, 'standard error error']
                 err = info.opt_block.loc[err_keys, 'standard error']
                 err_frac = err_err.divide(err)
-                err_frac_weighted = err_frac.divide(math.sqrt(data_left))
+                err_frac_weighted = err_frac.divide(math.sqrt(float(number_of_data_left)))
                 s_err_frac_weighted = err_frac_weighted['Shift']
                 if (err_frac_weighted <= min_error_frac_weighted).any():
                     min_index = j
