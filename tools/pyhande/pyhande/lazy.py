@@ -328,28 +328,40 @@ def find_starting_iteration(data, md, frac_screen_interval=500,
     Use with caution, check whether output is sensible and adjust parameters if
     necessary.
 
-First, consider only data from when the shift begins to vary. We are interested in finding the
-minimum in the fractional error in the error of the shift weighted by 1/sqrt(number of data points left). The error in the error of the shift and the error in the shift vary as 1/sqrt(number of data points to analyse) with the number of data points to analyse. If we were looking for the minimum in either of these quantities, the minimum would therefore be biased to the lower iterations as then more data points are included in the analysis. However, we have noticed that the error in the shift and its error fluctuate as we have less iterations to analyse which means that our search for the minimum could get trapped easily in a local minimum. We therefore consider their fraction. As they are divided by each other in the fractional error, the 1/sqrt(number of data points to analyse) gets removed. It is therefore artificially included as a weight. To be more conservative, we also
-find the minimum in the weighted fractional error in the error of # H psips, N_0, \sum H_0j N_j. We 
-then consider the minimum out of these four minima which is at the highest 
-number of iterations.
+First, consider only data from when the shift begins to vary. We are interested 
+in finding the minimum in the fractional error in the error of the shift 
+weighted by 1/sqrt(number of data points left). The error in the error of the 
+shift and the error in the shift vary as 1/sqrt(number of data points to 
+analyse) with the number of data points to analyse. If we were looking for the 
+minimum in either of these quantities, the minimum would therefore be biased to 
+the lower iterations as then more data points are included in the analysis. 
+However, we have noticed that the error in the shift and its error fluctuate as 
+we have less iterations to analyse which means that our search for the minimum 
+could get trapped easily in a local minimum. We therefore consider their 
+fraction. As they are divided by each other in the fractional error, the 
+1/sqrt(number of data points to analyse) gets removed. It is therefore 
+artificially included as a weight. To be more conservative, we also find the 
+minimum in the weighted fractional error in the error of # H psips, N_0, 
+\sum H_0j N_j. We then consider the minimum out of these four minima which is 
+at the highest number of iterations.
 
 The best estimate of the iteration to start the blocking analysis is found by:
 
 1. discard data during the constant shift phase.
-2. estimate the error in the error of the shift, # H psips, N_0, \sum H_0j N_j,
-   by blocking the remaining data :math:`n` times, where the blocking analysis 
-   considers the last :math:`1-i/f` fraction of the data and where :math:`i` is 
-   the number of blocking analyses already performed, :math:`n`  is 
-   `number_of_reblockings`  and :math:`f` is `frac_screen_interval`.
-3. find the iteration which gives the minimum estimate of the error in the error
-   of the shift, numerator of projected energy, reference and total population.
-   We then focus on the minimum out of these four minima which is at the highest
-   number of iterations. If this is in the first `pos_min_frac` fraction of the
-   blocking attempts, go to 4, otherwise repeat 2 and perform an additional
-   `number_of_reblockings` attempts.
-4. To be extra conservative, discard the first `number_of_reblocks_to_cut_off`
-   blocks from the start iteration, where each block corresponds to roughly the
+2. estimate the weighted fractional error in the error of the shift, # H psips, 
+   N_0, \sum H_0j N_j, by blocking the remaining data :math:`n` times, where 
+   the blocking analysis considers the last :math:`1-i/f` fraction of the data 
+   and where :math:`i` is the number of blocking analyses already performed, 
+   :math:`n`  is `number_of_reblockings`  and :math:`f` is 
+   `frac_screen_interval`.
+3. find the iteration which gives the minimum estimate of the weighted 
+   fractional error in the error of the shift, numerator of projected energy, 
+   reference and total population. We then focus on the minimum out of these 
+   four minima which is at the highest number of iterations. If this is in the 
+   first `pos_min_frac` fraction of the blocking attempts, go to 4, otherwise 
+   repeat 2 and perform an additional `number_of_reblockings` attempts.
+4. To be conservative, discard the first `number_of_reblocks_to_cut_off` blocks 
+   from the start iteration, where each block corresponds to roughly the
    autocorrelation time, and return the resultant iteration number as the
    estimate of the best place to start blocking from.
 
