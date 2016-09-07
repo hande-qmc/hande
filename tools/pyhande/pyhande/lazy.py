@@ -89,7 +89,7 @@ Umrigar93
         if calc_start is None:
             calc_start = find_starting_iteration(calc, md, verbose=verbosity)
         md['pyhande'] = {'reblock_start': calc_start}
-        if (verbosity > 1) :
+        if (verbosity > -1) :
             print('Block from: %i' % calc_start)
         infos.append(lazy_block(calc, md, calc_start, select_function,
                      extract_psips, calc_inefficiency))
@@ -468,7 +468,7 @@ starting_iteration: integer
                     min_error_frac_weighted = err_frac_weighted.copy()
                     opt_ind = pyblock.pd_utils.optimal_block(info.reblock[err_keys])
 
-            if verbose:
+            if (verbose > 1):
                 print("Blocking attempt: %i. Blocking from: %i. "
                       "Upper bound on shift fractional weighted error: %f" % (j, start, s_err_frac_weighted))
 
