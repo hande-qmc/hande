@@ -53,6 +53,7 @@ contains
         use reference_determinant, only: set_reference_det
         use symmetry, only: symmetry_orb_list
         use system
+        use calc_system_init, only: set_spin_polarisation
         use parallel
         use utils, only: binom_r
 

@@ -86,7 +86,8 @@ contains
         use utils, only: get_free_unit, int_fmt
         use parallel, only: parent
 
-        use system, only: sys_t, set_spin_polarisation
+        use system, only: sys_t
+        use calc_system_init, only: set_spin_polarisation
         use hamiltonian_data
 
         type(sys_t), intent(inout) :: sys

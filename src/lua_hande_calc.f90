@@ -7,30 +7,6 @@ implicit none
 
 contains
 
-    subroutine set_symmetry_aufbau(sys)
-
-        ! If initialising symmetry using Aufbau principle-chosen determinant
-        ! find this determinant and determine its symmetry.
-
-        ! In/Out:
-        !   sys: object containing information about system under consideration.
-        !       Must have initialised basis and symmetry.
-
-        use reference_determinant, only: set_reference_det
-        use symmetry, only: symmetry_orb_list
-        use system, only: sys_t
-
-        type(sys_t), intent(inout) :: sys
-        integer, allocatable :: occ_list(:)
-
-        ! Find the approximate lowest energy determinant.
-        call set_reference_det(sys, occ_list, .false., sys%symmetry)
-
-        ! Set symmetry sector equal to that of lowest energy determinant.
-        sys%symmetry= symmetry_orb_list(sys, occ_list)
-
-    end subroutine set_symmetry_aufbau
-
     ! --- Calculation wrappers ---
 
     function lua_fci(L) result(nresult) bind(c)
@@ -264,7 +240,7 @@ contains
         use system, only: sys_t
 
         use calc, only: calc_type, simple_fciqmc_calc, fciqmc_calc
-        use system, only: set_spin_polarisation
+        use calc_system_init, only: set_spin_polarisation, set_symmetry_aufbau
 
         integer(c_int) :: nresult
         type(c_ptr), value :: L
@@ -351,7 +327,7 @@ contains
         use system, only: sys_t
 
         use calc, only: calc_type, fciqmc_calc
-        use system, only: set_spin_polarisation
+        use calc_system_init, only: set_spin_polarisation, set_symmetry_aufbau
 
         integer(c_int)  :: nresult
         type(c_ptr), value :: L
@@ -448,7 +424,7 @@ contains
         use system, only: sys_t
 
         use calc, only: calc_type, ccmc_calc
-        use system, only: set_spin_polarisation
+        use calc_system_init, only: set_spin_polarisation, set_symmetry_aufbau
 
         integer(c_int) :: nresult
         type(c_ptr), value :: L
@@ -545,7 +521,7 @@ contains
         use calc, only: calc_type, dmqmc_calc, doing_dmqmc_calc, dmqmc_energy_squared
         use checking, only: check_allocate
         use real_lattice, only: create_next_nearest_orbs
-        use system, only: set_spin_polarisation
+        use calc_system_init, only: set_spin_polarisation, set_symmetry_aufbau
 
         integer(c_int) :: nresult
         type(c_ptr), value :: L
