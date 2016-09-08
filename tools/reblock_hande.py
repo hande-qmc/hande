@@ -137,9 +137,10 @@ opt_block: :class:`pandas.DataFrame`
                 indices.extend((','.join(calc),i) for i in range(len(info)))
         except ValueError:
             print('WARNING: No data found in file '+' '.join(calc)+'.')
-
-
-    opt_blocks = [info.opt_block for info in infos]
+    
+    opt_blocks = [pd.DataFrame(data=
+        {'estimate':info.metadata['pyhande']['reblock_start']}, 
+        index = ['Block from Iteration']).append(info.opt_block) for info in infos]
     if verbose < v_rec_stats:
         for opt_block in opt_blocks:
             if not opt_block.empty:
