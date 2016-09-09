@@ -43,14 +43,17 @@ Options
     Set the spin polarisation of the system in units of electron spin (i.e. a single
     electron can take values 1 or -1).  If not provided, the value in the FCIDUMP file is used.
 ``sym``
-    type: integer.
+    type: integer or string.
 
-    Required for deterministic calculations and highly recommended for Monte Carlo calculations.
+    Optional. Default: ``aufbau``.
 
-    Set the symmetry of the system.  This is the index of a specific irreducible
-    representation from the FCIDUMP file; see the output produced by creating a system for
-    possible values.  If not specified (and no reference determinant supplied for a calculation)
-    the symmetry used is that of a determinant selected using the Aufbau principle.
+    Set the symmetry of the system if a reference determinant is not provided. This can be
+    set to:
+
+    - An integer specifying the index of a specific irreducible representation from the FCIDUMP
+      file; see the output produced by creating a system for possible values.
+    - ``aufbau``. Uses the symmetry of a determinant selected using the Aufbau principle.
+    - ``tot_sym``. Uses the totally symmetric representation, whatever its index may be.;
 ``Lz``
     type: boolean.
 

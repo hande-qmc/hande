@@ -339,8 +339,17 @@ type sys_t
     ! # number of virtual alpha, beta spin-orbitals
     integer :: nvirt_alpha, nvirt_beta
 
-    ! The specific symmetry sector to be used.
-    integer :: symmetry = 0
+    ! There are three possible ways to specify the specific symmetry sector used
+    ! within a calculation. For details of how to specify each approach see the
+    ! documentation of set_common_sys_options in lua_hande_systems.
+
+    ! 1) Specify the index of the required symmetry directly.
+    integer :: symmetry = huge(0)
+    ! 2) Use the totally symmetric representation, whatever its index.
+    logical :: tot_sym = .false.
+    ! 3) Use a best-guess symmetry of the wavefunction obtained via the Aufbau
+    !    principle-suggested reference determinant. This is the default.
+    logical :: aufbau_sym = .true.
 
     ! Number of symmetries.  These are specified for orbitals.
     integer :: nsym = 1
@@ -603,90 +612,6 @@ contains
 
     end function in_FBZ
 
-    subroutine set_spin_polarisation(nbasis, sys)
-
-        ! Set the spin polarisation information stored in components of sys.
-        !    nalpha, nbeta: number of alpha, beta electrons.
-        !    nvirt_alpha, nvirt_beta: number of alpha, beta virtual spin-orbitals.
-
-        ! In:
-        !    nbasis: number of single-particle basis functions.
-        ! In/Out:
-        !    sys: initialised system object describing system. On output
-        !       components related to spin-polarisation are set.
-
-        use errors, only: stop_all
-
-        integer, intent(in) :: nbasis
-        type(sys_t), intent(inout) :: sys
-
-        character(len=*), parameter :: proc_name = 'set_spin_polarisation'
-        character(len=*), parameter :: err_fmt = '("Required Ms not possible: ",i11, ".")'
-        character(len=40) :: err
-
-        select case(sys%system)
-
-        case(heisenberg)
-
-            ! Spin polarization is different (see comments in system) as the
-            ! Heisenberg model is a collection of spins rather than electrons.
-            ! See comments in init_system and at module-level.
-            if (abs(sys%Ms) > sys%lattice%nsites) then
-                write (err, err_fmt) sys%Ms
-                call stop_all(proc_name, err)
-            end if
-            sys%nel = (sys%lattice%nsites + sys%Ms)/2
-            sys%nvirt = (sys%lattice%nsites - sys%Ms)/2
-            ! The Heisenberg model doesn't use these values, but they need to be
-            ! initialized to something sensible as we allocate memory using them in
-            ! alloc_det_info_t.
-            sys%nalpha = 0
-            sys%nbeta = 0
-            sys%nvirt_alpha = 0
-            sys%nvirt_beta = 0
-            sys%max_number_excitations = min(sys%nel, (sys%lattice%nsites-sys%nel))
-
-        case(chung_landau)
-
-            ! Spinless system.  Similarly for the Heisenberg model but treat all fermions as alpha electrons.
-            sys%nalpha = sys%nel
-            sys%nvirt_alpha = sys%lattice%nsites - sys%nalpha
-            sys%nbeta = 0
-            sys%nvirt_beta = 0
-            sys%max_number_excitations = min(sys%nel, (sys%lattice%nsites-sys%nel))
-
-        case (ringium)
-
-            if (sys%ms /= sys%nel) call stop_all(proc_name, "Ringium must be completely spin polarised.")
-
-            sys%nalpha = sys%nel
-            sys%nbeta = 0
-
-            sys%nvirt_alpha = nbasis/2 - sys%nel
-            sys%nvirt_beta = 0
-            sys%max_number_excitations = min(sys%nalpha, sys%nvirt_alpha)
-
-        case default
-
-            ! Find the number of determinants with the required spin.
-            if (abs(mod(sys%Ms,2)) /= mod(sys%nel,2) .or. abs(sys%Ms) > sys%nel) then
-                write (err, err_fmt) sys%Ms
-                call stop_all(proc_name, err)
-            end if
-
-            sys%nbeta = (sys%nel - sys%Ms)/2
-            sys%nalpha = (sys%nel + sys%Ms)/2
-
-            sys%nvirt_alpha = nbasis/2 - sys%nalpha
-            sys%nvirt_beta = nbasis/2 - sys%nbeta
-            sys%max_number_excitations = min(sys%nel, sys%nvirt)
-
-        end select
-
-        call set_fermi_energy(sys)
-
-    end subroutine set_spin_polarisation
-
     elemental subroutine copy_sys_spin_info(sys1, sys2)
 
         ! Copy all spin information used in *any* system type (irrespective of
@@ -791,6 +716,8 @@ contains
         call json_write_key(js, 'sym0_tot', sys%sym0_tot)
         call json_write_key(js, 'sym_max_tot', sys%sym_max_tot)
         call json_write_key(js, 'symmetry', sys%symmetry)
+        call json_write_key(js, 'tot_sym', sys%tot_sym)
+        call json_write_key(js, 'aufbau_sym', sys%aufbau_sym)
         call json_write_key(js, 'max_number_excitations', sys%max_number_excitations)
 
         if (lattice_system) then

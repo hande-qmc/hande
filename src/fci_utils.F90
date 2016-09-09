@@ -65,9 +65,9 @@ contains
         ! Initialisation of FCI calculations.  (Boilerplate, determinant initialisation.)
 
         ! In:
-        !   sys: system of interest.
         !   fci_in: fci input options.
         ! In/Out:
+        !   sys: system of interest.
         !   ref: reference determinant.  If a truncated calculation is being performed and
         !        a reference determinant is not supplied, a simple best guess will be created.
         ! Out:
@@ -86,7 +86,8 @@ contains
         use utils, only: get_free_unit, int_fmt
         use parallel, only: parent
 
-        use system, only: sys_t, set_spin_polarisation
+        use system, only: sys_t
+        use calc_system_init, only: set_spin_polarisation
         use hamiltonian_data
 
         type(sys_t), intent(inout) :: sys
@@ -95,7 +96,7 @@ contains
         integer, intent(out) :: ndets
         integer(i0), allocatable, intent(out) :: dets(:,:)
 
-        integer, allocatable :: sym_space_size(:)
+        integer, allocatable :: sym_space_size(:), occ_list_scratch(:)
         integer :: iunit, ref_ms, ref_sym
         logical :: spin_flip
         integer(i0) :: f0(sys%basis%string_len)
@@ -134,6 +135,11 @@ contains
         if (.not.allocated(ref%occ_list0) .and. ref%ex_level /= sys%nel) then
             ! Provide a best guess at the reference determinant given symmetry and spin options.
             call set_reference_det(sys, ref%occ_list0, .true., sys%symmetry)
+            if (sys%aufbau_sym) sys%symmetry = symmetry_orb_list(sys, ref%occ_list0)
+        else if (sys%aufbau_sym) then
+            ! Ensure we set a guess for the symmetry sector if requested.
+            call set_reference_det(sys, occ_list_scratch, .false., sys%symmetry)
+            sys%symmetry = symmetry_orb_list(sys, occ_list_scratch)
         end if
         if (allocated(ref%occ_list0)) then
             call encode_det(sys%basis, ref%occ_list0, f0)

@@ -66,6 +66,7 @@ contains
                 if (all(sys%basis%basis_fns(i*2)%l == 0)) sys%hubbard%mom_sym%gamma_sym = i
             end do
             if (sys%hubbard%mom_sym%gamma_sym == 0) call stop_all('init_momentum_symmetry', 'Gamma-point symmetry not found.')
+            if (sys%tot_sym) sys%symmetry = sys%hubbard%mom_sym%gamma_sym
 
             do i = 1, sys%nsym
                 do j = i, sys%nsym
@@ -132,6 +133,8 @@ contains
                 if (all(sys%basis%basis_fns(i*2)%l == 0)) sys%ueg%gamma_sym = i
             end do
             if (sys%ueg%gamma_sym == 0) call stop_all('init_momentum_symmetry', 'Gamma-point symmetry not found.')
+
+            if (sys%tot_sym) sys%symmetry = sys%ueg%gamma_sym
 
             call init_ueg_indexing(sys)
 

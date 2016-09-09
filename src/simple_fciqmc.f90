@@ -55,7 +55,8 @@ contains
         use qmc_data, only: qmc_in_t, particle_t, qmc_state_t
         use reference_determinant, only: reference_t
         use spawn_data, only: spawn_t
-        use system, only: sys_t, copy_sys_spin_info, set_spin_polarisation, read_in
+        use system, only: sys_t, copy_sys_spin_info, read_in
+        use calc_system_init, only: set_spin_polarisation
 
         type(sys_t), intent(inout) :: sys
         type(qmc_in_t), intent(in) :: qmc_in

@@ -240,7 +240,7 @@ contains
         use system, only: sys_t
 
         use calc, only: calc_type, simple_fciqmc_calc, fciqmc_calc
-        use system, only: set_spin_polarisation
+        use calc_system_init, only: set_spin_polarisation, set_symmetry_aufbau
 
         integer(c_int) :: nresult
         type(c_ptr), value :: L
@@ -263,6 +263,8 @@ contains
         call get_sys_t(lua_state, sys)
         ! [todo] - do spin polarisation in system setup.
         call set_spin_polarisation(sys%basis%nbasis, sys)
+        ! If using Aufbau determined symmetry need to do after setting spin polarisation.
+        if (sys%aufbau_sym) call set_symmetry_aufbau(sys)
 
         ! Get main table.
         opts = aot_table_top(lua_state)
@@ -325,7 +327,7 @@ contains
         use system, only: sys_t
 
         use calc, only: calc_type, fciqmc_calc
-        use system, only: set_spin_polarisation
+        use calc_system_init, only: set_spin_polarisation, set_symmetry_aufbau
 
         integer(c_int)  :: nresult
         type(c_ptr), value :: L
@@ -353,6 +355,8 @@ contains
         call get_sys_t(lua_state, sys)
         ! [todo] - do spin polarisation in system setup.
         call set_spin_polarisation(sys%basis%nbasis, sys)
+        ! If using Aufbau determined symmetry need to do after setting spin polarisation.
+        if (sys%aufbau_sym) call set_symmetry_aufbau(sys)
 
         ! Get main table.
         opts = aot_table_top(lua_state)
@@ -420,7 +424,7 @@ contains
         use system, only: sys_t
 
         use calc, only: calc_type, ccmc_calc
-        use system, only: set_spin_polarisation
+        use calc_system_init, only: set_spin_polarisation, set_symmetry_aufbau
 
         integer(c_int) :: nresult
         type(c_ptr), value :: L
@@ -446,6 +450,8 @@ contains
         call get_sys_t(lua_state, sys)
         ! [todo] - do spin polarisation in system setup.
         call set_spin_polarisation(sys%basis%nbasis, sys)
+        ! If using Aufbau determined symmetry need to do after setting spin polarisation.
+        if (sys%aufbau_sym) call set_symmetry_aufbau(sys)
 
         ! Get main table.
         opts = aot_table_top(lua_state)
@@ -515,7 +521,7 @@ contains
         use calc, only: calc_type, dmqmc_calc, doing_dmqmc_calc, dmqmc_energy_squared
         use checking, only: check_allocate
         use real_lattice, only: create_next_nearest_orbs
-        use system, only: set_spin_polarisation
+        use calc_system_init, only: set_spin_polarisation, set_symmetry_aufbau
 
         integer(c_int) :: nresult
         type(c_ptr), value :: L
@@ -565,6 +571,8 @@ contains
         else
             call set_spin_polarisation(sys%basis%nbasis, sys)
         end if
+        ! If using Aufbau determined symmetry need to do after setting spin polarisation.
+        if (sys%aufbau_sym) call set_symmetry_aufbau(sys)
 
         ! Now system initialisation is complete (boo), act on the other options.
         call read_restart_in(lua_state, opts, restart_in)

@@ -1,7 +1,7 @@
 sys = ueg {
     nel = 14,
     ms = 0,
-    sym = 1,
+    sym = 'tot_sym',
     dim = 3,
     cutoff = 3,
     rs = 1,

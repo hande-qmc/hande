@@ -76,6 +76,8 @@ contains
         use reference_determinant, only: set_reference_det
         use chem_pot, only: find_chem_pot
 
+        use calc_system_init, only: set_spin_polarisation
+
         type(sys_t), intent(inout) :: sys
         logical, intent(in) :: all_spin_sectors
         real(p), intent(in) :: beta
@@ -129,11 +131,7 @@ contains
             write (js%io,'()')
         end if
 
-        if (sys%symmetry < sys%sym_max) then
-            call set_reference_det(sys, occ_list0, .false., sys%symmetry)
-        else
-            call set_reference_det(sys, occ_list0, .false.)
-        end if
+        call set_reference_det(sys, occ_list0, .false., sys%symmetry)
 
         select case(sys%system)
         case (ueg)

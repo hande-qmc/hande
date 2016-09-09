@@ -44,7 +44,7 @@ contains
     subroutine set_reference_det(sys, occ_list, override_input, ref_sym)
 
         ! Set the list of occupied orbitals in the reference determinant to be
-        ! the spin-orbitals with the lowest kinetic energy which satisfy the
+        ! the spin-orbitals with the lowest energy which satisfy the
         ! spin polarisation.
 
         ! Note: this is for testing only!
@@ -62,7 +62,7 @@ contains
         !   sys: system being studied.
         !   override_input: if true, overwrite occ_list with the best guess of
         !       a reference determinant even if occ_list is allocated on input.
-        !   ref_sym (optional): if supplied, attempt to find the reference
+        !   ref_sym:  attempt to find the reference
         !       determinant with the lowest sum of single-particle energies with
         !       this symmetry index.  Ignored if less than sym0 or greater than
         !       sym_max.
@@ -78,7 +78,7 @@ contains
         type(sys_t), intent(in) :: sys
         integer, intent(inout), allocatable :: occ_list(:)
         logical, intent(in) :: override_input
-        integer, intent(in), optional :: ref_sym
+        integer, intent(in) :: ref_sym
 
         integer :: i, j, ierr, spins_set, connections, iel, icore, jcore, ivirt, jvirt
         integer :: bit_element, bit_pos, tmp_occ_list(sys%nel), curr_occ_list(sys%nel), sym
@@ -125,7 +125,7 @@ contains
                 ! to find a determinant of different symmetry?
                 ! This needs only be called for initialisation, so don't attempt
                 ! to be clever and efficient...
-                if (present(ref_sym)) then
+                if (ref_sym /= huge(0)) then
                     if (ref_sym >= sys%sym0 .and. ref_sym <= sys%sym_max) then
                         call encode_det(sys%basis, occ_list, f)
                         ! If occ_list is already of the correct symmetry, then
@@ -203,6 +203,12 @@ contains
 
                         end if
                     end if
+                else
+                    sym = symmetry_orb_list(sys, occ_list)
+                    write (6, '(1X)')
+                    write (6, '(1X,"Reference determinant and so symmetry sector selected using the Aufbau principle.")')
+                    write (6, '(1X,"Selected symmetry ",i2,".")') sym
+                    write (6, '(1X)')
                 end if
             case(hub_real)
                 ! Attempt to keep electrons on different sites where possible.

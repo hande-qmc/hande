@@ -29,6 +29,9 @@ contains
 
         ! In/Out:
         !    sys: system being studied.  Unaltered on output.
+        !    occ_list0: reference determinant.  If not allocated, then a best
+        !       guess is generated based upon the spin and symmetry quantum
+        !       numbers.
         ! In:
         !    ex_level: maximum excitation level relative to the reference
         !       determinant to include in the Hilbert space.  If negative or
@@ -38,9 +41,6 @@ contains
         !       generate, per Monte Carlo cycle.
         !    ncycles: number of blocks of nattempts to perform.  Statistics are
         !       estimated based upon the space size estimate from each block.
-        !    occ_list0: reference determinant.  If not allocated, then a best
-        !       guess is generated based upon the spin and symmetry quantum
-        !       numbers.
         !    rng_seed: seed to initialise the random number generator.
 
         use basis, only: write_basis_fn
@@ -53,6 +53,7 @@ contains
         use reference_determinant, only: set_reference_det
         use symmetry, only: symmetry_orb_list
         use system
+        use calc_system_init, only: set_spin_polarisation
         use parallel
         use utils, only: binom_r
 
@@ -137,11 +138,8 @@ contains
 
                 ! Perform a Monte Carlo sampling of the space.
 
-                if (sys%symmetry < sys%sym_max) then
-                    call set_reference_det(sys, occ_list0, .false., sys%symmetry)
-                else
-                    call set_reference_det(sys, occ_list0, .false.)
-                end if
+                call set_reference_det(sys, occ_list0, .false., sys%symmetry)
+
                 call encode_det(sys%basis, occ_list0, f0)
 
                 ! Symmetry of the reference determinant.
