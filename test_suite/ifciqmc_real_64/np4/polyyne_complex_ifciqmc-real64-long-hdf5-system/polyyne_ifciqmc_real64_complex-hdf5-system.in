@@ -2,7 +2,7 @@ system = {
     int_file = "FCIDUMP",
     nel = 24,
     ms = 0,
-    sym = 0,
+    sym = 1,
     complex = true,
 }
 
@@ -12,6 +12,7 @@ hdf5_file = write_read_in_system{sys = sys}
 
 sys:free()
 system.int_file = hdf5_file
+system.sym = "aufbau"
 
 sys = read_in(system)
 

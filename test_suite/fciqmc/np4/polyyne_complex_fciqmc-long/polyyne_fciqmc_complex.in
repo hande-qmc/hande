@@ -2,7 +2,6 @@ sys = read_in {
     int_file = "FCIDUMP",
     nel = 24,
     ms = 0,
-    sym = 0,
     complex = true,
 }
 
