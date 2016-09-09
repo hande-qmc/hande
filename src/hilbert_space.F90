@@ -29,6 +29,9 @@ contains
 
         ! In/Out:
         !    sys: system being studied.  Unaltered on output.
+        !    occ_list0: reference determinant.  If not allocated, then a best
+        !       guess is generated based upon the spin and symmetry quantum
+        !       numbers.
         ! In:
         !    ex_level: maximum excitation level relative to the reference
         !       determinant to include in the Hilbert space.  If negative or
@@ -38,9 +41,6 @@ contains
         !       generate, per Monte Carlo cycle.
         !    ncycles: number of blocks of nattempts to perform.  Statistics are
         !       estimated based upon the space size estimate from each block.
-        !    occ_list0: reference determinant.  If not allocated, then a best
-        !       guess is generated based upon the spin and symmetry quantum
-        !       numbers.
         !    rng_seed: seed to initialise the random number generator.
 
         use basis, only: write_basis_fn

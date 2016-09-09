@@ -73,7 +73,7 @@ contains
 
         case default
 
-            ! Find the number of determinants with the required spin.
+            ! Test whether the required spin is possible given the numbe of electrons.
             if (abs(mod(sys%Ms,2)) /= mod(sys%nel,2) .or. abs(sys%Ms) > sys%nel) then
                 write (err, err_fmt) sys%Ms
                 call stop_all(proc_name, err)

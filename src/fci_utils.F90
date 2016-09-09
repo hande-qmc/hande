@@ -65,9 +65,9 @@ contains
         ! Initialisation of FCI calculations.  (Boilerplate, determinant initialisation.)
 
         ! In:
-        !   sys: system of interest.
         !   fci_in: fci input options.
         ! In/Out:
+        !   sys: system of interest.
         !   ref: reference determinant.  If a truncated calculation is being performed and
         !        a reference determinant is not supplied, a simple best guess will be created.
         ! Out:

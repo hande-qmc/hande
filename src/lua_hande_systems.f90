@@ -167,6 +167,7 @@ contains
                 sys%tot_sym = trim(str) == 'tot_sym'
                 sys%aufbau_sym = trim(str) == 'aufbau'
             else
+                ! sys%tot_sym is already initialized to .false.
                 sys%aufbau_sym = .false.
             end if
             if (.not. (sys%tot_sym .or. sys%aufbau_sym .or. sys%symmetry < huge(0))) &
