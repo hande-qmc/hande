@@ -2,17 +2,17 @@
    HANDE
 
  ================================================================
- Compiled on Sep 02 2016 at 17:30:42
+ Compiled on Sep 09 2016 at 18:28:59
  Compiled using cuc3.intel13.mpi.pop64.(optimised)
  HANDE version: 1.0-dev
  git sha1 hash:
-     1d23145088bda0df900424c5fd88404b7e2db479
+     bf379e2d02f0f253143fe31eb37478a8fc5b5d4f
  Hostname:
      sandstone
  Working directory: 
      /home/cs675/Code/hande/test_suite/fci/polyyne_fci_cas_complex
- Started running on 02/09/2016 at 17:36:44
- Calculation UUID: 9a540fd2-699a-4762-8c0c-a34afdcc5ec3.
+ Started running on 09/09/2016 at 18:31:21
+ Calculation UUID: 20e6d527-1733-47fc-9a55-7f8dc9694f1c.
  Preprocessor settings:
      DISABLE_HDF5 not defined.  HDF5 enabled.
      DISABLE_LANCZOS defined.  Lanczos disabled.
@@ -32,21 +32,8 @@ sys = read_in {
     int_file = "FCIDUMP",
     nel = 24,
     ms = 0,
-    sym = 0,
+    sym = "tot_sym",
     CAS = {8,8},
-    complex = true,
-}
-
-
-hdf5_name = write_read_in_system {
-    sys = sys,
-}
-
-sys:free()
-
-sys = read_in {
-    int_file = hdf5_name,
-    sym = 1,
     complex = true,
 }
 
@@ -165,60 +152,6 @@ fci {
   2  3  1
   3  1  2
 
- Writing HDF5 system file to FCIDUMP-CAS8,8.H5
-
- Reading HDF5 system file from FCIDUMP-CAS8,8.H5
-
- Memory required for all two body integrals (MB) on each processor: 0
- It is left to the user to ensure that this does not exceed available resources.
-
- Basis functions
- ---------------
-
- Spin given in units of 1/2.
- k-points given in terms of the reciprocal lattice vectors of the crystal cell.
-
- index   k-point            ms       <i|h|i>
-     1   (  1,  0,  0)      1       -2.63091309E-01
-     2   (  1,  0,  0)     -1       -2.63091309E-01
-     3   (  2,  0,  0)      1       -2.63091308E-01
-     4   (  2,  0,  0)     -1       -2.63091308E-01
-     5   (  1,  0,  0)      1       -2.63091308E-01
-     6   (  1,  0,  0)     -1       -2.63091308E-01
-     7   (  2,  0,  0)      1       -2.63091305E-01
-     8   (  2,  0,  0)     -1       -2.63091305E-01
-     9   (  1,  0,  0)      1        4.24212132E-01
-    10   (  1,  0,  0)     -1        4.24212132E-01
-    11   (  1,  0,  0)      1        4.24212136E-01
-    12   (  1,  0,  0)     -1        4.24212136E-01
-    13   (  2,  0,  0)      1        4.24212136E-01
-    14   (  2,  0,  0)     -1        4.24212136E-01
-    15   (  2,  0,  0)      1        4.24212141E-01
-    16   (  2,  0,  0)     -1        4.24212141E-01
-
- E_core =   11.133891034100
- Number of electrons: 8
- Number of basis functions: 16
-
- Bit-length of integers used to store determinant bit-strings: 32
- Number of integers used to store determinant bit-strings: 1
-
- Symmetry information
- --------------------
-
- The table below gives the label and inverse of each wavevector.
-
- Index    k-point         Inverse
-   1      (  1,  0,  0)        1
-   2      (  2,  0,  0)        3
-   3      (  1,  0,  0)        2
-
- The matrix below gives the result of k_i+k_j to within a reciprocal lattice vector.
-
-  1  2  3
-  2  3  1
-  3  1  2
-
  FCI
  ---
 
@@ -240,9 +173,11 @@ fci {
          "sym0_tot": 1,   
          "sym_max_tot": 3,   
          "symmetry": 1,   
+         "tot_sym": true,   
+         "aufbau_sym": false,   
          "max_number_excitations": 8,   
          "read_in": {
-             "int_file":  "FCIDUMP-CAS8,8.H5",   
+             "int_file":  "FCIDUMP",   
              "uhf": false,   
              "Ecore": 11.13389103,   
              "CAS": [ 8, 8],
@@ -2163,13 +2098,11 @@ fci {
  Time for each calculation section (seconds):
 
  Generic system initialisation: .25
- HDF5 system file creation    : .00
- Generic system initialisation: .00
- FCI calculation              : 8.57
+ FCI calculation              : 8.78
 
  ================================================================
- Finished running on 02/09/2016 at 17:36:46
- Wall time (seconds):                           1.97
- CPU time (per processor, seconds):             8.83
+ Finished running on 09/09/2016 at 18:31:23
+ Wall time (seconds):                           1.89
+ CPU time (per processor, seconds):             9.03
  ================================================================
 
