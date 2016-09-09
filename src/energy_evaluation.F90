@@ -1262,7 +1262,7 @@ contains
         real(p) ::  proje
         type(qmc_state_t), intent(in) ::  qs
  
-        if (abs(qs%estimators%D0_population)<1e-100_p) then
+        if (abs(qs%estimators%D0_population)<tiny(0._p)) then
            proje = 0
         else
            proje = qs%estimators%proj_energy/qs%estimators%D0_population
