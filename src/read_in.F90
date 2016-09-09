@@ -284,7 +284,6 @@ contains
                 if (parent) write (6,'(1X,a62,/)') 'Unconverged symmetry found.  Turning translational symmetry off.'
                 orbsym(:) = 0_int_64
             end if
-            if (sys%symmetry == 0) sys%symmetry = 1
         end if
         ! Set system properties required later
 

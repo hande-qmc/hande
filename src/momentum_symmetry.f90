@@ -70,7 +70,8 @@ contains
             do i = 1, sys%nsym
                 if (all(sys%basis%basis_fns(i*2)%l == 0)) sys%hubbard%mom_sym%gamma_sym = i
             end do
-            if (sys%hubbard%mom_sym%gamma_sym == 0) call stop_all('init_momentum_symmetry', 'Gamma-point symmetry not found.')
+            if (sys%hubbard%mom_sym%gamma_sym == 0) call stop_all('init_momentum_symmetry', 'Gamma-point symmetry not found. &
+                        &Kpoint meshes not containing the gamma point are not currently supported.')
             if (sys%tot_sym) sys%symmetry = sys%hubbard%mom_sym%gamma_sym
 
             do i = 1, sys%nsym
@@ -144,7 +145,9 @@ contains
 
             end do
             sys%read_in%pg_sym%gamma_sym = sys%read_in%mom_sym%gamma_sym
-            if (sys%read_in%mom_sym%gamma_sym == 0) call stop_all('init_momentum_symmetry', 'Gamma-point symmetry not found.')
+            if (sys%tot_sym) sys%symmetry = sys%read_in%mom_sym%gamma_sym
+
+            if (sys%read_in%mom_sym%gamma_sym == 0) call stop_all('init_momentum_symmetry', 'Gamma-point symmetry not found. ')
 
             do i = sys%sym0, sys%nsym
                 do j = i, sys%nsym
