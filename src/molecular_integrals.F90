@@ -339,7 +339,7 @@ contains
             if (.not.suppress_err_msg) then
                 write (error, '("<i|o|j> should be zero by symmetry: &
                                 &<",i3,"|o|",i3,"> =",f16.10)') i, j, intgrl
-                call warning('store_one_body_mol_pg_sym', trim(error), -1)
+                call warning('store_one_body_int', trim(error), -1)
             end if
             ierr = 1
         end if
@@ -358,6 +358,9 @@ contains
         ! Out:
         !    sym_allowed: boolean value denoting whether integral can be
         !       nonzero. false if must be zero by symmetry.
+
+! [review] - AJWT: For momentum symmetry, this explicitly ignores op_sym. 
+! [review] - AJWT: While we can't raise an error in a pure function, we can at least include a comment on it here,
 
         use system, only: sys_t
         use point_group_symmetry, only: is_gamma_irrep_pg_sym
@@ -954,10 +957,13 @@ contains
 
         ! In:
         !    i,j,a,b: (indices of) spin-orbitals.
+        !    op_sym:  The symmetry of the operator
         !    sys: information on system being studied.
         ! Out:
         !    allowed: boolean value denoting whether or not integral can
         !       be nonzero by symmetry.
+! [review] - AJWT: For momentum symmetry, this explicitly ignores op_sym. 
+! [review] - AJWT: While we can't raise an error in a pure function, we can at least include a comment on it here,
 
         use system, only: sys_t
         use point_group_symmetry, only: cross_product_basis, cross_product_pg_sym, is_gamma_irrep_pg_sym, pg_sym_conj

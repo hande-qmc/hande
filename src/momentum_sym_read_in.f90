@@ -74,7 +74,8 @@ contains
         ! In/Out:
         !   sys: system being studied. On output all information about basis function
         !       symmetry in read_in%mom_sym set as required.
-
+! [review] - AJWT: It is not immediately obious what information this routine expects
+! [review] - AJWT: to have already been set in sys (or where it is set).
         use checking, only: check_allocate, check_deallocate
         use errors, only: stop_all
 
@@ -129,6 +130,9 @@ contains
 
     end subroutine init_basis_momentum_symmetry_info
 
+! [review] - AJWT: Below, sym is a 3-vector for the kpoint, but in mom_sym_conj it is a symmetry index
+! [review] - AJWT: Some consistent naming conventions to distinguish the two would be helpful.
+! [review] - AJWT: [Later] Of course neither to be confused with isym, the FCIDUMP symmetry index.
     pure function is_gamma_sym_periodic_read_in(mom_sym, sym) result(is_gamma_sym)
 
         ! Checks if symmetry given is the gamma point symmetry.
@@ -274,7 +278,7 @@ contains
 
         ! In:
         !   ind: index to decode.
-        !   nprop: condition of periodic bounary conditions used, ie the
+        !   nprop: condition of periodic boundary conditions used, ie the
         !       supercell dimension.
         ! Out:
         !   a: array containing kpoint identifier in terms of 3 "quantum numbers".
@@ -283,6 +287,9 @@ contains
         integer, intent(out) :: a(3)
         integer :: scratch
 
+! [review] - AJWT: Will the real arithmetic ever end up with a number which rounds the wrong way?
+! [review] - AJWT: eg. for large nprop, scratch below could end up being 1.999999999 which rownds
+! [review] - AJWT: down to 1 rather than getting the correct value 2.
         scratch = real(ind-1)/real(nprop(1)*nprop(2))
         a(3) = int(scratch)
         scratch = ind - 1 - a(3) * nprop(1) * nprop(2)

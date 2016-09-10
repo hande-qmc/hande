@@ -309,9 +309,9 @@ contains
     pure function cross_product_pg_sym(read_in, sym_i, sym_j) result(sym_ij)
 
         ! In:
-        !    pg_sym: information on the symmetries of the basis functions.
+        !    read_in: information on the symmetries of the basis functions.
         !    sym_i,sym_j: bit string representations of irreducible
-        !    representations of a point group and Lz symmetry
+        !                 representations of a point group and Lz symmetry
         ! Returns:
         !    The bit string representation of the irreducible representation
         !    formed from the direct product sym_i \cross sym_j.
@@ -336,7 +336,7 @@ contains
     pure function pg_sym_conj(read_in, sym) result(rsym)
 
         ! In:
-        !    pg_sym: information on the symmetries of the basis functions.
+        !   read_in: information on the symmetries of the basis functions.
         !   sym: the bit representation of the irrep of the pg sym including
         !        Lz in its higher bits 
         ! Returns:
