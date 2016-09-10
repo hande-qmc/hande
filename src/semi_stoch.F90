@@ -319,7 +319,6 @@ contains
 
         call create_determ_hash_table(determ, print_info)
 
-
         call create_determ_hamil(determ, sys, qs, reference%H00, displs, dets_this_proc, print_info)
 
         ! All deterministic states on this processor are always stored in
@@ -548,10 +547,11 @@ contains
                 fock_sum = sum_sp_eigenvalues_bit_string(sys, dets_this_proc(:,j))
                 weight = calc_qn_weighting(qs, fock_sum - qs%ref%fock_sum)
                 determ%one_minus_weight(j) =  weight
-            enddo
+            end do
         else
+            ! [review] - JSS: unnecessary use of (:).
             determ%one_minus_weight(:)=1.0_p
-        endif
+        end if
         if (print_info) write(6,'(1X,a74)') '# Counting number of non-zero deterministic Hamiltonian elements to store.'
 
         associate(hamil => determ%hamil)
@@ -573,7 +573,7 @@ contains
                         ! Take the Hartree-Fock energy off the diagonal elements.
                         if (diag_elem) then
                            hmatel%r = hmatel%r - H00
-                        endif
+                        end if
                         ! Recall one_minus_weight currently contains the acutal
                         ! weight
                         weight = determ%one_minus_weight(j)
@@ -842,8 +842,7 @@ contains
                     ! contribution from the shift.
                     ! For QuasiNewton instead of - tau * H_ii * v_i - tau * S * v_i  
                     ! we will need   - tau *((H_ii - E_proj) *w_i + (E_proj - S)) * v_i
-                    !           so   - tau * (H_ii) * w_i * v_i
-                    !                - tau * (E_proj * (1-w_i) + S) * v_i
+                    !           so   - tau * (H_ii) * w_i * v_i - tau * (E_proj * (1-w_i) + S) * v_i
                     !                       (where w_i is the quasi_newton weight).
                     ! w_i is subsumed into H_ii already, so we now just include
                     ! the shift/projE component.
@@ -932,12 +931,12 @@ contains
 
         ! For QuasiNewton instead of - tau * H_ii * v_i - tau * S * v_i  
         ! we will need   - tau *((H_ii - E_proj) *w_i + (E_proj - S)) * v_i
-        !           so   - tau * (H_ii) * w_i * v_i
-        !                - tau * (E_proj * (1-w_i) - S) * v_i
+        !           so   - tau * (H_ii) * w_i * v_i - tau * (E_proj * (1-w_i) - S) * v_i
         !                       (where w_i is the quasi_newton weight).
         ! w_i is subsumed into H_ii already, so we now just include
         ! the shift/projE component.
 
+        ! [review] - JSS: unnecessary use of (:) syntax.
         determ%vector(:) = (-qs%tau * (proj_energy*determ%one_minus_weight(:)-qs%shift(1)))*determ%vector(:)
 
         ! Perform the multiplication of the deterministic Hamiltonian on the

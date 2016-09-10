@@ -44,4 +44,5 @@ contains
       e3%r = e1%r * r2
       e3%c = e1%c * r2
    end function hmatel_mul_hr
+
 end module hamiltonian_data
