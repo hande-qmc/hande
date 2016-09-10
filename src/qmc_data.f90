@@ -381,8 +381,7 @@ type semi_stoch_t
     ! takes a weight for being spawned to.  This is included in the Hamiltonian
     ! directly, but must also be used when modifying the shift.  1-w_i is stored
     ! for all determinants on this processor in the deterministic space.
-    ! [review] - JSS: this is a horrible name.
-    real(p), allocatable :: one_minus_weight(:) ! sizes(iproc)
+    real(p), allocatable :: one_minus_qn_weight(:) ! sizes(iproc)
     ! If separate_annihilation is true then this array will hold the indices
     ! of the deterministic states in the main list. This prevents having to
     ! search the whole of the main list for the deterministic states.

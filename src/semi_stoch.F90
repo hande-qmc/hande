@@ -277,9 +277,9 @@ contains
 
         ! Vector to hold the residual weighting for each determinant 
         ! for quasinewton propagation.
-        allocate(determ%one_minus_weight(determ%sizes(iproc)), stat=ierr)
-        call check_allocate('determ%one_minus_weight', determ%sizes(iproc), ierr)
-        determ%one_minus_weight = 0.0_p
+        allocate(determ%one_minus_qn_weight(determ%sizes(iproc)), stat=ierr)
+        call check_allocate('determ%one_minus_qn_weight', determ%sizes(iproc), ierr)
+        determ%one_minus_qn_weight = 0.0_p
 
         ! Vector to hold deterministic amplitudes from all processes.
         if (determ%projection_mode == semi_stoch_separate_annihilation) then
@@ -371,9 +371,9 @@ contains
             deallocate(determ%vector, stat=ierr)
             call check_deallocate('determ%vector', ierr)
         end if
-        if (allocated(determ%one_minus_weight)) then
-            deallocate(determ%one_minus_weight, stat=ierr)
-            call check_deallocate('determ%one_minus_weight', ierr)
+        if (allocated(determ%one_minus_qn_weight)) then
+            deallocate(determ%one_minus_qn_weight, stat=ierr)
+            call check_deallocate('determ%one_minus_qn_weight', ierr)
         end if
         if (allocated(determ%full_vector)) then
             deallocate(determ%full_vector, stat=ierr)
@@ -541,17 +541,18 @@ contains
         integer :: ierr
 #endif
 
-        ! Start by evaluating the QN weights.  We store them in one_minus_weight
-        ! and then modify one_minus_weight to be 1-w after calculating H
+        ! Start by evaluating the QN weights.  We store them in one_minus_qn_weight
+        ! and then modify one_minus_qn_weight to be 1-w after calculating H
         if (propagator%quasi_newton) then
             do j = 1, determ%sizes(iproc)
                 fock_sum = sum_sp_eigenvalues_bit_string(sys, dets_this_proc(:,j))
                 weight = calc_qn_weighting(propagator, fock_sum - ref%fock_sum)
-                determ%one_minus_weight(j) =  weight
+                determ%one_minus_qn_weight(j) =  weight
             end do
         else
             ! [review] - JSS: unnecessary use of (:).
-            determ%one_minus_weight(:)=1.0_p
+            ! [reply] - AJWT: Agreed - also probably best set it to 0 if it's accidentally used before a proper init
+            determ%one_minus_qn_weight = 0.0_p
         end if
         if (print_info) write(6,'(1X,a74)') '# Counting number of non-zero deterministic Hamiltonian elements to store.'
 
@@ -575,9 +576,9 @@ contains
                         if (diag_elem) then
                            hmatel%r = hmatel%r - ref%H00
                         end if
-                        ! Recall one_minus_weight currently contains the acutal
+                        ! Recall one_minus_qn_weight currently contains the acutal
                         ! weight
-                        weight = determ%one_minus_weight(j)
+                        weight = determ%one_minus_qn_weight(j)
                         hmatel = weight * hmatel
                         if (abs(hmatel%r) > depsilon) then
                             nnz = nnz + 1
@@ -625,8 +626,8 @@ contains
                     hamil%row_ptr(1:determ%tot_size) = 0
                 end if
             end do
-            ! Now actually store 1-w in one_minus_weight
-            determ%one_minus_weight(:) = 1.0_p - determ%one_minus_weight(:)
+            ! Now actually store 1-w in one_minus_qn_weight
+            determ%one_minus_qn_weight(:) = 1.0_p - determ%one_minus_qn_weight(:)
 
         end associate
 
@@ -847,7 +848,7 @@ contains
                     !                       (where w_i is the quasi_newton weight).
                     ! w_i is subsumed into H_ii already, so we now just include
                     ! the shift/projE component.
-                    out_vec = -qs%tau * (out_vec + (proj_energy * determ%one_minus_weight(i) - qs%shift(1)) * determ%vector(i))
+                    out_vec = -qs%tau * (out_vec + (proj_energy * determ%one_minus_qn_weight(i) - qs%shift(1)) * determ%vector(i))
                     call create_spawned_particle_determ(determ%dets(:,row), out_vec, qs%psip_list%pop_real_factor, proc, &
                                                         qmc_in%initiator_approx, rng, spawn)
                 end do
@@ -938,7 +939,8 @@ contains
         ! the shift/projE component.
 
         ! [review] - JSS: unnecessary use of (:) syntax.
-        determ%vector(:) = (-qs%tau * (proj_energy*determ%one_minus_weight(:)-qs%shift(1)))*determ%vector(:)
+        ! [reply] - AJWT: given it's mixing both vectors and scalars, I thought the (:) were helpful
+        determ%vector(:) = (-qs%tau * (proj_energy*determ%one_minus_qn_weight(:)-qs%shift(1)))*determ%vector(:)
 
         ! Perform the multiplication of the deterministic Hamiltonian on the
         ! full deterministic vector. A factor of minus one is applied to the
