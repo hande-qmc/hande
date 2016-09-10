@@ -127,8 +127,8 @@ contains
 
     end subroutine init_semi_stoch_t_flags
 
-    subroutine init_semi_stoch_t(determ, ss_in, sys, qs, psip_list, reference, annihilation_flags, &
-                                 spawn, mpi_barriers)
+    subroutine init_semi_stoch_t(determ, ss_in, sys, propagator, psip_list, reference, &
+                                 annihilation_flags, spawn, mpi_barriers)
 
         ! Create a semi_stoch_t object which holds all of the necessary
         ! information to perform a semi-stochastic calculation. The type of
@@ -140,7 +140,7 @@ contains
         ! In:
         !    ss_in: Type containing various input semi-stochastic input options.
         !    sys: system being studied
-        !    qs: qmc_state_t containing information about the quasinewton parameter.
+        !    propagator: propagator_t containing information about the quasinewton parameter.
         !    reference: current reference determinant.
         !    annihilation_flags: calculation specific annihilation flags.
         !    spawn: spawn_t object to which deterministic spawning will occur.
@@ -149,7 +149,7 @@ contains
 
         use checking, only: check_allocate, check_deallocate
         use qmc_data, only: empty_determ_space, high_pop_determ_space, read_determ_space, reuse_determ_space, ci_determ_space, &
-                            semi_stoch_separate_annihilation, particle_t, annihilation_flags_t, semi_stoch_in_t, qmc_state_t
+                            semi_stoch_separate_annihilation, particle_t, annihilation_flags_t, semi_stoch_in_t, propagator_t
         use parallel
         use sort, only: qsort
         use spawn_data, only: spawn_t
@@ -160,7 +160,7 @@ contains
         type(semi_stoch_t), intent(inout) :: determ
         type(semi_stoch_in_t), intent(in) :: ss_in
         type(sys_t), intent(in) :: sys
-        type(qmc_state_t), intent(in) :: qs
+        type(propagator_t), intent(in) :: propagator
         type(particle_t), intent(inout) :: psip_list
         type(reference_t), intent(in) :: reference
         type(annihilation_flags_t), intent(in) :: annihilation_flags
@@ -319,7 +319,7 @@ contains
 
         call create_determ_hash_table(determ, print_info)
 
-        call create_determ_hamil(determ, sys, qs, reference%H00, displs, dets_this_proc, print_info)
+        call create_determ_hamil(determ, sys, propagator, reference, displs, dets_this_proc, print_info)
 
         ! All deterministic states on this processor are always stored in
         ! particle_t%states, even if they have a population of zero, so they are
@@ -495,7 +495,7 @@ contains
 
     end subroutine create_determ_hash_table
 
-    subroutine create_determ_hamil(determ, sys, qs, H00, displs, dets_this_proc, print_info)
+    subroutine create_determ_hamil(determ, sys, propagator, ref, displs, dets_this_proc, print_info)
 
         ! In/Out:
         !    determ: Deterministic space being used. On input, determ%sizes,
@@ -503,8 +503,8 @@ contains
         !        output, determ%hamil will have been created.
         ! In:
         !    sys: system being studied
-        !    qs: qmc_state_t containing information about the quasinewton parameter.
-        !    H00: energy of the reference determinant (subtracted from diagonal elements)
+        !    propagator: propagator_t containing information about the quasinewton parameter.
+        !    ref: reference_t for the reference determinant
         !    displs: displs(i) holds the cumulative sum of the number of
         !        deterministic states belonging to processor numbers 0 to i-1.
         !    dets_this_proc: The deterministic states belonging to this
@@ -519,13 +519,14 @@ contains
         use utils, only: int_fmt
         use hamiltonian_data
         use determinants, only: sum_sp_eigenvalues_bit_string
-        use qmc_data, only: qmc_state_t
+        use qmc_data, only: propagator_t
         use spawning, only: calc_qn_weighting
+        use reference_determinant, only: reference_t
 
         type(semi_stoch_t), intent(inout) :: determ
         type(sys_t), intent(in) :: sys
-        type(qmc_state_t), intent(in) :: qs
-        real(p), intent(in) :: H00
+        type(propagator_t), intent(in) :: propagator
+        type(reference_t), intent(in) :: ref
         integer, intent(in) :: displs(0:nprocs-1)
         integer(i0), intent(in) :: dets_this_proc(:,:)
         logical, intent(in) :: print_info
@@ -542,10 +543,10 @@ contains
 
         ! Start by evaluating the QN weights.  We store them in one_minus_weight
         ! and then modify one_minus_weight to be 1-w after calculating H
-        if (qs%quasi_newton) then
+        if (propagator%quasi_newton) then
             do j = 1, determ%sizes(iproc)
                 fock_sum = sum_sp_eigenvalues_bit_string(sys, dets_this_proc(:,j))
-                weight = calc_qn_weighting(qs, fock_sum - qs%ref%fock_sum)
+                weight = calc_qn_weighting(propagator, fock_sum - ref%fock_sum)
                 determ%one_minus_weight(j) =  weight
             end do
         else
@@ -572,7 +573,7 @@ contains
                         diag_elem = i == j + displs(iproc)
                         ! Take the Hartree-Fock energy off the diagonal elements.
                         if (diag_elem) then
-                           hmatel%r = hmatel%r - H00
+                           hmatel%r = hmatel%r - ref%H00
                         end if
                         ! Recall one_minus_weight currently contains the acutal
                         ! weight

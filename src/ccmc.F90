@@ -710,7 +710,7 @@ contains
                         ! cluster%excitation_level == huge(0) indicates a cluster
                         ! where two excitors share an elementary operator
 
-                        if (qs%quasi_newton) cdet(it)%fock_sum = sum_sp_eigenvalues_occ_list(sys, cdet(it)%occ_list) &
+                        if (qs%propagator%quasi_newton) cdet(it)%fock_sum = sum_sp_eigenvalues_occ_list(sys, cdet(it)%occ_list) &
                                                                     - qs%ref%fock_sum
                         if (cluster(it)%excitation_level /= huge(0)) then
                             ! FCIQMC calculates the projected energy exactly.  To do
@@ -818,7 +818,7 @@ contains
                         ! Note we use the (encoded) population directly in stochastic_ccmc_death_nc
                         ! (unlike the stochastic_ccmc_death) to avoid unnecessary decoding/encoding
                         ! steps (cf comments in stochastic_death for FCIQMC).
-                        if (qs%quasi_newton) then
+                        if (qs%propagator%quasi_newton) then
                             dfock = sum_sp_eigenvalues_bit_string(sys, qs%psip_list%states(:,iattempt)) - qs%ref%fock_sum
                         end if
                         if (sys%read_in%comp) then
@@ -952,5 +952,6 @@ contains
         end do
 
     end subroutine do_ccmc
+
 
 end module ccmc

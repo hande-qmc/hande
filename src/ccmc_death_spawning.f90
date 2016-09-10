@@ -128,7 +128,7 @@ contains
                     end if
                 end if
             end if
-            invdiagel = calc_qn_spawned_weighting(sys, qs, cdet%fock_sum, connection)
+            invdiagel = calc_qn_spawned_weighting(sys, qs%propagator, cdet%fock_sum, connection)
         else
             invdiagel = 1
         end if
@@ -228,7 +228,7 @@ contains
         ! a difference in the sign of the determinant formed from applying the
         ! parent excitor to the qs%ref and that formed from applying the
         ! child excitor.
-        invdiagel = calc_qn_weighting(qs, cdet%fock_sum)
+        invdiagel = calc_qn_weighting(qs%propagator, cdet%fock_sum)
         if (linked_ccmc) then
             select case (cluster%nexcitors)
             case(0)
@@ -433,7 +433,7 @@ contains
         ! parent excitor to the reference and that formed from applying the
         ! child excitor.
 
-        invdiagel = calc_qn_weighting(qs, dfock)
+        invdiagel = calc_qn_weighting(qs%propagator, dfock)
         if (isD0) then
             KiiAi = ((- proj_energy)*invdiagel + (proj_energy - qs%shift(1)))*population
         else
@@ -659,7 +659,7 @@ contains
             pgen = pgen*cluster%pselect*nspawnings_total/npartitions
 
             fock_sum = sum_sp_eigenvalues_bit_string(sys, fexcit)
-            invdiagel = calc_qn_weighting(qs, fock_sum - qs%ref%fock_sum)
+            invdiagel = calc_qn_weighting(qs%propagator, fock_sum - qs%ref%fock_sum)
             ! correct hmatel for cluster amplitude
             hmatel%r = hmatel%r * invdiagel * real(cluster%amplitude)
             excitor_level = get_excitation_level(fexcit, qs%ref%f0)

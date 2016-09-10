@@ -224,7 +224,7 @@ contains
                     determ%doing_semi_stoch = .true.
                     ! [review] - JSS: I think care should be taken when passing in both qs and a component of it. Is this really
                     ! [review] - JSS: necessary? Do they both have the same intents? (If not, bad things can happen...)
-                    call init_semi_stoch_t(determ, semi_stoch_in, sys, qs, qs%psip_list, qs%ref, annihilation_flags, &
+                    call init_semi_stoch_t(determ, semi_stoch_in, sys, qs%propagator, qs%psip_list, qs%ref, annihilation_flags, &
                                            qs%spawn_store%spawn, qmc_in%use_mpi_barriers)
                 end if
 
@@ -232,8 +232,9 @@ contains
                                             complx = sys%read_in%comp)
                 ! [review] - JSS: I think care should be taken when passing in both qs and a component of it. Is this really
                 ! [review] - JSS: necessary? Do they both have the same intents? (If not, bad things can happen...)
-                call load_balancing_wrapper(sys, qs, qs%ref, load_bal_in, annihilation_flags, fciqmc_in%non_blocking_comm, &
-                                            rng, qs%psip_list, qs%spawn_store%spawn, qs%par_info, determ)
+                call load_balancing_wrapper(sys, qs%propagator, qs%ref, load_bal_in, annihilation_flags, &
+                                            fciqmc_in%non_blocking_comm, rng, qs%psip_list, qs%spawn_store%spawn, &
+                                            qs%par_info, determ)
                 if (fciqmc_in%non_blocking_comm) qs%spawn_store%spawn_recv%proc_map = qs%par_info%load%proc_map
                 ideterm = 0
 
@@ -243,7 +244,8 @@ contains
                     cdet%data => qs%psip_list%dat(:,idet)
 
                     call decoder_ptr(sys, cdet%f, cdet)
-                    if (qs%quasi_newton) cdet%fock_sum = sum_sp_eigenvalues_occ_list(sys, cdet%occ_list) - qs%ref%fock_sum
+                    if (qs%propagator%quasi_newton) &
+                        cdet%fock_sum = sum_sp_eigenvalues_occ_list(sys, cdet%occ_list) - qs%ref%fock_sum
 
                     ! Extract the real sign from the encoded sign.
                     do ispace = 1, qs%psip_list%nspaces
@@ -493,7 +495,7 @@ contains
             cdet%data(1) = sc0_ptr(sys, cdet%f) - qs%ref%H00
 
             call decoder_ptr(sys, cdet%f, cdet)
-            if (qs%quasi_newton) cdet%fock_sum = sum_sp_eigenvalues_occ_list(sys, cdet%occ_list) - qs%ref%fock_sum
+            if (qs%propagator%quasi_newton) cdet%fock_sum = sum_sp_eigenvalues_occ_list(sys, cdet%occ_list) - qs%ref%fock_sum
 
             ! It is much easier to evaluate the projected energy at the
             ! start of the i-FCIQMC cycle than at the end, as we're

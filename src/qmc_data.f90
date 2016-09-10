@@ -535,6 +535,16 @@ type estimators_t
     real(p) :: proj_hf_H_hfpsip
 end type estimators_t
 
+type propagator_t
+    ! If true, use a quasiNewton step
+    logical :: quasi_newton = .false.
+    ! The lower threshold for a quasiNewton enegy difference
+    real(p) :: quasi_newton_threshold = 1.e-5_p
+    ! The value to set the quasiNewton energy difference to if lower than the
+    ! threshold
+    real(p) :: quasi_newton_value = 1_p
+end type propagator_t
+
 type qmc_state_t
     ! When performing dmqmc calculations, dmqmc_factor = 2.0. This factor is
     ! required because in DMQMC calculations, instead of spawning from one end with
@@ -561,15 +571,10 @@ type qmc_state_t
     real(p) :: target_particles = huge(1.0_p)
     ! Stores information used by the excitation generator
     type(excit_gen_data_t) :: excit_gen_data
-    ! If true, use a quasiNewton step
-    logical :: quasi_newton = .false.
-    ! The lower threshold for a quasiNewton enegy difference
-    real(p) :: quasi_newton_threshold = 1.e-5_p
-    ! The value to set the quasiNewton energy difference to if lower than the
-    ! threshold
-    real(p) :: quasi_newton_value = 1_p
     ! Value of beta which we propagate the density matrix to. Only used for DMQMC.
     real(p) :: target_beta = 1.0
+    ! Information about the propagator (currently just quasi_newton)
+    type(propagator_t) :: propagator
     ! Convenience handles.
     type(particle_t) :: psip_list
     type(spawned_particle_t) :: spawn_store
