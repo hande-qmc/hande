@@ -34,7 +34,7 @@ files : list of list of strings
     names of files containing HANDE QMC calculation output.  Each list contains
     the a set of files which are analysed together (ie a series of calculations
     restarted from the previous calculation).
-start_iteration : int or None
+start_iteration : int or None (Default)
     QMC iteration from which statistics are gathered.
 reblock_plot : string
     Filename to which the reblocking convergence plot (standard error vs reblock
@@ -46,8 +46,10 @@ verbose : int
     <0: print nothing
     0: print only the estimate from the optimal block length.
     1: print only the recommended statistics from the optimal block length.
-    2: print blocking analysis and recommended statistics.
-    3: print calculation metadata, blocking analysis and recommended statistics.
+    2: print search for automatic starting iteration (if required), blocking
+    analysis and recommended statistics.
+    3: print calculation metadata, search for automatic starting iteration
+    (if required), blocking analysis and recommended statistics.
 
 width : int
     Maximum width (in characters) of lines to print out for
@@ -105,7 +107,8 @@ opt_block: :class:`pandas.DataFrame`
         try:
             info = pyhande.lazy.std_analysis(calc, start_iteration,
                                              extract_psips=True,
-                                             calc_inefficiency=inefficiency)
+                                             calc_inefficiency=inefficiency,
+                                             verbosity = verbose)
             for (i, i_info) in enumerate(info):
                 if verbose >= v_analysis:
                     msg = 'Analysing file(s): %s.' % (' '.join(calc))
@@ -135,8 +138,9 @@ opt_block: :class:`pandas.DataFrame`
         except ValueError:
             print('WARNING: No data found in file '+' '.join(calc)+'.')
 
-
-    opt_blocks = [info.opt_block for info in infos]
+    opt_blocks = [pd.DataFrame(data=
+        {'iteration':info.metadata['pyhande']['reblock_start']},
+        index = ['Block from']).append(info.opt_block) for info in infos]
     if verbose < v_rec_stats:
         for opt_block in opt_blocks:
             if not opt_block.empty:
@@ -160,7 +164,7 @@ opt_block: :class:`pandas.DataFrame`
                 try:
                     fnames = ' in ' + calc.replace(',',' ')
                 except AttributeError:
-                    # if there is more than one calculation in the file calc is a tuple 
+                    # if there is more than one calculation in the file calc is a tuple
                     fnames = ' in ' + calc[0] + ' ' + str(calc[1])
             print('WARNING: could not find optimal block size%s.' % (fnames))
             print('Insufficient statistics collected for the following '
@@ -199,9 +203,6 @@ reblock_plot : string
         cols = -1
 
     parser = argparse.ArgumentParser(description = __doc__)
-    parser.add_argument('-a', '--auto-reblock', default=False,
-                        action='store_true', help='Attempt to automatically '
-                        'determine the iteration to start blocking from.')
     parser.add_argument('-m', '--merge', default=False, action='store_true',
                         help='Combine data from each file before analysing. '
                         'Separate calculations can be denoted by placing \'--\''
@@ -218,8 +219,9 @@ reblock_plot : string
                         help='Output only the final summary table.  '
                         'Overrides --verbose.')
     parser.add_argument('-s', '--start', type=int, dest='start_iteration',
-                        default=0, help='Iteration number from which to gather '
-                        'statistics.  Default: %(default)s.')
+                        default=None, help='Iteration number from which to '
+                        'gather statistics.  Default: Try finding starting '
+                        'iteration automatically. ')
     parser.add_argument('-v', '--verbose', dest='verbose', action='count',
                         default=1, help='Increase verbosity of the output.  Can '
                         'be specified multiple times.')
@@ -235,9 +237,6 @@ reblock_plot : string
                         help='Space-separated list of files to analyse.')
 
     options = parser.parse_args(args)
-
-    if options.auto_reblock:
-        options.start_iteration=None
 
     if not options.filenames:
         parser.print_help()

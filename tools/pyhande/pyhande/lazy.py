@@ -17,9 +17,9 @@ import pyhande.extract
 import pyhande.analysis
 import pyhande.weight
 
-def std_analysis(datafiles, start=0, select_function=None, extract_psips=False,
-                reweight_history=0, mean_shift=0.0, arith_mean=False,
-                calc_inefficiency=False ):
+def std_analysis(datafiles, start=None, select_function=None,
+        extract_psips=False, reweight_history=0, mean_shift=0.0,
+        arith_mean=False, calc_inefficiency=False, verbosity = 1):
     '''Perform a 'standard' analysis of HANDE output files.
 
 Parameters
@@ -30,7 +30,7 @@ start : int or None
     iteration from which the blocking analysis is performed.  If None, then
     attempt to automatically determine a good iteration using
     :func:`find_starting_iteration`.
-select_function : function 
+select_function : function
     function which returns a boolean mask for the iterations to include in the
     analysis.  Not used if set to None (default).  Overrides ``start``.  See
     below for examples.
@@ -41,6 +41,11 @@ reweight_history : integer
     [Umrigar93]_ this should be set to be a few correlation times.
 mean_shift : float
     prevent the weights from beoming to large.
+verbosity : int
+    values greater than 1 print out blocking information when automatically
+    finding the starting iteration. 0 and 1 print out the starting iteration if
+    automatically found. Negative values print out nothing from the automatic
+    starting point search.
 
 Returns
 -------
@@ -82,9 +87,10 @@ Umrigar93
     for (calc, md) in zip(calcs, calcs_md):
         calc_start = start
         if calc_start is None:
-            calc_start = find_starting_iteration(calc, md, verbose=True)
+            calc_start = find_starting_iteration(calc, md, verbose=verbosity)
         md['pyhande'] = {'reblock_start': calc_start}
-        print('Block from: %i' % calc_start)
+        if (verbosity > -1) :
+            print('Block from: %i' % calc_start)
         infos.append(lazy_block(calc, md, calc_start, select_function,
                      extract_psips, calc_inefficiency))
     return infos
@@ -181,18 +187,18 @@ info : :func:`collections.namedtuple`
                           'begins to vary.')
 
     (data_len, reblock, covariance) = pyblock.pd_utils.reblock(mc_data)
-    
+
     proje = pyhande.analysis.projected_energy(reblock, covariance, data_len)
     reblock = pd.concat([reblock, proje], axis=1)
     to_block.append('Proj. Energy')
 
     if reweight_calc:
-        proje = pyhande.analysis.projected_energy(reblock, covariance, 
+        proje = pyhande.analysis.projected_energy(reblock, covariance,
                     data_len, sum_key='W * \sum H_0j N_j', ref_key='W * N_0',
                     col_name='Weighted Proj. E.')
         reblock = pd.concat([reblock, proje], axis=1)
         to_block.append('Weighted Proj. E.')
-    
+
     # Summary (including pretty printing of estimates).
     (opt_block, no_opt_block) = pyhande.analysis.qmc_summary(reblock, to_block)
 
@@ -201,7 +207,7 @@ info : :func:`collections.namedtuple`
         dtau = md['qmc']['tau']
         reblocked_iters = calc.ix[indx, 'iterations']
         N = reblocked_iters.iloc[-1] - reblocked_iters.iloc[0]
-        
+
         # This returns a data frame with inefficiency data from the
         # projected energy estimators if available.
         ineff = pyhande.analysis.inefficiency(opt_block, dtau, N)
@@ -284,7 +290,7 @@ calcs : list of :class:`pandas.DataFrame`
             calcs.append(pd.concat(calc[::-1]))
         data = calcs
         metadata = calcs_metadata
-    
+
     # Don't have UUID information in all calculations.
     # Assume any restarted calculations/set of calculations if sorted by uuids
     # above are in the right order from here and contiguous.
@@ -312,9 +318,9 @@ calcs : list of :class:`pandas.DataFrame`
     calcs.append(pd.concat(xcalc, ignore_index=True))
     return calcs_metadata, calcs
 
-def find_starting_iteration(data, md, frac_screen_interval=500,
-    number_of_reblockings=50, number_of_reblocks_to_cut_off=1, pos_min_frac=0.8,
-    verbose=False, show_graph=False):
+def find_starting_iteration(data, md, frac_screen_interval=300,
+    number_of_reblockings=30, number_of_reblocks_to_cut_off=1, pos_min_frac=0.8,
+    verbose=0, show_graph=False):
     '''Find the best iteration to start analysing CCMC/FCIQMC data.
 
 .. warning::
@@ -322,32 +328,40 @@ def find_starting_iteration(data, md, frac_screen_interval=500,
     Use with caution, check whether output is sensible and adjust parameters if
     necessary.
 
-First, consider only data from when the shift begins to vary.  The error in the
-error on the shift is artificially high due to the equilibration period.  The
-error in the error hence initially decreases as the start of the blocking
-analysis is increased before beginning to increase once data from after
-equilibration begins to be discarded.  We are thus interested in finding the
-minimum in the error in the error of the shift. To be more conservative, we also
-find the minimum in the error in the error of # H psips, N_0, \sum H_0j N_j. We 
-then consider the minimum out of these four minima which is at the highest 
-number of iterations.
+First, consider only data from when the shift begins to vary. We are interested
+in finding the minimum in the fractional error in the error of the shift
+weighted by 1/sqrt(number of data points left). The error in the error of the
+shift and the error in the shift vary as 1/sqrt(number of data points to
+analyse) with the number of data points to analyse. If we were looking for the
+minimum in either of these quantities, the minimum would therefore be biased to
+the lower iterations as then more data points are included in the analysis.
+However, we have noticed that the error in the shift and its error fluctuate as
+we have less iterations to analyse which means that our search for the minimum
+could get trapped easily in a local minimum. We therefore consider their
+fraction. As they are divided by each other in the fractional error, the
+1/sqrt(number of data points to analyse) gets removed. It is therefore
+artificially included as a weight. To be more conservative, we also find the
+minimum in the weighted fractional error in the error of # H psips, N_0,
+\sum H_0j N_j. We then consider the minimum out of these four minima which is
+at the highest number of iterations.
 
 The best estimate of the iteration to start the blocking analysis is found by:
 
 1. discard data during the constant shift phase.
-2. estimate the error in the error of the shift, # H psips, N_0, \sum H_0j N_j,
-   by blocking the remaining data :math:`n` times, where the blocking analysis 
-   considers the last :math:`1-i/f` fraction of the data and where :math:`i` is 
-   the number of blocking analyses already performed, :math:`n`  is 
-   `number_of_reblockings`  and :math:`f` is `frac_screen_interval`.
-3. find the iteration which gives the minimum estimate of the error in the error
-   of the shift, numerator of projected energy, reference and total population.
-   We then focus on the minimum out of these four minima which is at the highest
-   number of iterations. If this is in the first `pos_min_frac` fraction of the
-   blocking attempts, go to 4, otherwise repeat 2 and perform an additional
-   `number_of_reblockings` attempts.
-4. To be extra conservative, discard the first `number_of_reblocks_to_cut_off`
-   blocks from the start iteration, where each block corresponds to roughly the
+2. estimate the weighted fractional error in the error of the shift, # H psips,
+   N_0, \sum H_0j N_j, by blocking the remaining data :math:`n` times, where
+   the blocking analysis considers the last :math:`1-i/f` fraction of the data
+   and where :math:`i` is the number of blocking analyses already performed,
+   :math:`n`  is `number_of_reblockings`  and :math:`f` is
+   `frac_screen_interval`.
+3. find the iteration which gives the minimum estimate of the weighted
+   fractional error in the error of the shift, numerator of projected energy,
+   reference and total population. We then focus on the minimum out of these
+   four minima which is at the highest number of iterations. If this is in the
+   first `pos_min_frac` fraction of the blocking attempts, go to 4, otherwise
+   repeat 2 and perform an additional `number_of_reblockings` attempts.
+4. To be conservative, discard the first `number_of_reblocks_to_cut_off` blocks
+   from the start iteration, where each block corresponds to roughly the
    autocorrelation time, and return the resultant iteration number as the
    estimate of the best place to start blocking from.
 
@@ -372,8 +386,9 @@ pos_min_frac : float
     The minimum has to be in the first pos_min_frac part of the tested data to
     be taken as the true minimum. Has be to greater than a small number (here
     0.00001) and can at most be equal to one.
-verbose : bool
-    Determines whether extra information is printed out.
+verbose : int
+    If greater than 1, prints out which blocking attempt is currently being
+    performed.
 show_graph : bool
     Determines whether a window showing the shift vs iteration graph pops up
     highlighting where the minimum was found and - after also excluding some
@@ -423,9 +438,12 @@ starting_iteration: integer
     step = int((data['iterations'].iloc[-1] - \
             iteration_shift_variation_start )/frac_screen_interval)
 
+    step_indx = int((data['iterations'].index[-1]-\
+            shift_variation_indx)/frac_screen_interval)
+
     min_index = -1
     err_keys = ['Shift',  'N_0', '\sum H_0j N_j', '# H psips']
-    min_error_error = pd.Series([float('inf')]*len(err_keys), index=err_keys)
+    min_error_frac_weighted = pd.Series([float('inf')]*len(err_keys), index=err_keys)
     starting_iteration_found = False
 
     for k in range(int(frac_screen_interval/number_of_reblockings)):
@@ -437,18 +455,22 @@ starting_iteration: integer
             if info.no_opt_block:
                 # Not enough data to get a best estimate for some values.
                 # Don't include, even if the shift is estimated.
-                s_err_err = float('inf')
+                s_err_frac_weighted = float('inf')
             else:
-                s_err_err = info.opt_block["standard error error"]["Shift"]
+                number_of_data_left = data['Shift'].index[-1] - shift_variation_indx - j*step_indx + 1
                 err_err = info.opt_block.loc[err_keys, 'standard error error']
-                if (err_err <= min_error_error).any():
+                err = info.opt_block.loc[err_keys, 'standard error']
+                err_frac = err_err.divide(err)
+                err_frac_weighted = err_frac.divide(math.sqrt(float(number_of_data_left)))
+                s_err_frac_weighted = err_frac_weighted['Shift']
+                if (err_frac_weighted <= min_error_frac_weighted).any():
                     min_index = j
-                    min_error_error = err_err.copy()
+                    min_error_frac_weighted = err_frac_weighted.copy()
                     opt_ind = pyblock.pd_utils.optimal_block(info.reblock[err_keys])
 
-            if verbose:
+            if (verbose > 1):
                 print("Blocking attempt: %i. Blocking from: %i. "
-                      "Error in the shift error: %f" % (j, start, s_err_err))
+                      "Upper bound on shift fractional weighted error: %f" % (j, start, s_err_frac_weighted))
 
         if min_index == -1:
             raise ValueError(
