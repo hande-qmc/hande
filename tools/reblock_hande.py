@@ -203,9 +203,6 @@ reblock_plot : string
         cols = -1
 
     parser = argparse.ArgumentParser(description = __doc__)
-    parser.add_argument('-a', '--auto-reblock', default=False,
-                        action='store_true', help='Attempt to automatically '
-                        'determine the iteration to start blocking from.')
     parser.add_argument('-m', '--merge', default=False, action='store_true',
                         help='Combine data from each file before analysing. '
                         'Separate calculations can be denoted by placing \'--\''
@@ -240,9 +237,6 @@ reblock_plot : string
                         help='Space-separated list of files to analyse.')
 
     options = parser.parse_args(args)
-
-    if options.auto_reblock:
-        options.start_iteration=None
 
     if not options.filenames:
         parser.print_help()
