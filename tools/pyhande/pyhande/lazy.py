@@ -17,8 +17,8 @@ import pyhande.extract
 import pyhande.analysis
 import pyhande.weight
 
-def std_analysis(datafiles, start=None, select_function=None, 
-        extract_psips=False, reweight_history=0, mean_shift=0.0, 
+def std_analysis(datafiles, start=None, select_function=None,
+        extract_psips=False, reweight_history=0, mean_shift=0.0,
         arith_mean=False, calc_inefficiency=False, verbosity = 1):
     '''Perform a 'standard' analysis of HANDE output files.
 
@@ -30,7 +30,7 @@ start : int or None
     iteration from which the blocking analysis is performed.  If None, then
     attempt to automatically determine a good iteration using
     :func:`find_starting_iteration`.
-select_function : function 
+select_function : function
     function which returns a boolean mask for the iterations to include in the
     analysis.  Not used if set to None (default).  Overrides ``start``.  See
     below for examples.
@@ -42,10 +42,10 @@ reweight_history : integer
 mean_shift : float
     prevent the weights from beoming to large.
 verbosity : int
-    values greater than 1 print out blocking information when automatically 
-    finding the starting iteration. 0 and 1 print out the starting iteration if 
-    automatically found. Negative values print out nothing from the automatic 
-    starting point search. 
+    values greater than 1 print out blocking information when automatically
+    finding the starting iteration. 0 and 1 print out the starting iteration if
+    automatically found. Negative values print out nothing from the automatic
+    starting point search.
 
 Returns
 -------
@@ -187,18 +187,18 @@ info : :func:`collections.namedtuple`
                           'begins to vary.')
 
     (data_len, reblock, covariance) = pyblock.pd_utils.reblock(mc_data)
-    
+
     proje = pyhande.analysis.projected_energy(reblock, covariance, data_len)
     reblock = pd.concat([reblock, proje], axis=1)
     to_block.append('Proj. Energy')
 
     if reweight_calc:
-        proje = pyhande.analysis.projected_energy(reblock, covariance, 
+        proje = pyhande.analysis.projected_energy(reblock, covariance,
                     data_len, sum_key='W * \sum H_0j N_j', ref_key='W * N_0',
                     col_name='Weighted Proj. E.')
         reblock = pd.concat([reblock, proje], axis=1)
         to_block.append('Weighted Proj. E.')
-    
+
     # Summary (including pretty printing of estimates).
     (opt_block, no_opt_block) = pyhande.analysis.qmc_summary(reblock, to_block)
 
@@ -207,7 +207,7 @@ info : :func:`collections.namedtuple`
         dtau = md['qmc']['tau']
         reblocked_iters = calc.ix[indx, 'iterations']
         N = reblocked_iters.iloc[-1] - reblocked_iters.iloc[0]
-        
+
         # This returns a data frame with inefficiency data from the
         # projected energy estimators if available.
         ineff = pyhande.analysis.inefficiency(opt_block, dtau, N)
@@ -290,7 +290,7 @@ calcs : list of :class:`pandas.DataFrame`
             calcs.append(pd.concat(calc[::-1]))
         data = calcs
         metadata = calcs_metadata
-    
+
     # Don't have UUID information in all calculations.
     # Assume any restarted calculations/set of calculations if sorted by uuids
     # above are in the right order from here and contiguous.
@@ -328,39 +328,39 @@ def find_starting_iteration(data, md, frac_screen_interval=300,
     Use with caution, check whether output is sensible and adjust parameters if
     necessary.
 
-First, consider only data from when the shift begins to vary. We are interested 
-in finding the minimum in the fractional error in the error of the shift 
-weighted by 1/sqrt(number of data points left). The error in the error of the 
-shift and the error in the shift vary as 1/sqrt(number of data points to 
-analyse) with the number of data points to analyse. If we were looking for the 
-minimum in either of these quantities, the minimum would therefore be biased to 
-the lower iterations as then more data points are included in the analysis. 
-However, we have noticed that the error in the shift and its error fluctuate as 
-we have less iterations to analyse which means that our search for the minimum 
-could get trapped easily in a local minimum. We therefore consider their 
-fraction. As they are divided by each other in the fractional error, the 
-1/sqrt(number of data points to analyse) gets removed. It is therefore 
-artificially included as a weight. To be more conservative, we also find the 
-minimum in the weighted fractional error in the error of # H psips, N_0, 
-\sum H_0j N_j. We then consider the minimum out of these four minima which is 
+First, consider only data from when the shift begins to vary. We are interested
+in finding the minimum in the fractional error in the error of the shift
+weighted by 1/sqrt(number of data points left). The error in the error of the
+shift and the error in the shift vary as 1/sqrt(number of data points to
+analyse) with the number of data points to analyse. If we were looking for the
+minimum in either of these quantities, the minimum would therefore be biased to
+the lower iterations as then more data points are included in the analysis.
+However, we have noticed that the error in the shift and its error fluctuate as
+we have less iterations to analyse which means that our search for the minimum
+could get trapped easily in a local minimum. We therefore consider their
+fraction. As they are divided by each other in the fractional error, the
+1/sqrt(number of data points to analyse) gets removed. It is therefore
+artificially included as a weight. To be more conservative, we also find the
+minimum in the weighted fractional error in the error of # H psips, N_0,
+\sum H_0j N_j. We then consider the minimum out of these four minima which is
 at the highest number of iterations.
 
 The best estimate of the iteration to start the blocking analysis is found by:
 
 1. discard data during the constant shift phase.
-2. estimate the weighted fractional error in the error of the shift, # H psips, 
-   N_0, \sum H_0j N_j, by blocking the remaining data :math:`n` times, where 
-   the blocking analysis considers the last :math:`1-i/f` fraction of the data 
-   and where :math:`i` is the number of blocking analyses already performed, 
-   :math:`n`  is `number_of_reblockings`  and :math:`f` is 
+2. estimate the weighted fractional error in the error of the shift, # H psips,
+   N_0, \sum H_0j N_j, by blocking the remaining data :math:`n` times, where
+   the blocking analysis considers the last :math:`1-i/f` fraction of the data
+   and where :math:`i` is the number of blocking analyses already performed,
+   :math:`n`  is `number_of_reblockings`  and :math:`f` is
    `frac_screen_interval`.
-3. find the iteration which gives the minimum estimate of the weighted 
-   fractional error in the error of the shift, numerator of projected energy, 
-   reference and total population. We then focus on the minimum out of these 
-   four minima which is at the highest number of iterations. If this is in the 
-   first `pos_min_frac` fraction of the blocking attempts, go to 4, otherwise 
+3. find the iteration which gives the minimum estimate of the weighted
+   fractional error in the error of the shift, numerator of projected energy,
+   reference and total population. We then focus on the minimum out of these
+   four minima which is at the highest number of iterations. If this is in the
+   first `pos_min_frac` fraction of the blocking attempts, go to 4, otherwise
    repeat 2 and perform an additional `number_of_reblockings` attempts.
-4. To be conservative, discard the first `number_of_reblocks_to_cut_off` blocks 
+4. To be conservative, discard the first `number_of_reblocks_to_cut_off` blocks
    from the start iteration, where each block corresponds to roughly the
    autocorrelation time, and return the resultant iteration number as the
    estimate of the best place to start blocking from.
@@ -387,7 +387,7 @@ pos_min_frac : float
     be taken as the true minimum. Has be to greater than a small number (here
     0.00001) and can at most be equal to one.
 verbose : int
-    If greater than 1, prints out which blocking attempt is currently being 
+    If greater than 1, prints out which blocking attempt is currently being
     performed.
 show_graph : bool
     Determines whether a window showing the shift vs iteration graph pops up

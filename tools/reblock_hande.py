@@ -46,9 +46,9 @@ verbose : int
     <0: print nothing
     0: print only the estimate from the optimal block length.
     1: print only the recommended statistics from the optimal block length.
-    2: print search for automatic starting iteration (if required), blocking 
+    2: print search for automatic starting iteration (if required), blocking
     analysis and recommended statistics.
-    3: print calculation metadata, search for automatic starting iteration 
+    3: print calculation metadata, search for automatic starting iteration
     (if required), blocking analysis and recommended statistics.
 
 width : int
@@ -137,9 +137,9 @@ opt_block: :class:`pandas.DataFrame`
                 indices.extend((','.join(calc),i) for i in range(len(info)))
         except ValueError:
             print('WARNING: No data found in file '+' '.join(calc)+'.')
-    
+
     opt_blocks = [pd.DataFrame(data=
-        {'iteration':info.metadata['pyhande']['reblock_start']}, 
+        {'iteration':info.metadata['pyhande']['reblock_start']},
         index = ['Block from']).append(info.opt_block) for info in infos]
     if verbose < v_rec_stats:
         for opt_block in opt_blocks:
@@ -164,7 +164,7 @@ opt_block: :class:`pandas.DataFrame`
                 try:
                     fnames = ' in ' + calc.replace(',',' ')
                 except AttributeError:
-                    # if there is more than one calculation in the file calc is a tuple 
+                    # if there is more than one calculation in the file calc is a tuple
                     fnames = ' in ' + calc[0] + ' ' + str(calc[1])
             print('WARNING: could not find optimal block size%s.' % (fnames))
             print('Insufficient statistics collected for the following '
@@ -223,7 +223,7 @@ reblock_plot : string
                         'Overrides --verbose.')
     parser.add_argument('-s', '--start', type=int, dest='start_iteration',
                         default=None, help='Iteration number from which to '
-                        'gather statistics.  Default: Try finding starting ' 
+                        'gather statistics.  Default: Try finding starting '
                         'iteration automatically. ')
     parser.add_argument('-v', '--verbose', dest='verbose', action='count',
                         default=1, help='Increase verbosity of the output.  Can '
