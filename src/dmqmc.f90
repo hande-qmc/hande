@@ -524,6 +524,7 @@ contains
 
         logical, intent(in) :: calc_excit_dist
         logical, intent(in) :: calc_mom_dist
+        logical, intent(in) :: calc_struc_fac
         type(bloom_stats_t), intent(inout) :: bloom_stats
         type(dmqmc_estimates_t), intent(inout) :: dmqmc_estimates
         real(p), intent(out) :: rspawn
@@ -534,7 +535,8 @@ contains
         if (calc_excit_dist) dmqmc_estimates%excit_dist = 0.0_p
         dmqmc_estimates%trace = 0.0_p
         dmqmc_estimates%numerators = 0.0_p
-        if (calc_mom_dist) dmqmc_estimates%mom_dist%n_k = 0.0_p
+        if (calc_mom_dist) dmqmc_estimates%mom_dist%f_k = 0.0_p
+        if (calc_struc_fac) dmqmc_estimates%struc_fac%f_k = 0.0_p
 
     end subroutine init_dmqmc_report_loop
 

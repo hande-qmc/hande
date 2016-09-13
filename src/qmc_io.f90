@@ -548,7 +548,7 @@ contains
         end if
 
         if (dmqmc_in%calc_mom_dist) then
-            call write_momentum_array(dmqmc_estimates%mom_dist%n_k, dmqmc_estimates%mom_dist%kpoints, .true.)
+            call write_momentum_array(dmqmc_estimates%mom_dist%f_k, dmqmc_estimates%mom_dist%kpoints, .true.)
         end if
 
         call write_qmc_var(iunit, ntot_particles(1))

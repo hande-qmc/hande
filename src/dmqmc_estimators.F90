@@ -19,6 +19,7 @@ enum, bind(c)
     enumerator :: inst_rdm_trace_ind
     enumerator :: rdm_r2_ind
     enumerator :: mom_dist_ind
+    enumerator :: struc_fac_ind
     enumerator :: final_ind ! ensure this remains the last index.
 end enum
 
@@ -88,6 +89,11 @@ contains
             nelems(mom_dist_ind) = size(dmqmc_estimates%mom_dist%f_k)
         else
             nelems(mom_dist_ind) = 0
+        end if
+        if (dmqmc_in%calc_struc_fac) then
+            nelems(struc_fac_ind) = size(dmqmc_estimates%struc_fac%f_k)
+        else
+            nelems(struc_fac_ind) = 0
         end if
 
         ! The total number of elements in the array to be communicated.
@@ -188,7 +194,10 @@ contains
             rep_loop_loc(min_ind(rdm_r2_ind):max_ind(rdm_r2_ind)) = dmqmc_estimates%inst_rdm%renyi_2
         end if
         if (dmqmc_in%calc_mom_dist) then
-            rep_loop_loc(min_ind(mom_dist_ind):max_ind(mom_dist_ind)) = dmqmc_estimates%mom_dist%n_k
+            rep_loop_loc(min_ind(mom_dist_ind):max_ind(mom_dist_ind)) = dmqmc_estimates%mom_dist%f_k
+        end if
+        if (dmqmc_in%calc_struc_fac) then
+            rep_loop_loc(min_ind(struc_fac_ind):max_ind(struc_fac_ind)) = dmqmc_estimates%struc_fac%f_k
         end if
 
     end subroutine local_dmqmc_estimators
@@ -251,9 +260,11 @@ contains
             dmqmc_estimates%inst_rdm%renyi_2 = real(rep_loop_sum(min_ind(rdm_r2_ind):max_ind(rdm_r2_ind)), p)
         end if
         if (dmqmc_in%calc_mom_dist) then
-            dmqmc_estimates%mom_dist%n_k = real(rep_loop_sum(min_ind(mom_dist_ind):max_ind(mom_dist_ind)), p)
+            dmqmc_estimates%mom_dist%f_k = real(rep_loop_sum(min_ind(mom_dist_ind):max_ind(mom_dist_ind)), p)
         end if
-
+        if (dmqmc_in%calc_struc_fac) then
+            dmqmc_estimates%struc_fac%f_k = real(rep_loop_sum(min_ind(struc_fac_ind):max_ind(struc_fac_ind)), p)
+        end if
 
         ! Average the spawning rate.
         qs%spawn_store%rspawn = qs%spawn_store%rspawn/(ncycles*nprocs)
@@ -458,7 +469,7 @@ contains
                 if (dmqmc_in%find_weights .and. iteration > dmqmc_in%find_weights_start) est%excit_dist(excitation%nexcit) = &
                     est%excit_dist(excitation%nexcit) + real(abs(psip_list%pops(1,idet)),p)/psip_list%pop_real_factor
                 if (dmqmc_in%calc_mom_dist) call update_dmqmc_momentum_distribution(sys, cdet, excitation, H00,&
-                                                                                      &unweighted_walker_pop(1), est%mom_dist%n_k)
+                                                                                      &unweighted_walker_pop(1), est%mom_dist%f_k)
             end if
 
             ! Full Renyi entropy (S_2).
