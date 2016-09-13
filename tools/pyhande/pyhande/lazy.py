@@ -316,6 +316,7 @@ calcs : list of :class:`pandas.DataFrame`
             xcalc.append(data[i])
         prev_iteration = data[i]['iterations'].iloc[-1]
     calcs.append(pd.concat(xcalc, ignore_index=True))
+    calcs = [ca.drop_duplicates(subset='iterations', keep='last').reset_index(drop=True) for ca in calcs]
     return calcs_metadata, calcs
 
 def find_starting_iteration(data, md, frac_screen_interval=300,
