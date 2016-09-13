@@ -384,6 +384,7 @@ contains
 
         type(blocking_t) :: bl
         integer :: k,j
+        integer :: optimal_size(2)
 
         if (parent) then
             write (io_unit,'(1X,"CCMC")')
@@ -857,7 +858,9 @@ contains
                     ! carried out.
                     write(7, '(1X, I8)') bl%start_point
                     write(7, '(1X, 2I8)')(bl%optimal_size)
-                    write(7, '(1X, ES20.7)')(bl%block_std(1,1)) 
+                    write(7, '(1X, ES20.7)')(bl%block_std(1,1))
+                    write(7, '(1X, 10ES20.7)')(bl%err_comp(k, 1), k = 0, 10)
+                    write(7, '(1X, 10ES20.7)')(bl%err_comp(k, 2), k = 0, 10)
                     write(7, '(1X, 3ES20.7)', advance = 'no') (bl%optimal_mean(k), k = 1, 3)
                     write(7, '(1X, 3ES20.7)') (bl%optimal_std(k), k = 1, 3)
                     write(7, '(1X, 2ES20.7)') (bl%optimal_err(k), k = 1,2)
@@ -866,14 +869,14 @@ contains
 
                     call flush(7)
                 end if
+                if (mod(bl%report,bl%save_fq) == 0) then
+                   call err_comparison(bl, ireport)
+                end if
+
 
                 ! Every 2*save_fq reports, the start position of reblock
                 ! analysis is updated
 
-                if (mod(bl%report,bl%save_fq) == 0) then
-                    call err_comparison(bl, ireport)
-                end if
-                
             end if
 
             ! Update the time for the start of the next iteration.
