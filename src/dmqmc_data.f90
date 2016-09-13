@@ -207,6 +207,10 @@ type dmqmc_in_t
     logical :: calc_mom_dist = .false.
     ! Maximum kvector momentum distribution is evaluated at (in terms of the Fermi wavevector).
     real(p) :: mom_dist_kmax = 0.0
+    ! If true the static structure factor will be calculated.
+    logical :: calc_struc_fac = .false.
+    ! Maximum momentum transfer to consider in structure factor (in terms of the Fermi wave vector).
+    real(p) :: struc_fac_qmax = 0.0
 
 end type dmqmc_in_t
 

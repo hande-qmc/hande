@@ -228,8 +228,8 @@ contains
 
             do ireport = 1, nreport
 
-                call init_dmqmc_report_loop(dmqmc_in%calc_excit_dist, dmqmc_in%calc_mom_dist, bloom_stats, &
-                                            dmqmc_estimates, qs%spawn_store%rspawn)
+                call init_dmqmc_report_loop(dmqmc_in%calc_excit_dist, dmqmc_in%calc_mom_dist, dmqmc_in%calc_struc_fac,&
+                                            &bloom_stats, dmqmc_estimates, qs%spawn_store%rspawn)
                 tot_nparticles_old = qs%psip_list%tot_nparticles
 
                 do icycle = 1, qmc_in%ncycles
@@ -504,7 +504,7 @@ contains
 
     end subroutine init_dmqmc_beta_loop
 
-    subroutine init_dmqmc_report_loop(calc_excit_dist, calc_mom_dist, bloom_stats, dmqmc_estimates, rspawn)
+    subroutine init_dmqmc_report_loop(calc_excit_dist, calc_mom_dist, calc_struc_fac, bloom_stats, dmqmc_estimates, rspawn)
 
         ! Initialise a report loop (basically zero quantities accumulated over
         ! a report loop).
