@@ -187,7 +187,7 @@ contains
 
         ! Main DMQMC loop.
         if (parent) then
-            call write_dmqmc_report_header(qs%psip_list%nspaces, dmqmc_in, sys%max_number_excitations)
+            call write_dmqmc_report_header(qs%psip_list%nspaces, dmqmc_in, sys%max_number_excitations, dmqmc_estimates)
         end if
         ! Initialise timer.
         call cpu_time(t1)
