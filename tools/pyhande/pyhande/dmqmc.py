@@ -45,6 +45,8 @@ None.
         ('VI', '\\sum\\rho_{ij}VI_{ji}'),
     ])
 
+    mom_dist = [m for m in means.columns if 'n_' in m]
+    observables.update(dict(zip(mom_dist, mom_dist)))
     # DataFrame to hold the final mean and error estimates.
     results = pd.DataFrame(index=beta_values)
     # DataFrame for the numerator.
@@ -255,6 +257,29 @@ spline_fit : :class:`pandas.Series`
     spline_fit = scipy.interpolate.splev(beta_values, tck)
 
     return pd.Series(spline_fit, index=beta_values)
+
+
+def sort_momentum(columns):
+    ''' Naturally sort results columns based off of their numeric values.
+
+    e.g. give columns = [n_1, n_10, n_5], return [n_1, n_5, n_10]
+
+Parameters
+----------
+columns : list
+    list of column names
+
+Returns
+-------
+sort : list
+    Sorted list of column names.
+'''
+
+    values = [float(c.split('_')[1]) for c in columns]
+
+    sort = [c for (v, c) in sorted(zip(values, columns))]
+
+    return sort
 
 
 def analyse_data(hande_out, shift=False, free_energy=False, spline=False,

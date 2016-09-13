@@ -85,11 +85,13 @@ None.
 
     # For anal-retentiveness, print the energy first after beta and then all
     # columns in alphabetical order.
-    columns = sorted(results.columns.values)
+    columns = sorted([c for c in results.columns.values if 'n_' not in c])
     columns.insert(1, columns.pop(columns.index('Tr[Hp]/Tr[p]')))
     columns.insert(2, columns.pop(columns.index('Tr[Hp]/Tr[p]_error')))
-
-    print(results.to_string(index=False, columns=columns))
+    momentum_dist = pyhande.dmqmc.sort_momentum([c for c in
+                                                 results.columns.values
+                                                 if 'n_' in c])
+    print(results.to_string(index=False, columns=columns+momentum_dist))
 
 
 if __name__ == '__main__':
