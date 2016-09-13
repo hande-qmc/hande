@@ -473,13 +473,7 @@ starting_iteration: integer
                 print("Blocking attempt: %i. Blocking from: %i. "
                       "Upper bound on shift fractional weighted error: %f" % (j, start, s_err_frac_weighted))
 
-        if min_index == -1:
-            raise ValueError(
-                    "Failed to find minimum error in the error for: %s!"
-                    % (','.join(err_keys))
-                )
-
-        if min_index < int(pos_min_frac * j):
+        if min_index < int(pos_min_frac * j) and min_index > -1:
             # Also discard the frst n=number_of_reblocks_to_cut_off of data to
             # be conservative.  This amounts to removing n autocorrelation
             # lengths.
