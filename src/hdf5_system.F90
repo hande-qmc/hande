@@ -332,6 +332,7 @@ module hdf5_system
                         call check_allocate('lscratch', nbasis*3, ierr)
 
                         ! [review] - JSS: why the transpose?
+                        ! [reply] - CJCS: which transpose?
                         do ibasis = 1, nbasis
                             do il = 1, 3
                                 lscratch(ibasis, il) = sys%basis%basis_fns(ibasis)%l(il)

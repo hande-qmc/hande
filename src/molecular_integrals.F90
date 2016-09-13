@@ -361,7 +361,7 @@ contains
 
 ! [review] - AJWT: For momentum symmetry, this explicitly ignores op_sym. 
 ! [review] - AJWT: While we can't raise an error in a pure function, we can at least include a comment on it here,
-
+! [reply] - CJCS: With the changes in interfaces we can make this neater and ensure this is considered- as now done.
         use system, only: sys_t
         use point_group_symmetry, only: is_gamma_irrep_pg_sym
 
@@ -371,19 +371,14 @@ contains
         logical :: sym_allowed
 
 
-        if (sys%momentum_space) then
-            ! As dealing with complex plane waves conj(sym_i) = inv(sym_i).
-            ! So need:
-            !       conj(sym_i) = inv(sym_j)
-            !             sym_i = sym_j
-            sym_allowed = (sys%basis%basis_fns(i)%sym == sys%basis%basis_fns(j)%sym)
-        else
-            sym = sys%read_in%cross_product_sym_ptr(sys%read_in, &
-                    sys%read_in%sym_conj_ptr(sys%read_in, &
-                    sys%basis%basis_fns(i)%sym),sys%basis%basis_fns(j)%sym)
-            sym = sys%read_in%cross_product_sym_ptr(sys%read_in, sym, op_sym)
-            sym_allowed = is_gamma_irrep_pg_sym(sys%read_in%pg_sym, sym)
-        end if
+        ! If dealing with complex plane waves or Lz conj(sym_i) = inv(sym_i).
+        ! If pg_sym conj(sym_i) = inv(sym_i) = sym_i
+        ! So in general we need:
+        !       conj(sym_i) = inv(op_sym x sym_j)
+        !             sym_i = op_sym x sym_j
+        sym_allowed = (sys%basis%basis_fns(i)%sym == &
+                sys%read_in%cross_product_sym_ptr(sys%read_in, &
+                op_sym, sys%basis%basis_fns(j)%sym))
 
     end function check_one_body_sym
 
@@ -964,30 +959,24 @@ contains
         !       be nonzero by symmetry.
 ! [review] - AJWT: For momentum symmetry, this explicitly ignores op_sym. 
 ! [review] - AJWT: While we can't raise an error in a pure function, we can at least include a comment on it here,
-
+! [reply] - CJCS: As for one body above, now done.
         use system, only: sys_t
-        use point_group_symmetry, only: cross_product_basis, cross_product_pg_sym, is_gamma_irrep_pg_sym, pg_sym_conj
+        use point_group_symmetry, only: cross_product_basis
 
         type(sys_t), intent(in) :: sys
         integer, intent(in) :: i, j, a, b, op_sym
         integer :: sym_ij, sym_ab, sym
         logical :: allowed
 
-        if (sys%momentum_space) then
-            sym_ij = cross_product_basis(sys, i, j)
-            sym_ab = cross_product_basis(sys, a, b)
-            ! As dealing with complex plane waves conj(sym_i) = inv_sym(sym_i).
-            ! So need:
-            !       conj(sym_ij) = inv_sym(sym_ab)
-            !            sym_ij = sym_ab
-            allowed = (sym_ij == sym_ab)
-        else
-            sym_ij = cross_product_basis(sys, i, j)
-            sym_ab = cross_product_basis(sys, a, b)
-            sym = cross_product_pg_sym(sys%read_in, pg_sym_conj(sys%read_in, sym_ij), sym_ab)
-            sym = cross_product_pg_sym(sys%read_in, sym, op_sym)
-            allowed = is_gamma_irrep_pg_sym(sys%read_in%pg_sym, sym)
-        end if
+        sym_ij = cross_product_basis(sys, i, j)
+        sym_ab = cross_product_basis(sys, a, b)
+        ! As dealing with complex plane waves conj(sym_i) = inv_sym(sym_i).
+        ! So need:
+        !       conj(sym_ij) = inv_sym(sym_ab)
+        !            sym_ij = sym_ab
+        allowed = (sym_ij == sys%read_in%cross_product_sym_ptr(sys%read_in, &
+                                           sym_ab, op_sym))
+
     end function check_two_body_sym
 
     subroutine store_two_body_int_nonzero(i, j, a, b, intgrl, basis_fns, store, ierr)

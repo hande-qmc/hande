@@ -71,11 +71,17 @@ contains
         ! Specifically, allocates and sets pg_sym%nbasis_sym,
         ! pg_sym%nbasis_sym_spin and pg_sym%sym_spin_basis_fns appropriately.
 
+        ! Requires that the sys%nsym, sys%sym0, sys%sym_max etc be set, as well
+        ! as symmetry basis function symmetries be set. This is done within
+        ! init_momentum_symmetry in momentum_symmetry.f90 and when reading in
+        ! system information respectively.
+
         ! In/Out:
         !   sys: system being studied. On output all information about basis function
         !       symmetry in read_in%mom_sym set as required.
 ! [review] - AJWT: It is not immediately obious what information this routine expects
 ! [review] - AJWT: to have already been set in sys (or where it is set).
+! [reply] - CJCS: Have added some clarification on this.
         use checking, only: check_allocate, check_deallocate
         use errors, only: stop_all
 
@@ -133,7 +139,7 @@ contains
 ! [review] - AJWT: Below, sym is a 3-vector for the kpoint, but in mom_sym_conj it is a symmetry index
 ! [review] - AJWT: Some consistent naming conventions to distinguish the two would be helpful.
 ! [review] - AJWT: [Later] Of course neither to be confused with isym, the FCIDUMP symmetry index.
-    pure function is_gamma_sym_periodic_read_in(mom_sym, sym) result(is_gamma_sym)
+    pure function is_gamma_sym_periodic_read_in(mom_sym, kpoint_vector) result(is_gamma_sym)
 
         ! Checks if symmetry given is the gamma point symmetry.
         ! In:
@@ -148,14 +154,14 @@ contains
 
         use symmetry_types, only: mom_sym_t
         type(mom_sym_t), intent(in) :: mom_sym
-        integer, intent(in) :: sym(3)
+        integer, intent(in) :: kpoint_vector(3)
         logical :: is_gamma_sym
 
-        is_gamma_sym = all(modulo(sym, mom_sym%nprop) == mom_sym%gamma_point)
+        is_gamma_sym = all(modulo(kpoint_vector, mom_sym%nprop) == mom_sym%gamma_point)
 
     end function is_gamma_sym_periodic_read_in
 
-    pure function mom_sym_conj(read_in, sym) result(rsym)
+    pure function mom_sym_conj(read_in, sym_index) result(conj_index)
 
         ! Returns symmetry index of complex conjugate of provided
         ! sym index.
@@ -165,9 +171,9 @@ contains
         ! In:
         !   sys: information about system being studied. We use the
         !       momentum symmetry information.
-        !   sym: symmetry to compare.
+        !   sym_index: symmetry index to conjgate.
         ! Returns:
-        !   Symmetry of complex conjugate of sym.
+        !   Index of complex conjugate of symmetry sym_index.
 
         ! For momentum symmetry in real (read in from an FCIDUMP), periodic
         ! systems.
@@ -175,10 +181,10 @@ contains
         use system, only: sys_read_in_t
 
         type(sys_read_in_t), intent(in) :: read_in
-        integer, intent(in) :: sym
-        integer :: rsym
+        integer, intent(in) :: sym_index
+        integer :: conj_index
 
-        rsym = read_in%mom_sym%inv_sym(sym)
+        conj_index = read_in%mom_sym%inv_sym(sym_index)
 
     end function mom_sym_conj
 
@@ -207,39 +213,40 @@ contains
 
 !--- Indexing conversion routines: ---
 
-    pure subroutine decompose_trans_sym(isym, propbitlen, abel_sym)
+    pure subroutine decompose_trans_sym(orbsym, propbitlen, kpoint_vector)
 
-        ! Takes symmetry index for translationally symmetric wavefunction and
-        ! returns representation of three "quantum numbers". In accordance
-        ! with approach used in NECI, values stored according to:
-        !   isym = 1 + \sum_i sym(i) * 2 ** (propbitlen * (i-1))
+        ! Takes orbsym value for translationally symmetric wavefunction and
+        ! returns representation of three "quantum numbers" in a vector. In
+        ! accordance with widely used approach, values stored according to:
+        !
+        !   orbsym = 1 + \sum_i sym(i) * 2 ** (propbitlen * (i-1))
 
         ! For an example of this in practice see symmetry_types.f90
 
         ! In:
-        !   isym: symmetry index provided in FCIDUMP file.
+        !   sym_index: symmetry index provided in FCIDUMP file.
         !   propbitlen: length of bit representation of each "quantum number"
         !       within isym.
         ! Out:
-        !   abel_sym: array of 3 quantum numbers stored in isym.
+        !   kpoint_vector: array of 3 quantum numbers stored in isym.
 
         use const, only: int_32, int_64
 
-        integer(int_64), intent(in) :: isym
+        integer(int_64), intent(in) :: orbsym
         integer, intent(in) :: propbitlen
-        integer, intent(out) :: abel_sym(3)
+        integer, intent(out) :: kpoint_vector(3)
 
         ! Use Iand and mask to select only bits in first propbitlen bits of
         ! isym.
-        abel_sym(1) = int(Iand(isym, 2_int_64 ** propbitlen - 1), int_32)
+        kpoint_vector(1) = int(Iand(orbsym, 2_int_64 ** propbitlen - 1), int_32)
         ! Bit shift to access correct bits of isym.
-        abel_sym(2) = int(Iand(Ishft(isym, -propbitlen), &
+        kpoint_vector(2) = int(Iand(Ishft(orbsym, -propbitlen), &
                             2_int_64 ** (propbitlen) - 1), int_32)
-        abel_sym(3) = int(Ishft(isym, -(propbitlen * 2)), int_32)
+        kpoint_vector(3) = int(Ishft(orbsym, -(propbitlen * 2)), int_32)
 
     end subroutine decompose_trans_sym
 
-    pure function get_kpoint_index(a, nprop) result(ind)
+    pure function get_kpoint_index(kpoint_vector, nprop) result(sym_index)
 
         ! Converts from kpoint symmetry vector into unique index.
         ! If we know size of unit cell, can calculate unique index by tiling
@@ -255,17 +262,18 @@ contains
         ! symmetry information within read_in%mom_sym.
 
         ! In:
-        !   a: array containing representation of kpoint wavevectors.
+        !   kpoint_vector: array containing representation of kpoint wavevectors.
         !   nprop: condition of periodic bounary conditions used, ie the
         !       supercell dimension.
         ! Returns:
         !   Index of given kpoint within indexing scheme.
 
-        integer, intent(in) :: a(3), nprop(3)
-        integer :: ind
+        integer, intent(in) :: kpoint_vector(3), nprop(3)
+        integer :: sym_index
 
         ! Want to start from index 1 at gamma point (0,0,0)
-        ind = 1 + a(1) + nprop(1) * a(2) + nprop(1) * nprop(2) * a(3)
+        sym_index = 1 + kpoint_vector(1) + nprop(1) * kpoint_vector(2) + &
+                    nprop(1) * nprop(2) * kpoint_vector(3)
 
     end function get_kpoint_index
 
@@ -283,6 +291,8 @@ contains
         ! Out:
         !   a: array containing kpoint identifier in terms of 3 "quantum numbers".
 
+        use const, only: dp
+
         integer, intent(in) :: ind, nprop(3)
         integer, intent(out) :: a(3)
         integer :: scratch
@@ -290,10 +300,13 @@ contains
 ! [review] - AJWT: Will the real arithmetic ever end up with a number which rounds the wrong way?
 ! [review] - AJWT: eg. for large nprop, scratch below could end up being 1.999999999 which rownds
 ! [review] - AJWT: down to 1 rather than getting the correct value 2.
-        scratch = real(ind-1)/real(nprop(1)*nprop(2))
-        a(3) = int(scratch)
+! [reply] - CJCS: The behaviour we want is to effectively use floor to always round down, as we
+! [reply] - CJCS: want the number of possible chunks of agiven size we can fit within the
+! [reply] - CJCS: index provided. Changed to be more explicit.
+        scratch = floor(real(ind-1, kind=dp)/real(nprop(1)*nprop(2), kind=dp))
+        a(3) = scratch
         scratch = ind - 1 - a(3) * nprop(1) * nprop(2)
-        a(2) = int(real(scratch)/real(nprop(1)))
+        a(2) = floor(real(scratch, kind=dp)/real(nprop(1), kind=dp))
         a(1) = scratch - a(2) * nprop(1)
 
     end subroutine get_kpoint_vector

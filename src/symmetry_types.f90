@@ -83,7 +83,7 @@ type mom_sym_t
     ! [review] - FDM: Does this have units?
     ! Dimensions of supercell used in translationally symmetric systems.
     ! This corresponds to the periodicity of the kpoint lattice in each
-    ! dimension.
+    ! dimension in units of 2\pi/L.
     ! Used only in non-model translationally symmetric systems.
     integer :: nprop(3) = [0, 0, 0]
 
