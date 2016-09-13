@@ -202,6 +202,17 @@ contains
         end if
         if (dmqmc_in%calc_mom_dist) write (iunit, '(1x, "n_k: The numerator of the estimator for the &
                                                      &momentum distribution at momentum k")')
+        if (dmqmc_in%calc_struc_fac) then
+            write (6, '(1x, "S_q: The numerator of the estimator for the &
+                             &spin-averaged static structure factor distribution &
+                             &at momentum transfer q")')
+            write (6, '(1x, "Suu_q: The numerator of the estimator for the &
+                             &like-spin contribution to the static structure factor distribution &
+                             &at momentum transfer q")')
+            write (6, '(1x, "Sud_q: The numerator of the estimator for the &
+                             &unlike-spin static structure factor distribution &
+                             &at momentum transfer q")')
+        end if
 
         write (iunit,'(1X,"# particles: current total population of Hamiltonian particles.")')
         write (iunit,'(1X,"# states: number of many-particle states occupied.")')
@@ -266,6 +277,11 @@ contains
         end if
         if (dmqmc_in%calc_mom_dist) then
             call write_momentum_array_header('   n_', .true., estimates%mom_dist%kpoints)
+        end if
+        if (dmqmc_in%calc_struc_fac) then
+            call write_momentum_array_header('   S_', .true., estimates%struc_fac%kpoints)
+            call write_momentum_array_header(' Suu_', .true., estimates%struc_fac%kpoints)
+            call write_momentum_array_header(' Sud_', .true., estimates%struc_fac%kpoints)
         end if
 
         call write_column_title(iunit, '# particles')
@@ -425,7 +441,7 @@ contains
 
     end subroutine write_qmc_report
 
-    subroutine write_dmqmc_report(qmc_in, qs, ireport, ntot_particles, elapsed_time, comment, &
+    subroutine write_dmqmc_report(sys, qmc_in, qs, ireport, ntot_particles, elapsed_time, comment, &
                                   dmqmc_in, dmqmc_estimates)
 
         ! Write the report line at the end of a report loop.
@@ -446,7 +462,9 @@ contains
         use calc, only: dmqmc_H0_energy, dmqmc_potential_energy, dmqmc_HI_energy
         use qmc_data, only: qmc_in_t, qmc_state_t
         use dmqmc_data
+        use system, only: sys_t
 
+        type(sys_t), intent(in) :: sys
         type(qmc_in_t), intent(in) :: qmc_in
         type(qmc_state_t), intent(in) :: qs
         integer, intent(in) :: ireport
@@ -456,7 +474,7 @@ contains
         type(dmqmc_in_t), intent(in) :: dmqmc_in
         type(dmqmc_estimates_t), intent(in) :: dmqmc_estimates
 
-        integer :: mc_cycles, i, j, ntypes, iunit
+        integer :: mc_cycles, i, j, ntypes, endp, iunit
 
         iunit = 6
 
@@ -549,6 +567,19 @@ contains
 
         if (dmqmc_in%calc_mom_dist) then
             call write_momentum_array(dmqmc_estimates%mom_dist%f_k, dmqmc_estimates%mom_dist%kpoints, .true.)
+        end if
+        if (dmqmc_in%calc_struc_fac) then
+            endp = size(dmqmc_estimates%struc_fac%f_k)
+            ! \sum_{s,s'} S_{s,s'}
+            call write_momentum_array((dmqmc_estimates%struc_fac%f_k(1:endp:2) + &
+                                      dmqmc_estimates%struc_fac%f_k(2:endp:2))/sys%nel,&
+                                      &dmqmc_estimates%struc_fac%kpoints(1:endp:2), .true.)
+            ! (S_{up,up}+S_{down,down})/
+            call write_momentum_array(dmqmc_estimates%struc_fac%f_k(1:endp:2)/sys%nel, &
+                                      dmqmc_estimates%struc_fac%kpoints(1:endp:2), .true.)
+             ! (S_{up,down}+S_{down,up})
+            call write_momentum_array(dmqmc_estimates%struc_fac%f_k(2:endp:2)/sys%nel, &
+                                      dmqmc_estimates%struc_fac%kpoints(2:endp:2), .true.)
         end if
 
         call write_qmc_var(iunit, ntot_particles(1))

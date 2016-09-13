@@ -376,7 +376,7 @@ contains
                 call cpu_time(t2)
                 if (parent) then
                     if (bloom_stats%nblooms_curr > 0) call bloom_stats_warning(bloom_stats)
-                    call write_dmqmc_report(qmc_in, qs, ireport, tot_nparticles_old, t2-t1, .false., &
+                    call write_dmqmc_report(sys, qmc_in, qs, ireport, tot_nparticles_old, t2-t1, .false., &
                                             dmqmc_in, dmqmc_estimates)
                 end if
 
