@@ -172,9 +172,15 @@ contains
                 do iorb = 1, sys%basis%nbasis
                     if (sys%basis%basis_fns(iorb)%sp_eigv > 0.5*(dmqmc_in%mom_dist_kmax*sys%ueg%kf)**2.0) exit
                 end do
-                ! Really want iorb - 1.
-                allocate(dmqmc_estimates%mom_dist(iorb-1), stat=ierr)
-                call check_allocate('tmp_basis_fns', iorb-1, ierr)
+                ! We want to average over spin, so we'll map the (spin) orbital index back to the given kpoint.
+                iorb = (iorb - 1) / 2
+                allocate(dmqmc_estimates%mom_dist(iorb), stat=ierr)
+                call check_allocate('dmqmc_estimates%mom_dist', iorb, ierr)
+                allocate(dmqmc_estimates%kpoints(iorb), stat=ierr)
+                call check_allocate('dmqmc_estimates%kpoints', iorb, ierr)
+                do iorb = 1, size(dmqmc_estimates%mom_dist)
+                    dmqmc_estimates%kpoints(iorb) = (2.0*sys%basis%basis_fns(2*iorb)%sp_eigv)**0.5
+                end do
             case default
                 call stop_all('init_dmqmc', 'Momentum distribution not implemented for this system.')
             end select

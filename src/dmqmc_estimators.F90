@@ -1378,13 +1378,18 @@ contains
         real(p), intent(in) :: H00, pop
         real(p), intent(inout) :: momentum_dist(:)
         integer :: occ_list(sys%nel)
-        integer :: iocc
+        integer :: iocc, oc_orb, pol
+
+        pol = (sys%nalpha-sys%nbeta) / sys%nel
 
         if (excitation%nexcit == 0) then
             call decode_det(sys%basis, cdet%f, occ_list)
             do iocc = 1, sys%nel
-                if (occ_list(iocc) <= size(momentum_dist)) then
-                    momentum_dist(occ_list(iocc)) = momentum_dist(occ_list(iocc)) + pop
+                ! Really want spin averaged momentum distribution, so only consider up index.
+                oc_orb = occ_list(iocc)/2 + mod(occ_list(iocc),2)
+                if (oc_orb <= size(momentum_dist)) then
+                    ! Divide by two for unpolarised system.
+                    momentum_dist(oc_orb) = momentum_dist(oc_orb) + pop / (2-pol)
                 end if
             end do
         endif
