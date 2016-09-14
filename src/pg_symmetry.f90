@@ -1,6 +1,7 @@
 module point_group_symmetry
 
-! Module for handling point group symmetry, as read in from FCIDUMP files.
+! Module for handling point group symmetry, as read in from molecular FCIDUMP
+! files.
 
 ! This was made much easier thanks to conversations with Alex Thom...
 
@@ -11,7 +12,9 @@ module point_group_symmetry
 ! Tinkham.
 
 ! It is best to avoid directly handling the symmetry yourself and instead use the
-! functions in this module, in case L_z symmetry is being used.
+! functions in this module, abelian_symmetry.f90 or more generally pointers within
+! sys%read_in. This enables flexibility in case L_z symmetry or translational
+! symmetry is being used.
 
 ! Point group symmetry
 ! --------------------

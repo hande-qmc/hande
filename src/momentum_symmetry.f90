@@ -7,7 +7,8 @@ module momentum_symmetry
 ! Stored symmetry information for the Hubbard model (and non-model periodic) systems.  UEG symmetry is
 ! done on the fly due to the size of the basis---see ueg module.
 
-! Momentum symmetry for non-model periodic systems is implemented within momentum_sym_read_in.f90.
+! Momentum symmetry for non-model periodic systems is implemented within abelian_symmetry.f90 and
+! momentum_sym_read_in.f90.
 
 use system
 

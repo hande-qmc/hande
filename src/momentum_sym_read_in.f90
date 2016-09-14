@@ -394,9 +394,9 @@ contains
 
     pure subroutine get_kpoint_vector(ind, nprop, a)
 
-        ! Get kpoint index, in 3D array, from index defined in get_kpoint_index.
+        ! Get kpoint vector, in 3D, from index defined in get_kpoint_index.
 
-        ! this functonality is mainly for use when initialising symmetry
+        ! This functonality is mainly for use when initialising symmetry
         ! information within read_in%mom_sym.
 
         ! In:

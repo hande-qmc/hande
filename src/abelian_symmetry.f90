@@ -1,7 +1,67 @@
 module abelian_symmetry
 
-! Module for symmetry subroutines/fucntions shared between pg and translational
-! symmetry.
+! Module for symmetry subroutines/functions shared between pg and translational
+! symmetry. For more specific comments on either symmetry see the comments at
+! the start of pg_symmetry.f90 and momentum_sym_read_in.f90 respectively.
+!
+! Here we will briefly detail the logical structure of the symmetry
+! implementations contained.
+!
+! Implementation Considerations
+! -----------------------------
+!
+! These implementations are designed to enable easy implementation of symmetry
+! constraints simultaneously for point group and translation symmetries without
+! significant overhead or complexity, while avoiding compile-time specification.
+!
+! This is (hopefully) achieved by utilising standardised interfaces for basic
+! symmetry operations (cross products and complex conjugates). These functions
+! are accessible by pointers (sys%read_in%cross_product_sym_ptr and
+! sys%read_in%sym_conj_ptr) set during either init_pg_symmetry or
+! init_read_in_momentum_symmetry
+!
+! Using a standard interface requires both symmetries be represented by a
+! single 32-bit integer value. For pg_sym this corresponds to the bit string
+! representation of the irreducible representation, while for translational
+! symmetry this is an index obtained by mapping all possible kpoint values
+! to a cuboid.
+!
+! Code Structure
+! --------------
+!
+!
+! This module contains various utility functions/subroutines for
+! commonly required operations (eg. the cross product of two basis function
+! symmetries or obtaining the symmetry of an orbital list). These functions
+! will function correctly for point group symmetry (with or without Lz
+! symmetry) and translational symmetry.
+!
+! pg_symmetry.f90 contains functions/subroutines to:
+! - initialise pg_symmetry for a non-model system and print required information to
+!       report.
+! - perform pg_sym cross product and conjugation (best accessed through pointers
+!       for non-specific uses).
+! - obtain the Lz value of a given symmetry representation.
+!
+! momentum_sym_read_in.f90 contains functions/subroutines to:
+! - initialise translational symmetry for non-model system and print required
+!       information to report. This includes functions converting between the
+!       various symmetry represenations used (see notes at start or
+!       momentum_sym_read_in.f90 or in symmetry_types.f90) and functions performing
+!       symmetry operations within the kpoint vector format.
+! - perform translational sym cross product and conjugation using symmetry indexes
+!       (best accessed through pointers for non-specific uses).
+!
+! symmetry.f90 contains more general functions to obtain the cross product of two
+! symmetries and the overall symmetry of an orbital list, also allowing use with
+! model periodic systems. As this requires a select statement the use of these
+! functions is by no means optimal.
+!
+! symmetry_types.f90 contains all derived types relevant to symmetries of any
+! description, as well as functions to fully deallocate these derived types.
+!
+! Various other modules contain functions for model system symmetries. These are
+! not detailed here.
 
 use const
 
@@ -57,7 +117,7 @@ contains
 
         ! In:
         !    pg_sym: information on the symmetries of the basis functions.
-        !    sym: representation of an irreducible representation.
+        !    sym: representation of a symmetry.
         ! Returns:
         !    True if sym represents the Gamma_1 (totally symmetric) irreducible
         !    representation.
