@@ -842,6 +842,7 @@ contains
         !    If we have momentum symmetry, will have assigned l values rather than
         !    sym.
 ! [review] - AJWT: What's an l value?
+
         use basis, only: basis_fn_t, init_basis_fn
         use system, only: sys_t
         use const, only: int_32, int_64
@@ -855,15 +856,26 @@ contains
         integer, intent(in) :: sp_eigv_rank(:)
         type(basis_fn_t), intent(inout) :: basis_arr(:)
 
-        integer :: i, rank, l(3), ksym_index
+        integer :: i, rank, kpoint_vector(3), ksym_index
 
         do i = 1, norb
             rank = sp_eigv_rank(i)
             if (sys%read_in%uhf) then
-                if (mod(i,2) == 0) then
-                    call init_basis_fn(sys, basis_arr(i), sym=int(orbsym(rank)-1, kind=int_32), lz=lz(rank), ms=-1)
+                if (sys%momentum_space) then
+                    call decompose_trans_sym(orbsym(rank), sys%read_in%mom_sym%propbitlen, kpoint_vector)
+                    ksym_index = get_kpoint_index(kpoint_vector, sys%read_in%mom_sym%nprop)
+                    if (mod(i,2) == 0) then
+                        call init_basis_fn(sys, basis_arr(i), l=kpoint_vector, lz=lz(rank), sym=ksym_index, ms=-1)
+                    else
+                        call init_basis_fn(sys, basis_arr(i), l=kpoint_vector, lz=lz(rank), sym=ksym_index, ms=1)
+                    end if
+
                 else
-                    call init_basis_fn(sys, basis_arr(i), sym=int(orbsym(rank)-1, kind=int_32), lz=lz(rank), ms=1)
+                    if (mod(i,2) == 0) then
+                        call init_basis_fn(sys, basis_arr(i), sym=int(orbsym(rank)-1, kind=int_32), lz=lz(rank), ms=-1)
+                    else
+                        call init_basis_fn(sys, basis_arr(i), sym=int(orbsym(rank)-1, kind=int_32), lz=lz(rank), ms=1)
+                    end if
                 end if
                 ! Assume orbitals are ordered appropriately in FCIDUMP...
                 basis_arr(i)%spatial_index = (i+1)/2
@@ -872,10 +884,10 @@ contains
                 ! Need to initialise both up- and down-spin basis functions.
                 ! If we have translational symmetry to account for want to have different basis function info.
                 if (sys%momentum_space) then
-                    call decompose_trans_sym(orbsym(rank), sys%read_in%mom_sym%propbitlen, l)
-                    ksym_index = get_kpoint_index(l, sys%read_in%mom_sym%nprop)
-                    call init_basis_fn(sys, basis_arr(2*i), l=l, lz=lz(rank), sym=ksym_index, ms=-1)
-                    call init_basis_fn(sys, basis_arr(2*i-1), l=l, lz=lz(rank), sym=ksym_index, ms=1)
+                    call decompose_trans_sym(orbsym(rank), sys%read_in%mom_sym%propbitlen, kpoint_vector)
+                    ksym_index = get_kpoint_index(kpoint_vector, sys%read_in%mom_sym%nprop)
+                    call init_basis_fn(sys, basis_arr(2*i), l=kpoint_vector, lz=lz(rank), sym=ksym_index, ms=-1)
+                    call init_basis_fn(sys, basis_arr(2*i-1), l=kpoint_vector, lz=lz(rank), sym=ksym_index, ms=1)
                 else
                     call init_basis_fn(sys, basis_arr(2*i), sym=int(orbsym(rank)-1, kind=int_32), lz=lz(rank), ms=-1)
                     call init_basis_fn(sys, basis_arr(2*i-1), sym=int(orbsym(rank)-1, kind=int_32), lz=lz(rank), ms=1)

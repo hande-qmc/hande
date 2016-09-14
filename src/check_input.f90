@@ -67,6 +67,9 @@ contains
             call warning(this, 'Not using default max_broadcast_chunk. This option is only intended for testing of &
                 &broadcasting functionality and gives no benefit to functionality.')
 
+        if (sys%read_in%comp .and. sys%read_in%uhf) call warning(this, &
+                            'UHF translational symmetry currently untested. Use with caution!')
+
     end subroutine check_sys
 
     subroutine check_fciqmc_opts(sys, fciqmc_in)
