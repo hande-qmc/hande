@@ -287,8 +287,7 @@ type sys_read_in_t
 
     ! Is system complex?
     logical :: comp = .false.
-    ! Are we using translational symmetry (for periodic systems).
-    logical :: translational_symmetry = .false.
+
     ! Data about momentum/translational symmetry. Some momentum symmetry
     ! information is also stored within pg_sym to avoid duplication of
     ! data strunctures.
