@@ -553,7 +553,7 @@ contains
         use lua_hande_utils, only: warn_unused_args, register_timing
         use hdf5_helper, only: ishdf5_wrapper
         use point_group_symmetry, only: print_pg_symmetry_info
-        use momentum_symmetry, only: print_mom_sym_info
+        use momentum_sym_read_in, only: print_mom_sym_info
         use read_in_system, only: read_in_integrals
         use system, only: sys_t, read_in, init_system
         use check_input, only: check_sys

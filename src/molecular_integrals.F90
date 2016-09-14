@@ -363,7 +363,7 @@ contains
 ! [review] - AJWT: While we can't raise an error in a pure function, we can at least include a comment on it here,
 ! [reply] - CJCS: With the changes in interfaces we can make this neater and ensure this is considered- as now done.
         use system, only: sys_t
-        use point_group_symmetry, only: is_gamma_irrep_pg_sym
+        use abelian_symmetry, only: is_gamma_irrep_abelian
 
         integer :: sym
         type(sys_t), intent(in) :: sys
@@ -961,15 +961,15 @@ contains
 ! [review] - AJWT: While we can't raise an error in a pure function, we can at least include a comment on it here,
 ! [reply] - CJCS: As for one body above, now done.
         use system, only: sys_t
-        use point_group_symmetry, only: cross_product_basis
+        use abelian_symmetry, only: cross_product_basis_abelian
 
         type(sys_t), intent(in) :: sys
         integer, intent(in) :: i, j, a, b, op_sym
         integer :: sym_ij, sym_ab, sym
         logical :: allowed
 
-        sym_ij = cross_product_basis(sys, i, j)
-        sym_ab = cross_product_basis(sys, a, b)
+        sym_ij = cross_product_basis_abelian(sys, i, j)
+        sym_ab = cross_product_basis_abelian(sys, a, b)
         ! As dealing with complex plane waves conj(sym_i) = inv_sym(sym_i).
         ! So need:
         !       conj(sym_ij) = inv_sym(sym_ab)
@@ -1020,7 +1020,8 @@ contains
         !    It is also faster to call RHF- or UHF-specific routines.
 
         use basis_types, only: basis_fn_t
-        use point_group_symmetry, only: cross_product_basis, cross_product_pg_sym, is_gamma_irrep_pg_sym, pg_sym_conj
+        use abelian_symmetry, only: cross_product_basis_abelian, is_gamma_irrep_abelian
+        use point_group_symmetry, only: cross_product_pg_sym, pg_sym_conj
         use system, only: sys_t
 
         real(p) :: intgrl
@@ -1030,11 +1031,11 @@ contains
 
         integer :: sym_ij, sym_ab, sym
 
-        sym_ij = pg_sym_conj(sys%read_in, cross_product_basis(sys, i, j))
-        sym_ab = cross_product_basis(sys, a, b)
+        sym_ij = pg_sym_conj(sys%read_in, cross_product_basis_abelian(sys, i, j))
+        sym_ab = cross_product_basis_abelian(sys, a, b)
         sym = cross_product_pg_sym(sys%read_in, sym_ij, sym_ab)
         sym = cross_product_pg_sym(sys%read_in, sym, store%op_sym)
-        if (is_gamma_irrep_pg_sym(sys%read_in%pg_sym, sym) .and. &
+        if (is_gamma_irrep_abelian(sys%read_in%pg_sym, sym) .and. &
                 sys%basis%basis_fns(i)%ms == sys%basis%basis_fns(a)%ms .and. &
                 sys%basis%basis_fns(j)%ms == sys%basis%basis_fns(b)%ms) then
             intgrl = get_two_body_int_mol_nonzero(store, i, j, a, b, sys%basis%basis_fns)
@@ -1063,7 +1064,7 @@ contains
         !    It is also faster to call RHF- or UHF-specific routines.
 
         use momentum_sym_read_in, only: mom_sym_conj
-        use point_group_symmetry, only: cross_product_basis
+        use abelian_symmetry, only: cross_product_basis_abelian
         use system, only: sys_t
 
         complex(p) :: intgrl
@@ -1074,8 +1075,8 @@ contains
 
         integer :: sym_ij, sym_ab
 
-        sym_ij = cross_product_basis(sys, i, j)
-        sym_ab = cross_product_basis(sys, a, b)
+        sym_ij = cross_product_basis_abelian(sys, i, j)
+        sym_ab = cross_product_basis_abelian(sys, a, b)
         if (mom_sym_conj(sys%read_in, sym_ij) == sys%read_in%mom_sym%inv_sym(sym_ab) .and. &
                     sys%basis%basis_fns(j)%ms == sys%basis%basis_fns(b)%ms .and. &
                     sys%basis%basis_fns(i)%ms == sys%basis%basis_fns(a)%ms) then

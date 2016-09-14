@@ -339,7 +339,7 @@ contains
 
         use system, only: sys_t
         use dSFMT_interface, only: dSFMT_t, get_rand_close_open
-        use point_group_symmetry, only: cross_product_basis
+        use abelian_symmetry, only: cross_product_basis_abelian
 
         type(sys_t), intent(in) :: sys
         integer, intent(in) :: occ_list(:)
@@ -367,7 +367,7 @@ contains
         j = occ_list(j)
 
         ij_sym = sys%read_in%sym_conj_ptr(sys%read_in, &
-                    cross_product_basis(sys, i,j))
+                    cross_product_basis_abelian(sys, i,j))
         ! ij_spin = -2 (down, down), 0 (up, down or down, up), +2 (up, up)
         ij_spin = sys%basis%basis_fns(i)%Ms + sys%basis%basis_fns(j)%Ms
 

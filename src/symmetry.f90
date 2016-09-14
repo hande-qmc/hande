@@ -24,7 +24,7 @@ contains
         !    of all the orbitals in the list).
 
         use momentum_symmetry, only: symmetry_orb_list_hub_k, symmetry_orb_list_ueg
-        use point_group_symmetry, only: symmetry_orb_list_mol
+        use abelian_symmetry, only: symmetry_orb_list_abelian
         use system
 
         integer :: isym
@@ -37,7 +37,7 @@ contains
         case(ueg)
             isym = symmetry_orb_list_ueg(sys, orb_list)
         case(read_in)
-            isym = symmetry_orb_list_mol(sys%read_in, sys%basis, orb_list)
+            isym = symmetry_orb_list_abelian(sys%read_in, sys%basis, orb_list)
         case default
             ! symmetry not implemented
             isym = sys%sym0

@@ -1,16 +1,13 @@
 module momentum_symmetry
 
-! Module for handling crystal momentum symmetry.
+! Module for handling model system crystal momentum symmetry.
 ! [review] - JSS: some detailed comments explaining translational symmetry (for Hubbard, UEG and read-in) would be welcome for the
 ! non-initiated, especially with a contrast to point group symmetry.
 
-! Stored symmetry information for the Hubbard model and non-model periodic systems.  UEG symmetry is
+! Stored symmetry information for the Hubbard model (and non-model periodic) systems.  UEG symmetry is
 ! done on the fly due to the size of the basis---see ueg module.
 
-! Momentum symmetry for non-model periodic systems
-! ------------------------------------------------
-!
-! For an explanation of the implementation used here, please see momentum_sym_read_in.f90
+! Momentum symmetry for non-model periodic systems is implemented within momentum_sym_read_in.f90.
 
 use system
 
@@ -33,9 +30,6 @@ contains
         use checking, only: check_allocate
         use errors, only: stop_all
         use ueg_system, only: init_ueg_indexing
-        use momentum_sym_read_in, only: get_kpoint_index, get_kpoint_vector, &
-                                        is_gamma_sym_periodic_read_in, &
-                                        init_basis_momentum_symmetry_info
 
         type(sys_t), intent(inout) :: sys
 
@@ -116,59 +110,6 @@ contains
                 write (6,'()')
             end if
 
-        case(read_in)
-            sys%nsym = product(sys%read_in%mom_sym%nprop)
-            sys%sym_max = sys%nsym
-            sys%nsym_tot = sys%nsym
-            sys%sym_max_tot = sys%sym_max
-            ! Multiple wavevectors in each irrep. Number of wavevectors
-            ! depends on kpoint grid used, but absolute maximum less than
-            ! 1000 (10x10x10) due to hard coded limits in read_in.
-
-            ! Feasible to calculate and store product and inverse tables,
-            ! so we do so to avoid repeated calculation and enable abstraction
-            ! of interfaces for various functions. This gives easier sharing of
-            ! logic with pg_sym functionality in eg. excit_gen_mol.f90 or
-            ! molecular _integrals.F90.
-            allocate(sys%read_in%mom_sym%sym_table(sys%nsym, sys%nsym), stat=ierr)
-            call check_allocate('sym_table',sys%nsym*sys%nsym,ierr)
-            allocate(sys%read_in%mom_sym%inv_sym(sys%nsym), stat=ierr)
-            call check_allocate('inv_sym',sys%nsym,ierr)
-
-            call init_basis_momentum_symmetry_info(sys)
-
-            sys%read_in%mom_sym%gamma_sym = 0
-            do i = 1, sys%nsym
-                call get_kpoint_vector(i, sys%read_in%mom_sym%nprop, a)
-
-                if (all(a == 0)) sys%read_in%mom_sym%gamma_sym = i
-
-            end do
-            sys%read_in%pg_sym%gamma_sym = sys%read_in%mom_sym%gamma_sym
-            if (sys%tot_sym) sys%symmetry = sys%read_in%mom_sym%gamma_sym
-
-            if (sys%read_in%mom_sym%gamma_sym == 0) call stop_all('init_momentum_symmetry', 'Gamma-point symmetry not found. ')
-
-            do i = sys%sym0, sys%nsym
-                do j = i, sys%nsym
-                    call get_kpoint_vector(i, sys%read_in%mom_sym%nprop, a)
-                    call get_kpoint_vector(j, sys%read_in%mom_sym%nprop, ksum)
-                    ksum = modulo(ksum + a, sys%read_in%mom_sym%nprop)
-                    do k = 1, sys%nsym
-                        call get_kpoint_vector(k, sys%read_in%mom_sym%nprop, a)
-                        if (is_gamma_sym_periodic_read_in(sys%read_in%mom_sym, ksum - a)) then
-                            sys%read_in%mom_sym%sym_table(i,j) = k
-                            sys%read_in%mom_sym%sym_table(j,i) = k
-                            if (k == sys%read_in%mom_sym%gamma_sym) then
-                                sys%read_in%mom_sym%inv_sym(i) = j
-                                sys%read_in%mom_sym%inv_sym(j) = i
-                            end if
-                            exit
-                        end if
-                    end do
-                end do
-            end do
-
         case(ueg)
 
             ! Trickier.
@@ -200,45 +141,6 @@ contains
         end select
 
     end subroutine init_momentum_symmetry
-
-    subroutine print_mom_sym_info(sys)
-        ! Write out momentum symmetry info (for non-model periodic systems).
-        ! In:
-        !    sys: system to be studied, with all symmetry components set.
-
-        use system, only: sys_t
-        use parallel, only: parent
-        use basis, only: write_basis_fn
-
-        type(sys_t), intent(in) :: sys
-        integer :: i, j
-
-        if (parent) then
-            write (6,'(1X,a20,/,1X,20("-"),/)') "Symmetry information"
-            write (6,'(1X,a63,/)') 'The table below gives the label and inverse of each wavevector.'
-            write (6,'(1X,a5,4X,a7)', advance='no') 'Index','k-point'
-            do i = 1, sys%lattice%ndim
-                write (6,'(3X)', advance='no')
-            end do
-            write (6,'(a7)') 'Inverse'
-            do i = 1, sys%nsym
-                write (6,'(i4,5X)', advance='no') i
-                call write_basis_fn(sys, sys%basis%basis_fns(2*i), new_line=.false., print_full=.false.)
-                write (6,'(5X,i4)') sys%read_in%mom_sym%inv_sym(i)
-            end do
-            write (6,'()')
-            write (6,'(1X,a83,/)') &
-                "The matrix below gives the result of k_i+k_j to within a reciprocal lattice vector."
-            do i = 1, sys%nsym
-                do j = 1, sys%nsym
-                    write (6,'(2X,i0)', advance='no') sys%read_in%mom_sym%sym_table(j,i)
-                end do
-                write (6,'()')
-            end do
-            write (6,'()')
-        end if
-
-    end subroutine print_mom_sym_info
 
     elemental function cross_product_k(sys, s1, s2) result(prod)
 

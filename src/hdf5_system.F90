@@ -428,7 +428,7 @@ module hdf5_system
             use excitations, only: init_excitations
             use read_in_system, only: read_in_one_body
             use molecular_integrals, only: init_one_body_t, init_two_body_t, broadcast_one_body_t, broadcast_two_body_t
-            use momentum_symmetry, only: init_momentum_symmetry
+            use momentum_sym_read_in, only: init_read_in_momentum_symmetry
 
             type(sys_t), intent(inout) :: sys
             logical, optional, intent(in) :: verbose
@@ -644,7 +644,7 @@ module hdf5_system
             call init_determinants(sys, sys%nel)
             call init_excitations(sys%basis)
             if (sys%momentum_space) then
-                call init_momentum_symmetry(sys)
+                call init_read_in_momentum_symmetry(sys)
             else
                 call init_pg_symmetry(sys, .true.)
             end if
