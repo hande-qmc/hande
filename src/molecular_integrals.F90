@@ -291,6 +291,70 @@ contains
 
 ! [todo] - fast and specific 'get' functions for UHF and RHF cases
 
+! First, symmetry check functions:
+
+    pure function check_one_body_sym(i, j, sys, op_sym) result(sym_allowed)
+
+        ! Check if one body integral symmetry allowed, using appropriate symmetry
+        ! (pg_sym vs mom_sym).
+
+        ! In:
+        !    i,j: (indices of) spin-orbitals.
+        !    sys: sys_t object containing info on current system.
+        !    op_sym: symmetry of operator.
+        ! Out:
+        !    sym_allowed: boolean value denoting whether integral can be
+        !       nonzero. false if must be zero by symmetry.
+
+        use system, only: sys_t
+
+        integer :: sym
+        type(sys_t), intent(in) :: sys
+        integer, intent(in) :: i, j, op_sym
+        logical :: sym_allowed
+
+        ! If dealing with complex plane waves or Lz conj(sym_i) = inv(sym_i).
+        ! If pg_sym conj(sym_i) = inv(sym_i) = sym_i
+        ! So in general we need:
+        !       conj(sym_i) = inv(op_sym x sym_j)
+        !             sym_i = op_sym x sym_j
+        sym_allowed = (sys%basis%basis_fns(i)%sym == &
+                sys%read_in%cross_product_sym_ptr(sys%read_in, &
+                op_sym, sys%basis%basis_fns(j)%sym))
+
+    end function check_one_body_sym
+
+    pure function check_two_body_sym(i, j, a, b, sys, op_sym) result (allowed)
+
+        ! Function to check if a two-body integral is symmetry allowed.
+
+        ! In:
+        !    i,j,a,b: (indices of) spin-orbitals.
+        !    op_sym:  The symmetry of the operator
+        !    sys: information on system being studied.
+        ! Out:
+        !    allowed: boolean value denoting whether or not integral can
+        !       be nonzero by symmetry.
+
+        use system, only: sys_t
+        use abelian_symmetry, only: cross_product_basis_abelian
+
+        type(sys_t), intent(in) :: sys
+        integer, intent(in) :: i, j, a, b, op_sym
+        integer :: sym_ij, sym_ab, sym
+        logical :: allowed
+
+        sym_ij = cross_product_basis_abelian(sys, i, j)
+        sym_ab = cross_product_basis_abelian(sys, a, b)
+        ! As dealing with complex plane waves conj(sym_i) = inv_sym(sym_i).
+        ! So need:
+        !       conj(sym_ij) = inv_sym(op_sym x sym_ab)
+        !            sym_ij = op_sym x sym_ab
+        allowed = (sym_ij == sys%read_in%cross_product_sym_ptr(sys%read_in, &
+                                           sym_ab, op_sym))
+
+    end function check_two_body_sym
+
 ! 1. < i | o_1 | j >
 
     subroutine store_one_body_int(i, j, intgrl, sys, suppress_err_msg, store, ierr)
@@ -345,42 +409,6 @@ contains
         end if
 
     end subroutine store_one_body_int
-
-    pure function check_one_body_sym(i, j, sys, op_sym) result(sym_allowed)
-
-        ! Check if integral symmetry allowed, using appropriate symmetry
-        ! (pg_sym vs mom_sym).
-
-        ! In:
-        !    i,j: (indices of) spin-orbitals.
-        !    sys: sys_t object containing info on current system.
-        !    op_sym: symmetry of operator.
-        ! Out:
-        !    sym_allowed: boolean value denoting whether integral can be
-        !       nonzero. false if must be zero by symmetry.
-
-! [review] - AJWT: For momentum symmetry, this explicitly ignores op_sym. 
-! [review] - AJWT: While we can't raise an error in a pure function, we can at least include a comment on it here,
-! [reply] - CJCS: With the changes in interfaces we can make this neater and ensure this is considered- as now done.
-        use system, only: sys_t
-        use abelian_symmetry, only: is_gamma_irrep_abelian
-
-        integer :: sym
-        type(sys_t), intent(in) :: sys
-        integer, intent(in) :: i, j, op_sym
-        logical :: sym_allowed
-
-
-        ! If dealing with complex plane waves or Lz conj(sym_i) = inv(sym_i).
-        ! If pg_sym conj(sym_i) = inv(sym_i) = sym_i
-        ! So in general we need:
-        !       conj(sym_i) = inv(op_sym x sym_j)
-        !             sym_i = op_sym x sym_j
-        sym_allowed = (sys%basis%basis_fns(i)%sym == &
-                sys%read_in%cross_product_sym_ptr(sys%read_in, &
-                op_sym, sys%basis%basis_fns(j)%sym))
-
-    end function check_one_body_sym
 
     subroutine store_one_body_int_nonzero(i, j, intgrl, basis_fns, suppress_err_msg, store)
 
@@ -455,12 +483,8 @@ contains
         type(sys_t), intent(in) :: sys
         type(one_body_t), intent(in) :: store
         integer, intent(in) :: i, j
-        integer :: sym
 
-        sym = sys%read_in%cross_product_sym_ptr(sys%read_in, &
-                sys%read_in%sym_conj_ptr(sys%read_in, sys%basis%basis_fns(i)%sym),sys%basis%basis_fns(j)%sym)
-
-        if (sym == sys%read_in%sym_conj_ptr(sys%read_in, store%op_sym) .and. &
+        if (check_one_body_sym(i, j, sys, store%op_sym) .and. &
                 sys%basis%basis_fns(i)%ms == sys%basis%basis_fns(j)%ms) then
             intgrl = get_one_body_int_mol_nonzero(store, i, j, sys%basis%basis_fns)
         else
@@ -497,8 +521,7 @@ contains
         ! So need:
         !       conj(sym_i) = inv(op_sym cross sym_j)
         !             sym_i = op_sym cross sym_j
-        if (sys%basis%basis_fns(i)%sym == sys%read_in%cross_product_sym_ptr(sys%read_in, &
-                store%op_sym, sys%basis%basis_fns(j)%sym) .and. &
+        if (check_one_body_sym(i, j, sys, store%op_sym) .and. &
                 sys%basis%basis_fns(i)%ms == sys%basis%basis_fns(j)%ms) then
             re = get_one_body_int_mol_nonzero(store, i, j, sys%basis%basis_fns)
             im = get_one_body_int_mol_nonzero(im_store, i, j, sys%basis%basis_fns)
@@ -924,7 +947,6 @@ contains
         type(two_body_t), intent(inout) :: store
         integer, intent(out) :: ierr
 
-        integer :: sym_ij, sym_ab, sym
         character(255) :: error
 
         ierr = 0
@@ -945,39 +967,6 @@ contains
         end if
 
     end subroutine store_two_body_int
-
-    pure function check_two_body_sym(i, j, a, b, sys, op_sym) result (allowed)
-
-        ! Function to check if a two-body integral is symmetry allowed.
-
-        ! In:
-        !    i,j,a,b: (indices of) spin-orbitals.
-        !    op_sym:  The symmetry of the operator
-        !    sys: information on system being studied.
-        ! Out:
-        !    allowed: boolean value denoting whether or not integral can
-        !       be nonzero by symmetry.
-! [review] - AJWT: For momentum symmetry, this explicitly ignores op_sym. 
-! [review] - AJWT: While we can't raise an error in a pure function, we can at least include a comment on it here,
-! [reply] - CJCS: As for one body above, now done.
-        use system, only: sys_t
-        use abelian_symmetry, only: cross_product_basis_abelian
-
-        type(sys_t), intent(in) :: sys
-        integer, intent(in) :: i, j, a, b, op_sym
-        integer :: sym_ij, sym_ab, sym
-        logical :: allowed
-
-        sym_ij = cross_product_basis_abelian(sys, i, j)
-        sym_ab = cross_product_basis_abelian(sys, a, b)
-        ! As dealing with complex plane waves conj(sym_i) = inv_sym(sym_i).
-        ! So need:
-        !       conj(sym_ij) = inv_sym(sym_ab)
-        !            sym_ij = sym_ab
-        allowed = (sym_ij == sys%read_in%cross_product_sym_ptr(sys%read_in, &
-                                           sym_ab, op_sym))
-
-    end function check_two_body_sym
 
     subroutine store_two_body_int_nonzero(i, j, a, b, intgrl, basis_fns, store, ierr)
         use basis_types, only: basis_fn_t
@@ -1019,9 +1008,6 @@ contains
         !    then it is faster to call get_two_body_int_mol_nonzero.
         !    It is also faster to call RHF- or UHF-specific routines.
 
-        use basis_types, only: basis_fn_t
-        use abelian_symmetry, only: cross_product_basis_abelian, is_gamma_irrep_abelian
-        use point_group_symmetry, only: cross_product_pg_sym, pg_sym_conj
         use system, only: sys_t
 
         real(p) :: intgrl
@@ -1029,13 +1015,7 @@ contains
         type(sys_t), intent(in) :: sys
         integer, intent(in) :: i, j, a, b
 
-        integer :: sym_ij, sym_ab, sym
-
-        sym_ij = pg_sym_conj(sys%read_in, cross_product_basis_abelian(sys, i, j))
-        sym_ab = cross_product_basis_abelian(sys, a, b)
-        sym = cross_product_pg_sym(sys%read_in, sym_ij, sym_ab)
-        sym = cross_product_pg_sym(sys%read_in, sym, store%op_sym)
-        if (is_gamma_irrep_abelian(sys%read_in%pg_sym, sym) .and. &
+        if (check_two_body_sym(i, j, a, b, sys, store%op_sym) .and. &
                 sys%basis%basis_fns(i)%ms == sys%basis%basis_fns(a)%ms .and. &
                 sys%basis%basis_fns(j)%ms == sys%basis%basis_fns(b)%ms) then
             intgrl = get_two_body_int_mol_nonzero(store, i, j, a, b, sys%basis%basis_fns)
@@ -1063,8 +1043,6 @@ contains
         !    then it is faster to call get_two_body_int_mol_nonzero.
         !    It is also faster to call RHF- or UHF-specific routines.
 
-        use momentum_sym_read_in, only: mom_sym_conj
-        use abelian_symmetry, only: cross_product_basis_abelian
         use system, only: sys_t
 
         complex(p) :: intgrl
@@ -1075,9 +1053,7 @@ contains
 
         integer :: sym_ij, sym_ab
 
-        sym_ij = cross_product_basis_abelian(sys, i, j)
-        sym_ab = cross_product_basis_abelian(sys, a, b)
-        if (mom_sym_conj(sys%read_in, sym_ij) == sys%read_in%mom_sym%inv_sym(sym_ab) .and. &
+        if (check_two_body_sym(i, j, a, b, sys, store%op_sym) .and. &
                     sys%basis%basis_fns(j)%ms == sys%basis%basis_fns(b)%ms .and. &
                     sys%basis%basis_fns(i)%ms == sys%basis%basis_fns(a)%ms) then
             re = get_two_body_int_mol_nonzero(store, i, j, a, b, sys%basis%basis_fns)
