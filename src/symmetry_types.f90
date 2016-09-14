@@ -64,10 +64,6 @@ end type pg_sym_t
 
 type mom_sym_t
     ! Index of the symmetry corresponding to the Gamma-point.
-    ! [review] - JSS: what about if the gamma-point isn't included in the grid (e.g. Monkhorst-Pack)?
-    ! [reply] - CJCS: Not currently sure about the formatting for this within the FCIDUMP. Will change
-    ! [reply] - CJCS: to enable flexibility on gamma-point position and email George to find out if there's
-    ! [reply] - CJCS: a convention for FCIDUMPs using MH grids.
     integer(int_64) :: gamma_sym
 
     ! sym_table(i,j) = k means that k_i + k_j = k_k to within a primitive reciprocal lattice vector.
@@ -80,7 +76,6 @@ type mom_sym_t
 
     ! Index of gamma point in real periodic systems.
     integer :: gamma_point(3) = [0, 0, 0]
-    ! [review] - FDM: Does this have units?
     ! Dimensions of supercell used in translationally symmetric systems.
     ! This corresponds to the periodicity of the kpoint lattice in each
     ! dimension in units of 2\pi/L.
