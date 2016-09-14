@@ -365,7 +365,8 @@ contains
         call json_write_key(js, 'finish_varying_weights', dmqmc%finish_varying_weights)
         call json_write_key(js, 'fermi_temperature', dmqmc%fermi_temperature)
         call json_write_key(js, 'target_beta', dmqmc%target_beta)
-        call json_write_key(js, 'mom_dist_kmax', dmqmc%mom_dist_kmax, terminal=.true.)
+        call json_write_key(js, 'mom_dist_kmax', dmqmc%mom_dist_kmax)
+        call json_write_key(js, 'struc_fac_qmax', dmqmc%struc_fac_qmax, terminal=.true.)
         call json_object_end(js, terminal)
 
     end subroutine dmqmc_in_t_json
