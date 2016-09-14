@@ -147,7 +147,7 @@ Write HDF5 system file
 
 .. code-block:: lua
 
-    write_read_in_system {
+    hdf5_name = write_read_in_system {
         sys = system,
         filename = filename,
     }
@@ -206,6 +206,9 @@ it in future calculations -- the HDF5 format of the file is automatically detect
 If a CAS is used to produce the system object used to produce such a file it will be
 labelled as such and only information for basis functions within the CAS will be stored;
 conversion between different CAS within this functionality is not currently supported.
+
+The FCIDUMP.H5 file does not specify the symmetry sector on which to perform a
+calculation. This is instead set as in :ref:`generic_systems`.
 
 .. important::
 

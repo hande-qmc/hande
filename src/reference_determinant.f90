@@ -74,6 +74,7 @@ contains
         use determinants, only: encode_det
         use symmetry, only: symmetry_orb_list
         use system
+        use parallel, only: parent
 
         type(sys_t), intent(in) :: sys
         integer, intent(inout), allocatable :: occ_list(:)
@@ -205,10 +206,12 @@ contains
                     end if
                 else
                     sym = symmetry_orb_list(sys, occ_list)
-                    write (6, '(1X)')
-                    write (6, '(1X,"Reference determinant and so symmetry sector selected using the Aufbau principle.")')
-                    write (6, '(1X,"Selected symmetry ",i2,".")') sym
-                    write (6, '(1X)')
+                    if (parent) then
+                        write (6, '(1X)')
+                        write (6, '(1X,"Reference determinant and so symmetry sector selected using the Aufbau principle.")')
+                        write (6, '(1X,"Selected symmetry ",i2,".")') sym
+                        write (6, '(1X)')
+                    end if
                 end if
             case(hub_real)
                 ! Attempt to keep electrons on different sites where possible.
