@@ -788,6 +788,7 @@ contains
             ! reals for CCMC so we are just maintaining behaviour.  The difference is
             ! really minimal...)
             nattempts = int(psip_list%nparticles(1), int_64)
+            if (complx_loc) nattempts = nattempts + abs(nint(psip_list%nparticles(2), int_64))
         else if (doing_calc(dmqmc_calc)) then
             ! Each particle and each end gets to attempt to spawn onto a
             ! connected determinant and a chance to die/clone.

@@ -589,10 +589,12 @@ contains
                 if (sys%read_in%comp) then
                     call init_mc_cycle(qs%psip_list, qs%spawn_store%spawn, nattempts, ndeath, &
                                        min_attempts=nint(abs(real(D0_normalisation_comp,p)) + &
-                                       abs(aimag(D0_normalisation_comp)),int_64), ndeath_im = ndeath_im)
+                                       abs(aimag(D0_normalisation_comp)),int_64), ndeath_im = ndeath_im, &
+                                       complx=sys%read_in%comp)
                 else
                     call init_mc_cycle(qs%psip_list, qs%spawn_store%spawn, nattempts, ndeath, &
-                                       min_attempts=nint(D0_normalisation,int_64), ndeath_im = ndeath_im)
+                                       min_attempts=nint(D0_normalisation,int_64), ndeath_im = ndeath_im, &
+                                       complx=sys%read_in%comp)
                 end if
                 nparticles_change = 0.0_p
 
