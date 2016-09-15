@@ -222,18 +222,12 @@ contains
                 ! Should we turn semi-stochastic on now?
                 if (iter == semi_stoch_iter .and. semi_stoch_in%space_type /= empty_determ_space) then
                     determ%doing_semi_stoch = .true.
-                    ! [review] - JSS: I think care should be taken when passing in both qs and a component of it. Is this really
-                    ! [review] - JSS: necessary? Do they both have the same intents? (If not, bad things can happen...)
-                    ! [reply] - AJWT: now separated out into qs%propagator object
                     call init_semi_stoch_t(determ, semi_stoch_in, sys, qs%propagator, qs%psip_list, qs%ref, annihilation_flags, &
                                            qs%spawn_store%spawn, qmc_in%use_mpi_barriers)
                 end if
 
                 call init_mc_cycle(qs%psip_list, qs%spawn_store%spawn, nattempts, ndeath, ndeath_im = ndeath_im, &
                                             complx = sys%read_in%comp)
-                ! [review] - JSS: I think care should be taken when passing in both qs and a component of it. Is this really
-                ! [review] - JSS: necessary? Do they both have the same intents? (If not, bad things can happen...)
-                ! [reply] - AJWT: now separated out into qs%propagator object
                 call load_balancing_wrapper(sys, qs%propagator, qs%ref, load_bal_in, annihilation_flags, &
                                             fciqmc_in%non_blocking_comm, rng, qs%psip_list, qs%spawn_store%spawn, &
                                             qs%par_info, determ)

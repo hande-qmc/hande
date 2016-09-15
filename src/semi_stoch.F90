@@ -550,8 +550,7 @@ contains
                 determ%one_minus_qn_weight(j) =  weight
             end do
         else
-            ! [review] - JSS: unnecessary use of (:).
-            ! [reply] - AJWT: Agreed - also probably best set it to 0 if it's accidentally used before a proper init
+            ! [review] - JSS: initialisation changed from 1 to 0 if not using QN. See below.
             determ%one_minus_qn_weight = 0.0_p
         end if
         if (print_info) write(6,'(1X,a74)') '# Counting number of non-zero deterministic Hamiltonian elements to store.'
@@ -627,6 +626,8 @@ contains
                 end if
             end do
             ! Now actually store 1-w in one_minus_qn_weight
+            ! [review] - JSS: now set to 1 if not using QN. Doesn't this then break propagation if not using QN because the
+            ! [review] - JSS: projected energy gets included?
             determ%one_minus_qn_weight(:) = 1.0_p - determ%one_minus_qn_weight(:)
 
         end associate
@@ -848,6 +849,7 @@ contains
                     !                       (where w_i is the quasi_newton weight).
                     ! w_i is subsumed into H_ii already, so we now just include
                     ! the shift/projE component.
+                    ! [review] - JSS: I think this is now wrong if not using QN because one_minus_qn_weight is not 0.
                     out_vec = -qs%tau * (out_vec + (proj_energy * determ%one_minus_qn_weight(i) - qs%shift(1)) * determ%vector(i))
                     call create_spawned_particle_determ(determ%dets(:,row), out_vec, qs%psip_list%pop_real_factor, proc, &
                                                         qmc_in%initiator_approx, rng, spawn)
