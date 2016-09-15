@@ -542,7 +542,7 @@ contains
         ! with an appropriately rescaled pgen.
         call partition_cluster(rng, sys, qs%ref%f0, cluster, left_cluster, right_cluster, ppart, ldet%f, &
                                rdet%f, allowed, sign_change)
-        pop = 1
+        pop = cmplx(1.0_p, 0.0_p, p)
 
         ! 2) Choose excitation from right_cluster|D_0>
         if (allowed) then

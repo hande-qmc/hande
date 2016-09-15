@@ -143,7 +143,7 @@ contains
 
         ! Find the determinant obtained by applying all of the cluster operators
         ! linked to H to D0
-        population = 0.0_p ! The population doesn't matter as the commutator does not change the amplitude
+        population = cmplx(0.0_p, 0.0_p, p) ! The population doesn't matter as the commutator does not change the amplitude
         found = 0
         if (cluster%nexcitors > 1) then
             do i = 1, cluster%nexcitors

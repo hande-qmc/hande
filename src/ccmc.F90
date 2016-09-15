@@ -617,7 +617,7 @@ contains
                 ! Given the contribution to the projected energy is divided by the cluster generation probability and
                 ! multiplied by the actual weight, doing this has absolutely no effect on the projected energy.
                 call cumulative_population(qs%psip_list%pops, qs%psip_list%nstates, D0_proc, D0_pos, qs%psip_list%pop_real_factor, &
-                                           cumulative_abs_nint_pops, tot_abs_nint_pop)
+                                           sys%read_in%comp, cumulative_abs_nint_pops, tot_abs_nint_pop)
 
                 associate(bs=>bloom_stats, nstates_active=>qs%psip_list%nstates)
                     bloom_threshold = real(nparticles_old(1)*bs%prop*bs%encoding_factor, p)
@@ -702,8 +702,8 @@ contains
                         else
 
                             call select_cluster(rng(it), sys, qs%psip_list, qs%ref%f0, qs%ref%ex_level, ccmc_in%linked, &
-                                                nstochastic_clusters, cmplx(D0_normalisation, 0, p), qmc_in%initiator_pop, D0_pos, &
-                                                cumulative_abs_nint_pops(:), tot_abs_nint_pop, min_cluster_size, &
+                                                nstochastic_clusters, cmplx(D0_normalisation, 0.0_p, p), qmc_in%initiator_pop, &
+                                                D0_pos, cumulative_abs_nint_pops(:), tot_abs_nint_pop, min_cluster_size, &
                                                 max_cluster_size, qmc_in%quadrature_initiator, cdet(it), cluster(it))
                         end if
                     else if (iattempt <= nstochastic_clusters+nD0_select) then
@@ -719,10 +719,10 @@ contains
                             seen_D0 = .true.
                             if (sys%read_in%comp) then
                                 call create_null_cluster(sys, qs%ref%f0, nprocs*real(nD0_select,p), D0_normalisation_comp, &
-                                                         qmc_in%initiator_pop, cdet(it), cluster(it))
+                                                         qmc_in%initiator_pop, qmc_in%quadrature_initiator, cdet(it), cluster(it))
                             else
-                                call create_null_cluster(sys, qs%ref%f0, nprocs*real(nD0_select,p), cmplx(D0_normalisation,0,p), &
-                                                         qmc_in%initiator_pop, cdet(it), cluster(it))
+                                call create_null_cluster(sys, qs%ref%f0,nprocs*real(nD0_select,p),cmplx(D0_normalisation,0.0_p,p),&
+                                                         qmc_in%initiator_pop, qmc_in%quadrature_initiator, cdet(it), cluster(it))
                             end if
                         end if
                     else

@@ -171,7 +171,8 @@ contains
 
         select case(cluster%nexcitors)
         case(0)
-            call create_null_cluster(sys, f0, cluster%pselect, normalisation, initiator_pop, cdet, cluster)
+            call create_null_cluster(sys, f0, cluster%pselect, normalisation, initiator_pop, &
+                                    quadrature_initiator, cdet, cluster)
         case default
             ! Select cluster from the excitors on the current processor with
             ! probability for choosing an excitor proportional to the excip
@@ -305,7 +306,7 @@ contains
 
     end subroutine select_cluster
 
-    subroutine create_null_cluster(sys, f0, prob, D0_normalisation, initiator_pop, cdet, cluster)
+    subroutine create_null_cluster(sys, f0, prob, D0_normalisation, initiator_pop, quadrature_initiator, cdet, cluster)
 
         ! Create a cluster with no excitors in it, and set it to have
         ! probability of generation prob.
@@ -317,6 +318,8 @@ contains
         !    D0_normalisation:  The number of excips at the reference (which
         !        will become the amplitude of this cluster)
         !    initiator_pop: the population above which a determinant is an initiator.
+        !    quadrature_initiator: how to apply the initiator criterion in complex
+        !        spaces.
 
         ! In/Out:
         !    cdet: information about the cluster of excitors applied to the
@@ -340,6 +343,7 @@ contains
         integer(i0), intent(in) :: f0(sys%basis%string_len)
         real(p), intent(in) :: prob, initiator_pop
         complex(p), intent(in) :: D0_normalisation
+        logical, intent(in) :: quadrature_initiator
         type(det_info_t), intent(inout) :: cdet
         type(cluster_t), intent(inout) :: cluster
 
@@ -362,11 +366,16 @@ contains
         cluster%amplitude = real(D0_normalisation, p)
         cluster%amplitude_im = aimag(D0_normalisation)
         cluster%cluster_to_det_sign = 1
-        if (cluster%amplitude <= initiator_pop) then
-             ! Something has gone seriously wrong and the CC
-             ! approximation is (most likely) not suitably for this system.
-             ! Let the user be an idiot if they want to be...
-             cdet%initiator_flag = 1
+         ! Something has gone seriously wrong and the CC
+         ! approximation is (most likely) not suitably for this system.
+         ! Let the user be an idiot if they want to be...
+        if (quadrature_initiator) then
+            if (abs(D0_normalisation) <= initiator_pop) cdet%initiator_flag = 3
+        else
+            if (abs(cluster%amplitude) <= initiator_pop) &
+                cdet%initiator_flag = ibset(cdet%initiator_flag, 0)
+            if (abs(cluster%amplitude_im) <= initiator_pop) &
+                cdet%initiator_flag = ibset(cdet%initiator_flag, 1)
         end if
 
         call decoder_ptr(sys, cdet%f, cdet)
@@ -510,7 +519,7 @@ contains
             if (sys%read_in%comp) then
                 excitor_pop = cmplx(psip_list%pops(1,iexcip_pos), psip_list%pops(2,iexcip_pos), p)/psip_list%pop_real_factor
             else
-                excitor_pop = cmplx(psip_list%pops(1,iexcip_pos), 0.0, p)/psip_list%pop_real_factor
+                excitor_pop = cmplx(psip_list%pops(1,iexcip_pos), 0.0_p, p)/psip_list%pop_real_factor
             end if
 
             if (quadrature_initiator) then
