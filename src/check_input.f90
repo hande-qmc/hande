@@ -335,7 +335,6 @@ contains
         end if
 
         if (sys%read_in%comp .and. ccmc_in%linked) call stop_all(this, 'Linked complex CCMC not yet implemented')
-        if (sys%read_in%comp .and. ccmc_in%full_nc) call stop_all(this, 'Non-composite complex CCMC not yet implemented')
 
     end subroutine check_ccmc_opts
 

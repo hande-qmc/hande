@@ -10,7 +10,8 @@ implicit none
 contains
 
     subroutine select_cluster(rng, sys, psip_list, f0, ex_level, linked_ccmc, nattempts, normalisation, &
-                              initiator_pop, D0_pos, cumulative_excip_pop, tot_excip_pop, min_size, max_size, cdet, cluster)
+                              initiator_pop, D0_pos, cumulative_excip_pop, tot_excip_pop, min_size, max_size, &
+                              quadrature_initiator, cdet, cluster)
 
         ! Select a random cluster of excitors from the excitors on the
         ! processor.  A cluster of excitors is itself an excitor.  For clarity
@@ -38,6 +39,8 @@ contains
         !    tot_excip_pop: total excip population.
         !    min_size: the minimum size cluster to allow.
         !    max_size: the maximum size cluster to allow.
+        !    quadrature_initiator: How to apply initiator approximation in solids/complex
+        !        spaces. Only used if sys%read_in%comp = true, otherwise ignored.
 
         ! NOTE: cumulative_excip_pop and tot_excip_pop ignore the population on the
         ! reference as excips on the reference cannot form a cluster and the rounds the
@@ -77,7 +80,7 @@ contains
         integer(i0), intent(in) :: f0(sys%basis%string_len)
         integer, intent(in) :: ex_level
         integer(int_64), intent(in) :: nattempts
-        logical, intent(in) :: linked_ccmc
+        logical, intent(in) :: linked_ccmc, quadrature_initiator
         integer, intent(in) :: D0_pos
         complex(p), intent(in) :: normalisation
         real(p), intent(in) :: initiator_pop
@@ -205,13 +208,11 @@ contains
                 ! case, where an excitor has population in another space but not
                 ! that which we're currently concerned with. More general test
                 ! should account for this.
-                if (pos /= 1) then
-                    do
-                        if (pos == 1) exit
-                        if (cumulative_excip_pop(pos) /= cumulative_excip_pop(pos-1)) exit
-                        pos = pos - 1
-                    end do
-                end if
+                do
+                    if (pos == 1) exit
+                    if (cumulative_excip_pop(pos) /= cumulative_excip_pop(pos-1)) exit
+                    pos = pos - 1
+                end do
                 if (sys%read_in%comp) then
                     excitor_pop = cmplx(psip_list%pops(1,pos), psip_list%pops(2,pos),p)/psip_list%pop_real_factor
                 else
@@ -240,9 +241,23 @@ contains
                 end if
                 ! If the excitor's population is below the initiator threshold, we remove the
                 ! initiator status for the cluster
-                if (abs(excitor_pop) <= initiator_pop) cdet%initiator_flag = 1
+                if (quadrature_initiator) then
+                    if (abs(excitor_pop) <= initiator_pop) cdet%initiator_flag = 3
+                else
+                    if (abs(real(excitor_pop,p)) <= initiator_pop) &
+                        cdet%initiator_flag = ibset(cdet%initiator_flag, 0)
+                    ! Only do this part if complex for eventual compatability with replicas/rdms.
+                    if (sys%read_in%comp) then
+                        if (abs(aimag(excitor_pop)) <= initiator_pop) &
+                            cdet%initiator_flag = ibset(cdet%initiator_flag, 1)
+                    end if
+                end if
                 ! Probability of choosing this excitor = nint(pop)/tot_pop.
-                cluster%pselect = (cluster%pselect*nint(abs(excitor_pop)))/tot_excip_pop
+                if (sys%read_in%comp) then
+                    cluster%pselect = (cluster%pselect*nint(abs(real(excitor_pop, p))+abs(aimag(excitor_pop))))/tot_excip_pop
+                else
+                    cluster%pselect = (cluster%pselect*nint(abs(real(excitor_pop, p))))/tot_excip_pop
+                end if
                 cluster%excitors(i)%f => psip_list%states(:,pos)
                 prev_pos = pos
             end do
@@ -357,7 +372,7 @@ contains
     end subroutine create_null_cluster
 
     subroutine select_cluster_non_composite(sys, psip_list, f0, iexcip, iexcip_pos, nattempts, initiator_pop,  D0_pos, &
-                                            cumulative_excip_pop, tot_excip_pop, cdet, cluster)
+                                            cumulative_excip_pop, tot_excip_pop, quadrature_initiator, cdet, cluster)
 
         ! Select (deterministically) the non-composite cluster containing only
         ! the single excitor iexcitor and set the same information as select_cluster.
@@ -375,6 +390,8 @@ contains
         !    cumulative_excip_population: running cumulative excip population on
         !        all excitors; i.e. cumulative_excip_population(i) = sum(particle_t%pops(1:i)).
         !    tot_excip_pop: total excip population.
+        !    quadrature_initiator: How to apply initiator approximation in solids/complex
+        !        spaces.
 
         ! NOTE: cumulative_excip_pop and tot_excip_pop ignore the population on the
         ! reference as excips on the reference cannot form a cluster and the rounds the
@@ -420,7 +437,8 @@ contains
         integer(int_p), intent(in) :: cumulative_excip_pop(:), tot_excip_pop
         type(det_info_t), intent(inout) :: cdet
         type(cluster_t), intent(inout) :: cluster
-        real(p) :: excitor_pop
+        complex(p) :: excitor_pop
+        logical, intent(in) :: quadrature_initiator
 
         integer :: iexcip_last
         ! It is more convenient to find the excitor on which the iexcip-th excip resides
@@ -487,12 +505,25 @@ contains
             cdet%f = psip_list%states(:,iexcip_pos)
             cdet%data => psip_list%dat(:,iexcip_pos)
             cluster%excitors(1)%f => psip_list%states(:,iexcip_pos)
-            excitor_pop = real(psip_list%pops(1,iexcip_pos),p)/psip_list%pop_real_factor
-            if (abs(excitor_pop) <= initiator_pop) cdet%initiator_flag = 1
+            if (sys%read_in%comp) then
+                excitor_pop = cmplx(psip_list%pops(1,iexcip_pos), psip_list%pops(2,iexcip_pos), p)/psip_list%pop_real_factor
+            else
+                excitor_pop = cmplx(psip_list%pops(1,iexcip_pos), 0.0, p)/psip_list%pop_real_factor
+            end if
+
+            if (quadrature_initiator) then
+                if (abs(excitor_pop) <= initiator_pop) cdet%initiator_flag = 3
+            else
+                if (abs(real(excitor_pop,p)) <= initiator_pop) &
+                    cdet%initiator_flag = ibset(cdet%initiator_flag, 0)
+                if (abs(aimag(excitor_pop)) <= initiator_pop) &
+                    cdet%initiator_flag = ibset(cdet%initiator_flag, 1)
+            end if
             ! pclust = |population|/total_population, as just a single excitor in the cluster..
-            cluster%pselect = (cluster%pselect*nint(abs(excitor_pop)))/tot_excip_pop
+            cluster%pselect = (cluster%pselect*nint(abs(real(excitor_pop, p))+abs(aimag(excitor_pop))))/tot_excip_pop
             cluster%excitation_level = get_excitation_level(f0, cdet%f)
-            cluster%amplitude = excitor_pop
+            cluster%amplitude = real(excitor_pop, p)
+            cluster%amplitude_im = aimag(excitor_pop)
 
             ! Sign change due to difference between determinant
             ! representation and excitors and excitation level.

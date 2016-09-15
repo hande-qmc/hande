@@ -696,13 +696,13 @@ contains
                             call select_cluster(rng(it), sys, qs%psip_list, qs%ref%f0, qs%ref%ex_level, ccmc_in%linked, &
                                                 nstochastic_clusters, D0_normalisation_comp, qmc_in%initiator_pop, D0_pos, &
                                                 cumulative_abs_nint_pops(:), tot_abs_nint_pop, min_cluster_size, &
-                                                max_cluster_size, cdet(it), cluster(it))
+                                                max_cluster_size, qmc_in%quadrature_initiator, cdet(it), cluster(it))
                         else
 
                             call select_cluster(rng(it), sys, qs%psip_list, qs%ref%f0, qs%ref%ex_level, ccmc_in%linked, &
                                                 nstochastic_clusters, cmplx(D0_normalisation, 0, p), qmc_in%initiator_pop, D0_pos, &
                                                 cumulative_abs_nint_pops(:), tot_abs_nint_pop, min_cluster_size, &
-                                                max_cluster_size, cdet(it), cluster(it))
+                                                max_cluster_size, qmc_in%quadrature_initiator, cdet(it), cluster(it))
                         end if
                     else if (iattempt <= nstochastic_clusters+nD0_select) then
                         ! We just select the empty cluster.
@@ -867,9 +867,20 @@ contains
                         if (qs%quasi_newton) then
                             dfock = sum_sp_eigenvalues_bit_string(sys, qs%psip_list%states(:,iattempt)) - qs%ref%fock_sum
                         end if
-                        call stochastic_ccmc_death_nc(rng(it), ccmc_in%linked, sys, qs, iattempt==D0_pos, dfock, &
+                        if (sys%read_in%comp) then
+                            call stochastic_ccmc_death_nc(rng(it), ccmc_in%linked, qs, iattempt==D0_pos, dfock, &
+                                              qs%psip_list%dat(1,iattempt), real(proj_energy_old_comp, p), &
+                                              qs%psip_list%pops(1, iattempt), nparticles_change(1), ndeath)
+                            call stochastic_ccmc_death_nc(rng(it), ccmc_in%linked, qs, iattempt==D0_pos, dfock, &
+                                              qs%psip_list%dat(1,iattempt), real(proj_energy_old_comp, p), &
+                                              qs%psip_list%pops(2, iattempt), nparticles_change(2), ndeath_im)
+                            ndeath = ndeath + ndeath_im
+                            ndeath_im = 0_int_p
+                        else
+                            call stochastic_ccmc_death_nc(rng(it), ccmc_in%linked, qs, iattempt==D0_pos, dfock, &
                                               qs%psip_list%dat(1,iattempt), proj_energy_old, qs%psip_list%pops(1, iattempt), &
                                               nparticles_change(1), ndeath)
+                        end if
                     end do
                     !$omp end do
                 end if
