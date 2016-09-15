@@ -466,7 +466,7 @@ contains
 
         ! ...and scratch space for calculative cumulative probabilities.
         allocate(cumulative_abs_nint_pops(size(qs%psip_list%states,dim=2)), stat=ierr)
-        call check_allocate('cumulative_abs_nint_pops', size(qs%psip_list%states, dim=2), ierr)
+        call check_allocate('cumulative_abs_nint_pops', size(qs%psip_list%states,dim=2), ierr)
 
         nparticles_old = qs%psip_list%tot_nparticles
 
@@ -644,10 +644,17 @@ contains
                     ! out how many clusters of each type we will sample
                     ! explicitly.
                     min_cluster_size = 2
-                    nD0_select = nint(D0_normalisation)
-                    nclusters = 2*tot_abs_nint_pop + nD0_select
-                    nstochastic_clusters = tot_abs_nint_pop
-                    nsingle_excitors = tot_abs_nint_pop
+                    if (sys%read_in%comp) then
+                        nD0_select = nint(abs(real(D0_normalisation_comp, p)) + abs(aimag(D0_normalisation_comp)))
+                        nclusters = 2*tot_abs_nint_pop + nD0_select
+                        nstochastic_clusters = tot_abs_nint_pop
+                        nsingle_excitors = tot_abs_nint_pop
+                    else
+                        nD0_select = nint(D0_normalisation)
+                        nclusters = 2*tot_abs_nint_pop + nD0_select
+                        nstochastic_clusters = tot_abs_nint_pop
+                        nsingle_excitors = tot_abs_nint_pop
+                    end if
                 else
                     min_cluster_size = 0
                     nclusters = nattempts
@@ -698,13 +705,13 @@ contains
                         if (sys%read_in%comp) then
                             call select_cluster(rng(it), sys, qs%psip_list, qs%ref%f0, qs%ref%ex_level, ccmc_in%linked, &
                                                 nstochastic_clusters, D0_normalisation_comp, qmc_in%initiator_pop, D0_pos, &
-                                                cumulative_abs_nint_pops(:), tot_abs_nint_pop, min_cluster_size, &
+                                                cumulative_abs_nint_pops, tot_abs_nint_pop, min_cluster_size, &
                                                 max_cluster_size, qmc_in%quadrature_initiator, cdet(it), cluster(it))
                         else
 
                             call select_cluster(rng(it), sys, qs%psip_list, qs%ref%f0, qs%ref%ex_level, ccmc_in%linked, &
                                                 nstochastic_clusters, cmplx(D0_normalisation, 0.0_p, p), qmc_in%initiator_pop, &
-                                                D0_pos, cumulative_abs_nint_pops(:), tot_abs_nint_pop, min_cluster_size, &
+                                                D0_pos, cumulative_abs_nint_pops, tot_abs_nint_pop, min_cluster_size, &
                                                 max_cluster_size, qmc_in%quadrature_initiator, cdet(it), cluster(it))
                         end if
                     else if (iattempt <= nstochastic_clusters+nD0_select) then
@@ -722,16 +729,17 @@ contains
                                 call create_null_cluster(sys, qs%ref%f0, nprocs*real(nD0_select,p), D0_normalisation_comp, &
                                                          qmc_in%initiator_pop, qmc_in%quadrature_initiator, cdet(it), cluster(it))
                             else
-                                call create_null_cluster(sys, qs%ref%f0,nprocs*real(nD0_select,p),cmplx(D0_normalisation,0.0_p,p),&
-                                                         qmc_in%initiator_pop, qmc_in%quadrature_initiator, cdet(it), cluster(it))
+                                call create_null_cluster(sys, qs%ref%f0, nprocs*real(nD0_select,p), &
+                                                         cmplx(D0_normalisation,0.0_p,p), qmc_in%initiator_pop, &
+                                                         qmc_in%quadrature_initiator, cdet(it), cluster(it))
                             end if
                         end if
                     else
                         ! Deterministically select each excip as a non-composite cluster.
-                        call select_cluster_non_composite(sys, qs%psip_list, qs%ref%f0, iattempt-nstochastic_clusters-nD0_select, &
+                        call select_cluster_non_composite(sys, qs%psip_list, qs%ref%f0, iattempt-nstochastic_clusters-nD0_select,&
                                                           iexcip_pos, nsingle_excitors, qmc_in%initiator_pop, D0_pos, &
-                                                          cumulative_abs_nint_pops, tot_abs_nint_pop, qmc_in%quadrature_initiator, &
-                                                          cdet(it), cluster(it))
+                                                          cumulative_abs_nint_pops, tot_abs_nint_pop, &
+                                                          qmc_in%quadrature_initiator, cdet(it), cluster(it))
                     end if
 
                     if (cluster(it)%excitation_level <= qs%ref%ex_level+2 .or. &

@@ -257,7 +257,7 @@ contains
 
     end subroutine find_single_double_prob
 
-    subroutine cumulative_population(pops, nactive, D0_proc, D0_pos, real_factor, cumulative_pops, tot_pop)
+    subroutine cumulative_population(pops, nactive, D0_proc, D0_pos, real_factor, complx, cumulative_pops, tot_pop)
 
         ! Calculate the cumulative population, i.e. the number of psips/excips
         ! residing on a determinant/an excitor and all determinants/excitors which
@@ -296,41 +296,74 @@ contains
 
         integer(int_p), intent(in) :: pops(:,:), real_factor
         integer, intent(in) :: nactive, D0_proc, D0_pos
-        integer(int_p), intent(out) :: cumulative_pops(:), tot_pop
+        integer(int_p), allocatable, intent(inout) :: cumulative_pops(:)
+        integer(int_p), intent(out) :: tot_pop
+        logical, intent(in) :: complx
 
         integer :: i
 
-! [review] - AJWT: This type of operation is almost certainly faster with a shift (or add and shift to get nint)
-        cumulative_pops(1) = nint(real(abs(pops(1,1)),p)/real_factor)
-        if (D0_proc == iproc) then
-            ! Let's be a bit faster: unroll loops and skip over the reference
-            ! between the loops.
-            do i = 2, d0_pos-1
-                cumulative_pops(i) = cumulative_pops(i-1) + &
-                                        nint(real(abs(pops(1,i)),p)/real_factor)
-            end do
-            ! Set cumulative on the reference to be the running total merely so we
-            ! can continue accessing the running total from the i-1 element in the
-            ! loop over excitors in slots above the reference.
-            if (d0_pos == 1) cumulative_pops(d0_pos) = 0
-            if (d0_pos > 1) cumulative_pops(d0_pos) = cumulative_pops(d0_pos-1)
-            do i = d0_pos+1, nactive
-                cumulative_pops(i) = cumulative_pops(i-1) + &
-                                        nint(real(abs(pops(1,i)),p)/real_factor)
-            end do
+        ! Need to combine spaces if doing complex; we choose combining in quadrature.
+        if (complx) then
+            cumulative_pops(1) = nint(abs(cmplx(pops(1,1), pops(2,1),p))/real_factor)
+            if (D0_proc == iproc) then
+                ! Let's be a bit faster: unroll loops and skip over the reference
+                ! between the loops.
+                do i = 2, d0_pos-1
+                    cumulative_pops(i) = cumulative_pops(i-1) + &
+                                  nint(abs(cmplx(pops(1,i), pops(2,i),p))/real_factor)
+                end do
+                ! Set cumulative on the reference to be the running total merely so we
+                ! can continue accessing the running total from the i-1 element in the
+                ! loop over excitors in slots above the reference.
+                if (d0_pos == 1) cumulative_pops(d0_pos) = 0
+                if (d0_pos > 1) cumulative_pops(d0_pos) = cumulative_pops(d0_pos-1)
+                do i = d0_pos+1, nactive
+                    cumulative_pops(i) = cumulative_pops(i-1) + &
+                                            nint(abs(cmplx(pops(1,i), pops(2,i),p))/real_factor)
+                end do
+            else
+                ! V simple on other processors: no reference to get in the way!
+                do i = 2, nactive
+                    cumulative_pops(i) = cumulative_pops(i-1) + &
+                                            nint(abs(cmplx(pops(1,i), pops(2,i),p))/real_factor)
+                end do
+            end if
+            if (nactive > 0) then
+                tot_pop = cumulative_pops(nactive)
+            else
+                tot_pop = 0_int_p
+            end if
         else
-            ! V simple on other processors: no reference to get in the way!
-            do i = 2, nactive
-                cumulative_pops(i) = cumulative_pops(i-1) + &
-                                        nint(real(abs(pops(1,i)),p)/real_factor)
-            end do
+            cumulative_pops(1) = nint(real(abs(pops(1,1)),p)/real_factor)
+            if (D0_proc == iproc) then
+                ! Let's be a bit faster: unroll loops and skip over the reference
+                ! between the loops.
+                do i = 2, d0_pos-1
+                    cumulative_pops(i) = cumulative_pops(i-1) + &
+                                            nint(real(abs(pops(1,i)),p)/real_factor)
+                end do
+                ! Set cumulative on the reference to be the running total merely so we
+                ! can continue accessing the running total from the i-1 element in the
+                ! loop over excitors in slots above the reference.
+                if (d0_pos == 1) cumulative_pops(d0_pos) = 0
+                if (d0_pos > 1) cumulative_pops(d0_pos) = cumulative_pops(d0_pos-1)
+                do i = d0_pos+1, nactive
+                    cumulative_pops(i) = cumulative_pops(i-1) + &
+                                            nint(real(abs(pops(1,i)),p)/real_factor)
+                end do
+            else
+                ! V simple on other processors: no reference to get in the way!
+                do i = 2, nactive
+                    cumulative_pops(i) = cumulative_pops(i-1) + &
+                                            nint(real(abs(pops(1,i)),p)/real_factor)
+                end do
+            end if
+            if (nactive > 0) then
+                tot_pop = cumulative_pops(nactive)
+            else
+                tot_pop = 0_int_p
+            end if
         end if
-        if (nactive > 0) then
-            tot_pop = cumulative_pops(nactive)
-        else
-            tot_pop = 0
-        end if
-
     end subroutine cumulative_population
 
     function decide_nattempts(rng, population) result(nattempts)
