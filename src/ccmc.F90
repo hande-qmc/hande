@@ -617,7 +617,8 @@ contains
                 ! Given the contribution to the projected energy is divided by the cluster generation probability and
                 ! multiplied by the actual weight, doing this has absolutely no effect on the projected energy.
                 call cumulative_population(qs%psip_list%pops, qs%psip_list%nstates, D0_proc, D0_pos, qs%psip_list%pop_real_factor, &
-                                           sys%read_in%comp, cumulative_abs_nint_pops, tot_abs_nint_pop)
+                                           sys%read_in%comp, cumulative_abs_nint_pops, &
+                                           tot_abs_nint_pop)
 
                 associate(bs=>bloom_stats, nstates_active=>qs%psip_list%nstates)
                     bloom_threshold = real(nparticles_old(1)*bs%prop*bs%encoding_factor, p)
@@ -675,7 +676,7 @@ contains
                 !$omp        nclusters, nstochastic_clusters, nattempts_spawn,       &
                 !$omp        nsingle_excitors, ccmc_in, ldet, rdet, left_cluster,    &
                 !$omp        right_cluster, nprocs, ms_stats, qmc_in, load_bal_in,   &
-                !$omp        nparticles_change, ndeath)
+                !$omp        nparticles_change, ndeath, D0_normalisation_comp)
                 it = get_thread_id()
                 iexcip_pos = 0
                 seen_D0 = .false.

@@ -20,9 +20,9 @@ type cluster_t
     ! Excitation level relative to the reference determinant of the determinant
     ! formed by applying the cluster of excitors to the reference determinant.
     integer :: excitation_level
-    ! Overall amplitude of the cluster.
+    ! Overall real component of amplitude of the cluster.
     real(p) :: amplitude
-    ! Overall imaginary amplitude of the cluster.
+    ! Overall imaginary component of amplitude of the cluster.
     real(p) :: amplitude_im
     ! < D_i | a_i D_0 >, where D_i is the determinant formed by applying the
     ! cluster of excitors to the reference determinant.  Equal to +1 or -1.
