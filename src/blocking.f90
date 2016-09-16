@@ -295,6 +295,7 @@ contains
         do i = 1, 2
             do j = 0, (bl%lg_max)
                 B = 2**(j)
+! [review] - CJCS: From what you said above shouldn't this be B**3 >?
                 if (B > (2*bl%reblock_data_2(1,j,i)&
                     *real(B)*((bl%block_std(j,i)/&
                      bl%block_std(0,i))**4))**(1.0/3.0)) then
@@ -519,6 +520,7 @@ contains
         ! Once the shift is varied the data needed for reblocking is
         ! collected.
 
+! [review] - CJCS: Can just write 'if (qs%vary_shift(1)) then'
         if (qs%vary_shift(1) .eqv. .true.) then
             call collect_data(qmc_in, qs, bl, ireport)
             call copy_block(bl, ireport)

@@ -514,6 +514,12 @@ type blocking_t
     ! Number of report cycles from the start of all blocking to the current
     ! cycle.
     integer :: n_reports_blocked = 0
+! [review] - CJCS: Little bit hard to understand in this format. Definining
+! [review] - CJCS: your array bounds (see below) will help, but otherwise
+! [review] - CJCS: explicitly saying
+! [review] - CJCS:  reblock_data(data_types1,log2(blocksize),data_types2) = value
+! [review] - CJCS: and defining all the different meanings would be a clearer
+! [review] - CJCS: way to represent this.
     ! Arrays in which block number and sums, sums of squares of \sum H_0j N_j
     ! and the reference population and the product of \sum H_0j N_j and
     ! reference population for each block is saved for each block size.
@@ -527,6 +533,7 @@ type blocking_t
     ! products of two sets of data for each block size where the block size is
     ! determined by 2^(arraynumber). reblock_data_2 and data_product_2 has the
     ! same format.
+! [review] - CJCS: specify intended array dimensions here- see other definitions.
     real(p), allocatable :: reblock_data(:,:,:), data_product(:)
     ! Arrays for calculation of optimal mean and standard deviation at different
     ! start points. reblock_data and data_product are temporarily copied before
@@ -534,11 +541,14 @@ type blocking_t
     real(p), allocatable :: reblock_data_2(:,:,:), data_product_2(:)
     ! Mean, standard deviation and covariance of \sum H_0j N_j and reference
     ! population at different block size.
+! [review] - CJCS: specify different dimensions?
     real(p), allocatable :: block_mean(:,:), block_std(:,:), block_cov(:)
     ! Mean of \sum H_0j N_j, reference population and the ratio between
     ! the two calculated with optimal block size. Optimal block is the smallest
     ! block that satisfies the condition B^3 > 2*(B*(number of blocks)) * (std(B)/std(0)) ^ 4
     real(p) :: optimal_mean(3) = 0
+! [review] - CJCS: Ratio between the two? I thought the convention for error propogation
+! [review] - CJCS: in quotients is the combination in quadrature of the fractional error?
     ! Standard deviation of \sum H_0j N_j, reference population and the ratio
     ! between the two calculated with optimal block size. Optimal block is found
     ! by the method identical to optimal_mean
