@@ -316,6 +316,7 @@ calcs : list of :class:`pandas.DataFrame`
             xcalc.append(data[i])
         prev_iteration = data[i]['iterations'].iloc[-1]
     calcs.append(pd.concat(xcalc, ignore_index=True))
+    calcs = [ca.drop_duplicates(subset='iterations', keep='last').reset_index(drop=True) for ca in calcs]
     return calcs_metadata, calcs
 
 def find_starting_iteration(data, md, frac_screen_interval=300,
@@ -472,13 +473,7 @@ starting_iteration: integer
                 print("Blocking attempt: %i. Blocking from: %i. "
                       "Upper bound on shift fractional weighted error: %f" % (j, start, s_err_frac_weighted))
 
-        if min_index == -1:
-            raise ValueError(
-                    "Failed to find minimum error in the error for: %s!"
-                    % (','.join(err_keys))
-                )
-
-        if min_index < int(pos_min_frac * j):
+        if min_index < int(pos_min_frac * j) and min_index > -1:
             # Also discard the frst n=number_of_reblocks_to_cut_off of data to
             # be conservative.  This amounts to removing n autocorrelation
             # lengths.
