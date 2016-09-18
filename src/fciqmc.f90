@@ -171,6 +171,12 @@ contains
         ! Some initial semi-stochastic parameters.
         ! Turn semi-stochastic on immediately unless asked otherwise.
         semi_stoch_iter = max(semi_stoch_in%start_iter, qs%mc_cycles_done+1)
+        if (all(qs%vary_shift) .and. semi_stoch_in%shift_iter /= -1) then
+            ! User wanted the shift to start shift_iter iterations after the
+            ! shift was enabled. We don't know when this happened in the
+            ! previous calculation so just start semi-stochastic now.
+            semi_stoch_iter = qs%mc_cycles_done+1
+        end if
 
         call init_semi_stoch_t_flags(determ, size(qs%psip_list%states, dim=2))
 
