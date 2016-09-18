@@ -362,6 +362,8 @@ module hdf5_system
                 ! [review] - JSS: one need not check if a data group exists when doing batch processing.
                 ! [reply] - CJCS: What's this likely to be used for? Are we planning to use the hdf5
                 ! [reply] - CJCS: files for anything other than reading back in?
+                ! [reply] - JSS: I am broadly in favour of removing unnecessary logic and making 
+                ! [reply] - the restart files as easy to parse as possible. Up to you.
                 ! Need to pass this values to be able to reinitiate symmetry
                 if (sys%momentum_space) then
                     call hdf5_write(subgroup_id, dnprop, kinds, [3_int_64], &
