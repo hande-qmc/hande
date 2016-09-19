@@ -1,4 +1,4 @@
-module abelian_symmetry
+module read_in_symmetry
 
 ! Module for symmetry subroutines/functions shared between pg and translational
 ! symmetry. For more specific comments on either symmetry see the comments at
@@ -68,7 +68,7 @@ implicit none
 
 contains
 
-    pure function cross_product_basis_abelian(sys, i, j) result(sym_ij)
+    pure function cross_product_basis_read_in(sys, i, j) result(sym_ij)
 
         ! In:
         !    sys: information on the system under consideration.
@@ -90,11 +90,11 @@ contains
         sym_ij = sys%read_in%cross_product_sym_ptr(sys%read_in, &
                     sys%basis%basis_fns(i)%sym, sys%basis%basis_fns(j)%sym)
 
-    end function cross_product_basis_abelian
+    end function cross_product_basis_read_in
 
     ! [review] - JSS: the name implies we're testing if the symmetry group of the system is Abelian...
     ! [reply] - CJCS: Is this any better? It's a little more explicit.
-    elemental function is_in_abelian_basis(sys,sym) result(valid)
+    elemental function is_in_read_in_basis_sym(sys,sym) result(valid)
 
         ! In:
         !    sys: system being studied
@@ -113,9 +113,9 @@ contains
         ! Check that the symmetry index is within the allowed range.
         valid = sym>=sys%sym0 .and. sym<=sys%sym_max
 
-    end function is_in_abelian_basis
+    end function is_in_read_in_basis_sym
 
-    elemental function is_gamma_irrep_abelian(pg_sym, sym) result(is_gamma)
+    elemental function is_gamma_irrep_read_in(pg_sym, sym) result(is_gamma)
 
         ! In:
         !    pg_sym: information on the symmetries of the basis functions.
@@ -133,9 +133,9 @@ contains
         ! Value is set appropriately for both pg and translational symmetry.
         is_gamma = pg_sym%gamma_sym == sym
 
-    end function is_gamma_irrep_abelian
+    end function is_gamma_irrep_read_in
 
-    pure function symmetry_orb_list_abelian(read_in, basis, orb_list) result(isym)
+    pure function symmetry_orb_list_read_in(read_in, basis, orb_list) result(isym)
 
         ! Function to obtain symmetry of a given orb list. Uses cross product
         ! pointer to enable use for both molecular and periodic systems.
@@ -167,6 +167,6 @@ contains
             isym = read_in%cross_product_sym_ptr(read_in, isym, basis%basis_fns(orb_list(i))%sym)
         end do
 
-    end function symmetry_orb_list_abelian
+    end function symmetry_orb_list_read_in
 
-end module abelian_symmetry
+end module read_in_symmetry

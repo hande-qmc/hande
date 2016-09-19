@@ -752,7 +752,7 @@ contains
         use determinants, only: det_info_t
         use excitations, only: excit_t
         use hamiltonian_molecular, only: slater_condon1_mol_excit, slater_condon2_mol_excit
-        use abelian_symmetry, only: cross_product_basis_abelian
+        use read_in_symmetry, only: cross_product_basis_read_in
         use system, only: sys_t
 
         type(sys_t), intent(in) :: sys
@@ -788,8 +788,8 @@ contains
             ! Is excitation symmetry allowed?
             if (sys%basis%basis_fns(excitation%from_orb(1))%Ms+sys%basis%basis_fns(excitation%from_orb(2))%Ms == &
                     sys%basis%basis_fns(excitation%to_orb(1))%Ms+sys%basis%basis_fns(excitation%to_orb(2))%Ms) then
-                ij_sym = cross_product_basis_abelian(sys, excitation%from_orb(1), excitation%from_orb(2))
-                ab_sym = cross_product_basis_abelian(sys, excitation%to_orb(1), excitation%to_orb(2))
+                ij_sym = cross_product_basis_read_in(sys, excitation%from_orb(1), excitation%from_orb(2))
+                ab_sym = cross_product_basis_read_in(sys, excitation%to_orb(1), excitation%to_orb(2))
                 if (ij_sym == ab_sym) then
                     hmatel = slater_condon2_mol_excit(sys, excitation%from_orb(1), excitation%from_orb(2), &
                                                       excitation%to_orb(1), excitation%to_orb(2),     &
@@ -836,7 +836,7 @@ contains
         use excitations, only: excit_t
         use hamiltonian_periodic_complex, only: slater_condon1_periodic_excit_complex, &
                                                 slater_condon2_periodic_excit_complex
-        use abelian_symmetry, only: cross_product_basis_abelian
+        use read_in_symmetry, only: cross_product_basis_read_in
         use system, only: sys_t
 
         type(sys_t), intent(in) :: sys
@@ -872,8 +872,8 @@ contains
             ! Is excitation symmetry allowed?
             if (sys%basis%basis_fns(excitation%from_orb(1))%Ms+sys%basis%basis_fns(excitation%from_orb(2))%Ms == &
                     sys%basis%basis_fns(excitation%to_orb(1))%Ms+sys%basis%basis_fns(excitation%to_orb(2))%Ms) then
-                ij_sym = cross_product_basis_abelian(sys, excitation%from_orb(1), excitation%from_orb(2))
-                ab_sym = cross_product_basis_abelian(sys, excitation%to_orb(1), excitation%to_orb(2))
+                ij_sym = cross_product_basis_read_in(sys, excitation%from_orb(1), excitation%from_orb(2))
+                ab_sym = cross_product_basis_read_in(sys, excitation%to_orb(1), excitation%to_orb(2))
                 if (ij_sym == ab_sym) then
                     hmatel = slater_condon2_periodic_excit_complex(sys, excitation%from_orb(1), excitation%from_orb(2), &
                                                       excitation%to_orb(1), excitation%to_orb(2),     &

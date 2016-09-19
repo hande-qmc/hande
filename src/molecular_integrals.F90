@@ -337,15 +337,15 @@ contains
         !       be nonzero by symmetry.
 
         use system, only: sys_t
-        use abelian_symmetry, only: cross_product_basis_abelian
+        use read_in_symmetry, only: cross_product_basis_read_in
 
         type(sys_t), intent(in) :: sys
         integer, intent(in) :: i, j, a, b, op_sym
         integer :: sym_ij, sym_ab, sym
         logical :: allowed
 
-        sym_ij = cross_product_basis_abelian(sys, i, j)
-        sym_ab = cross_product_basis_abelian(sys, a, b)
+        sym_ij = cross_product_basis_read_in(sys, i, j)
+        sym_ab = cross_product_basis_read_in(sys, a, b)
         ! As dealing with complex plane waves conj(sym_i) = inv_sym(sym_i).
         ! So need:
         !       conj(sym_ij) = inv_sym(op_sym x sym_ab)

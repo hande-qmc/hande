@@ -32,7 +32,7 @@ contains
         use basis_types, only: basis_fn_t, dealloc_basis_fn_t_array
         use molecular_integrals
         use point_group_symmetry, only: init_pg_symmetry
-        use abelian_symmetry, only: is_gamma_irrep_abelian
+        use read_in_symmetry, only: is_gamma_irrep_read_in
         use momentum_sym_read_in, only: init_read_in_momentum_symmetry
         use system, only: sys_t
 
@@ -693,7 +693,7 @@ contains
                                         ! of core(1) == core(2) after the inital if statement. As such if real automatically
                                         ! accept.
                                         if (seen_iaib(core(1), tri_ind_reorder(active(1),active(2))) < 2 .and. &
-                                            is_gamma_irrep_abelian(sys%read_in%pg_sym, &
+                                            is_gamma_irrep_read_in(sys%read_in%pg_sym, &
                                                 sys%read_in%cross_product_sym_ptr(sys%read_in, &
                                                             sys%read_in%sym_conj_ptr(sys%read_in, &
                                                             sys%basis%basis_fns(active(1))%sym), &
@@ -936,7 +936,7 @@ contains
         !         frozen core orbitals and the nucleii.
 
         use basis_types, only: basis_fn_t
-        use abelian_symmetry, only: cross_product_basis_abelian
+        use read_in_symmetry, only: cross_product_basis_read_in
         use symmetry_types, only: pg_sym_t
         use molecular_integrals, only: one_body_t, init_one_body_t,              &
                                        end_one_body_t, store_one_body_int, &
@@ -994,7 +994,7 @@ contains
             end do
             ! We only use Abelian symmetries so all representations are their own
             ! inverse.
-            op_sym = cross_product_basis_abelian(sys, ii,aa)
+            op_sym = cross_product_basis_read_in(sys, ii,aa)
         else
             ! We'll broadcast the symmetry and the integrals to all other
             ! processors later.

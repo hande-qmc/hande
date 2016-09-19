@@ -12,7 +12,7 @@ module point_group_symmetry
 ! Tinkham.
 
 ! It is best to avoid directly handling the symmetry yourself and instead use the
-! functions in this module, abelian_symmetry.f90 or more generally pointers within
+! functions in this module, read_in_symmetry.f90 or more generally pointers within
 ! sys%read_in. This enables flexibility in case L_z symmetry or translational
 ! symmetry is being used.
 
