@@ -1,8 +1,6 @@
 module momentum_symmetry
 
 ! Module for handling model system crystal momentum symmetry.
-! [review] - JSS: some detailed comments explaining translational symmetry (for Hubbard, UEG and read-in) would be welcome for the
-! non-initiated, especially with a contrast to point group symmetry.
 
 ! Stored symmetry information for the Hubbard model (and non-model periodic) systems.  UEG symmetry is
 ! done on the fly due to the size of the basis---see ueg module.

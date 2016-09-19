@@ -65,8 +65,6 @@ contains
                 ! < D | H | D_{ij}^{ab} > = < ij || ab >
 
                 ! Two electron operator
-                ! [review] - FDM: Why is this purely complex?
-                ! [reply] - CJCS: Not sure what this means sorry?
                 hmatel%c = slater_condon2_periodic_complex(sys, excitation%from_orb(1), excitation%from_orb(2), &
                                             & excitation%to_orb(1), excitation%to_orb(2), excitation%perm)
             case default

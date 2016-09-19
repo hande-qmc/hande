@@ -841,7 +841,6 @@ contains
         !    spatial_index information assigned.
         !    If we have momentum symmetry, will have assigned l values rather than
         !    sym.
-! [review] - AJWT: What's an l value?
 
         use basis, only: basis_fn_t, init_basis_fn
         use system, only: sys_t

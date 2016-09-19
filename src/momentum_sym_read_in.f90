@@ -46,17 +46,17 @@ module momentum_sym_read_in
 ! hande requires a mapping of all possible kpoint values onto a single (preferably
 ! contiguous) index. This minimises code duplication between momentum and pg sym.
 ! This mapping is defined within get_kpoint_index, with the reverse mapping defined
-! in get_kpoint_vector. This index is what will be utilised to within our
-! calculations, enabling us to avoid actually manipulating kpoint vectors.
+! in get_kpoint_vector. This index is what will be utilised within our calculations,
+! enabling us to avoid actually manipulating kpoint vectors.
 !
 ! With our indexing defined we can then store our inverses and cross products within
 ! lookup tables (sys%read_in%mom_sym%inv_sym and sys%read_in%mom_sym%sym_table
-! respectively) initialised within init_momentum_symmetry within momentum_symmetry.f90
+! respectively) initialised within init_read_in_momentum_symmetry in this module
 ! and obtain the relevant values from a lookup rather than calculation. The size of
 ! these lookup tables scales as N_sym and N_sym^2 respectively, so for a hypothetical
 ! 10x10x10 kpoint grid we would only require storing 1 million integer values within
 ! sym_table. At this point we would have much bigger issues with our two-body integral
-! storage and application of our actual method to the system.
+! storage and application of our actual methods to the system.
 
 use system
 

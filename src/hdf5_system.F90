@@ -331,8 +331,6 @@ module hdf5_system
                         allocate(lscratch(1:nbasis, 1:3), stat=ierr)
                         call check_allocate('lscratch', nbasis*3, ierr)
 
-                        ! [review] - JSS: why the transpose?
-                        ! [reply] - CJCS: which transpose?
                         do ibasis = 1, nbasis
                             do il = 1, 3
                                 lscratch(ibasis, il) = sys%basis%basis_fns(ibasis)%l(il)
@@ -358,12 +356,6 @@ module hdf5_system
                 call hdf5_write(subgroup_id, duselz, sys%read_in%uselz)
                 call hdf5_write(subgroup_id, dcomp, sys%read_in%comp)
 
-                ! [review] - JSS: probably best to print out information for both point groups so
-                ! [review] - JSS: one need not check if a data group exists when doing batch processing.
-                ! [reply] - CJCS: What's this likely to be used for? Are we planning to use the hdf5
-                ! [reply] - CJCS: files for anything other than reading back in?
-                ! [reply] - JSS: I am broadly in favour of removing unnecessary logic and making 
-                ! [reply] - the restart files as easy to parse as possible. Up to you.
                 ! Need to pass this values to be able to reinitiate symmetry
                 if (sys%momentum_space) then
                     call hdf5_write(subgroup_id, dnprop, kinds, [3_int_64], &
