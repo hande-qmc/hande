@@ -365,8 +365,7 @@ contains
         integer(int_p), allocatable :: cumulative_abs_nint_pops(:)
         integer :: D0_proc, D0_pos, nD0_proc, min_cluster_size, max_cluster_size, iexcip_pos, slot
         integer(int_p) :: tot_abs_nint_pop, ndeath_tot
-        real(p) :: D0_normalisation
-        complex(p) :: D0_normalisation_comp
+        complex(p) :: D0_normalisation
         type(bloom_stats_t) :: bloom_stats
         type(annihilation_flags_t) :: annihilation_flags
         type(restart_info_t) :: ri, ri_shift
@@ -381,8 +380,8 @@ contains
 
         integer(i0) :: fexcit(sys%basis%string_len)
         logical :: seen_D0
-        real(p) :: D0_population_cycle, proj_energy_cycle, proj_energy_old, dfock
-        complex(p) :: D0_population_cycle_comp, proj_energy_cycle_comp, proj_energy_old_comp
+        real(p) :: dfock
+        complex(p) :: D0_population_cycle, proj_energy_cycle, proj_energy_old
 
         real(p), allocatable :: rdm(:,:)
 
@@ -509,7 +508,7 @@ contains
 
             ! Projected energy from last report loop to correct death
             if (sys%read_in%comp) then
-                proj_energy_old_comp = get_sanitized_projected_energy_cmplx(qs)
+                proj_energy_old = get_sanitized_projected_energy_cmplx(qs)
             else
                 proj_energy_old = get_sanitized_projected_energy(qs)
             end if
@@ -538,7 +537,7 @@ contains
                     ! a factor of the number of times it was selected).
                     call find_D0(qs%psip_list, qs%ref%f0, D0_pos)
                     if (sys%read_in%comp) then
-                        D0_normalisation_comp = cmplx(qs%psip_list%pops(1,D0_pos), qs%psip_list%pops(2,D0_pos), p)&
+                        D0_normalisation = cmplx(qs%psip_list%pops(1,D0_pos), qs%psip_list%pops(2,D0_pos), p)&
                                                     /qs%psip_list%pop_real_factor
                     else
                         D0_normalisation = real(qs%psip_list%pops(1,D0_pos),p)/qs%psip_list%pop_real_factor
@@ -576,26 +575,16 @@ contains
                 end if
 
 #ifdef PARALLEL
-                if (sys%read_in%comp) then
-                    call mpi_bcast(D0_normalisation_comp, 1, mpi_pcomplex, D0_proc, MPI_COMM_WORLD, ierr)
-                else
-                    call mpi_bcast(D0_normalisation, 1, mpi_preal, D0_proc, MPI_COMM_WORLD, ierr)
-                end if
+                call mpi_bcast(D0_normalisation, 1, mpi_pcomplex, D0_proc, MPI_COMM_WORLD, ierr)
 #endif
 
                 ! Note that 'death' in CCMC creates particles in the spawned
                 ! list, so the number of deaths not in the spawned list is
                 ! always 0.
-                if (sys%read_in%comp) then
-                    call init_mc_cycle(qs%psip_list, qs%spawn_store%spawn, nattempts, ndeath, &
-                                       min_attempts=nint(abs(real(D0_normalisation_comp,p)) + &
-                                       abs(aimag(D0_normalisation_comp)),int_64), ndeath_im = ndeath_im, &
-                                       complx=sys%read_in%comp)
-                else
-                    call init_mc_cycle(qs%psip_list, qs%spawn_store%spawn, nattempts, ndeath, &
-                                       min_attempts=nint(D0_normalisation,int_64), ndeath_im = ndeath_im, &
-                                       complx=sys%read_in%comp)
-                end if
+                call init_mc_cycle(qs%psip_list, qs%spawn_store%spawn, nattempts, ndeath, &
+                                   min_attempts=nint(abs(D0_normalisation), kind=int_64), &
+                                   ndeath_im = ndeath_im, &
+                                   complx=sys%read_in%comp)
                 nparticles_change = 0.0_p
 
                 ! We need to count spawning attempts differently as there may be multiple spawns
@@ -644,17 +633,10 @@ contains
                     ! out how many clusters of each type we will sample
                     ! explicitly.
                     min_cluster_size = 2
-                    if (sys%read_in%comp) then
-                        nD0_select = nint(abs(real(D0_normalisation_comp, p)) + abs(aimag(D0_normalisation_comp)))
-                        nclusters = 2*tot_abs_nint_pop + nD0_select
-                        nstochastic_clusters = tot_abs_nint_pop
-                        nsingle_excitors = tot_abs_nint_pop
-                    else
-                        nD0_select = nint(D0_normalisation)
-                        nclusters = 2*tot_abs_nint_pop + nD0_select
-                        nstochastic_clusters = tot_abs_nint_pop
-                        nsingle_excitors = tot_abs_nint_pop
-                    end if
+                    nD0_select = nint(abs(D0_normalisation))
+                    nclusters = 2*tot_abs_nint_pop + nD0_select
+                    nstochastic_clusters = tot_abs_nint_pop
+                    nsingle_excitors = tot_abs_nint_pop
                 else
                     min_cluster_size = 0
                     nclusters = nattempts
@@ -683,7 +665,7 @@ contains
                 !$omp        nclusters, nstochastic_clusters, nattempts_spawn,       &
                 !$omp        nsingle_excitors, ccmc_in, ldet, rdet, left_cluster,    &
                 !$omp        right_cluster, nprocs, ms_stats, qmc_in, load_bal_in,   &
-                !$omp        nparticles_change, ndeath, D0_normalisation_comp)
+                !$omp        nparticles_change, ndeath)
                 it = get_thread_id()
                 iexcip_pos = 0
                 seen_D0 = .false.
@@ -691,29 +673,18 @@ contains
                 estimators_cycle%proj_energy = 0.0_p
                 estimators_cycle%D0_population_comp = cmplx(0.0, 0.0, p)
                 estimators_cycle%proj_energy_comp = cmplx(0.0, 0.0, p)
-                proj_energy_cycle = 0.0_p
-                D0_population_cycle = 0.0_p
-                D0_population_cycle_comp = cmplx(0.0, 0.0, p)
-                proj_energy_cycle_comp = cmplx(0.0, 0.0, p)
-                !$omp do schedule(dynamic,200) reduction(+:D0_population_cycle,proj_energy_cycle,nattempts_spawn &
-                !$omp           D0_population_cycle_comp, proj_energy_cycle_comp)
+                proj_energy_cycle = cmplx(0.0, 0.0, p)
+                D0_population_cycle = cmplx(0.0, 0.0, p)
+                !$omp do schedule(dynamic,200) reduction(+:D0_population_cycle,proj_energy_cycle,nattempts_spawn)
                 do iattempt = 1, nclusters
 
                     ! For OpenMP scalability, have this test inside a single loop rather
                     ! than attempt to parallelise over three separate loops.
                     if (iattempt <= nstochastic_clusters) then
-                        if (sys%read_in%comp) then
-                            call select_cluster(rng(it), sys, qs%psip_list, qs%ref%f0, qs%ref%ex_level, ccmc_in%linked, &
-                                                nstochastic_clusters, D0_normalisation_comp, qmc_in%initiator_pop, D0_pos, &
-                                                cumulative_abs_nint_pops, tot_abs_nint_pop, min_cluster_size, &
-                                                max_cluster_size, qmc_in%quadrature_initiator, cdet(it), cluster(it))
-                        else
-
-                            call select_cluster(rng(it), sys, qs%psip_list, qs%ref%f0, qs%ref%ex_level, ccmc_in%linked, &
-                                                nstochastic_clusters, cmplx(D0_normalisation, 0.0_p, p), qmc_in%initiator_pop, &
-                                                D0_pos, cumulative_abs_nint_pops, tot_abs_nint_pop, min_cluster_size, &
-                                                max_cluster_size, qmc_in%quadrature_initiator, cdet(it), cluster(it))
-                        end if
+                        call select_cluster(rng(it), sys, qs%psip_list, qs%ref%f0, qs%ref%ex_level, ccmc_in%linked, &
+                                            nstochastic_clusters, D0_normalisation, qmc_in%initiator_pop, D0_pos, &
+                                            cumulative_abs_nint_pops, tot_abs_nint_pop, min_cluster_size, &
+                                            max_cluster_size, qmc_in%quadrature_initiator, cdet(it), cluster(it))
                     else if (iattempt <= nstochastic_clusters+nD0_select) then
                         ! We just select the empty cluster.
                         ! As in the original algorithm, allow this to happen on
@@ -725,14 +696,8 @@ contains
                             ! needs to be converted into a det_info_t object for the excitation
                             ! generators. On subsequent calls, cdet does not need to change.
                             seen_D0 = .true.
-                            if (sys%read_in%comp) then
-                                call create_null_cluster(sys, qs%ref%f0, nprocs*real(nD0_select,p), D0_normalisation_comp, &
-                                                         qmc_in%initiator_pop, qmc_in%quadrature_initiator, cdet(it), cluster(it))
-                            else
-                                call create_null_cluster(sys, qs%ref%f0, nprocs*real(nD0_select,p), &
-                                                         cmplx(D0_normalisation,0.0_p,p), qmc_in%initiator_pop, &
-                                                         qmc_in%quadrature_initiator, cdet(it), cluster(it))
-                            end if
+                            call create_null_cluster(sys, qs%ref%f0, nprocs*real(nD0_select,p), D0_normalisation, &
+                                                     qmc_in%initiator_pop, qmc_in%quadrature_initiator, cdet(it), cluster(it))
                         end if
                     else
                         ! Deterministically select each excip as a non-composite cluster.
@@ -761,12 +726,12 @@ contains
                             ! the cluster.
                             connection = get_excitation(sys%nel, sys%basis, cdet(it)%f, qs%ref%f0)
                             call update_proj_energy_ptr(sys, qs%ref%f0, qs%trial%wfn_dat, cdet(it), &
-                                     [cluster(it)%cluster_to_det_sign*cluster(it)%amplitude/cluster(it)%pselect, &
-                                     cluster(it)%cluster_to_det_sign*cluster(it)%amplitude_im/cluster(it)%pselect], &
+                                     [real(cluster%amplitude,p),aimag(cluster%amplitude)]*&
+                                     cluster(it)%cluster_to_det_sign/cluster(it)%pselect, &
                                      estimators_cycle, connection, hmatel)
                             if (sys%read_in%comp) then
-                                D0_population_cycle_comp = estimators_cycle%D0_population_comp
-                                proj_energy_cycle_comp = estimators_cycle%proj_energy_comp
+                                D0_population_cycle = estimators_cycle%D0_population_comp
+                                proj_energy_cycle = estimators_cycle%proj_energy_comp
                             else
                                 D0_population_cycle = estimators_cycle%D0_population
                                 proj_energy_cycle = estimators_cycle%proj_energy
@@ -790,13 +755,8 @@ contains
                         ! of cluster%amplitude/cluster%pselect.  If this is
                         ! greater than cluster_multispawn_threshold, then nspawnings is
                         ! increased to the ratio of these.
-                        if (sys%read_in%comp) then
-                            nspawnings_total=max(1,ceiling( ((abs(cluster(it)%amplitude)+abs(cluster(it)%amplitude_im))&
-                                                         /cluster(it)%pselect)/ ccmc_in%cluster_multispawn_threshold))
-                        else
-                            nspawnings_total=max(1,ceiling( abs(cluster(it)%amplitude/cluster(it)%pselect)/ &
-                                                             ccmc_in%cluster_multispawn_threshold))
-                        end if
+                        nspawnings_total=max(1,ceiling((abs(cluster(it)%amplitude)&
+                                                     /cluster(it)%pselect)/ ccmc_in%cluster_multispawn_threshold))
 
                         call ms_stats_update(nspawnings_total, ms_stats(it))
                         nattempts_spawn = nattempts_spawn + nspawnings_total
@@ -852,15 +812,9 @@ contains
                             if ((.not. ccmc_in%linked) .or. cluster(it)%nexcitors <= 2) then
                                 ! Do death for non-composite clusters directly and in a separate loop
                                 if (cluster(it)%nexcitors >= 2 .or. .not. ccmc_in%full_nc) then
-                                    if (sys%read_in%comp) then
-                                        call stochastic_ccmc_death(rng(it), qs%spawn_store%spawn, ccmc_in%linked, sys, &
-                                                                   qs, cdet(it), cluster(it), real(proj_energy_old_comp,p), &
-                                                                   logging_info, ndeath_tot)
-                                    else
-                                        call stochastic_ccmc_death(rng(it), qs%spawn_store%spawn, ccmc_in%linked, sys, &
-                                                                   qs, cdet(it), cluster(it), proj_energy_old, logging_info, &
-                                                                   ndeath_tot)
-                                    end if
+                                    call stochastic_ccmc_death(rng(it), qs%spawn_store%spawn, ccmc_in%linked, sys, &
+                                                               qs, cdet(it), cluster(it), real(proj_energy_old,p), &
+                                                               logging_info, ndeath_tot)
                                 end if
                             end if
                         end if
@@ -882,17 +836,17 @@ contains
                         end if
                         if (sys%read_in%comp) then
                             call stochastic_ccmc_death_nc(rng(it), ccmc_in%linked, sys, qs, iattempt==D0_pos, dfock, &
-                                              qs%psip_list%dat(1,iattempt), real(proj_energy_old_comp, p), &
+                                              qs%psip_list%dat(1,iattempt), real(proj_energy_old, p), &
                                               qs%psip_list%pops(1, iattempt), nparticles_change(1), ndeath)
                             call stochastic_ccmc_death_nc(rng(it), ccmc_in%linked, sys, qs, iattempt==D0_pos, dfock, &
-                                              qs%psip_list%dat(1,iattempt), real(proj_energy_old_comp, p), &
+                                              qs%psip_list%dat(1,iattempt), real(proj_energy_old, p), &
                                               qs%psip_list%pops(2, iattempt), nparticles_change(2), ndeath_im)
                             ndeath = ndeath + ndeath_im
                             ndeath_im = 0_int_p
                         else
                             call stochastic_ccmc_death_nc(rng(it), ccmc_in%linked, sys, qs, iattempt==D0_pos, dfock, &
-                                              qs%psip_list%dat(1,iattempt), proj_energy_old, qs%psip_list%pops(1, iattempt), &
-                                              nparticles_change(1), ndeath)
+                                              qs%psip_list%dat(1,iattempt), real(proj_energy_old,p), &
+                                              qs%psip_list%pops(1, iattempt), nparticles_change(1), ndeath)
                         end if
                     end do
                     !$omp end do
@@ -906,13 +860,8 @@ contains
                 end if
 
                 qs%psip_list%nparticles = qs%psip_list%nparticles + nparticles_change
-                if (sys%read_in%comp) then
-                    qs%estimators%D0_population_comp = qs%estimators%D0_population_comp + D0_population_cycle_comp
-                    qs%estimators%proj_energy_comp = qs%estimators%proj_energy_comp + proj_energy_cycle_comp
-                else
-                    qs%estimators%D0_population = qs%estimators%D0_population + D0_population_cycle
-                    qs%estimators%proj_energy = qs%estimators%proj_energy + proj_energy_cycle
-                end if
+                qs%estimators%D0_population_comp = qs%estimators%D0_population_comp + D0_population_cycle
+                qs%estimators%proj_energy_comp = qs%estimators%proj_energy_comp + proj_energy_cycle
 
                 ! Calculate the number of spawning events before the particles are redistributed,
                 ! otherwise sending particles to other processors is counted as a spawning event.
@@ -940,6 +889,9 @@ contains
                                                                                       qs%estimators%rdm_trace)
 
             error = qs%spawn_store%spawn%error .or. qs%psip_list%error
+
+            qs%estimators%D0_population = real(qs%estimators%D0_population_comp)
+            qs%estimators%proj_energy = real(qs%estimators%proj_energy_comp)
 
             call end_report_loop(qmc_in, iter, update_tau, qs, nparticles_old, nspawn_events, &
                                  semi_stoch_in%shift_iter, semi_stoch_iter, soft_exit, &

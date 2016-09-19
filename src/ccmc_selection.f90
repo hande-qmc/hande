@@ -292,8 +292,7 @@ contains
                 call decoder_ptr(sys, cdet%f, cdet)
 
                 ! Normalisation factor for cluster%amplitudes...
-                cluster%amplitude = real(cluster_population/(real(normalisation,p)**(cluster%nexcitors-1)),p)
-                cluster%amplitude_im = aimag(cluster_population/(real(normalisation,p)**(cluster%nexcitors-1)))
+                cluster%amplitude = cluster_population/(normalisation**(cluster%nexcitors-1))
             else
                 ! Simply set excitation level to a too high (fake) level to avoid
                 ! this cluster being used.
@@ -363,8 +362,7 @@ contains
         ! Must be the reference.
         cdet%f = f0
         cluster%excitation_level = 0
-        cluster%amplitude = real(D0_normalisation, p)
-        cluster%amplitude_im = aimag(D0_normalisation)
+        cluster%amplitude = D0_normalisation
         cluster%cluster_to_det_sign = 1
          ! Something has gone seriously wrong and the CC
          ! approximation is (most likely) not suitably for this system.
@@ -372,9 +370,9 @@ contains
         if (quadrature_initiator) then
             if (abs(D0_normalisation) <= initiator_pop) cdet%initiator_flag = 3
         else
-            if (abs(cluster%amplitude) <= initiator_pop) &
+            if (abs(real(cluster%amplitude)) <= initiator_pop) &
                 cdet%initiator_flag = ibset(cdet%initiator_flag, 0)
-            if (abs(cluster%amplitude_im) <= initiator_pop) &
+            if (abs(aimag(cluster%amplitude)) <= initiator_pop) &
                 cdet%initiator_flag = ibset(cdet%initiator_flag, 1)
         end if
 
@@ -531,10 +529,9 @@ contains
                     cdet%initiator_flag = ibset(cdet%initiator_flag, 1)
             end if
             ! pclust = |population|/total_population, as just a single excitor in the cluster..
-            cluster%pselect = (cluster%pselect*nint(abs(real(excitor_pop, p))+abs(aimag(excitor_pop))))/tot_excip_pop
+            cluster%pselect = (cluster%pselect*nint(abs(excitor_pop)))/tot_excip_pop
             cluster%excitation_level = get_excitation_level(f0, cdet%f)
-            cluster%amplitude = real(excitor_pop, p)
-            cluster%amplitude_im = aimag(excitor_pop)
+            cluster%amplitude = excitor_pop
 
             ! Sign change due to difference between determinant
             ! representation and excitors and excitation level.

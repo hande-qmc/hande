@@ -134,14 +134,14 @@ contains
         end if
         ! 2, Apply additional factors.
         hmatel_save = hmatel
-        hmatel%r = hmatel%r*cluster%amplitude*invdiagel*cluster%cluster_to_det_sign
+        hmatel%r = hmatel%r*real(cluster%amplitude)*invdiagel*cluster%cluster_to_det_sign
         pgen = pgen*cluster%pselect*nspawnings_total
 
         ! 3. Attempt spawning.
         nspawn = attempt_to_spawn(rng, qs%tau, spawn_cutoff, qs%psip_list%pop_real_factor, hmatel%r, pgen, parent_sign)
 
         if (debug) call write_logging_spawn(logging_info, hmatel_save, pgen, invdiagel, [nspawn], &
-                        cluster%amplitude*qs%psip_list%pop_real_factor, sys%read_in%comp)
+                        real(cluster%amplitude)*qs%psip_list%pop_real_factor, sys%read_in%comp)
 
         if (nspawn /= 0_int_p) then
             ! 4. Convert the random excitation from a determinant into an
@@ -230,19 +230,19 @@ contains
             select case (cluster%nexcitors)
             case(0)
                 ! Death on the reference has H_ii - E_HF = 0.
-                KiiAi = (( - proj_energy)*invdiagel + (proj_energy - qs%shift(1)))*cluster%amplitude
+                KiiAi = (( - proj_energy)*invdiagel + (proj_energy - qs%shift(1)))*real(cluster%amplitude)
             case(1)
                 ! Evaluating the commutator gives
                 ! <D1|[H,a1]|D0> = <D1|H|D1> - <D0|H|D0>
                 ! (this is scaled for quasinewton approaches)
-                KiiAi = (cdet%data(1) * invdiagel + proj_energy - qs%shift(1))*cluster%amplitude
+                KiiAi = (cdet%data(1) * invdiagel + proj_energy - qs%shift(1))*real(cluster%amplitude)
             case(2)
                 ! Evaluate the commutator
                 ! The cluster operators are a1 and a2 (with a1 D0 = D1, a2 D0 = D2,
                 ! a1 a2 D0 = D3) so the commutator gives:
                 ! <D3|[[H,a1],a2]|D0> = <D3|H|D3> - <D2|H|D2> - <D1|H|D1> + <D0|H|D0>
                 KiiAi = (sc0_ptr(sys, cdet%f) - sc0_ptr(sys, cluster%excitors(1)%f) &
-                    - sc0_ptr(sys, cluster%excitors(2)%f) + qs%ref%H00)*cluster%amplitude
+                    - sc0_ptr(sys, cluster%excitors(2)%f) + qs%ref%H00)*real(cluster%amplitude)
                 ! (this is scaled for quasinewton approaches)
                 KiiAi = KiiAi*invdiagel                                             
             case default
@@ -253,19 +253,19 @@ contains
         else
             select case (cluster%nexcitors)
             case(0)
-                KiiAi = (( - proj_energy)*invdiagel + (proj_energy - qs%shift(1)))*cluster%amplitude
+                KiiAi = (( - proj_energy)*invdiagel + (proj_energy - qs%shift(1)))*real(cluster%amplitude)
                 if (sys%read_in%comp) then
-                    KiiAi_im = (-qs%shift(1))*cluster%amplitude_im
+                    KiiAi_im = (-qs%shift(1))*aimag(cluster%amplitude)
                 end if
             case(1)
-                KiiAi = ((cdet%data(1) - proj_energy)*invdiagel + (proj_energy - qs%shift(1)))*cluster%amplitude
+                KiiAi = ((cdet%data(1) - proj_energy)*invdiagel + (proj_energy - qs%shift(1)))*real(cluster%amplitude)
                 if (sys%read_in%comp) then
-                    KiiAi_im = (cdet%data(1) - qs%shift(1))*cluster%amplitude_im
+                    KiiAi_im = (cdet%data(1) - qs%shift(1))*aimag(cluster%amplitude)
                 end if
             case default
-                KiiAi = ((sc0_ptr(sys, cdet%f) - qs%ref%H00) - proj_energy)*invdiagel *cluster%amplitude
+                KiiAi = ((sc0_ptr(sys, cdet%f) - qs%ref%H00) - proj_energy)*invdiagel *real(cluster%amplitude)
                 if (sys%read_in%comp) then
-                    KiiAi_im = (sc0_ptr(sys, cdet%f) - qs%ref%H00 - proj_energy)*cluster%amplitude_im
+                    KiiAi_im = (sc0_ptr(sys, cdet%f) - qs%ref%H00 - proj_energy)*aimag(cluster%amplitude)
                 end if
             end select
         end if
@@ -634,7 +634,7 @@ contains
             fock_sum = sum_sp_eigenvalues_bit_string(sys, fexcit)
             invdiagel = calc_qn_weighting(qs, fock_sum - qs%ref%fock_sum)
             ! correct hmatel for cluster amplitude
-            hmatel%r = hmatel%r * invdiagel * cluster%amplitude
+            hmatel%r = hmatel%r * invdiagel * real(cluster%amplitude)
             excitor_level = get_excitation_level(fexcit, qs%ref%f0)
             call convert_excitor_to_determinant(fexcit, excitor_level, excitor_sign, qs%ref%f0)
             if (excitor_sign < 0) hmatel%r = -hmatel%r
@@ -740,7 +740,7 @@ contains
         call gen_excit_ptr%full(rng, sys, qs%excit_gen_data, cdet, pgen, connection, hmatel, allowed_excitation)
 
         ! 2, Apply additional factors.
-        hmatel%c = hmatel%c*cmplx(cluster%amplitude, cluster%amplitude_im, p)*cluster%cluster_to_det_sign
+        hmatel%c = hmatel%c*cluster%amplitude*cluster%cluster_to_det_sign
         pgen = pgen*cluster%pselect*nspawnings_total
 
         ! 3. Attempt spawning.
