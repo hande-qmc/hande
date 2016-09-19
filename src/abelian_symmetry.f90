@@ -29,7 +29,6 @@ module abelian_symmetry
 ! Code Structure
 ! --------------
 !
-!
 ! This module contains various utility functions/subroutines for
 ! commonly required operations (eg. the cross product of two basis function
 ! symmetries or obtaining the symmetry of an orbital list). These functions
@@ -94,7 +93,8 @@ contains
     end function cross_product_basis_abelian
 
     ! [review] - JSS: the name implies we're testing if the symmetry group of the system is Abelian...
-    elemental function is_basis_abelian_sym(sys,sym) result(valid)
+    ! [reply] - CJCS: Is this any better? It's a little more explicit.
+    elemental function is_in_abelian_basis(sys,sym) result(valid)
 
         ! In:
         !    sys: system being studied
@@ -110,10 +110,10 @@ contains
         type(sys_t), intent(in) :: sys
         integer, intent(in) :: sym
 
-        ! [review] - JSS: this seems like a magic test.
+        ! Check that the symmetry index is within the allowed range.
         valid = sym>=sys%sym0 .and. sym<=sys%sym_max
 
-    end function is_basis_abelian_sym
+    end function is_in_abelian_basis
 
     elemental function is_gamma_irrep_abelian(pg_sym, sym) result(is_gamma)
 

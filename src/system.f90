@@ -37,8 +37,6 @@ abstract interface
         type(basis_t), intent(in) :: b
         integer, intent(in) :: i, a
     end function i_int_ueg
-    ! [review] - JSS: this comment seems a bit oddly placed...
-    ! Read-in symmetry pointer interfaces.
 end interface
 
 ! --- System type constants ---
@@ -308,6 +306,8 @@ type sys_read_in_t
 end type sys_read_in_t
 
 ! [review] - JSS: do these need to be declared before they're used in sys_read_in_t?
+! [reply] - CJCS: Apparently not. In fact, read_in_t needs to be defined before the
+! [reply] - CJCS: interface can be defined so the order only works this way around.
 ! Interfaces for pointers to symmetry-specific functions within sys_read_in_t.
 abstract interface
     pure function i_cross_product_sym(read_in, sym_i, sym_j) result (sym_ij)
