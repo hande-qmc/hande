@@ -254,7 +254,7 @@ contains
         ! Checks if symmetry given is the gamma point symmetry.
         ! In:
         !   mom_sym: basis function symmetry information.
-        !   sym: kpoint to compare, expressed via 3 integers.
+        !   kpoint_vector: kpoint to compare, expressed via 3 integers.
         ! Returns:
         !   true: if symmetry provided is gamma sym.
         !   false: otherwise.

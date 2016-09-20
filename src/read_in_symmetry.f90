@@ -92,8 +92,6 @@ contains
 
     end function cross_product_basis_read_in
 
-    ! [review] - JSS: the name implies we're testing if the symmetry group of the system is Abelian...
-    ! [reply] - CJCS: Is this any better? It's a little more explicit.
     elemental function is_in_read_in_basis_sym(sys,sym) result(valid)
 
         ! In:
