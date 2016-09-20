@@ -588,6 +588,23 @@ type annihilation_flags_t
     logical :: symmetric = .true.
 end type annihilation_flags_t
 
+! Derived type to contain debugging flags and avoid passing lots of different flags to the various procedures.
+! Use bit strings to represent different levels of debugging (see forthcoming documentation).
+type logging_in_t
+    ! High-level debugging flag (at level of calculation running).
+    integer(int_32) :: calculation = 0
+    character(8) :: calc_filename = 'CALC.log'
+    ! Spawning flag.
+    integer(int_32) :: spawning = 0
+    character(9) :: spawn_filename = 'SPAWN.log'
+    ! Death flag.
+    integer(int_32) :: death = 0
+    character(9) :: death_filename = 'DEATH.log'
+    ! Annihilation flag.
+    integer(int_32) :: annihilation = 0
+    character(16) :: annihilation_filename = 'ANNIHILATION.log'
+end type logging_in_t
+
 contains
 
     subroutine qmc_in_t_json(js, qmc, terminal)

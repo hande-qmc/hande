@@ -1763,4 +1763,53 @@ contains
 
     end function lua_dealloc_qmc_state
 
+    subroutine read_logging_t(lua_state, opts, logging)
+        ! Read in options associated with the logging table (only for debug builds).
+
+        ! logging = {
+        !   calculation = verbosity_level,
+        !   spawning = verbosity_level,
+        !   death = verbosity_level,
+        !   }
+
+        use flu_binding, only: flu_State
+        use aot_table_module, only: aot_get_val, aot_exists, aot_table_open, aot_table_close
+        use lua_hande_utils, only: warn_unused_args
+
+        use qmc_data, only: logging_in_t
+
+        use errors, only: stop_all
+        use const, only: debug
+
+        type(flu_State), intent(inout) :: lua_state
+        integer, intent(in) :: opts
+
+        type(logging_in_t), intent(out) :: logging
+        integer :: logging_table, err
+
+        character(12), parameter :: keys(4) = [character(12) :: 'calc', 'spawning', 'death', 'annihilation']
+
+
+        if (aot_exists(lua_state, opts, 'logging')) then
+
+            if (debug) then
+
+                call aot_table_open(lua_state, opts, logging_table, 'logging')
+
+                call aot_get_val(logging%calculation, err, lua_state, logging_table, 'calc')
+
+                call aot_get_val(logging%spawning, err, lua_state, logging_table, 'spawning')
+
+                call aot_get_val(logging%death, err, lua_state, logging_table, 'death')
+
+                call aot_get_val(logging%annihilation, err, lua_state, logging_table, 'annihilation')
+
+            else
+                call stop_all('read_logging', 'Tried to pass in logging options in non-debug build.')
+            end if
+
+        end if
+
+    end subroutine read_logging_t
+
 end module lua_hande_calc
