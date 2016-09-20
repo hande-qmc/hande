@@ -96,7 +96,6 @@ contains
         type(sys_t), intent(in) :: sys
         integer(i0), intent(in) :: f1(:), f2(:)
 
-
         select case(sys%system)
         case(read_in)
             hmatel = get_hmatel_mol_comp(sys, f1, f2)

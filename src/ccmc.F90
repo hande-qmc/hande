@@ -295,7 +295,7 @@ contains
         use bloom_handler, only: init_bloom_stats_t, bloom_stats_t, bloom_mode_fractionn, &
                                  accumulate_bloom_stats, write_bloom_report, bloom_stats_warning
         use ccmc_data
-        use determinants, only: det_info_t, dealloc_det_info_t
+        use determinants, only: det_info_t, dealloc_det_info_t, decode_det, alloc_det_info_t
         use excitations, only: excit_t, get_excitation_level, get_excitation
         use fciqmc_data, only: write_fciqmc_report, &
                                write_fciqmc_report_header
@@ -333,6 +333,7 @@ contains
         real(dp), allocatable :: nparticles_old(:), nparticles_change(:)
         type(det_info_t), allocatable :: cdet(:)
         type(det_info_t), allocatable :: ldet(:), rdet(:)
+        type(det_info_t) :: ref_det
 
         integer(int_p) :: nspawned, ndeath
         integer :: nspawn_events, ierr
@@ -477,12 +478,13 @@ contains
 
         if (ccmc_in%density_matrices) then
             associate(nbasis=>sys%basis%nbasis)
-                ! [review] - JSS: "Can't ..."?
-                if (ccmc_in%linked) call stop_all('do_ccmc','Can''t sample density matrix within linked CCMC')
                 allocate(rdm(nbasis*(nbasis-1)/2,nbasis*(nbasis-1)/2), stat=ierr)
                 call check_allocate('rdm', nbasis**2*(nbasis-1)**2/4, ierr)
                 rdm = 0.0_p
             end associate
+            call alloc_det_info_t(sys, ref_det)
+            ref_det%f = qs%ref%f0
+            call decode_det(sys%basis, ref_det%f, ref_det%occ_list)
         end if
 
         do ireport = 1, qmc_in%nreport
@@ -699,7 +701,7 @@ contains
                             ! Add contribution to density matrix
                             ! d_pqrs = <HF|a_p^+a_q^+a_sa_r|CC>
                             !$omp critical
-                            call update_rdm(sys, cdet(it)%f, qs%ref%f0, cluster(it)%amplitude*cluster(it)%cluster_to_det_sign, &
+                            call update_rdm(sys, cdet(it), ref_det, cluster(it)%amplitude*cluster(it)%cluster_to_det_sign, &
                                             1.0_p, cluster(it)%pselect, rdm)
                             !$omp end critical
                         end if
@@ -803,6 +805,8 @@ contains
             update_tau = bloom_stats%nblooms_curr > 0
 
             ! [review] - JSS: should this logic be part of the energy estimation?
+            ! [reply] - RSTF: That seems to involve passing in a number of things that aren't
+            ! [reply] - RSTF: otherwise needed to end_report_loop though.
             if (ccmc_in%density_matrices .and. qs%vary_shift(1)) call calc_rdm_energy(sys, qs%ref, rdm, qs%estimators%rdm_energy, &
                                                                                       qs%estimators%rdm_trace)
 
@@ -859,6 +863,7 @@ contains
             if (parent) write (6,'(1x,"# Final energy from RDM",2x,es17.10)') qs%estimators%rdm_energy/qs%estimators%rdm_trace
             deallocate(rdm, stat=ierr)
             call check_deallocate('rdm',ierr)
+            call dealloc_det_info_t(ref_det)
         end if
 
         do i = 0, nthreads-1

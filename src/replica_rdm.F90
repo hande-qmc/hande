@@ -1,7 +1,6 @@
 module replica_rdm
 
-! [review] - JSS: this is the only mention of the 1-RDM in this module...
-! Procedures relating to the accumulation of the 1- and 2-RDM
+! Procedures relating to the accumulation of the 2-RDM
 ! from replica sampling with FCIQMC and CCMC.
 
 use const
@@ -49,13 +48,13 @@ contains
 
     end subroutine orbs_from_index
 
-    pure subroutine update_rdm(sys, f1, f2, pop1, pop2, prob, rdm)
+    pure subroutine update_rdm(sys, det1, det2, pop1, pop2, prob, rdm)
 
         ! Add contribution from a pair of determinants to the 2-RDM
 
         ! In:
         !   sys: system being studied
-        !   f1, f2: bit strings of the two determinants
+        !   det1, det2: the two determinants
         !   pop1, pop2: populations of the determinants in *different* replicas
         !   prob: Probability of this spawning event, to weight stochastic contributions
         ! In/Out:
@@ -63,19 +62,18 @@ contains
 
         use system, only: sys_t
         use excitations, only: excit_t, get_excitation
-        use determinants, only: decode_det
+        use determinants, only: det_info_t
 
         type(sys_t), intent(in) :: sys
-        integer(i0), intent(in) :: f1(:), f2(:)
+        type(det_info_t), intent(in) :: det1, det2
         real(p), intent(in) :: pop1, pop2, prob
         real(p), intent(inout) :: rdm(:,:)
 
         type(excit_t) :: excit
         real(p) :: matel
-        integer :: occ_list(sys%nel)
         integer :: i, j
 
-        excit = get_excitation(sys%nel, sys%basis, f1, f2)
+        excit = get_excitation(sys%nel, sys%basis, det1%f, det2%f)
         ! Contribution to matrix element
         matel = pop1*pop2/prob
         if (excit%perm) matel = -matel
@@ -83,24 +81,21 @@ contains
         select case(excit%nexcit)
         case(0)
             ! Diagonal elements.
-            ! [review] - JSS: decode is quite expensive and can be avoided by passing in the det_info_t object...
-            call decode_det(sys%basis, f1, occ_list)
             do i = 1, sys%nel
                 do j = i+1, sys%nel
-                    associate(ind => rdm_ind(occ_list(i),occ_list(j)))
+                    associate(ind => rdm_ind(det1%occ_list(i), det1%occ_list(j)))
                         rdm(ind,ind) = rdm(ind,ind) + matel
                     end associate
                 end do
             end do
         case(1)
             ! Single excitation contributes to one term for each orbital in common
-            ! [review] - JSS: this decode can be avoided by passing in det_info_t and looping over the list of occupied orbitals
-            ! [review] - JSS: and skipping the one which equals excit%from_orb(1). Think that would be faster...
-            call decode_det(sys%basis, iand(f1,f2), occ_list)
-            do i = 1, sys%nel-1
-                associate(p => excit%to_orb(1), q => excit%from_orb(1), orb => occ_list(i))
+            do i = 1, sys%nel
+                associate(p => excit%to_orb(1), q => excit%from_orb(1), orb => det1%occ_list(i))
+                    if (orb == q) cycle
                     ! [review] - JSS: occ_list is ordered and so this can be split into separate loops.
                     ! [review] - JSS: not sure if that would be faster though...
+                    ! [reply] - RSTF: p and q are not ordered though.
                     if (orb<p .and. orb<q) then
                         rdm(rdm_ind(orb,p),rdm_ind(orb,q)) = rdm(rdm_ind(orb,p),rdm_ind(orb,q)) + matel
                     else if (orb<p .and. orb>q) then
@@ -133,7 +128,7 @@ contains
         integer, intent(in) :: nel
         real(p), intent(inout) :: rdm(:,:)
 
-        integer :: nbasis, i, j
+        integer :: i
         real(p) :: trace
 
         trace = 0.0_p
@@ -241,9 +236,9 @@ contains
         !   nbasis: Number of basis fns
         !   filename: file to write to
         ! In/Out:
-        ! [review] - JSS: and the root processor holds the sum over all processors...
         !   rdm: Sampled two particle reduced density matrix. On exit it has been
-        !        normalised and made Hermitian
+        !        normalised and made Hermitian and the root processor holds the sum
+        !        over all processors
 
         use parallel
 
