@@ -306,6 +306,7 @@ contains
         !       restart = { ... },
         !       load_bal = { ... },
         !       reference = { ... },
+        !       logging = { ...},
         !       qmc_state = qmc_state,
         !    }
 
@@ -322,7 +323,8 @@ contains
         use fciqmc, only: do_fciqmc
         use lua_hande_system, only: get_sys_t
         use lua_hande_utils, only: warn_unused_args, register_timing
-        use qmc_data, only: qmc_in_t, fciqmc_in_t, semi_stoch_in_t, restart_in_t, load_bal_in_t, qmc_state_t
+        use qmc_data, only: qmc_in_t, fciqmc_in_t, semi_stoch_in_t, restart_in_t, load_bal_in_t, &
+                            qmc_state_t, logging_in_t
         use reference_determinant, only: reference_t
         use system, only: sys_t
 
@@ -341,13 +343,14 @@ contains
         type(load_bal_in_t) :: load_bal_in
         type(reference_t) :: reference
         type(qmc_state_t), pointer :: qmc_state_restart, qmc_state_out
+        type(logging_in_t) :: logging_in
 
         logical :: have_restart_state
 
         integer :: opts
         real :: t1, t2
-        character(10), parameter :: keys(8) = [character(10) :: 'sys', 'qmc', 'fciqmc', 'semi_stoch', 'restart', &
-                                                                'load_bal', 'reference', 'qmc_state']
+        character(10), parameter :: keys(9) = [character(10) :: 'sys', 'qmc', 'fciqmc', 'semi_stoch', 'restart', &
+                                                                'load_bal', 'reference', 'qmc_state', 'logging']
 
         call cpu_time(t1)
 
@@ -367,6 +370,7 @@ contains
         call read_restart_in(lua_state, opts, restart_in)
         call read_load_bal_in(lua_state, opts, load_bal_in)
         call read_reference_t(lua_state, opts, reference, sys)
+        call read_logging_in_t(lua_state, opts, logging_in)
 
         call get_qmc_state(lua_state, have_restart_state, qmc_state_restart)
 
@@ -376,10 +380,11 @@ contains
         calc_type = fciqmc_calc
         allocate(qmc_state_out)
         if (have_restart_state) then
-            call do_fciqmc(sys, qmc_in, fciqmc_in, semi_stoch_in, restart_in, load_bal_in, reference, qmc_state_out, &
-                           qmc_state_restart)
+            call do_fciqmc(sys, qmc_in, fciqmc_in, semi_stoch_in, restart_in, load_bal_in, reference, logging_in, &
+                           qmc_state_out, qmc_state_restart)
         else
-            call do_fciqmc(sys, qmc_in, fciqmc_in, semi_stoch_in, restart_in, load_bal_in, reference, qmc_state_out)
+            call do_fciqmc(sys, qmc_in, fciqmc_in, semi_stoch_in, restart_in, load_bal_in, reference, logging_in, &
+                           qmc_state_out)
         end if
 
         ! Return qmc_state to the user.
@@ -1763,7 +1768,7 @@ contains
 
     end function lua_dealloc_qmc_state
 
-    subroutine read_logging_t(lua_state, opts, logging)
+    subroutine read_logging_in_t(lua_state, opts, logging)
         ! Read in options associated with the logging table (only for debug builds).
 
         ! logging = {
@@ -1810,6 +1815,6 @@ contains
 
         end if
 
-    end subroutine read_logging_t
+    end subroutine read_logging_in_t
 
 end module lua_hande_calc

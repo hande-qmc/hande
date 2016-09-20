@@ -255,6 +255,25 @@ type restart_in_t
     integer :: write_shift_id = huge(0)
 end type restart_in_t
 
+type logging_in_t
+    ! High-level debugging flag (at level of calculation running).
+    integer(int_32) :: calculation = 0
+    character(8) :: calc_filename = 'CALC.log'
+    ! Spawning flag.
+    integer(int_32) :: spawning = 0
+    character(9) :: spawn_filename = 'SPAWN.log'
+    ! Death flag.
+    integer(int_32) :: death = 0
+    character(9) :: death_filename = 'DEATH.log'
+    ! Annihilation flag.
+    integer(int_32) :: annihilation = 0
+    character(16) :: annihilation_filename = 'ANNIHILATION.log'
+    ! Iteration to start outputting logs from.
+    integer(int_64) :: start_iter = 0_int_64
+    ! Iteration to stop outputting logs from.
+    integer(int_64) :: end_iter = huge(0_int_64)
+end type logging_in_t
+
 ! --- Parallel info ---
 
 ! Combine information required for non-blocking report loop quantities
@@ -588,22 +607,38 @@ type annihilation_flags_t
     logical :: symmetric = .true.
 end type annihilation_flags_t
 
+! --- Logging output ---
+
 ! Derived type to contain debugging flags and avoid passing lots of different flags to the various procedures.
 ! Use bit strings to represent different levels of debugging (see forthcoming documentation).
-type logging_in_t
+
+type logging_t
     ! High-level debugging flag (at level of calculation running).
-    integer(int_32) :: calculation = 0
-    character(8) :: calc_filename = 'CALC.log'
-    ! Spawning flag.
-    integer(int_32) :: spawning = 0
-    character(9) :: spawn_filename = 'SPAWN.log'
+    logical :: write_highlevel_values = .false.
+    logical :: write_highlevel_calculations = .false.
+    integer :: calc_unit = huge(1_int_32)
+
+    ! Spawning flags.
+    logical :: write_successful_spawn = .false.
+    logical :: write_failed_spawn = .false.
+    logical :: write_spawn_origin_det = .false.
+    logical :: write_spawn_target_det = .false.
+    integer :: spawn_unit = huge(1_int_32)
+
     ! Death flag.
-    integer(int_32) :: death = 0
-    character(9) :: death_filename = 'DEATH.log'
+    logical :: write_successful_death = .false.
+    logical :: write_failed_death = .false.
+    logical :: write_death_det = .false.
+    integer :: death_unit = huge(1_int_32)
+
     ! Annihilation flag.
-    integer(int_32) :: annihilation = 0
-    character(16) :: annihilation_filename = 'ANNIHILATION.log'
-end type logging_in_t
+    integer :: annihilation_unit = huge(1_int_32)
+
+    ! Iteration to start outputting logs from.
+    integer(int_64) :: start_iter = 0_int_64
+    ! Iteration to stop outputting logs from.
+    integer(int_64) :: end_iter = huge(0_int_64)
+end type logging_t
 
 contains
 

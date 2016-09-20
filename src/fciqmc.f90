@@ -10,7 +10,7 @@ implicit none
 contains
 
     subroutine do_fciqmc(sys, qmc_in, fciqmc_in, semi_stoch_in, restart_in, load_bal_in, &
-                         reference_in, qs, qmc_state_restart)
+                         reference_in, logging_in, qs, qmc_state_restart)
 
         ! Run the FCIQMC or initiator-FCIQMC algorithm starting from the initial walker
         ! distribution using the timestep algorithm.
@@ -62,7 +62,8 @@ contains
 
         use qmc_data, only: qmc_in_t, fciqmc_in_t, semi_stoch_in_t, restart_in_t, load_bal_in_t, empty_determ_space, &
                             qmc_state_t, annihilation_flags_t, semi_stoch_separate_annihilation, qmc_in_t_json,      &
-                            fciqmc_in_t_json, semi_stoch_in_t_json, restart_in_t_json, load_bal_in_t_json
+                            fciqmc_in_t_json, semi_stoch_in_t_json, restart_in_t_json, load_bal_in_t_json,           &
+                            logging_in_t
         use reference_determinant, only: reference_t, reference_t_json
         use check_input, only: check_qmc_opts, check_fciqmc_opts, check_load_bal_opts
         use hamiltonian_data
@@ -77,6 +78,8 @@ contains
         type(reference_t), intent(in) :: reference_in
         type(qmc_state_t), intent(inout), optional :: qmc_state_restart
         type(qmc_state_t), intent(out), target :: qs
+
+        type(logging_in_t), intent(in) :: logging_in
 
         type(det_info_t) :: cdet
         type(dSFMT_t) :: rng
