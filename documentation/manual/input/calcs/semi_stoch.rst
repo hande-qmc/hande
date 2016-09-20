@@ -46,6 +46,14 @@ stochastic error in many cases.
     applied entirely stochastically, before semi-stochastic projection is enabled.  This
     allows for a period for the population to grow and the ground-state wavefunction to
     emerge before the deterministic space is selected if ``space`` is set to 'high'.
+
+    .. note::
+
+        If the calculation is restarted from a previous one, this value refers to the
+        iteration index of the entire set of calculations. If it is less than the
+        iteration from which the calculation is started, semi-stochastic projection is
+        enabled immediately.
+
 ``shift_start_iteration``
     type: integer.
 
@@ -53,6 +61,12 @@ stochastic error in many cases.
 
     The number of iterations to perform after the shift is varied (i.e. after the
     ``target_population`` is reached) before the semi-stochastic projection is enabled.
+
+    .. note::
+
+        If the calculation is restarted from a previous one and the shift is already
+        varying, then semi-stochastic projection is enabled immediately.
+
 ``separate_annihilation``
     type: boolean.
 

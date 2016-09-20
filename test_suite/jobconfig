@@ -135,6 +135,7 @@ vquick =   ccmc/np1/Ne-RHF-cc-pVDZ-Lz-CCSDTQ5-multispawn-short
            ifciqmc_real_32/np1/hubbard_k_1d_ifciqmc_real_32
            ifciqmc_real_32/np1/hubbard_k_1d_ifciqmc_real_32_SS
            ifciqmc_real_32/np2/polyyne_nosym_complex_ifciqmc-real32
+           ifciqmc_real_32/np4/hubbard_k_1d_ifciqmc_ss_restart
            lanczos/hubbard_k_nontilted_2d_lanczos
            lanczos/hubbard_k_tilted_2d_sparse
            lanczos/hubbard_real_nontilted_2d_direct
