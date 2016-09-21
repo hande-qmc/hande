@@ -71,10 +71,8 @@ contains
         type(logging_in_t), intent(in) :: logging_in
         integer :: iunit
 
-        logging%calc_unit = get_free_unit()
-
         print *, 'Opening file ', logging_in%calc_filename
-        open(logging%calc_unit, file=logging_in%calc_filename, status='unknown')
+        open(newunit=logging%calc_unit, file=logging_in%calc_filename, status='unknown')
 
         if (logging_in%calc > 0) logging%write_highlevel_values = .true.
         if (logging_in%calc > 1) logging%write_highlevel_calculations = .true.
@@ -93,10 +91,10 @@ contains
         type(logging_in_t), intent(in) :: logging_in
         integer :: iunit
 
-        logging%spawn_unit = get_free_unit()
+        !logging%spawn_unit = get_free_unit()
 
         print *, 'Opening file ', logging_in%spawn_filename
-        open(logging%spawn_unit, file=logging_in%spawn_filename, status='unknown')
+        open(newunit=logging%spawn_unit, file=logging_in%spawn_filename, status='unknown')
 
         if (logging_in%spawn > 0) logging%write_successful_spawn = .true.
         if (logging_in%spawn > 1) logging%write_spawn_dets = .true.
@@ -116,10 +114,10 @@ contains
         type(logging_in_t), intent(in) :: logging_in
         integer :: iunit
 
-        logging%death_unit = get_free_unit()
+        !logging%death_unit = get_free_unit()
 
         print *, 'Opening file ', logging_in%death_filename
-        open(logging%death_unit, file=logging_in%death_filename, status='unknown')
+        open(newunit=logging%death_unit, file=logging_in%death_filename, status='unknown')
 
         if (logging_in%death > 0) logging%write_successful_death = .true.
         if (logging_in%death > 1) logging%write_death_det = .true.
