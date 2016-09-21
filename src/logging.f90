@@ -17,14 +17,47 @@ contains
 
     end subroutine init_logging
 
-    subroutine end_logging(logging)
+    subroutine prep_logging_mc_cycle(iter, logging_in, logging_info)
+
+        ! Subroutine to
+        !   - check if within the range of iterations where logging is required.
+        !   - print updates for iteration number in all active logs.
+
+        use qmc_data, only: logging_t, logging_in_t
+
+        integer, intent(in) :: iter
+        type(logging_t), intent(inout) :: logging_info
+        type(logging_in_t), intent(in) :: logging_in
+
+        logging_info%write_logging = (logging_in%start_iter <= iter .and. &
+                                    iter <= logging_in%end_iter)
+
+        if (logging_info%write_logging) then
+            if (logging_info%calc_unit /= huge(1)) call write_iter_to_log(iter, logging_info%calc_unit)
+            if (logging_info%spawn_unit /= huge(1)) call write_iter_to_log(iter, logging_info%spawn_unit)
+            if (logging_info%death_unit /= huge(1)) call write_iter_to_log(iter, logging_info%death_unit)
+        end if
+
+    end subroutine prep_logging_mc_cycle
+
+    subroutine write_iter_to_log(iter, iunit)
+        ! Writes iteration number to given io unit for logging.
+        integer :: iter, iunit
+
+        write(iunit, '(1X,20("="))')
+        write(iunit, '(1X,"Iteration",1X,i10)') iter
+        write(iunit, '(1X,20("="))')
+
+    end subroutine write_iter_to_log
+
+    subroutine end_logging(logging_info)
         use qmc_data, only: logging_t
 
-        type(logging_t), intent(in) :: logging
+        type(logging_t), intent(in) :: logging_info
 
-        if (logging%calc_unit /= huge(1)) close(logging%calc_unit, status='keep')
-        if (logging%spawn_unit /= huge(1)) close(logging%spawn_unit, status='keep')
-        if (logging%death_unit /= huge(1)) close(logging%death_unit, status='keep')
+        if (logging_info%calc_unit /= huge(1)) close(logging_info%calc_unit, status='keep')
+        if (logging_info%spawn_unit /= huge(1)) close(logging_info%spawn_unit, status='keep')
+        if (logging_info%death_unit /= huge(1)) close(logging_info%death_unit, status='keep')
 
     end subroutine end_logging
 

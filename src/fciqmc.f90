@@ -69,7 +69,7 @@ contains
         use hamiltonian_data
         use energy_evaluation, only: get_sanitized_projected_energy
 
-        use logging, only: init_logging, end_logging
+        use logging, only: init_logging, end_logging, prep_logging_mc_cycle
 
         type(sys_t), intent(in) :: sys
         type(qmc_in_t), intent(in) :: qmc_in
@@ -213,6 +213,8 @@ contains
             do icycle = 1, qmc_in%ncycles
 
                 iter = qs%mc_cycles_done + (ireport-1)*qmc_in%ncycles + icycle
+
+                call prep_logging_mc_cycle(iter, logging_in, logging_info)
 
                 ! Should we turn semi-stochastic on now?
                 if (iter == semi_stoch_iter .and. semi_stoch_in%space_type /= empty_determ_space) then

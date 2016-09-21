@@ -633,10 +633,8 @@ type logging_t
     ! Annihilation flag.
     integer :: annihilation_unit = huge(1_int_32)
 
-    ! Iteration to start outputting logs from.
-    integer(int_64) :: start_iter = 0_int_64
-    ! Iteration to stop outputting logs from.
-    integer(int_64) :: end_iter = huge(0_int_64)
+    ! Whether within iterations required to output logging info.
+    logical :: write_logging = .false.
 end type logging_t
 
 contains
