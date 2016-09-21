@@ -1794,7 +1794,6 @@ contains
 
         character(12), parameter :: keys(4) = [character(12) :: 'calc', 'spawning', 'death', 'annihilation']
 
-
         if (aot_exists(lua_state, opts, 'logging')) then
 
             if (debug) then
@@ -1809,12 +1808,14 @@ contains
 
                 call aot_get_val(logging%annihilation, err, lua_state, logging_table, 'annihilation')
 
+                call warn_unused_args(lua_state, keys, logging_table)
+                call aot_table_close(lua_state, logging_table)
+
             else
                 call stop_all('read_logging', 'Tried to pass in logging options in non-debug build.')
             end if
 
         end if
-
     end subroutine read_logging_in_t
 
 end module lua_hande_calc

@@ -63,11 +63,13 @@ contains
         use qmc_data, only: qmc_in_t, fciqmc_in_t, semi_stoch_in_t, restart_in_t, load_bal_in_t, empty_determ_space, &
                             qmc_state_t, annihilation_flags_t, semi_stoch_separate_annihilation, qmc_in_t_json,      &
                             fciqmc_in_t_json, semi_stoch_in_t_json, restart_in_t_json, load_bal_in_t_json,           &
-                            logging_in_t
+                            logging_in_t, logging_t
         use reference_determinant, only: reference_t, reference_t_json
         use check_input, only: check_qmc_opts, check_fciqmc_opts, check_load_bal_opts
         use hamiltonian_data
         use energy_evaluation, only: get_sanitized_projected_energy
+
+        use logging, only: init_logging, end_logging
 
         type(sys_t), intent(in) :: sys
         type(qmc_in_t), intent(in) :: qmc_in
@@ -80,6 +82,7 @@ contains
         type(qmc_state_t), intent(out), target :: qs
 
         type(logging_in_t), intent(in) :: logging_in
+        type(logging_t) :: logging_info
 
         type(det_info_t) :: cdet
         type(dSFMT_t) :: rng
@@ -130,6 +133,9 @@ contains
         ! Initialise data.
         call init_qmc(sys, qmc_in, restart_in, load_bal_in, reference_in, annihilation_flags, qs, uuid_restart, &
                       fciqmc_in=fciqmc_in, qmc_state_restart=qmc_state_restart)
+
+        call init_logging(logging_in, logging_info)
+        call end_logging(logging_info)
 
         if (parent) then
             call json_object_init(js, tag=.true.)
