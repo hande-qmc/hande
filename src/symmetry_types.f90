@@ -64,7 +64,7 @@ end type pg_sym_t
 
 type mom_sym_t
     ! Index of the symmetry corresponding to the Gamma-point.
-    integer(int_64) :: gamma_sym
+    integer :: gamma_sym
 
     ! sym_table(i,j) = k means that k_i + k_j = k_k to within a primitive reciprocal lattice vector.
     ! Used for Hubbard model and non-model periodic systems.
