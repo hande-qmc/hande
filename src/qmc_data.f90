@@ -257,10 +257,10 @@ end type restart_in_t
 
 type logging_in_t
     ! High-level debugging flag (at level of calculation running).
-    integer(int_32) :: calculation = 0
+    integer(int_32) :: calc = 0
     character(8) :: calc_filename = 'CALC.log'
     ! Spawning flag.
-    integer(int_32) :: spawning = 0
+    integer(int_32) :: spawn = 0
     character(9) :: spawn_filename = 'SPAWN.log'
     ! Death flag.
     integer(int_32) :: death = 0
@@ -621,8 +621,7 @@ type logging_t
     ! Spawning flags.
     logical :: write_successful_spawn = .false.
     logical :: write_failed_spawn = .false.
-    logical :: write_spawn_origin_det = .false.
-    logical :: write_spawn_target_det = .false.
+    logical :: write_spawn_dets = .false.
     integer :: spawn_unit = huge(1_int_32)
 
     ! Death flag.

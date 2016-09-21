@@ -1792,7 +1792,7 @@ contains
         type(logging_in_t), intent(out) :: logging
         integer :: logging_table, err
 
-        character(12), parameter :: keys(4) = [character(12) :: 'calc', 'spawning', 'death', 'annihilation']
+        character(12), parameter :: keys(4) = [character(12) :: 'calc', 'spawn', 'death', 'annihilation']
 
         if (aot_exists(lua_state, opts, 'logging')) then
 
@@ -1800,9 +1800,9 @@ contains
 
                 call aot_table_open(lua_state, opts, logging_table, 'logging')
 
-                call aot_get_val(logging%calculation, err, lua_state, logging_table, 'calc')
+                call aot_get_val(logging%calc, err, lua_state, logging_table, 'calc')
 
-                call aot_get_val(logging%spawning, err, lua_state, logging_table, 'spawning')
+                call aot_get_val(logging%spawn, err, lua_state, logging_table, 'spawn')
 
                 call aot_get_val(logging%death, err, lua_state, logging_table, 'death')
 

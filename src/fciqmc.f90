@@ -135,7 +135,6 @@ contains
                       fciqmc_in=fciqmc_in, qmc_state_restart=qmc_state_restart)
 
         call init_logging(logging_in, logging_info)
-        call end_logging(logging_info)
 
         if (parent) then
             call json_object_init(js, tag=.true.)
@@ -407,6 +406,7 @@ contains
         end if
 
         if (determ%doing_semi_stoch) call dealloc_semi_stoch_t(determ, .false.)
+        call end_logging(logging_info)
 
         call dealloc_det_info_t(cdet, .false.)
 
