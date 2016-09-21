@@ -308,7 +308,6 @@ contains
 
         use system, only: sys_t
 
-        integer :: sym
         type(sys_t), intent(in) :: sys
         integer, intent(in) :: i, j, op_sym
         logical :: sym_allowed
@@ -341,7 +340,7 @@ contains
 
         type(sys_t), intent(in) :: sys
         integer, intent(in) :: i, j, a, b, op_sym
-        integer :: sym_ij, sym_ab, sym
+        integer :: sym_ij, sym_ab
         logical :: allowed
 
         sym_ij = cross_product_basis_read_in(sys, i, j)
@@ -388,8 +387,6 @@ contains
         logical, intent(in) :: suppress_err_msg
         type(one_body_t) :: store
         integer, intent(out) :: ierr
-        integer :: ii, jj, spin
-        integer :: sym
         character(255) :: error
 
         ierr = 0
@@ -1050,8 +1047,6 @@ contains
         type(two_body_t), intent(in) :: store, im_store
         type(sys_t), intent(in) :: sys
         integer, intent(in) :: i, j, a, b
-
-        integer :: sym_ij, sym_ab
 
         if (check_two_body_sym(i, j, a, b, sys, store%op_sym) .and. &
                     sys%basis%basis_fns(j)%ms == sys%basis%basis_fns(b)%ms .and. &

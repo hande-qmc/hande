@@ -32,7 +32,7 @@ contains
 
         type(sys_t), intent(inout) :: sys
 
-        integer :: i, j, k, ierr, a(3)
+        integer :: i, j, k, ierr
         integer :: ksum(sys%lattice%ndim)
         character(4) :: fmt1
 
