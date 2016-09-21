@@ -190,8 +190,10 @@ contains
         use hamiltonian_hub_k, only: slater_condon0_hub_k
         use hamiltonian_hub_real, only: slater_condon0_hub_real
         use hamiltonian_heisenberg, only: diagonal_element_heisenberg, diagonal_element_heisenberg_staggered
-        use hamiltonian_molecular, only: slater_condon0_mol, double_counting_correction_mol, hf_hamiltonian_energy_mol
-        use hamiltonian_molecular_complex, only: slater_condon0_mol_complex
+        use hamiltonian_molecular, only: slater_condon0_mol, double_counting_correction_mol, hf_hamiltonian_energy_mol, &
+                                         slater_condon1_mol_excit, slater_condon2_mol_excit
+        use hamiltonian_periodic_complex, only: slater_condon0_periodic_complex, slater_condon1_periodic_excit_complex, &
+                                                slater_condon2_periodic_excit_complex
         use hamiltonian_ringium, only: slater_condon0_ringium
         use hamiltonian_ueg, only: slater_condon0_ueg, kinetic_energy_ueg, exchange_energy_ueg, potential_energy_ueg
         use heisenberg_estimators
@@ -307,22 +309,22 @@ contains
 
         case(read_in)
             if (sys%read_in%comp) then
-                update_proj_energy_ptr => update_proj_energy_mol_complex
-                sc0_ptr => slater_condon0_mol_complex
+                update_proj_energy_ptr => update_proj_energy_periodic_complex
+                sc0_ptr => slater_condon0_periodic_complex
                 energy_diff_ptr => null()
                 spawner_ptr => spawn_complex
+                slater_condon1_excit_ptr => slater_condon1_periodic_excit_complex
+                slater_condon2_excit_ptr => slater_condon2_periodic_excit_complex
             else
                 update_proj_energy_ptr => update_proj_energy_mol
                 sc0_ptr => slater_condon0_mol
                 energy_diff_ptr => double_counting_correction_mol
+                slater_condon1_excit_ptr => slater_condon1_mol_excit
+                slater_condon2_excit_ptr => slater_condon2_mol_excit
             end if
 
             select case(qmc_in%excit_gen)
             case(excit_gen_no_renorm)
-                if (sys%read_in%comp) then
-                    call stop_all('init_proc_pointers', 'Selected excitation generator not implemented for complex &
-                                        &wavefunctions.')
-                end if
                 gen_excit_ptr%full => gen_excit_mol_no_renorm
                 decoder_ptr => decode_det_occ
             case(excit_gen_renorm)

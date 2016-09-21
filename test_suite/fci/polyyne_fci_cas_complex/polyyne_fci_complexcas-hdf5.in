@@ -1,0 +1,25 @@
+sys = read_in {
+    int_file = "FCIDUMP",
+    nel = 24,
+    ms = 0,
+    sym = "aufbau",
+    CAS = {8,8},
+    complex = true,
+}
+
+
+hdf5_name = write_read_in_system {
+    sys = sys,
+}
+
+sys:free()
+
+sys = read_in {
+    int_file = hdf5_name,
+    sym = 1,
+    complex = true,
+}
+
+fci {
+    sys = sys,
+}

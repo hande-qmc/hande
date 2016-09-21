@@ -14,8 +14,8 @@ contains
         ! Initialise a variable of type basis_fn_t.
         ! In:
         !    sys: system being studied.
-        !    l (optional): quantum numbers of the basis function.  Used only in
-        !        model Hamiltonians.
+        !    l (optional): quantum numbers of the basis function.  Used in
+        !        model Hamiltonians and real periodic systems.
         !        Momentum space formulation:
         !            wavevector in units of the reciprocal lattice vectors of
         !            the crystal cell.
@@ -59,7 +59,7 @@ contains
 
         if (present(l)) then
             b%l = l
-            if (sys%momentum_space) then
+            if (sys%momentum_space .and. .not. sys%system == read_in) then
                 b%sp_eigv = calc_kinetic(sys, l)
             else
                 b%sp_eigv = 0.0_p
@@ -133,26 +133,30 @@ contains
         case(hub_real,heisenberg, chung_landau)
             write (io,'(1X,a63,/)') 'Site positions given in terms of the primitive lattice vectors.'
             write (io,'(1X,a5,3X,a4,3X)', advance='no') 'index','site'
-        case(hub_k,ueg)
-            write (io,'(1X,a78)') 'k-points given in terms of the reciprocal lattice vectors of the crystal cell.'
-            if (any(abs(sys%k_lattice%ktwist) > 0.0_p)) then
-                write (io,'(1X,a26)', advance='no') 'Applying a twist angle of:'
-                write (io,'(1X,"(",f6.4)', advance='no') sys%k_lattice%ktwist(1)
-                do i = 2, sys%lattice%ndim
-                    write (io,'(",",f6.4)', advance='no') sys%k_lattice%ktwist(i)
-                end do
-                write (io,'(").")')
+        case(hub_k,ueg,read_in)
+            if (sys%momentum_space) then
+                write (io,'(1X,a78)') 'k-points given in terms of the reciprocal lattice vectors of the crystal cell.'
+                if (sys%system /= read_in) then
+                    if (any(abs(sys%k_lattice%ktwist) > 0.0_p)) then
+                        write (io,'(1X,a26)', advance='no') 'Applying a twist angle of:'
+                        write (io,'(1X,"(",f6.4)', advance='no') sys%k_lattice%ktwist(1)
+                        do i = 2, sys%lattice%ndim
+                            write (io,'(",",f6.4)', advance='no') sys%k_lattice%ktwist(i)
+                        end do
+                        write (io,'(").")')
+                    end if
+                end if
+                write (io,'()')
+                write (io,'(1X,a5,3X,a7)', advance='no') 'index','k-point'
+            else
+                write (io,'(/,1X,a5,2X,a7,1X,a8,1X,a9,1X,a2,5X)', advance='no') 'index','spatial','symmetry','sym_index','lz'
             end if
-            write (io,'()')
-            write (io,'(1X,a5,3X,a7)', advance='no') 'index','k-point'
-        case(read_in)
-            write (io,'(/,1X,a5,2X,a7,1X,a8,1X,a9,1X,a2,5X)', advance='no') 'index','spatial','symmetry','sym_index','lz'
         case(ringium)
             write (io,'(1X,a25,/)') 'Lz given in units of 1/2.'
             write (io,'(1X,a5,4x,a2,4x)', advance='no') 'index', 'lz'
         end select
 
-        if (sys%system /= read_in) then
+        if (sys%system /= read_in .or. sys%momentum_space) then
             do i = 1, sys%lattice%ndim
                 write (io,'(4X)', advance='no')
             end do
@@ -223,7 +227,7 @@ contains
             if (ind >= 0) write (6,'(1X,i5,2X)',advance='no') ind
         end if
 
-        if (sys%system == read_in) then
+        if (sys%system == read_in .and. .not. sys%momentum_space) then
             write (io, '(i5,3(3X,i5),1X)',advance='no') b%spatial_index, b%sym, b%sym_index,b%lz
         else
             write (io,'(1X,"(")', advance='no')

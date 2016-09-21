@@ -1,14 +1,12 @@
 module momentum_symmetry
 
-! Module for handling crystal momentum symmetry.
+! Module for handling model system crystal momentum symmetry.
 
-! NOTE:
-! Currently implemented assuming that there is one band per k-point (as in the
-! Hubbard model or UEG, for instance).  Generalising to multiple bands would be
-! relatively straightforward.
-
-! Stored symmetry information *only* for the Hubbard model.  UEG symmetry is
+! Stored symmetry information for the Hubbard model (and non-model periodic) systems.  UEG symmetry is
 ! done on the fly due to the size of the basis---see ueg module.
+
+! Momentum symmetry for non-model periodic systems is implemented within read_in_symmetry.f90 and
+! momentum_sym_read_in.f90.
 
 use system
 
@@ -34,7 +32,7 @@ contains
 
         type(sys_t), intent(inout) :: sys
 
-        integer :: i, j, k, ierr
+        integer :: i, j, k, ierr, a(3)
         integer :: ksum(sys%lattice%ndim)
         character(4) :: fmt1
 
@@ -65,7 +63,8 @@ contains
             do i = 1, sys%nsym
                 if (all(sys%basis%basis_fns(i*2)%l == 0)) sys%hubbard%mom_sym%gamma_sym = i
             end do
-            if (sys%hubbard%mom_sym%gamma_sym == 0) call stop_all('init_momentum_symmetry', 'Gamma-point symmetry not found.')
+            if (sys%hubbard%mom_sym%gamma_sym == 0) call stop_all('init_momentum_symmetry', 'Gamma-point symmetry not found.' &
+                      //'Kpoint meshes not containing the gamma point are not currently supported.')
             if (sys%tot_sym) sys%symmetry = sys%hubbard%mom_sym%gamma_sym
 
             do i = 1, sys%nsym
@@ -141,31 +140,6 @@ contains
         end select
 
     end subroutine init_momentum_symmetry
-
-    subroutine end_momentum_symmetry(sys)
-
-        ! Clean up after symmetry.
-
-        ! In/Out:
-        !   sys: system being studied.  Symmetry information deallocated on exit
-
-        use checking, only: check_deallocate
-        use system, only: sys_t
-
-        type(sys_t), intent(inout) :: sys
-
-        integer :: ierr
-
-        if (allocated(sys%hubbard%mom_sym%sym_table)) then
-            deallocate(sys%hubbard%mom_sym%sym_table, stat=ierr)
-            call check_deallocate('sym_table',ierr)
-        end if
-        if (allocated(sys%hubbard%mom_sym%inv_sym)) then
-            deallocate(sys%hubbard%mom_sym%inv_sym, stat=ierr)
-            call check_deallocate('inv_sym',ierr)
-        end if
-
-    end subroutine end_momentum_symmetry
 
     elemental function cross_product_k(sys, s1, s2) result(prod)
 

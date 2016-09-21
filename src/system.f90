@@ -287,12 +287,40 @@ type sys_read_in_t
     ! Is system complex?
     logical :: comp = .false.
 
+    ! Data about momentum/translational symmetry. Some momentum symmetry
+    ! information is also stored within pg_sym to avoid duplication of
+    ! data strunctures.
+    type(mom_sym_t) :: mom_sym
+
     ! Size above which to use custom MPI type for broadcasting integer arrays.
     ! This is needed if size of array exceeds values that can be stored in a
     ! 32 bit integer.
     integer :: max_broadcast_chunk = (2_int_64**31)-1_int_64
 
+    ! Pointers to symmetry-specific functions (pg_sym or mom_sym):
+    ! 1) Cross product.
+    procedure(i_cross_product_sym), pointer, nopass :: cross_product_sym_ptr => null()
+    ! 2) Symmetry conjugate.
+    procedure(i_sym_conj), pointer, nopass :: sym_conj_ptr => null()
+
 end type sys_read_in_t
+
+! Interfaces for pointers to symmetry-specific functions within sys_read_in_t.
+abstract interface
+    pure function i_cross_product_sym(read_in, sym_i, sym_j) result (sym_ij)
+        import :: sys_read_in_t
+        type(sys_read_in_t), intent(in) :: read_in
+        integer, intent(in) :: sym_i, sym_j
+        integer :: sym_ij
+    end function i_cross_product_sym
+    pure function i_sym_conj(read_in, sym) result (rsym)
+        import :: sys_read_in_t
+        type(sys_read_in_t), intent(in) :: read_in
+        integer, intent(in) :: sym
+        integer :: rsym
+    end function i_sym_conj
+end interface
+
 
 type sys_ringium_t
 
@@ -366,7 +394,7 @@ type sys_t
     integer :: sym0_tot = 1
     integer :: sym_max_tot
 
-    ! System uses Bloch states for basis functions (i.e. hub_k and UEG)?
+    ! System uses Bloch states for basis functions (i.e. hub_k, UEG and periodic read_in)?
     logical :: momentum_space = .false.
 
     ! Complete active space of basis.  Valid only in systems where the

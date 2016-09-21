@@ -375,7 +375,7 @@ contains
         ! Check input options.
         if (parent) then
             restarting = present(qmc_state_restart) .or. restart_in%read_restart
-            call check_qmc_opts(qmc_in, .not.present(qmc_state_restart), restarting)
+            call check_qmc_opts(qmc_in, sys, .not.present(qmc_state_restart), restarting)
             call check_ccmc_opts(sys, ccmc_in)
         end if
 
@@ -2414,7 +2414,7 @@ contains
                                  calc_pgen_single_mol, calc_pgen_double_mol
         use excit_gen_ueg, only: calc_pgen_ueg_no_renorm
         use excit_gen_ringium, only: calc_pgen_ringium
-        use point_group_symmetry, only: cross_product_pg_basis, pg_sym_conj
+        use read_in_symmetry, only: cross_product_basis_read_in
         use determinants, only: det_info_t
         use qmc_data, only: excit_gen_no_renorm
         use excit_gens, only: excit_gen_data_t
@@ -2446,8 +2446,8 @@ contains
                                                                                 parent_det%occ_list, parent_det%symunocc, a)
                     else
                         spin = sys%basis%basis_fns(a)%ms + sys%basis%basis_fns(b)%ms
-                        ij_sym = pg_sym_conj(sys%read_in%pg_sym, &
-                                             cross_product_pg_basis(sys%read_in%pg_sym, a, b, sys%basis%basis_fns))
+                        ij_sym = sys%read_in%sym_conj_ptr(sys%read_in, &
+                                    cross_product_basis_read_in(sys, a, b))
                         pgen = excit_gen_data%pattempt_double * calc_pgen_double_mol(sys, ij_sym, a, b, spin, parent_det%symunocc)
                     end if
                 end if

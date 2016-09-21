@@ -33,6 +33,7 @@ module hdf5_system
     !   sym0_tot
     !   sym_max_tot
     !   CAS
+    !   momentum_space
     !
     !   basis/
     !       nbasis
@@ -45,6 +46,7 @@ module hdf5_system
     !       basis_ms
     !       basis_lz
     !       basis_sp_eigv
+    !       basis_l_numbers
     !
     !   read_in/
     !       fcidump     (string)
@@ -53,6 +55,7 @@ module hdf5_system
     !       uselz       (bool)
     !       comp        (bool)
     !       pg_mask     (int)
+    !       nprop     (int)
 
     !       integrals/                  # See write_1body_integrals/
     !                                   # write_coulomb_integrals for storage
@@ -99,6 +102,7 @@ module hdf5_system
                                 dsym0_tot = 'sym0_tot',         &
                                 dsym_max_tot = 'sym_max_tot',   &
                                 dcas = 'CAS',                   &
+                                dmom_space = 'momentum_space',  &
 
                                 dfcidump = 'fcidump',           &
                                 duhf = 'uhf',                   &
@@ -123,7 +127,9 @@ module hdf5_system
                                 dbasis_ms = 'basis_ms',         &
                                 dbasis_lz = 'basis_lz',         &
                                 dbasis_sp_eigv = 'basis_sp_eigv',&
-                                dpg_mask = 'pg_mask'
+                                dbasis_l_numbers = 'basis_l_numbers',   &
+                                dpg_mask = 'pg_mask',           &
+                                dnprop = 'nprop'
 
     contains
 
@@ -245,6 +251,7 @@ module hdf5_system
             use const
             use errors, only: stop_all, warning
             use system, only: sys_t
+            use checking, only: check_allocate, check_deallocate
 
             type(sys_t), intent(in) :: sys
             character(255), intent(inout) :: filename
@@ -253,7 +260,8 @@ module hdf5_system
 
             integer :: date_time(8)
             character(19) :: date_str
-            integer :: ierr
+            integer :: ierr, ibasis, il
+            integer, allocatable :: lscratch(:,:)
 
             ! HDF5 kinds
             type(hdf5_kinds_t) :: kinds
@@ -297,6 +305,8 @@ module hdf5_system
 
             call hdf5_write(group_id, dcas, kinds, [2_int_64], sys%CAS)
 
+            call hdf5_write(group_id, dmom_space, sys%momentum_space)
+
                 ! --- basis subgroup ---
                 call h5gcreate_f(group_id, gbasis, subgroup_id, ierr)
 
@@ -312,10 +322,25 @@ module hdf5_system
                                 [int(nbasis, kind=int_64)],  sys%basis%basis_fns(:)%sym_spin_index)
                     call hdf5_write(subgroup_id, dbasis_ms, kinds, [int(nbasis, kind=int_64)],&
                                 sys%basis%basis_fns(:)%ms)
-                    call hdf5_write(subgroup_id, dbasis_lz, kinds, [int(nbasis, kind=int_64)],&
+                    call hdf5_write(subgroup_id, dbasis_lz, kinds, [int(nbasis, kind=int_64)], &
                                 sys%basis%basis_fns(:)%lz)
                     call hdf5_write(subgroup_id, dbasis_sp_eigv, kinds, [int(nbasis, kind=int_64)],&
                                 sys%basis%basis_fns(:)%sp_eigv)
+
+                    if (sys%momentum_space) then
+                        allocate(lscratch(1:nbasis, 1:3), stat=ierr)
+                        call check_allocate('lscratch', nbasis*3, ierr)
+
+                        do ibasis = 1, nbasis
+                            do il = 1, 3
+                                lscratch(ibasis, il) = sys%basis%basis_fns(ibasis)%l(il)
+                            end do
+                        end do
+
+                        call hdf5_write(subgroup_id, dbasis_l_numbers, kinds, [int(nbasis, kind=int_64), 3_int_64], lscratch)
+                        deallocate(lscratch, stat=ierr)
+                        call check_deallocate('lscratch', ierr)
+                    end if
 
                 end associate
 
@@ -331,8 +356,13 @@ module hdf5_system
                 call hdf5_write(subgroup_id, duselz, sys%read_in%uselz)
                 call hdf5_write(subgroup_id, dcomp, sys%read_in%comp)
 
-                ! Need to pass this value to be able to reinitiate symmetry
-                call hdf5_write(subgroup_id, dpg_mask, sys%read_in%pg_sym%pg_mask)
+                ! Need to pass this values to be able to reinitiate symmetry
+                if (sys%momentum_space) then
+                    call hdf5_write(subgroup_id, dnprop, kinds, [3_int_64], &
+                                                sys%read_in%mom_sym%nprop)
+                else
+                    call hdf5_write(subgroup_id, dpg_mask, sys%read_in%pg_sym%pg_mask)
+                end if
 
                     ! --- integrals subsubgroup ---
                     ! Write each spin/sym block separately, use interface functions for
@@ -384,7 +414,7 @@ module hdf5_system
             use const
             use errors, only: stop_all, warning
             use system, only: sys_t
-            use point_group_symmetry, only: init_pg_symmetry, print_pg_symmetry_info
+            use point_group_symmetry, only: init_pg_symmetry
             use checking, only: check_allocate, check_deallocate
             use basis, only: write_basis_fn_header, write_basis_fn, write_basis_fn_title
             use basis_types, only: init_basis_strings, print_basis_metadata
@@ -392,6 +422,7 @@ module hdf5_system
             use excitations, only: init_excitations
             use read_in_system, only: read_in_one_body
             use molecular_integrals, only: init_one_body_t, init_two_body_t, broadcast_one_body_t, broadcast_two_body_t
+            use momentum_sym_read_in, only: init_read_in_momentum_symmetry
 
             type(sys_t), intent(inout) :: sys
             logical, optional, intent(in) :: verbose
@@ -409,9 +440,9 @@ module hdf5_system
             ! reading reals.
             real(p) :: ecore(1)
 
-            integer :: i, nel, ms
+            integer :: i, nel, ms, ibasis
             logical :: verbose_t
-            integer, allocatable :: sp_fcidump_rank(:)
+            integer, allocatable :: sp_fcidump_rank(:), lscratch(:,:)
 
             verbose_t = .true.
             if (present(verbose)) verbose_t = verbose
@@ -448,6 +479,8 @@ module hdf5_system
 
                 call hdf5_read(group_id, dnel, nel)
                 call hdf5_read(group_id, dms, ms)
+
+                call hdf5_read(group_id, dmom_space, sys%momentum_space)
 
                 if ((sys%nel == 0) .and. sys%Ms == huge(1)) then
                     sys%nel = nel
@@ -491,6 +524,15 @@ module hdf5_system
                                     sys%basis%basis_fns(:)%lz)
                         call hdf5_read(subgroup_id, dbasis_sp_eigv, kinds, [int(nbasis, kind=int_64)],&
                                     sys%basis%basis_fns(:)%sp_eigv)
+
+                        if (sys%momentum_space) then
+                            allocate(lscratch(nbasis, 3), stat=ierr)
+                            call check_allocate('lscratch', nbasis*3, ierr)
+
+                            call hdf5_read(subgroup_id, dbasis_l_numbers, kinds, [int(nbasis, kind=int_64), &
+                                        3_int_64], lscratch)
+
+                        end if
                     end associate
 
                 call h5gclose_f(subgroup_id, ierr)
@@ -517,9 +559,15 @@ module hdf5_system
                     sys%read_in%Ecore = ecore(1)
                     call hdf5_read(subgroup_id, duselz, sys%read_in%uselz)
                     call hdf5_read(subgroup_id, dcomp, sys%read_in%comp)
-                    ! All the symmetry information we need to initiate.
-                    call hdf5_read(subgroup_id, dpg_mask, sys%read_in%pg_sym%pg_mask)
-
+                    ! All the symmetry information we need to initiate either:
+                    if (sys%momentum_space) then
+                        ! a) momentum symmetry.
+                        call hdf5_read(subgroup_id, dnprop, kinds, [3_int_64],&
+                                    sys%read_in%mom_sym%nprop)
+                    else
+                        ! b) pg symmetry.
+                        call hdf5_read(subgroup_id, dpg_mask, sys%read_in%pg_sym%pg_mask)
+                    end if
                 call h5gclose_f(subgroup_id, ierr)
                 call h5gclose_f(group_id, ierr)
             end if
@@ -532,13 +580,23 @@ module hdf5_system
             call MPI_BCast(sys%read_in%uhf, 1, MPI_LOGICAL, root, MPI_COMM_WORLD, ierr)
             call MPI_BCast(sys%basis%nbasis, 1, MPI_INTEGER, root, MPI_COMM_WORLD, ierr)
             call MPI_BCast(sys%CAS, 2, MPI_INTEGER, root, MPI_COMM_WORLD, ierr)
+            call MPI_BCast(sys%momentum_space, 1, MPI_LOGICAL, root, MPI_COMM_WORLD, ierr)
             ! Broadcast symmetry values.
-            call MPI_BCast(sys%read_in%pg_sym%pg_mask, 1, MPI_INTEGER, root, MPI_COMM_WORLD, ierr)
+            if (sys%momentum_space) then
+                call MPI_BCast(sys%read_in%mom_sym%nprop, 3, MPI_INTEGER, root, MPI_COMM_WORLD, ierr)
+            else
+                call MPI_BCast(sys%read_in%pg_sym%pg_mask, 1, MPI_INTEGER, root, MPI_COMM_WORLD, ierr)
+            end if
+
             ! Allocate basis on non-parent processors.
             if (.not. parent) then
-                    allocate(sys%basis%basis_fns(sys%basis%nbasis),  stat = ierr)
-                    call check_allocate('sys%basis%basis_fns', sys%basis%nbasis, ierr)
-                    sys%nvirt = sys%basis%nbasis - sys%nel
+                allocate(sys%basis%basis_fns(sys%basis%nbasis),  stat = ierr)
+                call check_allocate('sys%basis%basis_fns', sys%basis%nbasis, ierr)
+                sys%nvirt = sys%basis%nbasis - sys%nel
+                if (sys%momentum_space) then
+                    allocate(lscratch(sys%basis%nbasis, 3), stat=ierr)
+                    call check_allocate('lscratch', sys%basis%nbasis*3, ierr)
+                end if
             end if
             ! Broadcast basis.
             associate(nbasis=>sys%basis%nbasis)
@@ -549,6 +607,22 @@ module hdf5_system
                 call MPI_BCast(sys%basis%basis_fns(:)%ms, nbasis, MPI_INTEGER, root, MPI_COMM_WORLD, ierr)
                 call MPI_BCast(sys%basis%basis_fns(:)%lz, nbasis, MPI_INTEGER, root, MPI_COMM_WORLD, ierr)
                 call MPI_BCast(sys%basis%basis_fns(:)%sp_eigv, nbasis, MPI_PREAL, root, MPI_COMM_WORLD, ierr)
+                if (sys%momentum_space) then
+                    call MPI_BCast(lscratch, nbasis*3, MPI_INTEGER, root, MPI_COMM_WORLD, ierr)
+                    do ibasis = 1, nbasis
+                        allocate(sys%basis%basis_fns(ibasis)%l(1:3), stat=ierr)
+                        call check_allocate('sys%basis%basis_fns(ibasis)%l', 3, ierr)
+                        sys%basis%basis_fns(ibasis)%l(:) = lscratch(ibasis,:)
+                    end do
+                    deallocate(lscratch, stat=ierr)
+                    call check_deallocate('lscratch', ierr)
+                    sys%lattice%ndim = 3
+                else
+                    do ibasis = 1, nbasis
+                        allocate(sys%basis%basis_fns(ibasis)%l(0), stat=ierr)
+                        call check_allocate('sys%basis%basis_fns(ibasis)%l', 0, ierr)
+                    end do
+                end if
             end associate
 
             ! Broadcast read_in parameters.
@@ -563,7 +637,11 @@ module hdf5_system
             call init_basis_strings(sys%basis)
             call init_determinants(sys, sys%nel)
             call init_excitations(sys%basis)
-            call init_pg_symmetry(sys, .true.)
+            if (sys%momentum_space) then
+                call init_read_in_momentum_symmetry(sys)
+            else
+                call init_pg_symmetry(sys, .true.)
+            end if
 
             call init_one_body_t(sys, sys%read_in%pg_sym%gamma_sym, &
                                 .false., sys%read_in%one_e_h_integrals)
@@ -618,7 +696,6 @@ module hdf5_system
                 end if
 
                 call print_basis_metadata(sys%basis, sys%nel, .false.)
-                call print_pg_symmetry_info(sys)
             end if
 
             if (sys%read_in%dipole_int_file /= '') then
@@ -657,7 +734,6 @@ module hdf5_system
             !   dname: name of dataset values will belong to.
             !   kinds: derived tpe containing HDF5 types which correspond to the
             !       non-standard integer and real kinds used in HANDE.
-            !   nbasis_sym_spin: (i,j) gives no. basis functions with spin i, sym j.
             !   integs: integral storage from one_body_t
 
             use hdf5
@@ -744,8 +820,6 @@ module hdf5_system
             character(155) :: dentr_name
 
             do ispin = lbound(store%integrals, dim=1), ubound(store%integrals, dim=1)
-                ! Workaround behaviour of lbound/ubound on allocatable arrays
-                ! (sometimes 0-indexed, sometimes not)
                 do isym = lbound(store%integrals, dim=2), ubound(store%integrals, dim=2)
                    call get_onebody_name(dname, ispin, isym, dentr_name)
                     s = shape(store%integrals(ispin, isym)%v, kind=int_64)

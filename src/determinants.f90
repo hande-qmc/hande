@@ -358,6 +358,7 @@ contains
         call decode_det(sys%basis, f, d%occ_list)
 
         d%symunocc = sys%read_in%pg_sym%nbasis_sym_spin
+
         do i = 1, sys%nel
             associate(orb=>d%occ_list(i))
                 ims = (sys%basis%basis_fns(orb)%ms+3)/2

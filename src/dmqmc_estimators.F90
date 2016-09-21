@@ -1496,6 +1496,7 @@ contains
         use proc_pointers, only: update_proj_energy_ptr
         use hamiltonian, only: hmatel_t
         use qmc_data, only: estimators_t
+        use const, only: i0
 
         type(sys_t), intent(in) :: sys
         integer(i0), intent(in) :: f(:)

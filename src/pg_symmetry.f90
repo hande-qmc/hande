@@ -1,6 +1,7 @@
 module point_group_symmetry
 
-! Module for handling point group symmetry, as read in from FCIDUMP files.
+! Module for handling point group symmetry, as read in from molecular FCIDUMP
+! files.
 
 ! This was made much easier thanks to conversations with Alex Thom...
 
@@ -11,7 +12,9 @@ module point_group_symmetry
 ! Tinkham.
 
 ! It is best to avoid directly handling the symmetry yourself and instead use the
-! functions in this module, in case L_z symmetry is being used.
+! functions in this module, read_in_symmetry.f90 or more generally pointers within
+! sys%read_in. This enables flexibility in case L_z symmetry or translational
+! symmetry is being used.
 
 ! Point group symmetry
 ! --------------------
@@ -220,37 +223,10 @@ contains
             sys%read_in%pg_sym%sym_spin_basis_fns(ind, ims, sys%basis%basis_fns(i)%sym) = i
         end do
 
+        sys%read_in%cross_product_sym_ptr => cross_product_pg_sym
+        sys%read_in%sym_conj_ptr => pg_sym_conj
+
     end subroutine init_pg_symmetry
-
-    subroutine end_pg_symmetry(sys)
-
-        ! Deallocate arrays containing point group symmetry information.
-        
-        ! In/Out:
-        !    sys: system being studied.  On output the symmetry arrays are deallocated.
-
-        use checking, only: check_deallocate
-
-        use system, only: sys_t
-
-        type(sys_t), intent(inout) :: sys
-
-        integer :: ierr
-
-        if (allocated(sys%read_in%pg_sym%nbasis_sym)) then
-            deallocate(sys%read_in%pg_sym%nbasis_sym, stat=ierr)
-            call check_deallocate('sys%read_in%pg_sym%nbasis_sym', ierr)
-        end if
-        if (allocated(sys%read_in%pg_sym%nbasis_sym_spin)) then
-            deallocate(sys%read_in%pg_sym%nbasis_sym_spin, stat=ierr)
-            call check_deallocate('sys%read_in%pg_sym%nbasis_sym_spin', ierr)
-        end if
-        if (allocated(sys%read_in%pg_sym%sym_spin_basis_fns)) then
-            deallocate(sys%read_in%pg_sym%sym_spin_basis_fns, stat=ierr)
-            call check_deallocate('sys%read_in%pg_sym%sym_spin_basis_fns', ierr)
-        end if
-
-    end subroutine end_pg_symmetry
 
     subroutine print_pg_symmetry_info(sys)
 
@@ -286,7 +262,7 @@ contains
             ! Note that we never actually store this.
             do i = sys%sym0, sys%sym_max
                 do j = sys%sym0, sys%sym_max
-                    sym=cross_product_pg_sym(sys%read_in%pg_sym,i,j)
+                    sym=cross_product_pg_sym(sys%read_in,i,j)
                     if (sym>=sys%sym0_tot.and.sym<sys%nsym_tot) then
                         write (6,'(1X,i2)',advance='no') sym
                     else
@@ -311,75 +287,54 @@ contains
 
     end subroutine print_pg_symmetry_info
 
-    pure function cross_product_pg_basis(pg_sym, i, j, basis_fns) result(sym_ij)
+    pure function cross_product_pg_sym(read_in, sym_i, sym_j) result(sym_ij)
 
         ! In:
-        !    pg_sym: information on the symmetries of the basis functions.
-        !    i,j: (indices of) spin-orbitals.
-        ! Returns:
-        !    The bit string representation of the irreducible representation
-        !    formed from the direct product i%sym \cross j%sym, where i%sym is
-        !    the irreducible representation spanned by the i-th spin-orbital
-        !    which can also potentially include an Lz symmetry.
-
-        use basis_types, only: basis_fn_t
-        use symmetry_types, only: pg_sym_t
-
-        integer :: sym_ij
-        type(pg_sym_t), intent(in) :: pg_sym
-        integer, intent(in) :: i, j
-        type(basis_fn_t), intent(in) :: basis_fns(:)
-
-        sym_ij = cross_product_pg_sym(pg_sym, basis_fns(i)%sym, basis_fns(j)%sym)
-
-    end function cross_product_pg_basis
-
-    elemental function cross_product_pg_sym(pg_sym, sym_i, sym_j) result(sym_ij)
-
-        ! In:
-        !    pg_sym: information on the symmetries of the basis functions.
+        !    read_in: information on the symmetries of the basis functions.
         !    sym_i,sym_j: bit string representations of irreducible
-        !    representations of a point group and Lz symmetry
+        !                 representations of a point group and Lz symmetry
         ! Returns:
         !    The bit string representation of the irreducible representation
         !    formed from the direct product sym_i \cross sym_j.
         !    The Lz part of the symmetry is split off and handled separately from the
         !    rest, and then reintegrated.
 
-        use symmetry_types, only: pg_sym_t
+        use system, only: sys_read_in_t
 
         integer :: sym_ij
         integer, intent(in) :: sym_i, sym_j
-        type(pg_sym_t), intent(in) :: pg_sym
+        type(sys_read_in_t), intent(in) :: read_in
 
         ! The pg part can be done with an exclusive or. To save on operations, we mask after that.
         ! The Lz is just additive (though we need to extract it and remember to remove an offset).
-        sym_ij = ior(iand(ieor(sym_i, sym_j),pg_sym%pg_mask), &
-                iand(sym_i,pg_sym%Lz_mask)+iand(sym_j,pg_sym%Lz_mask)-pg_sym%Lz_offset)
+        associate(pg_sym=>read_in%pg_sym)
+            sym_ij = ior(iand(ieor(sym_i, sym_j),pg_sym%pg_mask), &
+                    iand(sym_i,pg_sym%Lz_mask)+iand(sym_j,pg_sym%Lz_mask)-pg_sym%Lz_offset)
+        end associate
 
     end function cross_product_pg_sym
 
-
-    elemental function pg_sym_conj(pg_sym, sym) result(rsym)
+    pure function pg_sym_conj(read_in, sym) result(rsym)
 
         ! In:
-        !    pg_sym: information on the symmetries of the basis functions.
+        !   read_in: information on the symmetries of the basis functions.
         !   sym: the bit representation of the irrep of the pg sym including
         !        Lz in its higher bits 
         ! Returns:
         !   The symmetry conjugate of the symmetry. For pg symmetry this is the same as
         !   it's Abelian, but we need to take Lz to -Lz here.
 
-        use symmetry_types, only: pg_sym_t
+        use system, only: sys_read_in_t
 
-        type(pg_sym_t), intent(in) :: pg_sym
+        type(sys_read_in_t), intent(in) :: read_in
         integer, intent(in) :: sym
         integer :: rsym
 
         ! Take the symmetry conjugate.  The point group part is the same.
         ! The Lz needs to become -Lz but also dealing with the offsetting.
-        rsym  = ior(iand(sym,pg_sym%pg_mask), &
-                iand(2*pg_sym%Lz_offset-iand(sym,pg_sym%Lz_mask),pg_sym%Lz_mask))
+        rsym  = ior(iand(sym,read_in%pg_sym%pg_mask), &
+                iand(2*read_in%pg_sym%Lz_offset-iand(sym,read_in%pg_sym%Lz_mask), &
+                read_in%pg_sym%Lz_mask))
 
     end function pg_sym_conj
 
@@ -400,71 +355,5 @@ contains
         Lz = (iand(sym,pg_sym%Lz_mask)-pg_sym%Lz_offset)/pg_sym%Lz_divisor
 
     end function pg_sym_getLz
-
-    elemental function is_basis_pg_sym(sys,sym) result(valid)
-        
-        ! In:
-        !    sys: system being studied
-        !    sym: bit string representation of an irreducible representation of
-        !    a point group.
-        !
-        ! Returns:
-        !   True if sym could have been one of the basis function symmetries
-        !   False otherwise
-
-        use system, only: sys_t
-        logical :: valid
-        type(sys_t), intent(in) :: sys
-        integer, intent(in) :: sym
-        valid = sym>=sys%sym0 .and. sym<=sys%sym_max
-
-    end function is_basis_pg_sym 
-
-    elemental function is_gamma_irrep_pg_sym(pg_sym, sym) result(is_gamma)
-
-        ! In:
-        !    pg_sym: information on the symmetries of the basis functions.
-        !    sym: bit string representation of an irreducible representation of
-        !    a point group.
-        ! Returns:
-        !    True if sym represents the Gamma_1 (totally symmetric) irreducible
-        !    representation.
-
-        use symmetry_types, only: pg_sym_t
-
-        logical :: is_gamma
-        type(pg_sym_t), intent(in) :: pg_sym
-        integer, intent(in) :: sym
-
-        is_gamma = pg_sym%gamma_sym == sym
-
-    end function is_gamma_irrep_pg_sym
-
-    pure function symmetry_orb_list_mol(pg_sym, basis, orb_list) result(isym)
-
-        ! In:
-        !    pg_sym: information on the symmetries of the basis functions.
-        !    basis: info about the single particle basis set.
-        !    orb_list: list of orbitals (e.g. determinant).
-        ! Returns:
-        !    symmetry index of list (i.e. direct product of the representations
-        !    of all the orbitals in the list).
-
-        use basis_types, only: basis_t
-        use symmetry_types, only: pg_sym_t
-
-        integer :: isym
-        type(pg_sym_t), intent(in) :: pg_sym
-        type(basis_t), intent(in) :: basis
-        integer, intent(in) :: orb_list(:)
-
-        integer :: i
-
-        isym = pg_sym%gamma_sym
-        do i = lbound(orb_list, dim=1), ubound(orb_list, dim=1)
-            isym = cross_product_pg_sym(pg_sym, isym, basis%basis_fns(orb_list(i))%sym)
-        end do
-
-    end function symmetry_orb_list_mol
 
 end module point_group_symmetry

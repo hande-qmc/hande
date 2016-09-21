@@ -88,14 +88,10 @@ all integral values.
     If not provided in FCIDUMP assume no :math:`L_z` symmetry in system.
 
 ``NPROP``
-    Currently unused.  Defined solely for compatibility with NECI
-    FCIDUMP files. Dimensions of the supercell used in translationally
-    symmetric systems.
+    Dimensions of the supercell used in translationally symmetric systems.
 
 ``PROPBITLEN``
-    Currently unused.  Defined solely for compatibility with NECI
-    FCIDUMP files. Length in bits of each kpoint index dimension in
-    translationally symmetric systems.
+    Length in bits of each kpoint index dimension in translationally symmetric systems.
 
 Integrals
 ^^^^^^^^^
@@ -156,3 +152,7 @@ symmetry (i.e. set all orbitals to be totally symmetric).
 .. warning::
 
     Note that this has memory implications for the integral storage.
+
+For periodic systems symmetries are defined by their kpoint vector.
+ORBSYM(i) contains this vector in a format defined by PROPBITLEN,
+which is decoded within HANDE.

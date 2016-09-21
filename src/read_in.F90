@@ -31,8 +31,9 @@ contains
         use basis, only: write_basis_fn, write_basis_fn_header, write_basis_fn_title
         use basis_types, only: basis_fn_t, dealloc_basis_fn_t_array
         use molecular_integrals
-        use point_group_symmetry, only: init_pg_symmetry, cross_product_pg_sym, &
-                                        is_gamma_irrep_pg_sym, pg_sym_conj
+        use point_group_symmetry, only: init_pg_symmetry
+        use read_in_symmetry, only: is_gamma_irrep_read_in
+        use momentum_sym_read_in, only: init_read_in_momentum_symmetry
         use system, only: sys_t
 
         use checking, only: check_allocate, check_deallocate
@@ -47,14 +48,16 @@ contains
         logical, intent(in), optional :: store_info, verbose
 
         logical :: t_store, t_verbose
+        integer :: cas(2)
+        logical :: momentum_sym
 
         ! System data
         ! We don't know how many orbitals we have until we read in the FCI
         ! namelist, so have to hardcode the array sizes.
         ! It's reasonably safe to assume that we'll never use more than 1000
         ! orbitals!
-        integer :: norb, nelec, ms2, orbsym(1000), isym, syml(1000), symlz(1000), nprop(3), propbitlen
-
+        integer :: norb, nelec, ms2,  isym, syml(1000), symlz(1000), nprop(3), propbitlen
+        integer(int_64) :: orbsym(1000)
         ! all basis functions, including inactive ones.
         type(basis_fn_t), allocatable :: all_basis_fns(:)
 
@@ -90,6 +93,9 @@ contains
         ! Set orbsym to be zero to ensure sensible behaviour if no symmetry
         ! information is provided in FCIDUMP.
         orbsym(:) = 0
+        ! Set variables for translational symmetry to easily-detectable values.
+        nprop = [-1, -1, -1]
+        propbitlen = -1
 
         t_store = .true.
         if (present(store_info)) t_store = store_info
@@ -112,7 +118,7 @@ contains
         !  * MS2: spin polarisation.
         !       Must be provided either in FCIDUMP or input file.
         !  * ORBSYM: array containing symmetry label of each orbital.  See
-        !    symmetry notes below and in pg_symmetry.
+        !    symmetry notes below and in pg_symmetry/momentum_sym_read_in.
         !       If not provided in FCIDUMP assume no symmetry in system.
         !  * UHF: true if FCIDUMP file was produced from an unrestricted
         !    Hartree-Fock calculation.  See note on basis indices below.
@@ -129,9 +135,9 @@ contains
         !       If not provided in FCIDUMP assume no symmetry in system.
         !  * SYMLZ:  Array containing Lz (angular momentum along the z-axis) for each orbital.
         !    For example d_xz would have L=2 and Lz=1, and dyz L=2, Lz=-1.
-        !  * NPROP: Dimensions of the supercell used in translationally symmetric systems.
-        !  * PROPBITLEN: Length in bits of each kpoint index in reciprocal space in
-        !    translationally symmetric systems. Translational symmetry not yet implemented.
+        !  * NPROP: Dimensions of supercell used in translationally symmetric systems.
+        !  * PROPBITLEN: Length in bits of each property in translationally symmetric
+        !    systems.
         ! Integrals:
         !  * if i = j = a = b = 0, E_core = x , where E_core contains the
         !    nuclear-nuclear and other non-electron contributions to the
@@ -169,6 +175,10 @@ contains
         ! irreducible representation spanned by the i-th orbital.
         ! See notes in pg_symmetry about the symmetry label for Abelian point
         ! groups.
+        !
+        ! For periodic systems basis symmetries are defined by their kpoint
+        ! vector. This is converted into a single index within the space of
+        ! allowed kpoints, and this index used during calculations.
 
         ! Only do i/o on root processor.
         if (parent) then
@@ -178,12 +188,15 @@ contains
                                                                &exist:'//trim(sys%read_in%fcidump))
             open (ir, file=sys%read_in%fcidump, status='old', form='formatted')
 
+            ! If FCIDUMP doesn't contain uhf data, can end up accessing uninitalised value for uhf.
+            uhf = .false.
             ! read system data
             read (ir, FCI)
             sys%read_in%uhf = uhf
             if (norb == 0) call stop_all('read_in_integrals', &
                 'norb not provided in FCIDUMP header.')
-
+            if (norb > 1000) call stop_all('read_in_integrals', &
+                'norb > 1000. Please increase hard-coded limits within read_in.F90!')
         end if
 
 #ifdef PARALLEL
@@ -191,11 +204,13 @@ contains
         call MPI_BCast(norb, 1, MPI_INTEGER, root, MPI_COMM_WORLD, ierr)
         call MPI_BCast(nelec, 1, MPI_INTEGER, root, MPI_COMM_WORLD, ierr)
         call MPI_BCast(ms2, 1, MPI_INTEGER, root, MPI_COMM_WORLD, ierr)
-        call MPI_BCast(orbsym, 1000, MPI_INTEGER, root, MPI_COMM_WORLD, ierr)
+        call MPI_BCast(orbsym, 1000, MPI_INTEGER8, root, MPI_COMM_WORLD, ierr)
         call MPI_BCast(isym, 1, MPI_INTEGER, root, MPI_COMM_WORLD, ierr)
         call MPI_BCast(sys%read_in%uhf, 1, MPI_LOGICAL, root, MPI_COMM_WORLD, ierr)
         call MPI_BCast(syml, 1000, MPI_INTEGER, root, MPI_COMM_WORLD, ierr)
         call MPI_BCast(symlz, 1000, MPI_INTEGER, root, MPI_COMM_WORLD, ierr)
+        call MPI_BCast(propbitlen, 1, MPI_INTEGER, root, MPI_COMM_WORLD, ierr)
+        call MPI_BCast(nprop, 3, MPI_INTEGER, root, MPI_COMM_WORLD, ierr)
 #endif
 
         ! NOTE: nbasis is currently the number of spin-orbitals in the FCIDUMP file.
@@ -254,6 +269,24 @@ contains
                 call stop_all('read_in_integrals', 'CAS cannot have more active basis functions than in the system')
             end if
         end if
+
+        ! Determine if appropriate information is available to use translational symmetry
+        momentum_sym = sum(abs(nprop - [-1, -1, -1])) >= depsilon .and. propbitlen /= -1
+        if (momentum_sym .and. sys%read_in%comp) then
+            ! If system isn't complex but contains symmetry information, must have real supercell with
+            ! single kpoint. In this case using momentum symmetry or pg symmetry will make no difference,
+            ! so we use pg_sym for easy compatibility with conventional routines.
+            sys%lattice%ndim = 3
+            sys%momentum_space = .true.
+            sys%read_in%mom_sym%nprop = nprop
+            sys%read_in%mom_sym%propbitlen = propbitlen
+            sys%read_in%uhf = .false.
+            if (minval(orbsym(1:norb)) < 0) then
+                if (parent) write (6,'(1X,a62,/)') 'Unconverged symmetry found.  Turning translational symmetry off.'
+                orbsym(:) = 0_int_64
+            end if
+        end if
+        ! Set system properties required later
 
         ! Read in FCIDUMP file to get single-particle eigenvalues.
         allocate(sp_eigv(norb), stat=ierr)
@@ -347,25 +380,28 @@ contains
 
         ! Was a symmetry found for all basis functions?  If not, then we must
         ! turn symmetry off.
-        if (minval(sys%basis%basis_fns(:)%sym) < 0) then
+        if (.not. momentum_sym .and. minval(sys%basis%basis_fns(:)%sym) < 0) then
             if (parent) write (6,'(1X,a62,/)') 'Unconverged symmetry found.  Turning point group symmetry off.'
             forall (i=1:sys%basis%nbasis) sys%basis%basis_fns(i)%sym = 0
         end if
 
         ! Set up symmetry information.
-        if (t_store) call init_pg_symmetry(sys)
-
-        ! Initialise integral stores.
         if (t_store) then
-            call init_one_body_t(sys, sys%read_in%pg_sym%gamma_sym, &
-                                 .false., sys%read_in%one_e_h_integrals)
-            call init_two_body_t(sys, sys%read_in%pg_sym%gamma_sym, &
-                                 .false., sys%read_in%coulomb_integrals)
+            if (momentum_sym) then
+                call init_read_in_momentum_symmetry(sys)
+            else
+                call init_pg_symmetry(sys)
+            end if
+        end if
+        ! Initialise integral stores.
+        ! If using momentum symmetry don't use value of op_sym currently, so can set to read_in value (which
+        ! will be default value) even if not valid in system.
+        if (t_store) then
+            call init_one_body_t(sys, sys%read_in%pg_sym%gamma_sym, .false., sys%read_in%one_e_h_integrals)
+            call init_two_body_t(sys, sys%read_in%pg_sym%gamma_sym, .false., sys%read_in%coulomb_integrals)
             if (sys%read_in%comp) then
-                call init_one_body_t(sys, sys%read_in%pg_sym%gamma_sym, &
-                    .true., sys%read_in%one_e_h_integrals_imag)
-                call init_two_body_t(sys, sys%read_in%pg_sym%gamma_sym,&
-                                 .true., sys%read_in%coulomb_integrals_imag)
+                call init_one_body_t(sys, sys%read_in%pg_sym%gamma_sym, .true., sys%read_in%one_e_h_integrals_imag)
+                call init_two_body_t(sys, sys%read_in%pg_sym%gamma_sym, .true., sys%read_in%coulomb_integrals_imag)
             end if
         end if
 
@@ -524,16 +560,16 @@ contains
                                 end if
                             else if (all( (/ ii, aa /) > 0)) then
                                 if (.not.seen_iha(tri_ind_reorder(ii,aa))) then
-                                    x = x + get_one_body_int_mol(sys%read_in%one_e_h_integrals, ii, aa, &
-                                                                 sys%basis%basis_fns, sys%read_in%pg_sym)
-                                    call store_one_body_int_mol(ii, aa, x, sys%basis%basis_fns, sys%read_in%pg_sym, &
-                                                                int_err > max_err_msg, sys%read_in%one_e_h_integrals, ierr)
+                                    x = x + get_one_body_int_mol_real(sys%read_in%one_e_h_integrals, ii, aa, &
+                                                                 sys)
+                                    call store_one_body_int(ii, aa, x, sys, int_err > max_err_msg, &
+                                                            sys%read_in%one_e_h_integrals, ierr)
                                     int_err = int_err + ierr
                                     if (sys%read_in%comp) then
-                                        y = y + get_one_body_int_mol(sys%read_in%one_e_h_integrals_imag, ii, aa, &
-                                                                     sys%basis%basis_fns, sys%read_in%pg_sym)
-                                        call store_one_body_int_mol(ii, aa, y, sys%basis%basis_fns, sys%read_in%pg_sym, &
-                                                                    int_err > max_err_msg, sys%read_in%one_e_h_integrals_imag, ierr)
+                                        y = y + get_one_body_int_mol_real(sys%read_in%one_e_h_integrals_imag, ii, aa, &
+                                                                     sys)
+                                        call store_one_body_int(ii, aa, y, sys, int_err > max_err_msg, &
+                                                                sys%read_in%one_e_h_integrals_imag, ierr)
                                         int_err = int_err + ierr
                                     end if
 
@@ -629,18 +665,16 @@ contains
                                         if (mod(seen_iaib(core(1), tri_ind_reorder(active(1),active(2))),2) == 0) then
                                             ! Update <a|h|b> with contribution <ia|ib>.
                                             x = x*rhf_fac + &
-                                                get_one_body_int_mol(sys%read_in%one_e_h_integrals, active(1), &
-                                                                     active(2), sys%basis%basis_fns, sys%read_in%pg_sym)
-                                            call store_one_body_int_mol(active(1), active(2), x, sys%basis%basis_fns, &
-                                                                        sys%read_in%pg_sym, int_err > max_err_msg, &
+                                                get_one_body_int_mol_real(sys%read_in%one_e_h_integrals, active(1), &
+                                                                     active(2), sys)
+                                            call store_one_body_int(active(1), active(2), x, sys, int_err > max_err_msg, &
                                                                         sys%read_in%one_e_h_integrals, ierr)
                                             int_err = int_err + ierr
                                             if (sys%read_in%comp) then
                                                 y = y*rhf_fac + &
-                                                    get_one_body_int_mol(sys%read_in%one_e_h_integrals_imag, active(1), &
-                                                                         active(2), sys%basis%basis_fns, sys%read_in%pg_sym)
-                                                call store_one_body_int_mol(active(1), active(2), y, sys%basis%basis_fns, &
-                                                                            sys%read_in%pg_sym, int_err > max_err_msg, &
+                                                    get_one_body_int_mol_real(sys%read_in%one_e_h_integrals_imag, active(1), &
+                                                                         active(2), sys)
+                                                call store_one_body_int(active(1), active(2), y, sys, int_err > max_err_msg, &
                                                                             sys%read_in%one_e_h_integrals_imag, ierr)
                                                 int_err = int_err + ierr
                                             end if
@@ -659,24 +693,23 @@ contains
                                         ! of core(1) == core(2) after the inital if statement. As such if real automatically
                                         ! accept.
                                         if (seen_iaib(core(1), tri_ind_reorder(active(1),active(2))) < 2 .and. &
-                                            is_gamma_irrep_pg_sym(sys%read_in%pg_sym, &
-                                                cross_product_pg_sym(sys%read_in%pg_sym, &
-                                                            pg_sym_conj(sys%read_in%pg_sym, sys%basis%basis_fns(active(1))%sym), &
+                                            is_gamma_irrep_read_in(sys%read_in%pg_sym, &
+                                                sys%read_in%cross_product_sym_ptr(sys%read_in, &
+                                                            sys%read_in%sym_conj_ptr(sys%read_in, &
+                                                            sys%basis%basis_fns(active(1))%sym), &
                                                             sys%basis%basis_fns(active(2))%sym))) then
                                             ! Update <j|h|a> with contribution <ij|ai>.
-                                            x = get_one_body_int_mol(sys%read_in%one_e_h_integrals, active(1), active(2), &
-                                                                     sys%basis%basis_fns, sys%read_in%pg_sym)  - x
-                                            call store_one_body_int_mol(active(1), active(2), x, sys%basis%basis_fns, &
-                                                                        sys%read_in%pg_sym, int_err > max_err_msg, &
+                                            x = get_one_body_int_mol_real(sys%read_in%one_e_h_integrals, active(1), active(2), &
+                                                                     sys)  - x
+                                            call store_one_body_int(active(1), active(2), x, sys, int_err > max_err_msg, &
                                                                         sys%read_in%one_e_h_integrals, ierr)
                                             int_err = int_err + ierr
                                             if (sys%read_in%comp) then
                                                 ! Possible sign change due to ordering of active(1) & active(2) accounted for in get_one_body...
                                                 ! and store_one_body... function ordering adjustments.
-                                                y = get_one_body_int_mol(sys%read_in%one_e_h_integrals_imag, active(1), active(2), &
-                                                                         sys%basis%basis_fns, sys%read_in%pg_sym)  - y
-                                                call store_one_body_int_mol(active(1), active(2), y, sys%basis%basis_fns, &
-                                                                            sys%read_in%pg_sym, int_err > max_err_msg, &
+                                                y = get_one_body_int_mol_real(sys%read_in%one_e_h_integrals_imag, active(1), &
+                                                                        active(2), sys)  - y
+                                                call store_one_body_int(active(1), active(2), y, sys, int_err > max_err_msg, &
                                                                             sys%read_in%one_e_h_integrals_imag, ierr)
                                                 int_err = int_err + ierr
                                             end if
@@ -687,12 +720,12 @@ contains
                                 end if
                             case(4)
                                 ! Have <ij|ab> involving active orbitals.
-                                call store_two_body_int_mol(ii, jj, aa, bb, x, sys%basis%basis_fns, sys%read_in%pg_sym, &
-                                                            int_err > max_err_msg, sys%read_in%coulomb_integrals, ierr)
+                                call store_two_body_int(ii, jj, aa, bb, x, sys, int_err > max_err_msg, &
+                                                        sys%read_in%coulomb_integrals, ierr)
                                 int_err = int_err + ierr
                                 if (sys%read_in%comp) then
-                                    call store_two_body_int_mol(ii, jj, aa, bb, y, sys%basis%basis_fns, sys%read_in%pg_sym, &
-                                                            int_err > max_err_msg, sys%read_in%coulomb_integrals_imag, ierr)
+                                    call store_two_body_int(ii, jj, aa, bb, y, sys, int_err > max_err_msg, &
+                                                sys%read_in%coulomb_integrals_imag, ierr)
                                     int_err = int_err + ierr
                                 end if
                             end select
@@ -806,35 +839,58 @@ contains
         !    allocated to (at least) the size of the basis.  On exit the
         !    individual basis_fn_t elements have been initialised and symmetry and
         !    spatial_index information assigned.
+        !    If we have momentum symmetry, will have assigned l values rather than
+        !    sym.
 
         use basis, only: basis_fn_t, init_basis_fn
         use system, only: sys_t
+        use const, only: int_32, int_64
+        use momentum_sym_read_in, only: decompose_trans_sym, get_kpoint_index
 
         type(sys_t), intent(in) :: sys
         integer, intent(in) :: norb
-        integer, intent(in) :: orbsym(:)
+        integer(int_64), intent(in) :: orbsym(:)
         integer, intent(in) :: lz(:)
         real(p), intent(in) :: sp_eigv(:)
         integer, intent(in) :: sp_eigv_rank(:)
         type(basis_fn_t), intent(inout) :: basis_arr(:)
 
-        integer :: i, rank
+        integer :: i, rank, kpoint_vector(3), ksym_index
 
         do i = 1, norb
             rank = sp_eigv_rank(i)
             if (sys%read_in%uhf) then
-                if (mod(i,2) == 0) then
-                    call init_basis_fn(sys, basis_arr(i), sym=orbsym(rank)-1, lz=lz(rank), ms=-1)
+                if (sys%momentum_space) then
+                    call decompose_trans_sym(orbsym(rank), sys%read_in%mom_sym%propbitlen, kpoint_vector)
+                    ksym_index = get_kpoint_index(kpoint_vector, sys%read_in%mom_sym%nprop)
+                    if (mod(i,2) == 0) then
+                        call init_basis_fn(sys, basis_arr(i), l=kpoint_vector, lz=lz(rank), sym=ksym_index, ms=-1)
+                    else
+                        call init_basis_fn(sys, basis_arr(i), l=kpoint_vector, lz=lz(rank), sym=ksym_index, ms=1)
+                    end if
+
                 else
-                    call init_basis_fn(sys, basis_arr(i), sym=orbsym(rank)-1, lz=lz(rank), ms=1)
+                    if (mod(i,2) == 0) then
+                        call init_basis_fn(sys, basis_arr(i), sym=int(orbsym(rank)-1, kind=int_32), lz=lz(rank), ms=-1)
+                    else
+                        call init_basis_fn(sys, basis_arr(i), sym=int(orbsym(rank)-1, kind=int_32), lz=lz(rank), ms=1)
+                    end if
                 end if
                 ! Assume orbitals are ordered appropriately in FCIDUMP...
                 basis_arr(i)%spatial_index = (i+1)/2
                 basis_arr(i)%sp_eigv = sp_eigv(rank)
             else
                 ! Need to initialise both up- and down-spin basis functions.
-                call init_basis_fn(sys, basis_arr(2*i), sym=orbsym(rank)-1, lz=lz(rank), ms=-1)
-                call init_basis_fn(sys, basis_arr(2*i-1), sym=orbsym(rank)-1, lz=lz(rank), ms=1)
+                ! If we have translational symmetry to account for want to have different basis function info.
+                if (sys%momentum_space) then
+                    call decompose_trans_sym(orbsym(rank), sys%read_in%mom_sym%propbitlen, kpoint_vector)
+                    ksym_index = get_kpoint_index(kpoint_vector, sys%read_in%mom_sym%nprop)
+                    call init_basis_fn(sys, basis_arr(2*i), l=kpoint_vector, lz=lz(rank), sym=ksym_index, ms=-1)
+                    call init_basis_fn(sys, basis_arr(2*i-1), l=kpoint_vector, lz=lz(rank), sym=ksym_index, ms=1)
+                else
+                    call init_basis_fn(sys, basis_arr(2*i), sym=int(orbsym(rank)-1, kind=int_32), lz=lz(rank), ms=-1)
+                    call init_basis_fn(sys, basis_arr(2*i-1), sym=int(orbsym(rank)-1, kind=int_32), lz=lz(rank), ms=1)
+                end if
                 basis_arr(2*i-1)%spatial_index = i
                 basis_arr(2*i)%spatial_index = i
                 basis_arr(2*i-1)%sp_eigv = sp_eigv(rank)
@@ -879,10 +935,10 @@ contains
         !         frozen core orbitals and the nucleii.
 
         use basis_types, only: basis_fn_t
-        use point_group_symmetry, only: cross_product_pg_basis
+        use read_in_symmetry, only: cross_product_basis_read_in
         use symmetry_types, only: pg_sym_t
         use molecular_integrals, only: one_body_t, init_one_body_t,              &
-                                       end_one_body_t, store_one_body_int_mol, &
+                                       end_one_body_t, store_one_body_int, &
                                        zero_one_body_int_store, broadcast_one_body_t
 
         use errors, only: stop_all
@@ -937,7 +993,7 @@ contains
             end do
             ! We only use Abelian symmetries so all representations are their own
             ! inverse.
-            op_sym = cross_product_pg_basis(sys%read_in%pg_sym, ii,aa,sys%basis%basis_fns)
+            op_sym = cross_product_basis_read_in(sys, ii,aa)
         else
             ! We'll broadcast the symmetry and the integrals to all other
             ! processors later.
@@ -994,7 +1050,7 @@ contains
                 else if (ii < 1 .and. ii == aa) then
                     core_term = core_term + rhf_fac*x
                 else if (min(ii,aa) >= 1 .and. max(ii,aa) <= sys%basis%nbasis) then
-                    call store_one_body_int_mol(ii, aa, x, sys%basis%basis_fns, sys%read_in%pg_sym, &
+                    call store_one_body_int(ii, aa, x, sys, &
                                             int_err > max_err_msg, store, ierr)
                     int_err = int_err + ierr
                 end if

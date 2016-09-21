@@ -247,7 +247,7 @@ contains
 
         ! Check input options
         restarting = present(qmc_state_restart) .or. restart_in%read_restart
-        call check_qmc_opts(qmc_in, .false., restarting)
+        call check_qmc_opts(qmc_in, sys, .false., restarting)
 
         call init_simple_fciqmc(sys, qmc_in, reference, qs, sparse_hamil, restart_in%read_restart, ndets, dets, ref_det, &
                                 psip_list, spawn, hamil)

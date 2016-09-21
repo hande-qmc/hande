@@ -165,13 +165,13 @@ contains
         !             connected to D by a double excitation.
 
         use system
-        use point_group_symmetry, only: cross_product_pg_basis, cross_product_pg_sym
+        use symmetry, only: cross_product
 
         type(sys_t), intent(in) :: sys
         integer, intent(in) :: occ_list(sys%nel)
         real(p), intent(out) :: psingle, pdouble
 
-        integer :: i, j, virt_syms(2, sys%sym0_tot:sys%sym_max_tot), nsingles, ndoubles, isyma, isymb, ims1, ims2
+        integer :: i, j, virt_syms(2, sys%sym0_tot:sys%sym_max_tot), nsingles, ndoubles, isyma, isymb, ims1, ims2, isym1
 
         select case(sys%system)
         case(hub_k,ueg,ringium)
@@ -202,7 +202,8 @@ contains
                 ! Convert -1->1 and 1->2 for spin index in arrays.
                 ims1 = (sys%basis%basis_fns(occ_list(i))%ms+3)/2
                 ! Can't excite into already occupied orbitals.
-                nsingles = nsingles + virt_syms(ims1,sys%basis%basis_fns(occ_list(i))%sym)
+                isym1 = sys%basis%basis_fns(occ_list(i))%sym
+                nsingles = nsingles + virt_syms(ims1,isym1)
             end do
 
             ! Count number of possible double excitations from the supplied
@@ -217,8 +218,16 @@ contains
                     do isyma = sys%sym0, sys%sym_max
                         ! Symmetry of the final orbital is determined (for Abelian
                         ! symmetries) from the symmetry of the first three.
-                        isymb = cross_product_pg_sym(sys%read_in%pg_sym, isyma, &
-                                        cross_product_pg_basis(sys%read_in%pg_sym, occ_list(i),occ_list(j), sys%basis%basis_fns))
+                        isymb = cross_product(sys, &
+                                        sys%basis%basis_fns(occ_list(i))%sym, &
+                                        sys%basis%basis_fns(occ_list(j))%sym)
+                        if (sys%momentum_space) then
+                            ! For momentum symmetry need to take care as symmetries are not self-inverse.
+                            isymb = cross_product(sys, sys%read_in%mom_sym%inv_sym(isyma), isymb)
+                        else
+                            isymb = cross_product(sys, isyma, isymb)
+                        end if
+
                         if (isyma == isymb) then
                             if (ims1 == ims2) then
                                 ! Cannot excit_t 2 electrons into the same spin-orbital.

@@ -67,6 +67,9 @@ contains
             call warning(this, 'Not using default max_broadcast_chunk. This option is only intended for testing of &
                 &broadcasting functionality and gives no benefit to functionality.')
 
+        if (sys%read_in%comp .and. sys%read_in%uhf) call warning(this, &
+                            'UHF translational symmetry currently untested. Use with caution!')
+
     end subroutine check_sys
 
     subroutine check_fciqmc_opts(sys, fciqmc_in)
@@ -106,7 +109,7 @@ contains
 
     end subroutine check_fciqmc_opts
 
-    subroutine check_qmc_opts(qmc_in, need_length, restarting)
+    subroutine check_qmc_opts(qmc_in, sys, need_length, restarting)
 
         ! Check options common to QMC methods.
 
@@ -118,11 +121,14 @@ contains
 
         use qmc_data, only: qmc_in_t
         use errors, only: stop_all
+        use system, only: sys_t
 
         type(qmc_in_t), intent(in) :: qmc_in
+        type(sys_t), intent(in) :: sys
         logical, intent(in) :: need_length, restarting
 
         character(*), parameter :: this = 'check_qmc_opts'
+
 
         if (qmc_in%tau <= 0) call stop_all(this,'Tau must be positive.')
         if (qmc_in%shift_damping <= 0) call stop_all(this,'Shift damping must be positive.')
@@ -135,6 +141,9 @@ contains
         if (.not. restarting) then
             if (qmc_in%D0_population <= 0) call stop_all(this, 'Initial population must be positive.')
         end if
+
+        if (sys%read_in%comp .and. qmc_in%quasi_newton) call stop_all(this, 'Quasi-Newton not currently &
+            &compatible with complex systems.')
 
     end subroutine check_qmc_opts
 

@@ -499,7 +499,6 @@ contains
         use qmc_data, only: qmc_state_t
         use system, only: sys_t, read_in
         use proc_pointers, only: gen_excit_ptr_t
-        use excit_gen_mol_complex
         use dSFMT_interface, only: dSFMT_t
 
         use errors, only: stop_all
@@ -522,10 +521,7 @@ contains
         type(hmatel_t) :: hmatel
 
         ! 1. Generate random excitation.
-        if (sys%system/=read_in) then
-            call stop_all('spawn_complex', 'Attempting to use complex spawning in non-read_in system. Not currently implemented.')
-        end if
-        call gen_excit_mol_complex(rng, sys, qmc_state%excit_gen_data, cdet, pgen, connection, hmatel, allowed)
+        call gen_excit_ptr%full(rng, sys, qmc_state%excit_gen_data, cdet, pgen, connection, hmatel, allowed)
 
         if (allowed) then
            hmatel%r = hmatel%r * calc_qn_spawned_weighting(sys, qmc_state, cdet%fock_sum, connection)

@@ -174,7 +174,22 @@ abstract interface
         type(excit_t), intent(in) :: connection
         real(p) :: opmatel
     end function i_operator
-
+    pure function i_slater_condon1_excit(sys, occ_list, i, a, perm) result (hmatel)
+        use hamiltonian_data, only: hmatel_t
+        use system, only: sys_t
+        type(sys_t), intent(in) :: sys
+        integer, intent(in) :: occ_list(sys%nel), i, a
+        logical, intent(in) :: perm
+        type(hmatel_t) :: hmatel
+    end function i_slater_condon1_excit
+    pure function i_slater_condon2_excit(sys, i, j, a, b, perm) result (hmatel)
+        use hamiltonian_data, only: hmatel_t
+        use system, only: sys_t
+        type(sys_t), intent(in) :: sys
+        integer, intent(in) :: i, j, a, b
+        logical, intent(in) :: perm
+        type(hmatel_t) :: hmatel
+    end function i_slater_condon2_excit
     ! generic procedures...
     subroutine i_sub()
     end subroutine i_sub
@@ -204,6 +219,9 @@ procedure(i_sub), pointer :: dmqmc_initial_distribution_ptr => null()
 
 procedure(i_create_spawned_particle), pointer :: create_spawned_particle_ptr => null()
 procedure(i_create_spawned_particle_dm), pointer :: create_spawned_particle_dm_ptr => null()
+
+procedure(i_slater_condon1_excit), pointer :: slater_condon1_excit_ptr
+procedure(i_slater_condon2_excit), pointer :: slater_condon2_excit_ptr
 
 ! Single structure for all types of excitation generator so we can use the same
 ! interface for spawning routines which use different types of generator.

@@ -89,7 +89,7 @@ contains
         !  -If use array of allocatable length, redefine existing for minimally
         !   useful changes (haven't got complex behaviour/arithmetic).
 
-        use hamiltonian_molecular_complex, only: get_hmatel_mol_comp
+        use hamiltonian_periodic_complex, only: get_hmatel_periodic_complex
         use system
 
         type(hmatel_t) :: hmatel
@@ -99,7 +99,7 @@ contains
 
         select case(sys%system)
         case(read_in)
-            hmatel = get_hmatel_mol_comp(sys, f1, f2)
+            hmatel = get_hmatel_periodic_complex(sys, f1, f2)
         end select
 
     end function get_hmatel_complex

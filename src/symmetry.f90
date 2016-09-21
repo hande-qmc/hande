@@ -24,7 +24,7 @@ contains
         !    of all the orbitals in the list).
 
         use momentum_symmetry, only: symmetry_orb_list_hub_k, symmetry_orb_list_ueg
-        use point_group_symmetry, only: symmetry_orb_list_mol
+        use read_in_symmetry, only: symmetry_orb_list_read_in
         use system
 
         integer :: isym
@@ -37,7 +37,7 @@ contains
         case(ueg)
             isym = symmetry_orb_list_ueg(sys, orb_list)
         case(read_in)
-            isym = symmetry_orb_list_mol(sys%read_in%pg_sym, sys%basis, orb_list)
+            isym = symmetry_orb_list_read_in(sys%read_in, sys%basis, orb_list)
         case default
             ! symmetry not implemented
             isym = sys%sym0
@@ -55,6 +55,7 @@ contains
 
         use point_group_symmetry, only: cross_product_pg_sym
         use momentum_symmetry, only: cross_product_hub_k, cross_product_ueg
+        use momentum_sym_read_in, only: cross_product_periodic_read_in
         use system
 
         integer :: prod
@@ -67,7 +68,7 @@ contains
         case(ueg)
             prod = cross_product_ueg(sys, s1, s2)
         case(read_in)
-            prod = cross_product_pg_sym(sys%read_in%pg_sym, s1, s2)
+            prod = sys%read_in%cross_product_sym_ptr(sys%read_in, s1, s2)
         case default
             ! symmetry not implemented
             prod = sys%sym0
