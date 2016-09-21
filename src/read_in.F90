@@ -48,7 +48,6 @@ contains
         logical, intent(in), optional :: store_info, verbose
 
         logical :: t_store, t_verbose
-        integer :: cas(2)
         logical :: momentum_sym
 
         ! System data

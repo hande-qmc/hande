@@ -72,7 +72,6 @@ contains
         !    sys: system to be studied.  On output the symmetry components are set.
 
         use system, only: sys_t
-        use parallel, only: parent
         use checking, only: check_allocate
         use errors, only: stop_all
 
@@ -80,7 +79,6 @@ contains
 
         integer :: i, j, k, ierr, a(3)
         integer :: ksum(sys%lattice%ndim)
-        character(4) :: fmt1
 
         ! Use 1-index in common with model periodic systems.
         sys%sym0 = 1
