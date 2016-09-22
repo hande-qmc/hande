@@ -9,9 +9,11 @@ implicit none
 
 private
 public :: write_qmc_report_header, write_qmc_report, write_dmqmc_report_header, write_dmqmc_report
+public :: write_qmc_var
 
 interface write_qmc_var
-    module procedure :: write_qmc_var_int
+    module procedure :: write_qmc_var_int_32
+    module procedure :: write_qmc_var_int_64
     module procedure :: write_qmc_var_real_sp
     module procedure :: write_qmc_var_real_dp
 end interface
@@ -486,12 +488,25 @@ contains
     !    val: value to print out.
     !    low_prec (optional, real values only, default false): only write 4 decimal places instead of 10.
 
-    subroutine write_qmc_var_int(io, val)
+    subroutine write_qmc_var_int_32(io, val)
 
-        integer, intent(in) :: io, val
+        use const, only: int_32
+
+        integer, intent(in) :: io
+        integer(int_32), intent(in) :: val
         write (io, '(i14,2X)', advance='no') val
 
-    end subroutine write_qmc_var_int
+    end subroutine write_qmc_var_int_32
+
+    subroutine write_qmc_var_int_64(io, val)
+
+        use const, only: int_64
+
+        integer, intent(in) :: io
+        integer(int_64), intent(in) :: val
+        write (io, '(i14,2X)', advance='no') val
+
+    end subroutine write_qmc_var_int_64
 
     subroutine write_qmc_var_real_sp(io, val, low_prec)
 
