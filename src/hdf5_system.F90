@@ -609,19 +609,6 @@ module hdf5_system
                 call MPI_BCast(sys%basis%basis_fns(:)%sp_eigv, nbasis, MPI_PREAL, root, MPI_COMM_WORLD, ierr)
                 if (sys%momentum_space) then
                     call MPI_BCast(lscratch, nbasis*3, MPI_INTEGER, root, MPI_COMM_WORLD, ierr)
-                    do ibasis = 1, nbasis
-                        allocate(sys%basis%basis_fns(ibasis)%l(1:3), stat=ierr)
-                        call check_allocate('sys%basis%basis_fns(ibasis)%l', 3, ierr)
-                        sys%basis%basis_fns(ibasis)%l(:) = lscratch(ibasis,:)
-                    end do
-                    deallocate(lscratch, stat=ierr)
-                    call check_deallocate('lscratch', ierr)
-                    sys%lattice%ndim = 3
-                else
-                    do ibasis = 1, nbasis
-                        allocate(sys%basis%basis_fns(ibasis)%l(0), stat=ierr)
-                        call check_allocate('sys%basis%basis_fns(ibasis)%l', 0, ierr)
-                    end do
                 end if
             end associate
 
@@ -630,6 +617,22 @@ module hdf5_system
             call MPI_BCast(sys%read_in%uselz, 1, MPI_LOGICAL, root, MPI_COMM_WORLD, ierr)
             call MPI_BCast(sys%read_in%comp, 1, MPI_LOGICAL, root, MPI_COMM_WORLD, ierr)
 #endif
+            if (sys%momentum_space) then
+                do ibasis = 1, sys%basis%nbasis
+                    allocate(sys%basis%basis_fns(ibasis)%l(3), stat=ierr)
+                    call check_allocate('sys%basis%basis_fns(ibasis)%l', 3, ierr)
+                    sys%basis%basis_fns(ibasis)%l = lscratch(ibasis,:)
+                end do
+                deallocate(lscratch, stat=ierr)
+                call check_deallocate('lscratch', ierr)
+                sys%lattice%ndim = 3
+            else
+                do ibasis = 1, sys%basis%nbasis
+                    allocate(sys%basis%basis_fns(ibasis)%l(0), stat=ierr)
+                    call check_allocate('sys%basis%basis_fns(ibasis)%l', 0, ierr)
+                end do
+            end if
+
             ! Initialise various system parameters on all nodes simultaneously.
             ! Do system initialisation that hasn't been read in, hopefully
             ! in same order as in conventional initialisation. Also write
