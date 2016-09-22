@@ -9,45 +9,6 @@ implicit none
 
 contains
 
-! [review] - JSS: rdm_ind and orbs_from_index overlap with (e.g.) choose_ij_k.
-! [review] - JSS: Perhaps suitable to be moved into utils?
-
-    pure function rdm_ind(p, q)
-
-        ! We require p<q and r<s for \Gamma_pqrs so can use a rank two array
-        ! for the 2-RDM to save a factor of 4 in storage.
-
-        ! In:
-        !   p, q: orbital indices
-        ! Returns:
-        !   Composite index for the RDM
-
-        integer, intent(in) :: p, q
-        integer :: rdm_ind
-
-        ! The same indexing is used as in choose_ij_k
-
-        rdm_ind = (q-1)*(q-2)/2 + p
-
-    end function rdm_ind
-
-    pure subroutine orbs_from_index(ind, p, q)
-
-        ! Does the reverse of rdm_ind - gets a pair of orbitals from a single index
-
-        ! In:
-        !    ind: index to the RDM
-        ! Out:
-        !    p, q: orbitals, with p<q
-
-        integer, intent(in) :: ind
-        integer, intent(out) :: p, q
-
-        q = int(1.50 + sqrt(2*ind-1.750))
-        p = ind - ((q-1)*(q-2))/2
-
-    end subroutine orbs_from_index
-
     pure subroutine update_rdm(sys, det1, det2, pop1, pop2, prob, rdm)
 
         ! Add contribution from a pair of determinants to the 2-RDM
@@ -63,6 +24,7 @@ contains
         use system, only: sys_t
         use excitations, only: excit_t, get_excitation
         use determinants, only: det_info_t
+        use utils, only: tri_ind_distinct_reorder
 
         type(sys_t), intent(in) :: sys
         type(det_info_t), intent(in) :: det1, det2
@@ -83,7 +45,7 @@ contains
             ! Diagonal elements.
             do i = 1, sys%nel
                 do j = i+1, sys%nel
-                    associate(ind => rdm_ind(det1%occ_list(i), det1%occ_list(j)))
+                    associate(ind => tri_ind_distinct_reorder(det1%occ_list(i), det1%occ_list(j)))
                         rdm(ind,ind) = rdm(ind,ind) + matel
                     end associate
                 end do
@@ -97,20 +59,22 @@ contains
                     ! [review] - JSS: not sure if that would be faster though...
                     ! [reply] - RSTF: p and q are not ordered though.
                     if (orb<p .and. orb<q) then
-                        rdm(rdm_ind(orb,p),rdm_ind(orb,q)) = rdm(rdm_ind(orb,p),rdm_ind(orb,q)) + matel
-                    else if (orb<p .and. orb>q) then
-                        rdm(rdm_ind(orb,p),rdm_ind(q,orb)) = rdm(rdm_ind(orb,p),rdm_ind(q,orb)) - matel
-                    else if (orb>p .and. orb<q) then
-                        rdm(rdm_ind(p,orb),rdm_ind(orb,q)) = rdm(rdm_ind(p,orb),rdm_ind(orb,q)) - matel
+                        rdm(tri_ind_distinct_reorder(orb,p),tri_ind_distinct_reorder(orb,q)) = &
+                            rdm(tri_ind_distinct_reorder(orb,p),tri_ind_distinct_reorder(orb,q)) + matel
+                    else if (orb>p .and. orb>q) then
+                        rdm(tri_ind_distinct_reorder(orb,p),tri_ind_distinct_reorder(q,orb)) = &
+                            rdm(tri_ind_distinct_reorder(orb,p),tri_ind_distinct_reorder(q,orb)) + matel
                     else
-                        rdm(rdm_ind(p,orb),rdm_ind(q,orb)) = rdm(rdm_ind(p,orb),rdm_ind(q,orb)) + matel
+                        rdm(tri_ind_distinct_reorder(p,orb),tri_ind_distinct_reorder(orb,q)) = &
+                            rdm(tri_ind_distinct_reorder(p,orb),tri_ind_distinct_reorder(orb,q)) - matel
                     end if
                 end associate
             end do
         case(2)
             ! Double excitation contributes to one term
             associate(p => excit%to_orb(1), q => excit%to_orb(2), r => excit%from_orb(1), s => excit%from_orb(2))
-                rdm(rdm_ind(p,q),rdm_ind(r,s)) = rdm(rdm_ind(p,q),rdm_ind(r,s)) + matel
+                rdm(tri_ind_distinct_reorder(p,q),tri_ind_distinct_reorder(r,s)) = &
+                    rdm(tri_ind_distinct_reorder(p,q),tri_ind_distinct_reorder(r,s)) + matel
             end associate
         end select
 
@@ -153,7 +117,6 @@ contains
         integer :: i,j
         real(p) :: max_abs_error, mean_abs_error, err
 
-
         max_abs_error = 0.0_p
         mean_abs_error = 0.0_p
 
@@ -184,6 +147,7 @@ contains
         use proc_pointers, only: get_one_e_int_ptr, get_two_e_int_ptr
         use system, only: sys_t, read_in
         use qmc_data, only: reference_t
+        use utils, only: orbs_from_index
 
         type(sys_t), intent(in) :: sys
         type(reference_t), intent(in) :: reference
@@ -241,6 +205,7 @@ contains
         !        over all processors
 
         use parallel
+        use utils, only: tri_ind_distinct_reorder
 
         real(p), intent(inout) :: rdm(:,:)
         integer, intent(in) :: nel, nbasis
@@ -268,8 +233,10 @@ contains
                 do j = i+1, nbasis
                     do k = 1, nbasis
                         do l = k+1, nbasis
-                            if (abs(rdm(rdm_ind(i,j),rdm_ind(k,l))) > depsilon) &
-                                write (fileunit, '(4i4,2x,es13.6)') i, j, k, l, rdm(rdm_ind(i,j),rdm_ind(k,l))
+                            if (abs(rdm(tri_ind_distinct_reorder(i,j),tri_ind_distinct_reorder(k,l))) > depsilon) then
+                                write (fileunit, '(4i4,2x,es13.6)') i, j, k, l, &
+                                    rdm(tri_ind_distinct_reorder(i,j),tri_ind_distinct_reorder(k,l))
+                            end if
                         end do
                     end do
                 end do
