@@ -1768,7 +1768,7 @@ contains
 
     end function lua_dealloc_qmc_state
 
-    subroutine read_logging_in_t(lua_state, opts, logging)
+    subroutine read_logging_in_t(lua_state, opts, logging_in)
         ! Read in options associated with the logging table (only for debug builds).
 
         ! logging = {
@@ -1789,7 +1789,7 @@ contains
         type(flu_State), intent(inout) :: lua_state
         integer, intent(in) :: opts
 
-        type(logging_in_t), intent(out) :: logging
+        type(logging_in_t), intent(out) :: logging_in
         integer :: logging_table, err
 
         character(12), parameter :: keys(4) = [character(12) :: 'calc', 'spawn', 'death', 'annihilation']
@@ -1800,13 +1800,17 @@ contains
 
                 call aot_table_open(lua_state, opts, logging_table, 'logging')
 
-                call aot_get_val(logging%calc, err, lua_state, logging_table, 'calc')
+                call aot_get_val(logging_in%calc, err, lua_state, logging_table, 'calc')
 
-                call aot_get_val(logging%spawn, err, lua_state, logging_table, 'spawn')
+                call aot_get_val(logging_in%spawn, err, lua_state, logging_table, 'spawn')
 
-                call aot_get_val(logging%death, err, lua_state, logging_table, 'death')
+                call aot_get_val(logging_in%death, err, lua_state, logging_table, 'death')
 
-                call aot_get_val(logging%annihilation, err, lua_state, logging_table, 'annihilation')
+                call aot_get_val(logging_in%annihilation, err, lua_state, logging_table, 'annihilation')
+
+                call aot_get_val(logging_in%start_iter, err, lua_state, logging_table, 'start')
+
+                call aot_get_val(logging_in%end_iter, err, lua_state, logging_table, 'finish')
 
                 call warn_unused_args(lua_state, keys, logging_table)
                 call aot_table_close(lua_state, logging_table)
