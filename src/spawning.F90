@@ -514,6 +514,7 @@ contains
 
         use errors, only: stop_all
         use hamiltonian_data
+        use logging, only: write_logging_spawn
 
         type(dSFMT_t), intent(inout) :: rng
         type(sys_t), intent(in) :: sys
@@ -528,7 +529,7 @@ contains
         integer(int_p), intent(out) :: nspawn, nspawn_im
         type(excit_t), intent(out) :: connection
 
-        real(p) :: pgen
+        real(p) :: pgen, qn_weight
         logical :: allowed
         type(hmatel_t) :: hmatel
 
@@ -536,12 +537,18 @@ contains
         call gen_excit_ptr%full(rng, sys, qmc_state%excit_gen_data, cdet, pgen, connection, hmatel, allowed)
 
         if (allowed) then
-           hmatel%r = hmatel%r * calc_qn_spawned_weighting(sys, qmc_state, cdet%fock_sum, connection)
+            qn_weight = calc_qn_spawned_weighting(sys, qmc_state, cdet%fock_sum, connection)
+        else
+            qn_weight = 1.0_p
         end if
 
         ! 2. Attempt spawning.
-        nspawn = attempt_to_spawn(rng, qmc_state%tau, spawn_cutoff, real_factor, real(hmatel%c, p), pgen, parent_sign)
-        nspawn_im = attempt_to_spawn(rng, qmc_state%tau, spawn_cutoff, real_factor, aimag(hmatel%c), pgen, parent_sign)
+        nspawn = attempt_to_spawn(rng, qmc_state%tau, spawn_cutoff, real_factor, qn_weight*real(hmatel%c, p), &
+                                    pgen, parent_sign)
+        nspawn_im = attempt_to_spawn(rng, qmc_state%tau, spawn_cutoff, real_factor, qn_weight*aimag(hmatel%c), &
+                                    pgen, parent_sign)
+
+        if (debug) call write_logging_spawn(logging_info, hmatel, pgen, qn_weight, [nspawn, nspawn_im], parent_sign, .true.)
 
     end subroutine spawn_complex
 

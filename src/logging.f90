@@ -274,7 +274,7 @@ contains
             call write_column_title(logging_info%spawn_unit, "# spawn", int_val=.true., justify=1)
             call write_column_title(logging_info%spawn_unit, "# spawn im", int_val=.true., justify=1)
         else
-            call write_column_title(logging_info%spawn_unit, "nspawned", int_val=.true., justify=1)
+            call write_column_title(logging_info%spawn_unit, "# spawn", int_val=.true., justify=1)
         end if
         write (logging_info%spawn_unit,'()')
 

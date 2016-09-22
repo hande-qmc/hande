@@ -1792,7 +1792,8 @@ contains
         type(logging_in_t), intent(out) :: logging_in
         integer :: logging_table, err
 
-        character(12), parameter :: keys(4) = [character(12) :: 'calc', 'spawn', 'death', 'annihilation']
+        character(12), parameter :: keys(6) = [character(12) :: 'calc', 'spawn', 'death', 'annihilation', &
+                                                'start', 'finish']
 
         if (aot_exists(lua_state, opts, 'logging')) then
 
