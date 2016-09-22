@@ -138,7 +138,7 @@ contains
         call init_qmc(sys, qmc_in, restart_in, load_bal_in, reference_in, annihilation_flags, qs, uuid_restart, &
                       fciqmc_in=fciqmc_in, qmc_state_restart=qmc_state_restart)
 
-        if (debug) call init_logging(logging_in, logging_info)
+        if (debug) call init_logging(logging_in, logging_info, sys, qs)
 
         if (parent) then
             call json_object_init(js, tag=.true.)
@@ -218,7 +218,8 @@ contains
 
                 iter = qs%mc_cycles_done + (ireport-1)*qmc_in%ncycles + icycle
 
-                if (debug) call prep_logging_mc_cycle(iter, logging_in, logging_info, ndeath_tot)
+                if (debug) call prep_logging_mc_cycle(iter, logging_in, logging_info, ndeath_tot, qs%quasi_newton, &
+                                                        sys%read_in%comp)
 
                 ! Should we turn semi-stochastic on now?
                 if (iter == semi_stoch_iter .and. semi_stoch_in%space_type /= empty_determ_space) then
@@ -271,7 +272,7 @@ contains
                             ! Attempt to spawn.
                             call spawner_ptr(rng, sys, qs, qs%spawn_store%spawn%cutoff, qs%psip_list%pop_real_factor, &
                                             cdet, qs%psip_list%pops(ispace, idet), gen_excit_ptr, qs%trial%wfn_dat, &
-                                            nspawned, nspawned_im, connection)
+                                            logging_info, nspawned, nspawned_im, connection)
                             if (sys%read_in%comp .and. ispace == 2) then
                                 ! If imaginary parent have to factor into resulting signs/reality.
                                 scratch = nspawned_im
@@ -450,7 +451,7 @@ contains
         use dSFMT_interface, only: dSFMT_t
         use excitations, only: excit_t, get_excitation
         use ifciqmc
-        use qmc_data, only: qmc_in_t, qmc_state_t
+        use qmc_data, only: qmc_in_t, qmc_state_t, logging_t
         use spawn_data, only: spawn_t
         use system, only: sys_t
         use qmc_common, only: decide_nattempts
@@ -472,6 +473,8 @@ contains
         integer(int_p) :: int_pop(spawn_recv%ntypes)
         real(p) :: real_pop(spawn_recv%ntypes)
         real(dp) :: list_pop
+
+        type(logging_t) :: logging_info
 
         allocate(cdet%f(sys%basis%tensor_label_len))
         allocate(cdet%data(1))
@@ -508,7 +511,7 @@ contains
 
                     ! Attempt to spawn.
                     call spawner_ptr(rng, sys, qs, spawn_to_send%cutoff, qs%psip_list%pop_real_factor, cdet, int_pop(ispace), &
-                                     gen_excit_ptr, qs%trial%wfn_dat, nspawned, nspawned_im, connection)
+                                     gen_excit_ptr, qs%trial%wfn_dat, logging_info, nspawned, nspawned_im, connection)
 
                     if (sys%read_in%comp .and. ispace == 2) then
                         ! If imaginary parent have to factor into resulting signs/reality.

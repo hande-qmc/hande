@@ -236,9 +236,9 @@ type(gen_excit_ptr_t) :: gen_excit_ptr, gen_excit_hfs_ptr
 
 abstract interface
     subroutine i_spawner(rng, sys, qmc_state, spawn_cutoff, real_factor, d, parent_sign, gen_excit_ptr, weights, &
-                         nspawned, nspawned_im, connection)
+                         logging_info, nspawned, nspawned_im, connection)
         use dSFMT_interface, only: dSFMT_t
-        use qmc_data, only: qmc_state_t
+        use qmc_data, only: qmc_state_t, logging_t
         use system, only: sys_t
         import :: det_info_t, excit_t, gen_excit_ptr_t, int_p, p, dp
         implicit none
@@ -251,6 +251,7 @@ abstract interface
         integer(int_p), intent(in) :: parent_sign
         type(gen_excit_ptr_t), intent(in) :: gen_excit_ptr
         real(p), allocatable, intent(in) :: weights(:)
+        type(logging_t), intent(in) :: logging_info
         integer(int_p), intent(out) :: nspawned
         integer(int_p), intent(out) :: nspawned_im
         type(excit_t), intent(out) :: connection

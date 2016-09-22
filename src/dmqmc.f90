@@ -53,7 +53,7 @@ contains
         use system
         use dSFMT_interface, only: dSFMT_t, dSFMT_end
         use qmc_data, only: qmc_in_t, restart_in_t, load_bal_in_t, annihilation_flags_t, qmc_state_t, &
-                            qmc_in_t_json, restart_in_t_json, load_bal_in_t_json
+                            qmc_in_t_json, restart_in_t_json, load_bal_in_t_json, logging_t
         use reference_determinant, only: reference_t, reference_t_json
         use dmqmc_data, only: dmqmc_in_t, dmqmc_estimates_t, dmqmc_weighted_sampling_t, dmqmc_in_t_json, ipdmqmc_in_t_json, &
                               rdm_in_t_json, operators_in_t_json, hartree_fock_dm
@@ -103,6 +103,8 @@ contains
         type(dmqmc_in_t) :: dmqmc_in_loc
         character(36) :: uuid_restart
         real(p) :: proj_energy_old
+
+        type(logging_t) :: logging_info
 
         if (parent) then
             write (6,'(1X,"DMQMC")')
@@ -296,7 +298,8 @@ contains
                                     ! Attempt to spawn.
                                     call spawner_ptr(rng, sys, qs, qs%spawn_store%spawn%cutoff, &
                                                      qs%psip_list%pop_real_factor, cdet1, qs%psip_list%pops(ireplica,idet), &
-                                                     gen_excit_ptr, weighted_sampling%probs, nspawned, dummy, connection)
+                                                     gen_excit_ptr, weighted_sampling%probs,logging_info, nspawned, dummy, &
+                                                     connection)
                                     ! Spawn if attempt was successful.
                                     if (nspawned /= 0_int_p) then
                                         call create_spawned_particle_dm_ptr(sys%basis, qs%ref, cdet1, connection, nspawned, &
@@ -310,7 +313,8 @@ contains
                                         spawning_end = 2
                                         call spawner_ptr(rng, sys, qs, qs%spawn_store%spawn%cutoff, &
                                                          qs%psip_list%pop_real_factor, cdet2, qs%psip_list%pops(ireplica,idet), &
-                                                         gen_excit_ptr, weighted_sampling%probs, nspawned, dummy, connection)
+                                                         gen_excit_ptr, weighted_sampling%probs, logging_info, nspawned, dummy, &
+                                                         connection)
                                         if (nspawned /= 0_int_p) then
                                             call create_spawned_particle_dm_ptr(sys%basis, qs%ref, cdet2, connection, nspawned, &
                                                                                 spawning_end, ireplica, qs%spawn_store%spawn)
