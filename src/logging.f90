@@ -137,21 +137,42 @@ contains
 
     end subroutine init_logging_death
 
-    subroutine write_logging_calc_header(logging)
+    subroutine write_logging_calc_header(logging_info)
 
         use calc, only: calc_type, fciqmc_calc, ccmc_calc
         use qmc_data, only: logging_t
+        use qmc_io, only: write_column_title
 
-        type(logging_t), intent(in) :: logging
+        type(logging_t), intent(in) :: logging_info
+
+        write (logging_info%calc_unit, '(1X,"HANDE QMC Calculation Log File")')
+        write (logging_info%calc_unit, '(1X,"==============================")')
 
         select case (calc_type)
         case(fciqmc_calc)
-            write (logging%calc_unit, '(1X,"HANDE QMC Calculation Log File")')
-            write (logging%calc_unit, '(1X,"==============================")')
-            write (logging%calc_unit, '(1X,"Calculation type: FCIQMC")')
-            write (logging%calc_unit, '(1X,"Verbosity Settings:")')
+            write (logging_info%calc_unit, '(1X,"Calculation type: FCIQMC")')
         case(ccmc_calc)
-            write (logging%calc_unit, *) 'dsfgsg'
+            write (logging_info%calc_unit, '(1X,"Calculation type: CCMC")')
+        end select
+
+        write (logging_info%calc_unit, '(1X,"Verbosity Settings:")')
+        write (logging_info%calc_unit, '(1X,10X,"Write Calculation Values:",2X,L)') &
+                        logging_info%write_highlevel_values
+        write (logging_info%calc_unit, '(1X,10X,"Write Calculation Accumulation:",2X,L)') &
+                        logging_info%write_highlevel_calculations
+
+        write (logging_info%calc_unit,'()')
+
+        select case (calc_type)
+        case(fciqmc_calc)
+            call write_column_title(logging_info%calc_unit, "iter", int_val=.true., justify=1)
+            call write_column_title(logging_info%calc_unit, "# spawn events", int_val=.true., justify=1)
+            call write_column_title(logging_info%calc_unit, "# death events", int_val=.true., justify=1)
+            call write_column_title(logging_info%calc_unit, "# attempts", int_val=.true., justify=1)
+            write (logging_info%calc_unit,'()')
+        case(ccmc_calc)
+            write (logging_info%calc_unit,'()')
+
         end select
     end subroutine write_logging_calc_header
 

@@ -9,7 +9,7 @@ implicit none
 
 private
 public :: write_qmc_report_header, write_qmc_report, write_dmqmc_report_header, write_dmqmc_report
-public :: write_qmc_var
+public :: write_qmc_var, write_column_title
 
 interface write_qmc_var
     module procedure :: write_qmc_var_int_32
