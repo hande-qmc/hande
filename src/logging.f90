@@ -5,6 +5,7 @@ module logging
 contains
 
     subroutine init_logging(logging_in, logging)
+
         use qmc_data, only: logging_t, logging_in_t
 
         type(logging_t), intent(inout) :: logging
@@ -17,23 +18,29 @@ contains
 
     end subroutine init_logging
 
-    subroutine prep_logging_mc_cycle(iter, logging_in, logging_info)
+    subroutine prep_logging_mc_cycle(iter, logging_in, logging_info, ndeath_tot)
 
         ! Subroutine to
         !   - check if within the range of iterations where logging is required.
         !   - print updates for iteration number in all active logs.
 
         use qmc_data, only: logging_t, logging_in_t
+        use const, only: int_p
 
         integer, intent(in) :: iter
         type(logging_t), intent(inout) :: logging_info
         type(logging_in_t), intent(in) :: logging_in
+        integer(int_p), intent(inout) :: ndeath_tot
 
+        ! Check if we're within the required range to print logging info.
         logging_info%write_logging = (logging_in%start_iter <= iter .and. &
                                     iter <= logging_in%end_iter)
+        ! Zero total ndeath accumulation
+        ndeath_tot = 0_int_p
+        ndeath_tot_im = 0_int_p
 
         if (logging_info%write_logging) then
-            if (logging_info%calc_unit /= huge(1)) call write_iter_to_log(iter, logging_info%calc_unit)
+            !if (logging_info%calc_unit /= huge(1)) call write_iter_to_log(iter, logging_info%calc_unit)
             if (logging_info%spawn_unit /= huge(1)) call write_iter_to_log(iter, logging_info%spawn_unit)
             if (logging_info%death_unit /= huge(1)) call write_iter_to_log(iter, logging_info%death_unit)
         end if
@@ -41,7 +48,9 @@ contains
     end subroutine prep_logging_mc_cycle
 
     subroutine write_iter_to_log(iter, iunit)
+
         ! Writes iteration number to given io unit for logging.
+
         integer :: iter, iunit
 
         write(iunit, '(1X,20("="))')
@@ -51,6 +60,7 @@ contains
     end subroutine write_iter_to_log
 
     subroutine end_logging(logging_info)
+
         use qmc_data, only: logging_t
 
         type(logging_t), intent(in) :: logging_info
@@ -128,8 +138,10 @@ contains
     end subroutine init_logging_death
 
     subroutine write_logging_calc_header(logging)
+
         use calc, only: calc_type, fciqmc_calc, ccmc_calc
         use qmc_data, only: logging_t
+
         type(logging_t), intent(in) :: logging
 
         select case (calc_type)
@@ -144,8 +156,10 @@ contains
     end subroutine write_logging_calc_header
 
     subroutine write_logging_spawn_header(logging)
+
         use calc, only: calc_type, fciqmc_calc, ccmc_calc
         use qmc_data, only: logging_t
+
         type(logging_t), intent(in) :: logging
 
         select case (calc_type)
@@ -160,8 +174,10 @@ contains
     end subroutine write_logging_spawn_header
 
     subroutine write_logging_death_header(logging)
+
         use calc, only: calc_type, fciqmc_calc, ccmc_calc
         use qmc_data, only: logging_t
+
         type(logging_t), intent(in) :: logging
 
         select case (calc_type)
@@ -174,5 +190,26 @@ contains
             write (logging%death_unit, *) 'dsfgsg'
         end select
     end subroutine write_logging_death_header
+
+    subroutine write_logging_calc_fciqmc(logging_info, iter, nspawn_events, ndeath_events, nattempts)
+
+        use qmc_io, only: write_qmc_var
+        use const, only: int_p, int_64
+        use qmc_data, only: logging_t
+
+        integer, intent(in) :: iter
+        integer(int_p), intent(in) :: nspawn_events, ndeath_events
+        integer(int_64), intent(in) :: nattempts
+        type(logging_t), intent(in) :: logging_info
+
+        if (logging_info%write_logging .and. logging_info%write_highlevel_values) then
+            call write_qmc_var(logging_info%calc_unit, iter)
+            call write_qmc_var(logging_info%calc_unit, nspawn_events)
+            call write_qmc_var(logging_info%calc_unit, ndeath_events)
+            call write_qmc_var(logging_info%calc_unit, nattempts)
+            write (logging_info%calc_unit,'()')
+        end if
+
+    end subroutine write_logging_calc_fciqmc
 
 end module logging

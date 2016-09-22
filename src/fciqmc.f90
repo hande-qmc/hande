@@ -38,6 +38,8 @@ contains
         use checking, only: check_allocate
         use json_out
 
+        use const, only: debug
+
         use bloom_handler, only: init_bloom_stats_t, bloom_mode_fixedn, bloom_stats_warning, &
                                  bloom_stats_t, accumulate_bloom_stats, write_bloom_report
         use determinants, only: det_info_t, alloc_det_info_t, dealloc_det_info_t, sum_sp_eigenvalues_occ_list
@@ -69,7 +71,7 @@ contains
         use hamiltonian_data
         use energy_evaluation, only: get_sanitized_projected_energy
 
-        use logging, only: init_logging, end_logging, prep_logging_mc_cycle
+        use logging, only: init_logging, end_logging, prep_logging_mc_cycle, write_logging_calc_fciqmc
 
         type(sys_t), intent(in) :: sys
         type(qmc_in_t), intent(in) :: qmc_in
@@ -117,6 +119,8 @@ contains
 
         real(p) :: proj_energy_old
 
+        integer(int_p) :: ndeath_tot
+
         if (parent) then
             write (6,'(1X,"FCIQMC")')
             write (6,'(1X,"------",/)')
@@ -134,7 +138,7 @@ contains
         call init_qmc(sys, qmc_in, restart_in, load_bal_in, reference_in, annihilation_flags, qs, uuid_restart, &
                       fciqmc_in=fciqmc_in, qmc_state_restart=qmc_state_restart)
 
-        call init_logging(logging_in, logging_info)
+        if (debug) call init_logging(logging_in, logging_info)
 
         if (parent) then
             call json_object_init(js, tag=.true.)
@@ -214,7 +218,7 @@ contains
 
                 iter = qs%mc_cycles_done + (ireport-1)*qmc_in%ncycles + icycle
 
-                call prep_logging_mc_cycle(iter, logging_in, logging_info)
+                if (debug) call prep_logging_mc_cycle(iter, logging_in, logging_info, ndeath_tot)
 
                 ! Should we turn semi-stochastic on now?
                 if (iter == semi_stoch_iter .and. semi_stoch_in%space_type /= empty_determ_space) then
@@ -311,8 +315,13 @@ contains
                         if (sys%read_in%comp) then
                             call stochastic_death(rng, sys,  qs, cdet%fock_sum, qs%psip_list%dat(1,idet), proj_energy_old, &
                                             qs%shift(1), qs%psip_list%pops(2,idet), qs%psip_list%nparticles(2), ndeath_im)
+
                             ndeath = abs(ndeath) + abs(ndeath_im)
                             ndeath_im = 0_int_p
+                        end if
+                        if (debug) then
+                            if (logging_info%write_logging .and. logging_info%write_highlevel_values) &
+                                            ndeath_tot = ndeath_tot + abs(ndeath)
                         end if
                     end if
 
@@ -337,6 +346,7 @@ contains
                         if (determ%doing_semi_stoch) call determ_projection(rng, qmc_in, qs, spawn, determ)
 
                         call direct_annihilation(sys, rng, qs%ref, annihilation_flags, pl, spawn, nspawn_events, determ)
+                        if (debug) call write_logging_calc_fciqmc(logging_info, iter, nspawn_events, ndeath_tot, nattempts)
                         call end_mc_cycle(nspawn_events, ndeath, pl%pop_real_factor, nattempts, qs%spawn_store%rspawn)
                     end if
                 end associate
@@ -408,7 +418,7 @@ contains
         end if
 
         if (determ%doing_semi_stoch) call dealloc_semi_stoch_t(determ, .false.)
-        call end_logging(logging_info)
+        if (debug) call end_logging(logging_info)
 
         call dealloc_det_info_t(cdet, .false.)
 
