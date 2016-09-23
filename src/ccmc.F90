@@ -389,7 +389,7 @@ contains
         call init_qmc(sys, qmc_in, restart_in, load_bal_in, reference_in, annihilation_flags, qs, &
                       uuid_restart, qmc_state_restart=qmc_state_restart)
 
-        if (debug) call init_logging(logging_in, logging_info, sys, qs)
+        if (debug) call init_logging(logging_in, logging_info)
 
         if (parent) then
             call json_object_init(js, tag=.true.)
@@ -490,8 +490,7 @@ contains
 
                 iter = qs%mc_cycles_done + (ireport-1)*qmc_in%ncycles + icycle
 
-                if (debug) call prep_logging_mc_cycle(iter, logging_in, logging_info, ndeath_tot, qs%quasi_newton, &
-                                                        sys%read_in%comp)
+                if (debug) call prep_logging_mc_cycle(iter, logging_in, logging_info, ndeath_tot, sys%read_in%comp)
 
                 associate(spawn=>qs%spawn_store%spawn, pm=>qs%spawn_store%spawn%proc_map)
                     call assign_particle_processor(qs%ref%f0, spawn%bit_str_nbits, spawn%hash_seed, spawn%hash_shift, &

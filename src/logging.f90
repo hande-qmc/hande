@@ -4,32 +4,43 @@ module logging
 
 contains
 
-    subroutine init_logging(logging_in, logging, sys, qs)
+    subroutine init_logging(logging_in, logging_info)
 
         ! Subroutine to initialise logs within HANDE, calling more specific
         ! functions for each specific type of logging activated by the user.
+        ! In:
+        !   logging_in: input options relating to logging.
+        ! In/Out:
+        !   logging_info: derived type to be used during calculation to
+        !       control logging output
 
+        use qmc_data, only: logging_t, logging_in_t
 
-        use qmc_data, only: logging_t, logging_in_t, qmc_state_t
-        use system, only: sys_t
-
-        type(logging_t), intent(inout) :: logging
+        type(logging_t), intent(inout) :: logging_info
         type(logging_in_t), intent(in) :: logging_in
-        type(qmc_state_t), intent(in) :: qs
-        type(sys_t), intent(in) :: sys
 
-        if (logging_in%calc > 0) call init_logging_calc(logging_in, logging)
-        if (logging_in%spawn > 0) call init_logging_spawn(logging_in, logging)
-        if (logging_in%death > 0) call init_logging_death(logging_in, logging)
+        if (logging_in%calc > 0) call init_logging_calc(logging_in, logging_info)
+        if (logging_in%spawn > 0) call init_logging_spawn(logging_in, logging_info)
+        if (logging_in%death > 0) call init_logging_death(logging_in, logging_info)
 
     end subroutine init_logging
 
-    subroutine prep_logging_mc_cycle(iter, logging_in, logging_info, ndeath_tot, qn, cmplx_wfn)
+    subroutine prep_logging_mc_cycle(iter, logging_in, logging_info, ndeath_tot, cmplx_wfn)
 
         ! Subroutine to perform updates to logs required each iteration.
         ! This currently includes:
         !   - checking if within the range of iterations where logging is required.
         !   - printing updates for iteration number in all active logs.
+
+        ! In:
+        !   iter: current iteration number.
+        !   logging_in: input options relating to logging.
+        !   ndeath_tot: integer. Total number of death events in previous cycle. Zeroed on output.
+        !   cmplx_wfn: logical. True if using a complex wavefunction, false if not.
+        ! In/Out:
+        !   logging_info: derived type to be used during calculation to
+        !       control logging output
+
 
         use qmc_data, only: logging_t, logging_in_t
         use const, only: int_p
@@ -38,7 +49,7 @@ contains
         type(logging_t), intent(inout) :: logging_info
         type(logging_in_t), intent(in) :: logging_in
         integer(int_p), intent(inout) :: ndeath_tot
-        logical, intent(in) :: qn, cmplx_wfn
+        logical, intent(in) :: cmplx_wfn
 
         ! Check if we're within the required range to print logging info.
         logging_info%write_logging = (logging_in%start_iter <= iter .and. &
@@ -50,7 +61,7 @@ contains
             !if (logging_info%calc_unit /= huge(1)) call write_iter_to_log(iter, logging_info%calc_unit)
             if (logging_info%spawn_unit /= huge(1)) then
                 call write_iter_to_log(iter, logging_info%spawn_unit)
-                call write_logging_spawn_header(logging_info, qn, cmplx_wfn)
+                call write_logging_spawn_header(logging_info, cmplx_wfn)
             end if
             if (logging_info%death_unit /= huge(1)) then
                 call write_iter_to_log(iter, logging_info%death_unit)
@@ -63,6 +74,10 @@ contains
     subroutine write_iter_to_log(iter, iunit)
 
         ! Writes iteration number to given io unit for logging.
+
+        ! In:
+        !   iter: iteration number.
+        !   iunit: io unit.
 
         integer :: iter, iunit
 
@@ -202,13 +217,13 @@ contains
         case(fciqmc_calc)
             call write_column_title(logging_info%calc_unit, "iter", int_val=.true., justify=1)
             call write_column_title(logging_info%calc_unit, "# spawn events", int_val=.true., justify=1)
-            call write_column_title(logging_info%calc_unit, "# death events", int_val=.true., justify=1)
+            call write_column_title(logging_info%calc_unit, "# death particles", int_val=.true., justify=1)
             call write_column_title(logging_info%calc_unit, "# attempts", int_val=.true., justify=1)
             write (logging_info%calc_unit,'()')
         case(ccmc_calc)
             call write_column_title(logging_info%calc_unit, "iter", int_val=.true., justify=1)
             call write_column_title(logging_info%calc_unit, "# spawn events", int_val=.true., justify=1)
-            call write_column_title(logging_info%calc_unit, "# death events", int_val=.true., justify=1)
+            call write_column_title(logging_info%calc_unit, "# death particles", int_val=.true., justify=1)
             call write_column_title(logging_info%calc_unit, "# attempts", int_val=.true., justify=1)
             call write_column_title(logging_info%calc_unit, "# D0 select", int_val=.true., justify=1)
             call write_column_title(logging_info%calc_unit, "# stochastic", int_val=.true., justify=1)
@@ -221,6 +236,9 @@ contains
     subroutine write_logging_spawn_preamble(logging_info)
 
         ! Write initial preamble for top of spawn logging file.
+
+        ! In:
+        !    logging_info: contains information on logging settings.
 
         use qmc_data, only: logging_t
         use report, only: environment_report
@@ -250,15 +268,19 @@ contains
 
     end subroutine write_logging_spawn_preamble
 
-    subroutine write_logging_spawn_header(logging_info, qn, cmplx_wfn)
+    subroutine write_logging_spawn_header(logging_info, cmplx_wfn)
 
         ! Write column headers for spawn logging information output.
+
+        ! In:
+        !    logging_info: derived type containing information on logging settings.
+        !    cmplx_wfn: logical. True if using complex-valued wavefunction, false if not.
 
         use qmc_data, only: logging_t
         use qmc_io, only: write_column_title
 
         type(logging_t), intent(in) :: logging_info
-        logical, intent(in) :: qn, cmplx_wfn
+        logical, intent(in) :: cmplx_wfn
 
 
         write (logging_info%spawn_unit,'("#")', advance='no')
@@ -284,6 +306,11 @@ contains
     end subroutine write_logging_spawn_header
 
     subroutine write_logging_death_preamble(logging_info)
+
+        ! Write initial preamble for top of death logging file.
+
+        ! In:
+        !    logging_info: contains information on logging settings.
 
         use calc, only: calc_type, fciqmc_calc, ccmc_calc
         use qmc_data, only: logging_t
@@ -315,6 +342,11 @@ contains
 
     subroutine write_logging_death_header(logging_info)
 
+        ! Write column headers for spawn logging information output.
+
+        ! In:
+        !    logging_info: derived type containing information on logging settings.
+
         use qmc_data, only: logging_t
         use qmc_io, only: write_column_title
 
@@ -337,14 +369,23 @@ contains
 
     end subroutine write_logging_death_header
 
-    subroutine write_logging_calc_fciqmc(logging_info, iter, nspawn_events, ndeath_events, nattempts)
+    subroutine write_logging_calc_fciqmc(logging_info, iter, nspawn_events, ndeath_tot, nattempts)
+
+        ! Write a single log entry for FCIQMC calculation-level information.
+
+        ! In:
+        !   logging_info: derived type containing information on logging.
+        !   nspawn_events: integer. Number of spawning events in previous iteration.
+        !   ndeath_tot: total number of particles created or destroyed by death in
+        !       the previous iteration.
+        !   nattempts: total number of spawning attempts to be made on this processor.
 
         use qmc_io, only: write_qmc_var
         use const, only: int_p, int_64
         use qmc_data, only: logging_t
 
         integer, intent(in) :: iter
-        integer(int_p), intent(in) :: nspawn_events, ndeath_events
+        integer(int_p), intent(in) :: nspawn_events, ndeath_tot
         integer(int_64), intent(in) :: nattempts
         type(logging_t), intent(in) :: logging_info
 
@@ -352,15 +393,27 @@ contains
             write (logging_info%calc_unit,'(1X)', advance='no')
             call write_qmc_var(logging_info%calc_unit, iter)
             call write_qmc_var(logging_info%calc_unit, nspawn_events)
-            call write_qmc_var(logging_info%calc_unit, ndeath_events)
+            call write_qmc_var(logging_info%calc_unit, ndeath_tot)
             call write_qmc_var(logging_info%calc_unit, nattempts)
             write (logging_info%calc_unit,'()')
         end if
 
     end subroutine write_logging_calc_fciqmc
 
-    subroutine write_logging_calc_ccmc(logging_info, iter, nspawn_events, ndeath_events, nD0_select, &
+    subroutine write_logging_calc_ccmc(logging_info, iter, nspawn_events, ndeath_tot, nD0_select, &
                                         nclusters, nstochastic_clusters, nsingle_excitors)
+
+        ! Write a single log entry for CCMC calculation-level information.
+
+        ! In:
+        !   logging_info: derived type containing information on logging.
+        !   nspawn_events: integer. Number of spawning events in previous iteration.
+        !   ndeath_tot: total number of particles created or destroyed by death in
+        !       the previous iteration.
+        !   nD0_select: total number of selection of the reference made this iteration.
+        !   nclusters: total number of selections made this iteration.
+        !   nstochastic_clusters: total number of stochastic selections made this iteration.
+        !   nssingle_excitors: total number of deterministic selections made this iteration.
 
         use qmc_io, only: write_qmc_var
         use const, only: int_p, int_64
@@ -368,7 +421,7 @@ contains
 
         type(logging_t), intent(in) :: logging_info
         integer, intent(in) :: iter
-        integer(int_p), intent(in) :: nspawn_events, ndeath_events
+        integer(int_p), intent(in) :: nspawn_events, ndeath_tot
         integer(int_64), intent(in) :: nD0_select, nclusters, nstochastic_clusters, nsingle_excitors
 
         if (logging_info%write_logging .and. logging_info%write_highlevel_values) then
@@ -388,6 +441,16 @@ contains
     subroutine write_logging_spawn(logging_info, hmatel, pgen, qn_weighting, nspawned, parent_sign, cmplx_wfn)
 
         ! Write log entry for a single spawning event.
+
+        ! In:
+        !   logging_info: Derived type containing information on logging.
+        !   hmatel: Derived type containing hamiltonian coupling element spawned across.
+        !   pgen: real. Normalised probability of generating given excitation.
+        !   qn_weighting: real. Reweighting factor for quasi-newton solvers. Always printed
+        !       as still multiplied by but should be 1.000...
+        !   nspawned: integer. Total signed walkers spawned in this event.
+        !   parent_sign: integer. Total signed population on parent determinant.
+        !   cmplx_wfn: logical. True if using complex wavefunction, false if not.
 
         use qmc_io, only: write_qmc_var
         use const, only: int_p, p
@@ -430,6 +493,18 @@ contains
                 nkill, pd, init_pop, fin_pop)
 
         ! Write log entry for a single death event.
+
+        ! In:
+        !   logging_info: Derived type containing information on logging.
+        !   Kii: real. Diagonal Hamiltonian element of occupied determinant.
+        !   proj_energy: real. Instantaneous projected energy.
+        !   loc_shift: real. Instantaneous shift.
+        !   qn_weighting: real. Reweighting factor for quasi-newton solvers. Always printed
+        !       as still multiplied by but should be 1.000...
+        !   nkill: integer. Total particle change in event.
+        !   pd: real. pdeath of a single particle on same determinant.
+        !   init_pop: integer. Initial population on determinant.
+        !   fin_pop: integer. Final population on determinant.
 
         use qmc_io, only: write_qmc_var
         use qmc_data, only: logging_t
