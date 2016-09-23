@@ -425,6 +425,7 @@ contains
         use lua_hande_system, only: get_sys_t
         use lua_hande_utils, only: warn_unused_args, register_timing
         use qmc_data, only: qmc_in_t, ccmc_in_t, semi_stoch_in_t, restart_in_t, load_bal_in_t, qmc_state_t
+        use qmc_data, only: logging_in_t
         use reference_determinant, only: reference_t
         use system, only: sys_t
 
@@ -443,6 +444,7 @@ contains
         type(load_bal_in_t) :: load_bal_in
         type(reference_t) :: reference
         type(qmc_state_t), pointer :: qmc_state_restart, qmc_state_out
+        type(logging_in_t) :: logging_in
 
         logical :: have_restart_state
         integer :: opts
@@ -467,6 +469,9 @@ contains
         call read_restart_in(lua_state, opts, restart_in)
         ! load balancing is not available in CCMC; must use default settings.
         call read_reference_t(lua_state, opts, reference, sys)
+
+        call read_logging_in_t(lua_state, opts, logging_in)
+
         call get_qmc_state(lua_state, have_restart_state, qmc_state_restart)
         call warn_unused_args(lua_state, keys, opts)
         call aot_table_close(lua_state, opts)
@@ -474,9 +479,11 @@ contains
         calc_type = ccmc_calc
         allocate(qmc_state_out)
         if (have_restart_state) then
-            call do_ccmc(sys, qmc_in, ccmc_in, semi_stoch_in, restart_in, load_bal_in, reference, qmc_state_out, qmc_state_restart)
+            call do_ccmc(sys, qmc_in, ccmc_in, semi_stoch_in, restart_in, load_bal_in, reference, logging_in, &
+                            qmc_state_out, qmc_state_restart)
         else
-            call do_ccmc(sys, qmc_in, ccmc_in, semi_stoch_in, restart_in, load_bal_in, reference, qmc_state_out)
+            call do_ccmc(sys, qmc_in, ccmc_in, semi_stoch_in, restart_in, load_bal_in, reference, logging_in, &
+                            qmc_state_out)
         end if
 
         call push_qmc_state(lua_state, qmc_state_out)

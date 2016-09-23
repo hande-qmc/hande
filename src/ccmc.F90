@@ -255,13 +255,14 @@ module ccmc
 ! Note that we cannot separate the sampling the action of the Hamiltonian and the sampling
 ! of the wavefunction in linked CC in the same way that we can in unlinked CC.
 
-use const, only: i0, int_p, int_64, p, dp
+use const, only: i0, int_p, int_64, p, dp, debug
 
 implicit none
 
 contains
 
-    subroutine do_ccmc(sys, qmc_in, ccmc_in, semi_stoch_in, restart_in, load_bal_in, reference_in, qs, qmc_state_restart)
+    subroutine do_ccmc(sys, qmc_in, ccmc_in, semi_stoch_in, restart_in, load_bal_in, reference_in, &
+                        logging_in, qs, qmc_state_restart)
 
         ! Run the CCMC algorithm starting from the initial walker distribution
         ! using the timestep algorithm.
@@ -310,11 +311,14 @@ contains
         use qmc_data, only: qmc_in_t, ccmc_in_t, semi_stoch_in_t, restart_in_t
         use qmc_data, only: load_bal_in_t, qmc_state_t, annihilation_flags_t, estimators_t
         use qmc_data, only: qmc_in_t_json, ccmc_in_t_json, semi_stoch_in_t_json, restart_in_t_json
+        use qmc_data, only: logging_in_t, logging_t
         use reference_determinant, only: reference_t, reference_t_json
         use check_input, only: check_qmc_opts, check_ccmc_opts
         use json_out, only: json_out_t, json_object_init, json_object_end
         use hamiltonian_data
         use energy_evaluation, only: get_sanitized_projected_energy
+
+        use logging, only: init_logging, end_logging, prep_logging_mc_cycle, write_logging_calc_ccmc
 
         type(sys_t), intent(in) :: sys
         type(qmc_in_t), intent(in) :: qmc_in
@@ -323,6 +327,7 @@ contains
         type(restart_in_t), intent(in) :: restart_in
         type(load_bal_in_t), intent(in) :: load_bal_in
         type(reference_t), intent(in) :: reference_in
+        type(logging_in_t), intent(in) :: logging_in
         type(qmc_state_t), target, intent(out) :: qs
         type(qmc_state_t), intent(inout), optional :: qmc_state_restart
 
@@ -344,12 +349,13 @@ contains
         real(p) :: bloom_threshold
         type(json_out_t) :: js
         type(qmc_in_t) :: qmc_in_loc
+        type(logging_t) :: logging_info
 
         logical :: soft_exit, dump_restart_shift, restarting
 
         integer(int_p), allocatable :: cumulative_abs_nint_pops(:)
         integer :: D0_proc, D0_pos, nD0_proc, min_cluster_size, max_cluster_size, iexcip_pos, slot
-        integer(int_p) :: tot_abs_nint_pop
+        integer(int_p) :: tot_abs_nint_pop, ndeath_tot
         real(p) :: D0_normalisation
         type(bloom_stats_t) :: bloom_stats
         type(annihilation_flags_t) :: annihilation_flags
@@ -382,6 +388,8 @@ contains
         ! Initialise data.
         call init_qmc(sys, qmc_in, restart_in, load_bal_in, reference_in, annihilation_flags, qs, &
                       uuid_restart, qmc_state_restart=qmc_state_restart)
+
+        if (debug) call init_logging(logging_in, logging_info, sys, qs)
 
         if (parent) then
             call json_object_init(js, tag=.true.)
@@ -481,6 +489,9 @@ contains
             do icycle = 1, qmc_in%ncycles
 
                 iter = qs%mc_cycles_done + (ireport-1)*qmc_in%ncycles + icycle
+
+                if (debug) call prep_logging_mc_cycle(iter, logging_in, logging_info, ndeath_tot, qs%quasi_newton, &
+                                                        sys%read_in%comp)
 
                 associate(spawn=>qs%spawn_store%spawn, pm=>qs%spawn_store%spawn%proc_map)
                     call assign_particle_processor(qs%ref%f0, spawn%bit_str_nbits, spawn%hash_seed, spawn%hash_shift, &
@@ -597,6 +608,7 @@ contains
                     nclusters = nattempts
                     nD0_select = 0 ! instead of this number of deterministic selections, these are chosen stochastically
                     nstochastic_clusters = nattempts
+                    nsingle_excitors = 0
                 end if
 
                 ! OpenMP chunk size determined completely empirically from a single
@@ -731,7 +743,7 @@ contains
                                 ! Do death for non-composite clusters directly and in a separate loop
                                 if (cluster(it)%nexcitors >= 2 .or. .not. ccmc_in%full_nc) then
                                     call stochastic_ccmc_death(rng(it), qs%spawn_store%spawn, ccmc_in%linked, sys, &
-                                                               qs, cdet(it), cluster(it), proj_energy_old)
+                                                               qs, cdet(it), cluster(it), proj_energy_old, ndeath_tot)
                                 end if
                             end if
                         end if
@@ -777,7 +789,8 @@ contains
 
                     call direct_annihilation(sys, rng(0), qs%ref, annihilation_flags, pl, spawn)
                 end associate
-
+                if (debug) call write_logging_calc_ccmc(logging_info, iter, nspawn_events, ndeath_tot, nD0_select, &
+                                                        nclusters, nstochastic_clusters, nsingle_excitors)
                 call end_mc_cycle(nspawn_events, ndeath, qs%psip_list%pop_real_factor, nattempts_spawn, qs%spawn_store%rspawn)
 
             end do
@@ -1546,7 +1559,7 @@ contains
 
     end subroutine spawner_ccmc
 
-    subroutine stochastic_ccmc_death(rng, spawn, linked_ccmc, sys, qs, cdet, cluster, proj_energy)
+    subroutine stochastic_ccmc_death(rng, spawn, linked_ccmc, sys, qs, cdet, cluster, proj_energy, ndeath_tot)
 
         ! Attempt to 'die' (ie create an excip on the current excitor, cdet%f)
         ! with probability
@@ -1599,6 +1612,7 @@ contains
         real(p), intent(in) :: proj_energy
         type(dSFMT_t), intent(inout) :: rng
         type(spawn_t), intent(inout) :: spawn
+        integer(int_p), intent(inout) :: ndeath_tot
 
         real(p) :: pdeath, KiiAi
         integer(int_p) :: nkill
@@ -1676,6 +1690,7 @@ contains
         end if
 
         if (nkill /= 0) then
+            ndeath_tot = ndeath_tot + abs(nkill)
             ! Create nkill excips with sign of -K_ii A_i
             if (KiiAi > 0) nkill = -nkill
 !            cdet%initiator_flag=0  !All death is allowed

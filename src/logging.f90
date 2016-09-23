@@ -45,7 +45,6 @@ contains
                                     iter <= logging_in%end_iter)
         ! Zero total ndeath accumulation
         ndeath_tot = 0_int_p
-        ndeath_tot_im = 0_int_p
 
         if (logging_info%write_logging) then
             !if (logging_info%calc_unit /= huge(1)) call write_iter_to_log(iter, logging_info%calc_unit)
@@ -206,9 +205,16 @@ contains
             call write_column_title(logging_info%calc_unit, "# attempts", int_val=.true., justify=1)
             write (logging_info%calc_unit,'()')
         case(ccmc_calc)
+            call write_column_title(logging_info%calc_unit, "iter", int_val=.true., justify=1)
+            call write_column_title(logging_info%calc_unit, "# spawn events", int_val=.true., justify=1)
+            call write_column_title(logging_info%calc_unit, "# death events", int_val=.true., justify=1)
+            call write_column_title(logging_info%calc_unit, "# attempts", int_val=.true., justify=1)
+            call write_column_title(logging_info%calc_unit, "# D0 select", int_val=.true., justify=1)
+            call write_column_title(logging_info%calc_unit, "# stochastic", int_val=.true., justify=1)
+            call write_column_title(logging_info%calc_unit, "# single excit", int_val=.true., justify=1)
             write (logging_info%calc_unit,'()')
-
         end select
+
     end subroutine write_logging_calc_header
 
     subroutine write_logging_spawn_preamble(logging_info)
@@ -351,6 +357,32 @@ contains
         end if
 
     end subroutine write_logging_calc_fciqmc
+
+    subroutine write_logging_calc_ccmc(logging_info, iter, nspawn_events, ndeath_events, nD0_select, &
+                                        nclusters, nstochastic_clusters, nsingle_excitors)
+
+        use qmc_io, only: write_qmc_var
+        use const, only: int_p, int_64
+        use qmc_data, only: logging_t
+
+        type(logging_t), intent(in) :: logging_info
+        integer, intent(in) :: iter
+        integer(int_p), intent(in) :: nspawn_events, ndeath_events
+        integer(int_64), intent(in) :: nD0_select, nclusters, nstochastic_clusters, nsingle_excitors
+
+        if (logging_info%write_logging .and. logging_info%write_highlevel_values) then
+            write (logging_info%calc_unit, '(1X)', advance='no')
+            call write_qmc_var(logging_info%calc_unit, iter)
+            call write_qmc_var(logging_info%calc_unit, nspawn_events)
+            call write_qmc_var(logging_info%calc_unit, ndeath_events)
+            call write_qmc_var(logging_info%calc_unit, nclusters)
+            call write_qmc_var(logging_info%calc_unit, nD0_select)
+            call write_qmc_var(logging_info%calc_unit, nstochastic_clusters)
+            call write_qmc_var(logging_info%calc_unit, nsingle_excitors)
+            write (logging_info%calc_unit, '()')
+        end if
+
+    end subroutine write_logging_calc_ccmc
 
     subroutine write_logging_spawn(logging_info, hmatel, pgen, qn_weighting, nspawned, parent_sign, cmplx_wfn)
 
