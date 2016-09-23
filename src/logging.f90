@@ -142,11 +142,9 @@ contains
         !   - writing preamble information in log.
 
         use qmc_data, only: logging_t, logging_in_t
-        use parallel, only: iproc
 
         type(logging_t), intent(inout) :: logging_info
         type(logging_in_t), intent(in) :: logging_in
-        integer :: iunit
 
         open(newunit=logging_info%calc_unit, file=get_log_filename(logging_in%calc_filename), &
                 status='unknown')
@@ -167,11 +165,9 @@ contains
         !   - writing preamble information in log.
 
         use qmc_data, only: logging_t, logging_in_t
-        use calc, only: calc_type, fciqmc_calc, ccmc_calc
 
         type(logging_t), intent(inout) :: logging_info
         type(logging_in_t), intent(in) :: logging_in
-        integer :: iunit
 
         open(newunit=logging_info%spawn_unit, file=get_log_filename(logging_in%spawn_filename), &
                 status='unknown')
@@ -193,11 +189,9 @@ contains
         !   - writing preamble information in log.
 
         use qmc_data, only: logging_t, logging_in_t
-        use calc, only: calc_type, fciqmc_calc, ccmc_calc
 
         type(logging_t), intent(inout) :: logging_info
         type(logging_in_t), intent(in) :: logging_in
-        integer :: iunit
 
         open(newunit=logging_info%death_unit, file=get_log_filename(logging_in%death_filename), &
                 status='unknown')
