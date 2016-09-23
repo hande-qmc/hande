@@ -8,7 +8,8 @@ implicit none
 
 contains
 
-    subroutine stochastic_death(rng, sys, qs, dfock, Kii, proj_energy, loc_shift, population, tot_population, ndeath)
+    subroutine stochastic_death(rng, sys, qs, dfock, Kii, proj_energy, loc_shift, logging_info, population, &
+                                tot_population, ndeath)
 
         ! Particles will attempt to die with probability
         !  p_d = tau*M_ii
@@ -42,9 +43,11 @@ contains
         !   pop_real_factor) so to avoid a scaling and unscaling step.
 
         use dSFMT_interface, only: dSFMT_t, get_rand_close_open
-        use qmc_data, only: qmc_state_t
+        use qmc_data, only: qmc_state_t, logging_t
         use system, only: sys_t
         use spawning, only: calc_qn_weighting
+        use const, only: debug
+        use logging, only: write_logging_death
 
         type(sys_t), intent(in) :: sys
         real(p), intent(in) :: Kii, dfock, proj_energy
@@ -53,8 +56,9 @@ contains
         real(p), intent(in) :: loc_shift
         integer(int_p), intent(inout) :: population, ndeath
         real(dp), intent(inout) :: tot_population
+        type(logging_t), intent(in) :: logging_info
 
-        real(p) :: pd
+        real(p) :: pd, pd_saved
         real(dp) :: r
         integer(int_p) :: kill, old_population
         real(p) :: weight
@@ -77,6 +81,8 @@ contains
 
         weight = calc_qn_weighting(qs, dfock)
         pd = qs%tau*((Kii-proj_energy)*weight+(proj_energy-loc_shift))*qs%dmqmc_factor
+
+        pd_saved = pd
 
         ! This will be the same for all particles on the determinant, so we can
         ! attempt all deaths in one shot.
@@ -108,6 +114,8 @@ contains
         else
             population = population - kill
         end if
+        if (debug) call write_logging_death(logging_info, Kii, proj_energy, loc_shift, &
+                                        weight, kill, pd_saved, old_population, population)
         tot_population = tot_population + &
             real(abs(population) - abs(old_population),p)/qs%psip_list%pop_real_factor
         ndeath = ndeath + abs(kill)

@@ -54,7 +54,10 @@ contains
                 call write_iter_to_log(iter, logging_info%spawn_unit)
                 call write_logging_spawn_header(logging_info, qn, cmplx_wfn)
             end if
-            if (logging_info%death_unit /= huge(1)) call write_iter_to_log(iter, logging_info%death_unit)
+            if (logging_info%death_unit /= huge(1)) then
+                call write_iter_to_log(iter, logging_info%death_unit)
+                call write_logging_death_header(logging_info)
+            end if
         end if
 
     end subroutine prep_logging_mc_cycle
@@ -138,7 +141,7 @@ contains
 
     end subroutine init_logging_spawn
 
-    subroutine init_logging_death(logging_in, logging)
+    subroutine init_logging_death(logging_in, logging_info)
 
         ! Initialises logging of death information.
         ! This includes:
@@ -150,18 +153,18 @@ contains
         use qmc_data, only: logging_t, logging_in_t
         use calc, only: calc_type, fciqmc_calc, ccmc_calc
 
-        type(logging_t), intent(inout) :: logging
+        type(logging_t), intent(inout) :: logging_info
         type(logging_in_t), intent(in) :: logging_in
         integer :: iunit
 
         print *, 'Opening file ', logging_in%death_filename
-        open(newunit=logging%death_unit, file=logging_in%death_filename, status='unknown')
+        open(newunit=logging_info%death_unit, file=logging_in%death_filename, status='unknown')
 
-        if (logging_in%death > 0) logging%write_successful_death = .true.
-        if (logging_in%death > 1) logging%write_death_det = .true.
-        if (logging_in%death > 2) logging%write_failed_death = .true.
+        if (logging_in%death > 0) logging_info%write_successful_death = .true.
+        if (logging_in%death > 1) logging_info%write_death_det = .true.
+        if (logging_in%death > 2) logging_info%write_failed_death = .true.
 
-        call write_logging_death_header(logging)
+        call write_logging_death_preamble(logging_info)
 
     end subroutine init_logging_death
 
@@ -244,7 +247,6 @@ contains
 
         write (logging_info%spawn_unit,'()')
 
-
     end subroutine write_logging_spawn_preamble
 
     subroutine write_logging_spawn_header(logging_info, qn, cmplx_wfn)
@@ -280,22 +282,59 @@ contains
 
     end subroutine write_logging_spawn_header
 
-    subroutine write_logging_death_header(logging)
+    subroutine write_logging_death_preamble(logging_info)
 
         use calc, only: calc_type, fciqmc_calc, ccmc_calc
         use qmc_data, only: logging_t
+        use report, only: environment_report
 
-        type(logging_t), intent(in) :: logging
+        type(logging_t), intent(in) :: logging_info
+
+        write (logging_info%death_unit, '(1X,"HANDE QMC Death Log File")')
+        write (logging_info%death_unit, '()')
+
+        call environment_report(logging_info%death_unit)
 
         select case (calc_type)
         case(fciqmc_calc)
-            write (logging%death_unit, '(1X,"HANDE QMC Death Log File")')
-            write (logging%death_unit, '(1X,"========================")')
-            write (logging%death_unit, '(1X,"Calculation type: FCIQMC")')
-            write (logging%death_unit, '(1X,"Verbosity Settings:")')
+            write (logging_info%death_unit, '(1X,"Calculation type: FCIQMC")')
         case(ccmc_calc)
-            write (logging%death_unit, *) 'dsfgsg'
+            write (logging_info%death_unit, '(1X,"Calculation type: CCMC")')
         end select
+
+        write (logging_info%death_unit, '(1X,"Verbosity Settings:")')
+        write (logging_info%death_unit, '(1X,10X,"Write Successful Deaths:",2X,L)') &
+                        logging_info%write_successful_death
+        write (logging_info%death_unit, '(1X,10X,"Write Failed Deaths:",2X,L)') &
+                        logging_info%write_failed_death
+        write (logging_info%death_unit, '(1X,10X,"Write Death Determinants:",2X,L)') &
+                        logging_info%write_death_det
+
+        write (logging_info%spawn_unit,'()')
+
+    end subroutine write_logging_death_preamble
+
+    subroutine write_logging_death_header(logging_info)
+
+        use qmc_data, only: logging_t
+        use qmc_io, only: write_column_title
+
+        type(logging_t), intent(in) :: logging_info
+
+        write (logging_info%death_unit,'("#")', advance='no')
+
+        call write_column_title(logging_info%death_unit, "Kii")
+        call write_column_title(logging_info%death_unit, "proj_energy")
+        call write_column_title(logging_info%death_unit, "loc_shift")
+        call write_column_title(logging_info%death_unit, "qn_weight")
+        call write_column_title(logging_info%death_unit, "p_death")
+
+        call write_column_title(logging_info%death_unit, "nkill", int_val = .true., justify=1)
+
+        call write_column_title(logging_info%death_unit, "init pop", int_val = .true., justify=1)
+        call write_column_title(logging_info%death_unit, "fin pop", int_val = .true., justify=1)
+
+        write (logging_info%death_unit,'()')
 
     end subroutine write_logging_death_header
 
@@ -326,7 +365,7 @@ contains
         ! Write log entry for a single spawning event.
 
         use qmc_io, only: write_qmc_var
-        use const, only: int_p, int_64, p
+        use const, only: int_p, p
         use qmc_data, only: logging_t
         use hamiltonian_data, only: hmatel_t
 
@@ -338,7 +377,7 @@ contains
 
         if (logging_info%write_logging) then
             if ((logging_info%write_successful_spawn .and. any(abs(nspawned) > 0)) .or. &
-                 logging_info%write_failed_spawn) then
+                 (logging_info%write_failed_spawn .and. all(nspawned == 0))) then
 
                 write (logging_info%spawn_unit,'(1X)', advance='no')
 
@@ -361,5 +400,41 @@ contains
         end if
 
     end subroutine write_logging_spawn
+
+    subroutine write_logging_death(logging_info, Kii, proj_energy, loc_shift, qn_weight, &
+                nkill, pd, init_pop, fin_pop)
+
+        ! Write log entry for a single death event.
+
+        use qmc_io, only: write_qmc_var
+        use qmc_data, only: logging_t
+        use const, only: int_p, p
+
+        type(logging_t), intent(in) :: logging_info
+        real(p), intent(in) :: Kii, proj_energy, qn_weight, loc_shift, pd
+        integer(int_p), intent(in) :: nkill, init_pop, fin_pop
+
+        if (logging_info%write_logging) then
+            if ((logging_info%write_successful_death .and. abs(nkill) > 0) .or. &
+                    logging_info%write_failed_death .and. nkill == 0) then
+
+                write (logging_info%death_unit,'(1X)', advance='no')
+
+                call write_qmc_var(logging_info%death_unit, Kii)
+                call write_qmc_var(logging_info%death_unit, proj_energy)
+                call write_qmc_var(logging_info%death_unit, loc_shift)
+                call write_qmc_var(logging_info%death_unit, qn_weight)
+                call write_qmc_var(logging_info%death_unit, pd)
+
+                call write_qmc_var(logging_info%death_unit, nkill)
+
+                call write_qmc_var(logging_info%death_unit, init_pop)
+                call write_qmc_var(logging_info%death_unit, fin_pop)
+
+                write (logging_info%death_unit,'()')
+            end if
+        end if
+
+    end subroutine write_logging_death
 
 end module logging

@@ -262,7 +262,7 @@ contains
 
                     ! Clone or die: Hellmann--Feynman walkers.
                     call stochastic_death(rng, sys, qs, cdet%fock_sum, qs%psip_list%dat(2,idet), proj_energy_old, qs%shift(2), &
-                                          qs%psip_list%pops(2,idet), qs%psip_list%nparticles(2), ndeath)
+                                          logging_info, qs%psip_list%pops(2,idet), qs%psip_list%nparticles(2), ndeath)
 
                     ! Clone Hellmann--Feynman walkers from Hamiltonian walkers.
                     ! Not in place, must set initiator flag.
@@ -278,7 +278,7 @@ contains
 
                     ! Clone or die: Hamiltonian walkers.
                     call stochastic_death(rng, sys, qs, cdet%fock_sum, qs%psip_list%dat(1,idet), proj_energy_old, qs%shift(1), &
-                                          qs%psip_list%pops(1,idet), qs%psip_list%nparticles(1), ndeath)
+                                          logging_info, qs%psip_list%pops(1,idet), qs%psip_list%nparticles(1), ndeath)
 
                 end do
 

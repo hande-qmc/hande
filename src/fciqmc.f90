@@ -312,10 +312,11 @@ contains
                     ! Clone or die.
                     if (.not. determ_parent) then
                         call stochastic_death(rng, sys, qs, cdet%fock_sum, qs%psip_list%dat(1,idet),proj_energy_old, qs%shift(1), &
-                                       qs%psip_list%pops(1,idet), qs%psip_list%nparticles(1), ndeath)
+                                       logging_info, qs%psip_list%pops(1,idet), qs%psip_list%nparticles(1), ndeath)
                         if (sys%read_in%comp) then
                             call stochastic_death(rng, sys,  qs, cdet%fock_sum, qs%psip_list%dat(1,idet), proj_energy_old, &
-                                            qs%shift(1), qs%psip_list%pops(2,idet), qs%psip_list%nparticles(2), ndeath_im)
+                                            qs%shift(1), logging_info, qs%psip_list%pops(2,idet), qs%psip_list%nparticles(2), &
+                                            ndeath_im)
 
                             ndeath = abs(ndeath) + abs(ndeath_im)
                             ndeath_im = 0_int_p
@@ -531,8 +532,8 @@ contains
 
                 ! Clone or die.
                 ! list_pop is meaningless as particle_t%nparticles is updated upon annihilation.
-                call stochastic_death(rng, sys, qs, cdet%fock_sum, cdet%data(1), proj_energy_old,  qs%shift(1), int_pop(ispace), &
-                                      list_pop, ndeath)
+                call stochastic_death(rng, sys, qs, cdet%fock_sum, cdet%data(1), proj_energy_old,  qs%shift(1), logging_info, &
+                                      int_pop(ispace), list_pop, ndeath)
 
                 ! Update population of walkers on current determinant.
                 spawn_recv%sdata(spawn_recv%bit_str_len+1:spawn_recv%bit_str_len+spawn_recv%ntypes, idet) = int_pop

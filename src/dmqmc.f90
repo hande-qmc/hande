@@ -333,7 +333,7 @@ contains
                             ! of the two diagonal elements corresponding to the
                             ! two indicies of the density matrix.
                             call stochastic_death(rng, sys, qs, cdet1%fock_sum, qs%psip_list%dat(ireplica,idet), proj_energy_old, &
-                                                  qs%shift(ireplica), qs%psip_list%pops(ireplica,idet), &
+                                                  qs%shift(ireplica), logging_info, qs%psip_list%pops(ireplica,idet), &
                                                   qs%psip_list%nparticles(ireplica), ndeath)
                         end do
                     end do
