@@ -9,21 +9,25 @@
 #  7) ifort/64/2013/5/192
 #  8) mkl/64/11.0/lp64/5
 
+[DEFAULT]
+cppflags_opt = -DHAVE_SSE2 -DPARALLEL -DDET_SIZE=64 
+
 [main]
 fc = mpif90
 cc = mpicc
 cxx = mpicxx
 ld = mpif90
-cppflags = -DHAVE_SSE2 -DPARALLEL -DDET_SIZE=64 
 LIBS =  $(MKLROOT)/lib/intel64/libmkl_blas95_lp64.a $(MKLROOT)/lib/intel64/libmkl_lapack95_lp64.a -L$(MKLROOT)/lib/intel64 -lmkl_scalapack_lp64 -lmkl_intel_lp64 -lmkl_core -lmkl_intel_thread -lmkl_blacs_intelmpi_lp64 -lpthread -lm -liomp5 -cxxlib -lhdf5_fortran -luuid -ltrlan_mpi
 f90_module_flag = -module
 
 [opt]
+cppflags = %(cppflags_opt)s
 fflags = -O3 -openmp -ipo
 cxxflags = -O3 -openmp -ipo
 ldflags =  -openmp -ipo
 cflags = -O3 -ipo
 
 [dbg]
+cppflags = %(cppflags_opt)s -DDEBUG
 fflags = -g -traceback -CB -openmp
 cxxflags = -g -traceback  -openmp

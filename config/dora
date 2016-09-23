@@ -1,23 +1,27 @@
 # The default cray environment should work. Replace the path to lua.h in cppflags and link
 # to liblua.a as appropriate.  Note dora does not (currently) have lua installed
 # centrally.  Refer to the documentation (prereq.rst) for pointers on compiling lua.
+[DEFAULT]
+cppflags_opt = -DHAVE_SSE2 -DDISABLE_LANCZOS -DDISABLE_UUID -DDISABLE_HDF5 -DPARALLEL -DDET_SIZE=64 -DPOP_SIZE=64 -I ../local/include
+
 [main]
 fc = ftn
 cc = cc
 cxx = CC
 ccd = gcc
-cppflags = -DHAVE_SSE2 -DDISABLE_LANCZOS -DDISABLE_UUID -DDISABLE_HDF5 -DPARALLEL -DDET_SIZE=64 -DPOP_SIZE=64 -I ../local/include
 ld = ftn
 ldflags = -L/usr/lib64
 libs = -ldl ../local/lib/liblua.a
 f90_module_flag = -J
 
 [opt]
+cppflags = %(cppflags_opt)s
 fflags =  -e fm -O3 -hnoomp
 cflags = -O3 -hgnu -hnoomp
 cxxflags = -O3 -dynamic
 
 [dbg]
+cppflags = %(cppflags_opt)s -DDEBUG
 fflags = -e fm -g -hnoomp
 cflags = -g -hgnu -hnoomp
 cxxflags = -g -dynamic

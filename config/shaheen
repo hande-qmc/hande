@@ -1,4 +1,7 @@
 # Requires IBM, xl, bluegene and scalapack modules
+[DEFAULT]
+cppflags_opt = -DPARALLEL -DDISABLE_LANCZOS
+
 [main]
 fc = mpixlf90_r
 cc = mpixlc_r
@@ -7,15 +10,16 @@ ld = mpixlf90_r
 ccd = gcc
 cxxd = g++
 cpp = cpp -P -C
-cppflags = -DPARALLEL -DDISABLE_LANCZOS
 libs = -L/opt/ibmcmp/vacpp/11.1/lib -libmc++ -lstdc++ $${KSL_SCALAPACK_LIB} -lxlsmp -lhdf5_fortran -luuid -llua
 f90_module_flag = -qmoddir=
 f90_module_flag_pad = false
 
 [opt]
+cppflags = %(cppflags_opt)s
 fflags = -O3 -I /opt/share/include/mpi/ibm -I $(DEST)
 cxxflags = -O3
 
 [dbg]
+cppflags = %(cppflags_opt)s -DDEBUG
 fflags = -g -traceback -CB -I /opt/share/include/mpi/ibm -I $(DEST)
 cxxflags = -g -traceback 

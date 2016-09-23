@@ -14,5 +14,6 @@ fflags = %(include_f)s -O3
 cxxflags = -O3
 
 [dbg]
+cppflags = -DDEBUG
 fflags = %(include_f)s -g -fbounds-check -Wall -Wextra -fbacktrace
 cxxflags = -g -Wall -Wextra -fbacktrace

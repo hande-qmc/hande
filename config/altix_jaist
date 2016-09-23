@@ -1,20 +1,22 @@
 [DEFAULT]
 include_f = -I ${HDF5_HOME}/include
+cppflags_opt = -DHAVE_SSE2 -DPARALLEL -DDISABLE_LANCZOS -DDISABLE_HDF5
 
 [main]
 fc = mpif90
 cc = mpicc
 cxx = mpic++
 ld = mpif90
-cppflags = -DHAVE_SSE2 -DPARALLEL -DDISABLE_LANCZOS -DDISABLE_HDF5
 ldflags = -L ${MKL_HOME}/lib/64
 libs =  -mkl:cluster -lpthread -lm -cxxlib -lz /usr/lib64/libuuid.so -llua
 f90_module_flag = -module
 
 [opt]
+cppflags = %(cppflags_opt)s
 fflags = %(include_f)s -O3
 cxxflags = -O3
 
 [dbg]
+cppflags = %(cppflags_opt)s -DDEBUG
 fflags = %(include_f)s -g -traceback -CB
 cxxflags = -g -traceback 

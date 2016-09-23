@@ -1,22 +1,24 @@
 [DEFAULT]
 include_f = -I /usr/local/include
+cppflags_opt = -DDISABLE_LANCZOS
 
 [main]
 fc = gfortran
 cc = gcc
 cxx = g++
-cppflags = -DDISABLE_LANCZOS
 ld = gfortran
 ldflags = -L ${HOME}/lib -L /usr/local/lib
 libs = -llapack -lblas -lstdc++ -lhdf5_fortran -lhdf5 -lz -luuid -llua
 f90_module_flag = -J
 
 [opt]
+cppflags = %(cppflags_opt)s
 fflags = %(include_f)s -O3
 cflags = -O3
 cxxflags = -O3
 
 [dbg]
+cppflags = %(cppflags_opt)s -DDEBUG
 fflags = %(include_f)s -g -fbounds-check -Wall -Wextra -fbacktrace
 cflags = -g -Wall -Wextra -fbacktrace
 cxxflags = -g -Wall -Wextra -fbacktrace
