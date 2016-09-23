@@ -265,9 +265,6 @@ type logging_in_t
     ! Death flag.
     integer(int_32) :: death = 0
     character(9) :: death_filename = 'DEATH.log'
-    ! Annihilation flag.
-    integer(int_32) :: annihilation = 0
-    character(16) :: annihilation_filename = 'ANNIHILATION.log'
     ! Iteration to start outputting logs from.
     integer(int_64) :: start_iter = 0_int_64
     ! Iteration to stop outputting logs from.
@@ -621,17 +618,12 @@ type logging_t
     ! Spawning flags.
     logical :: write_successful_spawn = .false.
     logical :: write_failed_spawn = .false.
-    logical :: write_spawn_dets = .false.
     integer :: spawn_unit = huge(1_int_32)
 
     ! Death flag.
     logical :: write_successful_death = .false.
     logical :: write_failed_death = .false.
-    logical :: write_death_det = .false.
     integer :: death_unit = huge(1_int_32)
-
-    ! Annihilation flag.
-    integer :: annihilation_unit = huge(1_int_32)
 
     ! Whether within iterations required to output logging info.
     logical :: write_logging = .false.

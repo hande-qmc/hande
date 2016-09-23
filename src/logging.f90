@@ -21,7 +21,6 @@ contains
         if (logging_in%calc > 0) call init_logging_calc(logging_in, logging)
         if (logging_in%spawn > 0) call init_logging_spawn(logging_in, logging)
         if (logging_in%death > 0) call init_logging_death(logging_in, logging)
-        !if (logging_in%annihilation > 0) call init_logging_calc(logging_in, logging)
 
     end subroutine init_logging
 
@@ -108,7 +107,6 @@ contains
         open(newunit=logging%calc_unit, file=logging_in%calc_filename, status='unknown')
 
         if (logging_in%calc > 0) logging%write_highlevel_values = .true.
-        if (logging_in%calc > 1) logging%write_highlevel_calculations = .true.
 
         call write_logging_calc_header(logging)
 
@@ -134,8 +132,7 @@ contains
         open(newunit=logging_info%spawn_unit, file=logging_in%spawn_filename, status='unknown')
 
         if (logging_in%spawn > 0) logging_info%write_successful_spawn = .true.
-        if (logging_in%spawn > 1) logging_info%write_spawn_dets = .true.
-        if (logging_in%spawn > 2) logging_info%write_failed_spawn = .true.
+        if (logging_in%spawn > 1) logging_info%write_failed_spawn = .true.
 
         call write_logging_spawn_preamble(logging_info)
 
@@ -161,8 +158,7 @@ contains
         open(newunit=logging_info%death_unit, file=logging_in%death_filename, status='unknown')
 
         if (logging_in%death > 0) logging_info%write_successful_death = .true.
-        if (logging_in%death > 1) logging_info%write_death_det = .true.
-        if (logging_in%death > 2) logging_info%write_failed_death = .true.
+        if (logging_in%death > 1) logging_info%write_failed_death = .true.
 
         call write_logging_death_preamble(logging_info)
 
@@ -242,8 +238,6 @@ contains
                         logging_info%write_successful_spawn
         write (logging_info%spawn_unit, '(1X,10X,"Write Failed Spawns:",2X,L)') &
                         logging_info%write_failed_spawn
-        write (logging_info%spawn_unit, '(1X,10X,"Write Spawn Determinants:",2X,L)') &
-                        logging_info%write_spawn_dets
 
         write (logging_info%spawn_unit,'()')
 
@@ -307,8 +301,6 @@ contains
                         logging_info%write_successful_death
         write (logging_info%death_unit, '(1X,10X,"Write Failed Deaths:",2X,L)') &
                         logging_info%write_failed_death
-        write (logging_info%death_unit, '(1X,10X,"Write Death Determinants:",2X,L)') &
-                        logging_info%write_death_det
 
         write (logging_info%spawn_unit,'()')
 
