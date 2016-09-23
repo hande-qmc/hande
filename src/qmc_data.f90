@@ -258,13 +258,13 @@ end type restart_in_t
 type logging_in_t
     ! High-level debugging flag (at level of calculation running).
     integer(int_32) :: calc = 0
-    character(8) :: calc_filename = 'CALC.log'
+    character(255) :: calc_filename = 'CALC.log'
     ! Spawning flag.
     integer(int_32) :: spawn = 0
-    character(9) :: spawn_filename = 'SPAWN.log'
+    character(255) :: spawn_filename = 'SPAWN.log'
     ! Death flag.
     integer(int_32) :: death = 0
-    character(9) :: death_filename = 'DEATH.log'
+    character(255) :: death_filename = 'DEATH.log'
     ! Iteration to start outputting logs from.
     integer(int_64) :: start_iter = 0_int_64
     ! Iteration to stop outputting logs from.

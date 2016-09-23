@@ -87,7 +87,7 @@ contains
 
     end subroutine end_logging
 
-    subroutine init_logging_calc(logging_in, logging)
+    subroutine init_logging_calc(logging_in, logging_info)
 
         ! Initialises logging of high-level calculation information.
         ! This includes:
@@ -97,17 +97,18 @@ contains
         !   - writing preamble information in log.
 
         use qmc_data, only: logging_t, logging_in_t
+        use parallel, only: iproc
 
-        type(logging_t), intent(inout) :: logging
+        type(logging_t), intent(inout) :: logging_info
         type(logging_in_t), intent(in) :: logging_in
         integer :: iunit
 
-        print *, 'Opening file ', logging_in%calc_filename
-        open(newunit=logging%calc_unit, file=logging_in%calc_filename, status='unknown')
+        open(newunit=logging_info%calc_unit, file=get_log_filename(logging_in%calc_filename), &
+                status='unknown')
 
-        if (logging_in%calc > 0) logging%write_highlevel_values = .true.
+        if (logging_in%calc > 0) logging_info%write_highlevel_values = .true.
 
-        call write_logging_calc_header(logging)
+        call write_logging_calc_header(logging_info)
 
     end subroutine init_logging_calc
 
@@ -127,8 +128,8 @@ contains
         type(logging_in_t), intent(in) :: logging_in
         integer :: iunit
 
-        print *, 'Opening file ', logging_in%spawn_filename
-        open(newunit=logging_info%spawn_unit, file=logging_in%spawn_filename, status='unknown')
+        open(newunit=logging_info%spawn_unit, file=get_log_filename(logging_in%spawn_filename), &
+                status='unknown')
 
         if (logging_in%spawn > 0) logging_info%write_successful_spawn = .true.
         if (logging_in%spawn > 1) logging_info%write_failed_spawn = .true.
@@ -153,8 +154,8 @@ contains
         type(logging_in_t), intent(in) :: logging_in
         integer :: iunit
 
-        print *, 'Opening file ', logging_in%death_filename
-        open(newunit=logging_info%death_unit, file=logging_in%death_filename, status='unknown')
+        open(newunit=logging_info%death_unit, file=get_log_filename(logging_in%death_filename), &
+                status='unknown')
 
         if (logging_in%death > 0) logging_info%write_successful_death = .true.
         if (logging_in%death > 1) logging_info%write_failed_death = .true.
@@ -460,5 +461,26 @@ contains
         end if
 
     end subroutine write_logging_death
+
+    function get_log_filename(in_name) result(out_name)
+
+        ! Helper function to generate filenames to use for a generic log file.
+        ! In:
+        !   in_name: base name of log to give (eg. CALC.log)
+        ! Out:
+        !   out_name: filename to be used. If running in parallel with be of
+        !       form in_name.pX for process number X.
+
+        use parallel, only: iproc, nprocs
+        character(255), intent(in) ::in_name
+        character(255) :: out_name
+
+        if (nprocs > 1) then
+            write(out_name,'(a,".p",i0)') trim(in_name), iproc
+        else
+            out_name = trim(in_name)
+        end if
+
+    end function get_log_filename
 
 end module logging
