@@ -102,21 +102,42 @@ contains
         ! In future may also print message to demonstrate end of logs.
 
         use qmc_data, only: logging_t
+        use report, only: end_report
+        integer :: date_values(8)
 
         type(logging_t), intent(in) :: logging_info
 
-        if (logging_info%calc_unit /= huge(1)) close(logging_info%calc_unit, status='keep')
-        if (logging_info%spawn_unit /= huge(1)) close(logging_info%spawn_unit, status='keep')
-        if (logging_info%death_unit /= huge(1)) close(logging_info%death_unit, status='keep')
+        call date_and_time(VALUES=date_values)
+
+        call write_date_time_close(logging_info%calc_unit, date_values)
+        call write_date_time_close(logging_info%spawn_unit, date_values)
+        call write_date_time_close(logging_info%death_unit, date_values)
 
     end subroutine end_logging
+
+    subroutine write_date_time_close(iunit, date_values)
+
+        ! Write final message to log and close
+
+        integer, intent(in) :: iunit, date_values(8)
+
+        if (iunit /= huge(1)) then
+            write (iunit,'(1X,64("="))')
+            write (iunit,'(1X,a19,1X,i2.2,"/",i2.2,"/",i4.4,1X,a2,1X,i2.2,2(":",i2.2))') &
+                      "Finished running on", date_values(3:1:-1), "at", date_values(5:7)
+            write (iunit,'(1X,64("="))')
+
+            close(iunit, status='keep')
+        end if
+
+    end subroutine write_date_time_close
 
     subroutine init_logging_calc(logging_in, logging_info)
 
         ! Initialises logging of high-level calculation information.
         ! This includes:
         !   - opening filename given and obtaining unit identifier.
-        !   - converting from verbosity level given into specific
+        !   - converting from ierbosity level given into specific
         !       information required in logs.
         !   - writing preamble information in log.
 
