@@ -2,12 +2,21 @@ module logging
 
 ! Module to contain functions handling logging outputs.
 
+! All calls to functions within this module should be preceded by 'if (debug)'.
+! This ensures that in an optimised build all overhead involved with logging
+! be removed at compile-time. However, this does mean that using this functionality
+! requires a debug build (without some changes to the source code).
+
+! Logging output is controlled by verbosity levels for each area of logging. For
+! details of currently implemented output please see the manual.
+
 contains
 
     subroutine init_logging(logging_in, logging_info)
 
         ! Subroutine to initialise logs within HANDE, calling more specific
         ! functions for each specific type of logging activated by the user.
+
         ! In:
         !   logging_in: input options relating to logging.
         ! In/Out:
