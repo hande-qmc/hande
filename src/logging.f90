@@ -28,11 +28,68 @@ contains
         type(logging_t), intent(inout) :: logging_info
         type(logging_in_t), intent(in) :: logging_in
 
+        call check_logging_inputs(logging_in)
+
         if (logging_in%calc > 0) call init_logging_calc(logging_in, logging_info)
         if (logging_in%spawn > 0) call init_logging_spawn(logging_in, logging_info)
         if (logging_in%death > 0) call init_logging_death(logging_in, logging_info)
 
     end subroutine init_logging
+
+    subroutine check_logging_inputs(logging_in)
+
+        ! Subroutine checking if verbosity level requested has been implemented
+        ! and calling a warning if not.
+        ! As additional functionality is added should be updated appropriately.
+
+        use qmc_data, only: logging_in_t
+        use calc, only: fciqmc_calc, ccmc_calc, calc_type
+
+        type(logging_in_t), intent(in) :: logging_in
+
+        select case(calc_type)
+        case(fciqmc_calc)
+            continue ! All available logging implemented.
+        case(ccmc_calc)
+            if (logging_in%spawn > 0) call write_logging_warning(2, logging_in%spawn)
+            if (logging_in%death > 0) call write_logging_warning(3, logging_in%death)
+        case default
+            if (logging_in%calc > 0) call write_logging_warning(1, logging_in%calc)
+            if (logging_in%spawn > 0) call write_logging_warning(2, logging_in%spawn)
+            if (logging_in%death > 0) call write_logging_warning(3, logging_in%death)
+        end select
+
+    end subroutine check_logging_inputs
+
+    subroutine write_logging_warning(log_type, verbosity_level)
+
+        ! Subroutine to write warning when logging verbosity level requested
+        ! is not yet implemented.
+        ! Changing this function will change all responses to such errors.
+
+        use errors, only: warning
+        use calc, only: calc_type, get_calculation_string
+
+        integer, intent(in) :: log_type, verbosity_level
+        character(255) :: message, calc_name, log_name
+
+        calc_name = get_calculation_string(calc_type)
+
+        select case(log_type)
+        case(1)
+            log_name = "CALC"
+        case(2)
+            log_name = "SPAWN"
+        case(3)
+            log_name = "DEATH"
+        end select
+
+        write(message, '("Verbosity level ",i0," not yet implemented for ",a," logging with ",a)') &
+                        verbosity_level, trim(log_name), trim(calc_name)
+
+        call warning('check_logging_inputs',message)
+
+    end subroutine write_logging_warning
 
     subroutine prep_logging_mc_cycle(iter, logging_in, logging_info, ndeath_tot, cmplx_wfn)
 
