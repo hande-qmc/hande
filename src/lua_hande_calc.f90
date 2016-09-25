@@ -408,6 +408,7 @@ contains
         !       ccmc = { ... }
         !       restart = { ... },
         !       reference = { ... },
+        !       logging = { ...},
         !       qmc_state = qmc_state,
         !    }
 
@@ -449,7 +450,7 @@ contains
         logical :: have_restart_state
         integer :: opts
         real :: t1, t2
-        character(10), parameter :: keys(6) = [character(10) :: 'sys', 'qmc', 'ccmc', 'restart', 'reference', 'qmc_state']
+        character(10), parameter :: keys(7) = [character(10) :: 'sys', 'qmc', 'ccmc', 'restart', 'reference', 'qmc_state','logging']
 
         call cpu_time(t1)
 
