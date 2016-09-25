@@ -119,6 +119,7 @@ contains
 
         real(p) :: proj_energy_old
 
+![review] - AJWT: NB This variable is not to be used when not in debug mode
         integer(int_p) :: ndeath_tot
 
         if (parent) then

@@ -607,7 +607,6 @@ end type annihilation_flags_t
 ! --- Logging output ---
 
 ! Derived type to contain debugging flags and avoid passing lots of different flags to the various procedures.
-! Use bit strings to represent different levels of debugging (see forthcoming documentation).
 
 type logging_t
     ! High-level debugging flag (at level of calculation running).

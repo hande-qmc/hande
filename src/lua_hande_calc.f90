@@ -1779,10 +1779,18 @@ contains
         ! Read in options associated with the logging table (only for debug builds).
 
         ! logging = {
-        !   calculation = verbosity_level,
-        !   spawning = verbosity_level,
+        !   calc = verbosity_level,
+        !   spawn = verbosity_level,
         !   death = verbosity_level,
         !   }
+
+        ! In/Out:
+        !    lua_state: flu/Lua state to which the HANDE API is added.
+        ! In:
+        !    opts: handle for the table containing the semi_stoch table.
+        ! Out:
+        !    logging_in: logging_in_t object containing logging-specific input options.
+
 
         use flu_binding, only: flu_State
         use aot_table_module, only: aot_get_val, aot_exists, aot_table_open, aot_table_close
@@ -1822,7 +1830,7 @@ contains
                 call aot_table_close(lua_state, logging_table)
 
             else
-                call stop_all('read_logging', 'Tried to pass in logging options in non-debug build.')
+                call stop_all('read_logging_in_t', 'Tried to pass in logging options in non-debug build.')
             end if
 
         end if
