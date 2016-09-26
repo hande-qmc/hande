@@ -154,7 +154,7 @@ contains
         write(iunit, '(12X, A)', advance = 'no') ('Error in error')
         write(iunit, '(7X, A)', advance = 'no') ('Mean Proj. energy')
         write(iunit, '(7X, A)') ('Std Proj. energy')
-        call flush(iunit)
+        flush(iunit)
 
     end subroutine write_blocking_report_header
 
@@ -629,7 +629,7 @@ contains
             write(iunit, '(1X, ES20.7)', advance = 'no') (bl%optimal_mean(3))
             write(iunit, '(1X, ES20.7)') (bl%optimal_std(3))
 
-            call flush(iunit)
+            flush(iunit)
 
 
         end subroutine write_blocking
