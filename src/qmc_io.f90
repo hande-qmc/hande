@@ -225,7 +225,7 @@ contains
 
     end subroutine write_dmqmc_report_header
 
-    subroutine write_column_title(io, key, int_val, low_prec_val, justify)
+    subroutine write_column_title(io, key, int_val, low_prec_val, justify, sep)
 
         ! Write column headers using the same column width as write_qmc_var.
 
@@ -241,16 +241,20 @@ contains
         character(*), intent(in) :: key
         logical, intent(in), optional :: int_val, low_prec_val
         integer, intent(in), optional :: justify
+        character(1), intent(in), optional :: sep
         logical :: int_val_loc, low_prec_val_loc
         character(20) :: key_str
         integer :: justify_loc, str_len
+        character(1) :: sep_loc
 
         int_val_loc = .false.
         low_prec_val_loc = .false.
         justify_loc = 0
+        sep_loc = ' '
         if (present(int_val)) int_val_loc = int_val
         if (present(low_prec_val)) low_prec_val_loc = low_prec_val
         if (present(justify)) justify_loc = justify
+        if (present(sep)) sep_loc = sep
 
         key_str = key
         str_len = len(key_str)
@@ -261,14 +265,14 @@ contains
         select case(justify_loc)
         case(1)
             ! Right justify.
-            write (io,'("'//adjustr(key_str(:str_len))//'", 2X)', advance='no')
+            write (io,'("'//adjustr(key_str(:str_len))//'", a1,1X)', advance='no') sep_loc
         case(2)
             ! No justification.
-            write (io,'("'//key_str(:str_len)//'", 2X)', advance='no')
+            write (io,'("'//key_str(:str_len)//'", a1,1X)', advance='no') sep_loc
         case default
             ! Left justify.
             ! an extra space so the column lines up with the first non-sign entry in the value.
-            write (io,'(1X,"'//adjustl(key_str(:str_len-1))//'", 2X)', advance='no')
+            write (io,'(1X,"'//adjustl(key_str(:str_len-1))//'", a1, 1X)', advance='no') sep_loc
         end select
 
     end subroutine write_column_title
@@ -488,40 +492,54 @@ contains
     !    val: value to print out.
     !    low_prec (optional, real values only, default false): only write 4 decimal places instead of 10.
 
-    subroutine write_qmc_var_int_32(io, val)
+    subroutine write_qmc_var_int_32(io, val, sep)
 
         use const, only: int_32
 
         integer, intent(in) :: io
         integer(int_32), intent(in) :: val
-        write (io, '(i14,2X)', advance='no') val
+        character(1), intent(in), optional :: sep
+        character(1) :: sep_loc
+
+        sep_loc = ' '
+        if (present(sep)) sep_loc = sep
+        write (io, '(i14,a1,1X)', advance='no') val, sep_loc
 
     end subroutine write_qmc_var_int_32
 
-    subroutine write_qmc_var_int_64(io, val)
+    subroutine write_qmc_var_int_64(io, val, sep)
 
         use const, only: int_64
 
         integer, intent(in) :: io
         integer(int_64), intent(in) :: val
-        write (io, '(i14,2X)', advance='no') val
+        character(1), intent(in), optional :: sep
+        character(1) :: sep_loc
+
+        sep_loc = ' '
+        if (present(sep)) sep_loc = sep
+        write (io, '(i14,a1,1X)', advance='no') val, sep_loc
 
     end subroutine write_qmc_var_int_64
 
-    subroutine write_qmc_var_real_sp(io, val, low_prec)
+    subroutine write_qmc_var_real_sp(io, val, low_prec, sep)
 
         use const, only: sp, dp
 
         integer, intent(in) :: io
         real(sp), intent(in) :: val
         logical, intent(in), optional :: low_prec
+        character(1), intent(in), optional :: sep
+        character(1) :: sep_loc
 
+        sep_loc = ' '
+        if (present(sep)) sep_loc = sep
         ! Just forward to dp version to keep identical formatting.
-        call write_qmc_var(io, real(val, dp), low_prec)
+        call write_qmc_var(io, real(val, dp), low_prec, sep_loc)
 
     end subroutine write_qmc_var_real_sp
 
-    subroutine write_qmc_var_real_dp(io, val, low_prec)
+    subroutine write_qmc_var_real_dp(io, val, low_prec, sep)
 
         use const, only: dp
 
@@ -529,14 +547,19 @@ contains
         real(dp), intent(in) :: val
         logical, intent(in), optional :: low_prec
         logical :: low_prec_loc
+        character(1), intent(in), optional :: sep
+        character(1) :: sep_loc
+
+        sep_loc = ' '
+        if (present(sep)) sep_loc = sep
 
         low_prec_loc = .false.
         if (present(low_prec)) low_prec_loc = low_prec
 
         if (low_prec_loc) then
-            write (io, '(f8.4,2X)', advance='no') val
+            write (io, '(f8.4,a1,1X)', advance='no') val, sep_loc
         else
-            write (io, '(es17.10,5X)', advance='no') val
+            write (io, '(es17.10,a1,4X)', advance='no') val, sep_loc
         end if
 
     end subroutine write_qmc_var_real_dp

@@ -317,19 +317,19 @@ contains
         write (logging_info%calc_unit,'("#")', advance='no')
         select case (calc_type)
         case(fciqmc_calc)
-            call write_column_title(logging_info%calc_unit, "iter", int_val=.true., justify=1)
-            call write_column_title(logging_info%calc_unit, "# spawn events", int_val=.true., justify=1)
-            call write_column_title(logging_info%calc_unit, "# death particles", int_val=.true., justify=1)
-            call write_column_title(logging_info%calc_unit, "# attempts", int_val=.true., justify=1)
+            call write_column_title(logging_info%calc_unit, "iter", int_val=.true., justify=1, sep=',')
+            call write_column_title(logging_info%calc_unit, "# spawn events", int_val=.true., justify=1, sep=',')
+            call write_column_title(logging_info%calc_unit, "# death particles", int_val=.true., justify=1, sep=',')
+            call write_column_title(logging_info%calc_unit, "# attempts", int_val=.true., justify=1, sep=',')
             write (logging_info%calc_unit,'()')
         case(ccmc_calc)
-            call write_column_title(logging_info%calc_unit, "iter", int_val=.true., justify=1)
-            call write_column_title(logging_info%calc_unit, "# spawn events", int_val=.true., justify=1)
-            call write_column_title(logging_info%calc_unit, "# death particles", int_val=.true., justify=1)
-            call write_column_title(logging_info%calc_unit, "# attempts", int_val=.true., justify=1)
-            call write_column_title(logging_info%calc_unit, "# D0 select", int_val=.true., justify=1)
-            call write_column_title(logging_info%calc_unit, "# stochastic", int_val=.true., justify=1)
-            call write_column_title(logging_info%calc_unit, "# single excit", int_val=.true., justify=1)
+            call write_column_title(logging_info%calc_unit, "iter", int_val=.true., justify=1, sep=',')
+            call write_column_title(logging_info%calc_unit, "# spawn events", int_val=.true., justify=1, sep=',')
+            call write_column_title(logging_info%calc_unit, "# death particles", int_val=.true., justify=1, sep=',')
+            call write_column_title(logging_info%calc_unit, "# attempts", int_val=.true., justify=1, sep=',')
+            call write_column_title(logging_info%calc_unit, "# D0 select", int_val=.true., justify=1, sep=',')
+            call write_column_title(logging_info%calc_unit, "# stochastic", int_val=.true., justify=1, sep=',')
+            call write_column_title(logging_info%calc_unit, "# single excit", int_val=.true., justify=1, sep=',')
             write (logging_info%calc_unit,'()')
         end select
 
@@ -385,21 +385,21 @@ contains
 
         write (logging_info%spawn_unit,'("#")', advance='no')
         if (cmplx_wfn) then
-            call write_column_title(logging_info%spawn_unit, "Re{H_ij}", justify=-1)
-            call write_column_title(logging_info%spawn_unit, "Im{H_ij}", justify=-1)
+            call write_column_title(logging_info%spawn_unit, "Re{H_ij}", justify=-1, sep=',')
+            call write_column_title(logging_info%spawn_unit, "Im{H_ij}", justify=-1, sep=',')
         else
-            call write_column_title(logging_info%spawn_unit, "H_ij", justify=-1)
+            call write_column_title(logging_info%spawn_unit, "H_ij", justify=-1, sep=',')
         end if
 
-        call write_column_title(logging_info%spawn_unit, "pgen", justify=-1)
-        call write_column_title(logging_info%spawn_unit, "qn weighting", justify=-1)
-        call write_column_title(logging_info%spawn_unit, "parent_sign", int_val=.true., justify=1)
+        call write_column_title(logging_info%spawn_unit, "pgen", justify=-1, sep=',')
+        call write_column_title(logging_info%spawn_unit, "qn weighting", justify=-1, sep=',')
+        call write_column_title(logging_info%spawn_unit, "parent_sign", int_val=.true., justify=1, sep=',')
 
         if (cmplx_wfn) then
-            call write_column_title(logging_info%spawn_unit, "# spawn", int_val=.true., justify=1)
-            call write_column_title(logging_info%spawn_unit, "# spawn im", int_val=.true., justify=1)
+            call write_column_title(logging_info%spawn_unit, "# spawn", int_val=.true., justify=1, sep=',')
+            call write_column_title(logging_info%spawn_unit, "# spawn im", int_val=.true., justify=1, sep=',')
         else
-            call write_column_title(logging_info%spawn_unit, "# spawn", int_val=.true., justify=1)
+            call write_column_title(logging_info%spawn_unit, "# spawn", int_val=.true., justify=1, sep=',')
         end if
         write (logging_info%spawn_unit,'()')
 
@@ -452,16 +452,16 @@ contains
 
         write (logging_info%death_unit,'("#")', advance='no')
 
-        call write_column_title(logging_info%death_unit, "Kii")
-        call write_column_title(logging_info%death_unit, "proj_energy")
-        call write_column_title(logging_info%death_unit, "loc_shift")
-        call write_column_title(logging_info%death_unit, "qn_weight")
-        call write_column_title(logging_info%death_unit, "p_death")
+        call write_column_title(logging_info%death_unit, "Kii", sep=',')
+        call write_column_title(logging_info%death_unit, "proj_energy", sep=',')
+        call write_column_title(logging_info%death_unit, "loc_shift", sep=',')
+        call write_column_title(logging_info%death_unit, "qn_weight", sep=',')
+        call write_column_title(logging_info%death_unit, "p_death", sep=',')
 
-        call write_column_title(logging_info%death_unit, "nkill", int_val = .true., justify=1)
+        call write_column_title(logging_info%death_unit, "nkill", int_val = .true., justify=1, sep=',')
 
-        call write_column_title(logging_info%death_unit, "init pop", int_val = .true., justify=1)
-        call write_column_title(logging_info%death_unit, "fin pop", int_val = .true., justify=1)
+        call write_column_title(logging_info%death_unit, "init pop", int_val = .true., justify=1, sep=',')
+        call write_column_title(logging_info%death_unit, "fin pop", int_val = .true., justify=1, sep=',')
 
         write (logging_info%death_unit,'()')
 
@@ -490,10 +490,10 @@ contains
 
         if (logging_info%write_logging .and. logging_info%write_highlevel_values) then
             write (logging_info%calc_unit,'(1X)', advance='no')
-            call write_qmc_var(logging_info%calc_unit, iter)
-            call write_qmc_var(logging_info%calc_unit, nspawn_events)
-            call write_qmc_var(logging_info%calc_unit, ndeath_tot)
-            call write_qmc_var(logging_info%calc_unit, nattempts)
+            call write_qmc_var(logging_info%calc_unit, iter, sep=',')
+            call write_qmc_var(logging_info%calc_unit, nspawn_events, sep=',')
+            call write_qmc_var(logging_info%calc_unit, ndeath_tot, sep=',')
+            call write_qmc_var(logging_info%calc_unit, nattempts, sep=',')
             write (logging_info%calc_unit,'()')
         end if
 
@@ -524,13 +524,13 @@ contains
 
         if (logging_info%write_logging .and. logging_info%write_highlevel_values) then
             write (logging_info%calc_unit, '(1X)', advance='no')
-            call write_qmc_var(logging_info%calc_unit, iter)
-            call write_qmc_var(logging_info%calc_unit, nspawn_events)
-            call write_qmc_var(logging_info%calc_unit, ndeath_events)
-            call write_qmc_var(logging_info%calc_unit, nclusters)
-            call write_qmc_var(logging_info%calc_unit, nD0_select)
-            call write_qmc_var(logging_info%calc_unit, nstochastic_clusters)
-            call write_qmc_var(logging_info%calc_unit, nsingle_excitors)
+            call write_qmc_var(logging_info%calc_unit, iter, sep=',')
+            call write_qmc_var(logging_info%calc_unit, nspawn_events, sep=',')
+            call write_qmc_var(logging_info%calc_unit, ndeath_events, sep=',')
+            call write_qmc_var(logging_info%calc_unit, nclusters, sep=',')
+            call write_qmc_var(logging_info%calc_unit, nD0_select, sep=',')
+            call write_qmc_var(logging_info%calc_unit, nstochastic_clusters, sep=',')
+            call write_qmc_var(logging_info%calc_unit, nsingle_excitors, sep=',')
             write (logging_info%calc_unit, '()')
         end if
 
@@ -567,18 +567,18 @@ contains
                 write (logging_info%spawn_unit,'(1X)', advance='no')
 
                 if (cmplx_wfn) then
-                    call write_qmc_var(logging_info%spawn_unit, real(hmatel%c))
-                    call write_qmc_var(logging_info%spawn_unit, aimag(hmatel%c))
+                    call write_qmc_var(logging_info%spawn_unit, real(hmatel%c), sep=',')
+                    call write_qmc_var(logging_info%spawn_unit, aimag(hmatel%c), sep=',')
                 else
-                    call write_qmc_var(logging_info%spawn_unit, hmatel%r)
+                    call write_qmc_var(logging_info%spawn_unit, hmatel%r, sep=',')
                 end if
 
-                call write_qmc_var(logging_info%spawn_unit, pgen)
-                call write_qmc_var(logging_info%spawn_unit, qn_weighting)
-                call write_qmc_var(logging_info%spawn_unit, parent_sign)
-                call write_qmc_var(logging_info%spawn_unit, nspawned(1))
+                call write_qmc_var(logging_info%spawn_unit, pgen, sep=',')
+                call write_qmc_var(logging_info%spawn_unit, qn_weighting, sep=',')
+                call write_qmc_var(logging_info%spawn_unit, parent_sign, sep=',')
+                call write_qmc_var(logging_info%spawn_unit, nspawned(1), sep=',')
 
-                if (cmplx_wfn) call write_qmc_var(logging_info%spawn_unit, nspawned(2))
+                if (cmplx_wfn) call write_qmc_var(logging_info%spawn_unit, nspawned(2), sep=',')
 
                 write (logging_info%spawn_unit,'()')
             end if
@@ -616,16 +616,16 @@ contains
 
                 write (logging_info%death_unit,'(1X)', advance='no')
 
-                call write_qmc_var(logging_info%death_unit, Kii)
-                call write_qmc_var(logging_info%death_unit, proj_energy)
-                call write_qmc_var(logging_info%death_unit, loc_shift)
-                call write_qmc_var(logging_info%death_unit, qn_weight)
-                call write_qmc_var(logging_info%death_unit, pd)
+                call write_qmc_var(logging_info%death_unit, Kii, sep=',')
+                call write_qmc_var(logging_info%death_unit, proj_energy, sep=',')
+                call write_qmc_var(logging_info%death_unit, loc_shift, sep=',')
+                call write_qmc_var(logging_info%death_unit, qn_weight, sep=',')
+                call write_qmc_var(logging_info%death_unit, pd, sep=',')
 
-                call write_qmc_var(logging_info%death_unit, nkill)
+                call write_qmc_var(logging_info%death_unit, nkill, sep=',')
 
-                call write_qmc_var(logging_info%death_unit, init_pop)
-                call write_qmc_var(logging_info%death_unit, fin_pop)
+                call write_qmc_var(logging_info%death_unit, init_pop, sep=',')
+                call write_qmc_var(logging_info%death_unit, fin_pop, sep=',')
 
                 write (logging_info%death_unit,'()')
             end if
