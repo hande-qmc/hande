@@ -43,11 +43,11 @@ contains
         !   pop_real_factor) so to avoid a scaling and unscaling step.
 
         use dSFMT_interface, only: dSFMT_t, get_rand_close_open
-        use qmc_data, only: qmc_state_t, logging_t
+        use qmc_data, only: qmc_state_t
         use system, only: sys_t
         use spawning, only: calc_qn_weighting
         use const, only: debug
-        use logging, only: write_logging_death
+        use logging, only: write_logging_death, logging_t
 
         type(sys_t), intent(in) :: sys
         real(p), intent(in) :: Kii, dfock, proj_energy

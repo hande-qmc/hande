@@ -53,7 +53,8 @@ contains
         use system
         use dSFMT_interface, only: dSFMT_t, dSFMT_end
         use qmc_data, only: qmc_in_t, restart_in_t, load_bal_in_t, annihilation_flags_t, qmc_state_t, &
-                            qmc_in_t_json, restart_in_t_json, load_bal_in_t_json, logging_t
+                            qmc_in_t_json, restart_in_t_json, load_bal_in_t_json
+        use logging, only: logging_t
         use reference_determinant, only: reference_t, reference_t_json
         use dmqmc_data, only: dmqmc_in_t, dmqmc_estimates_t, dmqmc_weighted_sampling_t, dmqmc_in_t_json, ipdmqmc_in_t_json, &
                               rdm_in_t_json, operators_in_t_json, hartree_fock_dm

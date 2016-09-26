@@ -61,17 +61,16 @@ contains
         use restart_hdf5, only: init_restart_info_t, restart_info_t, dump_restart_hdf5, dump_restart_file_wrapper
         use spawn_data, only: receive_spawned_walkers, non_blocking_send, annihilate_wrapper_non_blocking_spawn, &
                               write_memcheck_report
-
         use qmc_data, only: qmc_in_t, fciqmc_in_t, semi_stoch_in_t, restart_in_t, load_bal_in_t, empty_determ_space, &
                             qmc_state_t, annihilation_flags_t, semi_stoch_separate_annihilation, qmc_in_t_json,      &
-                            fciqmc_in_t_json, semi_stoch_in_t_json, restart_in_t_json, load_bal_in_t_json,           &
-                            logging_in_t, logging_t
+                            fciqmc_in_t_json, semi_stoch_in_t_json, restart_in_t_json, load_bal_in_t_json
         use reference_determinant, only: reference_t, reference_t_json
         use check_input, only: check_qmc_opts, check_fciqmc_opts, check_load_bal_opts
         use hamiltonian_data
         use energy_evaluation, only: get_sanitized_projected_energy
 
-        use logging, only: init_logging, end_logging, prep_logging_mc_cycle, write_logging_calc_fciqmc
+        use logging, only: init_logging, end_logging, prep_logging_mc_cycle, write_logging_calc_fciqmc, &
+                            logging_in_t, logging_t
 
         type(sys_t), intent(in) :: sys
         type(qmc_in_t), intent(in) :: qmc_in
@@ -119,7 +118,7 @@ contains
 
         real(p) :: proj_energy_old
 
-![review] - AJWT: NB This variable is not to be used when not in debug mode
+        ! NB This variable is not to be used when not in debug mode
         integer(int_p) :: ndeath_tot
 
         if (parent) then
@@ -452,7 +451,8 @@ contains
         use dSFMT_interface, only: dSFMT_t
         use excitations, only: excit_t, get_excitation
         use ifciqmc
-        use qmc_data, only: qmc_in_t, qmc_state_t, logging_t
+        use qmc_data, only: qmc_in_t, qmc_state_t
+        use logging, only: logging_t
         use spawn_data, only: spawn_t
         use system, only: sys_t
         use qmc_common, only: decide_nattempts

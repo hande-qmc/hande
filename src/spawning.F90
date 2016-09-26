@@ -69,12 +69,12 @@ contains
 
         use determinants, only: det_info_t
         use excitations, only: excit_t
-        use qmc_data, only: qmc_state_t, logging_t
+        use qmc_data, only: qmc_state_t
         use system, only: sys_t
         use proc_pointers, only: gen_excit_ptr_t
         use dSFMT_interface, only: dSFMT_t
         use hamiltonian_data
-        use logging, only: write_logging_spawn
+        use logging, only: write_logging_spawn, logging_t
 
         type(dSFMT_t), intent(inout) :: rng
         type(sys_t), intent(in) :: sys
@@ -156,7 +156,8 @@ contains
         use system, only: sys_t
         use excitations, only: excit_t
         use proc_pointers, only: gen_excit_ptr_t
-        use qmc_data, only: qmc_state_t, logging_t
+        use qmc_data, only: qmc_state_t
+        use logging, only: logging_t
         use dSFMT_interface, only: dSFMT_t
         use hamiltonian_data
 
@@ -250,7 +251,8 @@ contains
         use excitations, only: excit_t
         use proc_pointers, only: gen_excit_ptr_t
         use stoch_utils, only: stochastic_round_spawned_particle
-        use qmc_data, only: qmc_state_t, logging_t
+        use qmc_data, only: qmc_state_t
+        use logging, only: logging_t
         use dSFMT_interface, only: dSFMT_t
         use hamiltonian_data
 
@@ -348,7 +350,8 @@ contains
         use system, only: sys_t
         use excitations, only: excit_t
         use proc_pointers, only: gen_excit_ptr_t
-        use qmc_data, only: qmc_state_t, logging_t
+        use qmc_data, only: qmc_state_t
+        use logging, only: logging_t
         use stoch_utils, only: stochastic_round_spawned_particle
         use dSFMT_interface, only: dSFMT_t
         use hamiltonian_data
@@ -441,7 +444,8 @@ contains
         use system, only: sys_t
         use excitations, only: excit_t
         use proc_pointers, only: gen_excit_ptr_t
-        use qmc_data, only: qmc_state_t, logging_t
+        use qmc_data, only: qmc_state_t
+        use logging, only: logging_t
         use dSFMT_interface, only: dSFMT_t
 
         type(dSFMT_t), intent(inout) :: rng
@@ -507,14 +511,14 @@ contains
 
         use determinants, only: det_info_t
         use excitations, only: excit_t
-        use qmc_data, only: qmc_state_t, logging_t
+        use qmc_data, only: qmc_state_t
         use system, only: sys_t, read_in
         use proc_pointers, only: gen_excit_ptr_t
         use dSFMT_interface, only: dSFMT_t
 
         use errors, only: stop_all
         use hamiltonian_data
-        use logging, only: write_logging_spawn
+        use logging, only: write_logging_spawn, logging_t
 
         type(dSFMT_t), intent(inout) :: rng
         type(sys_t), intent(in) :: sys

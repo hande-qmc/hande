@@ -11,6 +11,62 @@ module logging
 ! details of currently implemented output please see the manual.
 
 ! [review] - JSS: this is well written but rather specific.
+! [reply] - CJCS: A rewrite to be more general is possible, but is more than I have
+! [reply] - CJCS: time for at the moment sadly. I'll sketch out how I'd do it as a
+! [reply] - CJCS: suggestion for future work though?
+
+! Currently only a rudimentary implementation as an initial effort. A more elegant
+! approach is probably possible, for instance using generalised functions to initialise+
+! write reports and enabling configuration to be set simply by changing initialisation or
+! switching between preset  combination of variables.
+! However, actually implementing this cleanly is no mean feat.
+
+use const, only: int_32, int_64
+
+type logging_in_t
+    ! High-level debugging flag (at level of calculation running).
+    integer(int_32) :: calc = 0
+    character(255) :: calc_filename = 'CALC'
+    ! Spawning flag.
+    integer(int_32) :: spawn = 0
+    character(255) :: spawn_filename = 'SPAWN'
+    ! Death flag.
+    integer(int_32) :: death = 0
+    character(255) :: death_filename = 'DEATH'
+    ! Iteration to start outputting logs from.
+    integer(int_64) :: start_iter = 0_int_64
+    ! Iteration to stop outputting logs from.
+    integer(int_64) :: end_iter = huge(0_int_64)
+end type logging_in_t
+
+! Derived type to contain debugging flags and avoid passing lots of different
+! flags to the various procedures.
+
+type logging_t
+    ! [review] - JSS: this seems to have repetition but no structure.
+    ! [review] - JSS: nested structure? This is where built-in dict would help!
+    ! [review] - JSS: want something v simple to extend to a new log type.
+    ! [reply] - CJCS: I agree, but by no means clear how to nest. I avoided using
+    ! [reply] - CJCS: generic levels as reduction in code is minimal currently and
+    ! [reply] - CJCS: loss of clarity versus descriptive names is large.
+    ! High-level debugging flag (at level of calculation running).
+    logical :: write_highlevel_values = .false.
+    logical :: write_highlevel_calculations = .false.
+    integer :: calc_unit = huge(1_int_32)
+
+    ! Spawning flags.
+    logical :: write_successful_spawn = .false.
+    logical :: write_failed_spawn = .false.
+    integer :: spawn_unit = huge(1_int_32)
+
+    ! Death flag.
+    logical :: write_successful_death = .false.
+    logical :: write_failed_death = .false.
+    integer :: death_unit = huge(1_int_32)
+
+    ! Whether within iterations required to output logging info.
+    logical :: write_logging = .false.
+end type logging_t
 
 contains
 
@@ -24,8 +80,6 @@ contains
         ! In/Out:
         !   logging_info: derived type to be used during calculation to
         !       control logging output
-
-        use qmc_data, only: logging_t, logging_in_t
 
         type(logging_t), intent(inout) :: logging_info
         type(logging_in_t), intent(in) :: logging_in
@@ -44,7 +98,6 @@ contains
         ! and calling a warning if not.
         ! As additional functionality is added should be updated appropriately.
 
-        use qmc_data, only: logging_in_t
         use calc, only: fciqmc_calc, ccmc_calc, calc_type
 
         type(logging_in_t), intent(in) :: logging_in
@@ -109,8 +162,6 @@ contains
         !   logging_info: derived type to be used during calculation to
         !       control logging output
 
-
-        use qmc_data, only: logging_t, logging_in_t
         use const, only: int_p
 
         integer, intent(in) :: iter
@@ -160,10 +211,9 @@ contains
         ! Closes all active log files within fortran.
         ! In future may also print message to demonstrate end of logs.
 
-        use qmc_data, only: logging_t
         use report, only: end_report
-        integer :: date_values(8)
 
+        integer :: date_values(8)
         type(logging_t), intent(in) :: logging_info
 
         call date_and_time(VALUES=date_values)
@@ -200,8 +250,6 @@ contains
         !       information required in logs.
         !   - writing preamble information in log.
 
-        use qmc_data, only: logging_t, logging_in_t
-
         type(logging_t), intent(inout) :: logging_info
         type(logging_in_t), intent(in) :: logging_in
 
@@ -222,8 +270,6 @@ contains
         !   - converting from verbosity level given into specific
         !       information required in logs.
         !   - writing preamble information in log.
-
-        use qmc_data, only: logging_t, logging_in_t
 
         type(logging_t), intent(inout) :: logging_info
         type(logging_in_t), intent(in) :: logging_in
@@ -247,8 +293,6 @@ contains
         !       information required in logs.
         !   - writing preamble information in log.
 
-        use qmc_data, only: logging_t, logging_in_t
-
         type(logging_t), intent(inout) :: logging_info
         type(logging_in_t), intent(in) :: logging_in
 
@@ -269,7 +313,6 @@ contains
         !    logging_info: contains information on logging settings.
 
         use calc, only: calc_type, fciqmc_calc, ccmc_calc
-        use qmc_data, only: logging_t
         use qmc_io, only: write_column_title
         use report, only: environment_report
 
@@ -323,7 +366,6 @@ contains
         ! In:
         !    logging_info: contains information on logging settings.
 
-        use qmc_data, only: logging_t
         use report, only: environment_report
         use calc, only: calc_type, fciqmc_calc, ccmc_calc
 
@@ -359,7 +401,6 @@ contains
         !    logging_info: derived type containing information on logging settings.
         !    cmplx_wfn: logical. True if using complex-valued wavefunction, false if not.
 
-        use qmc_data, only: logging_t
         use qmc_io, only: write_column_title
 
         type(logging_t), intent(in) :: logging_info
@@ -396,7 +437,6 @@ contains
         !    logging_info: contains information on logging settings.
 
         use calc, only: calc_type, fciqmc_calc, ccmc_calc
-        use qmc_data, only: logging_t
         use report, only: environment_report
 
         type(logging_t), intent(in) :: logging_info
@@ -430,7 +470,6 @@ contains
         ! In:
         !    logging_info: derived type containing information on logging settings.
 
-        use qmc_data, only: logging_t
         use qmc_io, only: write_column_title
 
         type(logging_t), intent(in) :: logging_info
@@ -465,7 +504,6 @@ contains
 
         use qmc_io, only: write_qmc_var
         use const, only: int_p, int_64
-        use qmc_data, only: logging_t
 
         integer, intent(in) :: iter
         integer(int_p), intent(in) :: nspawn_events, ndeath_tot
@@ -500,7 +538,6 @@ contains
 
         use qmc_io, only: write_qmc_var
         use const, only: int_p, int_64
-        use qmc_data, only: logging_t
 
         type(logging_t), intent(in) :: logging_info
         integer, intent(in) :: iter
@@ -537,7 +574,6 @@ contains
 
         use qmc_io, only: write_qmc_var
         use const, only: int_p, p
-        use qmc_data, only: logging_t
         use hamiltonian_data, only: hmatel_t
 
         type(logging_t), intent(in) :: logging_info
@@ -590,7 +626,6 @@ contains
         !   fin_pop: integer. Final population on determinant.
 
         use qmc_io, only: write_qmc_var
-        use qmc_data, only: logging_t
         use const, only: int_p, p
 
         type(logging_t), intent(in) :: logging_info
@@ -620,25 +655,24 @@ contains
 
     end subroutine write_logging_death
 
-    ! [review] - JSS: cf append_ext and get_unique_filename in utils.
     function get_log_filename(in_name) result(out_name)
 
         ! Helper function to generate filenames to use for a generic log file.
         ! In:
-        !   in_name: base name of log to give (eg. CALC.log)
+        !   in_name: base name of log to give (eg. CALC)
         ! Out:
         !   out_name: filename to be used. If running in parallel with be of
-        !       form in_name.pX for process number X.
+        !       form in_name.Y.pX.log for process number X.
 
         use parallel, only: iproc, nprocs
-        character(255), intent(in) ::in_name
+        use utils, only: get_unique_filename
+        character(255), intent(in) :: in_name
+        character(255) :: suffix
         character(255) :: out_name
+        integer :: id
 
-        if (nprocs > 1) then
-            write(out_name,'(a,".p",i0)') trim(in_name), iproc
-        else
-            out_name = trim(in_name)
-        end if
+        write(suffix,'(".p",i0,".log")') iproc
+        call get_unique_filename(trim(in_name), suffix, .true., 0, out_name, id, .true.)
 
     end function get_log_filename
 

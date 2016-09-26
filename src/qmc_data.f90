@@ -255,24 +255,6 @@ type restart_in_t
     integer :: write_shift_id = huge(0)
 end type restart_in_t
 
-! [review] - JSS: is this best place in another module, given logging could be
-! [review] - JSS: used elsewhere, not just in QMC?
-type logging_in_t
-    ! High-level debugging flag (at level of calculation running).
-    integer(int_32) :: calc = 0
-    character(255) :: calc_filename = 'CALC.log'
-    ! Spawning flag.
-    integer(int_32) :: spawn = 0
-    character(255) :: spawn_filename = 'SPAWN.log'
-    ! Death flag.
-    integer(int_32) :: death = 0
-    character(255) :: death_filename = 'DEATH.log'
-    ! Iteration to start outputting logs from.
-    integer(int_64) :: start_iter = 0_int_64
-    ! Iteration to stop outputting logs from.
-    integer(int_64) :: end_iter = huge(0_int_64)
-end type logging_in_t
-
 ! --- Parallel info ---
 
 ! Combine information required for non-blocking report loop quantities
@@ -605,34 +587,6 @@ type annihilation_flags_t
     ! Use symmetric version of dmqmc algortithm?
     logical :: symmetric = .true.
 end type annihilation_flags_t
-
-! --- Logging output ---
-
-! Derived type to contain debugging flags and avoid passing lots of different flags to the various procedures.
-
-! [review] - JSS: in favour of placing this in logging module.
-type logging_t
-    ! [review] - JSS: this seems to have repetition but no structure.
-    ! [review] - JSS: nested structure? This is where built-in dict would help!
-    ! [review] - JSS: want something v simple to extend to a new log type.
-    ! High-level debugging flag (at level of calculation running).
-    logical :: write_highlevel_values = .false.
-    logical :: write_highlevel_calculations = .false.
-    integer :: calc_unit = huge(1_int_32)
-
-    ! Spawning flags.
-    logical :: write_successful_spawn = .false.
-    logical :: write_failed_spawn = .false.
-    integer :: spawn_unit = huge(1_int_32)
-
-    ! Death flag.
-    logical :: write_successful_death = .false.
-    logical :: write_failed_death = .false.
-    integer :: death_unit = huge(1_int_32)
-
-    ! Whether within iterations required to output logging info.
-    logical :: write_logging = .false.
-end type logging_t
 
 contains
 

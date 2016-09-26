@@ -324,7 +324,8 @@ contains
         use lua_hande_system, only: get_sys_t
         use lua_hande_utils, only: warn_unused_args, register_timing
         use qmc_data, only: qmc_in_t, fciqmc_in_t, semi_stoch_in_t, restart_in_t, load_bal_in_t, &
-                            qmc_state_t, logging_in_t
+                            qmc_state_t
+        use logging, only: logging_in_t
         use reference_determinant, only: reference_t
         use system, only: sys_t
 
@@ -426,7 +427,7 @@ contains
         use lua_hande_system, only: get_sys_t
         use lua_hande_utils, only: warn_unused_args, register_timing
         use qmc_data, only: qmc_in_t, ccmc_in_t, semi_stoch_in_t, restart_in_t, load_bal_in_t, qmc_state_t
-        use qmc_data, only: logging_in_t
+        use logging, only: logging_in_t
         use reference_determinant, only: reference_t
         use system, only: sys_t
 
@@ -1797,7 +1798,7 @@ contains
         use aot_table_module, only: aot_get_val, aot_exists, aot_table_open, aot_table_close
         use lua_hande_utils, only: warn_unused_args
 
-        use qmc_data, only: logging_in_t
+        use logging, only: logging_in_t
 
         use errors, only: stop_all
         use const, only: debug

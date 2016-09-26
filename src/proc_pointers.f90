@@ -238,7 +238,8 @@ abstract interface
     subroutine i_spawner(rng, sys, qmc_state, spawn_cutoff, real_factor, d, parent_sign, gen_excit_ptr, weights, &
                          logging_info, nspawned, nspawned_im, connection)
         use dSFMT_interface, only: dSFMT_t
-        use qmc_data, only: qmc_state_t, logging_t
+        use qmc_data, only: qmc_state_t
+        use logging, only: logging_t
         use system, only: sys_t
         import :: det_info_t, excit_t, gen_excit_ptr_t, int_p, p, dp
         implicit none
