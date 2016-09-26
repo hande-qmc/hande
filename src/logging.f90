@@ -51,7 +51,6 @@ type logging_t
     ! [reply] - CJCS: loss of clarity versus descriptive names is large.
     ! High-level debugging flag (at level of calculation running).
     logical :: write_highlevel_values = .false.
-    logical :: write_highlevel_calculations = .false.
     integer :: calc_unit = huge(1_int_32)
 
     ! Spawning flags.
@@ -124,25 +123,29 @@ contains
 
         use errors, only: warning
         use calc, only: calc_type, get_calculation_string
+        use parallel, only: parent
 
         integer, intent(in) :: log_type, verbosity_level
         character(255) :: message, calc_name, log_name
 
-        calc_name = get_calculation_string(calc_type)
+        if (parent) then
 
-        select case(log_type)
-        case(1)
-            log_name = "CALC"
-        case(2)
-            log_name = "SPAWN"
-        case(3)
-            log_name = "DEATH"
-        end select
+            calc_name = get_calculation_string(calc_type)
 
-        write(message, '("Verbosity level ",i0," not yet implemented for ",a," logging with ",a)') &
-                        verbosity_level, trim(log_name), trim(calc_name)
+            select case(log_type)
+            case(1)
+                log_name = "CALC"
+            case(2)
+                log_name = "SPAWN"
+            case(3)
+                log_name = "DEATH"
+            end select
 
-        call warning('check_logging_inputs',message)
+            write(message, '("Verbosity level ",i0," not yet implemented for ",a," logging with ",a)') &
+                            verbosity_level, trim(log_name), trim(calc_name)
+
+            call warning('check_logging_inputs',message)
+        end if
 
     end subroutine write_logging_warning
 
@@ -333,8 +336,6 @@ contains
         write (logging_info%calc_unit, '(1X,"Verbosity Settings:")')
         write (logging_info%calc_unit, '(1X,10X,"Write Calculation Values:",2X,L)') &
                         logging_info%write_highlevel_values
-        write (logging_info%calc_unit, '(1X,10X,"Write Calculation Accumulation:",2X,L)') &
-                        logging_info%write_highlevel_calculations
 
         write (logging_info%calc_unit,'()')
 
@@ -675,5 +676,51 @@ contains
         call get_unique_filename(trim(in_name), suffix, .true., 0, out_name, id, .true.)
 
     end function get_log_filename
+
+    subroutine logging_in_t_json(js, logging_in, terminal)
+
+        use json_out
+
+        type(json_out_t), intent(inout) :: js
+        type(logging_in_t), intent(in) :: logging_in
+        logical, intent(in), optional :: terminal
+
+        call json_object_init(js, 'logging_in')
+        call json_write_key(js, 'calc', logging_in%calc)
+        call json_write_key(js, 'calc_file', logging_in%calc_filename)
+        call json_write_key(js, 'spawn', logging_in%spawn)
+        call json_write_key(js, 'spawn_file', logging_in%spawn_filename)
+        call json_write_key(js, 'death', logging_in%death)
+        call json_write_key(js, 'death_file', logging_in%death_filename)
+
+        call json_write_key(js, 'start_iter', logging_in%start_iter)
+        call json_write_key(js, 'end_iter', logging_in%end_iter, .true.)
+
+        call json_object_end(js, terminal)
+
+    end subroutine logging_in_t_json
+
+    subroutine logging_t_json(js, logging_info, terminal)
+
+        use json_out
+
+        type(json_out_t), intent(inout) :: js
+        type(logging_t), intent(in) :: logging_info
+        logical, intent(in), optional :: terminal
+
+        call json_object_init(js, 'logging')
+        call json_write_key(js, 'write_highlevel_values', logging_info%write_highlevel_values)
+        call json_write_key(js, 'calc_unit', logging_info%calc_unit)
+
+        call json_write_key(js, 'write_successful_spawn', logging_info%write_successful_spawn)
+        call json_write_key(js, 'write_failed_spawn', logging_info%write_failed_spawn)
+        call json_write_key(js, 'spawn_unit', logging_info%spawn_unit)
+
+        call json_write_key(js, 'write_successful_death', logging_info%write_successful_death)
+        call json_write_key(js, 'write_failed_death', logging_info%write_failed_death)
+        call json_write_key(js, 'death_unit', logging_info%death_unit, .true.)
+
+        call json_object_end(js, terminal)
+    end subroutine logging_t_json
 
 end module logging

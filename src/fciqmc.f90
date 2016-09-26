@@ -70,7 +70,7 @@ contains
         use energy_evaluation, only: get_sanitized_projected_energy
 
         use logging, only: init_logging, end_logging, prep_logging_mc_cycle, write_logging_calc_fciqmc, &
-                            logging_in_t, logging_t
+                            logging_in_t, logging_t, logging_in_t_json, logging_t_json
 
         type(sys_t), intent(in) :: sys
         type(qmc_in_t), intent(in) :: qmc_in
@@ -152,7 +152,9 @@ contains
             call semi_stoch_in_t_json(js, semi_stoch_in)
             call restart_in_t_json(js, restart_in, uuid_restart)
             call load_bal_in_t_json(js, load_bal_in)
-            call reference_t_json(js, qs%ref, sys, terminal=.true.)
+            call reference_t_json(js, qs%ref, sys)
+            call logging_in_t_json(js, logging_in)
+            call logging_t_json(js, logging_info, terminal=.true.)
             call json_object_end(js, terminal=.true., tag=.true.)
             write (js%io, '()')
         end if

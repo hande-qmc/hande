@@ -1802,6 +1802,7 @@ contains
 
         use errors, only: stop_all
         use const, only: debug
+        use parallel, only: parent
 
         type(flu_State), intent(inout) :: lua_state
         integer, intent(in) :: opts
@@ -1832,7 +1833,8 @@ contains
                 call aot_table_close(lua_state, logging_table)
 
             else
-                call stop_all('read_logging_in_t', 'Tried to pass in logging options in non-debug build.')
+                if (parent) call stop_all('read_logging_in_t', &
+                        'Tried to pass logging options to a non-debug build.')
             end if
 
         end if
