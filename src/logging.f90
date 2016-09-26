@@ -10,6 +10,8 @@ module logging
 ! Logging output is controlled by verbosity levels for each area of logging. For
 ! details of currently implemented output please see the manual.
 
+! [review] - JSS: this is well written but rather specific.
+
 contains
 
     subroutine init_logging(logging_in, logging_info)
@@ -618,6 +620,7 @@ contains
 
     end subroutine write_logging_death
 
+    ! [review] - JSS: cf append_ext and get_unique_filename in utils.
     function get_log_filename(in_name) result(out_name)
 
         ! Helper function to generate filenames to use for a generic log file.

@@ -255,6 +255,8 @@ type restart_in_t
     integer :: write_shift_id = huge(0)
 end type restart_in_t
 
+! [review] - JSS: is this best place in another module, given logging could be
+! [review] - JSS: used elsewhere, not just in QMC?
 type logging_in_t
     ! High-level debugging flag (at level of calculation running).
     integer(int_32) :: calc = 0
@@ -608,7 +610,11 @@ end type annihilation_flags_t
 
 ! Derived type to contain debugging flags and avoid passing lots of different flags to the various procedures.
 
+! [review] - JSS: in favour of placing this in logging module.
 type logging_t
+    ! [review] - JSS: this seems to have repetition but no structure.
+    ! [review] - JSS: nested structure? This is where built-in dict would help!
+    ! [review] - JSS: want something v simple to extend to a new log type.
     ! High-level debugging flag (at level of calculation running).
     logical :: write_highlevel_values = .false.
     logical :: write_highlevel_calculations = .false.
