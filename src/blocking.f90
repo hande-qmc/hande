@@ -199,13 +199,13 @@ contains
                 bl%reblock_data(1,i,:) = (bl%n_reports_blocked)/reblock_size
 
                 bl%reblock_data(3,i,:) = bl%reblock_data(3,i,:) &
-                + bl%reblock_data(2,i,:)/reblock_size
+                    + bl%reblock_data(2,i,:)/reblock_size
 
                 bl%reblock_data(4,i,:) = bl%reblock_data(4,i,:) &
-                + (bl%reblock_data(2,i,:)/reblock_size) ** 2
+                    + (bl%reblock_data(2,i,:)/reblock_size) ** 2
 
                 bl%data_product(i) = bl%data_product(i) + (bl%reblock_data(2,i,1)/reblock_size) &
-                * (bl%reblock_data(2,i,2)/reblock_size)
+                    * (bl%reblock_data(2,i,2)/reblock_size)
 
                 bl%reblock_data(2,i,:) = 0
             end if
@@ -238,15 +238,15 @@ contains
 
             if (bl%reblock_data_2(1,i,1) > 1.0) then
                 bl%block_std(i,:) = (bl%reblock_data_2(4,i,:)/bl%reblock_data_2(1,i,:) &
-                - bl%block_mean(i,:) ** 2)
+                    - bl%block_mean(i,:) ** 2)
 
                 bl%block_std(i,:) = sqrt(bl%block_std(i,:)/(bl%reblock_data_2(1,i,:) &
-                - 1))
+                    - 1))
 
 
-                 bl%block_cov(i) = (bl%data_product_2(i) &
-                - bl%block_mean(i,1)*bl%block_mean(i,2) &
-                *bl%reblock_data_2(1,i,1))/(bl%reblock_data_2(1,i,1) - 1)
+                bl%block_cov(i) = (bl%data_product_2(i) &
+                    - bl%block_mean(i,1)*bl%block_mean(i,2) &
+                    *bl%reblock_data_2(1,i,1))/(bl%reblock_data_2(1,i,1) - 1)
 
             else
                 bl%block_std(i,:) = 0
@@ -257,7 +257,7 @@ contains
     end subroutine mean_std_cov
 
     function fraction_error(mean_1, mean_2, data_number, std_1, std_2, cov_in) &
-    result(error_est)
+            result(error_est)
 
         ! Function to calculate the error of a fraction when the error and mean
         ! of the denominator and numerator is known.
@@ -285,7 +285,7 @@ contains
 
         mean_cur = mean_1/mean_2
         error_est = abs(mean_cur*sqrt((std_1/mean_1)**2 + (std_2/mean_2)**2 &
-        - 2*cov_in/(data_number*mean_1*mean_2)))
+            - 2*cov_in/(data_number*mean_1*mean_2)))
 
     end function fraction_error
 
@@ -323,12 +323,10 @@ contains
             do j = 0, (bl%lg_max)
                 B = 2**(j)
 ! [review] - CJCS: From what you said above shouldn't this be B**3 >?
-                if (B > (2*bl%reblock_data_2(1,j,i)&
-                    *real(B)*((bl%block_std(j,i)/&
-                     bl%block_std(0,i))**4))**(1.0/3.0)) then
+                if (B > (2*bl%reblock_data_2(1,j,i)*real(B)*((bl%block_std(j,i) / &
+                        bl%block_std(0,i))**4))**(1.0/3.0)) then
                     bl%optimal_size(i) = j
                     exit
-
                 end if
             end do
             if (bl%optimal_size(i) == 1) then
@@ -350,7 +348,7 @@ contains
             ! limit theorem.
             else
                 bl%optimal_err(i) = bl%optimal_std(i)/ &
-                sqrt(2*(bl%reblock_data_2(1, bl%optimal_size(i), i) - 1))
+                    sqrt(2*(bl%reblock_data_2(1, bl%optimal_size(i), i) - 1))
             end if
         end do
         ! Larger optimal block size between the two is used.
@@ -365,11 +363,11 @@ contains
             bl%optimal_mean(3) = 0
             bl%optimal_std(3) = 0
         else
-            bl%optimal_mean(3) = bl%block_mean(size_e, 1)/bl%block_mean(size_e,2)
+            bl%optimal_mean(3) = bl%block_mean(size_e, 1) / bl%block_mean(size_e,2)
 
             bl%optimal_std(3) = fraction_error(bl%block_mean(size_e,1), bl%block_mean(size_e, 2), &
-            bl%reblock_data_2(1, size_e,1), bl%block_std(size_e,1), bl%block_std(size_e, 2), &
-            bl%block_cov(size_e))
+                bl%reblock_data_2(1, size_e,1), bl%block_std(size_e,1), bl%block_std(size_e, 2), &
+                bl%block_cov(size_e))
         end if
 
     end subroutine find_optimal_block
@@ -395,7 +393,7 @@ contains
 
         do i = 1, bl%n_saved_startpoints
             if (mod(bl%n_reports_blocked,(bl%save_fq * i)) == 0 .and. &
-            all(bl%reblock_save(i,:,:,:) == 0)) then
+                        all(bl%reblock_save(i,:,:,:) == 0)) then
                 bl%reblock_save(i,:,:,:) = bl%reblock_data(:,:,:)
                 bl%product_save(i,:) = bl%data_product(:)
             end if
@@ -442,9 +440,9 @@ contains
                 switch = .true.
                 do k = 0, bl%n_saved_startpoints
                     if (bl%reblock_save(k,2,i,1) == 0 .and. &
-                    bl%reblock_save(k,1,0,1) >= restart*bl%save_fq) then
+                                bl%reblock_save(k,1,0,1) >= restart*bl%save_fq) then
                         bl%reblock_data_2(:,i,:) = bl%reblock_data_2(:,i,:) - &
-                        bl%reblock_save(k,:,i,:)
+                            bl%reblock_save(k,:,i,:)
 
                         bl%data_product_2(i) = bl%data_product_2(i) - bl%product_save(k,i)
 
@@ -495,16 +493,16 @@ contains
                         bl%err_comp(i,j) = 0.0
                     else
                         if (bl%optimal_size(j) - 1 < log(real(bl%save_fq))/ &
-                        log(2.0)) then
+                                    log(2.0)) then
                             bl%err_comp(i,j) = bl%optimal_err(j)/&
-                            (bl%optimal_std(j) * sqrt(real((int(real(bl%n_reports_blocked &
-                            - i * bl%save_fq)/bl%optimal_size(j))) &
-                            * bl%optimal_size(j))))
+                                (bl%optimal_std(j) * sqrt(real((int(real(bl%n_reports_blocked &
+                                - i * bl%save_fq)/bl%optimal_size(j))) &
+                                * bl%optimal_size(j))))
                         else
                             bl%err_comp(i,j) = bl%optimal_err(j)/&
-                            (bl%optimal_std(j) * sqrt(real((int(real(bl%n_reports_blocked &
-                            - i * bl%save_fq)/bl%optimal_size(j))-1) &
-                            * bl%optimal_size(j))))
+                                (bl%optimal_std(j) * sqrt(real((int(real(bl%n_reports_blocked &
+                                - i * bl%save_fq)/bl%optimal_size(j))-1) &
+                                * bl%optimal_size(j))))
                         end if
                     end if
                 end do
@@ -516,8 +514,8 @@ contains
 
 
         do i = 1, 2
-            minimum(i) = minloc(bl%err_comp(:,i), dim = 1, mask = &
-            (bl%err_comp(:,i)>0)) - 1
+            minimum(i) = minloc(bl%err_comp(:,i), dim = 1, &
+                                mask = (bl%err_comp(:,i)>0)) - 1
         end do
 
         if (minimum(1) > minimum(2)) then
@@ -558,7 +556,7 @@ contains
         type(blocking_in_t), intent(in) :: blocking_in
 
         if (bl%start_ireport == -1 .and. blocking_in%start_point<0 .and. &
-            qs%vary_shift(1)) then
+                    qs%vary_shift(1)) then
             bl%start_ireport = ireport
         else if (blocking_in%start_point>0) then
             bl%start_ireport = blocking_in%start_point/qmc_in%ncycles
@@ -577,7 +575,7 @@ contains
         ! For every 50 reports, the optimal mean and standard deviation
         ! and the optimal error in error is calculated and printed.
         if (mod(ireport,50) ==0 .and. ireport >= bl%start_ireport .and. &
-        bl%start_ireport>0) then
+                    bl%start_ireport>0) then
             call change_start(bl, ireport, bl%start_point)
             call mean_std_cov(bl)
             call find_optimal_block(bl)
@@ -616,7 +614,7 @@ contains
            ! Prints the point from which reblock analysis is being
            ! carried out in terms of iterations.
             write(iunit, '(1X, I8)', advance = 'no') &
-            ((bl%start_point*bl%save_fq+bl%start_ireport)*qmc_in%ncycles)
+                ((bl%start_point*bl%save_fq+bl%start_ireport)*qmc_in%ncycles)
            ! Prints the mean, standard deviation and the error in error for \sum
            ! H_0j N_j and N_0 and mean and standard deviation of projected
            ! energy. Returns 0 if there are insufficient data.
