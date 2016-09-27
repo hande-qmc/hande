@@ -10,16 +10,24 @@ module logging
 ! Logging output is controlled by verbosity levels for each area of logging. For
 ! details of currently implemented output please see the manual.
 
-! [review] - JSS: this is well written but rather specific.
-! [reply] - CJCS: A rewrite to be more general is possible, but is more than I have
-! [reply] - CJCS: time for at the moment sadly. I'll sketch out how I'd do it as a
-! [reply] - CJCS: suggestion for future work though?
-
 ! Currently only a rudimentary implementation as an initial effort. A more elegant
 ! approach is probably possible, for instance using generalised functions to initialise+
-! write reports and enabling configuration to be set simply by changing initialisation or
+! write reports and enabling configurations to be set simply by changing initialisation or
 ! switching between preset  combination of variables.
 ! However, actually implementing this cleanly is no mean feat.
+
+! To add a new level of logging output to a calculation to an existing log file, you must:
+! 1) Add a (preferably descriptive) logical flag within
+!       logging_t (+update json).
+! 2) Add setting of flag appropriately in init function +
+!       update checks in check_logging_inputs.
+! 3) Update log preamble, header and log writer subroutine
+!       appropriately to give new output.
+!
+! Adding a new type of log requires writing+calling versions of various functions
+! (init_logging_x, write_logging_x_preamble, write_logging_x_header, write_logging_x)
+! as well as addition of new parameters to logging_in_t and logging_t, but should be
+! able to follow a similar pattern to that already established here.
 
 use const, only: int_32, int_64
 
@@ -43,12 +51,6 @@ end type logging_in_t
 ! flags to the various procedures.
 
 type logging_t
-    ! [review] - JSS: this seems to have repetition but no structure.
-    ! [review] - JSS: nested structure? This is where built-in dict would help!
-    ! [review] - JSS: want something v simple to extend to a new log type.
-    ! [reply] - CJCS: I agree, but by no means clear how to nest. I avoided using
-    ! [reply] - CJCS: generic levels as reduction in code is minimal currently and
-    ! [reply] - CJCS: loss of clarity versus descriptive names is large.
     ! High-level debugging flag (at level of calculation running).
     logical :: write_highlevel_values = .false.
     integer :: calc_unit = huge(1_int_32)
