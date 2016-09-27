@@ -71,6 +71,8 @@ end type logging_t
 
 contains
 
+! --- General functions for initialising+ending logging and writing reports ---
+
     subroutine init_logging(logging_in, logging_info)
 
         ! Subroutine to initialise logs within HANDE, calling more specific
@@ -195,22 +197,6 @@ contains
 
     end subroutine prep_logging_mc_cycle
 
-    subroutine write_iter_to_log(iter, iunit)
-
-        ! Writes iteration number to given io unit for logging.
-
-        ! In:
-        !   iter: iteration number.
-        !   iunit: io unit.
-
-        integer :: iter, iunit
-
-        write(iunit, '("#",1X,20("="))')
-        write(iunit, '("#",1X,"Iteration",1X,i10)') iter
-        write(iunit, '("#",1X,20("="))')
-
-    end subroutine write_iter_to_log
-
     subroutine end_logging(logging_info)
 
         ! Closes all active log files within fortran.
@@ -229,22 +215,7 @@ contains
 
     end subroutine end_logging
 
-    subroutine write_date_time_close(iunit, date_values)
-
-        ! Write final message to log and close
-
-        integer, intent(in) :: iunit, date_values(8)
-
-        if (iunit /= huge(1)) then
-            write (iunit,'(1X,64("="))')
-            write (iunit,'(1X,a19,1X,i2.2,"/",i2.2,"/",i4.4,1X,a2,1X,i2.2,2(":",i2.2))') &
-                      "Finished running on", date_values(3:1:-1), "at", date_values(5:7)
-            write (iunit,'(1X,64("="))')
-
-            close(iunit, status='keep')
-        end if
-
-    end subroutine write_date_time_close
+! --- Log-specific initialisation functions ---
 
     subroutine init_logging_calc(logging_in, logging_info)
 
@@ -310,6 +281,8 @@ contains
         call write_logging_death_preamble(logging_info)
 
     end subroutine init_logging_death
+
+! --- Log-specific functions to write log preambles and headers ---
 
     subroutine write_logging_calc_header(logging_info)
         ! Write header and preamble for calculation log file.
@@ -494,6 +467,8 @@ contains
 
     end subroutine write_logging_death_header
 
+! --- Log-specific subroutines to write log entries ---
+
     subroutine write_logging_calc_fciqmc(logging_info, iter, nspawn_events, ndeath_tot, nattempts)
 
         ! Write a single log entry for FCIQMC calculation-level information.
@@ -658,6 +633,8 @@ contains
 
     end subroutine write_logging_death
 
+! --- Generic helper functions ---
+
     function get_log_filename(in_name) result(out_name)
 
         ! Helper function to generate filenames to use for a generic log file.
@@ -679,7 +656,50 @@ contains
 
     end function get_log_filename
 
+    subroutine write_iter_to_log(iter, iunit)
+
+        ! Writes iteration number to given io unit for logging.
+
+        ! In:
+        !   iter: iteration number.
+        !   iunit: io unit.
+
+        integer :: iter, iunit
+
+        write(iunit, '("#",1X,20("="))')
+        write(iunit, '("#",1X,"Iteration",1X,i10)') iter
+        write(iunit, '("#",1X,20("="))')
+
+    end subroutine write_iter_to_log
+
+    subroutine write_date_time_close(iunit, date_values)
+
+        ! Write final message to log and close
+
+        integer, intent(in) :: iunit, date_values(8)
+
+        if (iunit /= huge(1)) then
+            write (iunit,'(1X,64("="))')
+            write (iunit,'(1X,a19,1X,i2.2,"/",i2.2,"/",i4.4,1X,a2,1X,i2.2,2(":",i2.2))') &
+                      "Finished running on", date_values(3:1:-1), "at", date_values(5:7)
+            write (iunit,'(1X,64("="))')
+
+            close(iunit, status='keep')
+        end if
+
+    end subroutine write_date_time_close
+
+! --- Json functions for logging types ---
+
     subroutine logging_in_t_json(js, logging_in, terminal)
+
+        ! Serialise a logging_in_t object in JSON format.
+
+        ! In/Out:
+        !   js: json_out_t controlling the output unit and handling JSON internal state.  Unchanged on output.
+        ! In:
+        !   logging_in: logging_in_t object containing logging input values (including any defaults set).
+        !   terminal (optional): if true, this is the last entry in the enclosing JSON object.  Default: false.
 
         use json_out
 
@@ -703,6 +723,15 @@ contains
     end subroutine logging_in_t_json
 
     subroutine logging_t_json(js, logging_info, terminal)
+
+        ! Serialise a logging_t object in JSON format.
+
+        ! In/Out:
+        !   js: json_out_t controlling the output unit and handling JSON internal state.  Unchanged on output.
+        ! In:
+        !   logging_info: logging_t object containing logging values used in calculation (including any
+        !               defaults set).
+        !   terminal (optional): if true, this is the last entry in the enclosing JSON object.  Default: false.
 
         use json_out
 
