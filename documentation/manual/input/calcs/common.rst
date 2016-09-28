@@ -13,3 +13,4 @@ options.
     reference
     restart
     semi_stoch
+    logging

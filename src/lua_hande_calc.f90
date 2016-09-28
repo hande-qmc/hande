@@ -306,6 +306,7 @@ contains
         !       restart = { ... },
         !       load_bal = { ... },
         !       reference = { ... },
+        !       logging = { ...},
         !       qmc_state = qmc_state,
         !    }
 
@@ -322,7 +323,9 @@ contains
         use fciqmc, only: do_fciqmc
         use lua_hande_system, only: get_sys_t
         use lua_hande_utils, only: warn_unused_args, register_timing
-        use qmc_data, only: qmc_in_t, fciqmc_in_t, semi_stoch_in_t, restart_in_t, load_bal_in_t, qmc_state_t
+        use qmc_data, only: qmc_in_t, fciqmc_in_t, semi_stoch_in_t, restart_in_t, load_bal_in_t, &
+                            qmc_state_t
+        use logging, only: logging_in_t
         use reference_determinant, only: reference_t
         use system, only: sys_t
 
@@ -341,13 +344,14 @@ contains
         type(load_bal_in_t) :: load_bal_in
         type(reference_t) :: reference
         type(qmc_state_t), pointer :: qmc_state_restart, qmc_state_out
+        type(logging_in_t) :: logging_in
 
         logical :: have_restart_state
 
         integer :: opts
         real :: t1, t2
-        character(10), parameter :: keys(8) = [character(10) :: 'sys', 'qmc', 'fciqmc', 'semi_stoch', 'restart', &
-                                                                'load_bal', 'reference', 'qmc_state']
+        character(10), parameter :: keys(9) = [character(10) :: 'sys', 'qmc', 'fciqmc', 'semi_stoch', 'restart', &
+                                                                'load_bal', 'reference', 'qmc_state', 'logging']
 
         call cpu_time(t1)
 
@@ -367,6 +371,7 @@ contains
         call read_restart_in(lua_state, opts, restart_in)
         call read_load_bal_in(lua_state, opts, load_bal_in)
         call read_reference_t(lua_state, opts, reference, sys)
+        call read_logging_in_t(lua_state, opts, logging_in)
 
         call get_qmc_state(lua_state, have_restart_state, qmc_state_restart)
 
@@ -376,10 +381,11 @@ contains
         calc_type = fciqmc_calc
         allocate(qmc_state_out)
         if (have_restart_state) then
-            call do_fciqmc(sys, qmc_in, fciqmc_in, semi_stoch_in, restart_in, load_bal_in, reference, qmc_state_out, &
-                           qmc_state_restart)
+            call do_fciqmc(sys, qmc_in, fciqmc_in, semi_stoch_in, restart_in, load_bal_in, reference, logging_in, &
+                           qmc_state_out, qmc_state_restart)
         else
-            call do_fciqmc(sys, qmc_in, fciqmc_in, semi_stoch_in, restart_in, load_bal_in, reference, qmc_state_out)
+            call do_fciqmc(sys, qmc_in, fciqmc_in, semi_stoch_in, restart_in, load_bal_in, reference, logging_in, &
+                           qmc_state_out)
         end if
 
         ! Return qmc_state to the user.
@@ -403,6 +409,7 @@ contains
         !       ccmc = { ... }
         !       restart = { ... },
         !       reference = { ... },
+        !       logging = { ...},
         !       qmc_state = qmc_state,
         !    }
 
@@ -420,6 +427,7 @@ contains
         use lua_hande_system, only: get_sys_t
         use lua_hande_utils, only: warn_unused_args, register_timing
         use qmc_data, only: qmc_in_t, ccmc_in_t, semi_stoch_in_t, restart_in_t, load_bal_in_t, qmc_state_t
+        use logging, only: logging_in_t
         use reference_determinant, only: reference_t
         use system, only: sys_t
 
@@ -438,11 +446,12 @@ contains
         type(load_bal_in_t) :: load_bal_in
         type(reference_t) :: reference
         type(qmc_state_t), pointer :: qmc_state_restart, qmc_state_out
+        type(logging_in_t) :: logging_in
 
         logical :: have_restart_state
         integer :: opts
         real :: t1, t2
-        character(10), parameter :: keys(6) = [character(10) :: 'sys', 'qmc', 'ccmc', 'restart', 'reference', 'qmc_state']
+        character(10), parameter :: keys(7) = [character(10) :: 'sys', 'qmc', 'ccmc', 'restart', 'reference', 'qmc_state','logging']
 
         call cpu_time(t1)
 
@@ -462,6 +471,9 @@ contains
         call read_restart_in(lua_state, opts, restart_in)
         ! load balancing is not available in CCMC; must use default settings.
         call read_reference_t(lua_state, opts, reference, sys)
+
+        call read_logging_in_t(lua_state, opts, logging_in)
+
         call get_qmc_state(lua_state, have_restart_state, qmc_state_restart)
         call warn_unused_args(lua_state, keys, opts)
         call aot_table_close(lua_state, opts)
@@ -469,9 +481,11 @@ contains
         calc_type = ccmc_calc
         allocate(qmc_state_out)
         if (have_restart_state) then
-            call do_ccmc(sys, qmc_in, ccmc_in, semi_stoch_in, restart_in, load_bal_in, reference, qmc_state_out, qmc_state_restart)
+            call do_ccmc(sys, qmc_in, ccmc_in, semi_stoch_in, restart_in, load_bal_in, reference, logging_in, &
+                            qmc_state_out, qmc_state_restart)
         else
-            call do_ccmc(sys, qmc_in, ccmc_in, semi_stoch_in, restart_in, load_bal_in, reference, qmc_state_out)
+            call do_ccmc(sys, qmc_in, ccmc_in, semi_stoch_in, restart_in, load_bal_in, reference, logging_in, &
+                            qmc_state_out)
         end if
 
         call push_qmc_state(lua_state, qmc_state_out)
@@ -1762,5 +1776,68 @@ contains
         nresult = 0
 
     end function lua_dealloc_qmc_state
+
+    subroutine read_logging_in_t(lua_state, opts, logging_in)
+        ! Read in options associated with the logging table (only for debug builds).
+
+        ! logging = {
+        !   calc = verbosity_level,
+        !   spawn = verbosity_level,
+        !   death = verbosity_level,
+        !   }
+
+        ! In/Out:
+        !    lua_state: flu/Lua state to which the HANDE API is added.
+        ! In:
+        !    opts: handle for the table containing the semi_stoch table.
+        ! Out:
+        !    logging_in: logging_in_t object containing logging-specific input options.
+
+
+        use flu_binding, only: flu_State
+        use aot_table_module, only: aot_get_val, aot_exists, aot_table_open, aot_table_close
+        use lua_hande_utils, only: warn_unused_args
+
+        use logging, only: logging_in_t
+
+        use errors, only: stop_all
+        use const, only: debug
+        use parallel, only: parent
+
+        type(flu_State), intent(inout) :: lua_state
+        integer, intent(in) :: opts
+
+        type(logging_in_t), intent(out) :: logging_in
+        integer :: logging_table, err
+
+        character(12), parameter :: keys(5) = [character(12) :: 'calc', 'spawn', 'death', &
+                                                'start', 'finish']
+
+        if (aot_exists(lua_state, opts, 'logging')) then
+
+            if (debug) then
+
+                call aot_table_open(lua_state, opts, logging_table, 'logging')
+
+                call aot_get_val(logging_in%calc, err, lua_state, logging_table, 'calc')
+
+                call aot_get_val(logging_in%spawn, err, lua_state, logging_table, 'spawn')
+
+                call aot_get_val(logging_in%death, err, lua_state, logging_table, 'death')
+
+                call aot_get_val(logging_in%start_iter, err, lua_state, logging_table, 'start')
+
+                call aot_get_val(logging_in%end_iter, err, lua_state, logging_table, 'finish')
+
+                call warn_unused_args(lua_state, keys, logging_table)
+                call aot_table_close(lua_state, logging_table)
+
+            else
+                if (parent) call stop_all('read_logging_in_t', &
+                        'Tried to pass logging options to a non-debug build.')
+            end if
+
+        end if
+    end subroutine read_logging_in_t
 
 end module lua_hande_calc

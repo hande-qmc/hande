@@ -60,6 +60,7 @@ contains
         use system, only: sys_t
         use restart_hdf5, only: dump_restart_hdf5, restart_info_t, init_restart_info_t
         use qmc_data, only: qmc_in_t, restart_in_t, load_bal_in_t, qmc_state_t, annihilation_flags_t
+        use logging, only: logging_t
         use reference_determinant, only: reference_t
         use hamiltonian_data
         use energy_evaluation, only: get_sanitized_projected_energy
@@ -87,6 +88,7 @@ contains
         type(annihilation_flags_t) :: annihilation_flags
         type(restart_info_t) :: ri
         character(36) :: uuid_restart
+        type(logging_t) :: logging_info
 
         logical :: soft_exit, comms_found, error
 
@@ -194,7 +196,7 @@ contains
                         ! Attempt to spawn Hamiltonian walkers..
                         call spawner_ptr(rng, sys, qs, qs%spawn_store%spawn%cutoff, qs%psip_list%pop_real_factor, &
                                          cdet, qs%psip_list%pops(1,idet), gen_excit_ptr, qs%trial%wfn_dat, &
-                                         nspawned, dummy, connection)
+                                         logging_info, nspawned, dummy, connection)
                         ! Spawn if attempt was successful.
                         if (nspawned /= 0_int_p) then
                             associate(spawn=>qs%spawn_store%spawn)
@@ -206,8 +208,8 @@ contains
                         ! Hamiltonian walkers.
                         ! [todo] - JSS: real populations for HFS spawner.
                         call spawner_hfs_ptr(rng, sys, qs, qs%spawn_store%spawn%cutoff, qs%psip_list%pop_real_factor, &
-                                             cdet, qs%psip_list%pops(1,idet), gen_excit_hfs_ptr, qs%trial%wfn_dat, nspawned, &
-                                             dummy, connection)
+                                             cdet, qs%psip_list%pops(1,idet), gen_excit_hfs_ptr, qs%trial%wfn_dat, logging_info, &
+                                             nspawned, dummy, connection)
                         ! Spawn if attempt was successful.
                         if (nspawned /= 0_int_p) then
                             associate(spawn=>qs%spawn_store%spawn)
@@ -223,8 +225,8 @@ contains
                         ! Attempt to spawn Hellmann--Feynman walkers from
                         ! Hellmann--Feynman walkers.
                         call spawner_ptr(rng, sys, qs, qs%spawn_store%spawn%cutoff, qs%psip_list%pop_real_factor, &
-                                         cdet, qs%psip_list%pops(2,idet), gen_excit_ptr, qs%trial%wfn_dat, nspawned, &
-                                         dummy, connection)
+                                         cdet, qs%psip_list%pops(2,idet), gen_excit_ptr, qs%trial%wfn_dat, logging_info, &
+                                         nspawned, dummy, connection)
                         ! Spawn if attempt was successful.
                         if (nspawned /= 0_int_p) then
                             associate(spawn=>qs%spawn_store%spawn)
@@ -260,7 +262,7 @@ contains
 
                     ! Clone or die: Hellmann--Feynman walkers.
                     call stochastic_death(rng, sys, qs, cdet%fock_sum, qs%psip_list%dat(2,idet), proj_energy_old, qs%shift(2), &
-                                          qs%psip_list%pops(2,idet), qs%psip_list%nparticles(2), ndeath)
+                                          logging_info, qs%psip_list%pops(2,idet), qs%psip_list%nparticles(2), ndeath)
 
                     ! Clone Hellmann--Feynman walkers from Hamiltonian walkers.
                     ! Not in place, must set initiator flag.
@@ -276,7 +278,7 @@ contains
 
                     ! Clone or die: Hamiltonian walkers.
                     call stochastic_death(rng, sys, qs, cdet%fock_sum, qs%psip_list%dat(1,idet), proj_energy_old, qs%shift(1), &
-                                          qs%psip_list%pops(1,idet), qs%psip_list%nparticles(1), ndeath)
+                                          logging_info, qs%psip_list%pops(1,idet), qs%psip_list%nparticles(1), ndeath)
 
                 end do
 

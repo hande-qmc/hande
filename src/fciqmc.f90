@@ -10,7 +10,7 @@ implicit none
 contains
 
     subroutine do_fciqmc(sys, qmc_in, fciqmc_in, semi_stoch_in, restart_in, load_bal_in, &
-                         reference_in, qs, qmc_state_restart)
+                         reference_in, logging_in, qs, qmc_state_restart)
 
         ! Run the FCIQMC or initiator-FCIQMC algorithm starting from the initial walker
         ! distribution using the timestep algorithm.
@@ -38,6 +38,8 @@ contains
         use checking, only: check_allocate
         use json_out
 
+        use const, only: debug
+
         use bloom_handler, only: init_bloom_stats_t, bloom_mode_fixedn, bloom_stats_warning, &
                                  bloom_stats_t, accumulate_bloom_stats, write_bloom_report
         use determinants, only: det_info_t, alloc_det_info_t, dealloc_det_info_t, sum_sp_eigenvalues_occ_list
@@ -59,7 +61,6 @@ contains
         use restart_hdf5, only: init_restart_info_t, restart_info_t, dump_restart_hdf5, dump_restart_file_wrapper
         use spawn_data, only: receive_spawned_walkers, non_blocking_send, annihilate_wrapper_non_blocking_spawn, &
                               write_memcheck_report
-
         use qmc_data, only: qmc_in_t, fciqmc_in_t, semi_stoch_in_t, restart_in_t, load_bal_in_t, empty_determ_space, &
                             qmc_state_t, annihilation_flags_t, semi_stoch_separate_annihilation, qmc_in_t_json,      &
                             fciqmc_in_t_json, semi_stoch_in_t_json, restart_in_t_json, load_bal_in_t_json
@@ -67,6 +68,9 @@ contains
         use check_input, only: check_qmc_opts, check_fciqmc_opts, check_load_bal_opts
         use hamiltonian_data
         use energy_evaluation, only: get_sanitized_projected_energy
+
+        use logging, only: init_logging, end_logging, prep_logging_mc_cycle, write_logging_calc_fciqmc, &
+                            logging_in_t, logging_t, logging_in_t_json, logging_t_json
 
         type(sys_t), intent(in) :: sys
         type(qmc_in_t), intent(in) :: qmc_in
@@ -77,6 +81,9 @@ contains
         type(reference_t), intent(in) :: reference_in
         type(qmc_state_t), intent(inout), optional :: qmc_state_restart
         type(qmc_state_t), intent(out), target :: qs
+
+        type(logging_in_t), intent(in) :: logging_in
+        type(logging_t) :: logging_info
 
         type(det_info_t) :: cdet
         type(dSFMT_t) :: rng
@@ -111,6 +118,9 @@ contains
 
         real(p) :: proj_energy_old
 
+        ! NB This variable is not to be used when not in debug mode
+        integer(int_p) :: ndeath_tot
+
         if (parent) then
             write (6,'(1X,"FCIQMC")')
             write (6,'(1X,"------",/)')
@@ -128,6 +138,8 @@ contains
         call init_qmc(sys, qmc_in, restart_in, load_bal_in, reference_in, annihilation_flags, qs, uuid_restart, &
                       fciqmc_in=fciqmc_in, qmc_state_restart=qmc_state_restart)
 
+        if (debug) call init_logging(logging_in, logging_info)
+
         if (parent) then
             call json_object_init(js, tag=.true.)
             call sys_t_json(js, sys)
@@ -140,7 +152,9 @@ contains
             call semi_stoch_in_t_json(js, semi_stoch_in)
             call restart_in_t_json(js, restart_in, uuid_restart)
             call load_bal_in_t_json(js, load_bal_in)
-            call reference_t_json(js, qs%ref, sys, terminal=.true.)
+            call reference_t_json(js, qs%ref, sys)
+            call logging_in_t_json(js, logging_in)
+            call logging_t_json(js, logging_info, terminal=.true.)
             call json_object_end(js, terminal=.true., tag=.true.)
             write (js%io, '()')
         end if
@@ -206,6 +220,8 @@ contains
 
                 iter = qs%mc_cycles_done + (ireport-1)*qmc_in%ncycles + icycle
 
+                if (debug) call prep_logging_mc_cycle(iter, logging_in, logging_info, ndeath_tot, sys%read_in%comp)
+
                 ! Should we turn semi-stochastic on now?
                 if (iter == semi_stoch_iter .and. semi_stoch_in%space_type /= empty_determ_space) then
                     determ%doing_semi_stoch = .true.
@@ -257,7 +273,7 @@ contains
                             ! Attempt to spawn.
                             call spawner_ptr(rng, sys, qs, qs%spawn_store%spawn%cutoff, qs%psip_list%pop_real_factor, &
                                             cdet, qs%psip_list%pops(ispace, idet), gen_excit_ptr, qs%trial%wfn_dat, &
-                                            nspawned, nspawned_im, connection)
+                                            logging_info, nspawned, nspawned_im, connection)
                             if (sys%read_in%comp .and. ispace == 2) then
                                 ! If imaginary parent have to factor into resulting signs/reality.
                                 scratch = nspawned_im
@@ -297,12 +313,18 @@ contains
                     ! Clone or die.
                     if (.not. determ_parent) then
                         call stochastic_death(rng, sys, qs, cdet%fock_sum, qs%psip_list%dat(1,idet),proj_energy_old, qs%shift(1), &
-                                       qs%psip_list%pops(1,idet), qs%psip_list%nparticles(1), ndeath)
+                                       logging_info, qs%psip_list%pops(1,idet), qs%psip_list%nparticles(1), ndeath)
                         if (sys%read_in%comp) then
                             call stochastic_death(rng, sys,  qs, cdet%fock_sum, qs%psip_list%dat(1,idet), proj_energy_old, &
-                                            qs%shift(1), qs%psip_list%pops(2,idet), qs%psip_list%nparticles(2), ndeath_im)
+                                            qs%shift(1), logging_info, qs%psip_list%pops(2,idet), qs%psip_list%nparticles(2), &
+                                            ndeath_im)
+
                             ndeath = abs(ndeath) + abs(ndeath_im)
                             ndeath_im = 0_int_p
+                        end if
+                        if (debug) then
+                            if (logging_info%write_logging .and. logging_info%write_highlevel_values) &
+                                            ndeath_tot = ndeath_tot + abs(ndeath)
                         end if
                     end if
 
@@ -327,6 +349,7 @@ contains
                         if (determ%doing_semi_stoch) call determ_projection(rng, qmc_in, qs, spawn, determ)
 
                         call direct_annihilation(sys, rng, qs%ref, annihilation_flags, pl, spawn, nspawn_events, determ)
+                        if (debug) call write_logging_calc_fciqmc(logging_info, iter, nspawn_events, ndeath_tot, nattempts)
                         call end_mc_cycle(nspawn_events, ndeath, pl%pop_real_factor, nattempts, qs%spawn_store%rspawn)
                     end if
                 end associate
@@ -398,6 +421,7 @@ contains
         end if
 
         if (determ%doing_semi_stoch) call dealloc_semi_stoch_t(determ, .false.)
+        if (debug) call end_logging(logging_info)
 
         call dealloc_det_info_t(cdet, .false.)
 
@@ -430,6 +454,7 @@ contains
         use excitations, only: excit_t, get_excitation
         use ifciqmc
         use qmc_data, only: qmc_in_t, qmc_state_t
+        use logging, only: logging_t
         use spawn_data, only: spawn_t
         use system, only: sys_t
         use qmc_common, only: decide_nattempts
@@ -451,6 +476,8 @@ contains
         integer(int_p) :: int_pop(spawn_recv%ntypes)
         real(p) :: real_pop(spawn_recv%ntypes)
         real(dp) :: list_pop
+
+        type(logging_t) :: logging_info
 
         allocate(cdet%f(sys%basis%tensor_label_len))
         allocate(cdet%data(1))
@@ -487,7 +514,7 @@ contains
 
                     ! Attempt to spawn.
                     call spawner_ptr(rng, sys, qs, spawn_to_send%cutoff, qs%psip_list%pop_real_factor, cdet, int_pop(ispace), &
-                                     gen_excit_ptr, qs%trial%wfn_dat, nspawned, nspawned_im, connection)
+                                     gen_excit_ptr, qs%trial%wfn_dat, logging_info, nspawned, nspawned_im, connection)
 
                     if (sys%read_in%comp .and. ispace == 2) then
                         ! If imaginary parent have to factor into resulting signs/reality.
@@ -507,8 +534,8 @@ contains
 
                 ! Clone or die.
                 ! list_pop is meaningless as particle_t%nparticles is updated upon annihilation.
-                call stochastic_death(rng, sys, qs, cdet%fock_sum, cdet%data(1), proj_energy_old,  qs%shift(1), int_pop(ispace), &
-                                      list_pop, ndeath)
+                call stochastic_death(rng, sys, qs, cdet%fock_sum, cdet%data(1), proj_energy_old,  qs%shift(1), logging_info, &
+                                      int_pop(ispace), list_pop, ndeath)
 
                 ! Update population of walkers on current determinant.
                 spawn_recv%sdata(spawn_recv%bit_str_len+1:spawn_recv%bit_str_len+spawn_recv%ntypes, idet) = int_pop

@@ -180,4 +180,40 @@ contains
 
     end function doing_dmqmc_calc
 
+    function get_calculation_string(calc_num) result(calc_name)
+
+        ! Returns string corresponding to name of integer given.
+
+        use const, only: int_32
+
+        integer(int_32), intent(in) :: calc_num
+        character(255) :: calc_name
+
+        select case(calc_num)
+        case(exact_diag)
+            calc_name = "exact diagonalisation"
+        case(lanczos_diag)
+            calc_name = "lanczos diagonalisation"
+        case(fciqmc_calc)
+            calc_name = "FCIQMC"
+        case(simple_fciqmc_calc)
+            calc_name = "simple FCIQMC"
+        case(ct_fciqmc_calc)
+            calc_name = "continuous time FCIQMC"
+        case(hfs_fciqmc_calc)
+            calc_name = "Hellmann-Feynman FCIQMC"
+        case(mc_hilbert_space)
+            calc_name = "Monte Carlo Hilbert space estimation."
+        case(dmqmc_calc)
+            calc_name = "DMQMC"
+        case(ccmc_calc)
+            calc_name = "CCMC"
+        case(mc_canonical_estimates)
+            calc_name = "Monte Carlo canonical estimates"
+        case(restart_redistribute)
+            calc_name = "Restart Redistribution"
+        end select
+
+    end function get_calculation_string
+
 end module calc

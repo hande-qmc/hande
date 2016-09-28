@@ -32,7 +32,7 @@ contains
 !--- Spawning wrappers ---
 
     subroutine spawn_standard(rng, sys, qmc_state, spawn_cutoff, real_factor, cdet, parent_sign, &
-                              gen_excit_ptr, weights, nspawn, nspawn_im, connection)
+                              gen_excit_ptr, weights, logging_info, nspawn, nspawn_im, connection)
 
         ! Attempt to spawn a new particle on a connected determinant.
         ! Only for use with non-complex systems.
@@ -74,6 +74,7 @@ contains
         use proc_pointers, only: gen_excit_ptr_t
         use dSFMT_interface, only: dSFMT_t
         use hamiltonian_data
+        use logging, only: write_logging_spawn, logging_t
 
         type(dSFMT_t), intent(inout) :: rng
         type(sys_t), intent(in) :: sys
@@ -84,10 +85,11 @@ contains
         integer(int_p), intent(in) :: parent_sign
         type(gen_excit_ptr_t), intent(in) :: gen_excit_ptr
         real(p), allocatable, intent(in) :: weights(:)
+        type(logging_t), intent(in) :: logging_info
         integer(int_p), intent(out) :: nspawn, nspawn_im
         type(excit_t), intent(out) :: connection
 
-        real(p) :: pgen
+        real(p) :: pgen, qn_weight
         type(hmatel_t) :: hmatel
         logical :: allowed
 
@@ -97,15 +99,20 @@ contains
         call gen_excit_ptr%full(rng, sys, qmc_state%excit_gen_data, cdet, pgen, connection, hmatel, allowed)
 
         if (allowed) then
-           hmatel%r = hmatel%r * calc_qn_spawned_weighting(sys, qmc_state, cdet%fock_sum, connection)
+            qn_weight = calc_qn_spawned_weighting(sys, qmc_state, cdet%fock_sum, connection)
+        else
+            qn_weight = 1.0_p
         end if
         ! 2. Attempt spawning.
-        nspawn = attempt_to_spawn(rng, qmc_state%tau, spawn_cutoff, real_factor, hmatel%r, pgen, parent_sign)
+        nspawn = attempt_to_spawn(rng, qmc_state%tau, spawn_cutoff, real_factor, hmatel%r * qn_weight, pgen, &
+                                parent_sign)
+
+        if (debug) call write_logging_spawn(logging_info, hmatel, pgen, qn_weight, [nspawn], parent_sign, .false.)
 
     end subroutine spawn_standard
 
     subroutine spawn_importance_sampling(rng, sys, qmc_state, spawn_cutoff, real_factor, cdet, parent_sign, &
-                                         gen_excit_ptr, weights, nspawn, nspawn_im, connection)
+                                         gen_excit_ptr, weights, logging_info, nspawn, nspawn_im, connection)
 
         ! Attempt to spawn a new particle on a connected determinant.
 
@@ -150,6 +157,7 @@ contains
         use excitations, only: excit_t
         use proc_pointers, only: gen_excit_ptr_t
         use qmc_data, only: qmc_state_t
+        use logging, only: logging_t
         use dSFMT_interface, only: dSFMT_t
         use hamiltonian_data
 
@@ -164,6 +172,7 @@ contains
         real(p), allocatable, intent(in) :: weights(:)
         integer(int_p), intent(out) :: nspawn, nspawn_im
         type(excit_t), intent(out) :: connection
+        type(logging_t), intent(in) :: logging_info
 
         real(p) :: pgen
         type(hmatel_t) :: hmatel
@@ -187,7 +196,7 @@ contains
     end subroutine spawn_importance_sampling
 
     subroutine spawn_lattice_split_gen(rng, sys, qmc_state, spawn_cutoff, real_factor, cdet, parent_sign, &
-                                       gen_excit_ptr, weights, nspawn, nspawn_im, connection)
+                                       gen_excit_ptr, weights, logging_info, nspawn, nspawn_im, connection)
 
         ! Attempt to spawn a new particle on a connected determinant.
 
@@ -243,6 +252,7 @@ contains
         use proc_pointers, only: gen_excit_ptr_t
         use stoch_utils, only: stochastic_round_spawned_particle
         use qmc_data, only: qmc_state_t
+        use logging, only: logging_t
         use dSFMT_interface, only: dSFMT_t
         use hamiltonian_data
 
@@ -255,6 +265,7 @@ contains
         integer(int_p), intent(in) :: parent_sign
         type(gen_excit_ptr_t), intent(in) :: gen_excit_ptr
         real(p), allocatable, intent(in) :: weights(:)
+        type(logging_t), intent(in) :: logging_info
         integer(int_p), intent(out) :: nspawn, nspawn_im
         type(excit_t), intent(out) :: connection
 
@@ -288,7 +299,7 @@ contains
     end subroutine spawn_lattice_split_gen
 
     subroutine spawn_lattice_split_gen_importance_sampling(rng, sys, qmc_state, spawn_cutoff, real_factor, cdet, parent_sign, &
-                                                           gen_excit_ptr, weights, nspawn, nspawn_im, connection)
+                                                       gen_excit_ptr, weights, logging_info, nspawn, nspawn_im, connection)
 
         ! Attempt to spawn a new particle on a connected determinant.
 
@@ -340,6 +351,7 @@ contains
         use excitations, only: excit_t
         use proc_pointers, only: gen_excit_ptr_t
         use qmc_data, only: qmc_state_t
+        use logging, only: logging_t
         use stoch_utils, only: stochastic_round_spawned_particle
         use dSFMT_interface, only: dSFMT_t
         use hamiltonian_data
@@ -353,6 +365,7 @@ contains
         integer(int_p), intent(in) :: parent_sign
         type(gen_excit_ptr_t), intent(in) :: gen_excit_ptr
         real(p), allocatable, intent(in) :: weights(:)
+        type(logging_t), intent(in) :: logging_info
         integer(int_p), intent(out) :: nspawn, nspawn_im
         type(excit_t), intent(out) :: connection
 
@@ -394,7 +407,7 @@ contains
     end subroutine spawn_lattice_split_gen_importance_sampling
 
     subroutine spawn_null(rng, sys, qmc_state, spawn_cutoff, real_factor, cdet, parent_sign, gen_excit_ptr, weights, &
-                          nspawn, nspawn_im, connection)
+                          logging_info, nspawn, nspawn_im, connection)
 
         ! This is a null spawning routine for use with operators which are
         ! diagonal in the basis and hence only have a cloning step in the
@@ -432,6 +445,7 @@ contains
         use excitations, only: excit_t
         use proc_pointers, only: gen_excit_ptr_t
         use qmc_data, only: qmc_state_t
+        use logging, only: logging_t
         use dSFMT_interface, only: dSFMT_t
 
         type(dSFMT_t), intent(inout) :: rng
@@ -443,6 +457,7 @@ contains
         integer(int_p), intent(in) :: parent_sign
         type(gen_excit_ptr_t), intent(in) :: gen_excit_ptr
         real(p), allocatable, intent(in) :: weights(:)
+        type(logging_t), intent(in) :: logging_info
         integer(int_p), intent(out) :: nspawn, nspawn_im
         type(excit_t), intent(out) :: connection
 
@@ -456,7 +471,7 @@ contains
     end subroutine spawn_null
 
     subroutine spawn_complex(rng, sys, qmc_state, spawn_cutoff, real_factor, cdet, parent_sign, &
-                              gen_excit_ptr, weights, nspawn, nspawn_im, connection)
+                              gen_excit_ptr, weights, logging_info, nspawn, nspawn_im, connection)
 
         ! Attempt to spawn a new particle on a connected determinant.
 
@@ -503,6 +518,7 @@ contains
 
         use errors, only: stop_all
         use hamiltonian_data
+        use logging, only: write_logging_spawn, logging_t
 
         type(dSFMT_t), intent(inout) :: rng
         type(sys_t), intent(in) :: sys
@@ -513,10 +529,11 @@ contains
         integer(int_p), intent(in) :: parent_sign
         type(gen_excit_ptr_t), intent(in) :: gen_excit_ptr
         real(p), allocatable, intent(in) :: weights(:)
+        type(logging_t), intent(in) :: logging_info
         integer(int_p), intent(out) :: nspawn, nspawn_im
         type(excit_t), intent(out) :: connection
 
-        real(p) :: pgen
+        real(p) :: pgen, qn_weight
         logical :: allowed
         type(hmatel_t) :: hmatel
 
@@ -524,12 +541,18 @@ contains
         call gen_excit_ptr%full(rng, sys, qmc_state%excit_gen_data, cdet, pgen, connection, hmatel, allowed)
 
         if (allowed) then
-           hmatel%r = hmatel%r * calc_qn_spawned_weighting(sys, qmc_state, cdet%fock_sum, connection)
+            qn_weight = calc_qn_spawned_weighting(sys, qmc_state, cdet%fock_sum, connection)
+        else
+            qn_weight = 1.0_p
         end if
 
         ! 2. Attempt spawning.
-        nspawn = attempt_to_spawn(rng, qmc_state%tau, spawn_cutoff, real_factor, real(hmatel%c, p), pgen, parent_sign)
-        nspawn_im = attempt_to_spawn(rng, qmc_state%tau, spawn_cutoff, real_factor, aimag(hmatel%c), pgen, parent_sign)
+        nspawn = attempt_to_spawn(rng, qmc_state%tau, spawn_cutoff, real_factor, qn_weight*real(hmatel%c, p), &
+                                    pgen, parent_sign)
+        nspawn_im = attempt_to_spawn(rng, qmc_state%tau, spawn_cutoff, real_factor, qn_weight*aimag(hmatel%c), &
+                                    pgen, parent_sign)
+
+        if (debug) call write_logging_spawn(logging_info, hmatel, pgen, qn_weight, [nspawn, nspawn_im], parent_sign, .true.)
 
     end subroutine spawn_complex
 
