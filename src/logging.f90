@@ -309,7 +309,7 @@ contains
         end select
 
         write (logging_info%calc_unit, '(1X,"Verbosity Settings:")')
-        write (logging_info%calc_unit, '(1X,10X,"Write Calculation Values:",2X,L)') &
+        write (logging_info%calc_unit, '(1X,10X,"Write Calculation Values:",2X,L1)') &
                         logging_info%write_highlevel_values
 
         write (logging_info%calc_unit,'()')
@@ -360,9 +360,9 @@ contains
         end select
 
         write (logging_info%spawn_unit, '(1X,"Verbosity Settings:")')
-        write (logging_info%spawn_unit, '(1X,10X,"Write Successful Spawns:",2X,L)') &
+        write (logging_info%spawn_unit, '(1X,10X,"Write Successful Spawns:",2X,L1)') &
                         logging_info%write_successful_spawn
-        write (logging_info%spawn_unit, '(1X,10X,"Write Failed Spawns:",2X,L)') &
+        write (logging_info%spawn_unit, '(1X,10X,"Write Failed Spawns:",2X,L1)') &
                         logging_info%write_failed_spawn
 
         write (logging_info%spawn_unit,'()')
@@ -430,9 +430,9 @@ contains
         end select
 
         write (logging_info%death_unit, '(1X,"Verbosity Settings:")')
-        write (logging_info%death_unit, '(1X,10X,"Write Successful Deaths:",2X,L)') &
+        write (logging_info%death_unit, '(1X,10X,"Write Successful Deaths:",2X,L1)') &
                         logging_info%write_successful_death
-        write (logging_info%death_unit, '(1X,10X,"Write Failed Deaths:",2X,L)') &
+        write (logging_info%death_unit, '(1X,10X,"Write Failed Deaths:",2X,L1)') &
                         logging_info%write_failed_death
 
         write (logging_info%spawn_unit,'()')
@@ -641,10 +641,10 @@ contains
         ! In:
         !   in_name: base name of log to give (eg. CALC)
         ! Out:
-        !   out_name: filename to be used. If running in parallel with be of
+        !   out_name: filename to be used. Will be of
         !       form in_name.Y.pX.log for process number X.
 
-        use parallel, only: iproc, nprocs
+        use parallel, only: iproc
         use utils, only: get_unique_filename
         character(255), intent(in) :: in_name
         character(255) :: suffix
