@@ -519,7 +519,8 @@ contains
 
         type(logging_t), intent(in) :: logging_info
         integer, intent(in) :: iter
-        integer(int_p), intent(in) :: nspawn_events, ndeath_tot
+        integer, intent(in) :: nspawn_events
+        integer(int_p), intent(in) :: ndeath_tot
         integer(int_64), intent(in) :: nD0_select, nclusters, nstochastic_clusters, nsingle_excitors
 
         if (logging_info%write_logging .and. logging_info%write_highlevel_values) then
