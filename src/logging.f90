@@ -483,8 +483,8 @@ contains
         use qmc_io, only: write_qmc_var
         use const, only: int_p, int_64
 
-        integer, intent(in) :: iter
-        integer(int_p), intent(in) :: nspawn_events, ndeath_tot
+        integer, intent(in) :: iter, nspawn_events
+        integer(int_p), intent(in) :: ndeath_tot
         integer(int_64), intent(in) :: nattempts
         type(logging_t), intent(in) :: logging_info
 
