@@ -739,11 +739,11 @@ contains
                         end if
 
                         if (ccmc_in%density_matrices .and. cluster(it)%excitation_level <= 2 .and. qs%vary_shift(1) &
-                            .and. cluster(it)%excitation_level /= 0) then
+                            .and. cluster(it)%excitation_level /= 0 .and. .not. sys%read_in%comp) then
                             ! Add contribution to density matrix
                             ! d_pqrs = <HF|a_p^+a_q^+a_sa_r|CC>
                             !$omp critical
-                            call update_rdm(sys, cdet(it), ref_det, cluster(it)%amplitude*cluster(it)%cluster_to_det_sign, &
+                            call update_rdm(sys, cdet(it), ref_det, real(cluster(it)%amplitude)*cluster(it)%cluster_to_det_sign, &
                                             1.0_p, cluster(it)%pselect, rdm)
                             !$omp end critical
                         end if
@@ -853,10 +853,10 @@ contains
                 end if
                 !$omp end parallel
 
-                if (ccmc_in%density_matrices .and. qs%vary_shift(1) .and. parent) then
+                if (ccmc_in%density_matrices .and. qs%vary_shift(1) .and. parent .and. .not. sys%read_in%comp) then
                     ! Add in diagonal contribution to RDM (only once per cycle not each time reference
                     ! is selected as this is O(N^2))
-                    call update_rdm(sys, ref_det, ref_det, D0_normalisation, 1.0_p, 1.0_p, rdm)
+                    call update_rdm(sys, ref_det, ref_det, real(D0_normalisation), 1.0_p, 1.0_p, rdm)
                 end if
 
                 qs%psip_list%nparticles = qs%psip_list%nparticles + nparticles_change
