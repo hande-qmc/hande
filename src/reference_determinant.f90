@@ -75,7 +75,7 @@ contains
         use symmetry, only: symmetry_orb_list
         use system
         use parallel, only: parent
-        use ranking, only: insertion_rank
+        use sort, only: insert_sort
 
         type(sys_t), intent(in) :: sys
         integer, intent(inout), allocatable :: occ_list(:)
@@ -87,8 +87,6 @@ contains
         integer(i0) :: f(sys%basis%string_len)
         real(p) :: eigv_sum, sp_eigv_sum
         logical :: set
-
-        integer, allocatable :: rank(:)
 
         ! Leave the reference determinant unchanged if it's already been
         ! allocated (and presumably set).
@@ -204,21 +202,6 @@ contains
                                 call stop_all('set_reference_det', &
                                     'Could not find determinant of required symmetry.')
                             end if
-                            ! Now we need to ensure that we've correctly sorted reference determinant.
-                            ! Allocate array to store ranking.
-                            allocate(rank(1:max(sys%nalpha, sys%nbeta)), stat=ierr)
-                            call check_allocate('rank', max(sys%nalpha, sys%nbeta), ierr)
-                            ! Get rank for alpha spinorbitals
-                            call insertion_rank(occ_list(1:sys%nalpha), rank)
-                            ! Sort alpha spinorbitals according to ranking
-                            occ_list(1:sys%nalpha) = occ_list(rank(1:sys%nalpha))
-                            ! Now do the same for beta spinorbitals
-                            call insertion_rank(occ_list(sys%nalpha+1:sys%nel), rank(1:sys%nbeta))
-                            rank = rank + sys%nalpha
-                            occ_list(sys%nalpha+1:sys%nel) = occ_list(rank(1:sys%nbeta))
-                            ! Finally deallocate array for ranking.
-                            deallocate(rank, stat=ierr)
-                            call check_deallocate('rank', ierr)
                         end if
                     end if
                 else
@@ -305,6 +288,9 @@ contains
                 end if
             end select
         end if
+
+        ! Finally ensure that whatever reference we obtain is properly sorted.
+        call insert_sort(occ_list)
 
     end subroutine set_reference_det
 
