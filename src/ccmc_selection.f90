@@ -1,5 +1,8 @@
 module ccmc_selection
 
+! Module containing all ccmc selection subroutines.
+! For full explanation see top of ccmc.F90.
+
 use const, only: i0, int_p, int_64, p, dp
 
 implicit none

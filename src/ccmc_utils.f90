@@ -1,5 +1,8 @@
 module ccmc_utils
 
+! Module containing all utility functions only used within ccmc.
+! For full explanation see top of ccmc.F90.
+
 use const, only: i0, p
 
 implicit none

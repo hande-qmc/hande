@@ -1,5 +1,8 @@
 module ccmc_death_spawning
 
+! Module containing all ccmc death and spawning routines, for all possible propogation methods.
+! For full explanation see top of ccmc.F90.
+
 use const, only: i0, int_p, int_64, p, dp, debug
 
 implicit none
