@@ -28,6 +28,8 @@ ccmc {
     },
     logging = {
         calc = 1,
+        spawn = 2,
+        death = 2,
         start = 144,
         finish = 219,
     },
