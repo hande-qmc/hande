@@ -510,7 +510,7 @@ contains
         !   nD0_select: total number of selection of the reference made this iteration.
         !   nclusters: total number of selections made this iteration.
         !   nstochastic_clusters: total number of stochastic selections made this iteration.
-        !   nssingle_excitors: total number of deterministic selections made this iteration.
+        !   nsingle_excitors: total number of deterministic selections made this iteration.
 
         use qmc_io, only: write_qmc_var
         use const, only: int_p, int_64
@@ -546,7 +546,7 @@ contains
         !   qn_weighting: real. Reweighting factor for quasi-newton solvers. Always printed
         !       as still multiplied by but should be 1.000...
         !   nspawned: integer. Total signed walkers spawned in this event.
-        !   parent_sign: integer. Total signed population on parent determinant.
+        !   parent_sign: real. Total signed population on parent determinant.
         !   cmplx_wfn: logical. True if using complex wavefunction, false if not.
 
         use qmc_io, only: write_qmc_var
@@ -599,8 +599,8 @@ contains
         !       as still multiplied by but should be 1.000...
         !   nkill: integer. Total particle change in event.
         !   pd: real. pdeath of a single particle on same determinant.
-        !   init_pop: integer. Initial population on determinant.
-        !   fin_pop: integer. Final population on determinant.
+        !   init_pop: real. Scaled initial population on determinant (ie. non-integer).
+        !   fin_pop: real. Scaled final population on determinant (ie. non-integer).
 
         use qmc_io, only: write_qmc_var
         use const, only: int_p, p
@@ -751,6 +751,7 @@ contains
         call json_write_key(js, 'death_unit', logging_info%death_unit, .true.)
 
         call json_object_end(js, terminal)
+
     end subroutine logging_t_json
 
 end module logging

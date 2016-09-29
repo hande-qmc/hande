@@ -25,7 +25,9 @@ Additional logging functionality can be added upon request. Current coverage is 
     - ``0`` returns no extra information.
     - ``1`` returns summary of events within a calculation (currently only for FCIQMC and CCMC).
 
-    Any information is produced in the file CALC.log within the working directory.
+    Any information is produced in files CALC.Y.pX.log within the working directory, where Y is the
+    same for all files produced in the same calculation and is set to the lowest value not present,
+    and X is the process number.
 
 ``spawn``
     type: integer
@@ -38,9 +40,11 @@ Additional logging functionality can be added upon request. Current coverage is 
     - ``1`` returns information on each spawning event creating at least one particle within a
         calculation (currently only for FCIQMC and generic systems).
     - ``2`` returns information on each spawning event within a calculation, regardless of result
-        (currently only for FCIQMC and generic systems).
+        (currently only for FCIQMC on generic systems and CCMC).
 
-    Any information is produced in the file SPAWN.log within the working directory.
+    Any information is produced in files SPAWN.Y.pX.log within the working directory, where Y is the
+    same for all files produced in the same calculation and is set to the lowest value not present,
+    and X is the process number.
 
 
 ``death``
@@ -54,9 +58,11 @@ Additional logging functionality can be added upon request. Current coverage is 
     - ``1`` returns information on each death or cloning event resulting in a change in particle number
         within a calculation (currently only for FCIQMC and generic systems).
     - ``2`` returns information on each death or cloning event within a calculation, regardless of result
-        (currently only for FCIQMC and generic systems).
+        (currently only for FCIQMC on generic systems and CCMC).
 
-    Any information is produced in the file DEATH.log within the working directory.
+    Any information is produced in files DEATH.Y.pX.log within the working directory, where Y is the
+    same for all files produced in the same calculation and is set to the lowest value not present,
+    and X is the process number.
 
 ``start``
     type: integer

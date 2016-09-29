@@ -1467,6 +1467,7 @@ contains
         !    gen_excit_ptr: procedure pointer to excitation generators.
         !        gen_excit_ptr%full *must* be set to a procedure which generates
         !        a complete excitation.
+        !    logging_info: logging_t derived type containing information on logging behaviour.
         ! In/Out:
         !    rng: random number generator.
         !    nspawnings_total: The total number of spawnings attemped by the current cluster
@@ -1601,6 +1602,7 @@ contains
         !    cluster: information about the cluster which forms the excitor.
         !    proj_energy: projected energy.  This should be the average value from the last
         !        report loop, not the running total in qs%estimators.
+        !    logging_info: logging_t derived type containing information on logging behaviour.
         ! In/Out:
         !    rng: random number generator.
         !    spawn: spawn_t object to which the spanwed particle will be added.
