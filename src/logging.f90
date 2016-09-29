@@ -1,5 +1,7 @@
 module logging
 
+implicit none
+
 ! Module to contain functions handling logging outputs.
 
 ! All calls to functions within this module should be preceded by 'if (debug)'.
@@ -109,7 +111,6 @@ contains
         case(fciqmc_calc)
             continue ! All available logging implemented.
         case(ccmc_calc)
-            if (logging_in%spawn > 0) call write_logging_warning(2, logging_in%spawn)
             if (logging_in%death > 0) call write_logging_warning(3, logging_in%death)
         case default
             if (logging_in%calc > 0) call write_logging_warning(1, logging_in%calc)
@@ -184,7 +185,6 @@ contains
         ndeath_tot = 0_int_p
 
         if (logging_info%write_logging) then
-            !if (logging_info%calc_unit /= huge(1)) call write_iter_to_log(iter, logging_info%calc_unit)
             if (logging_info%spawn_unit /= huge(1)) then
                 call write_iter_to_log(iter, logging_info%spawn_unit)
                 call write_logging_spawn_header(logging_info, cmplx_wfn)
@@ -393,7 +393,7 @@ contains
 
         call write_column_title(logging_info%spawn_unit, "pgen", justify=-1, sep=',')
         call write_column_title(logging_info%spawn_unit, "qn weighting", justify=-1, sep=',')
-        call write_column_title(logging_info%spawn_unit, "parent_sign", int_val=.true., justify=1, sep=',')
+        call write_column_title(logging_info%spawn_unit, "parent amplitude", justify=-1, sep=',')
 
         if (cmplx_wfn) then
             call write_column_title(logging_info%spawn_unit, "# spawn", int_val=.true., justify=1, sep=',')
@@ -557,8 +557,8 @@ contains
 
         type(logging_t), intent(in) :: logging_info
         type(hmatel_t), intent(in) :: hmatel
-        real(p), intent(in) :: pgen, qn_weighting
-        integer(int_p), intent(in) :: nspawned(:), parent_sign
+        real(p), intent(in) :: pgen, qn_weighting, parent_sign
+        integer(int_p), intent(in) :: nspawned(:)
         logical, intent(in) ::  cmplx_wfn
 
         if (logging_info%write_logging) then

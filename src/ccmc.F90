@@ -719,8 +719,8 @@ contains
                                           fexcit, cdet(it), ldet(it), rdet(it), left_cluster(it), right_cluster(it))
                             else
                                 call spawner_ccmc(rng(it), sys, qs, qs%spawn_store%spawn%cutoff, &
-                                          ccmc_in%linked, cdet(it), cluster(it), gen_excit_ptr, nspawned, connection, &
-                                          nspawnings_total)
+                                          ccmc_in%linked, cdet(it), cluster(it), gen_excit_ptr, logging_info, nspawned, &
+                                          connection, nspawnings_total)
                             end if
 
                            if (nspawned /= 0_int_p) then
@@ -1423,7 +1423,7 @@ contains
     end subroutine select_cluster_non_composite
 
     subroutine spawner_ccmc(rng, sys, qs, spawn_cutoff, linked_ccmc, cdet, cluster, &
-                            gen_excit_ptr, nspawn, connection, nspawnings_total)
+                            gen_excit_ptr, logging_info, nspawn, connection, nspawnings_total)
 
         ! Attempt to spawn a new particle on a connected excitor with
         ! probability
@@ -1483,9 +1483,10 @@ contains
         use proc_pointers, only: gen_excit_ptr_t
         use spawning, only: attempt_to_spawn, calc_qn_spawned_weighting
         use system, only: sys_t
-        use const, only: depsilon
+        use const, only: depsilon, debug
         use qmc_data, only: qmc_in_t, qmc_state_t
         use hamiltonian_data
+        use logging, only: logging_t, write_logging_spawn
 
         type(sys_t), intent(in) :: sys
         type(qmc_state_t), intent(in) :: qs
@@ -1496,6 +1497,7 @@ contains
         type(dSFMT_t), intent(inout) :: rng
         integer, intent(in) :: nspawnings_total
         type(gen_excit_ptr_t), intent(in) :: gen_excit_ptr
+        type(logging_t), intent(in) :: logging_info
         integer(int_p), intent(out) :: nspawn
         type(excit_t), intent(out) :: connection
 
@@ -1503,7 +1505,7 @@ contains
         ! element, so we 'pretend' to attempt_to_spawn that all excips are
         ! actually spawned by positive excips.
         integer(int_p), parameter :: parent_sign = 1_int_p
-        type(hmatel_t) :: hmatel
+        type(hmatel_t) :: hmatel, hmatel_save
         real(p) :: pgen
         integer(i0) :: fexcit(sys%basis%string_len), funlinked(sys%basis%string_len)
         integer :: excitor_sign, excitor_level
@@ -1541,11 +1543,15 @@ contains
             invdiagel = 1
         end if
         ! 2, Apply additional factors.
+        hmatel_save = hmatel
         hmatel%r = hmatel%r*cluster%amplitude*invdiagel*cluster%cluster_to_det_sign
         pgen = pgen*cluster%pselect*nspawnings_total
 
         ! 3. Attempt spawning.
         nspawn = attempt_to_spawn(rng, qs%tau, spawn_cutoff, qs%psip_list%pop_real_factor, hmatel%r, pgen, parent_sign)
+
+        if (debug) call write_logging_spawn(logging_info, hmatel, pgen, invdiagel, [nspawn], &
+                        cluster%amplitude*qs%psip_list%pop_real_factor, sys%read_in%comp)
 
         if (nspawn /= 0_int_p) then
             ! 4. Convert the random excitation from a determinant into an
@@ -1927,7 +1933,6 @@ contains
         end if
 
     end subroutine collapse_cluster
-
 
     pure subroutine linked_excitation(basis, f0, connection, cluster, linked, single_unlinked, excitor)
 
