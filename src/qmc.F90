@@ -139,6 +139,13 @@ contains
                 call initial_distribution(sys, qmc_state%spawn_store%spawn, qmc_in%D0_population, fciqmc_in_loc, &
                                           qmc_state%ref, qmc_state%psip_list)
             end if
+
+            ! Estimators: one per replica, but one for whole space if complex.
+            if (sys%read_in%comp) then
+                allocate(qmc_state%estimators(1))
+            else
+                allocate(qmc_state%estimators(qmc_state%psip_list%nspaces))
+            end if
         end if
 
         call init_annihilation_flags(qmc_in, fciqmc_in_loc, dmqmc_in_loc, annihilation_flags)
@@ -1113,6 +1120,7 @@ contains
         call move_spawn_t(qmc_state_old%spawn_store%spawn_recv, qmc_state_new%spawn_store%spawn_recv)
         call move_alloc(qmc_state_old%shift, qmc_state_new%shift)
         call move_alloc(qmc_state_old%vary_shift, qmc_state_new%vary_shift)
+        call move_alloc(qmc_state_old%estimators, qmc_state_new%estimators)
         call move_particle_t(qmc_state_old%psip_list, qmc_state_new%psip_list)
 
     end subroutine move_qmc_state_t

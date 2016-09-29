@@ -116,7 +116,7 @@ contains
 
         logical :: update_tau, restarting
 
-        real(p) :: proj_energy_old
+        real(p), allocatable :: proj_energy_old(:)
 
         if (parent) then
             write (6,'(1X,"FCIQMC")')
@@ -162,6 +162,8 @@ contains
         call check_allocate('real_population', qs%psip_list%nspaces, ierr)
         allocate(weighted_population(qs%psip_list%nspaces), stat=ierr)
         call check_allocate('weighted_population', qs%psip_list%nspaces, ierr)
+        allocate(proj_energy_old(qs%psip_list%nspaces), stat=ierr)
+        call check_allocate('proj_energy_old', qs%psip_list%nspaces, ierr)
 
         call dSFMT_init(qmc_in%seed+iproc, 50000, rng)
 
@@ -208,7 +210,7 @@ contains
 
         do ireport = 1, qmc_in%nreport
 
-            proj_energy_old = get_sanitized_projected_energy(qs)
+            proj_energy_old = get_sanitized_projected_energy(qs%estimators)
 
             ! Zero report cycle quantities.
             call init_report_loop(qs, bloom_stats)
@@ -258,8 +260,13 @@ contains
                         ! start of the i-FCIQMC cycle than at the end, as we're
                         ! already looping over the determinants.
                         connection = get_excitation(sys%nel, sys%basis, cdet%f, qs%ref%f0)
-                        if (ispace == 1) call update_proj_energy_ptr(sys, qs%ref%f0, qs%trial%wfn_dat, cdet, weighted_population, &
-                                                    qs%estimators, connection, hmatel)
+                        if (.not. sys%read_in%comp) then
+                            call update_proj_energy_ptr(sys, qs%ref%f0, qs%trial%wfn_dat, cdet, [weighted_population(ispace)], &
+                                                        qs%estimators(ispace), connection, hmatel)
+                        else if (ispace == 1) then
+                            call update_proj_energy_ptr(sys, qs%ref%f0, qs%trial%wfn_dat, cdet, weighted_population, &
+                                                        qs%estimators(1), connection, hmatel)
+                        end if
                         ! Is this determinant an initiator?
                         ! Todo: replicas?
                         call set_parent_flag(real_population, qmc_in%initiator_pop, determ%flags(idet), qmc_in%quadrature_initiator, &
@@ -319,9 +326,8 @@ contains
 
                         ! Clone or die.
                         if (.not. determ_parent) call stochastic_death(rng, sys, qs, cdet%fock_sum, qs%psip_list%dat(1,idet), &
-                                                            proj_energy_old, qs%shift(ispace), logging_info, &
-                                                            qs%psip_list%pops(ispace,idet), &
-                                                            qs%psip_list%nparticles(ispace), ndeath)
+                                                            proj_energy_old(ispace), qs%shift(ispace), logging_info, &
+                                                            qs%psip_list%pops(ispace,idet), qs%psip_list%nparticles(ispace), ndeath)
                     end do
 
                 end do
@@ -329,7 +335,7 @@ contains
                 associate(pl=>qs%psip_list, spawn=>qs%spawn_store%spawn, spawn_recv=>qs%spawn_store%spawn_recv)
                     if (fciqmc_in%non_blocking_comm) then
                         call receive_spawned_walkers(spawn_recv, req_data_s)
-                        call evolve_spawned_walkers(sys, qmc_in, qs, spawn_recv, spawn, cdet, rng, ndeath, proj_energy_old)
+                        call evolve_spawned_walkers(sys, qmc_in, qs, spawn_recv, spawn, cdet, rng, ndeath, proj_energy_old(1))
                         call direct_annihilation_received_list(sys, rng, qs%ref, annihilation_flags, pl, spawn_recv)
                         ! Need to add walkers which have potentially moved processor to the spawned walker list.
                         if (qs%par_info%load%needed) then
@@ -495,7 +501,7 @@ contains
             ! already looping over the determinants.
             connection = get_excitation(sys%nel, sys%basis, cdet%f, qs%ref%f0)
 
-            call update_proj_energy_ptr(sys, qs%ref%f0, qs%trial%wfn_dat, cdet, real_pop, qs%estimators, &
+            call update_proj_energy_ptr(sys, qs%ref%f0, qs%trial%wfn_dat, cdet, real_pop, qs%estimators(1), &
                                         connection, hmatel)
             ! Is this determinant an initiator?
             ! [todo] - pass determ_flag rather than 1.

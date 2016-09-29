@@ -1026,9 +1026,9 @@ contains
         integer :: fciqmc_table, ref_det, err
         character(len=12) :: str
         logical :: ref_det_flag
-        character(31), parameter :: keys(6) = [character(31) :: 'non_blocking_comm', 'load_balancing', 'guiding_function', &
+        character(31), parameter :: keys(7) = [character(31) :: 'non_blocking_comm', 'load_balancing', 'guiding_function', &
                                                                 'init_spin_inverse_reference_det', 'trial_function', &
-                                                                'select_reference_det']
+                                                                'select_reference_det', 'replica_tricks']
 
         if (aot_exists(lua_state, opts, 'fciqmc')) then
 

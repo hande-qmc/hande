@@ -378,7 +378,8 @@ contains
 
         integer(i0) :: fexcit(sys%basis%string_len)
         logical :: seen_D0
-        real(p) :: D0_population_cycle, proj_energy_cycle, proj_energy_old, dfock
+        real(p) :: D0_population_cycle, proj_energy_cycle, dfock
+        real(p), allocatable :: proj_energy_old(:)
 
         real(p), allocatable :: rdm(:,:)
 
@@ -422,6 +423,8 @@ contains
         call check_allocate('nparticles_old', qs%psip_list%nspaces, ierr)
         allocate(nparticles_change(qs%psip_list%nspaces), stat=ierr)
         call check_allocate('nparticles_change', qs%psip_list%nspaces, ierr)
+        allocate(proj_energy_old(qs%psip_list%nspaces), stat=ierr)
+        call check_allocate('proj_energy_old', qs%psip_list%nspaces, ierr)
 
         ! Initialise bloom_stats components to the following parameters.
         call init_bloom_stats_t(bloom_stats, mode=bloom_mode_fractionn, encoding_factor=qs%psip_list%pop_real_factor)
@@ -504,7 +507,7 @@ contains
         do ireport = 1, qmc_in%nreport
 
             ! Projected energy from last report loop to correct death
-            proj_energy_old = get_sanitized_projected_energy(qs)
+            proj_energy_old = get_sanitized_projected_energy(qs%estimators)
 
             call init_report_loop(qs, bloom_stats)
 
@@ -774,7 +777,7 @@ contains
                                 ! Do death for non-composite clusters directly and in a separate loop
                                 if (cluster(it)%nexcitors >= 2 .or. .not. ccmc_in%full_nc) then
                                     call stochastic_ccmc_death(rng(it), qs%spawn_store%spawn, ccmc_in%linked, sys, &
-                                                               qs, cdet(it), cluster(it), proj_energy_old, logging_info, &
+                                                               qs, cdet(it), cluster(it), proj_energy_old(1), logging_info, &
                                                                ndeath)
                                 end if
                             end if
@@ -797,7 +800,7 @@ contains
                             dfock = sum_sp_eigenvalues_bit_string(sys, qs%psip_list%states(:,iattempt)) - qs%ref%fock_sum
                         end if
                         call stochastic_ccmc_death_nc(rng(it), ccmc_in%linked, sys, qs, iattempt==D0_pos, dfock, &
-                                              qs%psip_list%dat(1,iattempt), proj_energy_old, qs%psip_list%pops(1, iattempt), &
+                                              qs%psip_list%dat(1,iattempt), proj_energy_old(1), qs%psip_list%pops(1, iattempt), &
                                               nparticles_change(1), ndeath_nc, logging_info)
                     end do
                     !$omp end do
@@ -836,8 +839,9 @@ contains
 
             update_tau = bloom_stats%nblooms_curr > 0
 
-            if (ccmc_in%density_matrices .and. qs%vary_shift(1)) call calc_rdm_energy(sys, qs%ref, rdm, qs%estimators%rdm_energy, &
-                                                                                      qs%estimators%rdm_trace)
+            if (ccmc_in%density_matrices .and. qs%vary_shift(1)) then
+                call calc_rdm_energy(sys, qs%ref, rdm, qs%estimators(1)%rdm_energy, qs%estimators(1)%rdm_trace)
+            end if
 
             error = qs%spawn_store%spawn%error .or. qs%psip_list%error
 
@@ -888,7 +892,7 @@ contains
 
         if (ccmc_in%density_matrices) then
             call write_final_rdm(rdm, sys%nel, sys%basis%nbasis, ccmc_in%density_matrix_file)
-            call calc_rdm_energy(sys, qs%ref, rdm, qs%estimators%rdm_energy, qs%estimators%rdm_trace)
+            call calc_rdm_energy(sys, qs%ref, rdm, qs%estimators(1)%rdm_energy, qs%estimators(1)%rdm_trace)
             if (parent) write (6,'(1x,"# Final energy from RDM",2x,es17.10)') qs%estimators%rdm_energy/qs%estimators%rdm_trace
             deallocate(rdm, stat=ierr)
             call check_deallocate('rdm',ierr)

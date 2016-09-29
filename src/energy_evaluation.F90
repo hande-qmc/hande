@@ -279,13 +279,14 @@ contains
         if (present(comp)) comp_param = comp
 
         if (comp_param) then
-            rep_loop_loc(proj_energy_ind) = real(qs%estimators%proj_energy_comp, p)
-            rep_loop_loc(D0_pop_ind) = real(qs%estimators%D0_population_comp, p)
-            rep_loop_loc(proj_energy_imag_ind) = aimag(qs%estimators%proj_energy_comp)
-            rep_loop_loc(D0_pop_imag_ind) = aimag(qs%estimators%D0_population_comp)
+            rep_loop_loc(proj_energy_ind) = real(qs%estimators(1)%proj_energy_comp, p)
+            rep_loop_loc(D0_pop_ind) = real(qs%estimators(1)%D0_population_comp, p)
+            rep_loop_loc(proj_energy_imag_ind) = aimag(qs%estimators(1)%proj_energy_comp)
+            rep_loop_loc(D0_pop_imag_ind) = aimag(qs%estimators(1)%D0_population_comp)
         else
-            rep_loop_loc(proj_energy_ind) = qs%estimators%proj_energy
-            rep_loop_loc(D0_pop_ind) = qs%estimators%D0_population
+            ! Todo: this doesn't account for replicas
+            rep_loop_loc(proj_energy_ind) = qs%estimators(1)%proj_energy
+            rep_loop_loc(D0_pop_ind) = qs%estimators(1)%D0_population
         end if
         rep_loop_loc(rspawn_ind) = qs%spawn_store%rspawn
         if (present(update_tau)) then
@@ -297,14 +298,14 @@ contains
         end if
         if (doing_calc(hfs_fciqmc_calc)) &
             rep_loop_loc(hf_signed_pop_ind) = calculate_hf_signed_pop(qs%psip_list)
-        rep_loop_loc(hf_proj_O_ind) = qs%estimators%proj_hf_O_hpsip
-        rep_loop_loc(hf_proj_H_ind) = qs%estimators%proj_hf_H_hfpsip
-        rep_loop_loc(hf_D0_pop_ind) = qs%estimators%D0_hf_population
+        rep_loop_loc(hf_proj_O_ind) = qs%estimators(1)%proj_hf_O_hpsip
+        rep_loop_loc(hf_proj_H_ind) = qs%estimators(1)%proj_hf_H_hfpsip
+        rep_loop_loc(hf_D0_pop_ind) = qs%estimators(1)%D0_hf_population
         rep_loop_loc(nocc_states_ind) = qs%psip_list%nstates
 
         if (present(nspawn_events)) rep_loop_loc(nspawned_ind) = nspawn_events
-        rep_loop_loc(rdm_energy_ind) = qs%estimators%rdm_energy
-        rep_loop_loc(rdm_trace_ind) = qs%estimators%rdm_trace
+        rep_loop_loc(rdm_energy_ind) = qs%estimators(1)%rdm_energy
+        rep_loop_loc(rdm_trace_ind) = qs%estimators(1)%rdm_trace
 
         offset = nparticles_start_ind-1 + iproc*qs%psip_list%nspaces
         if (present(spawn_elsewhere)) then
@@ -449,7 +450,7 @@ contains
             if (qs%vary_shift(1)) then
                 call update_shift(qmc_in, qs, qs%shift(1), ntot_particles_old(1), ntot_particles(1), qmc_in%ncycles)
                 call update_hf_shift(qmc_in, qs, qs%shift(2), ntot_particles_old(1), ntot_particles(1), &
-                                     qs%estimators%hf_signed_pop, new_hf_signed_pop, qmc_in%ncycles)
+                                     qs%estimators(1)%hf_signed_pop, new_hf_signed_pop, qmc_in%ncycles)
             end if
         else if (comp_param) then
             if (qs%vary_shift(1)) then
@@ -460,9 +461,8 @@ contains
             do i = 1, ntypes
                 if (qs%vary_shift(i)) then
                     if (vary_shift_reference_loc) then
-                        ! todo Fix D0_population to be an array?
-                        call update_shift(qmc_in, qs, qs%shift(i), real(qs%estimators%D0_population_old, dp), &
-                                          real(qs%estimators%D0_population, dp), qmc_in%ncycles)
+                        call update_shift(qmc_in, qs, qs%shift(i), real(qs%estimators(i)%D0_population_old, dp), &
+                                          real(qs%estimators(i)%D0_population, dp), qmc_in%ncycles)
                     else
                         call update_shift(qmc_in, qs, qs%shift(i), ntot_particles_old(i), &
                                                         ntot_particles(i), qmc_in%ncycles)
@@ -473,7 +473,7 @@ contains
 
         qs%estimators%D0_population_old = qs%estimators%D0_population
         ntot_particles_old = ntot_particles
-        qs%estimators%hf_signed_pop = new_hf_signed_pop
+        qs%estimators(1)%hf_signed_pop = new_hf_signed_pop
 
         associate (est=>qs%estimators)
             if (comp_param) then
@@ -481,7 +481,7 @@ contains
                     qs%vary_shift = .true.
                     if (qmc_in%vary_shift_from_proje) then
                         ! Set shift to be instantaneous projected energy.
-                        qs%shift = real(est%proj_energy_comp/est%D0_population_comp, p)
+                        qs%shift = real(est(1)%proj_energy_comp/est(1)%D0_population_comp, p)
                     else
                         qs%shift = qmc_in%vary_shift_from
                     end if
@@ -490,9 +490,9 @@ contains
                 if (.not. qs%vary_shift(1) .and. ntot_particles(1) > qs%target_particles) then
                     qs%vary_shift = .true.
                     if (qmc_in%vary_shift_from_proje) then
-                        qs%shift(1) = est%proj_energy/est%D0_population
-                        qs%shift(2) = est%proj_hf_O_hpsip/est%D0_population + est%proj_hf_H_hfpsip/est%D0_population &
-                                                             - (est%proj_energy*est%D0_hf_population)/est%D0_population**2
+                        qs%shift(1) = est(1)%proj_energy/est(1)%D0_population
+                        qs%shift(2) = est(1)%proj_hf_O_hpsip/est(1)%D0_population + est(1)%proj_hf_H_hfpsip/est(1)%D0_population &
+                                                             - (est(1)%proj_energy*est(1)%D0_hf_population)/est(1)%D0_population**2
                     else
                         qs%shift = qmc_in%vary_shift_from
                     end if
@@ -501,11 +501,11 @@ contains
                 do i = 1, ntypes
                     if (.not. qs%vary_shift(i)) then
                         if ((ntot_particles(i) > qs%target_particles .and. .not. qmc_in%target_reference) .or. &
-                            (qs%estimators%D0_population > qs%target_particles .and. qmc_in%target_reference)) then
+                            (est(i)%D0_population > qs%target_particles .and. qmc_in%target_reference)) then
                             qs%vary_shift(i) = .true.
                             if (qmc_in%vary_shift_from_proje) then
                                 ! Set shift to be instantaneous projected energy.
-                                qs%shift(i) = est%proj_energy/est%D0_population
+                                qs%shift(i) = est(i)%proj_energy/est(i)%D0_population
                             else
                                 qs%shift(i) = qmc_in%vary_shift_from
                             end if
@@ -1274,26 +1274,26 @@ contains
 
     end subroutine update_proj_hfs_one_body_mol
 
-    pure function get_sanitized_projected_energy(qs) result(proje)
+    pure function get_sanitized_projected_energy(estimators) result(proje)
         
         ! From a qmc_state, qs, return either the value of the projected energy,
         ! or 0 if this is undefined.
 
         ! In:
-        !    qs: qmc state containing estimators.
+        !    estimators: reference population and projected energy numerators.
 
         ! Returns:
         !   real containing (instantaneous) projected energy.
 
-        use qmc_data, only: qmc_state_t
-        real(p) ::  proje
-        type(qmc_state_t), intent(in) ::  qs
+        use qmc_data, only: estimators_t
+        type(estimators_t), intent(in) :: estimators(:)
+        real(p) ::  proje(size(estimators))
  
-        if (abs(qs%estimators%D0_population)<tiny(0._p)) then
-           proje = 0
-        else
-           proje = qs%estimators%proj_energy/qs%estimators%D0_population
-        end if
+        where (abs(estimators%D0_population) < tiny(0.0_p))
+            proje = 0.0_p
+        elsewhere
+            proje = estimators%proj_energy/estimators%D0_population
+        end where
 
     end function get_sanitized_projected_energy 
 

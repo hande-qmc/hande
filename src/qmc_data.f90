@@ -577,7 +577,7 @@ type qmc_state_t
     ! to determine the processor location of a particle.  It is the programmer's
     ! responsibility to ensure these are kept up to date...
     type(parallel_t) :: par_info
-    type(estimators_t) :: estimators
+    type(estimators_t), allocatable :: estimators(:)
 end type qmc_state_t
 
 ! Copies of various settings that are required during annihilation.  This avoids having to pass through lots of different
@@ -690,12 +690,13 @@ contains
         end select
         select case (fciqmc%guiding_function)
         case (no_guiding)
-            call json_write_key(js, 'guiding_function', 'none', .true.)
+            call json_write_key(js, 'guiding_function', 'none')
         case (neel_singlet_guiding)
-            call json_write_key(js, 'guiding_function', 'neel_singlet', .true.)
+            call json_write_key(js, 'guiding_function', 'neel_singlet')
         case default
-            call json_write_key(js, 'guiding_function', fciqmc%guiding_function, .true.)
+            call json_write_key(js, 'guiding_function', fciqmc%guiding_function)
         end select
+        call json_write_key(js, 'replica_tricks', fciqmc%replica_tricks, .true.)
         call json_object_end(js, terminal)
 
     end subroutine fciqmc_in_t_json

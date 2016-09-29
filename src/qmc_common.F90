@@ -86,7 +86,7 @@ contains
         if (all(fmax == qs%ref%f0)) then
             ! Max population on this processor is already the reference.  Don't change.
             in_data = (/ 0.0_dp, real(iproc,dp) /)
-        else if (abs(real_pop) > ref_det_factor*abs(qs%estimators%D0_population)) then
+        else if (abs(real_pop) > ref_det_factor*abs(qs%estimators(1)%D0_population)) then
             in_data = (/ real_pop, real(iproc,dp) /)
         else
             ! No det with sufficient population to become reference det on this
@@ -660,8 +660,16 @@ contains
             ! WARNING!  We assume only the bit string, occ list and data field
             ! are required to update the projected estimator.
             D0_excit = get_excitation(sys%nel, sys%basis, cdet%f, qs%ref%f0)
-            call update_proj_energy_ptr(sys, qs%ref%f0, qs%trial%wfn_dat, cdet, weighted_population, &
-                                    qs%estimators, D0_excit, hmatel)
+            if (sys%read_in%comp) then
+                call update_proj_energy_ptr(sys, qs%ref%f0, qs%trial%wfn_dat, cdet, weighted_population, &
+                                            qs%estimators(1), D0_excit, hmatel)
+            else
+                do ispace = 1, qs%psip_list%nspaces
+                    call update_proj_energy_ptr(sys, qs%ref%f0, qs%trial%wfn_dat, cdet, [weighted_population(ispace)], &
+                                                qs%estimators(ispace), D0_excit, hmatel)
+                end do
+            end if
+
         end do
         call dealloc_det_info_t(cdet)
 

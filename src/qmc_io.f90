@@ -32,7 +32,10 @@ contains
 
         integer, intent(in) :: ntypes
         logical, optional, intent(in) :: cmplx_est, rdm_energy
+
         logical :: cmplx_est_set
+        integer :: i
+        character(20) :: column_title
 
         cmplx_est_set = .false.
         if (present(cmplx_est)) cmplx_est_set = cmplx_est
@@ -55,32 +58,44 @@ contains
         write (6,'(1X,"time: average time per Monte Carlo cycle.",/)')
         write (6,'(1X,"Note that all particle populations are averaged over the report loop.",/)')
 
+        if (ntypes > 1 .and. .not. cmplx_est_set) then
+            ! Label replicas
+            write (6,'(1X,"#",1X)', advance='no')
+            call write_column_title(6, '', int_val=.true.)
+            do i = 1, ntypes
+                write (column_title, '("Replica ",i0)') i
+                call write_column_title(6, trim(column_title))
+                call write_column_title(6, '')
+                call write_column_title(6, '')
+                call write_column_title(6, '')
+            end do
+        end if
+
         write (6,'(1X,"#",1X)', advance='no')
         call write_column_title(6, 'iterations', int_val=.true., justify=1)
-        call write_column_title(6, 'Shift')
-        ! NOTE: HFS and complex are not currently compatible.
-        if (cmplx_est_set) then
-            call write_column_title(6, 'Re{\sum H_0j N_j}')
-            call write_column_title(6, 'Im{\sum H_0j N_j}')
-            call write_column_title(6, 'Re{N_0}')
-            call write_column_title(6, 'Im{N_0}')
-            call write_column_title(6, '# H psips')
-        else
-            call write_column_title(6, '\sum H_0j N_j')
-            call write_column_title(6, 'N_0')
-            if (doing_calc(hfs_fciqmc_calc)) then
-                call write_column_title(6, 'HF shift')
-                call write_column_title(6, '\sum O_0j N_j')
-                call write_column_title(6, "\sum H_0j N'_j")
-                call write_column_title(6, "N'_0")
+        do i = 1, ntypes
+            call write_column_title(6, 'Shift')
+            ! NOTE: HFS and complex are not currently compatible.
+            if (cmplx_est_set) then
+                call write_column_title(6, 'Re{\sum H_0j N_j}')
+                call write_column_title(6, 'Im{\sum H_0j N_j}')
+                call write_column_title(6, 'Re{N_0}')
+                call write_column_title(6, 'Im{N_0}')
                 call write_column_title(6, '# H psips')
+            else
+                call write_column_title(6, '\sum H_0j N_j')
+                call write_column_title(6, 'N_0')
+                if (doing_calc(hfs_fciqmc_calc)) then
+                    call write_column_title(6, 'HF shift')
+                    call write_column_title(6, '\sum O_0j N_j')
+                    call write_column_title(6, "\sum H_0j N'_j")
+                    call write_column_title(6, "N'_0")
+                    call write_column_title(6, '# H psips')
+                end if
+                call write_column_title(6, '# H psips')
+                if (doing_calc(hfs_fciqmc_calc)) call write_column_title(6, '# HF psips')
             end if
-            call write_column_title(6, '# H psips')
-            if (doing_calc(hfs_fciqmc_calc)) call write_column_title(6, '# HF psips')
-        end if
-        if (present(rdm_energy)) then
-            if (rdm_energy) call write_column_title(6, 'RDM Energy')
-        end if
+        end do
         call write_column_title(6, '# states', int_val=.true., justify=1)
         call write_column_title(6, '# spawn_events', int_val=.true., justify=1)
         call write_column_title(6, 'R_spawn', low_prec_val=.true.)
@@ -311,7 +326,7 @@ contains
         logical, intent(in), optional :: cmplx_est, rdm_energy
 
         logical :: cmplx_est_set
-        integer :: mc_cycles, ntypes
+        integer :: mc_cycles, ntypes, i
 
         ntypes = size(ntot_particles)
 
@@ -333,30 +348,29 @@ contains
         end if
 
         call write_qmc_var(6, qs%mc_cycles_done+mc_cycles)
-        call write_qmc_var(6, qs%shift(1))
 
         ! NOTE: HFS and complex are not currently compatible.
         if (cmplx_est_set) then
-            call write_qmc_var(6, real(qs%estimators%proj_energy_comp, p))
-            call write_qmc_var(6, aimag(qs%estimators%proj_energy_comp))
-            call write_qmc_var(6, real(qs%estimators%D0_population_comp, p))
-            call write_qmc_var(6, aimag(qs%estimators%D0_population_comp))
+            call write_qmc_var(6, qs%shift(1))
+            call write_qmc_var(6, real(qs%estimators(1)%proj_energy_comp, p))
+            call write_qmc_var(6, aimag(qs%estimators(1)%proj_energy_comp))
+            call write_qmc_var(6, real(qs%estimators(1)%D0_population_comp, p))
+            call write_qmc_var(6, aimag(qs%estimators(1)%D0_population_comp))
             call write_qmc_var(6, ntot_particles(1)+ntot_particles(2))
         else
-            call write_qmc_var(6, qs%estimators%proj_energy)
-            call write_qmc_var(6, qs%estimators%D0_population)
-            if (doing_calc(hfs_fciqmc_calc)) then
-            end if
-            call write_qmc_var(6, ntot_particles(1))
+            do i = 1, ntypes
+                call write_qmc_var(6, qs%shift(i))
+                call write_qmc_var(6, qs%estimators(i)%proj_energy)
+                call write_qmc_var(6, qs%estimators(i)%D0_population)
+                if (doing_calc(hfs_fciqmc_calc)) then
+                end if
+                call write_qmc_var(6, ntot_particles(i))
+            end do
             if (doing_calc(hfs_fciqmc_calc)) call write_qmc_var(6, ntot_particles(2))
         end if
 
-        if (present(rdm_energy)) then
-            if (rdm_energy) call write_qmc_var(6, qs%estimators%rdm_energy/qs%estimators%rdm_trace)
-        end if
-
-        call write_qmc_var(6, qs%estimators%tot_nstates)
-        call write_qmc_var(6, qs%estimators%tot_nspawn_events)
+        call write_qmc_var(6, qs%estimators(1)%tot_nstates)
+        call write_qmc_var(6, qs%estimators(1)%tot_nspawn_events)
 
         call write_qmc_var(6, qs%spawn_store%rspawn, low_prec=.true.)
         call write_qmc_var(6, elapsed_time/qmc_in%ncycles, low_prec=.true.)
@@ -486,8 +500,8 @@ contains
         end if
 
         call write_qmc_var(6, ntot_particles(1))
-        call write_qmc_var(6, qs%estimators%tot_nstates)
-        call write_qmc_var(6, qs%estimators%tot_nspawn_events)
+        call write_qmc_var(6, qs%estimators(1)%tot_nstates)
+        call write_qmc_var(6, qs%estimators(1)%tot_nspawn_events)
         call write_qmc_var(6, qs%spawn_store%rspawn, low_prec=.true.)
         call write_qmc_var(6, elapsed_time/qmc_in%ncycles, low_prec=.true.)
 
