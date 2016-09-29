@@ -1552,7 +1552,7 @@ contains
         ! 3. Attempt spawning.
         nspawn = attempt_to_spawn(rng, qs%tau, spawn_cutoff, qs%psip_list%pop_real_factor, hmatel%r, pgen, parent_sign)
 
-        if (debug) call write_logging_spawn(logging_info, hmatel, pgen, invdiagel, [nspawn], &
+        if (debug) call write_logging_spawn(logging_info, hmatel_save, pgen, invdiagel, [nspawn], &
                         cluster%amplitude*qs%psip_list%pop_real_factor, sys%read_in%comp)
 
         if (nspawn /= 0_int_p) then
