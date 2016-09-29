@@ -527,7 +527,7 @@ contains
             write (logging_info%calc_unit, '(1X)', advance='no')
             call write_qmc_var(logging_info%calc_unit, iter, sep=',')
             call write_qmc_var(logging_info%calc_unit, nspawn_events, sep=',')
-            call write_qmc_var(logging_info%calc_unit, ndeath_events, sep=',')
+            call write_qmc_var(logging_info%calc_unit, ndeath_tot, sep=',')
             call write_qmc_var(logging_info%calc_unit, nclusters, sep=',')
             call write_qmc_var(logging_info%calc_unit, nD0_select, sep=',')
             call write_qmc_var(logging_info%calc_unit, nstochastic_clusters, sep=',')
