@@ -745,7 +745,8 @@ contains
                                 ! Do death for non-composite clusters directly and in a separate loop
                                 if (cluster(it)%nexcitors >= 2 .or. .not. ccmc_in%full_nc) then
                                     call stochastic_ccmc_death(rng(it), qs%spawn_store%spawn, ccmc_in%linked, sys, &
-                                                               qs, cdet(it), cluster(it), proj_energy_old, ndeath_tot)
+                                                               qs, cdet(it), cluster(it), proj_energy_old, logging_info, &
+                                                               ndeath_tot)
                                 end if
                             end if
                         end if
@@ -1567,7 +1568,8 @@ contains
 
     end subroutine spawner_ccmc
 
-    subroutine stochastic_ccmc_death(rng, spawn, linked_ccmc, sys, qs, cdet, cluster, proj_energy, ndeath_tot)
+    subroutine stochastic_ccmc_death(rng, spawn, linked_ccmc, sys, qs, cdet, cluster, proj_energy, logging_info, &
+                                    ndeath_tot)
 
         ! Attempt to 'die' (ie create an excip on the current excitor, cdet%f)
         ! with probability
@@ -1603,6 +1605,7 @@ contains
         !    rng: random number generator.
         !    spawn: spawn_t object to which the spanwed particle will be added.
 
+        use const, only: debug
         use ccmc_data, only: cluster_t
         use determinants, only: det_info_t
         use excitations, only: excit_t
@@ -1612,12 +1615,14 @@ contains
         use spawning, only: calc_qn_weighting
         use system, only: sys_t
         use qmc_data, only: qmc_state_t
+        use logging, only: logging_t, write_logging_death
         type(sys_t), intent(in) :: sys
         type(qmc_state_t), intent(in) :: qs
         logical, intent(in) :: linked_ccmc
         type(det_info_t), intent(in) :: cdet
         type(cluster_t), intent(in) :: cluster
         real(p), intent(in) :: proj_energy
+        type(logging_t), intent(in) :: logging_info
         type(dSFMT_t), intent(inout) :: rng
         type(spawn_t), intent(inout) :: spawn
         integer(int_p), intent(inout) :: ndeath_tot
@@ -1709,6 +1714,8 @@ contains
             ! the current excitor.
             call create_spawned_particle_ptr(sys%basis, qs%ref, cdet, null_excit, nkill, 1, spawn)
         end if
+
+        if (debug) call write_logging_death(logging_info, KiiAi, proj_energy, qs%shift(1), invdiagel, nkill, pdeath, cluster%amplitude, 0.0_p)
 
     end subroutine stochastic_ccmc_death
 

@@ -1,7 +1,5 @@
 module logging
 
-implicit none
-
 ! Module to contain functions handling logging outputs.
 
 ! All calls to functions within this module should be preceded by 'if (debug)'.
@@ -32,6 +30,8 @@ implicit none
 ! able to follow a similar pattern to that already established here.
 
 use const, only: int_32, int_64
+
+implicit none
 
 type logging_in_t
     ! High-level debugging flag (at level of calculation running).
@@ -108,10 +108,8 @@ contains
         type(logging_in_t), intent(in) :: logging_in
 
         select case(calc_type)
-        case(fciqmc_calc)
+        case(fciqmc_calc, ccmc_calc)
             continue ! All available logging implemented.
-        case(ccmc_calc)
-            if (logging_in%death > 0) call write_logging_warning(3, logging_in%death)
         case default
             if (logging_in%calc > 0) call write_logging_warning(1, logging_in%calc)
             if (logging_in%spawn > 0) call write_logging_warning(2, logging_in%spawn)
@@ -460,8 +458,8 @@ contains
 
         call write_column_title(logging_info%death_unit, "nkill", int_val = .true., justify=1, sep=',')
 
-        call write_column_title(logging_info%death_unit, "init pop", int_val = .true., justify=1, sep=',')
-        call write_column_title(logging_info%death_unit, "fin pop", int_val = .true., justify=1, sep=',')
+        call write_column_title(logging_info%death_unit, "init pop", justify=-1, sep=',')
+        call write_column_title(logging_info%death_unit, "fin pop", justify=-1, sep=',')
 
         write (logging_info%death_unit,'()')
 
@@ -608,8 +606,8 @@ contains
         use const, only: int_p, p
 
         type(logging_t), intent(in) :: logging_info
-        real(p), intent(in) :: Kii, proj_energy, qn_weight, loc_shift, pd
-        integer(int_p), intent(in) :: nkill, init_pop, fin_pop
+        real(p), intent(in) :: Kii, proj_energy, qn_weight, loc_shift, pd, init_pop, fin_pop
+        integer(int_p), intent(in) :: nkill
 
         if (logging_info%write_logging) then
             if ((logging_info%write_successful_death .and. abs(nkill) > 0) .or. &

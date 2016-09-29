@@ -115,7 +115,9 @@ contains
             population = population - kill
         end if
         if (debug) call write_logging_death(logging_info, Kii, proj_energy, loc_shift, &
-                                        weight, kill, pd_saved, old_population, population)
+                                        weight, kill, pd_saved, &
+                                        real(old_population,p)/qs%psip_list%pop_real_factor, &
+                                        real(population,p)/qs%psip_list%pop_real_factor)
         tot_population = tot_population + &
             real(abs(population) - abs(old_population),p)/qs%psip_list%pop_real_factor
         ndeath = ndeath + abs(kill)
