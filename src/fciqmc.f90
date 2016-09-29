@@ -241,27 +241,30 @@ contains
                     call decoder_ptr(sys, cdet%f, cdet)
                     if (qs%quasi_newton) cdet%fock_sum = sum_sp_eigenvalues_occ_list(sys, cdet%occ_list) - qs%ref%fock_sum
 
-                    ! Extract the real sign from the encoded sign.
                     do ispace = 1, qs%psip_list%nspaces
+                        ! Extract the real sign from the encoded sign.
                         real_population(ispace) = real(qs%psip_list%pops(ispace,idet),p)/qs%psip_list%pop_real_factor
                         weighted_population(ispace) = importance_sampling_weight(qs%trial, cdet, real_population(ispace))
                     end do
 
-                    ! If this is a deterministic state then copy its population
-                    ! across to the determ%vector array.
-                    call set_determ_info(idet, real_population(1), ideterm, determ, determ_parent)
+                    do ispace = 1, qs%psip_list%nspaces
 
-                    ! It is much easier to evaluate the projected energy at the
-                    ! start of the i-FCIQMC cycle than at the end, as we're
-                    ! already looping over the determinants.
-                    connection = get_excitation(sys%nel, sys%basis, cdet%f, qs%ref%f0)
-                    call update_proj_energy_ptr(sys, qs%ref%f0, qs%trial%wfn_dat, cdet, weighted_population, &
-                                                qs%estimators, connection, hmatel)
-                    ! Is this determinant an initiator?
-                    call set_parent_flag(real_population, qmc_in%initiator_pop, determ%flags(idet), qmc_in%quadrature_initiator, &
-                                          cdet%initiator_flag)
+                        ! If this is a deterministic state then copy its population
+                        ! across to the determ%vector array.
+                        call set_determ_info(idet, real_population(ispace), ideterm, determ, determ_parent)
 
-                    do ispace  = 1, qs%psip_list%nspaces
+                        ! TODO: estimators should have dimension nspaces
+                        ! It is much easier to evaluate the projected energy at the
+                        ! start of the i-FCIQMC cycle than at the end, as we're
+                        ! already looping over the determinants.
+                        connection = get_excitation(sys%nel, sys%basis, cdet%f, qs%ref%f0)
+                        if (ispace == 1) call update_proj_energy_ptr(sys, qs%ref%f0, qs%trial%wfn_dat, cdet, weighted_population, &
+                                                    qs%estimators, connection, hmatel)
+                        ! Is this determinant an initiator?
+                        ! Todo: replicas?
+                        call set_parent_flag(real_population, qmc_in%initiator_pop, determ%flags(idet), qmc_in%quadrature_initiator, &
+                                              cdet%initiator_flag)
+
 
                         nattempts_current_det = decide_nattempts(rng, real_population(ispace))
 
@@ -286,13 +289,18 @@ contains
                                     ! If the spawning is both from and to the deterministic space, cancel it.
                                     if (.not. determ_child) then
                                         call create_spawned_particle_ptr(sys%basis, qs%ref, cdet, connection, nspawned, &
-                                                                         1, qs%spawn_store%spawn, f_child)
+                                                                         ispace, qs%spawn_store%spawn, f_child)
                                     else
                                         nspawned = 0_int_p
                                     end if
                                 else
-                                    call create_spawned_particle_ptr(sys%basis, qs%ref, cdet, connection, nspawned, 1, &
-                                                                     qs%spawn_store%spawn)
+                                    if (sys%read_in%comp) then
+                                        call create_spawned_particle_ptr(sys%basis, qs%ref, cdet, connection, nspawned, 1, &
+                                                                         qs%spawn_store%spawn)
+                                    else
+                                        call create_spawned_particle_ptr(sys%basis, qs%ref, cdet, connection, nspawned, ispace, &
+                                                                         qs%spawn_store%spawn)
+                                    end if
                                 end if
                                 if (abs(nspawned) >= bloom_stats%nparticles_encoded) &
                                     call accumulate_bloom_stats(bloom_stats, nspawned)
@@ -307,19 +315,14 @@ contains
 
                     end do
 
-                    ! Clone or die.
-                    if (.not. determ_parent) then
-                        call stochastic_death(rng, sys, qs, cdet%fock_sum, qs%psip_list%dat(1,idet),proj_energy_old, qs%shift(1), &
-                                       logging_info, qs%psip_list%pops(1,idet), qs%psip_list%nparticles(1), ndeath)
-                        if (sys%read_in%comp) then
-                            call stochastic_death(rng, sys,  qs, cdet%fock_sum, qs%psip_list%dat(1,idet), proj_energy_old, &
-                                            qs%shift(1), logging_info, qs%psip_list%pops(2,idet), qs%psip_list%nparticles(2), &
-                                            ndeath_im)
+                    do ispace = 1, qs%psip_list%nspaces
 
-                            ndeath = abs(ndeath) + abs(ndeath_im)
-                            ndeath_im = 0_int_p
-                        end if
-                    end if
+                        ! Clone or die.
+                        if (.not. determ_parent) call stochastic_death(rng, sys, qs, cdet%fock_sum, qs%psip_list%dat(1,idet), &
+                                                            proj_energy_old, qs%shift(ispace), logging_info, &
+                                                            qs%psip_list%pops(ispace,idet), &
+                                                            qs%psip_list%nparticles(ispace), ndeath)
+                    end do
 
                 end do
 

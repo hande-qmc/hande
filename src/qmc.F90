@@ -93,6 +93,8 @@ contains
             qmc_state%psip_list%nspaces = qmc_state%psip_list%nspaces + 1
         else if (present(dmqmc_in)) then
             if (dmqmc_in%replica_tricks) qmc_state%psip_list%nspaces = qmc_state%psip_list%nspaces + 1
+        else if (fciqmc_in_loc%replica_tricks) then
+            qmc_state%psip_list%nspaces = qmc_state%psip_list%nspaces + 1
         else if (sys%system == read_in) then
             if (sys%read_in%comp) then
                 qmc_state%psip_list%nspaces = qmc_state%psip_list%nspaces + 1
@@ -1003,6 +1005,7 @@ contains
         pl%pops(:,pl%nstates) = 0_int_p
         ! Set initial population of Hamiltonian walkers.
         pl%pops(1,pl%nstates) = nint(D0_pop)*pl%pop_real_factor
+        if (fciqmc_in%replica_tricks) pl%pops(:,pl%nstates) = nint(D0_pop)*pl%pop_real_factor
 
         ! Determine and set properties for the reference state which we start on.
         ! By definition, when using a single determinant as a reference state:

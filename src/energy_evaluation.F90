@@ -445,53 +445,75 @@ contains
         ! average spawning rate over report loop and processor.
         qs%spawn_store%rspawn = qs%spawn_store%rspawn/(qmc_in%ncycles*nprocs)
 
-        if (qs%vary_shift(1)) then
-            if (vary_shift_reference_loc) then
-                call update_shift(qmc_in, qs, qs%shift(1), real(qs%estimators%D0_population_old, dp), &
-                                  real(qs%estimators%D0_population, dp), qmc_in%ncycles)
-            else if (comp_param) then
-                call update_shift(qmc_in, qs, qs%shift(1), ntot_particles_old(1) + ntot_particles_old(2), &
-                                    ntot_particles(1) + ntot_particles(2), qmc_in%ncycles)
-            else
+        if (doing_calc(hfs_fciqmc_calc)) then
+            if (qs%vary_shift(1)) then
                 call update_shift(qmc_in, qs, qs%shift(1), ntot_particles_old(1), ntot_particles(1), qmc_in%ncycles)
-            end if
-            if (doing_calc(hfs_fciqmc_calc)) then
                 call update_hf_shift(qmc_in, qs, qs%shift(2), ntot_particles_old(1), ntot_particles(1), &
                                      qs%estimators%hf_signed_pop, new_hf_signed_pop, qmc_in%ncycles)
             end if
+        else if (comp_param) then
+            if (qs%vary_shift(1)) then
+                call update_shift(qmc_in, qs, qs%shift(1), ntot_particles_old(1) + ntot_particles_old(2), &
+                                    ntot_particles(1) + ntot_particles(2), qmc_in%ncycles)
+            end if
+        else
+            do i = 1, ntypes
+                if (qs%vary_shift(i)) then
+                    if (vary_shift_reference_loc) then
+                        ! todo Fix D0_population to be an array?
+                        call update_shift(qmc_in, qs, qs%shift(i), real(qs%estimators%D0_population_old, dp), &
+                                          real(qs%estimators%D0_population, dp), qmc_in%ncycles)
+                    else
+                        call update_shift(qmc_in, qs, qs%shift(i), ntot_particles_old(i), &
+                                                        ntot_particles(i), qmc_in%ncycles)
+                    end if
+                end if
+            end do
         end if
 
         qs%estimators%D0_population_old = qs%estimators%D0_population
         ntot_particles_old = ntot_particles
         qs%estimators%hf_signed_pop = new_hf_signed_pop
 
-        if (comp_param) then
-            nparticles_wfn = ntot_particles(1) + ntot_particles(2)
-        else
-            nparticles_wfn = ntot_particles(1)
-        end if
-
-        if (.not. qs%vary_shift(1) .and. &
-            ((nparticles_wfn > qs%target_particles .and. .not. qmc_in%target_reference) .or. &
-            (qs%estimators%D0_population > qs%target_particles .and. qmc_in%target_reference))) then
-            qs%vary_shift = .true.
-            if (qmc_in%vary_shift_from_proje) then
-                ! Set shift to be instantaneous projected energy.
-                associate(est=>qs%estimators)
-                    if (comp_param) then
+        associate (est=>qs%estimators)
+            if (comp_param) then
+                if (.not. qs%vary_shift(1) .and. sum(ntot_particles) > qs%target_particles) then
+                    qs%vary_shift = .true.
+                    if (qmc_in%vary_shift_from_proje) then
+                        ! Set shift to be instantaneous projected energy.
                         qs%shift = real(est%proj_energy_comp/est%D0_population_comp, p)
                     else
-                        qs%shift = est%proj_energy/est%D0_population
+                        qs%shift = qmc_in%vary_shift_from
                     end if
-                    if (doing_calc(hfs_fciqmc_calc)) then
+                end if
+            else if (doing_calc(hfs_fciqmc_calc)) then
+                if (.not. qs%vary_shift(1) .and. ntot_particles(1) > qs%target_particles) then
+                    qs%vary_shift = .true.
+                    if (qmc_in%vary_shift_from_proje) then
+                        qs%shift(1) = est%proj_energy/est%D0_population
                         qs%shift(2) = est%proj_hf_O_hpsip/est%D0_population + est%proj_hf_H_hfpsip/est%D0_population &
                                                              - (est%proj_energy*est%D0_hf_population)/est%D0_population**2
+                    else
+                        qs%shift = qmc_in%vary_shift_from
                     end if
-                end associate
+                end if
             else
-                qs%shift = qmc_in%vary_shift_from
+                do i = 1, ntypes
+                    if (.not. qs%vary_shift(i)) then
+                        if ((ntot_particles(i) > qs%target_particles .and. .not. qmc_in%target_reference) .or. &
+                            (qs%estimators%D0_population > qs%target_particles .and. qmc_in%target_reference)) then
+                            qs%vary_shift(i) = .true.
+                            if (qmc_in%vary_shift_from_proje) then
+                                ! Set shift to be instantaneous projected energy.
+                                qs%shift(i) = est%proj_energy/est%D0_population
+                            else
+                                qs%shift(i) = qmc_in%vary_shift_from
+                            end if
+                        end if
+                    end if
+                end do
             end if
-        end if
+        end associate
 
     end subroutine communicated_energy_estimators
 

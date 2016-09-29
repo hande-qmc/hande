@@ -186,6 +186,9 @@ type fciqmc_in_t
     ! guiding function being used.
     integer :: guiding_function = no_guiding
 
+    ! Evolve two copies of the wavefunction to enable unbiased sampling of the RDM
+    logical :: replica_tricks = .false.
+
 end type fciqmc_in_t
 
 type semi_stoch_in_t
