@@ -1717,7 +1717,8 @@ contains
             call create_spawned_particle_ptr(sys%basis, qs%ref, cdet, null_excit, nkill, 1, spawn)
         end if
 
-        if (debug) call write_logging_death(logging_info, KiiAi, proj_energy, qs%shift(1), invdiagel, nkill, pdeath, cluster%amplitude, 0.0_p)
+        if (debug) call write_logging_death(logging_info, KiiAi, proj_energy, qs%shift(1), invdiagel, &
+                                            nkill, pdeath, cluster%amplitude, 0.0_p)
 
     end subroutine stochastic_ccmc_death
 
