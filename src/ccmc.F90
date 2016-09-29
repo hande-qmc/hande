@@ -719,8 +719,8 @@ contains
                                           fexcit, cdet(it), ldet(it), rdet(it), left_cluster(it), right_cluster(it))
                             else
                                 call spawner_ccmc(rng(it), sys, qs, qs%spawn_store%spawn%cutoff, &
-                                          ccmc_in%linked, cdet(it), cluster(it), gen_excit_ptr, nspawned, connection, &
-                                          nspawnings_total)
+                                          ccmc_in%linked, cdet(it), cluster(it), gen_excit_ptr, logging_info, nspawned, &
+                                          connection, nspawnings_total)
                             end if
 
                            if (nspawned /= 0_int_p) then
@@ -745,7 +745,8 @@ contains
                                 ! Do death for non-composite clusters directly and in a separate loop
                                 if (cluster(it)%nexcitors >= 2 .or. .not. ccmc_in%full_nc) then
                                     call stochastic_ccmc_death(rng(it), qs%spawn_store%spawn, ccmc_in%linked, sys, &
-                                                               qs, cdet(it), cluster(it), proj_energy_old, ndeath_tot)
+                                                               qs, cdet(it), cluster(it), proj_energy_old, logging_info, &
+                                                               ndeath_tot)
                                 end if
                             end if
                         end if
@@ -1423,7 +1424,7 @@ contains
     end subroutine select_cluster_non_composite
 
     subroutine spawner_ccmc(rng, sys, qs, spawn_cutoff, linked_ccmc, cdet, cluster, &
-                            gen_excit_ptr, nspawn, connection, nspawnings_total)
+                            gen_excit_ptr, logging_info, nspawn, connection, nspawnings_total)
 
         ! Attempt to spawn a new particle on a connected excitor with
         ! probability
@@ -1466,6 +1467,7 @@ contains
         !    gen_excit_ptr: procedure pointer to excitation generators.
         !        gen_excit_ptr%full *must* be set to a procedure which generates
         !        a complete excitation.
+        !    logging_info: logging_t derived type containing information on logging behaviour.
         ! In/Out:
         !    rng: random number generator.
         !    nspawnings_total: The total number of spawnings attemped by the current cluster
@@ -1483,9 +1485,10 @@ contains
         use proc_pointers, only: gen_excit_ptr_t
         use spawning, only: attempt_to_spawn, calc_qn_spawned_weighting
         use system, only: sys_t
-        use const, only: depsilon
+        use const, only: depsilon, debug
         use qmc_data, only: qmc_in_t, qmc_state_t
         use hamiltonian_data
+        use logging, only: logging_t, write_logging_spawn
 
         type(sys_t), intent(in) :: sys
         type(qmc_state_t), intent(in) :: qs
@@ -1496,6 +1499,7 @@ contains
         type(dSFMT_t), intent(inout) :: rng
         integer, intent(in) :: nspawnings_total
         type(gen_excit_ptr_t), intent(in) :: gen_excit_ptr
+        type(logging_t), intent(in) :: logging_info
         integer(int_p), intent(out) :: nspawn
         type(excit_t), intent(out) :: connection
 
@@ -1503,7 +1507,7 @@ contains
         ! element, so we 'pretend' to attempt_to_spawn that all excips are
         ! actually spawned by positive excips.
         integer(int_p), parameter :: parent_sign = 1_int_p
-        type(hmatel_t) :: hmatel
+        type(hmatel_t) :: hmatel, hmatel_save
         real(p) :: pgen
         integer(i0) :: fexcit(sys%basis%string_len), funlinked(sys%basis%string_len)
         integer :: excitor_sign, excitor_level
@@ -1541,11 +1545,15 @@ contains
             invdiagel = 1
         end if
         ! 2, Apply additional factors.
+        hmatel_save = hmatel
         hmatel%r = hmatel%r*cluster%amplitude*invdiagel*cluster%cluster_to_det_sign
         pgen = pgen*cluster%pselect*nspawnings_total
 
         ! 3. Attempt spawning.
         nspawn = attempt_to_spawn(rng, qs%tau, spawn_cutoff, qs%psip_list%pop_real_factor, hmatel%r, pgen, parent_sign)
+
+        if (debug) call write_logging_spawn(logging_info, hmatel_save, pgen, invdiagel, [nspawn], &
+                        cluster%amplitude*qs%psip_list%pop_real_factor, sys%read_in%comp)
 
         if (nspawn /= 0_int_p) then
             ! 4. Convert the random excitation from a determinant into an
@@ -1561,7 +1569,8 @@ contains
 
     end subroutine spawner_ccmc
 
-    subroutine stochastic_ccmc_death(rng, spawn, linked_ccmc, sys, qs, cdet, cluster, proj_energy, ndeath_tot)
+    subroutine stochastic_ccmc_death(rng, spawn, linked_ccmc, sys, qs, cdet, cluster, proj_energy, logging_info, &
+                                    ndeath_tot)
 
         ! Attempt to 'die' (ie create an excip on the current excitor, cdet%f)
         ! with probability
@@ -1593,10 +1602,12 @@ contains
         !    cluster: information about the cluster which forms the excitor.
         !    proj_energy: projected energy.  This should be the average value from the last
         !        report loop, not the running total in qs%estimators.
+        !    logging_info: logging_t derived type containing information on logging behaviour.
         ! In/Out:
         !    rng: random number generator.
         !    spawn: spawn_t object to which the spanwed particle will be added.
 
+        use const, only: debug
         use ccmc_data, only: cluster_t
         use determinants, only: det_info_t
         use excitations, only: excit_t
@@ -1606,12 +1617,14 @@ contains
         use spawning, only: calc_qn_weighting
         use system, only: sys_t
         use qmc_data, only: qmc_state_t
+        use logging, only: logging_t, write_logging_death
         type(sys_t), intent(in) :: sys
         type(qmc_state_t), intent(in) :: qs
         logical, intent(in) :: linked_ccmc
         type(det_info_t), intent(in) :: cdet
         type(cluster_t), intent(in) :: cluster
         real(p), intent(in) :: proj_energy
+        type(logging_t), intent(in) :: logging_info
         type(dSFMT_t), intent(inout) :: rng
         type(spawn_t), intent(inout) :: spawn
         integer(int_p), intent(inout) :: ndeath_tot
@@ -1703,6 +1716,8 @@ contains
             ! the current excitor.
             call create_spawned_particle_ptr(sys%basis, qs%ref, cdet, null_excit, nkill, 1, spawn)
         end if
+
+        if (debug) call write_logging_death(logging_info, KiiAi, proj_energy, qs%shift(1), invdiagel, nkill, pdeath, cluster%amplitude, 0.0_p)
 
     end subroutine stochastic_ccmc_death
 
@@ -1927,7 +1942,6 @@ contains
         end if
 
     end subroutine collapse_cluster
-
 
     pure subroutine linked_excitation(basis, f0, connection, cluster, linked, single_unlinked, excitor)
 

@@ -31,6 +31,8 @@ module logging
 
 use const, only: int_32, int_64
 
+implicit none
+
 type logging_in_t
     ! High-level debugging flag (at level of calculation running).
     integer(int_32) :: calc = 0
@@ -106,11 +108,8 @@ contains
         type(logging_in_t), intent(in) :: logging_in
 
         select case(calc_type)
-        case(fciqmc_calc)
+        case(fciqmc_calc, ccmc_calc)
             continue ! All available logging implemented.
-        case(ccmc_calc)
-            if (logging_in%spawn > 0) call write_logging_warning(2, logging_in%spawn)
-            if (logging_in%death > 0) call write_logging_warning(3, logging_in%death)
         case default
             if (logging_in%calc > 0) call write_logging_warning(1, logging_in%calc)
             if (logging_in%spawn > 0) call write_logging_warning(2, logging_in%spawn)
@@ -184,7 +183,6 @@ contains
         ndeath_tot = 0_int_p
 
         if (logging_info%write_logging) then
-            !if (logging_info%calc_unit /= huge(1)) call write_iter_to_log(iter, logging_info%calc_unit)
             if (logging_info%spawn_unit /= huge(1)) then
                 call write_iter_to_log(iter, logging_info%spawn_unit)
                 call write_logging_spawn_header(logging_info, cmplx_wfn)
@@ -393,7 +391,7 @@ contains
 
         call write_column_title(logging_info%spawn_unit, "pgen", justify=-1, sep=',')
         call write_column_title(logging_info%spawn_unit, "qn weighting", justify=-1, sep=',')
-        call write_column_title(logging_info%spawn_unit, "parent_sign", int_val=.true., justify=1, sep=',')
+        call write_column_title(logging_info%spawn_unit, "parent amplitude", justify=-1, sep=',')
 
         if (cmplx_wfn) then
             call write_column_title(logging_info%spawn_unit, "# spawn", int_val=.true., justify=1, sep=',')
@@ -460,8 +458,8 @@ contains
 
         call write_column_title(logging_info%death_unit, "nkill", int_val = .true., justify=1, sep=',')
 
-        call write_column_title(logging_info%death_unit, "init pop", int_val = .true., justify=1, sep=',')
-        call write_column_title(logging_info%death_unit, "fin pop", int_val = .true., justify=1, sep=',')
+        call write_column_title(logging_info%death_unit, "init pop", justify=-1, sep=',')
+        call write_column_title(logging_info%death_unit, "fin pop", justify=-1, sep=',')
 
         write (logging_info%death_unit,'()')
 
@@ -512,7 +510,7 @@ contains
         !   nD0_select: total number of selection of the reference made this iteration.
         !   nclusters: total number of selections made this iteration.
         !   nstochastic_clusters: total number of stochastic selections made this iteration.
-        !   nssingle_excitors: total number of deterministic selections made this iteration.
+        !   nsingle_excitors: total number of deterministic selections made this iteration.
 
         use qmc_io, only: write_qmc_var
         use const, only: int_p, int_64
@@ -527,7 +525,7 @@ contains
             write (logging_info%calc_unit, '(1X)', advance='no')
             call write_qmc_var(logging_info%calc_unit, iter, sep=',')
             call write_qmc_var(logging_info%calc_unit, nspawn_events, sep=',')
-            call write_qmc_var(logging_info%calc_unit, ndeath_events, sep=',')
+            call write_qmc_var(logging_info%calc_unit, ndeath_tot, sep=',')
             call write_qmc_var(logging_info%calc_unit, nclusters, sep=',')
             call write_qmc_var(logging_info%calc_unit, nD0_select, sep=',')
             call write_qmc_var(logging_info%calc_unit, nstochastic_clusters, sep=',')
@@ -548,7 +546,7 @@ contains
         !   qn_weighting: real. Reweighting factor for quasi-newton solvers. Always printed
         !       as still multiplied by but should be 1.000...
         !   nspawned: integer. Total signed walkers spawned in this event.
-        !   parent_sign: integer. Total signed population on parent determinant.
+        !   parent_sign: real. Total signed population on parent determinant.
         !   cmplx_wfn: logical. True if using complex wavefunction, false if not.
 
         use qmc_io, only: write_qmc_var
@@ -557,8 +555,8 @@ contains
 
         type(logging_t), intent(in) :: logging_info
         type(hmatel_t), intent(in) :: hmatel
-        real(p), intent(in) :: pgen, qn_weighting
-        integer(int_p), intent(in) :: nspawned(:), parent_sign
+        real(p), intent(in) :: pgen, qn_weighting, parent_sign
+        integer(int_p), intent(in) :: nspawned(:)
         logical, intent(in) ::  cmplx_wfn
 
         if (logging_info%write_logging) then
@@ -601,15 +599,15 @@ contains
         !       as still multiplied by but should be 1.000...
         !   nkill: integer. Total particle change in event.
         !   pd: real. pdeath of a single particle on same determinant.
-        !   init_pop: integer. Initial population on determinant.
-        !   fin_pop: integer. Final population on determinant.
+        !   init_pop: real. Scaled initial population on determinant (ie. non-integer).
+        !   fin_pop: real. Scaled final population on determinant (ie. non-integer).
 
         use qmc_io, only: write_qmc_var
         use const, only: int_p, p
 
         type(logging_t), intent(in) :: logging_info
-        real(p), intent(in) :: Kii, proj_energy, qn_weight, loc_shift, pd
-        integer(int_p), intent(in) :: nkill, init_pop, fin_pop
+        real(p), intent(in) :: Kii, proj_energy, qn_weight, loc_shift, pd, init_pop, fin_pop
+        integer(int_p), intent(in) :: nkill
 
         if (logging_info%write_logging) then
             if ((logging_info%write_successful_death .and. abs(nkill) > 0) .or. &
@@ -753,6 +751,7 @@ contains
         call json_write_key(js, 'death_unit', logging_info%death_unit, .true.)
 
         call json_object_end(js, terminal)
+
     end subroutine logging_t_json
 
 end module logging

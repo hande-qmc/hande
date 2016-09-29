@@ -107,7 +107,7 @@ contains
         nspawn = attempt_to_spawn(rng, qmc_state%tau, spawn_cutoff, real_factor, hmatel%r * qn_weight, pgen, &
                                 parent_sign)
 
-        if (debug) call write_logging_spawn(logging_info, hmatel, pgen, qn_weight, [nspawn], parent_sign, .false.)
+        if (debug) call write_logging_spawn(logging_info, hmatel, pgen, qn_weight, [nspawn], real(parent_sign, p), .false.)
 
     end subroutine spawn_standard
 
@@ -552,7 +552,7 @@ contains
         nspawn_im = attempt_to_spawn(rng, qmc_state%tau, spawn_cutoff, real_factor, qn_weight*aimag(hmatel%c), &
                                     pgen, parent_sign)
 
-        if (debug) call write_logging_spawn(logging_info, hmatel, pgen, qn_weight, [nspawn, nspawn_im], parent_sign, .true.)
+        if (debug) call write_logging_spawn(logging_info, hmatel, pgen, qn_weight, [nspawn, nspawn_im], real(parent_sign,p), .true.)
 
     end subroutine spawn_complex
 
