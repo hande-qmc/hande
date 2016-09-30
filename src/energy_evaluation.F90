@@ -1293,7 +1293,7 @@ contains
         if (abs(qs%estimators%D0_population_comp)<tiny(0._p)) then
            proje = 0
         else
-           proje = qs%estimators%proj_energy_comp/qs%estimators%D0_population_comp
+           proje = real(qs%estimators%proj_energy_comp/qs%estimators%D0_population_comp, p)
         end if
 
     end function get_sanitized_projected_energy_cmplx
