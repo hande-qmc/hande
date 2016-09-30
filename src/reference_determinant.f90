@@ -68,7 +68,7 @@ contains
         !       sym_max.
 
         use const, only: i0, p, depsilon
-        use checking, only: check_allocate, check_deallocate
+        use checking, only: check_allocate
         use errors, only: stop_all
 
         use determinants, only: encode_det
