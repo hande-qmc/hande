@@ -91,7 +91,8 @@ contains
         type(cluster_t), intent(inout) :: cluster
 
         real(dp) :: rand
-        real(p) :: psize, cluster_population, excitor_pop
+        real(p) :: psize
+        complex(p) :: cluster_population, excitor_pop
         integer :: i, pos, prev_pos
         integer(int_p) :: pop(max_size)
         logical :: hit, allowed, all_allowed
@@ -290,7 +291,8 @@ contains
                 call decoder_ptr(sys, cdet%f, cdet)
 
                 ! Normalisation factor for cluster%amplitudes...
-                cluster%amplitude = cluster_population/(real(normalisation,p)**(cluster%nexcitors-1))
+                cluster%amplitude = real(cluster_population/(real(normalisation,p)**(cluster%nexcitors-1)),p)
+                cluster%amplitude_im = aimag(cluster_population/(real(normalisation,p)**(cluster%nexcitors-1)))
             else
                 ! Simply set excitation level to a too high (fake) level to avoid
                 ! this cluster being used.
