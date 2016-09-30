@@ -75,6 +75,7 @@ contains
         use symmetry, only: symmetry_orb_list
         use system
         use parallel, only: parent
+        use sort, only: insert_sort
 
         type(sys_t), intent(in) :: sys
         integer, intent(inout), allocatable :: occ_list(:)
@@ -201,7 +202,6 @@ contains
                                 call stop_all('set_reference_det', &
                                     'Could not find determinant of required symmetry.')
                             end if
-
                         end if
                     end if
                 else
@@ -288,6 +288,9 @@ contains
                 end if
             end select
         end if
+
+        ! Finally ensure that whatever reference we obtain is properly sorted.
+        call insert_sort(occ_list)
 
     end subroutine set_reference_det
 
