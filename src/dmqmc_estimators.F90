@@ -1385,6 +1385,7 @@ contains
             call decode_det(sys%basis, cdet%f, occ_list)
             do iocc = 1, sys%nel
                 ! Really want spin averaged momentum distribution, so only consider up index.
+                ! [review] - JSS: this mapping looks very odd...
                 oc_orb = occ_list(iocc)/2 + mod(occ_list(iocc),2)
                 if (oc_orb <= size(momentum_dist)) then
                     ! Divide by two for unpolarised system.

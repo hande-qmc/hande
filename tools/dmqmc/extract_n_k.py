@@ -5,6 +5,8 @@ import pandas as pd
 import numpy as np
 import sys
 
+# [review] - JSS: use if __name__ == '__main__' and functions so code can easily be reused in another script if necessary.
+
 if (len(sys.argv) < 2):
     print ("Usage: extract_n_k.py file bval")
     sys.exit()

@@ -45,6 +45,7 @@ None.
         ('VI', '\\sum\\rho_{ij}VI_{ji}'),
     ])
 
+    # [review] - JSS: ditto comments re:filter helper function.
     mom_dist = [m for m in means.columns if 'n_' in m]
     observables.update(dict(zip(mom_dist, mom_dist)))
     # DataFrame to hold the final mean and error estimates.

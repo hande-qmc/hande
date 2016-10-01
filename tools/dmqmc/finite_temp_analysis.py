@@ -85,6 +85,7 @@ None.
 
     # For anal-retentiveness, print the energy first after beta and then all
     # columns in alphabetical order.
+    # [review - JSS: this if seems a bit magic -- worth a helper function to filter for readability.
     columns = sorted([c for c in results.columns.values if 'n_' not in c])
     columns.insert(1, columns.pop(columns.index('Tr[Hp]/Tr[p]')))
     columns.insert(2, columns.pop(columns.index('Tr[Hp]/Tr[p]_error')))

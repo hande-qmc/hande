@@ -1421,6 +1421,7 @@ contains
                 dmqmc_calc_type = dmqmc_calc_type + dmqmc_correlation
                 call aot_get_val(dmqmc_in%correlation_sites, err_arr, nbasis, lua_state, table, 'correlation')
             end if
+            ! [review] - JSS: no docs for new option.
             if (aot_exists(lua_state, table, 'mom_dist')) then
                 call aot_get_val(dmqmc_in%mom_dist_kmax, err, lua_state, table, 'mom_dist')
                 dmqmc_in%calc_mom_dist = .true.

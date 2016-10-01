@@ -173,6 +173,8 @@ contains
                     if (sys%basis%basis_fns(iorb)%sp_eigv > 0.5*(dmqmc_in%mom_dist_kmax*sys%ueg%kf)**2.0) exit
                 end do
                 ! We want to average over spin, so we'll map the (spin) orbital index back to the given kpoint.
+                ! [review] - JSS: using iorb instead of (e.g.) kf_orb is a bit confusing.
+                ! [review] - JSS: I prefer not to use loop indices outside of the loop.
                 iorb = (iorb - 1) / 2
                 allocate(dmqmc_estimates%mom_dist%n_k(iorb), stat=ierr)
                 call check_allocate('dmqmc_estimates%mom_dist%n_k', iorb, ierr)
