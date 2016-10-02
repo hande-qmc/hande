@@ -811,9 +811,6 @@ contains
 
             update_tau = bloom_stats%nblooms_curr > 0
 
-            ! [review] - JSS: should this logic be part of the energy estimation?
-            ! [reply] - RSTF: That seems to involve passing in a number of things that aren't
-            ! [reply] - RSTF: otherwise needed to end_report_loop though.
             if (ccmc_in%density_matrices .and. qs%vary_shift(1)) call calc_rdm_energy(sys, qs%ref, rdm, qs%estimators%rdm_energy, &
                                                                                       qs%estimators%rdm_trace)
 

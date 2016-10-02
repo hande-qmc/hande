@@ -321,9 +321,6 @@ contains
             call stop_all(this, "cluster_multispawn_threshold must be positive")
         end if
 
-        ! [review] - JSS: why this restriction?
-        ! [reply] - RSTF: Because I haven't done the get_one/two_e_int functions and pointers for
-        ! [reply] - RSTF: model systems.  It would be fairly easy if they were wanted.
         if (ccmc_in%density_matrices .and. sys%system /= read_in) then
             call stop_all(this, "CCMC density matrices not implemented for this system type.")
         end if

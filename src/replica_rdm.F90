@@ -55,9 +55,6 @@ contains
             do i = 1, sys%nel
                 associate(p => excit%to_orb(1), q => excit%from_orb(1), orb => det1%occ_list(i))
                     if (orb == q) cycle
-                    ! [review] - JSS: occ_list is ordered and so this can be split into separate loops.
-                    ! [review] - JSS: not sure if that would be faster though...
-                    ! [reply] - RSTF: p and q are not ordered though.
                     if (orb<p .and. orb<q) then
                         rdm(tri_ind_distinct_reorder(orb,p),tri_ind_distinct_reorder(orb,q)) = &
                             rdm(tri_ind_distinct_reorder(orb,p),tri_ind_distinct_reorder(orb,q)) + matel
