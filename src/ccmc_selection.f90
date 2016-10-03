@@ -255,11 +255,7 @@ contains
                     end if
                 end if
                 ! Probability of choosing this excitor = nint(pop)/tot_pop.
-                if (sys%read_in%comp) then
-                    cluster%pselect = (cluster%pselect*nint(abs(real(excitor_pop, p))+abs(aimag(excitor_pop))))/tot_excip_pop
-                else
-                    cluster%pselect = (cluster%pselect*nint(abs(real(excitor_pop, p))))/tot_excip_pop
-                end if
+                cluster%pselect = (cluster%pselect*nint(abs(excitor_pop)))/tot_excip_pop
                 cluster%excitors(i)%f => psip_list%states(:,pos)
                 prev_pos = pos
             end do

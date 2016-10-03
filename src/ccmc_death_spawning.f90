@@ -317,7 +317,6 @@ contains
         end if
 
         ! Now repeat same stages with imaginary component. No need to repeat same comments.
-
         if (sys%read_in%comp) then
             if (pdeath_im < spawn%cutoff) then
                 if (pdeath_im > get_rand_close_open(rng)*spawn%cutoff) then
