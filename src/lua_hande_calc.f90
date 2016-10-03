@@ -1804,26 +1804,21 @@ contains
 
         integer :: err, blocking_table
         character(21),parameter :: keys(5) = [character(21) :: &
-        'blocking_on_the_fly', 'start_save_frequency', 'start_point_number', 'filename', 'start_point']
+            'blocking_on_the_fly', 'start_save_frequency', 'start_point_number', 'filename', 'start_point']
 
         if (aot_exists(lua_state, opts, 'blocking')) then
 
             call aot_table_open(lua_state, opts, blocking_table, 'blocking')
 
-            call aot_get_val(blocking_in%blocking_on_the_fly, err, lua_state, &
-            blocking_table, 'blocking_on_the_fly')
+            call aot_get_val(blocking_in%blocking_on_the_fly, err, lua_state, blocking_table, 'blocking_on_the_fly')
 
-            call aot_get_val(blocking_in%start_save_frequency, err, lua_state, &
-            blocking_table, 'start_save_frequency')
+            call aot_get_val(blocking_in%start_save_frequency, err, lua_state, blocking_table, 'start_save_frequency')
 
-            call aot_get_val(blocking_in%start_point_number, err, lua_state, &
-            blocking_table, 'start_point_number')
+            call aot_get_val(blocking_in%start_point_number, err, lua_state, blocking_table, 'start_point_number')
 
-            call aot_get_val(blocking_in%filename, err, lua_state, &
-            blocking_table, 'filename')
+            call aot_get_val(blocking_in%filename, err, lua_state, blocking_table, 'filename')
 
-            call aot_get_val(blocking_in%start_point, err, lua_state, &
-            blocking_table, 'start_point')
+            call aot_get_val(blocking_in%start_point, err, lua_state, blocking_table, 'start_point')
 
             call warn_unused_args(lua_state, keys, blocking_table)
 

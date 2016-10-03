@@ -290,9 +290,7 @@ type blocking_in_t
     ! collected. If negative, the default value is used. Default is to start
     ! collecting data once vary_shift is true.
     integer :: start_point = -1
-
 end type
-
 
 ! --- Parallel info ---
 
@@ -521,15 +519,13 @@ type spawned_particle_t
 end type spawned_particle_t
 
 type blocking_t
-    ! Log to the base 2 of maximum block size.
+    ! Log_2 of maximum block size.
     integer :: lg_max = 0
     ! Number of start points to start reblocking from.
     integer :: n_saved_startpoints = 0
-    ! Frequency at which the data for the start point is saved. In terms of the
-    ! number of reports
+    ! Frequency at which the data for the start point is saved. In terms of the number of reports
     integer :: save_fq = 0
-    ! Number of report cycles from the start of all blocking to the current
-    ! cycle.
+    ! Number of report cycles from the start of all blocking to the current cycle.
     integer :: n_reports_blocked = 0
 ! [review] - CJCS: Little bit hard to understand in this format. Definining
 ! [review] - CJCS: your array bounds (see below) will help, but otherwise
@@ -990,12 +986,9 @@ contains
         logical, intent(in), optional :: terminal
 
         call json_object_init(js, 'blocking')
-        call json_write_key(js, 'blocking_on_the_fly', &
-        blocking%blocking_on_the_fly)
-        call json_write_key(js, 'start_save_frequency', &
-        blocking%start_save_frequency)
-        call json_write_key(js, 'start_point_number', &
-        blocking%start_point_number)
+        call json_write_key(js, 'blocking_on_the_fly', blocking%blocking_on_the_fly)
+        call json_write_key(js, 'start_save_frequency', blocking%start_save_frequency)
+        call json_write_key(js, 'start_point_number', blocking%start_point_number)
         call json_write_key(js, 'filename', blocking%filename)
         call json_write_key(js, 'start_point', blocking%start_point, .true.)
         call json_object_end(js, terminal)

@@ -299,6 +299,7 @@ contains
         integer :: i
         logical :: t_open, t_exist
 
+        free_unit = -1
         do i = 10, max_unit
             inquire(unit=i, opened=t_open, exist=t_exist)
             if (.not.t_open .and. t_exist) then
@@ -449,6 +450,7 @@ contains
             iunit = get_free_unit()
             open(iunit, file=fname, status='old', form='formatted')
         else
+            iunit = -1
             call stop_all('read_file_to_buffer', 'Neither file nor file handle supplied to read_file_to_buffer.')
         end if
 

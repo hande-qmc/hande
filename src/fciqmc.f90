@@ -122,8 +122,6 @@ contains
         type(blocking_t) :: bl
         integer :: i,j, iunit
 
-
-
         if (parent) then
             write (io_unit,'(1X,"FCIQMC")')
             write (io_unit,'(1X,"------",/)')
@@ -214,8 +212,7 @@ contains
         ! Initialise timer.
         call cpu_time(t1)
         ! Allocate arrays needed for reblock analysis
-        if (blocking_in%blocking_on_the_fly) call allocate_blocking(qmc_in, &
-        blocking_in, bl)
+        if (blocking_in%blocking_on_the_fly) call allocate_blocking(qmc_in, blocking_in, bl)
 
         if (parent .and. blocking_in%blocking_on_the_fly) then
             iunit = get_free_unit()

@@ -522,8 +522,7 @@ contains
             call write_blocking_report_header(iunit)
         end if
 
-        if (blocking_in%blocking_on_the_fly) call allocate_blocking(qmc_in, &
-        blocking_in, bl)
+        if (blocking_in%blocking_on_the_fly) call allocate_blocking(qmc_in, blocking_in, bl)
         do ireport = 1, qmc_in%nreport
 
             ! Projected energy from last report loop to correct death
@@ -856,7 +855,6 @@ contains
             if (update_tau) call rescale_tau(qs%tau)
 
         end do
-
 
         if (blocking_in%blocking_on_the_fly) call deallocate_blocking(bl)
         if (blocking_in%blocking_on_the_fly) close(iunit, status='keep')

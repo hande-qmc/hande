@@ -1,9 +1,10 @@
 module blocking
 
+! [review] - JSS: cite blocking (and DDDA?) paper(s).
 ! Module for performing reblocking on the fly.
 
 implicit none
-
+ 
 contains
 
     subroutine allocate_blocking(qmc_in, blocking_in, bl)
@@ -74,11 +75,9 @@ contains
         ! Array in which the reblock_data and data_product are saved every
         ! start_fq.
         allocate(bl%reblock_save(0:bl%n_saved_startpoints, 4, 0:bl%lg_max, 3), stat=ierr)
-        call check_allocate('bl%reblock_save',(bl%n_saved_startpoints+1)*4*3*(bl%lg_max+1), &
-                ierr)
+        call check_allocate('bl%reblock_save',(bl%n_saved_startpoints+1)*4*3*(bl%lg_max+1), ierr)
         allocate(bl%product_save(0:bl%n_saved_startpoints, 0:bl%lg_max),stat=ierr)
-        call check_allocate('bl%product_save',(bl%n_saved_startpoints &
-                +1)*(bl%lg_max+1),ierr)
+        call check_allocate('bl%product_save',(bl%n_saved_startpoints+1)*(bl%lg_max+1),ierr)
         ! 1/(sqrt(number of data)) * fractional error for both \sum H_0j N_jand
         ! reference population is saved for comparison.
         allocate(bl%err_comp(0:bl%n_saved_startpoints, 3))
@@ -105,7 +104,6 @@ contains
         ! In/Out:
         !   bl: Information needed to peform blocking on the fly. It is
         !   unchanged in the output.
-
 
         use qmc_data, only: blocking_t
         use checking, only: check_deallocate
@@ -145,6 +143,7 @@ contains
 
         integer, intent(in) :: iunit
 
+        ! [review] - JSS: simpler is: write (iunit, '(1X,"#iterations")') etc.
         write(iunit, '(1X, A)', advance = 'no') ('#iterations')
         write(iunit, '(1X, A)', advance = 'no') ('Start point')
         write(iunit, '(1X, A)', advance = 'no') ('Mean \sum H_0j N_j')
@@ -189,7 +188,6 @@ contains
         bl%reblock_data(2,:,2) = bl%reblock_data(2,:,2) + qs%estimators%D0_population
         bl%reblock_data(2,:,3) = bl%reblock_data(2,:,3) + qs%shift(1)
 
-
         ! Everytime enough data is collected for each block size, the sum in
         ! column 2 is divied by the block size and added to column 3 and squared
         ! and added to column 4.
@@ -203,15 +201,12 @@ contains
 
                 bl%reblock_data(1,i,:) = (bl%n_reports_blocked)/reblock_size
 
-                bl%reblock_data(3,i,:) = bl%reblock_data(3,i,:) &
-                    + bl%reblock_data(2,i,:)/reblock_size
+                bl%reblock_data(3,i,:) = bl%reblock_data(3,i,:) + bl%reblock_data(2,i,:)/reblock_size
 
-                bl%reblock_data(4,i,:) = bl%reblock_data(4,i,:) &
-                    + (bl%reblock_data(2,i,:)/reblock_size) ** 2
+                bl%reblock_data(4,i,:) = bl%reblock_data(4,i,:) + (bl%reblock_data(2,i,:)/reblock_size) ** 2
 
-                bl%data_product(i) = bl%data_product(i) + (bl%reblock_data(2,i,1)/reblock_size) &
-                    * (bl%reblock_data(2,i,2)/reblock_size)
-
+                bl%data_product(i) = bl%data_product(i) + (bl%reblock_data(2,i,1)/reblock_size) * &
+                                                          (bl%reblock_data(2,i,2)/reblock_size)
                 bl%reblock_data(2,i,:) = 0
             end if
         end do
@@ -242,17 +237,12 @@ contains
             end if
 
             if (bl%reblock_data_2(1,i,1) > 1.0) then
-                bl%block_std(i,:) = (bl%reblock_data_2(4,i,:)/bl%reblock_data_2(1,i,:) &
-                    - bl%block_mean(i,:) ** 2)
+                bl%block_std(i,:) = (bl%reblock_data_2(4,i,:)/bl%reblock_data_2(1,i,:) - bl%block_mean(i,:) ** 2)
 
-                bl%block_std(i,:) = sqrt(bl%block_std(i,:)/(bl%reblock_data_2(1,i,:) &
-                    - 1))
+                bl%block_std(i,:) = sqrt(bl%block_std(i,:)/(bl%reblock_data_2(1,i,:) - 1))
 
-
-                bl%block_cov(i) = (bl%data_product_2(i) &
-                    - bl%block_mean(i,1)*bl%block_mean(i,2) &
-                    *bl%reblock_data_2(1,i,1))/(bl%reblock_data_2(1,i,1) - 1)
-
+                bl%block_cov(i) = (bl%data_product_2(i) - (bl%block_mean(i,1)*bl%block_mean(i,2) &
+                                                        *  bl%reblock_data_2(1,i,1)))/(bl%reblock_data_2(1,i,1) - 1)
             else
                 bl%block_std(i,:) = 0
                 bl%block_cov(i) = 0
@@ -260,8 +250,7 @@ contains
         end do
     end subroutine mean_std_cov
 
-    function fraction_error(mean_1, mean_2, data_number, std_1, std_2, cov_in) &
-            result(error_est)
+    pure function fraction_error(mean_1, mean_2, data_number, std_1, std_2, cov_in) result(error_est)
 
         ! Function to calculate the error of a fraction when the error and mean
         ! of the denominator and numerator is known.
@@ -288,8 +277,7 @@ contains
         real(p) :: mean_cur
 
         mean_cur = mean_1/mean_2
-        error_est = abs(mean_cur*sqrt((std_1/mean_1)**2 + (std_2/mean_2)**2 &
-            - 2*cov_in/(data_number*mean_1*mean_2)))
+        error_est = abs(mean_cur*sqrt((std_1/mean_1)**2 + (std_2/mean_2)**2 - 2*cov_in/(data_number*mean_1*mean_2)))
 
     end function fraction_error
 
@@ -304,6 +292,7 @@ contains
         ! Optimal block size for the fraction between \sum H_0j N_j and reference
         ! population is the larger optimal block size between the optimal block
         ! size of \sum H_0j N_j and reference population.
+
         ! References
         ! ----------
         !   [1] "Monte Carlo errors with less errors", U. Wolff, Comput. Phys.
@@ -311,7 +300,6 @@ contains
         !   [2] "Strategies for improving the efficiency of quantum Monte Carlo
         !   calculations", R. M. Lee, G. J. Conduit, N. Nemec, P. Lopez Rios, and N.
         !   D.  Drummond, Phys. Rev. E. 83, 066706 (2011).
-
 
         ! In/Out:
         !   bl: Information needed to peform blocking on the fly. Suggested
@@ -327,8 +315,7 @@ contains
             do j = 0, (bl%lg_max)
                 B = 2**(j)
 ! [review] - CJCS: From what you said above shouldn't this be B**3 >?
-                if (B > (2*bl%reblock_data_2(1,j,i)*real(B)*((bl%block_std(j,i) / &
-                        bl%block_std(0,i))**4))**(1.0/3.0)) then
+                if (B > (2*bl%reblock_data_2(1,j,i)*real(B)*((bl%block_std(j,i) / bl%block_std(0,i))**4))**(1.0/3.0)) then
                     bl%optimal_size(i) = j
                     exit
                 end if
@@ -351,8 +338,7 @@ contains
             ! calculated assuming the normal distribution following central
             ! limit theorem.
             else
-                bl%optimal_err(i) = bl%optimal_std(i)/ &
-                    sqrt(2*(bl%reblock_data_2(1, bl%optimal_size(i), i) - 1))
+                bl%optimal_err(i) = bl%optimal_std(i)/ sqrt(2*(bl%reblock_data_2(1, bl%optimal_size(i), i) - 1))
             end if
         end do
         ! Larger optimal block size between the two is used.
@@ -369,9 +355,8 @@ contains
         else
             bl%optimal_mean(4) = bl%block_mean(size_e, 1) / bl%block_mean(size_e,2)
 
-            bl%optimal_std(4) = fraction_error(bl%block_mean(size_e,1), bl%block_mean(size_e, 2), &
-                bl%reblock_data_2(1, size_e,1), bl%block_std(size_e,1), bl%block_std(size_e, 2), &
-                bl%block_cov(size_e))
+            bl%optimal_std(4) = fraction_error(bl%block_mean(size_e,1), bl%block_mean(size_e, 2), bl%reblock_data_2(1, size_e,1), &
+                                               bl%block_std(size_e,1), bl%block_std(size_e, 2), bl%block_cov(size_e))
         end if
 
     end subroutine find_optimal_block
@@ -403,7 +388,6 @@ contains
             end if
         end do
     end subroutine copy_block
-
 
     subroutine change_start(bl, ireport, restart)
 
@@ -443,10 +427,8 @@ contains
             do i = 0, bl%lg_max
                 switch = .true.
                 do k = 0, bl%n_saved_startpoints
-                    if (bl%reblock_save(k,2,i,1) == 0 .and. &
-                                bl%reblock_save(k,1,0,1) >= restart*bl%save_fq) then
-                        bl%reblock_data_2(:,i,:) = bl%reblock_data_2(:,i,:) - &
-                            bl%reblock_save(k,:,i,:)
+                    if (bl%reblock_save(k,2,i,1) == 0 .and. bl%reblock_save(k,1,0,1) >= restart*bl%save_fq) then
+                        bl%reblock_data_2(:,i,:) = bl%reblock_data_2(:,i,:) - bl%reblock_save(k,:,i,:)
 
                         bl%data_product_2(i) = bl%data_product_2(i) - bl%product_save(k,i)
 
@@ -459,7 +441,6 @@ contains
                 if (switch .eqv. .true.) then
                     bl%reblock_data_2(:,i,:) = 0
                     bl%data_product_2(i) = 0
-
                 end if
             end do
         end if
@@ -496,13 +477,11 @@ contains
                     if (bl%optimal_std(j) == 0.0) then
                         bl%err_comp(i,j) = 0.0
                     else
-                        if (bl%optimal_size(j) - 1 < log(real(bl%save_fq))/ &
-                                    log(2.0)) then
-                            bl%err_comp(i,j) = bl%optimal_err(j)/&
-                                (bl%optimal_std(j) * sqrt(real((int(real(bl%n_reports_blocked &
-                                - i * bl%save_fq)/bl%optimal_size(j))) &
-                                * bl%optimal_size(j))))
+                        if (bl%optimal_size(j) - 1 < log(real(bl%save_fq))/ log(2.0)) then
+                            bl%err_comp(i,j) = bl%optimal_err(j)/ (bl%optimal_std(j) * sqrt(real((int(real(bl%n_reports_blocked &
+                                                                    - i * bl%save_fq)/bl%optimal_size(j))) * bl%optimal_size(j))))
                         else
+                            ! [review] - JSS: such a long line is rather hard to parse.
                             bl%err_comp(i,j) = bl%optimal_err(j)/&
                                 (bl%optimal_std(j) * sqrt(real((int(real(bl%n_reports_blocked &
                                 - i * bl%save_fq)/bl%optimal_size(j))-1) &
@@ -516,10 +495,8 @@ contains
 
         end do
 
-
         do i = 1, 3
-            minimum(i) = minloc(bl%err_comp(:,i), dim = 1, &
-                                mask = (bl%err_comp(:,i)>0)) - 1
+            minimum(i) = minloc(bl%err_comp(:,i), dim = 1, mask = (bl%err_comp(:,i)>0)) - 1
         end do
 
         bl%start_point = maxval(minimum)
@@ -555,8 +532,7 @@ contains
         integer, intent(in) :: iunit
         type(blocking_in_t), intent(in) :: blocking_in
 
-        if (bl%start_ireport == -1 .and. blocking_in%start_point<0 .and. &
-                    qs%vary_shift(1)) then
+        if (bl%start_ireport == -1 .and. blocking_in%start_point<0 .and. qs%vary_shift(1)) then
             bl%start_ireport = ireport
         else if (blocking_in%start_point>0) then
             bl%start_ireport = blocking_in%start_point/qmc_in%ncycles
@@ -588,8 +564,6 @@ contains
 
         end subroutine do_blocking
 
-
-
         subroutine write_blocking(bl, qmc_in, ireport, iter, iunit)
 
         ! Writes the blocking report the a separate output file.
@@ -600,7 +574,7 @@ contains
         !   ireport: Number of reports.
         !   iter: Number of iterations.
         !   iunit: Number identifying the file to which the blocking report is
-        !   written out to.
+        !       written out to.
 
         use qmc_data, only: blocking_t, qmc_in_t
         use utils, only: get_free_unit
@@ -610,6 +584,7 @@ contains
         type(qmc_in_t), intent(in) :: qmc_in
         integer, intent(in) :: ireport, iter
 
+        ! [review] - JSS: inconsistent indentation.
             write(iunit, '(1X, I8)', advance = 'no') iter
            ! Prints the point from which reblock analysis is being
            ! carried out in terms of iterations.
@@ -618,6 +593,7 @@ contains
            ! Prints the mean, standard deviation and the error in error for \sum
            ! H_0j N_j and N_0 and mean and standard deviation of projected
            ! energy. Returns 0 if there are insufficient data.
+           ! [review] - JSS: do this in a loop over i=1,4.
             write(iunit, '(1X, ES18.7)', advance = 'no') (bl%optimal_mean(1))
             write(iunit, '(1X, ES18.7)', advance = 'no') (bl%optimal_std(1))
             write(iunit, '(1X, ES18.7)', advance = 'no') (bl%optimal_err(1))
@@ -629,9 +605,9 @@ contains
             write(iunit, '(1X, ES18.7)', advance = 'no') (bl%optimal_err(3))
             write(iunit, '(1X, ES18.7)', advance = 'no') (bl%optimal_mean(4))
             write(iunit, '(1X, ES18.7)') (bl%optimal_std(4))
+            ! [review] - JSS: optimal_err(4)?
 
             flush(iunit)
-
 
         end subroutine write_blocking
 
