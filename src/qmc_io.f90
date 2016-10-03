@@ -20,17 +20,18 @@ end interface
 
 contains
 
-    subroutine write_qmc_report_header(ntypes, cmplx_est)
+    subroutine write_qmc_report_header(ntypes, cmplx_est, rdm_energy)
 
         ! In:
         !    ntypes: number of particle types being sampled.
         ! In (optional):
         !    cmplx_est: Print out information of cmplx_estlex estimators.
+        !    rdm_energy: Print out energy calculated from rdm.
 
         use calc, only: doing_calc, hfs_fciqmc_calc
 
         integer, intent(in) :: ntypes
-        logical, optional, intent(in) :: cmplx_est
+        logical, optional, intent(in) :: cmplx_est, rdm_energy
         logical :: cmplx_est_set
 
         cmplx_est_set = .false.
@@ -76,6 +77,9 @@ contains
             end if
             call write_column_title(6, '# H psips')
             if (doing_calc(hfs_fciqmc_calc)) call write_column_title(6, '# HF psips')
+        end if
+        if (present(rdm_energy)) then
+            if (rdm_energy) call write_column_title(6, 'RDM Energy')
         end if
         call write_column_title(6, '# states', int_val=.true., justify=1)
         call write_column_title(6, '# spawn_events', int_val=.true., justify=1)
@@ -277,7 +281,8 @@ contains
 
     end subroutine write_column_title
 
-    subroutine write_qmc_report(qmc_in, qs, ireport, ntot_particles, elapsed_time, comment, non_blocking_comm, cmplx_est)
+    subroutine write_qmc_report(qmc_in, qs, ireport, ntot_particles, elapsed_time, comment, non_blocking_comm, cmplx_est, &
+                                rdm_energy)
 
         ! Write the report line at the end of a report loop.
 
@@ -292,6 +297,7 @@ contains
         ! In (optional):
         !    cmplx_est: if true, doing calculation with real and imaginary walkers
         !       so need to print extra parameters.
+        !    rdm_energy: Print energy calculated from RDM.
 
         use calc, only: doing_calc, hfs_fciqmc_calc
         use qmc_data, only: qmc_in_t, qmc_state_t
@@ -302,7 +308,7 @@ contains
         real(dp), intent(in) :: ntot_particles(:)
         real, intent(in) :: elapsed_time
         logical, intent(in) :: comment, non_blocking_comm
-        logical, intent(in), optional :: cmplx_est
+        logical, intent(in), optional :: cmplx_est, rdm_energy
 
         logical :: cmplx_est_set
         integer :: mc_cycles, ntypes
@@ -343,6 +349,10 @@ contains
             end if
             call write_qmc_var(6, ntot_particles(1))
             if (doing_calc(hfs_fciqmc_calc)) call write_qmc_var(6, ntot_particles(2))
+        end if
+
+        if (present(rdm_energy)) then
+            if (rdm_energy) call write_qmc_var(6, qs%estimators%rdm_energy/qs%estimators%rdm_trace)
         end if
 
         call write_qmc_var(6, qs%estimators%tot_nstates)

@@ -299,7 +299,8 @@ contains
         use ccmc_selection, only: select_cluster, create_null_cluster, select_cluster_non_composite
         use ccmc_death_spawning, only: spawner_ccmc, linked_spawner_ccmc, stochastic_ccmc_death, stochastic_ccmc_death_nc
         use ccmc_utils, only: init_cluster, find_D0
-        use determinants, only: det_info_t, dealloc_det_info_t, sum_sp_eigenvalues_occ_list, sum_sp_eigenvalues_bit_string
+        use determinants, only: det_info_t, alloc_det_info_t, dealloc_det_info_t, sum_sp_eigenvalues_occ_list, &
+                                sum_sp_eigenvalues_bit_string, decode_det
         use excitations, only: excit_t, get_excitation_level, get_excitation
         use qmc_io, only: write_qmc_report, write_qmc_report_header
         use qmc, only: init_qmc
@@ -310,6 +311,7 @@ contains
         use spawning, only: assign_particle_processor
         use system, only: sys_t, sys_t_json
         use spawn_data, only: calc_events_spawn_t, write_memcheck_report
+        use replica_rdm, only: update_rdm, calc_rdm_energy, write_final_rdm
 
         use qmc_data, only: qmc_in_t, ccmc_in_t, semi_stoch_in_t, restart_in_t
         use qmc_data, only: load_bal_in_t, qmc_state_t, annihilation_flags_t, estimators_t
@@ -341,6 +343,7 @@ contains
         real(dp), allocatable :: nparticles_old(:), nparticles_change(:)
         type(det_info_t), allocatable :: cdet(:)
         type(det_info_t), allocatable :: ldet(:), rdet(:)
+        type(det_info_t) :: ref_det
 
         integer(int_p) :: nspawned, ndeath
         integer :: nspawn_events, ierr
@@ -376,6 +379,8 @@ contains
         integer(i0) :: fexcit(sys%basis%string_len)
         logical :: seen_D0
         real(p) :: D0_population_cycle, proj_energy_cycle, proj_energy_old, dfock
+
+        real(p), allocatable :: rdm(:,:)
 
         if (parent) then
             write (6,'(1X,"CCMC")')
@@ -465,7 +470,7 @@ contains
         D0_pos = 1
 
         ! Main fciqmc loop.
-        if (parent) call write_qmc_report_header(qs%psip_list%nspaces)
+        if (parent) call write_qmc_report_header(qs%psip_list%nspaces, rdm_energy=ccmc_in%density_matrices)
         call initial_fciqmc_status(sys, qmc_in, qs)
         ! Initialise timer.
         call cpu_time(t1)
@@ -484,6 +489,17 @@ contains
         dump_restart_shift = restart_in%write_restart_shift
         call init_restart_info_t(ri, write_id=restart_in%write_id)
         call init_restart_info_t(ri_shift, write_id=restart_in%write_shift_id)
+
+        if (ccmc_in%density_matrices) then
+            associate(nbasis=>sys%basis%nbasis)
+                allocate(rdm(nbasis*(nbasis-1)/2,nbasis*(nbasis-1)/2), stat=ierr)
+                call check_allocate('rdm', nbasis**2*(nbasis-1)**2/4, ierr)
+                rdm = 0.0_p
+            end associate
+            call alloc_det_info_t(sys, ref_det)
+            ref_det%f = qs%ref%f0
+            call decode_det(sys%basis, ref_det%f, ref_det%occ_list)
+        end if
 
         do ireport = 1, qmc_in%nreport
 
@@ -700,6 +716,16 @@ contains
                             proj_energy_cycle = estimators_cycle%proj_energy
                         end if
 
+                        if (ccmc_in%density_matrices .and. cluster(it)%excitation_level <= 2 .and. qs%vary_shift(1) &
+                            .and. cluster(it)%excitation_level /= 0) then
+                            ! Add contribution to density matrix
+                            ! d_pqrs = <HF|a_p^+a_q^+a_sa_r|CC>
+                            !$omp critical
+                            call update_rdm(sys, cdet(it), ref_det, cluster(it)%amplitude*cluster(it)%cluster_to_det_sign, &
+                                            1.0_p, cluster(it)%pselect, rdm)
+                            !$omp end critical
+                        end if
+
                         ! Spawning
                         ! This has the potential to create blooms, so we allow for multiple
                         ! spawning events per cluster.
@@ -777,6 +803,12 @@ contains
                 end if
                 !$omp end parallel
 
+                if (ccmc_in%density_matrices .and. qs%vary_shift(1) .and. parent) then
+                    ! Add in diagonal contribution to RDM (only once per cycle not each time reference
+                    ! is selected as this is O(N^2))
+                    call update_rdm(sys, ref_det, ref_det, D0_normalisation, 1.0_p, 1.0_p, rdm)
+                end if
+
                 qs%psip_list%nparticles = qs%psip_list%nparticles + nparticles_change
                 qs%estimators%D0_population = qs%estimators%D0_population + D0_population_cycle
                 qs%estimators%proj_energy = qs%estimators%proj_energy + proj_energy_cycle
@@ -803,6 +835,9 @@ contains
 
             update_tau = bloom_stats%nblooms_curr > 0
 
+            if (ccmc_in%density_matrices .and. qs%vary_shift(1)) call calc_rdm_energy(sys, qs%ref, rdm, qs%estimators%rdm_energy, &
+                                                                                      qs%estimators%rdm_trace)
+
             error = qs%spawn_store%spawn%error .or. qs%psip_list%error
 
             call end_report_loop(qmc_in, iter, update_tau, qs, nparticles_old, nspawn_events, &
@@ -814,7 +849,8 @@ contains
             call cpu_time(t2)
             if (parent) then
                 if (bloom_stats%nblooms_curr > 0) call bloom_stats_warning(bloom_stats)
-                call write_qmc_report(qmc_in, qs, ireport, nparticles_old, t2-t1, .false., .false.)
+                call write_qmc_report(qmc_in, qs, ireport, nparticles_old, t2-t1, .false., .false., &
+                                         rdm_energy=ccmc_in%density_matrices)
             end if
 
             ! Update the time for the start of the next iteration.
@@ -847,6 +883,15 @@ contains
         if (restart_in%write_restart) then
             call dump_restart_hdf5(ri, qs, qs%mc_cycles_done, nparticles_old, sys%basis%nbasis, .false.)
             if (parent) write (6,'()')
+        end if
+
+        if (ccmc_in%density_matrices) then
+            call write_final_rdm(rdm, sys%nel, sys%basis%nbasis, ccmc_in%density_matrix_file)
+            call calc_rdm_energy(sys, qs%ref, rdm, qs%estimators%rdm_energy, qs%estimators%rdm_trace)
+            if (parent) write (6,'(1x,"# Final energy from RDM",2x,es17.10)') qs%estimators%rdm_energy/qs%estimators%rdm_trace
+            deallocate(rdm, stat=ierr)
+            call check_deallocate('rdm',ierr)
+            call dealloc_det_info_t(ref_det)
         end if
 
         do i = 0, nthreads-1

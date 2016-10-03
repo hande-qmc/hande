@@ -593,6 +593,85 @@ contains
 
     end function tri_ind_reorder
 
+    elemental function tri_ind_distinct(i, j) result(indx)
+
+        ! Find the index corresponding to the (i,j)-th element of a lower
+        ! triangular array of distinct pairs.  This maps:
+        !
+        !   2,1                   1
+        !   3,1 3,2               2  3
+        !   4,1 4,2 4,3       to  4  5  6
+        !   5,1 5,2 5,3 5,4       7  8  9 10
+        !
+        ! WARNING:
+        ! We assume that i > j.  It is the programmer's responsibility to check
+        ! this and re-order i and j if required.
+        !
+        ! In:
+        !    i: (1-indexed) row index
+        !    j: (1-indexed) column index
+        ! Returns:
+        !    A combined (1-indexed) index for the corresponding element in
+        !    a lower triangular array.
+
+        integer, intent(in) :: i, j
+        integer :: indx
+
+        indx = (i-1)*(i-2)/2 + j
+
+    end function tri_ind_distinct
+
+    elemental function tri_ind_distinct_reorder(i,j) result(indx)
+
+        ! Find the index corresponding to the (i,j)-th element of a lower
+        ! triangular array of distinct pairs.
+        !
+        ! We assume that i > j.  If this is not the case (i.e. (i,j) refers to
+        ! an element in the upper triangular array) then the index of the
+        ! transpose element (i.e. (j,i)) is returned.
+        !
+        ! This maps:
+        !
+        !   1,1 1,2 1,3 1,4        X  1  2  4
+        !   2,1 2,2 2,3 2,4        1  X  3  5
+        !   3,1 3,2 3,3 3,4   to   2  3  X  6
+        !   4,1 4,2 4,3 4,4        4  5  6  X
+        !
+        ! In:
+        !    i: (1-indexed) index
+        !    j: (1-indexed) index
+        ! Returns:
+        !    A combined (1-indexed) index for the corresponding element in
+        !    a lower triangular array.
+
+        integer :: indx
+        integer, intent(in) :: i, j
+
+        if (i>=j) then
+            indx = tri_ind_distinct(i,j)
+        else
+            indx = tri_ind_distinct(j,i)
+        end if
+
+    end function tri_ind_distinct_reorder
+
+    pure subroutine orbs_from_index(ind, p, q)
+
+        ! Inverse of tri_ind_distinct - gets a pair of orbitals from a single index
+
+        ! In:
+        !    ind: index to the RDM
+        ! Out:
+        !    p, q: orbitals, with p<q
+
+        integer, intent(in) :: ind
+        integer, intent(out) :: p, q
+
+        q = int(1.50 + sqrt(2*ind-1.750))
+        p = ind - ((q-1)*(q-2))/2
+
+    end subroutine orbs_from_index
+
 ! --- String conversion ---
 
     pure function fstring_to_carray(string_f03) result(array_c)
