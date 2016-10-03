@@ -456,6 +456,7 @@ contains
             if (qs%vary_shift(1)) then
                 call update_shift(qmc_in, qs, qs%shift(1), ntot_particles_old(1) + ntot_particles_old(2), &
                                     ntot_particles(1) + ntot_particles(2), qmc_in%ncycles)
+                qs%shift(2) = qs%shift(1)
             end if
         else
             do i = 1, ntypes
