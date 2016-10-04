@@ -109,7 +109,7 @@ Options
 
     Specify if the calculation should use complex dynamics in any calculation performed, 
     and if the FCIDUMP supplied is complex-formatted. Currently only compatible with
-    fci and fciqmc calculations.
+    fci, fciqmc and ccmc calculations.
 
 ``max_integral_chunk``
     type: integer
