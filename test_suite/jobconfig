@@ -72,6 +72,7 @@ quick =   vquick
           ccmc/np2/Ne-RHF-cc-pVDZ-Lz-CAS8_12-CCSDT-hdf5-system/
           ccmc/np2/ringium_ccsd_restart/
           ccmc/np4/H2O-cc-pVDZ_ccsdmc_continue
+          ccmc_real_32/np1/polyyne_complex_ccsd-real32-nc
           dmqmc/np1/ueg_n7_rs1_e1_dmqmc/
           dmqmc/np2/hubbard_k_1d/
           dmqmc/np2/n2_sto3g/
@@ -99,6 +100,7 @@ quick64 = quick
 
 vquick =   ccmc/np1/Ne-RHF-cc-pVDZ-Lz-CCSDTQ5-multispawn-short
            ccmc/np1/Ne-RHF-cc-pVDZ-Lz-CCSDTQ5-multispawn-short-debug-logging
+           ccmc/np1/polyyne_complex_ccsdt
            ccmc/np2/H2O-cc-pVDZ_tau_search
            ccmc_real_32/np1/HOCl-6-31g_ccsd_short
            dmqmc/np1/heisenberg_1d
@@ -149,6 +151,7 @@ vquick =   ccmc/np1/Ne-RHF-cc-pVDZ-Lz-CCSDTQ5-multispawn-short
 
 vquick64 = vquick
            ccmc_real_64/np2/NH3-6-31g_ccsdt_linked_short
+           ccmc_real_64/np4/polyyne_complex_ccsdt-real64-hdf5-system-short
            dmqmc_real_64/np4/n2_sto3g_short
            fciqmc_real_64/np1/polyyne_complex_fciqmc-real64-hdf5-system
            fciqmc_real_64/np1/heisenberg_1d_neel_ref_fciqmc_real_64
