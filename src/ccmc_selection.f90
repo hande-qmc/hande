@@ -455,7 +455,139 @@ contains
 
     end subroutine select_nc_cluster
 
+!---- Cluster information accumulation ---
+
+    subroutine update_selection_data(selection_data, cluster)
+
+        use ccmc_data, only: cluster_t, selection_data_t
+
+        type(selection_data_t), intent(inout) :: selection_data
+        type(cluster_t), intent(in) :: cluster
+
+        associate( nex=>cluster%nexcitors, amp=>real(cluster%amplitude,kind=dp)/real(cluster%pselect,kind=dp), &
+            aa=>selection_data%average_amplitude, &
+            nsuccess=>selection_data%nsuccessful)
+
+            if (cluster%excitation_level /= huge(0)) then
+                aa(nex) = aa(nex) * (real(nsuccess(nex),kind=dp)/real(nsuccess(nex)+1_int_64,kind=dp)) &
+                    + abs(amp)/ real(nsuccess(nex)+1_int_64, kind=dp)
+                nsuccess(nex) = nsuccess(nex) + 1_int_64
+            end if
+        end associate
+
+    end subroutine update_selection_data
+
+!---- p_size Probability update functions ----
+
+    subroutine set_psize_selections(selection_data, max_selections, min_size, max_size)
+        use ccmc_data, only: selection_data_t
+        type(selection_data_t), intent(inout) :: selection_data
+        integer(int_64) :: nselections
+        integer, intent(in) :: min_size, max_size
+        integer(int_64), intent(in) :: max_selections
+
+        if (max_size > 1) then
+
+            ! Set total selections so that expected proportion of selections of noncomposite gives
+            ! correct number of selections.
+            nselections = ceiling(real(selection_data%nsingle_excitors, kind=dp) / &
+                                    selection_data%size_weighting(1), kind=int_64)
+            if (nselections <= selection_data%nD0_select) then
+                ! Have majority of population on the reference; need to make sure we sample sensibly.
+                ! Use conventional non-composite reference + noncomposite selection numbers.
+                selection_data%nstochastic_clusters = ceiling(nselections * &
+                    (1.0_dp - sum(selection_data%size_weighting(0:1))))
+            else if (nselections > max_selections) then
+                selection_data%nD0_select = ceiling((max_selections-selection_data%nsingle_excitors) * &
+                            selection_data%size_weighting(0)/(1.0_dp - selection_data%size_weighting(1)))
+                selection_data%nstochastic_clusters = ceiling((max_selections-selection_data%nsingle_excitors) * &
+                            sum(selection_data%size_weighting(2:))/(1.0_dp - selection_data%size_weighting(1)))
+            else
+                ! Can treat reference more similarly to the rest of the space.
+                selection_data%nD0_select = ceiling(nselections * selection_data%size_weighting(0))
+                selection_data%nstochastic_clusters = ceiling(nselections * sum(selection_data%size_weighting(2:)))
+            end if
+
+            selection_data%nclusters = selection_data%nD0_select + selection_data%nsingle_excitors &
+                                + selection_data%nstochastic_clusters
+        end if
+    end subroutine set_psize_selections
+
+!---- p_comb Probability update functions ----
+
+    subroutine update_selection_probabilities(cluster_selection, cumulative_excip_pop, nstates_excit_level)
+        ! Updates all probabilities for selecting different excitation level combinations within
+        ! cluster_selection object in accordance with cumulative population distribution and
+        ! number of states per excitation level given.
+        ! In:
+        !    cumulative_excip_pop: cumulative excip population distribution.
+        !    nstates_excit_level: number of states at each excitation level in (1,:),
+        !       cumulative distribution in (2,:).
+        ! In/Out:
+        !    cluster_selection: selection_data_t object containing all information required for
+        !       truncated selection (all valid excitation level combinations). On output
+        !       cluster_sizes_proportion will be updated.
+
+        use ccmc_data, only: selection_data_t
+        type(selection_data_t), intent(inout) :: cluster_selection
+        integer(int_p), intent(in), allocatable :: cumulative_excip_pop(:)
+        integer, intent(in), allocatable :: nstates_excit_level(:,:)
+        integer :: i
+        integer(int_64), allocatable :: excitation_level_population(:)
+        real(dp), allocatable :: real_excitation_level_population(:)
+
+        allocate(excitation_level_population(lbound(nstates_excit_level, dim=2):ubound(nstates_excit_level, dim=2)))
+        allocate(real_excitation_level_population(lbound(nstates_excit_level, dim=2):ubound(nstates_excit_level, dim=2)))
+
+        excitation_level_population(:) = 0_int_64
+
+        do i = lbound(excitation_level_population, dim=1)+1, ubound(excitation_level_population,dim=1)
+            if (nstates_excit_level(2,i) > 0) then
+                excitation_level_population(i) = cumulative_excip_pop(nstates_excit_level(2,i))
+                if (nstates_excit_level(2,i-1) > 0)  then
+                    excitation_level_population(i) = excitation_level_population(i) - &
+                        cumulative_excip_pop(nstates_excit_level(2,i-1))
+                end if
+            end if
+        end do
+
+        real_excitation_level_population = real(excitation_level_population, dp)
+
+        do i = lbound(cluster_selection%cluster_sizes_info, dim=1), ubound(cluster_selection%cluster_sizes_info, dim=1)
+            associate(select_info => cluster_selection%cluster_sizes_info(i)%v, &
+                select_proportion => cluster_selection%cluster_sizes_proportion(i)%v)
+                call update_selection_block_probability(select_proportion, select_info, &
+                        real_excitation_level_population, cluster_selection%size_weighting(i))
+            end associate
+        end do
+
+        deallocate(excitation_level_population)
+        deallocate(real_excitation_level_population)
+
+    end subroutine update_selection_probabilitie
+
+
 !---- Initialisation routines for improved selection information ----
+
+    subroutine init_selection_data(ex_level, selection_data)
+        ! Take cluster selection object and initialise all data required for calculation.
+        ! In:
+        !   ex_level: maximum excitation level allowed in calculation.
+        ! In/Out:
+        !   cluster_selection: selection_data_t object. On output cluster_sizes_info components
+        !       will be allocated and set as appropriate, and cluster_sizes_proportion allocated.
+        use ccmc_data, only: selection_data_t
+        use checking, only: check_allocate
+        use parallel, only: parent
+
+        integer, intent(in) :: ex_level
+        type(selection_data_t), intent(inout) :: selection_data
+
+        call init_possible_clusters(ex_level, selection_data)
+
+        call init_psize_data(ex_level, selection_data)
+
+    end subroutine init_selection_data
 
     subroutine init_possible_clusters(ex_level, selection_data)
         ! Take cluster selection object and initialise all possible size combinations of clusters.
@@ -653,5 +785,53 @@ contains
         end if
 
     end subroutine find_available_perms
+
+!---- Helper Functions -----
+
+    pure function calc_combination_weighting(ar1, v1) result(res)
+
+        ! Calculates overall weighting of combination of excitation levels
+        ! ar1 given population distribution by population level of v1.
+
+        ! Combines two vectors together such that
+        !   res = product_{i, ar1(i)=/0} ar1_{i} ** v1{i} / v1!
+
+        use utils, only: factorial
+        integer, intent(in) :: ar1(:)
+        real(dp), intent(in) :: v1(:)
+        real(dp) :: res
+        real(dp) :: v2(size(v1,dim=1))
+        integer :: i
+        logical :: mask(size(ar1,dim=1))
+
+        mask = .true.
+
+        do i = lbound(ar1, dim=1), ubound(ar1, dim=1)
+           v2(i) = real(v1(i),kind=dp) ** ar1(i) / factorial(ar1(i))
+           if (ar1(i) == 0.0_dp) mask(i) = .false.
+        end do
+
+        res = real(product(v2, dim=1, mask=mask), dp)
+
+    end function calc_combination_weighting
+
+    subroutine update_cumulative_size_weighting(size_weighting, cumulative_size_weighting)
+        real(dp), intent(inout), allocatable :: size_weighting(:)
+        real(dp), intent(inout), allocatable :: cumulative_size_weighting(:)
+        integer :: i
+
+        cumulative_size_weighting(lbound(cumulative_size_weighting,dim=1)) = size_weighting(lbound(size_weighting,dim=1))
+        do i = lbound(size_weighting, dim=1) + 1, ubound(size_weighting, dim=1) - 1
+            cumulative_size_weighting(i) = cumulative_size_weighting(i-1) + size_weighting(i)
+        end do
+
+        cumulative_size_weighting(ubound(size_weighting, dim=1)) = 1.0_dp
+
+        if (size(cumulative_size_weighting, dim=1) > 1) then
+            size_weighting(ubound(size_weighting, dim=1)) = &
+                    cumulative_size_weighting(ubound(size_weighting, dim=1)) - &
+                    cumulative_size_weighting(ubound(size_weighting, dim=1) - 1)
+        end if
+    end subroutine update_cumulative_size_weighting
 
 end module ccmc_selection
