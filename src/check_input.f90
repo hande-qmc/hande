@@ -335,6 +335,8 @@ contains
         end if
 
         if (sys%read_in%comp .and. ccmc_in%linked) call stop_all(this, 'Linked complex CCMC not yet implemented')
+        if (sys%read_in%comp .and. ccmc_in%density_matrices) &
+                call stop_all(this, 'RDMS not yet implemented for complex CCMC.')
 
     end subroutine check_ccmc_opts
 
