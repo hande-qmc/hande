@@ -54,6 +54,41 @@ type wfn_contrib_t
     type(det_info_t) :: rdet
 end type wfn_contrib_t
 
+! Information about possible clusters for each cluster size.
+type selection_data_t
+    ! Number of selections of each type within a calculation.
+    integer(int_64) :: nD0_select
+    integer(int_64) :: nclusters
+    integer(int_64) :: nstochastic_clusters
+    integer(int_64) :: nsingle_excitors
+    ! Contains information on allowable cluster selections for each size.
+    ! cluster_sizes_info(i) contains info for clusters of size i.
+    ! cluster_sizes_info(i)%v(j,0) contains proportion of selections of size
+    ! i that should use combination j.
+    ! cluster_sizes_info(i)%v(j,k) contains number of excitors of excitation
+    ! level k in allowed combination j.
+    type(alloc_int2d), allocatable :: cluster_sizes_info(:) ! (ex_level)
+    ! Info on the proportion of selections at a particular excitation level
+    ! that should use a particular combination of excitor sizes.
+    type(alloc_rdp1d), allocatable :: cluster_sizes_proportion(:) ! (ex_level)
+    ! Population per excitation level; used to set selection probabilty
+    ! between different possible size distribution clusters.
+    integer(int_64), allocatable :: population_excitation_level(:) ! (ex_level)
+    ! Proportion of selections at each cluster size.
+    real(dp), allocatable :: size_weighting(:) ! (0:ex_level+2)
+    ! Cumulative probability of selecting cluster of a given size.
+    real(dp), allocatable :: cumulative_size_weighting(:) ! (0:ex_level+2)
+    ! Actual distributions of psize for use within calculation, only
+    ! including possible cluster sizes.
+    real(dp), allocatable :: effective_size_weighting(:)
+    real(dp), allocatable :: cumulative_effective_size_weighting(:)
+    ! Average amplitude of \prod_i |N_I| / p_{select} for clusters of a given
+    ! size.
+    real(dp), allocatable :: average_amplitude(:) ! (0:ex_level+2)
+    ! Total number of successful selections of a given cluster size.
+    integer(int_64), allocatable :: nsuccessful(:) ! (0:ex_level+2)
+end type selection_data_t
+
 contains
 
     subroutine ms_stats_update(nspawnings, ms_stats)
@@ -129,5 +164,72 @@ contains
         end if
 
     end subroutine multispawn_stats_report
+
+    subroutine end_selection_data(sd)
+        use ccmc_data, only: selection_data_t
+        use checking, only: check_deallocate
+        type(selection_data_t), intent(inout) :: sd
+        integer :: ierr
+
+        if (allocated(sd%cluster_sizes_info)) then
+            call dealloc_int2d(sd%cluster_sizes_info)
+        end if
+        if (allocated(sd%cluster_sizes_proportion)) then
+            call dealloc_real1d(sd%cluster_sizes_proportion)
+        end if
+        if (allocated(sd%population_excitation_level)) then
+            deallocate(sd%population_excitation_level, stat=ierr)
+            call check_deallocate('population_excitation_level', ierr)
+        end if
+        if (allocated(sd%size_weighting)) then
+            deallocate(sd%size_weighting, stat=ierr)
+            call check_deallocate('size_weighting', ierr)
+        end if
+        if (allocated(sd%cumulative_size_weighting)) then
+            deallocate(sd%cumulative_size_weighting, stat=ierr)
+            call check_deallocate('cumulative_size_weighting', ierr)
+        end if
+        if (allocated(sd%effective_size_weighting)) then
+            deallocate(sd%effective_size_weighting, stat=ierr)
+            call check_deallocate('effective_size_weighting', ierr)
+        end if
+        if (allocated(sd%cumulative_effective_size_weighting)) then
+            deallocate(sd%cumulative_effective_size_weighting, stat=ierr)
+            call check_deallocate('cumulative_effective_size_weighting', ierr)
+        end if
+        if (allocated(sd%average_amplitude)) then
+            deallocate(sd%average_amplitude, stat=ierr)
+            call check_deallocate('sd%average_amplitude', ierr)
+        end if
+        if (allocated(sd%nsuccessful)) then
+            deallocate(sd%nsuccessful, stat=ierr)
+            call check_deallocate('sd%nsuccessful', ierr)
+        end if
+
+    end subroutine end_selection_data
+
+    subroutine dealloc_real1d(array)
+        use base_types, only: alloc_rdp1d
+        use checking, only: check_deallocate
+        type(alloc_rdp1d), allocatable, intent(inout) :: array(:)
+        integer :: i, ierr
+
+        do i = lbound(array, dim=1), ubound(array, dim=1)
+            deallocate(array(i)%v, stat=ierr)
+            call check_deallocate('array', ierr)
+        end do
+    end subroutine dealloc_real1d
+
+    subroutine dealloc_int2d(array)
+        use base_types, only: alloc_int2d
+        use checking, only: check_deallocate
+        type(alloc_int2d), allocatable, intent(inout) :: array(:)
+        integer :: i, ierr
+
+        do i = lbound(array, dim=1), ubound(array, dim=1)
+            deallocate(array(i)%v, stat=ierr)
+            call check_deallocate('array', ierr)
+        end do
+    end subroutine dealloc_int2d
 
 end module ccmc_data

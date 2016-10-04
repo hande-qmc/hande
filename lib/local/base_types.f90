@@ -16,6 +16,10 @@ type alloc_rp1d
     real(p), allocatable :: v(:)
 end type
 
+type alloc_rdp1d
+    real(dp), allocatable :: v(:)
+end type
+
 ! Allocatable 2D array.  Useful for creating triangular spin arrays etc.
 
 type alloc_int2d

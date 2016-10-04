@@ -455,4 +455,203 @@ contains
 
     end subroutine select_nc_cluster
 
+!---- Initialisation routines for improved selection information ----
+
+    subroutine init_possible_clusters(ex_level, selection_data)
+        ! Take cluster selection object and initialise all possible size combinations of clusters.
+        ! In:
+        !   ex_level: maximum excitation level allowed in calculation.
+        ! In/Out:
+        !   cluster_selection: selection_data_t object. On output cluster_sizes_info components
+        !       will be allocated and set as appropriate, and cluster_sizes_proportion allocated.
+        use ccmc_data, only: selection_data_t
+        use checking, only: check_allocate
+        use parallel, only: parent
+        integer, intent(in) :: ex_level
+        type(selection_data_t), intent(inout) :: selection_data
+
+        integer :: nclusters, cluster_size, ierr, dummy
+        integer :: temporary(1:ex_level), i
+
+        allocate(selection_data%cluster_sizes_info(2:ex_level+2), stat=ierr)
+        call check_allocate('cluster_selection%cluster_sizes_info',ex_level+2, ierr)
+        allocate(selection_data%cluster_sizes_proportion(2:ex_level+2), stat=ierr)
+        call check_allocate('cluster_selection%cluster_sizes_proportion',ex_level+2, ierr)
+
+        ! Go through possible sizes...
+        do cluster_size = 2, ex_level + 2
+            ! Calc number possible clusters for each
+            nclusters = calc_available_perms(cluster_size, 1, 0, ex_level)
+            ! Allocate storage of appropriate size to store all cluster info
+            allocate(selection_data%cluster_sizes_info(cluster_size)%v(1:nclusters,1:ex_level), stat=ierr)
+            call check_allocate('cluster_selection_component', nclusters*ex_level,ierr)
+
+            allocate(selection_data%cluster_sizes_proportion(cluster_size)%v(1:nclusters), stat=ierr)
+            call check_allocate('cluster_selection_component', nclusters,ierr)
+
+            selection_data%cluster_sizes_info(cluster_size)%v(:,:) = 0
+            selection_data%cluster_sizes_proportion(cluster_size)%v(:) = 0
+            dummy = 0
+            temporary(:) = 0
+            call find_available_perms(dummy, selection_data%cluster_sizes_info(cluster_size)%v, temporary, &
+                                    cluster_size, 1, 0, ex_level)
+            if (parent) then
+                write(6, *), 'Found', nclusters,'clusters of size', cluster_size,'.'
+                write(6, *), 'Clusters are:'
+                do i = 1, nclusters
+                    write(6, *), selection_data%cluster_sizes_info(cluster_size)%v(i, :)
+                end do
+            end if
+        end do
+
+    end subroutine init_possible_clusters
+
+    subroutine init_psize_data(ex_level, selection_data)
+        ! Take cluster selection object and initialise all data required for psize variation.
+        ! In:
+        !   ex_level: maximum excitation level allowed in calculation.
+        !   cluster_selection: selection_data_t object. On output cluster_sizes_info components
+        !       will be allocated and set as appropriate, and cluster_sizes_proportion allocated.
+        use ccmc_data, only: selection_data_t
+        use checking, only: check_allocate
+
+        integer, intent(in) :: ex_level
+        type(selection_data_t), intent(inout) :: selection_data
+        integer :: ierr, i
+
+        allocate(selection_data%size_weighting(0:ex_level+2), stat=ierr)
+        call check_allocate('size_weighting', ex_level + 3, ierr)
+        allocate(selection_data%cumulative_size_weighting(0:ex_level+2), stat=ierr)
+        call check_allocate('cumulative_size_weighting', ex_level + 3, ierr)
+
+        associate(size_weighting => selection_data%size_weighting, &
+                cumulative_size_weighting => selection_data%cumulative_size_weighting)
+
+            size_weighting(0) = 0.5_dp
+            cumulative_size_weighting(0) = 0.5_dp
+
+            do i = 1, ex_level+1
+                size_weighting(i) = 1.0_dp/(2.0_dp**(i+1))
+                cumulative_size_weighting(i) = cumulative_size_weighting(i-1) + size_weighting(i)
+            end do
+
+            size_weighting(ex_level+2) = 1.0_dp - cumulative_size_weighting(ex_level+1)
+            cumulative_size_weighting(ex_level+2) = 1.0_dp
+
+        end associate
+
+        allocate(selection_data%average_amplitude(0:ex_level+2), stat=ierr)
+        call check_allocate('average_amplitude', ex_level + 3, ierr)
+        allocate(selection_data%nsuccessful(0:ex_level+2), stat=ierr)
+        call check_allocate('nsuccessful', ex_level + 3, ierr)
+
+        selection_data%average_amplitude = 0.0_dp
+        selection_data%nsuccessful = 0_int_64
+
+    end subroutine init_psize_data
+
+!---- Cluster generation functions ----
+! Below functions generate all allowed excitation level combinations for clusters satifying given
+! initial conditions.
+! This is achieved by starting from lowest excitation level of excitor considered, iterating through all
+! permissible numbers of said excitors, and depending upon the properties of any suggested combination
+! rejecting it, accepting it or calling the same function for the next excitation level to search for
+! acceptable combinations.
+
+     pure recursive function calc_available_perms(selections_remain, excitor_excit_level, current_excit_level, &
+                                 max_excit_level) result(nfound)
+         ! For given number of selections and excitations remaining,
+         ! calculate number of possible clusters. Performs this via a recursive
+         ! search of all combinations.
+         ! In:
+         !   selections_remain: total number more excitors to be added to the
+         !       cluster to reach chosen total size.
+         !   excitor_excit_level: excitation level of excitors currently being
+         !       considered for addition to the cluster.
+         !   current_excit_level: excitation level of partial cluster as it stands.
+         !   max_excit_level: maximum excitation level permitted in calculation.
+         ! Returns:
+         !   Number of possible size combinations fitting given initial conditions.
+         integer, intent(in) :: selections_remain, excitor_excit_level, current_excit_level
+         integer, intent(in) :: max_excit_level
+         integer :: nfound
+         integer :: new_selections_remain, new_current_excit_level
+         integer :: i
+
+         nfound = 0
+
+         if (max_excit_level + 2 - current_excit_level >= excitor_excit_level * selections_remain) then
+             ! Is still possible to form a valid cluster.
+             do i = 0, selections_remain
+                 new_selections_remain = selections_remain - i
+                 new_current_excit_level = current_excit_level + i * (excitor_excit_level)
+                 if (new_selections_remain == 0) then
+                     ! Have selected appropriate number of excitors to give cluster
+                     ! of required size without exceeding excitation level; increase.
+                     nfound = nfound + 1
+                 else if (excitor_excit_level < max_excit_level) then
+                     ! Haven't exceeded allowed excitation level, so have to
+                     ! continue searching at higher levels.
+                     nfound = nfound + calc_available_perms(new_selections_remain, excitor_excit_level + 1, &
+                                 new_current_excit_level, max_excit_level)
+                 end if
+             end do
+         end if
+
+     end function calc_available_perms
+
+     pure recursive subroutine find_available_perms(nfound, main_storage, temporary, selections_remain, &
+                                    excitor_excit_level, current_excit_level, max_excit_level)
+        ! For given number of selections and max excitation level calculate
+        ! all possible excitation level combinations forming a valid
+        ! cluster recursively. Once sufficient excitors are selected the overall
+        ! combination is stored in 'main_storage' in the next free slot.
+
+        ! main_storage should be allocated to the correct size before
+        ! initialisation; calc_available_perms enables calculations of the
+        ! size required.
+        ! In:
+        !   temporary: 1d integer array containing information on excitation
+        !       level combination accrued so far in recursive search.
+        !   selections_remain: total number more excitors to be added to the
+        !       cluster to reach chosen total size.
+        !   excitor_excit_level: excitation level of excitors currently being
+        !       considered for addition to the cluster.
+        !   current_excit_level: excitation level of cluster as currently
+        !       stands.
+        !   max_excit_level: maximum excitation level permitted in calculation.
+        ! In/Out:
+        !   nfound: number of allowed combinations already found.
+        !   main_storage: 2d integer array to store all found combinations.
+        !       main_storage(j,k) stores number of individual excitors of
+        !       excitation level k in combination j.
+        integer, allocatable, intent(inout) :: main_storage(:,:)
+        integer, intent(in) :: temporary(:), max_excit_level, excitor_excit_level
+        integer, intent(inout) :: nfound
+        integer, intent(in) :: selections_remain, current_excit_level
+        integer :: new_selections_remain, new_current_excit_level
+        integer :: i, nmax, ierr
+        integer :: temporary_loc(1:max_excit_level)
+
+        temporary_loc = temporary
+
+        if (max_excit_level + 2 - current_excit_level >= excitor_excit_level * selections_remain) then
+            ! Is still possible to form a valid cluster.
+            do i = 0, selections_remain
+                new_selections_remain = selections_remain - i
+                new_current_excit_level = current_excit_level + i * excitor_excit_level
+                if (new_selections_remain == 0) then
+                    temporary_loc(excitor_excit_level) = i
+                    nfound = nfound + 1
+                    main_storage(nfound, :) = temporary_loc(:)
+                else if (excitor_excit_level < max_excit_level) then
+                    temporary_loc(excitor_excit_level) = i
+                    call find_available_perms(nfound, main_storage, temporary_loc, new_selections_remain, &
+                            excitor_excit_level + 1, new_current_excit_level, max_excit_level)
+                end if
+            end do
+        end if
+
+    end subroutine find_available_perms
+
 end module ccmc_selection
