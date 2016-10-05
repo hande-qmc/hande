@@ -152,7 +152,7 @@ contains
 
     end subroutine write_logging_warning
 
-    subroutine prep_logging_mc_cycle(iter, logging_in, logging_info, ndeath_tot, cmplx_wfn)
+    subroutine prep_logging_mc_cycle(iter, logging_in, logging_info, cmplx_wfn)
 
         ! Subroutine to perform updates to logs required each iteration.
         ! This currently includes:
@@ -162,7 +162,6 @@ contains
         ! In:
         !   iter: current iteration number.
         !   logging_in: input options relating to logging.
-        !   ndeath_tot: integer. Total number of death events in previous cycle. Zeroed on output.
         !   cmplx_wfn: logical. True if using a complex wavefunction, false if not.
         ! In/Out:
         !   logging_info: derived type to be used during calculation to
@@ -173,15 +172,11 @@ contains
         integer, intent(in) :: iter
         type(logging_t), intent(inout) :: logging_info
         type(logging_in_t), intent(in) :: logging_in
-        integer(int_p), intent(inout) :: ndeath_tot
         logical, intent(in) :: cmplx_wfn
 
         ! Check if we're within the required range to print logging info.
         logging_info%write_logging = (logging_in%start_iter <= iter .and. &
                                     iter <= logging_in%end_iter)
-        ! Zero total ndeath accumulation
-        ndeath_tot = 0_int_p
-
         if (logging_info%write_logging) then
             if (logging_info%spawn_unit /= huge(1)) then
                 call write_iter_to_log(iter, logging_info%spawn_unit)

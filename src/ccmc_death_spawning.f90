@@ -311,7 +311,7 @@ contains
     end subroutine stochastic_ccmc_death
 
     subroutine stochastic_ccmc_death_nc(rng, linked_ccmc,  sys, qs, isD0, dfock, Hii, proj_energy, population, &
-                                        tot_population, ndeath)
+                                        tot_population, ndeath, logging_info)
 
         ! Attempt to 'die' (ie create an excip on the current excitor, cdet%f)
         ! with probability
@@ -353,12 +353,14 @@ contains
         use qmc_data, only: qmc_state_t
         use system, only: sys_t
         use spawning, only: calc_qn_weighting
+        use logging, only: logging_t, write_logging_death
 
         type(sys_t), intent(in) :: sys
         logical, intent(in) :: linked_ccmc
         type(qmc_state_t), intent(in) :: qs
         logical, intent(in) :: isD0
         real(p), intent(in) :: Hii, dfock, proj_energy
+        type(logging_t), intent(in) :: logging_info
         type(dSFMT_t), intent(inout) :: rng
         integer(int_p), intent(inout) :: population, ndeath
         real(dp), intent(inout) :: tot_population
@@ -407,6 +409,10 @@ contains
             tot_population = tot_population + real(abs(population)-abs(old_pop),p)/qs%psip_list%pop_real_factor
             ndeath = ndeath + abs(nkill)
         end if
+
+        if (debug) call write_logging_death(logging_info, KiiAi, proj_energy, qs%shift(1), invdiagel, &
+                                            nkill, pdeath, real(old_pop,p)/qs%psip_list%pop_real_factor, &
+                                            real(population,p)/qs%psip_list%pop_real_factor)
 
     end subroutine stochastic_ccmc_death_nc
 
