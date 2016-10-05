@@ -637,7 +637,7 @@ module hdf5_system
             ! Do system initialisation that hasn't been read in, hopefully
             ! in same order as in conventional initialisation. Also write
             ! out read_in info for easy checking to compare to original.
-            call init_basis_strings(sys%basis)
+            call init_basis_strings(sys%basis, sys%nel)
             call init_determinants(sys, sys%nel)
             call init_excitations(sys%basis)
             if (sys%momentum_space) then

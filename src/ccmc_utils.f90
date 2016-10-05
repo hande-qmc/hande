@@ -94,6 +94,8 @@ contains
         complex(p), intent(inout) :: cluster_population
         logical,  intent(out) :: allowed
 
+        integer(i0) :: excitor_loc(basis%string_len)
+
         integer :: ibasis, ibit
         integer(i0) :: excitor_excitation(basis%string_len)
         integer(i0) :: excitor_annihilation(basis%string_len)
@@ -103,16 +105,19 @@ contains
         integer(i0) :: cluster_creation(basis%string_len)
         integer(i0) :: permute_operators(basis%string_len)
 
+        excitor_loc = excitor
+        call remove_ex_level_bit_string(basis%string_len, excitor_loc)
+
         ! Apply excitor to the cluster of excitors.
 
         ! orbitals involved in excitation from reference
-        excitor_excitation = ieor(f0, excitor)
+        excitor_excitation = ieor(f0, excitor_loc)
         cluster_excitation = ieor(f0, cluster_excitor)
         ! annihilation operators (relative to the reference)
         excitor_annihilation = iand(excitor_excitation, f0)
         cluster_annihilation = iand(cluster_excitation, f0)
         ! creation operators (relative to the reference)
-        excitor_creation = iand(excitor_excitation, excitor)
+        excitor_creation = iand(excitor_excitation, excitor_loc)
         cluster_creation = iand(cluster_excitation, cluster_excitor)
 
         ! First, let's find out if the excitor is valid...
@@ -494,5 +499,49 @@ contains
         call check_deallocate('contrib', ierr)
 
     end subroutine dealloc_contrib
+
+    pure subroutine remove_ex_level_bit_string(string_len, f)
+
+        integer, intent(in) :: string_len
+        integer(i0), intent(inout) :: f(:)
+
+        f(string_len) = 0_i0
+
+    end subroutine remove_ex_level_bit_string
+
+    subroutine add_ex_level_bit_string_calc(string_len, f0, f)
+
+        ! Sets bits within bit string to give excitation level at end of bit strings.
+        ! This routine sets ex level from provided reference.
+
+        use excitations, only: get_excitation_level
+
+        integer, intent(in) :: string_len
+        integer(i0), intent(inout) :: f(:)
+        integer(i0), intent(in) :: f0(:)
+
+        integer(i0) :: ex_lvl
+
+        ex_lvl = int(get_excitation_level(f, f0), kind=i0)
+
+        f(string_len) = ex_lvl
+
+    end subroutine add_ex_level_bit_string_calc
+
+    subroutine add_ex_level_bit_string_provided(string_len, ex_lvl, f)
+
+        ! Sets bits within bit string to give excitation level at end of bit strings.
+        ! This routine uses a provided excitation level.
+
+        integer, intent(in) :: string_len
+        integer, intent(in) :: ex_lvl
+        integer(i0) :: ex_lvl_loc
+        integer(i0), intent(inout) :: f(:)
+
+        ex_lvl_loc = int(ex_lvl, kind=i0)
+
+        f(string_len) = ex_lvl
+
+    end subroutine add_ex_level_bit_string_provided
 
 end module ccmc_utils

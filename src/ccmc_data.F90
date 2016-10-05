@@ -1,7 +1,8 @@
 module ccmc_data
 
-use const, only: i0, p
+use const, only: i0, p, dp, int_64
 use determinants, only: det_info_t
+use base_types, only: alloc_int2d, alloc_rdp1d
 
 implicit none
 
@@ -166,7 +167,6 @@ contains
     end subroutine multispawn_stats_report
 
     subroutine end_selection_data(sd)
-        use ccmc_data, only: selection_data_t
         use checking, only: check_deallocate
         type(selection_data_t), intent(inout) :: sd
         integer :: ierr

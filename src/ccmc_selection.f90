@@ -564,7 +564,7 @@ contains
         deallocate(excitation_level_population)
         deallocate(real_excitation_level_population)
 
-    end subroutine update_selection_probabilitie
+    end subroutine update_selection_probabilities
 
 
 !---- Initialisation routines for improved selection information ----
@@ -578,7 +578,6 @@ contains
         !       will be allocated and set as appropriate, and cluster_sizes_proportion allocated.
         use ccmc_data, only: selection_data_t
         use checking, only: check_allocate
-        use parallel, only: parent
 
         integer, intent(in) :: ex_level
         type(selection_data_t), intent(inout) :: selection_data
@@ -762,7 +761,7 @@ contains
         integer, intent(inout) :: nfound
         integer, intent(in) :: selections_remain, current_excit_level
         integer :: new_selections_remain, new_current_excit_level
-        integer :: i, nmax, ierr
+        integer :: i
         integer :: temporary_loc(1:max_excit_level)
 
         temporary_loc = temporary
@@ -797,6 +796,7 @@ contains
         !   res = product_{i, ar1(i)=/0} ar1_{i} ** v1{i} / v1!
 
         use utils, only: factorial
+
         integer, intent(in) :: ar1(:)
         real(dp), intent(in) :: v1(:)
         real(dp) :: res
@@ -808,7 +808,7 @@ contains
 
         do i = lbound(ar1, dim=1), ubound(ar1, dim=1)
            v2(i) = real(v1(i),kind=dp) ** ar1(i) / factorial(ar1(i))
-           if (ar1(i) == 0.0_dp) mask(i) = .false.
+           if (ar1(i) > depsilon) mask(i) = .false.
         end do
 
         res = real(product(v2, dim=1, mask=mask), dp)

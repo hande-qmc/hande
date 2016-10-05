@@ -157,8 +157,8 @@ contains
 
     end subroutine spawner_ccmc
 
-    subroutine stochastic_ccmc_death(rng, spawn, linked_ccmc, sys, qs, cdet, cluster, logging_info, &
-                                    ndeath_tot)
+    subroutine stochastic_ccmc_death(rng, spawn, linked_ccmc, ex_lvl_sort, sys, qs, cdet, cluster, &
+                                    logging_info, ndeath_tot)
 
         ! Attempt to 'die' (ie create an excip on the current excitor, cdet%f)
         ! with probability
@@ -195,6 +195,7 @@ contains
         !    spawn: spawn_t object to which the spanwed particle will be added.
 
         use ccmc_data, only: cluster_t
+        use ccmc_utils, only: add_ex_level_bit_string_provided
         use determinants, only: det_info_t
         use const, only: debug
 
@@ -208,7 +209,7 @@ contains
 
         type(sys_t), intent(in) :: sys
         type(qmc_state_t), intent(in) :: qs
-        logical, intent(in) :: linked_ccmc
+        logical, intent(in) :: linked_ccmc, ex_lvl_sort
         type(det_info_t), intent(in) :: cdet
         type(cluster_t), intent(in) :: cluster
         type(logging_t), intent(in) :: logging_info
@@ -217,6 +218,7 @@ contains
         integer(int_p), intent(inout) :: ndeath_tot
 
         complex(p) :: KiiAi
+        type(det_info_t) :: cdet_loc
 
         real(p) :: invdiagel, pdeath
         integer(int_p) :: nkill
@@ -271,7 +273,12 @@ contains
         ! Scale by tau and pselect before pass to specific functions.
         KiiAi = KiiAi * qs%tau / cluster%pselect
 
-        call stochastic_death_attempt(rng, real(KiiAi, p), 1, cdet, qs%ref, sys%basis, spawn, &
+        ! If we're expecting to sort by excitation level, need to add in extra factor
+        cdet_loc = cdet
+
+        if (ex_lvl_sort) call add_ex_level_bit_string_provided(sys%basis%string_len, cluster%excitation_level, cdet_loc%f)
+
+        call stochastic_death_attempt(rng, real(KiiAi, p), 1, cdet_loc, qs%ref, sys%basis, spawn, &
                            nkill, pdeath)
         ndeath_tot = ndeath_tot + abs(nkill)
 
@@ -279,7 +286,7 @@ contains
                                             nkill, pdeath, real(cluster%amplitude,p), 0.0_p)
 
         if (sys%read_in%comp) then
-            call stochastic_death_attempt(rng, aimag(KiiAi), 2, cdet, qs%ref, sys%basis, spawn, &
+            call stochastic_death_attempt(rng, aimag(KiiAi), 2, cdet_loc, qs%ref, sys%basis, spawn, &
                                nkill, pdeath)
             ndeath_tot = ndeath_tot + abs(nkill)
 
@@ -790,15 +797,16 @@ contains
 ! --- Helper functions ---
 
     subroutine create_spawned_particle_ccmc(basis, ref, cdet, connection, nspawned, ispace, &
-                                            ex_level, fexcit, spawn, bloom_stats)
+                                            ex_level, ex_lvl_sort, fexcit, spawn, bloom_stats)
 
         use basis_types, only: basis_t
         use reference_determinant, only: reference_t
         use spawn_data, only: spawn_t
         use determinants, only: det_info_t
         use bloom_handler, only: bloom_stats_t, accumulate_bloom_stats
-        use excitations, only: excit_t
+        use excitations, only: excit_t, create_excited_det
         use proc_pointers, only: create_spawned_particle_ptr
+        use ccmc_utils, only: add_ex_level_bit_string_provided
 
         type(basis_t), intent(in) :: basis
         type(reference_t), intent(in) :: ref
@@ -810,14 +818,19 @@ contains
         integer(int_p), intent(in) :: nspawned
         integer, intent(in) :: ispace, ex_level
         integer(i0), intent(in) :: fexcit(:)
+        logical, intent(in) :: ex_lvl_sort
+        integer(i0) :: fexcit_loc(lbound(fexcit,dim=1):ubound(fexcit,dim=1))
 
-        if (ex_level == huge(0)) then
-            call create_spawned_particle_ptr(basis, ref, cdet, connection, nspawned, &
-                                            ispace, spawn, fexcit)
-        else
-            call create_spawned_particle_ptr(basis, ref, cdet, connection, nspawned, ispace, &
-                                            spawn)
+        fexcit_loc = fexcit
+
+        if (ex_level /= huge(0)) then
+            call create_excited_det(basis, cdet%f, connection, fexcit_loc)
         end if
+
+        if (ex_lvl_sort) call add_ex_level_bit_string_provided(basis%string_len, ex_level, &
+                                                                                fexcit_loc)
+        call create_spawned_particle_ptr(basis, ref, cdet, connection, nspawned, &
+                                        ispace, spawn, fexcit_loc)
         call accumulate_bloom_stats(bloom_stats, nspawned)
 
     end subroutine create_spawned_particle_ccmc

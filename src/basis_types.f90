@@ -116,11 +116,18 @@ module basis_types
         ! a higher index than i set.
         integer(i0), allocatable :: excit_mask(:,:) ! (string_len, nbasis)
 
+        ! Bit mask to select bits used to store excitation level relative to reference.
+        ! As can use different numbers of integers need to have string_len masks.
+        integer(i0), allocatable :: ex_level_mask(:) ! (string_len)
+
+        ! Length in bits of used to store excitation level.
+        integer :: bitlen_excit_level
+
     end type basis_t
 
     contains
 
-        subroutine init_basis_strings(b)
+        subroutine init_basis_strings(b, nelec)
 
             ! Initialise the string information in a basis_t object for
             ! converting a bit-string representation of a list of orbitials to/from the
@@ -134,11 +141,12 @@ module basis_types
             use checking, only: check_allocate
 
             type(basis_t), intent(inout) :: b
+            integer, intent(in) :: nelec
 
             integer :: i, bit_element, bit_pos, ierr
 
-            b%string_len = ceiling(real(b%nbasis)/i0_length)
-
+            ! Need space to store both basis string and excitation level.
+            b%string_len = ceiling(real(b%nbasis) / i0_length) + 1
             b%tensor_label_len = b%string_len
 
             ! Lookup arrays.
@@ -168,6 +176,13 @@ module basis_types
                     b%beta_mask = ibset(b%beta_mask,i)
                 end if
             end do
+
+            ! Set mask to select out bits used to specify the excitation level of a cluster.
+            allocate(b%ex_level_mask(1:b%string_len), stat=ierr)
+            call check_allocate('b%ex_level_mask', b%string_len, ierr)
+
+            b%ex_level_mask = 0_i0
+            b%ex_level_mask(b%string_len) = 1_i0
 
         end subroutine init_basis_strings
 
@@ -222,6 +237,10 @@ module basis_types
             if (allocated(b%basis_lookup)) then
                 deallocate(b%basis_lookup, stat=ierr)
                 call check_deallocate('b%basis_lookup', ierr)
+            end if
+            if (allocated(b%ex_level_mask)) then
+                deallocate(b%ex_level_mask, stat=ierr)
+                call check_deallocate('b%ex_level_mask', ierr)
             end if
             call dealloc_basis_fn_t_array(b%basis_fns)
 
