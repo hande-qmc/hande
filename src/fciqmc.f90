@@ -118,9 +118,6 @@ contains
 
         real(p) :: proj_energy_old
 
-        ! NB This variable is not to be used when not in debug mode
-        integer(int_p) :: ndeath_tot
-
         if (parent) then
             write (6,'(1X,"FCIQMC")')
             write (6,'(1X,"------",/)')
@@ -220,7 +217,7 @@ contains
 
                 iter = qs%mc_cycles_done + (ireport-1)*qmc_in%ncycles + icycle
 
-                if (debug) call prep_logging_mc_cycle(iter, logging_in, logging_info, ndeath_tot, sys%read_in%comp)
+                if (debug) call prep_logging_mc_cycle(iter, logging_in, logging_info, sys%read_in%comp)
 
                 ! Should we turn semi-stochastic on now?
                 if (iter == semi_stoch_iter .and. semi_stoch_in%space_type /= empty_determ_space) then
@@ -322,10 +319,6 @@ contains
                             ndeath = abs(ndeath) + abs(ndeath_im)
                             ndeath_im = 0_int_p
                         end if
-                        if (debug) then
-                            if (logging_info%write_logging .and. logging_info%write_highlevel_values) &
-                                            ndeath_tot = ndeath_tot + abs(ndeath)
-                        end if
                     end if
 
                 end do
@@ -349,7 +342,7 @@ contains
                         if (determ%doing_semi_stoch) call determ_projection(rng, qmc_in, qs, spawn, determ)
 
                         call direct_annihilation(sys, rng, qs%ref, annihilation_flags, pl, spawn, nspawn_events, determ)
-                        if (debug) call write_logging_calc_fciqmc(logging_info, iter, nspawn_events, ndeath_tot, nattempts)
+                        if (debug) call write_logging_calc_fciqmc(logging_info, iter, nspawn_events, ndeath, nattempts)
                         call end_mc_cycle(nspawn_events, ndeath, pl%pop_real_factor, nattempts, qs%spawn_store%rspawn)
                     end if
                 end associate

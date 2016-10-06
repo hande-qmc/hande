@@ -345,7 +345,7 @@ contains
         type(det_info_t), allocatable :: ldet(:), rdet(:)
         type(det_info_t) :: ref_det
 
-        integer(int_p) :: nspawned, ndeath
+        integer(int_p) :: nspawned, ndeath, ndeath_nc
         integer :: nspawn_events, ierr
         type(excit_t) :: connection
         type(cluster_t), allocatable, target :: cluster(:)
@@ -362,7 +362,7 @@ contains
 
         integer(int_p), allocatable :: cumulative_abs_nint_pops(:)
         integer :: D0_proc, D0_pos, nD0_proc, min_cluster_size, max_cluster_size, iexcip_pos, slot
-        integer(int_p) :: tot_abs_nint_pop, ndeath_tot
+        integer(int_p) :: tot_abs_nint_pop
         real(p) :: D0_normalisation
         type(bloom_stats_t) :: bloom_stats
         type(annihilation_flags_t) :: annihilation_flags
@@ -512,7 +512,7 @@ contains
 
                 iter = qs%mc_cycles_done + (ireport-1)*qmc_in%ncycles + icycle
 
-                if (debug) call prep_logging_mc_cycle(iter, logging_in, logging_info, ndeath_tot, sys%read_in%comp)
+                if (debug) call prep_logging_mc_cycle(iter, logging_in, logging_info, sys%read_in%comp)
 
                 associate(spawn=>qs%spawn_store%spawn, pm=>qs%spawn_store%spawn%proc_map)
                     call assign_particle_processor(qs%ref%f0, spawn%bit_str_nbits, spawn%hash_seed, spawn%hash_shift, &
@@ -775,7 +775,7 @@ contains
                                 if (cluster(it)%nexcitors >= 2 .or. .not. ccmc_in%full_nc) then
                                     call stochastic_ccmc_death(rng(it), qs%spawn_store%spawn, ccmc_in%linked, sys, &
                                                                qs, cdet(it), cluster(it), proj_energy_old, logging_info, &
-                                                               ndeath_tot)
+                                                               ndeath)
                                 end if
                             end if
                         end if
@@ -785,9 +785,10 @@ contains
                 end do
                 !$omp end do
 
+                ndeath_nc = 0
                 if (ccmc_in%full_nc .and. qs%psip_list%nstates > 0) then
                     ! Do death exactly and directly for non-composite clusters
-                    !$omp do schedule(dynamic,200) private(dfock) reduction(+:ndeath,nparticles_change)
+                    !$omp do schedule(dynamic,200) private(dfock) reduction(+:ndeath_nc,nparticles_change)
                     do iattempt = 1, qs%psip_list%nstates
                         ! Note we use the (encoded) population directly in stochastic_ccmc_death_nc
                         ! (unlike the stochastic_ccmc_death) to avoid unnecessary decoding/encoding
@@ -797,7 +798,7 @@ contains
                         end if
                         call stochastic_ccmc_death_nc(rng(it), ccmc_in%linked, sys, qs, iattempt==D0_pos, dfock, &
                                               qs%psip_list%dat(1,iattempt), proj_energy_old, qs%psip_list%pops(1, iattempt), &
-                                              nparticles_change(1), ndeath)
+                                              nparticles_change(1), ndeath_nc, logging_info)
                     end do
                     !$omp end do
                 end if
@@ -827,9 +828,9 @@ contains
 
                     call direct_annihilation(sys, rng(0), qs%ref, annihilation_flags, pl, spawn)
                 end associate
-                if (debug) call write_logging_calc_ccmc(logging_info, iter, nspawn_events, ndeath_tot, nD0_select, &
+                if (debug) call write_logging_calc_ccmc(logging_info, iter, nspawn_events, ndeath+ndeath_nc, nD0_select, &
                                                         nclusters, nstochastic_clusters, nsingle_excitors)
-                call end_mc_cycle(nspawn_events, ndeath, qs%psip_list%pop_real_factor, nattempts_spawn, qs%spawn_store%rspawn)
+                call end_mc_cycle(nspawn_events, ndeath_nc, qs%psip_list%pop_real_factor, nattempts_spawn, qs%spawn_store%rspawn)
 
             end do
 
