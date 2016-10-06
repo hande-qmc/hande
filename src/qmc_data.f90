@@ -278,8 +278,8 @@ type blocking_in_t
     ! Enable blocking on the fly.
     logical :: blocking_on_the_fly = .false.
     ! log2 of the frequency at which the start point is saved. If
-    ! negative, the default value is used. Default is the nearest integer to the 
-    ! log2(nreports) - 2
+    ! negative, the default value is used. Default is the nearest integer to the
+    ! log2(nreports) - 8.
     integer :: start_save_frequency = -1
     ! Number of start points that is to be saved. If negative, the default value
     ! is used. The default is the integer part of nreports/2^(start_save_frequency).

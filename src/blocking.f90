@@ -519,7 +519,7 @@ contains
             minimum(i) = minloc(bl%err_comp(:,i), dim = 1, mask = &
             (bl%err_comp(:,i)>0)) - 1
         end do
-        
+
         if (minimum(1) > minimum(2)) then
             bl%start_point = minimum(1)
         else
@@ -587,7 +587,7 @@ contains
         if (mod(bl%n_reports_blocked,bl%save_fq) == 0 .and. bl%n_reports_blocked > 0) then
             call err_comparison(bl, ireport)
         end if
-    
+
         end subroutine do_blocking
 
 

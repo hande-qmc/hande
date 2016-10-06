@@ -15,3 +15,4 @@ options.
     semi_stoch
     logging
     output
+    blocking
