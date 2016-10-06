@@ -90,6 +90,17 @@ type selection_data_t
     integer(int_64), allocatable :: nsuccessful(:) ! (0:ex_level+2)
 end type selection_data_t
 
+type ex_lvl_dist_t
+    ! Number of occupied excitors at each excitation level.
+    integer(int_64), allocatable :: nstates_ex_lvl(:)
+    ! Cumulative number of occupied excitors at each excitation level.
+    integer(int_64), allocatable :: cumulative_nstates_ex_lvl(:)
+    ! Population of excips on occupied excitors at each excitation level.
+    real(p), allocatable :: pop_ex_lvl(:)
+    ! Cumulative population of excips on occupied excitors at each excitation level.
+    real(p), allocatable :: cumulative_pop_ex_lvl(:)
+end type ex_lvl_dist_t
+
 contains
 
     subroutine ms_stats_update(nspawnings, ms_stats)

@@ -352,6 +352,7 @@ contains
         type(json_out_t) :: js
         type(qmc_in_t) :: qmc_in_loc
         type(logging_t) :: logging_info
+        type(selection_data_t) :: selection_data
 
         logical :: soft_exit, dump_restart_shift, restarting
 
@@ -363,6 +364,7 @@ contains
         type(annihilation_flags_t) :: annihilation_flags
         type(restart_info_t) :: ri, ri_shift
         character(36) :: uuid_restart
+        type(ex_lvl_dist_t) :: ex_lvl_dist
 
         real :: t1, t2
 
@@ -580,8 +582,9 @@ contains
                 ! (normalised) selection scheme we want...
                 ! Given the contribution to the projected energy is divided by the cluster generation probability and
                 ! multiplied by the actual weight, doing this has absolutely no effect on the projected energy.
-                call cumulative_population(qs%psip_list%pops, qs%psip_list%nstates, D0_proc, D0_pos, qs%psip_list%pop_real_factor, &
-                                           sys%read_in%comp, cumulative_abs_real_pops, tot_abs_real_pop)
+                call cumulative_population(qs%psip_list%pops, qs%psip_list%states(sys%basis%string_len,:), qs%psip_list%nstates, &
+                                           D0_proc, D0_pos, qs%psip_list%pop_real_factor, ccmc_in%even_selection, &
+                                           sys%read_in%comp, cumulative_abs_real_pops, tot_abs_real_pop, ex_lvl_dist)
 
                 call update_bloom_threshold_prop(bloom_stats, nparticles_old(1))
 
@@ -1004,7 +1007,7 @@ contains
             if ((.not. ccmc_in%linked) .or. contrib%cluster%nexcitors <= 2) then
                 ! Do death for non-composite clusters directly and in a separate loop
                 if (contrib%cluster%nexcitors >= 2 .or. .not. ccmc_in%full_nc) then
-                    call stochastic_ccmc_death(rng, qs%spawn_store%spawn, ccmc_in%linked, sys, &
+                    call stochastic_ccmc_death(rng, qs%spawn_store%spawn, ccmc_in%linked, ccmc_in%even_selection, sys, &
                                                qs, contrib%cdet, contrib%cluster, logging_info, ndeath)
                 end if
             end if
@@ -1160,10 +1163,10 @@ contains
 
         if (nspawned /= 0_int_p) call create_spawned_particle_ccmc(sys%basis, qs%ref, contrib%cdet, connection, &
                                             nspawned, 1, contrib%cluster%excitation_level, &
-                                            fexcit, qs%spawn_store%spawn, bloom_stats)
+                                            ccmc_in%even_selection, fexcit, qs%spawn_store%spawn, bloom_stats)
         if (nspawned_im /= 0_int_p) call create_spawned_particle_ccmc(sys%basis, qs%ref, contrib%cdet, connection,&
                                             nspawned_im, 2, contrib%cluster%excitation_level, &
-                                            fexcit, qs%spawn_store%spawn, bloom_stats)
+                                            ccmc_in%even_selection, fexcit, qs%spawn_store%spawn, bloom_stats)
 
     end subroutine perform_ccmc_spawning_attempt
 

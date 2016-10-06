@@ -302,7 +302,21 @@ contains
 
     end subroutine convert_excitor_to_determinant
 
-    subroutine cumulative_population(pops, nactive, D0_proc, D0_pos, real_factor, complx, cumulative_pops, tot_pop)
+    subroutine zero_estimators_t(estimators)
+
+        use qmc_data, only: estimators_t
+
+        type(estimators_t), intent(inout) :: estimators
+
+        estimators%D0_population = 0.0_p
+        estimators%proj_energy = 0.0_p
+        estimators%D0_population_comp = cmplx(0.0, 0.0, p)
+        estimators%proj_energy_comp = cmplx(0.0, 0.0, p)
+
+    end subroutine zero_estimators_t
+
+    subroutine cumulative_population(pops, ex_lvls, nactive, D0_proc, D0_pos, real_factor, calc_dist, complx, &
+                                    cumulative_pops, tot_pop, ex_lvl_dist)
 
         ! Calculate the cumulative population, i.e. the number of psips/excips
         ! residing on a determinant/an excitor and all determinants/excitors which
@@ -326,26 +340,41 @@ contains
         !       1<=D0_pos<=nactive and the processor holds the reference.
         !    real_factor: the encoding factor by which the stored populations are multiplied
         !       to enable non-integer populations.
+        !    calc_dist: whether to update excitation level distributions. NB. this is only
+        !       possible if the walker list is adjusted to be sorted by excitation level.
         ! Out:
         !    cumulative_pops: running total of excitor population, i.e.
         !        cumulative_pops(i) = sum(abs(pops(1:i))), excluding the
         !        population on the reference if appropriate.
         !    tot_pop: total population (possibly excluding the population on the
         !       reference).
+        !    ex_lvl_dist: derived types containing distributions of states
+        !       and populations between different excitation levels.
 
         ! NOTE: currently only the populations in the first psip/excip space are
         ! considered.  This should be changed if we do multiple simulations at
         ! once/Hellmann-Feynman sampling/etc.
 
         use parallel, only: iproc
+        use ccmc_data, only: ex_lvl_dist_t
 
         integer(int_p), intent(in) :: pops(:,:), real_factor
         integer, intent(in) :: nactive, D0_proc, D0_pos
         real(p), allocatable, intent(inout) :: cumulative_pops(:)
         real(p), intent(out) :: tot_pop
-        logical, intent(in) :: complx
+        type(ex_lvl_dist_t), intent(inout) :: ex_lvl_dist
+        logical, intent(in) :: complx, calc_dist
+        integer(i0), intent(in) :: ex_lvls(:)
 
         integer :: i
+        integer(i0) :: j
+
+
+        ! First need to set values to account for reference correctly in ex_lvl_dist.
+        if (calc_dist) then
+            ex_lvl_dist%cumulative_nstates_ex_lvl(0) = 1
+            ex_lvl_dist%cumulative_pop_ex_lvl(0) = 0
+        end if
 
         ! Need to combine spaces if doing complex; we choose combining in quadrature.
         cumulative_pops(1) = get_pop_contrib(pops(:,1), real_factor, complx)
@@ -355,6 +384,16 @@ contains
             do i = 2, d0_pos-1
                 cumulative_pops(i) = cumulative_pops(i-1) + &
                                         get_pop_contrib(pops(:,i), real_factor, complx)
+                if (calc_dist) then
+                    if (ex_lvls(i-1) < ex_lvls(i)) then
+                        ! i-1 is last entry of it's excitation level.
+                        ! Need to update all intervening excitation levels
+                         do j = ex_lvls(i-1), ex_lvls(i) - 1
+                            ex_lvl_dist%cumulative_nstates_ex_lvl(j) = i-1
+                            ex_lvl_dist%cumulative_pop_ex_lvl(j) = cumulative_pops(i-1)
+                        end do
+                    end if
+                end if
             end do
             ! Set cumulative on the reference to be the running total merely so we
             ! can continue accessing the running total from the i-1 element in the
@@ -366,12 +405,32 @@ contains
             do i = d0_pos+1, nactive
                 cumulative_pops(i) = cumulative_pops(i-1) + &
                                         get_pop_contrib(pops(:,i), real_factor, complx)
+                if (calc_dist) then
+                    if (ex_lvls(i-1) < ex_lvls(i)) then
+                        ! i-1 is last entry of it's excitation level.
+                        ! Need to update all intervening excitation levels
+                         do j = ex_lvls(i-1), ex_lvls(i) - 1
+                            ex_lvl_dist%cumulative_nstates_ex_lvl(j) = i-1
+                            ex_lvl_dist%cumulative_pop_ex_lvl(j) = cumulative_pops(i-1)
+                        end do
+                    end if
+                end if
             end do
         else
             ! V simple on other processors: no reference to get in the way!
             do i = 2, nactive
                 cumulative_pops(i) = cumulative_pops(i-1) + &
                                         get_pop_contrib(pops(:,i), real_factor, complx)
+                if (calc_dist) then
+                    if (ex_lvls(i-1) < ex_lvls(i)) then
+                        ! i-1 is last entry of it's excitation level.
+                        ! Need to update all intervening excitation levels
+                         do j = ex_lvls(i-1), ex_lvls(i) - 1
+                            ex_lvl_dist%cumulative_nstates_ex_lvl(j) = i-1
+                            ex_lvl_dist%cumulative_pop_ex_lvl(j) = cumulative_pops(i-1)
+                        end do
+                    end if
+                end if
             end do
         end if
         if (nactive > 0) then
@@ -500,6 +559,57 @@ contains
 
     end subroutine dealloc_contrib
 
+    subroutine init_ex_lvl_dist_t(max_ex_lvl, ex_lvl_dist)
+
+        use ccmc_data, only: ex_lvl_dist_t
+        use checking, only: check_allocate
+
+        integer, intent(in) :: max_ex_lvl
+        type(ex_lvl_dist_t), intent(inout) :: ex_lvl_dist
+
+        integer :: ierr
+
+        associate(eld => ex_lvl_dist)
+            allocate(eld%nstates_ex_lvl(0:max_ex_lvl), stat=ierr)
+            call check_allocate('eld%nstates_ex_lvl', max_ex_lvl+1, ierr)
+
+            allocate(eld%cumulative_nstates_ex_lvl(0:max_ex_lvl), stat=ierr)
+            call check_allocate('eld%cumulative_nstates_ex_lvl', max_ex_lvl+1, ierr)
+
+            allocate(eld%pop_ex_lvl(0:max_ex_lvl), stat=ierr)
+            call check_allocate('eld%pop_ex_lvl', max_ex_lvl+1, ierr)
+
+            allocate(eld%cumulative_pop_ex_lvl(0:max_ex_lvl), stat=ierr)
+            call check_allocate('eld%cumulative_pop_ex_lvl', max_ex_lvl+1, ierr)
+        end associate
+
+    end subroutine init_ex_lvl_dist_t
+
+    subroutine end_ex_lvl_dist_t(ex_lvl_dist)
+
+        use ccmc_data, only: ex_lvl_dist_t
+        use checking, only: check_deallocate
+
+        type(ex_lvl_dist_t), intent(inout) :: ex_lvl_dist
+
+        integer :: ierr
+
+        associate(eld => ex_lvl_dist)
+            deallocate(eld%nstates_ex_lvl, stat=ierr)
+            call check_deallocate('eld%nstates_ex_lvl', ierr)
+
+            deallocate(eld%cumulative_nstates_ex_lvl, stat=ierr)
+            call check_deallocate('eld%cumulative_nstates_ex_lvl', ierr)
+
+            deallocate(eld%pop_ex_lvl, stat=ierr)
+            call check_deallocate('eld%pop_ex_lvl', ierr)
+
+            deallocate(eld%cumulative_pop_ex_lvl, stat=ierr)
+            call check_deallocate('eld%cumulative_pop_ex_lvl', ierr)
+        end associate
+
+    end subroutine end_ex_lvl_dist_t
+
     pure subroutine remove_ex_level_bit_string(string_len, f)
 
         integer, intent(in) :: string_len
@@ -533,9 +643,9 @@ contains
         ! Sets bits within bit string to give excitation level at end of bit strings.
         ! This routine uses a provided excitation level.
 
-        integer, intent(in) :: string_len
-        integer, intent(in) :: ex_lvl
+        integer, intent(in) :: string_len, ex_lvl
         integer(i0) :: ex_lvl_loc
+
         integer(i0), intent(inout) :: f(:)
 
         ex_lvl_loc = int(ex_lvl, kind=i0)
@@ -543,5 +653,85 @@ contains
         f(string_len) = ex_lvl
 
     end subroutine add_ex_level_bit_string_provided
+
+    subroutine update_ex_lvl_dist(ex_lvl_dist)
+
+        ! Takes ex_lvl_dist derived type with updated cumulative distributions and
+        ! sets non-cumulative distributions correspondingly.
+
+        use ccmc_data, only: ex_lvl_dist_t
+
+        type(ex_lvl_dist_t), intent(inout) :: ex_lvl_dist
+
+        call update_noncumulative_dist_int64(ex_lvl_dist%cumulative_nstates_ex_lvl, ex_lvl_dist%nstates_ex_lvl)
+        call update_noncumulative_dist_realp(ex_lvl_dist%cumulative_pop_ex_lvl, ex_lvl_dist%pop_ex_lvl)
+
+    end subroutine update_ex_lvl_dist
+
+! ---- Helper functions to re-construct cumulative and non-cumulative distributions from each other ----
+
+    subroutine update_cumulative_dist_real(dist, cumulative_dist, normalised)
+
+        ! Updates cumulative_dist to be consistent with provided dist.
+        ! If normalised is set the distribution is set to have total amplitude
+        ! of 1.0_dp by adjusting the final non-zero entry of dist.
+
+        use const, only: depsilon, dp
+
+        real(dp), intent(inout), allocatable :: dist(:)
+        real(dp), intent(inout), allocatable :: cumulative_dist(:)
+        logical, intent(in) :: normalised
+        integer :: i
+        real(dp) :: diff
+
+        if (normalised .and. sum(dist) > depsilon) dist = dist / sum(dist)
+
+        cumulative_dist(lbound(cumulative_dist,dim=1)) = dist(lbound(dist,dim=1))
+        do i = lbound(dist, dim=1) + 1, ubound(dist, dim=1)
+            cumulative_dist(i) = cumulative_dist(i-1) + dist(i)
+        end do
+
+        if (normalised) then
+            diff = 1.0_dp - cumulative_dist(ubound(dist,dim=1))
+            do i = ubound(dist, dim=1), lbound(dist,dim=1), -1
+                if (dist(i) > depsilon) then
+                    dist(i) = dist(i) + diff
+                    cumulative_dist(i:) = 1.0_dp
+                    exit
+                end if
+            end do
+        end if
+
+    end subroutine update_cumulative_dist_real
+
+    subroutine update_noncumulative_dist_int64(cumulative_dist, dist)
+
+        use const, only: int_64
+
+        integer(int_64), intent(inout), allocatable :: dist(:)
+        integer(int_64), intent(inout), allocatable :: cumulative_dist(:)
+        integer :: i
+
+        dist(lbound(cumulative_dist,dim=1)) = cumulative_dist(lbound(dist,dim=1))
+        do i = lbound(cumulative_dist, dim=1) + 1, ubound(cumulative_dist, dim=1)
+            dist(i) = cumulative_dist(i) - cumulative_dist(i-1)
+        end do
+
+    end subroutine update_noncumulative_dist_int64
+
+    subroutine update_noncumulative_dist_realp(cumulative_dist, dist)
+
+        use const, only: int_64
+
+        real(p), intent(inout), allocatable :: dist(:)
+        real(p), intent(inout), allocatable :: cumulative_dist(:)
+        integer :: i
+
+        dist(lbound(cumulative_dist,dim=1)) = cumulative_dist(lbound(dist,dim=1))
+        do i = lbound(cumulative_dist, dim=1) + 1, ubound(cumulative_dist, dim=1)
+            dist(i) = cumulative_dist(i) - cumulative_dist(i-1)
+        end do
+
+    end subroutine update_noncumulative_dist_realp
 
 end module ccmc_utils

@@ -241,6 +241,8 @@ type ccmc_in_t
     logical :: density_matrices = .false.
     ! Filename to write density matrix to
     character(255) :: density_matrix_file = 'RDM'
+
+    logical :: even_selection = .false.
 end type ccmc_in_t
 
 type restart_in_t

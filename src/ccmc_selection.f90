@@ -566,7 +566,6 @@ contains
 
     end subroutine update_selection_probabilities
 
-
 !---- Initialisation routines for improved selection information ----
 
     subroutine init_selection_data(ex_level, selection_data)
@@ -627,10 +626,10 @@ contains
             call find_available_perms(dummy, selection_data%cluster_sizes_info(cluster_size)%v, temporary, &
                                     cluster_size, 1, 0, ex_level)
             if (parent) then
-                write(6, *), 'Found', nclusters,'clusters of size', cluster_size,'.'
-                write(6, *), 'Clusters are:'
+                write(6, *) 'Found', nclusters,'clusters of size', cluster_size,'.'
+                write(6, *) 'Clusters are:'
                 do i = 1, nclusters
-                    write(6, *), selection_data%cluster_sizes_info(cluster_size)%v(i, :)
+                    write(6, *) selection_data%cluster_sizes_info(cluster_size)%v(i, :)
                 end do
             end if
         end do
@@ -814,24 +813,5 @@ contains
         res = real(product(v2, dim=1, mask=mask), dp)
 
     end function calc_combination_weighting
-
-    subroutine update_cumulative_size_weighting(size_weighting, cumulative_size_weighting)
-        real(dp), intent(inout), allocatable :: size_weighting(:)
-        real(dp), intent(inout), allocatable :: cumulative_size_weighting(:)
-        integer :: i
-
-        cumulative_size_weighting(lbound(cumulative_size_weighting,dim=1)) = size_weighting(lbound(size_weighting,dim=1))
-        do i = lbound(size_weighting, dim=1) + 1, ubound(size_weighting, dim=1) - 1
-            cumulative_size_weighting(i) = cumulative_size_weighting(i-1) + size_weighting(i)
-        end do
-
-        cumulative_size_weighting(ubound(size_weighting, dim=1)) = 1.0_dp
-
-        if (size(cumulative_size_weighting, dim=1) > 1) then
-            size_weighting(ubound(size_weighting, dim=1)) = &
-                    cumulative_size_weighting(ubound(size_weighting, dim=1)) - &
-                    cumulative_size_weighting(ubound(size_weighting, dim=1) - 1)
-        end if
-    end subroutine update_cumulative_size_weighting
 
 end module ccmc_selection
