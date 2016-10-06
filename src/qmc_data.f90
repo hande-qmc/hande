@@ -241,7 +241,7 @@ type ccmc_in_t
     logical :: density_matrices = .false.
     ! Filename to write density matrix to
     character(255) :: density_matrix_file = 'RDM'
-
+    ! Whether to use improved cluster selection approach.
     logical :: even_selection = .false.
 end type ccmc_in_t
 
@@ -802,7 +802,8 @@ contains
         call json_write_key(js, 'linked', ccmc%linked)
         call json_write_key(js, 'vary_shift_reference', ccmc%vary_shift_reference)
         call json_write_key(js, 'density_matrices', ccmc%density_matrices)
-        call json_write_key(js, 'density_matrix_file', ccmc%density_matrix_file, .true.)
+        call json_write_key(js, 'density_matrix_file', ccmc%density_matrix_file)
+        call json_write_key(js, 'even_selection', ccmc%even_selection, .true.)
         call json_object_end(js, terminal)
 
     end subroutine ccmc_in_t_json
