@@ -210,9 +210,9 @@ contains
         end if
         ! Initialise timer.
         call cpu_time(t1)
-        
+        print *, qmc_in%blocking_on_the_fly        
         ! Allocate arrays needed for reblock analysis
-        call allocate_blocking(qmc_in, bl)
+        if (qmc_in%blocking_on_the_fly) call allocate_blocking(qmc_in, bl)
 
         do ireport = 1, qmc_in%nreport
 
@@ -346,7 +346,7 @@ contains
                 call write_qmc_report(qmc_in, qs, ireport, nparticles_old, t2-t1, .false., &
                                         fciqmc_in%non_blocking_comm, io_unit=io_unit, cmplx_est=sys%read_in%comp)
 
-                call do_blocking(bl, qs, qmc_in, ireport, iter)
+                if (qmc_in%blocking_on_the_fly) call do_blocking(bl, qs, qmc_in, ireport, iter)
             end if
 
             ! Update the time for the start of the next iteration.
@@ -366,7 +366,7 @@ contains
 
         end do
 
-        call deallocate_blocking(bl)
+        if (qmc_in%blocking_on_the_fly) call deallocate_blocking(bl)
 
         if (fciqmc_in%non_blocking_comm) call end_non_blocking_comm(sys, rng, qmc_in, annihilation_flags, ireport, &
                                                                     qs, qs%spawn_store%spawn_recv,  req_data_s,  &

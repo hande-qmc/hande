@@ -149,6 +149,9 @@ type qmc_in_t
     ! threshold
     real(p) :: quasi_newton_value = 1_p
 
+    ! Turn on on the fly reblock analysis
+    logical :: blocking_on_the_fly = .false.
+
 end type qmc_in_t
 
 type fciqmc_in_t
@@ -758,6 +761,7 @@ contains
         call json_write_key(js, 'quasi_newton', qmc%quasi_newton)
         call json_write_key(js, 'quasi_newton_threshold', qmc%quasi_newton_threshold)
         call json_write_key(js, 'quasi_newton_value', qmc%quasi_newton_value)
+        call json_write_key(js, 'blocking_on_the_fly', qmc%blocking_on_the_fly)
         call json_write_key(js, 'use_mpi_barriers', qmc%use_mpi_barriers, .true.)
         call json_object_end(js, terminal)
 
