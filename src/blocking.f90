@@ -54,35 +54,36 @@ contains
         ! is reached the sum is divided by the block size and copied to column 3
         ! and squared and copied to column 4. The product of \sum H_0j N_j and
         ! referecne population is copied to data_product.
-        allocate(bl%reblock_data(4, 0:bl%lg_max, 2), stat=ierr)
-        call check_allocate('bl%reblock_data',(bl%lg_max+1)*4*2,ierr)
+        allocate(bl%reblock_data(4, 0:bl%lg_max, 3), stat=ierr)
+        call check_allocate('bl%reblock_data',(bl%lg_max+1)*4*3,ierr)
         allocate(bl%data_product(0:bl%lg_max), stat=ierr)
         call check_allocate('bl%data_product',(bl%lg_max+1),ierr)
-        allocate(bl%reblock_data_2(4, 0:bl%lg_max, 2), stat=ierr)
-        call check_allocate('bl%reblock_data_2', (bl%lg_max+1)*4*2,ierr)
+        allocate(bl%reblock_data_2(4, 0:bl%lg_max, 3), stat=ierr)
+        call check_allocate('bl%reblock_data_2', (bl%lg_max+1)*4*3,ierr)
         allocate(bl%data_product_2(0:bl%lg_max), stat=ierr)
         call check_allocate('bl%data_product_2',(bl%lg_max+1),ierr)
         ! Mean, standard deviation and covariance of Proj. energy and reference
         ! population is calculated for each block size and added to block_mean,
         ! block_std and block_cov
-        allocate(bl%block_mean(0:bl%lg_max, 2), stat=ierr)
-        call check_allocate('bl%block_mean', 2*(bl%lg_max+1), ierr)
-        allocate(bl%block_std(0:bl%lg_max, 2), stat=ierr)
-        call check_allocate('bl%block_std', 2*(bl%lg_max+1), ierr)
+        allocate(bl%block_mean(0:bl%lg_max, 3), stat=ierr)
+        call check_allocate('bl%block_mean', 3*(bl%lg_max+1), ierr)
+        allocate(bl%block_std(0:bl%lg_max, 3), stat=ierr)
+        call check_allocate('bl%block_std', 3*(bl%lg_max+1), ierr)
         allocate(bl%block_cov(0:bl%lg_max), stat=ierr)
         call check_allocate('bl%block_cov', bl%lg_max+1, ierr)
         ! Array in which the reblock_data and data_product are saved every
         ! start_fq.
-        allocate(bl%reblock_save(0:bl%n_saved_startpoints, 4, 0:bl%lg_max, 2), stat=ierr)
-        call check_allocate('bl%reblock_save',(bl%n_saved_startpoints+1)*4*2*(bl%lg_max+1), &
+        allocate(bl%reblock_save(0:bl%n_saved_startpoints, 4, 0:bl%lg_max, 3), stat=ierr)
+        call check_allocate('bl%reblock_save',(bl%n_saved_startpoints+1)*4*3*(bl%lg_max+1), &
                 ierr)
         allocate(bl%product_save(0:bl%n_saved_startpoints, 0:bl%lg_max),stat=ierr)
         call check_allocate('bl%product_save',(bl%n_saved_startpoints &
                 +1)*(bl%lg_max+1),ierr)
         ! 1/(sqrt(number of data)) * fractional error for both \sum H_0j N_jand
         ! reference population is saved for comparison.
-        allocate(bl%err_comp(0:bl%n_saved_startpoints, 2))
-        call check_allocate('bl%err_comp', (bl%n_saved_startpoints+1)*2, ierr)
+        allocate(bl%err_comp(0:bl%n_saved_startpoints, 3))
+        call check_allocate('bl%err_comp', (bl%n_saved_startpoints+1)*3, ierr)
+
 
         bl%reblock_data = 0
         bl%data_product = 0
@@ -147,13 +148,16 @@ contains
         write(iunit, '(1X, A)', advance = 'no') ('#iterations')
         write(iunit, '(1X, A)', advance = 'no') ('Start point')
         write(iunit, '(1X, A)', advance = 'no') ('Mean \sum H_0j N_j')
-        write(iunit, '(4X, A)', advance = 'no') ('Std \sum H_0j N_j')
-        write(iunit, '(4X, A)', advance = 'no') ('Error in error')
-        write(iunit, '(7X, A)', advance = 'no') ('Mean N_0')
-        write(iunit, '(12X, A)', advance = 'no') ('Std N_0')
+        write(iunit, '(2X, A)', advance = 'no') ('Std \sum H_0j N_j')
+        write(iunit, '(2X, A)', advance = 'no') ('Error in error')
+        write(iunit, '(5X, A)', advance = 'no') ('Mean N_0')
+        write(iunit, '(10X, A)', advance = 'no') ('Std N_0')
         write(iunit, '(12X, A)', advance = 'no') ('Error in error')
-        write(iunit, '(7X, A)', advance = 'no') ('Mean Proj. energy')
-        write(iunit, '(7X, A)') ('Std Proj. energy')
+        write(iunit, '(5X, A)', advance = 'no') ('Mean Shift')
+        write(iunit, '(7X, A)', advance = 'no') ('Std Shift')
+        write(iunit, '(10X, A)', advance = 'no') ('Error in error')
+        write(iunit, '(5X, A)', advance = 'no') ('Mean Proj. energy')
+        write(iunit, '(5X, A)') ('Std Proj. energy')
         flush(iunit)
 
     end subroutine write_blocking_report_header
@@ -178,11 +182,12 @@ contains
         type(blocking_t), intent(inout) :: bl
         integer :: i, j, reblock_size
 
-        ! \sum H_0j N_j and reference population are added to column 2 of every
+        ! \sum H_0j N_j, reference population and shift are added to column 2 of every
         ! block size.
 
         bl%reblock_data(2,:,1) = bl%reblock_data(2,:,1) + qs%estimators%proj_energy
         bl%reblock_data(2,:,2) = bl%reblock_data(2,:,2) + qs%estimators%D0_population
+        bl%reblock_data(2,:,3) = bl%reblock_data(2,:,3) + qs%shift(1)
 
 
         ! Everytime enough data is collected for each block size, the sum in
@@ -253,7 +258,6 @@ contains
                 bl%block_cov(i) = 0
             end if
         end do
-
     end subroutine mean_std_cov
 
     function fraction_error(mean_1, mean_2, data_number, std_1, std_2, cov_in) &
@@ -319,7 +323,7 @@ contains
         type(blocking_t), intent(inout) :: bl
 
         ! Smallest block size satisfying the condition is found.
-        do i = 1, 2
+        do i = 1, 3
             do j = 0, (bl%lg_max)
                 B = 2**(j)
 ! [review] - CJCS: From what you said above shouldn't this be B**3 >?
@@ -360,12 +364,12 @@ contains
         end if
 
         if (bl%optimal_mean(1) == 0 .or. bl%optimal_mean(2) == 0) then
-            bl%optimal_mean(3) = 0
-            bl%optimal_std(3) = 0
+            bl%optimal_mean(4) = 0
+            bl%optimal_std(4) = 0
         else
-            bl%optimal_mean(3) = bl%block_mean(size_e, 1) / bl%block_mean(size_e,2)
+            bl%optimal_mean(4) = bl%block_mean(size_e, 1) / bl%block_mean(size_e,2)
 
-            bl%optimal_std(3) = fraction_error(bl%block_mean(size_e,1), bl%block_mean(size_e, 2), &
+            bl%optimal_std(4) = fraction_error(bl%block_mean(size_e,1), bl%block_mean(size_e, 2), &
                 bl%reblock_data_2(1, size_e,1), bl%block_std(size_e,1), bl%block_std(size_e, 2), &
                 bl%block_cov(size_e))
         end if
@@ -479,7 +483,7 @@ contains
         type(blocking_t), intent(inout) :: bl
         integer, intent(in) :: ireport
         integer :: i, j
-        integer ::  minimum(2)=0
+        integer ::  minimum(3)=0
 
         do i = 0, bl%n_saved_startpoints
 
@@ -488,7 +492,7 @@ contains
                 call mean_std_cov(bl)
                 call find_optimal_block(bl)
 
-                do j = 1, 2
+                do j = 1, 3
                     if (bl%optimal_std(j) == 0.0) then
                         bl%err_comp(i,j) = 0.0
                     else
@@ -513,16 +517,12 @@ contains
         end do
 
 
-        do i = 1, 2
+        do i = 1, 3
             minimum(i) = minloc(bl%err_comp(:,i), dim = 1, &
                                 mask = (bl%err_comp(:,i)>0)) - 1
         end do
 
-        if (minimum(1) > minimum(2)) then
-            bl%start_point = minimum(1)
-        else
-            bl%start_point = minimum(2)
-        end if
+        bl%start_point = maxval(minimum)
 
         if (bl%start_point == -1) bl%start_point = 0
 
@@ -618,14 +618,17 @@ contains
            ! Prints the mean, standard deviation and the error in error for \sum
            ! H_0j N_j and N_0 and mean and standard deviation of projected
            ! energy. Returns 0 if there are insufficient data.
-            write(iunit, '(1X, ES20.7)', advance = 'no') (bl%optimal_mean(1))
-            write(iunit, '(1X, ES20.7)', advance = 'no') (bl%optimal_std(1))
-            write(iunit, '(1X, ES20.7)', advance = 'no') (bl%optimal_err(1))
-            write(iunit, '(1X, ES20.7)', advance = 'no') (bl%optimal_mean(2))
-            write(iunit, '(1X, ES20.7)', advance = 'no') (bl%optimal_std(2))
-            write(iunit, '(1X, ES20.7)', advance = 'no') (bl%optimal_err(2))
-            write(iunit, '(1X, ES20.7)', advance = 'no') (bl%optimal_mean(3))
-            write(iunit, '(1X, ES20.7)') (bl%optimal_std(3))
+            write(iunit, '(1X, ES18.7)', advance = 'no') (bl%optimal_mean(1))
+            write(iunit, '(1X, ES18.7)', advance = 'no') (bl%optimal_std(1))
+            write(iunit, '(1X, ES18.7)', advance = 'no') (bl%optimal_err(1))
+            write(iunit, '(1X, ES18.7)', advance = 'no') (bl%optimal_mean(2))
+            write(iunit, '(1X, ES18.7)', advance = 'no') (bl%optimal_std(2))
+            write(iunit, '(1X, ES18.7)', advance = 'no') (bl%optimal_err(2))
+            write(iunit, '(1X, ES18.7)', advance = 'no') (bl%optimal_mean(3))
+            write(iunit, '(1X, ES18.7)', advance = 'no') (bl%optimal_std(3))
+            write(iunit, '(1X, ES18.7)', advance = 'no') (bl%optimal_err(3))
+            write(iunit, '(1X, ES18.7)', advance = 'no') (bl%optimal_mean(4))
+            write(iunit, '(1X, ES18.7)') (bl%optimal_std(4))
 
             flush(iunit)
 

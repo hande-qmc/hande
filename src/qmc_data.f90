@@ -578,7 +578,7 @@ type blocking_t
     ! optimal_mean(data_type) = block_mean of the block with the optimal block
     ! size for the data_type. For projected energy, the block size that is
     ! larger of the data_type 1 and 2 is used.
-    real(p) :: optimal_mean(3) = 0
+    real(p) :: optimal_mean(4) = 0
 ! [review] - CJCS: Ratio between the two? I thought the convention for error propogation
 ! [review] - CJCS: in quotients is the combination in quadrature of the fractional error?
     ! Optimal block is the smallest block that satisfies the condition
@@ -589,13 +589,13 @@ type blocking_t
     ! optimal_std(data_type) = block_std of the block with the optimal block
     ! size for the data_type. For projected energy, the block size that is
     ! larger of the data_type 1 and 2 is used.
-    real(p) :: optimal_std(3) = 0
+    real(p) :: optimal_std(4) = 0
     ! Error in standard deviation calculated assuming that the blocks are normally
     ! distributed from central limit theorm. 1/(sqrt(2*(number of blocks - 1)))
     ! data_type = 1 corresponds to \sum H_0j Nj.
     ! data_type = 2 corresponds to reference population.
     ! optimal_err(data_type) = Error in standard deviation of data_type.
-    real(p) :: optimal_err(2) = 0
+    real(p) :: optimal_err(3) = 0
     ! Report number from which the data for reblocking is collected.
     integer :: start_ireport = -1
     ! Arrays for saving the data for reblocking for the purpose of starting the
@@ -614,7 +614,7 @@ type blocking_t
     ! Array containing the different values of fractional error weighted by the
     ! 1/sqrt(number of data points) for each of the possible start positions.
     real(p), allocatable :: err_comp(:,:)
-    integer :: optimal_size(2)
+    integer :: optimal_size(3) = 1
 end type blocking_t
 
 type estimators_t
