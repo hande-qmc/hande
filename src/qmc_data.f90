@@ -500,6 +500,21 @@ type spawned_particle_t
     real(p) :: rspawn
 end type spawned_particle_t
 
+type blocking_t
+
+    integer :: max_2n, save_number, save_fq, report
+    real(p), allocatable :: reblock_data(:,:,:), data_product(:)
+    real(p), allocatable :: reblock_data_2(:,:,:), data_product_2(:)
+    real(p), allocatable :: block_mean(:,:), block_std(:,:), block_cov(:)
+    real(p) :: optimal_mean(3) = 0
+    real(p) :: optimal_std(3) = 0
+    real(p) :: optimal_err(2) = 0
+    integer :: start_ireport = 0
+    real(p), allocatable :: reblock_save(:,:,:,:), product_save(:,:)
+    integer :: start_point = 0
+    real(p), allocatable :: err_comp(:,:)    
+end type blocking_t
+
 type estimators_t
     ! Population of walkers on reference determinant/trace of density matrix.
     real(p) :: D0_population = 0.0_p

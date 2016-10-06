@@ -64,7 +64,8 @@ contains
                               write_memcheck_report
         use qmc_data, only: qmc_in_t, fciqmc_in_t, semi_stoch_in_t, restart_in_t, load_bal_in_t, empty_determ_space, &
                             qmc_state_t, annihilation_flags_t, semi_stoch_separate_annihilation, qmc_in_t_json,      &
-                            fciqmc_in_t_json, semi_stoch_in_t_json, restart_in_t_json, load_bal_in_t_json
+                            fciqmc_in_t_json, semi_stoch_in_t_json, restart_in_t_json, load_bal_in_t_json, &
+                            blocking_t
         use reference_determinant, only: reference_t, reference_t_json
         use check_input, only: check_qmc_opts, check_fciqmc_opts, check_load_bal_opts
         use hamiltonian_data
@@ -72,6 +73,7 @@ contains
 
         use logging, only: init_logging, end_logging, prep_logging_mc_cycle, write_logging_calc_fciqmc, &
                             logging_in_t, logging_t, logging_in_t_json, logging_t_json
+        use blocking
 
         type(sys_t), intent(in) :: sys
         type(qmc_in_t), intent(in) :: qmc_in
@@ -114,6 +116,11 @@ contains
 
         real :: t1, t2
         logical :: update_tau, restarting, imag
+
+        type(blocking_t) :: bl 
+        integer :: i,j
+
+        
 
         if (parent) then
             write (io_unit,'(1X,"FCIQMC")')
@@ -203,6 +210,8 @@ contains
         end if
         ! Initialise timer.
         call cpu_time(t1)
+
+        call allocate_arrays(qmc_in, bl)
 
         do ireport = 1, qmc_in%nreport
 
@@ -335,6 +344,41 @@ contains
                 if (bloom_stats%nblooms_curr > 0) call bloom_stats_warning(bloom_stats, io_unit=io_unit)
                 call write_qmc_report(qmc_in, qs, ireport, nparticles_old, t2-t1, .false., &
                                         fciqmc_in%non_blocking_comm, io_unit=io_unit, cmplx_est=sys%read_in%comp)
+                                         
+                if (qs%vary_shift(1) .eqv. .true. .and. bl%start_ireport == 0) then
+                    bl%start_ireport = ireport
+                end if
+                
+                if (qs%vary_shift(1) .eqv. .true.) then
+                    call collect_data(qmc_in, qs, bl, ireport)
+                    call copy_block(bl, ireport)
+                end if
+
+                if (mod(ireport,50) ==0 .and. qs%vary_shift(1) .eqv. .true.) then
+                    
+                    call change_start(bl, ireport, bl%start_point)
+                    call mean_std_cov(bl)
+                    call find_optimal_block(bl)
+
+!                write(7, '(1X, 20ES20.7)')(bl%reblock_data(1, i, 1), i = 1, &
+!               bl%max_2n)
+                    write(7, '(1X, I8)') iter
+                    write(7, '(1X, I8)') bl%start_point 
+!                    write(7, '(1X, 20ES20.7)')(bl%block_mean(i,1), i = 1, &
+!                    bl%max_2n)
+!                    write(7, '(1X, 20ES20.7)')(bl%block_std(i,1), i = 1,bl%max_2n)
+                    write(7, '(1X, 3ES20.7)', advance = 'no') (bl%optimal_mean(i), i = 1, 3)
+                    write(7, '(1X, 3ES20.7)') (bl%optimal_std(i), i = 1, 3)
+                    write(7, '(1X, 2ES20.7)') (bl%optimal_err(i), i = 1,2)
+
+
+
+                    call flush(7)
+                end if
+
+                if (mod(bl%report,2*bl%save_fq) == 0) then
+                    call err_comparison(bl, ireport)
+                end if
             end if
 
             ! Update the time for the start of the next iteration.
@@ -353,6 +397,17 @@ contains
                     call select_ref_det(sys, fciqmc_in%ref_det_factor, qs)
 
         end do
+
+        deallocate(bl%reblock_data)
+        deallocate(bl%reblock_data_2)
+        deallocate(bl%data_product)
+        deallocate(bl%data_product_2)
+        deallocate(bl%block_mean)
+        deallocate(bl%block_std)
+        deallocate(bl%block_cov)
+        deallocate(bl%reblock_save)
+        deallocate(bl%product_save)
+        deallocate(bl%err_comp)
 
         if (fciqmc_in%non_blocking_comm) call end_non_blocking_comm(sys, rng, qmc_in, annihilation_flags, ireport, &
                                                                     qs, qs%spawn_store%spawn_recv,  req_data_s,  &
