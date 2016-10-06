@@ -6,33 +6,47 @@ implicit none
 
 contains
 
-    subroutine allocate_blocking(qmc_in, bl)
+    subroutine allocate_blocking(qmc_in, blocking_in, bl)
 
         ! Allocate different arrays in blocking_t data according to the input
         ! options.
 
         ! In:
         !   qmc_in: input options relating to QMC methods.
+        !   blocking_in: input options for blocking on the fly.
         ! In/Out:
         !   bl: Information needed to peform blocking on the fly. Maximum block
         !       size, frequency at which the data for changing start position
         !       and number of possible start positions are determined
 
-        use qmc_data, only: qmc_in_t, blocking_t
+        use qmc_data, only: qmc_in_t, blocking_t, blocking_in_t
         use checking, only: check_allocate
 
         type(qmc_in_t), intent(in) :: qmc_in
         type(blocking_t), intent(inout) :: bl
+        type(blocking_in_t), intent(in) :: blocking_in
         integer :: ierr
 
         ! 2^(lg_max) is approximately 4 times larger than the nreport.
         bl%lg_max = nint(log(real(qmc_in%nreport))/log(2.0)) + 2
 
         ! Save frequency is approximately nreport/256.
-        ! Calculated by 2^(lg_max - 10)
-        bl%save_fq = 2 ** (bl%lg_max - 10)
+        ! Calculated by 2^(lg_max - 10) when start_save_frequency in blocking_in
+        ! is negative (Default). If it is specified, 2^(start_save_frequency) is
+        ! used.
+        if (blocking_in%start_save_frequency < 0) then
+            bl%save_fq = 2 ** (bl%lg_max - 10)
+        else
+            bl%save_fq = 2 ** (blocking_in%start_save_frequency)
+        end if
 
-        bl%n_saved_startpoints = int(qmc_in%nreport/(bl%save_fq))
+        ! number of saved startpoints is enough to cover the nreport in qmc_in
+        ! (default) unless specified in blocking_in.
+        if (blocking_in%start_point_number < 0) then
+            bl%n_saved_startpoints = int(qmc_in%nreport/(bl%save_fq))
+        else
+            bl%n_saved_startpoints = blocking_in%start_point_number
+        end if
 
         ! 1st column of reblock_data and reblock_data_2 is the number of blocks
         ! for different block sizes where the rows represent the block size from
@@ -85,6 +99,13 @@ contains
 
     subroutine deallocate_blocking(bl)
 
+        ! Deallocate different arrays in blocking_t data.
+
+        ! In/Out:
+        !   bl: Information needed to peform blocking on the fly. It is
+        !   unchanged in the output.
+
+
         use qmc_data, only: blocking_t
         use checking, only: check_deallocate
 
@@ -114,19 +135,26 @@ contains
 
     end subroutine deallocate_blocking
 
-    subroutine write_blocking_report_header
+    subroutine write_blocking_report_header(iunit)
 
-        write(7, '(1X, A)', advance = 'no') ('#iterations')
-        write(7, '(1X, A)', advance = 'no') ('Start point')
-        write(7, '(1X, A)', advance = 'no') ('Mean \sum H_0j N_j')
-        write(7, '(4X, A)', advance = 'no') ('Std \sum H_0j N_j')
-        write(7, '(4X, A)', advance = 'no') ('Error in error')
-        write(7, '(7X, A)', advance = 'no') ('Mean N_0')
-        write(7, '(12X, A)', advance = 'no') ('Std N_0')
-        write(7, '(12X, A)', advance = 'no') ('Error in error')
-        write(7, '(7X, A)', advance = 'no') ('Mean Proj. energy')
-        write(7, '(7X, A)') ('Std Proj. energy')
-        call flush(7)
+        ! Write the block analysis report to a file identified by iunit.
+
+        ! In:
+        !   iunit: identifies the file to which the header is written out to.
+
+        integer, intent(in) :: iunit
+
+        write(iunit, '(1X, A)', advance = 'no') ('#iterations')
+        write(iunit, '(1X, A)', advance = 'no') ('Start point')
+        write(iunit, '(1X, A)', advance = 'no') ('Mean \sum H_0j N_j')
+        write(iunit, '(4X, A)', advance = 'no') ('Std \sum H_0j N_j')
+        write(iunit, '(4X, A)', advance = 'no') ('Error in error')
+        write(iunit, '(7X, A)', advance = 'no') ('Mean N_0')
+        write(iunit, '(12X, A)', advance = 'no') ('Std N_0')
+        write(iunit, '(12X, A)', advance = 'no') ('Error in error')
+        write(iunit, '(7X, A)', advance = 'no') ('Mean Proj. energy')
+        write(iunit, '(7X, A)') ('Std Proj. energy')
+        call flush(iunit)
 
     end subroutine write_blocking_report_header
 
@@ -156,7 +184,6 @@ contains
         bl%reblock_data(2,:,1) = bl%reblock_data(2,:,1) + qs%estimators%proj_energy
         bl%reblock_data(2,:,2) = bl%reblock_data(2,:,2) + qs%estimators%D0_population
 
-        bl%n_reports_blocked = ireport - bl%start_ireport + 1
 
         ! Everytime enough data is collected for each block size, the sum in
         ! column 2 is divied by the block size and added to column 3 and squared
@@ -492,7 +519,7 @@ contains
             minimum(i) = minloc(bl%err_comp(:,i), dim = 1, mask = &
             (bl%err_comp(:,i)>0)) - 1
         end do
-
+        
         if (minimum(1) > minimum(2)) then
             bl%start_point = minimum(1)
         else
@@ -503,57 +530,108 @@ contains
 
     end subroutine err_comparison
 
-    subroutine do_blocking(bl, qs, qmc_in, ireport, iter)
+    subroutine do_blocking(bl, qs, qmc_in, ireport, iter, iunit, blocking_in)
 
-        use qmc_data, only: blocking_t, qmc_state_t, qmc_in_t
+        ! Carries out blocking on the fly and changes the start point to
+        ! minimise the fractional error in standard deviation weighted by the
+        ! number of data points.
 
-        type(blocking_t) :: bl
-        type(qmc_state_t) :: qs
-        type(qmc_in_t) :: qmc_in
-        integer :: ireport, iter, k
+        ! In:
+        !   qs: qmc_state where the data for current iteration is taken.
+        !   qmc_in: input options relating to QMC methods.
+        !   ireport: Number of reports.
+        !   iter: Number of iterations.
+        !   iunit: Number identifying the file to which the blocking report is
+        !   written out to.
+        !   blocking_in: input options for blocking on the fly.
+        ! In/Out:
+        !   bl: Information needed to peform blocking on the fly.
 
-        if (bl%start_ireport == 0 .and. &
-            qs%vary_shift(1) .eqv. .true.) then
+        use qmc_data, only: blocking_t, qmc_state_t, qmc_in_t, blocking_in_t
+
+        type(blocking_t), intent(inout) :: bl
+        type(qmc_state_t), intent(in) :: qs
+        type(qmc_in_t), intent(in) :: qmc_in
+        integer, intent(in) :: ireport, iter
+        integer :: k
+        integer, intent(in) :: iunit
+        type(blocking_in_t), intent(in) :: blocking_in
+
+        if (bl%start_ireport == -1 .and. blocking_in%start_point<0 .and. &
+            qs%vary_shift(1)) then
             bl%start_ireport = ireport
+        else if (blocking_in%start_point>0) then
+            bl%start_ireport = blocking_in%start_point/qmc_in%ncycles
         end if
 
         ! Once the shift is varied the data needed for reblocking is
         ! collected.
 
 ! [review] - CJCS: Can just write 'if (qs%vary_shift(1)) then'
-        if (qs%vary_shift(1) .eqv. .true.) then
+        if (ireport >= bl%start_ireport .and. bl%start_ireport>0) then
+            bl%n_reports_blocked = ireport - bl%start_ireport + 1
             call collect_data(qmc_in, qs, bl, ireport)
             call copy_block(bl, ireport)
         end if
 
         ! For every 50 reports, the optimal mean and standard deviation
         ! and the optimal error in error is calculated and printed.
-        if (mod(ireport,50) ==0 .and. qs%vary_shift(1) .eqv. .true.) then
+        if (mod(ireport,50) ==0 .and. ireport >= bl%start_ireport .and. &
+        bl%start_ireport>0) then
             call change_start(bl, ireport, bl%start_point)
             call mean_std_cov(bl)
             call find_optimal_block(bl)
-            write(7, '(1X, I8)', advance = 'no') iter
+            call write_blocking(bl, qmc_in, ireport, iter, iunit)
+        end if
+
+        if (mod(bl%n_reports_blocked,bl%save_fq) == 0 .and. bl%n_reports_blocked > 0) then
+            call err_comparison(bl, ireport)
+        end if
+    
+        end subroutine do_blocking
+
+
+
+        subroutine write_blocking(bl, qmc_in, ireport, iter, iunit)
+
+        ! Writes the blocking report the a separate output file.
+
+        ! In:
+        !   bl: Information needed to peform blocking on the fly.
+        !   qmc_in: input options relating to QMC methods.
+        !   ireport: Number of reports.
+        !   iter: Number of iterations.
+        !   iunit: Number identifying the file to which the blocking report is
+        !   written out to.
+
+        use qmc_data, only: blocking_t, qmc_in_t
+        use utils, only: get_free_unit
+
+        integer, intent(in) :: iunit
+        type(blocking_t), intent(in) :: bl
+        type(qmc_in_t), intent(in) :: qmc_in
+        integer, intent(in) :: ireport, iter
+
+            write(iunit, '(1X, I8)', advance = 'no') iter
            ! Prints the point from which reblock analysis is being
            ! carried out in terms of iterations.
-            write(7, '(1X, I8)', advance = 'no') &
-            ((bl%start_point*bl%save_fq+bl%start_ireport-1)*qmc_in%ncycles)
+            write(iunit, '(1X, I8)', advance = 'no') &
+            ((bl%start_point*bl%save_fq+bl%start_ireport)*qmc_in%ncycles)
            ! Prints the mean, standard deviation and the error in error for \sum
            ! H_0j N_j and N_0 and mean and standard deviation of projected
            ! energy. Returns 0 if there are insufficient data.
-            write(7, '(1X, ES20.7)', advance = 'no') (bl%optimal_mean(1))
-            write(7, '(1X, ES20.7)', advance = 'no') (bl%optimal_std(1))
-            write(7, '(1X, ES20.7)', advance = 'no') (bl%optimal_err(1))
-            write(7, '(1X, ES20.7)', advance = 'no') (bl%optimal_mean(2))
-            write(7, '(1X, ES20.7)', advance = 'no') (bl%optimal_std(2))
-            write(7, '(1X, ES20.7)', advance = 'no') (bl%optimal_err(2))
-            write(7, '(1X, ES20.7)', advance = 'no') (bl%optimal_mean(3))
-            write(7, '(1X, ES20.7)') (bl%optimal_std(3))
+            write(iunit, '(1X, ES20.7)', advance = 'no') (bl%optimal_mean(1))
+            write(iunit, '(1X, ES20.7)', advance = 'no') (bl%optimal_std(1))
+            write(iunit, '(1X, ES20.7)', advance = 'no') (bl%optimal_err(1))
+            write(iunit, '(1X, ES20.7)', advance = 'no') (bl%optimal_mean(2))
+            write(iunit, '(1X, ES20.7)', advance = 'no') (bl%optimal_std(2))
+            write(iunit, '(1X, ES20.7)', advance = 'no') (bl%optimal_err(2))
+            write(iunit, '(1X, ES20.7)', advance = 'no') (bl%optimal_mean(3))
+            write(iunit, '(1X, ES20.7)') (bl%optimal_std(3))
 
-            call flush(7)
-        end if
-        if (mod(bl%n_reports_blocked,bl%save_fq) == 0) then
-            call err_comparison(bl, ireport)
-        end if
+            call flush(iunit)
 
-    end subroutine do_blocking
+
+        end subroutine write_blocking
+
 end module blocking

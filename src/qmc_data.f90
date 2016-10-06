@@ -149,9 +149,6 @@ type qmc_in_t
     ! threshold
     real(p) :: quasi_newton_value = 1_p
 
-    ! Turn on on the fly reblock analysis
-    logical :: blocking_on_the_fly = .false.
-
 end type qmc_in_t
 
 type fciqmc_in_t
@@ -276,6 +273,26 @@ type output_in_t
     ! of calculation output file (if not to stout).
     logical :: reprint_sys_info = .true.
 end type output_in_t
+
+type blocking_in_t
+    ! Enable blocking on the fly.
+    logical :: blocking_on_the_fly = .false.
+    ! log2 of the frequency at which the start point is saved. If
+    ! negative, the default value is used. Default is the nearest integer to the 
+    ! log2(nreports) - 2
+    integer :: start_save_frequency = -1
+    ! Number of start points that is to be saved. If negative, the default value
+    ! is used. The default is the integer part of nreports/2^(start_save_frequency).
+    integer :: start_point_number = -1
+    ! Name blocking on the fly output file.
+    character(255) :: filename = 'BLOCKING'
+    ! The number of iteration from which the data for blocking analysis is
+    ! collected. If negative, the default value is used. Default is to start
+    ! collecting data once vary_shift is true.
+    integer :: start_point = -1
+
+end type
+
 
 ! --- Parallel info ---
 
@@ -520,52 +537,77 @@ type blocking_t
 ! [review] - CJCS:  reblock_data(data_types1,log2(blocksize),data_types2) = value
 ! [review] - CJCS: and defining all the different meanings would be a clearer
 ! [review] - CJCS: way to represent this.
-    ! Arrays in which block number and sums, sums of squares of \sum H_0j N_j
-    ! and the reference population and the product of \sum H_0j N_j and
-    ! reference population for each block is saved for each block size.
-    ! Block sizes are 2^n where n ranges from 0 to lg_max. 1st dimension of the
-    ! array contains the number of blocks for each block size, outstanding sum
-    ! not included in the block, sums corresponding to the block size and the
-    ! sums of the squares corresponding to the block size. 2nd dimesion
-    ! represents the different blocksizes. 2^(arraynumber) is the size of the
-    ! block. 3rd dimesnion has size 2 for the 2 sets of data, reference
-    ! population and \sum H_0j N_j. data_product contains the sums of the
-    ! products of two sets of data for each block size where the block size is
-    ! determined by 2^(arraynumber). reblock_data_2 and data_product_2 has the
-    ! same format.
-! [review] - CJCS: specify intended array dimensions here- see other definitions.
+    ! reblock_data: Array containing statistics to carry out blocking analysis of data up
+    ! until the current report cycle.
+    ! data_type = 1 corresponds to \sum H_0j N_j.
+    ! data_type = 2 corresponds to reference population.
+    ! reblock_data(1, log2(blocksize), data_type) = number of blocks of the
+    ! specified blocksize.
+    ! reblock_data(2, log2(blocksize), data_type) = sums of data_type that are
+    ! not included in the statistics yet because the number included in the sum
+    ! is too few to reach the blocksize.
+    ! reblock_data(3, log2(blocksize), data_type) = sums of blocks of data_type.
+    ! reblock_data(4, log2(blocksize), data_type) = sums of squares of blocks of
+    ! data_type.
+    ! data_product: Array containing the product of data_type 1 and data_type 2
+    ! for each blocksize
+    ! data_product(log2(blocksize)) = sums of product of the two data types of
+    ! the give block size.
     real(p), allocatable :: reblock_data(:,:,:), data_product(:)
     ! Arrays for calculation of optimal mean and standard deviation at different
     ! start points. reblock_data and data_product are temporarily copied before
-    ! the calculation on them is carried out
+    ! the calculation on them is carried out.
     real(p), allocatable :: reblock_data_2(:,:,:), data_product_2(:)
-    ! Mean, standard deviation and covariance of \sum H_0j N_j and reference
-    ! population at different block size.
+    ! Arrays containing the mean, standard deviation and covariance of all block
+    ! sizes
+    ! data_type = 1 corresponds to \sum H_0j Nj.
+    ! data_type = 2 corresponds to reference population.
+    ! block_mean(log2(blocksize), data_type) = mean of different block sizes of
+    ! data_type.
+    ! block_std(log2(blocksize), data_type) = standard deviation of different
+    ! block sizes of data_type.
+    ! block_cov(log2(blocksize)) = covariance of the two data types of different
+    ! block sizes.
 ! [review] - CJCS: specify different dimensions?
     real(p), allocatable :: block_mean(:,:), block_std(:,:), block_cov(:)
-    ! Mean of \sum H_0j N_j, reference population and the ratio between
-    ! the two calculated with optimal block size. Optimal block is the smallest
-    ! block that satisfies the condition B^3 > 2*(B*(number of blocks)) * (std(B)/std(0)) ^ 4
+    ! Optimal block is the smallest block that satisfies the condition
+    ! B^3 > 2*(B*(number of blocks)) * (std(B)/std(0)) ^ 4
+    ! data_type = 1 corresponds to \sum H_0j Nj.
+    ! data_type = 2 corresponds to reference population.
+    ! data_type = 3 corresponds to projected energy. (\sum H_0j Nj/N_0)
+    ! optimal_mean(data_type) = block_mean of the block with the optimal block
+    ! size for the data_type. For projected energy, the block size that is
+    ! larger of the data_type 1 and 2 is used.
     real(p) :: optimal_mean(3) = 0
 ! [review] - CJCS: Ratio between the two? I thought the convention for error propogation
 ! [review] - CJCS: in quotients is the combination in quadrature of the fractional error?
-    ! Standard deviation of \sum H_0j N_j, reference population and the ratio
-    ! between the two calculated with optimal block size. Optimal block is found
-    ! by the method identical to optimal_mean
+    ! Optimal block is the smallest block that satisfies the condition
+    ! B^3 > 2*(B*(number of blocks)) * (std(B)/std(0)) ^ 4
+    ! data_type = 1 corresponds to \sum H_0j Nj.
+    ! data_type = 2 corresponds to reference population.
+    ! data_type = 3 corresponds to projected energy. (\sum H_0j Nj/N_0)
+    ! optimal_std(data_type) = block_std of the block with the optimal block
+    ! size for the data_type. For projected energy, the block size that is
+    ! larger of the data_type 1 and 2 is used.
     real(p) :: optimal_std(3) = 0
     ! Error in standard deviation calculated assuming that the blocks are normally
     ! distributed from central limit theorm. 1/(sqrt(2*(number of blocks - 1)))
+    ! data_type = 1 corresponds to \sum H_0j Nj.
+    ! data_type = 2 corresponds to reference population.
+    ! optimal_err(data_type) = Error in standard deviation of data_type.
     real(p) :: optimal_err(2) = 0
     ! Report number from which the data for reblocking is collected.
-    integer :: start_ireport = 0
+    integer :: start_ireport = -1
     ! Arrays for saving the data for reblocking for the purpose of starting the
     ! reblock from a different start position in the middle of a calculation.
     ! The frequency and the number of reblock_data and data_product arrays saved
-    ! is determined by n_saved_startpoints and save_fq. 1st dimesion is the
-    ! different saved start points and the 2nd, 3rd and 4th dimension contains
-    ! the reblock_data for each start point.
+    ! is determined by n_saved_startpoints and save_fq.
+    ! reblock_save(start_point, :, :, :) = copy of reblock_data at the report
+    ! cycle (start_point * save_fq).
+    ! product_save(start_point, :) = copy of data_product at the report cycle
+    ! (start_point * save_fq).
     real(p), allocatable :: reblock_save(:,:,:,:), product_save(:,:)
-    ! (number of save start points point*save_fq) indicates the number of reports from which the reblock analysis
+    ! (start_point*save_fq) indicates the number of reports from which the reblock analysis
     ! is started from. This is varied during the calculation to minimise the
     ! fractional error weighted by the 1/sqrt(number of data points)
     integer :: start_point = 0
@@ -771,7 +813,6 @@ contains
         call json_write_key(js, 'quasi_newton', qmc%quasi_newton)
         call json_write_key(js, 'quasi_newton_threshold', qmc%quasi_newton_threshold)
         call json_write_key(js, 'quasi_newton_value', qmc%quasi_newton_value)
-        call json_write_key(js, 'blocking_on_the_fly', qmc%blocking_on_the_fly)
         call json_write_key(js, 'use_mpi_barriers', qmc%use_mpi_barriers, .true.)
         call json_object_end(js, terminal)
 
@@ -929,6 +970,37 @@ contains
         call json_object_end(js, terminal)
 
     end subroutine restart_in_t_json
+
+    subroutine blocking_in_t_json(js, blocking, terminal)
+
+        ! Serialise a blocking_in_t object in JSON format.
+
+        ! In/Out:
+        !   js: json_out_t controlling the output unit and handling JSON internal
+        !   state. Unchanged on output.
+        ! In:
+        !   blocking: blocking_in_t object containing blocking input values
+        !   (including any defaults set).
+        !   terminal (optional): if true, this is the last entry in the
+        !   enclosing JSON object. Default: false.
+        use json_out
+
+        type(json_out_t), intent(inout) :: js
+        type(blocking_in_t), intent(in) :: blocking
+        logical, intent(in), optional :: terminal
+
+        call json_object_init(js, 'blocking')
+        call json_write_key(js, 'blocking_on_the_fly', &
+        blocking%blocking_on_the_fly)
+        call json_write_key(js, 'start_save_frequency', &
+        blocking%start_save_frequency)
+        call json_write_key(js, 'start_point_number', &
+        blocking%start_point_number)
+        call json_write_key(js, 'filename', blocking%filename)
+        call json_write_key(js, 'start_point', blocking%start_point, .true.)
+        call json_object_end(js, terminal)
+
+    end subroutine blocking_in_t_json
 
     subroutine load_bal_in_t_json(js, lb, terminal)
 

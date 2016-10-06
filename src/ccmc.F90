@@ -262,7 +262,7 @@ implicit none
 contains
 
     subroutine do_ccmc(sys, qmc_in, ccmc_in, semi_stoch_in, restart_in, load_bal_in, reference_in, &
-                        logging_in, io_unit, qs, qmc_state_restart)
+                        logging_in, blocking_in, io_unit, qs, qmc_state_restart)
 
         ! Run the CCMC algorithm starting from the initial walker distribution
         ! using the timestep algorithm.
@@ -318,15 +318,17 @@ contains
         use replica_rdm, only: update_rdm, calc_rdm_energy, write_final_rdm
 
         use qmc_data, only: qmc_in_t, ccmc_in_t, semi_stoch_in_t, restart_in_t
+        use qmc_data, only: blocking_in_t
         use qmc_data, only: load_bal_in_t, qmc_state_t, annihilation_flags_t, estimators_t, blocking_t
         use qmc_data, only: qmc_in_t_json, ccmc_in_t_json, semi_stoch_in_t_json, restart_in_t_json
-
+        use qmc_data, only: blocking_in_t_json
         use reference_determinant, only: reference_t, reference_t_json
         use check_input, only: check_qmc_opts, check_ccmc_opts
         use json_out, only: json_out_t, json_object_init, json_object_end
         use hamiltonian_data
         use energy_evaluation, only: get_sanitized_projected_energy, get_sanitized_projected_energy_cmplx
         use blocking
+        use utils, only: get_free_unit
 
         use logging, only: init_logging, end_logging, prep_logging_mc_cycle, write_logging_calc_ccmc
         use logging, only: logging_in_t, logging_t, logging_in_t_json, logging_t_json, write_logging_select_ccmc
@@ -334,6 +336,7 @@ contains
         type(sys_t), intent(in) :: sys
         type(qmc_in_t), intent(in) :: qmc_in
         type(ccmc_in_t), intent(in) :: ccmc_in
+        type(blocking_in_t), intent(in) :: blocking_in
         type(semi_stoch_in_t), intent(in) :: semi_stoch_in
         type(restart_in_t), intent(in) :: restart_in
         type(load_bal_in_t), intent(in) :: load_bal_in
@@ -383,7 +386,7 @@ contains
         real(p), allocatable :: rdm(:,:)
 
         type(blocking_t) :: bl
-        integer :: k,j
+        integer :: k,j, iunit
         integer :: optimal_size(2)
 
         if (parent) then
@@ -425,6 +428,7 @@ contains
             call reference_t_json(js, qs%ref, sys)
             call logging_in_t_json(js, logging_in)
             call logging_t_json(js, logging_info, terminal=.true.)
+            call blocking_in_t_json(js, blocking_in)
             call json_object_end(js, terminal=.true., tag=.true.)
             write (js%io, '()')
         end if
@@ -512,8 +516,14 @@ contains
             call decode_det(sys%basis, ref_det%f, ref_det%occ_list)
         end if
 
-        if (parent .and. qmc_in%blocking_on_the_fly)  call write_blocking_report_header
-        if (qmc_in%blocking_on_the_fly) call allocate_blocking(qmc_in, bl)
+        if (parent .and. blocking_in%blocking_on_the_fly) then
+            iunit = get_free_unit()
+            open(iunit, file=blocking_in%filename, status='unknown')
+            call write_blocking_report_header(iunit)
+        end if
+
+        if (blocking_in%blocking_on_the_fly) call allocate_blocking(qmc_in, &
+        blocking_in, bl)
         do ireport = 1, qmc_in%nreport
 
             ! Projected energy from last report loop to correct death
@@ -830,7 +840,7 @@ contains
                 call write_qmc_report(qmc_in, qs, ireport, nparticles_old, t2-t1, .false., .false., &
                                         io_unit=io_unit, cmplx_est=sys%read_in%comp, rdm_energy=ccmc_in%density_matrices, &
                                         nattempts=.true.)
-                if (qmc_in%blocking_on_the_fly) call do_blocking(bl, qs, qmc_in, ireport, iter)
+                if (blocking_in%blocking_on_the_fly) call do_blocking(bl, qs, qmc_in, ireport, iter, iunit, blocking_in)
             end if
 
             ! Update the time for the start of the next iteration.
@@ -848,7 +858,8 @@ contains
         end do
 
 
-        if (qmc_in%blocking_on_the_fly) call deallocate_blocking(bl)
+        if (blocking_in%blocking_on_the_fly) call deallocate_blocking(bl)
+        if (blocking_in%blocking_on_the_fly) close(iunit, status='keep')
 
         if (parent) write (io_unit,'()')
         call write_bloom_report(bloom_stats, io_unit=io_unit)

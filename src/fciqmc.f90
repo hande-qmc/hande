@@ -10,7 +10,7 @@ implicit none
 contains
 
     subroutine do_fciqmc(sys, qmc_in, fciqmc_in, semi_stoch_in, restart_in, load_bal_in, io_unit, &
-                         reference_in, logging_in, qs, qmc_state_restart)
+                         reference_in, logging_in, blocking_in, qs, qmc_state_restart)
 
         ! Run the FCIQMC or initiator-FCIQMC algorithm starting from the initial walker
         ! distribution using the timestep algorithm.
@@ -65,7 +65,7 @@ contains
         use qmc_data, only: qmc_in_t, fciqmc_in_t, semi_stoch_in_t, restart_in_t, load_bal_in_t, empty_determ_space, &
                             qmc_state_t, annihilation_flags_t, semi_stoch_separate_annihilation, qmc_in_t_json,      &
                             fciqmc_in_t_json, semi_stoch_in_t_json, restart_in_t_json, load_bal_in_t_json, &
-                            blocking_t
+                            blocking_t, blocking_in_t, blocking_in_t_json
         use reference_determinant, only: reference_t, reference_t_json
         use check_input, only: check_qmc_opts, check_fciqmc_opts, check_load_bal_opts
         use hamiltonian_data
@@ -74,6 +74,7 @@ contains
         use logging, only: init_logging, end_logging, prep_logging_mc_cycle, write_logging_calc_fciqmc, &
                             logging_in_t, logging_t, logging_in_t_json, logging_t_json
         use blocking
+        use utils, only: get_free_unit
 
         type(sys_t), intent(in) :: sys
         type(qmc_in_t), intent(in) :: qmc_in
@@ -84,6 +85,7 @@ contains
         type(reference_t), intent(in) :: reference_in
         type(qmc_state_t), intent(inout), optional :: qmc_state_restart
         type(qmc_state_t), intent(out), target :: qs
+        type(blocking_in_t), intent(in) :: blocking_in
 
         type(logging_in_t), intent(in) :: logging_in
         integer, intent(in) :: io_unit
@@ -118,7 +120,7 @@ contains
         logical :: update_tau, restarting, imag
 
         type(blocking_t) :: bl
-        integer :: i,j
+        integer :: i,j, iunit
 
 
 
@@ -152,6 +154,7 @@ contains
             call fciqmc_in_t_json(js, fciqmc_in)
             call semi_stoch_in_t_json(js, semi_stoch_in)
             call restart_in_t_json(js, restart_in, uuid_restart)
+            call blocking_in_t_json(js, blocking_in)
             call load_bal_in_t_json(js, load_bal_in)
             call reference_t_json(js, qs%ref, sys)
             call logging_in_t_json(js, logging_in)
@@ -211,8 +214,15 @@ contains
         ! Initialise timer.
         call cpu_time(t1)
         ! Allocate arrays needed for reblock analysis
-        if (qmc_in%blocking_on_the_fly) call allocate_blocking(qmc_in, bl)
-        if (parent .and. qmc_in%blocking_on_the_fly) call write_blocking_report_header
+        if (blocking_in%blocking_on_the_fly) call allocate_blocking(qmc_in, &
+        blocking_in, bl)
+
+        if (parent .and. blocking_in%blocking_on_the_fly) then
+            iunit = get_free_unit()
+            open(iunit, file=blocking_in%filename, status='unknown')
+            call write_blocking_report_header(iunit)
+        end if
+
         do ireport = 1, qmc_in%nreport
 
             qs%estimators%proj_energy_old = get_sanitized_projected_energy(qs)
@@ -345,7 +355,7 @@ contains
                 call write_qmc_report(qmc_in, qs, ireport, nparticles_old, t2-t1, .false., &
                                         fciqmc_in%non_blocking_comm, io_unit=io_unit, cmplx_est=sys%read_in%comp)
 
-                if (qmc_in%blocking_on_the_fly) call do_blocking(bl, qs, qmc_in, ireport, iter)
+                if (blocking_in%blocking_on_the_fly) call do_blocking(bl, qs, qmc_in, ireport, iter, iunit, blocking_in)
             end if
 
             ! Update the time for the start of the next iteration.
@@ -365,7 +375,8 @@ contains
 
         end do
 
-        if (qmc_in%blocking_on_the_fly) call deallocate_blocking(bl)
+        if (blocking_in%blocking_on_the_fly) call deallocate_blocking(bl)
+        if (blocking_in%blocking_on_the_fly) close(iunit, status='keep')
 
         if (fciqmc_in%non_blocking_comm) call end_non_blocking_comm(sys, rng, qmc_in, annihilation_flags, ireport, &
                                                                     qs, qs%spawn_store%spawn_recv,  req_data_s,  &
