@@ -510,12 +510,12 @@ type blocking_t
     integer :: n_saved_startpoints = 0
     ! Frequency at which the data for the start point is saved. In terms of the
     ! number of reports
-    integer :: save_fq = 0 
+    integer :: save_fq = 0
     ! Number of report cycles from the start of all blocking to the current
     ! cycle.
     integer :: n_reports_blocked = 0
-    ! Arrays in which block number and sums, sums of squares of projected energy
-    ! and the reference population and the product of projected energy and 
+    ! Arrays in which block number and sums, sums of squares of \sum H_0j N_j
+    ! and the reference population and the product of \sum H_0j N_j and
     ! reference population for each block is saved for each block size.
     ! Block sizes are 2^n where n ranges from 0 to lg_max. 1st dimension of the
     ! array contains the number of blocks for each block size, outstanding sum
@@ -523,7 +523,7 @@ type blocking_t
     ! sums of the squares corresponding to the block size. 2nd dimesion
     ! represents the different blocksizes. 2^(arraynumber) is the size of the
     ! block. 3rd dimesnion has size 2 for the 2 sets of data, reference
-    ! population and proj. energy. data_product contains the sums of the
+    ! population and \sum H_0j N_j. data_product contains the sums of the
     ! products of two sets of data for each block size where the block size is
     ! determined by 2^(arraynumber). reblock_data_2 and data_product_2 has the
     ! same format.
@@ -532,14 +532,14 @@ type blocking_t
     ! start points. reblock_data and data_product are temporarily copied before
     ! the calculation on them is carried out
     real(p), allocatable :: reblock_data_2(:,:,:), data_product_2(:)
-    ! Mean, standard deviation and covariance of projected energy and reference
+    ! Mean, standard deviation and covariance of \sum H_0j N_j and reference
     ! population at different block size.
     real(p), allocatable :: block_mean(:,:), block_std(:,:), block_cov(:)
-    ! Mean of project energy, reference population and the ratio between
+    ! Mean of \sum H_0j N_j, reference population and the ratio between
     ! the two calculated with optimal block size. Optimal block is the smallest
     ! block that satisfies the condition B^3 > 2*(B*(number of blocks)) * (std(B)/std(0)) ^ 4
     real(p) :: optimal_mean(3) = 0
-    ! Standard deviation of projected energy, reference population and the ratio
+    ! Standard deviation of \sum H_0j N_j, reference population and the ratio
     ! between the two calculated with optimal block size. Optimal block is found
     ! by the method identical to optimal_mean
     real(p) :: optimal_std(3) = 0
@@ -560,9 +560,9 @@ type blocking_t
     ! fractional error weighted by the 1/sqrt(number of data points)
     integer :: start_point = 0
     ! Array containing the different values of fractional error weighted by the
-    ! 1/sqrt(number of data points) for each of the possible start positions. 
-    real(p), allocatable :: err_comp(:,:)   
-    integer :: optimal_size(2) 
+    ! 1/sqrt(number of data points) for each of the possible start positions.
+    real(p), allocatable :: err_comp(:,:)
+    integer :: optimal_size(2)
 end type blocking_t
 
 type estimators_t

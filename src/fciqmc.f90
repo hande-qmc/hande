@@ -117,10 +117,10 @@ contains
         real :: t1, t2
         logical :: update_tau, restarting, imag
 
-        type(blocking_t) :: bl 
+        type(blocking_t) :: bl
         integer :: i,j
 
-        
+
 
         if (parent) then
             write (io_unit,'(1X,"FCIQMC")')
@@ -210,10 +210,9 @@ contains
         end if
         ! Initialise timer.
         call cpu_time(t1)
-        print *, qmc_in%blocking_on_the_fly        
         ! Allocate arrays needed for reblock analysis
         if (qmc_in%blocking_on_the_fly) call allocate_blocking(qmc_in, bl)
-
+        if (parent .and. qmc_in%blocking_on_the_fly) call write_blocking_report_header
         do ireport = 1, qmc_in%nreport
 
             qs%estimators%proj_energy_old = get_sanitized_projected_energy(qs)

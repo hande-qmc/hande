@@ -897,6 +897,7 @@ contains
         !     use_mpi_barriers = true/false,
         !     vary_shift_from = shift or "proje",
         !     vary_shift = true/false,
+        !     blocking_on_the_fly = true/false
         ! }
 
         ! In/Out:
