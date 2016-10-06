@@ -68,21 +68,14 @@ type selection_data_t
     ! i that should use combination j.
     ! cluster_sizes_info(i)%v(j,k) contains number of excitors of excitation
     ! level k in allowed combination j.
-    type(alloc_int2d), allocatable :: cluster_sizes_info(:) ! (ex_level)
+    type(alloc_int2d), allocatable :: cluster_sizes_info(:) ! (ex_level+2)
     ! Info on the proportion of selections at a particular excitation level
     ! that should use a particular combination of excitor sizes.
-    type(alloc_rdp1d), allocatable :: cluster_sizes_proportion(:) ! (ex_level)
-    ! Population per excitation level; used to set selection probabilty
-    ! between different possible size distribution clusters.
-    integer(int_64), allocatable :: population_excitation_level(:) ! (ex_level)
+    type(alloc_rdp1d), allocatable :: cluster_sizes_proportion(:) ! (ex_level+2)
     ! Proportion of selections at each cluster size.
     real(dp), allocatable :: size_weighting(:) ! (0:ex_level+2)
     ! Cumulative probability of selecting cluster of a given size.
     real(dp), allocatable :: cumulative_size_weighting(:) ! (0:ex_level+2)
-    ! Actual distributions of psize for use within calculation, only
-    ! including possible cluster sizes.
-    real(dp), allocatable :: effective_size_weighting(:)
-    real(dp), allocatable :: cumulative_effective_size_weighting(:)
     ! Average amplitude of \prod_i |N_I| / p_{select} for clusters of a given
     ! size.
     real(dp), allocatable :: average_amplitude(:) ! (0:ex_level+2)
@@ -92,9 +85,9 @@ end type selection_data_t
 
 type ex_lvl_dist_t
     ! Number of occupied excitors at each excitation level.
-    integer(int_64), allocatable :: nstates_ex_lvl(:)
+    integer, allocatable :: nstates_ex_lvl(:)
     ! Cumulative number of occupied excitors at each excitation level.
-    integer(int_64), allocatable :: cumulative_nstates_ex_lvl(:)
+    integer, allocatable :: cumulative_nstates_ex_lvl(:)
     ! Population of excips on occupied excitors at each excitation level.
     real(p), allocatable :: pop_ex_lvl(:)
     ! Cumulative population of excips on occupied excitors at each excitation level.
@@ -188,10 +181,6 @@ contains
         if (allocated(sd%cluster_sizes_proportion)) then
             call dealloc_real1d(sd%cluster_sizes_proportion)
         end if
-        if (allocated(sd%population_excitation_level)) then
-            deallocate(sd%population_excitation_level, stat=ierr)
-            call check_deallocate('population_excitation_level', ierr)
-        end if
         if (allocated(sd%size_weighting)) then
             deallocate(sd%size_weighting, stat=ierr)
             call check_deallocate('size_weighting', ierr)
@@ -199,14 +188,6 @@ contains
         if (allocated(sd%cumulative_size_weighting)) then
             deallocate(sd%cumulative_size_weighting, stat=ierr)
             call check_deallocate('cumulative_size_weighting', ierr)
-        end if
-        if (allocated(sd%effective_size_weighting)) then
-            deallocate(sd%effective_size_weighting, stat=ierr)
-            call check_deallocate('effective_size_weighting', ierr)
-        end if
-        if (allocated(sd%cumulative_effective_size_weighting)) then
-            deallocate(sd%cumulative_effective_size_weighting, stat=ierr)
-            call check_deallocate('cumulative_effective_size_weighting', ierr)
         end if
         if (allocated(sd%average_amplitude)) then
             deallocate(sd%average_amplitude, stat=ierr)

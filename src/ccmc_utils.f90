@@ -7,6 +7,11 @@ use const, only: i0, p, int_p, dp, int_64
 
 implicit none
 
+interface update_noncumulative_dist_int
+    module procedure update_noncumulative_dist_int_32
+    module procedure update_noncumulative_dist_int_64
+end interface
+
 contains
 
     subroutine find_D0(psip_list, f0, D0_pos)
@@ -107,6 +112,7 @@ contains
 
         excitor_loc = excitor
         call remove_ex_level_bit_string(basis%string_len, excitor_loc)
+        call remove_ex_level_bit_string(basis%string_len, cluster_excitor)
 
         ! Apply excitor to the cluster of excitors.
 
@@ -663,7 +669,7 @@ contains
 
         type(ex_lvl_dist_t), intent(inout) :: ex_lvl_dist
 
-        call update_noncumulative_dist_int64(ex_lvl_dist%cumulative_nstates_ex_lvl, ex_lvl_dist%nstates_ex_lvl)
+        call update_noncumulative_dist_int(ex_lvl_dist%cumulative_nstates_ex_lvl, ex_lvl_dist%nstates_ex_lvl)
         call update_noncumulative_dist_realp(ex_lvl_dist%cumulative_pop_ex_lvl, ex_lvl_dist%pop_ex_lvl)
 
     end subroutine update_ex_lvl_dist
@@ -704,7 +710,22 @@ contains
 
     end subroutine update_cumulative_dist_real
 
-    subroutine update_noncumulative_dist_int64(cumulative_dist, dist)
+    subroutine update_noncumulative_dist_int_32(cumulative_dist, dist)
+
+        use const, only: int_32
+
+        integer(int_32), intent(inout), allocatable :: dist(:)
+        integer(int_32), intent(inout), allocatable :: cumulative_dist(:)
+        integer :: i
+
+        dist(lbound(cumulative_dist,dim=1)) = cumulative_dist(lbound(dist,dim=1))
+        do i = lbound(cumulative_dist, dim=1) + 1, ubound(cumulative_dist, dim=1)
+            dist(i) = cumulative_dist(i) - cumulative_dist(i-1)
+        end do
+
+    end subroutine update_noncumulative_dist_int_32
+
+    subroutine update_noncumulative_dist_int_64(cumulative_dist, dist)
 
         use const, only: int_64
 
@@ -717,7 +738,7 @@ contains
             dist(i) = cumulative_dist(i) - cumulative_dist(i-1)
         end do
 
-    end subroutine update_noncumulative_dist_int64
+    end subroutine update_noncumulative_dist_int_64
 
     subroutine update_noncumulative_dist_realp(cumulative_dist, dist)
 

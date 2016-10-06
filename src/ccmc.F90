@@ -296,7 +296,7 @@ contains
         use bloom_handler, only: init_bloom_stats_t, bloom_stats_t, bloom_mode_fractionn, &
                                  write_bloom_report, bloom_stats_warning, update_bloom_threshold_prop
         use ccmc_data
-        use ccmc_selection, only: select_cluster, create_null_cluster, select_nc_cluster
+        use ccmc_selection, only: select_cluster, create_null_cluster, select_nc_cluster, init_selection_data
         use ccmc_death_spawning, only: stochastic_ccmc_death_nc
         use ccmc_utils, only: init_contrib, dealloc_contrib, find_D0, cumulative_population
         use determinants, only: det_info_t, alloc_det_info_t, dealloc_det_info_t, sum_sp_eigenvalues_occ_list, &
@@ -469,6 +469,8 @@ contains
         dump_restart_shift = restart_in%write_restart_shift
         call init_restart_info_t(ri, write_id=restart_in%write_id)
         call init_restart_info_t(ri_shift, write_id=restart_in%write_shift_id)
+
+        call init_selection_data(qs%ref%ex_level, selection_data)
 
         if (ccmc_in%density_matrices) then
             associate(nbasis=>sys%basis%nbasis)
