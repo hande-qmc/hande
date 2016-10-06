@@ -426,9 +426,9 @@ contains
             call semi_stoch_in_t_json(js, semi_stoch_in)
             call restart_in_t_json(js, restart_in, uuid_restart)
             call reference_t_json(js, qs%ref, sys)
+            call blocking_in_t_json(js, blocking_in)
             call logging_in_t_json(js, logging_in)
             call logging_t_json(js, logging_info, terminal=.true.)
-            call blocking_in_t_json(js, blocking_in)
             call json_object_end(js, terminal=.true., tag=.true.)
             write (js%io, '()')
         end if
