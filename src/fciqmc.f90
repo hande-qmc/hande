@@ -210,7 +210,8 @@ contains
         end if
         ! Initialise timer.
         call cpu_time(t1)
-
+        
+        ! Allocate arrays needed for reblock analysis
         call allocate_arrays(qmc_in, bl)
 
         do ireport = 1, qmc_in%nreport
@@ -348,25 +349,27 @@ contains
                 if (qs%vary_shift(1) .eqv. .true. .and. bl%start_ireport == 0) then
                     bl%start_ireport = ireport
                 end if
-                
+
+                ! Once the shift is varied the data needed for reblocking is
+                ! collected. 
+
                 if (qs%vary_shift(1) .eqv. .true.) then
                     call collect_data(qmc_in, qs, bl, ireport)
                     call copy_block(bl, ireport)
                 end if
 
+                ! For every 50 reports, the optimal mean and standard deviation
+                ! and the optimal error in error is calculated and printed.
                 if (mod(ireport,50) ==0 .and. qs%vary_shift(1) .eqv. .true.) then
                     
                     call change_start(bl, ireport, bl%start_point)
                     call mean_std_cov(bl)
                     call find_optimal_block(bl)
 
-!                write(7, '(1X, 20ES20.7)')(bl%reblock_data(1, i, 1), i = 1, &
-!               bl%max_2n)
                     write(7, '(1X, I8)') iter
+                    ! Prints the point from which reblock analysis is being
+                    ! carried out.
                     write(7, '(1X, I8)') bl%start_point 
-!                    write(7, '(1X, 20ES20.7)')(bl%block_mean(i,1), i = 1, &
-!                    bl%max_2n)
-!                    write(7, '(1X, 20ES20.7)')(bl%block_std(i,1), i = 1,bl%max_2n)
                     write(7, '(1X, 3ES20.7)', advance = 'no') (bl%optimal_mean(i), i = 1, 3)
                     write(7, '(1X, 3ES20.7)') (bl%optimal_std(i), i = 1, 3)
                     write(7, '(1X, 2ES20.7)') (bl%optimal_err(i), i = 1,2)
@@ -375,6 +378,9 @@ contains
 
                     call flush(7)
                 end if
+
+                ! Every 2*save_fq reports, the start position of reblock
+                ! analysis is updated
 
                 if (mod(bl%report,2*bl%save_fq) == 0) then
                     call err_comparison(bl, ireport)

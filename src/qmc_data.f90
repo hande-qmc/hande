@@ -501,17 +501,50 @@ type spawned_particle_t
 end type spawned_particle_t
 
 type blocking_t
-
-    integer :: max_2n, save_number, save_fq, report
+    ! Log to the base 2 of maximum block size.
+    integer :: max_2n
+    ! Number of start points to start reblocking from.
+    integer :: save_number
+    ! Frequency at which the data for the start point is saved.
+    integer :: save_fq
+    ! Number of reports from the time the data for reblocking is collected.
+    integer :: report
+    ! Arrays in which block number and sums, sums of squares of projected energy
+    ! and the reference population and the product of projected energy and 
+    ! reference population for each block is saved for each block size.
+    ! Block sizes are 2^n where n ranges from 0 to max_2n
     real(p), allocatable :: reblock_data(:,:,:), data_product(:)
+    ! Arrays for calculation of optimal mean and standard deviation at different
+    ! start points. reblock_data and data_product are temporarily copied before
+    ! the calculation on them is carried out
     real(p), allocatable :: reblock_data_2(:,:,:), data_product_2(:)
+    ! Mean, standard deviation and covariance of projected energy and reference
+    ! population at different block size.
     real(p), allocatable :: block_mean(:,:), block_std(:,:), block_cov(:)
+    ! Mean of project energy, reference population and the ratio between
+    ! the two calculated with optimal block size. Optimal block is the smallest
+    ! block that satisfies the condition B^3 > 2*(B*(number of blocks)) * (std(B)/std(0)) ^ 4
     real(p) :: optimal_mean(3) = 0
+    ! Standard deviation of projected energy, reference population and the ratio
+    ! between the two calculated with optimal block size. Optimal block is found
+    ! by the method identical to optimal_mean
     real(p) :: optimal_std(3) = 0
+    ! Error in standard deviation calculated assuming that the blocks are normally
+    ! distributed from central limit theorm. 1/(sqrt(2*(number of blocks - 1)))
     real(p) :: optimal_err(2) = 0
+    ! Report number from which the data for reblocking is collected.
     integer :: start_ireport = 0
+    ! Arrays for saving the data for reblocking for the purpose of starting the
+    ! reblock from a different start position in the middle of a calculation.
+    ! The frequency and the number of reblock_data and data_product arrays saved
+    ! is determined by save_number and save_fq
     real(p), allocatable :: reblock_save(:,:,:,:), product_save(:,:)
+    ! (Save point*save_fq) indicates the number of reports from which the reblock analysis
+    ! is started from. This is varied during the calculation to minimise the
+    ! fractional error weighted by the 1/sqrt(number of data points)
     integer :: start_point = 0
+    ! Array containing the different values of fractional error weighted by the
+    ! 1/sqrt(number of data points) for each of the possible start positions. 
     real(p), allocatable :: err_comp(:,:)    
 end type blocking_t
 
