@@ -343,6 +343,9 @@ contains
         if (sys%read_in%comp .and. ccmc_in%density_matrices) &
                 call stop_all(this, 'RDMS not yet implemented for complex CCMC.')
 
+        if (ccmc_in%even_selection .and. .not. ccmc_in%full_nc) call &
+                stop_all(this, "Improved selection routines currently only work with full noncomposite enabled.")
+
     end subroutine check_ccmc_opts
 
 end module check_input

@@ -296,9 +296,11 @@ contains
         use bloom_handler, only: init_bloom_stats_t, bloom_stats_t, bloom_mode_fractionn, &
                                  write_bloom_report, bloom_stats_warning, update_bloom_threshold_prop
         use ccmc_data
-        use ccmc_selection, only: select_cluster, create_null_cluster, select_nc_cluster, init_selection_data
+        use ccmc_selection, only: select_cluster, create_null_cluster, select_nc_cluster, select_cluster_truncated
+        use ccmc_selection, only: init_selection_data, update_selection_probabilities, set_psize_selections
         use ccmc_death_spawning, only: stochastic_ccmc_death_nc
-        use ccmc_utils, only: init_contrib, dealloc_contrib, find_D0, cumulative_population
+        use ccmc_utils, only: init_contrib, dealloc_contrib, find_D0, cumulative_population, init_ex_lvl_dist_t, &
+                              update_ex_lvl_dist
         use determinants, only: det_info_t, alloc_det_info_t, dealloc_det_info_t, sum_sp_eigenvalues_occ_list, &
                                 sum_sp_eigenvalues_bit_string, decode_det
         use excitations, only: excit_t, get_excitation_level, get_excitation
@@ -338,7 +340,7 @@ contains
         type(qmc_state_t), intent(inout), optional :: qmc_state_restart
 
         integer :: i, ireport, icycle, iter, semi_stoch_iter, it
-        integer(int_64) :: iattempt, nattempts, nclusters, nstochastic_clusters, nsingle_excitors, nD0_select
+        integer(int_64) :: iattempt, nattempts
         integer(int_64) :: nattempts_spawn
         real(dp), allocatable :: nparticles_old(:), nparticles_change(:)
         type(det_info_t) :: ref_det
@@ -443,6 +445,11 @@ contains
         allocate(cumulative_abs_real_pops(size(qs%psip_list%states,dim=2)), stat=ierr)
         call check_allocate('cumulative_abs_real_pops', size(qs%psip_list%states, dim=2), ierr)
 
+        if (ccmc_in%even_selection) then
+            call init_selection_data(qs%ref%ex_level, selection_data)
+            call init_ex_lvl_dist_t(qs%ref%ex_level, ex_lvl_dist)
+        end if
+
         nparticles_old = qs%psip_list%tot_nparticles
 
         ! Initialise D0_pos to be somewhere (anywhere) in the list.
@@ -469,8 +476,6 @@ contains
         dump_restart_shift = restart_in%write_restart_shift
         call init_restart_info_t(ri, write_id=restart_in%write_id)
         call init_restart_info_t(ri_shift, write_id=restart_in%write_shift_id)
-
-        call init_selection_data(qs%ref%ex_level, selection_data)
 
         if (ccmc_in%density_matrices) then
             associate(nbasis=>sys%basis%nbasis)
@@ -590,6 +595,12 @@ contains
 
                 call update_bloom_threshold_prop(bloom_stats, nparticles_old(1))
 
+                if (ccmc_in%even_selection) then
+                    call update_ex_lvl_dist(ex_lvl_dist)
+                    call update_selection_probabilities(cumulative_abs_real_pops, ex_lvl_dist, &
+                                                    abs(D0_normalisation), tot_abs_real_pop, selection_data)
+                end if
+
 
                 ! Two options for evolution:
 
@@ -611,17 +622,20 @@ contains
                     ! out how many clusters of each type we will sample
                     ! explicitly.
                     min_cluster_size = 2
-                    nD0_select = nint(abs(D0_normalisation))
-                    nstochastic_clusters = ceiling(tot_abs_real_pop)
-                    nsingle_excitors = qs%psip_list%nstates
+                    selection_data%nD0_select = nint(abs(D0_normalisation))
+                    selection_data%nstochastic_clusters = ceiling(tot_abs_real_pop)
+                    selection_data%nsingle_excitors = qs%psip_list%nstates
+                    if (ccmc_in%even_selection) call set_psize_selections(selection_data, max_cluster_size)
                 else
                     min_cluster_size = 0
-                    nD0_select = 0 ! instead of this number of deterministic selections, these are chosen stochastically
-                    nstochastic_clusters = nattempts
-                    nsingle_excitors = 0
+                    selection_data%nclusters = nattempts
+                    selection_data%nD0_select = 0 ! instead of this number of deterministic selections, these are chosen stochastically
+                    selection_data%nstochastic_clusters = nattempts
+                    selection_data%nsingle_excitors = 0
                 end if
 
-                nclusters = nD0_select + nstochastic_clusters + nsingle_excitors
+                selection_data%nclusters = selection_data%nD0_select + selection_data%nstochastic_clusters + &
+                                            selection_data%nsingle_excitors
 
                 ! OpenMP chunk size determined completely empirically from a single
                 ! test.  Please feel free to improve...
@@ -633,9 +647,9 @@ contains
                 !$omp private(it, iexcip_pos, i, seen_D0) &
                 !$omp shared(nattempts, rng, cumulative_abs_real_pops, tot_abs_real_pop,  &
                 !$omp        max_cluster_size, contrib, D0_normalisation, D0_pos, rdm,    &
-                !$omp        nD0_select, qs, sys, bloom_stats, min_cluster_size, ref_det, &
-                !$omp        proj_energy_cycle, D0_population_cycle, nclusters,           &
-                !$omp        nstochastic_clusters, nattempts_spawn, nsingle_excitors,     &
+                !$omp        qs, sys, bloom_stats, min_cluster_size, ref_det,             &
+                !$omp        proj_energy_cycle, D0_population_cycle, selection_data,      &
+                !$omp        nattempts_spawn, &
                 !$omp        ccmc_in, nprocs, ms_stats, qmc_in, load_bal_in, ndeath_nc,   &
                 !$omp        nparticles_change, ndeath, ndeath_nc_im, logging_info)
                 it = get_thread_id()
@@ -644,14 +658,14 @@ contains
                 proj_energy_cycle = cmplx(0.0, 0.0, p)
                 D0_population_cycle = cmplx(0.0, 0.0, p)
                 !$omp do schedule(dynamic,200) reduction(+:D0_population_cycle,proj_energy_cycle,nattempts_spawn,ndeath)
-                do iattempt = 1, nclusters
-                    if (iattempt <= nsingle_excitors) then
+                do iattempt = 1, selection_data%nclusters
+                    if (iattempt <= selection_data%nsingle_excitors) then
                         ! As noncomposite clusters can't be above truncation level or linked-only all can accumulate +
                         ! propagate. Only need to check not selecting the reference as we treat it separately.
                         if (iattempt /= D0_pos) then
                             ! Deterministically select each excip as a non-composite cluster.
                             call select_nc_cluster(sys, qs%psip_list, qs%ref%f0, &
-                                        iattempt, qmc_in%initiator_pop, &
+                                        iattempt, qmc_in%initiator_pop, ccmc_in%even_selection, &
                                         contrib(it)%cdet, contrib(it)%cluster)
 
                             if (qs%propagator%quasi_newton) contrib(it)%cdet%fock_sum = &
@@ -665,11 +679,20 @@ contains
 
                     ! For OpenMP scalability, have this test inside a single loop rather
                     ! than attempt to parallelise over three separate loops.
-                    else if (iattempt <= nsingle_excitors + nstochastic_clusters) then
-                        call select_cluster(rng(it), sys, qs%psip_list, qs%ref%f0, qs%ref%ex_level, ccmc_in%linked, &
-                                            nstochastic_clusters, D0_normalisation, qmc_in%initiator_pop, D0_pos, &
+                    else if (iattempt <= selection_data%nsingle_excitors + selection_data%nstochastic_clusters) then
+                        if (ccmc_in%even_selection) then
+                            call select_cluster_truncated(rng(it), sys, qs%psip_list, qs%ref%f0, &
+                                                        selection_data%nstochastic_clusters, D0_normalisation, &
+                                                        qmc_in%initiator_pop, selection_data, cumulative_abs_real_pops, &
+                                                        qs%ref%ex_level, min_cluster_size, max_cluster_size, &
+                                                        ex_lvl_dist, contrib(it)%cluster, contrib(it)%cdet)
+
+                        else
+                            call select_cluster(rng(it), sys, qs%psip_list, qs%ref%f0, qs%ref%ex_level, ccmc_in%linked, &
+                                            selection_data%nstochastic_clusters, D0_normalisation, qmc_in%initiator_pop, D0_pos, &
                                             cumulative_abs_real_pops, tot_abs_real_pop, min_cluster_size, max_cluster_size, &
                                             logging_info, contrib(it)%cdet, contrib(it)%cluster)
+                        end if
 
                         if (contrib(it)%cluster%excitation_level <= qs%ref%ex_level+2 .or. &
                                 (ccmc_in%linked .and. contrib(it)%cluster%excitation_level == huge(0))) then
@@ -696,7 +719,7 @@ contains
                             ! needs to be converted into a det_info_t object for the excitation
                             ! generators. On subsequent calls, cdet does not need to change.
                             seen_D0 = .true.
-                            call create_null_cluster(sys, qs%ref%f0, nprocs*real(nD0_select,p), D0_normalisation, &
+                            call create_null_cluster(sys, qs%ref%f0, nprocs*real(selection_data%nD0_select,p), D0_normalisation, &
                                                      qmc_in%initiator_pop, contrib(it)%cdet, contrib(it)%cluster)
                         end if
 
@@ -769,8 +792,10 @@ contains
 
                     call direct_annihilation(sys, rng(0), qs%ref, annihilation_flags, pl, spawn)
                 end associate
-                if (debug) call write_logging_calc_ccmc(logging_info, iter, nspawn_events, ndeath+ndeath_nc, nD0_select, &
-                                                        nclusters, nstochastic_clusters, nsingle_excitors)
+                if (debug) call write_logging_calc_ccmc(logging_info, iter, nspawn_events, ndeath + ndeath_nc, &
+                                                        selection_data%nD0_select, &
+                                                        selection_data%nclusters, selection_data%nstochastic_clusters, &
+                                                        selection_data%nsingle_excitors)
                 call end_mc_cycle(nspawn_events, ndeath_nc, qs%psip_list%pop_real_factor, nattempts_spawn, qs%spawn_store%rspawn)
             end do
 

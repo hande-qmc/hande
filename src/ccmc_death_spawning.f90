@@ -187,9 +187,13 @@ contains
         !    sys: system being studied.
         !    qs: qmc_state_t containing information about the reference and estimators.
         !    linked_ccmc: if true then only sample linked clusters.
+        !    ex_lvl_sort: logical. If true add excitation level to bit string if successfully
+        !       die.
         !    cdet: info on the current excitor (cdet) that we will spawn
         !        from.
         !    cluster: information about the cluster which forms the excitor.
+        !    logging_info: logging_t derived type containing information on logging behaviour.
+
         ! In/Out:
         !    rng: random number generator.
         !    spawn: spawn_t object to which the spanwed particle will be added.
@@ -368,6 +372,7 @@ contains
             ! The excitor might be a composite cluster so we'll just create
             ! excips in the spawned list and allow the annihilation process to take
             ! care of the rest.
+
             ! Pass through a null excitation so that we create a spawned particle on
             ! the current excitor.
             call create_spawned_particle_ptr(basis, ref, cdet, null_excit, nkill, ispace, spawn)

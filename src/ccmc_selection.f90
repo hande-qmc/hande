@@ -364,12 +364,11 @@ contains
 
     end subroutine create_null_cluster
 
-    subroutine select_nc_cluster(sys, psip_list, f0, iexcitor, initiator_pop, &
+    subroutine select_nc_cluster(sys, psip_list, f0, iexcitor, initiator_pop, ex_lvl_sort, &
                                             cdet, cluster)
 
         ! Select (deterministically) the non-composite cluster containing only
         ! the single excitor iexcitor and set the same information as select_cluster.
-
 
         ! In:
         !    sys: system being studied
@@ -378,6 +377,9 @@ contains
         !    f0: bit string of the reference
         !    iexcitor: the index (in range [1,nstates]) of the excitor to select.
         !    initiator_pop: the population above which a determinant is an initiator.
+        !    ex_lvl_sort: if true, excitors are sorted by excitation level and so have
+        !       information about the excitation level also encoded in their bit string
+        !       that should be removed before being passed on.
 
         ! In/Out:
         !    cdet: information about the cluster of excitors applied to the
@@ -395,7 +397,7 @@ contains
         use system, only: sys_t
         use determinants, only: det_info_t
         use ccmc_data, only: cluster_t
-        use ccmc_utils, only: convert_excitor_to_determinant
+        use ccmc_utils, only: convert_excitor_to_determinant, remove_ex_level_bit_string
         use excitations, only: get_excitation_level
         use qmc_data, only: particle_t
         use search, only: binary_search
@@ -406,6 +408,7 @@ contains
         integer(i0), intent(in) :: f0(sys%basis%string_len)
         integer(int_64), intent(in) :: iexcitor
         real(p), intent(in) :: initiator_pop
+        logical, intent(in) :: ex_lvl_sort
         type(det_info_t), intent(inout) :: cdet
         type(cluster_t), intent(inout) :: cluster
         complex(p) :: excitor_pop
@@ -514,10 +517,11 @@ contains
         type(sys_t), intent(in) :: sys
         type(cluster_t), intent(inout) :: cluster
         type(det_info_t), intent(inout) :: cdet
-        integer(int_p), intent(in) :: cumulative_excip_pop(:)
+        real(p), intent(in) :: cumulative_excip_pop(:)
         type(dSFMT_t), intent(inout) :: rng
         integer(i0), intent(in) :: f0(sys%basis%string_len)
-        real(p), intent(in) :: initiator_pop, normalisation
+        real(p), intent(in) :: initiator_pop
+        complex(p), intent(in) :: normalisation
         integer(int_64), intent(in) :: nattempts
         integer, intent(in) :: min_size, max_size, ex_level
 
@@ -550,9 +554,9 @@ contains
         rand = get_rand_close_open(rng)
         cluster%nexcitors = -1
         do i = min_size, max_size
-            if (rand <= selection_data%cumulative_size_weighting(i)) then
+            if (rand < selection_data%cumulative_stoch_size_weighting(i)) then
                 cluster%nexcitors = i
-                cluster%pselect = cluster%pselect * selection_data%size_weighting(i)!cluster%pselect/2**(i+1)
+                cluster%pselect = cluster%pselect * selection_data%stoch_size_weighting(i)
                 exit
             end if
         end do
@@ -570,7 +574,7 @@ contains
                 select_proportion => selection_data%cluster_sizes_proportion(cluster%nexcitors)%v)
             rand = get_rand_close_open(rng)
 
-            cumulative = 0.0_p
+            cumulative = 0.0_dp
             do num = 1, size(select_proportion, dim=1)
                 cumulative = cumulative + select_proportion(num)
                 if (rand <= cumulative) then
@@ -594,13 +598,6 @@ contains
             end do accumulate_excitors
 
             if (allowed) then
-                if (sum(count_set_bits(cdet%f)) /= sys%nel) then
-                        print *, cdet%f
-                        print *, cluster%nexcitors
-                        print *, choice
-                        call stop_all('truncated_cluster_selection', &
-                        'Invalid cluster produced!')
-                end if
                 cluster%excitation_level = get_excitation_level(f0, cdet%f)
                 ! To contribute the cluster must be within a double excitation of
                 ! the maximum excitation included in the CC wavefunction.
@@ -625,7 +622,7 @@ contains
                 call decoder_ptr(sys, cdet%f, cdet)
 
                 ! Normalisation factor for cluster%amplitudes...
-                cluster%amplitude = cluster_population/(real(normalisation,p)**(cluster%nexcitors-1))
+                cluster%amplitude = cluster_population/(normalisation**(cluster%nexcitors-1))
             else
                 ! Simply set excitation level to a too high (fake) level to avoid
                 ! this cluster being used.
@@ -677,7 +674,7 @@ contains
         type(sys_t), intent(in) :: sys
         type(cluster_t), intent(inout) :: cluster
         type(det_info_t), intent(inout) :: cdet
-        integer(int_p), intent(in) :: cumulative_excip_pop(:)
+        real(p), intent(in) :: cumulative_excip_pop(:)
         type(dSFMT_t), intent(inout) :: rng
         complex(p), intent(inout) :: cluster_population
         integer(i0), intent(in) :: f0(sys%basis%string_len)
@@ -685,7 +682,7 @@ contains
         type(ex_lvl_dist_t), intent(in) :: ex_lvl_dist
 
         integer :: i, pos, prev_pos
-        integer(int_p) :: pops(1:nexcitors), tot_level_pop
+        real(p) :: pops(1:nexcitors), tot_level_pop
         logical :: hit
         logical, intent(out) :: allowed
         complex(p) :: excitor_pop
@@ -695,11 +692,11 @@ contains
 
         if (nexcitors /= 0) then
             do i = 1, nexcitors
-                pops(i) = int(get_rand_close_open(rng)*(tot_level_pop-1), int_p) + 1 + &
+                pops(i) = get_rand_close_open(rng)*(tot_level_pop-1) + &
                                 ex_lvl_dist%cumulative_pop_ex_lvl(ex_level - 1)
             end do
             call insert_sort(pops)
-            prev_pos = ex_lvl_dist%cumulative_nstates_ex_lvl(ex_level - 1) + 1
+            prev_pos = ex_lvl_dist%cumulative_nstates_ex_lvl(ex_level - 1)
             do i = 1, nexcitors
                 call binary_search(cumulative_excip_pop, pops(i), prev_pos, &
                             ex_lvl_dist%cumulative_nstates_ex_lvl(ex_level), hit, pos)
@@ -762,15 +759,14 @@ contains
 
 !---- p_size Probability update functions ----
 
-    subroutine set_psize_selections(selection_data, max_selections, min_size, max_size)
+    subroutine set_psize_selections(selection_data, max_size)
         use ccmc_data, only: selection_data_t
         type(selection_data_t), intent(inout) :: selection_data
         integer(int_64) :: nselections
-        integer, intent(in) :: min_size, max_size
-        integer(int_64), intent(in) :: max_selections
+        integer, intent(in) :: max_size
+!        integer(int_64), intent(in) :: max_selections
 
         if (max_size > 1) then
-
             ! Set total selections so that expected proportion of selections of noncomposite gives
             ! correct number of selections.
             nselections = ceiling(real(selection_data%nsingle_excitors, kind=dp) / &
@@ -780,11 +776,11 @@ contains
                 ! Use conventional non-composite reference + noncomposite selection numbers.
                 selection_data%nstochastic_clusters = ceiling(nselections * &
                     (1.0_dp - sum(selection_data%size_weighting(0:1))))
-            else if (nselections > max_selections) then
-                selection_data%nD0_select = ceiling((max_selections-selection_data%nsingle_excitors) * &
-                            selection_data%size_weighting(0)/(1.0_dp - selection_data%size_weighting(1)))
-                selection_data%nstochastic_clusters = ceiling((max_selections-selection_data%nsingle_excitors) * &
-                            sum(selection_data%size_weighting(2:))/(1.0_dp - selection_data%size_weighting(1)))
+            !else if (nselections > max_selections) then
+            !    selection_data%nD0_select = ceiling((max_selections-selection_data%nsingle_excitors) * &
+            !                selection_data%size_weighting(0)/(1.0_dp - selection_data%size_weighting(1)))
+            !    selection_data%nstochastic_clusters = ceiling((max_selections-selection_data%nsingle_excitors) * &
+            !                sum(selection_data%size_weighting(2:))/(1.0_dp - selection_data%size_weighting(1)))
             else
                 ! Can treat reference more similarly to the rest of the space.
                 selection_data%nD0_select = ceiling(nselections * selection_data%size_weighting(0))
@@ -798,31 +794,35 @@ contains
 
 !---- p_comb Probability update functions ----
 
-    subroutine update_selection_probabilities(cumulative_excip_pop, ex_lvl_dist, D0_normalisation, abs_nint_pop, cluster_selection)
+    subroutine update_selection_probabilities(cumulative_excip_pop, ex_lvl_dist, abs_D0_normalisation, tot_abs_pop, &
+                                                cluster_selection)
 
         ! Updates all probabilities for selecting different excitation level combinations within
         ! cluster_selection object in accordance with cumulative population distribution and
         ! number of states per excitation level given.
         ! In:
         !    cumulative_excip_pop: cumulative excip population distribution.
-        !    nstates_excit_level: number of states at each excitation level in (1,:),
-        !       cumulative distribution in (2,:).
+        !    ex_lvl_dist: derived type containing information on distribution of excip population
+        !       between excitation levels.
+        !    abs_D0_normalisation: absolute magnitude of D0 normalisation.
+        !   tot_abs_pop: absolute sum of cumulative population.
         ! In/Out:
         !    cluster_selection: selection_data_t object containing all information required for
         !       truncated selection (all valid excitation level combinations). On output
         !       cluster_sizes_proportion will be updated.
 
         use ccmc_data, only: selection_data_t, ex_lvl_dist_t
+        use ccmc_utils, only: update_cumulative_dist_real
 
         type(selection_data_t), intent(inout) :: cluster_selection
         type(ex_lvl_dist_t), intent(in) :: ex_lvl_dist
         real(p), intent(in), allocatable :: cumulative_excip_pop(:)
-        integer(int_p), intent(in) :: abs_nint_pop
-        real(p), intent(in) :: D0_normalisation
+        real(p), intent(in) :: tot_abs_pop
+        real(p), intent(in) :: abs_D0_normalisation
         integer :: i
 
-        cluster_selection%size_weighting(0) = D0_normalisation
-        cluster_selection%size_weighting(1) = real(abs_nint_pop, kind=p)
+        cluster_selection%size_weighting(0) = abs_D0_normalisation
+        cluster_selection%size_weighting(1) = real(tot_abs_pop, kind=dp)
 
         do i = lbound(cluster_selection%cluster_sizes_info, dim=1), ubound(cluster_selection%cluster_sizes_info, dim=1)
             associate(select_info => cluster_selection%cluster_sizes_info(i)%v, &
@@ -830,11 +830,17 @@ contains
 
                 call update_selection_block_probability(select_info, ex_lvl_dist%pop_ex_lvl, &
                                                     select_proportion, cluster_selection%size_weighting(i))
-                cluster_selection%size_weighting(i) = cluster_selection%size_weighting(i) / (D0_normalisation ** (i-1))
+                cluster_selection%size_weighting(i) = cluster_selection%size_weighting(i) / (abs_D0_normalisation ** (i-1))
             end associate
         end do
 
         cluster_selection%size_weighting = cluster_selection%size_weighting / sum(cluster_selection%size_weighting, dim=1)
+
+        call update_cumulative_dist_real(cluster_selection%size_weighting, cluster_selection%cumulative_size_weighting, .true.)
+        ! Now need to update lists storing only sizes selected stochastically.
+        cluster_selection%stoch_size_weighting(2:) = cluster_selection%size_weighting(2:)/sum(cluster_selection%size_weighting(2:))
+        call update_cumulative_dist_real(cluster_selection%stoch_size_weighting, &
+                                        cluster_selection%cumulative_stoch_size_weighting, .true.)
 
     end subroutine update_selection_probabilities
 
@@ -927,6 +933,11 @@ contains
         call check_allocate('size_weighting', ex_level + 3, ierr)
         allocate(selection_data%cumulative_size_weighting(0:ex_level+2), stat=ierr)
         call check_allocate('cumulative_size_weighting', ex_level + 3, ierr)
+
+        allocate(selection_data%stoch_size_weighting(2:ex_level+2), stat=ierr)
+        call check_allocate('stoch_size_weighting', ex_level + 1, ierr)
+        allocate(selection_data%cumulative_stoch_size_weighting(2:ex_level+2), stat=ierr)
+        call check_allocate('cumulative_stoch_size_weighting', ex_level + 1, ierr)
 
         associate(size_weighting => selection_data%size_weighting, &
                 cumulative_size_weighting => selection_data%cumulative_size_weighting)

@@ -373,13 +373,14 @@ contains
         integer(i0), intent(in) :: ex_lvls(:)
 
         integer :: i
-        integer(i0) :: j
+        integer(i0) :: j, ex_lvl
 
 
         ! First need to set values to account for reference correctly in ex_lvl_dist.
         if (calc_dist) then
             ex_lvl_dist%cumulative_nstates_ex_lvl(0) = 1
             ex_lvl_dist%cumulative_pop_ex_lvl(0) = 0
+            ex_lvl = 0_i0
         end if
 
         ! Need to combine spaces if doing complex; we choose combining in quadrature.
@@ -398,6 +399,7 @@ contains
                             ex_lvl_dist%cumulative_nstates_ex_lvl(j) = i-1
                             ex_lvl_dist%cumulative_pop_ex_lvl(j) = cumulative_pops(i-1)
                         end do
+                        ex_lvl = ex_lvls(i)
                     end if
                 end if
             end do
@@ -419,6 +421,7 @@ contains
                             ex_lvl_dist%cumulative_nstates_ex_lvl(j) = i-1
                             ex_lvl_dist%cumulative_pop_ex_lvl(j) = cumulative_pops(i-1)
                         end do
+                        ex_lvl = ex_lvls(i)
                     end if
                 end if
             end do
@@ -435,6 +438,7 @@ contains
                             ex_lvl_dist%cumulative_nstates_ex_lvl(j) = i-1
                             ex_lvl_dist%cumulative_pop_ex_lvl(j) = cumulative_pops(i-1)
                         end do
+                        ex_lvl = ex_lvls(i)
                     end if
                 end if
             end do
@@ -444,6 +448,9 @@ contains
         else
             tot_pop = 0.0_p
         end if
+
+        ex_lvl_dist%cumulative_nstates_ex_lvl(ex_lvl:) = nactive
+        ex_lvl_dist%cumulative_pop_ex_lvl(ex_lvl:) = tot_pop
 
     end subroutine cumulative_population
 

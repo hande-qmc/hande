@@ -76,6 +76,9 @@ type selection_data_t
     real(dp), allocatable :: size_weighting(:) ! (0:ex_level+2)
     ! Cumulative probability of selecting cluster of a given size.
     real(dp), allocatable :: cumulative_size_weighting(:) ! (0:ex_level+2)
+    ! Weightings between stochastically selected clusters.
+    real(dp), allocatable :: stoch_size_weighting(:) ! (2:ex_level+2)
+    real(dp), allocatable :: cumulative_stoch_size_weighting(:) ! (2:ex_level+2)
     ! Average amplitude of \prod_i |N_I| / p_{select} for clusters of a given
     ! size.
     real(dp), allocatable :: average_amplitude(:) ! (0:ex_level+2)
@@ -186,6 +189,14 @@ contains
             call check_deallocate('size_weighting', ierr)
         end if
         if (allocated(sd%cumulative_size_weighting)) then
+            deallocate(sd%cumulative_size_weighting, stat=ierr)
+            call check_deallocate('cumulative_size_weighting', ierr)
+        end if
+        if (allocated(sd%stoch_size_weighting)) then
+            deallocate(sd%size_weighting, stat=ierr)
+            call check_deallocate('size_weighting', ierr)
+        end if
+        if (allocated(sd%cumulative_stoch_size_weighting)) then
             deallocate(sd%cumulative_size_weighting, stat=ierr)
             call check_deallocate('cumulative_size_weighting', ierr)
         end if
