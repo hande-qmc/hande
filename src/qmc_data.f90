@@ -502,17 +502,28 @@ end type spawned_particle_t
 
 type blocking_t
     ! Log to the base 2 of maximum block size.
-    integer :: max_2n = 0
+    integer :: lg_max = 0
     ! Number of start points to start reblocking from.
-    integer :: save_number = 0
-    ! Frequency at which the data for the start point is saved.
+    integer :: n_saved_startpoints = 0
+    ! Frequency at which the data for the start point is saved. In terms of the
+    ! number of reports
     integer :: save_fq = 0 
-    ! Number of reports from the time the data for reblocking is collected.
-    integer :: report = 0
+    ! Number of report cycles from the start of all blocking to the current
+    ! cycle.
+    integer :: n_reports_blocked = 0
     ! Arrays in which block number and sums, sums of squares of projected energy
     ! and the reference population and the product of projected energy and 
     ! reference population for each block is saved for each block size.
-    ! Block sizes are 2^n where n ranges from 0 to max_2n
+    ! Block sizes are 2^n where n ranges from 0 to lg_max. 1st dimension of the
+    ! array contains the number of blocks for each block size, outstanding sum
+    ! not included in the block, sums corresponding to the block size and the
+    ! sums of the squares corresponding to the block size. 2nd dimesion
+    ! represents the different blocksizes. 2^(arraynumber) is the size of the
+    ! block. 3rd dimesnion has size 2 for the 2 sets of data, reference
+    ! population and proj. energy. data_product contains the sums of the
+    ! products of two sets of data for each block size where the block size is
+    ! determined by 2^(arraynumber). reblock_data_2 and data_product_2 has the
+    ! same format.
     real(p), allocatable :: reblock_data(:,:,:), data_product(:)
     ! Arrays for calculation of optimal mean and standard deviation at different
     ! start points. reblock_data and data_product are temporarily copied before
@@ -537,9 +548,11 @@ type blocking_t
     ! Arrays for saving the data for reblocking for the purpose of starting the
     ! reblock from a different start position in the middle of a calculation.
     ! The frequency and the number of reblock_data and data_product arrays saved
-    ! is determined by save_number and save_fq
+    ! is determined by n_saved_startpoints and save_fq. 1st dimesion is the
+    ! different saved start points and the 2nd, 3rd and 4th dimension contains
+    ! the reblock_data for each start point.
     real(p), allocatable :: reblock_save(:,:,:,:), product_save(:,:)
-    ! (Save point*save_fq) indicates the number of reports from which the reblock analysis
+    ! (number of save start points point*save_fq) indicates the number of reports from which the reblock analysis
     ! is started from. This is varied during the calculation to minimise the
     ! fractional error weighted by the 1/sqrt(number of data points)
     integer :: start_point = 0

@@ -512,7 +512,7 @@ contains
             call decode_det(sys%basis, ref_det%f, ref_det%occ_list)
         end if
 
-        call allocate_arrays(qmc_in, bl)
+        call allocate_blocking(qmc_in, bl)
 
         do ireport = 1, qmc_in%nreport
 
@@ -830,53 +830,7 @@ contains
                 call write_qmc_report(qmc_in, qs, ireport, nparticles_old, t2-t1, .false., .false., &
                                         io_unit=io_unit, cmplx_est=sys%read_in%comp, rdm_energy=ccmc_in%density_matrices, &
                                         nattempts=.true.)
- 
-                if (bl%start_ireport == 0 .and. &
-                        qs%vary_shift(1) .eqv. .true.) then
-                    bl%start_ireport = ireport
-                end if
-        
-                ! Once the shift is varied the data needed for reblocking is
-                ! collected. 
-
-                if (qs%vary_shift(1) .eqv. .true.) then
-                    call collect_data(qmc_in, qs, bl, ireport)
-                    call copy_block(bl, ireport)
-                end if
-
-                ! For every 50 reports, the optimal mean and standard deviation
-                ! and the optimal error in error is calculated and printed.
-                if (mod(ireport,50) ==0 .and. qs%vary_shift(1) .eqv. .true.) then
-!                if (mod(ireport,50) == 0) then                    
-                    call change_start(bl, ireport, bl%start_point)
-                    call mean_std_cov(bl)
-                    call find_optimal_block(bl)
-                    write(7, '(1X, I8)') bl%start_ireport
-                    write(7, '(1X, I8)') iter
-                    write(7, '(1X, I8)') bl%max_2n
-                    ! Prints the point from which reblock analysis is being
-                    ! carried out.
-                    write(7, '(1X, I8)') bl%start_point
-                    write(7, '(1X, 2I8)')(bl%optimal_size)
-                    write(7, '(1X, ES20.7)')(bl%block_std(1,1))
-                    write(7, '(1X, 10ES20.7)')(bl%err_comp(k, 1), k = 0, 10)
-                    write(7, '(1X, 10ES20.7)')(bl%err_comp(k, 2), k = 0, 10)
-                    write(7, '(1X, 3ES20.7)', advance = 'no') (bl%optimal_mean(k), k = 1, 3)
-                    write(7, '(1X, 3ES20.7)') (bl%optimal_std(k), k = 1, 3)
-                    write(7, '(1X, 2ES20.7)') (bl%optimal_err(k), k = 1,2)
-
-
-
-                    call flush(7)
-                end if
-                if (mod(bl%report,bl%save_fq) == 0) then
-                   call err_comparison(bl, ireport)
-                end if
-
-
-                ! Every 2*save_fq reports, the start position of reblock
-                ! analysis is updated
-
+                call do_blocking(bl, qs, qmc_in, ireport, iter) 
             end if
 
             ! Update the time for the start of the next iteration.
@@ -893,16 +847,8 @@ contains
 
         end do
 
-        deallocate(bl%reblock_data)
-        deallocate(bl%reblock_data_2)
-        deallocate(bl%data_product)
-        deallocate(bl%data_product_2)
-        deallocate(bl%block_mean)
-        deallocate(bl%block_std)
-        deallocate(bl%block_cov)
-        deallocate(bl%reblock_save)
-        deallocate(bl%product_save)
-        deallocate(bl%err_comp)       
+ 
+        call deallocate_blocking(bl)
 
         if (parent) write (io_unit,'()')
         call write_bloom_report(bloom_stats, io_unit=io_unit)
