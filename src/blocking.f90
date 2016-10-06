@@ -179,7 +179,7 @@ contains
         type(qmc_state_t), intent(in) :: qs
         integer, intent(in) :: ireport
         type(blocking_t), intent(inout) :: bl
-        integer :: i, j, reblock_size
+        integer :: i, reblock_size
 
         ! \sum H_0j N_j, reference population and shift are added to column 2 of every
         ! block size.
@@ -528,7 +528,6 @@ contains
         type(qmc_state_t), intent(in) :: qs
         type(qmc_in_t), intent(in) :: qmc_in
         integer, intent(in) :: ireport, iter
-        integer :: k
         integer, intent(in) :: iunit
         type(blocking_in_t), intent(in) :: blocking_in
 

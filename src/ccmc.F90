@@ -386,8 +386,7 @@ contains
         real(p), allocatable :: rdm(:,:)
 
         type(blocking_t) :: bl
-        integer :: k,j, iunit
-        integer :: optimal_size(2)
+        integer :: iunit
 
         if (parent) then
             write (io_unit,'(1X,"CCMC")')

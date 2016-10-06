@@ -120,7 +120,7 @@ contains
         logical :: update_tau, restarting, imag
 
         type(blocking_t) :: bl
-        integer :: i,j, iunit
+        integer :: iunit
 
         if (parent) then
             write (io_unit,'(1X,"FCIQMC")')
