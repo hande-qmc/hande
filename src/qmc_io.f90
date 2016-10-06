@@ -69,6 +69,7 @@ contains
                 call write_column_title(6, '')
                 call write_column_title(6, '')
             end do
+            write (6,'()')
         end if
 
         write (6,'(1X,"#",1X)', advance='no')
