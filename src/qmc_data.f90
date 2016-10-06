@@ -502,13 +502,13 @@ end type spawned_particle_t
 
 type blocking_t
     ! Log to the base 2 of maximum block size.
-    integer :: max_2n
+    integer :: max_2n = 0
     ! Number of start points to start reblocking from.
-    integer :: save_number
+    integer :: save_number = 0
     ! Frequency at which the data for the start point is saved.
-    integer :: save_fq
+    integer :: save_fq = 0 
     ! Number of reports from the time the data for reblocking is collected.
-    integer :: report
+    integer :: report = 0
     ! Arrays in which block number and sums, sums of squares of projected energy
     ! and the reference population and the product of projected energy and 
     ! reference population for each block is saved for each block size.
@@ -545,7 +545,8 @@ type blocking_t
     integer :: start_point = 0
     ! Array containing the different values of fractional error weighted by the
     ! 1/sqrt(number of data points) for each of the possible start positions. 
-    real(p), allocatable :: err_comp(:,:)    
+    real(p), allocatable :: err_comp(:,:)   
+    integer :: optimal_size(2) 
 end type blocking_t
 
 type estimators_t

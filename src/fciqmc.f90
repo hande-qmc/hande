@@ -347,7 +347,7 @@ contains
                                         fciqmc_in%non_blocking_comm, io_unit=io_unit, cmplx_est=sys%read_in%comp)
                                          
                 if (qs%vary_shift(1) .eqv. .true. .and. bl%start_ireport == 0) then
-                    bl%start_ireport = ireport
+                    bl%start_ireport = 0
                 end if
 
                 ! Once the shift is varied the data needed for reblocking is

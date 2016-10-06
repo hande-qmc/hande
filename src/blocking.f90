@@ -64,7 +64,7 @@ contains
         bl%reblock_save = 0
         bl%product_save = 0
         bl%err_comp = 0
-
+        bl%optimal_size = bl%max_2n
 
     end subroutine allocate_arrays
 
@@ -143,6 +143,9 @@ contains
 
             if (bl%reblock_data_2(1,i,1) > 0) then 
                 bl%block_mean(i,:) = bl%reblock_data_2(3,i,:)/bl%reblock_data_2(1,i,:)
+
+            else
+                bl%block_mean(i,:) = 0
             end if
 
             if (bl%reblock_data_2(1,i,1) > 1) then
@@ -156,6 +159,10 @@ contains
                  bl%block_cov(i) = (bl%data_product_2(i) &
                 - bl%block_mean(i,1)*bl%block_mean(i,2) &
                 *bl%reblock_data_2(1,i,1))/(bl%reblock_data_2(1,i,1) - 1)
+
+            else 
+                bl%block_std(i,:) = 0
+                bl%block_cov(i) = 0
             end if
         end do
 
@@ -211,28 +218,31 @@ contains
 
         use qmc_data, only: blocking_t
 
-        integer :: optimal_size(2)
         integer :: i, j, B, size_e
         type(blocking_t), intent(inout) :: bl
         
         ! Smallest block size satisfying the condition is found.
+        bl%optimal_size = bl%max_2n
         do i = 1, 2
             do j = (bl%max_2n), 1, -1
                 B = 2**(j-1)
                 if (B**3 > &
-                    2*bl%reblock_data_2(1,j,i)*B*(bl%block_std(j,i)/bl%block_std(1,i))**4) then
-                    optimal_size(i) = j                
+                    2*bl%reblock_data_2(1,j,i)*B*(bl%block_std(j,i)/&
+                    bl%block_std(1,i))**4) then
+                    bl%optimal_size(i) = j
+                else 
+                    bl%optimal_size(i) = bl%optimal_size(i) + 0                
                 end if
             end do
-            if (optimal_size(i) == 1) then
+            if (bl%optimal_size(i) == 1) then
                 bl%optimal_mean(i) = 0
                 bl%optimal_std(i) = 0
             else
-                bl%optimal_std(i) = bl%block_std(optimal_size(i),i)
+                bl%optimal_std(i) = bl%block_std(bl%optimal_size(i),i)
                 if (bl%optimal_std(i) == 0) then 
                     bl%optimal_mean(i) = 0
                 else
-                    bl%optimal_mean(i) = bl%block_mean(optimal_size(i),i)
+                    bl%optimal_mean(i) = bl%block_mean(bl%optimal_size(i),i)
                 end if
             
             end if
@@ -243,15 +253,15 @@ contains
             ! limit theorem.
             else 
                 bl%optimal_err(i) = bl%optimal_std(i)/ &
-                sqrt(2*(bl%reblock_data_2(1, optimal_size(i), i) - 1))
+                sqrt(2*(bl%reblock_data_2(1, bl%optimal_size(i), i) - 1))
             end if
         end do
         ! Larger optimal block size between the two is used.
-        if (optimal_size(1) > optimal_size(2)) then
-            size_e = optimal_size(1)
+        if (bl%optimal_size(1) > bl%optimal_size(2)) then
+            size_e = bl%optimal_size(1)
 
         else 
-            size_e = optimal_size(2)
+            size_e = bl%optimal_size(2)
         end if
         
         if (bl%optimal_mean(1) == 0 .or. bl%optimal_mean(2) == 0) then
@@ -374,7 +384,7 @@ contains
         type(blocking_t), intent(inout) :: bl
         integer, intent(in) :: ireport
         integer :: i, j
-        integer ::  minimum(2) = 0
+        integer ::  minimum(2)=0 
 
         do i = 0, bl%save_number
 
@@ -387,7 +397,21 @@ contains
                     if (bl%optimal_std(j) == 0) then
                         bl%err_comp(i,j) = 0
                     else
-                        bl%err_comp(i,j) = bl%optimal_err(j)/(bl%optimal_std(j) * sqrt(real(bl%report - i * bl%save_fq))) 
+                        if (bl%optimal_size(j) - 1 <= &
+                                int(log(real(bl%save_fq)/log(2.0)))) then
+                            
+                            bl%err_comp(i,j) = bl%optimal_err(j)/&
+                            (bl%optimal_std(j) * sqrt(real(int((bl%report & 
+                            - i * bl%save_fq)/(2 ** bl%optimal_size(j))) * &
+                            (2 ** bl%optimal_size(j)))))
+                            
+                        else 
+                            bl%err_comp(i,j) = bl%optimal_err(j)/&
+                            (bl%optimal_std(j) * sqrt(real((int((bl%report &
+                            - i * bl%save_fq)/(2 ** bl%optimal_size(j))) - 1) * &
+                            (2 ** bl%optimal_size(j)))))
+                       end if 
+                       ! bl%err_comp(i,j) = bl%optimal_err(j)
                     end if
                 end do
             else 
@@ -395,6 +419,7 @@ contains
             end if
 
         end do
+
 
         do i = 1, 2
             minimum(i) = minloc(bl%err_comp(:,i), dim = 1, mask = &
