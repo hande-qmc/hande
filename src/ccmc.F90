@@ -743,6 +743,7 @@ contains
                             ! Add contribution to density matrix
                             ! d_pqrs = <HF|a_p^+a_q^+a_sa_r|CC>
                             !$omp critical
+! [review] - AJWT: Here you use real(c), rather than real(c,p) for a complex number c which is used in other places - I think you said that was ok,  but it might be worth being consistent.
                             call update_rdm(sys, cdet(it), ref_det, real(cluster(it)%amplitude)*cluster(it)%cluster_to_det_sign, &
                                             1.0_p, cluster(it)%pselect, rdm)
                             !$omp end critical
@@ -856,6 +857,7 @@ contains
                 if (ccmc_in%density_matrices .and. qs%vary_shift(1) .and. parent .and. .not. sys%read_in%comp) then
                     ! Add in diagonal contribution to RDM (only once per cycle not each time reference
                     ! is selected as this is O(N^2))
+! [review] - AJWT: Another real() issue.
                     call update_rdm(sys, ref_det, ref_det, real(D0_normalisation), 1.0_p, 1.0_p, rdm)
                 end if
 

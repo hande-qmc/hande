@@ -194,6 +194,7 @@ contains
         !    rng: random number generator.
         !    spawn: spawn_t object to which the spanwed particle will be added.
 
+! [review] - AJWT: NB This handles non-linked complex amplitudes, but not linked complex.
         use ccmc_data, only: cluster_t
         use determinants, only: det_info_t
         use excitations, only: excit_t

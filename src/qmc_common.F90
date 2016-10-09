@@ -304,6 +304,7 @@ contains
 
         ! Need to combine spaces if doing complex; we choose combining in quadrature.
         if (complx) then
+            ! TODO: Check if this type of operation is faster with a shift (or add and shift to get nint) (and below)
             cumulative_pops(1) = nint(abs(cmplx(pops(1,1), pops(2,1),p))/real_factor)
             if (D0_proc == iproc) then
                 ! Let's be a bit faster: unroll loops and skip over the reference
@@ -821,6 +822,7 @@ contains
             ! reals for CCMC so we are just maintaining behaviour.  The difference is
             ! really minimal...)
             nattempts = int(psip_list%nparticles(1), int_64)
+! [review] - AJWT: Specifically looking at index 2 will get messy at some point
             if (complx_loc) nattempts = nattempts + abs(nint(psip_list%nparticles(2), int_64))
         else if (doing_calc(dmqmc_calc)) then
             ! Each particle and each end gets to attempt to spawn onto a

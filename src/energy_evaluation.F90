@@ -1279,6 +1279,7 @@ contains
 
         ! From a qmc_state, qs, return either the value of the projected energy,
         ! or 0 if this is undefined.
+! [review] - AJWT: Contrary to its name, this returns a real.  Might want to be more specific that it returns the real  part of ProjE
 
         ! In:
         !    qs: qmc state containing estimators.
