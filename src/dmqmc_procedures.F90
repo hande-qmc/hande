@@ -35,7 +35,7 @@ contains
         type(dmqmc_estimates_t), intent(inout) :: dmqmc_estimates
         type(dmqmc_weighted_sampling_t), intent(inout) :: weighted_sampling
 
-        integer :: ierr, i, bit_position, bit_element, iorb
+        integer :: ierr, i, bit_position, bit_element, iorb, max_orb
 
         allocate(dmqmc_estimates%trace(nreplicas), stat=ierr)
         call check_allocate('dmqmc_estimates%trace', nreplicas, ierr)
@@ -170,18 +170,18 @@ contains
             case (ueg)
                 ! Look for maximum kpoint which is less than user defined maximum multiple of Fermi vector.
                 do iorb = 1, sys%basis%nbasis
-                    if (sys%basis%basis_fns(iorb)%sp_eigv > 0.5*(dmqmc_in%mom_dist_kmax*sys%ueg%kf)**2.0) exit
+                    if (sys%basis%basis_fns(iorb)%sp_eigv > 0.5*(dmqmc_in%mom_dist_kmax*sys%ueg%kf)**2.0) then
+                        max_orb = (iorb - 1) / 2
+                        exit
+                    end if
                 end do
                 ! We want to average over spin, so we'll map the (spin) orbital index back to the given kpoint.
-                ! [review] - JSS: using iorb instead of (e.g.) kf_orb is a bit confusing.
-                ! [review] - JSS: I prefer not to use loop indices outside of the loop.
-                iorb = (iorb - 1) / 2
-                allocate(dmqmc_estimates%mom_dist%n_k(iorb), stat=ierr)
-                call check_allocate('dmqmc_estimates%mom_dist%n_k', iorb, ierr)
-                allocate(dmqmc_estimates%mom_dist%kpoints(iorb), stat=ierr)
-                call check_allocate('dmqmc_estimates%kpoints', iorb, ierr)
-                do iorb = 1, size(dmqmc_estimates%mom_dist%n_k)
-                    dmqmc_estimates%mom_dist%kpoints(iorb) = (2.0*sys%basis%basis_fns(2*iorb)%sp_eigv)**0.5
+                allocate(dmqmc_estimates%mom_dist%n_k(max_orb), stat=ierr)
+                call check_allocate('dmqmc_estimates%mom_dist%n_k', max_orb, ierr)
+                allocate(dmqmc_estimates%mom_dist%kpoints(max_orb), stat=ierr)
+                call check_allocate('dmqmc_estimates%kpoints', max_orb, ierr)
+                do max_orb = 1, size(dmqmc_estimates%mom_dist%n_k)
+                    dmqmc_estimates%mom_dist%kpoints(max_orb) = (2.0*sys%basis%basis_fns(2*max_orb)%sp_eigv)**0.5
                 end do
             case default
                 call stop_all('init_dmqmc', 'Momentum distribution not implemented for this system.')
