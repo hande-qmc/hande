@@ -39,5 +39,6 @@ dmqmc {
         potential_energy = true,
         H0_energy = true,
         HI_energy = true,
+        mom_dist = 2.0,
     },
 }
