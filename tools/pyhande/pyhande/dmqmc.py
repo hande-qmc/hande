@@ -45,9 +45,8 @@ None.
         ('VI', '\\sum\\rho_{ij}VI_{ji}'),
     ])
 
-    # [review] - JSS: ditto comments re:filter helper function.
-    mom_dist = [m for m in means.columns if 'n_' in m]
-    observables.update(dict(zip(mom_dist, mom_dist)))
+    # Add momentum distribution to dictionary of observables to be analaysed.
+    add_observable_to_dict(observables, columns, 'n_')
     # DataFrame to hold the final mean and error estimates.
     results = pd.DataFrame(index=beta_values)
     # DataFrame for the numerator.
@@ -70,6 +69,25 @@ None.
             results[k+'_error'] = stats['standard error']
 
     return results
+
+
+def add_observable_to_dict(observables, columns, label):
+    '''Add observable to dictionary of analysed data.
+
+    This sets the value to be the same as the key specified by label variable.
+
+Parameters
+----------
+observables : dict
+    Dictionary of observables to be analysed.
+columns : list
+    Columns in hande output.
+label : string
+    regex to search for in list of columns.
+'''
+
+    new_obs = [c for c in columns if label in c]
+    observables.update(dict(zip(new_obs, new_obs)))
 
 
 def free_energy_error_analysis(data, results, dtau):
