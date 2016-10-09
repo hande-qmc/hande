@@ -1,29 +1,35 @@
 #!/usr/bin/env python
-'''Extract the momentum distribution from a analysed DMQMC simulation.'''
+'''Extract the momentum distribution from an analysed DMQMC simulation.'''
 
 import pandas as pd
 import numpy as np
 import sys
 
-# [review] - JSS: use if __name__ == '__main__' and functions so code can easily be reused in another script if necessary.
 
-if (len(sys.argv) < 2):
-    print ("Usage: extract_n_k.py file bval")
-    sys.exit()
+def main(args):
 
-bval = float(sys.argv[2])
+    if (len(sys.argv) < 2):
+        print ("Usage: extract_n_k.py file bval")
+        sys.exit()
 
-data = pd.read_csv(sys.argv[1], sep=r'\s+').groupby('Beta').get_group(bval)
+    bval = float(sys.argv[2])
 
-mom = [c for c in data.columns.values if 'n_' in c and '_error' not in c]
-mome = [c for c in data.columns.values if 'n_' in c and '_error' in c]
+    data = pd.read_csv(sys.argv[1], sep=r'\s+').groupby('Beta').get_group(bval)
 
-vals = [float(c.split('_')[1]) for c in mom]
+    mom = [c for c in data.columns.values if 'n_' in c and '_error' not in c]
+    mome = [c for c in data.columns.values if 'n_' in c and '_error' in c]
 
-n_k = (data[mom].transpose()).values
-n_k_error = (data[mome].transpose()).values
-n_k_error[np.isnan(n_k_error)] = 0
-frame = pd.DataFrame({'Beta': bval, 'k': vals, 'n_k': n_k.ravel(), 'n_k_error':
-                      n_k_error.ravel()})
+    vals = [float(c.split('_')[1]) for c in mom]
 
-print (frame.to_string(index=False))
+    n_k = (data[mom].transpose()).values
+    n_k_error = (data[mome].transpose()).values
+    n_k_error[np.isnan(n_k_error)] = 0
+    frame = pd.DataFrame({'Beta': bval, 'k': vals, 'n_k': n_k.ravel(), 'n_k_error':
+                          n_k_error.ravel()})
+
+    print (frame.to_string(index=False))
+
+
+if __name__ == '__main__':
+
+    main(sys.argv[1:])
