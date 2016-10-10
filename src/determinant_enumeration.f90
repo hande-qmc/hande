@@ -212,6 +212,7 @@ contains
                     if (sys%basis%nbasis > i0_length) then
                         call stop_all('enumerate_determinants','Number of spin functions longer than the an i0 integer.')
                     end if
+                    dets_list(:,:) = 0_i0
                     dets_list(1,1) = first_perm(sys%nel)
                     do i = 2, ndets
                         dets_list(1,i) = bit_permutation(dets_list(1,i-1))

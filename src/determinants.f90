@@ -404,7 +404,7 @@ contains
         iunocc_b = 0
         orb = 0
 
-        do i = 1, sys%basis%string_len - 1
+        do i = 1, sys%basis%string_len - 2
             ! Manual unrolling allows us to avoid 2 mod statements
             ! and some branching.
             do j = 0, i0_end, 2
@@ -439,7 +439,7 @@ contains
         ! Treating the last element as a special case rather than having an if
         ! statement in the above loop results a speedup of the Hubbard k-space
         ! FCIQMC calculations of 1.5%.
-        last_basis_ind = sys%basis%nbasis - i0_length*(sys%basis%string_len-1) - 1
+        last_basis_ind = sys%basis%nbasis - i0_length*(sys%basis%string_len-2) - 1
         do j = 0, last_basis_ind, 2
             ! Test alpha orbital.
             orb = orb + 1
