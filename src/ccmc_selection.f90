@@ -695,8 +695,8 @@ contains
 
         if (nexcitors /= 0) then
             do i = 1, nexcitors
-                pops(i) = int(get_rand_close_open(rng)*tot_level_pop, int_p) + 1 + &
-                                ex_lvl_dist%cumulative_nstates_ex_lvl(ex_level - 1)
+                pops(i) = int(get_rand_close_open(rng)*(tot_level_pop-1), int_p) + 1 + &
+                                ex_lvl_dist%cumulative_pop_ex_lvl(ex_level - 1)
             end do
             call insert_sort(pops)
             prev_pos = ex_lvl_dist%cumulative_nstates_ex_lvl(ex_level - 1) + 1
