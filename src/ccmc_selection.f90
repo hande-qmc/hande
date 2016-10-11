@@ -745,12 +745,14 @@ contains
         type(cluster_t), intent(in) :: cluster
 
         associate( nex=>cluster%nexcitors, amp=>real(cluster%amplitude,kind=dp)/real(cluster%pselect,kind=dp), &
-            aa=>selection_data%average_amplitude, &
+            aa=>selection_data%average_amplitude, va=>selection_data%variance_amplitude, &
             nsuccess=>selection_data%nsuccessful)
 
             if (cluster%excitation_level /= huge(0)) then
                 aa(nex) = aa(nex) * (real(nsuccess(nex),kind=dp)/real(nsuccess(nex)+1_int_64,kind=dp)) &
                     + abs(amp)/ real(nsuccess(nex)+1_int_64, kind=dp)
+                va(nex) = va(nex) * (real(nsuccess(nex),kind=dp)/real(nsuccess(nex)+1_int_64,kind=dp)) &
+                    + amp**2/ real(nsuccess(nex)+1_int_64, kind=dp)
                 nsuccess(nex) = nsuccess(nex) + 1_int_64
             end if
         end associate
@@ -957,10 +959,13 @@ contains
 
         allocate(selection_data%average_amplitude(0:ex_level+2), stat=ierr)
         call check_allocate('average_amplitude', ex_level + 3, ierr)
+        allocate(selection_data%variance_amplitude(0:ex_level+2), stat=ierr)
+        call check_allocate('variance_amplitude', ex_level + 3, ierr)
         allocate(selection_data%nsuccessful(0:ex_level+2), stat=ierr)
         call check_allocate('nsuccessful', ex_level + 3, ierr)
 
         selection_data%average_amplitude = 0.0_dp
+        selection_data%variance_amplitude = 0.0_dp
         selection_data%nsuccessful = 0_int_64
 
     end subroutine init_psize_data

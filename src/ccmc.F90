@@ -672,7 +672,7 @@ contains
                                             sum_sp_eigenvalues_occ_list(sys, contrib(it)%cdet%occ_list) - qs%ref%fock_sum
 
                             call do_ccmc_accumulation(sys, qs, contrib(it)%cdet, contrib(it)%cluster, D0_population_cycle, &
-                                                    proj_energy_cycle, ccmc_in, ref_det, rdm)
+                                                    proj_energy_cycle, ccmc_in, ref_det, rdm, selection_data)
                             call do_nc_ccmc_propagation(rng(it), sys, qs, ccmc_in, logging_info, bloom_stats, &
                                                                 contrib(it), nattempts_spawn)
                         end if
@@ -703,7 +703,7 @@ contains
                                             sum_sp_eigenvalues_occ_list(sys, contrib(it)%cdet%occ_list) - qs%ref%fock_sum
 
                             call do_ccmc_accumulation(sys, qs, contrib(it)%cdet, contrib(it)%cluster, D0_population_cycle, &
-                                                    proj_energy_cycle, ccmc_in, ref_det, rdm)
+                                                    proj_energy_cycle, ccmc_in, ref_det, rdm, selection_data)
                             call do_stochastic_ccmc_propagation(rng(it), sys, qs, &
                                                                 ccmc_in, logging_info, ms_stats(it), bloom_stats, &
                                                                 contrib(it), nattempts_spawn, ndeath)
@@ -727,7 +727,7 @@ contains
                                         sum_sp_eigenvalues_occ_list(sys, contrib(it)%cdet%occ_list) - qs%ref%fock_sum
 
                         call do_ccmc_accumulation(sys, qs, contrib(it)%cdet, contrib(it)%cluster, D0_population_cycle, &
-                                                proj_energy_cycle, ccmc_in, ref_det, rdm)
+                                                proj_energy_cycle, ccmc_in, ref_det, rdm, selection_data)
                         nattempts_spawn = nattempts_spawn + 1
                         call perform_ccmc_spawning_attempt(rng(it), sys, qs, ccmc_in, logging_info, bloom_stats, contrib(it), 1)
                     end if
@@ -809,6 +809,10 @@ contains
             qs%estimators%D0_population = real(qs%estimators%D0_population_comp,p)
             qs%estimators%proj_energy = real(qs%estimators%proj_energy_comp,p)
 
+            selection_data%nsuccessful = 0_int_64
+            selection_data%average_amplitude = 0.0_dp
+            selection_data%variance_amplitude = 0.0_dp
+
             call end_report_loop(qmc_in, iter, update_tau, qs, nparticles_old, nspawn_events, &
                                  semi_stoch_in%shift_iter, semi_stoch_iter, soft_exit, &
                                  load_bal_in, bloom_stats=bloom_stats, comp=sys%read_in%comp, &
@@ -873,7 +877,7 @@ contains
     end subroutine do_ccmc
 
     subroutine do_ccmc_accumulation(sys, qs, cdet, cluster, D0_population_cycle, proj_energy_cycle, &
-                                    ccmc_in, ref_det, rdm)
+                                    ccmc_in, ref_det, rdm, selection_data)
 
         ! Performs all accumulation of values required for given ccmc clusters.
         ! Updates projected energy and any RDMs with the contribution from the
@@ -897,7 +901,8 @@ contains
         use system, only: sys_t
         use qmc_data, only: qmc_state_t, ccmc_in_t, estimators_t
         use determinants, only: det_info_t
-        use ccmc_data, only: cluster_t
+        use ccmc_data, only: cluster_t, selection_data_t
+        use ccmc_selection, only: update_selection_data
         use qmc_data, only: zero_estimators_t
 
         use excitations, only: excit_t, get_excitation
@@ -912,9 +917,12 @@ contains
         type(cluster_t), intent(in) :: cluster
         complex(p), intent(inout) :: D0_population_cycle, proj_energy_cycle
         real(p), allocatable, intent(inout) :: rdm(:,:)
+        type(selection_data_t), intent(inout) :: selection_data
         type(excit_t) :: connection
         type(hmatel_t) :: hmatel
         type(estimators_t) :: estimators_cycle
+
+        call update_selection_data(selection_data, cluster)
 
         if (cluster%excitation_level /= huge(0)) then
             ! FCIQMC calculates the projected energy exactly.  To do

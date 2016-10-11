@@ -82,6 +82,7 @@ type selection_data_t
     ! Average amplitude of \prod_i |N_I| / p_{select} for clusters of a given
     ! size.
     real(dp), allocatable :: average_amplitude(:) ! (0:ex_level+2)
+    real(dp), allocatable :: variance_amplitude(:) ! (0:ex_level+2)
     ! Total number of successful selections of a given cluster size.
     integer(int_64), allocatable :: nsuccessful(:) ! (0:ex_level+2)
 end type selection_data_t
@@ -203,6 +204,10 @@ contains
         if (allocated(sd%average_amplitude)) then
             deallocate(sd%average_amplitude, stat=ierr)
             call check_deallocate('sd%average_amplitude', ierr)
+        end if
+        if (allocated(sd%variance_amplitude)) then
+            deallocate(sd%variance_amplitude, stat=ierr)
+            call check_deallocate('sd%variance_amplitude', ierr)
         end if
         if (allocated(sd%nsuccessful)) then
             deallocate(sd%nsuccessful, stat=ierr)
