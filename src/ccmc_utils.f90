@@ -112,7 +112,6 @@ contains
 
         excitor_loc = excitor
         call remove_ex_level_bit_string(basis%string_len, excitor_loc)
-        call remove_ex_level_bit_string(basis%string_len, cluster_excitor)
 
         ! Apply excitor to the cluster of excitors.
 

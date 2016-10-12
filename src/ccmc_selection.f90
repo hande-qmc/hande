@@ -659,7 +659,7 @@ contains
         !   allowed: false if collapsed cluster is invalid (ie. tried to excite to/from
         !       same spinorbital twice).
         use ccmc_data, only: cluster_t, ex_lvl_dist_t
-        use ccmc_utils, only: collapse_cluster
+        use ccmc_utils, only: collapse_cluster, remove_ex_level_bit_string
         use determinants, only: det_info_t
         use qmc_data, only: particle_t
         use dSFMT_interface, only: dSFMT_t, get_rand_close_open
@@ -708,6 +708,7 @@ contains
                 if (i == 1 .and. first) then
                     ! First excitor 'seeds' the cluster:
                     cdet%f = psip_list%states(:,pos)
+                    call remove_ex_level_bit_string(sys%basis%string_len, cdet%f)
                     cdet%data => psip_list%dat(:,pos) ! Only use if cluster is non-composite!
                     cluster_population = excitor_pop
                     ! Counter the additional *nprocs above.
@@ -789,7 +790,6 @@ contains
                             + selection_data%nstochastic_clusters
 
     end subroutine set_cluster_selections
-
 
 !---- Cluster information accumulation ---
 
