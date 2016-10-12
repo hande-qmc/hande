@@ -743,8 +743,7 @@ contains
                             ! Add contribution to density matrix
                             ! d_pqrs = <HF|a_p^+a_q^+a_sa_r|CC>
                             !$omp critical
-! [review] - AJWT: Here you use real(c), rather than real(c,p) for a complex number c which is used in other places - I think you said that was ok,  but it might be worth being consistent.
-                            call update_rdm(sys, cdet(it), ref_det, real(cluster(it)%amplitude)*cluster(it)%cluster_to_det_sign, &
+                            call update_rdm(sys, cdet(it), ref_det, real(cluster(it)%amplitude, p)*cluster(it)%cluster_to_det_sign, &
                                             1.0_p, cluster(it)%pselect, rdm)
                             !$omp end critical
                         end if
@@ -857,8 +856,7 @@ contains
                 if (ccmc_in%density_matrices .and. qs%vary_shift(1) .and. parent .and. .not. sys%read_in%comp) then
                     ! Add in diagonal contribution to RDM (only once per cycle not each time reference
                     ! is selected as this is O(N^2))
-! [review] - AJWT: Another real() issue.
-                    call update_rdm(sys, ref_det, ref_det, real(D0_normalisation), 1.0_p, 1.0_p, rdm)
+                    call update_rdm(sys, ref_det, ref_det, real(D0_normalisation,p), 1.0_p, 1.0_p, rdm)
                 end if
 
                 qs%psip_list%nparticles = qs%psip_list%nparticles + nparticles_change
@@ -892,8 +890,8 @@ contains
 
             error = qs%spawn_store%spawn%error .or. qs%psip_list%error
 
-            qs%estimators%D0_population = real(qs%estimators%D0_population_comp)
-            qs%estimators%proj_energy = real(qs%estimators%proj_energy_comp)
+            qs%estimators%D0_population = real(qs%estimators%D0_population_comp,p)
+            qs%estimators%proj_energy = real(qs%estimators%proj_energy_comp,p)
 
             call end_report_loop(qmc_in, iter, update_tau, qs, nparticles_old, nspawn_events, &
                                  semi_stoch_in%shift_iter, semi_stoch_iter, soft_exit, &

@@ -1279,13 +1279,15 @@ contains
 
         ! From a qmc_state, qs, return either the value of the projected energy,
         ! or 0 if this is undefined.
-! [review] - AJWT: Contrary to its name, this returns a real.  Might want to be more specific that it returns the real  part of ProjE
+        ! Returns the real component of the projected energy. Since we have assumed
+        ! elsewhere the Hamiltonian is hermitian, we can safely assume a real energy
+        ! estimator.
 
         ! In:
         !    qs: qmc state containing estimators.
 
         ! Returns:
-        !   real containing (instantaneous) projected energy.
+        !   real containing real component of (complex, instantaneous) projected energy.
 
         use qmc_data, only: qmc_state_t
         real(p) ::  proje

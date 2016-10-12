@@ -360,10 +360,9 @@ contains
         cluster%excitation_level = 0
         cluster%amplitude = D0_normalisation
         cluster%cluster_to_det_sign = 1
-! [review] - AJWT: This comment used to be to check if the reference wasn't an initiator, but seems to be orphaned.
-         ! Something has gone seriously wrong and the CC
-         ! approximation is (most likely) not suitably for this system.
-         ! Let the user be an idiot if they want to be...
+        ! If not initiator something has gone seriously wrong and the CC
+        ! approximation is (most likely) not suitably for this system.
+        ! Let the user be an idiot if they want to be...
         if (quadrature_initiator) then
             if (abs(D0_normalisation) <= initiator_pop) cdet%initiator_flag = 3
         else

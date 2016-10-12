@@ -181,6 +181,8 @@ contains
         ! (H - E_proj) + (E_proj - S).
         ! The former is scaled and produces the step.  The latter effects the population control.
 
+        ! NB This currently only handles non-linked complex amplitudes, not linked complex.
+
         ! In:
         !    sys: system being studied.
         !    qs: qmc_state_t containing information about the reference and estimators.
@@ -194,7 +196,7 @@ contains
         !    rng: random number generator.
         !    spawn: spawn_t object to which the spanwed particle will be added.
 
-! [review] - AJWT: NB This handles non-linked complex amplitudes, but not linked complex.
+
         use ccmc_data, only: cluster_t
         use determinants, only: det_info_t
         use excitations, only: excit_t
