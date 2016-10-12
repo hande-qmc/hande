@@ -326,7 +326,7 @@ contains
         use energy_evaluation, only: get_sanitized_projected_energy, get_sanitized_projected_energy_cmplx
 
         use logging, only: init_logging, end_logging, prep_logging_mc_cycle, write_logging_calc_ccmc
-        use logging, only: logging_in_t, logging_t, logging_in_t_json, logging_t_json
+        use logging, only: logging_in_t, logging_t, logging_in_t_json, logging_t_json, write_logging_select_ccmc
 
         type(sys_t), intent(in) :: sys
         type(qmc_in_t), intent(in) :: qmc_in
@@ -394,7 +394,7 @@ contains
         call init_qmc(sys, qmc_in, restart_in, load_bal_in, reference_in, annihilation_flags, qs, &
                       uuid_restart, qmc_state_restart=qmc_state_restart)
 
-        if (debug) call init_logging(logging_in, logging_info)
+        if (debug) call init_logging(logging_in, logging_info, qs%ref%ex_level)
 
         if (parent) then
             call json_object_init(js, tag=.true.)
@@ -448,6 +448,8 @@ contains
         if (ccmc_in%even_selection) then
             call init_selection_data(qs%ref%ex_level, selection_data)
             call init_ex_lvl_dist_t(qs%ref%ex_level, ex_lvl_dist)
+        else if (debug) then
+            call init_selection_data(qs%ref%ex_level, selection_data)
         end if
 
         nparticles_old = qs%psip_list%tot_nparticles
@@ -790,6 +792,8 @@ contains
             qs%estimators%D0_population = real(qs%estimators%D0_population_comp,p)
             qs%estimators%proj_energy = real(qs%estimators%proj_energy_comp,p)
 
+            if (debug) call write_logging_select_ccmc(logging_info, iter, selection_data)
+
             selection_data%nsuccessful = 0_int_64
             selection_data%average_amplitude = 0.0_dp
             selection_data%variance_amplitude = 0.0_dp
@@ -903,7 +907,7 @@ contains
         type(hmatel_t) :: hmatel
         type(estimators_t) :: estimators_cycle
 
-        call update_selection_data(selection_data, cluster)
+        if (debug) call update_selection_data(selection_data, cluster)
 
         if (cluster%excitation_level /= huge(0)) then
             ! FCIQMC calculates the projected energy exactly.  To do
