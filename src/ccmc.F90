@@ -297,7 +297,7 @@ contains
                                  write_bloom_report, bloom_stats_warning, update_bloom_threshold_prop
         use ccmc_data
         use ccmc_selection, only: select_cluster, create_null_cluster, select_nc_cluster, select_cluster_truncated
-        use ccmc_selection, only: init_selection_data, update_selection_probabilities, set_psize_selections
+        use ccmc_selection, only: init_selection_data, update_selection_probabilities, set_cluster_selections
         use ccmc_death_spawning, only: stochastic_ccmc_death_nc
         use ccmc_utils, only: init_contrib, dealloc_contrib, find_D0, cumulative_population, init_ex_lvl_dist_t, &
                               update_ex_lvl_dist
@@ -616,27 +616,8 @@ contains
                 !         of composite clusters, choosing nattempts samples.  For convenience
                 !         nattempts = # excitors not on the reference (i.e. the number of
                 !         excitors which can actually be involved in a composite cluster).
-                if (ccmc_in%full_nc) then
-                    ! Note that nattempts /= tot_abs_real_pop+D0_normalisation if the
-                    ! reference is not on the current processor.  Instead work
-                    ! out how many clusters of each type we will sample
-                    ! explicitly.
-                    min_cluster_size = 2
-                    selection_data%nD0_select = nint(abs(D0_normalisation))
-                    selection_data%nstochastic_clusters = ceiling(tot_abs_real_pop)
-                    selection_data%nsingle_excitors = qs%psip_list%nstates
-                    if (ccmc_in%even_selection) call set_psize_selections(selection_data, max_cluster_size)
-                else
-                    min_cluster_size = 0
-                    selection_data%nclusters = nattempts
-                    selection_data%nD0_select = 0 ! instead of this number of deterministic selections, these are chosen stochastically
-                    selection_data%nstochastic_clusters = nattempts
-                    selection_data%nsingle_excitors = 0
-                end if
-
-                selection_data%nclusters = selection_data%nD0_select + selection_data%nstochastic_clusters + &
-                                            selection_data%nsingle_excitors
-
+                call set_cluster_selections(selection_data, nattempts, min_cluster_size, max_cluster_size, D0_normalisation, &
+                                            tot_abs_real_pop, qs%psip_list%nstates, ccmc_in%full_nc, ccmc_in%even_selection)
                 ! OpenMP chunk size determined completely empirically from a single
                 ! test.  Please feel free to improve...
                 ! NOTE: we can't refer to procedure pointers in shared blocks so

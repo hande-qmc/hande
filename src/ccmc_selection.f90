@@ -735,6 +735,62 @@ contains
 
     end subroutine add_excitors_given_level
 
+!---- nselections update function ----
+
+    subroutine set_cluster_selections(selection_data, nattempts, min_cluster_size, max_size, D0_normalisation, tot_abs_pop, &
+                                    nstates, full_nc, even_selection)
+
+        use ccmc_data, only: selection_data_t
+
+        type(selection_data_t), intent(inout) :: selection_data
+        integer(int_p), intent(inout) :: nattempts
+        integer, intent(out) :: min_cluster_size
+        integer(int_64) :: nselections
+        integer, intent(in) :: max_size, nstates
+        complex(p), intent(in) :: D0_normalisation
+        real(p), intent(in) :: tot_abs_pop
+        logical, intent(in) :: full_nc, even_selection
+
+        if (full_nc .or. even_selection) then
+            ! Note that nattempts /= tot_abs_nint_pop+D0_normalisation if the
+            ! reference is not on the current processor.  Instead work
+            ! out how many clusters of each type we will sample
+            ! explicitly.
+            min_cluster_size = 2
+            selection_data%nD0_select = nint(abs(D0_normalisation))
+            selection_data%nstochastic_clusters = tot_abs_pop
+            selection_data%nsingle_excitors = nstates
+            if (max_size > 1 .and. even_selection) then
+                ! Set total selections so that expected proportion of selections of noncomposite gives
+                ! correct number of selections.
+                nselections = ceiling(tot_abs_pop / &
+                                        selection_data%size_weighting(1), kind=int_64)
+                !if (nselections <= selection_data%nD0_select) then
+                    ! Have majority of population on the reference; need to make sure we sample sensibly.
+                    ! Use conventional non-composite reference + noncomposite selection numbers.
+                !    selection_data%nstochastic_clusters = ceiling(nselections * &
+                !        (1.0_dp - sum(selection_data%size_weighting(0:1))))
+                !else
+
+                ! Can treat reference more similarly to the rest of the space.
+                selection_data%nD0_select = ceiling(nselections * selection_data%size_weighting(0))
+                selection_data%nstochastic_clusters = ceiling(nselections * sum(selection_data%size_weighting(2:)))
+
+            end if
+
+        else
+            min_cluster_size = 0
+            selection_data%nD0_select = 0 ! instead of this number of deterministic selections, these are chosen stochastically
+            selection_data%nstochastic_clusters = nattempts
+            selection_data%nsingle_excitors = 0
+        end if
+
+        selection_data%nclusters = selection_data%nD0_select + selection_data%nsingle_excitors &
+                            + selection_data%nstochastic_clusters
+
+    end subroutine set_cluster_selections
+
+
 !---- Cluster information accumulation ---
 
     subroutine update_selection_data(selection_data, cluster)
@@ -759,42 +815,9 @@ contains
 
     end subroutine update_selection_data
 
-!---- p_size Probability update functions ----
+! --- From on here all functions are only used for truncated selection ---
 
-    subroutine set_psize_selections(selection_data, max_size)
-        use ccmc_data, only: selection_data_t
-        type(selection_data_t), intent(inout) :: selection_data
-        integer(int_64) :: nselections
-        integer, intent(in) :: max_size
-!        integer(int_64), intent(in) :: max_selections
-
-        if (max_size > 1) then
-            ! Set total selections so that expected proportion of selections of noncomposite gives
-            ! correct number of selections.
-            nselections = ceiling(real(selection_data%nsingle_excitors, kind=dp) / &
-                                    selection_data%size_weighting(1), kind=int_64)
-            if (nselections <= selection_data%nD0_select) then
-                ! Have majority of population on the reference; need to make sure we sample sensibly.
-                ! Use conventional non-composite reference + noncomposite selection numbers.
-                selection_data%nstochastic_clusters = ceiling(nselections * &
-                    (1.0_dp - sum(selection_data%size_weighting(0:1))))
-            !else if (nselections > max_selections) then
-            !    selection_data%nD0_select = ceiling((max_selections-selection_data%nsingle_excitors) * &
-            !                selection_data%size_weighting(0)/(1.0_dp - selection_data%size_weighting(1)))
-            !    selection_data%nstochastic_clusters = ceiling((max_selections-selection_data%nsingle_excitors) * &
-            !                sum(selection_data%size_weighting(2:))/(1.0_dp - selection_data%size_weighting(1)))
-            else
-                ! Can treat reference more similarly to the rest of the space.
-                selection_data%nD0_select = ceiling(nselections * selection_data%size_weighting(0))
-                selection_data%nstochastic_clusters = ceiling(nselections * sum(selection_data%size_weighting(2:)))
-            end if
-
-            selection_data%nclusters = selection_data%nD0_select + selection_data%nsingle_excitors &
-                                + selection_data%nstochastic_clusters
-        end if
-    end subroutine set_psize_selections
-
-!---- p_comb Probability update functions ----
+!---- p_comb and p_size Probability update functions ----
 
     subroutine update_selection_probabilities(cumulative_excip_pop, ex_lvl_dist, abs_D0_normalisation, tot_abs_pop, &
                                                 cluster_selection)
