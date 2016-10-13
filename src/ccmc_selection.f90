@@ -3,7 +3,7 @@ module ccmc_selection
 ! Module containing all ccmc selection subroutines.
 ! For full explanation see top of ccmc.F90.
 
-use const, only: i0, int_p, int_64, p, dp, debug
+use const, only: i0, int_p, int_64, p, dp, debug, depsilon
 
 implicit none
 
@@ -84,7 +84,7 @@ contains
         integer, intent(in) :: D0_pos
         complex(p), intent(in) :: normalisation
         real(p), intent(in) :: initiator_pop
-        integer(int_p), intent(in) :: cumulative_excip_pop(:), tot_excip_pop
+        real(p), intent(in) :: cumulative_excip_pop(:), tot_excip_pop
         integer :: min_size, max_size
         type(dSFMT_t), intent(inout) :: rng
         type(det_info_t), intent(inout) :: cdet
@@ -95,7 +95,7 @@ contains
         real(p) :: psize
         complex(p) :: cluster_population, excitor_pop
         integer :: i, pos, prev_pos
-        integer(int_p) :: pop(max_size)
+        real(p) :: pop(max_size)
         logical :: hit, allowed, all_allowed
 
         ! We shall accumulate the factors which comprise cluster%pselect as we go.
@@ -181,7 +181,7 @@ contains
             ! Select cluster from the excitors on the current processor with
             ! probability for choosing an excitor proportional to the excip
             ! population on that excitor.  (For convenience, we use a probability
-            ! proportional to the nint(pop), as it makes finding the right excitor
+            ! proportional to the ceiling(pop), as it makes finding the right excitor
             ! much easier, especially for the non-composite algorithm, as well as
             ! selecting excitors with the correct (relative) probability.  The
             ! additional fractional weight is taken into account in the amplitude.)
@@ -194,7 +194,7 @@ contains
 
             do i = 1, cluster%nexcitors
                 ! Select a position in the excitors list.
-                pop(i) = int(get_rand_close_open(rng)*tot_excip_pop, int_p) + 1
+                pop(i) = get_rand_close_open(rng)*tot_excip_pop
             end do
             call insert_sort(pop(:cluster%nexcitors))
             prev_pos = 1
@@ -217,7 +217,7 @@ contains
                 ! should account for this.
                 do
                     if (pos == 1) exit
-                    if (cumulative_excip_pop(pos) /= cumulative_excip_pop(pos-1)) exit
+                    if (abs(cumulative_excip_pop(pos) - cumulative_excip_pop(pos-1)) > depsilon) exit
                     pos = pos - 1
                 end do
                 if (sys%read_in%comp) then
@@ -249,8 +249,8 @@ contains
                 ! If the excitor's population is below the initiator threshold, we remove the
                 ! initiator status for the cluster
                 if (abs(excitor_pop) <= initiator_pop) cdet%initiator_flag = 3
-                ! Probability of choosing this excitor = nint(pop)/tot_pop.
-                cluster%pselect = (cluster%pselect*nint(abs(excitor_pop)))/tot_excip_pop
+                ! Probability of choosing this excitor = pop/tot_pop.
+                cluster%pselect = (cluster%pselect*abs(excitor_pop))/tot_excip_pop
                 cluster%excitors(i)%f => psip_list%states(:,pos)
                 prev_pos = pos
             end do
@@ -365,7 +365,7 @@ contains
     end subroutine create_null_cluster
 
     subroutine select_cluster_non_composite(sys, psip_list, f0, iexcip, iexcip_pos, nattempts, initiator_pop,  D0_pos, &
-                                            cumulative_excip_pop, tot_excip_pop, cdet, cluster)
+                                            running_total, tot_ceiling_excip_pop, cdet, cluster)
 
         ! Select (deterministically) the non-composite cluster containing only
         ! the single excitor iexcitor and set the same information as select_cluster.
@@ -380,8 +380,6 @@ contains
         !        of excitors is generated in the current timestep.
         !    initiator_pop: the population above which a determinant is an initiator.
         !    D0_pos: position in the excip list of the reference.
-        !    cumulative_excip_population: running cumulative excip population on
-        !        all excitors; i.e. cumulative_excip_population(i) = sum(particle_t%pops(1:i)).
         !    tot_excip_pop: total excip population.
 
         ! NOTE: cumulative_excip_pop and tot_excip_pop ignore the population on the
@@ -408,6 +406,10 @@ contains
         !        input this is a bare cluster_t variable with the excitors array
         !        allocated to the maximum number of excitors in a cluster.  On
         !        output all fields in cluster have been set.
+        !    running_total:
+        !        Running total of all ceiling(populations) prior to this site,
+        !        ie. cumulative_abs_ceiling_population(i-1).
+
 
         use system, only: sys_t
         use determinants, only: det_info_t
@@ -422,10 +424,10 @@ contains
         type(particle_t), intent(in), target :: psip_list
         integer(i0), intent(in) :: f0(sys%basis%string_len)
         integer(int_64), intent(in) :: iexcip, nattempts
-        integer, intent(inout) :: iexcip_pos
+        integer, intent(inout) :: iexcip_pos, running_total
         integer, intent(in) :: D0_pos
         real(p), intent(in) :: initiator_pop
-        integer(int_p), intent(in) :: cumulative_excip_pop(:), tot_excip_pop
+        integer(int_p), intent(in) :: tot_ceiling_excip_pop
         type(det_info_t), intent(inout) :: cdet
         type(cluster_t), intent(inout) :: cluster
         complex(p) :: excitor_pop
@@ -447,22 +449,33 @@ contains
 
         ! Most of the time the excip is either on the current position or the
         ! next one, so special case to avoid the loop overhead.
-        if (cumulative_excip_pop(iexcip_pos) >= iexcip) then
+        if (running_total + ceiling(abs(real(psip_list%pops(1,iexcip_pos),p)/psip_list%pop_real_factor)) &
+                >= iexcip .and. iexcip_pos /= D0_pos) then
+
             ! Do nothing---already on the right position
-        else if (cumulative_excip_pop(iexcip_pos+1) >= iexcip) then
+        else if (running_total &
+                + ceiling(abs(real(psip_list%pops(1,iexcip_pos),p)/psip_list%pop_real_factor)) &
+                + ceiling(abs(real(psip_list%pops(1,iexcip_pos+1),p)/psip_list%pop_real_factor)) &
+                >= iexcip) then
             ! In the next slot...
+            if (iexcip_pos /= D0_pos) running_total = running_total + &
+                    ceiling(abs(real(psip_list%pops(1,iexcip_pos),p)/psip_list%pop_real_factor))
             iexcip_pos = iexcip_pos + 1
         else
             ! Need to hunt for it (ie the reference position is in the way).
+            if (iexcip_pos /= D0_pos) running_total = running_total + &
+                    ceiling(abs(real(psip_list%pops(1,iexcip_pos),p)/psip_list%pop_real_factor))
             iexcip_pos = iexcip_pos + 1
             do
-                if (cumulative_excip_pop(iexcip_pos) >= iexcip .and. cumulative_excip_pop(iexcip_pos-1) < iexcip) exit
+                if (running_total + ceiling(abs(real(psip_list%pops(1,iexcip_pos),p)/psip_list%pop_real_factor)) &
+                        >= iexcip .and. running_total < iexcip) exit
+                if (iexcip_pos /= D0_pos) running_total = running_total + &
+                        ceiling(abs(real(psip_list%pops(1,iexcip_pos),p)/psip_list%pop_real_factor))
                 iexcip_pos = iexcip_pos + 1
             end do
         end if
         ! Adjust for reference---cumulative_excip_pop(D0_pos) = cumulative_excip_pop(D0_pos-1).
         if (iexcip_pos == D0_pos) iexcip_pos = iexcip_pos - 1
-
         ! cdet and cluster only need to be set the first time the cluster is selected. On subsequent
         ! spawning attempts the same values can be reused, saving calls to decode_det_* and
         ! convert_excitor_to_determinant
@@ -503,7 +516,7 @@ contains
 
             if (abs(excitor_pop) <= initiator_pop) cdet%initiator_flag = 3
             ! pclust = |population|/total_population, as just a single excitor in the cluster..
-            cluster%pselect = (cluster%pselect*nint(abs(excitor_pop)))/tot_excip_pop
+            cluster%pselect = (cluster%pselect*nint(abs(excitor_pop)))/real(tot_ceiling_excip_pop,p)
             cluster%excitation_level = get_excitation_level(f0, cdet%f)
             cluster%amplitude = excitor_pop
 

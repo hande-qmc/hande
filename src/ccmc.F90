@@ -355,9 +355,10 @@ contains
 
         logical :: soft_exit, dump_restart_shift, restarting
 
-        integer(int_p), allocatable :: cumulative_abs_nint_pops(:)
+        real(p), allocatable :: cumulative_abs_real_pops(:)
         integer :: D0_proc, D0_pos, nD0_proc, min_cluster_size, max_cluster_size, iexcip_pos, slot
-        integer(int_p) :: tot_abs_nint_pop
+        integer(int_p) :: tot_abs_ceiling_pop
+        real(p) :: tot_abs_real_pop
         complex(p) :: D0_normalisation
         type(bloom_stats_t) :: bloom_stats
         type(annihilation_flags_t) :: annihilation_flags
@@ -367,6 +368,8 @@ contains
         real :: t1, t2
 
         logical :: update_tau, error
+
+        integer :: running_total
 
         logical :: seen_D0
         real(p) :: dfock
@@ -438,8 +441,8 @@ contains
         end do
 
         ! ...and scratch space for calculative cumulative probabilities.
-        allocate(cumulative_abs_nint_pops(size(qs%psip_list%states,dim=2)), stat=ierr)
-        call check_allocate('cumulative_abs_nint_pops', size(qs%psip_list%states,dim=2), ierr)
+        allocate(cumulative_abs_real_pops(size(qs%psip_list%states,dim=2)), stat=ierr)
+        call check_allocate('cumulative_abs_real_pops', size(qs%psip_list%states, dim=2), ierr)
 
         nparticles_old = qs%psip_list%tot_nparticles
 
@@ -582,8 +585,7 @@ contains
                 ! Given the contribution to the projected energy is divided by the cluster generation probability and
                 ! multiplied by the actual weight, doing this has absolutely no effect on the projected energy.
                 call cumulative_population(qs%psip_list%pops, qs%psip_list%nstates, D0_proc, D0_pos, qs%psip_list%pop_real_factor, &
-                                           sys%read_in%comp, cumulative_abs_nint_pops, &
-                                           tot_abs_nint_pop)
+                                           sys%read_in%comp, cumulative_abs_real_pops, tot_abs_real_pop, tot_abs_ceiling_pop)
 
                 call update_bloom_threshold_prop(bloom_stats, nparticles_old(1))
 
@@ -603,15 +605,15 @@ contains
                 !         nattempts = # excitors not on the reference (i.e. the number of
                 !         excitors which can actually be involved in a composite cluster).
                 if (ccmc_in%full_nc) then
-                    ! Note that nattempts /= tot_abs_nint_pop+D0_normalisation if the
+                    ! Note that nattempts /= tot_abs_real_pop+D0_normalisation if the
                     ! reference is not on the current processor.  Instead work
                     ! out how many clusters of each type we will sample
                     ! explicitly.
                     min_cluster_size = 2
                     nD0_select = nint(abs(D0_normalisation))
-                    nclusters = 2*tot_abs_nint_pop + nD0_select
-                    nstochastic_clusters = tot_abs_nint_pop
-                    nsingle_excitors = tot_abs_nint_pop
+                    nclusters = 2*tot_abs_ceiling_pop + nD0_select
+                    nstochastic_clusters = tot_abs_ceiling_pop
+                    nsingle_excitors = tot_abs_ceiling_pop
                 else
                     min_cluster_size = 0
                     nclusters = nattempts
@@ -628,7 +630,8 @@ contains
                 ! errors relate to the procedure pointers...
                 !$omp parallel default(none) &
                 !$omp private(it, iexcip_pos, i, seen_D0) &
-                !$omp shared(nattempts, rng, cumulative_abs_nint_pops, tot_abs_nint_pop,  &
+                !$omp shared(nattempts, rng, cumulative_abs_real_pops, tot_abs_real_pop,  &
+                !$omp        tot_abs_ceiling_pop, &
                 !$omp        max_cluster_size, contrib, D0_normalisation, D0_pos, rdm,    &
                 !$omp        nD0_select, qs, sys, bloom_stats, min_cluster_size, ref_det, &
                 !$omp        proj_energy_cycle, D0_population_cycle, nclusters,           &
@@ -637,6 +640,7 @@ contains
                 !$omp        nparticles_change, ndeath, ndeath_nc_im, logging_info)
                 it = get_thread_id()
                 iexcip_pos = 0
+                running_total = 0
                 seen_D0 = .false.
                 proj_energy_cycle = cmplx(0.0, 0.0, p)
                 D0_population_cycle = cmplx(0.0, 0.0, p)
@@ -648,8 +652,8 @@ contains
                     if (iattempt <= nstochastic_clusters) then
                         call select_cluster(rng(it), sys, qs%psip_list, qs%ref%f0, qs%ref%ex_level, ccmc_in%linked, &
                                             nstochastic_clusters, D0_normalisation, qmc_in%initiator_pop, D0_pos, &
-                                            cumulative_abs_nint_pops, tot_abs_nint_pop, min_cluster_size, &
-                                            max_cluster_size, logging_info, contrib(it)%cdet, contrib(it)%cluster)
+                                            cumulative_abs_real_pops, tot_abs_real_pop, min_cluster_size, max_cluster_size, &
+                                            logging_info, contrib(it)%cdet, contrib(it)%cluster)
                     else if (iattempt <= nstochastic_clusters+nD0_select) then
                         ! We just select the empty cluster.
                         ! As in the original algorithm, allow this to happen on
@@ -668,7 +672,7 @@ contains
                         ! Deterministically select each excip as a non-composite cluster.
                         call select_cluster_non_composite(sys, qs%psip_list, qs%ref%f0, iattempt-nstochastic_clusters-nD0_select,&
                                                           iexcip_pos, nsingle_excitors, qmc_in%initiator_pop, D0_pos, &
-                                                          cumulative_abs_nint_pops, tot_abs_nint_pop, &
+                                                          running_total, tot_abs_ceiling_pop, &
                                                           contrib(it)%cdet, contrib(it)%cluster)
                     end if
 
