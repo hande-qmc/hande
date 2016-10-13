@@ -4,6 +4,7 @@ use const, only: i0, p, dp, int_64, int_p
 use determinants, only: det_info_t
 use excitations, only: excit_t
 use excit_gens, only: excit_gen_data_t
+use hamiltonian_data, only: hmatel_t
 
 implicit none
 
