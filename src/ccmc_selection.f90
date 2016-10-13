@@ -761,22 +761,16 @@ contains
             selection_data%nD0_select = nint(abs(D0_normalisation))
             selection_data%nstochastic_clusters = tot_abs_pop
             selection_data%nsingle_excitors = nstates
-            if (max_size > 1 .and. even_selection) then
-                ! Set total selections so that expected proportion of selections of noncomposite gives
-                ! correct number of selections.
-                nselections = ceiling(tot_abs_pop / &
-                                        selection_data%size_weighting(1), kind=int_64)
-                !if (nselections <= selection_data%nD0_select) then
-                    ! Have majority of population on the reference; need to make sure we sample sensibly.
-                    ! Use conventional non-composite reference + noncomposite selection numbers.
-                !    selection_data%nstochastic_clusters = ceiling(nselections * &
-                !        (1.0_dp - sum(selection_data%size_weighting(0:1))))
-                !else
-
-                ! Can treat reference more similarly to the rest of the space.
-                selection_data%nD0_select = ceiling(nselections * selection_data%size_weighting(0))
-                selection_data%nstochastic_clusters = ceiling(nselections * sum(selection_data%size_weighting(2:)))
-
+            if (even_selection) then
+                if (max_size > 1) then
+                    ! Set total selections so that expected proportion of selections of noncomposite gives
+                    ! correct number of selections.
+                    nselections = ceiling(tot_abs_pop / selection_data%size_weighting(1), kind=int_64)
+                    selection_data%nD0_select = ceiling(nselections * selection_data%size_weighting(0))
+                    selection_data%nstochastic_clusters = ceiling(nselections * sum(selection_data%size_weighting(2:)))
+                else
+                    selection_data%nstochastic_clusters = 0
+                end if
             end if
 
         else
