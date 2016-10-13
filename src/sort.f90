@@ -19,6 +19,7 @@ end interface qsort
 interface insert_sort
     module procedure insert_sort_int_32
     module procedure insert_sort_int_64
+    module procedure insert_sort_real_p
 end interface insert_sort
 
 contains
@@ -560,5 +561,32 @@ contains
         end do
 
     end subroutine insert_sort_int_64
+
+    pure subroutine insert_sort_real_p(list)
+
+        ! Sort in-place a real list by the insertion sort algorithm.
+
+        ! In/Out:
+        !    list: list of reals.  List is sorted on output.
+
+        real(p), intent(inout) :: list(:)
+        real(p) :: tmp
+        integer :: i, j
+
+        ! Based on http://rosettacode.org/wiki/Sorting_algorithms/Insertion_sort#Fortran.
+        ! Essentially a direct translation of the pseudo-code for the algorithm.
+
+        do i = 2, ubound(list,dim=1)
+            j = i - 1
+            tmp = list(i)
+            do while (j>=1)
+                if (list(j)<=tmp) exit ! Can't combine with while conditional as Fortran can evaluate boolean statements in any order.
+                list(j+1) = list(j)
+                j = j - 1
+            end do
+            list(j+1) = tmp
+        end do
+
+    end subroutine insert_sort_real_p
 
 end module sort
