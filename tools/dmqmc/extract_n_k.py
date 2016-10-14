@@ -8,6 +8,9 @@ import sys
 
 def main(args):
 
+    # [review] - JSS: just use argparse and print out a proper help message for free(ish).
+    # [review] - JSS: what's bval, for example?
+    # [review] - JSS: scope/utility for multiple values of bval?
     if (len(sys.argv) < 2):
         print ("Usage: extract_n_k.py file bval")
         sys.exit()
