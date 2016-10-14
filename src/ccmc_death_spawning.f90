@@ -766,4 +766,40 @@ contains
         end if
     end subroutine spawner_complex_ccmc
 
+! --- Helper functions ---
+
+    subroutine create_spawned_particle_ccmc(basis, ref, cdet, connection, nspawned, ispace, &
+                                            ex_level, bloom_threshold, fexcit, spawn, bloom_stats)
+
+        use basis_types, only: basis_t
+        use reference_determinant, only: reference_t
+        use spawn_data, only: spawn_t
+        use determinants, only: det_info_t
+        use bloom_handler, only: bloom_stats_t, accumulate_bloom_stats
+        use excitations, only: excit_t
+        use proc_pointers, only: create_spawned_particle_ptr
+
+        type(basis_t), intent(in) :: basis
+        type(reference_t), intent(in) :: ref
+        type(spawn_t), intent(inout) ::spawn
+        type(det_info_t), intent(in) :: cdet
+        type(bloom_stats_t), intent(inout) :: bloom_stats
+        type(excit_t), intent(in) :: connection
+
+        integer(int_p), intent(in) :: nspawned
+        integer, intent(in) :: ispace, ex_level
+        integer(i0), intent(in) :: fexcit(:)
+        real(p), intent(in) :: bloom_threshold
+
+        if (ex_level == huge(0)) then
+            call create_spawned_particle_ptr(basis, ref, cdet, connection, nspawned, &
+                                            ispace, spawn, fexcit)
+        else
+            call create_spawned_particle_ptr(basis, ref, cdet, connection, nspawned, ispace, &
+                                            spawn)
+        end if
+        if (abs(nspawned) > bloom_threshold) call accumulate_bloom_stats(bloom_stats, nspawned)
+
+    end subroutine create_spawned_particle_ccmc
+
 end module ccmc_death_spawning

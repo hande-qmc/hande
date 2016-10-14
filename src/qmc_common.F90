@@ -304,6 +304,7 @@ contains
 
         ! Need to combine spaces if doing complex; we choose combining in quadrature.
         ! [review] - JSS: I wonder if it's cleaner to simply make cumulative_pops a 2D array of (nspaces,nstates) dimension?
+        ! [reply] - CJCS: Having this procedure take individual spaces (ie real or real+imaginary) would probably be cleaner?
         if (complx) then
             ! [todo] - Check if this type of operation is faster with a shift (or add and shift to get nint) (and below)
             cumulative_pops(1) = nint(abs(cmplx(pops(1,1), pops(2,1),p))/real_factor)

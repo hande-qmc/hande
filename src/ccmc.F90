@@ -294,12 +294,12 @@ contains
 
         use annihilation, only: direct_annihilation
         use bloom_handler, only: init_bloom_stats_t, bloom_stats_t, bloom_mode_fractionn, &
-                                 accumulate_bloom_stats, write_bloom_report, bloom_stats_warning
+                                 write_bloom_report, bloom_stats_warning
         use ccmc_data
         use ccmc_selection, only: select_cluster, create_null_cluster, select_cluster_non_composite
         use ccmc_death_spawning, only: spawner_ccmc, linked_spawner_ccmc, stochastic_ccmc_death
-        use ccmc_death_spawning, only: stochastic_ccmc_death_nc, spawner_complex_ccmc
-        use ccmc_utils, only: init_cluster, find_D0
+        use ccmc_death_spawning, only: stochastic_ccmc_death_nc, spawner_complex_ccmc, create_spawned_particle_ccmc
+        use ccmc_utils, only: init_cluster, find_D0, zero_estimators_t
         use determinants, only: det_info_t, alloc_det_info_t, dealloc_det_info_t, sum_sp_eigenvalues_occ_list, &
                                 sum_sp_eigenvalues_bit_string, decode_det
         use excitations, only: excit_t, get_excitation_level, get_excitation
@@ -473,7 +473,8 @@ contains
         D0_pos = 1
 
         ! Main fciqmc loop.
-        if (parent) call write_qmc_report_header(qs%psip_list%nspaces, cmplx_est=sys%read_in%comp, rdm_energy=ccmc_in%density_matrices)
+        if (parent) call write_qmc_report_header(qs%psip_list%nspaces, cmplx_est=sys%read_in%comp, &
+                                            rdm_energy=ccmc_in%density_matrices)
         call initial_fciqmc_status(sys, qmc_in, qs)
         ! Initialise timer.
         call cpu_time(t1)
@@ -669,11 +670,7 @@ contains
                 it = get_thread_id()
                 iexcip_pos = 0
                 seen_D0 = .false.
-                ! [review] - JSS: seems we have enough components to make a estimators_t_zero procedure worthwhile.
-                estimators_cycle%D0_population = 0.0_p
-                estimators_cycle%proj_energy = 0.0_p
-                estimators_cycle%D0_population_comp = cmplx(0.0, 0.0, p)
-                estimators_cycle%proj_energy_comp = cmplx(0.0, 0.0, p)
+                call zero_estimators_t(estimators_cycle)
                 proj_energy_cycle = cmplx(0.0, 0.0, p)
                 D0_population_cycle = cmplx(0.0, 0.0, p)
                 !$omp do schedule(dynamic,200) reduction(+:D0_population_cycle,proj_energy_cycle,nattempts_spawn)
@@ -744,7 +741,8 @@ contains
                             ! Add contribution to density matrix
                             ! d_pqrs = <HF|a_p^+a_q^+a_sa_r|CC>
                             !$omp critical
-                            call update_rdm(sys, cdet(it), ref_det, real(cluster(it)%amplitude, p)*cluster(it)%cluster_to_det_sign, &
+                            call update_rdm(sys, cdet(it), ref_det, &
+                                            real(cluster(it)%amplitude, p)*cluster(it)%cluster_to_det_sign, &
                                             1.0_p, cluster(it)%pselect, rdm)
                             !$omp end critical
                         end if
@@ -782,27 +780,12 @@ contains
                                 nspawned_im = 0_int_p
                             end if
 
-                            ! [review] - JSS: code repetition; abstract.
-                            if (nspawned /= 0_int_p) then
-                                if (cluster(it)%excitation_level == huge(0)) then
-                                    call create_spawned_particle_ptr(sys%basis, qs%ref, cdet(it), connection, nspawned, &
-                                                                     1, qs%spawn_store%spawn, fexcit)
-                                else
-                                    call create_spawned_particle_ptr(sys%basis, qs%ref, cdet(it), connection, nspawned, 1, &
-                                                                     qs%spawn_store%spawn)
-                                end if
-                                if (abs(nspawned) > bloom_threshold) call accumulate_bloom_stats(bloom_stats, nspawned)
-                            end if
-                            if (nspawned_im /= 0_int_p) then
-                                if (cluster(it)%excitation_level == huge(0)) then
-                                    call create_spawned_particle_ptr(sys%basis, qs%ref, cdet(it), connection, nspawned_im, &
-                                                                     2, qs%spawn_store%spawn, fexcit)
-                                else
-                                    call create_spawned_particle_ptr(sys%basis, qs%ref, cdet(it), connection, nspawned_im, 2, &
-                                                                     qs%spawn_store%spawn)
-                                end if
-                                if (abs(nspawned_im) > bloom_threshold) call accumulate_bloom_stats(bloom_stats, nspawned_im)
-                            end if
+                            if (nspawned /= 0_int_p) call create_spawned_particle_ccmc(sys%basis, qs%ref, cdet(it), connection, &
+                                                                nspawned, 1, cluster(it)%excitation_level, bloom_threshold, &
+                                                                fexcit, qs%spawn_store%spawn, bloom_stats)
+                            if (nspawned_im /= 0_int_p) call create_spawned_particle_ccmc(sys%basis, qs%ref, cdet(it), connection,&
+                                                                nspawned_im, 2, cluster(it)%excitation_level, bloom_threshold, &
+                                                                fexcit, qs%spawn_store%spawn, bloom_stats)
                         end do
 
                         ! Does the cluster collapsed onto D0 produce
