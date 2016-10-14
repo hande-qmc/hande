@@ -321,6 +321,7 @@ contains
 
         ! Now repeat same stages with imaginary component. No need to repeat same comments.
         if (sys%read_in%comp) then
+            ! [review] - JSS: abstract this repetition into an internal procedure?
             if (pdeath_im < spawn%cutoff) then
                 if (pdeath_im > get_rand_close_open(rng)*spawn%cutoff) then
                     nkill_im = spawn%cutoff

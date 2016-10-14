@@ -1268,7 +1268,7 @@ contains
         type(qmc_state_t), intent(in) ::  qs
  
         if (abs(qs%estimators%D0_population)<tiny(0._p)) then
-           proje = 0
+           proje = 0.0_p
         else
            proje = qs%estimators%proj_energy/qs%estimators%D0_population
         end if
@@ -1294,7 +1294,7 @@ contains
         type(qmc_state_t), intent(in) ::  qs
 
         if (abs(qs%estimators%D0_population_comp)<tiny(0._p)) then
-           proje = 0
+           proje = 0.0_p
         else
            proje = real(qs%estimators%proj_energy_comp/qs%estimators%D0_population_comp, p)
         end if

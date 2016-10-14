@@ -303,8 +303,9 @@ contains
         integer :: i
 
         ! Need to combine spaces if doing complex; we choose combining in quadrature.
+        ! [review] - JSS: I wonder if it's cleaner to simply make cumulative_pops a 2D array of (nspaces,nstates) dimension?
         if (complx) then
-            ! TODO: Check if this type of operation is faster with a shift (or add and shift to get nint) (and below)
+            ! [todo] - Check if this type of operation is faster with a shift (or add and shift to get nint) (and below)
             cumulative_pops(1) = nint(abs(cmplx(pops(1,1), pops(2,1),p))/real_factor)
             if (D0_proc == iproc) then
                 ! Let's be a bit faster: unroll loops and skip over the reference

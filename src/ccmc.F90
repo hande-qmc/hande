@@ -669,6 +669,7 @@ contains
                 it = get_thread_id()
                 iexcip_pos = 0
                 seen_D0 = .false.
+                ! [review] - JSS: seems we have enough components to make a estimators_t_zero procedure worthwhile.
                 estimators_cycle%D0_population = 0.0_p
                 estimators_cycle%proj_energy = 0.0_p
                 estimators_cycle%D0_population_comp = cmplx(0.0, 0.0, p)
@@ -781,26 +782,27 @@ contains
                                 nspawned_im = 0_int_p
                             end if
 
-                           if (nspawned /= 0_int_p) then
-                               if (cluster(it)%excitation_level == huge(0)) then
-                                   call create_spawned_particle_ptr(sys%basis, qs%ref, cdet(it), connection, nspawned, &
-                                                                    1, qs%spawn_store%spawn, fexcit)
-                               else
-                                   call create_spawned_particle_ptr(sys%basis, qs%ref, cdet(it), connection, nspawned, 1, &
-                                                                    qs%spawn_store%spawn)
-                               end if
-                               if (abs(nspawned) > bloom_threshold) call accumulate_bloom_stats(bloom_stats, nspawned)
-                           end if
-                           if (nspawned_im /= 0_int_p) then
-                               if (cluster(it)%excitation_level == huge(0)) then
-                                   call create_spawned_particle_ptr(sys%basis, qs%ref, cdet(it), connection, nspawned_im, &
-                                                                    2, qs%spawn_store%spawn, fexcit)
-                               else
-                                   call create_spawned_particle_ptr(sys%basis, qs%ref, cdet(it), connection, nspawned_im, 2, &
-                                                                    qs%spawn_store%spawn)
-                               end if
-                               if (abs(nspawned_im) > bloom_threshold) call accumulate_bloom_stats(bloom_stats, nspawned_im)
-                           end if
+                            ! [review] - JSS: code repetition; abstract.
+                            if (nspawned /= 0_int_p) then
+                                if (cluster(it)%excitation_level == huge(0)) then
+                                    call create_spawned_particle_ptr(sys%basis, qs%ref, cdet(it), connection, nspawned, &
+                                                                     1, qs%spawn_store%spawn, fexcit)
+                                else
+                                    call create_spawned_particle_ptr(sys%basis, qs%ref, cdet(it), connection, nspawned, 1, &
+                                                                     qs%spawn_store%spawn)
+                                end if
+                                if (abs(nspawned) > bloom_threshold) call accumulate_bloom_stats(bloom_stats, nspawned)
+                            end if
+                            if (nspawned_im /= 0_int_p) then
+                                if (cluster(it)%excitation_level == huge(0)) then
+                                    call create_spawned_particle_ptr(sys%basis, qs%ref, cdet(it), connection, nspawned_im, &
+                                                                     2, qs%spawn_store%spawn, fexcit)
+                                else
+                                    call create_spawned_particle_ptr(sys%basis, qs%ref, cdet(it), connection, nspawned_im, 2, &
+                                                                     qs%spawn_store%spawn)
+                                end if
+                                if (abs(nspawned_im) > bloom_threshold) call accumulate_bloom_stats(bloom_stats, nspawned_im)
+                            end if
                         end do
 
                         ! Does the cluster collapsed onto D0 produce
