@@ -403,7 +403,9 @@ operators options
     \hat{n}_{\mathbf{k}} \rangle`, up to a maximum wavevector defined by kmax which is a
     multiple of the Fermi wavevector. The momentum distribution will be printed out at
     unique kpoints which have the same kinetic energy.  Results can be extracted from the
-    analysed dmqmc output using the extract_n_k.py script in the tools/dmqmc directory.
+    analysed (i.e. by using the finite_temp_analysis script in the tools/dmqmc (see
+    tutorial for more information)) dmqmc output using the extract_n_k.py script in the
+    tools/dmqmc directory.
 
     Only currently implemented for the UEG.
 
