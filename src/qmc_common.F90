@@ -825,6 +825,8 @@ contains
             ! really minimal...)
             nattempts = int(psip_list%nparticles(1), int_64)
 ! [review] - AJWT: Specifically looking at index 2 will get messy at some point
+! [reply] - CJCS: We could replace it with an iteration over all spaces summing to total
+! [reply] - CJCS: if that would be how we would always want to approach this?
             if (complx_loc) nattempts = nattempts + abs(nint(psip_list%nparticles(2), int_64))
         else if (doing_calc(dmqmc_calc)) then
             ! Each particle and each end gets to attempt to spawn onto a
