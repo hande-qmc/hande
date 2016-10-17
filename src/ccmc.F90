@@ -682,7 +682,7 @@ contains
                         call select_cluster(rng(it), sys, qs%psip_list, qs%ref%f0, qs%ref%ex_level, ccmc_in%linked, &
                                             nstochastic_clusters, D0_normalisation, qmc_in%initiator_pop, D0_pos, &
                                             cumulative_abs_nint_pops, tot_abs_nint_pop, min_cluster_size, &
-                                            max_cluster_size, qmc_in%quadrature_initiator, cdet(it), cluster(it))
+                                            max_cluster_size, cdet(it), cluster(it))
                     else if (iattempt <= nstochastic_clusters+nD0_select) then
                         ! We just select the empty cluster.
                         ! As in the original algorithm, allow this to happen on
@@ -695,14 +695,14 @@ contains
                             ! generators. On subsequent calls, cdet does not need to change.
                             seen_D0 = .true.
                             call create_null_cluster(sys, qs%ref%f0, nprocs*real(nD0_select,p), D0_normalisation, &
-                                                     qmc_in%initiator_pop, qmc_in%quadrature_initiator, cdet(it), cluster(it))
+                                                     qmc_in%initiator_pop, cdet(it), cluster(it))
                         end if
                     else
                         ! Deterministically select each excip as a non-composite cluster.
                         call select_cluster_non_composite(sys, qs%psip_list, qs%ref%f0, iattempt-nstochastic_clusters-nD0_select,&
                                                           iexcip_pos, nsingle_excitors, qmc_in%initiator_pop, D0_pos, &
                                                           cumulative_abs_nint_pops, tot_abs_nint_pop, &
-                                                          qmc_in%quadrature_initiator, cdet(it), cluster(it))
+                                                          cdet(it), cluster(it))
                     end if
 
                     if (cluster(it)%excitation_level <= qs%ref%ex_level+2 .or. &
