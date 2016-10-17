@@ -196,17 +196,18 @@ contains
         !    rng: random number generator.
         !    spawn: spawn_t object to which the spanwed particle will be added.
 
-
         use ccmc_data, only: cluster_t
         use determinants, only: det_info_t
-        use excitations, only: excit_t
-        use proc_pointers, only: sc0_ptr, create_spawned_particle_ptr
-        use dSFMT_interface, only: dSFMT_t, get_rand_close_open
+        use const, only: debug
+
+        use proc_pointers, only: sc0_ptr
+        use dSFMT_interface, only: dSFMT_t
         use spawn_data, only: spawn_t
         use spawning, only: calc_qn_weighting
         use system, only: sys_t
         use qmc_data, only: qmc_state_t
         use logging, only: logging_t, write_logging_death
+
         type(sys_t), intent(in) :: sys
         type(qmc_state_t), intent(in) :: qs
         logical, intent(in) :: linked_ccmc
@@ -218,11 +219,10 @@ contains
         type(spawn_t), intent(inout) :: spawn
         integer(int_p), intent(inout) :: ndeath_tot
 
-        real(p) :: pdeath, KiiAi, pdeath_im, KiiAi_im
-        integer(int_p) :: nkill, nkill_im
-        type(excit_t), parameter :: null_excit = excit_t( 0, [0,0], [0,0], .false.)
+        complex(p) :: KiiAi
 
-        real(p) :: invdiagel
+        real(p) :: invdiagel, pdeath
+        integer(int_p) :: nkill
 
         ! Spawning onto the same excitor so no change in sign due to
         ! a difference in the sign of the determinant formed from applying the
@@ -233,55 +233,104 @@ contains
             select case (cluster%nexcitors)
             case(0)
                 ! Death on the reference has H_ii - E_HF = 0.
-                KiiAi = (( - proj_energy)*invdiagel + (proj_energy - qs%shift(1)))*real(cluster%amplitude)
+                KiiAi = (( - proj_energy)*invdiagel + (proj_energy - qs%shift(1)))*cluster%amplitude
             case(1)
                 ! Evaluating the commutator gives
                 ! <D1|[H,a1]|D0> = <D1|H|D1> - <D0|H|D0>
                 ! (this is scaled for quasinewton approaches)
-                KiiAi = (cdet%data(1) * invdiagel + proj_energy - qs%shift(1))*real(cluster%amplitude)
+                KiiAi = (cdet%data(1) * invdiagel + proj_energy - qs%shift(1))*cluster%amplitude
             case(2)
                 ! Evaluate the commutator
                 ! The cluster operators are a1 and a2 (with a1 D0 = D1, a2 D0 = D2,
                 ! a1 a2 D0 = D3) so the commutator gives:
                 ! <D3|[[H,a1],a2]|D0> = <D3|H|D3> - <D2|H|D2> - <D1|H|D1> + <D0|H|D0>
                 KiiAi = (sc0_ptr(sys, cdet%f) - sc0_ptr(sys, cluster%excitors(1)%f) &
-                    - sc0_ptr(sys, cluster%excitors(2)%f) + qs%ref%H00)*real(cluster%amplitude)
+                    - sc0_ptr(sys, cluster%excitors(2)%f) + qs%ref%H00)*cluster%amplitude
                 ! (this is scaled for quasinewton approaches)
                 KiiAi = KiiAi*invdiagel                                             
             case default
                 ! At most two cluster operators can be linked to the diagonal
                 ! part of H so this must be an unlinked cluster
-                KiiAi = 0.0_p
+                KiiAi = cmplx(0.0_p,0.0_p,p)
             end select
         else
             select case (cluster%nexcitors)
             case(0)
-                KiiAi = (( - proj_energy)*invdiagel + (proj_energy - qs%shift(1)))*real(cluster%amplitude)
-                if (sys%read_in%comp) then
-                    KiiAi_im = (-qs%shift(1))*aimag(cluster%amplitude)
-                end if
+                KiiAi = (( - proj_energy)*invdiagel + (proj_energy - qs%shift(1)))*cluster%amplitude
             case(1)
-                KiiAi = ((cdet%data(1) - proj_energy)*invdiagel + (proj_energy - qs%shift(1)))*real(cluster%amplitude)
-                if (sys%read_in%comp) then
-                    KiiAi_im = (cdet%data(1) - qs%shift(1))*aimag(cluster%amplitude)
-                end if
+                KiiAi = ((cdet%data(1) - proj_energy)*invdiagel + (proj_energy - qs%shift(1)))*cluster%amplitude
             case default
-                KiiAi = ((sc0_ptr(sys, cdet%f) - qs%ref%H00) - proj_energy)*invdiagel *real(cluster%amplitude)
-                if (sys%read_in%comp) then
-                    KiiAi_im = (sc0_ptr(sys, cdet%f) - qs%ref%H00 - proj_energy)*aimag(cluster%amplitude)
-                end if
+                KiiAi = ((sc0_ptr(sys, cdet%f) - qs%ref%H00) - proj_energy)*invdiagel *cluster%amplitude
             end select
         end if
 
         ! Amplitude is the decoded value.  Scale here so death is performed exactly (bar precision).
         ! See comments in stochastic_death.
         KiiAi = qs%psip_list%pop_real_factor*KiiAi
-        pdeath = qs%tau*abs(KiiAi)/cluster%pselect
+
+        ! Scale by tau and pselect before pass to specific functions.
+        KiiAi = KiiAi * qs%tau / cluster%pselect
+
+
+        call stochastic_death_attempt(rng, real(KiiAi, p), 1, cdet, qs%ref, sys%basis, spawn, &
+                           nkill, pdeath)
+        ndeath_tot = ndeath_tot + abs(nkill)
+
+        if (debug) call write_logging_death(logging_info, real(KiiAi,p), proj_energy, qs%shift(1), invdiagel, &
+                                            nkill, pdeath, real(cluster%amplitude,p), 0.0_p)
 
         if (sys%read_in%comp) then
-            KiiAi_im = qs%psip_list%pop_real_factor*KiiAi_im
-            pdeath_im = qs%tau*abs(KiiAi_im)/cluster%pselect
+            call stochastic_death_attempt(rng, aimag(KiiAi), 2, cdet, qs%ref, sys%basis, spawn, &
+                               nkill, pdeath)
+            ndeath_tot = ndeath_tot + abs(nkill)
+
+            if (debug) call write_logging_death(logging_info, aimag(KiiAi), proj_energy, qs%shift(1), invdiagel, &
+                                                nkill, pdeath, aimag(cluster%amplitude), 0.0_p)
         end if
+
+    end subroutine stochastic_ccmc_death
+
+    subroutine stochastic_death_attempt(rng, KiiAi, ispace, cdet, ref, basis, spawn, nkill, pdeath)
+
+        ! Perform a single attempt at stochastic ccmc death. Abstracted to enable calls for
+        ! arbitrary spaces.
+
+        ! In:
+        !   KiiAi: Value of diagonal matrix element, appropriately scaled by tau and select,
+        !       as well as any factors arising from quasinewton approaches.
+        !   ispace: space number of any created particles.
+        !   cdet: determinant resulting from collapse of considered cluster.
+        !   ref: reference determinant information.
+        !   basis: information on basis being used.
+        ! In/Out:
+        !   rng: random number generator.
+        !   spawn: object containing information on spawn attempts.
+        ! Out:
+        !   nkill: signed number of particles killed in event.
+        !   pdeath: probability of additional death event over deterministic deaths.
+
+        use dSFMT_interface, only: dSFMT_t, get_rand_close_open
+        use spawn_data, only: spawn_t
+        use excitations, only: excit_t
+        use determinants, only: det_info_t
+        use reference_determinant, only: reference_t
+        use basis_types, only: basis_t
+        use proc_pointers, only: create_spawned_particle_ptr
+
+        type(dSFMT_t), intent(inout) :: rng
+        real(p), intent(out) :: pdeath
+        real(p), intent(in) :: KiiAi
+        type(spawn_t), intent(inout) :: spawn
+        integer, intent(in) :: ispace
+        type(det_info_t), intent(in) :: cdet
+        type(reference_t), intent(in) :: ref
+        type(basis_t), intent(in) :: basis
+
+        type(excit_t), parameter :: null_excit = excit_t( 0, [0,0], [0,0], .false.)
+
+        integer(int_p), intent(out) :: nkill
+
+        pdeath = abs(KiiAi)
 
         if (pdeath < spawn%cutoff) then
             ! Calling death once per excip (and hence with a low pselect) without any
@@ -307,7 +356,6 @@ contains
         end if
 
         if (nkill /= 0) then
-            ndeath_tot = ndeath_tot + abs(nkill)
             ! Create nkill excips with sign of -K_ii A_i
             if (KiiAi > 0) nkill = -nkill
 !            cdet%initiator_flag=0  !All death is allowed
@@ -316,40 +364,10 @@ contains
             ! care of the rest.
             ! Pass through a null excitation so that we create a spawned particle on
             ! the current excitor.
-            call create_spawned_particle_ptr(sys%basis, qs%ref, cdet, null_excit, nkill, 1, spawn)
+            call create_spawned_particle_ptr(basis, ref, cdet, null_excit, nkill, ispace, spawn)
         end if
 
-        ! Now repeat same stages with imaginary component. No need to repeat same comments.
-        if (sys%read_in%comp) then
-            ! [review] - JSS: abstract this repetition into an internal procedure?
-            if (pdeath_im < spawn%cutoff) then
-                if (pdeath_im > get_rand_close_open(rng)*spawn%cutoff) then
-                    nkill_im = spawn%cutoff
-                else
-                    nkill_im = 0_int_p
-                end if
-            else
-                ! Number that will definitely die
-                nkill_im = int(pdeath_im,int_p)
-                ! Stochastic death...
-                pdeath_im = pdeath_im - nkill_im
-                if (pdeath_im > get_rand_close_open(rng)) nkill_im = nkill_im + 1
-            end if
-
-            if (nkill_im /= 0) then
-                ndeath_tot = ndeath_tot + abs(nkill_im)
-                ! Create nkill excips with sign of -K_ii A_i
-                if (KiiAi_im > 0) nkill_im = -nkill_im
-                ! The excitor might be a composite cluster so we'll just create
-                ! excips in the spawned list and allow the annihilation process to take
-                ! care of the rest.
-                ! Pass through a null excitation so that we create a spawned particle on
-                ! the current excitor.
-                call create_spawned_particle_ptr(sys%basis, qs%ref, cdet, null_excit, nkill_im, 2, spawn)
-            end if
-        end if
-
-    end subroutine stochastic_ccmc_death
+    end subroutine stochastic_death_attempt
 
     subroutine stochastic_ccmc_death_nc(rng, linked_ccmc,  sys, qs, isD0, dfock, Hii, proj_energy, population, &
                                         tot_population, ndeath)
