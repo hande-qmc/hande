@@ -14,6 +14,8 @@ implicit none
 enum, bind(c)
     enumerator :: proj_energy_ind = 1
     enumerator :: D0_pop_ind
+    enumerator :: proj_energy_replica_ind
+    enumerator :: D0_pop_replica_ind
     enumerator :: rspawn_ind
     enumerator :: update_tau_ind
     enumerator :: bloom_tot_ind
@@ -284,9 +286,12 @@ contains
             rep_loop_loc(proj_energy_imag_ind) = aimag(qs%estimators(1)%proj_energy_comp)
             rep_loop_loc(D0_pop_imag_ind) = aimag(qs%estimators(1)%D0_population_comp)
         else
-            ! Todo: this doesn't account for replicas
             rep_loop_loc(proj_energy_ind) = qs%estimators(1)%proj_energy
             rep_loop_loc(D0_pop_ind) = qs%estimators(1)%D0_population
+            if (qs%psip_list%nspaces > 1) then
+                rep_loop_loc(proj_energy_replica_ind) = qs%estimators(2)%proj_energy
+                rep_loop_loc(D0_pop_replica_ind) = qs%estimators(2)%D0_population
+            end if
         end if
         rep_loop_loc(rspawn_ind) = qs%spawn_store%rspawn
         if (present(update_tau)) then
@@ -373,7 +378,6 @@ contains
 
         real(dp) :: ntot_particles(size(ntot_particles_old)), new_hf_signed_pop
         real(p) :: pop_av
-        real(dp) :: nparticles_wfn
         integer :: i, ntypes
         logical :: comp_param, vary_shift_reference_loc
 
@@ -389,8 +393,12 @@ contains
                                                 rep_loop_sum(proj_energy_imag_ind), p)
         qs%estimators%D0_population_comp = cmplx(rep_loop_sum(D0_pop_ind), &
                                                 rep_loop_sum(D0_pop_imag_ind), p)
-        qs%estimators%proj_energy = real(rep_loop_sum(proj_energy_ind), p)
-        qs%estimators%D0_population = real(rep_loop_sum(D0_pop_ind), p)
+        qs%estimators(1)%proj_energy = real(rep_loop_sum(proj_energy_ind), p)
+        qs%estimators(1)%D0_population = real(rep_loop_sum(D0_pop_ind), p)
+        if (size(qs%estimators) > 1) then
+            qs%estimators(2)%proj_energy = real(rep_loop_sum(proj_energy_replica_ind), p)
+            qs%estimators(2)%D0_population = real(rep_loop_sum(D0_pop_replica_ind), p)
+        end if
 
         qs%spawn_store%rspawn = real(rep_loop_sum(rspawn_ind), p)
         if (present(update_tau)) then

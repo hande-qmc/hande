@@ -269,8 +269,8 @@ contains
                         end if
                         ! Is this determinant an initiator?
                         ! Todo: replicas?
-                        call set_parent_flag(real_population, qmc_in%initiator_pop, determ%flags(idet), qmc_in%quadrature_initiator, &
-                                              cdet%initiator_flag)
+                        call set_parent_flag(real_population, qmc_in%initiator_pop, determ%flags(idet), &
+                                             qmc_in%quadrature_initiator, cdet%initiator_flag)
 
 
                         nattempts_current_det = decide_nattempts(rng, real_population(ispace))

@@ -109,7 +109,7 @@ contains
 
 #else
 
-        if (abs(real_pop) > ref_det_factor*abs(qs%estimators%D0_population) .and. any(fmax /= qs%ref%f0)) then
+        if (abs(real_pop) > ref_det_factor*abs(qs%estimators(1)%D0_population) .and. any(fmax /= qs%ref%f0)) then
             updated = .true.
             qs%ref%f0 = fmax
             qs%ref%H00 = H00_max
