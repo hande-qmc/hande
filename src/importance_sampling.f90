@@ -308,10 +308,12 @@ contains
 
         ! For the case when H^0 = \sum_i \varepsilon_i n_i, then the energy differences are simple to
         ! evaluate : E_i - E_k = (\varepsilon_a+\varepsilon_b) - (\varepsilon_i+\varepsilon_j).
-        do iorb = 1, connection%nexcit
-            diff_ijab = diff_ijab + sys%basis%basis_fns(connection%to_orb(iorb))%sp_eigv - &
-                                    sys%basis%basis_fns(connection%from_orb(iorb))%sp_eigv
-        end do
+        if (abs(hmatel) > depsilon) then
+            do iorb = 1, connection%nexcit
+                diff_ijab = diff_ijab + sys%basis%basis_fns(connection%to_orb(iorb))%sp_eigv - &
+                                        sys%basis%basis_fns(connection%from_orb(iorb))%sp_eigv
+            end do
+        end if
         hmatel = exp(-trial_func(sys%max_number_excitations+1)*diff_ijab) * hmatel
 
     end subroutine interaction_picture_reweighting_free
