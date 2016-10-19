@@ -744,7 +744,7 @@ contains
         use ccmc_data, only: selection_data_t
 
         type(selection_data_t), intent(inout) :: selection_data
-        integer(int_p), intent(inout) :: nattempts
+        integer(int_64), intent(inout) :: nattempts
         integer, intent(out) :: min_cluster_size
         integer(int_64) :: nselections
         integer, intent(in) :: max_size, nstates
