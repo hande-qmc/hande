@@ -846,7 +846,6 @@ contains
         !     shift_damping = damp_factor,
         !     initiator = true/false,
         !     initiator_threshold = pop,
-        !     quadrature_initiator = true/false,
         !     use_mpi_barriers = true/false,
         !     vary_shift_from = shift or "proje",
         !     vary_shift = true/false,
@@ -878,13 +877,13 @@ contains
         character(len=10) :: str
         logical :: skip, no_renorm
 
-        character(23), parameter :: keys(28) = [character(23) :: 'tau', 'init_pop', 'mc_cycles', 'nreports', 'state_size', &
+        character(23), parameter :: keys(27) = [character(23) :: 'tau', 'init_pop', 'mc_cycles', 'nreports', 'state_size', &
                                                                  'spawned_state_size', 'rng_seed', 'target_population', &
                                                                  'real_amplitudes', 'spawn_cutoff', 'no_renorm', 'tau_search', &
                                                                  'real_amplitude_force_32', &
                                                                  'pattempt_single', 'pattempt_double', 'initial_shift', &
                                                                  'shift_damping', 'initiator', 'initiator_threshold', &
-                                                                 'quadrature_initiator', 'use_mpi_barriers', 'vary_shift_from', &
+                                                                 'use_mpi_barriers', 'vary_shift_from', &
                                                                  'excit_gen', 'reference_target', 'vary_shift', &
                                                                  'quasi_newton','quasi_newton_thresh', 'quasi_newton_value']
 
@@ -925,7 +924,6 @@ contains
         call aot_get_val(qmc_in%target_particles, err, lua_state, qmc_table, 'target_population')
         call aot_get_val(qmc_in%initiator_approx, err, lua_state, qmc_table, 'initiator')
         call aot_get_val(qmc_in%initiator_pop, err, lua_state, qmc_table, 'initiator_threshold')
-        call aot_get_val(qmc_in%quadrature_initiator, err, lua_state, qmc_table, 'quadrature_initiator')
         call aot_get_val(qmc_in%use_mpi_barriers, err, lua_state, qmc_table, 'use_mpi_barriers')
         call aot_get_val(qmc_in%quasi_newton, err, lua_state, qmc_table, 'quasi_newton')
         call aot_get_val(qmc_in%quasi_newton_threshold, err, lua_state, qmc_table, 'quasi_newton_threshold')
@@ -1002,6 +1000,7 @@ contains
         !        update_every = mc_cycles,
         !        pop_factor = factor,
         !     }
+        !     quadrature_initiator = true/false,
         ! }
 
         ! In/Out:
@@ -1026,9 +1025,9 @@ contains
         integer :: fciqmc_table, ref_det, err
         character(len=12) :: str
         logical :: ref_det_flag
-        character(31), parameter :: keys(6) = [character(31) :: 'non_blocking_comm', 'load_balancing', 'guiding_function', &
+        character(31), parameter :: keys(7) = [character(31) :: 'non_blocking_comm', 'load_balancing', 'guiding_function', &
                                                                 'init_spin_inverse_reference_det', 'trial_function', &
-                                                                'select_reference_det']
+                                                                'select_reference_det', 'quadrature_initiator']
 
         if (aot_exists(lua_state, opts, 'fciqmc')) then
 
@@ -1038,6 +1037,7 @@ contains
             call aot_get_val(fciqmc_in%non_blocking_comm, err, lua_state, fciqmc_table, 'non_blocking_comm')
             call aot_get_val(fciqmc_in%doing_load_balancing, err, lua_state, fciqmc_table, 'load_balancing')
             call aot_get_val(fciqmc_in%init_spin_inv_D0, err, lua_state, fciqmc_table, 'init_spin_inverse_reference_det')
+            call aot_get_val(fciqmc_in%quadrature_initiator, err, lua_state, fciqmc_table, 'quadrature_initiator')
 
             ! Optional arguments requiring special care.
             if (aot_exists(lua_state, fciqmc_table, 'select_reference_det')) then

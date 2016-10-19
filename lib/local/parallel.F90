@@ -109,6 +109,14 @@ integer, parameter :: mpi_preal = MPI_REAL
 #else
 integer, parameter :: mpi_preal = MPI_REAL8
 #endif
+
+! MPI data type for complex of single/double precision (as chosen at
+! compile-time).
+#ifdef SINGLE_PRECISION
+integer, parameter :: mpi_pcomplex = MPI_COMPLEX
+#else
+integer, parameter :: mpi_pcomplex = MPI_COMPLEX16
+#endif
 #endif
 
 contains

@@ -134,14 +134,14 @@ contains
         end if
         ! 2, Apply additional factors.
         hmatel_save = hmatel
-        hmatel%r = hmatel%r*cluster%amplitude*invdiagel*cluster%cluster_to_det_sign
+        hmatel%r = hmatel%r*real(cluster%amplitude)*invdiagel*cluster%cluster_to_det_sign
         pgen = pgen*cluster%pselect*nspawnings_total
 
         ! 3. Attempt spawning.
         nspawn = attempt_to_spawn(rng, qs%tau, spawn_cutoff, qs%psip_list%pop_real_factor, hmatel%r, pgen, parent_sign)
 
         if (debug) call write_logging_spawn(logging_info, hmatel_save, pgen, invdiagel, [nspawn], &
-                        cluster%amplitude*qs%psip_list%pop_real_factor, sys%read_in%comp)
+                        real(cluster%amplitude)*qs%psip_list%pop_real_factor, sys%read_in%comp)
 
         if (nspawn /= 0_int_p) then
             ! 4. Convert the random excitation from a determinant into an
@@ -181,6 +181,8 @@ contains
         ! (H - E_proj) + (E_proj - S).
         ! The former is scaled and produces the step.  The latter effects the population control.
 
+        ! NB This currently only handles non-linked complex amplitudes, not linked complex.
+
         ! In:
         !    sys: system being studied.
         !    qs: qmc_state_t containing information about the reference and estimators.
@@ -190,22 +192,22 @@ contains
         !    cluster: information about the cluster which forms the excitor.
         !    proj_energy: projected energy.  This should be the average value from the last
         !        report loop, not the running total in qs%estimators.
-        !    logging_info: logging_t derived type containing information on logging behaviour.
         ! In/Out:
         !    rng: random number generator.
         !    spawn: spawn_t object to which the spanwed particle will be added.
 
-        use const, only: debug
         use ccmc_data, only: cluster_t
         use determinants, only: det_info_t
-        use excitations, only: excit_t
-        use proc_pointers, only: sc0_ptr, create_spawned_particle_ptr
-        use dSFMT_interface, only: dSFMT_t, get_rand_close_open
+        use const, only: debug
+
+        use proc_pointers, only: sc0_ptr
+        use dSFMT_interface, only: dSFMT_t
         use spawn_data, only: spawn_t
         use spawning, only: calc_qn_weighting
         use system, only: sys_t
         use qmc_data, only: qmc_state_t
         use logging, only: logging_t, write_logging_death
+
         type(sys_t), intent(in) :: sys
         type(qmc_state_t), intent(in) :: qs
         logical, intent(in) :: linked_ccmc
@@ -217,11 +219,10 @@ contains
         type(spawn_t), intent(inout) :: spawn
         integer(int_p), intent(inout) :: ndeath_tot
 
-        real(p) :: pdeath, KiiAi
-        integer(int_p) :: nkill
-        type(excit_t), parameter :: null_excit = excit_t( 0, [0,0], [0,0], .false.)
+        complex(p) :: KiiAi
 
-        real(p) :: invdiagel
+        real(p) :: invdiagel, pdeath
+        integer(int_p) :: nkill
 
         ! Spawning onto the same excitor so no change in sign due to
         ! a difference in the sign of the determinant formed from applying the
@@ -250,12 +251,11 @@ contains
             case default
                 ! At most two cluster operators can be linked to the diagonal
                 ! part of H so this must be an unlinked cluster
-                KiiAi = 0.0_p
+                KiiAi = cmplx(0.0_p,0.0_p,p)
             end select
         else
             select case (cluster%nexcitors)
             case(0)
-                ! Death on the reference has H_ii - E_HF = 0.
                 KiiAi = (( - proj_energy)*invdiagel + (proj_energy - qs%shift(1)))*cluster%amplitude
             case(1)
                 KiiAi = ((cdet%data(1) - proj_energy)*invdiagel + (proj_energy - qs%shift(1)))*cluster%amplitude
@@ -267,7 +267,70 @@ contains
         ! Amplitude is the decoded value.  Scale here so death is performed exactly (bar precision).
         ! See comments in stochastic_death.
         KiiAi = qs%psip_list%pop_real_factor*KiiAi
-        pdeath = qs%tau*abs(KiiAi)/cluster%pselect
+
+        ! Scale by tau and pselect before pass to specific functions.
+        KiiAi = KiiAi * qs%tau / cluster%pselect
+
+
+        call stochastic_death_attempt(rng, real(KiiAi, p), 1, cdet, qs%ref, sys%basis, spawn, &
+                           nkill, pdeath)
+        ndeath_tot = ndeath_tot + abs(nkill)
+
+        if (debug) call write_logging_death(logging_info, real(KiiAi,p), proj_energy, qs%shift(1), invdiagel, &
+                                            nkill, pdeath, real(cluster%amplitude,p), 0.0_p)
+
+        if (sys%read_in%comp) then
+            call stochastic_death_attempt(rng, aimag(KiiAi), 2, cdet, qs%ref, sys%basis, spawn, &
+                               nkill, pdeath)
+            ndeath_tot = ndeath_tot + abs(nkill)
+
+            if (debug) call write_logging_death(logging_info, aimag(KiiAi), proj_energy, qs%shift(1), invdiagel, &
+                                                nkill, pdeath, aimag(cluster%amplitude), 0.0_p)
+        end if
+
+    end subroutine stochastic_ccmc_death
+
+    subroutine stochastic_death_attempt(rng, KiiAi, ispace, cdet, ref, basis, spawn, nkill, pdeath)
+
+        ! Perform a single attempt at stochastic ccmc death. Abstracted to enable calls for
+        ! arbitrary spaces.
+
+        ! In:
+        !   KiiAi: Value of diagonal matrix element, appropriately scaled by tau and select,
+        !       as well as any factors arising from quasinewton approaches.
+        !   ispace: space number of any created particles.
+        !   cdet: determinant resulting from collapse of considered cluster.
+        !   ref: reference determinant information.
+        !   basis: information on basis being used.
+        ! In/Out:
+        !   rng: random number generator.
+        !   spawn: object containing information on spawn attempts.
+        ! Out:
+        !   nkill: signed number of particles killed in event.
+        !   pdeath: probability of additional death event over deterministic deaths.
+
+        use dSFMT_interface, only: dSFMT_t, get_rand_close_open
+        use spawn_data, only: spawn_t
+        use excitations, only: excit_t
+        use determinants, only: det_info_t
+        use reference_determinant, only: reference_t
+        use basis_types, only: basis_t
+        use proc_pointers, only: create_spawned_particle_ptr
+
+        type(dSFMT_t), intent(inout) :: rng
+        real(p), intent(out) :: pdeath
+        real(p), intent(in) :: KiiAi
+        type(spawn_t), intent(inout) :: spawn
+        integer, intent(in) :: ispace
+        type(det_info_t), intent(in) :: cdet
+        type(reference_t), intent(in) :: ref
+        type(basis_t), intent(in) :: basis
+
+        type(excit_t), parameter :: null_excit = excit_t( 0, [0,0], [0,0], .false.)
+
+        integer(int_p), intent(out) :: nkill
+
+        pdeath = abs(KiiAi)
 
         if (pdeath < spawn%cutoff) then
             ! Calling death once per excip (and hence with a low pselect) without any
@@ -293,7 +356,6 @@ contains
         end if
 
         if (nkill /= 0) then
-            ndeath_tot = ndeath_tot + abs(nkill)
             ! Create nkill excips with sign of -K_ii A_i
             if (KiiAi > 0) nkill = -nkill
 !            cdet%initiator_flag=0  !All death is allowed
@@ -302,13 +364,10 @@ contains
             ! care of the rest.
             ! Pass through a null excitation so that we create a spawned particle on
             ! the current excitor.
-            call create_spawned_particle_ptr(sys%basis, qs%ref, cdet, null_excit, nkill, 1, spawn)
+            call create_spawned_particle_ptr(basis, ref, cdet, null_excit, nkill, ispace, spawn)
         end if
 
-        if (debug) call write_logging_death(logging_info, KiiAi, proj_energy, qs%shift(1), invdiagel, &
-                                            nkill, pdeath, cluster%amplitude, 0.0_p)
-
-    end subroutine stochastic_ccmc_death
+    end subroutine stochastic_death_attempt
 
     subroutine stochastic_ccmc_death_nc(rng, linked_ccmc,  sys, qs, isD0, dfock, Hii, proj_energy, population, &
                                         tot_population, ndeath, logging_info)
@@ -493,7 +552,8 @@ contains
         integer :: excitor_sign, excitor_level
 
         integer :: i, j, npartitions, orb, bit_pos, bit_element
-        real(p) :: ppart, pgen, pop
+        real(p) :: ppart, pgen
+        complex(p) :: pop
         type(hmatel_t) :: hmatel, delta_h
         logical :: allowed, sign_change, linked, single_unlinked
         integer(i0) :: new_det(sys%basis%string_len)
@@ -509,7 +569,7 @@ contains
         ! with an appropriately rescaled pgen.
         call partition_cluster(rng, sys, qs%ref%f0, cluster, left_cluster, right_cluster, ppart, ldet%f, &
                                rdet%f, allowed, sign_change)
-        pop = 1
+        pop = cmplx(1.0_p, 0.0_p, p)
 
         ! 2) Choose excitation from right_cluster|D_0>
         if (allowed) then
@@ -521,7 +581,8 @@ contains
             ! check that left_cluster can be applied to the resulting excitor to
             ! give a cluster to spawn on to
             call create_excited_det(sys%basis, rdet%f, connection, fexcit)
-            call collapse_cluster(sys%basis, qs%ref%f0, ldet%f, 1.0_p, fexcit, pop, allowed)
+            call collapse_cluster(sys%basis, qs%ref%f0, ldet%f, cmplx(1.0_p,0.0_p,p), &
+                                    fexcit, pop, allowed)
         end if
 
         if (allowed) then
@@ -600,7 +661,7 @@ contains
             fock_sum = sum_sp_eigenvalues_bit_string(sys, fexcit)
             invdiagel = calc_qn_weighting(qs, fock_sum - qs%ref%fock_sum)
             ! correct hmatel for cluster amplitude
-            hmatel%r = hmatel%r * invdiagel * cluster%amplitude
+            hmatel%r = hmatel%r * invdiagel * real(cluster%amplitude)
             excitor_level = get_excitation_level(fexcit, qs%ref%f0)
             call convert_excitor_to_determinant(fexcit, excitor_level, excitor_sign, qs%ref%f0)
             if (excitor_sign < 0) hmatel%r = -hmatel%r
@@ -612,5 +673,157 @@ contains
         end if
 
     end subroutine linked_spawner_ccmc
+
+    subroutine spawner_complex_ccmc(rng, sys, qs, spawn_cutoff, cdet, cluster, &
+                            gen_excit_ptr, nspawn, nspawn_im, connection, nspawnings_total)
+        ! Attempt to spawn a new particle on a connected excitor with
+        ! probability
+        !     \tau |<D'|H|D_s> A_s|
+        !   -------------------------
+        !   n_sel p_s p_clust p_excit
+        ! where |D_s> is the determinant formed by applying the excitor to the
+        ! reference determinant, A_s is the amplitude and D' is the determinant
+        ! formed from applying a connected excitor to the reference determinant.
+        ! See comments in select_cluster about n_sel, p_s and p_clust.  p_excit
+        ! is the probability of choosing D' given D_s.
+
+        ! This is just a thin wrapper around a system-specific excitation
+        ! generator and a utility function.  We need to modify the spawning
+        ! probability compared to the FCIQMC algorithm as we spawn from multiple
+        ! excips at once (in FCIQMC we allow each psip to spawn individually)
+        ! and have additional probabilities to take into account.
+
+        ! This routine will only attempt one spawning event, but needs to know
+        ! the total number attempted for this cluster which is passed into
+        ! nspawnings_total.
+
+        ! In linked CCMC, the probability of spawning is modified by changing
+        ! the matrix elements <D'|H|D_s> so that only linked diagrams are used
+        ! for spawning.
+
+        ! In:
+        !    sys: system being studied.
+        !    qs: qmc_state_t object. The timestep and reference determinant are used.
+        !    spawn_cutoff: The size of the minimum spawning event allowed, in
+        !        the encoded representation. Events smaller than this will be
+        !        stochastically rounded up to this value or down to zero.
+        !    linked_ccmc: if true then only sample linked clusters.
+        !    cdet: info on the current excitor (cdet) that we will spawn
+        !        from.
+        !    cluster: information about the cluster which forms the excitor.  In
+        !        particular, we use the amplitude, cluster_to_det_sign and pselect
+        !        (i.e. n_sel.p_s.p_clust) attributes in addition to any used in
+        !        the excitation generator.
+        !    gen_excit_ptr: procedure pointer to excitation generators.
+        !        gen_excit_ptr%full *must* be set to a procedure which generates
+        !        a complete excitation.
+        ! In/Out:
+        !    rng: random number generator.
+        !    nspawnings_total: The total number of spawnings attemped by the current cluster
+        !        in the current timestep.
+        ! Out:
+        !    nspawn: number of particles spawned, in the encoded representation.
+        !        0 indicates the spawning attempt was unsuccessful.
+        !    connection: excitation connection between the current excitor
+        !        and the child excitor, on which progeny are spawned.
+
+        use ccmc_data, only: cluster_t
+        use ccmc_utils, only: convert_excitor_to_determinant
+        use determinants, only: det_info_t
+        use dSFMT_interface, only: dSFMT_t
+        use excitations, only: excit_t, create_excited_det, get_excitation_level
+        use proc_pointers, only: gen_excit_ptr_t
+        use spawning, only: attempt_to_spawn
+        use system, only: sys_t
+        use const, only: depsilon
+        use qmc_data, only: qmc_in_t, qmc_state_t
+        use hamiltonian_data, only: hmatel_t
+
+        type(sys_t), intent(in) :: sys
+        type(qmc_state_t), intent(in) :: qs
+        integer(int_p), intent(in) :: spawn_cutoff
+        type(det_info_t), intent(in) :: cdet
+        type(cluster_t), intent(in) :: cluster
+        type(dSFMT_t), intent(inout) :: rng
+        integer, intent(in) :: nspawnings_total
+        type(gen_excit_ptr_t), intent(in) :: gen_excit_ptr
+        integer(int_p), intent(out) :: nspawn, nspawn_im
+        type(excit_t), intent(out) :: connection
+
+        ! We incorporate the sign of the amplitude into the Hamiltonian matrix
+        ! element, so we 'pretend' to attempt_to_spawn that all excips are
+        ! actually spawned by positive excips.
+        integer(int_p), parameter :: parent_sign = 1_int_p
+        type(hmatel_t) :: hmatel
+        real(p) :: pgen
+        integer(i0) :: fexcit(sys%basis%string_len)
+        integer :: excitor_sign, excitor_level
+        logical :: allowed_excitation
+
+        ! 1. Generate random excitation.
+        ! Note CCMC is not (yet, if ever) compatible with the 'split' excitation
+        ! generators of the sys%lattice%lattice models.  It is trivial to implement and (at
+        ! least for now) is left as an exercise to the interested reader.
+        call gen_excit_ptr%full(rng, sys, qs%excit_gen_data, cdet, pgen, connection, hmatel, allowed_excitation)
+
+        ! 2, Apply additional factors.
+        hmatel%c = hmatel%c*cluster%amplitude*cluster%cluster_to_det_sign
+        pgen = pgen*cluster%pselect*nspawnings_total
+
+        ! 3. Attempt spawning.
+        nspawn = attempt_to_spawn(rng, qs%tau, spawn_cutoff, qs%psip_list%pop_real_factor, real(hmatel%c), pgen, parent_sign)
+        nspawn_im = attempt_to_spawn(rng, qs%tau, spawn_cutoff, qs%psip_list%pop_real_factor, aimag(hmatel%c), pgen, parent_sign)
+
+        if (nspawn /= 0_int_p .or. nspawn_im /= 0_int_p) then
+            ! 4. Convert the random excitation from a determinant into an
+            ! excitor.  This might incur a sign change and hence result in
+            ! a change in sign to the sign of the progeny.
+            ! This is the same process as excitor to determinant and hence we
+            ! can reuse code...
+            call create_excited_det(sys%basis, cdet%f, connection, fexcit)
+            excitor_level = get_excitation_level(qs%ref%f0, fexcit)
+            call convert_excitor_to_determinant(fexcit, excitor_level, excitor_sign, qs%ref%f0)
+            if (excitor_sign < 0) then
+                nspawn = -nspawn
+                nspawn_im = -nspawn_im
+            end if
+        end if
+    end subroutine spawner_complex_ccmc
+
+! --- Helper functions ---
+
+    subroutine create_spawned_particle_ccmc(basis, ref, cdet, connection, nspawned, ispace, &
+                                            ex_level, bloom_threshold, fexcit, spawn, bloom_stats)
+
+        use basis_types, only: basis_t
+        use reference_determinant, only: reference_t
+        use spawn_data, only: spawn_t
+        use determinants, only: det_info_t
+        use bloom_handler, only: bloom_stats_t, accumulate_bloom_stats
+        use excitations, only: excit_t
+        use proc_pointers, only: create_spawned_particle_ptr
+
+        type(basis_t), intent(in) :: basis
+        type(reference_t), intent(in) :: ref
+        type(spawn_t), intent(inout) ::spawn
+        type(det_info_t), intent(in) :: cdet
+        type(bloom_stats_t), intent(inout) :: bloom_stats
+        type(excit_t), intent(in) :: connection
+
+        integer(int_p), intent(in) :: nspawned
+        integer, intent(in) :: ispace, ex_level
+        integer(i0), intent(in) :: fexcit(:)
+        real(p), intent(in) :: bloom_threshold
+
+        if (ex_level == huge(0)) then
+            call create_spawned_particle_ptr(basis, ref, cdet, connection, nspawned, &
+                                            ispace, spawn, fexcit)
+        else
+            call create_spawned_particle_ptr(basis, ref, cdet, connection, nspawned, ispace, &
+                                            spawn)
+        end if
+        if (abs(nspawned) > bloom_threshold) call accumulate_bloom_stats(bloom_stats, nspawned)
+
+    end subroutine create_spawned_particle_ccmc
 
 end module ccmc_death_spawning

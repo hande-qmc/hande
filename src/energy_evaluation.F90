@@ -1268,11 +1268,37 @@ contains
         type(qmc_state_t), intent(in) ::  qs
  
         if (abs(qs%estimators%D0_population)<tiny(0._p)) then
-           proje = 0
+           proje = 0.0_p
         else
            proje = qs%estimators%proj_energy/qs%estimators%D0_population
         end if
 
     end function get_sanitized_projected_energy 
+
+    pure function get_sanitized_projected_energy_cmplx(qs) result(proje)
+
+        ! From a qmc_state, qs, return either the value of the projected energy,
+        ! or 0 if this is undefined.
+        ! Returns the real component of the projected energy. Since we have assumed
+        ! elsewhere the Hamiltonian is hermitian, we can safely assume a real energy
+        ! estimator.
+
+        ! In:
+        !    qs: qmc state containing estimators.
+
+        ! Returns:
+        !   real containing real component of (complex, instantaneous) projected energy.
+
+        use qmc_data, only: qmc_state_t
+        real(p) ::  proje
+        type(qmc_state_t), intent(in) ::  qs
+
+        if (abs(qs%estimators%D0_population_comp)<tiny(0._p)) then
+           proje = 0.0_p
+        else
+           proje = real(qs%estimators%proj_energy_comp/qs%estimators%D0_population_comp, p)
+        end if
+
+    end function get_sanitized_projected_energy_cmplx
 
 end module energy_evaluation

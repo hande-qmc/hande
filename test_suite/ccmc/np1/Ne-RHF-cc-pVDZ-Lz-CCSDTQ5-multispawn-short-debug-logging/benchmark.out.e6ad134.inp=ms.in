@@ -2,26 +2,26 @@
    HANDE
 
  ================================================================
- Compiled on Sep 30 2016 at 11:55:12
- Compiled using cuc3.intel13.mpi.(debug)
- HANDE version: 1.0-dev
+ Compiled on Oct 03 2016 at 16:47:18
+ Compiled using cuc3.intel13.mpi.pop64.(debug)
+ HANDE version: 1.1-dev
  git sha1 hash:
-     36e666a75d9404558e77e7597934be5022a2524e
+     e6ad134e2f6be7b7ca7d3f4ef4daf1fe20e62d50-dirty
  Hostname:
-     hypatia
+     sandstone
  Working directory: 
-     /home/rstf2/code/HANDE/test_suite/ccmc/np1/Ne-RHF-cc-pVDZ-Lz-CCSDTQ5-multispawn-short-debug-logging
- Started running on 30/09/2016 at 11:55:25
- Calculation UUID: a00b610e-a0e7-40fa-a8c9-ee975ea41e8f.
+     /home/cs675/Code/hande/test_suite/ccmc/np1/Ne-RHF-cc-pVDZ-Lz-CCSDTQ5-multispawn-short-debug-logging
+ Started running on 03/10/2016 at 16:51:30
+ Calculation UUID: 34798950-2094-430c-9a43-110a68527f88.
  Preprocessor settings:
      DISABLE_HDF5 not defined.  HDF5 enabled.
-     DISABLE_LANCZOS not defined.  Lanczos enabled.
+     DISABLE_LANCZOS defined.  Lanczos disabled.
      DISABLE_UUID not defined.  UUID enabled.
      PARALLEL defined.  MPI parallelization enabled.
      DISABLE_SCALAPACK not defined.  ScaLAPACK enabled.
      SINGLE_PRECISION not defined.  Double precision used throughout.
      USE_POPCNT not defined.  Internal POPCNT procedure used.
-     DET_SIZE = 64.
+     DET_SIZE = 32.
      POP_SIZE = 64.
  ================================================================
 
@@ -50,7 +50,7 @@ ccmc {
         spawned_state_size = -50,
     },
     ccmc = {
-        cluster_multispawn_threshold = 0.3,
+        cluster_multispawn_threshold = 3.15262647847835,
         full_non_composite = true,
     },
     reference = {
@@ -109,7 +109,7 @@ ccmc {
  Number of electrons: 10
  Number of basis functions: 28
 
- Bit-length of integers used to store determinant bit-strings: 64
+ Bit-length of integers used to store determinant bit-strings: 32
  Number of integers used to store determinant bit-strings: 1
 
  Symmetry information
@@ -174,7 +174,7 @@ ccmc {
  ----
 
  Memory allocated per core for main walker list (MB): 1000.00
- Number of elements per core in main walker list: 35714285
+ Number of elements per core in main walker list: 41666666
  Memory allocated per core for spawned walker lists (MB):   50.00
  Number of elements per core in spawned walker list: 1562500
 
@@ -239,10 +239,12 @@ ccmc {
      },
      "ccmc": {
          "move_freq": 5,   
-         "cluster_multispawn_threshold": 0.30000000,   
+         "cluster_multispawn_threshold": 3.15262648,   
          "full_nc": true,   
          "linked": false,   
-         "vary_shift_reference": false    
+         "vary_shift_reference": false,   
+         "density_matrices": false,   
+         "density_matrix_file":  "RDM"    
      },
      "semi_stoch": {
          "start_iter": 1,   
@@ -315,36 +317,44 @@ ccmc {
 
  #     iterations   Shift                 \sum H_0j N_j         N_0                   # H psips                  # states  # spawn_events   R_spawn    time   
  #              0   0.0000000000E+00      0.0000000000E+00      5.0000000000E+01      5.0000000000E+01                  1               0    0.0000    0.0000 
-               10   0.0000000000E+00     -4.5890564139E+00      5.0300000000E+01      2.5700000000E+02                173              80    0.1134    0.0020 
-               20   0.0000000000E+00     -9.8522117742E+00      5.3900000000E+01      6.6100000000E+02                489             190    0.1297    0.0072 
-               30   0.0000000000E+00     -1.0769759868E+01      5.6500000000E+01      9.1700000000E+02                705             252    0.1374    0.0132 
-               40   0.0000000000E+00     -1.1586341416E+01      5.9400000000E+01      9.6200000000E+02                746             289    0.1305    0.0148 
-               50   0.0000000000E+00     -1.2682777930E+01      6.1300000000E+01      1.1510000000E+03                895             333    0.1271    0.0172 
-               60   0.0000000000E+00     -1.3467940917E+01      6.2500000000E+01      1.3350000000E+03               1066             377    0.1375    0.0224 
-               70   0.0000000000E+00     -1.2035431494E+01      6.4300000000E+01      1.1070000000E+03                869             305    0.1401    0.0188 
-               80   0.0000000000E+00     -1.3038548551E+01      6.5300000000E+01      1.2590000000E+03                957             360    0.1493    0.0180 
-               90   0.0000000000E+00     -1.2610265832E+01      6.6800000000E+01      1.5980000000E+03               1160             423    0.1518    0.0240 
-              100   0.0000000000E+00     -1.3441147364E+01      6.8700000000E+01      1.5110000000E+03               1181             401    0.1389    0.0272 
-              110   0.0000000000E+00     -1.2926817287E+01      7.1000000000E+01      1.4740000000E+03               1133             397    0.1485    0.0236 
-              120   0.0000000000E+00     -1.2907423553E+01      7.4300000000E+01      1.5400000000E+03               1135             393    0.1617    0.0244 
-              130   0.0000000000E+00     -1.4744933240E+01      7.8300000000E+01      1.5600000000E+03               1189             447    0.1675    0.0256 
-              140   0.0000000000E+00     -1.5148022900E+01      8.2200000000E+01      1.6350000000E+03               1149             420    0.1723    0.0256 
-              150   0.0000000000E+00     -1.7438862571E+01      8.7100000000E+01      1.8900000000E+03               1350             536    0.1908    0.0596 
-              160   0.0000000000E+00     -1.8696879167E+01      8.9500000000E+01      1.6730000000E+03               1229             411    0.1877    0.0764 
-              170   0.0000000000E+00     -1.9723175516E+01      9.5700000000E+01      1.9400000000E+03               1397             531    0.1678    0.0752 
-              180   0.0000000000E+00     -1.7870805560E+01      9.9900000000E+01      2.1410000000E+03               1479             544    0.1790    0.0892 
-              190   0.0000000000E+00     -1.9662021855E+01      1.0480000000E+02      2.1790000000E+03               1555             558    0.1924    0.0936 
-              200   0.0000000000E+00     -2.1721806916E+01      1.0980000000E+02      2.2210000000E+03               1588             580    0.1780    0.0936 
-              210   0.0000000000E+00     -1.9507764162E+01      1.1410000000E+02      2.1510000000E+03               1585             544    0.1859    0.0976 
-              220   0.0000000000E+00     -2.1783117016E+01      1.1880000000E+02      2.1650000000E+03               1600             577    0.1922    0.0872 
-              230   0.0000000000E+00     -2.2429998970E+01      1.2450000000E+02      1.9740000000E+03               1479             494    0.1861    0.0332 
-              240   0.0000000000E+00     -2.6793862379E+01      1.3330000000E+02      1.8170000000E+03               1359             485    0.1699    0.0288 
-              250   0.0000000000E+00     -2.8377353313E+01      1.3710000000E+02      2.1000000000E+03               1520             575    0.1634    0.0312 
+ # WARNING: more than 5% of the total population spawned in a single event 3 times in the last report loop.
+ # Mean number of particles created in blooms:      3.3
+ # This warning only prints  1 time(s). You may wish to reduce the time step.
+               10   0.0000000000E+00     -3.5145599483E+00      5.0000000000E+01      2.4700000000E+02                172              76    0.4222    0.0015 
+               20   0.0000000000E+00     -5.8924188021E+00      5.1500000000E+01      5.2900000000E+02                371             141    0.5101    0.0037 
+               30   0.0000000000E+00     -9.5294441017E+00      5.5000000000E+01      7.5800000000E+02                538             183    0.5992    0.0072 
+               40   0.0000000000E+00     -9.7125799284E+00      5.7800000000E+01      1.0930000000E+03                734             246    0.6220    0.0088 
+               50   0.0000000000E+00     -7.9011829636E+00      5.7200000000E+01      1.3230000000E+03                876             300    0.6289    0.0112 
+               60   0.0000000000E+00     -9.5617144069E+00      6.2700000000E+01      1.3470000000E+03                985             313    0.7211    0.0143 
+               70   0.0000000000E+00     -1.1616671213E+01      6.7100000000E+01      1.5110000000E+03               1026             325    0.7268    0.0144 
+               80   0.0000000000E+00     -1.0879669448E+01      6.9600000000E+01      1.3920000000E+03                956             297    0.6925    0.0142 
+               90   0.0000000000E+00     -1.3173833780E+01      7.0100000000E+01      1.4560000000E+03               1025             335    0.7009    0.0140 
+              100   0.0000000000E+00     -1.2862765005E+01      7.2500000000E+01      1.4990000000E+03               1063             330    0.7251    0.0156 
+              110   0.0000000000E+00     -1.3324380994E+01      7.6600000000E+01      1.7680000000E+03               1131             356    0.7745    0.0157 
+              120   0.0000000000E+00     -1.5051346253E+01      7.8900000000E+01      1.9980000000E+03               1303             397    0.8099    0.0187 
+              130   0.0000000000E+00     -1.5901654873E+01      8.0000000000E+01      2.4800000000E+03               1460             472    0.9002    0.0210 
+              140   0.0000000000E+00     -1.7749855090E+01      8.0600000000E+01      2.7370000000E+03               1666             533    0.9559    0.0252 
+              150   0.0000000000E+00     -1.7195811308E+01      8.7000000000E+01      2.7850000000E+03               1788             586    0.9691    0.0413 
+              160   0.0000000000E+00     -2.0480973755E+01      8.7700000000E+01      3.4750000000E+03               2071             706    0.9545    0.0547 
+              170   0.0000000000E+00     -1.6306444101E+01      9.2000000000E+01      4.0300000000E+03               2346             790    1.0690    0.0680 
+              180   0.0000000000E+00     -1.7573797932E+01      9.7000000000E+01      3.7000000000E+03               2325             707    1.0760    0.0675 
+              190   0.0000000000E+00     -1.7473003745E+01      1.0050000000E+02      3.0670000000E+03               1992             620    1.0162    0.0571 
+              200   0.0000000000E+00     -1.9598437350E+01      1.0320000000E+02      3.5580000000E+03               1980             726    0.9326    0.0518 
+              210   0.0000000000E+00     -2.0784728552E+01      1.0790000000E+02      3.2930000000E+03               2014             634    0.9641    0.0595 
+              220   0.0000000000E+00     -2.2356724378E+01      1.1150000000E+02      2.9950000000E+03               1963             566    0.9224    0.0544 
+              230   0.0000000000E+00     -2.1375790089E+01      1.1400000000E+02      2.6990000000E+03               1720             581    0.8829    0.0263 
+              240   0.0000000000E+00     -2.4449124921E+01      1.1800000000E+02      3.2270000000E+03               1983             648    0.8997    0.0286 
+              250   0.0000000000E+00     -2.5425949623E+01      1.2320000000E+02      3.9610000000E+03               2337             811    0.9453    0.0337 
+
+ Blooming events occured: a more efficent calulation may be possible with a smaller timestep.
+ Total number of blooming events: 3
+ Maximum number of particles spawned in a blooming event:       4.00
+ Mean number of particles spawned in a blooming event:         3.33
 
  Multiple spawning events occurred.
- Number of multiple spawning events: 394460
- Mean number of multiple spawning attempts per event:         5.37
- Largest multiple spawning in a single event: 1191
+ Number of multiple spawning events: 10628
+ Mean number of multiple spawning attempts per event:         9.25
+ Largest multiple spawning in a single event: 294
 
  Timing breakdown
  ----------------
@@ -352,11 +362,11 @@ ccmc {
  Time for each calculation section (seconds):
 
  Generic system initialisation: .01
- CCMC calculation             : 10.30
+ CCMC calculation             : 7.29
 
  ================================================================
- Finished running on 30/09/2016 at 11:55:36
- Wall time (seconds):                          10.82
- CPU time (per processor, seconds):            10.31
+ Finished running on 03/10/2016 at 16:51:37
+ Wall time (seconds):                           7.31
+ CPU time (per processor, seconds):             7.29
  ================================================================
 

@@ -33,7 +33,7 @@ contains
         real(p) :: magnitude
 
         parent_flag = 0_int_p
-        if (quadrature_initiator) then
+        if (quadrature_initiator .and. modulo(size(parent_population), 2) == 0) then
             do i = 1, size(parent_population), 2
                 magnitude = real(parent_population(i),p) ** 2 + real(parent_population(i+1),p) ** 2
                 if (.not.((magnitude > initiator_pop ** 2) .or. (determ_flag == 0))) then

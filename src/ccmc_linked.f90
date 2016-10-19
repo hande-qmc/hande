@@ -139,11 +139,11 @@ contains
         integer(i0) :: temp(sys%basis%string_len)
         integer :: i, found, excitor_level, excitor_sign
         logical :: allowed
-        real(p) :: population
+        complex(p) :: population
 
         ! Find the determinant obtained by applying all of the cluster operators
         ! linked to H to D0
-        population = 0.0_p ! The population doesn't matter as the commutator does not change the amplitude
+        population = cmplx(0.0_p, 0.0_p, p) ! The population doesn't matter as the commutator does not change the amplitude
         found = 0
         if (cluster%nexcitors > 1) then
             do i = 1, cluster%nexcitors
@@ -153,7 +153,7 @@ contains
                     if (found == 1) then
                         deti = cluster%excitors(i)%f
                     else
-                        call collapse_cluster(sys%basis, f0, cluster%excitors(i)%f, 1.0_p, &
+                        call collapse_cluster(sys%basis, f0, cluster%excitors(i)%f, cmplx(1.0_p,0.0_p,p), &
                             deti, population, allowed)
                     end if
                 end if
@@ -176,8 +176,8 @@ contains
         ! Multiplying excitors can give a sign change, which is absorbed into cluster%amplitude
         population = 1.0_p
         temp = deti
-        call collapse_cluster(sys%basis, f0, funlinked, 1.0_p, temp, population, allowed)
-        hmatel = population*hmatel
+        call collapse_cluster(sys%basis, f0, funlinked, cmplx(1.0_p,0.0_p,p), temp, population, allowed)
+        hmatel = real(population)*hmatel
 
         ! Possible sign changes from <D|a|D_0> ...
         if (cluster%nexcitors > 1) then
@@ -234,7 +234,7 @@ contains
 
         integer :: i, in_left, in_right, side
         real(dp) :: rand
-        real(p) :: population
+        complex(p) :: population
 
         in_left = 0
         in_right = 0
@@ -269,7 +269,8 @@ contains
                 if (in_left == 1) then
                     ldet = cluster%excitors(i)%f
                 else
-                    call collapse_cluster(sys%basis, f0, cluster%excitors(i)%f, 1.0_p, ldet, population, allowed)
+                    call collapse_cluster(sys%basis, f0, cluster%excitors(i)%f, cmplx(1.0_p,0.0_p,p), &
+                                        ldet, population, allowed)
                     if (.not.allowed) exit
                 end if
             else
@@ -279,7 +280,8 @@ contains
                 if (in_right == 1) then
                     rdet = cluster%excitors(i)%f
                 else
-                    call collapse_cluster(sys%basis, f0, cluster%excitors(i)%f, 1.0_p, rdet, population, allowed)
+                    call collapse_cluster(sys%basis, f0, cluster%excitors(i)%f, cmplx(1.0_p,0.0_p,p), &
+                                        rdet, population, allowed)
                     if (.not.allowed) exit
                 end if
             end if
@@ -288,7 +290,7 @@ contains
         left_cluster%nexcitors = in_left
         right_cluster%nexcitors = in_right
 
-        sign_change = (population < 0)
+        sign_change = (real(population) < 0)
 
     end subroutine partition_cluster
 

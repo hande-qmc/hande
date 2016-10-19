@@ -10,7 +10,8 @@ implicit none
 contains
 
     subroutine select_cluster(rng, sys, psip_list, f0, ex_level, linked_ccmc, nattempts, normalisation, &
-                              initiator_pop, D0_pos, cumulative_excip_pop, tot_excip_pop, min_size, max_size, cdet, cluster)
+                              initiator_pop, D0_pos, cumulative_excip_pop, tot_excip_pop, min_size, max_size, &
+                              cdet, cluster)
 
         ! Select a random cluster of excitors from the excitors on the
         ! processor.  A cluster of excitors is itself an excitor.  For clarity
@@ -79,7 +80,8 @@ contains
         integer(int_64), intent(in) :: nattempts
         logical, intent(in) :: linked_ccmc
         integer, intent(in) :: D0_pos
-        real(p), intent(in) :: normalisation, initiator_pop
+        complex(p), intent(in) :: normalisation
+        real(p), intent(in) :: initiator_pop
         integer(int_p), intent(in) :: cumulative_excip_pop(:), tot_excip_pop
         integer :: min_size, max_size
         type(dSFMT_t), intent(inout) :: rng
@@ -87,7 +89,8 @@ contains
         type(cluster_t), intent(inout) :: cluster
 
         real(dp) :: rand
-        real(p) :: psize, cluster_population, excitor_pop
+        real(p) :: psize
+        complex(p) :: cluster_population, excitor_pop
         integer :: i, pos, prev_pos
         integer(int_p) :: pop(max_size)
         logical :: hit, allowed, all_allowed
@@ -166,7 +169,8 @@ contains
 
         select case(cluster%nexcitors)
         case(0)
-            call create_null_cluster(sys, f0, cluster%pselect, normalisation, initiator_pop, cdet, cluster)
+            call create_null_cluster(sys, f0, cluster%pselect, normalisation, initiator_pop, &
+                                    cdet, cluster)
         case default
             ! Select cluster from the excitors on the current processor with
             ! probability for choosing an excitor proportional to the excip
@@ -200,8 +204,20 @@ contains
                 ! then this means we actually need the slot before D0_pos.
                 ! Correcting for this accident is much easier than producing an
                 ! array explicitly without D0...
-                if (pos == D0_pos) pos = pos - 1
-                excitor_pop = real(psip_list%pops(1,pos),p)/psip_list%pop_real_factor
+                ! If contain multiple spaces we can have this in a more general
+                ! case, where an excitor has population in another space but not
+                ! that which we're currently concerned with. More general test
+                ! should account for this.
+                do
+                    if (pos == 1) exit
+                    if (cumulative_excip_pop(pos) /= cumulative_excip_pop(pos-1)) exit
+                    pos = pos - 1
+                end do
+                if (sys%read_in%comp) then
+                    excitor_pop = cmplx(psip_list%pops(1,pos), psip_list%pops(2,pos),p)/psip_list%pop_real_factor
+                else
+                    excitor_pop = real(psip_list%pops(1,pos),p)/psip_list%pop_real_factor
+                end if
                 if (i == 1) then
                     ! First excitor 'seeds' the cluster:
                     cdet%f = psip_list%states(:,pos)
@@ -225,7 +241,7 @@ contains
                 end if
                 ! If the excitor's population is below the initiator threshold, we remove the
                 ! initiator status for the cluster
-                if (abs(excitor_pop) <= initiator_pop) cdet%initiator_flag = 1
+                if (abs(excitor_pop) <= initiator_pop) cdet%initiator_flag = 3
                 ! Probability of choosing this excitor = nint(pop)/tot_pop.
                 cluster%pselect = (cluster%pselect*nint(abs(excitor_pop)))/tot_excip_pop
                 cluster%excitors(i)%f => psip_list%states(:,pos)
@@ -260,7 +276,7 @@ contains
                 call decoder_ptr(sys, cdet%f, cdet)
 
                 ! Normalisation factor for cluster%amplitudes...
-                cluster%amplitude = cluster_population/(real(normalisation,p)**(cluster%nexcitors-1))
+                cluster%amplitude = cluster_population/(normalisation**(cluster%nexcitors-1))
             else
                 ! Simply set excitation level to a too high (fake) level to avoid
                 ! this cluster being used.
@@ -306,7 +322,8 @@ contains
 
         type(sys_t), intent(in) :: sys
         integer(i0), intent(in) :: f0(sys%basis%string_len)
-        real(p), intent(in) :: prob, D0_normalisation, initiator_pop
+        real(p), intent(in) :: prob, initiator_pop
+        complex(p), intent(in) :: D0_normalisation
         type(det_info_t), intent(inout) :: cdet
         type(cluster_t), intent(inout) :: cluster
 
@@ -328,12 +345,10 @@ contains
         cluster%excitation_level = 0
         cluster%amplitude = D0_normalisation
         cluster%cluster_to_det_sign = 1
-        if (cluster%amplitude <= initiator_pop) then
-             ! Something has gone seriously wrong and the CC
-             ! approximation is (most likely) not suitably for this system.
-             ! Let the user be an idiot if they want to be...
-             cdet%initiator_flag = 1
-        end if
+        ! If not initiator something has gone seriously wrong and the CC
+        ! approximation is (most likely) not suitably for this system.
+        ! Let the user be an idiot if they want to be...
+        if (abs(D0_normalisation) <= initiator_pop) cdet%initiator_flag = 3
 
         call decoder_ptr(sys, cdet%f, cdet)
 
@@ -403,7 +418,7 @@ contains
         integer(int_p), intent(in) :: cumulative_excip_pop(:), tot_excip_pop
         type(det_info_t), intent(inout) :: cdet
         type(cluster_t), intent(inout) :: cluster
-        real(p) :: excitor_pop
+        complex(p) :: excitor_pop
 
         integer :: iexcip_last
         ! It is more convenient to find the excitor on which the iexcip-th excip resides
@@ -470,8 +485,13 @@ contains
             cdet%f = psip_list%states(:,iexcip_pos)
             cdet%data => psip_list%dat(:,iexcip_pos)
             cluster%excitors(1)%f => psip_list%states(:,iexcip_pos)
-            excitor_pop = real(psip_list%pops(1,iexcip_pos),p)/psip_list%pop_real_factor
-            if (abs(excitor_pop) <= initiator_pop) cdet%initiator_flag = 1
+            if (sys%read_in%comp) then
+                excitor_pop = cmplx(psip_list%pops(1,iexcip_pos), psip_list%pops(2,iexcip_pos), p)/psip_list%pop_real_factor
+            else
+                excitor_pop = cmplx(psip_list%pops(1,iexcip_pos), 0.0_p, p)/psip_list%pop_real_factor
+            end if
+
+            if (abs(excitor_pop) <= initiator_pop) cdet%initiator_flag = 3
             ! pclust = |population|/total_population, as just a single excitor in the cluster..
             cluster%pselect = (cluster%pselect*nint(abs(excitor_pop)))/tot_excip_pop
             cluster%excitation_level = get_excitation_level(f0, cdet%f)

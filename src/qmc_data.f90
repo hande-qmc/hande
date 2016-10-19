@@ -128,8 +128,6 @@ type qmc_in_t
     logical :: initiator_approx = .false.
     ! Population above which a determinant is an initiator.
     real(p) :: initiator_pop = 3.0_p
-    ! How to apply the initiator approximation in complex spaces.
-    logical :: quadrature_initiator = .false.
 
     ! number of monte carlo cycles/report loop
     integer :: ncycles
@@ -185,6 +183,9 @@ type fciqmc_in_t
     ! to a specific enumerator in importance_sampling_data to specify the corresponding
     ! guiding function being used.
     integer :: guiding_function = no_guiding
+
+    ! How to apply the initiator approximation in complex spaces.
+    logical :: quadrature_initiator = .true.
 
 end type fciqmc_in_t
 
@@ -482,9 +483,9 @@ end type spawned_particle_t
 
 type estimators_t
     ! Population of walkers on reference determinant/trace of density matrix.
-    real(p) :: D0_population
+    real(p) :: D0_population = 0.0_p
     ! Population of walkers on reference determinant/trace of density matrix at previous timestep.
-    real(p) :: D0_population_old
+    real(p) :: D0_population_old = 0.0_p
     ! projected energy
     ! This stores during an FCIQMC report loop
     !   \sum_{i/=0} <D_0|H|D_i> N_i
@@ -494,7 +495,7 @@ type estimators_t
     !   <D_0|H|D_0> + \sum_{i/=0} <D_0|H|D_i> N_i/N_0
     ! and so proj_energy must be 'normalised' and averaged over the report loops
     ! accordingly.
-    real(p) :: proj_energy
+    real(p) :: proj_energy = 0.0_p
     ! Total number of occupied states across all processors.
     integer :: tot_nstates = 0
     ! The total number of successful spawning events, across all processors.
@@ -506,8 +507,8 @@ type estimators_t
     ! back to a complex value. When performing complex calculations this value
     ! can be freely updated except when within update_energy_estimators, where
     ! extra care must be taken.
-    complex(p) :: proj_energy_comp
-    complex(p) :: D0_population_comp
+    complex(p) :: proj_energy_comp = (0.0_p, 0.0_p)
+    complex(p) :: D0_population_comp = (0.0_p, 0.0_p)
 
     ! Energy calculated from the RDM
     real(p) :: rdm_energy = 0.0_p
@@ -644,7 +645,6 @@ contains
         call json_write_key(js, 'target_reference', qmc%target_reference)
         call json_write_key(js, 'initiator_approx', qmc%initiator_approx)
         call json_write_key(js, 'initiator_pop', qmc%initiator_pop)
-        call json_write_key(js, 'quadrature_initiator', qmc%quadrature_initiator)
         call json_write_key(js, 'ncycles', qmc%ncycles)
         call json_write_key(js, 'nreport', qmc%nreport)
         call json_write_key(js, 'quasi_newton', qmc%quasi_newton)
@@ -687,12 +687,14 @@ contains
         end select
         select case (fciqmc%guiding_function)
         case (no_guiding)
-            call json_write_key(js, 'guiding_function', 'none', .true.)
+            call json_write_key(js, 'guiding_function', 'none')
         case (neel_singlet_guiding)
-            call json_write_key(js, 'guiding_function', 'neel_singlet', .true.)
+            call json_write_key(js, 'guiding_function', 'neel_singlet')
         case default
-            call json_write_key(js, 'guiding_function', fciqmc%guiding_function, .true.)
+            call json_write_key(js, 'guiding_function', fciqmc%guiding_function)
         end select
+        call json_write_key(js, 'quadrature_initiator', fciqmc%quadrature_initiator, .true.)
+
         call json_object_end(js, terminal)
 
     end subroutine fciqmc_in_t_json

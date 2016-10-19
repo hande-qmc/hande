@@ -20,7 +20,7 @@ ccmc {
         spawned_state_size = -50,
     },
     ccmc = {
-        cluster_multispawn_threshold = 0.3,
+        cluster_multispawn_threshold = 3.15262647847835,
         full_non_composite = true,
     },
     reference = {

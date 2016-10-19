@@ -258,8 +258,8 @@ contains
                     call update_proj_energy_ptr(sys, qs%ref%f0, qs%trial%wfn_dat, cdet, weighted_population, &
                                                 qs%estimators, connection, hmatel)
                     ! Is this determinant an initiator?
-                    call set_parent_flag(real_population, qmc_in%initiator_pop, determ%flags(idet), qmc_in%quadrature_initiator, &
-                                          cdet%initiator_flag)
+                    call set_parent_flag(real_population, qmc_in%initiator_pop, determ%flags(idet), &
+                                        fciqmc_in%quadrature_initiator, cdet%initiator_flag)
 
                     do ispace  = 1, qs%psip_list%nspaces
 
@@ -326,7 +326,8 @@ contains
                 associate(pl=>qs%psip_list, spawn=>qs%spawn_store%spawn, spawn_recv=>qs%spawn_store%spawn_recv)
                     if (fciqmc_in%non_blocking_comm) then
                         call receive_spawned_walkers(spawn_recv, req_data_s)
-                        call evolve_spawned_walkers(sys, qmc_in, qs, spawn_recv, spawn, cdet, rng, ndeath, proj_energy_old)
+                        call evolve_spawned_walkers(sys, qmc_in, qs, spawn_recv, spawn, cdet, rng, ndeath, proj_energy_old, &
+                                                    fciqmc_in%quadrature_initiator)
                         call direct_annihilation_received_list(sys, rng, qs%ref, annihilation_flags, pl, spawn_recv)
                         ! Need to add walkers which have potentially moved processor to the spawned walker list.
                         if (qs%par_info%load%needed) then
@@ -422,7 +423,8 @@ contains
 
     end subroutine do_fciqmc
 
-    subroutine evolve_spawned_walkers(sys, qmc_in, qs, spawn_recv, spawn_to_send, cdet, rng, ndeath, proj_energy_old)
+    subroutine evolve_spawned_walkers(sys, qmc_in, qs, spawn_recv, spawn_to_send, cdet, rng, ndeath, proj_energy_old, &
+                                    quadrature_initiator)
 
         ! Evolve spawned list of walkers one time step.
         ! Used for non-blocking communications.
@@ -432,6 +434,7 @@ contains
         !   qmc_in: input options relating to QMC methods.
         !   proj_energy_old: an estimate of the projected energy to allow for
         !                     unbiased QN death
+        !   quadrature_initiator: how to apply initiator approximation in complex systems.
         ! In/Out:
         !   qs: qmc_state_t containing information about the reference det and estimators.
         !   spawn: spawn_t object containing walkers spawned onto this processor during previous time step.
@@ -461,6 +464,7 @@ contains
         type(det_info_t), intent(inout) :: cdet
         integer(int_p), intent(inout) :: ndeath
         real(p), intent(in) :: proj_energy_old
+        logical, intent(in) :: quadrature_initiator
 
         type(excit_t) :: connection
         type(hmatel_t) :: hmatel
@@ -496,7 +500,7 @@ contains
                                         connection, hmatel)
             ! Is this determinant an initiator?
             ! [todo] - pass determ_flag rather than 1.
-            call set_parent_flag(real_pop, qmc_in%initiator_pop, 1, qmc_in%quadrature_initiator, cdet%initiator_flag)
+            call set_parent_flag(real_pop, qmc_in%initiator_pop, 1, quadrature_initiator, cdet%initiator_flag)
 
             do ispace = 1, qs%psip_list%nspaces
 

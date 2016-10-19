@@ -20,8 +20,8 @@ type cluster_t
     ! Excitation level relative to the reference determinant of the determinant
     ! formed by applying the cluster of excitors to the reference determinant.
     integer :: excitation_level
-    ! Overall amplitude of the cluster.
-    real(p) :: amplitude
+    ! Overall complex component of amplitude of the cluster.
+    complex(p) :: amplitude
     ! < D_i | a_i D_0 >, where D_i is the determinant formed by applying the
     ! cluster of excitors to the reference determinant.  Equal to +1 or -1.
     integer :: cluster_to_det_sign
@@ -110,6 +110,5 @@ contains
         end if
 
     end subroutine multispawn_stats_report
-
 
 end module ccmc_data

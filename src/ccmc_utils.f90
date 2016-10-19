@@ -130,9 +130,9 @@ contains
         type(basis_t), intent(in) :: basis
         integer(i0), intent(in) :: f0(basis%string_len)
         integer(i0), intent(in) :: excitor(basis%string_len)
-        real(p), intent(in) :: excitor_population
+        complex(p), intent(in) :: excitor_population
         integer(i0), intent(inout) :: cluster_excitor(basis%string_len)
-        real(p), intent(inout) :: cluster_population
+        complex(p), intent(inout) :: cluster_population
         logical,  intent(out) :: allowed
 
         integer :: ibasis, ibit
@@ -337,5 +337,18 @@ contains
         end do
 
     end subroutine convert_excitor_to_determinant
+
+    subroutine zero_estimators_t(estimators)
+
+        use qmc_data, only: estimators_t
+
+        type(estimators_t), intent(inout) :: estimators
+
+        estimators%D0_population = 0.0_p
+        estimators%proj_energy = 0.0_p
+        estimators%D0_population_comp = cmplx(0.0, 0.0, p)
+        estimators%proj_energy_comp = cmplx(0.0, 0.0, p)
+
+    end subroutine zero_estimators_t
 
 end module ccmc_utils
