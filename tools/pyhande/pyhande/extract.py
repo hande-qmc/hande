@@ -84,6 +84,7 @@ data_pairs : list of (dict, :class:`pandas.DataFrame` or :class:`pandas.Series`)
         UUID = 'Calculation UUID:',
         git_hash = re.compile('git sha1 hash:|VCS BASE repository version:'),
         hande_version = 'HANDE version:',
+        MPI_procs = 'Number of MPI processes running on:',
     )
     # ... footer of output (ie after QMC data table)
     comms_footer = dict(
