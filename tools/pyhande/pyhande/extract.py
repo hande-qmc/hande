@@ -84,6 +84,8 @@ data_pairs : list of (dict, :class:`pandas.DataFrame` or :class:`pandas.Series`)
         UUID = 'Calculation UUID:',
         git_hash = re.compile('git sha1 hash:|VCS BASE repository version:'),
         hande_version = 'HANDE version:',
+        MPI_procs = 'Number of MPI processes running on:',
+        OpenMP_threads = re.compile('Running with ?([0-9]+) threads?( per MPI process)?.')
     )
     # ... footer of output (ie after QMC data table)
     comms_footer = dict(
@@ -156,6 +158,10 @@ data_pairs : list of (dict, :class:`pandas.DataFrame` or :class:`pandas.Series`)
                 if key == 'git_hash':
                     if val.search(line):
                         md_generic[key] = next(f).strip()
+                elif key == 'OpenMP_threads':
+                    match = val.search(line)
+                    if match:
+                        md_generic[key] = match.group(1)
                 elif val in line:
                     md_generic[key] = line.split()[-1].strip('.')
             # Parse input block.
