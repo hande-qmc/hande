@@ -757,23 +757,26 @@ contains
         integer, intent(in) :: nslots
         integer, intent(out) :: particle_proc, slot_pos
 
-        integer(i0) :: particle_label_padded(size(particle_label)+1)
+        integer(i0) :: particle_label_padded(size(particle_label))
         integer :: label_len
 
+        ! Strip out CCMC-compatibility integer inserted between the bit strings.
+        label_len = size(particle_label)/2
+        particle_label_padded(:label_len-1) = particle_label(:label_len-1)
+        particle_label_padded(label_len:2*label_len-2) = particle_label(label_len+1:2*label_len-1)
+
         if (i0_length == 32) then
-            label_len = size(particle_label)/2
-            if (mod(label_len,2) == 0) then
-                call assign_particle_processor(particle_label, nbits, seed, shift, freq, np, &
+            if (mod(label_len-1,2) == 0) then
+                call assign_particle_processor(particle_label_padded, nbits, seed, shift, freq, np, &
                                                particle_proc, slot_pos, proc_map, nslots)
             else
-                particle_label_padded(:label_len) = particle_label(:label_len)
-                particle_label_padded(label_len+1) = 0_i0
-                particle_label_padded(label_len+2:) = particle_label(label_len+1:)
+                particle_label_padded(label_len+1:) = particle_label(label_len:)
+                particle_label_padded(label_len) = 0_i0
                 call assign_particle_processor(particle_label_padded, nbits+i0_length, seed, shift, freq, np, &
                                                particle_proc, slot_pos, proc_map, nslots)
             end if
         else
-            call assign_particle_processor(particle_label, nbits, seed, shift, freq, np, &
+            call assign_particle_processor(particle_label_padded, nbits, seed, shift, freq, np, &
                                            particle_proc, slot_pos, proc_map, nslots)
         end if
 

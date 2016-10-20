@@ -941,7 +941,7 @@ contains
         if (doing_calc(dmqmc_calc)) then
             ! Hash the entire first bit array and the minimum number of bits
             ! in the second bit array.
-            nhash_bits = basis%nbasis + i0_length*basis%string_len
+            nhash_bits = basis%nbasis + i0_length*(basis%string_len-1)
         else
             nhash_bits = basis%nbasis
         end if
