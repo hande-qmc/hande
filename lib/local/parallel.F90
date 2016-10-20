@@ -167,7 +167,7 @@ contains
             if (nthreads == 1) then
                 write (6,'(1X,"Running with 1 thread per MPI process.",/)')
             else
-                write (6,'(1X,"Running with", i0, " threads per MPI process.",/)') nthreads
+                write (6,'(1X,"Running with ", i0, " threads per MPI process.",/)') nthreads
             end if
         end if
 
