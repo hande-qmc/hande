@@ -93,9 +93,21 @@ module restart_hdf5
 
     ! Version id of the restart file *produced*.  Please increment if you add
     ! anything to dump_restart_hdf5!
-    ! Note that the restart version is not currently used anywhere but might be helpful
-    ! when writing post-processing utilities which act upon restart files.
-    integer, parameter :: restart_version = 1
+    ! Note that the restart version is currently used to check if a bit string conversion is
+    ! needed following updates to code.
+    ! In addition it might be helpful when writing post-processing utilities which act upon
+    ! restart files.
+    integer, parameter :: restart_version = 2
+
+    ! Log of reasons for version incrementation+ notes on changes:
+
+    ! 1 -> 2: cluster selection within CCMC requires sorting between excitation levels. Efficient
+    !   application of this requires an extra integer within bit strings at system initialisation,
+    !   and ensuring continued separation of system initialisation and calculation requires this be
+    !   a general change. Versiob incrementation provides a simple way to ensure we can always detect
+    !   and treat appropriately restart files produced prior to this change.
+    !   Backwards compatibility maintained.
+
 
     ! Group names...
     character(*), parameter :: gmetadata = 'metadata',  &
@@ -522,8 +534,8 @@ module restart_hdf5
                                   'Restarting with different calculation types not supported.  Please implement.')
                 ! Different restart versions require graceful handling of the
                 ! additions/removals.
-                if (restart_version /= restart_version_restart) &
-                    call stop_all('read_restart_hdf5', &
+                if ((restart_version /= restart_version_restart) .and. &
+                     .not. (restart_version == 2 .and. restart_version_restart == 1)) call stop_all('read_restart_hdf5', &
                                   'Restarting from a different restart version not supported.  Please implement.')
                 ! Different processor counts requires figuring out if
                 ! a determinant should be on the processor or not (and reading
@@ -559,11 +571,13 @@ module restart_hdf5
                 qs%psip_list%nstates = int(dims(size(dims)))
 
                 if (i0_length == i0_length_restart) then
-                    if (nbasis == nbasis_restart) then
+                    if (nbasis == nbasis_restart .and. (restart_version_restart > 1)) then
                         call hdf5_read(subgroup_id, ddets, kinds, shape(qs%psip_list%states, kind=int_64), qs%psip_list%states)
                     else
                         ! Change array bounds to restart with a larger basis
                         ! Assume that basis functions 1..nbasis_restart correspond to the original basis
+                        ! or need to account for addition of additional bit string integer to store
+                        ! excitation level between restart versions 1 and 2.
                         call change_nbasis(subgroup_id, ddets, kinds, qs%psip_list%states)
                     end if
                 else

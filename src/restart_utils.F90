@@ -105,7 +105,12 @@ contains
 
         call dset_shape(id, dset, dims)
         allocate(dets_tmp(dims(1),dims(2)))
-        call hdf5_read(id, dset, kinds, shape(dets_tmp, kind=int_64), dets_tmp)
+
+        if (dtype_equal(id, dset, kinds%i0)) then
+            call hdf5_read(id, dset, kinds, shape(dets_tmp, kind=int_64), dets_tmp)
+        else
+            call convert_dets(id, dset, kinds, dets_tmp)
+        end if
 
         ! Assume the old (small) basis corresponds to the first orbitals in the new basis
         dets = 0
