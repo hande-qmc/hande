@@ -271,13 +271,13 @@ contains
         ! Setup the rdms array.
         do i = 1, nrdms
             ! Initialise the instance of the rdm type for this subsystem.
-            subsys_info(i)%string_len = ceiling(real(subsys_info(i)%A_nsites)/i0_length)
+            subsys_info(i)%string_len = ceiling(real(subsys_info(i)%A_nsites)/i0_length) + 1
 
             ! With the calc_ground_rdm option, the entire RDM is allocated. If
             ! the following condition is met then the number of rows is greater
             ! than the maximum integer accessible. This would clearly be too
             ! large, so abort in this case.
-            if (calc_ground_rdm .and. subsys_info(i)%string_len > 1) call stop_all("setup_rdm_arrays",&
+            if (calc_ground_rdm .and. subsys_info(i)%string_len > 2) call stop_all("setup_rdm_arrays",&
                 "A requested RDM is too large for all indices to be addressed by a single integer.")
         end do
 

@@ -228,7 +228,7 @@ contains
         ! Find the number of 0-1 bonds where the 1 lies on the first sublattice.
         lattice_1_up = 0
         f_not = not(f)
-        do i = 1, sys%basis%string_len
+        do i = 1, sys%basis%string_len - 1
             do ipos = 0, i0_end
                 if (btest(f_mask(i), ipos)) then
                     basis_find = sys%basis%basis_lookup(ipos, i)

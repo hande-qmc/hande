@@ -868,6 +868,7 @@ contains
     subroutine init_selection_data(ex_level, selection_data)
 
         ! Take cluster selection object and initialise all data required for calculation.
+
         ! In:
         !   ex_level: maximum excitation level allowed for stored coefficients in calculation.
         ! In/Out:
@@ -887,12 +888,15 @@ contains
     end subroutine init_selection_data
 
     subroutine init_possible_clusters(ex_level, selection_data)
+
         ! Take cluster selection object and initialise all possible size combinations of clusters.
+
         ! In:
         !   ex_level: maximum excitation level allowed in calculation.
         ! In/Out:
         !   cluster_selection: selection_data_t object. On output cluster_sizes_info components
         !       will be allocated and set as appropriate, and cluster_sizes_proportion allocated.
+
         use ccmc_data, only: selection_data_t
         use checking, only: check_allocate
         use parallel, only: parent
@@ -936,11 +940,14 @@ contains
     end subroutine init_possible_clusters
 
     subroutine init_psize_data(ex_level, selection_data)
+
         ! Take cluster selection object and initialise all data required for psize variation.
+
         ! In:
         !   ex_level: maximum excitation level allowed in calculation.
         !   cluster_selection: selection_data_t object. On output cluster_sizes_info components
         !       will be allocated and set as appropriate, and cluster_sizes_proportion allocated.
+
         use ccmc_data, only: selection_data_t
         use checking, only: check_allocate
 
@@ -1000,6 +1007,7 @@ contains
          ! For given number of selections and excitations remaining,
          ! calculate number of possible clusters. Performs this via a recursive
          ! search of all combinations.
+
          ! In:
          !   selections_remain: total number more excitors to be added to the
          !       cluster to reach chosen total size.
@@ -1009,6 +1017,7 @@ contains
          !   max_excit_level: maximum excitation level permitted in calculation.
          ! Returns:
          !   Number of possible size combinations fitting given initial conditions.
+
          integer, intent(in) :: selections_remain, excitor_excit_level, current_excit_level
          integer, intent(in) :: max_excit_level
          integer :: nfound
@@ -1098,6 +1107,7 @@ contains
         ! Updates single block of selection_data to have selection probability
         ! proportional to occupancy of excitation levels in given cluster. Each
         ! block corresponds to a single size of cluster.
+
         ! In:
         !   cluster_info: array containing in element (i,j) the number of
         !       excitors of excitation level j within cluster combination
