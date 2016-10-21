@@ -449,8 +449,10 @@ contains
             tot_pop = 0.0_p
         end if
 
-        ex_lvl_dist%cumulative_nstates_ex_lvl(ex_lvl:) = nactive
-        ex_lvl_dist%cumulative_pop_ex_lvl(ex_lvl:) = tot_pop
+        if (calc_dist) then
+            ex_lvl_dist%cumulative_nstates_ex_lvl(ex_lvl:) = nactive
+            ex_lvl_dist%cumulative_pop_ex_lvl(ex_lvl:) = tot_pop
+        end if
 
     end subroutine cumulative_population
 

@@ -701,9 +701,9 @@ contains
                 call binary_search(cumulative_excip_pop, pops(i), prev_pos, &
                             ex_lvl_dist%cumulative_nstates_ex_lvl(ex_level), hit, pos)
                 if (sys%read_in%comp) then
-                    excitor_pop = cmplx(psip_list%pops(1,pos), psip_list%pops(2,pos),p)/psip_list%pop_real_factor
+                    excitor_pop = cmplx(psip_list%pops(1,pos),psip_list%pops(2,pos), p)/psip_list%pop_real_factor
                 else
-                    excitor_pop = real(psip_list%pops(1,pos),p)/psip_list%pop_real_factor
+                    excitor_pop = cmplx(psip_list%pops(1,pos), 0.0_p, p)/psip_list%pop_real_factor
                 end if
                 if (i == 1 .and. first) then
                     ! First excitor 'seeds' the cluster:
