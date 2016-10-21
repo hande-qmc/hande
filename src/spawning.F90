@@ -770,7 +770,7 @@ contains
                 call assign_particle_processor(particle_label_padded, nbits, seed, shift, freq, np, &
                                                particle_proc, slot_pos, proc_map, nslots)
             else
-                particle_label_padded(label_len+1:) = particle_label(label_len:)
+                particle_label_padded(label_len+1:) = particle_label_padded(label_len:)
                 particle_label_padded(label_len) = 0_i0
                 call assign_particle_processor(particle_label_padded, nbits+i0_length, seed, shift, freq, np, &
                                                particle_proc, slot_pos, proc_map, nslots)
