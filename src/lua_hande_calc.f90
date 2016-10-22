@@ -1778,10 +1778,12 @@ contains
         !    start_point_number = N,
         !    filename = filename,
         !    start_point = niterations,
+        !    error_limit = error_limit,
+        !    min_ratio = min_ratio
         ! }
 
-        ! If start_save_frequency, start_point_number and start_point is not
-        ! specified default value is used.
+        ! If start_save_frequency, start_point_number, error_limit, min ratio and start_point
+        ! is not specified default value is used.
 
         ! In/Out:
         !    lua_state: flu/Lua state to which the HANDE API is added.
@@ -1803,8 +1805,8 @@ contains
         type(blocking_in_t), intent(out) :: blocking_in
 
         integer :: err, blocking_table
-        character(21),parameter :: keys(5) = [character(21) :: &
-            'blocking_on_the_fly', 'start_save_frequency', 'start_point_number', 'filename', 'start_point']
+        character(21),parameter :: keys(7) = [character(21) :: &
+            'blocking_on_the_fly', 'start_save_frequency', 'start_point_number', 'filename', 'start_point', 'error_limit', 'min_ratio']
 
         if (aot_exists(lua_state, opts, 'blocking')) then
 
@@ -1819,6 +1821,10 @@ contains
             call aot_get_val(blocking_in%filename, err, lua_state, blocking_table, 'filename')
 
             call aot_get_val(blocking_in%start_point, err, lua_state, blocking_table, 'start_point')
+
+            call aot_get_val(blocking_in%error_limit, err, lua_state, blocking_table, 'error_limit')
+
+            call aot_get_val(blocking_in%min_ratio, err, lua_state, blocking_table, 'min_ratio')
 
             call warn_unused_args(lua_state, keys, blocking_table)
 

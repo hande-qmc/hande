@@ -290,6 +290,13 @@ type blocking_in_t
     ! collected. If negative, the default value is used. Default is to start
     ! collecting data once vary_shift is true.
     integer :: start_point = -1
+    ! Limit of the sum of error in error and standard deviation of projected
+    ! energy. If this value is reached soft_exit = true. Default is 0
+    real(p) :: error_limit = 0
+    ! Minimum ratio between error in error and standard errer used to determine
+    ! whether or not calculation should be terminated. Larger ratio means more
+    ! blocks are used for reblocking analysis. Default = 3
+    integer :: min_ratio = 3
 end type
 
 ! --- Parallel info ---
@@ -537,13 +544,14 @@ type blocking_t
     ! until the current report cycle.
     ! data_type = 1 corresponds to \sum H_0j N_j.
     ! data_type = 2 corresponds to reference population.
-    ! reblock_data(1, log2(blocksize), data_type) = number of blocks of the
+    ! data_type = 3 corresponds to shift
+    ! reblock_data(data_type, log2(blocksize), 1) = number of blocks of the
     ! specified blocksize.
-    ! reblock_data(2, log2(blocksize), data_type) = sums of data_type that are
+    ! reblock_data(data_type, log2(blocksize), data_type, 2) = sums of data_type that are
     ! not included in the statistics yet because the number included in the sum
     ! is too few to reach the blocksize.
-    ! reblock_data(3, log2(blocksize), data_type) = sums of blocks of data_type.
-    ! reblock_data(4, log2(blocksize), data_type) = sums of squares of blocks of
+    ! reblock_data(data_type, log2(blocksize), 3) = sums of blocks of data_type.
+    ! reblock_data(data_type, log2(blocksize), 4) = sums of squares of blocks of
     ! data_type.
     ! data_product: Array containing the product of data_type 1 and data_type 2
     ! for each blocksize
@@ -558,9 +566,10 @@ type blocking_t
     ! sizes
     ! data_type = 1 corresponds to \sum H_0j Nj.
     ! data_type = 2 corresponds to reference population.
-    ! block_mean(log2(blocksize), data_type) = mean of different block sizes of
+    ! data_type = 3 corresponds to shift
+    ! block_mean(data_type, log2(blocksize)) = mean of different block sizes of
     ! data_type.
-    ! block_std(log2(blocksize), data_type) = standard deviation of different
+    ! block_std(data_type, log2(blocksize)) = standard deviation of different
     ! block sizes of data_type.
     ! block_cov(log2(blocksize)) = covariance of the two data types of different
     ! block sizes.
@@ -570,7 +579,8 @@ type blocking_t
     ! B^3 > 2*(B*(number of blocks)) * (std(B)/std(0)) ^ 4
     ! data_type = 1 corresponds to \sum H_0j Nj.
     ! data_type = 2 corresponds to reference population.
-    ! data_type = 3 corresponds to projected energy. (\sum H_0j Nj/N_0)
+    ! data_type = 3 corresponds to shift
+    ! data_type = 4 corresponds to projected energy. (\sum H_0j Nj/N_0)
     ! optimal_mean(data_type) = block_mean of the block with the optimal block
     ! size for the data_type. For projected energy, the block size that is
     ! larger of the data_type 1 and 2 is used.
@@ -581,7 +591,8 @@ type blocking_t
     ! B^3 > 2*(B*(number of blocks)) * (std(B)/std(0)) ^ 4
     ! data_type = 1 corresponds to \sum H_0j Nj.
     ! data_type = 2 corresponds to reference population.
-    ! data_type = 3 corresponds to projected energy. (\sum H_0j Nj/N_0)
+    ! data_type = 3 corresponds to shift
+    ! data_type = 4 corresponds to projected energy. (\sum H_0j Nj/N_0)
     ! optimal_std(data_type) = block_std of the block with the optimal block
     ! size for the data_type. For projected energy, the block size that is
     ! larger of the data_type 1 and 2 is used.
@@ -590,17 +601,19 @@ type blocking_t
     ! distributed from central limit theorm. 1/(sqrt(2*(number of blocks - 1)))
     ! data_type = 1 corresponds to \sum H_0j Nj.
     ! data_type = 2 corresponds to reference population.
+    ! data_type = 3 corresponds to shift.
+    ! data_type = 4 corresponds to projected energy. (\sum H_0j Nj/N_0)
     ! optimal_err(data_type) = Error in standard deviation of data_type.
-    real(p) :: optimal_err(3) = 0
+    real(p) :: optimal_err(4) = 0
     ! Report number from which the data for reblocking is collected.
     integer :: start_ireport = -1
     ! Arrays for saving the data for reblocking for the purpose of starting the
     ! reblock from a different start position in the middle of a calculation.
     ! The frequency and the number of reblock_data and data_product arrays saved
     ! is determined by n_saved_startpoints and save_fq.
-    ! reblock_save(start_point, :, :, :) = copy of reblock_data at the report
+    ! reblock_save(:,:,:,start_point) = copy of reblock_data at the report
     ! cycle (start_point * save_fq).
-    ! product_save(start_point, :) = copy of data_product at the report cycle
+    ! product_save(:,start_point) = copy of data_product at the report cycle
     ! (start_point * save_fq).
     real(p), allocatable :: reblock_save(:,:,:,:), product_save(:,:)
     ! (start_point*save_fq) indicates the number of reports from which the reblock analysis
@@ -611,6 +624,7 @@ type blocking_t
     ! 1/sqrt(number of data points) for each of the possible start positions.
     real(p), allocatable :: err_comp(:,:)
     integer :: optimal_size(3) = 1
+
 end type blocking_t
 
 type estimators_t
@@ -718,6 +732,7 @@ type qmc_state_t
     ! to determine the processor location of a particle.  It is the programmer's
     ! responsibility to ensure these are kept up to date...
     type(parallel_t) :: par_info
+    logical :: reblock_done = .false.
     type(estimators_t), allocatable :: estimators(:)
 end type qmc_state_t
 
@@ -990,7 +1005,9 @@ contains
         call json_write_key(js, 'start_save_frequency', blocking%start_save_frequency)
         call json_write_key(js, 'start_point_number', blocking%start_point_number)
         call json_write_key(js, 'filename', blocking%filename)
-        call json_write_key(js, 'start_point', blocking%start_point, .true.)
+        call json_write_key(js, 'start_point', blocking%start_point)
+        call json_write_key(js, 'error_limit', blocking%error_limit)
+        call json_write_key(js, 'min_ratio', blocking%min_ratio, .true.)
         call json_object_end(js, terminal)
 
     end subroutine blocking_in_t_json

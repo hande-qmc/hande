@@ -3,8 +3,16 @@ module blocking
 ! [review] - JSS: cite blocking (and DDDA?) paper(s).
 ! Module for performing reblocking on the fly.
 
+! References
+! ----------
+!   [1] "Monte Carlo errors with less errors", U. Wolff, Comput. Phys.
+!   Commun. 156, 143 (2004) and arXiv:hep-lat/0306017.
+!   [2] "Strategies for improving the efficiency of quantum Monte Carlo
+!   calculations", R. M. Lee, G. J. Conduit, N. Nemec, P. Lopez Rios, and N.
+!   D.  Drummond, Phys. Rev. E. 83, 066706 (2011).
+
 implicit none
- 
+
 contains
 
     subroutine allocate_blocking(qmc_in, blocking_in, bl)
@@ -49,40 +57,35 @@ contains
             bl%n_saved_startpoints = blocking_in%start_point_number
         end if
 
-        ! 1st column of reblock_data and reblock_data_2 is the number of blocks
-        ! for different block sizes where the rows represent the block size from
-        ! 0 to 2^(lg_max). 2nd column is the sum of numbers, once the block size
-        ! is reached the sum is divided by the block size and copied to column 3
-        ! and squared and copied to column 4. The product of \sum H_0j N_j and
-        ! referecne population is copied to data_product.
-        allocate(bl%reblock_data(4, 0:bl%lg_max, 3), stat=ierr)
+        ! Each dimension and what they mean are listed in qmc_data.f90
+
+        allocate(bl%reblock_data(3, 0:bl%lg_max, 4), stat=ierr)
         call check_allocate('bl%reblock_data',(bl%lg_max+1)*4*3,ierr)
         allocate(bl%data_product(0:bl%lg_max), stat=ierr)
         call check_allocate('bl%data_product',(bl%lg_max+1),ierr)
-        allocate(bl%reblock_data_2(4, 0:bl%lg_max, 3), stat=ierr)
+        allocate(bl%reblock_data_2(3, 0:bl%lg_max, 4), stat=ierr)
         call check_allocate('bl%reblock_data_2', (bl%lg_max+1)*4*3,ierr)
         allocate(bl%data_product_2(0:bl%lg_max), stat=ierr)
         call check_allocate('bl%data_product_2',(bl%lg_max+1),ierr)
         ! Mean, standard deviation and covariance of Proj. energy and reference
-        ! population is calculated for each block size and added to block_mean,
+        ! population is calculated for each block size and added to ilock_mean,
         ! block_std and block_cov
-        allocate(bl%block_mean(0:bl%lg_max, 3), stat=ierr)
+        allocate(bl%block_mean(3, 0:bl%lg_max), stat=ierr)
         call check_allocate('bl%block_mean', 3*(bl%lg_max+1), ierr)
-        allocate(bl%block_std(0:bl%lg_max, 3), stat=ierr)
+        allocate(bl%block_std(3, 0:bl%lg_max), stat=ierr)
         call check_allocate('bl%block_std', 3*(bl%lg_max+1), ierr)
         allocate(bl%block_cov(0:bl%lg_max), stat=ierr)
         call check_allocate('bl%block_cov', bl%lg_max+1, ierr)
         ! Array in which the reblock_data and data_product are saved every
         ! start_fq.
-        allocate(bl%reblock_save(0:bl%n_saved_startpoints, 4, 0:bl%lg_max, 3), stat=ierr)
+        allocate(bl%reblock_save(3, 0:bl%lg_max, 4, 0:bl%n_saved_startpoints) , stat=ierr)
         call check_allocate('bl%reblock_save',(bl%n_saved_startpoints+1)*4*3*(bl%lg_max+1), ierr)
-        allocate(bl%product_save(0:bl%n_saved_startpoints, 0:bl%lg_max),stat=ierr)
+        allocate(bl%product_save(0:bl%lg_max, 0:bl%n_saved_startpoints),stat=ierr)
         call check_allocate('bl%product_save',(bl%n_saved_startpoints+1)*(bl%lg_max+1),ierr)
         ! 1/(sqrt(number of data)) * fractional error for both \sum H_0j N_jand
         ! reference population is saved for comparison.
-        allocate(bl%err_comp(0:bl%n_saved_startpoints, 3))
+        allocate(bl%err_comp(3, 0:bl%n_saved_startpoints))
         call check_allocate('bl%err_comp', (bl%n_saved_startpoints+1)*3, ierr)
-
 
         bl%reblock_data = 0
         bl%data_product = 0
@@ -144,19 +147,20 @@ contains
         integer, intent(in) :: iunit
 
         ! [review] - JSS: simpler is: write (iunit, '(1X,"#iterations")') etc.
-        write(iunit, '(1X, A)', advance = 'no') ('#iterations')
-        write(iunit, '(1X, A)', advance = 'no') ('Start point')
-        write(iunit, '(1X, A)', advance = 'no') ('Mean \sum H_0j N_j')
-        write(iunit, '(2X, A)', advance = 'no') ('Std \sum H_0j N_j')
-        write(iunit, '(2X, A)', advance = 'no') ('Error in error')
-        write(iunit, '(5X, A)', advance = 'no') ('Mean N_0')
-        write(iunit, '(10X, A)', advance = 'no') ('Std N_0')
-        write(iunit, '(12X, A)', advance = 'no') ('Error in error')
-        write(iunit, '(5X, A)', advance = 'no') ('Mean Shift')
-        write(iunit, '(7X, A)', advance = 'no') ('Std Shift')
-        write(iunit, '(10X, A)', advance = 'no') ('Error in error')
-        write(iunit, '(5X, A)', advance = 'no') ('Mean Proj. energy')
-        write(iunit, '(5X, A)') ('Std Proj. energy')
+        write(iunit, '(1X, "#iterations")', advance = 'no')
+        write(iunit, '(1X, "Start")', advance = 'no')
+        write(iunit, '(2X, "Mean \sum H_0j N_j")', advance = 'no')
+        write(iunit, '(1X, "Std \sum H_0 N_j")', advance = 'no')
+        write(iunit, '(4X, "Error in error")', advance = 'no')
+        write(iunit, '(3X, "Mean N_0")', advance = 'no')
+        write(iunit, '(9X, "Std N_0")', advance = 'no')
+        write(iunit, '(10 X, "Error in error")', advance = 'no')
+        write(iunit, '(3X, "Mean Shift")', advance = 'no')
+        write(iunit, '(7X, "Std Shift")', advance = 'no')
+        write(iunit, '(8X, "Error in error")', advance = 'no')
+        write(iunit, '(2X, "Mean Proj. energy")', advance = 'no')
+        write(iunit, '(1X, "Std Proj. energy")', advance = 'no')
+        write(iunit, '(1X, "Error in error")')
         flush(iunit)
 
     end subroutine write_blocking_report_header
@@ -184,9 +188,9 @@ contains
         ! \sum H_0j N_j, reference population and shift are added to column 2 of every
         ! block size.
 
-        bl%reblock_data(2,:,1) = bl%reblock_data(2,:,1) + qs%estimators%proj_energy
+        bl%reblock_data(1,:,2) = bl%reblock_data(1,:,2) + qs%estimators%proj_energy
         bl%reblock_data(2,:,2) = bl%reblock_data(2,:,2) + qs%estimators%D0_population
-        bl%reblock_data(2,:,3) = bl%reblock_data(2,:,3) + qs%shift(1)
+        bl%reblock_data(3,:,2) = bl%reblock_data(3,:,2) + qs%shift(1)
 
         ! Everytime enough data is collected for each block size, the sum in
         ! column 2 is divied by the block size and added to column 3 and squared
@@ -199,15 +203,15 @@ contains
             if (mod(bl%n_reports_blocked, 2 ** i) == 0) then
                 reblock_size = 2 ** i
 
-                bl%reblock_data(1,i,:) = (bl%n_reports_blocked)/reblock_size
+                bl%reblock_data(:,i,1) = (bl%n_reports_blocked)/reblock_size
 
-                bl%reblock_data(3,i,:) = bl%reblock_data(3,i,:) + bl%reblock_data(2,i,:)/reblock_size
+                bl%reblock_data(:,i,3) = bl%reblock_data(:,i,3) + bl%reblock_data(:,i,2)/reblock_size
 
-                bl%reblock_data(4,i,:) = bl%reblock_data(4,i,:) + (bl%reblock_data(2,i,:)/reblock_size) ** 2
+                bl%reblock_data(:,i,4) = bl%reblock_data(:,i,4) + (bl%reblock_data(:,i,2)/reblock_size) ** 2
 
-                bl%data_product(i) = bl%data_product(i) + (bl%reblock_data(2,i,1)/reblock_size) * &
+                bl%data_product(i) = bl%data_product(i) + (bl%reblock_data(1,i,2)/reblock_size) * &
                                                           (bl%reblock_data(2,i,2)/reblock_size)
-                bl%reblock_data(2,i,:) = 0
+                bl%reblock_data(:,i,2) = 0
             end if
         end do
     end subroutine collect_data
@@ -230,21 +234,21 @@ contains
         do i = 0, bl%lg_max
 
             if (bl%reblock_data_2(1,i,1) > 0.0) then
-                bl%block_mean(i,:) = bl%reblock_data_2(3,i,:)/bl%reblock_data_2(1,i,:)
+                bl%block_mean(:,i) = bl%reblock_data_2(:,i,3)/bl%reblock_data_2(:,i,1)
 
             else
-                bl%block_mean(i,:) = 0
+                bl%block_mean(:,i) = 0
             end if
 
             if (bl%reblock_data_2(1,i,1) > 1.0) then
-                bl%block_std(i,:) = (bl%reblock_data_2(4,i,:)/bl%reblock_data_2(1,i,:) - bl%block_mean(i,:) ** 2)
+                bl%block_std(:,i) = (bl%reblock_data_2(:,i,4)/bl%reblock_data_2(:,i,1) - bl%block_mean(:,i) ** 2)
 
-                bl%block_std(i,:) = sqrt(bl%block_std(i,:)/(bl%reblock_data_2(1,i,:) - 1))
+                bl%block_std(:,i) = sqrt(bl%block_std(:,i)/(bl%reblock_data_2(:,i,1) - 1))
 
-                bl%block_cov(i) = (bl%data_product_2(i) - (bl%block_mean(i,1)*bl%block_mean(i,2) &
+                bl%block_cov(i) = (bl%data_product_2(i) - (bl%block_mean(1,i)*bl%block_mean(2,i) &
                                                         *  bl%reblock_data_2(1,i,1)))/(bl%reblock_data_2(1,i,1) - 1)
             else
-                bl%block_std(i,:) = 0
+                bl%block_std(:,i) = 0
                 bl%block_cov(i) = 0
             end if
         end do
@@ -315,7 +319,7 @@ contains
             do j = 0, (bl%lg_max)
                 B = 2**(j)
 ! [review] - CJCS: From what you said above shouldn't this be B**3 >?
-                if (B > (2*bl%reblock_data_2(1,j,i)*real(B)*((bl%block_std(j,i) / bl%block_std(0,i))**4))**(1.0/3.0)) then
+                if (B > (2*bl%reblock_data_2(i,j,1)*real(B)*((bl%block_std(i,j) / bl%block_std(i,0))**4))**(1.0/3.0)) then
                     bl%optimal_size(i) = j
                     exit
                 end if
@@ -324,11 +328,11 @@ contains
                 bl%optimal_mean(i) = 0
                 bl%optimal_std(i) = 0
             else
-                bl%optimal_std(i) = bl%block_std(bl%optimal_size(i),i)
+                bl%optimal_std(i) = bl%block_std(i, bl%optimal_size(i))
                 if (bl%optimal_std(i) == 0) then
                     bl%optimal_mean(i) = 0
                 else
-                    bl%optimal_mean(i) = bl%block_mean(bl%optimal_size(i),i)
+                    bl%optimal_mean(i) = bl%block_mean(i, bl%optimal_size(i))
                 end if
 
             end if
@@ -338,7 +342,7 @@ contains
             ! calculated assuming the normal distribution following central
             ! limit theorem.
             else
-                bl%optimal_err(i) = bl%optimal_std(i)/ sqrt(2*(bl%reblock_data_2(1, bl%optimal_size(i), i) - 1))
+                bl%optimal_err(i) = bl%optimal_std(i)/ sqrt(2*(bl%reblock_data_2(i, bl%optimal_size(i), 1) - 1))
             end if
         end do
         ! Larger optimal block size between the two is used.
@@ -352,11 +356,15 @@ contains
         if (bl%optimal_mean(1) == 0 .or. bl%optimal_mean(2) == 0) then
             bl%optimal_mean(4) = 0
             bl%optimal_std(4) = 0
+            bl%optimal_err(4) = 0
         else
-            bl%optimal_mean(4) = bl%block_mean(size_e, 1) / bl%block_mean(size_e,2)
+            bl%optimal_mean(4) = bl%block_mean(1, size_e) / bl%block_mean(2,size_e)
 
-            bl%optimal_std(4) = fraction_error(bl%block_mean(size_e,1), bl%block_mean(size_e, 2), bl%reblock_data_2(1, size_e,1), &
-                                               bl%block_std(size_e,1), bl%block_std(size_e, 2), bl%block_cov(size_e))
+            bl%optimal_std(4) = fraction_error(bl%block_mean(1,size_e), bl%block_mean(2,size_e), bl%reblock_data_2(1,size_e,1), &
+                                               bl%block_std(1,size_e), bl%block_std(2, size_e), bl%block_cov(size_e))
+            bl%optimal_err(4) = sqrt((bl%optimal_err(1)/bl%optimal_std(1)) ** 2 + (bl%optimal_err(2)/bl%optimal_std(2)) ** 2) * &
+                                                                                                            bl%optimal_std(4)
+
         end if
 
     end subroutine find_optimal_block
@@ -382,9 +390,9 @@ contains
 
         do i = 1, bl%n_saved_startpoints
             if (mod(bl%n_reports_blocked,(bl%save_fq * i)) == 0 .and. &
-                        all(bl%reblock_save(i,:,:,:) == 0)) then
-                bl%reblock_save(i,:,:,:) = bl%reblock_data(:,:,:)
-                bl%product_save(i,:) = bl%data_product(:)
+                        all(bl%reblock_save(:,:,:,i) == 0)) then
+                bl%reblock_save(:,:,:,i) = bl%reblock_data(:,:,:)
+                bl%product_save(:,i) = bl%data_product(:)
             end if
         end do
     end subroutine copy_block
@@ -427,10 +435,10 @@ contains
             do i = 0, bl%lg_max
                 switch = .true.
                 do k = 0, bl%n_saved_startpoints
-                    if (bl%reblock_save(k,2,i,1) == 0 .and. bl%reblock_save(k,1,0,1) >= restart*bl%save_fq) then
-                        bl%reblock_data_2(:,i,:) = bl%reblock_data_2(:,i,:) - bl%reblock_save(k,:,i,:)
+                    if (bl%reblock_save(1,i,2,k) == 0 .and. bl%reblock_save(1,0,1,k) >= restart*bl%save_fq) then
+                        bl%reblock_data_2(:,i,:) = bl%reblock_data_2(:,i,:) - bl%reblock_save(:,i,:,k)
 
-                        bl%data_product_2(i) = bl%data_product_2(i) - bl%product_save(k,i)
+                        bl%data_product_2(i) = bl%data_product_2(i) - bl%product_save(i,k)
 
                         switch = .false.
 
@@ -475,14 +483,14 @@ contains
 
                 do j = 1, 3
                     if (bl%optimal_std(j) == 0.0) then
-                        bl%err_comp(i,j) = 0.0
+                        bl%err_comp(j,i) = 0.0
                     else
                         if (bl%optimal_size(j) - 1 < log(real(bl%save_fq))/ log(2.0)) then
-                            bl%err_comp(i,j) = bl%optimal_err(j)/ (bl%optimal_std(j) * sqrt(real((int(real(bl%n_reports_blocked &
+                            bl%err_comp(j,i) = bl%optimal_err(j)/ (bl%optimal_std(j) * sqrt(real((int(real(bl%n_reports_blocked &
                                                                     - i * bl%save_fq)/bl%optimal_size(j))) * bl%optimal_size(j))))
                         else
                             ! [review] - JSS: such a long line is rather hard to parse.
-                            bl%err_comp(i,j) = bl%optimal_err(j)/&
+                            bl%err_comp(j,i) = bl%optimal_err(j)/&
                                 (bl%optimal_std(j) * sqrt(real((int(real(bl%n_reports_blocked &
                                 - i * bl%save_fq)/bl%optimal_size(j))-1) &
                                 * bl%optimal_size(j))))
@@ -490,13 +498,13 @@ contains
                     end if
                 end do
             else
-                bl%err_comp(i,:) = 0
+                bl%err_comp(:,i) = 0
             end if
 
         end do
 
         do i = 1, 3
-            minimum(i) = minloc(bl%err_comp(:,i), dim = 1, mask = (bl%err_comp(:,i)>0)) - 1
+            minimum(i) = minloc(bl%err_comp(i,:), dim = 1, mask = (bl%err_comp(i,:)>0)) - 1
         end do
 
         bl%start_point = maxval(minimum)
@@ -505,7 +513,7 @@ contains
 
     end subroutine err_comparison
 
-    subroutine do_blocking(bl, qs, qmc_in, ireport, iter, iunit, blocking_in)
+    subroutine do_blocking(bl, qs, qmc_in, ireport, iter, iunit, blocking_in, soft_exit)
 
         ! Carries out blocking on the fly and changes the start point to
         ! minimise the fractional error in standard deviation weighted by the
@@ -521,15 +529,17 @@ contains
         !   blocking_in: input options for blocking on the fly.
         ! In/Out:
         !   bl: Information needed to peform blocking on the fly.
+        !   soft_exit: if true, the calculation is terminated.
 
         use qmc_data, only: blocking_t, qmc_state_t, qmc_in_t, blocking_in_t
 
         type(blocking_t), intent(inout) :: bl
-        type(qmc_state_t), intent(in) :: qs
+        type(qmc_state_t), intent(inout) :: qs
         type(qmc_in_t), intent(in) :: qmc_in
         integer, intent(in) :: ireport, iter
         integer, intent(in) :: iunit
         type(blocking_in_t), intent(in) :: blocking_in
+        logical, intent(inout) :: soft_exit
 
         if (bl%start_ireport == -1 .and. blocking_in%start_point<0 .and. qs%vary_shift(1)) then
             bl%start_ireport = ireport
@@ -555,6 +565,7 @@ contains
             call mean_std_cov(bl)
             call find_optimal_block(bl)
             call write_blocking(bl, qmc_in, ireport, iter, iunit)
+            call check_error(bl, qs, blocking_in, soft_exit)
         end if
 
         if (mod(bl%n_reports_blocked,bl%save_fq) == 0 .and. bl%n_reports_blocked > 0) then
@@ -582,32 +593,74 @@ contains
         type(blocking_t), intent(in) :: bl
         type(qmc_in_t), intent(in) :: qmc_in
         integer, intent(in) :: ireport, iter
+        integer :: i
 
         ! [review] - JSS: inconsistent indentation.
-            write(iunit, '(1X, I8)', advance = 'no') iter
-           ! Prints the point from which reblock analysis is being
-           ! carried out in terms of iterations.
-            write(iunit, '(1X, I8)', advance = 'no') &
-                ((bl%start_point*bl%save_fq+bl%start_ireport)*qmc_in%ncycles)
-           ! Prints the mean, standard deviation and the error in error for \sum
-           ! H_0j N_j and N_0 and mean and standard deviation of projected
-           ! energy. Returns 0 if there are insufficient data.
-           ! [review] - JSS: do this in a loop over i=1,4.
-            write(iunit, '(1X, ES18.7)', advance = 'no') (bl%optimal_mean(1))
-            write(iunit, '(1X, ES18.7)', advance = 'no') (bl%optimal_std(1))
-            write(iunit, '(1X, ES18.7)', advance = 'no') (bl%optimal_err(1))
-            write(iunit, '(1X, ES18.7)', advance = 'no') (bl%optimal_mean(2))
-            write(iunit, '(1X, ES18.7)', advance = 'no') (bl%optimal_std(2))
-            write(iunit, '(1X, ES18.7)', advance = 'no') (bl%optimal_err(2))
-            write(iunit, '(1X, ES18.7)', advance = 'no') (bl%optimal_mean(3))
-            write(iunit, '(1X, ES18.7)', advance = 'no') (bl%optimal_std(3))
-            write(iunit, '(1X, ES18.7)', advance = 'no') (bl%optimal_err(3))
-            write(iunit, '(1X, ES18.7)', advance = 'no') (bl%optimal_mean(4))
-            write(iunit, '(1X, ES18.7)') (bl%optimal_std(4))
-            ! [review] - JSS: optimal_err(4)?
+        write(iunit, '(1X, I8)', advance = 'no') iter
+        ! Prints the point from which reblock analysis is being
+        ! carried out in terms of iterations.
+        write(iunit, '(1X, I8)', advance = 'no') &
+             ((bl%start_point*bl%save_fq+bl%start_ireport)*qmc_in%ncycles)
+        ! Prints the mean, standard deviation and the error in error for \sum
+        ! H_0j N_j and N_0 and mean and standard deviation of projected
+        ! energy. Returns 0 if there are insufficient data.
+        ! [review] - JSS: do this in a loop over i=1,4.
+        write(iunit, '(4X, ES16.7)', advance = 'no') (bl%optimal_mean(1))
+        write(iunit, '(1X, ES16.7)', advance = 'no') (bl%optimal_std(1))
+        write(iunit, '(1X, ES16.7)', advance = 'no') (bl%optimal_err(1))
 
-            flush(iunit)
+        do i = 2,3
+            write(iunit, '(1X, ES16.7)', advance = 'no') (bl%optimal_mean(i))
+            write(iunit, '(1X, ES16.7)', advance = 'no') (bl%optimal_std(i))
+            write(iunit, '(1X, ES16.7)', advance = 'no') (bl%optimal_err(i))
+        end do
+
+        write(iunit, '(1X, ES16.7)', advance = 'no') (bl%optimal_mean(4))
+        write(iunit, '(1X, ES16.7)', advance = 'no') (bl%optimal_std(4))
+        write(iunit, '(1X, ES16.7)') (bl%optimal_err(4))
+        ! [review] - JSS: optimal_err(4)?
+
+        flush(iunit)
 
         end subroutine write_blocking
+
+        subroutine check_error(bl, qs, blocking_in, soft_exit)
+
+            ! checks the sum ofstandard deviation and error in error of
+            ! projected energy
+            ! and if the value is smaller than the user specified value and if
+            ! enough blocks
+            ! are used to estimate the error in error, calculation is
+            ! terminated.
+
+            ! In:
+            !   bl: Information needed to peform blocking on the fly.
+            !   blocking_in: projected energy. (\sum H_0j Nj/N_0).
+            ! In/Out:
+            !   soft_exit: if true, the calculation is terminated.
+
+            use qmc_data, only: blocking_t, blocking_in_t, qmc_state_t
+            use const
+
+            logical, intent(inout) :: soft_exit
+            type(qmc_state_t), intent(inout) :: qs
+            type(blocking_t), intent(in) :: bl
+            type(blocking_in_t), intent(in) :: blocking_in
+            real(p) :: error_sum = 50, error_ratio = 0
+
+            if (bl%optimal_std(4) > 0) then
+
+                error_sum = bl%optimal_err(4) + bl%optimal_std(4)
+
+                error_ratio = bl%optimal_std(4)/bl%optimal_err(4)
+
+            end if
+
+            if (error_sum < blocking_in%error_limit .and. error_ratio > &
+                                        blocking_in%min_ratio) then
+                qs%reblock_done = .true.
+            end if
+
+        end subroutine check_error
 
 end module blocking

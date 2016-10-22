@@ -949,6 +949,8 @@ contains
 
         call calc_interact(comms_found, soft_exit, qs)
 
+        if (qs%reblock_done) soft_exit = .true.
+
     end subroutine end_report_loop
 
     subroutine end_mc_cycle(nspawn_events, ndeath, real_factor, nattempts, rspawn)

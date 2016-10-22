@@ -838,7 +838,7 @@ contains
                 call write_qmc_report(qmc_in, qs, ireport, nparticles_old, t2-t1, .false., .false., &
                                         io_unit=io_unit, cmplx_est=sys%read_in%comp, rdm_energy=ccmc_in%density_matrices, &
                                         nattempts=.true.)
-                if (blocking_in%blocking_on_the_fly) call do_blocking(bl, qs, qmc_in, ireport, iter, iunit, blocking_in)
+                if (blocking_in%blocking_on_the_fly) call do_blocking(bl, qs, qmc_in, ireport, iter, iunit, blocking_in, soft_exit)
             end if
 
             ! Update the time for the start of the next iteration.

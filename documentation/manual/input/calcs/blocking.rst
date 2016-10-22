@@ -44,3 +44,21 @@ blocking analysis on the fly.
 
     The iteration number from which the data for blocking analysis is collected. When
     negative the data is collected when ``target_population`` is reached.
+
+``error_limit``
+    type: real.
+
+    Optinal. Default: 0
+
+    If the sum of error in error and standard deviation of projected energy is smaller than
+    this value and the ``min_ratio`` condition is satisfied, ``soft_exit`` = true is returned
+    and the calculation is terminated.
+
+``min_ratio``
+    type: integer.
+
+    Optional. Default: 3
+
+    The ratio between error in error and standard error of projected energy.
+    If the ratio is larger, greater number of blocks are used for reblock analysis. If the ``error_limit``
+    and ``min_ratio`` condition is satisfied, ``soft_exit`` = true is returned and calculation is terminated
