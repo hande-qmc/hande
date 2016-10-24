@@ -74,29 +74,32 @@ contains
 
         write (6,'(1X,"#",1X)', advance='no')
         call write_column_title(6, 'iterations', int_val=.true., justify=1)
-            ! NOTE: HFS and complex are not currently compatible.
-            if (cmplx_est_set) then
+        ! NOTE: HFS and complex are not currently compatible.
+        if (cmplx_est_set) then
+            call write_column_title(6, 'Shift')
+            call write_column_title(6, 'Re{\sum H_0j N_j}')
+            call write_column_title(6, 'Im{\sum H_0j N_j}')
+            call write_column_title(6, 'Re{N_0}')
+            call write_column_title(6, 'Im{N_0}')
+            call write_column_title(6, '# H psips')
+        else
+            do i = 1, ntypes
                 call write_column_title(6, 'Shift')
-                call write_column_title(6, 'Re{\sum H_0j N_j}')
-                call write_column_title(6, 'Im{\sum H_0j N_j}')
-                call write_column_title(6, 'Re{N_0}')
-                call write_column_title(6, 'Im{N_0}')
+                call write_column_title(6, '\sum H_0j N_j')
+                call write_column_title(6, 'N_0')
+                if (doing_calc(hfs_fciqmc_calc)) then
+                    call write_column_title(6, 'HF shift')
+                    call write_column_title(6, '\sum O_0j N_j')
+                    call write_column_title(6, "\sum H_0j N'_j")
+                    call write_column_title(6, "N'_0")
+                end if
                 call write_column_title(6, '# H psips')
-            else
-                do i = 1, ntypes
-                    call write_column_title(6, 'Shift')
-                    call write_column_title(6, '\sum H_0j N_j')
-                    call write_column_title(6, 'N_0')
-                    if (doing_calc(hfs_fciqmc_calc)) then
-                        call write_column_title(6, 'HF shift')
-                        call write_column_title(6, '\sum O_0j N_j')
-                        call write_column_title(6, "\sum H_0j N'_j")
-                        call write_column_title(6, "N'_0")
-                    end if
-                    call write_column_title(6, '# H psips')
-                    if (doing_calc(hfs_fciqmc_calc)) call write_column_title(6, '# HF psips')
-                end do
-            end if
+                if (doing_calc(hfs_fciqmc_calc)) call write_column_title(6, '# HF psips')
+            end do
+        end if
+        if (present(rdm_energy)) then
+            if (rdm_energy) call write_column_title(6, 'RDM Energy')
+        end if
         call write_column_title(6, '# states', int_val=.true., justify=1)
         call write_column_title(6, '# spawn_events', int_val=.true., justify=1)
         call write_column_title(6, 'R_spawn', low_prec_val=.true.)
@@ -368,6 +371,10 @@ contains
                 call write_qmc_var(6, ntot_particles(i))
             end do
             if (doing_calc(hfs_fciqmc_calc)) call write_qmc_var(6, ntot_particles(2))
+        end if
+
+        if (present(rdm_energy)) then
+            if (rdm_energy) call write_qmc_var(6, qs%estimators(1)%rdm_energy/qs%estimators(1)%rdm_trace)
         end if
 
         call write_qmc_var(6, qs%estimators(1)%tot_nstates)
