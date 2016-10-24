@@ -299,13 +299,13 @@ contains
         use ccmc_selection, only: select_cluster, create_null_cluster, select_cluster_non_composite
         use ccmc_death_spawning, only: spawner_ccmc, linked_spawner_ccmc, stochastic_ccmc_death
         use ccmc_death_spawning, only: stochastic_ccmc_death_nc, spawner_complex_ccmc, create_spawned_particle_ccmc
-        use ccmc_utils, only: init_cluster, find_D0, zero_estimators_t
+        use ccmc_utils, only: init_cluster, find_D0, zero_estimators_t, cumulative_population
         use determinants, only: det_info_t, alloc_det_info_t, dealloc_det_info_t, sum_sp_eigenvalues_occ_list, &
                                 sum_sp_eigenvalues_bit_string, decode_det
         use excitations, only: excit_t, get_excitation_level, get_excitation
         use qmc_io, only: write_qmc_report, write_qmc_report_header
         use qmc, only: init_qmc
-        use qmc_common, only: initial_fciqmc_status, cumulative_population, load_balancing_report, &
+        use qmc_common, only: initial_fciqmc_status, load_balancing_report, &
                               init_report_loop, init_mc_cycle, end_report_loop, end_mc_cycle,      &
                               redistribute_particles, rescale_tau
         use proc_pointers
