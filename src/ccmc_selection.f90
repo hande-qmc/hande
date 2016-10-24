@@ -1,7 +1,80 @@
 module ccmc_selection
 
 ! Module containing all ccmc selection subroutines.
-! For full explanation see top of ccmc.F90.
+! Three options for selection:
+
+! * Original CCMC algorithm
+!       + The number of excips on this processor determines the number
+!         of cluster generations, each of which can spawn and die.
+!         non-composite clusters therefore are seldom selected.
+! * 'full non-composite' algorithm, where spawning and death are split into two tranches.
+!       + non-composite clusters (i.e. consisting of a single excitor):
+!         enumerate explicitly (this is just the list of excitors)
+!       + composite clusters, which must be selected stochastically (as in
+!         the original algorithm for all clusters).  We sample the space
+!         of composite clusters, choosing nattempts samples.  For convenience
+!         nattempts = # excitors not on the reference (i.e. the number of
+!         excitors which can actually be involved in a composite cluster).
+! * 'even selection' algorithm, where all clusters are selected with probability
+!         proportional to their contribution to the final wavefunction.
+!       + non-composite cluster enumerated as in full non-composite algorithm.
+!       + composite clusters more complicated selection probability required.
+
+! A general overview of implementation details for each approach is given below.
+! Guide to general terms: N_0 = reference population
+!                         N_ex = absolute population on non-reference excips
+!                         N_attempts = number of attempts made to generate a
+!                                   cluster on a given iteration.
+
+! Original CCMC algorithm
+! -----------------------
+! N_attempts = N_0 + N_ex
+! p_size(N) = 1/2^(N+1)
+! All excitors for clusters selected at random from whole list with probability
+! proportional to absolute walker population on excitor.
+
+! Full non-composite algorithm
+! ----------------------------
+! Overall N_attempts = N_0 + 2 N_ex
+! N_0 attempts on the reference
+! N_ex selections of non-composite clusters (made deterministically).
+! N_ex selections of composite clusters. p_size(N) = 1/2^(N-1) for N>=2.
+! Excitors for composite clusters selected at random from whole list with
+! probability proportional to absolute walker population on excitor.
+
+! Even Selection
+! --------------
+! Based upon the premise that all components of the wavefunction should be
+! sampled evenly, regardless of providence. In practice, this involves
+! selecting individual clusters with probability proportional to the
+! product of all constituent absolute excip populations.
+
+! ie. for a cluster of size N
+!       p_clust \propto \product_i=1^N |N_i|
+
+! And weighting p_size according to the expected amplitude contribution of all
+! possible clusters at a given cluster size. This includes additional factors of
+! N_0^(-N+1) and 1/(N!).
+
+! Once we obtain this p_size distribution, N_attempts can be set by requiring
+!   N_attempts * p_size(1) = N_ex
+! As we are utilising full non-composite selection for non-composite clusters.
+
+! Thus described we have a functional method, but the combinatorally growing
+! number of possible excitor combinations with increasing cluster sizes leads
+! to a huge number of selections being required at these higher levels. This
+! is not a problem in and of itself, but noting that the Hamiltonian is a
+! two-electron operator we observe that the vast majority of these higher-size
+! selections made in anything but CCSD will have excitation level greater than our
+! truncation level + 2. In practice, this means these selections cannot affect
+! our stored coefficients via death or spawning, and so are simply discarded.
+
+! Remedying this situation is possible, by instead considering at each size
+! all possible combinations of excitors at different excitation levels that
+! results in a cluster of excitation level less than our truncation level + 2.
+
+
+
 
 use const, only: i0, int_p, int_32, int_64, debug, p, dp, depsilon
 

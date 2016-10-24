@@ -604,7 +604,7 @@ contains
                 end if
 
 
-                ! Two options for evolution:
+                ! Three options for evolution:
 
                 ! * Original CCMC algorithm
                 !       + The number of excips on this processor determines the number
@@ -618,6 +618,10 @@ contains
                 !         of composite clusters, choosing nattempts samples.  For convenience
                 !         nattempts = # excitors not on the reference (i.e. the number of
                 !         excitors which can actually be involved in a composite cluster).
+                ! * 'even selection' algorithm, where all clusters are selected with probability
+                !         proportional to their contribution to the final wavefunction.
+                !       + non-composite cluster enumerated as in full non-composite algorithm.
+                !       + composite clusters more complicated selection probability required.
                 call set_cluster_selections(selection_data, nattempts, min_cluster_size, max_cluster_size, D0_normalisation, &
                                             tot_abs_real_pop, qs%psip_list%nstates, ccmc_in%full_nc, ccmc_in%even_selection)
                 ! OpenMP chunk size determined completely empirically from a single
