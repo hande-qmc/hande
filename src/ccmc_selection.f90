@@ -3,7 +3,7 @@ module ccmc_selection
 ! Module containing all ccmc selection subroutines.
 ! For full explanation see top of ccmc.F90.
 
-use const, only: i0, int_p, int_64, p, dp
+use const, only: i0, int_p, int_64, p, dp, debug
 
 implicit none
 
@@ -11,7 +11,7 @@ contains
 
     subroutine select_cluster(rng, sys, psip_list, f0, ex_level, linked_ccmc, nattempts, normalisation, &
                               initiator_pop, D0_pos, cumulative_excip_pop, tot_excip_pop, min_size, max_size, &
-                              cdet, cluster)
+                              logging_info, cdet, cluster)
 
         ! Select a random cluster of excitors from the excitors on the
         ! processor.  A cluster of excitors is itself an excitor.  For clarity
@@ -39,6 +39,7 @@ contains
         !    tot_excip_pop: total excip population.
         !    min_size: the minimum size cluster to allow.
         !    max_size: the maximum size cluster to allow.
+        !    logging_info: derived type containing information on currently logging status
 
         ! NOTE: cumulative_excip_pop and tot_excip_pop ignore the population on the
         ! reference as excips on the reference cannot form a cluster and the rounds the
@@ -72,6 +73,7 @@ contains
         use sort, only: insert_sort
         use parallel, only: nprocs
         use system, only: sys_t
+        use logging, only: write_logging_stoch_selection, logging_t
 
         type(sys_t), intent(in) :: sys
         type(particle_t), intent(in), target :: psip_list
@@ -87,6 +89,7 @@ contains
         type(dSFMT_t), intent(inout) :: rng
         type(det_info_t), intent(inout) :: cdet
         type(cluster_t), intent(inout) :: cluster
+        type(logging_t), intent(in) :: logging_info
 
         real(dp) :: rand
         real(p) :: psize
@@ -149,6 +152,9 @@ contains
             cluster%pselect = cluster%pselect*(1.0_p - psize)
         end if
 
+        ! If could be using logging set to easily identifiable nonsense value.
+        if (debug) pop = -1_int_p
+
         ! Initiator approximation.
         ! This is sufficiently quick that we'll just do it in all cases, even
         ! when not using the initiator approximation.  This matches the approach
@@ -185,6 +191,7 @@ contains
             ! apply them.  This allows us to sort by population first (as the
             ! number of excitors is small) and hence allows for a more efficient
             ! searching of the cumulative population list.
+
             do i = 1, cluster%nexcitors
                 ! Select a position in the excitors list.
                 pop(i) = int(get_rand_close_open(rng)*tot_excip_pop, int_p) + 1
@@ -286,6 +293,9 @@ contains
             if (.not.all_allowed) cluster%excitation_level = huge(0)
 
         end select
+
+        if (debug) call write_logging_stoch_selection(logging_info, cluster%nexcitors, cluster%excitation_level, pop, &
+                min(sys%nel, ex_level+2), cluster%pselect, cluster%amplitude, allowed)
 
     end subroutine select_cluster
 

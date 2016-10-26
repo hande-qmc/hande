@@ -493,7 +493,8 @@ contains
 
                 iter = qs%mc_cycles_done + (ireport-1)*qmc_in%ncycles + icycle
 
-                if (debug) call prep_logging_mc_cycle(iter, logging_in, logging_info, sys%read_in%comp)
+                if (debug) call prep_logging_mc_cycle(iter, logging_in, logging_info, sys%read_in%comp, &
+                                                        min(sys%nel, qs%ref%ex_level+2))
 
                 associate(spawn=>qs%spawn_store%spawn, pm=>qs%spawn_store%spawn%proc_map)
                     call assign_particle_processor(qs%ref%f0, spawn%bit_str_nbits, spawn%hash_seed, spawn%hash_shift, &
@@ -648,7 +649,7 @@ contains
                         call select_cluster(rng(it), sys, qs%psip_list, qs%ref%f0, qs%ref%ex_level, ccmc_in%linked, &
                                             nstochastic_clusters, D0_normalisation, qmc_in%initiator_pop, D0_pos, &
                                             cumulative_abs_nint_pops, tot_abs_nint_pop, min_cluster_size, &
-                                            max_cluster_size, contrib(it)%cdet, contrib(it)%cluster)
+                                            max_cluster_size, logging_info, contrib(it)%cdet, contrib(it)%cluster)
                     else if (iattempt <= nstochastic_clusters+nD0_select) then
                         ! We just select the empty cluster.
                         ! As in the original algorithm, allow this to happen on
