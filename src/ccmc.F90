@@ -850,6 +850,8 @@ contains
             if (parent) write (6,'()')
         end if
 
+        if (debug) call end_logging(logging_info)
+
         do i = 0, nthreads-1
             call dSFMT_end(rng(i))
             call dealloc_det_info_t(cdet(i))
