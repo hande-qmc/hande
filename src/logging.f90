@@ -288,42 +288,45 @@ contains
         use report, only: environment_report
 
         type(logging_t), intent(in) :: logging_info
+        integer :: iunit
 
-        write (logging_info%calc_unit, '(1X,"HANDE QMC Calculation Log File")')
-        write (logging_info%calc_unit,'()')
+        iunit = logging_info%calc_unit
 
-        call environment_report(logging_info%calc_unit)
+        write (iunit, '(1X,"HANDE QMC Calculation Log File")')
+        write (iunit,'()')
+
+        call environment_report(iunit)
 
         select case (calc_type)
         case(fciqmc_calc)
-            write (logging_info%calc_unit, '(1X,"Calculation type: FCIQMC")')
+            write (iunit, '(1X,"Calculation type: FCIQMC")')
         case(ccmc_calc)
-            write (logging_info%calc_unit, '(1X,"Calculation type: CCMC")')
+            write (iunit, '(1X,"Calculation type: CCMC")')
         end select
 
-        write (logging_info%calc_unit, '(1X,"Verbosity Settings:")')
-        write (logging_info%calc_unit, '(1X,10X,"Write Calculation Values:",2X,L1)') &
+        write (iunit, '(1X,"Verbosity Settings:")')
+        write (iunit, '(1X,10X,"Write Calculation Values:",2X,L1)') &
                         logging_info%write_highlevel_values
 
-        write (logging_info%calc_unit,'()')
+        write (iunit,'()')
 
-        write (logging_info%calc_unit,'("#")', advance='no')
+        write (iunit,'("#")', advance='no')
         select case (calc_type)
         case(fciqmc_calc)
-            call write_column_title(logging_info%calc_unit, "iter", int_val=.true., justify=1, sep=',')
-            call write_column_title(logging_info%calc_unit, "# spawn events", int_val=.true., justify=1, sep=',')
-            call write_column_title(logging_info%calc_unit, "# death particles", int_val=.true., justify=1, sep=',')
-            call write_column_title(logging_info%calc_unit, "# attempts", int_val=.true., justify=1, sep=',')
-            write (logging_info%calc_unit,'()')
+            call write_column_title(iunit, "iter", int_val=.true., justify=1, sep=',')
+            call write_column_title(iunit, "# spawn events", int_val=.true., justify=1, sep=',')
+            call write_column_title(iunit, "# death particles", int_val=.true., justify=1, sep=',')
+            call write_column_title(iunit, "# attempts", int_val=.true., justify=1, sep=',')
+            write (iunit,'()')
         case(ccmc_calc)
-            call write_column_title(logging_info%calc_unit, "iter", int_val=.true., justify=1, sep=',')
-            call write_column_title(logging_info%calc_unit, "# spawn events", int_val=.true., justify=1, sep=',')
-            call write_column_title(logging_info%calc_unit, "# death particles", int_val=.true., justify=1, sep=',')
-            call write_column_title(logging_info%calc_unit, "# attempts", int_val=.true., justify=1, sep=',')
-            call write_column_title(logging_info%calc_unit, "# D0 select", int_val=.true., justify=1, sep=',')
-            call write_column_title(logging_info%calc_unit, "# stochastic", int_val=.true., justify=1, sep=',')
-            call write_column_title(logging_info%calc_unit, "# single excit", int_val=.true., justify=1, sep=',')
-            write (logging_info%calc_unit,'()')
+            call write_column_title(iunit, "iter", int_val=.true., justify=1, sep=',')
+            call write_column_title(iunit, "# spawn events", int_val=.true., justify=1, sep=',')
+            call write_column_title(iunit, "# death particles", int_val=.true., justify=1, sep=',')
+            call write_column_title(iunit, "# attempts", int_val=.true., justify=1, sep=',')
+            call write_column_title(iunit, "# D0 select", int_val=.true., justify=1, sep=',')
+            call write_column_title(iunit, "# stochastic", int_val=.true., justify=1, sep=',')
+            call write_column_title(iunit, "# single excit", int_val=.true., justify=1, sep=',')
+            write (iunit,'()')
         end select
 
     end subroutine write_logging_calc_header
@@ -339,26 +342,29 @@ contains
         use calc, only: calc_type, fciqmc_calc, ccmc_calc
 
         type(logging_t), intent(in) :: logging_info
+        integer :: iunit
 
-        write (logging_info%spawn_unit, '(1X,"HANDE QMC Spawning Log File")')
-        write (logging_info%spawn_unit,'()')
+        iunit = logging_info%spawn_unit
 
-        call environment_report(logging_info%spawn_unit)
+        write (iunit, '(1X,"HANDE QMC Spawning Log File")')
+        write (iunit,'()')
+
+        call environment_report(iunit)
 
         select case (calc_type)
         case(fciqmc_calc)
-            write (logging_info%spawn_unit, '(1X,"Calculation type: FCIQMC")')
+            write (iunit, '(1X,"Calculation type: FCIQMC")')
         case(ccmc_calc)
-            write (logging_info%spawn_unit, '(1X,"Calculation type: CCMC")')
+            write (iunit, '(1X,"Calculation type: CCMC")')
         end select
 
-        write (logging_info%spawn_unit, '(1X,"Verbosity Settings:")')
-        write (logging_info%spawn_unit, '(1X,10X,"Write Successful Spawns:",2X,L1)') &
+        write (iunit, '(1X,"Verbosity Settings:")')
+        write (iunit, '(1X,10X,"Write Successful Spawns:",2X,L1)') &
                         logging_info%write_successful_spawn
-        write (logging_info%spawn_unit, '(1X,10X,"Write Failed Spawns:",2X,L1)') &
+        write (iunit, '(1X,10X,"Write Failed Spawns:",2X,L1)') &
                         logging_info%write_failed_spawn
 
-        write (logging_info%spawn_unit,'()')
+        write (iunit,'()')
 
     end subroutine write_logging_spawn_preamble
 
@@ -374,27 +380,29 @@ contains
 
         type(logging_t), intent(in) :: logging_info
         logical, intent(in) :: cmplx_wfn
+        integer :: iunit
 
+        iunit = logging_info%spawn_unit
 
         write (logging_info%spawn_unit,'("#")', advance='no')
         if (cmplx_wfn) then
-            call write_column_title(logging_info%spawn_unit, "Re{H_ij}", justify=-1, sep=',')
-            call write_column_title(logging_info%spawn_unit, "Im{H_ij}", justify=-1, sep=',')
+            call write_column_title(iunit, "Re{H_ij}", justify=-1, sep=',')
+            call write_column_title(iunit, "Im{H_ij}", justify=-1, sep=',')
         else
-            call write_column_title(logging_info%spawn_unit, "H_ij", justify=-1, sep=',')
+            call write_column_title(iunit, "H_ij", justify=-1, sep=',')
         end if
 
-        call write_column_title(logging_info%spawn_unit, "pgen", justify=-1, sep=',')
-        call write_column_title(logging_info%spawn_unit, "qn weighting", justify=-1, sep=',')
-        call write_column_title(logging_info%spawn_unit, "parent amplitude", justify=-1, sep=',')
+        call write_column_title(iunit, "pgen", justify=-1, sep=',')
+        call write_column_title(iunit, "qn weighting", justify=-1, sep=',')
+        call write_column_title(iunit, "parent amplitude", justify=-1, sep=',')
 
         if (cmplx_wfn) then
-            call write_column_title(logging_info%spawn_unit, "# spawn", int_val=.true., justify=1, sep=',')
-            call write_column_title(logging_info%spawn_unit, "# spawn im", int_val=.true., justify=1, sep=',')
+            call write_column_title(iunit, "# spawn", int_val=.true., justify=1, sep=',')
+            call write_column_title(iunit, "# spawn im", int_val=.true., justify=1, sep=',')
         else
-            call write_column_title(logging_info%spawn_unit, "# spawn", int_val=.true., justify=1, sep=',')
+            call write_column_title(iunit, "# spawn", int_val=.true., justify=1, sep=',')
         end if
-        write (logging_info%spawn_unit,'()')
+        write (iunit,'()')
 
     end subroutine write_logging_spawn_header
 
@@ -410,25 +418,29 @@ contains
 
         type(logging_t), intent(in) :: logging_info
 
-        write (logging_info%death_unit, '(1X,"HANDE QMC Death Log File")')
-        write (logging_info%death_unit, '()')
+        integer :: iunit
 
-        call environment_report(logging_info%death_unit)
+        iunit = logging_info%death_unit
+
+        write (iunit, '(1X,"HANDE QMC Death Log File")')
+        write (iunit, '()')
+
+        call environment_report(iunit)
 
         select case (calc_type)
         case(fciqmc_calc)
-            write (logging_info%death_unit, '(1X,"Calculation type: FCIQMC")')
+            write (iunit, '(1X,"Calculation type: FCIQMC")')
         case(ccmc_calc)
-            write (logging_info%death_unit, '(1X,"Calculation type: CCMC")')
+            write (iunit, '(1X,"Calculation type: CCMC")')
         end select
 
-        write (logging_info%death_unit, '(1X,"Verbosity Settings:")')
-        write (logging_info%death_unit, '(1X,10X,"Write Successful Deaths:",2X,L1)') &
+        write (iunit, '(1X,"Verbosity Settings:")')
+        write (iunit, '(1X,10X,"Write Successful Deaths:",2X,L1)') &
                         logging_info%write_successful_death
-        write (logging_info%death_unit, '(1X,10X,"Write Failed Deaths:",2X,L1)') &
+        write (iunit, '(1X,10X,"Write Failed Deaths:",2X,L1)') &
                         logging_info%write_failed_death
 
-        write (logging_info%spawn_unit,'()')
+        write (iunit,'()')
 
     end subroutine write_logging_death_preamble
 
@@ -442,21 +454,24 @@ contains
         use qmc_io, only: write_column_title
 
         type(logging_t), intent(in) :: logging_info
+        integer :: iunit
 
-        write (logging_info%death_unit,'("#")', advance='no')
+        iunit = logging_info%death_unit
 
-        call write_column_title(logging_info%death_unit, "Kii", sep=',')
-        call write_column_title(logging_info%death_unit, "proj_energy", sep=',')
-        call write_column_title(logging_info%death_unit, "loc_shift", sep=',')
-        call write_column_title(logging_info%death_unit, "qn_weight", sep=',')
-        call write_column_title(logging_info%death_unit, "p_death", sep=',')
+        write (iunit,'("#")', advance='no')
 
-        call write_column_title(logging_info%death_unit, "nkill", int_val = .true., justify=1, sep=',')
+        call write_column_title(iunit, "Kii", sep=',')
+        call write_column_title(iunit, "proj_energy", sep=',')
+        call write_column_title(iunit, "loc_shift", sep=',')
+        call write_column_title(iunit, "qn_weight", sep=',')
+        call write_column_title(iunit, "p_death", sep=',')
 
-        call write_column_title(logging_info%death_unit, "init pop", justify=-1, sep=',')
-        call write_column_title(logging_info%death_unit, "fin pop", justify=-1, sep=',')
+        call write_column_title(iunit, "nkill", int_val = .true., justify=1, sep=',')
 
-        write (logging_info%death_unit,'()')
+        call write_column_title(iunit, "init pop", justify=-1, sep=',')
+        call write_column_title(iunit, "fin pop", justify=-1, sep=',')
+
+        write (iunit,'()')
 
     end subroutine write_logging_death_header
 
@@ -480,14 +495,17 @@ contains
         integer(int_p), intent(in) :: ndeath_tot
         integer(int_64), intent(in) :: nattempts
         type(logging_t), intent(in) :: logging_info
+        integer :: iunit
+
+        iunit = logging_info%calc_unit
 
         if (logging_info%write_logging .and. logging_info%write_highlevel_values) then
             write (logging_info%calc_unit,'(1X)', advance='no')
-            call write_qmc_var(logging_info%calc_unit, iter, sep=',')
-            call write_qmc_var(logging_info%calc_unit, nspawn_events, sep=',')
-            call write_qmc_var(logging_info%calc_unit, ndeath_tot, sep=',')
-            call write_qmc_var(logging_info%calc_unit, nattempts, sep=',')
-            write (logging_info%calc_unit,'()')
+            call write_qmc_var(iunit, iter, sep=',')
+            call write_qmc_var(iunit, nspawn_events, sep=',')
+            call write_qmc_var(iunit, ndeath_tot, sep=',')
+            call write_qmc_var(iunit, nattempts, sep=',')
+            write (iunit,'()')
         end if
 
     end subroutine write_logging_calc_fciqmc
@@ -515,17 +533,20 @@ contains
         integer, intent(in) :: nspawn_events
         integer(int_p), intent(in) :: ndeath_tot
         integer(int_64), intent(in) :: nD0_select, nclusters, nstochastic_clusters, nsingle_excitors
+        integer :: iunit
+
+        iunit = logging_info%calc_unit
 
         if (logging_info%write_logging .and. logging_info%write_highlevel_values) then
-            write (logging_info%calc_unit, '(1X)', advance='no')
-            call write_qmc_var(logging_info%calc_unit, iter, sep=',')
-            call write_qmc_var(logging_info%calc_unit, nspawn_events, sep=',')
-            call write_qmc_var(logging_info%calc_unit, ndeath_tot, sep=',')
-            call write_qmc_var(logging_info%calc_unit, nclusters, sep=',')
-            call write_qmc_var(logging_info%calc_unit, nD0_select, sep=',')
-            call write_qmc_var(logging_info%calc_unit, nstochastic_clusters, sep=',')
-            call write_qmc_var(logging_info%calc_unit, nsingle_excitors, sep=',')
-            write (logging_info%calc_unit, '()')
+            write (iunit, '(1X)', advance='no')
+            call write_qmc_var(iunit, iter, sep=',')
+            call write_qmc_var(iunit, nspawn_events, sep=',')
+            call write_qmc_var(iunit, ndeath_tot, sep=',')
+            call write_qmc_var(iunit, nclusters, sep=',')
+            call write_qmc_var(iunit, nD0_select, sep=',')
+            call write_qmc_var(iunit, nstochastic_clusters, sep=',')
+            call write_qmc_var(iunit, nsingle_excitors, sep=',')
+            write (iunit, '()')
         end if
 
     end subroutine write_logging_calc_ccmc
@@ -553,28 +574,31 @@ contains
         real(p), intent(in) :: pgen, qn_weighting, parent_sign
         integer(int_p), intent(in) :: nspawned(:)
         logical, intent(in) ::  cmplx_wfn
+        integer :: iunit
+
+        iunit = logging_info%spawn_unit
 
         if (logging_info%write_logging) then
             if ((logging_info%write_successful_spawn .and. any(abs(nspawned) > 0)) .or. &
                  (logging_info%write_failed_spawn .and. all(nspawned == 0))) then
 
-                write (logging_info%spawn_unit,'(1X)', advance='no')
+                write (iunit,'(1X)', advance='no')
 
                 if (cmplx_wfn) then
-                    call write_qmc_var(logging_info%spawn_unit, real(hmatel%c), sep=',')
-                    call write_qmc_var(logging_info%spawn_unit, aimag(hmatel%c), sep=',')
+                    call write_qmc_var(iunit, real(hmatel%c), sep=',')
+                    call write_qmc_var(iunit, aimag(hmatel%c), sep=',')
                 else
-                    call write_qmc_var(logging_info%spawn_unit, hmatel%r, sep=',')
+                    call write_qmc_var(iunit, hmatel%r, sep=',')
                 end if
 
-                call write_qmc_var(logging_info%spawn_unit, pgen, sep=',')
-                call write_qmc_var(logging_info%spawn_unit, qn_weighting, sep=',')
-                call write_qmc_var(logging_info%spawn_unit, parent_sign, sep=',')
-                call write_qmc_var(logging_info%spawn_unit, nspawned(1), sep=',')
+                call write_qmc_var(iunit, pgen, sep=',')
+                call write_qmc_var(iunit, qn_weighting, sep=',')
+                call write_qmc_var(iunit, parent_sign, sep=',')
+                call write_qmc_var(iunit, nspawned(1), sep=',')
 
-                if (cmplx_wfn) call write_qmc_var(logging_info%spawn_unit, nspawned(2), sep=',')
+                if (cmplx_wfn) call write_qmc_var(iunit, nspawned(2), sep=',')
 
-                write (logging_info%spawn_unit,'()')
+                write (iunit,'()')
             end if
         end if
 
