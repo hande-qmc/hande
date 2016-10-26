@@ -928,6 +928,8 @@ contains
             if (parent) write (6,'()')
         end if
 
+        if (debug) call end_logging(logging_info)
+
         if (ccmc_in%density_matrices) then
             call write_final_rdm(rdm, sys%nel, sys%basis%nbasis, ccmc_in%density_matrix_file)
             call calc_rdm_energy(sys, qs%ref, rdm, qs%estimators%rdm_energy, qs%estimators%rdm_trace)
