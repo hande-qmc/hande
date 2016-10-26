@@ -96,13 +96,16 @@ contains
 
         type(logging_t), intent(inout) :: logging_info
         type(logging_in_t), intent(in) :: logging_in
+        type(logging_in_t) :: logging_in_loc
 
-        call check_logging_inputs(logging_in)
+        logging_in_loc = logging_in
 
-        if (logging_in%calc > 0) call init_logging_calc(logging_in, logging_info)
-        if (logging_in%spawn > 0) call init_logging_spawn(logging_in, logging_info)
-        if (logging_in%death > 0) call init_logging_death(logging_in, logging_info)
-        if (logging_in%stoch_selection > 0) call init_logging_stoch_selection(logging_in, logging_info)
+        call check_logging_inputs(logging_in_loc)
+
+        if (logging_in_loc%calc > 0) call init_logging_calc(logging_in_loc, logging_info)
+        if (logging_in_loc%spawn > 0) call init_logging_spawn(logging_in_loc, logging_info)
+        if (logging_in_loc%death > 0) call init_logging_death(logging_in_loc, logging_info)
+        if (logging_in_loc%stoch_selection > 0) call init_logging_stoch_selection(logging_in_loc, logging_info)
 
     end subroutine init_logging
 
@@ -113,20 +116,27 @@ contains
         ! As additional functionality is added should be updated appropriately.
 
         use calc, only: fciqmc_calc, ccmc_calc, calc_type
+        use errors, only: warning
+        use parallel, only: parent
 
-        type(logging_in_t), intent(in) :: logging_in
+        type(logging_in_t), intent(inout) :: logging_in
 
         select case(calc_type)
-        case(ccmc_calc)
+        case(ccmc_calc, fciqmc_calc)
             continue ! All available logging implemented.
-        case(fciqmc_calc)
-            if (logging_in%stoch_selection > 0) call write_logging_warning(4, logging_in%stoch_selection)
         case default
             if (logging_in%calc > 0) call write_logging_warning(1, logging_in%calc)
             if (logging_in%spawn > 0) call write_logging_warning(2, logging_in%spawn)
             if (logging_in%death > 0) call write_logging_warning(3, logging_in%death)
-            if (logging_in%stoch_selection > 0) call write_logging_warning(4, logging_in%stoch_selection)
         end select
+
+        ! Selection only makes sense within CCMC, so for other calculation types simply
+        ! turn it off if attempted, with appropriate warning.
+        if (logging_in%stoch_selection > 0 .and. calc_type /= ccmc_calc) then
+            if (parent) call warning('check_logging_inputs',"Selection logging turned on for invalid calculation &
+                                        type (ie. not CCMC). Automatically turned off.")
+            logging_in%stoch_selection = 0
+        end if
 
     end subroutine check_logging_inputs
 
