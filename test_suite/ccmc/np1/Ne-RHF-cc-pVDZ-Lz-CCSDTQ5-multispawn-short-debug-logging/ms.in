@@ -30,7 +30,7 @@ ccmc {
         calc = 1,
         spawn = 2,
         death = 2,
-        selection = 1,
+        stoch_selection = 1,
         start = 144,
         finish = 219,
     },

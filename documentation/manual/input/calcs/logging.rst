@@ -46,7 +46,6 @@ Additional logging functionality can be added upon request. Current coverage is 
     same for all files produced in the same calculation and is set to the lowest value not present,
     and X is the process number.
 
-
 ``death``
     type: integer
 
@@ -61,6 +60,24 @@ Additional logging functionality can be added upon request. Current coverage is 
         (currently only for FCIQMC on generic systems and CCMC).
 
     Any information is produced in files DEATH.Y.pX.log within the working directory, where Y is the
+    same for all files produced in the same calculation and is set to the lowest value not present,
+    and X is the process number.
+
+``stoch_selection``
+    type: integer
+
+    Optional. Default: 0.
+
+    Determines level of logging output related to stochastic cluster selection within a ccmc calculation.
+    Current levels are:
+
+    - ``0`` returns no extra information.
+    - ``1`` returns information on each stochastic selection attempt resulting within a calculation in a
+        valid cluster (only for CCMC).
+    - ``2`` returns information on each stochastic selection attempt within a calculation, regardless of
+        validity of resulting cluster (only for CCMC).
+
+    Any information is produced in files STOCH_SELECTION.Y.pX.log within the working directory, where Y is the
     same for all files produced in the same calculation and is set to the lowest value not present,
     and X is the process number.
 

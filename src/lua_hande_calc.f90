@@ -1822,7 +1822,7 @@ contains
         integer :: logging_table, err
 
         character(12), parameter :: keys(6) = [character(12) :: 'calc', 'spawn', 'death', &
-                                                'selection', 'start', 'finish']
+                                                'stoch_selection', 'start', 'finish']
 
         if (aot_exists(lua_state, opts, 'logging')) then
 
@@ -1836,7 +1836,7 @@ contains
 
                 call aot_get_val(logging_in%death, err, lua_state, logging_table, 'death')
 
-                call aot_get_val(logging_in%stoch_selection, err, lua_state, logging_table, 'selection')
+                call aot_get_val(logging_in%stoch_selection, err, lua_state, logging_table, 'stoch_selection')
 
                 call aot_get_val(logging_in%start_iter, err, lua_state, logging_table, 'start')
 
