@@ -161,7 +161,8 @@ contains
                     cdet%data => qs%psip_list%dat(:,idet)
 
                     call decoder_ptr(sys, cdet%f, cdet)
-                    if (qs%quasi_newton) cdet%fock_sum = sum_sp_eigenvalues_occ_list(sys, cdet%occ_list) - qs%ref%fock_sum
+                    if (qs%propagator%quasi_newton) &
+                        cdet%fock_sum = sum_sp_eigenvalues_occ_list(sys, cdet%occ_list) - qs%ref%fock_sum
 
                     ! Extract the real sign from the encoded sign.
                     real_population = real(qs%psip_list%pops(1,idet),p)/qs%psip_list%pop_real_factor

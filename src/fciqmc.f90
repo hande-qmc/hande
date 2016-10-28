@@ -222,14 +222,15 @@ contains
                 ! Should we turn semi-stochastic on now?
                 if (iter == semi_stoch_iter .and. semi_stoch_in%space_type /= empty_determ_space) then
                     determ%doing_semi_stoch = .true.
-                    call init_semi_stoch_t(determ, semi_stoch_in, sys, qs%psip_list, qs%ref, annihilation_flags, &
+                    call init_semi_stoch_t(determ, semi_stoch_in, sys, qs%propagator, qs%psip_list, qs%ref, annihilation_flags, &
                                            qs%spawn_store%spawn, qmc_in%use_mpi_barriers)
                 end if
 
                 call init_mc_cycle(qs%psip_list, qs%spawn_store%spawn, nattempts, ndeath, ndeath_im = ndeath_im, &
                                             complx = sys%read_in%comp)
-                call load_balancing_wrapper(sys, qs%ref, load_bal_in, annihilation_flags, fciqmc_in%non_blocking_comm, &
-                                            rng, qs%psip_list, qs%spawn_store%spawn, qs%par_info, determ)
+                call load_balancing_wrapper(sys, qs%propagator, qs%ref, load_bal_in, annihilation_flags, &
+                                            fciqmc_in%non_blocking_comm, rng, qs%psip_list, qs%spawn_store%spawn, &
+                                            qs%par_info, determ)
                 if (fciqmc_in%non_blocking_comm) qs%spawn_store%spawn_recv%proc_map = qs%par_info%load%proc_map
                 ideterm = 0
 
@@ -239,7 +240,8 @@ contains
                     cdet%data => qs%psip_list%dat(:,idet)
 
                     call decoder_ptr(sys, cdet%f, cdet)
-                    if (qs%quasi_newton) cdet%fock_sum = sum_sp_eigenvalues_occ_list(sys, cdet%occ_list) - qs%ref%fock_sum
+                    if (qs%propagator%quasi_newton) &
+                        cdet%fock_sum = sum_sp_eigenvalues_occ_list(sys, cdet%occ_list) - qs%ref%fock_sum
 
                     ! Extract the real sign from the encoded sign.
                     do ispace = 1, qs%psip_list%nspaces
@@ -340,7 +342,7 @@ contains
                                           qs%spawn_store%rspawn)
                     else
                         ! If using semi-stochastic then perform the deterministic projection step.
-                        if (determ%doing_semi_stoch) call determ_projection(rng, qmc_in, qs, spawn, determ)
+                        if (determ%doing_semi_stoch) call determ_projection(rng, qmc_in, qs, proj_energy_old,  spawn, determ)
 
                         call direct_annihilation(sys, rng, qs%ref, annihilation_flags, pl, spawn, nspawn_events, determ)
                         if (debug) call write_logging_calc_fciqmc(logging_info, iter, nspawn_events, ndeath, nattempts)
@@ -489,7 +491,7 @@ contains
             cdet%data(1) = sc0_ptr(sys, cdet%f) - qs%ref%H00
 
             call decoder_ptr(sys, cdet%f, cdet)
-            if (qs%quasi_newton) cdet%fock_sum = sum_sp_eigenvalues_occ_list(sys, cdet%occ_list) - qs%ref%fock_sum
+            if (qs%propagator%quasi_newton) cdet%fock_sum = sum_sp_eigenvalues_occ_list(sys, cdet%occ_list) - qs%ref%fock_sum
 
             ! It is much easier to evaluate the projected energy at the
             ! start of the i-FCIQMC cycle than at the end, as we're

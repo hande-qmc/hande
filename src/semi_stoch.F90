@@ -127,8 +127,8 @@ contains
 
     end subroutine init_semi_stoch_t_flags
 
-    subroutine init_semi_stoch_t(determ, ss_in, sys, psip_list, reference, annihilation_flags, &
-                                 spawn, mpi_barriers)
+    subroutine init_semi_stoch_t(determ, ss_in, sys, propagator, psip_list, reference, &
+                                 annihilation_flags, spawn, mpi_barriers)
 
         ! Create a semi_stoch_t object which holds all of the necessary
         ! information to perform a semi-stochastic calculation. The type of
@@ -140,6 +140,7 @@ contains
         ! In:
         !    ss_in: Type containing various input semi-stochastic input options.
         !    sys: system being studied
+        !    propagator: propagator_t containing information about the quasinewton parameter.
         !    reference: current reference determinant.
         !    annihilation_flags: calculation specific annihilation flags.
         !    spawn: spawn_t object to which deterministic spawning will occur.
@@ -148,7 +149,7 @@ contains
 
         use checking, only: check_allocate, check_deallocate
         use qmc_data, only: empty_determ_space, high_pop_determ_space, read_determ_space, reuse_determ_space, ci_determ_space, &
-                            semi_stoch_separate_annihilation, particle_t, annihilation_flags_t, semi_stoch_in_t
+                            semi_stoch_separate_annihilation, particle_t, annihilation_flags_t, semi_stoch_in_t, propagator_t
         use parallel
         use sort, only: qsort
         use spawn_data, only: spawn_t
@@ -159,6 +160,7 @@ contains
         type(semi_stoch_t), intent(inout) :: determ
         type(semi_stoch_in_t), intent(in) :: ss_in
         type(sys_t), intent(in) :: sys
+        type(propagator_t), intent(in) :: propagator
         type(particle_t), intent(inout) :: psip_list
         type(reference_t), intent(in) :: reference
         type(annihilation_flags_t), intent(in) :: annihilation_flags
@@ -273,6 +275,12 @@ contains
         call check_allocate('determ%vector', determ%sizes(iproc), ierr)
         determ%vector = 0.0_p
 
+        ! Vector to hold the residual weighting for each determinant 
+        ! for quasinewton propagation.
+        allocate(determ%one_minus_qn_weight(determ%sizes(iproc)), stat=ierr)
+        call check_allocate('determ%one_minus_qn_weight', determ%sizes(iproc), ierr)
+        determ%one_minus_qn_weight = 0.0_p
+
         ! Vector to hold deterministic amplitudes from all processes.
         if (determ%projection_mode == semi_stoch_separate_annihilation) then
             allocate(determ%full_vector(determ%tot_size), stat=ierr)
@@ -311,7 +319,7 @@ contains
 
         call create_determ_hash_table(determ, print_info)
 
-        call create_determ_hamil(determ, sys, reference%H00, displs, dets_this_proc, print_info)
+        call create_determ_hamil(determ, sys, propagator, reference, displs, dets_this_proc, print_info)
 
         ! All deterministic states on this processor are always stored in
         ! particle_t%states, even if they have a population of zero, so they are
@@ -362,6 +370,10 @@ contains
         if (allocated(determ%vector)) then
             deallocate(determ%vector, stat=ierr)
             call check_deallocate('determ%vector', ierr)
+        end if
+        if (allocated(determ%one_minus_qn_weight)) then
+            deallocate(determ%one_minus_qn_weight, stat=ierr)
+            call check_deallocate('determ%one_minus_qn_weight', ierr)
         end if
         if (allocated(determ%full_vector)) then
             deallocate(determ%full_vector, stat=ierr)
@@ -483,7 +495,7 @@ contains
 
     end subroutine create_determ_hash_table
 
-    subroutine create_determ_hamil(determ, sys, H00, displs, dets_this_proc, print_info)
+    subroutine create_determ_hamil(determ, sys, propagator, ref, displs, dets_this_proc, print_info)
 
         ! In/Out:
         !    determ: Deterministic space being used. On input, determ%sizes,
@@ -491,7 +503,8 @@ contains
         !        output, determ%hamil will have been created.
         ! In:
         !    sys: system being studied
-        !    H00: energy of the reference determinant (subtracted from diagonal elements)
+        !    propagator: propagator_t containing information about the quasinewton parameter.
+        !    ref: reference_t for the reference determinant
         !    displs: displs(i) holds the cumulative sum of the number of
         !        deterministic states belonging to processor numbers 0 to i-1.
         !    dets_this_proc: The deterministic states belonging to this
@@ -505,10 +518,15 @@ contains
         use system, only: sys_t
         use utils, only: int_fmt
         use hamiltonian_data
+        use determinants, only: sum_sp_eigenvalues_bit_string
+        use qmc_data, only: propagator_t
+        use spawning, only: calc_qn_weighting
+        use reference_determinant, only: reference_t
 
         type(semi_stoch_t), intent(inout) :: determ
         type(sys_t), intent(in) :: sys
-        real(p), intent(in) :: H00
+        type(propagator_t), intent(in) :: propagator
+        type(reference_t), intent(in) :: ref
         integer, intent(in) :: displs(0:nprocs-1)
         integer(i0), intent(in) :: dets_this_proc(:,:)
         logical, intent(in) :: print_info
@@ -518,10 +536,22 @@ contains
         type(hmatel_t) :: hmatel
         real :: t1, t2
         logical :: diag_elem
+        real(p) :: fock_sum, weight
 #ifdef PARALLEL
         integer :: ierr
 #endif
 
+        ! Start by evaluating the QN weights.  We store them in one_minus_qn_weight
+        ! and then modify one_minus_qn_weight to be 1-w after calculating H
+        if (propagator%quasi_newton) then
+            do j = 1, determ%sizes(iproc)
+                fock_sum = sum_sp_eigenvalues_bit_string(sys, dets_this_proc(:,j))
+                weight = calc_qn_weighting(propagator, fock_sum - ref%fock_sum)
+                determ%one_minus_qn_weight(j) =  weight
+            end do
+        else
+            determ%one_minus_qn_weight = 1.0_p
+        end if
         if (print_info) write(6,'(1X,a74)') '# Counting number of non-zero deterministic Hamiltonian elements to store.'
 
         associate(hamil => determ%hamil)
@@ -534,13 +564,20 @@ contains
                 do i = 1, determ%tot_size
                     ! Over all deterministic states on this process (all columns).
                     do j = 1, determ%sizes(iproc)
-                        ! TODO: Here we implicitly assume that we are not weighting the semi-stochastic
-                        ! space for quasi-newton steps.  It could be included by multipying the element
-                        ! below by the quasi_newton weight for i (and modifying the shift application in determ_proj_*)
+                        ! The matrix element is applied from i to j (i.e. from
+                        ! i (all deterministics) to j (only this proc).
+                        ! The spawnee is j so this gets the quasinewton weight.
+                        
                         hmatel = get_hmatel(sys, determ%dets(:,i), dets_this_proc(:,j))
                         diag_elem = i == j + displs(iproc)
                         ! Take the Hartree-Fock energy off the diagonal elements.
-                        if (diag_elem) hmatel%r = hmatel%r - H00
+                        if (diag_elem) then
+                           hmatel%r = hmatel%r - ref%H00
+                        end if
+                        ! Recall one_minus_qn_weight currently contains the acutal
+                        ! weight
+                        weight = determ%one_minus_qn_weight(j)
+                        hmatel = weight * hmatel
                         if (abs(hmatel%r) > depsilon) then
                             nnz = nnz + 1
                             if (imode == 2) then
@@ -587,6 +624,8 @@ contains
                     hamil%row_ptr(1:determ%tot_size) = 0
                 end if
             end do
+            ! Now actually store 1-w in one_minus_qn_weight
+            determ%one_minus_qn_weight(:) = 1.0_p - determ%one_minus_qn_weight(:)
 
         end associate
 
@@ -723,7 +762,7 @@ contains
 
     end subroutine set_determ_info
 
-    subroutine determ_projection(rng, qmc_in, qs, spawn, determ)
+    subroutine determ_projection(rng, qmc_in, qs, proj_energy, spawn, determ)
 
         ! A wrapper function for calling the correct routine for deterministic
         ! projection.
@@ -735,6 +774,7 @@ contains
         ! In:
         !    qmc_in: input options relating to QMC methods.
         !    qs: state of the QMC calculation. Timestep and shift are used.
+        !    proj_energy: the projected energy used for quasinewton spawning
 
         use dSFMT_interface, only: dSFMT_t
         use qmc_data, only: qmc_in_t, qmc_state_t
@@ -744,19 +784,20 @@ contains
         type(dSFMT_t), intent(inout) :: rng
         type(qmc_in_t), intent(in) :: qmc_in
         type(qmc_state_t), intent(in) :: qs
+        real(p), intent(in) :: proj_energy
         type(spawn_t), intent(inout) :: spawn
         type(semi_stoch_t), intent(inout) :: determ
 
         select case(determ%projection_mode)
         case(semi_stoch_separate_annihilation)
-            call determ_proj_separate_annihil(determ, qs)
+            call determ_proj_separate_annihil(determ, qs, proj_energy)
         case(semi_stoch_combined_annihilation)
-            call determ_proj_combined_annihil(rng, qmc_in, qs, spawn, determ)
+            call determ_proj_combined_annihil(rng, qmc_in, qs, proj_energy, spawn, determ)
         end select
 
     end subroutine determ_projection
 
-    subroutine determ_proj_combined_annihil(rng, qmc_in, qs, spawn, determ)
+    subroutine determ_proj_combined_annihil(rng, qmc_in, qs, proj_energy, spawn, determ)
 
         ! Apply the deterministic part of the FCIQMC projector to the
         ! amplitudes in the deterministic space. The corresponding spawned
@@ -768,6 +809,7 @@ contains
         ! In:
         !    qmc_in: input options relating to QMC methods.
         !    qs: state of the QMC calculation. Timestep and shift are used.
+        !    proj_energy: the projected energy used for quasinewton spawning
         !    determ: deterministic space being used.
 
         use csr, only: csrpgemv_single_row
@@ -779,6 +821,7 @@ contains
         type(dSFMT_t), intent(inout) :: rng
         type(qmc_in_t), intent(in) :: qmc_in
         type(qmc_state_t), intent(in) :: qs
+        real(p), intent(in) :: proj_energy
         type(spawn_t), intent(inout) :: spawn
         type(semi_stoch_t), intent(in) :: determ
 
@@ -797,8 +840,13 @@ contains
                     call csrpgemv_single_row(determ%hamil, determ%vector, row, out_vec)
                     ! For states on this processor (proc == iproc), add the
                     ! contribution from the shift.
-                    out_vec = -out_vec + qs%shift(1)*determ%vector(i)
-                    out_vec = out_vec*qs%tau
+                    ! For QuasiNewton instead of - tau * H_ii * v_i - tau * S * v_i  
+                    ! we will need   - tau *((H_ii - E_proj) *w_i + (E_proj - S)) * v_i
+                    !           so   - tau * (H_ii) * w_i * v_i - tau * (E_proj * (1-w_i) + S) * v_i
+                    !                       (where w_i is the quasi_newton weight).
+                    ! w_i is subsumed into H_ii already, so we now just include
+                    ! the shift/projE component.
+                    out_vec = -qs%tau * (out_vec + (proj_energy * determ%one_minus_qn_weight(i) - qs%shift(1)) * determ%vector(i))
                     call create_spawned_particle_determ(determ%dets(:,row), out_vec, qs%psip_list%pop_real_factor, proc, &
                                                         qmc_in%initiator_approx, rng, spawn)
                 end do
@@ -816,7 +864,7 @@ contains
 
     end subroutine determ_proj_combined_annihil
 
-    subroutine determ_proj_separate_annihil(determ, qs)
+    subroutine determ_proj_separate_annihil(determ, qs, proj_energy)
 
         ! Perform the deterministic part of the projection. This is done here
         ! without adding deterministic spawnings to the spawned list, but
@@ -825,6 +873,7 @@ contains
 
         ! In:
         !    qs: state of QMC calculation. Shift and timestep are used.
+        !    proj_energy: the projected energy used for quasinewton spawning
         ! In/Out:
         !    determ: Deterministic space being used. On input determ%vector
         !       should hold the amplitudes of deterministic states on this
@@ -842,6 +891,7 @@ contains
 
         type(semi_stoch_t), intent(inout) :: determ
         type(qmc_state_t), intent(in) :: qs
+        real(p), intent(in) :: proj_energy
 
 #ifdef PARALLEL
         integer :: i, ierr
@@ -879,13 +929,16 @@ contains
         ! deterministic amplitudes and S is the shift. We therefore begin by
         ! setting the vector used to store the output to tau*S*v.
 
-        ! TODO For QuasiNewton instead of tau * H_ii * v_i - tau * S * v_i  
-        !                       (the last bit is done just below)
-        ! we will need tau * (H_ii) * w_i * v_i - tau * (E_proj * (1-w_i) - S) * v_i
+        ! For QuasiNewton instead of - tau * H_ii * v_i - tau * S * v_i  
+        ! we will need   - tau *((H_ii - E_proj) *w_i + (E_proj - S)) * v_i
+        !           so   - tau * (H_ii) * w_i * v_i - tau * (E_proj * (1-w_i) - S) * v_i
         !                       (where w_i is the quasi_newton weight).
-        ! For now we will simply set w_i = 1 in the semistochastic space.
-         
-        determ%vector = qs%tau*qs%shift(1)*determ%vector
+        ! w_i is subsumed into H_ii already, so we now just include
+        ! the shift/projE component.
+
+        ! [review] - JSS: unnecessary use of (:) syntax.
+        ! [reply] - AJWT: given it's mixing both vectors and scalars, I thought the (:) were helpful
+        determ%vector(:) = (-qs%tau * (proj_energy*determ%one_minus_qn_weight(:)-qs%shift(1)))*determ%vector(:)
 
         ! Perform the multiplication of the deterministic Hamiltonian on the
         ! full deterministic vector. A factor of minus one is applied to the

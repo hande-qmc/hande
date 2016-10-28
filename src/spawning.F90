@@ -99,7 +99,7 @@ contains
         call gen_excit_ptr%full(rng, sys, qmc_state%excit_gen_data, cdet, pgen, connection, hmatel, allowed)
 
         if (allowed) then
-            qn_weight = calc_qn_spawned_weighting(sys, qmc_state, cdet%fock_sum, connection)
+            qn_weight = calc_qn_spawned_weighting(sys, qmc_state%propagator, cdet%fock_sum, connection)
         else
             qn_weight = 1.0_p
         end if
@@ -187,7 +187,7 @@ contains
         call gen_excit_ptr%trial_fn(sys, cdet, connection, weights, hmatel%r)
 
         if (allowed) then
-           hmatel%r = hmatel%r * calc_qn_spawned_weighting(sys, qmc_state, cdet%fock_sum, connection)
+           hmatel%r = hmatel%r * calc_qn_spawned_weighting(sys, qmc_state%propagator, cdet%fock_sum, connection)
         end if
 
         ! 3. Attempt spawning.
@@ -280,7 +280,7 @@ contains
         call gen_excit_ptr%init(rng, sys, qmc_state%excit_gen_data, cdet, pgen, connection, abs_hmatel, allowed)
 
         if (allowed) then
-           abs_hmatel%r = abs_hmatel%r * calc_qn_spawned_weighting(sys, qmc_state, cdet%fock_sum, connection)
+           abs_hmatel%r = abs_hmatel%r * calc_qn_spawned_weighting(sys, qmc_state%propagator, cdet%fock_sum, connection)
         end if
 
         ! 2. Attempt spawning.
@@ -383,7 +383,7 @@ contains
         call gen_excit_ptr%trial_fn(sys, cdet, connection, weights, tilde_hmatel%r)
 
         if (allowed) then
-           tilde_hmatel%r = tilde_hmatel%r * calc_qn_spawned_weighting(sys, qmc_state, cdet%fock_sum, connection)
+           tilde_hmatel%r = tilde_hmatel%r * calc_qn_spawned_weighting(sys, qmc_state%propagator, cdet%fock_sum, connection)
         end if
 
 
@@ -541,7 +541,7 @@ contains
         call gen_excit_ptr%full(rng, sys, qmc_state%excit_gen_data, cdet, pgen, connection, hmatel, allowed)
 
         if (allowed) then
-            qn_weight = calc_qn_spawned_weighting(sys, qmc_state, cdet%fock_sum, connection)
+            qn_weight = calc_qn_spawned_weighting(sys, qmc_state%propagator, cdet%fock_sum, connection)
         else
             qn_weight = 1.0_p
         end if
@@ -1857,15 +1857,15 @@ contains
 
     end subroutine create_spawned_particle_rdm
 
-    pure function calc_qn_spawned_weighting(sys, qs, spawner_dfock, connection) result(weight)
+    pure function calc_qn_spawned_weighting(sys, propagator, spawner_dfock, connection) result(weight)
 
         ! The step in FCIQMC-like methods can be modified by a non-identity transformation
         ! to weight the particles being created to take a quasi-Newton step.
         ! This routine determines the weight to apply to the the resulting particle from this.
 
         ! In:
-        !   sys:    specifies the system
-        !   qs:     specifies the qmc_state to determine if weighting is needed
+        !   sys:        sys_t object which specifies the system
+        !   propagator: propagator_t object to determine if weighting is needed
         !   spawner_dfock: \sum_i (f_i - f^0_i) where f_i (f^0_i) is the Fock eigenvalue of the i-th occupied
         !       orbital in the spawner (reference) determinant.
         !   connection: the connection (excitation) from the spawner required to make the actual spawnee.
@@ -1875,29 +1875,29 @@ contains
 
         ! At present this uses the weight is 1/(F(spawnee)-F(reference)).
         ! If the difference in Fock energy between the reference and the spawnee is less than
-        ! qs%quasi_newton_threshold then the weight 1/(qs%quasi_newton_value) is used instead.
+        ! propagator%quasi_newton_threshold then the weight 1/(propagator%quasi_newton_value) is used instead.
     
-        use qmc_data, only:  qmc_state_t
+        use qmc_data, only:  propagator_t
         use system, only: sys_t
         use determinants, only: decode_det, det_info_t
         use excitations, only: excit_t, create_excited_det, get_excitation_level
 
         real(p) :: weight
         type(sys_t), intent(in) :: sys
-        type(qmc_state_t), intent(in) :: qs
+        type(propagator_t), intent(in) :: propagator
         real(p), intent(in) :: spawner_dfock
         type(excit_t), intent(in) :: connection
         real(p) :: diagel
         integer :: iel
 
-        if (qs%quasi_newton) then
+        if (propagator%quasi_newton) then
             diagel = spawner_dfock
             associate(basis_fns=>sys%basis%basis_fns, to=>connection%to_orb, from=>connection%from_orb)
                 do iel = 1, connection%nexcit
                     diagel = diagel + basis_fns(to(iel))%sp_eigv - basis_fns(from(iel))%sp_eigv
                 end do
             end associate
-            if (diagel < qs%quasi_newton_threshold) diagel = qs%quasi_newton_value
+            if (diagel < propagator%quasi_newton_threshold) diagel = propagator%quasi_newton_value
             weight = 1.0_p / diagel
         else
             weight = 1.0_p
@@ -1905,10 +1905,10 @@ contains
 
     end function calc_qn_spawned_weighting
 
-    pure function calc_qn_weighting(qs, dfock) result(weight)
+    pure function calc_qn_weighting(propagator, dfock) result(weight)
 
         ! In:
-        !    qs: qmc_state_t object containing Quasi-Newton parameters.
+        !    propagator: propagator_t object containing Quasi-Newton parameters.
         !    dfock: difference in the Fock energy of a given determinant and the reference, i.e. \sum_i (f_i - f^0_i).
         ! Returns:
         !     Weighting for the determinant.
@@ -1918,15 +1918,15 @@ contains
 
         ! See also calc_qn_spawned_weighting.
 
-        use qmc_data, only:  qmc_state_t
+        use qmc_data, only:  propagator_t
 
         real(p) :: weight
-        type(qmc_state_t), intent(in) :: qs
+        type(propagator_t), intent(in) :: propagator
         real(p), intent(in) :: dfock
 
-        if (qs%quasi_newton) then
-            if (dfock < qs%quasi_newton_threshold) then
-                weight = 1.0_p / qs%quasi_newton_value
+        if (propagator%quasi_newton) then
+            if (dfock < propagator%quasi_newton_threshold) then
+                weight = 1.0_p / propagator%quasi_newton_value
             else
                 weight = 1.0_p / dfock
             end if

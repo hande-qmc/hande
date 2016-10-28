@@ -20,7 +20,7 @@ contains
 
         ! In:
         !    sys: the system
-        !    qs: qmc_state_t object. tau and dmqmc_factor are used.
+        !    qs: qmc_state_t object. tau, propagator and dmqmc_factor are used.
         !    dfock: \sum_i (f_i - f^0_i), where f_i (f^0_i) is the Fock eigenvalue of the i-th orbital occupied in D_i (D_0).
         !    Kii: < D_i | H | D_i > - E_0, where D_i is the determinant on
         !         which the particles reside.
@@ -79,7 +79,7 @@ contains
         ! has a factor of 1/2 included for convenience already, for conveniece elsewhere.
         ! Hence we have to multiply by an extra factor of 2 to account for the extra 1/2 in tau.
 
-        weight = calc_qn_weighting(qs, dfock)
+        weight = calc_qn_weighting(qs%propagator, dfock)
         pd = qs%tau*((Kii-proj_energy)*weight+(proj_energy-loc_shift))*qs%dmqmc_factor
 
         pd_saved = pd

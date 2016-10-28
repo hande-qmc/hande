@@ -377,6 +377,11 @@ type semi_stoch_t
     ! If separate_annihilation is not true then this array will remain
     ! deallocated.
     real(p), allocatable :: full_vector(:) ! tot_size
+    ! For the quasi_newton approach, each determinant in the deterministic space
+    ! takes a weight for being spawned to.  This is included in the Hamiltonian
+    ! directly, but must also be used when modifying the shift.  1-w_i is stored
+    ! for all determinants on this processor in the deterministic space.
+    real(p), allocatable :: one_minus_qn_weight(:) ! sizes(iproc)
     ! If separate_annihilation is true then this array will hold the indices
     ! of the deterministic states in the main list. This prevents having to
     ! search the whole of the main list for the deterministic states.
@@ -529,6 +534,16 @@ type estimators_t
     real(p) :: proj_hf_H_hfpsip
 end type estimators_t
 
+type propagator_t
+    ! If true, use a quasiNewton step
+    logical :: quasi_newton = .false.
+    ! The lower threshold for a quasiNewton enegy difference
+    real(p) :: quasi_newton_threshold = 1.e-5_p
+    ! The value to set the quasiNewton energy difference to if lower than the
+    ! threshold
+    real(p) :: quasi_newton_value = 1_p
+end type propagator_t
+
 type qmc_state_t
     ! When performing dmqmc calculations, dmqmc_factor = 2.0. This factor is
     ! required because in DMQMC calculations, instead of spawning from one end with
@@ -555,15 +570,10 @@ type qmc_state_t
     real(p) :: target_particles = huge(1.0_p)
     ! Stores information used by the excitation generator
     type(excit_gen_data_t) :: excit_gen_data
-    ! If true, use a quasiNewton step
-    logical :: quasi_newton = .false.
-    ! The lower threshold for a quasiNewton enegy difference
-    real(p) :: quasi_newton_threshold = 1.e-5_p
-    ! The value to set the quasiNewton energy difference to if lower than the
-    ! threshold
-    real(p) :: quasi_newton_value = 1_p
     ! Value of beta which we propagate the density matrix to. Only used for DMQMC.
     real(p) :: target_beta = 1.0
+    ! Information about the propagator (currently just quasi_newton)
+    type(propagator_t) :: propagator
     ! Convenience handles.
     type(particle_t) :: psip_list
     type(spawned_particle_t) :: spawn_store
