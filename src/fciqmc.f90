@@ -98,9 +98,9 @@ contains
         real(dp), allocatable :: nparticles_old(:)
 
         integer(i0) :: f_child(sys%basis%string_len)
-        integer(int_p) :: nspawned, nspawned_im, scratch
+        integer(int_p) :: nspawned, nspawned_im
         integer(int_p) ::  ndeath, ndeath_im
-        integer :: nattempts_current_det, nspawn_events
+        integer :: nattempts_current_det, nspawn_events, target_space
         type(excit_t) :: connection
         type(hmatel_t) :: hmatel
         real(p), allocatable :: real_population(:), weighted_population(:)
@@ -114,7 +114,7 @@ contains
 
         real :: t1, t2
 
-        logical :: update_tau, restarting
+        logical :: update_tau, restarting, imag
 
         real(p), allocatable :: proj_energy_old(:)
 
@@ -251,11 +251,12 @@ contains
 
                     do ispace = 1, qs%psip_list%nspaces
 
+                        imag = sys%read_in%comp .and. mod(ispace,2) == 0
+
                         ! If this is a deterministic state then copy its population
                         ! across to the determ%vector array.
                         call set_determ_info(idet, real_population(ispace), ideterm, determ, determ_parent)
 
-                        ! TODO: estimators should have dimension nspaces
                         ! It is much easier to evaluate the projected energy at the
                         ! start of the i-FCIQMC cycle than at the end, as we're
                         ! already looping over the determinants.
@@ -263,12 +264,12 @@ contains
                         if (.not. sys%read_in%comp) then
                             call update_proj_energy_ptr(sys, qs%ref%f0, qs%trial%wfn_dat, cdet, [weighted_population(ispace)], &
                                                         qs%estimators(ispace), connection, hmatel)
-                        else if (ispace == 1) then
-                            call update_proj_energy_ptr(sys, qs%ref%f0, qs%trial%wfn_dat, cdet, weighted_population, &
-                                                        qs%estimators(1), connection, hmatel)
+                        else if (.not. imag) then
+                            call update_proj_energy_ptr(sys, qs%ref%f0, qs%trial%wfn_dat, cdet, &
+                                                        weighted_population(ispace:ispace+1), &
+                                                        qs%estimators(ispace), connection, hmatel)
                         end if
                         ! Is this determinant an initiator?
-                        ! Todo: replicas?
                         call set_parent_flag(real_population, qmc_in%initiator_pop, determ%flags(idet), &
                                              qmc_in%quadrature_initiator, cdet%initiator_flag)
 
@@ -281,12 +282,8 @@ contains
                             call spawner_ptr(rng, sys, qs, qs%spawn_store%spawn%cutoff, qs%psip_list%pop_real_factor, &
                                             cdet, qs%psip_list%pops(ispace, idet), gen_excit_ptr, qs%trial%wfn_dat, &
                                             logging_info, nspawned, nspawned_im, connection)
-                            if (sys%read_in%comp .and. ispace == 2) then
-                                ! If imaginary parent have to factor into resulting signs/reality.
-                                scratch = nspawned_im
-                                nspawned_im = nspawned
-                                nspawned = -scratch
-                            end if
+                            ! If imaginary parent have to factor into resulting signs/reality.
+                            if (imag) nspawned_im = -nspawned_im
 
                             ! Spawn if attempt was successful.
                             if (nspawned /= 0_int_p) then
@@ -301,19 +298,19 @@ contains
                                         nspawned = 0_int_p
                                     end if
                                 else
-                                    if (sys%read_in%comp) then
-                                        call create_spawned_particle_ptr(sys%basis, qs%ref, cdet, connection, nspawned, 1, &
+                                    call create_spawned_particle_ptr(sys%basis, qs%ref, cdet, connection, nspawned, ispace, &
                                                                          qs%spawn_store%spawn)
-                                    else
-                                        call create_spawned_particle_ptr(sys%basis, qs%ref, cdet, connection, nspawned, ispace, &
-                                                                         qs%spawn_store%spawn)
-                                    end if
                                 end if
                                 if (abs(nspawned) >= bloom_stats%nparticles_encoded) &
                                     call accumulate_bloom_stats(bloom_stats, nspawned)
                             end if
                             if (nspawned_im /= 0_int_p) then
-                                call create_spawned_particle_ptr(sys%basis, qs%ref, cdet, connection, nspawned_im, 2, &
+                                if (imag) then
+                                    target_space = ispace - 1
+                                else
+                                    target_space = ispace + 1
+                                end if
+                                call create_spawned_particle_ptr(sys%basis, qs%ref, cdet, connection, nspawned_im, target_space, &
                                                                      qs%spawn_store%spawn)
                                 if (abs(nspawned_im) >= bloom_stats%nparticles_encoded) &
                                     call accumulate_bloom_stats(bloom_stats, nspawned_im)

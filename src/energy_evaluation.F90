@@ -26,6 +26,8 @@ enum, bind(c)
     enumerator :: hf_D0_pop_ind
     enumerator :: proj_energy_imag_ind
     enumerator :: D0_pop_imag_ind
+    enumerator :: proj_energy_imag_replica_ind
+    enumerator :: D0_pop_imag_replica_ind
     enumerator :: nocc_states_ind
     enumerator :: nspawned_ind
     enumerator :: comms_found_ind
@@ -285,6 +287,12 @@ contains
             rep_loop_loc(D0_pop_ind) = real(qs%estimators(1)%D0_population_comp, p)
             rep_loop_loc(proj_energy_imag_ind) = aimag(qs%estimators(1)%proj_energy_comp)
             rep_loop_loc(D0_pop_imag_ind) = aimag(qs%estimators(1)%D0_population_comp)
+            if (qs%psip_list%nspaces > 2) then
+                rep_loop_loc(proj_energy_replica_ind) = real(qs%estimators(3)%proj_energy_comp, p)
+                rep_loop_loc(D0_pop_replica_ind) = real(qs%estimators(3)%D0_population_comp, p)
+                rep_loop_loc(proj_energy_imag_replica_ind) = aimag(qs%estimators(3)%proj_energy_comp)
+                rep_loop_loc(D0_pop_imag_replica_ind) = aimag(qs%estimators(3)%D0_population_comp)
+            end if
         else
             rep_loop_loc(proj_energy_ind) = qs%estimators(1)%proj_energy
             rep_loop_loc(D0_pop_ind) = qs%estimators(1)%D0_population
@@ -312,17 +320,18 @@ contains
         rep_loop_loc(rdm_energy_ind) = qs%estimators(1)%rdm_energy
         rep_loop_loc(rdm_trace_ind) = qs%estimators(1)%rdm_trace
 
-        offset = nparticles_start_ind-1 + iproc*qs%psip_list%nspaces
-        if (present(spawn_elsewhere)) then
-            rep_loop_loc(offset+1:offset+qs%psip_list%nspaces) = qs%psip_list%nparticles + spawn_elsewhere
-        else
-            rep_loop_loc(offset+1:offset+qs%psip_list%nspaces) = qs%psip_list%nparticles
-        end if
         if (present(comms_found)) then
             if (comms_found) rep_loop_loc(comms_found_ind) = 1.0_p
         end if
         if (present(error)) then
             if (error) rep_loop_loc(error_ind) = 1.0_p
+        end if
+
+        offset = nparticles_start_ind-1 + iproc*qs%psip_list%nspaces
+        if (present(spawn_elsewhere)) then
+            rep_loop_loc(offset+1:offset+qs%psip_list%nspaces) = qs%psip_list%nparticles + spawn_elsewhere
+        else
+            rep_loop_loc(offset+1:offset+qs%psip_list%nspaces) = qs%psip_list%nparticles
         end if
 
     end subroutine local_energy_estimators
@@ -389,10 +398,17 @@ contains
 
         ntypes = size(ntot_particles_old) ! Just to save passing in another parameter...
 
-        qs%estimators%proj_energy_comp = cmplx(rep_loop_sum(proj_energy_ind), &
+        qs%estimators(1)%proj_energy_comp = cmplx(rep_loop_sum(proj_energy_ind), &
                                                 rep_loop_sum(proj_energy_imag_ind), p)
-        qs%estimators%D0_population_comp = cmplx(rep_loop_sum(D0_pop_ind), &
+        qs%estimators(1)%D0_population_comp = cmplx(rep_loop_sum(D0_pop_ind), &
                                                 rep_loop_sum(D0_pop_imag_ind), p)
+        if (size(qs%estimators) > 2) then
+            qs%estimators(3)%proj_energy_comp = cmplx(rep_loop_sum(proj_energy_replica_ind), &
+                                                    rep_loop_sum(proj_energy_imag_replica_ind), p)
+            qs%estimators(3)%D0_population_comp = cmplx(rep_loop_sum(D0_pop_replica_ind), &
+                                                    rep_loop_sum(D0_pop_imag_replica_ind), p)
+        end if
+
         qs%estimators(1)%proj_energy = real(rep_loop_sum(proj_energy_ind), p)
         qs%estimators(1)%D0_population = real(rep_loop_sum(D0_pop_ind), p)
         if (size(qs%estimators) > 1) then
@@ -461,11 +477,13 @@ contains
                                      qs%estimators(1)%hf_signed_pop, new_hf_signed_pop, qmc_in%ncycles)
             end if
         else if (comp_param) then
-            if (qs%vary_shift(1)) then
-                call update_shift(qmc_in, qs, qs%shift(1), ntot_particles_old(1) + ntot_particles_old(2), &
-                                    ntot_particles(1) + ntot_particles(2), qmc_in%ncycles)
-                qs%shift(2) = qs%shift(1)
-            end if
+            do i = 1, ntypes, 2
+                if (qs%vary_shift(1)) then
+                    call update_shift(qmc_in, qs, qs%shift(i), ntot_particles_old(i) + ntot_particles_old(i+1), &
+                                        ntot_particles(i) + ntot_particles(i+1), qmc_in%ncycles)
+                    qs%shift(i+1) = qs%shift(i)
+                end if
+            end do
         else
             do i = 1, ntypes
                 if (qs%vary_shift(i)) then
@@ -486,15 +504,17 @@ contains
 
         associate (est=>qs%estimators)
             if (comp_param) then
-                if (.not. qs%vary_shift(1) .and. sum(ntot_particles) > qs%target_particles) then
-                    qs%vary_shift = .true.
-                    if (qmc_in%vary_shift_from_proje) then
-                        ! Set shift to be instantaneous projected energy.
-                        qs%shift = real(est(1)%proj_energy_comp/est(1)%D0_population_comp, p)
-                    else
-                        qs%shift = qmc_in%vary_shift_from
+                do i = 1, ntypes, 2
+                    if (.not. qs%vary_shift(i) .and. sum(ntot_particles(i:i+1)) > qs%target_particles) then
+                        qs%vary_shift(i) = .true.
+                        if (qmc_in%vary_shift_from_proje) then
+                            ! Set shift to be instantaneous projected energy.
+                            qs%shift = real(est(i)%proj_energy_comp/est(i)%D0_population_comp, p)
+                        else
+                            qs%shift = qmc_in%vary_shift_from
+                        end if
                     end if
-                end if
+                end do
             else if (doing_calc(hfs_fciqmc_calc)) then
                 if (.not. qs%vary_shift(1) .and. ntot_particles(1) > qs%target_particles) then
                     qs%vary_shift = .true.

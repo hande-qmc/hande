@@ -76,12 +76,14 @@ contains
         call write_column_title(6, 'iterations', int_val=.true., justify=1)
         ! NOTE: HFS and complex are not currently compatible.
         if (cmplx_est_set) then
-            call write_column_title(6, 'Shift')
-            call write_column_title(6, 'Re{\sum H_0j N_j}')
-            call write_column_title(6, 'Im{\sum H_0j N_j}')
-            call write_column_title(6, 'Re{N_0}')
-            call write_column_title(6, 'Im{N_0}')
-            call write_column_title(6, '# H psips')
+            do i = 1, ntypes, 2
+                call write_column_title(6, 'Shift')
+                call write_column_title(6, 'Re{\sum H_0j N_j}')
+                call write_column_title(6, 'Im{\sum H_0j N_j}')
+                call write_column_title(6, 'Re{N_0}')
+                call write_column_title(6, 'Im{N_0}')
+                call write_column_title(6, '# H psips')
+            end do
         else
             do i = 1, ntypes
                 call write_column_title(6, 'Shift')
@@ -355,22 +357,21 @@ contains
 
         ! NOTE: HFS and complex are not currently compatible.
         if (cmplx_est_set) then
-            call write_qmc_var(6, qs%shift(1))
-            call write_qmc_var(6, real(qs%estimators(1)%proj_energy_comp, p))
-            call write_qmc_var(6, aimag(qs%estimators(1)%proj_energy_comp))
-            call write_qmc_var(6, real(qs%estimators(1)%D0_population_comp, p))
-            call write_qmc_var(6, aimag(qs%estimators(1)%D0_population_comp))
-            call write_qmc_var(6, ntot_particles(1)+ntot_particles(2))
+            do i = 1, ntypes, 2
+                call write_qmc_var(6, qs%shift(i))
+                call write_qmc_var(6, real(qs%estimators(i)%proj_energy_comp, p))
+                call write_qmc_var(6, aimag(qs%estimators(i)%proj_energy_comp))
+                call write_qmc_var(6, real(qs%estimators(i)%D0_population_comp, p))
+                call write_qmc_var(6, aimag(qs%estimators(i)%D0_population_comp))
+                call write_qmc_var(6, ntot_particles(i)+ntot_particles(i+1))
+            end do
         else
             do i = 1, ntypes
                 call write_qmc_var(6, qs%shift(i))
                 call write_qmc_var(6, qs%estimators(i)%proj_energy)
                 call write_qmc_var(6, qs%estimators(i)%D0_population)
-                if (doing_calc(hfs_fciqmc_calc)) then
-                end if
                 call write_qmc_var(6, ntot_particles(i))
             end do
-            if (doing_calc(hfs_fciqmc_calc)) call write_qmc_var(6, ntot_particles(2))
         end if
 
         if (present(rdm_energy)) then

@@ -94,12 +94,12 @@ contains
         else if (present(dmqmc_in)) then
             if (dmqmc_in%replica_tricks) qmc_state%psip_list%nspaces = qmc_state%psip_list%nspaces + 1
         else if (fciqmc_in_loc%replica_tricks) then
-            qmc_state%psip_list%nspaces = qmc_state%psip_list%nspaces + 1
-        else if (sys%system == read_in) then
-            if (sys%read_in%comp) then
-                qmc_state%psip_list%nspaces = qmc_state%psip_list%nspaces + 1
-            end if
+            qmc_state%psip_list%nspaces = qmc_state%psip_list%nspaces * 2
         end if
+        if (sys%read_in%comp) then
+            qmc_state%psip_list%nspaces = qmc_state%psip_list%nspaces * 2
+        end if
+
         ! Each determinant occupies string_len kind=i0 integers,
         ! qmc_state%psip_list%nspaces kind=int_p integers, qmc_state%psip_list%nspaces kind=p reals and one
         ! integer. If the Neel singlet state is used as the reference state for
@@ -141,11 +141,7 @@ contains
             end if
 
             ! Estimators: one per replica, but one for whole space if complex.
-            if (sys%read_in%comp) then
-                allocate(qmc_state%estimators(1))
-            else
-                allocate(qmc_state%estimators(qmc_state%psip_list%nspaces))
-            end if
+            allocate(qmc_state%estimators(qmc_state%psip_list%nspaces))
         end if
 
         call init_annihilation_flags(qmc_in, fciqmc_in_loc, dmqmc_in_loc, annihilation_flags)

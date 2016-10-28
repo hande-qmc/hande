@@ -497,7 +497,7 @@ type estimators_t
     !   <D_0|H|D_0> + \sum_{i/=0} <D_0|H|D_i> N_i/N_0
     ! and so proj_energy must be 'normalised' and averaged over the report loops
     ! accordingly.
-    real(p) :: proj_energy
+    real(p) :: proj_energy = 0.0_p
     ! Total number of occupied states across all processors.
     integer :: tot_nstates = 0
     ! The total number of successful spawning events, across all processors.
@@ -509,8 +509,8 @@ type estimators_t
     ! back to a complex value. When performing complex calculations this value
     ! can be freely updated except when within update_energy_estimators, where
     ! extra care must be taken.
-    complex(p) :: proj_energy_comp
-    complex(p) :: D0_population_comp
+    complex(p) :: proj_energy_comp = 0.0_p
+    complex(p) :: D0_population_comp = 0.0_p
 
     ! Energy calculated from the RDM
     real(p) :: rdm_energy = 0.0_p
