@@ -7,15 +7,6 @@ use const, only: i0, p, int_p
 
 implicit none
 
-abstract interface
-
-    pure function i_get_pop_contrib(pops, real_factor) result(contrib)
-        use const, only: int_p, p
-        integer(int_p), intent(in) :: pops(:), real_factor
-        real(p) :: contrib
-    end function i_get_pop_contrib
-end interface
-
 contains
 
     subroutine init_cluster(sys, cluster_size, cdet, cluster)
@@ -403,24 +394,16 @@ contains
         integer(int_p), intent(out) :: tot_pop
         logical, intent(in) :: complx
 
-        procedure(i_get_pop_contrib), pointer :: get_pop_contrib_ptr => null()
-
         integer :: i
 
-        if (complx) then
-            get_pop_contrib_ptr => get_pop_contrib_cmplx
-        else
-            get_pop_contrib_ptr => get_pop_contrib_real
-        end if
-
         ! Need to combine spaces if doing complex; we choose combining in quadrature.
-        cumulative_pops(1) = nint(get_pop_contrib_ptr(pops(:,1), real_factor))
+        cumulative_pops(1) = nint(get_pop_contrib(pops(:,1), real_factor, complx))
         if (D0_proc == iproc) then
             ! Let's be a bit faster: unroll loops and skip over the reference
             ! between the loops.
             do i = 2, d0_pos-1
                 cumulative_pops(i) = cumulative_pops(i-1) + &
-                                        nint(get_pop_contrib_ptr(pops(:,i), real_factor))
+                                        nint(get_pop_contrib(pops(:,i), real_factor, complx))
             end do
             ! Set cumulative on the reference to be the running total merely so we
             ! can continue accessing the running total from the i-1 element in the
@@ -429,13 +412,13 @@ contains
             if (d0_pos > 1) cumulative_pops(d0_pos) = cumulative_pops(d0_pos-1)
             do i = d0_pos+1, nactive
                 cumulative_pops(i) = cumulative_pops(i-1) + &
-                                        nint(get_pop_contrib_ptr(pops(:,i), real_factor))
+                                        nint(get_pop_contrib(pops(:,i), real_factor, complx))
             end do
         else
             ! V simple on other processors: no reference to get in the way!
             do i = 2, nactive
                 cumulative_pops(i) = cumulative_pops(i-1) + &
-                                        nint(get_pop_contrib_ptr(pops(:,i), real_factor))
+                                        nint(get_pop_contrib(pops(:,i), real_factor, complx))
             end do
         end if
         if (nactive > 0) then
@@ -446,7 +429,7 @@ contains
 
     end subroutine cumulative_population
 
-    pure function get_pop_contrib_real(pops, real_factor) result(contrib)
+    pure function get_pop_contrib(pops, real_factor, complx) result(contrib)
 
         ! Get contribution from a given position in a population list,
         ! given real or complex.
@@ -455,38 +438,22 @@ contains
         !    pops: population on determinant/excitor position.
         !    real_factor: the encoding factor by which the stored populations
         !       are multiplied to enable non-integer populations.
+        !    complx: logical, true if complex populations, false otherwise.
         ! Out:
         !    contrib: contribution to cumulative population accumulation from
         !       given position in pop list.
 
         integer(int_p), intent(in) :: pops(:), real_factor
+        logical, intent(in) :: complx
 
         real(p) :: contrib
 
-        contrib = abs(real(pops(1), p))/real(real_factor, p)
+        if (complx) then
+            contrib = abs(cmplx(pops(1), pops(2), p))/real(real_factor, p)
+        else
+            contrib = abs(real(pops(1), p))/real(real_factor, p)
+        end if
 
-    end function get_pop_contrib_real
-
-    pure function get_pop_contrib_cmplx(pops, real_factor) result(contrib)
-
-        ! Get contribution from a given position in a population list,
-        ! given complex.
-
-        ! In:
-        !    pops: population on determinant/excitor position.
-        !    real_factor: the encoding factor by which the stored populations
-        !       are multiplied to enable non-integer populations.
-        ! Out:
-        !    contrib: contribution to cumulative population accumulation from
-        !       given position in pop list.
-
-        integer(int_p), intent(in) :: pops(:), real_factor
-
-        real(p) :: contrib
-
-        contrib = abs(cmplx(pops(1), pops(2), p))/real(real_factor, p)
-
-    end function get_pop_contrib_cmplx
-
+    end function get_pop_contrib
 
 end module ccmc_utils
