@@ -1131,6 +1131,8 @@ contains
 
         if (aot_exists(lua_state, opts, 'semi_stoch')) then
 
+            if (.not. qmc_in%real_amplitudes) &
+                call warning('read_semi_stoch_in', 'Enabling real_amplitudes as required by semi_stoch.')
             qmc_in%real_amplitudes = .true.
 
             call aot_table_open(lua_state, opts, semi_stoch_table, 'semi_stoch')
