@@ -146,7 +146,7 @@ contains
                 call get_filename(.true., sys, filename)
             end if
         else
-            call warning('lua_dump_hdf5_system', 'Cannot write systems other than read_in to an HDF5 file.')
+            if (parent) call warning('lua_dump_hdf5_system', 'Cannot write systems other than read_in to an HDF5 file.')
         end if
 
         nresult = 1

@@ -943,7 +943,7 @@ contains
 
         if (aot_exists(lua_state, qmc_table, 'no_renorm')) then
             call aot_get_val(no_renorm, err, lua_state, qmc_table, 'no_renorm')
-            call warning('read_qmc_in', 'no_renorm is deprecated.  Please use excit_gen instead.')
+            if (parent) call warning('read_qmc_in', 'no_renorm is deprecated.  Please use excit_gen instead.')
             if (no_renorm) then
                 qmc_in%excit_gen = excit_gen_no_renorm
             else
@@ -1131,7 +1131,7 @@ contains
 
         if (aot_exists(lua_state, opts, 'semi_stoch')) then
 
-            if (.not. qmc_in%real_amplitudes) &
+            if (parent .and. .not. qmc_in%real_amplitudes) &
                 call warning('read_semi_stoch_in', 'Enabling real_amplitudes as required by semi_stoch.')
             qmc_in%real_amplitudes = .true.
 
@@ -1174,7 +1174,7 @@ contains
             ! Optional arguments requiring special care.
             if (aot_exists(lua_state, semi_stoch_table, 'write_determ_space')) then
                 call aot_get_val(semi_stoch_in%write_determ_space, err, lua_state, semi_stoch_table, 'write_determ_space')
-                call warning('read_semi_stoch_in', 'write_determ_space is deprecated.  Please use write instead.')
+                if (parent) call warning('read_semi_stoch_in', 'write_determ_space is deprecated.  Please use write instead.')
             end if
             if (aot_exists(lua_state, semi_stoch_table, 'shift_start_iteration')) then
                 semi_stoch_in%start_iter = huge(0) ! fixed up once the shift comes on...
@@ -1379,7 +1379,7 @@ contains
             call aot_table_open(lua_state, opts, table, 'ipdmqmc')
             if (aot_exists(lua_state, table, 'initial_beta')) then
                 call aot_get_val(dmqmc_in%target_beta, err, lua_state, table, 'initial_beta')
-                call warning('read_dmqmc_in', 'initial_beta is deprecated.  Please use target_beta instead.')
+                if (parent) call warning('read_dmqmc_in', 'initial_beta is deprecated.  Please use target_beta instead.')
             end if
             call aot_get_val(dmqmc_in%target_beta, err, lua_state, table, 'target_beta')
             if (aot_exists(lua_state, table, 'initial_matrix')) then
