@@ -273,18 +273,12 @@ contains
                                                         ispace, nspawned, nspawned_im, logging_info)
 
                         ! Clone or die.
-
-                    end do
-                    if (.not. determ_parent) then
-                        call stochastic_death(rng, sys, qs, cdet%fock_sum, qs%psip_list%dat(1,idet), proj_energy_old, &
-                                        qs%shift(1), logging_info, qs%psip_list%pops(1,idet), &
-                                        qs%psip_list%nparticles(1), ndeath)
-                        if (sys%read_in%comp) then
+                        if (.not. determ_parent) then
                             call stochastic_death(rng, sys, qs, cdet%fock_sum, qs%psip_list%dat(1,idet), proj_energy_old, &
-                                            qs%shift(1), logging_info, qs%psip_list%pops(2,idet), &
-                                            qs%psip_list%nparticles(2), ndeath)
+                                            qs%shift(1), logging_info, qs%psip_list%pops(ispace,idet), &
+                                            qs%psip_list%nparticles(ispace), ndeath)
                         end if
-                    end if
+                    end do
                 end do
 
                 associate(pl=>qs%psip_list, spawn=>qs%spawn_store%spawn, spawn_recv=>qs%spawn_store%spawn_recv)
