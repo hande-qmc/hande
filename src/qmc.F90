@@ -82,8 +82,6 @@ contains
             call init_reference_restart(sys, reference_in, ri, qmc_state%ref)
         else if (present(qmc_state_restart)) then
             qmc_state%ref = qmc_state_restart%ref
-            qmc_state%estimators%D0_population = qmc_state_restart%estimators%D0_population
-            qmc_state%mc_cycles_done = qmc_state_restart%mc_cycles_done
         else
             call init_reference(sys, reference_in, qmc_state%ref)
         end if
@@ -119,6 +117,7 @@ contains
 
         if (present(qmc_state_restart)) then
             call move_qmc_state_t(qmc_state_restart, qmc_state)
+            qmc_state%mc_cycles_done = qmc_state_restart%mc_cycles_done
         else
             call init_spawn_store(qmc_in, qmc_state%psip_list%nspaces, qmc_state%psip_list%pop_real_factor, sys%basis, &
                                   fciqmc_in_loc%non_blocking_comm, qmc_state%par_info%load%proc_map, qmc_state%spawn_store)
@@ -129,6 +128,10 @@ contains
             call check_allocate('qmc_state%vary_shift', qmc_state%psip_list%nspaces, ierr)
             qmc_state%shift = qmc_in%initial_shift
             qmc_state%vary_shift = .false.
+
+            ! Estimators: one per replica, but one for whole space if complex.
+            allocate(qmc_state%estimators(qmc_state%psip_list%nspaces))
+
             ! Initial walker distributions
             if (restart_in%read_restart) then
                 call read_restart_hdf5(ri, sys%basis%nbasis, fciqmc_in_loc%non_blocking_comm, qmc_state, uuid_restart)
@@ -139,9 +142,6 @@ contains
                 call initial_distribution(sys, qmc_state%spawn_store%spawn, qmc_in%D0_population, fciqmc_in_loc, &
                                           qmc_state%ref, qmc_state%psip_list)
             end if
-
-            ! Estimators: one per replica, but one for whole space if complex.
-            allocate(qmc_state%estimators(qmc_state%psip_list%nspaces))
         end if
 
         call init_annihilation_flags(qmc_in, fciqmc_in_loc, dmqmc_in_loc, annihilation_flags)
@@ -149,9 +149,11 @@ contains
         call init_estimators(sys, qmc_in, restart_in%read_restart.and.fciqmc_in_loc%non_blocking_comm, qmc_state)
         if (present(qmc_state_restart)) call dealloc_excit_gen_data_t(qmc_state_restart%excit_gen_data)
         call init_excit_gen(sys, qmc_in, qmc_state%ref, qmc_state%excit_gen_data)
+
         qmc_state%quasi_newton = qmc_in%quasi_newton
         qmc_state%quasi_newton_threshold = qmc_in%quasi_newton_threshold
         qmc_state%quasi_newton_value = qmc_in%quasi_newton_value
+
     end subroutine init_qmc
 
     subroutine init_proc_pointers(sys, qmc_in, reference, dmqmc_in, fciqmc_in)

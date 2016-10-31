@@ -306,8 +306,6 @@ module restart_hdf5
             ! This allows us to use the same array functions for writing out (the small
             ! amount of) scalar data we have to write out.
             real(dp), allocatable, target :: tmp_pop(:)
-            real(p), target :: tmp(1)
-
 
             ! Initialise HDF5 and open file.
             call h5open_f(ierr)
@@ -400,8 +398,8 @@ module restart_hdf5
 
                     call hdf5_write(subgroup_id, dhsref, kinds, shape(qs%ref%hs_f0, kind=int_64), qs%ref%hs_f0)
 
-                    tmp = qs%estimators%D0_population
-                    call hdf5_write(subgroup_id, dref_pop, kinds, shape(tmp, kind=int_64), tmp)
+                    call hdf5_write(subgroup_id, dref_pop, kinds, shape(qs%estimators%D0_population, kind=int_64), &
+                                    qs%estimators%D0_population)
 
                 call h5gclose_f(subgroup_id, ierr)
 
@@ -472,7 +470,6 @@ module restart_hdf5
             integer :: restart_version_restart, calc_type_restart, nprocs_restart
             integer :: i0_length_restart, nbasis_restart
             integer :: ierr
-            real(p), target :: tmp(1)
             logical :: exists, resort
             integer(int_64) :: restart_scale_factor(1)
 
@@ -650,8 +647,8 @@ module restart_hdf5
 
                     ! Already read the reference determinant - only need the population
 
-                    call hdf5_read(subgroup_id, dref_pop, kinds, shape(tmp, kind=int_64), tmp)
-                    qs%estimators%D0_population = tmp(1)
+                    call hdf5_read(subgroup_id, dref_pop, kinds, shape(qs%estimators%D0_population, kind=int_64), &
+                                   qs%estimators%D0_population)
 
                 call h5gclose_f(subgroup_id, ierr)
 
