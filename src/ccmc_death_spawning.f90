@@ -157,7 +157,7 @@ contains
 
     end subroutine spawner_ccmc
 
-    subroutine stochastic_ccmc_death(rng, spawn, linked_ccmc, sys, qs, cdet, cluster, proj_energy, logging_info, &
+    subroutine stochastic_ccmc_death(rng, spawn, linked_ccmc, sys, qs, cdet, cluster, logging_info, &
                                     ndeath_tot)
 
         ! Attempt to 'die' (ie create an excip on the current excitor, cdet%f)
@@ -190,8 +190,6 @@ contains
         !    cdet: info on the current excitor (cdet) that we will spawn
         !        from.
         !    cluster: information about the cluster which forms the excitor.
-        !    proj_energy: projected energy.  This should be the average value from the last
-        !        report loop, not the running total in qs%estimators.
         ! In/Out:
         !    rng: random number generator.
         !    spawn: spawn_t object to which the spanwed particle will be added.
@@ -213,7 +211,6 @@ contains
         logical, intent(in) :: linked_ccmc
         type(det_info_t), intent(in) :: cdet
         type(cluster_t), intent(in) :: cluster
-        real(p), intent(in) :: proj_energy
         type(logging_t), intent(in) :: logging_info
         type(dSFMT_t), intent(inout) :: rng
         type(spawn_t), intent(inout) :: spawn
@@ -233,19 +230,20 @@ contains
             select case (cluster%nexcitors)
             case(0)
                 ! Death on the reference has H_ii - E_HF = 0.
-                KiiAi = (( - proj_energy)*invdiagel + (proj_energy - qs%shift(1)))*cluster%amplitude
+                KiiAi = (( - qs%estimators%proj_energy_old)*invdiagel + &
+                                    (qs%estimators%proj_energy_old - qs%shift(1)))*cluster%amplitude
             case(1)
                 ! Evaluating the commutator gives
                 ! <D1|[H,a1]|D0> = <D1|H|D1> - <D0|H|D0>
                 ! (this is scaled for quasinewton approaches)
-                KiiAi = (cdet%data(1) * invdiagel + proj_energy - qs%shift(1))*cluster%amplitude
+                KiiAi = (cdet%data(1) * invdiagel + qs%estimators%proj_energy_old - qs%shift(1))*cluster%amplitude
             case(2)
                 ! Evaluate the commutator
                 ! The cluster operators are a1 and a2 (with a1 D0 = D1, a2 D0 = D2,
                 ! a1 a2 D0 = D3) so the commutator gives:
                 ! <D3|[[H,a1],a2]|D0> = <D3|H|D3> - <D2|H|D2> - <D1|H|D1> + <D0|H|D0>
                 KiiAi = (sc0_ptr(sys, cdet%f) - sc0_ptr(sys, cluster%excitors(1)%f) &
-                    - sc0_ptr(sys, cluster%excitors(2)%f) + qs%ref%H00)*cluster%amplitude
+                                - sc0_ptr(sys, cluster%excitors(2)%f) + qs%ref%H00)*cluster%amplitude
                 ! (this is scaled for quasinewton approaches)
                 KiiAi = KiiAi*invdiagel                                             
             case default
@@ -256,11 +254,13 @@ contains
         else
             select case (cluster%nexcitors)
             case(0)
-                KiiAi = (( - proj_energy)*invdiagel + (proj_energy - qs%shift(1)))*cluster%amplitude
+                KiiAi = (( - qs%estimators%proj_energy_old)*invdiagel + &
+                                (qs%estimators%proj_energy_old - qs%shift(1)))*cluster%amplitude
             case(1)
-                KiiAi = ((cdet%data(1) - proj_energy)*invdiagel + (proj_energy - qs%shift(1)))*cluster%amplitude
+                KiiAi = ((cdet%data(1) - qs%estimators%proj_energy_old)*invdiagel + &
+                                (qs%estimators%proj_energy_old - qs%shift(1)))*cluster%amplitude
             case default
-                KiiAi = ((sc0_ptr(sys, cdet%f) - qs%ref%H00) - proj_energy)*invdiagel *cluster%amplitude
+                KiiAi = ((sc0_ptr(sys, cdet%f) - qs%ref%H00) - qs%estimators%proj_energy_old)*invdiagel *cluster%amplitude
             end select
         end if
 
@@ -271,12 +271,11 @@ contains
         ! Scale by tau and pselect before pass to specific functions.
         KiiAi = KiiAi * qs%tau / cluster%pselect
 
-
         call stochastic_death_attempt(rng, real(KiiAi, p), 1, cdet, qs%ref, sys%basis, spawn, &
                            nkill, pdeath)
         ndeath_tot = ndeath_tot + abs(nkill)
 
-        if (debug) call write_logging_death(logging_info, real(KiiAi,p), proj_energy, qs%shift(1), invdiagel, &
+        if (debug) call write_logging_death(logging_info, real(KiiAi,p), qs%estimators%proj_energy_old, qs%shift(1), invdiagel, &
                                             nkill, pdeath, real(cluster%amplitude,p), 0.0_p)
 
         if (sys%read_in%comp) then
@@ -284,7 +283,7 @@ contains
                                nkill, pdeath)
             ndeath_tot = ndeath_tot + abs(nkill)
 
-            if (debug) call write_logging_death(logging_info, aimag(KiiAi), proj_energy, qs%shift(1), invdiagel, &
+            if (debug) call write_logging_death(logging_info, aimag(KiiAi), qs%estimators%proj_energy_old, qs%shift(1), invdiagel,&
                                                 nkill, pdeath, aimag(cluster%amplitude), 0.0_p)
         end if
 
@@ -793,7 +792,7 @@ contains
 ! --- Helper functions ---
 
     subroutine create_spawned_particle_ccmc(basis, ref, cdet, connection, nspawned, ispace, &
-                                            ex_level, bloom_threshold, fexcit, spawn, bloom_stats)
+                                            ex_level, fexcit, spawn, bloom_stats)
 
         use basis_types, only: basis_t
         use reference_determinant, only: reference_t
@@ -813,7 +812,6 @@ contains
         integer(int_p), intent(in) :: nspawned
         integer, intent(in) :: ispace, ex_level
         integer(i0), intent(in) :: fexcit(:)
-        real(p), intent(in) :: bloom_threshold
 
         if (ex_level == huge(0)) then
             call create_spawned_particle_ptr(basis, ref, cdet, connection, nspawned, &
@@ -822,7 +820,7 @@ contains
             call create_spawned_particle_ptr(basis, ref, cdet, connection, nspawned, ispace, &
                                             spawn)
         end if
-        if (abs(nspawned) > bloom_threshold) call accumulate_bloom_stats(bloom_stats, nspawned)
+        if (abs(nspawned) > bloom_stats%nparticles_encoded) call accumulate_bloom_stats(bloom_stats, nspawned)
 
     end subroutine create_spawned_particle_ccmc
 

@@ -501,6 +501,9 @@ type estimators_t
     ! and so proj_energy must be 'normalised' and averaged over the report loops
     ! accordingly.
     real(p) :: proj_energy = 0.0_p
+    ! The instantaneous projected energy of the previous iteration is required for
+    ! various purposes.
+    real(p) :: proj_energy_old = 0.0_p
     ! Total number of occupied states across all processors.
     integer :: tot_nstates = 0
     ! The total number of successful spawning events, across all processors.

@@ -116,8 +116,6 @@ contains
 
         logical :: update_tau, restarting
 
-        real(p) :: proj_energy_old
-
         if (parent) then
             write (6,'(1X,"FCIQMC")')
             write (6,'(1X,"------",/)')
@@ -208,7 +206,7 @@ contains
 
         do ireport = 1, qmc_in%nreport
 
-            proj_energy_old = get_sanitized_projected_energy(qs)
+            qs%estimators%proj_energy_old = get_sanitized_projected_energy(qs)
 
             ! Zero report cycle quantities.
             call init_report_loop(qs, bloom_stats)
@@ -274,7 +272,7 @@ contains
 
                         ! Clone or die.
                         if (.not. determ_parent) then
-                            call stochastic_death(rng, sys, qs, cdet%fock_sum, qs%psip_list%dat(1,idet), proj_energy_old, &
+                            call stochastic_death(rng, sys, qs, cdet%fock_sum, qs%psip_list%dat(1,idet), &
                                             qs%shift(1), logging_info, qs%psip_list%pops(ispace,idet), &
                                             qs%psip_list%nparticles(ispace), ndeath)
                         end if
@@ -284,7 +282,7 @@ contains
                 associate(pl=>qs%psip_list, spawn=>qs%spawn_store%spawn, spawn_recv=>qs%spawn_store%spawn_recv)
                     if (fciqmc_in%non_blocking_comm) then
                         call receive_spawned_walkers(spawn_recv, req_data_s)
-                        call evolve_spawned_walkers(sys, qmc_in, qs, spawn_recv, spawn, cdet, rng, ndeath, proj_energy_old, &
+                        call evolve_spawned_walkers(sys, qmc_in, qs, spawn_recv, spawn, cdet, rng, ndeath, &
                                                     fciqmc_in%quadrature_initiator)
                         call direct_annihilation_received_list(sys, rng, qs%ref, annihilation_flags, pl, spawn_recv)
                         ! Need to add walkers which have potentially moved processor to the spawned walker list.
@@ -298,7 +296,7 @@ contains
                                           qs%spawn_store%rspawn)
                     else
                         ! If using semi-stochastic then perform the deterministic projection step.
-                        if (determ%doing_semi_stoch) call determ_projection(rng, qmc_in, qs, proj_energy_old,  spawn, determ)
+                        if (determ%doing_semi_stoch) call determ_projection(rng, qmc_in, qs, spawn, determ)
 
                         call direct_annihilation(sys, rng, qs%ref, annihilation_flags, pl, spawn, nspawn_events, determ)
                         if (debug) call write_logging_calc_fciqmc(logging_info, iter, nspawn_events, ndeath, nattempts)
@@ -381,7 +379,7 @@ contains
 
     end subroutine do_fciqmc
 
-    subroutine evolve_spawned_walkers(sys, qmc_in, qs, spawn_recv, spawn_to_send, cdet, rng, ndeath, proj_energy_old, &
+    subroutine evolve_spawned_walkers(sys, qmc_in, qs, spawn_recv, spawn_to_send, cdet, rng, ndeath, &
                                     quadrature_initiator)
 
         ! Evolve spawned list of walkers one time step.
@@ -390,8 +388,6 @@ contains
         ! In:
         !   sys: system being studied.
         !   qmc_in: input options relating to QMC methods.
-        !   proj_energy_old: an estimate of the projected energy to allow for
-        !                     unbiased QN death
         !   quadrature_initiator: how to apply initiator approximation in complex systems.
         ! In/Out:
         !   qs: qmc_state_t containing information about the reference det and estimators.
@@ -421,7 +417,6 @@ contains
         type(dSFMT_t), intent(inout) :: rng
         type(det_info_t), intent(inout) :: cdet
         integer(int_p), intent(inout) :: ndeath
-        real(p), intent(in) :: proj_energy_old
         logical, intent(in) :: quadrature_initiator
 
         type(excit_t) :: connection
@@ -489,7 +484,7 @@ contains
 
                 ! Clone or die.
                 ! list_pop is meaningless as particle_t%nparticles is updated upon annihilation.
-                call stochastic_death(rng, sys, qs, cdet%fock_sum, cdet%data(1), proj_energy_old,  qs%shift(1), logging_info, &
+                call stochastic_death(rng, sys, qs, cdet%fock_sum, cdet%data(1), qs%shift(1), logging_info, &
                                       int_pop(ispace), list_pop, ndeath)
 
                 ! Update population of walkers on current determinant.

@@ -352,7 +352,6 @@ contains
         type(cluster_t), allocatable :: left_cluster(:), right_cluster(:)
         type(multispawn_stats_t), allocatable :: ms_stats(:)
         type(dSFMT_t), allocatable :: rng(:)
-        real(p) :: bloom_threshold
         type(json_out_t) :: js
         type(qmc_in_t) :: qmc_in_loc
         type(logging_t) :: logging_info
@@ -374,7 +373,7 @@ contains
 
         logical :: seen_D0
         real(p) :: dfock
-        complex(p) :: D0_population_cycle, proj_energy_cycle, proj_energy_old
+        complex(p) :: D0_population_cycle, proj_energy_cycle
 
         real(p), allocatable :: rdm(:,:)
 
@@ -503,9 +502,9 @@ contains
 
             ! Projected energy from last report loop to correct death
             if (sys%read_in%comp) then
-                proj_energy_old = get_sanitized_projected_energy_cmplx(qs)
+                qs%estimators%proj_energy_old = get_sanitized_projected_energy_cmplx(qs)
             else
-                proj_energy_old = get_sanitized_projected_energy(qs)
+                qs%estimators%proj_energy_old = get_sanitized_projected_energy(qs)
             end if
             call init_report_loop(qs, bloom_stats)
 
@@ -605,7 +604,8 @@ contains
                                            tot_abs_nint_pop)
 
                 associate(bs=>bloom_stats, nstates_active=>qs%psip_list%nstates)
-                    bloom_threshold = real(nparticles_old(1)*bs%prop*bs%encoding_factor, p)
+                    bs%nparticles = int(real(nparticles_old(1),p)*bs%prop)
+                    bs%nparticles_encoded = int(real(nparticles_old(1),p)*bs%prop*bs%encoding_factor, int_p)
                 end associate
 
                 ! Two options for evolution:
@@ -708,11 +708,11 @@ contains
 
                         call do_ccmc_accumulation(rng(it), sys, qs, cdet(it), cluster(it), D0_population_cycle, &
                                                 proj_energy_cycle, ccmc_in, ref_det, rdm)
-                        call do_stochastic_ccmc_propagation(rng(it), sys, qs, cdet(it), ldet(it), rdet(it), cluster(it), &
-                                                            left_cluster(it), right_cluster(it), ccmc_in, qmc_in, nattempts_spawn,&
-                                                            nspawned, nspawned_im, ndeath, logging_info, ms_stats(it), &
-                                                            bloom_stats, bloom_threshold, proj_energy_old)
-
+                        call do_stochastic_ccmc_propagation(rng(it), sys, qs, &
+                                                            ccmc_in, qmc_in, logging_info, ms_stats(it), bloom_stats, &
+                                                            cdet(it), ldet(it), rdet(it), &
+                                                            cluster(it), left_cluster(it), right_cluster(it), &
+                                                            nattempts_spawn, nspawned, nspawned_im, ndeath)
                     end if
 
                 end do
@@ -732,18 +732,18 @@ contains
                         end if
                         if (sys%read_in%comp) then
                             call stochastic_ccmc_death_nc(rng(it), ccmc_in%linked, sys, qs, iattempt==D0_pos, dfock, &
-                                              qs%psip_list%dat(1,iattempt), real(proj_energy_old, p), &
+                                              qs%psip_list%dat(1,iattempt), qs%estimators%proj_energy_old, &
                                               qs%psip_list%pops(1, iattempt), nparticles_change(1), ndeath_nc, &
                                               logging_info)
                             call stochastic_ccmc_death_nc(rng(it), ccmc_in%linked, sys, qs, iattempt==D0_pos, dfock, &
-                                              qs%psip_list%dat(1,iattempt), real(proj_energy_old, p), &
+                                              qs%psip_list%dat(1,iattempt), qs%estimators%proj_energy_old, &
                                               qs%psip_list%pops(2, iattempt), nparticles_change(2), ndeath_nc_im, &
                                               logging_info)
                             ndeath_nc = ndeath_nc + ndeath_nc_im
                             ndeath_nc_im = 0_int_p
                         else
                             call stochastic_ccmc_death_nc(rng(it), ccmc_in%linked, sys, qs, iattempt==D0_pos, dfock, &
-                                              qs%psip_list%dat(1,iattempt), real(proj_energy_old,p), &
+                                              qs%psip_list%dat(1,iattempt), qs%estimators%proj_energy_old, &
                                               qs%psip_list%pops(1, iattempt), nparticles_change(1), ndeath_nc, &
                                               logging_info)
                         end if
@@ -927,10 +927,10 @@ contains
 
     end subroutine do_ccmc_accumulation
 
-    subroutine do_stochastic_ccmc_propagation(rng, sys, qs, cdet, ldet, rdet, cluster, left_cluster, right_cluster, ccmc_in,qmc_in,&
-                                            nattempts_spawn, nspawned, nspawned_im, ndeath, logging_info, ms_stats, bloom_stats, &
-                                            bloom_threshold, proj_energy_old)
-
+    subroutine do_stochastic_ccmc_propagation(rng, sys, qs, &
+                                            ccmc_in, qmc_in, logging_info, ms_stats, bloom_stats, &
+                                            cdet, ldet, rdet, cluster, left_cluster, right_cluster, &
+                                            nattempts_spawn, nspawned, nspawned_im, ndeath)
         use dSFMT_interface, only: dSFMT_t
         use system, only: sys_t
         use qmc_data, only: qmc_state_t, ccmc_in_t, qmc_in_t
@@ -959,12 +959,10 @@ contains
 
         integer(int_64), intent(inout) :: nattempts_spawn
         integer(int_p), intent(inout) :: nspawned, nspawned_im, ndeath
-        real(p), intent(in) :: bloom_threshold
         type(multispawn_stats_t), intent(inout) :: ms_stats
 
         integer(i0) :: fexcit(sys%basis%string_len)
         integer :: i, nspawnings_total
-        complex(p), intent(in) :: proj_energy_old
 
         ! Spawning
         ! This has the potential to create blooms, so we allow for multiple
@@ -1000,10 +998,10 @@ contains
             end if
 
             if (nspawned /= 0_int_p) call create_spawned_particle_ccmc(sys%basis, qs%ref, cdet, connection, &
-                                                nspawned, 1, cluster%excitation_level, bloom_threshold, &
+                                                nspawned, 1, cluster%excitation_level, &
                                                 fexcit, qs%spawn_store%spawn, bloom_stats)
             if (nspawned_im /= 0_int_p) call create_spawned_particle_ccmc(sys%basis, qs%ref, cdet, connection,&
-                                                nspawned_im, 2, cluster%excitation_level, bloom_threshold, &
+                                                nspawned_im, 2, cluster%excitation_level, &
                                                 fexcit, qs%spawn_store%spawn, bloom_stats)
         end do
 
@@ -1017,8 +1015,7 @@ contains
                 ! Do death for non-composite clusters directly and in a separate loop
                 if (cluster%nexcitors >= 2 .or. .not. ccmc_in%full_nc) then
                     call stochastic_ccmc_death(rng, qs%spawn_store%spawn, ccmc_in%linked, sys, &
-                                               qs, cdet, cluster, real(proj_energy_old,p), &
-                                               logging_info, ndeath)
+                                               qs, cdet, cluster, logging_info, ndeath)
                 end if
             end if
         end if

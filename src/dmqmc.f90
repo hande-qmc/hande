@@ -103,7 +103,6 @@ contains
         type(qmc_in_t) :: qmc_in_loc
         type(dmqmc_in_t) :: dmqmc_in_loc
         character(36) :: uuid_restart
-        real(p) :: proj_energy_old
 
         type(logging_t) :: logging_info
 
@@ -222,7 +221,7 @@ contains
             qs%vary_shift = qs%psip_list%tot_nparticles >= qs%target_particles
 
             ! DMQMC quasi-newton not functional, so we artificially set this value to 0 which should not affect non-QN calcs.
-            proj_energy_old = 0_p
+            qs%estimators%proj_energy_old = 0_p
 
             do ireport = 1, nreport
 
@@ -334,7 +333,7 @@ contains
                             ! when running a DMQMC algorithm, stores the average
                             ! of the two diagonal elements corresponding to the
                             ! two indicies of the density matrix.
-                            call stochastic_death(rng, sys, qs, cdet1%fock_sum, qs%psip_list%dat(ireplica,idet), proj_energy_old, &
+                            call stochastic_death(rng, sys, qs, cdet1%fock_sum, qs%psip_list%dat(ireplica,idet), &
                                                   qs%shift(ireplica), logging_info, qs%psip_list%pops(ireplica,idet), &
                                                   qs%psip_list%nparticles(ireplica), ndeath)
                         end do
