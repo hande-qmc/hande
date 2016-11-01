@@ -60,6 +60,20 @@ options : :class:`ArgumentParser`
     return (options.filenames, options)
 
 
+def remove_observable(columns, label):
+    '''Remove observable from list.
+
+Parameters
+----------
+columns : list
+    List of column names.
+label : string
+    regex to search for removal.
+'''
+
+    return [c for c in columns if label not in c]
+
+
 def main(args):
     '''Run data analysis on finite-temperature HANDE output.
 
@@ -83,13 +97,17 @@ None.
                                          options.with_trace,
                                          options.calc_number)[1]
 
+    # We want to sort momentum distribution array naturally so extract them here
+    # before sorting the rest of the column names by their label.
+    columns = sorted(remove_observable(results.columns.values, 'n_'))
     # For anal-retentiveness, print the energy first after beta and then all
     # columns in alphabetical order.
-    columns = sorted(results.columns.values)
     columns.insert(1, columns.pop(columns.index('Tr[Hp]/Tr[p]')))
     columns.insert(2, columns.pop(columns.index('Tr[Hp]/Tr[p]_error')))
-
-    print(results.to_string(index=False, columns=columns))
+    momentum_dist = pyhande.dmqmc.sort_momentum([c for c in
+                                                 results.columns.values
+                                                 if 'n_' in c])
+    print(results.to_string(index=False, columns=columns+momentum_dist))
 
 
 if __name__ == '__main__':

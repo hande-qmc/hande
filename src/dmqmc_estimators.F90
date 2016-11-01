@@ -18,13 +18,14 @@ enum, bind(c)
     enumerator :: ground_rdm_trace_ind
     enumerator :: inst_rdm_trace_ind
     enumerator :: rdm_r2_ind
+    enumerator :: mom_dist_ind
     enumerator :: final_ind ! ensure this remains the last index.
 end enum
 
 contains
 
-    subroutine dmqmc_estimate_comms(dmqmc_in, error, nspawn_events, max_num_excits, ncycles, psip_list, qs, &
-                                    accumulated_probs_old, dmqmc_estimates)
+    subroutine dmqmc_estimate_comms(dmqmc_in, error, nspawn_events, max_num_excits, ncycles, &
+                                    psip_list, qs, accumulated_probs_old, dmqmc_estimates)
 
         ! Sum together the contributions to the various DMQMC estimators (and
         ! some other non-physical quantities such as the rate of spawning and
@@ -83,6 +84,7 @@ contains
         nelems(ground_rdm_trace_ind) = 1
         nelems(inst_rdm_trace_ind) = psip_list%nspaces*dmqmc_estimates%inst_rdm%nrdms
         nelems(rdm_r2_ind) = dmqmc_estimates%inst_rdm%nrdms
+        nelems(mom_dist_ind) = size(dmqmc_estimates%mom_dist%n_k)
 
         ! The total number of elements in the array to be communicated.
         tot_nelems = sum(nelems)
@@ -181,6 +183,9 @@ contains
         if (doing_dmqmc_calc(dmqmc_rdm_r2)) then
             rep_loop_loc(min_ind(rdm_r2_ind):max_ind(rdm_r2_ind)) = dmqmc_estimates%inst_rdm%renyi_2
         end if
+        if (dmqmc_in%calc_mom_dist) then
+            rep_loop_loc(min_ind(mom_dist_ind):max_ind(mom_dist_ind)) = dmqmc_estimates%mom_dist%n_k
+        end if
 
     end subroutine local_dmqmc_estimators
 
@@ -241,6 +246,10 @@ contains
         if (doing_dmqmc_calc(dmqmc_rdm_r2)) then
             dmqmc_estimates%inst_rdm%renyi_2 = real(rep_loop_sum(min_ind(rdm_r2_ind):max_ind(rdm_r2_ind)), p)
         end if
+        if (dmqmc_in%calc_mom_dist) then
+            dmqmc_estimates%mom_dist%n_k = real(rep_loop_sum(min_ind(mom_dist_ind):max_ind(mom_dist_ind)), p)
+        end if
+
 
         ! Average the spawning rate.
         qs%spawn_store%rspawn = qs%spawn_store%rspawn/(ncycles*nprocs)
@@ -444,6 +453,8 @@ contains
                 ! Excitation distribtuion for calculating importance sampling weights.
                 if (dmqmc_in%find_weights .and. iteration > dmqmc_in%find_weights_start) est%excit_dist(excitation%nexcit) = &
                     est%excit_dist(excitation%nexcit) + real(abs(psip_list%pops(1,idet)),p)/psip_list%pop_real_factor
+                if (dmqmc_in%calc_mom_dist) call update_dmqmc_momentum_distribution(sys, cdet, excitation, H00,&
+                                                                                      &unweighted_walker_pop(1), est%mom_dist%n_k)
             end if
 
             ! Full Renyi entropy (S_2).
@@ -603,7 +614,7 @@ contains
             ! flip the same pair of spins twice. The Hamiltonian element for doing
             ! nothing is just the diagonal element. For each possible pairs of
             ! spins which can be flipped, there is a mtarix element of -J/2, so
-            ! we just need to count the number of such pairs, which can be found 
+            ! we just need to count the number of such pairs, which can be found
             ! simply from the diagonal element.
 
             sum_H1_H2 = (cdet%data(1)+H00)**2
@@ -621,7 +632,7 @@ contains
             ! the pair on the first bond, then flip the pair on the second bond.
             ! This flipping can only be done in exactly one order, not both - the
             ! two spins which change are opposite, so the middle spin will
-            ! initially only be the same as one or the other spin. This is nice, 
+            ! initially only be the same as one or the other spin. This is nice,
             ! because we don't have check which way up the intermediate spin is -
             ! there will always be one order which contributes. If there are two
             ! such paths, then this could happen by either paths, but again, the
@@ -1198,7 +1209,7 @@ contains
         call geev_wrapper('N', 'N', 4, rdm_spin_flip, 4, reigv, ieigv, VL, 1, VR, 1, info)
         ! Calculate the concurrence. Take abs of eigenvalues so that this is
         ! equivalant to sqauring and then square-rooting.
-        concurrence = 2.0_p*maxval(abs(reigv)) - sum(abs(reigv)) 
+        concurrence = 2.0_p*maxval(abs(reigv)) - sum(abs(reigv))
         concurrence = max(0.0_p, concurrence)
         write (6,'(1x,"# Unnormalised concurrence =",1X,es17.10)') concurrence
 
@@ -1333,6 +1344,56 @@ contains
         if (excitation%nexcit == 0) kinetic_energy = kinetic_energy + pop*kinetic_diag_ptr(sys, cdet%f)
 
     end subroutine dmqmc_kinetic_energy_diag
+
+    subroutine update_dmqmc_momentum_distribution(sys, cdet, excitation, H00, pop, momentum_dist)
+
+        ! Add the contribution for the current density matrix element to the thermal
+        ! momentum distribution estimate.
+
+        ! In:
+        !    sys: system being studied.
+        !    cdet: det_info_t object containing bit strings of densitry matrix
+        !       element under consideration.
+        !    excitation: excit_t type variable which stores information on
+        !        the excitation between the two bitstring ends, corresponding
+        !        to the two labels for the density matrix element.
+        !    H00: diagonal hamiltonian element for the reference. only for
+        !       interface consistency, not used.
+        !    pop: number of particles on the current density matrix
+        !        element.
+        ! In/Out:
+        !    momentum_dist: array expressing the number operator numerator
+        !        for each k point
+
+
+        use determinants, only: det_info_t
+        use system, only: sys_t
+        use excitations, only: excit_t
+        use determinants, only: decode_det
+
+        type(sys_t), intent(in) :: sys
+        type(det_info_t), intent(in) :: cdet
+        type(excit_t), intent(in) :: excitation
+        real(p), intent(in) :: H00, pop
+        real(p), intent(inout) :: momentum_dist(:)
+        integer :: occ_list(sys%nel)
+        integer :: iocc, oc_orb, pol
+
+        pol = (sys%nalpha-sys%nbeta) / sys%nel
+
+        if (excitation%nexcit == 0) then
+            call decode_det(sys%basis, cdet%f, occ_list)
+            do iocc = 1, sys%nel
+                ! Really want spin averaged momentum distribution, so only consider up index.
+                oc_orb = occ_list(iocc)/2 + mod(occ_list(iocc),2)
+                if (oc_orb <= size(momentum_dist)) then
+                    ! Divide by two for unpolarised system.
+                    momentum_dist(oc_orb) = momentum_dist(oc_orb) + pop / (2-pol)
+                end if
+            end do
+        endif
+
+    end subroutine update_dmqmc_momentum_distribution
 
     subroutine update_dmqmc_H0_energy(sys, cdet, excitation, pop, H0_energy)
 

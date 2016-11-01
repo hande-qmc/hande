@@ -203,6 +203,11 @@ type dmqmc_in_t
     ! by itself.
     integer :: initiator_level = -1
 
+    ! If true the momentum distribution will be calculated, i.e., <n_k>.
+    logical :: calc_mom_dist = .false.
+    ! Maximum kvector momentum distribution is evaluated at (in terms of the Fermi wavevector).
+    real(p) :: mom_dist_kmax = 0.0
+
 end type dmqmc_in_t
 
 ! Spawned lists for rdms.
@@ -244,6 +249,14 @@ type dmqmc_ground_rdm_t
     real(p) :: trace
 end type dmqmc_ground_rdm_t
 
+!--- Type for momentum distribution
+type momentum_dist_t
+    ! Stores the momentum distribution numerator at each value of k < kmax.
+    real(p), allocatable :: n_k(:)
+    ! Magnitude of kpoints used in momentum distribution calculation, useful for compression purposes.
+    real(p), allocatable :: kpoints(:)
+end type momentum_dist_t
+
 type dmqmc_estimates_t
     ! numerators stores the numerators for the estimators in DMQMC. These
     ! are, for a general operator O which we wish to find the thermal average of:
@@ -264,6 +277,9 @@ type dmqmc_estimates_t
     ! This array is used to hold the number of particles on each excitation
     ! level of the density matrix.
     real(p), allocatable :: excit_dist(:) ! (0:max_number_excitations)
+
+    ! Momentum distribution.
+    type(momentum_dist_t) :: mom_dist
 
     ! correlation_mask is a bit string with a 1 at positions i and j which
     ! are considered when finding the spin correlation function, C(r_{i,j}).
@@ -342,7 +358,8 @@ contains
         end if
         call json_write_key(js, 'finish_varying_weights', dmqmc%finish_varying_weights)
         call json_write_key(js, 'fermi_temperature', dmqmc%fermi_temperature)
-        call json_write_key(js, 'target_beta', dmqmc%target_beta, terminal=.true.)
+        call json_write_key(js, 'target_beta', dmqmc%target_beta)
+        call json_write_key(js, 'mom_dist_kmax', dmqmc%mom_dist_kmax, terminal=.true.)
         call json_object_end(js, terminal)
 
     end subroutine dmqmc_in_t_json
@@ -412,7 +429,7 @@ contains
 
     end subroutine rdm_in_t_json
 
-    subroutine operators_in_t_json(js, terminal)
+    subroutine operators_in_t_json(js, dmqmc, terminal)
 
         ! serialise operators in json format.
         ! options.
@@ -420,6 +437,7 @@ contains
         ! in/out:
         !   js: json_out_t controlling the output unit and handling json internal state.  unchanged on output.
         ! in:
+        !   dmqmc : dmqmc_in type containing input information.
         !   terminal (optional): if true, this is the last entry in the enclosing json object.  default: false.
 
         use json_out
@@ -428,6 +446,7 @@ contains
                         dmqmc_potential_energy, dmqmc_H0_energy, dmqmc_HI_energy
 
         type(json_out_t), intent(inout) :: js
+        type(dmqmc_in_t), intent(in) :: dmqmc
         logical, intent(in), optional :: terminal
 
         call json_object_init(js, 'operators')
@@ -440,7 +459,8 @@ contains
         call json_write_key(js, 'correlation_fn', doing_dmqmc_calc(dmqmc_correlation))
         call json_write_key(js, 'staggered_mad_ind', doing_dmqmc_calc(dmqmc_staggered_magnetisation))
         call json_write_key(js, 'rdm_r2', doing_dmqmc_calc(dmqmc_rdm_r2))
-        call json_write_key(js, 'full_r2', doing_dmqmc_calc(dmqmc_full_r2), terminal=.true.)
+        call json_write_key(js, 'full_r2', doing_dmqmc_calc(dmqmc_full_r2))
+        call json_write_key(js, 'mom_dist', dmqmc%calc_mom_dist, terminal=.true.)
         call json_object_end(js, terminal)
 
     end subroutine operators_in_t_json

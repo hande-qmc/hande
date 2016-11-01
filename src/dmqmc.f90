@@ -169,7 +169,7 @@ contains
             dmqmc_in_loc%chem_pot = mu
             call ipdmqmc_in_t_json(js, dmqmc_in_loc)
             call rdm_in_t_json(js, dmqmc_in%rdm)
-            call operators_in_t_json(js)
+            call operators_in_t_json(js, dmqmc_in)
             call restart_in_t_json(js, restart_in, uuid_restart)
             call load_bal_in_t_json(js, load_bal_in)
             call reference_t_json(js, qs%ref, sys, terminal=.true.)
@@ -187,7 +187,7 @@ contains
 
         ! Main DMQMC loop.
         if (parent) then
-            call write_dmqmc_report_header(qs%psip_list%nspaces, dmqmc_in, sys%max_number_excitations)
+            call write_dmqmc_report_header(qs%psip_list%nspaces, dmqmc_in, sys%max_number_excitations, dmqmc_estimates)
         end if
         ! Initialise timer.
         call cpu_time(t1)
@@ -226,7 +226,8 @@ contains
 
             do ireport = 1, nreport
 
-                call init_dmqmc_report_loop(dmqmc_in%calc_excit_dist, bloom_stats, dmqmc_estimates, qs%spawn_store%rspawn)
+                call init_dmqmc_report_loop(dmqmc_in%calc_excit_dist, dmqmc_in%calc_mom_dist, bloom_stats, &
+                                            dmqmc_estimates, qs%spawn_store%rspawn)
                 tot_nparticles_old = qs%psip_list%tot_nparticles
 
                 do icycle = 1, qmc_in%ncycles
@@ -360,7 +361,7 @@ contains
                 ! Sum all quantities being considered across all MPI processes.
                 error = qs%spawn_store%spawn%error .or. qs%psip_list%error .or. rdm_error
                 call dmqmc_estimate_comms(dmqmc_in, error, nspawn_events, sys%max_number_excitations, qmc_in%ncycles, &
-                                          qs%psip_list, qs, weighted_sampling%probs_old, dmqmc_estimates)
+                                          &qs%psip_list, qs, weighted_sampling%probs_old, dmqmc_estimates)
                 if (error) exit outer_loop
 
                 call update_shift_dmqmc(qmc_in, qs, qs%psip_list%tot_nparticles, tot_nparticles_old)
@@ -500,7 +501,7 @@ contains
 
     end subroutine init_dmqmc_beta_loop
 
-    subroutine init_dmqmc_report_loop(calc_excit_dist, bloom_stats, dmqmc_estimates, rspawn)
+    subroutine init_dmqmc_report_loop(calc_excit_dist, calc_mom_dist, bloom_stats, dmqmc_estimates, rspawn)
 
         ! Initialise a report loop (basically zero quantities accumulated over
         ! a report loop).
@@ -508,6 +509,7 @@ contains
         ! In:
         !    calc_excit_dist: true if the excitation distribution is being
         !        calculated at each report loop.
+        !    calc_mom_dist: true if the momentum distribution is being calculated.
         ! In/Out:
         !    bloom_stats: type containing information regarding blooming events.
         !    dmqmc_estimates: type containing estimates of observables.
@@ -518,6 +520,7 @@ contains
         use dmqmc_data, only: dmqmc_estimates_t
 
         logical, intent(in) :: calc_excit_dist
+        logical, intent(in) :: calc_mom_dist
         type(bloom_stats_t), intent(inout) :: bloom_stats
         type(dmqmc_estimates_t), intent(inout) :: dmqmc_estimates
         real(p), intent(out) :: rspawn
@@ -528,6 +531,7 @@ contains
         if (calc_excit_dist) dmqmc_estimates%excit_dist = 0.0_p
         dmqmc_estimates%trace = 0.0_p
         dmqmc_estimates%numerators = 0.0_p
+        if (calc_mom_dist) dmqmc_estimates%mom_dist%n_k = 0.0_p
 
     end subroutine init_dmqmc_report_loop
 

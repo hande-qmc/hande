@@ -394,6 +394,21 @@ operators options
             e^{\frac{1}{2}(\beta-\tau)\hat{H}^0}\hat{H}e^{-\frac{1}{2}(\beta-\tau)\hat{H}^0}.
 
 
+``mom_dist``
+    type: float
+
+    Optional. Default: 0.0
+
+    Evaluate the (spin averaged) momentum distribution in kspace, i.e., :math:`\langle
+    \hat{n}_{\mathbf{k}} \rangle`, up to a maximum wavevector defined by kmax which is a
+    multiple of the Fermi wavevector. The momentum distribution will be printed out at
+    unique kpoints which have the same kinetic energy.  Results can be extracted from the
+    analysed (i.e. by using the finite_temp_analysis script in the tools/dmqmc (see
+    tutorial for more information)) dmqmc output using the extract_n_k.py script in the
+    tools/dmqmc directory.
+
+    Only currently implemented for the UEG.
+
 
 .. _rdm_table:
 

@@ -90,7 +90,7 @@ contains
 
     end subroutine write_qmc_report_header
 
-    subroutine write_dmqmc_report_header(ntypes, dmqmc_in, max_excit)
+    subroutine write_dmqmc_report_header(ntypes, dmqmc_in, max_excit, estimates)
 
         ! Write header for DMQMC specific information.
 
@@ -100,7 +100,7 @@ contains
         !    max_excit: maximum number of excitations in system.
 
         use calc, only: doing_calc, hfs_fciqmc_calc, dmqmc_calc, doing_dmqmc_calc
-        use dmqmc_data, only: dmqmc_in_t
+        use dmqmc_data, only: dmqmc_in_t, dmqmc_estimates_t
         use calc, only: dmqmc_energy, dmqmc_energy_squared, dmqmc_staggered_magnetisation
         use calc, only: dmqmc_correlation, dmqmc_full_r2, dmqmc_rdm_r2, dmqmc_kinetic_energy
         use calc, only: dmqmc_H0_energy, dmqmc_potential_energy, dmqmc_HI_energy
@@ -109,6 +109,7 @@ contains
         integer, intent(in) :: ntypes
         type(dmqmc_in_t), intent(in) :: dmqmc_in
         integer, intent(in) :: max_excit
+        type(dmqmc_estimates_t), intent(in) :: estimates
 
         integer :: i, j
         character(16) :: excit_header
@@ -156,6 +157,8 @@ contains
             write (6, '(1x, "Excit. level n: The fraction of particles on excitation level n of the &
                              &density matrix.")')
         end if
+        if (dmqmc_in%calc_mom_dist) write (6, '(1x, "n_k: The numerator of the estimator for the &
+                                                     &momentum distribution at momentum k")')
 
         write (6,'(1X,"# particles: current total population of Hamiltonian particles.")')
         write (6,'(1X,"# states: number of many-particle states occupied.")')
@@ -217,6 +220,9 @@ contains
                 write (excit_header, '("Excit. level",1X,'//int_fmt(i,0)//')') i
                 call write_column_title(6, excit_header)
             end do
+        end if
+        if (dmqmc_in%calc_mom_dist) then
+            call write_momentum_array_header('   n_', .true., estimates%mom_dist%kpoints)
         end if
 
         call write_column_title(6, '# particles')
@@ -485,6 +491,10 @@ contains
             end do
         end if
 
+        if (dmqmc_in%calc_mom_dist) then
+            call write_momentum_array(dmqmc_estimates%mom_dist%n_k, dmqmc_estimates%mom_dist%kpoints, .true.)
+        end if
+
         call write_qmc_var(6, ntot_particles(1))
         call write_qmc_var(6, qs%estimators%tot_nstates)
         call write_qmc_var(6, qs%estimators%tot_nspawn_events)
@@ -573,5 +583,89 @@ contains
         end if
 
     end subroutine write_qmc_var_real_dp
+
+    subroutine write_momentum_array_header(header, compress_k, kpoints)
+
+        ! Write header for momentum space array estimator.
+
+        ! In:
+        !    header: base column header
+        !    compress_k: if true only unique kpoints (in terms of the single-particle
+        !        eigenvalues) will be printed with with results averaged over degeneracies.
+        !    kvals: unique kpoints at which the correlation function is evaluated at.
+        !        To be used with compress_k is true. Otherwise the orbital index
+        !        will be printed.
+
+        use utils, only: int_fmt
+
+        character(5), intent(in) :: header
+        logical, intent(in) :: compress_k
+        real(p), intent(in) :: kpoints(:)
+
+        integer :: iorb, str_len
+        real(p) :: k
+        character(14) :: klabel
+
+        if (compress_k) then
+            k = kpoints(1)
+            do iorb = 2, size(kpoints)
+                if (kpoints(iorb) > k + depsilon) then
+                    write(klabel, '(es14.8)') k
+                    call write_column_title(6, trim(header)//klabel)
+                    k = kpoints(iorb)
+                end if
+            end do
+            write(klabel, '(es14.8)') k
+            call write_column_title(6, trim(header)//klabel)
+        else
+            do iorb = 1, size(kpoints)
+                write (klabel, '('//int_fmt(iorb)//')') iorb
+                call write_column_title(6, trim(header)//klabel)
+            end do
+        end if
+
+    end subroutine write_momentum_array_header
+
+    subroutine write_momentum_array(f_k, grid_points, compress_k)
+
+        ! Write header for momentum space array estimator.
+
+        ! In:
+        !    f_k: momentum space correlation function to be printed.
+        !    grid_points: unique kpoints at which the correlation function is evaluated at.
+        !        To be used with compress_k is true.
+        !    compress_k: if true only unique kpoints (in magnitude) will
+        !        be printed with with results averaged over degeneracies.
+
+        real(p), intent(in) :: f_k(:), grid_points(:)
+        logical, intent(in) :: compress_k
+        character(2) :: a
+
+        integer :: i, deg
+        real(p) :: kp, compressed
+
+        kp = grid_points(1)
+        compressed = f_k(1)
+        deg = 1
+        if (compress_k) then
+            do i = 2, size(f_k)
+                if (grid_points(i) > kp + depsilon) then
+                    call write_qmc_var(6, compressed/deg)
+                    kp = grid_points(i)
+                    compressed = f_k(i)
+                    deg = 1
+                else
+                    compressed = compressed + f_k(i)
+                    deg = deg + 1
+                end if
+            end do
+            call write_qmc_var(6, compressed/deg) ! last point
+        else
+            do i = 1, size(f_k)
+                call write_qmc_var(6, compressed/deg)
+            end do
+        end if
+
+    end subroutine write_momentum_array
 
 end module qmc_io
