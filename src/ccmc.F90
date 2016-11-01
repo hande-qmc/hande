@@ -709,7 +709,7 @@ contains
                         call do_ccmc_accumulation(rng(it), sys, qs, cdet(it), cluster(it), D0_population_cycle, &
                                                 proj_energy_cycle, ccmc_in, ref_det, rdm)
                         call do_stochastic_ccmc_propagation(rng(it), sys, qs, &
-                                                            ccmc_in, qmc_in, logging_info, ms_stats(it), bloom_stats, &
+                                                            ccmc_in, logging_info, ms_stats(it), bloom_stats, &
                                                             cdet(it), ldet(it), rdet(it), &
                                                             cluster(it), left_cluster(it), right_cluster(it), &
                                                             nattempts_spawn, nspawned, nspawned_im, ndeath)
@@ -928,12 +928,12 @@ contains
     end subroutine do_ccmc_accumulation
 
     subroutine do_stochastic_ccmc_propagation(rng, sys, qs, &
-                                            ccmc_in, qmc_in, logging_info, ms_stats, bloom_stats, &
+                                            ccmc_in, logging_info, ms_stats, bloom_stats, &
                                             cdet, ldet, rdet, cluster, left_cluster, right_cluster, &
                                             nattempts_spawn, nspawned, nspawned_im, ndeath)
         use dSFMT_interface, only: dSFMT_t
         use system, only: sys_t
-        use qmc_data, only: qmc_state_t, ccmc_in_t, qmc_in_t
+        use qmc_data, only: qmc_state_t, ccmc_in_t
         use determinants, only: det_info_t
         use ccmc_data, only: cluster_t, multispawn_stats_t, ms_stats_update
 
@@ -950,7 +950,6 @@ contains
         type(dSFMT_T), intent(inout) :: rng
         type(qmc_state_t), intent(inout) :: qs
         type(ccmc_in_t), intent(in) :: ccmc_in
-        type(qmc_in_t), intent(in) :: qmc_in
         type(det_info_t), intent(inout) :: cdet, ldet, rdet
         type(cluster_t), intent(inout) :: cluster, left_cluster, right_cluster
         type(excit_t) :: connection
@@ -982,7 +981,7 @@ contains
                 ! When sampling e^-T H e^T, the cluster operators in e^-T
                 ! and e^T can excite to/from the same orbital, requiring
                 ! a different spawning routine
-                call linked_spawner_ccmc(rng, sys, qmc_in, qs, qs%spawn_store%spawn%cutoff, &
+                call linked_spawner_ccmc(rng, sys, qs, qs%spawn_store%spawn%cutoff, &
                           cluster, gen_excit_ptr, nspawned, connection, nspawnings_total, &
                           fexcit, cdet, ldet, rdet, left_cluster, right_cluster)
                 nspawned_im = 0_int_p

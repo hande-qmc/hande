@@ -74,7 +74,7 @@ contains
         use spawning, only: attempt_to_spawn, calc_qn_spawned_weighting
         use system, only: sys_t
         use const, only: depsilon, debug
-        use qmc_data, only: qmc_in_t, qmc_state_t
+        use qmc_data, only: qmc_state_t
         use hamiltonian_data
         use logging, only: logging_t, write_logging_spawn
 
@@ -474,7 +474,7 @@ contains
 
     end subroutine stochastic_ccmc_death_nc
 
-    subroutine linked_spawner_ccmc(rng, sys, qmc_in, qs, spawn_cutoff, cluster, gen_excit_ptr, nspawn, &
+    subroutine linked_spawner_ccmc(rng, sys, qs, spawn_cutoff, cluster, gen_excit_ptr, nspawn, &
                             connection, nspawnings_total, fexcit, cdet, ldet, rdet, left_cluster, right_cluster)
 
         ! When sampling e^-T H e^T, clusters need to be considered where two
@@ -488,7 +488,6 @@ contains
 
         ! In:
         !    sys: system being studied.
-        !    qmc_in: input options relating to QMC methods.
         !    qs: qmc_state_t object. ref and tau are used.
         !    spawn_cutoff: The size of the minimum spawning event allowed, in
         !        the encoded representation. Events smaller than this will be
@@ -526,11 +525,10 @@ contains
         use const, only: depsilon
         use hamiltonian, only: get_hmatel
         use bit_utils, only: count_set_bits
-        use qmc_data, only: qmc_in_t, qmc_state_t
+        use qmc_data, only: qmc_state_t
         use hamiltonian_data
 
         type(sys_t), intent(in) :: sys
-        type(qmc_in_t), intent(in) :: qmc_in
         type(qmc_state_t), intent(in) :: qs
         integer(int_p), intent(in) :: spawn_cutoff
         type(cluster_t), intent(in) :: cluster
@@ -630,7 +628,7 @@ contains
                     ! It's possible to get the same excitation from different partitionings
                     ! of the cluster so they all need to be accounted for in pgen
                     call create_excited_det(sys%basis, rdet%f, connection, new_det)
-                    pgen = pgen + calc_pgen(sys, qmc_in%excit_gen, qs%excit_gen_data, rdet%f, connection, rdet)
+                    pgen = pgen + calc_pgen(sys, qs%excit_gen_data%excit_gen, qs%excit_gen_data, rdet%f, connection, rdet)
 
                     ! Sign of the term in the commutator depends on the number of Ts in left_cluster
                     ! also need to account for possible sign change on going from excitor to determinant
@@ -735,7 +733,7 @@ contains
         use spawning, only: attempt_to_spawn
         use system, only: sys_t
         use const, only: depsilon
-        use qmc_data, only: qmc_in_t, qmc_state_t
+        use qmc_data, only: qmc_state_t
         use hamiltonian_data, only: hmatel_t
 
         type(sys_t), intent(in) :: sys
