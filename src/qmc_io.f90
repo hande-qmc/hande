@@ -602,7 +602,7 @@ contains
         logical, intent(in) :: compress_k
         real(p), intent(in) :: kpoints(:)
 
-        integer :: iorb, str_len
+        integer :: iorb
         real(p) :: k
         character(14) :: klabel
 
@@ -639,7 +639,6 @@ contains
 
         real(p), intent(in) :: f_k(:), grid_points(:)
         logical, intent(in) :: compress_k
-        character(2) :: a
 
         integer :: i, deg
         real(p) :: kp, compressed
