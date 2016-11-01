@@ -9,46 +9,58 @@ implicit none
 
 contains
 
-    subroutine init_cluster(sys, cluster_size, cdet, cluster)
+    subroutine init_contrib(sys, cluster_size, linked, contrib_info)
 
         ! Allocates cdet and cluster, and their components.
 
         ! In:
         !    sys: system being studied
         !    cluster_size: the maximum number of excitors allowed in a cluster
+        !    linked: whether we are performing propogation through the linked
+        !       coupled cluster equations.
         ! Out:
-        !    cdet: Array of det_info_t variables, one for each thread, with
-        !       components allocated
-        !    cluster: Array of cluster_t variables, one for each thread, with
-        !       components allocated
+        !    contrib_info: Array of wfn_contrib_t variables, one for each thread,
+        !       with appropriate cluster and det components allocated.
 
         use parallel, only: nthreads
-        use determinants, only: det_info_t, alloc_det_info_t
-        use ccmc_data, only: cluster_t
+        use determinants, only: alloc_det_info_t
+        use ccmc_data, only: wfn_contrib_t
         use system, only: sys_t
         use checking, only: check_allocate
 
         type(sys_t), intent(in) :: sys
         integer, intent(in) :: cluster_size
-        type(det_info_t), allocatable, intent(out) :: cdet(:)
-        type(cluster_t), allocatable, intent(out) :: cluster(:)
+        logical, intent(in) :: linked
+        type(wfn_contrib_t), allocatable, intent(out) :: contrib_info(:)
 
         integer :: i, ierr
+        integer :: cluster_size_loc
+
+        cluster_size_loc = cluster_size
+        if (linked) cluster_size_loc = 4
 
         ! Allocate arrays
-        allocate(cdet(0:nthreads-1), stat=ierr)
-        call check_allocate('cdet', nthreads, ierr)
-        allocate(cluster(0:nthreads-1), stat=ierr)
-        call check_allocate('cluster', nthreads, ierr)
+        allocate(contrib_info(0:nthreads-1), stat=ierr)
+        call check_allocate('contrib_info', nthreads, ierr)
 
         do i = 0, nthreads-1
             ! Allocate det_info_t and cluster_t components
-            call alloc_det_info_t(sys, cdet(i))
-            allocate(cluster(i)%excitors(cluster_size), stat=ierr)
-            call check_allocate('cluster%excitors', cluster_size, ierr)
+            call alloc_det_info_t(sys, contrib_info(i)%cdet)
+            allocate(contrib_info(i)%cluster%excitors(cluster_size_loc), stat=ierr)
+            call check_allocate('contrib_info%cluster%excitors', cluster_size_loc, ierr)
+            ! Only require right/left components if performing linked propogation.
+            if (linked) then
+                call alloc_det_info_t(sys, contrib_info(i)%ldet)
+                call alloc_det_info_t(sys, contrib_info(i)%rdet)
+
+                allocate(contrib_info(i)%left_cluster%excitors(cluster_size_loc), stat=ierr)
+                allocate(contrib_info(i)%right_cluster%excitors(cluster_size_loc), stat=ierr)
+                call check_allocate('contrib_info%left_cluster%excitors', cluster_size_loc, ierr)
+                call check_allocate('contrib_info%right_cluster%excitors', cluster_size_loc, ierr)
+            end if
         end do
 
-    end subroutine init_cluster
+    end subroutine init_contrib
 
     subroutine find_D0(psip_list, f0, D0_pos)
 

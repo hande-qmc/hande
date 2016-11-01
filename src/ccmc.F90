@@ -298,7 +298,7 @@ contains
         use ccmc_data
         use ccmc_selection, only: select_cluster, create_null_cluster, select_cluster_non_composite
         use ccmc_death_spawning, only: stochastic_ccmc_death_nc
-        use ccmc_utils, only: init_cluster, find_D0, cumulative_population
+        use ccmc_utils, only: init_contrib, find_D0, cumulative_population
         use determinants, only: det_info_t, alloc_det_info_t, dealloc_det_info_t, sum_sp_eigenvalues_occ_list, &
                                 sum_sp_eigenvalues_bit_string, decode_det
         use excitations, only: excit_t, get_excitation_level, get_excitation
@@ -341,15 +341,12 @@ contains
         integer(int_64) :: iattempt, nattempts, nclusters, nstochastic_clusters, nsingle_excitors, nD0_select
         integer(int_64) :: nattempts_spawn
         real(dp), allocatable :: nparticles_old(:), nparticles_change(:)
-        type(det_info_t), allocatable :: cdet(:)
-        type(det_info_t), allocatable :: ldet(:), rdet(:)
         type(det_info_t) :: ref_det
 
         integer(int_p) :: nspawned, ndeath, ndeath_nc
         integer(int_p) :: nspawned_im, ndeath_im, ndeath_nc_im
         integer :: nspawn_events, ierr
-        type(cluster_t), allocatable, target :: cluster(:)
-        type(cluster_t), allocatable :: left_cluster(:), right_cluster(:)
+        type(wfn_contrib_t), allocatable :: contrib(:)
         type(multispawn_stats_t), allocatable :: ms_stats(:)
         type(dSFMT_t), allocatable :: rng(:)
         type(json_out_t) :: js
@@ -433,14 +430,7 @@ contains
         allocate(ms_stats(0:nthreads-1), stat=ierr)
         call check_allocate('ms_stats', nthreads, ierr)
 
-        call init_cluster(sys, 4, ldet, left_cluster)
-        call init_cluster(sys, 4, rdet, right_cluster)
-
-        if (ccmc_in%linked) then
-            call init_cluster(sys, 4, cdet, cluster)
-        else
-            call init_cluster(sys, qs%ref%ex_level+2, cdet, cluster)
-        end if
+        call init_contrib(sys, qs%ref%ex_level+2, ccmc_in%linked, contrib)
 
         do i = 0, nthreads-1
             ! Initialise and allocate RNG store.
@@ -452,9 +442,9 @@ contains
         ! the sake of brevity and clarity.  In particular, I wish to encourage
         ! not using cdet%cluster in order to maintain (where possible and
         ! relevant) generality in routines applicable to FCIQMC and CCMC.
-        do i = 0, nthreads-1
-            cdet(i)%cluster => cluster(i)
-        end do
+        !do i = 0, nthreads-1
+        !    cdet(i)%cluster => cluster(i)
+        !end do
 
         ! ...and scratch space for calculative cumulative probabilities.
         allocate(cumulative_abs_nint_pops(size(qs%psip_list%states,dim=2)), stat=ierr)
@@ -652,14 +642,14 @@ contains
                 !$omp         nspawnings_total, fexcit, i,     &
                 !$omp         seen_D0) &
                 !$omp shared(nattempts, rng, cumulative_abs_nint_pops, tot_abs_nint_pop,  &
-                !$omp        max_cluster_size, cdet, cluster, &
+                !$omp        max_cluster_size, contrib, &
                 !$omp        D0_normalisation, D0_pos, nD0_select, qs,               &
                 !$omp        sys, bloom_threshold, bloom_stats,                      &
                 !$omp        estimators_cycle, min_cluster_size,       &
                 !$omp        proj_energy_cycle, D0_population_cycle,   &
                 !$omp        nclusters, nstochastic_clusters, nattempts_spawn,       &
-                !$omp        nsingle_excitors, ccmc_in, ldet, rdet, left_cluster,    &
-                !$omp        right_cluster, nprocs, ms_stats, qmc_in, load_bal_in,   &
+                !$omp        nsingle_excitors, ccmc_in,                              &
+                !$omp        nprocs, ms_stats, qmc_in, load_bal_in,   &
                 !$omp        nparticles_change, ndeath)
                 it = get_thread_id()
                 iexcip_pos = 0
@@ -675,7 +665,7 @@ contains
                         call select_cluster(rng(it), sys, qs%psip_list, qs%ref%f0, qs%ref%ex_level, ccmc_in%linked, &
                                             nstochastic_clusters, D0_normalisation, qmc_in%initiator_pop, D0_pos, &
                                             cumulative_abs_nint_pops, tot_abs_nint_pop, min_cluster_size, &
-                                            max_cluster_size, cdet(it), cluster(it))
+                                            max_cluster_size, contrib(it)%cdet, contrib(it)%cluster)
                     else if (iattempt <= nstochastic_clusters+nD0_select) then
                         ! We just select the empty cluster.
                         ! As in the original algorithm, allow this to happen on
@@ -688,31 +678,29 @@ contains
                             ! generators. On subsequent calls, cdet does not need to change.
                             seen_D0 = .true.
                             call create_null_cluster(sys, qs%ref%f0, nprocs*real(nD0_select,p), D0_normalisation, &
-                                                     qmc_in%initiator_pop, cdet(it), cluster(it))
+                                                     qmc_in%initiator_pop, contrib(it)%cdet, contrib(it)%cluster)
                         end if
                     else
                         ! Deterministically select each excip as a non-composite cluster.
                         call select_cluster_non_composite(sys, qs%psip_list, qs%ref%f0, iattempt-nstochastic_clusters-nD0_select,&
                                                           iexcip_pos, nsingle_excitors, qmc_in%initiator_pop, D0_pos, &
                                                           cumulative_abs_nint_pops, tot_abs_nint_pop, &
-                                                          cdet(it), cluster(it))
+                                                          contrib(it)%cdet, contrib(it)%cluster)
                     end if
 
-                    if (cluster(it)%excitation_level <= qs%ref%ex_level+2 .or. &
-                            (ccmc_in%linked .and. cluster(it)%excitation_level == huge(0))) then
+                    if (contrib(it)%cluster%excitation_level <= qs%ref%ex_level+2 .or. &
+                            (ccmc_in%linked .and. contrib(it)%cluster%excitation_level == huge(0))) then
                         ! cluster%excitation_level == huge(0) indicates a cluster
                         ! where two excitors share an elementary operator
 
-                        if (qs%propagator%quasi_newton) cdet(it)%fock_sum = sum_sp_eigenvalues_occ_list(sys, cdet(it)%occ_list) &
-                                                                    - qs%ref%fock_sum
+                        if (qs%propagator%quasi_newton) contrib(it)%cdet%fock_sum = &
+                                        sum_sp_eigenvalues_occ_list(sys, contrib(it)%cdet%occ_list) - qs%ref%fock_sum
 
-                        call do_ccmc_accumulation(rng(it), sys, qs, cdet(it), cluster(it), D0_population_cycle, &
+                        call do_ccmc_accumulation(rng(it), sys, qs, contrib(it)%cdet, contrib(it)%cluster, D0_population_cycle, &
                                                 proj_energy_cycle, ccmc_in, ref_det, rdm)
                         call do_stochastic_ccmc_propagation(rng(it), sys, qs, &
                                                             ccmc_in, logging_info, ms_stats(it), bloom_stats, &
-                                                            cdet(it), ldet(it), rdet(it), &
-                                                            cluster(it), left_cluster(it), right_cluster(it), &
-                                                            nattempts_spawn, nspawned, nspawned_im, ndeath)
+                                                            contrib(it), nattempts_spawn, nspawned, nspawned_im, ndeath)
                     end if
 
                 end do
@@ -850,12 +838,17 @@ contains
 
         do i = 0, nthreads-1
             call dSFMT_end(rng(i))
-            call dealloc_det_info_t(cdet(i))
-            call dealloc_det_info_t(ldet(i))
-            call dealloc_det_info_t(rdet(i))
-            nullify(cdet(i)%cluster)
-            deallocate(cluster(i)%excitors, stat=ierr)
-            call check_deallocate('cluster%excitors', ierr)
+            call dealloc_det_info_t(contrib(i)%cdet)
+            deallocate(contrib(i)%cluster%excitors, stat=ierr)
+            call check_deallocate('contrib%cluster%excitors', ierr)
+            if (ccmc_in%linked) then
+                call dealloc_det_info_t(contrib(i)%ldet)
+                call dealloc_det_info_t(contrib(i)%rdet)
+                deallocate(contrib(i)%left_cluster%excitors, stat=ierr)
+                call check_deallocate('contrib%left_cluster%excitors', ierr)
+                deallocate(contrib(i)%right_cluster%excitors, stat=ierr)
+                call check_deallocate('contrib%right_cluster%excitors', ierr)
+            end if
         end do
 
     end subroutine do_ccmc
@@ -929,13 +922,11 @@ contains
 
     subroutine do_stochastic_ccmc_propagation(rng, sys, qs, &
                                             ccmc_in, logging_info, ms_stats, bloom_stats, &
-                                            cdet, ldet, rdet, cluster, left_cluster, right_cluster, &
-                                            nattempts_spawn, nspawned, nspawned_im, ndeath)
+                                            contrib, nattempts_spawn, nspawned, nspawned_im, ndeath)
         use dSFMT_interface, only: dSFMT_t
         use system, only: sys_t
         use qmc_data, only: qmc_state_t, ccmc_in_t
-        use determinants, only: det_info_t
-        use ccmc_data, only: cluster_t, multispawn_stats_t, ms_stats_update
+        use ccmc_data, only: multispawn_stats_t, ms_stats_update, wfn_contrib_t
 
         use excitations, only: excit_t
         use proc_pointers, only: gen_excit_ptr
@@ -950,8 +941,7 @@ contains
         type(dSFMT_T), intent(inout) :: rng
         type(qmc_state_t), intent(inout) :: qs
         type(ccmc_in_t), intent(in) :: ccmc_in
-        type(det_info_t), intent(inout) :: cdet, ldet, rdet
-        type(cluster_t), intent(inout) :: cluster, left_cluster, right_cluster
+        type(wfn_contrib_t), intent(inout) :: contrib
         type(excit_t) :: connection
         type(bloom_stats_t), intent(inout) :: bloom_stats
         type(logging_t), intent(in) :: logging_info
@@ -970,37 +960,37 @@ contains
         ! of cluster%amplitude/cluster%pselect.  If this is
         ! greater than cluster_multispawn_threshold, then nspawnings is
         ! increased to the ratio of these.
-        nspawnings_total=max(1,ceiling((abs(cluster%amplitude)&
-                                     /cluster%pselect)/ ccmc_in%cluster_multispawn_threshold))
+        nspawnings_total=max(1,ceiling((abs(contrib%cluster%amplitude)&
+                                     /contrib%cluster%pselect)/ ccmc_in%cluster_multispawn_threshold))
 
         call ms_stats_update(nspawnings_total, ms_stats)
         nattempts_spawn = nattempts_spawn + nspawnings_total
 
         do i = 1, nspawnings_total
-            if (cluster%excitation_level == huge(0)) then
+            if (contrib%cluster%excitation_level == huge(0)) then
                 ! When sampling e^-T H e^T, the cluster operators in e^-T
                 ! and e^T can excite to/from the same orbital, requiring
                 ! a different spawning routine
                 call linked_spawner_ccmc(rng, sys, qs, qs%spawn_store%spawn%cutoff, &
-                          cluster, gen_excit_ptr, nspawned, connection, nspawnings_total, &
-                          fexcit, cdet, ldet, rdet, left_cluster, right_cluster)
+                          contrib%cluster, gen_excit_ptr, nspawned, connection, nspawnings_total, &
+                          fexcit, contrib%cdet, contrib%ldet, contrib%rdet, contrib%left_cluster, contrib%right_cluster)
                 nspawned_im = 0_int_p
             else if (sys%read_in%comp) then
                 call spawner_complex_ccmc(rng, sys, qs, qs%spawn_store%spawn%cutoff, &
-                          cdet, cluster, gen_excit_ptr, nspawned, nspawned_im, &
+                          contrib%cdet, contrib%cluster, gen_excit_ptr, nspawned, nspawned_im, &
                           connection, nspawnings_total)
             else
                 call spawner_ccmc(rng, sys, qs, qs%spawn_store%spawn%cutoff, &
-                          ccmc_in%linked, cdet, cluster, gen_excit_ptr, logging_info, nspawned, &
+                          ccmc_in%linked, contrib%cdet, contrib%cluster, gen_excit_ptr, logging_info, nspawned, &
                           connection, nspawnings_total)
                 nspawned_im = 0_int_p
             end if
 
-            if (nspawned /= 0_int_p) call create_spawned_particle_ccmc(sys%basis, qs%ref, cdet, connection, &
-                                                nspawned, 1, cluster%excitation_level, &
+            if (nspawned /= 0_int_p) call create_spawned_particle_ccmc(sys%basis, qs%ref, contrib%cdet, connection, &
+                                                nspawned, 1, contrib%cluster%excitation_level, &
                                                 fexcit, qs%spawn_store%spawn, bloom_stats)
-            if (nspawned_im /= 0_int_p) call create_spawned_particle_ccmc(sys%basis, qs%ref, cdet, connection,&
-                                                nspawned_im, 2, cluster%excitation_level, &
+            if (nspawned_im /= 0_int_p) call create_spawned_particle_ccmc(sys%basis, qs%ref, contrib%cdet, connection,&
+                                                nspawned_im, 2, contrib%cluster%excitation_level, &
                                                 fexcit, qs%spawn_store%spawn, bloom_stats)
         end do
 
@@ -1008,13 +998,13 @@ contains
         ! a determinant is in the truncation space?  If so, also
         ! need to attempt a death/cloning step.
         ! optimisation: call only once per iteration for clusters of size 0 or 1 for ccmc_in%full_nc.
-        if (cluster%excitation_level <= qs%ref%ex_level) then
+        if (contrib%cluster%excitation_level <= qs%ref%ex_level) then
             ! Clusters above size 2 can't die in linked ccmc.
-            if ((.not. ccmc_in%linked) .or. cluster%nexcitors <= 2) then
+            if ((.not. ccmc_in%linked) .or. contrib%cluster%nexcitors <= 2) then
                 ! Do death for non-composite clusters directly and in a separate loop
-                if (cluster%nexcitors >= 2 .or. .not. ccmc_in%full_nc) then
+                if (contrib%cluster%nexcitors >= 2 .or. .not. ccmc_in%full_nc) then
                     call stochastic_ccmc_death(rng, qs%spawn_store%spawn, ccmc_in%linked, sys, &
-                                               qs, cdet, cluster, logging_info, ndeath)
+                                               qs, contrib%cdet, contrib%cluster, logging_info, ndeath)
                 end if
             end if
         end if

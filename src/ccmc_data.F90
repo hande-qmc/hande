@@ -1,6 +1,7 @@
 module ccmc_data
 
 use const, only: i0, p
+use determinants, only: det_info_t
 
 implicit none
 
@@ -34,6 +35,24 @@ type multispawn_stats_t
     integer :: nspawnings = 0
     integer :: nspawnings_max = 0
 end type multispawn_stats_t
+
+! Derived type to store all required information about the contribution selected
+! (cluster, the determinant resulting from collapse and the partition in linked
+! CCMC).
+type wfn_contrib_t
+    ! All cluster types we could possibly use in calculation.
+    ! left_cluster and right_cluster will only be initialised if doing
+    ! linked propogation.
+    type(cluster_t) :: cluster
+    type(cluster_t) :: left_cluster
+    type(cluster_t) :: right_cluster
+    ! All determinant types we could possibly use in calculation.
+    ! ldet and rdet will only be initialised if doing
+    ! linked propogation.
+    type(det_info_t) :: cdet
+    type(det_info_t) :: ldet
+    type(det_info_t) :: rdet
+end type wfn_contrib_t
 
 contains
 
