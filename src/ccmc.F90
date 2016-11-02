@@ -857,6 +857,24 @@ contains
                                     ccmc_in, ref_det, rdm)
 
         ! Performs all accumulation of values required for given ccmc clusters.
+        ! Updates projected energy and any RDMs with the contribution from the
+        ! current cluster.
+
+        ! In:
+        !   sys: information on system under consideration.
+        !   qs: information on current state of qmc calculation.
+        !   ccmc_in: options relating to ccmc passed in to calculation.
+        !   cdet: information on determinant resulting from collapsing current
+        !       cluster.
+        !   ref_det: reference determinant information.
+        !   cluster: information on cluster currently under consideration.
+
+        ! In/Out:
+        !   rng: random number generator.
+        !   D0_population_cycle: running total of reference population.
+        !   proj_energy_cycle: running total of projected energy contributions.
+        !   rdm: array containing reduced density matrix.
+
 
         use dSFMT_interface, only: dSFMT_t
         use system, only: sys_t
@@ -923,6 +941,36 @@ contains
     subroutine do_stochastic_ccmc_propagation(rng, sys, qs, &
                                             ccmc_in, logging_info, ms_stats, bloom_stats, &
                                             contrib, nattempts_spawn, nspawned, nspawned_im, ndeath)
+
+        ! Perform stochastic propogation of a cluster in an appropriate manner
+        ! for the given inputs. For stochastically selected clusters this
+        ! attempts spawning and death, adding any created particles to the
+        ! spawned list. For deterministically selected clusters spawning is
+        ! performed, while death is performed in-place separately.
+
+        ! This is currently non-specific to a any given type of selected
+        ! cluster, though this may change in future.
+
+        ! In:
+        !   sys:
+        !   ccmc_in:
+        !   logging_info:
+        ! In/Out:
+        !   rng: random number generator.
+        !   qs: qmc_state_t type, contains information about calculation.
+        !   ms_stats: statistics on multispawn performance.
+        !   bloom_stats: statistics on blooms during calculation.
+        !   contrib: derived type containing information on the current
+        !       wavefunction contribution being considered.
+        !   nattempts_spawn: running total of number of spawning attempts
+        !       made during this mc cycle.
+        !   nspawned: total number of real particles spawned during this
+        !       attempt.
+        !   nspawned: total number of imaginary particles spawned during
+        !       this attempt.
+        !   ndeath: total number of particles created via death.
+
+
         use dSFMT_interface, only: dSFMT_t
         use system, only: sys_t
         use qmc_data, only: qmc_state_t, ccmc_in_t

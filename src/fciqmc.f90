@@ -501,6 +501,32 @@ contains
                                           cdet, determ, determ_parent, pop, imag, ispace, nspawned, nspawned_im, &
                                           logging_info) 
 
+        ! Perform spawning from a given determinant in a given space.
+
+        ! In:
+        !   sys: information on system under consideration.
+        !   qs: qmc_state_t derived type with information on
+        !       current calculation.
+        !   logging_info: information on current logging
+        !       settings.
+        !   nattempts_current_det: total number of spawning attempts
+        !       to make on this determinant.
+        !   ispace: space currently under consideration.
+        !   cdet: determinant spawning is originating from.
+        !   determ_parent: true if parent determinant is within the
+        !       semistochastic space, otherwise false.
+        !   imag: true if spawning from psips within an imaginary
+        !       space.
+        !   pop: population of given determinant in given space.
+        !   determ: derived type containing information on semistochastic
+        !       space within propogation.
+        ! In/Out:
+        !   rng: random number generator.
+        !   bloom_stats: information on blooms during calculation.
+        !   spawn: stored information on spawning.
+        !   nspawned, nspawned_im: number of real and imaginary
+        !       particles spawned from this determinant.
+
         use dSFMT_interface, only: dSFMT_t
         use system, only: sys_t
         use qmc_data, only: qmc_state_t
