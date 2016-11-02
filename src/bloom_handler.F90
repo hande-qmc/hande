@@ -35,9 +35,9 @@ module bloom_handler
 
         ! The absolute number of particles which has to be spawned in one event to define
         ! a bloom.   Used (by convention) if mode = bloom_mode_fractionn.
-        integer :: nparticles = 3
+        integer :: threshold = 3
         ! nparticles in its encoded form, nparticles*encoding_factor.
-        integer(int_p) :: nparticles_encoded
+        integer(int_p) :: threshold_encoded
 
         ! The maximum number of verbose warnings to printed out by a processor.
         integer :: nverbose_warnings = 1
@@ -68,18 +68,18 @@ module bloom_handler
 
     contains
 
-        subroutine init_bloom_stats_t(bloom_stats, mode, prop, nparticles, nverbose_warnings, encoding_factor)
+        subroutine init_bloom_stats_t(bloom_stats, mode, prop, threshold, nverbose_warnings, encoding_factor)
 
             ! Initialise a bloom_stats_t object.
 
             ! In:
-            !    mode, prop, nparticles, nverbose_warnings, encoding_factor: see
+            !    mode, prop, threshold, nverbose_warnings, encoding_factor: see
             !        description of matching components in bloom_stats_t object.
             ! Out:
             !    bloom_stats: initialised object for QMC blooming stats.
 
             integer, intent(in) :: mode
-            integer, intent(in), optional :: nparticles, nverbose_warnings
+            integer, intent(in), optional :: threshold, nverbose_warnings
             real(p), intent(in), optional :: prop
             integer(int_p), intent(in), optional :: encoding_factor
             type(bloom_stats_t), intent(out) :: bloom_stats
@@ -91,11 +91,11 @@ module bloom_handler
 
             bloom_stats%mode = mode
             if (present(prop)) bloom_stats%prop = prop
-            if (present(nparticles)) bloom_stats%nparticles = nparticles
+            if (present(threshold)) bloom_stats%threshold = threshold
             if (present(nverbose_warnings)) bloom_stats%nverbose_warnings = nverbose_warnings
             if (present(encoding_factor)) bloom_stats%encoding_factor = encoding_factor
 
-            bloom_stats%nparticles_encoded = int(bloom_stats%nparticles, int_p)*bloom_stats%encoding_factor
+            bloom_stats%threshold_encoded = int(bloom_stats%threshold, int_p)*bloom_stats%encoding_factor
 
         end subroutine init_bloom_stats_t
 
@@ -170,9 +170,9 @@ module bloom_handler
             if ( bloom_stats%nwarnings < bloom_stats%nverbose_warnings ) then
                 select case(bloom_stats%mode)
                 case(bloom_mode_fixedn)
-                    write (6,'(1X, "# WARNING: more than", '//int_fmt(bloom_stats%nparticles,1)//',&
+                    write (6,'(1X, "# WARNING: more than", '//int_fmt(bloom_stats%threshold,1)//',&
                        &" particles spawned in a single event", '//int_fmt(bloom_stats%nblooms_curr,1)//',&
-                       &" times in the last report loop.")') bloom_stats%nparticles, bloom_stats%nblooms_curr
+                       &" times in the last report loop.")') bloom_stats%threshold, bloom_stats%nblooms_curr
                 case(bloom_mode_fractionn)
                     write (6,'(1X, "# WARNING: more than", '//int_fmt(int(bloom_stats%prop)*100,1)//',&
                        &"% of the total population spawned in a single event", '//int_fmt(bloom_stats%nblooms_curr,1)//',&

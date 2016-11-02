@@ -294,15 +294,14 @@ contains
 
     end subroutine partition_cluster
 
-    function calc_pgen(sys, excit_gen, excit_gen_data, f, connection, parent_det) result(pgen)
+    function calc_pgen(sys, excit_gen_data, f, connection, parent_det) result(pgen)
 
         ! Calculate the probability of an excitation being selected.
         ! Wrapper round system specific functions.
 
         ! In:
         !    sys: the system being studied
-        !    excit_gen: which excitation generator is being used.  Should correspond to a value in the excit_gen_* enum in qmc_data.
-        !    qmc_state: input options relating to QMC methods.
+        !    excit_gen_data: information on excitation generator being used.
         !    f: bit string representation of parent excitor
         !    connection: excitation connection between the current excitor
         !        and the child excitor, on which progeny are spawned.
@@ -325,7 +324,6 @@ contains
         use excit_gens, only: excit_gen_data_t
 
         type(sys_t), intent(in) :: sys
-        integer, intent(in) :: excit_gen
         type(excit_gen_data_t), intent(in) :: excit_gen_data
         integer(i0), intent(in) :: f(sys%basis%string_len)
         type(excit_t), intent(in) :: connection
@@ -338,7 +336,7 @@ contains
         associate(a=>connection%to_orb(1), b=>connection%to_orb(2), i=>connection%from_orb(1), j=>connection%from_orb(2))
             select case(sys%system)
             case(read_in)
-                if (excit_gen == excit_gen_no_renorm) then
+                if (excit_gen_data%excit_gen == excit_gen_no_renorm) then
                     if (connection%nexcit == 1) then
                         pgen = excit_gen_data%pattempt_single * calc_pgen_single_mol_no_renorm(sys, a)
                     else

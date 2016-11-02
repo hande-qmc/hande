@@ -628,8 +628,7 @@ contains
                     ! It's possible to get the same excitation from different partitionings
                     ! of the cluster so they all need to be accounted for in pgen
                     call create_excited_det(sys%basis, rdet%f, connection, new_det)
-! [review] - AJWT: Could calc_pgen not now just use the excit_gen value in excit_gen_data?
-                    pgen = pgen + calc_pgen(sys, qs%excit_gen_data%excit_gen, qs%excit_gen_data, rdet%f, connection, rdet)
+                    pgen = pgen + calc_pgen(sys, qs%excit_gen_data, rdet%f, connection, rdet)
 
                     ! Sign of the term in the commutator depends on the number of Ts in left_cluster
                     ! also need to account for possible sign change on going from excitor to determinant
@@ -819,8 +818,7 @@ contains
             call create_spawned_particle_ptr(basis, ref, cdet, connection, nspawned, ispace, &
                                             spawn)
         end if
-! [review] - AJWT: bloom_stats%nparticles_encoded sounds like a rather ambiguous name for what's the bloom threshold.
-        if (abs(nspawned) > bloom_stats%nparticles_encoded) call accumulate_bloom_stats(bloom_stats, nspawned)
+        if (abs(nspawned) > bloom_stats%threshold_encoded) call accumulate_bloom_stats(bloom_stats, nspawned)
 
     end subroutine create_spawned_particle_ccmc
 

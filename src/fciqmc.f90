@@ -584,13 +584,13 @@ contains
                     call create_spawned_particle_ptr(sys%basis, qs%ref, cdet, connection, nspawned, space_real, &
                                                      spawn)
                 end if
-                if (abs(nspawned) >= bloom_stats%nparticles_encoded) &
+                if (abs(nspawned) >= bloom_stats%threshold_encoded) &
                     call accumulate_bloom_stats(bloom_stats, nspawned)
             end if
             if (nspawned_im /= 0_int_p) then
                 call create_spawned_particle_ptr(sys%basis, qs%ref, cdet, connection, nspawned_im, space_imag, &
                                                      spawn)
-                if (abs(nspawned_im) >= bloom_stats%nparticles_encoded) &
+                if (abs(nspawned_im) >= bloom_stats%threshold_encoded) &
                     call accumulate_bloom_stats(bloom_stats, nspawned_im)
             end if
         end do

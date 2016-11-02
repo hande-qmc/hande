@@ -298,7 +298,7 @@ contains
         use ccmc_data
         use ccmc_selection, only: select_cluster, create_null_cluster, select_cluster_non_composite
         use ccmc_death_spawning, only: stochastic_ccmc_death_nc
-        use ccmc_utils, only: init_contrib, find_D0, cumulative_population
+        use ccmc_utils, only: init_contrib, dealloc_contrib, find_D0, cumulative_population
         use determinants, only: det_info_t, alloc_det_info_t, dealloc_det_info_t, sum_sp_eigenvalues_occ_list, &
                                 sum_sp_eigenvalues_bit_string, decode_det
         use excitations, only: excit_t, get_excitation_level, get_excitation
@@ -585,8 +585,8 @@ contains
                                            tot_abs_nint_pop)
 
                 associate(bs=>bloom_stats, nstates_active=>qs%psip_list%nstates)
-                    bs%nparticles = int(real(nparticles_old(1),p)*bs%prop)
-                    bs%nparticles_encoded = int(real(nparticles_old(1),p)*bs%prop*bs%encoding_factor, int_p)
+                    bs%threshold = int(real(nparticles_old(1),p)*bs%prop)
+                    bs%threshold_encoded = int(real(nparticles_old(1),p)*bs%prop*bs%encoding_factor, int_p)
                 end associate
 
                 ! Two options for evolution:
@@ -827,20 +827,9 @@ contains
             call dealloc_det_info_t(ref_det)
         end if
 
-! [review] - AJWT: Could this be put into a dealloc_contrib function?
+        call dealloc_contrib(contrib, ccmc_in%linked)
         do i = 0, nthreads-1
             call dSFMT_end(rng(i))
-            call dealloc_det_info_t(contrib(i)%cdet)
-            deallocate(contrib(i)%cluster%excitors, stat=ierr)
-            call check_deallocate('contrib%cluster%excitors', ierr)
-            if (ccmc_in%linked) then
-                call dealloc_det_info_t(contrib(i)%ldet)
-                call dealloc_det_info_t(contrib(i)%rdet)
-                deallocate(contrib(i)%left_cluster%excitors, stat=ierr)
-                call check_deallocate('contrib%left_cluster%excitors', ierr)
-                deallocate(contrib(i)%right_cluster%excitors, stat=ierr)
-                call check_deallocate('contrib%right_cluster%excitors', ierr)
-            end if
         end do
 
     end subroutine do_ccmc
