@@ -827,6 +827,7 @@ contains
             call dealloc_det_info_t(ref_det)
         end if
 
+! [review] - AJWT: Could this be put into a dealloc_contrib function?
         do i = 0, nthreads-1
             call dSFMT_end(rng(i))
             call dealloc_det_info_t(contrib(i)%cdet)
@@ -943,9 +944,10 @@ contains
         ! cluster, though this may change in future.
 
         ! In:
-        !   sys:
-        !   ccmc_in:
-        !   logging_info:
+        !   sys: information on system under consideration.
+        !   ccmc_in: options relating to ccmc passed in to calculation.
+        !   logging_info: logging_t object with info about current logging
+        !        when debug is true. 
         ! In/Out:
         !   rng: random number generator.
         !   qs: qmc_state_t type, contains information about calculation.
@@ -957,7 +959,7 @@ contains
         !       made during this mc cycle.
         !   nspawned: total number of real particles spawned during this
         !       attempt.
-        !   nspawned: total number of imaginary particles spawned during
+        !   nspawned_im: total number of imaginary particles spawned during
         !       this attempt.
         !   ndeath: total number of particles created via death.
 
