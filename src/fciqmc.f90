@@ -97,9 +97,7 @@ contains
         integer(int_64) :: nattempts
         real(dp), allocatable :: nparticles_old(:)
 
-
-        integer(int_p) :: nspawned, nspawned_im
-        integer(int_p) ::  ndeath, ndeath_im
+        integer(int_p) :: ndeath
         integer :: nattempts_current_det, nspawn_events
         type(excit_t) :: connection
         type(hmatel_t) :: hmatel
@@ -224,7 +222,7 @@ contains
                                            qs%spawn_store%spawn, qmc_in%use_mpi_barriers)
                 end if
 
-                call init_mc_cycle(qs%psip_list, qs%spawn_store%spawn, nattempts, ndeath, ndeath_im = ndeath_im, &
+                call init_mc_cycle(qs%psip_list, qs%spawn_store%spawn, nattempts, ndeath, &
                                             complx = sys%read_in%comp)
                 call load_balancing_wrapper(sys, qs%propagator, qs%ref, load_bal_in, annihilation_flags, &
                                             fciqmc_in%non_blocking_comm, rng, qs%psip_list, qs%spawn_store%spawn, &
@@ -268,7 +266,7 @@ contains
                         call do_fciqmc_spawning_attempt(rng, qs%spawn_store%spawn, bloom_stats, sys, qs, nattempts_current_det, &
                                                         cdet, determ, determ_parent, qs%psip_list%pops(ispace, idet), &
                                                         sys%read_in%comp .and. modulo(ispace,2)==0, &
-                                                        ispace, nspawned, nspawned_im, logging_info)
+                                                        ispace, logging_info)
 
                         ! Clone or die.
                         if (.not. determ_parent) then
@@ -283,7 +281,7 @@ contains
                     if (fciqmc_in%non_blocking_comm) then
                         call receive_spawned_walkers(spawn_recv, req_data_s)
                         call evolve_spawned_walkers(sys, qmc_in, qs, spawn_recv, spawn, cdet, rng, ndeath, &
-                                                    fciqmc_in%quadrature_initiator)
+                                                    fciqmc_in%quadrature_initiator, logging_info, bloom_stats)
                         call direct_annihilation_received_list(sys, rng, qs%ref, annihilation_flags, pl, spawn_recv)
                         ! Need to add walkers which have potentially moved processor to the spawned walker list.
                         if (qs%par_info%load%needed) then
@@ -380,7 +378,7 @@ contains
     end subroutine do_fciqmc
 
     subroutine evolve_spawned_walkers(sys, qmc_in, qs, spawn_recv, spawn_to_send, cdet, rng, ndeath, &
-                                    quadrature_initiator)
+                                    quadrature_initiator, logging_info, bloom_stats)
 
         ! Evolve spawned list of walkers one time step.
         ! Used for non-blocking communications.
@@ -389,6 +387,7 @@ contains
         !   sys: system being studied.
         !   qmc_in: input options relating to QMC methods.
         !   quadrature_initiator: how to apply initiator approximation in complex systems.
+        !   logging_info: information on level of logging to use within calculation.
         ! In/Out:
         !   qs: qmc_state_t containing information about the reference det and estimators.
         !   spawn: spawn_t object containing walkers spawned onto this processor during previous time step.
@@ -396,6 +395,7 @@ contains
         !        / deallocated in do_fciqmc).
         !   rng: random number generator.
         !   ndeath: running total of number of particles which have died or been cloned.
+        !   bloom_stats: information on blooming within calculation.
 
         use proc_pointers, only: sc0_ptr
         use death, only: stochastic_death
@@ -409,6 +409,8 @@ contains
         use system, only: sys_t
         use qmc_common, only: decide_nattempts
         use hamiltonian_data
+        use bloom_handler, only: bloom_stats_t
+        use semi_stoch, only: semi_stoch_t
 
         type(sys_t), intent(in) :: sys
         type(qmc_in_t), intent(in) :: qmc_in
@@ -421,13 +423,14 @@ contains
 
         type(excit_t) :: connection
         type(hmatel_t) :: hmatel
-        integer :: idet, iparticle, nattempts_current_det, ispace
-        integer(int_p) :: nspawned, nspawned_im, scratch
+        integer :: idet, nattempts_current_det, ispace
         integer(int_p) :: int_pop(spawn_recv%ntypes)
         real(p) :: real_pop(spawn_recv%ntypes)
         real(dp) :: list_pop
 
-        type(logging_t) :: logging_info
+        type(logging_t), intent(in) :: logging_info
+        type(bloom_stats_t), intent(inout) :: bloom_stats
+        type(semi_stoch_t) :: determ
 
         allocate(cdet%f(sys%basis%tensor_label_len))
         allocate(cdet%data(1))
@@ -459,28 +462,10 @@ contains
 
                 nattempts_current_det = decide_nattempts(rng, real_pop(ispace))
 
-                ! Possibly redundant if only one walker spawned at each spawning event.
-                do iparticle = 1, nattempts_current_det
-
-                    ! Attempt to spawn.
-                    call spawner_ptr(rng, sys, qs, spawn_to_send%cutoff, qs%psip_list%pop_real_factor, cdet, int_pop(ispace), &
-                                     gen_excit_ptr, qs%trial%wfn_dat, logging_info, nspawned, nspawned_im, connection)
-
-                    if (sys%read_in%comp .and. ispace == 2) then
-                        ! If imaginary parent have to factor into resulting signs/reality.
-                        scratch = nspawned_im
-                        nspawned_im = nspawned
-                        nspawned = -scratch
-                    end if
-                    ! Spawn if attempt was successful.
-                    if (nspawned /= 0) then
-                        call create_spawned_particle_ptr(sys%basis, qs%ref, cdet, connection, nspawned, 1, spawn_to_send)
-                    end if
-                    if (nspawned_im /= 0) then
-                        call create_spawned_particle_ptr(sys%basis, qs%ref, cdet, connection, nspawned_im, 2, spawn_to_send)
-                    end if
-
-                end do
+                call do_fciqmc_spawning_attempt(rng, spawn_to_send, bloom_stats, sys, qs, nattempts_current_det, &
+                                            cdet, determ, .false., int_pop(ispace), &
+                                            sys%read_in%comp .and. modulo(ispace,2) == 0, &
+                                            ispace, logging_info)
 
                 ! Clone or die.
                 ! list_pop is meaningless as particle_t%nparticles is updated upon annihilation.
@@ -498,8 +483,8 @@ contains
     end subroutine evolve_spawned_walkers
 
     subroutine do_fciqmc_spawning_attempt(rng, spawn, bloom_stats, sys, qs, nattempts_current_det, &
-                                          cdet, determ, determ_parent, pop, imag, ispace, nspawned, nspawned_im, &
-                                          logging_info) 
+                                          cdet, determ, determ_parent, pop, imag, ispace, &
+                                          logging_info)
 
         ! Perform spawning from a given determinant in a given space.
 
@@ -524,8 +509,6 @@ contains
         !   rng: random number generator.
         !   bloom_stats: information on blooms during calculation.
         !   spawn: stored information on spawning.
-        !   nspawned, nspawned_im: number of real and imaginary
-        !       particles spawned from this determinant.
 
         use dSFMT_interface, only: dSFMT_t
         use system, only: sys_t
@@ -550,7 +533,7 @@ contains
         type(dSFMT_t), intent(inout) :: rng
         type(bloom_stats_t), intent(inout) :: bloom_stats
         type(spawn_t), intent(inout) :: spawn
-        integer(int_p), intent(inout) :: nspawned, nspawned_im
+        integer(int_p) :: nspawned, nspawned_im
         type(semi_stoch_t), intent(in) :: determ
 
         type(excit_t) :: connection
