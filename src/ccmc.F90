@@ -437,15 +437,6 @@ contains
             call dSFMT_init(qmc_in%seed+iproc+i*nprocs, 50000, rng(i))
         end do
 
-        ! Whilst cluster data can be accessed from cdet, I recommend explicitly
-        ! passing it as an argument rather than accessing cdet%cluster both for
-        ! the sake of brevity and clarity.  In particular, I wish to encourage
-        ! not using cdet%cluster in order to maintain (where possible and
-        ! relevant) generality in routines applicable to FCIQMC and CCMC.
-        !do i = 0, nthreads-1
-        !    cdet(i)%cluster => cluster(i)
-        !end do
-
         ! ...and scratch space for calculative cumulative probabilities.
         allocate(cumulative_abs_nint_pops(size(qs%psip_list%states,dim=2)), stat=ierr)
         call check_allocate('cumulative_abs_nint_pops', size(qs%psip_list%states,dim=2), ierr)
