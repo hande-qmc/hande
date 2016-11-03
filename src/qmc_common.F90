@@ -638,7 +638,7 @@ contains
         logical :: nb_comm_local
 #ifdef PARALLEL
         integer :: ierr
-        real(p) :: proj_energy_sum, D0_population_sum
+        real(p) :: proj_energy_sum(qs%psip_list%nspaces), D0_population_sum(qs%psip_list%nspaces)
 #endif
 
         ! Calculate the projected energy based upon the initial walker
@@ -661,8 +661,10 @@ contains
             ! are required to update the projected estimator.
             D0_excit = get_excitation(sys%nel, sys%basis, cdet%f, qs%ref%f0)
             if (sys%read_in%comp) then
-                call update_proj_energy_ptr(sys, qs%ref%f0, qs%trial%wfn_dat, cdet, weighted_population, &
-                                            qs%estimators(1), D0_excit, hmatel)
+                do ispace = 1, qs%psip_list%nspaces, 2
+                    call update_proj_energy_ptr(sys, qs%ref%f0, qs%trial%wfn_dat, cdet, weighted_population(ispace:ispace+1), &
+                                                qs%estimators(ispace), D0_excit, hmatel)
+                end do
             else
                 do ispace = 1, qs%psip_list%nspaces
                     call update_proj_energy_ptr(sys, qs%ref%f0, qs%trial%wfn_dat, cdet, [weighted_population(ispace)], &
@@ -695,8 +697,10 @@ contains
                                MPI_SUM, MPI_COMM_WORLD, ierr)
             call mpi_allreduce(qs%psip_list%nparticles, ntot_particles, qs%psip_list%nspaces, MPI_REAL8, &
                                MPI_SUM, MPI_COMM_WORLD, ierr)
-            call mpi_allreduce(qs%estimators%D0_population, D0_population_sum, 1, mpi_preal, MPI_SUM, MPI_COMM_WORLD, ierr)
-            call mpi_allreduce(qs%psip_list%nstates, qs%estimators%tot_nstates, 1, MPI_INTEGER, MPI_SUM, MPI_COMM_WORLD, ierr)
+            call mpi_allreduce(qs%estimators%D0_population, D0_population_sum, qs%psip_list%nspaces, mpi_preal, MPI_SUM, &
+                               MPI_COMM_WORLD, ierr)
+            call mpi_allreduce(qs%psip_list%nstates, qs%estimators%tot_nstates, qs%psip_list%nspaces, MPI_INTEGER, MPI_SUM, &
+                               MPI_COMM_WORLD, ierr)
             qs%estimators%proj_energy = proj_energy_sum
             qs%estimators%D0_population = D0_population_sum
             ! TODO: HFS, DMQMC quantities

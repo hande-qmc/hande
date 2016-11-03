@@ -509,9 +509,9 @@ contains
                         qs%vary_shift(i) = .true.
                         if (qmc_in%vary_shift_from_proje) then
                             ! Set shift to be instantaneous projected energy.
-                            qs%shift = real(est(i)%proj_energy_comp/est(i)%D0_population_comp, p)
+                            qs%shift(i) = real(est(i)%proj_energy_comp/est(i)%D0_population_comp, p)
                         else
-                            qs%shift = qmc_in%vary_shift_from
+                            qs%shift(i) = qmc_in%vary_shift_from
                         end if
                     end if
                 end do
