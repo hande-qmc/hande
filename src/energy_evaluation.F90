@@ -478,7 +478,7 @@ contains
             end if
         else if (comp_param) then
             do i = 1, ntypes, 2
-                if (qs%vary_shift(1)) then
+                if (qs%vary_shift(i)) then
                     call update_shift(qmc_in, qs, qs%shift(i), ntot_particles_old(i) + ntot_particles_old(i+1), &
                                         ntot_particles(i) + ntot_particles(i+1), qmc_in%ncycles)
                     qs%shift(i+1) = qs%shift(i)
