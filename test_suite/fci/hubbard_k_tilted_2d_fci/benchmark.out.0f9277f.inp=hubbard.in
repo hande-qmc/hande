@@ -1,0 +1,295 @@
+
+   HANDE
+
+ ================================================================
+ Compiled on Nov 03 2016 at 21:14:15
+ Compiled using cmth.(optimised)
+ HANDE version: 1.1-dev
+ git sha1 hash:
+     0f9277f9e99eeb05392bc6c1f76b93ca9f9cf35f
+ Hostname:
+     hylleraas
+ Working directory: 
+     /home/fm813/projects/hande/test_suite/fci/hubbard_k_tilted_2d_fci
+ Started running on 03/11/2016 at 21:15:47
+ Calculation UUID: 5ab75f00-3d29-4f61-8454-dd2c6b08306e.
+ Preprocessor settings:
+     DISABLE_HDF5 not defined.  HDF5 enabled.
+     DISABLE_LANCZOS not defined.  Lanczos enabled.
+     DISABLE_UUID not defined.  UUID enabled.
+     PARALLEL not defined.  MPI parallelization disabled.
+     DISABLE_SCALAPACK not defined.  ScaLAPACK enabled.
+     SINGLE_PRECISION not defined.  Double precision used throughout.
+     USE_POPCNT not defined.  Internal POPCNT procedure used.
+     DET_SIZE = 32.
+     POP_SIZE = 32.
+ ================================================================
+
+ Input options
+ -------------
+
+sys = hubbard_k {
+    electrons = 4,
+    lattice = { {2, 2}, {2, -2} },
+    ms = 0,
+    sym = 1,
+    twist = {0.1, 0.1},
+}
+
+fci {
+    sys = sys,
+    fci = {
+        blacs_block_size = 2,
+    },
+}
+
+ -------------
+
+ Basis functions
+ ---------------
+
+ Spin given in units of 1/2.
+ k-points given in terms of the reciprocal lattice vectors of the crystal cell.
+ Applying a twist angle of: (0.1000,0.1000).
+
+ index   k-point        ms       <i|h|i>
+     1   (  0,  0)      1       -3.90211303E+00
+     2   (  0,  0)     -1       -3.90211303E+00
+     3   (  0, -1)      1       -6.18033989E-01
+     4   (  0, -1)     -1       -6.18033989E-01
+     5   ( -1,  0)      1       -6.18033989E-01
+     6   ( -1,  0)     -1       -6.18033989E-01
+     7   (  1,  1)      1       -9.78869674E-02
+     8   (  1,  1)     -1       -9.78869674E-02
+     9   (  1, -1)      1        9.78869674E-02
+    10   (  1, -1)     -1        9.78869674E-02
+    11   (  1,  0)      1        6.18033989E-01
+    12   (  1,  0)     -1        6.18033989E-01
+    13   (  0,  1)      1        6.18033989E-01
+    14   (  0,  1)     -1        6.18033989E-01
+    15   (  2,  0)      1        3.90211303E+00
+    16   (  2,  0)     -1        3.90211303E+00
+
+ Number of electrons: 4
+ Number of basis functions: 16
+
+ Bit-length of integers used to store determinant bit-strings: 32
+ Number of integers used to store determinant bit-strings: 1
+
+ Symmetry information
+ --------------------
+
+ The table below gives the label and inverse of each wavevector.
+
+ Index    k-point      Inverse
+   1      (  0,  0)        1
+   2      (  0, -1)        7
+   3      ( -1,  0)        6
+   4      (  1,  1)        4
+   5      (  1, -1)        5
+   6      (  1,  0)        3
+   7      (  0,  1)        2
+   8      (  2,  0)        8
+
+ The matrix below gives the result of k_i+k_j to within a reciprocal lattice vector.
+
+  1  2  3  4  5  6  7  8
+  2  8  4  6  3  5  1  7
+  3  4  8  7  2  1  5  6
+  4  6  7  1  8  2  3  5
+  5  3  2  8  1  7  6  4
+  6  5  1  2  7  8  4  3
+  7  1  5  3  6  4  8  2
+  8  7  6  5  4  3  2  1
+
+ FCI
+ ---
+
+ -- Start JSON block --
+ {
+     "system": {
+         "nbasis": 16,   
+         "nel": 4,   
+         "nvirt": 12,   
+         "Ms": 0,   
+         "nalpha": 2,   
+         "nbeta": 2,   
+         "nvirt_alpha": 6,   
+         "nvirt_beta": 6,   
+         "nsym": 8,   
+         "sym0": 1,   
+         "sym_max": 8,   
+         "nsym_tot": 8,   
+         "sym0_tot": 1,   
+         "sym_max_tot": 8,   
+         "symmetry": 1,   
+         "tot_sym": false,   
+         "aufbau_sym": false,   
+         "max_number_excitations": 4,   
+         "lattice": {
+             "ndim": 2,   
+             "nsites": 8,   
+             "lattice": [[ 2, 2],[ 2, -2]]
+         },
+         "hubbard": {
+             "U": 1.00000000,   
+             "t": 1.00000000,   
+             "ktwist": [0.10000000,0.10000000]
+         }
+     },
+     "fci_in": {
+         "write_hamiltonian": false,   
+         "hamiltonian_file":  "HAMIL",   
+         "write_determinants": false,   
+         "determinant_file":  "DETS",   
+         "print_fci_wfn": 0,   
+         "print_fci_wfn_file":  "FCI_WFN",   
+         "analyse_fci_wfn": 0,   
+         "block_size": 2,   
+         "nlanczos_eigv": 5,   
+         "lanczos_string_len": 40,   
+         "direct_lanczos": false    
+     },
+     "reference": {
+         "ex_level": 4    
+     }
+ }
+ -- End JSON block --
+
+ The table below gives the number of determinants for each symmetry with Ms=0.
+
+ Symmetry index      # dets
+         1              104
+         2               96
+         3               96
+         4               96
+         5               96
+         6               96
+         7               96
+         8              104
+
+ Performing exact diagonalisation...
+
+ LAPACK diagonalisation results
+ ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+  State     Energy
+      1    -7.647891312926
+      2    -7.483795488708
+      3    -7.474447455090
+      4    -7.472127841140
+      5    -7.330036228048
+      6    -6.699940890332
+      7    -5.236067977500
+      8    -4.809314599919
+      9    -4.804913342857
+     10    -4.777052008442
+     11    -4.583042577438
+     12    -4.578947133843
+     13    -3.804226065181
+     14    -3.804226065181
+     15    -3.581996325964
+     16    -3.359527171768
+     17    -3.358803300249
+     18    -3.349164205956
+     19    -3.332501183432
+     20    -3.311990279035
+     21    -3.110410224752
+     22    -3.106908144339
+     23    -3.095567611892
+     24    -2.889763026581
+     25    -2.763932022500
+     26    -2.323258179523
+     27    -2.248108477484
+     28    -2.202128992104
+     29    -2.066833240377
+     30    -2.029587396956
+     31    -1.985008643439
+     32    -1.007608155518
+     33    -0.977746637782
+     34    -0.970073400299
+     35    -0.829300711026
+     36    -0.802867856132
+     37    -0.786671682160
+     38    -0.622457184360
+     39    -0.461320184927
+     40    -0.000000000000
+     41    -0.000000000000
+     42    -0.000000000000
+     43     0.080934552868
+     44     0.110962438766
+     45     0.122840810404
+     46     0.159519413647
+     47     0.338465885960
+     48     0.341705963417
+     49     0.366482126200
+     50     0.375510336134
+     51     0.467923118442
+     52     0.488761889958
+     53     0.496444150041
+     54     0.548135180054
+     55     0.550014610910
+     56     0.563327091793
+     57     0.631926521055
+     58     0.750483829645
+     59     0.777051507619
+     60     0.780452045844
+     61     0.785471211180
+     62     0.807220321561
+     63     0.954679913777
+     64     1.000000000000
+     65     1.487288223111
+     66     1.503930492681
+     67     1.504947480847
+     68     1.516436321241
+     69     1.815870521101
+     70     1.827323956853
+     71     1.828358541030
+     72     2.068056509095
+     73     2.317795329013
+     74     2.763932022500
+     75     3.196415932879
+     76     3.205547806731
+     77     3.246688412594
+     78     3.321820685590
+     79     3.471923097700
+     80     3.524297720736
+     81     3.804226065181
+     82     3.804226065181
+     83     4.071238836896
+     84     4.318154198971
+     85     4.340268614952
+     86     4.348193064997
+     87     4.354294945200
+     88     4.358419229483
+     89     4.591698662245
+     90     4.596886518206
+     91     4.623964061204
+     92     4.859816803345
+     93     5.236067977500
+     94     5.776696480906
+     95     5.798070172491
+     96     5.799166023596
+     97     6.059692672945
+     98     6.060711647632
+     99     8.079873693199
+    100     8.227296775157
+    101     8.230375791078
+    102     8.256584422977
+    103     8.400775623105
+    104     8.983918905738
+
+ Timing breakdown
+ ----------------
+
+ Time for each calculation section (seconds):
+
+ Momentum space hubbard model initialisation: .00
+ FCI calculation                            : .00
+
+ ================================================================
+ Finished running on 03/11/2016 at 21:15:47
+ Wall time (seconds):                           0.00
+ CPU time (per processor, seconds):             0.00
+ ================================================================
+
