@@ -98,7 +98,7 @@ contains
         real(dp), allocatable :: nparticles_old(:)
 
         integer(i0) :: f_child(sys%basis%string_len)
-        integer(int_p) :: nspawned, nspawned_im
+        integer(int_p) :: nspawned, nspawned_im, scratch
         integer(int_p) ::  ndeath, ndeath_im
         integer :: nattempts_current_det, nspawn_events, target_space
         type(excit_t) :: connection
@@ -283,10 +283,19 @@ contains
                                             cdet, qs%psip_list%pops(ispace, idet), gen_excit_ptr, qs%trial%wfn_dat, &
                                             logging_info, nspawned, nspawned_im, connection)
                             ! If imaginary parent have to factor into resulting signs/reality.
-                            if (imag) nspawned_im = -nspawned_im
+                            if (imag) then
+                                scratch = nspawned
+                                nspawned = -nspawned_im
+                                nspawned_im = scratch
+                            end if
 
                             ! Spawn if attempt was successful.
                             if (nspawned /= 0_int_p) then
+                                if (imag) then
+                                    target_space = ispace - 1
+                                else
+                                    target_space = ispace
+                                end if
                                 if (determ_parent) then
                                     call create_excited_det(sys%basis, cdet%f, connection, f_child)
                                     determ_child = check_if_determ(determ%hash_table, determ%dets, f_child)
@@ -298,7 +307,7 @@ contains
                                         nspawned = 0_int_p
                                     end if
                                 else
-                                    call create_spawned_particle_ptr(sys%basis, qs%ref, cdet, connection, nspawned, ispace, &
+                                    call create_spawned_particle_ptr(sys%basis, qs%ref, cdet, connection, nspawned, target_space, &
                                                                          qs%spawn_store%spawn)
                                 end if
                                 if (abs(nspawned) >= bloom_stats%nparticles_encoded) &
@@ -306,7 +315,7 @@ contains
                             end if
                             if (nspawned_im /= 0_int_p) then
                                 if (imag) then
-                                    target_space = ispace - 1
+                                    target_space = ispace
                                 else
                                     target_space = ispace + 1
                                 end if
