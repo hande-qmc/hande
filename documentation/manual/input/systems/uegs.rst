@@ -89,9 +89,9 @@ Options
 
     Optional.  Default: 0 in each dimension.
 
-    Apply a twist to the wavevector grid.  The twist is an :math:`N`-dimensional vector in
-    units of :math:`2\pi`.  The twist angle should be within the first Brillouin zone, and
-    hence the components should be between -0.5 and +0.5.
+    Apply a twist to the wavevector grid.  The twist is an *ndim*-dimensional vector in
+    terms of the reciprocal lattice vectors.  The twist angle is chosen to be within the
+    primitive reciprocal cell, and hence the components should be between -0.5 and +0.5.
 ``verbose``
     type: boolean.
 
