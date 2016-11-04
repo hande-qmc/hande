@@ -1009,8 +1009,12 @@ contains
         ! Zero population for all spaces.
         pl%pops(:,pl%nstates) = 0_int_p
         ! Set initial population of Hamiltonian walkers.
-        pl%pops(1,pl%nstates) = nint(D0_pop)*pl%pop_real_factor
-        if (fciqmc_in%replica_tricks) pl%pops(:,pl%nstates) = nint(D0_pop)*pl%pop_real_factor
+        if (sys%read_in%comp) then
+            ! Only have population in real spaces
+            pl%pops(1::2,pl%nstates) = nint(D0_pop)*pl%pop_real_factor
+        else
+            pl%pops(:,pl%nstates) = nint(D0_pop)*pl%pop_real_factor
+        end if
 
         ! Determine and set properties for the reference state which we start on.
         ! By definition, when using a single determinant as a reference state:

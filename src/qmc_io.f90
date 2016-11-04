@@ -34,7 +34,7 @@ contains
         logical, optional, intent(in) :: cmplx_est, rdm_energy
 
         logical :: cmplx_est_set
-        integer :: i
+        integer :: i, nreplicas
         character(20) :: column_title
 
         cmplx_est_set = .false.
@@ -58,16 +58,26 @@ contains
         write (6,'(1X,"time: average time per Monte Carlo cycle.",/)')
         write (6,'(1X,"Note that all particle populations are averaged over the report loop.",/)')
 
-        if (ntypes > 1 .and. .not. cmplx_est_set) then
+        if (cmplx_est_set) then
+            nreplicas = ntypes/2
+        else
+            nreplicas = ntypes
+        end if
+
+        if (nreplicas > 1) then
             ! Label replicas
             write (6,'(1X,"#",1X)', advance='no')
             call write_column_title(6, '', int_val=.true.)
-            do i = 1, ntypes
+            do i = 1, nreplicas
                 write (column_title, '("Replica ",i0)') i
                 call write_column_title(6, trim(column_title))
                 call write_column_title(6, '')
                 call write_column_title(6, '')
                 call write_column_title(6, '')
+                if (cmplx_est_set) then
+                    call write_column_title(6, '')
+                    call write_column_title(6, '')
+                end if
             end do
             write (6,'()')
         end if
