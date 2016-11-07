@@ -305,8 +305,7 @@ contains
                                     if (nspawned /= 0_int_p) then
                                         call create_spawned_particle_dm_ptr(sys%basis, qs%ref, cdet1, connection, nspawned, &
                                                                             spawning_end, ireplica, qs%spawn_store%spawn)
-                                        if (abs(nspawned) >= bloom_stats%threshold_encoded) &
-                                            call accumulate_bloom_stats(bloom_stats, nspawned)
+                                        call accumulate_bloom_stats(bloom_stats, nspawned)
                                     end if
 
                                     ! Now attempt to spawn from the second end.
@@ -319,8 +318,7 @@ contains
                                         if (nspawned /= 0_int_p) then
                                             call create_spawned_particle_dm_ptr(sys%basis, qs%ref, cdet2, connection, nspawned, &
                                                                                 spawning_end, ireplica, qs%spawn_store%spawn)
-                                            if (abs(nspawned) >= bloom_stats%threshold_encoded) &
-                                                call accumulate_bloom_stats(bloom_stats, nspawned)
+                                            call accumulate_bloom_stats(bloom_stats, nspawned)
                                         end if
                                     end if
                                 end do

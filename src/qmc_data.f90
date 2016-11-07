@@ -612,6 +612,22 @@ end type annihilation_flags_t
 
 contains
 
+    subroutine zero_estimators_t(estimators)
+
+        ! Zeros all values associated with a estimators_t derived type.
+
+        ! In/Out:
+        !   estimators: estimators_t object to be zeroed.
+
+        type(estimators_t), intent(inout) :: estimators
+
+        estimators%D0_population = 0.0_p
+        estimators%proj_energy = 0.0_p
+        estimators%D0_population_comp = cmplx(0.0, 0.0, p)
+        estimators%proj_energy_comp = cmplx(0.0, 0.0, p)
+
+    end subroutine zero_estimators_t
+
     subroutine qmc_in_t_json(js, qmc, terminal)
 
         ! Serialise a qmc_in_t object in JSON format.

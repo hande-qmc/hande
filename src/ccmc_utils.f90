@@ -297,22 +297,6 @@ contains
 
     end subroutine convert_excitor_to_determinant
 
-    subroutine zero_estimators_t(estimators)
-
-        ! [review] - JSS: why is this in ccmc_utils rather than qmc_data?
-        ! [review] - JSS: docstring?
-
-        use qmc_data, only: estimators_t
-
-        type(estimators_t), intent(inout) :: estimators
-
-        estimators%D0_population = 0.0_p
-        estimators%proj_energy = 0.0_p
-        estimators%D0_population_comp = cmplx(0.0, 0.0, p)
-        estimators%proj_energy_comp = cmplx(0.0, 0.0, p)
-
-    end subroutine zero_estimators_t
-
     subroutine cumulative_population(pops, nactive, D0_proc, D0_pos, real_factor, complx, cumulative_pops, tot_pop)
 
         ! Calculate the cumulative population, i.e. the number of psips/excips
@@ -485,15 +469,12 @@ contains
         use ccmc_data, only: wfn_contrib_t
         use checking, only: check_deallocate
         use determinants, only: dealloc_det_info_t
-        use parallel, only: nthreads
 
         type(wfn_contrib_t), allocatable, intent(inout) :: contrib(:)
         logical, intent(in) :: linked
         integer :: i, ierr
 
-        ! [review] - JSS: loop over array bounds rather than implicitly requiring
-        ! [review] - JSS: contrib to be allocated by init_contrib.
-        do i = 0, nthreads-1
+        do i = lbound(contrib,dim=1), ubound(contrib, dim=1)
             call dealloc_det_info_t(contrib(i)%cdet)
             deallocate(contrib(i)%cluster%excitors, stat=ierr)
             call check_deallocate('contrib%cluster%excitors', ierr)

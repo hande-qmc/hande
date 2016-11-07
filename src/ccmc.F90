@@ -294,7 +294,7 @@ contains
 
         use annihilation, only: direct_annihilation
         use bloom_handler, only: init_bloom_stats_t, bloom_stats_t, bloom_mode_fractionn, &
-                                 write_bloom_report, bloom_stats_warning
+                                 write_bloom_report, bloom_stats_warning, update_bloom_threshold_prop
         use ccmc_data
         use ccmc_selection, only: select_cluster, create_null_cluster, select_cluster_non_composite
         use ccmc_death_spawning, only: stochastic_ccmc_death_nc
@@ -584,11 +584,8 @@ contains
                                            sys%read_in%comp, cumulative_abs_nint_pops, &
                                            tot_abs_nint_pop)
 
-                associate(bs=>bloom_stats)
-                    ! [review] - JSS: make a procedure in bloom_handling.
-                    bs%threshold = int(real(nparticles_old(1),p)*bs%prop)
-                    bs%threshold_encoded = int(real(nparticles_old(1),p)*bs%prop*bs%encoding_factor, int_p)
-                end associate
+                call update_bloom_threshold_prop(bloom_stats, nparticles_old(1))
+
 
                 ! Two options for evolution:
 
@@ -861,7 +858,7 @@ contains
         use qmc_data, only: qmc_state_t, ccmc_in_t, estimators_t
         use determinants, only: det_info_t
         use ccmc_data, only: cluster_t
-        use ccmc_utils, only: zero_estimators_t
+        use qmc_data, only: zero_estimators_t
 
         use excitations, only: excit_t, get_excitation
         use hamiltonian_data, only: hmatel_t

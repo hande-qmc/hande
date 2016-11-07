@@ -2,7 +2,7 @@ module bloom_handler
 
     ! Module for handling blooms (single spawning events which create multiple particles).
 
-    use const, only: p, int_p
+    use const, only: p, int_p, dp
 
     implicit none
 
@@ -16,8 +16,9 @@ module bloom_handler
     end enum
 
     ! Stats about QMC blooming events.
-    ! A bloom is defined to have occured if a population of particles larger than 5% of
+    ! In general in CCMC a bloom is defined to have occured if a population of particles larger than 5% of
     ! the total population is spawned by any one cluster.
+    ! In FCIQMC, a fixed particle population is used. The optimal value to use is not trivial to determine.
     type bloom_stats_t
         ! Note the mode is for information only; the QMC routine is responsible for
         ! calling the bloom handler procedures when a bloom is detected (the definition of
@@ -30,12 +31,12 @@ module bloom_handler
         integer(int_p) :: encoding_factor = 1_int_p
 
         ! The proportion of the total number of particles which has to be spawned in one
-        ! event to define a bloom.   Used (by convention) if mode = bloom_mode_fixedn.
+        ! event to define a bloom.   Used (by convention) if mode = bloom_mode_fractionn.
         real(p) :: prop = 0.05_p
 
         ! The absolute number of particles which has to be spawned in one event to define
-        ! a bloom.   Used (by convention) if mode = bloom_mode_fractionn.
-        ! [review] - JSS: update comments above and throughout this module?
+        ! a bloom. Used regardless of mode, but must be updated every iteration if using
+        ! mode = bloom_mode_fractionn.
         integer :: threshold = 3
         ! nparticles in its encoded form, nparticles*encoding_factor.
         integer(int_p) :: threshold_encoded
@@ -102,8 +103,10 @@ module bloom_handler
 
         subroutine accumulate_bloom_stats(bloom_stats, nspawn)
 
-            ! Accumulate/print data about a blooming event.  Note that it left to the
-            ! caller to determine if a bloom has occured.
+            ! Detect if a blooming event has occured and accumulate/print data
+            ! about it if so.
+            ! Note that it left to the caller to ensure bloom_stats%threshold_encoded
+            ! is set to appropriately detect blooms.
 
             ! In/Out:
             !     bloom_stats: stats object to update with the blooming event.
@@ -118,28 +121,32 @@ module bloom_handler
             integer(int_p), intent(in) :: nspawn
             real(p) :: true_nspawn
 
-            ! Not thread safe (unless each thread has its own bloom_stats_t object,
-            ! but blooms should not be frequent!
-            !$omp critical
+            ! Check if a bloom event has occurred using previously set bloom threshold.
+            if (abs(nspawn) >= bloom_stats%threshold_encoded) then
 
-            ! Remove the encoding factor to create the true population, to be
-            ! printed to the user.
-            true_nspawn = real(nspawn,p)/bloom_stats%encoding_factor
+                ! Not thread safe (unless each thread has its own bloom_stats_t object,
+                ! but blooms should not be frequent!
+                !$omp critical
 
-            ! If the number of warnings exceeds the size of an integer then the
-            ! population may have exploded.
-            if ( bloom_stats%nblooms+bloom_stats%nblooms_curr == huge(bloom_stats%nblooms) ) then
-                call stop_all('accumulate_bloom_stats', 'Number of bloom events exceeded &
-                     &the size of an integer: the population may have exploded')
+                ! Remove the encoding factor to create the true population, to be
+                ! printed to the user.
+                true_nspawn = real(nspawn,p)/bloom_stats%encoding_factor
+
+                ! If the number of warnings exceeds the size of an integer then the
+                ! population may have exploded.
+                if ( bloom_stats%nblooms+bloom_stats%nblooms_curr == huge(bloom_stats%nblooms) ) then
+                    call stop_all('accumulate_bloom_stats', 'Number of bloom events exceeded &
+                         &the size of an integer: the population may have exploded')
+                end if
+
+                bloom_stats%nblooms_curr = bloom_stats%nblooms_curr + 1
+                bloom_stats%tot_bloom_curr = bloom_stats%tot_bloom_curr + abs(true_nspawn)
+                if(abs(true_nspawn) > bloom_stats%max_bloom_proc) then
+                    bloom_stats%max_bloom_proc = abs(true_nspawn)
+                end if
+
+                !$omp end critical
             end if
-
-            bloom_stats%nblooms_curr = bloom_stats%nblooms_curr + 1
-            bloom_stats%tot_bloom_curr = bloom_stats%tot_bloom_curr + abs(true_nspawn)
-            if(abs(true_nspawn) > bloom_stats%max_bloom_proc) then
-                bloom_stats%max_bloom_proc = abs(true_nspawn)
-            end if
-
-            !$omp end critical
 
         end subroutine accumulate_bloom_stats
 
@@ -221,5 +228,24 @@ module bloom_handler
             end if
 
         end subroutine write_bloom_report
+
+        subroutine update_bloom_threshold_prop(bs, nparticles)
+
+            ! Updates threshold and threshold_encoded in bloom_stats_t object
+            ! according to previous population and preset proportion of the
+            ! population that constitutes a bloom.
+
+            ! In:
+            !   nparticles: total population on previous iteration.
+            ! In/Out:
+            !   bs: bloom_stats_t object to be updated.
+
+            type(bloom_stats_t), intent(inout) :: bs
+            real(dp), intent(in) :: nparticles
+
+            bs%threshold = int(real(nparticles,p)*bs%prop)
+            bs%threshold_encoded = int(real(nparticles,p)*bs%prop*bs%encoding_factor, int_p)
+
+        end subroutine update_bloom_threshold_prop
 
 end module bloom_handler

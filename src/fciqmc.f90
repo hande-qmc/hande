@@ -483,7 +483,7 @@ contains
     end subroutine evolve_spawned_walkers
 
     subroutine do_fciqmc_spawning_attempt(rng, spawn, bloom_stats, sys, qs, nattempts_current_det, &
-                                          cdet, determ, determ_parent, pop, imag, ispace, &
+                                          cdet, determ, determ_parent, pop, imag_parent, ispace, &
                                           logging_info)
 
         ! Perform spawning from a given determinant in a given space.
@@ -500,7 +500,7 @@ contains
         !   cdet: determinant spawning is originating from.
         !   determ_parent: true if parent determinant is within the
         !       semistochastic space, otherwise false.
-        !   imag: true if spawning from psips within an imaginary
+        !   imag_parent: true if spawning from psips within an imaginary
         !       space.
         !   pop: population of given determinant in given space.
         !   determ: derived type containing information on semistochastic
@@ -527,7 +527,7 @@ contains
         type(logging_t), intent(in) :: logging_info
         integer, intent(in) :: nattempts_current_det, ispace
         type(det_info_t), intent(in) :: cdet
-        logical, intent(in) :: determ_parent, imag
+        logical, intent(in) :: determ_parent, imag_parent
         integer(int_p), intent(in) :: pop
 
         type(dSFMT_t), intent(inout) :: rng
@@ -545,11 +545,9 @@ contains
         ! First, determine the particle types possibly created by spawning.
         ! If we have a more sophisticated approach to multiple spaces this will
         ! need to be changed.
-        ! [review] - JSS: it took me some time to spot:
-        !       1. this implicitly assumes the spaces are ordered (real, imaginary)
-        !       2. imag actually refers to the particle rather than if a complex wfn is in use. Perhaps imag_parent or imag_spawnee
-        !          t difwould be a better name?
-        if (imag) then
+        ! NB this implicitly assumes the spaces are ordered (real, imaginary)
+
+        if (imag_parent) then
             space_imag = ispace
             space_real = ispace - 1
         else
@@ -565,7 +563,7 @@ contains
             call spawner_ptr(rng, sys, qs, qs%spawn_store%spawn%cutoff, qs%psip_list%pop_real_factor, &
                             cdet, pop, gen_excit_ptr, qs%trial%wfn_dat, &
                             logging_info, nspawned, nspawned_im, connection)
-            if (imag) then
+            if (imag_parent) then
                 ! If imaginary parent have to factor into resulting signs/reality.
                 scratch = nspawned_im
                 nspawned_im = nspawned
@@ -588,14 +586,12 @@ contains
                     call create_spawned_particle_ptr(sys%basis, qs%ref, cdet, connection, nspawned, space_real, &
                                                      spawn)
                 end if
-                if (abs(nspawned) >= bloom_stats%threshold_encoded) &
-                    call accumulate_bloom_stats(bloom_stats, nspawned)
+                call accumulate_bloom_stats(bloom_stats, nspawned)
             end if
             if (nspawned_im /= 0_int_p) then
                 call create_spawned_particle_ptr(sys%basis, qs%ref, cdet, connection, nspawned_im, space_imag, &
                                                      spawn)
-                if (abs(nspawned_im) >= bloom_stats%threshold_encoded) &
-                    call accumulate_bloom_stats(bloom_stats, nspawned_im)
+                call accumulate_bloom_stats(bloom_stats, nspawned_im)
             end if
         end do
 

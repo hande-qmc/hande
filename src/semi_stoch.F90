@@ -934,8 +934,6 @@ contains
         ! w_i is subsumed into H_ii already, so we now just include
         ! the shift/projE component.
 
-        ! [review] - JSS: unnecessary use of (:) syntax.
-        ! [reply] - AJWT: given it's mixing both vectors and scalars, I thought the (:) were helpful
         determ%vector(:) = (-qs%tau * (proj_energy*determ%one_minus_qn_weight(:)-qs%shift(1)))*determ%vector(:)
 
         ! Perform the multiplication of the deterministic Hamiltonian on the
