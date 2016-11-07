@@ -343,8 +343,8 @@ contains
         real(dp), allocatable :: nparticles_old(:), nparticles_change(:)
         type(det_info_t) :: ref_det
 
-        integer(int_p) :: nspawned, ndeath, ndeath_nc
-        integer(int_p) :: nspawned_im, ndeath_im, ndeath_nc_im
+        integer(int_p) :: ndeath, ndeath_nc
+        integer(int_p) :: ndeath_im, ndeath_nc_im
         integer :: nspawn_events, ierr
         type(wfn_contrib_t), allocatable :: contrib(:)
         type(multispawn_stats_t), allocatable :: ms_stats(:)
@@ -629,7 +629,7 @@ contains
                 ! errors relate to the procedure pointers...
                 !$omp parallel &
                 ! --DEFAULT(NONE) DISABLED-- !$omp default(none) &
-                !$omp private(it, iexcip_pos, nspawned, connection, hmatel,       &
+                !$omp private(it, iexcip_pos, connection, hmatel,       &
                 !$omp         nspawnings_total, fexcit, i,     &
                 !$omp         seen_D0) &
                 !$omp shared(nattempts, rng, cumulative_abs_nint_pops, tot_abs_nint_pop,  &
@@ -691,7 +691,7 @@ contains
                                                 proj_energy_cycle, ccmc_in, ref_det, rdm)
                         call do_stochastic_ccmc_propagation(rng(it), sys, qs, &
                                                             ccmc_in, logging_info, ms_stats(it), bloom_stats, &
-                                                            contrib(it), nattempts_spawn, nspawned, nspawned_im, ndeath)
+                                                            contrib(it), nattempts_spawn, ndeath)
                     end if
 
                 end do
@@ -918,7 +918,7 @@ contains
 
     subroutine do_stochastic_ccmc_propagation(rng, sys, qs, &
                                             ccmc_in, logging_info, ms_stats, bloom_stats, &
-                                            contrib, nattempts_spawn, nspawned, nspawned_im, ndeath)
+                                            contrib, nattempts_spawn, ndeath)
 
         ! Perform stochastic propogation of a cluster in an appropriate manner
         ! for the given inputs. For stochastically selected clusters this
@@ -943,10 +943,6 @@ contains
         !       wavefunction contribution being considered.
         !   nattempts_spawn: running total of number of spawning attempts
         !       made during this mc cycle.
-        !   nspawned: total number of real particles spawned during this
-        !       attempt.
-        !   nspawned_im: total number of imaginary particles spawned during
-        !       this attempt.
         !   ndeath: total number of particles created via death.
 
 
@@ -974,9 +970,10 @@ contains
         type(logging_t), intent(in) :: logging_info
 
         integer(int_64), intent(inout) :: nattempts_spawn
-        integer(int_p), intent(inout) :: nspawned, nspawned_im, ndeath
+        integer(int_p), intent(inout) :: ndeath
         type(multispawn_stats_t), intent(inout) :: ms_stats
 
+        integer(int_p) :: nspawned, nspawned_im
         integer(i0) :: fexcit(sys%basis%string_len)
         integer :: i, nspawnings_total
 
