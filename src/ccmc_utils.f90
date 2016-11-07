@@ -299,6 +299,9 @@ contains
 
     subroutine zero_estimators_t(estimators)
 
+        ! [review] - JSS: why is this in ccmc_utils rather than qmc_data?
+        ! [review] - JSS: docstring?
+
         use qmc_data, only: estimators_t
 
         type(estimators_t), intent(inout) :: estimators
@@ -488,6 +491,8 @@ contains
         logical, intent(in) :: linked
         integer :: i, ierr
 
+        ! [review] - JSS: loop over array bounds rather than implicitly requiring
+        ! [review] - JSS: contrib to be allocated by init_contrib.
         do i = 0, nthreads-1
             call dealloc_det_info_t(contrib(i)%cdet)
             deallocate(contrib(i)%cluster%excitors, stat=ierr)

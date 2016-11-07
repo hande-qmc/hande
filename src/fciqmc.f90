@@ -545,6 +545,10 @@ contains
         ! First, determine the particle types possibly created by spawning.
         ! If we have a more sophisticated approach to multiple spaces this will
         ! need to be changed.
+        ! [review] - JSS: it took me some time to spot:
+        !       1. this implicitly assumes the spaces are ordered (real, imaginary)
+        !       2. imag actually refers to the particle rather than if a complex wfn is in use. Perhaps imag_parent or imag_spawnee
+        !          t difwould be a better name?
         if (imag) then
             space_imag = ispace
             space_real = ispace - 1

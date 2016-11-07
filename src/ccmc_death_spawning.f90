@@ -818,6 +818,8 @@ contains
             call create_spawned_particle_ptr(basis, ref, cdet, connection, nspawned, ispace, &
                                             spawn)
         end if
+        ! [review] - JSS: should this test be moved inside accumulate_bloom_stats
+        ! [review] - JSS: now the threshold is always a component of bloom_stats_t?
         if (abs(nspawned) > bloom_stats%threshold_encoded) call accumulate_bloom_stats(bloom_stats, nspawned)
 
     end subroutine create_spawned_particle_ccmc

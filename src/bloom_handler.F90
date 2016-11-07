@@ -35,6 +35,7 @@ module bloom_handler
 
         ! The absolute number of particles which has to be spawned in one event to define
         ! a bloom.   Used (by convention) if mode = bloom_mode_fractionn.
+        ! [review] - JSS: update comments above and throughout this module?
         integer :: threshold = 3
         ! nparticles in its encoded form, nparticles*encoding_factor.
         integer(int_p) :: threshold_encoded

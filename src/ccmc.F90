@@ -584,7 +584,8 @@ contains
                                            sys%read_in%comp, cumulative_abs_nint_pops, &
                                            tot_abs_nint_pop)
 
-                associate(bs=>bloom_stats, nstates_active=>qs%psip_list%nstates)
+                associate(bs=>bloom_stats)
+                    ! [review] - JSS: make a procedure in bloom_handling.
                     bs%threshold = int(real(nparticles_old(1),p)*bs%prop)
                     bs%threshold_encoded = int(real(nparticles_old(1),p)*bs%prop*bs%encoding_factor, int_p)
                 end associate
