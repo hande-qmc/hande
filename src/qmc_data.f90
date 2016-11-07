@@ -371,14 +371,14 @@ type semi_stoch_t
     type(csrp_t) :: hamil
     ! This array is used to store the values of amplitudes of deterministic
     ! states throughout a QMC calculation.
-    real(p), allocatable :: vector(:) ! sizes(iproc)
+    real(p), allocatable :: vector(:,:) ! (sizes(iproc),nspaces)
     ! If separate_annihilation is true, then an extra MPI call is used to join
     ! together the the deterministic vector arrays from each process. This
     ! array is used to hold the results, which will be the list of all
     ! deterministic amplitudes.
     ! If separate_annihilation is not true then this array will remain
     ! deallocated.
-    real(p), allocatable :: full_vector(:) ! tot_size
+    real(p), allocatable :: full_vector(:,:) ! (tot_size,nspaces)
     ! If separate_annihilation is true then this array will hold the indices
     ! of the deterministic states in the main list. This prevents having to
     ! search the whole of the main list for the deterministic states.

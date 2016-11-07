@@ -269,14 +269,14 @@ contains
         end do
 
         ! Vector to hold deterministic amplitudes from this process.
-        allocate(determ%vector(determ%sizes(iproc)), stat=ierr)
-        call check_allocate('determ%vector', determ%sizes(iproc), ierr)
+        allocate(determ%vector(determ%sizes(iproc),psip_list%nspaces), stat=ierr)
+        call check_allocate('determ%vector', determ%sizes(iproc)*psip_list%nspaces, ierr)
         determ%vector = 0.0_p
 
         ! Vector to hold deterministic amplitudes from all processes.
         if (determ%projection_mode == semi_stoch_separate_annihilation) then
-            allocate(determ%full_vector(determ%tot_size), stat=ierr)
-            call check_allocate('determ%full_vector', determ%tot_size, ierr)
+            allocate(determ%full_vector(determ%tot_size,psip_list%nspaces), stat=ierr)
+            call check_allocate('determ%full_vector', determ%tot_size*psip_list%nspaces, ierr)
             determ%full_vector = 0.0_p
 
             allocate(determ%indices(determ%sizes(iproc)), stat=ierr)
@@ -707,14 +707,14 @@ contains
         use qmc_data, only: semi_stoch_separate_annihilation
 
         integer, intent(in) ::idet
-        real(p), intent(in) :: real_pop
+        real(p), intent(in) :: real_pop(:)
         integer, intent(inout) :: ndeterm_found
         type(semi_stoch_t), intent(inout) :: determ
         logical, intent(out) :: determ_parent
 
         if (determ%flags(idet) == 0) then
             ndeterm_found = ndeterm_found + 1
-            determ%vector(ndeterm_found) = real_pop
+            determ%vector(ndeterm_found,:) = real_pop
             if (determ%projection_mode == semi_stoch_separate_annihilation) determ%indices(ndeterm_found) = idet
             determ_parent = .true.
         else
@@ -782,7 +782,7 @@ contains
         type(spawn_t), intent(inout) :: spawn
         type(semi_stoch_t), intent(in) :: determ
 
-        integer :: i, proc, row
+        integer :: i, proc, row, ispace
         real(p) :: out_vec
 
         row = 0
@@ -793,23 +793,27 @@ contains
             if (proc == iproc) then
                 do i = 1, determ%sizes(proc)
                     row = row + 1
-                    ! Perform the projetion.
-                    call csrpgemv_single_row(determ%hamil, determ%vector, row, out_vec)
-                    ! For states on this processor (proc == iproc), add the
-                    ! contribution from the shift.
-                    out_vec = -out_vec + qs%shift(1)*determ%vector(i)
-                    out_vec = out_vec*qs%tau
-                    call create_spawned_particle_determ(determ%dets(:,row), out_vec, qs%psip_list%pop_real_factor, proc, &
-                                                        qmc_in%initiator_approx, rng, spawn)
+                    do ispace = 1, qs%psip_list%nspaces
+                        ! Perform the projection.
+                        call csrpgemv_single_row(determ%hamil, determ%vector(:,ispace), row, out_vec)
+                        ! For states on this processor (proc == iproc), add the
+                        ! contribution from the shift.
+                        out_vec = -out_vec + qs%shift(1)*determ%vector(i,ispace)
+                        out_vec = out_vec*qs%tau
+                        call create_spawned_particle_determ(determ%dets(:,row), out_vec, qs%psip_list%pop_real_factor, proc, &
+                                                            ispace, qmc_in%initiator_approx, rng, spawn)
+                    end do
                 end do
             else
                 do i = 1, determ%sizes(proc)
                     ! The same as above, but without the shift contribution.
                     row = row + 1
-                    call csrpgemv_single_row(determ%hamil, determ%vector, row, out_vec)
-                    out_vec = -out_vec*qs%tau
-                    call create_spawned_particle_determ(determ%dets(:,row), out_vec, qs%psip_list%pop_real_factor, proc, &
-                                                        qmc_in%initiator_approx, rng, spawn)
+                    do ispace = 1, qs%psip_list%nspaces
+                        call csrpgemv_single_row(determ%hamil, determ%vector(:,ispace), row, out_vec)
+                        out_vec = -out_vec*qs%tau
+                        call create_spawned_particle_determ(determ%dets(:,row), out_vec, qs%psip_list%pop_real_factor, proc, &
+                                                            ispace, qmc_in%initiator_approx, rng, spawn)
+                    end do
                 end do
             end if
         end do
@@ -843,6 +847,8 @@ contains
         type(semi_stoch_t), intent(inout) :: determ
         type(qmc_state_t), intent(in) :: qs
 
+        integer :: ispace
+
 #ifdef PARALLEL
         integer :: i, ierr
         integer :: disps(0:nprocs-1)
@@ -866,37 +872,42 @@ contains
 
         ! 'Stick together' the deterministic vectors from each process, on
         ! each process.
-        call mpi_allgatherv(determ%vector, determ%sizes(iproc), mpi_preal, determ%full_vector, &
-                             determ%sizes, disps, mpi_preal, MPI_COMM_WORLD, ierr)
+        ! Having a separate MPI call for each space is not ideal, but I cannot see a way around it.
+        do i = 1, qs%psip_list%nspaces
+            call mpi_allgatherv(determ%vector(:,i), determ%sizes(iproc), mpi_preal, determ%full_vector(:,i), &
+                                 determ%sizes, disps, mpi_preal, MPI_COMM_WORLD, ierr)
+        end do
 
         determ%mpi_time%comm_time = determ%mpi_time%comm_time + real(MPI_WTIME(), p) - t1
 #else
         determ%full_vector = determ%vector
 #endif
 
-        ! We want the final vector to hold -tau*(Hv-Sv), where tau is the
-        ! timestep, H is the determinstic Hamiltonian, v is the vector of
-        ! deterministic amplitudes and S is the shift. We therefore begin by
-        ! setting the vector used to store the output to tau*S*v.
+        do ispace = 1, qs%psip_list%nspaces
+            ! We want the final vector to hold -tau*(Hv-Sv), where tau is the
+            ! timestep, H is the determinstic Hamiltonian, v is the vector of
+            ! deterministic amplitudes and S is the shift. We therefore begin by
+            ! setting the vector used to store the output to tau*S*v.
 
-        ! TODO For QuasiNewton instead of tau * H_ii * v_i - tau * S * v_i  
-        !                       (the last bit is done just below)
-        ! we will need tau * (H_ii) * w_i * v_i - tau * (E_proj * (1-w_i) - S) * v_i
-        !                       (where w_i is the quasi_newton weight).
-        ! For now we will simply set w_i = 1 in the semistochastic space.
-         
-        determ%vector = qs%tau*qs%shift(1)*determ%vector
+            ! [todo] - For QuasiNewton instead of tau * H_ii * v_i - tau * S * v_i
+            !                       (the last bit is done just below)
+            ! we will need tau * (H_ii) * w_i * v_i - tau * (E_proj * (1-w_i) - S) * v_i
+            !                       (where w_i is the quasi_newton weight).
+            ! For now we will simply set w_i = 1 in the semistochastic space.
 
-        ! Perform the multiplication of the deterministic Hamiltonian on the
-        ! full deterministic vector. A factor of minus one is applied to the
-        ! Hamiltonian, as required, and the result is added to the input
-        ! vector, determ%vector, which is used to hold the final result of the
-        ! deterministic projection.
-        call csrpgemv(.true., .false., -1.0_p*qs%tau, determ%hamil, determ%full_vector, determ%vector)
+            determ%vector(:,ispace) = qs%tau*qs%shift(ispace)*determ%vector(:,ispace)
+
+            ! Perform the multiplication of the deterministic Hamiltonian on the
+            ! full deterministic vector. A factor of minus one is applied to the
+            ! Hamiltonian, as required, and the result is added to the input
+            ! vector, determ%vector, which is used to hold the final result of the
+            ! deterministic projection.
+            call csrpgemv(.true., .false., -1.0_p*qs%tau, determ%hamil, determ%full_vector(:,ispace), determ%vector(:,ispace))
+        end do
 
     end subroutine determ_proj_separate_annihil
 
-    subroutine create_spawned_particle_determ(f, target_nspawn, real_factor, proc, initiator_approx, rng, spawn)
+    subroutine create_spawned_particle_determ(f, target_nspawn, real_factor, proc, ispace, initiator_approx, rng, spawn)
 
         ! Add a deterministic spawning to the spawning array. Before
         ! this can be done, the target population must be encoded as an
@@ -911,6 +922,7 @@ contains
         !    real_factor: The factor by which populations are multiplied to
         !        enable non-integer populations.
         !    proc: the processor to which the determinant to be added belongs.
+        !    ispace: the space the spawning is happening in
         !    initiator_approx: is the initiator approximation in use?
         ! In/Out:
         !    rng: random number generator.
@@ -923,7 +935,7 @@ contains
         integer(i0), intent(in) :: f(:)
         real(p), intent(in) :: target_nspawn
         integer(int_p), intent(in) :: real_factor
-        integer, intent(in) :: proc
+        integer, intent(in) :: proc, ispace
         logical, intent(in) :: initiator_approx
         type(dSFMT_t), intent(inout) :: rng
         type(spawn_t), intent(inout) :: spawn
@@ -940,9 +952,9 @@ contains
         if (abs(target_nspawn_scaled) - nspawn > get_rand_close_open(rng)) nspawn = nspawn + 1_int_p
         nspawn = nspawn*nint(sgn, int_p)
         if (initiator_approx) then
-            call add_flagged_spawned_particle(f, nspawn, 1, 0, proc, spawn)
+            call add_flagged_spawned_particle(f, nspawn, ispace, 0, proc, spawn)
         else
-            call add_spawned_particle(f, nspawn, 1, proc, spawn)
+            call add_spawned_particle(f, nspawn, ispace, proc, spawn)
         end if
 
     end subroutine create_spawned_particle_determ

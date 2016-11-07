@@ -249,13 +249,14 @@ contains
                         weighted_population(ispace) = importance_sampling_weight(qs%trial, cdet, real_population(ispace))
                     end do
 
+                    ! If this is a deterministic state then copy its population
+                    ! across to the determ%vector array. (Both replicas use the
+                    ! same deterministic space.)
+                    call set_determ_info(idet, real_population, ideterm, determ, determ_parent)
+
                     do ispace = 1, qs%psip_list%nspaces
 
                         imag = sys%read_in%comp .and. mod(ispace,2) == 0
-
-                        ! If this is a deterministic state then copy its population
-                        ! across to the determ%vector array.
-                        call set_determ_info(idet, real_population(ispace), ideterm, determ, determ_parent)
 
                         ! It is much easier to evaluate the projected energy at the
                         ! start of the i-FCIQMC cycle than at the end, as we're
