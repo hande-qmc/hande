@@ -687,7 +687,7 @@ contains
                         if (qs%propagator%quasi_newton) contrib(it)%cdet%fock_sum = &
                                         sum_sp_eigenvalues_occ_list(sys, contrib(it)%cdet%occ_list) - qs%ref%fock_sum
 
-                        call do_ccmc_accumulation(rng(it), sys, qs, contrib(it)%cdet, contrib(it)%cluster, D0_population_cycle, &
+                        call do_ccmc_accumulation(sys, qs, contrib(it)%cdet, contrib(it)%cluster, D0_population_cycle, &
                                                 proj_energy_cycle, ccmc_in, ref_det, rdm)
                         call do_stochastic_ccmc_propagation(rng(it), sys, qs, &
                                                             ccmc_in, logging_info, ms_stats(it), bloom_stats, &
@@ -834,7 +834,7 @@ contains
 
     end subroutine do_ccmc
 
-    subroutine do_ccmc_accumulation(rng, sys, qs, cdet, cluster, D0_population_cycle, proj_energy_cycle, &
+    subroutine do_ccmc_accumulation(sys, qs, cdet, cluster, D0_population_cycle, proj_energy_cycle, &
                                     ccmc_in, ref_det, rdm)
 
         ! Performs all accumulation of values required for given ccmc clusters.
@@ -851,13 +851,11 @@ contains
         !   cluster: information on cluster currently under consideration.
 
         ! In/Out:
-        !   rng: random number generator.
         !   D0_population_cycle: running total of reference population.
         !   proj_energy_cycle: running total of projected energy contributions.
         !   rdm: array containing reduced density matrix.
 
 
-        use dSFMT_interface, only: dSFMT_t
         use system, only: sys_t
         use qmc_data, only: qmc_state_t, ccmc_in_t, estimators_t
         use determinants, only: det_info_t
@@ -870,7 +868,6 @@ contains
         use replica_rdm, only: update_rdm
 
         type(sys_t), intent(in) :: sys
-        type(dSFMT_T), intent(inout) :: rng
         type(qmc_state_t), intent(in) :: qs
         type(ccmc_in_t), intent(in) :: ccmc_in
         type(det_info_t), intent(in) :: cdet, ref_det
