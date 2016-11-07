@@ -507,10 +507,10 @@ contains
         integer(int_p) :: nspawn(psip_list%nspaces), spawn_sign(psip_list%nspaces), old_pop(psip_list%nspaces)
         real(p) :: scaled_amp(psip_list%nspaces)
 
-        do i = 1, size(determ%vector,1)
+        do i = 1, size(determ%vector,2)
             ind = determ%indices(i)
 
-            scaled_amp = determ%vector(i,:)*psip_list%pop_real_factor
+            scaled_amp = determ%vector(:,i)*psip_list%pop_real_factor
             spawn_sign = 1
             where (scaled_amp < 0.0_p) spawn_sign = -1
             ! Stochastically round the scaled amplitude to the nearest integer
