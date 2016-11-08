@@ -625,27 +625,21 @@ contains
                 ! can't use default(none).  I *strongly* recommend turning
                 ! default(none) on when making changes and ensure that the only
                 ! errors relate to the procedure pointers...
-                !$omp parallel &
-                ! --DEFAULT(NONE) DISABLED-- !$omp default(none) &
-                !$omp private(it, iexcip_pos, connection, hmatel,       &
-                !$omp         nspawnings_total, fexcit, i,     &
-                !$omp         seen_D0) &
+                !$omp parallel default(none) &
+                !$omp private(it, iexcip_pos, i, seen_D0) &
                 !$omp shared(nattempts, rng, cumulative_abs_nint_pops, tot_abs_nint_pop,  &
-                !$omp        max_cluster_size, contrib, &
-                !$omp        D0_normalisation, D0_pos, nD0_select, qs,               &
-                !$omp        sys, bloom_threshold, bloom_stats,                      &
-                !$omp        estimators_cycle, min_cluster_size,       &
-                !$omp        proj_energy_cycle, D0_population_cycle,   &
-                !$omp        nclusters, nstochastic_clusters, nattempts_spawn,       &
-                !$omp        nsingle_excitors, ccmc_in,                              &
-                !$omp        nprocs, ms_stats, qmc_in, load_bal_in,   &
-                !$omp        nparticles_change, ndeath)
+                !$omp        max_cluster_size, contrib, D0_normalisation, D0_pos, rdm,    &
+                !$omp        nD0_select, qs, sys, bloom_stats, min_cluster_size, ref_det, &
+                !$omp        proj_energy_cycle, D0_population_cycle, nclusters,           &
+                !$omp        nstochastic_clusters, nattempts_spawn, nsingle_excitors,     &
+                !$omp        ccmc_in, nprocs, ms_stats, qmc_in, load_bal_in, ndeath_nc,   &
+                !$omp        nparticles_change, ndeath, ndeath_nc_im, logging_info)
                 it = get_thread_id()
                 iexcip_pos = 0
                 seen_D0 = .false.
                 proj_energy_cycle = cmplx(0.0, 0.0, p)
                 D0_population_cycle = cmplx(0.0, 0.0, p)
-                !$omp do schedule(dynamic,200) reduction(+:D0_population_cycle,proj_energy_cycle,nattempts_spawn)
+                !$omp do schedule(dynamic,200) reduction(+:D0_population_cycle,proj_energy_cycle,nattempts_spawn,ndeath)
                 do iattempt = 1, nclusters
 
                     ! For OpenMP scalability, have this test inside a single loop rather
@@ -699,7 +693,7 @@ contains
                 ndeath_nc_im = 0
                 if (ccmc_in%full_nc .and. qs%psip_list%nstates > 0) then
                     ! Do death exactly and directly for non-composite clusters
-                    !$omp do schedule(dynamic,200) private(dfock) reduction(+:ndeath_nc,nparticles_change)
+                    !$omp do schedule(dynamic,200) private(dfock) reduction(+:ndeath_nc,nparticles_change,ndeath_nc_im)
                     do iattempt = 1, qs%psip_list%nstates
                         ! Note we use the (encoded) population directly in stochastic_ccmc_death_nc
                         ! (unlike the stochastic_ccmc_death) to avoid unnecessary decoding/encoding
