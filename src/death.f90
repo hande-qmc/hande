@@ -8,7 +8,7 @@ implicit none
 
 contains
 
-    subroutine stochastic_death(rng, sys, qs, dfock, Kii, proj_energy, loc_shift, logging_info, population, &
+    subroutine stochastic_death(rng, sys, qs, dfock, Kii, loc_shift, logging_info, population, &
                                 tot_population, ndeath)
 
         ! Particles will attempt to die with probability
@@ -24,8 +24,6 @@ contains
         !    dfock: \sum_i (f_i - f^0_i), where f_i (f^0_i) is the Fock eigenvalue of the i-th orbital occupied in D_i (D_0).
         !    Kii: < D_i | H | D_i > - E_0, where D_i is the determinant on
         !         which the particles reside.
-        !    proj_energy: projected energy.  This should be the average value from the last
-        !        report loop, not the running total in qs%estimators.
         !    loc_shift: The value of the shift to be used in the death step.
         ! In/Out:
         !    rng: random number generator.
@@ -50,7 +48,7 @@ contains
         use logging, only: write_logging_death, logging_t
 
         type(sys_t), intent(in) :: sys
-        real(p), intent(in) :: Kii, dfock, proj_energy
+        real(p), intent(in) :: Kii, dfock
         type(qmc_state_t), intent(in) :: qs
         type(dSFMT_t), intent(inout) :: rng
         real(p), intent(in) :: loc_shift
@@ -80,7 +78,7 @@ contains
         ! Hence we have to multiply by an extra factor of 2 to account for the extra 1/2 in tau.
 
         weight = calc_qn_weighting(qs%propagator, dfock)
-        pd = qs%tau*((Kii-proj_energy)*weight+(proj_energy-loc_shift))*qs%dmqmc_factor
+        pd = qs%tau*((Kii-qs%estimators%proj_energy_old)*weight+(qs%estimators%proj_energy_old-loc_shift))*qs%dmqmc_factor
 
         pd_saved = pd
 
@@ -114,7 +112,7 @@ contains
         else
             population = population - kill
         end if
-        if (debug) call write_logging_death(logging_info, Kii, proj_energy, loc_shift, &
+        if (debug) call write_logging_death(logging_info, Kii, qs%estimators%proj_energy_old, loc_shift, &
                                         weight, kill, pd_saved, &
                                         real(old_population,p)/qs%psip_list%pop_real_factor, &
                                         real(population,p)/qs%psip_list%pop_real_factor)

@@ -9,47 +9,6 @@ implicit none
 
 contains
 
-    subroutine init_cluster(sys, cluster_size, cdet, cluster)
-
-        ! Allocates cdet and cluster, and their components.
-
-        ! In:
-        !    sys: system being studied
-        !    cluster_size: the maximum number of excitors allowed in a cluster
-        ! Out:
-        !    cdet: Array of det_info_t variables, one for each thread, with
-        !       components allocated
-        !    cluster: Array of cluster_t variables, one for each thread, with
-        !       components allocated
-
-        use parallel, only: nthreads
-        use determinants, only: det_info_t, alloc_det_info_t
-        use ccmc_data, only: cluster_t
-        use system, only: sys_t
-        use checking, only: check_allocate
-
-        type(sys_t), intent(in) :: sys
-        integer, intent(in) :: cluster_size
-        type(det_info_t), allocatable, intent(out) :: cdet(:)
-        type(cluster_t), allocatable, intent(out) :: cluster(:)
-
-        integer :: i, ierr
-
-        ! Allocate arrays
-        allocate(cdet(0:nthreads-1), stat=ierr)
-        call check_allocate('cdet', nthreads, ierr)
-        allocate(cluster(0:nthreads-1), stat=ierr)
-        call check_allocate('cluster', nthreads, ierr)
-
-        do i = 0, nthreads-1
-            ! Allocate det_info_t and cluster_t components
-            call alloc_det_info_t(sys, cdet(i))
-            allocate(cluster(i)%excitors(cluster_size), stat=ierr)
-            call check_allocate('cluster%excitors', cluster_size, ierr)
-        end do
-
-    end subroutine init_cluster
-
     subroutine find_D0(psip_list, f0, D0_pos)
 
         ! Find the reference determinant in the list of walkers
@@ -338,19 +297,6 @@ contains
 
     end subroutine convert_excitor_to_determinant
 
-    subroutine zero_estimators_t(estimators)
-
-        use qmc_data, only: estimators_t
-
-        type(estimators_t), intent(inout) :: estimators
-
-        estimators%D0_population = 0.0_p
-        estimators%proj_energy = 0.0_p
-        estimators%D0_population_comp = cmplx(0.0, 0.0, p)
-        estimators%proj_energy_comp = cmplx(0.0, 0.0, p)
-
-    end subroutine zero_estimators_t
-
     subroutine cumulative_population(pops, nactive, D0_proc, D0_pos, real_factor, complx, cumulative_pops, tot_pop)
 
         ! Calculate the cumulative population, i.e. the number of psips/excips
@@ -455,5 +401,96 @@ contains
         end if
 
     end function get_pop_contrib
+
+    subroutine init_contrib(sys, cluster_size, linked, contrib_info)
+
+        ! Allocates cdet and cluster, and their components.
+
+        ! In:
+        !    sys: system being studied
+        !    cluster_size: the maximum number of excitors allowed in a cluster
+        !    linked: whether we are performing propogation through the linked
+        !       coupled cluster equations.
+        ! Out:
+        !    contrib_info: Array of wfn_contrib_t variables, one for each thread,
+        !       with appropriate cluster and det components allocated.
+
+        use parallel, only: nthreads
+        use determinants, only: alloc_det_info_t
+        use ccmc_data, only: wfn_contrib_t
+        use system, only: sys_t
+        use checking, only: check_allocate
+
+        type(sys_t), intent(in) :: sys
+        integer, intent(in) :: cluster_size
+        logical, intent(in) :: linked
+        type(wfn_contrib_t), allocatable, intent(out) :: contrib_info(:)
+
+        integer :: i, ierr
+        integer :: cluster_size_loc
+
+        cluster_size_loc = cluster_size
+        if (linked) cluster_size_loc = 4
+
+        ! Allocate arrays
+        allocate(contrib_info(0:nthreads-1), stat=ierr)
+        call check_allocate('contrib_info', nthreads, ierr)
+
+        do i = 0, nthreads-1
+            ! Allocate det_info_t and cluster_t components
+            call alloc_det_info_t(sys, contrib_info(i)%cdet)
+            allocate(contrib_info(i)%cluster%excitors(cluster_size_loc), stat=ierr)
+            call check_allocate('contrib_info%cluster%excitors', cluster_size_loc, ierr)
+            ! Only require right/left components if performing linked propogation.
+            if (linked) then
+                call alloc_det_info_t(sys, contrib_info(i)%ldet)
+                call alloc_det_info_t(sys, contrib_info(i)%rdet)
+
+                allocate(contrib_info(i)%left_cluster%excitors(cluster_size_loc), stat=ierr)
+                allocate(contrib_info(i)%right_cluster%excitors(cluster_size_loc), stat=ierr)
+                call check_allocate('contrib_info%left_cluster%excitors', cluster_size_loc, ierr)
+                call check_allocate('contrib_info%right_cluster%excitors', cluster_size_loc, ierr)
+            end if
+        end do
+
+    end subroutine init_contrib
+
+    subroutine dealloc_contrib(contrib, linked)
+
+        ! Deallocates cdet and cluster, and their components.
+
+        ! In:
+        !    linked: whether we are performing propogation through the linked
+        !       coupled cluster equations.
+        ! In/Out:
+        !    contrib_info: Array of wfn_contrib_t variables, one for each thread,
+        !       with all components deallocated.
+
+        use ccmc_data, only: wfn_contrib_t
+        use checking, only: check_deallocate
+        use determinants, only: dealloc_det_info_t
+
+        type(wfn_contrib_t), allocatable, intent(inout) :: contrib(:)
+        logical, intent(in) :: linked
+        integer :: i, ierr
+
+        do i = lbound(contrib,dim=1), ubound(contrib, dim=1)
+            call dealloc_det_info_t(contrib(i)%cdet)
+            deallocate(contrib(i)%cluster%excitors, stat=ierr)
+            call check_deallocate('contrib%cluster%excitors', ierr)
+            if (linked) then
+                call dealloc_det_info_t(contrib(i)%ldet)
+                call dealloc_det_info_t(contrib(i)%rdet)
+                deallocate(contrib(i)%left_cluster%excitors, stat=ierr)
+                call check_deallocate('contrib%left_cluster%excitors', ierr)
+                deallocate(contrib(i)%right_cluster%excitors, stat=ierr)
+                call check_deallocate('contrib%right_cluster%excitors', ierr)
+            end if
+        end do
+
+        deallocate(contrib, stat=ierr)
+        call check_deallocate('contrib', ierr)
+
+    end subroutine dealloc_contrib
 
 end module ccmc_utils

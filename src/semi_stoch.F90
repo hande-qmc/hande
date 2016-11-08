@@ -762,7 +762,7 @@ contains
 
     end subroutine set_determ_info
 
-    subroutine determ_projection(rng, qmc_in, qs, proj_energy, spawn, determ)
+    subroutine determ_projection(rng, qmc_in, qs, spawn, determ)
 
         ! A wrapper function for calling the correct routine for deterministic
         ! projection.
@@ -774,7 +774,6 @@ contains
         ! In:
         !    qmc_in: input options relating to QMC methods.
         !    qs: state of the QMC calculation. Timestep and shift are used.
-        !    proj_energy: the projected energy used for quasinewton spawning
 
         use dSFMT_interface, only: dSFMT_t
         use qmc_data, only: qmc_in_t, qmc_state_t
@@ -784,15 +783,14 @@ contains
         type(dSFMT_t), intent(inout) :: rng
         type(qmc_in_t), intent(in) :: qmc_in
         type(qmc_state_t), intent(in) :: qs
-        real(p), intent(in) :: proj_energy
         type(spawn_t), intent(inout) :: spawn
         type(semi_stoch_t), intent(inout) :: determ
 
         select case(determ%projection_mode)
         case(semi_stoch_separate_annihilation)
-            call determ_proj_separate_annihil(determ, qs, proj_energy)
+            call determ_proj_separate_annihil(determ, qs, qs%estimators%proj_energy_old)
         case(semi_stoch_combined_annihilation)
-            call determ_proj_combined_annihil(rng, qmc_in, qs, proj_energy, spawn, determ)
+            call determ_proj_combined_annihil(rng, qmc_in, qs, qs%estimators%proj_energy_old, spawn, determ)
         end select
 
     end subroutine determ_projection
@@ -936,8 +934,6 @@ contains
         ! w_i is subsumed into H_ii already, so we now just include
         ! the shift/projE component.
 
-        ! [review] - JSS: unnecessary use of (:) syntax.
-        ! [reply] - AJWT: given it's mixing both vectors and scalars, I thought the (:) were helpful
         determ%vector(:) = (-qs%tau * (proj_energy*determ%one_minus_qn_weight(:)-qs%shift(1)))*determ%vector(:)
 
         ! Perform the multiplication of the deterministic Hamiltonian on the

@@ -106,6 +106,11 @@ contains
                 'Flipping the reference state will give a state which has a different value of Ms and so cannot be used here.')
         end if
 
+        if (fciqmc_in%non_blocking_comm .and. sys%read_in%comp) then
+            call stop_all(this, &
+                'Complex non-blocking comms not yet implemented.')
+        end if
+
 
     end subroutine check_fciqmc_opts
 
