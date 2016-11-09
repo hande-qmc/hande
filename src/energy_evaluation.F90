@@ -406,10 +406,20 @@ contains
                                                 rep_loop_sum(proj_energy_imag_ind), p)
         qs%estimators(1)%D0_population_comp = cmplx(rep_loop_sum(D0_pop_ind), &
                                                 rep_loop_sum(D0_pop_imag_ind), p)
+        if (size(qs%estimators) > 1) then
+            qs%estimators(2)%proj_energy_comp = cmplx(rep_loop_sum(proj_energy_ind), &
+                                                    rep_loop_sum(proj_energy_imag_ind), p)
+            qs%estimators(2)%D0_population_comp = cmplx(rep_loop_sum(D0_pop_ind), &
+                                                    rep_loop_sum(D0_pop_imag_ind), p)
+        end if
         if (size(qs%estimators) > 2) then
             qs%estimators(3)%proj_energy_comp = cmplx(rep_loop_sum(proj_energy_replica_ind), &
                                                     rep_loop_sum(proj_energy_imag_replica_ind), p)
+            qs%estimators(4)%proj_energy_comp = cmplx(rep_loop_sum(proj_energy_replica_ind), &
+                                                    rep_loop_sum(proj_energy_imag_replica_ind), p)
             qs%estimators(3)%D0_population_comp = cmplx(rep_loop_sum(D0_pop_replica_ind), &
+                                                    rep_loop_sum(D0_pop_imag_replica_ind), p)
+            qs%estimators(4)%D0_population_comp = cmplx(rep_loop_sum(D0_pop_replica_ind), &
                                                     rep_loop_sum(D0_pop_imag_replica_ind), p)
         end if
 
@@ -517,6 +527,7 @@ contains
                         else
                             qs%shift(i) = qmc_in%vary_shift_from
                         end if
+                        qs%shift(i+1) = qs%shift(i)
                     end if
                 end do
             else if (doing_calc(hfs_fciqmc_calc)) then

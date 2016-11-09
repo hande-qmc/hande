@@ -798,7 +798,7 @@ contains
                         call csrpgemv_single_row(determ%hamil, determ%vector(ispace,:), row, out_vec)
                         ! For states on this processor (proc == iproc), add the
                         ! contribution from the shift.
-                        out_vec = -out_vec + qs%shift(1)*determ%vector(ispace,i)
+                        out_vec = -out_vec + qs%shift(ispace)*determ%vector(ispace,i)
                         out_vec = out_vec*qs%tau
                         call create_spawned_particle_determ(determ%dets(:,row), out_vec, qs%psip_list%pop_real_factor, proc, &
                                                             ispace, qmc_in%initiator_approx, rng, spawn)

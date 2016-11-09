@@ -940,7 +940,7 @@ contains
         real(dp) :: rep_info_copy(nprocs*qs%psip_list%nspaces+nparticles_start_ind-1)
 
         ! Only update the timestep if not in vary shift mode.
-        update_tau = update_tau .and. .not. qs%vary_shift(1) .and. qmc_in%tau_search
+        update_tau = update_tau .and. .not. any(qs%vary_shift) .and. qmc_in%tau_search
 
         ! Using non-blocking communications?
         nb_comm_local = .false.
