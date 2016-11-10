@@ -626,12 +626,12 @@ contains
                 ! --DEFAULT(NONE) DISABLED-- !$omp default(none) &
                 !$omp private(it, iexcip_pos, nspawned, connection, hmatel,       &
                 !$omp         nspawnings_total, fexcit, i,     &
-                !$omp         seen_D0) &
+                !$omp         seen_D0, estimators_cycle)  &
                 !$omp shared(nattempts, rng, cumulative_abs_nint_pops, tot_abs_nint_pop,  &
                 !$omp        max_cluster_size, cdet, cluster, &
                 !$omp        D0_normalisation, D0_pos, nD0_select, qs,               &
                 !$omp        sys, bloom_threshold, bloom_stats,                      &
-                !$omp        estimators_cycle, min_cluster_size,       &
+                !$omp        min_cluster_size,       &
                 !$omp        proj_energy_cycle, D0_population_cycle,   &
                 !$omp        nclusters, nstochastic_clusters, nattempts_spawn,       &
                 !$omp        nsingle_excitors, ccmc_in, ldet, rdet, left_cluster,    &
