@@ -414,7 +414,7 @@ contains
         use system, only: sys_t
         use determinants, only: det_info_t
         use ccmc_data, only: cluster_t
-        use ccmc_utils, only: convert_excitor_to_determinant
+        use ccmc_utils, only: convert_excitor_to_determinant, get_pop_contrib
         use excitations, only: get_excitation_level
         use qmc_data, only: particle_t
         use search, only: binary_search
@@ -449,28 +449,29 @@ contains
 
         ! Most of the time the excip is either on the current position or the
         ! next one, so special case to avoid the loop overhead.
-        if (running_total + ceiling(abs(real(psip_list%pops(1,iexcip_pos),p)/psip_list%pop_real_factor)) &
+        if (running_total + nint(get_pop_contrib(psip_list%pops(:,iexcip_pos), psip_list%pop_real_factor, sys%read_in%comp)) &
                 >= iexcip .and. iexcip_pos /= D0_pos) then
 
             ! Do nothing---already on the right position
         else if (running_total &
-                + ceiling(abs(real(psip_list%pops(1,iexcip_pos),p)/psip_list%pop_real_factor)) &
-                + ceiling(abs(real(psip_list%pops(1,iexcip_pos+1),p)/psip_list%pop_real_factor)) &
+                + nint(get_pop_contrib(psip_list%pops(:,iexcip_pos), psip_list%pop_real_factor, sys%read_in%comp)) &
+                + nint(get_pop_contrib(psip_list%pops(:,iexcip_pos+1), psip_list%pop_real_factor, sys%read_in%comp)) &
                 >= iexcip) then
             ! In the next slot...
             if (iexcip_pos /= D0_pos) running_total = running_total + &
-                    ceiling(abs(real(psip_list%pops(1,iexcip_pos),p)/psip_list%pop_real_factor))
+                nint(get_pop_contrib(psip_list%pops(:,iexcip_pos), psip_list%pop_real_factor, sys%read_in%comp))
             iexcip_pos = iexcip_pos + 1
         else
             ! Need to hunt for it (ie the reference position is in the way).
             if (iexcip_pos /= D0_pos) running_total = running_total + &
-                    ceiling(abs(real(psip_list%pops(1,iexcip_pos),p)/psip_list%pop_real_factor))
+                nint(get_pop_contrib(psip_list%pops(:,iexcip_pos), psip_list%pop_real_factor, sys%read_in%comp))
             iexcip_pos = iexcip_pos + 1
             do
-                if (running_total + ceiling(abs(real(psip_list%pops(1,iexcip_pos),p)/psip_list%pop_real_factor)) &
+                if (running_total + nint(get_pop_contrib(psip_list%pops(:,iexcip_pos), psip_list%pop_real_factor, &
+                                        sys%read_in%comp)) &
                         >= iexcip .and. running_total < iexcip) exit
                 if (iexcip_pos /= D0_pos) running_total = running_total + &
-                        ceiling(abs(real(psip_list%pops(1,iexcip_pos),p)/psip_list%pop_real_factor))
+                    nint(get_pop_contrib(psip_list%pops(:,iexcip_pos), psip_list%pop_real_factor, sys%read_in%comp))
                 iexcip_pos = iexcip_pos + 1
             end do
         end if

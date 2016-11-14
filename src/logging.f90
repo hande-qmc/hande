@@ -134,7 +134,7 @@ contains
         ! turn it off if attempted, with appropriate warning.
         if (logging_in%stoch_selection > 0 .and. calc_type /= ccmc_calc) then
             if (parent) call warning('check_logging_inputs',"Selection logging turned on for invalid calculation &
-                                        type (ie. not CCMC). Automatically turned off.")
+                                        &type (ie. not CCMC). Automatically turned off.")
             logging_in%stoch_selection = 0
         end if
 
