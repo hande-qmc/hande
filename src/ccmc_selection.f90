@@ -419,7 +419,6 @@ contains
         use qmc_data, only: particle_t
         use search, only: binary_search
         use proc_pointers, only: decoder_ptr
-        use parallel, only: iproc
 
         type(sys_t), intent(in) :: sys
         type(particle_t), intent(in), target :: psip_list

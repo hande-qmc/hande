@@ -522,7 +522,6 @@ contains
                         D0_normalisation = real(qs%psip_list%pops(1,D0_pos),p)/qs%psip_list%pop_real_factor
                     end if
                     nD0_proc = 1
-
                 else
 
                     ! Can't find D0 on this processor.  (See how D0_pos is used
@@ -611,12 +610,10 @@ contains
                     ! explicitly.
                     min_cluster_size = 2
                     nD0_select = nint(abs(D0_normalisation))
-                    nclusters = 2*tot_abs_ceiling_pop + nD0_select
                     nstochastic_clusters = tot_abs_ceiling_pop
                     nsingle_excitors = qs%psip_list%nstates
                 else
                     min_cluster_size = 0
-                    nclusters = nattempts
                     nD0_select = 0 ! instead of this number of deterministic selections, these are chosen stochastically
                     nstochastic_clusters = nattempts
                     nsingle_excitors = 0
@@ -692,14 +689,13 @@ contains
 
                         call do_ccmc_accumulation(sys, qs, contrib(it)%cdet, contrib(it)%cluster, D0_population_cycle, &
                                                 proj_energy_cycle, ccmc_in, ref_det, rdm)
-                        call do_nc_ccmc_propagation(rng(it), sys, qs, &
-                                                            ccmc_in, logging_info, ms_stats(it), bloom_stats, &
-                                                            contrib(it), nattempts_spawn, ndeath)
+                        nattempts_spawn = nattempts_spawn + 1
+                        call perform_ccmc_spawning_attempt(rng(it), sys, qs, ccmc_in, logging_info, bloom_stats, contrib(it), 1)
 
                     else
                         ! As noncomposite clusters can't be above truncation level or linked-only all can accumulate +
                         ! propogate. Only need to check not selecting the reference as we treat it separately.
-                        if (iattempt-nstochastic_clusters-nD0_select /= D0_pos .or. iproc /= D0_proc) then
+                        if (iattempt-nstochastic_clusters-nD0_select /= D0_pos) then
                             ! Deterministically select each excip as a non-composite cluster.
                             call select_cluster_non_composite(sys, qs%psip_list, qs%ref%f0, &
                                         iattempt-nstochastic_clusters-nD0_select, qmc_in%initiator_pop, D0_pos, D0_proc, &
@@ -710,9 +706,8 @@ contains
 
                             call do_ccmc_accumulation(sys, qs, contrib(it)%cdet, contrib(it)%cluster, D0_population_cycle, &
                                                     proj_energy_cycle, ccmc_in, ref_det, rdm)
-                            call do_nc_ccmc_propagation(rng(it), sys, qs, &
-                                                                ccmc_in, logging_info, ms_stats(it), bloom_stats, &
-                                                                contrib(it), nattempts_spawn, ndeath)
+                            call do_nc_ccmc_propagation(rng(it), sys, qs, ccmc_in, logging_info, bloom_stats, &
+                                                                contrib(it), nattempts_spawn)
                         end if
                     end if
 
@@ -780,7 +775,6 @@ contains
                 if (debug) call write_logging_calc_ccmc(logging_info, iter, nspawn_events, ndeath+ndeath_nc, nD0_select, &
                                                         nclusters, nstochastic_clusters, nsingle_excitors)
                 call end_mc_cycle(nspawn_events, ndeath_nc, qs%psip_list%pop_real_factor, nattempts_spawn, qs%spawn_store%rspawn)
-
             end do
 
             update_tau = bloom_stats%nblooms_curr > 0
@@ -973,10 +967,6 @@ contains
         use qmc_data, only: qmc_state_t, ccmc_in_t
         use ccmc_data, only: multispawn_stats_t, ms_stats_update, wfn_contrib_t
 
-        use excitations, only: excit_t
-        use proc_pointers, only: gen_excit_ptr
-        use replica_rdm, only: update_rdm
-
         use ccmc_death_spawning, only: spawner_ccmc, linked_spawner_ccmc, stochastic_ccmc_death
         use ccmc_death_spawning, only: stochastic_ccmc_death_nc, spawner_complex_ccmc, create_spawned_particle_ccmc
         use bloom_handler, only: bloom_stats_t, accumulate_bloom_stats
@@ -987,7 +977,6 @@ contains
         type(qmc_state_t), intent(inout) :: qs
         type(ccmc_in_t), intent(in) :: ccmc_in
         type(wfn_contrib_t), intent(inout) :: contrib
-        type(excit_t) :: connection
         type(bloom_stats_t), intent(inout) :: bloom_stats
         type(logging_t), intent(in) :: logging_info
 
@@ -995,8 +984,6 @@ contains
         integer(int_p), intent(inout) :: ndeath
         type(multispawn_stats_t), intent(inout) :: ms_stats
 
-        integer(int_p) :: nspawned, nspawned_im
-        integer(i0) :: fexcit(sys%basis%string_len)
         integer :: i, nspawnings_total
 
         ! Spawning
@@ -1013,31 +1000,7 @@ contains
         nattempts_spawn = nattempts_spawn + nspawnings_total
 
         do i = 1, nspawnings_total
-            if (contrib%cluster%excitation_level == huge(0)) then
-                ! When sampling e^-T H e^T, the cluster operators in e^-T
-                ! and e^T can excite to/from the same orbital, requiring
-                ! a different spawning routine
-                call linked_spawner_ccmc(rng, sys, qs, qs%spawn_store%spawn%cutoff, &
-                          contrib%cluster, gen_excit_ptr, nspawned, connection, nspawnings_total, &
-                          fexcit, contrib%cdet, contrib%ldet, contrib%rdet, contrib%left_cluster, contrib%right_cluster)
-                nspawned_im = 0_int_p
-            else if (sys%read_in%comp) then
-                call spawner_complex_ccmc(rng, sys, qs, qs%spawn_store%spawn%cutoff, &
-                          contrib%cdet, contrib%cluster, gen_excit_ptr, nspawned, nspawned_im, &
-                          connection, nspawnings_total)
-            else
-                call spawner_ccmc(rng, sys, qs, qs%spawn_store%spawn%cutoff, &
-                          ccmc_in%linked, contrib%cdet, contrib%cluster, gen_excit_ptr, logging_info, nspawned, &
-                          connection, nspawnings_total)
-                nspawned_im = 0_int_p
-            end if
-
-            if (nspawned /= 0_int_p) call create_spawned_particle_ccmc(sys%basis, qs%ref, contrib%cdet, connection, &
-                                                nspawned, 1, contrib%cluster%excitation_level, &
-                                                fexcit, qs%spawn_store%spawn, bloom_stats)
-            if (nspawned_im /= 0_int_p) call create_spawned_particle_ccmc(sys%basis, qs%ref, contrib%cdet, connection,&
-                                                nspawned_im, 2, contrib%cluster%excitation_level, &
-                                                fexcit, qs%spawn_store%spawn, bloom_stats)
+            call perform_ccmc_spawning_attempt(rng, sys, qs, ccmc_in, logging_info, bloom_stats, contrib, nspawnings_total)
         end do
 
         ! Does the cluster collapsed onto D0 produce
@@ -1058,17 +1021,13 @@ contains
     end subroutine do_stochastic_ccmc_propagation
 
     subroutine do_nc_ccmc_propagation(rng, sys, qs, &
-                                            ccmc_in, logging_info, ms_stats, bloom_stats, &
-                                            contrib, nattempts_spawn, ndeath)
+                                            ccmc_in, logging_info, bloom_stats, &
+                                            contrib, nattempts_spawn)
 
-        ! Perform stochastic propogation of a cluster in an appropriate manner
-        ! for the given inputs. For stochastically selected clusters this
-        ! attempts spawning and death, adding any created particles to the
-        ! spawned list. For deterministically selected clusters spawning is
-        ! performed, while death is performed in-place separately.
-
-        ! This is currently non-specific to a any given type of selected
-        ! cluster, though this may change in future.
+        ! Perform stochastic propogation of a cluster selected deterministically
+        ! in full non-composite selection. This attempts spawning, adding any
+        ! created particles to the spawned list, while death is performed
+        ! in-place later.
 
         ! In:
         !   sys: information on system under consideration.
@@ -1078,13 +1037,11 @@ contains
         ! In/Out:
         !   rng: random number generator.
         !   qs: qmc_state_t type, contains information about calculation.
-        !   ms_stats: statistics on multispawn performance.
         !   bloom_stats: statistics on blooms during calculation.
         !   contrib: derived type containing information on the current
         !       wavefunction contribution being considered.
         !   nattempts_spawn: running total of number of spawning attempts
         !       made during this mc cycle.
-        !   ndeath: total number of particles created via death.
 
 
         use dSFMT_interface, only: dSFMT_t
@@ -1092,12 +1049,72 @@ contains
         use qmc_data, only: qmc_state_t, ccmc_in_t
         use ccmc_data, only: multispawn_stats_t, ms_stats_update, wfn_contrib_t
 
-        use excitations, only: excit_t
-        use proc_pointers, only: gen_excit_ptr
-        use replica_rdm, only: update_rdm
-
         use ccmc_death_spawning, only: spawner_ccmc, linked_spawner_ccmc, stochastic_ccmc_death
         use ccmc_death_spawning, only: stochastic_ccmc_death_nc, spawner_complex_ccmc, create_spawned_particle_ccmc
+        use bloom_handler, only: bloom_stats_t, accumulate_bloom_stats
+        use logging, only: logging_t
+
+        type(sys_t), intent(in) :: sys
+        type(dSFMT_T), intent(inout) :: rng
+        type(qmc_state_t), intent(inout) :: qs
+        type(ccmc_in_t), intent(in) :: ccmc_in
+        type(wfn_contrib_t), intent(inout) :: contrib
+        type(bloom_stats_t), intent(inout) :: bloom_stats
+        type(logging_t), intent(in) :: logging_info
+
+        integer(int_64), intent(inout) :: nattempts_spawn
+
+        integer :: i, nspawnings_total
+
+        ! Spawning
+        ! This has the potential to create blooms, so we allow for multiple
+        ! spawning events per cluster.
+        ! The number of spawning events is decided by the value
+        ! of cluster%amplitude/cluster%pselect.  If this is
+        ! greater than cluster_multispawn_threshold, then nspawnings is
+        ! increased to the ratio of these.
+        nspawnings_total=nint(abs(contrib%cluster%amplitude)/contrib%cluster%pselect)
+
+        nattempts_spawn = nattempts_spawn + nspawnings_total
+
+        contrib%cluster%amplitude = contrib%cluster%amplitude / nspawnings_total
+
+        do i = 1, nspawnings_total
+            call perform_ccmc_spawning_attempt(rng, sys, qs, ccmc_in, logging_info, bloom_stats, contrib, 1)
+        end do
+
+    end subroutine do_nc_ccmc_propagation
+
+    subroutine perform_ccmc_spawning_attempt(rng, sys, qs, ccmc_in, logging_info, bloom_stats, contrib, nspawnings_total)
+
+        ! Performs a single ccmc spawning attempt, as appropriate for linked,
+        ! complex or none of the above.
+
+        ! In:
+        !   sys: the system being studied.
+        !   ccmc_in: input settings related to ccmc.
+        !   logging_info: input settings related to logging.
+        !   nspawnings_total: number of spawning attempts made
+        !       from the same cluster if using multispawn.
+        ! In/Out:
+        !   rng: random number generator.
+        !   qs: information on current state of calculation.
+        !   contrib: information on contribution to wavefunction
+        !       currently under consideration. Contains both the
+        !       cluster selected and the determinant formed on
+        !       collapsing, as well as scratch spaces for partitoning
+        !       within linked.
+
+        use dSFMT_interface, only: dSFMT_t
+        use system, only: sys_t
+        use qmc_data, only: qmc_state_t, ccmc_in_t
+        use ccmc_data, only: wfn_contrib_t
+
+        use excitations, only: excit_t
+        use proc_pointers, only: gen_excit_ptr
+
+        use ccmc_death_spawning, only: spawner_ccmc, linked_spawner_ccmc
+        use ccmc_death_spawning, only: spawner_complex_ccmc, create_spawned_particle_ccmc
         use bloom_handler, only: bloom_stats_t, accumulate_bloom_stats
         use logging, only: logging_t
 
@@ -1110,56 +1127,37 @@ contains
         type(bloom_stats_t), intent(inout) :: bloom_stats
         type(logging_t), intent(in) :: logging_info
 
-        integer(int_64), intent(inout) :: nattempts_spawn
-        integer(int_p), intent(inout) :: ndeath
-        type(multispawn_stats_t), intent(inout) :: ms_stats
+        integer, intent(in) :: nspawnings_total
 
         integer(int_p) :: nspawned, nspawned_im
         integer(i0) :: fexcit(sys%basis%string_len)
-        integer :: i, nspawnings_total
 
-        ! Spawning
-        ! This has the potential to create blooms, so we allow for multiple
-        ! spawning events per cluster.
-        ! The number of spawning events is decided by the value
-        ! of cluster%amplitude/cluster%pselect.  If this is
-        ! greater than cluster_multispawn_threshold, then nspawnings is
-        ! increased to the ratio of these.
-        nspawnings_total=nint(abs(contrib%cluster%amplitude)/contrib%cluster%pselect)
+        if (contrib%cluster%excitation_level == huge(0)) then
+            ! When sampling e^-T H e^T, the cluster operators in e^-T
+            ! and e^T can excite to/from the same orbital, requiring
+            ! a different spawning routine
+            call linked_spawner_ccmc(rng, sys, qs, qs%spawn_store%spawn%cutoff, &
+                      contrib%cluster, gen_excit_ptr, nspawned, connection, nspawnings_total, &
+                      fexcit, contrib%cdet, contrib%ldet, contrib%rdet, contrib%left_cluster, contrib%right_cluster)
+            nspawned_im = 0_int_p
+        else if (sys%read_in%comp) then
+            call spawner_complex_ccmc(rng, sys, qs, qs%spawn_store%spawn%cutoff, &
+                      contrib%cdet, contrib%cluster, gen_excit_ptr, nspawned, nspawned_im, &
+                      connection, nspawnings_total)
+        else
+            call spawner_ccmc(rng, sys, qs, qs%spawn_store%spawn%cutoff, &
+                      ccmc_in%linked, contrib%cdet, contrib%cluster, gen_excit_ptr, logging_info, nspawned, &
+                      connection, nspawnings_total)
+            nspawned_im = 0_int_p
+        end if
 
-        !call ms_stats_update(nspawnings_total, ms_stats)
-        nattempts_spawn = nattempts_spawn + nspawnings_total
+        if (nspawned /= 0_int_p) call create_spawned_particle_ccmc(sys%basis, qs%ref, contrib%cdet, connection, &
+                                            nspawned, 1, contrib%cluster%excitation_level, &
+                                            fexcit, qs%spawn_store%spawn, bloom_stats)
+        if (nspawned_im /= 0_int_p) call create_spawned_particle_ccmc(sys%basis, qs%ref, contrib%cdet, connection,&
+                                            nspawned_im, 2, contrib%cluster%excitation_level, &
+                                            fexcit, qs%spawn_store%spawn, bloom_stats)
 
-        contrib%cluster%amplitude = contrib%cluster%amplitude / nspawnings_total
-
-        do i = 1, nspawnings_total
-            if (contrib%cluster%excitation_level == huge(0)) then
-                ! When sampling e^-T H e^T, the cluster operators in e^-T
-                ! and e^T can excite to/from the same orbital, requiring
-                ! a different spawning routine
-                call linked_spawner_ccmc(rng, sys, qs, qs%spawn_store%spawn%cutoff, &
-                          contrib%cluster, gen_excit_ptr, nspawned, connection, 1, &
-                          fexcit, contrib%cdet, contrib%ldet, contrib%rdet, contrib%left_cluster, contrib%right_cluster)
-                nspawned_im = 0_int_p
-            else if (sys%read_in%comp) then
-                call spawner_complex_ccmc(rng, sys, qs, qs%spawn_store%spawn%cutoff, &
-                          contrib%cdet, contrib%cluster, gen_excit_ptr, nspawned, nspawned_im, &
-                          connection, 1)
-            else
-                call spawner_ccmc(rng, sys, qs, qs%spawn_store%spawn%cutoff, &
-                          ccmc_in%linked, contrib%cdet, contrib%cluster, gen_excit_ptr, logging_info, nspawned, &
-                          connection, 1)
-                nspawned_im = 0_int_p
-            end if
-
-            if (nspawned /= 0_int_p) call create_spawned_particle_ccmc(sys%basis, qs%ref, contrib%cdet, connection, &
-                                                nspawned, 1, contrib%cluster%excitation_level, &
-                                                fexcit, qs%spawn_store%spawn, bloom_stats)
-            if (nspawned_im /= 0_int_p) call create_spawned_particle_ccmc(sys%basis, qs%ref, contrib%cdet, connection,&
-                                                nspawned_im, 2, contrib%cluster%excitation_level, &
-                                                fexcit, qs%spawn_store%spawn, bloom_stats)
-        end do
-
-    end subroutine do_nc_ccmc_propagation
+    end subroutine perform_ccmc_spawning_attempt
 
 end module ccmc
