@@ -364,8 +364,8 @@ contains
 
     end subroutine create_null_cluster
 
-    subroutine select_cluster_non_composite(sys, psip_list, f0, iexcip, iexcip_pos, nattempts, initiator_pop,  D0_pos, &
-                                            running_total, tot_ceiling_excip_pop, cdet, cluster)
+    subroutine select_cluster_non_composite(sys, psip_list, f0, iattempt, initiator_pop, D0_pos, D0_proc, &
+                                            cdet, cluster)
 
         ! Select (deterministically) the non-composite cluster containing only
         ! the single excitor iexcitor and set the same information as select_cluster.
@@ -419,113 +419,66 @@ contains
         use qmc_data, only: particle_t
         use search, only: binary_search
         use proc_pointers, only: decoder_ptr
+        use parallel, only: iproc
 
         type(sys_t), intent(in) :: sys
         type(particle_t), intent(in), target :: psip_list
         integer(i0), intent(in) :: f0(sys%basis%string_len)
-        integer(int_64), intent(in) :: iexcip, nattempts
-        integer, intent(inout) :: iexcip_pos, running_total
-        integer, intent(in) :: D0_pos
+        integer(int_64), intent(in) :: iattempt
+        integer, intent(in) :: D0_pos, D0_proc
         real(p), intent(in) :: initiator_pop
-        integer(int_p), intent(in) :: tot_ceiling_excip_pop
         type(det_info_t), intent(inout) :: cdet
         type(cluster_t), intent(inout) :: cluster
         complex(p) :: excitor_pop
 
-        integer :: iexcip_last
         ! It is more convenient to find the excitor on which the iexcip-th excip resides
         ! rather than looping over all excips explicitly (as in fciqmc) as it enables us
         ! to use the same control loop for all CCMC spawning which is then simpler and
         ! more performant for OpenMP parallelisation.
 
-        ! Note that whilst we select each excip in turn, we actually set the amplitude to
-        ! the population of excips on that excitor and the selection probability to the
-        ! ratio of the population and the total population.  These factors cancel out in
-        ! the spawning attempt (see spawner_ccmc) but doing so means that cluster is set
-        ! here is an identical fashion to select_cluster.
+        ! Rather than looping over individual excips we loop over different sites. This is
+        ! because we want to stochastically set the number of spawning attempts such that
+        ! we on average select each excitor a number of times proportional to the absolute
+        ! population. As such, we can't specify the total number of selections beforehand
+        ! within do_ccmc.
 
-        iexcip_last = iexcip_pos
-        if (iexcip_pos == 0) iexcip_pos = 1
+        ! As iterating through all noncomposite clusters, pselect = 1 exactly.
 
-        ! Most of the time the excip is either on the current position or the
-        ! next one, so special case to avoid the loop overhead.
-        if (running_total + nint(get_pop_contrib(psip_list%pops(:,iexcip_pos), psip_list%pop_real_factor, sys%read_in%comp)) &
-                >= iexcip .and. iexcip_pos /= D0_pos) then
+        ! This excitor can only be selected on this processor and only one excitor is
+        ! selected in the cluster, so unlike selecting the reference or composite
+        ! clusters, there are no additional factors of nprocs or 1/nprocs to include.
+        cluster%pselect = 1.0_p
 
-            ! Do nothing---already on the right position
-        else if (running_total &
-                + nint(get_pop_contrib(psip_list%pops(:,iexcip_pos), psip_list%pop_real_factor, sys%read_in%comp)) &
-                + nint(get_pop_contrib(psip_list%pops(:,iexcip_pos+1), psip_list%pop_real_factor, sys%read_in%comp)) &
-                >= iexcip) then
-            ! In the next slot...
-            if (iexcip_pos /= D0_pos) running_total = running_total + &
-                nint(get_pop_contrib(psip_list%pops(:,iexcip_pos), psip_list%pop_real_factor, sys%read_in%comp))
-            iexcip_pos = iexcip_pos + 1
+        cluster%nexcitors = 1
+
+        ! Initiator approximation.
+        ! This is sufficiently quick that we'll just do it in all cases, even
+        ! when not using the initiator approximation.  This matches the approach
+        ! used by Alex Thom in 'Initiator Stochastic Coupled Cluster Theory'
+        ! (unpublished).
+        ! Assume all excitors in the cluster are initiators (initiator_flag=0)
+        ! until proven otherwise (initiator_flag=1).
+        cdet%initiator_flag = 0
+
+        cdet%f = psip_list%states(:,iattempt)
+        cdet%data => psip_list%dat(:,iattempt)
+        cluster%excitors(1)%f => psip_list%states(:,iattempt)
+        if (sys%read_in%comp) then
+            excitor_pop = cmplx(psip_list%pops(1,iattempt), psip_list%pops(2,iattempt), p)/psip_list%pop_real_factor
         else
-            ! Need to hunt for it (ie the reference position is in the way).
-            if (iexcip_pos /= D0_pos) running_total = running_total + &
-                nint(get_pop_contrib(psip_list%pops(:,iexcip_pos), psip_list%pop_real_factor, sys%read_in%comp))
-            iexcip_pos = iexcip_pos + 1
-            do
-                if (running_total + nint(get_pop_contrib(psip_list%pops(:,iexcip_pos), psip_list%pop_real_factor, &
-                                        sys%read_in%comp)) &
-                        >= iexcip .and. running_total < iexcip) exit
-                if (iexcip_pos /= D0_pos) running_total = running_total + &
-                    nint(get_pop_contrib(psip_list%pops(:,iexcip_pos), psip_list%pop_real_factor, sys%read_in%comp))
-                iexcip_pos = iexcip_pos + 1
-            end do
+            excitor_pop = cmplx(psip_list%pops(1,iattempt), 0.0_p, p)/psip_list%pop_real_factor
         end if
-        ! Adjust for reference---cumulative_excip_pop(D0_pos) = cumulative_excip_pop(D0_pos-1).
-        if (iexcip_pos == D0_pos) iexcip_pos = iexcip_pos - 1
-        ! cdet and cluster only need to be set the first time the cluster is selected. On subsequent
-        ! spawning attempts the same values can be reused, saving calls to decode_det_* and
-        ! convert_excitor_to_determinant
-        if (iexcip_last /= iexcip_pos) then
-            ! We shall accumulate the factors which comprise cluster%pselect as we go.
-            !   cluster%pselect = n_sel p_size p_clust
-            ! where
-            !   n_sel   is the number of cluster selections made (by this
-            !           processor);
-            !   p_size  is the probability of choosing a cluster of that size (1 in this case);
-            !   p_clust is the probability of choosing a specific cluster given
-            !           the choice of size.
 
-            ! This excitor can only be selected on this processor and only one excitor is
-            ! selected in the cluster, so unlike selecting the reference or composite
-            ! clusters, there are no additional factors of nprocs or 1/nprocs to include.
-            cluster%pselect = real(nattempts, p)
+        if (abs(excitor_pop) <= initiator_pop) cdet%initiator_flag = 3
+        ! pclust = |population|/total_population, as just a single excitor in the cluster..
+        cluster%pselect = 1.0_p !(cluster%pselect*nint(abs(excitor_pop)))/real(tot_ceiling_excip_pop,p)
+        cluster%excitation_level = get_excitation_level(f0, cdet%f)
+        cluster%amplitude = excitor_pop
 
-            cluster%nexcitors = 1
-
-            ! Initiator approximation.
-            ! This is sufficiently quick that we'll just do it in all cases, even
-            ! when not using the initiator approximation.  This matches the approach
-            ! used by Alex Thom in 'Initiator Stochastic Coupled Cluster Theory'
-            ! (unpublished).
-            ! Assume all excitors in the cluster are initiators (initiator_flag=0)
-            ! until proven otherwise (initiator_flag=1).
-            cdet%initiator_flag = 0
-
-            cdet%f = psip_list%states(:,iexcip_pos)
-            cdet%data => psip_list%dat(:,iexcip_pos)
-            cluster%excitors(1)%f => psip_list%states(:,iexcip_pos)
-            if (sys%read_in%comp) then
-                excitor_pop = cmplx(psip_list%pops(1,iexcip_pos), psip_list%pops(2,iexcip_pos), p)/psip_list%pop_real_factor
-            else
-                excitor_pop = cmplx(psip_list%pops(1,iexcip_pos), 0.0_p, p)/psip_list%pop_real_factor
-            end if
-
-            if (abs(excitor_pop) <= initiator_pop) cdet%initiator_flag = 3
-            ! pclust = |population|/total_population, as just a single excitor in the cluster..
-            cluster%pselect = (cluster%pselect*nint(abs(excitor_pop)))/real(tot_ceiling_excip_pop,p)
-            cluster%excitation_level = get_excitation_level(f0, cdet%f)
-            cluster%amplitude = excitor_pop
-
-            ! Sign change due to difference between determinant
-            ! representation and excitors and excitation level.
-            call convert_excitor_to_determinant(cdet%f, cluster%excitation_level, cluster%cluster_to_det_sign, f0)
-            call decoder_ptr(sys, cdet%f, cdet)
-        end if
+        ! Sign change due to difference between determinant
+        ! representation and excitors and excitation level.
+        call convert_excitor_to_determinant(cdet%f, cluster%excitation_level, cluster%cluster_to_det_sign, f0)
+        call decoder_ptr(sys, cdet%f, cdet)
 
     end subroutine select_cluster_non_composite
 
