@@ -3,7 +3,7 @@ module ccmc_utils
 ! Module containing all utility functions only used within ccmc.
 ! For full explanation see top of ccmc.F90.
 
-use const, only: i0, p, int_p, dp
+use const, only: i0, p, int_p, dp, int_64
 
 implicit none
 
@@ -411,6 +411,8 @@ contains
         else
             contrib = abs(real(pops(1), p))/real(real_factor, p)
         end if
+
+        contrib = real(nint(contrib,int_64),p)
 
     end function get_pop_contrib
 
