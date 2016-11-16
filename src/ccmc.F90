@@ -694,11 +694,11 @@ contains
 
                     else
                         ! As noncomposite clusters can't be above truncation level or linked-only all can accumulate +
-                        ! propogate. Only need to check not selecting the reference as we treat it separately.
+                        ! propagate. Only need to check not selecting the reference as we treat it separately.
                         if (iattempt-nstochastic_clusters-nD0_select /= D0_pos) then
                             ! Deterministically select each excip as a non-composite cluster.
                             call select_cluster_non_composite(sys, qs%psip_list, qs%ref%f0, &
-                                        iattempt-nstochastic_clusters-nD0_select, qmc_in%initiator_pop, D0_pos, D0_proc, &
+                                        iattempt-nstochastic_clusters-nD0_select, qmc_in%initiator_pop, &
                                         contrib(it)%cdet, contrib(it)%cluster)
 
                             if (qs%propagator%quasi_newton) contrib(it)%cdet%fock_sum = &
@@ -1020,14 +1020,13 @@ contains
 
     end subroutine do_stochastic_ccmc_propagation
 
-    subroutine do_nc_ccmc_propagation(rng, sys, qs, &
-                                            ccmc_in, logging_info, bloom_stats, &
+    subroutine do_nc_ccmc_propagation(rng, sys, qs, ccmc_in, logging_info, bloom_stats, &
                                             contrib, nattempts_spawn)
 
         ! Perform stochastic propogation of a cluster selected deterministically
-        ! in full non-composite selection. This attempts spawning, adding any
-        ! created particles to the spawned list, while death is performed
-        ! in-place later.
+        ! in full non-composite selection. This performs all spawning attempts
+        ! for a given noncomposite cluster, adding any created particles to the
+        ! spawned list, while death is performed in-place later.
 
         ! In:
         !   sys: information on system under consideration.
@@ -1067,12 +1066,13 @@ contains
         integer :: i, nspawnings_total
 
         ! Spawning
-        ! This has the potential to create blooms, so we allow for multiple
-        ! spawning events per cluster.
-        ! The number of spawning events is decided by the value
-        ! of cluster%amplitude/cluster%pselect.  If this is
-        ! greater than cluster_multispawn_threshold, then nspawnings is
-        ! increased to the ratio of these.
+        ! We select each non-composite cluster only once, then perform
+        ! a number of spawning attempts proportional to the excip population
+        ! on the corresponding excitor. This is similar to the previous
+        ! approach but removes the requirement to have a deterministic
+        ! method of deciding upon the number of attempts to make on each
+        ! non-composite cluster previously imposed.
+
         nspawnings_total=nint(abs(contrib%cluster%amplitude)/contrib%cluster%pselect)
 
         nattempts_spawn = nattempts_spawn + nspawnings_total
@@ -1087,8 +1087,11 @@ contains
 
     subroutine perform_ccmc_spawning_attempt(rng, sys, qs, ccmc_in, logging_info, bloom_stats, contrib, nspawnings_total)
 
-        ! Performs a single ccmc spawning attempt, as appropriate for linked,
-        ! complex or none of the above.
+        ! Performs a single ccmc spawning attempt, as appropriate for a
+        ! given setting combination of linked, complex or none of the above.
+
+        ! This could be replaced by a procedure pointer with a little
+        ! refactoring if desired.
 
         ! In:
         !   sys: the system being studied.
