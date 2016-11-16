@@ -1026,6 +1026,15 @@ contains
         ! for a given noncomposite cluster, adding any created particles to the
         ! spawned list, while death is performed in-place later.
 
+        ! This is in many ways similar to the approach used in fciqmc except in
+        ! the case of solid-state calculations. In this case, noncomposite CCMC
+        ! spawns from multiple chunks of magnitude one and phase equal to the
+        ! excip population. FCIQMC instead spawns from purely real or imaginary
+        ! parents.
+        ! The CCMC approach is consistent with that used throughout complex CCMC,
+        ! and requires fewer attempts per iteration to sample the same population,
+        ! though the efficacy of the two approaches has not yet been investigated.
+
         ! In:
         !   sys: information on system under consideration.
         !   ccmc_in: options relating to ccmc passed in to calculation.
@@ -1040,11 +1049,11 @@ contains
         !   nattempts_spawn: running total of number of spawning attempts
         !       made during this mc cycle.
 
-
         use dSFMT_interface, only: dSFMT_t
         use system, only: sys_t
         use qmc_data, only: qmc_state_t, ccmc_in_t
         use ccmc_data, only: multispawn_stats_t, ms_stats_update, wfn_contrib_t
+        use qmc_common, only: decide_nattempts
 
         use ccmc_death_spawning, only: spawner_ccmc, linked_spawner_ccmc, stochastic_ccmc_death
         use ccmc_death_spawning, only: stochastic_ccmc_death_nc, spawner_complex_ccmc, create_spawned_particle_ccmc
@@ -1071,11 +1080,14 @@ contains
         ! method of deciding upon the number of attempts to make on each
         ! non-composite cluster previously imposed.
 
-        nspawnings_total=nint(abs(contrib%cluster%amplitude)/contrib%cluster%pselect)
+        ! We now use this to decide the number of attempts on each cluster
+        ! stochastically, as in fciqmc.
+
+        nspawnings_total = decide_nattempts(rng, abs(contrib%cluster%amplitude)/contrib%cluster%pselect)
 
         nattempts_spawn = nattempts_spawn + nspawnings_total
 
-        contrib%cluster%amplitude = contrib%cluster%amplitude / nspawnings_total
+        contrib%cluster%amplitude = contrib%cluster%amplitude / abs(contrib%cluster%amplitude)
 
         do i = 1, nspawnings_total
             call perform_ccmc_spawning_attempt(rng, sys, qs, ccmc_in, logging_info, bloom_stats, contrib, 1)
