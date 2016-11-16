@@ -297,7 +297,7 @@ contains
 
     end subroutine convert_excitor_to_determinant
 
-    subroutine cumulative_population(pops, nactive, D0_proc, D0_pos, real_factor, complx, cumulative_pops, tot_pop, tot_nint_pop)
+    subroutine cumulative_population(pops, nactive, D0_proc, D0_pos, real_factor, complx, cumulative_pops, tot_pop)
 
         ! Calculate the cumulative population, i.e. the number of psips/excips
         ! residing on a determinant/an excitor and all determinants/excitors which
@@ -338,51 +338,41 @@ contains
         integer, intent(in) :: nactive, D0_proc, D0_pos
         real(p), allocatable, intent(inout) :: cumulative_pops(:)
         real(p), intent(out) :: tot_pop
-        integer(int_p), intent(out) :: tot_nint_pop
         logical, intent(in) :: complx
 
         integer :: i
 
         ! Need to combine spaces if doing complex; we choose combining in quadrature.
         cumulative_pops(1) = get_pop_contrib(pops(:,1), real_factor, complx)
-        tot_nint_pop = nint(get_pop_contrib(pops(:,1), real_factor, complx),kind=int_p)
         if (D0_proc == iproc) then
             ! Let's be a bit faster: unroll loops and skip over the reference
             ! between the loops.
             do i = 2, d0_pos-1
                 cumulative_pops(i) = cumulative_pops(i-1) + &
                                         get_pop_contrib(pops(:,i), real_factor, complx)
-                tot_nint_pop = tot_nint_pop + &
-                                    nint(get_pop_contrib(pops(:,i), real_factor, complx),kind=int_p)
             end do
             ! Set cumulative on the reference to be the running total merely so we
             ! can continue accessing the running total from the i-1 element in the
             ! loop over excitors in slots above the reference.
             if (d0_pos == 1) then
                 cumulative_pops(d0_pos) = 0
-                tot_nint_pop = 0
             end if
             if (d0_pos > 1) cumulative_pops(d0_pos) = cumulative_pops(d0_pos-1)
             do i = d0_pos+1, nactive
                 cumulative_pops(i) = cumulative_pops(i-1) + &
                                         get_pop_contrib(pops(:,i), real_factor, complx)
-                tot_nint_pop = tot_nint_pop + &
-                                    nint(get_pop_contrib(pops(:,i), real_factor, complx),kind=int_p)
             end do
         else
             ! V simple on other processors: no reference to get in the way!
             do i = 2, nactive
                 cumulative_pops(i) = cumulative_pops(i-1) + &
                                         get_pop_contrib(pops(:,i), real_factor, complx)
-                tot_nint_pop = tot_nint_pop + &
-                                    nint(get_pop_contrib(pops(:,i), real_factor, complx),kind=int_p)
             end do
         end if
         if (nactive > 0) then
             tot_pop = cumulative_pops(nactive)
         else
             tot_pop = 0.0_p
-            tot_nint_pop = 0_int_p
         end if
 
     end subroutine cumulative_population
@@ -411,8 +401,6 @@ contains
         else
             contrib = abs(real(pops(1), p))/real(real_factor, p)
         end if
-
-        contrib = real(nint(contrib,int_64),p)
 
     end function get_pop_contrib
 

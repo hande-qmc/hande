@@ -357,7 +357,6 @@ contains
 
         real(p), allocatable :: cumulative_abs_real_pops(:)
         integer :: D0_proc, D0_pos, nD0_proc, min_cluster_size, max_cluster_size, iexcip_pos, slot
-        integer(int_p) :: tot_abs_ceiling_pop
         real(p) :: tot_abs_real_pop
         complex(p) :: D0_normalisation
         type(bloom_stats_t) :: bloom_stats
@@ -584,7 +583,7 @@ contains
                 ! Given the contribution to the projected energy is divided by the cluster generation probability and
                 ! multiplied by the actual weight, doing this has absolutely no effect on the projected energy.
                 call cumulative_population(qs%psip_list%pops, qs%psip_list%nstates, D0_proc, D0_pos, qs%psip_list%pop_real_factor, &
-                                           sys%read_in%comp, cumulative_abs_real_pops, tot_abs_real_pop, tot_abs_ceiling_pop)
+                                           sys%read_in%comp, cumulative_abs_real_pops, tot_abs_real_pop)
 
                 call update_bloom_threshold_prop(bloom_stats, nparticles_old(1))
 
@@ -610,7 +609,7 @@ contains
                     ! explicitly.
                     min_cluster_size = 2
                     nD0_select = nint(abs(D0_normalisation))
-                    nstochastic_clusters = tot_abs_ceiling_pop
+                    nstochastic_clusters = ceiling(tot_abs_real_pop)
                     nsingle_excitors = qs%psip_list%nstates
                 else
                     min_cluster_size = 0
@@ -630,7 +629,6 @@ contains
                 !$omp parallel default(none) &
                 !$omp private(it, iexcip_pos, i, seen_D0) &
                 !$omp shared(nattempts, rng, cumulative_abs_real_pops, tot_abs_real_pop,  &
-                !$omp        tot_abs_ceiling_pop, &
                 !$omp        max_cluster_size, contrib, D0_normalisation, D0_pos, rdm,    &
                 !$omp        nD0_select, qs, sys, bloom_stats, min_cluster_size, ref_det, &
                 !$omp        proj_energy_cycle, D0_population_cycle, nclusters,           &
