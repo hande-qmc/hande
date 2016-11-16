@@ -643,10 +643,27 @@ contains
                 D0_population_cycle = cmplx(0.0, 0.0, p)
                 !$omp do schedule(dynamic,200) reduction(+:D0_population_cycle,proj_energy_cycle,nattempts_spawn,ndeath)
                 do iattempt = 1, nclusters
+                    if (iattempt <= nsingle_excitors) then
+                        ! As noncomposite clusters can't be above truncation level or linked-only all can accumulate +
+                        ! propagate. Only need to check not selecting the reference as we treat it separately.
+                        if (iattempt /= D0_pos) then
+                            ! Deterministically select each excip as a non-composite cluster.
+                            call select_cluster_non_composite(sys, qs%psip_list, qs%ref%f0, &
+                                        iattempt, qmc_in%initiator_pop, &
+                                        contrib(it)%cdet, contrib(it)%cluster)
+
+                            if (qs%propagator%quasi_newton) contrib(it)%cdet%fock_sum = &
+                                            sum_sp_eigenvalues_occ_list(sys, contrib(it)%cdet%occ_list) - qs%ref%fock_sum
+
+                            call do_ccmc_accumulation(sys, qs, contrib(it)%cdet, contrib(it)%cluster, D0_population_cycle, &
+                                                    proj_energy_cycle, ccmc_in, ref_det, rdm)
+                            call do_nc_ccmc_propagation(rng(it), sys, qs, ccmc_in, logging_info, bloom_stats, &
+                                                                contrib(it), nattempts_spawn)
+                        end if
 
                     ! For OpenMP scalability, have this test inside a single loop rather
                     ! than attempt to parallelise over three separate loops.
-                    if (iattempt <= nstochastic_clusters) then
+                    else if (iattempt <= nsingle_excitors + nstochastic_clusters) then
                         call select_cluster(rng(it), sys, qs%psip_list, qs%ref%f0, qs%ref%ex_level, ccmc_in%linked, &
                                             nstochastic_clusters, D0_normalisation, qmc_in%initiator_pop, D0_pos, &
                                             cumulative_abs_real_pops, tot_abs_real_pop, min_cluster_size, max_cluster_size, &
@@ -666,8 +683,7 @@ contains
                                                                 ccmc_in, logging_info, ms_stats(it), bloom_stats, &
                                                                 contrib(it), nattempts_spawn, ndeath)
                         end if
-
-                    else if (iattempt <= nstochastic_clusters+nD0_select) then
+                    else
                         ! We just select the empty cluster.
                         ! As in the original algorithm, allow this to happen on
                         ! each processor and hence scale the selection
@@ -689,26 +705,7 @@ contains
                                                 proj_energy_cycle, ccmc_in, ref_det, rdm)
                         nattempts_spawn = nattempts_spawn + 1
                         call perform_ccmc_spawning_attempt(rng(it), sys, qs, ccmc_in, logging_info, bloom_stats, contrib(it), 1)
-
-                    else
-                        ! As noncomposite clusters can't be above truncation level or linked-only all can accumulate +
-                        ! propagate. Only need to check not selecting the reference as we treat it separately.
-                        if (iattempt-nstochastic_clusters-nD0_select /= D0_pos) then
-                            ! Deterministically select each excip as a non-composite cluster.
-                            call select_cluster_non_composite(sys, qs%psip_list, qs%ref%f0, &
-                                        iattempt-nstochastic_clusters-nD0_select, qmc_in%initiator_pop, &
-                                        contrib(it)%cdet, contrib(it)%cluster)
-
-                            if (qs%propagator%quasi_newton) contrib(it)%cdet%fock_sum = &
-                                            sum_sp_eigenvalues_occ_list(sys, contrib(it)%cdet%occ_list) - qs%ref%fock_sum
-
-                            call do_ccmc_accumulation(sys, qs, contrib(it)%cdet, contrib(it)%cluster, D0_population_cycle, &
-                                                    proj_energy_cycle, ccmc_in, ref_det, rdm)
-                            call do_nc_ccmc_propagation(rng(it), sys, qs, ccmc_in, logging_info, bloom_stats, &
-                                                                contrib(it), nattempts_spawn)
-                        end if
                     end if
-
                 end do
                 !$omp end do
 
