@@ -801,7 +801,7 @@ contains
                 ! initiator status for the cluster
                 if (abs(excitor_pop) <= initiator_pop) cdet%initiator_flag = 1
                 ! Probability of choosing this excitor = nint(pop)/tot_pop.
-                cluster%pselect = (cluster%pselect*nint(abs(excitor_pop)))/tot_level_pop
+                cluster%pselect = (cluster%pselect*abs(excitor_pop))/tot_level_pop
                 cluster%excitors(i)%f => psip_list%states(:,pos)
                 prev_pos = pos
             end do
