@@ -832,7 +832,7 @@ contains
             ! explicitly.
             min_cluster_size = 2
             selection_data%nD0_select = nint(abs(D0_normalisation))
-            selection_data%nstochastic_clusters = tot_abs_pop
+            selection_data%nstochastic_clusters = ceiling(tot_abs_pop)
             selection_data%nsingle_excitors = nstates
             if (even_selection) then
                 if (max_size > 1) then
