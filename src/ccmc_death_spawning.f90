@@ -826,10 +826,10 @@ contains
         logical, intent(in) :: ex_lvl_sort
         integer(i0) :: fexcit_loc(lbound(fexcit,dim=1):ubound(fexcit,dim=1))
 
-        fexcit_loc = fexcit
-
         if (ex_level /= huge(0)) then
             call create_excited_det(basis, cdet%f, connection, fexcit_loc)
+        else
+            fexcit_loc = fexcit
         end if
 
         if (ex_lvl_sort) call add_ex_level_bit_string_provided(basis%string_len, ex_level, &

@@ -73,9 +73,6 @@ module ccmc_selection
 ! all possible combinations of excitors at different excitation levels that
 ! results in a cluster of excitation level less than our truncation level + 2.
 
-
-
-
 use const, only: i0, int_p, int_32, int_64, debug, p, dp, depsilon
 
 implicit none
@@ -523,6 +520,7 @@ contains
         if (abs(excitor_pop) <= initiator_pop) cdet%initiator_flag = 3
         cluster%excitation_level = get_excitation_level(f0, cdet%f)
         cluster%amplitude = excitor_pop
+        call remove_ex_level_bit_string(sys%basis%string_len, cdet%f)
 
         ! Sign change due to difference between determinant
         ! representation and excitors and excitation level.
