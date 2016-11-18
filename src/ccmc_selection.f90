@@ -518,9 +518,9 @@ contains
         end if
 
         if (abs(excitor_pop) <= initiator_pop) cdet%initiator_flag = 3
+        call remove_ex_level_bit_string(sys%basis%string_len, cdet%f)
         cluster%excitation_level = get_excitation_level(f0, cdet%f)
         cluster%amplitude = excitor_pop
-        call remove_ex_level_bit_string(sys%basis%string_len, cdet%f)
 
         ! Sign change due to difference between determinant
         ! representation and excitors and excitation level.
@@ -657,6 +657,7 @@ contains
             cluster%pselect = cluster%pselect * select_proportion(choice)
 
             first = .true.
+            allowed = .true.
             accumulate_excitors : do i = 1, size(select_info, dim=2)
                 if (select_info(choice, i) /= 0) then
 
@@ -755,7 +756,7 @@ contains
         integer :: i, pos, prev_pos
         real(p) :: pops(1:nexcitors), tot_level_pop
         logical :: hit
-        logical, intent(out) :: allowed
+        logical, intent(inout) :: allowed
         complex(p) :: excitor_pop
 
         ! Calculate total population of excips on states with this excit level.
@@ -763,7 +764,7 @@ contains
 
         if (nexcitors /= 0) then
             do i = 1, nexcitors
-                pops(i) = get_rand_close_open(rng)*(tot_level_pop-1) + &
+                pops(i) = get_rand_close_open(rng)*(tot_level_pop-depsilon) + depsilon + &
                                 ex_lvl_dist%cumulative_pop_ex_lvl(ex_level - 1)
             end do
             call insert_sort(pops)
