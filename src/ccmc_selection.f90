@@ -376,6 +376,7 @@ contains
         !    psip_list: particle_t object containing current excip distribution on
         !       this processor.
         !    f0: bit string of the reference
+! [review] - AJWT: iexcitor does sound like a better name than the iattempt which is actually used.
         !    iexcitor: the index (in range [1,nstates]) of the excitor to select.
         !    initiator_pop: the population above which a determinant is an initiator.
 
@@ -395,6 +396,7 @@ contains
         use system, only: sys_t
         use determinants, only: det_info_t
         use ccmc_data, only: cluster_t
+! [review] - AJWT: get_pop_contrib isn't used.
         use ccmc_utils, only: convert_excitor_to_determinant, get_pop_contrib
         use excitations, only: get_excitation_level
         use qmc_data, only: particle_t

@@ -368,6 +368,7 @@ contains
 
         logical :: update_tau, error
 
+! [review] - AJWT: running total of what?
         integer :: running_total
 
         logical :: seen_D0
@@ -979,6 +980,7 @@ contains
         integer(int_p), intent(inout) :: ndeath
         type(multispawn_stats_t), intent(inout) :: ms_stats
 
+! [review] - AJWT: nspawnings_total really means nattempts_spawn_here or some such
         integer :: i, nspawnings_total
 
         ! Spawning
@@ -1067,6 +1069,7 @@ contains
 
         integer(int_64), intent(inout) :: nattempts_spawn
 
+! [review] - AJWT: nspawnings_total really means nattempts_spawn_here or some such
         integer :: i, nspawnings_total
 
         ! Spawning
