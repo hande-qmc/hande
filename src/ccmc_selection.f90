@@ -364,7 +364,7 @@ contains
 
     end subroutine create_null_cluster
 
-    subroutine select_cluster_non_composite(sys, psip_list, f0, iattempt, initiator_pop, &
+    subroutine select_cluster_non_composite(sys, psip_list, f0, iexcitor, initiator_pop, &
                                             cdet, cluster)
 
         ! Select (deterministically) the non-composite cluster containing only
@@ -376,7 +376,6 @@ contains
         !    psip_list: particle_t object containing current excip distribution on
         !       this processor.
         !    f0: bit string of the reference
-! [review] - AJWT: iexcitor does sound like a better name than the iattempt which is actually used.
         !    iexcitor: the index (in range [1,nstates]) of the excitor to select.
         !    initiator_pop: the population above which a determinant is an initiator.
 
@@ -396,8 +395,7 @@ contains
         use system, only: sys_t
         use determinants, only: det_info_t
         use ccmc_data, only: cluster_t
-! [review] - AJWT: get_pop_contrib isn't used.
-        use ccmc_utils, only: convert_excitor_to_determinant, get_pop_contrib
+        use ccmc_utils, only: convert_excitor_to_determinant
         use excitations, only: get_excitation_level
         use qmc_data, only: particle_t
         use search, only: binary_search
@@ -406,7 +404,7 @@ contains
         type(sys_t), intent(in) :: sys
         type(particle_t), intent(in), target :: psip_list
         integer(i0), intent(in) :: f0(sys%basis%string_len)
-        integer(int_64), intent(in) :: iattempt
+        integer(int_64), intent(in) :: iexcitor
         real(p), intent(in) :: initiator_pop
         type(det_info_t), intent(inout) :: cdet
         type(cluster_t), intent(inout) :: cluster
@@ -437,13 +435,13 @@ contains
         ! until proven otherwise (initiator_flag=1).
         cdet%initiator_flag = 0
 
-        cdet%f = psip_list%states(:,iattempt)
-        cdet%data => psip_list%dat(:,iattempt)
-        cluster%excitors(1)%f => psip_list%states(:,iattempt)
+        cdet%f = psip_list%states(:,iexcitor)
+        cdet%data => psip_list%dat(:,iexcitor)
+        cluster%excitors(1)%f => psip_list%states(:,iexcitor)
         if (sys%read_in%comp) then
-            excitor_pop = cmplx(psip_list%pops(1,iattempt), psip_list%pops(2,iattempt), p)/psip_list%pop_real_factor
+            excitor_pop = cmplx(psip_list%pops(1,iexcitor), psip_list%pops(2,iexcitor),p)/psip_list%pop_real_factor
         else
-            excitor_pop = cmplx(psip_list%pops(1,iattempt), 0.0_p, p)/psip_list%pop_real_factor
+            excitor_pop = real(psip_list%pops(1,iexcitor),p)/psip_list%pop_real_factor
         end if
 
         if (abs(excitor_pop) <= initiator_pop) cdet%initiator_flag = 3

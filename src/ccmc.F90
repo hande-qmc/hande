@@ -368,9 +368,6 @@ contains
 
         logical :: update_tau, error
 
-! [review] - AJWT: running total of what?
-        integer :: running_total
-
         logical :: seen_D0
         real(p) :: dfock
         complex(p) :: D0_population_cycle, proj_energy_cycle
@@ -638,7 +635,6 @@ contains
                 !$omp        nparticles_change, ndeath, ndeath_nc_im, logging_info)
                 it = get_thread_id()
                 iexcip_pos = 0
-                running_total = 0
                 seen_D0 = .false.
                 proj_energy_cycle = cmplx(0.0, 0.0, p)
                 D0_population_cycle = cmplx(0.0, 0.0, p)
@@ -930,7 +926,7 @@ contains
 
     subroutine do_stochastic_ccmc_propagation(rng, sys, qs, &
                                             ccmc_in, logging_info, ms_stats, bloom_stats, &
-                                            contrib, nattempts_spawn, ndeath)
+                                            contrib, nattempts_spawn_tot, ndeath)
 
         ! Perform stochastic propogation of a cluster in an appropriate manner
         ! for the given inputs. For stochastically selected clusters this
@@ -953,7 +949,7 @@ contains
         !   bloom_stats: statistics on blooms during calculation.
         !   contrib: derived type containing information on the current
         !       wavefunction contribution being considered.
-        !   nattempts_spawn: running total of number of spawning attempts
+        !   nattempts_spawn_tot: running total of number of spawning attempts
         !       made during this mc cycle.
         !   ndeath: total number of particles created via death.
 
@@ -976,12 +972,11 @@ contains
         type(bloom_stats_t), intent(inout) :: bloom_stats
         type(logging_t), intent(in) :: logging_info
 
-        integer(int_64), intent(inout) :: nattempts_spawn
+        integer(int_64), intent(inout) :: nattempts_spawn_tot
         integer(int_p), intent(inout) :: ndeath
         type(multispawn_stats_t), intent(inout) :: ms_stats
 
-! [review] - AJWT: nspawnings_total really means nattempts_spawn_here or some such
-        integer :: i, nspawnings_total
+        integer :: i, nspawnings_cluster
 
         ! Spawning
         ! This has the potential to create blooms, so we allow for multiple
@@ -990,14 +985,14 @@ contains
         ! of cluster%amplitude/cluster%pselect.  If this is
         ! greater than cluster_multispawn_threshold, then nspawnings is
         ! increased to the ratio of these.
-        nspawnings_total=max(1,ceiling((abs(contrib%cluster%amplitude)&
+        nspawnings_cluster=max(1,ceiling((abs(contrib%cluster%amplitude)&
                                      /contrib%cluster%pselect)/ ccmc_in%cluster_multispawn_threshold))
 
-        call ms_stats_update(nspawnings_total, ms_stats)
-        nattempts_spawn = nattempts_spawn + nspawnings_total
+        call ms_stats_update(nspawnings_cluster, ms_stats)
+        nattempts_spawn_tot = nattempts_spawn_tot + nspawnings_cluster
 
-        do i = 1, nspawnings_total
-            call perform_ccmc_spawning_attempt(rng, sys, qs, ccmc_in, logging_info, bloom_stats, contrib, nspawnings_total)
+        do i = 1, nspawnings_cluster
+            call perform_ccmc_spawning_attempt(rng, sys, qs, ccmc_in, logging_info, bloom_stats, contrib, nspawnings_cluster)
         end do
 
         ! Does the cluster collapsed onto D0 produce
@@ -1018,7 +1013,7 @@ contains
     end subroutine do_stochastic_ccmc_propagation
 
     subroutine do_nc_ccmc_propagation(rng, sys, qs, ccmc_in, logging_info, bloom_stats, &
-                                            contrib, nattempts_spawn)
+                                            contrib, nattempts_spawn_tot)
 
         ! Perform stochastic propogation of a cluster selected deterministically
         ! in full non-composite selection. This performs all spawning attempts
@@ -1067,10 +1062,9 @@ contains
         type(bloom_stats_t), intent(inout) :: bloom_stats
         type(logging_t), intent(in) :: logging_info
 
-        integer(int_64), intent(inout) :: nattempts_spawn
+        integer(int_64), intent(inout) :: nattempts_spawn_tot
 
-! [review] - AJWT: nspawnings_total really means nattempts_spawn_here or some such
-        integer :: i, nspawnings_total
+        integer :: i, nspawnings_cluster
 
         ! Spawning
         ! We select each non-composite cluster only once, then perform
@@ -1083,13 +1077,13 @@ contains
         ! We now use this to decide the number of attempts on each cluster
         ! stochastically, as in fciqmc.
 
-        nspawnings_total = decide_nattempts(rng, abs(contrib%cluster%amplitude)/contrib%cluster%pselect)
+        nspawnings_cluster = decide_nattempts(rng, abs(contrib%cluster%amplitude)/contrib%cluster%pselect)
 
-        nattempts_spawn = nattempts_spawn + nspawnings_total
+        nattempts_spawn_tot = nattempts_spawn_tot + nspawnings_cluster
 
         contrib%cluster%amplitude = contrib%cluster%amplitude / abs(contrib%cluster%amplitude)
 
-        do i = 1, nspawnings_total
+        do i = 1, nspawnings_cluster
             call perform_ccmc_spawning_attempt(rng, sys, qs, ccmc_in, logging_info, bloom_stats, contrib, 1)
         end do
 
