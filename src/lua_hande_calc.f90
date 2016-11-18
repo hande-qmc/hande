@@ -1805,8 +1805,9 @@ contains
         type(blocking_in_t), intent(out) :: blocking_in
 
         integer :: err, blocking_table
-        character(21),parameter :: keys(7) = [character(21) :: &
-            'blocking_on_the_fly', 'start_save_frequency', 'start_point_number', 'filename', 'start_point', 'error_limit', 'min_ratio']
+        character(21),parameter :: keys(7) = [character(21) ::  'blocking_on_the_fly', 'start_save_frequency',   &
+                                                                'start_point_number', 'filename', 'start_point', &
+                                                                'error_limit', 'min_ratio']
 
         if (aot_exists(lua_state, opts, 'blocking')) then
 
