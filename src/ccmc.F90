@@ -987,7 +987,7 @@ contains
         use ccmc_data, only: multispawn_stats_t, ms_stats_update, wfn_contrib_t
 
         use ccmc_death_spawning, only: spawner_ccmc, linked_spawner_ccmc, stochastic_ccmc_death
-        use ccmc_death_spawning, only: stochastic_ccmc_death_nc, spawner_complex_ccmc, create_spawned_particle_ccmc
+        use ccmc_death_spawning, only: stochastic_ccmc_death_nc, spawner_complex_ccmc
         use bloom_handler, only: bloom_stats_t, accumulate_bloom_stats
         use logging, only: logging_t
 
@@ -1077,7 +1077,7 @@ contains
         use qmc_common, only: decide_nattempts
 
         use ccmc_death_spawning, only: spawner_ccmc, linked_spawner_ccmc, stochastic_ccmc_death
-        use ccmc_death_spawning, only: stochastic_ccmc_death_nc, spawner_complex_ccmc, create_spawned_particle_ccmc
+        use ccmc_death_spawning, only: stochastic_ccmc_death_nc, spawner_complex_ccmc
         use bloom_handler, only: bloom_stats_t, accumulate_bloom_stats
         use logging, only: logging_t
 
