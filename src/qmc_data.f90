@@ -537,6 +537,9 @@ type estimators_t
     real(p) :: proj_hf_O_hpsip
     ! \sum_i <D_0|H|D_i> \tilde{N}_i.
     real(p) :: proj_hf_H_hfpsip
+    ! The total number of attempts made to select cluster from current distribution, across all
+    ! processes.
+    integer(int_64) :: nattempts = 0_int_p
 end type estimators_t
 
 type propagator_t

@@ -30,6 +30,7 @@ enum, bind(c)
     enumerator :: error_ind
     enumerator :: rdm_energy_ind
     enumerator :: rdm_trace_ind
+    enumerator :: nattempts_ind
     enumerator :: nparticles_start_ind ! ensure this is always the last enumerator
 end enum
 
@@ -306,6 +307,8 @@ contains
         rep_loop_loc(rdm_energy_ind) = qs%estimators%rdm_energy
         rep_loop_loc(rdm_trace_ind) = qs%estimators%rdm_trace
 
+        rep_loop_loc(nattempts_ind) = real(qs%estimators%nattempts, dp)
+
         offset = nparticles_start_ind-1 + iproc*qs%psip_list%nspaces
         if (present(spawn_elsewhere)) then
             rep_loop_loc(offset+1:offset+qs%psip_list%nspaces) = qs%psip_list%nparticles + spawn_elsewhere
@@ -410,6 +413,8 @@ contains
         qs%estimators%tot_nspawn_events = nint(rep_loop_sum(nspawned_ind))
         qs%estimators%rdm_energy = real(rep_loop_sum(rdm_energy_ind), p)
         qs%estimators%rdm_trace = real(rep_loop_sum(rdm_trace_ind), p)
+        qs%estimators%nattempts = int(rep_loop_sum(nattempts_ind), int_64)
+
         if (present(comms_found)) then
             comms_found = abs(rep_loop_sum(comms_found_ind)) > depsilon
         end if

@@ -847,7 +847,7 @@ contains
                     selection_data%nstochastic_clusters = 0
                 end if
             end if
-
+            nattempts = nint(tot_abs_pop) + selection_data%nD0_select + selection_data%nstochastic_clusters
         else
             min_cluster_size = 0
             selection_data%nD0_select = 0 ! instead of this number of deterministic selections, these are chosen stochastically

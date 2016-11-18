@@ -340,7 +340,7 @@ contains
         type(qmc_state_t), intent(inout), optional :: qmc_state_restart
 
         integer :: i, ireport, icycle, iter, semi_stoch_iter, it
-        integer(int_64) :: iattempt, nattempts
+        integer(int_64) :: iattempt
         integer(int_64) :: nattempts_spawn
         real(dp), allocatable :: nparticles_old(:), nparticles_change(:)
         type(det_info_t) :: ref_det
@@ -465,8 +465,8 @@ contains
 
         ! Main fciqmc loop.
         if (parent) call write_qmc_report_header(qs%psip_list%nspaces, cmplx_est=sys%read_in%comp, &
-                                            rdm_energy=ccmc_in%density_matrices)
-        call initial_fciqmc_status(sys, qmc_in, qs)
+                                            rdm_energy=ccmc_in%density_matrices, nattempts = .true.)
+        call initial_fciqmc_status(sys, qmc_in, qs, doing_ccmc=.true.)
         ! Initialise timer.
         call cpu_time(t1)
 
@@ -573,7 +573,7 @@ contains
                 ! Note that 'death' in CCMC creates particles in the spawned
                 ! list, so the number of deaths not in the spawned list is
                 ! always 0.
-                call init_mc_cycle(qs%psip_list, qs%spawn_store%spawn, nattempts, ndeath, &
+                call init_mc_cycle(qs%psip_list, qs%spawn_store%spawn, qs%estimators%nattempts, ndeath, &
                                    min_attempts=nint(abs(D0_normalisation), kind=int_64), &
                                    ndeath_im = ndeath_im, &
                                    complx=sys%read_in%comp)
@@ -628,8 +628,9 @@ contains
                 !         proportional to their contribution to the final wavefunction.
                 !       + non-composite cluster enumerated as in full non-composite algorithm.
                 !       + composite clusters more complicated selection probability required.
-                call set_cluster_selections(selection_data, nattempts, min_cluster_size, max_cluster_size, D0_normalisation, &
-                                            tot_abs_real_pop, qs%psip_list%nstates, ccmc_in%full_nc, ccmc_in%even_selection)
+                call set_cluster_selections(selection_data, qs%estimators%nattempts, min_cluster_size, max_cluster_size, &
+                                            D0_normalisation, tot_abs_real_pop, qs%psip_list%nstates, ccmc_in%full_nc, &
+                                            ccmc_in%even_selection)
                 ! OpenMP chunk size determined completely empirically from a single
                 ! test.  Please feel free to improve...
                 ! NOTE: we can't refer to procedure pointers in shared blocks so
@@ -638,7 +639,7 @@ contains
                 ! errors relate to the procedure pointers...
                 !$omp parallel default(none) &
                 !$omp private(it, iexcip_pos, i, seen_D0) &
-                !$omp shared(nattempts, rng, cumulative_abs_real_pops, tot_abs_real_pop,  &
+                !$omp shared(rng, cumulative_abs_real_pops, tot_abs_real_pop,  &
                 !$omp        max_cluster_size, contrib, D0_normalisation, D0_pos, rdm,    &
                 !$omp        qs, sys, bloom_stats, min_cluster_size, ref_det,             &
                 !$omp        proj_energy_cycle, D0_population_cycle, selection_data,      &
@@ -818,7 +819,8 @@ contains
             if (parent) then
                 if (bloom_stats%nblooms_curr > 0) call bloom_stats_warning(bloom_stats)
                 call write_qmc_report(qmc_in, qs, ireport, nparticles_old, t2-t1, .false., .false., &
-                                        sys%read_in%comp, rdm_energy=ccmc_in%density_matrices)
+                                        sys%read_in%comp, rdm_energy=ccmc_in%density_matrices, &
+                                        nattempts=.true.)
             end if
 
             ! Update the time for the start of the next iteration.
