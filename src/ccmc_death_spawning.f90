@@ -802,7 +802,7 @@ contains
 ! --- Helper functions ---
 
     subroutine create_spawned_particle_ccmc(basis, ref, cdet, connection, nspawned, ispace, &
-                                            ex_level, ex_lvl_sort, fexcit, spawn, bloom_stats)
+                                            parent_cluster_ex_level, ex_lvl_sort, fexcit, spawn, bloom_stats)
 
         use basis_types, only: basis_t
         use reference_determinant, only: reference_t
@@ -811,7 +811,7 @@ contains
         use bloom_handler, only: bloom_stats_t, accumulate_bloom_stats
         use excitations, only: excit_t, create_excited_det
         use proc_pointers, only: create_spawned_particle_ptr
-        use ccmc_utils, only: add_ex_level_bit_string_provided
+        use ccmc_utils, only: add_ex_level_bit_string_calc
 
         type(basis_t), intent(in) :: basis
         type(reference_t), intent(in) :: ref
@@ -821,19 +821,18 @@ contains
         type(excit_t), intent(in) :: connection
 
         integer(int_p), intent(in) :: nspawned
-        integer, intent(in) :: ispace, ex_level
+        integer, intent(in) :: ispace, parent_cluster_ex_level
         integer(i0), intent(in) :: fexcit(:)
         logical, intent(in) :: ex_lvl_sort
         integer(i0) :: fexcit_loc(lbound(fexcit,dim=1):ubound(fexcit,dim=1))
 
-        if (ex_level /= huge(0)) then
+        if (parent_cluster_ex_level /= huge(0)) then
             call create_excited_det(basis, cdet%f, connection, fexcit_loc)
         else
             fexcit_loc = fexcit
         end if
 
-        if (ex_lvl_sort) call add_ex_level_bit_string_provided(basis%string_len, ex_level, &
-                                                                                fexcit_loc)
+        if (ex_lvl_sort) call add_ex_level_bit_string_calc(basis%string_len, ref%f0, fexcit_loc)
         call create_spawned_particle_ptr(basis, ref, cdet, connection, nspawned, &
                                         ispace, spawn, fexcit_loc)
         call accumulate_bloom_stats(bloom_stats, nspawned)
