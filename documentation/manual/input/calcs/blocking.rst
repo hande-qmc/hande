@@ -59,6 +59,10 @@ blocking analysis on the fly.
 
     Optional. Default: 3
 
+..
+    [review] - AJWT: It isn't clear to me what exactly this does or how it works.
+
+
     The ratio between error in error and standard error of projected energy.
     If the ratio is larger, greater number of blocks are used for reblock analysis. If the ``error_limit``
     and ``min_ratio`` condition is satisfied, ``soft_exit`` = true is returned and calculation is terminated

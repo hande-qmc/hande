@@ -293,6 +293,7 @@ type blocking_in_t
     ! Limit of the sum of error in error and standard deviation of projected
     ! energy. If this value is reached soft_exit = true. Default is 0
     real(p) :: error_limit = 0
+! [review] - AJWT: [also see docs].  Not entirely clear what this means.
     ! Minimum ratio between error in error and standard errer used to determine
     ! whether or not calculation should be terminated. Larger ratio means more
     ! blocks are used for reblocking analysis. Default = 3
@@ -540,8 +541,21 @@ type blocking_t
 ! [review] - CJCS:  reblock_data(data_types1,log2(blocksize),data_types2) = value
 ! [review] - CJCS: and defining all the different meanings would be a clearer
 ! [review] - CJCS: way to represent this.
+! [review] - AJWT: An alternative would be to have a reblock_data_t - something like
+!   type reblock_data_t
+!       integer :: n_blocks
+!       real(p) :: data_accumulator
+!       real(p) :: sum_of_blocks
+!       real(p) :: sum_of_block_squares
+!   end type reblock_data_t
+!
+!   type(reblock_data_t), allocatable :: reblock_data(:,:)
+!
+!  [/review]
+
     ! reblock_data: Array containing statistics to carry out blocking analysis of data up
     ! until the current report cycle.
+! [review] - AJWT: The following sounds like it ought to be an enum (as with the ones below)
     ! data_type = 1 corresponds to \sum H_0j N_j.
     ! data_type = 2 corresponds to reference population.
     ! data_type = 3 corresponds to shift

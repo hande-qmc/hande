@@ -118,6 +118,17 @@ FAQ
   where JSS and AJWT are the initials of the reviewer and code author
   respectively.
 
+  Documentation can also be reviewed, and in rst has the format
+
+  .. code-block:: rst
+
+     Some Documentation in RST format.
+
+     ..
+         [review] - AJWT: I don't see how this works.
+        
+    
+
 * Will *my* code actually get reviewed?
 
   We're all usually terribly busy and have very little time, but in a group

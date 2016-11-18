@@ -1,6 +1,7 @@
 module blocking
 
 ! [review] - JSS: cite blocking (and DDDA?) paper(s).
+! [review] - AJWT: Perhaps also Flyvbjerg & Petersen?
 ! Module for performing reblocking on the fly.
 
 ! References
@@ -529,6 +530,7 @@ contains
         !   blocking_in: input options for blocking on the fly.
         ! In/Out:
         !   bl: Information needed to peform blocking on the fly.
+! [review] - AJWT: This doesn't appear to actually touch soft_exit.
         !   soft_exit: if true, the calculation is terminated.
 
         use qmc_data, only: blocking_t, qmc_state_t, qmc_in_t, blocking_in_t
@@ -637,6 +639,7 @@ contains
             !   bl: Information needed to peform blocking on the fly.
             !   blocking_in: projected energy. (\sum H_0j Nj/N_0).
             ! In/Out:
+! [review] - AJWT: This never actually uses soft_exit
             !   soft_exit: if true, the calculation is terminated.
 
             use qmc_data, only: blocking_t, blocking_in_t, qmc_state_t
