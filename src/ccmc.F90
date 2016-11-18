@@ -293,7 +293,7 @@ contains
         use restart_hdf5, only: dump_restart_hdf5, restart_info_t, init_restart_info_t, dump_restart_file_wrapper
 
         use annihilation, only: direct_annihilation
-        use bloom_handler, only: init_bloom_stats_t, bloom_stats_t, bloom_mode_fractionn, &
+        use bloom_handler, only: init_bloom_stats_t, bloom_stats_t, bloom_mode_fractionn, bloom_mode_fixedn, &
                                  write_bloom_report, bloom_stats_warning, update_bloom_threshold_prop
         use ccmc_data
         use ccmc_selection, only: select_cluster, create_null_cluster, select_nc_cluster, select_cluster_truncated
@@ -420,7 +420,11 @@ contains
         call check_allocate('nparticles_change', qs%psip_list%nspaces, ierr)
 
         ! Initialise bloom_stats components to the following parameters.
-        call init_bloom_stats_t(bloom_stats, mode=bloom_mode_fractionn, encoding_factor=qs%psip_list%pop_real_factor)
+        if (ccmc_in%even_selection) then
+            call init_bloom_stats_t(bloom_stats, mode=bloom_mode_fixedn, encoding_factor=qs%psip_list%pop_real_factor)
+        else
+            call init_bloom_stats_t(bloom_stats, mode=bloom_mode_fractionn, encoding_factor=qs%psip_list%pop_real_factor)
+        end if
 
         if (qs%ref%ex_level+2 > 12 .and. .not. ccmc_in%linked) then
             call stop_all('do_ccmc', 'CCMC can currently only handle clusters up to size 12 due to&
@@ -595,7 +599,7 @@ contains
                                            D0_proc, D0_pos, qs%psip_list%pop_real_factor, ccmc_in%even_selection, &
                                            sys%read_in%comp, cumulative_abs_real_pops, tot_abs_real_pop, ex_lvl_dist)
 
-                call update_bloom_threshold_prop(bloom_stats, nparticles_old(1))
+                if (.not.ccmc_in%even_selection) call update_bloom_threshold_prop(bloom_stats, nparticles_old(1))
 
                 if (ccmc_in%even_selection) then
                     call update_ex_lvl_dist(ex_lvl_dist)
