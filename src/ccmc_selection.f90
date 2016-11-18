@@ -904,6 +904,7 @@ contains
 
         use ccmc_data, only: selection_data_t, ex_lvl_dist_t
         use ccmc_utils, only: update_cumulative_dist_real
+        use parallel, only: nprocs
 
         type(selection_data_t), intent(inout) :: cluster_selection
         type(ex_lvl_dist_t), intent(in) :: ex_lvl_dist
@@ -921,7 +922,8 @@ contains
 
                 call update_selection_block_probability(select_info, ex_lvl_dist%pop_ex_lvl, &
                                                     select_proportion, cluster_selection%size_weighting(i))
-                cluster_selection%size_weighting(i) = cluster_selection%size_weighting(i) / (abs_D0_normalisation ** (i-1))
+                cluster_selection%size_weighting(i) = cluster_selection%size_weighting(i) * (nprocs ** (i-1)) &
+                                                    / ((abs_D0_normalisation) ** (i-1))
             end associate
         end do
 
