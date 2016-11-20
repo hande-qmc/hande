@@ -507,7 +507,7 @@ contains
             ! start of the i-FCIQMC cycle than at the end, as we're
             ! already looping over the determinants.
             connection = get_excitation(sys%nel, sys%basis, cdet%f, qs%ref%f0)
-
+! [review] - AJWT: Does this mean that this routine doesn't work for more than one space?
             call update_proj_energy_ptr(sys, qs%ref%f0, qs%trial%wfn_dat, cdet, real_pop, qs%estimators(1), &
                                         connection, hmatel)
             ! Is this determinant an initiator?
