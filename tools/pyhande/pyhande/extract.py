@@ -123,7 +123,6 @@ data_pairs : list of (dict, :class:`pandas.DataFrame` or :class:`pandas.Series`)
     timings = []
     (f, compressed) = _open_file(filename)
     for line in f:
-
         # Start of calculation block?
         match = calc_block.search(line)
         if 'RNG' in line:
@@ -458,13 +457,17 @@ comment_file_filename : string
     else:
         comment_fname = ''
     for line in fhandle:
-        csv_line = ','.join(line.strip().split())
+        row_pieces = line.strip().split()
+        csv_line = ','.join(row_pieces)
         if not csv_line:
             # blank line => end of data table.
             break
         elif csv_line.startswith(comment):
             if parse_comments:
                 comment_file.write(line)
+        elif not row_pieces[0].isdigit():
+            # the first column contains something that is not a number
+            break
         else:
             data.write(csv_line+'\n')
     data.close()
