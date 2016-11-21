@@ -364,7 +364,7 @@ contains
 
     end subroutine create_null_cluster
 
-    subroutine select_cluster_non_composite(sys, psip_list, f0, iexcitor, initiator_pop, &
+    subroutine select_nc_cluster(sys, psip_list, f0, iexcitor, initiator_pop, &
                                             cdet, cluster)
 
         ! Select (deterministically) the non-composite cluster containing only
@@ -453,6 +453,6 @@ contains
         call convert_excitor_to_determinant(cdet%f, cluster%excitation_level, cluster%cluster_to_det_sign, f0)
         call decoder_ptr(sys, cdet%f, cdet)
 
-    end subroutine select_cluster_non_composite
+    end subroutine select_nc_cluster
 
 end module ccmc_selection

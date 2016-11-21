@@ -296,7 +296,7 @@ contains
         use bloom_handler, only: init_bloom_stats_t, bloom_stats_t, bloom_mode_fractionn, &
                                  write_bloom_report, bloom_stats_warning, update_bloom_threshold_prop
         use ccmc_data
-        use ccmc_selection, only: select_cluster, create_null_cluster, select_cluster_non_composite
+        use ccmc_selection, only: select_cluster, create_null_cluster, select_nc_cluster
         use ccmc_death_spawning, only: stochastic_ccmc_death_nc
         use ccmc_utils, only: init_contrib, dealloc_contrib, find_D0, cumulative_population
         use determinants, only: det_info_t, alloc_det_info_t, dealloc_det_info_t, sum_sp_eigenvalues_occ_list, &
@@ -645,8 +645,7 @@ contains
                         ! propagate. Only need to check not selecting the reference as we treat it separately.
                         if (iattempt /= D0_pos) then
                             ! Deterministically select each excip as a non-composite cluster.
-! [review] - JSS: note naming inconsistency between select_cluster_non_composite and do_nc_ccmc_propagation.
-                            call select_cluster_non_composite(sys, qs%psip_list, qs%ref%f0, &
+                            call select_nc_cluster(sys, qs%psip_list, qs%ref%f0, &
                                         iattempt, qmc_in%initiator_pop, &
                                         contrib(it)%cdet, contrib(it)%cluster)
 

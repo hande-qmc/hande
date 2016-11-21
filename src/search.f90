@@ -330,11 +330,11 @@ contains
 
     pure subroutine binary_search_real_p(list, item, istart, iend, hit, pos)
 
-        ! [review] - JSS: it should be noted that the item is tested to be within depsilon
-        ! [review] - JSS: of the value in the list rather than strict equality.
         ! Find where an item resides in a list of such items.
         ! Only elements between istart and iend are examined (use the
         ! array boundaries in the worst case).
+        !
+        ! NB item is tested to be within depsilon of list values, rather than equality.
         !
         ! In:
         !    list: a sorted real list/array.
