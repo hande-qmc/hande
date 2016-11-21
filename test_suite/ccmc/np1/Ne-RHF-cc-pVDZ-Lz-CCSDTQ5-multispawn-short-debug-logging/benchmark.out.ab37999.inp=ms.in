@@ -1,0 +1,181 @@
+
+   HANDE
+
+ ================================================================
+ Compiled on Nov 17 2016 at 11:33:17
+ Compiled using cuc3.intel13.mpi.pop64.(optimised)
+ HANDE version: 1.1-dev
+ git sha1 hash:
+     ab37999b695b057c0af76625b9be7bce9d14eae1
+ Hostname:
+     sandstone
+ Working directory: 
+     /home/cs675/Code/hande/test_suite/ccmc/np1/Ne-RHF-cc-pVDZ-Lz-CCSDTQ5-multispawn-short-debug-logging
+ Started running on 17/11/2016 at 12:00:10
+ Calculation UUID: 31c39734-9448-4f6b-a6a2-26fa3695e355.
+ Preprocessor settings:
+     DISABLE_HDF5 not defined.  HDF5 enabled.
+     DISABLE_LANCZOS defined.  Lanczos disabled.
+     DISABLE_UUID not defined.  UUID enabled.
+     PARALLEL defined.  MPI parallelization enabled.
+     DISABLE_SCALAPACK not defined.  ScaLAPACK enabled.
+     SINGLE_PRECISION not defined.  Double precision used throughout.
+     USE_POPCNT not defined.  Internal POPCNT procedure used.
+     DET_SIZE = 32.
+     POP_SIZE = 64.
+ ================================================================
+
+ Input options
+ -------------
+
+sys = read_in {
+    int_file = "FCIDUMP",
+    nel = 10,
+    ms = 0,
+    sym = 'aufbau',
+    Lz = true,
+}
+
+ccmc {
+    sys = sys,
+    qmc = {
+        tau = 0.02,
+        rng_seed = 7,
+        init_pop = 50,
+        mc_cycles = 10,
+        nreports = 25,
+        target_population = 5000,
+        shift_damping = 0.1,
+        state_size = -1000,
+        spawned_state_size = -50,
+    },
+    ccmc = {
+        cluster_multispawn_threshold = 3.15262647847835,
+        full_non_composite = true,
+    },
+    reference = {
+        ex_level = 5,
+    },
+    logging = {
+        calc = 1,
+        spawn = 2,
+        death = 2,
+        stoch_selection = 1,
+        start = 144,
+        finish = 219,
+    },
+}
+
+ -------------
+
+ Memory required for all two body integrals (MB) on each processor: 0
+ It is left to the user to ensure that this does not exceed available resources.
+
+ Basis functions
+ ---------------
+
+ Spin given in units of 1/2.
+
+ index  spatial symmetry sym_index lz     ms       <i|h|i>
+     1      1      24       1       0       1       -3.27656354E+01
+     2      1      24       2       0      -1       -3.27656354E+01
+     3      2      24       3       0       1       -1.91879823E+00
+     4      2      24       4       0      -1       -1.91879823E+00
+     5      3      23       1      -1       1       -8.32097255E-01
+     6      3      23       2      -1      -1       -8.32097255E-01
+     7      4      31       1       1       1       -8.32097255E-01
+     8      4      31       2       1      -1       -8.32097255E-01
+     9      5      25       1       0       1       -8.32097254E-01
+    10      5      25       2       0      -1       -8.32097254E-01
+    11      6      23       3      -1       1        1.69455773E+00
+    12      6      23       4      -1      -1        1.69455773E+00
+    13      7      31       3       1       1        1.69455773E+00
+    14      7      31       4       1      -1        1.69455773E+00
+    15      8      25       3       0       1        1.69455773E+00
+    16      8      25       4       0      -1        1.69455773E+00
+    17      9      24       5       0       1        2.15942507E+00
+    18      9      24       6       0      -1        2.15942507E+00
+    19     10      16       1      -2       1        5.19671140E+00
+    20     10      16       2      -2      -1        5.19671140E+00
+    21     11      32       1       2       1        5.19671140E+00
+    22     11      32       2       2      -1        5.19671140E+00
+    23     12      22       1      -1       1        5.19671140E+00
+    24     12      22       2      -1      -1        5.19671140E+00
+    25     13      30       1       1       1        5.19671140E+00
+    26     13      30       2       1      -1        5.19671140E+00
+    27     14      24       7       0       1        5.19671140E+00
+    28     14      24       8       0      -1        5.19671140E+00
+
+ E_core =    0.000000000000
+ Number of electrons: 10
+ Number of basis functions: 28
+
+ Bit-length of integers used to store determinant bit-strings: 32
+ Number of integers used to store determinant bit-strings: 1
+
+ Symmetry information
+ --------------------
+
+ Number of point group symmetries: 4
+ Maximum Lz found: 2
+ Lz offset (corresponds to Lz=0): 24
+ Totally symmetric symmetry: 24
+ The matrix below gives the direct products of the irreducible representations.
+
+  8  9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25 26 27
+  9  8 11 10 13 12 15 14 17 16 19 18 21 20 23 22 25 24 27 26
+ 10 11  8  9 14 15 12 13 18 19 16 17 22 23 20 21 26 27 24 25
+ 11 10  9  8 15 14 13 12 19 18 17 16 23 22 21 20 27 26 25 24
+ 12 13 14 15 16 17 18 19 20 21 22 23 24 25 26 27 28 29 30 31
+ 13 12 15 14 17 16 19 18 21 20 23 22 25 24 27 26 29 28 31 30
+ 14 15 12 13 18 19 16 17 22 23 20 21 26 27 24 25 30 31 28 29
+ 15 14 13 12 19 18 17 16 23 22 21 20 27 26 25 24 31 30 29 28
+ 16 17 18 19 20 21 22 23 24 25 26 27 28 29 30 31 32 33 34 35
+ 17 16 19 18 21 20 23 22 25 24 27 26 29 28 31 30 33 32 35 34
+ 18 19 16 17 22 23 20 21 26 27 24 25 30 31 28 29 34 35 32 33
+ 19 18 17 16 23 22 21 20 27 26 25 24 31 30 29 28 35 34 33 32
+ 20 21 22 23 24 25 26 27 28 29 30 31 32 33 34 35 36 37 38 39
+ 21 20 23 22 25 24 27 26 29 28 31 30 33 32 35 34 37 36 39 38
+ 22 23 20 21 26 27 24 25 30 31 28 29 34 35 32 33 38 39 36 37
+ 23 22 21 20 27 26 25 24 31 30 29 28 35 34 33 32 39 38 37 36
+ 24 25 26 27 28 29 30 31 32 33 34 35 36 37 38 39 40 41 42 43
+ 25 24 27 26 29 28 31 30 33 32 35 34 37 36 39 38 41 40 43 42
+ 26 27 24 25 30 31 28 29 34 35 32 33 38 39 36 37 42 43 40 41
+ 27 26 25 24 31 30 29 28 35 34 33 32 39 38 37 36 43 42 41 40
+
+ The table below gives the number of basis functions spanning each irreducible representation.
+
+ irrep  Lz   sym  nbasis  nbasis_up  nbasis_down
+  16    -2    0      2       1          1
+  17    -2    1      0       0          0
+  18    -2    2      0       0          0
+  19    -2    3      0       0          0
+  20    -1    0      0       0          0
+  21    -1    1      0       0          0
+  22    -1    2      2       1          1
+  23    -1    3      4       2          2
+  24     0    0      8       4          4
+  25     0    1      4       2          2
+  26     0    2      0       0          0
+  27     0    3      0       0          0
+  28     1    0      0       0          0
+  29     1    1      0       0          0
+  30     1    2      2       1          1
+  31     1    3      4       2          2
+  32     2    0      2       1          1
+  33     2    1      0       0          0
+  34     2    2      0       0          0
+  35     2    3      0       0          0
+
+
+ Reference determinant and so symmetry sector selected using the Aufbau principle.
+ Selected symmetry 24.
+
+--------------------------------------------------------------------------
+MPI_ABORT was invoked on rank 0 in communicator MPI_COMM_WORLD 
+with errorcode 999.
+
+NOTE: invoking MPI_ABORT causes Open MPI to kill all MPI processes.
+You may or may not see output from other processes, depending on
+exactly when Open MPI kills them.
+--------------------------------------------------------------------------

@@ -134,7 +134,7 @@ contains
         ! turn it off if attempted, with appropriate warning.
         if (logging_in%stoch_selection > 0 .and. calc_type /= ccmc_calc) then
             if (parent) call warning('check_logging_inputs',"Selection logging turned on for invalid calculation &
-                                        type (ie. not CCMC). Automatically turned off.")
+                                        &type (ie. not CCMC). Automatically turned off.")
             logging_in%stoch_selection = 0
         end if
 
@@ -591,7 +591,7 @@ contains
         call write_column_title(iunit, "ex_level", sep=',', int_val=.true.)
         call write_column_title(iunit, "pops", sep=',', int_val=.true.)
         do i = 2, max_size
-            call write_column_title(iunit, "", int_val=.true.)
+            call write_column_title(iunit, "")
         end do
 
         call write_column_title(iunit, "pselect", sep=',')
@@ -801,15 +801,15 @@ contains
 
         type(logging_t), intent(in) :: logging_info
         integer, intent(in) :: nexcitors, max_size, ex_level
-        integer(int_p), intent(in) :: pops(:)
+        real(p), intent(in) :: pops(:)
         real(p), intent(in) :: pselect
         complex(p), intent(in) :: amplitude
         logical, intent(in) :: allowed
 
         integer :: iunit, i
-        integer(int_p) :: pops_loc(1:max_size)
+        real(p) :: pops_loc(1:max_size)
 
-        pops_loc = -2_int_p
+        pops_loc = -2.0_p
 
         pops_loc(lbound(pops,dim=1):ubound(pops,dim=1)) = pops
 

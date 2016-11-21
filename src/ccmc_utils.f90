@@ -3,7 +3,7 @@ module ccmc_utils
 ! Module containing all utility functions only used within ccmc.
 ! For full explanation see top of ccmc.F90.
 
-use const, only: i0, p, int_p
+use const, only: i0, p, int_p, dp, int_64
 
 implicit none
 
@@ -336,41 +336,43 @@ contains
 
         integer(int_p), intent(in) :: pops(:,:), real_factor
         integer, intent(in) :: nactive, D0_proc, D0_pos
-        integer(int_p), allocatable, intent(inout) :: cumulative_pops(:)
-        integer(int_p), intent(out) :: tot_pop
+        real(p), allocatable, intent(inout) :: cumulative_pops(:)
+        real(p), intent(out) :: tot_pop
         logical, intent(in) :: complx
 
         integer :: i
 
         ! Need to combine spaces if doing complex; we choose combining in quadrature.
-        cumulative_pops(1) = nint(get_pop_contrib(pops(:,1), real_factor, complx))
+        cumulative_pops(1) = get_pop_contrib(pops(:,1), real_factor, complx)
         if (D0_proc == iproc) then
             ! Let's be a bit faster: unroll loops and skip over the reference
             ! between the loops.
             do i = 2, d0_pos-1
                 cumulative_pops(i) = cumulative_pops(i-1) + &
-                                        nint(get_pop_contrib(pops(:,i), real_factor, complx))
+                                        get_pop_contrib(pops(:,i), real_factor, complx)
             end do
             ! Set cumulative on the reference to be the running total merely so we
             ! can continue accessing the running total from the i-1 element in the
             ! loop over excitors in slots above the reference.
-            if (d0_pos == 1) cumulative_pops(d0_pos) = 0
+            if (d0_pos == 1) then
+                cumulative_pops(d0_pos) = 0
+            end if
             if (d0_pos > 1) cumulative_pops(d0_pos) = cumulative_pops(d0_pos-1)
             do i = d0_pos+1, nactive
                 cumulative_pops(i) = cumulative_pops(i-1) + &
-                                        nint(get_pop_contrib(pops(:,i), real_factor, complx))
+                                        get_pop_contrib(pops(:,i), real_factor, complx)
             end do
         else
             ! V simple on other processors: no reference to get in the way!
             do i = 2, nactive
                 cumulative_pops(i) = cumulative_pops(i-1) + &
-                                        nint(get_pop_contrib(pops(:,i), real_factor, complx))
+                                        get_pop_contrib(pops(:,i), real_factor, complx)
             end do
         end if
         if (nactive > 0) then
             tot_pop = cumulative_pops(nactive)
         else
-            tot_pop = 0_int_p
+            tot_pop = 0.0_p
         end if
 
     end subroutine cumulative_population
