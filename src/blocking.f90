@@ -59,6 +59,7 @@ contains
         end if
 
         ! Each dimension and what they mean are listed in qmc_data.f90
+        ! [review] - JSS: where? explcitly state in blocking_t (if this is correct).
 
         allocate(bl%reblock_data(3, 0:bl%lg_max, 4), stat=ierr)
         call check_allocate('bl%reblock_data',(bl%lg_max+1)*4*3,ierr)
@@ -628,6 +629,7 @@ contains
 
         subroutine check_error(bl, qs, blocking_in, soft_exit)
 
+            ! [review] - JSS: use full sentences for top-level description.
             ! checks the sum ofstandard deviation and error in error of
             ! projected energy
             ! and if the value is smaller than the user specified value and if

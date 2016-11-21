@@ -746,6 +746,8 @@ type qmc_state_t
     ! to determine the processor location of a particle.  It is the programmer's
     ! responsibility to ensure these are kept up to date...
     type(parallel_t) :: par_info
+    ! [review] - JSS: unclear why this variable is needed when we have happily passed a soft_exit argument into the (few) relevant
+    ! [re[vew] - JSS: procedures up until now.
     logical :: reblock_done = .false.
     type(estimators_t), allocatable :: estimators(:)
 end type qmc_state_t
