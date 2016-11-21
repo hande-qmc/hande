@@ -82,8 +82,11 @@ contains
             call init_reference_restart(sys, reference_in, ri, qmc_state%ref)
         else if (present(qmc_state_restart)) then
             qmc_state%ref = qmc_state_restart%ref
-! [review] - AJWT: qmc_state%estimators%D0_population is set in 3949eca5f6c11a9e0f68a4545af105bcdeafc920
-! [review] - AJWT: for restarting - is this an extra bug fix?
+            ! [review] - AJWT: qmc_state%estimators%D0_population is set in 3949eca5f6c11a9e0f68a4545af105bcdeafc920
+            ! [review] - AJWT: for restarting - is this an extra bug fix?
+            ! [reply] - RSTF: Now estimators is allocatable, D0_population can't be set until after
+            ! [reply] - RSTF: it's allocated.  It's done in move_qmc_state_t now.  It didn't really
+            ! [reply] - RSTF: belong in this block anyway.
         else
             call init_reference(sys, reference_in, qmc_state%ref)
         end if

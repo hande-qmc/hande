@@ -14,10 +14,7 @@ implicit none
 enum, bind(c)
     enumerator :: proj_energy_ind = 1
     enumerator :: D0_pop_ind
-! [review] - AJWT: While this might be ok for a little while while integrating changes,
-! [review] - AJWT: I'd rather see a more generic system so we don't need a separate enumerator
-! [review] - AJWT: for each space, and could deal with all spaces automatically in time.
-! [review] - AJWT: Worth inserting a TODO perhaps?
+    ! [todo] - having a separate index for each space is not very general.
     enumerator :: proj_energy_replica_ind
     enumerator :: D0_pop_replica_ind
     enumerator :: rspawn_ind

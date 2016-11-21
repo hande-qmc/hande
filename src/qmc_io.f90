@@ -389,7 +389,8 @@ contains
         end if
 
         call write_qmc_var(6, qs%estimators(1)%tot_nstates)
-! [review] - AJWT: Should this value also be printed out for the other spaces?
+        ! [review] - AJWT: Should this value also be printed out for the other spaces?
+        ! [reply] - RSTF: It is actually the total for all spaces.
         call write_qmc_var(6, qs%estimators(1)%tot_nspawn_events)
 
         call write_qmc_var(6, qs%spawn_store%rspawn, low_prec=.true.)

@@ -480,11 +480,12 @@ contains
 
         type(excit_t) :: connection
         type(hmatel_t) :: hmatel
-        integer :: idet, iparticle, nattempts_current_det, ispace
+        integer :: idet, iparticle, nattempts_current_det, ispace, target_space
         integer(int_p) :: nspawned, nspawned_im, scratch
         integer(int_p) :: int_pop(spawn_recv%ntypes)
         real(p) :: real_pop(spawn_recv%ntypes)
         real(dp) :: list_pop
+        logical :: imag
 
         type(logging_t) :: logging_info
 
@@ -503,18 +504,20 @@ contains
             call decoder_ptr(sys, cdet%f, cdet)
             if (qs%quasi_newton) cdet%fock_sum = sum_sp_eigenvalues_occ_list(sys, cdet%occ_list) - qs%ref%fock_sum
 
-            ! It is much easier to evaluate the projected energy at the
-            ! start of the i-FCIQMC cycle than at the end, as we're
-            ! already looping over the determinants.
-            connection = get_excitation(sys%nel, sys%basis, cdet%f, qs%ref%f0)
-! [review] - AJWT: Does this mean that this routine doesn't work for more than one space?
-            call update_proj_energy_ptr(sys, qs%ref%f0, qs%trial%wfn_dat, cdet, real_pop, qs%estimators(1), &
-                                        connection, hmatel)
             ! Is this determinant an initiator?
             ! [todo] - pass determ_flag rather than 1.
             call set_parent_flag(real_pop, qmc_in%initiator_pop, 1, qmc_in%quadrature_initiator, cdet%initiator_flag)
 
             do ispace = 1, qs%psip_list%nspaces
+
+                imag = sys%read_in%comp .and. mod(ispace,2) == 0
+
+                ! It is much easier to evaluate the projected energy at the
+                ! start of the i-FCIQMC cycle than at the end, as we're
+                ! already looping over the determinants.
+                connection = get_excitation(sys%nel, sys%basis, cdet%f, qs%ref%f0)
+                call update_proj_energy_ptr(sys, qs%ref%f0, qs%trial%wfn_dat, cdet, real_pop, qs%estimators(ispace), &
+                                            connection, hmatel)
 
                 nattempts_current_det = decide_nattempts(rng, real_pop(ispace))
 
@@ -533,17 +536,28 @@ contains
                     end if
                     ! Spawn if attempt was successful.
                     if (nspawned /= 0) then
-                        call create_spawned_particle_ptr(sys%basis, qs%ref, cdet, connection, nspawned, 1, spawn_to_send)
+                        if (imag) then
+                            target_space = ispace - 1
+                        else
+                            target_space = ispace
+                        end if
+                        call create_spawned_particle_ptr(sys%basis, qs%ref, cdet, connection, nspawned, target_space, spawn_to_send)
                     end if
                     if (nspawned_im /= 0) then
-                        call create_spawned_particle_ptr(sys%basis, qs%ref, cdet, connection, nspawned_im, 2, spawn_to_send)
+                        if (imag) then
+                            target_space = ispace
+                        else
+                            target_space = ispace + 1
+                        end if
+                        call create_spawned_particle_ptr(sys%basis, qs%ref, cdet, connection, nspawned_im, target_space, &
+                                                         spawn_to_send)
                     end if
 
                 end do
 
                 ! Clone or die.
                 ! list_pop is meaningless as particle_t%nparticles is updated upon annihilation.
-                call stochastic_death(rng, sys, qs, cdet%fock_sum, cdet%data(1), proj_energy_old,  qs%shift(1), logging_info, &
+                call stochastic_death(rng, sys, qs, cdet%fock_sum, cdet%data(1), proj_energy_old, qs%shift(ispace), logging_info, &
                                       int_pop(ispace), list_pop, ndeath)
 
                 ! Update population of walkers on current determinant.
