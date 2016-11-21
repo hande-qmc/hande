@@ -99,6 +99,7 @@ contains
         else if (fciqmc_in_loc%replica_tricks) then
             qmc_state%psip_list%nspaces = qmc_state%psip_list%nspaces * 2
         end if
+        ! [review] - JSS: this is no longer guarded by the check that the system is read_in. Intended?
         if (sys%read_in%comp) then
             qmc_state%psip_list%nspaces = qmc_state%psip_list%nspaces * 2
         end if
@@ -135,6 +136,9 @@ contains
             qmc_state%vary_shift = .false.
 
             ! Estimators: one per replica, but one for whole space if complex.
+            ! [review] - JSS: this is a little odd as we allocate one estimator_t per space but some spaces are linked (e.g. real
+            ! [review] - JSS: and imaginary_ and should share the same estimator_t object? Or do they implcitly and we just not use
+            ! [review] - JSS: one of them? Still, rather confusing.
             allocate(qmc_state%estimators(qmc_state%psip_list%nspaces))
 
             ! Initial walker distributions

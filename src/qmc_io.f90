@@ -64,6 +64,7 @@ contains
             nreplicas = ntypes
         end if
 
+        ! [review] - JSS: does this handle the output for both DMQMC and FCIQMC replicas?
         if (nreplicas > 1) then
             ! Label replicas
             write (6,'(1X,"#",1X)', advance='no')
@@ -521,6 +522,7 @@ contains
         end if
 
         call write_qmc_var(6, ntot_particles(1))
+        ! [review] - JSS: what about info from the other spaces?
         call write_qmc_var(6, qs%estimators(1)%tot_nstates)
         call write_qmc_var(6, qs%estimators(1)%tot_nspawn_events)
         call write_qmc_var(6, qs%spawn_store%rspawn, low_prec=.true.)

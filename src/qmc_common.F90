@@ -12,6 +12,9 @@ contains
 
     subroutine select_ref_det(sys, ref_det_factor, qs)
 
+        ! [review] - JSS: this only works on the first space. Should take an argument for the space to be inspected?
+        ! [review] - JSS: or explicitly state that all spaces use the same reference as the first?
+
         ! Change the reference determinant to be the determinant with the
         ! greatest population if it exceeds some threshold relative to the
         ! current reference determinant.
@@ -940,6 +943,7 @@ contains
         real(dp) :: rep_info_copy(nprocs*qs%psip_list%nspaces+nparticles_start_ind-1)
 
         ! Only update the timestep if not in vary shift mode.
+        ! [review] - JSS: all vs any?
         update_tau = update_tau .and. .not. any(qs%vary_shift) .and. qmc_in%tau_search
 
         ! Using non-blocking communications?
