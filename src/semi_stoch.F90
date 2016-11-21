@@ -1378,7 +1378,7 @@ contains
         ! Send the determinants to their process.
         associate(tbl=>sys%basis%tensor_label_len)
             call mpi_scatterv(determ%dets, tbl*determ%sizes, tbl*displs, mpi_det_integer, &
-                             dets_this_proc(:,1:ndeterm_this_proc), determ%sizes(iproc), &
+                             dets_this_proc(:,1:ndeterm_this_proc), tbl*determ%sizes(iproc), &
                              mpi_det_integer, root, MPI_COMM_WORLD, ierr)
         end associate
 #endif
