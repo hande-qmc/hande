@@ -441,7 +441,7 @@ parse_comments : boolean
 .. note::
 
     We assume the table finishes at the next blank line or before a comment
-    that does not start with a hash key.
+    that does not start with '#'.
 
 Returns
 -------
