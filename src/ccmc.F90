@@ -645,6 +645,7 @@ contains
                         ! propagate. Only need to check not selecting the reference as we treat it separately.
                         if (iattempt /= D0_pos) then
                             ! Deterministically select each excip as a non-composite cluster.
+! [review] - JSS: note naming inconsistency between select_cluster_non_composite and do_nc_ccmc_propagation.
                             call select_cluster_non_composite(sys, qs%psip_list, qs%ref%f0, &
                                         iattempt, qmc_in%initiator_pop, &
                                         contrib(it)%cdet, contrib(it)%cluster)
