@@ -1357,7 +1357,7 @@ contains
             ! Find how many determinants belong to each process.
             determ%sizes = 0
             do i = 1, ndeterm
-                call assign_particle_processor(determ%dets(:,i), size(determ%dets,1), spawn%hash_seed, spawn%hash_shift, &
+                call assign_particle_processor(determ%dets(:,i), spawn%bit_str_nbits, spawn%hash_seed, spawn%hash_shift, &
                                                spawn%move_freq, nprocs, proc, slot, spawn%proc_map%map, spawn%proc_map%nslots)
                 determ%sizes(proc) = determ%sizes(proc) + 1
             end do
