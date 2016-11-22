@@ -1,0 +1,45 @@
+sys = ueg {
+    nel = 6,
+    ms = 0,
+    sym = 15,
+    dim = 3,
+    cutoff = 2,
+    rs = 2.0,
+}
+
+qmc_opts = {
+    tau = 0.005,
+    rng_seed = 7,
+    init_pop = 10,
+    mc_cycles = 10,
+    nreports = 100,
+    target_population = 10000,
+    real_amplitudes = true,
+    real_amplitude_force_32 = true,
+    spawn_cutoff = 0.01,
+    state_size = 4e6,
+    spawned_state_size = 4e6,
+}
+
+qmc_state = fciqmc {
+    sys = sys,
+    qmc = qmc_opts,
+    semi_stoch = {
+        size = 1000,
+        start_iteration = 500,
+        space = "high",
+        write = 0,
+    },
+}
+
+qmc_opts.nreports = 50
+
+fciqmc {
+    sys = sys,
+    qmc = qmc_opts,
+    qmc_state = qmc_state,
+    semi_stoch = {
+        start_iteration = 0,
+        space = "read",
+    },
+}
