@@ -1357,7 +1357,7 @@ contains
             ! Find how many determinants belong to each process.
             determ%sizes = 0
             do i = 1, ndeterm
-                call assign_particle_processor(determ%dets(:,i), size(determ%dets,1), spawn%hash_seed, spawn%hash_shift, &
+                call assign_particle_processor(determ%dets(:,i), spawn%bit_str_nbits, spawn%hash_seed, spawn%hash_shift, &
                                                spawn%move_freq, nprocs, proc, slot, spawn%proc_map%map, spawn%proc_map%nslots)
                 determ%sizes(proc) = determ%sizes(proc) + 1
             end do
@@ -1378,7 +1378,7 @@ contains
         ! Send the determinants to their process.
         associate(tbl=>sys%basis%tensor_label_len)
             call mpi_scatterv(determ%dets, tbl*determ%sizes, tbl*displs, mpi_det_integer, &
-                             dets_this_proc(:,1:ndeterm_this_proc), determ%sizes(iproc), &
+                             dets_this_proc(:,1:ndeterm_this_proc), tbl*determ%sizes(iproc), &
                              mpi_det_integer, root, MPI_COMM_WORLD, ierr)
         end associate
 #endif

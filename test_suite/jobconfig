@@ -84,6 +84,7 @@ quick =   vquick
           fciqmc/np1/hubbard_real_1d_fciqmc/
           fciqmc/np4/Ne-RHF-cc-pVDZ_calc_interact/
           fciqmc/np4/Ne-RHF-cc-pVDZ_softexit/
+          fciqmc_real_32/np2/ueg_n10_rs2_e4_fciqmc_real_32_SS_large_restart/
           fciqmc_real_32/np4/heisenberg_4x4_real_32_SS/
           ifciqmc/np4/H2O-RHF-cc-pVTZ-non-block/
           ifciqmc/np4/hubbard_k_1d_ifciqmc_load/
