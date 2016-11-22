@@ -673,7 +673,7 @@ contains
                     else if (iattempt <= selection_data%nsingle_excitors + selection_data%nstochastic_clusters) then
                         if (ccmc_in%even_selection) then
                             call select_cluster_truncated(rng(it), sys, qs%psip_list, qs%ref%f0, &
-                                                        selection_data%nstochastic_clusters, D0_normalisation, &
+                                                        ccmc_in%linked, selection_data%nstochastic_clusters, D0_normalisation, &
                                                         qmc_in%initiator_pop, selection_data, cumulative_abs_real_pops, &
                                                         qs%ref%ex_level, min_cluster_size, max_cluster_size, &
                                                         ex_lvl_dist, contrib(it)%cluster, contrib(it)%cdet)
