@@ -158,8 +158,7 @@ vquick64 = vquick
            fciqmc_real_64/np1/heisenberg_1d_neel_ref_fciqmc_real_64
 
 # Tests that pass to a reduced tolerance of 1.e-5 when compiled with -DSINGLE_PRECISION.
-single_precision = ccmc/np2/H2O-cc-pVDZ_tau_search
-                   dmqmc/np1/heisenberg_3d
+single_precision = dmqmc/np1/heisenberg_3d
                    dmqmc/np1/hubbard_real_1d
                    dmqmc/np1/ueg_n7_rs1_e1_dmqmc
                    dmqmc/np2/heisenberg_3d
