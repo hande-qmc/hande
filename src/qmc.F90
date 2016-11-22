@@ -100,6 +100,8 @@ contains
             qmc_state%psip_list%nspaces = qmc_state%psip_list%nspaces * 2
         end if
         ! [review] - JSS: this is no longer guarded by the check that the system is read_in. Intended?
+        ! [reply] - RSTF: sys%read_in%comp should have its default (false) value if not using a
+        ! [reply] - RSTF: read_in system, so it's easier to not do both checks.
         if (sys%read_in%comp) then
             qmc_state%psip_list%nspaces = qmc_state%psip_list%nspaces * 2
         end if
@@ -135,10 +137,10 @@ contains
             qmc_state%shift = qmc_in%initial_shift
             qmc_state%vary_shift = .false.
 
-            ! Estimators: one per replica, but one for whole space if complex.
             ! [review] - JSS: this is a little odd as we allocate one estimator_t per space but some spaces are linked (e.g. real
             ! [review] - JSS: and imaginary_ and should share the same estimator_t object? Or do they implcitly and we just not use
             ! [review] - JSS: one of them? Still, rather confusing.
+            ! [reply] - RSTF: There's one per space.  The real and imaginary ones should have identical information.
             allocate(qmc_state%estimators(qmc_state%psip_list%nspaces))
 
             ! Initial walker distributions

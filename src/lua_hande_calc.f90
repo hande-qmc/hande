@@ -1002,9 +1002,9 @@ contains
         !        update_every = mc_cycles,
         !        pop_factor = factor,
         !     }
-! [review] - JSS: input option not documented.
 ! [review] - JSS: if replica_tricks is also going to be supported in CCMC,
 ! [review] - JSS: should we move this and the DMQMC option to the qmc table?
+! [reply] - RSTF: replica_tricks per se is not helpful in CCMC.
         !     replica_tricks = true/false,
         ! }
 

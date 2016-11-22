@@ -183,6 +183,13 @@ fciqmc options
     to transform the Hamiltonian such that the matrix elements, :math:`H_{ij}`, are
     replaced with :math:`a_i H_{ij} / a_j`. Using 'neel_singlet' automatically sets
     ``trial_function`` to 'neel_singlet'.
+``replica_tricks``
+    type: boolean.
+
+    Optional.  Default: false.
+
+    Perform replica simulations (i.e. evolve two independent FCIQMC simulations
+    concurrently).
 
 .. _load_bal_table:
 

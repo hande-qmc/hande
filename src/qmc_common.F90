@@ -14,12 +14,14 @@ contains
 
         ! [review] - JSS: this only works on the first space. Should take an argument for the space to be inspected?
         ! [review] - JSS: or explicitly state that all spaces use the same reference as the first?
+        ! [reply] - RSTF: I've changed this to use the total population across all states.  As the
+        ! [reply] - RSTF: comment states, the same reference is used across all spaces.
 
         ! Change the reference determinant to be the determinant with the
         ! greatest population if it exceeds some threshold relative to the
         ! current reference determinant.
 
-        ! Note this currently only looks at the Hamiltonian population.  The
+        ! Note this looks at the sum of populations over all spaces.  The
         ! setting of multiple reference determinants (e.g. different references
         ! for Hamiltonian walkers and Hellmann-Feynmann walkers) is currently not
         ! supported.  It is not clear if there is such a need as a good
@@ -47,7 +49,6 @@ contains
         real(p), intent(in) :: ref_det_factor
         type(qmc_state_t), intent(inout) :: qs
 
-        integer, parameter :: particle_type = 1
         integer :: i
         integer(i0), allocatable :: fmax(:)
         integer(int_p) :: max_pop
@@ -67,10 +68,10 @@ contains
         ! Find determinant with largest population.
         max_pop = 0_int_p
         do i = 1, qs%psip_list%nstates
-            if (abs(qs%psip_list%pops(particle_type,i)) > abs(max_pop)) then
-                max_pop = qs%psip_list%pops(particle_type,i)
+            if (sum(abs(qs%psip_list%pops(:,i))) > abs(max_pop)) then
+                max_pop = sum(abs(qs%psip_list%pops(:,i)))
                 fmax = qs%psip_list%states(:,i)
-                H00_max = qs%psip_list%dat(particle_type, i)
+                H00_max = qs%psip_list%dat(1, i)
             end if
         end do
 
@@ -89,7 +90,7 @@ contains
         if (all(fmax == qs%ref%f0)) then
             ! Max population on this processor is already the reference.  Don't change.
             in_data = (/ 0.0_dp, real(iproc,dp) /)
-        else if (abs(real_pop) > ref_det_factor*abs(qs%estimators(1)%D0_population)) then
+        else if (abs(real_pop) > ref_det_factor*sum(abs(qs%estimators%D0_population))) then
             in_data = (/ real_pop, real(iproc,dp) /)
         else
             ! No det with sufficient population to become reference det on this
@@ -112,7 +113,7 @@ contains
 
 #else
 
-        if (abs(real_pop) > ref_det_factor*abs(qs%estimators(1)%D0_population) .and. any(fmax /= qs%ref%f0)) then
+        if (abs(real_pop) > ref_det_factor*sum(abs(qs%estimators%D0_population)) .and. any(fmax /= qs%ref%f0)) then
             updated = .true.
             qs%ref%f0 = fmax
             qs%ref%H00 = H00_max
@@ -140,7 +141,7 @@ contains
                 write (6,'(1X,"#",1X,"Changed reference det to:",1X)',advance='no')
                 call write_det(sys%basis, sys%nel, qs%ref%f0, new_line=.true.)
                 write (6,'(1X,"#",1X,"Population on old reference det (averaged over report loop):",f10.2)') &
-                            qs%estimators%D0_population
+                            sum(abs(qs%estimators%D0_population))
                 write (6,'(1X,"#",1X,"Population on new reference det:",27X,f10.2)') real_pop
                 write (6,'(1X,"#",1X,"E0 = <D0|H|D0> = ",f20.12)') qs%ref%H00
                 write (6,'(1X,"#",1X,"Care should be taken with accumulating statistics before this point.")')
@@ -944,6 +945,8 @@ contains
 
         ! Only update the timestep if not in vary shift mode.
         ! [review] - JSS: all vs any?
+        ! [reply] - RSTF: For whatever reason we don't update the shift once in vary shift mode,
+        ! [reply] - RSTF: surely that applies as soon as one space has a varying shift.
         update_tau = update_tau .and. .not. any(qs%vary_shift) .and. qmc_in%tau_search
 
         ! Using non-blocking communications?
