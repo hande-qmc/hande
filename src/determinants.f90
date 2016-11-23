@@ -285,7 +285,7 @@ contains
 
         nfound = 0
         nbits_seen = 0
-        outer: do iel = 1, basis_set%string_len
+        outer: do iel = 1, basis_set%string_len - 1
             offset = 0
             do ifield = 1, nfields
                 ! Inspect one byte at a time.

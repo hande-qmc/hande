@@ -601,7 +601,7 @@ contains
 
         real(dp) :: rand, cumulative
         complex(p) :: cluster_population
-        integer :: i, num, choice
+        integer :: i, num, choice, iex
         logical :: first, allowed, all_allowed
 
         cluster%pselect = real(nattempts*nprocs, p)
@@ -653,13 +653,15 @@ contains
             cluster%pselect = cluster%pselect * select_proportion(choice)
 
             first = .true.
+            iex = 1
             accumulate_excitors : do i = 1, size(select_info, dim=2)
                 if (select_info(choice, i) /= 0) then
 
                     call add_excitors_given_level(rng, sys, psip_list, f0, linked_ccmc, initiator_pop, first, i, &
-                            select_info(choice, i), cumulative_excip_pop, ex_lvl_dist, cluster_population, cluster, cdet, allowed)
+                            select_info(choice, i), iex, cumulative_excip_pop, ex_lvl_dist, cluster_population, &
+                            cluster, cdet, allowed)
                     if (.not.allowed) then
-                        if (linked_ccmc) exit accumulate_excitors
+                        if (.not.linked_ccmc) exit accumulate_excitors
                         all_allowed = .false.
                     end if
                     first = .false.
@@ -704,7 +706,7 @@ contains
 
     end subroutine select_cluster_truncated
 
-    subroutine add_excitors_given_level(rng, sys, psip_list, f0, linked_ccmc, initiator_pop, first, ex_level, nexcitors, &
+    subroutine add_excitors_given_level(rng, sys, psip_list, f0, linked_ccmc, initiator_pop, first, ex_level, nexcitors, iexcitor, &
                                         cumulative_excip_pop, ex_lvl_dist, cluster_population, cluster, cdet, allowed)
         ! Adds excitors of a given level to cluster being created.
         ! In:
@@ -716,6 +718,7 @@ contains
         !   first: if true first cluster selected will seed the cluster
         !   ex_level: number of excitations from the reference we're considering.
         !   nexcitors: number of excitors of this excitation level to add to cluster.
+        !   iexcitor: number of excitation being added.
         !   cumulative_excip_pop: running excip population on all excitors.
         !   ex_lvl_dist: derived type containing information on excip distribution between
         !       excitation levels.
@@ -740,6 +743,7 @@ contains
         logical, intent(in) :: first, linked_ccmc
         type(particle_t), intent(in), target :: psip_list
         integer, intent(in) :: ex_level, nexcitors
+        integer, intent(inout) :: iexcitor
         type(sys_t), intent(in) :: sys
         type(cluster_t), intent(inout) :: cluster
         type(det_info_t), intent(inout) :: cdet
@@ -799,8 +803,9 @@ contains
                 if (abs(excitor_pop) <= initiator_pop) cdet%initiator_flag = 1
                 ! Probability of choosing this excitor = nint(pop)/tot_pop.
                 cluster%pselect = (cluster%pselect*abs(excitor_pop))/tot_level_pop
-                cluster%excitors(i)%f => psip_list%states(:,pos)
+                cluster%excitors(iexcitor)%f => psip_list%states(:,pos)
                 prev_pos = pos
+                iexcitor = iexcitor + 1
             end do
         end if
 
@@ -927,22 +932,24 @@ contains
 
         cluster_selection%size_weighting = cluster_selection%size_weighting / sum(cluster_selection%size_weighting, dim=1)
 
-        call update_cumulative_dist_real(cluster_selection%size_weighting, cluster_selection%cumulative_size_weighting, .true.)
+        call update_cumulative_dist_real(cluster_selection%size_weighting, cluster_selection%cumulative_size_weighting, &
+                                        normalised=.true.)
         ! Now need to update lists storing only sizes selected stochastically.
         cluster_selection%stoch_size_weighting(2:) = cluster_selection%size_weighting(2:)/sum(cluster_selection%size_weighting(2:))
         call update_cumulative_dist_real(cluster_selection%stoch_size_weighting, &
-                                        cluster_selection%cumulative_stoch_size_weighting, .true.)
+                                        cluster_selection%cumulative_stoch_size_weighting, normalised=.true.)
 
     end subroutine update_selection_probabilities
 
 !---- Initialisation routines for improved selection information ----
 
-    subroutine init_selection_data(ex_level, selection_data)
+    subroutine init_selection_data(ex_level, max_cluster_size, selection_data)
 
         ! Take cluster selection object and initialise all data required for calculation.
 
         ! In:
         !   ex_level: maximum excitation level allowed for stored coefficients in calculation.
+        !   max_cluster_size: maximum allowed cluster size.
         ! In/Out:
         !   cluster_selection: selection_data_t object. On output cluster_sizes_info components
         !       will be allocated and set as appropriate, and cluster_sizes_proportion allocated.
@@ -950,21 +957,22 @@ contains
         use ccmc_data, only: selection_data_t
         use checking, only: check_allocate
 
-        integer, intent(in) :: ex_level
+        integer, intent(in) :: ex_level, max_cluster_size
         type(selection_data_t), intent(inout) :: selection_data
 
-        call init_possible_clusters(ex_level, selection_data)
+        call init_possible_clusters(ex_level, max_cluster_size, selection_data)
 
-        call init_psize_data(ex_level, selection_data)
+        call init_psize_data(ex_level, max_cluster_size, selection_data)
 
     end subroutine init_selection_data
 
-    subroutine init_possible_clusters(ex_level, selection_data)
+    subroutine init_possible_clusters(ex_level, max_cluster_size, selection_data)
 
         ! Take cluster selection object and initialise all possible size combinations of clusters.
 
         ! In:
         !   ex_level: maximum excitation level allowed in calculation.
+        !   max_cluster_size: maximum allowed cluster size.
         ! In/Out:
         !   cluster_selection: selection_data_t object. On output cluster_sizes_info components
         !       will be allocated and set as appropriate, and cluster_sizes_proportion allocated.
@@ -972,19 +980,19 @@ contains
         use ccmc_data, only: selection_data_t
         use checking, only: check_allocate
         use parallel, only: parent
-        integer, intent(in) :: ex_level
+        integer, intent(in) :: ex_level, max_cluster_size
         type(selection_data_t), intent(inout) :: selection_data
 
         integer :: nclusters, cluster_size, ierr, dummy
         integer :: temporary(1:ex_level), i
 
-        allocate(selection_data%cluster_sizes_info(2:ex_level+2), stat=ierr)
-        call check_allocate('cluster_selection%cluster_sizes_info',ex_level+2, ierr)
-        allocate(selection_data%cluster_sizes_proportion(2:ex_level+2), stat=ierr)
-        call check_allocate('cluster_selection%cluster_sizes_proportion',ex_level+2, ierr)
+        allocate(selection_data%cluster_sizes_info(2:max_cluster_size), stat=ierr)
+        call check_allocate('cluster_selection%cluster_sizes_info',max_cluster_size-2, ierr)
+        allocate(selection_data%cluster_sizes_proportion(2:max_cluster_size), stat=ierr)
+        call check_allocate('cluster_selection%cluster_sizes_proportion',max_cluster_size-2, ierr)
 
         ! Go through possible sizes...
-        do cluster_size = 2, ex_level + 2
+        do cluster_size = 2, max_cluster_size
             ! Calc number possible clusters for each
             nclusters = calc_available_perms(cluster_size, 1, 0, ex_level)
             ! Allocate storage of appropriate size to store all cluster info
@@ -1011,31 +1019,33 @@ contains
 
     end subroutine init_possible_clusters
 
-    subroutine init_psize_data(ex_level, selection_data)
+    subroutine init_psize_data(ex_level, max_cluster_size, selection_data)
 
         ! Take cluster selection object and initialise all data required for psize variation.
 
         ! In:
         !   ex_level: maximum excitation level allowed in calculation.
+        !   max_cluster_size: maximum allowed cluster size.
+        ! In/Out:
         !   cluster_selection: selection_data_t object. On output cluster_sizes_info components
         !       will be allocated and set as appropriate, and cluster_sizes_proportion allocated.
 
         use ccmc_data, only: selection_data_t
         use checking, only: check_allocate
 
-        integer, intent(in) :: ex_level
+        integer, intent(in) :: ex_level, max_cluster_size
         type(selection_data_t), intent(inout) :: selection_data
         integer :: ierr, i
 
-        allocate(selection_data%size_weighting(0:ex_level+2), stat=ierr)
-        call check_allocate('size_weighting', ex_level + 3, ierr)
-        allocate(selection_data%cumulative_size_weighting(0:ex_level+2), stat=ierr)
-        call check_allocate('cumulative_size_weighting', ex_level + 3, ierr)
+        allocate(selection_data%size_weighting(0:max_cluster_size), stat=ierr)
+        call check_allocate('size_weighting', max_cluster_size + 1, ierr)
+        allocate(selection_data%cumulative_size_weighting(0:max_cluster_size), stat=ierr)
+        call check_allocate('cumulative_size_weighting', max_cluster_size + 1, ierr)
 
-        allocate(selection_data%stoch_size_weighting(2:ex_level+2), stat=ierr)
-        call check_allocate('stoch_size_weighting', ex_level + 1, ierr)
-        allocate(selection_data%cumulative_stoch_size_weighting(2:ex_level+2), stat=ierr)
-        call check_allocate('cumulative_stoch_size_weighting', ex_level + 1, ierr)
+        allocate(selection_data%stoch_size_weighting(2:max_cluster_size), stat=ierr)
+        call check_allocate('stoch_size_weighting', max_cluster_size - 1, ierr)
+        allocate(selection_data%cumulative_stoch_size_weighting(2:max_cluster_size), stat=ierr)
+        call check_allocate('cumulative_stoch_size_weighting', max_cluster_size - 1, ierr)
 
         associate(size_weighting => selection_data%size_weighting, &
                 cumulative_size_weighting => selection_data%cumulative_size_weighting)
@@ -1043,22 +1053,22 @@ contains
             size_weighting(0) = 0.5_dp
             cumulative_size_weighting(0) = 0.5_dp
 
-            do i = 1, ex_level+1
+            do i = 1, max_cluster_size -1
                 size_weighting(i) = 1.0_dp/(2.0_dp**(i+1))
                 cumulative_size_weighting(i) = cumulative_size_weighting(i-1) + size_weighting(i)
             end do
 
-            size_weighting(ex_level+2) = 1.0_dp - cumulative_size_weighting(ex_level+1)
-            cumulative_size_weighting(ex_level+2) = 1.0_dp
+            size_weighting(max_cluster_size) = 1.0_dp - cumulative_size_weighting(max_cluster_size-1)
+            cumulative_size_weighting(max_cluster_size) = 1.0_dp
 
         end associate
 
-        allocate(selection_data%average_amplitude(0:ex_level+2), stat=ierr)
-        call check_allocate('average_amplitude', ex_level + 3, ierr)
-        allocate(selection_data%variance_amplitude(0:ex_level+2), stat=ierr)
-        call check_allocate('variance_amplitude', ex_level + 3, ierr)
-        allocate(selection_data%nsuccessful(0:ex_level+2), stat=ierr)
-        call check_allocate('nsuccessful', ex_level + 3, ierr)
+        allocate(selection_data%average_amplitude(0:max_cluster_size), stat=ierr)
+        call check_allocate('average_amplitude', max_cluster_size + 1, ierr)
+        allocate(selection_data%variance_amplitude(0:max_cluster_size), stat=ierr)
+        call check_allocate('variance_amplitude', max_cluster_size + 1, ierr)
+        allocate(selection_data%nsuccessful(0:max_cluster_size), stat=ierr)
+        call check_allocate('nsuccessful', max_cluster_size + 1, ierr)
 
         selection_data%average_amplitude = 0.0_dp
         selection_data%variance_amplitude = 0.0_dp

@@ -449,12 +449,14 @@ contains
         allocate(cumulative_abs_real_pops(size(qs%psip_list%states,dim=2)), stat=ierr)
         call check_allocate('cumulative_abs_real_pops', size(qs%psip_list%states, dim=2), ierr)
 
-        if (ccmc_in%even_selection) then
-            call init_selection_data(qs%ref%ex_level, selection_data)
-            call init_ex_lvl_dist_t(qs%ref%ex_level, ex_lvl_dist)
-        else if (debug) then
-            call init_selection_data(qs%ref%ex_level, selection_data)
+        if (ccmc_in%even_selection .or. debug) then
+            if (ccmc_in%linked) then
+                call init_selection_data(qs%ref%ex_level, 4, selection_data)
+            else
+                call init_selection_data(qs%ref%ex_level, qs%ref%ex_level+2, selection_data)
+            end if
         end if
+        if (ccmc_in%even_selection) call init_ex_lvl_dist_t(qs%ref%ex_level, ex_lvl_dist)
 
         nparticles_old = qs%psip_list%tot_nparticles
 
