@@ -60,6 +60,21 @@ enum, bind(c)
     enumerator :: ci_determ_space
 end enum
 
+enum, bind(c)
+    ! Numerator of the final expression for the projected energy. i.e. \sum H_0j
+    ! N_j. 
+    enumerator :: dt_numerator = 1
+    ! Denominator of the final expression for the projected energy. i.e.
+    ! reference population.
+    enumerator :: dt_denominator 
+    ! Shift.
+    enumerator :: dt_shift
+    ! Projected energy calculated from the ratio of dt_numerator and
+    ! dt_denominator.
+    enumerator :: dt_proj_energy
+end enum
+    
+
 ! --- QMC input ---
 
 type qmc_in_t
@@ -291,13 +306,14 @@ type blocking_in_t
     ! collecting data once vary_shift is true.
     integer :: start_point = -1
     ! Limit of the sum of error in error and standard deviation of projected
-    ! energy. If this value is reached soft_exit = true. Default is 0
+    ! energy. If this value is reached soft_exit = true. Default = 0
     real(p) :: error_limit = 0
 ! [review] - AJWT: [also see docs].  Not entirely clear what this means.
-    ! Minimum ratio between error in error and standard errer used to determine
-    ! whether or not calculation should be terminated. Larger ratio means more
-    ! blocks are used for reblocking analysis. Default = 3
-    integer :: min_ratio = 3
+    ! Lower limit of the inverse of estimated fractional error of projected 
+    ! energy. The larger the value of inverse_fractional_error, the larger the
+    ! number of blocks used for reblock analysis therefore giving a more
+    ! reasonable estimate of error in error of projected energy.  Default = 3
+    integer :: inverse_fractional_error = 3
 end type
 
 ! --- Parallel info ---
@@ -526,6 +542,22 @@ type spawned_particle_t
     real(p) :: rspawn
 end type spawned_particle_t
 
+type reblock_data_t
+    ! Data type containing the information for the main array used for reblock
+    ! analysis. The information contained in this data type is for a given block
+    ! size.
+
+    ! Number of blocks of a given block size.
+    integer :: n_blocks = 0
+    ! Sums of data are saved here until sufficient size is reached. 
+    real(p) :: data_accumulator = 0
+    ! Sums of data of a given block size.
+    real(p) :: sum_of_blocks = 0
+    ! Sums of squares of data of a give block size.
+    real(p) :: sum_of_block_squares = 0
+
+end type reblock_data_t
+
 type blocking_t
     ! Log_2 of maximum block size.
     integer :: lg_max = 0
@@ -553,71 +585,49 @@ type blocking_t
 !
 !  [/review]
 
-    ! reblock_data: Array containing statistics to carry out blocking analysis of data up
-    ! until the current report cycle.
 ! [review] - AJWT: The following sounds like it ought to be an enum (as with the ones below)
-    ! data_type = 1 corresponds to \sum H_0j N_j.
-    ! data_type = 2 corresponds to reference population.
-    ! data_type = 3 corresponds to shift
-    ! reblock_data(data_type, log2(blocksize), 1) = number of blocks of the
-    ! specified blocksize.
-    ! reblock_data(data_type, log2(blocksize), data_type, 2) = sums of data_type that are
-    ! not included in the statistics yet because the number included in the sum
-    ! is too few to reach the blocksize.
-    ! reblock_data(data_type, log2(blocksize), 3) = sums of blocks of data_type.
-    ! reblock_data(data_type, log2(blocksize), 4) = sums of squares of blocks of
-    ! data_type.
-    ! data_product: Array containing the product of data_type 1 and data_type 2
-    ! for each blocksize
-    ! data_product(log2(blocksize)) = sums of product of the two data types of
-    ! the give block size.
-    real(p), allocatable :: reblock_data(:,:,:), data_product(:)
+    ! reblock_data_t type array with reblock_data(datatype, log_2(block_size).
+    ! datatypes are dt_numerator, dt_denominator, dt_shift, dt_proj_energy (see
+    ! enum above). 
+    type(reblock_data_t), allocatable :: reblock_data(:,:)
+    ! Product between dt_numerator and dt_denominator for different block sizes.
+    ! data_product(log_2(block_size)).
+    real(p), allocatable :: data_product(:)
     ! Arrays for calculation of optimal mean and standard deviation at different
     ! start points. reblock_data and data_product are temporarily copied before
     ! the calculation on them is carried out.
-    real(p), allocatable :: reblock_data_2(:,:,:), data_product_2(:)
+    type(reblock_data_t), allocatable :: reblock_data_2(:,:)
+    real(p), allocatable :: data_product_2(:)
     ! Arrays containing the mean, standard deviation and covariance of all block
     ! sizes
-    ! data_type = 1 corresponds to \sum H_0j Nj.
-    ! data_type = 2 corresponds to reference population.
-    ! data_type = 3 corresponds to shift
-    ! block_mean(data_type, log2(blocksize)) = mean of different block sizes of
-    ! data_type.
-    ! block_std(data_type, log2(blocksize)) = standard deviation of different
-    ! block sizes of data_type.
+    ! block_mean(datatype, log2(blocksize)) = mean of different block sizes of
+    ! datatype.
+    ! block_std(datatype, log2(blocksize)) = standard deviation of different
+    ! block sizes of datatype.
     ! block_cov(log2(blocksize)) = covariance of the two data types of different
     ! block sizes.
+    ! datatypes are dt_numerator, dt_denominator, dt_shift, dt_proj_energy (see
+    ! enum above). 
 ! [review] - CJCS: specify different dimensions?
     real(p), allocatable :: block_mean(:,:), block_std(:,:), block_cov(:)
     ! Optimal block is the smallest block that satisfies the condition
     ! B^3 > 2*(B*(number of blocks)) * (std(B)/std(0)) ^ 4
-    ! data_type = 1 corresponds to \sum H_0j Nj.
-    ! data_type = 2 corresponds to reference population.
-    ! data_type = 3 corresponds to shift
-    ! data_type = 4 corresponds to projected energy. (\sum H_0j Nj/N_0)
-    ! optimal_mean(data_type) = block_mean of the block with the optimal block
-    ! size for the data_type. For projected energy, the block size that is
-    ! larger of the data_type 1 and 2 is used.
+    ! optimal_mean(datatype) = block_mean of the block with the optimal block
+    ! size for the datatype. For projected energy, the block size that is
+    ! larger between dt_numerator and dt_denominator (see enum above) is used.
     real(p) :: optimal_mean(4) = 0
 ! [review] - CJCS: Ratio between the two? I thought the convention for error propogation
 ! [review] - CJCS: in quotients is the combination in quadrature of the fractional error?
     ! Optimal block is the smallest block that satisfies the condition
     ! B^3 > 2*(B*(number of blocks)) * (std(B)/std(0)) ^ 4
-    ! data_type = 1 corresponds to \sum H_0j Nj.
-    ! data_type = 2 corresponds to reference population.
-    ! data_type = 3 corresponds to shift
-    ! data_type = 4 corresponds to projected energy. (\sum H_0j Nj/N_0)
     ! optimal_std(data_type) = block_std of the block with the optimal block
-    ! size for the data_type. For projected energy, the block size that is
-    ! larger of the data_type 1 and 2 is used.
+    ! size for the datatype. For projected energy, the block size that is
+    ! larger between dt_numerator and dt_denominator (see enum above) is used.
     real(p) :: optimal_std(4) = 0
     ! Error in standard deviation calculated assuming that the blocks are normally
     ! distributed from central limit theorm. 1/(sqrt(2*(number of blocks - 1)))
-    ! data_type = 1 corresponds to \sum H_0j Nj.
-    ! data_type = 2 corresponds to reference population.
-    ! data_type = 3 corresponds to shift.
-    ! data_type = 4 corresponds to projected energy. (\sum H_0j Nj/N_0)
-    ! optimal_err(data_type) = Error in standard deviation of data_type.
+    ! optimal_err(datatype) = Error in standard deviation of datatype.
+    ! See enum above for datatypes.
     real(p) :: optimal_err(4) = 0
     ! Report number from which the data for reblocking is collected.
     integer :: start_ireport = -1
@@ -625,11 +635,12 @@ type blocking_t
     ! reblock from a different start position in the middle of a calculation.
     ! The frequency and the number of reblock_data and data_product arrays saved
     ! is determined by n_saved_startpoints and save_fq.
-    ! reblock_save(:,:,:,start_point) = copy of reblock_data at the report
+    ! reblock_save(:,:,start_point) = copy of reblock_data at the report
     ! cycle (start_point * save_fq).
     ! product_save(:,start_point) = copy of data_product at the report cycle
     ! (start_point * save_fq).
-    real(p), allocatable :: reblock_save(:,:,:,:), product_save(:,:)
+    type(reblock_data_t), allocatable :: reblock_save(:,:,:)
+    real(p), allocatable :: product_save(:,:)
     ! (start_point*save_fq) indicates the number of reports from which the reblock analysis
     ! is started from. This is varied during the calculation to minimise the
     ! fractional error weighted by the 1/sqrt(number of data points)
@@ -637,7 +648,11 @@ type blocking_t
     ! Array containing the different values of fractional error weighted by the
     ! 1/sqrt(number of data points) for each of the possible start positions.
     real(p), allocatable :: err_comp(:,:)
+    ! log_2(block_size) of the optimal block sizes for different datatypes
+    ! excluding dt_proj_energy. (see enum above) 
     integer :: optimal_size(3) = 1
+    ! Number of saved reblock_data type arrays at a given iteration.
+    integer :: n_saved = 1    
 
 end type blocking_t
 
@@ -1023,7 +1038,7 @@ contains
         call json_write_key(js, 'filename', blocking%filename)
         call json_write_key(js, 'start_point', blocking%start_point)
         call json_write_key(js, 'error_limit', blocking%error_limit)
-        call json_write_key(js, 'min_ratio', blocking%min_ratio, .true.)
+        call json_write_key(js, 'inverse_fractional_error', blocking%inverse_fractional_error, .true.)
         call json_object_end(js, terminal)
 
     end subroutine blocking_in_t_json

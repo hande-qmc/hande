@@ -50,11 +50,10 @@ blocking analysis on the fly.
 
     Optinal. Default: 0
 
-    If the sum of error in error and standard deviation of projected energy is smaller than
-    this value and the ``min_ratio`` condition is satisfied, ``soft_exit`` = true is returned
-    and the calculation is terminated.
+    One of two conditions for termination of the calculation together with ``inverse_frational_error``.
+    This specifies the upper limit of the sum of standard error and the error in error of projected energy.
 
-``min_ratio``
+``inverse_fractional_error``
     type: integer.
 
     Optional. Default: 3
@@ -62,7 +61,7 @@ blocking analysis on the fly.
 ..
     [review] - AJWT: It isn't clear to me what exactly this does or how it works.
 
-
-    The ratio between error in error and standard error of projected energy.
-    If the ratio is larger, greater number of blocks are used for reblock analysis. If the ``error_limit``
-    and ``min_ratio`` condition is satisfied, ``soft_exit`` = true is returned and calculation is terminated
+    One of two conditions for termination of the calculation together with ``error_limit``.
+    This specifies the lower limit of the inverse of the fractional error of projected energy.
+    The larger the value of ``inverse_fractional_error``, the larger the number of blocks used for 
+    reblock analysis. 

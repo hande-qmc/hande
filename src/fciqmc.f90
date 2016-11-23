@@ -352,7 +352,7 @@ contains
                 call write_qmc_report(qmc_in, qs, ireport, nparticles_old, t2-t1, .false., &
                                         fciqmc_in%non_blocking_comm, io_unit=io_unit, cmplx_est=sys%read_in%comp)
 
-                if (blocking_in%blocking_on_the_fly) call do_blocking(bl, qs, qmc_in, ireport, iter, iunit, blocking_in, soft_exit)
+                if (blocking_in%blocking_on_the_fly) call do_blocking(bl, qs, qmc_in, ireport, iter, iunit, blocking_in)
             end if
 
             ! Update the time for the start of the next iteration.
@@ -389,6 +389,7 @@ contains
             else
                 call load_balancing_report(pl%nparticles, pl%nstates, qmc_in%use_mpi_barriers, spawn%mpi_time, io_unit=io_unit)
             end if
+        if (parent .and. blocking_in%blocking_on_the_fly) call write_blocking_report(bl, qs)
         end associate
         call write_memcheck_report(qs%spawn_store%spawn, io_unit=io_unit)
 

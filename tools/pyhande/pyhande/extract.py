@@ -99,6 +99,13 @@ data_pairs : list of (dict, :class:`pandas.DataFrame` or :class:`pandas.Series`)
         max_communication_time = 'Max time taken by walker communication:',
         mean_communication_time = 'Mean time taken by walker communication:',
     )
+    energy_footer = dict(
+        corr_energy = 'Correlation energy:',
+        ref_energy = 'Reference energy:',
+        tot_energy = 'Total energy:',
+        err_in_err = 'Error in correlation energy:'
+    )
+
     md_generic_footer = dict(
         wall_time = 'Wall time (seconds):',
         cpu_time = 'CPU time (per processor, seconds):'
@@ -201,6 +208,12 @@ data_pairs : list of (dict, :class:`pandas.DataFrame` or :class:`pandas.Series`)
             for (key, val) in md_generic_footer.items():
                 if val in line:
                     md_generic[key] = float(line.split()[-1])
+           
+            # Final total energy
+            for (key, val) in energy_footer.items():
+                if val in line:
+                    energy_val = line.split()[-1]
+                    data_pairs[-1][0][key] = float(energy_val) 
 
     f.close()
 

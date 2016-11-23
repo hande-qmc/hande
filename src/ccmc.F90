@@ -399,7 +399,7 @@ contains
             call check_qmc_opts(qmc_in, sys, .not.present(qmc_state_restart), restarting)
             call check_ccmc_opts(sys, ccmc_in)
         end if
-
+        
         ! Initialise data.
         call init_qmc(sys, qmc_in, restart_in, load_bal_in, reference_in, io_unit, annihilation_flags, qs, &
                       uuid_restart, qmc_state_restart=qmc_state_restart, regenerate_info=regenerate_info)
@@ -431,7 +431,7 @@ contains
             call json_object_end(js, terminal=.true., tag=.true.)
             write (js%io, '()')
         end if
-
+        
         allocate(nparticles_old(qs%psip_list%nspaces), stat=ierr)
         call check_allocate('nparticles_old', qs%psip_list%nspaces, ierr)
         allocate(nparticles_change(qs%psip_list%nspaces), stat=ierr)
@@ -838,7 +838,7 @@ contains
                 call write_qmc_report(qmc_in, qs, ireport, nparticles_old, t2-t1, .false., .false., &
                                         io_unit=io_unit, cmplx_est=sys%read_in%comp, rdm_energy=ccmc_in%density_matrices, &
                                         nattempts=.true.)
-                if (blocking_in%blocking_on_the_fly) call do_blocking(bl, qs, qmc_in, ireport, iter, iunit, blocking_in, soft_exit)
+                if (blocking_in%blocking_on_the_fly) call do_blocking(bl, qs, qmc_in, ireport, iter, iunit, blocking_in)
             end if
 
             ! Update the time for the start of the next iteration.
@@ -864,6 +864,7 @@ contains
 
         call load_balancing_report(qs%psip_list%nparticles, qs%psip_list%nstates, qmc_in%use_mpi_barriers,&
                                    qs%spawn_store%spawn%mpi_time, io_unit=io_unit)
+        if (parent .and. blocking_in%blocking_on_the_fly) call write_blocking_report(bl, qs)
         call write_memcheck_report(qs%spawn_store%spawn, io_unit)
 
         if (soft_exit .or. error) then
