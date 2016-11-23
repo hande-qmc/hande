@@ -241,7 +241,7 @@ type ccmc_in_t
     logical :: density_matrices = .false.
     ! Filename to write density matrix to
     character(255) :: density_matrix_file = 'RDM'
-    ! Whether to use improved cluster selection approach.
+    ! Whether to use even cluster selection approach.
     logical :: even_selection = .false.
 end type ccmc_in_t
 
