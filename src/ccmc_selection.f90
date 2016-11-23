@@ -984,12 +984,17 @@ contains
         type(selection_data_t), intent(inout) :: selection_data
 
         integer :: nclusters, cluster_size, ierr, dummy
-        integer :: temporary(1:ex_level), i
+        integer :: temporary(1:ex_level), i, j
 
         allocate(selection_data%cluster_sizes_info(2:max_cluster_size), stat=ierr)
         call check_allocate('cluster_selection%cluster_sizes_info',max_cluster_size-2, ierr)
         allocate(selection_data%cluster_sizes_proportion(2:max_cluster_size), stat=ierr)
         call check_allocate('cluster_selection%cluster_sizes_proportion',max_cluster_size-2, ierr)
+
+        write (6, '(1X,"Truncated Selection Initialisation")')
+        write (6, '(1X,"----------------------------------",/)')
+        write (6, '(1X,"Setting up required data storage to sample all composite clusters of size <= ",i0,", ")') max_cluster_size
+        write (6, '(1X,"cluster excitation level <= ",i0," using excitors of excitation level <= ",i0,".",/)') ex_level+2, ex_level
 
         ! Go through possible sizes...
         do cluster_size = 2, max_cluster_size
@@ -1009,11 +1014,25 @@ contains
             call find_available_perms(dummy, selection_data%cluster_sizes_info(cluster_size)%v, temporary, &
                                     cluster_size, 1, 0, ex_level)
             if (parent) then
-                write(6, *) 'Found', nclusters,'clusters of size', cluster_size,'.'
-                write(6, *) 'Clusters are:'
-                do i = 1, nclusters
-                    write(6, *) selection_data%cluster_sizes_info(cluster_size)%v(i, :)
+                write(6, '(1X,"Found ",i0," possible excitation level combinations for a cluster of size ",i0,".")') nclusters, &
+                                                            cluster_size
+                write(6, '(1X,"Combinations are:",/)')
+                write(6, '(12X,"|",5X,a30)') "N_excitors @ excitation level:"
+                write(6, '(a11,1X,"|",41("-"))') "Combo"
+                write(6, '(a11,1X,"|",1X)', advance='no') "Number"
+                do j = 1, ex_level
+                    write(6, '(1X,a9,i2,1X)', advance='no') "ex level=", j
                 end do
+                write(6, '(1X)')
+                write(6, '(4X,50("-"))')
+                do i = 1, nclusters
+                    write (6, '(9X,i2,1X,"|",1X)',advance='no') i
+                    do j = 1, ex_level
+                        write(6, '(1X,5X,i2,5X)', advance='no') selection_data%cluster_sizes_info(cluster_size)%v(i, j)
+                    end do
+                    write(6, '(1x)')
+                end do
+                write(6, '(1x)')
             end if
         end do
 
