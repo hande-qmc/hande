@@ -64,8 +64,6 @@ contains
             nreplicas = ntypes
         end if
 
-        ! [review] - JSS: does this handle the output for both DMQMC and FCIQMC replicas?
-        ! [reply] - RSTF: DMQMC doesn't use this procedure.
         if (nreplicas > 1) then
             ! Label replicas
             write (6,'(1X,"#",1X)', advance='no')
@@ -391,8 +389,6 @@ contains
         end if
 
         call write_qmc_var(6, qs%estimators(1)%tot_nstates)
-        ! [review] - AJWT: Should this value also be printed out for the other spaces?
-        ! [reply] - RSTF: It is actually the total for all spaces.
         call write_qmc_var(6, qs%estimators(1)%tot_nspawn_events)
 
         call write_qmc_var(6, qs%spawn_store%rspawn, low_prec=.true.)
@@ -523,9 +519,6 @@ contains
         end if
 
         call write_qmc_var(6, ntot_particles(1))
-        ! [review] - JSS: what about info from the other spaces?
-        ! [reply] - RSTF: tot_nstates is the same across all spaces (number of entries in psip_list),
-        ! [reply] - RSTF: and tot_nspawn_events is the total across all spaces (number of elements in spawn_t).
         call write_qmc_var(6, qs%estimators(1)%tot_nstates)
         call write_qmc_var(6, qs%estimators(1)%tot_nspawn_events)
         call write_qmc_var(6, qs%spawn_store%rspawn, low_prec=.true.)

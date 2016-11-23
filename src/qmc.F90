@@ -82,11 +82,6 @@ contains
             call init_reference_restart(sys, reference_in, ri, qmc_state%ref)
         else if (present(qmc_state_restart)) then
             qmc_state%ref = qmc_state_restart%ref
-            ! [review] - AJWT: qmc_state%estimators%D0_population is set in 3949eca5f6c11a9e0f68a4545af105bcdeafc920
-            ! [review] - AJWT: for restarting - is this an extra bug fix?
-            ! [reply] - RSTF: Now estimators is allocatable, D0_population can't be set until after
-            ! [reply] - RSTF: it's allocated.  It's done in move_qmc_state_t now.  It didn't really
-            ! [reply] - RSTF: belong in this block anyway.
         else
             call init_reference(sys, reference_in, qmc_state%ref)
         end if
@@ -99,9 +94,6 @@ contains
         else if (fciqmc_in_loc%replica_tricks) then
             qmc_state%psip_list%nspaces = qmc_state%psip_list%nspaces * 2
         end if
-        ! [review] - JSS: this is no longer guarded by the check that the system is read_in. Intended?
-        ! [reply] - RSTF: sys%read_in%comp should have its default (false) value if not using a
-        ! [reply] - RSTF: read_in system, so it's easier to not do both checks.
         if (sys%read_in%comp) then
             qmc_state%psip_list%nspaces = qmc_state%psip_list%nspaces * 2
         end if
@@ -137,10 +129,6 @@ contains
             qmc_state%shift = qmc_in%initial_shift
             qmc_state%vary_shift = .false.
 
-            ! [review] - JSS: this is a little odd as we allocate one estimator_t per space but some spaces are linked (e.g. real
-            ! [review] - JSS: and imaginary_ and should share the same estimator_t object? Or do they implcitly and we just not use
-            ! [review] - JSS: one of them? Still, rather confusing.
-            ! [reply] - RSTF: There's one per space.  The real and imaginary ones should have identical information.
             allocate(qmc_state%estimators(qmc_state%psip_list%nspaces))
 
             ! Initial walker distributions

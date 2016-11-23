@@ -14,8 +14,6 @@ implicit none
 enum, bind(c)
     enumerator :: proj_energy_ind = 1
     enumerator :: D0_pop_ind
-    ! [review] - JSS: sadly the he/auto_tau_search branch hasn't yet been merged
-    ! [review] - JSS: to make this much easier. Should we have per-space variables that are automatically handled?
     ! [todo] - having a separate index for each space is not very general.
     enumerator :: proj_energy_replica_ind
     enumerator :: D0_pop_replica_ind
