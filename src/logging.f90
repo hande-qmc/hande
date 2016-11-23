@@ -946,7 +946,7 @@ contains
 
         type(logging_t), intent(in) :: logging_info
         integer, intent(in) :: iter
-        type(selection_data_t), intent(in) :: selection_info
+        type(selection_data_t), intent(inout) :: selection_info
         real(dp) :: var(lbound(selection_info%average_amplitude,dim=1): &
                         ubound(selection_info%average_amplitude,dim=1))
         integer :: i
@@ -964,6 +964,10 @@ contains
 
             write (logging_info%select_unit, '()')
         end if
+
+        selection_info%nsuccessful = 0_int_64
+        selection_info%average_amplitude = 0.0_dp
+        selection_info%variance_amplitude = 0.0_dp
 
     end subroutine write_logging_select_ccmc
 

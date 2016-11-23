@@ -805,10 +805,6 @@ contains
 
             if (debug) call write_logging_select_ccmc(logging_info, iter, selection_data)
 
-            selection_data%nsuccessful = 0_int_64
-            selection_data%average_amplitude = 0.0_dp
-            selection_data%variance_amplitude = 0.0_dp
-
             call end_report_loop(qmc_in, iter, update_tau, qs, nparticles_old, nspawn_events, &
                                  semi_stoch_in%shift_iter, semi_stoch_iter, soft_exit, &
                                  load_bal_in, bloom_stats=bloom_stats, comp=sys%read_in%comp, &
