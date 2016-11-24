@@ -167,7 +167,7 @@ contains
         type(spawn_t), intent(in) :: spawn
         logical, intent(in) :: mpi_barriers
 
-        integer :: i, ierr, determ_dets_mem, max_nstates
+        integer :: i, ierr, determ_dets_mem, max_nstates, n_spawnees
         integer :: displs(0:nprocs-1)
         ! dtes_this_proc will hold deterministic states on this processor only.
         ! This is only needed during initialisation.
@@ -275,10 +275,29 @@ contains
         call check_allocate('determ%vector', determ%sizes(iproc), ierr)
         determ%vector = 0.0_p
 
-        ! Vector to hold the residual weighting for each determinant 
+
+
+        ! The parallelization is performed by taking the full deterministic vector (length V)
+        !  and splitting it up over processors, each with a local subset (length v)
+        ! The two modes for semi-stochastic are
+        ! 1) Sepearate annihilation, which gathers the full deterministic vector first,
+        !          and applies the v x V (horizontal) slice of the Hamiltonian to give
+        !          the local spawnees (length v).
+        ! 2) Combined annihilation, which uses the local deterministic vector (length v), 
+        !          and applies the V x v (vertical) slice of the Hamiltonian to give the
+        !          full (V) list of spawnees, which are then distributed among its peers.
+
+        ! Quasinewton weights are applied to a vector the size of the spawnees, so work this out first.
+
+        if (determ%projection_mode == semi_stoch_separate_annihilation) then
+            n_spawnees = determ%sizes(iproc)
+        else
+            n_spawnees = determ%tot_size
+        end if
+        ! Vector to hold the residual weighting for each determinant on this processor
         ! for quasinewton propagation.
-        allocate(determ%one_minus_qn_weight(determ%sizes(iproc)), stat=ierr)
-        call check_allocate('determ%one_minus_qn_weight', determ%sizes(iproc), ierr)
+        allocate(determ%one_minus_qn_weight(n_spawnees), stat=ierr)
+        call check_allocate('determ%one_minus_qn_weight', n_spawnees, ierr)
         determ%one_minus_qn_weight = 0.0_p
 
         ! Vector to hold deterministic amplitudes from all processes.
@@ -319,7 +338,10 @@ contains
 
         call create_determ_hash_table(determ, print_info)
 
-        call create_determ_hamil(determ, sys, propagator, reference, displs, dets_this_proc, print_info)
+        ! separate_annihilation applies the transpose of H, so the 6th arg tells us 
+        ! if we need to qn-weight the column rather than the row of H.
+        call create_determ_hamil(determ, sys, propagator, reference, displs,    &
+                determ%projection_mode == semi_stoch_separate_annihilation , dets_this_proc, print_info)
 
         ! All deterministic states on this processor are always stored in
         ! particle_t%states, even if they have a population of zero, so they are
@@ -495,7 +517,7 @@ contains
 
     end subroutine create_determ_hash_table
 
-    subroutine create_determ_hamil(determ, sys, propagator, ref, displs, dets_this_proc, print_info)
+    subroutine create_determ_hamil(determ, sys, propagator, ref, displs, transp, dets_this_proc, print_info)
 
         ! In/Out:
         !    determ: Deterministic space being used. On input, determ%sizes,
@@ -507,6 +529,7 @@ contains
         !    ref: reference_t for the reference determinant
         !    displs: displs(i) holds the cumulative sum of the number of
         !        deterministic states belonging to processor numbers 0 to i-1.
+        !    transp: Should we apply the qn weighting to the j of Hij rather than the i?
         !    dets_this_proc: The deterministic states belonging to this
         !        processor.
         !    print_info: Should we print information to the screen?
@@ -527,6 +550,7 @@ contains
         type(sys_t), intent(in) :: sys
         type(propagator_t), intent(in) :: propagator
         type(reference_t), intent(in) :: ref
+        logical, intent(in) :: transp
         integer, intent(in) :: displs(0:nprocs-1)
         integer(i0), intent(in) :: dets_this_proc(:,:)
         logical, intent(in) :: print_info
@@ -537,6 +561,8 @@ contains
         real :: t1, t2
         logical :: diag_elem
         real(p) :: fock_sum, weight
+        integer :: n_spawnees
+
 #ifdef PARALLEL
         integer :: ierr
 #endif
@@ -544,11 +570,19 @@ contains
         ! Start by evaluating the QN weights.  We store them in one_minus_qn_weight
         ! and then modify one_minus_qn_weight to be 1-w after calculating H
         if (propagator%quasi_newton) then
-            do j = 1, determ%sizes(iproc)
-                fock_sum = sum_sp_eigenvalues_bit_string(sys, dets_this_proc(:,j))
-                weight = calc_qn_weighting(propagator, fock_sum - ref%fock_sum)
-                determ%one_minus_qn_weight(j) =  weight
-            end do
+            if (transp) then 
+                do j = 1, size(determ%one_minus_qn_weight)
+                    fock_sum = sum_sp_eigenvalues_bit_string(sys, dets_this_proc(:,j))
+                    weight = calc_qn_weighting(propagator, fock_sum - ref%fock_sum)
+                    determ%one_minus_qn_weight(j) =  weight
+                end do
+            else
+                do j = 1, size(determ%one_minus_qn_weight)
+                    fock_sum = sum_sp_eigenvalues_bit_string(sys, determ%dets(:,j))
+                    weight = calc_qn_weighting(propagator, fock_sum - ref%fock_sum)
+                    determ%one_minus_qn_weight(j) =  weight
+                end do
+            end if
         else
             determ%one_minus_qn_weight = 1.0_p
         end if
@@ -564,9 +598,14 @@ contains
                 do i = 1, determ%tot_size
                     ! Over all deterministic states on this process (all columns).
                     do j = 1, determ%sizes(iproc)
-                        ! The matrix element is applied from i to j (i.e. from
+                        ! If transp, then 
+                        ! the matrix element is applied from i to j (i.e. from
                         ! i (all deterministics) to j (only this proc).
                         ! The spawnee is j so this gets the quasinewton weight.
+                        ! Otherwise 
+                        ! the matrix element is applied from j to i (i.e. from
+                        ! j (only this proc) to i (all deterministics)
+                        ! The spawnee is i so this gets the quasinewton weight.
                         
                         hmatel = get_hmatel(sys, determ%dets(:,i), dets_this_proc(:,j))
                         diag_elem = i == j + displs(iproc)
@@ -574,9 +613,13 @@ contains
                         if (diag_elem) then
                            hmatel%r = hmatel%r - ref%H00
                         end if
-                        ! Recall one_minus_qn_weight currently contains the acutal
+                        ! Recall one_minus_qn_weight currently contains the actual
                         ! weight
-                        weight = determ%one_minus_qn_weight(j)
+                        if (transp) then
+                            weight = determ%one_minus_qn_weight(j)
+                        else
+                            weight = determ%one_minus_qn_weight(i)
+                        endif
                         hmatel = weight * hmatel
                         if (abs(hmatel%r) > depsilon) then
                             nnz = nnz + 1
@@ -828,29 +871,36 @@ contains
 
         row = 0
 
+        ! We would like to perform v_i <- sum_j (H_ij-S delta_ij) v_j
+        !                               = sum_j H_ij v_j  - S v_i
+
         do proc = 0, nprocs-1
             ! To avoid an if statement which could be called a very large number
             ! of times, separate out states on this processor from those not.
             if (proc == iproc) then
                 do i = 1, determ%sizes(proc)
                     row = row + 1
-                    ! Perform the projetion.
+                    ! Perform the projection.
                     call csrpgemv_single_row(determ%hamil, determ%vector, row, out_vec)
+                    ! out_vec now contains sum_j H_ij v_j
                     ! For states on this processor (proc == iproc), add the
                     ! contribution from the shift.
-                    ! For QuasiNewton instead of - tau * H_ii * v_i - tau * S * v_i  
+                    ! For QuasiNewton the diagonal part is special.
+                    !    instead of - tau * H_ii * v_i - tau * S * v_i  
                     ! we will need   - tau *((H_ii - E_proj) *w_i + (E_proj - S)) * v_i
-                    !           so   - tau * (H_ii) * w_i * v_i - tau * (E_proj * (1-w_i) + S) * v_i
+                    !           so   - tau * (H_ii) * w_i * v_i - tau * (E_proj * (1-w_i) - S) * v_i
                     !                       (where w_i is the quasi_newton weight).
                     ! w_i is subsumed into H_ii already, so we now just include
                     ! the shift/projE component.
-                    out_vec = -qs%tau * (out_vec + (proj_energy * determ%one_minus_qn_weight(i) - qs%shift(1)) * determ%vector(i))
+                    out_vec = -qs%tau * (out_vec + (proj_energy * determ%one_minus_qn_weight(row) - qs%shift(1)) * determ%vector(i))
                     call create_spawned_particle_determ(determ%dets(:,row), out_vec, qs%psip_list%pop_real_factor, proc, &
                                                         qmc_in%initiator_approx, rng, spawn)
                 end do
             else
                 do i = 1, determ%sizes(proc)
-                    ! The same as above, but without the shift contribution.
+                    ! The same as above, but since the processor we're sending the result to isn't this one,
+                    ! i doesn't live here, and we don't know v_i.  Its home processor deals with the shift component 
+                    ! (and quasinewton E_proj factor) instead (in the other branch of the if statement above).
                     row = row + 1
                     call csrpgemv_single_row(determ%hamil, determ%vector, row, out_vec)
                     out_vec = -out_vec*qs%tau
