@@ -561,7 +561,6 @@ contains
         real :: t1, t2
         logical :: diag_elem
         real(p) :: fock_sum, weight
-        integer :: n_spawnees
 
 #ifdef PARALLEL
         integer :: ierr
