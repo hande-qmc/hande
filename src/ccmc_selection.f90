@@ -45,7 +45,7 @@ module ccmc_selection
 ! Even Selection
 ! --------------
 ! Based upon the premise that all components of the wavefunction should be
-! sampled evenly, regardless of providence. In practice, this involves
+! sampled evenly, regardless of provenance. In practice, this involves
 ! selecting individual clusters with probability proportional to the
 ! product of all constituent absolute excip populations.
 
@@ -60,7 +60,7 @@ module ccmc_selection
 !   N_attempts * p_size(1) = N_ex
 ! As we are utilising full non-composite selection for non-composite clusters.
 
-! Thus described we have a functional method, but the combinatorally growing
+! Thus described we have a functional method, but the combinatorially growing
 ! number of possible excitor combinations with increasing cluster sizes leads
 ! to a huge number of selections being required at these higher levels. This
 ! is not a problem in and of itself, but noting that the Hamiltonian is a
@@ -447,6 +447,7 @@ contains
         !    f0: bit string of the reference
         !    iexcitor: the index (in range [1,nstates]) of the excitor to select.
         !    initiator_pop: the population above which a determinant is an initiator.
+! [review] - AJWT: This is not currently used by this routine.
         !    ex_lvl_sort: if true, excitors are sorted by excitation level and so have
         !       information about the excitation level also encoded in their bit string
         !       that should be removed before being passed on.
@@ -540,15 +541,20 @@ contains
         !    psip_list: particle_t object containing current excip distribution on
         !       this processor.
         !    f0: bit string of the reference
+        !    linked_ccmc: are we doing linked CCMC?
         !    nattempts: the number of times (on this processor) a random cluster
         !        of excitors is generated in the current timestep.
-        !    initiator_pop: the population above which a determinant is an initiator.
-        !    cumulative_excip_population: running cumulative excip population on
-        !        all excitors; i.e. cumulative_excip_population(i) = sum(particle_t%pops(1:i)).
         !    normalisation: intermediate normalisation factor, N_0, where we use the
         !       wavefunction ansatz |\Psi_{CC}> = N_0 e^{T/N_0} | D_0 >.
-        !    nattempts: the number of times (on this processor) a random cluster
-        !        of excitors is generated in the current timestep.
+        !    initiator_pop: the population above which a determinant is an initiator.
+        !    selection_data: contains weightings used for selection.
+        !    cumulative_excip_pop: running cumulative excip population on
+        !        all excitors; i.e. cumulative_excip_population(i) = sum(particle_t%pops(1:i)).
+! [review] - AJWT: Fill in docs:
+        !    ex_level:
+        !    min_size:
+        !    max_size:
+        !    ex_lvl_dist:
 
         ! NOTE: cumulative_excip_pop and tot_excip_pop ignore the population on the
         ! reference as excips on the reference cannot form a cluster.  Both these
@@ -556,18 +562,18 @@ contains
         ! format).
 
         ! In/Out:
+        !    rng: random number generator.
+        !    cluster:
+        !        Additional information about the cluster of excitors.  On
+        !        input this is a bare cluster_t variable with the excitors array
+        !        allocated to the maximum number of excitors in a cluster.  On
+        !        output all fields in cluster have been set.
         !    cdet: information about the cluster of excitors applied to the
         !        reference determinant.  This is a bare det_info variable on input
         !        with only the relevant fields allocated.  On output the
         !        appropriate (system-specific) fields have been filled by
         !        decoding the bit string of the determinant formed from applying
         !        the cluster to the reference determinant.
-        !    cluster:
-        !        Additional information about the cluster of excitors.  On
-        !        input this is a bare cluster_t variable with the excitors array
-        !        allocated to the maximum number of excitors in a cluster.  On
-        !        output all fields in cluster have been set.
-        !    rng: random number generator.
 
         use ccmc_data, only: cluster_t, selection_data_t, ex_lvl_dist_t
         use ccmc_utils, only: convert_excitor_to_determinant
@@ -714,6 +720,7 @@ contains
         !   psip_list: particle_t object containing current excip distribution on this
         !       processor.
         !   f0: bit string of the reference.
+        !   linked_ccmc: are we doing linked CCMC?
         !   initiator_pop: the population above which a determinant is an initiator.
         !   first: if true first cluster selected will seed the cluster
         !   ex_level: number of excitations from the reference we're considering.
@@ -724,9 +731,9 @@ contains
         !       excitation levels.
         ! In/Out:
         !   rng: random number generator.
-        !   cdet: information anout the cluster of excitors applied to the reference determinant.
         !   cluster_population: current population of cluster.
         !   cluster: cluster of excitors currently being accumulated.
+        !   cdet: information anout the cluster of excitors applied to the reference determinant.
         ! Out:
         !   allowed: false if collapsed cluster is invalid (ie. tried to excite to/from
         !       same spinorbital twice).

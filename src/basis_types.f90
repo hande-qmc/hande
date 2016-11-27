@@ -127,6 +127,7 @@ module basis_types
 
     contains
 
+! [review] - AJWT: nelec doesn't appear to be used.
         subroutine init_basis_strings(b, nelec)
 
             ! Initialise the string information in a basis_t object for
@@ -182,6 +183,8 @@ module basis_types
             call check_allocate('b%ex_level_mask', b%string_len, ierr)
 
             b%ex_level_mask = 0_i0
+! [review] - AJWT: Either I misunderstand what type of mask this is or this is wrong.
+! [review] - AJWT: Shouldn't it be 2^(ceiling(log_2 (max_excitation_level+1)))-1
             b%ex_level_mask(b%string_len) = 1_i0
 
         end subroutine init_basis_strings

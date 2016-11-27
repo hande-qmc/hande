@@ -915,6 +915,7 @@ contains
         type(hmatel_t) :: hmatel
         type(estimators_t) :: estimators_cycle
 
+! [review] - AJWT: Is there a reason this is only done in debug mode?
         if (debug) call update_selection_data(selection_data, cluster)
 
         if (cluster%excitation_level /= huge(0)) then

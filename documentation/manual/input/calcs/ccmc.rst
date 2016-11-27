@@ -169,6 +169,9 @@ ccmc options
     of selecting a cluster of any size is proportional to its contribution to the overall
     amplitude of the instantaneous wavefunction representation.
 
+    .. review - AJWT
+        Might need some guidance as to when to use this
+
     .. warning::
 
     This algorithm gives drastically different behaviour and is a subject of current

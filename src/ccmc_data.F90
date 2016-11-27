@@ -187,19 +187,19 @@ contains
         end if
         if (allocated(sd%size_weighting)) then
             deallocate(sd%size_weighting, stat=ierr)
-            call check_deallocate('size_weighting', ierr)
+            call check_deallocate('sd%size_weighting', ierr)
         end if
         if (allocated(sd%cumulative_size_weighting)) then
             deallocate(sd%cumulative_size_weighting, stat=ierr)
-            call check_deallocate('cumulative_size_weighting', ierr)
+            call check_deallocate('sd%cumulative_size_weighting', ierr)
         end if
         if (allocated(sd%stoch_size_weighting)) then
             deallocate(sd%size_weighting, stat=ierr)
-            call check_deallocate('size_weighting', ierr)
+            call check_deallocate('sd%size_weighting', ierr)
         end if
         if (allocated(sd%cumulative_stoch_size_weighting)) then
             deallocate(sd%cumulative_size_weighting, stat=ierr)
-            call check_deallocate('cumulative_size_weighting', ierr)
+            call check_deallocate('sd%cumulative_stoch_size_weighting', ierr)
         end if
         if (allocated(sd%average_amplitude)) then
             deallocate(sd%average_amplitude, stat=ierr)
@@ -216,6 +216,7 @@ contains
 
     end subroutine end_selection_data
 
+! [review] - AJWT: These doen't really seem like they belong in this file.
     subroutine dealloc_real1d(array)
         use base_types, only: alloc_rdp1d
         use checking, only: check_deallocate

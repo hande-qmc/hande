@@ -184,11 +184,11 @@ contains
         ! NB This currently only handles non-linked complex amplitudes, not linked complex.
 
         ! In:
-        !    sys: system being studied.
-        !    qs: qmc_state_t containing information about the reference and estimators.
         !    linked_ccmc: if true then only sample linked clusters.
         !    ex_lvl_sort: logical. If true add excitation level to bit string if successfully
         !       die.
+        !    sys: system being studied.
+        !    qs: qmc_state_t containing information about the reference and estimators.
         !    cdet: info on the current excitor (cdet) that we will spawn
         !        from.
         !    cluster: information about the cluster which forms the excitor.
@@ -197,6 +197,7 @@ contains
         ! In/Out:
         !    rng: random number generator.
         !    spawn: spawn_t object to which the spanwed particle will be added.
+        !    ndeath_tot: total number of deaths (added to by this function)
 
         use ccmc_data, only: cluster_t
         use ccmc_utils, only: add_ex_level_bit_string_provided
@@ -801,6 +802,7 @@ contains
 
 ! --- Helper functions ---
 
+! [review] - AJWT: Interface docs needed.
     subroutine create_spawned_particle_ccmc(basis, ref, cdet, connection, nspawned, ispace, &
                                             parent_cluster_ex_level, ex_lvl_sort, fexcit, spawn, bloom_stats)
 
