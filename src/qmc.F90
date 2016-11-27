@@ -941,6 +941,7 @@ contains
         if (doing_calc(dmqmc_calc)) then
             ! Hash the entire first bit array and the minimum number of bits
             ! in the second bit array.
+! [review] - AJWT: This assumes that we're encoding the excitation level in the topmost word.
             nhash_bits = basis%nbasis + i0_length*(basis%string_len-1)
         else
             nhash_bits = basis%nbasis

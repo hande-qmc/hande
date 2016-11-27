@@ -629,6 +629,7 @@ contains
         integer, intent(in) :: string_len
         integer(i0), intent(inout) :: f(:)
 
+! [review] - AJWT: shouldn't this use ex_level_mask?
         f(string_len) = 0_i0
 
     end subroutine remove_ex_level_bit_string
@@ -718,6 +719,7 @@ contains
 
     end subroutine update_cumulative_dist_real
 
+! [review] - AJWT: Some more docs here?
     subroutine update_noncumulative_dist_int_32(cumulative_dist, dist)
 
         use const, only: int_32
@@ -733,6 +735,7 @@ contains
 
     end subroutine update_noncumulative_dist_int_32
 
+! [review] - AJWT: Some more docs here?
     subroutine update_noncumulative_dist_int_64(cumulative_dist, dist)
 
         use const, only: int_64
@@ -748,6 +751,7 @@ contains
 
     end subroutine update_noncumulative_dist_int_64
 
+! [review] - AJWT: Some more docs here?
     subroutine update_noncumulative_dist_realp(cumulative_dist, dist)
 
         use const, only: int_64

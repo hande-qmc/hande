@@ -83,6 +83,7 @@ contains
 
         ! Count the number of 0-1 type bonds
         f_not = not(f)
+! [review] - AJWT: This assumes that we're encoding the excitation level in the topmost word.
         do i = 1, sys%basis%string_len - 1
             do ipos = 0, i0_end
                 if (btest(f(i), ipos)) then
@@ -145,6 +146,7 @@ contains
 
         ! Count the number of 0-1 type bonds
         f_not = not(f)
+! [review] - AJWT: This assumes that we're encoding the excitation level in the topmost word.
         do i = 1, sys%basis%string_len - 1
             do ipos = 0, i0_end
                 if (btest(f(i), ipos)) then

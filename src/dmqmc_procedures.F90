@@ -271,6 +271,7 @@ contains
         ! Setup the rdms array.
         do i = 1, nrdms
             ! Initialise the instance of the rdm type for this subsystem.
+! [review] - AJWT: The +1 has been added in this branch.  Why?
             subsys_info(i)%string_len = ceiling(real(subsys_info(i)%A_nsites)/i0_length) + 1
 
             ! With the calc_ground_rdm option, the entire RDM is allocated. If

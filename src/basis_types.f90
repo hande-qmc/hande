@@ -146,6 +146,11 @@ module basis_types
 
             integer :: i, bit_element, bit_pos, ierr
 
+! [review] - AJWT: I'm a little unhappy about this +1 because it leads to a number of -1's elsewhere in the code
+! [review] - AJWT: Could another variable be introduced to indicate the bits in the string which are used for 
+! [review] - AJWT: the encoding of the determinant?
+! [review] - AJWT: FCIQMC could then not use this extra word (and 1 word more in some systems is a lot).
+! [review] - AJWT: Similarly, assuming it's a single word doesn't really strike be as overly future-proof.
             ! Need space to store both basis string and excitation level.
             b%string_len = ceiling(real(b%nbasis) / i0_length) + 1
             b%tensor_label_len = b%string_len

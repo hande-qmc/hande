@@ -643,6 +643,8 @@ contains
         ! excitation at all.
         all_allowed = allowed
 
+! [review] - AJWT: Please check additional comments
+        ! Now choose the combination of excitor-levels, given the number of excitors in the cluster.
         associate(select_info => selection_data%cluster_sizes_info(cluster%nexcitors)%v, &
                 select_proportion => selection_data%cluster_sizes_proportion(cluster%nexcitors)%v)
             rand = get_rand_close_open(rng)
@@ -658,6 +660,8 @@ contains
 
             cluster%pselect = cluster%pselect * select_proportion(choice)
 
+            ! choice indexes the combinations, and select_info(choice, i) is the number of
+            ! excitors with level i needed in this particular combination.
             first = .true.
             iex = 1
             accumulate_excitors : do i = 1, size(select_info, dim=2)
@@ -723,14 +727,15 @@ contains
         !   linked_ccmc: are we doing linked CCMC?
         !   initiator_pop: the population above which a determinant is an initiator.
         !   first: if true first cluster selected will seed the cluster
-        !   ex_level: number of excitations from the reference we're considering.
+        !   ex_level: excitation level from the reference of the excitors to add
         !   nexcitors: number of excitors of this excitation level to add to cluster.
-        !   iexcitor: number of excitation being added.
         !   cumulative_excip_pop: running excip population on all excitors.
         !   ex_lvl_dist: derived type containing information on excip distribution between
         !       excitation levels.
         ! In/Out:
         !   rng: random number generator.
+        !   iexcitor: number of excitor being added - this is incremented with each added excitor
+! [review] - AJWT: Does cluster_population get updated in this routine?  What exactly is the 'population'?
         !   cluster_population: current population of cluster.
         !   cluster: cluster of excitors currently being accumulated.
         !   cdet: information anout the cluster of excitors applied to the reference determinant.
@@ -808,7 +813,7 @@ contains
                 ! If the excitor's population is below the initiator threshold, we remove the
                 ! initiator status for the cluster
                 if (abs(excitor_pop) <= initiator_pop) cdet%initiator_flag = 1
-                ! Probability of choosing this excitor = nint(pop)/tot_pop.
+                ! Probability of choosing this excitor = abs(pop)/tot_pop.
                 cluster%pselect = (cluster%pselect*abs(excitor_pop))/tot_level_pop
                 cluster%excitors(iexcitor)%f => psip_list%states(:,pos)
                 prev_pos = pos
@@ -820,6 +825,7 @@ contains
 
 !---- nselections update function ----
 
+! [review] - AJWT: definitely need some documentation here.
     subroutine set_cluster_selections(selection_data, nattempts, min_cluster_size, max_size, D0_normalisation, tot_abs_pop, &
                                     nstates, full_nc, even_selection)
 
@@ -869,6 +875,7 @@ contains
 
 !---- Cluster information accumulation ---
 
+! [review] - AJWT: definitely need some documentation here.
     subroutine update_selection_data(selection_data, cluster)
 
         use ccmc_data, only: cluster_t, selection_data_t
@@ -906,7 +913,7 @@ contains
         !    ex_lvl_dist: derived type containing information on distribution of excip population
         !       between excitation levels.
         !    abs_D0_normalisation: absolute magnitude of D0 normalisation.
-        !   tot_abs_pop: absolute sum of cumulative population.
+        !    tot_abs_pop: absolute sum of cumulative population.
         ! In/Out:
         !    cluster_selection: selection_data_t object containing all information required for
         !       truncated selection (all valid excitation level combinations). On output
@@ -926,6 +933,7 @@ contains
         cluster_selection%size_weighting(0) = abs_D0_normalisation
         cluster_selection%size_weighting(1) = real(tot_abs_pop, kind=dp)
 
+! [review] - AJWT: A little comment here wouldn't go amiss.
         do i = lbound(cluster_selection%cluster_sizes_info, dim=1), ubound(cluster_selection%cluster_sizes_info, dim=1)
             associate(select_info => cluster_selection%cluster_sizes_info(i)%v, &
                       select_proportion => cluster_selection%cluster_sizes_proportion(i)%v)
@@ -1006,6 +1014,7 @@ contains
         ! Go through possible sizes...
         do cluster_size = 2, max_cluster_size
             ! Calc number possible clusters for each
+! [review] - AJWT: Given the use of 'combinations' elsewhere, shouldn't this be ncombinations?
             nclusters = calc_available_perms(cluster_size, 1, 0, ex_level)
             ! Allocate storage of appropriate size to store all cluster info
             allocate(selection_data%cluster_sizes_info(cluster_size)%v(1:nclusters,1:ex_level), stat=ierr)
