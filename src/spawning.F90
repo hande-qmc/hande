@@ -1099,7 +1099,6 @@ contains
         end if
 
         ! Only accept spawning if it's within the truncation level.
-! [review] - AJWT: Another assumption about the extra encoding for excit level.
         if (get_excitation_level(reference%hs_f0(:basis%bit_string_len), f_new(:basis%bit_string_len)) <= reference%ex_level) then
 
             call assign_particle_processor(f_new, spawn%bit_str_nbits, spawn%hash_seed, spawn%hash_shift, spawn%move_freq, nprocs, &

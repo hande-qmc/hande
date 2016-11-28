@@ -209,7 +209,7 @@ module basis_types
 ! [review] - AJWT: Either I misunderstand what type of mask this is or this is wrong.
 ! [review] - AJWT: Shouldn't it be 2^(ceiling(log_2 (max_excitation_level+1)))-1
 ! [reply] - CJCS: This is currently unused but that's correct.
-            b%info_mask(b%bit_string_len+1:) = 2_int_64**(i0_length-2)-1_int_64 + 2_int_64**(i0_length-2)
+            b%info_mask(b%bit_string_len+1:) = 2_i0**(i0_length-2)-1_i0 + 2_i0**(i0_length-2)
 
         end subroutine init_basis_strings
 

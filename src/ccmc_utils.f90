@@ -719,13 +719,15 @@ contains
 
     end subroutine update_cumulative_dist_real
 
-! [review] - AJWT: Some more docs here?
     subroutine update_noncumulative_dist_int_32(cumulative_dist, dist)
+
+        ! Uses the provided cumulative distribution to update dist in a
+        ! consistent manner.
 
         use const, only: int_32
 
         integer(int_32), intent(inout), allocatable :: dist(:)
-        integer(int_32), intent(inout), allocatable :: cumulative_dist(:)
+        integer(int_32), intent(in), allocatable :: cumulative_dist(:)
         integer :: i
 
         dist(lbound(cumulative_dist,dim=1)) = cumulative_dist(lbound(dist,dim=1))
@@ -735,8 +737,10 @@ contains
 
     end subroutine update_noncumulative_dist_int_32
 
-! [review] - AJWT: Some more docs here?
     subroutine update_noncumulative_dist_int_64(cumulative_dist, dist)
+
+        ! Uses the provided cumulative distribution to update dist in a
+        ! consistent manner.
 
         use const, only: int_64
 
@@ -751,8 +755,10 @@ contains
 
     end subroutine update_noncumulative_dist_int_64
 
-! [review] - AJWT: Some more docs here?
     subroutine update_noncumulative_dist_realp(cumulative_dist, dist)
+
+        ! Uses the provided cumulative distribution to update dist in a
+        ! consistent manner.
 
         use const, only: int_64
 

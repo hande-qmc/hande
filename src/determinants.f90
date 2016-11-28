@@ -285,7 +285,6 @@ contains
 
         nfound = 0
         nbits_seen = 0
-! [review] - AJWT: Doesn't this assume that we're encoding the excitation level in the topmost word?
         outer: do iel = 1, basis_set%bit_string_len
             offset = 0
             do ifield = 1, nfields
@@ -405,7 +404,6 @@ contains
         iunocc_b = 0
         orb = 0
 
-! [review] - AJWT: Doesn't this assume that we're encoding the excitation level in the topmost word?
         do i = 1, sys%basis%bit_string_len - 1
             ! Manual unrolling allows us to avoid 2 mod statements
             ! and some branching.
@@ -441,7 +439,6 @@ contains
         ! Treating the last element as a special case rather than having an if
         ! statement in the above loop results a speedup of the Hubbard k-space
         ! FCIQMC calculations of 1.5%.
-! [review] - AJWT: Doesn't this assume that we're encoding the excitation level in the topmost word?
         last_basis_ind = sys%basis%nbasis - i0_length*(sys%basis%bit_string_len-1) - 1
         do j = 0, last_basis_ind, 2
             ! Test alpha orbital.
