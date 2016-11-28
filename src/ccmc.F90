@@ -297,7 +297,8 @@ contains
                                  write_bloom_report, bloom_stats_warning, update_bloom_threshold_prop
         use ccmc_data
         use ccmc_selection, only: select_cluster, create_null_cluster, select_nc_cluster, select_cluster_truncated
-        use ccmc_selection, only: init_selection_data, update_selection_probabilities, set_cluster_selections
+        use ccmc_selection, only: init_selection_data, update_selection_probabilities, set_cluster_selections, &
+                                  init_amp_psel_accumulation
         use ccmc_death_spawning, only: stochastic_ccmc_death_nc
         use ccmc_utils, only: init_contrib, dealloc_contrib, find_D0, cumulative_population, init_ex_lvl_dist_t, &
                               update_ex_lvl_dist
@@ -449,14 +450,15 @@ contains
         allocate(cumulative_abs_real_pops(size(qs%psip_list%states,dim=2)), stat=ierr)
         call check_allocate('cumulative_abs_real_pops', size(qs%psip_list%states, dim=2), ierr)
 
-        if (ccmc_in%even_selection .or. debug) then
+        if (ccmc_in%even_selection) then
             if (ccmc_in%linked) then
                 call init_selection_data(qs%ref%ex_level, 4, selection_data)
             else
                 call init_selection_data(qs%ref%ex_level, qs%ref%ex_level+2, selection_data)
             end if
+            call init_ex_lvl_dist_t(qs%ref%ex_level, ex_lvl_dist)
         end if
-        if (ccmc_in%even_selection) call init_ex_lvl_dist_t(qs%ref%ex_level, ex_lvl_dist)
+        if (debug) call init_amp_psel_accumulation(qs%ref%ex_level+2, logging_info, ccmc_in%linked, selection_data)
 
         nparticles_old = qs%psip_list%tot_nparticles
 
@@ -665,8 +667,8 @@ contains
                             if (qs%propagator%quasi_newton) contrib(it)%cdet%fock_sum = &
                                             sum_sp_eigenvalues_occ_list(sys, contrib(it)%cdet%occ_list) - qs%ref%fock_sum
 
-                            call do_ccmc_accumulation(sys, qs, contrib(it)%cdet, contrib(it)%cluster, D0_population_cycle, &
-                                                    proj_energy_cycle, ccmc_in, ref_det, rdm, selection_data)
+                            call do_ccmc_accumulation(sys, qs, contrib(it)%cdet, contrib(it)%cluster, logging_info, &
+                                                    D0_population_cycle, proj_energy_cycle, ccmc_in, ref_det, rdm, selection_data)
                             call do_nc_ccmc_propagation(rng(it), sys, qs, ccmc_in, logging_info, bloom_stats, &
                                                                 contrib(it), nattempts_spawn)
                         end if
@@ -696,8 +698,8 @@ contains
                             if (qs%propagator%quasi_newton) contrib(it)%cdet%fock_sum = &
                                             sum_sp_eigenvalues_occ_list(sys, contrib(it)%cdet%occ_list) - qs%ref%fock_sum
 
-                            call do_ccmc_accumulation(sys, qs, contrib(it)%cdet, contrib(it)%cluster, D0_population_cycle, &
-                                                    proj_energy_cycle, ccmc_in, ref_det, rdm, selection_data)
+                            call do_ccmc_accumulation(sys, qs, contrib(it)%cdet, contrib(it)%cluster, logging_info, &
+                                                    D0_population_cycle, proj_energy_cycle, ccmc_in, ref_det, rdm, selection_data)
                             call do_stochastic_ccmc_propagation(rng(it), sys, qs, &
                                                                 ccmc_in, logging_info, ms_stats(it), bloom_stats, &
                                                                 contrib(it), nattempts_spawn, ndeath)
@@ -720,8 +722,8 @@ contains
                         if (qs%propagator%quasi_newton) contrib(it)%cdet%fock_sum = &
                                         sum_sp_eigenvalues_occ_list(sys, contrib(it)%cdet%occ_list) - qs%ref%fock_sum
 
-                        call do_ccmc_accumulation(sys, qs, contrib(it)%cdet, contrib(it)%cluster, D0_population_cycle, &
-                                                proj_energy_cycle, ccmc_in, ref_det, rdm, selection_data)
+                        call do_ccmc_accumulation(sys, qs, contrib(it)%cdet, contrib(it)%cluster, logging_info, &
+                                                D0_population_cycle, proj_energy_cycle, ccmc_in, ref_det, rdm, selection_data)
                         nattempts_spawn = nattempts_spawn + 1
                         call perform_ccmc_spawning_attempt(rng(it), sys, qs, ccmc_in, logging_info, bloom_stats, contrib(it), 1)
                     end if
@@ -869,7 +871,7 @@ contains
 
     end subroutine do_ccmc
 
-    subroutine do_ccmc_accumulation(sys, qs, cdet, cluster, D0_population_cycle, proj_energy_cycle, &
+    subroutine do_ccmc_accumulation(sys, qs, cdet, cluster, logging_info, D0_population_cycle, proj_energy_cycle, &
                                     ccmc_in, ref_det, rdm, selection_data)
 
         ! Performs all accumulation of values required for given ccmc clusters.
@@ -884,12 +886,13 @@ contains
         !       cluster.
         !   ref_det: reference determinant information.
         !   cluster: information on cluster currently under consideration.
+        !   logging_info: current logging settings in use.
 
         ! In/Out:
         !   D0_population_cycle: running total of reference population.
         !   proj_energy_cycle: running total of projected energy contributions.
         !   rdm: array containing reduced density matrix.
-
+        !   selection_data: info on clsuter selection.
 
         use system, only: sys_t
         use qmc_data, only: qmc_state_t, ccmc_in_t, estimators_t
@@ -902,12 +905,14 @@ contains
         use hamiltonian_data, only: hmatel_t
         use proc_pointers, only: update_proj_energy_ptr
         use replica_rdm, only: update_rdm
+        use logging, only: logging_t
 
         type(sys_t), intent(in) :: sys
         type(qmc_state_t), intent(in) :: qs
         type(ccmc_in_t), intent(in) :: ccmc_in
         type(det_info_t), intent(in) :: cdet, ref_det
         type(cluster_t), intent(in) :: cluster
+        type(logging_t), intent(in) :: logging_info
         complex(p), intent(inout) :: D0_population_cycle, proj_energy_cycle
         real(p), allocatable, intent(inout) :: rdm(:,:)
         type(selection_data_t), intent(inout) :: selection_data
@@ -915,11 +920,12 @@ contains
         type(hmatel_t) :: hmatel
         type(estimators_t) :: estimators_cycle
 
+
 ! [review] - AJWT: Is there a reason this is only done in debug mode?
 ! [reply] - CJCS: We don't use this information for anything other than
 ! [reply] - CJCS: logging so including it would only slow down optimised
 ! [reply] - CJCS: calculations.
-        if (debug) call update_selection_data(selection_data, cluster)
+        if (debug) call update_selection_data(selection_data, cluster, logging_info)
 
         if (cluster%excitation_level /= huge(0)) then
             ! FCIQMC calculates the projected energy exactly.  To do

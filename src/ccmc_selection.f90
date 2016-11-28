@@ -899,7 +899,7 @@ contains
 
 !---- Cluster information accumulation ---
 
-    subroutine update_selection_data(selection_data, cluster)
+    subroutine update_selection_data(selection_data, cluster, logging_info)
 
         ! Updates selection_data derived type with information relating to amp/pselect. Only required
         ! for use with selection logging.
@@ -908,27 +908,32 @@ contains
 
         ! In:
         !   cluster: info on currently selected cluster to add to accumulated information.
+        !   logging_info: info on logging settings currently in use.
         ! In/Out:
         !   selection_data: information on cluster selection within calculation. On output will have
         !       contribution from cluster added into mean and mean square value accumulation.
 
         use ccmc_data, only: cluster_t, selection_data_t
+        use logging, only: logging_t
 
         type(selection_data_t), intent(inout) :: selection_data
+        type(logging_t), intent(in) :: logging_info
         type(cluster_t), intent(in) :: cluster
 
-        associate( nex=>cluster%nexcitors, amp=>real(cluster%amplitude,kind=dp)/real(cluster%pselect,kind=dp), &
-            aa=>selection_data%average_amplitude, va=>selection_data%variance_amplitude, &
-            nsuccess=>selection_data%nsuccessful)
+        if (logging_info%write_amp_psel) then
+            associate( nex=>cluster%nexcitors, amp=>real(cluster%amplitude,kind=dp)/real(cluster%pselect,kind=dp), &
+                aa=>selection_data%average_amplitude, va=>selection_data%variance_amplitude, &
+                nsuccess=>selection_data%nsuccessful)
 
-            if (cluster%excitation_level /= huge(0)) then
-                aa(nex) = aa(nex) * (real(nsuccess(nex),kind=dp)/real(nsuccess(nex)+1_int_64,kind=dp)) &
-                    + abs(amp)/ real(nsuccess(nex)+1_int_64, kind=dp)
-                va(nex) = va(nex) * (real(nsuccess(nex),kind=dp)/real(nsuccess(nex)+1_int_64,kind=dp)) &
-                    + amp**2/ real(nsuccess(nex)+1_int_64, kind=dp)
-                nsuccess(nex) = nsuccess(nex) + 1_int_64
-            end if
-        end associate
+                if (cluster%excitation_level /= huge(0)) then
+                    aa(nex) = aa(nex) * (real(nsuccess(nex),kind=dp)/real(nsuccess(nex)+1_int_64,kind=dp)) &
+                        + abs(amp)/ real(nsuccess(nex)+1_int_64, kind=dp)
+                    va(nex) = va(nex) * (real(nsuccess(nex),kind=dp)/real(nsuccess(nex)+1_int_64,kind=dp)) &
+                        + amp**2/ real(nsuccess(nex)+1_int_64, kind=dp)
+                    nsuccess(nex) = nsuccess(nex) + 1_int_64
+                end if
+            end associate
+        end if
 
     end subroutine update_selection_data
 
@@ -1144,18 +1149,47 @@ contains
 
         end associate
 
-        allocate(selection_data%average_amplitude(0:max_cluster_size), stat=ierr)
-        call check_allocate('average_amplitude', max_cluster_size + 1, ierr)
-        allocate(selection_data%variance_amplitude(0:max_cluster_size), stat=ierr)
-        call check_allocate('variance_amplitude', max_cluster_size + 1, ierr)
-        allocate(selection_data%nsuccessful(0:max_cluster_size), stat=ierr)
-        call check_allocate('nsuccessful', max_cluster_size + 1, ierr)
-
-        selection_data%average_amplitude = 0.0_dp
-        selection_data%variance_amplitude = 0.0_dp
-        selection_data%nsuccessful = 0_int_64
-
     end subroutine init_psize_data
+
+    subroutine init_amp_psel_accumulation(max_cluster_size, logging_info, linked_ccmc, selection_data)
+
+        ! Take selection_data derived type and initialise data strunctures required to accumulate
+        ! amp/pselect for different cluster sizes.
+
+        ! In:
+        !   max_cluster_size: maximum allowed cluster size.
+        ! In/Out:
+        !   cluster_selection: selection_data_t object. On output cluster_sizes_info components
+        !       will be allocated and set as appropriate.
+
+
+        use ccmc_data, only: selection_data_t
+        use checking, only: check_allocate
+        use logging, only: logging_t
+
+        integer, intent(in) :: max_cluster_size
+        type(logging_t), intent(in) :: logging_info
+        logical, intent(in) :: linked_ccmc
+        type(selection_data_t), intent(inout) :: selection_data
+        integer :: ierr, max_cluster_size_loc
+
+        max_cluster_size_loc = max_cluster_size
+        if (linked_ccmc) max_cluster_size_loc = 4
+
+        if (logging_info%write_amp_psel) then
+            allocate(selection_data%average_amplitude(0:max_cluster_size_loc), stat=ierr)
+            call check_allocate('average_amplitude', max_cluster_size_loc + 1, ierr)
+            allocate(selection_data%variance_amplitude(0:max_cluster_size_loc), stat=ierr)
+            call check_allocate('variance_amplitude', max_cluster_size_loc + 1, ierr)
+            allocate(selection_data%nsuccessful(0:max_cluster_size_loc), stat=ierr)
+            call check_allocate('nsuccessful', max_cluster_size_loc + 1, ierr)
+
+            selection_data%average_amplitude = 0.0_dp
+            selection_data%variance_amplitude = 0.0_dp
+            selection_data%nsuccessful = 0_int_64
+        end if
+
+    end subroutine init_amp_psel_accumulation
 
 !---- Cluster generation functions ----
 ! Below functions generate all allowed excitation level combinations for clusters satifying given

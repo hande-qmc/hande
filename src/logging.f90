@@ -963,11 +963,12 @@ contains
             end do
 
             write (logging_info%select_unit, '()')
-        end if
 
-        selection_info%nsuccessful = 0_int_64
-        selection_info%average_amplitude = 0.0_dp
-        selection_info%variance_amplitude = 0.0_dp
+            selection_info%nsuccessful = 0_int_64
+            selection_info%average_amplitude = 0.0_dp
+            selection_info%variance_amplitude = 0.0_dp
+
+        end if
 
     end subroutine write_logging_select_ccmc
 
