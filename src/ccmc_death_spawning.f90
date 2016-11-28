@@ -97,7 +97,7 @@ contains
         integer(int_p), parameter :: parent_sign = 1_int_p
         type(hmatel_t) :: hmatel, hmatel_save
         real(p) :: pgen
-        integer(i0) :: fexcit(sys%basis%string_len), funlinked(sys%basis%string_len)
+        integer(i0) :: fexcit(sys%basis%tot_string_len), funlinked(sys%basis%tot_string_len)
         integer :: excitor_sign, excitor_level
         logical :: linked, single_unlinked, allowed_excitation
         real(p) :: invdiagel
@@ -281,7 +281,7 @@ contains
         ! If we're expecting to sort by excitation level, need to add in extra factor
         cdet_loc = cdet
 
-        if (ex_lvl_sort) call add_ex_level_bit_string_provided(sys%basis%string_len, cluster%excitation_level, cdet_loc%f)
+        if (ex_lvl_sort) call add_ex_level_bit_string_provided(sys%basis%tot_string_len, cluster%excitation_level, cdet_loc%f)
 
         call stochastic_death_attempt(rng, real(KiiAi, p), 1, cdet_loc, qs%ref, sys%basis, spawn, &
                            nkill, pdeath)
@@ -550,7 +550,7 @@ contains
         type(gen_excit_ptr_t), intent(in) :: gen_excit_ptr
         integer(int_p), intent(out) :: nspawn
         type(excit_t), intent(out) :: connection
-        integer(i0), intent(out) :: fexcit(sys%basis%string_len)
+        integer(i0), intent(out) :: fexcit(sys%basis%tot_string_len)
         type(det_info_t), intent(inout) :: ldet, rdet
         type(det_info_t), intent(in) :: cdet
         type(cluster_t), intent(inout) :: left_cluster, right_cluster
@@ -566,8 +566,8 @@ contains
         complex(p) :: pop
         type(hmatel_t) :: hmatel, delta_h
         logical :: allowed, sign_change, linked, single_unlinked
-        integer(i0) :: new_det(sys%basis%string_len)
-        integer(i0) :: excitor(sys%basis%string_len)
+        integer(i0) :: new_det(sys%basis%tot_string_len)
+        integer(i0) :: excitor(sys%basis%tot_string_len)
         real(p) :: invdiagel, fock_sum
 
         ! 1) Choose an order for the excitors
@@ -766,7 +766,7 @@ contains
         integer(int_p), parameter :: parent_sign = 1_int_p
         type(hmatel_t) :: hmatel
         real(p) :: pgen
-        integer(i0) :: fexcit(sys%basis%string_len)
+        integer(i0) :: fexcit(sys%basis%tot_string_len)
         integer :: excitor_sign, excitor_level
         logical :: allowed_excitation
 
@@ -858,7 +858,7 @@ contains
             fexcit_loc = fexcit
         end if
 
-        if (ex_lvl_sort) call add_ex_level_bit_string_calc(basis%string_len, ref%f0, fexcit_loc)
+        if (ex_lvl_sort) call add_ex_level_bit_string_calc(basis%tot_string_len, ref%f0, fexcit_loc)
         call create_spawned_particle_ptr(basis, ref, cdet, connection, nspawned, &
                                         ispace, spawn, fexcit_loc)
         call accumulate_bloom_stats(bloom_stats, nspawned)

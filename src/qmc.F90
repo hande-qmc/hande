@@ -98,7 +98,7 @@ contains
                 qmc_state%psip_list%nspaces = qmc_state%psip_list%nspaces + 1
             end if
         end if
-        ! Each determinant occupies string_len kind=i0 integers,
+        ! Each determinant occupies tot_string_len kind=i0 integers,
         ! qmc_state%psip_list%nspaces kind=int_p integers, qmc_state%psip_list%nspaces kind=p reals and one
         ! integer. If the Neel singlet state is used as the reference state for
         ! the projected estimator, then a further 2 reals are used per
@@ -795,14 +795,14 @@ contains
         call set_reference_det(sys, reference%occ_list0, .false., sys%symmetry)
 
         if (.not. allocated(reference%f0)) then
-            allocate(reference%f0(sys%basis%string_len), stat=ierr)
-            call check_allocate('reference%f0',sys%basis%string_len,ierr)
+            allocate(reference%f0(sys%basis%tot_string_len), stat=ierr)
+            call check_allocate('reference%f0',sys%basis%tot_string_len,ierr)
         end if
         call encode_det(sys%basis, reference%occ_list0, reference%f0)
 
         if (.not. allocated(reference%hs_f0)) then
-            allocate(reference%hs_f0(sys%basis%string_len), stat=ierr)
-            call check_allocate('reference%hs_f0', sys%basis%string_len, ierr)
+            allocate(reference%hs_f0(sys%basis%tot_string_len), stat=ierr)
+            call check_allocate('reference%hs_f0', sys%basis%tot_string_len, ierr)
         end if
 
         ! Set hilbert space reference if not given in input
@@ -849,10 +849,10 @@ contains
 
         integer :: ierr
 
-        allocate(reference%f0(sys%basis%string_len), stat=ierr)
-        call check_allocate('reference%f0',sys%basis%string_len,ierr)
-        allocate(reference%hs_f0(sys%basis%string_len), stat=ierr)
-        call check_allocate('reference%hs_f0', sys%basis%string_len, ierr)
+        allocate(reference%f0(sys%basis%tot_string_len), stat=ierr)
+        call check_allocate('reference%f0',sys%basis%tot_string_len,ierr)
+        allocate(reference%hs_f0(sys%basis%tot_string_len), stat=ierr)
+        call check_allocate('reference%hs_f0', sys%basis%tot_string_len, ierr)
         allocate(reference%occ_list0(sys%nel), stat=ierr)
         call check_allocate('reference%occ_list0',sys%nel,ierr)
         allocate(reference%hs_occ_list0(sys%nel), stat=ierr)
@@ -942,7 +942,7 @@ contains
             ! Hash the entire first bit array and the minimum number of bits
             ! in the second bit array.
 ! [review] - AJWT: This assumes that we're encoding the excitation level in the topmost word.
-            nhash_bits = basis%nbasis + i0_length*(basis%string_len-1)
+            nhash_bits = basis%nbasis + i0_length*(basis%tot_string_len-1)
         else
             nhash_bits = basis%nbasis
         end if
@@ -991,7 +991,7 @@ contains
 
         integer :: D0_proc, slot, i, ipos, D0_inv_proc
         integer :: occ_list0_inv(sys%nel)
-        integer(i0) :: f0_inv(sys%basis%string_len)
+        integer(i0) :: f0_inv(sys%basis%tot_string_len)
 
         ! We start with psips only on the reference determinant,
         ! so set pl%nstates = 1 and initialise pl%pops.
@@ -1040,7 +1040,7 @@ contains
                 ! Flip all spins in f0 to get f0_inv
                 f0_inv = not(reference%f0)
                 ! Need to account for lengthening of bit string to store ex_lvl for ccmc.
-                f0_inv(sys%basis%string_len) = 0_i0
+                f0_inv(sys%basis%tot_string_len) = 0_i0
                 ! In general, the basis bit string has some padding at the
                 ! end which must be unset.  We need to clear this...
                 ! Loop over all bits after the last basis function.

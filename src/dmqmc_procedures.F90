@@ -50,8 +50,8 @@ contains
         ! mask. This has a bit set for each of the two sites/orbitals being
         ! considered in the correlation function.
         if (doing_dmqmc_calc(dmqmc_correlation)) then
-            allocate(dmqmc_estimates%correlation_mask(1:sys%basis%string_len), stat=ierr)
-            call check_allocate('dmqmc_estimates%correlation_mask',sys%basis%string_len,ierr)
+            allocate(dmqmc_estimates%correlation_mask(1:sys%basis%tot_string_len), stat=ierr)
+            call check_allocate('dmqmc_estimates%correlation_mask',sys%basis%tot_string_len,ierr)
             dmqmc_estimates%correlation_mask = 0_i0
             do i = 1, 2
                 bit_position = sys%basis%bit_lookup(1,dmqmc_in%correlation_sites(i))
@@ -389,7 +389,7 @@ contains
 
         integer :: i, j, k, l, nrdms, nsym_vecs, ipos, ierr
         integer :: basis_find, bit_position, bit_element
-        integer(i0) :: A_mask(sys%basis%string_len)
+        integer(i0) :: A_mask(sys%basis%tot_string_len)
         real(p), allocatable :: sym_vecs(:,:)
         integer :: r(sys%lattice%ndim)
         integer, allocatable :: lvecs(:,:)
@@ -407,8 +407,8 @@ contains
                               &dmqmc_full_renyi_2 option to calculate the Renyi entropy of the &
                               &whole lattice.')
             else
-                allocate(subsys_info(i)%B_masks(sys%basis%string_len,nsym_vecs), stat=ierr)
-                call check_allocate('subsys_info(i)%B_masks', nsym_vecs*sys%basis%string_len,ierr)
+                allocate(subsys_info(i)%B_masks(sys%basis%tot_string_len,nsym_vecs), stat=ierr)
+                call check_allocate('subsys_info(i)%B_masks', nsym_vecs*sys%basis%tot_string_len,ierr)
                 allocate(subsys_info(i)%bit_pos(subsys_info(i)%A_nsites,nsym_vecs,2), stat=ierr)
                 call check_allocate('subsys_info(i)%bit_pos', nsym_vecs*subsys_info(i)%A_nsites*2,ierr)
             end if
@@ -452,9 +452,10 @@ contains
                 ! then flip all the bits.
                 subsys_info(i)%B_masks(:,j) = A_mask
                 do ipos = 0, i0_end
-                    basis_find = sys%basis%basis_lookup(ipos, sys%basis%string_len)
+                    basis_find = sys%basis%basis_lookup(ipos, sys%basis%bit_string_len)
                     if (basis_find == 0) then
-                        subsys_info(i)%B_masks(sys%basis%string_len,j) = ibset(subsys_info(i)%B_masks(sys%basis%string_len,j),ipos)
+                        subsys_info(i)%B_masks(sys%basis%tot_string_len,j) = &
+                                    ibset(subsys_info(i)%B_masks(sys%basis%bit_string_len,j),ipos)
                     end if
                 end do
                 subsys_info(i)%B_masks(:,j) = not(subsys_info(i)%B_masks(:,j))
@@ -642,7 +643,7 @@ contains
                 rdm_f1(bit_element) = ibset(rdm_f1(bit_element),bit_pos)
             ! Similarly for the second index, by looking at the second end of
             ! the bitstring.
-            if (btest(f(subsys_info%bit_pos(i,isym,2)+basis%string_len),subsys_info%bit_pos(i,isym,1))) &
+            if (btest(f(subsys_info%bit_pos(i,isym,2)+basis%tot_string_len),subsys_info%bit_pos(i,isym,1))) &
                 rdm_f2(bit_element) = ibset(rdm_f2(bit_element),bit_pos)
         end do
 
@@ -695,8 +696,8 @@ contains
         ! appropriate probability.
         do idet = 1, psip_list%nstates
 
-            excit_level = get_excitation_level(psip_list%states(1:basis%string_len,idet), &
-                    psip_list%states(basis%string_len+1:basis%tensor_label_len,idet))
+            excit_level = get_excitation_level(psip_list%states(1:basis%tot_string_len,idet), &
+                    psip_list%states(basis%tot_string_len+1:basis%tensor_label_len,idet))
 
             old_population = abs(psip_list%pops(:,idet))
 

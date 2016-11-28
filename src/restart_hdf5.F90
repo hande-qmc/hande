@@ -926,9 +926,10 @@ module restart_hdf5
             call h5lexists_f(orig_id, gbasis, exists, ierr)
             if (exists) then
                 call hdf5_read(orig_id, hdf5_path(gbasis, dnbasis), nbasis)
-                string_len = ceiling(real(nbasis)/i0_length)
+                ! Here simply hard code that sys%basis%info_string_len = 1
+                string_len = ceiling(real(nbasis)/i0_length) + 1
             else if (present(sys)) then
-                string_len = sys%basis%string_len
+                string_len = sys%basis%tot_string_len
                 nbasis = sys%basis%nbasis
             else if (i0_length /= i0_length_restart) then
                 call stop_all('redistribute_restart_hdf5','A system object must be supplied to change DET_SIZE.')

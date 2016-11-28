@@ -28,7 +28,7 @@ contains
 
         real(p) :: kin
         type(sys_t), intent(in) :: sys
-        integer(i0), intent(in) :: f(sys%basis%string_len)
+        integer(i0), intent(in) :: f(sys%basis%tot_string_len)
 
         integer :: i, occ(sys%nel)
 
@@ -69,7 +69,7 @@ contains
 
         real(p) :: occ
         type(sys_t), intent(in) :: sys
-        integer(i0), intent(in) :: f1(sys%basis%string_len), f2(sys%basis%string_len)
+        integer(i0), intent(in) :: f1(sys%basis%tot_string_len), f2(sys%basis%tot_string_len)
         type(excit_t) :: excitation
 
         excitation = get_excitation(sys%nel, sys%basis, f1,f2)
@@ -104,7 +104,7 @@ contains
 
         real(p) :: occ
         type(sys_t), intent(in) :: sys
-        integer(i0), intent(in) :: f(sys%basis%string_len)
+        integer(i0), intent(in) :: f(sys%basis%tot_string_len)
 
         ! As with the potential operator, the double occupancy operator is
         ! constant for all diagonal elements (see slater_condon0_hub_k).
@@ -174,7 +174,7 @@ contains
 
         real(p) :: occ
         type(sys_t), intent(in) :: sys
-        integer(i0), intent(in) :: f(sys%basis%string_len)
+        integer(i0), intent(in) :: f(sys%basis%tot_string_len)
 
         ! As for momentum space, can use standard integrals of the potential and
         ! then scale.
@@ -209,7 +209,7 @@ contains
 
         real(p) :: occ
         type(sys_t), intent(in) :: sys
-        integer(i0), intent(in) :: f1(sys%basis%string_len), f2(sys%basis%string_len)
+        integer(i0), intent(in) :: f1(sys%basis%tot_string_len), f2(sys%basis%tot_string_len)
         type(excit_t) :: excitation
 
         excitation = get_excitation(sys%nel, sys%basis, f1,f2)
@@ -243,7 +243,7 @@ contains
 
         real(p) :: intgrl
         type(sys_t), intent(in) :: sys
-        integer(i0), intent(in) :: f(sys%basis%string_len)
+        integer(i0), intent(in) :: f(sys%basis%tot_string_len)
 
         integer :: occ_list(sys%nel)
         integer :: iel, iorb

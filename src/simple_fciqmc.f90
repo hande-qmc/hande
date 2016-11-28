@@ -139,8 +139,8 @@ contains
         if (restart) then
             allocate(reference%occ_list0(sys%nel), stat=ierr)
             call check_allocate('reference%occ_list0',sys%nel,ierr)
-            allocate(reference%f0(sys%basis%string_len), stat=ierr)
-            call check_allocate('reference%f0',sys%basis%string_len,ierr)
+            allocate(reference%f0(sys%basis%tot_string_len), stat=ierr)
+            call check_allocate('reference%f0',sys%basis%tot_string_len,ierr)
         else
             if (sparse_hamil) then
                 reference%H00 = huge(1.0_p)
@@ -167,8 +167,8 @@ contains
             end if
 
             if (.not.allocated(reference%f0)) then
-                allocate(reference%f0(sys%basis%string_len), stat=ierr)
-                call check_allocate('reference%f0',sys%basis%string_len,ierr)
+                allocate(reference%f0(sys%basis%tot_string_len), stat=ierr)
+                call check_allocate('reference%f0',sys%basis%tot_string_len,ierr)
             end if
             if (.not.allocated(reference%occ_list0)) then
                 allocate(reference%occ_list0(sys%nel), stat=ierr)

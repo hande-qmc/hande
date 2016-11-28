@@ -599,9 +599,10 @@ contains
                 ! (normalised) selection scheme we want...
                 ! Given the contribution to the projected energy is divided by the cluster generation probability and
                 ! multiplied by the actual weight, doing this has absolutely no effect on the projected energy.
-                call cumulative_population(qs%psip_list%pops, qs%psip_list%states(sys%basis%string_len,:), qs%psip_list%nstates, &
-                                           D0_proc, D0_pos, qs%psip_list%pop_real_factor, ccmc_in%even_selection, &
-                                           sys%read_in%comp, cumulative_abs_real_pops, tot_abs_real_pop, ex_lvl_dist)
+                call cumulative_population(qs%psip_list%pops, qs%psip_list%states(sys%basis%tot_string_len,:), &
+                                           qs%psip_list%nstates, D0_proc, D0_pos, qs%psip_list%pop_real_factor, &
+                                           ccmc_in%even_selection, sys%read_in%comp, cumulative_abs_real_pops, &
+                                           tot_abs_real_pop, ex_lvl_dist)
 
                 if (.not.ccmc_in%even_selection) call update_bloom_threshold_prop(bloom_stats, nparticles_old(1))
 
@@ -1178,7 +1179,7 @@ contains
         integer, intent(in) :: nspawnings_total
 
         integer(int_p) :: nspawned, nspawned_im
-        integer(i0) :: fexcit(sys%basis%string_len)
+        integer(i0) :: fexcit(sys%basis%tot_string_len)
 
         if (contrib%cluster%excitation_level == huge(0)) then
             ! When sampling e^-T H e^T, the cluster operators in e^-T

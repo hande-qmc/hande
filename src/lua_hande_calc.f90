@@ -567,7 +567,7 @@ contains
         call read_dmqmc_in(lua_state, sys%basis%nbasis, opts, sys%system, dmqmc_in, dmqmc_estimates%subsys_info)
 
         ! We are required to handle the tensor length ourselves.
-        sys%basis%tensor_label_len = 2*sys%basis%string_len
+        sys%basis%tensor_label_len = 2*sys%basis%tot_string_len
 
         if (doing_dmqmc_calc(dmqmc_energy_squared)) then
             ! Create info no longer set in init_real_space.
@@ -605,7 +605,7 @@ contains
             call do_dmqmc(sys, qmc_in, dmqmc_in, dmqmc_estimates, restart_in, load_bal_in, reference, qmc_state_out, sampling_probs)
         end if
 
-        sys%basis%tensor_label_len = sys%basis%string_len
+        sys%basis%tensor_label_len = sys%basis%tot_string_len
 
         nresult = 1
         call push_qmc_state(lua_state, qmc_state_out)

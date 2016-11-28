@@ -977,7 +977,7 @@ contains
         integer(i0), intent(in), target, optional :: fexcit(:)
         type(spawn_t), intent(inout) :: spawn
 
-        integer(i0), target :: f_local(basis%string_len)
+        integer(i0), target :: f_local(basis%tot_string_len)
         integer(i0), pointer :: f_new(:)
         integer :: iproc_spawn, slot
 
@@ -1032,7 +1032,7 @@ contains
         integer(i0), intent(in), target, optional :: fexcit(:)
         type(spawn_t), intent(inout) :: spawn
 
-        integer(i0), target :: f_local(basis%string_len)
+        integer(i0), target :: f_local(basis%tot_string_len)
         integer(i0), pointer :: f_new(:)
         integer :: iproc_spawn, slot
 
@@ -1087,7 +1087,7 @@ contains
         integer(i0), intent(in), target, optional :: fexcit(:)
         type(spawn_t), intent(inout) :: spawn
 
-        integer(i0), target :: f_local(basis%string_len)
+        integer(i0), target :: f_local(basis%tot_string_len)
         integer(i0), pointer :: f_new(:)
         integer :: iproc_spawn, slot
 
@@ -1100,7 +1100,7 @@ contains
 
         ! Only accept spawning if it's within the truncation level.
 ! [review] - AJWT: Another assumption about the extra encoding for excit level.
-        if (get_excitation_level(reference%hs_f0(:basis%string_len-1), f_new(:basis%string_len-1)) <= reference%ex_level) then
+        if (get_excitation_level(reference%hs_f0(:basis%bit_string_len), f_new(:basis%bit_string_len)) <= reference%ex_level) then
 
             call assign_particle_processor(f_new, spawn%bit_str_nbits, spawn%hash_seed, spawn%hash_shift, spawn%move_freq, nprocs, &
                                            iproc_spawn, slot, spawn%proc_map%map, spawn%proc_map%nslots)
@@ -1149,7 +1149,7 @@ contains
         integer(i0), intent(in), target, optional :: fexcit(:)
         type(spawn_t), intent(inout) :: spawn
 
-        integer(i0), target :: f_local(basis%string_len)
+        integer(i0), target :: f_local(basis%tot_string_len)
         integer(i0), pointer :: f_new(:)
         integer :: iproc_spawn, slot
 
@@ -1211,7 +1211,7 @@ contains
         integer(i0), intent(in), target, optional :: fexcit(:)
         type(spawn_t), intent(inout) :: spawn
 
-        integer(i0), target :: f_local(basis%string_len)
+        integer(i0), target :: f_local(basis%tot_string_len)
         integer(i0), pointer :: f_new(:)
         integer :: iproc_spawn, slot
 
@@ -1274,7 +1274,7 @@ contains
         integer(i0), intent(in), target, optional :: fexcit(:)
         type(spawn_t), intent(inout) :: spawn
 
-        integer(i0), target :: f_local(basis%string_len)
+        integer(i0), target :: f_local(basis%tot_string_len)
         integer(i0), pointer :: f_new(:)
         integer :: iproc_spawn, slot
 
@@ -1336,7 +1336,7 @@ contains
         type(spawn_t), intent(inout) :: spawn
         type(excit_t), intent(in) :: connection
 
-        integer(i0) :: f_new(basis%string_len)
+        integer(i0) :: f_new(basis%tot_string_len)
         integer(i0) :: f_new_tot(basis%tensor_label_len)
 
         ! DMQMC is not yet OpenMP parallelised.
@@ -1350,11 +1350,11 @@ contains
 
         f_new_tot = 0_i0
         if (spawning_end==1) then
-            f_new_tot(:basis%string_len) = f_new
-            f_new_tot((basis%string_len+1):(basis%tensor_label_len)) = cdet%f2
+            f_new_tot(:basis%tot_string_len) = f_new
+            f_new_tot((basis%tot_string_len+1):(basis%tensor_label_len)) = cdet%f2
         else
-            f_new_tot(:basis%string_len) = cdet%f2
-            f_new_tot((basis%string_len+1):(basis%tensor_label_len)) = f_new
+            f_new_tot(:basis%tot_string_len) = cdet%f2
+            f_new_tot((basis%tot_string_len+1):(basis%tensor_label_len)) = f_new
         end if
 
         call assign_particle_processor_dmqmc(f_new_tot, spawn%bit_str_nbits, spawn%hash_seed, spawn%hash_shift, spawn%move_freq, &
@@ -1404,7 +1404,7 @@ contains
         type(spawn_t), intent(inout) :: spawn
         type(excit_t), intent(in) :: connection
 
-        integer(i0) :: f_new(basis%string_len)
+        integer(i0) :: f_new(basis%tot_string_len)
         integer(i0) :: f_new_tot(basis%tensor_label_len)
 
         ! DMQMC is not yet OpenMP parallelised.
@@ -1418,11 +1418,11 @@ contains
 
         f_new_tot = 0_i0
         if (spawning_end==1) then
-            f_new_tot(:basis%string_len) = f_new
-            f_new_tot((basis%string_len+1):(basis%tensor_label_len)) = cdet%f2
+            f_new_tot(:basis%tot_string_len) = f_new
+            f_new_tot((basis%tot_string_len+1):(basis%tensor_label_len)) = cdet%f2
         else
-            f_new_tot(:basis%string_len) = cdet%f2
-            f_new_tot((basis%string_len+1):(basis%tensor_label_len)) = f_new
+            f_new_tot(:basis%tot_string_len) = cdet%f2
+            f_new_tot((basis%tot_string_len+1):(basis%tensor_label_len)) = f_new
         end if
 
 
@@ -1475,7 +1475,7 @@ contains
         type(spawn_t), intent(inout) :: spawn
         type(excit_t), intent(in) :: connection
 
-        integer(i0) :: f_new(basis%string_len)
+        integer(i0) :: f_new(basis%tot_string_len)
         integer(i0) :: f_new_tot(basis%tensor_label_len)
 
         ! DMQMC is not yet OpenMP parallelised.
@@ -1494,11 +1494,11 @@ contains
         ! new psips are reflected into the upper triangle of the density
         ! matrix as they try to spawn.
         if (bit_str_cmp(f_new, cdet%f2) == -1) then
-            f_new_tot(:basis%string_len) = f_new
-            f_new_tot((basis%string_len+1):(basis%tensor_label_len)) = cdet%f2
+            f_new_tot(:basis%tot_string_len) = f_new
+            f_new_tot((basis%tot_string_len+1):(basis%tensor_label_len)) = cdet%f2
         else
-            f_new_tot(:basis%string_len) = cdet%f2
-            f_new_tot((basis%string_len+1):(basis%tensor_label_len)) = f_new
+            f_new_tot(:basis%tot_string_len) = cdet%f2
+            f_new_tot((basis%tot_string_len+1):(basis%tensor_label_len)) = f_new
         end if
 
         call assign_particle_processor_dmqmc(f_new_tot, spawn%bit_str_nbits, spawn%hash_seed, spawn%hash_shift, spawn%move_freq, &
@@ -1550,7 +1550,7 @@ contains
         type(spawn_t), intent(inout) :: spawn
         type(excit_t), intent(in) :: connection
 
-        integer(i0) :: f_new(basis%string_len)
+        integer(i0) :: f_new(basis%tot_string_len)
         integer(i0) :: f_new_tot(basis%tensor_label_len)
 
         ! DMQMC is not yet OpenMP parallelised.
@@ -1569,11 +1569,11 @@ contains
         ! new psips are reflected into the upper triangle of the density
         ! matrix as they try to spawn.
         if (bit_str_cmp(f_new, cdet%f2) == -1) then
-            f_new_tot(:basis%string_len) = f_new
-            f_new_tot((basis%string_len+1):(basis%tensor_label_len)) = cdet%f2
+            f_new_tot(:basis%tot_string_len) = f_new
+            f_new_tot((basis%tot_string_len+1):(basis%tensor_label_len)) = cdet%f2
         else
-            f_new_tot(:basis%string_len) = cdet%f2
-            f_new_tot((basis%string_len+1):(basis%tensor_label_len)) = f_new
+            f_new_tot(:basis%tot_string_len) = cdet%f2
+            f_new_tot((basis%tot_string_len+1):(basis%tensor_label_len)) = f_new
         end if
 
         call assign_particle_processor_dmqmc(f_new_tot, spawn%bit_str_nbits, spawn%hash_seed, spawn%hash_shift, spawn%move_freq, &
@@ -1632,7 +1632,7 @@ contains
         type(spawn_t), intent(inout) :: spawn
         type(excit_t), intent(in) :: connection
 
-        integer(i0) :: f_new(basis%string_len)
+        integer(i0) :: f_new(basis%tot_string_len)
         integer(i0) :: f_new_tot(basis%tensor_label_len)
 
         ! DMQMC is not yet OpenMP parallelised.
@@ -1653,11 +1653,11 @@ contains
             ! new psips are reflected into the upper triangle of the density
             ! matrix as they try to spawn.
             if (bit_str_cmp(f_new, cdet%f2) == -1) then
-                f_new_tot(:basis%string_len) = f_new
-                f_new_tot((basis%string_len+1):(basis%tensor_label_len)) = cdet%f2
+                f_new_tot(:basis%tot_string_len) = f_new
+                f_new_tot((basis%tot_string_len+1):(basis%tensor_label_len)) = cdet%f2
             else
-                f_new_tot(:basis%string_len) = cdet%f2
-                f_new_tot((basis%string_len+1):(basis%tensor_label_len)) = f_new
+                f_new_tot(:basis%tot_string_len) = cdet%f2
+                f_new_tot((basis%tot_string_len+1):(basis%tensor_label_len)) = f_new
             end if
 
             call assign_particle_processor_dmqmc(f_new_tot, spawn%bit_str_nbits, spawn%hash_seed, spawn%hash_shift, &
@@ -1713,7 +1713,7 @@ contains
         type(spawn_t), intent(inout) :: spawn
         type(excit_t), intent(in) :: connection
 
-        integer(i0) :: f_new(basis%string_len)
+        integer(i0) :: f_new(basis%tot_string_len)
         integer(i0) :: f_new_tot(basis%tensor_label_len)
 
         ! DMQMC is not yet OpenMP parallelised.
@@ -1729,11 +1729,11 @@ contains
 
             f_new_tot = 0_i0
             if (spawning_end==1) then
-                f_new_tot(:basis%string_len) = f_new
-                f_new_tot((basis%string_len+1):(basis%tensor_label_len)) = cdet%f2
+                f_new_tot(:basis%tot_string_len) = f_new
+                f_new_tot((basis%tot_string_len+1):(basis%tensor_label_len)) = cdet%f2
             else
-                f_new_tot(:basis%string_len) = cdet%f2
-                f_new_tot((basis%string_len+1):(basis%tensor_label_len)) = f_new
+                f_new_tot(:basis%tot_string_len) = cdet%f2
+                f_new_tot((basis%tot_string_len+1):(basis%tensor_label_len)) = f_new
             end if
 
             call assign_particle_processor_dmqmc(f_new_tot, spawn%bit_str_nbits, spawn%hash_seed, spawn%hash_shift, &

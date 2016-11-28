@@ -244,11 +244,11 @@ contains
 
                         ! f points to the bitstring that is spawning, f2 to the
                         ! other bit string.
-                        cdet1%f => qs%psip_list%states(:sys%basis%string_len,idet)
-                        cdet1%f2 => qs%psip_list%states((sys%basis%string_len+1):(2*sys%basis%string_len),idet)
+                        cdet1%f => qs%psip_list%states(:sys%basis%tot_string_len,idet)
+                        cdet1%f2 => qs%psip_list%states((sys%basis%tot_string_len+1):(2*sys%basis%tot_string_len),idet)
                         cdet1%data => qs%psip_list%dat(:,idet)
-                        cdet2%f => qs%psip_list%states((sys%basis%string_len+1):(2*sys%basis%string_len),idet)
-                        cdet2%f2 => qs%psip_list%states(:sys%basis%string_len,idet)
+                        cdet2%f => qs%psip_list%states((sys%basis%tot_string_len+1):(2*sys%basis%tot_string_len),idet)
+                        cdet2%f2 => qs%psip_list%states(:sys%basis%tot_string_len,idet)
                         ! Decode and store the the relevant information for
                         ! both bitstrings. Both of these bitstrings are required
                         ! to refer to the correct element in the density matrix.

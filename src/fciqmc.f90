@@ -538,7 +538,7 @@ contains
 
         type(excit_t) :: connection
         integer :: iparticle, space_real, space_imag
-        integer(i0) :: f_child(sys%basis%string_len)
+        integer(i0) :: f_child(sys%basis%tot_string_len)
         logical :: determ_child
         integer(int_p) :: scratch
 

@@ -216,8 +216,8 @@ contains
         use system, only: sys_t
 
         type(sys_t), intent(in) :: sys
-        integer(i0), intent(in) :: f(sys%basis%string_len)
-        integer(i0) :: f_mask(sys%basis%string_len), f_not(sys%basis%string_len), g(sys%basis%string_len)
+        integer(i0), intent(in) :: f(sys%basis%tot_string_len)
+        integer(i0) :: f_mask(sys%basis%tot_string_len), f_not(sys%basis%tot_string_len), g(sys%basis%tot_string_len)
         integer :: lattice_1_up, n, i, ipos, basis_find
         integer :: spin_config_data(2)
 
@@ -229,7 +229,7 @@ contains
         lattice_1_up = 0
         f_not = not(f)
 ! [review] - AJWT: This assumes that we're encoding the excitation level in the topmost word.
-        do i = 1, sys%basis%string_len - 1
+        do i = 1, sys%basis%bit_string_len
             do ipos = 0, i0_end
                 if (btest(f_mask(i), ipos)) then
                     basis_find = sys%basis%basis_lookup(ipos, i)

@@ -17,7 +17,7 @@ abstract interface
         import :: i0, det_info_t
         implicit none
         type(sys_t), intent(in) :: sys
-        integer(i0), intent(in) :: f(sys%basis%string_len)
+        integer(i0), intent(in) :: f(sys%basis%tot_string_len)
         type(det_info_t), intent(inout) :: d
     end subroutine i_decoder
     pure subroutine i_update_proj_energy(sys, f0, wfn_dat, d, pop, estimators, excitation, hmatel)
@@ -117,7 +117,7 @@ abstract interface
         implicit none
         real(p) :: hmatel
         type(sys_t), intent(in) :: sys
-        integer(i0), intent(in) :: f(sys%basis%string_len)
+        integer(i0), intent(in) :: f(sys%basis%tot_string_len)
     end function i_sc0
     pure function i_ediff(sys, occ_list) result(hmatel)
         use system, only: sys_t

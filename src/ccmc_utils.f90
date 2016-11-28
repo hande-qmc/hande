@@ -92,26 +92,26 @@ contains
         use const, only: i0_end
 
         type(basis_t), intent(in) :: basis
-        integer(i0), intent(in) :: f0(basis%string_len)
-        integer(i0), intent(in) :: excitor(basis%string_len)
+        integer(i0), intent(in) :: f0(basis%tot_string_len)
+        integer(i0), intent(in) :: excitor(basis%tot_string_len)
         complex(p), intent(in) :: excitor_population
-        integer(i0), intent(inout) :: cluster_excitor(basis%string_len)
+        integer(i0), intent(inout) :: cluster_excitor(basis%tot_string_len)
         complex(p), intent(inout) :: cluster_population
         logical,  intent(out) :: allowed
 
-        integer(i0) :: excitor_loc(basis%string_len)
+        integer(i0) :: excitor_loc(basis%tot_string_len)
 
         integer :: ibasis, ibit
-        integer(i0) :: excitor_excitation(basis%string_len)
-        integer(i0) :: excitor_annihilation(basis%string_len)
-        integer(i0) :: excitor_creation(basis%string_len)
-        integer(i0) :: cluster_excitation(basis%string_len)
-        integer(i0) :: cluster_annihilation(basis%string_len)
-        integer(i0) :: cluster_creation(basis%string_len)
-        integer(i0) :: permute_operators(basis%string_len)
+        integer(i0) :: excitor_excitation(basis%tot_string_len)
+        integer(i0) :: excitor_annihilation(basis%tot_string_len)
+        integer(i0) :: excitor_creation(basis%tot_string_len)
+        integer(i0) :: cluster_excitation(basis%tot_string_len)
+        integer(i0) :: cluster_annihilation(basis%tot_string_len)
+        integer(i0) :: cluster_creation(basis%tot_string_len)
+        integer(i0) :: permute_operators(basis%tot_string_len)
 
         excitor_loc = excitor
-        call remove_ex_level_bit_string(basis%string_len, excitor_loc)
+        call remove_ex_level_bit_string(basis%tot_string_len, excitor_loc)
 
         ! Apply excitor to the cluster of excitors.
 
@@ -154,7 +154,7 @@ contains
             ! permute the creation and annihilation operators.  Each permutation
             ! incurs a sign change.
 
-            do ibasis = 1, basis%string_len
+            do ibasis = 1, basis%bit_string_len
                 do ibit = 0, i0_end
                     if (btest(excitor_excitation(ibasis),ibit)) then
                         if (btest(f0(ibasis),ibit)) then

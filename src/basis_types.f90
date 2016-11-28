@@ -74,8 +74,8 @@ module basis_types
         ! We commonly store the many-particle basis functions (e.g. spin
         ! products for the Heisenberg model, determinants for fermions) as a bit
         ! string.  The bit string is stored in an array of i0 integers.
-        ! string_len gives the size of this array.
-        ! The alpha and beta orbitals are interleaved and string_len is
+        ! tot_string_len gives the size of this array.
+        ! The alpha and beta orbitals are interleaved and bit_string_len is
         ! ceiling(nbasis/i0_length).
         !
         ! Note it's much more efficient to do operations on 32-bit or 64-bit
@@ -83,14 +83,21 @@ module basis_types
         ! architectures, so there's no need to cry about the bit type being
         ! removed from proposed F2008 standard or the wasted space at the end of
         ! the bit array.
-        integer :: string_len
+        integer :: bit_string_len
+        ! We can store additional information in the bit string to enable different
+        ! sorting orders. This takes the form of an additional info_string_len type-i0
+        ! integers at the end of the bit string.
+        integer :: info_string_len
+        ! The overall length of the bit string in type-i0 integers is the sum of
+        ! bit_string_len and info_string_len
+        integer :: tot_string_len
 
         ! The QMC algorithms implemented essentially sample a tensor of arbitrary rank.
         ! For example, FCIQMC samples a vector (rank 1) and DMQMC a matrix (rank 2).
         ! It is sometimes convenient to store/do operations on a bit string
         ! formed from concatenating the bit strings of the individual tensor
         ! labels.  Then length of this array is given by tensor_label_len.
-        ! tensor_label_len = (rank of tensor) * string_len.
+        ! tensor_label_len = (rank of tensor) * tot_string_len.
         ! NOTE: this must be set before running a QMC algorithm where the rank is not 1.
         integer :: tensor_label_len
 
@@ -110,15 +117,15 @@ module basis_types
         ! The reverse lookup to bit_lookup.
         ! basis_lookup(i,j) gives the basis function corresponding to
         ! the i-th bit in the j-th element of a determinant array.
-        integer, allocatable :: basis_lookup(:,:) ! (0:i0_end, string_len)
+        integer, allocatable :: basis_lookup(:,:) ! (0:i0_end, bit_string_len)
 
         ! excit_mask(:,i) is a bit field with bits corresponding to all orbitals with
         ! a higher index than i set.
-        integer(i0), allocatable :: excit_mask(:,:) ! (string_len, nbasis)
+        integer(i0), allocatable :: excit_mask(:,:) ! (tot_string_len, nbasis)
 
-        ! Bit mask to select bits used to store excitation level relative to reference.
-        ! As can use different numbers of integers need to have string_len masks.
-        integer(i0), allocatable :: ex_level_mask(:) ! (string_len)
+        ! Bit mask to select bits used to store additional information on configurations.
+        ! As can use different numbers of integers need to have tot_string_len masks.
+        integer(i0), allocatable :: info_mask(:) ! (tot_string_len)
 
         ! Length in bits of used to store excitation level.
         integer :: bitlen_excit_level
@@ -137,7 +144,7 @@ module basis_types
             !   b: basis_t object to be set.  On input b%nbasis must be set.
             !      On output the bit string look-up tables are also set.
 
-            use const, only: i0_end, i0_length
+            use const, only: i0_end, i0_length, int_64
             use checking, only: check_allocate
 
             type(basis_t), intent(inout) :: b
@@ -149,15 +156,28 @@ module basis_types
 ! [review] - AJWT: the encoding of the determinant?
 ! [review] - AJWT: FCIQMC could then not use this extra word (and 1 word more in some systems is a lot).
 ! [review] - AJWT: Similarly, assuming it's a single word doesn't really strike be as overly future-proof.
+! [reply] - CJCS: It's definitely possible to implement a different parameter to denote the bitlength used
+! [reply] - CJCS: to encode the determinant. However, avoiding using the extra 'word' isn't possible as when
+! [reply] - CJCS: we initialise the system we have no way of knowing if we're doing ccmc or fciqmc. If we want
+! [reply] - CJCS: to have this option we would need to either have two types of incompatible system objects
+! [reply] - CJCS: (contrary to our current approach) or reinitialise basis info, determinants and symmetry etc
+! [reply] - CJCS: when we decide we need the extra space. Neither of these seem compatible with our current
+! [reply] - CJCS: approach so always having the additional space was a work-around.
+! [reply] - CJCS: The rationale conversations with Ruth produced was that the extra word was a marginal increase
+! [reply] - CJCS: when using larger basis set sizes and memory was a limiting factor, but large in cases where
+! [reply] - CJCS: the calculation was memory limited.
+
             ! Need space to store both basis string and excitation level.
-            b%string_len = ceiling(real(b%nbasis) / i0_length) + 1
-            b%tensor_label_len = b%string_len
+            b%bit_string_len = ceiling(real(b%nbasis) / i0_length)
+            b%info_string_len = 1
+            b%tot_string_len = b%bit_string_len + b%info_string_len
+            b%tensor_label_len = b%tot_string_len
 
             ! Lookup arrays.
             allocate(b%bit_lookup(2,b%nbasis), stat=ierr)
             call check_allocate('b%bit_lookup',2*b%nbasis,ierr)
-            allocate(b%basis_lookup(0:i0_end,b%string_len), stat=ierr)
-            call check_allocate('b%basis_lookup',i0_length*b%string_len,ierr)
+            allocate(b%basis_lookup(0:i0_end,b%bit_string_len), stat=ierr)
+            call check_allocate('b%basis_lookup',i0_length*b%bit_string_len,ierr)
             b%basis_lookup = 0
 
             do i = 1, b%nbasis
@@ -182,13 +202,14 @@ module basis_types
             end do
 
             ! Set mask to select out bits used to specify the excitation level of a cluster.
-            allocate(b%ex_level_mask(1:b%string_len), stat=ierr)
-            call check_allocate('b%ex_level_mask', b%string_len, ierr)
+            allocate(b%info_mask(1:b%tot_string_len), stat=ierr)
+            call check_allocate('b%info_mask', b%tot_string_len, ierr)
 
-            b%ex_level_mask = 0_i0
+            b%info_mask = 0_i0
 ! [review] - AJWT: Either I misunderstand what type of mask this is or this is wrong.
 ! [review] - AJWT: Shouldn't it be 2^(ceiling(log_2 (max_excitation_level+1)))-1
-            b%ex_level_mask(b%string_len) = 1_i0
+! [reply] - CJCS: This is currently unused but that's correct.
+            b%info_mask(b%bit_string_len+1:) = 2_int_64**(i0_length-2)-1_int_64 + 2_int_64**(i0_length-2)
 
         end subroutine init_basis_strings
 
@@ -212,7 +233,7 @@ module basis_types
             character(4) :: fmt1(4)
 
             if (parent) then
-                fmt1 = int_fmt((/nel, b%nbasis, i0_length, b%string_len/), padding=1)
+                fmt1 = int_fmt((/nel, b%nbasis, i0_length, b%tot_string_len/), padding=1)
                 if (heisenberg_system) then
                     write (6,'(1X,a22,'//fmt1(1)//')') 'Number of alpha spins:', nel
                 else
@@ -221,7 +242,7 @@ module basis_types
                 write (6,'(1X,a26,'//fmt1(2)//')') 'Number of basis functions:', b%nbasis
                 write (6,'(/,1X,a61,'//fmt1(3)//')') 'Bit-length of integers used to store determinant bit-strings:', i0_length
                 write (6,'(1X,a57,'//fmt1(4)//',/)') &
-                    'Number of integers used to store determinant bit-strings:', b%string_len
+                    'Number of integers used to store determinant bit-strings:', b%tot_string_len
             end if
 
         end subroutine print_basis_metadata
@@ -244,9 +265,9 @@ module basis_types
                 deallocate(b%basis_lookup, stat=ierr)
                 call check_deallocate('b%basis_lookup', ierr)
             end if
-            if (allocated(b%ex_level_mask)) then
-                deallocate(b%ex_level_mask, stat=ierr)
-                call check_deallocate('b%ex_level_mask', ierr)
+            if (allocated(b%info_mask)) then
+                deallocate(b%info_mask, stat=ierr)
+                call check_deallocate('b%info_mask', ierr)
             end if
             call dealloc_basis_fn_t_array(b%basis_fns)
 

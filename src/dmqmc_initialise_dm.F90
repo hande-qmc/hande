@@ -256,7 +256,7 @@ contains
         integer(int_64) :: i
         integer :: rand_basis, bits_set
         integer :: bit_element, bit_position
-        integer(i0) :: f(basis%string_len)
+        integer(i0) :: f(basis%tot_string_len)
         real(dp) :: rand_num
 
         do i = 1, npsips
@@ -285,10 +285,10 @@ contains
             ! Now call a routine to add the corresponding diagonal element to
             ! the spawned walkers list.
             if (initiator_approx) then
-                call create_diagonal_density_matrix_particle_initiator(f, basis%string_len, &
+                call create_diagonal_density_matrix_particle_initiator(f, basis%tot_string_len, &
                         basis%tensor_label_len, pop_real_factor, ireplica, initiator_pop, pop_real_factor, spawn)
             else
-                call create_diagonal_density_matrix_particle(f, basis%string_len, basis%tensor_label_len, pop_real_factor, &
+                call create_diagonal_density_matrix_particle(f, basis%tot_string_len, basis%tensor_label_len, pop_real_factor, &
                                                              ireplica, spawn)
             end if
 
@@ -339,7 +339,7 @@ contains
         type(spawn_t), intent(inout) :: spawn
 
         integer(int_64) :: i
-        integer(i0) :: f(sys%basis%string_len)
+        integer(i0) :: f(sys%basis%tot_string_len)
         integer :: occ_list(sys%nalpha+sys%nbeta)
 
         do i = 1, npsips
@@ -351,10 +351,10 @@ contains
                     ! Now call a routine to add the corresponding diagonal element to
                     ! the spawned walkers list.
                     if (initiator_approx) then
-                        call create_diagonal_density_matrix_particle_initiator(f, sys%basis%string_len, &
+                        call create_diagonal_density_matrix_particle_initiator(f, sys%basis%tot_string_len, &
                                 sys%basis%tensor_label_len, pop_real_factor, ireplica, initiator_pop, pop_real_factor, spawn)
                     else
-                        call create_diagonal_density_matrix_particle(f, sys%basis%string_len, sys%basis%tensor_label_len, &
+                        call create_diagonal_density_matrix_particle(f, sys%basis%tot_string_len, sys%basis%tensor_label_len, &
                                 pop_real_factor, ireplica, spawn)
                     end if
                     exit
@@ -415,7 +415,7 @@ contains
         integer :: occ_list(sys%nel), naccept
         integer :: idet, iattempt, nsuccess
         integer :: thread_id = 0, proc
-        integer(i0) :: f_new(sys%basis%string_len)
+        integer(i0) :: f_new(sys%basis%tot_string_len)
         real(p), target :: tmp_data(1)
         real(p) :: pgen, E_new, E_old, prob
         type(hmatel_t) :: hmatel
@@ -438,7 +438,7 @@ contains
         do iattempt = 1, dmqmc_in%metropolis_attempts
             do proc = 0, nprocs-1
                 do idet = spawn%head_start(nthreads-1,proc)+1, spawn%head(thread_id,proc)
-                    cdet%f = spawn%sdata(:sys%basis%string_len,idet)
+                    cdet%f = spawn%sdata(:sys%basis%tot_string_len,idet)
                     E_old = trial_dm_ptr(sys, cdet%f)
                     tmp_data(1) = E_old
                     cdet%data => tmp_data
@@ -473,8 +473,8 @@ contains
                         ! Accept the new determinant by modifying the entry
                         ! in spawned walker list.
                         naccept = naccept + 1
-                        spawn%sdata(:sys%basis%string_len,idet) = f_new
-                        spawn%sdata(sys%basis%string_len+1:sys%basis%tensor_label_len,idet) = f_new
+                        spawn%sdata(:sys%basis%tot_string_len,idet) = f_new
+                        spawn%sdata(sys%basis%tot_string_len+1:sys%basis%tensor_label_len,idet) = f_new
                     end if
                 end do
             end do
@@ -613,7 +613,7 @@ contains
 
         real(dp) :: p_single(sys%basis%nbasis/2)
         integer :: occ_list(sys%nel)
-        integer(i0) :: f(sys%basis%string_len)
+        integer(i0) :: f(sys%basis%tot_string_len)
         integer :: ireplica, iorb, ipsip
         integer(int_p) :: nspawn
         integer :: nalpha_allowed, nbeta_allowed, ngen
@@ -669,10 +669,10 @@ contains
                                                             energy_shift, spawn%cutoff, pop_real_factor, rng)
                 call encode_det(sys%basis, occ_list, f)
                 if (initiator_approx) then
-                    call create_diagonal_density_matrix_particle_initiator(f, sys%basis%string_len, &
+                    call create_diagonal_density_matrix_particle_initiator(f, sys%basis%tot_string_len, &
                             sys%basis%tensor_label_len, nspawn, ireplica, initiator_pop, pop_real_factor, spawn)
                 else
-                    call create_diagonal_density_matrix_particle(f, sys%basis%string_len, sys%basis%tensor_label_len, &
+                    call create_diagonal_density_matrix_particle(f, sys%basis%tot_string_len, sys%basis%tensor_label_len, &
                             nspawn, ireplica, spawn)
                 end if
                 ipsip = ipsip + 1

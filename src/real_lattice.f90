@@ -43,10 +43,10 @@ contains
 
             sr%t_self_images = any(abs(sl%box_length-1.0_p) < depsilon)
 
-            allocate(sr%tmat(sys%basis%string_len,sys%basis%nbasis), stat=ierr)
-            call check_allocate('sr%tmat',sys%basis%string_len*sys%basis%nbasis,ierr)
-            allocate(sr%connected_orbs(sys%basis%string_len,sys%basis%nbasis), stat=ierr)
-            call check_allocate('sr%connected_orbs',sys%basis%string_len*sys%basis%nbasis,ierr)
+            allocate(sr%tmat(sys%basis%tot_string_len,sys%basis%nbasis), stat=ierr)
+            call check_allocate('sr%tmat',sys%basis%tot_string_len*sys%basis%nbasis,ierr)
+            allocate(sr%connected_orbs(sys%basis%tot_string_len,sys%basis%nbasis), stat=ierr)
+            call check_allocate('sr%connected_orbs',sys%basis%tot_string_len*sys%basis%nbasis,ierr)
             allocate(lvecs(sl%ndim,3**sl%ndim), stat=ierr)
             call check_allocate('lvecs', sl%ndim*3**sl%ndim, ierr)
             if (sl%triangular_lattice) then
@@ -139,7 +139,7 @@ contains
             sr%connected_sites = 0
             do i = 1, sys%basis%nbasis
                 v = 0
-                do ind = 1, sys%basis%string_len
+                do ind = 1, sys%basis%tot_string_len
                     do pos = 0, i0_end
                         if (btest(sr%connected_orbs(ind,i), pos)) then
                             v = v + 1
@@ -159,9 +159,9 @@ contains
             sys%heisenberg%nbonds = sum(sys%real_lattice%connected_sites(0,:))/2
             ! Find lattice_mask for a gerenal bipartite lattice.
             if (sys%lattice%bipartite_lattice) then
-                allocate (sys%heisenberg%lattice_mask(sys%basis%string_len), stat=ierr)
+                allocate (sys%heisenberg%lattice_mask(sys%basis%tot_string_len), stat=ierr)
                 associate(lattice_mask=>sys%heisenberg%lattice_mask)
-                    call check_allocate('lattice_mask',sys%basis%string_len,ierr)
+                    call check_allocate('lattice_mask',sys%basis%tot_string_len,ierr)
                     ! lattice_size is such that any loops over higher dimensions
                     ! than that of the model are single iterations but allows us to not have
                     ! to handle each dimension separately.
@@ -289,7 +289,7 @@ contains
 
         ! In:
         !    sys: system being studied.
-        !    f(string_len): bit string representation of the Slater
+        !    f(tot_string_len): bit string representation of the Slater
         !        determinant, D.
         ! Returns:
         !    The matrix element < D | U | D >
@@ -302,7 +302,7 @@ contains
 
         real(p) :: umatel
         type(sys_t), intent(in) :: sys
-        integer(i0), intent(in) :: f(sys%basis%string_len)
+        integer(i0), intent(in) :: f(sys%basis%tot_string_len)
         integer :: i
         integer(i0) :: b
 
@@ -317,7 +317,7 @@ contains
             !    orbitals occupied.
             ! 5. Hence < D | U | D >.
             umatel = 0.0_p
-            do i = 1, basis%string_len
+            do i = 1, basis%bit_string_len
                 b = iand(f(i), basis%beta_mask)
                 umatel = umatel + count_set_bits(iand(f(i), ishft(b,-1)))
             end do

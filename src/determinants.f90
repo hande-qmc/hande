@@ -15,8 +15,8 @@ implicit none
 ! Not all compenents are necessarily allocated: only those needed at the time.
 type det_info_t
     ! bit representation of determinant.
-    integer(i0), pointer :: f(:)  => NULL()  ! (string_len)
-    integer(i0), pointer :: f2(:)  => NULL()  ! (string_len); for DMQMC
+    integer(i0), pointer :: f(:)  => NULL()  ! (tot_string_len)
+    integer(i0), pointer :: f2(:)  => NULL()  ! (tot_string_len); for DMQMC
     ! List of occupied spin-orbitals.
     integer, pointer :: occ_list(:)  => NULL()  ! (nel)
     ! List of occupied alpha/beta spin-orbitals
@@ -66,10 +66,10 @@ contains
         integer :: i, bit_pos, bit_element, ierr
 
         if (all(ras > 0)) then
-            allocate(ras1(sys%basis%string_len), stat=ierr)
-            call check_allocate('ras1', sys%basis%string_len, ierr)
-            allocate(ras3(sys%basis%string_len), stat=ierr)
-            call check_allocate('ras3', sys%basis%string_len, ierr)
+            allocate(ras1(sys%basis%tot_string_len), stat=ierr)
+            call check_allocate('ras1', sys%basis%tot_string_len, ierr)
+            allocate(ras3(sys%basis%tot_string_len), stat=ierr)
+            call check_allocate('ras3', sys%basis%tot_string_len, ierr)
             ras1 = 0
             ras3 = 0
             ras1_min = sys%nel - ex_level
@@ -142,10 +142,10 @@ contains
             alloc_f = .true.
         end if
         if (alloc_f) then
-            allocate(det_info%f(sys%basis%string_len), stat=ierr)
-            call check_allocate('det_info%f',sys%basis%string_len,ierr)
-            allocate(det_info%f2(sys%basis%string_len), stat=ierr)
-            call check_allocate('det_info%f2',sys%basis%string_len,ierr)
+            allocate(det_info%f(sys%basis%tot_string_len), stat=ierr)
+            call check_allocate('det_info%f',sys%basis%tot_string_len,ierr)
+            allocate(det_info%f2(sys%basis%tot_string_len), stat=ierr)
+            call check_allocate('det_info%f2',sys%basis%tot_string_len,ierr)
         end if
 
         ! Components for occupied basis functions...
@@ -225,7 +225,7 @@ contains
         !    basis_set: information about the single-particle basis.
         !    occ_list(nel): integer list of occupied orbitals in the Slater determinant.
         ! Out:
-        !    bit_list(string_len): a bit string representation of the occupied
+        !    bit_list(tot_string_len): a bit string representation of the occupied
         !        orbitals.   The first element contains the first i0_length basis
         !        functions, the second element the next i0_length and so on.  A basis
         !        function is ocupied if the relevant bit is set.
@@ -234,7 +234,7 @@ contains
 
         type(basis_t), intent(in) :: basis_set
         integer, intent(in) :: occ_list(:)
-        integer(i0), intent(out) :: bit_list(basis_set%string_len)
+        integer(i0), intent(out) :: bit_list(basis_set%tot_string_len)
         integer :: i, orb, bit_pos, bit_element
 
         bit_list = 0
@@ -266,7 +266,7 @@ contains
         use bit_table_256_m, only: bit_table_256
 
         type(basis_t), intent(in) :: basis_set
-        integer(i0), intent(in) :: f(basis_set%string_len)
+        integer(i0), intent(in) :: f(basis_set%tot_string_len)
         integer, intent(out) :: occ_list(:)
 
         ! The lookup table contains the list of bits set for all possible integers contained in a given number of bits.
@@ -286,7 +286,7 @@ contains
         nfound = 0
         nbits_seen = 0
 ! [review] - AJWT: Doesn't this assume that we're encoding the excitation level in the topmost word?
-        outer: do iel = 1, basis_set%string_len - 1
+        outer: do iel = 1, basis_set%bit_string_len
             offset = 0
             do ifield = 1, nfields
                 ! Inspect one byte at a time.
@@ -311,7 +311,7 @@ contains
         !
         ! In:
         !    sys: system being studied (contains required basis information).
-        !    f(string_len): bit string representation of the Slater
+        !    f(tot_string_len): bit string representation of the Slater
         !        determinant.
         ! Out:
         !    d: det_info_t variable.  The following components are set:
@@ -321,7 +321,7 @@ contains
         use system, only: sys_t
 
         type(sys_t), intent(in) :: sys
-        integer(i0), intent(in) :: f(sys%basis%string_len)
+        integer(i0), intent(in) :: f(sys%basis%tot_string_len)
         type(det_info_t), intent(inout) :: d
 
         call decode_det(sys%basis, f, d%occ_list)
@@ -333,7 +333,7 @@ contains
         ! Decode determinant bit string into integer list containing the
         ! occupied orbitals.
         ! In:
-        !    f(string_len): bit string representation of the Slater
+        !    f(tot_string_len): bit string representation of the Slater
         !        determinant.
         ! Out:
         !    d: det_info_t variable.  The following components are set:
@@ -346,7 +346,7 @@ contains
         use system, only: sys_t
 
         type(sys_t), intent(in) :: sys
-        integer(i0), intent(in) :: f(sys%basis%string_len)
+        integer(i0), intent(in) :: f(sys%basis%tot_string_len)
         type(det_info_t), intent(inout) :: d
         integer :: i, ims, isym
 
@@ -372,7 +372,7 @@ contains
         ! We return the lists for alpha and beta electrons separately.
         !
         ! In:
-        !    f(string_len): bit string representation of the Slater
+        !    f(tot_string_len): bit string representation of the Slater
         !        determinant.
         ! Out:
         !    d: det_info_t variable.  The following components are set:
@@ -390,7 +390,7 @@ contains
         use system, only: sys_t
 
         type(sys_t), intent(in) :: sys
-        integer(i0), intent(in) :: f(sys%basis%string_len)
+        integer(i0), intent(in) :: f(sys%basis%tot_string_len)
         type(det_info_t), intent(inout) :: d
         integer :: i, j, iocc, iocc_a, iocc_b, iunocc_a, iunocc_b, orb, last_basis_ind
 
@@ -406,7 +406,7 @@ contains
         orb = 0
 
 ! [review] - AJWT: Doesn't this assume that we're encoding the excitation level in the topmost word?
-        do i = 1, sys%basis%string_len - 2
+        do i = 1, sys%basis%bit_string_len - 1
             ! Manual unrolling allows us to avoid 2 mod statements
             ! and some branching.
             do j = 0, i0_end, 2
@@ -442,7 +442,7 @@ contains
         ! statement in the above loop results a speedup of the Hubbard k-space
         ! FCIQMC calculations of 1.5%.
 ! [review] - AJWT: Doesn't this assume that we're encoding the excitation level in the topmost word?
-        last_basis_ind = sys%basis%nbasis - i0_length*(sys%basis%string_len-2) - 1
+        last_basis_ind = sys%basis%nbasis - i0_length*(sys%basis%bit_string_len-1) - 1
         do j = 0, last_basis_ind, 2
             ! Test alpha orbital.
             orb = orb + 1
@@ -504,7 +504,7 @@ contains
         ! In:
         !    basis_set: information about the single-particle basis.
         !    nel: number of electrons in system.
-        !    f(string_len): bit string representation of the Slater
+        !    f(tot_string_len): bit string representation of the Slater
         !        determinant.
         !    iunit (optional): io unit to which the output is written.
         !        Default: 6 (stdout).
@@ -517,7 +517,7 @@ contains
 
         type(basis_t), intent(in) :: basis_set
         integer, intent(in) :: nel
-        integer(i0), intent(in) :: f(basis_set%string_len)
+        integer(i0), intent(in) :: f(basis_set%tot_string_len)
         integer, intent(in), optional :: iunit
         logical, intent(in), optional :: new_line
         integer :: occ_list(nel), io, i

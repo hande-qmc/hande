@@ -39,15 +39,15 @@ contains
         use ccmc_utils, only: remove_ex_level_bit_string
 
         type(basis_t), intent(in) :: basis
-        integer(i0), intent(in) :: f0(basis%string_len)
+        integer(i0), intent(in) :: f0(basis%tot_string_len)
         type(excit_t), intent(in) :: connection
         type(cluster_t), intent(in) :: cluster
         logical, intent(out) :: linked, single_unlinked
-        integer(i0), intent(out) :: excitor(basis%string_len)
+        integer(i0), intent(out) :: excitor(basis%tot_string_len)
 
         integer :: i, orb, bit_pos, bit_element, unconnected
-        integer(i0) :: excitor_excitation(basis%string_len)
-        integer(i0) :: h_excitation(basis%string_len)
+        integer(i0) :: excitor_excitation(basis%tot_string_len)
+        integer(i0) :: h_excitation(basis%tot_string_len)
 
         single_unlinked = .false.
         unconnected = 0
@@ -73,12 +73,12 @@ contains
             ! check each cluster operator shares an index with connection
             ! orbitals involved in cluster operator excitation (from reference)
             excitor_excitation = ieor(cluster%excitors(i)%f, f0)
-            call remove_ex_level_bit_string(basis%string_len, excitor_excitation)
+            call remove_ex_level_bit_string(basis%tot_string_len, excitor_excitation)
             if (all(iand(h_excitation, excitor_excitation) == 0)) then
                 ! no orbitals in common between H and cluster
                 unconnected = unconnected + 1
                 excitor = cluster%excitors(i)%f
-                call remove_ex_level_bit_string(basis%string_len, excitor)
+                call remove_ex_level_bit_string(basis%tot_string_len, excitor)
             end if
         end do
 
@@ -131,16 +131,16 @@ contains
         use hamiltonian_data
 
         type(sys_t), intent(in) :: sys
-        integer(i0), intent(in) :: f0(sys%basis%string_len)
+        integer(i0), intent(in) :: f0(sys%basis%tot_string_len)
         type(excit_t), intent(in) :: connection
         type(cluster_t), intent(in) :: cluster
-        integer(i0), intent(in) :: cdet(sys%basis%string_len)
-        integer(i0), intent(in) :: funlinked(sys%basis%string_len)
+        integer(i0), intent(in) :: cdet(sys%basis%tot_string_len)
+        integer(i0), intent(in) :: funlinked(sys%basis%tot_string_len)
         real(p) :: hmatel
         type(hmatel_t) :: dummy_hmatel
 
-        integer(i0) :: deti(sys%basis%string_len), detj(sys%basis%string_len)
-        integer(i0) :: temp(sys%basis%string_len)
+        integer(i0) :: deti(sys%basis%tot_string_len), detj(sys%basis%tot_string_len)
+        integer(i0) :: temp(sys%basis%tot_string_len)
         integer :: i, found, excitor_level, excitor_sign
         logical :: allowed
         complex(p) :: population
@@ -151,7 +151,7 @@ contains
         found = 0
         if (cluster%nexcitors > 1) then
             do i = 1, cluster%nexcitors
-                if (any(cluster%excitors(i)%f(:sys%basis%string_len-1) /= funlinked(:sys%basis%string_len-1))) then
+                if (any(cluster%excitors(i)%f(:sys%basis%bit_string_len) /= funlinked(:sys%basis%bit_string_len))) then
                     ! Linked excitor, needed in cluster
                     found = found + 1
                     if (found == 1) then
@@ -160,7 +160,7 @@ contains
                         call collapse_cluster(sys%basis, f0, cluster%excitors(i)%f, cmplx(1.0_p,0.0_p,p), &
                             deti, population, allowed)
                     end if
-                    call remove_ex_level_bit_string(sys%basis%string_len, deti)
+                    call remove_ex_level_bit_string(sys%basis%tot_string_len, deti)
                 end if
             end do
         else
@@ -229,12 +229,12 @@ contains
         use dSFMT_interface, only: dSFMT_t, get_rand_close_open
 
         type(sys_t), intent(in) :: sys
-        integer(i0), intent(in) :: f0(sys%basis%string_len)
+        integer(i0), intent(in) :: f0(sys%basis%tot_string_len)
         type(cluster_t), intent(in) :: cluster
         type(cluster_t), intent(inout) :: left_cluster, right_cluster
         type(dSFMT_t), intent(inout) :: rng
         real(p), intent(out) :: ppart
-        integer(i0), intent(inout) :: ldet(sys%basis%string_len), rdet(sys%basis%string_len)
+        integer(i0), intent(inout) :: ldet(sys%basis%tot_string_len), rdet(sys%basis%tot_string_len)
         logical, intent(out) :: allowed, sign_change
         integer, intent(in), optional :: part_number
 
@@ -274,7 +274,7 @@ contains
                 left_cluster%excitors(in_left)%f => cluster%excitors(i)%f
                 if (in_left == 1) then
                     ldet = cluster%excitors(i)%f
-                    call remove_ex_level_bit_string(sys%basis%string_len, ldet)
+                    call remove_ex_level_bit_string(sys%basis%tot_string_len, ldet)
                 else
                     call collapse_cluster(sys%basis, f0, cluster%excitors(i)%f, cmplx(1.0_p,0.0_p,p), &
                                         ldet, population, allowed)
@@ -286,7 +286,7 @@ contains
                 right_cluster%excitors(in_right)%f => cluster%excitors(i)%f
                 if (in_right == 1) then
                     rdet = cluster%excitors(i)%f
-                    call remove_ex_level_bit_string(sys%basis%string_len, rdet)
+                    call remove_ex_level_bit_string(sys%basis%tot_string_len, rdet)
                 else
                     call collapse_cluster(sys%basis, f0, cluster%excitors(i)%f, cmplx(1.0_p,0.0_p,p), &
                                         rdet, population, allowed)
@@ -334,16 +334,16 @@ contains
 
         type(sys_t), intent(in) :: sys
         type(excit_gen_data_t), intent(in) :: excit_gen_data
-        integer(i0), intent(in) :: f(sys%basis%string_len)
+        integer(i0), intent(in) :: f(sys%basis%tot_string_len)
         type(excit_t), intent(in) :: connection
         type(det_info_t), intent(in) :: parent_det
         real(p) :: pgen
 
         integer :: spin, ij_sym, max_na, ij_k(3)
-        integer(i0) :: poss_a(sys%basis%string_len), f_loc(sys%basis%string_len)
+        integer(i0) :: poss_a(sys%basis%tot_string_len), f_loc(sys%basis%tot_string_len)
 
         f_loc = f
-        call remove_ex_level_bit_string(sys%basis%string_len, f_loc)
+        call remove_ex_level_bit_string(sys%basis%tot_string_len, f_loc)
 
         associate(a=>connection%to_orb(1), b=>connection%to_orb(2), i=>connection%from_orb(1), j=>connection%from_orb(2))
             select case(sys%system)

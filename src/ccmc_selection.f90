@@ -147,7 +147,7 @@ contains
 
         type(sys_t), intent(in) :: sys
         type(particle_t), intent(in), target :: psip_list
-        integer(i0), intent(in) :: f0(sys%basis%string_len)
+        integer(i0), intent(in) :: f0(sys%basis%tot_string_len)
         integer, intent(in) :: ex_level
         integer(int_64), intent(in) :: nattempts
         logical, intent(in) :: linked_ccmc
@@ -401,7 +401,7 @@ contains
         use proc_pointers, only: decoder_ptr
 
         type(sys_t), intent(in) :: sys
-        integer(i0), intent(in) :: f0(sys%basis%string_len)
+        integer(i0), intent(in) :: f0(sys%basis%tot_string_len)
         real(p), intent(in) :: prob, initiator_pop
         complex(p), intent(in) :: D0_normalisation
         type(det_info_t), intent(inout) :: cdet
@@ -475,7 +475,7 @@ contains
 
         type(sys_t), intent(in) :: sys
         type(particle_t), intent(in), target :: psip_list
-        integer(i0), intent(in) :: f0(sys%basis%string_len)
+        integer(i0), intent(in) :: f0(sys%basis%tot_string_len)
         integer(int_64), intent(in) :: iexcitor
         real(p), intent(in) :: initiator_pop
         logical, intent(in) :: ex_lvl_sort
@@ -518,7 +518,9 @@ contains
         end if
 
         if (abs(excitor_pop) <= initiator_pop) cdet%initiator_flag = 3
-        call remove_ex_level_bit_string(sys%basis%string_len, cdet%f)
+
+        if (ex_lvl_sort) call remove_ex_level_bit_string(sys%basis%tot_string_len, cdet%f)
+
         cluster%excitation_level = get_excitation_level(f0, cdet%f)
         cluster%amplitude = excitor_pop
 
@@ -595,7 +597,7 @@ contains
         type(det_info_t), intent(inout) :: cdet
         real(p), intent(in) :: cumulative_excip_pop(:)
         type(dSFMT_t), intent(inout) :: rng
-        integer(i0), intent(in) :: f0(sys%basis%string_len)
+        integer(i0), intent(in) :: f0(sys%basis%tot_string_len)
         real(p), intent(in) :: initiator_pop
         complex(p), intent(in) :: normalisation
         integer(int_64), intent(in) :: nattempts
@@ -765,7 +767,7 @@ contains
         real(p), intent(in) :: cumulative_excip_pop(:)
         type(dSFMT_t), intent(inout) :: rng
         complex(p), intent(inout) :: cluster_population
-        integer(i0), intent(in) :: f0(sys%basis%string_len)
+        integer(i0), intent(in) :: f0(sys%basis%tot_string_len)
         real(p), intent(in) :: initiator_pop
         type(ex_lvl_dist_t), intent(in) :: ex_lvl_dist
 
@@ -796,7 +798,7 @@ contains
                 if (i == 1 .and. first) then
                     ! First excitor 'seeds' the cluster:
                     cdet%f = psip_list%states(:,pos)
-                    call remove_ex_level_bit_string(sys%basis%string_len, cdet%f)
+                    call remove_ex_level_bit_string(sys%basis%tot_string_len, cdet%f)
                     cdet%data => psip_list%dat(:,pos) ! Only use if cluster is non-composite!
                     cluster_population = excitor_pop
                     ! Counter the additional *nprocs above.

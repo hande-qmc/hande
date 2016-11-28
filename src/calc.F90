@@ -82,7 +82,7 @@ integer :: ras1_min
 ! Max number of electrons in RAS3 space.
 integer :: ras3_max
 ! Bit masks for showing only orbitals in RAS1 and RAS3 spaces.
-integer(i0), allocatable :: ras1(:), ras3(:) ! (string_len)
+integer(i0), allocatable :: ras1(:), ras3(:) ! (tot_string_len)
 
 contains
 

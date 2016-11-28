@@ -28,7 +28,7 @@ contains
 
         type(hmatel_t) :: hmatel
         type(sys_t), intent(in) :: sys
-        integer(i0), intent(in) :: f1(sys%basis%string_len), f2(sys%basis%string_len)
+        integer(i0), intent(in) :: f1(sys%basis%tot_string_len), f2(sys%basis%tot_string_len)
         type(excit_t) :: excitation
 
         ! Test to see if Hamiltonian matrix element is non-zero.
@@ -82,7 +82,7 @@ contains
 
         real(p) :: hmatel
         type(sys_t), intent(in) :: sys
-        integer(i0), intent(in) :: f(sys%basis%string_len)
+        integer(i0), intent(in) :: f(sys%basis%tot_string_len)
         integer :: occ_list(sys%nel)
 
         call decode_det(sys%basis, f, occ_list)
@@ -113,7 +113,7 @@ contains
 
         real(p) :: hmatel
         type(sys_t), intent(in) :: sys
-        integer(i0), intent(in) :: f(sys%basis%string_len)
+        integer(i0), intent(in) :: f(sys%basis%tot_string_len)
         integer :: occ_list(sys%nel)
 
         call decode_det(sys%basis, f, occ_list)

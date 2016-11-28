@@ -861,17 +861,17 @@ contains
             if (annihilation_flags%propagate_to_beta .and. .not. annihilation_flags%symmetric) then
                 ! Store H^T_ii-H_jj so we can propagate with ~ 1 + \Delta\beta(H^T_ii - H_jj),
                 ! where H^T_ii is the "trial" Hamiltonian.
-                associate(bl=>sys%basis%string_len, pl=>psip_list)
+                associate(bl=>sys%basis%tot_string_len, pl=>psip_list)
                     pl%dat(1,pos) = -trial_dm_ptr(sys, pl%states((bl+1):(2*bl),pos)) + (pl%dat(1,pos) + ref%H00)
                 end associate
             else if (annihilation_flags%propagate_to_beta .and. annihilation_flags%symmetric) then
-                associate(bl=>sys%basis%string_len, pl=>psip_list)
+                associate(bl=>sys%basis%tot_string_len, pl=>psip_list)
                     pl%dat(1,pos) = -0.5_p*((trial_dm_ptr(sys, det)+trial_dm_ptr(sys, pl%states((bl+1):(2*bl),pos))) - &
                                      (pl%dat(1,pos) + ref%H00 + sc0_ptr(sys, pl%states((bl+1):(2*bl),pos))))
                 end associate
             else
                 ! Set the energy to be the average of the two induvidual energies.
-                associate(bl=>sys%basis%string_len, pl=>psip_list)
+                associate(bl=>sys%basis%tot_string_len, pl=>psip_list)
                     pl%dat(1,pos) = (pl%dat(1,pos) + sc0_ptr(sys, pl%states((bl+1):(2*bl),pos)) - ref%H00)/2
                 end associate
                 if (annihilation_flags%replica_tricks) then

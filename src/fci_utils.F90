@@ -99,7 +99,7 @@ contains
         integer, allocatable :: sym_space_size(:), occ_list_scratch(:)
         integer :: iunit, ref_ms, ref_sym
         logical :: spin_flip
-        integer(i0) :: f0(sys%basis%string_len)
+        integer(i0) :: f0(sys%basis%tot_string_len)
         type(hmatel_t) :: hmatel
 
         if (parent) then

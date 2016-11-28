@@ -405,8 +405,8 @@ contains
         real(p) :: unweighted_walker_pop(psip_list%nspaces)
 
         ! Get excitation.
-        excitation = get_excitation(sys%nel, sys%basis, psip_list%states(:sys%basis%string_len,idet), &
-                         psip_list%states((1+sys%basis%string_len):sys%basis%tensor_label_len,idet))
+        excitation = get_excitation(sys%nel, sys%basis, psip_list%states(:sys%basis%tot_string_len,idet), &
+                         psip_list%states((1+sys%basis%tot_string_len):sys%basis%tensor_label_len,idet))
 
         ! When performing importance sampling the result is that certain
         ! excitation levels have smaller psips populations than the true density
@@ -727,7 +727,7 @@ contains
         integer(i0), allocatable, intent(in) :: correlation_mask(:)
         real(p), intent(inout) :: correlation_fn
 
-        integer(i0) :: f(sys%basis%string_len)
+        integer(i0) :: f(sys%basis%tot_string_len)
         integer :: bit_element1, bit_position1, bit_element2, bit_position2
         integer :: sign_factor
 
@@ -741,7 +741,7 @@ contains
             ! and the same values as cdet%f at i and j. Hence, if f has
             ! two 1's or no 1's, we want sign_factor = +1. Else if we have one 1,
             ! we want sign_factor = -1.
-            f = iand(cdet%f(:sys%basis%string_len), correlation_mask)
+            f = iand(cdet%f(:sys%basis%tot_string_len), correlation_mask)
             ! Count if we have zero, one or two 1's.
             sign_factor = sum(count_set_bits(f))
             ! The operation below will map 0 and 2 to +1, and will map 1 to -1,
@@ -797,7 +797,7 @@ contains
         real(p), intent(inout) :: staggered_mag
 
         integer :: bit_element1, bit_position1, bit_element2, bit_position2
-        integer(i0) :: f(sys%basis%string_len)
+        integer(i0) :: f(sys%basis%tot_string_len)
         integer :: n_up_plus
         integer :: total_sum
 
@@ -816,7 +816,7 @@ contains
             ! are nel spins up in total. Hence the matrix element will be written
             ! only in terms of the number of up spins on sublattice 1, to save
             ! computation.
-            f = iand(cdet%f(:sys%basis%string_len), sys%heisenberg%lattice_mask)
+            f = iand(cdet%f(:sys%basis%tot_string_len), sys%heisenberg%lattice_mask)
             n_up_plus = sum(count_set_bits(f))
             ! Below, the term in brackets and middle term come from the z
             ! component (the z operator is diagonal) and one nsites/4 factor
@@ -939,15 +939,15 @@ contains
 
         real(p) :: unweighted_walker_pop(size(walker_pop))
         integer :: irdm, isym, ireplica, nrdms, nsym_vecs
-        integer(i0) :: f1(basis%string_len), f2(basis%string_len)
+        integer(i0) :: f1(basis%tot_string_len), f2(basis%tot_string_len)
         integer(i0) :: f3(basis%tensor_label_len)
-        integer(i0) :: rdm_f1(basis%string_len), rdm_f2(basis%string_len)
+        integer(i0) :: rdm_f1(basis%tot_string_len), rdm_f2(basis%tot_string_len)
 
         if (.not. (iteration > start_av_rdm .or. rdm_in%calc_inst_rdm)) return
 
         ! Combined bitstring.
-        f3(1:basis%string_len) = cdet%f(:basis%string_len)
-        f3(basis%string_len+1:) = cdet%f2(:basis%string_len)
+        f3(1:basis%tot_string_len) = cdet%f(:basis%tot_string_len)
+        f3(basis%tot_string_len+1:) = cdet%f2(:basis%tot_string_len)
 
         nrdms = size(dmqmc_estimates%subsys_info)
         nsym_vecs = size(dmqmc_estimates%subsys_info(1)%B_masks, 2)
@@ -965,8 +965,8 @@ contains
 
         ! Apply the mask for the B subsystem to set all sites in the A
         ! subsystem to 0.
-        f1 = iand(subsys_info(irdm)%B_masks(:,isym),cdet%f(:basis%string_len))
-        f2 = iand(subsys_info(irdm)%B_masks(:,isym),cdet%f2(:basis%string_len))
+        f1 = iand(subsys_info(irdm)%B_masks(:,isym),cdet%f(:basis%tot_string_len))
+        f2 = iand(subsys_info(irdm)%B_masks(:,isym),cdet%f2(:basis%tot_string_len))
 
         ! Once this is done, check if the resulting bitstrings (which can
         ! only possibly have 1's in the B subsystem) are identical. If
@@ -991,7 +991,7 @@ contains
                 unweighted_walker_pop = real(walker_pop,p)*&
                     accumulated_probs(excitation%nexcit)/pop_real_factor
                 ! Note, when storing the entire RDM (as done here), the
-                ! maximum value of subsys_info(i)%string_len is 1, so we
+                ! maximum value of subsys_info(i)%tot_string_len is 1, so we
                 ! only consider this one element here.
                 rdm(end1, end2) = rdm(end1, end2) + unweighted_walker_pop(1)
             end if
