@@ -447,7 +447,6 @@ contains
         !    f0: bit string of the reference
         !    iexcitor: the index (in range [1,nstates]) of the excitor to select.
         !    initiator_pop: the population above which a determinant is an initiator.
-! [review] - AJWT: This is not currently used by this routine.
         !    ex_lvl_sort: if true, excitors are sorted by excitation level and so have
         !       information about the excitation level also encoded in their bit string
         !       that should be removed before being passed on.
@@ -550,11 +549,12 @@ contains
         !    selection_data: contains weightings used for selection.
         !    cumulative_excip_pop: running cumulative excip population on
         !        all excitors; i.e. cumulative_excip_population(i) = sum(particle_t%pops(1:i)).
-! [review] - AJWT: Fill in docs:
-        !    ex_level:
-        !    min_size:
-        !    max_size:
-        !    ex_lvl_dist:
+        !    ex_level: maximum excitor excitation level to store coefficients for.
+        !    min_size: minimum size of cluster to select stocastically
+        !       (should always be 2).
+        !    max_size: maximum size of cluster to select stochastically.
+        !    ex_lvl_dist: derived type containing information on distribution of
+        !       wavefunction between different excitation levels.
 
         ! NOTE: cumulative_excip_pop and tot_excip_pop ignore the population on the
         ! reference as excips on the reference cannot form a cluster.  Both these
@@ -643,7 +643,6 @@ contains
         ! excitation at all.
         all_allowed = allowed
 
-! [review] - AJWT: Please check additional comments
         ! Now choose the combination of excitor-levels, given the number of excitors in the cluster.
         associate(select_info => selection_data%cluster_sizes_info(cluster%nexcitors)%v, &
                 select_proportion => selection_data%cluster_sizes_proportion(cluster%nexcitors)%v)
@@ -736,6 +735,10 @@ contains
         !   rng: random number generator.
         !   iexcitor: number of excitor being added - this is incremented with each added excitor
 ! [review] - AJWT: Does cluster_population get updated in this routine?  What exactly is the 'population'?
+! [reply] - CJCS: As in original select_cluster its just the name used for the current cluster amplitude.
+! [reply] - CJCS: This is before any additional factors are applied to it, so it's just the product of the
+! [reply] - CJCS: contributing excitor populations, and new excitor populations will be multiplied in
+! [reply] - CJCS: within collapse cluster.
         !   cluster_population: current population of cluster.
         !   cluster: cluster of excitors currently being accumulated.
         !   cdet: information anout the cluster of excitors applied to the reference determinant.
@@ -825,9 +828,30 @@ contains
 
 !---- nselections update function ----
 
-! [review] - AJWT: definitely need some documentation here.
     subroutine set_cluster_selections(selection_data, nattempts, min_cluster_size, max_size, D0_normalisation, tot_abs_pop, &
                                     nstates, full_nc, even_selection)
+
+        ! Function to set total number of selections of different cluster
+        ! types within CCMC. This effectively controls the relative sampling
+        ! of different clusters within the CC expansion.
+
+        ! In:
+        !   max_size: maximum cluster size we need to select.
+        !   nstates: total number of occupied states within calculation.
+        !   D0_normalisation: total population on the reference this iteration.
+        !   tot_abs_pop: sum of absolute excip populations on all excitors.
+        !   full_nc: whether using full non-composite algorithm.
+        !   even_selection: whether using even selection algorithm for
+        !       stochastic clusters.
+        ! In/Out:
+        !   selection_data: derived type containing information on various aspects
+        !       of cluster selection.
+        !   nattempts: total number of selection attempts to make this iteration.
+        !       Initially set to default value in original algorithm, but updated
+        !       otherwise. Used to calculate spawning rate and included in output
+        !       file.
+        ! Out:
+        !   min_cluster_size: minimum cluster size to select stochastically.
 
         use ccmc_data, only: selection_data_t
 
@@ -875,8 +899,18 @@ contains
 
 !---- Cluster information accumulation ---
 
-! [review] - AJWT: definitely need some documentation here.
     subroutine update_selection_data(selection_data, cluster)
+
+        ! Updates selection_data derived type with information relating to amp/pselect. Only required
+        ! for use with selection logging.
+        ! Information accumulated is the mean and mean square values, used to obtain the average and
+        ! variance/standard deviation of the amplitude distribution.
+
+        ! In:
+        !   cluster: info on currently selected cluster to add to accumulated information.
+        ! In/Out:
+        !   selection_data: information on cluster selection within calculation. On output will have
+        !       contribution from cluster added into mean and mean square value accumulation.
 
         use ccmc_data, only: cluster_t, selection_data_t
 
@@ -933,7 +967,20 @@ contains
         cluster_selection%size_weighting(0) = abs_D0_normalisation
         cluster_selection%size_weighting(1) = real(tot_abs_pop, kind=dp)
 
-! [review] - AJWT: A little comment here wouldn't go amiss.
+        ! To sample between all combinations effectively requires selecting:
+        !   - individual excitors with probability proportional to absolute excip population.
+        !   - different excitation level combinations with probability proportional to the proportion
+        !       of absolute excip population on constituent excitation levels, accounting for the
+        !       number of possible ways of selecting the same cluster.
+        !   - different sizes in proportion to the total chance of selecting all permitted excitation
+        !       level combinations of a given size.
+
+        ! This is achieved below via update_selection_block_probability calculating the weighting for
+        ! all combinations of a given size given the current excitation distribution, then applying
+        ! reweighting for the reference normalisation and the number of processors running to the
+        ! probability of selecting each size. After normalisation this gives a normalised probability of
+        ! selecting each cluster size and each combination of excitation levels.
+
         do i = lbound(cluster_selection%cluster_sizes_info, dim=1), ubound(cluster_selection%cluster_sizes_info, dim=1)
             associate(select_info => cluster_selection%cluster_sizes_info(i)%v, &
                       select_proportion => cluster_selection%cluster_sizes_proportion(i)%v)
@@ -998,7 +1045,7 @@ contains
         integer, intent(in) :: ex_level, max_cluster_size
         type(selection_data_t), intent(inout) :: selection_data
 
-        integer :: nclusters, cluster_size, ierr, dummy
+        integer :: ncombinations, cluster_size, ierr, dummy
         integer :: temporary(1:ex_level), i, j
 
         allocate(selection_data%cluster_sizes_info(2:max_cluster_size), stat=ierr)
@@ -1014,14 +1061,13 @@ contains
         ! Go through possible sizes...
         do cluster_size = 2, max_cluster_size
             ! Calc number possible clusters for each
-! [review] - AJWT: Given the use of 'combinations' elsewhere, shouldn't this be ncombinations?
-            nclusters = calc_available_perms(cluster_size, 1, 0, ex_level)
+            ncombinations = calc_available_perms(cluster_size, 1, 0, ex_level)
             ! Allocate storage of appropriate size to store all cluster info
-            allocate(selection_data%cluster_sizes_info(cluster_size)%v(1:nclusters,1:ex_level), stat=ierr)
-            call check_allocate('cluster_selection_component', nclusters*ex_level,ierr)
+            allocate(selection_data%cluster_sizes_info(cluster_size)%v(1:ncombinations,1:ex_level), stat=ierr)
+            call check_allocate('cluster_selection_component', ncombinations*ex_level,ierr)
 
-            allocate(selection_data%cluster_sizes_proportion(cluster_size)%v(1:nclusters), stat=ierr)
-            call check_allocate('cluster_selection_component', nclusters,ierr)
+            allocate(selection_data%cluster_sizes_proportion(cluster_size)%v(1:ncombinations), stat=ierr)
+            call check_allocate('cluster_selection_component', ncombinations,ierr)
 
             selection_data%cluster_sizes_info(cluster_size)%v(:,:) = 0
             selection_data%cluster_sizes_proportion(cluster_size)%v(:) = 0
@@ -1030,8 +1076,8 @@ contains
             call find_available_perms(dummy, selection_data%cluster_sizes_info(cluster_size)%v, temporary, &
                                     cluster_size, 1, 0, ex_level)
             if (parent) then
-                write(6, '(1X,"Found ",i0," possible excitation level combinations for a cluster of size ",i0,".")') nclusters, &
-                                                            cluster_size
+                write(6, '(1X,"Found ",i0," possible excitation level combinations for a cluster of size ",i0,".")') &
+                                                            ncombinations, cluster_size
                 write(6, '(1X,"Combinations are:",/)')
                 write(6, '(12X,"|",5X,a30)') "N_excitors @ excitation level:"
                 write(6, '(a11,1X,"|",41("-"))') "Combo"
@@ -1041,7 +1087,7 @@ contains
                 end do
                 write(6, '(1X)')
                 write(6, '(4X,50("-"))')
-                do i = 1, nclusters
+                do i = 1, ncombinations
                     write (6, '(9X,i2,1X,"|",1X)',advance='no') i
                     do j = 1, ex_level
                         write(6, '(1X,5X,i2,5X)', advance='no') selection_data%cluster_sizes_info(cluster_size)%v(i, j)

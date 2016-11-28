@@ -916,6 +916,9 @@ contains
         type(estimators_t) :: estimators_cycle
 
 ! [review] - AJWT: Is there a reason this is only done in debug mode?
+! [reply] - CJCS: We don't use this information for anything other than
+! [reply] - CJCS: logging so including it would only slow down optimised
+! [reply] - CJCS: calculations.
         if (debug) call update_selection_data(selection_data, cluster)
 
         if (cluster%excitation_level /= huge(0)) then

@@ -127,8 +127,7 @@ module basis_types
 
     contains
 
-! [review] - AJWT: nelec doesn't appear to be used.
-        subroutine init_basis_strings(b, nelec)
+        subroutine init_basis_strings(b)
 
             ! Initialise the string information in a basis_t object for
             ! converting a bit-string representation of a list of orbitials to/from the
@@ -142,7 +141,6 @@ module basis_types
             use checking, only: check_allocate
 
             type(basis_t), intent(inout) :: b
-            integer, intent(in) :: nelec
 
             integer :: i, bit_element, bit_pos, ierr
 

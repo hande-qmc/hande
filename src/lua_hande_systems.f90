@@ -283,7 +283,7 @@ contains
 
         type(sys_t), intent(inout) :: sys
 
-        call init_basis_strings(sys%basis, sys%nel)
+        call init_basis_strings(sys%basis)
         call print_basis_metadata(sys%basis, sys%nel, sys%system == heisenberg)
         ! NOTE: RAS is currently disabled.
         call init_determinants(sys, sys%nel)

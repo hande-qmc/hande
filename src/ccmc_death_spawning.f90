@@ -802,9 +802,33 @@ contains
 
 ! --- Helper functions ---
 
-! [review] - AJWT: Interface docs needed.
     subroutine create_spawned_particle_ccmc(basis, ref, cdet, connection, nspawned, ispace, &
                                             parent_cluster_ex_level, ex_lvl_sort, fexcit, spawn, bloom_stats)
+
+        ! Function to create spawned particle in spawned list for ccmc
+        ! calculations. Performs required manipulations of bit string
+        ! beforehand and accumulateion on blooming.
+
+        ! In:
+        !   basis: info on current basis functions.
+        !   reference: info on current reference state.
+        !   cdet: determinant representing state currently spawning
+        !       spawning from.
+        !   connection: connection from state cdet particle has been spawned
+        !       from.
+        !   nspawned: number of (encoded) particles created via spawning.
+        !   ispace: index of space particles are to be added to.
+        !   parent_cluster_ex_level: excitation level of parent cluster.
+        !   fexcit: bit string for state spawned to. Only available for linked
+        !       ccmc, otherwise generated using cdet+connection.
+        !   ex_lvl_sort: true if require states to be sorted by excitation
+        !       level within walker list, false otherwise.
+        ! In/Out:
+        !   spawn: spawn_t type containing information on particles created
+        !       via spawning this iteration. Spawned partivles will be added
+        !       to this on exit.
+        !   bloom_stats: information on blooms within a calculation. Will be
+        !       updated if a bloom has occurred.
 
         use basis_types, only: basis_t
         use reference_determinant, only: reference_t
@@ -817,7 +841,7 @@ contains
 
         type(basis_t), intent(in) :: basis
         type(reference_t), intent(in) :: ref
-        type(spawn_t), intent(inout) ::spawn
+        type(spawn_t), intent(inout) :: spawn
         type(det_info_t), intent(in) :: cdet
         type(bloom_stats_t), intent(inout) :: bloom_stats
         type(excit_t), intent(in) :: connection
