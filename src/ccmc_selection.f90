@@ -1060,10 +1060,14 @@ contains
         allocate(selection_data%cluster_sizes_proportion(2:max_cluster_size), stat=ierr)
         call check_allocate('cluster_selection%cluster_sizes_proportion',max_cluster_size-2, ierr)
 
-        write (6, '(1X,"Truncated Selection Initialisation")')
-        write (6, '(1X,"----------------------------------",/)')
-        write (6, '(1X,"Setting up required data storage to sample all composite clusters of size <= ",i0,", ")') max_cluster_size
-        write (6, '(1X,"cluster excitation level <= ",i0," using excitors of excitation level <= ",i0,".",/)') ex_level+2, ex_level
+        if (parent) then
+            write (6, '(1X,"Truncated Selection Initialisation")')
+            write (6, '(1X,"----------------------------------",/)')
+            write (6, '(1X,"Setting up required data storage to sample all composite clusters of size <= ",i0,", ")') &
+                                        max_cluster_size
+            write (6, '(1X,"cluster excitation level <= ",i0," using excitors of excitation level <= ",i0,".",/)') &
+                                        ex_level+2, ex_level
+        end if
 
         ! Go through possible sizes...
         do cluster_size = 2, max_cluster_size
