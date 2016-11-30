@@ -271,8 +271,9 @@ contains
         ! Setup the rdms array.
         do i = 1, nrdms
             ! Initialise the instance of the rdm type for this subsystem.
-! [review] - AJWT: The +1 has been added in this branch.  Why?
             ! Have to adjust bit string size for possible additional information.
+            ! This is required as we later assume bit string lengths are equal, though
+            ! functionality with sys%basis%info_string_len>0 is untested.
             subsys_info(i)%string_len = ceiling(real(subsys_info(i)%A_nsites)/i0_length) + sys%basis%info_string_len
 
             ! With the calc_ground_rdm option, the entire RDM is allocated. If

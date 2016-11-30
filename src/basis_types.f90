@@ -144,22 +144,6 @@ module basis_types
 
             integer :: i, bit_element, bit_pos, ierr
 
-! [review] - AJWT: I'm a little unhappy about this +1 because it leads to a number of -1's elsewhere in the code
-! [review] - AJWT: Could another variable be introduced to indicate the bits in the string which are used for 
-! [review] - AJWT: the encoding of the determinant?
-! [review] - AJWT: FCIQMC could then not use this extra word (and 1 word more in some systems is a lot).
-! [review] - AJWT: Similarly, assuming it's a single word doesn't really strike be as overly future-proof.
-! [reply] - CJCS: It's definitely possible to implement a different parameter to denote the bitlength used
-! [reply] - CJCS: to encode the determinant. However, avoiding using the extra 'word' isn't possible as when
-! [reply] - CJCS: we initialise the system we have no way of knowing if we're doing ccmc or fciqmc. If we want
-! [reply] - CJCS: to have this option we would need to either have two types of incompatible system objects
-! [reply] - CJCS: (contrary to our current approach) or reinitialise basis info, determinants and symmetry etc
-! [reply] - CJCS: when we decide we need the extra space. Neither of these seem compatible with our current
-! [reply] - CJCS: approach so always having the additional space was a work-around.
-! [reply] - CJCS: The rationale conversations with Ruth produced was that the extra word was a marginal increase
-! [reply] - CJCS: when using larger basis set sizes and memory was a limiting factor, but large in cases where
-! [reply] - CJCS: the calculation was memory limited.
-
             ! Assume not storing any additional information within bit string initially.
             b%bit_string_len = ceiling(real(b%nbasis) / i0_length)
             b%info_string_len = 0

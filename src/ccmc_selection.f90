@@ -736,11 +736,6 @@ contains
         ! In/Out:
         !   rng: random number generator.
         !   iexcitor: number of excitor being added - this is incremented with each added excitor
-! [review] - AJWT: Does cluster_population get updated in this routine?  What exactly is the 'population'?
-! [reply] - CJCS: As in original select_cluster its just the name used for the current cluster amplitude.
-! [reply] - CJCS: This is before any additional factors are applied to it, so it's just the product of the
-! [reply] - CJCS: contributing excitor populations, and new excitor populations will be multiplied in
-! [reply] - CJCS: within collapse cluster.
         !   cluster_population: current population of cluster.
         !   cluster: cluster of excitors currently being accumulated.
         !   cdet: information anout the cluster of excitors applied to the reference determinant.

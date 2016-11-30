@@ -631,7 +631,8 @@ contains
         type(basis_t), intent(in) :: basis
         integer(i0), intent(inout) :: f(:)
 
-! [review] - AJWT: shouldn't this use ex_level_mask?
+        ! Just clear all information stored within information section
+        ! of bit string.
         if (basis%info_string_len/=0) then
             f(basis%bit_string_len+1:) = 0_i0
         end if
