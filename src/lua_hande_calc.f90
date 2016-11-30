@@ -433,6 +433,7 @@ contains
 
         use calc, only: calc_type, ccmc_calc
         use calc_system_init, only: set_spin_polarisation, set_symmetry_aufbau
+        use excitations, only: end_excitations, init_excitations
 
         integer(c_int) :: nresult
         type(c_ptr), value :: L
@@ -466,6 +467,15 @@ contains
         opts = aot_table_top(lua_state)
         call read_qmc_in(lua_state, opts, qmc_in)
         call read_ccmc_in(lua_state, opts, ccmc_in)
+
+        ! Need to extend bit strings for additional excitation level information if needed.
+        if (ccmc_in%even_selection) then
+            sys%basis%info_string_len = 1
+            sys%basis%tot_string_len = sys%basis%bit_string_len + sys%basis%info_string_len
+            sys%basis%tensor_label_len = sys%basis%tot_string_len
+            call end_excitations(sys%basis%excit_mask)
+            call init_excitations(sys%basis)
+        end if
         ! note that semi-stochastic is not (yet) available in CCMC.
         !call read_semi_stoch_in(lua_state, opts, qmc_in, semi_stoch_in)
         call read_restart_in(lua_state, opts, restart_in)
@@ -486,6 +496,15 @@ contains
         else
             call do_ccmc(sys, qmc_in, ccmc_in, semi_stoch_in, restart_in, load_bal_in, reference, logging_in, &
                             qmc_state_out)
+        end if
+
+        ! Reset bit string length for reuse.
+        if (ccmc_in%even_selection) then
+            sys%basis%info_string_len = 0
+            sys%basis%tot_string_len = sys%basis%bit_string_len + sys%basis%info_string_len
+            sys%basis%tensor_label_len = sys%basis%tot_string_len
+            call end_excitations(sys%basis%excit_mask)
+            call init_excitations(sys%basis)
         end if
 
         call push_qmc_state(lua_state, qmc_state_out)

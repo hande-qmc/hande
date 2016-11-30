@@ -281,7 +281,7 @@ contains
         ! If we're expecting to sort by excitation level, need to add in extra factor
         cdet_loc = cdet
 
-        if (ex_lvl_sort) call add_ex_level_bit_string_provided(sys%basis%tot_string_len, cluster%excitation_level, cdet_loc%f)
+        if (ex_lvl_sort) call add_ex_level_bit_string_provided(sys%basis, cluster%excitation_level, cdet_loc%f)
 
         call stochastic_death_attempt(rng, real(KiiAi, p), 1, cdet_loc, qs%ref, sys%basis, spawn, &
                            nkill, pdeath)
@@ -858,7 +858,7 @@ contains
             fexcit_loc = fexcit
         end if
 
-        if (ex_lvl_sort) call add_ex_level_bit_string_calc(basis%tot_string_len, ref%f0, fexcit_loc)
+        if (ex_lvl_sort) call add_ex_level_bit_string_calc(basis, ref%f0, fexcit_loc)
         call create_spawned_particle_ptr(basis, ref, cdet, connection, nspawned, &
                                         ispace, spawn, fexcit_loc)
         call accumulate_bloom_stats(bloom_stats, nspawned)

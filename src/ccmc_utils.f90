@@ -111,7 +111,7 @@ contains
         integer(i0) :: permute_operators(basis%tot_string_len)
 
         excitor_loc = excitor
-        call remove_ex_level_bit_string(basis%tot_string_len, excitor_loc)
+        call remove_ex_level_bit_string(basis, excitor_loc)
 
         ! Apply excitor to the cluster of excitors.
 
@@ -624,48 +624,60 @@ contains
 
     end subroutine end_ex_lvl_dist_t
 
-    pure subroutine remove_ex_level_bit_string(string_len, f)
+    pure subroutine remove_ex_level_bit_string(basis, f)
 
-        integer, intent(in) :: string_len
+        use basis_types, only: basis_t
+
+        type(basis_t), intent(in) :: basis
         integer(i0), intent(inout) :: f(:)
 
 ! [review] - AJWT: shouldn't this use ex_level_mask?
-        f(string_len) = 0_i0
+        if (basis%info_string_len/=0) then
+            f(basis%bit_string_len+1:) = 0_i0
+        end if
 
     end subroutine remove_ex_level_bit_string
 
-    subroutine add_ex_level_bit_string_calc(string_len, f0, f)
+    subroutine add_ex_level_bit_string_calc(basis, f0, f)
 
         ! Sets bits within bit string to give excitation level at end of bit strings.
         ! This routine sets ex level from provided reference.
 
         use excitations, only: get_excitation_level
+        use basis_types, only: basis_t
 
-        integer, intent(in) :: string_len
+        type(basis_t), intent(in) :: basis
         integer(i0), intent(inout) :: f(:)
         integer(i0), intent(in) :: f0(:)
 
         integer(i0) :: ex_lvl
 
-        ex_lvl = int(get_excitation_level(f, f0), kind=i0)
+        if (basis%info_string_len/=0) then
+            ex_lvl = int(get_excitation_level(f, f0), kind=i0)
 
-        f(string_len) = ex_lvl
+            f(basis%bit_string_len+1) = ex_lvl
+        end if
 
     end subroutine add_ex_level_bit_string_calc
 
-    subroutine add_ex_level_bit_string_provided(string_len, ex_lvl, f)
+    subroutine add_ex_level_bit_string_provided(basis, ex_lvl, f)
 
         ! Sets bits within bit string to give excitation level at end of bit strings.
         ! This routine uses a provided excitation level.
 
-        integer, intent(in) :: string_len, ex_lvl
+        use basis_types, only: basis_t
+
+        type(basis_t), intent(in) :: basis
+        integer, intent(in) :: ex_lvl
         integer(i0) :: ex_lvl_loc
 
         integer(i0), intent(inout) :: f(:)
 
-        ex_lvl_loc = int(ex_lvl, kind=i0)
+        if (basis%info_string_len/=0) then
+            ex_lvl_loc = int(ex_lvl, kind=i0)
 
-        f(string_len) = ex_lvl
+            f(basis%bit_string_len+1) = ex_lvl
+        end if
 
     end subroutine add_ex_level_bit_string_provided
 

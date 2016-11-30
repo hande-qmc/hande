@@ -519,7 +519,7 @@ contains
 
         if (abs(excitor_pop) <= initiator_pop) cdet%initiator_flag = 3
 
-        if (ex_lvl_sort) call remove_ex_level_bit_string(sys%basis%tot_string_len, cdet%f)
+        if (ex_lvl_sort) call remove_ex_level_bit_string(sys%basis, cdet%f)
 
         cluster%excitation_level = get_excitation_level(f0, cdet%f)
         cluster%amplitude = excitor_pop
@@ -798,7 +798,7 @@ contains
                 if (i == 1 .and. first) then
                     ! First excitor 'seeds' the cluster:
                     cdet%f = psip_list%states(:,pos)
-                    call remove_ex_level_bit_string(sys%basis%tot_string_len, cdet%f)
+                    call remove_ex_level_bit_string(sys%basis, cdet%f)
                     cdet%data => psip_list%dat(:,pos) ! Only use if cluster is non-composite!
                     cluster_population = excitor_pop
                     ! Counter the additional *nprocs above.

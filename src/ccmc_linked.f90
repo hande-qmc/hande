@@ -73,12 +73,12 @@ contains
             ! check each cluster operator shares an index with connection
             ! orbitals involved in cluster operator excitation (from reference)
             excitor_excitation = ieor(cluster%excitors(i)%f, f0)
-            call remove_ex_level_bit_string(basis%tot_string_len, excitor_excitation)
+            call remove_ex_level_bit_string(basis, excitor_excitation)
             if (all(iand(h_excitation, excitor_excitation) == 0)) then
                 ! no orbitals in common between H and cluster
                 unconnected = unconnected + 1
                 excitor = cluster%excitors(i)%f
-                call remove_ex_level_bit_string(basis%tot_string_len, excitor)
+                call remove_ex_level_bit_string(basis, excitor)
             end if
         end do
 
@@ -160,7 +160,7 @@ contains
                         call collapse_cluster(sys%basis, f0, cluster%excitors(i)%f, cmplx(1.0_p,0.0_p,p), &
                             deti, population, allowed)
                     end if
-                    call remove_ex_level_bit_string(sys%basis%tot_string_len, deti)
+                    call remove_ex_level_bit_string(sys%basis, deti)
                 end if
             end do
         else
@@ -274,7 +274,7 @@ contains
                 left_cluster%excitors(in_left)%f => cluster%excitors(i)%f
                 if (in_left == 1) then
                     ldet = cluster%excitors(i)%f
-                    call remove_ex_level_bit_string(sys%basis%tot_string_len, ldet)
+                    call remove_ex_level_bit_string(sys%basis, ldet)
                 else
                     call collapse_cluster(sys%basis, f0, cluster%excitors(i)%f, cmplx(1.0_p,0.0_p,p), &
                                         ldet, population, allowed)
@@ -286,7 +286,7 @@ contains
                 right_cluster%excitors(in_right)%f => cluster%excitors(i)%f
                 if (in_right == 1) then
                     rdet = cluster%excitors(i)%f
-                    call remove_ex_level_bit_string(sys%basis%tot_string_len, rdet)
+                    call remove_ex_level_bit_string(sys%basis, rdet)
                 else
                     call collapse_cluster(sys%basis, f0, cluster%excitors(i)%f, cmplx(1.0_p,0.0_p,p), &
                                         rdet, population, allowed)
@@ -343,7 +343,7 @@ contains
         integer(i0) :: poss_a(sys%basis%tot_string_len), f_loc(sys%basis%tot_string_len)
 
         f_loc = f
-        call remove_ex_level_bit_string(sys%basis%tot_string_len, f_loc)
+        call remove_ex_level_bit_string(sys%basis, f_loc)
 
         associate(a=>connection%to_orb(1), b=>connection%to_orb(2), i=>connection%from_orb(1), j=>connection%from_orb(2))
             select case(sys%system)
