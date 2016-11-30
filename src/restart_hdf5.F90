@@ -926,8 +926,10 @@ module restart_hdf5
             call h5lexists_f(orig_id, gbasis, exists, ierr)
             if (exists) then
                 call hdf5_read(orig_id, hdf5_path(gbasis, dnbasis), nbasis)
-                ! Here simply hard code that sys%basis%info_string_len = 1
-                string_len = ceiling(real(nbasis)/i0_length) + 1
+                ! Here have to hard code that sys%basis%info_string_len = 0.
+                ! This is changed before calculation initiation, so if this
+                ! remains unchanged this will not cause any issues.
+                string_len = ceiling(real(nbasis)/i0_length)
             else if (present(sys)) then
                 string_len = sys%basis%tot_string_len
                 nbasis = sys%basis%nbasis
