@@ -718,8 +718,8 @@ contains
 
     end subroutine assign_particle_processor
 
-    subroutine assign_particle_processor_dmqmc(particle_label, nbits, seed, shift, freq, np, particle_proc, slot_pos, &
-                                               proc_map, nslots)
+    subroutine assign_particle_processor_dmqmc(particle_label, nbits, info_string_len, seed, shift, freq, np, particle_proc, &
+                                               slot_pos, proc_map, nslots)
 
         ! Wrapper around assign_particle_processor to ensure we hash the same
         ! amount of data for tensor labels in DMQMC (which involve two labels)
@@ -752,26 +752,29 @@ contains
         !    slot_pos: position in proc_map for this determinant
 
         integer(i0), intent(in) :: particle_label(:)
-        integer, intent(in) :: nbits, seed, shift, freq, np
+        integer, intent(in) :: info_string_len, nbits, seed, shift, freq, np
         integer, intent(in) :: proc_map(0:)
         integer, intent(in) :: nslots
         integer, intent(out) :: particle_proc, slot_pos
 
-        integer(i0) :: particle_label_padded(size(particle_label))
-        integer :: label_len
+        integer(i0) :: particle_label_padded(size(particle_label)+1)
+        integer :: tot_label_len, bit_label_len
 
-        ! Strip out CCMC-compatibility integer inserted between the bit strings.
-        label_len = size(particle_label)/2
-        particle_label_padded(:label_len-1) = particle_label(:label_len-1)
-        particle_label_padded(label_len:2*label_len-2) = particle_label(label_len+1:2*label_len-1)
+        ! Strip out integers inserted between the bit strings for additional
+        ! information if present.
+        tot_label_len = size(particle_label)/2
+        bit_label_len = tot_label_len - info_string_len
+        particle_label_padded = 0_i0
+        particle_label_padded(:bit_label_len) = particle_label(:bit_label_len)
+        particle_label_padded(bit_label_len+1:2*bit_label_len) = particle_label(tot_label_len+1:tot_label_len+bit_label_len)
 
         if (i0_length == 32) then
-            if (mod(label_len-1,2) == 0) then
+            if (mod(bit_label_len,2) == 0) then
                 call assign_particle_processor(particle_label_padded, nbits, seed, shift, freq, np, &
                                                particle_proc, slot_pos, proc_map, nslots)
             else
-                particle_label_padded(label_len+1:) = particle_label_padded(label_len:)
-                particle_label_padded(label_len) = 0_i0
+                particle_label_padded(bit_label_len+2:2*bit_label_len+1) = particle_label(bit_label_len+1:2*bit_label_len)
+                particle_label_padded(bit_label_len+1) = 0_i0
                 call assign_particle_processor(particle_label_padded, nbits+i0_length, seed, shift, freq, np, &
                                                particle_proc, slot_pos, proc_map, nslots)
             end if
@@ -1287,7 +1290,8 @@ contains
         ! Only accept spawning if it's within the RAS space.
         if (in_ras(ras1, ras3, ras1_min, ras3_max, f_new)) then
 
-            call assign_particle_processor_dmqmc(f_new, spawn%bit_str_nbits, spawn%hash_seed, spawn%hash_shift, spawn%move_freq, &
+            call assign_particle_processor_dmqmc(f_new, spawn%bit_str_nbits, basis%info_string_len, spawn%hash_seed, &
+                                                 spawn%hash_shift, spawn%move_freq, &
                                                  nprocs, iproc_spawn, slot, spawn%proc_map%map, spawn%proc_map%nslots)
 
             call add_flagged_spawned_particle(f_new, nspawn, particle_type, cdet%initiator_flag, iproc_spawn, spawn)
@@ -1356,7 +1360,8 @@ contains
             f_new_tot((basis%tot_string_len+1):(basis%tensor_label_len)) = f_new
         end if
 
-        call assign_particle_processor_dmqmc(f_new_tot, spawn%bit_str_nbits, spawn%hash_seed, spawn%hash_shift, spawn%move_freq, &
+        call assign_particle_processor_dmqmc(f_new_tot, spawn%bit_str_nbits, basis%info_string_len, spawn%hash_seed, &
+                                             spawn%hash_shift, spawn%move_freq, &
                                              nprocs, iproc_spawn, slot, spawn%proc_map%map, spawn%proc_map%nslots)
 
         call add_spawned_particle(f_new_tot, nspawn, particle_type, iproc_spawn, spawn)
@@ -1425,7 +1430,8 @@ contains
         end if
 
 
-        call assign_particle_processor_dmqmc(f_new_tot, spawn%bit_str_nbits, spawn%hash_seed, spawn%hash_shift, spawn%move_freq, &
+        call assign_particle_processor_dmqmc(f_new_tot, spawn%bit_str_nbits, basis%info_string_len, spawn%hash_seed, &
+                                             spawn%hash_shift, spawn%move_freq, &
                                              nprocs, iproc_spawn, slot, spawn%proc_map%map, spawn%proc_map%nslots)
 
         call add_flagged_spawned_particle(f_new_tot, nspawn, particle_type, cdet%initiator_flag, iproc_spawn, spawn)
@@ -1500,7 +1506,8 @@ contains
             f_new_tot((basis%tot_string_len+1):(basis%tensor_label_len)) = f_new
         end if
 
-        call assign_particle_processor_dmqmc(f_new_tot, spawn%bit_str_nbits, spawn%hash_seed, spawn%hash_shift, spawn%move_freq, &
+        call assign_particle_processor_dmqmc(f_new_tot, spawn%bit_str_nbits, basis%info_string_len, spawn%hash_seed, &
+                                             spawn%hash_shift, spawn%move_freq, &
                                              nprocs, iproc_spawn, slot, spawn%proc_map%map, spawn%proc_map%nslots)
 
         call add_spawned_particle(f_new_tot, nspawn, particle_type, iproc_spawn, spawn)
@@ -1575,7 +1582,8 @@ contains
             f_new_tot((basis%tot_string_len+1):(basis%tensor_label_len)) = f_new
         end if
 
-        call assign_particle_processor_dmqmc(f_new_tot, spawn%bit_str_nbits, spawn%hash_seed, spawn%hash_shift, spawn%move_freq, &
+        call assign_particle_processor_dmqmc(f_new_tot, spawn%bit_str_nbits, basis%info_string_len, spawn%hash_seed, &
+                                             spawn%hash_shift, spawn%move_freq, &
                                              nprocs, iproc_spawn, slot, spawn%proc_map%map, spawn%proc_map%nslots)
 
         call add_flagged_spawned_particle(f_new_tot, nspawn, particle_type, cdet%initiator_flag, iproc_spawn, spawn)
@@ -1659,7 +1667,8 @@ contains
                 f_new_tot((basis%tot_string_len+1):(basis%tensor_label_len)) = f_new
             end if
 
-            call assign_particle_processor_dmqmc(f_new_tot, spawn%bit_str_nbits, spawn%hash_seed, spawn%hash_shift, &
+            call assign_particle_processor_dmqmc(f_new_tot, spawn%bit_str_nbits, basis%info_string_len, spawn%hash_seed, &
+                                                 spawn%hash_shift, &
                                                  spawn%move_freq, nprocs, iproc_spawn, slot, spawn%proc_map%map, &
                                                  spawn%proc_map%nslots)
 
@@ -1735,7 +1744,8 @@ contains
                 f_new_tot((basis%tot_string_len+1):(basis%tensor_label_len)) = f_new
             end if
 
-            call assign_particle_processor_dmqmc(f_new_tot, spawn%bit_str_nbits, spawn%hash_seed, spawn%hash_shift, &
+            call assign_particle_processor_dmqmc(f_new_tot, spawn%bit_str_nbits, basis%info_string_len, spawn%hash_seed, &
+                                                 spawn%hash_shift, &
                                                  spawn%move_freq, nprocs, iproc_spawn, slot, spawn%proc_map%map, &
                                                  spawn%proc_map%nslots)
 

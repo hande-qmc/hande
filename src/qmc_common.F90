@@ -434,8 +434,13 @@ contains
         !$omp private(pproc, slot) reduction(+:nsent)
         do iexcitor = 1, nstates
             if (doing_calc(dmqmc_calc)) then
-                call assign_particle_processor_dmqmc(states(:,iexcitor), spawn%bit_str_nbits, spawn%hash_seed, spawn%hash_shift, &
-                                               spawn%move_freq, nprocs, pproc, slot, spawn%proc_map%map, spawn%proc_map%nslots)
+                ! NB this assumes sys%basis%info_string_len = 0 for DMQMC. This is
+                ! for convenience of not changing any additional interfaces.
+                ! If this is not the case in future this must be changed to be
+                ! compatible.
+                call assign_particle_processor_dmqmc(states(:,iexcitor), spawn%bit_str_nbits, 0, spawn%hash_seed, &
+                                               spawn%hash_shift, spawn%move_freq, nprocs, pproc, slot, spawn%proc_map%map, &
+                                               spawn%proc_map%nslots)
             else
                 call assign_particle_processor(states(:,iexcitor), spawn%bit_str_nbits, spawn%hash_seed, spawn%hash_shift, &
                                                spawn%move_freq, nprocs, pproc, slot, spawn%proc_map%map, spawn%proc_map%nslots)

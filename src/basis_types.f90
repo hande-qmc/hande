@@ -123,13 +123,6 @@ module basis_types
         ! a higher index than i set.
         integer(i0), allocatable :: excit_mask(:,:) ! (tot_string_len, nbasis)
 
-        ! Bit mask to select bits used to store additional information on configurations.
-        ! As can use different numbers of integers need to have tot_string_len masks.
-        integer(i0), allocatable :: info_mask(:) ! (tot_string_len)
-
-        ! Length in bits of used to store excitation level.
-        integer :: bitlen_excit_level
-
     end type basis_t
 
     contains
@@ -167,9 +160,9 @@ module basis_types
 ! [reply] - CJCS: when using larger basis set sizes and memory was a limiting factor, but large in cases where
 ! [reply] - CJCS: the calculation was memory limited.
 
-            ! Need space to store both basis string and excitation level.
+            ! Assume not storing any additional information within bit string initially.
             b%bit_string_len = ceiling(real(b%nbasis) / i0_length)
-            b%info_string_len = 1
+            b%info_string_len = 0
             b%tot_string_len = b%bit_string_len + b%info_string_len
             b%tensor_label_len = b%tot_string_len
 
@@ -200,16 +193,6 @@ module basis_types
                     b%beta_mask = ibset(b%beta_mask,i)
                 end if
             end do
-
-            ! Set mask to select out bits used to specify the excitation level of a cluster.
-            allocate(b%info_mask(1:b%tot_string_len), stat=ierr)
-            call check_allocate('b%info_mask', b%tot_string_len, ierr)
-
-            b%info_mask = 0_i0
-! [review] - AJWT: Either I misunderstand what type of mask this is or this is wrong.
-! [review] - AJWT: Shouldn't it be 2^(ceiling(log_2 (max_excitation_level+1)))-1
-! [reply] - CJCS: This is currently unused but that's correct.
-            b%info_mask(b%bit_string_len+1:) = 2_i0**(i0_length-2)-1_i0 + 2_i0**(i0_length-2)
 
         end subroutine init_basis_strings
 
@@ -264,10 +247,6 @@ module basis_types
             if (allocated(b%basis_lookup)) then
                 deallocate(b%basis_lookup, stat=ierr)
                 call check_deallocate('b%basis_lookup', ierr)
-            end if
-            if (allocated(b%info_mask)) then
-                deallocate(b%info_mask, stat=ierr)
-                call check_deallocate('b%info_mask', ierr)
             end if
             call dealloc_basis_fn_t_array(b%basis_fns)
 

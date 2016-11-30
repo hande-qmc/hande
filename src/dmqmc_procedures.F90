@@ -272,7 +272,8 @@ contains
         do i = 1, nrdms
             ! Initialise the instance of the rdm type for this subsystem.
 ! [review] - AJWT: The +1 has been added in this branch.  Why?
-            subsys_info(i)%string_len = ceiling(real(subsys_info(i)%A_nsites)/i0_length) + 1
+            ! Have to adjust bit string size for possible additional information.
+            subsys_info(i)%string_len = ceiling(real(subsys_info(i)%A_nsites)/i0_length) + sys%basis%info_string_len
 
             ! With the calc_ground_rdm option, the entire RDM is allocated. If
             ! the following condition is met then the number of rows is greater
@@ -516,7 +517,11 @@ contains
 
 #ifdef PARALLEL
         ! Need to determine which processor the spawned psip should be sent to.
-        call assign_particle_processor_dmqmc(f_new, spawn%bit_str_nbits, spawn%hash_seed, spawn%hash_shift, spawn%move_freq, &
+        ! NB this assumes sys%basis%info_string_len = 0 for DMQMC. This is
+        ! for convenience of not changing any additional interfaces.
+        ! If this is not the case in future this must be changed to be
+        ! compatible.
+        call assign_particle_processor_dmqmc(f_new, spawn%bit_str_nbits, 0, spawn%hash_seed, spawn%hash_shift, spawn%move_freq, &
                                        nprocs, iproc_spawn, slot, spawn%proc_map%map, spawn%proc_map%nslots)
 #endif
 
@@ -581,7 +586,7 @@ contains
 
 #ifdef PARALLEL
         ! Need to determine which processor the spawned psip should be sent to.
-        call assign_particle_processor_dmqmc(f_new, spawn%bit_str_nbits, spawn%hash_seed, spawn%hash_shift, spawn%move_freq, &
+        call assign_particle_processor_dmqmc(f_new, spawn%bit_str_nbits, 0, spawn%hash_seed, spawn%hash_shift, spawn%move_freq, &
                                        nprocs, iproc_spawn, slot, spawn%proc_map%map, spawn%proc_map%nslots)
 #endif
 

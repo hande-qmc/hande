@@ -942,7 +942,7 @@ contains
             ! Hash the entire first bit array and the minimum number of bits
             ! in the second bit array.
 ! [review] - AJWT: This assumes that we're encoding the excitation level in the topmost word.
-            nhash_bits = basis%nbasis + i0_length*(basis%tot_string_len-1)
+            nhash_bits = basis%nbasis + i0_length*(basis%bit_string_len)
         else
             nhash_bits = basis%nbasis
         end if
@@ -1040,7 +1040,7 @@ contains
                 ! Flip all spins in f0 to get f0_inv
                 f0_inv = not(reference%f0)
                 ! Need to account for lengthening of bit string to store ex_lvl for ccmc.
-                f0_inv(sys%basis%tot_string_len) = 0_i0
+                if (sys%basis%info_string_len /= 0) f0_inv(sys%basis%bit_string_len+1:) = 0_i0
                 ! In general, the basis bit string has some padding at the
                 ! end which must be unset.  We need to clear this...
                 ! Loop over all bits after the last basis function.
