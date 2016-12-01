@@ -929,6 +929,8 @@ module restart_hdf5
                 ! Here have to hard code that sys%basis%info_string_len = 0.
                 ! This is changed before calculation initiation, so if this
                 ! remains unchanged this will not cause any issues.
+                ![todo] write out previous info_string_len and enable conversion appropriately if
+                ! different value provided.
                 string_len = ceiling(real(nbasis)/i0_length)
             else if (present(sys)) then
                 string_len = sys%basis%tot_string_len

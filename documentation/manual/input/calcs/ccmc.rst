@@ -171,9 +171,12 @@ ccmc options
 
     .. review - AJWT
         Might need some guidance as to when to use this
+    .. reply - CJCS
+        Not sure we can say this for certain as yet. I'll just add a comment to this effect.
 
     .. warning::
 
     This algorithm gives drastically different behaviour and is a subject of current
-    research. As such, it is not currently confirmed to be compatible with propagation of
-    the linked coupled cluster equations and the behaviour is not yet fully benchmarked.
+    research. As such, the situations in which this is the optimal approach are not yet
+    entirely clear (benchmarking is underway). In addition, it is not currently confirmed
+    to be compatible with propagation of the linked coupled cluster equations.
