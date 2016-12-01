@@ -646,7 +646,7 @@ contains
                 !$omp        max_cluster_size, contrib, D0_normalisation, D0_pos, rdm,    &
                 !$omp        qs, sys, bloom_stats, min_cluster_size, ref_det,             &
                 !$omp        proj_energy_cycle, D0_population_cycle, selection_data,      &
-                !$omp        nattempts_spawn, &
+                !$omp        nattempts_spawn, ex_lvl_dist, &
                 !$omp        ccmc_in, nprocs, ms_stats, qmc_in, load_bal_in, ndeath_nc,   &
                 !$omp        nparticles_change, ndeath, ndeath_nc_im, logging_info)
                 it = get_thread_id()
