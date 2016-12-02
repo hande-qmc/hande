@@ -223,7 +223,6 @@ contains
         integer(int_p), intent(inout) :: ndeath_tot
 
         complex(p) :: KiiAi
-        type(det_info_t) :: cdet_loc
 
         real(p) :: invdiagel, pdeath
         integer(int_p) :: nkill
@@ -278,12 +277,9 @@ contains
         ! Scale by tau and pselect before pass to specific functions.
         KiiAi = KiiAi * qs%tau / cluster%pselect
 
-        ! If we're expecting to sort by excitation level, need to add in extra factor
-        cdet_loc = cdet
+        if (ex_lvl_sort) call add_ex_level_bit_string_provided(sys%basis, cluster%excitation_level, cdet%f)
 
-        if (ex_lvl_sort) call add_ex_level_bit_string_provided(sys%basis, cluster%excitation_level, cdet_loc%f)
-
-        call stochastic_death_attempt(rng, real(KiiAi, p), 1, cdet_loc, qs%ref, sys%basis, spawn, &
+        call stochastic_death_attempt(rng, real(KiiAi, p), 1, cdet, qs%ref, sys%basis, spawn, &
                            nkill, pdeath)
         ndeath_tot = ndeath_tot + abs(nkill)
 
@@ -291,7 +287,7 @@ contains
                                             nkill, pdeath, real(cluster%amplitude,p), 0.0_p)
 
         if (sys%read_in%comp) then
-            call stochastic_death_attempt(rng, aimag(KiiAi), 2, cdet_loc, qs%ref, sys%basis, spawn, &
+            call stochastic_death_attempt(rng, aimag(KiiAi), 2, cdet, qs%ref, sys%basis, spawn, &
                                nkill, pdeath)
             ndeath_tot = ndeath_tot + abs(nkill)
 
