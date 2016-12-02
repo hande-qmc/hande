@@ -238,6 +238,8 @@ contains
         logical, intent(out) :: allowed_excitation
 
         integer :: ibp, ibe, n, ind, kb(sys%lattice%ndim), k3(3)
+! [review] - AJWT: I think, as the ternary_conserve arrays only deal with basis functions, poss_a and nposs_a only
+! [review] - AJWT: need to be bit_string_len long - similarly ibe below.
         integer(i0) :: poss_a(sys%basis%tot_string_len)
         integer :: nposs_a(sys%basis%tot_string_len), poss_a_orbs(i0_length)
 

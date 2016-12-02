@@ -214,6 +214,7 @@ contains
         integer :: level
         integer(i0), intent(in) :: f1(:), f2(:)
 
+! [review] - AJWT: surely this will go wrong if we're using tot_string_len rather than bit_string_len
         level = sum(count_set_bits(ieor(f1,f2)))/2
 
     end function get_excitation_level
@@ -350,7 +351,7 @@ contains
         ! Out:
         !    f_out(tot_string_len): bit string representation of the excited
         !        Slater determinant.
-
+! [review] - AJWT: NB the info bits may well be invalid on output.  
         use basis_types, only: basis_t
 
         type(basis_t), intent(in) :: basis

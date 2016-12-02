@@ -633,6 +633,8 @@ contains
 
         ! Just clear all information stored within information section
         ! of bit string.
+! [review] - AJWT: this resets all the 'info' bits (admittedly there's only the ex_lvl ones at the mo)
+! [review] - AJWT: so it's probably worth noting that in the name or comments.
         if (basis%info_string_len/=0) then
             f(basis%bit_string_len+1:) = 0_i0
         end if

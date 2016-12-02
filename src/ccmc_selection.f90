@@ -989,6 +989,7 @@ contains
 
                 call update_selection_block_probability(select_info, ex_lvl_dist%pop_ex_lvl, &
                                                     select_proportion, cluster_selection%size_weighting(i))
+! [review] - AJWT: Why nprocs**(i-1)?
                 cluster_selection%size_weighting(i) = cluster_selection%size_weighting(i) * (nprocs ** (i-1)) &
                                                     / ((abs_D0_normalisation) ** (i-1))
             end associate

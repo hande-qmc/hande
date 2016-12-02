@@ -106,6 +106,7 @@ contains
 
         k = 0
         k(1:sys%lattice%ndim) = 2*sys%ueg%basis%kmax
+! [review] - AJWT: I think ternary_conserve should just be 0:bit_string_len for the first dimension
         allocate(ternary_conserve(0:sys%basis%tot_string_len, -k(1):k(1), -k(2):k(2), -k(3):k(3)), stat=ierr)
         call check_allocate('ternary_conserve', (sys%basis%bit_string_len+1)*(2*k(1)+1)*(2*k(2)+1)*(2*k(3)+1), ierr)
         ternary_conserve = 0_i0

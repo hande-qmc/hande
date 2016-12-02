@@ -803,7 +803,7 @@ contains
 
         ! Function to create spawned particle in spawned list for ccmc
         ! calculations. Performs required manipulations of bit string
-        ! beforehand and accumulateion on blooming.
+        ! beforehand and accumulation on blooming.
 
         ! In:
         !   basis: info on current basis functions.
@@ -812,7 +812,7 @@ contains
         !       spawning from.
         !   connection: connection from state cdet particle has been spawned
         !       from.
-        !   nspawned: number of (encoded) particles created via spawning.
+        !   nspawned: number of (encoded) particles to be created via this spawning.
         !   ispace: index of space particles are to be added to.
         !   parent_cluster_ex_level: excitation level of parent cluster.
         !   fexcit: bit string for state spawned to. Only available for linked
@@ -821,7 +821,7 @@ contains
         !       level within walker list, false otherwise.
         ! In/Out:
         !   spawn: spawn_t type containing information on particles created
-        !       via spawning this iteration. Spawned partivles will be added
+        !       via spawning this iteration. Spawned particles will be added
         !       to this on exit.
         !   bloom_stats: information on blooms within a calculation. Will be
         !       updated if a bloom has occurred.
