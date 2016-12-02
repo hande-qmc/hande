@@ -16,7 +16,7 @@ contains
         ! greatest population if it exceeds some threshold relative to the
         ! current reference determinant.
 
-        ! Note this currently only looks at the Hamiltonian population.  The
+        ! Note this looks at the sum of populations over all spaces.  The
         ! setting of multiple reference determinants (e.g. different references
         ! for Hamiltonian walkers and Hellmann-Feynmann walkers) is currently not
         ! supported.  It is not clear if there is such a need as a good
@@ -44,7 +44,6 @@ contains
         real(p), intent(in) :: ref_det_factor
         type(qmc_state_t), intent(inout) :: qs
 
-        integer, parameter :: particle_type = 1
         integer :: i
         integer(i0), allocatable :: fmax(:)
         integer(int_p) :: max_pop
@@ -64,10 +63,10 @@ contains
         ! Find determinant with largest population.
         max_pop = 0_int_p
         do i = 1, qs%psip_list%nstates
-            if (abs(qs%psip_list%pops(particle_type,i)) > abs(max_pop)) then
-                max_pop = qs%psip_list%pops(particle_type,i)
+            if (sum(abs(qs%psip_list%pops(:,i))) > abs(max_pop)) then
+                max_pop = sum(abs(qs%psip_list%pops(:,i)))
                 fmax = qs%psip_list%states(:,i)
-                H00_max = qs%psip_list%dat(particle_type, i)
+                H00_max = qs%psip_list%dat(1, i)
             end if
         end do
 
@@ -86,7 +85,7 @@ contains
         if (all(fmax == qs%ref%f0)) then
             ! Max population on this processor is already the reference.  Don't change.
             in_data = (/ 0.0_dp, real(iproc,dp) /)
-        else if (abs(real_pop) > ref_det_factor*abs(qs%estimators%D0_population)) then
+        else if (abs(real_pop) > ref_det_factor*sum(abs(qs%estimators%D0_population))) then
             in_data = (/ real_pop, real(iproc,dp) /)
         else
             ! No det with sufficient population to become reference det on this
@@ -109,7 +108,7 @@ contains
 
 #else
 
-        if (abs(real_pop) > ref_det_factor*abs(qs%estimators%D0_population) .and. any(fmax /= qs%ref%f0)) then
+        if (abs(real_pop) > ref_det_factor*sum(abs(qs%estimators%D0_population)) .and. any(fmax /= qs%ref%f0)) then
             updated = .true.
             qs%ref%f0 = fmax
             qs%ref%H00 = H00_max
@@ -137,7 +136,7 @@ contains
                 write (6,'(1X,"#",1X,"Changed reference det to:",1X)',advance='no')
                 call write_det(sys%basis, sys%nel, qs%ref%f0, new_line=.true.)
                 write (6,'(1X,"#",1X,"Population on old reference det (averaged over report loop):",f10.2)') &
-                            qs%estimators%D0_population
+                            sum(abs(qs%estimators%D0_population))
                 write (6,'(1X,"#",1X,"Population on new reference det:",27X,f10.2)') real_pop
                 write (6,'(1X,"#",1X,"E0 = <D0|H|D0> = ",f20.12)') qs%ref%H00
                 write (6,'(1X,"#",1X,"Care should be taken with accumulating statistics before this point.")')
@@ -564,7 +563,7 @@ contains
         logical :: nb_comm_local
 #ifdef PARALLEL
         integer :: ierr
-        real(p) :: proj_energy_sum, D0_population_sum
+        real(p) :: proj_energy_sum(qs%psip_list%nspaces), D0_population_sum(qs%psip_list%nspaces)
 #endif
 
         ! Calculate the projected energy based upon the initial walker
@@ -586,8 +585,18 @@ contains
             ! WARNING!  We assume only the bit string, occ list and data field
             ! are required to update the projected estimator.
             D0_excit = get_excitation(sys%nel, sys%basis, cdet%f, qs%ref%f0)
-            call update_proj_energy_ptr(sys, qs%ref%f0, qs%trial%wfn_dat, cdet, weighted_population, &
-                                    qs%estimators, D0_excit, hmatel)
+            if (sys%read_in%comp) then
+                do ispace = 1, qs%psip_list%nspaces, 2
+                    call update_proj_energy_ptr(sys, qs%ref%f0, qs%trial%wfn_dat, cdet, weighted_population(ispace:ispace+1), &
+                                                qs%estimators(ispace), D0_excit, hmatel)
+                end do
+            else
+                do ispace = 1, qs%psip_list%nspaces
+                    call update_proj_energy_ptr(sys, qs%ref%f0, qs%trial%wfn_dat, cdet, [weighted_population(ispace)], &
+                                                qs%estimators(ispace), D0_excit, hmatel)
+                end do
+            end if
+
         end do
         call dealloc_det_info_t(cdet)
 
@@ -613,8 +622,10 @@ contains
                                MPI_SUM, MPI_COMM_WORLD, ierr)
             call mpi_allreduce(qs%psip_list%nparticles, ntot_particles, qs%psip_list%nspaces, MPI_REAL8, &
                                MPI_SUM, MPI_COMM_WORLD, ierr)
-            call mpi_allreduce(qs%estimators%D0_population, D0_population_sum, 1, mpi_preal, MPI_SUM, MPI_COMM_WORLD, ierr)
-            call mpi_allreduce(qs%psip_list%nstates, qs%estimators%tot_nstates, 1, MPI_INTEGER, MPI_SUM, MPI_COMM_WORLD, ierr)
+            call mpi_allreduce(qs%estimators%D0_population, D0_population_sum, qs%psip_list%nspaces, mpi_preal, MPI_SUM, &
+                               MPI_COMM_WORLD, ierr)
+            call mpi_allreduce(qs%psip_list%nstates, qs%estimators%tot_nstates, qs%psip_list%nspaces, MPI_INTEGER, MPI_SUM, &
+                               MPI_COMM_WORLD, ierr)
             qs%estimators%proj_energy = proj_energy_sum
             qs%estimators%D0_population = D0_population_sum
             ! TODO: HFS, DMQMC quantities
@@ -858,7 +869,7 @@ contains
         real(dp) :: rep_info_copy(nprocs*qs%psip_list%nspaces+nparticles_start_ind-1)
 
         ! Only update the timestep if not in vary shift mode.
-        update_tau = update_tau .and. .not. qs%vary_shift(1) .and. qmc_in%tau_search
+        update_tau = update_tau .and. .not. any(qs%vary_shift) .and. qmc_in%tau_search
 
         ! Using non-blocking communications?
         nb_comm_local = .false.

@@ -130,7 +130,9 @@ vquick =   ccmc/np1/Ne-RHF-cc-pVDZ-Lz-CCSDTQ5-multispawn-short
            fciqmc/np1/polyyne_complex_fciqmc
            fciqmc/np2/ueg_n10_rs2_e4_tau_search
            fciqmc_real_32/np1/He2-aug-cc-pVDZ_real_32_SS
+           fciqmc_real_32/np1/He2-aug-cc-pVDZ_real_32_SS_replica
            fciqmc_real_32/np1/He2-aug-cc-pVDZ_real_32_SS_Extra_MPI
+           fciqmc_real_32/np4/ueg_n7_rs1_e1_SS_cisdtq_replica
            ifciqmc/np1/hubbard_k_1d_ifciqmc
            ifciqmc/np1/hubbard_k_1d_ifciqmc_cas
            ifciqmc/np1/hubbard_k_nontilted_2d_ifciqmc
@@ -156,6 +158,8 @@ vquick64 = vquick
            dmqmc_real_64/np4/n2_sto3g_short
            fciqmc_real_64/np1/polyyne_complex_fciqmc-real64-hdf5-system
            fciqmc_real_64/np1/heisenberg_1d_neel_ref_fciqmc_real_64
+           fciqmc_real_64/np2/heisenberg_4x4_real_64_SS_replica
+           ifciqmc_real_64/np4/polyyne_complex_ifciqmc_replica
 
 # Tests that pass to a reduced tolerance of 1.e-5 when compiled with -DSINGLE_PRECISION.
 single_precision = dmqmc/np1/heisenberg_3d

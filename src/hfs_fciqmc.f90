@@ -170,12 +170,12 @@ contains
                     ! already looping over the determinants.
                     connection = get_excitation(sys%nel, sys%basis, cdet%f, qs%ref%f0)
                     call update_proj_energy_ptr(sys, qs%ref%f0, qs%trial%wfn_dat, cdet, real_population,  &
-                                                qs%estimators, connection, hmatel)
+                                                qs%estimators(1), connection, hmatel)
                     ! [todo] - JSS: pass real populations through to HFS projected energy update
                     call update_proj_hfs_ptr(sys, cdet%f, int(qs%psip_list%pops(1,idet)),&
                                              int(qs%psip_list%pops(2,idet)), cdet%data,  &
-                                             connection, hmatel, qs%estimators%D0_hf_population,  &
-                                             qs%estimators%proj_hf_O_hpsip, qs%estimators%proj_hf_H_hfpsip)
+                                             connection, hmatel, qs%estimators(1)%D0_hf_population,  &
+                                             qs%estimators(1)%proj_hf_O_hpsip, qs%estimators(1)%proj_hf_H_hfpsip)
 
                     ! Is this determinant an initiator?
                     ! A determinant can be an initiator in the Hamiltonian space
@@ -260,8 +260,9 @@ contains
                     ! created don't get an additional death/cloning opportunity.
 
                     ! Clone or die: Hellmann--Feynman walkers.
-                    call stochastic_death(rng, sys, qs, cdet%fock_sum, qs%psip_list%dat(2,idet), qs%shift(2), &
-                                          logging_info, qs%psip_list%pops(2,idet), qs%psip_list%nparticles(2), ndeath)
+                    call stochastic_death(rng, sys, qs, cdet%fock_sum, qs%psip_list%dat(2,idet), qs%shift(1), &
+                                          qs%estimators(1)%proj_energy_old, logging_info, qs%psip_list%pops(2,idet), &
+                                          qs%psip_list%nparticles(2), ndeath)
 
                     ! Clone Hellmann--Feynman walkers from Hamiltonian walkers.
                     ! Not in place, must set initiator flag.
@@ -277,7 +278,8 @@ contains
 
                     ! Clone or die: Hamiltonian walkers.
                     call stochastic_death(rng, sys, qs, cdet%fock_sum, qs%psip_list%dat(1,idet), qs%shift(1), &
-                                          logging_info, qs%psip_list%pops(1,idet), qs%psip_list%nparticles(1), ndeath)
+                                          qs%estimators(1)%proj_energy_old, logging_info, qs%psip_list%pops(1,idet), &
+                                          qs%psip_list%nparticles(1), ndeath)
 
                 end do
 

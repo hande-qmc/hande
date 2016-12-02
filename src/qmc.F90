@@ -82,8 +82,6 @@ contains
             call init_reference_restart(sys, reference_in, ri, qmc_state%ref)
         else if (present(qmc_state_restart)) then
             qmc_state%ref = qmc_state_restart%ref
-            qmc_state%estimators%D0_population = qmc_state_restart%estimators%D0_population
-            qmc_state%mc_cycles_done = qmc_state_restart%mc_cycles_done
         else
             call init_reference(sys, reference_in, qmc_state%ref)
         end if
@@ -93,11 +91,13 @@ contains
             qmc_state%psip_list%nspaces = qmc_state%psip_list%nspaces + 1
         else if (present(dmqmc_in)) then
             if (dmqmc_in%replica_tricks) qmc_state%psip_list%nspaces = qmc_state%psip_list%nspaces + 1
-        else if (sys%system == read_in) then
-            if (sys%read_in%comp) then
-                qmc_state%psip_list%nspaces = qmc_state%psip_list%nspaces + 1
-            end if
+        else if (fciqmc_in_loc%replica_tricks) then
+            qmc_state%psip_list%nspaces = qmc_state%psip_list%nspaces * 2
         end if
+        if (sys%read_in%comp) then
+            qmc_state%psip_list%nspaces = qmc_state%psip_list%nspaces * 2
+        end if
+
         ! Each determinant occupies string_len kind=i0 integers,
         ! qmc_state%psip_list%nspaces kind=int_p integers, qmc_state%psip_list%nspaces kind=p reals and one
         ! integer. If the Neel singlet state is used as the reference state for
@@ -117,6 +117,7 @@ contains
 
         if (present(qmc_state_restart)) then
             call move_qmc_state_t(qmc_state_restart, qmc_state)
+            qmc_state%mc_cycles_done = qmc_state_restart%mc_cycles_done
         else
             call init_spawn_store(qmc_in, qmc_state%psip_list%nspaces, qmc_state%psip_list%pop_real_factor, sys%basis, &
                                   fciqmc_in_loc%non_blocking_comm, qmc_state%par_info%load%proc_map, qmc_state%spawn_store)
@@ -127,6 +128,9 @@ contains
             call check_allocate('qmc_state%vary_shift', qmc_state%psip_list%nspaces, ierr)
             qmc_state%shift = qmc_in%initial_shift
             qmc_state%vary_shift = .false.
+
+            allocate(qmc_state%estimators(qmc_state%psip_list%nspaces))
+
             ! Initial walker distributions
             if (restart_in%read_restart) then
                 call read_restart_hdf5(ri, sys%basis%nbasis, fciqmc_in_loc%non_blocking_comm, qmc_state, uuid_restart)
@@ -144,9 +148,11 @@ contains
         call init_estimators(sys, qmc_in, restart_in%read_restart.and.fciqmc_in_loc%non_blocking_comm, qmc_state)
         if (present(qmc_state_restart)) call dealloc_excit_gen_data_t(qmc_state_restart%excit_gen_data)
         call init_excit_gen(sys, qmc_in, qmc_state%ref, qmc_state%excit_gen_data)
+
         qmc_state%propagator%quasi_newton = qmc_in%quasi_newton
         qmc_state%propagator%quasi_newton_threshold = qmc_in%quasi_newton_threshold
         qmc_state%propagator%quasi_newton_value = qmc_in%quasi_newton_value
+
     end subroutine init_qmc
 
     subroutine init_proc_pointers(sys, qmc_in, reference, dmqmc_in, fciqmc_in)
@@ -1002,7 +1008,12 @@ contains
         ! Zero population for all spaces.
         pl%pops(:,pl%nstates) = 0_int_p
         ! Set initial population of Hamiltonian walkers.
-        pl%pops(1,pl%nstates) = nint(D0_pop)*pl%pop_real_factor
+        if (sys%read_in%comp) then
+            ! Only have population in real spaces
+            pl%pops(1::2,pl%nstates) = nint(D0_pop)*pl%pop_real_factor
+        else
+            pl%pops(:,pl%nstates) = nint(D0_pop)*pl%pop_real_factor
+        end if
 
         ! Determine and set properties for the reference state which we start on.
         ! By definition, when using a single determinant as a reference state:
@@ -1110,6 +1121,7 @@ contains
         call move_spawn_t(qmc_state_old%spawn_store%spawn_recv, qmc_state_new%spawn_store%spawn_recv)
         call move_alloc(qmc_state_old%shift, qmc_state_new%shift)
         call move_alloc(qmc_state_old%vary_shift, qmc_state_new%vary_shift)
+        call move_alloc(qmc_state_old%estimators, qmc_state_new%estimators)
         call move_particle_t(qmc_state_old%psip_list, qmc_state_new%psip_list)
 
     end subroutine move_qmc_state_t

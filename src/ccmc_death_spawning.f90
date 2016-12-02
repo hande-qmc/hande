@@ -230,13 +230,13 @@ contains
             select case (cluster%nexcitors)
             case(0)
                 ! Death on the reference has H_ii - E_HF = 0.
-                KiiAi = (( - qs%estimators%proj_energy_old)*invdiagel + &
-                                    (qs%estimators%proj_energy_old - qs%shift(1)))*cluster%amplitude
+                KiiAi = ((-qs%estimators(1)%proj_energy_old)*invdiagel + &
+                                    (qs%estimators(1)%proj_energy_old - qs%shift(1)))*cluster%amplitude
             case(1)
                 ! Evaluating the commutator gives
                 ! <D1|[H,a1]|D0> = <D1|H|D1> - <D0|H|D0>
                 ! (this is scaled for quasinewton approaches)
-                KiiAi = (cdet%data(1) * invdiagel + qs%estimators%proj_energy_old - qs%shift(1))*cluster%amplitude
+                KiiAi = (cdet%data(1) * invdiagel + qs%estimators(1)%proj_energy_old - qs%shift(1))*cluster%amplitude
             case(2)
                 ! Evaluate the commutator
                 ! The cluster operators are a1 and a2 (with a1 D0 = D1, a2 D0 = D2,
@@ -254,13 +254,13 @@ contains
         else
             select case (cluster%nexcitors)
             case(0)
-                KiiAi = (( - qs%estimators%proj_energy_old)*invdiagel + &
-                                (qs%estimators%proj_energy_old - qs%shift(1)))*cluster%amplitude
+                KiiAi = ((-qs%estimators(1)%proj_energy_old)*invdiagel + &
+                                (qs%estimators(1)%proj_energy_old - qs%shift(1)))*cluster%amplitude
             case(1)
-                KiiAi = ((cdet%data(1) - qs%estimators%proj_energy_old)*invdiagel + &
-                                (qs%estimators%proj_energy_old - qs%shift(1)))*cluster%amplitude
+                KiiAi = ((cdet%data(1) - qs%estimators(1)%proj_energy_old)*invdiagel + &
+                                (qs%estimators(1)%proj_energy_old - qs%shift(1)))*cluster%amplitude
             case default
-                KiiAi = ((sc0_ptr(sys, cdet%f) - qs%ref%H00) - qs%estimators%proj_energy_old)*invdiagel *cluster%amplitude
+                KiiAi = ((sc0_ptr(sys, cdet%f) - qs%ref%H00) - qs%estimators(1)%proj_energy_old)*invdiagel *cluster%amplitude
             end select
         end if
 
@@ -275,7 +275,7 @@ contains
                            nkill, pdeath)
         ndeath_tot = ndeath_tot + abs(nkill)
 
-        if (debug) call write_logging_death(logging_info, real(KiiAi,p), qs%estimators%proj_energy_old, qs%shift(1), invdiagel, &
+        if (debug) call write_logging_death(logging_info, real(KiiAi,p), qs%estimators(1)%proj_energy_old, qs%shift(1), invdiagel, &
                                             nkill, pdeath, real(cluster%amplitude,p), 0.0_p)
 
         if (sys%read_in%comp) then
@@ -283,8 +283,8 @@ contains
                                nkill, pdeath)
             ndeath_tot = ndeath_tot + abs(nkill)
 
-            if (debug) call write_logging_death(logging_info, aimag(KiiAi), qs%estimators%proj_energy_old, qs%shift(1), invdiagel,&
-                                                nkill, pdeath, aimag(cluster%amplitude), 0.0_p)
+            if (debug) call write_logging_death(logging_info, aimag(KiiAi), qs%estimators(1)%proj_energy_old, qs%shift(1), &
+                                                invdiagel, nkill, pdeath, aimag(cluster%amplitude), 0.0_p)
         end if
 
     end subroutine stochastic_ccmc_death

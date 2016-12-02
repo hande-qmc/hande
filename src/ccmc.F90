@@ -718,21 +718,14 @@ contains
                         if (qs%propagator%quasi_newton) then
                             dfock = sum_sp_eigenvalues_bit_string(sys, qs%psip_list%states(:,iattempt)) - qs%ref%fock_sum
                         end if
+                        call stochastic_ccmc_death_nc(rng(it), ccmc_in%linked, sys, qs, iattempt==D0_pos, dfock, &
+                                          qs%psip_list%dat(1,iattempt), qs%estimators(1)%proj_energy_old, &
+                                          qs%psip_list%pops(1, iattempt), nparticles_change(1), ndeath_nc, &
+                                          logging_info)
                         if (sys%read_in%comp) then
                             call stochastic_ccmc_death_nc(rng(it), ccmc_in%linked, sys, qs, iattempt==D0_pos, dfock, &
-                                              qs%psip_list%dat(1,iattempt), qs%estimators%proj_energy_old, &
-                                              qs%psip_list%pops(1, iattempt), nparticles_change(1), ndeath_nc, &
-                                              logging_info)
-                            call stochastic_ccmc_death_nc(rng(it), ccmc_in%linked, sys, qs, iattempt==D0_pos, dfock, &
-                                              qs%psip_list%dat(1,iattempt), qs%estimators%proj_energy_old, &
-                                              qs%psip_list%pops(2, iattempt), nparticles_change(2), ndeath_nc_im, &
-                                              logging_info)
-                            ndeath_nc = ndeath_nc + ndeath_nc_im
-                            ndeath_nc_im = 0_int_p
-                        else
-                            call stochastic_ccmc_death_nc(rng(it), ccmc_in%linked, sys, qs, iattempt==D0_pos, dfock, &
-                                              qs%psip_list%dat(1,iattempt), qs%estimators%proj_energy_old, &
-                                              qs%psip_list%pops(1, iattempt), nparticles_change(1), ndeath_nc, &
+                                              qs%psip_list%dat(1,iattempt), qs%estimators(2)%proj_energy_old, &
+                                              qs%psip_list%pops(2, iattempt), nparticles_change(2), ndeath_nc, &
                                               logging_info)
                         end if
                     end do
@@ -771,8 +764,9 @@ contains
 
             update_tau = bloom_stats%nblooms_curr > 0
 
-            if (ccmc_in%density_matrices .and. qs%vary_shift(1)) call calc_rdm_energy(sys, qs%ref, rdm, qs%estimators%rdm_energy, &
-                                                                                      qs%estimators%rdm_trace)
+            if (ccmc_in%density_matrices .and. qs%vary_shift(1)) then
+                call calc_rdm_energy(sys, qs%ref, rdm, qs%estimators(1)%rdm_energy, qs%estimators(1)%rdm_trace)
+            end if
 
             error = qs%spawn_store%spawn%error .or. qs%psip_list%error
 
@@ -828,7 +822,7 @@ contains
 
         if (ccmc_in%density_matrices) then
             call write_final_rdm(rdm, sys%nel, sys%basis%nbasis, ccmc_in%density_matrix_file)
-            call calc_rdm_energy(sys, qs%ref, rdm, qs%estimators%rdm_energy, qs%estimators%rdm_trace)
+            call calc_rdm_energy(sys, qs%ref, rdm, qs%estimators(1)%rdm_energy, qs%estimators(1)%rdm_trace)
             if (parent) write (6,'(1x,"# Final energy from RDM",2x,es17.10)') qs%estimators%rdm_energy/qs%estimators%rdm_trace
             deallocate(rdm, stat=ierr)
             call check_deallocate('rdm',ierr)

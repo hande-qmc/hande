@@ -187,6 +187,9 @@ type fciqmc_in_t
     ! How to apply the initiator approximation in complex spaces.
     logical :: quadrature_initiator = .true.
 
+    ! Evolve two copies of the wavefunction to enable unbiased sampling of the RDM
+    logical :: replica_tricks = .false.
+
 end type fciqmc_in_t
 
 type semi_stoch_in_t
@@ -369,14 +372,14 @@ type semi_stoch_t
     type(csrp_t) :: hamil
     ! This array is used to store the values of amplitudes of deterministic
     ! states throughout a QMC calculation.
-    real(p), allocatable :: vector(:) ! sizes(iproc)
+    real(p), allocatable :: vector(:,:) ! (nspaces,sizes(iproc))
     ! If separate_annihilation is true, then an extra MPI call is used to join
     ! together the the deterministic vector arrays from each process. This
     ! array is used to hold the results, which will be the list of all
     ! deterministic amplitudes.
     ! If separate_annihilation is not true then this array will remain
     ! deallocated.
-    real(p), allocatable :: full_vector(:) ! tot_size
+    real(p), allocatable :: full_vector(:,:) ! (nspaces,tot_size)
     ! For the quasi_newton approach, each determinant in the deterministic space
     ! takes a weight for being spawned to.  This is included in the Hamiltonian
     ! directly, but must also be used when modifying the shift.  1-w_i is stored
@@ -588,7 +591,7 @@ type qmc_state_t
     ! to determine the processor location of a particle.  It is the programmer's
     ! responsibility to ensure these are kept up to date...
     type(parallel_t) :: par_info
-    type(estimators_t) :: estimators
+    type(estimators_t), allocatable :: estimators(:)
 end type qmc_state_t
 
 ! Copies of various settings that are required during annihilation.  This avoids having to pass through lots of different
@@ -722,8 +725,8 @@ contains
         case default
             call json_write_key(js, 'guiding_function', fciqmc%guiding_function)
         end select
-        call json_write_key(js, 'quadrature_initiator', fciqmc%quadrature_initiator, .true.)
-
+        call json_write_key(js, 'quadrature_initiator', fciqmc%quadrature_initiator)
+        call json_write_key(js, 'replica_tricks', fciqmc%replica_tricks, .true.)
         call json_object_end(js, terminal)
 
     end subroutine fciqmc_in_t_json

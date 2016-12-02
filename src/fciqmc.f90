@@ -112,7 +112,7 @@ contains
 
         real :: t1, t2
 
-        logical :: update_tau, restarting
+        logical :: update_tau, restarting, imag
 
         if (parent) then
             write (6,'(1X,"FCIQMC")')
@@ -239,27 +239,38 @@ contains
                     if (qs%propagator%quasi_newton) &
                         cdet%fock_sum = sum_sp_eigenvalues_occ_list(sys, cdet%occ_list) - qs%ref%fock_sum
 
-                    ! Extract the real sign from the encoded sign.
                     do ispace = 1, qs%psip_list%nspaces
+                        ! Extract the real sign from the encoded sign.
                         real_population(ispace) = real(qs%psip_list%pops(ispace,idet),p)/qs%psip_list%pop_real_factor
                         weighted_population(ispace) = importance_sampling_weight(qs%trial, cdet, real_population(ispace))
                     end do
 
                     ! If this is a deterministic state then copy its population
-                    ! across to the determ%vector array.
-                    call set_determ_info(idet, real_population(1), ideterm, determ, determ_parent)
+                    ! across to the determ%vector array. (Both replicas use the
+                    ! same deterministic space.)
+                    call set_determ_info(idet, real_population, ideterm, determ, determ_parent)
 
-                    ! It is much easier to evaluate the projected energy at the
-                    ! start of the i-FCIQMC cycle than at the end, as we're
-                    ! already looping over the determinants.
-                    connection = get_excitation(sys%nel, sys%basis, cdet%f, qs%ref%f0)
-                    call update_proj_energy_ptr(sys, qs%ref%f0, qs%trial%wfn_dat, cdet, weighted_population, &
-                                                qs%estimators, connection, hmatel)
                     ! Is this determinant an initiator?
                     call set_parent_flag(real_population, qmc_in%initiator_pop, determ%flags(idet), &
-                                        fciqmc_in%quadrature_initiator, cdet%initiator_flag)
+                                         fciqmc_in%quadrature_initiator, cdet%initiator_flag)
 
-                    do ispace  = 1, qs%psip_list%nspaces
+                    do ispace = 1, qs%psip_list%nspaces
+
+                        imag = sys%read_in%comp .and. mod(ispace,2) == 0
+
+                        ! It is much easier to evaluate the projected energy at the
+                        ! start of the i-FCIQMC cycle than at the end, as we're
+                        ! already looping over the determinants.
+                        connection = get_excitation(sys%nel, sys%basis, cdet%f, qs%ref%f0)
+                        if (.not. sys%read_in%comp) then
+                            call update_proj_energy_ptr(sys, qs%ref%f0, qs%trial%wfn_dat, cdet, [weighted_population(ispace)], &
+                                                        qs%estimators(ispace), connection, hmatel)
+                        else if (.not. imag) then
+                            call update_proj_energy_ptr(sys, qs%ref%f0, qs%trial%wfn_dat, cdet, &
+                                                        weighted_population(ispace:ispace+1), &
+                                                        qs%estimators(ispace), connection, hmatel)
+                        end if
+
 
                         nattempts_current_det = decide_nattempts(rng, real_population(ispace))
 
@@ -271,8 +282,8 @@ contains
                         ! Clone or die.
                         if (.not. determ_parent) then
                             call stochastic_death(rng, sys, qs, cdet%fock_sum, qs%psip_list%dat(1,idet), &
-                                            qs%shift(1), logging_info, qs%psip_list%pops(ispace,idet), &
-                                            qs%psip_list%nparticles(ispace), ndeath)
+                                            qs%shift(ispace), qs%estimators(ispace)%proj_energy_old, logging_info, &
+                                            qs%psip_list%pops(ispace,idet), qs%psip_list%nparticles(ispace), ndeath)
                         end if
                     end do
                 end do
@@ -427,6 +438,7 @@ contains
         integer(int_p) :: int_pop(spawn_recv%ntypes)
         real(p) :: real_pop(spawn_recv%ntypes)
         real(dp) :: list_pop
+        logical :: imag
 
         type(logging_t), intent(in) :: logging_info
         type(bloom_stats_t), intent(inout) :: bloom_stats
@@ -447,18 +459,20 @@ contains
             call decoder_ptr(sys, cdet%f, cdet)
             if (qs%propagator%quasi_newton) cdet%fock_sum = sum_sp_eigenvalues_occ_list(sys, cdet%occ_list) - qs%ref%fock_sum
 
-            ! It is much easier to evaluate the projected energy at the
-            ! start of the i-FCIQMC cycle than at the end, as we're
-            ! already looping over the determinants.
-            connection = get_excitation(sys%nel, sys%basis, cdet%f, qs%ref%f0)
-
-            call update_proj_energy_ptr(sys, qs%ref%f0, qs%trial%wfn_dat, cdet, real_pop, qs%estimators, &
-                                        connection, hmatel)
             ! Is this determinant an initiator?
             ! [todo] - pass determ_flag rather than 1.
             call set_parent_flag(real_pop, qmc_in%initiator_pop, 1, quadrature_initiator, cdet%initiator_flag)
 
             do ispace = 1, qs%psip_list%nspaces
+
+                imag = sys%read_in%comp .and. mod(ispace,2) == 0
+
+                ! It is much easier to evaluate the projected energy at the
+                ! start of the i-FCIQMC cycle than at the end, as we're
+                ! already looping over the determinants.
+                connection = get_excitation(sys%nel, sys%basis, cdet%f, qs%ref%f0)
+                call update_proj_energy_ptr(sys, qs%ref%f0, qs%trial%wfn_dat, cdet, real_pop, qs%estimators(ispace), &
+                                            connection, hmatel)
 
                 nattempts_current_det = decide_nattempts(rng, real_pop(ispace))
 
@@ -469,8 +483,8 @@ contains
 
                 ! Clone or die.
                 ! list_pop is meaningless as particle_t%nparticles is updated upon annihilation.
-                call stochastic_death(rng, sys, qs, cdet%fock_sum, cdet%data(1), qs%shift(1), logging_info, &
-                                      int_pop(ispace), list_pop, ndeath)
+                call stochastic_death(rng, sys, qs, cdet%fock_sum, cdet%data(1), qs%shift(ispace), &
+                                      qs%estimators(ispace)%proj_energy, logging_info, int_pop(ispace), list_pop, ndeath)
 
                 ! Update population of walkers on current determinant.
                 spawn_recv%sdata(spawn_recv%bit_str_len+1:spawn_recv%bit_str_len+spawn_recv%ntypes, idet) = int_pop

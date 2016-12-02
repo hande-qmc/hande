@@ -131,6 +131,9 @@ contains
         call check_allocate('qs%vary_shift', 1, ierr)
         qs%vary_shift = .false.
 
+        allocate(qs%estimators(1), stat=ierr)
+        call check_allocate('qs%estimators', 1, ierr)
+
         qs%target_particles = qmc_in%target_particles
         qs%tau = qmc_in%tau
 

@@ -503,26 +503,28 @@ contains
         type(dSFMT_t), intent(inout) :: rng
         type(semi_stoch_t), intent(in), optional :: determ
 
-        integer :: i, ind
-        integer(int_p) :: nspawn, spawn_sign, old_pop(psip_list%nspaces)
-        real(p) :: scaled_amp
+        integer :: i, ind, ispace
+        integer(int_p) :: nspawn(psip_list%nspaces), spawn_sign(psip_list%nspaces), old_pop(psip_list%nspaces)
+        real(p) :: scaled_amp(psip_list%nspaces)
 
-        do i = 1, size(determ%vector)
+        do i = 1, size(determ%vector,2)
             ind = determ%indices(i)
 
-            scaled_amp = determ%vector(i)*psip_list%pop_real_factor
+            scaled_amp = determ%vector(:,i)*psip_list%pop_real_factor
             spawn_sign = 1
-            if (scaled_amp < 0.0_p) spawn_sign = -1
+            where (scaled_amp < 0.0_p) spawn_sign = -1
             ! Stochastically round the scaled amplitude to the nearest integer
             ! in order to encode it.
             scaled_amp = abs(scaled_amp)
             nspawn = int(scaled_amp, int_p)
             scaled_amp = scaled_amp - nspawn
-            if (scaled_amp > get_rand_close_open(rng)) nspawn = nspawn + 1_int_p
+            do ispace = 1, psip_list%nspaces
+                if (scaled_amp(ispace) > get_rand_close_open(rng)) nspawn(ispace) = nspawn(ispace) + 1_int_p
+            end do
 
             ! Add in the now-encoded deterministic spawning amplitude.
             old_pop = psip_list%pops(:,ind)
-            psip_list%pops(1,ind) = psip_list%pops(1,ind) + spawn_sign*nspawn
+            psip_list%pops(:,ind) = psip_list%pops(:,ind) + spawn_sign*nspawn
             psip_list%nparticles = psip_list%nparticles + real(abs(psip_list%pops(:,ind))-abs(old_pop),p)/psip_list%pop_real_factor
         end do
 
