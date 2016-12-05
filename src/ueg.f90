@@ -107,6 +107,10 @@ contains
         k = 0
         k(1:sys%lattice%ndim) = 2*sys%ueg%basis%kmax
 ! [review] - AJWT: I think ternary_conserve should just be 0:bit_string_len for the first dimension
+! [reply] - CJCS: You're correct, it could be this size. However, we often use ternary conserve
+! [reply] - CJCS: for direct comparison with bit strings of length tot_string_length. Storing
+! [reply] - CJCS: the extra space is in this case easier than passing bit_string_length through
+! [reply] - CJCS: to all additional routines.
         allocate(ternary_conserve(0:sys%basis%tot_string_len, -k(1):k(1), -k(2):k(2), -k(3):k(3)), stat=ierr)
         call check_allocate('ternary_conserve', (sys%basis%bit_string_len+1)*(2*k(1)+1)*(2*k(2)+1)*(2*k(3)+1), ierr)
         ternary_conserve = 0_i0

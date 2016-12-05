@@ -86,7 +86,7 @@ contains
         ! e1 to the cluster e2.
         ! ***WARNING***: if allowed is false then cluster_excitor is *not* updated.
 
-        use basis_types, only: basis_t
+        use basis_types, only: basis_t, reset_extra_info_bit_string
 
         use bit_utils, only: count_set_bits
         use const, only: i0_end
@@ -111,7 +111,7 @@ contains
         integer(i0) :: permute_operators(basis%tot_string_len)
 
         excitor_loc = excitor
-        call remove_ex_level_bit_string(basis, excitor_loc)
+        call reset_extra_info_bit_string(basis, excitor_loc)
 
         ! Apply excitor to the cluster of excitors.
 
@@ -623,23 +623,6 @@ contains
         end associate
 
     end subroutine end_ex_lvl_dist_t
-
-    pure subroutine remove_ex_level_bit_string(basis, f)
-
-        use basis_types, only: basis_t
-
-        type(basis_t), intent(in) :: basis
-        integer(i0), intent(inout) :: f(:)
-
-        ! Just clear all information stored within information section
-        ! of bit string.
-! [review] - AJWT: this resets all the 'info' bits (admittedly there's only the ex_lvl ones at the mo)
-! [review] - AJWT: so it's probably worth noting that in the name or comments.
-        if (basis%info_string_len/=0) then
-            f(basis%bit_string_len+1:) = 0_i0
-        end if
-
-    end subroutine remove_ex_level_bit_string
 
     subroutine add_ex_level_bit_string_calc(basis, f0, f)
 

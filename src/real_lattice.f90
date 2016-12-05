@@ -43,9 +43,9 @@ contains
 
             sr%t_self_images = any(abs(sl%box_length-1.0_p) < depsilon)
 
-! [review] - AJWT: Shouldn't these be bit_string_len ?
-            allocate(sr%tmat(sys%basis%tot_string_len,sys%basis%nbasis), stat=ierr)
-            call check_allocate('sr%tmat',sys%basis%tot_string_len*sys%basis%nbasis,ierr)
+            allocate(sr%tmat(sys%basis%bit_string_len,sys%basis%nbasis), stat=ierr)
+            call check_allocate('sr%tmat',sys%basis%bit_string_len*sys%basis%nbasis,ierr)
+            ! Information bits are not used but need to enable easy comparison to bit strings.
             allocate(sr%connected_orbs(sys%basis%tot_string_len,sys%basis%nbasis), stat=ierr)
             call check_allocate('sr%connected_orbs',sys%basis%tot_string_len*sys%basis%nbasis,ierr)
             allocate(lvecs(sl%ndim,3**sl%ndim), stat=ierr)
@@ -140,8 +140,7 @@ contains
             sr%connected_sites = 0
             do i = 1, sys%basis%nbasis
                 v = 0
-! [review] - AJWT: Shouldn't these be bit_string_len ?
-                do ind = 1, sys%basis%tot_string_len
+                do ind = 1, sys%basis%bit_string_len
                     do pos = 0, i0_end
                         if (btest(sr%connected_orbs(ind,i), pos)) then
                             v = v + 1

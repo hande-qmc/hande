@@ -87,6 +87,10 @@ module basis_types
         ! We can store additional information in the bit string to enable different
         ! sorting orders. This takes the form of an additional info_string_len type-i0
         ! integers at the end of the bit string.
+        ! NB This information should be removed when manipulating bit strings, eg. in
+        ! excitation generators. As it is currently only used within CCMC this simply
+        ! involves removing this information when selecting a cluster, but for any
+        ! other use it may be more involved.
         integer :: info_string_len
         ! The overall length of the bit string in type-i0 integers is the sum of
         ! bit_string_len and info_string_len
@@ -179,6 +183,19 @@ module basis_types
             end do
 
         end subroutine init_basis_strings
+
+        pure subroutine reset_extra_info_bit_string(basis, f)
+
+            type(basis_t), intent(in) :: basis
+            integer(i0), intent(inout) :: f(:)
+
+            ! Just clear all information stored within information section
+            ! of bit string.
+            if (basis%info_string_len/=0) then
+                f(basis%bit_string_len+1:) = 0_i0
+            end if
+
+        end subroutine reset_extra_info_bit_string
 
         subroutine print_basis_metadata(b, nel, heisenberg_system)
 

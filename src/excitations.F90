@@ -215,6 +215,11 @@ contains
         integer(i0), intent(in) :: f1(:), f2(:)
 
 ! [review] - AJWT: surely this will go wrong if we're using tot_string_len rather than bit_string_len
+! [reply] - CJCS: The way I've written the functionality for CCMC we have the info section of the
+! [reply] - CJCS: bit string clear when actually performing manipulation (eg. collapsing clusters)
+! [reply] - CJCS: and we only reset it when calling a function to add a new particle into the lists.
+! [reply] - CJCS: As such, this should function fine and we avoid having to pass a ton of additional
+! [reply] - CJCS: info into all bit string manipulations.
         level = sum(count_set_bits(ieor(f1,f2)))/2
 
     end function get_excitation_level
@@ -352,6 +357,10 @@ contains
         !    f_out(tot_string_len): bit string representation of the excited
         !        Slater determinant.
 ! [review] - AJWT: NB the info bits may well be invalid on output.  
+! [reply] - CJCS: As with get_excit_level, we make sure the info bits are clear
+! [reply] - CJCS: before performing any manipulations and so as long as we regenerate
+! [reply] - CJCS: this information when needed (ie. particle creation) we avoid any
+! [reply] - CJCS: issues.
         use basis_types, only: basis_t
 
         type(basis_t), intent(in) :: basis
