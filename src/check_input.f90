@@ -111,6 +111,10 @@ contains
                 'Complex non-blocking comms not yet implemented.')
         end if
 
+        ! This is mainly a precaution, as the majority of functionality is possible, but totally unused.
+        ! Major unresolved issue is likely to be semistochastic restart files.
+        if (sys%basis%info_string_len /= 0) call stop_all(this, &
+            'Fciqmc is incompatible with additional information being stored in the bit string. Please implement if needed.')
 
     end subroutine check_fciqmc_opts
 
@@ -182,6 +186,8 @@ contains
             if (fci_in%lanczos_string_len <= 0) call stop_all(this,'Lanczos basis not positive.')
             if (fci_in%nlanczos_eigv <= 0) call stop_all(this,'# lanczos eigenvalues not positive.')
         end if
+        if (sys%basis%info_string_len /= 0) call stop_all(this, &
+            'FCI is incompatible with additional information being stored in the bit string. Please implement if needed.')
 
     end subroutine check_fci_opts
 
@@ -306,6 +312,9 @@ contains
 
         if (sys%read_in%comp) call stop_all(this, 'Complex DMQMC not yet implemented')
 
+        if (sys%basis%info_string_len /= 0) call stop_all(this, &
+            'DMQMC is incompatible with additional information being stored in the bit string. Please implement if needed.')
+
     end subroutine check_dmqmc_opts
 
     subroutine check_ccmc_opts(sys, ccmc_in)
@@ -349,6 +358,9 @@ contains
             if (ccmc_in%linked) call stop_all(this, &
                 "Even selection routines are not currently confirmed to work with linked ccmc, so have been disabled")
         end if
+
+        if (sys%basis%info_string_len /= 0 .and. .not. ccmc_in%even_selection) call stop_all(this, &
+            'Additional space allocated in bit strings for no reason. Something has gone wrong.')
     end subroutine check_ccmc_opts
 
 end module check_input
