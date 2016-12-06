@@ -9,7 +9,7 @@ contains
 ! --- Initialisation routines ---
 
     subroutine init_qmc(sys, qmc_in, restart_in, load_bal_in, reference_in, annihilation_flags, qmc_state, uuid_restart, &
-                        dmqmc_in, fciqmc_in, qmc_state_restart)
+                        dmqmc_in, fciqmc_in, qmc_state_restart, regenerate_info)
 
         ! Initialisation for fciqmc calculations.
         ! Setup the spin polarisation for the system, initialise the RNG,
@@ -38,6 +38,8 @@ contains
         !       correctly allocated and useful information printed out...
         !    uuid_restart: if using a restart file, the UUID of the calculations
         !       that generated it.
+        !    regenerate_info (optional): true if additional information within
+        !       bit string needs to be regenerated for a read-in restart file.
 
         use checking, only: check_allocate
 
@@ -64,11 +66,14 @@ contains
         type(dmqmc_in_t), intent(in), optional :: dmqmc_in
         type(fciqmc_in_t), intent(in), optional :: fciqmc_in
         type(qmc_state_t), intent(inout), optional :: qmc_state_restart
+        logical, intent(out), optional :: regenerate_info
 
         integer :: ierr
         type(fciqmc_in_t) :: fciqmc_in_loc
         type(dmqmc_in_t) :: dmqmc_in_loc
         type(restart_info_t) :: ri
+
+        regenerate_info = .false.
 
         if (present(fciqmc_in)) fciqmc_in_loc = fciqmc_in
         if (present(dmqmc_in)) dmqmc_in_loc = dmqmc_in
@@ -129,8 +134,8 @@ contains
             qmc_state%vary_shift = .false.
             ! Initial walker distributions
             if (restart_in%read_restart) then
-                call read_restart_hdf5(ri, sys%basis%nbasis, fciqmc_in_loc%non_blocking_comm, qmc_state, uuid_restart, &
-                                        sys%basis%info_string_len)
+                call read_restart_hdf5(ri, sys%basis%nbasis, fciqmc_in_loc%non_blocking_comm, sys%basis%info_string_len, &
+                                        qmc_state, uuid_restart, regenerate_info)
             else if (doing_calc(dmqmc_calc)) then
                 ! Initial distribution handled later
                 qmc_state%psip_list%nstates = 0

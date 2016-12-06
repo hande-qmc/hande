@@ -433,7 +433,7 @@ module restart_hdf5
 
         end subroutine dump_restart_hdf5
 
-        subroutine read_restart_hdf5(ri, nbasis, nb_comm, qs, uuid_restart, info_string_len)
+        subroutine read_restart_hdf5(ri, nbasis, nb_comm, info_string_len, qs, uuid_restart, regenerate_info)
 
             ! Read QMC data from restart file.
 
@@ -449,6 +449,8 @@ module restart_hdf5
             !       information is also read into qs%spawn_store%spawn_recv.
             ! Out:
             !    uuid_restart: UUID of the calculation that generated the restart file
+            !    regenerate_info: whether the walker list obtained from a restart file
+            !       requires regeneration of the extra information in the bit string.
 
 #ifndef DISABLE_HDF5
             use hdf5
@@ -471,7 +473,7 @@ module restart_hdf5
             integer, intent(in) :: nbasis, info_string_len
             type(qmc_state_t), intent(inout) :: qs
             character(36), intent(out) :: uuid_restart
-
+            logical, intent(out) :: regenerate_info
 #ifndef DISABLE_HDF5
             ! HDF5 kinds
             type(hdf5_kinds_t) :: kinds
@@ -645,13 +647,29 @@ module restart_hdf5
                 if (exists) call hdf5_read(subgroup_id, dproc_map, kinds, shape(qs%par_info%load%proc_map%map, kind=int_64), &
                                            qs%par_info%load%proc_map%map)
 
+                ! Check for identifier from redistribute to indicate need to resort walker list.
                 call h5lexists_f(subgroup_id, dresort, exists, ierr)
                 if (exists) then
                     call hdf5_read(subgroup_id, dresort, resort)
-                    associate(pl=>qs%psip_list)
-                        if (resort) call qsort(pl%nstates, pl%states, pl%pops, pl%dat)
-                    end associate
                 end if
+
+                ! Need to specify whether to regenerate information in bit string or resort anyway.
+                if (info_string_len_restart /= info_string_len .and. info_string_len /= 0) then
+                    regenerate_info = .true.
+                    ! Resorting will be done anyway after regneration so no need to do twice.
+                    resort = .false.
+                else if (info_string_len == 0 .and. info_string_len_restart /= 0) then
+                    regenerate_info = .false.
+                    ! States will be out of order, so need to resort anyway.
+                    resort = .true.
+                else
+                    ! Restarted with same string len, so assume information is as required.
+                    regenerate_info = .false.
+                end if
+
+                associate(pl=>qs%psip_list)
+                    if (resort) call qsort(pl%nstates, pl%states, pl%pops, pl%dat)
+                end associate
 
                 call h5gclose_f(subgroup_id, ierr)
 

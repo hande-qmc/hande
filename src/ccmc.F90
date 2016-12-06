@@ -301,7 +301,7 @@ contains
                                   init_amp_psel_accumulation
         use ccmc_death_spawning, only: stochastic_ccmc_death_nc
         use ccmc_utils, only: init_contrib, dealloc_contrib, find_D0, cumulative_population, init_ex_lvl_dist_t, &
-                              update_ex_lvl_dist
+                              update_ex_lvl_dist, regenerate_ex_levels_psip_list
         use determinants, only: det_info_t, alloc_det_info_t, dealloc_det_info_t, sum_sp_eigenvalues_occ_list, &
                                 sum_sp_eigenvalues_bit_string, decode_det
         use excitations, only: excit_t, get_excitation_level, get_excitation
@@ -373,7 +373,7 @@ contains
 
         logical :: update_tau, error
 
-        logical :: seen_D0
+        logical :: seen_D0, regenerate_info
         real(p) :: dfock
         complex(p) :: D0_population_cycle, proj_energy_cycle
 
@@ -393,7 +393,14 @@ contains
 
         ! Initialise data.
         call init_qmc(sys, qmc_in, restart_in, load_bal_in, reference_in, annihilation_flags, qs, &
-                      uuid_restart, qmc_state_restart=qmc_state_restart)
+                      uuid_restart, qmc_state_restart=qmc_state_restart, regenerate_info=regenerate_info)
+
+        if (ccmc_in%even_selection .and. regenerate_info) then
+            call regenerate_ex_levels_psip_list(sys%basis, qs)
+        else if (regenerate_info) then
+            call stop_all('do_ccmc', &
+            'Asked to regenerate extra information after restart but no extra information expected.')
+        end if
 
         if (debug) call init_logging(logging_in, logging_info, qs%ref%ex_level)
 

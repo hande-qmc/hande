@@ -771,4 +771,41 @@ contains
 
     end subroutine update_noncumulative_dist_realp
 
+    subroutine regenerate_ex_levels_psip_list(basis, qs)
+
+        ! Regenerates excitation level information stored at start of bit string
+        ! within states in psip list. For use when restarting from a restart file
+        ! not containing this information.
+        ! Also sorts the list, as ordering will change.
+        ! Hashing only uses nbasis bits, so should be unaffected by the additional
+        ! information at the start of the bit string.
+        ! [todo] figure out a way to double check this is the case.
+
+        ! In:
+        !   basis: information on single-particle basis in use.
+        ! In/Out:
+        !   qmc_state: information on current state of calculation. We update and
+        !       reorder the bit strings within the psip list, using the reference
+        !       determinant bit string stored within qs%ref%f0.
+
+        use basis_types, only: basis_t
+        use qmc_data, only: qmc_state_t
+        use sort, only: qsort
+
+        type(basis_t), intent(in) :: basis
+        type(qmc_state_t), intent(inout) :: qs
+
+        integer :: istate
+
+        do istate = 1, qs%psip_list%nstates
+            call add_ex_level_bit_string_calc(basis, qs%ref%f0, qs%psip_list%states(:,istate))
+        end do
+
+        associate(pl=>qs%psip_list)
+             call qsort(pl%nstates, pl%states, pl%pops, pl%dat)
+        end associate
+
+
+    end subroutine regenerate_ex_levels_psip_list
+
 end module ccmc_utils
