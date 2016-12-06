@@ -129,7 +129,8 @@ contains
             qmc_state%vary_shift = .false.
             ! Initial walker distributions
             if (restart_in%read_restart) then
-                call read_restart_hdf5(ri, sys%basis%nbasis, fciqmc_in_loc%non_blocking_comm, qmc_state, uuid_restart)
+                call read_restart_hdf5(ri, sys%basis%nbasis, fciqmc_in_loc%non_blocking_comm, qmc_state, uuid_restart, &
+                                        sys%basis%info_string_len)
             else if (doing_calc(dmqmc_calc)) then
                 ! Initial distribution handled later
                 qmc_state%psip_list%nstates = 0
@@ -857,7 +858,7 @@ contains
         call check_allocate('reference%occ_list0',sys%nel,ierr)
         allocate(reference%hs_occ_list0(sys%nel), stat=ierr)
         call check_allocate('reference%hs_occ_list0',sys%nel,ierr)
-        call get_reference_hdf5(ri, reference)
+        call get_reference_hdf5(ri, sys%basis%info_string_len, reference)
 
         ! Need to re-calculate the reference determinant data
         call decode_det(sys%basis, reference%f0, reference%occ_list0)

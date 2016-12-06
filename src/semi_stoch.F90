@@ -1401,13 +1401,13 @@ contains
             ! Perform the reading in of determinants to determ%dets.
             if (semi_stoch_version_restart == 0 .and. semi_stoch_version >= 1) then
                 ! Check for correct conversion of 32/64 bit integers is performed within change_nbasis.
-                call change_nbasis(file_id, 'dets', kinds, determ%dets)
+                call change_nbasis(file_id, 'dets', kinds, 0, 0, determ%dets)
 
             else if (dtype_equal(file_id, 'dets', kinds%i0)) then
                 call hdf5_read(file_id, 'dets', kinds, shape(determ%dets, kind=int_64), determ%dets)
 
             else
-                call convert_dets(file_id, 'dets', kinds, determ%dets)
+                call convert_dets(file_id, 'dets', kinds, 0, 0, determ%dets)
             end if
 
             ! Close HDF5 file and HDF5.
