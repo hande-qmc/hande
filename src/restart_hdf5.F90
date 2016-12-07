@@ -561,6 +561,7 @@ module restart_hdf5
                     ! Must be written before info_string_len was implemented; as such must be 0.
                     info_string_len_restart = 0
                 end if
+                call h5gclose_f(group_id, ierr)
             else
                 ! assume not changing basis, and must have written before info_string_len
                 ! implemented so must be 0.
@@ -729,7 +730,7 @@ module restart_hdf5
 #ifndef DISABLE_HDF5
             use hdf5
             use hdf5_helper, only: hdf5_kinds_t, hdf5_read, hdf5_path
-            use restart_utils, only: convert_ref
+            use restart_utils, only: convert_ref, change_ninfo
 #endif
             use errors, only: stop_all
             use const
@@ -778,9 +779,12 @@ module restart_hdf5
                 ! For even selection additional information don't need to worry about effect of
                 ! changing info string length, as reference ex_level=0.
                 ! [todo] cover case where info_string_len changes when reference information is nonzero.
-                if (i0_length == i0_length_restart) then
+                if (i0_length == i0_length_restart .and. info_string_len == info_string_len_restart) then
                     call hdf5_read(group_id, dref, kinds, shape(reference%f0, kind=int_64), reference%f0)
                     call hdf5_read(group_id, dhsref, kinds, shape(reference%hs_f0, kind=int_64), reference%hs_f0)
+                else if (info_string_len /= info_string_len_restart) then
+                    call change_ninfo(group_id, dref, kinds, info_string_len, info_string_len_restart, reference%f0)
+                    call change_ninfo(group_id, dhsref, kinds, info_string_len, info_string_len_restart, reference%hs_f0)
                 else
                     call convert_ref(group_id, dref, kinds, info_string_len, info_string_len_restart, reference%f0)
                     call convert_ref(group_id, dhsref, kinds, info_string_len, info_string_len_restart, reference%hs_f0)
