@@ -1,0 +1,56 @@
+sys = ueg {
+    electrons = 6,
+    ms = 0,
+    dim = 3,
+    cutoff = 2,
+    rs = 2.0,
+}
+
+qmc_opts = {
+    tau = 0.005, 
+    tau_search = true,
+    rng_seed = 1234,
+    init_pop = 50, 
+    mc_cycles = 20,
+    nreports = 50,
+    target_population = 10000,
+    real_amplitudes = true,
+    real_amplitude_force_32 = true,
+    spawn_cutoff = 0.01,
+    state_size = 75000,
+    spawned_state_size = 75000,
+    vary_shift_from = 'proje',
+}
+
+ccmc {
+    sys = sys,
+    qmc = qmc_opts,
+    reference = {
+        ex_level = 4,
+    },
+    ccmc = {
+        full_non_composite = true,
+        even_selection = false,
+    },
+    restart = {
+        write = 0,
+    },
+}
+
+
+ccmc {
+    sys = sys,
+    qmc = qmc_opts,
+    reference = {
+        ex_level = 4,
+    },
+    ccmc = {
+        full_non_composite = true,
+        even_selection = true,
+    },
+    restart = {
+        read = 0,
+    },
+}
+
+

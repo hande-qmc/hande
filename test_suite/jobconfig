@@ -95,6 +95,7 @@ quick =   vquick
 
 quick64 = quick
           ccmc_real_64/np4/NH3-6-31g_ccsdt_even_selection
+          ccmc_real_64/np1/ueg_n10_rs2_e4_ccmc_even_fnc_restart
           dmqmc_real_64/np4/heisenberg_4x4_replica/
           dmqmc_real_64/np4/n2_sto3g/
           dmqmc_real_64/np4/ueg_n4_rs2_e4/
