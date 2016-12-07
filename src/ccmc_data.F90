@@ -183,7 +183,7 @@ contains
             call dealloc_int2d(sd%cluster_sizes_info)
         end if
         if (allocated(sd%cluster_sizes_proportion)) then
-            call dealloc_real1d(sd%cluster_sizes_proportion)
+            call dealloc_rdp1d(sd%cluster_sizes_proportion)
         end if
         if (allocated(sd%size_weighting)) then
             deallocate(sd%size_weighting, stat=ierr)
@@ -217,7 +217,10 @@ contains
     end subroutine end_selection_data
 
 ! [review] - AJWT: These doen't really seem like they belong in this file.
-    subroutine dealloc_real1d(array)
+! [reply] - CJCS: I agree, but don't really see any other places they fit
+! [reply] - CJCS: better. Considered base_types but since arrays of this
+! [reply] - CJCS: type are only in CCMC wasn't sure.
+    subroutine dealloc_rdp1d(array)
         use base_types, only: alloc_rdp1d
         use checking, only: check_deallocate
         type(alloc_rdp1d), allocatable, intent(inout) :: array(:)
@@ -227,7 +230,7 @@ contains
             deallocate(array(i)%v, stat=ierr)
             call check_deallocate('array', ierr)
         end do
-    end subroutine dealloc_real1d
+    end subroutine dealloc_rdp1d
 
     subroutine dealloc_int2d(array)
         use base_types, only: alloc_int2d

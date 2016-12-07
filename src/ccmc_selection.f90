@@ -992,6 +992,9 @@ contains
                 call update_selection_block_probability(select_info, ex_lvl_dist%pop_ex_lvl, &
                                                     select_proportion, cluster_selection%size_weighting(i))
 ! [review] - AJWT: Why nprocs**(i-1)?
+! [reply] - CJCS: To account for the fact that only a certain proportion of the composite
+! [reply] - CJCS: clusters are available to us. If we only use the combinations we can
+! [reply] - CJCS: 'see' we undersample larger cluster sizes in the overall wavefunction.
                 cluster_selection%size_weighting(i) = cluster_selection%size_weighting(i) * (nprocs ** (i-1)) &
                                                     / ((abs_D0_normalisation) ** (i-1))
             end associate
