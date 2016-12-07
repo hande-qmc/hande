@@ -238,13 +238,7 @@ contains
         logical, intent(out) :: allowed_excitation
 
         integer :: ibp, ibe, n, ind, kb(sys%lattice%ndim), k3(3)
-! [review] - AJWT: I think, as the ternary_conserve arrays only deal with basis functions, poss_a and nposs_a only
-! [review] - AJWT: need to be bit_string_len long - similarly ibe below.
-! [reply] - CJCS: They could be, but this complicates many of the comparisons we would then do (see below).
-! [reply] - CJCS: Storing the extra information is probably preferable to having slices of varying lengths
-! [reply] - CJCS: being passed around, at least for now. Changing to using strings of length bit_string_len
-! [reply] - CJCS: rather than tot_string_len where possible would be a considerable undertaking of itself,
-! [reply] - CJCS: so I think leave it for another branch if the optimisation is worth it.
+        ! [todo] rewrite using on bit_string_len, as we don't require the additional info_string_len info.
         integer(i0) :: poss_a(sys%basis%tot_string_len)
         integer :: nposs_a(sys%basis%tot_string_len), poss_a_orbs(i0_length)
 
