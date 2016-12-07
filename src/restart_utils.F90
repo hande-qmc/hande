@@ -134,7 +134,8 @@ contains
             dets(:dims(1)-info_string_len_restart,:dims(2)) = dets_tmp(:dims(1)-info_string_len_restart,:)
             dets(size(dets,dim=1)-info_string_len+1:,:dims(2)) = dets_tmp(dims(1)-info_string_len_restart+1:,:)
         else
-            dets(:size(dets,dim=1)-info_string_len,:dims(2)) = dets_tmp(:dims(1)-info_string_len_restart,:dims(2))
+            ! We know that dims(1)-info_string_len_restart <= size(dets,dim=1)-info_string_len
+            dets(:dims(1)-info_string_len_restart,:dims(2)) = dets_tmp(:dims(1)-info_string_len_restart,:dims(2))
         end if
         deallocate(dets_tmp)
 

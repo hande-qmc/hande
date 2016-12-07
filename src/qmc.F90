@@ -72,8 +72,9 @@ contains
         type(fciqmc_in_t) :: fciqmc_in_loc
         type(dmqmc_in_t) :: dmqmc_in_loc
         type(restart_info_t) :: ri
+        logical :: regenerate_info_loc
 
-        regenerate_info = .false.
+        regenerate_info_loc = .false.
 
         if (present(fciqmc_in)) fciqmc_in_loc = fciqmc_in
         if (present(dmqmc_in)) dmqmc_in_loc = dmqmc_in
@@ -135,7 +136,7 @@ contains
             ! Initial walker distributions
             if (restart_in%read_restart) then
                 call read_restart_hdf5(ri, sys%basis%nbasis, fciqmc_in_loc%non_blocking_comm, sys%basis%info_string_len, &
-                                        qmc_state, uuid_restart, regenerate_info)
+                                        qmc_state, uuid_restart, regenerate_info_loc)
             else if (doing_calc(dmqmc_calc)) then
                 ! Initial distribution handled later
                 qmc_state%psip_list%nstates = 0
@@ -144,6 +145,7 @@ contains
                                           qmc_state%ref, qmc_state%psip_list)
             end if
         end if
+        if (present(regenerate_info)) regenerate_info = regenerate_info_loc
 
         call init_annihilation_flags(qmc_in, fciqmc_in_loc, dmqmc_in_loc, annihilation_flags)
         call init_trial(sys, fciqmc_in_loc, qmc_state%trial)
