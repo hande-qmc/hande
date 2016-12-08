@@ -2,8 +2,6 @@ module blocking
 
 use qmc_data, only: dt_numerator, dt_denominator, dt_shift, dt_proj_energy
 
-! [review] - JSS: cite blocking (and DDDA?) paper(s).
-! [review] - AJWT: Perhaps also Flyvbjerg & Petersen?
 ! Module for performing reblocking on the fly.
 
 ! References
@@ -65,7 +63,6 @@ contains
 
         ! Each dimension and what they mean are listed in qmc_data.f90
         ! blocking_t and reblock_data_t.
-        ! [review] - JSS: where? explcitly state in blocking_t (if this is correct).
 
         allocate(bl%reblock_data(3, 0:bl%lg_max), stat=ierr)
         call check_allocate('bl%reblock_data',(bl%lg_max+1)*3,ierr)
@@ -158,7 +155,6 @@ contains
 
         integer, intent(in) :: iunit
 
-        ! [review] - JSS: simpler is: write (iunit, '(1X,"#iterations")') etc.
         write(iunit, '(1X, "#iterations")', advance = 'no')
         write(iunit, '(1X, "Start")', advance = 'no')
         write(iunit, '(2X, "Mean \sum H_0j N_j")', advance = 'no')
@@ -333,7 +329,6 @@ contains
         do i = dt_numerator, dt_shift
             do j = 0, (bl%lg_max)
                 B = 2**(j)
-! [review] - CJCS: From what you said above shouldn't this be B**3 >?
                 if (B > (2*bl%reblock_data_2(i,j)%n_blocks*real(B)*((bl%block_std(i,j) / bl%block_std(i,0))**4))**(1.0/3.0)) then
                     bl%optimal_size(i) = j
                     exit
@@ -517,7 +512,6 @@ contains
                             bl%err_comp(j,i) = bl%optimal_err(j)/ (bl%optimal_std(j) * sqrt(real((int(real(bl%n_reports_blocked &
                                                                     - i * bl%save_fq)/bl%optimal_size(j))) * bl%optimal_size(j))))
                         else
-                            ! [review] - JSS: such a long line is rather hard to parse.
                             bl%err_comp(j,i) = bl%optimal_err(j)/(bl%optimal_std(j) * sqrt(real((int(real(bl%n_reports_blocked - &
                                                                     i * bl%save_fq)/bl%optimal_size(j))-1) * bl%optimal_size(j))))
                         end if
@@ -555,7 +549,6 @@ contains
         ! In/Out:
         !   bl: Information needed to peform blocking on the fly.
         !   qs: qmc_state where the data for current iteration is taken.
-! [review] - AJWT: This doesn't appear to actually touch soft_exit.
 
         use qmc_data, only: blocking_t, qmc_state_t, qmc_in_t, blocking_in_t
 
@@ -575,7 +568,6 @@ contains
         ! Once the shift is varied the data needed for reblocking is
         ! collected.
 
-! [review] - CJCS: Can just write 'if (qs%vary_shift(1)) then'
         if (ireport >= bl%start_ireport .and. bl%start_ireport>0) then
             bl%n_reports_blocked = ireport - bl%start_ireport + 1
             call collect_data(qmc_in, qs, bl, ireport)
@@ -620,7 +612,6 @@ contains
         integer, intent(in) :: ireport, iter
         integer :: i
 
-        ! [review] - JSS: inconsistent indentation.
         write(iunit, '(1X, I8)', advance = 'no') iter
         ! Prints the point from which reblock analysis is being
         ! carried out in terms of iterations.
@@ -629,7 +620,6 @@ contains
         ! Prints the mean, standard deviation and the error in error for \sum
         ! H_0j N_j and N_0 and mean and standard deviation of projected
         ! energy. Returns 0 if there are insufficient data.
-        ! [review] - JSS: do this in a loop over i=1,4.
         write(iunit, '(4X, ES16.7)', advance = 'no') (bl%optimal_mean(dt_numerator))
         write(iunit, '(1X, ES16.7)', advance = 'no') (bl%optimal_std(dt_numerator))
         write(iunit, '(1X, ES16.7)', advance = 'no') (bl%optimal_err(dt_numerator))
@@ -643,7 +633,6 @@ contains
         write(iunit, '(1X, ES16.7)', advance = 'no') (bl%optimal_mean(dt_proj_energy))
         write(iunit, '(1X, ES16.7)', advance = 'no') (bl%optimal_std(dt_proj_energy))
         write(iunit, '(1X, ES16.7)') (bl%optimal_err(dt_proj_energy))
-        ! [review] - JSS: optimal_err(4)?
 
         flush(iunit)
 
@@ -651,9 +640,8 @@ contains
 
     subroutine check_error(bl, qs, blocking_in)
 
-        ! [review] - JSS: use full sentences for top-level description.
-        ! Maximum estimate of errors and the inverse of estimated fractional
-        ! error of projected energy is compared to the limit specified by the
+        ! The maximum error estimate and the inverse of estimated fractional
+        ! error in the projected energy is compared to the limit specified by the
         ! user. If the condition is satisfied, reblock_done = true is returned
         ! which modifies soft_exit to also be true. 
 

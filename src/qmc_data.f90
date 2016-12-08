@@ -567,12 +567,6 @@ type blocking_t
     integer :: save_fq = 0
     ! Number of report cycles from the start of all blocking to the current cycle.
     integer :: n_reports_blocked = 0
-! [review] - CJCS: Little bit hard to understand in this format. Definining
-! [review] - CJCS: your array bounds (see below) will help, but otherwise
-! [review] - CJCS: explicitly saying
-! [review] - CJCS:  reblock_data(data_types1,log2(blocksize),data_types2) = value
-! [review] - CJCS: and defining all the different meanings would be a clearer
-! [review] - CJCS: way to represent this.
 ! [review] - AJWT: An alternative would be to have a reblock_data_t - something like
 !   type reblock_data_t
 !       integer :: n_blocks
@@ -616,8 +610,6 @@ type blocking_t
     ! size for the datatype. For projected energy, the block size that is
     ! larger between dt_numerator and dt_denominator (see enum above) is used.
     real(p) :: optimal_mean(4) = 0
-! [review] - CJCS: Ratio between the two? I thought the convention for error propogation
-! [review] - CJCS: in quotients is the combination in quadrature of the fractional error?
     ! Optimal block is the smallest block that satisfies the condition
     ! B^3 > 2*(B*(number of blocks)) * (std(B)/std(0)) ^ 4
     ! optimal_std(data_type) = block_std of the block with the optimal block

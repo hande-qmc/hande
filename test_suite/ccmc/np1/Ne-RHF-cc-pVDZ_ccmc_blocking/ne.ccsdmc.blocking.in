@@ -21,6 +21,6 @@ ccmc {
         ex_level = 2,
     },
     blocking = {
-	blocking_on_the_fly = true,
+        blocking_on_the_fly = true,
     },
 }
