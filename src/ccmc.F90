@@ -327,6 +327,8 @@ contains
         use json_out, only: json_out_t, json_object_init, json_object_end
         use hamiltonian_data
         use energy_evaluation, only: get_sanitized_projected_energy, get_sanitized_projected_energy_cmplx
+        ! [review] - CJCS: Avoid importing the entire module, if only so it's
+        ! [review] - CJCS: clear which functions you're intending to use from it.
         use blocking
         use utils, only: get_free_unit
 
@@ -399,6 +401,8 @@ contains
             call check_qmc_opts(qmc_in, sys, .not.present(qmc_state_restart), restarting)
             call check_ccmc_opts(sys, ccmc_in)
         end if
+! [review] - CJCS: Watch out for whitespace added in (eg. line below). Run 'git diff --check'
+! [review] - CJCS: to check for this automatically.
         
         ! Initialise data.
         call init_qmc(sys, qmc_in, restart_in, load_bal_in, reference_in, io_unit, annihilation_flags, qs, &
