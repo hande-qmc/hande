@@ -387,7 +387,7 @@ results : :class:`pandas.DataFrame`
                                                   data[r'\sum\rho_{ij}H0{ji}']
                                                   )
         else:
-            estimates[r'\sum\rho_{ij}VI_{ji}'] = data[r'\sum\rho_{ij}H{ji}']
+            estimates[r'\sum\rho_{ij}VI_{ji}'] = data[r'\sum\rho_{ij}H_{ji}']
 
 
     # Compute the mean of all estimates across all beta loops.
