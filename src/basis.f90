@@ -124,10 +124,10 @@ contains
             print_long = .true.
         end if
 
-        call write_basis_fn_title(iunit)
+        call write_basis_fn_title(io)
 
         ! Describe information.
-        if (sys%system /= heisenberg) write (6,'(1X,a27)') 'Spin given in units of 1/2.'
+        if (sys%system /= heisenberg) write (io,'(1X,a27)') 'Spin given in units of 1/2.'
 
         select case(sys%system)
         case(hub_real,heisenberg, chung_landau)
@@ -224,7 +224,7 @@ contains
         end if
 
         if (present(ind)) then
-            if (ind >= 0) write (6,'(1X,i5,2X)',advance='no') ind
+            if (ind >= 0) write (io,'(1X,i5,2X)',advance='no') ind
         end if
 
         if (sys%system == read_in .and. .not. sys%momentum_space) then
@@ -289,10 +289,12 @@ contains
         logical :: t_store, t_verbose
 
         integer :: limits(3,3), nmax(3), kp(3) ! Support a maximum of 3 dimensions.
-        integer :: i, j, k, ibasis, ierr, nspatial
+        integer :: i, j, k, ibasis, ierr, nspatial, iunit
         type(basis_fn_t), allocatable, target :: tmp_basis_fns(:)
         type(basis_fn_t), pointer :: basis_fn_p
         integer, allocatable :: basis_fns_ranking(:)
+
+        iunit = 6
 
         t_store = .true.
         if (present(store_info)) t_store = store_info
@@ -486,7 +488,7 @@ contains
             do i = 1, sys%basis%nbasis
                 call write_basis_fn(sys, sys%basis%basis_fns(i), ind=i, new_line=.true.)
             end do
-            write (6,'()')
+            write (iunit,'()')
         else if (parent) then
             call write_basis_fn_title()
         end if

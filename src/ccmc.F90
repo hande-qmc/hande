@@ -69,7 +69,7 @@ module ccmc
 ! As a consequence, we must be very careful with the above expansion in (5).  We
 ! can simplify (5) such that each unique cluster only occurs once::
 !
-!     T(t) = \sum_{ia} t_i^a(t) a_i^a + \sum_{i<j,a<b} t_{ij}^{ab}(t) a_{ij}^{ab} + ...  (6)
+!     T(t) = \sum_{ia} t_i^a(t) a_i^a + \sum_{i<j,a<b} t_{ij}^{ab}(t) a_{ij}^{ab} + ...  (iunit)
 !
 ! Evaluating e^{T(t)} is, as in traditional CC, performed using a series
 ! expansion::
@@ -373,10 +373,13 @@ contains
         complex(p) :: D0_population_cycle, proj_energy_cycle
 
         real(p), allocatable :: rdm(:,:)
+        integer :: iunit
+
+        iunit = 6
 
         if (parent) then
-            write (6,'(1X,"CCMC")')
-            write (6,'(1X,"----",/)')
+            write (iunit,'(1X,"CCMC")')
+            write (iunit,'(1X,"----",/)')
         end if
 
         ! Check input options.
@@ -800,7 +803,7 @@ contains
 
         end do
 
-        if (parent) write (6,'()')
+        if (parent) write (iunit,'()')
         call write_bloom_report(bloom_stats)
         call multispawn_stats_report(ms_stats)
         call load_balancing_report(qs%psip_list%nparticles, qs%psip_list%nstates, qmc_in%use_mpi_barriers,&
@@ -815,7 +818,7 @@ contains
 
         if (restart_in%write_restart) then
             call dump_restart_hdf5(ri, qs, qs%mc_cycles_done, nparticles_old, sys%basis%nbasis, .false.)
-            if (parent) write (6,'()')
+            if (parent) write (iunit,'()')
         end if
 
         if (debug) call end_logging(logging_info)
@@ -823,7 +826,7 @@ contains
         if (ccmc_in%density_matrices) then
             call write_final_rdm(rdm, sys%nel, sys%basis%nbasis, ccmc_in%density_matrix_file)
             call calc_rdm_energy(sys, qs%ref, rdm, qs%estimators(1)%rdm_energy, qs%estimators(1)%rdm_trace)
-            if (parent) write (6,'(1x,"# Final energy from RDM",2x,es17.10)') qs%estimators%rdm_energy/qs%estimators%rdm_trace
+            if (parent) write (iunit,'(1x,"# Final energy from RDM",2x,es17.10)') qs%estimators%rdm_energy/qs%estimators%rdm_trace
             deallocate(rdm, stat=ierr)
             call check_deallocate('rdm',ierr)
             call dealloc_det_info_t(ref_det)

@@ -1178,7 +1178,7 @@ contains
 
         type(spawn_t), intent(in) :: spawn
 
-        integer :: warnings
+        integer :: warnings, iunit
 #ifdef PARALLEL
         integer :: ierr
 
@@ -1186,9 +1186,10 @@ contains
 #else
         warnings = spawn%warning_count
 #endif
+        iunit = 6
 
         if (parent .and. warnings > 0) then
-            write (6, '(1x, "The spawning array was at least 95% full on",'//int_fmt(warnings,1)//'," iterations.",/)') warnings
+            write (iunit, '(1x, "The spawning array was at least 95% full on",'//int_fmt(warnings,1)//'," iterations.",/)') warnings
         end if
 
     end subroutine write_memcheck_report

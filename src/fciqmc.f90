@@ -111,12 +111,14 @@ contains
         logical :: determ_parent
 
         real :: t1, t2
-
         logical :: update_tau, restarting, imag
+        integer :: iunit
+
+        iunit = 6
 
         if (parent) then
-            write (6,'(1X,"FCIQMC")')
-            write (6,'(1X,"------",/)')
+            write (iunit,'(1X,"FCIQMC")')
+            write (iunit,'(1X,"------",/)')
         end if
 
         if (parent) then
@@ -356,7 +358,7 @@ contains
                                                                     qs%par_info%report_comm%request, t1, nparticles_old, &
                                                                     qs%shift(1), restart_in%write_restart, load_bal_in)
 
-        if (parent) write (6,'()')
+        if (parent) write (iunit,'()')
         call write_bloom_report(bloom_stats)
         associate(pl=>qs%psip_list, spawn=>qs%spawn_store%spawn)
             if (determ%doing_semi_stoch .and. determ%projection_mode == semi_stoch_separate_annihilation) then
@@ -376,7 +378,7 @@ contains
 
         if (restart_in%write_restart) then
             call dump_restart_hdf5(ri, qs, qs%mc_cycles_done, nparticles_old, sys%basis%nbasis, fciqmc_in%non_blocking_comm)
-            if (parent) write (6,'()')
+            if (parent) write (iunit,'()')
         end if
 
         if (determ%doing_semi_stoch) call dealloc_semi_stoch_t(determ, .false.)

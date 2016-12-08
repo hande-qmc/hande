@@ -189,17 +189,20 @@ module basis_types
             logical, intent(in) :: heisenberg_system
 
             character(4) :: fmt1(4)
+            integer :: iunit
+
+            iunit = 6
 
             if (parent) then
                 fmt1 = int_fmt((/nel, b%nbasis, i0_length, b%string_len/), padding=1)
                 if (heisenberg_system) then
-                    write (6,'(1X,a22,'//fmt1(1)//')') 'Number of alpha spins:', nel
+                    write (iunit,'(1X,a22,'//fmt1(1)//')') 'Number of alpha spins:', nel
                 else
-                    write (6,'(1X,a20,'//fmt1(1)//')') 'Number of electrons:', nel
+                    write (iunit,'(1X,a20,'//fmt1(1)//')') 'Number of electrons:', nel
                 end if
-                write (6,'(1X,a26,'//fmt1(2)//')') 'Number of basis functions:', b%nbasis
-                write (6,'(/,1X,a61,'//fmt1(3)//')') 'Bit-length of integers used to store determinant bit-strings:', i0_length
-                write (6,'(1X,a57,'//fmt1(4)//',/)') &
+                write (iunit,'(1X,a26,'//fmt1(2)//')') 'Number of basis functions:', b%nbasis
+                write (iunit,'(/,1X,a61,'//fmt1(3)//')') 'Bit-length of integers used to store determinant bit-strings:', i0_length
+                write (iunit,'(1X,a57,'//fmt1(4)//',/)') &
                     'Number of integers used to store determinant bit-strings:', b%string_len
             end if
 

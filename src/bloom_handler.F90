@@ -174,21 +174,24 @@ module bloom_handler
             use utils, only: int_fmt
 
             type(bloom_stats_t), intent(inout) :: bloom_stats
+            integer :: iunit
+
+            iunit = 6
 
             if ( bloom_stats%nwarnings < bloom_stats%nverbose_warnings ) then
                 select case(bloom_stats%mode)
                 case(bloom_mode_fixedn)
-                    write (6,'(1X, "# WARNING: more than", '//int_fmt(bloom_stats%threshold,1)//',&
+                    write (iunit,'(1X, "# WARNING: more than", '//int_fmt(bloom_stats%threshold,1)//',&
                        &" particles spawned in a single event", '//int_fmt(bloom_stats%nblooms_curr,1)//',&
                        &" times in the last report loop.")') bloom_stats%threshold, bloom_stats%nblooms_curr
                 case(bloom_mode_fractionn)
-                    write (6,'(1X, "# WARNING: more than", '//int_fmt(int(bloom_stats%prop)*100,1)//',&
+                    write (iunit,'(1X, "# WARNING: more than", '//int_fmt(int(bloom_stats%prop)*100,1)//',&
                        &"% of the total population spawned in a single event", '//int_fmt(bloom_stats%nblooms_curr,1)//',&
                        &" times in the last report loop.")') int(bloom_stats%prop*100), bloom_stats%nblooms_curr
                 end select
-                write (6,'(1X, "# Mean number of particles created in blooms: ",f8.1)') &
+                write (iunit,'(1X, "# Mean number of particles created in blooms: ",f8.1)') &
                     bloom_stats%tot_bloom_curr/bloom_stats%nblooms_curr
-                write (6,'(1X,"# This warning only prints",'//int_fmt(bloom_stats%nverbose_warnings)//',&
+                write (iunit,'(1X,"# This warning only prints",'//int_fmt(bloom_stats%nverbose_warnings)//',&
                     &" time(s). You may wish to reduce the time step.")') bloom_stats%nverbose_warnings
                 bloom_stats%nwarnings = bloom_stats%nwarnings + 1
             end if
@@ -207,6 +210,7 @@ module bloom_handler
 
             type(bloom_stats_t), intent(inout) :: bloom_stats
 
+            integer :: iunit
 #ifdef PARALLEL
             integer :: ierr
 
@@ -216,14 +220,16 @@ module bloom_handler
             bloom_stats%max_bloom = bloom_stats%max_bloom_proc
 #endif
 
+            iunit = 6
+
             if (bloom_stats%nblooms > 0 .and. parent) then
-                write (6, '(1X, "Blooming events occured: a more efficent calulation may be possible &
+                write (iunit, '(1X, "Blooming events occured: a more efficent calulation may be possible &
                     &with a smaller timestep.")')
-                write (6, '(1X, "Total number of blooming events:", '//int_fmt(bloom_stats%nblooms,1)//')') &
+                write (iunit, '(1X, "Total number of blooming events:", '//int_fmt(bloom_stats%nblooms,1)//')') &
                     bloom_stats%nblooms
-                write (6, '(1X, "Maximum number of particles spawned in a blooming event:",f11.2)') &
+                write (iunit, '(1X, "Maximum number of particles spawned in a blooming event:",f11.2)') &
                     bloom_stats%max_bloom
-                write (6, '(1X, "Mean number of particles spawned in a blooming event:", 2X, f11.2, /)') &
+                write (iunit, '(1X, "Mean number of particles spawned in a blooming event:", 2X, f11.2, /)') &
                     bloom_stats%tot_bloom/bloom_stats%nblooms
             end if
 

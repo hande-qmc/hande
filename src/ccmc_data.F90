@@ -104,6 +104,7 @@ contains
 
         type(multispawn_stats_t), intent(in) :: ms_stats(:)
         type(multispawn_stats_t) :: ms_stats_total
+        integer :: iunit
 #ifdef PARALLEL
         type(multispawn_stats_t) :: ms_stats_local
         integer :: ierr
@@ -118,13 +119,15 @@ contains
 #else
         ms_stats_total = ms_stats_reduction(ms_stats)
 #endif
+        iunit = 6
+
         if (ms_stats_total%nevents > 0 .and. parent) then
-            write (6,'(1X,"Multiple spawning events occurred.")')
-            write (6,'(1X,"Number of multiple spawning events:",'//int_fmt(ms_stats_total%nevents,1)//')') &
+            write (iunit,'(1X,"Multiple spawning events occurred.")')
+            write (iunit,'(1X,"Number of multiple spawning events:",'//int_fmt(ms_stats_total%nevents,1)//')') &
                 ms_stats_total%nevents
-            write (6,'(1X,"Mean number of multiple spawning attempts per event:",2X,f11.2)') &
+            write (iunit,'(1X,"Mean number of multiple spawning attempts per event:",2X,f11.2)') &
                 real(ms_stats_total%nspawnings)/ms_stats_total%nevents
-            write (6,'(1X,"Largest multiple spawning in a single event:",'//int_fmt(ms_stats_total%nspawnings_max,1)//',/)') &
+            write (iunit,'(1X,"Largest multiple spawning in a single event:",'//int_fmt(ms_stats_total%nspawnings_max,1)//',/)') &
                 ms_stats_total%nspawnings_max
         end if
 

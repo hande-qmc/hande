@@ -105,10 +105,13 @@ contains
         character(36) :: uuid_restart
 
         type(logging_t) :: logging_info
+        integer :: iunit
+
+        iunit = 6
 
         if (parent) then
-            write (6,'(1X,"DMQMC")')
-            write (6,'(1X,"-----",/)')
+            write (iunit,'(1X,"DMQMC")')
+            write (iunit,'(1X,"-----",/)')
         end if
 
         if (parent) then
@@ -393,7 +396,7 @@ contains
 
         end do outer_loop
 
-        if (parent) write (6,'()')
+        if (parent) write (iunit,'()')
         call write_bloom_report(bloom_stats)
         call load_balancing_report(qs%psip_list%nparticles, qs%psip_list%nstates, qmc_in%use_mpi_barriers, &
                                    qs%spawn_store%spawn%mpi_time)
@@ -407,7 +410,7 @@ contains
 
         if (restart_in%write_restart) then
             call dump_restart_hdf5(ri, qs, qs%mc_cycles_done, qs%psip_list%tot_nparticles, sys%basis%nbasis, .false.)
-            if (parent) write (6,'()')
+            if (parent) write (iunit,'()')
         end if
 
         if (dmqmc_in%find_weights) then
@@ -471,7 +474,9 @@ contains
         integer, intent(out) :: nstates_active
         real(dp), intent(out) :: nparticles(:)
         real(p), intent(out) :: accumulated_probs(:)
-        integer :: new_seed
+        integer :: new_seed, iunit
+
+        iunit = 6
 
         ! Reset the current position in the spawning array to be the slot
         ! preceding the first slot.
@@ -488,8 +493,8 @@ contains
         new_seed = qmc_in%seed+iproc+(beta_cycle-1)*nprocs
 
         if (beta_cycle /= 1 .and. parent) then
-            write (6,'(a32,'//int_fmt(beta_cycle,1)//')') " # Resetting beta... Beta loop =", beta_cycle
-            write (6,'(a52,'//int_fmt(new_seed,1)//',a1)') " # Resetting random number generator with a seed of:", new_seed, "."
+            write (iunit,'(a32,'//int_fmt(beta_cycle,1)//')') " # Resetting beta... Beta loop =", beta_cycle
+            write (iunit,'(a52,'//int_fmt(new_seed,1)//',a1)') " # Resetting random number generator with a seed of:", new_seed, "."
         end if
 
         ! Reset the random number generator with new_seed = old_seed +

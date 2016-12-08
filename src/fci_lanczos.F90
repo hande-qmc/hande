@@ -43,6 +43,9 @@ contains
         type(blacs_info) :: proc_blacs_info
         type(hamil_t) :: hamil
         type(hmatel_t) :: hmatel
+        integer :: iunit
+
+        iunit = 6
 
         if (parent) call check_fci_opts(sys, fci_in, .true.)
 
@@ -68,11 +71,11 @@ contains
         if (nprocs*block_size > ndets) then
             if (parent) then
                 call warning('do_fci_lanczos','Reducing block size so that all processors contain at least a single row.',3)
-                write (6,'(1X,"Consider running on fewer processors or reducing block size in input.")')
-                write (6,'(1X,"Old block size was:"'//int_fmt(block_size,1)//')') block_size
+                write (iunit,'(1X,"Consider running on fewer processors or reducing block size in input.")')
+                write (iunit,'(1X,"Old block size was:"'//int_fmt(block_size,1)//')') block_size
             end if
             block_size = ndets/nprocs
-            if (parent) write (6,'(1X,"New block size is:"'//int_fmt(block_size,1)//')') block_size
+            if (parent) write (iunit,'(1X,"New block size is:"'//int_fmt(block_size,1)//')') block_size
         end if
         proc_blacs_info = get_blacs_info(ndets, block_size, [1, nprocs])
 
@@ -92,13 +95,13 @@ contains
         end if
 
         if (parent) then
-            write (6,'(1X,"Lanczos diagonalisation results")')
-            write (6,'(1X,"^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^",/)')
-            write (6,'(1X," State",1X,4X,"Energy")')
+            write (iunit,'(1X,"Lanczos diagonalisation results")')
+            write (iunit,'(1X,"^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^",/)')
+            write (iunit,'(1X," State",1X,4X,"Energy")')
             do i = 1, nfound
-                write (6,'(1X,i6,1X,f18.12)') i, eigv(i)
+                write (iunit,'(1X,i6,1X,f18.12)') i, eigv(i)
             end do
-            write (6,'()')
+            write (iunit,'()')
         end if
 
         ! Return sys in an unaltered state.
@@ -182,9 +185,9 @@ contains
 
         if (parent) then
             if (fci_in%direct_lanczos) then
-                write (6,'(1X,a44,/)') 'Performing direct Lanczos diagonalisation...'
+                write (iunit,'(1X,a44,/)') 'Performing direct Lanczos diagonalisation...'
             else
-                write (6,'(1X,a37,/)') 'Performing Lanczos diagonalisation...'
+                write (iunit,'(1X,a37,/)') 'Performing Lanczos diagonalisation...'
             end if
         end if
 
@@ -234,9 +237,9 @@ contains
         ! Science, 297 (1987) 894-913.
         ! trl_print_info gathers information from the processors so must be
         ! a global call but only prints information from one processor.
-        if (parent) write (6,'(1X,a28,/)') 'TRLan (Lanczos) information:'
+        if (parent) write (iunit,'(1X,a28,/)') 'TRLan (Lanczos) information:'
         call trl_print_info(info, 2*(ndets**2+2*ndets))
-        if (parent) write (6,'()')
+        if (parent) write (iunit,'()')
 
         nfound = min(fci_in%nlanczos_eigv,ndets)
         eigv(1:nfound) = real(eval(1:nfound),p)
@@ -334,7 +337,7 @@ contains
                 end do
             else
 #if defined(PARALLEL) && ! defined(DISABLE_SCALAPACK)
-                if (sparse_hamil) write (6,'(1X, a81)') 'WARNING.  Sparsity not implemented in parallel.  &
+                if (sparse_hamil) write (iunit,'(1X, a81)') 'WARNING.  Sparsity not implemented in parallel.  &
                                                   &This is not going to end well...'
                 ! Use pblas to perform matrix-vector multiplication.
                 if (proc_blacs_info%nrows > 0 .and. proc_blacs_info%ncols > 0) then

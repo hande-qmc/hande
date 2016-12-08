@@ -174,7 +174,9 @@ contains
         integer(i0), allocatable :: dets_this_proc(:,:)
         logical :: print_info, write_determ
         type(reference_t) :: ci_ref
+        integer :: iunit
 
+        iunit = 6
         ! Only print information if the parent processor and if we are using a
         ! non-trivial deterministic space.
         print_info = parent .and. ss_in%space_type /= empty_determ_space
@@ -193,9 +195,9 @@ contains
 
         if (print_info) then
             if (ss_in%space_type == reuse_determ_space) then
-                write(6,'(1X,"# Recreating semi-stochastic objects.")')
+                write(iunit,'(1X,"# Recreating semi-stochastic objects.")')
             else
-                write(6,'(1X,"# Beginning semi-stochastic initialisation.")')
+                write(iunit,'(1X,"# Beginning semi-stochastic initialisation.")')
             end if
         end if
 
@@ -217,9 +219,9 @@ contains
 
         if (print_info) then
             if (determ%space_type == reuse_determ_space) then
-                write(6,'(1X,"# Redistributing deterministic states.")')
+                write(iunit,'(1X,"# Redistributing deterministic states.")')
             else
-                write(6,'(1X,"# Creating deterministic space.")')
+                write(iunit,'(1X,"# Creating deterministic space.")')
             end if
         end if
 
@@ -254,14 +256,14 @@ contains
         determ%tot_size = sum(determ%sizes)
 
         if (print_info .and. nprocs > 1) then
-            write(6,'(1X,a46,'//int_fmt(minval(determ%sizes),1)//')') &
+            write(iunit,'(1X,a46,'//int_fmt(minval(determ%sizes),1)//')') &
                 '# Min deterministic space size on a processor:', minval(determ%sizes)
-            write(6,'(1X,a46,'//int_fmt(maxval(determ%sizes),1)//')') &
+            write(iunit,'(1X,a46,'//int_fmt(maxval(determ%sizes),1)//')') &
                 '# Max deterministic space size on a processor:', maxval(determ%sizes)
-            write(6,'(1X,a51,'//int_fmt(determ%tot_size,1)//')') &
+            write(iunit,'(1X,a51,'//int_fmt(determ%tot_size,1)//')') &
                 '# Total deterministic space size on all processors:', determ%tot_size
         else if (print_info) then
-            write(6,'(1X,a27,'//int_fmt(determ%tot_size,1)//')') '# Deterministic space size:', determ%tot_size
+            write(iunit,'(1X,a27,'//int_fmt(determ%tot_size,1)//')') '# Deterministic space size:', determ%tot_size
         end if
 
         ! Displacements used for MPI communication.
@@ -319,7 +321,7 @@ contains
             ! Array to hold all deterministic states from all processes.
             ! The memory required in MB.
             determ_dets_mem = sys%basis%tensor_label_len*determ%tot_size*i0_length/(8*10**6)
-            if (print_info) write(6,'(1X,a60,'//int_fmt(determ_dets_mem,1)//')') &
+            if (print_info) write(iunit,'(1X,a60,'//int_fmt(determ_dets_mem,1)//')') &
                 '# Memory required per core to store deterministic dets (MB):', determ_dets_mem
             allocate(determ%dets(sys%basis%tensor_label_len, determ%tot_size), stat=ierr)
             call check_allocate('determ%dets', sys%basis%tensor_label_len*determ%tot_size, ierr)
@@ -360,7 +362,7 @@ contains
 #ifdef PARALLEL
             call mpi_barrier(MPI_COMM_WORLD, ierr)
 #endif
-        if (print_info) write(6,'(1X,a42)') '# Semi-stochastic initialisation complete.'
+        if (print_info) write(iunit,'(1X,a42)') '# Semi-stochastic initialisation complete.'
 
     end subroutine init_semi_stoch_t
 
@@ -460,6 +462,9 @@ contains
 
         integer :: i, iz, hash, mem_reqd, ierr, tensor_label_len
         integer, allocatable :: nclash(:)
+        integer :: iunit
+
+        iunit = 6
 
         tensor_label_len = size(determ%dets, dim=1)
 
@@ -473,7 +478,7 @@ contains
                 ! The memory required in MB.
                 ! Two lists with length ht%nhash taking 4 bytes for each element.
                 mem_reqd = 2*ht%nhash*4/10**6
-                write(6,'(1X,a52,'//int_fmt(mem_reqd,1)//')') &
+                write(iunit,'(1X,a52,'//int_fmt(mem_reqd,1)//')') &
                     '# Memory required per core to store hash table (MB):', mem_reqd
             end if
 
@@ -561,11 +566,11 @@ contains
         real :: t1, t2
         logical :: diag_elem
         real(p) :: fock_sum, weight
-
+        integer :: iunit
 #ifdef PARALLEL
         integer :: ierr
 #endif
-
+        iunit = 6
         ! Start by evaluating the QN weights.  We store them in one_minus_qn_weight
         ! and then modify one_minus_qn_weight to be 1-w after calculating H
         if (propagator%quasi_newton) then
@@ -585,7 +590,7 @@ contains
         else
             determ%one_minus_qn_weight = 1.0_p
         end if
-        if (print_info) write(6,'(1X,a74)') '# Counting number of non-zero deterministic Hamiltonian elements to store.'
+        if (print_info) write(iunit,'(1X,a74)') '# Counting number of non-zero deterministic Hamiltonian elements to store.'
 
         associate(hamil => determ%hamil)
 
@@ -641,7 +646,7 @@ contains
 #endif
                     call cpu_time(t2)
                     if (print_info) then 
-                        write(6,'(1X,a41,1X,f10.2,a1)') '# Time taken to generate the Hamiltonian:', t2-t1, "s"
+                        write(iunit,'(1X,a41,1X,f10.2,a1)') '# Time taken to generate the Hamiltonian:', t2-t1, "s"
                         ! The memory required in MB.
 #ifdef SINGLE_PRECISION
                         mem_reqd = ((determ%tot_size+1)*4 + nnz*(4 + 4))/10**6
@@ -656,9 +661,9 @@ contains
                     max_mem_reqd = mem_reqd
 #endif
                     if (print_info) then 
-                        write(6,'(1X,a75,'//int_fmt(mem_reqd,1)//')') &
+                        write(iunit,'(1X,a75,'//int_fmt(mem_reqd,1)//')') &
                             '# Maximum memory required by a core for the deterministic Hamiltonian (MB):', mem_reqd
-                        write(6,'(1X,a54)') '# The Hamiltonian will now be recalculated and stored.'
+                        write(iunit,'(1X,a54)') '# The Hamiltonian will now be recalculated and stored.'
                     end if
 
                     ! Allocate the CSR Hamiltonian arrays.
@@ -1409,7 +1414,9 @@ contains
 #ifdef DISABLE_HDF5
         call stop_all('read_determ_from_file', '# Not compiled with HDF5 support.  Cannot read semi-stochastic file.')
 #else
+        integer :: iunit
 
+        iunit = 6
         ! Read the deterministic states in on just the parent processor.
         if (parent) then
             ! This bit of code converts to the encoding used by
@@ -1425,7 +1432,7 @@ contains
             end if
 
             call get_unique_filename("SEMI.STOCH", ".H5", .false., min(id,0), filename, reduce=.false.)
-            if (print_info) write(6,'(1X,"# Reading deterministic space states from",1X,a,".")') trim(filename)
+            if (print_info) write(iunit,'(1X,"# Reading deterministic space states from",1X,a,".")') trim(filename)
 
             inquire(file=trim(filename), exist=exists)
             if (.not. exists) call stop_all('read_determ_from_file', "Cannot find deterministic space file.")
@@ -1531,6 +1538,9 @@ contains
         type(hdf5_kinds_t) :: kinds
         integer(hid_t) :: file_id
         character(255) :: filename
+        integer :: iunit
+
+        iunit = 6
 
         ! This bit of code converts to the encoding used by
         ! get_unique_filename. If the user hasn't supplied a write_id
@@ -1545,7 +1555,7 @@ contains
         end if
 
         call get_unique_filename("SEMI.STOCH", ".H5", .true., min(id,0), filename, reduce=.false.)
-        if (print_info) write(6,'(1X,"# Writing deterministic space states to",1X,a,".")') trim(filename)
+        if (print_info) write(iunit,'(1X,"# Writing deterministic space states to",1X,a,".")') trim(filename)
 
         ! Open HDF5 and create HDF5 kinds.
         call h5open_f(ierr)

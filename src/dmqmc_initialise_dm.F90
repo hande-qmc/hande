@@ -424,6 +424,9 @@ contains
         type(excit_t) :: connection
         type(sys_t) :: sys_copy
         logical :: allowed
+        integer :: iunit
+
+        iunit = 6
 
         naccept = 0 ! Number of metropolis moves which are accepted.
         nsuccess = 0 ! Number of successful proposal steps i.e. excluding null excitations.
@@ -480,7 +483,8 @@ contains
             end do
         end do
 
-        if (parent) write (6,'(1X,"#",1X, "Average acceptance ratio: ",f8.7,1X," Average number of null excitations: ", f8.7)') &
+        if (parent) write (iunit,'(1X,"#",1X, "Average acceptance ratio: ",f8.7,1X," Average number of null&
+                            & excitations: ", f8.7)') &
                            real(naccept)/nsuccess, real(dmqmc_in%metropolis_attempts*npsips-nsuccess,dp)/&
                                                    &(dmqmc_in%metropolis_attempts*npsips)
 

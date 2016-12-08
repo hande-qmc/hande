@@ -334,11 +334,14 @@ contains
         use parallel, only: nprocs
 
         real(p), intent(in) :: nparticles_proc(:,:), d_slot_pop(:)
+        integer :: iunit
 
-        write (6, '(1X, "#",2X,"Load balancing info:")')
-        write (6, '(1X, "# ",1X,a18,2X,a18,2X,a22,2X,a12,9X,a12)') "Max # of particles", "Min # of particles", &
+        iunit = 6
+
+        write (iunit, '(1X, "#",2X,"Load balancing info:")')
+        write (iunit, '(1X, "# ",1X,a18,2X,a18,2X,a22,2X,a12,9X,a12)') "Max # of particles", "Min # of particles", &
                   "Average # of particles", "Max slot pop", "Min slot pop"
-        write (6, '(1X, "#",1X,3(es17.10,3X),4X,es17.10,4X,es17.10)') maxval(nparticles_proc(1,:)), &
+        write (iunit, '(1X, "#",1X,3(es17.10,3X),4X,es17.10,4X,es17.10)') maxval(nparticles_proc(1,:)), &
                   minval(nparticles_proc(1,:)), sum(nparticles_proc(1,:))/nprocs, &
                   maxval(d_slot_pop), minval(d_slot_pop)
 

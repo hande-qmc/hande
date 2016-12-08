@@ -250,6 +250,9 @@ contains
         integer :: nbytes_int, spawn_length_loc
         logical :: calc_ground_rdm
         type(proc_map_t) :: pm_dummy
+        integer :: iunit
+
+        iunit = 6
 
         ! If this routine was not called from DMQMC then we must be doing a
         ! ground state RDM calculation.
@@ -357,9 +360,9 @@ contains
                 end do
 
                 if (parent) then
-                    write (6,'(1X,a58,f7.2)') 'Memory allocated per core for the spawned RDM lists (MB): ', &
+                    write (iunit,'(1X,a58,f7.2)') 'Memory allocated per core for the spawned RDM lists (MB): ', &
                         total_size_spawned_rdm*real(2*spawn_length_loc,p)/10**6
-                    write (6,'(1X,a49,'//int_fmt(spawn_length_loc,1)//',/)') &
+                    write (iunit,'(1X,a49,'//int_fmt(spawn_length_loc,1)//',/)') &
                         'Number of elements per core in spawned RDM lists:', spawn_length_loc
                 end if
             end if
@@ -766,7 +769,7 @@ contains
         real(p), intent(inout) :: excit_dist(0:)
         type(dmqmc_weighted_sampling_t), intent(inout) :: weighted_sampling
 
-        integer :: i
+        integer :: i, iunit
 #ifdef PARALLEL
         integer :: ierr
         real(p) :: merged_excit_dist(0:sys%max_number_excitations)
@@ -775,6 +778,7 @@ contains
 
         excit_dist = merged_excit_dist
 #endif
+        iunit = 6
 
         select case(sys%system)
         case (heisenberg)
@@ -829,11 +833,11 @@ contains
         if (parent) then
             ! Print out weights in a form which can be copied into an input
             ! file.
-            write(6, '(1X,"# Importance sampling weights: sampling_weights = {")', advance = 'no')
+            write(iunit, '(1X,"# Importance sampling weights: sampling_weights = {")', advance = 'no')
             do i = 1, sys%max_number_excitations
-                write (6, '(es12.4,",",2X)', advance = 'no') weighted_sampling%sampling_probs(i)
+                write (iunit, '(es12.4,",",2X)', advance = 'no') weighted_sampling%sampling_probs(i)
             end do
-            write (6, '("},")', advance = 'yes')
+            write (iunit, '("},")', advance = 'yes')
         end if
 
     end subroutine output_and_alter_weights

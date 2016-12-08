@@ -77,8 +77,11 @@ contains
         type(det_info_t) :: det0
         logical :: truncate_space
         type(json_out_t) :: js
+        integer :: iunit
 
-        if (parent) write (6,'(1X,a13,/,1X,13("-"),/)') 'Hilbert space'
+        iunit = 6
+
+        if (parent) write (iunit,'(1X,a13,/,1X,13("-"),/)') 'Hilbert space'
 
         truncate_space = ex_level >= 0 .and. ex_level <= sys%nel
         if (truncate_space) then
@@ -118,7 +121,7 @@ contains
             else
                 full_space_size = binom_r(sys%lattice%nsites, sys%nel)
             end if
-            if (parent) write (6,'(1X,a,g12.4,/)') 'Size of space is', full_space_size
+            if (parent) write (iunit,'(1X,a,g12.4,/)') 'Size of space is', full_space_size
 
         case default
 
@@ -131,7 +134,7 @@ contains
                 ! simplest possible lattice model, the number of orbitals of each
                 ! spin is equal to the number of sites.
                 associate(sg=>sys, sl=>sys%lattice)
-                    if (parent) write (6,'(1X,a,g12.4,/)') 'Size of space is', &
+                    if (parent) write (iunit,'(1X,a,g12.4,/)') 'Size of space is', &
                                     binom_r(sl%nsites, sg%nalpha)*binom_r(sl%nsites, sg%nbeta)
                 end associate
             else
@@ -183,16 +186,16 @@ contains
                 end if
 
                 if (parent) then
-                    write (6,'(1X,a34)',advance='no') 'Symmetry of reference determinant:'
+                    write (iunit,'(1X,a34)',advance='no') 'Symmetry of reference determinant:'
                     if (sys%momentum_space) then
                         call write_basis_fn(sys, sys%basis%basis_fns(2*ref_sym), new_line=.true., print_full=.false.)
                     else
-                        write (6,'(1X,i2)') ref_sym
+                        write (iunit,'(1X,i2)') ref_sym
                     end if
-                    write (6,'(/,1X,"space size: estimate of the Hilbert space size from a single iteration.")')
-                    write (6,'(1X,"mean: running estimate of the mean of the Hilbert space size.")')
-                    write (6,'(1X,"std. err.: running estimate of the standard error in the estimate of the mean.")')
-                    write (6,'(/,1X,"# iterations  space size    mean          std. err.")')
+                    write (iunit,'(/,1X,"space size: estimate of the Hilbert space size from a single iteration.")')
+                    write (iunit,'(1X,"mean: running estimate of the mean of the Hilbert space size.")')
+                    write (iunit,'(1X,"std. err.: running estimate of the standard error in the estimate of the mean.")')
+                    write (iunit,'(/,1X,"# iterations  space size    mean          std. err.")')
                 end if
 
                 nattempts_local = nattempts/nprocs
@@ -242,13 +245,13 @@ contains
                             space_size_mean = space_size_mean + delta/n
                             space_size_mean2 = space_size_mean2 + delta*(naccept_sum(i) - space_size_mean)
                             space_size_se = sqrt(space_size_mean2 / (n*(n-1)))
-                            if (parent) write (6,'(1X,i12,3(2X,es12.6))') n, naccept_sum(i), space_size_mean, space_size_se
+                            if (parent) write (iunit,'(1X,i12,3(2X,es12.6))') n, naccept_sum(i), space_size_mean, space_size_se
                         end do
                         naccept = 0.0_p
                     end if
                 end do
 
-                if (parent) write (6,'(/,1X,"Monte-Carlo estimate of size of space is: ",es12.6," +/- ",es12.6,/)') &
+                if (parent) write (iunit,'(/,1X,"Monte-Carlo estimate of size of space is: ",es12.6," +/- ",es12.6,/)') &
                                     space_size_mean, space_size_se
 
                 if (truncate_space) call dealloc_det_info_t(det0)

@@ -88,6 +88,10 @@ contains
         real(p) :: eigv_sum, sp_eigv_sum
         logical :: set
 
+        integer :: iunit
+
+        iunit = 6
+
         ! Leave the reference determinant unchanged if it's already been
         ! allocated (and presumably set).
 
@@ -207,10 +211,10 @@ contains
                 else
                     sym = symmetry_orb_list(sys, occ_list)
                     if (parent) then
-                        write (6, '(1X)')
-                        write (6, '(1X,"Reference determinant and so symmetry sector selected using the Aufbau principle.")')
-                        write (6, '(1X,"Selected symmetry ",i2,".")') sym
-                        write (6, '(1X)')
+                        write (iunit, '(1X)')
+                        write (iunit, '(1X,"Reference determinant and so symmetry sector selected using the Aufbau principle.")')
+                        write (iunit, '(1X,"Selected symmetry ",i2,".")') sym
+                        write (iunit, '(1X)')
                     end if
                 end if
             case(hub_real)

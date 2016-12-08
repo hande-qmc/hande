@@ -67,13 +67,13 @@ contains
             ! This should be a very rare event, so we don't worry too much
             ! about optimised communications in this section.
             if (parent) then
-                write (6,'(1X,"#",1X,62("-"))')
-                write (6,'(1X,"#",1X,a21)') comms_file//' detected.'
-                write (6,'(1X,"#",/,1X,"#",1X,a24,/,1X,"#")') 'Contents of '//comms_file//':'
+                write (iunit,'(1X,"#",1X,62("-"))')
+                write (iunit,'(1X,"#",1X,a21)') comms_file//' detected.'
+                write (iunit,'(1X,"#",/,1X,"#",1X,a24,/,1X,"#")') 'Contents of '//comms_file//':'
                 ! Flush output from parent processor so that processor which
                 ! has the HANDE.COMM file can print out the contents without
                 ! mixing the output.
-                flush(6)
+                flush(iunit)
             end if
             ! Quick pause to ensure output is all done by this point.
 #ifdef PARALLEL
@@ -121,10 +121,10 @@ contains
                 do
                     j = index(buffer(i:), new_line(buffer))
                     if (j == 0) exit
-                    write (6,'(1X, "#", 1X, a)', advance='no') trim(buffer(i:j+i-1))
+                    write (iunit,'(1X, "#", 1X, a)', advance='no') trim(buffer(i:j+i-1))
                     i = i+j
                 end do
-                write (6,'(1X, "#", 1X, a)') trim(buffer(i:))
+                write (iunit,'(1X, "#", 1X, a)') trim(buffer(i:))
             end if
 
             ! Now each processor has the HANDE.COMM script, attempt to execute it...
@@ -147,7 +147,7 @@ contains
                         else
                             call aot_table_close(lua_state, shnd)
                             call aot_get_val(tmpshift, ierr_arr, size(qs%shift), lua_state, key='shift')
-                            if (parent) write (6,'(1X,"# Using ", i2, " shift values from HANDE.COMM.")') size(tmpshift)
+                            if (parent) write (iunit,'(1X,"# Using ", i2, " shift values from HANDE.COMM.")') size(tmpshift)
                             qs%shift(:size(tmpshift)) = tmpshift(:)
                         end if
                     end if
@@ -159,13 +159,13 @@ contains
 
             if (parent) then
                 if (lua_err == 0) then
-                    write (6,'(1X,"#",/,1X,"#",1X,a)') "From now on we use the information provided in "//comms_file//"."
+                    write (iunit,'(1X,"#",/,1X,"#",1X,a)') "From now on we use the information provided in "//comms_file//"."
                 else
-                    write (6,'(1X,"# aotus/lua error code:", i3)') ierr
-                    write (6,'(1X,"# error message:", a)') trim(err_str)
-                    write (6,'(1X,"# Ignoring variables in ",a)') trim(comms_file)
+                    write (iunit,'(1X,"# aotus/lua error code:", i3)') ierr
+                    write (iunit,'(1X,"# error message:", a)') trim(err_str)
+                    write (iunit,'(1X,"# Ignoring variables in ",a)') trim(comms_file)
                 end if
-                write (6,'(1X,"#",1X,62("-"))')
+                write (iunit,'(1X,"#",1X,62("-"))')
             end if
 
         end if

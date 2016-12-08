@@ -54,6 +54,9 @@ contains
         real(p) :: H00_max, H00_old
         real(dp) :: real_pop
         logical :: updated
+        integer :: iunit
+
+        iunit = 6
 
         allocate(fmax(lbound(qs%psip_list%states, dim=1):ubound(qs%psip_list%states, dim=1)))
 
@@ -132,15 +135,15 @@ contains
             qs%ref%fock_sum = sum_sp_eigenvalues_occ_list(sys, qs%ref%occ_list0)
             if (doing_calc(hfs_fciqmc_calc)) call stop_all('select_ref_det', 'Not implemented for HFS.')
             if (parent) then
-                write (6,'(1X,"#",1X,62("-"))')
-                write (6,'(1X,"#",1X,"Changed reference det to:",1X)',advance='no')
+                write (iunit,'(1X,"#",1X,62("-"))')
+                write (iunit,'(1X,"#",1X,"Changed reference det to:",1X)',advance='no')
                 call write_det(sys%basis, sys%nel, qs%ref%f0, new_line=.true.)
-                write (6,'(1X,"#",1X,"Population on old reference det (averaged over report loop):",f10.2)') &
+                write (iunit,'(1X,"#",1X,"Population on old reference det (averaged over report loop):",f10.2)') &
                             sum(abs(qs%estimators%D0_population))
-                write (6,'(1X,"#",1X,"Population on new reference det:",27X,f10.2)') real_pop
-                write (6,'(1X,"#",1X,"E0 = <D0|H|D0> = ",f20.12)') qs%ref%H00
-                write (6,'(1X,"#",1X,"Care should be taken with accumulating statistics before this point.")')
-                write (6,'(1X,"#",1X,62("-"))')
+                write (iunit,'(1X,"#",1X,"Population on new reference det:",27X,f10.2)') real_pop
+                write (iunit,'(1X,"#",1X,"E0 = <D0|H|D0> = ",f20.12)') qs%ref%H00
+                write (iunit,'(1X,"#",1X,"Care should be taken with accumulating statistics before this point.")')
+                write (iunit,'(1X,"#",1X,62("-"))')
             end if
         end if
 
@@ -317,20 +320,23 @@ contains
         real(p) :: barrier_this_proc
         real(p) :: spawn_comms(nprocs), determ_comms(nprocs), barrier_time(nprocs)
         character(4) :: lfmt
+        integer :: iunit
+
+        iunit = 6
 
         if (nprocs > 1) then
             if (parent) then
-                write (6,'(1X,a14,/,1X,14("^"),/)') 'Load balancing'
-                write (6,'(1X,a77,/)') "The final distribution of walkers and determinants across the processors was:"
+                write (iunit,'(1X,a14,/,1X,14("^"),/)') 'Load balancing'
+                write (iunit,'(1X,a77,/)') "The final distribution of walkers and determinants across the processors was:"
             endif
             call mpi_gather(nparticles, size(nparticles), mpi_real8, load_data, size(nparticles), &
                             mpi_real8, 0, MPI_COMM_WORLD, ierr)
             if (parent) then
                 do i = 1, size(nparticles)
-                    if (size(nparticles) > 1) write (6,'(1X,a,'//int_fmt(i,1)//')') 'Particle type:', i
-                    write (6,'(1X,"Min # of particles on a processor:",6X,es13.6)') minval(load_data(i,:))
-                    write (6,'(1X,"Max # of particles on a processor:",6X,es13.6)') maxval(load_data(i,:))
-                    write (6,'(1X,"Mean # of particles on a processor:",5X,es13.6,/)') sum(load_data(i,:))/nprocs
+                    if (size(nparticles) > 1) write (iunit,'(1X,a,'//int_fmt(i,1)//')') 'Particle type:', i
+                    write (iunit,'(1X,"Min # of particles on a processor:",6X,es13.6)') minval(load_data(i,:))
+                    write (iunit,'(1X,"Max # of particles on a processor:",6X,es13.6)') maxval(load_data(i,:))
+                    write (iunit,'(1X,"Mean # of particles on a processor:",5X,es13.6,/)') sum(load_data(i,:))/nprocs
                 end do
             end if
             call mpi_gather(nstates_active, 1, mpi_integer, load_data_int, 1, mpi_integer, 0, MPI_COMM_WORLD, ierr)
@@ -350,26 +356,26 @@ contains
 
             if (parent) then
                 lfmt = int_fmt(maxval(load_data_int),0)
-                write (6,'(1X,"Min # of determinants on a processor:",3X,'//lfmt//')') minval(load_data_int)
-                write (6,'(1X,"Max # of determinants on a processor:",3X,'//lfmt//')') maxval(load_data_int)
-                write (6,'(1X,"Mean # of determinants on a processor:",2X,es13.6)') real(sum(load_data_int), p)/nprocs
-                write (6,'()')
+                write (iunit,'(1X,"Min # of determinants on a processor:",3X,'//lfmt//')') minval(load_data_int)
+                write (iunit,'(1X,"Max # of determinants on a processor:",3X,'//lfmt//')') maxval(load_data_int)
+                write (iunit,'(1X,"Mean # of determinants on a processor:",2X,es13.6)') real(sum(load_data_int), p)/nprocs
+                write (iunit,'()')
                 if (use_mpi_barriers) then
-                    write (6,'(1X,"Min time taken by MPI barrier calls:",5X,f8.2,"s")') minval(barrier_time)
-                    write (6,'(1X,"Max time taken by MPI barrier calls:",5X,f8.2,"s")') maxval(barrier_time)
-                    write (6,'(1X,"Mean time taken by MPI barrier calls:",4X,f8.2,"s")') sum(barrier_time)/nprocs
-                    write (6,'()')
+                    write (iunit,'(1X,"Min time taken by MPI barrier calls:",5X,f8.2,"s")') minval(barrier_time)
+                    write (iunit,'(1X,"Max time taken by MPI barrier calls:",5X,f8.2,"s")') maxval(barrier_time)
+                    write (iunit,'(1X,"Mean time taken by MPI barrier calls:",4X,f8.2,"s")') sum(barrier_time)/nprocs
+                    write (iunit,'()')
                 end if
-                write (6,'(1X,"Min time taken by walker communication:",5X,f8.2,"s")') minval(spawn_comms)
-                write (6,'(1X,"Max time taken by walker communication:",5X,f8.2,"s")') maxval(spawn_comms)
-                write (6,'(1X,"Mean time taken by walker communication:",4X,f8.2,"s")') sum(spawn_comms)/nprocs
-                write (6,'()')
+                write (iunit,'(1X,"Min time taken by walker communication:",5X,f8.2,"s")') minval(spawn_comms)
+                write (iunit,'(1X,"Max time taken by walker communication:",5X,f8.2,"s")') maxval(spawn_comms)
+                write (iunit,'(1X,"Mean time taken by walker communication:",4X,f8.2,"s")') sum(spawn_comms)/nprocs
+                write (iunit,'()')
                 if (present(determ_mpi_time)) then
-                    write (6,'(1X,"Min time taken by semi-stochastic communication:",5X,f8.2,"s")') minval(determ_comms)
-                    write (6,'(1X,"Max time taken by semi-stochastic communication:",5X,f8.2,"s")') maxval(determ_comms)
-                    write (6,'(1X,"Mean time taken by semi-stochastic communication:",4X,f8.2,"s")') &
+                    write (iunit,'(1X,"Min time taken by semi-stochastic communication:",5X,f8.2,"s")') minval(determ_comms)
+                    write (iunit,'(1X,"Max time taken by semi-stochastic communication:",5X,f8.2,"s")') maxval(determ_comms)
+                    write (iunit,'(1X,"Mean time taken by semi-stochastic communication:",4X,f8.2,"s")') &
                         sum(determ_comms)/nprocs
-                    write (6,'()')
+                    write (iunit,'()')
                 end if
             end if
         end if
@@ -1002,13 +1008,16 @@ contains
 
         real(p), intent(inout) :: tau
         real(p), intent(in), optional :: factor
+        integer :: iunit
+
+        iunit = 6
 
         if (present(factor)) then
             tau = factor*tau
         else
             tau = 0.950_p*tau
         end if
-        if (parent) write(6, '(1X, "# Warning timestep changed to: ",f8.5)') tau
+        if (parent) write(iunit, '(1X, "# Warning timestep changed to: ",f8.5)') tau
 
     end subroutine rescale_tau
 

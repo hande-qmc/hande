@@ -160,9 +160,10 @@ contains
         type(sys_t), intent(in) :: sys
         type(two_body_t), intent(out) :: store
 
-        integer :: ierr, ispin, nspin, mem_reqd
+        integer :: ierr, ispin, nspin, mem_reqd, iunit
         integer(int_64):: npairs, nintgrls
 
+        iunit = 6
 
         store%op_sym = op_sym
         store%uhf = sys%read_in%uhf
@@ -207,9 +208,9 @@ contains
             mem_reqd = int((nintgrls*8*nspin)/10**6)
 #endif
             if (store%comp) mem_reqd = 2 * mem_reqd
-            write(6,'(1X,a,i0)') 'Memory required for all two body integrals (MB) on each processor: ', &
+            write(iunit,'(1X,a,i0)') 'Memory required for all two body integrals (MB) on each processor: ', &
                             mem_reqd
-            write(6,'(1X, a,/)') 'It is left to the user to ensure that this does not exceed available resources.'
+            write(iunit,'(1X, a,/)') 'It is left to the user to ensure that this does not exceed available resources.'
         end if
 
         do ispin = 1, nspin
@@ -1158,10 +1159,12 @@ contains
 
         type(two_body_t), intent(inout) :: store
         integer, intent(in) :: data_proc, max_broadcast_chunk
+        integer :: iunit
 #ifdef PARALLEL
         integer :: i, ierr, nblocks, nnext, mpi_preal_block, optimal_block_size
         integer(int_64) :: nmain
 
+        iunit = 6
         call MPI_BCast(store%op_sym, 1, mpi_integer, data_proc, MPI_COMM_WORLD, ierr)
         do i = lbound(store%integrals, dim=1), ubound(store%integrals, dim=1)
             ! Only use chunked broadcasting if have more elements than can broadcast in
@@ -1186,12 +1189,12 @@ contains
                     nnext = int(size(ints, kind=int_64) - nmain)
 
                     if (parent) then
-                        write(6,'(1X,"Integral Broadcasting",/,1X,21("-"),/)')
-                        write(6,'(1X,"Integral array larger than max_broadcast_chunk ",i0,".",&
+                        write(iunit,'(1X,"Integral Broadcasting",/,1X,21("-"),/)')
+                        write(iunit,'(1X,"Integral array larger than max_broadcast_chunk ",i0,".",&
                                     &/,1X,"Using contiguous MPI types for broadcast.",/)') max_broadcast_chunk
-                        write(6,'(1X,"Broadcasting coulomb integrals using ",i4," blocks of size ",&
+                        write(iunit,'(1X,"Broadcasting coulomb integrals using ",i4," blocks of size ",&
                                     &es11.4E3,".")') nblocks, real(optimal_block_size)
-                        write(6,'(1X,"This corresponds to ", es11.4E3," integrals in the main broadcast "&
+                        write(iunit,'(1X,"This corresponds to ", es11.4E3," integrals in the main broadcast "&
                                     &,/,1X,"and ", es11.4E3," in the remainder.")') real(nmain), real(nnext)
 
                     end if
@@ -1210,8 +1213,8 @@ contains
                     ! Finally tidy up mpi types.
                     call mpi_type_free(mpi_preal_block, ierr)
                     if (parent) then
-                        write(6, '(/,1X,"Broadcasting completed.")')
-                        write(6,'(/,1X,21("-"),/)')
+                        write(iunit, '(/,1X,"Broadcasting completed.")')
+                        write(iunit,'(/,1X,21("-"),/)')
                     end if
                 end associate
             else

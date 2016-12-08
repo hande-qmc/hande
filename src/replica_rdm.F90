@@ -111,8 +111,10 @@ contains
 
         real(p), intent(inout) :: rdm(:,:)
 
-        integer :: i,j
+        integer :: i,j, iunit
         real(p) :: max_abs_error, mean_abs_error, err
+
+        iunit = 6
 
         max_abs_error = 0.0_p
         mean_abs_error = 0.0_p
@@ -128,8 +130,8 @@ contains
         end do
 
         mean_abs_error = mean_abs_error/(size(rdm,dim=1)*(size(rdm,dim=1)-1)/2)
-        write (6,'(1X,"#",1X,"Maximum deviation from Hermiticity is:",1X,es17.10)') max_abs_error
-        write (6,'(1X,"#",1X,"Average deviation from Hermiticity is:",1X,es17.10)') mean_abs_error
+        write (iunit,'(1X,"#",1X,"Maximum deviation from Hermiticity is:",1X,es17.10)') max_abs_error
+        write (iunit,'(1X,"#",1X,"Average deviation from Hermiticity is:",1X,es17.10)') mean_abs_error
 
     end subroutine check_hermiticity
 

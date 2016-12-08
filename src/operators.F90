@@ -359,6 +359,9 @@ contains
         integer :: ierr
         real(p) :: esum(2)
 #endif
+        integer :: iunit
+
+        iunit = 6
 
         expectation_val = 0.0_p
         ndets = ubound(dets, dim=2)
@@ -430,14 +433,14 @@ contains
         if (parent) then
             select case(sys%system)
             case(hub_k)
-                write (6,'(1X,a16,f12.8)') '<\Psi|T|\Psi> = ', expectation_val(1)
-                write (6,'(1X,a16,f12.8)') '<\Psi|D|\Psi> = ', expectation_val(2)
+                write (iunit,'(1X,a16,f12.8)') '<\Psi|T|\Psi> = ', expectation_val(1)
+                write (iunit,'(1X,a16,f12.8)') '<\Psi|D|\Psi> = ', expectation_val(2)
             case(hub_real)
-                write (6,'(1X,a16,f12.8)') '<\Psi|D|\Psi> = ', expectation_val(1)
-                write (6,'()')
+                write (iunit,'(1X,a16,f12.8)') '<\Psi|D|\Psi> = ', expectation_val(1)
+                write (iunit,'()')
             case(read_in)
-                write (6,'(1X,a18,f12.8)') '<\Psi|O_1|\Psi> = ', expectation_val(1)
-                write (6,'()')
+                write (iunit,'(1X,a18,f12.8)') '<\Psi|O_1|\Psi> = ', expectation_val(1)
+                write (iunit,'()')
             end select
         end if
 

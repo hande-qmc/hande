@@ -241,47 +241,51 @@ contains
 
         type(sys_t), intent(in) :: sys
 
-        integer :: i, j, sym
+        integer :: i, j, sym, iunit
+
+        iunit = 6
 
         if (parent) then
-            write (6,'(1X,a20,/,1X,20("-"),/)') "Symmetry information"
+            write (iunit,'(1X,a20,/,1X,20("-"),/)') "Symmetry information"
 
-            write(6,'(1X,"Number of point group symmetries:",'//int_fmt(sys%read_in%pg_sym%Lz_divisor,1)//')') &
+            write(iunit,'(1X,"Number of point group symmetries:",'//int_fmt(sys%read_in%pg_sym%Lz_divisor,1)//')') &
                     sys%read_in%pg_sym%Lz_divisor
             if(sys%read_in%useLz) then
                 ! This is the Max Lz value we find in the basis functions.
                 i = maxval(sys%basis%basis_fns(:)%lz)
-                write(6,'(1X,"Maximum Lz found:",'//int_fmt(i,1)//')') i
-                write(6,'(1X,"Lz offset (corresponds to Lz=0):",'//int_fmt(sys%read_in%pg_sym%Lz_offset,1)//')') &
+                write(iunit,'(1X,"Maximum Lz found:",'//int_fmt(i,1)//')') i
+                write(iunit,'(1X,"Lz offset (corresponds to Lz=0):",'//int_fmt(sys%read_in%pg_sym%Lz_offset,1)//')') &
                     sys%read_in%pg_sym%Lz_offset
             else
-                write(6,'(1X,"Not using Lz symmetry.")')
+                write(iunit,'(1X,"Not using Lz symmetry.")')
             endif
-            write(6,'(1X,"Totally symmetric symmetry:",'//int_fmt(sys%read_in%pg_sym%gamma_sym,1)//')') sys%read_in%pg_sym%gamma_sym
-            write (6,'(1X,a78,/)') 'The matrix below gives the direct products of the irreducible representations.'
+            write(iunit,'(1X,"Totally symmetric symmetry:",'//int_fmt(sys%read_in%pg_sym%gamma_sym,1)//')') &
+                        sys%read_in%pg_sym%gamma_sym
+            write (iunit,'(1X,a78,/)') 'The matrix below gives the direct products of the irreducible representations.'
             ! Note that we never actually store this.
             do i = sys%sym0, sys%sym_max
                 do j = sys%sym0, sys%sym_max
                     sym=cross_product_pg_sym(sys%read_in,i,j)
                     if (sym>=sys%sym0_tot.and.sym<sys%nsym_tot) then
-                        write (6,'(1X,i2)',advance='no') sym
+                        write (iunit,'(1X,i2)',advance='no') sym
                     else
-                        write (6,'(3X)',advance='no')
+                        write (iunit,'(3X)',advance='no')
                     endif
                 end do
-                write (6,'()')
+                write (iunit,'()')
             end do
 
-            write (6,'(/,1X,a93,/)') 'The table below gives the number of basis functions spanning each irreducible representation.'
+            write (iunit,'(/,1X,a93,/)') &
+                'The table below gives the number of basis functions spanning each irreducible representation.'
 
-            write (6,'(1X,"irrep  Lz   sym  nbasis  nbasis_up  nbasis_down")')
+            write (iunit,'(1X,"irrep  Lz   sym  nbasis  nbasis_up  nbasis_down")')
             do i = sys%sym0, sys%sym_max
-                write (6,'(1X,i3,3X,i3,3X,i2,2X,i5,3X,i5,6X,i5)') i, pg_sym_getLz(sys%read_in%pg_sym, i), &
+                write (iunit,'(1X,i3,3X,i3,3X,i2,2X,i5,3X,i5,6X,i5)') i, pg_sym_getLz(sys%read_in%pg_sym, i), &
                     iand(i,sys%read_in%pg_sym%pg_mask), &
                     sys%read_in%pg_sym%nbasis_sym(i), sys%read_in%pg_sym%nbasis_sym_spin(:,i)
             end do
 
-            write (6,'()')
+            write (iunit,'()')
 
         end if
 

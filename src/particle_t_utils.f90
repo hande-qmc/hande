@@ -40,7 +40,9 @@ contains
         logical, intent(in), optional :: verbose_output
         integer :: ierr, nwalker_int_p, nwalker_real, size_main_walker, pop_bit_shift, max_nstates_elements
         logical :: verbose
+        integer :: iunit
 
+        iunit = 6
         verbose = .true.
         if (present(verbose_output)) verbose = verbose_output
 
@@ -97,9 +99,9 @@ contains
         end if
 
         if (parent .and. verbose) then
-            write (6,'(1X,a53,f7.2)') 'Memory allocated per core for main walker list (MB): ', &
+            write (iunit,'(1X,a53,f7.2)') 'Memory allocated per core for main walker list (MB): ', &
                                       size_main_walker*real(max_nstates_elements,p)/10**6
-            write (6,'(1X,a48,'//int_fmt(max_nstates_elements,1)//')') &
+            write (iunit,'(1X,a48,'//int_fmt(max_nstates_elements,1)//')') &
                     'Number of elements per core in main walker list:', max_nstates_elements
         end if
 

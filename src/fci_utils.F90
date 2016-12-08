@@ -102,9 +102,13 @@ contains
         integer(i0) :: f0(sys%basis%string_len)
         type(hmatel_t) :: hmatel
 
+        integer :: iunit_out
+
+        iunit_out = 6
+
         if (parent) then
-            write (6,'(1X,"FCI")')
-            write (6,'(1X,"---",/)')
+            write (iunit_out,'(1X,"FCI")')
+            write (iunit_out,'(1X,"---",/)')
 
             if (fci_in%print_fci_wfn /= 0) then
                 ! Overwrite any existing file...
@@ -255,6 +259,9 @@ contains
         integer :: i, j, ii, jj, ilocal, iglobal, jlocal, jglobal, nnz, imode
         logical :: sparse_mode
         type(hmatel_t) :: hmatel
+        integer :: iunit
+
+        iunit = 6
 
         hamil%comp = sys%read_in%comp
         if (present(use_sparse_hamil)) then
@@ -358,7 +365,7 @@ contains
                     end do
                     !$omp end parallel
                     if (imode == 1) then
-                        write (6,'(1X,a50,i8,/)') 'Number of non-zero elements in Hamiltonian matrix:', nnz
+                        write (iunit,'(1X,a50,i8,/)') 'Number of non-zero elements in Hamiltonian matrix:', nnz
                         call init_csrp(hamil%smat, ndets, nnz, .true.)
                         hamil%smat%row_ptr(1:ndets) = 0
                     else

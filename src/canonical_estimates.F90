@@ -102,8 +102,11 @@ contains
 #ifdef PARALLEL
         integer :: ierr
 #endif
+        integer :: iunit
 
-        if (parent) write (6,'(1X,a16,/,1X,16("-"),/)') 'Canonical energy'
+        iunit = 6
+
+        if (parent) write (iunit,'(1X,a16,/,1X,16("-"),/)') 'Canonical energy'
 
         call dSFMT_init(rng_seed+iproc, 50000, rng)
         call copy_sys_spin_info(sys, sys_bak)
@@ -146,17 +149,18 @@ contains
         ref_shift = energy_diff_ptr(sys, occ_list0)
 
         if (parent) then
-            write (6,'(1X,a87)') '<T>_0: Estimate for kinetic energy in non-interacting ensemble i.e. 1/Z_0 Tr(\rho_0 T).'
-            write (6,'(1X,a96)') '<V>_0: Estimate for potential energy in non-interacting ensemble energy i.e. 1/Z_0 Tr(\rho_0 V).'
-            write (6,'(1X,a70)') 'Tr(T\rho_HF): Estimate for numerator of "Hartree-Fock" kinetic energy.'
-            write (6,'(1X,a72)') 'Tr(V\rho_HF): Estimate for numerator of "Hartree-Fock" potential energy.'
-            write (6,'(1X,a72)') 'Tr(\rho_HF): Estimate for denominator of "Hatree-Fock" energy i.e. Z_HF.'
-            write (6,'(1X,a114)') 'N_ACC/N_ATT: Ratio of number of generated N particle states to number &
+            write (iunit,'(1X,a87)') '<T>_0: Estimate for kinetic energy in non-interacting ensemble i.e. 1/Z_0 Tr(\rho_0 T).'
+            write (iunit,'(1X,a96)') '<V>_0: Estimate for potential energy in non-interacting ensemble energy&
+                                    & i.e. 1/Z_0 Tr(\rho_0 V).'
+            write (iunit,'(1X,a70)') 'Tr(T\rho_HF): Estimate for numerator of "Hartree-Fock" kinetic energy.'
+            write (iunit,'(1X,a72)') 'Tr(V\rho_HF): Estimate for numerator of "Hartree-Fock" potential energy.'
+            write (iunit,'(1X,a72)') 'Tr(\rho_HF): Estimate for denominator of "Hatree-Fock" energy i.e. Z_HF.'
+            write (iunit,'(1X,a114)') 'N_ACC/N_ATT: Ratio of number of generated N particle states to number &
                                    &of attempts. Also Estimate for Z_GC(N)/Z_GC.'
-            write (6,'()')
+            write (iunit,'()')
         end if
 
-        if (parent) write (6,'(1X,a12,17X,a5,17X,a5,14x,a12,10X,a12,11X,a11,10X,a12)') &
+        if (parent) write (iunit,'(1X,a12,17X,a5,17X,a5,14x,a12,10X,a12,11X,a11,10X,a12)') &
                     '# iterations', '<T>_0', '<V>_0', 'Tr(T\rho_HF)', 'Tr(V\rho_HF)', 'Tr(\rho_HF)', 'N_ACC/N_ATT'
 
         forall (iorb=1:sys%basis%nbasis:2) p_single(iorb/2+1) = 1.0_p / &
@@ -217,7 +221,7 @@ contains
             estimators(ke_idx:hf_part_idx) = estimators(ke_idx:hf_part_idx) / estimators(naccept_idx)
             if (abs(estimators(naccept_idx)) < depsilon) call stop_all('estimate_estimates', 'Number of generated configurations &
                                                                        &is zero, increase number of attempts in input file.')
-            if (parent) write(6,'(3X,i10,5X,2(es17.10,5X),4X,4(es17.10,5X))') ireport, estimators(ke_idx), &
+            if (parent) write(iunit,'(3X,i10,5X,2(es17.10,5X),4X,4(es17.10,5X))') ireport, estimators(ke_idx), &
                                                              estimators(pe_idx), estimators(hf_ke_idx), &
                                                              estimators(hf_pe_idx), estimators(hf_part_idx), &
                                                              real(estimators(naccept_idx),p)/(nattempts*nprocs)
@@ -226,7 +230,7 @@ contains
             if (soft_exit) exit
         end do
 
-        if (parent) write(6, '()')
+        if (parent) write(iunit, '()')
 
         ! Return sys in unaltered state.
         call copy_sys_spin_info(sys_bak, sys)

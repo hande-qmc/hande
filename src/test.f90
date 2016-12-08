@@ -51,6 +51,9 @@ contains
         type(c_ptr), value :: L
 
         type(flu_State) :: lua_state
+        integer :: iunit
+
+        iunit = 6
 
         ! Number of variables returned on Lua stack.
         nreturn = 0
@@ -62,7 +65,7 @@ contains
         ! Get arguments passed to us by lua (if appropriate).
 
         ! Now do our work...
-        write (6,'(1X,"Hello from fortran! Processor: ",i2,/)') iproc
+        write (iunit,'(1X,"Hello from fortran! Processor: ",i2,/)') iproc
 
     end function test_lua_api
 

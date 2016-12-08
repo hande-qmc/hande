@@ -220,6 +220,9 @@ contains
         type(fciqmc_in_t), intent(in), optional :: fciqmc_in
 
         logical :: truncate_space
+        integer :: iunit
+
+        iunit = 6
 
         ! 0. In general, use the default spawning routine.
         spawner_ptr => spawn_standard
@@ -354,8 +357,8 @@ contains
             case(excit_gen_no_renorm)
             case(excit_gen_renorm)
                 if (parent) then
-                    write (6,'(1X,"WARNING: renormalised excitation generators not implemented.")')
-                    write (6,'(1X,"WARNING: If this upsets you, please send patches.",/)')
+                    write (iunit,'(1X,"WARNING: renormalised excitation generators not implemented.")')
+                    write (iunit,'(1X,"WARNING: If this upsets you, please send patches.",/)')
                 end if
             case default
                 call stop_all('init_proc_pointers', 'Selected excitation generator not implemented.')
@@ -372,8 +375,8 @@ contains
             case(excit_gen_no_renorm)
             case(excit_gen_renorm)
                 if (parent) then
-                    write (6,'(1X,"WARNING: renormalised excitation generators not implemented.")')
-                    write (6,'(1X,"WARNING: If this upsets you, please send patches.",/)')
+                    write (iunit,'(1X,"WARNING: renormalised excitation generators not implemented.")')
+                    write (iunit,'(1X,"WARNING: If this upsets you, please send patches.",/)')
                 end if
             case default
                 call stop_all('init_proc_pointers', 'Selected excitation generator not implemented.')
@@ -905,8 +908,10 @@ contains
         type(proc_map_t), intent(in) :: proc_map
         type(spawned_particle_t), intent(out) :: spawn_store
 
-        integer :: size_spawned_walker, max_nspawned_states, nhash_bits
+        integer :: size_spawned_walker, max_nspawned_states, nhash_bits, iunit
         real(p) :: spawn_cutoff
+
+        iunit = 6
 
         ! Calculate length of spawned particle arrays
 
@@ -924,17 +929,17 @@ contains
             max_nspawned_states = int((-real(max_nspawned_states,p)*10**6)/(2*size_spawned_walker))
         end if
         if (parent) then
-            write (6,'(1X,a57,f7.2)') &
+            write (iunit,'(1X,a57,f7.2)') &
                 'Memory allocated per core for spawned walker lists (MB): ', &
                 size_spawned_walker*real(2*max_nspawned_states,p)/10**6
-            write (6,'(1X,a51,1x,i0,/)') &
+            write (iunit,'(1X,a51,1x,i0,/)') &
                 'Number of elements per core in spawned walker list:', max_nspawned_states
         end if
         if (mod(max_nspawned_states, nprocs) /= 0) then
             max_nspawned_states = ceiling(real(max_nspawned_states)/nprocs)*nprocs
             if (parent) then
-               write (6,'(1X,a68)') 'spawned_walker_length is not a multiple of the number of processors.'
-               write (6,'(1X,a35,1x,i0,a1,/)') &
+               write (iunit,'(1X,a68)') 'spawned_walker_length is not a multiple of the number of processors.'
+               write (iunit,'(1X,a35,1x,i0,a1,/)') &
                 'Increasing spawned_walker_length to',max_nspawned_states,'.'
             end if
         end if
