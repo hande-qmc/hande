@@ -707,5 +707,18 @@ contains
 
     end subroutine write_blocking_report
 
+    subroutine reset_blocking_info(bl)
 
+        ! Subroutine to clear all stored blocking information to it's original state.
+        ! This is of use when using an initial short period of calculation to optimise
+        ! various parameters, before using optimal parameters for the rest of the
+        ! calculation.
+
+        ! In:
+        !   bl: Information needed to peform blocking on the fly.
+
+    end subroutine reset_blocking_info
+
+    subroutine update_shift_damping
+    end subroutine update_shift_damping
 end module blocking
