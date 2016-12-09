@@ -804,10 +804,10 @@ contains
 
         if (parent) write (io_unit,'()')
         call write_bloom_report(bloom_stats, io_unit=io_unit)
-        call multispawn_stats_report(ms_stats)
+        call multispawn_stats_report(ms_stats, io_unit=io_unit)
         call load_balancing_report(qs%psip_list%nparticles, qs%psip_list%nstates, qmc_in%use_mpi_barriers,&
-                                   qs%spawn_store%spawn%mpi_time)
-        call write_memcheck_report(qs%spawn_store%spawn)
+                                   qs%spawn_store%spawn%mpi_time, io_unit=io_unit)
+        call write_memcheck_report(qs%spawn_store%spawn, io_unit)
 
         if (soft_exit .or. error) then
             qs%mc_cycles_done = qs%mc_cycles_done + qmc_in%ncycles*ireport

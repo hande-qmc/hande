@@ -307,6 +307,7 @@ contains
         !       load_bal = { ... },
         !       reference = { ... },
         !       logging = { ...},
+        !       output = { ...},
         !       qmc_state = qmc_state,
         !    }
 
@@ -324,7 +325,7 @@ contains
         use lua_hande_system, only: get_sys_t
         use lua_hande_utils, only: warn_unused_args, register_timing
         use qmc_data, only: qmc_in_t, fciqmc_in_t, semi_stoch_in_t, restart_in_t, load_bal_in_t, &
-                            qmc_state_t
+                            qmc_state_t, output_in_t
         use logging, only: logging_in_t
         use reference_determinant, only: reference_t
         use system, only: sys_t
@@ -345,13 +346,15 @@ contains
         type(reference_t) :: reference
         type(qmc_state_t), pointer :: qmc_state_restart, qmc_state_out
         type(logging_in_t) :: logging_in
+        type(output_in_t) :: output_in
 
         logical :: have_restart_state
 
-        integer :: opts
+        integer :: opts, io_unit
         real :: t1, t2
-        character(10), parameter :: keys(9) = [character(10) :: 'sys', 'qmc', 'fciqmc', 'semi_stoch', 'restart', &
-                                                                'load_bal', 'reference', 'qmc_state', 'logging']
+        character(10), parameter :: keys(10) = [character(10) :: 'sys', 'qmc', 'fciqmc', 'semi_stoch', 'restart', &
+                                                                'load_bal', 'reference', 'qmc_state', 'logging', &
+                                                                'output']
 
         call cpu_time(t1)
 
@@ -372,6 +375,7 @@ contains
         call read_load_bal_in(lua_state, opts, load_bal_in)
         call read_reference_t(lua_state, opts, reference, sys)
         call read_logging_in_t(lua_state, opts, logging_in)
+        call read_output_in_t(lua_state, opts, output_in)
 
         call get_qmc_state(lua_state, have_restart_state, qmc_state_restart)
 
@@ -380,13 +384,18 @@ contains
 
         calc_type = fciqmc_calc
         allocate(qmc_state_out)
+
+        call init_output_unit(output_in, io_unit)
+
         if (have_restart_state) then
-            call do_fciqmc(sys, qmc_in, fciqmc_in, semi_stoch_in, restart_in, load_bal_in, reference, logging_in, &
+            call do_fciqmc(sys, qmc_in, fciqmc_in, semi_stoch_in, restart_in, load_bal_in, io_unit, reference, logging_in, &
                            qmc_state_out, qmc_state_restart)
         else
-            call do_fciqmc(sys, qmc_in, fciqmc_in, semi_stoch_in, restart_in, load_bal_in, reference, logging_in, &
+            call do_fciqmc(sys, qmc_in, fciqmc_in, semi_stoch_in, restart_in, load_bal_in, io_unit, reference, logging_in, &
                            qmc_state_out)
         end if
+
+        call end_output_unit(io_unit)
 
         ! Return qmc_state to the user.
         call push_qmc_state(lua_state, qmc_state_out)
@@ -410,6 +419,7 @@ contains
         !       restart = { ... },
         !       reference = { ... },
         !       logging = { ...},
+        !       output = { ...},
         !       qmc_state = qmc_state,
         !    }
 
@@ -1708,6 +1718,8 @@ contains
 
         use qmc_data, only: output_in_t
         use report, only: environment_report
+        use calc, only: calc_type, get_calculation_string
+
         type(output_in_t), intent(inout) :: output_in
         integer, intent(out) :: io_unit
 
@@ -1718,7 +1730,8 @@ contains
             ! Different filename; write note to stdout for clarity
             ! and initialise io_unit.
 
-            write (6,'("Writing calculation output to",1X,a)') output_in%out_filename
+            write (6,'(1X,"Writing ",a," calculation output to",1X,a)') trim(get_calculation_string(calc_type)), &
+                                trim(output_in%out_filename)
             write (6,'(1x)')
 
             open(newunit=io_unit, file=output_in%out_filename, &
