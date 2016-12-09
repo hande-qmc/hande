@@ -102,19 +102,20 @@ contains
 
     end subroutine normalise_rdm
 
-    subroutine check_hermiticity(rdm)
+    subroutine check_hermiticity(rdm, comment_unit)
 
         ! Calculate the deviation from Hermiticity of the RDM and make it Hermitian
 
         ! In/Out:
         !   rdm: the 2-RDM.
+        ! In:
+        !   comment_unit: io unit to write any comments to.
 
         real(p), intent(inout) :: rdm(:,:)
+        integer, intent(in) :: comment_unit
 
-        integer :: i,j, iunit
+        integer :: i,j
         real(p) :: max_abs_error, mean_abs_error, err
-
-        iunit = 6
 
         max_abs_error = 0.0_p
         mean_abs_error = 0.0_p
@@ -130,8 +131,8 @@ contains
         end do
 
         mean_abs_error = mean_abs_error/(size(rdm,dim=1)*(size(rdm,dim=1)-1)/2)
-        write (iunit,'(1X,"#",1X,"Maximum deviation from Hermiticity is:",1X,es17.10)') max_abs_error
-        write (iunit,'(1X,"#",1X,"Average deviation from Hermiticity is:",1X,es17.10)') mean_abs_error
+        write (comment_unit,'(1X,"#",1X,"Maximum deviation from Hermiticity is:",1X,es17.10)') max_abs_error
+        write (comment_unit,'(1X,"#",1X,"Average deviation from Hermiticity is:",1X,es17.10)') mean_abs_error
 
     end subroutine check_hermiticity
 
@@ -190,7 +191,7 @@ contains
 
     end subroutine calc_rdm_energy
 
-    subroutine write_final_rdm(rdm, nel, nbasis, filename)
+    subroutine write_final_rdm(rdm, nel, nbasis, filename, comment_unit)
 
         ! Write (normalised, Hermitian part of) RDM to a file
 
@@ -198,6 +199,7 @@ contains
         !   nel: number of electrons
         !   nbasis: Number of basis fns
         !   filename: file to write to
+        !   comment_unit: io unit to write any additional comments to.
         ! In/Out:
         !   rdm: Sampled two particle reduced density matrix. On exit it has been
         !        normalised and made Hermitian and the root processor holds the sum
@@ -207,7 +209,7 @@ contains
         use utils, only: tri_ind_distinct_reorder
 
         real(p), intent(inout) :: rdm(:,:)
-        integer, intent(in) :: nel, nbasis
+        integer, intent(in) :: nel, nbasis, comment_unit
         character(*), intent(in) :: filename
 
         integer :: i, j, k, l, fileunit, ierr
@@ -225,7 +227,7 @@ contains
 
         if (parent) then
             call normalise_rdm(nel, rdm)
-            call check_hermiticity(rdm)
+            call check_hermiticity(rdm, comment_unit)
 
             open(file=filename, newunit=fileunit)
             do i = 1, nbasis

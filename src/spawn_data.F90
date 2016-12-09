@@ -1166,17 +1166,20 @@ contains
 
     end subroutine compress_determ_repeats
 
-    subroutine write_memcheck_report(spawn)
+    subroutine write_memcheck_report(spawn, io_unit)
 
         ! Summarise the spawn_t memory warnings
 
         ! In:
         !   spawn: spawn_t object
+        ! In (optional):
+        !   io_unit: io unit to write report to.
 
         use parallel
         use utils, only: int_fmt
 
         type(spawn_t), intent(in) :: spawn
+        integer, intent(in), optional :: io_unit
 
         integer :: warnings, iunit
 #ifdef PARALLEL
@@ -1187,6 +1190,7 @@ contains
         warnings = spawn%warning_count
 #endif
         iunit = 6
+        if (present(io_unit)) iunit = io_unit
 
         if (parent .and. warnings > 0) then
             write (iunit, '(1x, "The spawning array was at least 95% full on",'//int_fmt(warnings,1)//'," iterations.",/)') warnings

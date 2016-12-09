@@ -286,4 +286,24 @@ contains
 
     end subroutine end_report
 
+    subroutine write_date_time_close(iunit, date_values)
+
+        ! Write final message to a given io unit, if open, and close
+
+        integer, intent(in) :: iunit, date_values(8)
+        logical :: io_open
+
+        inquire(unit=iunit, opened = io_open)
+
+        if (io_open) then
+            write (iunit,'(1X,64("="))')
+            write (iunit,'(1X,a19,1X,i2.2,"/",i2.2,"/",i4.4,1X,a2,1X,i2.2,2(":",i2.2))') &
+                      "Finished running on", date_values(3:1:-1), "at", date_values(5:7)
+            write (iunit,'(1X,64("="))')
+
+            close(iunit, status='keep')
+        end if
+
+    end subroutine write_date_time_close
+
 end module report

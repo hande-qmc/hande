@@ -20,24 +20,27 @@ end interface
 
 contains
 
-    subroutine write_qmc_report_header(ntypes, cmplx_est, rdm_energy)
+    subroutine write_qmc_report_header(ntypes, cmplx_est, rdm_energy, io_unit)
 
         ! In:
         !    ntypes: number of particle types being sampled.
         ! In (optional):
         !    cmplx_est: Print out information of cmplx_estlex estimators.
         !    rdm_energy: Print out energy calculated from rdm.
+        !    io_unit: io unit to write to.
 
         use calc, only: doing_calc, hfs_fciqmc_calc
 
         integer, intent(in) :: ntypes
         logical, optional, intent(in) :: cmplx_est, rdm_energy
+        integer, intent(in), optional :: io_unit
 
         logical :: cmplx_est_set
         integer :: i, nreplicas, iunit
         character(20) :: column_title
 
         iunit = 6
+        if (present(io_unit)) iunit = io_unit
 
         cmplx_est_set = .false.
         if (present(cmplx_est)) cmplx_est_set = cmplx_est
@@ -322,7 +325,7 @@ contains
 
     end subroutine write_column_title
 
-    subroutine write_qmc_report(qmc_in, qs, ireport, ntot_particles, elapsed_time, comment, non_blocking_comm, cmplx_est, &
+    subroutine write_qmc_report(qmc_in, qs, ireport, ntot_particles, elapsed_time, comment, non_blocking_comm, io_unit, cmplx_est, &
                                 rdm_energy)
 
         ! Write the report line at the end of a report loop.
@@ -336,6 +339,7 @@ contains
         !    comment: if true, then prefix the line with a #.
         !    non_blocking_comm: true if using non-blocking communications
         ! In (optional):
+        !    io_unit: io unit to write report to.
         !    cmplx_est: if true, doing calculation with real and imaginary walkers
         !       so need to print extra parameters.
         !    rdm_energy: Print energy calculated from RDM.
@@ -350,13 +354,14 @@ contains
         real, intent(in) :: elapsed_time
         logical, intent(in) :: comment, non_blocking_comm
         logical, intent(in), optional :: cmplx_est, rdm_energy
+        integer, intent(in), optional ::io_unit
 
         logical :: cmplx_est_set
         integer :: mc_cycles, ntypes, i, iunit
 
         ntypes = size(ntot_particles)
         iunit = 6
-
+        if (present(io_unit)) iunit = io_unit
         ! For non-blocking communications we print out the nth report loop
         ! after the (n+1)st iteration. Adjust mc_cycles accordingly
         if (.not. non_blocking_comm) then

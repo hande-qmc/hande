@@ -164,19 +164,23 @@ module bloom_handler
 
         end subroutine bloom_stats_init_report_loop
 
-        subroutine bloom_stats_warning(bloom_stats)
+        subroutine bloom_stats_warning(bloom_stats, io_unit)
 
             ! Write out a bloom warning if we haven't hit the warning limit already.
 
             ! In/Out:
             !    bloom_stats: blooming stats.  nwarnings is incremented if a warning is printed out.
+            ! In (optional):
+            !    io_unit: io unit to write warning to.
 
             use utils, only: int_fmt
 
             type(bloom_stats_t), intent(inout) :: bloom_stats
             integer :: iunit
+            integer, intent(in), optional :: io_unit
 
             iunit = 6
+            if (present(io_unit)) iunit = io_unit
 
             if ( bloom_stats%nwarnings < bloom_stats%nverbose_warnings ) then
                 select case(bloom_stats%mode)
@@ -198,12 +202,14 @@ module bloom_handler
 
         end subroutine bloom_stats_warning
 
-        subroutine write_bloom_report(bloom_stats)
+        subroutine write_bloom_report(bloom_stats, io_unit)
 
             ! Prints a nice report on any blooming events which have occured.
 
             ! In:
             !     bloom_stats: stats about blooming to print
+            ! In (optional):
+            !    io_unit: io unit to write warning to.
 
             use parallel
             use utils, only: int_fmt
@@ -211,6 +217,7 @@ module bloom_handler
             type(bloom_stats_t), intent(inout) :: bloom_stats
 
             integer :: iunit
+            integer, intent(in), optional :: io_unit
 #ifdef PARALLEL
             integer :: ierr
 
@@ -221,6 +228,7 @@ module bloom_handler
 #endif
 
             iunit = 6
+            if (present(io_unit)) iunit = io_unit
 
             if (bloom_stats%nblooms > 0 .and. parent) then
                 write (iunit, '(1X, "Blooming events occured: a more efficent calulation may be possible &

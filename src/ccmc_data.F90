@@ -92,18 +92,21 @@ contains
 
     end function ms_stats_reduction
 
-    subroutine multispawn_stats_report(ms_stats)
+    subroutine multispawn_stats_report(ms_stats, io_unit)
 
         ! Print out a report of the cluster multispawn events.
 
         ! In:
         !    ms_stats: array of multispawn_stats_t objects.  The reduced version is printed out.
+        ! In (optional):
+        !    io_unit: io unit to write report to.
 
         use parallel
         use utils, only: int_fmt
 
         type(multispawn_stats_t), intent(in) :: ms_stats(:)
         type(multispawn_stats_t) :: ms_stats_total
+        integer, intent(in), optional :: io_unit
         integer :: iunit
 #ifdef PARALLEL
         type(multispawn_stats_t) :: ms_stats_local
@@ -120,6 +123,7 @@ contains
         ms_stats_total = ms_stats_reduction(ms_stats)
 #endif
         iunit = 6
+        if (present(io_unit)) iunit = io_unit
 
         if (ms_stats_total%nevents > 0 .and. parent) then
             write (iunit,'(1X,"Multiple spawning events occurred.")')

@@ -103,7 +103,7 @@ contains
         end if
 
         ! Initialise data.
-        call init_qmc(sys, qmc_in, restart_in, load_bal_in, reference_in, annihilation_flags, qs, uuid_restart)
+        call init_qmc(sys, qmc_in, restart_in, load_bal_in, reference_in, 6, annihilation_flags, qs, uuid_restart)
 
         allocate(nparticles_old(qs%psip_list%nspaces), stat=ierr)
         call check_allocate('nparticles_old', qs%psip_list%nspaces, ierr)

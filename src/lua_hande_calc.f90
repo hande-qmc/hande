@@ -426,7 +426,7 @@ contains
         use ccmc, only: do_ccmc
         use lua_hande_system, only: get_sys_t
         use lua_hande_utils, only: warn_unused_args, register_timing
-        use qmc_data, only: qmc_in_t, ccmc_in_t, semi_stoch_in_t, restart_in_t, load_bal_in_t, qmc_state_t
+        use qmc_data, only: qmc_in_t, ccmc_in_t, semi_stoch_in_t, restart_in_t, load_bal_in_t, qmc_state_t, output_in_t
         use logging, only: logging_in_t
         use reference_determinant, only: reference_t
         use system, only: sys_t
@@ -447,11 +447,13 @@ contains
         type(reference_t) :: reference
         type(qmc_state_t), pointer :: qmc_state_restart, qmc_state_out
         type(logging_in_t) :: logging_in
+        type(output_in_t) :: output_in
 
         logical :: have_restart_state
-        integer :: opts
+        integer :: opts, io_unit
         real :: t1, t2
-        character(10), parameter :: keys(7) = [character(10) :: 'sys', 'qmc', 'ccmc', 'restart', 'reference', 'qmc_state','logging']
+        character(10), parameter :: keys(8) = [character(10) :: 'sys', 'qmc', 'ccmc', 'restart', 'reference', 'qmc_state', &
+                                                                'logging', 'output']
 
         call cpu_time(t1)
 
@@ -473,6 +475,7 @@ contains
         call read_reference_t(lua_state, opts, reference, sys)
 
         call read_logging_in_t(lua_state, opts, logging_in)
+        call read_output_in_t(lua_state, opts, output_in)
 
         call get_qmc_state(lua_state, have_restart_state, qmc_state_restart)
         call warn_unused_args(lua_state, keys, opts)
@@ -480,13 +483,18 @@ contains
 
         calc_type = ccmc_calc
         allocate(qmc_state_out)
+
+        call init_output_unit(output_in, io_unit)
+
         if (have_restart_state) then
-            call do_ccmc(sys, qmc_in, ccmc_in, semi_stoch_in, restart_in, load_bal_in, reference, logging_in, &
+            call do_ccmc(sys, qmc_in, ccmc_in, semi_stoch_in, restart_in, load_bal_in, reference, logging_in, io_unit, &
                             qmc_state_out, qmc_state_restart)
         else
-            call do_ccmc(sys, qmc_in, ccmc_in, semi_stoch_in, restart_in, load_bal_in, reference, logging_in, &
+            call do_ccmc(sys, qmc_in, ccmc_in, semi_stoch_in, restart_in, load_bal_in, reference, logging_in, io_unit, &
                             qmc_state_out)
         end if
+
+        call end_output_unit(io_unit)
 
         call push_qmc_state(lua_state, qmc_state_out)
         nresult = 1
@@ -1663,6 +1671,91 @@ contains
         end if
 
     end subroutine read_restart_in
+
+    subroutine read_output_in_t(lua_state, opts, output_in)
+
+        ! Read in output table (if it exists) and set up.
+
+        use flu_binding, only: flu_State
+        use aot_table_module, only: aot_exists, aot_table_open, aot_table_close, aot_get_val
+
+        use lua_hande_utils, only: warn_unused_args, get_flag_and_id
+        use qmc_data, only: output_in_t
+
+        type(flu_State), intent(inout) :: lua_state
+        integer, intent(in) :: opts
+        type(output_in_t), intent(out) :: output_in
+
+        integer :: err, output_table
+        character(11), parameter :: keys(2) = [character(11) :: 'filename', 'reprint_sys']
+
+        if (aot_exists(lua_state, opts, 'output')) then
+
+            call aot_table_open(lua_state, opts, output_table, 'output')
+
+            call aot_get_val(output_in%out_filename, err, lua_state, output_table, 'filename')
+            call aot_get_val(output_in%reprint_sys_info, err, lua_state, output_table, 'reprint_sys')
+
+            call warn_unused_args(lua_state, keys, output_table)
+
+            call aot_table_close(lua_state, output_table)
+
+        end if
+
+    end subroutine read_output_in_t
+
+    subroutine init_output_unit(output_in, io_unit)
+
+        use qmc_data, only: output_in_t
+        use report, only: environment_report
+        type(output_in_t), intent(inout) :: output_in
+        integer, intent(out) :: io_unit
+
+        if (output_in%out_filename == 'stdout') then
+            ! Filename is still the default.
+            io_unit = 6
+        else
+            ! Different filename; write note to stdout for clarity
+            ! and initialise io_unit.
+
+            write (6,'("Writing calculation output to",1X,a)') output_in%out_filename
+            write (6,'(1x)')
+
+            open(newunit=io_unit, file=output_in%out_filename, &
+                    status='unknown')
+
+            write (io_unit,'(/,a8,/)') 'HANDE'
+            call environment_report(io=io_unit)
+
+            if (output_in%reprint_sys_info) then
+                ! Want to reprint all system information in output file
+                ! for ease of use.
+                write (io_unit,'(1X,"Reprinting all system information as requested.")')
+                write (io_unit,'(1x)')
+
+                ! call write_out_system_info...
+            else
+                write (io_unit,'(1X,"System information previously written to stdout.")')
+                write (io_unit,'(1x)')
+            end if
+        end if
+
+    end subroutine init_output_unit
+
+    subroutine end_output_unit(io_unit)
+
+        ! Close calculation output file with the date and time.
+
+        use report, only: write_date_time_close
+
+        integer, intent(in) :: io_unit
+        integer :: date_values(8)
+
+        call date_and_time(VALUES=date_values)
+
+        call write_date_time_close(io_unit, date_values)
+
+    end subroutine end_output_unit
 
     subroutine get_qmc_state(lua_state, have_qmc_state, qmc_state)
 

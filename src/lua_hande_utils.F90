@@ -226,14 +226,11 @@ contains
         real :: time
         character(100) :: key
         integer :: i, key_len
-        integer :: iunit
-
-        iunit = 6
 
         if (parent) then
 
-            write (iunit,'(1x,"Timing breakdown",/,1x,16("-"),/)')
-            write (iunit,'(1X,"Time for each calculation section (seconds):",/)')
+            write (6,'(1x,"Timing breakdown",/,1x,16("-"),/)')
+            write (6,'(1X,"Time for each calculation section (seconds):",/)')
 
             ! Traversal of timer table
             ! First pass: get max key length.  Second pass: output with nicely aligned columns.
@@ -247,14 +244,14 @@ contains
                     if (i == 1) then
                         key_len = max(key_len, len_trim(key))
                     else
-                        write (iunit,'(1x,a,": ",f0.2)') key(:key_len), time
+                        write (6,'(1x,a,": ",f0.2)') key(:key_len), time
                     end if
                     call flu_pop(lua_state, 1)
                 end do
                 call aot_table_close(lua_state, timer)
             end do
 
-            write (iunit,'()')
+            write (6,'()')
 
         end if
 

@@ -130,7 +130,7 @@ contains
         end if
 
         ! Initialise data.
-        call init_qmc(sys, qmc_in, restart_in, load_bal_in, reference_in, annihilation_flags, qs, uuid_restart, &
+        call init_qmc(sys, qmc_in, restart_in, load_bal_in, reference_in, 6, annihilation_flags, qs, uuid_restart, &
                       fciqmc_in=fciqmc_in, qmc_state_restart=qmc_state_restart)
 
         if (debug) call init_logging(logging_in, logging_info)

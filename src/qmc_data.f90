@@ -263,6 +263,15 @@ type restart_in_t
     integer :: write_shift_id = huge(0)
 end type restart_in_t
 
+type output_in_t
+    ! Filename to output to.
+    character(255) :: out_filename = 'stdout'
+    ! Whether to reproduce system initialisation information at start
+    ! of calculation output file (if not to stout).
+    logical :: reprint_sys_info = .false.
+
+end type output_in_t
+
 ! --- Parallel info ---
 
 ! Combine information required for non-blocking report loop quantities

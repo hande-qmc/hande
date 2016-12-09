@@ -229,7 +229,7 @@ contains
         ! Closes all active log files within fortran.
         ! In future may also print message to demonstrate end of logs.
 
-        use report, only: end_report
+        use report, only: write_date_time_close
 
         integer :: date_values(8)
         type(logging_t), intent(in) :: logging_info
@@ -873,23 +873,6 @@ contains
         write(iunit, '("#",1X,20("="))')
 
     end subroutine write_iter_to_log
-
-    subroutine write_date_time_close(iunit, date_values)
-
-        ! Write final message to log and close
-
-        integer, intent(in) :: iunit, date_values(8)
-
-        if (iunit /= huge(1)) then
-            write (iunit,'(1X,64("="))')
-            write (iunit,'(1X,a19,1X,i2.2,"/",i2.2,"/",i4.4,1X,a2,1X,i2.2,2(":",i2.2))') &
-                      "Finished running on", date_values(3:1:-1), "at", date_values(5:7)
-            write (iunit,'(1X,64("="))')
-
-            close(iunit, status='keep')
-        end if
-
-    end subroutine write_date_time_close
 
 ! --- Json functions for logging types ---
 

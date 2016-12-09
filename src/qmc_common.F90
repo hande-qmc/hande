@@ -288,7 +288,7 @@ contains
 
     end function decide_nattempts
 
-    subroutine load_balancing_report(nparticles, nstates_active, use_mpi_barriers, spawn_mpi_time, determ_mpi_time)
+    subroutine load_balancing_report(nparticles, nstates_active, use_mpi_barriers, spawn_mpi_time, determ_mpi_time, io_unit)
 
         ! In:
         !    nparticles: number of particles in each space, on this process only.
@@ -300,6 +300,7 @@ contains
         ! In (optional):
         !    determ_mpi_time: MPI timings for semi-stochastic communications,
         !        on this process only.
+        !    io_unit: io unit to write report to.
 
         ! Print out a load-balancing report when run in parallel showing how
         ! determinants and walkers/particles are distributed over the processors.
@@ -312,7 +313,7 @@ contains
         logical, intent(in) :: use_mpi_barriers
         type(parallel_timing_t), intent(in) :: spawn_mpi_time
         type(parallel_timing_t), optional, intent(in) :: determ_mpi_time
-
+        integer, intent(in), optional :: io_unit
 #ifdef PARALLEL
         real(dp) :: load_data(size(nparticles), nprocs)
         integer :: load_data_int(nprocs)
@@ -323,6 +324,7 @@ contains
         integer :: iunit
 
         iunit = 6
+        if (present(io_unit)) iunit = io_unit
 
         if (nprocs > 1) then
             if (parent) then
@@ -525,7 +527,7 @@ contains
 
 ! --- Output routines ---
 
-    subroutine initial_fciqmc_status(sys, qmc_in, qs, nb_comm, spawn_elsewhere)
+    subroutine initial_fciqmc_status(sys, qmc_in, qs, nb_comm, spawn_elsewhere, io_unit)
 
         ! Calculate the projected energy based upon the initial walker
         ! distribution (either via a restart or as set during initialisation)
@@ -541,6 +543,7 @@ contains
         !    spawn_elsewhere: number of particles spawned from the current
         !       processor to other processors.  Relevant only when restarting
         !       non-blocking calculations.
+        !    io_unit: io unit to write any reporting to.
 
         use determinants, only: det_info_t, alloc_det_info_t, dealloc_det_info_t, decode_det
         use energy_evaluation, only: local_energy_estimators, update_energy_estimators_send
@@ -558,7 +561,7 @@ contains
         type(qmc_in_t), intent(in) :: qmc_in
         type(qmc_state_t), intent(inout), target :: qs
         logical, optional, intent(in) :: nb_comm
-        integer, optional, intent(in) :: spawn_elsewhere
+        integer, optional, intent(in) :: spawn_elsewhere, io_unit
 
         integer :: idet, ispace
         real(dp) :: ntot_particles(qs%psip_list%nspaces)
@@ -645,7 +648,7 @@ contains
         qs%estimators%D0_population_old = qs%estimators%D0_population
 
         if (.not. nb_comm_local .and. parent) then
-            call write_qmc_report(qmc_in, qs, 0, ntot_particles, 0.0, .true., .false., cmplx_est=sys%read_in%comp)
+            call write_qmc_report(qmc_in, qs, 0, ntot_particles, 0.0, .true., .false., cmplx_est=sys%read_in%comp, io_unit=io_unit)
         end if
 
     end subroutine initial_fciqmc_status

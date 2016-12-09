@@ -7,7 +7,8 @@ implicit none
 
 contains
 
-    subroutine init_particle_t(max_nstates, nwalker_int_extra, tensor_label_len, real_amplitudes, real32, pl, verbose_output)
+    subroutine init_particle_t(max_nstates, nwalker_int_extra, tensor_label_len, real_amplitudes, real32, pl, &
+                                verbose_output, io_unit)
 
         ! In:
         !    max_nstates: maximum number of states that can be held in pl.  Sets the
@@ -21,6 +22,7 @@ contains
         !       POP_SIZE=64.
         !    verbose_output (optional): if true (default: false) print out information about
         !       the memory allocation of pl.
+        !    io_unit (optional): io unit to write any reports to.
         ! In/Out:
         !    pl: particle_t object.  On input pl%nspaces and pl%info_size must be set.  On
         !       output all allocatable components are appropriately allocated.
@@ -38,11 +40,13 @@ contains
         logical, intent(in) :: real_amplitudes, real32
         type(particle_t), intent(inout) :: pl
         logical, intent(in), optional :: verbose_output
+        integer, intent(in), optional :: io_unit
         integer :: ierr, nwalker_int_p, nwalker_real, size_main_walker, pop_bit_shift, max_nstates_elements
         logical :: verbose
         integer :: iunit
 
         iunit = 6
+        if (present(io_unit)) iunit = io_unit
         verbose = .true.
         if (present(verbose_output)) verbose = verbose_output
 
