@@ -466,7 +466,7 @@ contains
         integer, intent(out) :: det_store(nel)
         integer, intent(out) :: nexcit
 
-        integer :: i, j, det_sind, ref_sind
+        integer :: i, j, det_sind, ref_sind, i_backwards, i_backwards_position
 
         j = 1  ! This is the index in det_list.
 
@@ -494,19 +494,29 @@ fdo:    do i=1, nel ! this will index in ref
             end if
             if (j > nel) exit fdo
         end do fdo 
-
+        
+        ! [Review] - VAN: i is not the last orbital we dealt with in all 
+        ! [Review] - VAN: possible cases. If det_list(last entry) < ref_list(last entry)
+        ! [Review] - VAN: we leave with an i we have not looked at yet. I have fixed this bug.
         ! Deal with whatever's left over in ref.  i is currently the last orbital we dealt with.
-        do while (i<nel)
-            i = i + 1
-            ref_sind = ref_sind + 1
-            ref_store(ref_sind) = i
-        end do
         ! Deal with whatever's left in det. j is the NEXT orbital to  deal with.
         do while (j<=nel)
             det_sind = det_sind + 1
             det_store(det_sind) = j
             j = j + 1
         end do
+
+        ! Deal with whatever's left over in ref. We fill this up backwards as having filled up j
+        ! we know the final value of ref_sind (= det_sind).
+        i_backwards = nel
+        i_backwards_position = det_sind
+        do while (ref_sind < det_sind)
+            ref_store(i_backwards_position) = i_backwards
+            i_backwards = i_backwards - 1
+            i_backwards_position = i_backwards_position - 1
+            ref_sind = ref_sind + 1
+        end do
+
 
         nexcit = ref_sind
 
