@@ -15,7 +15,7 @@ contains
         !     start_cpu_time: cpu_time at the start of the calculation.
         !     start_wall_time: system_clock at the start of the calculation.
 
-        use report, only: environment_report, comm_global_uuid, HANDE_VCS_VERSION, GLOBAL_UUID
+        use report, only: environment_report, get_uuid, comm_global_uuid, HANDE_VCS_VERSION, GLOBAL_UUID
         use calc, only: init_calc_defaults
         use parallel, only: init_parallel, parallel_report, nprocs, nthreads, parent
 
@@ -27,13 +27,14 @@ contains
         call cpu_time(start_cpu_time)
         call system_clock(start_wall_time)
 
+        if (parent) call get_uuid(GLOBAL_UUID)
+        call comm_global_uuid()
+        call init_calc_defaults(HANDE_VCS_VERSION, GLOBAL_UUID)
+
         if (parent) then
             write (6,'(/,a8,/)') 'HANDE'
             call environment_report()
         end if
-        call comm_global_uuid()
-
-        call init_calc_defaults(HANDE_VCS_VERSION, GLOBAL_UUID)
 
         if ((nprocs > 1 .or. nthreads > 1) .and. parent) call parallel_report()
 
