@@ -472,7 +472,7 @@ contains
 
     end subroutine redistribute_particles
 
-    subroutine redistribute_semi_stoch_t(sys, propagator, reference, annihilation_flags, psip_list, spawn, determ)
+    subroutine redistribute_semi_stoch_t(sys, propagator, reference, annihilation_flags, psip_list, spawn, io_unit, determ)
 
         ! Recreate the semi_stoch_t object (if a non-empty space is in use).
         ! This requires sending deterministic states to their new processes
@@ -506,6 +506,7 @@ contains
         type(particle_t), intent(inout) :: psip_list
         type(spawn_t), intent(in) :: spawn
         type(semi_stoch_t), intent(inout) :: determ
+        integer, intent(in) :: io_unit
 
         type(semi_stoch_in_t) :: ss_in_new
 
@@ -520,7 +521,8 @@ contains
             call dealloc_semi_stoch_t(determ, keep_dets=.true.)
             ! Recreate the semi_stoch_t instance, by reusing the deterministic
             ! space already generated, but with states on their new processes.
-            call init_semi_stoch_t(determ, ss_in_new, sys, propagator, psip_list, reference, annihilation_flags, spawn, .false.)
+            call init_semi_stoch_t(determ, ss_in_new, sys, propagator, psip_list, reference, annihilation_flags, spawn, &
+                                    .false., io_unit)
         end if
 
     end subroutine redistribute_semi_stoch_t
@@ -750,7 +752,7 @@ contains
 
     end subroutine init_mc_cycle
 
-    subroutine load_balancing_wrapper(sys, propagator, reference, load_bal_in, annihilation_flags, nb_comm, rng, &
+    subroutine load_balancing_wrapper(sys, propagator, reference, load_bal_in, annihilation_flags, nb_comm, io_unit, rng, &
                                       psip_list, spawn, par_info, determ)
 
         ! In:
@@ -798,11 +800,12 @@ contains
         type(spawn_t), intent(inout) :: spawn
         type(parallel_t), intent(inout) :: par_info
         type(semi_stoch_t), optional, intent(inout) :: determ
+        integer, intent(in) :: io_unit
 
         if (par_info%load%needed) then
             call do_load_balancing(psip_list, spawn, par_info, load_bal_in)
             call redistribute_load_balancing_dets(rng, sys, propagator, reference, determ, psip_list, &
-                                                  spawn, annihilation_flags)
+                                                  spawn, annihilation_flags, io_unit)
             ! If using non-blocking communications we still need this flag to
             ! be set.
             if (.not. nb_comm) par_info%load%needed = .false.
@@ -1025,7 +1028,7 @@ contains
     end subroutine rescale_tau
 
     subroutine redistribute_load_balancing_dets(rng, sys, propagator, reference, determ, &
-                                                 psip_list, spawn, annihilation_flags)
+                                                 psip_list, spawn, annihilation_flags, io_unit)
 
         ! When doing load balancing we need to redistribute chosen sections of
         ! main list to be sent to their new processors. This is a wrapper which
@@ -1068,6 +1071,7 @@ contains
         type(particle_t), intent(inout) :: psip_list
         type(spawn_t), intent(inout) :: spawn
         type(annihilation_flags_t), intent(in) :: annihilation_flags
+        integer, intent(in) :: io_unit
 
         associate(pl=>psip_list)
             call redistribute_particles(pl%states, pl%pop_real_factor, pl%pops, pl%nstates, pl%nparticles, spawn)
@@ -1079,7 +1083,7 @@ contains
         spawn%head = spawn%head_start
 
         if (present(determ)) call redistribute_semi_stoch_t(sys, propagator, reference, annihilation_flags, &
-                                                             psip_list, spawn, determ)
+                                                             psip_list, spawn, io_unit, determ)
 
     end subroutine redistribute_load_balancing_dets
 
