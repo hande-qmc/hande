@@ -11,6 +11,8 @@ Coupled Cluster Monte Carlo
         ccmc = { ... },
         restart = { ... },
         reference = { ... },
+        logging = { ... },
+        output = { ... },
         qmc_state = qmc_state,
     }
 
@@ -55,6 +57,21 @@ Options
     Optional.
 
     Further options to select the reference state used.  See :ref:`reference_table`.
+``logging``
+    type: lua table.
+
+    Optional.
+
+    Further options to enable various logging outputs from a CCMC simulation. Only
+    available when compiled in debug mode. See :ref:`logging_table` for information
+    on current options.
+``output``
+    type: lua_table.
+
+    Optional.
+
+    Further options to enable direction of calculation output to a different file.
+    See :ref:`output_table` for more information.
 ``qmc_state``
     type: qmc_state object.
 

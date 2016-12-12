@@ -72,7 +72,7 @@ Additional logging functionality can be added upon request. Current coverage is 
     Current levels are:
 
     - ``0`` returns no extra information.
-    - ``1`` returns information on each stochastic selection attempt resulting within a calculation in a
+    - ``1`` returns information on each stochastic selection attempt within a calculation resulting in a
         valid cluster (only for CCMC).
     - ``2`` returns information on each stochastic selection attempt within a calculation, regardless of
         validity of resulting cluster (only for CCMC).

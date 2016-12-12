@@ -264,12 +264,12 @@ type restart_in_t
 end type restart_in_t
 
 type output_in_t
-    ! Filename to output to.
+    ! Filename to direct all calculation output to. If set to 'stdout'
+    ! will be returned to standard output pipe.
     character(255) :: out_filename = 'stdout'
     ! Whether to reproduce system initialisation information at start
     ! of calculation output file (if not to stout).
-    logical :: reprint_sys_info = .false.
-
+    logical :: reprint_sys_info = .true.
 end type output_in_t
 
 ! --- Parallel info ---
