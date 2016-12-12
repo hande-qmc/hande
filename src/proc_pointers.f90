@@ -193,6 +193,15 @@ abstract interface
         type(hmatel_t) :: hmatel
     end function i_slater_condon2_excit
 
+    pure subroutine i_create_weighted_excitation_list(sys, i, a_list, a_list_len, weights, weight_tot)
+        use system, only: sys_t
+        use molecular_integrals, only: get_two_body_int_mol
+        import :: p
+        type(sys_t), intent(in) :: sys
+        integer, intent(in) :: i, a_list_len, a_list(:)
+        real(p), intent(out) :: weight_tot, weights(:)
+    end subroutine i_create_weighted_excitation_list
+
     pure function i_get_one_e_int(sys, i, a) result(intgrl)
         use system, only: sys_t
         import :: p
@@ -240,6 +249,8 @@ procedure(i_create_spawned_particle_dm), pointer :: create_spawned_particle_dm_p
 
 procedure(i_slater_condon1_excit), pointer :: slater_condon1_excit_ptr
 procedure(i_slater_condon2_excit), pointer :: slater_condon2_excit_ptr
+
+procedure(i_create_weighted_excitation_list), pointer :: create_weighted_excitation_list_ptr
 
 procedure(i_get_one_e_int), pointer :: get_one_e_int_ptr => null()
 procedure(i_get_two_e_int), pointer :: get_two_e_int_ptr => null()

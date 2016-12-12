@@ -405,7 +405,7 @@ contains
 
     end subroutine init_excit_ueg_cauchy_schwarz
 
-    subroutine create_weighted_excitation_list_ueg(sys, from, to_list, nto, weights, weighttot)
+    subroutine create_weighted_excitation_list_ueg(sys, i, a_list, a_list_len, weights, weight_tot)
 
         ! Generate a list of allowed excitations from from to one of to_list with their weights based on
         ! sqrt(|<from to  | to  from>|) 
@@ -414,18 +414,17 @@ contains
         ! [review] - JSS: doc args.
 
         use system, only: sys_t
-        use molecular_integrals, only: get_two_body_int_mol
         type(sys_t), intent(in) :: sys
-        integer, intent(in) :: from, nto, to_list(nto)
-        real(p), intent(out) :: weights(nto), weighttot
+        integer, intent(in) :: i, a_list_len, a_list(a_list_len)
+        real(p), intent(out) :: weights(a_list_len), weight_tot
         
-        integer :: i
+        integer :: k
         real(p) :: weight
 
-        weighttot = 0 
-        do i=1, nto
-            if (to_list(i) /= from) then
-                weight = sys%ueg%coulomb_int(sys%lattice%box_length(1), sys%basis, from, to_list(i))
+        weight_tot = 0 
+        do k=1, a_list_len
+            if (a_list(k) /= i) then
+                weight = sys%ueg%coulomb_int(sys%lattice%box_length(1), sys%basis, i, a_list(k))
             else
                 weight = 0
             end if
@@ -433,8 +432,8 @@ contains
             ! [review] - JSS: specifically, because momentum is conserved, |q| = | k_i - k_a | = | k_j - k_b | and hence
             ! [review] - JSS: for the (non-zero) integral <ij|ab>, <ia|ai> = <jb|bj>.
             weight = abs(weight) ! since the value of the integral in the UEG is uniquely determined from the i->a excitation, we can use exactly the abs value here.
-            weights(i) = weight
-            weighttot = weighttot + weight
+            weights(k) = weight
+            weight_tot = weight_tot + weight
         end do
 
     end subroutine create_weighted_excitation_list_ueg
@@ -471,6 +470,7 @@ contains
         use excit_gens, only: excit_gen_data_t
         use excit_gen_cauchy_schwarz_mol, only: select_weighted_value_prec
         use ueg_system, only: ueg_basis_index
+        use hamiltonian_data 
 
         use dSFMT_interface, only: dSFMT_t, get_rand_close_open
 
@@ -478,7 +478,8 @@ contains
         type(excit_gen_data_t), intent(in) :: excit_gen_data
         type(det_info_t), intent(in) :: cdet
         type(dSFMT_t), intent(inout) :: rng
-        real(p), intent(out) :: pgen, hmatel
+        real(p), intent(out) :: pgen
+        type(hmatel_t), intent(out) :: hmatel
         type(excit_t), intent(out) :: connection
         logical, intent(out) :: allowed_excitation
 
@@ -580,14 +581,14 @@ contains
                 call find_excitation_permutation2(sys%basis%excit_mask, cdet%f, connection)
 
                 ! 5b. Find the connecting matrix element.
-                hmatel = slater_condon2_ueg_excit(sys, connection%from_orb(1), connection%to_orb(1), connection%to_orb(2), &
+                hmatel%r = slater_condon2_ueg_excit(sys, connection%from_orb(1), connection%to_orb(1), connection%to_orb(2), &
                     connection%perm)
             else
                 ! Carelessly selected ij with no possible excitations.  Such
                 ! events are not worth the cost of renormalising the generation
                 ! probabilities.
                 ! Return a null excitation.
-                hmatel = 0.0_p
+                hmatel%r = 0.0_p
                 pgen = 1.0_p
             end if
         end associate

@@ -16,46 +16,6 @@ implicit none
 
 contains
 
-    subroutine create_weighted_excitation_list(sys, from, to_list, nto, weights, weighttot)
-
-        ! [review] - JSS: 'from from' is a bit awkward.  from_orb and to_orb(s)?
-        ! Generate a list of allowed excitations from from to one of to_list with their weights based on
-        ! sqrt(|<from to  | to  from>|)
-        !
-        ! In:
-        !    sys:   The system in which the orbitals live
-        !    from:  integer specifying the from orbital
-        !    to_list:   a list of integers specifying the basis functions we're allowed to excite to
-        !    nto:   The length of to_list
-        ! Out:
-        !    weights:   A list of reals (length nto), with the weight of each of the to_list orbitals
-        !    weighttot: The sum of all the weights.
-
-        use system, only: sys_t
-        use molecular_integrals, only: get_two_body_int_mol
-        type(sys_t), intent(in) :: sys
-        ! [review] - JSS: assumed size arrays?  to_list(:)?
-        integer, intent(in) :: from, nto, to_list(nto)
-        real(p), intent(out) :: weights(nto), weighttot
-        
-        integer :: i
-        real(p) :: weight
-
-        weighttot = 0 
-        do i = 1, nto
-            ! [review] - JSS: could avoid the abs with an assumption or a one-off O(N2) check during initialisation?
-            ! This exchange integral should be +ve, but best abs below in case!
-            weight = get_two_body_int_mol(sys%read_in%coulomb_integrals, from, to_list(i), to_list(i), from,  & 
-                        sys%basis%basis_fns, sys%read_in%pg_sym)
-! [review] - JSS: ?!  Debug?
-!            weight = 1
-            weight = sqrt(abs(weight))
-            weights(i) = weight
-            weighttot = weighttot + weight
-        end do
-
-    end subroutine create_weighted_excitation_list 
-
     ! [review] - JSS: not specific to excit_gen_cauchy_schwarz_mol.  Move to (e.g.) lib/local/alias.f90?
     ! [review] - JSS: name isn't immediately obvious.  Prec?
     function select_weighted_value_prec(rng, N, aliasP, aliasY) result(ret)
@@ -263,6 +223,7 @@ contains
         use system, only: sys_t
         use qmc_data, only: reference_t
         use sort, only: qsort
+        use proc_pointers, only: create_weighted_excitation_list_ptr
         type(sys_t), intent(in) :: sys
         type(reference_t), intent(in) :: ref
         type(excit_gen_cauchy_schwarz_t), intent(inout) :: cs
@@ -308,10 +269,10 @@ contains
             j = cs%occ_list(i)  ! The elec we're looking at
             if (sys%basis%basis_fns(j)%Ms == -1) then ! beta
                 nv = sys%nvirt_beta
-                call create_weighted_excitation_list(sys, j, cs%virt_list_b, nv, cs%ia_weights(:,i), cs%ia_weights_tot(i))
+                call create_weighted_excitation_list_ptr(sys, j, cs%virt_list_b, nv, cs%ia_weights(:,i), cs%ia_weights_tot(i))
             else ! alpha
                 nv = sys%nvirt_alpha
-                call create_weighted_excitation_list(sys, j, cs%virt_list_a, nv, cs%ia_weights(:,i), cs%ia_weights_tot(i))
+                call create_weighted_excitation_list_ptr(sys, j, cs%virt_list_a, nv, cs%ia_weights(:,i), cs%ia_weights_tot(i))
             end if
             call generate_alias_tables(nv, cs%ia_weights(:,i), cs%ia_weights_tot(i), cs%aliasP(:,i), cs%aliasY(:,i))        
         end do
@@ -349,19 +310,23 @@ contains
         use determinants, only: det_info_t
         use excitations, only: excit_t
         use excitations, only: find_excitation_permutation1, find_excitation_permutation2,get_excitation_locations
-        use hamiltonian_molecular, only: slater_condon1_mol_excit, slater_condon2_mol
+        use proc_pointers, only: slater_condon1_excit_ptr, slater_condon2_excit_ptr
         use system, only: sys_t
         use excit_gen_mol, only: calc_pgen_single_mol_no_renorm,find_ia_mol
 
         use dSFMT_interface, only: dSFMT_t, get_rand_close_open
+        use hamiltonian_data, only: hmatel_t
+
 
         type(sys_t), intent(in) :: sys
         type(excit_gen_data_t), intent(in) :: excit_gen_data
         type(det_info_t), intent(in) :: cdet
         type(dSFMT_t), intent(inout) :: rng
-        real(p), intent(out) :: pgen, hmatel
+        real(p), intent(out) :: pgen
+        type(hmatel_t), intent(out) :: hmatel 
         type(excit_t), intent(out) :: connection
         logical, intent(out) :: allowed_excitation
+
 
         integer ::  ij_spin
       
@@ -388,10 +353,12 @@ contains
                 call find_excitation_permutation1(sys%basis%excit_mask, cdet%f, connection)
 
                 ! 5a. Find the connecting matrix element.
-                hmatel = slater_condon1_mol_excit(sys, cdet%occ_list, connection%from_orb(1), connection%to_orb(1), connection%perm)
+                hmatel = slater_condon1_excit_ptr(sys, cdet%occ_list, connection%from_orb(1), & 
+                                            connection%to_orb(1), connection%perm)
             else
                 ! Forbidden---connection%to_orb(1) is already occupied.
-                hmatel = 0.0_p
+                hmatel%c = cmplx(0.0_p, 0.0_p, p)
+                hmatel%r = 0.0_p
                 pgen = 1.0_p ! Avoid any dangerous division by pgen by returning a sane (but cheap) value.
             end if
 
@@ -520,14 +487,15 @@ contains
                     call find_excitation_permutation2(sys%basis%excit_mask, cdet%f, connection)
 
                     ! 5b. Find the connecting matrix element.
-                    hmatel = slater_condon2_mol(sys, connection%from_orb(1), connection%from_orb(2), &
+                    hmatel = slater_condon2_excit_ptr(sys, connection%from_orb(1), connection%from_orb(2), &
                                                       connection%to_orb(1), connection%to_orb(2), connection%perm)
                 else
                     ! Carelessly selected ij with no possible excitations.  Such
                     ! events are not worth the cost of renormalising the generation
                     ! probabilities.
                     ! Return a null excitation.
-                    hmatel = 0.0_p
+                    hmatel%c = cmplx(0.0_p, 0.0_p, p)
+                    hmatel%r = 0.0_p
                     pgen = 1.0_p
                 end if
             end associate
@@ -620,17 +588,18 @@ contains
         use determinants, only: det_info_t
         use excitations, only: excit_t
         use excitations, only: find_excitation_permutation1, find_excitation_permutation2
-        use hamiltonian_molecular, only: slater_condon1_mol_excit, slater_condon2_mol
+        use proc_pointers, only: slater_condon1_excit_ptr, slater_condon2_excit_ptr, create_weighted_excitation_list_ptr
         use system, only: sys_t
         use excit_gen_mol, only: calc_pgen_single_mol_no_renorm, find_ia_mol, choose_ij_mol
-
+        use hamiltonian_data, only: hmatel_t
         use dSFMT_interface, only: dSFMT_t, get_rand_close_open
 
         type(sys_t), intent(in) :: sys
         type(excit_gen_data_t), intent(in) :: excit_gen_data
         type(det_info_t), intent(in) :: cdet
         type(dSFMT_t), intent(inout) :: rng
-        real(p), intent(out) :: pgen, hmatel
+        real(p), intent(out) :: pgen
+        type(hmatel_t), intent(out) :: hmatel
         type(excit_t), intent(out) :: connection
         logical, intent(out) :: allowed_excitation
 
@@ -660,10 +629,11 @@ contains
                 call find_excitation_permutation1(sys%basis%excit_mask, cdet%f, connection)
 
                 ! 5a. Find the connecting matrix element.
-                hmatel = slater_condon1_mol_excit(sys, cdet%occ_list, connection%from_orb(1), connection%to_orb(1), connection%perm)
+                hmatel = slater_condon1_excit_ptr(sys, cdet%occ_list, connection%from_orb(1), connection%to_orb(1), connection%perm)
             else
                 ! Forbidden---connection%to_orb(1) is already occupied.
-                hmatel = 0.0_p
+                hmatel%c = cmplx(0.0_p, 0.0_p, p)
+                hmatel%r = 0.0_p
                 pgen = 1.0_p ! Avoid any dangerous division by pgen by returning a sane (but cheap) value.
             end if
 
@@ -685,24 +655,24 @@ contains
             if (sys%basis%basis_fns(i)%Ms < 0) then
                 ! [review] - JSS: is it really worth constructing this (O(N) time) rather than just going for a binary (or even
                 ! [review] - JSS: linear) search on the cumulative table directly?
-                call create_weighted_excitation_list(sys, i, cdet%unocc_list_beta, sys%nvirt_beta, ia_weights, ia_weights_tot)
+                call create_weighted_excitation_list_ptr(sys, i, cdet%unocc_list_beta, sys%nvirt_beta, ia_weights, ia_weights_tot)
                 ! Use the alias method to select i with the appropriate probability
                 a_ind = select_weighted_value(rng, sys%nvirt_beta, ia_weights, ia_weights_tot)
                 a = cdet%unocc_list_beta(a_ind) 
             else
-                call create_weighted_excitation_list(sys, i, cdet%unocc_list_alpha, sys%nvirt_alpha, ia_weights, ia_weights_tot)
+                call create_weighted_excitation_list_ptr(sys, i, cdet%unocc_list_alpha, sys%nvirt_alpha, ia_weights, ia_weights_tot)
                 ! Use the alias method to select i with the appropriate probability
                 a_ind = select_weighted_value(rng, sys%nvirt_alpha, ia_weights, ia_weights_tot)
                 a = cdet%unocc_list_alpha(a_ind) 
             end if 
             ! Given j construct the weights of all possible b
             if (sys%basis%basis_fns(j)%Ms < 0) then
-                call create_weighted_excitation_list(sys, j, cdet%unocc_list_beta, sys%nvirt_beta, jb_weights, jb_weights_tot)
+                call create_weighted_excitation_list_ptr(sys, j, cdet%unocc_list_beta, sys%nvirt_beta, jb_weights, jb_weights_tot)
                 ! Use the alias method to select j with the appropriate probability
                 b_ind = select_weighted_value(rng, sys%nvirt_beta, jb_weights, jb_weights_tot)
                 b = cdet%unocc_list_beta(b_ind) 
             else
-                call create_weighted_excitation_list(sys, j, cdet%unocc_list_alpha, sys%nvirt_alpha, jb_weights, jb_weights_tot)
+                call create_weighted_excitation_list_ptr(sys, j, cdet%unocc_list_alpha, sys%nvirt_alpha, jb_weights, jb_weights_tot)
                 ! Use the alias method to select a with the appropriate probability
                 b_ind = select_weighted_value(rng, sys%nvirt_alpha, jb_weights, jb_weights_tot)
                 b = cdet%unocc_list_alpha(b_ind) 
@@ -746,14 +716,15 @@ contains
                 call find_excitation_permutation2(sys%basis%excit_mask, cdet%f, connection)
 
                 ! 5b. Find the connecting matrix element.
-                hmatel = slater_condon2_mol(sys, connection%from_orb(1), connection%from_orb(2), &
+                hmatel = slater_condon2_excit_ptr(sys, connection%from_orb(1), connection%from_orb(2), &
                                             connection%to_orb(1), connection%to_orb(2), connection%perm)
             else
                 ! Carelessly selected ij with no possible excitations.  Such
                 ! events are not worth the cost of renormalising the generation
                 ! probabilities.
                 ! Return a null excitation.
-                hmatel = 0.0_p
+                hmatel%c = cmplx(0.0_p, 0.0_p, p)
+                hmatel%r = 0.0_p
                 pgen = 1.0_p
             end if
 
@@ -789,17 +760,18 @@ contains
         use determinants, only: det_info_t
         use excitations, only: excit_t
         use excitations, only: find_excitation_permutation1, find_excitation_permutation2
-        use hamiltonian_molecular, only: slater_condon1_mol_excit, slater_condon2_mol
+        use proc_pointers, only: slater_condon1_excit_ptr, slater_condon2_excit_ptr, create_weighted_excitation_list_ptr
         use system, only: sys_t
         use excit_gen_mol, only: calc_pgen_single_mol_no_renorm, find_ia_mol 
-
+        use hamiltonian_data, only: hmatel_t
         use dSFMT_interface, only: dSFMT_t, get_rand_close_open
 
         type(sys_t), intent(in) :: sys
         type(excit_gen_data_t), intent(in) :: excit_gen_data
         type(det_info_t), intent(in) :: cdet
         type(dSFMT_t), intent(inout) :: rng
-        real(p), intent(out) :: pgen, hmatel
+        real(p), intent(out) :: pgen
+        type(hmatel_t), intent(out) :: hmatel
         type(excit_t), intent(out) :: connection
         logical, intent(out) :: allowed_excitation
 
@@ -828,10 +800,11 @@ contains
                 call find_excitation_permutation1(sys%basis%excit_mask, cdet%f, connection)
 
                 ! 5a. Find the connecting matrix element.
-                hmatel = slater_condon1_mol_excit(sys, cdet%occ_list, connection%from_orb(1), connection%to_orb(1), connection%perm)
+                hmatel = slater_condon1_excit_ptr(sys, cdet%occ_list, connection%from_orb(1), connection%to_orb(1), connection%perm)
             else
                 ! Forbidden---connection%to_orb(1) is already occupied.
-                hmatel = 0.0_p
+                hmatel%c = cmplx(0.0_p, 0.0_p, p)
+                hmatel%r = 0.0_p
                 pgen = 1.0_p ! Avoid any dangerous division by pgen by returning a sane (but cheap) value.
             end if
 
@@ -871,24 +844,24 @@ contains
 
             ! Given a, construct the weights of all possible i
             if (sys%basis%basis_fns(a)%Ms < 0) then
-                call create_weighted_excitation_list(sys, a, cdet%occ_list_beta, sys%nbeta, ia_weights, ia_weights_tot)
+                call create_weighted_excitation_list_ptr(sys, a, cdet%occ_list_beta, sys%nbeta, ia_weights, ia_weights_tot)
                 ! Use the alias method to select i with the appropriate probability
                 i_ind = select_weighted_value(rng, sys%nbeta, ia_weights, ia_weights_tot)
                 i = cdet%occ_list_beta(i_ind) 
             else
-                call create_weighted_excitation_list(sys, a, cdet%occ_list_alpha, sys%nalpha, ia_weights, ia_weights_tot)
+                call create_weighted_excitation_list_ptr(sys, a, cdet%occ_list_alpha, sys%nalpha, ia_weights, ia_weights_tot)
                 ! Use the alias method to select i with the appropriate probability
                 i_ind = select_weighted_value(rng, sys%nalpha, ia_weights, ia_weights_tot)
                 i = cdet%occ_list_alpha(i_ind) 
             end if 
             ! Given j construct the weights of all possible b
             if (sys%basis%basis_fns(b)%Ms < 0) then
-                call create_weighted_excitation_list(sys, b, cdet%occ_list_beta, sys%nbeta, jb_weights, jb_weights_tot)
+                call create_weighted_excitation_list_ptr(sys, b, cdet%occ_list_beta, sys%nbeta, jb_weights, jb_weights_tot)
                 ! Use the alias method to select j with the appropriate probability
                 j_ind = select_weighted_value(rng, sys%nbeta, jb_weights, jb_weights_tot)
                 j = cdet%occ_list_beta(j_ind) 
             else
-                call create_weighted_excitation_list(sys, b, cdet%occ_list_alpha, sys%nalpha, jb_weights, jb_weights_tot)
+                call create_weighted_excitation_list_ptr(sys, b, cdet%occ_list_alpha, sys%nalpha, jb_weights, jb_weights_tot)
                 ! Use the alias method to select a with the appropriate probability
                 j_ind = select_weighted_value(rng, sys%nalpha, jb_weights, jb_weights_tot)
                 j = cdet%occ_list_alpha(j_ind) 
@@ -932,14 +905,15 @@ contains
                 call find_excitation_permutation2(sys%basis%excit_mask, cdet%f, connection)
 
                 ! 5b. Find the connecting matrix element.
-                hmatel = slater_condon2_mol(sys, connection%from_orb(1), connection%from_orb(2), &
+                hmatel = slater_condon2_excit_ptr(sys, connection%from_orb(1), connection%from_orb(2), &
                                             connection%to_orb(1), connection%to_orb(2), connection%perm)
             else
                 ! Carelessly selected ij with no possible excitations.  Such
                 ! events are not worth the cost of renormalising the generation
                 ! probabilities.
                 ! Return a null excitation.
-                hmatel = 0.0_p
+                hmatel%c = cmplx(0.0_p, 0.0_p, p)
+                hmatel%r = 0.0_p
                 pgen = 1.0_p
             end if
 

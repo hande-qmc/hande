@@ -10,6 +10,7 @@ implicit none
 private
 public :: get_hmatel_periodic_complex, slater_condon1_periodic_excit_complex
 public :: slater_condon2_periodic_excit_complex, slater_condon0_periodic_complex
+public :: create_weighted_excitation_list_periodic_complex
 contains
 
     pure function get_hmatel_periodic_complex(sys, f1, f2) result(hmatel)
@@ -362,5 +363,40 @@ contains
         if (perm) hmatel%c = -hmatel%c
 
     end function slater_condon2_periodic_excit_complex
+
+    pure subroutine create_weighted_excitation_list_periodic_complex(sys, i, a_list, a_list_len, weights, weight_tot)
+
+        ! Generate a list of allowed excitations from i to one a of a_list with their weights based on
+        ! sqrt(|<ia|ai>|)
+        !
+        ! In:
+        !    sys:   The system in which the orbitals live
+        !    i:  integer specifying the from orbital
+        !    a_list:   list of integers specifying the basis functions we're allowed to excite to
+        !    a_list_len:   The length of a_list
+        ! Out:
+        !    weights:   A list of reals (length a_list_len), with the weight of each of the to_list orbit
+        !    weight_tot: The sum of all the weights.
+
+        use system, only: sys_t
+        use molecular_integrals, only: get_two_body_int_mol_complex
+
+        type(sys_t), intent(in) :: sys
+        integer, intent(in) :: i, a_list_len, a_list(:)
+        real(p), intent(out) :: weight_tot, weights(:)
+
+        integer :: k
+        complex(p) :: weight
+
+        weight_tot = 0
+        do k = 1, a_list_len
+            ! [review] - JSS: could avoid the abs with an assumption or a one-off O(N2) check during init
+            ! This exchange integral should be +ve, but best abs below in case!
+            weight = get_two_body_int_mol_complex(sys%read_in%coulomb_integrals, sys%read_in%coulomb_integrals_imag, i, a_list(k), a_list(k), i, sys)
+            weights(k) = sqrt(abs(weight))
+            weight_tot = weight_tot + weights(k)
+        end do
+
+    end subroutine create_weighted_excitation_list_periodic_complex
 
 end module hamiltonian_periodic_complex

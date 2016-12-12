@@ -241,9 +241,10 @@ contains
         use hamiltonian_hub_real, only: slater_condon0_hub_real
         use hamiltonian_heisenberg, only: diagonal_element_heisenberg, diagonal_element_heisenberg_staggered
         use hamiltonian_molecular, only: slater_condon0_mol, double_counting_correction_mol, hf_hamiltonian_energy_mol, &
-                                         slater_condon1_mol_excit, slater_condon2_mol_excit, get_one_e_int_mol, get_two_e_int_mol
+                                         slater_condon1_mol_excit, slater_condon2_mol_excit, get_one_e_int_mol, get_two_e_int_mol, & 
+                                         create_weighted_excitation_list_mol
         use hamiltonian_periodic_complex, only: slater_condon0_periodic_complex, slater_condon1_periodic_excit_complex, &
-                                                slater_condon2_periodic_excit_complex
+                                                slater_condon2_periodic_excit_complex, create_weighted_excitation_list_periodic_complex
         use hamiltonian_ringium, only: slater_condon0_ringium
         use hamiltonian_ueg, only: slater_condon0_ueg, kinetic_energy_ueg, exchange_energy_ueg, potential_energy_ueg
         use heisenberg_estimators
@@ -366,12 +367,14 @@ contains
                 spawner_ptr => spawn_complex
                 slater_condon1_excit_ptr => slater_condon1_periodic_excit_complex
                 slater_condon2_excit_ptr => slater_condon2_periodic_excit_complex
+                create_weighted_excitation_list_ptr => create_weighted_excitation_list_periodic_complex
             else
                 update_proj_energy_ptr => update_proj_energy_mol
                 sc0_ptr => slater_condon0_mol
                 energy_diff_ptr => double_counting_correction_mol
                 slater_condon1_excit_ptr => slater_condon1_mol_excit
                 slater_condon2_excit_ptr => slater_condon2_mol_excit
+                create_weighted_excitation_list_ptr => create_weighted_excitation_list_mol
             end if
 
             select case(qmc_in%excit_gen)
