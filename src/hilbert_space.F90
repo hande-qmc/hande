@@ -139,7 +139,7 @@ contains
 
                 ! Perform a Monte Carlo sampling of the space.
 
-                call set_reference_det(sys, occ_list0, .false., sys%symmetry)
+                call set_reference_det(sys, occ_list0, .false., sys%symmetry, io_unit)
 
                 call encode_det(sys%basis, occ_list0, f0)
 

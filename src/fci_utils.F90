@@ -138,11 +138,11 @@ contains
 
         if (.not.allocated(ref%occ_list0) .and. ref%ex_level /= sys%nel) then
             ! Provide a best guess at the reference determinant given symmetry and spin options.
-            call set_reference_det(sys, ref%occ_list0, .true., sys%symmetry)
+            call set_reference_det(sys, ref%occ_list0, .true., sys%symmetry, iunit_out)
             if (sys%aufbau_sym) sys%symmetry = symmetry_orb_list(sys, ref%occ_list0)
         else if (sys%aufbau_sym) then
             ! Ensure we set a guess for the symmetry sector if requested.
-            call set_reference_det(sys, occ_list_scratch, .false., sys%symmetry)
+            call set_reference_det(sys, occ_list_scratch, .false., sys%symmetry, iunit_out)
             sys%symmetry = symmetry_orb_list(sys, occ_list_scratch)
         end if
         if (allocated(ref%occ_list0)) then

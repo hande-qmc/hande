@@ -85,7 +85,7 @@ contains
         else if (present(qmc_state_restart)) then
             qmc_state%ref = qmc_state_restart%ref
         else
-            call init_reference(sys, reference_in, qmc_state%ref)
+            call init_reference(sys, reference_in, io_unit, qmc_state%ref)
         end if
 
         ! --- Allocate psip list ---
@@ -774,13 +774,14 @@ contains
 
     end subroutine init_excit_gen
 
-    subroutine init_reference(sys, reference_in, reference)
+    subroutine init_reference(sys, reference_in, io_unit, reference)
 
         ! Set the reference determinant from input options
 
         ! In:
         !   sys: system being studied.
         !   reference_in: reference provided in input, if any.
+        !   io_unit: io unit to write any information to.
         ! Out:
         !   reference: reference selected for the qmc calculation.
 
@@ -793,6 +794,7 @@ contains
 
         type(sys_t), intent(in) :: sys
         type(reference_t), intent(in) :: reference_in
+        integer, intent(in) :: io_unit
         type(reference_t), intent(out) :: reference
 
         integer :: ierr
@@ -803,7 +805,7 @@ contains
         ! Set the reference determinant to be the spin-orbitals with the lowest
         ! single-particle eigenvalues which satisfy the spin polarisation and, if
         ! specified, the symmetry.
-        call set_reference_det(sys, reference%occ_list0, .false., sys%symmetry)
+        call set_reference_det(sys, reference%occ_list0, .false., sys%symmetry, io_unit)
 
         if (.not. allocated(reference%f0)) then
             allocate(reference%f0(sys%basis%string_len), stat=ierr)

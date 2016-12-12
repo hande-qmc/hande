@@ -92,7 +92,7 @@ contains
 
     end subroutine set_spin_polarisation
 
-    subroutine set_symmetry_aufbau(sys)
+    subroutine set_symmetry_aufbau(sys, io_unit)
 
         ! If initialising symmetry using Aufbau principle-chosen determinant
         ! find this determinant and determine its symmetry.
@@ -100,21 +100,23 @@ contains
         ! In/Out:
         !   sys: object containing information about system under consideration.
         !       Must have initialised basis and symmetry.
+        ! In:
+        !   io_unit: io unit to write any additional info to.
 
         use reference_determinant, only: set_reference_det
         use symmetry, only: symmetry_orb_list
         use system, only: sys_t
 
         type(sys_t), intent(inout) :: sys
+        integer, intent(in) :: io_unit
         integer, allocatable :: occ_list(:)
 
         ! Find the approximate lowest energy determinant.
-        call set_reference_det(sys, occ_list, .false., sys%symmetry)
+        call set_reference_det(sys, occ_list, .false., sys%symmetry, io_unit)
 
         ! Set symmetry sector equal to that of lowest energy determinant.
         sys%symmetry= symmetry_orb_list(sys, occ_list)
 
     end subroutine set_symmetry_aufbau
-
 
 end module calc_system_init

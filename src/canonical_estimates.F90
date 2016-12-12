@@ -134,7 +134,7 @@ contains
             write (js%io,'()')
         end if
 
-        call set_reference_det(sys, occ_list0, .false., sys%symmetry)
+        call set_reference_det(sys, occ_list0, .false., sys%symmetry, iunit)
 
         select case(sys%system)
         case (ueg)

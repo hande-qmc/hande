@@ -160,7 +160,7 @@ contains
             write (iunit,'()')
         end if
 
-    end subroutine print_hubbard_symmetry_info
+    end subroutine print_hubbard_k_symmetry_info
 
     elemental function cross_product_k(sys, s1, s2) result(prod)
 

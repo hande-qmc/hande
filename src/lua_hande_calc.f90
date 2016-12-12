@@ -271,7 +271,7 @@ contains
         ! [todo] - do spin polarisation in system setup.
         call set_spin_polarisation(sys%basis%nbasis, sys)
         ! If using Aufbau determined symmetry need to do after setting spin polarisation.
-        if (sys%aufbau_sym) call set_symmetry_aufbau(sys)
+        if (sys%aufbau_sym) call set_symmetry_aufbau(sys, 6)
 
         ! Get main table.
         opts = aot_table_top(lua_state)
@@ -369,8 +369,6 @@ contains
         call get_sys_t(lua_state, sys)
         ! [todo] - do spin polarisation in system setup.
         call set_spin_polarisation(sys%basis%nbasis, sys)
-        ! If using Aufbau determined symmetry need to do after setting spin polarisation.
-        if (sys%aufbau_sym) call set_symmetry_aufbau(sys)
 
         ! Get main table.
         opts = aot_table_top(lua_state)
@@ -393,6 +391,9 @@ contains
         allocate(qmc_state_out)
 
         call init_output_unit(output_in, sys, io_unit)
+
+        ! If using Aufbau determined symmetry need to do after setting spin polarisation.
+        if (sys%aufbau_sym) call set_symmetry_aufbau(sys, io_unit)
 
         if (have_restart_state) then
             call do_fciqmc(sys, qmc_in, fciqmc_in, semi_stoch_in, restart_in, load_bal_in, io_unit, reference, logging_in, &
@@ -478,8 +479,6 @@ contains
         call get_sys_t(lua_state, sys)
         ! [todo] - do spin polarisation in system setup.
         call set_spin_polarisation(sys%basis%nbasis, sys)
-        ! If using Aufbau determined symmetry need to do after setting spin polarisation.
-        if (sys%aufbau_sym) call set_symmetry_aufbau(sys)
 
         ! Get main table.
         opts = aot_table_top(lua_state)
@@ -502,6 +501,8 @@ contains
         allocate(qmc_state_out)
 
         call init_output_unit(output_in, sys, io_unit)
+        ! If using Aufbau determined symmetry need to do after setting spin polarisation.
+        if (sys%aufbau_sym) call set_symmetry_aufbau(sys, io_unit)
 
         if (have_restart_state) then
             call do_ccmc(sys, qmc_in, ccmc_in, semi_stoch_in, restart_in, load_bal_in, reference, logging_in, io_unit, &
@@ -611,7 +612,7 @@ contains
             call set_spin_polarisation(sys%basis%nbasis, sys)
         end if
         ! If using Aufbau determined symmetry need to do after setting spin polarisation.
-        if (sys%aufbau_sym) call set_symmetry_aufbau(sys)
+        if (sys%aufbau_sym) call set_symmetry_aufbau(sys, 6)
 
         ! Now system initialisation is complete (boo), act on the other options.
         call read_restart_in(lua_state, opts, restart_in)
