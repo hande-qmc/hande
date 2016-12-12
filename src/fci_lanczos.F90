@@ -166,6 +166,7 @@ contains
         real(dp), allocatable :: evec(:,:) ! (ndets, mev)
         integer :: ierr, nrows, i, nwfn
         type(trl_info_t) :: info
+        integer, parameter :: iunit = 6
 
 #ifdef SINGLE_PRECISION
         ! TRLan requires a double precision interface; elsewhere we need single precision
