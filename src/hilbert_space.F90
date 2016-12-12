@@ -60,8 +60,7 @@ contains
         type(sys_t), intent(inout) :: sys
         integer, intent(in) :: ex_level, nattempts
         integer, intent(inout), allocatable :: occ_list0(:)
-        integer, intent(in) :: ncycles
-        integer, intent(in), optional :: rng_seed
+        integer, intent(in) :: ncycles, rng_seed
 
         integer :: truncation_level, icycle, i, ierr, a, n, ireport, ireport_ind, nattempts_local
         integer :: ref_sym, det_sym
