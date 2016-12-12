@@ -395,7 +395,7 @@ contains
                            qmc_state_out)
         end if
 
-        call end_output_unit(io_unit)
+        call end_output_unit(output_in%out_filename, io_unit)
 
         ! Return qmc_state to the user.
         call push_qmc_state(lua_state, qmc_state_out)
@@ -504,7 +504,7 @@ contains
                             qmc_state_out)
         end if
 
-        call end_output_unit(io_unit)
+        call end_output_unit(output_in%out_filename, io_unit)
 
         call push_qmc_state(lua_state, qmc_state_out)
         nresult = 1
@@ -1686,6 +1686,19 @@ contains
 
         ! Read in output table (if it exists) and set up.
 
+        ! output = {
+        !    filename = filename,
+        !    reprint_sys = true/false,
+        ! }
+
+        ! In/Out:
+        !    lua_state: flu/Lua state to which the HANDE API is added.
+        ! In:
+        !    opts: handle for the table containing the output table.
+        ! Out:
+        !    output_in: output_in_t object contianing the input options
+        !       describing output files.
+
         use flu_binding, only: flu_State
         use aot_table_module, only: aot_exists, aot_table_open, aot_table_close, aot_get_val
 
@@ -1715,6 +1728,18 @@ contains
     end subroutine read_output_in_t
 
     subroutine init_output_unit(output_in, io_unit)
+
+        ! Initialises file if filename specified in input and
+        ! returns the corresponding io unit.
+        ! If not specified will just direct all output to stdout.
+        ! If not writing to stdout will write message to stdout.
+
+        ! In:
+        !   output_in: derived type containing input parameters
+        !       related to calculation output.
+        ! Out:
+        !   io_unit: io unit allocated to given filename. If writing
+        !       to stdout, set to 6.
 
         use qmc_data, only: output_in_t
         use report, only: environment_report
@@ -1755,18 +1780,30 @@ contains
 
     end subroutine init_output_unit
 
-    subroutine end_output_unit(io_unit)
+    subroutine end_output_unit(filename, io_unit)
 
         ! Close calculation output file with the date and time.
 
-        use report, only: write_date_time_close
+        ! In:
+        !   filename: filename calculation is writing to.
+        !   io_unit: io unit to be closed.
 
+        use report, only: write_date_time_close
+        use calc, only: calc_type, get_calculation_string
+
+        character(255), intent(in) :: filename
         integer, intent(in) :: io_unit
         integer :: date_values(8)
 
-        call date_and_time(VALUES=date_values)
+        if (filename /= 'stdout') then
+            call date_and_time(VALUES=date_values)
 
-        call write_date_time_close(io_unit, date_values)
+            call write_date_time_close(io_unit, date_values)
+
+            write (6,'(1X,"Finished writing ",a," calculation output to",1X,a)') trim(get_calculation_string(calc_type)), &
+                                trim(filename)
+            write (6,'(1x)')
+        end if
 
     end subroutine end_output_unit
 
@@ -1898,6 +1935,7 @@ contains
     end function lua_dealloc_qmc_state
 
     subroutine read_logging_in_t(lua_state, opts, logging_in)
+
         ! Read in options associated with the logging table (only for debug builds).
 
         ! logging = {
