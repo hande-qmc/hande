@@ -99,6 +99,7 @@ contains
         end interface
 
         integer, intent(in), optional :: io
+
         integer :: io_unit
         integer :: date_values(8)
         integer(c_size_t), parameter :: str_len = 255
@@ -151,7 +152,6 @@ contains
 
         write (io_unit,'(1X,a18,1X,i2.2,"/",i2.2,"/",i4.4,1X,a2,1X,i2.2,2(":",i2.2))') &
                    "Started running on", date_values(3:1:-1), "at", date_values(5:7)
-        call get_uuid(GLOBAL_UUID)
         write (io_unit,'(1X,"Calculation UUID:",1X,a36,".")') GLOBAL_UUID
 
         write (io_unit,'(1X,"Preprocessor settings:")')
