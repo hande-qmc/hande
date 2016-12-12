@@ -228,22 +228,25 @@ contains
 
     end subroutine init_pg_symmetry
 
-    subroutine print_pg_symmetry_info(sys)
+    subroutine print_pg_symmetry_info(sys, io_unit)
 
         ! Write out point group symmetry information.
 
         ! In:
         !    sys: system being studied.
+        !    io_unit (optional): io unit to print information to.
 
         use system, only: sys_t
         use parallel, only: parent
         use utils, only: int_fmt
 
         type(sys_t), intent(in) :: sys
+        integer, intent(in), optional :: io_unit
 
         integer :: i, j, sym, iunit
 
         iunit = 6
+        if (present(io_unit)) iunit = io_unit
 
         if (parent) then
             write (iunit,'(1X,a20,/,1X,20("-"),/)') "Symmetry information"

@@ -139,7 +139,7 @@ contains
         end if
 
         calc_type = mc_hilbert_space
-        call init_output_unit(output_in, io_unit)
+        call init_output_unit(output_in, sys, io_unit)
         call estimate_hilbert_space(sys, truncation_level, nattempts, ncycles, ref_det, rng_seed, io_unit)
         call end_output_unit(output_in%out_filename, io_unit)
 
@@ -392,7 +392,7 @@ contains
         calc_type = fciqmc_calc
         allocate(qmc_state_out)
 
-        call init_output_unit(output_in, io_unit)
+        call init_output_unit(output_in, sys, io_unit)
 
         if (have_restart_state) then
             call do_fciqmc(sys, qmc_in, fciqmc_in, semi_stoch_in, restart_in, load_bal_in, io_unit, reference, logging_in, &
@@ -501,7 +501,7 @@ contains
         calc_type = ccmc_calc
         allocate(qmc_state_out)
 
-        call init_output_unit(output_in, io_unit)
+        call init_output_unit(output_in, sys, io_unit)
 
         if (have_restart_state) then
             call do_ccmc(sys, qmc_in, ccmc_in, semi_stoch_in, restart_in, load_bal_in, reference, logging_in, io_unit, &
@@ -1734,7 +1734,7 @@ contains
 
     end subroutine read_output_in_t
 
-    subroutine init_output_unit(output_in, io_unit)
+    subroutine init_output_unit(output_in, sys, io_unit)
 
         ! Initialises file if filename specified in input and
         ! returns the corresponding io unit.
@@ -1744,6 +1744,8 @@ contains
         ! In:
         !   output_in: derived type containing input parameters
         !       related to calculation output.
+        !   sys: system object. Used to reprint all required
+        !       information if requested by user.
         ! Out:
         !   io_unit: io unit allocated to given filename. If writing
         !       to stdout, set to 6.
@@ -1751,8 +1753,10 @@ contains
         use qmc_data, only: output_in_t
         use report, only: environment_report
         use calc, only: calc_type, get_calculation_string
+        use system, only: sys_t
 
-        type(output_in_t), intent(inout) :: output_in
+        type(output_in_t), intent(in) :: output_in
+        type(sys_t), intent(in) :: sys
         integer, intent(out) :: io_unit
 
         if (output_in%out_filename == 'stdout') then
@@ -1778,7 +1782,7 @@ contains
                 write (io_unit,'(1X,"Reprinting all system information as requested.")')
                 write (io_unit,'(1x)')
 
-                ! call write_out_system_info...
+                 call reprint_sys_info(sys, io_unit)
             else
                 write (io_unit,'(1X,"System information previously written to stdout.")')
                 write (io_unit,'(1x)')
@@ -1813,6 +1817,45 @@ contains
         end if
 
     end subroutine end_output_unit
+
+    subroutine reprint_sys_info(sys, io_unit)
+
+        ! Reprints all information from system usually written during
+        ! initialisation. For use when writing calculations to separate
+        ! files.
+
+        use system, only: sys_t, heisenberg, hub_k, read_in
+        use basis, only: write_basis_fn_header, write_basis_fn
+        use basis_types, only: print_basis_metadata
+        use parallel, only: parent
+        use momentum_symmetry, only: print_hubbard_k_symmetry_info
+        use point_group_symmetry, only: print_pg_symmetry_info
+        use momentum_sym_read_in, only: print_mom_sym_info
+
+        type(sys_t), intent(in) :: sys
+        integer, intent(in) :: io_unit
+        integer :: i
+
+        if (parent) then
+            call write_basis_fn_header(sys, iunit=io_unit)
+            do i = 1, sys%basis%nbasis
+                call write_basis_fn(sys, sys%basis%basis_fns(i), ind=i, iunit=io_unit, new_line=.true.)
+            end do
+            write (io_unit,'(/,1X,a8,f18.12)') 'E_core =', sys%read_in%Ecore
+            call print_basis_metadata(sys%basis, sys%nel, sys%system == heisenberg, io_unit=io_unit)
+            select case(sys%system)
+            case(hub_k)
+                call print_hubbard_k_symmetry_info(sys, io_unit)
+            case(read_in)
+                if (sys%momentum_space) then
+                    call print_mom_sym_info(sys, io_unit)
+                else
+                    call print_pg_symmetry_info(sys, io_unit)
+                end if
+            end select
+        end if
+
+    end subroutine reprint_sys_info
 
     subroutine get_qmc_state(lua_state, have_qmc_state, qmc_state)
 

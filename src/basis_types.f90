@@ -171,7 +171,7 @@ module basis_types
 
         end subroutine init_basis_strings
 
-        subroutine print_basis_metadata(b, nel, heisenberg_system)
+        subroutine print_basis_metadata(b, nel, heisenberg_system, io_unit)
 
             ! Print out metadata regarding the basis (but not the basis itself).
 
@@ -187,11 +187,13 @@ module basis_types
             type(basis_t), intent(in) :: b
             integer, intent(in) :: nel
             logical, intent(in) :: heisenberg_system
+            integer, intent(in), optional :: io_unit
 
             character(4) :: fmt1(4)
             integer :: iunit
 
             iunit = 6
+            if (present(io_unit)) iunit = io_unit
 
             if (parent) then
                 fmt1 = int_fmt((/nel, b%nbasis, i0_length, b%string_len/), padding=1)

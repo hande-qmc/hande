@@ -21,11 +21,8 @@ contains
         ! In/Out:
         !    sys: system to be studied.  On output the symmetry components are set.
 
-        use basis, only: write_basis_fn
         use system
         use kpoints, only: is_reciprocal_lattice_vector
-        use parallel, only: parent
-        use utils, only: int_fmt
         use checking, only: check_allocate
         use errors, only: stop_all
         use ueg_system, only: init_ueg_indexing
@@ -34,7 +31,6 @@ contains
 
         integer :: i, j, k, ierr, iunit
         integer :: ksum(sys%lattice%ndim)
-        character(4) :: fmt1
 
         iunit = 6
 
@@ -58,8 +54,6 @@ contains
             call check_allocate('sym_table',sys%nsym*sys%nsym,ierr)
             allocate(sys%hubbard%mom_sym%inv_sym(sys%nsym), stat=ierr)
             call check_allocate('inv_sym',sys%nsym,ierr)
-
-            fmt1 = int_fmt(sys%nsym)
 
             sys%hubbard%mom_sym%gamma_sym = 0
             do i = 1, sys%nsym
@@ -86,30 +80,7 @@ contains
                 end do
             end do
 
-            if (parent) then
-                write (iunit,'(1X,a20,/,1X,20("-"),/)') "Symmetry information"
-                write (iunit,'(1X,a63,/)') 'The table below gives the label and inverse of each wavevector.'
-                write (iunit,'(1X,a5,4X,a7)', advance='no') 'Index','k-point'
-                do i = 1, sys%lattice%ndim
-                    write (iunit,'(3X)', advance='no')
-                end do
-                write (iunit,'(a7)') 'Inverse'
-                do i = 1, sys%nsym
-                    write (iunit,'(i4,5X)', advance='no') i
-                    call write_basis_fn(sys, sys%basis%basis_fns(2*i), new_line=.false., print_full=.false.)
-                    write (iunit,'(5X,i4)') sys%hubbard%mom_sym%inv_sym(i)
-                end do
-                write (iunit,'()')
-                write (iunit,'(1X,a83,/)') &
-                    "The matrix below gives the result of k_i+k_j to within a reciprocal lattice vector."
-                do i = 1, sys%nsym
-                    do j = 1, sys%nsym
-                        write (iunit,'('//fmt1//')', advance='no') sys%hubbard%mom_sym%sym_table(j,i)
-                    end do
-                    write (iunit,'()')
-                end do
-                write (iunit,'()')
-            end if
+            call print_hubbard_k_symmetry_info(sys, iunit)
 
         case(ueg)
 
@@ -142,6 +113,54 @@ contains
         end select
 
     end subroutine init_momentum_symmetry
+
+    subroutine print_hubbard_k_symmetry_info(sys, iunit)
+
+        ! Function to print all information about symmetry of a given
+        ! k-space hubbard model from an initialised sys_t object.
+
+        ! In:
+        !   sys: initialised sys_t object for k-space hubbard model.
+        !   iunit: io unit to print information to.
+
+        use parallel, only: parent
+        use basis, only: write_basis_fn
+        use system, only: sys_t
+        use utils, only: int_fmt
+
+        type(sys_t), intent(in) :: sys
+        integer, intent(in) :: iunit
+        character(4) :: fmt1
+        integer :: i, j
+
+        fmt1 = int_fmt(sys%nsym)
+
+        if (parent) then
+            write (iunit,'(1X,a20,/,1X,20("-"),/)') "Symmetry information"
+            write (iunit,'(1X,a63,/)') 'The table below gives the label and inverse of each wavevector.'
+            write (iunit,'(1X,a5,4X,a7)', advance='no') 'Index','k-point'
+            do i = 1, sys%lattice%ndim
+                write (iunit,'(3X)', advance='no')
+            end do
+            write (iunit,'(a7)') 'Inverse'
+            do i = 1, sys%nsym
+                write (iunit,'(i4,5X)', advance='no') i
+                call write_basis_fn(sys, sys%basis%basis_fns(2*i), new_line=.false., print_full=.false.)
+                write (iunit,'(5X,i4)') sys%hubbard%mom_sym%inv_sym(i)
+            end do
+            write (iunit,'()')
+            write (iunit,'(1X,a83,/)') &
+                "The matrix below gives the result of k_i+k_j to within a reciprocal lattice vector."
+            do i = 1, sys%nsym
+                do j = 1, sys%nsym
+                    write (iunit,'('//fmt1//')', advance='no') sys%hubbard%mom_sym%sym_table(j,i)
+                end do
+                write (iunit,'()')
+            end do
+            write (iunit,'()')
+        end if
+
+    end subroutine print_hubbard_symmetry_info
 
     elemental function cross_product_k(sys, s1, s2) result(prod)
 

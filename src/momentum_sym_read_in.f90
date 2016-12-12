@@ -208,19 +208,23 @@ contains
 
     end subroutine init_basis_momentum_symmetry_info
 
-    subroutine print_mom_sym_info(sys)
+    subroutine print_mom_sym_info(sys, io_unit)
+
         ! Write out momentum symmetry info (for non-model periodic systems).
         ! In:
         !    sys: system to be studied, with all symmetry components set.
+        !    io_unit (optional): io unit to print info to.
 
         use system, only: sys_t
         use parallel, only: parent
         use basis, only: write_basis_fn
 
         type(sys_t), intent(in) :: sys
+        integer, intent(in), optional :: io_unit
         integer :: i, j, iunit
 
         iunit = 6
+        if (present(io_unit)) iunit = io_unit
 
         if (parent) then
             write (iunit,'(1X,a20,/,1X,20("-"),/)') "Symmetry information"
