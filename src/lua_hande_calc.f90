@@ -88,6 +88,7 @@ contains
         !    hilbert_space {
         !       sys = system,      -- required
         !       hilbert = { ... }, -- required
+        !       output = { ... },
         !    }
 
         use, intrinsic :: iso_c_binding, only: c_ptr, c_int, c_f_pointer
@@ -100,6 +101,7 @@ contains
         use lua_hande_system, only: get_sys_t
         use lua_hande_utils, only: warn_unused_args, register_timing
         use system, only: sys_t
+        use qmc_data, only: output_in_t
 
         use calc, only: calc_type, mc_hilbert_space
         use hilbert_space, only: estimate_hilbert_space
@@ -111,10 +113,12 @@ contains
 
         type(sys_t), pointer :: sys
         integer :: truncation_level, nattempts, ncycles, rng_seed
+        type(output_in_t) :: output_in
         integer, allocatable :: ref_det(:)
-        integer :: opts
+        integer :: opts, io_unit
         real :: t1, t2
-        character(12), parameter :: keys(2) = [character(12) :: 'sys', 'hilbert']
+        character(12), parameter :: keys(3) = [character(12) :: 'sys', 'hilbert', 'output']
+
 
         call cpu_time(t1)
 
@@ -123,6 +127,7 @@ contains
 
         opts = aot_table_top(lua_state)
         call read_hilbert_args(lua_state, opts, sys%nel, nattempts, ncycles, truncation_level, ref_det, rng_seed)
+        call read_output_in_t(lua_state, opts, output_in)
         call warn_unused_args(lua_state, keys, opts)
         call aot_table_close(lua_state, opts)
 
@@ -134,7 +139,9 @@ contains
         end if
 
         calc_type = mc_hilbert_space
-        call estimate_hilbert_space(sys, truncation_level, nattempts, ncycles, ref_det, rng_seed)
+        call init_output_unit(output_in, io_unit)
+        call estimate_hilbert_space(sys, truncation_level, nattempts, ncycles, ref_det, rng_seed, io_unit)
+        call end_output_unit(output_in%out_filename, io_unit)
 
         ! [todo] - return estimate of space and error to lua.
         nresult = 0
@@ -306,8 +313,8 @@ contains
         !       restart = { ... },
         !       load_bal = { ... },
         !       reference = { ... },
-        !       logging = { ...},
-        !       output = { ...},
+        !       logging = { ... },
+        !       output = { ... },
         !       qmc_state = qmc_state,
         !    }
 
@@ -418,8 +425,8 @@ contains
         !       ccmc = { ... }
         !       restart = { ... },
         !       reference = { ... },
-        !       logging = { ...},
-        !       output = { ...},
+        !       logging = { ... },
+        !       output = { ... },
         !       qmc_state = qmc_state,
         !    }
 
