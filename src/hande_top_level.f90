@@ -36,7 +36,7 @@ contains
             call environment_report()
         end if
 
-        if ((nprocs > 1 .or. nthreads > 1) .and. parent) call parallel_report()
+        if ((nprocs > 1 .or. nthreads > 1) .and. parent) call parallel_report(6)
 
     end subroutine init_hande
 

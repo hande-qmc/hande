@@ -151,23 +151,25 @@ contains
 
     end subroutine init_parallel
 
-    subroutine parallel_report()
+    subroutine parallel_report(iunit)
 
         ! Print out information about the parallel environment.
 
+        integer, intent(in) :: iunit
+
         if (nprocs == 1) then
-            write (6,'(1X,"Number of MPI processes running on: ", i0)') nprocs
+            write (iunit,'(1X,"Number of MPI processes running on: ", i0)') nprocs
             if (nthreads == 1) then
-                write (6,'(1X,"Running with 1 thread.",/)')
+                write (iunit,'(1X,"Running with 1 thread.",/)')
             else
-                write (6,'(1X,"Running with ", i0, " threads.",/)') nthreads
+                write (iunit,'(1X,"Running with ", i0, " threads.",/)') nthreads
             end if
         else
-            write (6,'(1X,"Number of MPI processes running on: ", i0)') nprocs
+            write (iunit,'(1X,"Number of MPI processes running on: ", i0)') nprocs
             if (nthreads == 1) then
-                write (6,'(1X,"Running with 1 thread per MPI process.",/)')
+                write (iunit,'(1X,"Running with 1 thread per MPI process.",/)')
             else
-                write (6,'(1X,"Running with ", i0, " threads per MPI process.",/)') nthreads
+                write (iunit,'(1X,"Running with ", i0, " threads per MPI process.",/)') nthreads
             end if
         end if
 

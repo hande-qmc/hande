@@ -45,25 +45,28 @@ contains
             ! and initialise io_unit.
 
             if (parent) then
-                write (6,'(1X,"Writing ",a," calculation output to",1X,a)') trim(get_calculation_string(calc_type)), &
+                write (6,'(1X,"Calculation")')
+                write (6,'(1X,"-----------")')
+                write (6,'(1X)')
+                write (6,'(1X,"Writing ",a," calculation output to",1X,a,"...")') trim(get_calculation_string(calc_type)), &
                                     trim(output_in%out_filename)
-                write (6,'(1x)')
+
 
                 open(newunit=io_unit, file=output_in%out_filename, &
                         status='unknown')
 
                 write (io_unit,'(/,a8,/)') 'HANDE'
                 call environment_report(io=io_unit)
+                if (nthreads > 1 .or. nprocs > 1) call parallel_report(io_unit)
                 if (output_in%reprint_sys_info) then
                     ! Want to reprint all system information in output file
                     ! for ease of use.
                     write (io_unit,'(1X,"Reprinting all system information as requested.")')
-                    write (io_unit,'(1x)')
-
-                     call reprint_sys_info(sys, io_unit)
+                    write (io_unit,'(1X)')
+                    call reprint_sys_info(sys, io_unit)
                 else
                     write (io_unit,'(1X,"System information previously written to stdout.")')
-                    write (io_unit,'(1x)')
+                    write (io_unit,'(1X)')
                 end if
             end if
 #ifdef PARALLEL
