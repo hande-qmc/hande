@@ -53,8 +53,10 @@ module ccmc_selection
 !       p_clust \propto \product_i=1^N |N_i|
 
 ! And weighting p_size according to the expected amplitude contribution of all
-! possible clusters at a given cluster size. This includes additional factors of
-! N_0^(-N+1) and 1/(N!).
+! possible clusters at a given cluster size. This is proportional to the product
+! of the fraction of excips at each level used within a cluster. It also includes
+! additional factors of N_0^(-N+1) and 1/(N!) due to our wavefunction anzatz and
+! expansion.
 
 ! Once we obtain this p_size distribution, N_attempts can be set by requiring
 !   N_attempts * p_size(1) = N_ex
@@ -72,6 +74,15 @@ module ccmc_selection
 ! Remedying this situation is possible, by instead considering at each size
 ! all possible combinations of excitors at different excitation levels that
 ! results in a cluster of excitation level less than our truncation level + 2.
+! Selecting a known combination of excitation levels requires easy selection of
+! an excitor with known excitation level when acting upon the reference. This
+! is achieved by sorting excitors according to excitation level, requiring
+! extension of excitor bit string with the excitation level. This is achieved by
+! modification of sys%basis%info_string_len in lua_hande_calc.f90 where needed.
+
+! With these improvements, we observe a reduction in attempts required, especially
+! in combination with the initiator approximation. This is an area of current active
+! research.
 
 use const, only: i0, int_p, int_32, int_64, debug, p, dp, depsilon
 
@@ -991,10 +1002,9 @@ contains
 
                 call update_selection_block_probability(select_info, ex_lvl_dist%pop_ex_lvl, &
                                                     select_proportion, cluster_selection%size_weighting(i))
-! [review] - AJWT: Why nprocs**(i-1)?
-! [reply] - CJCS: To account for the fact that only a certain proportion of the composite
-! [reply] - CJCS: clusters are available to us. If we only use the combinations we can
-! [reply] - CJCS: 'see' we undersample larger cluster sizes in the overall wavefunction.
+                ! Must include factor of D0_normalisation from wavefunction anzatx expansion and factor of
+                ! 1/(nprocs^(i-1)) to account for the probability of two excitors being on the same
+                ! proccessor on any given iteration.
                 cluster_selection%size_weighting(i) = cluster_selection%size_weighting(i) * (nprocs ** (i-1)) &
                                                     / ((abs_D0_normalisation) ** (i-1))
             end associate
