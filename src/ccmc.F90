@@ -862,6 +862,7 @@ contains
         end if
 
         if (debug) call end_logging(logging_info)
+        if (debug .or. ccmc_in%even_selection) call end_selection_data(selection_data)
 
         if (ccmc_in%density_matrices) then
             call write_final_rdm(rdm, sys%nel, sys%basis%nbasis, ccmc_in%density_matrix_file)
@@ -881,6 +882,8 @@ contains
 
     subroutine do_ccmc_accumulation(sys, qs, cdet, cluster, logging_info, D0_population_cycle, proj_energy_cycle, &
                                     ccmc_in, ref_det, rdm, selection_data)
+
+
 
         ! Performs all accumulation of values required for given ccmc clusters.
         ! Updates projected energy and any RDMs with the contribution from the

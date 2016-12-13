@@ -175,7 +175,16 @@ contains
     end subroutine multispawn_stats_report
 
     subroutine end_selection_data(sd)
+
+        ! Fully deallocate a passed in selection_data_t object.
+
+        ! In:
+        !   sd: selection_data_t object. Deallocated on output.
+
+
         use checking, only: check_deallocate
+        use base_types, only: dealloc_int2d, dealloc_rdp1d
+
         type(selection_data_t), intent(inout) :: sd
         integer :: ierr
 
@@ -194,11 +203,11 @@ contains
             call check_deallocate('sd%cumulative_size_weighting', ierr)
         end if
         if (allocated(sd%stoch_size_weighting)) then
-            deallocate(sd%size_weighting, stat=ierr)
-            call check_deallocate('sd%size_weighting', ierr)
+            deallocate(sd%stoch_size_weighting, stat=ierr)
+            call check_deallocate('sd%stoch_size_weighting', ierr)
         end if
         if (allocated(sd%cumulative_stoch_size_weighting)) then
-            deallocate(sd%cumulative_size_weighting, stat=ierr)
+            deallocate(sd%cumulative_stoch_size_weighting, stat=ierr)
             call check_deallocate('sd%cumulative_stoch_size_weighting', ierr)
         end if
         if (allocated(sd%average_amplitude)) then
@@ -215,57 +224,5 @@ contains
         end if
 
     end subroutine end_selection_data
-
-! [review] - AJWT: These doen't really seem like they belong in this file.
-! [reply] - CJCS: I agree, but don't really see any other places they fit
-! [reply] - CJCS: better. Considered base_types but since arrays of this
-! [reply] - CJCS: type are only in CCMC wasn't sure.
-    subroutine dealloc_rdp1d(array)
-
-        ! Deallocates an allocatable array of 1D allocatable real
-        ! arrays, all of arbitrary size.
-
-        ! In/Out:
-        !   array: array of type alloc_rdp1d. Fully deallocated on output.
-
-        use base_types, only: alloc_rdp1d
-        use checking, only: check_deallocate
-
-        type(alloc_rdp1d), allocatable, intent(inout) :: array(:)
-        integer :: i, ierr
-
-        do i = lbound(array, dim=1), ubound(array, dim=1)
-            deallocate(array(i)%v, stat=ierr)
-            call check_deallocate('array%v', ierr)
-        end do
-
-        deallocate(array, stat=ierr)
-        call check_deallocate('array', ierr)
-
-    end subroutine dealloc_rdp1d
-
-    subroutine dealloc_int2d(array)
-
-        ! Deallocates an allocatable array of 2D allocatable integer
-        ! arrays, all of arbitrary size.
-
-        ! In/Out:
-        !   array: array of type alloc_int2d. Fully deallocated on output.
-
-        use base_types, only: alloc_int2d
-        use checking, only: check_deallocate
-
-        type(alloc_int2d), allocatable, intent(inout) :: array(:)
-        integer :: i, ierr
-
-        do i = lbound(array, dim=1), ubound(array, dim=1)
-            deallocate(array(i)%v, stat=ierr)
-            call check_deallocate('array%v', ierr)
-        end do
-
-        deallocate(array, stat=ierr)
-        call check_deallocate('array', ierr)
-
-    end subroutine dealloc_int2d
 
 end module ccmc_data
