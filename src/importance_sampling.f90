@@ -251,7 +251,7 @@ contains
         type(excit_t), intent(in) :: connection
         real(p), allocatable, intent(in) :: trial_func(:)
         real(p), intent(inout) :: hmatel
-        integer(i0) :: f_new(sys%basis%string_len)
+        integer(i0) :: f_new(sys%basis%tot_string_len)
         integer :: excit_level_old, excit_level_new
 
         excit_level_old = get_excitation_level(cdet%f,cdet%f2)

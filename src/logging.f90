@@ -46,6 +46,9 @@ type logging_in_t
     ! Stochastic selection logging.
     integer(int_32) :: stoch_selection = 0
     character(255) :: stoch_selection_filename = 'STOCH_SELECTION'
+    ! Selection flag (for ccmc only).
+    integer(int_32) :: selection = 0
+    character(255) :: select_filename = 'SELECT'
     ! Iteration to start outputting logs from.
     integer(int_64) :: start_iter = 0_int_64
     ! Iteration to stop outputting logs from.
@@ -65,7 +68,7 @@ type logging_t
     logical :: write_failed_spawn = .false.
     integer :: spawn_unit = huge(1_int_32)
 
-    ! Death flag.
+    ! Death flags.
     logical :: write_successful_death = .false.
     logical :: write_failed_death = .false.
     integer :: death_unit = huge(1_int_32)
@@ -75,6 +78,10 @@ type logging_t
     logical :: write_invalid_stoch_selection = .false.
     integer :: stoch_select_unit = huge(1_int_32)
 
+    ! Selection flags.
+    logical :: write_amp_psel = .false.
+    integer :: select_unit = huge(1_int_32)
+
     ! Whether within iterations required to output logging info.
     logical :: write_logging = .false.
 end type logging_t
@@ -83,7 +90,7 @@ contains
 
 ! --- General functions for initialising+ending logging and writing reports ---
 
-    subroutine init_logging(logging_in, logging_info)
+    subroutine init_logging(logging_in, logging_info, max_ex_level)
 
         ! Subroutine to initialise logs within HANDE, calling more specific
         ! functions for each specific type of logging activated by the user.
@@ -97,6 +104,7 @@ contains
         type(logging_t), intent(inout) :: logging_info
         type(logging_in_t), intent(in) :: logging_in
         type(logging_in_t) :: logging_in_loc
+        integer, intent(in) :: max_ex_level
 
         logging_in_loc = logging_in
 
@@ -106,6 +114,7 @@ contains
         if (logging_in_loc%spawn > 0) call init_logging_spawn(logging_in_loc, logging_info)
         if (logging_in_loc%death > 0) call init_logging_death(logging_in_loc, logging_info)
         if (logging_in_loc%stoch_selection > 0) call init_logging_stoch_selection(logging_in_loc, logging_info)
+        if (logging_in%selection > 0) call init_logging_select(logging_in_loc, logging_info, max_ex_level)
 
     end subroutine init_logging
 
@@ -128,14 +137,16 @@ contains
             if (logging_in%calc > 0) call write_logging_warning(1, logging_in%calc)
             if (logging_in%spawn > 0) call write_logging_warning(2, logging_in%spawn)
             if (logging_in%death > 0) call write_logging_warning(3, logging_in%death)
+            if (logging_in%selection > 0) call write_logging_warning(4, logging_in%selection)
         end select
 
         ! Selection only makes sense within CCMC, so for other calculation types simply
         ! turn it off if attempted, with appropriate warning.
-        if (logging_in%stoch_selection > 0 .and. calc_type /= ccmc_calc) then
+        if ((logging_in%stoch_selection > 0 .or. logging_in%selection > 0) .and. calc_type /= ccmc_calc) then
             if (parent) call warning('check_logging_inputs',"Selection logging turned on for invalid calculation &
                                         &type (ie. not CCMC). Automatically turned off.")
             logging_in%stoch_selection = 0
+            logging_in%selection = 0
         end if
 
     end subroutine check_logging_inputs
@@ -164,8 +175,6 @@ contains
                 log_name = "SPAWN"
             case(3)
                 log_name = "DEATH"
-            case(4)
-                log_name = "STOCH SELECTION"
             end select
 
             write(message, '("Verbosity level ",i0," not yet implemented for ",a," logging with ",a)') &
@@ -240,6 +249,7 @@ contains
         call write_date_time_close(logging_info%spawn_unit, date_values)
         call write_date_time_close(logging_info%death_unit, date_values)
         call write_date_time_close(logging_info%stoch_select_unit, date_values)
+        call write_date_time_close(logging_info%select_unit, date_values)
 
     end subroutine end_logging
 
@@ -331,6 +341,29 @@ contains
         call write_logging_stoch_selection_preamble(logging_info)
 
     end subroutine init_logging_stoch_selection
+
+    subroutine init_logging_select(logging_in, logging_info, max_ex_level)
+
+        ! Initialises logging of  select information.
+        ! This includes:
+        !   - opening filename given and obtaining unit identifier.
+        !   - converting from verbosity level given into specific
+        !       information required in logs.
+        !   - writing preamble information in log.
+
+        type(logging_t), intent(inout) :: logging_info
+        type(logging_in_t), intent(in) :: logging_in
+        integer, intent(in) :: max_ex_level
+
+        open(newunit=logging_info%select_unit, file=get_log_filename(logging_in%select_filename), &
+                status='unknown')
+
+        if (logging_in%selection > 0) logging_info%write_amp_psel = .true.
+
+        call write_logging_select_preamble(logging_info)
+        call write_logging_select_header(logging_info, max_ex_level)
+
+    end subroutine init_logging_select
 
 ! --- Log-specific functions to write log preambles and headers ---
 
@@ -603,6 +636,67 @@ contains
 
     end subroutine write_logging_stoch_selection_header
 
+    subroutine write_logging_select_preamble(logging_info)
+
+        ! Write initial preamble for top of select logging file.
+
+        ! In:
+        !    logging_info: contains information on logging settings.
+
+        use report, only: environment_report
+        use calc, only: calc_type, fciqmc_calc, ccmc_calc
+
+        type(logging_t), intent(in) :: logging_info
+
+        write (logging_info%select_unit, '(1X,"HANDE QMC Selection Log File")')
+        write (logging_info%select_unit,'()')
+
+        call environment_report(logging_info%select_unit)
+
+        select case (calc_type)
+        case(fciqmc_calc)
+            write (logging_info%select_unit, '(1X,"Calculation type: FCIQMC")')
+        case(ccmc_calc)
+            write (logging_info%select_unit, '(1X,"Calculation type: CCMC")')
+        end select
+
+        write (logging_info%select_unit, '(1X,"Verbosity Settings:")')
+        write (logging_info%select_unit, '(1X,10X,"Write Amp P_select:",2X,L1)') &
+                        logging_info%write_amp_psel
+
+        write (logging_info%select_unit,'()')
+
+    end subroutine write_logging_select_preamble
+
+    subroutine write_logging_select_header(logging_info, max_ex_level)
+
+        ! Write column headers for spawn logging information output.
+
+        ! In:
+        !    logging_info: derived type containing information on logging settings.
+
+        use qmc_io, only: write_column_title
+
+        type(logging_t), intent(in) :: logging_info
+        integer, intent(in) :: max_ex_level
+        integer :: i
+        character(255) :: title
+
+        write (logging_info%select_unit,'("#")', advance='no')
+
+        call write_column_title(logging_info%select_unit, "iter", sep=',')
+
+        do i = 0, max_ex_level
+            write(title, '("<Amp/psel> ",i0)') i
+            call write_column_title(logging_info%select_unit, title, sep=',')
+            write(title, '("Var{Amp/psel} ",i0)') i
+            call write_column_title(logging_info%select_unit, title, sep=',')
+        end do
+
+        write (logging_info%select_unit,'()')
+
+    end subroutine write_logging_select_header
+
 ! --- Log-specific subroutines to write log entries ---
 
     subroutine write_logging_calc_fciqmc(logging_info, iter, nspawn_events, ndeath_tot, nattempts)
@@ -834,6 +928,49 @@ contains
         end if
 
     end subroutine write_logging_stoch_selection
+
+    subroutine write_logging_select_ccmc(logging_info, iter, selection_info)
+
+        ! Write a single log entry for CCMC selection information.
+
+        ! In:
+        !   logging_info: derived type containing information on logging.
+        !   iter: iteration reached.
+        !   selection_info: derived type containing information on cluster selection.
+
+        use const, only: dp
+
+        use qmc_io, only: write_qmc_var
+        use const, only: int_p, int_64
+        use ccmc_data, only: selection_data_t
+
+        type(logging_t), intent(in) :: logging_info
+        integer, intent(in) :: iter
+        type(selection_data_t), intent(inout) :: selection_info
+        real(dp) :: var(lbound(selection_info%average_amplitude,dim=1): &
+                        ubound(selection_info%average_amplitude,dim=1))
+        integer :: i
+
+        if (logging_info%write_logging .and. logging_info%write_amp_psel) then
+            var = selection_info%variance_amplitude - selection_info%average_amplitude**2
+
+            write (logging_info%select_unit, '(1X)', advance='no')
+            call write_qmc_var(logging_info%select_unit, iter, sep=',')
+
+            do i = lbound(selection_info%average_amplitude,dim=1), ubound(selection_info%average_amplitude,dim=1)
+                call write_qmc_var(logging_info%select_unit, selection_info%average_amplitude(i), sep=',')
+                call write_qmc_var(logging_info%select_unit, var(i), sep=',')
+            end do
+
+            write (logging_info%select_unit, '()')
+
+            selection_info%nsuccessful = 0_int_64
+            selection_info%average_amplitude = 0.0_dp
+            selection_info%variance_amplitude = 0.0_dp
+
+        end if
+
+    end subroutine write_logging_select_ccmc
 
 ! --- Generic helper functions ---
 

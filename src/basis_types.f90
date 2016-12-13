@@ -74,8 +74,8 @@ module basis_types
         ! We commonly store the many-particle basis functions (e.g. spin
         ! products for the Heisenberg model, determinants for fermions) as a bit
         ! string.  The bit string is stored in an array of i0 integers.
-        ! string_len gives the size of this array.
-        ! The alpha and beta orbitals are interleaved and string_len is
+        ! tot_string_len gives the size of this array.
+        ! The alpha and beta orbitals are interleaved and bit_string_len is
         ! ceiling(nbasis/i0_length).
         !
         ! Note it's much more efficient to do operations on 32-bit or 64-bit
@@ -83,14 +83,25 @@ module basis_types
         ! architectures, so there's no need to cry about the bit type being
         ! removed from proposed F2008 standard or the wasted space at the end of
         ! the bit array.
-        integer :: string_len
+        integer :: bit_string_len
+        ! We can store additional information in the bit string to enable different
+        ! sorting orders. This takes the form of an additional info_string_len type-i0
+        ! integers at the end of the bit string.
+        ! NB This information should be removed when manipulating bit strings, eg. in
+        ! excitation generators. As it is currently only used within CCMC this simply
+        ! involves removing this information when selecting a cluster, but for any
+        ! other use it may be more involved.
+        integer :: info_string_len
+        ! The overall length of the bit string in type-i0 integers is the sum of
+        ! bit_string_len and info_string_len
+        integer :: tot_string_len
 
         ! The QMC algorithms implemented essentially sample a tensor of arbitrary rank.
         ! For example, FCIQMC samples a vector (rank 1) and DMQMC a matrix (rank 2).
         ! It is sometimes convenient to store/do operations on a bit string
         ! formed from concatenating the bit strings of the individual tensor
         ! labels.  Then length of this array is given by tensor_label_len.
-        ! tensor_label_len = (rank of tensor) * string_len.
+        ! tensor_label_len = (rank of tensor) * tot_string_len.
         ! NOTE: this must be set before running a QMC algorithm where the rank is not 1.
         integer :: tensor_label_len
 
@@ -110,11 +121,11 @@ module basis_types
         ! The reverse lookup to bit_lookup.
         ! basis_lookup(i,j) gives the basis function corresponding to
         ! the i-th bit in the j-th element of a determinant array.
-        integer, allocatable :: basis_lookup(:,:) ! (0:i0_end, string_len)
+        integer, allocatable :: basis_lookup(:,:) ! (0:i0_end, bit_string_len)
 
         ! excit_mask(:,i) is a bit field with bits corresponding to all orbitals with
         ! a higher index than i set.
-        integer(i0), allocatable :: excit_mask(:,:) ! (string_len, nbasis)
+        integer(i0), allocatable :: excit_mask(:,:) ! (tot_string_len, nbasis)
 
     end type basis_t
 
@@ -130,22 +141,24 @@ module basis_types
             !   b: basis_t object to be set.  On input b%nbasis must be set.
             !      On output the bit string look-up tables are also set.
 
-            use const, only: i0_end, i0_length
+            use const, only: i0_end, i0_length, int_64
             use checking, only: check_allocate
 
             type(basis_t), intent(inout) :: b
 
             integer :: i, bit_element, bit_pos, ierr
 
-            b%string_len = ceiling(real(b%nbasis)/i0_length)
-
-            b%tensor_label_len = b%string_len
+            ! Assume not storing any additional information within bit string initially.
+            b%bit_string_len = ceiling(real(b%nbasis) / i0_length)
+            b%info_string_len = 0
+            b%tot_string_len = b%bit_string_len + b%info_string_len
+            b%tensor_label_len = b%tot_string_len
 
             ! Lookup arrays.
             allocate(b%bit_lookup(2,b%nbasis), stat=ierr)
             call check_allocate('b%bit_lookup',2*b%nbasis,ierr)
-            allocate(b%basis_lookup(0:i0_end,b%string_len), stat=ierr)
-            call check_allocate('b%basis_lookup',i0_length*b%string_len,ierr)
+            allocate(b%basis_lookup(0:i0_end,b%bit_string_len), stat=ierr)
+            call check_allocate('b%basis_lookup',i0_length*b%bit_string_len,ierr)
             b%basis_lookup = 0
 
             do i = 1, b%nbasis
@@ -171,6 +184,19 @@ module basis_types
 
         end subroutine init_basis_strings
 
+        pure subroutine reset_extra_info_bit_string(basis, f)
+
+            type(basis_t), intent(in) :: basis
+            integer(i0), intent(inout) :: f(:)
+
+            ! Just clear all information stored within information section
+            ! of bit string.
+            if (basis%info_string_len/=0) then
+                f(basis%bit_string_len+1:) = 0_i0
+            end if
+
+        end subroutine reset_extra_info_bit_string
+
         subroutine print_basis_metadata(b, nel, heisenberg_system)
 
             ! Print out metadata regarding the basis (but not the basis itself).
@@ -191,7 +217,7 @@ module basis_types
             character(4) :: fmt1(4)
 
             if (parent) then
-                fmt1 = int_fmt((/nel, b%nbasis, i0_length, b%string_len/), padding=1)
+                fmt1 = int_fmt((/nel, b%nbasis, i0_length, b%tot_string_len/), padding=1)
                 if (heisenberg_system) then
                     write (6,'(1X,a22,'//fmt1(1)//')') 'Number of alpha spins:', nel
                 else
@@ -200,7 +226,7 @@ module basis_types
                 write (6,'(1X,a26,'//fmt1(2)//')') 'Number of basis functions:', b%nbasis
                 write (6,'(/,1X,a61,'//fmt1(3)//')') 'Bit-length of integers used to store determinant bit-strings:', i0_length
                 write (6,'(1X,a57,'//fmt1(4)//',/)') &
-                    'Number of integers used to store determinant bit-strings:', b%string_len
+                    'Number of integers used to store determinant bit-strings:', b%tot_string_len
             end if
 
         end subroutine print_basis_metadata

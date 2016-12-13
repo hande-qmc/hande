@@ -34,19 +34,19 @@ contains
         !       excitor not linked to connection (otherwise 0)
 
         use excitations, only: excit_t, create_excited_det
-        use basis_types, only: basis_t
+        use basis_types, only: basis_t, reset_extra_info_bit_string
         use ccmc_data, only: cluster_t
 
         type(basis_t), intent(in) :: basis
-        integer(i0), intent(in) :: f0(basis%string_len)
+        integer(i0), intent(in) :: f0(basis%tot_string_len)
         type(excit_t), intent(in) :: connection
         type(cluster_t), intent(in) :: cluster
         logical, intent(out) :: linked, single_unlinked
-        integer(i0), intent(out) :: excitor(basis%string_len)
+        integer(i0), intent(out) :: excitor(basis%tot_string_len)
 
         integer :: i, orb, bit_pos, bit_element, unconnected
-        integer(i0) :: excitor_excitation(basis%string_len)
-        integer(i0) :: h_excitation(basis%string_len)
+        integer(i0) :: excitor_excitation(basis%tot_string_len)
+        integer(i0) :: h_excitation(basis%tot_string_len)
 
         single_unlinked = .false.
         unconnected = 0
@@ -72,10 +72,12 @@ contains
             ! check each cluster operator shares an index with connection
             ! orbitals involved in cluster operator excitation (from reference)
             excitor_excitation = ieor(cluster%excitors(i)%f, f0)
+            call reset_extra_info_bit_string(basis, excitor_excitation)
             if (all(iand(h_excitation, excitor_excitation) == 0)) then
                 ! no orbitals in common between H and cluster
                 unconnected = unconnected + 1
                 excitor = cluster%excitors(i)%f
+                call reset_extra_info_bit_string(basis, excitor)
             end if
         end do
 
@@ -123,20 +125,21 @@ contains
         use excitations, only: excit_t, create_excited_det, get_excitation_level
         use ccmc_data, only: cluster_t
         use ccmc_utils, only: collapse_cluster, convert_excitor_to_determinant
+        use basis_types, only: reset_extra_info_bit_string
         use hamiltonian, only: get_hmatel
         use hamiltonian_data
 
         type(sys_t), intent(in) :: sys
-        integer(i0), intent(in) :: f0(sys%basis%string_len)
+        integer(i0), intent(in) :: f0(sys%basis%tot_string_len)
         type(excit_t), intent(in) :: connection
         type(cluster_t), intent(in) :: cluster
-        integer(i0), intent(in) :: cdet(sys%basis%string_len)
-        integer(i0), intent(in) :: funlinked(sys%basis%string_len)
+        integer(i0), intent(in) :: cdet(sys%basis%tot_string_len)
+        integer(i0), intent(in) :: funlinked(sys%basis%tot_string_len)
         real(p) :: hmatel
         type(hmatel_t) :: dummy_hmatel
 
-        integer(i0) :: deti(sys%basis%string_len), detj(sys%basis%string_len)
-        integer(i0) :: temp(sys%basis%string_len)
+        integer(i0) :: deti(sys%basis%tot_string_len), detj(sys%basis%tot_string_len)
+        integer(i0) :: temp(sys%basis%tot_string_len)
         integer :: i, found, excitor_level, excitor_sign
         logical :: allowed
         complex(p) :: population
@@ -147,7 +150,7 @@ contains
         found = 0
         if (cluster%nexcitors > 1) then
             do i = 1, cluster%nexcitors
-                if (any(cluster%excitors(i)%f /= funlinked)) then
+                if (any(cluster%excitors(i)%f(:sys%basis%bit_string_len) /= funlinked(:sys%basis%bit_string_len))) then
                     ! Linked excitor, needed in cluster
                     found = found + 1
                     if (found == 1) then
@@ -156,6 +159,7 @@ contains
                         call collapse_cluster(sys%basis, f0, cluster%excitors(i)%f, cmplx(1.0_p,0.0_p,p), &
                             deti, population, allowed)
                     end if
+                    call reset_extra_info_bit_string(sys%basis, deti)
                 end if
             end do
         else
@@ -219,16 +223,17 @@ contains
 
         use ccmc_data, only: cluster_t
         use ccmc_utils, only: collapse_cluster, convert_excitor_to_determinant
+        use basis_types, only: reset_extra_info_bit_string
         use system, only: sys_t
         use dSFMT_interface, only: dSFMT_t, get_rand_close_open
 
         type(sys_t), intent(in) :: sys
-        integer(i0), intent(in) :: f0(sys%basis%string_len)
+        integer(i0), intent(in) :: f0(sys%basis%tot_string_len)
         type(cluster_t), intent(in) :: cluster
         type(cluster_t), intent(inout) :: left_cluster, right_cluster
         type(dSFMT_t), intent(inout) :: rng
         real(p), intent(out) :: ppart
-        integer(i0), intent(inout) :: ldet(sys%basis%string_len), rdet(sys%basis%string_len)
+        integer(i0), intent(inout) :: ldet(sys%basis%tot_string_len), rdet(sys%basis%tot_string_len)
         logical, intent(out) :: allowed, sign_change
         integer, intent(in), optional :: part_number
 
@@ -268,6 +273,7 @@ contains
                 left_cluster%excitors(in_left)%f => cluster%excitors(i)%f
                 if (in_left == 1) then
                     ldet = cluster%excitors(i)%f
+                    call reset_extra_info_bit_string(sys%basis, ldet)
                 else
                     call collapse_cluster(sys%basis, f0, cluster%excitors(i)%f, cmplx(1.0_p,0.0_p,p), &
                                         ldet, population, allowed)
@@ -279,6 +285,7 @@ contains
                 right_cluster%excitors(in_right)%f => cluster%excitors(i)%f
                 if (in_right == 1) then
                     rdet = cluster%excitors(i)%f
+                    call reset_extra_info_bit_string(sys%basis, rdet)
                 else
                     call collapse_cluster(sys%basis, f0, cluster%excitors(i)%f, cmplx(1.0_p,0.0_p,p), &
                                         rdet, population, allowed)
@@ -322,16 +329,20 @@ contains
         use determinants, only: det_info_t
         use qmc_data, only: excit_gen_no_renorm
         use excit_gens, only: excit_gen_data_t
+        use basis_types, only: reset_extra_info_bit_string
 
         type(sys_t), intent(in) :: sys
         type(excit_gen_data_t), intent(in) :: excit_gen_data
-        integer(i0), intent(in) :: f(sys%basis%string_len)
+        integer(i0), intent(in) :: f(sys%basis%tot_string_len)
         type(excit_t), intent(in) :: connection
         type(det_info_t), intent(in) :: parent_det
         real(p) :: pgen
 
         integer :: spin, ij_sym, max_na, ij_k(3)
-        integer(i0) :: poss_a(sys%basis%string_len)
+        integer(i0) :: poss_a(sys%basis%tot_string_len), f_loc(sys%basis%tot_string_len)
+
+        f_loc = f
+        call reset_extra_info_bit_string(sys%basis, f_loc)
 
         associate(a=>connection%to_orb(1), b=>connection%to_orb(2), i=>connection%from_orb(1), j=>connection%from_orb(2))
             select case(sys%system)
@@ -359,9 +370,9 @@ contains
                 ij_k = 0
                 ij_k(1:sys%lattice%ndim) = sys%basis%basis_fns(i)%l + sys%basis%basis_fns(j)%l
                 if (spin == -2) then
-                    poss_a = iand(not(f), ishft(excit_gen_data%ueg_ternary_conserve(1:,ij_k(1),ij_k(2),ij_k(3)),1))
+                    poss_a = iand(not(f_loc), ishft(excit_gen_data%ueg_ternary_conserve(1:,ij_k(1),ij_k(2),ij_k(3)),1))
                 else
-                    poss_a = iand(not(f), excit_gen_data%ueg_ternary_conserve(1:,ij_k(1),ij_k(2),ij_k(3)))
+                    poss_a = iand(not(f_loc), excit_gen_data%ueg_ternary_conserve(1:,ij_k(1),ij_k(2),ij_k(3)))
                 end if
                 max_na = sum(count_set_bits(poss_a))
                 pgen = calc_pgen_ueg_no_renorm(sys, max_na, spin)

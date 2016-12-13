@@ -50,8 +50,8 @@ contains
         ! mask. This has a bit set for each of the two sites/orbitals being
         ! considered in the correlation function.
         if (doing_dmqmc_calc(dmqmc_correlation)) then
-            allocate(dmqmc_estimates%correlation_mask(1:sys%basis%string_len), stat=ierr)
-            call check_allocate('dmqmc_estimates%correlation_mask',sys%basis%string_len,ierr)
+            allocate(dmqmc_estimates%correlation_mask(1:sys%basis%tot_string_len), stat=ierr)
+            call check_allocate('dmqmc_estimates%correlation_mask',sys%basis%tot_string_len,ierr)
             dmqmc_estimates%correlation_mask = 0_i0
             do i = 1, 2
                 bit_position = sys%basis%bit_lookup(1,dmqmc_in%correlation_sites(i))
@@ -271,13 +271,16 @@ contains
         ! Setup the rdms array.
         do i = 1, nrdms
             ! Initialise the instance of the rdm type for this subsystem.
-            subsys_info(i)%string_len = ceiling(real(subsys_info(i)%A_nsites)/i0_length)
+            ! Have to adjust bit string size for possible additional information.
+            ! This is required as we later assume bit string lengths are equal, though
+            ! functionality with sys%basis%info_string_len>0 is untested.
+            subsys_info(i)%string_len = ceiling(real(subsys_info(i)%A_nsites)/i0_length) + sys%basis%info_string_len
 
             ! With the calc_ground_rdm option, the entire RDM is allocated. If
             ! the following condition is met then the number of rows is greater
             ! than the maximum integer accessible. This would clearly be too
             ! large, so abort in this case.
-            if (calc_ground_rdm .and. subsys_info(i)%string_len > 1) call stop_all("setup_rdm_arrays",&
+            if (calc_ground_rdm .and. subsys_info(i)%string_len > 2) call stop_all("setup_rdm_arrays",&
                 "A requested RDM is too large for all indices to be addressed by a single integer.")
         end do
 
@@ -388,7 +391,7 @@ contains
 
         integer :: i, j, k, l, nrdms, nsym_vecs, ipos, ierr
         integer :: basis_find, bit_position, bit_element
-        integer(i0) :: A_mask(sys%basis%string_len)
+        integer(i0) :: A_mask(sys%basis%tot_string_len)
         real(p), allocatable :: sym_vecs(:,:)
         integer :: r(sys%lattice%ndim)
         integer, allocatable :: lvecs(:,:)
@@ -406,8 +409,8 @@ contains
                               &dmqmc_full_renyi_2 option to calculate the Renyi entropy of the &
                               &whole lattice.')
             else
-                allocate(subsys_info(i)%B_masks(sys%basis%string_len,nsym_vecs), stat=ierr)
-                call check_allocate('subsys_info(i)%B_masks', nsym_vecs*sys%basis%string_len,ierr)
+                allocate(subsys_info(i)%B_masks(sys%basis%tot_string_len,nsym_vecs), stat=ierr)
+                call check_allocate('subsys_info(i)%B_masks', nsym_vecs*sys%basis%tot_string_len,ierr)
                 allocate(subsys_info(i)%bit_pos(subsys_info(i)%A_nsites,nsym_vecs,2), stat=ierr)
                 call check_allocate('subsys_info(i)%bit_pos', nsym_vecs*subsys_info(i)%A_nsites*2,ierr)
             end if
@@ -451,9 +454,10 @@ contains
                 ! then flip all the bits.
                 subsys_info(i)%B_masks(:,j) = A_mask
                 do ipos = 0, i0_end
-                    basis_find = sys%basis%basis_lookup(ipos, sys%basis%string_len)
+                    basis_find = sys%basis%basis_lookup(ipos, sys%basis%bit_string_len)
                     if (basis_find == 0) then
-                        subsys_info(i)%B_masks(sys%basis%string_len,j) = ibset(subsys_info(i)%B_masks(sys%basis%string_len,j),ipos)
+                        subsys_info(i)%B_masks(sys%basis%tot_string_len,j) = &
+                                    ibset(subsys_info(i)%B_masks(sys%basis%bit_string_len,j),ipos)
                     end if
                 end do
                 subsys_info(i)%B_masks(:,j) = not(subsys_info(i)%B_masks(:,j))
@@ -514,7 +518,11 @@ contains
 
 #ifdef PARALLEL
         ! Need to determine which processor the spawned psip should be sent to.
-        call assign_particle_processor_dmqmc(f_new, spawn%bit_str_nbits, spawn%hash_seed, spawn%hash_shift, spawn%move_freq, &
+        ! NB this assumes sys%basis%info_string_len = 0 for DMQMC. This is
+        ! for convenience of not changing any additional interfaces.
+        ! If this is not the case in future this must be changed to be
+        ! compatible.
+        call assign_particle_processor_dmqmc(f_new, spawn%bit_str_nbits, 0, spawn%hash_seed, spawn%hash_shift, spawn%move_freq, &
                                        nprocs, iproc_spawn, slot, spawn%proc_map%map, spawn%proc_map%nslots)
 #endif
 
@@ -579,7 +587,7 @@ contains
 
 #ifdef PARALLEL
         ! Need to determine which processor the spawned psip should be sent to.
-        call assign_particle_processor_dmqmc(f_new, spawn%bit_str_nbits, spawn%hash_seed, spawn%hash_shift, spawn%move_freq, &
+        call assign_particle_processor_dmqmc(f_new, spawn%bit_str_nbits, 0, spawn%hash_seed, spawn%hash_shift, spawn%move_freq, &
                                        nprocs, iproc_spawn, slot, spawn%proc_map%map, spawn%proc_map%nslots)
 #endif
 
@@ -641,7 +649,7 @@ contains
                 rdm_f1(bit_element) = ibset(rdm_f1(bit_element),bit_pos)
             ! Similarly for the second index, by looking at the second end of
             ! the bitstring.
-            if (btest(f(subsys_info%bit_pos(i,isym,2)+basis%string_len),subsys_info%bit_pos(i,isym,1))) &
+            if (btest(f(subsys_info%bit_pos(i,isym,2)+basis%tot_string_len),subsys_info%bit_pos(i,isym,1))) &
                 rdm_f2(bit_element) = ibset(rdm_f2(bit_element),bit_pos)
         end do
 
@@ -694,8 +702,8 @@ contains
         ! appropriate probability.
         do idet = 1, psip_list%nstates
 
-            excit_level = get_excitation_level(psip_list%states(1:basis%string_len,idet), &
-                    psip_list%states(basis%string_len+1:basis%tensor_label_len,idet))
+            excit_level = get_excitation_level(psip_list%states(1:basis%tot_string_len,idet), &
+                    psip_list%states(basis%tot_string_len+1:basis%tensor_label_len,idet))
 
             old_population = abs(psip_list%pops(:,idet))
 

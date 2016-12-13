@@ -9,7 +9,7 @@ contains
 ! --- Initialisation routines ---
 
     subroutine init_qmc(sys, qmc_in, restart_in, load_bal_in, reference_in, annihilation_flags, qmc_state, uuid_restart, &
-                        dmqmc_in, fciqmc_in, qmc_state_restart)
+                        dmqmc_in, fciqmc_in, qmc_state_restart, regenerate_info)
 
         ! Initialisation for fciqmc calculations.
         ! Setup the spin polarisation for the system, initialise the RNG,
@@ -38,6 +38,8 @@ contains
         !       correctly allocated and useful information printed out...
         !    uuid_restart: if using a restart file, the UUID of the calculations
         !       that generated it.
+        !    regenerate_info (optional): true if additional information within
+        !       bit string needs to be regenerated for a read-in restart file.
 
         use checking, only: check_allocate
 
@@ -64,11 +66,15 @@ contains
         type(dmqmc_in_t), intent(in), optional :: dmqmc_in
         type(fciqmc_in_t), intent(in), optional :: fciqmc_in
         type(qmc_state_t), intent(inout), optional :: qmc_state_restart
+        logical, intent(out), optional :: regenerate_info
 
         integer :: ierr
         type(fciqmc_in_t) :: fciqmc_in_loc
         type(dmqmc_in_t) :: dmqmc_in_loc
         type(restart_info_t) :: ri
+        logical :: regenerate_info_loc
+
+        regenerate_info_loc = .false.
 
         if (present(fciqmc_in)) fciqmc_in_loc = fciqmc_in
         if (present(dmqmc_in)) dmqmc_in_loc = dmqmc_in
@@ -97,8 +103,7 @@ contains
         if (sys%read_in%comp) then
             qmc_state%psip_list%nspaces = qmc_state%psip_list%nspaces * 2
         end if
-
-        ! Each determinant occupies string_len kind=i0 integers,
+        ! Each determinant occupies tot_string_len kind=i0 integers,
         ! qmc_state%psip_list%nspaces kind=int_p integers, qmc_state%psip_list%nspaces kind=p reals and one
         ! integer. If the Neel singlet state is used as the reference state for
         ! the projected estimator, then a further 2 reals are used per
@@ -133,7 +138,8 @@ contains
 
             ! Initial walker distributions
             if (restart_in%read_restart) then
-                call read_restart_hdf5(ri, sys%basis%nbasis, fciqmc_in_loc%non_blocking_comm, qmc_state, uuid_restart)
+                call read_restart_hdf5(ri, sys%basis%nbasis, fciqmc_in_loc%non_blocking_comm, sys%basis%info_string_len, &
+                                        qmc_state, uuid_restart, regenerate_info_loc)
             else if (doing_calc(dmqmc_calc)) then
                 ! Initial distribution handled later
                 qmc_state%psip_list%nstates = 0
@@ -142,6 +148,7 @@ contains
                                           qmc_state%ref, qmc_state%psip_list)
             end if
         end if
+        if (present(regenerate_info)) regenerate_info = regenerate_info_loc
 
         call init_annihilation_flags(qmc_in, fciqmc_in_loc, dmqmc_in_loc, annihilation_flags)
         call init_trial(sys, fciqmc_in_loc, qmc_state%trial)
@@ -801,14 +808,14 @@ contains
         call set_reference_det(sys, reference%occ_list0, .false., sys%symmetry)
 
         if (.not. allocated(reference%f0)) then
-            allocate(reference%f0(sys%basis%string_len), stat=ierr)
-            call check_allocate('reference%f0',sys%basis%string_len,ierr)
+            allocate(reference%f0(sys%basis%tot_string_len), stat=ierr)
+            call check_allocate('reference%f0',sys%basis%tot_string_len,ierr)
         end if
         call encode_det(sys%basis, reference%occ_list0, reference%f0)
 
         if (.not. allocated(reference%hs_f0)) then
-            allocate(reference%hs_f0(sys%basis%string_len), stat=ierr)
-            call check_allocate('reference%hs_f0', sys%basis%string_len, ierr)
+            allocate(reference%hs_f0(sys%basis%tot_string_len), stat=ierr)
+            call check_allocate('reference%hs_f0', sys%basis%tot_string_len, ierr)
         end if
 
         ! Set hilbert space reference if not given in input
@@ -855,15 +862,15 @@ contains
 
         integer :: ierr
 
-        allocate(reference%f0(sys%basis%string_len), stat=ierr)
-        call check_allocate('reference%f0',sys%basis%string_len,ierr)
-        allocate(reference%hs_f0(sys%basis%string_len), stat=ierr)
-        call check_allocate('reference%hs_f0', sys%basis%string_len, ierr)
+        allocate(reference%f0(sys%basis%tot_string_len), stat=ierr)
+        call check_allocate('reference%f0',sys%basis%tot_string_len,ierr)
+        allocate(reference%hs_f0(sys%basis%tot_string_len), stat=ierr)
+        call check_allocate('reference%hs_f0', sys%basis%tot_string_len, ierr)
         allocate(reference%occ_list0(sys%nel), stat=ierr)
         call check_allocate('reference%occ_list0',sys%nel,ierr)
         allocate(reference%hs_occ_list0(sys%nel), stat=ierr)
         call check_allocate('reference%hs_occ_list0',sys%nel,ierr)
-        call get_reference_hdf5(ri, reference)
+        call get_reference_hdf5(ri, sys%basis%info_string_len, reference)
 
         ! Need to re-calculate the reference determinant data
         call decode_det(sys%basis, reference%f0, reference%occ_list0)
@@ -947,7 +954,7 @@ contains
         if (doing_calc(dmqmc_calc)) then
             ! Hash the entire first bit array and the minimum number of bits
             ! in the second bit array.
-            nhash_bits = basis%nbasis + i0_length*basis%string_len
+            nhash_bits = basis%nbasis + i0_length*(basis%bit_string_len)
         else
             nhash_bits = basis%nbasis
         end if
@@ -996,7 +1003,7 @@ contains
 
         integer :: D0_proc, slot, i, ipos, D0_inv_proc
         integer :: occ_list0_inv(sys%nel)
-        integer(i0) :: f0_inv(sys%basis%string_len)
+        integer(i0) :: f0_inv(sys%basis%tot_string_len)
 
         ! We start with psips only on the reference determinant,
         ! so set pl%nstates = 1 and initialise pl%pops.
@@ -1049,6 +1056,8 @@ contains
             case (heisenberg)
                 ! Flip all spins in f0 to get f0_inv
                 f0_inv = not(reference%f0)
+                ! Need to account for lengthening of bit string to store ex_lvl for ccmc.
+                if (sys%basis%info_string_len /= 0) f0_inv(sys%basis%bit_string_len+1:) = 0_i0
                 ! In general, the basis bit string has some padding at the
                 ! end which must be unset.  We need to clear this...
                 ! Loop over all bits after the last basis function.

@@ -142,8 +142,8 @@ contains
         if (restart) then
             allocate(reference%occ_list0(sys%nel), stat=ierr)
             call check_allocate('reference%occ_list0',sys%nel,ierr)
-            allocate(reference%f0(sys%basis%string_len), stat=ierr)
-            call check_allocate('reference%f0',sys%basis%string_len,ierr)
+            allocate(reference%f0(sys%basis%tot_string_len), stat=ierr)
+            call check_allocate('reference%f0',sys%basis%tot_string_len,ierr)
         else
             if (sparse_hamil) then
                 reference%H00 = huge(1.0_p)
@@ -170,8 +170,8 @@ contains
             end if
 
             if (.not.allocated(reference%f0)) then
-                allocate(reference%f0(sys%basis%string_len), stat=ierr)
-                call check_allocate('reference%f0',sys%basis%string_len,ierr)
+                allocate(reference%f0(sys%basis%tot_string_len), stat=ierr)
+                call check_allocate('reference%f0',sys%basis%tot_string_len,ierr)
             end if
             if (.not.allocated(reference%occ_list0)) then
                 allocate(reference%occ_list0(sys%nel), stat=ierr)
@@ -362,7 +362,8 @@ contains
 
             ! Write restart file if required.
             call dump_restart_file_wrapper(qs, write_restart_shift, restart_in%write_freq, [nparticles_old], &
-                                           ireport, qmc_in%ncycles, sys%basis%nbasis, ri, ri_shift, .false.)
+                                           ireport, qmc_in%ncycles, sys%basis%nbasis, ri, ri_shift, .false., &
+                                           sys%basis%info_string_len)
 
             t1 = t2
 
@@ -372,7 +373,7 @@ contains
 
         if (restart_in%write_restart) then
             call dump_restart_hdf5(ri, qs, qs%mc_cycles_done+qmc_in%ncycles*qmc_in%nreport, &
-                                   (/nparticles_old/), sys%basis%nbasis, .false.)
+                                   (/nparticles_old/), sys%basis%nbasis, .false., sys%basis%info_string_len)
             if (parent) write (6,'()')
         end if
 

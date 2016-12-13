@@ -7,6 +7,11 @@ use const, only: i0, p, int_p, dp, int_64
 
 implicit none
 
+interface update_noncumulative_dist_int
+    module procedure update_noncumulative_dist_int_32
+    module procedure update_noncumulative_dist_int_64
+end interface
+
 contains
 
     subroutine find_D0(psip_list, f0, D0_pos)
@@ -81,38 +86,43 @@ contains
         ! e1 to the cluster e2.
         ! ***WARNING***: if allowed is false then cluster_excitor is *not* updated.
 
-        use basis_types, only: basis_t
+        use basis_types, only: basis_t, reset_extra_info_bit_string
 
         use bit_utils, only: count_set_bits
         use const, only: i0_end
 
         type(basis_t), intent(in) :: basis
-        integer(i0), intent(in) :: f0(basis%string_len)
-        integer(i0), intent(in) :: excitor(basis%string_len)
+        integer(i0), intent(in) :: f0(basis%tot_string_len)
+        integer(i0), intent(in) :: excitor(basis%tot_string_len)
         complex(p), intent(in) :: excitor_population
-        integer(i0), intent(inout) :: cluster_excitor(basis%string_len)
+        integer(i0), intent(inout) :: cluster_excitor(basis%tot_string_len)
         complex(p), intent(inout) :: cluster_population
         logical,  intent(out) :: allowed
 
+        integer(i0) :: excitor_loc(basis%tot_string_len)
+
         integer :: ibasis, ibit
-        integer(i0) :: excitor_excitation(basis%string_len)
-        integer(i0) :: excitor_annihilation(basis%string_len)
-        integer(i0) :: excitor_creation(basis%string_len)
-        integer(i0) :: cluster_excitation(basis%string_len)
-        integer(i0) :: cluster_annihilation(basis%string_len)
-        integer(i0) :: cluster_creation(basis%string_len)
-        integer(i0) :: permute_operators(basis%string_len)
+        integer(i0) :: excitor_excitation(basis%tot_string_len)
+        integer(i0) :: excitor_annihilation(basis%tot_string_len)
+        integer(i0) :: excitor_creation(basis%tot_string_len)
+        integer(i0) :: cluster_excitation(basis%tot_string_len)
+        integer(i0) :: cluster_annihilation(basis%tot_string_len)
+        integer(i0) :: cluster_creation(basis%tot_string_len)
+        integer(i0) :: permute_operators(basis%tot_string_len)
+
+        excitor_loc = excitor
+        call reset_extra_info_bit_string(basis, excitor_loc)
 
         ! Apply excitor to the cluster of excitors.
 
         ! orbitals involved in excitation from reference
-        excitor_excitation = ieor(f0, excitor)
+        excitor_excitation = ieor(f0, excitor_loc)
         cluster_excitation = ieor(f0, cluster_excitor)
         ! annihilation operators (relative to the reference)
         excitor_annihilation = iand(excitor_excitation, f0)
         cluster_annihilation = iand(cluster_excitation, f0)
         ! creation operators (relative to the reference)
-        excitor_creation = iand(excitor_excitation, excitor)
+        excitor_creation = iand(excitor_excitation, excitor_loc)
         cluster_creation = iand(cluster_excitation, cluster_excitor)
 
         ! First, let's find out if the excitor is valid...
@@ -144,7 +154,7 @@ contains
             ! permute the creation and annihilation operators.  Each permutation
             ! incurs a sign change.
 
-            do ibasis = 1, basis%string_len
+            do ibasis = 1, basis%bit_string_len
                 do ibit = 0, i0_end
                     if (btest(excitor_excitation(ibasis),ibit)) then
                         if (btest(f0(ibasis),ibit)) then
@@ -297,7 +307,21 @@ contains
 
     end subroutine convert_excitor_to_determinant
 
-    subroutine cumulative_population(pops, nactive, D0_proc, D0_pos, real_factor, complx, cumulative_pops, tot_pop)
+    subroutine zero_estimators_t(estimators)
+
+        use qmc_data, only: estimators_t
+
+        type(estimators_t), intent(inout) :: estimators
+
+        estimators%D0_population = 0.0_p
+        estimators%proj_energy = 0.0_p
+        estimators%D0_population_comp = cmplx(0.0, 0.0, p)
+        estimators%proj_energy_comp = cmplx(0.0, 0.0, p)
+
+    end subroutine zero_estimators_t
+
+    subroutine cumulative_population(pops, ex_lvls, nactive, D0_proc, D0_pos, real_factor, calc_dist, complx, &
+                                    cumulative_pops, tot_pop, ex_lvl_dist)
 
         ! Calculate the cumulative population, i.e. the number of psips/excips
         ! residing on a determinant/an excitor and all determinants/excitors which
@@ -321,26 +345,42 @@ contains
         !       1<=D0_pos<=nactive and the processor holds the reference.
         !    real_factor: the encoding factor by which the stored populations are multiplied
         !       to enable non-integer populations.
+        !    calc_dist: whether to update excitation level distributions. NB. this is only
+        !       possible if the walker list is adjusted to be sorted by excitation level.
         ! Out:
         !    cumulative_pops: running total of excitor population, i.e.
         !        cumulative_pops(i) = sum(abs(pops(1:i))), excluding the
         !        population on the reference if appropriate.
         !    tot_pop: total population (possibly excluding the population on the
         !       reference).
+        !    ex_lvl_dist: derived types containing distributions of states
+        !       and populations between different excitation levels.
 
         ! NOTE: currently only the populations in the first psip/excip space are
         ! considered.  This should be changed if we do multiple simulations at
         ! once/Hellmann-Feynman sampling/etc.
 
         use parallel, only: iproc
+        use ccmc_data, only: ex_lvl_dist_t
 
         integer(int_p), intent(in) :: pops(:,:), real_factor
         integer, intent(in) :: nactive, D0_proc, D0_pos
         real(p), allocatable, intent(inout) :: cumulative_pops(:)
         real(p), intent(out) :: tot_pop
-        logical, intent(in) :: complx
+        type(ex_lvl_dist_t), intent(inout) :: ex_lvl_dist
+        logical, intent(in) :: complx, calc_dist
+        integer(i0), intent(in) :: ex_lvls(:)
 
         integer :: i
+        integer(i0) :: j, ex_lvl
+
+
+        ! First need to set values to account for reference correctly in ex_lvl_dist.
+        if (calc_dist) then
+            ex_lvl_dist%cumulative_nstates_ex_lvl(0) = 1
+            ex_lvl_dist%cumulative_pop_ex_lvl(0) = 0
+            ex_lvl = 0_i0
+        end if
 
         ! Need to combine spaces if doing complex; we choose combining in quadrature.
         cumulative_pops(1) = get_pop_contrib(pops(:,1), real_factor, complx)
@@ -350,6 +390,17 @@ contains
             do i = 2, d0_pos-1
                 cumulative_pops(i) = cumulative_pops(i-1) + &
                                         get_pop_contrib(pops(:,i), real_factor, complx)
+                if (calc_dist) then
+                    if (ex_lvls(i-1) < ex_lvls(i)) then
+                        ! i-1 is last entry of it's excitation level.
+                        ! Need to update all intervening excitation levels
+                         do j = ex_lvls(i-1), ex_lvls(i) - 1
+                            ex_lvl_dist%cumulative_nstates_ex_lvl(j) = i-1
+                            ex_lvl_dist%cumulative_pop_ex_lvl(j) = cumulative_pops(i-1)
+                        end do
+                        ex_lvl = ex_lvls(i)
+                    end if
+                end if
             end do
             ! Set cumulative on the reference to be the running total merely so we
             ! can continue accessing the running total from the i-1 element in the
@@ -361,18 +412,45 @@ contains
             do i = d0_pos+1, nactive
                 cumulative_pops(i) = cumulative_pops(i-1) + &
                                         get_pop_contrib(pops(:,i), real_factor, complx)
+                if (calc_dist) then
+                    if (ex_lvls(i-1) < ex_lvls(i)) then
+                        ! i-1 is last entry of it's excitation level.
+                        ! Need to update all intervening excitation levels
+                         do j = ex_lvls(i-1), ex_lvls(i) - 1
+                            ex_lvl_dist%cumulative_nstates_ex_lvl(j) = i-1
+                            ex_lvl_dist%cumulative_pop_ex_lvl(j) = cumulative_pops(i-1)
+                        end do
+                        ex_lvl = ex_lvls(i)
+                    end if
+                end if
             end do
         else
             ! V simple on other processors: no reference to get in the way!
             do i = 2, nactive
                 cumulative_pops(i) = cumulative_pops(i-1) + &
                                         get_pop_contrib(pops(:,i), real_factor, complx)
+                if (calc_dist) then
+                    if (ex_lvls(i-1) < ex_lvls(i)) then
+                        ! i-1 is last entry of it's excitation level.
+                        ! Need to update all intervening excitation levels
+                         do j = ex_lvls(i-1), ex_lvls(i) - 1
+                            ex_lvl_dist%cumulative_nstates_ex_lvl(j) = i-1
+                            ex_lvl_dist%cumulative_pop_ex_lvl(j) = cumulative_pops(i-1)
+                        end do
+                        ex_lvl = ex_lvls(i)
+                    end if
+                end if
             end do
         end if
         if (nactive > 0) then
             tot_pop = cumulative_pops(nactive)
         else
             tot_pop = 0.0_p
+        end if
+
+        if (calc_dist) then
+            ex_lvl_dist%cumulative_nstates_ex_lvl(ex_lvl:) = nactive
+            ex_lvl_dist%cumulative_pop_ex_lvl(ex_lvl:) = tot_pop
         end if
 
     end subroutine cumulative_population
@@ -494,5 +572,240 @@ contains
         call check_deallocate('contrib', ierr)
 
     end subroutine dealloc_contrib
+
+    subroutine init_ex_lvl_dist_t(max_ex_lvl, ex_lvl_dist)
+
+        use ccmc_data, only: ex_lvl_dist_t
+        use checking, only: check_allocate
+
+        integer, intent(in) :: max_ex_lvl
+        type(ex_lvl_dist_t), intent(inout) :: ex_lvl_dist
+
+        integer :: ierr
+
+        associate(eld => ex_lvl_dist)
+            allocate(eld%nstates_ex_lvl(0:max_ex_lvl), stat=ierr)
+            call check_allocate('eld%nstates_ex_lvl', max_ex_lvl+1, ierr)
+
+            allocate(eld%cumulative_nstates_ex_lvl(0:max_ex_lvl), stat=ierr)
+            call check_allocate('eld%cumulative_nstates_ex_lvl', max_ex_lvl+1, ierr)
+
+            allocate(eld%pop_ex_lvl(0:max_ex_lvl), stat=ierr)
+            call check_allocate('eld%pop_ex_lvl', max_ex_lvl+1, ierr)
+
+            allocate(eld%cumulative_pop_ex_lvl(0:max_ex_lvl), stat=ierr)
+            call check_allocate('eld%cumulative_pop_ex_lvl', max_ex_lvl+1, ierr)
+        end associate
+
+    end subroutine init_ex_lvl_dist_t
+
+    subroutine end_ex_lvl_dist_t(ex_lvl_dist)
+
+        use ccmc_data, only: ex_lvl_dist_t
+        use checking, only: check_deallocate
+
+        type(ex_lvl_dist_t), intent(inout) :: ex_lvl_dist
+
+        integer :: ierr
+
+        associate(eld => ex_lvl_dist)
+            deallocate(eld%nstates_ex_lvl, stat=ierr)
+            call check_deallocate('eld%nstates_ex_lvl', ierr)
+
+            deallocate(eld%cumulative_nstates_ex_lvl, stat=ierr)
+            call check_deallocate('eld%cumulative_nstates_ex_lvl', ierr)
+
+            deallocate(eld%pop_ex_lvl, stat=ierr)
+            call check_deallocate('eld%pop_ex_lvl', ierr)
+
+            deallocate(eld%cumulative_pop_ex_lvl, stat=ierr)
+            call check_deallocate('eld%cumulative_pop_ex_lvl', ierr)
+        end associate
+
+    end subroutine end_ex_lvl_dist_t
+
+    subroutine add_ex_level_bit_string_calc(basis, f0, f)
+
+        ! Sets bits within bit string to give excitation level at end of bit strings.
+        ! This routine sets ex level from provided reference.
+
+        use excitations, only: get_excitation_level
+        use basis_types, only: basis_t
+
+        type(basis_t), intent(in) :: basis
+        integer(i0), intent(inout) :: f(:)
+        integer(i0), intent(in) :: f0(:)
+
+        integer(i0) :: ex_lvl
+
+        if (basis%info_string_len/=0) then
+            ex_lvl = int(get_excitation_level(f, f0), kind=i0)
+
+            f(basis%bit_string_len+1) = ex_lvl
+        end if
+
+    end subroutine add_ex_level_bit_string_calc
+
+    subroutine add_ex_level_bit_string_provided(basis, ex_lvl, f)
+
+        ! Sets bits within bit string to give excitation level at end of bit strings.
+        ! This routine uses a provided excitation level.
+
+        use basis_types, only: basis_t
+
+        type(basis_t), intent(in) :: basis
+        integer, intent(in) :: ex_lvl
+        integer(i0) :: ex_lvl_loc
+
+        integer(i0), intent(inout) :: f(:)
+
+        if (basis%info_string_len/=0) then
+            ex_lvl_loc = int(ex_lvl, kind=i0)
+
+            f(basis%bit_string_len+1) = ex_lvl
+        end if
+
+    end subroutine add_ex_level_bit_string_provided
+
+    subroutine update_ex_lvl_dist(ex_lvl_dist)
+
+        ! Takes ex_lvl_dist derived type with updated cumulative distributions and
+        ! sets non-cumulative distributions correspondingly.
+
+        use ccmc_data, only: ex_lvl_dist_t
+
+        type(ex_lvl_dist_t), intent(inout) :: ex_lvl_dist
+
+        call update_noncumulative_dist_int(ex_lvl_dist%cumulative_nstates_ex_lvl, ex_lvl_dist%nstates_ex_lvl)
+        call update_noncumulative_dist_realp(ex_lvl_dist%cumulative_pop_ex_lvl, ex_lvl_dist%pop_ex_lvl)
+
+    end subroutine update_ex_lvl_dist
+
+! ---- Helper functions to re-construct cumulative and non-cumulative distributions from each other ----
+
+    subroutine update_cumulative_dist_real(dist, cumulative_dist, normalised)
+
+        ! Updates cumulative_dist to be consistent with provided dist.
+        ! If normalised is set the distribution is set to have total amplitude
+        ! of 1.0_dp by adjusting the final non-zero entry of dist.
+
+        use const, only: depsilon, dp
+
+        real(dp), intent(inout), allocatable :: dist(:)
+        real(dp), intent(inout), allocatable :: cumulative_dist(:)
+        logical, intent(in) :: normalised
+        integer :: i
+        real(dp) :: diff
+
+        if (normalised .and. sum(dist) > depsilon) dist = dist / sum(dist)
+
+        cumulative_dist(lbound(cumulative_dist,dim=1)) = dist(lbound(dist,dim=1))
+        do i = lbound(dist, dim=1) + 1, ubound(dist, dim=1)
+            cumulative_dist(i) = cumulative_dist(i-1) + dist(i)
+        end do
+
+        if (normalised) then
+            diff = 1.0_dp - cumulative_dist(ubound(dist,dim=1))
+            do i = ubound(dist, dim=1), lbound(dist,dim=1), -1
+                if (dist(i) > depsilon) then
+                    dist(i) = dist(i) + diff
+                    cumulative_dist(i:) = 1.0_dp
+                    exit
+                end if
+            end do
+        end if
+
+    end subroutine update_cumulative_dist_real
+
+    subroutine update_noncumulative_dist_int_32(cumulative_dist, dist)
+
+        ! Uses the provided cumulative distribution to update dist in a
+        ! consistent manner.
+
+        use const, only: int_32
+
+        integer(int_32), intent(inout), allocatable :: dist(:)
+        integer(int_32), intent(in), allocatable :: cumulative_dist(:)
+        integer :: i
+
+        dist(lbound(cumulative_dist,dim=1)) = cumulative_dist(lbound(dist,dim=1))
+        do i = lbound(cumulative_dist, dim=1) + 1, ubound(cumulative_dist, dim=1)
+            dist(i) = cumulative_dist(i) - cumulative_dist(i-1)
+        end do
+
+    end subroutine update_noncumulative_dist_int_32
+
+    subroutine update_noncumulative_dist_int_64(cumulative_dist, dist)
+
+        ! Uses the provided cumulative distribution to update dist in a
+        ! consistent manner.
+
+        use const, only: int_64
+
+        integer(int_64), intent(inout), allocatable :: dist(:)
+        integer(int_64), intent(inout), allocatable :: cumulative_dist(:)
+        integer :: i
+
+        dist(lbound(cumulative_dist,dim=1)) = cumulative_dist(lbound(dist,dim=1))
+        do i = lbound(cumulative_dist, dim=1) + 1, ubound(cumulative_dist, dim=1)
+            dist(i) = cumulative_dist(i) - cumulative_dist(i-1)
+        end do
+
+    end subroutine update_noncumulative_dist_int_64
+
+    subroutine update_noncumulative_dist_realp(cumulative_dist, dist)
+
+        ! Uses the provided cumulative distribution to update dist in a
+        ! consistent manner.
+
+        use const, only: int_64
+
+        real(p), intent(inout), allocatable :: dist(:)
+        real(p), intent(inout), allocatable :: cumulative_dist(:)
+        integer :: i
+
+        dist(lbound(cumulative_dist,dim=1)) = cumulative_dist(lbound(dist,dim=1))
+        do i = lbound(cumulative_dist, dim=1) + 1, ubound(cumulative_dist, dim=1)
+            dist(i) = cumulative_dist(i) - cumulative_dist(i-1)
+        end do
+
+    end subroutine update_noncumulative_dist_realp
+
+    subroutine regenerate_ex_levels_psip_list(basis, qs)
+
+        ! Regenerates excitation level information stored at start of bit string
+        ! within states in psip list. For use when restarting from a restart file
+        ! not containing this information.
+        ! Also sorts the list, as ordering will change.
+        ! Hashing only uses nbasis bits, so should be unaffected by the additional
+        ! information at the start of the bit string.
+        ! [todo] figure out a way to double check this is the case.
+
+        ! In:
+        !   basis: information on single-particle basis in use.
+        ! In/Out:
+        !   qmc_state: information on current state of calculation. We update and
+        !       reorder the bit strings within the psip list, using the reference
+        !       determinant bit string stored within qs%ref%f0.
+
+        use basis_types, only: basis_t
+        use qmc_data, only: qmc_state_t
+        use sort, only: qsort
+
+        type(basis_t), intent(in) :: basis
+        type(qmc_state_t), intent(inout) :: qs
+
+        integer :: istate
+
+        do istate = 1, qs%psip_list%nstates
+            call add_ex_level_bit_string_calc(basis, qs%ref%f0, qs%psip_list%states(:,istate))
+        end do
+
+        associate(pl=>qs%psip_list)
+             call qsort(pl%nstates, pl%states, pl%pops, pl%dat)
+        end associate
+
+
+    end subroutine regenerate_ex_levels_psip_list
 
 end module ccmc_utils

@@ -345,10 +345,10 @@ contains
 
         type(sys_t), intent(in) :: sys
         integer, intent(in) :: occ_list(:)
-        integer(i0), intent(in) :: f(sys%basis%string_len)
+        integer(i0), intent(in) :: f(sys%basis%tot_string_len)
         type(dSFMT_t), intent(inout) :: rng
         integer, intent(out) :: i, a, nvirt_avail
-        integer(i0) :: virt_avail(sys%basis%string_len)
+        integer(i0) :: virt_avail(sys%basis%tot_string_len)
         integer :: ivirt, ipos, iel, virt(3*sys%lattice%ndim) ! 3*sys%lattice%ndim to allow for triangular lattices; minor memory waste for other cases is irrelevant!
 
         do
@@ -432,7 +432,7 @@ contains
         real(p) :: pgen
         type(sys_t), intent(in) :: sys
         integer, intent(in) :: occ_list(:)
-        integer(i0), intent(in) :: f(sys%basis%string_len)
+        integer(i0), intent(in) :: f(sys%basis%tot_string_len)
         integer, intent(in) :: nvirt_avail
         integer :: i, no_excit
 

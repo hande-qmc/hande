@@ -159,3 +159,21 @@ ccmc options
     Optional.  Default: 'RDM'.
 
     Filename to which the reduced density matrix is written.
+
+``even_selection``
+    type: boolean
+
+    Optional. Default: false.
+
+    If true, use selection probabilities for composite clusters such that the probability
+    of selecting a cluster of any size is proportional to its contribution to the overall
+    amplitude of the instantaneous wavefunction representation.
+
+    .. TODO - guidance when to use this
+
+    .. warning::
+
+    This algorithm gives drastically different behaviour and is a subject of current
+    research. As such, the situations in which this is the optimal approach are not yet
+    entirely clear (benchmarking is underway). In addition, it is not currently confirmed
+    to be compatible with propagation of the linked coupled cluster equations.

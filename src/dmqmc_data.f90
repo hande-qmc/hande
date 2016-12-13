@@ -40,7 +40,7 @@ integer, parameter :: num_dmqmc_operators = terminator - 1
 type subsys_t
     ! The total number of sites in subsystem A.
     integer :: A_nsites
-    ! Equivalent to string_len in basis_t, string_len is the length of the byte
+    ! Equivalent to tot_string_len in basis_t, tot_string_len is the length of the byte
     ! array necessary to contain a bit for each subsystem-A basis function.
     integer :: string_len
     ! The sites in subsystem A.
@@ -285,7 +285,7 @@ type dmqmc_estimates_t
     ! are considered when finding the spin correlation function, C(r_{i,j}).
     ! All other bits are set to 0. i and j are chosen by the user initially.
     ! Not an estimate, but needed to calculate one.
-    integer(i0), allocatable :: correlation_mask(:) ! (string_len)
+    integer(i0), allocatable :: correlation_mask(:) ! (tot_string_len)
 
     ! RDM data.
 

@@ -23,7 +23,7 @@ fciqmc {
         nreports = 320,
         target_population = 80000,
         state_size = -5,
-        spawned_state_size = -1,
+        spawned_state_size = -2,
     },
     restart = {
         write = 0,

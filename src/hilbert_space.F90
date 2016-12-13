@@ -64,7 +64,7 @@ contains
 
         integer :: truncation_level, icycle, i, ierr, a, n, ireport, ireport_ind, nattempts_local
         integer :: ref_sym, det_sym
-        integer(i0) :: f(sys%basis%string_len), f0(sys%basis%string_len)
+        integer(i0) :: f(sys%basis%tot_string_len), f0(sys%basis%tot_string_len)
         integer :: occ_list(sys%nel)
         integer, parameter :: nreport_block = 100
         real(dp) :: full_space_size, space_size_mean, space_size_mean2, space_size_se, delta
@@ -278,7 +278,7 @@ contains
         !    sys: system being studied.  Unaltered on output.
         ! Out:
         !     f: bit string representation of random determinant.  Must have dimensions of
-        !        (at least) string_len.
+        !        (at least) tot_string_len.
         !     occ_list: list of occupied orbital of random determinant.  Must have
         !         dimensions of (at least) sys%nel.
 

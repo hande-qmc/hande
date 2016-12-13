@@ -96,7 +96,7 @@ contains
 
         type(dSFMT_t), intent(inout) :: rng
         type(sys_t), intent(in) :: sys
-        integer(i0), intent(in) :: f(sys%basis%string_len)
+        integer(i0), intent(in) :: f(sys%basis%tot_string_len)
         integer, intent(in) :: ij_lz
         integer, intent(out) :: a, b
         logical, intent(out) :: allowed

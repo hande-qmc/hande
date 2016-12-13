@@ -433,6 +433,7 @@ contains
 
         use calc, only: calc_type, ccmc_calc
         use calc_system_init, only: set_spin_polarisation, set_symmetry_aufbau
+        use excitations, only: end_excitations, init_excitations
 
         integer(c_int) :: nresult
         type(c_ptr), value :: L
@@ -466,6 +467,15 @@ contains
         opts = aot_table_top(lua_state)
         call read_qmc_in(lua_state, opts, qmc_in)
         call read_ccmc_in(lua_state, opts, ccmc_in)
+
+        ! Need to extend bit strings for additional excitation level information if needed.
+        if (ccmc_in%even_selection) then
+            sys%basis%info_string_len = 1
+            sys%basis%tot_string_len = sys%basis%bit_string_len + sys%basis%info_string_len
+            sys%basis%tensor_label_len = sys%basis%tot_string_len
+            call end_excitations(sys%basis%excit_mask)
+            call init_excitations(sys%basis)
+        end if
         ! note that semi-stochastic is not (yet) available in CCMC.
         !call read_semi_stoch_in(lua_state, opts, qmc_in, semi_stoch_in)
         call read_restart_in(lua_state, opts, restart_in)
@@ -486,6 +496,15 @@ contains
         else
             call do_ccmc(sys, qmc_in, ccmc_in, semi_stoch_in, restart_in, load_bal_in, reference, logging_in, &
                             qmc_state_out)
+        end if
+
+        ! Reset bit string length for reuse.
+        if (ccmc_in%even_selection) then
+            sys%basis%info_string_len = 0
+            sys%basis%tot_string_len = sys%basis%bit_string_len + sys%basis%info_string_len
+            sys%basis%tensor_label_len = sys%basis%tot_string_len
+            call end_excitations(sys%basis%excit_mask)
+            call init_excitations(sys%basis)
         end if
 
         call push_qmc_state(lua_state, qmc_state_out)
@@ -567,7 +586,7 @@ contains
         call read_dmqmc_in(lua_state, sys%basis%nbasis, opts, sys%system, dmqmc_in, dmqmc_estimates%subsys_info)
 
         ! We are required to handle the tensor length ourselves.
-        sys%basis%tensor_label_len = 2*sys%basis%string_len
+        sys%basis%tensor_label_len = 2*sys%basis%tot_string_len
 
         if (doing_dmqmc_calc(dmqmc_energy_squared)) then
             ! Create info no longer set in init_real_space.
@@ -605,7 +624,7 @@ contains
             call do_dmqmc(sys, qmc_in, dmqmc_in, dmqmc_estimates, restart_in, load_bal_in, reference, qmc_state_out, sampling_probs)
         end if
 
-        sys%basis%tensor_label_len = sys%basis%string_len
+        sys%basis%tensor_label_len = sys%basis%tot_string_len
 
         nresult = 1
         call push_qmc_state(lua_state, qmc_state_out)
@@ -1204,6 +1223,7 @@ contains
         !     vary_shift_reference = true/false,
         !     density_matrices = true/false,
         !     density_matrix_file = filename,
+        !     even_selection = true/false,
         ! }
 
         ! In/Out:
@@ -1224,9 +1244,9 @@ contains
         type(ccmc_in_t), intent(out) :: ccmc_in
 
         integer :: ccmc_table, err
-        character(28), parameter :: keys(7) = [character(28) :: 'move_frequency', 'cluster_multispawn_threshold', &
+        character(28), parameter :: keys(8) = [character(28) :: 'move_frequency', 'cluster_multispawn_threshold', &
                                                                 'full_non_composite', 'linked', 'vary_shift_reference', &
-                                                                'density_matrices', 'density_matrix_file']
+                                                                'density_matrices', 'density_matrix_file', 'even_selection']
 
         if (aot_exists(lua_state, opts, 'ccmc')) then
 
@@ -1240,6 +1260,7 @@ contains
             call aot_get_val(ccmc_in%vary_shift_reference, err, lua_state, ccmc_table, 'vary_shift_reference')
             call aot_get_val(ccmc_in%density_matrices, err, lua_state, ccmc_table, 'density_matrices')
             call aot_get_val(ccmc_in%density_matrix_file, err, lua_state, ccmc_table, 'density_matrix_file')
+            call aot_get_val(ccmc_in%even_selection, err, lua_state, ccmc_table, 'even_selection')
 
             call warn_unused_args(lua_state, keys, ccmc_table)
 
@@ -1824,8 +1845,8 @@ contains
         type(logging_in_t), intent(out) :: logging_in
         integer :: logging_table, err
 
-        character(15), parameter :: keys(6) = [character(15) :: 'calc', 'spawn', 'death', &
-                                                'stoch_selection', 'start', 'finish']
+        character(15), parameter :: keys(7) = [character(15) :: 'calc', 'spawn', 'death', &
+                                                'stoch_selection', 'select', 'start', 'finish']
 
         if (aot_exists(lua_state, opts, 'logging')) then
 
@@ -1840,6 +1861,8 @@ contains
                 call aot_get_val(logging_in%death, err, lua_state, logging_table, 'death')
 
                 call aot_get_val(logging_in%stoch_selection, err, lua_state, logging_table, 'stoch_selection')
+
+                call aot_get_val(logging_in%selection, err, lua_state, logging_table, 'select')
 
                 call aot_get_val(logging_in%start_iter, err, lua_state, logging_table, 'start')
 

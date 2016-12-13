@@ -262,7 +262,7 @@ contains
 
         type(sys_t), intent(in) :: sys
         integer, intent(in) :: op_sym
-        integer(i0), intent(in) :: f(sys%basis%string_len)
+        integer(i0), intent(in) :: f(sys%basis%tot_string_len)
         integer, intent(in) :: occ_list(:), symunocc(:,sys%sym0_tot:)
         type(dSFMT_t), intent(inout) :: rng
         integer, intent(out) :: i, a
@@ -418,7 +418,7 @@ contains
         use dSFMT_interface, only: dSFMT_t, get_rand_close_open
 
         type(sys_t), intent(in) :: sys
-        integer(i0), intent(in) :: f(sys%basis%string_len)
+        integer(i0), intent(in) :: f(sys%basis%tot_string_len)
         integer, intent(in) :: sym, spin, symunocc(:,sys%sym0_tot:)
         type(dSFMT_t), intent(inout) :: rng
         integer, intent(out) :: a, b
@@ -567,7 +567,7 @@ contains
 
         type(sys_t), intent(in) :: sys
         integer, intent(in) :: op_sym
-        integer(i0), intent(in) :: f(sys%basis%string_len)
+        integer(i0), intent(in) :: f(sys%basis%tot_string_len)
         integer, intent(in) :: occ_list(:)
         type(dSFMT_t), intent(inout) :: rng
         integer, intent(out) :: i, a
@@ -640,7 +640,7 @@ contains
 
         integer, intent(in) :: sym, spin
         type(sys_t), intent(in) :: sys
-        integer(i0), intent(in) :: f(sys%basis%string_len)
+        integer(i0), intent(in) :: f(sys%basis%tot_string_len)
         type(dSFMT_t), intent(inout) :: rng
         integer, intent(out) :: a, b
         logical, intent(out) :: allowed_excitation

@@ -131,7 +131,7 @@ contains
         call init_qmc(sys, qmc_in, restart_in, load_bal_in, reference_in, annihilation_flags, qs, uuid_restart, &
                       fciqmc_in=fciqmc_in, qmc_state_restart=qmc_state_restart)
 
-        if (debug) call init_logging(logging_in, logging_info)
+        if (debug) call init_logging(logging_in, logging_info, 0)
 
         if (parent) then
             call json_object_init(js, tag=.true.)
@@ -339,7 +339,8 @@ contains
             t1 = t2
 
             call dump_restart_file_wrapper(qs, write_restart_shift, restart_in%write_freq, nparticles_old, ireport, &
-                                           qmc_in%ncycles, sys%basis%nbasis, ri, ri_shift, fciqmc_in%non_blocking_comm)
+                                           qmc_in%ncycles, sys%basis%nbasis, ri, ri_shift, fciqmc_in%non_blocking_comm, &
+                                           sys%basis%info_string_len)
 
             qs%psip_list%tot_nparticles = nparticles_old
 
@@ -375,7 +376,8 @@ contains
         end if
 
         if (restart_in%write_restart) then
-            call dump_restart_hdf5(ri, qs, qs%mc_cycles_done, nparticles_old, sys%basis%nbasis, fciqmc_in%non_blocking_comm)
+            call dump_restart_hdf5(ri, qs, qs%mc_cycles_done, nparticles_old, sys%basis%nbasis, fciqmc_in%non_blocking_comm, &
+                                    sys%basis%info_string_len)
             if (parent) write (6,'()')
         end if
 
@@ -552,7 +554,7 @@ contains
 
         type(excit_t) :: connection
         integer :: iparticle, space_real, space_imag
-        integer(i0) :: f_child(sys%basis%string_len)
+        integer(i0) :: f_child(sys%basis%tot_string_len)
         logical :: determ_child
         integer(int_p) :: scratch
 

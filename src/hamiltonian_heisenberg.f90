@@ -27,7 +27,7 @@ contains
 
         type(hmatel_t) :: hmatel
         type(sys_t), intent(in) :: sys
-        integer(i0), intent(in) :: f1(sys%basis%string_len), f2(sys%basis%string_len)
+        integer(i0), intent(in) :: f1(sys%basis%tot_string_len), f2(sys%basis%tot_string_len)
         type(excit_t) :: excitation
 
         ! Test to see if Hamiltonian matrix element is non-zero.
@@ -75,15 +75,15 @@ contains
 
         real(p) :: hmatel
         type(sys_t), intent(in) :: sys
-        integer(i0), intent(in) :: f(sys%basis%string_len)
-        integer(i0) :: f_not(sys%basis%string_len), g(sys%basis%string_len)
+        integer(i0), intent(in) :: f(sys%basis%tot_string_len)
+        integer(i0) :: f_not(sys%basis%tot_string_len), g(sys%basis%tot_string_len)
         integer :: ipos, i, basis_find, counter
 
         counter = 0
 
         ! Count the number of 0-1 type bonds
         f_not = not(f)
-        do i = 1, sys%basis%string_len
+        do i = 1, sys%basis%bit_string_len
             do ipos = 0, i0_end
                 if (btest(f(i), ipos)) then
                     basis_find = sys%basis%basis_lookup(ipos, i)
@@ -130,9 +130,9 @@ contains
 
         real(p) :: hmatel
         type(sys_t), intent(in) :: sys
-        integer(i0), intent(in) :: f(sys%basis%string_len)
-        integer(i0) :: f_not(sys%basis%string_len), f_mask(sys%basis%string_len), &
-                       g(sys%basis%string_len)
+        integer(i0), intent(in) :: f(sys%basis%tot_string_len)
+        integer(i0) :: f_not(sys%basis%tot_string_len), f_mask(sys%basis%tot_string_len), &
+                       g(sys%basis%tot_string_len)
         integer :: ipos, i, basis_find, counter, sublattice1_up_spins
 
         counter = 0
@@ -145,7 +145,7 @@ contains
 
         ! Count the number of 0-1 type bonds
         f_not = not(f)
-        do i = 1, sys%basis%string_len
+        do i = 1, sys%basis%bit_string_len
             do ipos = 0, i0_end
                 if (btest(f(i), ipos)) then
                     basis_find = sys%basis%basis_lookup(ipos, i)

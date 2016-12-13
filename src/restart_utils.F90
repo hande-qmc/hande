@@ -11,7 +11,7 @@ module restart_utils
 implicit none
 
 private
-public :: convert_dets, convert_ref, convert_pops, change_pop_scaling, change_nbasis
+public :: convert_dets, convert_ref, convert_pops, change_pop_scaling, change_nbasis, change_ninfo
 
 interface convert_dets
     module procedure convert_dets_32_to_64
@@ -35,7 +35,7 @@ end interface change_pop_scaling
 
 contains
 
-    subroutine convert_dets_32_to_64(id, dset, kinds, dets)
+    subroutine convert_dets_32_to_64(id, dset, kinds, info_string_len, info_string_len_restart, dets)
 
         ! Convert determinants from 32 to 64 bit integers from a restart file.
 
@@ -55,6 +55,7 @@ contains
         integer(hid_t), intent(in) :: id
         character(*), intent(in) :: dset
         type(hdf5_kinds_t), intent(in) :: kinds
+        integer, intent(in) :: info_string_len, info_string_len_restart
         integer(int_64), intent(out) :: dets(:,:)
 
         integer(int_32), allocatable :: dets_tmp(:,:)
@@ -71,15 +72,25 @@ contains
         do i = 1, dims(2)
             ! Must convert each determinant separately as there is a different
             ! amount of padding if the number of 32 bit integers is odd
-            dets(:,i) = transfer(dets_tmp(:,i), dets, size(dets(:,i)))
+            dets(:,i) = transfer(dets_tmp(:dims(1)-info_string_len_restart,i), dets, size(dets(:,i)))
+
         end do
+        ! First check there is information stored within information string
+        ! and we want to store it again.
+        if (info_string_len_restart > 0 .and. info_string_len > 0) then
+            do i = 1, dims(2)
+                ! NB previous checks will ensure info_string_len >= info_strin_len_restart
+                dets(size(dets,dim=1)-info_string_len+1:size(dets,dim=1)-info_string_len+info_string_len_restart,i) = &
+                        int(dets_tmp(dims(1)-info_string_len_restart+1:,i),kind=int_64)
+            end do
+        end if
 
         deallocate(dets_tmp)
 
     end subroutine convert_dets_32_to_64
 
-    subroutine change_nbasis(id, dset, kinds, dets)
-        
+    subroutine change_nbasis(id, dset, kinds, info_string_len, info_string_len_restart, dets)
+
         ! Read determinants in from restart file and change to a larger basis
 
         ! In:
@@ -87,6 +98,10 @@ contains
         !   dset: dataset name.
         !   kinds: hdf5_kinds_t object containing the mapping between the non-default
         !       kinds used in HANDE and HDF5 datatypes.
+        !   info_string_len: number of integers we want to use to store additional
+        !       information in bit strings once read in.
+        !   info_string_len_restart: number of integers used to store additional
+        !       information in bit strings in restart file.
         ! Out:
         !   dets: determinant list read from restart file in larger basis.
 
@@ -98,6 +113,7 @@ contains
         integer(hid_t), intent(in) :: id
         character(*), intent(in) :: dset
         type(hdf5_kinds_t), intent(in) :: kinds
+        integer, intent(in) :: info_string_len, info_string_len_restart
         integer(i0), intent(out) :: dets(:,:)
 
         integer(i0), allocatable :: dets_tmp(:,:)
@@ -105,17 +121,78 @@ contains
 
         call dset_shape(id, dset, dims)
         allocate(dets_tmp(dims(1),dims(2)))
+
         call hdf5_read(id, dset, kinds, shape(dets_tmp, kind=int_64), dets_tmp)
 
         ! Assume the old (small) basis corresponds to the first orbitals in the new basis
         dets = 0
-        dets(:dims(1),:dims(2)) = dets_tmp
-
+        ! If we have a change in bitlength used for additional information we need to
+        ! be careful to ensure any additional information is transferred correctly.
+        ! NB previous checks will ensure info_string_len >= info_strin_len_restart unless
+        ! info_string_len == 0.
+        if (info_string_len > 0 .and. info_string_len_restart > 0) then
+            dets(:dims(1)-info_string_len_restart,:dims(2)) = dets_tmp(:dims(1)-info_string_len_restart,:)
+            dets(size(dets,dim=1)-info_string_len+1:,:dims(2)) = dets_tmp(dims(1)-info_string_len_restart+1:,:)
+        else
+            ! We know that dims(1)-info_string_len_restart <= size(dets,dim=1)-info_string_len
+            dets(:dims(1)-info_string_len_restart,:dims(2)) = dets_tmp(:dims(1)-info_string_len_restart,:dims(2))
+        end if
         deallocate(dets_tmp)
 
     end subroutine change_nbasis
 
-    subroutine convert_ref_32_to_64(id, dset, kinds, f0)
+    subroutine change_ninfo(id, dset, kinds, info_string_len, info_string_len_restart, ref)
+
+        ! Read in reference and change number of bit string entries used for
+        ! additional information. For determinants this is combned with
+        ! change_nbasis, but for determinants this cannot be achieved.
+
+        ! In:
+        !   id: file or group HD5 identifier,
+        !   dset: dataset name.
+        !   kinds: hdf5_kinds_t object containing the mapping between the non-default
+        !       kinds used in HANDE and HDF5 datatypes.
+        !   info_string_len: number of integers we want to use to store additional
+        !       information in bit strings once read in.
+        !   info_string_len_restart: number of integers used to store additional
+        !       information in bit strings in restart file.
+        ! Out:
+        !   ref: reference determinant bit string read from restart file with correct
+        !       length of information string.
+
+        use const
+
+        use hdf5
+        use hdf5_helper
+
+        integer(hid_t), intent(in) :: id
+        character(*), intent(in) :: dset
+        type(hdf5_kinds_t), intent(in) :: kinds
+        integer, intent(in) :: info_string_len, info_string_len_restart
+        integer(i0), intent(out) :: ref(:)
+
+        integer(i0), allocatable :: ref_tmp(:)
+        integer(hsize_t) :: dims(1)
+
+        call dset_shape(id, dset, dims)
+        allocate(ref_tmp(dims(1)))
+
+        call hdf5_read(id, dset, kinds, shape(ref_tmp, kind=int_64), ref_tmp)
+
+        ref = 0
+        ! NB previously know that info_string_len /= info_string_len_restart
+        if (info_string_len_restart == 0 .or. info_string_len == 0) then
+            ref(:size(ref,dim=1)-info_string_len) = ref_tmp(:dims(1)-info_string_len_restart)
+        else if (info_string_len_restart < info_string_len) then
+            ref(:size(ref,dim=1)-info_string_len) = ref_tmp(:dims(1)-info_string_len_restart)
+            ref(size(ref,dim=1)-info_string_len+1:size(ref,dim=1)-info_string_len+info_string_len_restart) = &
+                            ref_tmp(dims(1)-info_string_len_restart+1:)
+        end if
+        deallocate(ref_tmp)
+
+    end subroutine change_ninfo
+
+    subroutine convert_ref_32_to_64(id, dset, kinds, info_string_len, info_string_len_restart, f0)
  
         ! Convert a reference determinant from a restart file from 32 to 64 bit integers.
 
@@ -124,6 +201,10 @@ contains
         !   dset: dataset name.
         !   kinds: hdf5_kinds_t object containing the mapping between the non-default
         !       kinds used in HANDE and HDF5 datatypes.
+        !   info_string_len: number of integers we want to use to store additional
+        !       information in bit strings once read in.
+        !   info_string_len_restart: number of integers used to store additional
+        !       information in bit strings in restart file.
         ! Out:
         !   f0: determinant read from restart file converted to 64 bit.
        
@@ -135,6 +216,7 @@ contains
         integer(hid_t), intent(in) :: id
         character(*), intent(in) :: dset
         type(hdf5_kinds_t), intent(in) :: kinds
+        integer, intent(in) :: info_string_len, info_string_len_restart
         integer(int_64), intent(out) :: f0(:)
 
         integer(int_32), allocatable :: f0_tmp(:)
@@ -145,8 +227,12 @@ contains
         call hdf5_read(id, dset, kinds, shape(f0_tmp, kind=int_64), f0_tmp)
 
         f0 = 0
-        f0 = transfer(f0_tmp, f0, size(f0))
-
+        if (info_string_len > 0 .and. info_string_len_restart > 0) then
+            f0 = transfer(f0_tmp(:dims(1)-info_string_len_restart), f0, size(f0))
+            f0(size(f0,dim=1)-info_string_len+1:) = int(f0_tmp(dims(1)-info_string_len_restart+1:),kind=int_64)
+        else
+            f0 = transfer(f0_tmp, f0, size(f0))
+        end if
         deallocate(f0_tmp)
 
     end subroutine convert_ref_32_to_64
@@ -192,7 +278,7 @@ contains
 
     end subroutine convert_pops_32_to_64
 
-    subroutine convert_dets_64_to_32(id, dset, kinds, dets)
+    subroutine convert_dets_64_to_32(id, dset, kinds, info_string_len, info_string_len_restart, dets)
 
         ! Convert determinants from 64 to 32 bit integers
 
@@ -201,6 +287,10 @@ contains
         !   dset: dataset name.
         !   kinds: hdf5_kinds_t object containing the mapping between the non-default
         !       kinds used in HANDE and HDF5 datatypes.
+        !   info_string_len: number of integers we want to use to store additional
+        !       information in bit strings once read in.
+        !   info_string_len_restart: number of integers used to store additional
+        !       information in bit strings in restart file.
         ! Out:
         !   dets: determinant list read from restart file converted to 32 bit.
 
@@ -212,6 +302,7 @@ contains
         integer(hid_t), intent(in) :: id
         character(*), intent(in) :: dset
         type(hdf5_kinds_t), intent(in) :: kinds
+        integer, intent(in) :: info_string_len, info_string_len_restart
         integer(int_32), intent(out) :: dets(:,:)
 
         integer(int_64), allocatable :: dets_tmp(:,:)
@@ -228,14 +319,24 @@ contains
         do i = 1, dims(2)
             ! Must convert each determinant separately as there is a different
             ! amount of padding if the number of 32 bit integers is odd
-            dets(:,i) = transfer(dets_tmp(:,i), dets, size(dets(:,i)))
+            dets(:,i) = transfer(dets_tmp(:dims(1)-info_string_len_restart,i), dets, size(dets(:,i)))
         end do
+
+        ! First check there is information stored within information string
+        ! and we want to store it again.
+        if (info_string_len_restart > 0 .and. info_string_len > 0) then
+            do i = 1, dims(2)
+                ! NB previous checks will ensure info_string_len >= info_strin_len_restart
+                dets(size(dets,dim=1)-info_string_len+1:size(dets,dim=1)-info_string_len+info_string_len_restart,i) = &
+                        int(dets_tmp(dims(1)-info_string_len_restart+1:,i),kind=int_32)
+            end do
+        end if
 
         deallocate(dets_tmp)
 
     end subroutine convert_dets_64_to_32
 
-    subroutine convert_ref_64_to_32(id, dset, kinds, f0)
+    subroutine convert_ref_64_to_32(id, dset, kinds, info_string_len, info_string_len_restart, f0)
 
         ! Convert a reference determinant from a restart file from 64 to 32 bit integers.
  
@@ -255,6 +356,7 @@ contains
         integer(hid_t), intent(in) :: id
         character(*), intent(in) :: dset
         type(hdf5_kinds_t), intent(in) :: kinds
+        integer, intent(in) :: info_string_len, info_string_len_restart
         integer(int_32), intent(out) :: f0(:)
 
         integer(int_64), allocatable :: f0_tmp(:)
@@ -265,8 +367,12 @@ contains
         call hdf5_read(id, dset, kinds, shape(f0_tmp, kind=int_64), f0_tmp)
 
         f0 = 0
-        f0 = transfer(f0_tmp, f0, size(f0))
-
+        if (info_string_len > 0 .and. info_string_len_restart > 0) then
+            f0 = transfer(f0_tmp(:dims(1)-info_string_len_restart), f0, size(f0))
+            f0(size(f0,dim=1)-info_string_len+1:) = int(f0_tmp(dims(1)-info_string_len_restart+1:),kind=int_32)
+        else
+            f0 = transfer(f0_tmp, f0, size(f0))
+        end if
         deallocate(f0_tmp)
 
     end subroutine convert_ref_64_to_32

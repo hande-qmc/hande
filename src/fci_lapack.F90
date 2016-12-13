@@ -266,8 +266,8 @@ contains
         real(p), intent(out) :: rdm(:,:)
         real(p), intent(out) :: rdm_eigv(size(rdm,1))
 
-        integer(i0) :: f1(basis%string_len), f2(basis%string_len)
-        integer(i0) :: f3(2*basis%string_len)
+        integer(i0) :: f1(basis%tot_string_len), f2(basis%tot_string_len)
+        integer(i0) :: f3(2*basis%tot_string_len)
         integer :: i, j, rdm_size, info
         integer(i0) :: rdm_f1(subsys_info(1)%string_len), rdm_f2(subsys_info(1)%string_len)
         real(p) :: rdm_element
@@ -283,8 +283,8 @@ contains
                 ! been unset, then these two bitstrings contribute to the RDM.
                 if (sum(abs(f1-f2)) == 0) then
                     ! In f3, concatenate the two bitstrings.
-                    f3(1:basis%string_len) = dets(:,i)
-                    f3(basis%string_len+1:basis%string_len*2) = dets(:,j)
+                    f3(1:basis%tot_string_len) = dets(:,i)
+                    f3(basis%tot_string_len+1:basis%tot_string_len*2) = dets(:,j)
 
                     ! Get the position in the RDM of this density matrix element.
                     call decode_dm_bitstring(basis, f3, 1, subsys_info(1), rdm_f1, rdm_f2)

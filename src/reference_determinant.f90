@@ -84,7 +84,7 @@ contains
 
         integer :: i, j, ierr, spins_set, connections, iel, icore, jcore, ivirt, jvirt
         integer :: bit_element, bit_pos, tmp_occ_list(sys%nel), curr_occ_list(sys%nel), sym
-        integer(i0) :: f(sys%basis%string_len)
+        integer(i0) :: f(sys%basis%tot_string_len)
         real(p) :: eigv_sum, sp_eigv_sum
         logical :: set
 

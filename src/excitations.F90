@@ -36,8 +36,8 @@ contains
         type(basis_t), intent(inout) :: basis
         integer :: ibasis, jbasis, ipos, iel, jpos, jel, ierr
 
-        allocate(basis%excit_mask(basis%string_len, basis%nbasis), stat=ierr)
-        call check_allocate('basis%excit_mask', basis%string_len*basis%nbasis, ierr)
+        allocate(basis%excit_mask(basis%tot_string_len, basis%nbasis), stat=ierr)
+        call check_allocate('basis%excit_mask', basis%bit_string_len*basis%nbasis, ierr)
 
         basis%excit_mask = 0_i0
 
@@ -77,9 +77,9 @@ contains
         ! In:
         !    nel: number of electrons in system.
         !    basis: information about the single-particle basis.
-        !    f1(string_len): bit string representation of the Slater
+        !    f1(tot_string_len): bit string representation of the Slater
         !        determinant.
-        !    f2(string_len): bit string representation of the Slater
+        !    f2(tot_string_len): bit string representation of the Slater
         !        determinant.
         ! Returns:
         !    excitation: excit_t type containing the following information---
@@ -101,7 +101,7 @@ contains
         type(excit_t) :: excitation
         integer, intent(in) :: nel
         type(basis_t), intent(in) :: basis
-        integer(i0), intent(in) :: f1(basis%string_len), f2(basis%string_len)
+        integer(i0), intent(in) :: f1(basis%tot_string_len), f2(basis%tot_string_len)
         integer :: i, j, iexcit1, iexcit2, perm, iel1, iel2, shift, nset_bits
         logical :: test_f1, test_f2
 
@@ -147,7 +147,7 @@ contains
 
             if (excitation%nexcit <= 2) then
 
-                do i = 1, basis%string_len
+                do i = 1, basis%bit_string_len
                     ! Bonus optimisation: We can skip most of the following for
                     ! this element of the bit strings if they are equal, but
                     ! may have to update iel1 and iel2 first...
@@ -201,10 +201,14 @@ contains
 
     pure function get_excitation_level(f1, f2) result(level)
 
+        ! Function to obtain the relative excitation level of f1 and f2.
+        ! f1 and f2 should have any additional information cleared from
+        ! their bit string before being passed in.
+
         ! In:
-        !    f1(string_len): bit string representation of the Slater
+        !    f1(tot_string_len): bit string representation of the Slater
         !        determinant.
-        !    f2(string_len): bit string representation of the Slater
+        !    f2(tot_string_len): bit string representation of the Slater
         !        determinant.
         ! Returns:
         !    Excitation level connecting determinants f1 and f2.
@@ -340,23 +344,24 @@ contains
 
         ! Generate a determinant from another determinant and the excitation
         ! information connecting the two determinants.
+        ! Information bits are not set correctly on output of f_out.
 
         ! In:
         !    basis: information about the single-particle basis.
-        !    f_in(string_len): bit string representation of the reference
+        !    f_in(tot_string_len): bit string representation of the reference
         !        Slater determinant.
         !    connection: excitation connecting f_in to f_out.  Note that
         !        the perm field is not used.
         ! Out:
-        !    f_out(string_len): bit string representation of the excited
+        !    f_out(tot_string_len): bit string representation of the excited
         !        Slater determinant.
 
         use basis_types, only: basis_t
 
         type(basis_t), intent(in) :: basis
-        integer(i0), intent(in) :: f_in(basis%string_len)
+        integer(i0), intent(in) :: f_in(basis%tot_string_len)
         type(excit_t), intent(in) :: connection
-        integer(i0), intent(out) :: f_out(basis%string_len)
+        integer(i0), intent(out) :: f_out(basis%tot_string_len)
 
         integer :: i, orb, bit_pos, bit_element
 

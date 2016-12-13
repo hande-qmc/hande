@@ -20,19 +20,20 @@ end interface
 
 contains
 
-    subroutine write_qmc_report_header(ntypes, cmplx_est, rdm_energy)
+    subroutine write_qmc_report_header(ntypes, cmplx_est, rdm_energy, nattempts)
 
         ! In:
         !    ntypes: number of particle types being sampled.
         ! In (optional):
         !    cmplx_est: Print out information of cmplx_estlex estimators.
         !    rdm_energy: Print out energy calculated from rdm.
+        !    nattempts: Print out number of attempts made each iteration
+        !       (for CCMC).
 
         use calc, only: doing_calc, hfs_fciqmc_calc
 
         integer, intent(in) :: ntypes
-        logical, optional, intent(in) :: cmplx_est, rdm_energy
-
+        logical, optional, intent(in) :: cmplx_est, rdm_energy, nattempts
         logical :: cmplx_est_set
         integer :: i, nreplicas
         character(20) :: column_title
@@ -114,6 +115,9 @@ contains
         end if
         call write_column_title(6, '# states', int_val=.true., justify=1)
         call write_column_title(6, '# spawn_events', int_val=.true., justify=1)
+        if (present(nattempts)) then
+            if (nattempts) call write_column_title(6, '# attempts', int_val=.true., justify=1)
+        end if
         call write_column_title(6, 'R_spawn', low_prec_val=.true.)
         call write_column_title(6, '  time', low_prec_val=.true., justify=2)
 
@@ -319,7 +323,7 @@ contains
     end subroutine write_column_title
 
     subroutine write_qmc_report(qmc_in, qs, ireport, ntot_particles, elapsed_time, comment, non_blocking_comm, cmplx_est, &
-                                rdm_energy)
+                                rdm_energy, nattempts)
 
         ! Write the report line at the end of a report loop.
 
@@ -335,6 +339,7 @@ contains
         !    cmplx_est: if true, doing calculation with real and imaginary walkers
         !       so need to print extra parameters.
         !    rdm_energy: Print energy calculated from RDM.
+        !    nattempts: Print number of selection attempts made. Only used in CCMC.
 
         use calc, only: doing_calc, hfs_fciqmc_calc
         use qmc_data, only: qmc_in_t, qmc_state_t
@@ -345,9 +350,9 @@ contains
         real(dp), intent(in) :: ntot_particles(:)
         real, intent(in) :: elapsed_time
         logical, intent(in) :: comment, non_blocking_comm
-        logical, intent(in), optional :: cmplx_est, rdm_energy
+        logical, intent(in), optional :: cmplx_est, rdm_energy, nattempts
 
-        logical :: cmplx_est_set
+        logical :: cmplx_est_set, nattempts_set
         integer :: mc_cycles, ntypes, i
 
         ntypes = size(ntot_particles)
@@ -362,6 +367,8 @@ contains
 
         cmplx_est_set = .false.
         if (present(cmplx_est)) cmplx_est_set = cmplx_est
+        nattempts_set = .false.
+        if (present(nattempts)) nattempts_set = nattempts
 
         if (comment) then
             write (6,'(1X,"#",1X)', advance='no')
@@ -396,6 +403,9 @@ contains
 
         call write_qmc_var(6, qs%estimators(1)%tot_nstates)
         call write_qmc_var(6, qs%estimators(1)%tot_nspawn_events)
+        if (nattempts_set) then
+            call write_qmc_var(6, qs%estimators(1)%nattempts)
+        end if
 
         call write_qmc_var(6, qs%spawn_store%rspawn, low_prec=.true.)
         call write_qmc_var(6, elapsed_time/qmc_in%ncycles, low_prec=.true.)

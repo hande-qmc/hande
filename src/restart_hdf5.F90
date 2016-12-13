@@ -60,6 +60,8 @@ module restart_hdf5
     !                                  # qmc_io for details).
     !  basis/
     !      nbasis                      # Number of basis functions
+    !      info_string_len             # Length in integers of additional information
+    !                                  # stored in bit string.
     !
     !  rng/                            # Not used yet.
 
@@ -93,8 +95,10 @@ module restart_hdf5
 
     ! Version id of the restart file *produced*.  Please increment if you add
     ! anything to dump_restart_hdf5!
-    ! Note that the restart version is not currently used anywhere but might be helpful
-    ! when writing post-processing utilities which act upon restart files.
+    ! Note that the restart version is currently used to check if a bit string conversion is
+    ! needed following updates to code.
+    ! In addition it might be helpful when writing post-processing utilities which act upon
+    ! restart files.
     integer, parameter :: restart_version = 1
 
     ! Group names...
@@ -131,7 +135,8 @@ module restart_hdf5
                                dhsref = 'Hilbert space reference determinant', &
                                dscaling = 'population scale factor', &
                                dnbasis = 'nbasis',                  &
-                               dvary = 'vary shift'
+                               dvary = 'vary shift',                &
+                               dinfo_string_len = 'info string len'
 
     contains
 
@@ -252,7 +257,7 @@ module restart_hdf5
         end subroutine init_restart_hdf5
 #endif
 
-        subroutine dump_restart_hdf5(ri, qs, ncycles, total_population, nbasis, nb_comm)
+        subroutine dump_restart_hdf5(ri, qs, ncycles, total_population, nbasis, nb_comm, info_string_len)
 
             ! Write out a restart file.
 
@@ -265,6 +270,8 @@ module restart_hdf5
             !    nb_comm: true if using non-blocking communications, in which case
             !       information from qs%spawn_store%spawn_recv is also written out
             !       to the restart file.
+            !    info_string_len: length in i0 integers of used to store additional
+            !       information in bit string.
 
 #ifndef DISABLE_HDF5
             use hdf5
@@ -286,7 +293,7 @@ module restart_hdf5
             type(qmc_state_t), intent(in) :: qs
             integer, intent(in) :: ncycles
             real(dp), intent(in) :: total_population(:)
-            integer, intent(in) :: nbasis
+            integer, intent(in) :: nbasis, info_string_len
             logical, intent(in) :: nb_comm
 #ifndef DISABLE_HDF5
             character(255) :: restart_file
@@ -412,6 +419,7 @@ module restart_hdf5
             ! --- basis group ---
             call h5gcreate_f(file_id, gbasis, group_id, ierr)
             call hdf5_write(group_id, dnbasis, nbasis)
+            call hdf5_write(group_id, dinfo_string_len, info_string_len)
             call h5gclose_f(group_id, ierr)
 
             ! And terminate HDF5.
@@ -423,7 +431,7 @@ module restart_hdf5
 
         end subroutine dump_restart_hdf5
 
-        subroutine read_restart_hdf5(ri, nbasis, nb_comm, qs, uuid_restart)
+        subroutine read_restart_hdf5(ri, nbasis, nb_comm, info_string_len, qs, uuid_restart, regenerate_info)
 
             ! Read QMC data from restart file.
 
@@ -431,12 +439,16 @@ module restart_hdf5
             !    ri: restart information.  ri%restart_stem and ri%read_id are used.
             !    nb_comm: true if using non-blocking communications.
             !    nbasis: number of basis functions being used.
+            !    info_string_len: length in integers of additional information stored
+            !       in bit string.
             ! In/Out:
             !    qs: qmc_state_t object.  Allocated on input, contains info
             !       from the restart file on exit.  If nb_comm is true, then
             !       information is also read into qs%spawn_store%spawn_recv.
             ! Out:
             !    uuid_restart: UUID of the calculation that generated the restart file
+            !    regenerate_info: whether the walker list obtained from a restart file
+            !       requires regeneration of the extra information in the bit string.
 
 #ifndef DISABLE_HDF5
             use hdf5
@@ -456,10 +468,10 @@ module restart_hdf5
 
             type(restart_info_t), intent(in) :: ri
             logical, intent(in) :: nb_comm
-            integer, intent(in) :: nbasis
+            integer, intent(in) :: nbasis, info_string_len
             type(qmc_state_t), intent(inout) :: qs
             character(36), intent(out) :: uuid_restart
-
+            logical, intent(out) :: regenerate_info
 #ifndef DISABLE_HDF5
             ! HDF5 kinds
             type(hdf5_kinds_t) :: kinds
@@ -468,7 +480,7 @@ module restart_hdf5
 
             character(255) :: restart_file
             integer :: restart_version_restart, calc_type_restart, nprocs_restart
-            integer :: i0_length_restart, nbasis_restart
+            integer :: i0_length_restart, nbasis_restart, info_string_len_restart
             integer :: ierr
             logical :: exists, resort
             integer(int_64) :: restart_scale_factor(1)
@@ -519,8 +531,7 @@ module restart_hdf5
                                   'Restarting with different calculation types not supported.  Please implement.')
                 ! Different restart versions require graceful handling of the
                 ! additions/removals.
-                if (restart_version /= restart_version_restart) &
-                    call stop_all('read_restart_hdf5', &
+                if (restart_version /= restart_version_restart) call stop_all('read_restart_hdf5', &
                                   'Restarting from a different restart version not supported.  Please implement.')
                 ! Different processor counts requires figuring out if
                 ! a determinant should be on the processor or not (and reading
@@ -535,14 +546,31 @@ module restart_hdf5
             ! --- basis group ---
             call h5lexists_f(file_id, gbasis, exists, ierr)
             if (exists) then
-                call hdf5_read(file_id, hdf5_path(gbasis, dnbasis), nbasis_restart)
+                call h5gopen_f(file_id, gbasis, group_id, ierr)
+                call hdf5_read(group_id, dnbasis, nbasis_restart)
                 if (nbasis_restart > nbasis) &
                     call stop_all('read_restart_hdf5', &
                                   'Restarting with a smaller basis not supported.  Please implement.')
+                call h5lexists_f(group_id, dinfo_string_len, exists, ierr)
+                if (exists) then
+                    call hdf5_read(group_id, dinfo_string_len, info_string_len_restart)
+                else
+                    ! Must be written before info_string_len was implemented; as such must be 0.
+                    info_string_len_restart = 0
+                end if
+                call h5gclose_f(group_id, ierr)
             else
-                ! assume not changing basis
+                ! assume not changing basis, and must have written before info_string_len
+                ! implemented so must be 0.
                 nbasis_restart = nbasis
+                info_string_len_restart = 0
             end if
+
+            ! Need to check that we're performing a conversion that makes sense for additional
+            ! bit string information. If we implement different approaches to regenerate
+            ! different information forms in future we'll need to add exceptions.
+            if (info_string_len_restart > info_string_len .and. info_string_len /= 0) call stop_all('read_restart_hdf5', &
+                        'Restarting with less additional information stored in bit string not supported. Please implement.')
 
             ! --- qmc group ---
                 call h5gopen_f(file_id, gqmc, group_id, ierr)
@@ -556,18 +584,20 @@ module restart_hdf5
                 qs%psip_list%nstates = int(dims(size(dims)))
 
                 if (i0_length == i0_length_restart) then
-                    if (nbasis == nbasis_restart) then
+                    if (nbasis == nbasis_restart .and. info_string_len == info_string_len_restart) then
                         call hdf5_read(subgroup_id, ddets, kinds, shape(qs%psip_list%states, kind=int_64), qs%psip_list%states)
                     else
-                        ! Change array bounds to restart with a larger basis
+                        ! Change array bounds to restart with a larger basis and/or change in bit string length.
                         ! Assume that basis functions 1..nbasis_restart correspond to the original basis
-                        call change_nbasis(subgroup_id, ddets, kinds, qs%psip_list%states)
+                        ! or need to account for addition of additional bit string integer to store
+                        ! excitation level between restart versions 1 and 2.
+                        call change_nbasis(subgroup_id, ddets, kinds, info_string_len, info_string_len_restart, qs%psip_list%states)
                     end if
                 else
                     if (nbasis /= nbasis_restart) &
                         call stop_all('read_restart_hdf5', &
                                       'Changing DET_SIZE and basis size simultaneously not supported.  Please implement.')
-                    call convert_dets(subgroup_id, ddets, kinds, qs%psip_list%states)
+                    call convert_dets(subgroup_id, ddets, kinds, info_string_len, info_string_len_restart, qs%psip_list%states)
                 end if
 
                 if (.not. dtype_equal(subgroup_id, dpops, kinds%int_p) .and. (bit_size(0_int_p) == 32) .and. parent) &
@@ -615,13 +645,29 @@ module restart_hdf5
                 if (exists) call hdf5_read(subgroup_id, dproc_map, kinds, shape(qs%par_info%load%proc_map%map, kind=int_64), &
                                            qs%par_info%load%proc_map%map)
 
+                ! Check for identifier from redistribute to indicate need to resort walker list.
                 call h5lexists_f(subgroup_id, dresort, exists, ierr)
                 if (exists) then
                     call hdf5_read(subgroup_id, dresort, resort)
-                    associate(pl=>qs%psip_list)
-                        if (resort) call qsort(pl%nstates, pl%states, pl%pops, pl%dat)
-                    end associate
                 end if
+
+                ! Need to specify whether to regenerate information in bit string or resort anyway.
+                if (info_string_len_restart /= info_string_len .and. info_string_len /= 0) then
+                    regenerate_info = .true.
+                    ! Resorting will be done anyway after regneration so no need to do twice.
+                    resort = .false.
+                else if (info_string_len == 0 .and. info_string_len_restart /= 0) then
+                    regenerate_info = .false.
+                    ! States will be out of order, so need to resort anyway.
+                    resort = .true.
+                else
+                    ! Restarted with same string len, so assume information is as required.
+                    regenerate_info = .false.
+                end if
+
+                associate(pl=>qs%psip_list)
+                    if (resort) call qsort(pl%nstates, pl%states, pl%pops, pl%dat)
+                end associate
 
                 call h5gclose_f(subgroup_id, ierr)
 
@@ -667,19 +713,21 @@ module restart_hdf5
 
         end subroutine read_restart_hdf5
 
-        subroutine get_reference_hdf5(ri, reference)
+        subroutine get_reference_hdf5(ri, info_string_len, reference)
 
             ! Read a reference determinant from a restart file.
 
             ! In:
             !    ri: restart information.  ri%restart_stem and ri%read_id are used.
+            !    info_string_len: length in integers of additional information stored
+            !       in bit string.
             ! In/Out:
             !    reference: info on the reference determinant read from file.
 
 #ifndef DISABLE_HDF5
             use hdf5
             use hdf5_helper, only: hdf5_kinds_t, hdf5_read, hdf5_path
-            use restart_utils, only: convert_ref
+            use restart_utils, only: convert_ref, change_ninfo
 #endif
             use errors, only: stop_all
             use const
@@ -687,14 +735,16 @@ module restart_hdf5
             use reference_determinant, only: reference_t
 
             type(restart_info_t), intent(in) :: ri
+            integer, intent(in) :: info_string_len
             type(reference_t), intent(inout) :: reference
 
 #ifndef DISABLE_HDF5
-
+            integer :: info_string_len_restart
             integer :: ierr, i0_length_restart
             character(255) :: restart_file
             type(hdf5_kinds_t) :: kinds
             integer(hid_t) :: file_id, group_id
+            logical :: exists
 
             ! Initialise HDF5 and open file.
             call h5open_f(ierr)
@@ -708,17 +758,33 @@ module restart_hdf5
                 call hdf5_read(group_id, di0_length, i0_length_restart)
             call h5gclose_f(group_id, ierr)
 
+            ! Need to obtain info string length used with restart file.
+            info_string_len_restart = 0
+            call h5lexists_f(file_id, gbasis, exists, ierr)
+            if (exists) then
+                call h5gopen_f(file_id, gbasis, group_id, ierr)
+                call h5lexists_f(group_id, dinfo_string_len, exists, ierr)
+                if (exists) then
+                    call hdf5_read(group_id, dinfo_string_len, info_string_len_restart)
+                end if
+            end if
             ! --- qmc/reference group ---
             call h5gopen_f(file_id, hdf5_path(gqmc,gref), group_id, ierr)
 
                 reference%f0 = 0
                 reference%hs_f0 = 0
-                if (i0_length == i0_length_restart) then
+                ! For even selection additional information don't need to worry about effect of
+                ! changing info string length, as reference ex_level=0.
+                ! [todo] cover case where info_string_len changes when reference information is nonzero.
+                if (i0_length == i0_length_restart .and. info_string_len == info_string_len_restart) then
                     call hdf5_read(group_id, dref, kinds, shape(reference%f0, kind=int_64), reference%f0)
                     call hdf5_read(group_id, dhsref, kinds, shape(reference%hs_f0, kind=int_64), reference%hs_f0)
+                else if (info_string_len /= info_string_len_restart) then
+                    call change_ninfo(group_id, dref, kinds, info_string_len, info_string_len_restart, reference%f0)
+                    call change_ninfo(group_id, dhsref, kinds, info_string_len, info_string_len_restart, reference%hs_f0)
                 else
-                    call convert_ref(group_id, dref, kinds, reference%f0)
-                    call convert_ref(group_id, dhsref, kinds, reference%hs_f0)
+                    call convert_ref(group_id, dref, kinds, info_string_len, info_string_len_restart, reference%f0)
+                    call convert_ref(group_id, dhsref, kinds, info_string_len, info_string_len_restart, reference%hs_f0)
                 end if
 
             call h5gclose_f(group_id, ierr)
@@ -790,7 +856,7 @@ module restart_hdf5
 
             integer :: hash_shift, hash_seed, move_freq, slot_pos, storage_type, nlinks, max_corder, write_id
             integer :: max_nstates, tensor_label_len, i0_length_restart, nbasis
-            integer :: iproc_target_start, iproc_target_end, string_len
+            integer :: iproc_target_start, iproc_target_end, string_len, info_string_len
             integer, allocatable :: istate_proc(:)
             type(particle_t) :: psip_read, psip_new(0:nmax_files-1)
             logical :: exists
@@ -907,15 +973,25 @@ module restart_hdf5
             ! Try to get determinant string length (needed to convert DET_SIZE) from file,
             ! otherwise the user must supply a system object.
             call h5lexists_f(orig_id, gbasis, exists, ierr)
+            ! Assume written before implementation of info_string_len, so
+            ! info_string_len=0 is the only option, unless find otherwise.
+            info_string_len = 0
             if (exists) then
                 call hdf5_read(orig_id, hdf5_path(gbasis, dnbasis), nbasis)
-                string_len = ceiling(real(nbasis)/i0_length)
+                call h5lexists_f(orig_id, hdf5_path(gbasis, dinfo_string_len), exists, ierr)
+                if (exists) then
+                    call hdf5_read(orig_id, hdf5_path(gbasis, dinfo_string_len), info_string_len)
+                end if
+                ![todo] write out previous info_string_len and enable conversion appropriately if
+                ! different value provided.
+                string_len = ceiling(real(nbasis)/i0_length) + info_string_len
             else if (present(sys)) then
-                string_len = sys%basis%string_len
+                string_len = sys%basis%tot_string_len
                 nbasis = sys%basis%nbasis
             else if (i0_length /= i0_length_restart) then
                 call stop_all('redistribute_restart_hdf5','A system object must be supplied to change DET_SIZE.')
             end if
+
             allocate(f0(string_len))
 
             ! Write out metadata to each new file.
@@ -946,10 +1022,10 @@ module restart_hdf5
                         call h5gopen_f(orig_group_id, gref, orig_subgroup_id, ierr)
                         call h5gcreate_f(group_id, gref, subgroup_id, ierr)
 
-                        call convert_ref(orig_subgroup_id, dref, kinds, f0)
+                        call convert_ref(orig_subgroup_id, dref, kinds, info_string_len, info_string_len, f0)
                         call hdf5_write(subgroup_id, dref, kinds, shape(f0, kind=int_64), f0)
 
-                        call convert_ref(orig_subgroup_id, dhsref, kinds, f0)
+                        call convert_ref(orig_subgroup_id, dhsref, kinds, info_string_len, info_string_len, f0)
                         call hdf5_write(subgroup_id, dhsref, kinds, shape(f0, kind=int_64), f0)
 
                         call h5ocopy_f(orig_group_id, hdf5_path(gref, dref_pop), group_id, hdf5_path(gref, dref_pop), ierr)
@@ -1031,7 +1107,7 @@ module restart_hdf5
                     if (i0_length == i0_length_restart) then
                         call hdf5_read(orig_subgroup_id, ddets, kinds, shape(psip_read%states, kind=int_64), psip_read%states)
                     else
-                        call convert_dets(orig_subgroup_id, ddets, kinds, psip_read%states)
+                        call convert_dets(orig_subgroup_id, ddets, kinds, info_string_len, info_string_len, psip_read%states)
                     end if
 
                     call h5lexists_f(orig_subgroup_id, dscaling, exists, ierr)
@@ -1180,7 +1256,7 @@ module restart_hdf5
         end subroutine redistribute_restart_hdf5
 
         subroutine dump_restart_file_wrapper(qs, dump_restart_shift, dump_freq, ntot_particles, ireport, ncycles, &
-                                             nbasis, ri_freq, ri_shift, nb_comm)
+                                             nbasis, ri_freq, ri_shift, nb_comm, info_string_len)
 
             ! Check if a restart file needs to be written, and if so then do so.
 
@@ -1196,6 +1272,8 @@ module restart_hdf5
             !     ri_freq: restart_info_t object for writing out the restart file once the shift
             !         is turned on.
             !     nb_comm: true if using non-blocking communications.
+            !     info_string_len: length of integers used to store additional information in
+            !         the bit string.
             ! In/Out:
             !     dump_restart_shift: should we dump a restart file just before
             !         the shift turns on?  If true and a restart file is written out, then
@@ -1207,7 +1285,7 @@ module restart_hdf5
             type(qmc_state_t), intent(inout) :: qs
             logical, intent(inout) :: dump_restart_shift
             real(dp), intent(in) :: ntot_particles(qs%psip_list%nspaces)
-            integer, intent(in) :: ireport, ncycles, dump_freq, nbasis
+            integer, intent(in) :: ireport, ncycles, dump_freq, nbasis, info_string_len
             type(restart_info_t), intent(in) :: ri_freq, ri_shift
             logical, intent(in) :: nb_comm
 
@@ -1219,11 +1297,11 @@ module restart_hdf5
                 vary_shift = qs%vary_shift
                 qs%vary_shift = .false.
                 call dump_restart_hdf5(ri_shift, qs, qs%mc_cycles_done+ncycles*ireport, &
-                                       ntot_particles, nbasis, nb_comm)
+                                       ntot_particles, nbasis, nb_comm, info_string_len)
                 qs%vary_shift = vary_shift
             else if (mod(ireport*ncycles,dump_freq) == 0) then
                 call dump_restart_hdf5(ri_freq, qs, qs%mc_cycles_done+ncycles*ireport, &
-                                       ntot_particles, nbasis, nb_comm)
+                                       ntot_particles, nbasis, nb_comm, info_string_len)
             end if
 
         end subroutine dump_restart_file_wrapper

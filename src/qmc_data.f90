@@ -244,6 +244,8 @@ type ccmc_in_t
     logical :: density_matrices = .false.
     ! Filename to write density matrix to
     character(255) :: density_matrix_file = 'RDM'
+    ! Whether to use even cluster selection approach.
+    logical :: even_selection = .false.
 end type ccmc_in_t
 
 type restart_in_t
@@ -538,6 +540,9 @@ type estimators_t
     real(p) :: proj_hf_O_hpsip
     ! \sum_i <D_0|H|D_i> \tilde{N}_i.
     real(p) :: proj_hf_H_hfpsip
+    ! The total number of attempts made to select cluster from current distribution, across all
+    ! processes.
+    integer(int_64) :: nattempts = 0_int_64
 end type estimators_t
 
 type propagator_t
@@ -803,7 +808,8 @@ contains
         call json_write_key(js, 'linked', ccmc%linked)
         call json_write_key(js, 'vary_shift_reference', ccmc%vary_shift_reference)
         call json_write_key(js, 'density_matrices', ccmc%density_matrices)
-        call json_write_key(js, 'density_matrix_file', ccmc%density_matrix_file, .true.)
+        call json_write_key(js, 'density_matrix_file', ccmc%density_matrix_file)
+        call json_write_key(js, 'even_selection', ccmc%even_selection, .true.)
         call json_object_end(js, terminal)
 
     end subroutine ccmc_in_t_json

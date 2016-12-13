@@ -97,7 +97,7 @@ contains
         integer(int_p), parameter :: parent_sign = 1_int_p
         type(hmatel_t) :: hmatel, hmatel_save
         real(p) :: pgen
-        integer(i0) :: fexcit(sys%basis%string_len), funlinked(sys%basis%string_len)
+        integer(i0) :: fexcit(sys%basis%tot_string_len), funlinked(sys%basis%tot_string_len)
         integer :: excitor_sign, excitor_level
         logical :: linked, single_unlinked, allowed_excitation
         real(p) :: invdiagel
@@ -157,8 +157,8 @@ contains
 
     end subroutine spawner_ccmc
 
-    subroutine stochastic_ccmc_death(rng, spawn, linked_ccmc, sys, qs, cdet, cluster, logging_info, &
-                                    ndeath_tot)
+    subroutine stochastic_ccmc_death(rng, spawn, linked_ccmc, ex_lvl_sort, sys, qs, cdet, cluster, &
+                                    logging_info, ndeath_tot)
 
         ! Attempt to 'die' (ie create an excip on the current excitor, cdet%f)
         ! with probability
@@ -184,17 +184,23 @@ contains
         ! NB This currently only handles non-linked complex amplitudes, not linked complex.
 
         ! In:
+        !    linked_ccmc: if true then only sample linked clusters.
+        !    ex_lvl_sort: logical. If true add excitation level to bit string if successfully
+        !       die.
         !    sys: system being studied.
         !    qs: qmc_state_t containing information about the reference and estimators.
-        !    linked_ccmc: if true then only sample linked clusters.
         !    cdet: info on the current excitor (cdet) that we will spawn
         !        from.
         !    cluster: information about the cluster which forms the excitor.
+        !    logging_info: logging_t derived type containing information on logging behaviour.
+
         ! In/Out:
         !    rng: random number generator.
         !    spawn: spawn_t object to which the spanwed particle will be added.
+        !    ndeath_tot: total number of deaths (added to by this function)
 
         use ccmc_data, only: cluster_t
+        use ccmc_utils, only: add_ex_level_bit_string_provided
         use determinants, only: det_info_t
         use const, only: debug
 
@@ -208,7 +214,7 @@ contains
 
         type(sys_t), intent(in) :: sys
         type(qmc_state_t), intent(in) :: qs
-        logical, intent(in) :: linked_ccmc
+        logical, intent(in) :: linked_ccmc, ex_lvl_sort
         type(det_info_t), intent(in) :: cdet
         type(cluster_t), intent(in) :: cluster
         type(logging_t), intent(in) :: logging_info
@@ -270,6 +276,8 @@ contains
 
         ! Scale by tau and pselect before pass to specific functions.
         KiiAi = KiiAi * qs%tau / cluster%pselect
+
+        if (ex_lvl_sort) call add_ex_level_bit_string_provided(sys%basis, cluster%excitation_level, cdet%f)
 
         call stochastic_death_attempt(rng, real(KiiAi, p), 1, cdet, qs%ref, sys%basis, spawn, &
                            nkill, pdeath)
@@ -361,6 +369,7 @@ contains
             ! The excitor might be a composite cluster so we'll just create
             ! excips in the spawned list and allow the annihilation process to take
             ! care of the rest.
+
             ! Pass through a null excitation so that we create a spawned particle on
             ! the current excitor.
             call create_spawned_particle_ptr(basis, ref, cdet, null_excit, nkill, ispace, spawn)
@@ -537,7 +546,7 @@ contains
         type(gen_excit_ptr_t), intent(in) :: gen_excit_ptr
         integer(int_p), intent(out) :: nspawn
         type(excit_t), intent(out) :: connection
-        integer(i0), intent(out) :: fexcit(sys%basis%string_len)
+        integer(i0), intent(out) :: fexcit(sys%basis%tot_string_len)
         type(det_info_t), intent(inout) :: ldet, rdet
         type(det_info_t), intent(in) :: cdet
         type(cluster_t), intent(inout) :: left_cluster, right_cluster
@@ -553,8 +562,8 @@ contains
         complex(p) :: pop
         type(hmatel_t) :: hmatel, delta_h
         logical :: allowed, sign_change, linked, single_unlinked
-        integer(i0) :: new_det(sys%basis%string_len)
-        integer(i0) :: excitor(sys%basis%string_len)
+        integer(i0) :: new_det(sys%basis%tot_string_len)
+        integer(i0) :: excitor(sys%basis%tot_string_len)
         real(p) :: invdiagel, fock_sum
 
         ! 1) Choose an order for the excitors
@@ -753,7 +762,7 @@ contains
         integer(int_p), parameter :: parent_sign = 1_int_p
         type(hmatel_t) :: hmatel
         real(p) :: pgen
-        integer(i0) :: fexcit(sys%basis%string_len)
+        integer(i0) :: fexcit(sys%basis%tot_string_len)
         integer :: excitor_sign, excitor_level
         logical :: allowed_excitation
 
@@ -790,34 +799,64 @@ contains
 ! --- Helper functions ---
 
     subroutine create_spawned_particle_ccmc(basis, ref, cdet, connection, nspawned, ispace, &
-                                            ex_level, fexcit, spawn, bloom_stats)
+                                            parent_cluster_ex_level, ex_lvl_sort, fexcit, spawn, bloom_stats)
+
+        ! Function to create spawned particle in spawned list for ccmc
+        ! calculations. Performs required manipulations of bit string
+        ! beforehand and accumulation on blooming.
+
+        ! In:
+        !   basis: info on current basis functions.
+        !   reference: info on current reference state.
+        !   cdet: determinant representing state currently spawning
+        !       spawning from.
+        !   connection: connection from state cdet particle has been spawned
+        !       from.
+        !   nspawned: number of (encoded) particles to be created via this spawning.
+        !   ispace: index of space particles are to be added to.
+        !   parent_cluster_ex_level: excitation level of parent cluster.
+        !   fexcit: bit string for state spawned to. Only available for linked
+        !       ccmc, otherwise generated using cdet+connection.
+        !   ex_lvl_sort: true if require states to be sorted by excitation
+        !       level within walker list, false otherwise.
+        ! In/Out:
+        !   spawn: spawn_t type containing information on particles created
+        !       via spawning this iteration. Spawned particles will be added
+        !       to this on exit.
+        !   bloom_stats: information on blooms within a calculation. Will be
+        !       updated if a bloom has occurred.
 
         use basis_types, only: basis_t
         use reference_determinant, only: reference_t
         use spawn_data, only: spawn_t
         use determinants, only: det_info_t
         use bloom_handler, only: bloom_stats_t, accumulate_bloom_stats
-        use excitations, only: excit_t
+        use excitations, only: excit_t, create_excited_det
         use proc_pointers, only: create_spawned_particle_ptr
+        use ccmc_utils, only: add_ex_level_bit_string_calc
 
         type(basis_t), intent(in) :: basis
         type(reference_t), intent(in) :: ref
-        type(spawn_t), intent(inout) ::spawn
+        type(spawn_t), intent(inout) :: spawn
         type(det_info_t), intent(in) :: cdet
         type(bloom_stats_t), intent(inout) :: bloom_stats
         type(excit_t), intent(in) :: connection
 
         integer(int_p), intent(in) :: nspawned
-        integer, intent(in) :: ispace, ex_level
+        integer, intent(in) :: ispace, parent_cluster_ex_level
         integer(i0), intent(in) :: fexcit(:)
+        logical, intent(in) :: ex_lvl_sort
+        integer(i0) :: fexcit_loc(lbound(fexcit,dim=1):ubound(fexcit,dim=1))
 
-        if (ex_level == huge(0)) then
-            call create_spawned_particle_ptr(basis, ref, cdet, connection, nspawned, &
-                                            ispace, spawn, fexcit)
+        if (parent_cluster_ex_level /= huge(0)) then
+            call create_excited_det(basis, cdet%f, connection, fexcit_loc)
         else
-            call create_spawned_particle_ptr(basis, ref, cdet, connection, nspawned, ispace, &
-                                            spawn)
+            fexcit_loc = fexcit
         end if
+
+        if (ex_lvl_sort) call add_ex_level_bit_string_calc(basis, ref%f0, fexcit_loc)
+        call create_spawned_particle_ptr(basis, ref, cdet, connection, nspawned, &
+                                        ispace, spawn, fexcit_loc)
         call accumulate_bloom_stats(bloom_stats, nspawned)
 
     end subroutine create_spawned_particle_ccmc

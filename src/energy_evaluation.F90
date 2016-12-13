@@ -35,6 +35,7 @@ enum, bind(c)
     enumerator :: error_ind
     enumerator :: rdm_energy_ind
     enumerator :: rdm_trace_ind
+    enumerator :: nattempts_ind
     enumerator :: nparticles_start_ind ! ensure this is always the last enumerator
 end enum
 
@@ -321,6 +322,8 @@ contains
         rep_loop_loc(rdm_energy_ind) = qs%estimators(1)%rdm_energy
         rep_loop_loc(rdm_trace_ind) = qs%estimators(1)%rdm_trace
 
+        rep_loop_loc(nattempts_ind) = real(qs%estimators(1)%nattempts, dp)
+
         if (present(comms_found)) then
             if (comms_found) rep_loop_loc(comms_found_ind) = 1.0_p
         end if
@@ -446,6 +449,8 @@ contains
         qs%estimators%tot_nspawn_events = nint(rep_loop_sum(nspawned_ind))
         qs%estimators%rdm_energy = real(rep_loop_sum(rdm_energy_ind), p)
         qs%estimators%rdm_trace = real(rep_loop_sum(rdm_trace_ind), p)
+        qs%estimators%nattempts = int(rep_loop_sum(nattempts_ind), int_64)
+
         if (present(comms_found)) then
             comms_found = abs(rep_loop_sum(comms_found_ind)) > depsilon
         end if
@@ -1087,7 +1092,7 @@ contains
 
         ! In:
         !    sys: system being studied.  Unused.
-        !    f(string_len): bit string representation of the Slater determinant, D_i.
+        !    f(tot_string_len): bit string representation of the Slater determinant, D_i.
         !    fpop: Hamiltonian population on the determinant.
         !    f_hfpop: Hellmann-Feynman population on the determinant.
         !    fdata(:): additional information about the determinant (unused, for
@@ -1141,7 +1146,7 @@ contains
 
         ! In:
         !    sys: system being studied.  Unused.
-        !    f(string_len): bit string representation of the Slater determinant, D_i
+        !    f(tot_string_len): bit string representation of the Slater determinant, D_i
         !       (unused, for interface compatibility only).
         !    fpop: Hamiltonian population on the determinant (unused, for interface
         !       compatibility only).
@@ -1198,7 +1203,7 @@ contains
 
         ! In:
         !    sys: system being studied.  Requires hubbard%u and lattice%nsites.
-        !    f(string_len): bit string representation of the Slater determinant, D_i
+        !    f(tot_string_len): bit string representation of the Slater determinant, D_i
         !       (unused, for interface compatibility only).
         !    fpop: Hamiltonian population on the determinant.
         !    f_hfpop: Hellmann-Feynman population on the determinant.
@@ -1257,7 +1262,7 @@ contains
 
         ! In:
         !    sys: system being studied.  Unused.
-        !    f(string_len): bit string representation of the Slater determinant, D_i
+        !    f(tot_string_len): bit string representation of the Slater determinant, D_i
         !       (unused, for interface compatibility only).
         !    fpop: Hamiltonian population on the determinant.
         !    f_hfpop: Hellmann-Feynman population on the determinant.

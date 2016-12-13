@@ -231,15 +231,16 @@ contains
 
         type(dSFMT_t), intent(inout) :: rng
         type(sys_t), intent(in) :: sys
-        integer(i0), intent(in) :: f(sys%basis%string_len)
+        integer(i0), intent(in) :: f(sys%basis%tot_string_len)
         integer, intent(in) :: ij_k(sys%lattice%ndim), ij_spin
         integer(i0), intent(in), allocatable :: ternary_conserve(:,:,:,:) ! Declared as allocatable to get correct array bounds
         integer, intent(out) :: a, b, max_na
         logical, intent(out) :: allowed_excitation
 
         integer :: ibp, ibe, n, ind, kb(sys%lattice%ndim), k3(3)
-        integer(i0) :: poss_a(sys%basis%string_len)
-        integer :: nposs_a(sys%basis%string_len), poss_a_orbs(i0_length)
+        ! [todo] rewrite using on bit_string_len, as we don't require the additional info_string_len info.
+        integer(i0) :: poss_a(sys%basis%tot_string_len)
+        integer :: nposs_a(sys%basis%tot_string_len), poss_a_orbs(i0_length)
 
         ! Let's just check there are possible a,b first!
         ! Adjust for spin.  Allow a to be up (without bias) if possible.
@@ -259,7 +260,7 @@ contains
             a = int(max_na*get_rand_close_open(rng)) + 1
 
             n = 0
-            finda: do ibe = 1, sys%basis%string_len
+            finda: do ibe = 1, sys%basis%tot_string_len
                 if (n + nposs_a(ibe) >= a) then
                     call decode_bit_string(poss_a(ibe), poss_a_orbs)
                     a = sys%basis%basis_lookup(poss_a_orbs(a-n), ibe)

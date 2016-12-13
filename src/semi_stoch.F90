@@ -101,6 +101,10 @@ use qmc_data, only: semi_stoch_t, determ_hash_t
 
 implicit none
 
+! Version for output semi stoch files. If produced prior to introduction is treated
+! as version number 0.
+integer, parameter :: semi_stoch_version = 1
+
 contains
 
     subroutine init_semi_stoch_t_flags(determ, max_nstates)
@@ -1374,7 +1378,7 @@ contains
 #ifndef DISABLE_HDF5
         use hdf5
         use hdf5_helper, only: hdf5_kinds_t, hdf5_read, hdf5_kinds_init, dtype_equal
-        use restart_utils, only: convert_dets
+        use restart_utils, only: convert_dets, change_nbasis
 #else
         use errors, only: stop_all
 #endif
@@ -1399,7 +1403,7 @@ contains
         type(hdf5_kinds_t) :: kinds
         integer(hid_t) :: file_id, dset_id, dspace_id
         character(255) :: filename
-        integer :: id, ierr, ndeterm
+        integer :: id, ierr, ndeterm, semi_stoch_version_restart
         integer(HSIZE_T) :: dims(2), maxdims(2)
         logical :: exists
 #ifdef PARALLEL
@@ -1435,6 +1439,14 @@ contains
             call hdf5_kinds_init(kinds)
             call h5fopen_f(filename, H5F_ACC_RDONLY_F, file_id, ierr)
 
+            ! Find version of semistoch file
+            call h5lexists_f(file_id, 'ss_version', exists, ierr)
+            if (exists) then
+                call hdf5_read(file_id, 'ss_version', semi_stoch_version_restart)
+            else
+                semi_stoch_version_restart = 0
+            end if
+
             ! Find how many determinants are in the file.
             call h5dopen_f(file_id, 'dets', dset_id, ierr)
             call h5dget_space_f(dset_id, dspace_id, ierr)
@@ -1447,10 +1459,15 @@ contains
             call check_allocate('determ%dets', ndeterm*sys%basis%tensor_label_len, ierr)
 
             ! Perform the reading in of determinants to determ%dets.
-            if (dtype_equal(file_id, 'dets', kinds%i0)) then
+            if (semi_stoch_version_restart == 0 .and. semi_stoch_version >= 1) then
+                ! Check for correct conversion of 32/64 bit integers is performed within change_nbasis.
+                call change_nbasis(file_id, 'dets', kinds, 0, 0, determ%dets)
+
+            else if (dtype_equal(file_id, 'dets', kinds%i0)) then
                 call hdf5_read(file_id, 'dets', kinds, shape(determ%dets, kind=int_64), determ%dets)
+
             else
-                call convert_dets(file_id, 'dets', kinds, determ%dets)
+                call convert_dets(file_id, 'dets', kinds, 0, 0, determ%dets)
             end if
 
             ! Close HDF5 file and HDF5.
@@ -1556,6 +1573,9 @@ contains
 
         ! Write UUID so this can be linked to the main output, restart files, etc.
         call hdf5_write(file_id, 'uuid', GLOBAL_META%uuid)
+
+        ! Write version of semi stochastic file so can do appropriate transformations.
+        call hdf5_write(file_id, 'ss_version', semi_stoch_version)
 
         ! Write deterministic states to file.
         call hdf5_write(file_id, 'dets', kinds, shape(determ%dets, kind=int_64), determ%dets)

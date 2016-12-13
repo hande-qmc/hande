@@ -433,8 +433,13 @@ contains
         !$omp private(pproc, slot) reduction(+:nsent)
         do iexcitor = 1, nstates
             if (doing_calc(dmqmc_calc)) then
-                call assign_particle_processor_dmqmc(states(:,iexcitor), spawn%bit_str_nbits, spawn%hash_seed, spawn%hash_shift, &
-                                               spawn%move_freq, nprocs, pproc, slot, spawn%proc_map%map, spawn%proc_map%nslots)
+                ! NB this assumes sys%basis%info_string_len = 0 for DMQMC. This is
+                ! for convenience of not changing any additional interfaces.
+                ! If this is not the case in future this must be changed to be
+                ! compatible.
+                call assign_particle_processor_dmqmc(states(:,iexcitor), spawn%bit_str_nbits, 0, spawn%hash_seed, &
+                                               spawn%hash_shift, spawn%move_freq, nprocs, pproc, slot, spawn%proc_map%map, &
+                                               spawn%proc_map%nslots)
             else
                 call assign_particle_processor(states(:,iexcitor), spawn%bit_str_nbits, spawn%hash_seed, spawn%hash_shift, &
                                                spawn%move_freq, nprocs, pproc, slot, spawn%proc_map%map, spawn%proc_map%nslots)
@@ -519,7 +524,7 @@ contains
 
 ! --- Output routines ---
 
-    subroutine initial_fciqmc_status(sys, qmc_in, qs, nb_comm, spawn_elsewhere)
+    subroutine initial_fciqmc_status(sys, qmc_in, qs, nb_comm, spawn_elsewhere, doing_ccmc)
 
         ! Calculate the projected energy based upon the initial walker
         ! distribution (either via a restart or as set during initialisation)
@@ -535,6 +540,7 @@ contains
         !    spawn_elsewhere: number of particles spawned from the current
         !       processor to other processors.  Relevant only when restarting
         !       non-blocking calculations.
+        !    doing_ccmc: true if doing ccmc calculation.
 
         use determinants, only: det_info_t, alloc_det_info_t, dealloc_det_info_t, decode_det
         use energy_evaluation, only: local_energy_estimators, update_energy_estimators_send
@@ -551,7 +557,7 @@ contains
         type(sys_t), intent(in) :: sys
         type(qmc_in_t), intent(in) :: qmc_in
         type(qmc_state_t), intent(inout), target :: qs
-        logical, optional, intent(in) :: nb_comm
+        logical, optional, intent(in) :: nb_comm, doing_ccmc
         integer, optional, intent(in) :: spawn_elsewhere
 
         integer :: idet, ispace
@@ -560,7 +566,7 @@ contains
         type(det_info_t) :: cdet
         type(hmatel_t) :: hmatel
         type(excit_t) :: D0_excit
-        logical :: nb_comm_local
+        logical :: nb_comm_local, doing_ccmc_loc
 #ifdef PARALLEL
         integer :: ierr
         real(p) :: proj_energy_sum(qs%psip_list%nspaces), D0_population_sum(qs%psip_list%nspaces)
@@ -607,6 +613,9 @@ contains
         ! Using non blocking communications?
         nb_comm_local = .false.
         if (present(nb_comm)) nb_comm_local = nb_comm
+        ! doing ccmc?
+        doing_ccmc_loc = .false.
+        if (present(doing_ccmc)) doing_ccmc_loc = doing_ccmc
 #ifdef PARALLEL
         if (nb_comm_local) then
             ! The output in non-blocking comms is delayed one report loop, so initialise
@@ -639,7 +648,13 @@ contains
         qs%estimators%D0_population_old = qs%estimators%D0_population
 
         if (.not. nb_comm_local .and. parent) then
-            call write_qmc_report(qmc_in, qs, 0, ntot_particles, 0.0, .true., .false., cmplx_est=sys%read_in%comp)
+            if (doing_ccmc_loc) then
+                qs%estimators%nattempts = nint(qs%estimators%D0_population)
+                call write_qmc_report(qmc_in, qs, 0, ntot_particles, 0.0, .true., .false., cmplx_est=sys%read_in%comp, &
+                                        nattempts=.true.)
+            else
+                call write_qmc_report(qmc_in, qs, 0, ntot_particles, 0.0, .true., .false., cmplx_est=sys%read_in%comp)
+            end if
         end if
 
     end subroutine initial_fciqmc_status

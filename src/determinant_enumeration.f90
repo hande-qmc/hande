@@ -69,14 +69,14 @@ contains
         integer, intent(in), optional :: occ_list0(sys%nel)
         integer, intent(inout), allocatable :: sym_space_size(:) ! (nsym)
         integer, intent(out) :: ndets
-        integer(i0), intent(out), allocatable :: dets_list(:,:) ! (string_len,ndets)
+        integer(i0), intent(out), allocatable :: dets_list(:,:) ! (tot_string_len,ndets)
         logical, intent(in), optional :: verbose_in
 
         integer :: i, j, iel, idet, ierr
         integer :: nbeta_combinations
         integer, allocatable :: nalpha_combinations(:)
         integer :: sym_beta, sym, Ms, excit_level_alpha, excit_level_beta
-        integer(i0) :: f(sys%basis%string_len)
+        integer(i0) :: f(sys%basis%tot_string_len)
         integer, allocatable :: occ(:), comb(:,:), unocc(:)
         integer :: k(sys%lattice%ndim), k_beta(sys%lattice%ndim)
         type(det_info_t) :: d0
@@ -106,8 +106,8 @@ contains
 
             ndets = sym_space_size(ref_sym)
 
-            allocate(dets_list(sys%basis%string_len, ndets), stat=ierr)
-            call check_allocate('dets_list', sys%basis%string_len, ierr)
+            allocate(dets_list(sys%basis%tot_string_len, ndets), stat=ierr)
+            call check_allocate('dets_list', sys%basis%tot_string_len, ierr)
         end if
 
         call alloc_det_info_t(sys, d0)
@@ -212,6 +212,7 @@ contains
                     if (sys%basis%nbasis > i0_length) then
                         call stop_all('enumerate_determinants','Number of spin functions longer than the an i0 integer.')
                     end if
+                    dets_list(:,:) = 0_i0
                     dets_list(1,1) = first_perm(sys%nel)
                     do i = 2, ndets
                         dets_list(1,i) = bit_permutation(dets_list(1,i-1))
