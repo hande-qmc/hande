@@ -1,7 +1,7 @@
 module blocking
 
 use qmc_data, only: dt_numerator, dt_denominator, dt_shift, dt_proj_energy
-use const, only: depsilon
+use const, only: p, depsilon
 
 ! Module for performing reblocking on the fly.
 
@@ -226,7 +226,7 @@ contains
         end do
     end subroutine collect_data
 
-    subroutine mean_std_cov(bl)
+    subroutine mean_std_cov(bl, std_dev_shift)
 
         ! Mean, standard deviation and covariance for each block size is
         ! calculated from the collected data.
@@ -241,6 +241,7 @@ contains
 
         type(blocking_t), intent(inout) :: bl
         integer :: i
+        real(p), intent(out) :: std_dev_shift(0:bl%lg_max)
 
         do i = 0, bl%lg_max
 
@@ -253,7 +254,7 @@ contains
             if (bl%reblock_data_2(dt_numerator,i)%n_blocks > 1) then
                 bl%block_std(:,i) = (bl%reblock_data_2(:,i)%sum_of_block_squares/bl%reblock_data_2(:,i)%n_blocks - &
                                                                                                 bl%block_mean(:,i) ** 2)
-
+                std_dev_shift(i) = sqrt(bl%block_std(dt_shift,i))
                 bl%block_std(:,i) = sqrt(bl%block_std(:,i)/(bl%reblock_data_2(:,i)%n_blocks - 1))
 
                 bl%block_cov(i) = (bl%data_product_2(i) - (bl%block_mean(1,i)*bl%block_mean(2,i)  * &
@@ -262,8 +263,10 @@ contains
             else
                 bl%block_std(:,i) = 0.0_p
                 bl%block_cov(i) = 0.0_p
+                std_dev_shift(i) = 0.0_p
             end if
         end do
+
     end subroutine mean_std_cov
 
     pure function fraction_error(mean_1, mean_2, data_number, std_1, std_2, cov_in) result(error_est)
@@ -500,12 +503,13 @@ contains
         integer, intent(in) :: ireport
         integer :: i, j
         integer ::  minimum(3)=0
+        real(p) :: values(0:bl%lg_max)
 
         do i = 0, bl%n_saved_startpoints
 
             if (bl%n_reports_blocked > bl%save_fq * i) then
                 call change_start(bl, ireport, i)
-                call mean_std_cov(bl)
+                call mean_std_cov(bl, values)
                 call find_optimal_block(bl)
 
                 do j = 1, 3
@@ -539,7 +543,7 @@ contains
 
     end subroutine err_comparison
 
-    subroutine do_blocking(bl, qs, qmc_in, ireport, iter, iunit, blocking_in)
+    subroutine do_blocking(bl, qs, qmc_in, ireport, iter, iunit, blocking_in, std_dev_shift)
 
         ! Carries out blocking on the fly and changes the start point to
         ! minimise the fractional error in standard deviation weighted by the
@@ -564,6 +568,7 @@ contains
         integer, intent(in) :: ireport, iter
         integer, intent(in) :: iunit
         type(blocking_in_t), intent(in) :: blocking_in
+        real(p), intent(inout) :: std_dev_shift(:)
 
         if (bl%start_ireport == -1 .and. blocking_in%start_point<0 .and. qs%vary_shift(1)) then
             bl%start_ireport = ireport
@@ -585,7 +590,7 @@ contains
         if (mod(ireport,50) ==0 .and. ireport >= bl%start_ireport .and. &
                     bl%start_ireport>=0) then
             call change_start(bl, ireport, bl%start_point)
-            call mean_std_cov(bl)
+            call mean_std_cov(bl, std_dev_shift)
             call find_optimal_block(bl)
             call write_blocking(bl, qmc_in, ireport, iter, iunit)
             call check_error(bl, qs, blocking_in, ireport)
@@ -707,7 +712,7 @@ contains
 
     end subroutine write_blocking_report
 
-    subroutine reset_blocking_info(bl)
+    !subroutine reset_blocking_info(bl)
 
         ! Subroutine to clear all stored blocking information to it's original state.
         ! This is of use when using an initial short period of calculation to optimise
@@ -717,8 +722,8 @@ contains
         ! In:
         !   bl: Information needed to peform blocking on the fly.
 
-    end subroutine reset_blocking_info
+    !end subroutine reset_blocking_info
 
-    subroutine update_shift_damping
-    end subroutine update_shift_damping
+    !subroutine update_shift_damping
+    !end subroutine update_shift_damping
 end module blocking
