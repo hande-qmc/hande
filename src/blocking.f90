@@ -1,6 +1,7 @@
 module blocking
 
 use qmc_data, only: dt_numerator, dt_denominator, dt_shift, dt_proj_energy
+use const, only: depsilon
 
 ! Module for performing reblocking on the fly.
 
@@ -339,7 +340,7 @@ contains
                 bl%optimal_std(i) = 0
             else
                 bl%optimal_std(i) = bl%block_std(i, bl%optimal_size(i))
-                if (bl%optimal_std(i) == 0) then
+                if (abs(bl%optimal_std(i)) < depsilon) then
                     bl%optimal_mean(i) = 0
                 else
                     bl%optimal_mean(i) = bl%block_mean(i, bl%optimal_size(i))
@@ -347,7 +348,7 @@ contains
 
             end if
 
-            if (bl%optimal_std(i) == 0) then
+            if (abs(bl%optimal_std(i)) < depsilon) then
                 bl%optimal_err(i) = 0
             ! calculated assuming the normal distribution following central
             ! limit theorem.
@@ -363,7 +364,7 @@ contains
             size_e = bl%optimal_size(dt_denominator)
         end if
 
-        if (bl%optimal_mean(dt_numerator) == 0 .or. bl%optimal_mean(dt_denominator) == 0) then
+        if (abs(bl%optimal_mean(dt_numerator)) < depsilon .or. abs(bl%optimal_mean(dt_denominator)) < depsilon) then
             bl%optimal_mean(dt_proj_energy) = 0
             bl%optimal_std(dt_proj_energy) = 0
             bl%optimal_err(dt_proj_energy) = 0
@@ -448,7 +449,7 @@ contains
             do i = 0, bl%lg_max
                 switch = .true.
                 do k = 0, bl%n_saved_startpoints
-                    if (bl%reblock_save(dt_numerator,i,k)%data_accumulator == 0 .and. &
+                    if (abs(bl%reblock_save(dt_numerator,i,k)%data_accumulator) < depsilon .and. &
                             bl%reblock_save(dt_numerator,0,k)%n_blocks >= restart*bl%save_fq) then
                         bl%reblock_data_2(:,i)%n_blocks = bl%reblock_data_2(:,i)%n_blocks - bl%reblock_save(:,i,k)%n_blocks
                         bl%reblock_data_2(:,i)%data_accumulator = bl%reblock_data_2(:,i)%data_accumulator - &
@@ -505,7 +506,7 @@ contains
                 call find_optimal_block(bl)
 
                 do j = 1, 3
-                    if (bl%optimal_std(j) == 0.0) then
+                    if (abs(bl%optimal_std(j)) < depsilon) then
                         bl%err_comp(j,i) = 0.0
                     else
                         if (bl%optimal_size(j) - 1 < log(real(bl%save_fq))/ log(2.0)) then
