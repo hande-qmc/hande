@@ -193,12 +193,12 @@ abstract interface
         type(hmatel_t) :: hmatel
     end function i_slater_condon2_excit
 
-    pure subroutine i_create_weighted_excitation_list(sys, i, a_list, a_list_len, weights, weight_tot)
+    pure subroutine i_create_weighted_excitation_list(sys, i, b, a_list, a_list_len, weights, weight_tot)
         use system, only: sys_t
         use molecular_integrals, only: get_two_body_int_mol
         import :: p
         type(sys_t), intent(in) :: sys
-        integer, intent(in) :: i, a_list_len, a_list(:)
+        integer, intent(in) :: i, b, a_list_len, a_list(:)
         real(p), intent(out) :: weight_tot, weights(:)
     end subroutine i_create_weighted_excitation_list
 

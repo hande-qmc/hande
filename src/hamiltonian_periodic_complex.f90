@@ -364,7 +364,7 @@ contains
 
     end function slater_condon2_periodic_excit_complex
 
-    pure subroutine create_weighted_excitation_list_periodic_complex(sys, i, a_list, a_list_len, weights, weight_tot)
+    pure subroutine create_weighted_excitation_list_periodic_complex(sys, i, b, a_list, a_list_len, weights, weight_tot)
 
         ! Generate a list of allowed excitations from i to one a of a_list with their weights based on
         ! sqrt(|<ia|ai>|)
@@ -372,6 +372,7 @@ contains
         ! In:
         !    sys:   The system in which the orbitals live
         !    i:  integer specifying the from orbital
+        !    b:  integer specifying the other to orbital if found aready. If not found already, a 0 is passed.
         !    a_list:   list of integers specifying the basis functions we're allowed to excite to
         !    a_list_len:   The length of a_list
         ! Out:
@@ -382,7 +383,7 @@ contains
         use molecular_integrals, only: get_two_body_int_mol_complex
 
         type(sys_t), intent(in) :: sys
-        integer, intent(in) :: i, a_list_len, a_list(:)
+        integer, intent(in) :: i, b, a_list_len, a_list(:)
         real(p), intent(out) :: weight_tot, weights(:)
 
         integer :: k
@@ -390,11 +391,18 @@ contains
 
         weight_tot = 0
         do k = 1, a_list_len
-            ! [review] - JSS: could avoid the abs with an assumption or a one-off O(N2) check during init
-            ! This exchange integral should be +ve, but best abs below in case!
-            weight = get_two_body_int_mol_complex(sys%read_in%coulomb_integrals, sys%read_in%coulomb_integrals_imag, i, a_list(k), a_list(k), i, sys)
-            weights(k) = sqrt(abs(weight))
-            weight_tot = weight_tot + weights(k)
+            ! check whether a and b are identical (if one of them has already been found). 
+            ! If they are identical, assign zero weight.
+            if (a_list(k) /= b) then
+                ! [review] - JSS: could avoid the abs with an assumption or a one-off O(N2) check during init
+                ! [review] - VAN: need abs here for complex
+                weight = get_two_body_int_mol_complex(sys%read_in%coulomb_integrals, sys%read_in%coulomb_integrals_imag, i, a_list(k), a_list(k), i, sys)
+                weights(k) = sqrt(abs(weight))
+                weight_tot = weight_tot + weights(k)
+            else
+                ! a == b which is forbidden, assign zero weight.
+                weights(k) = 0.0_p
+            end if
         end do
 
     end subroutine create_weighted_excitation_list_periodic_complex
