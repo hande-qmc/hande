@@ -4,197 +4,12 @@ module excit_gen_cauchy_schwarz_mol
 
 use const, only: i0, p
 
-! Data structures in here
-! [review] - JSS: used infrequently enough that importing as needed isn't too much overhead.  Also should avoid import entire
-! [review] - JSS: modules at the top-level to avoid namespace pollution.
-use excit_gens 
-
 implicit none
 
 ! [review] - JSS: some code-style uniformity please.  e.g. vertical space before/after procedures, around the procedure comments,
 ! [review] - JSS: indented comments, end do/end if instead of end do and end if, spaces around binary operators (=, <, ...), ...
 
 contains
-
-    ! [review] - JSS: not specific to excit_gen_cauchy_schwarz_mol.  Move to (e.g.) lib/local/alias.f90?
-    ! [review] - JSS: name isn't immediately obvious.  Prec?
-    function select_weighted_value_prec(rng, N, aliasP, aliasY) result(ret)
-
-        ! Select an element, i=1..N with probability from pre-generated alias method weights.
-        ! [review] - JSS: O(N) setup cost, O(1) to select?  Repetition below the arguments comments.
-        ! This uses the alias method, requiring O(N) storage, and O(N) time.
-        
-        ! In:
-        !    N: the number of objects to select from
-        ! [review] - JSS: what are alias reals and alias integers?
-        !    aliasP: a length N array of precomputed alias reals.
-        !    aliasY: a length N array of precomputed alias integers
-        ! In/Out:
-        !    rng: random number generator.
-        ! Out:
-        !    ret: the index of the element chosen.
-
-        ! [review] - JSS: I think the switch (multiple times) between k and N objects is confusing.
-
-        ! The 'alias method' allows one to select from a discrete probability distribution of k objects (with object j having probability p_j) in O(1) time. 
-        ! There's an O(k) storage and O(k) setup cost - a list of k reals (P_j) and k integers (Y_j)  which requires O(k) setup.
-
-        ! Pick a random real number x, 0<=x<k.
-        ! Let K=floor(x) and V=x-K. (so K is an integer and V the remainder).
-        ! The randomly selected object, X, will be X=K if V<P_K and X=Y_K otherwise.
-
-        ! Here's Knuth's exercise:
-        ! Vol2: 3.4.1 Ex 7 [20] (A. J. Walker)
-        ! Suppose we have a bunch of cubes of k different colors, say n_j cubes of color C_j for 1<=j<=k, and we have k boxes
-        ! {B_1,...,B_k} each of which can hold exactly n cubes.  Furthermore n_1+...+n_k=kn, so the cubes will just fit in the
-        ! boxes.  Prove (constructively) that there is always a way to put the cubes into the boxes so that each box contains at
-        ! most two different colors of cubes; in fact there is a way to do it so that, whenever box B_j contains two colors, one of
-        ! those colors is C_j.  Show how to use this principle to compute the P and Y tables given a probability distribution
-        ! (p_1,...p_k).
-
-        use dSFMT_interface, only: dSFMT_t, get_rand_close_open
-        type(dSFMT_t), intent(inout) :: rng
-        
-        integer, intent(in) :: N
-        ! [review] - JSS: Here 'ret' is X in the above comments?
-        integer :: ret
-
-        real(p) :: aliasP(N)
-        integer :: aliasY(N)
-        
-        real(p) :: x
-        integer :: K 
-
-        x = get_rand_close_open(rng)*N
-        K = floor(x)
-        x = x-K
-        K = K+1
-        if (x < aliasP(K)) then
-            ret = K
-        else
-            ret = aliasY(K)
-        end if
-
-    end function select_weighted_value_prec
-
-    ! [review] - JSS: not specific to excit_gen_cauchy_schwarz_mol.  Move to (e.g.) lib/local/alias.f90?
-    ! [review] - JSS: is the alias method useful compared to simple binary search of the probabilities for one-off selections?
-    function select_weighted_value(rng, N, weights, totweight) result(ret)
-
-        ! Select an element, i=1..N with probability weights(i)/totweight.
-        ! This uses the alias method, requiring O(N) storage, and O(N) time
-        
-        ! In:
-        !    N: the number of objects to select from
-        !    weights: a length N array of reals containing the weights of each element
-        !    totweight: sum(weights(1:N))
-        ! In/Out:
-        !    rng: random number generator.
-        ! Out:
-        !    ret: the index of the element chosen.
-
-        ! See notes in select_weighted_value_prec
-
-        use dSFMT_interface, only: dSFMT_t, get_rand_close_open
-        type(dSFMT_t), intent(inout) :: rng
-        
-        integer, intent(in) :: N
-        real(p), intent(in) :: totweight, weights(N) 
-        integer :: ret
-
-        real(p) :: aliasP(N)
-        integer :: aliasY(N)
-        
-        call generate_alias_tables(N, weights, totweight, aliasP, aliasY)        
-        ret = select_weighted_value_prec(rng, N, aliasP, aliasY)
-    end function select_weighted_value
-
-    ! [review] - JSS: not specific to excit_gen_cauchy_schwarz_mol.  Move to (e.g.) lib/local/alias.f90?
-    subroutine generate_alias_tables(N, weights, totweight, aliasU, aliasK)
-
-        ! Generate an alias table for the alias method.
-        ! This requires O(N) time and O(2N) scratch space
-        !
-        ! In:
-        !    N: number of objects to select from
-        !    weights: a length N array of reals containing the weights of each element
-        !    totweight: sum(weights(1:N))
-        ! Out:
-        !    aliasU: a length N array of reals for the U table
-        !    aliasK: a length N array of integers for the K table.
-
-        !
-        ! The alias method (a la Wikipedia)
-        ! The distribution may be padded with additional probabilities /p_i / = 0 to increase n to a convenient value, such as a power of two.
-
-        ! To generate the table, first initialize /U_i / = /np_i /. While doing this, divide the table entries into three categories:
-
-        !  * The "overfull" group, where /U_i / > 1,
-        !  * The "underfull" group, where /U_i / < 1 and K_i has not been
-        !    initialized, and
-        !  * The "exactly full" group, where /U_i / = 1 or K_i /has/ been
-        !    initialized.
-
-        ! If /U_i / = 1, the corresponding value K_i will never be consulted and is unimportant, but a value of /K_i / = /i/ is sensible.
-
-        ! As long as not all table entries are exactly full, repeat the following steps:
-
-        ! 1. Arbitrarily choose an overfull entry /U_i / > 1 and an underfull
-        !    entry /U_j / < 1. (If one of these exists, the other must, as well.)
-        ! 2. Allocate the unused space in entry j to outcome i, by setting /K_j /
-        !    = /i/.
-        ! 3. Remove the allocated space from entry i by changing /U_i / = /U_i /
-        !    - (1 - /U_j /) = /U_i / + /U_j / - 1.
-        ! 4. Entry j is now exactly full.
-        ! 5. Assign entry i to the appropriate category based on the new value of
-        !    U_i .  
-
-        integer, intent(in) :: N
-        real(p), intent(in) :: totweight, weights(N) 
-        real(p), intent(out) :: aliasU(N)
-        integer, intent(out) :: aliasK(N)
-
-        ! Working space:  We need a list of the underfull and the overfull, and a copy of the weights
-        integer :: underfull(N)
-        integer :: overfull(N)
-        integer :: i, nunder, nover, ov, un
-
-        ! [review] - JSS: aliasU = weights * (N / totweight) is easy for compiler to optimise.
-        aliasU(:) = weights(:) * (N / totweight)
-        nunder = 0
-        nover = 0
-        do i = 1, N
-            ! [review] - JSS: comparison of integer and real?  Compile with warnings enabled...
-            if (aliasU(i) <= 1.0_p) then
-                nunder = nunder + 1
-                underfull(nunder) = i
-            else ! account for weight=1 as underfull
-                nover = nover +1
-                overfull(nover) = i
-            end if
-            ! [review] - JSS: in case of what?!
-            aliasK(i) = i ! Just in case
-        end do
-        do while (nover > 0 .and. nunder > 0)
-            ! match the last nover with the last nunder
-            ! [review] - JSS: how arbitrary is this choice of over and under and how does it impact efficiency?
-            ov = overfull(nover)
-            un = underfull(nunder)
-            ! put ov as the alternate for un
-            aliasK(un) = ov
-            ! un is now full, so we remove it from the un list
-            nunder = nunder - 1
-            ! remove that much probability from the ov's amount
-            aliasU(ov) = aliasU(ov) - (1 - aliasU(un))
-            if (aliasU(ov) < 1.0_p) then
-                ! Move it to the under list
-                nunder = nunder + 1
-                underfull(nunder) = overfull(nover)
-                nover = nover - 1
-            end if
-        end do 
-
-    end subroutine generate_alias_tables        
 
     subroutine init_excit_mol_cauchy_schwarz_occ_ref(sys, ref, cs)
         ! [review] - JSS: How good is this really?  I suspect it's okish for single-reference truncated calculations and quickly
@@ -223,6 +38,8 @@ contains
         use qmc_data, only: reference_t
         use sort, only: qsort
         use proc_pointers, only: create_weighted_excitation_list_ptr
+        use excit_gens, only: excit_gen_cauchy_schwarz_t
+        use alias, only: generate_alias_tables
         type(sys_t), intent(in) :: sys
         type(reference_t), intent(in) :: ref
         type(excit_gen_cauchy_schwarz_t), intent(inout) :: cs
@@ -312,7 +129,8 @@ contains
         use proc_pointers, only: slater_condon1_excit_ptr, slater_condon2_excit_ptr
         use system, only: sys_t
         use excit_gen_mol, only: calc_pgen_single_mol_no_renorm,find_ia_mol
-
+        use excit_gens, only: excit_gen_cauchy_schwarz_t, excit_gen_data_t
+        use alias, only: select_weighted_value_prec
         use dSFMT_interface, only: dSFMT_t, get_rand_close_open
         use hamiltonian_data, only: hmatel_t
 
@@ -594,6 +412,8 @@ contains
         use dSFMT_interface, only: dSFMT_t, get_rand_close_open
         use search, only: binary_search
         use checking, only: check_allocate, check_deallocate
+        use excit_gens, only: excit_gen_cauchy_schwarz_t, excit_gen_data_t
+        use alias, only: select_weighted_value
 
         type(sys_t), intent(in) :: sys
         type(excit_gen_data_t), intent(in) :: excit_gen_data
@@ -812,6 +632,8 @@ contains
         use excit_gen_mol, only: calc_pgen_single_mol_no_renorm, find_ia_mol 
         use hamiltonian_data, only: hmatel_t
         use dSFMT_interface, only: dSFMT_t, get_rand_close_open
+        use excit_gens, only: excit_gen_cauchy_schwarz_t, excit_gen_data_t
+        use alias, only: select_weighted_value
 
         type(sys_t), intent(in) :: sys
         type(excit_gen_data_t), intent(in) :: excit_gen_data

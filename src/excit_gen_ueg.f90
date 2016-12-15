@@ -379,7 +379,8 @@ contains
         use system, only: sys_t
         use qmc_data, only: reference_t
         use sort, only: qsort
-        use excit_gen_cauchy_schwarz_mol, only: excit_gen_cauchy_schwarz_t, generate_alias_tables
+        use excit_gens, only: excit_gen_cauchy_schwarz_t
+        use alias, only: generate_alias_tables
         type(sys_t), intent(in) :: sys
         type(reference_t), intent(in) :: ref
         type(excit_gen_cauchy_schwarz_t), intent(inout) :: cs
@@ -468,7 +469,7 @@ contains
         use system, only: sys_t
         use hamiltonian_ueg, only: slater_condon2_ueg_excit
         use excit_gens, only: excit_gen_data_t
-        use excit_gen_cauchy_schwarz_mol, only: select_weighted_value_prec
+        use alias, only: select_weighted_value_prec
         use ueg_system, only: ueg_basis_index
         use hamiltonian_data 
 
