@@ -329,7 +329,7 @@ contains
         use energy_evaluation, only: get_sanitized_projected_energy, get_sanitized_projected_energy_cmplx
         ! [review] - CJCS: Avoid importing the entire module, if only so it's
         ! [review] - CJCS: clear which functions you're intending to use from it.
-        use blocking
+        use blocking, only: write_blocking_report_header, allocate_blocking, do_blocking, deallocate_blocking, write_blocking_report
         use utils, only: get_free_unit
 
         use logging, only: init_logging, end_logging, prep_logging_mc_cycle, write_logging_calc_ccmc
@@ -403,7 +403,7 @@ contains
         end if
 ! [review] - CJCS: Watch out for whitespace added in (eg. line below). Run 'git diff --check'
 ! [review] - CJCS: to check for this automatically.
-        
+
         ! Initialise data.
         call init_qmc(sys, qmc_in, restart_in, load_bal_in, reference_in, io_unit, annihilation_flags, qs, &
                       uuid_restart, qmc_state_restart=qmc_state_restart, regenerate_info=regenerate_info)
@@ -435,7 +435,7 @@ contains
             call json_object_end(js, terminal=.true., tag=.true.)
             write (js%io, '()')
         end if
-        
+
         allocate(nparticles_old(qs%psip_list%nspaces), stat=ierr)
         call check_allocate('nparticles_old', qs%psip_list%nspaces, ierr)
         allocate(nparticles_change(qs%psip_list%nspaces), stat=ierr)
@@ -868,7 +868,7 @@ contains
 
         call load_balancing_report(qs%psip_list%nparticles, qs%psip_list%nstates, qmc_in%use_mpi_barriers,&
                                    qs%spawn_store%spawn%mpi_time, io_unit=io_unit)
-        if (parent .and. blocking_in%blocking_on_the_fly) call write_blocking_report(bl, qs)
+        if (parent .and. blocking_in%blocking_on_the_fly .and. soft_exit) call write_blocking_report(bl, qs)
         call write_memcheck_report(qs%spawn_store%spawn, io_unit)
 
         if (soft_exit .or. error) then

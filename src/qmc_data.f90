@@ -62,18 +62,18 @@ end enum
 
 enum, bind(c)
     ! Numerator of the final expression for the projected energy. i.e. \sum H_0j
-    ! N_j. 
+    ! N_j.
     enumerator :: dt_numerator = 1
     ! Denominator of the final expression for the projected energy. i.e.
     ! reference population.
-    enumerator :: dt_denominator 
+    enumerator :: dt_denominator
     ! Shift.
     enumerator :: dt_shift
     ! Projected energy calculated from the ratio of dt_numerator and
     ! dt_denominator.
     enumerator :: dt_proj_energy
 end enum
-    
+
 
 ! --- QMC input ---
 
@@ -309,7 +309,7 @@ type blocking_in_t
     ! energy. If this value is reached soft_exit = true. Default = 0
     real(p) :: error_limit = 0
 ! [review] - AJWT: [also see docs].  Not entirely clear what this means.
-    ! Lower limit of the inverse of estimated fractional error of projected 
+    ! Lower limit of the inverse of estimated fractional error of projected
     ! energy. The larger the value of inverse_fractional_error, the larger the
     ! number of blocks used for reblock analysis therefore giving a more
     ! reasonable estimate of error in error of projected energy.  Default = 3
@@ -549,7 +549,7 @@ type reblock_data_t
 
     ! Number of blocks of a given block size.
     integer :: n_blocks = 0
-    ! Sums of data are saved here until sufficient size is reached. 
+    ! Sums of data are saved here until sufficient size is reached.
     real(p) :: data_accumulator = 0
     ! Sums of data of a given block size.
     real(p) :: sum_of_blocks = 0
@@ -582,7 +582,7 @@ type blocking_t
 ! [review] - AJWT: The following sounds like it ought to be an enum (as with the ones below)
     ! reblock_data_t type array with reblock_data(datatype, log_2(block_size).
     ! datatypes are dt_numerator, dt_denominator, dt_shift, dt_proj_energy (see
-    ! enum above). 
+    ! enum above).
     type(reblock_data_t), allocatable :: reblock_data(:,:)
     ! Product between dt_numerator and dt_denominator for different block sizes.
     ! data_product(log_2(block_size)).
@@ -601,7 +601,7 @@ type blocking_t
     ! block_cov(log2(blocksize)) = covariance of the two data types of different
     ! block sizes.
     ! datatypes are dt_numerator, dt_denominator, dt_shift, dt_proj_energy (see
-    ! enum above). 
+    ! enum above).
 ! [review] - CJCS: specify different dimensions?
     real(p), allocatable :: block_mean(:,:), block_std(:,:), block_cov(:)
     ! Optimal block is the smallest block that satisfies the condition
@@ -641,10 +641,10 @@ type blocking_t
     ! 1/sqrt(number of data points) for each of the possible start positions.
     real(p), allocatable :: err_comp(:,:)
     ! log_2(block_size) of the optimal block sizes for different datatypes
-    ! excluding dt_proj_energy. (see enum above) 
+    ! excluding dt_proj_energy. (see enum above)
     integer :: optimal_size(3) = 1
     ! Number of saved reblock_data type arrays at a given iteration.
-    integer :: n_saved = 1    
+    integer :: n_saved = 1
 
 end type blocking_t
 

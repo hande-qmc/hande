@@ -12,7 +12,9 @@ blocking analysis on the fly.
     Optional. Default: false
 
     If true, the data for blocking analysis is collected every report loop and blocking
-    analysis is performed on the fly while the calculation is running.
+    analysis is performed on the fly while the calculation is running. At the end of the calculation,
+    Estimated correlation energy and its error together with reference energy is printed to the HANDE
+    output file. Zero is printed if insufficient data are collected for the blocking analysis.
 
 ``start_save_frequency``
     type: integer.
@@ -63,5 +65,5 @@ blocking analysis on the fly.
 
     One of two conditions for termination of the calculation together with ``error_limit``.
     This specifies the lower limit of the inverse of the fractional error of projected energy.
-    The larger the value of ``inverse_fractional_error``, the larger the number of blocks used for 
-    reblock analysis. 
+    The larger the value of ``inverse_fractional_error``, the larger the number of blocks used for
+    reblock analysis.

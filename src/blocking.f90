@@ -194,7 +194,7 @@ contains
         integer :: i, reblock_size
 
         ! \sum H_0j N_j, reference population and shift are added to
-        ! data_accumulator of every block size. 
+        ! data_accumulator of every block size.
 
         bl%reblock_data(dt_numerator,:)%data_accumulator = bl%reblock_data(dt_numerator,:)%data_accumulator + &
                                                                                         qs%estimators%proj_energy
@@ -203,7 +203,7 @@ contains
         bl%reblock_data(dt_shift,:)%data_accumulator = bl%reblock_data(dt_shift,:)%data_accumulator + qs%shift(1)
 
         ! Everytime enough data is collected for each block size, the
-        ! data_accumulator is divied by the block size and added to 
+        ! data_accumulator is divied by the block size and added to
         ! sum_of_blocks and squared and added to sum_of_block_squares.
 
         do i = 0, (bl%lg_max)
@@ -399,7 +399,7 @@ contains
 
         type(blocking_t), intent(inout) :: bl
 
-        if (mod(bl%n_reports_blocked,(bl%save_fq * bl%n_saved)) == 0) then             
+        if (mod(bl%n_reports_blocked,(bl%save_fq * bl%n_saved)) == 0) then
             bl%reblock_save(:,:,bl%n_saved) = bl%reblock_data(:,:)
             bl%product_save(:,bl%n_saved) = bl%data_product(:)
             bl%n_saved = bl%n_saved + 1
@@ -448,7 +448,7 @@ contains
             do i = 0, bl%lg_max
                 switch = .true.
                 do k = 0, bl%n_saved_startpoints
-                    if (bl%reblock_save(dt_numerator,i,k)%data_accumulator == 0 .and. & 
+                    if (bl%reblock_save(dt_numerator,i,k)%data_accumulator == 0 .and. &
                             bl%reblock_save(dt_numerator,0,k)%n_blocks >= restart*bl%save_fq) then
                         bl%reblock_data_2(:,i)%n_blocks = bl%reblock_data_2(:,i)%n_blocks - bl%reblock_save(:,i,k)%n_blocks
                         bl%reblock_data_2(:,i)%data_accumulator = bl%reblock_data_2(:,i)%data_accumulator - &
@@ -643,13 +643,13 @@ contains
         ! The maximum error estimate and the inverse of estimated fractional
         ! error in the projected energy is compared to the limit specified by the
         ! user. If the condition is satisfied, reblock_done = true is returned
-        ! which modifies soft_exit to also be true. 
+        ! which modifies soft_exit to also be true.
 
         ! In:
         !   bl: Information needed to peform blocking on the fly.
         !   blocking_in: input options for blocking on the fly.
         ! In/Out:
-        !   qs: qmc_state where the data for current iteration is taken. 
+        !   qs: qmc_state where the data for current iteration is taken.
 
         use qmc_data, only: blocking_t, blocking_in_t, qmc_state_t
         use const
@@ -675,15 +675,15 @@ contains
     end subroutine check_error
 
     subroutine write_blocking_report(bl, qs)
-    
+
         ! Once the calculation is finished after satisfying the user-specified
         ! target error and fractional error in projected energy, the total
-        ! energy, correlation energy, errer in correlation energy and reference 
-        ! energy is printed out at the bottom of the HANDE output file.    
-    
-        ! In: 
+        ! energy, correlation energy, errer in correlation energy and reference
+        ! energy is printed out at the bottom of the HANDE output file.
+
+        ! In:
         !   bl: Information needed to peform blocking on the fly.
-        !   qs: qmc_state where the data for current iteration is taken. 
+        !   qs: qmc_state where the data for current iteration is taken.
 
         use qmc_data, only: blocking_t, qmc_state_t
         use const
@@ -691,14 +691,12 @@ contains
         type(blocking_t), intent(in) :: bl
         type(qmc_state_t), intent(in) :: qs
 
-        if (qs%reblock_done) then
-            write (6, '(1X,a12,/,1X,12("-"),/)') 'Total Energy'
-            write (6, '(1X, "Correlation energy:",15X,es13.6)') bl%optimal_mean(dt_proj_energy)
-            write (6, '(1X, "Reference energy:",17X,es13.6)') qs%ref%H00 
-            write (6, '(1X, "Total energy:",21X,es13.6)') bl%optimal_mean(dt_proj_energy) + qs%ref%H00
-            write (6, '(1X, "Error in correlation energy:",6X,es13.6)') bl%optimal_std(dt_proj_energy)
-            write (6, '()')
-        end if 
+        write (6, '(1X,a12,/,1X,12("-"),/)') 'Total Energy'
+        write (6, '(1X, "Correlation energy:",15X,es13.6)') bl%optimal_mean(dt_proj_energy)
+        write (6, '(1X, "Reference energy:",17X,es13.6)') qs%ref%H00
+        write (6, '(1X, "Total energy:",21X,es13.6)') bl%optimal_mean(dt_proj_energy) + qs%ref%H00
+        write (6, '(1X, "Error in correlation energy:",6X,es13.6)') bl%optimal_std(dt_proj_energy)
+        write (6, '()')
 
     end subroutine write_blocking_report
 

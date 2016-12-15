@@ -74,7 +74,7 @@ contains
         use logging, only: init_logging, end_logging, prep_logging_mc_cycle, write_logging_calc_fciqmc, &
                             logging_in_t, logging_t, logging_in_t_json, logging_t_json
         ! [review] - CJCS: As in ccmc.
-        use blocking
+        use blocking, only: write_blocking_report_header, allocate_blocking, do_blocking, deallocate_blocking, write_blocking_report
         use utils, only: get_free_unit
 
         type(sys_t), intent(in) :: sys
@@ -390,7 +390,7 @@ contains
             else
                 call load_balancing_report(pl%nparticles, pl%nstates, qmc_in%use_mpi_barriers, spawn%mpi_time, io_unit=io_unit)
             end if
-        if (parent .and. blocking_in%blocking_on_the_fly) call write_blocking_report(bl, qs)
+        if (parent .and. blocking_in%blocking_on_the_fly .and. soft_exit) call write_blocking_report(bl, qs)
         end associate
         call write_memcheck_report(qs%spawn_store%spawn, io_unit=io_unit)
 
