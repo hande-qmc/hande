@@ -126,8 +126,7 @@ FAQ
 
      ..
          [review] - AJWT: I don't see how this works.
-        
-    
+
 
 * Will *my* code actually get reviewed?
 

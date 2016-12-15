@@ -567,7 +567,7 @@ type blocking_t
     integer :: save_fq = 0
     ! Number of report cycles from the start of all blocking to the current cycle.
     integer :: n_reports_blocked = 0
-! [review] - AJWT: An alternative would be to have a reblock_data_t - something like
+! [todo] An alternative would be to have a reblock_data_t - something like
 !   type reblock_data_t
 !       integer :: n_blocks
 !       real(p) :: data_accumulator
@@ -577,9 +577,9 @@ type blocking_t
 !
 !   type(reblock_data_t), allocatable :: reblock_data(:,:)
 !
-!  [/review]
+!  [/todo]
 
-! [review] - AJWT: The following sounds like it ought to be an enum (as with the ones below)
+! [todo] The following sounds like it ought to be an enum (as with the ones below)
     ! reblock_data_t type array with reblock_data(datatype, log_2(block_size).
     ! datatypes are dt_numerator, dt_denominator, dt_shift, dt_proj_energy (see
     ! enum above).
@@ -602,7 +602,6 @@ type blocking_t
     ! block sizes.
     ! datatypes are dt_numerator, dt_denominator, dt_shift, dt_proj_energy (see
     ! enum above).
-! [review] - CJCS: specify different dimensions?
     real(p), allocatable :: block_mean(:,:), block_std(:,:), block_cov(:)
     ! Optimal block is the smallest block that satisfies the condition
     ! B^3 > 2*(B*(number of blocks)) * (std(B)/std(0)) ^ 4
@@ -753,8 +752,8 @@ type qmc_state_t
     ! to determine the processor location of a particle.  It is the programmer's
     ! responsibility to ensure these are kept up to date...
     type(parallel_t) :: par_info
-    ! [review] - JSS: unclear why this variable is needed when we have happily passed a soft_exit argument into the (few) relevant
-    ! [re[vew] - JSS: procedures up until now.
+    ! Need additional parameter to identify the cause of calculation termination;
+    ! we may want to print a different message depending upon the cause.
     logical :: reblock_done = .false.
     type(estimators_t), allocatable :: estimators(:)
 end type qmc_state_t

@@ -401,8 +401,6 @@ contains
             call check_qmc_opts(qmc_in, sys, .not.present(qmc_state_restart), restarting)
             call check_ccmc_opts(sys, ccmc_in)
         end if
-! [review] - CJCS: Watch out for whitespace added in (eg. line below). Run 'git diff --check'
-! [review] - CJCS: to check for this automatically.
 
         ! Initialise data.
         call init_qmc(sys, qmc_in, restart_in, load_bal_in, reference_in, io_unit, annihilation_flags, qs, &

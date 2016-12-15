@@ -208,12 +208,12 @@ data_pairs : list of (dict, :class:`pandas.DataFrame` or :class:`pandas.Series`)
             for (key, val) in md_generic_footer.items():
                 if val in line:
                     md_generic[key] = float(line.split()[-1])
-           
+
             # Final total energy
             for (key, val) in energy_footer.items():
                 if val in line:
                     energy_val = line.split()[-1]
-                    data_pairs[-1][0][key] = float(energy_val) 
+                    data_pairs[-1][0][key] = float(energy_val)
 
     f.close()
 

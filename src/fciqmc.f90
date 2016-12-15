@@ -73,7 +73,6 @@ contains
 
         use logging, only: init_logging, end_logging, prep_logging_mc_cycle, write_logging_calc_fciqmc, &
                             logging_in_t, logging_t, logging_in_t_json, logging_t_json
-        ! [review] - CJCS: As in ccmc.
         use blocking, only: write_blocking_report_header, allocate_blocking, do_blocking, deallocate_blocking, write_blocking_report
         use utils, only: get_free_unit
 

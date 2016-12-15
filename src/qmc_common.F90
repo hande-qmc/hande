@@ -792,7 +792,7 @@ contains
         !    determ: The deterministic space being used, as required for
         !        semi-stochastic calculations.
 
-        ! WARNIGN: all spawn_t objects (bar the spawn argument provided) which operate
+        ! WARNING: all spawn_t objects (bar the spawn argument provided) which operate
         ! on the same particle_t object must be updated with the proc_info from the
         ! master copy (par_info%load%proc_map).  It is the programmer's responsibility
         ! to ensure this happens.
