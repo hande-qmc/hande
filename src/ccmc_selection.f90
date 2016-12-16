@@ -624,13 +624,14 @@ contains
         integer :: i, num, choice, iex
         logical :: first, allowed, all_allowed
 
-        cluster%pselect = real(nattempts*nprocs, p)
+        cluster%pselect = real(nattempts, p)
 
         ! Select cluster size according to probability distribution set by
         ! update_selection_probabilites.
         rand = get_rand_close_open(rng)
         cluster%nexcitors = -1
         do i = min_size, max_size
+            ! Add equality for edge case.
             if (rand <= selection_data%cumulative_stoch_size_weighting(i)) then
                 cluster%nexcitors = i
                 cluster%pselect = cluster%pselect * selection_data%stoch_size_weighting(i)
@@ -693,7 +694,8 @@ contains
                     ! and t_Y t_X collapse onto the same excitor (where X and Y each
                     ! label an excitor), the probability of selecting a given cluster is
                     ! proportional to the number of ways the cluster could have been
-                    ! formed.
+                    ! formed. Obviously this now only applies to clusters of the same
+                    ! excitation level.
                     ! If two excitors in the cluster are the same, the factorial
                     ! overcounts the number of ways the cluster could have been formed
                     ! but the extra factor(s) of 2 are cancelled by a similar
@@ -789,11 +791,15 @@ contains
         tot_level_pop = ex_lvl_dist%pop_ex_lvl(ex_level)
 
         if (nexcitors /= 0) then
+            ! Want to generate populations in range:
+            !       cumulative_pop_ex_lvl(ex_lvl-1) < pop <= cumulative_pop_ex_lvl(ex_lvl)
             do i = 1, nexcitors
                 pops(i) = get_rand_close_open(rng)*(tot_level_pop-depsilon) + depsilon + &
                                 ex_lvl_dist%cumulative_pop_ex_lvl(ex_level - 1)
             end do
             call insert_sort(pops)
+            ! Lowest possible position is first state of chosen ex lvl ie. cumulative
+            ! states to one lower ex lvl plus 1.
             prev_pos = ex_lvl_dist%cumulative_nstates_ex_lvl(ex_level - 1) + 1
             do i = 1, nexcitors
                 call binary_search(cumulative_excip_pop, pops(i), prev_pos, &
@@ -809,8 +815,6 @@ contains
                     call reset_extra_info_bit_string(sys%basis, cdet%f)
                     cdet%data => psip_list%dat(:,pos) ! Only use if cluster is non-composite!
                     cluster_population = excitor_pop
-                    ! Counter the additional *nprocs above.
-                    cluster%pselect = cluster%pselect/nprocs
                 else
                     call collapse_cluster(sys%basis, f0, psip_list%states(:,pos), excitor_pop, cdet%f, &
                                           cluster_population, allowed)
