@@ -27,10 +27,9 @@ contains
         ! Out:
         !    ret: the index of the element chosen.
 
-        ! [review] - JSS: I think the switch (multiple times) between k and N objects is confusing.
-
-        ! The 'alias method' allows one to select from a discrete probability distribution of k objects (with object j having probability p_j) in O(1) time. 
-        ! There's an O(k) storage and O(k) setup cost - a list of k reals (P_j) and k integers (Y_j)  which requires O(k) setup.
+        ! The 'alias method' allows one to select from a discrete probability distribution of N objects 
+        ! (with object i having probability p_i) in O(1) time. There's an O(N) storage and O(N) setup cost 
+        ! - a list of N reals (P_i) and N integers (Y_i) which requires O(N) setup.
 
         ! Pick a random real number x, 0<=x<k.
         ! Let K=floor(x) and V=x-K. (so K is an integer and V the remainder).
@@ -71,6 +70,7 @@ contains
     end function select_weighted_value_prec
 
     ! [review] - JSS: is the alias method useful compared to simple binary search of the probabilities for one-off selections?
+    ! [review] - VAN: How would you do the binary search to select an integer from a discrete probability distribution?
     function select_weighted_value(rng, N, weights, totweight) result(ret)
 
         ! Select an element, i=1..N with probability weights(i)/totweight.
@@ -116,17 +116,18 @@ contains
 
         !
         ! The alias method (a la Wikipedia)
-        ! The distribution may be padded with additional probabilities /p_i / = 0 to increase n to a convenient value, such as a power of two.
+        ! The distribution may be padded with additional probabilities /p_i / = 0 to 
+        ! increase n to a convenient value, such as a power of two.
 
-        ! To generate the table, first initialize /U_i / = /np_i /. While doing this, divide the table entries into three categories:
+        ! To generate the table, first initialize /U_i / = /np_i /. While doing this, 
+        ! divide the table entries into three categories:
 
         !  * The "overfull" group, where /U_i / > 1,
-        !  * The "underfull" group, where /U_i / < 1 and K_i has not been
-        !    initialized, and
-        !  * The "exactly full" group, where /U_i / = 1 or K_i /has/ been
-        !    initialized.
+        !  * The "underfull" group, where /U_i / < 1, and
+        !  * The "exactly full" group, where /U_i / = 1.
 
-        ! If /U_i / = 1, the corresponding value K_i will never be consulted and is unimportant, but a value of /K_i / = /i/ is sensible.
+        ! If /U_i / = 1, the corresponding value K_i will never be consulted and is unimportant, 
+        ! but a value of /K_i / = /i/ is sensible.
 
         ! As long as not all table entries are exactly full, repeat the following steps:
 
@@ -134,8 +135,8 @@ contains
         !    entry /U_j / < 1. (If one of these exists, the other must, as well.)
         ! 2. Allocate the unused space in entry j to outcome i, by setting /K_j /
         !    = /i/.
-        ! 3. Remove the allocated space from entry i by changing /U_i / = /U_i /
-        !    - (1 - /U_j /) = /U_i / + /U_j / - 1.
+        ! 3. Remove the space from entry i that entry j got from entry i by changing 
+        ! /U_i / = /U_i / - (1 - /U_j /) = /U_i / + /U_j / - 1.
         ! 4. Entry j is now exactly full.
         ! 5. Assign entry i to the appropriate category based on the new value of
         !    U_i .  
@@ -150,21 +151,21 @@ contains
         integer :: overfull(N)
         integer :: i, nunder, nover, ov, un
 
-        ! [review] - JSS: aliasU = weights * (N / totweight) is easy for compiler to optimise.
-        aliasU(:) = weights(:) * (N / totweight)
+        aliasU = weights * (N / totweight)
         nunder = 0
         nover = 0
         do i = 1, N
-            ! [review] - JSS: comparison of integer and real?  Compile with warnings enabled...
             if (aliasU(i) <= 1.0_p) then
                 nunder = nunder + 1
                 underfull(nunder) = i
-            else ! account for weight=1 as underfull
+            else ! account for aliasU(i)=1 as underfull
                 nover = nover +1
                 overfull(nover) = i
             end if
             ! [review] - JSS: in case of what?!
-            aliasK(i) = i ! Just in case
+            ! [review] - VAN: Sensible to set it in case there is a tiny numerical error
+            ! [review] - VAN: when matching up the last underfull and overfull Us. 
+            aliasK(i) = i ! This is a sensible safe choice in case aliasK(i) is not set below.
         end do
         do while (nover > 0 .and. nunder > 0)
             ! match the last nover with the last nunder
