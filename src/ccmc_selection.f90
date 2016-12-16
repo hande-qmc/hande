@@ -631,7 +631,7 @@ contains
         rand = get_rand_close_open(rng)
         cluster%nexcitors = -1
         do i = min_size, max_size
-            if (rand < selection_data%cumulative_stoch_size_weighting(i)) then
+            if (rand <= selection_data%cumulative_stoch_size_weighting(i)) then
                 cluster%nexcitors = i
                 cluster%pselect = cluster%pselect * selection_data%stoch_size_weighting(i)
                 exit
@@ -794,7 +794,7 @@ contains
                                 ex_lvl_dist%cumulative_pop_ex_lvl(ex_level - 1)
             end do
             call insert_sort(pops)
-            prev_pos = ex_lvl_dist%cumulative_nstates_ex_lvl(ex_level - 1)
+            prev_pos = ex_lvl_dist%cumulative_nstates_ex_lvl(ex_level - 1) + 1
             do i = 1, nexcitors
                 call binary_search(cumulative_excip_pop, pops(i), prev_pos, &
                             ex_lvl_dist%cumulative_nstates_ex_lvl(ex_level), hit, pos)
