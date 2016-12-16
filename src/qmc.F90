@@ -214,7 +214,7 @@ contains
         use system
         use parallel, only: parent
         use qmc_data, only: qmc_in_t, fciqmc_in_t, single_basis, neel_singlet, neel_singlet_guiding, &
-                            excit_gen_renorm, excit_gen_no_renorm, excit_gen_cauchy_schwarz_virt, excit_gen_cauchy_schwarz_occ, &
+                            excit_gen_renorm, excit_gen_no_renorm, excit_gen_cauchy_schwarz_occ, &
                             excit_gen_cauchy_schwarz
         use dmqmc_data, only: dmqmc_in_t, free_electron_dm
         use reference_determinant, only: reference_t
@@ -227,7 +227,7 @@ contains
         use dmqmc_data, only: hartree_fock_dm
         use energy_evaluation
         use excit_gen_mol
-        use excit_gen_cauchy_schwarz_mol, only: gen_excit_mol_cauchy_schwarz_virt, gen_excit_mol_cauchy_schwarz_occ
+        use excit_gen_cauchy_schwarz_mol, only: gen_excit_mol_cauchy_schwarz_occ
         use excit_gen_cauchy_schwarz_mol, only: gen_excit_mol_cauchy_schwarz_occ_ref
         use excit_gen_ueg, only:  gen_excit_ueg_cauchy_schwarz
         use excit_gen_op_mol
@@ -384,10 +384,7 @@ contains
             case(excit_gen_renorm)
                 gen_excit_ptr%full => gen_excit_mol
                 decoder_ptr => decode_det_occ_symunocc
-            case(excit_gen_cauchy_schwarz_virt)
                 ! [review] - JSS: check why read_in requires decode_det_spinocc_spinunocc but ueg doesn't. 
-                gen_excit_ptr%full => gen_excit_mol_cauchy_schwarz_virt
-                decoder_ptr => decode_det_spinocc_spinunocc
             case(excit_gen_cauchy_schwarz_occ)
                 gen_excit_ptr%full => gen_excit_mol_cauchy_schwarz_occ
                 decoder_ptr => decode_det_spinocc_spinunocc
