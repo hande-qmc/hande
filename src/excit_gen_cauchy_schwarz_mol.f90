@@ -44,18 +44,22 @@ contains
         type(reference_t), intent(in) :: ref
         type(excit_gen_cauchy_schwarz_t), intent(inout) :: cs
 
-        integer :: i, j, ind_a, ind_b, maxv, nv
-
+        integer :: i, j, ind_a, ind_b, maxv, nv, jsym
+        
         ! Temp storage
         maxv = max(sys%nvirt_alpha,sys%nvirt_beta)
-        allocate(cs%aliasP(maxv,sys%nel))
-        allocate(cs%aliasY(maxv,sys%nel))
+        allocate(cs%ia_aliasP(maxv,sys%nel))
+        allocate(cs%ia_aliasY(maxv,sys%nel))
         allocate(cs%ia_weights(maxv,sys%nel))
         allocate(cs%ia_weights_tot(sys%nel))
+        allocate(cs%jb_aliasP(maxval(sys%read_in%pg_sym%nbasis_sym_spin), sys%sym0_tot:sys%sym_max_tot, sys%nel))
+        allocate(cs%jb_aliasY(maxval(sys%read_in%pg_sym%nbasis_sym_spin), sys%sym0_tot:sys%sym_max_tot, sys%nel))
+        allocate(cs%jb_weights(maxval(sys%read_in%pg_sym%nbasis_sym_spin), sys%sym0_tot:sys%sym_max_tot, sys%nel))
+        allocate(cs%jb_weights_tot(sys%sym0_tot:sys%sym_max_tot, sys%nel))
         allocate(cs%occ_list(sys%nel+1))  ! The +1 is a pad to allow loops to look better
-        allocate(cs%virt_list_a(sys%nvirt_alpha))
-        allocate(cs%virt_list_b(sys%nvirt_beta))
-
+        allocate(cs%virt_list_alpha(sys%nvirt_alpha))
+        allocate(cs%virt_list_beta(sys%nvirt_beta))
+        
         cs%occ_list(:sys%nel) = ref%occ_list0(:sys%nel)
         cs%occ_list(sys%nel+1) = sys%basis%nbasis*2  ! A pad 
         ! Now sort this
@@ -73,10 +77,10 @@ contains
             else ! Need to store it as a virt
                 if (sys%basis%basis_fns(i)%Ms == -1) then ! beta
                     ind_b = ind_b + 1
-                    cs%virt_list_b(ind_b) = i
+                    cs%virt_list_beta(ind_b) = i
                 else
                     ind_a = ind_a + 1
-                    cs%virt_list_a(ind_a) = i
+                    cs%virt_list_alpha(ind_a) = i
                 end if
             end if
         end do
@@ -85,14 +89,26 @@ contains
             j = cs%occ_list(i)  ! The elec we're looking at
             if (sys%basis%basis_fns(j)%Ms == -1) then ! beta
                 nv = sys%nvirt_beta
-                call create_weighted_excitation_list_ptr(sys, j, 0, cs%virt_list_b, nv, cs%ia_weights(:,i), cs%ia_weights_tot(i))
+                call create_weighted_excitation_list_ptr(sys, j, 0, cs%virt_list_beta, nv, cs%ia_weights(:,i), cs%ia_weights_tot(i))
+                call generate_alias_tables(nv, cs%ia_weights(:,i), cs%ia_weights_tot(i), cs%ia_aliasP(:,i), cs%ia_aliasY(:,i))
+                do jsym = sys%sym0_tot, sys%sym_max_tot
+                    call create_weighted_excitation_list_ptr(sys, j, 0, sys%read_in%pg_sym%sym_spin_basis_fns(:,1,jsym), &
+                        sys%read_in%pg_sym%nbasis_sym_spin(1,jsym), cs%jb_weights(:,jsym,i), cs%jb_weights_tot(jsym,i))
+                    call generate_alias_tables(sys%read_in%pg_sym%nbasis_sym_spin(1,jsym), cs%jb_weights(:,jsym,i), &
+                        cs%jb_weights_tot(jsym,i), cs%jb_aliasP(:,jsym,i), cs%jb_aliasY(:,jsym,i))
+                end do
             else ! alpha
                 nv = sys%nvirt_alpha
-                call create_weighted_excitation_list_ptr(sys, j, 0, cs%virt_list_a, nv, cs%ia_weights(:,i), cs%ia_weights_tot(i))
+                call create_weighted_excitation_list_ptr(sys, j, 0, cs%virt_list_alpha, nv, cs%ia_weights(:,i), cs%ia_weights_tot(i))
+                call generate_alias_tables(nv, cs%ia_weights(:,i), cs%ia_weights_tot(i), cs%ia_aliasP(:,i), cs%ia_aliasY(:,i))
+                do jsym = sys%sym0_tot, sys%sym_max_tot
+                    call create_weighted_excitation_list_ptr(sys, j, 0, sys%read_in%pg_sym%sym_spin_basis_fns(:,2,jsym), &
+                        sys%read_in%pg_sym%nbasis_sym_spin(2,jsym), cs%jb_weights(:,jsym,i), cs%jb_weights_tot(jsym,i))
+                    call generate_alias_tables(sys%read_in%pg_sym%nbasis_sym_spin(2,jsym), cs%jb_weights(:,jsym,i), &
+                        cs%jb_weights_tot(jsym,i), cs%jb_aliasP(:,jsym,i), cs%jb_aliasY(:,jsym,i))
+                end do
             end if
-            call generate_alias_tables(nv, cs%ia_weights(:,i), cs%ia_weights_tot(i), cs%aliasP(:,i), cs%aliasY(:,i))        
         end do
-
     end subroutine init_excit_mol_cauchy_schwarz_occ_ref
 
     subroutine gen_excit_mol_cauchy_schwarz_occ_ref(rng, sys, excit_gen_data, cdet, pgen, connection, hmatel, allowed_excitation)
@@ -198,25 +214,26 @@ contains
 
                 ! Given i, use the alias table to select a
                 if (sys%basis%basis_fns(i)%Ms < 0) then
-                    a_ind = select_weighted_value_prec(rng, sys%nvirt_beta, cs%aliasP(:,i_ind), cs%aliasY(:,i_ind))
+                    a_ind = select_weighted_value_prec(rng, sys%nvirt_beta, cs%ia_aliasP(:,i_ind), cs%ia_aliasY(:,i_ind))
                     ! [review] - JSS: is 4 copies of the identical comment really necessary?  I don't think any of them are...(also
                     ! [review] - JSS: not clear if the comment is correct here!)
                     ! Use the alias method to select i with the appropriate probability
-                    a = cs%virt_list_b(a_ind) 
+                    a = cs%virt_list_beta(a_ind) 
                 else
-                    a_ind = select_weighted_value_prec(rng, sys%nvirt_alpha, cs%aliasP(:,i_ind), cs%aliasY(:,i_ind))
+                    a_ind = select_weighted_value_prec(rng, sys%nvirt_alpha, cs%ia_aliasP(:,i_ind), cs%ia_aliasY(:,i_ind))
                     ! Use the alias method to select i with the appropriate probability
-                    a = cs%virt_list_a(a_ind) 
+                    a = cs%virt_list_alpha(a_ind) 
                 end if 
+
                 ! Given j use the alias table to select b
                 if (sys%basis%basis_fns(j)%Ms < 0) then
-                    b_ind = select_weighted_value_prec(rng, sys%nvirt_beta, cs%aliasP(:,j_ind), cs%aliasY(:,j_ind))
+                    b_ind = select_weighted_value_prec(rng, sys%nvirt_beta, cs%ia_aliasP(:,j_ind), cs%ia_aliasY(:,j_ind))
                     ! Use the alias method to select i with the appropriate probability
-                    b = cs%virt_list_b(b_ind) 
+                    b = cs%virt_list_beta(b_ind) 
                 else
-                    b_ind = select_weighted_value_prec(rng, sys%nvirt_alpha, cs%aliasP(:,j_ind), cs%aliasY(:,j_ind))
+                    b_ind = select_weighted_value_prec(rng, sys%nvirt_alpha, cs%ia_aliasP(:,j_ind), cs%ia_aliasY(:,j_ind))
                     ! Use the alias method to select i with the appropriate probability
-                    b = cs%virt_list_a(b_ind) 
+                    b = cs%virt_list_alpha(b_ind) 
                 end if 
 
                 ! 3b. Probability of generating this excitation.
@@ -504,10 +521,16 @@ contains
             ! Ms_k is +1 if up and -1 if down but imsb is +2 if up and +1 if down, 
             ! therefore a conversion is necessary.
             imsb = (ij_spin-sys%basis%basis_fns(a)%Ms+3)/2
-            allocate(jb_weights(1:sys%read_in%pg_sym%nbasis_sym_spin(imsb,isymb)), stat=ierr)
-            call check_allocate('jb_weights', sys%read_in%pg_sym%nbasis_sym_spin(imsb,isymb), ierr)
-            call create_weighted_excitation_list_ptr(sys, j, a, sys%read_in%pg_sym%sym_spin_basis_fns(:,imsb,isymb), &
-                                    sys%read_in%pg_sym%nbasis_sym_spin(imsb,isymb), jb_weights, jb_weights_tot)
+            
+            if (sys%read_in%pg_sym%nbasis_sym_spin(imsb,isymb) > 0) then 
+                allocate(jb_weights(1:sys%read_in%pg_sym%nbasis_sym_spin(imsb,isymb)), stat=ierr)
+                call check_allocate('jb_weights', sys%read_in%pg_sym%nbasis_sym_spin(imsb,isymb), ierr)
+                call create_weighted_excitation_list_ptr(sys, j, a, sys%read_in%pg_sym%sym_spin_basis_fns(:,imsb,isymb), &
+                                        sys%read_in%pg_sym%nbasis_sym_spin(imsb,isymb), jb_weights, jb_weights_tot)
+            else
+                jb_weights_tot = 0.0_p
+            end if
+
             ! Test whether at least one possible b given i,j,a exists.
             ! Note that we did not need a btest for orbital a because we only considered
             ! virtual orbitals there.

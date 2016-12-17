@@ -391,8 +391,8 @@ contains
         nbas = sys%basis%nbasis    
         maxv = nbas / 2
 
-        allocate(cs%aliasP(maxv,nbas))
-        allocate(cs%aliasY(maxv,nbas))
+        allocate(cs%ia_aliasP(maxv,nbas))
+        allocate(cs%ia_aliasY(maxv,nbas))
         allocate(cs%ia_weights(maxv,nbas))
         allocate(cs%ia_weights_tot(nbas))
 
@@ -401,7 +401,7 @@ contains
                vlist(j) = j*2 - mod(i,2)      !get the virtual of the right spin
             end do
             call create_weighted_excitation_list_ueg(sys, i, vlist, maxv, cs%ia_weights(:,i), cs%ia_weights_tot(i))
-            call generate_alias_tables(maxv, cs%ia_weights(:,i), cs%ia_weights_tot(i), cs%aliasP(:,i), cs%aliasY(:,i))        
+            call generate_alias_tables(maxv, cs%ia_weights(:,i), cs%ia_weights_tot(i), cs%ia_aliasP(:,i), cs%ia_aliasY(:,i))        
         end do
 
     end subroutine init_excit_ueg_cauchy_schwarz
@@ -507,7 +507,7 @@ contains
             maxv = sys%basis%nbasis / 2
 
             ! Just use electron i
-            a_ind = select_weighted_value_prec(rng, maxv, cs%aliasP(:,i), cs%aliasY(:,i))
+            a_ind = select_weighted_value_prec(rng, maxv, cs%ia_aliasP(:,i), cs%ia_aliasY(:,i))
             ! Use the alias method to select i with the appropriate probability
             ! Map those >=i to the one after ( we're not allowed to select i)
             ! convert from spatial orbital back to spin orbital

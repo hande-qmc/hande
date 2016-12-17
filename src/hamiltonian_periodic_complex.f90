@@ -392,7 +392,7 @@ contains
         weight_tot = 0
         do k = 1, a_list_len
             ! check whether a and b are identical (if one of them has already been found). 
-            ! If they are identical, assign zero weight.
+            ! If one of these checks is true, assign zero weight.
             if (a_list(k) /= b) then
                 ! [review] - JSS: could avoid the abs with an assumption or a one-off O(N2) check during init
                 ! [review] - VAN: need abs here for complex

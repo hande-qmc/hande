@@ -10,12 +10,16 @@ integer(int_32), parameter :: int_bas = int_32
 
 ! [review] - JSS: document what each component holds.
 type excit_gen_cauchy_schwarz_t
-    real(p), allocatable :: aliasP(:,:) !(max(sys%nvirt_alpha,sys%nvirt_beta),sys%nel)
-    integer(int_bas), allocatable :: aliasY(:,:) !(max(sys%nvirt_alpha,sys%nvirt_beta),sys%nel)
+    real(p), allocatable :: ia_aliasP(:,:) !(max(sys%nvirt_alpha,sys%nvirt_beta),sys%nel)
+    integer(int_bas), allocatable :: ia_aliasY(:,:) !(max(sys%nvirt_alpha,sys%nvirt_beta),sys%nel)
     real(p), allocatable :: ia_weights(:,:) !(max(sys%nvirt_alpha,sys%nvirt_beta),sys%nel)
     real(p), allocatable :: ia_weights_tot(:) !(sys%nel)
-    integer(int_bas), allocatable :: virt_list_a(:) !(sys%nvirt_alpha)
-    integer(int_bas), allocatable :: virt_list_b(:) !(sys%nvirt_beta)
+    real(p), allocatable :: jb_aliasP(:,:,:) !(maxval(sys%read_in%pg_sym%nbasis_sym_spin),sys%sym0_tot:sys%sym_max_tot,sys%nel)
+    integer(int_bas), allocatable :: jb_aliasY(:,:,:) !(maxval(sys%read_in%pg_sym%nbasis_sym_spin),sys%sym0_tot:sys%sym_max_tot,sys%nel)
+    real(p), allocatable :: jb_weights(:,:,:) !(maxval(sys%read_in%pg_sym%nbasis_sym_spin),sys%sym0_tot:sys%sym_max_tot,sys%nel)
+    real(p), allocatable :: jb_weights_tot(:,:) !(sys%sym0_tot:sys%sym_max_tot,sys%nel)
+    integer(int_bas), allocatable :: virt_list_alpha(:) !(sys%nvirt_alpha)
+    integer(int_bas), allocatable :: virt_list_beta(:) !(sys%nvirt_beta)
     integer(int_bas), allocatable :: occ_list(:) !(sys%nel+1)  !The +1 is a pad
 end type excit_gen_cauchy_schwarz_t
 
