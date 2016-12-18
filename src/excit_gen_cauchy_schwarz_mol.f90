@@ -149,7 +149,8 @@ contains
         use alias, only: select_weighted_value_prec
         use dSFMT_interface, only: dSFMT_t, get_rand_close_open
         use hamiltonian_data, only: hmatel_t
-
+        use read_in_symmetry, only: cross_product_basis_read_in
+        use search, only: binary_search
 
         type(sys_t), intent(in) :: sys
         type(excit_gen_data_t), intent(in) :: excit_gen_data
@@ -161,14 +162,18 @@ contains
         logical, intent(out) :: allowed_excitation
 
 
-        integer ::  ij_spin
+        integer ::  ij_spin, ij_sym, imsb, isyma, isymb
       
-        integer :: a, b, i, j, a_ind, b_ind, i_ind, j_ind
+        integer :: i_ind_ref, j_ind_ref, a_ind_ref, b_ind_cdet
+        integer :: a_ind_rev_cdet, b_ind_rev_ref
+        integer :: i_ref, j_ref, a_ref, b_ref, i_cdet, j_cdet, a_cdet, b_cdet
 
         integer :: nex
         integer :: cdet_store(sys%nel)
         integer :: ref_store(sys%nel)
         integer :: ii, jj, t
+
+        logical :: found
 
         ! 1. Select single or double.
         if (get_rand_close_open(rng) < excit_gen_data%pattempt_single) then
@@ -201,11 +206,11 @@ contains
 
                 ! 2b. Select orbitals to excite from
                 
-                call choose_ij_ind(rng, sys, cs%occ_list, i_ind, j_ind, ij_spin)
+                call choose_ij_ind(rng, sys, cs%occ_list, i_ind_ref, j_ind_ref, ij_spin)
 
                 ! At this point we pretend we're the reference, and fix up mapping ref's orbitals to cdet's orbitals later.
-                i = cs%occ_list(i_ind)
-                j = cs%occ_list(j_ind)
+                i_ref = cs%occ_list(i_ind_ref)
+                j_ref = cs%occ_list(j_ind_ref)
 
                 ! We now need to select the orbitals to excite into which we do with weighting:
                 ! p(ab|ij) = p(a|i) p(b|j) + p(a|j) p(b|i)
@@ -213,108 +218,158 @@ contains
                 ! need to include that prob too.
 
                 ! Given i, use the alias table to select a
-                if (sys%basis%basis_fns(i)%Ms < 0) then
-                    a_ind = select_weighted_value_prec(rng, sys%nvirt_beta, cs%ia_aliasP(:,i_ind), cs%ia_aliasY(:,i_ind))
+                if (sys%basis%basis_fns(i_ref)%Ms < 0) then
+                    a_ind_ref = select_weighted_value_prec(rng, sys%nvirt_beta, cs%ia_aliasP(:,i_ind_ref), cs%ia_aliasY(:,i_ind_ref))
                     ! [review] - JSS: is 4 copies of the identical comment really necessary?  I don't think any of them are...(also
                     ! [review] - JSS: not clear if the comment is correct here!)
                     ! Use the alias method to select i with the appropriate probability
-                    a = cs%virt_list_beta(a_ind) 
+                    a_ref = cs%virt_list_beta(a_ind_ref) 
                 else
-                    a_ind = select_weighted_value_prec(rng, sys%nvirt_alpha, cs%ia_aliasP(:,i_ind), cs%ia_aliasY(:,i_ind))
+                    a_ind_ref = select_weighted_value_prec(rng, sys%nvirt_alpha, cs%ia_aliasP(:,i_ind_ref), cs%ia_aliasY(:,i_ind_ref))
                     ! Use the alias method to select i with the appropriate probability
-                    a = cs%virt_list_alpha(a_ind) 
+                    a_ref = cs%virt_list_alpha(a_ind_ref) 
                 end if 
 
-                ! Given j use the alias table to select b
-                if (sys%basis%basis_fns(j)%Ms < 0) then
-                    b_ind = select_weighted_value_prec(rng, sys%nvirt_beta, cs%ia_aliasP(:,j_ind), cs%ia_aliasY(:,j_ind))
-                    ! Use the alias method to select i with the appropriate probability
-                    b = cs%virt_list_beta(b_ind) 
-                else
-                    b_ind = select_weighted_value_prec(rng, sys%nvirt_alpha, cs%ia_aliasP(:,j_ind), cs%ia_aliasY(:,j_ind))
-                    ! Use the alias method to select i with the appropriate probability
-                    b = cs%virt_list_alpha(b_ind) 
-                end if 
+                ! To conserve total spin, b and j will have the same spin, as a and i have the same spin.
+                ! To find what symmetry b should have, we first have to map i,j and a to what they correspond to 
+                ! had we considered cdet and not the reference.
+                
+                ! We need a list of the substitutions in cdet vs the ref.  i.e. for each orbital in the ref-lined-up 
+                ! cdet which is not in ref, we need the location.
+                ! This is currently done with an O(N) step, but might be sped up at least.
 
-                ! 3b. Probability of generating this excitation.
+                call get_excitation_locations(cs%occ_list, cdet%occ_list, ref_store, cdet_store, sys%nel, nex)
+                ! These orbitals might not be aligned in the most efficient way:
+                !  They may not match in spin, so first deal with this
 
-                ! Calculate p(ab|ij) = p(a|i) p(j|b) + p(b|i)p(a|j)
-                if (ij_spin==0) then 
-                    ! Not possible to have chosen the reversed excitation
-                    pgen = cs%ia_weights(a_ind,i_ind) / cs%ia_weights_tot(i_ind) &
-                            * cs%ia_weights(b_ind,j_ind) / cs%ia_weights_tot(j_ind)
+                ! ref store (e.g.) contains the indices within cs%occ_list of the orbitals
+                ! which have been excited from.
+                ! [review] - JSS: this could/should be done once per determinant/excitor rather than once per excit gen.
+                do ii=1, nex
+                    associate(bfns=>sys%basis%basis_fns)
+                        if (bfns(cs%occ_list(ref_store(ii)))%Ms /= bfns(cdet%occ_list(cdet_store(ii)))%Ms) then
+                            jj = ii + 1
+                            do while (bfns(cs%occ_list(ref_store(ii)))%Ms /= bfns(cdet%occ_list(cdet_store(jj)))%Ms)
+                                jj = jj + 1
+                            end do
+                            ! det's jj now points to an orb of the same spin as ref's ii, so swap cdet_store's ii and jj.
+                            t = cdet_store(ii)
+                            cdet_store(ii) = cdet_store(jj)
+                            cdet_store(jj) = t 
+                        end if
+                    end associate
+                end do
+                
+                ! Now see if i_ref and j_ref are in ref_store or a_ref in cdet_store and map appropriately
+                i_cdet = i_ref
+                j_cdet = j_ref
+                a_cdet = a_ref
+                ! ref store (e.g.) contains the indices within cs%occ_list of the orbitals which are excited out of ref into
+                ! cdet det store (e.g.) contains the indices within cdet%occ_list of the orbitals which are in cdet (excited out
+                ! of ref).  i_ind_ref and j_ind_ref are the indices of the orbitals in cs%occ_list which we're exciting from.
+                do ii=1, nex
+                    if (ref_store(ii)==i_ind_ref) then  ! i_ref isn't actually in cdet, so we assign i_cdet to the orb that is
+                        i_cdet = cdet%occ_list(cdet_store(ii))
+                    else if (ref_store(ii)==j_ind_ref) then ! j_ref isn't actually in cdet, so we assign j_cdet to the orb that is
+                        j_cdet = cdet%occ_list(cdet_store(ii))
+                    end if
+                    if (cdet%occ_list(cdet_store(ii))==a_ref) then
+                        a_cdet = cs%occ_list(ref_store(ii)) ! a_ref is occupied in cdet, assign a_cdet to the orb that is not
+                    end if   
+                end do
+
+                ! The symmetry of b (=b_cdet), isymb, is given by 
+                ! (sym_i_cdet* x sym_j_cdet* x sym_a_cdet)* = sym_b_cdet
+                ! (at least for Abelian point groups)
+                ! ij_sym: symmetry conjugate of the irreducible representation spanned by the codensity
+                !        \phi_i_cdet*\phi_j_cdet. (We assume that ij is going to be in the bra of the excitation.)
+                ij_sym = sys%read_in%sym_conj_ptr(sys%read_in, cross_product_basis_read_in(sys, i_cdet, j_cdet))
+
+                isymb = sys%read_in%sym_conj_ptr(sys%read_in, &
+                            sys%read_in%cross_product_sym_ptr(sys%read_in, ij_sym, sys%basis%basis_fns(a_cdet)%sym))
+                ! Ms_i + Ms_j = Ms_a + Ms_b => Ms_b = Ms_i + Ms_j - Ms_a.
+                ! Given that Ms_a = Ms_i, Ms_b = Ms_j.
+                ! Ms_k is +1 if up and -1 if down but imsb is +2 if up and +1 if down, 
+                ! therefore a conversion is necessary.
+                imsb = (sys%basis%basis_fns(j_ref)%Ms+3)/2
+            
+                ! Check whether an orbital (occupied or not) with required spin and symmetry exists.
+                if (sys%read_in%pg_sym%nbasis_sym_spin(imsb,isymb) > 0) then 
+                    ! Using alias tables based on the reference, find b_cdet out of the set of orbitals that have 
+                    ! the required spin and symmetry. Note that these orbitals might be occupied in the reference and/or 
+                    ! cdet (although we only care about whether they are occupied in cdet). 
+                    b_ind_cdet = select_weighted_value_prec(rng, sys%read_in%pg_sym%nbasis_sym_spin(imsb, isymb), &
+                                        cs%jb_aliasP(:, isymb, j_ind_ref), cs%jb_aliasY(:, isymb, j_ind_ref))
+                    b_cdet = sys%read_in%pg_sym%sym_spin_basis_fns(b_ind_cdet, imsb, isymb)
+
+                    ! Check that a_cdet /= b_cdet and that b_cdet is not occupied in cdet:
+                    if (a_cdet /= b_cdet .and. .not.btest(cdet%f(sys%basis%bit_lookup(2,b_cdet)), & 
+                        sys%basis%bit_lookup(1,b_cdet))) then
+                        
+                        ! 3b. Probability of generating this excitation.
+
+                        ! Calculate p(ab|ij) = p(a|i) p(j|b) + p(b|i)p(a|j)
+                        if (ij_spin==0) then
+                            ! Not possible to have chosen the reversed excitation.
+                            pgen = cs%ia_weights(a_ind_ref, i_ind_ref) / cs%ia_weights_tot(i_ind_ref) &
+                                    * cs%jb_weights(b_ind_cdet, isymb, j_ind_ref) / cs%jb_weights_tot(isymb, j_ind_ref)
+                        else
+                            ! i and j have same spin, so could have been selected in the other order.
+                            ! Need to find b_ref, the orbital b would have been in the world where we focus on the reference.
+                            b_ref = b_cdet
+
+                            do ii=1, nex
+                                if (cs%occ_list(ref_store(ii))==b_cdet) then
+                                    ! b_cdet is occupied in ref, assign b_ref to the orb that is not
+                                    b_ref = cdet%occ_list(cdet_store(ii))
+                                    exit
+                                end if   
+                            end do
+
+                            if (imsb == 1) then 
+                                ! find index b as if we had it selected first and as a from list of unoccupied virtual orbitals.
+                                call binary_search(cs%virt_list_beta, b_ref, 1, sys%nvirt_beta, found, b_ind_rev_ref)
+                            else 
+                                call binary_search(cs%virt_list_alpha, b_ref, 1, sys%nvirt_alpha, found, b_ind_rev_ref)
+                            end if
+                            isyma = sys%read_in%sym_conj_ptr(sys%read_in, &
+                                        sys%read_in%cross_product_sym_ptr(sys%read_in, ij_sym, isymb))
+                            ! imsa = imsb
+                            call binary_search(sys%read_in%pg_sym%sym_spin_basis_fns(:,imsb,isyma), a_cdet, 1, &
+                                    sys%read_in%pg_sym%nbasis_sym_spin(imsb,isyma), found, a_ind_rev_cdet)
+
+                            pgen = cs%ia_weights(a_ind_ref, i_ind_ref) / cs%ia_weights_tot(i_ind_ref) &
+                                    * cs%jb_weights(b_ind_cdet, isymb, j_ind_ref) / cs%jb_weights_tot(isymb, j_ind_ref) &
+                                +  cs%ia_weights(b_ind_rev_ref, i_ind_ref) / cs%ia_weights_tot(i_ind_ref) &
+                                    * cs%jb_weights(a_ind_rev_cdet, isyma, j_ind_ref) / cs%jb_weights_tot(isyma, j_ind_ref)
+                        end if
+
+                        pgen = excit_gen_data%pattempt_double * pgen * 2.0_p/(sys%nel*(sys%nel-1)) ! pgen(ab)
+                        connection%nexcit = 2
+                        allowed_excitation = .true.
+                    else
+                        allowed_excitation = .false.
+                    end if
                 else
-                    ! i and j have same spin, so could have been selected in the other order.
-                    pgen = ( cs%ia_weights(a_ind, i_ind) * cs%ia_weights(b_ind, j_ind) &
-                             + cs%ia_weights(b_ind, i_ind) * cs%ia_weights(a_ind, j_ind) ) &
-                           / (cs%ia_weights_tot(i_ind)*cs%ia_weights_tot(j_ind))
+                    allowed_excitation = .false.
                 end if
-                pgen = excit_gen_data%pattempt_double * pgen * 2.0_p/(sys%nel*(sys%nel-1)) ! pgen(ab)
-                connection%nexcit = 2
-                allowed_excitation = (a/=b)
 
                 if (allowed_excitation) then
-                    ! Now do the translation.  We need a list of the substitutio ns in cdet vs the ref.  i.e. for each orbital in
-                    ! the ref-lined-up cdet which is not in ref, we need the location.
-                    ! This is currently done with an O(N) step, but might be sped up at least.
 
-                    call get_excitation_locations(cs%occ_list, cdet%occ_list, ref_store, cdet_store, sys%nel, nex)
-                    ! These orbitals might not be aligned in the most efficient way:
-                    !  They may not match in spin, so first deal with this
-
-                    ! ref store (e.g.) contains the indices within cs%occ_list of the orbitals
-                    ! which have been excited from.
-                    ! [review] - JSS: this could/should be done once per determinant/excitor rather than once per excit gen.
-                    do ii=1, nex
-                        associate(bfns=>sys%basis%basis_fns, ref_orb=>cs%occ_list(ref_store(ii)), det=>cdet%occ_list)
-                            if (bfns(ref_orb)%Ms /= bfns(det(cdet_store(ii)))%Ms) then
-                                jj = ii + 1
-                                do while (bfns(ref_orb)%Ms /= bfns(det(cdet_store(jj)))%Ms)
-                                    jj = jj + 1
-                                end do
-                                ! det's jj now points to an orb of the same spin as ref's ii, so swap cdet_store's ii and jj.
-                                t = cdet_store(ii)
-                                cdet_store(ii) = cdet_store(jj)
-                                cdet_store(jj) = t 
-                            end if
-                        end associate
-                    end do
-                    ! At this point we may want to align the orbitals even further to avoid strange cases where selection
-                    ! probabilities are zero, but let's leave that for another day.
-
-                    ! Now see if i and j are in ref_store or a and b are in cdet_store and map appropriately
-
-                    connection%from_orb(1)=i
-                    connection%from_orb(2)=j
-                    connection%to_orb(1)=a
-                    connection%to_orb(2)=b
-                    ! ref store (e.g.) contains the indices within cs%occ_list of the orbitals which are excited out of ref into
-                    ! cdet det store (e.g.) contains the indices within cdet%occ_list of the orbitals which are in cdet (excited out
-                    ! of ref).  i_ind and j_ind are the indices of the orbitals in cs%occ_list which we're exciting from.
-                    do ii=1, nex
-                        if (ref_store(ii)==i_ind) then  ! from_orb(1) isn't actually in cdet, so we replace it with the orb that is
-                            connection%from_orb(1) = cdet%occ_list(cdet_store(ii))
-                        else if (ref_store(ii)==j_ind) then ! from_orb(2) isn't actually in cdet, so we replace it with the orb that is
-                            connection%from_orb(2) = cdet%occ_list(cdet_store(ii))
-                        end if
-                        if (cdet%occ_list(cdet_store(ii))==a) then
-                            connection%to_orb(1) = cs%occ_list(ref_store(ii))
-                        else if (cdet%occ_list(cdet_store(ii))==b) then
-                            connection%to_orb(2) = cs%occ_list(ref_store(ii))
-                        end if
-                    end do
-                    ! Now order the excitation
-                    if( connection%to_orb(1) > connection%to_orb(2) ) then
-                        t = connection%to_orb(1)
-                        connection%to_orb(1) = connection%to_orb(2)
-                        connection%to_orb(2) = t
+                    if (i_cdet<j_cdet) then
+                        connection%from_orb(1) = i_cdet
+                        connection%from_orb(2) = j_cdet
+                    else
+                        connection%from_orb(2) = i_cdet
+                        connection%from_orb(1) = j_cdet
                     end if
-                    if( connection%from_orb(1) > connection%from_orb(2) ) then
-                        t = connection%from_orb(1)
-                        connection%from_orb(1) = connection%from_orb(2)
-                        connection%from_orb(2) = t
+                    if (a_cdet<b_cdet) then
+                        connection%to_orb(1) = a_cdet
+                        connection%to_orb(2) = b_cdet
+                    else
+                        connection%to_orb(2) = a_cdet
+                        connection%to_orb(1) = b_cdet 
                     end if
-
 
                     ! 4b. Parity of permutation required to line up determinants.
                     ! NOTE: connection%from_orb and connection%to_orb *must* be ordered.
@@ -352,9 +407,6 @@ contains
         ! Out:
         !    i, j: orbitals in determinant from which two electrons are excited.
         !        Note that i,j are ordered such that i<j.
-        ! [review] JSS: ij_sym has vanished.
-        !    ij_sym: symmetry conjugate of the irreducible representation spanned by the codensity
-        !        \phi_i*\phi_j. (We assume that ij is going to be in the bra of the excitation.)
         !    ij_spin: spin label of the combined ij codensity.
         !        ij_spin = -2   i,j both down
         !                =  0   i up and j down or vice versa
