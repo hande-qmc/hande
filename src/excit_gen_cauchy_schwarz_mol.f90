@@ -163,7 +163,16 @@ contains
 
 
         integer ::  ij_spin, ij_sym, imsb, isyma, isymb
-      
+        
+        ! We distinguish here between a_ref and a_cdet. a_ref is a in the world where the reference is fully occupied 
+        ! and we excite from the reference. We then map a_ref onto a_cdet which is a in the world where cdet is fully
+        ! occupied (which is the world we are actually in). This mapping is a one-to-one mapping.
+
+        ! a_ind_ref is the index of a in the world where the reference is fully occupied, etc.
+
+        ! a_ind_rev_cdet is the index of a_cdet if a had been chosen after b (relevant when both have the same spin
+        ! and the reverse selection has to be considered). 
+        
         integer :: i_ind_ref, j_ind_ref, a_ind_ref, b_ind_cdet
         integer :: a_ind_rev_cdet, b_ind_rev_ref
         integer :: i_ref, j_ref, a_ref, b_ref, i_cdet, j_cdet, a_cdet, b_cdet
@@ -217,16 +226,13 @@ contains
                 ! We actually choose a|i then b|j, but since we could have also generated the excitation b from i and a from j, we
                 ! need to include that prob too.
 
-                ! Given i, use the alias table to select a
+                ! Given i_ref, use the alias method to select a_ref with appropriate probability from the set of orbitals
+                ! of the same spin as i_ref that are unoccupied if all electrons are in the reference.
                 if (sys%basis%basis_fns(i_ref)%Ms < 0) then
                     a_ind_ref = select_weighted_value_prec(rng, sys%nvirt_beta, cs%ia_aliasU(:,i_ind_ref), cs%ia_aliasK(:,i_ind_ref))
-                    ! [review] - JSS: is 4 copies of the identical comment really necessary?  I don't think any of them are...(also
-                    ! [review] - JSS: not clear if the comment is correct here!)
-                    ! Use the alias method to select i with the appropriate probability
                     a_ref = cs%virt_list_beta(a_ind_ref) 
                 else
                     a_ind_ref = select_weighted_value_prec(rng, sys%nvirt_alpha, cs%ia_aliasU(:,i_ind_ref), cs%ia_aliasK(:,i_ind_ref))
-                    ! Use the alias method to select i with the appropriate probability
                     a_ref = cs%virt_list_alpha(a_ind_ref) 
                 end if 
 
