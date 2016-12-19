@@ -49,7 +49,6 @@ type excit_gen_data_t
     ! the energy cutoff.  Memory can be saved by not using a cubic array for
     ! k_i+k_j...
     integer(i0), allocatable :: ueg_ternary_conserve(:,:,:,:)
-
     type(excit_gen_cauchy_schwarz_t) :: excit_gen_cs
 end type excit_gen_data_t
 
@@ -69,8 +68,31 @@ contains
 
         if (allocated(excit_gen_data%ueg_ternary_conserve)) deallocate(excit_gen_data%ueg_ternary_conserve)
 
-        ! [review] - JSS: deallocate excit_gen_cauchy_schwarz_t.
+        call dealloc_excit_gen_cauchy_schwarz_t(excit_gen_data%excit_gen_cs)
 
     end subroutine dealloc_excit_gen_data_t
+
+    subroutine dealloc_excit_gen_cauchy_schwarz_t(excit_gen_cs)
+        
+        ! Deallocate the cauchy schwarz excitation generator data.
+
+        ! In/Out:
+        !   excit_gen_cs: excit_gen_cauchy_schwarz_t to be deallocated.
+
+        type(excit_gen_cauchy_schwarz_t), intent(inout) :: excit_gen_cs
+
+        if (allocated(excit_gen_cs%ia_aliasP)) deallocate(excit_gen_cs%ia_aliasP)
+        if (allocated(excit_gen_cs%ia_aliasY)) deallocate(excit_gen_cs%ia_aliasY)
+        if (allocated(excit_gen_cs%ia_weights)) deallocate(excit_gen_cs%ia_weights)
+        if (allocated(excit_gen_cs%ia_weights_tot)) deallocate(excit_gen_cs%ia_weights_tot)
+        if (allocated(excit_gen_cs%jb_aliasP)) deallocate(excit_gen_cs%jb_aliasP)
+        if (allocated(excit_gen_cs%jb_aliasY)) deallocate(excit_gen_cs%jb_aliasY)
+        if (allocated(excit_gen_cs%jb_weights)) deallocate(excit_gen_cs%jb_weights)
+        if (allocated(excit_gen_cs%jb_weights_tot)) deallocate(excit_gen_cs%jb_weights_tot)
+        if (allocated(excit_gen_cs%virt_list_alpha)) deallocate(excit_gen_cs%virt_list_alpha)
+        if (allocated(excit_gen_cs%virt_list_beta)) deallocate(excit_gen_cs%virt_list_beta)
+        if (allocated(excit_gen_cs%occ_list)) deallocate(excit_gen_cs%occ_list)
+
+    end subroutine dealloc_excit_gen_cauchy_schwarz_t
 
 end module excit_gens

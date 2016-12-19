@@ -185,11 +185,11 @@ contains
             if (sys%system == read_in) then
                call init_excit_mol_cauchy_schwarz_occ_ref(sys, qmc_state%ref, qmc_state%excit_gen_data%excit_gen_cs)
                ! [review] - JSS: see deallocation hooks for qmc_state_t.
-               ! TODO this needs to be deallocated somewhere
+               ! [review] - VAN: it is now being deallocated when excit_gen_data_t is deallocated.
             else if (sys%system == ueg) then 
                call init_excit_ueg_cauchy_schwarz(sys, qmc_state%ref, qmc_state%excit_gen_data%excit_gen_cs)
                ! [review] - JSS: see deallocation hooks for qmc_state_t.
-               ! TODO this needs to be deallocated somewhere
+               ! [review] - VAN: it is now being deallocated when excit_gen_data_t is deallocated.
             end if
         end if
     end subroutine init_qmc
