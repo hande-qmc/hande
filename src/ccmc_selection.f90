@@ -595,7 +595,6 @@ contains
         use excitations, only: get_excitation_level
         use qmc_data, only: particle_t
         use dSFMT_interface, only: dSFMT_t, get_rand_close_open
-        use parallel, only: nprocs
         use proc_pointers, only: decoder_ptr
         use system, only: sys_t
         use utils, only: factorial
