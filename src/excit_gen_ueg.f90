@@ -365,7 +365,12 @@ contains
         ! This creates a random excitation from cdet and calculate both the probability
         ! of selecting that excitation and the Hamiltonian matrix element.
         ! Weight the double excitations according the the Cauchy-Schwarz bound
-        ! <ij|ab> <= Sqrt(<ia|ai><jb|bj>)
+        ! <ij|ab> <= Sqrt(<ia|ai><jb|bj>). 
+        ! Since the value of the integral in the UEG is uniquely determined from the i->a 
+        ! excitation (momentum conservation), we can use exactly |<ia|ai>| as the upper 
+        ! bound for <ij|ab> here. (Note that because momentum is conserved, 
+        ! |q| = | k_i - k_a | = | k_j - k_b | and hence for the (non-zero) integral <ij|ab>, 
+        ! <ia|ai> = <jb|bj>.)
         ! This version uses the excitation weights from the reference rather than
         ! recalculating for each determinant.
 
@@ -408,11 +413,19 @@ contains
 
     subroutine create_weighted_excitation_list_ueg(sys, i, a_list, a_list_len, weights, weight_tot)
 
-        ! Generate a list of allowed excitations from from to one of to_list with their weights based on
-        ! sqrt(|<from to  | to  from>|) 
-        ! The case where to == from is set to weight 0
-
-        ! [review] - JSS: doc args.
+        ! Generate a list of allowed excitations from a to an element in a_list with their weights based on
+        ! |<ia|ai>|. 
+        !
+        ! In:
+        !    sys:   The system in which the orbitals live
+        !    i:  integer specifying the from orbital
+        !    a_list:   list of integers specifying the basis functions we're allowed to excite to
+        !    a_list_len:   The length of a_list
+        ! Out:
+        !    weights:   A list of reals (length a_list_len), with the weight of each of the to_list orbitals
+        !    weight_tot: The sum of all the weights.
+        
+        ! [review] - VAN: Do we think I should move this to hamiltonian_ueg.f90?
 
         use system, only: sys_t
         type(sys_t), intent(in) :: sys
@@ -422,17 +435,14 @@ contains
         integer :: k
         real(p) :: weight
 
-        weight_tot = 0 
+        weight_tot = 0.0_p 
         do k=1, a_list_len
             if (a_list(k) /= i) then
                 weight = sys%ueg%coulomb_int(sys%lattice%box_length(1), sys%basis, i, a_list(k))
+                weight = abs(weight)
             else
-                weight = 0
+                weight = 0.0_p
             end if
-            ! [review] - JSS: I think this comment should be in the procedure-level comments (especially as they claim the sqrt is used).
-            ! [review] - JSS: specifically, because momentum is conserved, |q| = | k_i - k_a | = | k_j - k_b | and hence
-            ! [review] - JSS: for the (non-zero) integral <ij|ab>, <ia|ai> = <jb|bj>.
-            weight = abs(weight) ! since the value of the integral in the UEG is uniquely determined from the i->a excitation, we can use exactly the abs value here.
             weights(k) = weight
             weight_tot = weight_tot + weight
         end do
@@ -551,7 +561,8 @@ contains
                 ! 3b. Probability of generating this excitation.
 
                 ! [review] - JSS: isn't this p(a|i) p(b|ija) + p(b|i)p(a|ijb) ?
-                ! Calculate p(ab|ij) = p(a|i) p(j|b) + p(b|i)p(a|j)
+                ! [reply] - VAN: I think you are correct. I have changed that.
+                ! Calculate p(ab|ij) = p(a|i) p(b|ija) + p(b|i)p(a|ijb)
               
                 if (ij_spin==0) then 
                     ! Not possible to have chosen the reversed excitation.
