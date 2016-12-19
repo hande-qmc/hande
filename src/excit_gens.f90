@@ -5,22 +5,55 @@ implicit none
 !Data for the Cauchy_Schwarz excit gen
 
 ! [review] - JSS: unclear why a new named parameter for int_32.
-!The integer types have been chosen to be int_32
+! [review] - VAN: Alex?
+! The integer types have been chosen to be int_32
 integer(int_32), parameter :: int_bas = int_32
 
-! [review] - JSS: document what each component holds.
+! Type containing alias tables, etc, needed when using the cauchy schwarz ("occ_ref") 
+! excitation generator, that considers weights, etc, as seen from the reference.
 type excit_gen_cauchy_schwarz_t
-    real(p), allocatable :: ia_aliasP(:,:) !(max(sys%nvirt_alpha,sys%nvirt_beta),sys%nel)
-    integer(int_bas), allocatable :: ia_aliasY(:,:) !(max(sys%nvirt_alpha,sys%nvirt_beta),sys%nel)
-    real(p), allocatable :: ia_weights(:,:) !(max(sys%nvirt_alpha,sys%nvirt_beta),sys%nel)
-    real(p), allocatable :: ia_weights_tot(:) !(sys%nel)
-    real(p), allocatable :: jb_aliasP(:,:,:) !(maxval(sys%read_in%pg_sym%nbasis_sym_spin),sys%sym0_tot:sys%sym_max_tot,sys%nel)
-    integer(int_bas), allocatable :: jb_aliasY(:,:,:) !(maxval(sys%read_in%pg_sym%nbasis_sym_spin),sys%sym0_tot:sys%sym_max_tot,sys%nel)
-    real(p), allocatable :: jb_weights(:,:,:) !(maxval(sys%read_in%pg_sym%nbasis_sym_spin),sys%sym0_tot:sys%sym_max_tot,sys%nel)
-    real(p), allocatable :: jb_weights_tot(:,:) !(sys%sym0_tot:sys%sym_max_tot,sys%nel)
-    integer(int_bas), allocatable :: virt_list_alpha(:) !(sys%nvirt_alpha)
-    integer(int_bas), allocatable :: virt_list_beta(:) !(sys%nvirt_beta)
-    integer(int_bas), allocatable :: occ_list(:) !(sys%nel+1)  !The +1 is a pad
+
+    ! ia_aliasU(:,i) stores the alias table of real U considering an excitation from i 
+    ! to a virtual orbital of the same spin. 
+    ! Lengths of array: (max(sys%nvirt_alpha,sys%nvirt_beta),sys%nel).  
+    real(p), allocatable :: ia_aliasU(:,:) 
+    ! ia_aliasK(:,i) stores the alias table of integer K considering an excitation from
+    ! i to a virtual orbital of the same spin.
+    ! Lengths of array: (max(sys%nvirt_alpha,sys%nvirt_beta),sys%nel) 
+    integer(int_bas), allocatable :: ia_aliasK(:,:) 
+    ! ia_weights(:,i) stores the weights considering an excitation from i to a virtual
+    ! orbital of the same spin.
+    ! Lengths of array: (max(sys%nvirt_alpha,sys%nvirt_beta),sys%nel)
+    real(p), allocatable :: ia_weights(:,:) 
+    ! ia_weights_tot(i) is the sum over j in ia_weights(j,i). 
+    ! Length of array: (sys%nel)
+    real(p), allocatable :: ia_weights_tot(:) 
+    ! jb_aliasU(:,syma,i) stores the alias table of real U considering an excitation
+    ! from i to any orbital (occupied or not) of same spin and symmetry syma.
+    ! Lengths of array: (maxval(sys%read_in%pg_sym%nbasis_sym_spin),sys%sym0_tot:sys%sym_max_tot,sys%nel)
+    real(p), allocatable :: jb_aliasU(:,:,:) 
+    ! jb_aliasK(:,syma,i) stores the alias table of integer K considering an excitation
+    ! from i to any orbital (occupied or not) of same spin and symmetry syma.
+    ! Lengths of array: (maxval(sys%read_in%pg_sym%nbasis_sym_spin),sys%sym0_tot:sys%sym_max_tot,sys%nel)
+    integer(int_bas), allocatable :: jb_aliasK(:,:,:) 
+    ! jb_weights(:,syma,i) stores the weights considering an excitation from i to any
+    ! orbital (occupied or not) of same spin and symmetry syma.
+    ! Lengths of array: (maxval(sys%read_in%pg_sym%nbasis_sym_spin),sys%sym0_tot:sys%sym_max_tot,sys%nel)
+    real(p), allocatable :: jb_weights(:,:,:) 
+    ! jb_weights_tot(syma,i) is the sum over j in jb_weights(j,syma,i).
+    ! Lengths of array: (sys%sym0_tot:sys%sym_max_tot,sys%nel)
+    real(p), allocatable :: jb_weights_tot(:,:)
+    ! virt_list_alpha is a list of all virtual alpha orbitals as seen from the reference.
+    ! Length of array: (sys%nvirt_alpha)
+    integer(int_bas), allocatable :: virt_list_alpha(:) 
+    ! virt_list_beta is a list of all virtual beta orbitals as seen from the reference.
+    ! Length of array: (sys%nvirt_beta)
+    integer(int_bas), allocatable :: virt_list_beta(:) 
+    ! occ_list(:) is the list of occupied orbitals in the reference.
+    ! Length of array: (sys%nel+1) - The +1 is a pad.
+    ! [review] - VAN: Why is this pad good?
+    integer(int_bas), allocatable :: occ_list(:)
+
 end type excit_gen_cauchy_schwarz_t
 
 
@@ -81,12 +114,12 @@ contains
 
         type(excit_gen_cauchy_schwarz_t), intent(inout) :: excit_gen_cs
 
-        if (allocated(excit_gen_cs%ia_aliasP)) deallocate(excit_gen_cs%ia_aliasP)
-        if (allocated(excit_gen_cs%ia_aliasY)) deallocate(excit_gen_cs%ia_aliasY)
+        if (allocated(excit_gen_cs%ia_aliasU)) deallocate(excit_gen_cs%ia_aliasU)
+        if (allocated(excit_gen_cs%ia_aliasK)) deallocate(excit_gen_cs%ia_aliasK)
         if (allocated(excit_gen_cs%ia_weights)) deallocate(excit_gen_cs%ia_weights)
         if (allocated(excit_gen_cs%ia_weights_tot)) deallocate(excit_gen_cs%ia_weights_tot)
-        if (allocated(excit_gen_cs%jb_aliasP)) deallocate(excit_gen_cs%jb_aliasP)
-        if (allocated(excit_gen_cs%jb_aliasY)) deallocate(excit_gen_cs%jb_aliasY)
+        if (allocated(excit_gen_cs%jb_aliasU)) deallocate(excit_gen_cs%jb_aliasU)
+        if (allocated(excit_gen_cs%jb_aliasK)) deallocate(excit_gen_cs%jb_aliasK)
         if (allocated(excit_gen_cs%jb_weights)) deallocate(excit_gen_cs%jb_weights)
         if (allocated(excit_gen_cs%jb_weights_tot)) deallocate(excit_gen_cs%jb_weights_tot)
         if (allocated(excit_gen_cs%virt_list_alpha)) deallocate(excit_gen_cs%virt_list_alpha)

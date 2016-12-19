@@ -11,7 +11,7 @@ implicit none
 contains
 
     ! [review] - JSS: name isn't immediately obvious.  Prec?
-    function select_weighted_value_prec(rng, N, aliasP, aliasY) result(ret)
+    function select_weighted_value_prec(rng, N, aliasU, aliasK) result(ret)
 
         ! Select an element, i=1..N with probability from pre-generated alias method weights.
         ! [review] - JSS: O(N) setup cost, O(1) to select?  Repetition below the arguments comments.
@@ -20,8 +20,8 @@ contains
         ! In:
         !    N: the number of objects to select from
         ! [review] - JSS: what are alias reals and alias integers?
-        !    aliasP: a length N array of precomputed alias reals.
-        !    aliasY: a length N array of precomputed alias integers
+        !    aliasU: a length N array of precomputed alias reals.
+        !    aliasK: a length N array of precomputed alias integers
         ! In/Out:
         !    rng: random number generator.
         ! Out:
@@ -29,11 +29,11 @@ contains
 
         ! The 'alias method' allows one to select from a discrete probability distribution of N objects 
         ! (with object i having probability p_i) in O(1) time. There's an O(N) storage and O(N) setup cost 
-        ! - a list of N reals (P_i) and N integers (Y_i) which requires O(N) setup.
+        ! - a list of N reals (U_i) and N integers (K_i) which requires O(N) setup.
 
-        ! Pick a random real number x, 0<=x<k.
-        ! Let K=floor(x) and V=x-K. (so K is an integer and V the remainder).
-        ! The randomly selected object, X, will be X=K if V<P_K and X=Y_K otherwise.
+        ! Pick a random real number x, 0<=x<N.
+        ! Let i=floor(x) and V=x-i. (so i is an integer and V the remainder).
+        ! The randomly selected object, ret, will be ret=i if V<U_i and ret=K_i otherwise.
 
         ! Here's Knuth's exercise:
         ! Vol2: 3.4.1 Ex 7 [20] (A. J. Walker)
@@ -41,18 +41,17 @@ contains
         ! {B_1,...,B_k} each of which can hold exactly n cubes.  Furthermore n_1+...+n_k=kn, so the cubes will just fit in the
         ! boxes.  Prove (constructively) that there is always a way to put the cubes into the boxes so that each box contains at
         ! most two different colors of cubes; in fact there is a way to do it so that, whenever box B_j contains two colors, one of
-        ! those colors is C_j.  Show how to use this principle to compute the P and Y tables given a probability distribution
+        ! those colors is C_j.  Show how to use this principle to compute the U and K tables given a probability distribution
         ! (p_1,...p_k).
 
         use dSFMT_interface, only: dSFMT_t, get_rand_close_open
         type(dSFMT_t), intent(inout) :: rng
         
         integer, intent(in) :: N
-        ! [review] - JSS: Here 'ret' is X in the above comments?
         integer :: ret
 
-        real(p) :: aliasP(N)
-        integer :: aliasY(N)
+        real(p) :: aliasU(N)
+        integer :: aliasK(N)
         
         real(p) :: x
         integer :: K 
@@ -61,10 +60,10 @@ contains
         K = floor(x)
         x = x-K
         K = K+1
-        if (x < aliasP(K)) then
+        if (x < aliasU(K)) then
             ret = K
         else
-            ret = aliasY(K)
+            ret = aliasK(K)
         end if
 
     end function select_weighted_value_prec
@@ -94,11 +93,11 @@ contains
         real(p), intent(in) :: totweight, weights(N) 
         integer :: ret
 
-        real(p) :: aliasP(N)
-        integer :: aliasY(N)
+        real(p) :: aliasU(N)
+        integer :: aliasK(N)
         
-        call generate_alias_tables(N, weights, totweight, aliasP, aliasY)        
-        ret = select_weighted_value_prec(rng, N, aliasP, aliasY)
+        call generate_alias_tables(N, weights, totweight, aliasU, aliasK)        
+        ret = select_weighted_value_prec(rng, N, aliasU, aliasK)
     end function select_weighted_value
 
     subroutine generate_alias_tables(N, weights, totweight, aliasU, aliasK)

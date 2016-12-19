@@ -48,12 +48,12 @@ contains
         
         ! Temp storage
         maxv = max(sys%nvirt_alpha,sys%nvirt_beta)
-        allocate(cs%ia_aliasP(maxv,sys%nel))
-        allocate(cs%ia_aliasY(maxv,sys%nel))
+        allocate(cs%ia_aliasU(maxv,sys%nel))
+        allocate(cs%ia_aliasK(maxv,sys%nel))
         allocate(cs%ia_weights(maxv,sys%nel))
         allocate(cs%ia_weights_tot(sys%nel))
-        allocate(cs%jb_aliasP(maxval(sys%read_in%pg_sym%nbasis_sym_spin), sys%sym0_tot:sys%sym_max_tot, sys%nel))
-        allocate(cs%jb_aliasY(maxval(sys%read_in%pg_sym%nbasis_sym_spin), sys%sym0_tot:sys%sym_max_tot, sys%nel))
+        allocate(cs%jb_aliasU(maxval(sys%read_in%pg_sym%nbasis_sym_spin), sys%sym0_tot:sys%sym_max_tot, sys%nel))
+        allocate(cs%jb_aliasK(maxval(sys%read_in%pg_sym%nbasis_sym_spin), sys%sym0_tot:sys%sym_max_tot, sys%nel))
         allocate(cs%jb_weights(maxval(sys%read_in%pg_sym%nbasis_sym_spin), sys%sym0_tot:sys%sym_max_tot, sys%nel))
         allocate(cs%jb_weights_tot(sys%sym0_tot:sys%sym_max_tot, sys%nel))
         allocate(cs%occ_list(sys%nel+1))  ! The +1 is a pad to allow loops to look better
@@ -90,22 +90,22 @@ contains
             if (sys%basis%basis_fns(j)%Ms == -1) then ! beta
                 nv = sys%nvirt_beta
                 call create_weighted_excitation_list_ptr(sys, j, 0, cs%virt_list_beta, nv, cs%ia_weights(:,i), cs%ia_weights_tot(i))
-                call generate_alias_tables(nv, cs%ia_weights(:,i), cs%ia_weights_tot(i), cs%ia_aliasP(:,i), cs%ia_aliasY(:,i))
+                call generate_alias_tables(nv, cs%ia_weights(:,i), cs%ia_weights_tot(i), cs%ia_aliasU(:,i), cs%ia_aliasK(:,i))
                 do jsym = sys%sym0_tot, sys%sym_max_tot
                     call create_weighted_excitation_list_ptr(sys, j, 0, sys%read_in%pg_sym%sym_spin_basis_fns(:,1,jsym), &
                         sys%read_in%pg_sym%nbasis_sym_spin(1,jsym), cs%jb_weights(:,jsym,i), cs%jb_weights_tot(jsym,i))
                     call generate_alias_tables(sys%read_in%pg_sym%nbasis_sym_spin(1,jsym), cs%jb_weights(:,jsym,i), &
-                        cs%jb_weights_tot(jsym,i), cs%jb_aliasP(:,jsym,i), cs%jb_aliasY(:,jsym,i))
+                        cs%jb_weights_tot(jsym,i), cs%jb_aliasU(:,jsym,i), cs%jb_aliasK(:,jsym,i))
                 end do
             else ! alpha
                 nv = sys%nvirt_alpha
                 call create_weighted_excitation_list_ptr(sys, j, 0, cs%virt_list_alpha, nv, cs%ia_weights(:,i), cs%ia_weights_tot(i))
-                call generate_alias_tables(nv, cs%ia_weights(:,i), cs%ia_weights_tot(i), cs%ia_aliasP(:,i), cs%ia_aliasY(:,i))
+                call generate_alias_tables(nv, cs%ia_weights(:,i), cs%ia_weights_tot(i), cs%ia_aliasU(:,i), cs%ia_aliasK(:,i))
                 do jsym = sys%sym0_tot, sys%sym_max_tot
                     call create_weighted_excitation_list_ptr(sys, j, 0, sys%read_in%pg_sym%sym_spin_basis_fns(:,2,jsym), &
                         sys%read_in%pg_sym%nbasis_sym_spin(2,jsym), cs%jb_weights(:,jsym,i), cs%jb_weights_tot(jsym,i))
                     call generate_alias_tables(sys%read_in%pg_sym%nbasis_sym_spin(2,jsym), cs%jb_weights(:,jsym,i), &
-                        cs%jb_weights_tot(jsym,i), cs%jb_aliasP(:,jsym,i), cs%jb_aliasY(:,jsym,i))
+                        cs%jb_weights_tot(jsym,i), cs%jb_aliasU(:,jsym,i), cs%jb_aliasK(:,jsym,i))
                 end do
             end if
         end do
@@ -219,13 +219,13 @@ contains
 
                 ! Given i, use the alias table to select a
                 if (sys%basis%basis_fns(i_ref)%Ms < 0) then
-                    a_ind_ref = select_weighted_value_prec(rng, sys%nvirt_beta, cs%ia_aliasP(:,i_ind_ref), cs%ia_aliasY(:,i_ind_ref))
+                    a_ind_ref = select_weighted_value_prec(rng, sys%nvirt_beta, cs%ia_aliasU(:,i_ind_ref), cs%ia_aliasK(:,i_ind_ref))
                     ! [review] - JSS: is 4 copies of the identical comment really necessary?  I don't think any of them are...(also
                     ! [review] - JSS: not clear if the comment is correct here!)
                     ! Use the alias method to select i with the appropriate probability
                     a_ref = cs%virt_list_beta(a_ind_ref) 
                 else
-                    a_ind_ref = select_weighted_value_prec(rng, sys%nvirt_alpha, cs%ia_aliasP(:,i_ind_ref), cs%ia_aliasY(:,i_ind_ref))
+                    a_ind_ref = select_weighted_value_prec(rng, sys%nvirt_alpha, cs%ia_aliasU(:,i_ind_ref), cs%ia_aliasK(:,i_ind_ref))
                     ! Use the alias method to select i with the appropriate probability
                     a_ref = cs%virt_list_alpha(a_ind_ref) 
                 end if 
@@ -299,7 +299,7 @@ contains
                     ! the required spin and symmetry. Note that these orbitals might be occupied in the reference and/or 
                     ! cdet (although we only care about whether they are occupied in cdet). 
                     b_ind_cdet = select_weighted_value_prec(rng, sys%read_in%pg_sym%nbasis_sym_spin(imsb, isymb), &
-                                        cs%jb_aliasP(:, isymb, j_ind_ref), cs%jb_aliasY(:, isymb, j_ind_ref))
+                                        cs%jb_aliasU(:, isymb, j_ind_ref), cs%jb_aliasK(:, isymb, j_ind_ref))
                     b_cdet = sys%read_in%pg_sym%sym_spin_basis_fns(b_ind_cdet, imsb, isymb)
 
                     ! Check that a_cdet /= b_cdet and that b_cdet is not occupied in cdet:
