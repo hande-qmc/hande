@@ -62,8 +62,8 @@ contains
         
         cs%occ_list(:sys%nel) = ref%occ_list0(:sys%nel)
         cs%occ_list(sys%nel+1) = sys%basis%nbasis*2  ! A pad 
-        ! Now sort this
-        ! [review] - JSS: is this not always true?
+        
+        ! Now sort this, just in case we have an old restart file and the reference was not sorted then.
         call qsort(cs%occ_list,sys%nel)
 
         ! Make the unocc list.
@@ -677,6 +677,12 @@ contains
             end if
 
         end if
+
+        ! deallocate weight arrays if allocated
+        if (allocated(ia_weights)) deallocate(ia_weights)
+        if (allocated(jb_weights)) deallocate(jb_weights)
+        if (allocated(ja_weights)) deallocate(ja_weights)
+
     end subroutine gen_excit_mol_cauchy_schwarz_occ
 
 end module excit_gen_cauchy_schwarz_mol
