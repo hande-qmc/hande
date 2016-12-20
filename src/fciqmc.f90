@@ -67,7 +67,7 @@ contains
                             fciqmc_in_t_json, semi_stoch_in_t_json, restart_in_t_json, load_bal_in_t_json, &
                             blocking_t, blocking_in_t, blocking_in_t_json
         use reference_determinant, only: reference_t, reference_t_json
-        use check_input, only: check_qmc_opts, check_fciqmc_opts, check_load_bal_opts
+        use check_input, only: check_qmc_opts, check_fciqmc_opts, check_load_bal_opts, check_blocking_opts
         use hamiltonian_data
         use energy_evaluation, only: get_sanitized_projected_energy
 
@@ -133,6 +133,7 @@ contains
             call check_qmc_opts(qmc_in, sys, .not.present(qmc_state_restart), restarting)
             call check_fciqmc_opts(sys, fciqmc_in)
             call check_load_bal_opts(load_bal_in)
+            call check_blocking_opts(blocking_in, restart_in)
         end if
 
         ! Initialise data.

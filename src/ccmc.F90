@@ -323,7 +323,7 @@ contains
         use qmc_data, only: qmc_in_t_json, ccmc_in_t_json, semi_stoch_in_t_json, restart_in_t_json
         use qmc_data, only: blocking_in_t_json
         use reference_determinant, only: reference_t, reference_t_json
-        use check_input, only: check_qmc_opts, check_ccmc_opts
+        use check_input, only: check_qmc_opts, check_ccmc_opts, check_blocking_opts
         use json_out, only: json_out_t, json_object_init, json_object_end
         use hamiltonian_data
         use energy_evaluation, only: get_sanitized_projected_energy, get_sanitized_projected_energy_cmplx
@@ -400,6 +400,7 @@ contains
             restarting = present(qmc_state_restart) .or. restart_in%read_restart
             call check_qmc_opts(qmc_in, sys, .not.present(qmc_state_restart), restarting)
             call check_ccmc_opts(sys, ccmc_in)
+            call check_blocking_opts(blocking_in, restart_in)
         end if
 
         ! Initialise data.
