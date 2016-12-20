@@ -629,14 +629,19 @@ contains
         ! update_selection_probabilites.
         rand = get_rand_close_open(rng)
         cluster%nexcitors = -1
-        do i = min_size, max_size
+        do i = min_size, max_size - 1
             ! Add equality for edge case.
-            if (rand <= selection_data%cumulative_stoch_size_weighting(i)) then
+            if (rand < selection_data%cumulative_stoch_size_weighting(i)) then
                 cluster%nexcitors = i
                 cluster%pselect = cluster%pselect * selection_data%stoch_size_weighting(i)
                 exit
             end if
         end do
+
+        if (cluster%nexcitors == -1) then
+                cluster%nexcitors = max_size
+                cluster%pselect = cluster%pselect * selection_data%stoch_size_weighting(max_size)
+        end if
 
         ! Initiator approximation.
         ! This is sufficiently quick that we'll just do it in all cases, even
@@ -662,14 +667,19 @@ contains
                 select_proportion => selection_data%cluster_sizes_proportion(cluster%nexcitors)%v)
             rand = get_rand_close_open(rng)
 
+            choice = -1
             cumulative = 0.0_dp
-            do num = 1, size(select_proportion, dim=1)
+            do num = 1, size(select_proportion, dim=1) - 1
                 cumulative = cumulative + select_proportion(num)
-                if (rand <= cumulative) then
+                if (rand < cumulative) then
                     choice = num
                     exit
                 end if
             end do
+
+            if (choice == -1) then
+                choice = size(select_proportion, dim=1)
+            end if
 
             cluster%pselect = cluster%pselect * select_proportion(choice)
 
