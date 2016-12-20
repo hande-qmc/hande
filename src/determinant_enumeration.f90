@@ -81,6 +81,9 @@ contains
         integer :: k(sys%lattice%ndim), k_beta(sys%lattice%ndim)
         type(det_info_t) :: d0
         logical :: in_space, force_full, truncate_space, verbose
+        integer :: iunit
+
+        iunit = 6
 
         truncate_space = ex_level /= sys%nel
         verbose = init
@@ -315,21 +318,21 @@ contains
         if (verbose .and. parent) then
             ! Output information about the size of the space.
             Ms = sys%nalpha - sys%nbeta
-            write (6,'(1X,a75,'//int_fmt(Ms,0)//',a1)') &
+            write (iunit,'(1X,a75,'//int_fmt(Ms,0)//',a1)') &
                      'The table below gives the number of determinants for each symmetry with Ms=', &
                      Ms,"."
             if (truncate_space) then
-                write (6,'(1X,a24,'//int_fmt(ex_level,1)//',1X,a54)') &
+                write (iunit,'(1X,a24,'//int_fmt(ex_level,1)//',1X,a54)') &
                     'Only determinants within', ex_level, &
                     'excitations of the reference determinant are included.'
-                write (6,'(1X,a29,1X)',advance='no') 'Reference determinant, |D0> ='
+                write (iunit,'(1X,a29,1X)',advance='no') 'Reference determinant, |D0> ='
                 call write_det(sys%basis, sys%nel, d0%f, new_line=.true.)
             end if
-            write (6,'(/,1X,a14,6X,a6)') 'Symmetry index','# dets'
+            write (iunit,'(/,1X,a14,6X,a6)') 'Symmetry index','# dets'
             do i = lbound(sym_space_size,dim=1), ubound(sym_space_size, dim=1)
-                write (6,'(6X,i4,4X,i13)') i, sym_space_size(i)
+                write (iunit,'(6X,i4,4X,i13)') i, sym_space_size(i)
             end do
-            write (6,'()')
+            write (iunit,'()')
         end if
 
         deallocate(occ, stat=ierr)

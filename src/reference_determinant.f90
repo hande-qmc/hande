@@ -41,7 +41,7 @@ contains
 
 !--- Attempt to find a reasonable reference determinant ---
 
-    subroutine set_reference_det(sys, occ_list, override_input, ref_sym)
+    subroutine set_reference_det(sys, occ_list, override_input, ref_sym, io_unit)
 
         ! Set the list of occupied orbitals in the reference determinant to be
         ! the spin-orbitals with the lowest energy which satisfy the
@@ -66,6 +66,7 @@ contains
         !       determinant with the lowest sum of single-particle energies with
         !       this symmetry index.  Ignored if less than sym0 or greater than
         !       sym_max.
+        !   io_unit: io unit to write all additional comments to.
 
         use const, only: i0, p, depsilon
         use checking, only: check_allocate
@@ -81,6 +82,7 @@ contains
         integer, intent(inout), allocatable :: occ_list(:)
         logical, intent(in) :: override_input
         integer, intent(in) :: ref_sym
+        integer, intent(in) :: io_unit
 
         integer :: i, j, ierr, spins_set, connections, iel, icore, jcore, ivirt, jvirt
         integer :: bit_element, bit_pos, tmp_occ_list(sys%nel), curr_occ_list(sys%nel), sym
@@ -207,10 +209,10 @@ contains
                 else
                     sym = symmetry_orb_list(sys, occ_list)
                     if (parent) then
-                        write (6, '(1X)')
-                        write (6, '(1X,"Reference determinant and so symmetry sector selected using the Aufbau principle.")')
-                        write (6, '(1X,"Selected symmetry ",i2,".")') sym
-                        write (6, '(1X)')
+                        write (io_unit, '(1X)')
+                        write (io_unit, '(1X,"Reference determinant and so symmetry sector selected using the Aufbau principle.")')
+                        write (io_unit, '(1X,"Selected symmetry ",i2,".")') sym
+                        write (io_unit, '(1X)')
                     end if
                 end if
             case(hub_real)

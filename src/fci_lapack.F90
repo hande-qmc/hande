@@ -43,6 +43,9 @@ contains
         type(blacs_info) :: proc_blacs_info
         type(hamil_t) :: hamil
         type(hmatel_t) :: hmatel
+        integer :: iunit
+
+        iunit = 6
 
         if (parent) call check_fci_opts(sys, fci_in, .false.)
 
@@ -73,13 +76,13 @@ contains
         end if
 
         if (parent) then
-            write (6,'(1X,"LAPACK diagonalisation results")')
-            write (6,'(1X,"^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^",/)')
-            write (6,'(1X," State",5X,"Energy")')
+            write (iunit,'(1X,"LAPACK diagonalisation results")')
+            write (iunit,'(1X,"^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^",/)')
+            write (iunit,'(1X," State",5X,"Energy")')
             do i = 1, ndets
-                write (6,'(1X,i6,1X,f18.12)') i, eigv(i)
+                write (iunit,'(1X,i6,1X,f18.12)') i, eigv(i)
             end do
-            write (6,'()')
+            write (iunit,'()')
         end if
 
         ! If requested, calculate and print eigenvalues for an RDM.
@@ -89,20 +92,20 @@ contains
             else if (sys%system /= heisenberg) then
                 if (parent) call warning('diagonalise','RDM calculations are only implemented for Heisenberg systems. Skipping.',3)
             else
-                write(6,'(1x,a46)') "Performing reduced density matrix calculation."
+                write(iunit,'(1x,a46)') "Performing reduced density matrix calculation."
                 call setup_rdm_arrays(sys, .false., fci_in%subsys_info, rdm)
                 rdm_size = size(rdm, 1)
                 allocate(rdm_eigv(rdm_size), stat=ierr)
                 call check_allocate('rdm_eigv',rdm_size,ierr)
                 call get_rdm_eigenvalues(sys%basis, fci_in%subsys_info, ndets, dets, hamil%rmat, rdm, rdm_eigv)
 
-                write (6,'(1X,"RDM eigenvalues")')
-                write (6,'(1X,"^^^^^^^^^^^^^^^",/)')
-                write (6,'(1X," State",5X,"RDM eigenvalue")')
+                write (iunit,'(1X,"RDM eigenvalues")')
+                write (iunit,'(1X,"^^^^^^^^^^^^^^^",/)')
+                write (iunit,'(1X," State",5X,"RDM eigenvalue")')
                 do i = 1, rdm_size
-                    write (6,'(1X,i6,1X,f18.12)') i, rdm_eigv(i)
+                    write (iunit,'(1X,i6,1X,f18.12)') i, rdm_eigv(i)
                 end do
-                write (6,'()')
+                write (iunit,'()')
             end if
         end if
 
@@ -151,11 +154,14 @@ contains
         complex(p), allocatable :: ceigvec(:,:)
         integer :: info, ierr, i, nwfn, ndets
         character(1) :: job
+        integer :: iunit
+
+        iunit = 6
 
         ndets = ubound(dets, dim=2)
 
         if (parent) then
-            write (6,'(1X,a35,/)') 'Performing exact diagonalisation...'
+            write (iunit,'(1X,a35,/)') 'Performing exact diagonalisation...'
         end if
 
         if (fci_in%analyse_fci_wfn /= 0 .or. fci_in%print_fci_wfn /= 0 &
@@ -189,7 +195,7 @@ contains
             deallocate(rwork, stat=ierr)
             call check_deallocate('rwork',ierr)
             if (fci_in%analyse_fci_wfn /= 0) then
-                write(6,'(1x,a36)') "Complex wavefunction analysis and printing not implemented. Skipping."
+                write(iunit,'(1x,a36)') "Complex wavefunction analysis and printing not implemented. Skipping."
             end if
         else
             if (nprocs == 1) then
@@ -271,8 +277,11 @@ contains
         integer :: i, j, rdm_size, info
         integer(i0) :: rdm_f1(subsys_info(1)%string_len), rdm_f2(subsys_info(1)%string_len)
         real(p) :: rdm_element
+        integer :: iunit
 
-        write(6,'(1x,a36)') "Setting up reduced density matrix..."
+        iunit = 6
+
+        write(iunit,'(1x,a36)') "Setting up reduced density matrix..."
 
         ! Loop over all elements of the density matrix and add all contributing elements to the RDM.
         do i = 1, ndets
@@ -302,7 +311,7 @@ contains
         ! Now the RDM is completley calculated.
 
         ! Calculate the eigenvalues:
-        write(6,'(1x,a39,/)') "Diagonalising reduced density matrix..."
+        write(iunit,'(1x,a39,/)') "Diagonalising reduced density matrix..."
 
         rdm_size = size(rdm, 1)
         call syev_wrapper('N', 'U', rdm_size, rdm, rdm_size, rdm_eigv, info)

@@ -115,7 +115,7 @@ contains
 
     !--- Object initialisation and termination ---
 
-    subroutine json_object_init(js, key, tag)
+    subroutine json_object_init(js, key, tag, io)
 
         ! Start a new JSON object.
 
@@ -126,12 +126,17 @@ contains
         !        document/starting a new object from scratch.
         !   tag (optional): if true (default: false) print out a tag before the opening bracket
         !        to allow for easy identication of JSON blocks in a mixed format output file.
+        !   io (optional): io unit to write output to. (default: 6)
 
         type(json_out_t), intent(inout) :: js
         character(*), intent(in), optional :: key
         logical, intent(in), optional :: tag
+        integer, intent(in), optional :: io
         character(3) :: xc
 
+        if (present(io)) then
+            js%io = io
+        end if
         if (present(tag)) then
             if (tag) write (js%io,'(1X,"-- Start JSON block --")')
         end if

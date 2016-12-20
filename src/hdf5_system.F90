@@ -169,6 +169,9 @@ module hdf5_system
             character(255), intent(inout) :: filename
 
             logical :: verbose_loc
+            integer :: iunit
+
+            iunit = 6
 
             verbose_loc = .true.
             if (present(verbose)) verbose_loc = verbose
@@ -177,9 +180,9 @@ module hdf5_system
 
             if (verbose_loc) then
                 if (write_mode) then
-                    write (6,'(1X,"Writing HDF5 system file to",1X,a,/)') trim(filename)
+                    write (iunit,'(1X,"Writing HDF5 system file to",1X,a,/)') trim(filename)
                 else
-                    write (6,'(1X,"Reading HDF5 system file from",1X,a,/)') trim(filename)
+                    write (iunit,'(1X,"Reading HDF5 system file from",1X,a,/)') trim(filename)
                 end if
             end if
 
@@ -426,7 +429,7 @@ module hdf5_system
 
             type(sys_t), intent(inout) :: sys
             logical, optional, intent(in) :: verbose
-
+            integer :: iunit
 #ifndef DISABLE_HDF5
             character(255) :: filename
             integer :: ierr, sysdump_dump_version, cas(2)
@@ -446,6 +449,8 @@ module hdf5_system
 
             verbose_t = .true.
             if (present(verbose)) verbose_t = verbose
+
+            iunit = 6
 
             ! A little care must be taken with reading in the file to accomodate
             ! (e.g.) shared memory allocators.  We first read in the data to be
@@ -693,7 +698,7 @@ module hdf5_system
                         call write_basis_fn(sys, sys%basis%basis_fns(i), ind=i, &
                                                 new_line=.true.)
                     end do
-                    write (6,'(/,1X,a8,f18.12)') 'E_core =', sys%read_in%Ecore
+                    write (iunit,'(/,1X,a8,f18.12)') 'E_core =', sys%read_in%Ecore
                 else
                     call write_basis_fn_title()
                 end if

@@ -9,7 +9,7 @@ implicit none
 
 contains
 
-    subroutine do_fciqmc(sys, qmc_in, fciqmc_in, semi_stoch_in, restart_in, load_bal_in, &
+    subroutine do_fciqmc(sys, qmc_in, fciqmc_in, semi_stoch_in, restart_in, load_bal_in, io_unit, &
                          reference_in, logging_in, qs, qmc_state_restart)
 
         ! Run the FCIQMC or initiator-FCIQMC algorithm starting from the initial walker
@@ -28,6 +28,7 @@ contains
         !       desired spin/symmetry.
         !    qmc_in: input options relating to QMC methods.
         !    load_bal_in: input options for load balancing.
+        !    io_unit: io unit to write all calculation output to.
         ! In/Out:
         !    qmc_state_restart (optional): if present, restart from a previous fciqmc calculation.
         !       Deallocated on exit.
@@ -83,6 +84,7 @@ contains
         type(qmc_state_t), intent(out), target :: qs
 
         type(logging_in_t), intent(in) :: logging_in
+        integer, intent(in) :: io_unit
         type(logging_t) :: logging_info
 
         type(det_info_t) :: cdet
@@ -111,12 +113,11 @@ contains
         logical :: determ_parent
 
         real :: t1, t2
-
         logical :: update_tau, restarting, imag
 
         if (parent) then
-            write (6,'(1X,"FCIQMC")')
-            write (6,'(1X,"------",/)')
+            write (io_unit,'(1X,"FCIQMC")')
+            write (io_unit,'(1X,"------",/)')
         end if
 
         if (parent) then
@@ -128,13 +129,13 @@ contains
         end if
 
         ! Initialise data.
-        call init_qmc(sys, qmc_in, restart_in, load_bal_in, reference_in, annihilation_flags, qs, uuid_restart, &
+        call init_qmc(sys, qmc_in, restart_in, load_bal_in, reference_in, io_unit, annihilation_flags, qs, uuid_restart, &
                       fciqmc_in=fciqmc_in, qmc_state_restart=qmc_state_restart)
 
         if (debug) call init_logging(logging_in, logging_info, 0)
 
         if (parent) then
-            call json_object_init(js, tag=.true.)
+            call json_object_init(js, tag=.true., io=io_unit)
             call sys_t_json(js, sys)
             ! The default values of pattempt_* are not in qmc_in
             qmc_in_loc = qmc_in
@@ -191,13 +192,14 @@ contains
         nparticles_old = qs%psip_list%tot_nparticles
 
         ! Main fciqmc loop.
-        if (parent) call write_qmc_report_header(qs%psip_list%nspaces, cmplx_est=sys%read_in%comp)
+        if (parent) call write_qmc_report_header(qs%psip_list%nspaces, cmplx_est=sys%read_in%comp, io_unit=io_unit)
         if (fciqmc_in%non_blocking_comm) then
             call init_non_blocking_comm(qs%spawn_store%spawn, req_data_s, send_counts, qs%spawn_store%spawn_recv, &
                                         restart_in%read_restart)
-            call initial_fciqmc_status(sys, qmc_in, qs, .true., send_counts(iproc)/qs%spawn_store%spawn_recv%element_len)
+            call initial_fciqmc_status(sys, qmc_in, qs, .true., send_counts(iproc)/qs%spawn_store%spawn_recv%element_len, &
+                                        io_unit=io_unit)
         else
-            call initial_fciqmc_status(sys, qmc_in, qs)
+            call initial_fciqmc_status(sys, qmc_in, qs, io_unit=io_unit)
         end if
         ! Initialise timer.
         call cpu_time(t1)
@@ -219,13 +221,13 @@ contains
                 if (iter == semi_stoch_iter .and. semi_stoch_in%space_type /= empty_determ_space) then
                     determ%doing_semi_stoch = .true.
                     call init_semi_stoch_t(determ, semi_stoch_in, sys, qs%propagator, qs%psip_list, qs%ref, annihilation_flags, &
-                                           qs%spawn_store%spawn, qmc_in%use_mpi_barriers)
+                                           qs%spawn_store%spawn, qmc_in%use_mpi_barriers, io_unit)
                 end if
 
                 call init_mc_cycle(qs%psip_list, qs%spawn_store%spawn, nattempts, ndeath, &
                                             complx = sys%read_in%comp)
                 call load_balancing_wrapper(sys, qs%propagator, qs%ref, load_bal_in, annihilation_flags, &
-                                            fciqmc_in%non_blocking_comm, rng, qs%psip_list, qs%spawn_store%spawn, &
+                                            fciqmc_in%non_blocking_comm, io_unit, rng, qs%psip_list, qs%spawn_store%spawn, &
                                             qs%par_info, determ)
                 if (fciqmc_in%non_blocking_comm) qs%spawn_store%spawn_recv%proc_map = qs%par_info%load%proc_map
                 ideterm = 0
@@ -330,9 +332,9 @@ contains
 
             call cpu_time(t2)
             if (parent) then
-                if (bloom_stats%nblooms_curr > 0) call bloom_stats_warning(bloom_stats)
+                if (bloom_stats%nblooms_curr > 0) call bloom_stats_warning(bloom_stats, io_unit=io_unit)
                 call write_qmc_report(qmc_in, qs, ireport, nparticles_old, t2-t1, .false., &
-                                         fciqmc_in%non_blocking_comm, cmplx_est=sys%read_in%comp)
+                                        fciqmc_in%non_blocking_comm, io_unit=io_unit, cmplx_est=sys%read_in%comp)
             end if
 
             ! Update the time for the start of the next iteration.
@@ -357,17 +359,17 @@ contains
                                                                     qs%par_info%report_comm%request, t1, nparticles_old, &
                                                                     qs%shift(1), restart_in%write_restart, load_bal_in)
 
-        if (parent) write (6,'()')
-        call write_bloom_report(bloom_stats)
+        if (parent) write (io_unit,'()')
+        call write_bloom_report(bloom_stats, io_unit=io_unit)
         associate(pl=>qs%psip_list, spawn=>qs%spawn_store%spawn)
             if (determ%doing_semi_stoch .and. determ%projection_mode == semi_stoch_separate_annihilation) then
                 call load_balancing_report(pl%nparticles, pl%nstates, qmc_in%use_mpi_barriers, spawn%mpi_time, &
-                                           determ%mpi_time)
+                                           determ%mpi_time, io_unit=io_unit)
             else
-                call load_balancing_report(pl%nparticles, pl%nstates, qmc_in%use_mpi_barriers, spawn%mpi_time)
+                call load_balancing_report(pl%nparticles, pl%nstates, qmc_in%use_mpi_barriers, spawn%mpi_time, io_unit=io_unit)
             end if
         end associate
-        call write_memcheck_report(qs%spawn_store%spawn)
+        call write_memcheck_report(qs%spawn_store%spawn, io_unit=io_unit)
 
         if (soft_exit .or. error) then
             qs%mc_cycles_done = qs%mc_cycles_done + qmc_in%ncycles*ireport
@@ -378,7 +380,7 @@ contains
         if (restart_in%write_restart) then
             call dump_restart_hdf5(ri, qs, qs%mc_cycles_done, nparticles_old, sys%basis%nbasis, fciqmc_in%non_blocking_comm, &
                                     sys%basis%info_string_len)
-            if (parent) write (6,'()')
+            if (parent) write (io_unit,'()')
         end if
 
         if (determ%doing_semi_stoch) call dealloc_semi_stoch_t(determ, .false.)

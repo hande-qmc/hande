@@ -807,20 +807,23 @@ contains
         integer(int_p), intent(in) :: nspawn
         integer, intent(in) :: particle_type, iproc_spawn
         type(spawn_t), intent(inout) :: spawn
+        integer :: iunit
 #ifndef _OPENMP
         integer, parameter :: thread_id = 0
 #else
         integer :: thread_id
         thread_id = omp_get_thread_num()
 #endif
+        iunit = 6
 
         if (spawn%head(thread_id,iproc_spawn) + nthreads - spawn%head_start(nthreads-1,iproc_spawn) > spawn%block_size) then
             if (.not. spawn%error) then
-                write (6,'(1X,"# Error: No space left in spawning array on processor",'//int_fmt(iproc,1)//',".")') iproc
-                write (6,'(1X,"# Error: HANDE will exit at the end of this report loop.")')
-                write (6,'(1X,"# Error: Note that spawning until the end of the report loop will be affected and&
+                write (iunit,'(1X,"# Error: No space left in spawning array on processor",'//int_fmt(iproc,1)//',".")') iproc
+                write (iunit,'(1X,"# Error: HANDE will exit at the end of this report loop.")')
+                write (iunit,'(1X,"# Error: Note that spawning until the end of the report loop will be affected and&
                               & so results from this final loop may be slightly incorrect.")')
-                write (6,'(1X,"# Error: Some reconvergence time should be allowed if continuing from a subsequent restart file.")')
+                write (iunit,&
+                    '(1X,"# Error: Some reconvergence time should be allowed if continuing from a subsequent restart file.")')
             end if
             spawn%error = .true.
         else
@@ -861,20 +864,23 @@ contains
         integer(int_p), intent(in) :: nspawn
         integer, intent(in) :: particle_type, flag, iproc_spawn
         type(spawn_t), intent(inout) :: spawn
+        integer :: iunit
 #ifndef _OPENMP
         integer, parameter :: thread_id = 0
 #else
         integer :: thread_id
         thread_id = omp_get_thread_num()
 #endif
+        iunit = 6
 
         if (spawn%head(thread_id,iproc_spawn) + nthreads - spawn%head_start(nthreads-1,iproc_spawn) > spawn%block_size) then
             if (.not. spawn%error) then
-                write (6,'(1X,"# Error: No space left in spawning array on processor",'//int_fmt(iproc,1)//',".")') iproc
-                write (6,'(1X,"# Error: HANDE will exit at the end of this report loop.")')
-                write (6,'(1X,"# Error: Note that spawning until the end of the report loop will be affected and&
+                write (iunit,'(1X,"# Error: No space left in spawning array on processor",'//int_fmt(iproc,1)//',".")') iproc
+                write (iunit,'(1X,"# Error: HANDE will exit at the end of this report loop.")')
+                write (iunit,'(1X,"# Error: Note that spawning until the end of the report loop will be affected and&
                               & so results from this final loop may be slightly incorrect.")')
-                write (6,'(1X,"# Error: Some reconvergence time should be allowed if continuing from a subsequent restart file.")')
+                write (iunit,'(1X,"# Error: Some reconvergence time should be allowed if continuing from a subsequent&
+                              & restart file.")')
             end if
             spawn%error = .true.
         else
@@ -913,20 +919,23 @@ contains
         integer(int_p), intent(in) :: nspawn(:) ! (spawn%ntypes)
         integer, intent(in) :: iproc_spawn
         type(spawn_t), intent(inout) :: spawn
+        integer :: iunit
 #ifndef _OPENMP
         integer, parameter :: thread_id = 0
 #else
         integer :: thread_id
         thread_id = omp_get_thread_num()
 #endif
+        iunit = 6
 
         if (spawn%head(thread_id,iproc_spawn) + nthreads - spawn%head_start(nthreads-1,iproc_spawn) > spawn%block_size) then
             if (.not. spawn%error) then
-                write (6,'(1X,"# Error: No space left in spawning array on processor",'//int_fmt(iproc,1)//',".")') iproc
-                write (6,'(1X,"# Error: HANDE will exit at the end of this report loop.")')
-                write (6,'(1X,"# Error: Note that spawning until the end of the report loop will be affected and&
+                write (iunit,'(1X,"# Error: No space left in spawning array on processor",'//int_fmt(iproc,1)//',".")') iproc
+                write (iunit,'(1X,"# Error: HANDE will exit at the end of this report loop.")')
+                write (iunit,'(1X,"# Error: Note that spawning until the end of the report loop will be affected and&
                               & so results from this final loop may be slightly incorrect.")')
-                write (6,'(1X,"# Error: Some reconvergence time should be allowed if continuing from a subsequent restart file.")')
+                write (iunit,'(1X,"# Error: Some reconvergence time should be allowed if continuing from a subsequent&
+                              & restart file.")')
             end if
             spawn%error = .true.
         else
@@ -1797,7 +1806,9 @@ contains
 
         type(hash_table_pos_t) :: pos
         logical :: hit
-        integer :: err_code
+        integer :: err_code, iunit
+
+        iunit = 6
 
         rdm_bl = size(f1)
 
@@ -1836,7 +1847,7 @@ contains
                 ! Move to the next position in the spawning array.
                 call assign_hash_table_entry(ht, pos%islot, pos, err_code)
                 if (err_code /= 0) then
-                    write(6,'(1X,a9,'//int_fmt(err_code,1)//')') 'err_code:', err_code
+                    write(iunit,'(1X,a9,'//int_fmt(err_code,1)//')') 'err_code:', err_code
                     call stop_all('create_spawned_particle_rdm','Error in assigning hash &
                                   &table entry.')
                 end if
@@ -1846,10 +1857,10 @@ contains
 
                 if (spawn%head(thread_id,iproc_spawn) + nthreads - spawn%head_start(nthreads-1,iproc_spawn) > spawn%block_size) then
                     if (.not. spawn%error) then
-                        write (6,'(1X,"# Error: No space left in RDM spawning array on processor",'&
+                        write (iunit,'(1X,"# Error: No space left in RDM spawning array on processor",'&
                                                 &//int_fmt(iproc,1)//',".")') iproc
-                        write (6,'(1X,"# Error: HANDE will exit at the end of this report loop.")')
-                        write (6,'(1X,"# Error: Note that RDM results from this final report loop will be incorrect.")')
+                        write (iunit,'(1X,"# Error: HANDE will exit at the end of this report loop.")')
+                        write (iunit,'(1X,"# Error: Note that RDM results from this final report loop will be incorrect.")')
                     end if
                     spawn%error = .true.
                 end if

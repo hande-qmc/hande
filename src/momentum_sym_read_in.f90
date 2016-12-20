@@ -208,41 +208,47 @@ contains
 
     end subroutine init_basis_momentum_symmetry_info
 
-    subroutine print_mom_sym_info(sys)
+    subroutine print_mom_sym_info(sys, io_unit)
+
         ! Write out momentum symmetry info (for non-model periodic systems).
         ! In:
         !    sys: system to be studied, with all symmetry components set.
+        !    io_unit (optional): io unit to print info to.
 
         use system, only: sys_t
         use parallel, only: parent
         use basis, only: write_basis_fn
 
         type(sys_t), intent(in) :: sys
-        integer :: i, j
+        integer, intent(in), optional :: io_unit
+        integer :: i, j, iunit
+
+        iunit = 6
+        if (present(io_unit)) iunit = io_unit
 
         if (parent) then
-            write (6,'(1X,a20,/,1X,20("-"),/)') "Symmetry information"
-            write (6,'(1X,a63,/)') 'The table below gives the label and inverse of each wavevector.'
-            write (6,'(1X,a5,4X,a7)', advance='no') 'Index','k-point'
+            write (iunit,'(1X,a20,/,1X,20("-"),/)') "Symmetry information"
+            write (iunit,'(1X,a63,/)') 'The table below gives the label and inverse of each wavevector.'
+            write (iunit,'(1X,a5,4X,a7)', advance='no') 'Index','k-point'
             do i = 1, sys%lattice%ndim
-                write (6,'(3X)', advance='no')
+                write (iunit,'(3X)', advance='no')
             end do
-            write (6,'(a7)') 'Inverse'
+            write (iunit,'(a7)') 'Inverse'
             do i = 1, sys%nsym
-                write (6,'(i4,5X)', advance='no') i
+                write (iunit,'(i4,5X)', advance='no') i
                 call write_basis_fn(sys, sys%basis%basis_fns(2*i), new_line=.false., print_full=.false.)
-                write (6,'(5X,i4)') sys%read_in%mom_sym%inv_sym(i)
+                write (iunit,'(5X,i4)') sys%read_in%mom_sym%inv_sym(i)
             end do
-            write (6,'()')
-            write (6,'(1X,a83,/)') &
+            write (iunit,'()')
+            write (iunit,'(1X,a83,/)') &
                 "The matrix below gives the result of k_i+k_j to within a reciprocal lattice vector."
             do i = 1, sys%nsym
                 do j = 1, sys%nsym
-                    write (6,'(2X,i0)', advance='no') sys%read_in%mom_sym%sym_table(j,i)
+                    write (iunit,'(2X,i0)', advance='no') sys%read_in%mom_sym%sym_table(j,i)
                 end do
-                write (6,'()')
+                write (iunit,'()')
             end do
-            write (6,'()')
+            write (iunit,'()')
         end if
 
     end subroutine print_mom_sym_info

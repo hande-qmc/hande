@@ -132,7 +132,7 @@ contains
     end subroutine init_semi_stoch_t_flags
 
     subroutine init_semi_stoch_t(determ, ss_in, sys, propagator, psip_list, reference, &
-                                 annihilation_flags, spawn, mpi_barriers)
+                                 annihilation_flags, spawn, mpi_barriers, io_unit)
 
         ! Create a semi_stoch_t object which holds all of the necessary
         ! information to perform a semi-stochastic calculation. The type of
@@ -170,6 +170,7 @@ contains
         type(annihilation_flags_t), intent(in) :: annihilation_flags
         type(spawn_t), intent(in) :: spawn
         logical, intent(in) :: mpi_barriers
+        integer, intent(in) :: io_unit
 
         integer :: i, ierr, determ_dets_mem, max_nstates, n_spawnees
         integer :: displs(0:nprocs-1)
@@ -197,9 +198,9 @@ contains
 
         if (print_info) then
             if (ss_in%space_type == reuse_determ_space) then
-                write(6,'(1X,"# Recreating semi-stochastic objects.")')
+                write(io_unit,'(1X,"# Recreating semi-stochastic objects.")')
             else
-                write(6,'(1X,"# Beginning semi-stochastic initialisation.")')
+                write(io_unit,'(1X,"# Beginning semi-stochastic initialisation.")')
             end if
         end if
 
@@ -221,9 +222,9 @@ contains
 
         if (print_info) then
             if (determ%space_type == reuse_determ_space) then
-                write(6,'(1X,"# Redistributing deterministic states.")')
+                write(io_unit,'(1X,"# Redistributing deterministic states.")')
             else
-                write(6,'(1X,"# Creating deterministic space.")')
+                write(io_unit,'(1X,"# Creating deterministic space.")')
             end if
         end if
 
@@ -233,7 +234,7 @@ contains
         if (ss_in%space_type == high_pop_determ_space) then
             call create_high_pop_space(dets_this_proc, psip_list, spawn, ss_in%target_size, determ%sizes(iproc))
         else if (ss_in%space_type == read_determ_space) then
-            call read_determ_from_file(dets_this_proc, determ, spawn, sys, ss_in%read_id, print_info)
+            call read_determ_from_file(dets_this_proc, determ, spawn, sys, ss_in%read_id, print_info, io_unit)
         else if (ss_in%space_type == reuse_determ_space) then
             call recreate_determ_space(dets_this_proc, determ%dets(:,:), spawn, determ%sizes(iproc))
         else if (ss_in%space_type == ci_determ_space) then
@@ -258,14 +259,14 @@ contains
         determ%tot_size = sum(determ%sizes)
 
         if (print_info .and. nprocs > 1) then
-            write(6,'(1X,a46,'//int_fmt(minval(determ%sizes),1)//')') &
+            write(io_unit,'(1X,a46,'//int_fmt(minval(determ%sizes),1)//')') &
                 '# Min deterministic space size on a processor:', minval(determ%sizes)
-            write(6,'(1X,a46,'//int_fmt(maxval(determ%sizes),1)//')') &
+            write(io_unit,'(1X,a46,'//int_fmt(maxval(determ%sizes),1)//')') &
                 '# Max deterministic space size on a processor:', maxval(determ%sizes)
-            write(6,'(1X,a51,'//int_fmt(determ%tot_size,1)//')') &
+            write(io_unit,'(1X,a51,'//int_fmt(determ%tot_size,1)//')') &
                 '# Total deterministic space size on all processors:', determ%tot_size
         else if (print_info) then
-            write(6,'(1X,a27,'//int_fmt(determ%tot_size,1)//')') '# Deterministic space size:', determ%tot_size
+            write(io_unit,'(1X,a27,'//int_fmt(determ%tot_size,1)//')') '# Deterministic space size:', determ%tot_size
         end if
 
         ! Displacements used for MPI communication.
@@ -323,7 +324,7 @@ contains
             ! Array to hold all deterministic states from all processes.
             ! The memory required in MB.
             determ_dets_mem = sys%basis%tensor_label_len*determ%tot_size*i0_length/(8*10**6)
-            if (print_info) write(6,'(1X,a60,'//int_fmt(determ_dets_mem,1)//')') &
+            if (print_info) write(io_unit,'(1X,a60,'//int_fmt(determ_dets_mem,1)//')') &
                 '# Memory required per core to store deterministic dets (MB):', determ_dets_mem
             allocate(determ%dets(sys%basis%tensor_label_len, determ%tot_size), stat=ierr)
             call check_allocate('determ%dets', sys%basis%tensor_label_len*determ%tot_size, ierr)
@@ -340,12 +341,12 @@ contains
         determ%dets = dets_this_proc(:,1:determ%sizes(iproc))
 #endif
 
-        call create_determ_hash_table(determ, print_info)
+        call create_determ_hash_table(determ, print_info, io_unit=io_unit)
 
         ! separate_annihilation applies the transpose of H, so the 6th arg tells us 
         ! if we need to qn-weight the column rather than the row of H.
         call create_determ_hamil(determ, sys, propagator, reference, displs,    &
-                determ%projection_mode == semi_stoch_separate_annihilation , dets_this_proc, print_info)
+                determ%projection_mode == semi_stoch_separate_annihilation , dets_this_proc, print_info, io_unit)
 
         ! All deterministic states on this processor are always stored in
         ! particle_t%states, even if they have a population of zero, so they are
@@ -357,14 +358,14 @@ contains
         deallocate(dets_this_proc, stat=ierr)
         call check_deallocate('dets_this_proc', ierr)
 
-        if (write_determ .and. parent) call write_determ_to_file(determ, ss_in%write_id, print_info)
+        if (write_determ .and. parent) call write_determ_to_file(determ, ss_in%write_id, print_info, io_unit)
 
         ! Wait for all processes to finish initialisation before we tell
         ! the user that we are done.
 #ifdef PARALLEL
             call mpi_barrier(MPI_COMM_WORLD, ierr)
 #endif
-        if (print_info) write(6,'(1X,a42)') '# Semi-stochastic initialisation complete.'
+        if (print_info) write(io_unit,'(1X,a42)') '# Semi-stochastic initialisation complete.'
 
     end subroutine init_semi_stoch_t
 
@@ -444,7 +445,7 @@ contains
 
     end subroutine dealloc_determ_hash_t
 
-    subroutine create_determ_hash_table(determ, print_info)
+    subroutine create_determ_hash_table(determ, print_info, io_unit)
 
         ! Create the hash table for the deterministic space.
 
@@ -461,6 +462,7 @@ contains
 
         type(semi_stoch_t), intent(inout) :: determ
         logical, intent(in) :: print_info
+        integer, intent(in) :: io_unit
 
         integer :: i, iz, hash, mem_reqd, ierr, tensor_label_len
         integer, allocatable :: nclash(:)
@@ -477,7 +479,7 @@ contains
                 ! The memory required in MB.
                 ! Two lists with length ht%nhash taking 4 bytes for each element.
                 mem_reqd = 2*ht%nhash*4/10**6
-                write(6,'(1X,a52,'//int_fmt(mem_reqd,1)//')') &
+                write(io_unit,'(1X,a52,'//int_fmt(mem_reqd,1)//')') &
                     '# Memory required per core to store hash table (MB):', mem_reqd
             end if
 
@@ -521,7 +523,7 @@ contains
 
     end subroutine create_determ_hash_table
 
-    subroutine create_determ_hamil(determ, sys, propagator, ref, displs, transp, dets_this_proc, print_info)
+    subroutine create_determ_hamil(determ, sys, propagator, ref, displs, transp, dets_this_proc, print_info, io_unit)
 
         ! In/Out:
         !    determ: Deterministic space being used. On input, determ%sizes,
@@ -555,7 +557,7 @@ contains
         type(propagator_t), intent(in) :: propagator
         type(reference_t), intent(in) :: ref
         logical, intent(in) :: transp
-        integer, intent(in) :: displs(0:nprocs-1)
+        integer, intent(in) :: displs(0:nprocs-1), io_unit
         integer(i0), intent(in) :: dets_this_proc(:,:)
         logical, intent(in) :: print_info
 
@@ -565,11 +567,9 @@ contains
         real :: t1, t2
         logical :: diag_elem
         real(p) :: fock_sum, weight
-
 #ifdef PARALLEL
         integer :: ierr
 #endif
-
         ! Start by evaluating the QN weights.  We store them in one_minus_qn_weight
         ! and then modify one_minus_qn_weight to be 1-w after calculating H
         if (propagator%quasi_newton) then
@@ -589,7 +589,7 @@ contains
         else
             determ%one_minus_qn_weight = 1.0_p
         end if
-        if (print_info) write(6,'(1X,a74)') '# Counting number of non-zero deterministic Hamiltonian elements to store.'
+        if (print_info) write(io_unit,'(1X,a74)') '# Counting number of non-zero deterministic Hamiltonian elements to store.'
 
         associate(hamil => determ%hamil)
 
@@ -645,7 +645,7 @@ contains
 #endif
                     call cpu_time(t2)
                     if (print_info) then 
-                        write(6,'(1X,a41,1X,f10.2,a1)') '# Time taken to generate the Hamiltonian:', t2-t1, "s"
+                        write(io_unit,'(1X,a41,1X,f10.2,a1)') '# Time taken to generate the Hamiltonian:', t2-t1, "s"
                         ! The memory required in MB.
 #ifdef SINGLE_PRECISION
                         mem_reqd = ((determ%tot_size+1)*4 + nnz*(4 + 4))/10**6
@@ -660,9 +660,9 @@ contains
                     max_mem_reqd = mem_reqd
 #endif
                     if (print_info) then 
-                        write(6,'(1X,a75,'//int_fmt(mem_reqd,1)//')') &
+                        write(io_unit,'(1X,a75,'//int_fmt(mem_reqd,1)//')') &
                             '# Maximum memory required by a core for the deterministic Hamiltonian (MB):', mem_reqd
-                        write(6,'(1X,a54)') '# The Hamiltonian will now be recalculated and stored.'
+                        write(io_unit,'(1X,a54)') '# The Hamiltonian will now be recalculated and stored.'
                     end if
 
                     ! Allocate the CSR Hamiltonian arrays.
@@ -1353,7 +1353,7 @@ contains
 
     end subroutine find_indices_of_most_populated_dets
 
-    subroutine read_determ_from_file(dets_this_proc, determ, spawn, sys, read_id, print_info)
+    subroutine read_determ_from_file(dets_this_proc, determ, spawn, sys, read_id, print_info, io_unit)
 
         ! Use states read in from a HDF5 file to form the deterministic space.
 
@@ -1396,7 +1396,7 @@ contains
         type(semi_stoch_t), intent(inout) :: determ
         type(spawn_t), intent(in) :: spawn
         type(sys_t), intent(in) :: sys
-        integer, intent(in) :: read_id
+        integer, intent(in) :: read_id, io_unit
         logical, intent(in) :: print_info
 
 #ifndef DISABLE_HDF5
@@ -1429,7 +1429,7 @@ contains
             end if
 
             call get_unique_filename("SEMI.STOCH", ".H5", .false., min(id,0), filename, reduce=.false.)
-            if (print_info) write(6,'(1X,"# Reading deterministic space states from",1X,a,".")') trim(filename)
+            if (print_info) write(io_unit,'(1X,"# Reading deterministic space states from",1X,a,".")') trim(filename)
 
             inquire(file=trim(filename), exist=exists)
             if (.not. exists) call stop_all('read_determ_from_file', "Cannot find deterministic space file.")
@@ -1516,7 +1516,7 @@ contains
 
     end subroutine read_determ_from_file
 
-    subroutine write_determ_to_file(determ, write_id, print_info)
+    subroutine write_determ_to_file(determ, write_id, print_info, io_unit)
 
         ! Write determinants stored in determ to a file.
 
@@ -1536,13 +1536,14 @@ contains
         use const, only: int_64
 
         type(semi_stoch_t), intent(in) :: determ
-        integer, intent(in) :: write_id
+        integer, intent(in) :: write_id, io_unit
         logical, intent(in) :: print_info
 
         integer :: id, ierr
         type(hdf5_kinds_t) :: kinds
         integer(hid_t) :: file_id
         character(255) :: filename
+
 
         ! This bit of code converts to the encoding used by
         ! get_unique_filename. If the user hasn't supplied a write_id
@@ -1557,7 +1558,7 @@ contains
         end if
 
         call get_unique_filename("SEMI.STOCH", ".H5", .true., min(id,0), filename, reduce=.false.)
-        if (print_info) write(6,'(1X,"# Writing deterministic space states to",1X,a,".")') trim(filename)
+        if (print_info) write(io_unit,'(1X,"# Writing deterministic space states to",1X,a,".")') trim(filename)
 
         ! Open HDF5 and create HDF5 kinds.
         call h5open_f(ierr)
@@ -1582,7 +1583,7 @@ contains
         use errors, only: warning
 
         type(semi_stoch_t), intent(in) :: determ
-        integer, intent(in) :: write_id
+        integer, intent(in) :: write_id, io_unit
         logical, intent(in) :: print_info
 
         call warning('write_determ_to_file', '# Not compiled with HDF5 support.  Cannot write out semi-stochastic file.')

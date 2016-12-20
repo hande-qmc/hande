@@ -20,7 +20,7 @@ end interface
 
 contains
 
-    subroutine write_qmc_report_header(ntypes, cmplx_est, rdm_energy, nattempts)
+    subroutine write_qmc_report_header(ntypes, cmplx_est, rdm_energy, nattempts, io_unit)
 
         ! In:
         !    ntypes: number of particle types being sampled.
@@ -29,35 +29,41 @@ contains
         !    rdm_energy: Print out energy calculated from rdm.
         !    nattempts: Print out number of attempts made each iteration
         !       (for CCMC).
+        !    io_unit: io unit to write to.
 
         use calc, only: doing_calc, hfs_fciqmc_calc
 
         integer, intent(in) :: ntypes
         logical, optional, intent(in) :: cmplx_est, rdm_energy, nattempts
+        integer, intent(in), optional :: io_unit
+
         logical :: cmplx_est_set
-        integer :: i, nreplicas
+        integer :: i, nreplicas, iunit
         character(20) :: column_title
+
+        iunit = 6
+        if (present(io_unit)) iunit = io_unit
 
         cmplx_est_set = .false.
         if (present(cmplx_est)) cmplx_est_set = cmplx_est
 
         ! Data table info.
-        write (6,'(1X,"Information printed out every QMC report loop:",/)')
-        write (6,'(1X,"Shift: the energy offset calculated at the end of the report loop.")')
-        write (6,'(1X,"H_0j: <D_0|H|D_j>, Hamiltonian matrix element.")')
-        write (6,'(1X,"N_j: population of Hamiltonian particles on determinant D_j.")')
+        write (iunit,'(1X,"Information printed out every QMC report loop:",/)')
+        write (iunit,'(1X,"Shift: the energy offset calculated at the end of the report loop.")')
+        write (iunit,'(1X,"H_0j: <D_0|H|D_j>, Hamiltonian matrix element.")')
+        write (iunit,'(1X,"N_j: population of Hamiltonian particles on determinant D_j.")')
         if (doing_calc(hfs_fciqmc_calc)) then
-            write (6,'(1X,"O_0j: <D_0|O|D_j>, operator matrix element.")')
-            write (6,'(1X,a67)') "N'_j: population of Hellmann--Feynman particles on determinant D_j."
-            write (6,'(1X,"# HF psips: current total population of Hellmann--Feynman particles.")')
+            write (iunit,'(1X,"O_0j: <D_0|O|D_j>, operator matrix element.")')
+            write (iunit,'(1X,a67)') "N'_j: population of Hellmann--Feynman particles on determinant D_j."
+            write (iunit,'(1X,"# HF psips: current total population of Hellmann--Feynman particles.")')
         end if
 
-        write (6,'(1X,"# H psips: current total population of Hamiltonian particles.")')
-        write (6,'(1X,"# states: number of many-particle states occupied.")')
-        write (6,'(1X,"spawn_events: number of successful spawning events across all processors.")')
-        write (6,'(1X,"R_spawn: average rate of spawning across all processors.")')
-        write (6,'(1X,"time: average time per Monte Carlo cycle.",/)')
-        write (6,'(1X,"Note that all particle populations are averaged over the report loop.",/)')
+        write (iunit,'(1X,"# H psips: current total population of Hamiltonian particles.")')
+        write (iunit,'(1X,"# states: number of many-particle states occupied.")')
+        write (iunit,'(1X,"spawn_events: number of successful spawning events across all processors.")')
+        write (iunit,'(1X,"R_spawn: average rate of spawning across all processors.")')
+        write (iunit,'(1X,"time: average time per Monte Carlo cycle.",/)')
+        write (iunit,'(1X,"Note that all particle populations are averaged over the report loop.",/)')
 
         if (cmplx_est_set) then
             nreplicas = ntypes/2
@@ -67,61 +73,61 @@ contains
 
         if (nreplicas > 1) then
             ! Label replicas
-            write (6,'(1X,"#",1X)', advance='no')
-            call write_column_title(6, '', int_val=.true.)
+            write (iunit,'(1X,"#",1X)', advance='no')
+            call write_column_title(iunit, '', int_val=.true.)
             do i = 1, nreplicas
                 write (column_title, '("Replica ",i0)') i
-                call write_column_title(6, trim(column_title))
-                call write_column_title(6, '')
-                call write_column_title(6, '')
-                call write_column_title(6, '')
+                call write_column_title(iunit, trim(column_title))
+                call write_column_title(iunit, '')
+                call write_column_title(iunit, '')
+                call write_column_title(iunit, '')
                 if (cmplx_est_set) then
-                    call write_column_title(6, '')
-                    call write_column_title(6, '')
+                    call write_column_title(iunit, '')
+                    call write_column_title(iunit, '')
                 end if
             end do
-            write (6,'()')
+            write (iunit,'()')
         end if
 
-        write (6,'(1X,"#",1X)', advance='no')
-        call write_column_title(6, 'iterations', int_val=.true., justify=1)
+        write (iunit,'(1X,"#",1X)', advance='no')
+        call write_column_title(iunit, 'iterations', int_val=.true., justify=1)
         ! NOTE: HFS and complex are not currently compatible.
         if (cmplx_est_set) then
             do i = 1, ntypes, 2
-                call write_column_title(6, 'Shift')
-                call write_column_title(6, 'Re{\sum H_0j N_j}')
-                call write_column_title(6, 'Im{\sum H_0j N_j}')
-                call write_column_title(6, 'Re{N_0}')
-                call write_column_title(6, 'Im{N_0}')
-                call write_column_title(6, '# H psips')
+                call write_column_title(iunit, 'Shift')
+                call write_column_title(iunit, 'Re{\sum H_0j N_j}')
+                call write_column_title(iunit, 'Im{\sum H_0j N_j}')
+                call write_column_title(iunit, 'Re{N_0}')
+                call write_column_title(iunit, 'Im{N_0}')
+                call write_column_title(iunit, '# H psips')
             end do
         else
             do i = 1, ntypes
-                call write_column_title(6, 'Shift')
-                call write_column_title(6, '\sum H_0j N_j')
-                call write_column_title(6, 'N_0')
+                call write_column_title(iunit, 'Shift')
+                call write_column_title(iunit, '\sum H_0j N_j')
+                call write_column_title(iunit, 'N_0')
                 if (doing_calc(hfs_fciqmc_calc)) then
-                    call write_column_title(6, 'HF shift')
-                    call write_column_title(6, '\sum O_0j N_j')
-                    call write_column_title(6, "\sum H_0j N'_j")
-                    call write_column_title(6, "N'_0")
+                    call write_column_title(iunit, 'HF shift')
+                    call write_column_title(iunit, '\sum O_0j N_j')
+                    call write_column_title(iunit, "\sum H_0j N'_j")
+                    call write_column_title(iunit, "N'_0")
                 end if
-                call write_column_title(6, '# H psips')
-                if (doing_calc(hfs_fciqmc_calc)) call write_column_title(6, '# HF psips')
+                call write_column_title(iunit, '# H psips')
+                if (doing_calc(hfs_fciqmc_calc)) call write_column_title(iunit, '# HF psips')
             end do
         end if
         if (present(rdm_energy)) then
-            if (rdm_energy) call write_column_title(6, 'RDM Energy')
+            if (rdm_energy) call write_column_title(iunit, 'RDM Energy')
         end if
-        call write_column_title(6, '# states', int_val=.true., justify=1)
-        call write_column_title(6, '# spawn_events', int_val=.true., justify=1)
+        call write_column_title(iunit, '# states', int_val=.true., justify=1)
+        call write_column_title(iunit, '# spawn_events', int_val=.true., justify=1)
         if (present(nattempts)) then
-            if (nattempts) call write_column_title(6, '# attempts', int_val=.true., justify=1)
+            if (nattempts) call write_column_title(iunit, '# attempts', int_val=.true., justify=1)
         end if
-        call write_column_title(6, 'R_spawn', low_prec_val=.true.)
-        call write_column_title(6, '  time', low_prec_val=.true., justify=2)
+        call write_column_title(iunit, 'R_spawn', low_prec_val=.true.)
+        call write_column_title(iunit, '  time', low_prec_val=.true., justify=2)
 
-        write (6,'()')
+        write (iunit,'()')
 
     end subroutine write_qmc_report_header
 
@@ -146,99 +152,101 @@ contains
         integer, intent(in) :: max_excit
         type(dmqmc_estimates_t), intent(in) :: estimates
 
-        integer :: i, j
+        integer :: i, j, iunit
         character(16) :: excit_header
         character(10) :: header_iidx, header_jidx
 
-        write (6,'(1X,"Information printed out every QMC report loop:",/)')
-        write (6,'(1X,"Shift: the energy offset calculated at the end of the report loop.")')
+        iunit = 6
+
+        write (iunit,'(1X,"Information printed out every QMC report loop:",/)')
+        write (iunit,'(1X,"Shift: the energy offset calculated at the end of the report loop.")')
         if (doing_dmqmc_calc(dmqmc_full_r2)) then
-            write (6, '(1X, "Trace: The current total population on the diagonal elements of the &
+            write (iunit, '(1X, "Trace: The current total population on the diagonal elements of the &
                                  &first replica of the density matrix.")')
-            write (6, '(1X, "Trace 2: The current total population on the diagonal elements of the &
+            write (iunit, '(1X, "Trace 2: The current total population on the diagonal elements of the &
                                  &second replica of the density matrix.")')
         else
-            write (6, '(1X, "Trace: The current total population on the diagonal elements of the &
+            write (iunit, '(1X, "Trace: The current total population on the diagonal elements of the &
                                  &density matrix.")')
         end if
         if (doing_dmqmc_calc(dmqmc_full_r2)) then
-            write (6, '(1X, "Full S2: The numerator of the estimator for the Renyi entropy of the &
+            write (iunit, '(1X, "Full S2: The numerator of the estimator for the Renyi entropy of the &
                                   &full system.")')
         end if
         if (doing_dmqmc_calc(dmqmc_energy)) then
-            write (6, '(1X, "\sum\rho_{ij}H_{ji}: The numerator of the estimator for the expectation &
+            write (iunit, '(1X, "\sum\rho_{ij}H_{ji}: The numerator of the estimator for the expectation &
                                  &value of the energy.")')
         end if
         if (doing_dmqmc_calc(dmqmc_energy_squared)) then
-            write (6, '(1X, "\sum\rho_{ij}H2{ji}: The numerator of the estimator for the expectation &
+            write (iunit, '(1X, "\sum\rho_{ij}H2{ji}: The numerator of the estimator for the expectation &
                                  &value of the energy squared.")')
         end if
         if (doing_dmqmc_calc(dmqmc_correlation)) then
-            write (6, '(1X, "\sum\rho_{ij}S_{ji}: The numerator of the estimator for the expectation &
+            write (iunit, '(1X, "\sum\rho_{ij}S_{ji}: The numerator of the estimator for the expectation &
                                  &value of the spin correlation function.")')
         end if
         if (doing_dmqmc_calc(dmqmc_staggered_magnetisation)) then
-            write (6, '(1X, "\sum\rho_{ij}M2{ji}: The numerator of the estimator for the expectation &
+            write (iunit, '(1X, "\sum\rho_{ij}M2{ji}: The numerator of the estimator for the expectation &
                                  &value of the staggered magnetisation.")')
         end if
         if (doing_dmqmc_calc(dmqmc_rdm_r2)) then
-            write (6, '(1x, "RDM(n) S2: The numerator of the estimator for the Renyi entropy of RDM n.")')
+            write (iunit, '(1x, "RDM(n) S2: The numerator of the estimator for the Renyi entropy of RDM n.")')
         end if
         if (dmqmc_in%rdm%calc_inst_rdm) then
-            write (6, '(1x, "RDM(n) trace m: The current total population on the diagonal of replica m &
+            write (iunit, '(1x, "RDM(n) trace m: The current total population on the diagonal of replica m &
                                   &of RDM n.")')
         end if
         if (dmqmc_in%calc_excit_dist) then
-            write (6, '(1x, "Excit. level n: The fraction of particles on excitation level n of the &
+            write (iunit, '(1x, "Excit. level n: The fraction of particles on excitation level n of the &
                              &density matrix.")')
         end if
-        if (dmqmc_in%calc_mom_dist) write (6, '(1x, "n_k: The numerator of the estimator for the &
+        if (dmqmc_in%calc_mom_dist) write (iunit, '(1x, "n_k: The numerator of the estimator for the &
                                                      &momentum distribution at momentum k")')
 
-        write (6,'(1X,"# particles: current total population of Hamiltonian particles.")')
-        write (6,'(1X,"# states: number of many-particle states occupied.")')
-        write (6,'(1X,"# spawn_events: number of successful spawning events across all processors.")')
-        write (6,'(1X,"R_spawn: average rate of spawning across all processors.")')
-        write (6,'(1X,"time: average time per Monte Carlo cycle.",/)')
-        write (6,'(1X,"Note that all particle populations are averaged over the report loop.",/)')
+        write (iunit,'(1X,"# particles: current total population of Hamiltonian particles.")')
+        write (iunit,'(1X,"# states: number of many-particle states occupied.")')
+        write (iunit,'(1X,"# spawn_events: number of successful spawning events across all processors.")')
+        write (iunit,'(1X,"R_spawn: average rate of spawning across all processors.")')
+        write (iunit,'(1X,"time: average time per Monte Carlo cycle.",/)')
+        write (iunit,'(1X,"Note that all particle populations are averaged over the report loop.",/)')
 
         ! Header of data table.
-        write (6,'(1X,"#",1X)', advance='no')
-        call write_column_title(6, 'iterations', int_val=.true., justify=1)
-        call write_column_title(6, 'Instant shift')
-        call write_column_title(6, 'Trace')
+        write (iunit,'(1X,"#",1X)', advance='no')
+        call write_column_title(iunit, 'iterations', int_val=.true., justify=1)
+        call write_column_title(iunit, 'Instant shift')
+        call write_column_title(iunit, 'Trace')
         if (doing_dmqmc_calc(dmqmc_full_r2)) then
-            call write_column_title(6, 'Trace 2')
-            call write_column_title(6, 'Full S2')
+            call write_column_title(iunit, 'Trace 2')
+            call write_column_title(iunit, 'Full S2')
         end if
         if (doing_dmqmc_calc(dmqmc_energy)) then
-            call write_column_title(6, '\sum\rho_{ij}H_{ji}')
+            call write_column_title(iunit, '\sum\rho_{ij}H_{ji}')
         end if
         if (doing_dmqmc_calc(dmqmc_energy_squared)) then
-            call write_column_title(6, '\sum\rho_{ij}H2{ji}')
+            call write_column_title(iunit, '\sum\rho_{ij}H2{ji}')
         end if
         if (doing_dmqmc_calc(dmqmc_correlation)) then
-            call write_column_title(6, '\sum\rho_{ij}S_{ji}')
+            call write_column_title(iunit, '\sum\rho_{ij}S_{ji}')
         end if
         if (doing_dmqmc_calc(dmqmc_staggered_magnetisation)) then
-            call write_column_title(6, '\sum\rho_{ij}M2{ji}')
+            call write_column_title(iunit, '\sum\rho_{ij}M2{ji}')
         end if
         if (doing_dmqmc_calc(dmqmc_kinetic_energy)) then
-            call write_column_title(6, '\sum\rho_{ij}T_{ji}')
+            call write_column_title(iunit, '\sum\rho_{ij}T_{ji}')
         end if
         if (doing_dmqmc_calc(dmqmc_H0_energy)) then
-            call write_column_title(6, '\sum\rho_{ij}H0{ji}')
+            call write_column_title(iunit, '\sum\rho_{ij}H0{ji}')
         end if
         if (doing_dmqmc_calc(dmqmc_HI_energy)) then
-            call write_column_title(6, '\sum\rho_{ij}HI{ji}')
+            call write_column_title(iunit, '\sum\rho_{ij}HI{ji}')
         end if
         if (doing_dmqmc_calc(dmqmc_potential_energy)) then
-            call write_column_title(6, '\sum\rho_{ij}U_{ji}')
+            call write_column_title(iunit, '\sum\rho_{ij}U_{ji}')
         end if
         if (doing_dmqmc_calc(dmqmc_rdm_r2)) then
             do i = 1, dmqmc_in%rdm%nrdms
                 write(header_iidx, '('//int_fmt(i,0)//')') i
-                call write_column_title(6, 'RDM'//trim(header_iidx)//' S2')
+                call write_column_title(iunit, 'RDM'//trim(header_iidx)//' S2')
             end do
         end if
         if (dmqmc_in%rdm%calc_inst_rdm) then
@@ -246,27 +254,27 @@ contains
                 do j = 1, ntypes
                     write(header_iidx, '('//int_fmt(i,0)//')') i
                     write(header_jidx, '('//int_fmt(j,0)//')') j
-                    call write_column_title(6, 'RDM'//trim(header_iidx)//' trace '//trim(header_jidx)//'')
+                    call write_column_title(iunit, 'RDM'//trim(header_iidx)//' trace '//trim(header_jidx)//'')
                 end do
             end do
         end if
         if (dmqmc_in%calc_excit_dist) then
             do i = 0, max_excit
                 write (excit_header, '("Excit. level",1X,'//int_fmt(i,0)//')') i
-                call write_column_title(6, excit_header)
+                call write_column_title(iunit, excit_header)
             end do
         end if
         if (dmqmc_in%calc_mom_dist) then
             call write_momentum_array_header('   n_', .true., estimates%mom_dist%kpoints)
         end if
 
-        call write_column_title(6, '# particles')
-        call write_column_title(6, '# states', int_val=.true., justify=1)
-        call write_column_title(6, '# spawn_events', int_val=.true., justify=1)
-        call write_column_title(6, 'R_spawn', low_prec_val=.true.)
-        call write_column_title(6, '  time', low_prec_val=.true., justify=2)
+        call write_column_title(iunit, '# particles')
+        call write_column_title(iunit, '# states', int_val=.true., justify=1)
+        call write_column_title(iunit, '# spawn_events', int_val=.true., justify=1)
+        call write_column_title(iunit, 'R_spawn', low_prec_val=.true.)
+        call write_column_title(iunit, '  time', low_prec_val=.true., justify=2)
 
-        write (6,'()')
+        write (iunit,'()')
 
     end subroutine write_dmqmc_report_header
 
@@ -322,7 +330,7 @@ contains
 
     end subroutine write_column_title
 
-    subroutine write_qmc_report(qmc_in, qs, ireport, ntot_particles, elapsed_time, comment, non_blocking_comm, cmplx_est, &
+    subroutine write_qmc_report(qmc_in, qs, ireport, ntot_particles, elapsed_time, comment, non_blocking_comm, io_unit, cmplx_est, &
                                 rdm_energy, nattempts)
 
         ! Write the report line at the end of a report loop.
@@ -336,6 +344,7 @@ contains
         !    comment: if true, then prefix the line with a #.
         !    non_blocking_comm: true if using non-blocking communications
         ! In (optional):
+        !    io_unit: io unit to write report to.
         !    cmplx_est: if true, doing calculation with real and imaginary walkers
         !       so need to print extra parameters.
         !    rdm_energy: Print energy calculated from RDM.
@@ -351,12 +360,14 @@ contains
         real, intent(in) :: elapsed_time
         logical, intent(in) :: comment, non_blocking_comm
         logical, intent(in), optional :: cmplx_est, rdm_energy, nattempts
+        integer, intent(in), optional :: io_unit
 
         logical :: cmplx_est_set, nattempts_set
-        integer :: mc_cycles, ntypes, i
+        integer :: mc_cycles, ntypes, i, iunit
 
         ntypes = size(ntot_particles)
-
+        iunit = 6
+        if (present(io_unit)) iunit = io_unit
         ! For non-blocking communications we print out the nth report loop
         ! after the (n+1)st iteration. Adjust mc_cycles accordingly
         if (.not. non_blocking_comm) then
@@ -371,46 +382,46 @@ contains
         if (present(nattempts)) nattempts_set = nattempts
 
         if (comment) then
-            write (6,'(1X,"#",1X)', advance='no')
+            write (iunit,'(1X,"#",1X)', advance='no')
         else
-            write (6,'(3X)', advance='no')
+            write (iunit,'(3X)', advance='no')
         end if
 
-        call write_qmc_var(6, qs%mc_cycles_done+mc_cycles)
+        call write_qmc_var(iunit, qs%mc_cycles_done+mc_cycles)
 
         ! NOTE: HFS and complex are not currently compatible.
         if (cmplx_est_set) then
             do i = 1, ntypes, 2
-                call write_qmc_var(6, qs%shift(i))
-                call write_qmc_var(6, real(qs%estimators(i)%proj_energy_comp, p))
-                call write_qmc_var(6, aimag(qs%estimators(i)%proj_energy_comp))
-                call write_qmc_var(6, real(qs%estimators(i)%D0_population_comp, p))
-                call write_qmc_var(6, aimag(qs%estimators(i)%D0_population_comp))
-                call write_qmc_var(6, ntot_particles(i)+ntot_particles(i+1))
+                call write_qmc_var(iunit, qs%shift(i))
+                call write_qmc_var(iunit, real(qs%estimators(i)%proj_energy_comp, p))
+                call write_qmc_var(iunit, aimag(qs%estimators(i)%proj_energy_comp))
+                call write_qmc_var(iunit, real(qs%estimators(i)%D0_population_comp, p))
+                call write_qmc_var(iunit, aimag(qs%estimators(i)%D0_population_comp))
+                call write_qmc_var(iunit, ntot_particles(i)+ntot_particles(i+1))
             end do
         else
             do i = 1, ntypes
-                call write_qmc_var(6, qs%shift(i))
-                call write_qmc_var(6, qs%estimators(i)%proj_energy)
-                call write_qmc_var(6, qs%estimators(i)%D0_population)
-                call write_qmc_var(6, ntot_particles(i))
+                call write_qmc_var(iunit, qs%shift(i))
+                call write_qmc_var(iunit, qs%estimators(i)%proj_energy)
+                call write_qmc_var(iunit, qs%estimators(i)%D0_population)
+                call write_qmc_var(iunit, ntot_particles(i))
             end do
         end if
 
         if (present(rdm_energy)) then
-            if (rdm_energy) call write_qmc_var(6, qs%estimators(1)%rdm_energy/qs%estimators(1)%rdm_trace)
+            if (rdm_energy) call write_qmc_var(iunit, qs%estimators(1)%rdm_energy/qs%estimators(1)%rdm_trace)
         end if
 
-        call write_qmc_var(6, qs%estimators(1)%tot_nstates)
-        call write_qmc_var(6, qs%estimators(1)%tot_nspawn_events)
+        call write_qmc_var(iunit, qs%estimators(1)%tot_nstates)
+        call write_qmc_var(iunit, qs%estimators(1)%tot_nspawn_events)
         if (nattempts_set) then
-            call write_qmc_var(6, qs%estimators(1)%nattempts)
+            call write_qmc_var(iunit, qs%estimators(1)%nattempts)
         end if
 
-        call write_qmc_var(6, qs%spawn_store%rspawn, low_prec=.true.)
-        call write_qmc_var(6, elapsed_time/qmc_in%ncycles, low_prec=.true.)
+        call write_qmc_var(iunit, qs%spawn_store%rspawn, low_prec=.true.)
+        call write_qmc_var(iunit, elapsed_time/qmc_in%ncycles, low_prec=.true.)
 
-        write (6,'()')
+        write (iunit,'()')
 
     end subroutine write_qmc_report
 
@@ -445,75 +456,77 @@ contains
         type(dmqmc_in_t), intent(in) :: dmqmc_in
         type(dmqmc_estimates_t), intent(in) :: dmqmc_estimates
 
-        integer :: mc_cycles, i, j, ntypes
+        integer :: mc_cycles, i, j, ntypes, iunit
+
+        iunit = 6
 
         ntypes = size(ntot_particles)
 
         mc_cycles = ireport*qmc_in%ncycles
 
         if (comment) then
-            write (6,'(1X,"#",1X)', advance='no')
+            write (iunit,'(1X,"#",1X)', advance='no')
         else
-            write (6,'(3X)', advance='no')
+            write (iunit,'(3X)', advance='no')
         end if
 
-        call write_qmc_var(6, qs%mc_cycles_done+mc_cycles-qmc_in%ncycles)
-        call write_qmc_var(6, qs%shift(1))
-        call write_qmc_var(6, dmqmc_estimates%trace(1))
+        call write_qmc_var(iunit, qs%mc_cycles_done+mc_cycles-qmc_in%ncycles)
+        call write_qmc_var(iunit, qs%shift(1))
+        call write_qmc_var(iunit, dmqmc_estimates%trace(1))
         ! The trace on the second replica.
         if (doing_dmqmc_calc(dmqmc_full_r2)) then
-            call write_qmc_var(6, dmqmc_estimates%trace(2))
+            call write_qmc_var(iunit, dmqmc_estimates%trace(2))
         end if
 
         ! Renyi-2 entropy for the full density matrix.
         if (doing_dmqmc_calc(dmqmc_full_r2)) then
-            call write_qmc_var(6, dmqmc_estimates%numerators(full_r2_ind))
+            call write_qmc_var(iunit, dmqmc_estimates%numerators(full_r2_ind))
         end if
 
         ! Energy.
         if (doing_dmqmc_calc(dmqmc_energy)) then
-            call write_qmc_var(6, dmqmc_estimates%numerators(energy_ind))
+            call write_qmc_var(iunit, dmqmc_estimates%numerators(energy_ind))
         end if
 
         ! Energy squared.
         if (doing_dmqmc_calc(dmqmc_energy_squared)) then
-            call write_qmc_var(6, dmqmc_estimates%numerators(energy_squared_ind))
+            call write_qmc_var(iunit, dmqmc_estimates%numerators(energy_squared_ind))
         end if
 
         ! Correlation function.
         if (doing_dmqmc_calc(dmqmc_correlation)) then
-            call write_qmc_var(6, dmqmc_estimates%numerators(correlation_fn_ind))
+            call write_qmc_var(iunit, dmqmc_estimates%numerators(correlation_fn_ind))
         end if
 
         ! Staggered magnetisation.
         if (doing_dmqmc_calc(dmqmc_staggered_magnetisation)) then
-            call write_qmc_var(6, dmqmc_estimates%numerators(staggered_mag_ind))
+            call write_qmc_var(iunit, dmqmc_estimates%numerators(staggered_mag_ind))
         end if
 
         ! Kinetic energy
         if (doing_dmqmc_calc(dmqmc_kinetic_energy)) then
-            call write_qmc_var(6, dmqmc_estimates%numerators(kinetic_ind))
+            call write_qmc_var(iunit, dmqmc_estimates%numerators(kinetic_ind))
         end if
 
         ! H^0 energy, where H = H^0 + V.
         if (doing_dmqmc_calc(dmqmc_H0_energy)) then
-            call write_qmc_var(6, dmqmc_estimates%numerators(H0_ind))
+            call write_qmc_var(iunit, dmqmc_estimates%numerators(H0_ind))
         end if
 
         ! H^I energy, where H^I = exp(-(beta-tau)/2 H^0) H exp(-(beta-tau)/2. H^0).
         if (doing_dmqmc_calc(dmqmc_HI_energy)) then
-            call write_qmc_var(6, dmqmc_estimates%numerators(HI_ind))
+            call write_qmc_var(iunit, dmqmc_estimates%numerators(HI_ind))
         end if
 
         ! Potential energy.
         if (doing_dmqmc_calc(dmqmc_potential_energy)) then
-            call write_qmc_var(6, dmqmc_estimates%numerators(potential_ind))
+            call write_qmc_var(iunit, dmqmc_estimates%numerators(potential_ind))
         end if
 
         ! Renyi-2 entropy for all RDMs being sampled.
         if (doing_dmqmc_calc(dmqmc_rdm_r2)) then
             do i = 1, dmqmc_in%rdm%nrdms
-                call write_qmc_var(6, dmqmc_estimates%inst_rdm%renyi_2(i))
+                call write_qmc_var(iunit, dmqmc_estimates%inst_rdm%renyi_2(i))
             end do
         end if
 
@@ -521,7 +534,7 @@ contains
         if (dmqmc_in%rdm%calc_inst_rdm) then
             do i = 1, dmqmc_in%rdm%nrdms
                 do j = 1, ntypes
-                    call write_qmc_var(6, dmqmc_estimates%inst_rdm%traces(j,i))
+                    call write_qmc_var(iunit, dmqmc_estimates%inst_rdm%traces(j,i))
                 end do
             end do
         end if
@@ -530,7 +543,7 @@ contains
         ! density matrix.
         if (dmqmc_in%calc_excit_dist) then
             do i = 0, ubound(dmqmc_estimates%excit_dist,1)
-                call write_qmc_var(6, dmqmc_estimates%excit_dist(i)/ntot_particles(1))
+                call write_qmc_var(iunit, dmqmc_estimates%excit_dist(i)/ntot_particles(1))
             end do
         end if
 
@@ -538,13 +551,13 @@ contains
             call write_momentum_array(dmqmc_estimates%mom_dist%n_k, dmqmc_estimates%mom_dist%kpoints, .true.)
         end if
 
-        call write_qmc_var(6, ntot_particles(1))
-        call write_qmc_var(6, qs%estimators(1)%tot_nstates)
-        call write_qmc_var(6, qs%estimators(1)%tot_nspawn_events)
-        call write_qmc_var(6, qs%spawn_store%rspawn, low_prec=.true.)
-        call write_qmc_var(6, elapsed_time/qmc_in%ncycles, low_prec=.true.)
+        call write_qmc_var(iunit, ntot_particles(1))
+        call write_qmc_var(iunit, qs%estimators(1)%tot_nstates)
+        call write_qmc_var(iunit, qs%estimators(1)%tot_nspawn_events)
+        call write_qmc_var(iunit, qs%spawn_store%rspawn, low_prec=.true.)
+        call write_qmc_var(iunit, elapsed_time/qmc_in%ncycles, low_prec=.true.)
 
-        write (6,'()')
+        write (iunit,'()')
 
     end subroutine write_dmqmc_report
 
@@ -645,25 +658,27 @@ contains
         logical, intent(in) :: compress_k
         real(p), intent(in) :: kpoints(:)
 
-        integer :: iorb
+        integer :: iorb, iunit
         real(p) :: k
         character(14) :: klabel
+
+        iunit = 6
 
         if (compress_k) then
             k = kpoints(1)
             do iorb = 2, size(kpoints)
                 if (kpoints(iorb) > k + depsilon) then
                     write(klabel, '(es14.8)') k
-                    call write_column_title(6, trim(header)//klabel)
+                    call write_column_title(iunit, trim(header)//klabel)
                     k = kpoints(iorb)
                 end if
             end do
             write(klabel, '(es14.8)') k
-            call write_column_title(6, trim(header)//klabel)
+            call write_column_title(iunit, trim(header)//klabel)
         else
             do iorb = 1, size(kpoints)
                 write (klabel, '('//int_fmt(iorb)//')') iorb
-                call write_column_title(6, trim(header)//klabel)
+                call write_column_title(iunit, trim(header)//klabel)
             end do
         end if
 
@@ -683,8 +698,10 @@ contains
         real(p), intent(in) :: f_k(:), grid_points(:)
         logical, intent(in) :: compress_k
 
-        integer :: i, deg
+        integer :: i, deg, iunit
         real(p) :: kp, compressed
+
+        iunit = 6
 
         kp = grid_points(1)
         compressed = f_k(1)
@@ -692,7 +709,7 @@ contains
         if (compress_k) then
             do i = 2, size(f_k)
                 if (grid_points(i) > kp + depsilon) then
-                    call write_qmc_var(6, compressed/deg)
+                    call write_qmc_var(iunit, compressed/deg)
                     kp = grid_points(i)
                     compressed = f_k(i)
                     deg = 1
@@ -701,10 +718,10 @@ contains
                     deg = deg + 1
                 end if
             end do
-            call write_qmc_var(6, compressed/deg) ! last point
+            call write_qmc_var(iunit, compressed/deg) ! last point
         else
             do i = 1, size(f_k)
-                call write_qmc_var(6, compressed/deg)
+                call write_qmc_var(iunit, compressed/deg)
             end do
         end if
 

@@ -93,14 +93,17 @@ contains
         logical :: soft_exit, comms_found, error
 
         real :: t1, t2
-        
+        integer :: iunit
+
+        iunit = 6
+
         if (parent) then
-            write (6,'(1X,"FCIQMC (with Hellmann-Feynman sampling")')
-            write (6,'(1X,"--------------------------------------",/)')
+            write (iunit,'(1X,"FCIQMC (with Hellmann-Feynman sampling")')
+            write (iunit,'(1X,"--------------------------------------",/)')
         end if
 
         ! Initialise data.
-        call init_qmc(sys, qmc_in, restart_in, load_bal_in, reference_in, annihilation_flags, qs, uuid_restart)
+        call init_qmc(sys, qmc_in, restart_in, load_bal_in, reference_in, 6, annihilation_flags, qs, uuid_restart)
 
         allocate(nparticles_old(qs%psip_list%nspaces), stat=ierr)
         call check_allocate('nparticles_old', qs%psip_list%nspaces, ierr)
@@ -314,7 +317,7 @@ contains
 
         end do
 
-        if (parent) write (6,'()')
+        if (parent) write (iunit,'()')
         call load_balancing_report(qs%psip_list%nparticles, qs%psip_list%nstates, qmc_in%use_mpi_barriers, &
                                    qs%spawn_store%spawn%mpi_time)
 
@@ -326,7 +329,7 @@ contains
 
         if (restart_in%write_restart) then
             call dump_restart_hdf5(ri, qs, qs%mc_cycles_done, nparticles_old, sys%basis%nbasis, .false., sys%basis%info_string_len)
-            if (parent) write (6,'()')
+            if (parent) write (iunit,'()')
         end if
 
         call dealloc_det_info_t(cdet, .false.)

@@ -1035,7 +1035,7 @@ contains
         integer, intent(in) :: beta_cycle
         type(dmqmc_rdm_in_t), intent(in) :: rdm_in
 
-        integer :: i, j, new_unit
+        integer :: i, j, new_unit, iunit
         character(10) :: rdm_filename
         ! If in parallel then merge the reduced density matrix onto one
         ! processor.
@@ -1062,6 +1062,7 @@ contains
         call check_deallocate('dm_sum',ierr)
 
 #endif
+        iunit = 6
 
         associate(rdm=>dmqmc_estimates%ground_rdm%rdm, trace=>dmqmc_estimates%ground_rdm%trace)
 
@@ -1083,7 +1084,7 @@ contains
                 if (rdm_in%doing_vn_entropy) call calculate_vn_entropy(rdm, dmqmc_estimates%subsys_info)
                 if (rdm_in%doing_concurrence) call calculate_concurrence(rdm)
 
-                write (6,'(1x,"# RDM trace =",1X,es17.10)') trace
+                write (iunit,'(1x,"# RDM trace =",1X,es17.10)') trace
 
                 if (rdm_in%output_rdm) then
                     new_unit = get_free_unit()
@@ -1133,6 +1134,9 @@ contains
         real(p) :: eigv(2**subsys_info(1)%A_nsites)
         real(p) :: vn_entropy
         logical :: thrown_away
+        integer :: iunit
+
+        iunit = 6
 
         rdm_size = 2**subsys_info(1)%A_nsites
         vn_entropy = 0.0_p
@@ -1146,21 +1150,21 @@ contains
 
         call syev_wrapper('N', 'U', rdm_size, dm_tmp, rdm_size, eigv, info)
         thrown_away = .false.
-        write(6,'(1X,"# Eigenvalues thrown away:",1X)',advance='no')
+        write(iunit,'(1X,"# Eigenvalues thrown away:",1X)',advance='no')
         do i = 1, ubound(eigv,1)
             if (eigv(i) < depsilon) then
-                write(6,'(es15.8,2x)',advance='no') eigv(i)
+                write(iunit,'(es15.8,2x)',advance='no') eigv(i)
                 thrown_away = .true.
                 cycle
             end if
             vn_entropy = vn_entropy - eigv(i)*(log(eigv(i))/log(2.0_p))
         end do
         if (thrown_away) then
-            write(6,'()',advance='yes')
+            write(iunit,'()',advance='yes')
         else
-            write(6,'(1X,"none")',advance='yes')
+            write(iunit,'(1X,"none")',advance='yes')
         end if
-        write (6,'(1x,"# Unnormalised von Neumann entropy =",1X,es17.10)') vn_entropy
+        write (iunit,'(1x,"# Unnormalised von Neumann entropy =",1X,es17.10)') vn_entropy
 
         deallocate(dm_tmp)
         call check_deallocate('dm_tmp',ierr)
@@ -1205,6 +1209,8 @@ contains
                                        0.0_p,  0.0_p, 1.0_p,  0.0_p,  &
                                        0.0_p,  1.0_p, 0.0_p,  0.0_p,  &
                                        -1.0_p,  0.0_p, 0.0_p,  0.0_p  ], shape(flip_spin_matrix))
+        integer :: iunit
+        iunit = 6
 
         ! Make rdm_spin_flip_tmp because sgeev and dgeev delete input matrix.
         rdm_spin_flip_tmp = matmul(rdm, flip_spin_matrix)
@@ -1215,7 +1221,7 @@ contains
         ! equivalant to sqauring and then square-rooting.
         concurrence = 2.0_p*maxval(abs(reigv)) - sum(abs(reigv))
         concurrence = max(0.0_p, concurrence)
-        write (6,'(1x,"# Unnormalised concurrence =",1X,es17.10)') concurrence
+        write (iunit,'(1x,"# Unnormalised concurrence =",1X,es17.10)') concurrence
 
     end subroutine calculate_concurrence
 

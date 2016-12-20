@@ -1,3 +1,5 @@
+.. _hilbert:
+
 Monte Carlo estimate of size of the Hilbert space
 =================================================
 
@@ -11,6 +13,7 @@ the size of this subspace can be estimated via a simple Monte Carlo approach [Bo
     hilbert_space {
         sys = system,
         hilbert = { ... },
+        output = { ... },
     }
 
 Options
@@ -32,6 +35,13 @@ All options should be in the hilbert table bar the sys option.
 
     Further options to control the Monte Carlo estimation of the Hilbert space.  See
     below.
+``output``
+    type: lua_table.
+
+    Optional.
+
+    Further options to enable direction of calculation output to a different file.
+    See :ref:`output_table` for more information.
 
 hilbert options
 ---------------

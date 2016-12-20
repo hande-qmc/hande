@@ -442,7 +442,9 @@ contains
 
         type(sys_t), intent(inout) :: sys
 
-        integer :: i, ivec, ierr, counter
+        integer :: i, ivec, ierr, counter, iunit
+
+        iunit = 6
 
         associate(sl=>sys%lattice, sr=>sys%real_lattice, sk=>sys%k_lattice, su=>sys%ueg, sh=>sys%heisenberg)
 
@@ -464,7 +466,7 @@ contains
                     if (allocated(sl%lattice)) then
                         deallocate(sl%lattice, stat=ierr)
                         call check_deallocate('sys%lattice%lattice',ierr)
-                        write (6,'(1X,a)') 'Ignoring lattice input for the UEG.'
+                        write (iunit,'(1X,a)') 'Ignoring lattice input for the UEG.'
                     end if
 
                     ! Use a cubic simulation cell.

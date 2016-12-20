@@ -45,6 +45,10 @@ nprocs = 4
 min_nprocs = 4
 max_nprocs = 4
 
+# Need to set up jobs that have additional information output.
+[*/*/*write-to-file/]
+output = HANDE.out
+
 # Form job categories.
 [categories]
 
@@ -153,11 +157,13 @@ vquick =   ccmc/np1/Ne-RHF-cc-pVDZ-Lz-CCSDTQ5-multispawn-short
            mc_hilbert_space/np1/hf_hilbert_space
            mc_hilbert_space/np1/hubbard_k_tilted_2d_mchilbert
            mc_hilbert_space/np1/ueg_n7_rs1_e3_hilbert_space
+           mc_hilbert_space/np1/ueg_n7_rs1_e3_hilbert_space_write-to-file
            simple_fciqmc/hubbard_k_nontilted_2d_sfciqmc
 
 vquick64 = vquick
            ccmc_real_64/np2/NH3-6-31g_ccsdt_linked_short
            ccmc_real_64/np4/polyyne_complex_ccsdt-real64-hdf5-system-short
+           ccmc_real_64/np2/NH3-6-31g_ccsdt_write-to-file
            dmqmc_real_64/np4/n2_sto3g_short
            fciqmc_real_64/np1/polyyne_complex_fciqmc-real64-hdf5-system
            fciqmc_real_64/np1/heisenberg_1d_neel_ref_fciqmc_real_64

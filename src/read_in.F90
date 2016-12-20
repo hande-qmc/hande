@@ -74,10 +74,12 @@ contains
         logical, allocatable :: seen_iha(:)
         real(p), allocatable :: sp_eigv(:)
         logical :: uhf
-        integer :: int_err, max_err_msg
+        integer :: int_err, max_err_msg, iunit
         character(1024) :: err_msg
 
         namelist /FCI/ norb, nelec, ms2, orbsym, uhf, isym, syml, symlz, nprop, propbitlen
+
+        iunit = 6
 
         ! avoid annoying compiler warnings over unused variables in FCI namelist
         ! that are present for NECI compatibility.
@@ -281,7 +283,7 @@ contains
             sys%read_in%mom_sym%propbitlen = propbitlen
             sys%read_in%uhf = .false.
             if (minval(orbsym(1:norb)) < 0) then
-                if (parent) write (6,'(1X,a62,/)') 'Unconverged symmetry found.  Turning translational symmetry off.'
+                if (parent) write (iunit,'(1X,a62,/)') 'Unconverged symmetry found.  Turning translational symmetry off.'
                 orbsym(:) = 0_int_64
             end if
         end if
@@ -380,7 +382,7 @@ contains
         ! Was a symmetry found for all basis functions?  If not, then we must
         ! turn symmetry off.
         if (.not. momentum_sym .and. minval(sys%basis%basis_fns(:)%sym) < 0) then
-            if (parent) write (6,'(1X,a62,/)') 'Unconverged symmetry found.  Turning point group symmetry off.'
+            if (parent) write (iunit,'(1X,a62,/)') 'Unconverged symmetry found.  Turning point group symmetry off.'
             forall (i=1:sys%basis%nbasis) sys%basis%basis_fns(i)%sym = 0
         end if
 
@@ -741,7 +743,7 @@ contains
                                   &by symmetry in file: '//trim(sys%read_in%fcidump)//'")') int_err
                 call warning('read_in_integrals', trim(err_msg), 1)
                 if (int_err > max_err_msg) &
-                    write (6,'(1X,"Only the first",'//int_fmt(max_err_msg)//'," error messages are shown.",/)') max_err_msg
+                    write (iunit,'(1X,"Only the first",'//int_fmt(max_err_msg)//'," error messages are shown.",/)') max_err_msg
             end if
 
             ! If system is sensible, total Ecore including any CAS contribution will be purely real as is just the sum of Ecore and single
@@ -778,7 +780,7 @@ contains
             do i = 1, size(all_basis_fns)
                 call write_basis_fn(sys, all_basis_fns(i), ind=i, new_line=.true.)
             end do
-            write (6,'(/,1X,"Freezing...",/,1X,"Using complete active space: (",i0,",",i0,")",/)') sys%cas
+            write (iunit,'(/,1X,"Freezing...",/,1X,"Using complete active space: (",i0,",",i0,")",/)') sys%cas
         end if
 
         call dealloc_basis_fn_t_array(all_basis_fns)
@@ -788,7 +790,7 @@ contains
             do i = 1, sys%basis%nbasis
                 call write_basis_fn(sys, sys%basis%basis_fns(i), ind=i, new_line=.true.)
             end do
-            write (6,'(/,1X,a8,f18.12)') 'E_core =', sys%read_in%Ecore
+            write (iunit,'(/,1X,a8,f18.12)') 'E_core =', sys%read_in%Ecore
         else if (parent) then
             call write_basis_fn_title()
         end if
@@ -956,10 +958,12 @@ contains
 
         integer :: ir, op_sym, ios, i, a, ii, aa, rhf_fac, ierr
         logical :: t_exists
-        integer :: int_err, max_err_msg
+        integer :: int_err, max_err_msg, iunit
         character(1024) :: err_msg
 
         real(p) :: x
+
+        iunit = 6
 
         ! Accumulate errors so we can print out (at most) max_err_msg errors from this file.
         int_err = 0
@@ -1061,7 +1065,7 @@ contains
                               &by symmetry in file: '//trim(integral_file)//'")') int_err
             call warning('read_in_one_body', trim(err_msg), 1)
             if (int_err > max_err_msg) &
-                write (6,'(1X,"Only the first",'//int_fmt(max_err_msg)//'," error messages are shown.",/)') max_err_msg
+                write (iunit,'(1X,"Only the first",'//int_fmt(max_err_msg)//'," error messages are shown.",/)') max_err_msg
         end if
 
 

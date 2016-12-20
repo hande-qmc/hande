@@ -76,6 +76,10 @@ contains
         integer :: i, j
         type(sys_t) :: sys_bak
 
+        integer :: iunit
+
+        iunit = 6
+
         if (nprocs > 1) call stop_all('init_simple_fciqmc','Not a parallel algorithm.')
         if (sys%system == read_in) then
             if (sys%read_in%comp) call stop_all('init_simple_fciqmc', 'Complex simple fciqmc not currently implemented.')
@@ -103,14 +107,14 @@ contains
         ! Set up hamiltonian matrix.
         call generate_hamil(sys, ndets, dets, hamil, full_mat=.true., use_sparse_hamil=sparse_hamil)
 
-        write (6,'(1X,a13,/,1X,13("-"),/)') 'Simple FCIQMC'
-        write (6,'(1X,a53,1X)') 'Using a simple (but correct) serial FCIQMC algorithm.'
-        write (6,'(1X,a137)') 'Enumeration of the determinant list and evaluation of &
+        write (iunit,'(1X,a13,/,1X,13("-"),/)') 'Simple FCIQMC'
+        write (iunit,'(1X,a53,1X)') 'Using a simple (but correct) serial FCIQMC algorithm.'
+        write (iunit,'(1X,a137)') 'Enumeration of the determinant list and evaluation of &
                               &the Hamiltonian matrix for the given symmetry block and &
                               &spin polarization required.'
-        write (6,'(1X,a104,/)') 'This is slow and memory demanding: consider using the &
+        write (iunit,'(1X,a104,/)') 'This is slow and memory demanding: consider using the &
                                 &fciqmc option instead of the simple_fciqmc option.'
-        write (6,'(1X,a46,'//int_fmt(sys%symmetry,1)//',1X,a9,'//int_fmt(sys%Ms,1)//',a1,/)') &
+        write (iunit,'(1X,a46,'//int_fmt(sys%symmetry,1)//',1X,a9,'//int_fmt(sys%Ms,1)//',a1,/)') &
             'Considering determinants belonging to symmetry',sys%symmetry,'with spin',sys%Ms,"."
 
         ! Allocate main and spawned lists to hold population of walkers.
@@ -182,10 +186,10 @@ contains
             psip_list%pops(1,ref_det) = nint(qmc_in%D0_population)
         end if
 
-        write (6,'(1X,a29,1X)',advance='no') 'Reference determinant, |D0> ='
+        write (iunit,'(1X,a29,1X)',advance='no') 'Reference determinant, |D0> ='
         call write_det(sys%basis, sys%nel, dets(:,ref_det), new_line=.true.)
-        write (6,'(1X,a16,f20.12)') 'E0 = <D0|H|D0> =',reference%H00
-        write (6,'(/,1X,a68,/)') 'Note that FCIQMC calculates the correlation energy relative to |D0>.'
+        write (iunit,'(1X,a16,f20.12)') 'E0 = <D0|H|D0> =',reference%H00
+        write (iunit,'(/,1X,a68,/)') 'Note that FCIQMC calculates the correlation energy relative to |D0>.'
 
         ! Return sys in an unaltered state.
         call copy_sys_spin_info(sys_bak, sys)
@@ -247,7 +251,9 @@ contains
         type(hamil_t) :: hamil
         type(json_out_t) :: js
         character(36) :: uuid_restart
+        integer :: iunit
 
+        iunit = 6
         ! Check input options
         restarting = present(qmc_state_restart) .or. restart_in%read_restart
         call check_qmc_opts(qmc_in, sys, .false., restarting)
@@ -369,12 +375,12 @@ contains
 
         end do
 
-        if (parent) write (6,'()')
+        if (parent) write (iunit,'()')
 
         if (restart_in%write_restart) then
             call dump_restart_hdf5(ri, qs, qs%mc_cycles_done+qmc_in%ncycles*qmc_in%nreport, &
                                    (/nparticles_old/), sys%basis%nbasis, .false., sys%basis%info_string_len)
-            if (parent) write (6,'()')
+            if (parent) write (iunit,'()')
         end if
 
         deallocate(dets)

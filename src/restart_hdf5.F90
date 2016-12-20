@@ -214,7 +214,9 @@ module restart_hdf5
             character(14) :: proc_suf
             integer :: id, ip_loc
             logical :: exists, verbose_loc
+            integer :: iunit
 
+            iunit = 6
             verbose_loc = parent
             if (present(verbose)) verbose_loc = verbose
             ip_loc = iproc
@@ -241,14 +243,14 @@ module restart_hdf5
 
             if (verbose_loc) then
                 if (write_mode) then
-                    write (6,'(1X,"#",1X,"Writing restart file to",1X,a)', advance='no') trim(filename)
+                    write (iunit,'(1X,"#",1X,"Writing restart file to",1X,a)', advance='no') trim(filename)
                 else
-                    write (6,'(1X,"Reading restart file from",1X,a)', advance='no') trim(filename)
+                    write (iunit,'(1X,"Reading restart file from",1X,a)', advance='no') trim(filename)
                 end if
                 if (nprocs > 1) then
-                    write (6,'(1X, "family.")')
+                    write (iunit,'(1X, "family.")')
                 else
-                    write (6,'(".")')
+                    write (iunit,'(".")')
                 end if
             end if
 
@@ -865,6 +867,9 @@ module restart_hdf5
             type(restart_info_t) :: ri_write
             integer(i0), allocatable :: f0(:)
             integer(int_64) :: restart_scale_factor(1)
+            integer :: iunit
+
+            iunit = 6
 
             ! Each processor reads from every restart file but only writes to
             ! a (unique) subset, [iproc_target_start,iproc_target_end].
@@ -1190,7 +1195,7 @@ module restart_hdf5
 
             end do
 
-            if (parent) write (6,'()')
+            if (parent) write (iunit,'()')
 
 #ifdef PARALLEL
             ! Just in case we go on to use the restart files produced in the same HANDE

@@ -201,7 +201,7 @@ contains
         case(hfs_fciqmc_calc)
             calc_name = "Hellmann-Feynman FCIQMC"
         case(mc_hilbert_space)
-            calc_name = "Monte Carlo Hilbert space estimation."
+            calc_name = "Monte Carlo Hilbert space estimation"
         case(dmqmc_calc)
             calc_name = "DMQMC"
         case(ccmc_calc)

@@ -88,6 +88,7 @@ contains
         !    hilbert_space {
         !       sys = system,      -- required
         !       hilbert = { ... }, -- required
+        !       output = { ... },
         !    }
 
         use, intrinsic :: iso_c_binding, only: c_ptr, c_int, c_f_pointer
@@ -99,7 +100,9 @@ contains
         use errors, only: stop_all
         use lua_hande_system, only: get_sys_t
         use lua_hande_utils, only: warn_unused_args, register_timing
+        use lua_hande_calc_utils, only: init_output_unit, end_output_unit
         use system, only: sys_t
+        use qmc_data, only: output_in_t
 
         use calc, only: calc_type, mc_hilbert_space
         use hilbert_space, only: estimate_hilbert_space
@@ -111,10 +114,12 @@ contains
 
         type(sys_t), pointer :: sys
         integer :: truncation_level, nattempts, ncycles, rng_seed
+        type(output_in_t) :: output_in
         integer, allocatable :: ref_det(:)
-        integer :: opts
+        integer :: opts, io_unit
         real :: t1, t2
-        character(12), parameter :: keys(2) = [character(12) :: 'sys', 'hilbert']
+        character(12), parameter :: keys(3) = [character(12) :: 'sys', 'hilbert', 'output']
+
 
         call cpu_time(t1)
 
@@ -123,6 +128,7 @@ contains
 
         opts = aot_table_top(lua_state)
         call read_hilbert_args(lua_state, opts, sys%nel, nattempts, ncycles, truncation_level, ref_det, rng_seed)
+        call read_output_in_t(lua_state, opts, output_in)
         call warn_unused_args(lua_state, keys, opts)
         call aot_table_close(lua_state, opts)
 
@@ -134,7 +140,9 @@ contains
         end if
 
         calc_type = mc_hilbert_space
-        call estimate_hilbert_space(sys, truncation_level, nattempts, ncycles, ref_det, rng_seed)
+        call init_output_unit(output_in, sys, io_unit)
+        call estimate_hilbert_space(sys, truncation_level, nattempts, ncycles, ref_det, rng_seed, io_unit)
+        call end_output_unit(output_in%out_filename, io_unit)
 
         ! [todo] - return estimate of space and error to lua.
         nresult = 0
@@ -264,7 +272,7 @@ contains
         ! [todo] - do spin polarisation in system setup.
         call set_spin_polarisation(sys%basis%nbasis, sys)
         ! If using Aufbau determined symmetry need to do after setting spin polarisation.
-        if (sys%aufbau_sym) call set_symmetry_aufbau(sys)
+        if (sys%aufbau_sym) call set_symmetry_aufbau(sys, 6)
 
         ! Get main table.
         opts = aot_table_top(lua_state)
@@ -306,7 +314,8 @@ contains
         !       restart = { ... },
         !       load_bal = { ... },
         !       reference = { ... },
-        !       logging = { ...},
+        !       logging = { ... },
+        !       output = { ... },
         !       qmc_state = qmc_state,
         !    }
 
@@ -323,8 +332,9 @@ contains
         use fciqmc, only: do_fciqmc
         use lua_hande_system, only: get_sys_t
         use lua_hande_utils, only: warn_unused_args, register_timing
+        use lua_hande_calc_utils, only: init_output_unit, end_output_unit
         use qmc_data, only: qmc_in_t, fciqmc_in_t, semi_stoch_in_t, restart_in_t, load_bal_in_t, &
-                            qmc_state_t
+                            qmc_state_t, output_in_t
         use logging, only: logging_in_t
         use reference_determinant, only: reference_t
         use system, only: sys_t
@@ -345,13 +355,15 @@ contains
         type(reference_t) :: reference
         type(qmc_state_t), pointer :: qmc_state_restart, qmc_state_out
         type(logging_in_t) :: logging_in
+        type(output_in_t) :: output_in
 
         logical :: have_restart_state
 
-        integer :: opts
+        integer :: opts, io_unit
         real :: t1, t2
-        character(10), parameter :: keys(9) = [character(10) :: 'sys', 'qmc', 'fciqmc', 'semi_stoch', 'restart', &
-                                                                'load_bal', 'reference', 'qmc_state', 'logging']
+        character(10), parameter :: keys(10) = [character(10) :: 'sys', 'qmc', 'fciqmc', 'semi_stoch', 'restart', &
+                                                                'load_bal', 'reference', 'qmc_state', 'logging', &
+                                                                'output']
 
         call cpu_time(t1)
 
@@ -359,8 +371,6 @@ contains
         call get_sys_t(lua_state, sys)
         ! [todo] - do spin polarisation in system setup.
         call set_spin_polarisation(sys%basis%nbasis, sys)
-        ! If using Aufbau determined symmetry need to do after setting spin polarisation.
-        if (sys%aufbau_sym) call set_symmetry_aufbau(sys)
 
         ! Get main table.
         opts = aot_table_top(lua_state)
@@ -372,6 +382,7 @@ contains
         call read_load_bal_in(lua_state, opts, load_bal_in)
         call read_reference_t(lua_state, opts, reference, sys)
         call read_logging_in_t(lua_state, opts, logging_in)
+        call read_output_in_t(lua_state, opts, output_in)
 
         call get_qmc_state(lua_state, have_restart_state, qmc_state_restart)
 
@@ -380,13 +391,21 @@ contains
 
         calc_type = fciqmc_calc
         allocate(qmc_state_out)
+
+        call init_output_unit(output_in, sys, io_unit)
+
+        ! If using Aufbau determined symmetry need to do after setting spin polarisation.
+        if (sys%aufbau_sym) call set_symmetry_aufbau(sys, io_unit)
+
         if (have_restart_state) then
-            call do_fciqmc(sys, qmc_in, fciqmc_in, semi_stoch_in, restart_in, load_bal_in, reference, logging_in, &
+            call do_fciqmc(sys, qmc_in, fciqmc_in, semi_stoch_in, restart_in, load_bal_in, io_unit, reference, logging_in, &
                            qmc_state_out, qmc_state_restart)
         else
-            call do_fciqmc(sys, qmc_in, fciqmc_in, semi_stoch_in, restart_in, load_bal_in, reference, logging_in, &
+            call do_fciqmc(sys, qmc_in, fciqmc_in, semi_stoch_in, restart_in, load_bal_in, io_unit, reference, logging_in, &
                            qmc_state_out)
         end if
+
+        call end_output_unit(output_in%out_filename, io_unit)
 
         ! Return qmc_state to the user.
         call push_qmc_state(lua_state, qmc_state_out)
@@ -409,7 +428,8 @@ contains
         !       ccmc = { ... }
         !       restart = { ... },
         !       reference = { ... },
-        !       logging = { ...},
+        !       logging = { ... },
+        !       output = { ... },
         !       qmc_state = qmc_state,
         !    }
 
@@ -426,7 +446,8 @@ contains
         use ccmc, only: do_ccmc
         use lua_hande_system, only: get_sys_t
         use lua_hande_utils, only: warn_unused_args, register_timing
-        use qmc_data, only: qmc_in_t, ccmc_in_t, semi_stoch_in_t, restart_in_t, load_bal_in_t, qmc_state_t
+        use lua_hande_calc_utils, only: init_output_unit, end_output_unit
+        use qmc_data, only: qmc_in_t, ccmc_in_t, semi_stoch_in_t, restart_in_t, load_bal_in_t, qmc_state_t, output_in_t
         use logging, only: logging_in_t
         use reference_determinant, only: reference_t
         use system, only: sys_t
@@ -448,11 +469,13 @@ contains
         type(reference_t) :: reference
         type(qmc_state_t), pointer :: qmc_state_restart, qmc_state_out
         type(logging_in_t) :: logging_in
+        type(output_in_t) :: output_in
 
         logical :: have_restart_state
-        integer :: opts
+        integer :: opts, io_unit
         real :: t1, t2
-        character(10), parameter :: keys(7) = [character(10) :: 'sys', 'qmc', 'ccmc', 'restart', 'reference', 'qmc_state','logging']
+        character(10), parameter :: keys(8) = [character(10) :: 'sys', 'qmc', 'ccmc', 'restart', 'reference', 'qmc_state', &
+                                                                'logging', 'output']
 
         call cpu_time(t1)
 
@@ -460,8 +483,6 @@ contains
         call get_sys_t(lua_state, sys)
         ! [todo] - do spin polarisation in system setup.
         call set_spin_polarisation(sys%basis%nbasis, sys)
-        ! If using Aufbau determined symmetry need to do after setting spin polarisation.
-        if (sys%aufbau_sym) call set_symmetry_aufbau(sys)
 
         ! Get main table.
         opts = aot_table_top(lua_state)
@@ -483,6 +504,7 @@ contains
         call read_reference_t(lua_state, opts, reference, sys)
 
         call read_logging_in_t(lua_state, opts, logging_in)
+        call read_output_in_t(lua_state, opts, output_in)
 
         call get_qmc_state(lua_state, have_restart_state, qmc_state_restart)
         call warn_unused_args(lua_state, keys, opts)
@@ -490,11 +512,16 @@ contains
 
         calc_type = ccmc_calc
         allocate(qmc_state_out)
+
+        call init_output_unit(output_in, sys, io_unit)
+        ! If using Aufbau determined symmetry need to do after setting spin polarisation.
+        if (sys%aufbau_sym) call set_symmetry_aufbau(sys, io_unit)
+
         if (have_restart_state) then
-            call do_ccmc(sys, qmc_in, ccmc_in, semi_stoch_in, restart_in, load_bal_in, reference, logging_in, &
+            call do_ccmc(sys, qmc_in, ccmc_in, semi_stoch_in, restart_in, load_bal_in, reference, logging_in, io_unit, &
                             qmc_state_out, qmc_state_restart)
         else
-            call do_ccmc(sys, qmc_in, ccmc_in, semi_stoch_in, restart_in, load_bal_in, reference, logging_in, &
+            call do_ccmc(sys, qmc_in, ccmc_in, semi_stoch_in, restart_in, load_bal_in, reference, logging_in, io_unit, &
                             qmc_state_out)
         end if
 
@@ -506,6 +533,8 @@ contains
             call end_excitations(sys%basis%excit_mask)
             call init_excitations(sys%basis)
         end if
+
+        call end_output_unit(output_in%out_filename, io_unit)
 
         call push_qmc_state(lua_state, qmc_state_out)
         nresult = 1
@@ -605,7 +634,7 @@ contains
             call set_spin_polarisation(sys%basis%nbasis, sys)
         end if
         ! If using Aufbau determined symmetry need to do after setting spin polarisation.
-        if (sys%aufbau_sym) call set_symmetry_aufbau(sys)
+        if (sys%aufbau_sym) call set_symmetry_aufbau(sys, 6)
 
         ! Now system initialisation is complete (boo), act on the other options.
         call read_restart_in(lua_state, opts, restart_in)
@@ -1685,6 +1714,51 @@ contains
 
     end subroutine read_restart_in
 
+    subroutine read_output_in_t(lua_state, opts, output_in)
+
+        ! Read in output table (if it exists) and set up.
+
+        ! output = {
+        !    filename = filename,
+        !    reprint_sys = true/false,
+        ! }
+
+        ! In/Out:
+        !    lua_state: flu/Lua state to which the HANDE API is added.
+        ! In:
+        !    opts: handle for the table containing the output table.
+        ! Out:
+        !    output_in: output_in_t object contianing the input options
+        !       describing output files.
+
+        use flu_binding, only: flu_State
+        use aot_table_module, only: aot_exists, aot_table_open, aot_table_close, aot_get_val
+
+        use lua_hande_utils, only: warn_unused_args, get_flag_and_id
+        use qmc_data, only: output_in_t
+
+        type(flu_State), intent(inout) :: lua_state
+        integer, intent(in) :: opts
+        type(output_in_t), intent(out) :: output_in
+
+        integer :: err, output_table
+        character(11), parameter :: keys(2) = [character(11) :: 'filename', 'reprint_sys']
+
+        if (aot_exists(lua_state, opts, 'output')) then
+
+            call aot_table_open(lua_state, opts, output_table, 'output')
+
+            call aot_get_val(output_in%out_filename, err, lua_state, output_table, 'filename')
+            call aot_get_val(output_in%reprint_sys_info, err, lua_state, output_table, 'reprint_sys')
+
+            call warn_unused_args(lua_state, keys, output_table)
+
+            call aot_table_close(lua_state, output_table)
+
+        end if
+
+    end subroutine read_output_in_t
+
     subroutine get_qmc_state(lua_state, have_qmc_state, qmc_state)
 
         ! Get (if present) a qmc_state_t object passed in to resume a calculation.
@@ -1813,6 +1887,7 @@ contains
     end function lua_dealloc_qmc_state
 
     subroutine read_logging_in_t(lua_state, opts, logging_in)
+
         ! Read in options associated with the logging table (only for debug builds).
 
         ! logging = {

@@ -262,7 +262,7 @@ implicit none
 contains
 
     subroutine do_ccmc(sys, qmc_in, ccmc_in, semi_stoch_in, restart_in, load_bal_in, reference_in, &
-                        logging_in, qs, qmc_state_restart)
+                        logging_in, io_unit, qs, qmc_state_restart)
 
         ! Run the CCMC algorithm starting from the initial walker distribution
         ! using the timestep algorithm.
@@ -280,6 +280,7 @@ contains
         !       desired spin/symmetry.
         !    load_bal_in: input options for load balancing.
         !    qmc_in: input options relating to QMC methods.
+        !    io_unit: input unit to write all output to.
         ! In/Out:
         !    qmc_state_restart (optional): if present, restart from a previous fciqmc calculation.
         !       Deallocated on exit.
@@ -339,6 +340,7 @@ contains
         type(logging_in_t), intent(in) :: logging_in
         type(qmc_state_t), target, intent(out) :: qs
         type(qmc_state_t), intent(inout), optional :: qmc_state_restart
+        integer, intent(in) :: io_unit
 
         integer :: i, ireport, icycle, iter, semi_stoch_iter, it
         integer(int_64) :: iattempt
@@ -380,8 +382,8 @@ contains
         real(p), allocatable :: rdm(:,:)
 
         if (parent) then
-            write (6,'(1X,"CCMC")')
-            write (6,'(1X,"----",/)')
+            write (io_unit,'(1X,"CCMC")')
+            write (io_unit,'(1X,"----",/)')
         end if
 
         ! Check input options.
@@ -392,7 +394,7 @@ contains
         end if
 
         ! Initialise data.
-        call init_qmc(sys, qmc_in, restart_in, load_bal_in, reference_in, annihilation_flags, qs, &
+        call init_qmc(sys, qmc_in, restart_in, load_bal_in, reference_in, io_unit, annihilation_flags, qs, &
                       uuid_restart, qmc_state_restart=qmc_state_restart, regenerate_info=regenerate_info)
 
         if (ccmc_in%even_selection .and. regenerate_info) then
@@ -405,7 +407,7 @@ contains
         if (debug) call init_logging(logging_in, logging_info, qs%ref%ex_level)
 
         if (parent) then
-            call json_object_init(js, tag=.true.)
+            call json_object_init(js, tag=.true., io=io_unit)
             call sys_t_json(js, sys)
             ! The default values of pattempt_* are not in qmc_in
             qmc_in_loc = qmc_in
@@ -474,8 +476,8 @@ contains
 
         ! Main fciqmc loop.
         if (parent) call write_qmc_report_header(qs%psip_list%nspaces, cmplx_est=sys%read_in%comp, &
-                                            rdm_energy=ccmc_in%density_matrices, nattempts = .true.)
-        call initial_fciqmc_status(sys, qmc_in, qs, doing_ccmc=.true.)
+                                            rdm_energy=ccmc_in%density_matrices, nattempts=.true., io_unit=io_unit)
+        call initial_fciqmc_status(sys, qmc_in, qs, doing_ccmc=.true., io_unit=io_unit)
         ! Initialise timer.
         call cpu_time(t1)
 
@@ -817,9 +819,9 @@ contains
 
             call cpu_time(t2)
             if (parent) then
-                if (bloom_stats%nblooms_curr > 0) call bloom_stats_warning(bloom_stats)
+                if (bloom_stats%nblooms_curr > 0) call bloom_stats_warning(bloom_stats, io_unit=io_unit)
                 call write_qmc_report(qmc_in, qs, ireport, nparticles_old, t2-t1, .false., .false., &
-                                        sys%read_in%comp, rdm_energy=ccmc_in%density_matrices, &
+                                        io_unit=io_unit, cmplx_est=sys%read_in%comp, rdm_energy=ccmc_in%density_matrices, &
                                         nattempts=.true.)
             end if
 
@@ -837,12 +839,12 @@ contains
 
         end do
 
-        if (parent) write (6,'()')
-        call write_bloom_report(bloom_stats)
-        call multispawn_stats_report(ms_stats)
+        if (parent) write (io_unit,'()')
+        call write_bloom_report(bloom_stats, io_unit=io_unit)
+        call multispawn_stats_report(ms_stats, io_unit=io_unit)
         call load_balancing_report(qs%psip_list%nparticles, qs%psip_list%nstates, qmc_in%use_mpi_barriers,&
-                                   qs%spawn_store%spawn%mpi_time)
-        call write_memcheck_report(qs%spawn_store%spawn)
+                                   qs%spawn_store%spawn%mpi_time, io_unit=io_unit)
+        call write_memcheck_report(qs%spawn_store%spawn, io_unit)
 
         if (soft_exit .or. error) then
             qs%mc_cycles_done = qs%mc_cycles_done + qmc_in%ncycles*ireport
@@ -852,16 +854,16 @@ contains
 
         if (restart_in%write_restart) then
             call dump_restart_hdf5(ri, qs, qs%mc_cycles_done, nparticles_old, sys%basis%nbasis, .false., sys%basis%info_string_len)
-            if (parent) write (6,'()')
+            if (parent) write (io_unit,'()')
         end if
 
         if (debug) call end_logging(logging_info)
         if (debug .or. ccmc_in%even_selection) call end_selection_data(selection_data)
 
         if (ccmc_in%density_matrices) then
-            call write_final_rdm(rdm, sys%nel, sys%basis%nbasis, ccmc_in%density_matrix_file)
+            call write_final_rdm(rdm, sys%nel, sys%basis%nbasis, ccmc_in%density_matrix_file, io_unit)
             call calc_rdm_energy(sys, qs%ref, rdm, qs%estimators(1)%rdm_energy, qs%estimators(1)%rdm_trace)
-            if (parent) write (6,'(1x,"# Final energy from RDM",2x,es17.10)') qs%estimators%rdm_energy/qs%estimators%rdm_trace
+            if (parent) write (io_unit,'(1x,"# Final energy from RDM",2x,es17.10)') qs%estimators%rdm_energy/qs%estimators%rdm_trace
             deallocate(rdm, stat=ierr)
             call check_deallocate('rdm',ierr)
             call dealloc_det_info_t(ref_det)

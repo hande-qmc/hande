@@ -102,9 +102,13 @@ contains
         integer(i0) :: f0(sys%basis%tot_string_len)
         type(hmatel_t) :: hmatel
 
+        integer :: iunit_out
+
+        iunit_out = 6
+
         if (parent) then
-            write (6,'(1X,"FCI")')
-            write (6,'(1X,"---",/)')
+            write (iunit_out,'(1X,"FCI")')
+            write (iunit_out,'(1X,"---",/)')
 
             if (fci_in%print_fci_wfn /= 0) then
                 ! Overwrite any existing file...
@@ -134,11 +138,11 @@ contains
 
         if (.not.allocated(ref%occ_list0) .and. ref%ex_level /= sys%nel) then
             ! Provide a best guess at the reference determinant given symmetry and spin options.
-            call set_reference_det(sys, ref%occ_list0, .true., sys%symmetry)
+            call set_reference_det(sys, ref%occ_list0, .true., sys%symmetry, iunit_out)
             if (sys%aufbau_sym) sys%symmetry = symmetry_orb_list(sys, ref%occ_list0)
         else if (sys%aufbau_sym) then
             ! Ensure we set a guess for the symmetry sector if requested.
-            call set_reference_det(sys, occ_list_scratch, .false., sys%symmetry)
+            call set_reference_det(sys, occ_list_scratch, .false., sys%symmetry, iunit_out)
             sys%symmetry = symmetry_orb_list(sys, occ_list_scratch)
         end if
         if (allocated(ref%occ_list0)) then
@@ -255,6 +259,9 @@ contains
         integer :: i, j, ii, jj, ilocal, iglobal, jlocal, jglobal, nnz, imode
         logical :: sparse_mode
         type(hmatel_t) :: hmatel
+        integer :: iunit
+
+        iunit = 6
 
         hamil%comp = sys%read_in%comp
         if (present(use_sparse_hamil)) then
@@ -358,7 +365,7 @@ contains
                     end do
                     !$omp end parallel
                     if (imode == 1) then
-                        write (6,'(1X,a50,i8,/)') 'Number of non-zero elements in Hamiltonian matrix:', nnz
+                        write (iunit,'(1X,a50,i8,/)') 'Number of non-zero elements in Hamiltonian matrix:', nnz
                         call init_csrp(hamil%smat, ndets, nnz, .true.)
                         hamil%smat%row_ptr(1:ndets) = 0
                     else

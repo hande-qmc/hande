@@ -8,7 +8,7 @@ contains
 
 ! --- Initialisation routines ---
 
-    subroutine init_qmc(sys, qmc_in, restart_in, load_bal_in, reference_in, annihilation_flags, qmc_state, uuid_restart, &
+    subroutine init_qmc(sys, qmc_in, restart_in, load_bal_in, reference_in, io_unit, annihilation_flags, qmc_state, uuid_restart, &
                         dmqmc_in, fciqmc_in, qmc_state_restart, regenerate_info)
 
         ! Initialisation for fciqmc calculations.
@@ -25,6 +25,7 @@ contains
         !       allocated) then this is copied into qmc_state%ref.
         !       Otherwise a best guess is made based upon symmetry/spin/number
         !       of electrons/etc in set_reference_det.
+        !    io_unit: io unit to write all output to.
         !    dmqmc_in (optional): input options relating to DMQMC.
         !    fciqmc_in (optional): input options relating to FCIQMC.  Default
         !       fciqmc_in_t settings are used if not present.
@@ -60,6 +61,7 @@ contains
         type(restart_in_t), intent(in) :: restart_in
         type(load_bal_in_t), intent(in) :: load_bal_in
         type(reference_t), intent(in) :: reference_in
+        integer, intent(in) :: io_unit
         type(annihilation_flags_t), intent(out) :: annihilation_flags
         type(qmc_state_t), intent(out) :: qmc_state
         character(36), intent(out) :: uuid_restart
@@ -81,7 +83,7 @@ contains
 
         if (restart_in%read_restart) call init_restart_info_t(ri, read_id=restart_in%read_id)
 
-        call init_proc_pointers(sys, qmc_in, reference_in, dmqmc_in, fciqmc_in)
+        call init_proc_pointers(sys, qmc_in, reference_in, io_unit, dmqmc_in, fciqmc_in)
 
         ! Note it is not possible to override a reference if restarting.
         if (restart_in%read_restart) then
@@ -89,7 +91,7 @@ contains
         else if (present(qmc_state_restart)) then
             qmc_state%ref = qmc_state_restart%ref
         else
-            call init_reference(sys, reference_in, qmc_state%ref)
+            call init_reference(sys, reference_in, io_unit, qmc_state%ref)
         end if
 
         ! --- Allocate psip list ---
@@ -114,7 +116,7 @@ contains
         ! calculation of memory occupied by the main particle lists.
         if (.not. present(qmc_state_restart)) then
             call init_particle_t(qmc_in%walker_length, 1, sys%basis%tensor_label_len, qmc_in%real_amplitudes, &
-                                 qmc_in%real_amplitude_force_32, qmc_state%psip_list)
+                                 qmc_in%real_amplitude_force_32, qmc_state%psip_list, io_unit=io_unit)
         end if
 
         call init_parallel_t(qmc_state%psip_list%nspaces, nparticles_start_ind-1, fciqmc_in_loc%non_blocking_comm, &
@@ -125,7 +127,8 @@ contains
             qmc_state%mc_cycles_done = qmc_state_restart%mc_cycles_done
         else
             call init_spawn_store(qmc_in, qmc_state%psip_list%nspaces, qmc_state%psip_list%pop_real_factor, sys%basis, &
-                                  fciqmc_in_loc%non_blocking_comm, qmc_state%par_info%load%proc_map, qmc_state%spawn_store)
+                                  fciqmc_in_loc%non_blocking_comm, qmc_state%par_info%load%proc_map, io_unit, &
+                                  qmc_state%spawn_store)
             ! Allocate the shift.
             allocate(qmc_state%shift(qmc_state%psip_list%nspaces), stat=ierr)
             call check_allocate('qmc_state%shift', qmc_state%psip_list%nspaces, ierr)
@@ -162,7 +165,7 @@ contains
 
     end subroutine init_qmc
 
-    subroutine init_proc_pointers(sys, qmc_in, reference, dmqmc_in, fciqmc_in)
+    subroutine init_proc_pointers(sys, qmc_in, reference, io_unit, dmqmc_in, fciqmc_in)
 
         ! Set function pointers for QMC calculations.
 
@@ -170,6 +173,7 @@ contains
         !    sys: system being studied.
         !    qmc_in: input options relating to QMC methods.
         !    reference: reference_t object defining the reference state/determinant.
+        !    io_unit: io unit to write all output to.
         !    dmqmc_in (optional): input options relating to DMQMC, only required if doing DMQMC.
         !    fciqmc_in (optional): input options relating to FCIQMC, only required if doing FCIQMC.
 
@@ -223,6 +227,7 @@ contains
         type(sys_t), intent(in) :: sys
         type(qmc_in_t), intent(in) :: qmc_in
         type(reference_t), intent(in) :: reference
+        integer, intent(in) :: io_unit
         type(dmqmc_in_t), intent(in), optional :: dmqmc_in
         type(fciqmc_in_t), intent(in), optional :: fciqmc_in
 
@@ -361,8 +366,8 @@ contains
             case(excit_gen_no_renorm)
             case(excit_gen_renorm)
                 if (parent) then
-                    write (6,'(1X,"WARNING: renormalised excitation generators not implemented.")')
-                    write (6,'(1X,"WARNING: If this upsets you, please send patches.",/)')
+                    write (io_unit,'(1X,"WARNING: renormalised excitation generators not implemented.")')
+                    write (io_unit,'(1X,"WARNING: If this upsets you, please send patches.",/)')
                 end if
             case default
                 call stop_all('init_proc_pointers', 'Selected excitation generator not implemented.')
@@ -379,8 +384,8 @@ contains
             case(excit_gen_no_renorm)
             case(excit_gen_renorm)
                 if (parent) then
-                    write (6,'(1X,"WARNING: renormalised excitation generators not implemented.")')
-                    write (6,'(1X,"WARNING: If this upsets you, please send patches.",/)')
+                    write (io_unit,'(1X,"WARNING: renormalised excitation generators not implemented.")')
+                    write (io_unit,'(1X,"WARNING: If this upsets you, please send patches.",/)')
                 end if
             case default
                 call stop_all('init_proc_pointers', 'Selected excitation generator not implemented.')
@@ -776,13 +781,14 @@ contains
 
     end subroutine init_excit_gen
 
-    subroutine init_reference(sys, reference_in, reference)
+    subroutine init_reference(sys, reference_in, io_unit, reference)
 
         ! Set the reference determinant from input options
 
         ! In:
         !   sys: system being studied.
         !   reference_in: reference provided in input, if any.
+        !   io_unit: io unit to write any information to.
         ! Out:
         !   reference: reference selected for the qmc calculation.
 
@@ -795,6 +801,7 @@ contains
 
         type(sys_t), intent(in) :: sys
         type(reference_t), intent(in) :: reference_in
+        integer, intent(in) :: io_unit
         type(reference_t), intent(out) :: reference
 
         integer :: ierr
@@ -805,7 +812,7 @@ contains
         ! Set the reference determinant to be the spin-orbitals with the lowest
         ! single-particle eigenvalues which satisfy the spin polarisation and, if
         ! specified, the symmetry.
-        call set_reference_det(sys, reference%occ_list0, .false., sys%symmetry)
+        call set_reference_det(sys, reference%occ_list0, .false., sys%symmetry, io_unit)
 
         if (.not. allocated(reference%f0)) then
             allocate(reference%f0(sys%basis%tot_string_len), stat=ierr)
@@ -883,7 +890,7 @@ contains
 
     end subroutine init_reference_restart
 
-    subroutine init_spawn_store(qmc_in, nspaces, pop_real_factor, basis, non_blocking_comm, proc_map, spawn_store)
+    subroutine init_spawn_store(qmc_in, nspaces, pop_real_factor, basis, non_blocking_comm, proc_map, io_unit, spawn_store)
 
         ! Allocate and initialise spawn store
 
@@ -894,6 +901,7 @@ contains
         !   basis: information on the single particle basis used.
         !   non_blocking_comm: whether non-blocking MPI communication is being used.
         !   proc_map: settings for mapping hash of a determinant to a processor.
+        !   io_unit: io unit to write all output to.
         ! Out:
         !   spawn_store: spawned array.  All components allocated/initialised on exit.
 
@@ -905,7 +913,7 @@ contains
         use spawn_data, only: proc_map_t, alloc_spawn_t
 
         type(qmc_in_t), intent(in) :: qmc_in
-        integer, intent(in) :: nspaces
+        integer, intent(in) :: nspaces, io_unit
         integer(int_p), intent(in) :: pop_real_factor
         type(basis_t), intent(in) :: basis
         logical, intent(in) :: non_blocking_comm
@@ -931,17 +939,17 @@ contains
             max_nspawned_states = int((-real(max_nspawned_states,p)*10**6)/(2*size_spawned_walker))
         end if
         if (parent) then
-            write (6,'(1X,a57,f7.2)') &
+            write (io_unit,'(1X,a57,f7.2)') &
                 'Memory allocated per core for spawned walker lists (MB): ', &
                 size_spawned_walker*real(2*max_nspawned_states,p)/10**6
-            write (6,'(1X,a51,1x,i0,/)') &
+            write (io_unit,'(1X,a51,1x,i0,/)') &
                 'Number of elements per core in spawned walker list:', max_nspawned_states
         end if
         if (mod(max_nspawned_states, nprocs) /= 0) then
             max_nspawned_states = ceiling(real(max_nspawned_states)/nprocs)*nprocs
             if (parent) then
-               write (6,'(1X,a68)') 'spawned_walker_length is not a multiple of the number of processors.'
-               write (6,'(1X,a35,1x,i0,a1,/)') &
+               write (io_unit,'(1X,a68)') 'spawned_walker_length is not a multiple of the number of processors.'
+               write (io_unit,'(1X,a35,1x,i0,a1,/)') &
                 'Increasing spawned_walker_length to',max_nspawned_states,'.'
             end if
         end if

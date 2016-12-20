@@ -14,3 +14,4 @@ options.
     restart
     semi_stoch
     logging
+    output

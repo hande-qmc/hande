@@ -54,6 +54,9 @@ contains
         real(p) :: H00_max, H00_old
         real(dp) :: real_pop
         logical :: updated
+        integer :: iunit
+
+        iunit = 6
 
         allocate(fmax(lbound(qs%psip_list%states, dim=1):ubound(qs%psip_list%states, dim=1)))
 
@@ -132,15 +135,15 @@ contains
             qs%ref%fock_sum = sum_sp_eigenvalues_occ_list(sys, qs%ref%occ_list0)
             if (doing_calc(hfs_fciqmc_calc)) call stop_all('select_ref_det', 'Not implemented for HFS.')
             if (parent) then
-                write (6,'(1X,"#",1X,62("-"))')
-                write (6,'(1X,"#",1X,"Changed reference det to:",1X)',advance='no')
+                write (iunit,'(1X,"#",1X,62("-"))')
+                write (iunit,'(1X,"#",1X,"Changed reference det to:",1X)',advance='no')
                 call write_det(sys%basis, sys%nel, qs%ref%f0, new_line=.true.)
-                write (6,'(1X,"#",1X,"Population on old reference det (averaged over report loop):",f10.2)') &
+                write (iunit,'(1X,"#",1X,"Population on old reference det (averaged over report loop):",f10.2)') &
                             sum(abs(qs%estimators%D0_population))
-                write (6,'(1X,"#",1X,"Population on new reference det:",27X,f10.2)') real_pop
-                write (6,'(1X,"#",1X,"E0 = <D0|H|D0> = ",f20.12)') qs%ref%H00
-                write (6,'(1X,"#",1X,"Care should be taken with accumulating statistics before this point.")')
-                write (6,'(1X,"#",1X,62("-"))')
+                write (iunit,'(1X,"#",1X,"Population on new reference det:",27X,f10.2)') real_pop
+                write (iunit,'(1X,"#",1X,"E0 = <D0|H|D0> = ",f20.12)') qs%ref%H00
+                write (iunit,'(1X,"#",1X,"Care should be taken with accumulating statistics before this point.")')
+                write (iunit,'(1X,"#",1X,62("-"))')
             end if
         end if
 
@@ -285,7 +288,7 @@ contains
 
     end function decide_nattempts
 
-    subroutine load_balancing_report(nparticles, nstates_active, use_mpi_barriers, spawn_mpi_time, determ_mpi_time)
+    subroutine load_balancing_report(nparticles, nstates_active, use_mpi_barriers, spawn_mpi_time, determ_mpi_time, io_unit)
 
         ! In:
         !    nparticles: number of particles in each space, on this process only.
@@ -297,6 +300,7 @@ contains
         ! In (optional):
         !    determ_mpi_time: MPI timings for semi-stochastic communications,
         !        on this process only.
+        !    io_unit: io unit to write report to.
 
         ! Print out a load-balancing report when run in parallel showing how
         ! determinants and walkers/particles are distributed over the processors.
@@ -309,7 +313,7 @@ contains
         logical, intent(in) :: use_mpi_barriers
         type(parallel_timing_t), intent(in) :: spawn_mpi_time
         type(parallel_timing_t), optional, intent(in) :: determ_mpi_time
-
+        integer, intent(in), optional :: io_unit
 #ifdef PARALLEL
         real(dp) :: load_data(size(nparticles), nprocs)
         integer :: load_data_int(nprocs)
@@ -317,20 +321,24 @@ contains
         real(p) :: barrier_this_proc
         real(p) :: spawn_comms(nprocs), determ_comms(nprocs), barrier_time(nprocs)
         character(4) :: lfmt
+        integer :: iunit
+
+        iunit = 6
+        if (present(io_unit)) iunit = io_unit
 
         if (nprocs > 1) then
             if (parent) then
-                write (6,'(1X,a14,/,1X,14("^"),/)') 'Load balancing'
-                write (6,'(1X,a77,/)') "The final distribution of walkers and determinants across the processors was:"
+                write (iunit,'(1X,a14,/,1X,14("^"),/)') 'Load balancing'
+                write (iunit,'(1X,a77,/)') "The final distribution of walkers and determinants across the processors was:"
             endif
             call mpi_gather(nparticles, size(nparticles), mpi_real8, load_data, size(nparticles), &
                             mpi_real8, 0, MPI_COMM_WORLD, ierr)
             if (parent) then
                 do i = 1, size(nparticles)
-                    if (size(nparticles) > 1) write (6,'(1X,a,'//int_fmt(i,1)//')') 'Particle type:', i
-                    write (6,'(1X,"Min # of particles on a processor:",6X,es13.6)') minval(load_data(i,:))
-                    write (6,'(1X,"Max # of particles on a processor:",6X,es13.6)') maxval(load_data(i,:))
-                    write (6,'(1X,"Mean # of particles on a processor:",5X,es13.6,/)') sum(load_data(i,:))/nprocs
+                    if (size(nparticles) > 1) write (iunit,'(1X,a,'//int_fmt(i,1)//')') 'Particle type:', i
+                    write (iunit,'(1X,"Min # of particles on a processor:",6X,es13.6)') minval(load_data(i,:))
+                    write (iunit,'(1X,"Max # of particles on a processor:",6X,es13.6)') maxval(load_data(i,:))
+                    write (iunit,'(1X,"Mean # of particles on a processor:",5X,es13.6,/)') sum(load_data(i,:))/nprocs
                 end do
             end if
             call mpi_gather(nstates_active, 1, mpi_integer, load_data_int, 1, mpi_integer, 0, MPI_COMM_WORLD, ierr)
@@ -350,26 +358,26 @@ contains
 
             if (parent) then
                 lfmt = int_fmt(maxval(load_data_int),0)
-                write (6,'(1X,"Min # of determinants on a processor:",3X,'//lfmt//')') minval(load_data_int)
-                write (6,'(1X,"Max # of determinants on a processor:",3X,'//lfmt//')') maxval(load_data_int)
-                write (6,'(1X,"Mean # of determinants on a processor:",2X,es13.6)') real(sum(load_data_int), p)/nprocs
-                write (6,'()')
+                write (iunit,'(1X,"Min # of determinants on a processor:",3X,'//lfmt//')') minval(load_data_int)
+                write (iunit,'(1X,"Max # of determinants on a processor:",3X,'//lfmt//')') maxval(load_data_int)
+                write (iunit,'(1X,"Mean # of determinants on a processor:",2X,es13.6)') real(sum(load_data_int), p)/nprocs
+                write (iunit,'()')
                 if (use_mpi_barriers) then
-                    write (6,'(1X,"Min time taken by MPI barrier calls:",5X,f8.2,"s")') minval(barrier_time)
-                    write (6,'(1X,"Max time taken by MPI barrier calls:",5X,f8.2,"s")') maxval(barrier_time)
-                    write (6,'(1X,"Mean time taken by MPI barrier calls:",4X,f8.2,"s")') sum(barrier_time)/nprocs
-                    write (6,'()')
+                    write (iunit,'(1X,"Min time taken by MPI barrier calls:",5X,f8.2,"s")') minval(barrier_time)
+                    write (iunit,'(1X,"Max time taken by MPI barrier calls:",5X,f8.2,"s")') maxval(barrier_time)
+                    write (iunit,'(1X,"Mean time taken by MPI barrier calls:",4X,f8.2,"s")') sum(barrier_time)/nprocs
+                    write (iunit,'()')
                 end if
-                write (6,'(1X,"Min time taken by walker communication:",5X,f8.2,"s")') minval(spawn_comms)
-                write (6,'(1X,"Max time taken by walker communication:",5X,f8.2,"s")') maxval(spawn_comms)
-                write (6,'(1X,"Mean time taken by walker communication:",4X,f8.2,"s")') sum(spawn_comms)/nprocs
-                write (6,'()')
+                write (iunit,'(1X,"Min time taken by walker communication:",5X,f8.2,"s")') minval(spawn_comms)
+                write (iunit,'(1X,"Max time taken by walker communication:",5X,f8.2,"s")') maxval(spawn_comms)
+                write (iunit,'(1X,"Mean time taken by walker communication:",4X,f8.2,"s")') sum(spawn_comms)/nprocs
+                write (iunit,'()')
                 if (present(determ_mpi_time)) then
-                    write (6,'(1X,"Min time taken by semi-stochastic communication:",5X,f8.2,"s")') minval(determ_comms)
-                    write (6,'(1X,"Max time taken by semi-stochastic communication:",5X,f8.2,"s")') maxval(determ_comms)
-                    write (6,'(1X,"Mean time taken by semi-stochastic communication:",4X,f8.2,"s")') &
+                    write (iunit,'(1X,"Min time taken by semi-stochastic communication:",5X,f8.2,"s")') minval(determ_comms)
+                    write (iunit,'(1X,"Max time taken by semi-stochastic communication:",5X,f8.2,"s")') maxval(determ_comms)
+                    write (iunit,'(1X,"Mean time taken by semi-stochastic communication:",4X,f8.2,"s")') &
                         sum(determ_comms)/nprocs
-                    write (6,'()')
+                    write (iunit,'()')
                 end if
             end if
         end if
@@ -469,7 +477,7 @@ contains
 
     end subroutine redistribute_particles
 
-    subroutine redistribute_semi_stoch_t(sys, propagator, reference, annihilation_flags, psip_list, spawn, determ)
+    subroutine redistribute_semi_stoch_t(sys, propagator, reference, annihilation_flags, psip_list, spawn, io_unit, determ)
 
         ! Recreate the semi_stoch_t object (if a non-empty space is in use).
         ! This requires sending deterministic states to their new processes
@@ -503,6 +511,7 @@ contains
         type(particle_t), intent(inout) :: psip_list
         type(spawn_t), intent(in) :: spawn
         type(semi_stoch_t), intent(inout) :: determ
+        integer, intent(in) :: io_unit
 
         type(semi_stoch_in_t) :: ss_in_new
 
@@ -517,14 +526,15 @@ contains
             call dealloc_semi_stoch_t(determ, keep_dets=.true.)
             ! Recreate the semi_stoch_t instance, by reusing the deterministic
             ! space already generated, but with states on their new processes.
-            call init_semi_stoch_t(determ, ss_in_new, sys, propagator, psip_list, reference, annihilation_flags, spawn, .false.)
+            call init_semi_stoch_t(determ, ss_in_new, sys, propagator, psip_list, reference, annihilation_flags, spawn, &
+                                    .false., io_unit)
         end if
 
     end subroutine redistribute_semi_stoch_t
 
 ! --- Output routines ---
 
-    subroutine initial_fciqmc_status(sys, qmc_in, qs, nb_comm, spawn_elsewhere, doing_ccmc)
+    subroutine initial_fciqmc_status(sys, qmc_in, qs, nb_comm, spawn_elsewhere, doing_ccmc, io_unit)
 
         ! Calculate the projected energy based upon the initial walker
         ! distribution (either via a restart or as set during initialisation)
@@ -541,6 +551,7 @@ contains
         !       processor to other processors.  Relevant only when restarting
         !       non-blocking calculations.
         !    doing_ccmc: true if doing ccmc calculation.
+        !    io_unit: io unit to write any reporting to.
 
         use determinants, only: det_info_t, alloc_det_info_t, dealloc_det_info_t, decode_det
         use energy_evaluation, only: local_energy_estimators, update_energy_estimators_send
@@ -558,7 +569,7 @@ contains
         type(qmc_in_t), intent(in) :: qmc_in
         type(qmc_state_t), intent(inout), target :: qs
         logical, optional, intent(in) :: nb_comm, doing_ccmc
-        integer, optional, intent(in) :: spawn_elsewhere
+        integer, optional, intent(in) :: spawn_elsewhere, io_unit
 
         integer :: idet, ispace
         real(dp) :: ntot_particles(qs%psip_list%nspaces)
@@ -651,9 +662,10 @@ contains
             if (doing_ccmc_loc) then
                 qs%estimators%nattempts = nint(qs%estimators%D0_population)
                 call write_qmc_report(qmc_in, qs, 0, ntot_particles, 0.0, .true., .false., cmplx_est=sys%read_in%comp, &
-                                        nattempts=.true.)
+                                        nattempts=.true., io_unit=io_unit)
             else
-                call write_qmc_report(qmc_in, qs, 0, ntot_particles, 0.0, .true., .false., cmplx_est=sys%read_in%comp)
+                call write_qmc_report(qmc_in, qs, 0, ntot_particles, 0.0, .true., .false., cmplx_est=sys%read_in%comp, &
+                    io_unit=io_unit)
             end if
         end if
 
@@ -756,7 +768,7 @@ contains
 
     end subroutine init_mc_cycle
 
-    subroutine load_balancing_wrapper(sys, propagator, reference, load_bal_in, annihilation_flags, nb_comm, rng, &
+    subroutine load_balancing_wrapper(sys, propagator, reference, load_bal_in, annihilation_flags, nb_comm, io_unit, rng, &
                                       psip_list, spawn, par_info, determ)
 
         ! In:
@@ -804,11 +816,12 @@ contains
         type(spawn_t), intent(inout) :: spawn
         type(parallel_t), intent(inout) :: par_info
         type(semi_stoch_t), optional, intent(inout) :: determ
+        integer, intent(in) :: io_unit
 
         if (par_info%load%needed) then
             call do_load_balancing(psip_list, spawn, par_info, load_bal_in)
             call redistribute_load_balancing_dets(rng, sys, propagator, reference, determ, psip_list, &
-                                                  spawn, annihilation_flags)
+                                                  spawn, annihilation_flags, io_unit)
             ! If using non-blocking communications we still need this flag to
             ! be set.
             if (.not. nb_comm) par_info%load%needed = .false.
@@ -1017,18 +1030,21 @@ contains
 
         real(p), intent(inout) :: tau
         real(p), intent(in), optional :: factor
+        integer :: iunit
+
+        iunit = 6
 
         if (present(factor)) then
             tau = factor*tau
         else
             tau = 0.950_p*tau
         end if
-        if (parent) write(6, '(1X, "# Warning timestep changed to: ",f8.5)') tau
+        if (parent) write(iunit, '(1X, "# Warning timestep changed to: ",f8.5)') tau
 
     end subroutine rescale_tau
 
     subroutine redistribute_load_balancing_dets(rng, sys, propagator, reference, determ, &
-                                                 psip_list, spawn, annihilation_flags)
+                                                 psip_list, spawn, annihilation_flags, io_unit)
 
         ! When doing load balancing we need to redistribute chosen sections of
         ! main list to be sent to their new processors. This is a wrapper which
@@ -1071,6 +1087,7 @@ contains
         type(particle_t), intent(inout) :: psip_list
         type(spawn_t), intent(inout) :: spawn
         type(annihilation_flags_t), intent(in) :: annihilation_flags
+        integer, intent(in) :: io_unit
 
         associate(pl=>psip_list)
             call redistribute_particles(pl%states, pl%pop_real_factor, pl%pops, pl%nstates, pl%nparticles, spawn)
@@ -1082,7 +1099,7 @@ contains
         spawn%head = spawn%head_start
 
         if (present(determ)) call redistribute_semi_stoch_t(sys, propagator, reference, annihilation_flags, &
-                                                             psip_list, spawn, determ)
+                                                             psip_list, spawn, io_unit, determ)
 
     end subroutine redistribute_load_balancing_dets
 

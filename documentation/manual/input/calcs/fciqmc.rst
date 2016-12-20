@@ -13,6 +13,8 @@ Full Configuration Interaction Quantum Monte Carlo
         restart = { ... },
         reference = { ... },
         load_bal = { ... },
+        logging = { ... },
+        output = { ... },
         qmc_state = qmc_state,
     }
 
@@ -75,6 +77,21 @@ Options
     Further options to improve the parallel load balancing of an FCIQMC simulation.  If
     present (even if empty) an advanced load-balancing algorithm is used
     [Malone16a]_.  See :ref:`load_bal_table` for more details.
+``logging``
+    type: lua table.
+
+    Optional.
+
+    Further options to enable various logging outputs from a FCIQMC simulation. Only
+    available when compiled in debug mode. See :ref:`logging_table` for information
+    on current options.
+``output``
+    type: lua_table.
+
+    Optional.
+
+    Further options to enable direction of calculation output to a different file.
+    See :ref:`output_table` for more information.
 ``qmc_state``
     type: qmc_state object.
 
