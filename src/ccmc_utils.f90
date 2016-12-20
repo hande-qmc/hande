@@ -377,7 +377,11 @@ contains
 
         ! First need to set values to account for reference correctly in ex_lvl_dist.
         if (calc_dist) then
-            ex_lvl_dist%cumulative_nstates_ex_lvl(0) = 1
+            if (D0_proc==iproc) then
+                ex_lvl_dist%cumulative_nstates_ex_lvl(0:ex_lvls(1)) = 1
+            else
+                ex_lvl_dist%cumulative_nstates_ex_lvl(0:ex_lvls(1)) = 0
+            end if
             ex_lvl_dist%cumulative_pop_ex_lvl(0) = 0
             ex_lvl = 0_i0
         end if
