@@ -595,7 +595,6 @@ contains
         use excitations, only: get_excitation_level
         use qmc_data, only: particle_t
         use dSFMT_interface, only: dSFMT_t, get_rand_close_open
-        use parallel, only: nprocs
         use proc_pointers, only: decoder_ptr
         use system, only: sys_t
         use utils, only: factorial
@@ -624,19 +623,25 @@ contains
         integer :: i, num, choice, iex
         logical :: first, allowed, all_allowed
 
-        cluster%pselect = real(nattempts*nprocs, p)
+        cluster%pselect = real(nattempts, p)
 
         ! Select cluster size according to probability distribution set by
         ! update_selection_probabilites.
         rand = get_rand_close_open(rng)
         cluster%nexcitors = -1
-        do i = min_size, max_size
+        do i = min_size, max_size - 1
+            ! Add equality for edge case.
             if (rand < selection_data%cumulative_stoch_size_weighting(i)) then
                 cluster%nexcitors = i
                 cluster%pselect = cluster%pselect * selection_data%stoch_size_weighting(i)
                 exit
             end if
         end do
+
+        if (cluster%nexcitors == -1) then
+                cluster%nexcitors = max_size
+                cluster%pselect = cluster%pselect * selection_data%stoch_size_weighting(max_size)
+        end if
 
         ! Initiator approximation.
         ! This is sufficiently quick that we'll just do it in all cases, even
@@ -662,14 +667,19 @@ contains
                 select_proportion => selection_data%cluster_sizes_proportion(cluster%nexcitors)%v)
             rand = get_rand_close_open(rng)
 
+            choice = -1
             cumulative = 0.0_dp
-            do num = 1, size(select_proportion, dim=1)
+            do num = 1, size(select_proportion, dim=1) - 1
                 cumulative = cumulative + select_proportion(num)
-                if (rand <= cumulative) then
+                if (rand < cumulative) then
                     choice = num
                     exit
                 end if
             end do
+
+            if (choice == -1) then
+                choice = size(select_proportion, dim=1)
+            end if
 
             cluster%pselect = cluster%pselect * select_proportion(choice)
 
@@ -693,7 +703,8 @@ contains
                     ! and t_Y t_X collapse onto the same excitor (where X and Y each
                     ! label an excitor), the probability of selecting a given cluster is
                     ! proportional to the number of ways the cluster could have been
-                    ! formed.
+                    ! formed. Obviously this now only applies to clusters of the same
+                    ! excitation level.
                     ! If two excitors in the cluster are the same, the factorial
                     ! overcounts the number of ways the cluster could have been formed
                     ! but the extra factor(s) of 2 are cancelled by a similar
@@ -789,12 +800,16 @@ contains
         tot_level_pop = ex_lvl_dist%pop_ex_lvl(ex_level)
 
         if (nexcitors /= 0) then
+            ! Want to generate populations in range:
+            !       cumulative_pop_ex_lvl(ex_lvl-1) < pop <= cumulative_pop_ex_lvl(ex_lvl)
             do i = 1, nexcitors
                 pops(i) = get_rand_close_open(rng)*(tot_level_pop-depsilon) + depsilon + &
                                 ex_lvl_dist%cumulative_pop_ex_lvl(ex_level - 1)
             end do
             call insert_sort(pops)
-            prev_pos = ex_lvl_dist%cumulative_nstates_ex_lvl(ex_level - 1)
+            ! Lowest possible position is first state of chosen ex lvl ie. cumulative
+            ! states to one lower ex lvl plus 1.
+            prev_pos = ex_lvl_dist%cumulative_nstates_ex_lvl(ex_level - 1) + 1
             do i = 1, nexcitors
                 call binary_search(cumulative_excip_pop, pops(i), prev_pos, &
                             ex_lvl_dist%cumulative_nstates_ex_lvl(ex_level), hit, pos)
@@ -809,8 +824,6 @@ contains
                     call reset_extra_info_bit_string(sys%basis, cdet%f)
                     cdet%data => psip_list%dat(:,pos) ! Only use if cluster is non-composite!
                     cluster_population = excitor_pop
-                    ! Counter the additional *nprocs above.
-                    cluster%pselect = cluster%pselect/nprocs
                 else
                     call collapse_cluster(sys%basis, f0, psip_list%states(:,pos), excitor_pop, cdet%f, &
                                           cluster_population, allowed)
