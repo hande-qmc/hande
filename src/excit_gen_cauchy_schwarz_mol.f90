@@ -44,7 +44,7 @@ contains
         type(reference_t), intent(in) :: ref
         type(excit_gen_cauchy_schwarz_t), intent(inout) :: cs
 
-        integer :: i, j, ind_a, ind_b, maxv, nv, jsym
+        integer :: i, j, ind_a, ind_b, maxv, nv, bsym
         
         ! Temp storage
         maxv = max(sys%nvirt_alpha,sys%nvirt_beta)
@@ -91,21 +91,21 @@ contains
                 nv = sys%nvirt_beta
                 call create_weighted_excitation_list_ptr(sys, j, 0, cs%virt_list_beta, nv, cs%ia_weights(:,i), cs%ia_weights_tot(i))
                 call generate_alias_tables(nv, cs%ia_weights(:,i), cs%ia_weights_tot(i), cs%ia_aliasU(:,i), cs%ia_aliasK(:,i))
-                do jsym = sys%sym0_tot, sys%sym_max_tot
-                    call create_weighted_excitation_list_ptr(sys, j, 0, sys%read_in%pg_sym%sym_spin_basis_fns(:,1,jsym), &
-                        sys%read_in%pg_sym%nbasis_sym_spin(1,jsym), cs%jb_weights(:,jsym,i), cs%jb_weights_tot(jsym,i))
-                    call generate_alias_tables(sys%read_in%pg_sym%nbasis_sym_spin(1,jsym), cs%jb_weights(:,jsym,i), &
-                        cs%jb_weights_tot(jsym,i), cs%jb_aliasU(:,jsym,i), cs%jb_aliasK(:,jsym,i))
+                do bsym = sys%sym0_tot, sys%sym_max_tot
+                    call create_weighted_excitation_list_ptr(sys, j, 0, sys%read_in%pg_sym%sym_spin_basis_fns(:,1,bsym), &
+                        sys%read_in%pg_sym%nbasis_sym_spin(1,bsym), cs%jb_weights(:,bsym,i), cs%jb_weights_tot(bsym,i))
+                    call generate_alias_tables(sys%read_in%pg_sym%nbasis_sym_spin(1,bsym), cs%jb_weights(:,bsym,i), &
+                        cs%jb_weights_tot(bsym,i), cs%jb_aliasU(:,bsym,i), cs%jb_aliasK(:,bsym,i))
                 end do
             else ! alpha
                 nv = sys%nvirt_alpha
                 call create_weighted_excitation_list_ptr(sys, j, 0, cs%virt_list_alpha, nv, cs%ia_weights(:,i), cs%ia_weights_tot(i))
                 call generate_alias_tables(nv, cs%ia_weights(:,i), cs%ia_weights_tot(i), cs%ia_aliasU(:,i), cs%ia_aliasK(:,i))
-                do jsym = sys%sym0_tot, sys%sym_max_tot
-                    call create_weighted_excitation_list_ptr(sys, j, 0, sys%read_in%pg_sym%sym_spin_basis_fns(:,2,jsym), &
-                        sys%read_in%pg_sym%nbasis_sym_spin(2,jsym), cs%jb_weights(:,jsym,i), cs%jb_weights_tot(jsym,i))
-                    call generate_alias_tables(sys%read_in%pg_sym%nbasis_sym_spin(2,jsym), cs%jb_weights(:,jsym,i), &
-                        cs%jb_weights_tot(jsym,i), cs%jb_aliasU(:,jsym,i), cs%jb_aliasK(:,jsym,i))
+                do bsym = sys%sym0_tot, sys%sym_max_tot
+                    call create_weighted_excitation_list_ptr(sys, j, 0, sys%read_in%pg_sym%sym_spin_basis_fns(:,2,bsym), &
+                        sys%read_in%pg_sym%nbasis_sym_spin(2,bsym), cs%jb_weights(:,bsym,i), cs%jb_weights_tot(bsym,i))
+                    call generate_alias_tables(sys%read_in%pg_sym%nbasis_sym_spin(2,bsym), cs%jb_weights(:,bsym,i), &
+                        cs%jb_weights_tot(bsym,i), cs%jb_aliasU(:,bsym,i), cs%jb_aliasK(:,bsym,i))
                 end do
             end if
         end do
