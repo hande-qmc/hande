@@ -51,7 +51,6 @@ type excit_gen_cauchy_schwarz_t
     integer(int_bas), allocatable :: virt_list_beta(:) 
     ! occ_list(:) is the list of occupied orbitals in the reference.
     ! Length of array: (sys%nel+1) - The +1 is a pad.
-    ! [review] - VAN: Why is this pad good?
     integer(int_bas), allocatable :: occ_list(:)
 
 end type excit_gen_cauchy_schwarz_t

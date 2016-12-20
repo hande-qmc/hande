@@ -73,6 +73,10 @@ contains
         
         do i = 1, sys%basis%nbasis
             if (i==cs%occ_list(j)) then ! Our basis fn is in the ref
+                ! Due to the +1 pad in occ_list, there is not danger of going past array boundaries here.
+                ! [review] - VAN: is it not better to check whether j is <= sys%nel?
+                ! [review] - VAN: That might be safer. I am not a fan of assigning a number that is not
+                ! [review] - VAN: sensible.
                 j = j + 1
             else ! Need to store it as a virt
                 if (sys%basis%basis_fns(i)%Ms == -1) then ! beta
