@@ -255,6 +255,7 @@ contains
                 ! ref store (e.g.) contains the indices within cs%occ_list of the orbitals
                 ! which have been excited from.
                 ! [review] - JSS: this could/should be done once per determinant/excitor rather than once per excit gen.
+                ! [review] - VAN: Would you calculate it the moment that cdet is defined? and add it as cdet%cdet_store etc?
                 do ii=1, nex
                     associate(bfns=>sys%basis%basis_fns)
                         if (bfns(cs%occ_list(ref_store(ii)))%Ms /= bfns(cdet%occ_list(cdet_store(ii)))%Ms) then

@@ -475,7 +475,9 @@ contains
         det_sind = 0 ! the position in cdet_store of the last non-matching orbital
         ref_sind = 0 ! the position in ref_store of the last non-matching orbital
 
-        
+        ! [review] - VAN: Could put into det_store_{alpha,beta}, etc, so that spin sorting 
+        ! [review] - VAN: does not have to be done later.
+
 fdo:    do i=1, nel ! this will index in ref
             do while (det_list(j)<ref_list(i))
                 ! det's orb isn't in ref, so we store its index in det_store
