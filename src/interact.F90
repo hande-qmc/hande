@@ -8,7 +8,7 @@ character(*), parameter :: comms_file = "HANDE.COMM"
 
 contains
 
-    subroutine calc_interact(comms_found, soft_exit, qs)
+    subroutine calc_interact(comms_found, out_unit, soft_exit, qs)
 
         ! Read HANDE.COMM if it exists in the working directory of any
         ! processor and set the variables according to the options defined in
@@ -16,12 +16,12 @@ contains
 
         ! In:
         !    comms_found: true if the file HANDE.COMM exists on nay processor.
+        !    out_unit: File unit to write output to.
         ! Out:
         !    softexit: true if SOFTEXIT is defined in HANDE.COMM, in which case
         !        any calculation should exit immediately and go to the
         !        post-processing steps.
         ! In/Out:
-        !    qmc_in (optional): Input options relating to QMC methods.
         !    qs (optional): QMC calculation state. The shift and/or timestep may be updated.
 
         use aotus_module, only: open_config_chunk
@@ -29,12 +29,13 @@ contains
         use aot_vector_module, only: aot_get_val
         use flu_binding, only: flu_State, flu_close
 
-        use utils, only: get_free_unit, read_file_to_buffer
+        use utils, only: read_file_to_buffer
         use parallel
 
         use qmc_data, only: qmc_in_t, qmc_state_t
 
         logical, intent(in) :: comms_found
+        integer, intent(in) :: out_unit
         logical, intent(out) :: soft_exit
         type(qmc_state_t), optional, intent(inout) :: qs
 
@@ -67,13 +68,13 @@ contains
             ! This should be a very rare event, so we don't worry too much
             ! about optimised communications in this section.
             if (parent) then
-                write (iunit,'(1X,"#",1X,62("-"))')
-                write (iunit,'(1X,"#",1X,a21)') comms_file//' detected.'
-                write (iunit,'(1X,"#",/,1X,"#",1X,a24,/,1X,"#")') 'Contents of '//comms_file//':'
+                write (out_unit,'(1X,"#",1X,62("-"))')
+                write (out_unit,'(1X,"#",1X,a21)') comms_file//' detected.'
+                write (out_unit,'(1X,"#",/,1X,"#",1X,a24,/,1X,"#")') 'Contents of '//comms_file//':'
                 ! Flush output from parent processor so that processor which
                 ! has the HANDE.COMM file can print out the contents without
                 ! mixing the output.
-                flush(iunit)
+                flush(out_unit)
             end if
             ! Quick pause to ensure output is all done by this point.
 #ifdef PARALLEL
@@ -91,8 +92,7 @@ contains
             do proc = 0, nprocs-1
                 if (proc == iproc .and. comms_exists) then
                     ! Read in file.
-                    iunit = get_free_unit()
-                    open(iunit, file=comms_file, status='old')
+                    open(newunit=iunit, file=comms_file, status='old')
                     call read_file_to_buffer(buffer, in_unit=iunit)
                     ! Don't want to keep HANDE.COMM around to be detected again on
                     ! the next Monte Carlo iteration.
@@ -121,10 +121,10 @@ contains
                 do
                     j = index(buffer(i:), new_line(buffer))
                     if (j == 0) exit
-                    write (iunit,'(1X, "#", 1X, a)', advance='no') trim(buffer(i:j+i-1))
+                    write (out_unit,'(1X, "#", 1X, a)', advance='no') trim(buffer(i:j+i-1))
                     i = i+j
                 end do
-                write (iunit,'(1X, "#", 1X, a)') trim(buffer(i:))
+                write (out_unit,'(1X, "#", 1X, a)') trim(buffer(i:))
             end if
 
             ! Now each processor has the HANDE.COMM script, attempt to execute it...
@@ -147,7 +147,7 @@ contains
                         else
                             call aot_table_close(lua_state, shnd)
                             call aot_get_val(tmpshift, ierr_arr, size(qs%shift), lua_state, key='shift')
-                            if (parent) write (iunit,'(1X,"# Using ", i2, " shift values from HANDE.COMM.")') size(tmpshift)
+                            if (parent) write (out_unit,'(1X,"# Using ", i2, " shift values from HANDE.COMM.")') size(tmpshift)
                             qs%shift(:size(tmpshift)) = tmpshift(:)
                         end if
                     end if
@@ -159,13 +159,13 @@ contains
 
             if (parent) then
                 if (lua_err == 0) then
-                    write (iunit,'(1X,"#",/,1X,"#",1X,a)') "From now on we use the information provided in "//comms_file//"."
+                    write (out_unit,'(1X,"#",/,1X,"#",1X,a)') "From now on we use the information provided in "//comms_file//"."
                 else
-                    write (iunit,'(1X,"# aotus/lua error code:", i3)') ierr
-                    write (iunit,'(1X,"# error message:", a)') trim(err_str)
-                    write (iunit,'(1X,"# Ignoring variables in ",a)') trim(comms_file)
+                    write (out_unit,'(1X,"# aotus/lua error code:", i3)') ierr
+                    write (out_unit,'(1X,"# error message:", a)') trim(err_str)
+                    write (out_unit,'(1X,"# Ignoring variables in ",a)') trim(comms_file)
                 end if
-                write (iunit,'(1X,"#",1X,62("-"))')
+                write (out_unit,'(1X,"#",1X,62("-"))')
             end if
 
         end if

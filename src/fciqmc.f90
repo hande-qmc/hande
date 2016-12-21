@@ -321,7 +321,7 @@ contains
 
             error = qs%spawn_store%spawn%error .or. qs%psip_list%error
 
-            call end_report_loop(qmc_in, iter, update_tau, qs, nparticles_old, &
+            call end_report_loop(io_unit, qmc_in, iter, update_tau, qs, nparticles_old, &
                                  nspawn_events, semi_stoch_in%shift_iter, semi_stoch_iter, soft_exit, &
                                  load_bal_in, bloom_stats=bloom_stats, doing_lb=fciqmc_in%doing_load_balancing, &
                                  nb_comm=fciqmc_in%non_blocking_comm, comp=sys%read_in%comp, &

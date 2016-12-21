@@ -811,7 +811,7 @@ contains
 
             if (debug) call write_logging_select_ccmc(logging_info, iter, selection_data)
 
-            call end_report_loop(qmc_in, iter, update_tau, qs, nparticles_old, nspawn_events, &
+            call end_report_loop(io_unit, qmc_in, iter, update_tau, qs, nparticles_old, nspawn_events, &
                                  semi_stoch_in%shift_iter, semi_stoch_iter, soft_exit, &
                                  load_bal_in, bloom_stats=bloom_stats, comp=sys%read_in%comp, &
                                  error=error, vary_shift_reference=ccmc_in%vary_shift_reference)

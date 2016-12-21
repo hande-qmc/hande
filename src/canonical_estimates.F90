@@ -226,7 +226,7 @@ contains
                                                              estimators(hf_pe_idx), estimators(hf_part_idx), &
                                                              real(estimators(naccept_idx),p)/(nattempts*nprocs)
             comms_found = abs(estimators(comms_found_idx)) > depsilon
-            call calc_interact(comms_found, soft_exit)
+            call calc_interact(comms_found, iunit, soft_exit)
             if (soft_exit) exit
         end do
 
