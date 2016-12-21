@@ -831,11 +831,12 @@ contains
 
 ! --- QMC loop and cycle termination routines ---
 
-    subroutine end_report_loop(qmc_in, iteration, update_tau, qs, ntot_particles, nspawn_events, semi_stoch_shift_it, &
+    subroutine end_report_loop(out_unit, qmc_in, iteration, update_tau, qs, ntot_particles, nspawn_events, semi_stoch_shift_it, &
                                semi_stoch_start_it, soft_exit, load_bal_in, update_estimators, bloom_stats, doing_lb, &
                                nb_comm, comp, error, vary_shift_reference)
 
         ! In:
+        !    out_unit: File unit to write ouput to.
         !    qmc_in: input optons relating to QMC methods.
         !    iteration: The current iteration of the simulation.
         !    nspawn_events: The total number of spawning events to this process.
@@ -876,6 +877,7 @@ contains
         use bloom_handler, only: bloom_stats_t, bloom_stats_warning
         use qmc_data, only: qmc_in_t, load_bal_in_t, qmc_state_t, nb_rep_t
 
+        integer, intent(in) :: out_unit
         type(qmc_in_t), intent(in) :: qmc_in
         integer, intent(in) :: iteration
         logical, intent(inout) :: update_tau
@@ -947,7 +949,7 @@ contains
         if ((.not. vary_shift_before) .and. all(qs%vary_shift) .and. (semi_stoch_shift_it /= -1)) &
             semi_stoch_start_it = semi_stoch_shift_it + iteration + 1
 
-        call calc_interact(comms_found, soft_exit, qs)
+        call calc_interact(comms_found, out_unit, soft_exit, qs)
 
     end subroutine end_report_loop
 
