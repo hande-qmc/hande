@@ -198,9 +198,9 @@ contains
         ! data_accumulator of every block size.
 
         bl%reblock_data(dt_numerator,:)%data_accumulator = bl%reblock_data(dt_numerator,:)%data_accumulator + &
-                                                                                        qs%estimators%proj_energy
+                                                                                        qs%estimators(1)%proj_energy
         bl%reblock_data(dt_denominator,:)%data_accumulator = bl%reblock_data(dt_denominator,:)%data_accumulator + &
-                                                                                        qs%estimators%D0_population
+                                                                                        qs%estimators(1)%D0_population
         bl%reblock_data(dt_shift,:)%data_accumulator = bl%reblock_data(dt_shift,:)%data_accumulator + qs%shift(1)
 
         ! Everytime enough data is collected for each block size, the
