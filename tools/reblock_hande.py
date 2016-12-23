@@ -137,7 +137,8 @@ opt_block: :class:`pandas.DataFrame`
                 indices.extend((','.join(calc),i) for i in range(len(info)))
         except ValueError:
             print('WARNING: No data found in file '+' '.join(calc)+'.')
-
+        except RuntimeError as err:
+            print('WARNING: Reblocking failed for file '+' '.join(calc)+' with error '+format(err)+'.')
     opt_blocks = [pd.DataFrame(data=
         {'iteration':info.metadata['pyhande']['reblock_start']},
         index = ['Block from']).append(info.opt_block) for info in infos]
