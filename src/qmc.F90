@@ -162,6 +162,7 @@ contains
         qmc_state%propagator%quasi_newton = qmc_in%quasi_newton
         qmc_state%propagator%quasi_newton_threshold = qmc_in%quasi_newton_threshold
         qmc_state%propagator%quasi_newton_value = qmc_in%quasi_newton_value
+        qmc_state%shift_damping = qmc_in%shift_damping
 
     end subroutine init_qmc
 
