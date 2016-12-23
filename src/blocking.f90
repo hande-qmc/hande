@@ -226,7 +226,7 @@ contains
         end do
     end subroutine collect_data
 
-    subroutine mean_std_cov(bl, std_dev_shift)
+    subroutine mean_std_cov(bl, sd_shift_dist, sd_proj_numer_dist, sd_proj_denom_dist)
 
         ! Mean, standard deviation and covariance for each block size is
         ! calculated from the collected data.
@@ -235,13 +235,20 @@ contains
         !   bl: Information needed to peform blocking on the fly. block_mean,
         !       block_std and block_cov for each block size is calculated. 0 is
         !       returned if there aren't sufficient blocks to calculate them.
+        ! Out (optional):
+        !   sd_shift_dist: standard distribution of the shift distribution.
+        !       Obtained as sqrt(<S^2>-<S>^2) for instantaneous shift values.
+        !   sd_proj_numer_dist: standard distribution of the projected energy
+        !       numerator distribution.
+        !   sd_proj_denom_dist: stardard deviation of the instantaneous reference
+        !       population distribution.
 
         use qmc_data, only: blocking_t
         use const, only: p
 
         type(blocking_t), intent(inout) :: bl
         integer :: i
-        real(p), intent(out) :: std_dev_shift(0:bl%lg_max)
+        real(p), intent(out), optional :: sd_shift_dist, sd_proj_numer_dist, sd_proj_denom_dist
 
         do i = 0, bl%lg_max
 
@@ -254,7 +261,11 @@ contains
             if (bl%reblock_data_2(dt_numerator,i)%n_blocks > 1) then
                 bl%block_std(:,i) = (bl%reblock_data_2(:,i)%sum_of_block_squares/bl%reblock_data_2(:,i)%n_blocks - &
                                                                                                 bl%block_mean(:,i) ** 2)
-                std_dev_shift(i) = sqrt(bl%block_std(dt_shift,i))
+                if (i==0) then
+                    sd_proj_numer_dist = sqrt(bl%block_std(dt_numerator,0))
+                    sd_proj_denom_dist = sqrt(bl%block_std(dt_denominator,0))
+                    sd_shift_dist = sqrt(bl%block_std(dt_shift,0))
+                end if
                 bl%block_std(:,i) = sqrt(bl%block_std(:,i)/(bl%reblock_data_2(:,i)%n_blocks - 1))
 
                 bl%block_cov(i) = (bl%data_product_2(i) - (bl%block_mean(1,i)*bl%block_mean(2,i)  * &
@@ -503,13 +514,12 @@ contains
         integer, intent(in) :: ireport
         integer :: i, j
         integer ::  minimum(3)=0
-        real(p) :: values(0:bl%lg_max)
 
         do i = 0, bl%n_saved_startpoints
 
             if (bl%n_reports_blocked > bl%save_fq * i) then
                 call change_start(bl, ireport, i)
-                call mean_std_cov(bl, values)
+                call mean_std_cov(bl)
                 call find_optimal_block(bl)
 
                 do j = 1, 3
@@ -543,7 +553,7 @@ contains
 
     end subroutine err_comparison
 
-    subroutine do_blocking(bl, qs, qmc_in, ireport, iter, iunit, blocking_in, std_dev_shift)
+    subroutine do_blocking(bl, qs, qmc_in, ireport, iter, iunit, blocking_in)
 
         ! Carries out blocking on the fly and changes the start point to
         ! minimise the fractional error in standard deviation weighted by the
@@ -568,7 +578,7 @@ contains
         integer, intent(in) :: ireport, iter
         integer, intent(in) :: iunit
         type(blocking_in_t), intent(in) :: blocking_in
-        real(p), intent(inout) :: std_dev_shift(:)
+        real(p), intent(inout) :: sd_shift_dist, sd_proj_numer_dist, sd_proj_denom_dist
 
         if (bl%start_ireport == -1 .and. blocking_in%start_point<0 .and. qs%vary_shift(1)) then
             bl%start_ireport = ireport
@@ -590,7 +600,7 @@ contains
         if (mod(ireport,50) ==0 .and. ireport >= bl%start_ireport .and. &
                     bl%start_ireport>=0) then
             call change_start(bl, ireport, bl%start_point)
-            call mean_std_cov(bl, std_dev_shift)
+            call mean_std_cov(bl, sd_shift_dist, sd_proj_numer_dist, sd_proj_denom_dist)
             call find_optimal_block(bl)
             call write_blocking(bl, qmc_in, ireport, iter, iunit)
             call check_error(bl, qs, blocking_in, ireport)
