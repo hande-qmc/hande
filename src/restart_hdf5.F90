@@ -713,6 +713,7 @@ module restart_hdf5
             call stop_all('read_restart_hdf5', '# Not compiled with HDF5 support.  Cannot read in restart file.')
 #endif
 
+
         end subroutine read_restart_hdf5
 
         subroutine get_reference_hdf5(ri, info_string_len, reference)
@@ -769,6 +770,7 @@ module restart_hdf5
                 if (exists) then
                     call hdf5_read(group_id, dinfo_string_len, info_string_len_restart)
                 end if
+                call h5gclose_f(group_id, ierr)
             end if
             ! --- qmc/reference group ---
             call h5gopen_f(file_id, hdf5_path(gqmc,gref), group_id, ierr)
