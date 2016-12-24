@@ -145,10 +145,10 @@ contains
 
         use determinants, only: det_info_t
         use excitations, only: excit_t
-        use excitations, only: find_excitation_permutation1, find_excitation_permutation2,get_excitation_locations
-        use proc_pointers, only: slater_condon1_excit_ptr, slater_condon2_excit_ptr
+        use excitations, only: find_excitation_permutation2,get_excitation_locations
+        use proc_pointers, only: slater_condon2_excit_ptr
         use system, only: sys_t
-        use excit_gen_mol, only: calc_pgen_single_mol_no_renorm,find_ia_mol
+        use excit_gen_mol, only: gen_single_excit_mol_no_renorm
         use excit_gens, only: excit_gen_cauchy_schwarz_t, excit_gen_data_t
         use alias, only: select_weighted_value_prec
         use dSFMT_interface, only: dSFMT_t, get_rand_close_open
@@ -191,27 +191,7 @@ contains
         ! 1. Select single or double.
         if (get_rand_close_open(rng) < excit_gen_data%pattempt_single) then
 
-            ! 2a. Select orbital to excite from and orbital to excite into.
-            call find_ia_mol(rng, sys, sys%read_in%pg_sym%gamma_sym, cdet%f, cdet%occ_list, connection%from_orb(1), &
-                             connection%to_orb(1), allowed_excitation)
-            connection%nexcit = 1
-
-            if (allowed_excitation) then
-                ! 3a. Probability of generating this excitation.
-                pgen = excit_gen_data%pattempt_single*calc_pgen_single_mol_no_renorm(sys, connection%to_orb(1))
-
-                ! 4a. Parity of permutation required to line up determinants.
-                call find_excitation_permutation1(sys%basis%excit_mask, cdet%f, connection)
-
-                ! 5a. Find the connecting matrix element.
-                hmatel = slater_condon1_excit_ptr(sys, cdet%occ_list, connection%from_orb(1), & 
-                                            connection%to_orb(1), connection%perm)
-            else
-                ! Forbidden---connection%to_orb(1) is already occupied.
-                hmatel%c = cmplx(0.0_p, 0.0_p, p)
-                hmatel%r = 0.0_p
-                pgen = 1.0_p ! Avoid any dangerous division by pgen by returning a sane (but cheap) value.
-            end if
+            call gen_single_excit_mol_no_renorm(rng, sys, excit_gen_data, cdet, pgen, connection, hmatel, allowed_excitation)
 
         else
             ! We have a double
@@ -484,10 +464,10 @@ contains
 
         use determinants, only: det_info_t
         use excitations, only: excit_t
-        use excitations, only: find_excitation_permutation1, find_excitation_permutation2
-        use proc_pointers, only: slater_condon1_excit_ptr, slater_condon2_excit_ptr, create_weighted_excitation_list_ptr
+        use excitations, only: find_excitation_permutation2
+        use proc_pointers, only: slater_condon2_excit_ptr, create_weighted_excitation_list_ptr
         use system, only: sys_t
-        use excit_gen_mol, only: calc_pgen_single_mol_no_renorm, find_ia_mol, choose_ij_mol
+        use excit_gen_mol, only: gen_single_excit_mol_no_renorm, choose_ij_mol
         use hamiltonian_data, only: hmatel_t
         use dSFMT_interface, only: dSFMT_t, get_rand_close_open
         use search, only: binary_search
@@ -517,27 +497,7 @@ contains
         ! 1. Select single or double.
         if (get_rand_close_open(rng) < excit_gen_data%pattempt_single) then
 
-            ! [review] - JSS: this block is identical for renorm, no_renorm and the three Cauchy-Schwarz generators.  Should abstract it.
-            ! 2a. Select orbital to excite from and orbital to excite into.
-            call find_ia_mol(rng, sys, sys%read_in%pg_sym%gamma_sym, cdet%f, cdet%occ_list, connection%from_orb(1), &
-                             connection%to_orb(1), allowed_excitation)
-            connection%nexcit = 1
-
-            if (allowed_excitation) then
-                ! 3a. Probability of generating this excitation.
-                pgen = excit_gen_data%pattempt_single*calc_pgen_single_mol_no_renorm(sys, connection%to_orb(1))
-
-                ! 4a. Parity of permutation required to line up determinants.
-                call find_excitation_permutation1(sys%basis%excit_mask, cdet%f, connection)
-
-                ! 5a. Find the connecting matrix element.
-                hmatel = slater_condon1_excit_ptr(sys, cdet%occ_list, connection%from_orb(1), connection%to_orb(1), connection%perm)
-            else
-                ! Forbidden---connection%to_orb(1) is already occupied.
-                hmatel%c = cmplx(0.0_p, 0.0_p, p)
-                hmatel%r = 0.0_p
-                pgen = 1.0_p ! Avoid any dangerous division by pgen by returning a sane (but cheap) value.
-            end if
+            call gen_single_excit_mol_no_renorm(rng, sys, excit_gen_data, cdet, pgen, connection, hmatel, allowed_excitation)
 
         else
             ! We have a double
