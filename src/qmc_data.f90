@@ -566,6 +566,7 @@ type blocking_t
     ! Frequency at which the data for the start point is saved. In terms of the number of reports
     integer :: save_fq = 0
     ! Number of report cycles from the start of all blocking to the current cycle.
+! [review] - CJCS: What happens if this exceeds a 32-bit int? eg. for very long calculations.
     integer :: n_reports_blocked = 0
 ! [todo] An alternative would be to have a reblock_data_t - something like
 !   type reblock_data_t

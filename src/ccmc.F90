@@ -859,6 +859,9 @@ contains
         end do
 
         if (blocking_in%blocking_on_the_fly) call deallocate_blocking(bl)
+        ! [review] - CJCS: Won't this only be applicable on parent?
+        ! [review] - CJCS: Also, maybe use write_date_time_close from environment_report
+        ! [review] - CJCS: to write info then close.
         if (blocking_in%blocking_on_the_fly) close(iunit, status='keep')
 
         if (parent) write (io_unit,'()')

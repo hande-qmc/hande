@@ -208,6 +208,8 @@ contains
         ! sum_of_blocks and squared and added to sum_of_block_squares.
 
         do i = 0, (bl%lg_max)
+! [review] - CJCS: If running until certain error reached using nreports = 2e9 or similar large number 2 ** i exceeds
+! [review] - CJCS: 32-bit integer and this check fails. Change to 2_int_64?
             if (mod(bl%n_reports_blocked, 2 ** i) == 0) then
                 reblock_size = 2 ** i
 
@@ -399,7 +401,7 @@ contains
         use qmc_data, only: blocking_t
 
         type(blocking_t), intent(inout) :: bl
-
+! [review] - CJCS: What happens if n_saved>n_saved_startpoints? Won't work for non-default startpoint values.
         if (mod(bl%n_reports_blocked,(bl%save_fq * bl%n_saved)) == 0) then
             bl%reblock_save(:,:,bl%n_saved) = bl%reblock_data(:,:)
             bl%product_save(:,bl%n_saved) = bl%data_product(:)
