@@ -23,5 +23,5 @@ fciqmc {
         state_size = -100,
         spawned_state_size = -50,
     },
-    restart = { read = np1_id }
+    restart = { read = np1_id, write= np1_id}
 }
