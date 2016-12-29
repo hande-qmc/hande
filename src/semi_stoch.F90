@@ -1403,7 +1403,7 @@ contains
         type(hdf5_kinds_t) :: kinds
         integer(hid_t) :: file_id, dset_id, dspace_id
         character(255) :: filename
-        integer :: id, ierr, ndeterm, semi_stoch_version_restart
+        integer :: id, ierr, ndeterm, semi_stoch_version_restart, tensor_label_len_old
         integer(HSIZE_T) :: dims(2), maxdims(2)
         logical :: exists
 #ifdef PARALLEL
@@ -1454,14 +1454,22 @@ contains
             call h5dclose_f(dset_id, ierr)
             ! Number of determinants is the last index...
             ndeterm = int(dims(2))
+            ! Assume basis order is unchanged (as assumed in restarting from a smaller basis).
+            tensor_label_len_old = int(dims(1))
 
             allocate(determ%dets(sys%basis%tensor_label_len, ndeterm), stat=ierr)
             call check_allocate('determ%dets', ndeterm*sys%basis%tensor_label_len, ierr)
 
             ! Perform the reading in of determinants to determ%dets.
             if (dtype_equal(file_id, 'dets', kinds%i0)) then
-                call hdf5_read(file_id, 'dets', kinds, shape(determ%dets, kind=int_64), determ%dets)
+                if (sys%basis%tensor_label_len == tensor_label_len_old) then
+                    call hdf5_read(file_id, 'dets', kinds, shape(determ%dets, kind=int_64), determ%dets)
+                else
+                    call change_nbasis(file_id, 'dets', kinds, 0, 0, determ%dets)
+                end if
             else
+                if (sys%basis%tensor_label_len == tensor_label_len_old) &
+                    call stop_all('read_determ_from_file', 'Changing DET_SIZE and basis size simultaneously not supported.')
                 call convert_dets(file_id, 'dets', kinds, 0, 0, determ%dets)
             end if
 
