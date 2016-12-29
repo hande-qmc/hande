@@ -103,7 +103,7 @@ implicit none
 
 ! Version for output semi stoch files. If produced prior to introduction is treated
 ! as version number 0.
-integer, parameter :: semi_stoch_version = 1
+integer, parameter :: semi_stoch_version = 2
 
 contains
 
@@ -358,7 +358,7 @@ contains
         deallocate(dets_this_proc, stat=ierr)
         call check_deallocate('dets_this_proc', ierr)
 
-        if (write_determ .and. parent) call write_determ_to_file(determ, ss_in%write_id, print_info, io_unit)
+        if (write_determ .and. parent) call write_determ_to_file(determ, sys%basis%nbasis, ss_in%write_id, print_info, io_unit)
 
         ! Wait for all processes to finish initialisation before we tell
         ! the user that we are done.
@@ -1403,7 +1403,7 @@ contains
         type(hdf5_kinds_t) :: kinds
         integer(hid_t) :: file_id, dset_id, dspace_id
         character(255) :: filename
-        integer :: id, ierr, ndeterm, semi_stoch_version_restart, tensor_label_len_old
+        integer :: id, ierr, ndeterm, semi_stoch_version_restart, tensor_label_len_old, nbasis_restart
         integer(HSIZE_T) :: dims(2), maxdims(2)
         logical :: exists
 #ifdef PARALLEL
@@ -1459,6 +1459,12 @@ contains
 
             allocate(determ%dets(sys%basis%tensor_label_len, ndeterm), stat=ierr)
             call check_allocate('determ%dets', ndeterm*sys%basis%tensor_label_len, ierr)
+
+            if (semi_stoch_version_restart >= 2) then
+                call hdf5_read(file_id, 'nbasis', nbasis_restart)
+                if (nbasis_restart > sys%basis%nbasis) &
+                    call stop_all('read_determ_from_file', 'Cannot use a larger basis to start a calculation in a smaller basis')
+            end if
 
             ! Perform the reading in of determinants to determ%dets.
             if (dtype_equal(file_id, 'dets', kinds%i0)) then
@@ -1524,12 +1530,13 @@ contains
 
     end subroutine read_determ_from_file
 
-    subroutine write_determ_to_file(determ, write_id, print_info, io_unit)
+    subroutine write_determ_to_file(determ, nbasis, write_id, print_info, io_unit)
 
         ! Write determinants stored in determ to a file.
 
         ! In:
         !    determ: Deterministic space being used.
+        !    nbasis: number of basis functions.
         !    write_id: the id of the file to write to, i.e., the file will be
         !        called SEMI.STOCH.x.H5, where x is write_id. The exception is
         !        if write_id is unset (==huge(0)) in which case the lowest
@@ -1544,7 +1551,7 @@ contains
         use const, only: int_64
 
         type(semi_stoch_t), intent(in) :: determ
-        integer, intent(in) :: write_id, io_unit
+        integer, intent(in) :: nbasis, write_id, io_unit
         logical, intent(in) :: print_info
 
         integer :: id, ierr
@@ -1580,6 +1587,8 @@ contains
 
         ! Write version of semi stochastic file so can do appropriate transformations.
         call hdf5_write(file_id, 'ss_version', semi_stoch_version)
+
+        call hdf5_write(file_id, 'nbasis', nbasis)
 
         ! Write deterministic states to file.
         call hdf5_write(file_id, 'dets', kinds, shape(determ%dets, kind=int_64), determ%dets)
