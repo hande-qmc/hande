@@ -1377,7 +1377,7 @@ contains
 
 #ifndef DISABLE_HDF5
         use hdf5
-        use hdf5_helper, only: hdf5_kinds_t, hdf5_read, hdf5_kinds_init, dtype_equal
+        use hdf5_helper, only: hdf5_kinds_t, hdf5_read, hdf5_kinds_init, dtype_equal, hdf5_file_close
         use restart_utils, only: convert_dets, change_nbasis
 #else
         use errors, only: stop_all
@@ -1466,7 +1466,7 @@ contains
             end if
 
             ! Close HDF5 file and HDF5.
-            call h5fclose_f(file_id, ierr)
+            call hdf5_file_close(file_id)
             call h5close_f(ierr)
         end if
 
@@ -1530,7 +1530,7 @@ contains
 
 #ifndef DISABLE_HDF5
         use hdf5
-        use hdf5_helper, only: hdf5_kinds_t, hdf5_write, hdf5_kinds_init
+        use hdf5_helper, only: hdf5_kinds_t, hdf5_write, hdf5_kinds_init, hdf5_file_close
         use calc, only: GLOBAL_META
         use utils, only: get_unique_filename
         use const, only: int_64
@@ -1577,7 +1577,7 @@ contains
         call hdf5_write(file_id, 'dets', kinds, shape(determ%dets, kind=int_64), determ%dets)
 
         ! Close HDF5 file and HDF5.
-        call h5fclose_f(file_id, ierr)
+        call hdf5_file_close(file_id)
         call h5close_f(ierr)
 #else
         use errors, only: warning

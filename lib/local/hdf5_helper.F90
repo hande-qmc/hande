@@ -36,8 +36,8 @@ module hdf5_helper
     implicit none
 
     private
-    public :: hdf5_kinds_t, hdf5_kinds_init, hdf5_write, hdf5_read, dtype_equal, dset_shape, hdf5_path, ishdf5_wrapper
-
+    public :: hdf5_kinds_t, hdf5_kinds_init, hdf5_write, hdf5_read, dtype_equal, dset_shape, hdf5_path, ishdf5_wrapper, &
+              hdf5_file_close, hdf5_list_open_objects
 
     ! HDF5 kinds equivalent to the kinds defined in const.  Set in
     ! hdf5_kinds_init.
@@ -99,6 +99,39 @@ module hdf5_helper
 #ifndef DISABLE_HDF5
 
         ! === Helper procedures: initialisation, properties ===
+
+        subroutine hdf5_file_close(fid, proc_id)
+
+            ! Attempt to safely close an HDF5 file. Raise an error if it still has open objects as we
+            ! don't want to have to worry about delayed closing.
+
+            ! In:
+            !    fid: HDF5 file ID of file to be closed.
+            !    proc_id (optional): if present, list open objects (if any) from this processor. Default: root.
+
+            use hdf5, only: hid_t, size_t, H5F_OBJ_ALL_F, h5fget_obj_count_f, h5fclose_f
+            use errors, only: stop_all
+            use parallel, only: iproc, parent
+
+            integer(hid_t), intent(in) :: fid
+            integer, intent(in), optional :: proc_id
+            integer(size_t) :: obj_count
+            integer :: ierr
+            logical :: list_open_objects
+
+            call h5fget_obj_count_f(fid, H5F_OBJ_ALL_F, obj_count, ierr)
+            if (obj_count > 1) then ! except file we haven't closed...
+                list_open_objects = parent
+                if (present(proc_id)) list_open_objects = iproc == proc_id
+                if (list_open_objects) then
+                    call hdf5_list_open_objects(fid, obj_count)
+                    call stop_all('hdf5_file_close', 'Cannot close HDF5 file immediately -- file objects still open.')
+                end if
+            else
+                call h5fclose_f(fid, ierr)
+            end if
+
+        end subroutine hdf5_file_close
 
         subroutine hdf5_kinds_init(kinds)
 
@@ -281,6 +314,53 @@ module hdf5_helper
             path = hdf5_path(trim(path), l4)
 
         end function hdf5_path_4
+
+        ! === Helper procedures: inspection ===
+
+        subroutine hdf5_list_open_objects(fid, obj_count_in, verbose_in)
+
+            ! List all objects open in an HDF5 file.
+
+            ! In:
+            !   fid: HDF5 file ID.
+            !   obj_count_in (optional): number of open objects. Default: (re-)compute if not provided.
+            !   verbose_in: if true, print a message if no objects are open in the file. Default: false.
+
+            use hdf5, only: hid_t, size_t, H5F_OBJ_ALL_F, h5fget_obj_count_f, h5fget_obj_ids_f, h5fget_name_f, h5iget_name_f
+
+            integer(hid_t), intent(in) :: fid
+            integer(size_t), intent(in), optional :: obj_count_in
+            logical, intent(in), optional :: verbose_in
+            integer(size_t) :: obj_count, name_len, i
+            integer(hid_t), allocatable :: obj_ids(:)
+            character(255) :: obj_name
+            logical :: verbose
+            integer :: ierr
+
+            verbose = .false.
+            if (present(verbose_in)) verbose = verbose_in
+            if (present(obj_count_in)) then
+                obj_count = obj_count_in
+            else
+                call h5fget_obj_count_f(fid, H5F_OBJ_ALL_F, obj_count, ierr)
+            end if
+
+            name_len = len(obj_name, kind=size_t)
+            call h5fget_name_f(fid, obj_name, name_len, ierr)
+            if (obj_count > 1) then ! except file we haven't closed...
+                write (6, '(1X,"Objects open in '//trim(obj_name)//':")')
+                allocate(obj_ids(obj_count))
+                call h5fget_obj_ids_f(fid, H5F_OBJ_ALL_F, obj_count, obj_ids, ierr)
+                do i = 1, obj_count
+                    call h5iget_name_f(obj_ids(i), obj_name, len(obj_name, kind=size_t), name_len, ierr)
+                    write (6,'(5X,"'//trim(obj_name)//'")')
+                end do
+                deallocate(obj_ids)
+            else if (verbose) then
+                write (6, '(1X, "No objects open in '//trim(obj_name)//'.")')
+            end if
+
+        end subroutine hdf5_list_open_objects
 
         ! === Helper procedures: writing ===
 

@@ -246,7 +246,7 @@ module hdf5_system
 
 #ifndef DISABLE_HDF5
             use hdf5
-            use hdf5_helper, only: hdf5_kinds_t, hdf5_write
+            use hdf5_helper, only: hdf5_kinds_t, hdf5_write, hdf5_file_close
             use calc, only: GLOBAL_META
 #else
             use parallel, only: parent
@@ -390,7 +390,7 @@ module hdf5_system
             call h5gclose_f(group_id, ierr)
 
             ! Terminate HDF5
-            call h5fclose_f(file_id, ierr)
+            call hdf5_file_close(file_id)
             call h5close_f(ierr)
 #else
             filename = ''
@@ -410,7 +410,7 @@ module hdf5_system
 
 #ifndef DISABLE_HDF5
             use hdf5
-            use hdf5_helper, only: hdf5_kinds_t, hdf5_read, hdf5_path
+            use hdf5_helper, only: hdf5_kinds_t, hdf5_read, hdf5_path, hdf5_file_close
 #endif
             use parallel
 
@@ -680,7 +680,7 @@ module hdf5_system
                             kinds, sys%read_in%coulomb_integrals_imag)
                     end if
                 call h5gclose_f(subsubgroup_id, ierr)
-                call h5fclose_f(file_id, ierr)
+                call hdf5_file_close(file_id)
                 call h5close_f(ierr)
             end if
 

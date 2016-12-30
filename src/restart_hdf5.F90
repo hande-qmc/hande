@@ -277,7 +277,7 @@ module restart_hdf5
 
 #ifndef DISABLE_HDF5
             use hdf5
-            use hdf5_helper, only: hdf5_kinds_t, hdf5_write
+            use hdf5_helper, only: hdf5_kinds_t, hdf5_write, hdf5_file_close
             use parallel, only: nprocs
             use calc, only: calc_type, GLOBAL_META
 #else
@@ -425,7 +425,7 @@ module restart_hdf5
             call h5gclose_f(group_id, ierr)
 
             ! And terminate HDF5.
-            call h5fclose_f(file_id, ierr)
+            call hdf5_file_close(file_id)
             call h5close_f(ierr)
 #else
             if (parent) call warning('dump_restart_hdf5', '# Not compiled with HDF5 support.  Cannot write out restart file.')
@@ -454,7 +454,7 @@ module restart_hdf5
 
 #ifndef DISABLE_HDF5
             use hdf5
-            use hdf5_helper, only: hdf5_kinds_t, hdf5_read, dtype_equal, dset_shape, hdf5_path
+            use hdf5_helper, only: hdf5_kinds_t, hdf5_read, dtype_equal, dset_shape, hdf5_path, hdf5_file_close
             use restart_utils, only: convert_dets, convert_ref, convert_pops, change_pop_scaling, change_nbasis
             use calc, only: calc_type, exact_diag, lanczos_diag, mc_hilbert_space
             use parallel, only: nprocs
@@ -707,7 +707,7 @@ module restart_hdf5
             call h5gclose_f(group_id, ierr)
 
             ! And terminate HDF5.
-            call h5fclose_f(file_id, ierr)
+            call hdf5_file_close(file_id)
             call h5close_f(ierr)
 #else
             call stop_all('read_restart_hdf5', '# Not compiled with HDF5 support.  Cannot read in restart file.')
@@ -729,7 +729,7 @@ module restart_hdf5
 
 #ifndef DISABLE_HDF5
             use hdf5
-            use hdf5_helper, only: hdf5_kinds_t, hdf5_read, hdf5_path
+            use hdf5_helper, only: hdf5_kinds_t, hdf5_read, hdf5_path, hdf5_file_close
             use restart_utils, only: convert_ref, change_ninfo
 #endif
             use errors, only: stop_all
@@ -794,7 +794,7 @@ module restart_hdf5
             call h5gclose_f(group_id, ierr)
 
             ! And terminate HDF5.
-            call h5fclose_f(file_id, ierr)
+            call hdf5_file_close(file_id)
             call h5close_f(ierr)
 
 #else
@@ -819,7 +819,7 @@ module restart_hdf5
 
 #ifndef DISABLE_HDF5
             use hdf5
-            use hdf5_helper, only: hdf5_kinds_t, hdf5_read, hdf5_write, dset_shape, dtype_equal, hdf5_path
+            use hdf5_helper, only: hdf5_kinds_t, hdf5_read, hdf5_write, dset_shape, dtype_equal, hdf5_path, hdf5_file_close
             use checking
             use errors, only: warning, stop_all
             use parallel
@@ -901,7 +901,7 @@ module restart_hdf5
             call h5fopen_f(tmp_name, H5F_ACC_RDONLY_F, orig_id, ierr)
             if (ierr/=0) call stop_all('redistribute_restart_hdf5', "Unable to open restart file.")
             call hdf5_read(orig_id, hdf5_path(gmetadata,dnprocs), nprocs_read)
-            call h5fclose_f(orig_id, ierr)
+            call hdf5_file_close(orig_id)
 
             ! If the processor has nothing to do (i.e. for some reason the user
             ! is running on X processors and redistributing to Y processors,
@@ -928,7 +928,7 @@ module restart_hdf5
             do i = iproc_target_start, iproc_target_end
                 call init_restart_hdf5(ri_write, .true., new_names(i), ip=i, verbose=.false.)
                 call h5fcreate_f(new_names(i), H5F_ACC_TRUNC_F, new_id, ierr)
-                call h5fclose_f(new_id, ierr)
+                call hdf5_file_close(new_id)
             end do
 
             ! Open the original file from proc=0 to get required metadata.  (The choice is arbitrary as
@@ -1055,11 +1055,11 @@ module restart_hdf5
                 call h5dwrite_f(dset_id, H5T_NATIVE_INTEGER, nprocs_target, [0_HSIZE_T,0_HSIZE_T], ierr)
                 call h5dclose_f(dset_id, ierr)
 
-                call h5fclose_f(new_id, ierr)
+                call hdf5_file_close(new_id)
             end do
 
             call h5gclose_f(orig_group_id, ierr)
-            call h5fclose_f(orig_id, ierr)
+            call hdf5_file_close(orig_id)
 
             ! Read the old restart file for each processor in turn and place the psip
             ! information into the new restart file for the appropriate processor.
@@ -1190,7 +1190,7 @@ module restart_hdf5
 
                 call h5gclose_f(orig_subgroup_id, ierr)
                 call h5gclose_f(orig_group_id, ierr)
-                call h5fclose_f(orig_id, ierr)
+                call hdf5_file_close(orig_id)
 
                 if (ndets /= 0) call stop_all('redistribute_restart_hdf5', &
                                               'Failed to redistribute all determinants.  Something went seriously wrong!')
@@ -1252,7 +1252,7 @@ module restart_hdf5
 
                     call h5gclose_f(subgroup_id, ierr)
                     call h5gclose_f(group_id, ierr)
-                    call h5fclose_f(file_id, ierr)
+                    call hdf5_file_close(file_id)
 
             end subroutine write_psip_info
 
