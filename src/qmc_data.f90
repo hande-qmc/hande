@@ -319,6 +319,7 @@ type blocking_in_t
     ! The calculation is terminated if this condition is met irrelevant of
     ! the standard error of the projected energy. Default = (huge)
     real(p) :: blocks_used = huge(1.0_p)
+    logical :: auto_set_shift_damping = .true.
 end type
 
 ! --- Parallel info ---
@@ -639,7 +640,12 @@ type blocking_t
     integer :: n_saved = 1
     ! Optimal blocksize saved for the calculation of number of blocks used.
     integer :: opt_bl_size=0
-
+    ! Flag to indicate stage within shift damping optimisation.
+    ! 0 indicates using initial damping value.
+    ! 1 indicates we've updated the shift damping and need to check it is
+    !   within acceptable bounds.
+    ! 2 indicates the shift damping is settled on a value.
+    integer :: shift_damping_status = 0
 end type blocking_t
 
 type estimators_t

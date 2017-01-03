@@ -122,7 +122,6 @@ contains
         type(blocking_t) :: bl
         integer :: iunit
         integer :: date_values(8)
-        real(p), allocatable :: std_dev_shift(:)
 
         if (parent) then
             write (io_unit,'(1X,"FCIQMC")')
@@ -221,8 +220,6 @@ contains
             open(newunit=iunit, file=blocking_in%filename, status='unknown')
             call write_blocking_report_header(iunit)
         end if
-
-        allocate(std_dev_shift(0:bl%lg_max))
 
         do ireport = 1, qmc_in%nreport
 
@@ -357,9 +354,7 @@ contains
                                         fciqmc_in%non_blocking_comm, io_unit=io_unit, cmplx_est=sys%read_in%comp)
 
                 if (blocking_in%blocking_on_the_fly) then
-                    call do_blocking(bl, qs, qmc_in, ireport, iter, iunit, blocking_in, &
-                                                                      std_dev_shift)
-                    write(20,*) iter, std_dev_shift
+                    call do_blocking(bl, qs, qmc_in, ireport, iter, iunit, blocking_in)
                 end if
             end if
 

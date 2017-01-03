@@ -226,7 +226,7 @@ contains
         end do
     end subroutine collect_data
 
-    subroutine mean_std_cov(bl, sd_shift_dist, sd_proj_numer_dist, sd_proj_denom_dist)
+    subroutine mean_std_cov(bl, energy_estimate_dist)
 
         ! Mean, standard deviation and covariance for each block size is
         ! calculated from the collected data.
@@ -248,7 +248,7 @@ contains
 
         type(blocking_t), intent(inout) :: bl
         integer :: i
-        real(p), intent(out), optional :: sd_shift_dist, sd_proj_numer_dist, sd_proj_denom_dist
+        real(p), intent(out), optional :: energy_estimate_dist(dt_numerator:dt_shift,2)
 
         do i = 0, bl%lg_max
 
@@ -262,9 +262,12 @@ contains
                 bl%block_std(:,i) = (bl%reblock_data_2(:,i)%sum_of_block_squares/bl%reblock_data_2(:,i)%n_blocks - &
                                                                                                 bl%block_mean(:,i) ** 2)
                 if (i==0) then
-                    sd_proj_numer_dist = sqrt(bl%block_std(dt_numerator,0))
-                    sd_proj_denom_dist = sqrt(bl%block_std(dt_denominator,0))
-                    sd_shift_dist = sqrt(bl%block_std(dt_shift,0))
+                    energy_estimate_dist(dt_numerator,1) = sqrt(bl%block_std(dt_numerator,i))
+                    energy_estimate_dist(dt_numerator,2) = bl%block_mean(dt_numerator,i)
+                    energy_estimate_dist(dt_denominator,1) = sqrt(bl%block_std(dt_denominator,i))
+                    energy_estimate_dist(dt_denominator,2) = bl%block_mean(dt_denominator,i)
+                    energy_estimate_dist(dt_shift,1) = sqrt(bl%block_std(dt_shift,i))
+                    energy_estimate_dist(dt_shift,2) = bl%block_mean(dt_shift,i)
                 end if
                 bl%block_std(:,i) = sqrt(bl%block_std(:,i)/(bl%reblock_data_2(:,i)%n_blocks - 1))
 
@@ -274,7 +277,9 @@ contains
             else
                 bl%block_std(:,i) = 0.0_p
                 bl%block_cov(i) = 0.0_p
-                std_dev_shift(i) = 0.0_p
+                if (i==0) then
+                    energy_estimate_dist = 0.0_p
+                end if
             end if
         end do
 
@@ -578,7 +583,13 @@ contains
         integer, intent(in) :: ireport, iter
         integer, intent(in) :: iunit
         type(blocking_in_t), intent(in) :: blocking_in
-        real(p), intent(inout) :: sd_shift_dist, sd_proj_numer_dist, sd_proj_denom_dist
+        ! Array containing info on distributions of energy estimators (proj
+        ! energy components and shift).
+        ! energy_estimate_dist(:,1) contains means, energy_estimate_dist(:,2)
+        !   contains standard deviations.
+        ! energy_estimate_dist(i,:) gives information on parameter
+        ! corresponding to enum within qmc_data.
+        real(p) :: energy_estimate_dist(dt_numerator:dt_shift,2)
 
         if (bl%start_ireport == -1 .and. blocking_in%start_point<0 .and. qs%vary_shift(1)) then
             bl%start_ireport = ireport
@@ -600,10 +611,13 @@ contains
         if (mod(ireport,50) ==0 .and. ireport >= bl%start_ireport .and. &
                     bl%start_ireport>=0) then
             call change_start(bl, ireport, bl%start_point)
-            call mean_std_cov(bl, sd_shift_dist, sd_proj_numer_dist, sd_proj_denom_dist)
+            call mean_std_cov(bl, energy_estimate_dist)
             call find_optimal_block(bl)
             call write_blocking(bl, qmc_in, ireport, iter, iunit)
             call check_error(bl, qs, blocking_in, ireport)
+            if (blocking_in%auto_set_shift_damping) then
+                call update_shift_damping(qs, bl, energy_estimate_dist)
+            end if
         end if
 
         if (mod(bl%n_reports_blocked,bl%save_fq) == 0 .and. bl%n_reports_blocked > 0) then
@@ -722,18 +736,81 @@ contains
 
     end subroutine write_blocking_report
 
-    !subroutine reset_blocking_info(bl)
+    subroutine reset_blocking_info(bl)
 
         ! Subroutine to clear all stored blocking information to it's original state.
         ! This is of use when using an initial short period of calculation to optimise
         ! various parameters, before using optimal parameters for the rest of the
         ! calculation.
 
-        ! In:
+        ! In/Out:
         !   bl: Information needed to peform blocking on the fly.
 
-    !end subroutine reset_blocking_info
+        use qmc_data, only: blocking_t
 
-    !subroutine update_shift_damping
-    !end subroutine update_shift_damping
+        type(blocking_t), intent(inout) :: bl
+
+        bl%n_reports_blocked = 0
+        bl%start_ireport = -1
+        bl%start_point = 0
+        bl%n_saved = 1
+        bl%data_product = 0
+        bl%data_product_2 = 0
+        bl%block_mean = 0
+        bl%block_std = 0
+        bl%block_cov = 0
+        bl%product_save = 0
+        bl%err_compare = 0
+
+    end subroutine reset_blocking_info
+
+    subroutine update_shift_damping(qs, bl, energy_estimate_dist)
+
+        use qmc_data, only: qmc_state_t, blocking_t
+
+        ! Array containing info on distributions of energy estimators (proj
+        ! energy components and shift).
+        ! energy_estimate_dist(:,1) contains means, energy_estimate_dist(:,2)
+        !   contains standard deviations.
+        ! energy_estimate_dist(i,:) gives information on parameter
+        ! corresponding to enum within qmc_data.
+        real(p), intent(in) :: energy_estimate_dist(dt_numerator:dt_shift,2)
+        type(qmc_state_t), intent(inout) :: qs
+        type(blocking_t), intent(inout) :: bl
+        real(p) :: sd_proj_energy_dist
+
+        select case (bl%shift_damping_status)
+        case(0)
+            ! Need to use currently collected information to update shift damping.
+            sd_proj_energy_dist = fraction_error(energy_estimate_dist(dt_numerator,1), &
+                    energy_estimate_dist(dt_denominator,1), 1, energy_estimate_dist(dt_numerator,2), &
+                    energy_estimate_dist(dt_denominator,2), bl%block_cov(0))
+
+            ! Use linear relationship between sqrt(<S^2>-<S>^2) and shift damping
+            ! parameter to set shift damping such that the standard deviation of
+            ! the shift is approximately 1.5 times that of the projected energy.
+            qs%shift_damping = qs%shift_damping * 1.5_p * sd_proj_energy_dist / energy_estimate_dist(dt_shift,2)
+            qs%shift= qs%estimators(1)%proj_energy/qs%estimators(1)%D0_population
+            bl%shift_damping_status = 1
+            call reset_blocking_info(bl)
+        case(1)
+            ! Need to check that standard distribution after change is within acceptable range.
+            sd_proj_energy_dist = fraction_error(energy_estimate_dist(dt_numerator,1), &
+                    energy_estimate_dist(dt_denominator,1), 1, energy_estimate_dist(dt_numerator,2), &
+                    energy_estimate_dist(dt_denominator,2), bl%block_cov(0))
+
+            if (sd_proj_energy_dist > 2 * energy_estimate_dist(dt_shift,2) .or. &
+                        sd_proj_energy_dist < energy_estimate_dist(dt_shift,2)) then
+                ! Outside acceptable range- retry optimisation.
+                bl%shift_damping_status = 0
+            else
+                bl%shift_damping_status = 2
+            end if
+        case default
+            ! On a settled value of shift damping; don't need to do anything.
+            continue
+        end select
+
+    end subroutine update_shift_damping
+
 end module blocking

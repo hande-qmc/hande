@@ -388,8 +388,6 @@ contains
         integer :: iunit
         integer :: date_values(8)
 
-        real(p), allocatable :: std_dev_shift(:)
-
         if (parent) then
             write (io_unit,'(1X,"CCMC")')
             write (io_unit,'(1X,"----",/)')
@@ -524,7 +522,6 @@ contains
         end if
 
         if (blocking_in%blocking_on_the_fly) call allocate_blocking(qmc_in, blocking_in, bl)
-        allocate(std_dev_shift(0:bl%lg_max))
         do ireport = 1, qmc_in%nreport
 
             ! Projected energy from last report loop to correct death
@@ -840,9 +837,7 @@ contains
                                         io_unit=io_unit, cmplx_est=sys%read_in%comp, rdm_energy=ccmc_in%density_matrices, &
                                         nattempts=.true.)
                 if (blocking_in%blocking_on_the_fly) then
-                    call do_blocking(bl, qs, qmc_in, ireport, iter, iunit, blocking_in, &
-                                                                      std_dev_shift)
-                    write(10,*), iter, std_dev_shift
+                    call do_blocking(bl, qs, qmc_in, ireport, iter, iunit, blocking_in)
                 end if
             end if
 
