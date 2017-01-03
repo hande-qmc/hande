@@ -639,6 +639,9 @@ type blocking_t
     integer :: start_point = 0
     ! Array containing the different values of fractional error weighted by the
     ! 1/sqrt(number of data points) for each of the possible start positions.
+    ! [review] - VAN: very sorry to make such a pedantic comment. I just got confused 
+    ! [review] - VAN: between comparison and complex here when reading through 
+    ! [review] - VAN: blocking.f90. Is there any chance this name could be changed?
     real(p), allocatable :: err_comp(:,:)
     ! log_2(block_size) of the optimal block sizes for different datatypes
     ! excluding dt_proj_energy. (see enum above)
