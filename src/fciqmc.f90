@@ -73,7 +73,8 @@ contains
 
         use logging, only: init_logging, end_logging, prep_logging_mc_cycle, write_logging_calc_fciqmc, &
                             logging_in_t, logging_t, logging_in_t_json, logging_t_json
-        use blocking, only: write_blocking_report_header, allocate_blocking, do_blocking, deallocate_blocking, write_blocking_report
+        use blocking, only: write_blocking_report_header, allocate_blocking, do_blocking, deallocate_blocking, &
+                            write_blocking_report, receive_shift_updates
         use report, only: write_date_time_close
 
         type(sys_t), intent(in) :: sys
@@ -356,6 +357,8 @@ contains
                 if (blocking_in%blocking_on_the_fly) then
                     call do_blocking(bl, qs, qmc_in, ireport, iter, iunit, blocking_in)
                 end if
+            else if (blocking_in%blocking_on_the_fly) then
+                call receive_shift_updates(bl%shift_damping_status, qs%shift_damping, qs%shift)
             end if
 
             ! Update the time for the start of the next iteration.
