@@ -788,6 +788,12 @@ contains
 #endif
         select case (bl%shift_damping_status)
         case(0)
+            ! Need to wait one iteration to ensure enough information to properly calculate update.
+            bl%shift_damping_status = 1
+#ifdef PARALLEL
+            call mpi_bcast(bl%shift_damping_status, 1, mpi_integer, root, MPI_COMM_WORLD, ierr)
+#endif
+        case(1)
             ! Need to use currently collected information to update shift damping.
             sd_proj_energy_dist = fraction_error(energy_estimate_dist(dt_numerator,1), &
                     energy_estimate_dist(dt_denominator,1), 1, energy_estimate_dist(dt_numerator,2), &
@@ -799,14 +805,14 @@ contains
             qs%shift_damping = qs%shift_damping * 1.5_p * sd_proj_energy_dist / energy_estimate_dist(dt_shift,2)
             write (6, '("# Shift damping changed to",1X,es17.10)') qs%shift_damping
             qs%shift= qs%estimators(1)%proj_energy/qs%estimators(1)%D0_population
-            bl%shift_damping_status = 1
+            bl%shift_damping_status = 2
             call reset_blocking_info(bl)
 #ifdef PARALLEL
             call mpi_bcast(bl%shift_damping_status, 1, mpi_integer, root, MPI_COMM_WORLD, ierr)
             call mpi_bcast(qs%shift_damping, 1, mpi_preal, root, MPI_COMM_WORLD, ierr)
             call mpi_bcast(qs%shift, size(qs%shift), mpi_preal, root, MPI_COMM_WORLD, ierr)
 #endif
-        case(1)
+        case(2)
             ! Need to check that standard distribution after change is within acceptable range.
             sd_proj_energy_dist = fraction_error(energy_estimate_dist(dt_numerator,1), &
                     energy_estimate_dist(dt_denominator,1), 1, energy_estimate_dist(dt_numerator,2), &
@@ -818,7 +824,7 @@ contains
                 bl%shift_damping_status = 0
                 write (6, '("# Reattemping shift damping optimisation.")')
             else
-                bl%shift_damping_status = 2
+                bl%shift_damping_status = 3
                 write (6, '("# Shift damping optimised; variance within acceptable range.")')
             end if
 #ifdef PARALLEL
@@ -843,9 +849,11 @@ contains
         select case (shift_damping_status)
         case(0)
             call mpi_bcast(shift_damping_status, 1, mpi_integer, root, MPI_COMM_WORLD, ierr)
+        case(1)
+            call mpi_bcast(shift_damping_status, 1, mpi_integer, root, MPI_COMM_WORLD, ierr)
             call mpi_bcast(shift_damping, 1, mpi_preal, root, MPI_COMM_WORLD, ierr)
             call mpi_bcast(shift, size(shift), mpi_preal, root, MPI_COMM_WORLD, ierr)
-        case(1)
+        case(2)
             call mpi_bcast(shift_damping_status, 1, mpi_integer, root, MPI_COMM_WORLD, ierr)
         case default
             continue
