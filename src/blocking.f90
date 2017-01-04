@@ -261,7 +261,7 @@ contains
             if (bl%reblock_data_2(dt_numerator,i)%n_blocks > 1) then
                 bl%block_std(:,i) = (bl%reblock_data_2(:,i)%sum_of_block_squares/bl%reblock_data_2(:,i)%n_blocks - &
                                                                                                 bl%block_mean(:,i) ** 2)
-                if (i==0) then
+                if (i==0 .and. present(energy_estimate_dist)) then
                     energy_estimate_dist(dt_numerator,1) = sqrt(bl%block_std(dt_numerator,i))
                     energy_estimate_dist(dt_numerator,2) = bl%block_mean(dt_numerator,i)
                     energy_estimate_dist(dt_denominator,1) = sqrt(bl%block_std(dt_denominator,i))
@@ -277,7 +277,7 @@ contains
             else
                 bl%block_std(:,i) = 0.0_p
                 bl%block_cov(i) = 0.0_p
-                if (i==0) then
+                if (i==0 .and. present(energy_estimate_dist)) then
                     energy_estimate_dist = 0.0_p
                 end if
             end if
