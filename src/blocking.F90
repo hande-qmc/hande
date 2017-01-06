@@ -789,7 +789,7 @@ contains
         select case (bl%shift_damping_status)
         case(0)
             ! Need to wait one iteration to ensure enough information to properly calculate update.
-            bl%shift_damping_status = 1
+            bl%shift_damping_status = 2
 #ifdef PARALLEL
             call mpi_bcast(bl%shift_damping_status, 1, mpi_integer, root, MPI_COMM_WORLD, ierr)
 #endif
@@ -821,7 +821,7 @@ contains
             if (sd_proj_energy_dist > 2 * energy_estimate_dist(dt_shift,2) .or. &
                         sd_proj_energy_dist < energy_estimate_dist(dt_shift,2)) then
                 ! Outside acceptable range- retry optimisation.
-                bl%shift_damping_status = 0
+                bl%shift_damping_status = 1
                 write (6, '("# Reattemping shift damping optimisation.")')
             else
                 bl%shift_damping_status = 3

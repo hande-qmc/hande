@@ -641,10 +641,11 @@ type blocking_t
     ! Optimal blocksize saved for the calculation of number of blocks used.
     integer :: opt_bl_size=0
     ! Flag to indicate stage within shift damping optimisation.
-    ! 0 indicates using initial damping value.
-    ! 1 indicates we've updated the shift damping and need to check it is
-    !   within acceptable bounds.
+    ! 0 indicates we're going to change the shift damping on the next update.
+    ! 1 indicates we're checking the shift damping is within acceptable bounds,
+    !   and will progress to either 0 or 2 depending upon the result.
     ! 2 indicates the shift damping is settled on a value.
+    ! We start in 1, and update the damping if it is required.
     integer :: shift_damping_status = 0
 end type blocking_t
 
