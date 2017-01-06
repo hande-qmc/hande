@@ -55,6 +55,7 @@ contains
         use reference_determinant, only: reference_t
         use dmqmc_data, only: dmqmc_in_t
         use excit_gens, only: dealloc_excit_gen_data_t
+        use const, only: p
 
         type(sys_t), intent(in) :: sys
         type(qmc_in_t), intent(in) :: qmc_in
@@ -162,7 +163,17 @@ contains
         qmc_state%propagator%quasi_newton = qmc_in%quasi_newton
         qmc_state%propagator%quasi_newton_threshold = qmc_in%quasi_newton_threshold
         qmc_state%propagator%quasi_newton_value = qmc_in%quasi_newton_value
-        qmc_state%shift_damping = qmc_in%shift_damping
+        ! Need to ensure we end up with a sensible value of shift damping to use.
+        if (qmc_in%shift_damping < huge(1.0_p)) then
+            ! If we've passed in a specific value use that.
+            qmc_state%shift_damping = qmc_in%shift_damping
+        else if (qmc_state%shift_damping < huge(1.0)) then
+            ! If we've read in a restart file containing a shift damping value use that.
+            continue
+        else
+            ! Otherwise use normal default value.
+            qmc_state%shift_damping = 0.050_p
+        end if
 
     end subroutine init_qmc
 

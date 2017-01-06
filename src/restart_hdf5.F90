@@ -52,6 +52,7 @@ module restart_hdf5
     !            hash seed             # hash seed passed to hash function to assign a state to a processor
     !            move frequency        # (log2 of the) frequency at which the processor location is modified in CCMC
     !            vary shift            # Whether the shift was varying before the calculation stopped
+    !            shift_damping         # Value of the shift damping used within the calculation
     !      reference/
     !                reference determinant # reference determinant
     !                reference population  # population on reference
@@ -136,6 +137,7 @@ module restart_hdf5
                                dscaling = 'population scale factor', &
                                dnbasis = 'nbasis',                  &
                                dvary = 'vary shift',                &
+                               dshift_damping = 'shift_damping',    &
                                dinfo_string_len = 'info string len'
 
     contains
@@ -398,6 +400,8 @@ module restart_hdf5
 
                     call hdf5_write(subgroup_id, dvary, kinds, shape(qs%vary_shift, kind=int_64), qs%vary_shift)
 
+                    call hdf5_write(subgroup_id, dshift_damping, kinds, [1_int_64], [qs%shift_damping])
+
                 call h5gclose_f(subgroup_id, ierr)
 
                 ! --- qmc/qs%ref group ---
@@ -486,9 +490,9 @@ module restart_hdf5
             integer :: ierr
             logical :: exists, resort
             integer(int_64) :: restart_scale_factor(1)
+            real(p) :: shift_damp(1)
 
             integer(HSIZE_T) :: dims(size(shape(qs%psip_list%states)))
-
 
             ! Initialise HDF5 and open file.
             call h5open_f(ierr)
@@ -686,6 +690,12 @@ module restart_hdf5
                     else
                         ! If not present, keep old behaviour.
                         qs%vary_shift = .false.
+                    end if
+                    call h5lexists_f(subgroup_id, dshift_damping, exists, ierr)
+                    ! If not present we just leave at default value.
+                    if (exists) then
+                        call hdf5_read(subgroup_id, dshift_damping, kinds, [1_int_64], shift_damp)
+                        qs%shift_damping = shift_damp(1)
                     end if
 
                 call h5gclose_f(subgroup_id, ierr)

@@ -118,7 +118,7 @@ type qmc_in_t
     real(p) :: initial_shift = 0.0_p
     ! Factor by which the changes in the population are damped when updating the
     ! shift. Used to set initial value within qmc_state_t.
-    real(p) :: shift_damping = 0.050_p
+    real(p) :: shift_damping = huge(1.0_p)
 
     logical :: vary_shift
     logical :: vary_shift_present = .false.
@@ -738,7 +738,7 @@ type qmc_state_t
     real(p) :: target_particles = huge(1.0_p)
     ! Factor by which the changes in the population are damped when updating the
     ! shift.
-    real(p) :: shift_damping
+    real(p) :: shift_damping = huge(1.0_p)
     ! Stores information used by the excitation generator
     type(excit_gen_data_t) :: excit_gen_data
     ! Value of beta which we propagate the density matrix to. Only used for DMQMC.
