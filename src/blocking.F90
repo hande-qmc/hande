@@ -617,7 +617,7 @@ contains
             call find_optimal_block(bl)
             call write_blocking(bl, qmc_in, ireport, iter, iunit)
             call check_error(bl, qs, blocking_in, ireport)
-            if (blocking_in%auto_set_shift_damping) then
+            if (blocking_in%auto_shift_damping) then
                 call update_shift_damping(qs, bl, energy_estimate_dist)
             end if
         end if
