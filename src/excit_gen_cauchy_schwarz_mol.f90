@@ -15,6 +15,7 @@ contains
         ! [review] - JSS: How good is this really?  I suspect it's okish for single-reference truncated calculations and quickly
         ! [review] - JSS: becomes bad for multi-reference/as the truncation level increases.
         ! [review] - JSS: Is this an experiment?  Ready for use in production calculations?
+        ! [reply] - AJWT: still under investigation.
 
         ! Generate excitation tables from the reference for the 
         ! gen_excit_mol_cauchy_schwarz_occ_ref excitation generator.

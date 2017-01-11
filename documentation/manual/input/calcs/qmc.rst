@@ -170,7 +170,7 @@ algorithms and control the core settings in the algorithms.
 
     Optional.
 
-    Possible values: 'renorm', 'no_renorm', 'cauchy_schwarz', 'cauchy_schwarz_orderN'
+    Possible values: 'renorm', 'no_renorm', 'cauchy_schwarz', 'cauchy_schwarz_orderM'
 
     ============  =================                    =========
     System        Implemented                          Default
@@ -209,9 +209,10 @@ algorithms and control the core settings in the algorithms.
 
         [review] - JSS: O(Number of basis functions) what?  space?  time?  both?
         [review] - JSS: Not convinced this is a more refined upper bound.
+        [review] - AJWT: These docs probably need to be expanded now.
  
     The 'cauchy_schwarz_orderM' uses a more refined upper bound for the Hamiltonian matrix
-    elements, but which requires O(Number of basis functions) for each particle being spawned from.
+    elements, but which requires O(Number of basis functions) time cost for each particle being spawned from.
     
 
 ``pattempt_single``

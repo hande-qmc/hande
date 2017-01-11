@@ -11,17 +11,17 @@ implicit none
 contains
 
     ! [review] - JSS: name isn't immediately obvious.  Prec?
+    ! [review] - AJWT: precalc would be better
     function select_weighted_value_prec(rng, N, aliasU, aliasK) result(ret)
 
         ! Select an element, i=1..N with probability from pre-generated alias method weights.
-        ! [review] - JSS: O(N) setup cost, O(1) to select?  Repetition below the arguments comments.
-        ! This uses the alias method, requiring O(N) storage, and O(N) time.
-        
+        ! The cost for this lookup function is O(1).
+        ! See generate_alias_tables and documentation below for definitions of the alias tables  
+ 
         ! In:
         !    N: the number of objects to select from
-        ! [review] - JSS: what are alias reals and alias integers?
-        !    aliasU: a length N array of precomputed alias reals.
-        !    aliasK: a length N array of precomputed alias integers
+        !    aliasU: a length N array of precomputed alias reals table.
+        !    aliasK: a length N array of precomputed alias integers table.
         ! In/Out:
         !    rng: random number generator.
         ! Out:
@@ -68,13 +68,12 @@ contains
 
     end function select_weighted_value_prec
 
-    ! [review] - JSS: is the alias method useful compared to simple binary search of the probabilities for one-off selections?
-    ! [review] - VAN: How would you do the binary search to select an integer from a discrete probability distribution?
     function select_weighted_value(rng, N, weights, totweight) result(ret)
 
         ! Select an element, i=1..N with probability weights(i)/totweight.
-        ! This uses the alias method, requiring O(N) storage, and O(N) time
-        
+        ! This uses the alias method, requiring O(2N) extra storage, and O(2N) time 
+        ! so is probably marginally slower than a binary search through a generated cumulative distribution
+ 
         ! In:
         !    N: the number of objects to select from
         !    weights: a length N array of reals containing the weights of each element
@@ -169,6 +168,8 @@ contains
         do while (nover > 0 .and. nunder > 0)
             ! match the last nover with the last nunder
             ! [review] - JSS: how arbitrary is this choice of over and under and how does it impact efficiency?
+            ! [reply] - AJWT: Unknown. This is probably the fastest way to get rid of the over- and under-full boxes
+            ! [reply] - AJWT: but it is certainly arbitrary.
             ov = overfull(nover)
             un = underfull(nunder)
             ! put ov as the alternate for un
