@@ -352,7 +352,7 @@ contains
             ! If one of these checks is true, assign zero weight.
             if (a_list(k) /= b) then
                 ! [review] - JSS: could avoid the abs with an assumption or a one-off O(N2) check during initialisation?
-                ! [review] - VAN: -- TODO --
+                ! [review] - VAN: where in initialisation would that check be?
                 ! This exchange integral should be +ve, but best abs below in case!
                 weight = get_two_body_int_mol_real(sys%read_in%coulomb_integrals, i, a_list(k), a_list(k), i, sys)
                 weights(k) = sqrt(abs(weight))

@@ -8,6 +8,7 @@ implicit none
 
 ! [review] - JSS: some code-style uniformity please.  e.g. vertical space before/after procedures, around the procedure comments,
 ! [review] - JSS: indented comments, end do/end if instead of end do and end if, spaces around binary operators (=, <, ...), ...
+! [reply] - VAN: thank you, I will do this after I get first review comments and I am tidying up. 
 
 contains
 
@@ -16,6 +17,7 @@ contains
         ! [review] - JSS: becomes bad for multi-reference/as the truncation level increases.
         ! [review] - JSS: Is this an experiment?  Ready for use in production calculations?
         ! [reply] - AJWT: still under investigation.
+        ! [reply] - VAN: I will test this once I am in the testing stage (after I get first reviews)
 
         ! Generate excitation tables from the reference for the 
         ! gen_excit_mol_cauchy_schwarz_occ_ref excitation generator.
@@ -236,7 +238,7 @@ contains
                 ! ref store (e.g.) contains the indices within cs%occ_list of the orbitals
                 ! which have been excited from.
                 ! [review] - JSS: this could/should be done once per determinant/excitor rather than once per excit gen.
-                ! [review] - VAN: Would you calculate it the moment that cdet is defined? and add it as cdet%cdet_store etc?
+                ! [reply] - VAN: Would you calculate it the moment that cdet is defined? and add it as cdet%cdet_store etc?
                 do ii=1, nex
                     associate(bfns=>sys%basis%basis_fns)
                         if (bfns(cs%occ_list(ref_store(ii)))%Ms /= bfns(cdet%occ_list(cdet_store(ii)))%Ms) then
@@ -385,6 +387,11 @@ contains
     end subroutine gen_excit_mol_cauchy_schwarz_occ_ref
 
     ! [review] - JSS: close to choose_ij_mol but without symmetry?  If so, unnecessary code duplication.
+    ! [reply] - VAN: we need the indices of i and j here and we don't need ij_sym yet (we only need symmetry
+    ! [reply] - VAN: once i and j have been mapped). I therefore think this function should be kept. However,
+    ! [reply] - VAN: to avoid code duplication, I can update choose_ij_mol in excit_gen_mol.f90 to give out
+    ! [reply] - VAN: indices. I can then remove choose_ij_ind here and call (the updated) choose_ij_mol from excit_gen_mol.f90
+    ! [reply] - VAN: and ignore the symmetry of ij it gives me.
     subroutine choose_ij_ind(rng, sys, occ_list, i_ind, j_ind, ij_spin)
 
         ! Randomly select two occupied orbitals in a determinant from which
@@ -518,6 +525,7 @@ contains
             if (sys%basis%basis_fns(i)%Ms < 0) then
                 ! [review] - JSS: is it really worth constructing this (O(N) time) rather than just going for a binary (or even
                 ! [review] - JSS: linear) search on the cumulative table directly?
+                ! [reply] - VAN: can you please clarify how you would do what you say?
                 allocate(ia_weights(1:sys%nvirt_beta), stat=ierr)
                 call check_allocate('ia_weights', sys%nvirt_beta, ierr)
                 call create_weighted_excitation_list_ptr(sys, i, 0, cdet%unocc_list_beta, sys%nvirt_beta, ia_weights, ia_weights_tot)

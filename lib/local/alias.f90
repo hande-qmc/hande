@@ -12,16 +12,21 @@ contains
 
     ! [review] - JSS: name isn't immediately obvious.  Prec?
     ! [review] - AJWT: precalc would be better
+    ! [reply] - VAN: --todo-- think of a better name --
     function select_weighted_value_prec(rng, N, aliasU, aliasK) result(ret)
 
         ! Select an element, i=1..N with probability from pre-generated alias method weights.
-        ! The cost for this lookup function is O(1).
-        ! See generate_alias_tables and documentation below for definitions of the alias tables  
- 
+        ! [review] - JSS: O(N) setup cost, O(1) to select?  Repetition below the arguments comments.
+        ! [reply] - VAN: maybe nice to repeat it so that the busy user can immediately read the cost?
+        ! [reply] - VAN: However, I am happy to remove the next sentence.
+        ! This uses the alias method, requiring O(N) storage, and O(N) time.
+        
         ! In:
         !    N: the number of objects to select from
-        !    aliasU: a length N array of precomputed alias reals table.
-        !    aliasK: a length N array of precomputed alias integers table.
+        ! [review] - JSS: what are alias reals and alias integers?
+        ! [reply] - VAN: maybe better to say "precomputed U" and "precomputed K" and assume user reads explanations here?
+        !    aliasU: a length N array of precomputed alias reals.
+        !    aliasK: a length N array of precomputed alias integers
         ! In/Out:
         !    rng: random number generator.
         ! Out:
@@ -68,6 +73,8 @@ contains
 
     end function select_weighted_value_prec
 
+    ! [review] - JSS: is the alias method useful compared to simple binary search of the probabilities for one-off selections?
+    ! [reply] - VAN: How would you do the binary search to select an integer from a discrete probability distribution?
     function select_weighted_value(rng, N, weights, totweight) result(ret)
 
         ! Select an element, i=1..N with probability weights(i)/totweight.
@@ -161,8 +168,8 @@ contains
                 overfull(nover) = i
             end if
             ! [review] - JSS: in case of what?!
-            ! [review] - VAN: Sensible to set it in case there is a tiny numerical error
-            ! [review] - VAN: when matching up the last underfull and overfull Us. 
+            ! [reply] - VAN: Sensible to set it in case there is a tiny numerical error
+            ! [reply] - VAN: when matching up the last underfull and overfull Us. 
             aliasK(i) = i ! This is a sensible safe choice in case aliasK(i) is not set below.
         end do
         do while (nover > 0 .and. nunder > 0)
@@ -170,6 +177,10 @@ contains
             ! [review] - JSS: how arbitrary is this choice of over and under and how does it impact efficiency?
             ! [reply] - AJWT: Unknown. This is probably the fastest way to get rid of the over- and under-full boxes
             ! [reply] - AJWT: but it is certainly arbitrary.
+            ! [reply] - VAN: interesting point. the easiest option is to just keep them in the order they were
+            ! [reply] - VAN: and assign and over to an under by that order. I guess something else would involve
+            ! [reply] - VAN: sorting? 
+            ! [todo] think more about whether this can be made more efficient
             ov = overfull(nover)
             un = underfull(nunder)
             ! put ov as the alternate for un
