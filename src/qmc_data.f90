@@ -306,14 +306,19 @@ type blocking_in_t
     ! collecting data once vary_shift is true.
     integer :: start_point = -1
     ! Limit of the sum of error in error and standard deviation of projected
-    ! energy. If this value is reached soft_exit = true. Default = 0
+    ! energy. If this value is reached calculation is terminated. Default = 0
     real(p) :: error_limit = 0
 ! [review] - AJWT: [also see docs].  Not entirely clear what this means.
-    ! Lower limit of the inverse of estimated fractional error of projected
-    ! energy. The larger the value of inverse_fractional_error, the larger the
-    ! number of blocks used for reblock analysis therefore giving a more
-    ! reasonable estimate of error in error of projected energy.  Default = 3
-    integer :: inverse_fractional_error = 3
+    ! Minimum number of blocks used to terminate the calculation.
+    ! The blocking analysis is more reliable with more blocks used.
+    ! The calculation terminated if the standard error of projected energy is
+    ! below the error_limit and the number_of_blocks used is above
+    ! min_blocks_used. Default = 10
+    real(p) :: min_blocks_used = 10.0_p
+    ! The lower limit of the number_of_blocks used to terminate the calculation.
+    ! The calculation is terminated if this condition is met irrelevant of
+    ! the standard error of the projected energy. Default = (huge)
+    real(p) :: blocks_used = huge(1.0_p)
 end type
 
 ! --- Parallel info ---
@@ -566,7 +571,6 @@ type blocking_t
     ! Frequency at which the data for the start point is saved. In terms of the number of reports
     integer :: save_fq = 0
     ! Number of report cycles from the start of all blocking to the current cycle.
-! [review] - CJCS: What happens if this exceeds a 32-bit int? eg. for very long calculations.
     integer(int_64) :: n_reports_blocked = 0_int_64
 ! [todo] An alternative would be to have a reblock_data_t - something like
 !   type reblock_data_t
@@ -639,15 +643,14 @@ type blocking_t
     integer :: start_point = 0
     ! Array containing the different values of fractional error weighted by the
     ! 1/sqrt(number of data points) for each of the possible start positions.
-    ! [review] - VAN: very sorry to make such a pedantic comment. I just got confused 
-    ! [review] - VAN: between comparison and complex here when reading through 
-    ! [review] - VAN: blocking.f90. Is there any chance this name could be changed?
-    real(p), allocatable :: err_comp(:,:)
+    real(p), allocatable :: err_compare(:,:)
     ! log_2(block_size) of the optimal block sizes for different datatypes
     ! excluding dt_proj_energy. (see enum above)
     integer :: optimal_size(3) = 1
     ! Number of saved reblock_data type arrays at a given iteration.
     integer :: n_saved = 1
+    ! Optimal blocksize saved for the calculation of number of blocks used.
+    integer :: opt_bl_size=0
 
 end type blocking_t
 
@@ -1033,7 +1036,8 @@ contains
         call json_write_key(js, 'filename', blocking%filename)
         call json_write_key(js, 'start_point', blocking%start_point)
         call json_write_key(js, 'error_limit', blocking%error_limit)
-        call json_write_key(js, 'inverse_fractional_error', blocking%inverse_fractional_error, .true.)
+        call json_write_key(js, 'blocks_used', blocking%blocks_used)
+        call json_write_key(js, 'min_blocks_used', blocking%min_blocks_used, .true.)
         call json_object_end(js, terminal)
 
     end subroutine blocking_in_t_json

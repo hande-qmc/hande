@@ -55,15 +55,23 @@ blocking analysis on the fly.
     One of two conditions for termination of the calculation together with ``inverse_frational_error``.
     This specifies the upper limit of the sum of standard error and the error in error of projected energy.
 
-``inverse_fractional_error``
-    type: integer.
+``min_blocks_used``
+    type: real.
 
-    Optional. Default: 3
+    Optional. Default: 10
 
 ..
     [review] - AJWT: It isn't clear to me what exactly this does or how it works.
 
     One of two conditions for termination of the calculation together with ``error_limit``.
-    This specifies the lower limit of the inverse of the fractional error of projected energy.
-    The larger the value of ``inverse_fractional_error``, the larger the number of blocks used for
-    reblock analysis.
+    This specifies the lower limit of the number of blocks used for blocking analysis.
+    Larger ``min_blocks_used`` ensures a more reliable blocking analysis.
+
+``blocks_used``
+    type: real.
+
+    Optional. Default: (huge)
+
+    Irrelevant of the error_limit, if the number of blocks used to estimate the standard error of projected energy
+    is less than the ``blocks_used``, the calculation is terminated. Larger ``blocks_used`` ensures a more reliable
+    blocking analysis.

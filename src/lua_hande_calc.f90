@@ -1779,7 +1779,8 @@ contains
         !    filename = filename,
         !    start_point = niterations,
         !    error_limit = error_limit,
-        !    inverse_fractional_error = inverse_fractional_error
+        !    blocks_used = blocks_used,
+        !    min_blocks_used = min_blocks_used
         ! }
 
         ! If start_save_frequency, start_point_number, error_limit, min ratio and start_point
@@ -1805,9 +1806,9 @@ contains
         type(blocking_in_t), intent(out) :: blocking_in
 
         integer :: err, blocking_table
-        character(24),parameter :: keys(7) = [character(24) ::  'blocking_on_the_fly', 'start_save_frequency',   &
+        character(24),parameter :: keys(8) = [character(24) ::  'blocking_on_the_fly', 'start_save_frequency',   &
                                                                 'start_point_number', 'filename', 'start_point', &
-                                                                'error_limit', 'inverse_fractional_error']
+                                                                'error_limit', 'blocks_used', 'min_blocks_used']
 
         if (aot_exists(lua_state, opts, 'blocking')) then
 
@@ -1825,7 +1826,9 @@ contains
 
             call aot_get_val(blocking_in%error_limit, err, lua_state, blocking_table, 'error_limit')
 
-            call aot_get_val(blocking_in%inverse_fractional_error, err, lua_state, blocking_table, 'inverse_fractional_error')
+            call aot_get_val(blocking_in%blocks_used, err, lua_state, blocking_table, 'blocks_used')
+
+            call aot_get_val(blocking_in%min_blocks_used, err, lua_state, blocking_table, 'min_blocks_used')
 
             call warn_unused_args(lua_state, keys, blocking_table)
 

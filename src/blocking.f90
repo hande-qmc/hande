@@ -97,8 +97,8 @@ contains
         ! 1/(sqrt(number of data)) * fractional error for both \sum H_0j N_jand
         ! reference population is saved for comparison.
 
-        allocate(bl%err_comp(3, 0:bl%n_saved_startpoints))
-        call check_allocate('bl%err_comp', (bl%n_saved_startpoints+1)*3, ierr)
+        allocate(bl%err_compare(3, 0:bl%n_saved_startpoints))
+        call check_allocate('bl%err_compare', (bl%n_saved_startpoints+1)*3, ierr)
 
         bl%data_product = 0
         bl%data_product_2 = 0
@@ -106,7 +106,7 @@ contains
         bl%block_std = 0
         bl%block_cov = 0
         bl%product_save = 0
-        bl%err_comp = 0
+        bl%err_compare = 0
 
     end subroutine allocate_blocking
 
@@ -142,8 +142,8 @@ contains
         call check_deallocate('bl%reblock_save', ierr)
         deallocate(bl%product_save, stat=ierr)
         call check_deallocate('bl%product_save', ierr)
-        deallocate(bl%err_comp, stat=ierr)
-        call check_deallocate('bl%err_comp', ierr)
+        deallocate(bl%err_compare, stat=ierr)
+        call check_deallocate('bl%err_compare', ierr)
 
     end subroutine deallocate_blocking
 
@@ -209,8 +209,6 @@ contains
         ! sum_of_blocks and squared and added to sum_of_block_squares.
 
         do i = 0, (bl%lg_max)
-! [review] - CJCS: If running until certain error reached using nreports = 2e9 or similar large number 2 ** i exceeds
-! [review] - CJCS: 32-bit integer and this check fails. Change to 2_int_64?
             if (mod(bl%n_reports_blocked, 2_int_64 ** i) == 0) then
                 reblock_size = 2_int_64 ** i
 
@@ -326,7 +324,7 @@ contains
 
         use qmc_data, only: blocking_t
 
-        integer :: i, j, B, size_e
+        integer :: i, j, B
         type(blocking_t), intent(inout) :: bl
 
         ! Smallest block size satisfying the condition is found.
@@ -361,10 +359,10 @@ contains
         end do
         ! Larger optimal block size between the two is used.
         if (bl%optimal_size(dt_numerator) > bl%optimal_size(dt_denominator)) then
-            size_e = bl%optimal_size(dt_numerator)
+            bl%opt_bl_size = bl%optimal_size(dt_numerator)
 
         else
-            size_e = bl%optimal_size(dt_denominator)
+            bl%opt_bl_size = bl%optimal_size(dt_denominator)
         end if
 
         if (abs(bl%optimal_mean(dt_numerator)) < depsilon .or. abs(bl%optimal_mean(dt_denominator)) < depsilon) then
@@ -372,11 +370,14 @@ contains
             bl%optimal_std(dt_proj_energy) = 0
             bl%optimal_err(dt_proj_energy) = 0
         else
-            bl%optimal_mean(dt_proj_energy) = bl%block_mean(dt_numerator, size_e) / bl%block_mean(dt_denominator,size_e)
+            bl%optimal_mean(dt_proj_energy) = bl%block_mean(dt_numerator, bl%opt_bl_size) / &
+                                                                    bl%block_mean(dt_denominator,bl%opt_bl_size)
 
-            bl%optimal_std(dt_proj_energy) = fraction_error(bl%block_mean(dt_numerator,size_e), &
-                                  bl%block_mean(dt_denominator,size_e), bl%reblock_data_2(dt_numerator,size_e)%n_blocks,&
-                                  bl%block_std(dt_numerator,size_e), bl%block_std(dt_denominator, size_e), bl%block_cov(size_e))
+            bl%optimal_std(dt_proj_energy) = fraction_error(bl%block_mean(dt_numerator,bl%opt_bl_size), &
+                                                        bl%block_mean(dt_denominator,bl%opt_bl_size), &
+                                                        bl%reblock_data_2(dt_numerator,bl%opt_bl_size)%n_blocks,&
+                                                        bl%block_std(dt_numerator,bl%opt_bl_size), &
+                                                        bl%block_std(dt_denominator, bl%opt_bl_size), bl%block_cov(bl%opt_bl_size))
 
             bl%optimal_err(dt_proj_energy) = sqrt((bl%optimal_err(dt_numerator)/bl%optimal_std(dt_numerator)) ** 2 + &
                                                  (bl%optimal_err(dt_denominator)/bl%optimal_std(dt_denominator)) ** 2) * &
@@ -392,8 +393,6 @@ contains
         ! points to be able to change the point at which the reblocking analysis
         ! starts from can be changed.
 
-        ! In:
-        !   ireport: Number of reports.
         ! In/out:
         !   bl: Information needed to peform blocking on the fly. reblock_save
         !       product_save is returned with the reblock_data and product_data
@@ -402,7 +401,6 @@ contains
         use qmc_data, only: blocking_t
 
         type(blocking_t), intent(inout) :: bl
-! [review] - CJCS: What happens if n_saved>n_saved_startpoints? Won't work for non-default startpoint values.
         if ((mod(bl%n_reports_blocked,(bl%save_fq * bl%n_saved)) == 0) .and. (bl%n_saved_startpoints >= bl%n_saved)) then
             bl%reblock_save(:,:,bl%n_saved) = bl%reblock_data(:,:)
             bl%product_save(:,bl%n_saved) = bl%data_product(:)
@@ -510,25 +508,27 @@ contains
 
                 do j = 1, 3
                     if (abs(bl%optimal_std(j)) < depsilon) then
-                        bl%err_comp(j,i) = 0.0
+                        bl%err_compare(j,i) = 0.0
                     else
                         if (bl%optimal_size(j) - 1 < log(real(bl%save_fq))/ log(2.0)) then
-                            bl%err_comp(j,i) = bl%optimal_err(j)/ (bl%optimal_std(j) * sqrt(real((int(real(bl%n_reports_blocked &
+                            bl%err_compare(j,i) = bl%optimal_err(j)/ (bl%optimal_std(j) * &
+                                                                    sqrt(real((int(real(bl%n_reports_blocked &
                                                                     - i * bl%save_fq)/bl%optimal_size(j))) * bl%optimal_size(j))))
                         else
-                            bl%err_comp(j,i) = bl%optimal_err(j)/(bl%optimal_std(j) * sqrt(real((int(real(bl%n_reports_blocked - &
+                            bl%err_compare(j,i) = bl%optimal_err(j)/(bl%optimal_std(j) * &
+                                                                    sqrt(real((int(real(bl%n_reports_blocked - &
                                                                     i * bl%save_fq)/bl%optimal_size(j))-1) * bl%optimal_size(j))))
                         end if
                     end if
                 end do
             else
-                bl%err_comp(:,i) = 0
+                bl%err_compare(:,i) = 0
             end if
 
         end do
 
         do i = 1, 3
-            minimum(i) = minloc(bl%err_comp(i,:), dim = 1, mask = (bl%err_comp(i,:)>0)) - 1
+            minimum(i) = minloc(bl%err_compare(i,:), dim = 1, mask = (bl%err_compare(i,:)>0)) - 1
         end do
 
         bl%start_point = maxval(minimum)
@@ -586,7 +586,7 @@ contains
             call mean_std_cov(bl)
             call find_optimal_block(bl)
             call write_blocking(bl, qmc_in, ireport, iter, iunit)
-            call check_error(bl, qs, blocking_in)
+            call check_error(bl, qs, blocking_in, ireport)
         end if
 
         if (mod(bl%n_reports_blocked,bl%save_fq) == 0 .and. bl%n_reports_blocked > 0) then
@@ -642,7 +642,7 @@ contains
 
     end subroutine write_blocking
 
-    subroutine check_error(bl, qs, blocking_in)
+    subroutine check_error(bl, qs, blocking_in, ireport)
 
         ! The maximum error estimate and the inverse of estimated fractional
         ! error in the projected energy is compared to the limit specified by the
@@ -652,6 +652,7 @@ contains
         ! In:
         !   bl: Information needed to peform blocking on the fly.
         !   blocking_in: input options for blocking on the fly.
+        !   ireport: Number of reports.
         ! In/Out:
         !   qs: qmc_state where the data for current iteration is taken.
 
@@ -661,18 +662,19 @@ contains
         type(qmc_state_t), intent(inout) :: qs
         type(blocking_t), intent(in) :: bl
         type(blocking_in_t), intent(in) :: blocking_in
-        real(p) :: error_sum = 50, error_ratio = 0
+        integer, intent(in) :: ireport
+        real(p) :: error_sum = 50, number_of_blocks = 0
 
         if (bl%optimal_std(dt_proj_energy) > 0) then
 
             error_sum = bl%optimal_err(dt_proj_energy) + bl%optimal_std(dt_proj_energy)
 
-            error_ratio = bl%optimal_std(dt_proj_energy)/bl%optimal_err(dt_proj_energy)
+            number_of_blocks =int((ireport-(bl%start_point*bl%save_fq+bl%start_ireport))/(2.0**bl%opt_bl_size))
 
         end if
 
-        if (error_sum < blocking_in%error_limit .and. error_ratio > &
-                                    blocking_in%inverse_fractional_error) then
+        if ((error_sum < blocking_in%error_limit .and. number_of_blocks > blocking_in%min_blocks_used) &
+                                    .or. number_of_blocks > blocking_in%blocks_used) then
             qs%reblock_done = .true.
         end if
 

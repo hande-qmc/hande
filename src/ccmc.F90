@@ -327,8 +327,6 @@ contains
         use json_out, only: json_out_t, json_object_init, json_object_end
         use hamiltonian_data
         use energy_evaluation, only: get_sanitized_projected_energy, get_sanitized_projected_energy_cmplx
-        ! [review] - CJCS: Avoid importing the entire module, if only so it's
-        ! [review] - CJCS: clear which functions you're intending to use from it.
         use blocking, only: write_blocking_report_header, allocate_blocking, do_blocking, deallocate_blocking, write_blocking_report
         use utils, only: get_free_unit
 
@@ -861,9 +859,6 @@ contains
         end do
 
         if (blocking_in%blocking_on_the_fly) call deallocate_blocking(bl)
-        ! [review] - CJCS: Won't this only be applicable on parent?
-        ! [review] - CJCS: Also, maybe use write_date_time_close from environment_report
-        ! [review] - CJCS: to write info then close.
         if (blocking_in%blocking_on_the_fly .and. parent) call date_and_time(VALUES=date_values)
         if (blocking_in%blocking_on_the_fly .and. parent) call write_date_time_close(iunit, date_values)
 
