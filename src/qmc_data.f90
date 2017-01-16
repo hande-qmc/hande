@@ -567,7 +567,7 @@ type blocking_t
     integer :: save_fq = 0
     ! Number of report cycles from the start of all blocking to the current cycle.
 ! [review] - CJCS: What happens if this exceeds a 32-bit int? eg. for very long calculations.
-    integer :: n_reports_blocked = 0
+    integer(int_64) :: n_reports_blocked = 0_int_64
 ! [todo] An alternative would be to have a reblock_data_t - something like
 !   type reblock_data_t
 !       integer :: n_blocks

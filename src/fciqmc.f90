@@ -75,6 +75,7 @@ contains
                             logging_in_t, logging_t, logging_in_t_json, logging_t_json
         use blocking, only: write_blocking_report_header, allocate_blocking, do_blocking, deallocate_blocking, write_blocking_report
         use utils, only: get_free_unit
+        use report, only: write_date_time_close
 
         type(sys_t), intent(in) :: sys
         type(qmc_in_t), intent(in) :: qmc_in
@@ -121,6 +122,7 @@ contains
 
         type(blocking_t) :: bl
         integer :: iunit
+        integer :: date_values(8)
 
         if (parent) then
             write (io_unit,'(1X,"FCIQMC")')
@@ -374,7 +376,8 @@ contains
         end do
 
         if (blocking_in%blocking_on_the_fly) call deallocate_blocking(bl)
-        if (blocking_in%blocking_on_the_fly) close(iunit, status='keep')
+        if (blocking_in%blocking_on_the_fly .and. parent) call date_and_time(VALUES=date_values)
+        if (blocking_in%blocking_on_the_fly .and. parent) call write_date_time_close(iunit, date_values)
 
         if (fciqmc_in%non_blocking_comm) call end_non_blocking_comm(sys, rng, qmc_in, annihilation_flags, ireport, &
                                                                     qs, qs%spawn_store%spawn_recv,  req_data_s,  &

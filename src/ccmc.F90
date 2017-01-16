@@ -334,6 +334,7 @@ contains
 
         use logging, only: init_logging, end_logging, prep_logging_mc_cycle, write_logging_calc_ccmc
         use logging, only: logging_in_t, logging_t, logging_in_t_json, logging_t_json, write_logging_select_ccmc
+        use report, only: write_date_time_close
 
         type(sys_t), intent(in) :: sys
         type(qmc_in_t), intent(in) :: qmc_in
@@ -389,6 +390,7 @@ contains
 
         type(blocking_t) :: bl
         integer :: iunit
+        integer :: date_values(8)
 
         if (parent) then
             write (io_unit,'(1X,"CCMC")')
@@ -862,7 +864,8 @@ contains
         ! [review] - CJCS: Won't this only be applicable on parent?
         ! [review] - CJCS: Also, maybe use write_date_time_close from environment_report
         ! [review] - CJCS: to write info then close.
-        if (blocking_in%blocking_on_the_fly) close(iunit, status='keep')
+        if (blocking_in%blocking_on_the_fly .and. parent) call date_and_time(VALUES=date_values)
+        if (blocking_in%blocking_on_the_fly .and. parent) call write_date_time_close(iunit, date_values)
 
         if (parent) write (io_unit,'()')
         call write_bloom_report(bloom_stats, io_unit=io_unit)

@@ -187,6 +187,7 @@ contains
         !       collected every report and reblock_data and data_product is updated.
 
         use qmc_data, only: qmc_in_t, qmc_state_t, blocking_t
+        use const, only: int_64
 
         type(qmc_in_t), intent(in) :: qmc_in
         type(qmc_state_t), intent(in) :: qs
@@ -210,8 +211,8 @@ contains
         do i = 0, (bl%lg_max)
 ! [review] - CJCS: If running until certain error reached using nreports = 2e9 or similar large number 2 ** i exceeds
 ! [review] - CJCS: 32-bit integer and this check fails. Change to 2_int_64?
-            if (mod(bl%n_reports_blocked, 2 ** i) == 0) then
-                reblock_size = 2 ** i
+            if (mod(bl%n_reports_blocked, 2_int_64 ** i) == 0) then
+                reblock_size = 2_int_64 ** i
 
                 bl%reblock_data(:,i)%n_blocks = (bl%n_reports_blocked)/reblock_size
 
@@ -402,7 +403,7 @@ contains
 
         type(blocking_t), intent(inout) :: bl
 ! [review] - CJCS: What happens if n_saved>n_saved_startpoints? Won't work for non-default startpoint values.
-        if (mod(bl%n_reports_blocked,(bl%save_fq * bl%n_saved)) == 0) then
+        if ((mod(bl%n_reports_blocked,(bl%save_fq * bl%n_saved)) == 0) .and. (bl%n_saved_startpoints >= bl%n_saved)) then
             bl%reblock_save(:,:,bl%n_saved) = bl%reblock_data(:,:)
             bl%product_save(:,bl%n_saved) = bl%data_product(:)
             bl%n_saved = bl%n_saved + 1
@@ -564,14 +565,14 @@ contains
 
         if (bl%start_ireport == -1 .and. blocking_in%start_point<0 .and. qs%vary_shift(1)) then
             bl%start_ireport = ireport
-        else if (blocking_in%start_point>0) then
-            bl%start_ireport = blocking_in%start_point/qmc_in%ncycles
+        else if (blocking_in%start_point>=0) then
+            bl%start_ireport = nint(real(blocking_in%start_point)/qmc_in%ncycles)
         end if
 
         ! Once the shift is varied the data needed for reblocking is
         ! collected.
 
-        if (ireport >= bl%start_ireport .and. bl%start_ireport>0) then
+        if (ireport >= bl%start_ireport .and. bl%start_ireport>=0) then
             bl%n_reports_blocked = ireport - bl%start_ireport + 1
             call collect_data(qmc_in, qs, bl, ireport)
             call copy_block(bl)
@@ -580,7 +581,7 @@ contains
         ! For every 50 reports, the optimal mean and standard deviation
         ! and the optimal error in error is calculated and printed.
         if (mod(ireport,50) ==0 .and. ireport >= bl%start_ireport .and. &
-                    bl%start_ireport>0) then
+                    bl%start_ireport>=0) then
             call change_start(bl, ireport, bl%start_point)
             call mean_std_cov(bl)
             call find_optimal_block(bl)
