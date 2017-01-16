@@ -215,7 +215,7 @@ contains
         type(sys_t), intent(in) :: sys
         type(qmc_state_t), intent(in) :: qs
         logical, intent(in) :: linked_ccmc, ex_lvl_sort
-        type(det_info_t), intent(in) :: cdet
+        type(det_info_t), intent(inout) :: cdet
         type(cluster_t), intent(in) :: cluster
         type(logging_t), intent(in) :: logging_info
         type(dSFMT_t), intent(inout) :: rng
