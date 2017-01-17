@@ -92,12 +92,16 @@ contains
             do proc = 0, nprocs-1
                 if (proc == iproc .and. comms_exists) then
                     ! Read in file.
-                    open(newunit=iunit, file=comms_file, status='old')
+                    ! It's possible that there is a latency in the inquire for
+                    ! the existence of comms_file, so comms_exists = .true., but
+                    ! the file has actually been deleted.  Account for this
+                    ! gracefully.
+                    open(newunit=iunit, file=comms_file, status='old',err=101)
                     call read_file_to_buffer(buffer, in_unit=iunit)
                     ! Don't want to keep HANDE.COMM around to be detected again on
                     ! the next Monte Carlo iteration.
                     close(iunit, status="delete")
-                    comms_read = .true.
+101                 comms_read = .true.
                 end if
 #ifdef PARALLEL
                 call mpi_bcast(comms_read, 1, mpi_logical, proc, mpi_comm_world, ierr)
