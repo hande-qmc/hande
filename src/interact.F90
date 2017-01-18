@@ -42,6 +42,7 @@ contains
         logical :: comms_exists, comms_read
         integer :: proc, i, j, ierr, lua_err, iunit, shnd
         integer, allocatable :: ierr_arr(:)
+        integer :: ios
 #ifdef PARALLEL
         integer :: buf_len
 #endif
@@ -94,13 +95,19 @@ contains
                     ! It's possible that there is a latency in the inquire for
                     ! the existence of comms_file, so comms_exists = .true., but
                     ! the file has actually been deleted.  Account for this
-                    ! gracefully.
-                    open(newunit=iunit, file=comms_file, status='old',err=101)
-                    call read_file_to_buffer(buffer, in_unit=iunit)
-                    ! Don't want to keep HANDE.COMM around to be detected again on
-                    ! the next Monte Carlo iteration.
-                    close(iunit, status="delete")
-101                 comms_read = .true.
+                    ! gracefully by checking iostat
+                    open(newunit=iunit, file=comms_file, status='old',iostat=ios)
+                    if (ios==0) then !all is fine
+                        call read_file_to_buffer(buffer, in_unit=iunit)
+                        ! Don't want to keep HANDE.COMM around to be detected again on
+                        ! the next Monte Carlo iteration.
+                        close(iunit, status="delete")
+                    else
+                        write (out_unit,'(1X,"#",1X,a61)') 'Error reading '//comms_file//'.  Assuming empty.'
+                        flush(out_unit)
+                        buffer = ''
+                    end if
+                    comms_read = .true.
                 end if
 #ifdef PARALLEL
                 call mpi_bcast(comms_read, 1, mpi_logical, proc, mpi_comm_world, ierr)
