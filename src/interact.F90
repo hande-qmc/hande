@@ -30,6 +30,7 @@ contains
         use flu_binding, only: flu_State, flu_close
 
         use utils, only: read_file_to_buffer
+        use errors, only: warning
         use parallel
 
         use qmc_data, only: qmc_in_t, qmc_state_t
@@ -104,7 +105,7 @@ contains
                         ! the next Monte Carlo iteration.
                         close(iunit, status="delete")
                     else
-                        write (out_unit,'(1X,"#",1X,a61)') 'Error reading '//comms_file//'.  Assuming empty.'
+                        call warning('calc_interact', 'Error reading '//comms_file//'.  Assuming empty.')
                         flush(out_unit)
                         buffer = ''
                     end if
