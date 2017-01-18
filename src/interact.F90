@@ -29,7 +29,8 @@ contains
         use aot_vector_module, only: aot_get_val
         use flu_binding, only: flu_State, flu_close
 
-        use utils, only: get_free_unit, read_file_to_buffer
+        use utils, only: read_file_to_buffer
+        use errors, only: warning
         use parallel
 
         use qmc_data, only: qmc_in_t, qmc_state_t
@@ -42,6 +43,7 @@ contains
         logical :: comms_exists, comms_read
         integer :: proc, i, j, ierr, lua_err, iunit, shnd
         integer, allocatable :: ierr_arr(:)
+        integer :: ios
 #ifdef PARALLEL
         integer :: buf_len
 #endif
@@ -91,12 +93,21 @@ contains
             do proc = 0, nprocs-1
                 if (proc == iproc .and. comms_exists) then
                     ! Read in file.
-                    iunit = get_free_unit()
-                    open(iunit, file=comms_file, status='old')
-                    call read_file_to_buffer(buffer, in_unit=iunit)
-                    ! Don't want to keep HANDE.COMM around to be detected again on
-                    ! the next Monte Carlo iteration.
-                    close(iunit, status="delete")
+                    ! It's possible that there is a latency in the inquire for
+                    ! the existence of comms_file, so comms_exists = .true., but
+                    ! the file has actually been deleted.  Account for this
+                    ! gracefully by checking iostat
+                    open(newunit=iunit, file=comms_file, status='old',iostat=ios)
+                    if (ios==0) then !all is fine
+                        call read_file_to_buffer(buffer, in_unit=iunit)
+                        ! Don't want to keep HANDE.COMM around to be detected again on
+                        ! the next Monte Carlo iteration.
+                        close(iunit, status="delete")
+                    else
+                        call warning('calc_interact', 'Error reading '//comms_file//'.  Assuming empty.')
+                        flush(6)
+                        buffer = ''
+                    end if
                     comms_read = .true.
                 end if
 #ifdef PARALLEL
