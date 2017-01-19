@@ -19,17 +19,19 @@ import pyhande.weight
 
 def std_analysis(datafiles, start=None, select_function=None,
         extract_psips=False, reweight_history=0, mean_shift=0.0,
-        arith_mean=False, calc_inefficiency=False, verbosity = 1):
+        arith_mean=False, calc_inefficiency=False, verbosity = 1, end=None):
     '''Perform a 'standard' analysis of HANDE output files.
 
 Parameters
 ----------
 datafiles : list of strings
     names of files containing HANDE QMC calculation output.
-start : int or None
-    iteration from which the blocking analysis is performed.  If None, then
-    attempt to automatically determine a good iteration using
-    :func:`find_starting_iteration`.
+start, end : int or None
+    iteration after which/until which the blocking analysis is performed.
+    If start is None, then attempt to automatically determine a good iteration
+    using :func:`find_starting_iteration`.
+    If end is None, the last iteration included is the last iteration of the
+    data set.
 select_function : function
     function which returns a boolean mask for the iterations to include in the
     analysis.  Not used if set to None (default).  Overrides ``start``.  See
@@ -86,13 +88,15 @@ Umrigar93
     infos = []
     for (calc, md) in zip(calcs, calcs_md):
         calc_start = start
+        calc_end = end
         if calc_start is None:
-            calc_start = find_starting_iteration(calc, md, verbose=verbosity)
+            calc_start = find_starting_iteration(calc, md, verbose=verbosity,
+                        end=calc_end)
         md['pyhande'] = {'reblock_start': calc_start}
         if (verbosity > -1) :
             print('Block from: %i' % calc_start)
         infos.append(lazy_block(calc, md, calc_start, select_function,
-                     extract_psips, calc_inefficiency))
+                    extract_psips, calc_inefficiency, calc_end))
     return infos
 
 def zeroT_qmc(datafiles, reweight_history=0, mean_shift=0.0, arith_mean=False):
@@ -140,7 +144,7 @@ metadata : list of dict
     return (calcs, calcs_metadata)
 
 def lazy_block(calc, md, start=0, select_function=None, extract_psips=False,
-               calc_inefficiency=False):
+               calc_inefficiency=False, end=None):
     '''Standard blocking analysis on zero-temperature QMC calcaulations.
 
 .. note::
@@ -154,7 +158,7 @@ calc : :class:`pandas.DataFrame`
     Zero-temperature QMC calculation output.
 md : dict
     Metadata for the calculation in `calc`.
-start, select_function, extract_psips, calc_inefficiency:
+start, select_function, extract_psips, calc_inefficiency, end:
     See :func:`std_analysis`.
 
 Returns
@@ -168,8 +172,15 @@ info : :func:`collections.namedtuple`
     info_tuple = collections.namedtuple('HandeInfo', tuple_fields)
     # Reblock Monte Carlo data over desired window.
     reweight_calc = 'W * N_0' in calc
+    if end is None:
+        #Default end is the last iteration.
+        end = calc['iterations'].iloc[-1]
     if select_function is None:
-        indx = calc['iterations'] > start
+        #start+1 due to backwards compatibility
+        #(used to be indx = calc['iterations'] > start
+        #but pdSeries.between(start,end) gives True at
+        #calc['iterations'] == start).
+        indx = calc['iterations'].between(start+1, end)
     else:
         indx = select_function(calc)
     to_block = []
@@ -180,7 +191,6 @@ info : :func:`collections.namedtuple`
         to_block.extend(['W * \sum H_0j N_j', 'W * N_0'])
 
     mc_data = calc.ix[indx, to_block]
-
     if mc_data['Shift'].iloc[0] == mc_data['Shift'].iloc[1]:
         if calc['Shift'][~indx].iloc[-1] == mc_data['Shift'].iloc[0]:
             warnings.warn('The blocking analysis starts from before the shift '
@@ -321,7 +331,7 @@ calcs : list of :class:`pandas.DataFrame`
 
 def find_starting_iteration(data, md, frac_screen_interval=300,
     number_of_reblockings=30, number_of_reblocks_to_cut_off=1, pos_min_frac=0.8,
-    verbose=0, show_graph=False):
+    verbose=0, show_graph=False, end=None):
     '''Find the best iteration to start analysing CCMC/FCIQMC data.
 
 .. warning::
@@ -395,6 +405,9 @@ show_graph : bool
     highlighting where the minimum was found and - after also excluding some
     reblocking blocks - which iteration was found as the best starting iteration
     to use in reblocking analyses.
+end : int or None
+    Last iteration included in analysis. If None, the last iteration included
+    is the last iteration of the data set.
 
 Returns
 -------
@@ -417,15 +430,21 @@ starting_iteration: integer
     if number_of_reblockings > frac_screen_interval:
         raise RuntimeError("number_of_reblockings > frac_screen_interval")
 
+    if end is None:
+        #Default end is the last iteration.
+        end = data['iterations'].iloc[-1]
+    before_end_indx = data['iterations'] <= end
+    data_before_end = data.ix[before_end_indx]
+
     # Find the point the shift began to vary.
-    variable_shift = data['Shift'] != data['Shift'].iloc[0]
+    variable_shift = data_before_end['Shift'] != data_before_end['Shift'].iloc[0]
     if variable_shift.any():
-        shift_variation_indx = data[variable_shift]['iterations'].index[0]
+        shift_variation_indx = data_before_end[variable_shift]['iterations'].index[0]
     else:
         raise RuntimeError("Shift has not started to vary in dataset!")
 
     # Check we have enough data to screen:
-    if data['Shift'].size - shift_variation_indx < frac_screen_interval:
+    if data_before_end['Shift'].size - shift_variation_indx < frac_screen_interval:
         # i.e. data where shift is not equal to initial value is less than
         # frac_screen_interval, i.e. we cannot screen adequately.
         warnings.warn("Calculation contains less data than "
@@ -434,12 +453,12 @@ starting_iteration: integer
 
     # Find the MC iteration at which shift starts to vary.
     iteration_shift_variation_start = \
-            data['iterations'].iloc[shift_variation_indx]
+            data_before_end['iterations'].iloc[shift_variation_indx]
 
-    step = int((data['iterations'].iloc[-1] - \
+    step = int((data_before_end['iterations'].iloc[-1] - \
             iteration_shift_variation_start )/frac_screen_interval)
 
-    step_indx = int((data['iterations'].index[-1]-\
+    step_indx = int((data_before_end['iterations'].index[-1]-\
             shift_variation_indx)/frac_screen_interval)
 
     min_index = -1
@@ -451,14 +470,14 @@ starting_iteration: integer
 
         for j in range(k*number_of_reblockings, (k+1)*number_of_reblockings):
             start = iteration_shift_variation_start + j*step
-            info = lazy_block(data, md, start, extract_psips=True)
+            info = lazy_block(data_before_end, md, start, extract_psips=True, end=end)
 
             if info.no_opt_block:
                 # Not enough data to get a best estimate for some values.
                 # Don't include, even if the shift is estimated.
                 s_err_frac_weighted = float('inf')
             else:
-                number_of_data_left = data['Shift'].index[-1] - shift_variation_indx - j*step_indx + 1
+                number_of_data_left = data_before_end['Shift'].index[-1] - shift_variation_indx - j*step_indx + 1
                 err_err = info.opt_block.loc[err_keys, 'standard error error']
                 err = info.opt_block.loc[err_keys, 'standard error']
                 err_frac = err_err.divide(err)
@@ -478,8 +497,8 @@ starting_iteration: integer
             # be conservative.  This amounts to removing n autocorrelation
             # lengths.
             discard_indx = 2**opt_ind * number_of_reblocks_to_cut_off
-            starting_iteration = data['iterations'].iloc[shift_variation_indx+discard_indx] + min_index*step
-            if data['iterations'].iloc[-1] <= starting_iteration:
+            starting_iteration = data_before_end['iterations'].iloc[shift_variation_indx+discard_indx] + min_index*step
+            if data_before_end['iterations'].iloc[-1] <= starting_iteration:
                 raise ValueError("Too much cut off! Data is not converged or "
                                  "use a smaller number_of_reblocks_to_cut_off.")
             starting_iteration_found = True
@@ -492,7 +511,7 @@ starting_iteration: integer
     if show_graph:
         plt.xlabel('Iterations')
         plt.ylabel('Shift')
-        plt.plot(data['iterations'], data['Shift'], 'b-', label='data')
+        plt.plot(data_before_end['iterations'], data_before_end['Shift'], 'b-', label='data')
         plt.axvline(starting_iteration, color='r',
                     label='Suggested starting iteration')
         plt.axvline(iteration_shift_variation_start + min_index*step, color='g',
