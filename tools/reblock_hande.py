@@ -22,7 +22,8 @@ import pyblock
 import pyhande
 
 def run_hande_blocking(files, start_iteration, reblock_plot=None, verbose=1,
-                       width=0, out_method='to_string', inefficiency=False):
+                       width=0, out_method='to_string', inefficiency=False,
+                       end_iteration=None):
     '''Run a reblocking analysis on HANDE output and print to STDOUT.
 
 See :func:`pyblock.pd_utils.reblock` and :func:`pyblock.blocking.reblock` for
@@ -61,6 +62,9 @@ out_method : string
 inefficiency : bool
     Attempt to calculate the inefficiency factor for the calculations, and
     include it in the output.
+end_iteration : int or None (Default)
+    QMC iteration until which statistics are gathered. If None, the last QMC
+    iteration included is the last iteration of the data set.
 
 Returns
 -------
@@ -108,7 +112,8 @@ opt_block: :class:`pandas.DataFrame`
             info = pyhande.lazy.std_analysis(calc, start_iteration,
                                              extract_psips=True,
                                              calc_inefficiency=inefficiency,
-                                             verbosity = verbose)
+                                             verbosity = verbose,
+                                             end=end_iteration)
             for (i, i_info) in enumerate(info):
                 if verbose >= v_analysis:
                     msg = 'Analysing file(s): %s.' % (' '.join(calc))
@@ -227,6 +232,10 @@ reblock_plot : string
                         default=None, help='Iteration number from which to '
                         'gather statistics.  Default: Try finding starting '
                         'iteration automatically. ')
+    parser.add_argument('-e', '--end', type=int, dest='end_iteration',
+                        default=None, help='Iteration number until which to '
+                        'gather statistics.  Default: Last iteration in data '
+                        'set. ')
     parser.add_argument('-v', '--verbose', dest='verbose', action='count',
                         default=1, help='Increase verbosity of the output.  Can '
                         'be specified multiple times.')
@@ -280,7 +289,8 @@ None.
     options = parse_args(args)
     run_hande_blocking(options.filenames, options.start_iteration,
                        options.plotfile, options.verbose, options.width,
-                       options.output, options.inefficiency)
+                       options.output, options.inefficiency,
+                       options.end_iteration)
 
 if __name__ == '__main__':
 
