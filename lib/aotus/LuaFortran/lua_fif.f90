@@ -50,11 +50,12 @@ module lua_fif
       integer(kind=c_int) :: lua_gettop
     end function lua_gettop
 
-    subroutine lua_insert(L, index) bind(c, name="lua_insert")
+    subroutine lua_rotate(L, index, n) bind(c, name="lua_rotate")
       use, intrinsic :: iso_c_binding
       type(c_ptr), value :: L
       integer(kind=c_int), value :: index
-    end subroutine lua_insert
+      integer(kind=c_int), value :: n
+    end subroutine lua_rotate
 
     function lua_isNumber(L, index) bind(c, name="lua_isnumber")
       use, intrinsic :: iso_c_binding
@@ -264,5 +265,14 @@ module lua_fif
     end function luaL_newmetatable
 
   end interface
+
+contains
+  subroutine lua_insert(L, index)
+    use, intrinsic :: iso_c_binding
+    type(c_ptr), value :: L
+    integer(kind=c_int), value :: index
+    integer(kind=c_int) :: n=1
+    call lua_rotate(L, index, n)
+  end subroutine lua_insert
 
 end module lua_fif

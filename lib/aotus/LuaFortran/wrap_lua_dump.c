@@ -49,7 +49,7 @@ const char* dump_lua_toBuf(lua_State *L, int *length, int *ierr)
   dat.space = 1024;
   dat.container = malloc(dat.space);
 
-  errcode = lua_dump(L, buf_writer, &dat);
+  errcode = lua_dump(L, buf_writer, &dat, 0);
 
   (*ierr) = errcode;
   (*length) = dat.length;
