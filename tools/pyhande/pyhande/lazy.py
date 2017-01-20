@@ -27,7 +27,8 @@ Parameters
 datafiles : list of strings
     names of files containing HANDE QMC calculation output.
 start, end : int or None
-    iteration after which/until which the blocking analysis is performed.
+    iteration after which/until which the blocking analysis is performed. The
+    end iteration is included in analysis, the start iteration is not.
     If start is None, then attempt to automatically determine a good iteration
     using :func:`find_starting_iteration`.
     If end is None, the last iteration included is the last iteration of the

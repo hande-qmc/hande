@@ -36,7 +36,8 @@ files : list of list of strings
     the a set of files which are analysed together (ie a series of calculations
     restarted from the previous calculation).
 start_iteration : int or None (Default)
-    QMC iteration from which statistics are gathered.
+    QMC iteration from which statistics are gathered. While the end_iteration
+    is included in analysis, the start_iteration is not.
 reblock_plot : string
     Filename to which the reblocking convergence plot (standard error vs reblock
     iteration) is saved.  The plot is not created if None and shown
@@ -230,8 +231,9 @@ reblock_plot : string
                         'Overrides --verbose.')
     parser.add_argument('-s', '--start', type=int, dest='start_iteration',
                         default=None, help='Iteration number from which to '
-                        'gather statistics.  Default: Try finding starting '
-                        'iteration automatically. ')
+                        'gather statistics. The start iteration itself is not '
+                        'included in the analysis. Default: Try finding '
+                        'starting iteration automatically. ')
     parser.add_argument('-e', '--end', type=int, dest='end_iteration',
                         default=None, help='Iteration number until which to '
                         'gather statistics.  Default: Last iteration in data '
