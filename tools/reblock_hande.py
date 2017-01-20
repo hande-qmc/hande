@@ -21,9 +21,9 @@ if not pkgutil.find_loader('pyhande'):
 import pyblock
 import pyhande
 
-def run_hande_blocking(files, start_iteration, reblock_plot=None, verbose=1,
-                       width=0, out_method='to_string', inefficiency=False,
-                       end_iteration=None):
+def run_hande_blocking(files, start_iteration=None, reblock_plot=None,
+                       verbose=1, width=0, out_method='to_string',
+                       inefficiency=False, end_iteration=None):
     '''Run a reblocking analysis on HANDE output and print to STDOUT.
 
 See :func:`pyblock.pd_utils.reblock` and :func:`pyblock.blocking.reblock` for
