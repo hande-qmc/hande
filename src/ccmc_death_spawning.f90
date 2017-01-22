@@ -189,14 +189,14 @@ contains
         !       die.
         !    sys: system being studied.
         !    qs: qmc_state_t containing information about the reference and estimators.
-        !    cdet: info on the current excitor (cdet) that we will spawn
-        !        from.
         !    cluster: information about the cluster which forms the excitor.
         !    logging_info: logging_t derived type containing information on logging behaviour.
 
         ! In/Out:
         !    rng: random number generator.
         !    spawn: spawn_t object to which the spanwed particle will be added.
+        !    cdet: info on the current excitor (cdet) that we will spawn
+        !        from.
         !    ndeath_tot: total number of deaths (added to by this function)
 
         use ccmc_data, only: cluster_t
