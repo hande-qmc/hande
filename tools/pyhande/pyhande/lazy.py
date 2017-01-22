@@ -17,6 +17,7 @@ import pyhande.extract
 import pyhande.analysis
 import pyhande.weight
 
+# [review] - JSS: seems reasonable to place start and end together.
 def std_analysis(datafiles, start=None, select_function=None,
         extract_psips=False, reweight_history=0, mean_shift=0.0,
         arith_mean=False, calc_inefficiency=False, verbosity = 1, end=None):
@@ -30,9 +31,8 @@ start, end : int or None
     iteration after which/until which the blocking analysis is performed. The
     end iteration is included in analysis, the start iteration is not.
     If start is None, then attempt to automatically determine a good iteration
-    using :func:`find_starting_iteration`.
-    If end is None, the last iteration included is the last iteration of the
-    data set.
+    using :func:`find_starting_iteration`.  If end is None, the last iteration
+    included is the last iteration of the data set.
 select_function : function
     function which returns a boolean mask for the iterations to include in the
     analysis.  Not used if set to None (default).  Overrides ``start``.  See
@@ -92,7 +92,7 @@ Umrigar93
         calc_end = end
         if calc_start is None:
             calc_start = find_starting_iteration(calc, md, verbose=verbosity,
-                        end=calc_end)
+                                                 end=calc_end)
         md['pyhande'] = {'reblock_start': calc_start}
         if (verbosity > -1) :
             print('Block from: %i' % calc_start)
@@ -144,6 +144,7 @@ metadata : list of dict
         raise ValueError('No data found in '+' '.join(datafiles))
     return (calcs, calcs_metadata)
 
+# [review] - JSS: as above
 def lazy_block(calc, md, start=0, select_function=None, extract_psips=False,
                calc_inefficiency=False, end=None):
     '''Standard blocking analysis on zero-temperature QMC calcaulations.
@@ -174,13 +175,13 @@ info : :func:`collections.namedtuple`
     # Reblock Monte Carlo data over desired window.
     reweight_calc = 'W * N_0' in calc
     if end is None:
-        #Default end is the last iteration.
+        # Default end is the last iteration.
         end = calc['iterations'].iloc[-1]
     if select_function is None:
-        #start+1 due to backwards compatibility
-        #(used to be indx = calc['iterations'] > start
-        #but pdSeries.between(start,end) gives True at
-        #calc['iterations'] == start).
+        # start+1 due to backwards compatibility
+        # (used to be indx = calc['iterations'] > start
+        # but pd.Series.between(start,end) gives True at
+        # calc['iterations'] == start).
         indx = calc['iterations'].between(start+1, end)
     else:
         indx = select_function(calc)
@@ -432,9 +433,13 @@ starting_iteration: integer
         raise RuntimeError("number_of_reblockings > frac_screen_interval")
 
     if end is None:
-        #Default end is the last iteration.
+        # Default end is the last iteration.
         end = data['iterations'].iloc[-1]
     before_end_indx = data['iterations'] <= end
+    # [review] - JSS: not obvious why this is necessary when lazy_block takes end as well.
+    # [review] - JSS: I think we already assume that the timestep and iterations
+    # [review] - JSS: between shift updates are constant across the data, so only
+    # [review] - JSS: need to adjust the end point for number_of_reblockings...
     data_before_end = data.ix[before_end_indx]
 
     # Find the point the shift began to vary.

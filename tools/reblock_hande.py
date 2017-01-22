@@ -21,6 +21,7 @@ if not pkgutil.find_loader('pyhande'):
 import pyblock
 import pyhande
 
+# [review] - JSS: group start and end together in args list..
 def run_hande_blocking(files, start_iteration=None, reblock_plot=None,
                        verbose=1, width=0, out_method='to_string',
                        inefficiency=False, end_iteration=None):
