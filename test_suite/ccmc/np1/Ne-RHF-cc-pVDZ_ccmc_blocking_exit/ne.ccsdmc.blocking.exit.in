@@ -22,7 +22,7 @@ ccmc {
     },
     blocking = {
         blocking_on_the_fly = true,
-        inverse_fractional_error = 1,
+        min_blocks_used = 1,
         error_limit = 1e-3,
     },
 }
