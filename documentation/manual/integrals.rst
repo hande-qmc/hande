@@ -103,10 +103,10 @@ Hamiltonian.
 if :math:`a = j = b = 0`, :math:`\epsilon_i = x`, the single-particle eigenvalue
 of the i-th orbital.
 
-if :math:`j = b = 0`, :math:`< i | h | a > = x`, the one-body Hamiltonian matrix element
+if :math:`j = b = 0`, :math:`\langle i | h | a \rangle = x`, the one-body Hamiltonian matrix element
 between the i-th and a-th orbitals, where :math:`h = T+V_{ext}`.
 
-otherwise :math:`< i j | 1/r_{12} | a b > = x`, the Coulomb integral between
+otherwise :math:`\langle i j | 1/r_{12} | a b \rangle = x`, the Coulomb integral between
 the i-a co-density and the j-b codensity.  Note the Coulomb
 integrals are given in Chemists' notation.
 
