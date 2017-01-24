@@ -17,10 +17,9 @@ import pyhande.extract
 import pyhande.analysis
 import pyhande.weight
 
-# [review] - JSS: seems reasonable to place start and end together.
-def std_analysis(datafiles, start=None, select_function=None,
+def std_analysis(datafiles, start=None, end=None, select_function=None,
         extract_psips=False, reweight_history=0, mean_shift=0.0,
-        arith_mean=False, calc_inefficiency=False, verbosity = 1, end=None):
+        arith_mean=False, calc_inefficiency=False, verbosity = 1):
     '''Perform a 'standard' analysis of HANDE output files.
 
 Parameters
@@ -96,8 +95,8 @@ Umrigar93
         md['pyhande'] = {'reblock_start': calc_start}
         if (verbosity > -1) :
             print('Block from: %i' % calc_start)
-        infos.append(lazy_block(calc, md, calc_start, select_function,
-                    extract_psips, calc_inefficiency, calc_end))
+        infos.append(lazy_block(calc, md, calc_start, calc_end,
+                    select_function, extract_psips, calc_inefficiency))
     return infos
 
 def zeroT_qmc(datafiles, reweight_history=0, mean_shift=0.0, arith_mean=False):
@@ -144,9 +143,8 @@ metadata : list of dict
         raise ValueError('No data found in '+' '.join(datafiles))
     return (calcs, calcs_metadata)
 
-# [review] - JSS: as above
-def lazy_block(calc, md, start=0, select_function=None, extract_psips=False,
-               calc_inefficiency=False, end=None):
+def lazy_block(calc, md, start=0, end=None, select_function=None,
+            extract_psips=False, calc_inefficiency=False):
     '''Standard blocking analysis on zero-temperature QMC calcaulations.
 
 .. note::
@@ -160,7 +158,7 @@ calc : :class:`pandas.DataFrame`
     Zero-temperature QMC calculation output.
 md : dict
     Metadata for the calculation in `calc`.
-start, select_function, extract_psips, calc_inefficiency, end:
+start, end, select_function, extract_psips, calc_inefficiency:
     See :func:`std_analysis`.
 
 Returns
@@ -440,6 +438,10 @@ starting_iteration: integer
     # [review] - JSS: I think we already assume that the timestep and iterations
     # [review] - JSS: between shift updates are constant across the data, so only
     # [review] - JSS: need to adjust the end point for number_of_reblockings...
+    # [reply] - VAN: This is more rigorous as the size of the steps I am using depends
+    # [reply] - VAN: on the number of iterations I am including in the analysis. If a
+    # [reply] - VAN: user only wants to consider data from start to end, the remaining
+    # [reply] - VAN: data points should not be part of the decision where to start from.
     data_before_end = data.ix[before_end_indx]
 
     # Find the point the shift began to vary.
@@ -476,7 +478,7 @@ starting_iteration: integer
 
         for j in range(k*number_of_reblockings, (k+1)*number_of_reblockings):
             start = iteration_shift_variation_start + j*step
-            info = lazy_block(data_before_end, md, start, extract_psips=True, end=end)
+            info = lazy_block(data_before_end, md, start, end=end, extract_psips=True)
 
             if info.no_opt_block:
                 # Not enough data to get a best estimate for some values.
