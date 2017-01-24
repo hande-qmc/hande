@@ -38,7 +38,7 @@ class ErrorTests(unittest.TestCase):
             self.assertAlmostEqual(self.ratio.ix[4,key], ratio[key], 8)
     def test_product_single(self):
         product = pyblock.error.product(self.reblock.ix[4,1], self.reblock.ix[4,2], self.cov_12[4], self.data_len[4])
-        benchmark = pd.Series({'mean':-0.08668955, 'standard error':0.24344343})
+        benchmark = pd.Series({'mean':-0.00561329, 'standard error':0.01576336})
         for key in ('mean', 'standard error'):
             self.assertAlmostEqual(benchmark[key], product[key], 8)
     def test_quad_raise(self):

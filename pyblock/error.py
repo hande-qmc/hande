@@ -117,8 +117,11 @@ ValueError
 
     if sign not in (1,-1):
         raise ValueError('sign must be either +1 or -1')
-    
-    mean = stats_A['mean'] / stats_B['mean']
+
+    if sign == 1:
+        mean = stats_A['mean'] * stats_B['mean']
+    else:
+        mean = stats_A['mean'] / stats_B['mean']
 
     std_err = mean*numpy.sqrt(
                 (stats_A['standard error']/stats_A['mean'])**2 +
