@@ -390,7 +390,7 @@ operators options
 
     .. math::
 
-        \hat{H}_I(\frac{1}{2}(\beta-\tau)) =
+        \hat{H}_I\left(\frac{1}{2}(\beta-\tau)\right) =
             e^{\frac{1}{2}(\beta-\tau)\hat{H}^0}\hat{H}e^{-\frac{1}{2}(\beta-\tau)\hat{H}^0}.
 
 
@@ -404,11 +404,34 @@ operators options
     multiple of the Fermi wavevector. The momentum distribution will be printed out at
     unique kpoints which have the same kinetic energy.  Results can be extracted from the
     analysed (i.e. by using the finite_temp_analysis script in the tools/dmqmc (see
-    tutorial for more information)) dmqmc output using the extract_n_k.py script in the
-    tools/dmqmc directory.
+    tutorial for more information)) dmqmc output using the extract_momentum_correlation.py
+    script in the tools/dmqmc directory.
 
     Only currently implemented for the UEG.
 
+``structure_factor``
+    type: float
+
+    Optional. Default: 0.0
+
+    Evaluate the static structure factor:
+
+    .. math::
+        S_{\sigma\sigma'}(q) = \frac{N_{\sigma}\delta_{\sigma\sigma'}}{N} +
+        \frac{1}{N} \sum_{kp} \left\langle c^{\dagger}_{k+q\sigma}c^{\dagger}_{p-q\sigma'}
+                                      c_{p\sigma'}c_{k\sigma}\right\rangle
+
+    up to a maximum wavevector defined by qmax which is a multiple of the Fermi
+    wavevector. The static structure factor will be printed out at unique kpoints which
+    have the same kinetic energy. Note that in the output file we actually print out
+    :math:`S(q)-1`, :math:`S_{\uparrow\uparrow}(q)+S_{\downarrow\downarrow}(q)-1` and
+    :math:`S_{\uparrow\downarrow}(q)+S_{\downarrow\uparrow}(q)`, where :math:`S(q) =
+    \sum_{\sigma\sigma'}S_{\sigma\sigma'}`. Results can be extracted from the analysed
+    (i.e. by using the finite_temp_analysis script in the tools/dmqmc (see tutorial for
+    more information)) dmqmc output using the extract_momentum_correlation.py script in
+    the tools/dmqmc directory. The extraction script takes care of the factors of 1.
+
+    Currently only implemented for the UEG.
 
 .. _rdm_table:
 
