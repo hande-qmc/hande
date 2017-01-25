@@ -24,16 +24,17 @@ LAPACK and BLAS
     manager.  This is only required for the FCI functionality in HANDE; the performance of
     the QMC algorithms do not depend upon the quality of the LAPACK and BLAS libraries
     used.
-lua 5.2
+lua 5.3
     Lua (available from http://www.lua.org) is required.  HANDE links to the lua library,
     which is used for parsing the input file.  No performance critical code is written in
     lua.
 
     .. note::
 
-        The version of the AOTUS library included with HANDE is only compatible with lua
-        5.2.  Later versions of AOTUS, which HANDE should also work with, support lua 5.3
-        (but not 5.2 due to API changes).
+        A different version of the AOTUS library (which is included with HANDE) is
+        needed to use lua 5.2 due to API changes.  This is also provided with HANDE
+        (in the lib/aotus-5.2 directory).  To use it, set the variable lua_52 to any
+        non-empty value in the config file.
 
 MPI (parallel compilation only)
     MPI 2 is required.  We have used a variety of implementations (including OpenMPI and
@@ -117,8 +118,8 @@ Lua is straightforward to compile.  For example:
 
 .. code-block:: bash
 
-    $ wget -O - http://www.lua.org/ftp/lua-5.2.4.tar.gz | tar xvzf -
-    $ cd lua-5.2.4
+    $ wget -O - http://www.lua.org/ftp/lua-5.3.3.tar.gz | tar xvzf -
+    $ cd lua-5.3.3
     $ make linux
     $ make install INSTALL_TOP=$HOME/local
 
