@@ -11,12 +11,12 @@
 !! Therefore this module is somehow the counter-part to the reading functions,
 !! however it is almost completely independent and relies purely on Fortran
 !! output methods. Thus this module could stand alone, along with the
-!! flu_kinds_module without the Lua library.
+!! aot_kinds_module without the Lua library.
 module aot_out_module
-  use flu_kinds_module, only: double_k, single_k, long_k
+  use aot_kinds_module, only: double_k, single_k, long_k
   use aot_out_general_module, only: aot_out_type, aot_out_open, aot_out_close, &
     &                               aot_out_open_table, aot_out_close_table, &
-    &                               aot_out_breakline, aot_out_toChunk
+    &                               aot_out_breakline
 
   ! Include interfaces for quadruple precision if available.
   use aot_quadruple_out_module
@@ -32,7 +32,6 @@ module aot_out_module
   public :: aot_out_close
   public :: aot_out_open_table
   public :: aot_out_close_table
-  public :: aot_out_toChunk
 
   !> Put Fortran intrinsic types into the script.
   !!
@@ -71,7 +70,7 @@ contains
 !******************************************************************************!
   !>  Put integer variables into the Lua script.
   !!
-  !! The value is passed in with val, optionally you can assign a name to it
+  !! The value is passed in with path, optionally you can assign a name to it
   !! with the vname argument. If it should be put on the same line as the
   !! previous entry, you have to set advance_previous=.false.
   subroutine aot_out_val_int(put_conf, val, vname, advance_previous)
@@ -108,7 +107,7 @@ contains
 !******************************************************************************!
   !>  Put long variables into the Lua script.
   !!
-  !! The value is passed in with val, optionally you can assign a name to it
+  !! The value is passed in with path, optionally you can assign a name to it
   !! with the vname argument. If it should be put on the same line as the
   !! previous entry, you have to set advance_previous=.false.
   subroutine aot_out_val_long(put_conf, val, vname, advance_previous)
@@ -145,7 +144,7 @@ contains
 !******************************************************************************!
   !>  Put real variables into the Lua script.
   !!
-  !! The value is passed in with val, optionally you can assign a name to it
+  !! The value is passed in with path, optionally you can assign a name to it
   !! with the vname argument. If it should be put on the same line as the
   !! previous entry, you have to set advance_previous=.false.
   subroutine aot_out_val_real(put_conf, val, vname, advance_previous)
@@ -182,7 +181,7 @@ contains
 !******************************************************************************!
   !>  Put double variables into the Lua script.
   !!
-  !! The value is passed in with val, optionally you can assign a name to it
+  !! The value is passed in with path, optionally you can assign a name to it
   !! with the vname argument. If it should be put on the same line as the
   !! previous entry, you have to set advance_previous=.false.
   subroutine aot_out_val_double(put_conf, val, vname, advance_previous)
@@ -219,7 +218,7 @@ contains
 !******************************************************************************!
   !>  Put logical variables into the Lua script.
   !!
-  !! The value is passed in with val, optionally you can assign a name to it
+  !! The value is passed in with path, optionally you can assign a name to it
   !! with the vname argument. If it should be put on the same line as the
   !! previous entry, you have to set advance_previous=.false.
   subroutine aot_out_val_logical(put_conf, val, vname, advance_previous)
@@ -263,7 +262,7 @@ contains
 !******************************************************************************!
   !>  Put string variables into the Lua script.
   !!
-  !! The value is passed in with val, optionally you can assign a name to it
+  !! The value is passed in with path, optionally you can assign a name to it
   !! with the vname argument. If it should be put on the same line as the
   !! previous entry, you have to set advance_previous=.false.
   subroutine aot_out_val_string(put_conf, val, vname, advance_previous)

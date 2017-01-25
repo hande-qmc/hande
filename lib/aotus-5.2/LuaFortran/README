@@ -1,0 +1,22 @@
+This LuaFortran code provides a direct Fortran interface to the Lua C-API.
+
+* lua_fif.f90 contains the ISO-C-Binding interface declarations for various
+              functions from the Lua C-API (still incomplete).
+* lua_parameters.f90 provides Lua constants as Fortran parameters (might need
+                     to be updated with changed Lua versions).
+* wrap_lua_dump.c provides a wrapper around Lua's dump routine to allow dumping
+                  into a memory chunk from Fortran.
+* dump_lua_fif_module.f90 contains the ISO-C-Binding interface to the dumping
+                          wrapper in wrap_lua_dump.c
+* flu_binding.f90 encapsulates the Lua interface in a more Fortran like
+                  interface, taking care of type castings and hiding C
+                  internals.
+
+If you just want to build the flu library run:
+./waf --target=flu
+in the main Aotus directory. This will produce
+* libflu.a
+* dump_lua_fif_module.mod
+* flu_binding.mod
+* lua_fif.mod
+* lua_parameters.mod
