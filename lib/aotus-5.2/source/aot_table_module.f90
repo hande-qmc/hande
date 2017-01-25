@@ -1,19 +1,18 @@
 ! Copyright (C) 2011-2013 German Research School for Simulation Sciences GmbH,
 !                         Aachen and others.
-!               2013-2016 University of Siegen.
+!               2013-2014 University of Siegen.
 ! Please see the COPYRIGHT file in this directory for details.
 
 !> This module provides some convenient functions to act on Lua tables.
 module aot_table_module
   use flu_binding
-  use flu_kinds_module, only: double_k, single_k, long_k
+  use aot_kinds_module, only: double_k, single_k, long_k
   use aot_err_module, only: aoterr_Fatal, aoterr_NonExistent, &
     &                       aoterr_WrongType
   use aot_top_module, only: aot_top_get_val
   use aot_table_ops_module, only: aot_table_open, aot_table_close, &
     &                             aot_table_length, aot_table_first, &
-    &                             aot_table_top, aot_table_push, &
-    &                             aot_type_of
+    &                             aot_table_top, aot_table_push
 
   ! The following module enables an interface for quadruple precision numbers,
   ! if the compiler supports them. However, you should be aware, that this is
@@ -33,12 +32,11 @@ module aot_table_module
   public :: aot_table_from_1Darray
   public :: aot_table_set_val, aot_table_set_top
   public :: aot_get_val
-  public :: aot_type_of
   public :: aot_exists
 
   !> Get a value from a table.
   !!
-  !! First, the given key is looked up, if this fails, the value
+  !! First the given key is looked up, if this fails, the value
   !! at the given position is looked up, and if this also fails,
   !! the default value is returned.
   !! Positional addressing is only valid, as long,
@@ -58,7 +56,7 @@ module aot_table_module
   !!
   !! The given value will be put at the entry named by key into the table
   !! provided in thandle.
-  !! Alternatively, you can also put the value by position into the table by
+  !! Alternatively you can also put the value by position into the table by
   !! providing the pos argument.
   !! If both, pos and key are provided, the key will be used.
   !! Though, both of them are optional, at least one of them has to be provided.
@@ -71,49 +69,57 @@ module aot_table_module
     module procedure set_table_logical
   end interface
 
-  !> Get a value from the Lua script.
+  !> Get a value from the script.
   !!
   !! This is the central interface to retrieve values from a Lua script,
   !! its general shape looks like
-  !! `call aot_{top}_get_val(<outputs>, <id>, default)`.
-  !! Where the "outputs" are `val` and `errCode`. While "id" is
-  !! at least the Lua context `L`. For global variables there has to
-  !! be a `key` to identify the variable.
+  !! <tt>call aot_{top}_get_val(<outputs>, <id>, default)</tt>.
+  !! Where the "outputs" are <tt>val</tt> and <tt>errCode</tt>. While "id" is
+  !! at least the Lua context <tt>L</tt>. For the global variables there has to
+  !! be a <tt>key</tt> for the identification of the variable.
   !!
-  !! The `errCode` returns an error code with various bits set for
-  !! different errors that might happen while retrieving the variable.
-  !! They can be checked by `btest` and the different error codes are:
-  !!
-  !! - [[aot_err_module:aoterr_fatal]]: Something went irrecoverably wrong
-  !! - [[aot_err_module:aoterr_nonExistent]]: The requested variable is not set
-  !!   in the Lua script
-  !! - [[aot_err_module:aoterr_wrongType]]: The requested variable in the Lua
-  !!   script does not match the requested data type
+  !! The <tt>errCode</tt> returns an error code with various bits set for
+  !! different errors, that might happen while retrieving the variable.
+  !! They can be checked by <tt>btest</tt> and the different error codes are:
+  !!- aoterr_fatal: Something went irrecoverably wrong
+  !!- aoterr_nonExistent: The requested variable is not set in the Lua script
+  !!- aoterr_wrongType: The requested variable in the Lua script does not meet
+  !!                    the requested data type
   !!
   !! For example a check for a fatal error can be done by
   !! `btest(errCode, aoterr_fatal)`.
   !!
   !! For the access to global variables in the Lua script the interface
-  !! therefore, looks like:
+  !! therefore looks like:
   !! `call aot_get_val(val, errCode, L, key, default)`.
+  !! First the given key is looked up, if this fails, the value
+  !! at the given position is looked up, and if this also fails,
+  !! the default value is returned.
+  !! Positional addressing is only valid, as long,
+  !! as no value was provided by an explicit key
+  !! in the list before the entry in question.
   !!
   !! The interface to access table values looks like:
   !! `call aot_get_val(val, errCode, L, thandle, key, pos, default)`.
   !! Position pos and key are both optional, but one of them has to be provided.
   !! If both are provided the key takes precedence over the pos, and the pos
   !! will only be tried if the access to the key fails.
-  !! See for example [[get_table_real]] for a more detailed description of the
-  !! parameters.
+  !! See for example get_table_real() for a more detailed
+  !! description of the parameters.
   !!
-  !! @note Positional addressing only works intuitively as long as there
+  !! Note, that positional addressing only works intuitively as long as there
   !! have been no entries specified by keys in the table.
   !! This kind of resembles the behavior of Fortran interfaces with named or
   !! unnamed arguments, as soon as you provide a name, all following arguments
   !! have to be given by key also.
   !! Just stick to this rule for the Lua tables as well to avoid too much
   !! headache.
+  !!
   !! The reason for this is, that positional addressing in Lua refers only to
   !! the unnamed entries of the tables.
+  !!
+  !! See for example aot_table_module#get_table_real for a more detailed
+  !! description of the parameters.
   interface aot_get_val
     module procedure get_table_real
     module procedure get_table_double
@@ -144,7 +150,7 @@ contains
   !! containing table if it is not a global variable. A key
   !! or a position.
   function aot_exists(L, thandle, key, pos) result(exists)
-    type(flu_State) :: L !! Handle to the Lua script.
+    type(flu_State) :: L !< Handle to the Lua script.
 
     !> Handle to the table to look the value up in.
     integer, intent(in), optional :: thandle
@@ -164,18 +170,24 @@ contains
     logical :: exists
 
     logical :: valid_args
-    integer :: toptype
 
     exists = .false.
 
     valid_args = .false.
-    toptype = FLU_TNONE
-    call aot_table_push( L       = L,       &
-      &                  thandle = thandle, &
-      &                  key     = key,     &
-      &                  pos     = pos,     &
-      &                  toptype = toptype  )
-    exists = (toptype /= FLU_TNONE .and. toptype /= FLU_TNIL)
+    if (present(thandle)) then
+      call aot_table_push(L=L, thandle=thandle, &
+        &                 key=key, pos=pos)
+      valid_args = .true.
+    else
+      if (present(key)) then
+        call flu_getglobal(L, key)
+        valid_args = .true.
+      end if
+    end if
+
+    if (valid_args) then
+      exists = .not. flu_isNoneOrNil(L, -1)
+    end if
 
     call flu_pop(L)
 
@@ -184,7 +196,7 @@ contains
 
   !> Retrieve a single precision real value from a table.
   subroutine get_table_real(val, ErrCode, L, thandle, key, pos, default)
-    type(flu_State) :: L !! Handle to the Lua script.
+    type(flu_State) :: L !< Handle to the Lua script.
 
     !> Handle to the table to look the value up in.
     integer, intent(in), optional :: thandle
@@ -212,16 +224,15 @@ contains
     real(kind=single_k), intent(in), optional :: default
 
     logical :: valid_args
-    integer :: toptype
 
     valid_args = .true.
     if (present(thandle)) then
       call aot_table_push(L=L, thandle=thandle, &
-        &                 key=key, pos=pos      )
+        &                 key=key, pos=pos)
     else
       if (present(key)) then
-        toptype = flu_getglobal(L, key)
-      else if (present(pos)) then
+        call flu_getglobal(L, key)
+      else
         valid_args = .false.
       end if
     end if
@@ -238,7 +249,7 @@ contains
   !> Retrieve a double precision real value from a table.
   subroutine get_table_double(val, ErrCode, L, thandle, key, pos, &
     &                         default)
-    type(flu_State) :: L !! Handle to the Lua script.
+    type(flu_State) :: L !< Handle to the Lua script.
 
     !> Handle to the table to look the value up in.
     integer, intent(in), optional :: thandle
@@ -266,7 +277,6 @@ contains
     real(kind=double_k), intent(in), optional :: default
 
     logical :: valid_args
-    integer :: toptype
 
     valid_args = .true.
     if (present(thandle)) then
@@ -274,8 +284,8 @@ contains
         &                 key=key, pos=pos)
     else
       if (present(key)) then
-        toptype = flu_getglobal(L, key)
-      else if (present(pos)) then
+        call flu_getglobal(L, key)
+      else
         valid_args = .false.
       end if
     end if
@@ -292,7 +302,7 @@ contains
   !> Retrieve a default integer value from a table.
   subroutine get_table_integer(val, ErrCode, L, thandle, key, pos, &
     &                          default)
-    type(flu_State) :: L !! Handle to the Lua script.
+    type(flu_State) :: L !< Handle to the Lua script.
 
     !> Handle to the table to look the value up in.
     integer, intent(in), optional :: thandle
@@ -321,7 +331,6 @@ contains
     integer, intent(in), optional :: default
 
     logical :: valid_args
-    integer :: toptype
 
     valid_args = .true.
     if (present(thandle)) then
@@ -329,8 +338,8 @@ contains
         &                 key=key, pos=pos)
     else
       if (present(key)) then
-        toptype = flu_getglobal(L, key)
-      else if (present(pos)) then
+        call flu_getglobal(L, key)
+      else
         valid_args = .false.
       end if
     end if
@@ -346,7 +355,7 @@ contains
 
   !> Retrieve a long integer value from a table.
   subroutine get_table_long(val, ErrCode, L, thandle, key, pos, default)
-    type(flu_State) :: L !! Handle to the Lua script.
+    type(flu_State) :: L !< Handle to the Lua script.
 
     !> Handle to the table to look the value up in.
     integer, intent(in), optional :: thandle
@@ -374,7 +383,6 @@ contains
     integer(kind=long_k), intent(in), optional :: default
 
     logical :: valid_args
-    integer :: toptype
 
     valid_args = .true.
     if (present(thandle)) then
@@ -382,8 +390,8 @@ contains
         &                 key=key, pos=pos)
     else
       if (present(key)) then
-        toptype = flu_getglobal(L, key)
-      else if (present(pos)) then
+        call flu_getglobal(L, key)
+      else
         valid_args = .false.
       end if
     end if
@@ -400,7 +408,7 @@ contains
   !> Retrieve a logical value from a table.
   subroutine get_table_logical(val, ErrCode, L, thandle, key, pos, &
     &                          default)
-    type(flu_State) :: L !! Handle to the Lua script.
+    type(flu_State) :: L !< Handle to the Lua script.
 
     !> Handle to the table to look the value up in.
     integer, intent(in), optional :: thandle
@@ -428,7 +436,6 @@ contains
     logical, intent(in), optional :: default
 
     logical :: valid_args
-    integer :: toptype
 
     valid_args = .true.
     if (present(thandle)) then
@@ -436,8 +443,8 @@ contains
         &                 key=key, pos=pos)
     else
       if (present(key)) then
-        toptype = flu_getglobal(L, key)
-      else if (present(pos)) then
+        call flu_getglobal(L, key)
+      else
         valid_args = .false.
       end if
     end if
@@ -457,7 +464,7 @@ contains
 
     use, intrinsic :: iso_c_binding, only: c_ptr
 
-    type(flu_State) :: L !! Handle to the Lua script.
+    type(flu_State) :: L !< Handle to the Lua script.
 
     !> Handle to the table to look the value up in.
     integer, intent(in), optional :: thandle
@@ -485,7 +492,6 @@ contains
     type(c_ptr), intent(in), optional :: default
 
     logical :: valid_args
-    integer :: toptype
 
     valid_args = .true.
     if (present(thandle)) then
@@ -493,8 +499,8 @@ contains
         &                 key=key, pos=pos)
     else
       if (present(key)) then
-        toptype = flu_getglobal(L, key)
-      else if (present(pos)) then
+        call flu_getglobal(L, key)
+      else
         valid_args = .false.
       end if
     end if
@@ -511,7 +517,7 @@ contains
   !> Retrieve a string from a table.
   subroutine get_table_string(val, ErrCode, L, thandle, key, pos, &
     &                         default)
-    type(flu_State) :: L !! Handle to the Lua script.
+    type(flu_State) :: L !< Handle to the Lua script.
 
     !> Handle to the table to look the value up in.
     integer, intent(in), optional :: thandle
@@ -539,7 +545,6 @@ contains
     character(len=*), intent(in), optional :: default
 
     logical :: valid_args
-    integer :: toptype
 
     valid_args = .true.
     if (present(thandle)) then
@@ -547,8 +552,8 @@ contains
         &                 key=key, pos=pos)
     else
       if (present(key)) then
-        toptype = flu_getglobal(L, key)
-      else if (present(pos)) then
+        call flu_getglobal(L, key)
+      else
         valid_args = .false.
       end if
     end if
@@ -567,7 +572,7 @@ contains
 
   !> Put the top of the stack into a table.
   subroutine aot_table_set_top(L, thandle, key, pos)
-    type(flu_State) :: L !! Handle to the Lua script.
+    type(flu_State) :: L !< Handle to the Lua script.
 
     !> Handle to the table to look the value up in.
     integer, intent(in) :: thandle
@@ -619,7 +624,7 @@ contains
 
   !> Put a single precision real value into a table.
   subroutine set_table_real(val, L, thandle, key, pos)
-    type(flu_State) :: L !! Handle to the Lua script.
+    type(flu_State) :: L !< Handle to the Lua script.
 
     !> Handle to the table to look the value up in.
     integer, intent(in) :: thandle
@@ -665,7 +670,7 @@ contains
 
   !> Put a double precision real value into a table.
   subroutine set_table_double(val, L, thandle, key, pos)
-    type(flu_State) :: L !! Handle to the Lua script.
+    type(flu_State) :: L !< Handle to the Lua script.
 
     !> Handle to the table to look the value up in.
     integer, intent(in) :: thandle
@@ -711,7 +716,7 @@ contains
 
   !> Put a default integer value into a table.
   subroutine set_table_integer(val, L, thandle, key, pos)
-    type(flu_State) :: L !! Handle to the Lua script.
+    type(flu_State) :: L !< Handle to the Lua script.
 
     !> Handle to the table to look the value up in.
     integer, intent(in) :: thandle
@@ -757,7 +762,7 @@ contains
 
   !> Put a long integer value into a table.
   subroutine set_table_long(val, L, thandle, key, pos)
-    type(flu_State) :: L !! Handle to the Lua script.
+    type(flu_State) :: L !< Handle to the Lua script.
 
     !> Handle to the table to look the value up in.
     integer, intent(in) :: thandle
@@ -803,7 +808,7 @@ contains
 
   !> Put a logical value into a table.
   subroutine set_table_logical(val, L, thandle, key, pos)
-    type(flu_State) :: L !! Handle to the Lua script.
+    type(flu_State) :: L !< Handle to the Lua script.
 
     !> Handle to the table to look the value up in.
     integer, intent(in) :: thandle
@@ -849,7 +854,7 @@ contains
 
   !> Put a string value into a table.
   subroutine set_table_string(val, L, thandle, key, pos)
-    type(flu_State) :: L !! Handle to the Lua script.
+    type(flu_State) :: L !< Handle to the Lua script.
 
     !> Handle to the table to look the value up in.
     integer, intent(in) :: thandle
@@ -899,7 +904,7 @@ contains
   !! The returned thandle provides the index to access this newly created
   !! table.
   subroutine create_1Darray_real(L, thandle, val)
-    type(flu_State) :: L !! Handle to the Lua script.
+    type(flu_State) :: L !< Handle to the Lua script.
 
     !> Handle to access the newly created table.
     integer, intent(out) :: thandle
@@ -931,7 +936,7 @@ contains
   !! The returned thandle provides the index to access this newly created
   !! table.
   subroutine create_1Darray_double(L, thandle, val)
-    type(flu_State) :: L !! Handle to the Lua script.
+    type(flu_State) :: L !< Handle to the Lua script.
 
     !> Handle to access the newly created table.
     integer, intent(out) :: thandle

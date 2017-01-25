@@ -5,78 +5,46 @@
 !! The main content are then the wrapper implementations
 !! which ease the usage of the Lua functions declared
 !! in the lua_fif module.
-!!
-!! Naming follows the Lua API, but replaces the `lua_` prefix
-!! by `flu_`.
-!!
-!! @note Documentation of the actual C functions can be found by replacing
-!!       the `flu_` prefix here by `lua_` and refering to the
-!!       [Lua API documentation](http://www.lua.org/manual/5.3/manual.html#4.8).
 module flu_binding
   use, intrinsic :: iso_c_binding
   use lua_fif
-  use lua_parameters
   use dump_lua_fif_module
-  use flu_kinds_module, only: long_k
 
   implicit none
 
   private
 
-  !> Encapsulation of the Lua state.
-  !!
-  !! No internal information on the Lua state is required, and so all
-  !! components are private. It suffices therefore, to keep a `c_ptr`
-  !! reference to the Lua state.
-  type flu_State
+  type :: flu_State
     private
     type(c_ptr) :: state = c_null_ptr
     logical :: opened_libs = .false.
   end type flu_State
 
-  type cbuf_type
+  type :: cbuf_type
     type(c_ptr) :: ptr = c_null_ptr
     character, pointer :: buffer(:) => NULL()
   end type cbuf_type
 
-
-  integer, parameter, public :: FLU_TNONE          = int(LUA_TNONE)
-  integer, parameter, public :: FLU_TNIL           = int(LUA_TNIL)
-  integer, parameter, public :: FLU_TBOOLEAN       = int(LUA_TBOOLEAN)
-  integer, parameter, public :: FLU_TLIGHTUSERDATA = int(LUA_TLIGHTUSERDATA)
-  integer, parameter, public :: FLU_TNUMBER        = int(LUA_TNUMBER)
-  integer, parameter, public :: FLU_TSTRING        = int(LUA_TSTRING)
-  integer, parameter, public :: FLU_TTABLE         = int(LUA_TTABLE)
-  integer, parameter, public :: FLU_TFUNCTION      = int(LUA_TFUNCTION)
-  integer, parameter, public :: FLU_TUSERDATA      = int(LUA_TUSERDATA)
-  integer, parameter, public :: FLU_TTHREAD        = int(LUA_TTHREAD)
-
-
   public :: flu_State
   public :: cbuf_type
-  public :: lua_Function
 
   public :: flu_close, flu_isopen
   public :: flu_createTable
   public :: flu_getField, flu_getGlobal, flu_getTable, flu_getTop
   public :: flu_setGlobal
   public :: flu_insert
-  public :: flu_isFunction, flu_isNumber, flu_isTable, flu_isString
+  public :: flu_isFunction, flu_isNumber, flu_isTable
   public :: flu_isNone, flu_isNoneOrNil, flu_isNil
   public :: flu_isBoolean, flu_islightuserdata
   public :: flu_pcall
-  public :: flu_rawgeti
   public :: flu_next
   public :: flu_setTop
   public :: flu_setTable, flu_setField
   public :: flu_todouble
   public :: flu_tolstring, flu_tonumber, flu_toboolean, flu_touserdata
-  public :: flu_topointer
-  public :: flu_type
   public :: flu_pop
   public :: flu_pushinteger, flu_pushnil, flu_pushnumber, flu_pushboolean
-  public :: flu_pushstring, flu_pushvalue, flu_pushlightuserdata
-  public :: flu_pushcclosure
+  public :: flu_pushstring, flu_pushvalue, flu_pushlightuserdata, flu_pushcclosure
 
   public :: flu_copyptr
   public :: flu_register
@@ -86,9 +54,10 @@ module flu_binding
 
   public :: fluL_loadfile, fluL_newstate, fluL_openlibs, fluL_loadstring
   public :: fluL_loadbuffer
-  public :: fluL_ref
 
   public :: fluL_newmetatable, fluL_setmetatable, flu_getmetatable
+
+  public :: lua_Function
 
   interface flu_pushnumber
     module procedure flu_pushreal
@@ -100,7 +69,7 @@ module flu_binding
   end interface flu_dump
 
 
-  !> Interoperable interface required for a function that is callable from Lua.
+  ! Interoperable interface required for a function that is callable from Lua.
   abstract interface
     function lua_Function(s) result(val) bind(c)
       use, intrinsic :: iso_c_binding
@@ -119,13 +88,12 @@ module flu_binding
 
 contains
 
-  ! !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! !
+  !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
   ! Wrapper routines for the lua API
-  ! !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! !
+  !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
-  !> Close a previously opened Lua script.
   subroutine flu_close(L)
-    type(flu_State) :: L !! Handle to the Lua state to close.
+    type(flu_State) :: L
 
     call lua_close(L%state)
     L%state = c_null_ptr
@@ -147,48 +115,40 @@ contains
   end subroutine flu_createtable
 
 
-  function flu_getfield(L, index, k) result(luatype)
+  subroutine flu_getfield(L, index, k)
     type(flu_State)  :: L
     integer          :: index
     character(len=*) :: k
-    integer          :: luatype
 
-    integer(kind=c_int) :: c_index, res
+    integer(kind=c_int) :: c_index
     character(len=len_trim(k)+1) :: c_k
 
     c_k = trim(k) // c_null_char
     c_index = index
-    res = lua_getfield(L%state, c_index, c_k)
-    luatype = int(res)
-  end function flu_getfield
+    call lua_getfield(L%state, c_index, c_k)
+  end subroutine flu_getfield
 
 
-  function flu_getglobal(L, k) result(luatype)
+  subroutine flu_getglobal(L, k)
     type(flu_State)  :: L
     character(len=*) :: k
-    integer          :: luatype
-
-    integer(kind=c_int) :: res
 
     character(len=len_trim(k)+1) :: c_k
 
     c_k = trim(k) // c_null_char
-    res = lua_getglobal(L%state, c_k)
-    luatype = int(res)
-  end function flu_getglobal
+    call lua_getglobal(L%state, c_k)
+  end subroutine flu_getglobal
 
 
-  function flu_gettable(L, index) result(luatype)
+  subroutine flu_gettable(L, index)
     type(flu_State) :: L
-    integer         :: index
-    integer         :: luatype
+    integer :: index
 
-    integer(kind=c_int) :: c_index, res
+    integer(kind=c_int) :: c_index
 
     c_index = index
-    res = lua_gettable(L%state, c_index)
-    luatype = int(res)
-  end function flu_gettable
+    call lua_gettable(L%state, c_index)
+  end subroutine flu_gettable
 
 
   function flu_gettop(L) result(stacktop)
@@ -206,7 +166,7 @@ contains
     integer(kind=c_int) :: c_index
 
     c_index = int(index, kind = c_int)
-    call lua_rotate(L%state, c_index, 1_c_int)
+    call lua_insert(L%state, c_index)
   end subroutine flu_insert
 
 
@@ -247,18 +207,6 @@ contains
   end function flu_isnumber
 
 
-  function flu_isString(L, index) result(is_string)
-    type(flu_State) :: L
-    integer         :: index
-    logical         :: is_string
-
-    integer(kind=c_int) :: c_index
-
-    c_index = int(index, kind = c_int)
-    is_string = (lua_isstring(L%state, c_index) .eq. 1)
-  end function flu_isString
-
-
   function flu_isTable(L, index) result(is_Table)
     type(flu_State) :: L
     integer         :: index
@@ -267,7 +215,7 @@ contains
     integer(kind=c_int) :: c_index
 
     c_index = int(index, kind = c_int)
-    ! Only defined as a Macro, using lua_type:
+    !! Only defined as a Macro, using lua_type:
     is_Table = (lua_type(L%state, c_index) == LUA_TTABLE)
   end function flu_isTable
 
@@ -280,7 +228,7 @@ contains
     integer(kind=c_int) :: c_index
 
     c_index = int(index, kind = c_int)
-    ! Only defined as a Macro, using lua_type:
+    !! Only defined as a Macro, using lua_type:
     is_NoneOrNil = (lua_Type(L%state, c_index) <= 0)
   end function flu_isNoneOrNil
 
@@ -293,7 +241,7 @@ contains
     integer(kind=c_int) :: c_index
 
     c_index = int(index, kind = c_int)
-    ! Only defined as a Macro, using lua_type:
+    !! Only defined as a Macro, using lua_type:
     is_Nil = (lua_Type(L%state, c_index) .eq. LUA_TNIL)
   end function flu_isNil
 
@@ -306,7 +254,7 @@ contains
     integer(kind=c_int) :: c_index
 
     c_index = int(index, kind = c_int)
-    ! Only defined as a Macro, using lua_type:
+    !! Only defined as a Macro, using lua_type:
     is_None = (lua_Type(L%state, c_index) .eq. LUA_TNONE)
   end function flu_isNone
 
@@ -357,11 +305,8 @@ contains
   end function flu_pcall
 
 
-  !> Wrapper for lua_pop that pops n elements from the Lua API stack.
   subroutine flu_pop(L, n)
-    type(flu_State) :: L !! Handle to the Lua script
-
-    !> Number of elements to pop from the Lua API stack, defaults to 1.
+    type(flu_State) :: L
     integer, optional, intent(in) :: n
 
     integer(kind=c_int) :: n_c
@@ -382,7 +327,6 @@ contains
     call lua_pushinteger(L%state, n_c)
   end subroutine flu_pushinteger
 
-
   subroutine flu_pushboolean(L, b)
     type(flu_State) :: L
     logical :: b
@@ -397,7 +341,6 @@ contains
     call lua_pushboolean(L%state, n_c)
   end subroutine flu_pushboolean
 
-
   subroutine flu_pushstring(L, string)
     type(flu_State) :: L
     character(len=*), intent(in) :: string
@@ -409,7 +352,6 @@ contains
     ret = lua_pushlstring(L%state, string, c_len)
   end subroutine flu_pushstring
 
-
   subroutine flu_pushreal(L, n)
     type(flu_State) :: L
     real :: n
@@ -420,7 +362,6 @@ contains
     call lua_pushnumber(L%state, n_c)
   end subroutine flu_pushreal
 
-
   subroutine flu_pushdouble(L, n)
     type(flu_State) :: L
     real(kind=c_double) :: n
@@ -428,13 +369,11 @@ contains
     call lua_pushnumber(L%state, n)
   end subroutine flu_pushdouble
 
-
   subroutine flu_pushnil(L)
     type(flu_State) :: L
 
     call lua_pushnil(L%state)
   end subroutine flu_pushnil
-
 
   subroutine flu_pushvalue(L, index)
     type(flu_State) :: L
@@ -446,7 +385,6 @@ contains
     call lua_pushvalue(L%state, c_index)
   end subroutine flu_pushvalue
 
-
   subroutine flu_pushlightuserdata(L, ptr)
     type(flu_State) :: L
     type(c_ptr) :: ptr
@@ -454,23 +392,6 @@ contains
     call lua_pushlightuserdata(L%state, ptr)
 
   end subroutine flu_pushlightuserdata
-
-
-  function flu_rawgeti(L, index, n) result(luatype)
-    type(flu_State) :: L
-    integer, intent(in) :: index
-    integer, intent(in) :: n
-    integer :: luatype
-
-    integer(kind=c_int) :: c_index
-    integer(kind=c_int) :: c_n
-    integer(kind=c_int) :: res
-
-    c_index = int(index, kind=c_int)
-    c_n = int(n, kind=c_int)
-    res = lua_rawgeti(L%state, c_index, c_n)
-    luatype = int(res)
-  end function flu_rawgeti
 
 
   subroutine flu_settable(L, n)
@@ -591,36 +512,6 @@ contains
     ptr = lua_touserdata(L%state, c_index)
   end function flu_touserdata
 
-
-  function flu_topointer(L, index) result(intptr)
-    type(flu_State) :: L
-    integer :: index
-    integer(kind=long_k) :: intptr
-
-    integer(kind=c_intptr_t) :: ptr
-    integer(kind=c_int) :: c_index
-
-    c_index = index
-    ptr = lua_topointer(L%state, c_index)
-    intptr = int(ptr, kind=long_k)
-  end function flu_topointer
-
-
-  function flu_type(L, index) result(flut)
-    type(flu_State) :: L
-    integer :: index
-    integer :: flut
-
-    integer(kind=c_int) :: c_index
-    integer(kind=c_int) :: luat
-
-    c_index = int(index, kind=c_int)
-    luat = lua_type(L%state, c_index)
-    flut = int(luat)
-
-  end function flu_type
-
-
   subroutine flu_pushcclosure(L, fn, n)
     type(flu_State), value :: L
     procedure(lua_Function) :: fn
@@ -636,12 +527,10 @@ contains
 
   end subroutine flu_pushcclosure
 
-
   subroutine flu_register(L, fn_name, fn)
 
-    ! lua_register is defined as a macro in lua.h and isn't accessible from
-    ! Fortran.
-    ! Re-implement macro explicitly.
+    ! lua_register is defined as a macro in lua.h and isn't accessible from Fortran.
+    ! Re-implement macro explictly.
 
     type(flu_State) :: L
     character(len=*), intent(in) :: fn_name
@@ -656,22 +545,22 @@ contains
     type(flu_State) :: L
     integer :: index, errcode
 
-    integer(c_int) :: c_index, c_errcode
+    integer(c_int) :: c_idx, c_errcode
 
-    c_index = index
-    c_errcode = lua_getmetatable(L%state, c_index)
+    c_idx = index
+    c_errcode = lua_getmetatable(L%state, c_idx)
     errcode = c_errcode
 
   end function flu_getmetatable
 
-  ! !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! !
-  ! !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! !
+  !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+  !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
 
 
-  ! !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! !
+  !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
   ! Wrapper routines for the auxiliary library
-  ! !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! !
+  !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
   function fluL_loadfile(L, filename) result(errcode)
     type(flu_State) :: L
@@ -743,14 +632,16 @@ contains
     end if
   end subroutine fluL_openlibs
 
+
   subroutine fluL_setmetatable(L, tname)
     type(flu_State) :: L
     character(len=*) :: tname
 
-    character(len=len_trim(tname) + 1) :: c_name
+    character(len=len_trim(tname)+1) :: c_name
 
     c_name = trim(tname) // c_null_char
     call luaL_setmetatable(L%state, c_name)
+
   end subroutine fluL_setmetatable
 
 
@@ -764,43 +655,28 @@ contains
 
     c_name = trim(tname) // c_null_char
     c_errcode = luaL_newmetatable(L%state, c_name)
+
     errcode = c_errcode
+
   end function fluL_newmetatable
 
-
-  function fluL_ref(L, t) result(ref)
-    type(flu_State) :: L
-    integer :: t
-    integer :: ref
-
-    integer(kind=c_int) :: c_t
-    integer(kind=c_int) :: c_ref
-
-    c_t = int(t, kind=c_int)
-    c_ref = luaL_ref(L%state, c_t)
-    ref = int(c_ref)
-  end function fluL_ref
-
-
-  ! !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! !
+  !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
   ! Routines for using existing Lua states with
   ! flu_binding
-  ! !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! !
+  !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
-  !> Copy an existing Lua state.
-  !!
-  !! @WARNING This copies the *pointer* to an existing Lua state, not the Lua
-  !! state itself.  Modifying L via the flu bindings will modify the same Lua
-  !! state as pointed to by lua_state.
   function flu_copyptr(lua_state) result(L)
+      ! WARNING: this copies the pointer to an existing Lua state, not the Lua
+      ! state itself.  Modifying L via the flu bindings will modify the same Lua
+      ! state as pointed to by lua_state.
       type(flu_State) :: L
       type(c_ptr), intent(in) :: lua_state
       L%state = lua_state
   end function flu_copyptr
 
-  ! !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! !
+  !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
   ! Routines for probing the Lua state
-  ! !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! !
+  !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
   function flu_isopen(L) result(is_open)
       logical :: is_open
@@ -810,9 +686,9 @@ contains
   end function flu_isopen
 
 
-  ! !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! !
-  ! ! Wrapper implementation for lua_dump ! !
-  ! !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! !
+  !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+  !!! Wrapper implementation for lua_dump !!!
+  !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
   !> Dump to a buffer and return the pointer to the resulting string.
   subroutine flu_dump_toBuf(L, buf, length, iError)
@@ -840,8 +716,7 @@ contains
   !> Free an allocated cbuf.
   !!
   !! This is a helping routine to deallocate memory that was allocated for
-  !! the cbuf by C.
-  !! (Cray compiler complained about its deallocation in Fortran)
+  !! the cbuf by C. (Cray compiler complained about its deallocation in Fortran)
   subroutine flu_free_cbuf(buf)
     type(cbuf_type) :: buf
 

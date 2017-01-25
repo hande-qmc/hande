@@ -6,10 +6,8 @@
 !> The aot_path can be used to track the position of a Lua entity in nested
 !! tables.
 !!
-!! @warning This is obsolete! Use [[aot_references_module]] instead.
-!!          Please note that this module might be removed in future versions
-!!          of Aotus.
-!!
+!! It is mainly useful to lookup a function reference again after closing and
+!! opening the script.
 !! The idea is to initialize the path in the very beginning and then append a
 !! node whenever a table is opened. Thus you pass down the growing path object
 !! and store at in the level, to which you might need to return later.
@@ -72,7 +70,6 @@ module aot_path_module
   public :: aot_path_addNode, aot_path_delNode
   public :: assignment(=)
   public :: aot_path_open, aot_path_close
-  public :: aot_path_toString
   public :: aot_path_dump
 
   !> Re-open a previously recorded path through nested Lua tables.
@@ -416,74 +413,6 @@ contains
 
   end subroutine aot_path_close_table
 
-  !> Dumps the complete path into a string.
-  !!
-  !! This routine transforms a given path into a special notation. Each element
-  !! is added to the string, separated by a . char.
-  !! If the resulting string is to long for the provided buffer /ref
-  !! pathAsString, the buffer will stay empty to not have the caller proceed
-  !! with incomplete results.
-  subroutine aot_path_toString( path, pathAsString )
-    !> The path which information should be printed
-    type(aot_path_type), intent(in) :: path
-    !> The path represented as string
-    character(len=*), intent(out) :: pathAsString
-
-    type(aot_path_node_type), pointer :: current
-    integer :: pathLength
-    integer :: stringLength
-    character(len=10) :: posstr
-
-    stringLength = len(pathAsString)
-    pathLength = 0
-
-    ! First we measure the size of the result
-    if (associated(path%globalNode)) then
-      current => path%globalNode
-      do while(associated(current))
-        if (associated(current,path%globalNode)) then
-          ! Add the length of the first node
-          pathLength = len_trim(adjustl(current%key))
-        else
-          if (trim(current%ID_kind) == 'key') then
-            ! Add the length of a following node and the delimiter char
-            pathLength = pathLength + len_trim(adjustl(current%key)) + 1
-          else
-            ! Length of the position number and 2 places for brackets.
-            write(posstr,'(i0)') current%pos
-            pathLength = pathLength + len_trim(posstr) + 2
-          end if
-        end if
-        current => current%child
-      end do
-    end if
-
-    ! If the result fits into the buffer, we create it
-    if (pathLength <= stringLength .and. pathLength > 0) then
-      current => path%globalNode
-      do while(associated(current))
-        if (associated(current,path%globalNode)) then
-          pathAsString = trim(adjustl(current%key))
-        else
-          if (trim(current%ID_kind) == 'key') then
-            pathAsString = trim(pathAsString) // '.' &
-              &            // trim(adjustl(current%key))
-          else
-            write(posstr,'(i0)') current%pos
-            pathAsString = trim(pathAsString) // '[' &
-              &            // trim(posstr) // ']'
-          end if
-        end if
-        current => current%child
-      end do
-    else
-      ! Either the result is empty or too long, thus we clear the buffer
-      pathAsString = ''
-    end if
-
-  end subroutine aot_path_toString
-
-
   !> Dumps the complete path to the given output unit.
   !!
   !! This routine is for debugging purposes. It takes the path and, beginning
@@ -510,11 +439,8 @@ contains
         end if
         write(outputUnit,*) '    NodeType: ', current%NodeType
         write(outputUnit,*) '    ID_Kind: ', current%ID_Kind
-        if (trim(current%ID_Kind) == 'key') then
-          write(outputUnit,*) '    key: ', current%key
-        else
-          write(outputUnit,'(A,I10)') '     pos: ', current%pos
-        end if
+        write(outputUnit,*) '    key: ', current%key
+        write(outputUnit,'(A,I10)') '     pos: ', current%pos
         current => current%child
       end do
     end if
