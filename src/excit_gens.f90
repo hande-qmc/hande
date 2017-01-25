@@ -6,6 +6,7 @@ implicit none
 
 ! [review] - JSS: unclear why a new named parameter for int_32.
 ! [review] - VAN: Alex?
+! [reply] - AJWT: I presume so that should we need to, we can change it in one place rather than everywhere, though I'm a little fuzzy as to when we would have more than 2^31-1 basis functions.
 ! The integer types have been chosen to be int_32
 integer(int_32), parameter :: int_bas = int_32
 

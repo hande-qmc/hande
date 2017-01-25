@@ -477,6 +477,8 @@ contains
 
         ! [review] - VAN: Could put into det_store_{alpha,beta}, etc, so that spin sorting 
         ! [review] - VAN: does not have to be done later.
+        ! [reply] - AJWT: That would be helpful if we tended to store alphas and betas separately.  I think it makes the code
+        ! [reply] - AJWT: look messier though and might not give much of a gain.  Would this interact well with symmetry?
 
 fdo:    do i=1, nel ! this will index in ref
             do while (det_list(j)<ref_list(i))
@@ -497,10 +499,9 @@ fdo:    do i=1, nel ! this will index in ref
             if (j > nel) exit fdo
         end do fdo 
         
-        ! [Review] - VAN: i is not the last orbital we dealt with in all 
-        ! [Review] - VAN: possible cases. If det_list(last entry) < ref_list(last entry)
-        ! [Review] - VAN: we leave with an i we have not looked at yet. I have fixed this bug.
-        ! Deal with whatever's left over in ref.  i is currently the last orbital we dealt with.
+        ! [review] - VAN: i is not the last orbital we dealt with in all 
+        ! [review] - VAN: possible cases. If det_list(last entry) < ref_list(last entry)
+        ! [review] - VAN: we leave with an i we have not looked at yet. I have fixed this bug.
         ! Deal with whatever's left in det. j is the NEXT orbital to  deal with.
         do while (j<=nel)
             det_sind = det_sind + 1
@@ -508,7 +509,8 @@ fdo:    do i=1, nel ! this will index in ref
             j = j + 1
         end do
 
-        ! Deal with whatever's left over in ref. We fill this up backwards as having filled up j
+        ! Deal with whatever's left over in ref.  i is currently the last orbital we dealt with.
+        ! We fill this up backwards as having filled up j
         ! we know the final value of ref_sind (= det_sind).
         i_backwards = nel
         i_backwards_position = det_sind

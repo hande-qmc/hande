@@ -92,6 +92,9 @@ contains
             end if
         end do
 
+        ! cs%virt_list_*(:) now contains the lists of virtual alpha and beta with respect to ref.
+
+        ! Now generate the occ->virtual weighting lists and alias tables.
         do i = 1, sys%nel
             j = cs%occ_list(i)  ! The elec we're looking at
             if (sys%basis%basis_fns(j)%Ms == -1) then ! beta
@@ -239,6 +242,7 @@ contains
                 ! which have been excited from.
                 ! [review] - JSS: this could/should be done once per determinant/excitor rather than once per excit gen.
                 ! [reply] - VAN: Would you calculate it the moment that cdet is defined? and add it as cdet%cdet_store etc?
+                ! [reply] - AJWT: Quite possibly - this is certainly an optimization to consider, though it has structural implications.
                 do ii=1, nex
                     associate(bfns=>sys%basis%basis_fns)
                         if (bfns(cs%occ_list(ref_store(ii)))%Ms /= bfns(cdet%occ_list(cdet_store(ii)))%Ms) then
@@ -258,8 +262,8 @@ contains
                 i_cdet = i_ref
                 j_cdet = j_ref
                 a_cdet = a_ref
-                ! ref store (e.g.) contains the indices within cs%occ_list of the orbitals which are excited out of ref into
-                ! cdet det store (e.g.) contains the indices within cdet%occ_list of the orbitals which are in cdet (excited out
+                ! ref_store  contains the indices within cs%occ_list of the orbitals which are excited out of ref into cdet
+                ! cdet_store  contains the indices within cdet%occ_list of the orbitals which are in cdet (excited out
                 ! of ref).  i_ind_ref and j_ind_ref are the indices of the orbitals in cs%occ_list which we're exciting from.
                 do ii=1, nex
                     if (ref_store(ii)==i_ind_ref) then  ! i_ref isn't actually in cdet, so we assign i_cdet to the orb that is
@@ -289,9 +293,10 @@ contains
             
                 ! Check whether an orbital (occupied or not) with required spin and symmetry exists.
                 if (sys%read_in%pg_sym%nbasis_sym_spin(imsb,isymb) > 0) then 
-                    ! Using alias tables based on the reference, find b_cdet out of the set of orbitals that have 
+                    ! Using alias tables based on the reference, find b_cdet out of the set of (all) orbitals that have 
                     ! the required spin and symmetry. Note that these orbitals might be occupied in the reference and/or 
-                    ! cdet (although we only care about whether they are occupied in cdet). 
+                    ! cdet (although we only care about whether they are occupied in cdet which we deal with later). 
+
                     b_ind_cdet = select_weighted_value_prec(rng, sys%read_in%pg_sym%nbasis_sym_spin(imsb, isymb), &
                                         cs%jb_aliasU(:, isymb, j_ind_ref), cs%jb_aliasK(:, isymb, j_ind_ref))
                     b_cdet = sys%read_in%pg_sym%sym_spin_basis_fns(b_ind_cdet, imsb, isymb)
