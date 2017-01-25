@@ -9,7 +9,6 @@ addons:
             - gfortran
             - libopenmpi-dev
             - openmpi-bin
-            - liblua5.2-dev
             - uuid-dev
             - libblas-dev
             - liblapack-dev
@@ -17,6 +16,10 @@ addons:
 before_install:
     - pip install pandas matplotlib scipy
     - cd
+    # Lua (from source as only 5.2 is available in a package)
+    - export LUA=$HOME/lua-5.3.3
+    - if [ ! -f $LUA/lib/liblua.a ] ; then ( wget -O - http://www.lua.org/ftp/lua-5.3.3.tar.gz | tar xzf - && cd lua-5.3.3 && make linux && make install INSTALL_TOP=$LUA ) ; fi
+    - export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$LUA/lib
     # HDF5 (from source as the Ubuntu package doesn't have Fortran 2003 bindings)
     - export HDF5_ROOT=$HOME/hdf5-1.8.17
     - if [ ! -f $HDF5_ROOT/lib/libhdf5_fortran.so ] ; then ( wget -O - http://www.hdfgroup.org/ftp/HDF5/current/src/hdf5-1.8.17.tar.gz | tar xzf - && cd hdf5-1.8.17 && ./configure --prefix=$HDF5_ROOT --enable-fortran --enable-fortran2003 && make && make install ) ; fi
@@ -45,6 +48,7 @@ cache:
         - $HOME/hdf5-1.8.17
         - $HOME/scalapack-2.0.2
         - $HOME/trlan-201009
+        - $HOME/lua-5.3.3
 
 script:
     - cd test_suite 
