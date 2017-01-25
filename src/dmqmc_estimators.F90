@@ -1392,23 +1392,20 @@ contains
         use determinants, only: det_info_t
         use system, only: sys_t
         use excitations, only: excit_t
-        use determinants, only: decode_det
 
         type(sys_t), intent(in) :: sys
         type(det_info_t), intent(in) :: cdet
         type(excit_t), intent(in) :: excitation
         real(p), intent(in) :: H00, pop
         real(p), intent(inout) :: momentum_dist(:)
-        integer :: occ_list(sys%nel)
         integer :: iocc, oc_orb, pol
 
         pol = (sys%nalpha-sys%nbeta) / sys%nel
 
         if (excitation%nexcit == 0) then
-            call decode_det(sys%basis, cdet%f, occ_list)
             do iocc = 1, sys%nel
                 ! Really want spin averaged momentum distribution, so only consider up index.
-                oc_orb = occ_list(iocc)/2 + mod(occ_list(iocc),2)
+                oc_orb = cdet%occ_list(iocc)/2 + mod(cdet%occ_list(iocc),2)
                 if (oc_orb <= size(momentum_dist)) then
                     ! Divide by two for unpolarised system.
                     momentum_dist(oc_orb) = momentum_dist(oc_orb) + pop / (2-pol)
@@ -1449,7 +1446,6 @@ contains
         use determinants, only: det_info_t
         use system, only: sys_t
         use excitations, only: excit_t
-        use determinants, only: decode_det
 
         type(sys_t), intent(in) :: sys
         type(det_info_t), intent(in) :: cdet
@@ -1457,7 +1453,6 @@ contains
         real(p), intent(in) :: H00, pop
         real(dp), intent(inout) :: structure_factor(:)
 
-        integer :: occ_list(sys%nel)
         integer :: i, j, a, b, indx, sign_factor
         integer :: q(sys%lattice%ndim)
         logical :: in_basis
@@ -1471,14 +1466,13 @@ contains
         ! while for S_{ud} + S_{du} is ueg_basis%lookup(q) + 1
         ! Note ueg_basis%lookup only returns the up spin index.
         associate(ueg_basis => sys%ueg%basis, bs => sys%basis)
-            call decode_det(sys%basis, cdet%f, occ_list)
             select case(excitation%nexcit)
             case(0)
                 ! Hartree--Fock-like contribution to the structure factor.
                 do i = 1, sys%nel
                     do j = i+1, sys%nel
-                        if (mod(occ_list(i),2) == mod(occ_list(j),2)) then
-                            q = bs%basis_fns(occ_list(i))%l - bs%basis_fns(occ_list(j))%l
+                        if (mod(cdet%occ_list(i),2) == mod(cdet%occ_list(j),2)) then
+                            q = bs%basis_fns(cdet%occ_list(i))%l - bs%basis_fns(cdet%occ_list(j))%l
                             call q_in_basis(ueg_basis, q, in_basis, indx)
                             if (in_basis) then
                                 ! The factor of two accounts for only summing j > i.
