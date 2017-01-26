@@ -1,5 +1,5 @@
 !> This module provides a direct translation of some
-!! Lua 5.3.2
+!! Lua 5.2.1
 !! C-Interfaces to Fortran 2003 interfaces using the
 !! ISO_C_BINDING facilities.
 module lua_fif
@@ -8,9 +8,9 @@ module lua_fif
 
   implicit none
 
-  ! !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! !
-  ! Lua API interfaces
-  ! !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! !
+  !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+  ! lua API interfaces
+  !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
   interface
 
     subroutine lua_close(L) bind(c, name="lua_close")
@@ -25,27 +25,24 @@ module lua_fif
       integer(kind=c_int), value :: nrec
     end subroutine lua_createtable
 
-    function lua_getglobal(L, k) bind(c, name="lua_getglobal")
+    subroutine lua_getglobal(L, k) bind(c, name="lua_getglobal")
       use, intrinsic :: iso_c_binding
       type(c_ptr), value :: L
       character(kind=c_char), dimension(*) :: k
-      integer(kind=c_int) :: lua_getglobal
-    end function lua_getglobal
+    end subroutine lua_getglobal
 
-    function lua_getfield(L, index, k) bind(c, name="lua_getfield")
+    subroutine lua_getfield(L, index, k) bind(c, name="lua_getfield")
       use, intrinsic :: iso_c_binding
       type(c_ptr), value :: L
       integer(kind=c_int), value :: index
       character(kind=c_char), dimension(*) :: k
-      integer(kind=c_int) :: lua_getfield
-    end function lua_getfield
+    end subroutine lua_getfield
 
-    function lua_gettable(L, index) bind(c, name="lua_gettable")
+    subroutine lua_gettable(L, index) bind(c, name="lua_gettable")
       use, intrinsic :: iso_c_binding
       type(c_ptr), value :: L
       integer(kind=c_int), value :: index
-      integer(kind=c_int) :: lua_gettable
-    end function lua_gettable
+    end subroutine lua_gettable
 
     function lua_gettop(L) bind(c, name="lua_gettop")
       use, intrinsic :: iso_c_binding
@@ -53,19 +50,18 @@ module lua_fif
       integer(kind=c_int) :: lua_gettop
     end function lua_gettop
 
+    subroutine lua_insert(L, index) bind(c, name="lua_insert")
+      use, intrinsic :: iso_c_binding
+      type(c_ptr), value :: L
+      integer(kind=c_int), value :: index
+    end subroutine lua_insert
+
     function lua_isNumber(L, index) bind(c, name="lua_isnumber")
       use, intrinsic :: iso_c_binding
       type(c_ptr), value :: L
       integer(kind=c_int), value :: index
       integer(kind=c_int) :: lua_isnumber
     end function lua_isnumber
-
-    function lua_isString(L, index) bind(c, name="lua_isstring")
-      use, intrinsic :: iso_c_binding
-      type(c_ptr), value :: L
-      integer(kind=c_int), value :: index
-      integer(kind=c_int) :: lua_isString
-    end function lua_isString
 
     function lua_next(L, index) bind(c, name="lua_next")
       use, intrinsic :: iso_c_binding
@@ -124,21 +120,6 @@ module lua_fif
       integer(kind=c_int), value :: index
     end subroutine lua_pushvalue
 
-    function lua_rawgeti(L, index, n) bind(c, name="lua_rawgeti")
-      use, intrinsic :: iso_c_binding
-      type(c_ptr), value :: L
-      integer(kind=c_int), value :: index
-      integer(kind=c_int), value :: n
-      integer(kind=c_int) :: lua_rawgeti
-    end function lua_rawgeti
-
-    subroutine lua_rotate(L, idx, n) bind(c, name="lua_rotate")
-      use, intrinsic :: iso_c_binding
-      type(c_ptr), value :: L
-      integer(kind=c_int), value :: idx
-      integer(kind=c_int), value :: n
-    end subroutine lua_rotate
-
     subroutine lua_setfield(L, index, k) bind(c, name="lua_setfield")
       use, intrinsic :: iso_c_binding
       type(c_ptr), value :: L
@@ -195,13 +176,6 @@ module lua_fif
       type(c_ptr) :: lua_touserdata
     end function lua_touserdata
 
-    function lua_topointer(L, index) bind(c, name="lua_topointer")
-      use, intrinsic :: iso_c_binding
-      type(c_ptr), value :: L
-      integer(kind=c_int), value :: index
-      integer(kind=c_intptr_t) :: lua_topointer
-    end function lua_topointer
-
     function lua_type(L, index) bind(c, name="lua_type")
       use, intrinsic :: iso_c_binding
       type(c_ptr), value :: L
@@ -230,14 +204,15 @@ module lua_fif
     end function lua_getmetatable
 
   end interface
-  ! !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! !
-  ! !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! !
+  !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+  !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
 
 
-  ! !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! !
-  ! Lua auxiliary library interfaces
-  ! !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! !
+  !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+  ! lua auxiliary library interfaces
+  !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+  ! lua auxiliary library
   interface
 
     subroutine luaL_openlibs(L) bind(c, name="luaL_openlibs")
@@ -288,15 +263,6 @@ module lua_fif
       integer(kind=c_int) :: luaL_newmetatable
     end function luaL_newmetatable
 
-    function luaL_ref(L, t) bind(c, name="luaL_ref")
-      use, intrinsic :: iso_c_binding
-      type(c_ptr), value :: L
-      integer(kind=c_int), value :: t
-      integer(kind=c_int) :: luaL_ref
-    end function luaL_ref
-
   end interface
-  ! !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! !
-  ! !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! !
 
 end module lua_fif
