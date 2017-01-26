@@ -1,11 +1,22 @@
-All files in this directory and subdirectories are available under the license
-detailed below.
+Aotus License
+-------------
+
+Aotus is licensed under the terms of the MIT license reproduced below.
+This means that Aotus is free software and can be used for both academic and
+commercial purposes at absolutely no cost. You are free to do with the code
+whatever you want.
+The only requirement is that some credit to the authors is given by putting this
+copyright notice somewhere in your project.
+The MIT license is chosen for full compatibility with Lua.
+
+For the license of the underlying Lua library have a look at
+http://www.lua.org/license.html.
 
 ===============================================================================
 
 Copyright (C) 2011-2013 German Research School for Simulation Sciences GmbH,
                         Aachen and others.
-              2013-2016 University of Siegen
+              2013-2014 University of Siegen.
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal

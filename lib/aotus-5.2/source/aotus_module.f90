@@ -1,25 +1,24 @@
 ! Copyright (C) 2011-2013 German Research School for Simulation Sciences GmbH,
 !                         Aachen and others.
-!               2013-2016 University of Siegen.
+!               2013-2014 University of Siegen.
 ! Please see the COPYRIGHT file in this directory for details.
 
 !> This module provides high level Fortran interfaces to retrieve values from a
 !! Lua script.
 !!
-!! The central interface of the module is [[aot_get_val]], which is
+!! The central interface of the module is aot_table_module#aot_get_val, which is
 !! a generic interface that allows access to scalars and vectors in global Lua
 !! variables as well as nested tables.
 !!
-!! In the [Overview](|page|/index.html) there are some more general remarks and further
-!! pointers.
+!! In the \ref aot_overview "overview page" there are some more general
+!! remarks and further pointers.
 module aotus_module
   use flu_binding
-  use flu_kinds_module, only: double_k, single_k, long_k
+  use aot_kinds_module, only: double_k, single_k, long_k
   use aot_top_module, only: aot_top_get_val, aot_err_handler, &
     &                       aoterr_Fatal, aoterr_NonExistent, aoterr_WrongType
   use aot_table_module, only: aot_get_val, aot_table_set_val, &
-    &                         aot_table_open, aot_table_close, &
-    &                         aot_table_push, aot_type_of
+    &                         aot_table_open, aot_table_close
   use aot_vector_module, only: aot_top_get_val, aot_get_val
 
   implicit none
@@ -27,7 +26,6 @@ module aotus_module
   private
 
   public :: aot_get_val
-  public :: aot_type_of
   public :: open_config_file, close_config
   public :: open_config_chunk, open_config_buffer
   public :: aot_require_buffer
@@ -42,9 +40,7 @@ module aotus_module
   ! Inherited from the flu_binding module, publish for convenience.
   public :: flu_State
 
-
 contains
-
 
   !> Subroutine to load and execute a script from a file.
   !!
@@ -52,7 +48,7 @@ contains
   !! tem_open_distconf routine in the
   !! [treelm library](https://bitbucket.org/apesteam/treelm) instead.
   subroutine open_config_file(L, filename, ErrCode, ErrString, buffer)
-    type(flu_State) :: L !! Handle to the Lua script
+    type(flu_State) :: L !< Handle to the Lua script
 
     !> Name of file to load the Lua code from
     character(len=*), intent(in) :: filename
@@ -108,7 +104,7 @@ contains
 
   !> Subroutine to load and execute a script given in a string.
   subroutine open_config_chunk(L, chunk, ErrCode, ErrString)
-    type(flu_State) :: L !! Handle to the Lua script
+    type(flu_State) :: L !< Handle to the Lua script
 
     !> String with Lua code to load.
     character(len=*), intent(in) :: chunk
@@ -123,7 +119,7 @@ contains
 
     !> Obtained error description from the Lua stack.
     !!
-    !! This optional argument holds the Lua error message in case something
+    !! This optional argument holds the Lua error message in case somehting
     !! went wrong. It can be used to provide some feedback to the user in the
     !! calling routine. If neither ErrCode nor ErrString are provided,
     !! open_config() will print the error message and stop program execution.
@@ -151,7 +147,7 @@ contains
   !> Subroutine to load and execute a script given in a buffer
   !! (bytecode).
   subroutine open_config_buffer(L, buffer, bufName, ErrCode, ErrString)
-    type(flu_State) :: L !! Handle to the Lua script
+    type(flu_State) :: L !< Handle to the Lua script
 
     !> String with Lua code to load.
     character, intent(in) :: buffer(:)
@@ -196,7 +192,7 @@ contains
 
   !> Close an opened Lua script again.
   subroutine close_config(L)
-    type(flu_State) :: L !! Handle to the Lua script to close.
+    type(flu_State) :: L !< Handle to the Lua script to close.
 
     call flu_close(L)
 
@@ -267,9 +263,9 @@ contains
   !> Load and execute a given buffer and register it in the package table as
   !! the given module name.
   subroutine aot_require_buffer(L, buffer, modname)
-    type(flu_State) :: L !! Lua State to set load the buffer into.
-    character, intent(in) :: buffer(:) !! Buffer to load.
-    character(len=*), intent(in) :: modname !! Module name to set.
+    type(flu_State) :: L !< Lua State to set load the buffer into.
+    character, intent(in) :: buffer(:) !< Buffer to load.
+    character(len=*), intent(in) :: modname !< Module name to set.
 
     integer :: pac_handle
     integer :: ld_handle
@@ -285,3 +281,61 @@ contains
   end subroutine aot_require_buffer
 
 end module aotus_module
+
+!> \page aot_overview Overview for Aotus
+!!
+!! Aotus stands for *Advanced Options in Tables and Universal Scripting*.
+!!
+!! It is a Fortran wrapper for the [Lua](http://www.lua.org/) scripting
+!! language.
+!! The aim of this wrapper is to provide flexible configuration files to Fortran
+!! applications with the full user experience provided by Lua.
+!! Aotus is also known as the
+!! [night monkey](http://en.wikipedia.org/wiki/Night_monkey), living in south
+!! america.
+!! Thus, we saw the name fit as it interacts with the moon (Lua, provided
+!! by the Pontifical Catholic University of Rio de Janeiro in Brazil).
+!!
+!! The most prominent data structure in Lua are
+!! [tables](http://www.lua.org/manual/5.2/manual.html#2), which provide the
+!! possibility to store complex structures.
+!! Configuration is typically done with global variables in the Lua script
+!! or some tables to distinguish subsections in the configuration.
+!!
+!! Aotus provides several layers, encapsulating the bare
+!! [Lua C-API](http://www.lua.org/manual/5.2/manual.html#4):
+!! - \ref lua_fif this just provides the
+!!   [ISO_C_Binding](http://www.fortran.bcs.org/2002/interop.htm)
+!!   interface declarations.
+!! - \ref flu_binding this the actural Fortran binding wrapped around lua_fif,
+!!   to provide a more Fortran like interface.
+!!   Especially the flu_binding::flu_state type is declared which maintains the
+!!   handle for the
+!!   [Lua state](http://www.lua.org/manual/5.2/manual.html#lua_state).
+!! - \ref aot_table_module provides some convenience functions to work on Lua
+!!   tables in Fortran.
+!! - \ref aot_fun_module provides some convenience functions to work with Lua
+!!   functions in Fortran.
+!! - \ref aotus_module provides the high end level to easily retrieve data from
+!!   a Lua script.
+!! - On top of those there is an additional \ref aot_vector_module, which allows
+!!   the concise reading of values into arrays of rank one.
+!! - Finally there is an \ref aot_out_module that allows output of Fortran values
+!!   into nested Lua tables.
+!!
+!! The library can be compiled by various modern Fortran compilers as described
+!! in \ref compiler_support "Compiler Support".
+!!
+!! An example showing the usage of the library in a Fortran application is given
+!! in sample/aotus_sample.f90 in the Aotus main directory.
+!! The corresponding Lua script used as input is given in sample/config.lua.
+!!
+!! Note on usage in parallel environments: Aotus itself is not providing parallel
+!! facilities. But it can be nicely used in parallel aswell. However, for
+!! massively parallel systems, it is advisable to minimize the access to config
+!! files. To avoid excessive filesystem meta accesses it is recommended to
+!! load required files only on one process.
+!! An implementation of this for MPI can be found in TreElMs
+!! [distconf](https://geb.sts.nt.uni-siegen.de/doxy/treelm/classtem__aux__module.html#a1a6bd9f747c89e6f00791131e3d169de).
+!!
+!! *Sources are available at <https://bitbucket.org/apesteam/aotus>.*

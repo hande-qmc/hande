@@ -1,29 +1,27 @@
 ! Copyright (C) 2011-2013 German Research School for Simulation Sciences GmbH,
 !                         Aachen and others.
-!               2013-2016 University of Siegen
+!               2013-2014 University of Siegen
 ! Please see the COPYRIGHT file in this directory for details.
 
-!> This module provides access to Lua functions
+!> A module providing access to Lua functions
 !!
 !! Intented usage:
 !!
-!! - First open a function with [[aot_fun_open]].
-!! - Then put required parameters into it with [[aot_fun_put]].
-!! - Execute the function with [[aot_fun_do]].
-!! - Retrieve the possibly multiple results with [[aot_top_get_val]].
-!!   If there are multiple results to be retrieved from the function
-!!   repeat calling [[aot_top_get_val]] for each of them. Keep in mind that they
-!!   will be in reversed order on the stack!
-!! - Repeat putting and retrieving as needed (for multiple function
-!!   evaluations).
-!! - Close the function finally with [[aot_fun_close]].
+!! - First open a function with aot_fun_open.
+!! - Then put required parameters into it with aot_fun_put.
+!! - Execute the function with aot_fun_do().
+!! - Retrieve the possibly multiple results with
+!!   AOT_top_module::aot_top_get_val.
+!!   if there are multiple results to be retrieved from the function, kep
+!!   in mind, that they will be in reversed order on the stack!
+!! - Repeat putting and retrieving if needed.
+!! - Close the function finally with aot_fun_close().
 module aot_fun_module
   use flu_binding
-  use flu_kinds_module, only: double_k, single_k
+  use aot_kinds_module, only: double_k, single_k
   use aot_fun_declaration_module, only: aot_fun_type
-  use aot_table_module, only: aot_table_push, aot_table_from_1Darray
+  use aot_table_module, only: aot_table_push
   use aot_top_module, only: aot_err_handler
-  use aot_references_module, only: aot_reference_to_top
 
   ! Include quadruple precision interfaces if available
   use aot_quadruple_fun_module
@@ -36,8 +34,6 @@ module aot_fun_module
   private
 
   public :: aot_fun_type, aot_fun_open, aot_fun_close, aot_fun_put, aot_fun_do
-  public :: aot_fun_top
-  public :: aot_fun_id
 
   !> Open a Lua function for evaluation.
   !!
@@ -45,25 +41,22 @@ module aot_fun_module
   !! be executed.
   !! Execution might be repeated for an arbitrary number of iterations, to
   !! retrieve more than one evaluation of a single function, before closing it
-  !! again with [[aot_fun_close]].
+  !! again with aot_fun_close().
   interface aot_fun_open
+    module procedure aot_fun_global
     module procedure aot_fun_table
-    module procedure aot_fun_ref
   end interface aot_fun_open
 
   !> Put an argument into the lua function.
   !!
   !! Arguments have to be in order, first put the first argument then the second
   !! and so on.
-  !! Currently only real number arguments are supported.
+  !! Currently only double precision arguments are supported.
   interface aot_fun_put
     module procedure aot_fun_put_top
     module procedure aot_fun_put_double
     module procedure aot_fun_put_single
-    module procedure aot_fun_put_double_v
-    module procedure aot_fun_put_single_v
   end interface aot_fun_put
-
 
 contains
 
@@ -72,7 +65,7 @@ contains
   !!
   !! If it actually is not a Lua function, the returned handle will be 0.
   function aot_fun_top(L) result(fun)
-    type(flu_state) :: L !! Handle for the Lua script.
+    type(flu_state) :: L !< Handle for the Lua script.
 
     !> Handle to the function on the top of the stack.
     type(aot_fun_type) :: fun
@@ -82,25 +75,40 @@ contains
     if (flu_isFunction(L, -1)) then
       ! Keep a handle to this function.
       fun%handle = flu_gettop(L)
-      fun%id = flu_topointer(L, -1)
       ! Push a copy of the function right after it, the function will
-      ! be popped from the stack upon execution. Thus, this copy is
+      ! be popped from the stack upon execution. Thus this copy is
       ! used to ensure the reference to the function is kept across
       ! several executions of the function.
       call flu_pushvalue(L, -1)
     end if
   end function aot_fun_top
 
+
+  !> Get a globally defined function.
+  subroutine aot_fun_global(L, fun, key)
+    type(flu_state) :: L !< Handle for the Lua script.
+
+    !> Returned handle, providing access to the function.
+    type(aot_fun_type), intent(out) :: fun
+
+    !> Name of the function to look up in the global scope of the Lua script.
+    character(len=*), intent(in) :: key
+
+    call flu_getglobal(L, key)
+    fun = aot_fun_top(L)
+  end subroutine aot_fun_global
+
+
   !> Get a function defined as component of a table.
   !!
   !! Functions in tables might be retrieved by position or key.
   !! If both optional parameters are provided, the key is attempted to be read
-  !! first. Only when that fails, the position will be tested.
+  !! first, only if that fails, the position will be tested.
   subroutine aot_fun_table(L, parent, fun, key, pos)
-    type(flu_state) :: L !! Handle for the Lua script.
+    type(flu_state) :: L !< Handle for the Lua script.
 
     !> Handle to the table to look in for the function.
-    integer, intent(in), optional :: parent
+    integer, intent(in) :: parent
 
     !> Returned handle, providing access to the function.
     type(aot_fun_type), intent(out) :: fun
@@ -116,34 +124,15 @@ contains
   end subroutine aot_fun_table
 
 
-  !> Get a function from a previously defned Lua reference.
-  !!
-  !! Use a previously (with [[aot_reference_for]]) defined reference to get a
-  !! function.
-  subroutine aot_fun_ref(L, fun, ref)
-    type(flu_state) :: L !! Handle for the Lua script.
-
-    !> Returned handle, providing access to the function.
-    type(aot_fun_type), intent(out) :: fun
-
-    !> Lua reference to the function.
-    integer, intent(in) :: ref
-
-    call aot_reference_to_top(L, ref)
-    fun = aot_fun_top(L)
-  end subroutine aot_fun_ref
-
-
   !> Close the function again (pop everything above from the stack).
   subroutine aot_fun_close(L, fun)
-    type(flu_state) :: L !! Handle for the Lua script.
+    type(flu_state) :: L !< Handle for the Lua script.
 
     !> Handle to the function to close.
     type(aot_fun_type) :: fun
 
     if (fun%handle > 0) call flu_settop(L, fun%handle-1)
     fun%handle = 0
-    fun%id = 0
     fun%arg_count = 0
   end subroutine aot_fun_close
 
@@ -151,7 +140,7 @@ contains
   !> Put the top of the stack as argument into the list of arguments for the
   !! function.
   subroutine aot_fun_put_top(L, fun)
-    type(flu_state) :: L !! Handle for the Lua script.
+    type(flu_state) :: L !< Handle for the Lua script.
 
     !> Handle of the function, this argument should be put into.
     type(aot_fun_type) :: fun
@@ -194,7 +183,7 @@ contains
 
   !> Put an argument of type double into the list of arguments for the function.
   subroutine aot_fun_put_double(L, fun, arg)
-    type(flu_state) :: L !! Handle for the Lua script.
+    type(flu_state) :: L !< Handle for the Lua script.
 
     !> Handle of the function, this argument should be put into.
     type(aot_fun_type) :: fun
@@ -229,7 +218,7 @@ contains
 
   !> Put an argument of type single into the list of arguments for the function.
   subroutine aot_fun_put_single(L, fun, arg)
-    type(flu_state) :: L !! Handle for the Lua script.
+    type(flu_state) :: L !< Handle for the Lua script.
 
     !> Handle of the function, this argument should be put into.
     type(aot_fun_type) :: fun
@@ -266,88 +255,8 @@ contains
   end subroutine aot_fun_put_single
 
 
-  !> Put an array of doubles into the list of arguments for the function.
-  subroutine aot_fun_put_double_v(L, fun, arg)
-    type(flu_state) :: L !! Handle for the Lua script.
-
-    !> Handle of the function, this argument should be put into.
-    type(aot_fun_type) :: fun
-
-    !> Actual argument to hand over to the Lua function.
-    real(kind=double_k), intent(in) :: arg(:)
-
-    integer :: thandle
-
-    ! Only do something, if the function is actually properly defined.
-    if (fun%handle /= 0) then
-
-      ! If the function was executed before this call, it has to be
-      ! reset.
-      if (fun%arg_count == -1) then
-        ! Set the top of the stack to the reference of the function.
-        ! Discarding anything above it.
-        call flu_settop(L, fun%handle)
-        ! Push a copy of the function itself on the stack again, before
-        ! adding arguments, to savely survive popping of the function
-        ! upon execution.
-        call flu_pushvalue(L, fun%handle)
-        ! Increase the argument count to 0 again (really start counting
-        ! arguments afterwards.
-        fun%arg_count = fun%arg_count+1
-      end if
-
-      call aot_table_from_1Darray(L, thandle, arg)
-      fun%arg_count = fun%arg_count+1
-    end if
-
-  end subroutine aot_fun_put_double_v
-
-
-  !> Put an array of singles into the list of arguments for the function.
-  subroutine aot_fun_put_single_v(L, fun, arg)
-    type(flu_state) :: L !! Handle for the Lua script.
-
-    !> Handle of the function, this argument should be put into.
-    type(aot_fun_type) :: fun
-
-    !> Actual argument to hand over to the Lua function.
-    real(kind=single_k), intent(in) :: arg(:)
-
-    real(kind=double_k) :: locarg(size(arg))
-
-    integer :: thandle
-
-    ! Only do something, if the function is actually properly defined.
-    if (fun%handle /= 0) then
-
-      locarg = real(arg, kind=double_k)
-
-      ! If the function was executed before this call, it has to be
-      ! reset.
-      if (fun%arg_count == -1) then
-        ! Set the top of the stack to the reference of the function.
-        ! Discarding anything above it.
-        call flu_settop(L, fun%handle)
-        ! Push a copy of the function itself on the stack again, before
-        ! adding arguments, to savely survive popping of the function
-        ! upon execution.
-        call flu_pushvalue(L, fun%handle)
-        ! Increase the argument count to 0 again (really start counting
-        ! arguments afterwards.
-        fun%arg_count = fun%arg_count+1
-      end if
-
-      call aot_table_from_1Darray(L, thandle, locarg)
-      fun%arg_count = fun%arg_count+1
-    end if
-
-  end subroutine aot_fun_put_single_v
-
-
-
-
   !> Execute a given function and put its results on the stack, where it is
-  !! retrievable with [[aot_top_get_val]].
+  !! retrievable with AOT_top_module::aot_top_get_val.
   !!
   !! The optional arguments ErrCode and ErrString provide some feedback on the
   !! success of the function execution.
@@ -356,11 +265,8 @@ contains
   !! You have to provide the number of results to obtain in nresults. Keep in
   !! mind, that multiple results have to obtained in reverse order from the
   !! stack.
-  !!
-  !! @note You might want to return multiple values as a single argument in a
-  !!       table instead of several single values.
   subroutine aot_fun_do(L, fun, nresults, ErrCode, ErrString)
-    type(flu_state) :: L !! Handle for the Lua script.
+    type(flu_state) :: L !< Handle for the Lua script.
 
     !> Handle to the function to execute.
     type(aot_fun_type) :: fun
@@ -384,20 +290,5 @@ contains
       fun%arg_count = -1
     end if
   end subroutine aot_fun_do
-
-
-  !> A string identifying the function uniquely in the Lua script.
-  function aot_fun_id(fun) result(id)
-    !> Function to identify.
-    type(aot_fun_type), intent(in) :: fun
-
-    !> Identification of the function as a string.
-    character(len=32) :: id
-
-    character(len=32) :: tmp
-
-    write(tmp,'(i0)') fun%id
-    id = adjustl(tmp)
-  end function aot_fun_id
 
 end module aot_fun_module

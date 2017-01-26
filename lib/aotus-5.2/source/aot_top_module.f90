@@ -10,7 +10,7 @@
 !! All intrinsic variables except complex numbers can be accessed this way.
 module aot_top_module
   use flu_binding
-  use flu_kinds_module, only: double_k, single_k, long_k
+  use aot_kinds_module, only: double_k, single_k, long_k
   use aot_err_module, only: aoterr_Fatal, aoterr_NonExistent, &
     &                       aoterr_WrongType, aot_err_handler
 
@@ -31,7 +31,7 @@ module aot_top_module
   public :: aot_top_get_val
   public :: aot_err_handler
 
-  !> Get the value on top of the Lua API stack
+  !> Get the value on top of the stack
   !!
   !! This is the most basic operation to retrieve a value.
   !! It is also most flexible in the sense, that it does not matter how the
@@ -39,13 +39,11 @@ module aot_top_module
   !!
   !! The interface looks like this:
   !! `call aot_top_get_val(val, errCode, L, default)`.
-  !! See for example [[aot_top_get_real]] for a more detailed description of the
+  !! See for example aot_top_get_real() for a more detailed description of the
   !! parameters.
   !!
-  !! aot_top_get_val can not be in the same generic interface as the other
-  !! [[aot_get_val]] routines, as it results in ambiguities of the interfaces.
-  !!
-  !! @note The retrieved value will be popped from the Lua API stack.
+  !! The aot_top_get_val can not be in the same generic interface as the other
+  !! aot_get_val routines, as it results in ambiguities of the interfaces.
   interface aot_top_get_val
     module procedure aot_top_get_real
     module procedure aot_top_get_double
@@ -60,7 +58,7 @@ contains
 
   !> Interpret topmost entry on Lua stack as a single precision real.
   subroutine aot_top_get_real(val, ErrCode, L, default)
-    type(flu_State) :: L !! Handle to the Lua script
+    type(flu_State) :: L !< Handle to the Lua script
 
     !> Value of the Variable in the script
     real(kind=single_k), intent(out) :: val
@@ -104,7 +102,7 @@ contains
 
   !> Interpret topmost entry on Lua stack as a double precision real.
   subroutine aot_top_get_double(val, ErrCode, L, default)
-    type(flu_State) :: L !! Handle to the Lua script
+    type(flu_State) :: L !< Handle to the Lua script
 
     !> Value of the Variable in the script
     real(kind=double_k), intent(out) :: val
@@ -148,7 +146,7 @@ contains
 
   !> Interpret topmost entry on Lua stack as a default integer.
   subroutine aot_top_get_integer(val, ErrCode, L, default)
-    type(flu_State) :: L !! Handle to the Lua script
+    type(flu_State) :: L !< Handle to the Lua script
 
     !> Value of the Variable in the script
     integer, intent(out) :: val
@@ -192,7 +190,7 @@ contains
 
   !> Interpret topmost entry on Lua stack as a single precision real.
   subroutine aot_top_get_long(val, ErrCode, L, default)
-    type(flu_State) :: L !! Handle to the Lua script
+    type(flu_State) :: L !< Handle to the Lua script
 
     !> Value of the Variable in the script
     integer(kind=long_k), intent(out) :: val
@@ -236,7 +234,7 @@ contains
 
   !> Interpret topmost entry on Lua stack as a single precision real.
   subroutine aot_top_get_logical(val, ErrCode, L, default)
-    type(flu_State) :: L !! Handle to the Lua script
+    type(flu_State) :: L !< Handle to the Lua script
 
     !> Value of the Variable in the script
     logical, intent(out) :: val
@@ -280,7 +278,7 @@ contains
 
   !> Interpret topmost entry on Lua stack as a single precision real.
   subroutine aot_top_get_string(val, ErrCode, L, default)
-    type(flu_State) :: L !! Handle to the Lua script
+    type(flu_State) :: L !< Handle to the Lua script
 
     !> Value of the Variable in the script
     character(len=*) :: val
@@ -303,18 +301,12 @@ contains
       ErrCode = ibSet(ErrCode, aoterr_NonExistent)
       not_retrievable = .true.
     else
-      if (flu_isString(L, -1)) then
-        cstring => flu_toLString(L, -1, StrLen)
-        StrLimit = min(StrLen, len(val))
-        val = ''
-        do i=1,StrLimit
-          val(i:i) = cstring(i)
-        end do
-      else
-        ErrCode = ibSet(ErrCode, aoterr_WrongType)
-        ErrCode = ibSet(ErrCode, aoterr_Fatal)
-        not_retrievable = .true.
-      end if
+      cstring => flu_toLString(L, -1, StrLen)
+      StrLimit = min(StrLen, len(val))
+      val = ''
+      do i=1,StrLimit
+        val(i:i) = cstring(i)
+      end do
     end if
 
     if (not_retrievable) then
@@ -332,7 +324,7 @@ contains
   !> Interpret topmost entry on Lua stack as userdata.
   subroutine aot_top_get_userdata(val, ErrCode, L, default)
     use, intrinsic :: iso_c_binding
-    type(flu_State) :: L !! Handle to the Lua script
+    type(flu_State) :: L !< Handle to the Lua script
 
     !> Value of the Variable in the script
     type(c_ptr), intent(out) :: val

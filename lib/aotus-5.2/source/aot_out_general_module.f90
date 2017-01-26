@@ -3,12 +3,9 @@
 !               2013-2014 University of Siegen
 ! Please see the COPYRIGHT file in this directory for details.
 
-!> Collection of general operations required for the output of Lua scripts.
 module aot_out_general_module
 
   implicit none
-
-  private
 
   public :: aot_out_type
   public :: aot_out_open
@@ -16,25 +13,24 @@ module aot_out_general_module
   public :: aot_out_open_table
   public :: aot_out_close_table
   public :: aot_out_breakline
-  public :: aot_out_toChunk
 
   !> This type provides the internal representation of the opened Lua script.
   !!
   !! It is used to keep track of the state in the script internally.
   type aot_out_type
-    integer :: outunit !! Unit to write to
-    integer :: indent !! Indentation level (number of spaces)
-    integer :: stack(100) !! Number of entries on each level
-    integer :: level !! Current nesting level in tables
-    logical :: externalOpen !! Flag if file opened outside the aot_out scope
-    integer :: in_step !! Number of spaces for each indentation level
+    integer :: outunit !< Unit to write to
+    integer :: indent !< Indentation level (number of spaces)
+    integer :: stack(100) !< Number of entries on each level
+    integer :: level !< Current nesting level in tables
+    logical :: externalOpen !< Flag if file opened outside the aot_out scope
+    integer :: in_step !< Number of spaces for each indentation level
   end type
 
+  private
 
 contains
 
-
-! **************************************************************************** !
+!******************************************************************************!
   !> Open the file to write to and return a handle (put_conf) to it.
   !!
   !! This will overwrite the given file, if it already exists.
@@ -44,10 +40,10 @@ contains
   !! outUnit is ignored in this case.
   subroutine aot_out_open(put_conf, filename, outUnit, indentation)
     !------------------------------------------------------------------------
-    type(aot_out_type), intent(out) :: put_conf !! Handle for the file
-    character(len=*), optional, intent(in) :: filename !! File to open
-    integer, optional, intent(in) :: outUnit !! Pre-connected unit to write to
-    integer, optional, intent(in) :: indentation !! Spacer per indentation level
+    type(aot_out_type), intent(out) :: put_conf !< Handle for the file
+    character(len=*), optional, intent(in) :: filename !< File to open
+    integer, optional, intent(in) :: outUnit !< Pre-connected unit to write to
+    integer, optional, intent(in) :: indentation !< Spacer per indentation level
     !------------------------------------------------------------------------
 
     if (present(indentation)) then
@@ -71,10 +67,10 @@ contains
     put_conf%level = 0
 
   end subroutine aot_out_open
-! **************************************************************************** !
+!******************************************************************************!
 
 
-! **************************************************************************** !
+!******************************************************************************!
   !>  Close the opened script again.
   !!
   !! This will close the file, if the data was not written to a pre-connected
@@ -85,10 +81,10 @@ contains
     !------------------------------------------------------------------------
     if( .not. put_conf%externalOpen ) close( put_conf%outunit )
   end subroutine aot_out_close
-! **************************************************************************** !
+!******************************************************************************!
 
 
-! **************************************************************************** !
+!******************************************************************************!
   !> Start a new table to write to.
   !!
   !! You can give the table a name with the tname argument.
@@ -113,10 +109,10 @@ contains
     put_conf%indent = put_conf%indent + put_conf%in_step
 
   end subroutine aot_out_open_table
-! **************************************************************************** !
+!******************************************************************************!
 
 
-! **************************************************************************** !
+!******************************************************************************!
   !>  Close the current table.
   !!
   !! The table on the current table is closed with a curly bracket.
@@ -161,12 +157,12 @@ contains
     end if
 
   end subroutine aot_out_close_table
-! **************************************************************************** !
+!******************************************************************************!
 
 
 
 
-! **************************************************************************** !
+!******************************************************************************!
   !> This subroutine takes care of the proper linebreaking in Lua-Tables.
   !!
   !! It takes care of a proper line-continuation, depending on the optional
@@ -213,95 +209,11 @@ contains
     end if lev_if
 
   end subroutine aot_out_breakline
-! **************************************************************************** !
+!******************************************************************************!
 
 
-! **************************************************************************** !
-  !> This subroutine converts information written in outunit to string
-  subroutine aot_out_toChunk(out_conf, chunk, ErrCode, ErrString)
-    type(aot_out_type), intent(in)  :: out_conf
-
-    !> String with Lua code to load.
-    character(len=*), intent(out) :: chunk
-
-    !> Error code returned by Lua during loading or executing the file.
-    !!
-    !! This optional parameter might be used to react on errors in the calling
-    !! side. If neither ErrCode nor ErrString are given, this subroutine will
-    !! stop the program execution and print the error message
-    integer, intent(out), optional :: ErrCode
-
-    !> Error description
-    !!
-    !! This optional argument holds the error message in case something
-    !! went wrong. It can be used to provide some feedback to the user in the
-    !! calling routine. If neither ErrCode nor ErrString are provided,
-    !! this subroutine will print the error message and stop program execution.
-    character(len=*), intent(out), optional :: ErrString
-
-    logical :: stop_on_error
-    integer :: error
-    integer :: chunk_len, chunk_left, read_len
-    character(len=320) :: err_string
-    logical :: unitOpened
-    integer :: read_stat
-    character(len=320) :: chunk_line
-
-    stop_on_error = .not.(present(ErrString) .or. present(ErrCode))
-    error = 0
-    err_string = ''
-
-    ! length of chunk
-    chunk_len = len(chunk)
-
-    inquire(unit=out_conf%outunit, opened=unitOpened)
-    if (unitOpened) then
-      chunk = ''
-      chunk_left = chunk_len
-      rewind(out_conf%outunit)
-      do
-        read(out_conf%outunit,'(a)', iostat=read_stat) chunk_line
-        read_len = len(trim(chunk_line))
-        if (read_stat /= 0) then
-          if (read_stat > 0) then
-            error = read_stat
-            err_string = 'Error reading out conf unit'
-          end if
-          exit ! exit reading
-        end if
-        if (chunk_left >= read_len) then
-          chunk_left = chunk_left - len(trim(chunk))
-          chunk =  trim(chunk)//new_line('x')//trim(chunk_line)
-        else
-          error = 2
-          err_string = 'Reached limit of output string length'
-          exit
-        end if
-      end do
-    else
-      error = 1
-      err_string = 'Output conf unit is not opened'
-    end if
-
-    if (present(ErrCode)) then
-      ErrCode = error
-    end if
-
-    if (present(ErrString)) then
-      ErrString = err_string
-    end if
-
-    if (error /= 0) then
-      if (stop_on_error) then
-        write(*,*) 'From aot_out_toChunk: '//trim(err_string)
-        STOP
-      end if
-    end if
-  end subroutine aot_out_toChunk
-! **************************************************************************** !
 
 
-! **************************************************************************** !
   !> Helper function to provide new unit, as long as F2008 newunit argument
   !! in open statement is not commonly available.
   !!
@@ -320,7 +232,6 @@ contains
       inquire(unit=nu, opened=connected)
     end do
   end function newunit
-! **************************************************************************** !
 
 
 end module aot_out_general_module
