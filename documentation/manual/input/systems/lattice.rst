@@ -17,7 +17,7 @@ Returns:
 
 .. math::
 
-    H = -t \sum_{<r,r'>,\sigma} c^\dagger_{r,\sigma} c_{r',\sigma} + U \sum_r n_{r,\uparrow} n_{r,\downarrow}
+    H = -t \sum_{\langle r,r' \rangle,\sigma} c^\dagger_{r,\sigma} c_{r',\sigma} + U \sum_r n_{r,\uparrow} n_{r,\downarrow}
 
 using a single-particle basis of Bloch functions, :math:`\psi_k`:
 
@@ -112,7 +112,7 @@ Returns:
 
 .. math::
 
-    H = -t \sum_{<r,r'>,\sigma} c^\dagger_{r,\sigma} c_{r',\sigma} + U \sum_r n_{r,\uparrow} n_{r,\downarrow}
+    H = -t \sum_{\langle r,r' \rangle,\sigma} c^\dagger_{r,\sigma} c_{r',\sigma} + U \sum_r n_{r,\uparrow} n_{r,\downarrow}
 
 using a single-particle basis of functions in real-space.
 
