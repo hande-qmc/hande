@@ -5,13 +5,43 @@ import os
 import pkgutil
 import sys
 import warnings
+import argparse
 
 if not pkgutil.find_loader('pyhande'):
     _script_dir = os.path.dirname(os.path.abspath(__file__))
     sys.path.append(os.path.join(_script_dir, '../pyhande'))
 import pyhande
 
-def main(filename):
+
+def parse_args(args):
+    '''Parse command-line arguments.
+
+Parameters
+----------
+args : list of strings
+    command-line arguments.
+
+Returns
+-------
+options : :class:`ArgumentParser`
+    Options read in from command line.
+'''
+    parser = argparse.ArgumentParser(usage=__doc__)
+    parser.add_argument('-s', '--sim', action='store_true', default=False,
+                        dest='multi_sim', help='Do not average over multiple '
+                        'simulations in the same or from multiple data files.')
+    parser.add_argument('filename', nargs='+', help='HANDE output.')
+
+    options = parser.parse_args(args)
+
+    if not options.filename:
+        parser.print_help()
+        sys.exit(1)
+
+    return options
+
+
+def main(args):
     ''' Analyse the output from a canonical estimates calculation.
 
 Parameters
@@ -20,11 +50,9 @@ filename : list of strings
     files to be analysed.
 '''
 
-    if len(filename) < 1:
-        print("Usage: ./analyse_canonical.py files")
-        sys.exit()
+    args = parse_args(args)
 
-    hande_out = pyhande.extract.extract_data_sets(filename)
+    hande_out = pyhande.extract.extract_data_sets(args.filename)
 
     (metadata, data) = ([], [])
     for (md, df) in hande_out:
@@ -32,7 +60,7 @@ filename : list of strings
         if md['calc_type'] == 'Canonical energy' or md['calc_type'] == 'RNG':
             metadata.append(md)
             data.append(df)
-    if data:
+    if data and not args.multi_sim:
         data = pd.concat(data)
 
     # Sanity check: are all the calculations from the same calculation?
@@ -43,7 +71,11 @@ filename : list of strings
             if 'beta' in md and md['beta'] != beta:
                 warnings.warn('Beta values in input files not consistent.')
 
-    results = pyhande.canonical.estimates(metadata[0], data)
+    if args.multi_sim:
+        results = pd.concat([pyhande.canonical.estimates(m, d) for (m, d)
+                             in zip(metadata, data)])
+    else:
+        results = pyhande.canonical.estimates(metadata[0], data)
 
     try:
         float_fmt = '{0:-#.8e}'.format
