@@ -99,7 +99,8 @@ contains
             j = cs%occ_list(i)  ! The elec we're looking at
             if (sys%basis%basis_fns(j)%Ms == -1) then ! beta
                 nv = sys%nvirt_beta
-                call create_weighted_excitation_list_ptr(sys, j, 0, cs%virt_list_beta, nv, cs%ia_weights(:,i), cs%ia_weights_tot(i))
+                call create_weighted_excitation_list_ptr(sys, j, 0, cs%virt_list_beta, nv, cs%ia_weights(:,i), &
+                                                         cs%ia_weights_tot(i))
                 call generate_alias_tables(nv, cs%ia_weights(:,i), cs%ia_weights_tot(i), cs%ia_aliasU(:,i), cs%ia_aliasK(:,i))
                 do bsym = sys%sym0_tot, sys%sym_max_tot
                     call create_weighted_excitation_list_ptr(sys, j, 0, sys%read_in%pg_sym%sym_spin_basis_fns(:,1,bsym), &
@@ -109,7 +110,8 @@ contains
                 end do
             else ! alpha
                 nv = sys%nvirt_alpha
-                call create_weighted_excitation_list_ptr(sys, j, 0, cs%virt_list_alpha, nv, cs%ia_weights(:,i), cs%ia_weights_tot(i))
+                call create_weighted_excitation_list_ptr(sys, j, 0, cs%virt_list_alpha, nv, cs%ia_weights(:,i), &
+                                                         cs%ia_weights_tot(i))
                 call generate_alias_tables(nv, cs%ia_weights(:,i), cs%ia_weights_tot(i), cs%ia_aliasU(:,i), cs%ia_aliasK(:,i))
                 do bsym = sys%sym0_tot, sys%sym_max_tot
                     call create_weighted_excitation_list_ptr(sys, j, 0, sys%read_in%pg_sym%sym_spin_basis_fns(:,2,bsym), &
@@ -219,10 +221,12 @@ contains
                 ! Given i_ref, use the alias method to select a_ref with appropriate probability from the set of orbitals
                 ! of the same spin as i_ref that are unoccupied if all electrons are in the reference.
                 if (sys%basis%basis_fns(i_ref)%Ms < 0) then
-                    a_ind_ref = select_weighted_value_prec(rng, sys%nvirt_beta, cs%ia_aliasU(:,i_ind_ref), cs%ia_aliasK(:,i_ind_ref))
+                    a_ind_ref = select_weighted_value_prec(rng, sys%nvirt_beta, cs%ia_aliasU(:,i_ind_ref), &
+                                                           cs%ia_aliasK(:,i_ind_ref))
                     a_ref = cs%virt_list_beta(a_ind_ref) 
                 else
-                    a_ind_ref = select_weighted_value_prec(rng, sys%nvirt_alpha, cs%ia_aliasU(:,i_ind_ref), cs%ia_aliasK(:,i_ind_ref))
+                    a_ind_ref = select_weighted_value_prec(rng, sys%nvirt_alpha, cs%ia_aliasU(:,i_ind_ref), &
+                                                           cs%ia_aliasK(:,i_ind_ref))
                     a_ref = cs%virt_list_alpha(a_ind_ref) 
                 end if 
 
@@ -533,7 +537,8 @@ contains
                 ! [reply] - VAN: can you please clarify how you would do what you say?
                 allocate(ia_weights(1:sys%nvirt_beta), stat=ierr)
                 call check_allocate('ia_weights', sys%nvirt_beta, ierr)
-                call create_weighted_excitation_list_ptr(sys, i, 0, cdet%unocc_list_beta, sys%nvirt_beta, ia_weights, ia_weights_tot)
+                call create_weighted_excitation_list_ptr(sys, i, 0, cdet%unocc_list_beta, sys%nvirt_beta, ia_weights, &
+                                                         ia_weights_tot)
                 ! Use the alias method to select i with the appropriate probability
                 a_ind = select_weighted_value(rng, sys%nvirt_beta, ia_weights, ia_weights_tot)
                 a = cdet%unocc_list_beta(a_ind) 
@@ -541,7 +546,8 @@ contains
                 allocate(ia_weights(1:sys%nvirt_alpha), stat=ierr)
                 call check_allocate('ia_weights', sys%nvirt_alpha, ierr)
 
-                call create_weighted_excitation_list_ptr(sys, i, 0, cdet%unocc_list_alpha, sys%nvirt_alpha, ia_weights, ia_weights_tot)
+                call create_weighted_excitation_list_ptr(sys, i, 0, cdet%unocc_list_alpha, sys%nvirt_alpha, ia_weights, &
+                                                         ia_weights_tot)
                 ! Use the alias method to select i with the appropriate probability
                 a_ind = select_weighted_value(rng, sys%nvirt_alpha, ia_weights, ia_weights_tot)
                 a = cdet%unocc_list_alpha(a_ind) 
@@ -601,7 +607,7 @@ contains
                         ! imsa = imsb
                         allocate(ja_weights(1:sys%read_in%pg_sym%nbasis_sym_spin(imsb,isyma)), stat=ierr)
                         call check_allocate('ja_weights', sys%read_in%pg_sym%nbasis_sym_spin(imsb,isyma), ierr)
-                        call create_weighted_excitation_list_ptr(sys, j, b, sys%read_in%pg_sym%sym_spin_basis_fns(:,imsb,isyma), &
+                        call create_weighted_excitation_list_ptr(sys, j, b, sys%read_in%pg_sym%sym_spin_basis_fns(:,imsb,isyma),&
                                             sys%read_in%pg_sym%nbasis_sym_spin(imsb,isyma), ja_weights, ja_weights_tot)
                         call binary_search(sys%read_in%pg_sym%sym_spin_basis_fns(:,imsb,isyma), a, 1, &
                                     sys%read_in%pg_sym%nbasis_sym_spin(imsb,isyma), found, a_ind_rev)

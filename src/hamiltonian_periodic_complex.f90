@@ -396,7 +396,8 @@ contains
             if (a_list(k) /= b) then
                 ! [review] - JSS: could avoid the abs with an assumption or a one-off O(N2) check during init
                 ! [review] - VAN: need abs here for complex
-                weight = get_two_body_int_mol_complex(sys%read_in%coulomb_integrals, sys%read_in%coulomb_integrals_imag, i, a_list(k), a_list(k), i, sys)
+                weight = get_two_body_int_mol_complex(sys%read_in%coulomb_integrals, sys%read_in%coulomb_integrals_imag, i, &
+                                                      a_list(k), a_list(k), i, sys)
                 weights(k) = sqrt(abs(weight))
                 weight_tot = weight_tot + weights(k)
             else
