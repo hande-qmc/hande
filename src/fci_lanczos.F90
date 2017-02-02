@@ -85,12 +85,14 @@ contains
             eigv(1) = hmatel%r
             nfound = 1
         else
-            if (nprocs == 1) then
-                call generate_hamil(sys, ndets, dets, hamil, use_sparse_hamil = sparse_hamil)
-            else
-                call generate_hamil(sys, ndets, dets, hamil, proc_blacs_info=proc_blacs_info)
+            if (.not. fci_in%direct_lanczos) then
+                if (nprocs == 1) then
+                    call generate_hamil(sys, ndets, dets, hamil, use_sparse_hamil=sparse_hamil)
+                else
+                    call generate_hamil(sys, ndets, dets, hamil, proc_blacs_info=proc_blacs_info)
+                end if
+                if (fci_in%write_hamiltonian) call write_hamil(fci_in%hamiltonian_file, ndets, proc_blacs_info, hamil)
             end if
-            if (fci_in%write_hamiltonian) call write_hamil(fci_in%hamiltonian_file, ndets, proc_blacs_info, hamil)
             call lanczos_diagonalisation(sys, fci_in, dets, proc_blacs_info, nfound, eigv, hamil)
         end if
 
@@ -173,7 +175,7 @@ contains
         real(p), allocatable :: evec_copy(:,:)
 #endif
 
-        if (.not.allocated(hamil%rmat) .and. .not. hamil%sparse .and. .not.allocated(hamil%cmat)) then
+        if (.not.(hamil%sparse .or. allocated(hamil%rmat) .or. allocated(hamil%cmat) .or. fci_in%direct_lanczos)) then
             call stop_all('lanczos_diagonalisation', 'No Hamiltonian supplied.')
         end if
         sparse_hamil = hamil%sparse
