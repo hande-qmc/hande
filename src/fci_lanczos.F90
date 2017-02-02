@@ -88,8 +88,8 @@ contains
                 else
                     call generate_hamil(sys, ndets, dets, hamil, proc_blacs_info=proc_blacs_info)
                 end if
+                if (fci_in%write_hamiltonian) call write_hamil(fci_in%hamiltonian_file, ndets, proc_blacs_info, hamil)
             end if
-            if (fci_in%write_hamiltonian) call write_hamil(fci_in%hamiltonian_file, ndets, proc_blacs_info, hamil)
             call lanczos_diagonalisation(sys, fci_in, dets, proc_blacs_info, nfound, eigv, hamil)
         end if
 
