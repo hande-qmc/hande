@@ -318,7 +318,7 @@ results : :class:`pandas.DataFrame`
     grouped = pyhande.utils.groupby_beta_loops(data, name='Beta')
     niterations = len(grouped.get_group(0))
     last_group = len(grouped) - 1
-    if len(grouped.get_group(last_group) < niterations):
+    if len(grouped.get_group(last_group)) < niterations:
         data.drop(grouped.get_group(last_group).index, inplace=True)
     # Make the Beta column a MultiIndex.
     data.set_index('Beta', inplace=True, append=True)
