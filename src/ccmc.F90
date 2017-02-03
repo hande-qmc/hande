@@ -349,7 +349,6 @@ contains
         type(det_info_t) :: ref_det
 
         integer(int_p) :: ndeath, ndeath_nc
-        integer(int_p) :: ndeath_im, ndeath_nc_im
         integer :: nspawn_events, ierr
         type(wfn_contrib_t), allocatable :: contrib(:)
         type(multispawn_stats_t), allocatable :: ms_stats(:)
@@ -586,7 +585,6 @@ contains
                 ! always 0.
                 call init_mc_cycle(qs%psip_list, qs%spawn_store%spawn, qs%estimators(1)%nattempts, ndeath, &
                                    min_attempts=nint(abs(D0_normalisation), kind=int_64), &
-                                   ndeath_im = ndeath_im, &
                                    complx=sys%read_in%comp)
                 nparticles_change = 0.0_p
 
@@ -657,7 +655,7 @@ contains
                 !$omp        proj_energy_cycle, D0_population_cycle, selection_data,      &
                 !$omp        nattempts_spawn, ex_lvl_dist, &
                 !$omp        ccmc_in, nprocs, ms_stats, qmc_in, load_bal_in, ndeath_nc,   &
-                !$omp        nparticles_change, ndeath, ndeath_nc_im, logging_info)
+                !$omp        nparticles_change, ndeath, logging_info)
                 it = get_thread_id()
                 iexcip_pos = 0
                 seen_D0 = .false.
@@ -741,10 +739,9 @@ contains
                 !$omp end do
 
                 ndeath_nc = 0
-                ndeath_nc_im = 0
                 if (ccmc_in%full_nc .and. qs%psip_list%nstates > 0) then
                     ! Do death exactly and directly for non-composite clusters
-                    !$omp do schedule(dynamic,200) private(dfock) reduction(+:ndeath_nc,nparticles_change,ndeath_nc_im)
+                    !$omp do schedule(dynamic,200) private(dfock) reduction(+:ndeath_nc,nparticles_change)
                     do iattempt = 1, qs%psip_list%nstates
                         ! Note we use the (encoded) population directly in stochastic_ccmc_death_nc
                         ! (unlike the stochastic_ccmc_death) to avoid unnecessary decoding/encoding
