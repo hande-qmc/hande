@@ -99,25 +99,35 @@ contains
             j = cs%occ_list(i)  ! The elec we're looking at
             if (sys%basis%basis_fns(j)%Ms == -1) then ! beta
                 nv = sys%nvirt_beta
-                call create_weighted_excitation_list_ptr(sys, j, 0, cs%virt_list_beta, nv, cs%ia_weights(:,i), &
-                                                         cs%ia_weights_tot(i))
-                call generate_alias_tables(nv, cs%ia_weights(:,i), cs%ia_weights_tot(i), cs%ia_aliasU(:,i), cs%ia_aliasK(:,i))
+                if (nv > 0) then
+                    call create_weighted_excitation_list_ptr(sys, j, 0, cs%virt_list_beta, nv, cs%ia_weights(:,i), &
+                                                            cs%ia_weights_tot(i))
+                    call generate_alias_tables(nv, cs%ia_weights(:,i), cs%ia_weights_tot(i), cs%ia_aliasU(:,i), &
+                                               cs%ia_aliasK(:,i))
+                end if
                 do bsym = sys%sym0_tot, sys%sym_max_tot
-                    call create_weighted_excitation_list_ptr(sys, j, 0, sys%read_in%pg_sym%sym_spin_basis_fns(:,1,bsym), &
-                        sys%read_in%pg_sym%nbasis_sym_spin(1,bsym), cs%jb_weights(:,bsym,i), cs%jb_weights_tot(bsym,i))
-                    call generate_alias_tables(sys%read_in%pg_sym%nbasis_sym_spin(1,bsym), cs%jb_weights(:,bsym,i), &
-                        cs%jb_weights_tot(bsym,i), cs%jb_aliasU(:,bsym,i), cs%jb_aliasK(:,bsym,i))
+                    if (sys%read_in%pg_sym%nbasis_sym_spin(1,bsym) > 0) then
+                        call create_weighted_excitation_list_ptr(sys, j, 0, sys%read_in%pg_sym%sym_spin_basis_fns(:,1,bsym), &
+                            sys%read_in%pg_sym%nbasis_sym_spin(1,bsym), cs%jb_weights(:,bsym,i), cs%jb_weights_tot(bsym,i))
+                        call generate_alias_tables(sys%read_in%pg_sym%nbasis_sym_spin(1,bsym), cs%jb_weights(:,bsym,i), &
+                            cs%jb_weights_tot(bsym,i), cs%jb_aliasU(:,bsym,i), cs%jb_aliasK(:,bsym,i))
+                    end if
                 end do
             else ! alpha
                 nv = sys%nvirt_alpha
-                call create_weighted_excitation_list_ptr(sys, j, 0, cs%virt_list_alpha, nv, cs%ia_weights(:,i), &
-                                                         cs%ia_weights_tot(i))
-                call generate_alias_tables(nv, cs%ia_weights(:,i), cs%ia_weights_tot(i), cs%ia_aliasU(:,i), cs%ia_aliasK(:,i))
+                if (nv > 0) then
+                    call create_weighted_excitation_list_ptr(sys, j, 0, cs%virt_list_alpha, nv, cs%ia_weights(:,i), &
+                                                             cs%ia_weights_tot(i))
+                    call generate_alias_tables(nv, cs%ia_weights(:,i), cs%ia_weights_tot(i), cs%ia_aliasU(:,i), &
+                                               cs%ia_aliasK(:,i))
+                end if
                 do bsym = sys%sym0_tot, sys%sym_max_tot
-                    call create_weighted_excitation_list_ptr(sys, j, 0, sys%read_in%pg_sym%sym_spin_basis_fns(:,2,bsym), &
-                        sys%read_in%pg_sym%nbasis_sym_spin(2,bsym), cs%jb_weights(:,bsym,i), cs%jb_weights_tot(bsym,i))
-                    call generate_alias_tables(sys%read_in%pg_sym%nbasis_sym_spin(2,bsym), cs%jb_weights(:,bsym,i), &
-                        cs%jb_weights_tot(bsym,i), cs%jb_aliasU(:,bsym,i), cs%jb_aliasK(:,bsym,i))
+                    if (sys%read_in%pg_sym%nbasis_sym_spin(2,bsym) > 0) then
+                        call create_weighted_excitation_list_ptr(sys, j, 0, sys%read_in%pg_sym%sym_spin_basis_fns(:,2,bsym), &
+                            sys%read_in%pg_sym%nbasis_sym_spin(2,bsym), cs%jb_weights(:,bsym,i), cs%jb_weights_tot(bsym,i))
+                        call generate_alias_tables(sys%read_in%pg_sym%nbasis_sym_spin(2,bsym), cs%jb_weights(:,bsym,i), &
+                            cs%jb_weights_tot(bsym,i), cs%jb_aliasU(:,bsym,i), cs%jb_aliasK(:,bsym,i))
+                    end if
                 end do
             end if
         end do
@@ -194,7 +204,7 @@ contains
         integer :: ref_store(sys%nel)
         integer :: ii, jj, t
 
-        logical :: found
+        logical :: found, a_found
 
         ! 1. Select single or double.
         if (get_rand_close_open(rng) < excit_gen_data%pattempt_single) then
@@ -221,82 +231,94 @@ contains
                 ! Given i_ref, use the alias method to select a_ref with appropriate probability from the set of orbitals
                 ! of the same spin as i_ref that are unoccupied if all electrons are in the reference.
                 if (sys%basis%basis_fns(i_ref)%Ms < 0) then
-                    a_ind_ref = select_weighted_value_prec(rng, sys%nvirt_beta, cs%ia_aliasU(:,i_ind_ref), &
-                                                           cs%ia_aliasK(:,i_ind_ref))
-                    a_ref = cs%virt_list_beta(a_ind_ref) 
+                    if (sys%nvirt_beta > 0) then
+                        a_ind_ref = select_weighted_value_prec(rng, sys%nvirt_beta, cs%ia_aliasU(:,i_ind_ref), &
+                                                               cs%ia_aliasK(:,i_ind_ref))
+                        a_ref = cs%virt_list_beta(a_ind_ref)
+                        a_found = .true.
+                    else
+                        a_found = .false.
+                    end if
                 else
-                    a_ind_ref = select_weighted_value_prec(rng, sys%nvirt_alpha, cs%ia_aliasU(:,i_ind_ref), &
-                                                           cs%ia_aliasK(:,i_ind_ref))
-                    a_ref = cs%virt_list_alpha(a_ind_ref) 
+                    if (sys%nvirt_alpha > 0) then
+                        a_ind_ref = select_weighted_value_prec(rng, sys%nvirt_alpha, cs%ia_aliasU(:,i_ind_ref), &
+                                                               cs%ia_aliasK(:,i_ind_ref))
+                        a_ref = cs%virt_list_alpha(a_ind_ref)
+                        a_found = .true.
+                    else
+                        a_found = .false.
+                    end if
                 end if 
 
-                ! To conserve total spin, b and j will have the same spin, as a and i have the same spin.
-                ! To find what symmetry b should have, we first have to map i,j and a to what they correspond to 
-                ! had we considered cdet and not the reference.
+                if (a_found) then
+                    ! To conserve total spin, b and j will have the same spin, as a and i have the same spin.
+                    ! To find what symmetry b should have, we first have to map i,j and a to what they correspond to 
+                    ! had we considered cdet and not the reference.
                 
-                ! We need a list of the substitutions in cdet vs the ref.  i.e. for each orbital in the ref-lined-up 
-                ! cdet which is not in ref, we need the location.
-                ! This is currently done with an O(N) step, but might be sped up at least.
+                    ! We need a list of the substitutions in cdet vs the ref.  i.e. for each orbital in the ref-lined-up 
+                    ! cdet which is not in ref, we need the location.
+                    ! This is currently done with an O(N) step, but might be sped up at least.
 
-                call get_excitation_locations(cs%occ_list, cdet%occ_list, ref_store, cdet_store, sys%nel, nex)
-                ! These orbitals might not be aligned in the most efficient way:
-                !  They may not match in spin, so first deal with this
+                    call get_excitation_locations(cs%occ_list, cdet%occ_list, ref_store, cdet_store, sys%nel, nex)
+                    ! These orbitals might not be aligned in the most efficient way:
+                    !  They may not match in spin, so first deal with this
 
-                ! ref store (e.g.) contains the indices within cs%occ_list of the orbitals
-                ! which have been excited from.
-                ! [review] - JSS: this could/should be done once per determinant/excitor rather than once per excit gen.
-                ! [reply] - VAN: Would you calculate it the moment that cdet is defined? and add it as cdet%cdet_store etc?
-                ! [reply] - AJWT: Quite possibly - this is certainly an optimization to consider, though it has structural implications.
-                do ii=1, nex
-                    associate(bfns=>sys%basis%basis_fns)
-                        if (bfns(cs%occ_list(ref_store(ii)))%Ms /= bfns(cdet%occ_list(cdet_store(ii)))%Ms) then
-                            jj = ii + 1
-                            do while (bfns(cs%occ_list(ref_store(ii)))%Ms /= bfns(cdet%occ_list(cdet_store(jj)))%Ms)
-                                jj = jj + 1
-                            end do
-                            ! det's jj now points to an orb of the same spin as ref's ii, so swap cdet_store's ii and jj.
-                            t = cdet_store(ii)
-                            cdet_store(ii) = cdet_store(jj)
-                            cdet_store(jj) = t 
+                    ! ref store (e.g.) contains the indices within cs%occ_list of the orbitals
+                    ! which have been excited from.
+                    ! [review] - JSS: this could/should be done once per determinant/excitor rather than once per excit gen.
+                    ! [reply] - VAN: Would you calculate it the moment that cdet is defined? and add it as cdet%cdet_store etc?
+                    ! [reply] - AJWT: Quite possibly - this is certainly an optimization to consider, though it has structural implications.
+                    do ii=1, nex
+                        associate(bfns=>sys%basis%basis_fns)
+                            if (bfns(cs%occ_list(ref_store(ii)))%Ms /= bfns(cdet%occ_list(cdet_store(ii)))%Ms) then
+                                jj = ii + 1
+                                do while (bfns(cs%occ_list(ref_store(ii)))%Ms /= bfns(cdet%occ_list(cdet_store(jj)))%Ms)
+                                    jj = jj + 1
+                                end do
+                                ! det's jj now points to an orb of the same spin as ref's ii, so swap cdet_store's ii and jj.
+                                t = cdet_store(ii)
+                                cdet_store(ii) = cdet_store(jj)
+                                cdet_store(jj) = t 
+                            end if
+                        end associate
+                    end do
+                
+                    ! Now see if i_ref and j_ref are in ref_store or a_ref in cdet_store and map appropriately
+                    i_cdet = i_ref
+                    j_cdet = j_ref
+                    a_cdet = a_ref
+                    ! ref_store  contains the indices within cs%occ_list of the orbitals which are excited out of ref into cdet
+                    ! cdet_store  contains the indices within cdet%occ_list of the orbitals which are in cdet (excited out
+                    ! of ref).  i_ind_ref and j_ind_ref are the indices of the orbitals in cs%occ_list which we're exciting from.
+                    do ii=1, nex
+                        if (ref_store(ii)==i_ind_ref) then  ! i_ref isn't actually in cdet, so we assign i_cdet to the orb that is
+                            i_cdet = cdet%occ_list(cdet_store(ii))
+                        else if (ref_store(ii)==j_ind_ref) then ! j_ref isn't actually in cdet, so we assign j_cdet to the orb that is
+                            j_cdet = cdet%occ_list(cdet_store(ii))
                         end if
-                    end associate
-                end do
-                
-                ! Now see if i_ref and j_ref are in ref_store or a_ref in cdet_store and map appropriately
-                i_cdet = i_ref
-                j_cdet = j_ref
-                a_cdet = a_ref
-                ! ref_store  contains the indices within cs%occ_list of the orbitals which are excited out of ref into cdet
-                ! cdet_store  contains the indices within cdet%occ_list of the orbitals which are in cdet (excited out
-                ! of ref).  i_ind_ref and j_ind_ref are the indices of the orbitals in cs%occ_list which we're exciting from.
-                do ii=1, nex
-                    if (ref_store(ii)==i_ind_ref) then  ! i_ref isn't actually in cdet, so we assign i_cdet to the orb that is
-                        i_cdet = cdet%occ_list(cdet_store(ii))
-                    else if (ref_store(ii)==j_ind_ref) then ! j_ref isn't actually in cdet, so we assign j_cdet to the orb that is
-                        j_cdet = cdet%occ_list(cdet_store(ii))
-                    end if
-                    if (cdet%occ_list(cdet_store(ii))==a_ref) then
-                        a_cdet = cs%occ_list(ref_store(ii)) ! a_ref is occupied in cdet, assign a_cdet to the orb that is not
-                    end if   
-                end do
+                        if (cdet%occ_list(cdet_store(ii))==a_ref) then
+                            a_cdet = cs%occ_list(ref_store(ii)) ! a_ref is occupied in cdet, assign a_cdet to the orb that is not
+                        end if   
+                    end do
 
-                ! The symmetry of b (=b_cdet), isymb, is given by 
-                ! (sym_i_cdet* x sym_j_cdet* x sym_a_cdet)* = sym_b_cdet
-                ! (at least for Abelian point groups)
-                ! ij_sym: symmetry conjugate of the irreducible representation spanned by the codensity
-                !        \phi_i_cdet*\phi_j_cdet. (We assume that ij is going to be in the bra of the excitation.)
-                ij_sym = sys%read_in%sym_conj_ptr(sys%read_in, cross_product_basis_read_in(sys, i_cdet, j_cdet))
+                    ! The symmetry of b (=b_cdet), isymb, is given by 
+                    ! (sym_i_cdet* x sym_j_cdet* x sym_a_cdet)* = sym_b_cdet
+                    ! (at least for Abelian point groups)
+                    ! ij_sym: symmetry conjugate of the irreducible representation spanned by the codensity
+                    !        \phi_i_cdet*\phi_j_cdet. (We assume that ij is going to be in the bra of the excitation.)
+                    ij_sym = sys%read_in%sym_conj_ptr(sys%read_in, cross_product_basis_read_in(sys, i_cdet, j_cdet))
 
-                isymb = sys%read_in%sym_conj_ptr(sys%read_in, &
-                            sys%read_in%cross_product_sym_ptr(sys%read_in, ij_sym, sys%basis%basis_fns(a_cdet)%sym))
-                ! Ms_i + Ms_j = Ms_a + Ms_b => Ms_b = Ms_i + Ms_j - Ms_a.
-                ! Given that Ms_a = Ms_i, Ms_b = Ms_j.
-                ! Ms_k is +1 if up and -1 if down but imsb is +2 if up and +1 if down, 
-                ! therefore a conversion is necessary.
-                imsb = (sys%basis%basis_fns(j_ref)%Ms+3)/2
-            
+                    isymb = sys%read_in%sym_conj_ptr(sys%read_in, &
+                                sys%read_in%cross_product_sym_ptr(sys%read_in, ij_sym, sys%basis%basis_fns(a_cdet)%sym))
+                    ! Ms_i + Ms_j = Ms_a + Ms_b => Ms_b = Ms_i + Ms_j - Ms_a.
+                    ! Given that Ms_a = Ms_i, Ms_b = Ms_j.
+                    ! Ms_k is +1 if up and -1 if down but imsb is +2 if up and +1 if down, 
+                    ! therefore a conversion is necessary.
+                    imsb = (sys%basis%basis_fns(j_ref)%Ms+3)/2
+                end if
+
                 ! Check whether an orbital (occupied or not) with required spin and symmetry exists.
-                if (sys%read_in%pg_sym%nbasis_sym_spin(imsb,isymb) > 0) then 
+                if (a_found .and. (sys%read_in%pg_sym%nbasis_sym_spin(imsb,isymb) > 0)) then 
                     ! Using alias tables based on the reference, find b_cdet out of the set of (all) orbitals that have 
                     ! the required spin and symmetry. Note that these orbitals might be occupied in the reference and/or 
                     ! cdet (although we only care about whether they are occupied in cdet which we deal with later). 
@@ -502,7 +524,7 @@ contains
         logical, intent(out) :: allowed_excitation
 
         integer ::  ij_spin, ij_sym, ierr
-        logical :: found
+        logical :: found, a_found
         real(p), allocatable :: ia_weights(:), ja_weights(:), jb_weights(:)
 
         !real(p) :: ia_weights(max(sys%nalpha + sys%nel,sys%nbeta+ sys%nel)), ja_weights(max(sys%nalpha+sys%nel,sys%nbeta+sys%nel)),
@@ -535,50 +557,70 @@ contains
                 ! [review] - JSS: is it really worth constructing this (O(N) time) rather than just going for a binary (or even
                 ! [review] - JSS: linear) search on the cumulative table directly?
                 ! [reply] - VAN: can you please clarify how you would do what you say?
-                allocate(ia_weights(1:sys%nvirt_beta), stat=ierr)
-                call check_allocate('ia_weights', sys%nvirt_beta, ierr)
-                call create_weighted_excitation_list_ptr(sys, i, 0, cdet%unocc_list_beta, sys%nvirt_beta, ia_weights, &
-                                                         ia_weights_tot)
-                ! Use the alias method to select i with the appropriate probability
-                a_ind = select_weighted_value(rng, sys%nvirt_beta, ia_weights, ia_weights_tot)
-                a = cdet%unocc_list_beta(a_ind) 
+                if (sys%nvirt_beta > 0) then
+                    allocate(ia_weights(1:sys%nvirt_beta), stat=ierr)
+                    call check_allocate('ia_weights', sys%nvirt_beta, ierr)
+                    call create_weighted_excitation_list_ptr(sys, i, 0, cdet%unocc_list_beta, sys%nvirt_beta, ia_weights, &
+                                                             ia_weights_tot)
+                    if (ia_weights_tot > 0.0_p) then
+                        ! Use the alias method to select i with the appropriate probability
+                        a_ind = select_weighted_value(rng, sys%nvirt_beta, ia_weights, ia_weights_tot)
+                        a = cdet%unocc_list_beta(a_ind)
+                        a_found = .true.
+                    else
+                        a_found = .false.
+                    end if
+                else
+                    a_found = .false.
+                end if
             else
-                allocate(ia_weights(1:sys%nvirt_alpha), stat=ierr)
-                call check_allocate('ia_weights', sys%nvirt_alpha, ierr)
+                if (sys%nvirt_alpha > 0) then
+                    allocate(ia_weights(1:sys%nvirt_alpha), stat=ierr)
+                    call check_allocate('ia_weights', sys%nvirt_alpha, ierr)
 
-                call create_weighted_excitation_list_ptr(sys, i, 0, cdet%unocc_list_alpha, sys%nvirt_alpha, ia_weights, &
-                                                         ia_weights_tot)
-                ! Use the alias method to select i with the appropriate probability
-                a_ind = select_weighted_value(rng, sys%nvirt_alpha, ia_weights, ia_weights_tot)
-                a = cdet%unocc_list_alpha(a_ind) 
+                    call create_weighted_excitation_list_ptr(sys, i, 0, cdet%unocc_list_alpha, sys%nvirt_alpha, ia_weights, &
+                                                             ia_weights_tot)
+                    if (ia_weights_tot > 0.0_p) then
+                        ! Use the alias method to select i with the appropriate probability
+                        a_ind = select_weighted_value(rng, sys%nvirt_alpha, ia_weights, ia_weights_tot)
+                        a = cdet%unocc_list_alpha(a_ind)
+                        a_found = .true.
+                    else
+                        a_found = .false.
+                    end if
+                else
+                    a_found = .false.
+                end if
             end if
 
-            ! Given i,j,a construct the weights of all possible b
-            ! This requires that total symmetry and spin are conserved.
-            ! The symmetry of b (isymb) is given by 
-            ! (sym_i* x sym_j* x sym_a)* = sym_b
-            ! (at least for Abelian point groups)
-            isymb = sys%read_in%sym_conj_ptr(sys%read_in, &
-                    sys%read_in%cross_product_sym_ptr(sys%read_in, ij_sym, sys%basis%basis_fns(a)%sym))
-            ! Ms_i + Ms_j = Ms_a + Ms_b => Ms_b = Ms_i + Ms_j - Ms_a
-            ! Ms_k is +1 if up and -1 if down but imsb is +2 if up and +1 if down, 
-            ! therefore a conversion is necessary.
-            imsb = (ij_spin-sys%basis%basis_fns(a)%Ms+3)/2
+            if (a_found) then
+                ! Given i,j,a construct the weights of all possible b
+                ! This requires that total symmetry and spin are conserved.
+                ! The symmetry of b (isymb) is given by 
+                ! (sym_i* x sym_j* x sym_a)* = sym_b
+                ! (at least for Abelian point groups)
+                isymb = sys%read_in%sym_conj_ptr(sys%read_in, &
+                        sys%read_in%cross_product_sym_ptr(sys%read_in, ij_sym, sys%basis%basis_fns(a)%sym))
+                ! Ms_i + Ms_j = Ms_a + Ms_b => Ms_b = Ms_i + Ms_j - Ms_a
+                ! Ms_k is +1 if up and -1 if down but imsb is +2 if up and +1 if down, 
+                ! therefore a conversion is necessary.
+                imsb = (ij_spin-sys%basis%basis_fns(a)%Ms+3)/2
             
-            if (sys%read_in%pg_sym%nbasis_sym_spin(imsb,isymb) > 0) then 
-                allocate(jb_weights(1:sys%read_in%pg_sym%nbasis_sym_spin(imsb,isymb)), stat=ierr)
-                call check_allocate('jb_weights', sys%read_in%pg_sym%nbasis_sym_spin(imsb,isymb), ierr)
-                call create_weighted_excitation_list_ptr(sys, j, a, sys%read_in%pg_sym%sym_spin_basis_fns(:,imsb,isymb), &
-                                        sys%read_in%pg_sym%nbasis_sym_spin(imsb,isymb), jb_weights, jb_weights_tot)
-            else
-                jb_weights_tot = 0.0_p
+                if (sys%read_in%pg_sym%nbasis_sym_spin(imsb,isymb) > 0) then 
+                    allocate(jb_weights(1:sys%read_in%pg_sym%nbasis_sym_spin(imsb,isymb)), stat=ierr)
+                    call check_allocate('jb_weights', sys%read_in%pg_sym%nbasis_sym_spin(imsb,isymb), ierr)
+                    call create_weighted_excitation_list_ptr(sys, j, a, sys%read_in%pg_sym%sym_spin_basis_fns(:,imsb,isymb), &
+                                                             sys%read_in%pg_sym%nbasis_sym_spin(imsb,isymb), jb_weights, &
+                                                             jb_weights_tot)
+                else
+                    jb_weights_tot = 0.0_p
+                end if
             end if
-
             ! Test whether at least one possible b given i,j,a exists.
             ! Note that we did not need a btest for orbital a because we only considered
             ! virtual orbitals there.
 
-            if (jb_weights_tot > 0.0_p) then
+            if (a_found .and. (jb_weights_tot > 0.0_p)) then
                 ! Use the alias method to select b with the appropriate probability
                 b_ind = select_weighted_value(rng, sys%read_in%pg_sym%nbasis_sym_spin(imsb,isymb), jb_weights, jb_weights_tot)
                 b = sys%read_in%pg_sym%sym_spin_basis_fns(b_ind,imsb,isymb)
