@@ -67,3 +67,4 @@ Appendix
    :maxdepth: 2
 
    lua_intro
+   scriptable_input/scriptable_input
