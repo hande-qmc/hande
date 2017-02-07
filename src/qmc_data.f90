@@ -569,7 +569,7 @@ type blocking_t
     ! Number of start points to start reblocking from.
     integer :: n_saved_startpoints = 0
     ! Frequency at which the data for the start point is saved. In terms of the number of reports
-    integer :: save_fq = 0
+    integer(int_64) :: save_fq = 0
     ! Number of report cycles from the start of all blocking to the current cycle.
     integer(int_64) :: n_reports_blocked = 0_int_64
 ! [todo] An alternative would be to have a reblock_data_t - something like

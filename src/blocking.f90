@@ -193,7 +193,8 @@ contains
         type(qmc_state_t), intent(in) :: qs
         integer, intent(in) :: ireport
         type(blocking_t), intent(inout) :: bl
-        integer :: i, reblock_size
+        integer :: i
+        integer(int_64) :: reblock_size
 
         ! \sum H_0j N_j, reference population and shift are added to
         ! data_accumulator of every block size.
@@ -208,11 +209,11 @@ contains
         ! data_accumulator is divied by the block size and added to
         ! sum_of_blocks and squared and added to sum_of_block_squares.
 
-        do i = 0, (bl%lg_max)
+        do i = 0, bl%lg_max
             if (mod(bl%n_reports_blocked, 2_int_64 ** i) == 0) then
                 reblock_size = 2_int_64 ** i
 
-                bl%reblock_data(:,i)%n_blocks = (bl%n_reports_blocked)/reblock_size
+                bl%reblock_data(:,i)%n_blocks = int(bl%n_reports_blocked/reblock_size)
 
                 bl%reblock_data(:,i)%sum_of_blocks = bl%reblock_data(:,i)%sum_of_blocks + bl%reblock_data(:,i)%data_accumulator/&
                                                                                                                      reblock_size
