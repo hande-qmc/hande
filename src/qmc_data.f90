@@ -555,6 +555,7 @@ type reblock_data_t
     ! Number of blocks of a given block size.
     integer :: n_blocks = 0
     ! Sums of data are saved here until sufficient size is reached.
+    ! [review] - VAN: I guess for consistency in hande, that should be "0.0_p" not "0" for floats
     real(p) :: data_accumulator = 0
     ! Sums of data of a given block size.
     real(p) :: sum_of_blocks = 0
@@ -572,6 +573,7 @@ type blocking_t
     integer(int_64) :: save_fq = 0
     ! Number of report cycles from the start of all blocking to the current cycle.
     integer(int_64) :: n_reports_blocked = 0_int_64
+    ![review] - VAN: Can this be deleted now that reblock_data_t exists?
 ! [todo] An alternative would be to have a reblock_data_t - something like
 !   type reblock_data_t
 !       integer :: n_blocks
@@ -608,6 +610,7 @@ type blocking_t
     ! datatypes are dt_numerator, dt_denominator, dt_shift, dt_proj_energy (see
     ! enum above).
     real(p), allocatable :: block_mean(:,:), block_std(:,:), block_cov(:)
+    ! [review] - VAN: Maybe B should be defined here.
     ! Optimal block is the smallest block that satisfies the condition
     ! B^3 > 2*(B*(number of blocks)) * (std(B)/std(0)) ^ 4
     ! optimal_mean(datatype) = block_mean of the block with the optimal block

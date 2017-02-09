@@ -40,6 +40,15 @@ contains
         type(blocking_in_t), intent(in) :: blocking_in
         integer :: ierr
 
+        ! [review] - VAN: You use the present tense to talk about what value a variable holds before it actually holds this value,
+        ! [review] - VAN: i.e. before you set it. That makes it seem like this variable is already set, whereas in reality it is 
+        ! [review] - VAN: not set and some choices are a bit arbitrary.
+        ! [review] - VAN: E.g. instead of "2^(lg_max) is approximately 4 times larger than the nreport.", maybe say
+        ! [review] - VAN: "Set 2^(lg_max) to a value that is approximately 4 times larger than the nreport."
+
+        ! [review] - VAN: Can you make these two comments consistent?
+        ! [review] - VAN: Like: "2^(lg_max) is approximately 4 times larger than nreport."
+        ! [review] - VAN: and "Save frequency is approximately 256 times larger than nreport." 
         ! 2^(lg_max) is approximately 4 times larger than the nreport.
         bl%lg_max = nint(log(real(qmc_in%nreport))/log(2.0)) + 2
 
@@ -47,6 +56,7 @@ contains
         ! Calculated by 2^(lg_max - 10) when start_save_frequency in blocking_in
         ! is negative (Default). If it is specified, 2^(start_save_frequency) is
         ! used.
+        ! [review] - VAN: One of them is the exponent of the other which is a bit confusing, renaming might help?
         if (blocking_in%start_save_frequency < 0) then
             bl%save_fq = 2 ** (bl%lg_max - 10)
         else
@@ -245,13 +255,15 @@ contains
 
         do i = 0, bl%lg_max
 
+            ! [review] - VAN: I think it is better to compare an int with an int (i.e. 0)
             if (bl%reblock_data_2(dt_numerator,i)%n_blocks > 0.0) then
                 bl%block_mean(:,i) = bl%reblock_data_2(:,i)%sum_of_blocks/bl%reblock_data_2(:,i)%n_blocks
 
             else
+                ! [review] - VAN: bl%block_mean contains floats I believe, it should therefore be " = 0.0_p" in our code style.
                 bl%block_mean(:,i) = 0
             end if
-
+            ! [review] - VAN: Again, neater to compare int with int.
             if (bl%reblock_data_2(dt_numerator,i)%n_blocks > 1.0) then
                 bl%block_std(:,i) = (bl%reblock_data_2(:,i)%sum_of_block_squares/bl%reblock_data_2(:,i)%n_blocks - &
                                                                                                 bl%block_mean(:,i) ** 2)
@@ -262,6 +274,7 @@ contains
                                                                     bl%reblock_data_2(dt_numerator,i)%n_blocks))/&
                                                                     (bl%reblock_data_2(dt_numerator,i)%n_blocks - 1)
             else
+                ! [review] - VAN: In our code style, more consistent to say " = 0.0_p".
                 bl%block_std(:,i) = 0
                 bl%block_cov(i) = 0
             end if
@@ -338,11 +351,13 @@ contains
                 end if
             end do
             if (bl%optimal_size(i) == 1) then
+                ! [review] - VAN: I believe that should be "= 0.0_p"
                 bl%optimal_mean(i) = 0
                 bl%optimal_std(i) = 0
             else
                 bl%optimal_std(i) = bl%block_std(i, bl%optimal_size(i))
                 if (abs(bl%optimal_std(i)) < depsilon) then
+                    ! [review] - VAN: "= 0.0_p" in my opinion
                     bl%optimal_mean(i) = 0
                 else
                     bl%optimal_mean(i) = bl%block_mean(i, bl%optimal_size(i))
@@ -351,6 +366,7 @@ contains
             end if
 
             if (abs(bl%optimal_std(i)) < depsilon) then
+                ! [review] - VAN: "= 0.0_p"
                 bl%optimal_err(i) = 0
             ! calculated assuming the normal distribution following central
             ! limit theorem.
@@ -367,6 +383,7 @@ contains
         end if
 
         if (abs(bl%optimal_mean(dt_numerator)) < depsilon .or. abs(bl%optimal_mean(dt_denominator)) < depsilon) then
+            ! [review] - VAN: 0.0_p
             bl%optimal_mean(dt_proj_energy) = 0
             bl%optimal_std(dt_proj_energy) = 0
             bl%optimal_err(dt_proj_energy) = 0
@@ -444,7 +461,7 @@ contains
                     bl%reblock_data_2(:,i)%data_accumulator = 0
                     bl%reblock_data_2(:,i)%sum_of_blocks = 0
                     bl%reblock_data_2(:,i)%sum_of_block_squares = 0
-                    bl%data_product_2(i) = 0
+                    bl%data_product_2(i) = 0 ! [review] - VAN: 0.0_p I believe.
                 end if
             end do
 
@@ -474,7 +491,7 @@ contains
                     bl%reblock_data_2(:,i)%data_accumulator = 0
                     bl%reblock_data_2(:,i)%sum_of_blocks = 0
                     bl%reblock_data_2(:,i)%sum_of_block_squares = 0
-                    bl%data_product_2(i) = 0
+                    bl%data_product_2(i) = 0 ! [review] - VAN: 0.0_p
                 end if
             end do
         end if
@@ -509,7 +526,7 @@ contains
 
                 do j = 1, 3
                     if (abs(bl%optimal_std(j)) < depsilon) then
-                        bl%err_compare(j,i) = 0.0
+                        bl%err_compare(j,i) = 0.0 ! [review] - VAN: 0.0_p
                     else
                         if (bl%optimal_size(j) - 1 < log(real(bl%save_fq))/ log(2.0)) then
                             bl%err_compare(j,i) = bl%optimal_err(j)/ (bl%optimal_std(j) * &
@@ -523,12 +540,13 @@ contains
                     end if
                 end do
             else
-                bl%err_compare(:,i) = 0
+                bl%err_compare(:,i) = 0 ! [review] - VAN: 0.0_p
             end if
 
         end do
 
         do i = 1, 3
+        ! [review] - VAN: I believe err_compare should be compared to 0.0_p
             minimum(i) = minloc(bl%err_compare(i,:), dim = 1, mask = (bl%err_compare(i,:)>0)) - 1
         end do
 
@@ -666,7 +684,7 @@ contains
         integer, intent(in) :: ireport
         real(p) :: error_sum = 50, number_of_blocks = 0
 
-        if (bl%optimal_std(dt_proj_energy) > 0) then
+        if (bl%optimal_std(dt_proj_energy) > 0) then ! [review] - VAN: 0.0_p 
 
             error_sum = bl%optimal_err(dt_proj_energy) + bl%optimal_std(dt_proj_energy)
 
