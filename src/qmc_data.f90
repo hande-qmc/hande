@@ -555,12 +555,11 @@ type reblock_data_t
     ! Number of blocks of a given block size.
     integer :: n_blocks = 0
     ! Sums of data are saved here until sufficient size is reached.
-    ! [review] - VAN: I guess for consistency in hande, that should be "0.0_p" not "0" for floats
-    real(p) :: data_accumulator = 0
+    real(p) :: data_accumulator = 0.0_p
     ! Sums of data of a given block size.
-    real(p) :: sum_of_blocks = 0
+    real(p) :: sum_of_blocks = 0.0_p
     ! Sums of squares of data of a give block size.
-    real(p) :: sum_of_block_squares = 0
+    real(p) :: sum_of_block_squares = 0.0_p
 
 end type reblock_data_t
 
@@ -570,23 +569,9 @@ type blocking_t
     ! Number of start points to start reblocking from.
     integer :: n_saved_startpoints = 0
     ! Frequency at which the data for the start point is saved. In terms of the number of reports
-    integer(int_64) :: save_fq = 0
+    integer(int_64) :: save_fq = 0_int_64
     ! Number of report cycles from the start of all blocking to the current cycle.
     integer(int_64) :: n_reports_blocked = 0_int_64
-    ![review] - VAN: Can this be deleted now that reblock_data_t exists?
-! [todo] An alternative would be to have a reblock_data_t - something like
-!   type reblock_data_t
-!       integer :: n_blocks
-!       real(p) :: data_accumulator
-!       real(p) :: sum_of_blocks
-!       real(p) :: sum_of_block_squares
-!   end type reblock_data_t
-!
-!   type(reblock_data_t), allocatable :: reblock_data(:,:)
-!
-!  [/todo]
-
-! [todo] The following sounds like it ought to be an enum (as with the ones below)
     ! reblock_data_t type array with reblock_data(datatype, log_2(block_size).
     ! datatypes are dt_numerator, dt_denominator, dt_shift, dt_proj_energy (see
     ! enum above).
@@ -610,24 +595,24 @@ type blocking_t
     ! datatypes are dt_numerator, dt_denominator, dt_shift, dt_proj_energy (see
     ! enum above).
     real(p), allocatable :: block_mean(:,:), block_std(:,:), block_cov(:)
-    ! [review] - VAN: Maybe B should be defined here.
     ! Optimal block is the smallest block that satisfies the condition
-    ! B^3 > 2*(B*(number of blocks)) * (std(B)/std(0)) ^ 4
+    ! B^3 > 2*(B*(number of blocks)) * (std(B)/std(0)) ^ 4, where B is the blocksize
+    ! (number of data points in a block).
     ! optimal_mean(datatype) = block_mean of the block with the optimal block
     ! size for the datatype. For projected energy, the block size that is
     ! larger between dt_numerator and dt_denominator (see enum above) is used.
-    real(p) :: optimal_mean(4) = 0
+    real(p) :: optimal_mean(4) = 0.0_p
     ! Optimal block is the smallest block that satisfies the condition
     ! B^3 > 2*(B*(number of blocks)) * (std(B)/std(0)) ^ 4
     ! optimal_std(data_type) = block_std of the block with the optimal block
     ! size for the datatype. For projected energy, the block size that is
     ! larger between dt_numerator and dt_denominator (see enum above) is used.
-    real(p) :: optimal_std(4) = 0
+    real(p) :: optimal_std(4) = 0.0_p
     ! Error in standard deviation calculated assuming that the blocks are normally
     ! distributed from central limit theorm. 1/(sqrt(2*(number of blocks - 1)))
     ! optimal_err(datatype) = Error in standard deviation of datatype.
     ! See enum above for datatypes.
-    real(p) :: optimal_err(4) = 0
+    real(p) :: optimal_err(4) = 0.0_p
     ! Report number from which the data for reblocking is collected.
     integer :: start_ireport = -1
     ! Arrays for saving the data for reblocking for the purpose of starting the
