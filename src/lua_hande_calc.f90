@@ -316,6 +316,7 @@ contains
         !       reference = { ... },
         !       logging = { ... },
         !       output = { ... },
+        !       blocking = { ... },
         !       qmc_state = qmc_state,
         !    }
 
@@ -334,7 +335,7 @@ contains
         use lua_hande_utils, only: warn_unused_args, register_timing
         use lua_hande_calc_utils, only: init_output_unit, end_output_unit
         use qmc_data, only: qmc_in_t, fciqmc_in_t, semi_stoch_in_t, restart_in_t, load_bal_in_t, &
-                            qmc_state_t, output_in_t
+                            qmc_state_t, output_in_t, blocking_in_t
         use logging, only: logging_in_t
         use reference_determinant, only: reference_t
         use system, only: sys_t
@@ -356,14 +357,15 @@ contains
         type(qmc_state_t), pointer :: qmc_state_restart, qmc_state_out
         type(logging_in_t) :: logging_in
         type(output_in_t) :: output_in
+        type(blocking_in_t) :: blocking_in
 
         logical :: have_restart_state
 
         integer :: opts, io_unit
         real :: t1, t2
-        character(10), parameter :: keys(10) = [character(10) :: 'sys', 'qmc', 'fciqmc', 'semi_stoch', 'restart', &
+        character(10), parameter :: keys(11) = [character(10) :: 'sys', 'qmc', 'fciqmc', 'semi_stoch', 'restart', &
                                                                 'load_bal', 'reference', 'qmc_state', 'logging', &
-                                                                'output']
+                                                                'output', 'blocking']
 
         call cpu_time(t1)
 
@@ -377,6 +379,7 @@ contains
 
         call read_qmc_in(lua_state, opts, qmc_in)
         call read_fciqmc_in(lua_state, opts, fciqmc_in)
+        call read_blocking_in(lua_state, opts, blocking_in)
         call read_semi_stoch_in(lua_state, opts, qmc_in, semi_stoch_in)
         call read_restart_in(lua_state, opts, restart_in)
         call read_load_bal_in(lua_state, opts, load_bal_in)
@@ -399,10 +402,10 @@ contains
 
         if (have_restart_state) then
             call do_fciqmc(sys, qmc_in, fciqmc_in, semi_stoch_in, restart_in, load_bal_in, io_unit, reference, logging_in, &
-                           qmc_state_out, qmc_state_restart)
+                           blocking_in, qmc_state_out, qmc_state_restart)
         else
             call do_fciqmc(sys, qmc_in, fciqmc_in, semi_stoch_in, restart_in, load_bal_in, io_unit, reference, logging_in, &
-                           qmc_state_out)
+                           blocking_in, qmc_state_out)
         end if
 
         call end_output_unit(output_in%out_filename, io_unit)
@@ -430,6 +433,7 @@ contains
         !       reference = { ... },
         !       logging = { ... },
         !       output = { ... },
+        !       blocking = { ... },
         !       qmc_state = qmc_state,
         !    }
 
@@ -447,7 +451,8 @@ contains
         use lua_hande_system, only: get_sys_t
         use lua_hande_utils, only: warn_unused_args, register_timing
         use lua_hande_calc_utils, only: init_output_unit, end_output_unit
-        use qmc_data, only: qmc_in_t, ccmc_in_t, semi_stoch_in_t, restart_in_t, load_bal_in_t, qmc_state_t, output_in_t
+        use qmc_data, only: qmc_in_t, ccmc_in_t, semi_stoch_in_t, restart_in_t, load_bal_in_t, &
+                            qmc_state_t, output_in_t, blocking_in_t
         use logging, only: logging_in_t
         use reference_determinant, only: reference_t
         use system, only: sys_t
@@ -470,12 +475,13 @@ contains
         type(qmc_state_t), pointer :: qmc_state_restart, qmc_state_out
         type(logging_in_t) :: logging_in
         type(output_in_t) :: output_in
+        type(blocking_in_t) :: blocking_in
 
         logical :: have_restart_state
         integer :: opts, io_unit
         real :: t1, t2
-        character(10), parameter :: keys(8) = [character(10) :: 'sys', 'qmc', 'ccmc', 'restart', 'reference', 'qmc_state', &
-                                                                'logging', 'output']
+        character(10), parameter :: keys(9) = [character(10) :: 'sys', 'qmc', 'ccmc', 'restart', 'reference', 'qmc_state', &
+                                                                'logging', 'output', 'blocking']
 
         call cpu_time(t1)
 
@@ -497,6 +503,8 @@ contains
             call end_excitations(sys%basis%excit_mask)
             call init_excitations(sys%basis)
         end if
+
+        call read_blocking_in(lua_state, opts, blocking_in)
         ! note that semi-stochastic is not (yet) available in CCMC.
         !call read_semi_stoch_in(lua_state, opts, qmc_in, semi_stoch_in)
         call read_restart_in(lua_state, opts, restart_in)
@@ -518,11 +526,11 @@ contains
         if (sys%aufbau_sym) call set_symmetry_aufbau(sys, io_unit)
 
         if (have_restart_state) then
-            call do_ccmc(sys, qmc_in, ccmc_in, semi_stoch_in, restart_in, load_bal_in, reference, logging_in, io_unit, &
-                            qmc_state_out, qmc_state_restart)
+            call do_ccmc(sys, qmc_in, ccmc_in, semi_stoch_in, restart_in, load_bal_in, reference, logging_in, blocking_in, &
+                            io_unit, qmc_state_out, qmc_state_restart)
         else
-            call do_ccmc(sys, qmc_in, ccmc_in, semi_stoch_in, restart_in, load_bal_in, reference, logging_in, io_unit, &
-                            qmc_state_out)
+            call do_ccmc(sys, qmc_in, ccmc_in, semi_stoch_in, restart_in, load_bal_in, reference, logging_in, blocking_in, &
+                            io_unit, qmc_state_out)
         end if
 
         ! Reset bit string length for reuse.
@@ -976,6 +984,7 @@ contains
         call aot_get_val(qmc_in%quasi_newton, err, lua_state, qmc_table, 'quasi_newton')
         call aot_get_val(qmc_in%quasi_newton_threshold, err, lua_state, qmc_table, 'quasi_newton_threshold')
         call aot_get_val(qmc_in%quasi_newton_value, err, lua_state, qmc_table, 'quasi_newton_value')
+
 
         if (aot_exists(lua_state, qmc_table, 'reference_target')) then
             qmc_in%target_reference = .true.
@@ -1758,6 +1767,76 @@ contains
         end if
 
     end subroutine read_output_in_t
+
+    subroutine read_blocking_in(lua_state, opts, blocking_in)
+
+        ! Read in a blocking table (if it exists) to a blocking_in_t object.
+
+        ! blocking = {
+        !    blocking_on_the_fly = true/false,
+        !    start_save_frequency = log_2(nreports),
+        !    start_point_number = N,
+        !    filename = filename,
+        !    start_point = niterations,
+        !    error_limit = error_limit,
+        !    blocks_used = blocks_used,
+        !    min_blocks_used = min_blocks_used
+        ! }
+
+        ! If start_save_frequency, start_point_number, error_limit, min ratio and start_point
+        ! is not specified default value is used.
+
+        ! In/Out:
+        !    lua_state: flu/Lua state to which the HANDE API is added.
+        ! In:
+        !    opts: handle of the table containing the blocking table.
+        ! Out:
+        !    blocking_in: blocking_in_t object containing the input options for
+        !    blocking on the fly.
+
+        use flu_binding, only: flu_State
+        use aot_table_module, only: aot_exists, aot_table_open, aot_table_close
+        use aot_table_module, only: aot_get_val
+
+        use lua_hande_utils, only: warn_unused_args
+        use qmc_data, only: blocking_in_t
+
+        type(flu_State), intent(inout) :: lua_state
+        integer, intent(in) :: opts
+        type(blocking_in_t), intent(out) :: blocking_in
+
+        integer :: err, blocking_table
+        character(24),parameter :: keys(8) = [character(24) ::  'blocking_on_the_fly', 'start_save_frequency',   &
+                                                                'start_point_number', 'filename', 'start_point', &
+                                                                'error_limit', 'blocks_used', 'min_blocks_used']
+
+        if (aot_exists(lua_state, opts, 'blocking')) then
+
+            call aot_table_open(lua_state, opts, blocking_table, 'blocking')
+
+            call aot_get_val(blocking_in%blocking_on_the_fly, err, lua_state, blocking_table, 'blocking_on_the_fly')
+
+            call aot_get_val(blocking_in%start_save_frequency, err, lua_state, blocking_table, 'start_save_frequency')
+
+            call aot_get_val(blocking_in%start_point_number, err, lua_state, blocking_table, 'start_point_number')
+
+            call aot_get_val(blocking_in%filename, err, lua_state, blocking_table, 'filename')
+
+            call aot_get_val(blocking_in%start_point, err, lua_state, blocking_table, 'start_point')
+
+            call aot_get_val(blocking_in%error_limit, err, lua_state, blocking_table, 'error_limit')
+
+            call aot_get_val(blocking_in%blocks_used, err, lua_state, blocking_table, 'blocks_used')
+
+            call aot_get_val(blocking_in%min_blocks_used, err, lua_state, blocking_table, 'min_blocks_used')
+
+            call warn_unused_args(lua_state, keys, blocking_table)
+
+            call aot_table_close(lua_state, blocking_table)
+
+        end if
+
+    end subroutine read_blocking_in
 
     subroutine get_qmc_state(lua_state, have_qmc_state, qmc_state)
 

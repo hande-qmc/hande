@@ -15,6 +15,7 @@ Full Configuration Interaction Quantum Monte Carlo
         load_bal = { ... },
         logging = { ... },
         output = { ... },
+        blocking = { ... },
         qmc_state = qmc_state,
     }
 
@@ -92,6 +93,12 @@ Options
 
     Further options to enable direction of calculation output to a different file.
     See :ref:`output_table` for more information.
+``blocking``
+    type: lua table.
+
+    Optional.
+
+    Further options to switch on and control blocking on the fly. See :ref:`blocking_table`.
 ``qmc_state``
     type: qmc_state object.
 

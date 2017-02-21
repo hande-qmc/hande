@@ -177,7 +177,7 @@ contains
         ! applies on the reference determinant.
 
         ! Quasinewtwon approaches scale this death step, but doing this naively
-        ! would break population control.  Instead, we split H-S into 
+        ! would break population control.  Instead, we split H-S into
         ! (H - E_proj) + (E_proj - S).
         ! The former is scaled and produces the step.  The latter effects the population control.
 
@@ -251,7 +251,7 @@ contains
                 KiiAi = (sc0_ptr(sys, cdet%f) - sc0_ptr(sys, cluster%excitors(1)%f) &
                                 - sc0_ptr(sys, cluster%excitors(2)%f) + qs%ref%H00)*cluster%amplitude
                 ! (this is scaled for quasinewton approaches)
-                KiiAi = KiiAi*invdiagel                                             
+                KiiAi = KiiAi*invdiagel
             case default
                 ! At most two cluster operators can be linked to the diagonal
                 ! part of H so this must be an unlinked cluster

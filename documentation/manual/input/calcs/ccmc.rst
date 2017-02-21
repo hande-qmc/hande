@@ -13,6 +13,7 @@ Coupled Cluster Monte Carlo
         reference = { ... },
         logging = { ... },
         output = { ... },
+        blocking = { ... },
         qmc_state = qmc_state,
     }
 
@@ -72,6 +73,12 @@ Options
 
     Further options to enable direction of calculation output to a different file.
     See :ref:`output_table` for more information.
+``blocking``
+    type: lua table.
+
+    Optional.
+
+    Further options to switch on and control blocking on the fly. See :ref:`blocking_table`.
 ``qmc_state``
     type: qmc_state object.
 
@@ -190,7 +197,7 @@ ccmc options
 
     .. warning::
 
-    This algorithm gives drastically different behaviour and is a subject of current
-    research. As such, the situations in which this is the optimal approach are not yet
-    entirely clear (benchmarking is underway). In addition, it is not currently confirmed
-    to be compatible with propagation of the linked coupled cluster equations.
+        This algorithm gives drastically different behaviour and is a subject of current
+        research. As such, the situations in which this is the optimal approach are not yet
+        entirely clear (benchmarking is underway). In addition, it is not currently confirmed
+        to be compatible with propagation of the linked coupled cluster equations.

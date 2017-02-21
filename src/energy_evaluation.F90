@@ -36,6 +36,7 @@ enum, bind(c)
     enumerator :: rdm_energy_ind
     enumerator :: rdm_trace_ind
     enumerator :: nattempts_ind
+    enumerator :: reblock_done_ind
     enumerator :: nparticles_start_ind ! ensure this is always the last enumerator
 end enum
 
@@ -330,6 +331,7 @@ contains
         if (present(error)) then
             if (error) rep_loop_loc(error_ind) = 1.0_p
         end if
+        if (qs%reblock_done) rep_loop_loc(reblock_done_ind) = 1.0_p
 
         offset = nparticles_start_ind-1 + iproc*qs%psip_list%nspaces
         if (present(spawn_elsewhere)) then
@@ -457,6 +459,8 @@ contains
         if (present(error)) then
             error = abs(rep_loop_sum(error_ind)) > depsilon
         end if
+
+        qs%reblock_done = abs(rep_loop_sum(reblock_done_ind)) > depsilon
 
         do i = 1, ntypes
             nparticles_proc(i,:nprocs) = rep_loop_sum(nparticles_start_ind-1+i::ntypes)

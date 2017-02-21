@@ -787,7 +787,7 @@ contains
         !    determ: The deterministic space being used, as required for
         !        semi-stochastic calculations.
 
-        ! WARNIGN: all spawn_t objects (bar the spawn argument provided) which operate
+        ! WARNING: all spawn_t objects (bar the spawn argument provided) which operate
         ! on the same particle_t object must be updated with the proc_info from the
         ! master copy (par_info%load%proc_map).  It is the programmer's responsibility
         ! to ensure this happens.
@@ -945,6 +945,8 @@ contains
             semi_stoch_start_it = semi_stoch_shift_it + iteration + 1
 
         call calc_interact(comms_found, out_unit, soft_exit, qs)
+
+        if (qs%reblock_done) soft_exit = .true.
 
     end subroutine end_report_loop
 

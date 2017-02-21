@@ -10,7 +10,7 @@ implicit none
 contains
 
     subroutine do_fciqmc(sys, qmc_in, fciqmc_in, semi_stoch_in, restart_in, load_bal_in, io_unit, &
-                         reference_in, logging_in, qs, qmc_state_restart)
+                         reference_in, logging_in, blocking_in, qs, qmc_state_restart)
 
         ! Run the FCIQMC or initiator-FCIQMC algorithm starting from the initial walker
         ! distribution using the timestep algorithm.
@@ -64,14 +64,18 @@ contains
                               write_memcheck_report
         use qmc_data, only: qmc_in_t, fciqmc_in_t, semi_stoch_in_t, restart_in_t, load_bal_in_t, empty_determ_space, &
                             qmc_state_t, annihilation_flags_t, semi_stoch_separate_annihilation, qmc_in_t_json,      &
-                            fciqmc_in_t_json, semi_stoch_in_t_json, restart_in_t_json, load_bal_in_t_json
+                            fciqmc_in_t_json, semi_stoch_in_t_json, restart_in_t_json, load_bal_in_t_json, &
+                            blocking_t, blocking_in_t, blocking_in_t_json
         use reference_determinant, only: reference_t, reference_t_json
-        use check_input, only: check_qmc_opts, check_fciqmc_opts, check_load_bal_opts
+        use check_input, only: check_qmc_opts, check_fciqmc_opts, check_load_bal_opts, check_blocking_opts
         use hamiltonian_data
         use energy_evaluation, only: get_sanitized_projected_energy
 
         use logging, only: init_logging, end_logging, prep_logging_mc_cycle, write_logging_calc_fciqmc, &
                             logging_in_t, logging_t, logging_in_t_json, logging_t_json
+        use blocking, only: write_blocking_report_header, allocate_blocking, do_blocking, deallocate_blocking, write_blocking_report
+        use utils, only: get_free_unit
+        use report, only: write_date_time_close
 
         type(sys_t), intent(in) :: sys
         type(qmc_in_t), intent(in) :: qmc_in
@@ -82,6 +86,7 @@ contains
         type(reference_t), intent(in) :: reference_in
         type(qmc_state_t), intent(inout), optional :: qmc_state_restart
         type(qmc_state_t), intent(out), target :: qs
+        type(blocking_in_t), intent(in) :: blocking_in
 
         type(logging_in_t), intent(in) :: logging_in
         integer, intent(in) :: io_unit
@@ -115,6 +120,10 @@ contains
         real :: t1, t2
         logical :: update_tau, restarting, imag
 
+        type(blocking_t) :: bl
+        integer :: iunit
+        integer :: date_values(8)
+
         if (parent) then
             write (io_unit,'(1X,"FCIQMC")')
             write (io_unit,'(1X,"------",/)')
@@ -126,6 +135,7 @@ contains
             call check_qmc_opts(qmc_in, sys, .not.present(qmc_state_restart), restarting)
             call check_fciqmc_opts(sys, fciqmc_in)
             call check_load_bal_opts(load_bal_in)
+            call check_blocking_opts(blocking_in, restart_in)
         end if
 
         ! Initialise data.
@@ -145,6 +155,7 @@ contains
             call fciqmc_in_t_json(js, fciqmc_in)
             call semi_stoch_in_t_json(js, semi_stoch_in)
             call restart_in_t_json(js, restart_in, uuid_restart)
+            call blocking_in_t_json(js, blocking_in)
             call load_bal_in_t_json(js, load_bal_in)
             call reference_t_json(js, qs%ref, sys)
             call logging_in_t_json(js, logging_in)
@@ -203,6 +214,14 @@ contains
         end if
         ! Initialise timer.
         call cpu_time(t1)
+        ! Allocate arrays needed for reblock analysis
+        if (blocking_in%blocking_on_the_fly) call allocate_blocking(qmc_in, blocking_in, bl)
+
+        if (parent .and. blocking_in%blocking_on_the_fly) then
+            iunit = get_free_unit()
+            open(iunit, file=blocking_in%filename, status='unknown')
+            call write_blocking_report_header(iunit)
+        end if
 
         do ireport = 1, qmc_in%nreport
 
@@ -335,6 +354,8 @@ contains
                 if (bloom_stats%nblooms_curr > 0) call bloom_stats_warning(bloom_stats, io_unit=io_unit)
                 call write_qmc_report(qmc_in, qs, ireport, nparticles_old, t2-t1, .false., &
                                         fciqmc_in%non_blocking_comm, io_unit=io_unit, cmplx_est=sys%read_in%comp)
+
+                if (blocking_in%blocking_on_the_fly) call do_blocking(bl, qs, qmc_in, ireport, iter, iunit, blocking_in)
             end if
 
             ! Update the time for the start of the next iteration.
@@ -354,6 +375,10 @@ contains
 
         end do
 
+        if (blocking_in%blocking_on_the_fly) call deallocate_blocking(bl)
+        if (blocking_in%blocking_on_the_fly .and. parent) call date_and_time(VALUES=date_values)
+        if (blocking_in%blocking_on_the_fly .and. parent) call write_date_time_close(iunit, date_values)
+
         if (fciqmc_in%non_blocking_comm) call end_non_blocking_comm(sys, rng, qmc_in, annihilation_flags, ireport, &
                                                                     qs, qs%spawn_store%spawn_recv,  req_data_s,  &
                                                                     qs%par_info%report_comm%request, t1, nparticles_old, &
@@ -368,6 +393,7 @@ contains
             else
                 call load_balancing_report(pl%nparticles, pl%nstates, qmc_in%use_mpi_barriers, spawn%mpi_time, io_unit=io_unit)
             end if
+        if (parent .and. blocking_in%blocking_on_the_fly .and. soft_exit) call write_blocking_report(bl, qs)
         end associate
         call write_memcheck_report(qs%spawn_store%spawn, io_unit=io_unit)
 

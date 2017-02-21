@@ -60,6 +60,21 @@ enum, bind(c)
     enumerator :: ci_determ_space
 end enum
 
+enum, bind(c)
+    ! Numerator of the final expression for the projected energy. i.e. \sum H_0j
+    ! N_j.
+    enumerator :: dt_numerator = 1
+    ! Denominator of the final expression for the projected energy. i.e.
+    ! reference population.
+    enumerator :: dt_denominator
+    ! Shift.
+    enumerator :: dt_shift
+    ! Projected energy calculated from the ratio of dt_numerator and
+    ! dt_denominator.
+    enumerator :: dt_proj_energy
+end enum
+
+
 ! --- QMC input ---
 
 type qmc_in_t
@@ -273,6 +288,38 @@ type output_in_t
     ! of calculation output file (if not to stout).
     logical :: reprint_sys_info = .true.
 end type output_in_t
+
+type blocking_in_t
+    ! Enable blocking on the fly.
+    logical :: blocking_on_the_fly = .false.
+    ! log2 of the frequency at which the start point is saved. If
+    ! negative, the default value is used. Default is the nearest integer to the
+    ! log2(nreports) - 8.
+    integer :: start_save_frequency = -1
+    ! Number of start points that is to be saved. If negative, the default value
+    ! is used. The default is the integer part of nreports/2^(start_save_frequency).
+    integer :: start_point_number = -1
+    ! Name blocking on the fly output file.
+    character(255) :: filename = 'BLOCKING'
+    ! The number of iteration from which the data for blocking analysis is
+    ! collected. If negative, the default value is used. Default is to start
+    ! collecting data once vary_shift is true.
+    integer :: start_point = -1
+    ! Limit of the sum of error in error and standard deviation of projected
+    ! energy. If this value is reached calculation is terminated. Default = 0
+    real(p) :: error_limit = 0
+! [review] - AJWT: [also see docs].  Not entirely clear what this means.
+    ! Minimum number of blocks used to terminate the calculation.
+    ! The blocking analysis is more reliable with more blocks used.
+    ! The calculation terminated if the standard error of projected energy is
+    ! below the error_limit and the number_of_blocks used is above
+    ! min_blocks_used. Default = 10
+    real(p) :: min_blocks_used = 10.0_p
+    ! The lower limit of the number_of_blocks used to terminate the calculation.
+    ! The calculation is terminated if this condition is met irrelevant of
+    ! the standard error of the projected energy. Default = (huge)
+    real(p) :: blocks_used = huge(1.0_p)
+end type
 
 ! --- Parallel info ---
 
@@ -500,6 +547,101 @@ type spawned_particle_t
     real(p) :: rspawn
 end type spawned_particle_t
 
+type reblock_data_t
+    ! Data type containing the information for the main array used for reblock
+    ! analysis. The information contained in this data type is for a given block
+    ! size.
+
+    ! Number of blocks of a given block size.
+    integer :: n_blocks = 0
+    ! Sums of data are saved here until sufficient size is reached.
+    real(p) :: data_accumulator = 0.0_p
+    ! Sums of data of a given block size.
+    real(p) :: sum_of_blocks = 0.0_p
+    ! Sums of squares of data of a give block size.
+    real(p) :: sum_of_block_squares = 0.0_p
+
+end type reblock_data_t
+
+type blocking_t
+    ! Log_2 of maximum block size.
+    integer :: lg_max = 0
+    ! Number of start points to start reblocking from.
+    integer :: n_saved_startpoints = 0
+    ! Frequency at which the data for the start point is saved. In terms of the number of reports
+    integer(int_64) :: save_fq = 0_int_64
+    ! Number of report cycles from the start of all blocking to the current cycle.
+    integer(int_64) :: n_reports_blocked = 0_int_64
+    ! reblock_data_t type array with reblock_data(datatype, log_2(block_size).
+    ! datatypes are dt_numerator, dt_denominator, dt_shift, dt_proj_energy (see
+    ! enum above).
+    type(reblock_data_t), allocatable :: reblock_data(:,:)
+    ! Product between dt_numerator and dt_denominator for different block sizes.
+    ! data_product(log_2(block_size)).
+    real(p), allocatable :: data_product(:)
+    ! Arrays for calculation of optimal mean and standard deviation at different
+    ! start points. reblock_data and data_product are temporarily copied before
+    ! the calculation on them is carried out.
+    type(reblock_data_t), allocatable :: reblock_data_2(:,:)
+    real(p), allocatable :: data_product_2(:)
+    ! Arrays containing the mean, standard deviation and covariance of all block
+    ! sizes
+    ! block_mean(datatype, log2(blocksize)) = mean of different block sizes of
+    ! datatype.
+    ! block_std(datatype, log2(blocksize)) = standard deviation of different
+    ! block sizes of datatype.
+    ! block_cov(log2(blocksize)) = covariance of the two data types of different
+    ! block sizes.
+    ! datatypes are dt_numerator, dt_denominator, dt_shift, dt_proj_energy (see
+    ! enum above).
+    real(p), allocatable :: block_mean(:,:), block_std(:,:), block_cov(:)
+    ! Optimal block is the smallest block that satisfies the condition
+    ! B^3 > 2*(B*(number of blocks)) * (std(B)/std(0)) ^ 4, where B is the blocksize
+    ! (number of data points in a block).
+    ! optimal_mean(datatype) = block_mean of the block with the optimal block
+    ! size for the datatype. For projected energy, the block size that is
+    ! larger between dt_numerator and dt_denominator (see enum above) is used.
+    real(p) :: optimal_mean(4) = 0.0_p
+    ! Optimal block is the smallest block that satisfies the condition
+    ! B^3 > 2*(B*(number of blocks)) * (std(B)/std(0)) ^ 4
+    ! optimal_std(data_type) = block_std of the block with the optimal block
+    ! size for the datatype. For projected energy, the block size that is
+    ! larger between dt_numerator and dt_denominator (see enum above) is used.
+    real(p) :: optimal_std(4) = 0.0_p
+    ! Error in standard deviation calculated assuming that the blocks are normally
+    ! distributed from central limit theorm. 1/(sqrt(2*(number of blocks - 1)))
+    ! optimal_err(datatype) = Error in standard deviation of datatype.
+    ! See enum above for datatypes.
+    real(p) :: optimal_err(4) = 0.0_p
+    ! Report number from which the data for reblocking is collected.
+    integer :: start_ireport = -1
+    ! Arrays for saving the data for reblocking for the purpose of starting the
+    ! reblock from a different start position in the middle of a calculation.
+    ! The frequency and the number of reblock_data and data_product arrays saved
+    ! is determined by n_saved_startpoints and save_fq.
+    ! reblock_save(:,:,start_point) = copy of reblock_data at the report
+    ! cycle (start_point * save_fq).
+    ! product_save(:,start_point) = copy of data_product at the report cycle
+    ! (start_point * save_fq).
+    type(reblock_data_t), allocatable :: reblock_save(:,:,:)
+    real(p), allocatable :: product_save(:,:)
+    ! (start_point*save_fq) indicates the number of reports from which the reblock analysis
+    ! is started from. This is varied during the calculation to minimise the
+    ! fractional error weighted by the 1/sqrt(number of data points)
+    integer :: start_point = 0
+    ! Array containing the different values of fractional error weighted by the
+    ! 1/sqrt(number of data points) for each of the possible start positions.
+    real(p), allocatable :: err_compare(:,:)
+    ! log_2(block_size) of the optimal block sizes for different datatypes
+    ! excluding dt_proj_energy. (see enum above)
+    integer :: optimal_size(3) = 1
+    ! Number of saved reblock_data type arrays at a given iteration.
+    integer :: n_saved = 1
+    ! Optimal blocksize saved for the calculation of number of blocks used.
+    integer :: opt_bl_size=0
+
+end type blocking_t
+
 type estimators_t
     ! Population of walkers on reference determinant/trace of density matrix.
     real(p) :: D0_population = 0.0_p
@@ -605,6 +747,9 @@ type qmc_state_t
     ! to determine the processor location of a particle.  It is the programmer's
     ! responsibility to ensure these are kept up to date...
     type(parallel_t) :: par_info
+    ! Need additional parameter to identify the cause of calculation termination;
+    ! we may want to print a different message depending upon the cause.
+    logical :: reblock_done = .false.
     type(estimators_t), allocatable :: estimators(:)
 end type qmc_state_t
 
@@ -853,6 +998,37 @@ contains
         call json_object_end(js, terminal)
 
     end subroutine restart_in_t_json
+
+    subroutine blocking_in_t_json(js, blocking, terminal)
+
+        ! Serialise a blocking_in_t object in JSON format.
+
+        ! In/Out:
+        !   js: json_out_t controlling the output unit and handling JSON internal
+        !   state. Unchanged on output.
+        ! In:
+        !   blocking: blocking_in_t object containing blocking input values
+        !   (including any defaults set).
+        !   terminal (optional): if true, this is the last entry in the
+        !   enclosing JSON object. Default: false.
+        use json_out
+
+        type(json_out_t), intent(inout) :: js
+        type(blocking_in_t), intent(in) :: blocking
+        logical, intent(in), optional :: terminal
+
+        call json_object_init(js, 'blocking')
+        call json_write_key(js, 'blocking_on_the_fly', blocking%blocking_on_the_fly)
+        call json_write_key(js, 'start_save_frequency', blocking%start_save_frequency)
+        call json_write_key(js, 'start_point_number', blocking%start_point_number)
+        call json_write_key(js, 'filename', blocking%filename)
+        call json_write_key(js, 'start_point', blocking%start_point)
+        call json_write_key(js, 'error_limit', blocking%error_limit)
+        call json_write_key(js, 'blocks_used', blocking%blocks_used)
+        call json_write_key(js, 'min_blocks_used', blocking%min_blocks_used, .true.)
+        call json_object_end(js, terminal)
+
+    end subroutine blocking_in_t_json
 
     subroutine load_bal_in_t_json(js, lb, terminal)
 

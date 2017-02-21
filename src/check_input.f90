@@ -366,4 +366,36 @@ contains
             'Additional space allocated in bit strings for no reason. Something has gone wrong.')
     end subroutine check_ccmc_opts
 
+    subroutine check_blocking_opts(blocking_in, restart_in)
+
+        ! Check block on the fly input options.
+        ! The majority of these can't be sanity-checked as a nonsensical (ie. negative)
+        ! value is used to indicate that we should default to suitable values.
+
+        ! In:
+        !   blocking_in: Reblocking on the fly input options.
+        !   restart_in: Calculation restarting input options.
+
+        use qmc_data, only: blocking_in_t, restart_in_t
+        use errors, only: warning
+
+        type(blocking_in_t), intent(in) :: blocking_in
+        type(restart_in_t), intent(in) :: restart_in
+
+        character(*), parameter :: this = 'check_blocking_opts'
+
+        if (blocking_in%blocking_on_the_fly) then
+            if (restart_in%read_restart) then
+                call warning(this, 'Restarting from restart file while using reblocking. &
+                        &No reblocking data from before restart has been saved. If this annoys you send patches.')
+            end if
+
+            if (restart_in%write_restart) then
+                call warning(this, 'Writing a restart file from a calculation using on-the-fly reblocking. &
+                        &No reblocking data has been saved. If this annoys you send patches.')
+            end if
+        end if
+
+    end subroutine check_blocking_opts
+
 end module check_input
