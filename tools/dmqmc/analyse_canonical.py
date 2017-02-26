@@ -72,10 +72,10 @@ filename : list of strings
                 warnings.warn('Beta values in input files not consistent.')
 
     if args.multi_sim:
-        results = pd.concat([pyhande.canonical.estimates(m, d) for (m, d)
-                             in zip(metadata, data)])
+        results = pd.DataFrame([pyhande.canonical.estimates(m, d) for (m, d)
+                                in zip(metadata, data)])
     else:
-        results = pyhande.canonical.estimates(metadata[0], data)
+        results = pd.DataFrame(pyhande.canonical.estimates(metadata[0], data)).T
 
     try:
         float_fmt = '{0:-#.8e}'.format
