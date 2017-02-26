@@ -243,7 +243,7 @@ filtered : list of (dict, :class:`pandas.DataFrame` or :class:`pandas.Series`)
     desired calculations.
 '''
 
-    calc_filter = lambda md: any(md['calc_type'] for calc in calc_types)
+    calc_filter = lambda md: md['calc_type'] in calc_types
     filtered = [(md, calc) for (md, calc) in outputs if calc_filter(md)]
     return filtered
 
