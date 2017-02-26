@@ -1,5 +1,5 @@
-Scriptable Input
-================
+Cookbook
+========
 
 Having lua control a HANDE simulation allows for some pretty clean ways to run complicated
 simulations. Here we will list some examples.
@@ -20,3 +20,12 @@ typically much more expensive.
 
 .. literalinclude:: examples/canonical_twist.lua
     :language: lua
+
+The output file can then be analysed to obtain the canonical total energy estimate for each
+twist angle using
+
+.. code-block:: bash
+
+    $ analyse_canonical.py --sim canonical_twist.out
+
+where ``canonical_twist.out`` is the output filename.
