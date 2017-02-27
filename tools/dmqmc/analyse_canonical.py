@@ -85,8 +85,10 @@ filename : list of strings
         # python 2.6..
         float_fmt = '{0:-.8e}'.format
 
-    print(results.to_string(index=False, float_format=float_fmt))
-
+    # Work around bug in to_string alignment with index=False
+    lines = results.to_string(float_format=float_fmt).split('\n')
+    index_wdith = max([len(str(s)) for s in results.index]) + 1
+    print('\n'.join(l[index_wdith:] for l in lines))
 
 if __name__ == '__main__':
 
