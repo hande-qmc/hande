@@ -124,7 +124,7 @@ metadata : list of dict
     # Concat all QMC data (We did say 'lazy', so assumptions are being made...)
     data = []
     metadata = []
-    for (md, df) in filter_calcs(hande_out, ('FCIQMC', 'CCMC')):
+    for (md, df) in filter_calcs(hande_out, ('FCIQMC', 'CCMC', 'Simple FCIQMC')):
         if reweight_history > 0:
             df = pyhande.weight.reweight(df, md['qmc']['ncycles'],
                 md['qmc']['tau'], reweight_history, mean_shift,
@@ -243,7 +243,7 @@ filtered : list of (dict, :class:`pandas.DataFrame` or :class:`pandas.Series`)
     desired calculations.
 '''
 
-    calc_filter = lambda md: any(md['calc_type'] for calc in calc_types)
+    calc_filter = lambda md: md['calc_type'] in calc_types
     filtered = [(md, calc) for (md, calc) in outputs if calc_filter(md)]
     return filtered
 
