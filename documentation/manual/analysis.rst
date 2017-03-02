@@ -59,7 +59,7 @@ Canonical Total Energy MC
 
 The configurations and resulting estimates in a canonical total energy
 calculation are statistically independent and therefore no blocking analysis is
-required. The ``analyse_canonical.py`` script is available in ``tools/dmqmc/`` which
+required. The ``analyse_canonical.py`` script is available in ``tools/canonical_energy/`` which
 performs the appropriate averaging and standard error analysis on the output file
 using the pyhande suite.
 

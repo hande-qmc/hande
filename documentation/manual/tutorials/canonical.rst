@@ -31,7 +31,7 @@ Inspecting the :download:`output <calcs/canonical_estimates/canonical_estimates.
 see a number of columns for various estimates including the kinetic, potential, internal,
 free energy and entropy - precise definitions of everything can be found in the output
 file.  The data can be analysed to find the mean and standard error using the
-``analyse_canonical.py`` script in the ``tools/dmqmc`` subdirectory:
+``analyse_canonical.py`` script in the ``tools/canonical_energy`` subdirectory:
 
 .. code-block:: bash
 

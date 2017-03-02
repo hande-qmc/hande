@@ -21,7 +21,7 @@ nsamples : int
 
 Returns
 -------
-results : :class:`pandas.DataFrame`
+results : :class:`pandas.Series`
     Averaged Hartree-Fock estimates along with error estimates.
 '''
 
@@ -31,16 +31,16 @@ results : :class:`pandas.DataFrame`
         ('U_HF', r'Tr(H\rho_HF)'),
     ])
 
-    num = pd.DataFrame()
-    trace = pd.DataFrame()
-    results = pd.DataFrame()
-    trace['mean'] = [means[r'Tr(\rho_HF)']]
-    trace['standard error'] = (
-            [np.sqrt(covariances[r'Tr(\rho_HF)'][r'Tr(\rho_HF)']/nsamples)])
+    num = pd.Series({'mean': 0.0, 'standard error': 0.0})
+    trace = pd.Series({
+        'mean': means[r'Tr(\rho_HF)'],
+        'standard error': np.sqrt(covariances[r'Tr(\rho_HF)'][r'Tr(\rho_HF)']/nsamples)
+    })
+    results = {}
 
     for (k, v) in observables.items():
-        num['mean'] = [means[v]]
-        num['standard error'] = [np.sqrt(covariances[v][v]/nsamples)]
+        num['mean'] = means[v]
+        num['standard error'] = np.sqrt(covariances[v][v]/nsamples)
         cov_ab = covariances[v][r'Tr(\rho_HF)']
 
         stats = pyblock.error.ratio(num, trace, cov_ab, nsamples)
@@ -48,7 +48,7 @@ results : :class:`pandas.DataFrame`
         results[k] = stats['mean']
         results[k+'_error'] = stats['standard error']
 
-    return results
+    return pd.Series(results)
 
 
 def estimates(metadata, data):
@@ -64,7 +64,7 @@ data : :class:`pandas.DataFrame`
 
 Returns
 -------
-results : :class:`pandas.DataFrame`
+results : :class:`pandas.Series`
     Averaged estimates.
 '''
 
@@ -95,31 +95,35 @@ results : :class:`pandas.DataFrame`
     xm = data.sub(means, axis=1)
     covariances = 1.0/(1.0-w2) * xm.mul(w, axis=0).T.dot(xm)
 
-    results = pd.DataFrame()
     if 'beta' in metadata:
         # New, richer JSON-based metadata.
-        results['Beta'] = [metadata['beta']]
+        beta = metadata['beta']
     else:
         # Hope to find it in the input file...
-        results['Beta'] = pyhande.legacy.extract_input(metadata, 'beta')
-    # Free estimates contain no denominator so the error is
-    # just the standard error.
-    results['U_0'] = [means['U_0']]
-    results['U_0_error'] = [np.sqrt(covariances['U_0']['U_0']/ncycles)]
-    results['T_0'] = [means['<T>_0']]
-    results['T_0_error'] = [np.sqrt(covariances['<T>_0']['<T>_0']/ncycles)]
-    results['V_0'] = [means['<V>_0']]
-    results['V_0_error'] = [np.sqrt(covariances['<V>_0']['<V>_0']/ncycles)]
+        beta = pyhande.legacy.extract_input(metadata, 'beta')
+    results = {
+        'Beta': beta,
+        # Free estimates contain no denominator so the error is
+        # just the standard error.
+        'U_0': means['U_0'],
+        'U_0_error': np.sqrt(covariances['U_0']['U_0']/ncycles),
+        'T_0': means['<T>_0'],
+        'T_0_error': np.sqrt(covariances['<T>_0']['<T>_0']/ncycles),
+        'V_0': means['<V>_0'],
+        'V_0_error': np.sqrt(covariances['<V>_0']['<V>_0']/ncycles),
+    }
     if 'N_ACC/N_ATT' in data.columns:
-        results['N_ACC/N_ATT'] = [means['N_ACC/N_ATT']]
-        results['N_ACC/N_ATT_error'] = (
-                [np.sqrt(covariances['N_ACC/N_ATT']['N_ACC/N_ATT']/ncycles)]
-        )
         if metadata['fermi_temperature']:
-            beta = results['Beta'][0] / metadata['system']['ueg']['E_fermi']
+            beta = results['Beta'] / metadata['system']['ueg']['E_fermi']
         else:
-            beta = results['Beta'][0]
-        correction = [metadata['free_energy_corr']]
+            beta = results['Beta']
+        correction = metadata['free_energy_corr']
+        results.update({
+            'N_ACC/N_ATT': means['N_ACC/N_ATT'],
+            'N_ACC/N_ATT_error': (
+                np.sqrt(covariances['N_ACC/N_ATT']['N_ACC/N_ATT']/ncycles)
+            ),
+        })
         results['F_0'] = (
                 (-1.0/beta)*np.log(results['N_ACC/N_ATT']) + correction
         )
@@ -135,11 +139,10 @@ results : :class:`pandas.DataFrame`
                                 results['F_0_error']**2.0 -
                                 2.0*covariances['N_ACC/N_ATT']['<T>_0'] /
                                 (ncycles*results['N_ACC/N_ATT']*beta)))
+    results = pd.Series(results)
 
     # Take care of the correlation between numerator and denominator
     # in Hartree-Fock estimates.
-    results = (
-            results.join(analyse_hf_observables(means, covariances, ncycles))
-    )
+    results = results.append(analyse_hf_observables(means, covariances, ncycles))
 
     return results
