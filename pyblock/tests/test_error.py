@@ -41,9 +41,19 @@ class ErrorTests(unittest.TestCase):
         benchmark = pd.Series({'mean':-0.00561329, 'standard error':0.01576336})
         for key in ('mean', 'standard error'):
             self.assertAlmostEqual(benchmark[key], product[key], 8)
+    def test_difference_single(self):
+        difference = pyblock.error.difference(self.reblock.ix[4,1], self.reblock.ix[4,2], self.cov_12[4], self.data_len[4])
+        benchmark = pd.Series({'mean':-0.27652270, 'standard error':0.17002344})
+        for key in ('mean', 'standard error'):
+            self.assertAlmostEqual(benchmark[key], difference[key], 8)
+    def test_addition_single(self):
+        addition = pyblock.error.addition(self.reblock.ix[4,1], self.reblock.ix[4,2], self.cov_12[4], self.data_len[4])
+        benchmark = pd.Series({'mean':0.23240407, 'standard error':0.06664526})
+        for key in ('mean', 'standard error'):
+            self.assertAlmostEqual(benchmark[key], addition[key], 8)
     def test_quad_raise(self):
         with self.assertRaises(ValueError):
-            pyblock.error._quadratic(self.reblock[1], self.reblock[2], self.cov_12, self.data_len, 2)
+            pyblock.error._quadratic(self.reblock[1], self.reblock[2], self.cov_12, self.data_len, True, 2)
 
 
 class ErrorFmtTests(unittest.TestCase):
