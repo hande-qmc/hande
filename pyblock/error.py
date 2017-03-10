@@ -44,7 +44,7 @@ ratio_stats : :class:`pandas.Series` or :class:`pandas.DataFrame`
     same index, otherwise a :class:`pandas.Series` is returned.
 '''
 
-    return _quadratic(stats_A, stats_B, cov_AB, data_len, -1)
+    return _quadratic(stats_A, stats_B, cov_AB, data_len, False, -1)
 
 def product(stats_A, stats_B, cov_AB, data_len):
     '''Calculate the mean and standard error of :math:`f = A \\times B`.
@@ -76,9 +76,73 @@ product_stats : :class:`pandas.Series` or :class:`pandas.DataFrame`
     same index, otherwise a :class:`pandas.Series` is returned.
 '''
 
-    return _quadratic(stats_A, stats_B, cov_AB, data_len, 1)
+    return _quadratic(stats_A, stats_B, cov_AB, data_len, False, 1)
 
-def _quadratic(stats_A, stats_B, cov_AB, data_len, sign):
+def difference(stats_A, stats_B, cov_AB, data_len):
+    '''Calculate the mean and standard error of :math:`f = A - B`.
+
+Parameters
+----------
+stats_A : :class:`pandas.Series` or :class:`pandas.DataFrame`
+    Statistics (containing at least the 'mean' and 'standard error' fields) for
+    variable :math:`A`.  The rows contain different values of these statistics
+    (e.g. from a reblocking analysis) if :class:`pandas.DataFrame` are passed.
+stats_B : :class:`pandas.Series` or :class:`pandas.DataFrame`
+    Similarly for variable :math:`B`.
+cov_AB : float or :class:`pandas.Series`
+    Covariance between variables `A and B.  If ``stats_A`` and ``stats_B`` are
+    :class:`pandas.DataFrame`, then this must be a :class:`pandas.Series`, with
+    the same index as ``stats_A`` and ``stats_B``.
+data_len : int or :class:`pandas.Series`
+    Number of data points ('observations') used to obtain the statistics given
+    in ``stats_A`` and ``stats_B``.  If ``stats_A`` and ``stats_B`` are
+    :class:`pandas.DataFrame`, then this must be a :class:`pandas.Series`, with
+    the same index as ``stats_A`` and ``stats_B``.
+
+Returns
+-------
+difference_stats : :class:`pandas.Series` or :class:`pandas.DataFrame`
+    Mean and standard error (and, if possible/relevant, optimal reblock
+    iteration) for :math:`f = A - B`.  If ``stats_A``, ``stats_B`` are
+    :class:`pandas.DataFrame`, this is a :class:`pandas.DataFrame` with the
+    same index, otherwise a :class:`pandas.Series` is returned.
+'''
+
+    return _quadratic(stats_A, stats_B, cov_AB, data_len, True, -1)
+
+def addition(stats_A, stats_B, cov_AB, data_len):
+    '''Calculate the mean and standard error of :math:`f = A \\plus B`.
+
+Parameters
+----------
+stats_A : :class:`pandas.Series` or :class:`pandas.DataFrame`
+    Statistics (containing at least the 'mean' and 'standard error' fields) for
+    variable :math:`A`.  The rows contain different values of these statistics
+    (e.g. from a reblocking analysis) if :class:`pandas.DataFrame` are passed.
+stats_B : :class:`pandas.Series` or :class:`pandas.DataFrame`
+    Similarly for variable :math:`B`.
+cov_AB : float or :class:`pandas.Series`
+    Covariance between variables `A and B.  If ``stats_A`` and ``stats_B`` are
+    :class:`pandas.DataFrame`, then this must be a :class:`pandas.Series`, with
+    the same index as ``stats_A`` and ``stats_B``.
+data_len : int or :class:`pandas.Series`
+    Number of data points ('observations') used to obtain the statistics given
+    in ``stats_A`` and ``stats_B``.  If ``stats_A`` and ``stats_B`` are
+    :class:`pandas.DataFrame`, then this must be a :class:`pandas.Series`, with
+    the same index as ``stats_A`` and ``stats_B``.
+
+Returns
+-------
+addition_stats : :class:`pandas.Series` or :class:`pandas.DataFrame`
+    Mean and standard error (and, if possible/relevant, optimal reblock
+    iteration) for :math:`f = A \\plus B`.  If ``stats_A``, ``stats_B`` are
+    :class:`pandas.DataFrame`, this is a :class:`pandas.DataFrame` with the
+    same index, otherwise a :class:`pandas.Series` is returned.
+'''
+
+    return _quadratic(stats_A, stats_B, cov_AB, data_len, True, 1)
+
+def _quadratic(stats_A, stats_B, cov_AB, data_len, linear, sign):
     '''Calculate the mean and standard error of :math:`f = g(A,B)`.
 
 Parameters
@@ -98,8 +162,12 @@ data_len : int or :class:`pandas.Series`
     in ``stats_A`` and ``stats_B``.  If ``stats_A`` and ``stats_B`` are
     :class:`pandas.DataFrame`, then this must be a :class:`pandas.Series`, with
     the same index as ``stats_A`` and ``stats_B``.
+linear : bool
+    If true, do addition (if sign=1) or subtraction (if sign=-1). If false, do
+    multiplication (if sign=1) or division (if sign=-1).
 sign : int
-    :math:`g(A,B) = A*B` for sign=1 and :math:`f = A/B` for sign=-1.
+    :math:`g(A,B) = A*B` or :math:`g(A,B) = A+B` for sign=1 and :math:`f = A/B`
+    or :math:`f = A-B` for sign=-1.
 
 Returns
 -------
@@ -117,17 +185,25 @@ ValueError
 
     if sign not in (1,-1):
         raise ValueError('sign must be either +1 or -1')
+    if linear:
+        mean = stats_A['mean'] + sign*stats_B['mean']
+        std_err = numpy.sqrt(
+                    (stats_A['standard error'])**2 + 
+                    (stats_B['standard error'])**2 +
+                    2*sign*cov_AB/data_len
+                )
 
-    if sign == 1:
-        mean = stats_A['mean'] * stats_B['mean']
     else:
-        mean = stats_A['mean'] / stats_B['mean']
+        if sign == 1:
+            mean = stats_A['mean'] * stats_B['mean']
+        else:
+            mean = stats_A['mean'] / stats_B['mean']
 
-    std_err = mean*numpy.sqrt(
-                (stats_A['standard error']/stats_A['mean'])**2 +
-                (stats_B['standard error']/stats_B['mean'])**2 +
-                2*sign*cov_AB/(data_len*stats_A['mean']*stats_B['mean'])
-            )
+        std_err = mean*numpy.sqrt(
+                    (stats_A['standard error']/stats_A['mean'])**2 +
+                    (stats_B['standard error']/stats_B['mean'])**2 +
+                    2*sign*cov_AB/(data_len*stats_A['mean']*stats_B['mean'])
+                )
     std_err = abs(std_err)
 
     stats_dict = dict( (('mean', mean), ('standard error', std_err)) )
