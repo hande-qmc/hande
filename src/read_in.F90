@@ -274,9 +274,7 @@ contains
         ! Determine if appropriate information is available to use translational symmetry
         momentum_sym = sum(abs(nprop - [-1, -1, -1])) >= depsilon .and. propbitlen /= -1
         if (momentum_sym .and. sys%read_in%comp) then
-            ! If system isn't complex but contains symmetry information, must have real supercell with
-            ! single kpoint. In this case using momentum symmetry or pg symmetry will make no difference,
-            ! so we use pg_sym for easy compatibility with conventional routines.
+
             sys%lattice%ndim = 3
             sys%momentum_space = .true.
             sys%read_in%mom_sym%nprop = nprop
@@ -286,6 +284,13 @@ contains
                 if (parent) write (iunit,'(1X,a62,/)') 'Unconverged symmetry found.  Turning translational symmetry off.'
                 orbsym(:) = 0_int_64
             end if
+        else
+            ! If system isn't complex but contains symmetry information, must have real supercell with
+            ! single kpoint. In this case using momentum symmetry or pg symmetry will make no difference,
+            ! so we use pg_sym for easy compatibility with conventional routines.
+            momentum_sym = .false.
+            if (parent) write (iunit,'(1X,a62,/)') 'Performing supercell calculation.  Turning symmetry off.'
+            orbsym(:) = 0_int_64
         end if
         ! Set system properties required later
 
