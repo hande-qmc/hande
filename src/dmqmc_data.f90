@@ -171,8 +171,8 @@ type dmqmc_in_t
     ! the weights varied for?
     integer :: finish_varying_weights = 0
 
-    ! Propagate a trial density matrix to a specific temeperature.
-    logical :: propagate_to_beta = .false.
+    ! Use interaction picture version of DMQMC algorithm.
+    logical :: ipdmqmc = .false.
     ! Initial density matrix to use in IP-DMQMC see enum at beginning of module
     ! for description of available values.
     integer :: initial_matrix = hartree_fock_dm
@@ -382,7 +382,7 @@ contains
         logical, intent(in), optional :: terminal
 
         call json_object_init(js, 'ipdmqmc')
-        call json_write_key(js, 'propagate_to_beta', dmqmc%propagate_to_beta)
+        call json_write_key(js, 'ipdmqmc', dmqmc%ipdmqmc)
         select case(dmqmc%initial_matrix)
         case(hartree_fock_dm)
             call json_write_key(js, 'initial_matrix', 'hartree_fock')

@@ -765,7 +765,7 @@ type annihilation_flags_t
     ! Currently only implemented for DMQMC.
     logical :: replica_tricks = .false.
     ! Propagate a trial density matrix to a specific temeperature.
-    logical :: propagate_to_beta = .false.
+    logical :: ipdmqmc = .false.
     ! Trial function used (FCIQMC & Heisenberg model only).
     integer :: trial_function = single_basis
     ! Use symmetric version of dmqmc algortithm?

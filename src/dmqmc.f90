@@ -131,10 +131,10 @@ contains
         call check_allocate('real_population', qs%psip_list%nspaces, ierr)
 
         nreport = qmc_in%nreport
-        ! When using the propagate_to_beta option the number of iterations in imaginary
+        ! When using the ipdmqmc option the number of iterations in imaginary
         ! time we want to do depends on what value of beta we are seeking. It's
         ! annoying to have to modify this in the input file, so just do it here.
-        if (dmqmc_in%propagate_to_beta) nreport = int(ceiling(dmqmc_in%target_beta/(qmc_in%ncycles*qmc_in%tau)))
+        if (dmqmc_in%ipdmqmc) nreport = int(ceiling(dmqmc_in%target_beta/(qmc_in%ncycles*qmc_in%tau)))
         ! When we accumulate data throughout a run, we are actually accumulating
         ! results from the psips distribution from the previous iteration.
         ! For example, in the first iteration, the trace calculated will be that
@@ -147,7 +147,7 @@ contains
         ! and to initalise reduced density matrix quantities if necessary.
         call init_dmqmc(sys, qmc_in, dmqmc_in, qs%psip_list%nspaces, qs, dmqmc_estimates, weighted_sampling)
         ! Determine the chemical potential if doing the ip-dmqmc algorithm.
-        if (dmqmc_in%propagate_to_beta .and. dmqmc_in%grand_canonical_initialisation) then
+        if (dmqmc_in%ipdmqmc .and. dmqmc_in%grand_canonical_initialisation) then
             mu = find_chem_pot(sys, qs%target_beta)
             if (dmqmc_in%initial_matrix == hartree_fock_dm) then
                 energy_shift = energy_diff_ptr(sys, qs%ref%occ_list0)
@@ -239,7 +239,7 @@ contains
                     iteration = (ireport-1)*qmc_in%ncycles + icycle
 
                     ! Store (beta-tau)/2 for use in symmetric ip-dmqmc spawning probabilities.
-                    if (dmqmc_in%propagate_to_beta .and. dmqmc_in%symmetric) &
+                    if (dmqmc_in%ipdmqmc .and. dmqmc_in%symmetric) &
                             & weighted_sampling%probs(sys%max_number_excitations+1) = &
                             & 0.5*(qs%target_beta-(iteration-1)*qs%dmqmc_factor*qs%tau)
 

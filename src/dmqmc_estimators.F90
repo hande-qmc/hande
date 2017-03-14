@@ -531,7 +531,7 @@ contains
     subroutine dmqmc_energy_and_trace_propagate(sys, excitation, cdet, H00, pop, diagonal_contribution, trace, energy)
 
         ! Add the contribution for the current density matrix element to the thermal
-        ! energy estimate. Routine is specific to when using propagate_to_beta
+        ! energy estimate. Routine is specific to when using ipdmqmc
         ! option.
 
         ! In:

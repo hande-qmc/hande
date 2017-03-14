@@ -290,7 +290,7 @@ contains
             call stop_all(this, 'The vary_weights option can only be used together with the weighted_sampling option.')
         end if
 
-        if (dmqmc_in%propagate_to_beta .and. .not. dmqmc_in%grand_canonical_initialisation &
+        if (dmqmc_in%ipdmqmc .and. .not. dmqmc_in%grand_canonical_initialisation &
             & .and.  dmqmc_in%metropolis_attempts == 0) then
             call stop_all(this, 'metropolis_attempts must be non-zero to sample the correct initial density matrix&
                                  & if not using grand_canonical_initialisation.')
@@ -299,7 +299,7 @@ contains
             .and. sys%system /= ueg .and. sys%system /= read_in) then
             call stop_all(this, 'Reweighting of initial matrix not supported for this system. Please implement.')
         end if
-        if (dmqmc_in%symmetric .and. dmqmc_in%propagate_to_beta .and. sys%system /= ueg) then
+        if (dmqmc_in%symmetric .and. dmqmc_in%ipdmqmc .and. sys%system /= ueg) then
             call stop_all(this, 'Symmetric propagation is only implemented for the UEG. Please implement.')
         end if
 

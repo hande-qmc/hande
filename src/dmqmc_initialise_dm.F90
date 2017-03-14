@@ -115,7 +115,7 @@ contains
                                                         ireplica, qmc_in%initiator_approx, qmc_in%initiator_pop, spawn)
                 end if
             case(ueg, hub_k, read_in)
-                if (dmqmc_in%propagate_to_beta) then
+                if (dmqmc_in%ipdmqmc) then
                     ! Initially distribute psips along the diagonal according to
                     ! a guess.
                     if (dmqmc_in%grand_canonical_initialisation) then

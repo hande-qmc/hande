@@ -446,7 +446,7 @@ contains
             end if
 
             ! Reweighting routines for different initial density matrices.
-            if (dmqmc_in%propagate_to_beta .and. dmqmc_in%grand_canonical_initialisation) then
+            if (dmqmc_in%ipdmqmc .and. dmqmc_in%grand_canonical_initialisation) then
                 select case(sys%system)
                 case(ueg)
                     energy_diff_ptr => exchange_energy_ueg
@@ -465,7 +465,7 @@ contains
 
             ! Expectation values.
             if (doing_dmqmc_calc(dmqmc_energy)) then
-                if (dmqmc_in%propagate_to_beta) then
+                if (dmqmc_in%ipdmqmc) then
                     update_dmqmc_energy_and_trace_ptr => dmqmc_energy_and_trace_propagate
                 else
                     update_dmqmc_energy_and_trace_ptr => dmqmc_energy_and_trace
@@ -480,7 +480,7 @@ contains
                 if (doing_dmqmc_calc(dmqmc_staggered_magnetisation)) &
                                          update_dmqmc_stag_mag_ptr => dmqmc_stag_mag_heisenberg
             case(ueg)
-                if (dmqmc_in%propagate_to_beta) then
+                if (dmqmc_in%ipdmqmc) then
                     if (dmqmc_in%initial_matrix == free_electron_dm) then
                         h0_ptr => kinetic_energy_ueg
                         if (dmqmc_in%symmetric) then
@@ -510,12 +510,12 @@ contains
                     if (doing_dmqmc_calc(dmqmc_potential_energy)) then
                         potential_energy_ptr => potential_energy_ueg
                     end if
-                    if (doing_dmqmc_calc(dmqmc_H0_energy) .and. .not. dmqmc_in%propagate_to_beta) then
+                    if (doing_dmqmc_calc(dmqmc_H0_energy) .and. .not. dmqmc_in%ipdmqmc) then
                         ! Assume that we want to evaluate <H_HF> rather than the kinetic energy.
                         h0_ptr => slater_condon0_ueg
                     end if
             case(hub_k)
-                if (dmqmc_in%propagate_to_beta) then
+                if (dmqmc_in%ipdmqmc) then
                     if (dmqmc_in%initial_matrix == free_electron_dm) then
                         h0_ptr => kinetic0_hub_k
                     else
@@ -523,7 +523,7 @@ contains
                     end if
                 end if
             case(read_in)
-                if (dmqmc_in%propagate_to_beta) then
+                if (dmqmc_in%ipdmqmc) then
                     if (dmqmc_in%initial_matrix == free_electron_dm) then
                         h0_ptr => hf_hamiltonian_energy_mol
                     else
@@ -650,7 +650,7 @@ contains
         annihilation_flags%initiator_approx = qmc_in%initiator_approx
         annihilation_flags%real_amplitudes = qmc_in%real_amplitudes
         annihilation_flags%trial_function = fciqmc_in%trial_function
-        annihilation_flags%propagate_to_beta = dmqmc_in%propagate_to_beta
+        annihilation_flags%ipdmqmc = dmqmc_in%ipdmqmc
         annihilation_flags%replica_tricks = dmqmc_in%replica_tricks
         annihilation_flags%symmetric = dmqmc_in%symmetric
 

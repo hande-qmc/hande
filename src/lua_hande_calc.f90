@@ -1325,7 +1325,7 @@ contains
         !     symmetrize = true/false,
         !     initiator_level = ilevel,
         ! }
-        ! ipdmqmc = { -- sets propagate_to_beta to true
+        ! ipdmqmc = { -- sets ipdmqmc to true
         !     initial_beta = b,
         !     initial_matrix = 'free_electron'/'hartree_fock',
         !     grand_canonical_initialisation = true/false,
@@ -1438,7 +1438,7 @@ contains
         if (dmqmc_in%find_weights) dmqmc_in%weighted_sampling = .true.
 
         if (aot_exists(lua_state, opts, 'ipdmqmc')) then
-            dmqmc_in%propagate_to_beta = .true.
+            dmqmc_in%ipdmqmc = .true.
             call aot_table_open(lua_state, opts, table, 'ipdmqmc')
             if (aot_exists(lua_state, table, 'initial_beta')) then
                 call aot_get_val(dmqmc_in%target_beta, err, lua_state, table, 'initial_beta')

@@ -860,13 +860,13 @@ contains
             ! Set psip_list%dat(2:,k) = <D_i|O|D_i> - <D_0|O|D_0>.
             psip_list%dat(2,pos) = op0_ptr(sys, det) - ref%O00
         else if (doing_calc(dmqmc_calc)) then
-            if (annihilation_flags%propagate_to_beta .and. .not. annihilation_flags%symmetric) then
+            if (annihilation_flags%ipdmqmc .and. .not. annihilation_flags%symmetric) then
                 ! Store H^0_ii-H_jj so we can propagate with ~ 1 + \Delta\beta(H^0_ii - H_jj),
                 ! where H^0_ii is the zeroth-order Hamiltonian: H = H^0 + H'
                 associate(bl=>sys%basis%tot_string_len, pl=>psip_list)
                     pl%dat(1,pos) = -h0_ptr(sys, pl%states((bl+1):(2*bl),pos)) + (pl%dat(1,pos) + ref%H00)
                 end associate
-            else if (annihilation_flags%propagate_to_beta .and. annihilation_flags%symmetric) then
+            else if (annihilation_flags%ipdmqmc .and. annihilation_flags%symmetric) then
                 associate(bl=>sys%basis%tot_string_len, pl=>psip_list)
                     pl%dat(1,pos) = -0.5_p*((h0_ptr(sys, det)+h0_ptr(sys, pl%states((bl+1):(2*bl),pos))) - &
                                      (pl%dat(1,pos) + ref%H00 + sc0_ptr(sys, pl%states((bl+1):(2*bl),pos))))
