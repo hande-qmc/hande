@@ -482,7 +482,7 @@ contains
             case(ueg)
                 if (dmqmc_in%propagate_to_beta) then
                     if (dmqmc_in%initial_matrix == free_electron_dm) then
-                        trial_dm_ptr => kinetic_energy_ueg
+                        h0_ptr => kinetic_energy_ueg
                         if (dmqmc_in%symmetric) then
                             if (dmqmc_in%weighted_sampling) then
                                 gen_excit_ptr%trial_fn => dmqmc_int_pic_free_importance_sampling
@@ -492,7 +492,7 @@ contains
                             endif
                         end if
                     else
-                        trial_dm_ptr => slater_condon0_ueg
+                        h0_ptr => slater_condon0_ueg
                         if (dmqmc_in%symmetric) then
                             if (dmqmc_in%weighted_sampling) then
                                 gen_excit_ptr%trial_fn => dmqmc_int_pic_hf_importance_sampling
@@ -512,22 +512,22 @@ contains
                     end if
                     if (doing_dmqmc_calc(dmqmc_H0_energy) .and. .not. dmqmc_in%propagate_to_beta) then
                         ! Assume that we want to evaluate <H_HF> rather than the kinetic energy.
-                        trial_dm_ptr => slater_condon0_ueg
+                        h0_ptr => slater_condon0_ueg
                     end if
             case(hub_k)
                 if (dmqmc_in%propagate_to_beta) then
                     if (dmqmc_in%initial_matrix == free_electron_dm) then
-                        trial_dm_ptr => kinetic0_hub_k
+                        h0_ptr => kinetic0_hub_k
                     else
-                        trial_dm_ptr => slater_condon0_hub_k
+                        h0_ptr => slater_condon0_hub_k
                     end if
                 end if
             case(read_in)
                 if (dmqmc_in%propagate_to_beta) then
                     if (dmqmc_in%initial_matrix == free_electron_dm) then
-                        trial_dm_ptr => hf_hamiltonian_energy_mol
+                        h0_ptr => hf_hamiltonian_energy_mol
                     else
-                        trial_dm_ptr => slater_condon0_mol
+                        h0_ptr => slater_condon0_mol
                     end if
                 end if
             end select

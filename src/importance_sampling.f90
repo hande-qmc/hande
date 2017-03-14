@@ -323,7 +323,11 @@ contains
         ! Apply transformation to the Hamiltonian matrix element so that
         ! excitation generations are performed with the weighting factors
         ! e^{-0.5*(beta-tau)(E_i-E_k)} H_{ik}. The trial function is essentially
-        ! meaningless, but we abuse its meaning to pass in beta-tau. Here E_i = <D_i| H |D_i>.
+        ! meaningless, but we abuse its meaning to pass in beta-tau.
+
+        ! Here we write H = H^0 + H', and now we define the zeroth-order Hamiltonian
+        ! to be the `Hartree--Fock' Hamiltonian as H^0 = |D_i><D_i| H |D_i><D_i|,
+        ! so that E_i = <D_i| H |D_i>.
 
         ! In:
         !    sys: system being studied.
@@ -346,7 +350,7 @@ contains
         use determinants, only: det_info_t
         use excitations, only: excit_t, get_excitation_level, create_excited_det
         use system, only: sys_t
-        use proc_pointers, only: trial_dm_ptr
+        use proc_pointers, only: h0_ptr
         use hamiltonian_ueg, only: exchange_energy_orb
 
         type(sys_t), intent(in) :: sys
