@@ -96,6 +96,12 @@ DEPEND_DIR = $(DEST_ROOT)/depend
 # NOTE: this can be overridden if this makefile is included in another
 # makefile.
 MAKEFILE_NAME := $(CURDIR)/$(word $(words $(MAKEFILE_LIST)), $(MAKEFILE_LIST))
+
+# Figure out list of source code directories asap (generally useful to know).
+
+# Space separated list of source directories.
+SRCDIRS := $(subst :, ,$(VPATH))
+
 #-----
 # Include arch file.
 
@@ -108,14 +114,8 @@ include $(SETTINGS_INC)
 
 ifneq ($(LUA52),)
 VPATH := $(subst aotus,aotus-5.2,$(VPATH))
+SRCDIRS := $(subst aotus,aotus-5.2,$(SRCDIRS))
 endif
-
-#-----
-# Figure out list of source code directories asap (generally useful to know).
-
-# Space separated list of source directories.
-SRCDIRS := $(subst :, ,$(VPATH))
-
 
 #-----
 # Error checking
