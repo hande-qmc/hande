@@ -373,9 +373,14 @@ results : :class:`pandas.DataFrame`
     estimates = data.loc[:,'Shift':'# H psips']
 
     if free_energy:
+        # Deal with legacy input.
+        if 'propagate_to_beta' in metadata[0]['ipdmqmc']:
+            ipdmqmc = metadata[0]['ipdmqmc']['propagate_to_beta']
+        else:
+            ipdmqmc = metadata[0]['ipdmqmc']['ipdmqmc']
         # Set up estimator we need to integrate wrt time/temperature to evaluate
         # free energy difference.
-        if metadata[0]['ipdmqmc']['propagate_to_beta']:
+        if ipdmqmc:
             if metadata[0]['ipdmqmc']['symmetric']:
                 estimates[r'\sum\rho_{ij}VI_{ji}'] = (
                                                  data[r'\sum\rho_{ij}HI{ji}'] -
