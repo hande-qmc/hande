@@ -531,7 +531,7 @@ contains
     subroutine dmqmc_energy_and_trace_propagate(sys, excitation, cdet, H00, pop, diagonal_contribution, trace, energy)
 
         ! Add the contribution for the current density matrix element to the thermal
-        ! energy estimate. Routine is specific to when using propagate_to_beta
+        ! energy estimate. Routine is specific to when using ipdmqmc
         ! option.
 
         ! In:
@@ -1434,7 +1434,7 @@ contains
         use determinants, only: det_info_t
         use system, only: sys_t
         use excitations, only: excit_t
-        use proc_pointers, only: trial_dm_ptr
+        use proc_pointers, only: h0_ptr
 
         type(sys_t), intent(in) :: sys
         type(det_info_t), intent(in) :: cdet
@@ -1442,7 +1442,7 @@ contains
         real(p), intent(in) :: pop
         real(p), intent(inout) :: H0_energy
 
-        if (excitation%nexcit == 0) H0_energy = H0_energy + pop*trial_dm_ptr(sys, cdet%f)
+        if (excitation%nexcit == 0) H0_energy = H0_energy + pop*h0_ptr(sys, cdet%f)
 
     end subroutine update_dmqmc_H0_energy
 
@@ -1478,7 +1478,7 @@ contains
         use determinants, only: det_info_t
         use system, only: sys_t
         use excitations, only: excit_t
-        use proc_pointers, only: sc0_ptr, trial_dm_ptr
+        use proc_pointers, only: sc0_ptr, h0_ptr
         use hamiltonian_data
 
         type(sys_t), intent(in) :: sys
@@ -1502,7 +1502,7 @@ contains
         if (excitation%nexcit == 0) then
             hmatel%r = sc0_ptr(sys, cdet%f)
         else
-            diff_ijab = trial_dm_ptr(sys, cdet%f) - trial_dm_ptr(sys, cdet%f2)
+            diff_ijab = h0_ptr(sys, cdet%f) - h0_ptr(sys, cdet%f2)
         end if
 
         HI_energy = HI_energy + exp(-tdiff*diff_ijab)*hmatel%r*pop

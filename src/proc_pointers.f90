@@ -228,7 +228,7 @@ procedure(i_update_dmqmc_correlation_function), pointer :: update_dmqmc_correlat
 procedure(i_sc0), pointer :: sc0_ptr => null()
 procedure(i_sc0), pointer :: op0_ptr => null()
 procedure(i_sc0), pointer :: kinetic_diag_ptr => null()
-procedure(i_sc0), pointer :: trial_dm_ptr => null()
+procedure(i_sc0), pointer :: h0_ptr => null()
 procedure(i_ediff), pointer :: energy_diff_ptr => null()
 
 procedure(i_operator), pointer :: potential_energy_ptr => null()

@@ -112,7 +112,7 @@ contains
                 weighted_sampling%sampling_probs(:size(dmqmc_in%sampling_probs)) = dmqmc_in%sampling_probs
             end if
             call check_allocate('weighted_sampling%sampling_probs',sys%max_number_excitations,ierr)
-            if (dmqmc_in%propagate_to_beta .and. dmqmc_in%symmetric) then
+            if (dmqmc_in%ipdmqmc .and. dmqmc_in%symmetric) then
                 ! If using symmetric version of ipdmqmc let the last entry contain 0.5*(beta-tau).
                 allocate(weighted_sampling%probs(0:sys%max_number_excitations+1), stat=ierr)
                 call check_allocate('weighted_sampling%probs',sys%max_number_excitations+2,ierr)
@@ -143,7 +143,7 @@ contains
         else
             ! If not using the importance sampling procedure, turn it off by
             ! setting all amplitudes to 1.0 in the relevant arrays.
-            if (dmqmc_in%propagate_to_beta .and. dmqmc_in%symmetric) then
+            if (dmqmc_in%ipdmqmc .and. dmqmc_in%symmetric) then
                 ! If using symmetric version of ipdmqmc let the last entry contain 0.5*(beta-tau).
                 allocate(weighted_sampling%probs(0:sys%max_number_excitations+1), stat=ierr)
                 call check_allocate('weighted_sampling%probs',sys%max_number_excitations+2,ierr)

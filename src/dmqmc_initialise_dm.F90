@@ -115,7 +115,7 @@ contains
                                                         ireplica, qmc_in%initiator_approx, qmc_in%initiator_pop, spawn)
                 end if
             case(ueg, hub_k, read_in)
-                if (dmqmc_in%propagate_to_beta) then
+                if (dmqmc_in%ipdmqmc) then
                     ! Initially distribute psips along the diagonal according to
                     ! a guess.
                     if (dmqmc_in%grand_canonical_initialisation) then
@@ -397,7 +397,7 @@ contains
         use excitations, only: excit_t, create_excited_det
         use parallel, only: nprocs, nthreads, parent
         use hilbert_space, only: gen_random_det_truncate_space
-        use proc_pointers, only: trial_dm_ptr, gen_excit_ptr, decoder_ptr
+        use proc_pointers, only: h0_ptr, gen_excit_ptr, decoder_ptr
         use qmc_data, only: qmc_state_t
         use utils, only: int_fmt
         use spawn_data, only: spawn_t
@@ -442,7 +442,7 @@ contains
             do proc = 0, nprocs-1
                 do idet = spawn%head_start(nthreads-1,proc)+1, spawn%head(thread_id,proc)
                     cdet%f = spawn%sdata(:sys%basis%tot_string_len,idet)
-                    E_old = trial_dm_ptr(sys, cdet%f)
+                    E_old = h0_ptr(sys, cdet%f)
                     tmp_data(1) = E_old
                     cdet%data => tmp_data
                     if (dmqmc_in%all_sym_sectors) then
@@ -468,7 +468,7 @@ contains
                         call create_excited_det(sys%basis, cdet%f, connection, f_new)
                     end if
                     ! Accept new det with probability p = min[1,exp(-\beta(E_new-E_old))]
-                    E_new = trial_dm_ptr(sys, f_new)
+                    E_new = h0_ptr(sys, f_new)
                     prob = exp(-1.0_p*qmc_state%target_beta*(E_new-E_old))
                     r = get_rand_close_open(rng)
                     if (prob > r) then
