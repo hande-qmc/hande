@@ -118,7 +118,7 @@ contains
 
     end subroutine check_fciqmc_opts
 
-    subroutine check_qmc_opts(qmc_in, sys, need_length, restarting)
+    subroutine check_qmc_opts(qmc_in, sys, need_length, restarting, qmc_state_restart)
 
         ! Check options common to QMC methods.
 
@@ -127,14 +127,16 @@ contains
         !   need_length: whether the size of main/spawned particle arrays is needed.
         !       false if using simple fciqmc algorithm or restarting from memory.
         !   restarting: whether the calculation is restarting from a previous one.
+        !   qmc_state_restart (optional): qmc_state object being restarted from.
 
-        use qmc_data, only: qmc_in_t
+        use qmc_data, only: qmc_in_t, qmc_state_t
         use errors, only: stop_all
         use system, only: sys_t
 
         type(qmc_in_t), intent(in) :: qmc_in
         type(sys_t), intent(in) :: sys
         logical, intent(in) :: need_length, restarting
+        type(qmc_state_t), intent(in), optional :: qmc_state_restart
 
         character(*), parameter :: this = 'check_qmc_opts'
 
@@ -156,6 +158,12 @@ contains
 
         if (qmc_in%ncycles <= 0) call stop_all(this, 'mc_cycles must be positive.')
         if (qmc_in%nreport <= 0) call stop_all(this, 'nreports must be positive.')
+
+        if (present(qmc_state_restart)) then
+            if (sys%basis%tot_string_len /= size(qmc_state_restart%psip_list%states,dim=1)) call stop_all(this, &
+                'Attempting to restart calculation within lua using different information string lengths.&
+                & This is only possible by producing and reading back in a restart file.')
+        end if
 
     end subroutine check_qmc_opts
 
@@ -328,6 +336,7 @@ contains
         !   sys: system being studied.
         !   ccmc_in: CCMC options
 
+
         use qmc_data, only: ccmc_in_t
         use system, only: sys_t, read_in
         use errors, only: stop_all
@@ -364,6 +373,7 @@ contains
 
         if (sys%basis%info_string_len /= 0 .and. .not. ccmc_in%even_selection) call stop_all(this, &
             'Additional space allocated in bit strings for no reason. Something has gone wrong.')
+
     end subroutine check_ccmc_opts
 
     subroutine check_blocking_opts(blocking_in, restart_in)
