@@ -245,6 +245,10 @@ type sys_ueg_t
 
 end type sys_ueg_t
 
+! Size above which to use custom MPI type for broadcasting integer arrays.
+! This is needed if size of array exceeds values that can be stored in a
+! 32 bit integer.  /8 (i.e. 2^31->2^28) owing to the size of the double.
+integer, parameter :: default_max_broadcast_chunk = (2_int_64**28)-1_int_64
 type sys_read_in_t
 
     ! Read-in system
@@ -293,9 +297,7 @@ type sys_read_in_t
     type(mom_sym_t) :: mom_sym
 
     ! Size above which to use custom MPI type for broadcasting integer arrays.
-    ! This is needed if size of array exceeds values that can be stored in a
-    ! 32 bit integer.
-    integer :: max_broadcast_chunk = (2_int_64**31)-1_int_64
+    integer :: max_broadcast_chunk = default_max_broadcast_chunk
 
     ! Pointers to symmetry-specific functions (pg_sym or mom_sym):
     ! 1) Cross product.
