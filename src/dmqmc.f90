@@ -228,8 +228,8 @@ contains
 
             do ireport = 1, nreport
 
-                call init_dmqmc_report_loop(dmqmc_in%calc_excit_dist, dmqmc_in%calc_mom_dist, bloom_stats, &
-                                            dmqmc_estimates, qs%spawn_store%rspawn)
+                call init_dmqmc_report_loop(dmqmc_in%calc_excit_dist, dmqmc_in%calc_mom_dist, dmqmc_in%calc_struc_fac,&
+                                            &bloom_stats, dmqmc_estimates, qs%spawn_store%rspawn)
                 tot_nparticles_old = qs%psip_list%tot_nparticles
 
                 do icycle = 1, qmc_in%ncycles
@@ -376,7 +376,7 @@ contains
                 call cpu_time(t2)
                 if (parent) then
                     if (bloom_stats%nblooms_curr > 0) call bloom_stats_warning(bloom_stats)
-                    call write_dmqmc_report(qmc_in, qs, ireport, tot_nparticles_old, t2-t1, .false., &
+                    call write_dmqmc_report(sys, qmc_in, qs, ireport, tot_nparticles_old, t2-t1, .false., &
                                             dmqmc_in, dmqmc_estimates)
                 end if
 
@@ -504,7 +504,7 @@ contains
 
     end subroutine init_dmqmc_beta_loop
 
-    subroutine init_dmqmc_report_loop(calc_excit_dist, calc_mom_dist, bloom_stats, dmqmc_estimates, rspawn)
+    subroutine init_dmqmc_report_loop(calc_excit_dist, calc_mom_dist, calc_struc_fac, bloom_stats, dmqmc_estimates, rspawn)
 
         ! Initialise a report loop (basically zero quantities accumulated over
         ! a report loop).
@@ -524,6 +524,7 @@ contains
 
         logical, intent(in) :: calc_excit_dist
         logical, intent(in) :: calc_mom_dist
+        logical, intent(in) :: calc_struc_fac
         type(bloom_stats_t), intent(inout) :: bloom_stats
         type(dmqmc_estimates_t), intent(inout) :: dmqmc_estimates
         real(p), intent(out) :: rspawn
@@ -534,7 +535,8 @@ contains
         if (calc_excit_dist) dmqmc_estimates%excit_dist = 0.0_p
         dmqmc_estimates%trace = 0.0_p
         dmqmc_estimates%numerators = 0.0_p
-        if (calc_mom_dist) dmqmc_estimates%mom_dist%n_k = 0.0_p
+        if (calc_mom_dist) dmqmc_estimates%mom_dist%f_k = 0.0_p
+        if (calc_struc_fac) dmqmc_estimates%struc_fac%f_k = 0.0_p
 
     end subroutine init_dmqmc_report_loop
 

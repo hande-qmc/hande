@@ -207,6 +207,10 @@ type dmqmc_in_t
     logical :: calc_mom_dist = .false.
     ! Maximum kvector momentum distribution is evaluated at (in terms of the Fermi wavevector).
     real(p) :: mom_dist_kmax = 0.0
+    ! If true the static structure factor will be calculated.
+    logical :: calc_struc_fac = .false.
+    ! Maximum momentum transfer to consider in structure factor (in terms of the Fermi wave vector).
+    real(p) :: struc_fac_qmax = 0.0
 
 end type dmqmc_in_t
 
@@ -249,13 +253,13 @@ type dmqmc_ground_rdm_t
     real(p) :: trace
 end type dmqmc_ground_rdm_t
 
-!--- Type for momentum distribution
-type momentum_dist_t
+!--- Type for momentum space correlation function.
+type momentum_corr_t
     ! Stores the momentum distribution numerator at each value of k < kmax.
-    real(p), allocatable :: n_k(:)
-    ! Magnitude of kpoints used in momentum distribution calculation, useful for compression purposes.
+    real(p), allocatable :: f_k(:)
+    ! Magnitude of kpoints used in correlation function calculation, useful for compression purposes.
     real(p), allocatable :: kpoints(:)
-end type momentum_dist_t
+end type momentum_corr_t
 
 type dmqmc_estimates_t
     ! numerators stores the numerators for the estimators in DMQMC. These
@@ -279,7 +283,9 @@ type dmqmc_estimates_t
     real(p), allocatable :: excit_dist(:) ! (0:max_number_excitations)
 
     ! Momentum distribution.
-    type(momentum_dist_t) :: mom_dist
+    type(momentum_corr_t) :: mom_dist
+    ! Static Structure Factor.
+    type(momentum_corr_t) :: struc_fac
 
     ! correlation_mask is a bit string with a 1 at positions i and j which
     ! are considered when finding the spin correlation function, C(r_{i,j}).
@@ -359,7 +365,8 @@ contains
         call json_write_key(js, 'finish_varying_weights', dmqmc%finish_varying_weights)
         call json_write_key(js, 'fermi_temperature', dmqmc%fermi_temperature)
         call json_write_key(js, 'target_beta', dmqmc%target_beta)
-        call json_write_key(js, 'mom_dist_kmax', dmqmc%mom_dist_kmax, terminal=.true.)
+        call json_write_key(js, 'mom_dist_kmax', dmqmc%mom_dist_kmax)
+        call json_write_key(js, 'struc_fac_qmax', dmqmc%struc_fac_qmax, terminal=.true.)
         call json_object_end(js, terminal)
 
     end subroutine dmqmc_in_t_json

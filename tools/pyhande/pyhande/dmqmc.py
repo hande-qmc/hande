@@ -47,6 +47,12 @@ None.
 
     # Add momentum distribution to dictionary of observables to be analaysed.
     add_observable_to_dict(observables, columns, 'n_')
+    # Add spin-averaged static structure factor to dict of observables to be analaysed.
+    add_observable_to_dict(observables, columns, 'S_')
+    # Add spin up static structure factor to dict of observables to be analaysed.
+    add_observable_to_dict(observables, columns, 'Suu_')
+    # Add spin down static structure factor to dict of observables to be analaysed.
+    add_observable_to_dict(observables, columns, 'Sud_')
     # DataFrame to hold the final mean and error estimates.
     results = pd.DataFrame(index=beta_values)
     # DataFrame for the numerator.
@@ -299,6 +305,59 @@ sort : list
     sort = [c for (v, c) in sorted(zip(values, columns))]
 
     return sort
+
+
+def extract_momentum_correlation_function(data, beta):
+    '''Extract correlation function from analysed DMQMC data.
+
+Parameters
+----------
+data : :class:`pandas.DataFrame`
+    Analysed DMQMC output at a specific temperature / imaginary time.
+beta : float
+    Temperature / imaginary time value to extrat correlation function at.
+
+Returns
+-------
+full : :class:`pandas.DataFrame`
+    Momentum space correlation functions as a function of k at given
+    temperature.
+'''
+
+    dbeta = data.groupby('Beta').get_group(beta)
+    base_headers = ['n_', 'S_', 'Suu_', 'Sud_']
+
+    frames = []
+
+    for h in base_headers:
+
+        mom = [c for c in dbeta.columns.values if h in c and '_error' not in c]
+        mome = [c for c in dbeta.columns.values if h in c and '_error' in c]
+
+        kvals = [float(c.split('_')[1]) for c in mom]
+
+        # The columns in the output do not contain the factors of 1
+        # necessary for the upup+downdown contributions or the spin-averaged
+        # contribution.
+        if h == 'S_' or h == 'Suu_':
+            kspace_fn = 1.0 + dbeta[mom].values
+        else:
+            kspace_fn = dbeta[mom].values
+        kspace_fn_error = dbeta[mome].values
+        kspace_fn_error[np.isnan(kspace_fn_error)] = 0
+        frames.append(pd.DataFrame({'Beta': beta, 'k': kvals,
+                                    h+'k': kspace_fn.ravel(),
+                                    h+'k_error': kspace_fn_error.ravel()}))
+
+
+    # Want to perform merge so that the correlation function with the most k points
+    # defines the total number of k points in the final frame.
+    frames.sort(key=lambda x: len(x.k))
+    full = frames[0]
+    for f in frames[1:]:
+        full = full.merge(f, on=['Beta', 'k'], how='right')
+
+    return full
 
 
 def analyse_data(hande_out, shift=False, free_energy=False, spline=False,
