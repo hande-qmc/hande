@@ -40,5 +40,6 @@ dmqmc {
         H0_energy = true,
         HI_energy = true,
         mom_dist = 2.0,
+        structure_factor = 2.0,
     },
 }
