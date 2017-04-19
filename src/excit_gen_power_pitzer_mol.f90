@@ -160,7 +160,7 @@ contains
         use excitations, only: find_excitation_permutation2,get_excitation_locations
         use proc_pointers, only: slater_condon2_excit_ptr
         use system, only: sys_t
-        use excit_gen_mol, only: gen_single_excit_mol_no_renorm
+        use excit_gen_mol, only: gen_single_excit_mol_no_renorm, choose_ij_mol
         use excit_gens, only: excit_gen_power_pitzer_t, excit_gen_data_t
         use alias, only: select_weighted_value_precalc
         use dSFMT_interface, only: dSFMT_t, get_rand_close_open
@@ -178,7 +178,7 @@ contains
         logical, intent(out) :: allowed_excitation
 
 
-        integer ::  ij_spin, ij_sym, imsb, isyma, isymb
+        integer ::  ij_spin, ij_sym, i_ref_j_ref_sym, imsb, isyma, isymb
         
         ! We distinguish here between a_ref and a_cdet. a_ref is a in the world where the reference is fully occupied
         ! and we excite from the reference. We then map a_ref onto a_cdet which is a in the world where cdet is fully
@@ -211,7 +211,7 @@ contains
 
                 ! 2b. Select orbitals to excite from
                 
-                call choose_ij_ind(rng, sys, pp%occ_list, i_ind_ref, j_ind_ref, ij_spin)
+                call choose_ij_mol(rng, sys, pp%occ_list, i_ind_ref, j_ind_ref, i_ref, j_ref, i_ref_j_ref_sym, ij_spin)
 
                 ! At this point we pretend we're the reference, and fix up mapping ref's orbitals to cdet's orbitals later.
                 i_ref = pp%occ_list(i_ind_ref)
@@ -412,65 +412,6 @@ contains
 
     end subroutine gen_excit_mol_power_pitzer_occ_ref
 
-    ! [review] - JSS: close to choose_ij_mol but without symmetry?  If so, unnecessary code duplication.
-    ! [reply] - VAN: we need the indices of i and j here and we don't need ij_sym yet (we only need symmetry
-    ! [reply] - VAN: once i and j have been mapped). I therefore think this function should be kept. However,
-    ! [reply] - VAN: to avoid code duplication, I can update choose_ij_mol in excit_gen_mol.f90 to give out
-    ! [reply] - VAN: indices. I can then remove choose_ij_ind here and call (the updated) choose_ij_mol from excit_gen_mol.f90
-    ! [reply] - VAN: and ignore the symmetry of ij it gives me.
-    subroutine choose_ij_ind(rng, sys, occ_list, i_ind, j_ind, ij_spin)
-
-        ! Randomly select two occupied orbitals in a determinant from which
-        ! electrons are excited as part of a double excitation.
-        !
-        ! In:
-        !    sys: system object being studied.
-        !    occ_list: integer list of occupied spin-orbitals in the determinant.
-        !        (min length: sys%nel.)
-        ! In/Out:
-        !    rng: random number generator.
-        ! Out:
-        !    i, j: orbitals in determinant from which two electrons are excited.
-        !        Note that i,j are ordered such that i<j.
-        !    ij_spin: spin label of the combined ij codensity.
-        !        ij_spin = -2   i,j both down
-        !                =  0   i up and j down or vice versa
-        !                =  2   i,j both up
-
-        use system, only: sys_t
-
-        use dSFMT_interface, only: dSFMT_t, get_rand_close_open
-
-        type(sys_t), intent(in) :: sys
-        integer, intent(in) :: occ_list(:)
-        type(dSFMT_t), intent(inout) :: rng
-        integer, intent(out) :: i_ind, j_ind, ij_spin
-
-        integer :: ind, i, j
-
-        ! See comments in choose_ij_k for how the occupied orbitals are indexed
-        ! to allow one random number to decide the ij pair.
-
-        ind = int(get_rand_close_open(rng)*sys%nel*(sys%nel - 1)/2) + 1
-
-        ! i,j initially refer to the indices in the lists of occupied spin-orbitals
-        ! rather than the spin-orbitals.
-        ! Note that the indexing scheme for the strictly lower triangular array
-        ! assumes j>i.  As occ_list is ordered, this means that we will return
-        ! i,j (referring to spin-orbitals) where j>i.  This ordering is
-        ! convenient subsequently, e.g. is assumed in the
-        ! find_excitation_permutation2 routine.
-        j_ind = int(1.50_p + sqrt(2*ind - 1.750_p))
-        i_ind = ind - ((j_ind - 1)*(j_ind - 2))/2
-
-        i = occ_list(i_ind)
-        j = occ_list(j_ind)
-
-        ! ij_spin = -2 (down, down), 0 (up, down or down, up), +2 (up, up)
-        ij_spin = sys%basis%basis_fns(i)%Ms + sys%basis%basis_fns(j)%Ms
-
-    end subroutine choose_ij_ind
-
     subroutine gen_excit_mol_power_pitzer_occ(rng, sys, excit_gen_data, cdet, pgen, connection, hmatel, allowed_excitation)
 
         ! Create a random excitation from cdet and calculate both the probability
@@ -523,7 +464,7 @@ contains
         logical :: found, a_found
         real(p), allocatable :: ia_weights(:), ja_weights(:), jb_weights(:)
         real(p) :: ia_weights_tot, ja_weights_tot, jb_weights_tot
-        integer :: a, b, i, j, a_ind, b_ind, a_ind_rev, b_ind_rev, isymb, imsb, isyma
+        integer :: a, b, i, j, a_ind, b_ind, a_ind_rev, b_ind_rev, i_ind, j_ind, isymb, imsb, isyma
 
         ! 1. Select single or double.
         if (get_rand_close_open(rng) < excit_gen_data%pattempt_single) then
@@ -535,7 +476,7 @@ contains
 
             ! 2b. Select orbitals to excite from
             
-            call choose_ij_mol(rng, sys, cdet%occ_list, i, j, ij_sym, ij_spin)
+            call choose_ij_mol(rng, sys, cdet%occ_list, i_ind, j_ind, i, j, ij_sym, ij_spin)
 
             ! Now we've chosen i and j.
  

@@ -54,7 +54,7 @@ contains
         type(excit_t), intent(out) :: connection
         logical, intent(out) :: allowed_excitation
 
-        integer :: ij_sym, ij_spin
+        integer :: ij_sym, ij_spin, i_ind, j_ind
 
         ! 1. Select single or double.
 
@@ -89,7 +89,7 @@ contains
         else
 
             ! 2b. Select orbitals to excite from and orbitals to excite into.
-            call choose_ij_mol(rng, sys, cdet%occ_list, connection%from_orb(1), connection%from_orb(2), ij_sym, ij_spin)
+            call choose_ij_mol(rng, sys, cdet%occ_list, i_ind, j_ind, connection%from_orb(1), connection%from_orb(2), ij_sym, ij_spin)
             call choose_ab_mol(rng, sys, cdet%f, ij_sym, ij_spin, cdet%symunocc, connection%to_orb(1), &
                                connection%to_orb(2), allowed_excitation)
             connection%nexcit = 2
@@ -169,7 +169,7 @@ contains
         type(excit_t), intent(out) :: connection
         logical, intent(out) :: allowed_excitation
 
-        integer :: ij_sym, ij_spin
+        integer :: i_ind, j_ind, ij_sym, ij_spin
 
         ! 1. Select single or double.
 
@@ -180,7 +180,7 @@ contains
         else
 
             ! 2b. Select orbitals to excite from and orbitals to excite into.
-            call choose_ij_mol(rng, sys, cdet%occ_list, connection%from_orb(1), connection%from_orb(2), ij_sym, ij_spin)
+            call choose_ij_mol(rng, sys, cdet%occ_list, i_ind, j_ind, connection%from_orb(1), connection%from_orb(2), ij_sym, ij_spin)
             call find_ab_mol(rng, cdet%f, ij_sym, ij_spin, sys,  &
                              connection%to_orb(1), connection%to_orb(2), &
                              allowed_excitation)
@@ -382,7 +382,7 @@ contains
 
 !--- Select random orbitals involved in a valid double excitation ---
 
-    subroutine choose_ij_mol(rng, sys, occ_list, i, j, ij_sym, ij_spin)
+    subroutine choose_ij_mol(rng, sys, occ_list, i_ind, j_ind, i, j, ij_sym, ij_spin)
 
         ! Randomly select two occupied orbitals in a determinant from which
         ! electrons are excited as part of a double excitation.
@@ -394,6 +394,7 @@ contains
         ! In/Out:
         !    rng: random number generator.
         ! Out:
+        !    i_ind, j_ind: indices in occ_list of i and j.
         !    i, j: orbitals in determinant from which two electrons are excited.
         !        Note that i,j are ordered such that i<j.
         !    ij_sym: symmetry conjugate of the irreducible representation spanned by the codensity
@@ -404,20 +405,20 @@ contains
         !                =  2   i,j both up
 
         use system, only: sys_t
-        use dSFMT_interface, only: dSFMT_t, get_rand_close_open
         use read_in_symmetry, only: cross_product_basis_read_in
+        use dSFMT_interface, only: dSFMT_t, get_rand_close_open
 
         type(sys_t), intent(in) :: sys
         integer, intent(in) :: occ_list(:)
         type(dSFMT_t), intent(inout) :: rng
-        integer, intent(out) :: i, j, ij_sym, ij_spin
+        integer, intent(out) :: i_ind, j_ind, i, j, ij_sym, ij_spin
 
         integer :: ind
 
         ! See comments in choose_ij_k for how the occupied orbitals are indexed
         ! to allow one random number to decide the ij pair.
 
-        ind = int(get_rand_close_open(rng)*sys%nel*(sys%nel-1)/2) + 1
+        ind = int(get_rand_close_open(rng)*sys%nel*(sys%nel - 1)/2) + 1
 
         ! i,j initially refer to the indices in the lists of occupied spin-orbitals
         ! rather than the spin-orbitals.
@@ -426,14 +427,15 @@ contains
         ! i,j (referring to spin-orbitals) where j>i.  This ordering is
         ! convenient subsequently, e.g. is assumed in the
         ! find_excitation_permutation2 routine.
-        j = int(1.50_p + sqrt(2*ind-1.750_p))
-        i = ind - ((j-1)*(j-2))/2
+        j_ind = int(1.50_p + sqrt(2*ind - 1.750_p))
+        i_ind = ind - ((j_ind - 1)*(j_ind - 2))/2
 
-        i = occ_list(i)
-        j = occ_list(j)
+        i = occ_list(i_ind)
+        j = occ_list(j_ind)
 
         ij_sym = sys%read_in%sym_conj_ptr(sys%read_in, &
                     cross_product_basis_read_in(sys, i,j))
+
         ! ij_spin = -2 (down, down), 0 (up, down or down, up), +2 (up, up)
         ij_spin = sys%basis%basis_fns(i)%Ms + sys%basis%basis_fns(j)%Ms
 
