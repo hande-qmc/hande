@@ -10,23 +10,15 @@ implicit none
 
 contains
 
-    ! [review] - JSS: name isn't immediately obvious.  Prec?
-    ! [review] - AJWT: precalc would be better
-    ! [reply] - VAN: --todo-- think of a better name --
-    function select_weighted_value_prec(rng, N, aliasU, aliasK) result(ret)
+    function select_weighted_value_precalc(rng, N, aliasU, aliasK) result(ret)
 
         ! Select an element, i=1..N with probability from pre-generated alias method weights.
-        ! [review] - JSS: O(N) setup cost, O(1) to select?  Repetition below the arguments comments.
-        ! [reply] - VAN: maybe nice to repeat it so that the busy user can immediately read the cost?
-        ! [reply] - VAN: However, I am happy to remove the next sentence.
-        ! This uses the alias method, requiring O(N) storage, and O(N) time.
+        ! This uses the alias method.
         
         ! In:
         !    N: the number of objects to select from
-        ! [review] - JSS: what are alias reals and alias integers?
-        ! [reply] - VAN: maybe better to say "precomputed U" and "precomputed K" and assume user reads explanations here?
-        !    aliasU: a length N array of precomputed alias reals.
-        !    aliasK: a length N array of precomputed alias integers
+        !    aliasU: a length N array of precomputed alias reals (U_i).
+        !    aliasK: a length N array of precomputed alias integers (K_i).
         ! In/Out:
         !    rng: random number generator.
         ! Out:
@@ -71,10 +63,8 @@ contains
             ret = aliasK(K)
         end if
 
-    end function select_weighted_value_prec
+    end function select_weighted_value_precalc
 
-    ! [review] - JSS: is the alias method useful compared to simple binary search of the probabilities for one-off selections?
-    ! [reply] - VAN: How would you do the binary search to select an integer from a discrete probability distribution?
     function select_weighted_value(rng, N, weights, totweight) result(ret)
 
         ! Select an element, i=1..N with probability weights(i)/totweight.
@@ -89,8 +79,10 @@ contains
         !    rng: random number generator.
         ! Out:
         !    ret: the index of the element chosen.
+        
+        ! [todo] - Consider alternatives to the alias method.
 
-        ! See notes in select_weighted_value_prec
+        ! See notes in select_weighted_value_precalc
 
         use dSFMT_interface, only: dSFMT_t, get_rand_close_open
         type(dSFMT_t), intent(inout) :: rng
@@ -103,7 +95,7 @@ contains
         integer :: aliasK(N)
         
         call generate_alias_tables(N, weights, totweight, aliasU, aliasK)        
-        ret = select_weighted_value_prec(rng, N, aliasU, aliasK)
+        ret = select_weighted_value_precalc(rng, N, aliasU, aliasK)
     end function select_weighted_value
 
     subroutine generate_alias_tables(N, weights, totweight, aliasU, aliasK)
@@ -144,7 +136,8 @@ contains
         ! /U_i / = /U_i / - (1 - /U_j /) = /U_i / + /U_j / - 1.
         ! 4. Entry j is now exactly full.
         ! 5. Assign entry i to the appropriate category based on the new value of
-        !    U_i .  
+        !    U_i .
+        ! [todo] - add citations for method 
 
         integer, intent(in) :: N
         real(p), intent(in) :: totweight, weights(N) 
@@ -167,20 +160,11 @@ contains
                 nover = nover +1
                 overfull(nover) = i
             end if
-            ! [review] - JSS: in case of what?!
-            ! [reply] - VAN: Sensible to set it in case there is a tiny numerical error
-            ! [reply] - VAN: when matching up the last underfull and overfull Us. 
             aliasK(i) = i ! This is a sensible safe choice in case aliasK(i) is not set below.
         end do
         do while (nover > 0 .and. nunder > 0)
             ! match the last nover with the last nunder
-            ! [review] - JSS: how arbitrary is this choice of over and under and how does it impact efficiency?
-            ! [reply] - AJWT: Unknown. This is probably the fastest way to get rid of the over- and under-full boxes
-            ! [reply] - AJWT: but it is certainly arbitrary.
-            ! [reply] - VAN: interesting point. the easiest option is to just keep them in the order they were
-            ! [reply] - VAN: and assign and over to an under by that order. I guess something else would involve
-            ! [reply] - VAN: sorting? 
-            ! [todo] think more about whether this can be made more efficient
+            ! [todo] consider improving the efficiency of this
             ov = overfull(nover)
             un = underfull(nunder)
             ! put ov as the alternate for un

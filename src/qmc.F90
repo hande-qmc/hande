@@ -184,12 +184,8 @@ contains
         if (qmc_in%excit_gen==excit_gen_power_pitzer) then
             if (sys%system == read_in) then
                call init_excit_mol_power_pitzer_occ_ref(sys, qmc_state%ref, qmc_state%excit_gen_data%excit_gen_pp)
-               ! [review] - JSS: see deallocation hooks for qmc_state_t.
-               ! [review] - VAN: it is now being deallocated when excit_gen_data_t is deallocated.
             else if (sys%system == ueg) then 
                call init_excit_ueg_power_pitzer(sys, qmc_state%ref, qmc_state%excit_gen_data%excit_gen_pp)
-               ! [review] - JSS: see deallocation hooks for qmc_state_t.
-               ! [review] - VAN: it is now being deallocated when excit_gen_data_t is deallocated.
             end if
         end if
     end subroutine init_qmc
@@ -384,13 +380,12 @@ contains
             case(excit_gen_renorm)
                 gen_excit_ptr%full => gen_excit_mol
                 decoder_ptr => decode_det_occ_symunocc
-                ! [review] - JSS: check why read_in requires decode_det_spinocc_spinunocc but ueg doesn't. 
             case(excit_gen_power_pitzer_occ)
                 gen_excit_ptr%full => gen_excit_mol_power_pitzer_occ
                 decoder_ptr => decode_det_spinocc_spinunocc
             case(excit_gen_power_pitzer)
                 gen_excit_ptr%full => gen_excit_mol_power_pitzer_occ_ref
-                decoder_ptr => decode_det_spinocc_spinunocc
+                decoder_ptr => decode_det_occ
             case default
                 call stop_all('init_proc_pointers', 'Selected excitation generator not implemented.')
             end select

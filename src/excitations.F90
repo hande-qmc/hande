@@ -475,10 +475,7 @@ contains
         det_sind = 0 ! the position in cdet_store of the last non-matching orbital
         ref_sind = 0 ! the position in ref_store of the last non-matching orbital
 
-        ! [review] - VAN: Could put into det_store_{alpha,beta}, etc, so that spin sorting 
-        ! [review] - VAN: does not have to be done later.
-        ! [reply] - AJWT: That would be helpful if we tended to store alphas and betas separately.  I think it makes the code
-        ! [reply] - AJWT: look messier though and might not give much of a gain.  Would this interact well with symmetry?
+        ! [todo] - Consider sorting these lists by spin.
 
 fdo:    do i=1, nel ! this will index in ref
             do while (det_list(j)<ref_list(i))
@@ -499,9 +496,6 @@ fdo:    do i=1, nel ! this will index in ref
             if (j > nel) exit fdo
         end do fdo 
         
-        ! [review] - VAN: i is not the last orbital we dealt with in all 
-        ! [review] - VAN: possible cases. If det_list(last entry) < ref_list(last entry)
-        ! [review] - VAN: we leave with an i we have not looked at yet. I have fixed this bug.
         ! Deal with whatever's left in det. j is the NEXT orbital to  deal with.
         do while (j<=nel)
             det_sind = det_sind + 1

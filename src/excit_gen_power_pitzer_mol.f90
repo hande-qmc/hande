@@ -6,26 +6,21 @@ use const, only: i0, p
 
 implicit none
 
-! [review] - JSS: some code-style uniformity please.  e.g. vertical space before/after procedures, around the procedure comments,
-! [review] - JSS: indented comments, end do/end if instead of end do and end if, spaces around binary operators (=, <, ...), ...
-! [reply] - VAN: thank you, I will do this after I get first review comments and I am tidying up. 
+! [review] - JSS: some code-style uniformity please.  e.g. end do/end if instead of end do and end if
 
 contains
 
     subroutine init_excit_mol_power_pitzer_occ_ref(sys, ref, pp)
-        ! [review] - JSS: How good is this really?  I suspect it's okish for single-reference truncated calculations and quickly
-        ! [review] - JSS: becomes bad for multi-reference/as the truncation level increases.
-        ! [review] - JSS: Is this an experiment?  Ready for use in production calculations?
-        ! [reply] - AJWT: still under investigation.
-        ! [reply] - VAN: I will test this once I am in the testing stage (after I get first reviews)
 
-        ! Generate excitation tables from the reference for the 
+        ! Generate excitation tables from the reference for the
         ! gen_excit_mol_power_pitzer_occ_ref excitation generator.
         ! This creates a random excitation from a det and calculates both the probability
         ! of selecting that excitation and the Hamiltonian matrix element.
         ! Weight the double excitations according the the Power-Pitzer bound
-        ! <ij|ab> <= Sqrt(<ia|ai><jb|bj>)
+        ! <ij|ab> <= Sqrt(<ia|ai><jb|bj>), see J.D. Power, R.M. Pitzer, Chem. Phys. Lett.,
+        ! 478-483 (1974).
         ! This is an O(M/64) version which pretends the determinant excited from is the reference,
+        ! [todo] - why O(M/64)?
         ! then modifies the selected orbitals to be those of the determinant given.
         ! Each occupied and virtual not present in the det we're actually given will be
         ! mapped to the one of the equivalent free numerical index in the reference.
@@ -59,12 +54,13 @@ contains
         allocate(pp%jb_aliasK(maxval(sys%read_in%pg_sym%nbasis_sym_spin), sys%sym0_tot:sys%sym_max_tot, sys%nel))
         allocate(pp%jb_weights(maxval(sys%read_in%pg_sym%nbasis_sym_spin), sys%sym0_tot:sys%sym_max_tot, sys%nel))
         allocate(pp%jb_weights_tot(sys%sym0_tot:sys%sym_max_tot, sys%nel))
-        allocate(pp%occ_list(sys%nel+1))  ! The +1 is a pad to allow loops to look better
+        allocate(pp%occ_list(sys%nel + 1))  ! The +1 is a pad to allow loops to look better
         allocate(pp%virt_list_alpha(sys%nvirt_alpha))
         allocate(pp%virt_list_beta(sys%nvirt_beta))
         
         pp%occ_list(:sys%nel) = ref%occ_list0(:sys%nel)
-        pp%occ_list(sys%nel+1) = sys%basis%nbasis*2  ! A pad 
+        pp%occ_list(sys%nel + 1) = sys%basis%nbasis*2  ! A pad
+        ! [todo] - Consider testing j <= sys%nel below instead of having this pad.
         
         ! Now sort this, just in case we have an old restart file and the reference was not sorted then.
         call qsort(pp%occ_list,sys%nel)
@@ -77,9 +73,6 @@ contains
         do i = 1, sys%basis%nbasis
             if (i==pp%occ_list(j)) then ! Our basis fn is in the ref
                 ! Due to the +1 pad in occ_list, there is not danger of going past array boundaries here.
-                ! [review] - VAN: is it not better to check whether j is <= sys%nel?
-                ! [review] - VAN: That might be safer. I am not a fan of assigning a number that is not
-                ! [review] - VAN: sensible.
                 j = j + 1
             else ! Need to store it as a virt
                 if (sys%basis%basis_fns(i)%Ms == -1) then ! beta
@@ -138,7 +131,8 @@ contains
         ! Create a random excitation from cdet and calculate both the probability
         ! of selecting that excitation and the Hamiltonian matrix element.
         ! Weight the double excitations according the the Power-Pitzer bound
-        ! <ij|ab> <= Sqrt(<ia|ai><jb|bj>)
+        ! <ij|ab> <= Sqrt(<ia|ai><jb|bj>), see J.D. Power, R.M. Pitzer, Chem. Phys. Lett.,
+        ! 478-483 (1974).
         ! This is an O(M/64) version which pretends the determinant excited from is the reference,
         ! then modifies the selected orbitals to be those of the determinant given.
         ! Each occupied and virtual not present in the det we're actually given will be
@@ -168,7 +162,7 @@ contains
         use system, only: sys_t
         use excit_gen_mol, only: gen_single_excit_mol_no_renorm
         use excit_gens, only: excit_gen_power_pitzer_t, excit_gen_data_t
-        use alias, only: select_weighted_value_prec
+        use alias, only: select_weighted_value_precalc
         use dSFMT_interface, only: dSFMT_t, get_rand_close_open
         use hamiltonian_data, only: hmatel_t
         use read_in_symmetry, only: cross_product_basis_read_in
@@ -179,21 +173,21 @@ contains
         type(det_info_t), intent(in) :: cdet
         type(dSFMT_t), intent(inout) :: rng
         real(p), intent(out) :: pgen
-        type(hmatel_t), intent(out) :: hmatel 
+        type(hmatel_t), intent(out) :: hmatel
         type(excit_t), intent(out) :: connection
         logical, intent(out) :: allowed_excitation
 
 
         integer ::  ij_spin, ij_sym, imsb, isyma, isymb
         
-        ! We distinguish here between a_ref and a_cdet. a_ref is a in the world where the reference is fully occupied 
+        ! We distinguish here between a_ref and a_cdet. a_ref is a in the world where the reference is fully occupied
         ! and we excite from the reference. We then map a_ref onto a_cdet which is a in the world where cdet is fully
         ! occupied (which is the world we are actually in). This mapping is a one-to-one mapping.
 
         ! a_ind_ref is the index of a in the world where the reference is fully occupied, etc.
 
         ! a_ind_rev_cdet is the index of a_cdet if a had been chosen after b (relevant when both have the same spin
-        ! and the reverse selection has to be considered). 
+        ! and the reverse selection has to be considered).
         
         integer :: i_ind_ref, j_ind_ref, a_ind_ref, b_ind_cdet
         integer :: a_ind_rev_cdet, b_ind_rev_ref
@@ -232,7 +226,7 @@ contains
                 ! of the same spin as i_ref that are unoccupied if all electrons are in the reference.
                 if (sys%basis%basis_fns(i_ref)%Ms < 0) then
                     if (sys%nvirt_beta > 0) then
-                        a_ind_ref = select_weighted_value_prec(rng, sys%nvirt_beta, pp%ia_aliasU(:,i_ind_ref), &
+                        a_ind_ref = select_weighted_value_precalc(rng, sys%nvirt_beta, pp%ia_aliasU(:,i_ind_ref), &
                                                                pp%ia_aliasK(:,i_ind_ref))
                         a_ref = pp%virt_list_beta(a_ind_ref)
                         a_found = .true.
@@ -241,21 +235,21 @@ contains
                     end if
                 else
                     if (sys%nvirt_alpha > 0) then
-                        a_ind_ref = select_weighted_value_prec(rng, sys%nvirt_alpha, pp%ia_aliasU(:,i_ind_ref), &
+                        a_ind_ref = select_weighted_value_precalc(rng, sys%nvirt_alpha, pp%ia_aliasU(:,i_ind_ref), &
                                                                pp%ia_aliasK(:,i_ind_ref))
                         a_ref = pp%virt_list_alpha(a_ind_ref)
                         a_found = .true.
                     else
                         a_found = .false.
                     end if
-                end if 
+                end if
 
                 if (a_found) then
                     ! To conserve total spin, b and j will have the same spin, as a and i have the same spin.
-                    ! To find what symmetry b should have, we first have to map i,j and a to what they correspond to 
+                    ! To find what symmetry b should have, we first have to map i,j and a to what they correspond to
                     ! had we considered cdet and not the reference.
                 
-                    ! We need a list of the substitutions in cdet vs the ref.  i.e. for each orbital in the ref-lined-up 
+                    ! We need a list of the substitutions in cdet vs the ref.  i.e. for each orbital in the ref-lined-up
                     ! cdet which is not in ref, we need the location.
                     ! This is currently done with an O(N) step, but might be sped up at least.
 
@@ -265,9 +259,10 @@ contains
 
                     ! ref store (e.g.) contains the indices within pp%occ_list of the orbitals
                     ! which have been excited from.
-                    ! [review] - JSS: this could/should be done once per determinant/excitor rather than once per excit gen.
-                    ! [reply] - VAN: Would you calculate it the moment that cdet is defined? and add it as cdet%cdet_store etc?
-                    ! [reply] - AJWT: Quite possibly - this is certainly an optimization to consider, though it has structural implications.
+                    ! [todo] - Consider having four lists separated by spin instead of two, i.e. ref_store_alpha and
+                    ! [todo] - ref_store_beta instead of ref_store and the same for cdet_store.
+                    ! [todo] - Consider calculating these lists once per determinants/excitor instead of once per excitation
+                    ! [todo] - generator call.
                     do ii=1, nex
                         associate(bfns=>sys%basis%basis_fns)
                             if (bfns(pp%occ_list(ref_store(ii)))%Ms /= bfns(cdet%occ_list(cdet_store(ii)))%Ms) then
@@ -278,7 +273,7 @@ contains
                                 ! det's jj now points to an orb of the same spin as ref's ii, so swap cdet_store's ii and jj.
                                 t = cdet_store(ii)
                                 cdet_store(ii) = cdet_store(jj)
-                                cdet_store(jj) = t 
+                                cdet_store(jj) = t
                             end if
                         end associate
                     end do
@@ -291,17 +286,17 @@ contains
                     ! cdet_store  contains the indices within cdet%occ_list of the orbitals which are in cdet (excited out
                     ! of ref).  i_ind_ref and j_ind_ref are the indices of the orbitals in pp%occ_list which we're exciting from.
                     do ii=1, nex
-                        if (ref_store(ii)==i_ind_ref) then  ! i_ref isn't actually in cdet, so we assign i_cdet to the orb that is
+                        if (ref_store(ii) == i_ind_ref) then  ! i_ref isn't actually in cdet, so we assign i_cdet to the orb that is
                             i_cdet = cdet%occ_list(cdet_store(ii))
-                        else if (ref_store(ii)==j_ind_ref) then ! j_ref isn't actually in cdet, so we assign j_cdet to the orb that is
+                        else if (ref_store(ii) == j_ind_ref) then ! j_ref isn't actually in cdet, so we assign j_cdet to the orb that is
                             j_cdet = cdet%occ_list(cdet_store(ii))
                         end if
-                        if (cdet%occ_list(cdet_store(ii))==a_ref) then
+                        if (cdet%occ_list(cdet_store(ii)) == a_ref) then
                             a_cdet = pp%occ_list(ref_store(ii)) ! a_ref is occupied in cdet, assign a_cdet to the orb that is not
-                        end if   
+                        end if
                     end do
 
-                    ! The symmetry of b (=b_cdet), isymb, is given by 
+                    ! The symmetry of b (=b_cdet), isymb, is given by
                     ! (sym_i_cdet* x sym_j_cdet* x sym_a_cdet)* = sym_b_cdet
                     ! (at least for Abelian point groups)
                     ! ij_sym: symmetry conjugate of the irreducible representation spanned by the codensity
@@ -312,29 +307,29 @@ contains
                                 sys%read_in%cross_product_sym_ptr(sys%read_in, ij_sym, sys%basis%basis_fns(a_cdet)%sym))
                     ! Ms_i + Ms_j = Ms_a + Ms_b => Ms_b = Ms_i + Ms_j - Ms_a.
                     ! Given that Ms_a = Ms_i, Ms_b = Ms_j.
-                    ! Ms_k is +1 if up and -1 if down but imsb is +2 if up and +1 if down, 
+                    ! Ms_k is +1 if up and -1 if down but imsb is +2 if up and +1 if down,
                     ! therefore a conversion is necessary.
-                    imsb = (sys%basis%basis_fns(j_ref)%Ms+3)/2
+                    imsb = (sys%basis%basis_fns(j_ref)%Ms + 3)/2
                 end if
 
                 ! Check whether an orbital (occupied or not) with required spin and symmetry exists.
-                if (a_found .and. (sys%read_in%pg_sym%nbasis_sym_spin(imsb,isymb) > 0)) then 
-                    ! Using alias tables based on the reference, find b_cdet out of the set of (all) orbitals that have 
-                    ! the required spin and symmetry. Note that these orbitals might be occupied in the reference and/or 
-                    ! cdet (although we only care about whether they are occupied in cdet which we deal with later). 
+                if (a_found .and. (sys%read_in%pg_sym%nbasis_sym_spin(imsb,isymb) > 0)) then
+                    ! Using alias tables based on the reference, find b_cdet out of the set of (all) orbitals that have
+                    ! the required spin and symmetry. Note that these orbitals might be occupied in the reference and/or
+                    ! cdet (although we only care about whether they are occupied in cdet which we deal with later).
 
-                    b_ind_cdet = select_weighted_value_prec(rng, sys%read_in%pg_sym%nbasis_sym_spin(imsb, isymb), &
+                    b_ind_cdet = select_weighted_value_precalc(rng, sys%read_in%pg_sym%nbasis_sym_spin(imsb, isymb), &
                                         pp%jb_aliasU(:, isymb, j_ind_ref), pp%jb_aliasK(:, isymb, j_ind_ref))
                     b_cdet = sys%read_in%pg_sym%sym_spin_basis_fns(b_ind_cdet, imsb, isymb)
 
                     ! Check that a_cdet /= b_cdet and that b_cdet is not occupied in cdet:
-                    if (a_cdet /= b_cdet .and. .not.btest(cdet%f(sys%basis%bit_lookup(2,b_cdet)), & 
+                    if (a_cdet /= b_cdet .and. .not.btest(cdet%f(sys%basis%bit_lookup(2,b_cdet)), &
                         sys%basis%bit_lookup(1,b_cdet))) then
                         
                         ! 3b. Probability of generating this excitation.
 
                         ! Calculate p(ab|ij) = p(a|i) p(j|b) + p(b|i)p(a|j)
-                        if (ij_spin==0) then
+                        if (ij_spin == 0) then
                             ! Not possible to have chosen the reversed excitation.
                             pgen = pp%ia_weights(a_ind_ref, i_ind_ref) / pp%ia_weights_tot(i_ind_ref) &
                                     * pp%jb_weights(b_ind_cdet, isymb, j_ind_ref) / pp%jb_weights_tot(isymb, j_ind_ref)
@@ -344,17 +339,17 @@ contains
                             b_ref = b_cdet
 
                             do ii=1, nex
-                                if (pp%occ_list(ref_store(ii))==b_cdet) then
+                                if (pp%occ_list(ref_store(ii)) == b_cdet) then
                                     ! b_cdet is occupied in ref, assign b_ref to the orb that is not
                                     b_ref = cdet%occ_list(cdet_store(ii))
                                     exit
-                                end if   
+                                end if
                             end do
 
-                            if (imsb == 1) then 
+                            if (imsb == 1) then
                                 ! find index b as if we had it selected first and as a from list of unoccupied virtual orbitals.
                                 call binary_search(pp%virt_list_beta, b_ref, 1, sys%nvirt_beta, found, b_ind_rev_ref)
-                            else 
+                            else
                                 call binary_search(pp%virt_list_alpha, b_ref, 1, sys%nvirt_alpha, found, b_ind_rev_ref)
                             end if
                             isyma = sys%read_in%sym_conj_ptr(sys%read_in, &
@@ -393,7 +388,7 @@ contains
                         connection%to_orb(2) = b_cdet
                     else
                         connection%to_orb(2) = a_cdet
-                        connection%to_orb(1) = b_cdet 
+                        connection%to_orb(1) = b_cdet
                     end if
 
                     ! 4b. Parity of permutation required to line up determinants.
@@ -456,7 +451,7 @@ contains
         ! See comments in choose_ij_k for how the occupied orbitals are indexed
         ! to allow one random number to decide the ij pair.
 
-        ind = int(get_rand_close_open(rng)*sys%nel*(sys%nel-1)/2) + 1
+        ind = int(get_rand_close_open(rng)*sys%nel*(sys%nel - 1)/2) + 1
 
         ! i,j initially refer to the indices in the lists of occupied spin-orbitals
         ! rather than the spin-orbitals.
@@ -465,8 +460,8 @@ contains
         ! i,j (referring to spin-orbitals) where j>i.  This ordering is
         ! convenient subsequently, e.g. is assumed in the
         ! find_excitation_permutation2 routine.
-        j_ind = int(1.50_p + sqrt(2*ind-1.750_p))
-        i_ind = ind - ((j_ind-1)*(j_ind-2))/2
+        j_ind = int(1.50_p + sqrt(2*ind - 1.750_p))
+        i_ind = ind - ((j_ind - 1)*(j_ind - 2))/2
 
         i = occ_list(i_ind)
         j = occ_list(j_ind)
@@ -481,7 +476,8 @@ contains
         ! Create a random excitation from cdet and calculate both the probability
         ! of selecting that excitation and the Hamiltonian matrix element.
         ! Weight the double excitations according the the Power-Pitzer bound
-        ! <ij|ab> <= Sqrt(<ia|ai><jb|bj>)
+        ! <ij|ab> <= Sqrt(<ia|ai><jb|bj>), see J.D. Power, R.M. Pitzer, Chem. Phys. Lett.,
+        ! 478-483 (1974).
         ! This requires a lookup of O(M) two-electron integrals in its setup.
 
         ! In:
@@ -526,10 +522,6 @@ contains
         integer ::  ij_spin, ij_sym, ierr
         logical :: found, a_found
         real(p), allocatable :: ia_weights(:), ja_weights(:), jb_weights(:)
-
-        !real(p) :: ia_weights(max(sys%nalpha + sys%nel,sys%nbeta+ sys%nel)), ja_weights(max(sys%nalpha+sys%nel,sys%nbeta+sys%nel)),
-        !jb_weights(max(sys%nalpha+sys%nel,sys%nbeta+sys%nel))
-      
         real(p) :: ia_weights_tot, ja_weights_tot, jb_weights_tot
         integer :: a, b, i, j, a_ind, b_ind, a_ind_rev, b_ind_rev, isymb, imsb, isyma
 
@@ -545,7 +537,7 @@ contains
             
             call choose_ij_mol(rng, sys, cdet%occ_list, i, j, ij_sym, ij_spin)
 
-            ! Now we've chosen i and j. 
+            ! Now we've chosen i and j.
  
             ! We now need to select the orbitals to excite into which we do with weighting:
             ! p(ab|ij) = p(a|i) p(b|j) + p(a|j) p(b|i)
@@ -554,9 +546,7 @@ contains
 
             ! Given i, construct the weights of all possible a
             if (sys%basis%basis_fns(i)%Ms < 0) then
-                ! [review] - JSS: is it really worth constructing this (O(N) time) rather than just going for a binary (or even
-                ! [review] - JSS: linear) search on the cumulative table directly?
-                ! [reply] - VAN: can you please clarify how you would do what you say?
+                ! [todo] - Consider doing a binary/linear search instead of using the alias method.
                 if (sys%nvirt_beta > 0) then
                     allocate(ia_weights(1:sys%nvirt_beta), stat=ierr)
                     call check_allocate('ia_weights', sys%nvirt_beta, ierr)
@@ -596,17 +586,17 @@ contains
             if (a_found) then
                 ! Given i,j,a construct the weights of all possible b
                 ! This requires that total symmetry and spin are conserved.
-                ! The symmetry of b (isymb) is given by 
+                ! The symmetry of b (isymb) is given by
                 ! (sym_i* x sym_j* x sym_a)* = sym_b
                 ! (at least for Abelian point groups)
                 isymb = sys%read_in%sym_conj_ptr(sys%read_in, &
                         sys%read_in%cross_product_sym_ptr(sys%read_in, ij_sym, sys%basis%basis_fns(a)%sym))
                 ! Ms_i + Ms_j = Ms_a + Ms_b => Ms_b = Ms_i + Ms_j - Ms_a
-                ! Ms_k is +1 if up and -1 if down but imsb is +2 if up and +1 if down, 
+                ! Ms_k is +1 if up and -1 if down but imsb is +2 if up and +1 if down,
                 ! therefore a conversion is necessary.
-                imsb = (ij_spin-sys%basis%basis_fns(a)%Ms+3)/2
+                imsb = (ij_spin - sys%basis%basis_fns(a)%Ms + 3)/2
             
-                if (sys%read_in%pg_sym%nbasis_sym_spin(imsb,isymb) > 0) then 
+                if (sys%read_in%pg_sym%nbasis_sym_spin(imsb,isymb) > 0) then
                     allocate(jb_weights(1:sys%read_in%pg_sym%nbasis_sym_spin(imsb,isymb)), stat=ierr)
                     call check_allocate('jb_weights', sys%read_in%pg_sym%nbasis_sym_spin(imsb,isymb), ierr)
                     call create_weighted_excitation_list_ptr(sys, j, a, sys%read_in%pg_sym%sym_spin_basis_fns(:,imsb,isymb), &
@@ -630,17 +620,17 @@ contains
                     ! 3b. Probability of generating this excitation.
 
                     ! Calculate p(ab|ij) = p(a|i) p(j|b) + p(b|i)p(a|j)
-                    if (ij_spin==0) then 
+                    if (ij_spin==0) then
                         ! not possible to have chosen the reversed excitation
                         pgen=ia_weights(a_ind)/ia_weights_tot*jb_weights(b_ind)/jb_weights_tot
-                    else 
+                    else
                         ! i and j have same spin, so could have been selected in the other order.
-                        if (imsb == 1) then 
+                        if (imsb == 1) then
                             ! find index b as if we had it selected first and as a from list of unoccupied virtual orbitals.
                             ! This uses the fact that the position of b in cdet%unocc_list_{beta,alpha} is the same
-                            ! position index as in b's index in ia_weights is. 
+                            ! position index as in b's index in ia_weights is.
                             call binary_search(cdet%unocc_list_beta, b, 1, sys%nvirt_beta, found, b_ind_rev)
-                        else 
+                        else
                             call binary_search(cdet%unocc_list_alpha, b, 1, sys%nvirt_alpha, found, b_ind_rev)
                         end if
 
@@ -671,17 +661,17 @@ contains
                     end if
                     if (a<b) then
                         connection%to_orb(1) = a
-                        connection%to_orb(2) = b 
+                        connection%to_orb(2) = b
                     else
                         connection%to_orb(2) = a
-                        connection%to_orb(1) = b 
+                        connection%to_orb(1) = b
                     end if
                     allowed_excitation = .true.
                 else
                     allowed_excitation = .false.
                 end if
             else
-                allowed_excitation = .false. 
+                allowed_excitation = .false.
             end if
            
             if (allowed_excitation) then

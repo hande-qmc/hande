@@ -6,15 +6,15 @@ module excit_gen_ueg
 ! The electron gas is wonderfully simple and only contains double
 ! excitations (much like, in fact, the Hubbard model).
 
-! NOTE: Currently only unrenormalised excitation generators are fully
-! implemented (ie where we explicitly discard excitations (i,j)->(a,b) if b is
-! already occupied rather than only generating excitations which are allowed).
-! This is because, as there is no integral storage bottleneck in the UEG, the
-! number of basis functions tends to be much larger than the number of
-! electrons.  Consequently the fraction of such forbidden excitations is quite
-! small and so it is not worth the expense of renormalising.  We still generate
-! excitations (i,j)->(a,b) which are allowed both by symmetry (conservation of
-! crystal momentum) and spin.
+! NOTE: Besides power-pitzer excitation generators, only unrenormalised
+! excitation generators are fully implemented (ie where we explicitly discard
+! excitations (i,j)->(a,b) if b is already occupied rather than only generating
+! excitations which are allowed). This is because, as there is no integral
+! storage bottleneck in the UEG, the number of basis functions tends to be much
+! larger than the number of electrons.  Consequently the fraction of such
+! forbidden excitations is quite small and so it is not worth the expense of
+! renormalising. We still generate excitations (i,j)->(a,b) which are allowed
+! both by symmetry (conservation of crystal momentum) and spin.
 
 use const, only: i0, p, dp
 
@@ -386,6 +386,7 @@ contains
         use sort, only: qsort
         use excit_gens, only: excit_gen_power_pitzer_t
         use alias, only: generate_alias_tables
+        use hamiltonian_ueg, only: create_weighted_excitation_list_ueg 
         type(sys_t), intent(in) :: sys
         type(reference_t), intent(in) :: ref
         type(excit_gen_power_pitzer_t), intent(inout) :: pp
@@ -410,44 +411,6 @@ contains
         end do
 
     end subroutine init_excit_ueg_power_pitzer
-
-    subroutine create_weighted_excitation_list_ueg(sys, i, a_list, a_list_len, weights, weight_tot)
-
-        ! Generate a list of allowed excitations from a to an element in a_list with their weights based on
-        ! |<ia|ai>|. 
-        !
-        ! In:
-        !    sys:   The system in which the orbitals live
-        !    i:  integer specifying the from orbital
-        !    a_list:   list of integers specifying the basis functions we're allowed to excite to
-        !    a_list_len:   The length of a_list
-        ! Out:
-        !    weights:   A list of reals (length a_list_len), with the weight of each of the to_list orbitals
-        !    weight_tot: The sum of all the weights.
-        
-        ! [review] - VAN: Do we think I should move this to hamiltonian_ueg.f90?
-
-        use system, only: sys_t
-        type(sys_t), intent(in) :: sys
-        integer, intent(in) :: i, a_list_len, a_list(a_list_len)
-        real(p), intent(out) :: weights(a_list_len), weight_tot
-        
-        integer :: k
-        real(p) :: weight
-
-        weight_tot = 0.0_p 
-        do k=1, a_list_len
-            if (a_list(k) /= i) then
-                weight = sys%ueg%coulomb_int(sys%lattice%box_length(1), sys%basis, i, a_list(k))
-                weight = abs(weight)
-            else
-                weight = 0.0_p
-            end if
-            weights(k) = weight
-            weight_tot = weight_tot + weight
-        end do
-
-    end subroutine create_weighted_excitation_list_ueg
 
     subroutine gen_excit_ueg_power_pitzer(rng, sys, excit_gen_data, cdet, pgen, connection, hmatel, allowed_excitation)
 
@@ -479,7 +442,7 @@ contains
         use system, only: sys_t
         use hamiltonian_ueg, only: slater_condon2_ueg_excit
         use excit_gens, only: excit_gen_data_t
-        use alias, only: select_weighted_value_prec
+        use alias, only: select_weighted_value_precalc
         use ueg_system, only: ueg_basis_index
         use hamiltonian_data 
 
@@ -517,7 +480,7 @@ contains
             maxv = sys%basis%nbasis / 2
 
             ! Just use electron i
-            a_ind = select_weighted_value_prec(rng, maxv, pp%ia_aliasU(:,i), pp%ia_aliasK(:,i))
+            a_ind = select_weighted_value_precalc(rng, maxv, pp%ia_aliasU(:,i), pp%ia_aliasK(:,i))
             ! Use the alias method to select i with the appropriate probability
             ! Map those >=i to the one after ( we're not allowed to select i)
             ! convert from spatial orbital back to spin orbital
@@ -560,8 +523,6 @@ contains
 
                 ! 3b. Probability of generating this excitation.
 
-                ! [review] - JSS: isn't this p(a|i) p(b|ija) + p(b|i)p(a|ijb) ?
-                ! [reply] - VAN: I think you are correct. I have changed that.
                 ! Calculate p(ab|ij) = p(a|i) p(b|ija) + p(b|i)p(a|ijb)
               
                 if (ij_spin==0) then 
