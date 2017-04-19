@@ -1451,7 +1451,7 @@ contains
         type(det_info_t), intent(in) :: cdet
         type(excit_t), intent(in) :: excitation
         real(p), intent(in) :: H00, pop
-        real(dp), intent(inout) :: structure_factor(:)
+        real(p), intent(inout) :: structure_factor(:)
 
         integer :: i, j, a, b, indx, sign_factor
         integer :: q(sys%lattice%ndim)
