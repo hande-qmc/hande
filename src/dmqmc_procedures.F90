@@ -34,7 +34,7 @@ contains
         type(dmqmc_estimates_t), intent(inout) :: dmqmc_estimates
         type(dmqmc_weighted_sampling_t), intent(inout) :: weighted_sampling
 
-        integer :: ierr, i, bit_position, bit_element, iorb, max_orb
+        integer :: ierr, i, bit_position, bit_element
 
         allocate(dmqmc_estimates%trace(nreplicas), stat=ierr)
         call check_allocate('dmqmc_estimates%trace', nreplicas, ierr)
