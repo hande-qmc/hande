@@ -132,11 +132,7 @@ contains
         if (parent) then
             ! Check input options.
             restarting = present(qmc_state_restart) .or. restart_in%read_restart
-            if (present(qmc_state_restart)) then
-                call check_qmc_opts(qmc_in, sys, .not.present(qmc_state_restart), restarting, qmc_state_restart)
-            else
-                call check_qmc_opts(qmc_in, sys, .not.present(qmc_state_restart), restarting)
-            end if
+            call check_qmc_opts(qmc_in, sys, .not.present(qmc_state_restart), restarting, qmc_state_restart)
             call check_fciqmc_opts(sys, fciqmc_in)
             call check_load_bal_opts(load_bal_in)
             call check_blocking_opts(blocking_in, restart_in)
