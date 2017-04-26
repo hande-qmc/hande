@@ -89,7 +89,9 @@ Options
     .. warning::
 
         The qmc_state object must have been returned by a previous CCMC calculation.
-        The validity of this is not checked.  The system must also be unchanged.
+        The validity of this is not checked.  The system must also be unchanged and
+        must not have a different even selection setting. To switch between using
+        even selection and not a written restart file must be used.
 
 .. _ccmc_table:
 
