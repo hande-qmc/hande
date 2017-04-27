@@ -1,0 +1,48 @@
+ueg_params = {
+    nel = 6,
+    ms = 0,
+    dim = 3,
+    cutoff = 1,
+    rs = 1.0,
+}
+
+ueg_small_basis = ueg(ueg_params)
+
+qmc_opts = {
+    tau = 0.05,
+    rng_seed = 7,
+    init_pop = 10,
+    mc_cycles = 10,
+    nreports = 1000,
+    target_population = 2000,
+    real_amplitudes = true,
+    real_amplitude_force_32 = true,
+    spawn_cutoff = 0.01,
+    state_size = 4e6,
+    spawned_state_size = 4e6,
+}
+
+qmc_state = fciqmc {
+    sys = ueg_small_basis,
+    qmc = qmc_opts,
+    semi_stoch = {
+        size = 1000,
+        start_iteration = 500,
+        space = "high",
+        write = 0,
+    },
+}
+
+ueg_params.cutoff = 2
+ueg_large_basis = ueg(ueg_params)
+
+qmc_opts.tau = 0.005
+
+fciqmc {
+    sys = ueg_large_basis,
+    qmc = qmc_opts,
+    semi_stoch = {
+        start_iteration = 0,
+        space = "read",
+    },
+}
