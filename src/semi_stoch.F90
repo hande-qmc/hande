@@ -1464,6 +1464,9 @@ contains
                 call hdf5_read(file_id, 'nbasis', nbasis_restart)
                 if (nbasis_restart > sys%basis%nbasis) &
                     call stop_all('read_determ_from_file', 'Cannot use a larger basis to start a calculation in a smaller basis')
+            else
+                ! If no information provided in the file, assume the basis is not changed.
+                nbasis_restart = sys%basis%nbasis
             end if
 
             ! Perform the reading in of determinants to determ%dets.
@@ -1474,7 +1477,7 @@ contains
                     call change_nbasis(file_id, 'dets', kinds, 0, 0, determ%dets)
                 end if
             else
-                if (sys%basis%tensor_label_len == tensor_label_len_old) &
+                if (sys%basis%nbasis /= nbasis_restart) &
                     call stop_all('read_determ_from_file', 'Changing DET_SIZE and basis size simultaneously not supported.')
                 call convert_dets(file_id, 'dets', kinds, 0, 0, determ%dets)
             end if
