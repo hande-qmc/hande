@@ -89,7 +89,8 @@ contains
         else
 
             ! 2b. Select orbitals to excite from and orbitals to excite into.
-            call choose_ij_mol(rng, sys, cdet%occ_list, i_ind, j_ind, connection%from_orb(1), connection%from_orb(2), ij_sym, ij_spin)
+            call choose_ij_mol(rng, sys, cdet%occ_list, i_ind, j_ind, connection%from_orb(1), connection%from_orb(2), ij_sym, &
+                            ij_spin)
             call choose_ab_mol(rng, sys, cdet%f, ij_sym, ij_spin, cdet%symunocc, connection%to_orb(1), &
                                connection%to_orb(2), allowed_excitation)
             connection%nexcit = 2
@@ -180,7 +181,8 @@ contains
         else
 
             ! 2b. Select orbitals to excite from and orbitals to excite into.
-            call choose_ij_mol(rng, sys, cdet%occ_list, i_ind, j_ind, connection%from_orb(1), connection%from_orb(2), ij_sym, ij_spin)
+            call choose_ij_mol(rng, sys, cdet%occ_list, i_ind, j_ind, connection%from_orb(1), connection%from_orb(2), ij_sym, &
+                            ij_spin)
             call find_ab_mol(rng, cdet%f, ij_sym, ij_spin, sys,  &
                              connection%to_orb(1), connection%to_orb(2), &
                              allowed_excitation)
