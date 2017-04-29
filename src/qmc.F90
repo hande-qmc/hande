@@ -240,7 +240,8 @@ contains
                                          slater_condon1_mol_excit, slater_condon2_mol_excit, get_one_e_int_mol, get_two_e_int_mol, & 
                                          create_weighted_excitation_list_mol
         use hamiltonian_periodic_complex, only: slater_condon0_periodic_complex, slater_condon1_periodic_excit_complex, &
-                                                slater_condon2_periodic_excit_complex, create_weighted_excitation_list_periodic_complex
+                                                slater_condon2_periodic_excit_complex, &
+                                                create_weighted_excitation_list_periodic_complex
         use hamiltonian_ringium, only: slater_condon0_ringium
         use hamiltonian_ueg, only: slater_condon0_ueg, kinetic_energy_ueg, exchange_energy_ueg, potential_energy_ueg
         use heisenberg_estimators
