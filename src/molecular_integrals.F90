@@ -216,7 +216,6 @@ contains
             allocate(store%integrals(ispin)%v(nintgrls), stat=ierr)
             call check_allocate('two_body_store_component', nintgrls, ierr)
         end do
-        write(iunit,*) "Done 2body alloc."
 
     end subroutine init_two_body_t
 
