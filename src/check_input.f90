@@ -15,6 +15,7 @@ contains
         ! In:
         !    sys: system object, as set in read_input.
 
+        use parallel, only: default_max_broadcast_chunk
         use system
 
         use errors, only: stop_all, warning

@@ -21,6 +21,7 @@ use basis_types, only: basis_t
 use molecular_integral_types
 use ueg_types, only: ueg_basis_t
 use symmetry_types, only: pg_sym_t, mom_sym_t
+use parallel, only: default_max_broadcast_chunk
 
 implicit none
 
@@ -244,11 +245,6 @@ type sys_ueg_t
     integer :: gamma_sym
 
 end type sys_ueg_t
-
-! Size above which to use custom MPI type for broadcasting integer arrays.
-! This is needed if size of array exceeds values that can be stored in a
-! 32 bit integer.  /8 (i.e. 2^31->2^28) owing to the size of the double.
-integer, parameter :: default_max_broadcast_chunk = (2_int_64**28)-1_int_64
 
 type sys_read_in_t
 
