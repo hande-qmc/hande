@@ -119,6 +119,11 @@ integer, parameter :: mpi_pcomplex = MPI_COMPLEX16
 #endif
 #endif
 
+! Size above which to use custom MPI type for broadcasting integer arrays.
+! This is needed if size of array exceeds values that can be stored in a
+! 32 bit integer.  /8 (i.e. 2^31->2^28) owing to the size of the double.
+integer, parameter :: default_max_broadcast_chunk = (2_int_64**28)-1_int_64
+
 contains
 
     subroutine init_parallel()

@@ -1161,8 +1161,8 @@ contains
         integer, intent(in) :: data_proc, max_broadcast_chunk
         integer :: iunit
 #ifdef PARALLEL
-        integer :: i, ierr, nblocks, nnext, mpi_preal_block, optimal_block_size
-        integer(int_64) :: nmain
+        integer :: i, ierr, nblocks, nnext, mpi_preal_block, optimal_block_size, j
+        integer(int_64) :: nmain, ncurr
 
         iunit = 6
         call MPI_BCast(store%op_sym, 1, mpi_integer, data_proc, MPI_COMM_WORLD, ierr)
@@ -1198,8 +1198,11 @@ contains
                                     &,/,1X,"and ", es11.4E3," in the remainder.")') real(nmain), real(nnext)
 
                     end if
-
-                    call MPI_BCast(ints, nblocks, mpi_preal_block, data_proc, MPI_COMM_WORLD, ierr)
+                    ncurr = 1
+                    do j = 1,nblocks
+                       call MPI_BCast(ints(ncurr), 1, mpi_preal_block, data_proc, MPI_COMM_WORLD, ierr)
+                       ncurr = ncurr + optimal_block_size
+                    end do
                     ! Finally broadcast the remaining values not included in previous block.
                     ! In some compilers (intel) passing array slices into mpi calls leads to
                     ! creation of a temporary array the size of the full integral list. To
