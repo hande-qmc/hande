@@ -83,7 +83,7 @@ contains
         use symmetry, only: symmetry_orb_list
 
         use errors, only: stop_all
-        use utils, only: get_free_unit, int_fmt
+        use utils, only: int_fmt
         use parallel, only: parent
 
         use system, only: sys_t
@@ -113,8 +113,7 @@ contains
             if (fci_in%print_fci_wfn /= 0) then
                 ! Overwrite any existing file...
                 ! Open a fresh file here so we can just append to it later.
-                iunit = get_free_unit()
-                open(iunit, file=fci_in%print_fci_wfn_file, status='unknown')
+                open(newunit=iunit, file=fci_in%print_fci_wfn_file, status='unknown')
                 close(iunit, status='delete')
             end if
         end if
@@ -239,7 +238,6 @@ contains
 
         use checking, only: check_allocate, check_deallocate
         use csr, only: init_csrp, end_csrp, csrp_t
-        use utils, only: get_free_unit
         use errors, only: stop_all
         use parallel
 
@@ -421,7 +419,6 @@ contains
         use errors, only: stop_all
         use linalg, only: plaprnt
         use parallel, only: blacs_info, nprocs
-        use utils, only: get_free_unit
 
         use csr, only: csrp_t
 
@@ -434,8 +431,7 @@ contains
         real(p), allocatable :: work_print(:)
         complex(p), allocatable :: cwork_print(:)
 
-        iunit = get_free_unit()
-        open(iunit, file=hamiltonian_file, status='unknown')
+        open(newunit=iunit, file=hamiltonian_file, status='unknown')
         if (nprocs > 1 .and. (.not.hamil%comp)) then
             if (.not.present(proc_blacs_info)) call stop_all('write_hamil', 'proc_blacs_info not supplied.')
             ! Note that this uses a different format to the serial case...

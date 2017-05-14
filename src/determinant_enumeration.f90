@@ -356,7 +356,7 @@ contains
         !   filename: filename to write determinants to.  Overwritten.
 
         use system, only: sys_t
-        use utils, only: get_free_unit, int_fmt
+        use utils, only: int_fmt
 
         type(sys_t), intent(in) :: sys
         integer, intent(in) :: ndets
@@ -368,8 +368,7 @@ contains
 
         ! Output the determinants.
         fmt1 = int_fmt(ndets, padding=1)
-        det_unit = get_free_unit()
-        open(det_unit, file=filename, status='unknown')
+        open(newunit=det_unit, file=filename, status='unknown')
         do i = 1, ndets
             write (det_unit,'('//fmt1//',4X)',advance='no') i
             call write_det(sys%basis, sys%nel, dets(:,i), det_unit, new_line=.true.)
