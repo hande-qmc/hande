@@ -457,7 +457,6 @@ contains
         use const, only: i0, p
 
         use checking, only: check_allocate, check_deallocate
-        use utils, only: get_free_unit
         use parallel
 
         character(*), intent(in) :: filename
@@ -476,8 +475,7 @@ contains
 #endif
 
         if (parent) then
-            iunit = get_free_unit()
-            open(iunit,file=filename,status='unknown', position='append')
+            open(newunit=iunit,file=filename,status='unknown', position='append')
         end if
 
         if (nprocs == 1) then

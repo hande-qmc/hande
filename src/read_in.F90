@@ -40,7 +40,7 @@ contains
         use errors, only: stop_all, warning
         use parallel
         use ranking, only: insertion_rank
-        use utils, only: get_free_unit, tri_ind_reorder, int_fmt
+        use utils, only: tri_ind_reorder, int_fmt
 
         use, intrinsic :: iso_fortran_env
 
@@ -181,11 +181,10 @@ contains
 
         ! Only do i/o on root processor.
         if (parent) then
-            ir = get_free_unit()
             inquire(file=sys%read_in%fcidump, exist=t_exists)
             if (.not.t_exists) call stop_all('read_in_integrals', 'FCIDUMP does not &
                                                                &exist:'//trim(sys%read_in%fcidump))
-            open (ir, file=sys%read_in%fcidump, status='old', form='formatted')
+            open (newunit=ir, file=sys%read_in%fcidump, status='old', form='formatted')
 
             ! If FCIDUMP doesn't contain uhf data, can end up accessing uninitalised value for uhf.
             uhf = .false.
@@ -949,7 +948,7 @@ contains
 
         use errors, only: stop_all
         use parallel
-        use utils, only: get_free_unit, int_fmt
+        use utils, only: int_fmt
         use errors, only: warning
         use system, only: sys_t
 
@@ -983,11 +982,10 @@ contains
             ! We don't know the symmetry of the operator.
             ! However, we do know that a non-zero integral must have a totally
             ! symmetric integrand *and* we know the symmetries of all the orbitals.
-            ir = get_free_unit()
             inquire(file=integral_file, exist=t_exists)
             if (.not.t_exists) call stop_all('read_in_one_body', 'Integral file does not &
                                                                &exist:'//trim(integral_file))
-            open (ir, file=integral_file, status='old', form='formatted')
+            open (newunit=ir, file=integral_file, status='old', form='formatted')
 
             do
                 read (ir,*, iostat=ios) x, i, a
