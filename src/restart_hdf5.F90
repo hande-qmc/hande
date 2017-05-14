@@ -665,7 +665,7 @@ module restart_hdf5
             call h5fclose_f(file_id, ierr)
             call h5close_f(ierr)
 #else
-            call stop_all('read_restart_hdf5', '# Not compiled with HDF5 support.  Cannot read in restart file.')
+            call stop_all('read_restart_hdf5', '# Fatal: not compiled with HDF5 support.  Cannot read in restart file.')
 #endif
 
         end subroutine read_restart_hdf5
@@ -731,7 +731,7 @@ module restart_hdf5
             call h5close_f(ierr)
 
 #else
-            call stop_all('get_reference_hdf5', '# Not compiled with HDF5 support.  Cannot read in restart file.')
+            call stop_all('get_reference_hdf5', '# Fatal: not compiled with HDF5 support.  Cannot read in restart file.')
 #endif
 
         end subroutine get_reference_hdf5
@@ -1177,7 +1177,7 @@ module restart_hdf5
             end subroutine write_psip_info
 
 #else
-            call stop_all('redistribute_restart_hdf5', '# Not compiled with HDF5 support.  Cannot manipulate restart files.')
+            call stop_all('redistribute_restart_hdf5', '# Fatal: not compiled with HDF5 support.  Cannot manipulate restart files.')
 #endif
 
         end subroutine redistribute_restart_hdf5

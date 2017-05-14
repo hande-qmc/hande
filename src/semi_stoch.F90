@@ -1298,7 +1298,7 @@ contains
 #endif
 #endif
 #ifdef DISABLE_HDF5
-        call stop_all('read_determ_from_file', '# Not compiled with HDF5 support.  Cannot read semi-stochastic file.')
+        call stop_all('read_determ_from_file', '# Fatal: not compiled with HDF5 support.  Cannot read semi-stochastic file.')
 #else
 
         ! Read the deterministic states in on just the parent processor.
