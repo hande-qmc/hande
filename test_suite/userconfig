@@ -6,7 +6,7 @@ extract_fn = ../tools/pyhande pyhande.testcode.testcode_data
 extract_program = ../tools/tests/extract_test_data.py
 ignore_fields = time
 skip_program = grep
-skip_args = -i 'disabled at compile-time\|Not compiled with HDF5 support\|Running with .* threads\|Tried to pass logging options to a non-debug build'
+skip_args = -i 'disabled at compile-time\|Fatal: not compiled with HDF5 support\|Running with .* threads\|Tried to pass logging options to a non-debug build'
 skip_cmd_template = tc.skip tc.args tc.test tc.error
 
 [user]
