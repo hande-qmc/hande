@@ -74,7 +74,6 @@ contains
         use logging, only: init_logging, end_logging, prep_logging_mc_cycle, write_logging_calc_fciqmc, &
                             logging_in_t, logging_t, logging_in_t_json, logging_t_json
         use blocking, only: write_blocking_report_header, allocate_blocking, do_blocking, deallocate_blocking, write_blocking_report
-        use utils, only: get_free_unit
         use report, only: write_date_time_close
 
         type(sys_t), intent(in) :: sys
@@ -218,8 +217,7 @@ contains
         if (blocking_in%blocking_on_the_fly) call allocate_blocking(qmc_in, blocking_in, bl)
 
         if (parent .and. blocking_in%blocking_on_the_fly) then
-            iunit = get_free_unit()
-            open(iunit, file=blocking_in%filename, status='unknown')
+            open(newunit=iunit, file=blocking_in%filename, status='unknown')
             call write_blocking_report_header(iunit)
         end if
 

@@ -1042,7 +1042,7 @@ contains
         use checking, only: check_allocate, check_deallocate
         use dmqmc_data, only: dmqmc_rdm_in_t, dmqmc_estimates_t
         use parallel
-        use utils, only: get_free_unit, append_ext, int_fmt
+        use utils, only: append_ext, int_fmt
 
         type(dmqmc_estimates_t), intent(inout) :: dmqmc_estimates
         integer, intent(in) :: beta_cycle
@@ -1100,9 +1100,8 @@ contains
                 write (iunit,'(1x,"# RDM trace =",1X,es17.10)') trace
 
                 if (rdm_in%output_rdm) then
-                    new_unit = get_free_unit()
                     call append_ext('rdm', beta_cycle, rdm_filename)
-                    open(new_unit, file=trim(rdm_filename), status='replace')
+                    open(newunit=new_unit, file=trim(rdm_filename), status='replace')
                     write(new_unit,'(a5,1x,es15.8)') "Trace", trace
                     do i = 1, ubound(rdm,1)
                         do j = i, ubound(rdm,1)

@@ -610,7 +610,6 @@ contains
         !       written out to.
 
         use qmc_data, only: blocking_t, qmc_in_t
-        use utils, only: get_free_unit
 
         integer, intent(in) :: iunit
         type(blocking_t), intent(in) :: bl
