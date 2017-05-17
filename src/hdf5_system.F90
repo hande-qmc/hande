@@ -391,7 +391,7 @@ module hdf5_system
             call h5close_f(ierr)
 #else
             filename = ''
-            if (parent)  call warning('dump_system_hdf5', '# Not compiled with HDF5 support. Cannot write out &
+            if (parent)  call stop_all('dump_system_hdf5', '# Fatal: not compiled with HDF5 support. Cannot write out &
                                       &sysdump file.')
 #endif
         end subroutine dump_system_hdf5
