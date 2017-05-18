@@ -1411,7 +1411,7 @@ contains
 #endif
 #endif
 #ifdef DISABLE_HDF5
-        call stop_all('read_determ_from_file', '# Not compiled with HDF5 support.  Cannot read semi-stochastic file.')
+        call stop_all('read_determ_from_file', '# Fatal: not compiled with HDF5 support.  Cannot read semi-stochastic file.')
 #else
 
         ! Read the deterministic states in on just the parent processor.
@@ -1603,7 +1603,7 @@ contains
         use errors, only: warning
 
         type(semi_stoch_t), intent(in) :: determ
-        integer, intent(in) :: write_id, io_unit
+        integer, intent(in) :: nbasis, write_id, io_unit
         logical, intent(in) :: print_info
 
         call warning('write_determ_to_file', '# Not compiled with HDF5 support.  Cannot write out semi-stochastic file.')
