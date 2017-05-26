@@ -898,6 +898,7 @@ contains
         !     real_amplitude_force_32 = true/false,
         !     spawn_cutoff = cutoff,
         !     excit_gen = 'renorm'/'no_renorm'/'power_pitzer'/'power_pitzer_orderM',
+        !     power_pitzer_min_weight = power_pitzer_min_weight,
         !     tau_search = true/false,
         !     pattempt_single = prob,
         !     pattempt_double = prob,
@@ -945,8 +946,9 @@ contains
                                                                  'pattempt_single', 'pattempt_double', 'initial_shift', &
                                                                  'shift_damping', 'initiator', 'initiator_threshold', &
                                                                  'use_mpi_barriers', 'vary_shift_from', &
-                                                                 'excit_gen', 'reference_target', 'vary_shift', &
-                                                                 'quasi_newton','quasi_newton_threshold', 'quasi_newton_value']
+                                                                 'excit_gen', 'power_pitzer_min_weight', 'reference_target', &
+                                                                 'vary_shift', 'quasi_newton','quasi_newton_threshold', &
+                                                                 'quasi_newton_value']
 
         if (present(short)) then
             skip = short
@@ -986,6 +988,7 @@ contains
         call aot_get_val(qmc_in%initiator_approx, err, lua_state, qmc_table, 'initiator')
         call aot_get_val(qmc_in%initiator_pop, err, lua_state, qmc_table, 'initiator_threshold')
         call aot_get_val(qmc_in%use_mpi_barriers, err, lua_state, qmc_table, 'use_mpi_barriers')
+        call aot_get_val(qmc_in%power_pitzer_min_weight, err, lua_state, qmc_table, 'power_pitzer_min_weight')
         call aot_get_val(qmc_in%quasi_newton, err, lua_state, qmc_table, 'quasi_newton')
         call aot_get_val(qmc_in%quasi_newton_threshold, err, lua_state, qmc_table, 'quasi_newton_threshold')
         call aot_get_val(qmc_in%quasi_newton_value, err, lua_state, qmc_table, 'quasi_newton_value')

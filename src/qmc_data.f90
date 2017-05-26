@@ -172,6 +172,10 @@ type qmc_in_t
     ! If true then allow the use of MPI barrier calls.
     logical :: use_mpi_barriers = .false.
 
+    ! The minimum ratio of individual weight over total weight when using the
+    ! occref power pitzer excitation generator.
+    real(p) :: power_pitzer_min_weight = 0.01_p
+
     ! If true, use a quasiNewton step
     logical :: quasi_newton = .false.
 
@@ -889,6 +893,7 @@ contains
         call json_write_key(js, 'initiator_pop', qmc%initiator_pop)
         call json_write_key(js, 'ncycles', qmc%ncycles)
         call json_write_key(js, 'nreport', qmc%nreport)
+        call json_write_key(js, 'power_pitzer_min_weight', qmc%power_pitzer_min_weight)
         call json_write_key(js, 'quasi_newton', qmc%quasi_newton)
         call json_write_key(js, 'quasi_newton_threshold', qmc%quasi_newton_threshold)
         call json_write_key(js, 'quasi_newton_value', qmc%quasi_newton_value)
