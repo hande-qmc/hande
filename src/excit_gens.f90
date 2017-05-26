@@ -10,7 +10,7 @@ integer(int_32), parameter :: int_bas = int_32
 ! Type containing alias tables, etc, needed when using the power pitzer ("occ_ref") 
 ! excitation generator, that considers weights, etc, as seen from the reference.
 type excit_gen_power_pitzer_t
-    ! Minimum ratio of individual weight/total weight. Aims to reduce p_gens that are too big.
+    ! Minimum ratio over number of orbitals of individual weight/total weight. Aims to reduce p_gens that are too big.
     real(p) :: power_pitzer_min_weight
     ! ia_aliasU(:,i) stores the alias table of real U considering an excitation from i 
     ! to a virtual orbital of the same spin. 

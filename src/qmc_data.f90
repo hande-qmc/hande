@@ -172,7 +172,7 @@ type qmc_in_t
     ! If true then allow the use of MPI barrier calls.
     logical :: use_mpi_barriers = .false.
 
-    ! The minimum ratio of individual weight over total weight when using the
+    ! The minimum ratio over number of orbitals of individual weight over total weight when using the
     ! occref power pitzer excitation generator.
     real(p) :: power_pitzer_min_weight = 0.01_p
 

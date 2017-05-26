@@ -134,8 +134,8 @@ contains
 
     subroutine check_min_weight_ratio(weights, weights_tot, weights_len, min_ratio)
         
-        ! Restrict the minimum ratio of weights(i)/weights_tot to be min_ratio. Of course, as the total weight weights_tot gets
-        ! updated, some weights set earlier might then fall below the min_ratio again.
+        ! Restrict the minimum ratio of weights(i)/weights_tot to be min_ratio/number of orbitals. Of course, as the total
+        ! weight weights_tot gets updated, some weights set earlier might then fall below the min_ratio again.
         ! [todo] - test what ratio is sensible and whether a second loop is required until convergence is achieved so that
         ! [todo] - all weights satisfy the min_ratio requirement.
 
@@ -156,9 +156,9 @@ contains
         if (weights_tot > 0.0_p) then
             weights_tot_tmp = weights_tot
             do i = 1, weights_len
-                if ((weights(i) > 0.0_p) .and. (((weights(i)/weights_tot_tmp) - min_ratio) < 0.0_p)) then
+                if ((weights(i) > 0.0_p) .and. (((weights(i)/weights_tot_tmp) - (min_ratio/real(weights_len))) < 0.0_p)) then
                     weight_tmp = weights(i)
-                    weights(i) = min_ratio * weights_tot_tmp
+                    weights(i) = (min_ratio/real(weights_len)) * weights_tot_tmp
                     weights_tot = weights_tot + weights(i) - weight_tmp
                 end if            
             end do
