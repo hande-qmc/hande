@@ -939,7 +939,7 @@ contains
         character(len=30) :: str
         logical :: skip, no_renorm
 
-        character(23), parameter :: keys(27) = [character(23) :: 'tau', 'init_pop', 'mc_cycles', 'nreports', 'state_size', &
+        character(23), parameter :: keys(28) = [character(23) :: 'tau', 'init_pop', 'mc_cycles', 'nreports', 'state_size', &
                                                                  'spawned_state_size', 'rng_seed', 'target_population', &
                                                                  'real_amplitudes', 'spawn_cutoff', 'no_renorm', 'tau_search', &
                                                                  'real_amplitude_force_32', &

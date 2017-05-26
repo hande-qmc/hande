@@ -95,6 +95,7 @@ contains
                 if (nv > 0) then
                     call create_weighted_excitation_list_ptr(sys, j, 0, pp%virt_list_beta, nv, pp%ia_weights(:,i), &
                                                             pp%ia_weights_tot(i))
+                    call check_min_weight_ratio(pp%ia_weights(:,i), pp%ia_weights_tot(i), nv, pp%power_pitzer_min_weight)
                     call generate_alias_tables(nv, pp%ia_weights(:,i), pp%ia_weights_tot(i), pp%ia_aliasU(:,i), &
                                                pp%ia_aliasK(:,i))
                 end if
@@ -102,6 +103,8 @@ contains
                     if (sys%read_in%pg_sym%nbasis_sym_spin(1,bsym) > 0) then
                         call create_weighted_excitation_list_ptr(sys, j, 0, sys%read_in%pg_sym%sym_spin_basis_fns(:,1,bsym), &
                             sys%read_in%pg_sym%nbasis_sym_spin(1,bsym), pp%jb_weights(:,bsym,i), pp%jb_weights_tot(bsym,i))
+                        call check_min_weight_ratio(pp%jb_weights(:,bsym,i), pp%jb_weights_tot(bsym,i), &
+                                                   sys%read_in%pg_sym%nbasis_sym_spin(1,bsym), pp%power_pitzer_min_weight)
                         call generate_alias_tables(sys%read_in%pg_sym%nbasis_sym_spin(1,bsym), pp%jb_weights(:,bsym,i), &
                             pp%jb_weights_tot(bsym,i), pp%jb_aliasU(:,bsym,i), pp%jb_aliasK(:,bsym,i))
                     end if
@@ -111,6 +114,7 @@ contains
                 if (nv > 0) then
                     call create_weighted_excitation_list_ptr(sys, j, 0, pp%virt_list_alpha, nv, pp%ia_weights(:,i), &
                                                              pp%ia_weights_tot(i))
+                    call check_min_weight_ratio(pp%ia_weights(:,i), pp%ia_weights_tot(i), nv, pp%power_pitzer_min_weight)
                     call generate_alias_tables(nv, pp%ia_weights(:,i), pp%ia_weights_tot(i), pp%ia_aliasU(:,i), &
                                                pp%ia_aliasK(:,i))
                 end if
@@ -118,6 +122,8 @@ contains
                     if (sys%read_in%pg_sym%nbasis_sym_spin(2,bsym) > 0) then
                         call create_weighted_excitation_list_ptr(sys, j, 0, sys%read_in%pg_sym%sym_spin_basis_fns(:,2,bsym), &
                             sys%read_in%pg_sym%nbasis_sym_spin(2,bsym), pp%jb_weights(:,bsym,i), pp%jb_weights_tot(bsym,i))
+                        call check_min_weight_ratio(pp%jb_weights(:,bsym,i), pp%jb_weights_tot(bsym,i), &
+                                                   sys%read_in%pg_sym%nbasis_sym_spin(2,bsym), pp%power_pitzer_min_weight)
                         call generate_alias_tables(sys%read_in%pg_sym%nbasis_sym_spin(2,bsym), pp%jb_weights(:,bsym,i), &
                             pp%jb_weights_tot(bsym,i), pp%jb_aliasU(:,bsym,i), pp%jb_aliasK(:,bsym,i))
                     end if
@@ -125,6 +131,40 @@ contains
             end if
         end do
     end subroutine init_excit_mol_power_pitzer_occ_ref
+
+    subroutine check_min_weight_ratio(weights, weights_tot, weights_len, min_ratio)
+        
+        ! Restrict the minimum ratio of weights(i)/weights_tot to be min_ratio. Of course, as the total weight weights_tot gets
+        ! updated, some weights set earlier might then fall below the min_ratio again.
+        ! [todo] - test what ratio is sensible and whether a second loop is required until convergence is achieved so that
+        ! [todo] - all weights satisfy the min_ratio requirement.
+
+        ! In:
+        !   weights_len: number of elements in weights list
+        !   min_ratio: minimum value of weights(i)/weights_tot
+        ! In/Out:
+        !   weights: list of weights
+        !   weights_tot: sum of weights
+    
+        integer :: weights_len
+        real(p), intent(in) :: min_ratio
+        real(p), intent(inout) :: weights(:), weights_tot
+
+        integer :: i
+        real(p) :: weight_tmp, weights_tot_tmp
+
+        if (weights_tot > 0.0_p) then
+            weights_tot_tmp = weights_tot
+            do i = 1, weights_len
+                if ((weights(i) > 0.0_p) .and. (((weights(i)/weights_tot_tmp) - min_ratio) < 0.0_p)) then
+                    weight_tmp = weights(i)
+                    weights(i) = min_ratio * weights_tot_tmp
+                    weights_tot = weights_tot + weights(i) - weight_tmp
+                end if            
+            end do
+        end if
+
+    end subroutine check_min_weight_ratio
 
     subroutine gen_excit_mol_power_pitzer_occ_ref(rng, sys, excit_gen_data, cdet, pgen, connection, hmatel, allowed_excitation)
 

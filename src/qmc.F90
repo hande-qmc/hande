@@ -184,7 +184,7 @@ contains
         if (qmc_in%excit_gen==excit_gen_power_pitzer) then
             if (sys%system == read_in) then
                call init_excit_mol_power_pitzer_occ_ref(sys, qmc_state%ref, qmc_state%excit_gen_data%excit_gen_pp)
-               qmc_state%excit_gen_data%excit_gen_pp%min_weight_ratio = qmc_in%power_pitzer_min_weight
+               qmc_state%excit_gen_data%excit_gen_pp%power_pitzer_min_weight = qmc_in%power_pitzer_min_weight
             else if (sys%system == ueg) then 
                call init_excit_ueg_power_pitzer(sys, qmc_state%ref, qmc_state%excit_gen_data%excit_gen_pp)
             end if
