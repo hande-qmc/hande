@@ -844,12 +844,12 @@ contains
                     ! no spawning is attempted
                     call linked_excitation(sys%basis, qs%ref%f0, connection, cluster, linked, single_unlinked, funlinked)
                     if (.not. linked) then
-                        hmatel%r = 0.0_p
+                        hmatel%c = 0.0_p
                     else if (single_unlinked) then
                         ! Single excitation: need to modify the matrix element
                         ! Subtract off the matrix element from the cluster without
                         ! the unlinked a_i operator
-                        hmatel%r = hmatel%r - unlinked_commutator(sys, qs%ref%f0, connection, cluster, cdet%f, funlinked)
+                        hmatel%c = hmatel%c - unlinked_commutator(sys, qs%ref%f0, connection, cluster, cdet%f, funlinked)
                     end if
                 end if
             end if
