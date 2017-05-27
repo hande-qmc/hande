@@ -222,8 +222,23 @@ algorithms and control the core settings in the algorithms.
 
     ..
 
-        [todo] - Add paper citation once it is published.
+        [todo] - Add paper citation once it is published. Highlight special case of UEG.
 
+``power_pitzer_min_weight``
+    type: float.
+
+    Optional. Default: 0.01.
+
+    Only used in 'read_in' systems if the 'power_pitzer' excitation generator is used.
+    This number (approximately) sets the minimum value of
+    weight(orbital to excite to)/(total weights times number of orbitals to excite to).
+    The aim of this is to reduce the number of spawns with big abs(Hij)/pgen which can
+    happen if orbital connections with low pgen are mapped to orbital connections with
+    big abs(Hij).
+
+    ..
+
+        [todo] - Test.
 
 ``pattempt_single``
     type: float.
