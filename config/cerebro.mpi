@@ -10,7 +10,7 @@
 #  8) mkl/64/11.0/lp64/5
 
 [DEFAULT]
-cppflags_opt = -DHAVE_SSE2 -DPARALLEL -DDET_SIZE=64  -DPOP_SIZE=64
+cppflags_opt = -DHAVE_SSE2 -DPARALLEL -DDET_SIZE=64 -DPOP_SIZE=64
 
 [main]
 fc = mpif90

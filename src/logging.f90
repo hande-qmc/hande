@@ -490,6 +490,13 @@ contains
         else
             call write_column_title(iunit, "# spawn", int_val=.true., justify=1, sep=',')
         end if
+        call write_column_title(iunit, "spawn pgen", justify=-1, sep=',')
+        call write_column_title(iunit, "spawnee", justify=-1, sep=',')
+        call write_column_title(iunit, "spawner", justify=-1, sep=',')
+        call write_column_title(iunit, "i", justify=-1, sep=',')
+        call write_column_title(iunit, "j", justify=-1, sep=',')
+        call write_column_title(iunit, "a", justify=-1, sep=',')
+        call write_column_title(iunit, "b", justify=-1, sep=',')
         write (iunit,'()')
 
     end subroutine write_logging_spawn_header
@@ -771,7 +778,7 @@ contains
 
     end subroutine write_logging_calc_ccmc
 
-    subroutine write_logging_spawn(logging_info, hmatel, pgen, qn_weighting, nspawned, parent_sign, cmplx_wfn)
+    subroutine write_logging_spawn(logging_info, hmatel, pgen, qn_weighting, nspawned, parent_sign, cmplx_wfn, pgen_spawn, det_to, det_from,connection)
 
         ! Write log entry for a single spawning event.
 
@@ -785,9 +792,10 @@ contains
         !   parent_sign: real. Total signed population on parent determinant.
         !   cmplx_wfn: logical. True if using complex wavefunction, false if not.
 
-        use qmc_io, only: write_qmc_var
-        use const, only: int_p, p
+        use qmc_io, only: write_qmc_var, write_hex_determinant
+        use const, only: int_p, p, i0
         use hamiltonian_data, only: hmatel_t
+        use excitations, only: excit_t
 
         type(logging_t), intent(in) :: logging_info
         type(hmatel_t), intent(in) :: hmatel
@@ -795,6 +803,9 @@ contains
         integer(int_p), intent(in) :: nspawned(:)
         logical, intent(in) ::  cmplx_wfn
         integer :: iunit
+        real(p), intent(in), optional :: pgen_spawn
+        integer(i0), intent(in), optional :: det_to(:), det_from(:)
+        type(excit_t), intent(in),optional :: connection
 
         iunit = logging_info%spawn_unit
 
@@ -818,6 +829,29 @@ contains
 
                 if (cmplx_wfn) call write_qmc_var(iunit, nspawned(2), sep=',')
 
+                if (present(pgen_spawn)) then
+                    call write_qmc_var(iunit, pgen_spawn, sep=',')
+                else
+                    call write_qmc_var(iunit, 0._p, sep=',')
+                end if
+                if (present(det_to)) then
+                    call write_hex_determinant(iunit, det_to, sep=',')
+                else
+                    call write_qmc_var(iunit, 0, sep=',')
+                end if
+                if (present(det_from)) then
+                    call write_hex_determinant(iunit, det_from, sep=',')
+                else
+                    call write_qmc_var(iunit, 0, sep=',')
+                end if
+                if (present(connection)) then
+                    call write_qmc_var(iunit, connection%from_orb(1), sep=',')
+                    call write_qmc_var(iunit, connection%from_orb(2), sep=',')
+                    call write_qmc_var(iunit, connection%to_orb(1), sep=',')
+                    call write_qmc_var(iunit, connection%to_orb(2), sep=',')
+                else
+                    call write_qmc_var(iunit, 0, sep=',')
+                end if
                 write (iunit,'()')
             end if
         end if

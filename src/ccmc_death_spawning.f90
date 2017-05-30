@@ -96,7 +96,7 @@ contains
         ! actually spawned by positive excips.
         integer(int_p), parameter :: parent_sign = 1_int_p
         type(hmatel_t) :: hmatel, hmatel_save
-        real(p) :: pgen
+        real(p) :: pgen, spawn_pgen
         integer(i0) :: fexcit(sys%basis%tot_string_len), funlinked(sys%basis%tot_string_len)
         integer :: excitor_sign, excitor_level
         logical :: linked, single_unlinked, allowed_excitation
@@ -106,7 +106,7 @@ contains
         ! Note CCMC is not (yet, if ever) compatible with the 'split' excitation
         ! generators of the sys%lattice%lattice models.  It is trivial to implement and (at
         ! least for now) is left as an exercise to the interested reader.
-        call gen_excit_ptr%full(rng, sys, qs%excit_gen_data, cdet, pgen, connection, hmatel, allowed_excitation)
+        call gen_excit_ptr%full(rng, sys, qs%excit_gen_data, cdet, spawn_pgen, connection, hmatel, allowed_excitation)
 
         if (allowed_excitation) then
             if (linked_ccmc) then
@@ -135,13 +135,10 @@ contains
         ! 2, Apply additional factors.
         hmatel_save = hmatel
         hmatel%r = hmatel%r*real(cluster%amplitude)*invdiagel*cluster%cluster_to_det_sign
-        pgen = pgen*cluster%pselect*nspawnings_total
+        pgen = spawn_pgen*cluster%pselect*nspawnings_total
 
         ! 3. Attempt spawning.
         nspawn = attempt_to_spawn(rng, qs%tau, spawn_cutoff, qs%psip_list%pop_real_factor, hmatel%r, pgen, parent_sign)
-
-        if (debug) call write_logging_spawn(logging_info, hmatel_save, pgen, invdiagel, [nspawn], &
-                        real(cluster%amplitude)*qs%psip_list%pop_real_factor, sys%read_in%comp)
 
         if (nspawn /= 0_int_p) then
             ! 4. Convert the random excitation from a determinant into an
@@ -153,7 +150,13 @@ contains
             excitor_level = get_excitation_level(qs%ref%f0, fexcit)
             call convert_excitor_to_determinant(fexcit, excitor_level, excitor_sign, qs%ref%f0)
             if (excitor_sign < 0) nspawn = -nspawn
+            if (debug) call write_logging_spawn(logging_info, hmatel_save, pgen, invdiagel, [nspawn], &
+                        real(cluster%amplitude,p), sys%read_in%comp, spawn_pgen, fexcit, cdet%f,connection)
+        else
+            if (debug) call write_logging_spawn(logging_info, hmatel_save, pgen, invdiagel, [nspawn], &
+                        real(cluster%amplitude,p), sys%read_in%comp, spawn_pgen)
         end if
+
 
     end subroutine spawner_ccmc
 
