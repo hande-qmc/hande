@@ -163,12 +163,16 @@ contains
 
         if (qmc_in%ncycles <= 0) call stop_all(this, 'mc_cycles must be positive.')
         if (qmc_in%nreport <= 0) call stop_all(this, 'nreports must be positive.')
+        
+        if ((qmc_in%power_pitzer_min_weight < 0) .or. (qmc_in%power_pitzer_min_weight > 1)) then
+            call stop_all(this,'Power Pitzer Min. Weight Ratio must be between 0 and 1 inclusive.')
+        end if
 
         if (present(qmc_state_restart)) then
             if (sys%basis%tot_string_len /= size(qmc_state_restart%psip_list%states,dim=1)) call stop_all(this, &
                 'Attempting to restart calculation within lua using different information string lengths.&
                 & This is only possible by producing and reading back in a restart file.')
-        end if
+        end if  
 
     end subroutine check_qmc_opts
 

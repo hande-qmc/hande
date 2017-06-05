@@ -136,8 +136,6 @@ contains
         
         ! Restrict the minimum ratio of weights(i)/weights_tot to be min_ratio/number of orbitals. Of course, as the total
         ! weight weights_tot gets updated, some weights set earlier might then fall below the min_ratio again.
-        ! [todo] - test what ratio is sensible and whether a second loop is required until convergence is achieved so that
-        ! [todo] - all weights satisfy the min_ratio requirement.
 
         ! In:
         !   weights_len: number of elements in weights list
@@ -150,18 +148,59 @@ contains
         real(p), intent(in) :: min_ratio
         real(p), intent(inout) :: weights(:), weights_tot
 
-        integer :: i
-        real(p) :: weight_tmp, weights_tot_tmp
+        integer :: i, j, k, min_weights_counter, non_zero_weights_len
+        real(p) :: weights_keep, min_weight, min_weight_tmp
 
-        if (weights_tot > 0.0_p) then
-            weights_tot_tmp = weights_tot
+        min_weight_tmp = 0.0_p
+        non_zero_weights_len = 0
+
+        if ((weights_tot > 0.0_p) .and. (min_ratio > 0.0_p)) then
+            
+            ! Find the number of non zero weights.
             do i = 1, weights_len
-                if ((weights(i) > 0.0_p) .and. (((weights(i)/weights_tot_tmp) - (min_ratio/real(weights_len))) < 0.0_p)) then
-                    weight_tmp = weights(i)
-                    weights(i) = (min_ratio/real(weights_len)) * weights_tot_tmp
-                    weights_tot = weights_tot + weights(i) - weight_tmp
-                end if            
+                if (weights(i) > 0.0_p) then
+                    non_zero_weights_len = non_zero_weights_len + 1
+                end if
             end do
+
+            min_weight = (min_ratio/real(non_zero_weights_len)) * weights_tot
+
+            ! Find the correct min_weight such that min_ratio*weights_tot/non_zero_weights_len is min_weight at the end.            
+            do while (abs(min_weight_tmp - min_weight) > 0.0_p)
+                min_weight_tmp = min_weight
+                weights_keep = 0.0_p
+                min_weights_counter = 0
+                
+                do k = 1, weights_len
+                    if ((weights(k) > 0.0_p) .and. ((weights(k) - min_weight) < 0.0_p)) then
+                        min_weights_counter = min_weights_counter + 1
+                    else
+                        weights_keep = weights_keep + weights(k)
+                    end if            
+                end do
+                if (min_weights_counter == non_zero_weights_len) then
+                    exit
+                end if
+                ! The weights_tot of the next (future) iteration is calculated as
+                ! weights_tot (next iteration) = weights_keep + 
+                ! min_ratio*min_weights_counter*weights_tot (next iteration) /non_zero_weights_len,
+                ! which is then solved to be 
+                ! weights_tot (next iteration) = weights_keep / (1-min_ratio*min_weights_counter/non_zero_weights_len).
+                ! Substitute into min_weight = weights_tot * min_ratio/non_zero_weights_len
+                ! and get the expression below.
+                min_weight = (min_ratio/real(non_zero_weights_len)) * &
+                    (weights_keep/(1-(min_ratio*real(min_weights_counter)/real(non_zero_weights_len))))
+            end do
+
+            ! Set the new weights if required and update weights_tot.
+            weights_tot = 0.0_p
+            do j = 1, weights_len
+                if ((weights(j) > 0.0_p) .and. ((weights(j) - min_weight) < 0.0_p)) then
+                    weights(j) = min_weight
+                end if
+                weights_tot = weights_tot + weights(j)
+            end do
+                
         end if
 
     end subroutine check_min_weight_ratio
