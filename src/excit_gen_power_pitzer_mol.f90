@@ -144,6 +144,8 @@ contains
         !   weights: list of weights
         !   weights_tot: sum of weights
     
+        use const, only: depsilon
+
         integer :: weights_len
         real(p), intent(in) :: min_ratio
         real(p), intent(inout) :: weights(:), weights_tot
@@ -166,13 +168,13 @@ contains
             min_weight = (min_ratio/real(non_zero_weights_len)) * weights_tot
 
             ! Find the correct min_weight such that min_ratio*weights_tot/non_zero_weights_len is min_weight at the end.            
-            do while (abs(min_weight_tmp - min_weight) > 0.0_p)
+            do while (abs(min_weight_tmp - min_weight) > depsilon)
                 min_weight_tmp = min_weight
                 weights_keep = 0.0_p
                 min_weights_counter = 0
                 
                 do k = 1, weights_len
-                    if ((weights(k) > 0.0_p) .and. ((weights(k) - min_weight) < 0.0_p)) then
+                    if ((weights(k) > 0.0_p) .and. (weights(k) < min_weight)) then
                         min_weights_counter = min_weights_counter + 1
                     else
                         weights_keep = weights_keep + weights(k)
@@ -195,7 +197,7 @@ contains
             ! Set the new weights if required and update weights_tot.
             weights_tot = 0.0_p
             do j = 1, weights_len
-                if ((weights(j) > 0.0_p) .and. ((weights(j) - min_weight) < 0.0_p)) then
+                if ((weights(j) > 0.0_p) .and. (weights(j) < min_weight)) then
                     weights(j) = min_weight
                 end if
                 weights_tot = weights_tot + weights(j)
