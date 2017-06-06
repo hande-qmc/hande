@@ -778,7 +778,8 @@ contains
 
     end subroutine write_logging_calc_ccmc
 
-    subroutine write_logging_spawn(logging_info, hmatel, pgen, qn_weighting, nspawned, parent_sign, cmplx_wfn, pgen_spawn, det_to, det_from,connection)
+    subroutine write_logging_spawn(logging_info, hmatel, pgen, qn_weighting, nspawned, parent_sign, cmplx_wfn, pgen_spawn, &
+            det_to, det_from, connection)
 
         ! Write log entry for a single spawning event.
 
@@ -791,6 +792,10 @@ contains
         !   nspawned: integer. Total signed walkers spawned in this event.
         !   parent_sign: real. Total signed population on parent determinant.
         !   cmplx_wfn: logical. True if using complex wavefunction, false if not.
+        !   pgen_spawn: real. Optional. p_gen as returned by the excitation generator.
+        !   det_to: integer i0. Optional. Determinant with attempt to spawn to.
+        !   det_from: integer i0. Optional. Determinant attempting to spawn to det_to.
+        !   connection: excit_t. Optional. Contains information about the excitation attempt.
 
         use qmc_io, only: write_qmc_var, write_hex_determinant
         use const, only: int_p, p, i0

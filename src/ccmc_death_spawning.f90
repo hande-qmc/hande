@@ -151,10 +151,15 @@ contains
             call convert_excitor_to_determinant(fexcit, excitor_level, excitor_sign, qs%ref%f0)
             if (excitor_sign < 0) nspawn = -nspawn
             if (debug) call write_logging_spawn(logging_info, hmatel_save, pgen, invdiagel, [nspawn], &
-                        real(cluster%amplitude,p), sys%read_in%comp, spawn_pgen, fexcit, cdet%f,connection)
+                        real(cluster%amplitude,p), sys%read_in%comp, spawn_pgen, fexcit, cdet%f, connection)
         else
-            if (debug) call write_logging_spawn(logging_info, hmatel_save, pgen, invdiagel, [nspawn], &
-                        real(cluster%amplitude,p), sys%read_in%comp, spawn_pgen)
+            if (debug) then
+                call create_excited_det(sys%basis, cdet%f, connection, fexcit)
+                excitor_level = get_excitation_level(qs%ref%f0, fexcit)
+                call convert_excitor_to_determinant(fexcit, excitor_level, excitor_sign, qs%ref%f0)
+                call write_logging_spawn(logging_info, hmatel_save, pgen, invdiagel, [nspawn], &
+                        real(cluster%amplitude,p), sys%read_in%comp, spawn_pgen, fexcit, cdet%f, connection)
+            end if
         end if
 
 
