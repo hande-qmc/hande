@@ -846,9 +846,17 @@ contains
                 end if
                 if (present(connection)) then
                     call write_qmc_var(iunit, connection%from_orb(1), sep=',')
-                    call write_qmc_var(iunit, connection%from_orb(2), sep=',')
+                    if (connection%nexcit == 2) then
+                        call write_qmc_var(iunit, connection%from_orb(2), sep=',')
+                    else
+                        call write_qmc_var(iunit, 0, sep=',')
+                    end if
                     call write_qmc_var(iunit, connection%to_orb(1), sep=',')
-                    call write_qmc_var(iunit, connection%to_orb(2), sep=',')
+                    if (connection%nexcit == 2) then
+                        call write_qmc_var(iunit, connection%to_orb(2), sep=',')
+                    else
+                        call write_qmc_var(iunit, 0, sep=',')
+                    end if
                 else
                     call write_qmc_var(iunit, 0, sep=',')
                 end if
