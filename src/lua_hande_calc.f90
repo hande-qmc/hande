@@ -2027,8 +2027,8 @@ contains
         type(logging_in_t), intent(out) :: logging_in
         integer :: logging_table, err
 
-        character(15), parameter :: keys(7) = [character(15) :: 'calc', 'spawn', 'death', &
-                                                'stoch_selection', 'select', 'start', 'finish']
+        character(15), parameter :: keys(8) = [character(15) :: 'calc', 'spawn', 'death', &
+                                                'stoch_selection', 'select', 'start', 'finish', 'write']
 
         if (aot_exists(lua_state, opts, 'logging')) then
 
@@ -2049,6 +2049,8 @@ contains
                 call aot_get_val(logging_in%start_iter, err, lua_state, logging_table, 'start')
 
                 call aot_get_val(logging_in%end_iter, err, lua_state, logging_table, 'finish')
+
+                call aot_get_val(logging_in%write_to, err, lua_state, logging_table, 'write')
 
                 call warn_unused_args(lua_state, keys, logging_table)
                 call aot_table_close(lua_state, logging_table)
