@@ -1038,9 +1038,8 @@ contains
         character(255) :: out_name
         integer :: id, write_to_neg
 
-        write_to_neg = -write_to
         write(suffix,'(".p",i0,".log")') iproc
-        call get_unique_filename(trim(in_name), suffix, .true., write_to_neg, out_name, id, .true.)
+        call get_unique_filename(trim(in_name), suffix, .true., write_to, out_name, id, .true.)
 
     end function get_log_filename
 
