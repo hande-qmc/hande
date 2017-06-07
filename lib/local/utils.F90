@@ -286,30 +286,6 @@ contains
 
 ! --- File names and file handling ---
 
-    function get_free_unit() result(free_unit)
-
-        ! Returns:
-        !    The first free file unit above 10 and less than or equal to
-        !    the paramater max_unit (currently set to 200).
-
-        use errors, only: stop_all
-
-        integer, parameter :: max_unit = 100
-        integer :: free_unit
-        integer :: i
-        logical :: t_open, t_exist
-
-        do i = 10, max_unit
-            inquire(unit=i, opened=t_open, exist=t_exist)
-            if (.not.t_open .and. t_exist) then
-                free_unit = i
-                exit
-            end if
-        end do
-        if (i == max_unit+1) call stop_all('get_free_unit','Cannot find a free unit below max_unit.')
-
-    end function get_free_unit
-
     elemental subroutine append_ext(stem, n, s)
 
         ! Returns stem.n in s.
@@ -446,8 +422,7 @@ contains
         if (present(in_unit)) then
             iunit = in_unit
         else if (present(fname)) then
-            iunit = get_free_unit()
-            open(iunit, file=fname, status='old', form='formatted')
+            open(newunit=iunit, file=fname, status='old', form='formatted')
         else
             call stop_all('read_file_to_buffer', 'Neither file nor file handle supplied to read_file_to_buffer.')
         end if
