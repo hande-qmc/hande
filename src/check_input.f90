@@ -15,6 +15,7 @@ contains
         ! In:
         !    sys: system object, as set in read_input.
 
+        use parallel, only: default_max_broadcast_chunk
         use system
 
         use errors, only: stop_all, warning
@@ -63,7 +64,7 @@ contains
 
         if (sys%system == ringium .and. sys%ringium%radius < depsilon) call stop_all(this, 'Ringium must have a positive radius.')
 
-        if (sys%system == read_in .and. sys%read_in%max_broadcast_chunk /= ((2_int_64**31) - 1_int_64)) &
+        if (sys%system == read_in .and. sys%read_in%max_broadcast_chunk /= default_max_broadcast_chunk) &
             call warning(this, 'Not using default max_broadcast_chunk. This option is only intended for testing of &
                 &broadcasting functionality and gives no benefit to functionality.')
 

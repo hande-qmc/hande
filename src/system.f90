@@ -21,6 +21,7 @@ use basis_types, only: basis_t
 use molecular_integral_types
 use ueg_types, only: ueg_basis_t
 use symmetry_types, only: pg_sym_t, mom_sym_t
+use parallel, only: default_max_broadcast_chunk
 
 implicit none
 
@@ -293,9 +294,7 @@ type sys_read_in_t
     type(mom_sym_t) :: mom_sym
 
     ! Size above which to use custom MPI type for broadcasting integer arrays.
-    ! This is needed if size of array exceeds values that can be stored in a
-    ! 32 bit integer.
-    integer :: max_broadcast_chunk = (2_int_64**31)-1_int_64
+    integer :: max_broadcast_chunk = default_max_broadcast_chunk
 
     ! Pointers to symmetry-specific functions (pg_sym or mom_sym):
     ! 1) Cross product.
