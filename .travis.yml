@@ -21,8 +21,8 @@ before_install:
     - if [ ! -f $LUA/lib/liblua.a ] ; then ( wget -O - http://www.lua.org/ftp/lua-5.3.3.tar.gz | tar xzf - && cd lua-5.3.3 && make linux && make install INSTALL_TOP=$LUA ) ; fi
     - export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$LUA/lib
     # HDF5 (from source as the Ubuntu package doesn't have Fortran 2003 bindings)
-    - export HDF5_ROOT=$HOME/hdf5-1.8.17
-    - if [ ! -f $HDF5_ROOT/lib/libhdf5_fortran.so ] ; then ( wget -O - http://www.hdfgroup.org/ftp/HDF5/current/src/hdf5-1.8.17.tar.gz | tar xzf - && cd hdf5-1.8.17 && ./configure --prefix=$HDF5_ROOT --enable-fortran --enable-fortran2003 && make && make install ) ; fi
+    - export HDF5_ROOT=$HOME/hdf5-1.10.1
+    - if [ ! -f $HDF5_ROOT/lib/libhdf5_fortran.so ] ; then ( wget -O - http://www.hdfgroup.org/ftp/HDF5/releases/hdf5-1.10/hdf5-1.10.1/src/hdf5-1.10.1.tar.bz2 | tar xjf - && cd hdf5-1.10.1 && ./configure --prefix=$HDF5_ROOT --enable-fortran --enable-fortran2003 && make && make install ) ; fi
     - export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$HDF5_ROOT/lib
     # paths for blas and lapack
     - export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/usr/lib/libblas:/usr/lib/lapack
@@ -45,7 +45,7 @@ install:
 cache:
     pip: true
     directories:
-        - $HOME/hdf5-1.8.17
+        - $HOME/hdf5-1.10.1
         - $HOME/scalapack-2.0.2
         - $HOME/trlan-201009
         - $HOME/lua-5.3.3
