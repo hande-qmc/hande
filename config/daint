@@ -1,0 +1,26 @@
+# I used  PrgEnv-intel, with cray-hdf5-parallel
+# Assumes lua is located in $HOME/local
+[DEFAULT]
+include_f = -I ${HDF5_ROOT}/include -I ${MKLROOT}/include -I ${HOME}/local/include
+include_c = -I ${MKLROOT}/include -I ${HOME}/local/include
+
+[main]
+fc = ftn
+cc = cc
+cxx = CC
+ccd = gcc
+cppflags = -DHAVE_SSE2 -DDISABLE_LANCZOS -DDISABLE_UUID -DPARALLEL -DDET_SIZE=64 -DPOP_SIZE=64
+ld = ftn
+ldflags = -L ${HOME}/local/lib -L -L${MKLROOT}/lib/intel64
+libs =  ${MKLROOT}/lib/intel64/libmkl_scalapack_ilp64.a -Wl,--start-group ${MKLROOT}/lib/intel64/libmkl_intel_ilp64.a ${MKLROOT}/lib/intel64/libmkl_sequential.a ${MKLROOT}/lib/intel64/libmkl_core.a ${MKLROOT}/lib/intel64/libmkl_blacs_intelmpi_ilp64.a ${HOME}/local/lib/liblua.a -Wl,--end-group -lpthread -lm -lhdf5_fortran -lhdf5 -ldl
+f90_module_flag = -module
+
+[opt]
+fflags = %(include_f)s -O3
+cflags = %(include_c)s -O3
+cxxflags = -O3
+
+[dbg]
+fflags = %(include_f)s -e fm -g -hnoomp
+cflags = %(include_c)s -g -hgnu -hnoomp
+cxxflags = -g -dynamic
