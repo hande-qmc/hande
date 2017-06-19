@@ -243,10 +243,11 @@ contains
         use hamiltonian_heisenberg, only: diagonal_element_heisenberg, diagonal_element_heisenberg_staggered
         use hamiltonian_molecular, only: slater_condon0_mol, double_counting_correction_mol, hf_hamiltonian_energy_mol, &
                                          slater_condon1_mol_excit, slater_condon2_mol_excit, get_one_e_int_mol, get_two_e_int_mol, & 
-                                         create_weighted_excitation_list_mol, abs_hmatel_mol
+                                         create_weighted_excitation_list_mol, abs_hmatel_mol, single_excitation_weight_mol 
         use hamiltonian_periodic_complex, only: slater_condon0_periodic_complex, slater_condon1_periodic_excit_complex, &
                                                 slater_condon2_periodic_excit_complex, &
-                                                create_weighted_excitation_list_periodic_complex, abs_hmatel_periodic_complex
+                                                create_weighted_excitation_list_periodic_complex, abs_hmatel_periodic_complex, &
+                                                single_excitation_weight_periodic
         use hamiltonian_ringium, only: slater_condon0_ringium
         use hamiltonian_ueg, only: slater_condon0_ueg, kinetic_energy_ueg, exchange_energy_ueg, potential_energy_ueg
         use heisenberg_estimators
@@ -371,6 +372,7 @@ contains
                 slater_condon2_excit_ptr => slater_condon2_periodic_excit_complex
                 create_weighted_excitation_list_ptr => create_weighted_excitation_list_periodic_complex
                 abs_hmatel_ptr => abs_hmatel_periodic_complex
+                single_excitation_weight_ptr => single_excitation_weight_periodic
             else
                 update_proj_energy_ptr => update_proj_energy_mol
                 sc0_ptr => slater_condon0_mol
@@ -379,6 +381,7 @@ contains
                 slater_condon2_excit_ptr => slater_condon2_mol_excit
                 create_weighted_excitation_list_ptr => create_weighted_excitation_list_mol
                 abs_hmatel_ptr => abs_hmatel_mol
+                single_excitation_weight_ptr => single_excitation_weight_mol
             end if
 
             select case(qmc_in%excit_gen)

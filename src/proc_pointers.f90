@@ -209,6 +209,17 @@ abstract interface
         real(p) :: abs_hmatel
     end function i_abs_hmatel
 
+    pure function i_single_excitation_weight(sys, i, a) result(weight)
+        use molecular_integrals, only: get_one_body_int_mol_nonzero, get_two_body_int_mol_nonzero 
+        use system, only: sys_t 
+        use hamiltonian_data, only: hmatel_t
+        import :: p
+        type(hmatel_t) :: two_body_tmp
+        type(sys_t), intent(in) :: sys
+        integer, intent(in) :: i, a
+        real(p) :: weight
+    end function i_single_excitation_weight        
+
     pure function i_get_one_e_int(sys, i, a) result(intgrl)
         use system, only: sys_t
         import :: p
@@ -259,6 +270,7 @@ procedure(i_slater_condon2_excit), pointer :: slater_condon2_excit_ptr
 
 procedure(i_create_weighted_excitation_list), pointer :: create_weighted_excitation_list_ptr
 procedure(i_abs_hmatel), pointer :: abs_hmatel_ptr
+procedure(i_single_excitation_weight), pointer :: single_excitation_weight_ptr
 
 procedure(i_get_one_e_int), pointer :: get_one_e_int_ptr => null()
 procedure(i_get_two_e_int), pointer :: get_two_e_int_ptr => null()

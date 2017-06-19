@@ -222,7 +222,8 @@ contains
         use system, only: sys_t
         use qmc_data, only: reference_t
         use sort, only: qsort
-        use proc_pointers, only: create_weighted_excitation_list_ptr, slater_condon2_excit_ptr, abs_hmatel_ptr
+        use proc_pointers, only: create_weighted_excitation_list_ptr, slater_condon1_excit_ptr, slater_condon2_excit_ptr
+        use proc_pointers, only: abs_hmatel_ptr, single_excitation_weight_ptr
         use excit_gens, only: excit_gen_power_pitzer_t
         use alias, only: generate_alias_tables
         use read_in_symmetry, only: cross_product_basis_read_in
@@ -232,7 +233,7 @@ contains
         type(excit_gen_power_pitzer_t), intent(inout) :: pp
         type(hmatel_t) :: hmatel
 
-        integer :: i, j, a, b, ind_a, ind_b, ind_virt, ind_a_virt, ind_b_virt, maxv, nv, bsym, ij_sym, isymb
+        integer :: i, j, a, b, ind_a, ind_b, ind_virt, ind_a_virt, ind_b_virt, maxv, nv, bsym, ij_sym, isyma, isymb, ims, imsa
         integer :: i_tmp, j_tmp, a_tmp, b_tmp, nall
         real(p) :: i_weight, ij_weight
         
@@ -241,11 +242,19 @@ contains
         allocate(pp%i_all_aliasK(sys%nel))
         allocate(pp%i_all_weights(sys%nel))
         ! allocate(pp%i_all_weights_tot)
+        allocate(pp%i_single_aliasU(sys%nel))
+        allocate(pp%i_single_aliasK(sys%nel))
+        allocate(pp%i_single_weights(sys%nel))
+        ! allocate(pp%i_single_weights_tot)
         allocate(pp%ij_all_aliasU(sys%nel,sys%basis%nbasis))
         allocate(pp%ij_all_aliasK(sys%nel,sys%basis%nbasis))
         allocate(pp%ij_all_weights(sys%nel,sys%basis%nbasis))
         allocate(pp%ij_all_weights_tot(sys%basis%nbasis))
-        allocate(pp%ia_all_weights_tot(sys%basis%nbasis))
+        allocate(pp%ia_all_weights_tot(sys%basis%nbasis)) 
+        allocate(pp%ia_single_weights_tot(sys%basis%nbasis))
+        allocate(pp%ia_single_aliasU(maxval(sys%read_in%pg_sym%nbasis_sym_spin),sys%basis%nbasis))
+        allocate(pp%ia_single_aliasK(maxval(sys%read_in%pg_sym%nbasis_sym_spin),sys%basis%nbasis))
+        allocate(pp%ia_single_weights(maxval(sys%read_in%pg_sym%nbasis_sym_spin),sys%basis%nbasis))
         allocate(pp%jb_all_aliasU(maxval(sys%read_in%pg_sym%nbasis_sym_spin), sys%sym0_tot:sys%sym_max_tot, sys%basis%nbasis))
         allocate(pp%jb_all_aliasK(maxval(sys%read_in%pg_sym%nbasis_sym_spin), sys%sym0_tot:sys%sym_max_tot, sys%basis%nbasis))
         allocate(pp%jb_all_weights(maxval(sys%read_in%pg_sym%nbasis_sym_spin), sys%sym0_tot:sys%sym_max_tot, sys%basis%nbasis))
@@ -257,7 +266,7 @@ contains
         pp%occ_list(:sys%nel) = ref%occ_list0(:sys%nel)
         pp%occ_list(sys%nel + 1) = sys%basis%nbasis*2  ! A pad
         ! [todo] - Consider testing j <= sys%nel below instead of having this pad.
-        
+
         ! Now sort this, just in case we have an old restart file and the reference was not sorted then.
         call qsort(pp%occ_list,sys%nel)
 
@@ -286,6 +295,51 @@ contains
         allocate(pp%ia_all_aliasK(max(pp%n_all_alpha,pp%n_all_beta),sys%basis%nbasis))
         allocate(pp%ia_all_weights(max(pp%n_all_alpha,pp%n_all_beta),sys%basis%nbasis))
 
+        ! Now set up weight tables.
+        ! Single Excitations.
+        pp%i_single_weights_tot = 0.0_p
+        do i = 1, sys%nel
+            i_weight = 0.0_p
+            ims = sys%basis%basis_fns(pp%occ_list(i))%ms
+            isyma = sys%read_in%cross_product_sym_ptr(sys%read_in, sys%basis%basis_fns(pp%occ_list(i))%sym, &
+                                                    sys%read_in%pg_sym%gamma_sym)
+            do a = 1, sys%basis%nbasis
+            ! Check that a is not i and has the required spin and symmetry.
+                if ((a /= pp%occ_list(i)) .and. (sys%basis%basis_fns(a)%sym == isyma) .and. &
+                    (sys%basis%basis_fns(a)%ms == ims)) then
+                    i_weight = i_weight + single_excitation_weight_ptr(sys, pp%occ_list(i), a)
+                    print *, pp%occ_list(i), a, i_weight 
+                end if
+            end do
+            if (i_weight < depsilon) then
+                i_weight = 0.00001_p/real(sys%nel)
+            end if
+            pp%i_single_weights(i) = i_weight
+            pp%i_single_weights_tot = pp%i_single_weights_tot + i_weight
+        end do
+        
+        call generate_alias_tables(sys%nel, pp%i_single_weights(:), pp%i_single_weights_tot, pp%i_single_aliasU(:), &
+                                pp%i_single_aliasK(:))
+
+        do i = 1, sys%basis%nbasis
+            pp%ia_single_weights_tot(i) = 0.0_p
+            ims = sys%basis%basis_fns(i)%ms
+            ! Convert ims which is in {-1, +1} notation to imsa which is {1, 2}.
+            imsa = (3 + ims)/2
+            isyma = sys%read_in%cross_product_sym_ptr(sys%read_in, sys%basis%basis_fns(i)%sym, sys%read_in%pg_sym%gamma_sym)
+            do a = 1, sys%read_in%pg_sym%nbasis_sym_spin(imsa,isyma)
+                pp%ia_single_weights(a, i) = 0.0_p
+                if (sys%read_in%pg_sym%sym_spin_basis_fns(a,imsa, isyma) /= i) then
+                    pp%ia_single_weights(a, i) = single_excitation_weight_ptr(sys, i, sys%read_in%pg_sym%sym_spin_basis_fns(a, &
+                        imsa,isyma))
+                end if
+                pp%ia_single_weights_tot(i) = pp%ia_single_weights_tot(i) + pp%ia_single_weights(a, i)
+            end do
+            call generate_alias_tables(sys%read_in%pg_sym%nbasis_sym_spin(imsa,isyma), pp%ia_single_weights(:,i), &
+                                    pp%ia_single_weights_tot(i), pp%ia_single_aliasU(:,i), pp%ia_single_aliasK(:,i))
+        end do
+
+        ! Double Excitations.
         ! Generate the i weighting lists and alias tables for possible (spin conserved - symmetry cannot be checked due to latter
         ! mapping which only conserves spin) double excitations.
         ! i and j are drawn from spinorbitals occupied in the reference and a and b can be all orbitals. i!=j and a!=b.
@@ -351,8 +405,8 @@ contains
         do i = 1, sys%basis%nbasis
             pp%ij_all_weights_tot(i) = 0.0_p
             do j = 1, sys%nel
-                if (j /= i) then
-                    ij_weight = 0.0_p
+                ij_weight = 0.0_p
+                if (pp%occ_list(j) /= i) then
                     ! Make sure i and j are ordered.
                     if (pp%occ_list(j) < i) then
                         i_tmp = pp%occ_list(j)
@@ -363,7 +417,7 @@ contains
                     end if
                     ij_sym = sys%read_in%sym_conj_ptr(sys%read_in, cross_product_basis_read_in(sys, i_tmp, j_tmp))
                     do a = 1, sys%basis%nbasis
-                        if ((a /= i_tmp) .and. (b /= j_tmp)) then
+                        if ((a /= i_tmp) .and. (a /= j_tmp)) then
                             isymb = sys%read_in%sym_conj_ptr(sys%read_in, &
                                     sys%read_in%cross_product_sym_ptr(sys%read_in, ij_sym, sys%basis%basis_fns(a)%sym))
                             do b = 1, sys%basis%nbasis 
@@ -390,9 +444,9 @@ contains
                         ! [todo] - think of better min weight (needed because after mapping i might be a valid orbital to use)
                         ij_weight = 0.00001_p/real(sys%nel)
                     end if
-                    pp%ij_all_weights(j,i) = ij_weight
-                    pp%ij_all_weights_tot(i) = pp%ij_all_weights_tot(i) + ij_weight
                 end if
+                pp%ij_all_weights(j,i) = ij_weight
+                pp%ij_all_weights_tot(i) = pp%ij_all_weights_tot(i) + ij_weight
             end do
             call generate_alias_tables(sys%nel, pp%ij_all_weights(:,i), pp%ij_all_weights_tot(i), pp%ij_all_aliasU(:,i), &
                                     pp%ij_all_aliasK(:,i))
@@ -754,8 +808,8 @@ contains
 
         use determinants, only: det_info_t
         use excitations, only: excit_t
-        use excitations, only: find_excitation_permutation2, get_excitation_locations
-        use proc_pointers, only: slater_condon2_excit_ptr
+        use excitations, only: find_excitation_permutation1, find_excitation_permutation2, get_excitation_locations
+        use proc_pointers, only: slater_condon1_excit_ptr, slater_condon2_excit_ptr
         use system, only: sys_t
         use excit_gen_mol, only: gen_single_excit_mol_no_renorm
         use excit_gens, only: excit_gen_power_pitzer_t, excit_gen_data_t
@@ -775,7 +829,7 @@ contains
         logical, intent(out) :: allowed_excitation
 
 
-        integer ::  ij_spin, ij_sym, imsb, isyma, isymb
+        integer ::  ij_spin, ij_sym, imsa, imsb, isyma, isymb
         
         ! We distinguish here between a_ref and a_cdet. a_ref is a in the world where the reference is fully occupied
         ! and we excite from the reference. We then map a_ref onto a_cdet which is a in the world where cdet is fully
@@ -798,9 +852,89 @@ contains
         logical :: found
 
         ! 1. Select single or double.
-        if (get_rand_close_open(rng) < excit_gen_data%pattempt_single) then
+        if (get_rand_close_open(rng) < excit_gen_data%pattempt_single) then  
+            ! We have a single
+            associate( pp => excit_gen_data%excit_gen_pp )
+                ! 2b. Select orbitals to excite from
+                
+                i_ind_ref = select_weighted_value_precalc(rng, sys%nel, pp%i_single_aliasU(:), pp%i_single_aliasK(:))
+                i_ref = pp%occ_list(i_ind_ref)
+                
+                ! Now map i_ref to i_cdet.
+                call get_excitation_locations(pp%occ_list, cdet%occ_list, ref_store, cdet_store, sys%nel, nex)
+                ! These orbitals might not be aligned in the most efficient way:
+                !  They may not match in spin, so first deal with this
 
-            call gen_single_excit_mol_no_renorm(rng, sys, excit_gen_data, cdet, pgen, connection, hmatel, allowed_excitation)
+                ! ref store (e.g.) contains the indices within pp%occ_list of the orbitals
+                ! which have been excited from.
+                ! [todo] - Consider having four lists separated by spin instead of two, i.e. ref_store_alpha and
+                ! [todo] - ref_store_beta instead of ref_store and the same for cdet_store.
+                ! [todo] - Consider calculating these lists once per determinants/excitor instead of once per excitation
+                ! [todo] - generator call.
+                do ii=1, nex
+                    associate(bfns=>sys%basis%basis_fns)
+                        if (bfns(pp%occ_list(ref_store(ii)))%Ms /= bfns(cdet%occ_list(cdet_store(ii)))%Ms) then
+                            jj = ii + 1
+                            do while (bfns(pp%occ_list(ref_store(ii)))%Ms /= bfns(cdet%occ_list(cdet_store(jj)))%Ms)
+                                jj = jj + 1
+                            end do
+                            ! det's jj now points to an orb of the same spin as ref's ii, so swap cdet_store's ii and jj.
+                            t = cdet_store(ii)
+                            cdet_store(ii) = cdet_store(jj)
+                            cdet_store(jj) = t
+                        end if
+                    end associate
+                end do
+                ! Now see if i_ref is in ref_store and map appropriately
+                i_cdet = i_ref
+                ! ref_store  contains the indices within pp%occ_list of the orbitals which are excited out of ref into cdet
+                ! cdet_store  contains the indices within cdet%occ_list of the orbitals which are in cdet (excited out
+                ! of ref).  i_ind_ref is the index of the orbital in pp%occ_list which we're exciting from.
+                do ii=1, nex
+                    if (ref_store(ii) == i_ind_ref) then  ! i_ref isn't actually in cdet, so we assign i_cdet to the orb that is
+                        i_cdet = cdet%occ_list(cdet_store(ii))
+                        exit
+                    end if
+                end do
+    
+                ! Convert ims which is in {-1, +1} notation to imsa which is {1, 2}.
+                imsa = (3 + sys%basis%basis_fns(i_cdet)%ms)/2
+                isyma = sys%read_in%cross_product_sym_ptr(sys%read_in, sys%basis%basis_fns(i_cdet)%sym, &
+                                                        sys%read_in%pg_sym%gamma_sym)
+                if (sys%read_in%pg_sym%nbasis_sym_spin(imsa,isyma) > 0) then
+                    a_ind_cdet = select_weighted_value_precalc(rng, sys%read_in%pg_sym%nbasis_sym_spin(imsa,isyma), &
+                                                    pp%ia_single_aliasU(:, i_cdet), pp%ia_single_aliasK(:, i_cdet))
+                    a_cdet = sys%read_in%pg_sym%sym_spin_basis_fns(a_ind_cdet, imsa, isyma)
+                    if (.not. btest(cdet%f(sys%basis%bit_lookup(2,a_cdet)), sys%basis%bit_lookup(1,a_cdet))) then
+                        allowed_excitation = .true.
+                    else
+                        allowed_excitation = .false.
+                    end if
+                else
+                    allowed_excitation = .false.
+                end if
+
+                if (allowed_excitation) then
+                    pgen = (pp%i_single_weights(i_ind_ref)/pp%i_single_weights_tot) * &
+                            (pp%ia_single_weights(a_ind_cdet, i_cdet)/pp%ia_single_weights_tot(i_cdet))
+                    pgen = excit_gen_data%pattempt_single * pgen ! pgen(ab)
+                    connection%nexcit = 1
+                    connection%to_orb(1) = a_cdet
+                    connection%from_orb(1) = i_cdet
+                    call find_excitation_permutation1(sys%basis%excit_mask, cdet%f, connection)
+                    hmatel = slater_condon1_excit_ptr(sys, cdet%occ_list, connection%from_orb(1), &
+                                          connection%to_orb(1), connection%perm)
+                else
+                    ! We have not found a valid excitation i -> a.  Such
+                    ! events are not worth the cost of renormalising the generation
+                    ! probabilities.
+                    ! Return a null excitation.
+                    hmatel%c = cmplx(0.0_p, 0.0_p, p)
+                    hmatel%r = 0.0_p
+                    pgen = 1.0_p
+                end if
+
+            end associate
 
         else
             ! We have a double

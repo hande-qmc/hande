@@ -11,6 +11,7 @@ private
 public :: get_hmatel_periodic_complex, slater_condon1_periodic_excit_complex
 public :: slater_condon2_periodic_excit_complex, slater_condon0_periodic_complex
 public :: create_weighted_excitation_list_periodic_complex, abs_hmatel_periodic_complex
+public :: single_excitation_weight_periodic
 contains
 
     pure function get_hmatel_periodic_complex(sys, f1, f2) result(hmatel)
@@ -416,5 +417,61 @@ contains
 
         abs_hmatel = abs(hmatel%c)
     end function abs_hmatel_periodic_complex
+
+    pure function single_excitation_weight_periodic(sys, i, a) result(weight)
+
+        ! In:
+        !    sys: system to be studied.
+        !    i: the spin-orbital from which an electron is excited in
+        !       the reference determinant.
+        !    a: the spin-orbital into which an electron is excited in
+        !       the excited determinant.
+        ! Returns:
+        !    A quantity related to < D | H | D_i^a >, which loops over all
+        !        electrons not just the occupied ones and uses absolute values.
+
+        ! WARNING: This function assumes that the D_i^a is a symmetry allowed
+        ! excitation from D (and so the matrix element is *not* zero by
+        ! symmetry).  This is less safe that slater_condon1_mol but much faster
+        ! as it allows symmetry checking to be skipped in the integral lookups.
+
+        use molecular_integrals, only: get_one_body_int_mol_nonzero, get_two_body_int_mol_nonzero
+        use system, only: sys_t
+        use hamiltonian_data, only: hmatel_t
+
+        type(hmatel_t) :: two_body_tmp
+        type(sys_t), intent(in) :: sys
+        integer, intent(in) :: i, a
+        real(p) :: re, im, weight
+
+        integer :: iel
+
+        ! < D | H | D_i^a > = < i | h(a) | a > + \sum_j < ij || aj >
+
+        associate(basis_fns=>sys%basis%basis_fns, &
+                  one_e_ints=>sys%read_in%one_e_h_integrals, &
+                  coulomb_ints=>sys%read_in%coulomb_integrals,&
+                  one_e_ints_im=>sys%read_in%one_e_h_integrals_imag,&
+                  coulomb_ints_im=>sys%read_in%coulomb_integrals_imag)
+
+            re = get_one_body_int_mol_nonzero(one_e_ints, i, a, basis_fns)
+            im = get_one_body_int_mol_nonzero(one_e_ints_im, i, a, basis_fns)
+            weight = abs(cmplx(re, im, p))
+            do iel = 1, sys%basis%nbasis
+                if ((iel /= i) .and. (iel /= a)) then
+                    re = get_two_body_int_mol_nonzero(coulomb_ints, i, iel, a, iel, basis_fns)
+                    im = get_two_body_int_mol_nonzero(coulomb_ints_im, i, iel, a, iel, basis_fns)
+                    two_body_tmp%c = cmplx(re, im, p)
+                    if (basis_fns(iel)%Ms == basis_fns(i)%Ms) then
+                        re = get_two_body_int_mol_nonzero(coulomb_ints, i, iel, iel, a, basis_fns)
+                        im = get_two_body_int_mol_nonzero(coulomb_ints_im, i, iel, iel, a, basis_fns)
+                        two_body_tmp%c = two_body_tmp%c - cmplx(re, im, p)
+                    end if
+                    weight = weight + abs(two_body_tmp%c)
+                end if
+            end do
+        end associate
+
+    end function single_excitation_weight_periodic
 
 end module hamiltonian_periodic_complex

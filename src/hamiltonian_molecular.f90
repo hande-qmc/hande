@@ -374,6 +374,55 @@ contains
         abs_hmatel = abs(hmatel%r)
     end function abs_hmatel_mol
 
+    pure function single_excitation_weight_mol(sys, i, a) result(weight)
+
+        ! In:
+        !    sys: system to be studied.
+        !    i: the spin-orbital from which an electron is excited in
+        !       the reference determinant.
+        !    a: the spin-orbital into which an electron is excited in
+        !       the excited determinant.
+        ! Returns:
+        !    A quantity related to < D | H | D_i^a >, which loops over all electrons
+        !       not just the occupied ones and uses absolute values. 
+
+        ! WARNING: This function assumes that the D_i^a is a symmetry allowed
+        ! excitation from D (and so the matrix element is *not* zero by
+        ! symmetry).  This is less safe that slater_condon1_mol but much faster
+        ! as it allows symmetry checking to be skipped in the integral lookups.
+
+        use molecular_integrals, only: get_one_body_int_mol_nonzero, get_two_body_int_mol_nonzero
+        use system, only: sys_t
+        use hamiltonian_data, only: hmatel_t
+
+        type(hmatel_t) :: two_body_tmp
+        type(sys_t), intent(in) :: sys
+        integer, intent(in) :: i, a
+        real(p) :: weight
+
+        integer :: iel
+
+        ! < D | H | D_i^a > = < i | h(a) | a > + \sum_j < ij || aj >
+        ! where j is all electrons
+
+        associate(basis_fns=>sys%basis%basis_fns, &
+                  one_e_ints=>sys%read_in%one_e_h_integrals, &
+                  coulomb_ints=>sys%read_in%coulomb_integrals)
+            weight = abs(get_one_body_int_mol_nonzero(one_e_ints, i, a, basis_fns))
+
+            do iel = 1, sys%basis%nbasis
+                if ((iel /= i) .and. (iel /= a)) then
+                    two_body_tmp%r = get_two_body_int_mol_nonzero(coulomb_ints, i, iel, a, iel, basis_fns)
+                    if (basis_fns(iel)%Ms == basis_fns(i)%Ms) &
+                        two_body_tmp%r = two_body_tmp%r &
+                                    - get_two_body_int_mol_nonzero(coulomb_ints, i, iel, iel, a, basis_fns)
+                    weight = weight + abs(two_body_tmp%r)
+                end if
+            end do
+        end associate
+    
+    end function single_excitation_weight_mol
+
     pure function hf_hamiltonian_energy_mol(sys, f) result(hf_energy)
 
         ! Work out expectation value of Hartree-Fock Hamiltonian between

@@ -58,6 +58,13 @@ type excit_gen_power_pitzer_t
     ! Length of array: sys%nel
     real(p), allocatable :: i_all_weights(:)
     real(p) :: i_all_weights_tot
+    ! Length of array: sys%nel
+    real(p), allocatable :: i_single_aliasU(:)
+    ! Length of array: sys%nel
+    integer(int_bas), allocatable :: i_single_aliasK(:)
+    ! Length of array: sys%nel
+    real(p), allocatable :: i_single_weights(:)
+    real(p) :: i_single_weights_tot
     ! Length of array: sys%nel,sys%basis%nbasis
     real(p), allocatable :: ij_all_aliasU(:,:)
     ! Length of array: sys%nel,sys%basis%nbasis
@@ -74,6 +81,14 @@ type excit_gen_power_pitzer_t
     real(p), allocatable :: ia_all_weights(:,:)
     ! Length of array: sys%basis%nbasis
     real(p), allocatable :: ia_all_weights_tot(:)
+    ! Length of array: sys%basis%nbasis
+    real(p), allocatable :: ia_single_weights_tot(:)
+    ! Length of array: maxval(sys%read_in%pg_sym%nbasis_sym_spin),sys%basis%nbasis
+    real(p), allocatable :: ia_single_aliasU(:,:)
+    ! Length of array: maxval(sys%read_in%pg_sym%nbasis_sym_spin),sys%basis%nbasis
+    integer(int_bas), allocatable :: ia_single_aliasK(:,:)
+    ! Length of array: maxval(sys%read_in%pg_sym%nbasis_sym_spin),sys%basis%nbasis
+    real(p), allocatable :: ia_single_weights(:,:)
     ! Length of array: maxval(sys%read_in%pg_sym%nbasis_sym_spin), sys%sym0_tot:sys%sym_max_tot, sys%basis%nbasis
     real(p), allocatable :: jb_all_aliasU(:,:,:)
     ! Length of array: maxval(sys%read_in%pg_sym%nbasis_sym_spin), sys%sym0_tot:sys%sym_max_tot, sys%basis%nbasis
@@ -165,6 +180,9 @@ contains
         if (allocated(excit_gen_pp%i_all_aliasU)) deallocate(excit_gen_pp%i_all_aliasU)
         if (allocated(excit_gen_pp%i_all_aliasK)) deallocate(excit_gen_pp%i_all_aliasK)
         if (allocated(excit_gen_pp%i_all_weights)) deallocate(excit_gen_pp%i_all_weights)
+        if (allocated(excit_gen_pp%i_single_aliasU)) deallocate(excit_gen_pp%i_single_aliasU)
+        if (allocated(excit_gen_pp%i_single_aliasK)) deallocate(excit_gen_pp%i_single_aliasK)
+        if (allocated(excit_gen_pp%i_single_weights)) deallocate(excit_gen_pp%i_single_weights)
         if (allocated(excit_gen_pp%ij_all_aliasU)) deallocate(excit_gen_pp%ij_all_aliasU)
         if (allocated(excit_gen_pp%ij_all_aliasK)) deallocate(excit_gen_pp%ij_all_aliasK)
         if (allocated(excit_gen_pp%ij_all_weights)) deallocate(excit_gen_pp%ij_all_weights)
@@ -173,6 +191,10 @@ contains
         if (allocated(excit_gen_pp%ia_all_aliasK)) deallocate(excit_gen_pp%ia_all_aliasK)
         if (allocated(excit_gen_pp%ia_all_weights)) deallocate(excit_gen_pp%ia_all_weights)
         if (allocated(excit_gen_pp%ia_all_weights_tot)) deallocate(excit_gen_pp%ia_all_weights_tot)
+        if (allocated(excit_gen_pp%ia_single_aliasU)) deallocate(excit_gen_pp%ia_single_aliasU)
+        if (allocated(excit_gen_pp%ia_single_aliasK)) deallocate(excit_gen_pp%ia_single_aliasK)
+        if (allocated(excit_gen_pp%ia_single_weights)) deallocate(excit_gen_pp%ia_single_weights)
+        if (allocated(excit_gen_pp%ia_single_weights_tot)) deallocate(excit_gen_pp%ia_single_weights_tot)
         if (allocated(excit_gen_pp%jb_all_aliasU)) deallocate(excit_gen_pp%jb_all_aliasU)
         if (allocated(excit_gen_pp%jb_all_aliasK)) deallocate(excit_gen_pp%jb_all_aliasK)
         if (allocated(excit_gen_pp%jb_all_weights)) deallocate(excit_gen_pp%jb_all_weights)
