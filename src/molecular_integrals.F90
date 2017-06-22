@@ -256,6 +256,104 @@ contains
 
     end subroutine end_two_body_t
 
+    subroutine init_two_body_exchange_t(sys, op_sym, store)
+
+        ! Allocate memory required for the integrals involving a two-body
+        ! operator.
+
+        ! In:
+        !    sys: sys_t object containing info on current system. We use:
+        !           -sys%read_in%uhf
+        !           -sys%basis%nbasis
+        !    op_sym: bit string representations of irreducible representations
+        !       of a point group.  See point_group_symmetry.
+        ! Out:
+        !    store: two-body integral store with components allocated to hold
+        !       interals.  Note that the integral store is *not* zeroed.
+
+        use checking, only: check_allocate
+        use const, only: int_64
+        use parallel, only: parent
+        use system, only: sys_t
+
+        integer, intent(in) :: op_sym
+        type(sys_t), intent(in) :: sys
+        type(two_body_exchange_t), intent(out) :: store
+
+        integer :: ierr, ispin, nspin, mem_reqd, iunit
+        integer(int_64):: npairs, nintgrls
+
+        iunit = 6
+
+        store%op_sym = op_sym
+        store%uhf = sys%read_in%uhf
+        store%comp = sys%read_in%comp
+        ! if rhf then need to store only integrals for spatial orbitals.
+        ! ie < i,alpha j,beta | a,alpha b,beta > = < i,alpha j,alpha | a,alpha b,alpha >
+        if (store%uhf) then
+            nspin = 4
+        else
+            nspin = 1
+        end if
+
+        ! Allocate general store for each spin-channel the two-electron integrals.
+        allocate(store%integrals(nspin), stat=ierr)
+        call check_allocate('two_body_store', nspin**2, ierr)
+
+        ! Allocate component of store for each spin-channel.
+        ! The spatial parts are identical in RHF, thus need store only one
+        ! spin-channel.
+        ! In UHF need to store <a a|a a>, <a b|a b>, <b a|b a> and <b b|b b>
+        ! (where a==alpha spin-orbital and b==beta spin-orbital).
+        ! For the integral <i j|a b>, where (i,j,a,b) are spatial-orbitals,
+        ! there are M(M+1)/2=N_p (i,a) pairs (and similarly for (j,b) pairs).
+        ! NOTE:
+        ! Compression due to symmetry not yet implemented.
+        npairs = ((sys%basis%nbasis/2)*(sys%basis%nbasis/2 + 1))/2
+        nintgrls = npairs * sys%basis%nbasis/2
+
+        if (parent ) then
+#ifdef SINGLE_PRECISION
+            mem_reqd = int((nintgrls*4*nspin)/10**6)
+#else
+            mem_reqd = int((nintgrls*8*nspin)/10**6)
+#endif
+            write(iunit,'(1X,a,i0)') 'Memory required for all additional exchange integrals (MB) on each processor: ', &
+                            mem_reqd
+            write(iunit,'(1X, a,/)') 'It is left to the user to ensure that this does not exceed available resources.'
+        end if
+
+        do ispin = 1, nspin
+            allocate(store%integrals(ispin)%v(sys%basis%nbasis/2,npairs), stat=ierr)
+            call check_allocate('two_body_store_component', nintgrls, ierr)
+        end do
+
+    end subroutine init_two_body_exchange_t
+
+    subroutine end_two_body_exchange_t(store)
+
+        ! Deallocate comptwonts of a store of integrals involving a two-body operator.
+
+        ! In/Out:
+        !    store: two-body integral store with comptwonts allocated to hold
+        !    integrals which are deallocated upon exit.
+
+        use checking, only: check_deallocate
+
+        type(two_body_exchange_t), intent(inout) :: store
+        integer :: ierr, ispin
+
+        if (allocated(store%integrals)) then
+            do ispin = lbound(store%integrals, dim=1), ubound(store%integrals, dim=1)
+                deallocate(store%integrals(ispin)%v, stat=ierr)
+                call check_deallocate('two_body_store_component', ierr)
+            end do
+            deallocate(store%integrals, stat=ierr)
+            call check_deallocate('two_body_store', ierr)
+        end if
+
+    end subroutine end_two_body_exchange_t
+
 !--- Zeroing ---
 
      pure subroutine zero_one_body_int_store(store)
@@ -299,6 +397,26 @@ contains
         end do
 
      end subroutine zero_two_body_int_store
+
+     pure subroutine zero_two_body_exchange_int_store(store)
+
+        ! Zero a two-body integral store.
+
+        ! In:
+        !    store: two-body integral store with components allocated to hold
+        !    interals.
+        ! Out:
+        !    store: two-body integral store with integral array now set to zero.
+
+        type(two_body_exchange_t), intent(inout) :: store
+
+        integer :: ispin
+
+        do ispin = lbound(store%integrals, dim=1), ubound(store%integrals, dim=1)
+            store%integrals(ispin)%v = 0.0_p
+        end do
+
+     end subroutine zero_two_body_exchange_int_store
 
 !--- Integral access ---
 

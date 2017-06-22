@@ -543,6 +543,7 @@ contains
         !        CAS = {cas1, cas2}
         !        complex = true/false,
         !        max_broadcast_chunk = block_size,
+        !        ex_int_file = '...',
         !    }
 
         use, intrinsic :: iso_c_binding, only: c_ptr, c_int
@@ -593,6 +594,14 @@ contains
 
         call aot_get_val(sys%read_in%max_broadcast_chunk, err, lua_state, opts, 'max_broadcast_chunk')
 
+        call aot_get_val(sys%read_in%ex_fcidump, err, lua_state, opts, 'ex_int_file')
+
+        print*,'!HERE!!',sys%read_in%ex_fcidump
+        print*,len(sys%read_in%ex_fcidump)
+        print*,sys%read_in%ex_fcidump==''
+        print*,sys%read_in%ex_fcidump=='fcidumpname'
+
+        sys%read_in%extra_exchange_integrals = (.not.sys%read_in%ex_fcidump=='')
 
         if (parent) then
             ! Verify that the specified file exists and check whether it is HDF5 or text.

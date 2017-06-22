@@ -1174,4 +1174,26 @@ contains
 
     end subroutine get_sp_eigv
 
+    subroutine read_additional_exchange_integrals(sys, verbose)
+
+        ! For periodic bounary conditions we require additional integrals, to be read
+        ! in from a separate FCIDUMP.
+
+        use molecular_integrals, only: init_two_body_exchange_t, zero_two_body_exchange_int_store
+        use system, only: sys_t
+
+        type(sys_t), intent(inout) :: sys
+
+        logical, intent(in), optional :: verbose
+
+        call init_two_body_exchange_t(sys, sys%read_in%pg_sym%gamma_sym, sys%read_in%additional_exchange_ints)
+        call zero_two_body_exchange_int_store(sys%read_in%additional_exchange_ints)
+
+
+
+
+
+    end subroutine read_additional_exchange_integrals
+
+
 end module read_in_system
