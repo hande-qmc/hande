@@ -1,18 +1,19 @@
 # I used  PrgEnv-intel, with cray-hdf5-parallel
 # Assumes lua is located in $HOME/local
 [DEFAULT]
-include_f = -I ${HDF5_ROOT}/include -I ${MKLROOT}/include -I ${HOME}/local/include
-include_c = -I ${MKLROOT}/include -I ${HOME}/local/include
+include_f = -I ${HDF5_ROOT}/include -I ${MKLROOT}/include
+include_c = -I ${MKLROOT}/include
 
 [main]
 fc = ftn
 cc = cc
 cxx = CC
+lua_52 = 1
 ccd = gcc
-cppflags = -DHAVE_SSE2 -DDISABLE_LANCZOS -DDISABLE_UUID -DPARALLEL -DDET_SIZE=64 -DPOP_SIZE=64
+cppflags = -DHAVE_SSE2 -DDISABLE_LANCZOS -DPARALLEL -DDISABLE_UUID -DDET_SIZE=64 -DPOP_SIZE=64
 ld = ftn
-ldflags = -L ${HOME}/local/lib -L -L${MKLROOT}/lib/intel64
-libs =  ${MKLROOT}/lib/intel64/libmkl_scalapack_ilp64.a -Wl,--start-group ${MKLROOT}/lib/intel64/libmkl_intel_ilp64.a ${MKLROOT}/lib/intel64/libmkl_sequential.a ${MKLROOT}/lib/intel64/libmkl_core.a ${MKLROOT}/lib/intel64/libmkl_blacs_intelmpi_ilp64.a ${HOME}/local/lib/liblua.a -Wl,--end-group -lpthread -lm -lhdf5_fortran -lhdf5 -ldl
+ldflags = -L${MKLROOT}/lib/intel64
+libs =  -mkl:cluster -lpthread -lm -lhdf5_fortran -lhdf5 -lz -llua
 f90_module_flag = -module
 
 [opt]
