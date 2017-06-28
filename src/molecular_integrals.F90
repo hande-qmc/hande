@@ -290,8 +290,13 @@ contains
         store%comp = sys%read_in%comp
         ! if rhf then need to store only integrals for spatial orbitals.
         ! ie < i,alpha j,beta | a,alpha b,beta > = < i,alpha j,alpha | a,alpha b,alpha >
+        ! Note that integral form in spinorbitals must be
+        ! <ij|ai>. This requires that all spinorbitals have
+        ! the same spin, so we have two spin channels in the
+        ! UHF case (all up or all down) versus one in the RHF case.
+
         if (store%uhf) then
-            nspin = 4
+            nspin = 2
         else
             nspin = 1
         end if
@@ -303,10 +308,11 @@ contains
         ! Allocate component of store for each spin-channel.
         ! The spatial parts are identical in RHF, thus need store only one
         ! spin-channel.
-        ! In UHF need to store <a a|a a>, <a b|a b>, <b a|b a> and <b b|b b>
+        ! In UHF need to store <a a|a a> and <b b|b b>
         ! (where a==alpha spin-orbital and b==beta spin-orbital).
-        ! For the integral <i j|a b>, where (i,j,a,b) are spatial-orbitals,
-        ! there are M(M+1)/2=N_p (i,a) pairs (and similarly for (j,b) pairs).
+        ! For the integral <i j|a i>, where (i,j,a,i) are spatial-orbitals,
+        ! there are M(M+1)/2=N_p (j,a) pairs and each pair can go with a single
+        ! value of i.
         ! NOTE:
         ! Compression due to symmetry not yet implemented.
         npairs = ((sys%basis%nbasis/2)*(sys%basis%nbasis/2 + 1))/2
@@ -770,7 +776,7 @@ contains
         ia = tri_ind(basis_fns(ii)%spatial_index, basis_fns(aa)%spatial_index)
         jb = tri_ind(basis_fns(jj)%spatial_index, basis_fns(bb)%spatial_index)
 
-        ! Comine ia and jb in a unique way.
+        ! Combine ia and jb in a unique way.
         ! This amounts to requiring (i,a) > (j,b), i.e. i>j || (i==j && a>b),
         ! for example.
         ! Hence find overall index after applying 3-fold permutation symmetry.
@@ -1232,6 +1238,107 @@ contains
         end if
 
     end function get_two_body_int_mol_nonzero
+
+! 3. additional < i j | o_2 | a i > for PBC.
+
+    subroutine store_pbc_int_mol_nonzero(i, j, a, b, intgrl, basis_fns, store, ierr)
+
+        use basis_types, only: basis_fn_t
+        use errors, only: warning
+        use utils, only: tri_ind
+
+        integer, intent(in) :: i,j,a,b
+        integer :: repeat_ind, triind, ispin
+        real(p), intent(in) :: intgrl
+        real(p) :: intgrl_loc
+        type(basis_fns_t), intent(in) :: basis_fns
+        type(two_body_exchange_t), intent(inout) :: store
+        integer :: ii,jj,aa,bb,scratch
+        logical :: conjugate, elec_swap
+
+
+        ! Index goes integrals(ispin)%v(repeated_basis, triind of remainder)
+        conjugate = .false.
+        elec_swap = .false.
+
+        if (i == b) then
+            if (j==a) then
+                ! edge case- need to choose sensible representation
+                ! as no guarentee both forms will appear in fcidump.
+                ! Always choose to use largest pair for pair indexing.
+                if (i < j) then
+                    elec_swap = .true.
+                end if
+            else
+                ! Conventional case; choose such that j>a.
+                if (j < a) then
+                    conjugate = .true.
+                    elec_swap = .true.
+                end if
+            end if
+        else if (j == a) then
+            ! Can't have edge case. Just swap indexes and ensure satisfy
+            ! conditions for tri ind.
+            if (i < b) then
+                conjugate = .true.
+            else
+                elec_swap = .true.
+            end if
+        end if
+
+        ii = i
+        jj = j
+        aa = a
+        bb = b
+
+        if (conjugate) then
+            scratch = ii  
+            ii = aa
+            aa = scratch
+            scratch = jj
+            jj = bb
+            bb = scratch
+        end if
+        if (elec_swap) then
+            scratch = ii
+            ii = jj
+            jj = ii
+            scratch = aa
+            aa = bb
+            bb = scratch
+        end if
+
+        repeat_ind = ii
+        triind = tri_ind(basis_fns(jj)%spatial_index, basis_fns(aa)%spatial_index)
+
+        if (conjugate .and. store%imag) then
+            intgrl_loc = -intgrl
+        else
+            intgrl_loc = intgrl
+        end if
+
+        ! Note that integral form in spinorbitals must be
+        ! <ij|ai>. This requires that all spinorbitals have
+        ! the same spin, so we have two spin channels in the
+        ! UHF case versus one in the RHF case.
+        ! In this case spin channels are
+        !  1 = down down down down
+        !  2 = up up up up 
+
+        if (store%uhf) then
+
+            if (basis_fns(i)%ms = -1) then
+                ispin = 1
+            else
+                ispin = 2
+            end if
+        end if
+
+        store(ispin)%v(repeat_ind,triind) = intgrl_loc
+
+    end subroutine store_pbc_int_mol_nonzero
+
+    pure function pbc_exchang_int_indx(uhf, i, j, a, basis_fns) result(indx)
 
 !--- Parallel broadcasting ---
 

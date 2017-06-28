@@ -1179,19 +1179,43 @@ contains
         ! For periodic bounary conditions we require additional integrals, to be read
         ! in from a separate FCIDUMP.
 
-        use molecular_integrals, only: init_two_body_exchange_t, zero_two_body_exchange_int_store
+        use molecular_integrals, only: init_two_body_exchange_t, zero_two_body_exchange_int_store, &
+                                       store_pbc_int_nonzero
         use system, only: sys_t
+        use errors, only: stop_all
 
         type(sys_t), intent(inout) :: sys
 
         logical, intent(in), optional :: verbose
+        integer :: ir
+        logical  :: t_exists
 
         call init_two_body_exchange_t(sys, sys%read_in%pg_sym%gamma_sym, sys%read_in%additional_exchange_ints)
         call zero_two_body_exchange_int_store(sys%read_in%additional_exchange_ints)
 
+        if (parent) then
+            inquire(file=sys%read_in%ex_fcidump, exist=t_exists)
+            if (.not.t_exists) call stop_all('read_in_integrals', 'FCIDUMP does not &
+                                                               &exist:'//trim(sys%read_in%ex_fcidump))
+            open (newunit=ir, file=sys%read_in%fcidump, status='old', form='formatted')
+        end if
 
 
+        do
+            if (sys%read_in%comp) then
+                read (ir,*, iostat=ios) compint, i, a, j, b
+                x=real(compint,p)
+                y=aimag(compint)
+            else
+                read (ir,*, iostat=ios) x, i, a, j, b
+            end if
 
+            if (.not. i == b) call stop_all('read_in_ex_ints',"Unexpected integral indexes encountered.")
+
+            call store_pbc_int_nonzero(i,j,a,b,x,sys%basis%basis_fns, sys%read_in%additional_exchange_ints)
+
+
+        end do
 
     end subroutine read_additional_exchange_integrals
 
