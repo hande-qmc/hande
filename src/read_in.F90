@@ -1180,15 +1180,21 @@ contains
         ! in from a separate FCIDUMP.
 
         use molecular_integrals, only: init_two_body_exchange_t, zero_two_body_exchange_int_store, &
-                                       store_pbc_int_nonzero
+                                       store_pbc_int_mol, broadcast_two_body_exchange_t
         use system, only: sys_t
         use errors, only: stop_all
+        use parallel, only: parent, root
 
         type(sys_t), intent(inout) :: sys
 
         logical, intent(in), optional :: verbose
-        integer :: ir
+        integer :: ir, ierr
         logical  :: t_exists
+        integer :: i,j,a,b, ios
+        real(p) :: x, y
+        complex(p) :: compint
+
+        ios = 0
 
         call init_two_body_exchange_t(sys, sys%read_in%pg_sym%gamma_sym, sys%read_in%additional_exchange_ints)
         call zero_two_body_exchange_int_store(sys%read_in%additional_exchange_ints)
@@ -1210,14 +1216,14 @@ contains
 
                 if (.not. i == b) call stop_all('read_in_ex_ints',"Unexpected integral indexes encountered.")
 
-                call store_pbc_int_nonzero(i,j,a,b,x,sys%basis%basis_fns, sys%read_in%additional_exchange_ints)
+                call store_pbc_int_mol(i,j,a,b,x,sys%basis%basis_fns, sys%read_in%additional_exchange_ints, ierr)
 
             end do
         end if
 
-        call broadcast_two_body_exchange_ints(sys%read_in%additional_exchange_ints)
+        call broadcast_two_body_exchange_t(sys%read_in%additional_exchange_ints, root)
         if (sys%read_in%comp) then
-            call broadcast_two_body_exchange_ints(sys%read_in%additional_exchange_ints_imag)
+            call broadcast_two_body_exchange_t(sys%read_in%additional_exchange_ints_imag, root)
         end if
 
     end subroutine read_additional_exchange_integrals

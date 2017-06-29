@@ -20,6 +20,13 @@ type, private :: int_indx
     logical :: conjugate        ! Indicates if we need to take the complex conjugate of the integral
 end type int_indx
 
+type, private :: int_ex_indx
+    integer :: spin_channel
+    integer :: repeat_ind
+    integer(int_64) :: triind
+    logical :: conjugate
+end type int_ex_indx
+
 interface get_one_body_int_mol
     module procedure get_one_body_int_mol_real
     module procedure get_one_body_int_mol_complex
@@ -1164,9 +1171,9 @@ contains
         ! In:
         !    store: store for two-body integral real component.
         !    i,j,a,b: (indices of) spin-orbitals.
-        !    basis_fns: list of single-particle basis functions.
-        !    pg_sym: information on the symmetries of the basis functions.
         !    im_store: store for two-body integral imaginary component.
+        !    sys: information on the system. We use symmetry and basis function
+        !       info.
         ! Returns:
         !    < i j | o_2 | a b >, the integral between the (i,a) co-density and
         !    the (j,b) co-density involving a two-body operator o_2 given by
@@ -1239,23 +1246,152 @@ contains
 
     end function get_two_body_int_mol_nonzero
 
+    pure function get_two_body_exchange_pbc_int_real(store, i, j, a, b, sys) result(intgrl)
+
+        ! In:
+        !   store: store for two body pbc exchange integrals with modified electron
+        !       interaction potential.
+        !   i,j,a,b: (indicies of) spin-orbitals.
+        !    sys: information on the system. We use symmetry and basis function
+        !       info.
+        ! Returns:
+        !    < i j | o_2 | a b >_x, the integral between the (i,a) co-density and
+        !    the (j,b) co-density involving a two-body operator o_2 given by
+        !    store using a modified electron-electron interaction potential. This
+        !    is stored separately to other integrals as the unmodified interaction
+        !    is sometimes required.
+
+        use system, only: sys_t
+
+        type(two_body_exchange_t), intent(in) :: store
+        integer, intent(in) :: i,j,a,b
+        type(sys_t), intent(in) :: sys
+        real(p) :: intgrl
+
+        if (check_two_body_sym(i,j,a,b, sys, store%op_sym) .and. &
+                    sys%basis%basis_fns(j)%ms == sys%basis%basis_fns(b)%ms .and. &
+                    sys%basis%basis_fns(i)%ms == sys%basis%basis_fns(a)%ms) then
+            intgrl = get_two_body_exchange_pbc_int_nonzero(store, i, j, a, b, sys%basis%basis_fns)
+        else
+            intgrl = 0.0_p
+        end if
+
+    end function get_two_body_exchange_pbc_int_real
+
+    pure function get_two_body_exchange_pbc_int_complex(store, im_store, i, j, a, b, sys) result(intgrl)
+
+        ! In:
+        !   store: store for real component of the two body pbc exchange
+        !       integrals with modified electron interaction potential.
+        !   im_store: store for imag component of the two body pbc exchange
+        !       integrals with modified electron interaction potential.
+        !   i,j,a,b: (indicies of) spin-orbitals.
+        !    sys: information on the system. We use symmetry and basis function
+        !       info.
+        ! Returns:
+        !    < i j | o_2 | a b >_x, the integral between the (i,a) co-density and
+        !    the (j,b) co-density involving a two-body operator o_2 given by
+        !    store using a modified electron-electron interaction potential. This
+        !    is stored separately to other integrals as the unmodified interaction
+        !    is sometimes required.
+
+        use system, only: sys_t
+
+        type(two_body_exchange_t), intent(in) :: store, im_store
+        integer, intent(in) :: i,j,a,b
+        type(sys_t), intent(in) :: sys
+        complex(p) :: intgrl
+        real(p) :: re, im
+
+        if (check_two_body_sym(i,j,a,b, sys, store%op_sym) .and. &
+                    sys%basis%basis_fns(j)%ms == sys%basis%basis_fns(b)%ms .and. &
+                    sys%basis%basis_fns(i)%ms == sys%basis%basis_fns(a)%ms) then
+            re = get_two_body_exchange_pbc_int_nonzero(store, i, j, a, b, sys%basis%basis_fns)
+            im = get_two_body_exchange_pbc_int_nonzero(im_store, i, j, a, b, sys%basis%basis_fns)
+            intgrl = cmplx(re, im, p)
+        else
+            intgrl = cmplx(0.0_p, 0.0_p, p)
+        end if
+
+    end function get_two_body_exchange_pbc_int_complex
+
+    pure function get_two_body_exchange_pbc_int_nonzero(store, i, j, a, b, basis_fns) result(intgrl)
+
+        ! In:
+        !    store: two-body integral store.
+        !    i,j,a,b: (indices of) spin-orbitals.
+        !    basis_fns: list of single-particle basis functions.
+        ! Returns:
+        !    < i j | o_2 | a b >, the integral between the (i,a) co-density and
+        !    the (j,b) co-density involving a two-body operator o_2 given by
+        !    store.
+        !
+        ! NOTE:
+        !    This assumes that <ij|ab> is known the be non-zero by spin and
+        !    spatial symmetry.  If this is not true then this routine will return
+        !    either an incorrect value or cause an array-bounds error.  If
+        !    <ij|ab> might be zero by symmetry, get_two_body_int_mol must be called
+        !    instead.
+        !    It is faster to call RHF- or UHF-specific routines.
+
+        use basis_types, only: basis_fn_t
+
+        type(two_body_exchange_t), intent(in) :: store
+        integer, intent(in) :: i,j,a,b
+        type(basis_fn_t), intent(in) :: basis_fns(:)
+        real(p) :: intgrl
+        type(int_ex_indx) :: indx
+
+        indx = pbc_ex_int_indx(store%uhf, i, j, a, b, basis_fns)
+
+        intgrl = store%integrals(indx%spin_channel)%v(indx%repeat_ind,indx%triind)
+
+        if (store%imag .and. indx%conjugate) intgrl = -intgrl
+
+    end function get_two_body_exchange_pbc_int_nonzero
+
 ! 3. additional < i j | o_2 | a i > for PBC.
 
-    subroutine store_pbc_int_mol_nonzero(i, j, a, b, intgrl, basis_fns, store, ierr)
+    subroutine store_pbc_int_mol(i, j, a, b, intgrl, basis_fns, store, ierr)
 
         use basis_types, only: basis_fn_t
         use errors, only: warning
         use utils, only: tri_ind
 
         integer, intent(in) :: i,j,a,b
-        integer :: repeat_ind, triind, ispin
+        integer, intent(out) :: ierr
         real(p), intent(in) :: intgrl
         real(p) :: intgrl_loc
-        type(basis_fns_t), intent(in) :: basis_fns
+        type(basis_fn_t), intent(in) :: basis_fns(:)
         type(two_body_exchange_t), intent(inout) :: store
-        integer :: ii,jj,aa,bb,scratch
-        logical :: conjugate, elec_swap
+        type(int_ex_indx) :: indx
 
+        indx = pbc_ex_int_indx(store%uhf, i, j, a, b, basis_fns)
+
+
+        if (indx%conjugate .and. store%imag) then
+            intgrl_loc = -intgrl
+        else
+            intgrl_loc = intgrl
+        end if
+
+        store%integrals(indx%spin_channel)%v(indx%repeat_ind,indx%triind) = intgrl_loc
+
+    end subroutine store_pbc_int_mol
+
+    pure function pbc_ex_int_indx(uhf, i, j, a, b, basis_fns) result(indx)
+
+        use basis_types, only: basis_fn_t
+        use errors, only: warning
+        use utils, only: tri_ind
+
+        type(int_ex_indx) :: indx
+        logical, intent(in) :: uhf
+        integer, intent(in) :: i, j, a, b
+        type(basis_fn_t), intent(in) :: basis_fns(:)
+
+        logical :: conjugate, elec_swap
+        integer :: ii,jj,aa,bb,scratch
 
         ! Index goes integrals(ispin)%v(repeated_basis, triind of remainder)
         conjugate = .false.
@@ -1308,14 +1444,8 @@ contains
             bb = scratch
         end if
 
-        repeat_ind = ii
-        triind = tri_ind(basis_fns(jj)%spatial_index, basis_fns(aa)%spatial_index)
-
-        if (conjugate .and. store%imag) then
-            intgrl_loc = -intgrl
-        else
-            intgrl_loc = intgrl
-        end if
+        indx%repeat_ind = ii
+        indx%triind = tri_ind(basis_fns(jj)%spatial_index, basis_fns(aa)%spatial_index)
 
         ! Note that integral form in spinorbitals must be
         ! <ij|ai>. This requires that all spinorbitals have
@@ -1325,20 +1455,19 @@ contains
         !  1 = down down down down
         !  2 = up up up up 
 
-        if (store%uhf) then
-
-            if (basis_fns(i)%ms = -1) then
-                ispin = 1
+        if (uhf) then
+            if (basis_fns(i)%ms == -1) then
+                indx%spin_channel = 1
             else
-                ispin = 2
+                indx%spin_channel = 2
             end if
+        else
+            indx%spin_channel = 1
         end if
 
-        store(ispin)%v(repeat_ind,triind) = intgrl_loc
+        indx%conjugate = conjugate
 
-    end subroutine store_pbc_int_mol_nonzero
-
-    pure function pbc_exchang_int_indx(uhf, i, j, a, basis_fns) result(indx)
+    end function pbc_ex_int_indx
 
 !--- Parallel broadcasting ---
 
@@ -1479,6 +1608,27 @@ contains
 #endif
 
     end subroutine broadcast_two_body_t
+
+    subroutine broadcast_two_body_exchange_t(store, data_proc)
+
+        use parallel
+        use errors, only: warning
+        use const, only: p, dp, int_64
+
+        integer :: i, j, ierr
+        type(two_body_exchange_t), intent(inout) :: store
+        integer, intent(in) :: data_proc
+
+        do i = lbound(store%integrals, dim=1), ubound(store%integrals, dim=1)
+            do j = lbound(store%integrals(i)%v,dim=1), ubound(store%integrals(i)%v,dim=1)
+
+                call MPI_BCAST(store%integrals(i)%v(j,:), size(store%integrals(i)%v(j,:)), &
+                                mpi_preal, data_proc, MPI_COMM_WORLD, ierr)
+
+            end do
+        end do
+
+    end subroutine broadcast_two_body_exchange_t
 
 #ifdef PARALLEL
     subroutine get_optimal_integral_block(nints, max_broadcast_chunk, nblocks, optimal_block_size, &
