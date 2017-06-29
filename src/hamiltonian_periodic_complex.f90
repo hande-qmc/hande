@@ -121,7 +121,8 @@ contains
         !    <D|H|D>, the diagonal Hamiltonian matrix element involving D for
         !    systems defined by integrals read in from an FCIDUMP file.
 
-        use molecular_integrals, only: get_one_body_int_mol_nonzero, get_two_body_int_mol_nonzero
+        use molecular_integrals, only: get_one_body_int_mol_nonzero, get_two_body_int_mol_nonzero, &
+                                        get_two_body_exchange_pbc_int_nonzero
         use system, only: sys_t
 
         complex(p) :: hmatel
@@ -145,8 +146,15 @@ contains
                     im =  get_two_body_int_mol_nonzero(coulomb_ints_im, i, j, i, j, sys%basis%basis_fns)
                     hmatel = hmatel + cmplx(re, im, p)
                     if (sys%basis%basis_fns(i)%Ms == sys%basis%basis_fns(j)%Ms) then
-                        re =  get_two_body_int_mol_nonzero(coulomb_ints, i, j, j, i, sys%basis%basis_fns)
-                        im =  get_two_body_int_mol_nonzero(coulomb_ints_im, i, j, j, i, sys%basis%basis_fns)
+                        if (sys%read_in%extra_exchange_integrals) then
+                            re = get_two_body_exchange_pbc_int_nonzero(sys%read_in%additional_exchange_ints, &
+                                        i, j, j, i, sys%basis%basis_fns)
+                            im = get_two_body_exchange_pbc_int_nonzero(sys%read_in%additional_exchange_ints_imag, &
+                                        i, j, j, i, sys%basis%basis_fns)
+                        else
+                            re =  get_two_body_int_mol_nonzero(coulomb_ints, i, j, j, i, sys%basis%basis_fns)
+                            im =  get_two_body_int_mol_nonzero(coulomb_ints_im, i, j, j, i, sys%basis%basis_fns)
+                        end if
                         hmatel = hmatel - cmplx(re, im, p)
                     end if
                 end do
@@ -154,7 +162,6 @@ contains
         end associate
 
     end function slater_condon0_periodic_orb_list_complex
-
 
     pure function slater_condon1_periodic_complex(sys, occ_list, i, a, perm) result(hmatel)
 
@@ -172,7 +179,8 @@ contains
         !        determinant and a single excitation of it for systems defined
         !        by integrals read in from an FCIDUMP file.
 
-        use molecular_integrals, only: get_one_body_int_mol, get_two_body_int_mol
+        use molecular_integrals, only: get_one_body_int_mol, get_two_body_int_mol, &
+                                        get_two_body_exchange_pbc_int_complex
         use system, only: sys_t
 
         complex(p) :: hmatel
@@ -195,12 +203,21 @@ contains
                 hmatel = get_one_body_int_mol(one_e_ints, one_e_ints_im, i, a, sys)
 
                 do iel = 1, sys%nel
-                    if (occ_list(iel) /= i) &
+                    if (occ_list(iel) /= i) then
                         hmatel = hmatel &
                             + get_two_body_int_mol(coulomb_ints, coulomb_ints_im, i, occ_list(iel), a, occ_list(iel), &
-                                                    sys) &
-                            - get_two_body_int_mol(coulomb_ints, coulomb_ints_im, i, occ_list(iel), occ_list(iel), a, &
                                                     sys)
+                        if (sys%read_in%extra_exchange_integrals) then
+                            hmatel = hmatel &
+                                        - get_two_body_exchange_pbc_int_complex(sys%read_in%additional_exchange_ints, &
+                                        sys%read_in%additional_exchange_ints_imag, i, occ_list(iel), occ_list(iel), a, sys)
+
+                        else
+                            hmatel = hmatel &
+                                - get_two_body_int_mol(coulomb_ints, coulomb_ints_im, i, occ_list(iel), occ_list(iel), a, &
+                                                    sys)
+                        end if
+                    end if
                 end do
             end associate
 
@@ -230,7 +247,8 @@ contains
         ! symmetry).  This is less safe that slater_condon1_mol but much faster
         ! as it allows symmetry checking to be skipped in the integral lookups.
 
-        use molecular_integrals, only: get_one_body_int_mol_nonzero, get_two_body_int_mol_nonzero
+        use molecular_integrals, only: get_one_body_int_mol_nonzero, get_two_body_int_mol_nonzero, &
+                                        get_two_body_exchange_pbc_int_nonzero
         use system, only: sys_t
         use hamiltonian_data, only: hmatel_t
 
@@ -259,8 +277,17 @@ contains
                     im = get_two_body_int_mol_nonzero(coulomb_ints_im, i, occ_list(iel), a, occ_list(iel), basis_fns)
                     hmatel%c = hmatel%c + cmplx(re, im, p)
                     if (basis_fns(occ_list(iel))%Ms == basis_fns(i)%Ms) then
-                        re = get_two_body_int_mol_nonzero(coulomb_ints, i, occ_list(iel), occ_list(iel), a, basis_fns)
-                        im = get_two_body_int_mol_nonzero(coulomb_ints_im, i, occ_list(iel), occ_list(iel), a, basis_fns)
+                        if (sys%read_in%extra_exchange_integrals) then
+                            re = get_two_body_exchange_pbc_int_nonzero(sys%read_in%additional_exchange_ints, &
+                                        i, occ_list(iel), occ_list(iel), a, sys%basis%basis_fns)
+                            im = get_two_body_exchange_pbc_int_nonzero(sys%read_in%additional_exchange_ints_imag, &
+                                        i, occ_list(iel), occ_list(iel), a, sys%basis%basis_fns)
+                        else
+                            re =  get_two_body_int_mol_nonzero(coulomb_ints, i, occ_list(iel), occ_list(iel), a, &
+                                                                sys%basis%basis_fns)
+                            im =  get_two_body_int_mol_nonzero(coulomb_ints_im, i, occ_list(iel), occ_list(iel), &
+                                                                a, sys%basis%basis_fns)
+                        end if
                         hmatel%c = hmatel%c - cmplx(re, im, p)
                     end if
                 end if
