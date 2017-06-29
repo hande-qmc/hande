@@ -298,6 +298,7 @@ type sys_read_in_t
     logical :: extra_exchange_integrals = .false.
     ! Note that these integrals must be purely real.
     type(two_body_exchange_t) :: additional_exchange_ints
+    type(two_body_exchange_t) :: additional_exchange_ints_imag
 
     ! Data about momentum/translational symmetry. Some momentum symmetry
     ! information is also stored within pg_sym to avoid duplication of
