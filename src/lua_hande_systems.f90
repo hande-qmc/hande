@@ -572,8 +572,9 @@ contains
         logical :: new, new_basis, verbose, hdf5, t_exists
         integer :: err
 
-        character(20), parameter :: keys(12) = [character(20) :: 'sys', 'nel', 'electrons', 'int_file', 'dipole_int_file', 'Lz', &
-                                                                'sym', 'ms', 'CAS', 'complex', 'verbose', 'max_broadcast_chunk']
+        character(20), parameter :: keys(13) = [character(20) :: 'sys', 'nel', 'electrons', 'int_file', 'dipole_int_file', 'Lz', &
+                                                                'sym', 'ms', 'CAS', 'complex', 'verbose', 'max_broadcast_chunk', &
+                                                                'ex_int_file']
 
         call cpu_time(t1)
 
@@ -595,11 +596,6 @@ contains
         call aot_get_val(sys%read_in%max_broadcast_chunk, err, lua_state, opts, 'max_broadcast_chunk')
 
         call aot_get_val(sys%read_in%ex_fcidump, err, lua_state, opts, 'ex_int_file')
-
-        print*,'!HERE!!',sys%read_in%ex_fcidump
-        print*,len(sys%read_in%ex_fcidump)
-        print*,sys%read_in%ex_fcidump==''
-        print*,sys%read_in%ex_fcidump=='fcidumpname'
 
         sys%read_in%extra_exchange_integrals = (.not.sys%read_in%ex_fcidump=='')
 

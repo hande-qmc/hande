@@ -780,6 +780,8 @@ contains
             call broadcast_two_body_t(sys%read_in%coulomb_integrals_imag, root, sys%read_in%max_broadcast_chunk)
         end if
 
+        if (sys%read_in%extra_exchange_integrals) call read_additional_exchange_integrals(sys, t_verbose)
+
         if (size(sys%basis%basis_fns) /= size(all_basis_fns) .and. parent .and. t_verbose) then
             ! We froze some orbitals...
             ! Print out entire original basis.
@@ -1185,6 +1187,8 @@ contains
         use errors, only: stop_all
         use parallel, only: parent, root
 
+        use, intrinsic :: iso_fortran_env, only: iostat_end
+
         type(sys_t), intent(inout) :: sys
 
         logical, intent(in), optional :: verbose
@@ -1198,12 +1202,16 @@ contains
 
         call init_two_body_exchange_t(sys, sys%read_in%pg_sym%gamma_sym, sys%read_in%additional_exchange_ints)
         call zero_two_body_exchange_int_store(sys%read_in%additional_exchange_ints)
+        if (sys%read_in%comp) then
+            call init_two_body_exchange_t(sys, sys%read_in%pg_sym%gamma_sym, sys%read_in%additional_exchange_ints_imag)
+            call zero_two_body_exchange_int_store(sys%read_in%additional_exchange_ints_imag)
+        end if
 
         if (parent) then
             inquire(file=sys%read_in%ex_fcidump, exist=t_exists)
             if (.not.t_exists) call stop_all('read_in_integrals', 'FCIDUMP does not &
                                                                &exist:'//trim(sys%read_in%ex_fcidump))
-            open (newunit=ir, file=sys%read_in%fcidump, status='old', form='formatted')
+            open (newunit=ir, file=sys%read_in%ex_fcidump, status='old', form='formatted')
 
             do
                 if (sys%read_in%comp) then
@@ -1214,10 +1222,16 @@ contains
                     read (ir,*, iostat=ios) x, i, a, j, b
                 end if
 
-                if (.not. i == b) call stop_all('read_in_ex_ints',"Unexpected integral indexes encountered.")
+                if (ios == iostat_end) exit
+                if (ios /= 0) call stop_all('read_additional_exchange_integrals', &
+                                            'Problem reading integrals file: '//trim(sys%read_in%ex_fcidump))
 
+                if (.not. (i == b .or. a == j)) call stop_all('read_additional_exchange_integrals',&
+                                        "Unexpected integral indexes encountered.")
                 call store_pbc_int_mol(i,j,a,b,x,sys%basis%basis_fns, sys%read_in%additional_exchange_ints, ierr)
-
+                if (sys%read_in%comp) then
+                    call store_pbc_int_mol(i,j,a,b,y,sys%basis%basis_fns, sys%read_in%additional_exchange_ints_imag, ierr)
+                end if
             end do
         end if
 

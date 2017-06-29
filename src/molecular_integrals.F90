@@ -1382,7 +1382,6 @@ contains
     pure function pbc_ex_int_indx(uhf, i, j, a, b, basis_fns) result(indx)
 
         use basis_types, only: basis_fn_t
-        use errors, only: warning
         use utils, only: tri_ind
 
         type(int_ex_indx) :: indx
@@ -1444,7 +1443,7 @@ contains
             bb = scratch
         end if
 
-        indx%repeat_ind = ii
+        indx%repeat_ind = basis_fns(ii)%spatial_index
         indx%triind = tri_ind(basis_fns(jj)%spatial_index, basis_fns(aa)%spatial_index)
 
         ! Note that integral form in spinorbitals must be
@@ -1620,6 +1619,7 @@ contains
 
 #ifdef PARALLEL
         integer :: i, j, ierr
+
         do i = lbound(store%integrals, dim=1), ubound(store%integrals, dim=1)
             do j = lbound(store%integrals(i)%v,dim=1), ubound(store%integrals(i)%v,dim=1)
 
