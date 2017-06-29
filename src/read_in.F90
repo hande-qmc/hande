@@ -1226,6 +1226,54 @@ contains
             call broadcast_two_body_exchange_t(sys%read_in%additional_exchange_ints_imag, root)
         end if
 
+        call modify_one_body_ints(sys, sys%read_in%coulomb_integrals, sys%read_in%additional_exchange_ints, &
+                                    sys%read_in%one_e_h_integrals)
+        if (sys%read_in%comp) then
+            call modify_one_body_ints(sys, sys%read_in%coulomb_integrals_imag, sys%read_in%additional_exchange_ints_imag, &
+                                    sys%read_in%one_e_h_integrals_imag)
+        end if
+
     end subroutine read_additional_exchange_integrals
+
+    subroutine modify_one_body_ints(sys, two_e_ints, pbc_ex_ints, one_e_ints)
+
+        ! If using additional exchange integrals with modified electron-electron
+        ! interaction we need to modify our diagonal one electron integrals to
+        ! ensure different energy expressions agree.
+
+        ! In:
+        !   sys: information on system being studied.
+        !   two_e_ints: object storing coulomb integrals to be used in modification.
+        !   pbc_ex_ints: object storing additional pbc ints.
+        ! In/Out:
+        !   one_e_ints: object containing one body integrals to be modified.
+
+        ! NB this function uses separately passed onjects for the different integrals
+        ! to enable use of the same function for both the real and imaginary components
+        ! of all integrals.
+
+        use molecular_integrals, only: store_one_body_int, get_one_body_int_mol_nonzero, &
+                               get_two_body_int_mol_nonzero, get_two_body_exchange_pbc_int_nonzero
+        use system, only: sys_t
+        use molecular_integral_types, only: two_body_t, one_body_t, two_body_exchange_t
+
+        type(sys_t), intent(in) :: sys
+        type(two_body_t), intent(in) :: two_e_ints
+        type(two_body_exchange_t), intent(in) :: pbc_ex_ints
+        type(one_body_t), intent(inout) :: one_e_ints
+        real(p) :: intgrl
+        integer :: i, ierr
+
+        do i = 1, sys%basis%nbasis
+            intgrl = get_one_body_int_mol_nonzero(one_e_ints, i, i, sys%basis%basis_fns)
+
+            intgrl = intgrl + get_two_body_int_mol_nonzero(two_e_ints, i, i, i, i, sys%basis%basis_fns)
+
+            intgrl = intgrl - get_two_body_exchange_pbc_int_nonzero(pbc_ex_ints, i, i, i, i, sys%basis%basis_fns)
+
+            call store_one_body_int(i, i, intgrl, sys, .false., one_e_ints, ierr)
+        end do
+
+    end subroutine modify_one_body_ints
 
 end module read_in_system
