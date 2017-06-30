@@ -20,7 +20,7 @@ type, private :: int_indx
     logical :: conjugate        ! Indicates if we need to take the complex conjugate of the integral
 end type int_indx
 
-type, private :: int_ex_indx
+type :: int_ex_indx
     integer :: spin_channel
     integer :: repeat_ind
     integer(int_64) :: triind
@@ -263,7 +263,7 @@ contains
 
     end subroutine end_two_body_t
 
-    subroutine init_two_body_exchange_t(sys, op_sym, store)
+    subroutine init_two_body_exchange_t(sys, op_sym, imag, store)
 
         ! Allocate memory required for the integrals involving a two-body
         ! operator.
@@ -285,6 +285,7 @@ contains
 
         integer, intent(in) :: op_sym
         type(sys_t), intent(in) :: sys
+        logical, intent(in) :: imag
         type(two_body_exchange_t), intent(out) :: store
 
         integer :: ierr, ispin, nspin, mem_reqd, iunit
@@ -294,6 +295,7 @@ contains
 
         store%op_sym = op_sym
         store%uhf = sys%read_in%uhf
+        store%imag = imag
         store%comp = sys%read_in%comp
         ! if rhf then need to store only integrals for spatial orbitals.
         ! ie < i,alpha j,beta | a,alpha b,beta > = < i,alpha j,alpha | a,alpha b,alpha >
@@ -1368,7 +1370,6 @@ contains
 
         indx = pbc_ex_int_indx(store%uhf, i, j, a, b, basis_fns)
 
-
         if (indx%conjugate .and. store%imag) then
             intgrl_loc = -intgrl
         else
@@ -1437,7 +1438,7 @@ contains
         if (elec_swap) then
             scratch = ii
             ii = jj
-            jj = ii
+            jj = scratch
             scratch = aa
             aa = bb
             bb = scratch

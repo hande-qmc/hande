@@ -559,7 +559,7 @@ contains
                         if (t_store) then
                             if (ii < 1 .and. ii == aa) then
                                 ! Have <i|h|i> from a core orbital.  Add
-                                ! contribution to sys%read_in%Ecore.
+                               ! contribution to sys%read_in%Ecore.
                                 ! If RHF need to include <i,up|h|i,up> and
                                 ! <i,down|h|i,down>.
                                 sys%read_in%Ecore = sys%read_in%Ecore + x*rhf_fac
@@ -1197,13 +1197,20 @@ contains
         integer :: i,j,a,b, ios
         real(p) :: x, y
         complex(p) :: compint
+        integer :: rhf_fac
 
         ios = 0
 
-        call init_two_body_exchange_t(sys, sys%read_in%pg_sym%gamma_sym, sys%read_in%additional_exchange_ints)
+        if (sys%read_in%uhf) then
+            rhf_fac = 1
+        else
+            rhf_fac = 2  ! need to double count some integrals.
+        end if
+
+        call init_two_body_exchange_t(sys, sys%read_in%pg_sym%gamma_sym, .false., sys%read_in%additional_exchange_ints)
         call zero_two_body_exchange_int_store(sys%read_in%additional_exchange_ints)
         if (sys%read_in%comp) then
-            call init_two_body_exchange_t(sys, sys%read_in%pg_sym%gamma_sym, sys%read_in%additional_exchange_ints_imag)
+            call init_two_body_exchange_t(sys, sys%read_in%pg_sym%gamma_sym, .true., sys%read_in%additional_exchange_ints_imag)
             call zero_two_body_exchange_int_store(sys%read_in%additional_exchange_ints_imag)
         end if
 
@@ -1228,6 +1235,11 @@ contains
 
                 if (.not. (i == b .or. a == j)) call stop_all('read_additional_exchange_integrals',&
                                         "Unexpected integral indexes encountered.")
+                i = rhf_fac*i
+                j = rhf_fac*j
+                a = rhf_fac*a
+                b = rhf_fac*b
+
                 call store_pbc_int_mol(i,j,a,b,x,sys%basis%basis_fns, sys%read_in%additional_exchange_ints, ierr)
                 if (sys%read_in%comp) then
                     call store_pbc_int_mol(i,j,a,b,y,sys%basis%basis_fns, sys%read_in%additional_exchange_ints_imag, ierr)
@@ -1267,7 +1279,8 @@ contains
         ! of all integrals.
 
         use molecular_integrals, only: store_one_body_int, get_one_body_int_mol_nonzero, &
-                               get_two_body_int_mol_nonzero, get_two_body_exchange_pbc_int_nonzero
+                               get_two_body_int_mol_nonzero, get_two_body_exchange_pbc_int_nonzero,&
+                               pbc_ex_int_indx, int_ex_indx
         use system, only: sys_t
         use molecular_integral_types, only: two_body_t, one_body_t, two_body_exchange_t
 
@@ -1277,13 +1290,14 @@ contains
         type(one_body_t), intent(inout) :: one_e_ints
         real(p) :: intgrl
         integer :: i, ierr
+        type(int_ex_indx) :: indx
 
-        do i = 1, sys%basis%nbasis
+        do i = 1, sys%basis%nbasis, 2
+            indx = pbc_ex_int_indx(.false., i,i,i,i,sys%basis%basis_fns)
             intgrl = get_one_body_int_mol_nonzero(one_e_ints, i, i, sys%basis%basis_fns)
 
-            intgrl = intgrl + get_two_body_int_mol_nonzero(two_e_ints, i, i, i, i, sys%basis%basis_fns)
-
-            intgrl = intgrl - get_two_body_exchange_pbc_int_nonzero(pbc_ex_ints, i, i, i, i, sys%basis%basis_fns)
+            intgrl = intgrl + 0.5_p * get_two_body_int_mol_nonzero(two_e_ints, i, i, i, i, sys%basis%basis_fns)
+            intgrl = intgrl - 0.5_p * get_two_body_exchange_pbc_int_nonzero(pbc_ex_ints, i, i, i, i, sys%basis%basis_fns)
 
             call store_one_body_int(i, i, intgrl, sys, .false., one_e_ints, ierr)
         end do
