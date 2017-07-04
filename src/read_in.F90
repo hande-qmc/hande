@@ -780,7 +780,7 @@ contains
             call broadcast_two_body_t(sys%read_in%coulomb_integrals_imag, root, sys%read_in%max_broadcast_chunk)
         end if
 
-        if (sys%read_in%extra_exchange_integrals) call read_additional_exchange_integrals(sys, t_verbose)
+        if (sys%read_in%extra_exchange_integrals) call read_additional_exchange_integrals(sys, sp_fcidump_rank, t_verbose)
 
         if (size(sys%basis%basis_fns) /= size(all_basis_fns) .and. parent .and. t_verbose) then
             ! We froze some orbitals...
@@ -1176,10 +1176,17 @@ contains
 
     end subroutine get_sp_eigv
 
-    subroutine read_additional_exchange_integrals(sys, verbose)
+    subroutine read_additional_exchange_integrals(sys, sp_fcidump_rank, verbose)
 
         ! For periodic bounary conditions we require additional integrals, to be read
         ! in from a separate FCIDUMP.
+        !    sp_fcidump_rank: ranking array which converts index in the
+        !         integrals file(s) to the (energy-ordered) index used in HANDE,
+        !         i.e. sp_fcidump_rank(a) = i, where a is the a-th
+        !         orbital according to the ordering used in the integral files
+        !         and i is the i-th orbital by energy ordering.
+        !         Note: must be 0-indexed and sp_fcidump_rank(0) = 0.  See above
+        !         commments about this special case.
 
         use molecular_integrals, only: init_two_body_exchange_t, zero_two_body_exchange_int_store, &
                                        store_pbc_int_mol, broadcast_two_body_exchange_t
@@ -1190,6 +1197,7 @@ contains
         use, intrinsic :: iso_fortran_env, only: iostat_end
 
         type(sys_t), intent(inout) :: sys
+        integer, intent(in) :: sp_fcidump_rank(0:)
 
         logical, intent(in), optional :: verbose
         integer :: ir, ierr
@@ -1235,10 +1243,10 @@ contains
 
                 if (.not. (i == b .or. a == j)) call stop_all('read_additional_exchange_integrals',&
                                         "Unexpected integral indexes encountered.")
-                i = rhf_fac*i
-                j = rhf_fac*j
-                a = rhf_fac*a
-                b = rhf_fac*b
+                i = rhf_fac*sp_fcidump_rank(i)
+                j = rhf_fac*sp_fcidump_rank(j)
+                a = rhf_fac*sp_fcidump_rank(a)
+                b = rhf_fac*sp_fcidump_rank(b)
 
                 call store_pbc_int_mol(i,j,a,b,x,sys%basis%basis_fns, sys%read_in%additional_exchange_ints, ierr)
                 if (sys%read_in%comp) then
