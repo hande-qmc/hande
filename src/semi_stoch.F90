@@ -1406,6 +1406,8 @@ contains
         integer :: id, ierr, ndeterm, semi_stoch_version_restart, tensor_label_len_old, nbasis_restart
         integer(HSIZE_T) :: dims(2), maxdims(2)
         logical :: exists
+        integer(i0), allocatable :: dets_by_proc(:,:)
+
 #ifdef PARALLEL
         integer :: i, proc, slot, ndeterm_this_proc, displs(0:nprocs-1)
 #endif
@@ -1491,6 +1493,8 @@ contains
         determ%sizes = ndeterm
         dets_this_proc(:,1:ndeterm) = determ%dets
 #else
+        allocate(dets_by_proc(sys%basis%tensor_label_len, ndeterm), stat=ierr)
+        call check_allocate('dets_by_proc', ndeterm*sys%basis%tensor_label_len, ierr)
         if (parent) then
             ! Find how many determinants belong to each process.
             determ%sizes = 0
@@ -1505,6 +1509,15 @@ contains
             do i = 1, nprocs-1
                 displs(i) = displs(i-1) + determ%sizes(i-1)
             end do
+
+            ! Now make a list of dets ordered by processor for the scatter.
+            determ%sizes = 0
+            do i = 1, ndeterm
+                call assign_particle_processor(determ%dets(:,i), spawn%bit_str_nbits, spawn%hash_seed, spawn%hash_shift, &
+                                               spawn%move_freq, nprocs, proc, slot, spawn%proc_map%map, spawn%proc_map%nslots)
+                determ%sizes(proc) = determ%sizes(proc) + 1
+                dets_by_proc(:,displs(proc)+determ%sizes(proc)) =determ%dets(:,i)
+            end do
         end if
 
         ! Send the number of determinants on a process to that process, from
@@ -1515,10 +1528,11 @@ contains
 
         ! Send the determinants to their process.
         associate(tbl=>sys%basis%tensor_label_len)
-            call mpi_scatterv(determ%dets, tbl*determ%sizes, tbl*displs, mpi_det_integer, &
+            call mpi_scatterv(dets_by_proc, tbl*determ%sizes, tbl*displs, mpi_det_integer, &
                              dets_this_proc(:,1:ndeterm_this_proc), tbl*determ%sizes(iproc), &
                              mpi_det_integer, root, MPI_COMM_WORLD, ierr)
         end associate
+        deallocate(dets_by_proc)
 #endif
 
         ! determ%dets is used to store the list of all deterministic states, but
