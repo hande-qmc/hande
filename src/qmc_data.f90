@@ -314,6 +314,9 @@ type ccmc_in_t
     character(255) :: density_matrix_file = 'RDM'
     ! Whether to use even cluster selection approach.
     logical :: even_selection = .false.
+    ! Whether to use a second reference.
+    logical :: multiref = .false.
+    type(reference_t) :: second_ref
 end type ccmc_in_t
 
 type restart_in_t
