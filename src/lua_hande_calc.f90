@@ -1298,6 +1298,8 @@ contains
         !     density_matrices = true/false,
         !     density_matrix_file = filename,
         !     even_selection = true/false,
+	!     multiref = true/false,
+	!     second_ref =second reference,
         ! }
 
         ! In/Out:
@@ -1318,9 +1320,10 @@ contains
         type(ccmc_in_t), intent(out) :: ccmc_in
 
         integer :: ccmc_table, err
-        character(28), parameter :: keys(8) = [character(28) :: 'move_frequency', 'cluster_multispawn_threshold', &
+        character(28), parameter :: keys(10) [character(28) :: 'move_frequency', 'cluster_multispawn_threshold', &
                                                                 'full_non_composite', 'linked', 'vary_shift_reference', &
-                                                                'density_matrices', 'density_matrix_file', 'even_selection']
+                                                                'density_matrices', 'density_matrix_file', 'even_selection' &
+								'multiref', 'second_ref']
 
         if (aot_exists(lua_state, opts, 'ccmc')) then
 
@@ -1335,6 +1338,8 @@ contains
             call aot_get_val(ccmc_in%density_matrices, err, lua_state, ccmc_table, 'density_matrices')
             call aot_get_val(ccmc_in%density_matrix_file, err, lua_state, ccmc_table, 'density_matrix_file')
             call aot_get_val(ccmc_in%even_selection, err, lua_state, ccmc_table, 'even_selection')
+            call aot_get_val(ccmc_in%multiref, err, lua_state, ccmc_table, 'multiref')
+            call aot_get_val(ccmc_in%second_ref, err, lua_state, ccmc_table, 'second_ref')
 
             call warn_unused_args(lua_state, keys, ccmc_table)
 
