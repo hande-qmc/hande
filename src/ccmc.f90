@@ -605,7 +605,13 @@ contains
                     ! excitors.
                     ! Can't include the reference in the cluster, so -1 from the
                     ! total number of excitors.
-                    max_cluster_size = min(sys%nel, qs%ref%ex_level+2, qs%psip_list%nstates-nD0_proc)
+                    if (ccmc_in%multiref) then
+                        max_cluster_size = min(sys%nel, get_excitation_level(qs%ref%f0,ccmc_in%second_ref%f0)+qs%ref%ex_level+2, &
+                                                           qs%psip_list%nstates-nD0_proc)
+                    else
+                        max_cluster_size = min(sys%nel, qs%ref%ex_level+2, &
+                                                           qs%psip_list%nstates-nD0_proc)
+                    end if
                 end if
 
                 ! Note that 'death' in CCMC creates particles in the spawned
@@ -1111,7 +1117,7 @@ contains
                 ! Do death for non-composite clusters directly and in a separate loop
                 if (contrib%cluster%nexcitors >= 2 .or. .not. ccmc_in%full_nc) then
                     call stochastic_ccmc_death(rng, qs%spawn_store%spawn, ccmc_in%linked, ccmc_in%even_selection, sys, &
-                                               qs, contrib%cdet, contrib%cluster, logging_info, ndeath)
+                                               qs, contrib%cdet, contrib%cluster, logging_info, ndeath, ccmc_in)
                 end if
             end if
         end if

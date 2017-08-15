@@ -496,7 +496,7 @@ contains
         ! Get main table.
         opts = aot_table_top(lua_state)
         call read_qmc_in(lua_state, opts, qmc_in)
-        call read_ccmc_in(lua_state, opts, ccmc_in)
+        call read_ccmc_in(lua_state, opts, ccmc_in, sys)
 
         ! Need to extend bit strings for additional excitation level information if needed.
         if (ccmc_in%even_selection) then
@@ -1285,7 +1285,7 @@ contains
 
     end subroutine read_semi_stoch_in
 
-    subroutine read_ccmc_in(lua_state, opts, ccmc_in)
+    subroutine read_ccmc_in(lua_state, opts, ccmc_in,sys)
 
         ! Read in an ccmc table (if it exists) to an ccmc_in object.
 
@@ -1314,15 +1314,17 @@ contains
 
         use qmc_data, only: ccmc_in_t
         use lua_hande_utils, only: warn_unused_args
+	use system, only: sys_t
 
         type(flu_State), intent(inout) :: lua_state
         integer, intent(in) :: opts
+	type (sys_t), intent(in) :: sys
         type(ccmc_in_t), intent(out) :: ccmc_in
 
         integer :: ccmc_table, err
-        character(28), parameter :: keys(10) [character(28) :: 'move_frequency', 'cluster_multispawn_threshold', &
+        character(28), parameter :: keys(10) = [character(28) :: 'move_frequency', 'cluster_multispawn_threshold', &
                                                                 'full_non_composite', 'linked', 'vary_shift_reference', &
-                                                                'density_matrices', 'density_matrix_file', 'even_selection' &
+                                                                'density_matrices', 'density_matrix_file', 'even_selection', &
 								'multiref', 'second_ref']
 
         if (aot_exists(lua_state, opts, 'ccmc')) then
@@ -1339,7 +1341,7 @@ contains
             call aot_get_val(ccmc_in%density_matrix_file, err, lua_state, ccmc_table, 'density_matrix_file')
             call aot_get_val(ccmc_in%even_selection, err, lua_state, ccmc_table, 'even_selection')
             call aot_get_val(ccmc_in%multiref, err, lua_state, ccmc_table, 'multiref')
-            call aot_get_val(ccmc_in%second_ref, err, lua_state, ccmc_table, 'second_ref')
+            call  read_reference_t(lua_state, opts, ccmc_in%second_ref, sys, 'second_ref')
 
             call warn_unused_args(lua_state, keys, ccmc_table)
 
