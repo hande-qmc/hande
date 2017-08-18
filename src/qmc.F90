@@ -53,12 +53,13 @@ contains
         use restart_hdf5, only: read_restart_hdf5, restart_info_t, init_restart_info_t, get_reference_hdf5
 
         use qmc_data, only: qmc_in_t, fciqmc_in_t, restart_in_t, load_bal_in_t, annihilation_flags_t, qmc_state_t, &
-                            neel_singlet, excit_gen_power_pitzer, excit_gen_power_pitzer_orderN
+                            neel_singlet, excit_gen_power_pitzer, excit_gen_power_pitzer_orderN, excit_gen_heat_bath
         use reference_determinant, only: reference_t
         use dmqmc_data, only: dmqmc_in_t
         use excit_gens, only: dealloc_excit_gen_data_t
         use const, only: p
         use excit_gen_power_pitzer_mol, only: init_excit_mol_power_pitzer_occ_ref, init_excit_mol_power_pitzer_orderN
+        use excit_gen_heat_bath_mol, only: init_excit_mol_heat_bath
         use excit_gen_ueg, only: init_excit_ueg_power_pitzer
 
 
@@ -193,6 +194,11 @@ contains
         if (qmc_in%excit_gen==excit_gen_power_pitzer_orderN) then
            call init_excit_mol_power_pitzer_orderN(sys, qmc_state%ref, qmc_state%excit_gen_data%excit_gen_pp)
         end if
+
+        if (qmc_in%excit_gen==excit_gen_heat_bath) then
+           call init_excit_mol_heat_bath(sys, qmc_state%excit_gen_data%excit_gen_hb)
+        end if
+
     end subroutine init_qmc
 
     subroutine init_proc_pointers(sys, qmc_in, reference, io_unit, dmqmc_in, fciqmc_in)
@@ -216,7 +222,7 @@ contains
         use parallel, only: parent
         use qmc_data, only: qmc_in_t, fciqmc_in_t, single_basis, neel_singlet, neel_singlet_guiding, &
                             excit_gen_renorm, excit_gen_no_renorm, excit_gen_power_pitzer_occ, &
-                            excit_gen_power_pitzer, excit_gen_power_pitzer_orderN
+                            excit_gen_power_pitzer, excit_gen_power_pitzer_orderN, excit_gen_heat_bath
         use dmqmc_data, only: dmqmc_in_t, free_electron_dm
         use reference_determinant, only: reference_t
 
@@ -230,6 +236,7 @@ contains
         use excit_gen_mol
         use excit_gen_power_pitzer_mol, only: gen_excit_mol_power_pitzer_occ
         use excit_gen_power_pitzer_mol, only: gen_excit_mol_power_pitzer_occ_ref, gen_excit_mol_power_pitzer_orderN
+        use excit_gen_heat_bath_mol, only: gen_excit_mol_heat_bath_uniform
         use excit_gen_ueg, only:  gen_excit_ueg_power_pitzer
         use excit_gen_op_mol
         use excit_gen_hub_k
@@ -400,6 +407,9 @@ contains
             case(excit_gen_power_pitzer_orderN)
                 ! [todo] - check this decoder is correct.
                 gen_excit_ptr%full => gen_excit_mol_power_pitzer_orderN
+                decoder_ptr => decode_det_occ
+            case(excit_gen_heat_bath)
+                gen_excit_ptr%full => gen_excit_mol_heat_bath_uniform
                 decoder_ptr => decode_det_occ
             case default
                 call stop_all('init_proc_pointers', 'Selected excitation generator not implemented.')

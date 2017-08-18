@@ -108,6 +108,28 @@ type excit_gen_power_pitzer_t
 
 end type excit_gen_power_pitzer_t
 
+type excit_gen_heat_bath_t
+    ! Length of array: sys%basis%nbasis
+    real(p), allocatable :: i_weights(:) ! This will hold S_p in the Holmes JCTC paper.
+    ! Length of array: sys%basis%nbasis, sys%basis%nbasis
+    real(p), allocatable :: ij_weights(:,:) ! This stores D_pq.
+    ! Length of array: sys%basis%nbasis, sys%basis%nbasis, sys%basis%nbasis
+    real(p), allocatable :: ija_weights(:,:,:)
+    ! Length of array: sys%basis%nbasis, sys%basis%nbasis, sys%basis%nbasis
+    real(p), allocatable :: ija_aliasU(:,:,:)
+    ! Length of array: sys%basis%nbasis, sys%basis%nbasis, sys%basis%nbasis
+    integer(int_bas), allocatable :: ija_aliasK(:,:,:)
+    ! Length of array: sys%basis%nbasis, sys%basis%nbasis
+    real(p), allocatable :: ija_weights_tot(:,:)
+    ! Length of array: sys%basis%nbasis, sys%basis%nbasis, sys%basis%nbasis, sys%basis%nbasis
+    real(p), allocatable :: ijab_weights(:,:,:,:)
+    ! Length of array: sys%basis%nbasis, sys%basis%nbasis, sys%basis%nbasis, sys%basis%nbasis
+    real(p), allocatable :: ijab_aliasU(:,:,:,:)
+    ! Length of array: sys%basis%nbasis, sys%basis%nbasis, sys%basis%nbasis, sys%basis%nbasis
+    integer(int_bas), allocatable :: ijab_aliasK(:,:,:,:)
+    ! Length of array: sys%basis%nbasis, sys%basis%nbasis, sys%basis%nbasis
+    real(p), allocatable :: ijab_weights_tot(:,:,:)
+end type excit_gen_heat_bath_t
 
 !Type containing data for excitation generators
 type excit_gen_data_t
@@ -135,6 +157,7 @@ type excit_gen_data_t
     ! k_i+k_j...
     integer(i0), allocatable :: ueg_ternary_conserve(:,:,:,:)
     type(excit_gen_power_pitzer_t) :: excit_gen_pp
+    type(excit_gen_heat_bath_t) :: excit_gen_hb
 end type excit_gen_data_t
 
 contains
@@ -154,6 +177,7 @@ contains
         if (allocated(excit_gen_data%ueg_ternary_conserve)) deallocate(excit_gen_data%ueg_ternary_conserve)
 
         call dealloc_excit_gen_power_pitzer_t(excit_gen_data%excit_gen_pp)
+        call dealloc_excit_gen_heat_bath_t(excit_gen_data%excit_gen_hb)
 
     end subroutine dealloc_excit_gen_data_t
 
@@ -203,5 +227,27 @@ contains
         if (allocated(excit_gen_pp%all_list_beta)) deallocate(excit_gen_pp%all_list_beta)
 
     end subroutine dealloc_excit_gen_power_pitzer_t
+
+    subroutine dealloc_excit_gen_heat_bath_t(excit_gen_hb)
+
+        ! Deallocate the heat bath excitation generator data.
+
+        ! In/Out:
+        !   excit_gen_hb: excit_gen_heat_bath_t to be deallocated.
+
+        type(excit_gen_heat_bath_t), intent(inout) :: excit_gen_hb
+
+        if (allocated(excit_gen_hb%i_weights)) deallocate(excit_gen_hb%i_weights)
+        if (allocated(excit_gen_hb%ij_weights)) deallocate(excit_gen_hb%ij_weights)
+        if (allocated(excit_gen_hb%ija_weights)) deallocate(excit_gen_hb%ija_weights)
+        if (allocated(excit_gen_hb%ija_aliasU)) deallocate(excit_gen_hb%ija_aliasU)
+        if (allocated(excit_gen_hb%ija_aliasK)) deallocate(excit_gen_hb%ija_aliasK)
+        if (allocated(excit_gen_hb%ija_weights_tot)) deallocate(excit_gen_hb%ija_weights_tot)
+        if (allocated(excit_gen_hb%ijab_weights)) deallocate(excit_gen_hb%ijab_weights)
+        if (allocated(excit_gen_hb%ijab_aliasU)) deallocate(excit_gen_hb%ijab_aliasU)
+        if (allocated(excit_gen_hb%ijab_aliasK)) deallocate(excit_gen_hb%ijab_aliasK)
+        if (allocated(excit_gen_hb%ijab_weights_tot)) deallocate(excit_gen_hb%ijab_weights_tot)
+
+    end subroutine dealloc_excit_gen_heat_bath_t
 
 end module excit_gens

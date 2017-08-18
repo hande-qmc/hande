@@ -45,6 +45,9 @@ enum, bind(c)
     enumerator :: excit_gen_power_pitzer_occ
     ! The version O(N) which precomputes more than excit_gen_power_pitzer.
     enumerator :: excit_gen_power_pitzer_orderN
+    ! Heat bath excitation generator, based on Holmes, A. A.; Changlani, H. J.; Umrigar, 
+    ! C. J. J. Chem. Theory Comput. 2016, 12, 1561–1571
+    enumerator :: excit_gen_heat_bath
 end enum
 
 ! Types of semi-stochastic space.
