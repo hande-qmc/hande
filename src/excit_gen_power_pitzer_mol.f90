@@ -308,7 +308,6 @@ contains
                 if ((a /= pp%occ_list(i)) .and. (sys%basis%basis_fns(a)%sym == isyma) .and. &
                     (sys%basis%basis_fns(a)%ms == ims)) then
                     i_weight = i_weight + single_excitation_weight_ptr(sys, pp%occ_list(i), a)
-                    print *, pp%occ_list(i), a, i_weight 
                 end if
             end do
             if (i_weight < depsilon) then
@@ -369,10 +368,10 @@ contains
                                         sys%read_in%cross_product_sym_ptr(sys%read_in, ij_sym, sys%basis%basis_fns(a)%sym))
                             do b = 1, sys%basis%nbasis
                                 ! Check spin conservation and symmetry conservation.
-                                if (((sys%basis%basis_fns(i_tmp)%Ms == sys%basis%basis_fns(a)%Ms) .and. &
+                                if ((((sys%basis%basis_fns(i_tmp)%Ms == sys%basis%basis_fns(a)%Ms) .and. &
                                     (sys%basis%basis_fns(j_tmp)%Ms == sys%basis%basis_fns(b)%Ms)) .or. &
                                     ((sys%basis%basis_fns(i_tmp)%Ms == sys%basis%basis_fns(b)%Ms) .and. &
-                                    (sys%basis%basis_fns(j_tmp)%Ms == sys%basis%basis_fns(a)%Ms)) .and. &
+                                    (sys%basis%basis_fns(j_tmp)%Ms == sys%basis%basis_fns(a)%Ms))) .and. &
                                     (sys%basis%basis_fns(b)%sym == isymb) .and. (b /= a) .and. (b /= i_tmp) .and. &
                                     (b/=j_tmp)) then
                                     if (b < a) then
@@ -421,10 +420,10 @@ contains
                             isymb = sys%read_in%sym_conj_ptr(sys%read_in, &
                                     sys%read_in%cross_product_sym_ptr(sys%read_in, ij_sym, sys%basis%basis_fns(a)%sym))
                             do b = 1, sys%basis%nbasis 
-                                if (((sys%basis%basis_fns(i_tmp)%Ms == sys%basis%basis_fns(a)%Ms) .and. &
+                                if ((((sys%basis%basis_fns(i_tmp)%Ms == sys%basis%basis_fns(a)%Ms) .and. &
                                     (sys%basis%basis_fns(j_tmp)%Ms == sys%basis%basis_fns(b)%Ms)) .or. &
                                     ((sys%basis%basis_fns(i_tmp)%Ms == sys%basis%basis_fns(b)%Ms) .and. &
-                                    (sys%basis%basis_fns(j_tmp)%Ms == sys%basis%basis_fns(a)%Ms)) .and. &
+                                    (sys%basis%basis_fns(j_tmp)%Ms == sys%basis%basis_fns(a)%Ms))) .and. &
                                     (sys%basis%basis_fns(b)%sym == isymb) .and. (a /= b) .and. (b /= i_tmp) .and. &
                                     (b /= j_tmp)) then
                                     if (b < a) then
@@ -444,6 +443,10 @@ contains
                         ! [todo] - think of better min weight (needed because after mapping i might be a valid orbital to use)
                         ij_weight = 0.00001_p/real(sys%nel)
                     end if
+                else
+                    ! i == pp%occ_list(j) which means i_cdet == j_ref here but that does not mean that i_cdet == j_cdet.
+                    ! Assign a uniform weight.
+                    ij_weight = 1.0_p/sys%nel
                 end if
                 pp%ij_all_weights(j,i) = ij_weight
                 pp%ij_all_weights_tot(i) = pp%ij_all_weights_tot(i) + ij_weight
