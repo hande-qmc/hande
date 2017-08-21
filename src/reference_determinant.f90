@@ -28,6 +28,8 @@ type reference_t
     ! determinants differ by at most ex_level excitations.
     ! Set to the number of electrons in the system to use the full space.
     integer :: ex_level = -1
+    ! Set to the maximum acceptable excitation level (for use in multireference CCMC).
+    integer :: max_ex_level = -1 
     ! Energy of reference determinant.
     real(p) :: H00
     ! Value of <D0|O|D0>, where O is the operator we are sampling.
@@ -108,11 +110,13 @@ contains
                 end select
             end if
             set = .true.
+	    print*,'Using passed in ref##############'
         else
             ! Allocate memory if required.
             allocate(occ_list(sys%nel), stat=ierr)
             call check_allocate('occ_list',sys%nel,ierr)
             set = .false.
+	    print*,'Regenerating ref ###############'
         end if
 
         if (.not.set .or. override_input) then

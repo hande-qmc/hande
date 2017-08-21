@@ -1299,7 +1299,7 @@ contains
         !     density_matrix_file = filename,
         !     even_selection = true/false,
 	!     multiref = true/false,
-	!     second_ref =second reference,
+	!     second_ref ={...},
         ! }
 
         ! In/Out:
@@ -1341,7 +1341,13 @@ contains
             call aot_get_val(ccmc_in%density_matrix_file, err, lua_state, ccmc_table, 'density_matrix_file')
             call aot_get_val(ccmc_in%even_selection, err, lua_state, ccmc_table, 'even_selection')
             call aot_get_val(ccmc_in%multiref, err, lua_state, ccmc_table, 'multiref')
-            call  read_reference_t(lua_state, opts, ccmc_in%second_ref, sys, 'second_ref')
+	    if (aot_exists(lua_state, ccmc_table, 'second_ref')) then
+	    	 print*, 'I can see the second ref table!======================================='
+	    else
+		 print*,'I cant see the table.+++++++++++++++++++++++++++++++++++++++'
+	    end if
+
+            call read_reference_t(lua_state, ccmc_table, ccmc_in%second_ref, sys, 'second_ref')
 
             call warn_unused_args(lua_state, keys, ccmc_table)
 
@@ -1680,13 +1686,14 @@ contains
 
         integer :: ref_table, err
         integer, allocatable :: err_arr(:)
-        character(17), parameter :: keys(3) = [character(17) :: 'det', 'hilbert_space_det', 'ex_level']
+        character(17), parameter :: keys(4) = [character(17) :: 'det', 'hilbert_space_det', 'ex_level', 'max_ex_level']
         ! Avoid using allocatable strings here for old compiler support.
         character(100) :: ref_name
 
         ! Set to full space/a problematic value by default.
         ref%ex_level = -1
         if (present(sys)) ref%ex_level = sys%nel
+        ref%max_ex_level = -1
 
         ref_name = 'reference'
         if (present(ref_table_name)) then
@@ -1709,11 +1716,14 @@ contains
             end if
 
             call aot_get_val(ref%ex_level, err, lua_state, ref_table, 'ex_level')
+           
+            call aot_get_val (ref%max_ex_level, err, lua_state, ref_table, 'max_ex_level')
 
             call warn_unused_args(lua_state, keys, ref_table)
 
             call aot_table_close(lua_state, ref_table)
-
+	    print*,'@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@',ref_name,ref%occ_list0
+	    print*,allocated(ref%occ_list0)
         end if
 
     end subroutine read_reference_t

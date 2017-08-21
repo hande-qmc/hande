@@ -309,7 +309,7 @@ contains
         use determinant_data, only: det_info_t
         use excitations, only: excit_t, get_excitation_level, get_excitation
         use qmc_io, only: write_qmc_report, write_qmc_report_header
-        use qmc, only: init_qmc
+        use qmc, only: init_qmc, init_reference
         use qmc_common, only: initial_qmc_status, initial_cc_projected_energy, load_balancing_report, init_report_loop, &
                               init_mc_cycle, end_report_loop, end_mc_cycle, redistribute_particles, rescale_tau
         use proc_pointers
@@ -423,6 +423,18 @@ contains
             'Asked to regenerate extra information after restart but no extra information expected.')
         end if
 
+        if (ccmc_in%multiref) then
+!	   print*, '11111111111111111',allocated(ccmc_in%second_ref%occ_list0)
+            call init_reference(sys, ccmc_in%second_ref, io_unit, qs%second_ref)
+            qs%ref%max_ex_level = qs%ref%ex_level + get_excitation_level(qs%ref%f0(:sys%basis%bit_string_len), &
+                                                                  qs%second_ref%f0(:sys%basis%bit_string_len))
+!           print*,"!!!!!!!!!!!!!!!!!!!!!!!",qs%second_ref%f0
+        else 
+            qs%ref%max_ex_level = qs%ref%ex_level
+        end if
+
+!        print*, qs%ref%max_ex_level
+
         if (debug) call init_logging(logging_in, logging_info, qs%ref%ex_level)
 
         if (parent) then
@@ -473,7 +485,7 @@ contains
         allocate(ps_stats(0:nthreads-1), stat=ierr)
         call check_allocate('ps_stats', nthreads, ierr)
 
-        call init_contrib(sys, qs%ref%ex_level+2, ccmc_in%linked, contrib)
+        call init_contrib(sys, qs%ref%max_ex_level+2, ccmc_in%linked, contrib)
 
         do i = 0, nthreads-1
             ! Initialise and allocate RNG store.
@@ -490,14 +502,15 @@ contains
         call check_allocate('cumulative_abs_real_pops', size(qs%psip_list%states, dim=2), ierr)
 
         if (ccmc_in%even_selection) then
+            print*, qs%ref%max_ex_level
             if (ccmc_in%linked) then
-                call init_selection_data(qs%ref%ex_level, 4, selection_data)
+                call init_selection_data(qs%ref%max_ex_level, 4, selection_data)
             else
-                call init_selection_data(qs%ref%ex_level, qs%ref%ex_level+2, selection_data)
+                call init_selection_data(qs%ref%max_ex_level, qs%ref%max_ex_level+2, selection_data)
             end if
-            call init_ex_lvl_dist_t(qs%ref%ex_level, ex_lvl_dist)
+            call init_ex_lvl_dist_t(qs%ref%max_ex_level, ex_lvl_dist)
         end if
-        if (debug) call init_amp_psel_accumulation(qs%ref%ex_level+2, logging_info, ccmc_in%linked, selection_data)
+        if (debug) call init_amp_psel_accumulation(qs%ref%max_ex_level+2, logging_info, ccmc_in%linked, selection_data)
 
         nparticles_old = qs%psip_list%tot_nparticles
 
@@ -567,6 +580,15 @@ contains
 
         do ireport = 1, qmc_in%nreport
 
+            !do i = 1, qs%psip_list%nstates
+              !print*, get_excitation_level(qs%ref%f0(:sys%basis%bit_string_len), &
+              !                          qs%psip_list%states(:sys%basis%bit_string_len,i))
+              !if (get_excitation_level(qs%ref%f0(:sys%basis%bit_string_len), &
+              !                         qs%psip_list%states(:sys%basis%bit_string_len,i)) > qs%ref%ex_level) then
+              !    print*, 'OUT' 
+              ! end if
+            !end do
+
             ! Projected energy from last report loop to correct death
             if (sys%read_in%comp) then
                 qs%estimators%proj_energy_old = get_sanitized_projected_energy_cmplx(qs)
@@ -605,13 +627,8 @@ contains
                     ! excitors.
                     ! Can't include the reference in the cluster, so -1 from the
                     ! total number of excitors.
-                    if (ccmc_in%multiref) then
-                        max_cluster_size = min(sys%nel, get_excitation_level(qs%ref%f0,ccmc_in%second_ref%f0)+qs%ref%ex_level+2, &
+                    max_cluster_size = min(sys%nel,qs%ref%max_ex_level+2, &
                                                            qs%psip_list%nstates-nD0_proc)
-                    else
-                        max_cluster_size = min(sys%nel, qs%ref%ex_level+2, &
-                                                           qs%psip_list%nstates-nD0_proc)
-                    end if
                 end if
 
                 ! Note that 'death' in CCMC creates particles in the spawned
@@ -724,21 +741,21 @@ contains
                             call select_cluster_truncated(rng(it), sys, qs%psip_list, qs%ref%f0, &
                                                         ccmc_in%linked, selection_data%nstochastic_clusters, D0_normalisation, &
                                                         qmc_in%initiator_pop, selection_data, cumulative_abs_real_pops, &
-                                                        qs%ref%ex_level, min_cluster_size, max_cluster_size, &
+                                                        qs%ref%max_ex_level, min_cluster_size, max_cluster_size, &
                                                         ex_lvl_dist, contrib(it)%cluster, contrib(it)%cdet, qs%excit_gen_data)
 
                         else
-                            call select_cluster(rng(it), sys, qs%psip_list, qs%ref%f0, qs%ref%ex_level, ccmc_in%linked, &
+                            call select_cluster(rng(it), sys, qs%psip_list, qs%ref%f0, qs%ref%max_ex_level, ccmc_in%linked, &
                                             selection_data%nstochastic_clusters, D0_normalisation, qmc_in%initiator_pop, D0_pos, &
                                             cumulative_abs_real_pops, tot_abs_real_pop, min_cluster_size, max_cluster_size, &
                                             logging_info, contrib(it)%cdet, contrib(it)%cluster, qs%excit_gen_data)
                         end if
 
-                        if (contrib(it)%cluster%excitation_level <= qs%ref%ex_level+2 .or. &
+                        if (contrib(it)%cluster%excitation_level <= qs%ref%max_ex_level+2 .or. &
                                 (ccmc_in%linked .and. contrib(it)%cluster%excitation_level == huge(0))) then
                             ! cluster%excitation_level == huge(0) indicates a cluster
                             ! where two excitors share an elementary operator
-
+                            !print*, contrib(it)%cluster%excitation_level
                             if (qs%propagator%quasi_newton) contrib(it)%cdet%fock_sum = &
                                             sum_sp_eigenvalues_occ_list(sys, contrib(it)%cdet%occ_list) - qs%ref%fock_sum
 

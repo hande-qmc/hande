@@ -164,11 +164,12 @@ contains
             ! This is the same process as excitor to determinant and hence we
             ! can reuse code...
             call create_excited_det(sys%basis, cdet%f, connection, fexcit)
-            excitor_level = get_excitation_level(qs%ref%f0, fexcit)
+            excitor_level = get_excitation_level(qs%ref%f0(:sys%basis%bit_string_len), fexcit(:sys%basis%bit_string_len))
             call convert_excitor_to_determinant(fexcit, excitor_level, excitor_sign, qs%ref%f0)
 	        if (ccmcin%multiref) then
-	            excitor_level_2 = get_excitation_level(ccmcin%second_ref%f0, fexcit)
-	            if (excitor_level > qs%ref%ex_level .and.  excitor_level_2 >qs%ref%ex_level) nspawn=0
+	            excitor_level_2 = get_excitation_level(ccmcin%second_ref%f0(:sys%basis%bit_string_len), fexcit(:sys%basis%bit_string_len))
+	            !print*, excitor_level, excitor_level_2
+                if (excitor_level > qs%ref%ex_level .and.  excitor_level_2 >qs%ref%ex_level) nspawn=0
 	        end if
             if (excitor_sign < 0) nspawn = -nspawn
             if (debug) call write_logging_spawn(logging_info, hmatel_save, pgen, invdiagel, [nspawn], &
@@ -315,7 +316,9 @@ contains
 
         if (ex_lvl_sort) call add_ex_level_bit_string_provided(sys%basis, cluster%excitation_level, cdet%f)
 	    if (ccmcin%multiref) then
-	        if (cluster%excitation_level>get_excitation_level(qs%ref%f0, ccmcin%second_ref%f0)+qs%ref%ex_level+2) then
+	        if (get_excitation_level(qs%ref%f0(:sys%basis%bit_string_len),cdet%f(:sys%basis%bit_string_len)) > qs%ref%ex_level .and. &
+                                             get_excitation_level(ccmcin%second_ref%f0(:sys%basis%bit_string_len), &
+                                             cdet%f(:sys%basis%bit_string_len)) > qs%ref%ex_level) then
 	            nkill=0
 	        else
                 call stochastic_death_attempt(rng, real(KiiAi, p), 1, cdet, qs%ref, sys%basis, spawn, &
@@ -345,7 +348,7 @@ contains
     subroutine stochastic_death_attempt(rng, KiiAi, ispace, cdet, ref, basis, spawn, nkill, pdeath)
 
         ! Perform a single attempt at stochastic ccmc death. Abstracted to enable calls for
-        ! arbitrary spaces.
+        ! arbitrary spaces
 
         ! In:
         !   KiiAi: Value of diagonal matrix element, appropriately scaled by tau and select,
