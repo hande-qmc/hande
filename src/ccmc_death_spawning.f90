@@ -9,7 +9,7 @@ implicit none
 
 contains
 
-    subroutine spawner_ccmc(rng, sys, qs, spawn_cutoff, linked_ccmc, cdet, cluster, ccmcin, &
+    subroutine spawner_ccmc(rng, sys, qs, spawn_cutoff, linked_ccmc, cdet, cluster, ccmc_in, &
                             gen_excit_ptr, logging_info, nspawn, connection, nspawnings_total, ps_stat)
 
         ! Attempt to spawn a new particle on a connected excitor with
@@ -95,7 +95,7 @@ contains
         integer, intent(in) :: nspawnings_total
         type(gen_excit_ptr_t), intent(in) :: gen_excit_ptr
         type(logging_t), intent(in) :: logging_info
-	    type (ccmc_in_t), intent(in) :: ccmcin
+    	type (ccmc_in_t), intent(in) :: ccmc_in
         integer(int_p), intent(out) :: nspawn
         type(excit_t), intent(out) :: connection
 
@@ -166,8 +166,8 @@ contains
             call create_excited_det(sys%basis, cdet%f, connection, fexcit)
             excitor_level = get_excitation_level(qs%ref%f0(:sys%basis%bit_string_len), fexcit(:sys%basis%bit_string_len))
             call convert_excitor_to_determinant(fexcit, excitor_level, excitor_sign, qs%ref%f0)
-	        if (ccmcin%multiref) then
-	            excitor_level_2 = get_excitation_level(ccmcin%second_ref%f0(:sys%basis%bit_string_len), fexcit(:sys%basis%bit_string_len))
+	        if (ccmc_in%multiref) then
+	            excitor_level_2 = get_excitation_level(qs%second_ref%f0(:sys%basis%bit_string_len), fexcit(:sys%basis%bit_string_len))
 	            !print*, excitor_level, excitor_level_2
                 if (excitor_level > qs%ref%ex_level .and.  excitor_level_2 >qs%ref%ex_level) nspawn=0
 	        end if
@@ -193,7 +193,7 @@ contains
     end subroutine spawner_ccmc
 
     subroutine stochastic_ccmc_death(rng, spawn, linked_ccmc, ex_lvl_sort, sys, qs, cdet, cluster, &
-                                    logging_info, ndeath_tot, ccmcin)
+                                    logging_info, ndeath_tot, ccmc_in)
 
         ! Attempt to 'die' (ie create an excip on the current excitor, cdet%f)
         ! with probability
@@ -250,7 +250,7 @@ contains
 
         type(sys_t), intent(in) :: sys
         type(qmc_state_t), intent(in) :: qs
-	    type (ccmc_in_t), intent (in) :: ccmcin
+	    type (ccmc_in_t), intent (in) :: ccmc_in
         logical, intent(in) :: linked_ccmc, ex_lvl_sort
         type(det_info_t), intent(inout) :: cdet
         type(cluster_t), intent(in) :: cluster
@@ -315,10 +315,10 @@ contains
         KiiAi = KiiAi * qs%tau / cluster%pselect
 
         if (ex_lvl_sort) call add_ex_level_bit_string_provided(sys%basis, cluster%excitation_level, cdet%f)
-	    if (ccmcin%multiref) then
+	    if (ccmc_in%multiref) then
 	        if (get_excitation_level(qs%ref%f0(:sys%basis%bit_string_len),cdet%f(:sys%basis%bit_string_len)) > qs%ref%ex_level .and. &
-                                             get_excitation_level(ccmcin%second_ref%f0(:sys%basis%bit_string_len), &
-                                             cdet%f(:sys%basis%bit_string_len)) > qs%ref%ex_level) then
+                                                 get_excitation_level(qs%second_ref%f0(:sys%basis%bit_string_len), &
+                                                 cdet%f(:sys%basis%bit_string_len)) > qs%ref%ex_level) then
 	            nkill=0
 	        else
                 call stochastic_death_attempt(rng, real(KiiAi, p), 1, cdet, qs%ref, sys%basis, spawn, &
