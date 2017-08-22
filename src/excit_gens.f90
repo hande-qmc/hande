@@ -129,6 +129,8 @@ type excit_gen_heat_bath_t
     integer(int_bas), allocatable :: ijab_aliasK(:,:,:,:)
     ! Length of array: sys%basis%nbasis, sys%basis%nbasis, sys%basis%nbasis
     real(p), allocatable :: ijab_weights_tot(:,:,:)
+    ! Length of array: sys%basis%nbasis,sys%basis%nbasis
+    real(p), allocatable :: ia_weights(:,:)
 end type excit_gen_heat_bath_t
 
 !Type containing data for excitation generators
@@ -247,6 +249,7 @@ contains
         if (allocated(excit_gen_hb%ijab_aliasU)) deallocate(excit_gen_hb%ijab_aliasU)
         if (allocated(excit_gen_hb%ijab_aliasK)) deallocate(excit_gen_hb%ijab_aliasK)
         if (allocated(excit_gen_hb%ijab_weights_tot)) deallocate(excit_gen_hb%ijab_weights_tot)
+        if (allocated(excit_gen_hb%ia_weights)) deallocate(excit_gen_hb%ia_weights)
 
     end subroutine dealloc_excit_gen_heat_bath_t
 
