@@ -1121,9 +1121,9 @@ contains
         call ms_stats_update(nspawnings_cluster, ms_stats)
         nattempts_spawn_tot = nattempts_spawn_tot + nspawnings_cluster
         if (ccmc_in%multiref) then
-            if (contrib%cluster%excitation_level <= qs%ref%ex_level .or. &
+            if (contrib%cluster%excitation_level <= qs%ref%ex_level+2 .or. &
                       get_excitation_level(contrib%cdet%f(:sys%basis%bit_string_len),qs%second_ref%f0(:sys%basis%bit_string_len)) &
-                      <= qs%ref%ex_level) then
+                      <= qs%second_ref%ex_level+2) then
                 do i = 1, nspawnings_cluster
                    call perform_ccmc_spawning_attempt(rng, sys, qs, ccmc_in, logging_info, bloom_stats, contrib, nspawnings_cluster, &
                                                 ps_stat)
@@ -1139,10 +1139,10 @@ contains
                   ! Do death for non-composite clusters directly and in a separate loop
                       if (contrib%cluster%nexcitors >= 2 .or. .not. ccmc_in%full_nc) then
                           call stochastic_ccmc_death(rng, qs%spawn_store%spawn, ccmc_in%linked, ccmc_in%even_selection, sys, &
-                                               qs, contrib%cdet, contrib%cluster, logging_info, ndeath, ccmc_in)
+                                              qs, contrib%cdet, contrib%cluster, logging_info, ndeath, ccmc_in)
                       end if
                   end if
-               end if
+              end if
              end if
        else
            do i = 1, nspawnings_cluster

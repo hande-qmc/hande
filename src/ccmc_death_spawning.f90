@@ -166,11 +166,12 @@ contains
             call create_excited_det(sys%basis, cdet%f, connection, fexcit)
             excitor_level = get_excitation_level(qs%ref%f0(:sys%basis%bit_string_len), fexcit(:sys%basis%bit_string_len))
             call convert_excitor_to_determinant(fexcit, excitor_level, excitor_sign, qs%ref%f0)
-	        !if (ccmc_in%multiref) then
-	            !excitor_level_2 = get_excitation_level(qs%second_ref%f0(:sys%basis%bit_string_len), fexcit(:sys%basis%bit_string_len))
-	            !print*, excitor_level, excitor_level_2
-                !if (excitor_level > qs%ref%ex_level .and.  excitor_level_2 >qs%ref%ex_level) nspawn=0
-	        !end if
+	        if (ccmc_in%multiref) then
+	            excitor_level_2 = get_excitation_level(qs%second_ref%f0(:sys%basis%bit_string_len), fexcit(:sys%basis%bit_string_len))
+!	            !print*, excitor_level, excitor_level_2
+                if (excitor_level > qs%ref%ex_level .and.  excitor_level_2 >qs%ref%ex_level) nspawn=0
+	        end if
+            
             if (excitor_sign < 0) nspawn = -nspawn
             if (debug) call write_logging_spawn(logging_info, hmatel_save, pgen, invdiagel, [nspawn], &
                         real(cluster%amplitude,p), sys%read_in%comp, spawn_pgen, cdet%f, fexcit, connection)
@@ -315,16 +316,16 @@ contains
         KiiAi = KiiAi * qs%tau / cluster%pselect
 
         if (ex_lvl_sort) call add_ex_level_bit_string_provided(sys%basis, cluster%excitation_level, cdet%f)
-	!if (ccmc_in%multiref) then
-	!    if (get_excitation_level(qs%ref%f0(:sys%basis%bit_string_len),cdet%f(:sys%basis%bit_string_len)) > qs%ref%ex_level .and. &
-        !                                     get_excitation_level(qs%second_ref%f0(:sys%basis%bit_string_len), &
-        !                                     cdet%f(:sys%basis%bit_string_len)) > qs%ref%ex_level) then
-	!        nkill=0
-	!   else
-        !        call stochastic_death_attempt(rng, real(KiiAi, p), 1, cdet, qs%ref, sys%basis, spawn, &
-        !                   nkill, pdeath)
-	!    end if
-	!else
+!	if (ccmc_in%multiref) then
+!	    if (get_excitation_level(qs%ref%f0(:sys%basis%bit_string_len),cdet%f(:sys%basis%bit_string_len)) > qs%ref%ex_level .and. &
+!                                            get_excitation_level(qs%second_ref%f0(:sys%basis%bit_string_len), &
+!                                             cdet%f(:sys%basis%bit_string_len)) > qs%ref%ex_level) then
+!	        nkill=0
+!	   else
+!                call stochastic_death_attempt(rng, real(KiiAi, p), 1, cdet, qs%ref, sys%basis, spawn, &
+!                           nkill, pdeath)
+!	    end if
+!	else
 	    call stochastic_death_attempt(rng, real(KiiAi, p), 1, cdet, qs%ref, sys%basis, spawn, &
                            nkill, pdeath)
 !	end if
