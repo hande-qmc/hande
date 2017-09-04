@@ -1133,7 +1133,9 @@ contains
                ! a determinant is in the truncation space?  If so, also
                ! need to attempt a death/cloning step.
                ! optimisation: call only once per iteration for clusters of size 0 or 1 for ccmc_in%full_nc.
-               if (contrib%cluster%excitation_level <= qs%ref%ex_level) then
+               if (contrib%cluster%excitation_level <= qs%ref%ex_level .or. &
+                      get_excitation_level(contrib%cdet%f(:sys%basis%bit_string_len),qs%second_ref%f0(:sys%basis%bit_string_len)) &
+                      <= qs%second_ref%ex_level) then
                   ! Clusters above size 2 can't die in linked ccmc.
                   if ((.not. ccmc_in%linked) .or. contrib%cluster%nexcitors <= 2) then
                   ! Do death for non-composite clusters directly and in a separate loop
