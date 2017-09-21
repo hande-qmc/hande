@@ -1,0 +1,23 @@
+name: HANDE
+min_cmake_version: 3.3
+setup_script: mkconfig.py
+url_root: https://github.com/coderefinery/autocmake/raw/master/
+default_build_type: debug
+language:
+  - Fortran
+  - C
+  - CXX
+
+modules:
+- compilers:
+  - source:
+    - '%(url_root)modules/fc.cmake'
+    - '%(url_root)modules/cc.cmake'
+    - '%(url_root)modules/cxx.cmake'
+- plugins:
+  - source:
+    - '%(url_root)modules/safeguards.cmake'
+    - '%(url_root)modules/default_build_paths.cmake'
+    - '%(url_root)modules/src.cmake'
+    - 'custom/lib.cmake'
+    - 'custom/hdf5.cmake'
