@@ -348,7 +348,7 @@ contains
         integer(i0), intent(in) :: f(sys%basis%tot_string_len)
         type(dSFMT_t), intent(inout) :: rng
         integer, intent(out) :: i, a, nvirt_avail
-        integer(i0) :: virt_avail(sys%basis%tot_string_len)
+        integer(i0) :: virt_avail(sys%basis%bit_string_len)
         integer :: ivirt, ipos, iel, virt(3*sys%lattice%ndim) ! 3*sys%lattice%ndim to allow for triangular lattices; minor memory waste for other cases is irrelevant!
 
         do
@@ -367,7 +367,7 @@ contains
             ! with the relevant sys%real_lattice%connected_orbs element gives the bit string
             ! containing the virtual orbitals which are connected to i.
             ! Neat, huh?
-            virt_avail = iand(not(f), sys%real_lattice%connected_orbs(:,i))
+            virt_avail = iand(not(f(1:sys%basis%bit_string_len)), sys%real_lattice%connected_orbs(:,i))
 
             if (any(virt_avail /= 0_i0)) then
                 ! Have found an i with at least one available orbital we can
@@ -463,9 +463,9 @@ contains
         no_excit = 0
         do i = 1, sys%nel
             ! See if there are any allowed excitations from this electron
-            ! (Or excitations from this spin up for Hesienberg)
+            ! (Or excitations from this spin up for Heisenberg)
             ! (see notes in choose_ia_real for how this works)
-            if (all(iand(not(f), sys%real_lattice%connected_orbs(:,occ_list(i))) == 0_i0)) then
+            if (all(iand(not(f(1:sys%basis%bit_string_len)), sys%real_lattice%connected_orbs(:,occ_list(i))) == 0_i0)) then
                 ! none allowed from this orbial
                 no_excit = no_excit + 1
             end if
