@@ -883,6 +883,16 @@ contains
             call json_write_key(js, 'excit_gen', 'renorm')
         case (excit_gen_no_renorm)
             call json_write_key(js, 'excit_gen', 'no_renorm')
+        case (excit_gen_power_pitzer)
+            call json_write_key(js, 'excit_gen', 'power_pitzer')
+        case (excit_gen_power_pitzer_occ)
+            call json_write_key(js, 'excit_gen', 'power_pitzer_orderM')
+        case (excit_gen_power_pitzer_orderN)
+            call json_write_key(js, 'excit_gen', 'power_pitzer_orderN')
+        case (excit_gen_heat_bath)
+            call json_write_key(js, 'excit_gen', 'heat_bath')
+        case (excit_gen_heat_bath_uniform)
+            call json_write_key(js, 'excit_gen', 'heat_bath_uniform')
         case default
             call json_write_key(js, 'excit_gen', qmc%excit_gen)
         end select
