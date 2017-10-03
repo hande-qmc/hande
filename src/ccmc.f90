@@ -750,12 +750,14 @@ contains
                 !$omp end do
 
                 if (qs%excit_gen_data%p_single_double%vary_psingles == .true.) then
-                    associate(ps=>qs%excit_gen_data%p_single_double)
-                        ps%h_pgen_singles_sum = ps%h_pgen_singles_sum + h_pgen_singles_sum_tmp
-                        ps%excit_gen_singles = ps%excit_gen_singles + excit_gen_singles_tmp
-                        ps%h_pgen_doubles_sum = ps%h_pgen_doubles_sum + h_pgen_doubles_sum_tmp
-                        ps%excit_gen_doubles = ps%excit_gen_doubles + excit_gen_doubles_tmp
-                    end associate
+                    qs%excit_gen_data%p_single_double%h_pgen_singles_sum = &
+                        qs%excit_gen_data%p_single_double%h_pgen_singles_sum + h_pgen_singles_sum_tmp
+                    qs%excit_gen_data%p_single_double%excit_gen_singles = &
+                        qs%excit_gen_data%p_single_double%excit_gen_singles + excit_gen_singles_tmp
+                    qs%excit_gen_data%p_single_double%h_pgen_doubles_sum = &
+                        qs%excit_gen_data%p_single_double%h_pgen_doubles_sum + h_pgen_doubles_sum_tmp
+                    qs%excit_gen_data%p_single_double%excit_gen_doubles = &
+                        qs%excit_gen_data%p_single_double%excit_gen_doubles + excit_gen_doubles_tmp
                 end if
 
                 ndeath_nc = 0
