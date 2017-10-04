@@ -8,6 +8,7 @@ list(APPEND sources
   error_handling.F90
   hash.f90
   hash_table.f90
+  hdf5_helper.F90
   json_out.f90
   linalg.F90
   parallel.F90
@@ -15,17 +16,18 @@ list(APPEND sources
   utils.F90
   )
 
-if(USE_HDF5)
-  list(APPEND sources
-    hdf5_helper.F90
-    )
-endif()
-
-add_library(hande-utils
+add_library(coreutils
   OBJECT
     ${sources}
   )
-set_target_properties(hande-utils
+if(NOT USE_HDF5)
+  target_compile_definitions(coreutils
+    PUBLIC
+      DISABLE_HDF5
+    )
+endif()
+set_target_properties(coreutils
   PROPERTIES
     POSITION_INDEPENDENT_CODE 1
   )
+add_library(HANDE::coreutils ALIAS coreutils)

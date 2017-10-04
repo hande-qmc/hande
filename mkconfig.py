@@ -24,7 +24,10 @@ Options:
   --extra-cc-flags=<EXTRA_CFLAGS>        Extra C compiler flags [default: ''].
   --cxx=<CXX>                            C++ compiler [default: g++].
   --extra-cxx-flags=<EXTRA_CXXFLAGS>     Extra C++ compiler flags [default: ''].
-  --hdf5=<USE_HDF5>                      C++ compiler [default: OFF].
+  --dsfmt-mexp=<DSFMT_MEXP>              An integer among 521, 1279, 2203, 4253, 11213, 19937, 44497, 86243, 1322049, 216091 [default: 19937].
+  --hdf5=<HDF5>                          C++ compiler [default: OFF].
+  --trlan=<TRLAN>                        Toggle use of TRLan [default: OFF].
+  --libuuid=<LIBUUID>                    Whether to activate UUID generation [default: OFF].
   --type=<TYPE>                          Set the CMake build type (debug, release, relwithdebinfo, minsizerel) [default: debug].
   --generator=<STRING>                   Set the CMake build system generator [default: Unix Makefiles].
   --show                                 Show CMake command and exit.
@@ -48,7 +51,10 @@ def gen_cmake_command(options, arguments):
     command.append('-DEXTRA_FCFLAGS="{0}"'.format(arguments['--extra-fc-flags']))
     command.append('-DEXTRA_CFLAGS="{0}"'.format(arguments['--extra-cc-flags']))
     command.append('-DEXTRA_CXXFLAGS="{0}"'.format(arguments['--extra-cxx-flags']))
-    command.append('-DUSE_HDF5="{0}"'.format(arguments['--hdf5']))
+    command.append('-DDSFMT_MEXP="{0}"'.format(arguments['--dsfmt-mexp']))
+    command.append('-DHDF5="{0}"'.format(arguments['--hdf5']))
+    command.append('-DTRLAN="{0}"'.format(arguments['--trlan']))
+    command.append('-DLIBUUID="{0}"'.format(arguments['--libuuid']))
     command.append('-DCMAKE_BUILD_TYPE={0}'.format(arguments['--type']))
     command.append('-G "{0}"'.format(arguments['--generator']))
     if arguments['--cmake-options'] != "''":

@@ -62,7 +62,7 @@ contains
         ! Deal with initial send of data when using non-blocking communications.
 
         ! In/Out:
-        !    spawn: spawned array we we be sending.
+        !    spawn: spawned array we will be sending.
         !    request: array of requests for non-blocking communications
         !    send_counts: number of elements to send from each processor
         !    restart_list: walkers spawned from final iteration of a restart

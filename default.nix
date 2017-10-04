@@ -12,6 +12,7 @@ with import <nixpkgs> {}; {
       gdb
       gfortran
       hdf5
+      hdf5-fortran
       hdf5-mpi
       libuuid
       lldb

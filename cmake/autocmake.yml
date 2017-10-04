@@ -20,4 +20,7 @@ modules:
     - '%(url_root)modules/default_build_paths.cmake'
     - '%(url_root)modules/src.cmake'
     - 'custom/lib.cmake'
+    - 'custom/dsfmt_mexp.cmake'
     - 'custom/hdf5.cmake'
+    - 'custom/trlan.cmake'
+    - 'custom/libuuid.cmake'

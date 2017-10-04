@@ -23,8 +23,7 @@ contains
         !       components allocated
 
         use parallel, only: nthreads
-        use determinants, only: det_info_t, alloc_det_info_t
-        use ccmc_data, only: cluster_t
+        use determinants, only: det_info_t, alloc_det_info_t, cluster_t
         use system, only: sys_t
         use checking, only: check_allocate
 

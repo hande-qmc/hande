@@ -1,7 +1,7 @@
 ! $Id: trl_info.f90,v 1.6 1999/09/23 16:20:21 kewu Exp $
 !!!
 ! a module that defines TRL_INFO_T type,
-! TRL_INFO_T stors information for TRLAN which includes the definition
+! TRL_INFO_T stores information for TRLAN which includes the definition
 ! of eigenvalue problem, the size of the problem, convergence
 ! tolerance, time used by various parts of the Lanczos routine, whether
 ! to print debug information and where to print them, etc.

@@ -90,7 +90,7 @@ module semi_stoch
 !     spawnings separately.
 !
 ! * semi_stoch_combined_annihilation:
-!     the deterministic spawning amplitudes from a given processor will be calculated 
+!     the deterministic spawning amplitudes from a given processor will be calculated
 !     by performing the exact projection, and the resulting 'spawnings' will then
 !     be added to the spawned list, just like non-deterministic spawnings.  This
 !     prevents the need for an extra MPI call each iteration, but the spawned list
@@ -284,7 +284,7 @@ contains
             determ%indices = 0
         end if
 
-        call qsort(dets_this_proc, determ%sizes(iproc)) 
+        call qsort(dets_this_proc, determ%sizes(iproc))
 
         ! If we're reusing the deterministic space then we don't need to
         ! allocate the dets array. It's already allocated to the correct size.
@@ -394,7 +394,7 @@ contains
 
         type(determ_hash_t), intent(inout) :: ht
         integer :: ierr
-        
+
         if (allocated(ht%ind)) then
             deallocate(ht%ind, stat=ierr)
             call check_deallocate('ht%ind', ierr)
@@ -435,7 +435,7 @@ contains
             ! For now just let there be as many hash values as deterministic states.
             ht%nhash = determ%tot_size
 
-            if (print_info) then 
+            if (print_info) then
                 ! The memory required in MB.
                 ! Two lists with length ht%nhash taking 4 bytes for each element.
                 mem_reqd = 2*ht%nhash*4/10**6
@@ -443,16 +443,16 @@ contains
                     '# Memory required per core to store hash table (MB):', mem_reqd
             end if
 
-            allocate(ht%ind(determ%tot_size), stat=ierr) 
+            allocate(ht%ind(determ%tot_size), stat=ierr)
             call check_allocate('determ%hash_table%ind', determ%tot_size, ierr)
-            allocate(ht%hash_ptr(ht%nhash+1), stat=ierr) 
+            allocate(ht%hash_ptr(ht%nhash+1), stat=ierr)
             call check_allocate('determ%hash_table%hash_ptr', ht%nhash, ierr)
 
             ! Array to count the number of deterministic states with each hash value.
             allocate(nclash(ht%nhash), stat=ierr)
             call check_allocate('nclash', ht%nhash, ierr)
             nclash = 0
-                        
+
             ! Count the number of deterministic states with each hash value.
             ! Note hash table doesn't affect Markov chain so just hash the whole shebang.
             do i = 1, determ%tot_size
@@ -561,7 +561,7 @@ contains
                     call mpi_barrier(MPI_COMM_WORLD, ierr)
 #endif
                     call cpu_time(t2)
-                    if (print_info) then 
+                    if (print_info) then
                         write(6,'(1X,a41,1X,f10.2,a1)') '# Time taken to generate the Hamiltonian:', t2-t1, "s"
                         ! The memory required in MB.
 #ifdef SINGLE_PRECISION
@@ -576,7 +576,7 @@ contains
 #else
                     max_mem_reqd = mem_reqd
 #endif
-                    if (print_info) then 
+                    if (print_info) then
                         write(6,'(1X,a75,'//int_fmt(mem_reqd,1)//')') &
                             '# Maximum memory required by a core for the deterministic Hamiltonian (MB):', mem_reqd
                         write(6,'(1X,a54)') '# The Hamiltonian will now be recalculated and stored.'
@@ -879,12 +879,12 @@ contains
         ! deterministic amplitudes and S is the shift. We therefore begin by
         ! setting the vector used to store the output to tau*S*v.
 
-        ! TODO For QuasiNewton instead of tau * H_ii * v_i - tau * S * v_i  
+        ! TODO For QuasiNewton instead of tau * H_ii * v_i - tau * S * v_i
         !                       (the last bit is done just below)
         ! we will need tau * (H_ii) * w_i * v_i - tau * (E_proj * (1-w_i) - S) * v_i
         !                       (where w_i is the quasi_newton weight).
         ! For now we will simply set w_i = 1 in the semistochastic space.
-         
+
         determ%vector = qs%tau*qs%shift(1)*determ%vector
 
         ! Perform the multiplication of the deterministic Hamiltonian on the
@@ -1129,7 +1129,7 @@ contains
         !    pops_out: Populations corresponding to the determinants in dets_out.
 
         ! dets_in(:,i) holds determinant i.
-        integer(i0), intent(in) :: dets_in(:,:) 
+        integer(i0), intent(in) :: dets_in(:,:)
         ! pops_in(j,i) holds the population of particle type j on determinant i.
         integer(int_p), intent(in) :: pops_in(:,:)
         integer, intent(in) :: ndets_in, ndets_out
@@ -1458,7 +1458,7 @@ contains
         use errors, only: warning
 
         type(semi_stoch_t), intent(in) :: determ
-        integer, intent(in) :: nbasis, write_id
+        integer, intent(in) :: write_id
         logical, intent(in) :: print_info
 
         call warning('write_determ_to_file', '# Not compiled with HDF5 support.  Cannot write out semi-stochastic file.')
