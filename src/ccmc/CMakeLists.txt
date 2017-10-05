@@ -1,0 +1,9 @@
+target_sources(hande-shared
+  PUBLIC
+    ${CMAKE_CURRENT_LIST_DIR}/ccmc.F90
+    ${CMAKE_CURRENT_LIST_DIR}/ccmc_death_spawning.f90
+    ${CMAKE_CURRENT_LIST_DIR}/ccmc_linked.f90
+    ${CMAKE_CURRENT_LIST_DIR}/ccmc_multispawn.F90
+    ${CMAKE_CURRENT_LIST_DIR}/ccmc_selection.f90
+    ${CMAKE_CURRENT_LIST_DIR}/ccmc_utils.f90
+  )

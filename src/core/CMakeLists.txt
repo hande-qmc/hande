@@ -1,0 +1,11 @@
+target_sources(hande-shared
+  PUBLIC
+    ${CMAKE_CURRENT_LIST_DIR}/basis_types.f90
+    ${CMAKE_CURRENT_LIST_DIR}/bit_utils.F90
+    ${CMAKE_CURRENT_LIST_DIR}/calc.F90
+    ${CMAKE_CURRENT_LIST_DIR}/molecular_integral_types.f90
+    ${CMAKE_CURRENT_LIST_DIR}/search.f90
+    ${CMAKE_CURRENT_LIST_DIR}/sort.f90
+    ${CMAKE_CURRENT_LIST_DIR}/symmetry_types.f90
+    ${CMAKE_CURRENT_LIST_DIR}/ueg_types.f90
+)

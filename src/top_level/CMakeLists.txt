@@ -1,0 +1,31 @@
+target_sources(hande-shared
+  PUBLIC
+    ${CMAKE_CURRENT_LIST_DIR}/calc_system_init.f90
+    ${CMAKE_CURRENT_LIST_DIR}/canonical_estimates.F90
+    ${CMAKE_CURRENT_LIST_DIR}/check_input.f90
+    ${CMAKE_CURRENT_LIST_DIR}/dealloc.F90
+    ${CMAKE_CURRENT_LIST_DIR}/hande_top_level.f90
+    ${CMAKE_CURRENT_LIST_DIR}/heisenberg_estimators.F90
+    ${CMAKE_CURRENT_LIST_DIR}/hilbert_space.F90
+    ${CMAKE_CURRENT_LIST_DIR}/interact.F90
+    ${CMAKE_CURRENT_LIST_DIR}/load_balancing.F90
+    ${CMAKE_CURRENT_LIST_DIR}/logging.f90
+    ${CMAKE_CURRENT_LIST_DIR}/lua_hande.F90
+    ${CMAKE_CURRENT_LIST_DIR}/lua_hande_calc.f90
+    ${CMAKE_CURRENT_LIST_DIR}/lua_hande_fns.f90
+    ${CMAKE_CURRENT_LIST_DIR}/lua_hande_systems.f90
+    ${CMAKE_CURRENT_LIST_DIR}/lua_hande_utils.F90
+    ${CMAKE_CURRENT_LIST_DIR}/non_blocking_comm.F90
+    ${CMAKE_CURRENT_LIST_DIR}/proc_pointers.f90
+    ${CMAKE_CURRENT_LIST_DIR}/restart_hdf5.F90
+    ${CMAKE_CURRENT_LIST_DIR}/restart_utils.F90
+    ${CMAKE_CURRENT_LIST_DIR}/stoch_utils.f90
+    ${CMAKE_CURRENT_LIST_DIR}/test.f90
+)
+
+if(NOT USE_HDF5)
+  target_compile_definitions(hande-shared
+    PUBLIC
+      DISABLE_HDF5
+    )
+endif()

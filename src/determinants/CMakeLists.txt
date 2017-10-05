@@ -1,0 +1,16 @@
+target_sources(hande-shared
+  PUBLIC
+  ${CMAKE_CURRENT_LIST_DIR}/bloom_handler.F90
+  ${CMAKE_CURRENT_LIST_DIR}/determinant_enumeration.f90
+  ${CMAKE_CURRENT_LIST_DIR}/determinants.f90
+  ${CMAKE_CURRENT_LIST_DIR}/excit_gen_hub_k.f90
+  ${CMAKE_CURRENT_LIST_DIR}/excit_gen_mol.f90
+  ${CMAKE_CURRENT_LIST_DIR}/excit_gen_op_hub_k.f90
+  ${CMAKE_CURRENT_LIST_DIR}/excit_gen_op_mol.f90
+  ${CMAKE_CURRENT_LIST_DIR}/excit_gen_real_lattice.f90
+  ${CMAKE_CURRENT_LIST_DIR}/excit_gen_ringium.f90
+  ${CMAKE_CURRENT_LIST_DIR}/excit_gen_ueg.f90
+  ${CMAKE_CURRENT_LIST_DIR}/excit_gens.f90
+  ${CMAKE_CURRENT_LIST_DIR}/excitations.F90
+  ${CMAKE_CURRENT_LIST_DIR}/reference_determinant.f90
+)

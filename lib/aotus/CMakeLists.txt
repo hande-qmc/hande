@@ -35,6 +35,14 @@ list(APPEND sources
   )
 
 add_library(aotus ${LuaFortran-sources} ${sources})
+target_include_directories(aotus
+  PRIVATE
+    ${LUA_INCLUDE_DIR}
+  )
+target_link_libraries(aotus
+  PUBLIC
+    ${LUA_LIBRARIES}
+  )
 add_library(HANDE::aotus ALIAS aotus)
 set_target_properties(aotus
   PROPERTIES

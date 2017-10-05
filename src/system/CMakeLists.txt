@@ -1,0 +1,37 @@
+target_sources(hande-shared
+  PUBLIC
+    ${CMAKE_CURRENT_LIST_DIR}/basis.f90
+    ${CMAKE_CURRENT_LIST_DIR}/chem_pot.f90
+    ${CMAKE_CURRENT_LIST_DIR}/hamiltonian.f90
+    ${CMAKE_CURRENT_LIST_DIR}/hamiltonian_chung_landau.f90
+    ${CMAKE_CURRENT_LIST_DIR}/hamiltonian_data.f90
+    ${CMAKE_CURRENT_LIST_DIR}/hamiltonian_heisenberg.f90
+    ${CMAKE_CURRENT_LIST_DIR}/hamiltonian_hub_k.f90
+    ${CMAKE_CURRENT_LIST_DIR}/hamiltonian_hub_real.f90
+    ${CMAKE_CURRENT_LIST_DIR}/hamiltonian_molecular.f90
+    ${CMAKE_CURRENT_LIST_DIR}/hamiltonian_periodic_complex.f90
+    ${CMAKE_CURRENT_LIST_DIR}/hamiltonian_ringium.f90
+    ${CMAKE_CURRENT_LIST_DIR}/hamiltonian_ueg.f90
+    ${CMAKE_CURRENT_LIST_DIR}/hdf5_system.F90
+    ${CMAKE_CURRENT_LIST_DIR}/hubbard_k.f90
+    ${CMAKE_CURRENT_LIST_DIR}/kpoints.f90
+    ${CMAKE_CURRENT_LIST_DIR}/molecular_integrals.F90
+    ${CMAKE_CURRENT_LIST_DIR}/momentum_sym_read_in.f90
+    ${CMAKE_CURRENT_LIST_DIR}/momentum_symmetry.f90
+    ${CMAKE_CURRENT_LIST_DIR}/operators.F90
+    ${CMAKE_CURRENT_LIST_DIR}/pg_symmetry.f90
+    ${CMAKE_CURRENT_LIST_DIR}/read_in.F90
+    ${CMAKE_CURRENT_LIST_DIR}/read_in_symmetry.f90
+    ${CMAKE_CURRENT_LIST_DIR}/real_lattice.f90
+    ${CMAKE_CURRENT_LIST_DIR}/ringium.f90
+    ${CMAKE_CURRENT_LIST_DIR}/symmetry.f90
+    ${CMAKE_CURRENT_LIST_DIR}/system.f90
+    ${CMAKE_CURRENT_LIST_DIR}/ueg.f90
+  )
+
+if(NOT USE_HDF5)
+  target_compile_definitions(hande-shared
+    PUBLIC
+      DISABLE_HDF5
+    )
+endif()

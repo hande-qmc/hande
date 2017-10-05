@@ -20,12 +20,9 @@ if(HDF5)
   # Was the Fortran 2003 interface to HDF5 enabled?
   # Compile an example from the HDF5 website:
   # https://support.hdfgroup.org/HDF5/examples/f-src.html
-  set(scratch_directory
-    ${CMAKE_CURRENT_BINARY_DIR}${CMAKE_FILES_DIRECTORY}/hdf5)
+  set(scratch_directory ${CMAKE_CURRENT_BINARY_DIR}${CMAKE_FILES_DIRECTORY}/hdf5)
   try_compile(has_Fortran2003 ${scratch_directory} ${PROJECT_SOURCE_DIR}/cmake/custom/compound_complex_fortran2003.f90)
   if(NOT has_Fortran2003)
     message(FATAL_ERROR "HDF5 was not compiled with --enable-fortran2003")
   endif()
-else()
-  add_definitions(-DDISABLE_HDF5)
 endif()

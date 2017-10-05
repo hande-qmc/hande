@@ -1,0 +1,15 @@
+target_sources(hande-shared
+  PUBLIC
+  ${CMAKE_CURRENT_LIST_DIR}/hamiltonian.f90
+  ${CMAKE_CURRENT_LIST_DIR}/hamiltonian_chung_landau.f90
+  ${CMAKE_CURRENT_LIST_DIR}/hamiltonian_data.f90
+  ${CMAKE_CURRENT_LIST_DIR}/hamiltonian_heisenberg.f90
+  ${CMAKE_CURRENT_LIST_DIR}/hamiltonian_hub_k.f90
+  ${CMAKE_CURRENT_LIST_DIR}/hamiltonian_hub_real.f90
+  ${CMAKE_CURRENT_LIST_DIR}/hamiltonian_molecular.f90
+  ${CMAKE_CURRENT_LIST_DIR}/hamiltonian_periodic_complex.f90
+  ${CMAKE_CURRENT_LIST_DIR}/hamiltonian_ringium.f90
+  ${CMAKE_CURRENT_LIST_DIR}/hamiltonian_ueg.f90
+  ${CMAKE_CURRENT_LIST_DIR}/operators.F90
+  ${CMAKE_CURRENT_LIST_DIR}/real_lattice.f90
+)
