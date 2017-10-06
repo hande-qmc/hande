@@ -44,8 +44,12 @@ contains
 
             sr%t_self_images = any(abs(sl%box_length-1.0_p) < depsilon)
 
+! [review] - AJWT: It seems inconsistent that these are allocated here, but deallocated in 
+! [review] - AJWT: system.f90: end_lattice_system
+
             allocate(sr%tmat(sys%basis%bit_string_len,sys%basis%nbasis), stat=ierr)
             call check_allocate('sr%tmat',sys%basis%bit_string_len*sys%basis%nbasis,ierr)
+! [review] - AJWT: Shouldn't this use bit_string_len as it's a system- not calc- specific variable?
             ! Information bits are not used but need to enable easy comparison to bit strings.
             allocate(sr%connected_orbs(sys%basis%bit_string_len,sys%basis%nbasis), stat=ierr)
             call check_allocate('sr%connected_orbs',sys%basis%bit_string_len*sys%basis%nbasis,ierr)
