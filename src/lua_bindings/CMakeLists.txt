@@ -1,0 +1,10 @@
+target_sources(hande-shared
+  PUBLIC
+    ${CMAKE_CURRENT_LIST_DIR}/interact.F90
+    ${CMAKE_CURRENT_LIST_DIR}/lua_hande.F90
+    ${CMAKE_CURRENT_LIST_DIR}/lua_hande_calc.f90
+    ${CMAKE_CURRENT_LIST_DIR}/lua_hande_fns.f90
+    ${CMAKE_CURRENT_LIST_DIR}/lua_hande_systems.f90
+    ${CMAKE_CURRENT_LIST_DIR}/lua_hande_utils.F90
+    ${CMAKE_CURRENT_LIST_DIR}/test.f90
+)

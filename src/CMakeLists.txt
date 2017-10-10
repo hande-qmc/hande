@@ -5,6 +5,11 @@ add_library(hande-shared SHARED
             $<TARGET_OBJECTS:HANDE::external>
             )
 
+target_link_libraries(hande-shared
+  PUBLIC
+    HANDE::aotus
+  )
+
 add_subdirectory(ccmc)
 add_subdirectory(core)
 add_subdirectory(determinants)
@@ -12,9 +17,9 @@ add_subdirectory(dmqmc)
 add_subdirectory(fci)
 add_subdirectory(hellmann_feynman_sampling)
 add_subdirectory(importance_sampling)
+add_subdirectory(lua_bindings)
 add_subdirectory(qmc)
 add_subdirectory(system)
-add_subdirectory(top_level)
 
 set_target_properties(hande-shared PROPERTIES SOVERSION 1 #${PROJECT_VERSION_MAJOR}
                                             OUTPUT_NAME "hande"
