@@ -844,7 +844,7 @@ contains
         ! If not set at input or available from restart file, set probability of selecting single or double
         ! excitations based upon the reference determinant and assume other
         ! determinants have a roughly similar ratio of single:double
-        ! excitations. Input overrides information stored in restart file.
+        ! excitations. Input overrides pattempt_single stored in restart file.
         if (qmc_in%pattempt_single < 0 .or. qmc_in%pattempt_double < 0) then
             if (excit_gen_data%p_single_double%pattempt_restart_store == .false.) then
                 call find_single_double_prob(sys, ref%occ_list0, excit_gen_data%pattempt_single, excit_gen_data%pattempt_double)
