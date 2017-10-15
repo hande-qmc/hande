@@ -180,8 +180,11 @@ algorithms and control the core settings in the algorithms.
     hubbard_k     renorm, no_renorm    renorm
     hubbard_real  renorm, no_renorm    renorm
     read_in       renorm, no_renorm,   renorm
+                  heat_bath,
+                  heat_bath_uniform,
                   power_pitzer,
-                  power_pitzer_orderM
+                  power_pitzer_orderM,
+                  power_pitzer_orderN
     ringium       no_renorm            no_renorm
     ueg           no_renorm,           no_renorm
                   power_pitzer
@@ -202,6 +205,12 @@ algorithms and control the core settings in the algorithms.
     and 'no_renorm' is a good choice for large basis sets, especially with a small number
     of electrons (such that forbidden excitations are rarely generated).
 
+    The 'heat_bath' excitation generator is very similar to the "original" heat bath
+    excitation generator described by Holmes et al. [Holmes16]_. i, j, a, b are chosen
+    with weighted, precalculated probabilities that aim to make |Hij|/pgen as constant
+    as possible. The power pitzer excitation generators are approximate these weights.
+    'heat_bath_uniform' is very similar but samples single excitations uniformly.
+
     The 'power_pitzer' excitation generator generates excitations using a Power-Pitzer
     [Power74]_ like upper bound for the value of the Hamiltonian matrix element. This
     involves some precalcalated weights and alias tables, but should reduce both noise
@@ -219,6 +228,9 @@ algorithms and control the core settings in the algorithms.
     excitation is called for the actual determinant we are spawning from. This requires
     O(Number of basis functions) time cost for each particle being spawned from. The 
     memory requirements are of O(Number of basis functions).
+
+    The 'power_pitzer_orderN' excitation generator uses precalculated weights and unlike
+    'power_pitzer', it also samples i and j with weighted probabilities.
 
     ..
 
@@ -254,6 +266,15 @@ algorithms and control the core settings in the algorithms.
     reference determinant that correspond to double excitations.
 
     The probability of generating a double excitation.
+``pattempt_update``
+    type: boolean.
+
+    Optional. Default: False.
+    
+    If true, then pattempt_single is varied during the run
+    to attempt to align the means of |Hij|/pgen for single and double excitations.
+    Update of pattempt_single only happens if shift is constant. Not applicable to
+    "original" heat bath algorithm.
 ``initial_shift``
     type: float.
 

@@ -9,6 +9,7 @@ Bibliography
 .. [Dunning89] Dunning, Thom H., Gaussian basis sets for use in correlated molecular calculations. I. The atoms boron through neon and hydrogen. J. Chem. Phys. 90, 1007 (1989) 
 .. [Flyvbjerg89] H. Flyvbjerg, H. G. Petersen, Error estimates on averages of correlated data, J. Chem. Phys. 91, 461 (1989). 
 .. [Franklin16] R.S.T. Franklin, J.S. Spencer, A. Zoccante and A.J.W Thom, Linked coupled cluster Monte Carlo, J Chem. Phys. 144, 044111 (2016).
+.. [Holmes16] A.A. Holmes, H.J. Changlani, C.J. Umrigar, Efficient Heat-Bath Sampling in Fock Space, J. Chem. Theory Comput., 12, 1561–1571 (2016).
 .. [Knowles89] P.J. Knowles, N.C. Handy, A determinant based full configuration interaction program, Comput. Phys. Comm. 54, 75 (1989).
 .. [Lee11] R. M. Lee, G. J. Conduit, N. Nemec, P. Lopez Rios, and N. D. Drummond, Strategies for improving the efficiency of quantum Monte Carlo calculations", Phys. Rev. E. 83, 066706 (2011).
 .. [Loos13] P.F. Loos, P.M.W. Gill, Uniform electron gases. I. Electrons on a ring. J. Chem. Phys. 138, 164124 (2013).
