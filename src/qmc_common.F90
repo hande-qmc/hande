@@ -534,7 +534,7 @@ contains
 
 ! --- Output routines ---
 
-    subroutine initial_fciqmc_status(sys, qmc_in, qs, nb_comm, spawn_elsewhere, doing_ccmc, io_unit)
+    subroutine initial_fciqmc_status(sys, qmc_in, qs, nb_comm, spawn_elsewhere, doing_ccmc, io_unit, restarting)
 
         ! Calculate the projected energy based upon the initial walker
         ! distribution (either via a restart or as set during initialisation)
@@ -552,6 +552,7 @@ contains
         !       non-blocking calculations.
         !    doing_ccmc: true if doing ccmc calculation.
         !    io_unit: io unit to write any reporting to.
+        !    restarting: true if restarting
 
         use determinants, only: det_info_t, alloc_det_info_t, dealloc_det_info_t, decode_det
         use energy_evaluation, only: local_energy_estimators, update_energy_estimators_send
@@ -568,7 +569,7 @@ contains
         type(sys_t), intent(in) :: sys
         type(qmc_in_t), intent(in) :: qmc_in
         type(qmc_state_t), intent(inout), target :: qs
-        logical, optional, intent(in) :: nb_comm, doing_ccmc
+        logical, optional, intent(in) :: nb_comm, doing_ccmc, restarting
         integer, optional, intent(in) :: spawn_elsewhere, io_unit
 
         integer :: idet, ispace
@@ -578,10 +579,20 @@ contains
         type(hmatel_t) :: hmatel
         type(excit_t) :: D0_excit
         logical :: nb_comm_local, doing_ccmc_loc
+        real(p) :: proj_energy_tmp(qs%psip_list%nspaces), D0_population_tmp(qs%psip_list%nspaces)
+        complex(p) :: proj_energy_comp_tmp(qs%psip_list%nspaces), D0_population_comp_tmp(qs%psip_list%nspaces)
 #ifdef PARALLEL
         integer :: ierr
         real(p) :: proj_energy_sum(qs%psip_list%nspaces), D0_population_sum(qs%psip_list%nspaces)
 #endif
+        
+        ! Make sure projected energy/ D0 pop. does not get overwritten if restarting.
+        if (present(restarting) .and. (restarting == .true.)) then
+            D0_population_tmp = qs%estimators%D0_population
+            D0_population_comp_tmp = qs%estimators%D0_population_comp
+            proj_energy_tmp = qs%estimators%proj_energy
+            proj_energy_comp_tmp = qs%estimators%proj_energy_comp
+        end if
 
         ! Calculate the projected energy based upon the initial walker
         ! distribution.  proj_energy and D0_population are both accumulated in
@@ -655,6 +666,13 @@ contains
         qs%estimators%tot_nstates = qs%psip_list%nstates
 #endif
 
+        if (present(restarting) .and. (restarting == .true.)) then
+            qs%estimators%D0_population = D0_population_tmp
+            qs%estimators%D0_population_comp = D0_population_comp_tmp
+            qs%estimators%proj_energy = proj_energy_tmp
+            qs%estimators%proj_energy_comp = proj_energy_comp_tmp
+        end if
+        
         ! Ensure D0_population from last cycle is set appropriately if restarting
         qs%estimators%D0_population_old = qs%estimators%D0_population
 

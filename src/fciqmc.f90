@@ -129,9 +129,9 @@ contains
             write (io_unit,'(1X,"------",/)')
         end if
 
+        restarting = present(qmc_state_restart) .or. restart_in%read_restart
         if (parent) then
             ! Check input options.
-            restarting = present(qmc_state_restart) .or. restart_in%read_restart
             call check_qmc_opts(qmc_in, sys, .not.present(qmc_state_restart), restarting, qmc_state_restart)
             call check_fciqmc_opts(sys, fciqmc_in, blocking_in)
             call check_load_bal_opts(load_bal_in)
@@ -209,9 +209,9 @@ contains
             call init_non_blocking_comm(qs%spawn_store%spawn, req_data_s, send_counts, qs%spawn_store%spawn_recv, &
                                         restart_in%read_restart)
             call initial_fciqmc_status(sys, qmc_in, qs, .true., send_counts(iproc)/qs%spawn_store%spawn_recv%element_len, &
-                                        io_unit=io_unit)
+                                        io_unit=io_unit, restarting=restarting)
         else
-            call initial_fciqmc_status(sys, qmc_in, qs, io_unit=io_unit)
+            call initial_fciqmc_status(sys, qmc_in, qs, io_unit=io_unit, restarting=restarting)
         end if
         ! Initialise timer.
         call cpu_time(t1)

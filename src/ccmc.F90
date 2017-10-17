@@ -394,9 +394,9 @@ contains
             write (io_unit,'(1X,"----",/)')
         end if
 
+        restarting = present(qmc_state_restart) .or. restart_in%read_restart
         ! Check input options.
         if (parent) then
-            restarting = present(qmc_state_restart) .or. restart_in%read_restart
             call check_qmc_opts(qmc_in, sys, .not.present(qmc_state_restart), restarting, qmc_state_restart)
             call check_ccmc_opts(sys, ccmc_in)
             call check_blocking_opts(sys, blocking_in, restart_in)
@@ -488,7 +488,7 @@ contains
         ! Main fciqmc loop.
         if (parent) call write_qmc_report_header(qs%psip_list%nspaces, cmplx_est=sys%read_in%comp, &
                                             rdm_energy=ccmc_in%density_matrices, nattempts=.true., io_unit=io_unit)
-        call initial_fciqmc_status(sys, qmc_in, qs, doing_ccmc=.true., io_unit=io_unit)
+        call initial_fciqmc_status(sys, qmc_in, qs, doing_ccmc=.true., io_unit=io_unit, restarting=restarting)
         ! Initialise timer.
         call cpu_time(t1)
 
