@@ -523,7 +523,9 @@ contains
             call write_blocking_report_header(iunit)
         end if
 
-        if (blocking_in%blocking_on_the_fly) call allocate_blocking(qmc_in, blocking_in, bl)
+        if (blocking_in%blocking_on_the_fly) &
+                    call allocate_blocking(qmc_in, blocking_in, bl, qs%shift_damping_status)
+
         do ireport = 1, qmc_in%nreport
 
             ! Projected energy from last report loop to correct death
@@ -842,7 +844,7 @@ contains
                     call do_blocking(bl, qs, qmc_in, ireport, iter, iunit, blocking_in)
                 end if
             else if (blocking_in%blocking_on_the_fly) then
-                call receive_shift_updates(ireport, bl%start_ireport, bl%shift_damping_status, qs%shift_damping, qs%shift)
+                call receive_shift_updates(ireport, bl%start_ireport, qs)
             end if
 
             ! Update the time for the start of the next iteration.

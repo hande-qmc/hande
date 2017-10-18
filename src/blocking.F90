@@ -19,7 +19,7 @@ implicit none
 
 contains
 
-    subroutine allocate_blocking(qmc_in, blocking_in, bl)
+    subroutine allocate_blocking(qmc_in, blocking_in, bl, shift_damping_status)
 
         ! Allocate different arrays in blocking_t data according to the input
         ! options.
@@ -31,6 +31,8 @@ contains
         !   bl: Information needed to peform blocking on the fly. Maximum block
         !       size, frequency at which the data for changing start position
         !       and number of possible start positions are determined
+        !   shift_damping_status: current status of shift damping optimisation
+        !       within a calculation.
 
         use qmc_data, only: qmc_in_t, blocking_t, blocking_in_t
         use checking, only: check_allocate
@@ -38,6 +40,7 @@ contains
         type(qmc_in_t), intent(in) :: qmc_in
         type(blocking_t), intent(inout) :: bl
         type(blocking_in_t), intent(in) :: blocking_in
+        integer, intent(inout) :: shift_damping_status
         integer :: ierr
 
         ! Set 2^(lg_max) to a value that is approximately 4 times larger than nreport.
@@ -105,6 +108,11 @@ contains
         bl%block_cov = 0
         bl%product_save = 0
         bl%err_compare = 0
+
+        ! Set status of shift damping to initialise automatic search for shift damping
+        ! If we have previously optimised shift damping shift_damping_status will equal 2
+        ! and so not be updated.
+        if (blocking_in%auto_shift_damping .and. shift_damping_status == -1) shift_damping_status = 0
 
     end subroutine allocate_blocking
 
@@ -786,12 +794,12 @@ contains
 #ifdef PARALLEL
         integer :: ierr
 #endif
-        select case (bl%shift_damping_status)
+        select case (qs%shift_damping_status)
         case(0)
             ! Need to wait one iteration to ensure enough information to properly calculate update.
-            bl%shift_damping_status = 2
+            qs%shift_damping_status = 1
 #ifdef PARALLEL
-            call mpi_bcast(bl%shift_damping_status, 1, mpi_integer, root, MPI_COMM_WORLD, ierr)
+            call mpi_bcast(qs%shift_damping_status, 1, mpi_integer, root, MPI_COMM_WORLD, ierr)
 #endif
         case(1)
             ! Need to use currently collected information to update shift damping.
@@ -799,37 +807,32 @@ contains
                     energy_estimate_dist(dt_denominator,1), 1, energy_estimate_dist(dt_numerator,2), &
                     energy_estimate_dist(dt_denominator,2), bl%block_cov(0))
 
-            ! Use linear relationship between sqrt(<S^2>-<S>^2) and shift damping
-            ! parameter to set shift damping such that the standard deviation of
-            ! the shift is approximately 1.5 times that of the projected energy.
-            qs%shift_damping = qs%shift_damping * 1.5_p * sd_proj_energy_dist / energy_estimate_dist(dt_shift,2)
-            write (6, '("# Shift damping changed to",1X,es17.10)') qs%shift_damping
-            qs%shift= qs%estimators(1)%proj_energy/qs%estimators(1)%D0_population
-            bl%shift_damping_status = 2
-            call reset_blocking_info(bl)
-#ifdef PARALLEL
-            call mpi_bcast(bl%shift_damping_status, 1, mpi_integer, root, MPI_COMM_WORLD, ierr)
-            call mpi_bcast(qs%shift_damping, 1, mpi_preal, root, MPI_COMM_WORLD, ierr)
-            call mpi_bcast(qs%shift, size(qs%shift), mpi_preal, root, MPI_COMM_WORLD, ierr)
-#endif
-        case(2)
-            ! Need to check that standard distribution after change is within acceptable range.
-            sd_proj_energy_dist = fraction_error(energy_estimate_dist(dt_numerator,1), &
-                    energy_estimate_dist(dt_denominator,1), 1, energy_estimate_dist(dt_numerator,2), &
-                    energy_estimate_dist(dt_denominator,2), bl%block_cov(0))
-
-            if (sd_proj_energy_dist > 2 * energy_estimate_dist(dt_shift,2) .or. &
-                        sd_proj_energy_dist < energy_estimate_dist(dt_shift,2)) then
-                ! Outside acceptable range- retry optimisation.
-                bl%shift_damping_status = 1
-                write (6, '("# Reattemping shift damping optimisation.")')
+            if (sd_proj_energy_dist * 2 < energy_estimate_dist(dt_shift,2)) then! .or. &
+!                        sd_proj_energy_dist < energy_estimate_dist(dt_shift,2)) then
+                ! Outside acceptable range- attempt optimisation.
+                !qs%shift_damping_status = 1
+                write (6, '("# Attemping shift damping optimisation.")')
             else
-                bl%shift_damping_status = 3
+                qs%shift_damping_status = 2
                 write (6, '("# Shift damping optimised; variance within acceptable range.")')
             end if
 #ifdef PARALLEL
-            call mpi_bcast(bl%shift_damping_status, 1, mpi_integer, root, MPI_COMM_WORLD, ierr)
+            call mpi_bcast(qs%shift_damping_status, 1, mpi_integer, root, MPI_COMM_WORLD, ierr)
 #endif
+            if (qs%shift_damping_status == 1) then
+                ! Use linear relationship between sqrt(<S^2>-<S>^2) and shift damping
+                ! parameter to set shift damping such that the standard deviation of
+                ! the shift is approximately 1.0 times that of the projected energy.
+                qs%shift_damping = qs%shift_damping * 1.0_p * sd_proj_energy_dist / energy_estimate_dist(dt_shift,2)
+                write (6, '("# Shift damping changed to",1X,es17.10)') qs%shift_damping
+                qs%shift= qs%estimators(1)%proj_energy/qs%estimators(1)%D0_population
+                call reset_blocking_info(bl)
+#ifdef PARALLEL
+                call mpi_bcast(qs%shift_damping, 1, mpi_preal, root, MPI_COMM_WORLD, ierr)
+                call mpi_bcast(qs%shift, size(qs%shift), mpi_preal, root, MPI_COMM_WORLD, ierr)
+#endif
+            end if
+
         case default
             ! On a settled value of shift damping; don't need to do anything.
             continue
@@ -837,29 +840,29 @@ contains
 
     end subroutine update_shift_damping
 
-    subroutine receive_shift_updates(ireport, start_ireport, shift_damping_status, shift_damping, shift)
+    subroutine receive_shift_updates(ireport, start_ireport, qs)
 
         use parallel
+        use qmc_data, only: qmc_state_t
 
         integer, intent(in) :: ireport, start_ireport
-        integer, intent(inout) :: shift_damping_status
-        real(p), intent(inout) :: shift_damping
-        real(p), intent(inout), allocatable :: shift(:)
+        type(qmc_state_t), intent(inout) :: qs
 #ifdef PARALLEL
         integer :: ierr
 
 
         if (mod(ireport,50) ==0 .and. ireport >= start_ireport .and. &
                     start_ireport>=0) then
-            select case (shift_damping_status)
+            select case (qs%shift_damping_status)
             case(0)
-                call mpi_bcast(shift_damping_status, 1, mpi_integer, root, MPI_COMM_WORLD, ierr)
+                call mpi_bcast(qs%shift_damping_status, 1, mpi_integer, root, MPI_COMM_WORLD, ierr)
             case(1)
-                call mpi_bcast(shift_damping_status, 1, mpi_integer, root, MPI_COMM_WORLD, ierr)
-                call mpi_bcast(shift_damping, 1, mpi_preal, root, MPI_COMM_WORLD, ierr)
-                call mpi_bcast(shift, size(shift), mpi_preal, root, MPI_COMM_WORLD, ierr)
-            case(2)
-                call mpi_bcast(shift_damping_status, 1, mpi_integer, root, MPI_COMM_WORLD, ierr)
+                call mpi_bcast(qs%shift_damping_status, 1, mpi_integer, root, MPI_COMM_WORLD, ierr)
+                ! Check if we've changed our status; if not we'll have to receive modified values.
+                if (qs%shift_damping_status == 1) then
+                    call mpi_bcast(qs%shift_damping, 1, mpi_preal, root, MPI_COMM_WORLD, ierr)
+                    call mpi_bcast(qs%shift, size(qs%shift), mpi_preal, root, MPI_COMM_WORLD, ierr)
+                end if
             case default
                 continue
             end select

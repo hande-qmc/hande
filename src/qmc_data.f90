@@ -640,13 +640,6 @@ type blocking_t
     integer :: n_saved = 1
     ! Optimal blocksize saved for the calculation of number of blocks used.
     integer :: opt_bl_size=0
-    ! Flag to indicate stage within shift damping optimisation.
-    ! 0 indicates we're going to change the shift damping on the next update.
-    ! 1 indicates we're checking the shift damping is within acceptable bounds,
-    !   and will progress to either 0 or 2 depending upon the result.
-    ! 2 indicates the shift damping is settled on a value.
-    ! We start in 1, and update the damping if it is required.
-    integer :: shift_damping_status = 0
 end type blocking_t
 
 type estimators_t
@@ -761,6 +754,16 @@ type qmc_state_t
     ! we may want to print a different message depending upon the cause.
     logical :: reblock_done = .false.
     type(estimators_t), allocatable :: estimators(:)
+    ! Internal flag to indicate status of shift damping optimisation.
+    ! 0 indicates we're accumulating information before attempting to optimise
+    !   our shift damping. This will progress to stage 2 the next iteration.
+    ! 1 indicates we've accumulated information and need to check if the standard
+    !   deviation of our shift is within acceptable limits. If not, we will attempt
+    !   to optimise our shift damping.
+    ! Any other value indicates that our shift is at an appropriate value. In general
+    !   we use -1 to indicate that no optimisation is to be performed and 2 to indicate
+    !   that optimisation has been previously completed.
+    integer :: shift_damping_status = -1
 end type qmc_state_t
 
 ! Copies of various settings that are required during annihilation.  This avoids having to pass through lots of different
