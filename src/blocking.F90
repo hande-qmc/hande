@@ -837,29 +837,34 @@ contains
 
     end subroutine update_shift_damping
 
-    subroutine receive_shift_updates(shift_damping_status, shift_damping, shift)
+    subroutine receive_shift_updates(ireport, start_ireport, shift_damping_status, shift_damping, shift)
 
         use parallel
 
+        integer, intent(in) :: ireport, start_ireport
         integer, intent(inout) :: shift_damping_status
         real(p), intent(inout) :: shift_damping
         real(p), intent(inout), allocatable :: shift(:)
 #ifdef PARALLEL
         integer :: ierr
-        select case (shift_damping_status)
-        case(0)
-            call mpi_bcast(shift_damping_status, 1, mpi_integer, root, MPI_COMM_WORLD, ierr)
-        case(1)
-            call mpi_bcast(shift_damping_status, 1, mpi_integer, root, MPI_COMM_WORLD, ierr)
-            call mpi_bcast(shift_damping, 1, mpi_preal, root, MPI_COMM_WORLD, ierr)
-            call mpi_bcast(shift, size(shift), mpi_preal, root, MPI_COMM_WORLD, ierr)
-        case(2)
-            call mpi_bcast(shift_damping_status, 1, mpi_integer, root, MPI_COMM_WORLD, ierr)
-        case default
-            continue
-        end select
-#endif
 
+
+        if (mod(ireport,50) ==0 .and. ireport >= start_ireport .and. &
+                    start_ireport>=0) then
+            select case (shift_damping_status)
+            case(0)
+                call mpi_bcast(shift_damping_status, 1, mpi_integer, root, MPI_COMM_WORLD, ierr)
+            case(1)
+                call mpi_bcast(shift_damping_status, 1, mpi_integer, root, MPI_COMM_WORLD, ierr)
+                call mpi_bcast(shift_damping, 1, mpi_preal, root, MPI_COMM_WORLD, ierr)
+                call mpi_bcast(shift, size(shift), mpi_preal, root, MPI_COMM_WORLD, ierr)
+            case(2)
+                call mpi_bcast(shift_damping_status, 1, mpi_integer, root, MPI_COMM_WORLD, ierr)
+            case default
+                continue
+            end select
+        end if
+#endif
     end subroutine receive_shift_updates
 
 end module blocking

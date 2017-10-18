@@ -842,7 +842,7 @@ contains
                     call do_blocking(bl, qs, qmc_in, ireport, iter, iunit, blocking_in)
                 end if
             else if (blocking_in%blocking_on_the_fly) then
-                call receive_shift_updates(bl%shift_damping_status, qs%shift_damping, qs%shift)
+                call receive_shift_updates(ireport, bl%start_ireport, bl%shift_damping_status, qs%shift_damping, qs%shift)
             end if
 
             ! Update the time for the start of the next iteration.
