@@ -327,8 +327,7 @@ contains
         use json_out, only: json_out_t, json_object_init, json_object_end
         use hamiltonian_data
         use energy_evaluation, only: get_sanitized_projected_energy, get_sanitized_projected_energy_cmplx
-        use blocking, only: write_blocking_report_header, allocate_blocking, do_blocking, deallocate_blocking, write_blocking_report
-        use blocking, only: write_blocking_report_header, allocate_blocking, do_blocking, deallocate_blocking, &
+        use blocking, only: write_blocking_report_header, init_blocking, do_blocking, deallocate_blocking, &
                             write_blocking_report, receive_shift_updates
 
         use logging, only: init_logging, end_logging, prep_logging_mc_cycle, write_logging_calc_ccmc
@@ -524,7 +523,7 @@ contains
         end if
 
         if (blocking_in%blocking_on_the_fly) &
-                    call allocate_blocking(qmc_in, blocking_in, bl, qs%shift_damping_status)
+                    call init_blocking(qmc_in, blocking_in, bl, qs%shift_damping_status)
 
         do ireport = 1, qmc_in%nreport
 

@@ -73,7 +73,7 @@ contains
 
         use logging, only: init_logging, end_logging, prep_logging_mc_cycle, write_logging_calc_fciqmc, &
                             logging_in_t, logging_t, logging_in_t_json, logging_t_json
-        use blocking, only: write_blocking_report_header, allocate_blocking, do_blocking, deallocate_blocking, &
+        use blocking, only: write_blocking_report_header, init_blocking, do_blocking, deallocate_blocking, &
                             write_blocking_report, receive_shift_updates
         use report, only: write_date_time_close
 
@@ -215,7 +215,7 @@ contains
         ! Initialise timer.
         call cpu_time(t1)
         ! Allocate arrays needed for reblock analysis
-        if (blocking_in%blocking_on_the_fly) call allocate_blocking(qmc_in, blocking_in, bl, qs%shift_damping_status)
+        if (blocking_in%blocking_on_the_fly) call init_blocking(qmc_in, blocking_in, bl, qs%shift_damping_status)
 
         if (parent .and. blocking_in%blocking_on_the_fly) then
             open(newunit=iunit, file=blocking_in%filename, status='unknown')
