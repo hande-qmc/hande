@@ -1040,7 +1040,7 @@ contains
         call json_write_key(js, 'start_point', blocking%start_point)
         call json_write_key(js, 'error_limit', blocking%error_limit)
         call json_write_key(js, 'blocks_used', blocking%blocks_used)
-        call json_write_key(js, 'min_blocks_used', blocking%min_blocks_used, .true.)
+        call json_write_key(js, 'min_blocks_used', blocking%min_blocks_used)
         call json_write_key(js, 'auto_shift_damping', blocking%auto_shift_damping, .true.)
         call json_object_end(js, terminal)
 
