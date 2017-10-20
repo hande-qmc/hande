@@ -53,6 +53,7 @@ module restart_hdf5
     !            move frequency        # (log2 of the) frequency at which the processor location is modified in CCMC
     !            vary shift            # Whether the shift was varying before the calculation stopped
     !            shift_damping         # Value of the shift damping used within the calculation
+    !            shift_damping_status  # Current status of any shift damping optimisation.
     !      reference/
     !                reference determinant # reference determinant
     !                reference population  # population on reference
@@ -138,6 +139,7 @@ module restart_hdf5
                                dnbasis = 'nbasis',                  &
                                dvary = 'vary shift',                &
                                dshift_damping = 'shift_damping',    &
+                               dshift_damping_status = 'shift_damping_status', &
                                dinfo_string_len = 'info string len'
 
     contains
@@ -402,6 +404,7 @@ module restart_hdf5
 
                     call hdf5_write(subgroup_id, dshift_damping, kinds, [1_int_64], [qs%shift_damping])
 
+                    call hdf5_write(subgroup_id, dshift_damping_status, qs%shift_damping_status)
                 call h5gclose_f(subgroup_id, ierr)
 
                 ! --- qmc/qs%ref group ---
@@ -693,9 +696,11 @@ module restart_hdf5
                     end if
                     call h5lexists_f(subgroup_id, dshift_damping, exists, ierr)
                     ! If not present we just leave at default value.
+                    ! If shift damping was written to restart file we'll also have written the current status of any optimisation.
                     if (exists) then
                         call hdf5_read(subgroup_id, dshift_damping, kinds, [1_int_64], shift_damp)
                         qs%shift_damping = shift_damp(1)
+                        call hdf5_read(subgroup_id, dshift_damping_status, qs%shift_damping_status)
                     end if
 
                 call h5gclose_f(subgroup_id, ierr)
