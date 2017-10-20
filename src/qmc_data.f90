@@ -642,6 +642,10 @@ type blocking_t
     integer :: opt_bl_size=0
 
     integer :: n_increased_damping = 0
+    ! We need a logical flag to tell us when we need to communicate to non-parent processes
+    ! that reblocking has started. We can detect this on other processes (start_ireport < 0
+    ! and we've started varying the shift) but on the parent processor have no such luck.
+    logical :: first_iteration = .false.
 end type blocking_t
 
 type estimators_t

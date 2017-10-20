@@ -616,8 +616,12 @@ contains
 
         if (bl%start_ireport == -1 .and. blocking_in%start_point<0 .and. qs%vary_shift(1)) then
             bl%start_ireport = ireport
+            !print*,'Detected start!'
+            bl%first_iteration = .true.
         else if (blocking_in%start_point>=0) then
             bl%start_ireport = nint(real(blocking_in%start_point)/qmc_in%ncycles)
+            !print*,'Detected start!'
+            bl%first_iteration = .true.
         end if
 
         ! Once the shift is varied the data needed for reblocking is
@@ -639,6 +643,7 @@ contains
             call write_blocking(bl, qmc_in, ireport, iter, iunit)
             call check_error(bl, qs, blocking_in, ireport)
             if (blocking_in%auto_shift_damping) call update_shift_damping(qs, bl, energy_estimate_dist)
+            bl%first_iteration = .false.
         end if
 
         if (mod(bl%n_reports_blocked,bl%save_fq) == 0 .and. bl%n_reports_blocked > 0) then
@@ -831,6 +836,11 @@ contains
         logical :: modified
 #ifdef PARALLEL
         integer :: ierr
+
+        if (bl%first_iteration) then
+            !print*,"Broadcasting from head on first iter..."
+            call mpi_bcast(bl%start_ireport, 1, mpi_integer, root, MPI_COMM_WORLD, ierr)
+        end if
 #endif
         modified = .false.
         if (qs%shift_damping_status < 0) then
@@ -848,7 +858,7 @@ contains
 
                 diff = abs(instant_proj_e - energy_estimate_dist(dt_shift,1))
 
-                if (abs(diff) > abs(0.3 * instant_proj_e) .or. abs(diff) > abs(0.3 * energy_estimate_dist(dt_shift,1))) then
+                if (abs(diff) > abs(10 * instant_proj_e) .or. abs(diff) > abs(10 * energy_estimate_dist(dt_shift,1))) then
                     ! Values don't agree within reasonable tolerances; shift damping may be
                     ! too low to effectively reach target value in reasonable time.
                     ! Boost shift damping to rectify.
@@ -861,8 +871,9 @@ contains
                     else
                         modified = .true.
                         write (6, '("# Increasing shift damping to compensate for slow approach.")')
-                        qs%shift_damping = max(0.2,qs%shift_damping * 5.0_p)
+                        qs%shift_damping = min(1.0,max(0.05,qs%shift_damping * 5.0_p))
                         bl%n_increased_damping = bl%n_increased_damping + 1
+                        qs%shift_damping_status = 1
                     end if
                 else if (isnan(energy_estimate_dist(dt_shift,2))) then
                     ! Not enough data to know if optimised; wait.
@@ -893,6 +904,7 @@ contains
             if (qs%shift_damping_status >= 0) then
                 call mpi_bcast(qs%shift_damping, 1, mpi_preal, root, MPI_COMM_WORLD, ierr)
                 call mpi_bcast(qs%shift, size(qs%shift), mpi_preal, root, MPI_COMM_WORLD, ierr)
+                call mpi_bcast(modified, 1, mpi_logical, root, MPI_COMM_WORLD, ierr)
             end if
 #endif
         else
@@ -900,6 +912,7 @@ contains
             ! optimisationi.
             qs%shift_damping_status = qs%shift_damping_status - 1
         end if
+!        print*, iproc, qs%shift_damping_status, qs%shift_damping, qs%shift
 
     end subroutine update_shift_damping
 
@@ -913,13 +926,23 @@ contains
         use parallel
         use qmc_data, only: qmc_state_t
 
-        integer, intent(in) :: ireport, start_ireport
+        integer, intent(in) :: ireport
+        integer, intent(inout) :: start_ireport
         type(qmc_state_t), intent(inout) :: qs
 #ifdef PARALLEL
         integer :: ierr
+        logical :: modified
+
+        modified = .false.
+
+        if (mod(ireport,50) ==0 .and. start_ireport < 0 .and. qs%vary_shift(1)) then
+        !    print*,"proc ",iproc," receiving on first iteration."
+            call mpi_bcast(start_ireport, 1, mpi_integer, root, MPI_COMM_WORLD, ierr)
+        end if
 
         if (mod(ireport,50) ==0 .and. ireport >= start_ireport .and. &
                     start_ireport>=0) then
+            !print *,iproc,ireport,start_ireport
             if (qs%shift_damping_status < 0) then
                 continue
             else if (qs%shift_damping_status == 0) then
@@ -928,10 +951,14 @@ contains
                 if (qs%shift_damping_status >= 0) then
                     call mpi_bcast(qs%shift_damping, 1, mpi_preal, root, MPI_COMM_WORLD, ierr)
                     call mpi_bcast(qs%shift, size(qs%shift), mpi_preal, root, MPI_COMM_WORLD, ierr)
+                    call mpi_bcast(modified, 1, mpi_logical, root, MPI_COMM_WORLD, ierr)
                 end if
             else
                 qs%shift_damping_status = qs%shift_damping_status - 1
             end if
+
+            if (modified) start_ireport = -1
+
         end if
 #endif
     end subroutine receive_shift_updates
