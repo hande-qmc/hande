@@ -734,7 +734,7 @@ type qmc_state_t
     real(p) :: target_particles = huge(1.0_p)
     ! Factor by which the changes in the population are damped when updating the
     ! shift.
-    real(p) :: shift_damping = huge(1.0_p)
+    real(p) :: shift_damping = 0.050_p
     ! Stores information used by the excitation generator
     type(excit_gen_data_t) :: excit_gen_data
     ! Value of beta which we propagate the density matrix to. Only used for DMQMC.

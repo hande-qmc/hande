@@ -164,15 +164,11 @@ contains
         qmc_state%propagator%quasi_newton_threshold = qmc_in%quasi_newton_threshold
         qmc_state%propagator%quasi_newton_value = qmc_in%quasi_newton_value
         ! Need to ensure we end up with a sensible value of shift damping to use.
+        ! qmc_state%shift_damping will be set to either its default value or one
+        ! read in from a restart file.
         if (qmc_in%shift_damping < huge(1.0_p)) then
-            ! If we've passed in a specific value use that.
+            ! If we've passed in a specific value to qmc_in use that.
             qmc_state%shift_damping = qmc_in%shift_damping
-        else if (qmc_state%shift_damping < huge(1.0)) then
-            ! If we've read in a restart file containing a shift damping value use that.
-            continue
-        else
-            ! Otherwise use normal default value.
-            qmc_state%shift_damping = 0.050_p
         end if
 
     end subroutine init_qmc
