@@ -75,3 +75,19 @@ blocking analysis on the fly.
     Irrelevant of the error_limit, if the number of blocks used to estimate the standard error of projected energy
     is less than the ``blocks_used``, the calculation is terminated. Larger ``blocks_used`` ensures a more reliable
     blocking analysis.
+
+``auto_shift_damping``
+    type: boolean.
+
+    Optional. Default: false
+
+    Whether to automatically optimise the shift damping using information from blocking on the fly. This optimises
+    the shift damping to ensure that the standard deviations of the instantaneous projected energy and shift are
+    approximately equal. The allowable range of values is currently set to allow the shift standard deviation to
+    be between 50% and 200% of that of the instantaneous projected energy, though this could easily be exposed to
+    the user if required.
+
+    .. note::
+        This approach will modify the shift damping to ensure a reasonable variation in the shift during a calculation.
+        Updates to the shift damping will be printed within the output file, and the final shift damping written into
+        restart files to be used in any restarted calculations.

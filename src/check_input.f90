@@ -388,7 +388,7 @@ contains
         !   restart_in: Calculation restarting input options.
 
         use qmc_data, only: blocking_in_t, restart_in_t
-        use errors, only: warning
+        use errors, only: warning, stop_all
 
         type(blocking_in_t), intent(in) :: blocking_in
         type(restart_in_t), intent(in) :: restart_in
@@ -405,6 +405,11 @@ contains
                 call warning(this, 'Writing a restart file from a calculation using on-the-fly reblocking. &
                         &No reblocking data has been saved. If this annoys you send patches.')
             end if
+        end if
+
+        if (blocking_in%auto_shift_damping .and. .not. blocking_in%blocking_on_the_fly) then
+            call stop_all(this, 'Automatic shift damping optimisation requires blocking on the fly to be activated. &
+                        & Please restart calculation with blocking enabled.')
         end if
 
     end subroutine check_blocking_opts
