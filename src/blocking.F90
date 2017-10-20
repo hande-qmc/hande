@@ -638,9 +638,7 @@ contains
             call find_optimal_block(bl)
             call write_blocking(bl, qmc_in, ireport, iter, iunit)
             call check_error(bl, qs, blocking_in, ireport)
-            if (blocking_in%auto_shift_damping) then
-                call update_shift_damping(qs, bl, energy_estimate_dist)
-            end if
+            if (blocking_in%auto_shift_damping) call update_shift_damping(qs, bl, energy_estimate_dist)
         end if
 
         if (mod(bl%n_reports_blocked,bl%save_fq) == 0 .and. bl%n_reports_blocked > 0) then
@@ -798,21 +796,22 @@ contains
 ! the correlation energy for a given calculation, so using the standard deviation of the
 ! other energy measure ensures a reasonable value (assuming a stable calculation).
 
-! We must also account for various edge cases within our algorithm. If the shift starts from
-! a value that deviates largely from the true one and the shift damping is low, it can take
-! a very large period of time for it to equilibrate. This will prevent effective evaluation
-! of the standard deviations of various distributions, prevent collection of statistics for
-! our energy estimates for a significant period of time, and lead to the population changing
-! significantly after the start of population control.
+! We must account for edge cases within our algorithm. If the shift starts from a value that
+! deviates largely from the true energy and the shift damping is low, it can take a
+! considerable time for to equilibrate. This will prevent effective evaluation of the standard
+! deviations of various distributions, prevent collection of statistics for our energy estimates
+! before equilibration, and lead to the population changing significantly after the start of
+! population control.
 ! To avoid this, if the mean of our estimators deviates by greater than 30% of the smaller
 ! value we increase the shift damping, to ensure more rapid equilibration, and restart the
 ! shift from the instantaneous projected energy. This should hopefully allow more useful
 ! statistics to be collected in the interim. If this does not rectify the situation we repeat
 ! the increase, and wait a larger period of time before reattempting optimisation.
 
-    subroutine update_shift_damping(qs, bl, energy_estimate_dist)
+! It should be noted that after each modification of the shift damping we must discard all
+! previous reblocking data. This makes it imperitive that we equilibrate rapidly.
 
-        use qmc_data, only: qmc_state_t, blocking_t
+    subroutine update_shift_damping(qs, bl, energy_estimate_dist)
 
         ! Array containing info on distributions of energy estimators (proj
         ! energy components and shift).
@@ -822,6 +821,8 @@ contains
         ! corresponding to enum within qmc_data.
 
         use parallel
+        use qmc_data, only: qmc_state_t, blocking_t
+        use qmc_data, only: dt_numerator, dt_denominator, dt_shift
 
         real(p), intent(in) :: energy_estimate_dist(dt_numerator:dt_shift,2)
         type(qmc_state_t), intent(inout) :: qs
