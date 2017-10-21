@@ -228,16 +228,11 @@ contains
             call check_allocate('i_weights_occ', sys%nel, ierr)
 
             ! [todo] can move iido to double.
-            pos_occ = 1
             i_weights_occ_tot = 0.0_p
-ido:        do pos_bas = 1, sys%basis%nbasis
-                if (occ_list(pos_occ) == pos_bas) then
-                    i_weights_occ(pos_occ) = hb%i_weights(pos_bas)
-                    i_weights_occ_tot = i_weights_occ_tot + hb%i_weights(pos_bas)
-                    pos_occ = pos_occ + 1
-                end if
-                if (pos_occ > sys%nel) exit ido
-            end do ido
+            do pos_occ = 1, sys%nel
+                i_weights_occ(pos_occ) = hb%i_weights(cdet%occ_list(pos_occ))
+                i_weights_occ_tot = i_weights_occ_tot + i_weights_occ(pos_occ)
+            end do
                 
             i_ind = select_weighted_value(rng, sys%nel, i_weights_occ, i_weights_occ_tot)
             i = occ_list(i_ind)
@@ -245,16 +240,11 @@ ido:        do pos_bas = 1, sys%basis%nbasis
             allocate(ij_weights_occ(1:sys%nel), stat=ierr)
             call check_allocate('ij_weights_occ', sys%nel, ierr)
 
-            pos_occ = 1
             ij_weights_occ_tot = 0.0_p
-jdo:        do pos_bas = 1, sys%basis%nbasis
-                if (occ_list(pos_occ) == pos_bas) then
-                    ij_weights_occ(pos_occ) = hb%ij_weights(pos_bas,i)
-                    ij_weights_occ_tot = ij_weights_occ_tot + hb%ij_weights(pos_bas,i)
-                    pos_occ = pos_occ + 1    
-                end if
-                if (pos_occ > sys%nel) exit jdo
-            end do jdo
+            do pos_occ = 1, sys%nel
+                ij_weights_occ(pos_occ) = hb%ij_weights(cdet%occ_list(pos_occ),i)
+                ij_weights_occ_tot = ij_weights_occ_tot + ij_weights_occ(pos_occ)
+            end do
 
             j_ind = select_weighted_value(rng, sys%nel, ij_weights_occ, ij_weights_occ_tot)
             j = occ_list(j_ind)
@@ -262,16 +252,11 @@ jdo:        do pos_bas = 1, sys%basis%nbasis
             allocate(ji_weights_occ(1:sys%nel), stat=ierr)
             call check_allocate('ji_weights_occ', sys%nel, ierr)
                 
-            pos_occ = 1
             ji_weights_occ_tot = 0.0_p
-iido:       do pos_bas = 1, sys%basis%nbasis
-                if (occ_list(pos_occ) == pos_bas) then
-                    ji_weights_occ(pos_occ) = hb%ij_weights(pos_bas,j)
-                    ji_weights_occ_tot = ji_weights_occ_tot + hb%ij_weights(pos_bas,j)
-                    pos_occ = pos_occ + 1    
-                end if
-                if (pos_occ > sys%nel) exit iido
-            end do iido
+            do pos_occ = 1, sys%nel
+                ji_weights_occ(pos_occ) = hb%ij_weights(cdet%occ_list(pos_occ),j)
+                ji_weights_occ_tot = ji_weights_occ_tot + ji_weights_occ(pos_occ)
+            end do
 
             allowed_excitation = .true.
             if (abs(hb%ija_weights_tot(j, i)) > 0.0_p) then
