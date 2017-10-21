@@ -23,6 +23,10 @@ integrals is usually not a key factor.  Please consult the documentation of the 
 interest regarding how to run SCF calculations and generate the integrals in the FCIDUMP
 format.
 
+Please note that not all programs use exactly identical FCIDUMP formats and some may not
+be compatible with HANDE. The differences are typically in the namelist header. It may be
+possible to resolve these differences by hand or a script.
+
 .. _fcidump_format:
 
 FCIDUMP format

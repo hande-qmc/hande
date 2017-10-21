@@ -14,6 +14,13 @@ where ``conf`` is one of the platforms available and is simply the name of the r
 file residing in the ``config/`` directory.  Various configurations are provided and it is
 simple to adapt one to the local environment (e.g. changing compiler or library paths).
 
+.. warning::
+
+    If any `prereq` have been installed to non-default (e.g. to $HOME/local) paths, then
+    these paths must be made available to the compiler via ``ldflags`` (see below) -- e.g.
+    using ``-L $HOME/local`` -- and, for dynamic libariesm added to the environment by
+    setting the LD_LIBRARY_PATH environment variable.
+
 Run
 
 .. code-block:: bash
@@ -24,6 +31,8 @@ to see the options available, including inspecting available configurations.
 
 A configuration is defined using a simple ini file, consisting of three sections:
 main, opt and dbg.  For instance::
+
+.. [todo] - minimal working example
 
     [main]
     fc = gfortran
@@ -304,3 +313,12 @@ is not possible.  Issues and, where known, workarounds we have found are:
 
 * gcc 7.3 (and possibly earlier gcc 7 releases) has a bug affecting ``c_associated``. Use
   a later version. Details: https://gcc.gnu.org/bugzilla/show_bug.cgi?id=82869.
+
+* Linking lua depends on how it was compiled. Errors of the type
+
+  .. code-block:: bash
+
+      liblua.a(loadlib.o): undefined reference to symbol dlclose@@GLIBC_2.2.5
+
+  indicate that lua requires dynamic loading and requires ``-ldl`` to be added to the link
+  line (``libs`` in the config file).
