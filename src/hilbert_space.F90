@@ -11,7 +11,8 @@ public :: nhilbert_cycles, estimate_hilbert_space, gen_random_det_full_space, ge
 
 contains
 
-    subroutine estimate_hilbert_space(sys, ex_level, nattempts, ncycles, occ_list0, rng_seed, io_unit)
+    subroutine estimate_hilbert_space(sys, ex_level, nattempts, ncycles, occ_list0, rng_seed, io_unit, space_size_mean, &
+        space_size_se)
 
         ! Based on Appendix A in George Booth's thesis.
 
@@ -62,13 +63,14 @@ contains
         integer, intent(in) :: ex_level, nattempts
         integer, intent(inout), allocatable :: occ_list0(:)
         integer, intent(in) :: ncycles, rng_seed, io_unit
+        real(dp), intent(out) :: space_size_mean, space_size_se
 
         integer :: truncation_level, icycle, i, ierr, a, n, ireport, ireport_ind, nattempts_local
         integer :: ref_sym, det_sym
         integer(i0) :: f(sys%basis%tot_string_len), f0(sys%basis%tot_string_len)
         integer :: occ_list(sys%nel)
         integer, parameter :: nreport_block = 100
-        real(dp) :: full_space_size, space_size_mean, space_size_mean2, space_size_se, delta
+        real(dp) :: full_space_size, space_size_mean2, delta
         real(dp) :: naccept(nreport_block), naccept_sum(nreport_block)
         real(dp), allocatable :: ptrunc_level(:,:)
 
@@ -262,6 +264,11 @@ contains
             deallocate(ptrunc_level, stat=ierr)
             call check_deallocate('ptrunc_level', ierr)
         end if
+
+#ifdef PARALLEL
+        call MPI_Bcast(space_size_mean, 1, MPI_REAL8, root, MPI_COMM_WORLD, ierr)
+        call MPI_Bcast(space_size_se, 1, MPI_REAL8, root, MPI_COMM_WORLD, ierr)
+#endif
 
         ! Return sys in an unaltered state.
         call copy_sys_spin_info(sys_bak, sys)
