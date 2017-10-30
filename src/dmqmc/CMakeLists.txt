@@ -1,9 +1,0 @@
-target_sources(hande-shared
-  PUBLIC
-  ${CMAKE_CURRENT_LIST_DIR}/dmqmc.f90
-  ${CMAKE_CURRENT_LIST_DIR}/dmqmc_data.f90
-  ${CMAKE_CURRENT_LIST_DIR}/dmqmc_estimators.F90
-  ${CMAKE_CURRENT_LIST_DIR}/dmqmc_initialise_dm.F90
-  ${CMAKE_CURRENT_LIST_DIR}/dmqmc_procedures.F90
-  ${CMAKE_CURRENT_LIST_DIR}/idmqmc.f90
-)
