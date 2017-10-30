@@ -60,6 +60,49 @@ function(generate_build_info_header _header_location _header_name)
     endif()
   endforeach()
 
+  set(_pop_size "unknown")
+  if(POP_SIZE)
+    set(_pop_size ${POP_SIZE})
+  endif()
+
+  set(_det_size "unknown")
+  if(DET_SIZE)
+    set(_det_size ${DET_SIZE})
+  endif()
+
+  # HDF5
+  set(_use_hdf5 "DISABLE_HDF5 defined.  HDF5 disabled.")
+  if(USE_HDF5)
+    set(_use_hdf5 "DISABLE_HDF5 not defined.  HDF5 enabled.")
+  endif()
+  # LANCZOS
+  set(_use_lanczos "DISABLE_LANCZOS defined.  Lanczos disabled.")
+  if(USE_LANCZOS)
+    set(_use_lanczos "DISABLE_LANCZOS not defined.  Lanczos enabled.")
+  endif()
+  # UUID
+  set(_use_libuuid "DISABLE_UUID defined.  UUID disabled.")
+  if(USE_LIBUUID)
+    set(_use_libuuid "DISABLE_UUID not defined.  UUID enabled.")
+  endif()
+  # ScaLAPACK
+  set(_use_scalapack "DISABLE_SCALAPACK defined.  ScaLAPACK disabled.")
+  if(USE_SCALAPACK)
+    set(_use_scalapack "DISABLE_SCALAPACK not defined.  ScaLAPACK enabled.")
+  endif()
+  # SINGLE_PRECISION
+  set(_use_single_precision "SINGLE_PRECISION defined.  Single precision used where relevant.")
+  if(USE_SINGLE_PRECISION)
+    set(_use_single_precision "SINGLE_PRECISION not defined.  Double precision used throughout.")
+  endif()
+  # POP_CNT
+  set(_use_popcnt "USE_POPCNT defined.  Fortran 2003 POPCNT procedure used.")
+  if(USE_POPCNT)
+    set(_use_popcnt "USE_POPCNT not defined.  Internal POPCNT procedure used.")
+  endif()
+  # dSFMT Mersenne Exponent
+  set(_dsfmt_mexp ${DSFMT_MEXP})
+
   set(_enable_mpi ${ENABLE_MPI})
 
   set(_mpi_launcher "unknown")

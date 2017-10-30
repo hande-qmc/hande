@@ -9,6 +9,7 @@
 function(generate_git_info_header _header_location _header_name)
   # _header_location: where the Git info header file should be generated
   # _header_name: the Git info header name, complete with extension (.h, .hpp, .hxx or whatever)
+  # Accepts on optional argument for the name of the Fortran module holding the Git version info
   find_package(Git QUIET)
 
   set(_git_last_commit_hash "unknown")
@@ -59,6 +60,15 @@ function(generate_git_info_header _header_location _header_name)
     ${_header_location}/${_header_name}
     @ONLY
     )
+
+  # Check if the optional argument was passed
+  if(ARGN)
+    configure_file(
+      ${PROJECT_SOURCE_DIR}/cmake/custom/git_info.f90.in
+      ${_header_location}/${ARGV2}
+      @ONLY
+      )
+  endif()
 
   unset(_git_last_commit_hash)
   unset(_git_last_commit_author)

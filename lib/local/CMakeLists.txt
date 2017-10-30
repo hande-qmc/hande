@@ -1,3 +1,6 @@
+generate_git_info_header(${CMAKE_CURRENT_BINARY_DIR} git_info.h git_info.f90)
+generate_build_info_header(${CMAKE_CURRENT_BINARY_DIR} build_info.h)
+
 add_library(coreutils
   OBJECT
     base_types.f90
@@ -15,6 +18,16 @@ add_library(coreutils
     parallel.F90
     ranking.f90
     utils.F90
+    print_info.c
+  )
+
+target_include_directories(coreutils
+  PRIVATE
+    ${CMAKE_CURRENT_BINARY_DIR}
+  )
+target_sources(coreutils
+  PRIVATE
+    ${CMAKE_CURRENT_BINARY_DIR}/git_info.f90
   )
 
 set_target_properties(coreutils

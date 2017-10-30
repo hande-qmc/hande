@@ -16,6 +16,16 @@
 
 #define CXX_COMPILER "@_CXX_compiler@"
 
+#define POP_SIZE "@_pop_size@"
+#define DET_SIZE "@_det_size@"
+#define HDF5 "@_use_hdf5@"
+#define LANCZOS "@_use_lanczos@"
+#define UUID "@_use_libuuid@"
+#define SCALAPACK "@_use_scalapack@"
+#define SINGLE_PRECISION "@_use_single_precision@"
+#define POPCNT "@_use_popcnt@"
+#define dSFMT_MEXP "@_dsfmt_mexp"
+
 #define ENABLE_MPI "@_enable_mpi@"
 #define MPI_LAUNCHER "@_mpi_launcher@"
 
