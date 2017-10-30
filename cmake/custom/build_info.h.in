@@ -1,0 +1,22 @@
+#ifndef BUILD_INFO_H_INCLUDED
+#define BUILD_INFO_H_INCLUDED
+
+#define USER_NAME "@_user_name@"
+#define HOST_NAME "@_host_name@"
+#define SYSTEM "@_system@"
+#define CMAKE_VERSION "@_cmake_version@"
+#define CMAKE_GENERATOR "@_cmake_generator@"
+#define CMAKE_BUILD_TYPE "@_cmake_build_type@"
+#define CONFIGURATION_TIME "@_configuration_time@"
+#define PYTHON_VERSION "@_python_version@"
+
+#define FORTRAN_COMPILER "@_Fortran_compiler@"
+
+#define C_COMPILER "@_C_compiler@"
+
+#define CXX_COMPILER "@_CXX_compiler@"
+
+#define ENABLE_MPI "@_enable_mpi@"
+#define MPI_LAUNCHER "@_mpi_launcher@"
+
+#endif /* BUILD_INFO_H_INCLUDED */
