@@ -105,7 +105,7 @@ contains
         character(36) :: uuid_restart
 
         type(logging_t) :: logging_info
-        integer :: iunit
+        integer :: iunit, restart_version_restart
 
         iunit = 6
 
@@ -123,7 +123,7 @@ contains
 
         ! Initialise data.
         call init_qmc(sys, qmc_in, restart_in, load_bal_in, reference_in, 6, annihilation_flags, qs, uuid_restart, &
-                      dmqmc_in=dmqmc_in, qmc_state_restart=qmc_state_restart)
+                      restart_version_restart, dmqmc_in=dmqmc_in, qmc_state_restart=qmc_state_restart)
 
         allocate(tot_nparticles_old(qs%psip_list%nspaces), stat=ierr)
         call check_allocate('tot_nparticles_old', qs%psip_list%nspaces, ierr)

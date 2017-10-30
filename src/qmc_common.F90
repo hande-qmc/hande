@@ -534,7 +534,8 @@ contains
 
 ! --- Output routines ---
 
-    subroutine initial_fciqmc_status(sys, qmc_in, qs, nb_comm, spawn_elsewhere, doing_ccmc, io_unit, restarting)
+    subroutine initial_fciqmc_status(sys, qmc_in, qs, nb_comm, spawn_elsewhere, doing_ccmc, io_unit, restarting, &
+                            restart_version_restart)
 
         ! Calculate the projected energy based upon the initial walker
         ! distribution (either via a restart or as set during initialisation)
@@ -553,6 +554,7 @@ contains
         !    doing_ccmc: true if doing ccmc calculation.
         !    io_unit: io unit to write any reporting to.
         !    restarting: true if restarting
+        !    restart_version_restart: version of restart file to restart from.
 
         use determinants, only: det_info_t, alloc_det_info_t, dealloc_det_info_t, decode_det
         use energy_evaluation, only: local_energy_estimators, update_energy_estimators_send
@@ -564,13 +566,14 @@ contains
         use qmc_data, only: qmc_in_t, qmc_state_t, nb_rep_t
         use system, only: sys_t
         use hamiltonian_data
-
-
+        use const, only: depsilon
+        use errors, only: warning
+        
         type(sys_t), intent(in) :: sys
         type(qmc_in_t), intent(in) :: qmc_in
         type(qmc_state_t), intent(inout), target :: qs
         logical, optional, intent(in) :: nb_comm, doing_ccmc, restarting
-        integer, optional, intent(in) :: spawn_elsewhere, io_unit
+        integer, optional, intent(in) :: spawn_elsewhere, io_unit, restart_version_restart
 
         integer :: idet, ispace
         real(dp) :: ntot_particles(qs%psip_list%nspaces)
@@ -578,7 +581,7 @@ contains
         type(det_info_t) :: cdet
         type(hmatel_t) :: hmatel
         type(excit_t) :: D0_excit
-        logical :: nb_comm_local, doing_ccmc_loc
+        logical :: nb_comm_local, doing_ccmc_loc, use_tmp
         real(p) :: proj_energy_tmp(qs%psip_list%nspaces), D0_population_tmp(qs%psip_list%nspaces)
         complex(p) :: proj_energy_comp_tmp(qs%psip_list%nspaces), D0_population_comp_tmp(qs%psip_list%nspaces)
 #ifdef PARALLEL
@@ -586,12 +589,24 @@ contains
         real(p) :: proj_energy_sum(qs%psip_list%nspaces), D0_population_sum(qs%psip_list%nspaces)
 #endif
         
+        use_tmp = .false.
         ! Make sure projected energy/ D0 pop. does not get overwritten if restarting.
         if (present(restarting) .and. (restarting == .true.)) then
             D0_population_tmp = qs%estimators%D0_population
             D0_population_comp_tmp = qs%estimators%D0_population_comp
             proj_energy_tmp = qs%estimators%proj_energy
             proj_energy_comp_tmp = qs%estimators%proj_energy_comp
+            if ((present(restart_version_restart) .and. (restart_version_restart < 2)) .and. &
+                (all(abs(proj_energy_tmp) > 0.0_p))) then
+                ! Proj. energy was not estimated (due to legacy restart) by a shift which was zero.
+                use_tmp = .true.
+            else
+                ! This might be conservative but since one element of qs%estimators%proj_energy was zero
+                ! which could have been because of the shift.
+                ! [todo] - alternatively can check whether we are reading in from legacy restart file.
+                call warning('initial_fciqmc_status', 'Even though we are restarting a CCMC/FCIQMC'// &
+                    ' calculation, projected energy from previous calculation cannot be used.')
+            end if
         end if
 
         ! Calculate the projected energy based upon the initial walker
@@ -666,7 +681,7 @@ contains
         qs%estimators%tot_nstates = qs%psip_list%nstates
 #endif
 
-        if (present(restarting) .and. (restarting == .true.)) then
+        if (use_tmp) then
             qs%estimators%D0_population = D0_population_tmp
             qs%estimators%D0_population_comp = D0_population_comp_tmp
             qs%estimators%proj_energy = proj_energy_tmp

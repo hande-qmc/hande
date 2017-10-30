@@ -386,7 +386,7 @@ contains
         real(p), allocatable :: rdm(:,:)
 
         type(blocking_t) :: bl
-        integer :: iunit
+        integer :: iunit, restart_version_restart
         integer :: date_values(8)
 
         if (parent) then
@@ -404,7 +404,8 @@ contains
 
         ! Initialise data.
         call init_qmc(sys, qmc_in, restart_in, load_bal_in, reference_in, io_unit, annihilation_flags, qs, &
-                      uuid_restart, qmc_state_restart=qmc_state_restart, regenerate_info=regenerate_info)
+                      uuid_restart, restart_version_restart, qmc_state_restart=qmc_state_restart, &
+                      regenerate_info=regenerate_info)
 
         if (ccmc_in%even_selection .and. regenerate_info) then
             call regenerate_ex_levels_psip_list(sys%basis, qs)
@@ -488,7 +489,8 @@ contains
         ! Main fciqmc loop.
         if (parent) call write_qmc_report_header(qs%psip_list%nspaces, cmplx_est=sys%read_in%comp, &
                                             rdm_energy=ccmc_in%density_matrices, nattempts=.true., io_unit=io_unit)
-        call initial_fciqmc_status(sys, qmc_in, qs, doing_ccmc=.true., io_unit=io_unit, restarting=restarting)
+        call initial_fciqmc_status(sys, qmc_in, qs, doing_ccmc=.true., io_unit=io_unit, restarting=restarting, &
+                                restart_version_restart = restart_version_restart)
         ! Initialise timer.
         call cpu_time(t1)
 

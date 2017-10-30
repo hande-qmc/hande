@@ -57,8 +57,8 @@ module restart_hdf5
     !            shift_damping         # Value of the shift damping used within the calculation
     !            shift_damping_status  # Current status of any shift damping optimisation.
     !      reference/
-    !                reference determinant # reference determinant
-    !                reference population re # real population on reference
+    !                reference determinant   # reference determinant
+    !                reference population    # real population on reference
     !                reference population im # imag. population on reference
     !                Hilbert space reference determinant # reference determinant
     !                                  # defining Hilbert space (see comments in
@@ -138,7 +138,7 @@ module restart_hdf5
                                dhash_seed = 'hash_seed',            &
                                dmove_freq = 'move_freq',            &
                                dref = 'reference determinant',      &
-                               dref_pop_re = 'reference population @ t-1 real', &
+                               dref_pop = 'reference population @ t-1', &
                                dref_pop_im = 'reference population @ t-1 imag', &
                                dhsref = 'Hilbert space reference determinant', &
                                dscaling = 'population scale factor', &
@@ -426,7 +426,7 @@ module restart_hdf5
 
                     call hdf5_write(subgroup_id, dhsref, kinds, shape(qs%ref%hs_f0, kind=int_64), qs%ref%hs_f0)
 
-                    call hdf5_write(subgroup_id, dref_pop_re, kinds, shape(qs%estimators%D0_population, kind=int_64), &
+                    call hdf5_write(subgroup_id, dref_pop, kinds, shape(qs%estimators%D0_population, kind=int_64), &
                                     qs%estimators%D0_population)
 
                     call hdf5_write(subgroup_id, dref_pop_im, kinds, &
@@ -456,7 +456,8 @@ module restart_hdf5
 
         end subroutine dump_restart_hdf5
 
-        subroutine read_restart_hdf5(ri, nbasis, nb_comm, info_string_len, qs, uuid_restart, regenerate_info)
+        subroutine read_restart_hdf5(ri, nbasis, nb_comm, info_string_len, qs, uuid_restart, regenerate_info, &
+                                restart_version_restart)
 
             ! Read QMC data from restart file.
 
@@ -474,6 +475,7 @@ module restart_hdf5
             !    uuid_restart: UUID of the calculation that generated the restart file
             !    regenerate_info: whether the walker list obtained from a restart file
             !       requires regeneration of the extra information in the bit string.
+            !    restart_version_restart: version of restart file that is being read in.
 
 #ifndef DISABLE_HDF5
             use hdf5
@@ -497,6 +499,7 @@ module restart_hdf5
             type(qmc_state_t), intent(inout) :: qs
             character(36), intent(out) :: uuid_restart
             logical, intent(out) :: regenerate_info
+            integer, intent(out) :: restart_version_restart
 #ifndef DISABLE_HDF5
             ! HDF5 kinds
             type(hdf5_kinds_t) :: kinds
@@ -504,7 +507,7 @@ module restart_hdf5
             integer(hid_t) :: file_id, group_id, subgroup_id
 
             character(255) :: restart_file
-            integer :: restart_version_restart, calc_type_restart, nprocs_restart
+            integer :: calc_type_restart, nprocs_restart
             integer :: i0_length_restart, nbasis_restart, info_string_len_restart
             integer :: ierr
             logical :: exists, resort
@@ -557,8 +560,18 @@ module restart_hdf5
                                   'Restarting with different calculation types not supported.  Please implement.')
                 ! Different restart versions require graceful handling of the
                 ! additions/removals.
-                if (restart_version /= restart_version_restart) call stop_all('read_restart_hdf5', &
+                if (restart_version /= restart_version_restart) then
+                    if ((restart_version_restart == 1) .and. (restart_version == 2)) then
+                        call warning('read_restart_hdf5', &
+                            'Restarting from restart version 1. '// &
+                            'Projected energy and imaginary part of D0 population not stored. '// &
+                            'They have to be estimated (from shift etc.). If shift is still zero and running CCMC, '// &
+                            'estimation for projected energy can be quite off.')
+                    else
+                        call stop_all('read_restart_hdf5', &
                                   'Restarting from a different restart version not supported.  Please implement.')
+                    end if
+                end if
                 ! Different processor counts requires figuring out if
                 ! a determinant should be on the processor or not (and reading
                 ! in chunks).
@@ -703,12 +716,14 @@ module restart_hdf5
                     call hdf5_read(subgroup_id, dncycles, qs%mc_cycles_done)
 
                     call hdf5_read(subgroup_id, dshift, kinds, shape(qs%shift, kind=int_64), qs%shift)
-
-                    call hdf5_read(subgroup_id, dproj_energy_re, kinds, &
-                            shape(qs%estimators%proj_energy, kind=int_64), qs%estimators%proj_energy)
-                    call hdf5_read(subgroup_id, dproj_energy_im, kinds, shape(proj_energy_tmp, kind=int_64), &
-                            proj_energy_tmp)
-                    qs%estimators%proj_energy_comp = cmplx(qs%estimators%proj_energy, proj_energy_tmp, p)
+                    
+                    if (restart_version_restart > 1) then
+                        call hdf5_read(subgroup_id, dproj_energy_re, kinds, &
+                                shape(qs%estimators%proj_energy, kind=int_64), qs%estimators%proj_energy)
+                        call hdf5_read(subgroup_id, dproj_energy_im, kinds, shape(proj_energy_tmp, kind=int_64), &
+                                proj_energy_tmp)
+                        qs%estimators%proj_energy_comp = cmplx(qs%estimators%proj_energy, proj_energy_tmp, p)
+                    end if
 
                     call h5lexists_f(subgroup_id, dvary, exists, ierr)
                     if (exists) then
@@ -732,10 +747,21 @@ module restart_hdf5
                 call h5gopen_f(group_id, gref, subgroup_id, ierr)
 
                     ! Already read the reference determinant - only need the population
-                    call hdf5_read(subgroup_id, dref_pop_re, kinds, shape(qs%estimators%D0_population, kind=int_64), &
-                                   qs%estimators%D0_population) 
-                    call hdf5_read(subgroup_id, dref_pop_im, kinds, shape(D0_population_tmp, kind=int_64), &
-                                   D0_population_tmp)
+                    call hdf5_read(subgroup_id, dref_pop, kinds, shape(qs%estimators%D0_population, kind=int_64), &
+                                   qs%estimators%D0_population)
+                    if (restart_version_restart > 1) then 
+                        call hdf5_read(subgroup_id, dref_pop_im, kinds, shape(D0_population_tmp, kind=int_64), &
+                                       D0_population_tmp)
+                    else
+                        ! Have legacy restart file from version 1. Estimate projected energy using shift.
+                        ! This can work assuming the projected energy is only really used for calculating the
+                        ! old projected energy (real part of ratio of projected energy and D0 population) before starting
+                        ! an CCMC/FCIQMC calculation.
+                        ! If qs%shift is still zero, will estimate projected energy later (which can be quite wrong for CCMC).
+                        qs%estimators%proj_energy = qs%shift * qs%estimators%D0_population
+                        qs%estimators%proj_energy_comp = cmplx(qs%estimators%proj_energy, 0.0_p, p)
+                        D0_population_tmp = 0.0_p
+                    end if
                     qs%estimators%D0_population_comp = cmplx(qs%estimators%D0_population, D0_population_tmp, p)
 
                 call h5gclose_f(subgroup_id, ierr)
@@ -1075,7 +1101,7 @@ module restart_hdf5
                         call convert_ref(orig_subgroup_id, dhsref, kinds, info_string_len, info_string_len, f0)
                         call hdf5_write(subgroup_id, dhsref, kinds, shape(f0, kind=int_64), f0)
 
-                        call h5ocopy_f(orig_group_id, hdf5_path(gref, dref_pop_re), group_id, hdf5_path(gref, dref_pop_re), ierr)
+                        call h5ocopy_f(orig_group_id, hdf5_path(gref, dref_pop), group_id, hdf5_path(gref, dref_pop), ierr)
                         call h5ocopy_f(orig_group_id, hdf5_path(gref, dref_pop_im), group_id, hdf5_path(gref, dref_pop_im), ierr)
 
                         call h5gclose_f(subgroup_id, ierr)

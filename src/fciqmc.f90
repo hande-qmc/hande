@@ -121,7 +121,7 @@ contains
         logical :: update_tau, restarting, imag
 
         type(blocking_t) :: bl
-        integer :: iunit
+        integer :: iunit, restart_version_restart
         integer :: date_values(8)
 
         if (parent) then
@@ -140,7 +140,7 @@ contains
 
         ! Initialise data.
         call init_qmc(sys, qmc_in, restart_in, load_bal_in, reference_in, io_unit, annihilation_flags, qs, uuid_restart, &
-                      fciqmc_in=fciqmc_in, qmc_state_restart=qmc_state_restart)
+                      restart_version_restart, fciqmc_in=fciqmc_in, qmc_state_restart=qmc_state_restart)
 
         if (debug) call init_logging(logging_in, logging_info, 0)
 
@@ -209,9 +209,10 @@ contains
             call init_non_blocking_comm(qs%spawn_store%spawn, req_data_s, send_counts, qs%spawn_store%spawn_recv, &
                                         restart_in%read_restart)
             call initial_fciqmc_status(sys, qmc_in, qs, .true., send_counts(iproc)/qs%spawn_store%spawn_recv%element_len, &
-                                        io_unit=io_unit, restarting=restarting)
+                                        io_unit=io_unit, restarting=restarting, restart_version_restart=restart_version_restart)
         else
-            call initial_fciqmc_status(sys, qmc_in, qs, io_unit=io_unit, restarting=restarting)
+            call initial_fciqmc_status(sys, qmc_in, qs, io_unit=io_unit, restarting=restarting, &
+                                        restart_version_restart=restart_version_restart)
         end if
         ! Initialise timer.
         call cpu_time(t1)
