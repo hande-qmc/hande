@@ -16,7 +16,8 @@
 
 # Valid values for the exponent of the Mersenne Twister
 set(_VALID_DSFMT_MEXP 521 1279 2203 4253 11213 19937 44497 86243 1322049 216091)
-if(NOT DEFINED DSFMT_MEXP OR NOT DSFMT_MEXP IN_LIST _VALID_DSFMT_MEXP)
+if(DEFINED DSFMT_MEXP AND NOT DSFMT_MEXP IN_LIST _VALID_DSFMT_MEXP)
+  message(STATUS "${DSFMT_MEXP} not a valid exponent for a Mersenne prime, resetting to default value 19937")
   set(DSFMT_MEXP 19937)
 endif()
-message(STATUS "Exponent of the period of the Mersenne Twister RNG: ${DSFMT_MEXP}")
+option_with_default(DSFMT_MEXP "Exponent of the period of the Mersenne Twister RNG" 19937)

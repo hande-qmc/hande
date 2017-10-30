@@ -23,6 +23,7 @@ set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${PROJECT_SOURCE_DIR}/cmake/downloade
 include(autocmake_fc)
 include(autocmake_cc)
 include(autocmake_cxx)
+include(options_wrappers)
 include(autocmake_safeguards)
 include(autocmake_default_build_paths)
 include(autocmake_src)
