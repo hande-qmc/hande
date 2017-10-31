@@ -48,6 +48,7 @@ module restart_hdf5
     !            scaling factor        # population scaling factor for real amplitudes.
     !      state/
     !            shift                 # shift (energy offset/population control)
+! [review] - AJWT: Below this is called projected_energy_real
     !            proj_energy_re        # projected energy, important in CCMC restarts, real part
     !            proj_energy_im        # projected energy, imaginary part
     !            ncycles               # number of Monte Carlo cycles performed
@@ -58,6 +59,7 @@ module restart_hdf5
     !            shift_damping_status  # Current status of any shift damping optimisation.
     !      reference/
     !                reference determinant   # reference determinant
+! [review] - AJWT: These aren't actually the names in the HDF file
     !                reference population    # real population on reference
     !                reference population im # imag. population on reference
     !                Hilbert space reference determinant # reference determinant
@@ -104,6 +106,7 @@ module restart_hdf5
     ! needed following updates to code.
     ! In addition it might be helpful when writing post-processing utilities which act upon
     ! restart files.
+! [review] - AJWT: This seems like a good place to have a bit of history as to what exists in what version numbers.
     integer, parameter :: restart_version = 2
 
     ! Group names...
