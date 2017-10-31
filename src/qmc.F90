@@ -77,13 +77,15 @@ contains
         type(fciqmc_in_t) :: fciqmc_in_loc
         type(dmqmc_in_t) :: dmqmc_in_loc
         type(restart_info_t) :: ri
-        logical :: regenerate_info_loc
+        logical :: regenerate_info_loc, qmc_state_restart_loc
 
         regenerate_info_loc = .false.
         restart_version_restart = 0
+        qmc_state_restart_loc = .false.
 
         if (present(fciqmc_in)) fciqmc_in_loc = fciqmc_in
         if (present(dmqmc_in)) dmqmc_in_loc = dmqmc_in
+        if (present(qmc_state_restart)) qmc_state_restart_loc = .true.
 
         if (restart_in%read_restart) call init_restart_info_t(ri, read_id=restart_in%read_id)
 
@@ -92,7 +94,7 @@ contains
         ! Note it is not possible to override a reference if restarting.
         if (restart_in%read_restart) then
             call init_reference_restart(sys, reference_in, ri, qmc_state%ref)
-        else if (present(qmc_state_restart)) then
+        else if (qmc_state_restart_loc) then
             qmc_state%ref = qmc_state_restart%ref
         else
             call init_reference(sys, reference_in, io_unit, qmc_state%ref)
@@ -118,7 +120,7 @@ contains
 
         ! Allocate main particle lists.  Include the memory used by semi_stoch_t%determ in the
         ! calculation of memory occupied by the main particle lists.
-        if (.not. present(qmc_state_restart)) then
+        if (.not. (qmc_state_restart_loc)) then
             call init_particle_t(qmc_in%walker_length, 1, sys%basis%tensor_label_len, qmc_in%real_amplitudes, &
                                  qmc_in%real_amplitude_force_32, qmc_state%psip_list, io_unit=io_unit)
         end if
@@ -126,7 +128,7 @@ contains
         call init_parallel_t(qmc_state%psip_list%nspaces, nparticles_start_ind-1, fciqmc_in_loc%non_blocking_comm, &
                              qmc_state%par_info, load_bal_in%nslots)
 
-        if (present(qmc_state_restart)) then
+        if (qmc_state_restart_loc) then
             call move_qmc_state_t(qmc_state_restart, qmc_state)
             qmc_state%mc_cycles_done = qmc_state_restart%mc_cycles_done
         else
@@ -159,7 +161,8 @@ contains
 
         call init_annihilation_flags(qmc_in, fciqmc_in_loc, dmqmc_in_loc, annihilation_flags)
         call init_trial(sys, fciqmc_in_loc, qmc_state%trial)
-        call init_estimators(sys, qmc_in, restart_in%read_restart, fciqmc_in_loc%non_blocking_comm, qmc_state)
+        call init_estimators(sys, qmc_in, restart_in%read_restart, qmc_state_restart_loc, fciqmc_in_loc%non_blocking_comm, &
+                        qmc_state)
         if (present(qmc_state_restart)) call dealloc_excit_gen_data_t(qmc_state_restart%excit_gen_data)
         call init_excit_gen(sys, qmc_in, qmc_state%ref, qmc_state%excit_gen_data)
 
@@ -667,7 +670,7 @@ contains
 
     end subroutine init_annihilation_flags
 
-    subroutine init_estimators(sys, qmc_in, restart_read_in, fciqmc_non_blocking_comm, qmc_state)
+    subroutine init_estimators(sys, qmc_in, restart_read_in, qmc_state_restart, fciqmc_non_blocking_comm, qmc_state)
 
         ! Initialise estimators and related components of qmc_state
 
@@ -688,7 +691,7 @@ contains
 
         type(sys_t), intent(in) :: sys
         type(qmc_in_t), intent(in) :: qmc_in
-        logical, intent(in) :: restart_read_in, fciqmc_non_blocking_comm
+        logical, intent(in) :: restart_read_in, qmc_state_restart, fciqmc_non_blocking_comm
         type(qmc_state_t), intent(inout) :: qmc_state
 
         logical :: have_tot_nparticles
@@ -743,7 +746,7 @@ contains
 
         ! Set initial values from input
         qmc_state%tau = qmc_in%tau
-        if (restart_read_in == .false.) then
+        if ((restart_read_in == .false.) .and. (qmc_state_restart == .false.)) then
             qmc_state%estimators%D0_population = qmc_in%D0_population
             qmc_state%estimators%D0_population_old = qmc_in%D0_population
         else

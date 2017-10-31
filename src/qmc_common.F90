@@ -596,14 +596,16 @@ contains
             D0_population_comp_tmp = qs%estimators%D0_population_comp
             proj_energy_tmp = qs%estimators%proj_energy
             proj_energy_comp_tmp = qs%estimators%proj_energy_comp
-            if ((present(restart_version_restart) .and. (restart_version_restart < 2)) .and. &
+            if (present(restart_version_restart) .and. (restart_version_restart > 1)) then
+                ! We do not have to deal with legacy restart.
+                use_tmp = .true.
+            else if ((present(restart_version_restart) .and. (restart_version_restart < 2)) .and. &
                 (all(abs(proj_energy_tmp) > 0.0_p))) then
-                ! Proj. energy was not estimated (due to legacy restart) by a shift which was zero.
+                ! Legacy restart but proj. energy was not estimated by a shift which was zero.
                 use_tmp = .true.
             else
                 ! This might be conservative but since one element of qs%estimators%proj_energy was zero
-                ! which could have been because of the shift.
-                ! [todo] - alternatively can check whether we are reading in from legacy restart file.
+                ! which could have been because of the shift, we do not use estimated proj. energies.
                 call warning('initial_fciqmc_status', 'Even though we are restarting a CCMC/FCIQMC'// &
                     ' calculation, projected energy from previous calculation cannot be used.')
             end if

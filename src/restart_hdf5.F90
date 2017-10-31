@@ -25,6 +25,8 @@ module restart_hdf5
     ! (Note: order does not matter as HDF5 requires explicitly statement of the group and
     ! dataspace names for each read and write operation.)
 
+    ! If added for version 2, items are marked with (Version 2).
+
     ! /                                # ROOT/
     !
     !  metadata/
@@ -48,9 +50,8 @@ module restart_hdf5
     !            scaling factor        # population scaling factor for real amplitudes.
     !      state/
     !            shift                 # shift (energy offset/population control)
-! [review] - AJWT: Below this is called projected_energy_real
-    !            proj_energy_re        # projected energy, important in CCMC restarts, real part
-    !            proj_energy_im        # projected energy, imaginary part
+    !            projected energy real # (Version 2) projected energy, important in CCMC restarts, real part
+    !            projected energy imag # (Version 2) projected energy, imaginary part
     !            ncycles               # number of Monte Carlo cycles performed
     !            hash seed             # hash seed passed to hash function to assign a state to a processor
     !            move frequency        # (log2 of the) frequency at which the processor location is modified in CCMC
@@ -58,10 +59,9 @@ module restart_hdf5
     !            shift_damping         # Value of the shift damping used within the calculation
     !            shift_damping_status  # Current status of any shift damping optimisation.
     !      reference/
-    !                reference determinant   # reference determinant
-! [review] - AJWT: These aren't actually the names in the HDF file
-    !                reference population    # real population on reference
-    !                reference population im # imag. population on reference
+    !                reference determinant               # reference determinant
+    !                reference population @ t-1          # real population on reference
+    !                reference population @ t-1 imag     # (Version 2) imag. population on reference
     !                Hilbert space reference determinant # reference determinant
     !                                  # defining Hilbert space (see comments in
     !                                  # qmc_io for details).
@@ -80,6 +80,12 @@ module restart_hdf5
     ! files should always test that a data item exists before reading it; if it
     ! doesn't then handle the situation gracefully (e.g. by falling back to
     ! default values).
+
+    ! Backwards compatibility between version 1 and 2:
+    ! When reading in a legacy restart file from version 1, estimate the 'projected energy real' by
+    ! 'shift'*'reference population @ t-1'. 'projected energy imag' is set to zero and so is 'reference population @ t-1 imag'.
+    ! These estimated values may or may not be used when initialising CCMC/FCIQMC (see function initial_fciqmc_status in
+    ! qmc_common.F90).
 
     implicit none
 
@@ -106,7 +112,6 @@ module restart_hdf5
     ! needed following updates to code.
     ! In addition it might be helpful when writing post-processing utilities which act upon
     ! restart files.
-! [review] - AJWT: This seems like a good place to have a bit of history as to what exists in what version numbers.
     integer, parameter :: restart_version = 2
 
     ! Group names...
@@ -565,11 +570,13 @@ module restart_hdf5
                 ! additions/removals.
                 if (restart_version /= restart_version_restart) then
                     if ((restart_version_restart == 1) .and. (restart_version == 2)) then
-                        call warning('read_restart_hdf5', &
-                            'Restarting from restart version 1. '// &
-                            'Projected energy and imaginary part of D0 population not stored. '// &
-                            'They have to be estimated (from shift etc.). If shift is still zero and running CCMC, '// &
-                            'estimation for projected energy can be quite off.')
+                        if (parent) then
+                            call warning('read_restart_hdf5', &
+                                'Restarting from restart version 1. '// &
+                                'Projected energy and imaginary part of D0 population not stored. '// &
+                                'They have to be estimated (from shift etc.). If shift is still zero and running CCMC, '// &
+                                'estimation for projected energy can be quite off.')
+                        end if
                     else
                         call stop_all('read_restart_hdf5', &
                                   'Restarting from a different restart version not supported.  Please implement.')
