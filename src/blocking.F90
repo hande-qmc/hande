@@ -614,13 +614,12 @@ contains
         ! corresponding to enum within qmc_data.
         real(p) :: energy_estimate_dist(dt_numerator:dt_shift,2)
 
+        ! Detect whether blocking should have started yet.
         if (bl%start_ireport == -1 .and. blocking_in%start_point<0 .and. qs%vary_shift(1)) then
             bl%start_ireport = ireport
-            !print*,'Detected start!'
             bl%first_iteration = .true.
         else if (blocking_in%start_point>=0) then
             bl%start_ireport = nint(real(blocking_in%start_point)/qmc_in%ncycles)
-            !print*,'Detected start!'
             bl%first_iteration = .true.
         end if
 
@@ -838,7 +837,6 @@ contains
         integer :: ierr
 
         if (bl%first_iteration) then
-            !print*,"Broadcasting from head on first iter..."
             call mpi_bcast(bl%start_ireport, 1, mpi_integer, root, MPI_COMM_WORLD, ierr)
         end if
 #endif
@@ -912,7 +910,6 @@ contains
             ! optimisationi.
             qs%shift_damping_status = qs%shift_damping_status - 1
         end if
-!        print*, iproc, qs%shift_damping_status, qs%shift_damping, qs%shift
 
     end subroutine update_shift_damping
 
@@ -936,13 +933,11 @@ contains
         modified = .false.
 
         if (mod(ireport,50) ==0 .and. start_ireport < 0 .and. qs%vary_shift(1)) then
-        !    print*,"proc ",iproc," receiving on first iteration."
             call mpi_bcast(start_ireport, 1, mpi_integer, root, MPI_COMM_WORLD, ierr)
         end if
 
         if (mod(ireport,50) ==0 .and. ireport >= start_ireport .and. &
                     start_ireport>=0) then
-            !print *,iproc,ireport,start_ireport
             if (qs%shift_damping_status < 0) then
                 continue
             else if (qs%shift_damping_status == 0) then

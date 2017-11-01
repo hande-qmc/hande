@@ -90,4 +90,5 @@ blocking analysis on the fly.
     .. note::
         This approach will modify the shift damping to ensure a reasonable variation in the shift during a calculation.
         Updates to the shift damping will be printed within the output file, and the final shift damping written into
-        restart files to be used in any restarted calculations.
+        restart files to be used in any restarted calculations. If no shift_damping is provided to a restarted
+        calculation in the qmc table the final value from the restarted calculation will be used.
