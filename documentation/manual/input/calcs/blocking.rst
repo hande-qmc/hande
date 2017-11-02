@@ -87,6 +87,10 @@ blocking analysis on the fly.
     be between 50% and 200% of that of the instantaneous projected energy, though this could easily be exposed to
     the user if required.
 
+..
+    [review] - VAN: What happens if I do not provide a shift damping value in the qmc table but there is also none
+    in the restart file due to legacy?
+
     .. note::
         This approach will modify the shift damping to ensure a reasonable variation in the shift during a calculation.
         Updates to the shift damping will be printed within the output file, and the final shift damping written into

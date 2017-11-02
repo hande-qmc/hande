@@ -17,6 +17,12 @@ use const, only: p, depsilon
 
 implicit none
 
+! [review] - VAN: Tests: they need to be rerun as git hash is dirty. It would be great if a test
+! [review] - VAN: is added that tests restarting by passing a qmc_state object.
+! [review] - VAN: How well does restarting work when restart blocking is not implemented yet?
+! [review] - VAN: How well does auto shift damping work with (complex) replica tricks? - Maybe add a test as that
+! [review] - VAN: might stress test it.
+
 contains
 
     subroutine init_blocking(qmc_in, blocking_in, bl, shift_damping_status)

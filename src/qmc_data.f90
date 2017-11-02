@@ -319,6 +319,7 @@ type blocking_in_t
     ! The calculation is terminated if this condition is met irrelevant of
     ! the standard error of the projected energy. Default = (huge)
     real(p) :: blocks_used = huge(1.0_p)
+    ! [review] - VAN: add comment here
     logical :: auto_shift_damping = .false.
 end type
 
@@ -640,7 +641,7 @@ type blocking_t
     integer :: n_saved = 1
     ! Optimal blocksize saved for the calculation of number of blocks used.
     integer :: opt_bl_size=0
-
+    ! [review] - VAN: add comment here
     integer :: n_increased_damping = 0
     ! We need a logical flag to tell us when we need to communicate to non-parent processes
     ! that reblocking has started. We can detect this on other processes (start_ireport < 0
