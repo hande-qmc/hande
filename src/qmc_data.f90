@@ -674,6 +674,9 @@ end type blocking_t
 
 type estimators_t
     ! Population of walkers on reference determinant/trace of density matrix.
+    ! Note that when using complex populations, the estimators array of D0_population
+    ! can be (a,b,0,0) (as in the case for nspaces = 4, e.g. fciqmc complex and replica tricks),
+    ! whereas real(D0_population_comp) would then be (a,a,b,b).
     real(p) :: D0_population = 0.0_p
     ! Population of walkers on reference determinant/trace of density matrix at previous timestep.
     real(p) :: D0_population_old = 0.0_p
@@ -686,6 +689,9 @@ type estimators_t
     !   <D_0|H|D_0> + \sum_{i/=0} <D_0|H|D_i> N_i/N_0
     ! and so proj_energy must be 'normalised' and averaged over the report loops
     ! accordingly.
+    ! Note that when using complex populations, the estimators array of proj_energy
+    ! can be (a,b,0,0) (as in the case for nspaces = 4), whereas real(proj_energy_comp)
+    ! would then be (a,a,b,b).
     real(p) :: proj_energy = 0.0_p
     ! The instantaneous projected energy of the previous iteration is required for
     ! various purposes.
