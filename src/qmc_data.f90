@@ -676,7 +676,8 @@ type estimators_t
     ! Population of walkers on reference determinant/trace of density matrix.
     ! Note that when using complex populations, the estimators array of D0_population
     ! can be (a,b,0,0) (as in the case for nspaces = 4, e.g. fciqmc complex and replica tricks),
-    ! whereas real(D0_population_comp) would then be (a,a,b,b).
+    ! whereas real(D0_population_comp) would then be (a,a,b,b). Using *_comp variables
+    ! in non complex calculations and vice versa can be dangerous.
     real(p) :: D0_population = 0.0_p
     ! Population of walkers on reference determinant/trace of density matrix at previous timestep.
     real(p) :: D0_population_old = 0.0_p

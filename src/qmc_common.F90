@@ -606,9 +606,11 @@ contains
             else
                 ! This might be conservative but since one element of qs%estimators%proj_energy was zero
                 ! which could have been because of the shift, we do not use estimated proj. energies.
-                call warning('initial_fciqmc_status', 'Even though we are restarting a CCMC/FCIQMC'// &
-                    ' calculation, information from previous calculation cannot be used to estimate projected energy.'// &
-                    ' This is probably because the shift/one of the shifts is zero.')
+                if (parent) then
+                    call warning('initial_fciqmc_status', 'Even though we are restarting a CCMC/FCIQMC'// &
+                        ' calculation, information from previous calculation cannot be used to estimate projected energy.'// &
+                        ' This is probably because the shift/one of the shifts is zero.')
+                end if
             end if
         end if
 

@@ -50,7 +50,9 @@ module restart_hdf5
     !            scaling factor        # population scaling factor for real amplitudes.
     !      state/
     !            shift                 # shift (energy offset/population control)
-    !            projected energy real # (Version 2) projected energy, important in CCMC restarts, real part
+    !            projected energy      # (Version 2), projected energy, qmc_state%estimators%projected_energy
+    !            projected energy real # (Version 2) projected energy, important in CCMC restarts, real part of
+    !                                  #             qmc_state%estimators%projected_energy_comp
     !            projected energy imag # (Version 2) projected energy, imaginary part
     !            ncycles               # number of Monte Carlo cycles performed
     !            hash seed             # hash seed passed to hash function to assign a state to a processor
@@ -60,7 +62,9 @@ module restart_hdf5
     !            shift_damping_status  # Current status of any shift damping optimisation.
     !      reference/
     !                reference determinant               # reference determinant
-    !                reference population @ t-1          # real population on reference
+    !                reference population @ t-1          # population on reference (real, mainly used non complex calcs)
+    !                reference population @ t-1 real     # (Version 2) real population on reference, real part of
+    !                                                    #             qmc_state%estimators%D0_population_comp
     !                reference population @ t-1 imag     # (Version 2) imag. population on reference
     !                Hilbert space reference determinant # reference determinant
     !                                  # defining Hilbert space (see comments in
@@ -140,6 +144,7 @@ module restart_hdf5
                                dnspawn = 'nspawn',                  &
                                dresort = 'psip_resort',             &
                                dshift = 'shift',                    &
+                               dproj_energy = 'projected energy',   &
                                dproj_energy_re = 'projected energy real',   &
                                dproj_energy_im = 'projected energy imag',   &
                                dncycles = 'ncycles',                &
@@ -147,6 +152,7 @@ module restart_hdf5
                                dmove_freq = 'move_freq',            &
                                dref = 'reference determinant',      &
                                dref_pop = 'reference population @ t-1', &
+                               dref_pop_re = 'reference population @ t-1 real', &
                                dref_pop_im = 'reference population @ t-1 imag', &
                                dhsref = 'Hilbert space reference determinant', &
                                dscaling = 'population scale factor', &
@@ -409,6 +415,9 @@ module restart_hdf5
                     call hdf5_write(subgroup_id, dncycles, ncycles)
 
                     call hdf5_write(subgroup_id, dshift, kinds, shape(qs%shift, kind=int_64), qs%shift)
+
+                    call hdf5_write(subgroup_id, dproj_energy, kinds, shape(qs%estimators%proj_energy, kind=int_64), &
+                                    qs%estimators%proj_energy)
 
                     call hdf5_write(subgroup_id, dproj_energy_re, kinds, shape(real(qs%estimators%proj_energy_comp,p), &
                         kind=int_64), real(qs%estimators%proj_energy_comp,p))
@@ -732,6 +741,8 @@ module restart_hdf5
                     call hdf5_read(subgroup_id, dshift, kinds, shape(qs%shift, kind=int_64), qs%shift)
                     
                     if (restart_version_restart > 1) then
+                        call hdf5_read(subgroup_id, dproj_energy, kinds, shape(qs%estimators%proj_energy, kind=int_64), &
+                                qs%estimators%proj_energy)
                         call hdf5_read(subgroup_id, dproj_energy_re, kinds, shape(proj_energy_tmp_re, kind=int_64), &
                                 proj_energy_tmp_re)
                         call hdf5_read(subgroup_id, dproj_energy_im, kinds, shape(proj_energy_tmp_im, kind=int_64), &
@@ -761,29 +772,14 @@ module restart_hdf5
                 call h5gopen_f(group_id, gref, subgroup_id, ierr)
 
                     ! Already read the reference determinant - only need the population
-                    call hdf5_read(subgroup_id, dref_pop, kinds, shape(D0_population_tmp_re, kind=int_64), &
-                                   D0_population_tmp_re)
+                    call hdf5_read(subgroup_id, dref_pop, kinds, shape(qs%estimators%D0_population, kind=int_64), &
+                                   qs%estimators%D0_population)
                     if (restart_version_restart > 1) then 
+                        call hdf5_read(subgroup_id, dref_pop_re, kinds, shape(D0_population_tmp_re, kind=int_64), &
+                                   D0_population_tmp_re)
                         call hdf5_read(subgroup_id, dref_pop_im, kinds, shape(D0_population_tmp_im, kind=int_64), &
-                                       D0_population_tmp_im)
-                        ! In the case of complex: While real(qs%estimators%D0_population_comp) might
-                        ! look like (a,a,b,b) (in the case of qs%psip_list%nspaces=4), qs%estimators%D0_population
-                        ! will then be (a,b,0,0). Similar for projected energy. Need to convert this.
-                        if (do_comp) then
-                            i = 1
-                            j = 1
-                            qs%estimators%D0_population = 0.0_p
-                            qs%estimators%proj_energy = 0.0_p
-                            do while (j < qs%psip_list%nspaces)
-                                qs%estimators(i)%D0_population = D0_population_tmp_re(j)
-                                qs%estimators(i)%proj_energy = proj_energy_tmp_re(j) 
-                                i = i + 1
-                                j = j + 2
-                            end do
-                        else
-                            qs%estimators%proj_energy = proj_energy_tmp_re
-                            qs%estimators%D0_population = D0_population_tmp_re
-                        end if
+                                   D0_population_tmp_im)
+                        qs%estimators%D0_population_comp = cmplx(D0_population_tmp_re, D0_population_tmp_im, p)
                     else
                         ! Have legacy restart file from version 1. Estimate projected energy using shift.
                         ! This can work assuming the projected energy is only really used for calculating the
@@ -793,37 +789,44 @@ module restart_hdf5
                         ! While real(qs%estimators%D0_population_comp) might look like (a,a,b,b) (qs%psip_list%nspaces=4),
                         ! qs%estimators%D0_population will then be (a,b,0,0). Need to convert this as legacy restart has stored
                         ! qs%estimators%D0_population.
-                        qs%estimators%D0_population = D0_population_tmp_re
+                        i = 1
+                        j = 1
+                        do while (i <= qs%psip_list%nspaces)
+                            D0_population_tmp_re(i) = qs%estimators(j)%D0_population
+                            i = i + 1
+                            if (mod(i,2) /= 0) then
+                                j = j + 1
+                            end if
+                        end do
+                        
                         if (do_comp) then
-                            i = qs%psip_list%nspaces
-                            j = qs%psip_list%nspaces/2
-                            do while (i > 1)
-                                if (D0_population_tmp_re(i) < depsilon) then
-                                    D0_population_tmp_re(i) = D0_population_tmp_re(j)
-                                end if
-                                i = i - 1
-                                if (mod(i,2) == 0) then
-                                    j = j - 1
-                                end if
-                            end do
-                        end if
-                        proj_energy_tmp_re = qs%shift * D0_population_tmp_re
-                        qs%estimators%proj_energy_comp = cmplx(proj_energy_tmp_re, 0.0_p, p)
-                        D0_population_tmp_im = 0.0_p
-                        if (do_comp) then
+                            ! shift is of form e.g. (a,a,b,b), i.e. two consecutive entries are identical
+                            proj_energy_tmp_re = qs%shift * D0_population_tmp_re
                             i = 1
                             j = 1
                             qs%estimators%proj_energy = 0.0_p
-                            do while (j < qs%psip_list%nspaces)
-                                qs%estimators(i)%proj_energy = proj_energy_tmp_re(j) 
+                            do while (j <= qs%psip_list%nspaces)
+                                qs%estimators(i)%proj_energy = proj_energy_tmp_re(j)
                                 i = i + 1
                                 j = j + 2
                             end do
                         else
-                            qs%estimators%proj_energy = proj_energy_tmp_re
+                            ! shift is of form e.g. (a,b), i.e. entries are unique
+                            qs%estimators%proj_energy = qs%shift * qs%estimators%D0_population
+                            i = 1
+                            j = 1
+                            do while (i <= qs%psip_list%nspaces)
+                                proj_energy_tmp_re(i) = qs%estimators(j)%proj_energy
+                                i = i + 1
+                                if (mod(i,2) /= 0) then
+                                    j = j + 1
+                                end if
+                            end do
                         end if
+                        
+                        qs%estimators%D0_population_comp = cmplx(D0_population_tmp_re, 0.0_p, p)
+                        qs%estimators%proj_energy_comp = cmplx(proj_energy_tmp_re, 0.0_p, p)
                     end if
-                    qs%estimators%D0_population_comp = cmplx(D0_population_tmp_re, D0_population_tmp_im, p)
 
                 call h5gclose_f(subgroup_id, ierr)
 
