@@ -262,6 +262,8 @@ contains
         !   bl: Information needed to peform blocking on the fly. block_mean,
         !       block_std and block_cov for each block size is calculated. 0 is
         !       returned if there aren't sufficient blocks to calculate them.
+! [review] - AJWT: These are presumably in the the energy_estimate_dist variable
+! [review] - AJWT: The inclusion of the energy_estimate_dist is inelegant - can't it be extracted in a separate function?
         ! Out (optional):
         !   sd_shift_dist: standard distribution of the shift distribution.
         !       Obtained as sqrt(<S^2>-<S>^2) for instantaneous shift values.
@@ -769,7 +771,7 @@ contains
 
     subroutine reset_blocking_info(bl)
 
-        ! Subroutine to clear all stored blocking information to it's original state.
+        ! Subroutine to clear all stored blocking information to its original state.
         ! This is of use when using an initial short period of calculation to optimise
         ! various parameters, before using optimal parameters for the rest of the
         ! calculation.
@@ -823,12 +825,20 @@ contains
 
     subroutine update_shift_damping(qs, bl, energy_estimate_dist)
 
-        ! Array containing info on distributions of energy estimators (proj
-        ! energy components and shift).
-        ! energy_estimate_dist(:,1) contains means, energy_estimate_dist(:,2)
-        !   contains standard deviations.
-        ! energy_estimate_dist(i,:) gives information on parameter
-        ! corresponding to enum within qmc_data.
+! [review] - AJWT: Description needed.  NB This should only be called on the parent processor.
+        ! In/Out:
+! [review] - AJWT: These need to be checked.
+        !   qs: qmc_state 
+        !   bl: Information needed to peform blocking on the fly.
+
+        ! In:
+        !   energy_estimate_dist(:,1) contains means, energy_estimate_dist(:,2)
+        !       Array containing info on distributions of energy estimators (proj
+        !           energy components and shift).
+        !       energy_estimate_dist(:,1) contains means, energy_estimate_dist(:,2)
+        !           contains standard deviations.
+        !       energy_estimate_dist(i,:) gives information on parameter
+        !           corresponding to enum within qmc_data.
 
         use parallel
         use qmc_data, only: qmc_state_t, blocking_t
@@ -847,6 +857,7 @@ contains
         end if
 #endif
         modified = .false.
+! [review] - AJWT: Comments as to what each shift_damping_status means would be good (though they are also in qmc_data)
         if (qs%shift_damping_status < 0) then
             continue
         else if (qs%shift_damping_status == 0) then
@@ -870,6 +881,8 @@ contains
                     ! destabilise calculation.
                     if (bl%n_increased_damping >= 1) then
                         bl%n_increased_damping = bl%n_increased_damping - 1
+! [review] - AJWT: Perhaps prefix these messages with something to indicate what we're doing
+! [review] - AJWT: e.g. "# Auto-Shift-Damping: Waiting for calculation to settle down."
                         write (6, '("# Waiting for calculation to settle down.")')
                         qs%shift_damping_status = 1
                     else
@@ -921,6 +934,13 @@ contains
 
     subroutine receive_shift_updates(ireport, start_ireport, qs)
 
+        ! In/Out:
+! [review] - AJWT: These need to be filled in.
+        !   start_ireport:
+        !   qs:
+        ! In:
+        !   ireport:
+        
         ! Subroutine to receive updates to shift on non-parent processors within an mpi calculation.
         ! As all shift damping optimisation is performed on the parent processor, we must ensure that
         ! other nodes are correctly updated. The number of mpi_bcast calls must match exactly those
