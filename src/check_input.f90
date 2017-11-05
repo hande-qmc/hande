@@ -407,6 +407,7 @@ contains
             end if
         end if
 
+        ! [review] - JSS: if auto_shift_damping requires blocking_on_the_fly, why doesn't it simply enable it?
         if (blocking_in%auto_shift_damping .and. .not. blocking_in%blocking_on_the_fly) then
             call stop_all(this, 'Automatic shift damping optimisation requires blocking on the fly to be activated. &
                         & Please restart calculation with blocking enabled.')

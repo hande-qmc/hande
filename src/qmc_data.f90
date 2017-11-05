@@ -764,6 +764,7 @@ type qmc_state_t
     ! Internal flag to indicate status of shift damping optimisation.
     ! Positive values indicate the number of blocking iterations to go through before
     !   attempting optimisation. These will be incremented downwards every iteration.
+    ! [review] - JSS: rather than hard-coding these values, use an enumerator.
     ! 0 indicates we've accumulated information and need to check if the standard
     !   deviation of our shift is within acceptable limits. If not, we will attempt
     !   to optimise our shift damping.
