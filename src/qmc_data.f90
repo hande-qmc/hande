@@ -674,6 +674,7 @@ end type blocking_t
 
 type estimators_t
     ! Population of walkers on reference determinant/trace of density matrix.
+    ! [review] - JSS: This comment seems somewhat out of place and unclear.
     ! Note that when using complex populations, the estimators array of D0_population
     ! can be (a,b,0,0) (as in the case for nspaces = 4, e.g. fciqmc complex and replica tricks),
     ! whereas real(D0_population_comp) would then be (a,a,b,b). Using *_comp variables
@@ -690,6 +691,7 @@ type estimators_t
     !   <D_0|H|D_0> + \sum_{i/=0} <D_0|H|D_i> N_i/N_0
     ! and so proj_energy must be 'normalised' and averaged over the report loops
     ! accordingly.
+    ! [review] - JSS: This comment seems somewhat out of place and unclear.
     ! Note that when using complex populations, the estimators array of proj_energy
     ! can be (a,b,0,0) (as in the case for nspaces = 4), whereas real(proj_energy_comp)
     ! would then be (a,a,b,b).

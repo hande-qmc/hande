@@ -600,6 +600,7 @@ contains
                 ! We do not have to deal with legacy restart.
                 use_tmp = .true.
             else if ((present(restart_version_restart) .and. (restart_version_restart < 2)) .and. &
+                ! [review] - JSS: magic comparison? Leaky abstraction here...
                 (all(abs(real(proj_energy_comp_tmp,p)) > 0.0_p))) then
                 ! Legacy restart but proj. energy was not estimated by a shift which was zero.
                 use_tmp = .true.
@@ -622,6 +623,7 @@ contains
         qs%estimators%proj_energy_comp = cmplx(0.0, 0.0, p)
         qs%estimators%D0_population_comp = cmplx(0.0, 0.0, p)
         call alloc_det_info_t(sys, cdet)
+        ! [review] - JSS: still wrong for CCMC.
         do idet = 1, qs%psip_list%nstates
             cdet%f = qs%psip_list%states(:,idet)
             call decode_det(sys%basis, cdet%f, cdet%occ_list)
