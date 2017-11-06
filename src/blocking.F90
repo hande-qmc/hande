@@ -24,6 +24,9 @@ implicit none
 ! [review] - VAN: How well does restarting work when restart blocking is not implemented yet?
 ! [reply] - CJCS: What do you mean how well? Once the optimisation is done this functionality
 ! [reply] - CJCS: doesn't reply upon blocking-on-the-fly, so there aren't any issues with restarts.
+! [reply2] - VAN: Cool, so I guess as long as enough data is taken so that optimisation can be done before
+! [reply2] - VAN: restart, we are good. I guess it would only stuggle with short data sets until we have
+! [reply2] - VAN: blocking-on-the-fly for restarts? Or is it always independent?
 ! [review] - VAN: How well does auto shift damping work with (complex) replica tricks? - Maybe add a test as that
 ! [review] - VAN: might stress test it.
 ! [reply] - CJCS: I haven't tested with replica tricks or complex, as I thought it better to
@@ -31,6 +34,7 @@ implicit none
 ! [reply] - CJCS: with every option. I can't remember the state of complex on-the-fly reblocking,
 ! [reply] - CJCS: so that might be an issue, but replica tricks will be fine if we can use the
 ! [reply] - CJCS: same shift damping for both spaces. For now I'll block them at check_input.
+! [reply2] - VAN: Sure, in my opinion that is good if you could put a check into check_input.
 
 contains
 

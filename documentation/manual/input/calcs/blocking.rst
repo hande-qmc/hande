@@ -88,13 +88,10 @@ blocking analysis on the fly.
     be between 50% and 200% of that of the instantaneous projected energy, though this could easily be exposed to
     the user if required.
 
-..
-    [review] - VAN: What happens if I do not provide a shift damping value in the qmc table but there is also none
-    in the restart file due to legacy?
-    [reply] - CJCS: The shift damping defaults to the original default, 0.05.
-
     .. note::
         This approach will modify the shift damping to ensure a reasonable variation in the shift during a calculation.
         Updates to the shift damping will be printed within the output file, and the final shift damping written into
         restart files to be used in any restarted calculations. If no shift_damping is provided to a restarted
-        calculation in the qmc table the final value from the restarted calculation will be used.
+        calculation in the qmc table the final value from the restarted calculation will be used. If we read in from a
+        legacy restart file and no shift_damping is provided in the qmc table, the shift_damping defaults to the
+        original default, 0.05.
