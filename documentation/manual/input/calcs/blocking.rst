@@ -52,7 +52,7 @@ blocking analysis on the fly.
 
     Optinal. Default: 0
 
-    One of two conditions for termination of the calculation together with ``inverse_frational_error``.
+    One of two conditions for termination of the calculation together with ``blocks_used``.
     This specifies the upper limit of the sum of standard error and the error in error of projected energy.
 
 ``min_blocks_used``
@@ -60,12 +60,13 @@ blocking analysis on the fly.
 
     Optional. Default: 10
 
-..
-    [review] - AJWT: It isn't clear to me what exactly this does or how it works.
-
-    One of two conditions for termination of the calculation together with ``error_limit``.
-    This specifies the lower limit of the number of blocks used for blocking analysis.
-    Larger ``min_blocks_used`` ensures a more reliable blocking analysis.
+    The minimum number of optimal reblock lengths required for a calculation to
+    terminate. The calculation will not terminate due to the standard error
+    falling below ``error_limit`` until at least this number of optimal
+    reblock lengths are included within the calculation. This ensures that
+    our error estimate is reliable at termination.
+    Larger ``min_blocks_used`` ensures a more reliable blocking analysis but
+    increases the minimum length of calculations.
 
 ``blocks_used``
     type: real.
@@ -73,7 +74,7 @@ blocking analysis on the fly.
     Optional. Default: (huge)
 
     Irrelevant of the error_limit, if the number of blocks used to estimate the standard error of projected energy
-    is less than the ``blocks_used``, the calculation is terminated. Larger ``blocks_used`` ensures a more reliable
+    is more than the ``blocks_used``, the calculation is terminated. Larger ``blocks_used`` ensures a more reliable
     blocking analysis.
 
 ``auto_shift_damping``
@@ -90,6 +91,7 @@ blocking analysis on the fly.
 ..
     [review] - VAN: What happens if I do not provide a shift damping value in the qmc table but there is also none
     in the restart file due to legacy?
+    [reply] - CJCS: The shift damping defaults to the original default, 0.05.
 
     .. note::
         This approach will modify the shift damping to ensure a reasonable variation in the shift during a calculation.

@@ -224,7 +224,11 @@ algorithms and control the core settings in the algorithms.
 
     Optional.  Default: 0.05.
 
-    The shift damping factor, :math:`\xi`.
+    The shift damping factor, :math:`\xi`. This can be optimised using the
+    ``auto_shift_damping`` keyword (see :ref:`blocking_table`).
+    On restarting the final value in the previous calculation will replace
+    the usual default value if ``shift_damping`` is not specified.
+
 ``vary_shift_from``
     type: float or string.
 

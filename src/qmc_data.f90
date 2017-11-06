@@ -309,17 +309,20 @@ type blocking_in_t
     ! energy. If this value is reached calculation is terminated. Default = 0
     real(p) :: error_limit = 0
 ! [review] - AJWT: [also see docs].  Not entirely clear what this means.
-    ! Minimum number of blocks used to terminate the calculation.
-    ! The blocking analysis is more reliable with more blocks used.
-    ! The calculation terminated if the standard error of projected energy is
-    ! below the error_limit and the number_of_blocks used is above
-    ! min_blocks_used. Default = 10
+! [reply] - CJCS: Not in this review, but I've rephrased nontheless- do the new
+! [reply] - CJCS: comments help or hinder?
+    ! The minimum number of optimal block lengths required for a calculation to
+    ! terminate. The calculation will not terminate due to the standard error
+    ! falling below error_limit until at least this number of optimal
+    ! reblock lengths are included within the calculation. This ensures that
+    ! our error estimate is reliable at termination.
     real(p) :: min_blocks_used = 10.0_p
     ! The lower limit of the number_of_blocks used to terminate the calculation.
     ! The calculation is terminated if this condition is met irrelevant of
     ! the standard error of the projected energy. Default = (huge)
     real(p) :: blocks_used = huge(1.0_p)
-    ! [review] - VAN: add comment here
+    ! Enable automatic optimisation of the shift damping using the standard
+    ! deviations of the shift and projected energy distributions.
     logical :: auto_shift_damping = .false.
 end type
 
@@ -641,7 +644,8 @@ type blocking_t
     integer :: n_saved = 1
     ! Optimal blocksize saved for the calculation of number of blocks used.
     integer :: opt_bl_size=0
-    ! [review] - VAN: add comment here
+    ! Number of times we've increased the shift damping during calculation. This is to avoid
+    ! the shift damping becoming too large for a stable calculation.
     integer :: n_increased_damping = 0
     ! We need a logical flag to tell us when we need to communicate to non-parent processes
     ! that reblocking has started. We can detect this on other processes (start_ireport < 0
@@ -765,6 +769,9 @@ type qmc_state_t
     ! Positive values indicate the number of blocking iterations to go through before
     !   attempting optimisation. These will be incremented downwards every iteration.
     ! [review] - JSS: rather than hard-coding these values, use an enumerator.
+    ! [reply] - CJCS: I'm unsure how to use an enumerator and keep the functionality
+    ! [reply] - CJCS: of using positive values to encode the number of iterations
+    ! [reply] - CJCS: we have to collect data over. Any suggestions?
     ! 0 indicates we've accumulated information and need to check if the standard
     !   deviation of our shift is within acceptable limits. If not, we will attempt
     !   to optimise our shift damping.

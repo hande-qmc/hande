@@ -19,9 +19,18 @@ implicit none
 
 ! [review] - VAN: Tests: they need to be rerun as git hash is dirty. It would be great if a test
 ! [review] - VAN: is added that tests restarting by passing a qmc_state object.
+! [reply] - CJCS: My bad, must've forgotten to recompile when I was rearranging commits.
+! [reply] - CJCS: I'll add a test for that restart, probably in with the other short tests.
 ! [review] - VAN: How well does restarting work when restart blocking is not implemented yet?
+! [reply] - CJCS: What do you mean how well? Once the optimisation is done this functionality
+! [reply] - CJCS: doesn't reply upon blocking-on-the-fly, so there aren't any issues with restarts.
 ! [review] - VAN: How well does auto shift damping work with (complex) replica tricks? - Maybe add a test as that
 ! [review] - VAN: might stress test it.
+! [reply] - CJCS: I haven't tested with replica tricks or complex, as I thought it better to
+! [reply] - CJCS: get this basic functionality developed and tested before trying to combine
+! [reply] - CJCS: with every option. I can't remember the state of complex on-the-fly reblocking,
+! [reply] - CJCS: so that might be an issue, but replica tricks will be fine if we can use the
+! [reply] - CJCS: same shift damping for both spaces. For now I'll block them at check_input.
 
 contains
 
@@ -263,14 +272,12 @@ contains
         !       block_std and block_cov for each block size is calculated. 0 is
         !       returned if there aren't sufficient blocks to calculate them.
 ! [review] - AJWT: These are presumably in the the energy_estimate_dist variable
+! [reply] - CJCS: Sorry yes, all combined now.
 ! [review] - AJWT: The inclusion of the energy_estimate_dist is inelegant - can't it be extracted in a separate function?
+! [reply] - CJCS: It could be but this would duplicate the standard deviation calculation, which is itself a bit messy.
         ! Out (optional):
-        !   sd_shift_dist: standard distribution of the shift distribution.
-        !       Obtained as sqrt(<S^2>-<S>^2) for instantaneous shift values.
-        !   sd_proj_numer_dist: standard distribution of the projected energy
-        !       numerator distribution.
-        !   sd_proj_denom_dist: stardard deviation of the instantaneous reference
-        !       population distribution.
+        !   energy_estimate_dist: information on instantaneous distributions of
+        !       shift and projected energy numberator and denominator.
 
         use qmc_data, only: blocking_t
         use const, only: p
@@ -825,19 +832,25 @@ contains
 
     subroutine update_shift_damping(qs, bl, energy_estimate_dist)
 
-! [review] - AJWT: Description needed.  NB This should only be called on the parent processor.
+        ! Updates the shift damping according to the stage of a shift damping
+        ! optimisation we are in. This should only be called on the parent
+        ! processor, which broadcasts the resulting values to other processors.
+        ! The mpi broadcasts are recieved within receive_shift_updates.
+
         ! In/Out:
 ! [review] - AJWT: These need to be checked.
-        !   qs: qmc_state 
+! [reply] - CJCS: What need to be checked?
+        !   qs: qmc_state object containing information on current state of
+        !           qmc calculation.
         !   bl: Information needed to peform blocking on the fly.
 
         ! In:
-        !   energy_estimate_dist(:,1) contains means, energy_estimate_dist(:,2)
+        !   energy_estimate_dist(:,:)
         !       Array containing info on distributions of energy estimators (proj
         !           energy components and shift).
         !       energy_estimate_dist(:,1) contains means, energy_estimate_dist(:,2)
         !           contains standard deviations.
-        !       energy_estimate_dist(i,:) gives information on parameter
+        !       energy_estimate_dist(i,:) gives information on parameters
         !           corresponding to enum within qmc_data.
 
         use parallel
@@ -857,7 +870,7 @@ contains
         end if
 #endif
         modified = .false.
-! [review] - AJWT: Comments as to what each shift_damping_status means would be good (though they are also in qmc_data)
+        ! See qmc_data for description of each stage of shift_damping_status.
         if (qs%shift_damping_status < 0) then
             continue
         else if (qs%shift_damping_status == 0) then
@@ -881,38 +894,36 @@ contains
                     ! destabilise calculation.
                     if (bl%n_increased_damping >= 1) then
                         bl%n_increased_damping = bl%n_increased_damping - 1
-! [review] - AJWT: Perhaps prefix these messages with something to indicate what we're doing
-! [review] - AJWT: e.g. "# Auto-Shift-Damping: Waiting for calculation to settle down."
-                        write (6, '("# Waiting for calculation to settle down.")')
+                        write (6, '("# Auto-Shift-Damping: Waiting for calculation to settle down.")')
                         qs%shift_damping_status = 1
                     else
                         modified = .true.
-                        write (6, '("# Increasing shift damping to compensate for slow approach.")')
+                        write (6, '("# Auto-Shift-Damping: Increasing shift damping to compensate for slow approach.")')
                         qs%shift_damping = min(1.0,max(0.05,qs%shift_damping * 5.0_p))
                         bl%n_increased_damping = bl%n_increased_damping + 1
                         qs%shift_damping_status = 1
                     end if
                 else if (isnan(energy_estimate_dist(dt_shift,2))) then
                     ! Not enough data to know if optimised; wait.
-                    write (6, '("# Waiting to accumulate data on standard deviations.")')
+                    write (6, '("# Auto-Shift-Damping: Waiting to accumulate data on standard deviations.")')
                     qs%shift_damping_status = 2
                 else if (sd_proj_energy_dist * 2 < energy_estimate_dist(dt_shift,2) .or. &
                         sd_proj_energy_dist * 0.1_p > energy_estimate_dist(dt_shift,2)) then
                     modified = .true.
                     ! Outside acceptable range- attempt optimisation.
-                    write (6, '("# Attemping shift damping optimisation.")')
+                    write (6, '("# Auto-Shift-Damping: Attemping shift damping optimisation.")')
                     ! Use linear relationship between sqrt(<S^2>-<S>^2) and shift damping
                     ! parameter to set shift damping such that the standard deviation of
                     ! the shift is approximately 1.0 times that of the projected energy.
                     qs%shift_damping = qs%shift_damping * 1.0_p * sd_proj_energy_dist / energy_estimate_dist(dt_shift,2)
                 else
                     qs%shift_damping_status = -1
-                    write (6, '("# Shift damping optimised; variance within acceptable range.")')
+                    write (6, '("# Auto-Shift-Damping: Shift damping optimised; variance within acceptable range.")')
                 end if
             end if
 
             if (modified) then
-                write (6, '("# Shift damping changed to",1X,es17.10)') qs%shift_damping
+                write (6, '("# Auto-Shift-Damping: Shift damping changed to",1X,es17.10)') qs%shift_damping
                 qs%shift= qs%estimators(1)%proj_energy/qs%estimators(1)%D0_population
                 call reset_blocking_info(bl)
             end if
@@ -935,11 +946,10 @@ contains
     subroutine receive_shift_updates(ireport, start_ireport, qs)
 
         ! In/Out:
-! [review] - AJWT: These need to be filled in.
-        !   start_ireport:
-        !   qs:
+        !   start_ireport: report at which reblocking-on-the-fly started.
+        !   qs: qmc_state_t object, describing current state of qmc calculation.
         ! In:
-        !   ireport:
+        !   ireport: Current report number.
         
         ! Subroutine to receive updates to shift on non-parent processors within an mpi calculation.
         ! As all shift damping optimisation is performed on the parent processor, we must ensure that
