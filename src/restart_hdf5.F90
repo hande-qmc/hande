@@ -442,8 +442,11 @@ module restart_hdf5
                     call hdf5_write(subgroup_id, dref, kinds, shape(qs%ref%f0, kind=int_64), qs%ref%f0)
 
                     call hdf5_write(subgroup_id, dhsref, kinds, shape(qs%ref%hs_f0, kind=int_64), qs%ref%hs_f0)
+                    
+                    call hdf5_write(subgroup_id, dref_pop, kinds, shape(qs%estimators%D0_population, kind=int_64),&
+                                    qs%estimators%D0_population)
 
-                    call hdf5_write(subgroup_id, dref_pop, kinds, shape(real(qs%estimators%D0_population_comp), kind=int_64),&
+                    call hdf5_write(subgroup_id, dref_pop_re, kinds, shape(real(qs%estimators%D0_population_comp), kind=int_64),&
                                     real(qs%estimators%D0_population_comp))
 
                     call hdf5_write(subgroup_id, dref_pop_im, kinds, &
