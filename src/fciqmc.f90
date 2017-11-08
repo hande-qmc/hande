@@ -209,9 +209,12 @@ contains
             call init_non_blocking_comm(qs%spawn_store%spawn, req_data_s, send_counts, qs%spawn_store%spawn_recv, &
                                         restart_in%read_restart)
             call initial_fciqmc_status(sys, qmc_in, qs, .true., send_counts(iproc)/qs%spawn_store%spawn_recv%element_len, &
-                                        io_unit=io_unit, restarting=restarting, restart_version_restart=restart_version_restart)
+                                        io_unit=io_unit, restarting_readin=restart_in%read_restart, &
+                                        restarting_qs=present(qmc_state_restart), &
+                                        restart_version_restart=restart_version_restart)
         else
-            call initial_fciqmc_status(sys, qmc_in, qs, io_unit=io_unit, restarting=restarting, &
+            call initial_fciqmc_status(sys, qmc_in, qs, io_unit=io_unit, restarting_readin=restart_in%read_restart, &
+                                        restarting_qs=present(qmc_state_restart), &
                                         restart_version_restart=restart_version_restart)
         end if
         ! Initialise timer.

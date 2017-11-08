@@ -489,8 +489,9 @@ contains
         ! Main fciqmc loop.
         if (parent) call write_qmc_report_header(qs%psip_list%nspaces, cmplx_est=sys%read_in%comp, &
                                             rdm_energy=ccmc_in%density_matrices, nattempts=.true., io_unit=io_unit)
-        call initial_fciqmc_status(sys, qmc_in, qs, doing_ccmc=.true., io_unit=io_unit, restarting=restarting, &
-                                restart_version_restart = restart_version_restart)
+        call initial_fciqmc_status(sys, qmc_in, qs, doing_ccmc=.true., io_unit=io_unit, &
+            restarting_readin=restart_in%read_restart, restarting_qs=present(qmc_state_restart), &
+            restart_version_restart=restart_version_restart)
         ! Initialise timer.
         call cpu_time(t1)
 

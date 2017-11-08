@@ -534,8 +534,8 @@ contains
 
 ! --- Output routines ---
 
-    subroutine initial_fciqmc_status(sys, qmc_in, qs, nb_comm, spawn_elsewhere, doing_ccmc, io_unit, restarting, &
-                            restart_version_restart)
+    subroutine initial_fciqmc_status(sys, qmc_in, qs, nb_comm, spawn_elsewhere, doing_ccmc, io_unit, restarting_readin, &
+                            restarting_qs, restart_version_restart)
 
         ! Calculate the projected energy based upon the initial walker
         ! distribution (either via a restart or as set during initialisation)
@@ -553,7 +553,8 @@ contains
         !       non-blocking calculations.
         !    doing_ccmc: true if doing ccmc calculation.
         !    io_unit: io unit to write any reporting to.
-        !    restarting: true if restarting
+        !    restarting_readin: true if restarting with a restart file
+        !    restarting_qs: true if restarting by passing a qmc_state object
         !    restart_version_restart: version of restart file to restart from.
 
         use determinants, only: det_info_t, alloc_det_info_t, dealloc_det_info_t, decode_det
@@ -572,16 +573,16 @@ contains
         type(sys_t), intent(in) :: sys
         type(qmc_in_t), intent(in) :: qmc_in
         type(qmc_state_t), intent(inout), target :: qs
-        logical, optional, intent(in) :: nb_comm, doing_ccmc, restarting
+        logical, optional, intent(in) :: nb_comm, doing_ccmc, restarting_readin, restarting_qs
         integer, optional, intent(in) :: spawn_elsewhere, io_unit, restart_version_restart
 
-        integer :: idet, ispace
+        integer :: idet, ispace, restart_version_restart_loc
         real(dp) :: ntot_particles(qs%psip_list%nspaces)
         real(p) :: real_population(qs%psip_list%nspaces), weighted_population(qs%psip_list%nspaces)
         type(det_info_t) :: cdet
         type(hmatel_t) :: hmatel
         type(excit_t) :: D0_excit
-        logical :: nb_comm_local, doing_ccmc_loc, use_tmp
+        logical :: nb_comm_local, doing_ccmc_loc, restarting_readin_loc, restarting_qs_loc, use_tmp
         real(p) :: proj_energy_tmp(qs%psip_list%nspaces), D0_population_tmp(qs%psip_list%nspaces)
         complex(p) :: proj_energy_comp_tmp(qs%psip_list%nspaces), D0_population_comp_tmp(qs%psip_list%nspaces)
 #ifdef PARALLEL
@@ -589,28 +590,38 @@ contains
         real(p) :: proj_energy_sum(qs%psip_list%nspaces), D0_population_sum(qs%psip_list%nspaces)
 #endif
         
+        restarting_readin_loc = .false.
+        if (present(restarting_readin)) restarting_readin_loc = restarting_readin
+        restarting_qs_loc = .false.
+        if (present(restarting_qs)) restarting_qs_loc = restarting_qs
+        restart_version_restart_loc = 0
+        if (present(restart_version_restart)) restart_version_restart_loc = restart_version_restart
+
         use_tmp = .false.
         ! Make sure projected energy/ D0 pop. does not get overwritten if restarting.
-        if (present(restarting) .and. (restarting == .true.)) then
+        if ((restarting_readin_loc) .or. (restarting_qs_loc)) then
             D0_population_tmp = qs%estimators%D0_population
             D0_population_comp_tmp = qs%estimators%D0_population_comp
             proj_energy_tmp = qs%estimators%proj_energy
             proj_energy_comp_tmp = qs%estimators%proj_energy_comp
-            if (present(restart_version_restart) .and. (restart_version_restart > 1)) then
-                ! We do not have to deal with legacy restart.
-                use_tmp = .true.
-            else if ((present(restart_version_restart) .and. (restart_version_restart < 2)) .and. &
-                ! [review] - JSS: magic comparison? Leaky abstraction here...
-                (all(abs(real(proj_energy_comp_tmp,p)) > 0.0_p))) then
-                ! Legacy restart but proj. energy was not estimated by a shift which was zero.
+            if (restarting_qs_loc) then
                 use_tmp = .true.
             else
-                ! This might be conservative but since one element of qs%estimators%proj_energy was zero
-                ! which could have been because of the shift, we do not use estimated proj. energies.
-                if (parent) then
-                    call warning('initial_fciqmc_status', 'Even though we are restarting a CCMC/FCIQMC'// &
-                        ' calculation, information from previous calculation cannot be used to estimate projected energy.'// &
-                        ' This is probably because the shift/one of the shifts is zero.')
+                if (restart_version_restart_loc > 1) then
+                    ! We do not have to deal with legacy restart.
+                    use_tmp = .true.
+                else if (((all(abs(real(proj_energy_comp_tmp,p)) > 0.0_p)) .and. (sys%read_in%comp)) &
+                    .or. ((all(abs(proj_energy_tmp) > 0.0_p)) .and. (sys%read_in%comp == .false.))) then
+                    ! Legacy restart but proj. energy was not estimated by a shift which was zero.
+                    use_tmp = .true.
+                else
+                    ! This might be conservative but since one element of qs%estimators%proj_energy was zero
+                    ! which could have been because of the shift, we do not use estimated proj. energies.
+                    if (parent) then
+                        call warning('initial_fciqmc_status', 'Even though we are restarting a CCMC/FCIQMC'// &
+                            ' calculation, information from previous calculation cannot be used to estimate projected energy.'// &
+                            ' This is probably because the shift/one of the shifts is zero.')
+                    end if
                 end if
             end if
         end if
@@ -623,7 +634,7 @@ contains
         qs%estimators%proj_energy_comp = cmplx(0.0, 0.0, p)
         qs%estimators%D0_population_comp = cmplx(0.0, 0.0, p)
         call alloc_det_info_t(sys, cdet)
-        ! [review] - JSS: still wrong for CCMC.
+        ! [todo] - The following does not estimate the correct estimators for CCMC. Might be worth considering fixing that.
         do idet = 1, qs%psip_list%nstates
             cdet%f = qs%psip_list%states(:,idet)
             call decode_det(sys%basis, cdet%f, cdet%occ_list)
