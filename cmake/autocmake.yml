@@ -6,24 +6,35 @@ default_build_type: debug
 language:
   - Fortran
   - C
-  - CXX
 
 modules:
 - compilers:
   - source:
     - '%(url_root)modules/fc.cmake'
     - '%(url_root)modules/cc.cmake'
-    - '%(url_root)modules/cxx.cmake'
-- plugins:
+- cmake:
   - source:
-    - 'custom/options_wrappers.cmake'
     - '%(url_root)modules/safeguards.cmake'
     - '%(url_root)modules/default_build_paths.cmake'
-    - '%(url_root)modules/src.cmake'
+    - '%(url_root)modules/math_libs.cmake'
+    - 'custom/options_wrappers.cmake'
+    - 'custom/mpi.cmake'
+    - 'custom/omp.cmake'
+- nonbooloptions:
+  - source:
     - 'custom/dsfmt_mexp.cmake'
+    - 'custom/detsize.cmake'
+    - 'custom/popsize.cmake'
+- booloptions:
+  - source:
     - 'custom/hdf5.cmake'
-    - 'custom/trlan.cmake'
-    - 'custom/libuuid.cmake'
-    - 'custom/git_info.cmake'
-    - 'custom/build_info.cmake'
+    - 'custom/uuid.cmake'
+    - 'custom/lanczos.cmake'
+    - 'custom/single_precision.cmake'
+    - 'custom/backtrace.cmake'
+    - 'custom/popcnt.cmake'
+- sourcefiles:
+  - source:
+    - 'custom/print_info.cmake'
     - 'custom/lib.cmake'
+    - '%(url_root)modules/src.cmake'

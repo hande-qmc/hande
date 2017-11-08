@@ -4,17 +4,10 @@ add_library(external
     MurmurHash2.h
   )
 
-if(NOT USE_LANCZOS)
-  target_sources(external
-    PUBLIC
-      trl_info.f90
-    )
-  # TODO
-  #target_link_libraries(external
-  #  PUBLIC
-  #    ${TRLAN_LIBRARIES}
-  #  )
-endif()
+target_sources(external
+  PUBLIC
+    $<$<BOOL:${USE_LANCZOS}>:trl_info.f90>
+  )
 
 set_target_properties(external
   PROPERTIES

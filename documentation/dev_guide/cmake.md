@@ -1,34 +1,51 @@
 # Rewriting HANDE's build system
 
-## Directory structure
-
-`lib` has been split into two subdirectories:
-  - `lib`. Contains all the source files that were previously under `lib/local`
-  - `external`. Contains all the sources that were previously under `lib` except stuff in `lib/local`:
-    1. `aotus`.
-    2. `dSFMT-src-2.2`
-    3. `dSFMT_F03_interface`
-    4. `external` This directory has been renamed to... _find a name_
-    5. `cephes`
-  I have dropped:
-    1. `aotus-5.2` and Lua 5.2 support to make the transition to CMake easier.
+This document is still a work-in-progress!!!
 
 The contents of `src` are compiled into a library `libhande` and an executable `hande.x`.
-The directory is split into subdirectories, to give the code some more structure.
 
-## Structure of src
+I have dropped:
+  1. `aotus-5.2` and Lua 5.2 support to make the transition to CMake easier.
 
-I have tried to organize source files into a hierarchical structure that should
-help avoid circular dependencies. All subdirectories but `core` may depend on stuff
-in other subdirectories in `src`. The dependencies are explicitly listed in the `CMakeLists.txt`.
-- `core` contains source code that depends on stuff in `lib`
-- `top_level` contains source code that doesn’t clearly belong to any other
-  subdirectory _and_ uses a lot of stuff from many other modules.
-- `qmc`
-- `dmqmc`
-- `fciqmc`
-- `ccmc`
-- `top_level`
+## CMake options: user-facing and internals
+
+Conventions:
+- `ENABLE_<component>` are _boolean_, **user-facing** options to enable optional components.
+  The CMake code will check for availability of additional dependencies
+  and set a corresponding `USE_<component>` **internal** option to `ON` or `OFF`.
+  These options can be mapped to preprocessor flags `-DENABLE_<component>`. These can be injected
+  into the build system generator by using `target_compile_definitions` using the following
+  pattern exploiting CMake generator expressions:
+  ```
+  target_compile_definitions(<target-name>
+    PRIVATE
+      $<$<BOOL:${USE_<option>}>:<option-preprocessor-variable>>
+      $<$<NOT:$<BOOL:${USE_<option>>}>>:<option-preprocessor-variable>>
+    )
+  ```
+  Options in this class:
+    * `ENABLE_BACKTRACE`. Sets the `DISABLE_BACKTRACE` preprocessor variable.
+    * `ENABLE_HDF5`. Sets the `DISABLE_HDF5` preprocessor variable.
+    * `ENABLE_SINGLE_PRECISION`. Sets the `SINGLE_PRECISION` preprocessor variable.
+    * `ENABLE_MPI`. Sets the `PARALLEL` preprocessor variable.
+    * `ENABLE_OPENMP`.
+    * `ENABLE_INTRINSIC_POPCNT`. Set the `USE_POPCNT` preprocessor variable.
+    * `ENABLE_UUID`. Sets the `DISABLE_UUID` preprocessor variable.
+    * `ENABLE_LANCZOS`. Sets the `DISABLE_LANCZOS` preprocessor variable.
+    * `ENABLE_ScaLAPACK`. Sets the `DISABLE_SCALAPACK` preprocessor variable.
+- `HANDE_<option>` are _non-boolean_, **user-facing** options. CMake will check for consistency
+  against their available valid values. These options can be mapped to preprocessor `-D<option>` flags
+  that can be injected into the build system generator by using `target_compile_definitons`:
+  ```
+  target_compile_definitions(<target-name>
+    PRIVATE
+      <option-preprocessor-variable>=${HANDE_<option>}
+    )
+  ```
+  Options in this class:
+    * `HANDE_DET_SIZE`. Its value is used to set the `DET_SIZE` preprocessor variable.
+    * `HANDE_POP_SIZE`. Its value is used to set the `POP_SIZE` preprocessor varaible.
+    * `HANDE_DSFMT_MEXP`. Its value is used to set the `DSFMT_MEXP` preprocessor variable.
 
 ## Files renamed
 

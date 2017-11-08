@@ -10,12 +10,22 @@ target_link_libraries(hande-shared
     HANDE::aotus
   )
 
-if(NOT USE_HDF5)
-  target_compile_definitions(hande-shared
-    PUBLIC
-      DISABLE_HDF5
-    )
-endif()
+target_compile_definitions(hande-shared
+  PRIVATE
+    $<$<BOOL:${USE_INTRINSIC_POPCNT}>:USE_POPCNT>
+    $<$<NOT:$<BOOL:${USE_HDF5}>>:DISABLE_HDF5>
+    $<$<NOT:$<BOOL:${USE_LANCZOS}>>:DISABLE_LANCZOS>
+    $<$<BOOL:${USE_MPI}>:PARALLEL>
+    $<$<NOT:$<BOOL:${USE_ScaLAPACK}>>:DISABLE_SCALAPACK>
+    $<$<BOOL:${USE_SINGLE_PRECISION}>:SINGLE_PRECISION>
+  )
+
+target_compile_options(hande-shared
+  PRIVATE
+    ${HANDE_Fortran_FLAGS}
+    $<$<CONFIG:Debug>:${HANDE_Fortran_FLAGS_DEBUG}>
+    $<$<CONFIG:Release>:${HANDE_Fortran_FLAGS_RELEASE}>
+  )
 
 target_sources(hande-shared
   PRIVATE
@@ -103,18 +113,6 @@ target_sources(hande-shared
     simple_fciqmc.f90
 )
 
-if(NOT USE_TRLAN)
-  target_compile_definitions(hande-shared
-    PUBLIC
-      DISABLE_LANCZOS
-    )
-else()
-  target_sources(hande-shared
-    PRIVATE
-      fci_lanczos.F90
-  )
-endif()
-
 target_sources(hande-shared
   PRIVATE
     hamiltonian.f90
@@ -178,36 +176,18 @@ set_target_properties(hande-shared PROPERTIES SOVERSION 1 #${PROJECT_VERSION_MAJ
                                             OUTPUT_NAME "hande"
                                             EXPORT_NAME "hande")
 
-# TODO Make the HANDE library discoverable
-#install(TARGETS hande-shared
-#        EXPORT "${PROJECT_NAME}Targets-shared"
-#        RUNTIME DESTINATION ${CMAKE_INSTALL_LIBDIR}
-#        LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR})
-
-# TODO This needs to be rewritten for MKL and ScaLAPACK
-find_package(BLAS REQUIRED)
-find_package(LAPACK REQUIRED)
-
 add_executable(hande.x hande.f90)
 target_link_libraries(hande.x
   PRIVATE
     hande-shared
     HANDE::aotus
   PUBLIC
-    ${BLAS_LIBRARIES}
-    ${LAPACK_LIBRARIES}
+    ${MATH_LIBS}
+    ${ScaLAPACK_LIBRARIES}
   )
 
-if(USE_LIBUUID)
-  target_link_libraries(hande.x
-    PUBLIC
-      ${UUID_LIBRARIES}
-    )
-endif()
-
-if(USE_HDF5)
-  target_link_libraries(hande.x
-    PUBLIC
-      ${HDF5_Fortran_LIBRARIES}
-    )
-endif()
+target_link_libraries(hande.x
+  PUBLIC
+    $<$<BOOL:${USE_UUID}>:${UUID_LIBRARIES}>
+    $<$<BOOL:${USE_HDF5}>:${HDF5_Fortran_LIBRARIES}>
+  )

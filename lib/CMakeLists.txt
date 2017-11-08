@@ -4,7 +4,7 @@ add_subdirectory(external)
 add_subdirectory(local)
 
 # Compile dSFMT and dSFMT_F03_interface
-list(APPEND dSFMT_sources
+add_library(dSFMT OBJECT
   dSFMT-src-2.2/dSFMT-common.h
   dSFMT-src-2.2/dSFMT-params.h
   dSFMT-src-2.2/dSFMT-params11213.h
@@ -19,19 +19,13 @@ list(APPEND dSFMT_sources
   dSFMT-src-2.2/dSFMT-params86243.h
   dSFMT-src-2.2/dSFMT.c
   dSFMT-src-2.2/dSFMT.h
-  )
-list(APPEND dSFMT_F03_interface_sources
   dSFMT_F03_interface/dSFMT_interface.F90
   dSFMT_F03_interface/dSFMT_utils.c
   )
-add_library(dSFMT
-  OBJECT
-    ${dSFMT_sources}
-    ${dSFMT_F03_interface_sources}
-  )
 target_compile_definitions(dSFMT
   PRIVATE
-    -DDSFMT_MEXP=${DSFMT_MEXP}
+    DSFMT_MEXP=${HANDE_DSFMT_MEXP}
+    $<$<BOOL:${USE_MPI}>:PARALLEL>
   )
 target_include_directories(dSFMT
   PRIVATE

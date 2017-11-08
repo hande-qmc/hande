@@ -5,7 +5,7 @@
 cmake_minimum_required(VERSION 3.3 FATAL_ERROR)
 
 # project name
-project(HANDE Fortran C CXX)
+project(HANDE Fortran C)
 
 # do not rebuild if rules (compiler flags) change
 set(CMAKE_SKIP_RULE_DEPENDENCY TRUE)
@@ -22,15 +22,21 @@ set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${PROJECT_SOURCE_DIR}/cmake/downloade
 # included cmake modules
 include(autocmake_fc)
 include(autocmake_cc)
-include(autocmake_cxx)
-include(options_wrappers)
 include(autocmake_safeguards)
 include(autocmake_default_build_paths)
-include(autocmake_src)
+include(autocmake_math_libs)
+include(options_wrappers)
+include(mpi)
+include(omp)
 include(dsfmt_mexp)
+include(detsize)
+include(popsize)
 include(hdf5)
-include(trlan)
-include(libuuid)
-include(git_info)
-include(build_info)
+include(uuid)
+include(lanczos)
+include(single_precision)
+include(backtrace)
+include(popcnt)
+include(print_info)
 include(lib)
+include(autocmake_src)

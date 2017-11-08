@@ -22,12 +22,21 @@ Options:
   --extra-fc-flags=<EXTRA_FCFLAGS>       Extra Fortran compiler flags [default: ''].
   --cc=<CC>                              C compiler [default: gcc].
   --extra-cc-flags=<EXTRA_CFLAGS>        Extra C compiler flags [default: ''].
-  --cxx=<CXX>                            C++ compiler [default: g++].
-  --extra-cxx-flags=<EXTRA_CXXFLAGS>     Extra C++ compiler flags [default: ''].
-  --dsfmt-mexp=<DSFMT_MEXP>              An integer among 521, 1279, 2203, 4253, 11213, 19937, 44497, 86243, 1322049, 216091 [default: 19937].
-  --hdf5=<HDF5>                          C++ compiler [default: OFF].
-  --trlan=<TRLAN>                        Toggle use of TRLan [default: OFF].
-  --libuuid=<LIBUUID>                    Whether to activate UUID generation [default: OFF].
+  --blas=<BLAS>                          Detect and link BLAS library (auto or off) [default: auto].
+  --lapack=<LAPACK>                      Detect and link LAPACK library (auto or off) [default: auto].
+  --mkl=<MKL>                            Pass MKL flag to the Intel compiler and linker and skip BLAS/LAPACK detection (sequential, parallel, cluster, or off) [default: off].
+  --mpi                                  Enable MPI parallelization [default: False].
+  --scalapack=<ScaLAPACK_LIBRARIES>      Set ScaLAPACK libraries to be linked in [default: ].
+  --omp                                  Enable OpenMP parallelization [default: False].
+  --dsfmt-mexp=<HANDE_DSFMT_MEXP>        An integer among 521, 1279, 2203, 4253, 11213, 19937, 44497, 86243, 1322049, 216091 [default: 19937].
+  --det-size=<HANDE_DET_SIZE>            An integer among 32 or 64 [default: 32].
+  --pop-size=<HANDE_POP_SIZE>            An integer among 32 or 64 [default: 32].
+  --hdf5                                 Enable HDF5 [default: False].
+  --uuid                                 Whether to activate UUID generation [default: False].
+  --lanczos                              Toggle use of Lanczos diagonalisation [default: False].
+  --single                               Enable usage of single precision, where appropriate [default: False].
+  --backtrace                            Enable backtrace functionality [default: False].
+  --popcnt                               Enable use of intrinsic popcnt [default: False].
   --type=<TYPE>                          Set the CMake build type (debug, release, relwithdebinfo, minsizerel) [default: debug].
   --generator=<STRING>                   Set the CMake build system generator [default: Unix Makefiles].
   --show                                 Show CMake command and exit.
@@ -46,15 +55,28 @@ def gen_cmake_command(options, arguments):
     command = []
     command.append('FC={0}'.format(arguments['--fc']))
     command.append('CC={0}'.format(arguments['--cc']))
-    command.append('CXX={0}'.format(arguments['--cxx']))
     command.append(arguments['--cmake-executable'])
     command.append('-DEXTRA_FCFLAGS="{0}"'.format(arguments['--extra-fc-flags']))
     command.append('-DEXTRA_CFLAGS="{0}"'.format(arguments['--extra-cc-flags']))
-    command.append('-DEXTRA_CXXFLAGS="{0}"'.format(arguments['--extra-cxx-flags']))
-    command.append('-DDSFMT_MEXP="{0}"'.format(arguments['--dsfmt-mexp']))
-    command.append('-DHDF5="{0}"'.format(arguments['--hdf5']))
-    command.append('-DTRLAN="{0}"'.format(arguments['--trlan']))
-    command.append('-DLIBUUID="{0}"'.format(arguments['--libuuid']))
+    command.append('-DENABLE_BLAS={0}'.format(arguments['--blas']))
+    command.append('-DENABLE_LAPACK={0}'.format(arguments['--lapack']))
+    command.append('-DMKL_FLAG={0}'.format(arguments['--mkl']))
+    command.append('-DMATH_LIB_SEARCH_ORDER="MKL;ESSL;OPENBLAS;ATLAS;ACML;SYSTEM_NATIVE"')
+    command.append('-DBLAS_LANG=Fortran')
+    command.append('-DLAPACK_LANG=Fortran')
+    command.append('-DENABLE_MPI="{0}"'.format(arguments['--mpi']))
+    command.append('-DENABLE_ScaLAPACK="{0}"'.format(arguments['--mpi']))
+    command.append('-DScaLAPACK_LIBRARIES="{0}"'.format(arguments['--scalapack']))
+    command.append('-DENABLE_OPENMP="{0}"'.format(arguments['--omp']))
+    command.append('-DHANDE_DSFMT_MEXP="{0}"'.format(arguments['--dsfmt-mexp']))
+    command.append('-DHANDE_DET_SIZE="{0}"'.format(arguments['--det-size']))
+    command.append('-DHANDE_POP_SIZE="{0}"'.format(arguments['--pop-size']))
+    command.append('-DENABLE_HDF5="{0}"'.format(arguments['--hdf5']))
+    command.append('-DENABLE_UUID="{0}"'.format(arguments['--uuid']))
+    command.append('-DENABLE_LANCZOS="{0}"'.format(arguments['--lanczos']))
+    command.append('-DENABLE_SINGLE_PRECISION="{0}"'.format(arguments['--single']))
+    command.append('-DENABLE_BACKTRACE="{0}"'.format(arguments['--backtrace']))
+    command.append('-DENABLE_INTRINSIC_POPCNT="{0}"'.format(arguments['--popcnt']))
     command.append('-DCMAKE_BUILD_TYPE={0}'.format(arguments['--type']))
     command.append('-G "{0}"'.format(arguments['--generator']))
     if arguments['--cmake-options'] != "''":

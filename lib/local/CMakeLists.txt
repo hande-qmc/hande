@@ -1,5 +1,4 @@
-generate_git_info_header(${CMAKE_CURRENT_BINARY_DIR} git_info.h git_info.f90)
-generate_build_info_header(${CMAKE_CURRENT_BINARY_DIR} build_info.h)
+generate_info_header(${CMAKE_CURRENT_BINARY_DIR} print_info.c git_info.f90)
 
 add_library(coreutils
   OBJECT
@@ -18,7 +17,6 @@ add_library(coreutils
     parallel.F90
     ranking.f90
     utils.F90
-    print_info.c
   )
 
 target_include_directories(coreutils
@@ -28,25 +26,20 @@ target_include_directories(coreutils
 target_sources(coreutils
   PRIVATE
     ${CMAKE_CURRENT_BINARY_DIR}/git_info.f90
+    ${CMAKE_CURRENT_BINARY_DIR}/print_info.c
   )
-
+target_compile_definitions(coreutils
+  PUBLIC
+    DET_SIZE=${HANDE_DET_SIZE}
+    POP_SIZE=${HANDE_POP_SIZE}
+    $<$<NOT:$<BOOL:${USE_BACKTRACE}>>:DISABLE_BACKTRACE>
+    $<$<NOT:$<BOOL:${USE_UUID}>>:DISABLE_UUID>
+    $<$<NOT:$<BOOL:${USE_HDF5}>>:DISABLE_HDF5>
+    $<$<BOOL:${USE_SINGLE_PRECISION}>:SINGLE_PRECISION>
+  )
 set_target_properties(coreutils
   PROPERTIES
     POSITION_INDEPENDENT_CODE 1
   )
-
-if(NOT USE_LIBUUID)
-  target_compile_definitions(coreutils
-    PUBLIC
-      DISABLE_UUID
-    )
-endif()
-
-if(NOT USE_HDF5)
-  target_compile_definitions(coreutils
-    PUBLIC
-      DISABLE_HDF5
-    )
-endif()
 
 add_library(HANDE::coreutils ALIAS coreutils)
