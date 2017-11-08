@@ -25,6 +25,7 @@ Options:
   --blas=<BLAS>                          Detect and link BLAS library (auto or off) [default: auto].
   --lapack=<LAPACK>                      Detect and link LAPACK library (auto or off) [default: auto].
   --mkl=<MKL>                            Pass MKL flag to the Intel compiler and linker and skip BLAS/LAPACK detection (sequential, parallel, cluster, or off) [default: off].
+  --python=<PYTHON_INTERPRETER>          The Python interpreter (development version) to use. [default: ''].
   --mpi                                  Enable MPI parallelization [default: False].
   --scalapack=<ScaLAPACK_LIBRARIES>      Set ScaLAPACK libraries to be linked in [default: ].
   --omp                                  Enable OpenMP parallelization [default: False].
@@ -64,6 +65,7 @@ def gen_cmake_command(options, arguments):
     command.append('-DMATH_LIB_SEARCH_ORDER="MKL;ESSL;OPENBLAS;ATLAS;ACML;SYSTEM_NATIVE"')
     command.append('-DBLAS_LANG=Fortran')
     command.append('-DLAPACK_LANG=Fortran')
+    command.append('-DPYTHON_INTERPRETER="{0}"'.format(arguments['--python']))
     command.append('-DENABLE_MPI="{0}"'.format(arguments['--mpi']))
     command.append('-DENABLE_ScaLAPACK="{0}"'.format(arguments['--mpi']))
     command.append('-DScaLAPACK_LIBRARIES="{0}"'.format(arguments['--scalapack']))
