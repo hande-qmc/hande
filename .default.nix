@@ -2,7 +2,7 @@ with import <nixpkgs> {}; {
   handeEnv = stdenv.mkDerivation {
     name = "HANDE";
     buildInputs = [
-      atlasWithLapack
+      atlas
       ccache
       clang
       clang-analyzer
@@ -27,7 +27,6 @@ with import <nixpkgs> {}; {
       python35Packages.scipy
       python35Packages.sphinx
       python35Packages.sphinx_rtd_theme
-      python35Packages.sympy
     ];
   };
 }
