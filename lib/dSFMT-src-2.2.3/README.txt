@@ -1,3 +1,8 @@
+HANDE note:
+
+Upstream source is http://www.math.sci.hiroshima-u.ac.jp/~m-mat/MT/SFMT/.
+Only files required by HANDE are included here.
+
  =================================================================
  dSFMT ver. 2.2.1
  2011.11.10
