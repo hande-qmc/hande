@@ -128,6 +128,7 @@ type qmc_in_t
     ! They are varied in an attempt to make the means of |Hij|/pgen be the same for singles and doubles.
     ! Only used for excitation generators using pattempt_single/pattempt_double.
     ! If shift has already started varying, ignore pattempt_update.
+    ! [todo] - check whether restarting works correctly with pattempt_update
     logical :: pattempt_update = .false.
 
     ! timestep
