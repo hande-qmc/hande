@@ -443,6 +443,121 @@ contains
 
     end subroutine choose_ij_mol
 
+    subroutine choose_ij_spin_mol(rng, sys, cdet, i, j, ij_sym, ij_spin, pgen_ij, allowed_excitation)
+
+        ! Randomly select two occupied orbitals in a determinant from which
+        ! electrons are excited as part of a double excitation.
+        ! As opposed to choose_ij_mol, we first decide whether we want i and j
+        ! to have parallel spins or not. This is based on an idea of Alavi et al.
+        !
+        ! In:
+        !    sys: system object being studied.
+        !    cdet: the current determinant considered
+        ! In/Out:
+        !    rng: random number generator.
+        ! Out:
+        !    i, j: orbitals in determinant from which two electrons are excited.
+        !        Note that i,j are ordered such that i<j.
+        !    ij_sym: symmetry conjugate of the irreducible representation spanned by the codensity
+        !        \phi_i*\phi_j. (We assume that ij is going to be in the bra of the excitation.)
+        !    ij_spin: spin label of the combined ij codensity.
+        !        ij_spin = -2   i,j both down
+        !                =  0   i up and j down or vice versa
+        !                =  2   i,j both up
+        !    pgen_ij: probability of having selected ij
+        !    allowed_excitation: whether the selection of ij lead to a valid combination of ij or not.
+
+        use system, only: sys_t
+        use determinants, only: det_info_t
+        use read_in_symmetry, only: cross_product_basis_read_in
+        use dSFMT_interface, only: dSFMT_t, get_rand_close_open
+
+        type(sys_t), intent(in) :: sys
+        type(det_info_t), intent(in) :: cdet
+        type(dSFMT_t), intent(inout) :: rng
+        integer, intent(out) :: i, j, ij_sym, ij_spin
+        real(p), intent(out) :: pgen_ij
+        logical, intent(out) :: allowed_excitation
+
+        integer :: ind, i_ind, j_ind, i_ind_tmp
+
+        allowed_excitation = .true.
+        if (get_rand_close_open(rng) < excit_gen_data%pattempt_parallel) then
+            ! i and j have parallel spin. With probability n_alpha/(n_alpha + n_beta)
+            ! select from alpha spins and vice versa. n_alpha is the number of alpha spin
+            ! electrons.
+            if (get_rand_close_open(rng) < (sys%nalpha/(sys%nalpha + sys%nbeta))) then
+                ! i and j are both alpha
+                if (sys%nalpha < 2) then
+                    ! not enough alphas, forbidden excitation
+                    allowed_excitation = .false.
+                else 
+                    ! See comments in choose_ij_k for how the occupied orbitals are indexed
+                    ! to allow one random number to decide the ij pair.
+                    ind = int(get_rand_close_open(rng) * sys%nalpha * (sys%nalpha - 1)/2) + 1
+                    j_ind = int(1.50_p + sqrt(2*ind - 1.750_p))
+                    i_ind = ind - ((j_ind - 1) * (j_ind - 2))/2
+                    i = cdet%occ_list_alpha(i_ind)
+                    j = cdet%occ_list_alpha(j_ind)
+                    pgen_ij = (excit_gen_data%pattempt_parallel * (sys%nalpha/(sys%nalpha + sys%nbeta)) * &
+                            2.0_p * (1.0_p/sys%nalpha) * (1.0_p/(sys%nalpha - 1)))
+                end if
+            else
+                ! i and j are both beta
+                if (sys%nbeta < 2) then
+                    ! not enough betas, forbidden excitation
+                    allowed_excitation = .false.
+                else
+                    ! See comments in choose_ij_k for how the occupied orbitals are indexed
+                    ! to allow one random number to decide the ij pair.
+                    ind = int(get_rand_close_open(rng) * sys%nbeta * (sys%nbeta - 1)/2) + 1
+                    j_ind = int(1.50_p + sqrt(2*ind - 1.750_p))
+                    i_ind = ind - ((j_ind - 1) * (j_ind - 2))/2
+                    i = cdet%occ_list_beta(i_ind)
+                    j = cdet%occ_list_beta(j_ind)
+                    pgen_ij = (excit_gen_data%pattempt_parallel * (sys%nbeta/(sys%nalpha + sys%nbeta)) * &
+                            2.0_p * (1.0_p/sys%nbeta) * (1.0_p/(sys%nbeta - 1)))
+                end if
+            end if
+        else
+            ! i and j have opposite spin. Select i out of the alpha orbitals and j
+            ! out of the beta orbitals (order later).
+            if ((sys%nbeta < 1) .or. (sys%nalpha < 1)) then
+                ! do not have one of each, forbidden excitation
+                ! [todo] - set pattempt_parallel so that this is avoided.
+                allowed_excitation = .false.
+            else
+                i_ind = int(get_rand_close_open(rng) * sys%nalpha) + 1
+                j_ind = int(get_rand_close_open(rng) * sys%nbeta) + 1
+                i = cdet%occ_list_alpha(i_ind)
+                j = cdet%occ_list_beta(j_ind)
+                ! Order i and j.
+                if (j < i) then
+                    i_tmp = i
+                    i = j
+                    j = i_tmp
+                end if
+                pgen_ij = (1.0_p - excit_gen_data%pattempt_parallel) * (1.0_p/(sys%nalpha * sys%nbeta))
+            end if
+        end if
+
+        if (allowed_excitation) then
+            ij_sym = sys%read_in%sym_conj_ptr(sys%read_in, &
+                        cross_product_basis_read_in(sys, i,j))
+
+            ! ij_spin = -2 (down, down), 0 (up, down or down, up), +2 (up, up)
+            ij_spin = sys%basis%basis_fns(i)%Ms + sys%basis%basis_fns(j)%Ms
+        else
+            pgen_ij = 1.0_p
+            ! [todo] - is this a good idea?
+            i = -1
+            j = -1
+            ij_sym = -1
+            ij_spin = -1
+        end if
+
+    end subroutine choose_ij_spin_mol
+
     subroutine choose_ab_mol(rng, sys, f, sym, spin, symunocc, a, b, allowed_excitation)
 
         ! Select a random pair of orbitals to excite into as part of a double
