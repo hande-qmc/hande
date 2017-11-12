@@ -568,6 +568,7 @@ contains
         integer :: cdet_store(sys%nel)
         integer :: ref_store(sys%nel)
         integer :: ii, jj, t
+        real(p) :: pgen_ij
 
         logical :: found, a_found
 
@@ -582,7 +583,7 @@ contains
 
                 ! 2b. Select orbitals to excite from
                 
-                call choose_ij_mol(rng, sys, pp%occ_list, i_ind_ref, j_ind_ref, i_ref, j_ref, i_ref_j_ref_sym, ij_spin)
+                call choose_ij_mol(rng, sys, pp%occ_list, i_ind_ref, j_ind_ref, i_ref, j_ref, i_ref_j_ref_sym, ij_spin, pgen_ij)
 
                 ! At this point we pretend we're the reference, and fix up mapping ref's orbitals to cdet's orbitals later.
                 i_ref = pp%occ_list(i_ind_ref)
@@ -735,7 +736,7 @@ contains
                                     * pp%jb_weights(a_ind_rev_cdet, isyma, j_ind_ref) / pp%jb_weights_tot(isyma, j_ind_ref)
                         end if
 
-                        pgen = excit_gen_data%pattempt_double * pgen * 2.0_p/(sys%nel*(sys%nel-1)) ! pgen(ab)
+                        pgen = excit_gen_data%pattempt_double * pgen * pgen_ij ! pgen(ab)
                         connection%nexcit = 2
                         allowed_excitation = .true.
                     else
@@ -1188,6 +1189,7 @@ contains
         logical :: found, a_found
         real(p), allocatable :: ia_weights(:), ja_weights(:), jb_weights(:)
         real(p) :: ia_weights_tot, ja_weights_tot, jb_weights_tot
+        real(p) :: pgen_ij
         integer :: a, b, i, j, a_ind, b_ind, a_ind_rev, b_ind_rev, i_ind, j_ind, isymb, imsb, isyma
 
         ! 1. Select single or double.
@@ -1200,7 +1202,7 @@ contains
 
             ! 2b. Select orbitals to excite from
             
-            call choose_ij_mol(rng, sys, cdet%occ_list, i_ind, j_ind, i, j, ij_sym, ij_spin)
+            call choose_ij_mol(rng, sys, cdet%occ_list, i_ind, j_ind, i, j, ij_sym, ij_spin, pgen_ij)
 
             ! Now we've chosen i and j.
  
@@ -1311,7 +1313,7 @@ contains
                         pgen=       (ia_weights(a_ind)*jb_weights(b_ind)) / (ia_weights_tot*jb_weights_tot) + &
                             (ia_weights(b_ind_rev)*ja_weights(a_ind_rev) ) / (ia_weights_tot*ja_weights_tot)
                     end if
-                    pgen = excit_gen_data%pattempt_double * pgen *2.0_p/(sys%nel*(sys%nel-1)) ! pgen(ab)
+                    pgen = excit_gen_data%pattempt_double * pgen * pgen_ij ! pgen(ab)
                     connection%nexcit = 2
 
                     ! if create_weighted_excitation_list checks this then this check is redundant
