@@ -32,11 +32,17 @@ enum, bind(c)
     ! correct symmetry and the double excitation i,j->a,b such that given the choice of
     ! (i,j) a is only chosen if there exists an unoccupied b of the correct symmetry.
     enumerator :: excit_gen_renorm
+    ! Similar to excit_gen_renorm but when selecting ij in a double excitation, first
+    ! decide whether their spins are parallel or not. Based on an idea of Alavi et al.
+    enumerator :: excit_gen_renorm_spin
     ! Don't require i (single) and i,j,a (double) to have allowed excitations.  This gives
     ! slightly less efficient excitation generation (negligible in large systems) but
     ! avoids an expensive renormalisation step to calculate the excitation generation
     ! probabilities.
     enumerator :: excit_gen_no_renorm
+    ! Similar to excit_gen_no_renorm but when selecting ij in a double excitation, first
+    ! decide whether their spins are parallel or not. Based on an idea of Alavi et al.
+    enumerator :: excit_gen_no_renorm_spin
     ! Weight the excitations according to a Power-Pitzer limit on the bounds of the integrals
     ! The version O(M/64) which chooses occ orbitals first, and excites with probabilities akin 
     ! to that of the reference.
@@ -886,8 +892,12 @@ contains
         select case (qmc%excit_gen)
         case (excit_gen_renorm)
             call json_write_key(js, 'excit_gen', 'renorm')
+        case (excit_gen_renorm_spin)
+            call json_write_key(js, 'excit_gen', 'renorm_spin')
         case (excit_gen_no_renorm)
             call json_write_key(js, 'excit_gen', 'no_renorm')
+        case (excit_gen_no_renorm_spin)
+            call json_write_key(js, 'excit_gen', 'no_renorm_spin')
         case (excit_gen_power_pitzer)
             call json_write_key(js, 'excit_gen', 'power_pitzer')
         case (excit_gen_power_pitzer_occ)
