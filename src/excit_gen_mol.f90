@@ -125,11 +125,11 @@ contains
 
         use determinants, only: det_info_t
         use excitations, only: excit_t
-        use excitations, only: find_excitation_permutation1, find_excitation_permutation2
+        use excitations, only: find_excitation_permutation2
         use excit_gens, only: excit_gen_data_t
         use system, only: sys_t
         use hamiltonian_data
-        use proc_pointers, only: slater_condon1_excit_ptr, slater_condon2_excit_ptr
+        use proc_pointers, only: slater_condon2_excit_ptr
 
         use dSFMT_interface, only: dSFMT_t, get_rand_close_open
 

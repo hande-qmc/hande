@@ -210,7 +210,9 @@ abstract interface
     end function i_abs_hmatel
 
     pure function i_single_excitation_weight(sys, i, a) result(weight)
-        use molecular_integrals, only: get_one_body_int_mol_nonzero, get_two_body_int_mol_nonzero 
+        ! [todo] in the next line, the complex version and the real versions use different
+        ! [todo] functions from molecular_integrals. Does that matter?
+        use molecular_integrals
         use system, only: sys_t 
         use hamiltonian_data, only: hmatel_t
         import :: p

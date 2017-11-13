@@ -436,7 +436,7 @@ contains
         ! symmetry).  This is less safe that slater_condon1_mol but much faster
         ! as it allows symmetry checking to be skipped in the integral lookups.
 
-        use molecular_integrals, only: get_one_body_int_mol_nonzero, get_two_body_int_mol_nonzero
+        use molecular_integrals, only: get_one_body_int_mol_complex, get_two_body_int_mol_complex
         use system, only: sys_t
         use hamiltonian_data, only: hmatel_t
 
@@ -448,6 +448,7 @@ contains
         integer :: iel
 
         ! < D | H | D_i^a > = < i | h(a) | a > + \sum_j < ij || aj >
+        ! where j is summed over all electrons (j /= i and j /= a).
 
         associate(basis_fns=>sys%basis%basis_fns, &
                   one_e_ints=>sys%read_in%one_e_h_integrals, &
@@ -455,19 +456,15 @@ contains
                   one_e_ints_im=>sys%read_in%one_e_h_integrals_imag,&
                   coulomb_ints_im=>sys%read_in%coulomb_integrals_imag)
 
-            re = get_one_body_int_mol_nonzero(one_e_ints, i, a, basis_fns)
-            im = get_one_body_int_mol_nonzero(one_e_ints_im, i, a, basis_fns)
-            weight = abs(cmplx(re, im, p))
+            ! Have already checked whether i - > a is allowed when calling the function
+            ! but using get_one_body_int_mol_complex is neater than the _nonzero equivalent.
+            two_body_tmp%c = get_one_body_int_mol_complex(one_e_ints, one_e_ints_im, i, a, sys)
+            weight = abs(two_body_tmp%c)
             do iel = 1, sys%basis%nbasis
                 if ((iel /= i) .and. (iel /= a)) then
-                    re = get_two_body_int_mol_nonzero(coulomb_ints, i, iel, a, iel, basis_fns)
-                    im = get_two_body_int_mol_nonzero(coulomb_ints_im, i, iel, a, iel, basis_fns)
-                    two_body_tmp%c = cmplx(re, im, p)
-                    if (basis_fns(iel)%Ms == basis_fns(i)%Ms) then
-                        re = get_two_body_int_mol_nonzero(coulomb_ints, i, iel, iel, a, basis_fns)
-                        im = get_two_body_int_mol_nonzero(coulomb_ints_im, i, iel, iel, a, basis_fns)
-                        two_body_tmp%c = two_body_tmp%c - cmplx(re, im, p)
-                    end if
+                    ! get_two_body_int_mol_complex checks spins and symmetry.
+                    two_body_tmp%c = get_two_body_int_mol_complex(coulomb_ints, coulomb_ints_im, i, iel, a, iel, sys) &
+                            - get_two_body_int_mol_complex(coulomb_ints, coulomb_ints_im, i, iel, iel, a, sys)
                     weight = weight + abs(two_body_tmp%c)
                 end if
             end do

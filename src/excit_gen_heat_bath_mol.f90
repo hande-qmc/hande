@@ -467,7 +467,7 @@ contains
         use determinants, only: det_info_t
         use excitations, only: excit_t
         use excitations, only: find_excitation_permutation1, find_excitation_permutation2, get_excitation_locations
-        use proc_pointers, only: slater_condon1_excit_ptr, slater_condon2_excit_ptr
+        use proc_pointers, only: slater_condon2_excit_ptr
         use proc_pointers, only: create_weighted_excitation_list_ptr
         use checking, only: check_allocate, check_deallocate
         use system, only: sys_t

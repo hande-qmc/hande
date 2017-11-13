@@ -391,7 +391,7 @@ contains
         ! symmetry).  This is less safe that slater_condon1_mol but much faster
         ! as it allows symmetry checking to be skipped in the integral lookups.
 
-        use molecular_integrals, only: get_one_body_int_mol_nonzero, get_two_body_int_mol_nonzero
+        use molecular_integrals, only: get_one_body_int_mol_nonzero, get_two_body_int_mol_real
         use system, only: sys_t
         use hamiltonian_data, only: hmatel_t
 
@@ -404,18 +404,20 @@ contains
 
         ! < D | H | D_i^a > = < i | h(a) | a > + \sum_j < ij || aj >
         ! where j is all electrons
+        ! [todo] is it the best idea to sum over the abs values?
 
         associate(basis_fns=>sys%basis%basis_fns, &
                   one_e_ints=>sys%read_in%one_e_h_integrals, &
                   coulomb_ints=>sys%read_in%coulomb_integrals)
+            ! have checked when calling this function that i -> a is allowed by spin and symmetry.
+            ! we can there use get_one_body_int_mol_nonzero
             weight = abs(get_one_body_int_mol_nonzero(one_e_ints, i, a, basis_fns))
 
             do iel = 1, sys%basis%nbasis
                 if ((iel /= i) .and. (iel /= a)) then
-                    two_body_tmp%r = get_two_body_int_mol_nonzero(coulomb_ints, i, iel, a, iel, basis_fns)
-                    if (basis_fns(iel)%Ms == basis_fns(i)%Ms) &
-                        two_body_tmp%r = two_body_tmp%r &
-                                    - get_two_body_int_mol_nonzero(coulomb_ints, i, iel, iel, a, basis_fns)
+                    ! use get_two_body_int_mol_real to check whether excitation is symmetry allowed.
+                    two_body_tmp%r = get_two_body_int_mol_real(coulomb_ints, i, iel, a, iel, sys) &
+                                    - get_two_body_int_mol_real(coulomb_ints, i, iel, iel, a, sys)
                     weight = weight + abs(two_body_tmp%r)
                 end if
             end do

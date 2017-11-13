@@ -222,7 +222,7 @@ contains
         use system, only: sys_t
         use qmc_data, only: reference_t
         use sort, only: qsort
-        use proc_pointers, only: create_weighted_excitation_list_ptr, slater_condon1_excit_ptr, slater_condon2_excit_ptr
+        use proc_pointers, only: create_weighted_excitation_list_ptr, slater_condon2_excit_ptr
         use proc_pointers, only: abs_hmatel_ptr, single_excitation_weight_ptr
         use excit_gens, only: excit_gen_power_pitzer_t
         use alias, only: generate_alias_tables
@@ -381,6 +381,8 @@ contains
                                         a_tmp = a
                                         b_tmp = b
                                     end if
+                                    ! slater_condon2_excit does not check whether ij -> ab is allowed but have
+                                    ! checked for that, so it is ok.
                                     hmatel = slater_condon2_excit_ptr(sys, i_tmp, j_tmp, a_tmp, b_tmp, .false.)
                                     i_weight = i_weight + abs_hmatel_ptr(hmatel)
                                 end if
@@ -433,6 +435,8 @@ contains
                                         a_tmp = a
                                         b_tmp = b
                                     end if
+                                    ! slater_condon2 does not check whether ij -> ab is allowed by symmetry/spin
+                                    ! but we have checked for that here so it is ok.
                                     hmatel = slater_condon2_excit_ptr(sys, i_tmp, j_tmp, a_tmp, b_tmp, .false.)
                                     ij_weight = ij_weight + abs_hmatel_ptr(hmatel)
                                 end if
