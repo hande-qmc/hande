@@ -16,7 +16,7 @@ contains
 
         ! In:
         !    sys: system object being studied.
-        !    original: boolean, true if original heat bath, false if single excitations are sampled uniformly.
+        !    original: boolean, true if original heat bath, false if single excitations are sampled uniformly/exactly.
         ! In/Out:
         !    hb: an empty excit_gen_heat_bath_t object which gets filled with
         !           the alias tables required to generate excitations.
@@ -471,11 +471,12 @@ contains
         use proc_pointers, only: create_weighted_excitation_list_ptr
         use checking, only: check_allocate, check_deallocate
         use system, only: sys_t
-        use excit_gen_mol, only: gen_single_excit_mol_no_renorm
+        use excit_gen_mol, only: gen_single_excit_mol
         use excit_gens, only: excit_gen_heat_bath_t, excit_gen_data_t
         use alias, only: select_weighted_value_precalc, select_weighted_value
         use dSFMT_interface, only: dSFMT_t, get_rand_close_open
         use hamiltonian_data, only: hmatel_t
+        use qmc_data, only: excit_gen_heat_bath_uniform, excit_gen_heat_bath_single
         use read_in_symmetry, only: cross_product_basis_read_in
         use search, only: binary_search
         use sort, only: qsort
@@ -500,7 +501,17 @@ contains
         ! 1. Select single or double.
         if (get_rand_close_open(rng) < excit_gen_data%pattempt_single) then  
             ! We have a single
-            call gen_single_excit_mol_no_renorm(rng, sys, excit_gen_data, cdet, pgen, connection, hmatel, allowed_excitation)
+            select case(excit_gen_data%excit_gen)
+            case (excit_gen_heat_bath_uniform)
+                call gen_single_excit_mol(rng, sys, excit_gen_data%pattempt_single, cdet, pgen, connection, hmatel, &
+                                                allowed_excitation)
+            case (excit_gen_heat_bath_single)
+                call gen_single_excit_heat_bath_exact(rng, sys, excit_gen_data%pattempt_single, cdet, pgen, connection, hmatel,&
+                                                    allowed_excitation)
+            case default
+                ! [todo] debug. remove.
+                print *, "something went wrong"
+            end select
         else
             occ_list = cdet%occ_list
             ! call qsort(occ_list,sys%nel)
@@ -634,7 +645,6 @@ contains
         use determinants, only: det_info_t
         use excitations, only: excit_t
         use excitations, only: find_excitation_permutation1
-        use excit_gens, only: excit_gen_data_t
         use proc_pointers, only: abs_hmatel_ptr, slater_condon1_excit_ptr
         use system, only: sys_t
         use hamiltonian_data, only: hmatel_t

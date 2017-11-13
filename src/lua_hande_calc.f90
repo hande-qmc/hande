@@ -899,7 +899,7 @@ contains
         !     spawn_cutoff = cutoff,
         !     excit_gen =
         !     'renorm'/'renorm_spin'/'no_renorm'/'no_renorm_spin'/'power_pitzer'/'power_pitzer_orderM'/'power_pitzer_orderN'/
-        !     'heat_bath'/'heat_bath_uniform'
+        !     'heat_bath'/'heat_bath_uniform'/'heat_bath_single'
         !     power_pitzer_min_weight = power_pitzer_min_weight,
         !     tau_search = true/false,
         !     pattempt_single = prob,
@@ -930,7 +930,7 @@ contains
         use qmc_data, only: qmc_in_t, excit_gen_renorm, excit_gen_no_renorm, excit_gen_renorm_spin, excit_gen_no_renorm_spin
         use qmc_data, only: excit_gen_power_pitzer
         use qmc_data, only: excit_gen_power_pitzer_occ, excit_gen_power_pitzer_orderN
-        use qmc_data, only: excit_gen_heat_bath, excit_gen_heat_bath_uniform
+        use qmc_data, only: excit_gen_heat_bath, excit_gen_heat_bath_uniform, excit_gen_heat_bath_single
         use lua_hande_utils, only: warn_unused_args, get_rng_seed
         use parallel, only: parent
         use errors, only: stop_all, warning
@@ -1044,6 +1044,8 @@ contains
                 qmc_in%excit_gen = excit_gen_heat_bath
             case('heat_bath_uniform')
                 qmc_in%excit_gen = excit_gen_heat_bath_uniform
+            case('heat_bath_single')
+                qmc_in%excit_gen = excit_gen_heat_bath_single
             case default
                 call stop_all('read_qmc_in', 'Invalid excit_gen setting: '//trim(str))
             end select

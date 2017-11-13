@@ -61,7 +61,8 @@ contains
 
         if (get_rand_close_open(rng) < excit_gen_data%pattempt_single) then
             
-            call gen_single_excit_mol(rng, sys, excit_gen_data, cdet, pgen, connection, hmatel, allowed_excitation)
+            call gen_single_excit_mol(rng, sys, excit_gen_data%pattempt_single, cdet, pgen, connection, hmatel, &
+                                    allowed_excitation)
 
         else
 
@@ -148,7 +149,8 @@ contains
 
         if (get_rand_close_open(rng) < excit_gen_data%pattempt_single) then
             
-            call gen_single_excit_mol(rng, sys, excit_gen_data, cdet, pgen, connection, hmatel, allowed_excitation)
+            call gen_single_excit_mol(rng, sys, excit_gen_data%pattempt_single, cdet, pgen, connection, hmatel, &
+                                    allowed_excitation)
 
         else
 
@@ -244,7 +246,8 @@ contains
 
         if (get_rand_close_open(rng) < excit_gen_data%pattempt_single) then
 
-            call gen_single_excit_mol_no_renorm(rng, sys, excit_gen_data, cdet, pgen, connection, hmatel, allowed_excitation)
+            call gen_single_excit_mol_no_renorm(rng, sys, excit_gen_data%pattempt_single, cdet, pgen, connection, hmatel, &
+                                            allowed_excitation)
 
         else
 
@@ -336,14 +339,15 @@ contains
 
         if (get_rand_close_open(rng) < excit_gen_data%pattempt_single) then
 
-            call gen_single_excit_mol_no_renorm(rng, sys, excit_gen_data, cdet, pgen, connection, hmatel, allowed_excitation)
+            call gen_single_excit_mol_no_renorm(rng, sys, excit_gen_data%pattempt_single, cdet, pgen, connection, hmatel, &
+                                            allowed_excitation)
 
         else
 
             ! 2b. Select orbitals to excite from and orbitals to excite into.
             call choose_ij_spin_mol(rng, sys, cdet, excit_gen_data%pattempt_parallel, connection%from_orb(1), &
                             connection%from_orb(2), ij_sym, ij_spin, pgen_ij, allowed_excitation)
-            
+           
             if (allowed_excitation) then
                 call find_ab_mol(rng, cdet%f, ij_sym, ij_spin, sys,  &
                              connection%to_orb(1), connection%to_orb(2), allowed_excitation)
@@ -375,14 +379,15 @@ contains
 
 !--- Part of renorm and no_renorm excitation generators that finds a single excitation ---
 
-    subroutine gen_single_excit_mol(rng, sys, excit_gen_data, cdet, pgen, connection, hmatel, allowed_excitation)
+    subroutine gen_single_excit_mol(rng, sys, pattempt_single, cdet, pgen, connection, hmatel, allowed_excitation)
 
         ! Create a random single excitation from cdet and calculate both the probability
         ! of selecting that excitation and the Hamiltonian matrix element.
 
         ! In:
         !    sys: system object being studied.
-        !    excit_gen_data: Data for the excitation generator.
+        !    pattempt_single: the probability to attempt a single and not
+        !         a double excitation with.
         !    cdet: info on the current determinant (cdet) that we will gen
         !        from.
         ! In/Out:
@@ -398,14 +403,13 @@ contains
         use determinants, only: det_info_t
         use excitations, only: excit_t
         use excitations, only: find_excitation_permutation1
-        use excit_gens, only: excit_gen_data_t
         use proc_pointers, only: slater_condon1_excit_ptr
         use system, only: sys_t
         use hamiltonian_data, only: hmatel_t
         use dSFMT_interface, only: dSFMT_t
 
         type(sys_t), intent(in) :: sys
-        type(excit_gen_data_t), intent(in) :: excit_gen_data
+        real(p), intent(in) :: pattempt_single
         type(det_info_t), intent(in) :: cdet
         type(dSFMT_t), intent(inout) :: rng
         real(p), intent(out) :: pgen
@@ -420,7 +424,7 @@ contains
 
         if (allowed_excitation) then
             ! 3a. Probability of generating this excitation.
-            pgen = excit_gen_data%pattempt_single*calc_pgen_single_mol(sys, sys%read_in%pg_sym%gamma_sym, cdet%occ_list, &
+            pgen = pattempt_single*calc_pgen_single_mol(sys, sys%read_in%pg_sym%gamma_sym, cdet%occ_list, &
                                                                    cdet%symunocc, connection%to_orb(1))
 
             ! 4a. Parity of permutation required to line up determinants.
@@ -441,7 +445,7 @@ contains
 
     end subroutine gen_single_excit_mol
     
-    subroutine gen_single_excit_mol_no_renorm(rng, sys, excit_gen_data, cdet, pgen, connection, hmatel, allowed_excitation)
+    subroutine gen_single_excit_mol_no_renorm(rng, sys, pattempt_single, cdet, pgen, connection, hmatel, allowed_excitation)
 
         ! Create a random single excitation from cdet and calculate both the probability
         ! of selecting that excitation and the Hamiltonian matrix element.
@@ -471,14 +475,13 @@ contains
         use determinants, only: det_info_t
         use excitations, only: excit_t
         use excitations, only: find_excitation_permutation1
-        use excit_gens, only: excit_gen_data_t
         use proc_pointers, only: slater_condon1_excit_ptr
         use system, only: sys_t
         use hamiltonian_data, only: hmatel_t
         use dSFMT_interface, only: dSFMT_t
 
         type(sys_t), intent(in) :: sys
-        type(excit_gen_data_t), intent(in) :: excit_gen_data
+        real(p), intent(in) :: pattempt_single
         type(det_info_t), intent(in) :: cdet
         type(dSFMT_t), intent(inout) :: rng
         real(p), intent(out) :: pgen
@@ -494,7 +497,7 @@ contains
 
         if (allowed_excitation) then
             ! 3a. Probability of generating this excitation.
-            pgen = excit_gen_data%pattempt_single*calc_pgen_single_mol_no_renorm(sys, connection%to_orb(1))
+            pgen = pattempt_single*calc_pgen_single_mol_no_renorm(sys, connection%to_orb(1))
 
             ! 4a. Parity of permutation required to line up determinants.
             call find_excitation_permutation1(sys%basis%excit_mask, cdet%f, connection)
@@ -721,7 +724,7 @@ contains
             ! i and j have parallel spin. With probability n_alpha/(n_alpha + n_beta)
             ! select from alpha spins and vice versa. n_alpha is the number of alpha spin
             ! electrons.
-            if (get_rand_close_open(rng) < (sys%nalpha/(sys%nalpha + sys%nbeta))) then
+            if (get_rand_close_open(rng) < (real(sys%nalpha,p)/real((sys%nalpha + sys%nbeta),p))) then
                 ! i and j are both alpha
                 if (sys%nalpha < 2) then
                     ! not enough alphas, forbidden excitation
@@ -729,12 +732,13 @@ contains
                 else 
                     ! See comments in choose_ij_k for how the occupied orbitals are indexed
                     ! to allow one random number to decide the ij pair.
-                    ind = int(get_rand_close_open(rng) * sys%nalpha * (sys%nalpha - 1)/2) + 1
+                    ind = int(get_rand_close_open(rng) * real((sys%nalpha * (sys%nalpha - 1)),p)/2.0_p) + 1
+                    ! [todo] - is casting necessary in the lines below?
                     j_ind = int(1.50_p + sqrt(2*ind - 1.750_p))
                     i_ind = ind - ((j_ind - 1) * (j_ind - 2))/2
                     i = cdet%occ_list_alpha(i_ind)
                     j = cdet%occ_list_alpha(j_ind)
-                    pgen_ij = (pattempt_parallel * (sys%nalpha/(sys%nalpha + sys%nbeta)) * &
+                    pgen_ij = (pattempt_parallel * (real(sys%nalpha,p)/real((sys%nalpha + sys%nbeta),p)) * &
                             2.0_p * (1.0_p/sys%nalpha) * (1.0_p/(sys%nalpha - 1)))
                 end if
             else
@@ -745,12 +749,12 @@ contains
                 else
                     ! See comments in choose_ij_k for how the occupied orbitals are indexed
                     ! to allow one random number to decide the ij pair.
-                    ind = int(get_rand_close_open(rng) * sys%nbeta * (sys%nbeta - 1)/2) + 1
+                    ind = int(get_rand_close_open(rng) * real((sys%nbeta * (sys%nbeta - 1)),p)/2.0_p) + 1
                     j_ind = int(1.50_p + sqrt(2*ind - 1.750_p))
                     i_ind = ind - ((j_ind - 1) * (j_ind - 2))/2
                     i = cdet%occ_list_beta(i_ind)
                     j = cdet%occ_list_beta(j_ind)
-                    pgen_ij = (pattempt_parallel * (sys%nbeta/(sys%nalpha + sys%nbeta)) * &
+                    pgen_ij = (pattempt_parallel * (real(sys%nbeta,p)/real((sys%nalpha + sys%nbeta),p)) * &
                             2.0_p * (1.0_p/sys%nbeta) * (1.0_p/(sys%nbeta - 1)))
                 end if
             end if

@@ -54,7 +54,10 @@ enum, bind(c)
     ! Heat bath excitation generators, based on Holmes, A. A.; Changlani, H. J.; Umrigar, 
     ! C. J. J. Chem. Theory Comput. 2016, 12, 1561–1571
     enumerator :: excit_gen_heat_bath
+    ! Finds single excitations uniformly, like renorm
     enumerator :: excit_gen_heat_bath_uniform
+    ! Finds single excitations with exact weights.
+    enumerator :: excit_gen_heat_bath_single
 end enum
 
 ! Types of semi-stochastic space.
@@ -908,6 +911,8 @@ contains
             call json_write_key(js, 'excit_gen', 'heat_bath')
         case (excit_gen_heat_bath_uniform)
             call json_write_key(js, 'excit_gen', 'heat_bath_uniform')
+        case (excit_gen_heat_bath_single)
+            call json_write_key(js, 'excit_gen', 'heat_bath_single')
         case default
             call json_write_key(js, 'excit_gen', qmc%excit_gen)
         end select

@@ -575,7 +575,8 @@ contains
         ! 1. Select single or double.
         if (get_rand_close_open(rng) < excit_gen_data%pattempt_single) then
 
-            call gen_single_excit_mol_no_renorm(rng, sys, excit_gen_data, cdet, pgen, connection, hmatel, allowed_excitation)
+            call gen_single_excit_mol_no_renorm(rng, sys, excit_gen_data%pattempt_single, cdet, pgen, connection, hmatel, &
+                                            allowed_excitation)
 
         else
             ! We have a double
@@ -815,7 +816,6 @@ contains
         use excitations, only: find_excitation_permutation1, find_excitation_permutation2, get_excitation_locations
         use proc_pointers, only: slater_condon1_excit_ptr, slater_condon2_excit_ptr
         use system, only: sys_t
-        use excit_gen_mol, only: gen_single_excit_mol_no_renorm
         use excit_gens, only: excit_gen_power_pitzer_t, excit_gen_data_t
         use alias, only: select_weighted_value_precalc
         use dSFMT_interface, only: dSFMT_t, get_rand_close_open
@@ -1195,7 +1195,8 @@ contains
         ! 1. Select single or double.
         if (get_rand_close_open(rng) < excit_gen_data%pattempt_single) then
 
-            call gen_single_excit_mol_no_renorm(rng, sys, excit_gen_data, cdet, pgen, connection, hmatel, allowed_excitation)
+            call gen_single_excit_mol_no_renorm(rng, sys, excit_gen_data%pattempt_single, cdet, pgen, connection, hmatel, &
+                                            allowed_excitation)
 
         else
             ! We have a double
