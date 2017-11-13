@@ -9,6 +9,7 @@ implicit none
 
 private
 public :: get_hmatel_periodic_complex, slater_condon1_periodic_excit_complex
+public :: slater_condon1_periodic_complex
 public :: slater_condon2_periodic_excit_complex, slater_condon0_periodic_complex
 public :: create_weighted_excitation_list_periodic_complex, abs_hmatel_periodic_complex
 public :: single_excitation_weight_periodic

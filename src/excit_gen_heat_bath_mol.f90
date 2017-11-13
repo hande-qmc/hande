@@ -53,6 +53,9 @@ contains
         allocate(hb%ijab_weights_tot(sys%basis%nbasis,sys%basis%nbasis,sys%basis%nbasis))
         allocate(hb%ia_weights(sys%basis%nbasis,sys%basis%nbasis)) ! implicit sum over j
 
+        ! [todo] - consider setting hmatel%r and hmatel%c to zero to avoid undefined behaviour.
+        ! [todo] - although it is probably fine, abs_hmatel_ptr ignores the irrelevant bit.
+
         j_nonzero = 0
 
         hb%ia_weights = 0.0_p
@@ -635,6 +638,8 @@ contains
         use proc_pointers, only: abs_hmatel_ptr, slater_condon1_excit_ptr
         use system, only: sys_t
         use hamiltonian_data, only: hmatel_t
+        use hamiltonian_molecular, only: slater_condon1_mol
+        use hamiltonian_periodic_complex, only: slater_condon1_periodic_complex
         use dSFMT_interface, only: dSFMT_t
         use alias, only: select_weighted_value
 
@@ -682,7 +687,16 @@ contains
                 ! [todo] - this reduces the computational time (by calculation ia_weights here)
                 ! but more memory costs as after we have selected i, we don't need all elements in ia_weights. Need to balance these
                 ! costs.
-                hmatel = slater_condon1_excit_ptr(sys, cdet%occ_list, cdet%occ_list(i_ind), virt_list(a_ind), .false.)
+                ! [todo] - could consider rewritting with proc_pointer here but that would imply having to rewrite slater
+                ! condon 1 mol / periodic complex. slater_condon1_excit_mol is not safe enough (no checks).
+                if (sys%read_in%comp) then
+                    hmatel%r = 0.0_p
+                    hmatel%c = slater_condon1_periodic_complex(sys, cdet%occ_list, cdet%occ_list(i_ind), virt_list(a_ind), &
+                        .false.)
+                else
+                    hmatel%r = slater_condon1_mol(sys, cdet%occ_list, cdet%occ_list(i_ind), virt_list(a_ind), .false.)
+                    hmatel%c = cmplx(0.0_p, 0.0_p, p)
+                end if
                 ia_weights(a_ind, i_ind) = abs_hmatel_ptr(hmatel)
                 ia_weights_tot(i_ind) = ia_weights_tot(i_ind) + ia_weights(a_ind, i_ind)
                 i_weights(i_ind) = i_weights(i_ind) + ia_weights(a_ind, i_ind)
@@ -716,16 +730,6 @@ contains
 
             ! Find the connecting matrix element.
             hmatel = slater_condon1_excit_ptr(sys, cdet%occ_list, connection%from_orb(1), connection%to_orb(1), connection%perm)
-
-            if (abs_hmatel_ptr(hmatel) < depsilon) then
-                ! use hmatel as weights to exclude forbidden excitations. However, should all excitations be
-                ! forbidden (hmatel very close to zero), then possibly we have still selected one of these.
-                ! [todo] - really?
-                allowed_excitation = .false.
-                hmatel%c = cmplx(0.0_p, 0.0_p, p)
-                hmatel%r = 0.0_p
-                pgen = 1.0_p ! Avoid any dangerous division by pgen by returning a sane (but cheap) value.
-            end if
         end if
 
     end subroutine gen_single_excit_heat_bath_exact
