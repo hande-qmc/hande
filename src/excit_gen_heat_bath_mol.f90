@@ -604,4 +604,130 @@ contains
 
     end subroutine gen_excit_mol_heat_bath_uniform
 
+    subroutine gen_single_excit_heat_bath_exact(rng, sys, pattempt_single, cdet, pgen, connection, hmatel, &
+            allowed_excitation)
+
+        ! Create a random single excitation from cdet and calculate both the probability
+        ! of selecting that excitation and the Hamiltonian matrix element.
+
+        ! This calculates the weights for i and a as exact as possibly.
+        ! For i, the weight is \sum_a H_ia, for a given i it is H_ia.
+
+        ! In:
+        !    sys: system object being studied.
+        !    pattempt_single: probability of having chosen to attempt a single and not a double
+        !                    excitation.
+        !    cdet: determinant to attempt spawning from.
+        ! In/Out:
+        !    rng: random number generator.
+        ! Out:
+        !    pgen: probability of generating the excited determinant from cdet.
+        !    connection: excitation connection between the current determinant
+        !        and the child determinant, on which progeny are gened.
+        !    hmatel: < D | H | D' >, the Hamiltonian matrix element between a
+        !       determinant and a connected determinant in molecular systems.
+        !    allowed_excitation: false if a valid symmetry allowed excitation was not generated
+
+        use determinants, only: det_info_t
+        use excitations, only: excit_t
+        use excitations, only: find_excitation_permutation1
+        use excit_gens, only: excit_gen_data_t
+        use proc_pointers, only: abs_hmatel_ptr, slater_condon1_excit_ptr
+        use system, only: sys_t
+        use hamiltonian_data, only: hmatel_t
+        use dSFMT_interface, only: dSFMT_t
+        use alias, only: select_weighted_value
+
+        type(sys_t), intent(in) :: sys
+        real(p), intent(in) :: pattempt_single
+        type(det_info_t), intent(in) :: cdet
+        type(dSFMT_t), intent(inout) :: rng
+        real(p), intent(out) :: pgen
+        type(hmatel_t), intent(out) :: hmatel
+        type(excit_t), intent(out) :: connection
+        logical, intent(out) :: allowed_excitation
+
+        integer :: virt_list(sys%basis%nbasis - sys%nel)
+        real(p) :: i_weights(sys%nel), ia_weights(sys%basis%nbasis - sys%nel, sys%nel), ia_weights_tot(sys%nel)
+        real(p) :: i_weights_tot
+        integer :: pos, virt_pos, occ_pos, i_ind, a_ind, i, a, nvirt
+
+        nvirt = sys%basis%nbasis - sys%nel
+        allowed_excitation = .true.
+        connection%nexcit = 1
+        
+        ! Make list of virtual orbitals, virt_list.
+        virt_pos = 1
+        occ_pos = 1
+        do pos = 1, sys%basis%nbasis
+            if (occ_pos > sys%nel) then
+                virt_list(virt_pos) = pos
+                virt_pos = virt_pos + 1
+            else
+                if (cdet%occ_list(occ_pos) == pos) then
+                    occ_pos = occ_pos + 1
+                else
+                    virt_list(virt_pos) = pos
+                    virt_pos = virt_pos + 1
+                end if
+            end if
+        end do
+        
+        ! Calculate weights.
+        i_weights_tot = 0.0_p
+        ia_weights_tot = 0.0_p
+        do i_ind = 1, sys%nel
+            i_weights(i_ind) = 0.0_p
+            do a_ind = 1, nvirt
+                ! [todo] - this reduces the computational time (by calculation ia_weights here)
+                ! but more memory costs as after we have selected i, we don't need all elements in ia_weights. Need to balance these
+                ! costs.
+                hmatel = slater_condon1_excit_ptr(sys, cdet%occ_list, cdet%occ_list(i_ind), virt_list(a_ind), .false.)
+                ia_weights(a_ind, i_ind) = abs_hmatel_ptr(hmatel)
+                ia_weights_tot(i_ind) = ia_weights_tot(i_ind) + ia_weights(a_ind, i_ind)
+                i_weights(i_ind) = i_weights(i_ind) + ia_weights(a_ind, i_ind)
+            end do
+            i_weights_tot = i_weights_tot + i_weights(i_ind)
+        end do
+
+        if (i_weights_tot < depsilon) then
+            ! no allowed single excitations.
+            allowed_excitation = .false.
+            hmatel%c = cmplx(0.0_p, 0.0_p, p)
+            hmatel%r = 0.0_p
+            pgen = 1.0_p ! Avoid any dangerous division by pgen by returning a sane (but cheap) value.
+        else
+            ! Select i.
+            i_ind = select_weighted_value(rng, sys%nel, i_weights, i_weights_tot)
+            i = cdet%occ_list(i_ind)
+
+            ! Select a.
+            a_ind = select_weighted_value(rng, nvirt, ia_weights(:, i_ind), ia_weights_tot(i_ind))
+            a = virt_list(a_ind)
+
+            connection%from_orb(1) = i
+            connection%to_orb(1) = a
+
+            ! Calculate pgen and hmatel.
+            pgen = pattempt_single * (i_weights(i_ind)/i_weights_tot) * (ia_weights(a_ind, i_ind)/ia_weights_tot(i_ind))
+
+            ! Parity of permutation required to line up determinants.
+            call find_excitation_permutation1(sys%basis%excit_mask, cdet%f, connection)
+
+            ! Find the connecting matrix element.
+            hmatel = slater_condon1_excit_ptr(sys, cdet%occ_list, connection%from_orb(1), connection%to_orb(1), connection%perm)
+
+            if (abs_hmatel_ptr(hmatel) < depsilon) then
+                ! use hmatel as weights to exclude forbidden excitations. However, should all excitations be
+                ! forbidden (hmatel very close to zero), then possibly we have still selected one of these.
+                ! [todo] - really?
+                allowed_excitation = .false.
+                hmatel%c = cmplx(0.0_p, 0.0_p, p)
+                hmatel%r = 0.0_p
+                pgen = 1.0_p ! Avoid any dangerous division by pgen by returning a sane (but cheap) value.
+            end if
+        end if
+
+    end subroutine gen_single_excit_heat_bath_exact
+    
 end module excit_gen_heat_bath_mol
