@@ -1,3 +1,5 @@
+# NOTE: use MPICH rather than OpenMPI due to lack of support in MKL for recent versions of OpenMPI.
+# See https://software.intel.com/en-us/forums/intel-math-kernel-library/topic/734559 for details.
 [DEFAULT]
 cppflags_opt = -DHAVE_SSE2 -DPARALLEL -DDET_SIZE=64
 
@@ -7,7 +9,7 @@ fc = mpif90
 cc = mpicc
 cxx = mpiCC
 ld = mpif90
-libs = -ltrlan_mpi -lmkl_scalapack_lp64 -Wl,--start-group -lmkl_intel_lp64 -lmkl_sequential -lmkl_core -lmkl_blacs_openmpi_lp64 -Wl,--end-group -lpthread -cxxlib -lhdf5_fortran -luuid -llua
+libs = -ltrlan_mpi -lmkl_scalapack_lp64 -Wl,--start-group -lmkl_intel_lp64 -lmkl_sequential -lmkl_core -lmkl_blacs_intelmpi_lp64 -Wl,--end-group -lpthread -cxxlib -lhdf5_fortran -luuid -llua
 f90_module_flag = -module
 
 [opt]
