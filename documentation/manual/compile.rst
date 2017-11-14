@@ -295,3 +295,12 @@ is not possible.  Issues and, where known, workarounds we have found are:
 
 * Using some versions of Intel MPI 5.1 with very large molecular systems (more than 2GB of
   integrals) causes crashes due to an overflow in a broadcast operation.  This is fixed in 5.1.3.
+
+* Intel 2017 compilers, MKL 2017 and OpenMPI 1.10 or later cause segmentation faults in
+  FCI calculations in parallel (see
+  https://software.intel.com/en-us/forums/intel-math-kernel-library/topic/734559 for more
+  details). QMC calculations are unaffected. Either use MKL 2016 or an alternative MPI
+  library (MPICH is not affected by this issue) or only perform QMC calculations.
+
+* gcc 7.3 (and possibly earlier gcc 7 releases) has a bug affecting ``c_associated``. Use
+  a later version. Details: https://gcc.gnu.org/bugzilla/show_bug.cgi?id=82869.
