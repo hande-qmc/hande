@@ -137,6 +137,9 @@ contains
         if (qmc_state_restart_loc) then
             call move_qmc_state_t(qmc_state_restart, qmc_state)
             qmc_state%mc_cycles_done = qmc_state_restart%mc_cycles_done
+            ! Prevent pattempt_single to be overwritten by default value in init_excit_gen.
+            ! It is only overwritten if user specifies pattempt_single by qmc_in.
+            qmc_state%excit_gen_data%p_single_double%pattempt_restart_store = .true.
         else
             call init_spawn_store(qmc_in, qmc_state%psip_list%nspaces, qmc_state%psip_list%pop_real_factor, sys%basis, &
                                   fciqmc_in_loc%non_blocking_comm, qmc_state%par_info%load%proc_map, io_unit, &
@@ -1237,6 +1240,9 @@ contains
         call move_alloc(qmc_state_old%vary_shift, qmc_state_new%vary_shift)
         call move_alloc(qmc_state_old%estimators, qmc_state_new%estimators)
         call move_particle_t(qmc_state_old%psip_list, qmc_state_new%psip_list)
+
+        ! [todo] - there are only logicals, reals and integers in there so is it as easy as this?
+        qmc_state_new%excit_gen_data%p_single_double = qmc_state_old%excit_gen_data%p_single_double
 
     end subroutine move_qmc_state_t
 
