@@ -1019,11 +1019,14 @@ contains
 
         logical :: update, vary_shift_before, nb_comm_local, comms_found, comp_param
         real(dp) :: rep_info_copy(nprocs*qs%psip_list%nspaces+nparticles_start_ind-1)
+        integer :: iunit
+
 #ifdef PARALLEL
         integer :: ierr
         real(p) :: pattempt_single_sum
 #endif
 
+        iunit = 6
         ! Only update the timestep if not in vary shift mode.
         update_tau = update_tau .and. .not. any(qs%vary_shift) .and. qmc_in%tau_search
 
@@ -1037,6 +1040,7 @@ contains
         if ((qs%excit_gen_data%p_single_double%vary_psingles == .true.) .and. (vary_shift_before == .true.)) then
             ! Stop varying pattempt_single when the shift has started varying.
             ! The MPI processes communicate to decide on a common, average pattempt_single now.
+            ! [todo] - is it best to only communicate now? (probably fine)
             qs%excit_gen_data%p_single_double%vary_psingles = .false.
 #ifdef PARALLEL
             pattempt_single_sum = 0.0_p
@@ -1045,6 +1049,8 @@ contains
             qs%excit_gen_data%pattempt_single = pattempt_single_sum/float(nprocs)
             qs%excit_gen_data%pattempt_double = 1.0_p - qs%excit_gen_data%pattempt_single
 #endif
+            ! Write (final) pattempt_single to output file.
+            if (parent) write(iunit, '(1X, "# pattempt_single chosen to be: ",f8.6)') qs%excit_gen_data%pattempt_single
         end if
 
         ! Test for a comms file so MPI communication can be combined with
