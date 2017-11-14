@@ -74,6 +74,7 @@ contains
         use utils, only: read_file_to_buffer
 
         character(255) :: inp_file, err_string
+        ! [review] - VAN: I guess, this needs removal as well right?
 #if ! defined(__GNUC__) || __GNUC__ > 4 || (__GNUC__ == 4 && (__GNUC_MINOR__ > 7))
         character(:), allocatable :: buffer
 #else
