@@ -394,10 +394,7 @@ contains
         !    buffer: set to the contents in the file.  Enlarged to hold the entire
         !        contents of the file.
 
-        ! NOTE: for GCC 4.7 and below, we take a fixed buffer and assume that
-        ! it is large enough to hold the entire file and lines are (at most)
-        ! 1024 characters long.  For all other compilers we take an allocatalbe
-        ! character string and dynamically resize it.
+        ! NOTE: We take an allocatable character string and dynamically resize it.
 
         use, intrinsic :: iso_fortran_env
 
