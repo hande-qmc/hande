@@ -785,9 +785,10 @@ module restart_hdf5
                         qs%estimators%D0_population_comp = cmplx(D0_population_tmp_re, D0_population_tmp_im, p)
                     else
                         ! Have legacy restart file from version 1. Estimate projected energy using shift.
+                        ! This is only used when doing a CCMC calculation.
                         ! This can work assuming the projected energy is only really used for calculating the
                         ! old projected energy (real part of ratio of projected energy and D0 population) before starting
-                        ! an CCMC/FCIQMC calculation.
+                        ! an CCMC calculation.
                         ! If qs%shift is still zero, will estimate projected energy later (which can be quite wrong for CCMC).
                         ! While real(qs%estimators%D0_population_comp) might look like (a,a,b,b) (qs%psip_list%nspaces=4),
                         ! qs%estimators%D0_population will then be (a,b,0,0). Need to convert this as legacy restart has stored

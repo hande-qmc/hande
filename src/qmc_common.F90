@@ -596,9 +596,14 @@ contains
         if (present(restarting_qs)) restarting_qs_loc = restarting_qs
         restart_version_restart_loc = 0
         if (present(restart_version_restart)) restart_version_restart_loc = restart_version_restart
+        ! doing ccmc?
+        doing_ccmc_loc = .false.
+        if (present(doing_ccmc)) doing_ccmc_loc = doing_ccmc
 
         use_tmp = .false.
         ! Make sure projected energy/ D0 pop. does not get overwritten if restarting.
+        ! If we read in from a legacy restart file, estimate projected energy from shift
+        ! if and only if doing a ccmc calculation and shift is nonzero.
         if ((restarting_readin_loc) .or. (restarting_qs_loc)) then
             D0_population_tmp = qs%estimators%D0_population
             D0_population_comp_tmp = qs%estimators%D0_population_comp
@@ -610,17 +615,23 @@ contains
                 if (restart_version_restart_loc > 1) then
                     ! We do not have to deal with legacy restart.
                     use_tmp = .true.
-                else if (((all(abs(real(proj_energy_comp_tmp,p)) > 0.0_p)) .and. (sys%read_in%comp)) &
-                    .or. ((all(abs(proj_energy_tmp) > 0.0_p)) .and. (sys%read_in%comp == .false.))) then
-                    ! Legacy restart but proj. energy was not estimated by a shift which was zero.
-                    use_tmp = .true.
                 else
-                    ! This might be conservative but since one element of qs%estimators%proj_energy was zero
-                    ! which could have been because of the shift, we do not use estimated proj. energies.
-                    if (parent) then
-                        call warning('initial_fciqmc_status', 'Even though we are restarting a CCMC/FCIQMC'// &
-                            ' calculation, information from previous calculation cannot be used to estimate projected energy.'// &
-                            ' This is probably because the shift/one of the shifts is zero.')
+                    if (doing_ccmc_loc) then
+                        ! doing ccmc, possibly estimate projected energy from shift.
+                        if (((all(abs(real(proj_energy_comp_tmp,p)) > 0.0_p)) .and. (sys%read_in%comp)) &
+                            .or. ((all(abs(proj_energy_tmp) > 0.0_p)) .and. (sys%read_in%comp == .false.))) then
+                            ! Legacy restart but proj. energy was not estimated by a shift which was zero.
+                            use_tmp = .true.
+                        else
+                            ! This might be conservative but since one element of qs%estimators%proj_energy was zero
+                            ! which could have been because of the shift, we do not use estimated proj. energies.
+                            if (parent) then
+                                call warning('initial_fciqmc_status', 'Even though we are restarting a CCMC/FCIQMC'// &
+                                    ' calculation, information from previous calculation cannot be used to estimate'// &
+                                    ' projected energy.'// &
+                                    ' This is probably because the shift/one of the shifts is zero.')
+                            end if
+                        end if
                     end if
                 end if
             end if
@@ -668,9 +679,6 @@ contains
         ! Using non blocking communications?
         nb_comm_local = .false.
         if (present(nb_comm)) nb_comm_local = nb_comm
-        ! doing ccmc?
-        doing_ccmc_loc = .false.
-        if (present(doing_ccmc)) doing_ccmc_loc = doing_ccmc
 #ifdef PARALLEL
         if (nb_comm_local) then
             ! The output in non-blocking comms is delayed one report loop, so initialise
