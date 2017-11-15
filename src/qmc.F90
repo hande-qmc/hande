@@ -45,7 +45,7 @@ contains
 
         use checking, only: check_allocate
 
-        use calc, only: doing_calc, hfs_fciqmc_calc, dmqmc_calc
+        use calc, only: doing_calc, hfs_fciqmc_calc, dmqmc_calc, GLOBAL_META
         use energy_evaluation, only: nparticles_start_ind
         use load_balancing, only: init_parallel_t
         use particle_t_utils, only: init_particle_t
@@ -128,9 +128,11 @@ contains
         call init_parallel_t(qmc_state%psip_list%nspaces, nparticles_start_ind-1, fciqmc_in_loc%non_blocking_comm, &
                              qmc_state%par_info, load_bal_in%nslots)
 
-        if (qmc_state_restart_loc) then
+        uuid_restart = ''
+        if (present(qmc_state_restart)) then
             call move_qmc_state_t(qmc_state_restart, qmc_state)
             qmc_state%mc_cycles_done = qmc_state_restart%mc_cycles_done
+            uuid_restart = GLOBAL_META%uuid
         else
             call init_spawn_store(qmc_in, qmc_state%psip_list%nspaces, qmc_state%psip_list%pop_real_factor, sys%basis, &
                                   fciqmc_in_loc%non_blocking_comm, qmc_state%par_info%load%proc_map, io_unit, &
