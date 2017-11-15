@@ -56,6 +56,11 @@ contains
         ! [todo] - consider setting hmatel%r and hmatel%c to zero to avoid undefined behaviour.
         ! [todo] - although it is probably fine, abs_hmatel_ptr ignores the irrelevant bit.
 
+        if (original) then
+            ! check whether we are allowed to use the original heat bath algorithm. Exit if not.
+            call check_heat_bath_bias(sys)
+        end if
+
         j_nonzero = 0
 
         hb%ia_weights = 0.0_p
@@ -136,19 +141,20 @@ contains
             end do
             hb%i_weights(i) = i_weight
 
+            ! Old test for bias. Replaced by subroutine check_heat_bath_bias
             ! Test that all single excitation i -> a that are allowed have some non zero weight ija for some j.
-            do a = 1, sys%basis%nbasis
-                if ((j_nonzero(a,i) < (sys%basis%nbasis - sys%nel)) .and. (original == .true.) .and. (i /= a)) then
-                    ! no non zero weight ija for some j and (i /= a). Now check that i -> a is valid.
-                    ims = sys%basis%basis_fns(i)%ms
-                    isyma = sys%read_in%cross_product_sym_ptr(sys%read_in, sys%basis%basis_fns(i)%sym, &
-                                                    sys%read_in%pg_sym%gamma_sym)
-                    if ((sys%basis%basis_fns(a)%sym == isyma) .and. (sys%basis%basis_fns(a)%ms == ims)) then
-                        call stop_all('init_excit_mol_heat_bath','Not all possible single excitations can be accounted for. &
-                            Use another excitation generator.')
-                    end if
-                end if
-            end do
+            !do a = 1, sys%basis%nbasis
+            !    if ((j_nonzero(a,i) < (sys%basis%nbasis - sys%nel)) .and. (original == .true.) .and. (i /= a)) then
+            !        ! no non zero weight ija for some j and (i /= a). Now check that i -> a is valid.
+            !        ims = sys%basis%basis_fns(i)%ms
+            !        isyma = sys%read_in%cross_product_sym_ptr(sys%read_in, sys%basis%basis_fns(i)%sym, &
+            !                                        sys%read_in%pg_sym%gamma_sym)
+            !        if ((sys%basis%basis_fns(a)%sym == isyma) .and. (sys%basis%basis_fns(a)%ms == ims)) then
+            !            call stop_all('init_excit_mol_heat_bath','Not all possible single excitations can be accounted for. &
+            !                Use another excitation generator.')
+            !        end if
+            !    end if
+            !end do
         end do
 
         do i = 1, sys%basis%nbasis
@@ -167,6 +173,66 @@ contains
         end do
 
     end subroutine init_excit_mol_heat_bath
+
+    subroutine check_heat_bath_bias(sys)
+        
+        ! This routine checks for bias in the heat_bath excitation generator where a single excitation
+        ! i -> a is only chosen after i, j and a have been selected. This means that if there is no
+        ! j that allows us to select i, j and a but i -> a is valid, i -> a cannot be selected even
+        ! though it should have that chance. If a bias is found, stop the calculation run.
+
+        ! The bias follows the check by Holmes et al. (Section D, p. 1565)
+        ! (Holmes, A. A.; Changlani, H. J.; Umrigar, C. J. J. Chem. Theory Comput. 2016, 12, 1561–1571)
+        ! The number of irreducible representations in the full symmetry group are found by the
+        ! number of i for which Hij == 0 for any j /= i for the system we study except that we only
+        ! have one electron instead of N electrons in M spinorbitals.
+        ! If the number of irreducible representations is bigger than either the number of up spins or
+        ! down spins (whatever is bigger), then the heat bath algorithm might be biased. If not, then
+        ! it is not biased (a sufficient but not necessary condition).
+
+        ! In:
+        !   sys: information about the system to be studied.
+
+        use errors, only: stop_all
+        use system, only: sys_t
+        use molecular_integrals, only: get_one_body_int_mol_real, get_one_body_int_mol_complex
+        
+        type(sys_t), intent(in) :: sys
+
+        integer :: i, j, counter
+        complex(p) :: hij_comp
+        real(p) :: hij_real
+
+        counter = 0 ! number of irreps.
+        hij_comp = cmplx(0.0_p, 0.0_p, p)
+        hij_real = 0.0_p
+
+        do i = 1, sys%basis%nbasis
+            do j = 1, sys%basis%nbasis
+                if (i /= j) then
+                    if (sys%read_in%comp) then
+                        ! add the abs value so that minus/plus cancellations do not happen.
+                        hij_comp = hij_comp + abs(get_one_body_int_mol_complex(sys%read_in%one_e_h_integrals, &
+                                                sys%read_in%one_e_h_integrals_imag, i, j, sys))
+                    else
+                        hij_real = hij_real + abs(get_one_body_int_mol_real(sys%read_in%one_e_h_integrals, i, j, sys))
+                    end if
+                end if
+            end do
+            ! [todo] compare as > 0 or > depsilon?
+            if (((sys%read_in%comp) .and. (abs(real(hij_comp)) > 0.0_p) .and. (abs(aimag(hij_comp)) > 0.0_p)) .or. &
+                ((sys%read_in%comp == .false.) .and. (abs(hij_real) > 0.0_p))) then
+                counter = counter + 1
+            end if
+        end do
+
+        if ((counter < max(sys%nalpha, sys%nbeta)) == .false.) then
+            ! [todo] - should only the parent process deal with this?
+            call stop_all('check_heat_bath_bias','Maybe not all possible single excitations can be accounted for. &
+                            Use another excitation generator.')
+        end if
+
+    end subroutine check_heat_bath_bias
 
     subroutine gen_excit_mol_heat_bath(rng, sys, excit_gen_data, cdet, pgen, connection, hmatel, allowed_excitation)
 
