@@ -74,12 +74,7 @@ contains
         use utils, only: read_file_to_buffer
 
         character(255) :: inp_file, err_string
-        ! [review] - VAN: I guess, this needs removal as well right?
-#if ! defined(__GNUC__) || __GNUC__ > 4 || (__GNUC__ == 4 && (__GNUC_MINOR__ > 7))
         character(:), allocatable :: buffer
-#else
-        character(1024**2) :: buffer
-#endif
         integer :: lua_err
         integer :: buf_len
         type(flu_State) :: lua_state
@@ -105,10 +100,7 @@ contains
 
 #ifdef PARALLEL
             call mpi_bcast(buf_len, 1, MPI_INTEGER, 0, mpi_comm_world, ierr)
-#if ! defined(__GNUC__) || __GNUC__ > 4 || (__GNUC__ == 4 && (__GNUC_MINOR__ > 7))
             if (.not.parent) allocate(character(len=buf_len) :: buffer)
-#else
-#endif
             call mpi_bcast(buffer, buf_len, MPI_CHARACTER, 0, mpi_comm_world, ierr)
 #endif
 
