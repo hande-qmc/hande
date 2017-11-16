@@ -585,7 +585,7 @@ module restart_hdf5
                 ! Different restart versions require graceful handling of the
                 ! additions/removals.
                 if (restart_version /= restart_version_restart) then
-                    if ((restart_version_restart == 1) .and. (restart_version == 2)) then
+                    if ((restart_version_restart == 1) .and. (restart_version >= 2)) then
                         if (parent) then
                             call warning('read_restart_hdf5', &
                                 'Restarting from restart version 1. '// &
