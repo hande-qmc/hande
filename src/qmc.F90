@@ -845,7 +845,7 @@ contains
         use qmc_data, only: qmc_in_t
         use excit_gens, only: excit_gen_data_t
         use ueg_system, only: init_ternary_conserve
-        use qmc_common, only: find_single_double_prob
+        use qmc_common, only: find_single_double_prob, find_parallel_prob
         use reference_determinant, only: reference_t
 
         type(sys_t), intent(in) :: sys
@@ -870,10 +870,11 @@ contains
             excit_gen_data%pattempt_double = 1.0_p - qmc_in%pattempt_single
         end if
 
-        ! If not set at input, set probability of selecting parallel ij to 0.25.
-        ! [todo] - find more intelligent default. check restarting.
+        ! If not set at input, set probability of selecting parallel ij to the ratio of |Hij->ab| with parallel spins to
+        ! total |Hij->ab|.
+        ! [todo] - desireable to store in restart file?
         if (qmc_in%pattempt_parallel < 0) then
-            excit_gen_data%pattempt_parallel = 0.25_p
+            call find_parallel_prob(sys, excit_gen_data%pattempt_parallel)
         end if
 
         ! UEG allowed excitations

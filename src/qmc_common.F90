@@ -259,6 +259,87 @@ contains
 
     end subroutine find_single_double_prob
 
+    subroutine find_parallel_prob(sys, pparallel)
+        
+        ! Estimate pattempt_parallel by finding the ration of |Hij->ab|
+        ! where ij are parallel to when they are not.
+
+        ! In:
+        !   sys: information about the system to be studied
+        ! Out:
+        !   pparallel: Estimate for pattempt_parallel
+
+        use system, only: sys_t
+        use proc_pointers, only: slater_condon2_excit_ptr, abs_hmatel_ptr
+        use read_in_symmetry, only: cross_product_basis_read_in
+        use hamiltonian_data, only: hmatel_t
+
+        type(sys_t), intent(in) :: sys
+        real(p), intent(out) :: pparallel
+        
+        type(hmatel_t)  :: hmatel
+        integer :: i, j, a, b, i_tmp, j_tmp, a_tmp, b_tmp, ij_sym, isymb
+        real(p) :: parallel_weight, ortho_weight
+
+        parallel_weight = 0.0_p
+        ortho_weight = 0.0_p
+
+        do i = 1, sys%basis%nbasis
+            do j = 1, sys%basis%nbasis
+                if (i /= j) then
+                    if (j < i) then
+                        i_tmp = j
+                        j_tmp = i
+                    else
+                        i_tmp = i
+                        j_tmp = j
+                    end if
+                    ! The symmetry of b, isymb, is given by
+                    ! (sym_i* x sym_j* x sym_a)* = sym_b
+                    ! (at least for Abelian point groups)
+                    ! ij_sym: symmetry conjugate of the irreducible representation spanned by the codensity
+                    !        \phi_i*\phi_j. (We assume that ij is going to be in the bra of the excitation.)
+                    ! [todo] - Check whether order of i and j matters here.
+                    ij_sym = sys%read_in%sym_conj_ptr(sys%read_in, cross_product_basis_read_in(sys, i_tmp, j_tmp))
+                    do a = 1, sys%basis%nbasis
+                        if ((a /= i) .and. (a /= j)) then
+                            isymb = sys%read_in%sym_conj_ptr(sys%read_in, &
+                                        sys%read_in%cross_product_sym_ptr(sys%read_in, ij_sym, sys%basis%basis_fns(a)%sym))
+                            do b = 1, sys%basis%nbasis
+                                ! Check spin conservation and symmetry conservation.
+                                if ((((sys%basis%basis_fns(i_tmp)%Ms == sys%basis%basis_fns(a)%Ms) .and. &
+                                    (sys%basis%basis_fns(j_tmp)%Ms == sys%basis%basis_fns(b)%Ms)) .or. &
+                                    ((sys%basis%basis_fns(i_tmp)%Ms == sys%basis%basis_fns(b)%Ms) .and. &
+                                    (sys%basis%basis_fns(j_tmp)%Ms == sys%basis%basis_fns(a)%Ms))) .and. &
+                                    (sys%basis%basis_fns(b)%sym == isymb) .and. ((b /= a) .and. (b /= i) .and. &
+                                    (b /= j))) then
+                                    if (b < a) then
+                                        a_tmp = b
+                                        b_tmp = a
+                                    else
+                                        a_tmp = a
+                                        b_tmp = b
+                                    end if
+                                    hmatel = slater_condon2_excit_ptr(sys, i_tmp, j_tmp, a_tmp, b_tmp, .false.)
+                                    if (sys%basis%basis_fns(i_tmp)%Ms == sys%basis%basis_fns(j_tmp)%Ms) then
+                                        ! parallel spins
+                                        parallel_weight = parallel_weight + abs_hmatel_ptr(hmatel)
+                                    else
+                                        ! not parallel
+                                        ortho_weight = ortho_weight + abs_hmatel_ptr(hmatel)
+                                    end if
+                                end if
+                            end do
+                        end if
+                    end do
+                end if
+            end do
+        end do
+
+        pparallel = parallel_weight/(parallel_weight + ortho_weight)
+
+    end subroutine
+
     function decide_nattempts(rng, population) result(nattempts)
 
         ! Decide how many spawning attempts should be made from a determinant
