@@ -148,8 +148,7 @@ contains
             ! Initial walker distributions
             if (restart_in%read_restart) then
                 call read_restart_hdf5(ri, sys%basis%nbasis, fciqmc_in_loc%non_blocking_comm, sys%basis%info_string_len, &
-                                        sys%read_in%comp, qmc_state, uuid_restart, regenerate_info_loc, &
-                                        restart_version_restart)
+                                        qmc_state, uuid_restart, regenerate_info_loc, restart_version_restart)
             else if (doing_calc(dmqmc_calc)) then
                 ! Initial distribution handled later
                 qmc_state%psip_list%nstates = 0

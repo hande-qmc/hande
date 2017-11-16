@@ -442,7 +442,7 @@ module restart_hdf5
                     call hdf5_write(subgroup_id, dref, kinds, shape(qs%ref%f0, kind=int_64), qs%ref%f0)
 
                     call hdf5_write(subgroup_id, dhsref, kinds, shape(qs%ref%hs_f0, kind=int_64), qs%ref%hs_f0)
-                    
+
                     call hdf5_write(subgroup_id, dref_pop, kinds, shape(qs%estimators%D0_population, kind=int_64),&
                                     qs%estimators%D0_population)
 
@@ -476,8 +476,8 @@ module restart_hdf5
 
         end subroutine dump_restart_hdf5
 
-        subroutine read_restart_hdf5(ri, nbasis, nb_comm, info_string_len, do_comp, qs, uuid_restart, &
-                regenerate_info, restart_version_restart)
+        subroutine read_restart_hdf5(ri, nbasis, nb_comm, info_string_len, qs, uuid_restart, regenerate_info, &
+                                     restart_version_restart)
 
             ! Read QMC data from restart file.
 
@@ -487,7 +487,6 @@ module restart_hdf5
             !    nbasis: number of basis functions being used.
             !    info_string_len: length in integers of additional information stored
             !       in bit string.
-            !    do_comp: true if we are using complex populations
             ! In/Out:
             !    qs: qmc_state_t object.  Allocated on input, contains info
             !       from the restart file on exit.  If nb_comm is true, then
@@ -517,7 +516,6 @@ module restart_hdf5
             type(restart_info_t), intent(in) :: ri
             logical, intent(in) :: nb_comm
             integer, intent(in) :: nbasis, info_string_len
-            logical, intent(in) :: do_comp
             type(qmc_state_t), intent(inout) :: qs
             character(36), intent(out) :: uuid_restart
             logical, intent(out) :: regenerate_info
@@ -742,7 +740,7 @@ module restart_hdf5
                     call hdf5_read(subgroup_id, dncycles, qs%mc_cycles_done)
 
                     call hdf5_read(subgroup_id, dshift, kinds, shape(qs%shift, kind=int_64), qs%shift)
-                    
+
                     if (restart_version_restart > 1) then
                         call hdf5_read(subgroup_id, dproj_energy, kinds, shape(qs%estimators%proj_energy, kind=int_64), &
                                 qs%estimators%proj_energy)
@@ -783,53 +781,6 @@ module restart_hdf5
                         call hdf5_read(subgroup_id, dref_pop_im, kinds, shape(D0_population_tmp_im, kind=int_64), &
                                    D0_population_tmp_im)
                         qs%estimators%D0_population_comp = cmplx(D0_population_tmp_re, D0_population_tmp_im, p)
-                    else
-                        ! Have legacy restart file from version 1. Estimate projected energy using shift.
-                        ! This is only used when doing a CCMC calculation.
-                        ! This can work assuming the projected energy is only really used for calculating the
-                        ! old projected energy (real part of ratio of projected energy and D0 population) before starting
-                        ! an CCMC calculation.
-                        ! If qs%shift is still zero, will estimate projected energy later (which can be quite wrong for CCMC).
-                        ! While real(qs%estimators%D0_population_comp) might look like (a,a,b,b) (qs%psip_list%nspaces=4),
-                        ! qs%estimators%D0_population will then be (a,b,0,0). Need to convert this as legacy restart has stored
-                        ! qs%estimators%D0_population.
-                        i = 1
-                        j = 1
-                        do while (i <= qs%psip_list%nspaces)
-                            D0_population_tmp_re(i) = qs%estimators(j)%D0_population
-                            i = i + 1
-                            if (mod(i,2) /= 0) then
-                                j = j + 1
-                            end if
-                        end do
-                        
-                        if (do_comp) then
-                            ! shift is of form e.g. (a,a,b,b), i.e. two consecutive entries are identical
-                            proj_energy_tmp_re = qs%shift * D0_population_tmp_re
-                            i = 1
-                            j = 1
-                            qs%estimators%proj_energy = 0.0_p
-                            do while (j <= qs%psip_list%nspaces)
-                                qs%estimators(i)%proj_energy = proj_energy_tmp_re(j)
-                                i = i + 1
-                                j = j + 2
-                            end do
-                        else
-                            ! shift is of form e.g. (a,b), i.e. entries are unique
-                            qs%estimators%proj_energy = qs%shift * qs%estimators%D0_population
-                            i = 1
-                            j = 1
-                            do while (i <= qs%psip_list%nspaces)
-                                proj_energy_tmp_re(i) = qs%estimators(j)%proj_energy
-                                i = i + 1
-                                if (mod(i,2) /= 0) then
-                                    j = j + 1
-                                end if
-                            end do
-                        end if
-                        
-                        qs%estimators%D0_population_comp = cmplx(D0_population_tmp_re, 0.0_p, p)
-                        qs%estimators%proj_energy_comp = cmplx(proj_energy_tmp_re, 0.0_p, p)
                     end if
 
                 call h5gclose_f(subgroup_id, ierr)
