@@ -619,7 +619,7 @@ contains
                     if (doing_ccmc_loc) then
                         ! doing ccmc, possibly estimate projected energy from shift.
                         if (((all(abs(real(proj_energy_comp_tmp,p)) > 0.0_p)) .and. (sys%read_in%comp)) &
-                            .or. ((all(abs(proj_energy_tmp) > 0.0_p)) .and. (sys%read_in%comp == .false.))) then
+                            .or. ((all(abs(proj_energy_tmp) > 0.0_p)) .and. (.not.sys%read_in%comp))) then
                             ! Legacy restart but proj. energy was not estimated by a shift which was zero.
                             use_tmp = .true.
                         else

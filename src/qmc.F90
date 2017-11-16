@@ -747,7 +747,7 @@ contains
 
         ! Set initial values from input
         qmc_state%tau = qmc_in%tau
-        if ((restart_read_in == .false.) .and. (qmc_state_restart == .false.)) then
+        if (.not.restart_read_in .and. .not.qmc_state_restart) then
             qmc_state%estimators%D0_population = qmc_in%D0_population
             qmc_state%estimators%D0_population_old = qmc_in%D0_population
         else
