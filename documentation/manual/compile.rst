@@ -335,9 +335,6 @@ is not possible.  Issues and, where known, workarounds we have found are:
   details). QMC calculations are unaffected. Either use MKL 2016 or an alternative MPI
   library (MPICH is not affected by this issue) or only perform QMC calculations.
 
-* gcc 7.3 (and possibly earlier gcc 7 releases) has a bug affecting ``c_associated``. Use
-  a later version. Details: https://gcc.gnu.org/bugzilla/show_bug.cgi?id=82869.
-
 * Linking lua depends on how it was compiled. Errors of the type
 
   .. code-block:: bash
