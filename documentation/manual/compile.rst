@@ -18,7 +18,7 @@ simple to adapt one to the local environment (e.g. changing compiler or library 
 
     If any `prereq` have been installed to non-default (e.g. to $HOME/local) paths, then
     these paths must be made available to the compiler via ``ldflags`` (see below) -- e.g.
-    using ``-L $HOME/local`` -- and, for dynamic libariesm added to the environment by
+    using ``-L $HOME/local`` -- and, for dynamic libaries added to the environment by
     setting the LD_LIBRARY_PATH environment variable.
 
 Run
