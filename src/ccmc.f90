@@ -468,14 +468,8 @@ contains
             call dSFMT_init(qmc_in%seed+iproc+i*nprocs, 50000, rng(i))
         end do
         if (restart_in%restart_rng .and. allocated(qs%rng_state%dsfmt_state)) then
-            ! [review] - VAN: this gives me a compile time error as rng is an array here but
-            ! [review] - VAN: dSFMT_state_t_to_dSFMT_t expects just a single rng object.
-            ! [review] - VAN: Given you seems to store rng(0), should rng below here be rng(0)?
-            ! [review] - VAN: So the other threads just stay initialised from the call above,
-            ! [review] - VAN: whereas rng(0) gets overwritten with the rng state stored in restart?
-            ! [review] - VAN: Also, should it be 'do_ccmc'?
-            call dSFMT_state_t_to_dSFMT_t(rng, qs%rng_state, err_msg=err_msg)
-            if (allocated(err_msg)) call stop_all('do_fciqmc', 'Failed to reset RNG state: '//err_msg)
+            call dSFMT_state_t_to_dSFMT_t(rng(0), qs%rng_state, err_msg=err_msg)
+            if (allocated(err_msg)) call stop_all('do_ccmc', 'Failed to reset RNG state: '//err_msg)
             call free_dSFMT_state_t(qs%rng_state)
         end if
 
