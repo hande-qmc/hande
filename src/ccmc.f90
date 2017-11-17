@@ -289,6 +289,8 @@ contains
 
         use checking, only: check_allocate, check_deallocate
         use dSFMT_interface, only: dSFMT_t, dSFMT_init, dSFMT_end
+        use dSFMT_interface, only: dSFMT_t, dSFMT_init, dSFMT_end, dSFMT_state_t_to_dSFMT_t, dSFMT_t_to_dSFMT_state_t, &
+                                   free_dSFMT_state_t
         use errors, only: stop_all
         use parallel
         use restart_hdf5, only: dump_restart_hdf5, restart_info_t, init_restart_info_t, dump_restart_file_wrapper
@@ -386,6 +388,7 @@ contains
         type(blocking_t) :: bl
         integer :: iunit, restart_version_restart
         integer :: date_values(8)
+        character(:), allocatable :: err_msg
 
         if (parent) then
             write (io_unit,'(1X,"CCMC")')
@@ -464,6 +467,11 @@ contains
             ! Initialise and allocate RNG store.
             call dSFMT_init(qmc_in%seed+iproc+i*nprocs, 50000, rng(i))
         end do
+        if (restart_in%restart_rng .and. allocated(qs%rng_state%dsfmt_state)) then
+            call dSFMT_state_t_to_dSFMT_t(rng, qs%rng_state, err_msg=err_msg)
+            if (allocated(err_msg)) call stop_all('do_fciqmc', 'Failed to reset RNG state: '//err_msg)
+            call free_dSFMT_state_t(qs%rng_state)
+        end if
 
         ! ...and scratch space for calculative cumulative probabilities.
         allocate(cumulative_abs_real_pops(size(qs%psip_list%states,dim=2)), stat=ierr)
@@ -824,7 +832,8 @@ contains
             t1 = t2
 
             call dump_restart_file_wrapper(qs, dump_restart_shift, restart_in%write_freq, nparticles_old, ireport, &
-                                           qmc_in%ncycles, sys%basis%nbasis, ri, ri_shift, .false., sys%basis%info_string_len)
+                                           qmc_in%ncycles, sys%basis%nbasis, ri, ri_shift, .false., sys%basis%info_string_len, &
+                                           rng(0))
 
             qs%psip_list%tot_nparticles = nparticles_old
 
@@ -833,6 +842,8 @@ contains
             if (update_tau) call rescale_tau(qs%tau)
 
         end do
+
+        call dSFMT_t_to_dSFMT_state_t(rng(0), qs%rng_state)
 
         if (blocking_in%blocking_on_the_fly) call deallocate_blocking(bl)
         if (blocking_in%blocking_on_the_fly .and. parent) call date_and_time(VALUES=date_values)

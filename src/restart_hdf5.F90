@@ -74,7 +74,11 @@ module restart_hdf5
     !      info_string_len             # Length in integers of additional information
     !                                  # stored in bit string.
     !
-    !  rng/                            # Not used yet.
+    !  rng/                            # Should be used to restore a dSFMT_state_t object and then that object
+    !                                  # used to restore a dSFMT_t state.
+    !      state                       # (Version 3) State of DSFMT RNG.
+    !      distribution                # (Version 3) Type of pre-computed random numbers
+    !      random_store                # (Version 3) Set of pre-computed (but unused) random numbers.
 
     ! where XXX/ indicates a group called XXX, YYY indicates a dataset called
     ! YYY and a nested structure indicates group membership and # is used to
@@ -114,7 +118,7 @@ module restart_hdf5
     ! needed following updates to code.
     ! In addition it might be helpful when writing post-processing utilities which act upon
     ! restart files.
-    integer, parameter :: restart_version = 2
+    integer, parameter :: restart_version = 3
 
     ! Group names...
     character(*), parameter :: gmetadata = 'metadata',  &
@@ -158,7 +162,10 @@ module restart_hdf5
                                dvary = 'vary shift',                &
                                dshift_damping = 'shift_damping',    &
                                dshift_damping_status = 'shift_damping_status', &
-                               dinfo_string_len = 'info string len'
+                               dinfo_string_len = 'info string len',&
+                               drng_state = 'state',                &
+                               drng_dist = 'distribution',          &
+                               drng_store = 'random_store'
 
     contains
 
@@ -457,6 +464,13 @@ module restart_hdf5
 
             ! --- rng group ---
             call h5gcreate_f(file_id, grng, group_id, ierr)
+                if (allocated(qs%rng_state%dsfmt_state)) then
+                    associate(state=>qs%rng_state)
+                        call hdf5_write(group_id, drng_state, state%dsfmt_state)
+                        call hdf5_write(group_id, drng_dist, state%distribution)
+                        call hdf5_write(group_id, drng_store, kinds, shape(state%random_store, kind=int_64), state%random_store)
+                    end associate
+                end if
             call h5gclose_f(group_id, ierr)
 
             ! --- basis group ---
@@ -785,6 +799,16 @@ module restart_hdf5
 
             ! --- rng group ---
             call h5gopen_f(file_id, grng, group_id, ierr)
+                call h5lexists_f(group_id, drng_state, exists, ierr)
+                if (exists) then
+                    associate(state=>qs%rng_state)
+                        call hdf5_read(group_id, drng_state, state%dsfmt_state)
+                        call hdf5_read(group_id, drng_dist, state%distribution)
+                        call dset_shape(group_id, drng_store, dims(:1))
+                        allocate(state%random_store(dims(1)))
+                        call hdf5_read(group_id, drng_store, kinds, shape(state%random_store, kind=int_64), state%random_store)
+                    end associate
+                end if
             call h5gclose_f(group_id, ierr)
 
             ! And terminate HDF5.
@@ -1098,7 +1122,9 @@ module restart_hdf5
                     call h5dwrite_f(dset_id, H5T_NATIVE_INTEGER, i0_length, [0_HSIZE_T,0_HSIZE_T], ierr)
                     call h5dclose_f(dset_id, ierr)
                 end if
-                call h5ocopy_f(orig_id, grng, new_id, grng, ierr)
+                ! Create the RNG group but don't copy the RNG state as we can't restart RNG streams for processors we didn't have...
+                call h5gcreate_f(new_id, grng, group_id, ierr)
+                call h5gclose_f(group_id, ierr)
                 ! ...and non-psip-specific groups in the /qmc group.
                 call h5gcreate_f(new_id, gqmc, group_id, ierr)
                     ! /qmc/state and /qmc/reference
@@ -1352,12 +1378,11 @@ module restart_hdf5
         end subroutine redistribute_restart_hdf5
 
         subroutine dump_restart_file_wrapper(qs, dump_restart_shift, dump_freq, ntot_particles, ireport, ncycles, &
-                                             nbasis, ri_freq, ri_shift, nb_comm, info_string_len)
+                                             nbasis, ri_freq, ri_shift, nb_comm, info_string_len, rng)
 
             ! Check if a restart file needs to be written, and if so then do so.
 
             ! In:
-            !     qs: qmc_state_t object.  Particle and related info written out (if desired).
             !     dump_freq: How often (in iterations) to write out a restart file.  Pass in
             !         huge(0) to (effectively) disable.
             !     ntot_particles: total number of particles in each space.
@@ -1370,13 +1395,17 @@ module restart_hdf5
             !     nb_comm: true if using non-blocking communications.
             !     info_string_len: length of integers used to store additional information in
             !         the bit string.
+            !     rng (optional): if present, include the DSFMT state with qmc_state_t for writing to the restart file.
             ! In/Out:
+            !     qs: qmc_state_t object.  Particle and related info written out (if desired). A few fields are modified but reset
+            !         to their original values at the end.
             !     dump_restart_shift: should we dump a restart file just before
             !         the shift turns on?  If true and a restart file is written out, then
             !         returned as false.
 
             use const, only: dp
             use qmc_data, only: qmc_state_t
+            use dSFMT_interface, only: dSFMT_t, dsfmt_state_to_str, free_dSFMT_state_t
 
             type(qmc_state_t), intent(inout) :: qs
             logical, intent(inout) :: dump_restart_shift
@@ -1384,7 +1413,10 @@ module restart_hdf5
             integer, intent(in) :: ireport, ncycles, dump_freq, nbasis, info_string_len
             type(restart_info_t), intent(in) :: ri_freq, ri_shift
             logical, intent(in) :: nb_comm
+            type(dSFMT_t), intent(in), optional :: rng
 
+            ! [todo]
+            !if (present(rng)) call dsfmt_state_to_str(rng, qs%rng_state)
             if (dump_restart_shift .and. any(qs%vary_shift)) then
                 dump_restart_shift = .false.
                 call dump_restart_hdf5(ri_shift, qs, qs%mc_cycles_done+ncycles*ireport, &
@@ -1393,6 +1425,7 @@ module restart_hdf5
                 call dump_restart_hdf5(ri_freq, qs, qs%mc_cycles_done+ncycles*ireport, &
                                        ntot_particles, nbasis, nb_comm, info_string_len)
             end if
+            call free_dSFMT_state_t(qs%rng_state)
 
         end subroutine dump_restart_file_wrapper
 

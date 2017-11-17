@@ -1142,6 +1142,7 @@ contains
         !   qmc_state_old: existing qmc_state.  Deallocated on exit.
         !   qmc_state_new: qmc_state_t.  Components allocated an initialised on exit.
 
+        use dSFMT_interface, only: move_dSFMT_state_t
         use qmc_data, only: qmc_state_t
         use spawn_data, only: move_spawn_t
         use particle_t_utils, only: move_particle_t
@@ -1153,6 +1154,7 @@ contains
         call move_alloc(qmc_state_old%shift, qmc_state_new%shift)
         call move_alloc(qmc_state_old%vary_shift, qmc_state_new%vary_shift)
         call move_alloc(qmc_state_old%estimators, qmc_state_new%estimators)
+        call move_dSFMT_state_t(qmc_state_old%rng_state, qmc_state_new%rng_state)
         call move_particle_t(qmc_state_old%psip_list, qmc_state_new%psip_list)
 
     end subroutine move_qmc_state_t
