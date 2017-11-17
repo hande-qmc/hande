@@ -289,6 +289,23 @@ Compilation issues
 We attempt to work round any compiler and library issues we encounter but sometimes this
 is not possible.  Issues and, where known, workarounds we have found are:
 
+* gcc 6.3.0 has a code generation bug which causes incorrect energies for all molecular
+  QMC calculations. Please use either a later version of gcc (either 6.4.0 or 7.1.0 do not
+  have this problem) or a different compiler or an optimisation level no higher than
+  `-O0`. Warning: the latter is **very** slow! See
+  https://gcc.gnu.org/ml/fortran/2017-05/msg00074.html and the subseuqent discussion for
+  more details.
+
+* gcc 7.1.0 has a bug that prevents reading in molecular integrals correctly and instead
+  causes HANDE to exit with an error.
+  See https://gcc.gnu.org/bugzilla/show_bug.cgi?id=80741 for details.
+
+* gcc 7.1.0 and 7.2.0 have a bug that causes `c_associated` to sometimes return incorrect
+  values. This might affect the error reporting from reading a restart file but should not
+  cause any problems under normal usage. If affected, the only workaround is to use
+  a later version of gcc or a different compiler. See
+  https://gcc.gnu.org/bugzilla/show_bug.cgi?id=82869 for more details.
+
 * HDF5 1.8.14 (and possibly 1.8.13) has a bug revealed by Intel compilers v15 onwards.
   This results in unusual error messages and/or segmentation faults when writing out
   restart files.  Possibly workarounds:
@@ -301,6 +318,13 @@ is not possible.  Issues and, where known, workarounds we have found are:
 * Compiling with GCC and linking the Intel MKL library leads to segmentation faults or
   incorrect answers for FCI calculation on systems with complex-valued integrals when
   run in parallel.  Either use a different ScaLAPACK library, or use the Intel compilers.
+
+* Recent versions of Intel MKL do not support recent versions of OpenMPI (including
+  OpenMPI 1.10 and 2.x families), and OpenMPI has a long-standing issue with certain
+  datatypes. This results in ``MPI_ERR_TRUNCATE`` in parallel FCI calculations. Either use
+  a different ScaLAPACK library or a different MPI implementation or use ``--mca coll
+  ^tuned`` as an argument to ``mpirun``/``mpiexec``.  See
+  https://github.com/open-mpi/ompi/issues/3937 for more details.
 
 * Using some versions of Intel MPI 5.1 with very large molecular systems (more than 2GB of
   integrals) causes crashes due to an overflow in a broadcast operation.  This is fixed in 5.1.3.
