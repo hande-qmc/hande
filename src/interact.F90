@@ -48,11 +48,7 @@ contains
 #ifdef PARALLEL
         integer :: buf_len
 #endif
-#if ! defined(__GNUC__) || __GNUC__ > 4 || (__GNUC__ == 4 && (__GNUC_MINOR__ > 7))
         character(:), allocatable :: buffer
-#else
-        character(1024**2) :: buffer
-#endif
         type(flu_State) :: lua_state
         character(255) :: err_str
 
@@ -120,9 +116,7 @@ contains
 #ifdef PARALLEL
             if (iproc == proc) buf_len = len_trim(buffer)
             call mpi_bcast(buf_len, 1, MPI_INTEGER, proc, mpi_comm_world, ierr)
-#if ! defined(__GNUC__) || __GNUC__ > 4 || (__GNUC__ == 4 && (__GNUC_MINOR__ > 7))
             if (iproc /= proc) allocate(character(len=buf_len) :: buffer)
-#endif
             call mpi_bcast(buffer, buf_len, MPI_CHARACTER, proc, mpi_comm_world, ierr)
 #endif
 
