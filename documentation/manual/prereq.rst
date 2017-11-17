@@ -1,3 +1,5 @@
+.. _prereq:
+
 Prerequisites
 =============
 
@@ -112,6 +114,11 @@ Compilation and installation notes
 
 Some notes on compiling the less common dependencies.
 
+.. note::
+
+    The following are guidelines and the links provided are not necessarily the latest
+    version of each package. Checking for the latest version is highly recommded.
+
 lua
 ^^^
 
@@ -119,8 +126,8 @@ Lua is straightforward to compile.  For example:
 
 .. code-block:: bash
 
-    $ wget -O - http://www.lua.org/ftp/lua-5.3.3.tar.gz | tar xvzf -
-    $ cd lua-5.3.3
+    $ wget -O - http://www.lua.org/ftp/lua-5.3.4.tar.gz | tar xvzf -
+    $ cd lua-5.3.4
     $ make linux
     $ make install INSTALL_TOP=$HOME/local
 
@@ -136,8 +143,8 @@ example:
 
 .. code-block:: bash
 
-    $ wget -O - http://www.hdfgroup.org/ftp/HDF5/current/src/hdf5-1.8.14.tar.gz | tar xvzf -
-    $ cd hdf5-1.8.14
+    $ wget -O - https://support.hdfgroup.org/ftp/HDF5/releases/hdf5-1.8/hdf5-1.8.19/src/hdf5-1.8.19.tar.gz | tar xvzf -
+    $ cd hdf5-1.8.19
     $ ./configure --prefix=$HOME/local --enable-fortran --enable-fortran2003 --enable-cxx
     $ make
     $ make install
@@ -166,9 +173,8 @@ Alternatively, where pip is not available, one can install it locally:
 
 .. code-block:: bash
 
-    $ wget https://github.com/pydata/pandas/archive/v0.15.2.tar.gz
-    $ tar -xzvf v0.15.2.tar.gz
-    $ cd pandas-0.15.2
+    $ wget -O - https://github.com/pandas-dev/pandas/releases/download/v0.21.0/pandas-0.21.0.tar.gz | tar -xzvf -
+    $ cd pandas-0.21.0
     $ python setup.py build
     $ python setup.py install
 

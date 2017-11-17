@@ -14,6 +14,13 @@ where ``conf`` is one of the platforms available and is simply the name of the r
 file residing in the ``config/`` directory.  Various configurations are provided and it is
 simple to adapt one to the local environment (e.g. changing compiler or library paths).
 
+.. warning::
+
+    If any `prereq` have been installed to non-default (e.g. to $HOME/local) paths, then
+    these paths must be made available to the compiler via ``ldflags`` (see below) -- e.g.
+    using ``-L $HOME/local`` -- and, for dynamic libaries added to the environment by
+    setting the LD_LIBRARY_PATH environment variable.
+
 Run
 
 .. code-block:: bash
@@ -24,6 +31,8 @@ to see the options available, including inspecting available configurations.
 
 A configuration is defined using a simple ini file, consisting of three sections:
 main, opt and dbg.  For instance::
+
+.. [todo] - minimal working example
 
     [main]
     fc = gfortran
@@ -280,6 +289,23 @@ Compilation issues
 We attempt to work round any compiler and library issues we encounter but sometimes this
 is not possible.  Issues and, where known, workarounds we have found are:
 
+* gcc 6.3.0 has a code generation bug which causes incorrect energies for all molecular
+  QMC calculations. Please use either a later version of gcc (either 6.4.0 or 7.1.0 do not
+  have this problem) or a different compiler or an optimisation level no higher than
+  `-O0`. Warning: the latter is **very** slow! See
+  https://gcc.gnu.org/ml/fortran/2017-05/msg00074.html and the subseuqent discussion for
+  more details.
+
+* gcc 7.1.0 has a bug that prevents reading in molecular integrals correctly and instead
+  causes HANDE to exit with an error.
+  See https://gcc.gnu.org/bugzilla/show_bug.cgi?id=80741 for details.
+
+* gcc 7.1.0 and 7.2.0 have a bug that causes `c_associated` to sometimes return incorrect
+  values. This might affect the error reporting from reading a restart file but should not
+  cause any problems under normal usage. If affected, the only workaround is to use
+  a later version of gcc or a different compiler. See
+  https://gcc.gnu.org/bugzilla/show_bug.cgi?id=82869 for more details.
+
 * HDF5 1.8.14 (and possibly 1.8.13) has a bug revealed by Intel compilers v15 onwards.
   This results in unusual error messages and/or segmentation faults when writing out
   restart files.  Possibly workarounds:
@@ -293,6 +319,13 @@ is not possible.  Issues and, where known, workarounds we have found are:
   incorrect answers for FCI calculation on systems with complex-valued integrals when
   run in parallel.  Either use a different ScaLAPACK library, or use the Intel compilers.
 
+* Recent versions of Intel MKL do not support recent versions of OpenMPI (including
+  OpenMPI 1.10 and 2.x families), and OpenMPI has a long-standing issue with certain
+  datatypes. This results in ``MPI_ERR_TRUNCATE`` in parallel FCI calculations. Either use
+  a different ScaLAPACK library or a different MPI implementation or use ``--mca coll
+  ^tuned`` as an argument to ``mpirun``/``mpiexec``.  See
+  https://github.com/open-mpi/ompi/issues/3937 for more details.
+
 * Using some versions of Intel MPI 5.1 with very large molecular systems (more than 2GB of
   integrals) causes crashes due to an overflow in a broadcast operation.  This is fixed in 5.1.3.
 
@@ -302,5 +335,11 @@ is not possible.  Issues and, where known, workarounds we have found are:
   details). QMC calculations are unaffected. Either use MKL 2016 or an alternative MPI
   library (MPICH is not affected by this issue) or only perform QMC calculations.
 
-* gcc 7.3 (and possibly earlier gcc 7 releases) has a bug affecting ``c_associated``. Use
-  a later version. Details: https://gcc.gnu.org/bugzilla/show_bug.cgi?id=82869.
+* Linking lua depends on how it was compiled. Errors of the type
+
+  .. code-block:: bash
+
+      liblua.a(loadlib.o): undefined reference to symbol dlclose@@GLIBC_2.2.5
+
+  indicate that lua requires dynamic loading and requires ``-ldl`` to be added to the link
+  line (``libs`` in the config file).
