@@ -1687,6 +1687,7 @@ contains
         !    write = true/false/id,
         !    write_shift = true/false/id,
         !    write_frequency = niterations,
+        !    restart_rng = true/false,
         ! }
 
         ! where id is an integer and sets the id for the restart file of the relevant type.
@@ -1710,7 +1711,7 @@ contains
         type(restart_in_t), intent(out) :: restart_in
 
         integer :: err, restart_table
-        character(15), parameter :: keys(4) = [character(15) :: 'read', 'write', 'write_shift', 'write_frequency']
+        character(15), parameter :: keys(5) = [character(15) :: 'read', 'write', 'write_shift', 'write_frequency', 'restart_rng']
 
         if (aot_exists(lua_state, opts, 'restart')) then
 
@@ -1724,6 +1725,8 @@ contains
                 call get_flag_and_id(lua_state, restart_table, r_in%write_restart_shift, r_in%write_shift_id, 'write_shift')
             end associate
 
+            call aot_get_val(restart_in%restart_rng, err, lua_state, restart_table, 'restart_rng')
+            
             call warn_unused_args(lua_state, keys, restart_table)
 
             call aot_table_close(lua_state, restart_table)
