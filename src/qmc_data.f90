@@ -566,7 +566,7 @@ type spawned_particle_t
     ! Rate of spawning.  This is a running total over MC cycles on each processor
     ! until it is summed over processors and averaged over cycles in
     ! update_energy_estimators.
-    real(p) :: rspawn
+    real(p) :: rspawn = 0.0_p
 end type spawned_particle_t
 
 type reblock_data_t
@@ -819,7 +819,7 @@ end type annihilation_flags_t
 
 contains
 
-    subroutine zero_estimators_t(estimators)
+    elemental subroutine zero_estimators_t(estimators)
 
         ! Zeros all values associated with a estimators_t derived type.
 

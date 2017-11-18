@@ -564,7 +564,7 @@ contains
         use importance_sampling, only: importance_sampling_weight
         use parallel
         use proc_pointers, only: update_proj_energy_ptr
-        use qmc_data, only: qmc_in_t, qmc_state_t, nb_rep_t
+        use qmc_data, only: qmc_in_t, qmc_state_t, nb_rep_t, zero_estimators_t
         use system, only: sys_t
         use hamiltonian_data
         use const, only: depsilon
@@ -640,10 +640,9 @@ contains
         ! Calculate the projected energy based upon the initial walker
         ! distribution.  proj_energy and D0_population are both accumulated in
         ! update_proj_energy.
-        qs%estimators%proj_energy = 0.0_p
-        qs%estimators%D0_population = 0.0_p
-        qs%estimators%proj_energy_comp = cmplx(0.0, 0.0, p)
-        qs%estimators%D0_population_comp = cmplx(0.0, 0.0, p)
+
+        call zero_estimators_t(qs%estimators)
+
         call alloc_det_info_t(sys, cdet)
         ! [todo] - The following does not estimate the correct estimators for CCMC. Might be worth considering fixing that.
         do idet = 1, qs%psip_list%nstates
@@ -671,10 +670,6 @@ contains
 
         end do
         call dealloc_det_info_t(cdet)
-
-        ! Initialise spawning rate to zero.
-        qs%estimators%tot_nspawn_events = 0
-        qs%spawn_store%rspawn = 0.0_p
 
         ! Using non blocking communications?
         nb_comm_local = .false.
@@ -738,18 +733,15 @@ contains
         ! a report loop).
 
         use bloom_handler, only: bloom_stats_t, bloom_stats_init_report_loop
-        use qmc_data, only: qmc_state_t
+        use qmc_data, only: qmc_state_t, zero_estimators_t
 
         type(qmc_state_t), intent(inout) :: qs
         type(bloom_stats_t), intent(inout) :: bloom_stats
 
         call bloom_stats_init_report_loop(bloom_stats)
 
-        qs%estimators%proj_energy = 0.0_p
         qs%spawn_store%rspawn = 0.0_p
-        qs%estimators%D0_population = 0.0_p
-        qs%estimators%proj_energy_comp = cmplx(0.0, 0.0, p)
-        qs%estimators%D0_population_comp = cmplx(0.0, 0.0, p)
+        call zero_estimators_t(qs%estimators)
 
     end subroutine init_report_loop
 
