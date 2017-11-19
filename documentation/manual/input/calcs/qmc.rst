@@ -180,8 +180,11 @@ algorithms and control the core settings in the algorithms.
     hubbard_k     renorm, no_renorm    renorm
     hubbard_real  renorm, no_renorm    renorm
     read_in       renorm, no_renorm,   renorm
+                  renorm_spin,
+                  no_renorm_spin,
                   heat_bath,
                   heat_bath_uniform,
+                  heat_bath_single,
                   power_pitzer,
                   power_pitzer_orderM,
                   power_pitzer_orderN
@@ -204,12 +207,18 @@ algorithms and control the core settings in the algorithms.
     consequently much faster.  In general, 'renorm' is a good choice for small basis sets
     and 'no_renorm' is a good choice for large basis sets, especially with a small number
     of electrons (such that forbidden excitations are rarely generated).
+    'renorm_spin' and 'no_renorm_spin' are very similar to 'renorm' and 'no_renorm'
+    respectively but when selecting :math:`i` and :maths:`j`, they first decide with
+    probability ``pattempt_parallel`` whether :math:`i` and :maths:`j` should have
+    parallel spins or not.
 
     The 'heat_bath' excitation generator is very similar to the "original" heat bath
-    excitation generator described by Holmes et al. [Holmes16]_. i, j, a, b are chosen
+    excitation generator described by Holmes et al. [Holmes16]_. :math:`i,j,a,b` are chosen
     with weighted, precalculated probabilities that aim to make |Hij|/pgen as constant
     as possible. The power pitzer excitation generators are approximate these weights.
-    'heat_bath_uniform' is very similar but samples single excitations uniformly.
+    'heat_bath_uniform' is very similar but samples single excitations uniformly and
+    'heat_bath_single' samples is also very similar but samples single excitations
+    exactly (following a recommendation from Pablo Lopez Rios).
 
     The 'power_pitzer' excitation generator generates excitations using a Power-Pitzer
     [Power74]_ like upper bound for the value of the Hamiltonian matrix element. This
@@ -275,6 +284,15 @@ algorithms and control the core settings in the algorithms.
     to attempt to align the means of |Hij|/pgen for single and double excitations.
     Update of pattempt_single only happens if shift is constant. Not applicable to
     "original" heat bath algorithm.
+``pattempt_parallel``
+    type: float.
+
+    Optional. Default: Estimate it by sum of |Hijab| with :math:`ij` parallel over
+    the total sum of |Hijab|.
+
+    Only relevant for ``excit_gen`` == 'no_renorm_spin' and 'renorm_spin'.
+    Probability that :math:`ij` have parallel spins.
+    
 ``initial_shift``
     type: float.
 
