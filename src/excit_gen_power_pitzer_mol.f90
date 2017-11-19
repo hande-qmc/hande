@@ -307,7 +307,7 @@ contains
             ! Check that a is not i and has the required spin and symmetry.
                 if ((a /= pp%occ_list(i)) .and. (sys%basis%basis_fns(a)%sym == isyma) .and. &
                     (sys%basis%basis_fns(a)%ms == ims)) then
-                    i_weight = i_weight + single_excitation_weight_ptr(sys, pp%occ_list(i), a)
+                    i_weight = i_weight + single_excitation_weight_ptr(sys, ref, pp%occ_list(i), a)
                 end if
             end do
             if (i_weight < depsilon) then
@@ -329,8 +329,8 @@ contains
             do a = 1, sys%read_in%pg_sym%nbasis_sym_spin(imsa,isyma)
                 pp%ia_single_weights(a, i) = 0.0_p
                 if (sys%read_in%pg_sym%sym_spin_basis_fns(a,imsa, isyma) /= i) then
-                    pp%ia_single_weights(a, i) = single_excitation_weight_ptr(sys, i, sys%read_in%pg_sym%sym_spin_basis_fns(a, &
-                        imsa,isyma))
+                    pp%ia_single_weights(a, i) = single_excitation_weight_ptr(sys, ref, i, &
+                        sys%read_in%pg_sym%sym_spin_basis_fns(a,imsa,isyma))
                 end if
                 pp%ia_single_weights_tot(i) = pp%ia_single_weights_tot(i) + pp%ia_single_weights(a, i)
             end do

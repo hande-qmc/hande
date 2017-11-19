@@ -209,17 +209,17 @@ abstract interface
         real(p) :: abs_hmatel
     end function i_abs_hmatel
 
-    pure function i_single_excitation_weight(sys, i, a) result(weight)
+    pure function i_single_excitation_weight(sys, ref, i, a) result(weight)
         ! [todo] in the next line, the complex version and the real versions use different
         ! [todo] functions from molecular_integrals. Does that matter?
         use molecular_integrals
-        use system, only: sys_t 
-        use hamiltonian_data, only: hmatel_t
-        import :: p
-        type(hmatel_t) :: two_body_tmp
+        use system, only: sys_t
+        use reference_determinant, only: reference_t
         type(sys_t), intent(in) :: sys
         integer, intent(in) :: i, a
+        type(reference_t), intent(in) :: ref
         real(p) :: weight
+        ! [todo] - need to declare dummy variables here as well?
     end function i_single_excitation_weight        
 
     pure function i_get_one_e_int(sys, i, a) result(intgrl)

@@ -374,53 +374,110 @@ contains
         abs_hmatel = abs(hmatel%r)
     end function abs_hmatel_mol
 
-    pure function single_excitation_weight_mol(sys, i, a) result(weight)
+    pure function single_excitation_weight_mol(sys, ref, i, a) result(weight)
 
         ! In:
         !    sys: system to be studied.
+        !    ref: reference determinant information
         !    i: the spin-orbital from which an electron is excited in
         !       the reference determinant.
         !    a: the spin-orbital into which an electron is excited in
         !       the excited determinant.
         ! Returns:
-        !    A quantity related to < D | H | D_i^a >, which loops over all electrons
-        !       not just the occupied ones and uses absolute values. 
+        !    weight: weight of i -> a
 
-        ! WARNING: This function assumes that the D_i^a is a symmetry allowed
-        ! excitation from D (and so the matrix element is *not* zero by
-        ! symmetry).  This is less safe that slater_condon1_mol but much faster
-        ! as it allows symmetry checking to be skipped in the integral lookups.
-
-        use molecular_integrals, only: get_one_body_int_mol_nonzero, get_two_body_int_mol_real
+        use molecular_integrals, only: get_two_body_int_mol_real
         use system, only: sys_t
-        use hamiltonian_data, only: hmatel_t
+        use reference_determinant, only: reference_t
 
-        type(hmatel_t) :: two_body_tmp
         type(sys_t), intent(in) :: sys
         integer, intent(in) :: i, a
+        type(reference_t), intent(in) :: ref
         real(p) :: weight
+        integer :: n_jb, pos, j, b, virt_pos, occ_pos, nvirt, virt_list(sys%basis%nbasis - sys%nel)
 
-        integer :: iel
-
+        !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+        ! Old code. Kept for now until after testing of new code.
         ! < D | H | D_i^a > = < i | h(a) | a > + \sum_j < ij || aj >
         ! where j is all electrons
         ! [todo] is it the best idea to sum over the abs values?
 
+        ! associate(basis_fns=>sys%basis%basis_fns, &
+        !          one_e_ints=>sys%read_in%one_e_h_integrals, &
+        !          coulomb_ints=>sys%read_in%coulomb_integrals)
+            ! have checked when calling this function that i -> a is allowed by spin and symmetry.
+            ! we can there use get_one_body_int_mol_nonzero
+        !    weight = abs(get_one_body_int_mol_nonzero(one_e_ints, i, a, basis_fns))
+
+        !    do iel = 1, sys%basis%nbasis
+        !        if ((iel /= i) .and. (iel /= a)) then
+        !            ! use get_two_body_int_mol_real to check whether excitation is symmetry allowed.
+        !            two_body_tmp%r = get_two_body_int_mol_real(coulomb_ints, i, iel, a, iel, sys) &
+        !                            - get_two_body_int_mol_real(coulomb_ints, i, iel, iel, a, sys)
+        !            weight = weight + abs(two_body_tmp%r)
+        !        end if
+        !    end do
+        ! end associate
+        !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+        ! Assuming that we often have the RHF reference which obeys Brillouin's theorem
+        ! (no single excitations from the reference), the main contribution to single
+        ! excitations can be the single excitation from a double excitation a step
+        ! back towards the reference (D_{ij}^{ab} -> D_j^b). For a given single excitation
+        ! i -> a, we sum over j and b and look at the weights of D_j^b -> D_{ij}^{ab} to
+        ! determine that weight of i -> a. 
+        ! < D_j^b | H | D_{ij}^{ab} > = h1_i^a + \sum_k{occ. in ref.} (<ik|ak> - <ik|ka>)
+        ! - < ij|aj> + <ij|ja> + <ib|ab> - <ib|ba>
+        ! where h1_i^a + \sum_k{occ. in ref.} (<ik|ak> - <ik|ka>), called ref_term here, is zero in the
+        ! case of an SCF reference (todo: check).
+    
         associate(basis_fns=>sys%basis%basis_fns, &
                   one_e_ints=>sys%read_in%one_e_h_integrals, &
                   coulomb_ints=>sys%read_in%coulomb_integrals)
-            ! have checked when calling this function that i -> a is allowed by spin and symmetry.
-            ! we can there use get_one_body_int_mol_nonzero
-            weight = abs(get_one_body_int_mol_nonzero(one_e_ints, i, a, basis_fns))
-
-            do iel = 1, sys%basis%nbasis
-                if ((iel /= i) .and. (iel /= a)) then
-                    ! use get_two_body_int_mol_real to check whether excitation is symmetry allowed.
-                    two_body_tmp%r = get_two_body_int_mol_real(coulomb_ints, i, iel, a, iel, sys) &
-                                    - get_two_body_int_mol_real(coulomb_ints, i, iel, iel, a, sys)
-                    weight = weight + abs(two_body_tmp%r)
+        ! Could add this ref_term to make the expression more general (in case we do not have an SCF
+        ! reference. However, that would restrict the set we can select a from (function might turn
+        ! weird if i is virtual (might be ok though) and a is occupied (not checked for in
+        ! slater_condon1_mol. Leave ref_term for now. [todo]
+!            connection%from_orb(1) = i
+!            connection%to_orb(1) = a
+!            connection%nexcit = 1
+!            call find_excitation_permutation1(sys%basis%excit_mask, ref%f0, connection)
+!            ref_term = slater_condon1_mol(sys, ref%occ_list0, i, a, connection%perm)
+            virt_pos = 1
+            occ_pos = 1
+            nvirt = sys%basis%nbasis - sys%nel
+            do pos = 1, sys%basis%nbasis
+                if (occ_pos > sys%nel) then
+                    virt_list(virt_pos) = pos
+                    virt_pos = virt_pos + 1
+                else
+                    if (ref%occ_list0(occ_pos) == pos) then
+                        occ_pos = occ_pos + 1
+                    else
+                        virt_list(virt_pos) = pos
+                        virt_pos = virt_pos + 1
+                    end if
                 end if
             end do
+
+            n_jb = 0
+            weight = 0.0_p
+            ! Let j be an occupied spinorbital in reference (consistent with equation above).
+            ! [todo] - should j and b be more general? - might need to worry about double counting then
+            ! take mean of abs values. [todo] - what if some j b combinations are not valid? count them too?
+            ! Is there a chance of a bias? Can the weight ever be zero?
+            do j = 1, sys%nel
+                do b = 1, nvirt
+                    n_jb = n_jb + 1
+                    weight = weight + &
+                        abs(get_two_body_int_mol_real(coulomb_ints, i, ref%occ_list0(j), ref%occ_list0(j), a, sys) - &
+                        get_two_body_int_mol_real(coulomb_ints, i, ref%occ_list0(j), a, ref%occ_list0(j), sys) + &
+                        get_two_body_int_mol_real(coulomb_ints, i, virt_list(b), a, virt_list(b), sys) - &
+                        get_two_body_int_mol_real(coulomb_ints, i, virt_list(b), virt_list(b), a, sys))
+                end do
+            end do
+            weight = weight/real(n_jb,p)
+
         end associate
     
     end function single_excitation_weight_mol
