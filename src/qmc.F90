@@ -746,12 +746,6 @@ contains
 
         ! Set initial values from input
         qmc_state%tau = qmc_in%tau
-        if (.not.restart_read_in .and. .not.qmc_state_restart) then
-            qmc_state%estimators%D0_population = qmc_in%D0_population
-            qmc_state%estimators%D0_population_old = qmc_in%D0_population
-        else
-            qmc_state%estimators%D0_population_old = qmc_state%estimators%D0_population
-        end if
 
     end subroutine init_estimators
 
