@@ -1405,7 +1405,7 @@ module restart_hdf5
 
             use const, only: dp
             use qmc_data, only: qmc_state_t
-            use dSFMT_interface, only: dSFMT_t, dsfmt_state_to_str, free_dSFMT_state_t
+            use dSFMT_interface, only: dSFMT_t, dSFMT_t_to_dSFMT_state_t, free_dSFMT_state_t
 
             type(qmc_state_t), intent(inout) :: qs
             logical, intent(inout) :: dump_restart_shift
@@ -1415,8 +1415,7 @@ module restart_hdf5
             logical, intent(in) :: nb_comm
             type(dSFMT_t), intent(in), optional :: rng
 
-            ! [todo]
-            !if (present(rng)) call dsfmt_state_to_str(rng, qs%rng_state)
+            if (present(rng)) call dSFMT_t_to_dSFMT_state_t(rng, qs%rng_state)
             if (dump_restart_shift .and. any(qs%vary_shift)) then
                 dump_restart_shift = .false.
                 call dump_restart_hdf5(ri_shift, qs, qs%mc_cycles_done+ncycles*ireport, &
