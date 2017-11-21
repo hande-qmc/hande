@@ -60,8 +60,7 @@ contains
         use semi_stoch, only: dealloc_semi_stoch_t, init_semi_stoch_t, init_semi_stoch_t_flags, set_determ_info
         use system, only: sys_t, sys_t_json, read_in
         use restart_hdf5, only: init_restart_info_t, restart_info_t, dump_restart_hdf5, dump_restart_file_wrapper
-        use spawn_data, only: receive_spawned_walkers, non_blocking_send, annihilate_wrapper_non_blocking_spawn, &
-                              write_memcheck_report
+        use spawn_data, only: receive_spawned_walkers, annihilate_wrapper_non_blocking_spawn, write_memcheck_report
         use qmc_data, only: qmc_in_t, fciqmc_in_t, semi_stoch_in_t, restart_in_t, load_bal_in_t, empty_determ_space, &
                             qmc_state_t, annihilation_flags_t, semi_stoch_separate_annihilation, qmc_in_t_json,      &
                             fciqmc_in_t_json, semi_stoch_in_t_json, restart_in_t_json, load_bal_in_t_json, &
@@ -106,6 +105,7 @@ contains
 
         integer(int_p) :: ndeath
         integer :: nattempts_current_det, nspawn_events
+        real(dp), allocatable :: ntot_particles(:) ! qs%psip_list%nspaces
         type(excit_t) :: connection
         type(hmatel_t) :: hmatel
         real(p), allocatable :: real_population(:), weighted_population(:)
@@ -115,7 +115,7 @@ contains
         character(36) :: uuid_restart
 
         logical :: soft_exit, write_restart_shift, error
-        logical :: determ_parent
+        logical :: determ_parent, restart_proj_est
 
         real :: t1, t2
         logical :: update_tau, restarting, imag
@@ -205,18 +205,14 @@ contains
 
         ! Main fciqmc loop.
         if (parent) call write_qmc_report_header(qs%psip_list%nspaces, cmplx_est=sys%read_in%comp, io_unit=io_unit)
+        restart_proj_est = present(qmc_state_restart) .or. (restart_in%read_restart .and. restart_version_restart >= 2)
+        if (.not.restart_proj_est) call initial_ci_projected_energy(sys, qs, fciqmc_in%non_blocking_comm, nparticles_old)
         if (fciqmc_in%non_blocking_comm) then
-            call init_non_blocking_comm(qs%spawn_store%spawn, req_data_s, send_counts, qs%spawn_store%spawn_recv, &
-                                        restart_in%read_restart)
-            call initial_fciqmc_status(sys, qmc_in, qs, .true., send_counts(iproc)/qs%spawn_store%spawn_recv%element_len, &
-                                        io_unit=io_unit, restarting_readin=restart_in%read_restart, &
-                                        restarting_qs=present(qmc_state_restart), &
-                                        restart_version_restart=restart_version_restart)
+            call init_non_blocking_comm(qs, req_data_s, send_counts, qmc_in%ncycles, restart_in%read_restart, restart_proj_est)
         else
-            call initial_fciqmc_status(sys, qmc_in, qs, io_unit=io_unit, restarting_readin=restart_in%read_restart, &
-                                        restarting_qs=present(qmc_state_restart), &
-                                        restart_version_restart=restart_version_restart)
+            call initial_qmc_status(sys, qmc_in, qs, nparticles_old, .false., io_unit)
         end if
+
         ! Initialise timer.
         call cpu_time(t1)
         ! Allocate arrays needed for reblock analysis

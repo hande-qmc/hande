@@ -86,10 +86,8 @@ module restart_hdf5
     ! default values).
 
     ! Backwards compatibility between version 1 and 2:
-    ! When reading in a legacy restart file from version 1, estimate the 'projected energy real' by
-    ! 'shift'*'reference population @ t-1'. 'projected energy imag' is set to zero and so is 'reference population @ t-1 imag'.
-    ! These estimated values may or may not be used when initialising CCMC/FCIQMC (see function initial_fciqmc_status in
-    ! qmc_common.F90).
+    ! When reading in a legacy restart file from version 1, the projected energy and reference quantities are estimated from
+    ! the wavefunction snapshot stored in the restart file.
 
     implicit none
 

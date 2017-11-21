@@ -57,41 +57,67 @@ implicit none
 
 contains
 
-    subroutine init_non_blocking_comm(spawn, request, send_counts, restart_list, restart)
+    subroutine init_non_blocking_comm(qs, request, send_counts, ncycles, restart, restart_proj_est)
 
         ! Deal with initial send of data when using non-blocking communications.
 
         ! In/Out:
-        !    spawn: spawned array we we be sending.
+        !    qs: qmc_state_t object. On output the spawn store caches are updated (in particular,
+        !        spawn_store%spawn now holds the set of particles from the previous calculation
+        !        that need to be evolved one timestep) and the spawn and estimator communications
+        !        are initialised.
+        ! Out:
         !    request: array of requests for non-blocking communications
         !    send_counts: number of elements to send from each processor
-        !    restart_list: walkers spawned from final iteration of a restart
-        !                  calculation. These need to be evolved and merged.
         ! In:
         !    restart: doing a restart calculation or not.
+        !    restart_proj_est: true if the projected estimator quantities were saved or re-estimated
+        !        based on the restarted particle distribution.
 
-        use spawn_data, only: spawn_t, non_blocking_send
-        use parallel, only: iproc, nthreads
+        use const, only: p
+        use parallel, only: iproc, nthreads, parent
+        use energy_evaluation, only: local_energy_estimators, update_energy_estimators_send
+        use qmc_data, only: qmc_state_t
+        use spawn_data, only: non_blocking_send
 
-        type(spawn_t), intent(inout) :: spawn
-        integer, intent(inout) :: request(0:), send_counts(0:)
-        type(spawn_t), intent(inout) :: restart_list
-        logical, intent(in) :: restart
+        type(qmc_state_t), intent(inout) :: qs
+        integer, intent(out) :: request(0:), send_counts(0:)
+        integer, intent(in) :: ncycles
+        logical, intent(in) :: restart, restart_proj_est
 
         integer :: start, nspawn
 
         send_counts = 0
 
         if (restart) then
-            start = spawn%head_start(0,iproc) + nthreads
-            nspawn = restart_list%head(0,0)
-            send_counts(iproc) = restart_list%head(0,0)
-            spawn%sdata(:,start:start+nspawn) = restart_list%sdata(:,:nspawn)
+            associate(spawn=>qs%spawn_store%spawn, restart_list=>qs%spawn_store%spawn_recv)
+                start = spawn%head_start(0,iproc) + nthreads
+                nspawn = restart_list%head(0,0)
+                send_counts(iproc) = restart_list%head(0,0)
+                spawn%sdata(:,start:start+nspawn) = restart_list%sdata(:,:nspawn)
+            end associate
         else
             send_counts = 0
         end if
 
-        call non_blocking_send(spawn, send_counts, request)
+        call non_blocking_send(qs%spawn_store%spawn, send_counts, request)
+
+        ! The output in non-blocking comms is delayed one report loop, so initialise
+        ! the send here.
+        ! For simplicity, hook into the normal estimator communications, which normalises
+        ! by the number of MC cycles in a report loop (hence need to rescale to fake it).
+        if (restart .and. .not.restart_proj_est .and. .not.parent) then
+            ! If we stored the projected quantities, we know them exactly on each processor but still want to sum over all
+            ! processors in order to easily initialise the non-blocking comms. Set all processors bar 1 to zero.
+            qs%estimators%D0_population = 0.0_p
+            qs%estimators%proj_energy = 0.0_p
+        end if
+        qs%estimators%D0_population = qs%estimators%D0_population*ncycles
+        qs%estimators%proj_energy = qs%estimators%proj_energy*ncycles
+        associate(spawn_elsewhere=>send_counts(iproc)/qs%spawn_store%spawn_recv%element_len)
+            call local_energy_estimators(qs, qs%par_info%report_comm%rep_info, spawn_elsewhere=spawn_elsewhere)
+        end associate
+        call update_energy_estimators_send(qs%par_info%report_comm)
 
     end subroutine init_non_blocking_comm
 
