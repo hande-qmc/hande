@@ -1170,8 +1170,14 @@ module restart_hdf5
                         call hdf5_write(subgroup_id, dhsref, kinds, shape(f0, kind=int_64), f0)
 
                         call h5ocopy_f(orig_group_id, hdf5_path(gref, dref_pop), group_id, hdf5_path(gref, dref_pop), ierr)
-                        call h5ocopy_f(orig_group_id, hdf5_path(gref, dref_pop_re), group_id, hdf5_path(gref, dref_pop_re), ierr)
-                        call h5ocopy_f(orig_group_id, hdf5_path(gref, dref_pop_im), group_id, hdf5_path(gref, dref_pop_im), ierr)
+
+                        call h5lexists_f(orig_group_id, dref_pop, exists, ierr)
+                        if (exists) then
+                            call h5ocopy_f(orig_group_id, hdf5_path(gref, dref_pop_re), group_id, &
+                                           hdf5_path(gref, dref_pop_re), ierr)
+                            call h5ocopy_f(orig_group_id, hdf5_path(gref, dref_pop_im), group_id, &
+                                           hdf5_path(gref, dref_pop_im), ierr)
+                        end if
 
                         call h5gclose_f(subgroup_id, ierr)
                         call h5gclose_f(orig_subgroup_id, ierr)
