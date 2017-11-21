@@ -563,6 +563,7 @@ contains
         integer, optional, intent(in) :: io_unit
 
         ! [todo] - is this the best place for it? Maybe init_report_loop?
+        ! [todo] - VAN: init_report_loop is inside ireport loop, this subroutine is not.
         ! Ensure D0_population from last cycle is set appropriately if restarting
         qs%estimators%D0_population_old = qs%estimators%D0_population
 

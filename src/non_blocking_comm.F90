@@ -97,6 +97,7 @@ contains
                 spawn%sdata(:,start:start+nspawn) = restart_list%sdata(:,:nspawn)
             end associate
         else
+            ! [review] - VAN: double? (see above before if)
             send_counts = 0
         end if
 
