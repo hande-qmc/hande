@@ -983,22 +983,22 @@ contains
         type(reference_t), intent(in) :: reference_in
         integer, intent(in) :: io_unit
         type(reference_t), intent(out) :: reference
-	integer, allocatable, optional :: occlist(:)
+        integer, allocatable, optional :: occlist(:)
 
         integer :: ierr
-	print*,'555555555555555',reference_in%occ_list0
-	print*, '444444444444444',allocated(reference_in%occ_list0)
-	if (present(occlist)) print*, '66666666666666', occlist, 'here'
+    print*,'555555555555555',reference_in%occ_list0
+    print*, '444444444444444',allocated(reference_in%occ_list0)
+    if (present(occlist)) print*, '66666666666666', occlist, 'here'
         ! Note occ_list could be set and allocated in the input.
         reference = reference_in
 
-	if (present(occlist)) reference%occ_list0 = occlist
+    if (present(occlist)) reference%occ_list0 = occlist
 
         ! Set the reference determinant to be the spin-orbitals with the lowest
         ! single-particle eigenvalues which satisfy the spin polarisation and, if
         ! specified, the symmetry.
 
-	print*, '333333333333333',allocated(reference%occ_list0)
+    print*, '333333333333333',allocated(reference%occ_list0)
 
         call set_reference_det(sys, reference%occ_list0, .false., sys%symmetry, io_unit)
 

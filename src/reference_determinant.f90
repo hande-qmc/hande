@@ -110,13 +110,13 @@ contains
                 end select
             end if
             set = .true.
-	    print*,'Using passed in ref##############'
+        print*,'Using passed in ref##############'
         else
             ! Allocate memory if required.
             allocate(occ_list(sys%nel), stat=ierr)
             call check_allocate('occ_list',sys%nel,ierr)
             set = .false.
-	    print*,'Regenerating ref ###############'
+        print*,'Regenerating ref ###############'
         end if
 
         if (.not.set .or. override_input) then
