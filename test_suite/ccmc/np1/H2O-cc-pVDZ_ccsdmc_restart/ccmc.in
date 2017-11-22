@@ -15,6 +15,7 @@ ccmc {
         target_population = 50000,
         state_size = -100,
         spawned_state_size = -50,
+        vary_shift = true, -- old restart file without vary_shift set
     },
     reference = {
         ex_level = 2,

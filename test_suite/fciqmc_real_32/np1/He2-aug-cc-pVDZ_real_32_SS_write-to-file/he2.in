@@ -19,6 +19,7 @@ fciqmc {
         spawn_cutoff = 0.01,
         state_size = -5,
         spawned_state_size = -1,
+        vary_shift = true, -- allow shift to vary immediately
     },
     semi_stoch = {
         size = 100,

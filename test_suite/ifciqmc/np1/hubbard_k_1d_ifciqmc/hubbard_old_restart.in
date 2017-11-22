@@ -17,6 +17,7 @@ fciqmc {
         target_population = 100,
         state_size = 10,
         spawned_state_size = 100,
+        vary_shift = true, -- old restart file without vary_shift set
     },
     restart = {
         read = 0,

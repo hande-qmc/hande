@@ -16,6 +16,7 @@ ccmc {
         real_amplitudes = true,
         state_size = -200,
         spawned_state_size = -200,
+        vary_shift = true, -- old restart file without vary_shift set
     },
     reference = {
         ex_level = 3,
