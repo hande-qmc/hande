@@ -562,11 +562,6 @@ contains
         logical, intent(in) :: doing_ccmc
         integer, optional, intent(in) :: io_unit
 
-        ! [todo] - is this the best place for it? Maybe init_report_loop?
-        ! [todo] - VAN: init_report_loop is inside ireport loop, this subroutine is not.
-        ! Ensure D0_population from last cycle is set appropriately if restarting
-        qs%estimators%D0_population_old = qs%estimators%D0_population
-
         if (parent) then
             if (doing_ccmc) then
                 qs%estimators%nattempts = nint(qs%estimators%D0_population)
@@ -688,6 +683,9 @@ contains
         type(bloom_stats_t), intent(inout) :: bloom_stats
 
         call bloom_stats_init_report_loop(bloom_stats)
+
+        ! Ensure D0_population from last cycle is set appropriately if restarting
+        qs%estimators%D0_population_old = qs%estimators%D0_population
 
         qs%spawn_store%rspawn = 0.0_p
         call zero_estimators_t(qs%estimators)

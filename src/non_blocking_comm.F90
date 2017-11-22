@@ -96,9 +96,6 @@ contains
                 send_counts(iproc) = restart_list%head(0,0)
                 spawn%sdata(:,start:start+nspawn) = restart_list%sdata(:,:nspawn)
             end associate
-        else
-            ! [review] - VAN: double? (see above before if)
-            send_counts = 0
         end if
 
         call non_blocking_send(qs%spawn_store%spawn, send_counts, request)
