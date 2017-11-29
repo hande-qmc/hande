@@ -74,6 +74,18 @@ enum, bind(c)
     enumerator :: dt_proj_energy
 end enum
 
+enum, bind(c)
+    ! We have not attempted any optimisation of the shift damping.
+    enumerator :: sd_no_optimisation = -2
+    ! The shift damping has been previous optimised.
+    enumerator :: sd_optimised = -1
+    ! We have accumulated information and should now attempt to optimise the shift damping.
+    enumerator :: sd_optimising = 0
+    ! We need to wait one blocking cycle before attempting optimisation.
+    enumerator :: sd_wait1 = 1
+    ! We need to wait two blocking cycles before attempting optimisation.
+    enumerator :: sd_wait2 = 2
+end enum
 
 ! --- QMC input ---
 
@@ -763,19 +775,7 @@ type qmc_state_t
     logical :: reblock_done = .false.
     type(estimators_t), allocatable :: estimators(:)
     ! Internal flag to indicate status of shift damping optimisation.
-    ! Positive values indicate the number of blocking iterations to go through before
-    !   attempting optimisation. These will be incremented downwards every iteration.
-    ! [review] - JSS: rather than hard-coding these values, use an enumerator.
-    ! [reply] - CJCS: I'm unsure how to use an enumerator and keep the functionality
-    ! [reply] - CJCS: of using positive values to encode the number of iterations
-    ! [reply] - CJCS: we have to collect data over. Any suggestions?
-    ! 0 indicates we've accumulated information and need to check if the standard
-    !   deviation of our shift is within acceptable limits. If not, we will attempt
-    !   to optimise our shift damping.
-    ! Any other value indicates that our shift is at an appropriate value. In general
-    !   we use -2 to indicate that no optimisation is to be performed and -1 to indicate
-    !   that optimisation has been previously completed.
-    integer :: shift_damping_status = -2
+    integer :: shift_damping_status = sd_no_optimisation
 end type qmc_state_t
 
 ! Copies of various settings that are required during annihilation.  This avoids having to pass through lots of different

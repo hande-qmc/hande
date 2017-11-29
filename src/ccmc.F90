@@ -328,7 +328,7 @@ contains
         use hamiltonian_data
         use energy_evaluation, only: get_sanitized_projected_energy, get_sanitized_projected_energy_cmplx
         use blocking, only: write_blocking_report_header, init_blocking, do_blocking, deallocate_blocking, &
-                            write_blocking_report, receive_shift_updates
+                            write_blocking_report, update_shift_damping
 
         use logging, only: init_logging, end_logging, prep_logging_mc_cycle, write_logging_calc_ccmc
         use logging, only: logging_in_t, logging_t, logging_in_t_json, logging_t_json, write_logging_select_ccmc
@@ -839,12 +839,10 @@ contains
                 call write_qmc_report(qmc_in, qs, ireport, nparticles_old, t2-t1, .false., .false., &
                                         io_unit=io_unit, cmplx_est=sys%read_in%comp, rdm_energy=ccmc_in%density_matrices, &
                                         nattempts=.true.)
-                if (blocking_in%blocking_on_the_fly) then
-                    call do_blocking(bl, qs, qmc_in, ireport, iter, iunit, blocking_in)
-                end if
-            else if (blocking_in%blocking_on_the_fly) then
-                call receive_shift_updates(ireport, bl%start_ireport, qs)
+                if (blocking_in%blocking_on_the_fly) call do_blocking(bl, qs, qmc_in, ireport, iter, iunit, blocking_in)
             end if
+
+            if (blocking_in%auto_shift_damping) call update_shift_damping(qs, bl)
 
             ! Update the time for the start of the next iteration.
             t1 = t2

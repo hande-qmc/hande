@@ -74,7 +74,7 @@ contains
         use logging, only: init_logging, end_logging, prep_logging_mc_cycle, write_logging_calc_fciqmc, &
                             logging_in_t, logging_t, logging_in_t_json, logging_t_json
         use blocking, only: write_blocking_report_header, init_blocking, do_blocking, deallocate_blocking, &
-                            write_blocking_report, receive_shift_updates
+                            write_blocking_report, update_shift_damping
         use report, only: write_date_time_close
 
         type(sys_t), intent(in) :: sys
@@ -353,13 +353,12 @@ contains
                 if (bloom_stats%nblooms_curr > 0) call bloom_stats_warning(bloom_stats, io_unit=io_unit)
                 call write_qmc_report(qmc_in, qs, ireport, nparticles_old, t2-t1, .false., &
                                         fciqmc_in%non_blocking_comm, io_unit=io_unit, cmplx_est=sys%read_in%comp)
-
                 if (blocking_in%blocking_on_the_fly) then
                     call do_blocking(bl, qs, qmc_in, ireport, iter, iunit, blocking_in)
                 end if
-            else if (blocking_in%blocking_on_the_fly) then
-                call receive_shift_updates(ireport, bl%start_ireport, qs)
+
             end if
+            if (blocking_in%auto_shift_damping) call update_shift_damping(qs, bl)
 
             ! Update the time for the start of the next iteration.
             t1 = t2
