@@ -66,7 +66,9 @@ contains
         ! Set status of shift damping to initialise automatic search for shift damping
         ! If we have previously optimised shift damping shift_damping_status will equal
         ! and sd_optimised so not be updated.
-        if (blocking_in%auto_shift_damping .and. shift_damping_status == sd_no_optimisation) shift_damping_status = sd_wait1
+        if (blocking_in%auto_shift_damping .and. shift_damping_status == sd_no_optimisation) then
+            shift_damping_status = sd_wait1
+        end if
 
     end subroutine init_blocking
 
@@ -786,7 +788,7 @@ contains
 ! It should be noted that after each modification of the shift damping we must discard all
 ! previous reblocking data. This makes it imperitive that we equilibrate rapidly.
 
-    subroutine update_shift_damping(qs, bl)
+    subroutine update_shift_damping(qs, bl, ireport)
 
         ! Updates the shift damping according to the stage of a shift damping
         ! optimisation we are in. This should only be called on the parent
@@ -806,21 +808,24 @@ contains
 
         type(qmc_state_t), intent(inout) :: qs
         type(blocking_t), intent(inout) :: bl
+        integer, intent(in) :: ireport
         real(p) :: stds(dt_numerator:dt_shift), means(dt_numerator:dt_shift)
         real(p) :: sd_proj_energy_dist, instant_proj_e, diff
         logical :: modified
 #ifdef PARALLEL
         integer :: ierr
 
-        modified = .false.
         if (parent.and.bl%first_iteration) then
             call mpi_bcast(bl%start_ireport, 1, mpi_integer, root, MPI_COMM_WORLD, ierr)
         else if ((.not.parent) .and. bl%start_ireport < 0 .and. qs%vary_shift(1)) then
             call mpi_bcast(bl%start_ireport, 1, mpi_integer, root, MPI_COMM_WORLD, ierr)
         end if
 #endif
+        modified = .false.
         ! See qmc_data for description of each stage of shift_damping_status.
         if (qs%shift_damping_status == sd_no_optimisation .or. qs%shift_damping_status == sd_optimised) then
+            continue
+        else if (ireport < bl%start_ireport .or. bl%start_ireport < 0 .or. mod(ireport,50)/=0) then
             continue
         else if (qs%shift_damping_status == sd_optimising) then
             if (parent) then

@@ -842,7 +842,7 @@ contains
                 if (blocking_in%blocking_on_the_fly) call do_blocking(bl, qs, qmc_in, ireport, iter, iunit, blocking_in)
             end if
 
-            if (blocking_in%auto_shift_damping) call update_shift_damping(qs, bl)
+            if (blocking_in%auto_shift_damping) call update_shift_damping(qs, bl, ireport)
 
             ! Update the time for the start of the next iteration.
             t1 = t2
