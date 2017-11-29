@@ -377,19 +377,22 @@ contains
 
     end subroutine check_ccmc_opts
 
-    subroutine check_blocking_opts(blocking_in, restart_in)
+    subroutine check_blocking_opts(sys, blocking_in, restart_in)
 
         ! Check block on the fly input options.
         ! The majority of these can't be sanity-checked as a nonsensical (ie. negative)
         ! value is used to indicate that we should default to suitable values.
 
         ! In:
+        !   sys: system being studied.
         !   blocking_in: Reblocking on the fly input options.
         !   restart_in: Calculation restarting input options.
 
         use qmc_data, only: blocking_in_t, restart_in_t
         use errors, only: warning, stop_all
+        use system, only: sys_t
 
+        type(sys_t), intent(in) :: sys
         type(blocking_in_t), intent(in) :: blocking_in
         type(restart_in_t), intent(in) :: restart_in
 
@@ -410,6 +413,10 @@ contains
         if (blocking_in%auto_shift_damping .and. .not. blocking_in%blocking_on_the_fly) then
             call stop_all(this, 'Automatic shift damping optimisation requires blocking on the fly to be activated. &
                         & Please restart calculation with blocking enabled.')
+        end if
+
+        if (sys%read_in%comp .and. blocking_in%blocking_on_the_fly) then
+            call stop_all(this, "Blocking on the fly is not currently compatible with complex calculations.")
         end if
 
     end subroutine check_blocking_opts

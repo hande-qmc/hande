@@ -135,7 +135,7 @@ contains
             call check_qmc_opts(qmc_in, sys, .not.present(qmc_state_restart), restarting, qmc_state_restart)
             call check_fciqmc_opts(sys, fciqmc_in)
             call check_load_bal_opts(load_bal_in)
-            call check_blocking_opts(blocking_in, restart_in)
+            call check_blocking_opts(sys, blocking_in, restart_in)
         end if
 
         ! Initialise data.

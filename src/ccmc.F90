@@ -399,7 +399,7 @@ contains
             restarting = present(qmc_state_restart) .or. restart_in%read_restart
             call check_qmc_opts(qmc_in, sys, .not.present(qmc_state_restart), restarting, qmc_state_restart)
             call check_ccmc_opts(sys, ccmc_in)
-            call check_blocking_opts(blocking_in, restart_in)
+            call check_blocking_opts(sys, blocking_in, restart_in)
         end if
 
         ! Initialise data.
