@@ -308,9 +308,6 @@ type blocking_in_t
     ! Limit of the sum of error in error and standard deviation of projected
     ! energy. If this value is reached calculation is terminated. Default = 0
     real(p) :: error_limit = 0
-! [review] - AJWT: [also see docs].  Not entirely clear what this means.
-! [reply] - CJCS: Not in this review, but I've rephrased nontheless- do the new
-! [reply] - CJCS: comments help or hinder?
     ! The minimum number of optimal block lengths required for a calculation to
     ! terminate. The calculation will not terminate due to the standard error
     ! falling below error_limit until at least this number of optimal

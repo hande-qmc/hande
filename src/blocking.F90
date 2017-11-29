@@ -17,25 +17,6 @@ use const, only: p, depsilon
 
 implicit none
 
-! [review] - VAN: Tests: they need to be rerun as git hash is dirty. It would be great if a test
-! [review] - VAN: is added that tests restarting by passing a qmc_state object.
-! [reply] - CJCS: My bad, must've forgotten to recompile when I was rearranging commits.
-! [reply] - CJCS: I'll add a test for that restart, probably in with the other short tests.
-! [review] - VAN: How well does restarting work when restart blocking is not implemented yet?
-! [reply] - CJCS: What do you mean how well? Once the optimisation is done this functionality
-! [reply] - CJCS: doesn't reply upon blocking-on-the-fly, so there aren't any issues with restarts.
-! [reply2] - VAN: Cool, so I guess as long as enough data is taken so that optimisation can be done before
-! [reply2] - VAN: restart, we are good. I guess it would only stuggle with short data sets until we have
-! [reply2] - VAN: blocking-on-the-fly for restarts? Or is it always independent?
-! [review] - VAN: How well does auto shift damping work with (complex) replica tricks? - Maybe add a test as that
-! [review] - VAN: might stress test it.
-! [reply] - CJCS: I haven't tested with replica tricks or complex, as I thought it better to
-! [reply] - CJCS: get this basic functionality developed and tested before trying to combine
-! [reply] - CJCS: with every option. I can't remember the state of complex on-the-fly reblocking,
-! [reply] - CJCS: so that might be an issue, but replica tricks will be fine if we can use the
-! [reply] - CJCS: same shift damping for both spaces. For now I'll block them at check_input.
-! [reply2] - VAN: Sure, in my opinion that is good if you could put a check into check_input.
-
 contains
 
     subroutine init_blocking(qmc_in, blocking_in, bl, shift_damping_status)
@@ -275,13 +256,6 @@ contains
         !   bl: Information needed to peform blocking on the fly. block_mean,
         !       block_std and block_cov for each block size is calculated. 0 is
         !       returned if there aren't sufficient blocks to calculate them.
-! [review] - AJWT: These are presumably in the the energy_estimate_dist variable
-! [reply] - CJCS: Sorry yes, all combined now.
-! [review] - AJWT: The inclusion of the energy_estimate_dist is inelegant - can't it be extracted in a separate function?
-! [reply] - CJCS: It could be but this would duplicate the standard deviation calculation, which is itself a bit messy.
-        ! Out (optional):
-        !   energy_estimate_dist: information on instantaneous distributions of
-        !       shift and projected energy numberator and denominator.
 
         use qmc_data, only: blocking_t
         use const, only: p
