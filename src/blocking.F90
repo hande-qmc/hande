@@ -615,7 +615,6 @@ contains
             call find_optimal_block(bl)
             call write_blocking(bl, qmc_in, ireport, iter, iunit)
             call check_error(bl, qs, blocking_in, ireport)
-            bl%first_iteration = .false.
         end if
 
         if (mod(bl%n_reports_blocked,bl%save_fq) == 0 .and. bl%n_reports_blocked > 0) then
@@ -817,6 +816,7 @@ contains
 
         if (parent.and.bl%first_iteration) then
             call mpi_bcast(bl%start_ireport, 1, mpi_integer, root, MPI_COMM_WORLD, ierr)
+            bl%first_iteration = .false.
         else if ((.not.parent) .and. bl%start_ireport < 0 .and. qs%vary_shift(1)) then
             call mpi_bcast(bl%start_ireport, 1, mpi_integer, root, MPI_COMM_WORLD, ierr)
         end if
@@ -918,15 +918,12 @@ contains
         type(blocking_t), intent(in) :: bl
         real(p), intent(out) :: std(dt_numerator:dt_shift), mean(dt_numerator:dt_shift)
 
-        if (bl%reblock_data_2(dt_numerator,0)%n_blocks > 0) then
-            mean(:) = bl%reblock_data_2(:,0)%sum_of_blocks/bl%reblock_data_2(:,0)%n_blocks
-        else
-            mean(:) = 0.0_p
-        end if
         if (bl%reblock_data_2(dt_numerator,0)%n_blocks > 1) then
+            mean(:) = bl%reblock_data_2(:,0)%sum_of_blocks/bl%reblock_data_2(:,0)%n_blocks
             std(:) = sqrt(bl%reblock_data_2(:,0)%sum_of_block_squares/bl%reblock_data_2(:,0)%n_blocks - &
                                                                                             mean(:) ** 2)
         else
+            mean(:) = 0.0_p
             std(:) = 0.0_p
         end if
     end subroutine get_instantaneous_distributions
