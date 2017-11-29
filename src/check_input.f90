@@ -73,7 +73,7 @@ contains
 
     end subroutine check_sys
 
-    subroutine check_fciqmc_opts(sys, fciqmc_in)
+    subroutine check_fciqmc_opts(sys, fciqmc_in, blocking_in)
 
         ! Check the FCIQMC specific options.
 
@@ -81,12 +81,13 @@ contains
         !   sys: system being studied.
         !   fciqmc_in: FCIQMC input options.
 
-        use qmc_data, only: fciqmc_in_t, single_basis, no_guiding, neel_singlet_guiding, neel_singlet
+        use qmc_data, only: fciqmc_in_t, single_basis, no_guiding, neel_singlet_guiding, neel_singlet, blocking_in_t
         use system, only: sys_t, heisenberg
         use errors, only: stop_all
 
         type(sys_t), intent(in) :: sys
         type(fciqmc_in_t), intent(in) :: fciqmc_in
+        type(blocking_in_t), intent(in) :: blocking_in
 
         character(*), parameter :: this = 'check_fciqmc_opts'
 
@@ -116,6 +117,9 @@ contains
         ! Major unresolved issue is likely to be semistochastic restart files.
         if (sys%basis%info_string_len /= 0) call stop_all(this, &
             'Fciqmc is incompatible with additional information being stored in the bit string. Please implement if needed.')
+
+        if (fciqmc_in%replica_tricks .and. blocking_in%blocking_on_the_fly) call stop_all(this, &
+            'Blocking on the fly is not currently compatible with replica tricks in fciqmc.')
 
     end subroutine check_fciqmc_opts
 
