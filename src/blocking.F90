@@ -48,6 +48,8 @@ contains
         ! is negative (Default). If otherwise, set save_fq to 2^(start_save_frequency).
         if (blocking_in%start_save_frequency < 0) then
             bl%save_fq = 2 ** (bl%lg_max - 10)
+            ! Catch error if calculation is considered too short; don't do any restarts.
+            if (bl%save_fq < 1) bl%save_fq = qmc_in%nreport
         else
             bl%save_fq = 2 ** (blocking_in%start_save_frequency)
         end if
