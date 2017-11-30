@@ -311,6 +311,9 @@ contains
                 end if
             end do
             if (i_weight < depsilon) then
+                ! because we map i later, even if i->a is not allowed/ has been wrongly assigned a zero weight,
+                ! it needs a weight
+                ! [todo] - a bit arbitrary. maybe make bigger?
                 i_weight = 0.00001_p/real(sys%nel)
             end if
             pp%i_single_weights(i) = i_weight
@@ -331,6 +334,13 @@ contains
                 if (sys%read_in%pg_sym%sym_spin_basis_fns(a,imsa, isyma) /= i) then
                     pp%ia_single_weights(a, i) = single_excitation_weight_ptr(sys, ref, i, &
                         sys%read_in%pg_sym%sym_spin_basis_fns(a,imsa,isyma))
+                    if (pp%ia_single_weights(a, i) < depsilon) then
+                        ! i-> a spin and symmetry allowed but weight assigned zero. fix this.
+                        ! [todo] - really?
+                        ! [todo] - need to cast with precision p?
+                        ! [todo] - is this the best weight? a bit arbitrary.
+                        pp%ia_single_weights(a, i) = 0.01_p/real(sys%read_in%pg_sym%nbasis_sym_spin(imsa,isyma))
+                    end if
                 end if
                 pp%ia_single_weights_tot(i) = pp%ia_single_weights_tot(i) + pp%ia_single_weights(a, i)
             end do
@@ -462,6 +472,7 @@ contains
         ! Now generate the occ->virtual weighting lists and alias tables.
         ! This breaks in the case where there is only one spinorbital in the system with a certain spin. This is unlikely
         ! and will be ignored. [todo] - check for case where sys%nbeta and sys%nalpha are 1?
+        ! [todo] - do we need min weights here? probably not because we do not map and if <ai|ia> = 0 that is probably deserved?
         do i = 1, sys%basis%nbasis
             if (sys%basis%basis_fns(i)%Ms == -1) then ! beta
                 nall = pp%n_all_beta
