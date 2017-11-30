@@ -95,3 +95,14 @@ blocking analysis on the fly.
         calculation in the qmc table the final value from the restarted calculation will be used. If we read in from a
         legacy restart file and no shift_damping is provided in the qmc table, the shift_damping defaults to the
         original default, 0.05.
+
+``shift_damping_precision``
+    type: real.
+
+    Optional. Default: 2.0_p
+
+    How precisely the standard deviations of the projected energy and shift should match. This defines the
+    maxiumum allowed ratio between the two in any combination. For values above this a further optimisation
+    will be attempted. A lower value will lead to a longer optimisation period before statistics can be
+    collected but a more reliably optimised value. The minimum allowed ratio is 1.5_p, as convergence to below
+    this accuracy is not guaranteed.

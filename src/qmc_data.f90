@@ -333,6 +333,8 @@ type blocking_in_t
     ! Enable automatic optimisation of the shift damping using the standard
     ! deviations of the shift and projected energy distributions.
     logical :: auto_shift_damping = .false.
+    ! Ratio that defines strictness of automatic shift damping optimisation.
+    real(p) :: shift_damping_precision = 2.0_p
 end type
 
 ! --- Parallel info ---
@@ -660,6 +662,8 @@ type blocking_t
     ! that reblocking has started. We can detect this on other processes (start_ireport < 0
     ! and we've started varying the shift) but on the parent processor have no such luck.
     logical :: first_iteration = .false.
+    ! Ratio that defines strictness of automatic shift damping optimisation.
+    real(p) :: shift_damping_precision
 end type blocking_t
 
 type estimators_t

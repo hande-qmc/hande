@@ -69,6 +69,7 @@ contains
         if (blocking_in%auto_shift_damping .and. shift_damping_status == sd_no_optimisation) then
             shift_damping_status = sd_wait1
         end if
+        bl%shift_damping_precision = blocking_in%shift_damping_precision
 
     end subroutine init_blocking
 
@@ -752,6 +753,7 @@ contains
         new_bl%lg_max = bl%lg_max
         new_bl%save_fq = bl%save_fq
         new_bl%n_saved_startpoints = bl%n_saved_startpoints
+        new_bl%shift_damping_precision = bl%shift_damping_precision
 
         call deallocate_blocking(bl)
 
@@ -861,8 +863,8 @@ contains
                         ! Not enough data to know if optimised; wait.
                         write (6, '("# Auto-Shift-Damping: Waiting to accumulate data on standard deviations.")')
                         qs%shift_damping_status = sd_wait1
-                    else if (sd_proj_energy_dist * 2 < stds(dt_shift) .or. &
-                            sd_proj_energy_dist * 0.1_p > stds(dt_shift)) then
+                    else if (sd_proj_energy_dist/stds(dt_shift) > bl%shift_damping_precision .or. &
+                            sd_proj_energy_dist/stds(dt_shift) < 1.0_p/bl%shift_damping_precision) then
                         modified = .true.
                         ! Outside acceptable range- attempt optimisation.
                         write (6, '("# Auto-Shift-Damping: Attemping shift damping optimisation.")')

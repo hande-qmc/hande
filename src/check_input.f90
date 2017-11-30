@@ -395,6 +395,7 @@ contains
         use qmc_data, only: blocking_in_t, restart_in_t
         use errors, only: warning, stop_all
         use system, only: sys_t
+        use const, only: p
 
         type(sys_t), intent(in) :: sys
         type(blocking_in_t), intent(in) :: blocking_in
@@ -417,6 +418,11 @@ contains
         if (blocking_in%auto_shift_damping .and. .not. blocking_in%blocking_on_the_fly) then
             call stop_all(this, 'Automatic shift damping optimisation requires blocking on the fly to be activated. &
                         & Please restart calculation with blocking enabled.')
+        end if
+
+        if (blocking_in%auto_shift_damping .and. blocking_in%shift_damping_precision < 1.5_p) then
+            call stop_all(this, 'Automatic shift damping optimisation precision should be a positive float greater &
+                        than or equal to 1.5 for reasonable results.')
         end if
 
         if (sys%read_in%comp .and. blocking_in%blocking_on_the_fly) then
