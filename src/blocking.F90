@@ -842,27 +842,26 @@ contains
 
                     diff = abs(instant_proj_e - means(dt_shift))
 
-                    if (abs(diff) > abs(10 * instant_proj_e) .or. abs(diff) > abs(10 * means(dt_shift))) then
+                    if (abs(stds(dt_shift))<depsilon .or. isnan(sd_proj_energy_dist)) then
+                        ! Not enough data to get distributions; wait.
+                        write (6, '("# Auto-Shift-Damping: Waiting to accumulate data on standard deviations.")')
+                        qs%shift_damping_status = sd_optimising
+                    else if (abs(diff) > abs(10 * instant_proj_e) .or. abs(diff) > abs(10 * means(dt_shift))) then
                         ! Values don't agree within reasonable tolerances; shift damping may be
                         ! too low to effectively reach target value in reasonable time.
                         ! Boost shift damping to rectify.
                         ! Add a limit here to ensure we don't increase indefinitely and actually
                         ! destabilise calculation.
+                        qs%shift_damping_status = sd_optimising
                         if (bl%n_increased_damping >= 1) then
                             bl%n_increased_damping = bl%n_increased_damping - 1
                             write (6, '("# Auto-Shift-Damping: Waiting for calculation to settle down.")')
-                            qs%shift_damping_status = sd_wait1
                         else
                             write (6, '("# Auto-Shift-Damping: Increasing shift damping to compensate for slow approach.")')
-                            qs%shift_damping = min(1.0,max(0.05,qs%shift_damping * 5.0_p))
+                            qs%shift_damping = min(0.5,max(0.01,qs%shift_damping * 5.0_p))
                             modified = .true.
                             bl%n_increased_damping = bl%n_increased_damping + 1
-                            qs%shift_damping_status = sd_wait1
                         end if
-                    else if (isnan(stds(dt_shift))) then
-                        ! Not enough data to know if optimised; wait.
-                        write (6, '("# Auto-Shift-Damping: Waiting to accumulate data on standard deviations.")')
-                        qs%shift_damping_status = sd_wait1
                     else if (sd_proj_energy_dist/stds(dt_shift) > bl%shift_damping_precision .or. &
                             sd_proj_energy_dist/stds(dt_shift) < 1.0_p/bl%shift_damping_precision) then
                         modified = .true.
@@ -872,6 +871,7 @@ contains
                         ! parameter to set shift damping such that the standard deviation of
                         ! the shift is approximately 1.0 times that of the projected energy.
                         qs%shift_damping = qs%shift_damping * 1.0_p * sd_proj_energy_dist / stds(dt_shift)
+                        qs%shift_damping_status = sd_wait1
                     else
                         qs%shift_damping_status = sd_optimised
                         write (6, '("# Auto-Shift-Damping: Shift damping optimised; variance within acceptable range.")')
