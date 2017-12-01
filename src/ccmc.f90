@@ -301,7 +301,7 @@ contains
         use ccmc_selection, only: init_selection_data, update_selection_probabilities, set_cluster_selections, &
                                   init_amp_psel_accumulation
         use ccmc_death_spawning, only: stochastic_ccmc_death_nc
-        use ccmc_utils, only: init_contrib, dealloc_contrib, find_D0, cumulative_population, init_ex_lvl_dist_t, &
+        use ccmc_utils, only: get_D0_info, init_contrib, dealloc_contrib, cumulative_population, init_ex_lvl_dist_t, &
                               update_ex_lvl_dist, regenerate_ex_levels_psip_list
         use determinants, only: det_info_t, alloc_det_info_t, dealloc_det_info_t, sum_sp_eigenvalues_occ_list, &
                                 sum_sp_eigenvalues_bit_string, decode_det
@@ -312,7 +312,6 @@ contains
                               init_report_loop, init_mc_cycle, end_report_loop, end_mc_cycle,      &
                               redistribute_particles, rescale_tau
         use proc_pointers
-        use spawning, only: assign_particle_processor
         use system, only: sys_t, sys_t_json
         use spawn_data, only: calc_events_spawn_t, write_memcheck_report
         use replica_rdm, only: update_rdm, calc_rdm_energy, write_final_rdm
@@ -366,7 +365,7 @@ contains
         logical :: soft_exit, dump_restart_shift, restarting, restart_proj_est
 
         real(p), allocatable :: cumulative_abs_real_pops(:)
-        integer :: D0_proc, D0_pos, nD0_proc, min_cluster_size, max_cluster_size, iexcip_pos, slot
+        integer :: D0_proc, D0_pos, nD0_proc, min_cluster_size, max_cluster_size, iexcip_pos
         real(p) :: tot_abs_real_pop
         complex(p) :: D0_normalisation
         type(bloom_stats_t) :: bloom_stats
@@ -549,37 +548,10 @@ contains
                 if (debug) call prep_logging_mc_cycle(iter, logging_in, logging_info, sys%read_in%comp, &
                                                         min(sys%nel, qs%ref%ex_level+2))
 
-                associate(spawn=>qs%spawn_store%spawn, pm=>qs%spawn_store%spawn%proc_map)
-                    call assign_particle_processor(qs%ref%f0, spawn%bit_str_nbits, spawn%hash_seed, spawn%hash_shift, &
-                                                   spawn%move_freq, nprocs, D0_proc, slot, pm%map, pm%nslots)
-
-                    ! Update the shift of the excitor locations to be the end of this
-                    ! current iteration.
-                    spawn%hash_shift = spawn%hash_shift + 1
-                end associate
-
-                if (iproc == D0_proc) then
-
-                    ! Population on reference determinant.
-                    ! As we might select the reference determinant multiple times in
-                    ! a cycle, the running total of D0_population is incorrect (by
-                    ! a factor of the number of times it was selected).
-                    call find_D0(qs%psip_list, qs%ref%f0, D0_pos)
-                    if (sys%read_in%comp) then
-                        D0_normalisation = cmplx(qs%psip_list%pops(1,D0_pos), qs%psip_list%pops(2,D0_pos), p)&
-                                                    /qs%psip_list%pop_real_factor
-                    else
-                        D0_normalisation = real(qs%psip_list%pops(1,D0_pos),p)/qs%psip_list%pop_real_factor
-                    end if
-                    nD0_proc = 1
-                else
-
-                    ! Can't find D0 on this processor.  (See how D0_pos is used
-                    ! in select_cluster.)
-                    D0_pos = -1
-                    nD0_proc = 0 ! No reference excitor on the processor.
-
-                end if
+                call get_D0_info(qs, sys%read_in%comp, D0_proc, D0_pos, nD0_proc, D0_normalisation)
+                ! Update the shift of the excitor locations to be the end of this
+                ! current iteration.
+                qs%spawn_store%spawn%hash_shift = qs%spawn_store%spawn%hash_shift + 1
 
                 if (ccmc_in%linked) then
                     ! The BCH expansion of the Hamiltonian terminates at fourth
@@ -601,10 +573,6 @@ contains
                     ! total number of excitors.
                     max_cluster_size = min(sys%nel, qs%ref%ex_level+2, qs%psip_list%nstates-nD0_proc)
                 end if
-
-#ifdef PARALLEL
-                call mpi_bcast(D0_normalisation, 1, mpi_pcomplex, D0_proc, MPI_COMM_WORLD, ierr)
-#endif
 
                 ! Note that 'death' in CCMC creates particles in the spawned
                 ! list, so the number of deaths not in the spawned list is
