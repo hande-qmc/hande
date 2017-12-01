@@ -369,7 +369,7 @@ contains
         use checking, only: check_allocate, check_deallocate
         use dmqmc_data, only: subsys_t
         use errors
-        use real_lattice, only: find_translational_symmetry_vecs, map_vec_to_cell, enumerate_lattice_vectors
+        use real_lattice, only: find_translational_symmetry_vecs, map_vec_to_cell, enumerate_lattice_vectors_in_ws
         use system, only: sys_t
 
         type(sys_t), intent(in) :: sys
@@ -408,7 +408,7 @@ contains
         ! symmetry vector.
         allocate(lvecs(sys%lattice%ndim,3**sys%lattice%ndim), stat=ierr)
         call check_allocate('lvecs', sys%lattice%ndim*3**sys%lattice%ndim, ierr)
-        call enumerate_lattice_vectors(sys%lattice, lvecs)
+        call enumerate_lattice_vectors_in_ws(sys%lattice, lvecs)
         do i = 1, nrdms ! Over every subsystem.
             do j = 1, nsym_vecs ! Over every symmetry vector.
                 A_mask = 0_i0

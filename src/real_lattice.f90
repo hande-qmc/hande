@@ -46,13 +46,17 @@ contains
 
 ! [review] - AJWT: It seems inconsistent that these are allocated here, but deallocated in 
 ! [review] - AJWT: system.f90: end_lattice_system
-
+! [reply] - CJCS: So, looking into this I realised end_lattice_system is never even called.
+! [reply] - CJCS: I think that since the lua_hande rewrite lua garbage collection deals with
+! [reply] - CJCS: this instead. This seems to be working as a valgrind run doesn't show any
+! [reply] - CJCS: memory leaks that increase with system size or number of system allocation.
+! [reply] - CJCS: As such I think we can instead delete this and any other obsolete end_system
+! [reply] - CJCS: routines.
             allocate(sr%tmat(sys%basis%bit_string_len,sys%basis%nbasis), stat=ierr)
             call check_allocate('sr%tmat',sys%basis%bit_string_len*sys%basis%nbasis,ierr)
-! [review] - AJWT: Shouldn't this use bit_string_len as it's a system- not calc- specific variable?
             ! Information bits are not used but need to enable easy comparison to bit strings.
-            allocate(sr%connected_orbs(sys%basis%tot_string_len,sys%basis%nbasis), stat=ierr)
-            call check_allocate('sr%connected_orbs',sys%basis%tot_string_len*sys%basis%nbasis,ierr)
+            allocate(sr%connected_orbs(sys%basis%bit_string_len,sys%basis%nbasis), stat=ierr)
+            call check_allocate('sr%connected_orbs',sys%basis%bit_string_len*sys%basis%nbasis,ierr)
             allocate(lvecs(sl%ndim,3**sl%ndim), stat=ierr)
             call check_allocate('lvecs', sl%ndim*3**sl%ndim, ierr)
             if (sl%triangular_lattice) then
@@ -83,7 +87,7 @@ contains
                 isystem = 2
             end select
 
-            call enumerate_lattice_vectors(sl, lvecs)
+            call enumerate_lattice_vectors_in_ws(sl, lvecs)
 
             ! Construct how the sl%lattice is connected.
             diag_connection = .false. ! For sl%ndim /= 2.
@@ -165,10 +169,9 @@ contains
             sys%heisenberg%nbonds = sum(sys%real_lattice%connected_sites(0,:))/2
             ! Find lattice_mask for a gerenal bipartite lattice.
             if (sys%lattice%bipartite_lattice) then
-! [review] - AJWT: Shouldn't this use bit_string_len as it's a system- not calc- specific variable?
-                allocate (sys%heisenberg%lattice_mask(sys%basis%tot_string_len), stat=ierr)
+                allocate (sys%heisenberg%lattice_mask(sys%basis%bit_string_len), stat=ierr)
                 associate(lattice_mask=>sys%heisenberg%lattice_mask)
-                    call check_allocate('lattice_mask',sys%basis%tot_string_len,ierr)
+                    call check_allocate('lattice_mask',sys%basis%bit_string_len,ierr)
                     ! lattice_size is such that any loops over higher dimensions
                     ! than that of the model are single iterations but allows us to not have
                     ! to handle each dimension separately.
@@ -200,6 +203,7 @@ contains
 
 ! [review] - AJWT:   Given this just deallocates the heisenberg, shouldn't it be more specifically named?
 ! [review] - AJWT:   It's confusing that it doesn't 'undo' the allocations in init_real_space
+! [reply] - CJCS: This is true- but this function is never even called. As such I think it's ripe for deletion.
     subroutine end_real_space(sh)
 
         ! Clean up real_lattice specific allocations.
@@ -223,7 +227,8 @@ contains
 
 ! [review] - AJWT: The name of this function is a little misleading as it enumerates all combinations
 ! [review] - AJWT: which lie in the WS cell, not the lattice or boundary vectors themselves.
-    subroutine enumerate_lattice_vectors(sl, lvecs)
+! [reply] - CJCS: Changed to hopefully clearer name?
+    subroutine enumerate_lattice_vectors_in_ws(sl, lvecs)
 
         ! Enumerate combinations of lattice vectors which define the Wigner--Seitz cell.
 
@@ -263,7 +268,7 @@ contains
             end do
         end select
 
-    end subroutine enumerate_lattice_vectors
+    end subroutine enumerate_lattice_vectors_in_ws
 
     elemental function get_one_e_int_real(sys, i, j) result(one_e_int)
 
@@ -300,8 +305,7 @@ contains
 
         ! In:
         !    sys: system being studied.
-! [review] - AJWT: Shouldn't this use bit_string_len as it's a system- not calc- specific variable?
-        !    f(tot_string_len): bit string representation of the Slater
+        !    f(bit_string_len): bit string representation of the Slater
         !        determinant, D.
         ! Returns:
         !    The matrix element < D | U | D >
@@ -314,8 +318,7 @@ contains
 
         real(p) :: umatel
         type(sys_t), intent(in) :: sys
-! [review] - AJWT: Shouldn't this use bit_string_len as it's a system- not calc- specific variable?
-        integer(i0), intent(in) :: f(sys%basis%tot_string_len)
+        integer(i0), intent(in) :: f(sys%basis%bit_string_len)
         integer :: i
         integer(i0) :: b
 
