@@ -64,7 +64,14 @@ contains
 
     subroutine get_D0_info(qs, complex_system, D0_proc, D0_pos, nD0_proc, D0_normalisation)
 
-        ! [todo]
+        ! In:
+        !    qs: qmc_state_t object describing the current CCMC state.
+        !    complex_system: true if system has a complex wavefunction (i.e. sys_t%sys_read_in_t%comp).
+        ! Out:
+        !    D0_proc: the processor index on which the reference currently resides.
+        !    D0_pos: the position within the excip list of the reference. Set to -1 if iproc != D0_proc.
+        !    nD0_proc: 1 if iproc == D0_proc and 0 otherwise.
+        !    D0_normalisation: population of the reference.
 
         use parallel
         use qmc_data, only: qmc_state_t

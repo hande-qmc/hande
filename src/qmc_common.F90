@@ -575,8 +575,6 @@ contains
 
     end subroutine initial_qmc_status
 
-    ! [todo] - add ccmc-specific wfn calc
-
     subroutine initial_ci_projected_energy(sys, qs, nb_comm, ntot_particles)
 
         ! Calculate the projected energy based upon the initial walker
@@ -588,7 +586,7 @@ contains
         !    qmc_in: input options relating to QMC methods.
         !    nb_comm: true if performing a calculation using non-blocking communications.
         ! In/Out:
-        !    qs: qmc_state_t object. On output the estimator_t quantities are updated for each space based upon the partiule
+        !    qs: qmc_state_t object. On output the estimator_t quantities are updated for each space based upon the particle
         !        distribution in the space.
         ! Out:
         !    ntot_particles: total number of particles in each space.
@@ -668,6 +666,121 @@ contains
 #endif
 
     end subroutine initial_ci_projected_energy
+
+    subroutine initial_cc_projected_energy(sys, qs, rng_seed, logging_info, cumulative_abs_real_pops, ntot_particles)
+
+        ! Calculate the projected energy based upon the initial walker
+        ! distribution for a CC wavefunction ansatz.
+
+        ! In:
+        !    sys: system being studies
+        !    qmc_in: input options relating to QMC methods.
+        !    rng_seed: seed for DSFMT random number generator. Use our own RNG stream so we don't disturb
+        !        the subseuquent Markov chain in the QMC calculation.
+        !    logging_info: logging status. Used only in debugging runs.
+        ! In/Out:
+        !    qs: qmc_state_t object. On output the estimator_t quantities are updated for each space based upon the particle
+        !        distribution in the space.
+        !    cumulative_abs_real_pops: scratch space for calculating the cumulative population distribution. Must be at least
+        !        of size of current number of states. Do not use output unless the excip distribution has not been subseuquently
+        !        modified!
+        ! Out:
+        !    ntot_particles: total number of particles in each space.
+
+        use dSFMT_interface, only: dSFMT_t, dSFMT_init, dSFMT_end
+        use parallel
+
+        use ccmc_data, only: cluster_t, ex_lvl_dist_t
+        use ccmc_utils, only: cumulative_population, get_D0_info
+        use ccmc_selection, only: select_cluster, select_nc_cluster
+        use determinants, only: det_info_t, alloc_det_info_t, dealloc_det_info_t
+        use excitations, only: excit_t, get_excitation
+        use hamiltonian_data, only: hmatel_t
+        use logging, only: logging_t
+        use proc_pointers, only: update_proj_energy_ptr
+        use qmc_data, only: qmc_state_t, zero_estimators_t
+        use system, only: sys_t
+
+        type(sys_t), intent(in) :: sys
+        type(qmc_state_t), intent(inout), target :: qs
+        integer, intent(in) :: rng_seed
+        type(logging_t), intent(in) :: logging_info
+        real(p), intent(inout), allocatable :: cumulative_abs_real_pops(:)
+        real(dp), intent(out) :: ntot_particles(qs%psip_list%nspaces)
+
+        integer :: idet, ispace
+        type(det_info_t) :: cdet
+        type(cluster_t) :: cluster
+        type(hmatel_t) :: hmatel
+        type(excit_t) :: D0_excit
+        real(p) :: tot_abs_real_pop, pop(2)
+        type(ex_lvl_dist_t) :: ex_lvl_dist
+        type(dSFMT_t) :: rng
+        integer(int_64) :: iattempt, nattempts
+        integer :: D0_pos, D0_proc, nD0_proc
+        complex(p) :: D0_normalisation
+#ifdef PARALLEL
+        integer :: ierr
+        real(p) :: proj_energy_sum(qs%psip_list%nspaces), D0_population_sum(qs%psip_list%nspaces)
+#endif
+
+        call zero_estimators_t(qs%estimators)
+
+        call dSFMT_init(rng_seed, 50000, rng)
+
+        D0_pos = 1
+        call get_D0_info(qs, sys%read_in%comp, D0_proc, D0_pos, nD0_proc, D0_normalisation)
+        associate(pl=>qs%psip_list)
+            call cumulative_population(pl%pops, pl%states(sys%basis%tot_string_len,:), pl%nstates, D0_proc, D0_pos, &
+                                       pl%pop_real_factor, .false., sys%read_in%comp, cumulative_abs_real_pops, &
+                                       tot_abs_real_pop, ex_lvl_dist)
+        end associate
+        ! Choose one cluster of size 2 for each excip we have.
+        nattempts = nint(tot_abs_real_pop, int_64)
+
+        ! Generate clusters of size 1 or 2; only these have a chance of connecting to the reference determinant.
+        call alloc_det_info_t(sys, cdet)
+        allocate(cluster%excitors(2))
+        do iattempt = 1, 2*nattempts
+            if (iattempt < nattempts) then
+                call select_nc_cluster(sys, qs%psip_list, qs%ref%f0, iattempt, 0.0_p, .false., cdet, cluster)
+            else
+                ! Note: even if we're doing linked CC, the clusters contributing to the projected estimator must not contain
+                ! excitors involving the same orbitals so we need only look for unlinked clusters.
+                call select_cluster(rng, sys, qs%psip_list, qs%ref%f0, 2, .false., nattempts, D0_normalisation, 0.0_p, D0_pos, &
+                                cumulative_abs_real_pops, tot_abs_real_pop, 2, 2, logging_info, cdet, cluster)
+            end if
+            if (cluster%excitation_level /= huge(0)) then
+
+                D0_excit = get_excitation(sys%nel, sys%basis, cdet%f, qs%ref%f0)
+                pop = [real(cluster%amplitude,p), aimag(cluster%amplitude)]*cluster%cluster_to_det_sign/cluster%pselect
+                ! Note: replica tricks is not yet implemented in CCMC so only have (at most) real and imaginary spaces, which are
+                ! handled in select_cluster/select_nc_cluster.
+                call update_proj_energy_ptr(sys, qs%ref%f0, qs%trial%wfn_dat, cdet, pop, qs%estimators(1), D0_excit, hmatel)
+            end if
+        end do
+        deallocate(cluster%excitors)
+        call dealloc_det_info_t(cdet)
+        call dSFMT_end(rng)
+        qs%estimators(1)%D0_population = D0_normalisation
+
+#ifdef PARALLEL
+        call mpi_allreduce(qs%estimators%proj_energy, proj_energy_sum, qs%psip_list%nspaces, mpi_preal, &
+                           MPI_SUM, MPI_COMM_WORLD, ierr)
+        call mpi_allreduce(qs%psip_list%nparticles, ntot_particles, qs%psip_list%nspaces, MPI_REAL8, &
+                           MPI_SUM, MPI_COMM_WORLD, ierr)
+        call mpi_allreduce(qs%estimators%D0_population, D0_population_sum, qs%psip_list%nspaces, mpi_preal, MPI_SUM, &
+                           MPI_COMM_WORLD, ierr)
+        call mpi_allreduce(qs%psip_list%nstates, qs%estimators%tot_nstates, qs%psip_list%nspaces, MPI_INTEGER, MPI_SUM, &
+                               MPI_COMM_WORLD, ierr)
+        qs%estimators%proj_energy = proj_energy_sum
+        qs%estimators%D0_population = D0_population_sum
+#else
+        ntot_particles = qs%psip_list%nparticles
+        qs%estimators%tot_nstates = qs%psip_list%nstates
+#endif
+
+    end subroutine initial_cc_projected_energy
 
 ! --- QMC loop and cycle initialisation routines ---
 

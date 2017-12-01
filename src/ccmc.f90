@@ -308,9 +308,8 @@ contains
         use excitations, only: excit_t, get_excitation_level, get_excitation
         use qmc_io, only: write_qmc_report, write_qmc_report_header
         use qmc, only: init_qmc
-        use qmc_common, only: initial_qmc_status, load_balancing_report, &
-                              init_report_loop, init_mc_cycle, end_report_loop, end_mc_cycle,      &
-                              redistribute_particles, rescale_tau
+        use qmc_common, only: initial_qmc_status, initial_cc_projected_energy, load_balancing_report, init_report_loop, &
+                              init_mc_cycle, end_report_loop, end_mc_cycle, redistribute_particles, rescale_tau
         use proc_pointers
         use system, only: sys_t, sys_t_json
         use spawn_data, only: calc_events_spawn_t, write_memcheck_report
@@ -490,8 +489,9 @@ contains
                                          nattempts=.true., io_unit=io_unit)
         end if
         restart_proj_est = present(qmc_state_restart) .or. (restart_in%read_restart .and. restart_version_restart >= 2)
-        ! [todo]
-        !if (.not.restart_proj_est) call initial_cc_projected_energy(sys, qs, fciqmc_in%non_blocking_comm, nparticles_old)
+        if (.not.restart_proj_est) then
+            call initial_cc_projected_energy(sys, qs, qmc_in%seed+iproc, logging_info, cumulative_abs_real_pops, nparticles_old)
+        end if
         call initial_qmc_status(sys, qmc_in, qs, nparticles_old, doing_ccmc=.true., io_unit=io_unit)
 
         ! Initialise timer.

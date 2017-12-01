@@ -585,9 +585,8 @@ module restart_hdf5
                         if (parent) then
                             call warning('read_restart_hdf5', &
                                 'Restarting from restart version 1. '// &
-                                'Projected energy and imaginary part of D0 population not stored. '// &
-                                'They have to be estimated (from shift etc.). If shift is still zero and running CCMC, '// &
-                                'estimation for projected energy can be quite off.')
+                                'Projected energy and imaginary part of D0 population not stored '// &
+                                'and will be estimated from the stored population distribution.')
                         end if
                     else
                         call stop_all('read_restart_hdf5', &
