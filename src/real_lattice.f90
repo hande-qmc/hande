@@ -46,10 +46,14 @@ contains
 
 ! [review] - AJWT: It seems inconsistent that these are allocated here, but deallocated in 
 ! [review] - AJWT: system.f90: end_lattice_system
-
+! [reply] - CJCS: So, looking into this I realised end_lattice_system is never even called.
+! [reply] - CJCS: I think that since the lua_hande rewrite lua garbage collection deals with
+! [reply] - CJCS: this instead. This seems to be working as a valgrind run doesn't show any
+! [reply] - CJCS: memory leaks that increase with system size or number of system allocation.
+! [reply] - CJCS: As such I think we can instead delete this and any other obsolete end_system
+! [reply] - CJCS: routines.
             allocate(sr%tmat(sys%basis%bit_string_len,sys%basis%nbasis), stat=ierr)
             call check_allocate('sr%tmat',sys%basis%bit_string_len*sys%basis%nbasis,ierr)
-! [review] - AJWT: Shouldn't this use bit_string_len as it's a system- not calc- specific variable?
             ! Information bits are not used but need to enable easy comparison to bit strings.
             allocate(sr%connected_orbs(sys%basis%bit_string_len,sys%basis%nbasis), stat=ierr)
             call check_allocate('sr%connected_orbs',sys%basis%bit_string_len*sys%basis%nbasis,ierr)
