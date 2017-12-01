@@ -25,6 +25,7 @@ ccmc {
     blocking = {
         blocking_on_the_fly = true,
         auto_shift_damping = true,
+        start_point_number = 0,
     },
     ccmc = {
         even_selection = false,
