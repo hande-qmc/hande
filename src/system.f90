@@ -558,58 +558,6 @@ contains
 
     end subroutine init_system
 
-    subroutine end_lattice_system(sl, sk, sr)
-
-        ! Clean up system allocations.
-
-        ! In/Out:
-        !    sl, sk, sr: sys_*lattice_t objects.  On output the components of all provided
-        !       arguments are deallocated.
-
-        use checking, only: check_deallocate
-
-        type(sys_lattice_t), intent(inout), optional :: sl
-        type(sys_k_lattice_t), intent(inout), optional :: sk
-        type(sys_real_lattice_t), intent(inout), optional :: sr
-        integer :: ierr
-
-        if (present(sl)) then
-            if (allocated(sl%box_length)) then
-                deallocate(sl%box_length, stat=ierr)
-                call check_deallocate('box_length',ierr)
-            end if
-            if (allocated(sl%rlattice)) then
-                deallocate(sl%rlattice, stat=ierr)
-                call check_deallocate('rlattice',ierr)
-            end if
-            if (allocated(sl%lattice)) then
-                deallocate(sl%lattice, stat=ierr)
-                call check_deallocate('lattice',ierr)
-            end if
-        end if
-        if (present(sk)) then
-            if (allocated(sk%ktwist)) then
-                deallocate(sk%ktwist, stat=ierr)
-                call check_deallocate('ktwist',ierr)
-            end if
-        end if
-        if (present(sr)) then
-            if (allocated(sr%tmat)) then
-                deallocate(sr%tmat, stat=ierr)
-                call check_deallocate('sr%tmat',ierr)
-            end if
-            if (allocated(sr%connected_orbs)) then
-                deallocate(sr%connected_orbs, stat=ierr)
-                call check_deallocate('sr%connected_orbs',ierr)
-            end if
-            if (allocated(sr%connected_sites)) then
-                deallocate(sr%connected_sites, stat=ierr)
-                call check_deallocate('sr%connected_sites',ierr)
-            end if
-        end if
-
-    end subroutine end_lattice_system
-
     pure function in_FBZ(system_type,sl,k)
 
         ! Test if k is in the FBZ of the primitive unit cell.

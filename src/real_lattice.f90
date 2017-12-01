@@ -44,14 +44,6 @@ contains
 
             sr%t_self_images = any(abs(sl%box_length-1.0_p) < depsilon)
 
-! [review] - AJWT: It seems inconsistent that these are allocated here, but deallocated in 
-! [review] - AJWT: system.f90: end_lattice_system
-! [reply] - CJCS: So, looking into this I realised end_lattice_system is never even called.
-! [reply] - CJCS: I think that since the lua_hande rewrite lua garbage collection deals with
-! [reply] - CJCS: this instead. This seems to be working as a valgrind run doesn't show any
-! [reply] - CJCS: memory leaks that increase with system size or number of system allocation.
-! [reply] - CJCS: As such I think we can instead delete this and any other obsolete end_system
-! [reply] - CJCS: routines.
             allocate(sr%tmat(sys%basis%bit_string_len,sys%basis%nbasis), stat=ierr)
             call check_allocate('sr%tmat',sys%basis%bit_string_len*sys%basis%nbasis,ierr)
             ! Information bits are not used but need to enable easy comparison to bit strings.
@@ -200,30 +192,6 @@ contains
         call check_deallocate('lvecs', ierr)
 
     end subroutine init_real_space
-
-! [review] - AJWT:   Given this just deallocates the heisenberg, shouldn't it be more specifically named?
-! [review] - AJWT:   It's confusing that it doesn't 'undo' the allocations in init_real_space
-! [reply] - CJCS: This is true- but this function is never even called. As such I think it's ripe for deletion.
-    subroutine end_real_space(sh)
-
-        ! Clean up real_lattice specific allocations.
-
-        ! In/Out:
-        !    sh: Heisenberg system object to be deallocated.
-
-        use checking, only: check_deallocate
-        use system, only: sys_heisenberg_t
-
-        type(sys_heisenberg_t), intent(inout) :: sh
-
-        integer :: ierr
-
-        if (allocated(sh%lattice_mask)) then
-            deallocate(sh%lattice_mask, stat=ierr)
-            call check_deallocate('sh%lattice_mask', ierr)
-        end if
-
-    end subroutine end_real_space
 
 ! [review] - AJWT: The name of this function is a little misleading as it enumerates all combinations
 ! [review] - AJWT: which lie in the WS cell, not the lattice or boundary vectors themselves.
