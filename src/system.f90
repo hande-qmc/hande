@@ -155,8 +155,7 @@ type sys_real_lattice_t
     ! By next nearest neighbors, it is meant sites which can be joined by exactly two
     ! bonds - any notion one may have of where the spins are located spatially is unimportant.
 
-! [review] - AJWT: This seems a sensible warning to add
-    !It is currently only initialized if doing_dmqmc_calc(dmqmc_energy_squared) (init_real_space)
+    ! It is currently only initialized if doing_dmqmc_calc(dmqmc_energy_squared) (init_real_space)
     integer(i0), allocatable :: next_nearest_orbs(:,:) ! (nbasis, nbasis)
 
     ! True if any site is its own periodic image.
