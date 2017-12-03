@@ -488,6 +488,14 @@ contains
             call write_qmc_report_header(qs%psip_list%nspaces, cmplx_est=sys%read_in%comp, rdm_energy=ccmc_in%density_matrices, &
                                          nattempts=.true., io_unit=io_unit)
         end if
+        
+        associate(spawn=>qs%spawn_store%spawn)
+            ! Initialise hash shift if restarting...
+            spawn%hash_shift = qs%mc_cycles_done
+            ! Hard code how frequently (ie 2^10) a determinant can move.
+            spawn%move_freq = ccmc_in%move_freq
+        end associate
+        
         restart_proj_est = present(qmc_state_restart) .or. (restart_in%read_restart .and. restart_version_restart >= 2)
         if (.not.restart_proj_est) then
             call initial_cc_projected_energy(sys, qs, qmc_in%seed+iproc, logging_info, cumulative_abs_real_pops, nparticles_old)
@@ -496,13 +504,6 @@ contains
 
         ! Initialise timer.
         call cpu_time(t1)
-
-        associate(spawn=>qs%spawn_store%spawn)
-            ! Initialise hash shift if restarting...
-            spawn%hash_shift = qs%mc_cycles_done
-            ! Hard code how frequently (ie 2^10) a determinant can move.
-            spawn%move_freq = ccmc_in%move_freq
-        end associate
 
         ! The iteration on which to start performing semi-stochastic.
         semi_stoch_iter = qs%mc_cycles_done + semi_stoch_in%start_iter

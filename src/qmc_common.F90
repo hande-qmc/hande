@@ -775,6 +775,9 @@ contains
                                MPI_COMM_WORLD, ierr)
         qs%estimators%proj_energy = proj_energy_sum
         qs%estimators%D0_population = D0_population_sum
+        ! D0_normalisation will have already been broadcasted and averaged in "get_D0_info".
+        ! Also, the D0_population was stored in legacy files as well (restart_version = 1), alternatively could use that.
+        qs%estimators(1)%D0_population = D0_normalisation
 #else
         ntot_particles = qs%psip_list%nparticles
         qs%estimators%tot_nstates = qs%psip_list%nstates
