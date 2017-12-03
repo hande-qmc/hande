@@ -741,8 +741,8 @@ contains
         ! Generate clusters of size 1 or 2; only these have a chance of connecting to the reference determinant.
         call alloc_det_info_t(sys, cdet)
         allocate(cluster%excitors(2))
-        do iattempt = 1, 2*nattempts
-            if (iattempt < nattempts) then
+        do iattempt = 1, nattempts + qs%psip_list%nstates
+            if (iattempt < qs%psip_list%nstates) then
                 call select_nc_cluster(sys, qs%psip_list, qs%ref%f0, iattempt, 0.0_p, .false., cdet, cluster)
             else
                 ! Note: even if we're doing linked CC, the clusters contributing to the projected estimator must not contain
