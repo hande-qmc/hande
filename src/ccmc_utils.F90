@@ -62,11 +62,11 @@ contains
 
     end subroutine find_D0
 
-    subroutine get_D0_info(qs, complex_system, D0_proc, D0_pos, nD0_proc, D0_normalisation)
+    subroutine get_D0_info(qs, complx, D0_proc, D0_pos, nD0_proc, D0_normalisation)
 
         ! In:
         !    qs: qmc_state_t object describing the current CCMC state.
-        !    complex_system: true if system has a complex wavefunction (i.e. sys_t%sys_read_in_t%comp).
+        !    complx: true if system has a complex wavefunction (i.e. sys_t%sys_read_in_t%comp).
         ! Out:
         !    D0_proc: the processor index on which the reference currently resides.
         !    D0_pos: the position within the excip list of the reference. Set to -1 if iproc != D0_proc.
@@ -78,7 +78,7 @@ contains
         use spawning, only: assign_particle_processor
 
         type(qmc_state_t), intent(in) :: qs
-        logical, intent(in) :: complex_system
+        logical, intent(in) :: complx
         integer, intent(out) :: D0_proc, D0_pos, nD0_proc
         complex(p), intent(out) :: D0_normalisation
         integer :: slot
@@ -99,7 +99,7 @@ contains
             ! a cycle, the running total of D0_population is incorrect (by
             ! a factor of the number of times it was selected).
             call find_D0(qs%psip_list, qs%ref%f0, D0_pos)
-            if (complex_system) then
+            if (complx) then
                 D0_normalisation = cmplx(qs%psip_list%pops(1,D0_pos), qs%psip_list%pops(2,D0_pos), p)/qs%psip_list%pop_real_factor
             else
                 D0_normalisation = real(qs%psip_list%pops(1,D0_pos),p)/qs%psip_list%pop_real_factor
