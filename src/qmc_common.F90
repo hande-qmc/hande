@@ -561,7 +561,7 @@ contains
         real(dp), intent(in) :: ntot_particles(qs%psip_list%nspaces)
         logical, intent(in) :: doing_ccmc
         integer, optional, intent(in) :: io_unit
-
+        
         if (parent) then
             if (doing_ccmc) then
                 qs%estimators%nattempts = nint(qs%estimators%D0_population)
@@ -614,6 +614,7 @@ contains
 #ifdef PARALLEL
         integer :: ierr
         real(p) :: proj_energy_sum(qs%psip_list%nspaces), D0_population_sum(qs%psip_list%nspaces)
+        complex(p) :: proj_energy_comp_sum(qs%psip_list%nspaces), D0_population_comp_sum(qs%psip_list%nspaces)
 #endif
         call zero_estimators_t(qs%estimators)
 
@@ -634,6 +635,8 @@ contains
                 do ispace = 1, qs%psip_list%nspaces, 2
                     call update_proj_energy_ptr(sys, qs%ref%f0, qs%trial%wfn_dat, cdet, weighted_population(ispace:ispace+1), &
                                                 qs%estimators(ispace), D0_excit, hmatel)
+                    qs%estimators(ispace+1)%D0_population_comp = qs%estimators(ispace)%D0_population_comp
+                    qs%estimators(ispace+1)%proj_energy_comp = qs%estimators(ispace)%proj_energy_comp
                 end do
             else
                 do ispace = 1, qs%psip_list%nspaces
@@ -651,14 +654,20 @@ contains
         if (.not.nb_comm) then
             call mpi_allreduce(qs%estimators%proj_energy, proj_energy_sum, qs%psip_list%nspaces, mpi_preal, &
                                MPI_SUM, MPI_COMM_WORLD, ierr)
+            call mpi_allreduce(qs%estimators%proj_energy_comp, proj_energy_comp_sum, qs%psip_list%nspaces, mpi_pcomplex, &
+                               MPI_SUM, MPI_COMM_WORLD, ierr)
             call mpi_allreduce(qs%psip_list%nparticles, ntot_particles, qs%psip_list%nspaces, MPI_REAL8, &
                                MPI_SUM, MPI_COMM_WORLD, ierr)
             call mpi_allreduce(qs%estimators%D0_population, D0_population_sum, qs%psip_list%nspaces, mpi_preal, MPI_SUM, &
                                MPI_COMM_WORLD, ierr)
+            call mpi_allreduce(qs%estimators%D0_population_comp, D0_population_comp_sum, qs%psip_list%nspaces, mpi_pcomplex, MPI_SUM, &
+                               MPI_COMM_WORLD, ierr)
             call mpi_allreduce(qs%psip_list%nstates, qs%estimators%tot_nstates, qs%psip_list%nspaces, MPI_INTEGER, MPI_SUM, &
                                MPI_COMM_WORLD, ierr)
             qs%estimators%proj_energy = proj_energy_sum
+            qs%estimators%proj_energy_comp = proj_energy_comp_sum
             qs%estimators%D0_population = D0_population_sum
+            qs%estimators%D0_population_comp = D0_population_comp_sum
         end if
 #else
         ntot_particles = qs%psip_list%nparticles
@@ -722,12 +731,13 @@ contains
 #ifdef PARALLEL
         integer :: ierr
         real(p) :: proj_energy_sum(qs%psip_list%nspaces), D0_population_sum(qs%psip_list%nspaces)
+        complex(p) :: proj_energy_comp_sum(qs%psip_list%nspaces), D0_population_comp_sum(qs%psip_list%nspaces)
 #endif
 
         call zero_estimators_t(qs%estimators)
 
         call dSFMT_init(rng_seed, 50000, rng)
-
+        
         D0_pos = 1
         call get_D0_info(qs, sys%read_in%comp, D0_proc, D0_pos, nD0_proc, D0_normalisation)
         associate(pl=>qs%psip_list)
@@ -757,32 +767,38 @@ contains
                 ! Note: replica tricks is not yet implemented in CCMC so only have (at most) real and imaginary spaces, which are
                 ! handled in select_cluster/select_nc_cluster.
                 call update_proj_energy_ptr(sys, qs%ref%f0, qs%trial%wfn_dat, cdet, pop, qs%estimators(1), D0_excit, hmatel)
+                if (sys%read_in%comp) then
+                    qs%estimators(2)%D0_population_comp = qs%estimators(1)%D0_population_comp
+                    qs%estimators(2)%proj_energy_comp = qs%estimators(1)%proj_energy_comp
+                end if
             end if
         end do
         deallocate(cluster%excitors)
         call dealloc_det_info_t(cdet)
         call dSFMT_end(rng)
-        qs%estimators(1)%D0_population = D0_normalisation
 
 #ifdef PARALLEL
         call mpi_allreduce(qs%estimators%proj_energy, proj_energy_sum, qs%psip_list%nspaces, mpi_preal, &
+                           MPI_SUM, MPI_COMM_WORLD, ierr)
+        call mpi_allreduce(qs%estimators%proj_energy_comp, proj_energy_comp_sum, qs%psip_list%nspaces, mpi_pcomplex, &
                            MPI_SUM, MPI_COMM_WORLD, ierr)
         call mpi_allreduce(qs%psip_list%nparticles, ntot_particles, qs%psip_list%nspaces, MPI_REAL8, &
                            MPI_SUM, MPI_COMM_WORLD, ierr)
         call mpi_allreduce(qs%estimators%D0_population, D0_population_sum, qs%psip_list%nspaces, mpi_preal, MPI_SUM, &
                            MPI_COMM_WORLD, ierr)
+        call mpi_allreduce(qs%estimators%D0_population_comp, D0_population_comp_sum, qs%psip_list%nspaces, mpi_pcomplex, MPI_SUM, &
+                           MPI_COMM_WORLD, ierr)
         call mpi_allreduce(qs%psip_list%nstates, qs%estimators%tot_nstates, qs%psip_list%nspaces, MPI_INTEGER, MPI_SUM, &
-                               MPI_COMM_WORLD, ierr)
+                           MPI_COMM_WORLD, ierr)
         qs%estimators%proj_energy = proj_energy_sum
+        qs%estimators%proj_energy_comp = proj_energy_comp_sum
         qs%estimators%D0_population = D0_population_sum
-        ! D0_normalisation will have already been broadcasted and averaged in "get_D0_info".
-        ! Also, the D0_population was stored in legacy files as well (restart_version = 1), alternatively could use that.
-        qs%estimators(1)%D0_population = D0_normalisation
+        qs%estimators%D0_population_comp = D0_population_comp_sum
 #else
         ntot_particles = qs%psip_list%nparticles
         qs%estimators%tot_nstates = qs%psip_list%nstates
 #endif
-
+    
     end subroutine initial_cc_projected_energy
 
 ! --- QMC loop and cycle initialisation routines ---
