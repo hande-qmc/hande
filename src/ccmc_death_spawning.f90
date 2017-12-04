@@ -116,6 +116,7 @@ contains
         call gen_excit_ptr%full(rng, sys, qs%excit_gen_data, cdet, spawn_pgen, connection, hmatel, allowed_excitation)
 
         if (allowed_excitation) then
+! [review] - AJWT: This code is repeated later, so should be put into a subroutine.
             if (qs%excit_gen_data%p_single_double%vary_psingles == .true.) then
                 if (connection%nexcit == 1) then
                     h_pgen_singles_sum_tmp = h_pgen_singles_sum_tmp + &
@@ -622,6 +623,7 @@ contains
         end if
 
         if (allowed) then
+! [review] - AJWT: Repeated code.
             if (qs%excit_gen_data%p_single_double%vary_psingles == .true.) then
                 if (connection%nexcit == 1) then
                     h_pgen_singles_sum_tmp = h_pgen_singles_sum_tmp + &
@@ -828,6 +830,7 @@ contains
         ! least for now) is left as an exercise to the interested reader.
         call gen_excit_ptr%full(rng, sys, qs%excit_gen_data, cdet, pgen, connection, hmatel, allowed_excitation)
 
+! [review] - AJWT: Repeated code.
         if ((allowed_excitation == .true.) .and. (qs%excit_gen_data%p_single_double%vary_psingles == .true.)) then
             if (connection%nexcit == 1) then
                 h_pgen_singles_sum_tmp = h_pgen_singles_sum_tmp + &

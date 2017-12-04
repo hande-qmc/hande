@@ -212,17 +212,21 @@ algorithms and control the core settings in the algorithms.
     probability ``pattempt_parallel`` whether :math:`i` and :maths:`j` should have
     parallel spins or not.
 
+.. [review] - AJWT:
+      'very similar' below is not exactly helpful - perhaps detail the differences here or in an appendix
+
     The 'heat_bath' excitation generator is very similar to the "original" heat bath
     excitation generator described by Holmes et al. [Holmes16]_. :math:`i,j,a,b` are chosen
     with weighted, precalculated probabilities that aim to make |Hij|/pgen as constant
-    as possible. The power pitzer excitation generators are approximate these weights.
+    as possible. The power pitzer excitation generators use approximate upper bounds for these weights.
     'heat_bath_uniform' is very similar but samples single excitations uniformly and
-    'heat_bath_single' samples is also very similar but samples single excitations
-    exactly (following a recommendation from Pablo Lopez Rios).
+    'heat_bath_single' is also very similar but samples single excitations with the correct
+    weighting (following a recommendation from Pablo Lopez Rios).
 
     The 'power_pitzer' excitation generator generates excitations using a Power-Pitzer
-    [Power74]_ like upper bound for the value of the Hamiltonian matrix element. This
-    involves some precalcalated weights and alias tables, but should reduce both noise
+    [Power74]_ upper bound for the value of the Hamiltonian matrix element, 
+    :math`|\langle ij|ab\rangle|^2 > \langle ia|ai\rangle\langle jb|bj\rangle`.
+     This involves some precalcalated weights and alias tables, but should reduce both noise
     and shoulder heights. The weights to select a certain excitation are calculated for
     the reference in the beginning of the QMC calculation. Each time the excitation
     generator is called, the weights are mapped from the reference to the actual 
@@ -257,7 +261,10 @@ algorithms and control the core settings in the algorithms.
     happen if orbital connections with low pgen are mapped to orbital connections with
     big abs(Hij).
 
-    ..
+.. [review] - AJWT: 
+    What does Test mean in the context of the manual?
+
+    .. 
 
         [todo] - Test.
 

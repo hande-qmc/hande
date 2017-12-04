@@ -137,7 +137,7 @@ contains
         ! 4. Entry j is now exactly full.
         ! 5. Assign entry i to the appropriate category based on the new value of
         !    U_i .
-        ! [todo] - add citations for method 
+        ! See A. J. Walker, ACM Trans. Math. Software 3, 253 (1977).
 
         integer, intent(in) :: N
         real(p), intent(in) :: totweight, weights(N) 

@@ -387,6 +387,7 @@ contains
         integer :: iunit, restart_version_restart
         integer :: date_values(8)
 
+! [review] - AJWT: Might be worth stating what these will be used for as there's a lot to take in in this subroutine.
         real(p) :: h_pgen_singles_sum_tmp, h_pgen_doubles_sum_tmp, excit_gen_singles_tmp, excit_gen_doubles_tmp
 
         if (parent) then
@@ -421,6 +422,7 @@ contains
             call sys_t_json(js, sys)
             ! The default values of pattempt_* are not in qmc_in
             qmc_in_loc = qmc_in
+! [review] - AJWT: This is repeated in DMQMC (and FCIQMC?).  Should it be a subroutine?
             qmc_in_loc%pattempt_single = qs%excit_gen_data%pattempt_single
             qmc_in_loc%pattempt_double = qs%excit_gen_data%pattempt_double
             qmc_in_loc%shift_damping = qs%shift_damping
@@ -750,6 +752,7 @@ contains
                 end do
                 !$omp end do
 
+! [review] - AJWT: This is tautologous, but perhaps ok. 
                 if (qs%excit_gen_data%p_single_double%vary_psingles == .true.) then
                     qs%excit_gen_data%p_single_double%h_pgen_singles_sum = &
                         qs%excit_gen_data%p_single_double%h_pgen_singles_sum + h_pgen_singles_sum_tmp
@@ -818,6 +821,7 @@ contains
                 call end_mc_cycle(nspawn_events, ndeath_nc, qs%psip_list%pop_real_factor, nattempts_spawn, qs%spawn_store%rspawn)
             end do
 
+! [review] - AJWT: Should this be put into a subroutine? I presume it's used in FCIQMC as well.
             if (qs%excit_gen_data%p_single_double%vary_psingles == .true.) then 
                 associate(ps=>qs%excit_gen_data%p_single_double)
                     if (((ps%excit_gen_singles + ps%excit_gen_doubles) > (ps%counter*ps%every_attempts)) .and. &
@@ -1010,6 +1014,10 @@ contains
 
     end subroutine do_ccmc_accumulation
 
+! [review] - AJWT: Perhaps the four _tmp variables should exist in a structure which is more abstracted.  
+! [review] - AJWT: Their purpose isn't anything to do with the propagation, but just need to passed around for
+! [review] - AJWT: data accumulation for excitation generators.  Something like calc_stats?
+! [review] - AJWT: This is distinct from the nattempts_spawn_tot which is just THIS cycle.
     subroutine do_stochastic_ccmc_propagation(rng, sys, qs, &
                                             ccmc_in, logging_info, ms_stats, bloom_stats, &
                                             contrib, nattempts_spawn_tot, ndeath, h_pgen_singles_sum_tmp, &
