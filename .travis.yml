@@ -17,14 +17,14 @@ addons:
       - cmake3
       - cmake3-data
       - gfortran
-      - libopenmpi-dev
-      - openmpi-bin
-      - uuid-dev
       - libblas-dev
       - liblapack-dev
+      - libopenmpi-dev
+      - openmpi-bin
+      - python-dev
+      - uuid-dev
 
 install:
-  - pip install --user virtualenv --upgrade
   - virtualenv venv
   - source venv/bin/activate
   - pip install -r requirements.txt
