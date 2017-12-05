@@ -137,7 +137,7 @@ const char *report_popcnt() {
 #ifdef USE_POPCNT
   return "USE_POPCNT defined.  Fortran 2003 POPCNT procedure used.";
 #else
-  return "USE_POPCNT not defined. Integral POPCNT procedure used.";
+  return "USE_POPCNT not defined. Internal POPCNT procedure used.";
 #endif
   /* clang-format on */
 }

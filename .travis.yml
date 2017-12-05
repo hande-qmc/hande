@@ -3,13 +3,13 @@ dist: trusty
 
 language: python
 
-cache:
-  pip: true
-  directories:
-    - $DEPS/hdf5-1.10.1
-    - $DEPS/scalapack-2.0.2
-    - $DEPS/trlan-201009
-    - $DEPS/lua-5.3.3
+os:
+  - linux
+  - osx
+
+python:
+  - "2.7"
+  - "3.5"
 
 addons:
   apt:
@@ -21,58 +21,41 @@ addons:
       - liblapack-dev
       - libopenmpi-dev
       - openmpi-bin
-      - python-dev
       - uuid-dev
 
+env:
+  global:
+    - DEPS=$HOME/Deps
+    - LUA_ROOT=$DEPS/lua
+    - HDF5_ROOT=$DEPS/hdf5
+    - ScaLAPACK_ROOT=$DEPS/scalapack
+    # Paths for BLAS, LAPACK, and UUID from packages
+    - LD_LIBRARY_PATH=/usr/lib/x86_64-linux-gnu:/usr/lib/libblas:/usr/lib/lapack${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}
+    - LD_LIBRARY_PATH=$LUA_ROOT/lib:$HDF5_ROOT/lib:$ScaLAPACK_ROOT/lib:$DEPS/trlan/lib${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}
+
+before_install:
+  # Dependencies are downloaded in $HOME/Downloads and installed in $HOME/Deps
+  - mkdir -p $HOME/Downloads $DEPS
+
+cache:
+  pip: true
+  directories:
+    - $HOME/Deps/lua
+    - $HOME/Deps/hdf5
+    - $HOME/Deps/scalapack
+    - $HOME/Deps/trlan
+
 install:
-  - virtualenv venv
-  - source venv/bin/activate
+  - ./.ci/install_deps.sh
   - pip install -r requirements.txt
-  - mkdir -p $HOME/Deps
-  - DEPS=$HOME/Deps
-  - |
-    if [[ "${TRAVIS_OS_NAME}" == "linux" ]]; then
-      cd $DEPS
-      # Install Lua 5.3
-      wget -O - http://www.lua.org/ftp/lua-5.3.3.tar.gz | tar xzf -
-      cd lua-5.3.3
-      make linux >/dev/null 2>&1
-      make install INSTALL_TOP=$DEPS/lua-5.3.3 >/dev/null 2>&1
-      export LD_LIBRARY_PATH=$DEPS/lua-5.3.3/lib${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}
-      # Install HDF5 with Fortran 2003 bindings
-      cd $DEPS
-      wget -O - http://www.hdfgroup.org/ftp/HDF5/releases/hdf5-1.10/hdf5-1.10.1/src/hdf5-1.10.1.tar.bz2 | tar xjf -
-      cd hdf5-1.10.1
-      ./configure --prefix=$DEPS/hdf5-1.10.1 --enable-build-mode=debug --enable-fortran --enable-shared --enable-fortran2003 >/dev/null 2>&1
-      make >/dev/null 2>&1
-      make install >/dev/null 2>&1
-      export LD_LIBRARY_PATH=$DEPS/hdf5-1.10.1/lib${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}
-      # Paths for BLAS and LAPACK
-      export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/usr/lib/libblas:/usr/lib/lapack
-      # Install ScaLAPACK (from source as it is only packaged for MPICH)
-      cd $DEPS
-      wget -O - http://www.netlib.org/scalapack/scalapack-2.0.2.tgz | tar xzf -
-      cd scalapack-2.0.2
-      ln -sf SLmake.inc.example SLmake.inc
-      make libi >/dev/null 2>&1
-      export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$DEPS/scalapack-2.0.2
-      # Install TRLan
-      cd $DEPS
-      wget -O - https://codeforge.lbl.gov/frs/download.php/210/trlan-201009.tar.gz | tar xzf -
-      cd trlan-201009
-      make lib >/dev/null 2&>1
-      export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$DEPS/trlan-201009
-      # testcode
-      cd $DEPS
-      git clone git://github.com/jsspencer/testcode
-      # Lua + UUID (from packages - need to set paths)
-      export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/usr/lib/x86_64-linux-gnu
-    elif [[ "${TRAVIS_OS_NAME}" == "osx" ]]; then
-    fi
 
 before_script:
-  - cd $TRAVIS_BUILD_DIR
-  - tools/mkconfig.py travis
+  - >
+    if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then
+      tools/mkconfig.py travis.linux
+    elif [[ "$TRAVIS_OS_NAME" == "osx" ]]; then
+      tools/mkconfig.py travis.macosx
+    fi
 
 script:
   - make
