@@ -60,7 +60,7 @@ fi
 echo "-- Done with ScaLAPACK $ScaLAPACK_VERSION"
 
 echo "-- Installing TRLan"
-if [[ ! -f $DEPS/trlan-201009/libtrlan.a ]]; then
+if [[ ! -f $DEPS/trlan/lib/libtrlan.a ]]; then
   echo "-- TRLan NOT FOUND in cache"
   curl -Ls https://codeforge.lbl.gov/frs/download.php/210/trlan-201009.tar.gz | tar -xz
   cd trlan-201009
@@ -73,7 +73,5 @@ else
   echo "-- TRLan FOUND in cache"
 fi
 echo "-- Done with TRLan"
-
-echo $LD_LIBRARY_PATH
 
 cd $TRAVIS_BUILD_DIR
