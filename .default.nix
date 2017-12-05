@@ -10,9 +10,6 @@ in
   with import nixpkgs {
     overlays = [(self: super:
     {
-      atlas = super.atlas.override {
-        withLapack = true;
-      };
       hdf5 = super.hdf5.override {
         gfortran = super.gfortran;
         mpi = super.openmpi;
@@ -24,25 +21,20 @@ in
     name = "HANDE";
     buildInputs = [
       atlas
-      clang-tools
       cmake
       exa
       gcc
       gdb
       gfortran
       hdf5
+      liblapack
       libuuid
       lua5_3
       openmpi
-      python35Packages.jupyter
       python35Packages.matplotlib
       python35Packages.numpy
       python35Packages.pandas
-      python35Packages.pyyaml
-      python35Packages.recommonmark
-      python35Packages.scipy
-      python35Packages.sphinx
-      python35Packages.sphinx_rtd_theme
+      python35Packages.virtualenvwrapper
       valgrind
     ];
   }

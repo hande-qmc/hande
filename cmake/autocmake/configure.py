@@ -84,8 +84,7 @@ def run_cmake(command, build_path, default_build_path):
     from shutil import rmtree
 
     topdir = os.getcwd()
-    os.chdir(build_path)
-    p = Popen(command,
+    p = Popen(command + ' -B'+ build_path,
               shell=True,
               stdin=PIPE,
               stdout=PIPE,

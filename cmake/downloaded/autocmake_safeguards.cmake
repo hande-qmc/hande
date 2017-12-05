@@ -1,3 +1,6 @@
+# (c) https://github.com/coderefinery/autocmake/blob/master/AUTHORS.md
+# licensed under BSD-3: https://github.com/coderefinery/autocmake/blob/master/LICENSE
+
 #.rst:
 #
 # Provides safeguards against in-source builds and bad build types.

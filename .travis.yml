@@ -1,60 +1,85 @@
-sudo: required
+sudo: false
 dist: trusty
 
 language: python
 
-addons:
-    apt:
-        packages:
-            - gfortran
-            - libopenmpi-dev
-            - openmpi-bin
-            - uuid-dev
-            - libblas-dev
-            - liblapack-dev
+cache:
+  pip: true
+  directories:
+    - $DEPS/hdf5-1.10.1
+    - $DEPS/scalapack-2.0.2
+    - $DEPS/trlan-201009
+    - $DEPS/lua-5.3.3
 
-before_install:
-    - pip install pandas matplotlib scipy
-    - cd
-    # Lua (from source as only 5.2 is available in a package)
-    - export LUA=$HOME/lua-5.3.3
-    - if [ ! -f $LUA/lib/liblua.a ] ; then ( wget -O - http://www.lua.org/ftp/lua-5.3.3.tar.gz | tar xzf - && cd lua-5.3.3 && make linux && make install INSTALL_TOP=$LUA ) ; fi
-    - export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$LUA/lib
-    # HDF5 (from source as the Ubuntu package doesn't have Fortran 2003 bindings)
-    - export HDF5_ROOT=$HOME/hdf5-1.10.1
-    - if [ ! -f $HDF5_ROOT/lib/libhdf5_fortran.so ] ; then ( wget -O - http://www.hdfgroup.org/ftp/HDF5/releases/hdf5-1.10/hdf5-1.10.1/src/hdf5-1.10.1.tar.bz2 | tar xjf - && cd hdf5-1.10.1 && ./configure --prefix=$HDF5_ROOT --enable-fortran --enable-fortran2003 && make && make install ) ; fi
-    - export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$HDF5_ROOT/lib
-    # paths for blas and lapack
-    - export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/usr/lib/libblas:/usr/lib/lapack
-    # scalapack (from source as it is only packaged for MPICH)
-    - if [ ! -f scalapack-2.0.2/libscalapack.a ] ; then ( wget -O - http://www.netlib.org/scalapack/scalapack-2.0.2.tgz | tar xzf - && cd scalapack-2.0.2 && ln -sf SLmake.inc.example SLmake.inc && make lib ) ; fi
-    - export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$HOME/scalapack-2.0.2
-    # TRLan
-    - if [ ! -f trlan-201009/libtrlan.a ] ; then ( wget -O - https://codeforge.lbl.gov/frs/download.php/210/trlan-201009.tar.gz | tar xzf - && cd trlan-201009 && make lib ) ; fi
-    - export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$HOME/trlan-201009
-    # testcode
-    - git clone git://github.com/jsspencer/testcode
-    # lua + UUID (from packages - need to set paths)
-    - export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/usr/lib/x86_64-linux-gnu
+addons:
+  apt:
+    packages:
+      - cmake3
+      - cmake3-data
+      - gfortran
+      - libopenmpi-dev
+      - openmpi-bin
+      - uuid-dev
+      - libblas-dev
+      - liblapack-dev
 
 install:
-    - cd -
-    - tools/mkconfig.py travis
-    - make
+  - pip install --user virtualenv --upgrade
+  - virtualenv venv
+  - source venv/bin/activate
+  - pip install -r requirements.txt
+  - mkdir -p $HOME/Deps
+  - DEPS=$HOME/Deps
+  - |
+    if [[ "${TRAVIS_OS_NAME}" == "linux" ]]; then
+      cd $DEPS
+      # Install Lua 5.3
+      wget -O - http://www.lua.org/ftp/lua-5.3.3.tar.gz | tar xzf -
+      cd lua-5.3.3
+      make linux >/dev/null 2>&1
+      make install INSTALL_TOP=$DEPS/lua-5.3.3 >/dev/null 2>&1
+      export LD_LIBRARY_PATH=$DEPS/lua-5.3.3/lib${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}
+      # Install HDF5 with Fortran 2003 bindings
+      cd $DEPS
+      wget -O - http://www.hdfgroup.org/ftp/HDF5/releases/hdf5-1.10/hdf5-1.10.1/src/hdf5-1.10.1.tar.bz2 | tar xjf -
+      cd hdf5-1.10.1
+      ./configure --prefix=$DEPS/hdf5-1.10.1 --enable-build-mode=debug --enable-fortran --enable-shared --enable-fortran2003 >/dev/null 2>&1
+      make >/dev/null 2>&1
+      make install >/dev/null 2>&1
+      export LD_LIBRARY_PATH=$DEPS/hdf5-1.10.1/lib${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}
+      # Paths for BLAS and LAPACK
+      export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/usr/lib/libblas:/usr/lib/lapack
+      # Install ScaLAPACK (from source as it is only packaged for MPICH)
+      cd $DEPS
+      wget -O - http://www.netlib.org/scalapack/scalapack-2.0.2.tgz | tar xzf -
+      cd scalapack-2.0.2
+      ln -sf SLmake.inc.example SLmake.inc
+      make libi >/dev/null 2>&1
+      export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$DEPS/scalapack-2.0.2
+      # Install TRLan
+      cd $DEPS
+      wget -O - https://codeforge.lbl.gov/frs/download.php/210/trlan-201009.tar.gz | tar xzf -
+      cd trlan-201009
+      make lib >/dev/null 2&>1
+      export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$DEPS/trlan-201009
+      # testcode
+      cd $DEPS
+      git clone git://github.com/jsspencer/testcode
+      # Lua + UUID (from packages - need to set paths)
+      export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/usr/lib/x86_64-linux-gnu
+    elif [[ "${TRAVIS_OS_NAME}" == "osx" ]]; then
+    fi
 
-cache:
-    pip: true
-    directories:
-        - $HOME/hdf5-1.10.1
-        - $HOME/scalapack-2.0.2
-        - $HOME/trlan-201009
-        - $HOME/lua-5.3.3
+before_script:
+  - cd $TRAVIS_BUILD_DIR
+  - tools/mkconfig.py travis
 
 script:
-    - cd test_suite 
-    # Only run a short subset of the tests
-    - $HOME/testcode/bin/testcode.py -c vquick -v
+  - make
+  # Only run a short subset of the tests
+  - cd test_suite
+  - $DEPS/testcode/bin/testcode.py -c vquick -v
 
 notifications:
-    email:
-        - hande-dev@imperial.ac.uk
+  email:
+    - hande-dev@imperial.ac.uk

@@ -1,4 +1,4 @@
-generate_info_header(${CMAKE_CURRENT_BINARY_DIR} print_info.c git_info.f90)
+generate_info_header()
 
 add_library(coreutils
   OBJECT
@@ -25,17 +25,24 @@ target_include_directories(coreutils
   )
 target_sources(coreutils
   PRIVATE
-    ${CMAKE_CURRENT_BINARY_DIR}/git_info.f90
-    ${CMAKE_CURRENT_BINARY_DIR}/print_info.c
+    git_info.f90
+    print_info.c
   )
+# We need to pass all compiler definitions to have a coherent set up report in
+# print_info.c
 target_compile_definitions(coreutils
-  PUBLIC
+  PRIVATE
     DET_SIZE=${HANDE_DET_SIZE}
     POP_SIZE=${HANDE_POP_SIZE}
+    DSFMT_MEXP=${HANDE_DSFMT_MEXP}
     $<$<NOT:$<BOOL:${USE_BACKTRACE}>>:DISABLE_BACKTRACE>
-    $<$<NOT:$<BOOL:${USE_UUID}>>:DISABLE_UUID>
     $<$<NOT:$<BOOL:${USE_HDF5}>>:DISABLE_HDF5>
+    $<$<NOT:$<BOOL:${USE_LANCZOS}>>:DISABLE_LANCZOS>
+    $<$<NOT:$<BOOL:${USE_UUID}>>:DISABLE_UUID>
+    $<$<NOT:$<BOOL:${USE_ScaLAPACK}>>:DISABLE_SCALAPACK>
+    $<$<BOOL:${USE_INTRINSIC_POPCNT}>:USE_POPCNT>
     $<$<BOOL:${USE_SINGLE_PRECISION}>:SINGLE_PRECISION>
+    $<$<BOOL:${USE_MPI}>:PARALLEL>
   )
 set_target_properties(coreutils
   PROPERTIES

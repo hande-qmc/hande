@@ -29,13 +29,13 @@ target_compile_options(hande-shared
 
 target_sources(hande-shared
   PRIVATE
-    lua_bindings/interact.F90
-    lua_bindings/lua_hande.F90
-    lua_bindings/lua_hande_calc.f90
-    lua_bindings/lua_hande_fns.f90
-    lua_bindings/lua_hande_systems.f90
-    lua_bindings/lua_hande_utils.F90
-    lua_bindings/test.f90
+    interact.F90
+    lua_hande.F90
+    lua_hande_calc.f90
+    lua_hande_fns.f90
+    lua_hande_systems.f90
+    lua_hande_utils.F90
+    test.f90
 )
 
 target_sources(hande-shared

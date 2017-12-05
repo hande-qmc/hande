@@ -12,10 +12,20 @@ if sys.version_info[0] == 2 and sys.version_info[1] < 7:
 AUTOCMAKE_GITHUB_URL = 'https://github.com/coderefinery/autocmake/raw/master/'
 
 
+def licensing_info():
+    return '''The CMake infrastructure for this project is generated using [Autocmake]
+by Radovan Bast, Roberto Di Remigio, Jonas Juselius and contributors.
+The `update.py` Python script and the contents of the directories `autocmake` and `downloaded` are licensed
+under the terms of the [BSD-3-Clause license], unless otherwise stated.
+
+[Autocmake]: http://autocmake.org
+[BSD-3-Clause license]: https://tldrlegal.com/license/bsd-3-clause-license-(revised)'''
+
+
 def check_for_yaml():
     try:
         import yaml
-    except:
+    except ImportError:
         sys.stderr.write("ERROR: you need to install the pyyaml package\n")
         sys.exit(-1)
 
@@ -257,6 +267,10 @@ def main(argv):
                 src='{0}{1}'.format(AUTOCMAKE_GITHUB_URL, f),
                 dst='{0}'.format(f)
             )
+        # finally create a README.md with licensing information
+        with open('README.md', 'w') as f:
+            print('- generating licensing information')
+            f.write(licensing_info())
         sys.exit(0)
 
     process_yaml(argv)

@@ -1,3 +1,6 @@
+# (c) https://github.com/coderefinery/autocmake/blob/master/AUTHORS.md
+# licensed under BSD-3: https://github.com/coderefinery/autocmake/blob/master/LICENSE
+
 #.rst:
 #
 # Sets binary and library output directories to ${PROJECT_BINARY_DIR}/bin

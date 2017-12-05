@@ -1,0 +1,23 @@
+[DEFAULT]
+cppflags_opt = -DDISABLE_HDF5 -DDISABLE_LANCZOS -DDISABLE_UUID
+
+[main]
+fc = gfortran
+cc = gcc
+cxx = g++
+ld = gfortran
+ldflags = -L ${HOME}/lib -L/nix/store/j8msm6wmkw842ffl0gmcwnsnvwkr3kx4-atlas-3.10.2/lib -L/nix/store/x59cszr06mqpwaqgszccc9ldx49j1i1d-liblapack-3.4.1/lib
+libs = -llapack -latlas -lcblas -lf77blas -latlas -llua -ldl
+f90_module_flag = -J
+
+[opt]
+cppflags = %(cppflags_opt)s
+fflags = -O3
+cflags = -O3
+cxxflags = -O3
+
+[dbg]
+cppflags = %(cppflags_opt)s -DDEBUG
+fflags = -g -fbounds-check -Wall -Wextra -fbacktrace
+cflags = -g -Wall -Wextra -fbacktrace
+cxxflags = -g -Wall -Wextra -fbacktrace
