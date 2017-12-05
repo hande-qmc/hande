@@ -259,8 +259,7 @@ contains
 
     end subroutine find_single_double_prob
 
-! [review] - AJWT: parallel by itself is confusing - parallel computing or parallel spins?
-    subroutine find_parallel_prob(sys, pparallel)
+    subroutine find_parallel_spin_prob(sys, pparallel)
         
         ! Estimate pattempt_parallel by finding the ration of |Hij->ab|
         ! where ij are parallel to when they are not.
@@ -339,7 +338,7 @@ contains
 
         pparallel = parallel_weight/(parallel_weight + ortho_weight)
 
-    end subroutine
+    end subroutine find_parallel_spin_prob
 
     function decide_nattempts(rng, population) result(nattempts)
 

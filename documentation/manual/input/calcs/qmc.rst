@@ -212,16 +212,22 @@ algorithms and control the core settings in the algorithms.
     probability ``pattempt_parallel`` whether :math:`i` and :maths:`j` should have
     parallel spins or not.
 
-.. [review] - AJWT:
-      'very similar' below is not exactly helpful - perhaps detail the differences here or in an appendix
-
     The 'heat_bath' excitation generator is very similar to the "original" heat bath
     excitation generator described by Holmes et al. [Holmes16]_. :math:`i,j,a,b` are chosen
     with weighted, precalculated probabilities that aim to make |Hij|/pgen as constant
-    as possible. The power pitzer excitation generators use approximate upper bounds for these weights.
-    'heat_bath_uniform' is very similar but samples single excitations uniformly and
-    'heat_bath_single' is also very similar but samples single excitations with the correct
-    weighting (following a recommendation from Pablo Lopez Rios).
+    as possible. The difference to Holmes et al. is that we never do a single and a double
+    excitation at the same time. When Holmes et al. decide to do both, we do a single
+    excitation with probability of 0.5 and a double with 0.5. The 'heat_bath' excitation
+    generator can have a bias if for a valid excitation :math:`i` going to :math:`a`,
+    there might be no occupied :math:`j` that lets us select :math:`ija`. See Holmes et al.
+    for details. We check for the bias in the beginning of a calculation and stop it if
+    necessary.
+    The power pitzer excitation generators use approximate upper bounds for these weights.
+    'heat_bath_uniform' is very similar to 'heat_bath' but samples single excitations
+    uniformly (mentioned by Holmes et al.) and 'heat_bath_single' is also very similar
+    but samples single excitations with the correct weighting (following a
+    recommendation by Pablo Lopez Rios). 'heat_bath_uniform' and 'heat_bath_single' do
+    not have this potential bias that 'heat_bath' can have.
 
     The 'power_pitzer' excitation generator generates excitations using a Power-Pitzer
     [Power74]_ upper bound for the value of the Hamiltonian matrix element, 
@@ -260,13 +266,6 @@ algorithms and control the core settings in the algorithms.
     The aim of this is to reduce the number of spawns with big abs(Hij)/pgen which can
     happen if orbital connections with low pgen are mapped to orbital connections with
     big abs(Hij).
-
-.. [review] - AJWT: 
-    What does Test mean in the context of the manual?
-
-    .. 
-
-        [todo] - Test.
 
 ``pattempt_single``
     type: float.

@@ -2,7 +2,10 @@ module excit_gens
 use const
 implicit none
 
-!Data for the power_pitzer excit gen
+private
+public :: dealloc_excit_gen_data_t, p_single_double_t, excit_gen_power_pitzer_t, excit_gen_heat_bath_t, excit_gen_data_t
+
+!Data for the power_pitzer/heat bath excit gens
 
 ! The integer types have been chosen to be int_32 as they never need to index more than 2^31-1 basis functions.
 integer(int_32), parameter :: int_bas = int_32
@@ -21,41 +24,79 @@ type p_single_double_t
     logical :: pattempt_restart_store = .false. ! has pattempt_* information from p_single_double been stored when restarting
 end type p_single_double_t
 
-! Type containing alias tables, etc, needed when using the power pitzer ("occ_ref") 
-! excitation generator, that considers weights, etc, as seen from the reference.
+type alias_table_data_one_ind_t
+    ! aliasU(:) stores the alias table of real U for selecting an orbital.
+    real(p), allocatable :: aliasU(:) 
+    ! aliasK(:) stores the alias table of integer K for selecting an orbital.
+    integer(int_bas), allocatable :: aliasK(:) 
+    ! weights(:) stores the weights for selecting an orbital.
+    real(p), allocatable :: weights(:) 
+    ! weights_tot is the sum over j in weights(j). 
+    real(p)  :: weights_tot
+end type alias_table_data_one_ind_t
+
+type alias_table_data_two_ind_t
+    ! e.g. aliasU(:,i) stores the alias table of real U considering an excitation from i 
+    ! to another orbital. 
+    real(p), allocatable :: aliasU(:,:) 
+    ! aliasK(:,i) stores the alias table of integer K considering an excitation from
+    ! i to another orbital.
+    integer(int_bas), allocatable :: aliasK(:,:) 
+    ! weights(:,i) stores the weights considering an excitation from i to another orbital.
+    real(p), allocatable :: weights(:,:) 
+    ! weights_tot(i) is the sum over j in weights(j,i). 
+    real(p), allocatable :: weights_tot(:) 
+end type alias_table_data_two_ind_t
+
+type alias_table_data_three_ind_t
+    ! e.g. aliasU(:,syma,i) stores the alias table of real U considering an excitation
+    ! from i to any orbital of symmetry syma.
+    real(p), allocatable :: aliasU(:,:,:) 
+    ! aliasK(:,syma,i) stores the alias table of integer K considering an excitation
+    ! from i to any orbital of symmetry syma.
+    integer(int_bas), allocatable :: aliasK(:,:,:) 
+    ! weights(:,syma,i) stores the weights considering an excitation from i to
+    ! orbital of symmetry syma.
+    real(p), allocatable :: weights(:,:,:) 
+    ! weights_tot(syma,i) is the sum over j in weights(j,syma,i).
+    real(p), allocatable :: weights_tot(:,:)
+end type alias_table_data_three_ind_t
+
+type alias_table_data_four_ind_t
+    ! aliasU(:,a,j,i) stores the alias table of real U considering an excitation
+    ! to an orbital having selected ija.
+    real(p), allocatable :: aliasU(:,:,:,:) 
+    ! aliasK(:,syma,i) stores the alias table of integer K considering an excitation
+    ! to an orbital having selected ija.
+    integer(int_bas), allocatable :: aliasK(:,:,:,:) 
+    ! weights(:,syma,i) stores the weights considering an excitation from i to
+    ! an orbital having selected ija.
+    real(p), allocatable :: weights(:,:,:,:)
+    ! weights_tot(a,j,i) is the sum over b in weights(b,a,j,i).
+    real(p), allocatable :: weights_tot(:,:,:)
+end type alias_table_data_four_ind_t
+
+! Type containing alias tables, etc, needed when using the Power Pitzer ("occ_ref") and the
+! Power Pitzer Order N excitation generators.
 type excit_gen_power_pitzer_t
     ! Minimum ratio over number of orbitals of individual weight/total weight. Aims to reduce p_gens that are too big.
     real(p) :: power_pitzer_min_weight
-    ! ia_aliasU(:,i) stores the alias table of real U considering an excitation from i 
-    ! to a virtual orbital of the same spin. 
-    ! Lengths of array: (max(sys%nvirt_alpha,sys%nvirt_beta),sys%nel).  
-    real(p), allocatable :: ia_aliasU(:,:) 
-    ! ia_aliasK(:,i) stores the alias table of integer K considering an excitation from
-    ! i to a virtual orbital of the same spin.
-    ! Lengths of array: (max(sys%nvirt_alpha,sys%nvirt_beta),sys%nel) 
-    integer(int_bas), allocatable :: ia_aliasK(:,:) 
-    ! ia_weights(:,i) stores the weights considering an excitation from i to a virtual
-    ! orbital of the same spin.
-    ! Lengths of array: (max(sys%nvirt_alpha,sys%nvirt_beta),sys%nel)
-    real(p), allocatable :: ia_weights(:,:) 
-    ! ia_weights_tot(i) is the sum over j in ia_weights(j,i). 
-    ! Length of array: (sys%nel)
-    real(p), allocatable :: ia_weights_tot(:) 
-    ! jb_aliasU(:,syma,i) stores the alias table of real U considering an excitation
-    ! from i to any orbital (occupied or not) of same spin and symmetry syma.
-    ! Lengths of array: (maxval(sys%read_in%pg_sym%nbasis_sym_spin),sys%sym0_tot:sys%sym_max_tot,sys%nel)
-    real(p), allocatable :: jb_aliasU(:,:,:) 
-    ! jb_aliasK(:,syma,i) stores the alias table of integer K considering an excitation
-    ! from i to any orbital (occupied or not) of same spin and symmetry syma.
-    ! Lengths of array: (maxval(sys%read_in%pg_sym%nbasis_sym_spin),sys%sym0_tot:sys%sym_max_tot,sys%nel)
-    integer(int_bas), allocatable :: jb_aliasK(:,:,:) 
-    ! jb_weights(:,syma,i) stores the weights considering an excitation from i to any
-    ! orbital (occupied or not) of same spin and symmetry syma.
-    ! Lengths of array: (maxval(sys%read_in%pg_sym%nbasis_sym_spin),sys%sym0_tot:sys%sym_max_tot,sys%nel)
-    real(p), allocatable :: jb_weights(:,:,:) 
-    ! jb_weights_tot(syma,i) is the sum over j in jb_weights(j,syma,i).
-    ! Lengths of array: (sys%sym0_tot:sys%sym_max_tot,sys%nel)
-    real(p), allocatable :: jb_weights_tot(:,:)
+    ! Alias table information for the Power Pitzer excitation generator, selecting a from i in a double excitation.
+    type(alias_table_data_two_ind_t) :: pp_ia_d
+    ! Alias table information for the Power Pitzer excitation generator, selecting b from j in a double excitation.
+    type(alias_table_data_three_ind_t) :: pp_jb_d
+    ! Alias table information for the Power Pitzer order N excitation generator, selecting i in a double excitation.
+    type(alias_table_data_one_ind_t) :: ppn_i_d
+    ! Alias table information for the Power Pitzer order N excitation generator, selecting i in a single excitation.
+    type(alias_table_data_one_ind_t) :: ppn_i_s
+    ! Alias table information for the Power Pitzer order N excitation generator, selecting j (after i) in a double excitation.
+    type(alias_table_data_two_ind_t) :: ppn_ij_d
+    ! Alias table information for the Power Pitzer order N excitation generator, selecting a from i in a double excitation.
+    type(alias_table_data_two_ind_t) :: ppn_ia_d
+    ! Alias table information for the Power Pitzer order N excitation generator, selecting a from i in a single excitation.
+    type(alias_table_data_two_ind_t) :: ppn_ia_s
+    ! Alias table information for the Power Pitzer order N excitation generator, selecting b from j in a double excitation.
+    type(alias_table_data_three_ind_t) :: ppn_jb_d
     ! virt_list_alpha is a list of all virtual alpha orbitals as seen from the reference.
     ! Length of array: (sys%nvirt_alpha)
     integer(int_bas), allocatable :: virt_list_alpha(:) 
@@ -64,89 +105,31 @@ type excit_gen_power_pitzer_t
     integer(int_bas), allocatable :: virt_list_beta(:) 
     ! occ_list(:) is the list of occupied orbitals in the reference.
     ! Length of array: (sys%nel+1) - The +1 is a pad.
-! [review] - AJWT: These all need more documentation about what the variables are (and perhaps when they're used).
-! [review] - AJWT: Consider using a further derived type to encapsulate the information for a given alias table.
     integer(int_bas), allocatable :: occ_list(:)
-    ! Length of array: sys%nel
-    real(p), allocatable :: i_all_aliasU(:)
-    ! Length of array: sys%nel
-    integer(int_bas), allocatable :: i_all_aliasK(:)
-    ! Length of array: sys%nel
-    real(p), allocatable :: i_all_weights(:)
-    real(p) :: i_all_weights_tot
-    ! Length of array: sys%nel
-    real(p), allocatable :: i_single_aliasU(:)
-    ! Length of array: sys%nel
-    integer(int_bas), allocatable :: i_single_aliasK(:)
-    ! Length of array: sys%nel
-    real(p), allocatable :: i_single_weights(:)
-    real(p) :: i_single_weights_tot
-    ! Length of array: sys%nel,sys%basis%nbasis
-    real(p), allocatable :: ij_all_aliasU(:,:)
-    ! Length of array: sys%nel,sys%basis%nbasis
-    integer(int_bas), allocatable :: ij_all_aliasK(:,:)
-    ! Length of array: sys%nel,sys%basis%nbasis
-    real(p), allocatable :: ij_all_weights(:,:)
-    ! Length of array: sys%basis%nbasis
-    real(p), allocatable :: ij_all_weights_tot(:)
-    ! Length of array: sys%basis%nbasis, sys%basis%nbasis
-    real(p), allocatable :: ia_all_aliasU(:,:)
-    ! Length of array: sys%basis%nbasis, sys%basis%nbasis
-    integer(int_bas), allocatable :: ia_all_aliasK(:,:)
-    ! Length of array: sys%basis%nbasis, sys%basis%nbasis
-    real(p), allocatable :: ia_all_weights(:,:)
-    ! Length of array: sys%basis%nbasis
-    real(p), allocatable :: ia_all_weights_tot(:)
-    ! Length of array: sys%basis%nbasis
-    real(p), allocatable :: ia_single_weights_tot(:)
-    ! Length of array: maxval(sys%read_in%pg_sym%nbasis_sym_spin),sys%basis%nbasis
-    real(p), allocatable :: ia_single_aliasU(:,:)
-    ! Length of array: maxval(sys%read_in%pg_sym%nbasis_sym_spin),sys%basis%nbasis
-    integer(int_bas), allocatable :: ia_single_aliasK(:,:)
-    ! Length of array: maxval(sys%read_in%pg_sym%nbasis_sym_spin),sys%basis%nbasis
-    real(p), allocatable :: ia_single_weights(:,:)
-    ! Length of array: maxval(sys%read_in%pg_sym%nbasis_sym_spin), sys%sym0_tot:sys%sym_max_tot, sys%basis%nbasis
-    real(p), allocatable :: jb_all_aliasU(:,:,:)
-    ! Length of array: maxval(sys%read_in%pg_sym%nbasis_sym_spin), sys%sym0_tot:sys%sym_max_tot, sys%basis%nbasis
-    integer(int_bas), allocatable :: jb_all_aliasK(:,:,:)
-    ! Length of array: maxval(sys%read_in%pg_sym%nbasis_sym_spin), sys%sym0_tot:sys%sym_max_tot, sys%basis%nbasis
-    real(p), allocatable :: jb_all_weights(:,:,:)
-    ! Length of array: sys%sym0_tot:sys%sym_max_tot, sys%basis%nbasis
-    real(p), allocatable :: jb_all_weights_tot(:,:)
+    ! List of all alpha orbitals.
     ! Length of array: sys%basis%nbasis 
     integer(int_bas), allocatable :: all_list_alpha(:)
+    ! List of all beta orbitals.
     ! Length of array: sys%basis%nbasis
     integer(int_bas), allocatable :: all_list_beta(:)
+    ! [todo] - put in sys?
     ! Number of alpha spinorbitals
-    integer(int_bas) :: n_all_alpha
+    integer :: n_all_alpha
     ! Number of beta spinorbitals
-    integer(int_bas) :: n_all_beta
-
+    integer :: n_all_beta
 end type excit_gen_power_pitzer_t
 
-! [review] - AJWT: These all need more documentation about what the variables are (and perhaps when they're used).
-! [review] - AJWT: Consider using a further derived type to encapsulate the information for a given alias table.
+! Type containing alias tables, etc, needed when using the heat bath excitation generators.
 type excit_gen_heat_bath_t
     ! Length of array: sys%basis%nbasis
     real(p), allocatable :: i_weights(:) ! This will hold S_p in the Holmes JCTC paper.
     ! Length of array: sys%basis%nbasis, sys%basis%nbasis
     real(p), allocatable :: ij_weights(:,:) ! This stores D_pq.
-    ! Length of array: sys%basis%nbasis, sys%basis%nbasis, sys%basis%nbasis
-    real(p), allocatable :: ija_weights(:,:,:)
-    ! Length of array: sys%basis%nbasis, sys%basis%nbasis, sys%basis%nbasis
-    real(p), allocatable :: ija_aliasU(:,:,:)
-    ! Length of array: sys%basis%nbasis, sys%basis%nbasis, sys%basis%nbasis
-    integer(int_bas), allocatable :: ija_aliasK(:,:,:)
-    ! Length of array: sys%basis%nbasis, sys%basis%nbasis
-    real(p), allocatable :: ija_weights_tot(:,:)
-    ! Length of array: sys%basis%nbasis, sys%basis%nbasis, sys%basis%nbasis, sys%basis%nbasis
-    real(p), allocatable :: ijab_weights(:,:,:,:)
-    ! Length of array: sys%basis%nbasis, sys%basis%nbasis, sys%basis%nbasis, sys%basis%nbasis
-    real(p), allocatable :: ijab_aliasU(:,:,:,:)
-    ! Length of array: sys%basis%nbasis, sys%basis%nbasis, sys%basis%nbasis, sys%basis%nbasis
-    integer(int_bas), allocatable :: ijab_aliasK(:,:,:,:)
-    ! Length of array: sys%basis%nbasis, sys%basis%nbasis, sys%basis%nbasis
-    real(p), allocatable :: ijab_weights_tot(:,:,:)
+    ! Alias table information for selecting a from ij in a double excitation/when using the original
+    ! implementation.
+    type(alias_table_data_three_ind_t) :: hb_ija
+    ! Alias table information for selecting b from ija in a double excitation.
+    type(alias_table_data_four_ind_t) :: hb_ijab
     ! Length of array: sys%basis%nbasis,sys%basis%nbasis
     real(p), allocatable :: ia_weights(:,:)
 end type excit_gen_heat_bath_t
@@ -184,6 +167,13 @@ type excit_gen_data_t
     type (p_single_double_t) :: p_single_double
 end type excit_gen_data_t
 
+interface dealloc_alias_table_data_t
+    module procedure :: dealloc_alias_table_data_one_ind_t
+    module procedure :: dealloc_alias_table_data_two_ind_t
+    module procedure :: dealloc_alias_table_data_three_ind_t
+    module procedure :: dealloc_alias_table_data_four_ind_t
+end interface
+
 contains
 
     subroutine dealloc_excit_gen_data_t(excit_gen_data)
@@ -214,39 +204,18 @@ contains
 
         type(excit_gen_power_pitzer_t), intent(inout) :: excit_gen_pp
 
-        if (allocated(excit_gen_pp%ia_aliasU)) deallocate(excit_gen_pp%ia_aliasU)
-        if (allocated(excit_gen_pp%ia_aliasK)) deallocate(excit_gen_pp%ia_aliasK)
-        if (allocated(excit_gen_pp%ia_weights)) deallocate(excit_gen_pp%ia_weights)
-        if (allocated(excit_gen_pp%ia_weights_tot)) deallocate(excit_gen_pp%ia_weights_tot)
-        if (allocated(excit_gen_pp%jb_aliasU)) deallocate(excit_gen_pp%jb_aliasU)
-        if (allocated(excit_gen_pp%jb_aliasK)) deallocate(excit_gen_pp%jb_aliasK)
-        if (allocated(excit_gen_pp%jb_weights)) deallocate(excit_gen_pp%jb_weights)
-        if (allocated(excit_gen_pp%jb_weights_tot)) deallocate(excit_gen_pp%jb_weights_tot)
+        call dealloc_alias_table_data_t(excit_gen_pp%pp_ia_d)
+        call dealloc_alias_table_data_t(excit_gen_pp%pp_jb_d)
+        call dealloc_alias_table_data_t(excit_gen_pp%ppn_i_d)
+        call dealloc_alias_table_data_t(excit_gen_pp%ppn_i_s)
+        call dealloc_alias_table_data_t(excit_gen_pp%ppn_ij_d)
+        call dealloc_alias_table_data_t(excit_gen_pp%ppn_ia_d)
+        call dealloc_alias_table_data_t(excit_gen_pp%ppn_ia_s)
+        call dealloc_alias_table_data_t(excit_gen_pp%ppn_jb_d)
+        
         if (allocated(excit_gen_pp%virt_list_alpha)) deallocate(excit_gen_pp%virt_list_alpha)
         if (allocated(excit_gen_pp%virt_list_beta)) deallocate(excit_gen_pp%virt_list_beta)
         if (allocated(excit_gen_pp%occ_list)) deallocate(excit_gen_pp%occ_list)
-        if (allocated(excit_gen_pp%i_all_aliasU)) deallocate(excit_gen_pp%i_all_aliasU)
-        if (allocated(excit_gen_pp%i_all_aliasK)) deallocate(excit_gen_pp%i_all_aliasK)
-        if (allocated(excit_gen_pp%i_all_weights)) deallocate(excit_gen_pp%i_all_weights)
-        if (allocated(excit_gen_pp%i_single_aliasU)) deallocate(excit_gen_pp%i_single_aliasU)
-        if (allocated(excit_gen_pp%i_single_aliasK)) deallocate(excit_gen_pp%i_single_aliasK)
-        if (allocated(excit_gen_pp%i_single_weights)) deallocate(excit_gen_pp%i_single_weights)
-        if (allocated(excit_gen_pp%ij_all_aliasU)) deallocate(excit_gen_pp%ij_all_aliasU)
-        if (allocated(excit_gen_pp%ij_all_aliasK)) deallocate(excit_gen_pp%ij_all_aliasK)
-        if (allocated(excit_gen_pp%ij_all_weights)) deallocate(excit_gen_pp%ij_all_weights)
-        if (allocated(excit_gen_pp%ij_all_weights_tot)) deallocate(excit_gen_pp%ij_all_weights_tot)
-        if (allocated(excit_gen_pp%ia_all_aliasU)) deallocate(excit_gen_pp%ia_all_aliasU)
-        if (allocated(excit_gen_pp%ia_all_aliasK)) deallocate(excit_gen_pp%ia_all_aliasK)
-        if (allocated(excit_gen_pp%ia_all_weights)) deallocate(excit_gen_pp%ia_all_weights)
-        if (allocated(excit_gen_pp%ia_all_weights_tot)) deallocate(excit_gen_pp%ia_all_weights_tot)
-        if (allocated(excit_gen_pp%ia_single_aliasU)) deallocate(excit_gen_pp%ia_single_aliasU)
-        if (allocated(excit_gen_pp%ia_single_aliasK)) deallocate(excit_gen_pp%ia_single_aliasK)
-        if (allocated(excit_gen_pp%ia_single_weights)) deallocate(excit_gen_pp%ia_single_weights)
-        if (allocated(excit_gen_pp%ia_single_weights_tot)) deallocate(excit_gen_pp%ia_single_weights_tot)
-        if (allocated(excit_gen_pp%jb_all_aliasU)) deallocate(excit_gen_pp%jb_all_aliasU)
-        if (allocated(excit_gen_pp%jb_all_aliasK)) deallocate(excit_gen_pp%jb_all_aliasK)
-        if (allocated(excit_gen_pp%jb_all_weights)) deallocate(excit_gen_pp%jb_all_weights)
-        if (allocated(excit_gen_pp%jb_all_weights_tot)) deallocate(excit_gen_pp%jb_all_weights_tot)
         if (allocated(excit_gen_pp%all_list_alpha)) deallocate(excit_gen_pp%all_list_alpha)
         if (allocated(excit_gen_pp%all_list_beta)) deallocate(excit_gen_pp%all_list_beta)
 
@@ -263,16 +232,60 @@ contains
 
         if (allocated(excit_gen_hb%i_weights)) deallocate(excit_gen_hb%i_weights)
         if (allocated(excit_gen_hb%ij_weights)) deallocate(excit_gen_hb%ij_weights)
-        if (allocated(excit_gen_hb%ija_weights)) deallocate(excit_gen_hb%ija_weights)
-        if (allocated(excit_gen_hb%ija_aliasU)) deallocate(excit_gen_hb%ija_aliasU)
-        if (allocated(excit_gen_hb%ija_aliasK)) deallocate(excit_gen_hb%ija_aliasK)
-        if (allocated(excit_gen_hb%ija_weights_tot)) deallocate(excit_gen_hb%ija_weights_tot)
-        if (allocated(excit_gen_hb%ijab_weights)) deallocate(excit_gen_hb%ijab_weights)
-        if (allocated(excit_gen_hb%ijab_aliasU)) deallocate(excit_gen_hb%ijab_aliasU)
-        if (allocated(excit_gen_hb%ijab_aliasK)) deallocate(excit_gen_hb%ijab_aliasK)
-        if (allocated(excit_gen_hb%ijab_weights_tot)) deallocate(excit_gen_hb%ijab_weights_tot)
         if (allocated(excit_gen_hb%ia_weights)) deallocate(excit_gen_hb%ia_weights)
+        
+        call dealloc_alias_table_data_t(excit_gen_hb%hb_ija)
+        call dealloc_alias_table_data_t(excit_gen_hb%hb_ijab)
 
     end subroutine dealloc_excit_gen_heat_bath_t
 
+!--------------------------------------------------------------------------------!
+    ! dealloc_alias_table_t(alias_data)
+        ! Deallocate alias table data.
+
+        ! In/Out:
+        !   alias_data: alias_table_data_one_ind_t to be deallocated.
+    subroutine dealloc_alias_table_data_one_ind_t(alias_data)
+
+        type(alias_table_data_one_ind_t), intent(inout) :: alias_data
+
+        if (allocated(alias_data%weights)) deallocate(alias_data%weights)
+        if (allocated(alias_data%aliasU)) deallocate(alias_data%aliasU)
+        if (allocated(alias_data%aliasK)) deallocate(alias_data%aliasK)
+
+    end subroutine dealloc_alias_table_data_one_ind_t
+    
+    subroutine dealloc_alias_table_data_two_ind_t(alias_data)
+
+        type(alias_table_data_two_ind_t), intent(inout) :: alias_data
+
+        if (allocated(alias_data%weights)) deallocate(alias_data%weights)
+        if (allocated(alias_data%aliasU)) deallocate(alias_data%aliasU)
+        if (allocated(alias_data%aliasK)) deallocate(alias_data%aliasK)
+        if (allocated(alias_data%weights_tot)) deallocate(alias_data%weights_tot)
+
+    end subroutine dealloc_alias_table_data_two_ind_t
+
+    subroutine dealloc_alias_table_data_three_ind_t(alias_data)
+
+        type(alias_table_data_three_ind_t), intent(inout) :: alias_data
+
+        if (allocated(alias_data%weights)) deallocate(alias_data%weights)
+        if (allocated(alias_data%aliasU)) deallocate(alias_data%aliasU)
+        if (allocated(alias_data%aliasK)) deallocate(alias_data%aliasK)
+        if (allocated(alias_data%weights_tot)) deallocate(alias_data%weights_tot)
+
+    end subroutine dealloc_alias_table_data_three_ind_t
+
+    subroutine dealloc_alias_table_data_four_ind_t(alias_data)
+
+        type(alias_table_data_four_ind_t), intent(inout) :: alias_data
+
+        if (allocated(alias_data%weights)) deallocate(alias_data%weights)
+        if (allocated(alias_data%aliasU)) deallocate(alias_data%aliasU)
+        if (allocated(alias_data%aliasK)) deallocate(alias_data%aliasK)
+        if (allocated(alias_data%weights_tot)) deallocate(alias_data%weights_tot)
+
+    end subroutine dealloc_alias_table_data_four_ind_t
+!--------------------------------------------------------------------------------!
 end module excit_gens

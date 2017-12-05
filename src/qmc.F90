@@ -848,7 +848,7 @@ contains
         use qmc_data, only: qmc_in_t
         use excit_gens, only: excit_gen_data_t
         use ueg_system, only: init_ternary_conserve
-        use qmc_common, only: find_single_double_prob, find_parallel_prob
+        use qmc_common, only: find_single_double_prob, find_parallel_spin_prob
         use reference_determinant, only: reference_t
 
         type(sys_t), intent(in) :: sys
@@ -878,7 +878,7 @@ contains
         ! [todo] - desireable to store in restart file?
 ! [review] - AJWT: This is probably worth storing in the restart file, given it's calculated here.
         if (qmc_in%pattempt_parallel < 0) then
-            call find_parallel_prob(sys, excit_gen_data%pattempt_parallel)
+            call find_parallel_spin_prob(sys, excit_gen_data%pattempt_parallel)
         end if
 
         ! UEG allowed excitations

@@ -43,23 +43,19 @@ contains
         ! Temp storage
         allocate(hb%i_weights(sys%basis%nbasis)) ! This will hold S_p in the Holmes JCTC paper.
         allocate(hb%ij_weights(sys%basis%nbasis,sys%basis%nbasis)) ! This stores D_pq.
-        allocate(hb%ija_weights(sys%basis%nbasis,sys%basis%nbasis,sys%basis%nbasis))
-        allocate(hb%ija_aliasU(sys%basis%nbasis,sys%basis%nbasis,sys%basis%nbasis))
-        allocate(hb%ija_aliasK(sys%basis%nbasis,sys%basis%nbasis,sys%basis%nbasis))
-        allocate(hb%ija_weights_tot(sys%basis%nbasis,sys%basis%nbasis))
-        allocate(hb%ijab_weights(sys%basis%nbasis,sys%basis%nbasis,sys%basis%nbasis,sys%basis%nbasis))
-        allocate(hb%ijab_aliasU(sys%basis%nbasis,sys%basis%nbasis,sys%basis%nbasis,sys%basis%nbasis))
-        allocate(hb%ijab_aliasK(sys%basis%nbasis,sys%basis%nbasis,sys%basis%nbasis,sys%basis%nbasis))
-        allocate(hb%ijab_weights_tot(sys%basis%nbasis,sys%basis%nbasis,sys%basis%nbasis))
+        allocate(hb%hb_ija%weights(sys%basis%nbasis,sys%basis%nbasis,sys%basis%nbasis))
+        allocate(hb%hb_ija%aliasU(sys%basis%nbasis,sys%basis%nbasis,sys%basis%nbasis))
+        allocate(hb%hb_ija%aliasK(sys%basis%nbasis,sys%basis%nbasis,sys%basis%nbasis))
+        allocate(hb%hb_ija%weights_tot(sys%basis%nbasis,sys%basis%nbasis))
+        allocate(hb%hb_ijab%weights(sys%basis%nbasis,sys%basis%nbasis,sys%basis%nbasis,sys%basis%nbasis))
+        allocate(hb%hb_ijab%aliasU(sys%basis%nbasis,sys%basis%nbasis,sys%basis%nbasis,sys%basis%nbasis))
+        allocate(hb%hb_ijab%aliasK(sys%basis%nbasis,sys%basis%nbasis,sys%basis%nbasis,sys%basis%nbasis))
+        allocate(hb%hb_ijab%weights_tot(sys%basis%nbasis,sys%basis%nbasis,sys%basis%nbasis))
         allocate(hb%ia_weights(sys%basis%nbasis,sys%basis%nbasis)) ! implicit sum over j
 
         ! [todo] - consider setting hmatel%r and hmatel%c to zero to avoid undefined behaviour.
         ! [todo] - although it is probably fine, abs_hmatel_ptr ignores the irrelevant bit.
-
-        if (original) then
-            ! check whether we are allowed to use the original heat bath algorithm. Exit if not.
-            call check_heat_bath_bias(sys)
-        end if
+        ! [todo] - ia_weights is not used.
 
         j_nonzero = 0
 
@@ -70,7 +66,7 @@ contains
             i_weight = 0.0_p
             do j = 1, sys%basis%nbasis
                 ij_weight = 0.0_p
-                hb%ija_weights_tot(j,i) = 0.0_p
+                hb%hb_ija%weights_tot(j,i) = 0.0_p
                 if (i /= j) then
                     if (j < i) then
                         i_tmp = j
@@ -88,7 +84,7 @@ contains
                     ij_sym = sys%read_in%sym_conj_ptr(sys%read_in, cross_product_basis_read_in(sys, i_tmp, j_tmp))
                     do a = 1, sys%basis%nbasis
                         ija_weight = 0.0_p
-                        hb%ijab_weights_tot(a,j,i) = 0.0_p
+                        hb%hb_ijab%weights_tot(a,j,i) = 0.0_p
                         if ((a /= i) .and. (a /= j)) then
                             isymb = sys%read_in%sym_conj_ptr(sys%read_in, &
                                         sys%read_in%cross_product_sym_ptr(sys%read_in, ij_sym, sys%basis%basis_fns(a)%sym))
@@ -114,16 +110,16 @@ contains
                                     ija_weight = ija_weight + abs_hmatel_ptr(hmatel)
                                     ijab_weight = ijab_weight + abs_hmatel_ptr(hmatel)
                                 end if
-                                hb%ijab_weights(b,a,j,i) = ijab_weight
-                                hb%ijab_weights_tot(a,j,i) = hb%ijab_weights_tot(a,j,i) + ijab_weight
+                                hb%hb_ijab%weights(b,a,j,i) = ijab_weight
+                                hb%hb_ijab%weights_tot(a,j,i) = hb%hb_ijab%weights_tot(a,j,i) + ijab_weight
                             end do
                         else
                             do b = 1, sys%basis%nbasis
-                                hb%ijab_weights(b,a,j,i) = 0.0_p
+                                hb%hb_ijab%weights(b,a,j,i) = 0.0_p
                             end do
                         end if
-                        hb%ija_weights(a,j,i) = ija_weight
-                        hb%ija_weights_tot(j,i) = hb%ija_weights_tot(j,i) + ija_weight
+                        hb%hb_ija%weights(a,j,i) = ija_weight
+                        hb%hb_ija%weights_tot(j,i) = hb%hb_ija%weights_tot(j,i) + ija_weight
                         hb%ia_weights(a,i) = hb%ia_weights(a,i) + ija_weight
                         if (ija_weight > depsilon) then
                             j_nonzero(a,i) = j_nonzero(a,i) + 1
@@ -131,10 +127,10 @@ contains
                     end do
                 else
                     do a = 1, sys%basis%nbasis
-                        hb%ija_weights(a,j,i) = 0.0_p
-                        hb%ijab_weights_tot(a,j,i) = 0.0_p
+                        hb%hb_ija%weights(a,j,i) = 0.0_p
+                        hb%hb_ijab%weights_tot(a,j,i) = 0.0_p
                         do b = 1, sys%basis%nbasis
-                            hb%ijab_weights(b,a,j,i) = 0.0_p
+                            hb%hb_ijab%weights(b,a,j,i) = 0.0_p
                         end do
                     end do
                 end if
@@ -142,32 +138,31 @@ contains
             end do
             hb%i_weights(i) = i_weight
 
-! [review] - AJWT: Remove old code.
-            ! Old test for bias. Replaced by subroutine check_heat_bath_bias
+            ! Test for bias.
             ! Test that all single excitation i -> a that are allowed have some non zero weight ija for some j.
-            !do a = 1, sys%basis%nbasis
-            !    if ((j_nonzero(a,i) < (sys%basis%nbasis - sys%nel)) .and. (original == .true.) .and. (i /= a)) then
-            !        ! no non zero weight ija for some j and (i /= a). Now check that i -> a is valid.
-            !        ims = sys%basis%basis_fns(i)%ms
-            !        isyma = sys%read_in%cross_product_sym_ptr(sys%read_in, sys%basis%basis_fns(i)%sym, &
-            !                                        sys%read_in%pg_sym%gamma_sym)
-            !        if ((sys%basis%basis_fns(a)%sym == isyma) .and. (sys%basis%basis_fns(a)%ms == ims)) then
-            !            call stop_all('init_excit_mol_heat_bath','Not all possible single excitations can be accounted for. &
-            !                Use another excitation generator.')
-            !        end if
-            !    end if
-            !end do
+            do a = 1, sys%basis%nbasis
+                if ((j_nonzero(a,i) < (sys%basis%nbasis - sys%nel)) .and. (original == .true.) .and. (i /= a)) then
+                    ! no non zero weight ija for some j and (i /= a). Now check that i -> a is valid.
+                    ims = sys%basis%basis_fns(i)%ms
+                    isyma = sys%read_in%cross_product_sym_ptr(sys%read_in, sys%basis%basis_fns(i)%sym, &
+                                                    sys%read_in%pg_sym%gamma_sym)
+                    if ((sys%basis%basis_fns(a)%sym == isyma) .and. (sys%basis%basis_fns(a)%ms == ims)) then
+                        call stop_all('init_excit_mol_heat_bath','Not all possible single excitations can be accounted for. &
+                            Use another excitation generator.')
+                    end if
+                end if
+            end do
         end do
 
         do i = 1, sys%basis%nbasis
             do j = 1, sys%basis%nbasis
-                if (abs(hb%ija_weights_tot(j,i)) > 0.0_p) then
-                    call generate_alias_tables(sys%basis%nbasis, hb%ija_weights(:,j,i), hb%ija_weights_tot(j,i), &
-                                                hb%ija_aliasU(:,j,i), hb%ija_aliasK(:,j,i))
+                if (abs(hb%hb_ija%weights_tot(j,i)) > 0.0_p) then
+                    call generate_alias_tables(sys%basis%nbasis, hb%hb_ija%weights(:,j,i), hb%hb_ija%weights_tot(j,i), &
+                                                hb%hb_ija%aliasU(:,j,i), hb%hb_ija%aliasK(:,j,i))
                     do a = 1, sys%basis%nbasis
-                        if (abs(hb%ijab_weights_tot(a,j,i)) > 0.0_p) then
-                            call generate_alias_tables(sys%basis%nbasis, hb%ijab_weights(:,a,j,i), hb%ijab_weights_tot(a,j,i), &
-                                                        hb%ijab_aliasU(:,a,j,i), hb%ijab_aliasK(:,a,j,i))
+                        if (abs(hb%hb_ijab%weights_tot(a,j,i)) > 0.0_p) then
+                            call generate_alias_tables(sys%basis%nbasis, hb%hb_ijab%weights(:,a,j,i), &
+                                hb%hb_ijab%weights_tot(a,j,i), hb%hb_ijab%aliasU(:,a,j,i), hb%hb_ijab%aliasK(:,a,j,i))
                         end if
                     end do
                 end if
@@ -175,70 +170,6 @@ contains
         end do
 
     end subroutine init_excit_mol_heat_bath
-
-    subroutine check_heat_bath_bias(sys)
-        
-        ! This routine checks for bias in the heat_bath excitation generator where a single excitation
-        ! i -> a is only chosen after i, j and a have been selected. This means that if there is no
-        ! j that allows us to select i, j and a but i -> a is valid, i -> a cannot be selected even
-        ! though it should have that chance. If a bias is found, stop the calculation run.
-
-        ! The bias follows the check by Holmes et al. (Section D, p. 1565)
-        ! (Holmes, A. A.; Changlani, H. J.; Umrigar, C. J. J. Chem. Theory Comput. 2016, 12, 1561–1571)
-        ! The number of irreducible representations in the full symmetry group are found by the
-        ! number of i for which Hij == 0 for any j /= i for the system we study except that we only
-        ! have one electron instead of N electrons in M spinorbitals.
-        ! If the number of irreducible representations is bigger than either the number of up spins or
-        ! down spins (whatever is bigger), then the heat bath algorithm might be biased. If not, then
-        ! it is not biased (a sufficient but not necessary condition).
-
-        ! In:
-        !   sys: information about the system to be studied.
-
-        use errors, only: stop_all
-        use system, only: sys_t
-        use molecular_integrals, only: get_one_body_int_mol_real, get_one_body_int_mol_complex
-        
-        type(sys_t), intent(in) :: sys
-
-        integer :: i, j, counter
-        complex(p) :: hij_comp
-        real(p) :: hij_real
-
-        counter = 0 ! number of irreps.
-        hij_comp = cmplx(0.0_p, 0.0_p, p)
-        hij_real = 0.0_p
-
-        do i = 1, sys%basis%nbasis
-            do j = 1, sys%basis%nbasis
-                if (i /= j) then
-                    if (sys%read_in%comp) then
-                        ! add the abs value so that minus/plus cancellations do not happen.
-                        hij_comp = hij_comp + abs(get_one_body_int_mol_complex(sys%read_in%one_e_h_integrals, &
-                                                sys%read_in%one_e_h_integrals_imag, i, j, sys))
-                    else
-                        hij_real = hij_real + abs(get_one_body_int_mol_real(sys%read_in%one_e_h_integrals, i, j, sys))
-                    end if
-                end if
-            end do
-            ! [todo] compare as > 0 or > depsilon?
-! [review] - AJWT: Given the integrals are only stored if above a certain value, this test might not correctly detect whether a symmetry is truly present.  
-! [review] - AJWT: I presume you didn't write abs(hij_comp) > 0.0_p to avoidance the square root.
-            if (((sys%read_in%comp) .and. (abs(real(hij_comp)) > 0.0_p) .and. (abs(aimag(hij_comp)) > 0.0_p)) .or. &
-                ((sys%read_in%comp == .false.) .and. (abs(hij_real) > 0.0_p))) then
-                counter = counter + 1
-            end if
-        end do
-
-        ! counter is now the number of irreps.  
-! [review] - AJWT: this logic seems more tortuous than using the >= operator (which according to the comments should be a > operator)
-        if ((counter < max(sys%nalpha, sys%nbeta)) == .false.) then
-            ! [todo] - should only the parent process deal with this?
-            call stop_all('check_heat_bath_bias','Maybe not all possible single excitations can be accounted for. &
-                            Use another excitation generator.')
-        end if
-
-    end subroutine check_heat_bath_bias
 
     subroutine gen_excit_mol_heat_bath(rng, sys, excit_gen_data, cdet, pgen, connection, hmatel, allowed_excitation)
 
@@ -337,8 +268,8 @@ contains
             end do
 
             allowed_excitation = .true.
-            if (abs(hb%ija_weights_tot(j, i)) > 0.0_p) then
-                a = select_weighted_value_precalc(rng, sys%basis%nbasis, hb%ija_aliasU(:, j, i), hb%ija_aliasK(:, j, i))
+            if (abs(hb%hb_ija%weights_tot(j, i)) > 0.0_p) then
+                a = select_weighted_value_precalc(rng, sys%basis%nbasis, hb%hb_ija%aliasU(:, j, i), hb%hb_ija%aliasK(:, j, i))
                 if (.not.btest(cdet%f(sys%basis%bit_lookup(2,a)), sys%basis%bit_lookup(1,a))) then
                     ims = sys%basis%basis_fns(i)%ms
                     isyma = sys%read_in%cross_product_sym_ptr(sys%read_in, sys%basis%basis_fns(i)%sym, &
@@ -352,8 +283,8 @@ contains
                         hmatel_single = slater_condon1_excit_ptr(sys, cdet%occ_list, i, a, connection%perm)
                         hmatel_mod_ia = abs_hmatel_ptr(hmatel_single)
                         x = get_rand_close_open(rng)                        
-                        if (hmatel_mod_ia < hb%ijab_weights_tot(a,j,i)) then
-                            psingle = hmatel_mod_ia/(hb%ijab_weights_tot(a,j,i) + hmatel_mod_ia)
+                        if (hmatel_mod_ia < hb%hb_ijab%weights_tot(a,j,i)) then
+                            psingle = hmatel_mod_ia/(hb%hb_ijab%weights_tot(a,j,i) + hmatel_mod_ia)
                         else
                             psingle = 0.5_p
                         end if
@@ -376,14 +307,14 @@ contains
 
             if (allowed_excitation) then
                 if (double) then
-                    b = select_weighted_value_precalc(rng, sys%basis%nbasis, hb%ijab_aliasU(:, a, j, i), &
-                                                        hb%ijab_aliasK(:, a, j, i))
+                    b = select_weighted_value_precalc(rng, sys%basis%nbasis, hb%hb_ijab%aliasU(:, a, j, i), &
+                                                        hb%hb_ijab%aliasK(:, a, j, i))
                     if (.not.btest(cdet%f(sys%basis%bit_lookup(2,b)), sys%basis%bit_lookup(1,b))) then
                         allowed_excitation = .true.
                         
                         pgen_ija = ((i_weights_occ(i_ind)/i_weights_occ_tot) * (ij_weights_occ(j_ind)/ij_weights_occ_tot)) * &
-                            (hb%ija_weights(a,j,i)/hb%ija_weights_tot(j,i)) * (1.0_p - psingle) * &
-                            (hb%ijab_weights(b,a,j,i)/hb%ijab_weights_tot(a,j,i))
+                            (hb%hb_ija%weights(a,j,i)/hb%hb_ija%weights_tot(j,i)) * (1.0_p - psingle) * &
+                            (hb%hb_ijab%weights(b,a,j,i)/hb%hb_ijab%weights_tot(a,j,i))
 
                         ims = sys%basis%basis_fns(i)%ms
                         isyma = sys%read_in%cross_product_sym_ptr(sys%read_in, sys%basis%basis_fns(i)%sym, &
@@ -397,8 +328,8 @@ contains
                             call find_excitation_permutation1(sys%basis%excit_mask, cdet%f, connection)
                             hmatel_single = slater_condon1_excit_ptr(sys, cdet%occ_list, i, b, connection%perm)
                             hmatel_mod_ia = abs_hmatel_ptr(hmatel_single)
-                            if (hmatel_mod_ia < hb%ijab_weights_tot(b,j,i)) then
-                                psingle = hmatel_mod_ia/(hb%ijab_weights_tot(b,j,i) + hmatel_mod_ia)
+                            if (hmatel_mod_ia < hb%hb_ijab%weights_tot(b,j,i)) then
+                                psingle = hmatel_mod_ia/(hb%hb_ijab%weights_tot(b,j,i) + hmatel_mod_ia)
                             else
                                 psingle = 0.5_p
                             end if
@@ -407,8 +338,8 @@ contains
                         end if
 
                         pgen_ijb = ((i_weights_occ(i_ind)/i_weights_occ_tot) * (ij_weights_occ(j_ind)/ij_weights_occ_tot)) * &
-                            (hb%ija_weights(b,j,i)/hb%ija_weights_tot(j,i)) * (1.0_p - psingle) * &
-                            (hb%ijab_weights(a,b,j,i)/hb%ijab_weights_tot(b,j,i))
+                            (hb%hb_ija%weights(b,j,i)/hb%hb_ija%weights_tot(j,i)) * (1.0_p - psingle) * &
+                            (hb%hb_ijab%weights(a,b,j,i)/hb%hb_ijab%weights_tot(b,j,i))
 
                         ims = sys%basis%basis_fns(j)%ms
                         isyma = sys%read_in%cross_product_sym_ptr(sys%read_in, sys%basis%basis_fns(j)%sym, &
@@ -422,8 +353,8 @@ contains
                             call find_excitation_permutation1(sys%basis%excit_mask, cdet%f, connection)
                             hmatel_single = slater_condon1_excit_ptr(sys, cdet%occ_list, j, a, connection%perm)
                             hmatel_mod_ia = abs_hmatel_ptr(hmatel_single)
-                            if (hmatel_mod_ia < hb%ijab_weights_tot(a,i,j)) then
-                                psingle = hmatel_mod_ia/(hb%ijab_weights_tot(a,i,j) + hmatel_mod_ia)
+                            if (hmatel_mod_ia < hb%hb_ijab%weights_tot(a,i,j)) then
+                                psingle = hmatel_mod_ia/(hb%hb_ijab%weights_tot(a,i,j) + hmatel_mod_ia)
                             else
                                 psingle = 0.5_p
                             end if
@@ -432,8 +363,8 @@ contains
                         end if
 
                         pgen_jia = ((i_weights_occ(j_ind)/i_weights_occ_tot) * (ji_weights_occ(i_ind)/ji_weights_occ_tot)) * &
-                            (hb%ija_weights(a,i,j)/hb%ija_weights_tot(i,j)) * (1.0_p - psingle) * &
-                            (hb%ijab_weights(b,a,i,j)/hb%ijab_weights_tot(a,i,j))
+                            (hb%hb_ija%weights(a,i,j)/hb%hb_ija%weights_tot(i,j)) * (1.0_p - psingle) * &
+                            (hb%hb_ijab%weights(b,a,i,j)/hb%hb_ijab%weights_tot(a,i,j))
 
                         connection%from_orb(1) = j
                         connection%to_orb(1) = b
@@ -443,8 +374,8 @@ contains
                             call find_excitation_permutation1(sys%basis%excit_mask, cdet%f, connection)
                             hmatel_single = slater_condon1_excit_ptr(sys, cdet%occ_list, j, b, connection%perm)
                             hmatel_mod_ia = abs_hmatel_ptr(hmatel_single)
-                            if (hmatel_mod_ia < hb%ijab_weights_tot(b,i,j)) then
-                                psingle = hmatel_mod_ia/(hb%ijab_weights_tot(b,i,j) + hmatel_mod_ia)
+                            if (hmatel_mod_ia < hb%hb_ijab%weights_tot(b,i,j)) then
+                                psingle = hmatel_mod_ia/(hb%hb_ijab%weights_tot(b,i,j) + hmatel_mod_ia)
                             else
                                 psingle = 0.5_p
                             end if
@@ -453,8 +384,8 @@ contains
                         end if
 
                         pgen_jib = ((i_weights_occ(j_ind)/i_weights_occ_tot) * (ji_weights_occ(i_ind)/ji_weights_occ_tot)) * &
-                            (hb%ija_weights(b,i,j)/hb%ija_weights_tot(i,j)) * (1.0_p - psingle) * &
-                            (hb%ijab_weights(a,b,i,j)/hb%ijab_weights_tot(b,i,j))
+                            (hb%hb_ija%weights(b,i,j)/hb%hb_ija%weights_tot(i,j)) * (1.0_p - psingle) * &
+                            (hb%hb_ijab%weights(a,b,i,j)/hb%hb_ijab%weights_tot(b,i,j))
 
                         pgen = pgen_ija + pgen_ijb + pgen_jia + pgen_jib
 
@@ -493,13 +424,13 @@ contains
                     pgen = 0.0_p
                     do pos_q = 1, sys%nel
                         if ((i /= cdet%occ_list(pos_q)) .and. (a /= cdet%occ_list(pos_q))) then
-                            if (hmatel_mod_ia < hb%ijab_weights_tot(a,cdet%occ_list(pos_q),i)) then
-                                psingle_q = hmatel_mod_ia/(hb%ijab_weights_tot(a,cdet%occ_list(pos_q),i) + hmatel_mod_ia)
+                            if (hmatel_mod_ia < hb%hb_ijab%weights_tot(a,cdet%occ_list(pos_q),i)) then
+                                psingle_q = hmatel_mod_ia/(hb%hb_ijab%weights_tot(a,cdet%occ_list(pos_q),i) + hmatel_mod_ia)
                             else
                                 psingle_q = 0.5_p
                             end if
                             pgen = pgen + (psingle_q * (ij_weights_occ(pos_q)/ij_weights_occ_tot) * &
-                                (hb%ija_weights(a, cdet%occ_list(pos_q), i)/hb%ija_weights_tot(cdet%occ_list(pos_q), i)))
+                                (hb%hb_ija%weights(a, cdet%occ_list(pos_q), i)/hb%hb_ija%weights_tot(cdet%occ_list(pos_q), i)))
                         end if
                     end do
                     pgen = pgen * (i_weights_occ(i_ind)/i_weights_occ_tot)
@@ -632,12 +563,13 @@ contains
                 pgen = ((i_weights_occ(i_ind)/i_weights_occ_tot) * (ij_weights_occ(j_ind)/ij_weights_occ_tot)) + &
                         ((i_weights_occ(j_ind)/i_weights_occ_tot) * (ji_weights_occ(i_ind)/ji_weights_occ_tot))
 
-                if (abs(hb%ija_weights_tot(j, i)) > 0.0_p) then
-                    a = select_weighted_value_precalc(rng, sys%basis%nbasis, hb%ija_aliasU(:, j, i), hb%ija_aliasK(:, j, i))
-                    if ((abs(hb%ijab_weights_tot(a, j, i)) > 0.0_p) .and. (.not.btest(cdet%f(sys%basis%bit_lookup(2,a)), &
+                if (abs(hb%hb_ija%weights_tot(j, i)) > 0.0_p) then
+                    a = select_weighted_value_precalc(rng, sys%basis%nbasis, hb%hb_ija%aliasU(:, j, i), &
+                                                    hb%hb_ija%aliasK(:, j, i))
+                    if ((abs(hb%hb_ijab%weights_tot(a, j, i)) > 0.0_p) .and. (.not.btest(cdet%f(sys%basis%bit_lookup(2,a)), &
                             sys%basis%bit_lookup(1,a)))) then
-                        b = select_weighted_value_precalc(rng, sys%basis%nbasis, hb%ijab_aliasU(:, a, j, i), &
-                                                            hb%ijab_aliasK(:, a, j, i))
+                        b = select_weighted_value_precalc(rng, sys%basis%nbasis, hb%hb_ijab%aliasU(:, a, j, i), &
+                                                            hb%hb_ijab%aliasK(:, a, j, i))
                         if (.not.btest(cdet%f(sys%basis%bit_lookup(2,b)), sys%basis%bit_lookup(1,b))) then
                             allowed_excitation = .true.               
                         else
@@ -674,10 +606,10 @@ contains
                     hmatel = slater_condon2_excit_ptr(sys, connection%from_orb(1), connection%from_orb(2), &
                                                       connection%to_orb(1), connection%to_orb(2), connection%perm)
                     pgen = (1.0_p - excit_gen_data%pattempt_single) * pgen * &
-                        (((hb%ija_weights(a, j, i)/hb%ija_weights_tot(j, i)) * &
-                        (hb%ijab_weights(b, a, j, i)/hb%ijab_weights_tot(a, j, i))) + &
-                        ((hb%ija_weights(b, j, i)/hb%ija_weights_tot(j, i)) * &
-                        (hb%ijab_weights(a, b, j, i)/hb%ijab_weights_tot(b, j, i))))
+                        (((hb%hb_ija%weights(a, j, i)/hb%hb_ija%weights_tot(j, i)) * &
+                        (hb%hb_ijab%weights(b, a, j, i)/hb%hb_ijab%weights_tot(a, j, i))) + &
+                        ((hb%hb_ija%weights(b, j, i)/hb%hb_ija%weights_tot(j, i)) * &
+                        (hb%hb_ijab%weights(a, b, j, i)/hb%hb_ijab%weights_tot(b, j, i))))
                 else
                     ! We have not found a valid excitation ij -> ab.  Such
                     ! events are not worth the cost of renormalising the generation
@@ -773,8 +705,8 @@ contains
             i_weights(i_ind) = 0.0_p
             do a_ind = 1, nvirt
                 ! [todo] - this reduces the computational time (by calculation ia_weights here)
-                ! but more memory costs as after we have selected i, we don't need all elements in ia_weights. Need to balance these
-                ! costs.
+                ! but more memory costs as after we have selected i, we don't need all elements in ia_weights. Need to balance
+                ! these costs.
                 ! [todo] - could consider rewritting with proc_pointer here but that would imply having to rewrite slater
                 ! condon 1 mol / periodic complex. slater_condon1_excit_mol is not safe enough (no checks).
                 if (sys%read_in%comp) then

@@ -420,6 +420,8 @@ contains
     end function abs_hmatel_periodic_complex
 
 ! [review] - AJWT: Is this a partial rehash of the _mol version?  If it shares code, might that be shared too?
+! [reply] - VAN: They share making the virt_list but the calls to the integrals are different. The function has a lot
+! [reply] - VAN: comments but not so much content otherwise.
     pure function single_excitation_weight_periodic(sys, ref, i, a) result(weight)
 
         ! In:
@@ -430,9 +432,12 @@ contains
         !    a: the spin-orbital into which an electron is excited in
         !       the excited determinant.
         ! Returns:
-        !    weight: weight of i -> a
+        !    weight: used in the Power Pitzer Order N excitation generator as
+        !            pre-calculated weight for the single excitations i -> a.
 
-        use molecular_integrals, only: get_two_body_int_mol_complex
+        ! [todo] - get_two_body_int_mol_real is imported here as single_excitation_weight_mol uses that and
+        ! [todo] - they share a proc pointer.
+        use molecular_integrals, only: get_two_body_int_mol_real, get_two_body_int_mol_complex
         use system, only: sys_t
         use reference_determinant, only: reference_t
 
@@ -457,15 +462,6 @@ contains
                   one_e_ints=>sys%read_in%one_e_h_integrals, & ![todo] delete when not needed
                   c_ints=>sys%read_in%coulomb_integrals, &
                   c_ints_im=>sys%read_in%coulomb_integrals_imag)
-        ! Could add this ref_term to make the expression more general (in case we do not have an SCF
-        ! reference. However, that would restrict the set we can select a from (function might turn
-        ! weird if i is virtual (might be ok though) and a is occupied (not checked for in
-        ! slater_condon1_mol. Leave ref_term for now. [todo]
-!            connection%from_orb(1) = i
-!            connection%to_orb(1) = a
-!            connection%nexcit = 1
-!            call find_excitation_permutation1(sys%basis%excit_mask, ref%f0, connection)
-!            ref_term = slater_condon1_mol(sys, ref%occ_list0, i, a, connection%perm)
             virt_pos = 1
             occ_pos = 1
             nvirt = sys%basis%nbasis - sys%nel

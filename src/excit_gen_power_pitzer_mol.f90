@@ -45,14 +45,14 @@ contains
         
         ! Temp storage
         maxv = max(sys%nvirt_alpha,sys%nvirt_beta)
-        allocate(pp%ia_aliasU(maxv,sys%nel))
-        allocate(pp%ia_aliasK(maxv,sys%nel))
-        allocate(pp%ia_weights(maxv,sys%nel))
-        allocate(pp%ia_weights_tot(sys%nel))
-        allocate(pp%jb_aliasU(maxval(sys%read_in%pg_sym%nbasis_sym_spin), sys%sym0_tot:sys%sym_max_tot, sys%nel))
-        allocate(pp%jb_aliasK(maxval(sys%read_in%pg_sym%nbasis_sym_spin), sys%sym0_tot:sys%sym_max_tot, sys%nel))
-        allocate(pp%jb_weights(maxval(sys%read_in%pg_sym%nbasis_sym_spin), sys%sym0_tot:sys%sym_max_tot, sys%nel))
-        allocate(pp%jb_weights_tot(sys%sym0_tot:sys%sym_max_tot, sys%nel))
+        allocate(pp%pp_ia_d%aliasU(maxv,sys%nel))
+        allocate(pp%pp_ia_d%aliasK(maxv,sys%nel))
+        allocate(pp%pp_ia_d%weights(maxv,sys%nel))
+        allocate(pp%pp_ia_d%weights_tot(sys%nel))
+        allocate(pp%pp_jb_d%aliasU(maxval(sys%read_in%pg_sym%nbasis_sym_spin), sys%sym0_tot:sys%sym_max_tot, sys%nel))
+        allocate(pp%pp_jb_d%aliasK(maxval(sys%read_in%pg_sym%nbasis_sym_spin), sys%sym0_tot:sys%sym_max_tot, sys%nel))
+        allocate(pp%pp_jb_d%weights(maxval(sys%read_in%pg_sym%nbasis_sym_spin), sys%sym0_tot:sys%sym_max_tot, sys%nel))
+        allocate(pp%pp_jb_d%weights_tot(sys%sym0_tot:sys%sym_max_tot, sys%nel))
         allocate(pp%occ_list(sys%nel + 1))  ! The +1 is a pad to allow loops to look better
         allocate(pp%virt_list_alpha(sys%nvirt_alpha))
         allocate(pp%virt_list_beta(sys%nvirt_beta))
@@ -92,39 +92,43 @@ contains
             if (sys%basis%basis_fns(j)%Ms == -1) then ! beta
                 nv = sys%nvirt_beta
                 if (nv > 0) then
-                    call create_weighted_excitation_list_ptr(sys, j, 0, pp%virt_list_beta, nv, pp%ia_weights(:,i), &
-                                                            pp%ia_weights_tot(i))
-                    call check_min_weight_ratio(pp%ia_weights(:,i), pp%ia_weights_tot(i), nv, pp%power_pitzer_min_weight)
-                    call generate_alias_tables(nv, pp%ia_weights(:,i), pp%ia_weights_tot(i), pp%ia_aliasU(:,i), &
-                                               pp%ia_aliasK(:,i))
+                    call create_weighted_excitation_list_ptr(sys, j, 0, pp%virt_list_beta, nv, pp%pp_ia_d%weights(:,i), &
+                                                            pp%pp_ia_d%weights_tot(i))
+                    call check_min_weight_ratio(pp%pp_ia_d%weights(:,i), pp%pp_ia_d%weights_tot(i), nv, &
+                                               pp%power_pitzer_min_weight)
+                    call generate_alias_tables(nv, pp%pp_ia_d%weights(:,i), pp%pp_ia_d%weights_tot(i), pp%pp_ia_d%aliasU(:,i), &
+                                               pp%pp_ia_d%aliasK(:,i))
                 end if
                 do bsym = sys%sym0_tot, sys%sym_max_tot
                     if (sys%read_in%pg_sym%nbasis_sym_spin(1,bsym) > 0) then
                         call create_weighted_excitation_list_ptr(sys, j, 0, sys%read_in%pg_sym%sym_spin_basis_fns(:,1,bsym), &
-                            sys%read_in%pg_sym%nbasis_sym_spin(1,bsym), pp%jb_weights(:,bsym,i), pp%jb_weights_tot(bsym,i))
-                        call check_min_weight_ratio(pp%jb_weights(:,bsym,i), pp%jb_weights_tot(bsym,i), &
+                            sys%read_in%pg_sym%nbasis_sym_spin(1,bsym), pp%pp_jb_d%weights(:,bsym,i), &
+                            pp%pp_jb_d%weights_tot(bsym,i))
+                        call check_min_weight_ratio(pp%pp_jb_d%weights(:,bsym,i), pp%pp_jb_d%weights_tot(bsym,i), &
                                                    sys%read_in%pg_sym%nbasis_sym_spin(1,bsym), pp%power_pitzer_min_weight)
-                        call generate_alias_tables(sys%read_in%pg_sym%nbasis_sym_spin(1,bsym), pp%jb_weights(:,bsym,i), &
-                            pp%jb_weights_tot(bsym,i), pp%jb_aliasU(:,bsym,i), pp%jb_aliasK(:,bsym,i))
+                        call generate_alias_tables(sys%read_in%pg_sym%nbasis_sym_spin(1,bsym), pp%pp_jb_d%weights(:,bsym,i), &
+                            pp%pp_jb_d%weights_tot(bsym,i), pp%pp_jb_d%aliasU(:,bsym,i), pp%pp_jb_d%aliasK(:,bsym,i))
                     end if
                 end do
             else ! alpha
                 nv = sys%nvirt_alpha
                 if (nv > 0) then
-                    call create_weighted_excitation_list_ptr(sys, j, 0, pp%virt_list_alpha, nv, pp%ia_weights(:,i), &
-                                                             pp%ia_weights_tot(i))
-                    call check_min_weight_ratio(pp%ia_weights(:,i), pp%ia_weights_tot(i), nv, pp%power_pitzer_min_weight)
-                    call generate_alias_tables(nv, pp%ia_weights(:,i), pp%ia_weights_tot(i), pp%ia_aliasU(:,i), &
-                                               pp%ia_aliasK(:,i))
+                    call create_weighted_excitation_list_ptr(sys, j, 0, pp%virt_list_alpha, nv, pp%pp_ia_d%weights(:,i), &
+                                                             pp%pp_ia_d%weights_tot(i))
+                    call check_min_weight_ratio(pp%pp_ia_d%weights(:,i), pp%pp_ia_d%weights_tot(i), nv, &
+                        pp%power_pitzer_min_weight)
+                    call generate_alias_tables(nv, pp%pp_ia_d%weights(:,i), pp%pp_ia_d%weights_tot(i), pp%pp_ia_d%aliasU(:,i), &
+                                               pp%pp_ia_d%aliasK(:,i))
                 end if
                 do bsym = sys%sym0_tot, sys%sym_max_tot
                     if (sys%read_in%pg_sym%nbasis_sym_spin(2,bsym) > 0) then
                         call create_weighted_excitation_list_ptr(sys, j, 0, sys%read_in%pg_sym%sym_spin_basis_fns(:,2,bsym), &
-                            sys%read_in%pg_sym%nbasis_sym_spin(2,bsym), pp%jb_weights(:,bsym,i), pp%jb_weights_tot(bsym,i))
-                        call check_min_weight_ratio(pp%jb_weights(:,bsym,i), pp%jb_weights_tot(bsym,i), &
+                            sys%read_in%pg_sym%nbasis_sym_spin(2,bsym), pp%pp_jb_d%weights(:,bsym,i), &
+                            pp%pp_jb_d%weights_tot(bsym,i))
+                        call check_min_weight_ratio(pp%pp_jb_d%weights(:,bsym,i), pp%pp_jb_d%weights_tot(bsym,i), &
                                                    sys%read_in%pg_sym%nbasis_sym_spin(2,bsym), pp%power_pitzer_min_weight)
-                        call generate_alias_tables(sys%read_in%pg_sym%nbasis_sym_spin(2,bsym), pp%jb_weights(:,bsym,i), &
-                            pp%jb_weights_tot(bsym,i), pp%jb_aliasU(:,bsym,i), pp%jb_aliasK(:,bsym,i))
+                        call generate_alias_tables(sys%read_in%pg_sym%nbasis_sym_spin(2,bsym), pp%pp_jb_d%weights(:,bsym,i), &
+                            pp%pp_jb_d%weights_tot(bsym,i), pp%pp_jb_d%aliasU(:,bsym,i), pp%pp_jb_d%aliasK(:,bsym,i))
                     end if
                 end do
             end if
@@ -232,32 +236,32 @@ contains
         type(excit_gen_power_pitzer_t), intent(inout) :: pp
         type(hmatel_t) :: hmatel
 
-        integer :: i, j, a, b, ind_a, ind_b, ind_virt, ind_a_virt, ind_b_virt, maxv, nv, bsym, ij_sym, isyma, isymb, ims, imsa
+        integer :: i, j, a, b, ind_a, ind_b, maxv, nv, bsym, ij_sym, isyma, isymb, ims, imsa
         integer :: i_tmp, j_tmp, a_tmp, b_tmp, nall
         real(p) :: i_weight, ij_weight
         
         ! Temp storage
-        allocate(pp%i_all_aliasU(sys%nel))
-        allocate(pp%i_all_aliasK(sys%nel))
-        allocate(pp%i_all_weights(sys%nel))
-        ! allocate(pp%i_all_weights_tot)
-        allocate(pp%i_single_aliasU(sys%nel))
-        allocate(pp%i_single_aliasK(sys%nel))
-        allocate(pp%i_single_weights(sys%nel))
-        ! allocate(pp%i_single_weights_tot)
-        allocate(pp%ij_all_aliasU(sys%nel,sys%basis%nbasis))
-        allocate(pp%ij_all_aliasK(sys%nel,sys%basis%nbasis))
-        allocate(pp%ij_all_weights(sys%nel,sys%basis%nbasis))
-        allocate(pp%ij_all_weights_tot(sys%basis%nbasis))
-        allocate(pp%ia_all_weights_tot(sys%basis%nbasis)) 
-        allocate(pp%ia_single_weights_tot(sys%basis%nbasis))
-        allocate(pp%ia_single_aliasU(maxval(sys%read_in%pg_sym%nbasis_sym_spin),sys%basis%nbasis))
-        allocate(pp%ia_single_aliasK(maxval(sys%read_in%pg_sym%nbasis_sym_spin),sys%basis%nbasis))
-        allocate(pp%ia_single_weights(maxval(sys%read_in%pg_sym%nbasis_sym_spin),sys%basis%nbasis))
-        allocate(pp%jb_all_aliasU(maxval(sys%read_in%pg_sym%nbasis_sym_spin), sys%sym0_tot:sys%sym_max_tot, sys%basis%nbasis))
-        allocate(pp%jb_all_aliasK(maxval(sys%read_in%pg_sym%nbasis_sym_spin), sys%sym0_tot:sys%sym_max_tot, sys%basis%nbasis))
-        allocate(pp%jb_all_weights(maxval(sys%read_in%pg_sym%nbasis_sym_spin), sys%sym0_tot:sys%sym_max_tot, sys%basis%nbasis))
-        allocate(pp%jb_all_weights_tot(sys%sym0_tot:sys%sym_max_tot, sys%basis%nbasis))
+        allocate(pp%ppn_i_d%aliasU(sys%nel))
+        allocate(pp%ppn_i_d%aliasK(sys%nel))
+        allocate(pp%ppn_i_d%weights(sys%nel))
+        ! allocate(pp%ppn_i_d%weights_tot)
+        allocate(pp%ppn_i_s%aliasU(sys%nel))
+        allocate(pp%ppn_i_s%aliasK(sys%nel))
+        allocate(pp%ppn_i_s%weights(sys%nel))
+        ! allocate(pp%ppn_i_s%weights_tot)
+        allocate(pp%ppn_ij_d%aliasU(sys%nel,sys%basis%nbasis))
+        allocate(pp%ppn_ij_d%aliasK(sys%nel,sys%basis%nbasis))
+        allocate(pp%ppn_ij_d%weights(sys%nel,sys%basis%nbasis))
+        allocate(pp%ppn_ij_d%weights_tot(sys%basis%nbasis))
+        allocate(pp%ppn_ia_d%weights_tot(sys%basis%nbasis)) 
+        allocate(pp%ppn_ia_s%weights_tot(sys%basis%nbasis))
+        allocate(pp%ppn_ia_s%aliasU(maxval(sys%read_in%pg_sym%nbasis_sym_spin),sys%basis%nbasis))
+        allocate(pp%ppn_ia_s%aliasK(maxval(sys%read_in%pg_sym%nbasis_sym_spin),sys%basis%nbasis))
+        allocate(pp%ppn_ia_s%weights(maxval(sys%read_in%pg_sym%nbasis_sym_spin),sys%basis%nbasis))
+        allocate(pp%ppn_jb_d%aliasU(maxval(sys%read_in%pg_sym%nbasis_sym_spin), sys%sym0_tot:sys%sym_max_tot, sys%basis%nbasis))
+        allocate(pp%ppn_jb_d%aliasK(maxval(sys%read_in%pg_sym%nbasis_sym_spin), sys%sym0_tot:sys%sym_max_tot, sys%basis%nbasis))
+        allocate(pp%ppn_jb_d%weights(maxval(sys%read_in%pg_sym%nbasis_sym_spin), sys%sym0_tot:sys%sym_max_tot, sys%basis%nbasis))
+        allocate(pp%ppn_jb_d%weights_tot(sys%sym0_tot:sys%sym_max_tot, sys%basis%nbasis))
         allocate(pp%occ_list(sys%nel + 1))  ! The +1 is a pad to allow loops to look better
         allocate(pp%all_list_alpha(sys%basis%nbasis))
         allocate(pp%all_list_beta(sys%basis%nbasis))
@@ -272,10 +276,6 @@ contains
         ! Fill the list with alpha and the list with betas.
         ind_a = 0
         ind_b = 0
-        ind_virt = 0
-        ind_a_virt = 0
-        ind_b_virt = 0
-        j = 1
 
         do i = 1, sys%basis%nbasis
             if (sys%basis%basis_fns(i)%Ms == -1) then ! beta
@@ -290,13 +290,13 @@ contains
         pp%n_all_alpha = ind_a
         pp%n_all_beta = ind_b
 
-        allocate(pp%ia_all_aliasU(max(pp%n_all_alpha,pp%n_all_beta),sys%basis%nbasis))
-        allocate(pp%ia_all_aliasK(max(pp%n_all_alpha,pp%n_all_beta),sys%basis%nbasis))
-        allocate(pp%ia_all_weights(max(pp%n_all_alpha,pp%n_all_beta),sys%basis%nbasis))
+        allocate(pp%ppn_ia_d%aliasU(max(pp%n_all_alpha,pp%n_all_beta),sys%basis%nbasis))
+        allocate(pp%ppn_ia_d%aliasK(max(pp%n_all_alpha,pp%n_all_beta),sys%basis%nbasis))
+        allocate(pp%ppn_ia_d%weights(max(pp%n_all_alpha,pp%n_all_beta),sys%basis%nbasis))
 
         ! Now set up weight tables.
         ! Single Excitations.
-        pp%i_single_weights_tot = 0.0_p
+        pp%ppn_i_s%weights_tot = 0.0_p
         do i = 1, sys%nel
             i_weight = 0.0_p
             ims = sys%basis%basis_fns(pp%occ_list(i))%ms
@@ -315,37 +315,37 @@ contains
                 ! [todo] - a bit arbitrary. maybe make bigger?
                 i_weight = 0.00001_p/real(sys%nel)
             end if
-            pp%i_single_weights(i) = i_weight
-            pp%i_single_weights_tot = pp%i_single_weights_tot + i_weight
+            pp%ppn_i_s%weights(i) = i_weight
+            pp%ppn_i_s%weights_tot = pp%ppn_i_s%weights_tot + i_weight
         end do
         
-        call generate_alias_tables(sys%nel, pp%i_single_weights(:), pp%i_single_weights_tot, pp%i_single_aliasU(:), &
-                                pp%i_single_aliasK(:))
+        call generate_alias_tables(sys%nel, pp%ppn_i_s%weights(:), pp%ppn_i_s%weights_tot, pp%ppn_i_s%aliasU(:), &
+                                pp%ppn_i_s%aliasK(:))
 
         do i = 1, sys%basis%nbasis
-            pp%ia_single_weights_tot(i) = 0.0_p
+            pp%ppn_ia_s%weights_tot(i) = 0.0_p
             ims = sys%basis%basis_fns(i)%ms
             ! Convert ims which is in {-1, +1} notation to imsa which is {1, 2}.
             imsa = (3 + ims)/2
             isyma = sys%read_in%cross_product_sym_ptr(sys%read_in, sys%basis%basis_fns(i)%sym, sys%read_in%pg_sym%gamma_sym)
             do a = 1, sys%read_in%pg_sym%nbasis_sym_spin(imsa,isyma)
-                pp%ia_single_weights(a, i) = 0.0_p
+                pp%ppn_ia_s%weights(a, i) = 0.0_p
                 if (sys%read_in%pg_sym%sym_spin_basis_fns(a,imsa, isyma) /= i) then
-                    pp%ia_single_weights(a, i) = single_excitation_weight_ptr(sys, ref, i, &
+                    pp%ppn_ia_s%weights(a, i) = single_excitation_weight_ptr(sys, ref, i, &
                         sys%read_in%pg_sym%sym_spin_basis_fns(a,imsa,isyma))
-                    if (pp%ia_single_weights(a, i) < depsilon) then
+                    if (pp%ppn_ia_s%weights(a, i) < depsilon) then
 ! [review] - AJWT: This hard-coded 0.01 is a bit arbitrary.
                         ! i-> a spin and symmetry allowed but weight assigned zero. fix this.
                         ! [todo] - really?
                         ! [todo] - need to cast with precision p?
                         ! [todo] - is this the best weight? a bit arbitrary.
-                        pp%ia_single_weights(a, i) = 0.01_p/real(sys%read_in%pg_sym%nbasis_sym_spin(imsa,isyma))
+                        pp%ppn_ia_s%weights(a, i) = 0.01_p/real(sys%read_in%pg_sym%nbasis_sym_spin(imsa,isyma))
                     end if
                 end if
-                pp%ia_single_weights_tot(i) = pp%ia_single_weights_tot(i) + pp%ia_single_weights(a, i)
+                pp%ppn_ia_s%weights_tot(i) = pp%ppn_ia_s%weights_tot(i) + pp%ppn_ia_s%weights(a, i)
             end do
-            call generate_alias_tables(sys%read_in%pg_sym%nbasis_sym_spin(imsa,isyma), pp%ia_single_weights(:,i), &
-                                    pp%ia_single_weights_tot(i), pp%ia_single_aliasU(:,i), pp%ia_single_aliasK(:,i))
+            call generate_alias_tables(sys%read_in%pg_sym%nbasis_sym_spin(imsa,isyma), pp%ppn_ia_s%weights(:,i), &
+                                    pp%ppn_ia_s%weights_tot(i), pp%ppn_ia_s%aliasU(:,i), pp%ppn_ia_s%aliasK(:,i))
         end do
 
         ! Double Excitations.
@@ -353,7 +353,7 @@ contains
         ! mapping which only conserves spin) double excitations.
         ! i and j are drawn from spinorbitals occupied in the reference and a and b can be all orbitals. i!=j and a!=b.
         ! i and j can equal a and b because we later map i. Single excitations are not considered. [todo]
-        pp%i_all_weights_tot = 0.0_p
+        pp%ppn_i_d%weights_tot = 0.0_p
         do i = 1, sys%nel
             i_weight = 0.0_p
             do j = 1, sys%nel
@@ -406,17 +406,16 @@ contains
 ! [review] - AJWT: Need at least some reasoning behind this.
                 i_weight = 0.00001_p/real(sys%nel)
             end if
-            pp%i_all_weights(i) = i_weight
-            pp%i_all_weights_tot = pp%i_all_weights_tot + i_weight
+            pp%ppn_i_d%weights(i) = i_weight
+            pp%ppn_i_d%weights_tot = pp%ppn_i_d%weights_tot + i_weight
         end do
 
-        call generate_alias_tables(sys%nel, pp%i_all_weights(:), pp%i_all_weights_tot, pp%i_all_aliasU(:), pp%i_all_aliasK(:))
+        call generate_alias_tables(sys%nel, pp%ppn_i_d%weights(:), pp%ppn_i_d%weights_tot, pp%ppn_i_d%aliasU(:), &
+                                pp%ppn_i_d%aliasK(:))
 
         ! Generate the j given i weighting lists and alias tables. a and b cannot equal i (they are drawn from the same set).
-        ! [todo] - Does this work if orbitals are frozen?
-! [review] - AJWT: nbasis should know the number of available orbitals, so I don't see why this shouldn't work for systems with freezing.
         do i = 1, sys%basis%nbasis
-            pp%ij_all_weights_tot(i) = 0.0_p
+            pp%ppn_ij_d%weights_tot(i) = 0.0_p
             do j = 1, sys%nel
                 ij_weight = 0.0_p
                 if (pp%occ_list(j) /= i) then
@@ -465,11 +464,11 @@ contains
                     ! Assign a uniform weight.
                     ij_weight = 1.0_p/sys%nel
                 end if
-                pp%ij_all_weights(j,i) = ij_weight
-                pp%ij_all_weights_tot(i) = pp%ij_all_weights_tot(i) + ij_weight
+                pp%ppn_ij_d%weights(j,i) = ij_weight
+                pp%ppn_ij_d%weights_tot(i) = pp%ppn_ij_d%weights_tot(i) + ij_weight
             end do
-            call generate_alias_tables(sys%nel, pp%ij_all_weights(:,i), pp%ij_all_weights_tot(i), pp%ij_all_aliasU(:,i), &
-                                    pp%ij_all_aliasK(:,i))
+            call generate_alias_tables(sys%nel, pp%ppn_ij_d%weights(:,i), pp%ppn_ij_d%weights_tot(i), pp%ppn_ij_d%aliasU(:,i), &
+                                    pp%ppn_ij_d%aliasK(:,i))
         end do
 
         ! Now generate the occ->virtual weighting lists and alias tables.
@@ -480,34 +479,36 @@ contains
             if (sys%basis%basis_fns(i)%Ms == -1) then ! beta
                 nall = pp%n_all_beta
                 if (nall > 0) then
-                    call create_weighted_excitation_list_ptr(sys, i, i, pp%all_list_beta, nall, pp%ia_all_weights(:,i), &
-                                                            pp%ia_all_weights_tot(i))
-                    call generate_alias_tables(nall, pp%ia_all_weights(:,i), pp%ia_all_weights_tot(i), pp%ia_all_aliasU(:,i), &
-                                               pp%ia_all_aliasK(:,i))
+                    call create_weighted_excitation_list_ptr(sys, i, i, pp%all_list_beta, nall, pp%ppn_ia_d%weights(:,i), &
+                                                            pp%ppn_ia_d%weights_tot(i))
+                    call generate_alias_tables(nall, pp%ppn_ia_d%weights(:,i), pp%ppn_ia_d%weights_tot(i), &
+                                            pp%ppn_ia_d%aliasU(:,i), pp%ppn_ia_d%aliasK(:,i))
                 end if
                 do bsym = sys%sym0_tot, sys%sym_max_tot
                     if (sys%read_in%pg_sym%nbasis_sym_spin(1,bsym) > 0) then
                         call create_weighted_excitation_list_ptr(sys, i, i, sys%read_in%pg_sym%sym_spin_basis_fns(:,1,bsym), &
-                            sys%read_in%pg_sym%nbasis_sym_spin(1,bsym), pp%jb_all_weights(:,bsym,i), pp%jb_all_weights_tot(bsym,i))
-                        call generate_alias_tables(sys%read_in%pg_sym%nbasis_sym_spin(1,bsym), pp%jb_all_weights(:,bsym,i), &
-                            pp%jb_all_weights_tot(bsym,i), pp%jb_all_aliasU(:,bsym,i), pp%jb_all_aliasK(:,bsym,i))
+                            sys%read_in%pg_sym%nbasis_sym_spin(1,bsym), pp%ppn_jb_d%weights(:,bsym,i), &
+                            pp%ppn_jb_d%weights_tot(bsym,i))
+                        call generate_alias_tables(sys%read_in%pg_sym%nbasis_sym_spin(1,bsym), pp%ppn_jb_d%weights(:,bsym,i), &
+                            pp%ppn_jb_d%weights_tot(bsym,i), pp%ppn_jb_d%aliasU(:,bsym,i), pp%ppn_jb_d%aliasK(:,bsym,i))
                     end if
                 end do
             else ! alpha
                 nall = pp%n_all_alpha
                 if (nall > 0) then
-                    call create_weighted_excitation_list_ptr(sys, i, i, pp%all_list_alpha, nall, pp%ia_all_weights(:,i), &
-                                                             pp%ia_all_weights_tot(i))
+                    call create_weighted_excitation_list_ptr(sys, i, i, pp%all_list_alpha, nall, pp%ppn_ia_d%weights(:,i), &
+                                                             pp%ppn_ia_d%weights_tot(i))
 
-                    call generate_alias_tables(nall, pp%ia_all_weights(:,i), pp%ia_all_weights_tot(i), pp%ia_all_aliasU(:,i), &
-                                               pp%ia_all_aliasK(:,i))
+                    call generate_alias_tables(nall, pp%ppn_ia_d%weights(:,i), pp%ppn_ia_d%weights_tot(i), &
+                                            pp%ppn_ia_d%aliasU(:,i), pp%ppn_ia_d%aliasK(:,i))
                 end if
                 do bsym = sys%sym0_tot, sys%sym_max_tot
                     if (sys%read_in%pg_sym%nbasis_sym_spin(2,bsym) > 0) then
                         call create_weighted_excitation_list_ptr(sys, i, i, sys%read_in%pg_sym%sym_spin_basis_fns(:,2,bsym), &
-                            sys%read_in%pg_sym%nbasis_sym_spin(2,bsym), pp%jb_all_weights(:,bsym,i), pp%jb_all_weights_tot(bsym,i))
-                        call generate_alias_tables(sys%read_in%pg_sym%nbasis_sym_spin(2,bsym), pp%jb_all_weights(:,bsym,i), &
-                            pp%jb_all_weights_tot(bsym,i), pp%jb_all_aliasU(:,bsym,i), pp%jb_all_aliasK(:,bsym,i))
+                            sys%read_in%pg_sym%nbasis_sym_spin(2,bsym), pp%ppn_jb_d%weights(:,bsym,i), &
+                            pp%ppn_jb_d%weights_tot(bsym,i))
+                        call generate_alias_tables(sys%read_in%pg_sym%nbasis_sym_spin(2,bsym), pp%ppn_jb_d%weights(:,bsym,i), &
+                            pp%ppn_jb_d%weights_tot(bsym,i), pp%ppn_jb_d%aliasU(:,bsym,i), pp%ppn_jb_d%aliasK(:,bsym,i))
                     end if
                 end do
             end if
@@ -610,15 +611,15 @@ contains
 
                 ! We now need to select the orbitals to excite into which we do with weighting:
                 ! p(ab|ij) = p(a|i) p(b|j) + p(a|j) p(b|i)
-                ! We actually choose a|i then b|j, but since we could have also generated the excitation b from i and a from j, we
-                ! need to include that prob too.
+                ! We actually choose a|i then b|j, but since we could have also generated the excitation b from i and a from j,
+                ! we need to include that prob too.
 
                 ! Given i_ref, use the alias method to select a_ref with appropriate probability from the set of orbitals
                 ! of the same spin as i_ref that are unoccupied if all electrons are in the reference.
                 if (sys%basis%basis_fns(i_ref)%Ms < 0) then
                     if (sys%nvirt_beta > 0) then
-                        a_ind_ref = select_weighted_value_precalc(rng, sys%nvirt_beta, pp%ia_aliasU(:,i_ind_ref), &
-                                                               pp%ia_aliasK(:,i_ind_ref))
+                        a_ind_ref = select_weighted_value_precalc(rng, sys%nvirt_beta, pp%pp_ia_d%aliasU(:,i_ind_ref), &
+                                                               pp%pp_ia_d%aliasK(:,i_ind_ref))
                         a_ref = pp%virt_list_beta(a_ind_ref)
                         a_found = .true.
                     else
@@ -626,8 +627,8 @@ contains
                     end if
                 else
                     if (sys%nvirt_alpha > 0) then
-                        a_ind_ref = select_weighted_value_precalc(rng, sys%nvirt_alpha, pp%ia_aliasU(:,i_ind_ref), &
-                                                               pp%ia_aliasK(:,i_ind_ref))
+                        a_ind_ref = select_weighted_value_precalc(rng, sys%nvirt_alpha, pp%pp_ia_d%aliasU(:,i_ind_ref), &
+                                                               pp%pp_ia_d%aliasK(:,i_ind_ref))
                         a_ref = pp%virt_list_alpha(a_ind_ref)
                         a_found = .true.
                     else
@@ -677,13 +678,16 @@ contains
                     ! cdet_store  contains the indices within cdet%occ_list of the orbitals which are in cdet (excited out
                     ! of ref).  i_ind_ref and j_ind_ref are the indices of the orbitals in pp%occ_list which we're exciting from.
                     do ii=1, nex
-                        if (ref_store(ii) == i_ind_ref) then  ! i_ref isn't actually in cdet, so we assign i_cdet to the orb that is
+                        if (ref_store(ii) == i_ind_ref) then  
+                            ! i_ref isn't actually in cdet, so we assign i_cdet to the orb that is
                             i_cdet = cdet%occ_list(cdet_store(ii))
-                        else if (ref_store(ii) == j_ind_ref) then ! j_ref isn't actually in cdet, so we assign j_cdet to the orb that is
+                        else if (ref_store(ii) == j_ind_ref) then 
+                            ! j_ref isn't actually in cdet, so we assign j_cdet to the orb that is
                             j_cdet = cdet%occ_list(cdet_store(ii))
                         end if
                         if (cdet%occ_list(cdet_store(ii)) == a_ref) then
-                            a_cdet = pp%occ_list(ref_store(ii)) ! a_ref is occupied in cdet, assign a_cdet to the orb that is not
+                            ! a_ref is occupied in cdet, assign a_cdet to the orb that is not
+                            a_cdet = pp%occ_list(ref_store(ii)) 
                         end if
                     end do
 
@@ -710,7 +714,7 @@ contains
                     ! cdet (although we only care about whether they are occupied in cdet which we deal with later).
 
                     b_ind_cdet = select_weighted_value_precalc(rng, sys%read_in%pg_sym%nbasis_sym_spin(imsb, isymb), &
-                                        pp%jb_aliasU(:, isymb, j_ind_ref), pp%jb_aliasK(:, isymb, j_ind_ref))
+                                        pp%pp_jb_d%aliasU(:, isymb, j_ind_ref), pp%pp_jb_d%aliasK(:, isymb, j_ind_ref))
                     b_cdet = sys%read_in%pg_sym%sym_spin_basis_fns(b_ind_cdet, imsb, isymb)
 
                     ! Check that a_cdet /= b_cdet and that b_cdet is not occupied in cdet:
@@ -722,8 +726,8 @@ contains
                         ! Calculate p(ab|ij) = p(a|i) p(j|b) + p(b|i)p(a|j)
                         if (ij_spin == 0) then
                             ! Not possible to have chosen the reversed excitation.
-                            pgen = pp%ia_weights(a_ind_ref, i_ind_ref) / pp%ia_weights_tot(i_ind_ref) &
-                                    * pp%jb_weights(b_ind_cdet, isymb, j_ind_ref) / pp%jb_weights_tot(isymb, j_ind_ref)
+                            pgen = pp%pp_ia_d%weights(a_ind_ref, i_ind_ref) / pp%pp_ia_d%weights_tot(i_ind_ref) &
+                                    * pp%pp_jb_d%weights(b_ind_cdet, isymb, j_ind_ref) / pp%pp_jb_d%weights_tot(isymb, j_ind_ref)
                         else
                             ! i and j have same spin, so could have been selected in the other order.
                             ! Need to find b_ref, the orbital b would have been in the world where we focus on the reference.
@@ -749,10 +753,10 @@ contains
                             call binary_search(sys%read_in%pg_sym%sym_spin_basis_fns(:,imsb,isyma), a_cdet, 1, &
                                     sys%read_in%pg_sym%nbasis_sym_spin(imsb,isyma), found, a_ind_rev_cdet)
 
-                            pgen = pp%ia_weights(a_ind_ref, i_ind_ref) / pp%ia_weights_tot(i_ind_ref) &
-                                    * pp%jb_weights(b_ind_cdet, isymb, j_ind_ref) / pp%jb_weights_tot(isymb, j_ind_ref) &
-                                +  pp%ia_weights(b_ind_rev_ref, i_ind_ref) / pp%ia_weights_tot(i_ind_ref) &
-                                    * pp%jb_weights(a_ind_rev_cdet, isyma, j_ind_ref) / pp%jb_weights_tot(isyma, j_ind_ref)
+                            pgen = pp%pp_ia_d%weights(a_ind_ref, i_ind_ref) / pp%pp_ia_d%weights_tot(i_ind_ref) &
+                                * pp%pp_jb_d%weights(b_ind_cdet, isymb, j_ind_ref) / pp%pp_jb_d%weights_tot(isymb, j_ind_ref) &
+                                +  pp%pp_ia_d%weights(b_ind_rev_ref, i_ind_ref) / pp%pp_ia_d%weights_tot(i_ind_ref) &
+                                * pp%pp_jb_d%weights(a_ind_rev_cdet, isyma, j_ind_ref) / pp%pp_jb_d%weights_tot(isyma, j_ind_ref)
                         end if
 
                         pgen = excit_gen_data%pattempt_double * pgen * pgen_ij ! pgen(ab)
@@ -881,7 +885,7 @@ contains
             associate( pp => excit_gen_data%excit_gen_pp )
                 ! 2b. Select orbitals to excite from
                 
-                i_ind_ref = select_weighted_value_precalc(rng, sys%nel, pp%i_single_aliasU(:), pp%i_single_aliasK(:))
+                i_ind_ref = select_weighted_value_precalc(rng, sys%nel, pp%ppn_i_s%aliasU(:), pp%ppn_i_s%aliasK(:))
                 i_ref = pp%occ_list(i_ind_ref)
                 
                 ! Now map i_ref to i_cdet.
@@ -927,7 +931,7 @@ contains
                                                         sys%read_in%pg_sym%gamma_sym)
                 if (sys%read_in%pg_sym%nbasis_sym_spin(imsa,isyma) > 0) then
                     a_ind_cdet = select_weighted_value_precalc(rng, sys%read_in%pg_sym%nbasis_sym_spin(imsa,isyma), &
-                                                    pp%ia_single_aliasU(:, i_cdet), pp%ia_single_aliasK(:, i_cdet))
+                                                    pp%ppn_ia_s%aliasU(:, i_cdet), pp%ppn_ia_s%aliasK(:, i_cdet))
                     a_cdet = sys%read_in%pg_sym%sym_spin_basis_fns(a_ind_cdet, imsa, isyma)
                     if (.not. btest(cdet%f(sys%basis%bit_lookup(2,a_cdet)), sys%basis%bit_lookup(1,a_cdet))) then
                         allowed_excitation = .true.
@@ -939,8 +943,8 @@ contains
                 end if
 
                 if (allowed_excitation) then
-                    pgen = (pp%i_single_weights(i_ind_ref)/pp%i_single_weights_tot) * &
-                            (pp%ia_single_weights(a_ind_cdet, i_cdet)/pp%ia_single_weights_tot(i_cdet))
+                    pgen = (pp%ppn_i_s%weights(i_ind_ref)/pp%ppn_i_s%weights_tot) * &
+                            (pp%ppn_ia_s%weights(a_ind_cdet, i_cdet)/pp%ppn_ia_s%weights_tot(i_cdet))
                     pgen = excit_gen_data%pattempt_single * pgen ! pgen(ab)
                     connection%nexcit = 1
                     connection%to_orb(1) = a_cdet
@@ -965,7 +969,7 @@ contains
             associate( pp => excit_gen_data%excit_gen_pp )
                 ! 2b. Select orbitals to excite from
                 
-                i_ind_ref = select_weighted_value_precalc(rng, sys%nel, pp%i_all_aliasU(:), pp%i_all_aliasK(:))
+                i_ind_ref = select_weighted_value_precalc(rng, sys%nel, pp%ppn_i_d%aliasU(:), pp%ppn_i_d%aliasK(:))
                 i_ref = pp%occ_list(i_ind_ref)
                 
                 ! Now map i_ref to i_cdet.
@@ -1006,7 +1010,8 @@ contains
                 end do
                 
                 ! j is chosen from set of occupied spinorbitals in reference but with weights calculated for i_cdet.
-                j_ind_ref = select_weighted_value_precalc(rng, sys%nel, pp%ij_all_aliasU(:,i_cdet), pp%ij_all_aliasK(:,i_cdet))
+                j_ind_ref = select_weighted_value_precalc(rng, sys%nel, pp%ppn_ij_d%aliasU(:,i_cdet), &
+                                                    pp%ppn_ij_d%aliasK(:,i_cdet))
                 j_ref = pp%occ_list(j_ind_ref)
 
                 j_cdet = j_ref
@@ -1018,12 +1023,12 @@ contains
                 end do
                 if (j_cdet /= i_cdet) then
                     allowed_excitation = .true. ! for now - that can change.
-                    pgen = (pp%i_all_weights(i_ind_ref) / pp%i_all_weights_tot) * &
-                            (pp%ij_all_weights(j_ind_ref,i_cdet) / pp%ij_all_weights_tot(i_cdet))
+                    pgen = (pp%ppn_i_d%weights(i_ind_ref) / pp%ppn_i_d%weights_tot) * &
+                            (pp%ppn_ij_d%weights(j_ind_ref,i_cdet) / pp%ppn_ij_d%weights_tot(i_cdet))
                     ij_spin = sys%basis%basis_fns(i_cdet)%Ms + sys%basis%basis_fns(j_cdet)%Ms
                     ! Could have selected i and j the other way around. 
-                    pgen = pgen + ((pp%i_all_weights(j_ind_ref) / pp%i_all_weights_tot) * &
-                            (pp%ij_all_weights(i_ind_ref,j_cdet) / pp%ij_all_weights_tot(j_cdet)))
+                    pgen = pgen + ((pp%ppn_i_d%weights(j_ind_ref) / pp%ppn_i_d%weights_tot) * &
+                            (pp%ppn_ij_d%weights(i_ind_ref,j_cdet) / pp%ppn_ij_d%weights_tot(j_cdet)))
                     ! Order i and j such that i<j.
                     if (j_cdet < i_cdet) then
                         j_cdet_tmp = j_cdet
@@ -1036,18 +1041,18 @@ contains
                 if (allowed_excitation) then
                     ! We now need to select the orbitals to excite into which we do with weighting:
                     ! p(ab|ij) = p(a|i) p(b|j) + p(a|j) p(b|i).
-                    ! We actually choose a|i then b|j, but since we could have also generated the excitation b from i and a from j, we
-                    ! need to include that too if they have the same spin.
+                    ! We actually choose a|i then b|j, but since we could have also generated the excitation b from i and a from
+                    ! j, we need to include that too if they have the same spin.
 
                     ! Given i_cdet, use the alias method to select a_cdet with appropriate probability from the set of orbitals
                     ! of the same spin as i_cdet.
                     if (sys%basis%basis_fns(i_cdet)%Ms < 0) then
-                        a_ind_cdet = select_weighted_value_precalc(rng, pp%n_all_beta, pp%ia_all_aliasU(:,i_cdet), &
-                                                               pp%ia_all_aliasK(:,i_cdet))
+                        a_ind_cdet = select_weighted_value_precalc(rng, pp%n_all_beta, pp%ppn_ia_d%aliasU(:,i_cdet), &
+                                                               pp%ppn_ia_d%aliasK(:,i_cdet))
                         a_cdet = pp%all_list_beta(a_ind_cdet)
                     else
-                        a_ind_cdet = select_weighted_value_precalc(rng, pp%n_all_alpha, pp%ia_all_aliasU(:,i_cdet), &
-                                                               pp%ia_all_aliasK(:,i_cdet))
+                        a_ind_cdet = select_weighted_value_precalc(rng, pp%n_all_alpha, pp%ppn_ia_d%aliasU(:,i_cdet), &
+                                                               pp%ppn_ia_d%aliasK(:,i_cdet))
                         a_cdet = pp%all_list_alpha(a_ind_cdet)
                     end if
                     ! Make sure a_cdet is a virtual orbital (not occupied in c_det).
@@ -1082,7 +1087,7 @@ contains
                     ! Find b_cdet out of the set of (all) orbitals that have the required spin and symmetry for given j_cdet. 
                     ! Note that these orbitals might be occupied.
                     b_ind_cdet = select_weighted_value_precalc(rng, sys%read_in%pg_sym%nbasis_sym_spin(imsb, isymb), &
-                                        pp%jb_all_aliasU(:, isymb, j_cdet), pp%jb_all_aliasK(:, isymb, j_cdet))
+                                        pp%ppn_jb_d%aliasU(:, isymb, j_cdet), pp%ppn_jb_d%aliasK(:, isymb, j_cdet))
                     b_cdet = sys%read_in%pg_sym%sym_spin_basis_fns(b_ind_cdet, imsb, isymb)
 
                     ! Check that a_cdet /= b_cdet and that b_cdet is not occupied in cdet:
@@ -1094,8 +1099,8 @@ contains
                         ! Calculate p(ab|ij) = p(a|i) p(j|b) + p(b|i)p(a|j)
                         if (ij_spin == 0) then
                             ! Not possible to have chosen the reversed excitation.
-                            pgen = pgen * (pp%ia_all_weights(a_ind_cdet, i_cdet) / pp%ia_all_weights_tot(i_cdet) &
-                                    * pp%jb_all_weights(b_ind_cdet, isymb, j_cdet) / pp%jb_all_weights_tot(isymb, j_cdet))
+                            pgen = pgen * (pp%ppn_ia_d%weights(a_ind_cdet, i_cdet) / pp%ppn_ia_d%weights_tot(i_cdet) &
+                                    * pp%ppn_jb_d%weights(b_ind_cdet, isymb, j_cdet) / pp%ppn_jb_d%weights_tot(isymb, j_cdet))
                         else
                             ! i and j have same spin, so could have been selected in the other order.
 
@@ -1111,10 +1116,10 @@ contains
                             call binary_search(sys%read_in%pg_sym%sym_spin_basis_fns(:,imsb,isyma), a_cdet, 1, &
                                     sys%read_in%pg_sym%nbasis_sym_spin(imsb,isyma), found, a_ind_rev_cdet)
 
-                            pgen = pgen * (pp%ia_all_weights(a_ind_cdet, i_cdet) / pp%ia_all_weights_tot(i_cdet) &
-                                    * pp%jb_all_weights(b_ind_cdet, isymb, j_cdet) / pp%jb_all_weights_tot(isymb, j_cdet) &
-                                +  pp%ia_all_weights(b_ind_rev_cdet, i_cdet) / pp%ia_all_weights_tot(i_cdet) &
-                                    * pp%jb_all_weights(a_ind_rev_cdet, isyma, j_cdet) / pp%jb_all_weights_tot(isyma, j_cdet))
+                            pgen = pgen * (pp%ppn_ia_d%weights(a_ind_cdet, i_cdet) / pp%ppn_ia_d%weights_tot(i_cdet) &
+                                * pp%ppn_jb_d%weights(b_ind_cdet, isymb, j_cdet) / pp%ppn_jb_d%weights_tot(isymb, j_cdet) &
+                                +  pp%ppn_ia_d%weights(b_ind_rev_cdet, i_cdet) / pp%ppn_ia_d%weights_tot(i_cdet) &
+                                * pp%ppn_jb_d%weights(a_ind_rev_cdet, isyma, j_cdet) / pp%ppn_jb_d%weights_tot(isyma, j_cdet))
                         end if
 
                         pgen = excit_gen_data%pattempt_double * pgen ! pgen(ab)
@@ -1230,7 +1235,8 @@ contains
             ! We now need to select the orbitals to excite into which we do with weighting:
             ! p(ab|ij) = p(a|i) p(b|j) + p(a|j) p(b|i)
             
-            ! We actually choose a|i then b|j, but since we could have also generated the excitation b from i and a from j, we need to include that prob too.
+            ! We actually choose a|i then b|j, but since we could have also generated the excitation b from i and a from j,
+            ! we need to include that prob too.
 
             ! Given i, construct the weights of all possible a
             if (sys%basis%basis_fns(i)%Ms < 0) then

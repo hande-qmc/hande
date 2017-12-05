@@ -375,8 +375,9 @@ contains
     end function abs_hmatel_mol
 
     pure function single_excitation_weight_mol(sys, ref, i, a) result(weight)
-! [review] - AJWT: be more explicit about what 'weight' means and what it might be used for.
 ! [review] - AJWT: Also, why is this in this file exactly?
+! [reply] - VAN: I put excitation generator weights calculated for reals here and for complex, the pointers will point to
+! [reply] - VAN: functions in hamiltonian_periodic_complex.
         ! In:
         !    sys: system to be studied.
         !    ref: reference determinant information
@@ -385,9 +386,12 @@ contains
         !    a: the spin-orbital into which an electron is excited in
         !       the excited determinant.
         ! Returns:
-        !    weight: weight of i -> a
+        !    weight: used in the Power Pitzer Order N excitation generator as
+        !            pre-calculated weight for the single excitations i -> a.
 
-        use molecular_integrals, only: get_two_body_int_mol_real
+        ! [todo] - get_two_body_int_mol_complex imported here as single_excitation_weight_periodic_complex uses that and
+        ! [todo] - they share a proc pointer.
+        use molecular_integrals, only: get_two_body_int_mol_real, get_two_body_int_mol_complex
         use system, only: sys_t
         use reference_determinant, only: reference_t
 
@@ -397,32 +401,8 @@ contains
         real(p) :: weight
         integer :: n_jb, pos, j, b, virt_pos, occ_pos, nvirt, virt_list(sys%basis%nbasis - sys%nel)
 
-! [review] - AJWT: remove old code.
-        !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-        ! Old code. Kept for now until after testing of new code.
-        ! < D | H | D_i^a > = < i | h(a) | a > + \sum_j < ij || aj >
-        ! where j is all electrons
-        ! [todo] is it the best idea to sum over the abs values?
-
-        ! associate(basis_fns=>sys%basis%basis_fns, &
-        !          one_e_ints=>sys%read_in%one_e_h_integrals, &
-        !          coulomb_ints=>sys%read_in%coulomb_integrals)
-            ! have checked when calling this function that i -> a is allowed by spin and symmetry.
-            ! we can there use get_one_body_int_mol_nonzero
-        !    weight = abs(get_one_body_int_mol_nonzero(one_e_ints, i, a, basis_fns))
-
-        !    do iel = 1, sys%basis%nbasis
-        !        if ((iel /= i) .and. (iel /= a)) then
-        !            ! use get_two_body_int_mol_real to check whether excitation is symmetry allowed.
-        !            two_body_tmp%r = get_two_body_int_mol_real(coulomb_ints, i, iel, a, iel, sys) &
-        !                            - get_two_body_int_mol_real(coulomb_ints, i, iel, iel, a, sys)
-        !            weight = weight + abs(two_body_tmp%r)
-        !        end if
-        !    end do
-        ! end associate
-        !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-
 ! [review] - AJWT: Do we want to check whether it does obey Brillouin?
+! [reply] - VAN: Why? Would you do something different if it does not?
         ! Assuming that we often have the RHF reference which obeys Brillouin's theorem
         ! (no single excitations from the reference), the main contribution to single
         ! excitations can be the single excitation from a double excitation a step
@@ -437,15 +417,6 @@ contains
         associate(basis_fns=>sys%basis%basis_fns, &
                   one_e_ints=>sys%read_in%one_e_h_integrals, &
                   coulomb_ints=>sys%read_in%coulomb_integrals)
-        ! Could add this ref_term to make the expression more general (in case we do not have an SCF
-        ! reference. However, that would restrict the set we can select a from (function might turn
-        ! weird if i is virtual (might be ok though) and a is occupied (not checked for in
-        ! slater_condon1_mol. Leave ref_term for now. [todo]
-!            connection%from_orb(1) = i
-!            connection%to_orb(1) = a
-!            connection%nexcit = 1
-!            call find_excitation_permutation1(sys%basis%excit_mask, ref%f0, connection)
-!            ref_term = slater_condon1_mol(sys, ref%occ_list0, i, a, connection%perm)
             virt_pos = 1
             occ_pos = 1
             nvirt = sys%basis%nbasis - sys%nel

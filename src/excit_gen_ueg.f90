@@ -397,17 +397,17 @@ contains
         nbas = sys%basis%nbasis    
         maxv = nbas / 2
 
-        allocate(pp%ia_aliasU(maxv,nbas))
-        allocate(pp%ia_aliasK(maxv,nbas))
-        allocate(pp%ia_weights(maxv,nbas))
-        allocate(pp%ia_weights_tot(nbas))
+        allocate(pp%pp_ia_d%aliasU(maxv,nbas))
+        allocate(pp%pp_ia_d%aliasK(maxv,nbas))
+        allocate(pp%pp_ia_d%weights(maxv,nbas))
+        allocate(pp%pp_ia_d%weights_tot(nbas))
 
         do i=1, nbas
             do j=1, maxv     !make a temporary array of 'virtuals' for this occ.
                vlist(j) = j*2 - mod(i,2)      !get the virtual of the right spin
             end do
-            call create_weighted_excitation_list_ueg(sys, i, vlist, maxv, pp%ia_weights(:,i), pp%ia_weights_tot(i))
-            call generate_alias_tables(maxv, pp%ia_weights(:,i), pp%ia_weights_tot(i), pp%ia_aliasU(:,i), pp%ia_aliasK(:,i))        
+            call create_weighted_excitation_list_ueg(sys, i, vlist, maxv, pp%pp_ia_d%weights(:,i), pp%pp_ia_d%weights_tot(i))
+            call generate_alias_tables(maxv, pp%pp_ia_d%weights(:,i), pp%pp_ia_d%weights_tot(i), pp%pp_ia_d%aliasU(:,i), pp%pp_ia_d%aliasK(:,i))        
         end do
 
     end subroutine init_excit_ueg_power_pitzer
@@ -480,7 +480,7 @@ contains
             maxv = sys%basis%nbasis / 2
 
             ! Just use electron i
-            a_ind = select_weighted_value_precalc(rng, maxv, pp%ia_aliasU(:,i), pp%ia_aliasK(:,i))
+            a_ind = select_weighted_value_precalc(rng, maxv, pp%pp_ia_d%aliasU(:,i), pp%pp_ia_d%aliasK(:,i))
             ! Use the alias method to select i with the appropriate probability
             ! Map those >=i to the one after ( we're not allowed to select i)
             ! convert from spatial orbital back to spin orbital
@@ -527,10 +527,10 @@ contains
               
                 if (ij_spin==0) then 
                     ! Not possible to have chosen the reversed excitation.
-                    pgen=pp%ia_weights(a_ind,i) / pp%ia_weights_tot(i)   ! p(j|b)=1
+                    pgen=pp%pp_ia_d%weights(a_ind,i) / pp%pp_ia_d%weights_tot(i)   ! p(j|b)=1
                 else
                     ! i and j have same spin, so could have been selected in the other order.
-                    pgen= ( pp%ia_weights(a_ind, i) + pp%ia_weights(b_ind, i) )  / (pp%ia_weights_tot(i))
+                    pgen= ( pp%pp_ia_d%weights(a_ind, i) + pp%pp_ia_d%weights(b_ind, i) )  / (pp%pp_ia_d%weights_tot(i))
                 end if
 
                 pgen = pgen * 2.0_p/(sys%nel*(sys%nel-1)) ! pgen(ij)
