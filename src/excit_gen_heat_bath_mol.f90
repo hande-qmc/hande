@@ -1,6 +1,6 @@
 module excit_gen_heat_bath_mol
 
-! A module containing excitations generators for molecules which weight excitations according to the heat bath algorithm
+! A module containing excitations generators which weight excitations according to the heat bath algorithm
 ! by Holmes et al. (Holmes, A. A.; Changlani, H. J.; Umrigar, C. J. J. Chem. Theory Comput. 2016, 12, 1561–1571).
 
 use const, only: i0, p, depsilon
@@ -51,23 +51,40 @@ contains
         allocate(hb%hb_ijab%aliasU(sys%basis%nbasis,sys%basis%nbasis,sys%basis%nbasis,sys%basis%nbasis))
         allocate(hb%hb_ijab%aliasK(sys%basis%nbasis,sys%basis%nbasis,sys%basis%nbasis,sys%basis%nbasis))
         allocate(hb%hb_ijab%weights_tot(sys%basis%nbasis,sys%basis%nbasis,sys%basis%nbasis))
-        allocate(hb%ia_weights(sys%basis%nbasis,sys%basis%nbasis)) ! implicit sum over j
 
         ! [todo] - consider setting hmatel%r and hmatel%c to zero to avoid undefined behaviour.
         ! [todo] - although it is probably fine, abs_hmatel_ptr ignores the irrelevant bit.
-        ! [todo] - ia_weights is not used.
+
+        ! The following big for-loop/do-loop structure pre-computes weights to select i (hb%i_weights), to select j given i
+        ! (hb%ij_weights), to select a given ij (hb%hb_ija%weights) and to select b given ija (hb%hb_ijab%weights).
+        ! The weights are (as described in Holmes et al.):
+        !   hb%i_weights(:) = \frac{\sum_jab h_ijab}{\sum_ijab h_ijab}
+        !   hb%ij_weights(:,i) = \frac{\sum_ab h_ijab}{\sum_jab h_ijab}
+        !   hb%hb_ija%weights(:,j,i) = \frac{\sum_b h_ijab}{\sum_ab h_ijab}
+        !   hb%hb_ijab%weights(:,a,j,i) = \frac{h_ijab}{\sum_b h_ijab}
+        ! where the orbitals ijab are all different and chosen from the set of all spinorbitals.
+        !   h_ijab = <D_0| H |D_{ij}^{ab}>, i.e. the Hamiltonian matrix element representing the double excitation
+        ! ij -> ab. Note that for double excitations, the value of h_ijab does not depend on wether we excite from
+        ! the reference or not. That is useful as at the time of initialisation we do not know the determinant
+        ! we will look at at a certain spawn attempt.
+
+        ! We also check for bias in the loop if we are doing the "original" heat bath algorithm (original == .true.)
+        ! and stop the calculation if we have to. There is a bias if for certain determinants to spawn from, a valid
+        ! single excitation i -> a cannot be chosen as there is no occupied spinorbital (different to i) that could
+        ! play the role of j when selecting ija.
+        ! Reminder: We only decide whether we should do a single excitation i->a or a double excitation ij->ab
+        ! after having selected ija. A single excitation i->a can therefore only be selected if there is a j
+        ! we can select so that we can select ija.
 
         j_nonzero = 0
 
-        hb%ia_weights = 0.0_p
-
-! [review] - AJWT: A very brief rundown of what's about to happen wouldn't hurt the unfamiliar reader.
         do i = 1, sys%basis%nbasis
             i_weight = 0.0_p
             do j = 1, sys%basis%nbasis
                 ij_weight = 0.0_p
                 hb%hb_ija%weights_tot(j,i) = 0.0_p
                 if (i /= j) then
+                    ! [todo] - is sorting really necessary?
                     if (j < i) then
                         i_tmp = j
                         j_tmp = i
@@ -120,7 +137,7 @@ contains
                         end if
                         hb%hb_ija%weights(a,j,i) = ija_weight
                         hb%hb_ija%weights_tot(j,i) = hb%hb_ija%weights_tot(j,i) + ija_weight
-                        hb%ia_weights(a,i) = hb%ia_weights(a,i) + ija_weight
+                        ! [todo] - depsilon or 0.0_p?
                         if (ija_weight > depsilon) then
                             j_nonzero(a,i) = j_nonzero(a,i) + 1
                         end if
@@ -138,7 +155,7 @@ contains
             end do
             hb%i_weights(i) = i_weight
 
-            ! Test for bias.
+            ! Test for bias and stop calculation if a bias is found.
             ! Test that all single excitation i -> a that are allowed have some non zero weight ija for some j.
             do a = 1, sys%basis%nbasis
                 if ((j_nonzero(a,i) < (sys%basis%nbasis - sys%nel)) .and. (original == .true.) .and. (i /= a)) then
@@ -154,6 +171,9 @@ contains
             end do
         end do
 
+        ! Generate alias tables for hb%hb_ija%weights and hb%hb_ijab%weights. hb%i_weights and hb%ij_weights do not
+        ! get pre-computed alias tables, they will be computed on-the-fly during the run, just including occupied
+        ! spinorbitals.
         do i = 1, sys%basis%nbasis
             do j = 1, sys%basis%nbasis
                 if (abs(hb%hb_ija%weights_tot(j,i)) > 0.0_p) then
@@ -173,9 +193,25 @@ contains
 
     subroutine gen_excit_mol_heat_bath(rng, sys, excit_gen_data, cdet, pgen, connection, hmatel, allowed_excitation)
 
-        ! This is the main heat bath algorithm.
-! [review] - AJWT: Say whath the routine actually does...
-! [review] - AJWT: Also comment the various steps in the subroutine code itself - it's fairly opaque.
+        ! This is the main heat bath algorithm described in Holmes et al. (2016)
+
+        ! A short description (note that excit_gen_data%hb => hb):
+        ! --------------------------------------------------------
+        ! 1a: We first select i using the pre-calculated weights hb%i_weights(:), first restricting
+        !     this weight array to occupied orbitals i. We calculate alias tables on-the-fly.
+        ! 1b: Then, we find j using the pre-calculated weights hb%ij_weights(:,i), again restricting
+        !     the weight array to occupied orbitals j/=i and calculate alias tables on-the-fly.
+        ! 2:  We select a using pre-computed alias tables hb%hb_ija%alias{K,U}.
+        ! 3:  We decide whether we should do a single excitation i->a or double excitation ij->ab,
+        !     with probability 0.5 if (|h_ia| > hb%hb_ijab%weights_tot(a,j,i)) where h_ia is the
+        !     Hamiltonian matrix element of the single excitation i->a from the current determinant.
+        !     Else, we do a single excitation with probability
+        !     |h_ia|/(hb%hb_ijab%weights_tot(b,i,j) + |h_ia|) and a double excitation otherwise.
+        !     This step is slightly different to Holmes et al. who might choose to do a single
+        !     and a double excitation at the same time under certain conditions.
+        ! [todo] - double check what to do if |h_ia| == hb%hb_ijab%weights_tot(a,j,i)
+        ! 4:  If we do a double excitation, we now select b using pre-computed alias tables
+        !     hb%hb_ijab%alias{K,U}.
 
         ! In:
         !    sys: system object being studied.
@@ -219,7 +255,6 @@ contains
         real(p), allocatable :: i_weights_occ(:)
         real(p), allocatable :: ij_weights_occ(:)
         real(p), allocatable :: ji_weights_occ(:)
-        integer :: occ_list(sys%nel)
 
         integer :: pos_bas, pos_occ, pos_q, i_ind, j_ind, i, j, a, b, ierr, ims, isyma
         
@@ -228,49 +263,30 @@ contains
         logical :: double
         type(hmatel_t) :: hmatel_single
 
-        occ_list = cdet%occ_list
-        ! call qsort(occ_list,sys%nel)
         associate( hb => excit_gen_data%excit_gen_hb )
-            ! 2b. Select orbitals to excite from
+            ! 1: Select orbitals i and j to excite from.
             allocate(i_weights_occ(1:sys%nel), stat=ierr)
             call check_allocate('i_weights_occ', sys%nel, ierr)
-
-! [review] - AJWT: non capisco
-            ! [todo] can move iido to double.
-            i_weights_occ_tot = 0.0_p
-            do pos_occ = 1, sys%nel
-                i_weights_occ(pos_occ) = hb%i_weights(cdet%occ_list(pos_occ))
-                i_weights_occ_tot = i_weights_occ_tot + i_weights_occ(pos_occ)
-            end do
-                
-            i_ind = select_weighted_value(rng, sys%nel, i_weights_occ, i_weights_occ_tot)
-            i = occ_list(i_ind)
-
             allocate(ij_weights_occ(1:sys%nel), stat=ierr)
             call check_allocate('ij_weights_occ', sys%nel, ierr)
-
-            ij_weights_occ_tot = 0.0_p
-            do pos_occ = 1, sys%nel
-                ij_weights_occ(pos_occ) = hb%ij_weights(cdet%occ_list(pos_occ),i)
-                ij_weights_occ_tot = ij_weights_occ_tot + ij_weights_occ(pos_occ)
-            end do
-
-            j_ind = select_weighted_value(rng, sys%nel, ij_weights_occ, ij_weights_occ_tot)
-            j = occ_list(j_ind)
-
             allocate(ji_weights_occ(1:sys%nel), stat=ierr)
             call check_allocate('ji_weights_occ', sys%nel, ierr)
-                
-            ji_weights_occ_tot = 0.0_p
-            do pos_occ = 1, sys%nel
-                ji_weights_occ(pos_occ) = hb%ij_weights(cdet%occ_list(pos_occ),j)
-                ji_weights_occ_tot = ji_weights_occ_tot + ji_weights_occ(pos_occ)
-            end do
+            
+            call  select_ij_heat_bath(rng, sys%nel, hb, cdet, i, j, i_ind, j_ind, i_weights_occ, i_weights_occ_tot, &
+                                ij_weights_occ, ij_weights_occ_tot, ji_weights_occ, ji_weights_occ_tot, allowed_excitation)
+            
+            ! Important: We do not order i and j here as the original order matters before we decide whether to do a single
+            ! excitation i -> a or a double excitation ij -> ab.
 
-            allowed_excitation = .true.
-            if (abs(hb%hb_ija%weights_tot(j, i)) > 0.0_p) then
+            ! If allowed_excitation == .true. at this stage, we will have checked that
+            ! (abs(hb%hb_ija%weights_tot(j, i)) > 0.0_p) in the subroutine select_ij_heat_bath, i.e. there exists an a we
+            ! can find.
+            if (allowed_excitation) then
+                ! 2: Find a.
                 a = select_weighted_value_precalc(rng, sys%basis%nbasis, hb%hb_ija%aliasU(:, j, i), hb%hb_ija%aliasK(:, j, i))
+                ! Check a is not occupied.
                 if (.not.btest(cdet%f(sys%basis%bit_lookup(2,a)), sys%basis%bit_lookup(1,a))) then
+                    ! 3: Determine whether to do a single or a double excitation.
                     ims = sys%basis%basis_fns(i)%ms
                     isyma = sys%read_in%cross_product_sym_ptr(sys%read_in, sys%basis%basis_fns(i)%sym, &
                                                     sys%read_in%pg_sym%gamma_sym)    
@@ -306,12 +322,16 @@ contains
             end if
 
             if (allowed_excitation) then
+                ! 4: We have decided to do a double excitation. Find b.
                 if (double) then
                     b = select_weighted_value_precalc(rng, sys%basis%nbasis, hb%hb_ijab%aliasU(:, a, j, i), &
                                                         hb%hb_ijab%aliasK(:, a, j, i))
+                    ! Is b occupied?
                     if (.not.btest(cdet%f(sys%basis%bit_lookup(2,b)), sys%basis%bit_lookup(1,b))) then
                         allowed_excitation = .true.
                         
+                        ! Calculate all contributions to pgen (need to consider different orders of having selected i and j
+                        ! and different combinations of a and b. Sub-pgens are pgen_ija, pgen_ijb, pgen_jia, pgen_jib.
                         pgen_ija = ((i_weights_occ(i_ind)/i_weights_occ_tot) * (ij_weights_occ(j_ind)/ij_weights_occ_tot)) * &
                             (hb%hb_ija%weights(a,j,i)/hb%hb_ija%weights_tot(j,i)) * (1.0_p - psingle) * &
                             (hb%hb_ijab%weights(b,a,j,i)/hb%hb_ijab%weights_tot(a,j,i))
@@ -416,7 +436,10 @@ contains
                         hmatel%r = 0.0_p
                         pgen = 1.0_p
                     end if
-                else !if not double
+                else 
+                    ! We have decided to do a single excitation. Need to calculate pgen. Given that j is now a dummy variable,
+                    ! we need to consider that we could have achieved the same single excitation i->a with a different (occupied)
+                    ! j/=i.
                     connection%from_orb(1) = i
                     connection%to_orb(1) = a
                     connection%nexcit = 1
@@ -451,11 +474,25 @@ contains
 
     end subroutine gen_excit_mol_heat_bath
 
-
-! [review] - AJWT: Is there any way for this to share code with gen_excit_mol_heat_bath. Also more comments would be helpful.
     subroutine gen_excit_mol_heat_bath_uniform(rng, sys, excit_gen_data, cdet, pgen, connection, hmatel, allowed_excitation)
 
-        ! This is the heat bath algorithm that selects single excitations uniformly.
+        ! This is the heat bath algorithm that selects single excitations uniformly or exactly.
+        ! This is based on Holmes et al. (2016) (uniform) and a recommendation by Pablo Rios Lopez and Ali Alavi (exact).
+        ! How we handle double excitations is the same as in the "original" version above.
+        
+        ! A short description (note that excit_gen_data%hb => hb):
+        ! --------------------------------------------------------
+        ! 0:  We decide whether to do a single or a double excitation. Either we use the renorm
+        !     excitation generator to find i->a if doing singles (if we selected the uniform option)
+        !     or we calculate the weights exactly (single option). For more information on the latter,
+        !     see subroutine below. Points 1-3 are for double excitations only.
+        ! 1a: If we decide to do a double excitation, we first select i using the pre-calculated weights
+        !     hb%i_weights(:), first restricting
+        !     this weight array to occupied orbitals i. We calculate alias tables on-the-fly.
+        ! 1b: Then, we find j using the pre-calculated weights hb%ij_weights(:,i), again restricting
+        !     the weight array to occupied orbitals j/=i and calculate alias tables on-the-fly.
+        ! 2:  We select a using pre-computed alias tables hb%hb_ija%alias{K,U}.
+        ! 3:  We now select b using pre-computed alias tables hb%hb_ijab%alias{K,U}.
 
         ! In:
         !    sys: system object being studied.
@@ -484,7 +521,7 @@ contains
         use alias, only: select_weighted_value_precalc, select_weighted_value
         use dSFMT_interface, only: dSFMT_t, get_rand_close_open
         use hamiltonian_data, only: hmatel_t
-        use qmc_data, only: excit_gen_heat_bath_uniform, excit_gen_heat_bath_single
+        use qmc_data, only: excit_gen_heat_bath_uniform
         use read_in_symmetry, only: cross_product_basis_read_in
         use search, only: binary_search
         use sort, only: qsort
@@ -500,74 +537,60 @@ contains
         real(p), allocatable :: i_weights_occ(:)
         real(p), allocatable :: ij_weights_occ(:)
         real(p), allocatable :: ji_weights_occ(:)
-        integer :: occ_list(sys%nel)
 
-        integer :: pos_bas, pos_occ, i_ind, j_ind, i, j, a, b, ierr
+        integer :: pos_bas, pos_occ, i_ind, j_ind, i, j, a, b, ierr, j_tmp
         
         real(p) :: i_weights_occ_tot, ij_weights_occ_tot, ji_weights_occ_tot
 
-        ! 1. Select single or double.
+        ! 0: Select single or double.
         if (get_rand_close_open(rng) < excit_gen_data%pattempt_single) then  
             ! We have a single
-            select case(excit_gen_data%excit_gen)
-            case (excit_gen_heat_bath_uniform)
+            if (excit_gen_data%excit_gen == excit_gen_heat_bath_uniform) then
+                ! The user has chosen the uniform option. Call renorm single excitation generator.
                 call gen_single_excit_mol(rng, sys, excit_gen_data%pattempt_single, cdet, pgen, connection, hmatel, &
                                                 allowed_excitation)
-            case (excit_gen_heat_bath_single)
+            else
+                ! The user has chosen the single option (exact weights). Call subroutine below.
                 call gen_single_excit_heat_bath_exact(rng, sys, excit_gen_data%pattempt_single, cdet, pgen, connection, hmatel,&
                                                     allowed_excitation)
-            case default
-! [review] - AJWT: Indeed to remove
-                ! [todo] debug. remove.
-                print *, "something went wrong"
-            end select
+            end if
         else
-            occ_list = cdet%occ_list
-            ! call qsort(occ_list,sys%nel)
             ! We have a double
             associate( hb => excit_gen_data%excit_gen_hb )
-                ! 2b. Select orbitals to excite from
+                ! 1: Select orbitals i and j to excite from.
                 allocate(i_weights_occ(1:sys%nel), stat=ierr)
                 call check_allocate('i_weights_occ', sys%nel, ierr)
-                
-                i_weights_occ_tot = 0.0_p
-                do pos_occ = 1, sys%nel
-                    i_weights_occ(pos_occ) = hb%i_weights(cdet%occ_list(pos_occ))
-                    i_weights_occ_tot = i_weights_occ_tot + i_weights_occ(pos_occ)
-                end do
-                
-                i_ind = select_weighted_value(rng, sys%nel, i_weights_occ, i_weights_occ_tot)
-                i = occ_list(i_ind)
-
                 allocate(ij_weights_occ(1:sys%nel), stat=ierr)
                 call check_allocate('ij_weights_occ', sys%nel, ierr)
-
-                ij_weights_occ_tot = 0.0_p
-                do pos_occ = 1, sys%nel
-                    ij_weights_occ(pos_occ) = hb%ij_weights(cdet%occ_list(pos_occ),i)
-                    ij_weights_occ_tot = ij_weights_occ_tot + ij_weights_occ(pos_occ)
-                end do
-
-                j_ind = select_weighted_value(rng, sys%nel, ij_weights_occ, ij_weights_occ_tot)
-                j = occ_list(j_ind)
-
                 allocate(ji_weights_occ(1:sys%nel), stat=ierr)
                 call check_allocate('ji_weights_occ', sys%nel, ierr)
                 
-                ji_weights_occ_tot = 0.0_p
-                do pos_occ = 1, sys%nel
-                    ji_weights_occ(pos_occ) = hb%ij_weights(cdet%occ_list(pos_occ),j)
-                    ji_weights_occ_tot = ji_weights_occ_tot + ji_weights_occ(pos_occ)
-                end do
+                call  select_ij_heat_bath(rng, sys%nel, hb, cdet, i, j, i_ind, j_ind, i_weights_occ, i_weights_occ_tot, &
+                                    ij_weights_occ, ij_weights_occ_tot, ji_weights_occ, ji_weights_occ_tot, allowed_excitation)
 
                 pgen = ((i_weights_occ(i_ind)/i_weights_occ_tot) * (ij_weights_occ(j_ind)/ij_weights_occ_tot)) + &
                         ((i_weights_occ(j_ind)/i_weights_occ_tot) * (ji_weights_occ(i_ind)/ji_weights_occ_tot))
 
-                if (abs(hb%hb_ija%weights_tot(j, i)) > 0.0_p) then
+                ! [todo] - this is technically not necessary at this stage, the weights are symmetric in i and j (and in fact
+                ! [todo] - when precalculating the weights, we sort i and j such that i < j).
+                ! sort i and j.
+                if (j < i) then
+                    j_tmp = j
+                    j = i
+                    i = j_tmp
+                end if
+                
+                ! If allowed_excitation == .true. at this stage, we will have checked that
+                ! (abs(hb%hb_ija%weights_tot(j, i)) > 0.0_p) in the subroutine select_ij_heat_bath, i.e. there exists an a we
+                ! can find.
+                if (allowed_excitation) then
+                    ! 2: Find a.
                     a = select_weighted_value_precalc(rng, sys%basis%nbasis, hb%hb_ija%aliasU(:, j, i), &
                                                     hb%hb_ija%aliasK(:, j, i))
+                    ! Check that a possible b exists and that a is not occupied.
                     if ((abs(hb%hb_ijab%weights_tot(a, j, i)) > 0.0_p) .and. (.not.btest(cdet%f(sys%basis%bit_lookup(2,a)), &
                             sys%basis%bit_lookup(1,a)))) then
+                        ! 3: Select b.
                         b = select_weighted_value_precalc(rng, sys%basis%nbasis, hb%hb_ijab%aliasU(:, a, j, i), &
                                                             hb%hb_ijab%aliasK(:, a, j, i))
                         if (.not.btest(cdet%f(sys%basis%bit_lookup(2,b)), sys%basis%bit_lookup(1,b))) then
@@ -578,18 +601,12 @@ contains
                     else
                         allowed_excitation = .false.
                     end if
-                else
-                    allowed_excitation = .false.
                 end if
 
                 if (allowed_excitation) then
-                    if (i < j) then
-                        connection%from_orb(1) = i
-                        connection%from_orb(2) = j
-                    else
-                        connection%from_orb(1) = j
-                        connection%from_orb(2) = i
-                    end if
+                    ! i and j were sorted above.
+                    connection%from_orb(1) = i
+                    connection%from_orb(2) = j
                     if (a < b) then
                         connection%to_orb(1) = a
                         connection%to_orb(2) = b
@@ -628,14 +645,87 @@ contains
 
     end subroutine gen_excit_mol_heat_bath_uniform
 
+    subroutine select_ij_heat_bath(rng, nel, hb, cdet, i, j, i_ind, j_ind, i_weights_occ, i_weights_occ_tot, ij_weights_occ, &
+            ij_weights_occ_tot, ji_weights_occ, ji_weights_occ_tot, allowed_excitation)
+        ! Routine to select i and j according to the heat bath algorithm.
+
+        ! In:
+        !   nel: number of electrons (= sys%nel)
+        !   hb: excit_gen_heat_bath_t object containing precalculated weights and alias tables
+        !   cdet: current determinant to attempt spawning from.
+        ! In/Out:
+        !   rng: random number generator
+        ! Out:
+        !   allowed_excitation: true if excitation with ij is possible.
+        !   i_weights_occ: weights of i for all occupied spinorbitals.
+        !   ij_weights_occ: weights of j for all occupied spinorbitals, given i.
+        !   ji_weights_occ: weights of i for all occupied spinorbitals, given j (reverse selection for pgen calculation).
+        !   i_weights_occ_tot: sum of weights of i for all occupied spinorbitals.
+        !   ij_weights_occ_tot: sum of weights of j for all occupied spinorbitals, given i.
+        !   ji_weights_occ_tot: sum of weights of i for all occupied spinorbitals, given j.
+
+        use determinants, only: det_info_t
+        use dSFMT_interface, only: dSFMT_t
+        use alias, only: select_weighted_value
+        use excit_gens, only: excit_gen_heat_bath_t
+
+        integer, intent(in) :: nel
+        type(excit_gen_heat_bath_t), intent(in) :: hb
+        type(det_info_t), intent(in) :: cdet
+        type(dSFMT_t), intent(inout) :: rng
+        real(p), intent(out) :: i_weights_occ(:), ij_weights_occ(:), ji_weights_occ(:)
+        real(p), intent(out) :: i_weights_occ_tot, ij_weights_occ_tot, ji_weights_occ_tot
+        logical, intent(out) :: allowed_excitation
+        
+        integer :: pos_occ, i_ind, j_ind, i, j
+
+        i_weights_occ_tot = 0.0_p
+        do pos_occ = 1, nel
+            i_weights_occ(pos_occ) = hb%i_weights(cdet%occ_list(pos_occ))
+            i_weights_occ_tot = i_weights_occ_tot + i_weights_occ(pos_occ)
+         end do
+                
+        i_ind = select_weighted_value(rng, nel, i_weights_occ, i_weights_occ_tot)
+        i = cdet%occ_list(i_ind)
+
+        ij_weights_occ_tot = 0.0_p
+        do pos_occ = 1, nel
+            ij_weights_occ(pos_occ) = hb%ij_weights(cdet%occ_list(pos_occ),i)
+            ij_weights_occ_tot = ij_weights_occ_tot + ij_weights_occ(pos_occ)
+        end do
+
+        if (ij_weights_occ_tot > 0.0_p) then
+            ! There is a j for this i.
+            j_ind = select_weighted_value(rng, nel, ij_weights_occ, ij_weights_occ_tot)
+            j = cdet%occ_list(j_ind)
+
+            ! Pre-compute the other direction (first selecting j then i) as well as that is required for pgen.
+            ji_weights_occ_tot = 0.0_p
+            do pos_occ = 1, nel
+                ji_weights_occ(pos_occ) = hb%ij_weights(cdet%occ_list(pos_occ),j)
+                ji_weights_occ_tot = ji_weights_occ_tot + ji_weights_occ(pos_occ)
+            end do
+            ! Is there a possible a?
+            if (abs(hb%hb_ija%weights_tot(j, i)) > 0.0_p) then
+                allowed_excitation = .true.
+            else
+                allowed_excitation = .false.
+            end if
+        else
+            allowed_excitation = .false.
+        end if
+
+    end subroutine select_ij_heat_bath
+
     subroutine gen_single_excit_heat_bath_exact(rng, sys, pattempt_single, cdet, pgen, connection, hmatel, &
             allowed_excitation)
 
         ! Create a random single excitation from cdet and calculate both the probability
         ! of selecting that excitation and the Hamiltonian matrix element.
 
-        ! This calculates the weights for i and a as exact as possibly.
-        ! For i, the weight is \sum_a H_ia, for a given i it is H_ia.
+        ! This calculates the weights for i and a as exact as possibly. Called if user selected
+        ! heat bath single option and we are doing a single excitation.
+        ! For i, the weight is \sum_a H_ia, for a given i (a|i) it is H_ia.
 
         ! In:
         !    sys: system object being studied.

@@ -130,8 +130,6 @@ type excit_gen_heat_bath_t
     type(alias_table_data_three_ind_t) :: hb_ija
     ! Alias table information for selecting b from ija in a double excitation.
     type(alias_table_data_four_ind_t) :: hb_ijab
-    ! Length of array: sys%basis%nbasis,sys%basis%nbasis
-    real(p), allocatable :: ia_weights(:,:)
 end type excit_gen_heat_bath_t
 
 !Type containing data for excitation generators
@@ -232,7 +230,6 @@ contains
 
         if (allocated(excit_gen_hb%i_weights)) deallocate(excit_gen_hb%i_weights)
         if (allocated(excit_gen_hb%ij_weights)) deallocate(excit_gen_hb%ij_weights)
-        if (allocated(excit_gen_hb%ia_weights)) deallocate(excit_gen_hb%ia_weights)
         
         call dealloc_alias_table_data_t(excit_gen_hb%hb_ija)
         call dealloc_alias_table_data_t(excit_gen_hb%hb_ijab)
