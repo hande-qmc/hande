@@ -137,8 +137,8 @@ contains
 
     subroutine check_min_weight_ratio(weights, weights_tot, weights_len, min_ratio)
         
-        ! Restrict the minimum ratio of weights(i)/weights_tot to be min_ratio/number of orbitals. Of course, as the total
-        ! weight weights_tot gets updated, some weights set earlier might then fall below the min_ratio again.
+        ! Restrict the minimum ratio of weights(i)/weights_tot to be min_ratio/number of orbitals with nonzero
+        ! weight.
 
         ! In:
         !   weights_len: number of elements in weights list
@@ -212,7 +212,7 @@ contains
  
     subroutine init_excit_mol_power_pitzer_orderN(sys, ref, pp)
 
-        ! Generate excitation tables for all spinorbitals for the gen_excit_mol_power_pitzer
+        ! Generate excitation tables for all spinorbitals for the gen_excit_mol_power_pitzer_orderN
         ! excitation generator.
 
         ! In:
@@ -240,24 +240,31 @@ contains
         integer :: i_tmp, j_tmp, a_tmp, b_tmp, nall
         real(p) :: i_weight, ij_weight
         
-        ! Temp storage
+        ! Store weights and alias tables.
+        ! pp%ppn_i_d%weights(:) selects i from orbitals occupied in the reference in a double excitation.
         allocate(pp%ppn_i_d%aliasU(sys%nel))
         allocate(pp%ppn_i_d%aliasK(sys%nel))
         allocate(pp%ppn_i_d%weights(sys%nel))
         ! allocate(pp%ppn_i_d%weights_tot)
+        ! pp%ppn_i_s%weights(:) selects i from orbitals occupied in the reference in a single excitation.
         allocate(pp%ppn_i_s%aliasU(sys%nel))
         allocate(pp%ppn_i_s%aliasK(sys%nel))
         allocate(pp%ppn_i_s%weights(sys%nel))
-        ! allocate(pp%ppn_i_s%weights_tot)
+        ! allocate(pp%ppn_i_s%weights_tot) 
+        ! pp%ppn_ij_d%weights(:,i) selects j from orbitals occupied in the reference in a double excitation.
         allocate(pp%ppn_ij_d%aliasU(sys%nel,sys%basis%nbasis))
         allocate(pp%ppn_ij_d%aliasK(sys%nel,sys%basis%nbasis))
         allocate(pp%ppn_ij_d%weights(sys%nel,sys%basis%nbasis))
         allocate(pp%ppn_ij_d%weights_tot(sys%basis%nbasis))
-        allocate(pp%ppn_ia_d%weights_tot(sys%basis%nbasis)) 
+        ! pp%ppn_ia_d%weights(:,i) select a from all orbitals in a double excitation.
+        ! Note that the alias table values for this are allocated further below.
+        allocate(pp%ppn_ia_d%weights_tot(sys%basis%nbasis))
+        ! pp%ppn_ia_s%weights(:,i) selects a from all orbitals in a single excitation.
         allocate(pp%ppn_ia_s%weights_tot(sys%basis%nbasis))
         allocate(pp%ppn_ia_s%aliasU(maxval(sys%read_in%pg_sym%nbasis_sym_spin),sys%basis%nbasis))
         allocate(pp%ppn_ia_s%aliasK(maxval(sys%read_in%pg_sym%nbasis_sym_spin),sys%basis%nbasis))
         allocate(pp%ppn_ia_s%weights(maxval(sys%read_in%pg_sym%nbasis_sym_spin),sys%basis%nbasis))
+        ! pp%ppn_jb_d%weights(:,symb,j) selects b from orbitals with j's spin and symmetry symb in a double excitation.
         allocate(pp%ppn_jb_d%aliasU(maxval(sys%read_in%pg_sym%nbasis_sym_spin), sys%sym0_tot:sys%sym_max_tot, sys%basis%nbasis))
         allocate(pp%ppn_jb_d%aliasK(maxval(sys%read_in%pg_sym%nbasis_sym_spin), sys%sym0_tot:sys%sym_max_tot, sys%basis%nbasis))
         allocate(pp%ppn_jb_d%weights(maxval(sys%read_in%pg_sym%nbasis_sym_spin), sys%sym0_tot:sys%sym_max_tot, sys%basis%nbasis))
@@ -311,14 +318,22 @@ contains
             end do
             if (i_weight < depsilon) then
                 ! because we map i later, even if i->a is not allowed/ has been wrongly assigned a zero weight,
-                ! it needs a weight
-                ! [todo] - a bit arbitrary. maybe make bigger?
-                i_weight = 0.00001_p/real(sys%nel)
+                ! it needs a weight. It will be assigned a minimum weight by the routine check_in_weight_ratio
+                ! called after this loop. The finite weight here should be very small (and will be raised in
+                ! the min. weight function) but still detectable (> depsilon).
+                ! [todo] - factor in front of depsilon is a bit arbitary. 10depsilon is assumed to be less than
+                ! [todo] - the min. weight.
+                i_weight = 10.0_p*depsilon
             end if
             pp%ppn_i_s%weights(i) = i_weight
             pp%ppn_i_s%weights_tot = pp%ppn_i_s%weights_tot + i_weight
         end do
+        ! The i that we find with i_weight is i_ref which is mapped to i_cdet later. If i_weight is very close to 0
+        ! (i.e. if there is not a with a valid excitaiton i->a), we need to make that weight finite as the mapped
+        ! i_cdet might have allowed exciations. This is to prevent a bias where a valid i cannot be selected.
+        call check_min_weight_ratio(pp%ppn_i_s%weights(:), pp%ppn_i_s%weights_tot, sys%nel, pp%power_pitzer_min_weight)
         
+        ! Generate alias tables.
         call generate_alias_tables(sys%nel, pp%ppn_i_s%weights(:), pp%ppn_i_s%weights_tot, pp%ppn_i_s%aliasU(:), &
                                 pp%ppn_i_s%aliasK(:))
 
@@ -334,16 +349,22 @@ contains
                     pp%ppn_ia_s%weights(a, i) = single_excitation_weight_ptr(sys, ref, i, &
                         sys%read_in%pg_sym%sym_spin_basis_fns(a,imsa,isyma))
                     if (pp%ppn_ia_s%weights(a, i) < depsilon) then
-! [review] - AJWT: This hard-coded 0.01 is a bit arbitrary.
-                        ! i-> a spin and symmetry allowed but weight assigned zero. fix this.
-                        ! [todo] - really?
-                        ! [todo] - need to cast with precision p?
-                        ! [todo] - is this the best weight? a bit arbitrary.
-                        pp%ppn_ia_s%weights(a, i) = 0.01_p/real(sys%read_in%pg_sym%nbasis_sym_spin(imsa,isyma))
+                        ! i-> a spin and symmetry allowed but weight assigned zero by our assumptions made when calculating
+                        ! the weight. fix this by giving it a very small, but finite weight. The check_min_weight_ratio
+                        ! routine called after this loop will convert nonzero finite weights that are less than the minimum
+                        ! weight to a minimum weight. The min. weight depends on the other weights in the array, which is why
+                        ! we cannot just set it here. It is important that this weight is non zero, otherwise it will not
+                        ! be touched. We want i->a which is not symmetry and spin allowed to have a zero weight.
+                        ! [todo] - factor in front of depsilon is a bit arbitary. 10depsilon is assumed to be less than
+                        ! [todo] - the min. weight.
+                        pp%ppn_ia_s%weights(a, i) = 10.0_p*depsilon
                     end if
                 end if
                 pp%ppn_ia_s%weights_tot(i) = pp%ppn_ia_s%weights_tot(i) + pp%ppn_ia_s%weights(a, i)
             end do
+            ! Make sure that very small non zero weights get raised to the minimum weight.
+            call check_min_weight_ratio(pp%ppn_ia_s%weights(:,i), pp%ppn_ia_s%weights_tot(i), sys%basis%nbasis, &
+                                    pp%power_pitzer_min_weight)
             call generate_alias_tables(sys%read_in%pg_sym%nbasis_sym_spin(imsa,isyma), pp%ppn_ia_s%weights(:,i), &
                                     pp%ppn_ia_s%weights_tot(i), pp%ppn_ia_s%aliasU(:,i), pp%ppn_ia_s%aliasK(:,i))
         end do
@@ -402,14 +423,23 @@ contains
                 end if
             end do
             if (i_weight < depsilon) then
-                ! [todo] - think of better min weight (needed because after mapping i might be a valid orbital to use)
-! [review] - AJWT: Need at least some reasoning behind this.
-                i_weight = 0.00001_p/real(sys%nel)
+                ! because we map i later, even if i->a is not allowed/ has been wrongly assigned a zero weight,
+                ! it needs a weight. It will be assigned a minimum weight by the routine check_in_weight_ratio
+                ! called after this loop. The finite weight here should be very small (and will be raised in
+                ! the min. weight function) but still detectable (> depsilon).
+                ! [todo] - factor in front of depsilon is a bit arbitary. 10depsilon is assumed to be less than
+                ! [todo] - the min. weight.
+                i_weight = 10.0_p*depsilon
             end if
             pp%ppn_i_d%weights(i) = i_weight
             pp%ppn_i_d%weights_tot = pp%ppn_i_d%weights_tot + i_weight
         end do
 
+        ! The i that we find with i_weight is i_ref which is mapped to i_cdet later. If i_weight is very close to 0,
+        ! we need to make that weight finite as the mapped i_cdet might have allowed excitations. This is to prevent
+        ! a bias where a valid i cannot be selected.
+        call check_min_weight_ratio(pp%ppn_i_d%weights(:), pp%ppn_i_d%weights_tot, sys%nel, pp%power_pitzer_min_weight)
+        ! Generate alias tables for i.
         call generate_alias_tables(sys%nel, pp%ppn_i_d%weights(:), pp%ppn_i_d%weights_tot, pp%ppn_i_d%aliasU(:), &
                                 pp%ppn_i_d%aliasK(:))
 
@@ -454,19 +484,27 @@ contains
                             end do
                         end if
                     end do
-                    if (ij_weight < depsilon) then
-! [review] - AJWT: rationale behind this.
-                        ! [todo] - think of better min weight (needed because after mapping i might be a valid orbital to use)
-                        ij_weight = 0.00001_p/real(sys%nel)
-                    end if
-                else
-                    ! i == pp%occ_list(j) which means i_cdet == j_ref here but that does not mean that i_cdet == j_cdet.
-                    ! Assign a uniform weight.
-                    ij_weight = 1.0_p/sys%nel
+                end if
+                if (ij_weight < depsilon) then
+                    ! because we map i later, even if ij->ab is never allowed for any ab/ has been wrongly assigned
+                    ! a zero weight, it needs a weight. It will be assigned a minimum weight by the routine
+                    ! check_in_weight_ratio called after this loop. The finite weight here should be very small
+                    ! (and will be raised in the min. weight function) but still detectable (> depsilon).
+                    ! if i==j and that is why ij_weight is zero, set it to a nonzero finite weight since i=i_cdet but
+                    ! j=j_ref here and in general i_cdet/=j_cdet if i==j.
+                    ! [todo] - factor in front of depsilon is a bit arbitary. 10depsilon is assumed to be less than
+                    ! [todo] - the min. weight.
+                    ij_weight = 10.0_p*depsilon
                 end if
                 pp%ppn_ij_d%weights(j,i) = ij_weight
                 pp%ppn_ij_d%weights_tot(i) = pp%ppn_ij_d%weights_tot(i) + ij_weight
             end do
+            ! The j that we find with ij_weight is j_ref which is mapped to j_cdet later. If ij_weight is very close to 0,
+            ! we need to make that weight finite as the mapped j_cdet might have allowed excitations. This is to prevent
+            ! a bias where a valid j cannot be selected.
+            call check_min_weight_ratio(pp%ppn_ij_d%weights(:,i), pp%ppn_ij_d%weights_tot(i), sys%nel, &
+                                    pp%power_pitzer_min_weight)
+            ! Generate alias tables.
             call generate_alias_tables(sys%nel, pp%ppn_ij_d%weights(:,i), pp%ppn_ij_d%weights_tot(i), pp%ppn_ij_d%aliasU(:,i), &
                                     pp%ppn_ij_d%aliasK(:,i))
         end do
@@ -815,8 +853,43 @@ contains
         ! <ij|ab> <= Sqrt(<ia|ai><jb|bj>), see J.D. Power, R.M. Pitzer, Chem. Phys. Lett.,
         ! 478-483 (1974).
 
-! [review] - AJWT: Meaning...
-        ! [todo] - more
+        ! A short overview over the method:
+        ! ---------------------------------
+        ! We have a reference and a simulation frame of reference. In the reference frame, the
+        ! reference determinant is occupied and in the simulation frame, cdet is occupied (which
+        ! is actually correct). i_ref is i in the reference frame which can be mapped to i_cdet in
+        ! simulation frame.
+        ! 1. Decide whether to do a single or a double excitation using p_single.
+
+        ! Single excitation:
+        ! 2. Select i_ref from the set of occupied orbitals in the reference using pre-computed
+        !    alias tables pp%ppn_i_s%alias{K,U}(:).
+        ! 3. Map i_ref to i_cdet. This is a one-to-one mapping. All spinorbitals that are occupied
+        !    in one of the two frames but not the other are separated by spin and then ordered.
+        !    If i_ref is occupied in both frames, i_ref = i_cdet. If not, a spinorbital of the same
+        !    spin is found that is at the same position in the lists of differing orbitals.
+        ! 4. Find a_cdet from all orbitals of required spin and symmetry using pre-calculated alias
+        !    information pp%ppn_ia_s%alias{K,U}(:, i_cdet).
+        ! 5. Calculate pgen.
+
+        ! Double excitation:
+        ! 2. Select i_ref from occupied orbitals in the reference using pre-calculated alias tables
+        !    pp%ppn_i_d%alias{K,U}.
+        ! 3. Map i_ref to i_cdet. This is a one-to-one mapping. All spinorbitals that are occupied
+        !    in one of the two frames but not the other are separated by spin and then ordered.
+        !    If i_ref is occupied in both frames, i_ref = i_cdet. If not, a spinorbital of the same
+        !    spin is found that is at the same position in the lists of differing orbitals.
+        ! 4. Find j_ref from occupied orbitals in the reference using pre-calculated alias tables
+        !    pp%ppn_ij_d%alias{K,U}(:,i_cdet).
+        ! 5. Map j_ref to j_cdet.
+        ! 6. Select a_cdet from all orbitals of the same spin as i using pre-calculated alias tables
+        !    pp%ppn_ia_d%alias{K,U}(:,i_cdet). If a_cdet is occupied, excitation is forbidden.
+        ! 7. Select b_cdet from all orbitals of required spin and symmetry isymb using pre-calculated
+        !    alias tables pp%ppn_jb_d%alias{K,U}(:, isymb, j_cdet). If b is occupied, excitation is
+        !    forbidden.
+        ! 8. Calculate pgen, considering that if ij are of the same spin. b could have been selected
+        !    from alias tables pp%ppn_ia_d%alias{K,U}(:,i_cdet) and a from
+        !    pp%ppn_jb_d%alias{K,U}(:, isymb', j_cdet).
 
         ! In:
         !    sys: system object being studied.
@@ -883,12 +956,12 @@ contains
         if (get_rand_close_open(rng) < excit_gen_data%pattempt_single) then  
             ! We have a single
             associate( pp => excit_gen_data%excit_gen_pp )
-                ! 2b. Select orbitals to excite from
+                ! 2. Select i_ref.
                 
                 i_ind_ref = select_weighted_value_precalc(rng, sys%nel, pp%ppn_i_s%aliasU(:), pp%ppn_i_s%aliasK(:))
                 i_ref = pp%occ_list(i_ind_ref)
                 
-                ! Now map i_ref to i_cdet.
+                ! 3. Now map i_ref to i_cdet.
                 call get_excitation_locations(pp%occ_list, cdet%occ_list, ref_store, cdet_store, sys%nel, nex)
                 ! These orbitals might not be aligned in the most efficient way:
                 !  They may not match in spin, so first deal with this
@@ -925,6 +998,7 @@ contains
                     end if
                 end do
     
+                ! 4. Select a_cdet.
                 ! Convert ims which is in {-1, +1} notation to imsa which is {1, 2}.
                 imsa = (3 + sys%basis%basis_fns(i_cdet)%ms)/2
                 isyma = sys%read_in%cross_product_sym_ptr(sys%read_in, sys%basis%basis_fns(i_cdet)%sym, &
@@ -943,6 +1017,7 @@ contains
                 end if
 
                 if (allowed_excitation) then
+                    ! 5. Calculate pgen.
                     pgen = (pp%ppn_i_s%weights(i_ind_ref)/pp%ppn_i_s%weights_tot) * &
                             (pp%ppn_ia_s%weights(a_ind_cdet, i_cdet)/pp%ppn_ia_s%weights_tot(i_cdet))
                     pgen = excit_gen_data%pattempt_single * pgen ! pgen(ab)
@@ -967,12 +1042,12 @@ contains
         else
             ! We have a double
             associate( pp => excit_gen_data%excit_gen_pp )
-                ! 2b. Select orbitals to excite from
+                ! 2. Select i_ref.
                 
                 i_ind_ref = select_weighted_value_precalc(rng, sys%nel, pp%ppn_i_d%aliasU(:), pp%ppn_i_d%aliasK(:))
                 i_ref = pp%occ_list(i_ind_ref)
                 
-                ! Now map i_ref to i_cdet.
+                ! 3. Now map i_ref to i_cdet.
                 call get_excitation_locations(pp%occ_list, cdet%occ_list, ref_store, cdet_store, sys%nel, nex)
                 ! These orbitals might not be aligned in the most efficient way:
                 !  They may not match in spin, so first deal with this
@@ -1009,11 +1084,13 @@ contains
                     end if
                 end do
                 
+                ! 4. Find j_ref.
                 ! j is chosen from set of occupied spinorbitals in reference but with weights calculated for i_cdet.
                 j_ind_ref = select_weighted_value_precalc(rng, sys%nel, pp%ppn_ij_d%aliasU(:,i_cdet), &
                                                     pp%ppn_ij_d%aliasK(:,i_cdet))
                 j_ref = pp%occ_list(j_ind_ref)
 
+                ! 5. Map j_ref to j_cdet.
                 j_cdet = j_ref
                 do ii=1, nex
                     if (ref_store(ii) == j_ind_ref) then  ! j_ref isn't actually in cdet, so we assign j_cdet to the orb that is
@@ -1044,6 +1121,7 @@ contains
                     ! We actually choose a|i then b|j, but since we could have also generated the excitation b from i and a from
                     ! j, we need to include that too if they have the same spin.
 
+                    ! 6. Find a_cdet.
                     ! Given i_cdet, use the alias method to select a_cdet with appropriate probability from the set of orbitals
                     ! of the same spin as i_cdet.
                     if (sys%basis%basis_fns(i_cdet)%Ms < 0) then
@@ -1061,6 +1139,7 @@ contains
                     end if
                 end if
                 if (allowed_excitation) then
+                    ! 7. Select b_cdet.
                     ! To conserve total spin, b and j will have the same spin, as a and i have the same spin.
 
                     ! The symmetry of b (=b_cdet), isymb, is given by
@@ -1094,7 +1173,7 @@ contains
                     if ((a_cdet /= b_cdet) .and. .not. btest(cdet%f(sys%basis%bit_lookup(2,b_cdet)), &
                         sys%basis%bit_lookup(1,b_cdet))) then
                         
-                        ! 3b. Probability of generating this excitation.
+                        ! 8. Probability of generating this excitation.
 
                         ! Calculate p(ab|ij) = p(a|i) p(j|b) + p(b|i)p(a|j)
                         if (ij_spin == 0) then
@@ -1170,6 +1249,8 @@ contains
         ! <ij|ab> <= Sqrt(<ia|ai><jb|bj>), see J.D. Power, R.M. Pitzer, Chem. Phys. Lett.,
         ! 478-483 (1974).
         ! This requires a lookup of O(M) two-electron integrals in its setup.
+        ! This calculates weights on-the-fly. Single excitations are currently treated uniformly and ij are also
+        ! selected uniformly currently.
 
         ! In:
         !    sys: system object being studied.
@@ -1226,7 +1307,7 @@ contains
         else
             ! We have a double
 
-            ! 2b. Select orbitals to excite from
+            ! 2. Select orbitals to excite from
             
             call choose_ij_mol(rng, sys, cdet%occ_list, i_ind, j_ind, i, j, ij_sym, ij_spin, pgen_ij)
 
@@ -1238,6 +1319,7 @@ contains
             ! We actually choose a|i then b|j, but since we could have also generated the excitation b from i and a from j,
             ! we need to include that prob too.
 
+            ! 3. Find a.
             ! Given i, construct the weights of all possible a
             if (sys%basis%basis_fns(i)%Ms < 0) then
                 ! [todo] - Consider doing a binary/linear search instead of using the alias method.
@@ -1305,13 +1387,13 @@ contains
             ! virtual orbitals there.
 
             if (a_found .and. (jb_weights_tot > 0.0_p)) then
-                ! Use the alias method to select b with the appropriate probability
+                ! 4. Use the alias method to select b with the appropriate probability
                 b_ind = select_weighted_value(rng, sys%read_in%pg_sym%nbasis_sym_spin(imsb,isymb), jb_weights, jb_weights_tot)
                 b = sys%read_in%pg_sym%sym_spin_basis_fns(b_ind,imsb,isymb)
 
                 if (.not.btest(cdet%f(sys%basis%bit_lookup(2,b)), sys%basis%bit_lookup(1,b))) then
          
-                    ! 3b. Probability of generating this excitation.
+                    ! 5. Probability of generating this excitation.
 
                     ! Calculate p(ab|ij) = p(a|i) p(j|b) + p(b|i)p(a|j)
                     if (ij_spin==0) then
@@ -1370,11 +1452,11 @@ contains
            
             if (allowed_excitation) then
 
-                ! 4b. Parity of permutation required to line up determinants.
+                ! Parity of permutation required to line up determinants.
                 ! NOTE: connection%from_orb and connection%to_orb *must* be ordered.
                 call find_excitation_permutation2(sys%basis%excit_mask, cdet%f, connection)
 
-                ! 5b. Find the connecting matrix element.
+                ! Find the connecting matrix element.
                 hmatel = slater_condon2_excit_ptr(sys, connection%from_orb(1), connection%from_orb(2), &
                                             connection%to_orb(1), connection%to_orb(2), connection%perm)
             else
