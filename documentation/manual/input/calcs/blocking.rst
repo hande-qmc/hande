@@ -95,6 +95,11 @@ blocking analysis on the fly.
         calculation in the qmc table the final value from the restarted calculation will be used. If we read in from a
         legacy restart file and no shift_damping is provided in the qmc table, the shift_damping defaults to the
         original default, 0.05.
+    .. node::
+        Once an optimisation has been completed the calculation will not modify the shift damping unless
+        force_shift_damping_opt is true. This is to avoid the user having to know if an optimisation has been completed
+        when configuring a calculation restart.
+
 
 ``shift_damping_precision``
     type: real.
@@ -106,3 +111,11 @@ blocking analysis on the fly.
     will be attempted. A lower value will lead to a longer optimisation period before statistics can be
     collected but a more reliably optimised value. The minimum allowed ratio is 1.5_p, as convergence to below
     this accuracy is not guaranteed.
+
+``force_shift_damping_opt``
+    type: boolean.
+
+    Optional. Default: false
+
+    Forces shift damping optimisation when we have previously performed an optimisation. Useful when restarting
+    from previous calculation with a higher target population.
