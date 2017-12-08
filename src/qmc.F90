@@ -168,6 +168,10 @@ contains
         ! read in from a restart file.
         if (qmc_in%shift_damping < huge(1.0_p)) then
             ! If we've passed in a specific value to qmc_in use that.
+            ! [review] - VAN: if the user restarts saying auto_shift_damping = true but also
+            ! [review] - VAN: specifies a qmc_in%shift_damping value, there might be no
+            ! [review] - VAN: optimisation performed and auto_shift_damping = true is
+            ! [review] - VAN: is meaningless. Maybe print a warning in check_input?
             qmc_state%shift_damping = qmc_in%shift_damping
         end if
 
