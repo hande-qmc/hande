@@ -68,7 +68,8 @@ contains
         ! Set status of shift damping to initialise automatic search for shift damping
         ! If we have previously optimised shift damping shift_damping_status will equal
         ! sd_optimised so not be updated.
-        if (blocking_in%auto_shift_damping .and. shift_damping_status == sd_no_optimisation) then
+        if ((blocking_in%auto_shift_damping .and. shift_damping_status == sd_no_optimisation) .or. &
+                (blocking_in%force_shift_damping_opt)) then
             shift_damping_status = sd_wait1
         end if
         bl%shift_damping_precision = blocking_in%shift_damping_precision

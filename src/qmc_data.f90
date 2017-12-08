@@ -338,6 +338,9 @@ type blocking_in_t
     logical :: auto_shift_damping = .false.
     ! Ratio that defines strictness of automatic shift damping optimisation.
     real(p) :: shift_damping_precision = 2.0_p
+    ! Force shift damping optmisation when we've already performed one. For
+    ! use when restarting from previously optimised calculation.
+    logical :: force_shift_damping_opt = .false.
 end type
 
 ! --- Parallel info ---
@@ -1058,7 +1061,10 @@ contains
         call json_write_key(js, 'error_limit', blocking%error_limit)
         call json_write_key(js, 'blocks_used', blocking%blocks_used)
         call json_write_key(js, 'min_blocks_used', blocking%min_blocks_used)
-        call json_write_key(js, 'auto_shift_damping', blocking%auto_shift_damping, .true.)
+        call json_write_key(js, 'auto_shift_damping', blocking%auto_shift_damping)
+        call json_write_key(js, 'auto_shift_damping', blocking%auto_shift_damping)
+        call json_write_key(js, 'shift_damping_precision', blocking%shift_damping_precision)
+        call json_write_key(js, 'force_shift_damping_opt', blocking%force_shift_damping_opt, .true.)
         call json_object_end(js, terminal)
 
     end subroutine blocking_in_t_json

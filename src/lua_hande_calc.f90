@@ -1788,7 +1788,8 @@ contains
         !    blocks_used = blocks_used,
         !    min_blocks_used = min_blocks_used,
         !    auto_shift_damping = true/false,
-        !    shift_damping_precision = ratio
+        !    shift_damping_precision = ratio,
+        !    force_shift_damping_opt = true/false,
         ! }
 
         ! If start_save_frequency, start_point_number, error_limit, min ratio and start_point
@@ -1842,6 +1843,8 @@ contains
             call aot_get_val(blocking_in%auto_shift_damping, err, lua_state, blocking_table, 'auto_shift_damping')
 
             call aot_get_val(blocking_in%shift_damping_precision, err, lua_state, blocking_table, 'shift_damping_precision')
+
+            call aot_get_val(blocking_in%force_shift_damping_opt, err, lua_state, blocking_table, 'force_shift_damping_opt')
 
             call warn_unused_args(lua_state, keys, blocking_table)
 
