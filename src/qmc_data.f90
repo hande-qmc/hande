@@ -306,12 +306,13 @@ type blocking_in_t
     logical :: blocking_on_the_fly = .false.
     ! log2 of the frequency at which the start point is saved. If
     ! negative, the default value is used. Default is the nearest integer to the
-    ! log2(nreports) - 8.
-    ! [review] - VAN: Is the last sentence above correct?
+    ! log2(nreports) - 8, assuming this is greater than 1, or otherwise no start
+    ! points being saved.
     integer :: start_save_frequency = -1
     ! Number of start points that is to be saved. If negative, the default value
     ! is used. The default is the integer part of nreports/2^(start_save_frequency).
-    ! [review] - VAN: Is the last sentence above (still) correct?
+    ! If this becomes greater than 1, we will instead save no start points (same
+    ! edge case as 0 < start_save_freq < 1.
     integer :: start_point_number = -1
     ! Name blocking on the fly output file.
     character(255) :: filename = 'BLOCKING'

@@ -172,6 +172,10 @@ contains
             ! [review] - VAN: specifies a qmc_in%shift_damping value, there might be no
             ! [review] - VAN: optimisation performed and auto_shift_damping = true is
             ! [review] - VAN: is meaningless. Maybe print a warning in check_input?
+            ! [reply] - CJCS: This isn't true. If the user specifies shift damping optimisation
+            ! [reply] - CJCS: the optimisation flag is set provided no optimisation has been
+            ! [reply] - CJCS: performed in a previous restart. Optimisation is performed
+            ! [reply] - CJCS: independent of setting the shift to a given starting value.
             qmc_state%shift_damping = qmc_in%shift_damping
         end if
 
