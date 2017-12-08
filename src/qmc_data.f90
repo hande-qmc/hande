@@ -1062,7 +1062,6 @@ contains
         call json_write_key(js, 'blocks_used', blocking%blocks_used)
         call json_write_key(js, 'min_blocks_used', blocking%min_blocks_used)
         call json_write_key(js, 'auto_shift_damping', blocking%auto_shift_damping)
-        call json_write_key(js, 'auto_shift_damping', blocking%auto_shift_damping)
         call json_write_key(js, 'shift_damping_precision', blocking%shift_damping_precision)
         call json_write_key(js, 'force_shift_damping_opt', blocking%force_shift_damping_opt, .true.)
         call json_object_end(js, terminal)
