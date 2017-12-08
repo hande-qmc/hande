@@ -2030,29 +2030,114 @@ contains
         end if
     end subroutine update_p_single_double_data
 
-    subroutine update_pattempt_single(qs)
+    subroutine update_pattempt(excit_gen_data)
+        
+        ! First accumulate data from all MPI procs onto dummy variables if necessary, then update pattempt_single
+        ! and pattempt_double.
+
+        ! In/Out:
+        !   excit_gen_data: Object containing pattempt_{single,double} and information for updating them.
+        
+        use excit_gens, only: excit_gen_data_t
+
+        type(excit_gen_data_t), intent(inout) :: excit_gen_data
+
+#ifdef PARALLEL
+        real(p) :: excit_gen_singles_sum, excit_gen_doubles_sum, h_pgen_singles_sum_sum, h_pgen_doubles_sum_sum
+                
+        associate(ps=>excit_gen_data%p_single_double)
+            call communicate_pattempt_single_data(ps, excit_gen_singles_sum, excit_gen_doubles_sum, &
+                                h_pgen_singles_sum_sum, h_pgen_doubles_sum_sum)
+            call update_pattempt_single(ps%every_attempts, ps%every_min_attempts, excit_gen_singles_sum, excit_gen_doubles_sum, &
+                h_pgen_singles_sum_sum, h_pgen_doubles_sum_sum, ps%counter, excit_gen_data%pattempt_single, &
+                excit_gen_data%pattempt_double)
+        end associate
+#else
+        associate(ps=>excit_gen_data%p_single_double)
+            call update_pattempt_single(ps%every_attempts, ps%every_min_attempts, ps%excit_gen_singles, ps%excit_gen_doubles, &
+                ps%h_pgen_singles_sum, ps%h_pgen_doubles_sum, ps%counter, excit_gen_data%pattempt_single, &
+                excit_gen_data%pattempt_double)
+        end associate 
+#endif
+
+    end subroutine update_pattempt
+
+    subroutine communicate_pattempt_single_data(ps, excit_gen_singles_sum, excit_gen_doubles_sum, h_pgen_singles_sum_sum, &
+                                            h_pgen_doubles_sum_sum)
+
+        ! Data from all MPI procs is accumulated.
+        ! WARNING: only call in parallel mode.
+
+        ! In:
+        !   qs: qmc state.
+        ! Out:
+        !   excit_gen_singles_sum: Sum of number of single excitations during calculation
+        !   excit_gen_doubles_sum: Sum of number of double excitations during calculation
+        !   h_pgen_singles_sum_sum: Sum of hmatel/pgen (excluding pattempt_single) for single excitations.
+        !   h_pgen_doubles_sum_sum: Sum of hmatel/pgen (excluding pattempt_single) for double excitations.
+
+        use parallel
+        use excit_gens, only: p_single_double_t
+        use qmc_data, only: qmc_state_t
+
+        type(p_single_double_t), intent(in) :: ps
+        real(p), intent(out) :: excit_gen_singles_sum, excit_gen_doubles_sum, h_pgen_singles_sum_sum, h_pgen_doubles_sum_sum
+        integer :: ierr
+
+        ! [todo] - Do they need initialising?
+        excit_gen_singles_sum = 0.0_p
+        excit_gen_doubles_sum = 0.0_p
+        h_pgen_singles_sum_sum = 0.0_p
+        h_pgen_doubles_sum_sum = 0.0_p
+
+        ! [todo] - is MPI communication best here or together with energy estimators? Do we need to disable non blocking comm?
+        call mpi_allreduce(ps%excit_gen_singles, excit_gen_singles_sum, 1, mpi_preal, MPI_SUM, MPI_COMM_WORLD, ierr)
+        call mpi_allreduce(ps%excit_gen_doubles, excit_gen_doubles_sum, 1, mpi_preal, MPI_SUM, MPI_COMM_WORLD, ierr)
+        call mpi_allreduce(ps%h_pgen_singles_sum, h_pgen_singles_sum_sum, 1, mpi_preal, MPI_SUM, MPI_COMM_WORLD, ierr)
+        call mpi_allreduce(ps%h_pgen_doubles_sum, h_pgen_doubles_sum_sum, 1, mpi_preal, MPI_SUM, MPI_COMM_WORLD, ierr)
+        ! ps%counter does not need to be communicated as it increments a change done below (same calculation done on all
+        ! processes.
+    end subroutine communicate_pattempt_single_data
+
+    subroutine update_pattempt_single(every_attempts, every_min_attempts, excit_gen_singles_sum, excit_gen_doubles_sum, &
+            h_pgen_singles_sum_sum, h_pgen_doubles_sum_sum, counter, pattempt_single, pattempt_double)
 
         ! Update pattempt single using the sums of pattempt_single%hmatel/spawn_pgen for and the numbers
         ! of single and double excitations. The aim is align the means of hmatel/spawn_pgen of single
         ! and double excitations.
 
+        ! In:
+        !   every_attempts: minimum number of valid excitations before next update
+        !   every_min_attempts: minimum number of valid excitations of either single or double before next update.
+        !   excit_gen_singles_sum: Sum of number of single excitations during calculation
+        !   excit_gen_doubles_sum: Sum of number of double excitations during calculation
+        !   h_pgen_singles_sum_sum: Sum of hmatel/pgen (excluding pattempt_single) for single excitations.
+        !   h_pgen_doubles_sum_sum: Sum of hmatel/pgen (excluding pattempt_single) for double excitations.
         ! In/Out:
-        !   qs: qmc state.
+        !   counter: number of times pattempt_single was updated.
+        ! Out:
+        !   pattempt_single: probability of a single excitation
+        !   pattempt_double: probability of a double excitation
 
-        use qmc_data, only: qmc_state_t
+        use parallel, only: parent
 
-        type(qmc_state_t), intent(inout) :: qs
+        real(p), intent(in) :: every_attempts, every_min_attempts, excit_gen_singles_sum, excit_gen_doubles_sum
+        real(p), intent(in) :: h_pgen_singles_sum_sum, h_pgen_doubles_sum_sum
+        real(p), intent(inout) :: counter
+        real(p), intent(out) :: pattempt_single, pattempt_double
+        integer :: iunit
 
-        associate(ps=>qs%excit_gen_data%p_single_double)
-            if (((ps%excit_gen_singles + ps%excit_gen_doubles) > (ps%counter*ps%every_attempts)) .and. &
-                (ps%excit_gen_singles > (ps%counter*ps%every_min_attempts)) .and. &
-                (ps%excit_gen_doubles > (ps%counter*ps%every_min_attempts))) then
-                ps%counter = ps%counter + 1.0_p
-                qs%excit_gen_data%pattempt_single = (ps%h_pgen_singles_sum/ps%excit_gen_singles) / &
-                    ((ps%h_pgen_doubles_sum/ps%excit_gen_doubles) + (ps%h_pgen_singles_sum/ps%excit_gen_singles))
-                qs%excit_gen_data%pattempt_double = 1.0_p - qs%excit_gen_data%pattempt_single
-            end if
-        end associate
+        iunit = 6
+ 
+        if (((excit_gen_singles_sum + excit_gen_doubles_sum) > (counter*every_attempts)) .and. &
+            (excit_gen_singles_sum > (counter*every_min_attempts)) .and. &
+            (excit_gen_doubles_sum > (counter*every_min_attempts))) then
+            counter = counter + 1.0_p
+            pattempt_single = (h_pgen_singles_sum_sum/excit_gen_singles_sum) / &
+                    ((h_pgen_doubles_sum_sum/excit_gen_doubles_sum) + (h_pgen_singles_sum_sum/excit_gen_singles_sum))
+            pattempt_double = 1.0_p - pattempt_single
+            if (parent) write(iunit, '(1X, "# pattempt_single changed to be: ",f8.6)') pattempt_single
+        end if
     end subroutine update_pattempt_single
 
 end module spawning

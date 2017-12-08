@@ -311,7 +311,7 @@ contains
         use qmc_common, only: initial_qmc_status, initial_cc_projected_energy, load_balancing_report, init_report_loop, &
                               init_mc_cycle, end_report_loop, end_mc_cycle, redistribute_particles, rescale_tau
         use proc_pointers
-        use spawning, only: assign_particle_processor, update_pattempt_single
+        use spawning, only: assign_particle_processor
         use system, only: sys_t, sys_t_json
         use spawn_data, only: calc_events_spawn_t, write_memcheck_report
         use replica_rdm, only: update_rdm, calc_rdm_energy, write_final_rdm
@@ -803,10 +803,6 @@ contains
                                                         selection_data%nsingle_excitors)
                 call end_mc_cycle(nspawn_events, ndeath_nc, qs%psip_list%pop_real_factor, nattempts_spawn, qs%spawn_store%rspawn)
             end do
-
-            if (qs%excit_gen_data%p_single_double%vary_psingles) then 
-                call update_pattempt_single(qs)
-            end if
 
             update_tau = bloom_stats%nblooms_curr > 0
 

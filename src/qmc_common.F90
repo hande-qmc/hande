@@ -1079,6 +1079,7 @@ contains
         use system, only: sys_t
         use bloom_handler, only: bloom_stats_t, bloom_stats_warning
         use qmc_data, only: qmc_in_t, load_bal_in_t, qmc_state_t, nb_rep_t
+        use spawning, only: update_pattempt
 
         integer, intent(in) :: out_unit
         type(qmc_in_t), intent(in) :: qmc_in
@@ -1117,22 +1118,6 @@ contains
 
         ! Are all the shifts currently varying?
         vary_shift_before = all(qs%vary_shift)
-
-        if ((qs%excit_gen_data%p_single_double%vary_psingles == .true.) .and. (vary_shift_before == .true.)) then
-            ! Stop varying pattempt_single when the shift has started varying.
-            ! The MPI processes communicate to decide on a common, average pattempt_single now.
-            ! [todo] - is it best to only communicate now? (probably fine)
-            qs%excit_gen_data%p_single_double%vary_psingles = .false.
-#ifdef PARALLEL
-            pattempt_single_sum = 0.0_p
-            call mpi_allreduce(qs%excit_gen_data%pattempt_single, pattempt_single_sum, 1, mpi_preal, MPI_SUM, MPI_COMM_WORLD, &
-                            ierr)
-            qs%excit_gen_data%pattempt_single = pattempt_single_sum/float(nprocs)
-            qs%excit_gen_data%pattempt_double = 1.0_p - qs%excit_gen_data%pattempt_single
-#endif
-            ! Write (final) pattempt_single to output file.
-            if (parent) write(iunit, '(1X, "# pattempt_single chosen to be: ",f8.6)') qs%excit_gen_data%pattempt_single
-        end if
 
         ! Test for a comms file so MPI communication can be combined with
         ! energy_estimators communication
@@ -1175,6 +1160,19 @@ contains
         if ((.not. vary_shift_before) .and. all(qs%vary_shift) .and. (semi_stoch_shift_it /= -1)) &
             semi_stoch_start_it = semi_stoch_shift_it + iteration + 1
 
+        if (qs%excit_gen_data%p_single_double%vary_psingles) then
+            if (all(qs%vary_shift)) then
+                ! Stop varying pattempt_single when the shift has started varying. This means that we do not update
+                ! pattempt_single at the end of this report loop and of any future report loops.
+                qs%excit_gen_data%p_single_double%vary_psingles = .false.
+                ! Write (final) pattempt_single to output file.
+                if (parent) write(iunit, '(1X, "# pattempt_single chosen to be: ",f8.6)') qs%excit_gen_data%pattempt_single
+            else
+                ! Possibly (if there were enough excitations) update pattempt_single.
+                call update_pattempt(qs%excit_gen_data)
+            end if
+        end if
+        
         call calc_interact(comms_found, out_unit, soft_exit, qs)
 
         if (qs%reblock_done) soft_exit = .true.

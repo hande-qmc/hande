@@ -17,6 +17,7 @@ type p_single_double_t
     real(p) :: h_pgen_doubles_sum = 0.0_p ! hamtel/pgen sum for doubles
     real(p) :: excit_gen_singles = 0.0_p ! number of valid singles excitations created
     real(p) :: excit_gen_doubles = 0.0_p ! number of valid doubles excitations created
+    ! [todo] - find a way to make these parameters inside types.
     real(p) :: every_attempts = 1000000.0_p ! update pattempt_single every every_attempts a single or double ex. happened
     real(p) :: every_min_attempts = 10.0_p ! unless there were not more than every_min_attempts of single or double ex. since
     real(p) :: counter = 1.0_p

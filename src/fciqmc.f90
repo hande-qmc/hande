@@ -52,7 +52,7 @@ contains
         use importance_sampling, only: importance_sampling_weight
         use ifciqmc
         use non_blocking_comm_m, only: init_non_blocking_comm, end_non_blocking_comm
-        use spawning, only: create_spawned_particle_initiator, update_pattempt_single
+        use spawning, only: create_spawned_particle_initiator
         use qmc, only: init_qmc
         use qmc_common
         use dSFMT_interface, only: dSFMT_t, dSFMT_init, dSFMT_end
@@ -336,10 +336,6 @@ contains
 
             end do
 
-            if (qs%excit_gen_data%p_single_double%vary_psingles) then
-                call update_pattempt_single(qs)
-            end if
-            
             update_tau = bloom_stats%nblooms_curr > 0
 
             error = qs%spawn_store%spawn%error .or. qs%psip_list%error
