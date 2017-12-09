@@ -134,9 +134,9 @@ contains
         !   restarting: whether the calculation is restarting from a previous one.
         !   qmc_state_restart (optional): qmc_state object being restarted from.
 
-        use qmc_data, only: qmc_in_t, qmc_state_t
+        use qmc_data, only: qmc_in_t, qmc_state_t, excit_gen_heat_bath
         use errors, only: stop_all
-        use system, only: sys_t
+        use system, only: sys_t, read_in
 
         type(qmc_in_t), intent(in) :: qmc_in
         type(sys_t), intent(in) :: sys
@@ -172,7 +172,15 @@ contains
             if (sys%basis%tot_string_len /= size(qmc_state_restart%psip_list%states,dim=1)) call stop_all(this, &
                 'Attempting to restart calculation within lua using different information string lengths.&
                 & This is only possible by producing and reading back in a restart file.')
-        end if  
+        end if
+
+        if (qmc_in%pattempt_update) then
+            if (sys%system /= read_in) then
+                call stop_all(this, 'pattempt_update only used in read_in systems.')
+            else if (qmc_in%excit_gen == excit_gen_heat_bath) then
+                call stop_all(this, 'pattempt_update is not used with heat bath excitation generator.')
+            end if
+        end if
 
     end subroutine check_qmc_opts
 

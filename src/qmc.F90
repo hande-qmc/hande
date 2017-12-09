@@ -240,8 +240,8 @@ contains
                 '(1X, "# Finishing the heat bath excitation generator initialisation, took time: ",f8.6)') set_up_time
         end if
 
-        if ((all(qmc_state%vary_shift) == .false.) .and. (qmc_in%pattempt_update == .true.) .and. &
-            (qmc_in%excit_gen/=excit_gen_heat_bath)) then
+        ! check_input makes sure the pattempt_update cannot be true if we are using the heat bath excitation generator.
+        if ((.not. all(qmc_state%vary_shift)) .and. (qmc_in%pattempt_update)) then
             ! We sample singles with probability pattempt_single. It therefore makes sense to update pattempt_single 
             ! [todo] - DMQMC
             ! for FCIQMC and CCMC on the fly (at least in the beginning of the calculation).
