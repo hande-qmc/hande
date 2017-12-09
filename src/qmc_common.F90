@@ -259,8 +259,11 @@ contains
 
     end subroutine find_single_double_prob
 
-    subroutine find_parallel_spin_prob(sys, pparallel)
+    subroutine find_parallel_spin_prob_mol(sys, pparallel)
         
+        ! WARNING:
+        ! Only call for read_in systems.
+
         ! Estimate pattempt_parallel by finding the ration of |Hij->ab|
         ! where ij are parallel to when they are not.
 
@@ -338,7 +341,7 @@ contains
 
         pparallel = parallel_weight/(parallel_weight + ortho_weight)
 
-    end subroutine find_parallel_spin_prob
+    end subroutine find_parallel_spin_prob_mol
 
     function decide_nattempts(rng, population) result(nattempts)
 

@@ -183,7 +183,7 @@ contains
         call init_excit_gen(sys, qmc_in, qmc_state%ref, qmc_state%excit_gen_data)
         call cpu_time(t2)
         set_up_time = t2 - t1
-        if (parent) write(iunit, '(1X, "# Finishing the excitation generator initialisation, took time: ",f8.6)') set_up_time
+        if (parent) write(iunit, '(1X, "# Finishing the excitation generator initialisation, time taken: ",f8.5)') set_up_time
 
         qmc_state%propagator%quasi_newton = qmc_in%quasi_newton
         qmc_state%propagator%quasi_newton_threshold = qmc_in%quasi_newton_threshold
@@ -208,7 +208,7 @@ contains
             call cpu_time(t2)
             set_up_time = t2 - t1
             if (parent) write(iunit, &
-                '(1X, "# Finishing the Power Pitzer excitation generator initialisation, took time: ",f8.6)') set_up_time
+                '(1X, "# Finishing the Power Pitzer excitation generator initialisation, time taken: ",f8.5)') set_up_time
         end if
 
         if (qmc_in%excit_gen==excit_gen_power_pitzer_orderN) then
@@ -218,7 +218,7 @@ contains
             call cpu_time(t2)
             set_up_time = t2 - t1
             if (parent) write(iunit, &
-                '(1X, "# Finishing the Power Pitzer Order N excitation generator initialisation, took time: ",f8.6)') set_up_time
+                '(1X, "# Finishing the Power Pitzer Order N excitation generator initialisation, time taken: ",f8.5)') set_up_time
         end if
 
         if (qmc_in%excit_gen==excit_gen_heat_bath) then
@@ -228,7 +228,7 @@ contains
             call cpu_time(t2)
             set_up_time = t2 - t1
             if (parent) write(iunit, &
-                '(1X, "# Finishing the heat bath excitation generator initialisation, took time: ",f8.6)') set_up_time
+                '(1X, "# Finishing the heat bath excitation generator initialisation, time taken: ",f8.5)') set_up_time
         end if
         if ((qmc_in%excit_gen==excit_gen_heat_bath_uniform) .or. (qmc_in%excit_gen==excit_gen_heat_bath_single)) then
             if (parent) write(iunit, '(1X, "# Starting the heat bath excitation generator initialisation.")')
@@ -237,7 +237,7 @@ contains
             call cpu_time(t2)
             set_up_time = t2 - t1
             if (parent) write(iunit, &
-                '(1X, "# Finishing the heat bath excitation generator initialisation, took time: ",f8.6)') set_up_time
+                '(1X, "# Finishing the heat bath excitation generator initialisation, time taken: ",f8.5)') set_up_time
         end if
 
         ! check_input makes sure the pattempt_update cannot be true if we are using the heat bath excitation generator.
@@ -876,11 +876,11 @@ contains
         !   excit_gen_data: pre-computed data for fast excitation generation.
 
         use const, only: p
-        use system, only: sys_t, ueg
-        use qmc_data, only: qmc_in_t
+        use system, only: sys_t, ueg, read_in
+        use qmc_data, only: qmc_in_t, excit_gen_renorm_spin, excit_gen_no_renorm_spin
         use excit_gens, only: excit_gen_data_t
         use ueg_system, only: init_ternary_conserve
-        use qmc_common, only: find_single_double_prob, find_parallel_spin_prob
+        use qmc_common, only: find_single_double_prob, find_parallel_spin_prob_mol
         use reference_determinant, only: reference_t
 
         type(sys_t), intent(in) :: sys
@@ -920,8 +920,9 @@ contains
 ! [reply] - VAN: If I don't store it, it will be recalculated. If the user wants to keep the old value, they can manually
 ! [reply] - VAN: specify it. If they don't want the old value but the system is new, there is no way to call the function
 ! [reply] - VAN: find_parallel_spin_prob. The only disadvantage of not storing it is timing but that might be fine (?).
-        if (qmc_in%pattempt_parallel < 0) then
-            call find_parallel_spin_prob(sys, excit_gen_data%pattempt_parallel)
+        if ((qmc_in%pattempt_parallel < 0) .and. (sys%system == read_in) .and. &
+            ((qmc_in%excit_gen == excit_gen_renorm_spin) .or. (qmc_in%excit_gen == excit_gen_no_renorm_spin))) then
+            call find_parallel_spin_prob_mol(sys, excit_gen_data%pattempt_parallel)
         end if
 
         ! UEG allowed excitations
