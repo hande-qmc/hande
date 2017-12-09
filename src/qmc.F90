@@ -916,6 +916,9 @@ contains
         ! total |Hij->ab|.
         ! [todo] - desireable to store in restart file?
 ! [review] - AJWT: This is probably worth storing in the restart file, given it's calculated here.
+! [reply] - VAN: If I don't store it, it will be recalculated. If the user wants to keep the old value, they can manually
+! [reply] - VAN: specify it. If they don't want the old value but the system is new, there is no way to call the function
+! [reply] - VAN: find_parallel_spin_prob. The only disadvantage of not storing it is timing but that might be fine (?).
         if (qmc_in%pattempt_parallel < 0) then
             call find_parallel_spin_prob(sys, excit_gen_data%pattempt_parallel)
         end if
