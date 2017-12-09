@@ -1099,7 +1099,7 @@ contains
         logical, optional, intent(in) :: doing_lb, nb_comm
         logical, optional, intent(inout) :: error
 
-        logical :: update, vary_shift_before, nb_comm_local, comms_found, comp_param
+        logical :: update, vary_shift_before, nb_comm_local, comms_found, comp_param, overflow
         real(dp) :: rep_info_copy(nprocs*qs%psip_list%nspaces+nparticles_start_ind-1)
         integer :: iunit
 
@@ -1161,12 +1161,21 @@ contains
             semi_stoch_start_it = semi_stoch_shift_it + iteration + 1
 
         if (qs%excit_gen_data%p_single_double%vary_psingles) then
-            if (all(qs%vary_shift)) then
+            ! If any ps%overflow_loc is true (i.e. at least in one MPI proc there was a lack of precision in the
+            ! number of single/double excitations), stop here and fix pattempt_single.
+            call mpi_allreduce(qs%excit_gen_data%p_single_double%overflow_loc, overflow, 1, MPI_LOGICAL, MPI_LAND, &
+                            MPI_COMM_WORLD, ierr)
+            
+            if ((all(qs%vary_shift)) .or. (overflow)) then
+                if ((overflow) .and. (parent)) then
+                    ! Make a note of the overflow.
+                    write(iunit, '(1X, "# Had to stop varying pattempt_single due to lack of precision.")')
+                end if
                 ! Stop varying pattempt_single when the shift has started varying. This means that we do not update
                 ! pattempt_single at the end of this report loop and of any future report loops.
                 qs%excit_gen_data%p_single_double%vary_psingles = .false.
                 ! Write (final) pattempt_single to output file.
-                if (parent) write(iunit, '(1X, "# pattempt_single chosen to be: ",f8.6)') qs%excit_gen_data%pattempt_single
+                if (parent) write(iunit, '(1X, "# pattempt_single chosen to be: ",f8.5)') qs%excit_gen_data%pattempt_single
             else
                 ! Possibly (if there were enough excitations) update pattempt_single.
                 call update_pattempt(qs%excit_gen_data)

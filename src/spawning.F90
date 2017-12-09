@@ -103,7 +103,8 @@ contains
             if (qmc_state%excit_gen_data%p_single_double%vary_psingles) then
                 associate(ps=>qmc_state%excit_gen_data%p_single_double)
                     call update_p_single_double_data(connection%nexcit, ps%h_pgen_singles_sum, ps%h_pgen_doubles_sum, &
-                            ps%excit_gen_singles, ps%excit_gen_doubles, hmatel, pgen, qmc_state%excit_gen_data, sys%read_in%comp)
+                            ps%excit_gen_singles, ps%excit_gen_doubles, hmatel, pgen, qmc_state%excit_gen_data, &
+                            sys%read_in%comp, ps%overflow_loc)
                 end associate
             end if
         else
@@ -197,7 +198,7 @@ contains
                 associate(ps=>qmc_state%excit_gen_data%p_single_double)
                     call update_p_single_double_data(connection%nexcit, ps%h_pgen_singles_sum, ps%h_pgen_doubles_sum, &
                                 ps%excit_gen_singles, ps%excit_gen_doubles, hmatel, pgen, qmc_state%excit_gen_data, &
-                                sys%read_in%comp)
+                                sys%read_in%comp, ps%overflow_loc)
                 end associate
             end if
             hmatel%r = hmatel%r * calc_qn_spawned_weighting(sys, qmc_state%propagator, cdet%fock_sum, connection)
@@ -558,7 +559,8 @@ contains
             if (qmc_state%excit_gen_data%p_single_double%vary_psingles) then
                 associate(ps=>qmc_state%excit_gen_data%p_single_double)
                     call update_p_single_double_data(connection%nexcit, ps%h_pgen_singles_sum, ps%h_pgen_doubles_sum, &
-                            ps%excit_gen_singles, ps%excit_gen_doubles, hmatel, pgen, qmc_state%excit_gen_data, sys%read_in%comp)
+                            ps%excit_gen_singles, ps%excit_gen_doubles, hmatel, pgen, qmc_state%excit_gen_data, &
+                            sys%read_in%comp, ps%overflow_loc)
                 end associate
             end if
         else
@@ -1980,7 +1982,7 @@ contains
     end function calc_qn_weighting
 
     subroutine update_p_single_double_data(nexcit, h_pgen_singles_sum, h_pgen_doubles_sum, excit_gen_singles, excit_gen_doubles,&
-                                        hmatel, spawn_pgen, excit_gen_data, complx)
+                                        hmatel, spawn_pgen, excit_gen_data, complx, overflow_loc)
         ! Update h_pgen_singles_sum/h_pgen_doubles_sum (the sum of pattempt_single*hmatel/spawn_pgen
         ! for a single/double excitation), as well as excit_gen_singles/excit_gen_doubles, the number
         ! of single/double excitations.
@@ -1990,13 +1992,16 @@ contains
         !    hmatel: hamiltonian matrix element
         !    spawn_pgen: pgen as it comes out of the excitation generator, probability of choosing
         !            a certain combination of orbitals for excitation.
-        !    excit_gen_data: excitation generator data
         !    complx: true if populations are complex.
+        !    excit_gen_data: excitation generator data
         ! In/Out:
         !    h_pgen_singles_sum: the sum of pattempt_single*hmatel/spawn_pgen for a single excitation
         !    h_pgen_doubles_sum: the sum of pattempt_double*hmatel/spawn_pgen for a double excitation
         !    excit_gen_singles: the number of singles excitations.
         !    excit_gen_doubles: the number of doubles excitations.
+        ! Out:
+        !    overflow_loc: true if precision is so low that updates on excit_gen_singles/excit_gen_doubles
+        !            are lost.
 
         use hamiltonian_data, only: hmatel_t
         use excit_gens, only: excit_gen_data_t
@@ -2007,6 +2012,9 @@ contains
         type(excit_gen_data_t), intent(in) :: excit_gen_data
         logical, intent(in) :: complx
         real(p), intent(inout) :: h_pgen_singles_sum, h_pgen_doubles_sum, excit_gen_singles, excit_gen_doubles
+        logical, intent(out) :: overflow_loc
+
+        real(p) :: excit_gen_singles_old, excit_gen_doubles_old
 
         if (nexcit == 1) then
             if (complx) then
@@ -2016,7 +2024,12 @@ contains
                 h_pgen_singles_sum = h_pgen_singles_sum + &
                         ((abs(hmatel%r)*excit_gen_data%pattempt_single)/spawn_pgen)
             end if
+            excit_gen_singles_old = excit_gen_singles
             excit_gen_singles = excit_gen_singles + 1.0_p
+            ! check for overflow
+            if (abs(excit_gen_singles - excit_gen_singles_old) < depsilon) then
+                overflow_loc = .true.
+            end if
         ! [todo] - should this be an else? Using else if is another check but is it necessary?
         else if (nexcit == 2) then
             if (complx) then
@@ -2026,7 +2039,12 @@ contains
                 h_pgen_doubles_sum = h_pgen_doubles_sum + &
                         ((abs(hmatel%r)*excit_gen_data%pattempt_double)/spawn_pgen)
             end if
+            excit_gen_doubles_old = excit_gen_doubles
             excit_gen_doubles = excit_gen_doubles + 1.0_p
+            ! check for overflow
+            if (abs(excit_gen_doubles - excit_gen_doubles_old) < depsilon) then
+                overflow_loc = .true.
+            end if
         end if
     end subroutine update_p_single_double_data
 
@@ -2136,7 +2154,7 @@ contains
             pattempt_single = (h_pgen_singles_sum_sum/excit_gen_singles_sum) / &
                     ((h_pgen_doubles_sum_sum/excit_gen_doubles_sum) + (h_pgen_singles_sum_sum/excit_gen_singles_sum))
             pattempt_double = 1.0_p - pattempt_single
-            if (parent) write(iunit, '(1X, "# pattempt_single changed to be: ",f8.6)') pattempt_single
+            if (parent) write(iunit, '(1X, "# pattempt_single changed to be: ",f8.5)') pattempt_single
         end if
     end subroutine update_pattempt_single
 

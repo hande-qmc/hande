@@ -23,6 +23,7 @@ type p_single_double_t
     real(p) :: counter = 1.0_p
     logical :: vary_psingles = .false. ! still update pattempt_singles
     logical :: pattempt_restart_store = .false. ! has pattempt_* information from p_single_double been stored when restarting
+    logical :: overflow_loc = .false. ! Does adding a 1 still increase the number (excit_gen_singles and excit_gen_doubles)?
 end type p_single_double_t
 
 type alias_table_data_one_ind_t

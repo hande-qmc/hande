@@ -118,7 +118,7 @@ contains
             if (qs%excit_gen_data%p_single_double%vary_psingles) then
                 call update_p_single_double_data(connection%nexcit, ps_stat%h_pgen_singles_sum, &
                             ps_stat%h_pgen_doubles_sum, ps_stat%excit_gen_singles, ps_stat%excit_gen_doubles, &
-                            hmatel, spawn_pgen, qs%excit_gen_data, sys%read_in%comp)
+                            hmatel, spawn_pgen, qs%excit_gen_data, sys%read_in%comp, ps_stat%overflow_loc)
             end if
 
             if (linked_ccmc) then
@@ -617,7 +617,8 @@ contains
         if (allowed) then
             if (qs%excit_gen_data%p_single_double%vary_psingles) then
                 call update_p_single_double_data(connection%nexcit, ps_stat%h_pgen_singles_sum, ps_stat%h_pgen_doubles_sum, &
-                        ps_stat%excit_gen_singles, ps_stat%excit_gen_doubles, hmatel, pgen, qs%excit_gen_data, sys%read_in%comp)
+                        ps_stat%excit_gen_singles, ps_stat%excit_gen_doubles, hmatel, pgen, qs%excit_gen_data, &
+                        sys%read_in%comp, ps_stat%overflow_loc)
             end if
             ! check that left_cluster can be applied to the resulting excitor to
             ! give a cluster to spawn on to
@@ -816,7 +817,8 @@ contains
 
         if ((allowed_excitation == .true.) .and. (qs%excit_gen_data%p_single_double%vary_psingles == .true.)) then
             call update_p_single_double_data(connection%nexcit, ps_stat%h_pgen_singles_sum, ps_stat%h_pgen_doubles_sum, &
-                        ps_stat%excit_gen_singles, ps_stat%excit_gen_doubles, hmatel, pgen, qs%excit_gen_data, sys%read_in%comp)
+                        ps_stat%excit_gen_singles, ps_stat%excit_gen_doubles, hmatel, pgen, qs%excit_gen_data, &
+                        sys%read_in%comp, ps_stat%overflow_loc)
         end if
 
         ! 2, Apply additional factors.
