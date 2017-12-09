@@ -243,6 +243,7 @@ contains
         if ((all(qmc_state%vary_shift) == .false.) .and. (qmc_in%pattempt_update == .true.) .and. &
             (qmc_in%excit_gen/=excit_gen_heat_bath)) then
             ! We sample singles with probability pattempt_single. It therefore makes sense to update pattempt_single 
+            ! [todo] - DMQMC
             ! for FCIQMC and CCMC on the fly (at least in the beginning of the calculation).
             qmc_state%excit_gen_data%p_single_double%vary_psingles = .true.
         end if
@@ -1277,6 +1278,7 @@ contains
 
         use qmc_data, only: qmc_state_t
         use spawn_data, only: move_spawn_t
+        use excit_gens, only: move_pattempt_data
         use particle_t_utils, only: move_particle_t
 
         type(qmc_state_t), intent(inout) :: qmc_state_old, qmc_state_new
@@ -1287,8 +1289,7 @@ contains
         call move_alloc(qmc_state_old%vary_shift, qmc_state_new%vary_shift)
         call move_alloc(qmc_state_old%estimators, qmc_state_new%estimators)
         call move_particle_t(qmc_state_old%psip_list, qmc_state_new%psip_list)
-
-        qmc_state_new%excit_gen_data%p_single_double = qmc_state_old%excit_gen_data%p_single_double
+        call move_pattempt_data(qmc_state_old%excit_gen_data, qmc_state_new%excit_gen_data)
 
     end subroutine move_qmc_state_t
 

@@ -4,6 +4,7 @@ implicit none
 
 private
 public :: dealloc_excit_gen_data_t, p_single_double_t, excit_gen_power_pitzer_t, excit_gen_heat_bath_t, excit_gen_data_t
+public :: move_pattempt_data
 
 !Data for the power_pitzer/heat bath excit gens
 
@@ -181,6 +182,27 @@ interface dealloc_alias_table_data_t
 end interface
 
 contains
+    
+    subroutine move_pattempt_data(excit_gen_data_old, excit_gen_data_new)
+
+        ! [todo] - Move more excit_gen_data?
+        ! Move allocated memory from one excit_gen_data_t to another.
+
+        ! In/Out:
+        !   excit_gen_data_old: assigned excit_gen_data_t;
+        ! Out:
+        !   excit_gen_data_new: newly assigned excit_gen_data_t;
+
+        type(excit_gen_data_t), intent(inout) :: excit_gen_data_old
+        type(excit_gen_data_t), intent(out) :: excit_gen_data_new
+        
+        excit_gen_data_new%pattempt_single = excit_gen_data_old%pattempt_single
+        excit_gen_data_new%pattempt_double = excit_gen_data_old%pattempt_double
+        excit_gen_data_new%p_single_double%counter = excit_gen_data_old%p_single_double%counter
+        ! [todo] - Below a type gets set equal. Check.
+        excit_gen_data_new%p_single_double%total = excit_gen_data_old%p_single_double%total
+        
+    end subroutine move_pattempt_data
 
     subroutine dealloc_excit_gen_data_t(excit_gen_data)
 
