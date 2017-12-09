@@ -102,8 +102,8 @@ contains
             qn_weight = calc_qn_spawned_weighting(sys, qmc_state%propagator, cdet%fock_sum, connection)
             if (qmc_state%excit_gen_data%p_single_double%vary_psingles) then
                 associate(ps=>qmc_state%excit_gen_data%p_single_double)
-                    call update_p_single_double_data(connection%nexcit, ps%h_pgen_singles_sum, ps%h_pgen_doubles_sum, &
-                            ps%excit_gen_singles, ps%excit_gen_doubles, hmatel, pgen, qmc_state%excit_gen_data, &
+                    call update_p_single_double_data(connection%nexcit, ps%tmp%h_pgen_singles_sum, ps%tmp%h_pgen_doubles_sum, &
+                            ps%tmp%excit_gen_singles, ps%tmp%excit_gen_doubles, hmatel, pgen, qmc_state%excit_gen_data, &
                             sys%read_in%comp, ps%overflow_loc)
                 end associate
             end if
@@ -196,8 +196,8 @@ contains
         if (allowed) then
             if (qmc_state%excit_gen_data%p_single_double%vary_psingles) then
                 associate(ps=>qmc_state%excit_gen_data%p_single_double)
-                    call update_p_single_double_data(connection%nexcit, ps%h_pgen_singles_sum, ps%h_pgen_doubles_sum, &
-                                ps%excit_gen_singles, ps%excit_gen_doubles, hmatel, pgen, qmc_state%excit_gen_data, &
+                    call update_p_single_double_data(connection%nexcit, ps%tmp%h_pgen_singles_sum, ps%tmp%h_pgen_doubles_sum, &
+                                ps%tmp%excit_gen_singles, ps%tmp%excit_gen_doubles, hmatel, pgen, qmc_state%excit_gen_data, &
                                 sys%read_in%comp, ps%overflow_loc)
                 end associate
             end if
@@ -558,8 +558,8 @@ contains
             qn_weight = calc_qn_spawned_weighting(sys, qmc_state%propagator, cdet%fock_sum, connection) 
             if (qmc_state%excit_gen_data%p_single_double%vary_psingles) then
                 associate(ps=>qmc_state%excit_gen_data%p_single_double)
-                    call update_p_single_double_data(connection%nexcit, ps%h_pgen_singles_sum, ps%h_pgen_doubles_sum, &
-                            ps%excit_gen_singles, ps%excit_gen_doubles, hmatel, pgen, qmc_state%excit_gen_data, &
+                    call update_p_single_double_data(connection%nexcit, ps%tmp%h_pgen_singles_sum, ps%tmp%h_pgen_doubles_sum, &
+                            ps%tmp%excit_gen_singles, ps%tmp%excit_gen_doubles, hmatel, pgen, qmc_state%excit_gen_data, &
                             sys%read_in%comp, ps%overflow_loc)
                 end associate
             end if
@@ -2066,17 +2066,26 @@ contains
         associate(ps=>excit_gen_data%p_single_double)
             call communicate_pattempt_single_data(ps, excit_gen_singles_sum, excit_gen_doubles_sum, &
                                 h_pgen_singles_sum_sum, h_pgen_doubles_sum_sum)
-            call update_pattempt_single(ps%every_attempts, ps%every_min_attempts, excit_gen_singles_sum, excit_gen_doubles_sum, &
-                h_pgen_singles_sum_sum, h_pgen_doubles_sum_sum, ps%counter, excit_gen_data%pattempt_single, &
-                excit_gen_data%pattempt_double)
+            call add_tmp_to_total(ps, excit_gen_singles_sum, excit_gen_doubles_sum, h_pgen_singles_sum_sum, &
+                                            h_pgen_doubles_sum_sum)
         end associate
 #else
         associate(ps=>excit_gen_data%p_single_double)
-            call update_pattempt_single(ps%every_attempts, ps%every_min_attempts, ps%excit_gen_singles, ps%excit_gen_doubles, &
-                ps%h_pgen_singles_sum, ps%h_pgen_doubles_sum, ps%counter, excit_gen_data%pattempt_single, &
-                excit_gen_data%pattempt_double)
+            call add_tmp_to_total(ps, ps%tmp%excit_gen_singles, ps%tmp%excit_gen_doubles, ps%tmp%h_pgen_singles_sum, &
+                                            ps%tmp%h_pgen_doubles_sum)
         end associate 
 #endif
+        associate(ps=>excit_gen_data%p_single_double)
+            call update_pattempt_single(ps%every_attempts, ps%every_min_attempts, ps%total%excit_gen_singles, &
+                ps%total%excit_gen_doubles, ps%total%h_pgen_singles_sum, ps%total%h_pgen_doubles_sum, ps%counter, &
+                excit_gen_data%pattempt_single, excit_gen_data%pattempt_double)
+
+            ! Zero tmp variables to be prepared for next report loop.
+            ps%tmp%excit_gen_singles = 0.0_p
+            ps%tmp%excit_gen_doubles = 0.0_p
+            ps%tmp%h_pgen_singles_sum = 0.0_p
+            ps%tmp%h_pgen_doubles_sum = 0.0_p
+        end associate
 
     end subroutine update_pattempt
 
@@ -2109,14 +2118,49 @@ contains
         h_pgen_doubles_sum_sum = 0.0_p
 
         ! [todo] - is MPI communication best here or together with energy estimators? Do we need to disable non blocking comm?
-        call mpi_allreduce(ps%excit_gen_singles, excit_gen_singles_sum, 1, mpi_preal, MPI_SUM, MPI_COMM_WORLD, ierr)
-        call mpi_allreduce(ps%excit_gen_doubles, excit_gen_doubles_sum, 1, mpi_preal, MPI_SUM, MPI_COMM_WORLD, ierr)
-        call mpi_allreduce(ps%h_pgen_singles_sum, h_pgen_singles_sum_sum, 1, mpi_preal, MPI_SUM, MPI_COMM_WORLD, ierr)
-        call mpi_allreduce(ps%h_pgen_doubles_sum, h_pgen_doubles_sum_sum, 1, mpi_preal, MPI_SUM, MPI_COMM_WORLD, ierr)
+        call mpi_allreduce(ps%tmp%excit_gen_singles, excit_gen_singles_sum, 1, mpi_preal, MPI_SUM, MPI_COMM_WORLD, ierr)
+        call mpi_allreduce(ps%tmp%excit_gen_doubles, excit_gen_doubles_sum, 1, mpi_preal, MPI_SUM, MPI_COMM_WORLD, ierr)
+        call mpi_allreduce(ps%tmp%h_pgen_singles_sum, h_pgen_singles_sum_sum, 1, mpi_preal, MPI_SUM, MPI_COMM_WORLD, ierr)
+        call mpi_allreduce(ps%tmp%h_pgen_doubles_sum, h_pgen_doubles_sum_sum, 1, mpi_preal, MPI_SUM, MPI_COMM_WORLD, ierr)
         ! ps%counter does not need to be communicated as it increments a change done below (same calculation done on all
         ! processes.
     end subroutine communicate_pattempt_single_data
 
+    subroutine add_tmp_to_total(ps, excit_gen_singles_sum, excit_gen_doubles_sum, h_pgen_singles_sum_sum, &
+                                            h_pgen_doubles_sum_sum)
+
+        ! Data from the report loop gets added to total.
+        
+        ! In:
+        !   excit_gen_singles_sum: Sum of number of single excitations during calculation
+        !   excit_gen_doubles_sum: Sum of number of double excitations during calculation
+        !   h_pgen_singles_sum_sum: Sum of hmatel/pgen (excluding pattempt_single) for single excitations.
+        !   h_pgen_doubles_sum_sum: Sum of hmatel/pgen (excluding pattempt_single) for double excitations.
+        ! In/Out:
+        !   ps: p_single_double_t object with the pattempt single update data
+
+        use excit_gens, only: p_single_double_t
+
+        real(p), intent(in) :: excit_gen_singles_sum, excit_gen_doubles_sum, h_pgen_singles_sum_sum, h_pgen_doubles_sum_sum
+        type(p_single_double_t), intent(inout) :: ps
+        real(p) :: excit_gen_singles_old, excit_gen_doubles_old
+
+        excit_gen_singles_old = ps%total%excit_gen_singles
+        excit_gen_doubles_old = ps%total%excit_gen_doubles
+    
+        ps%total%excit_gen_singles = ps%total%excit_gen_singles + excit_gen_singles_sum
+        ps%total%excit_gen_doubles = ps%total%excit_gen_doubles + excit_gen_doubles_sum
+        ps%total%h_pgen_singles_sum = ps%total%h_pgen_singles_sum + h_pgen_singles_sum_sum
+        ps%total%h_pgen_doubles_sum = ps%total%h_pgen_doubles_sum + h_pgen_doubles_sum_sum
+
+        ! Check whether precision is high enough to detect change in the number of single/double excitations.
+        if (((abs(ps%total%excit_gen_singles - excit_gen_singles_old) < depsilon) .and. (excit_gen_singles_sum > 0.0_p)) .or. &
+            ((abs(ps%total%excit_gen_doubles - excit_gen_doubles_old) < depsilon) .and. (excit_gen_doubles_sum > 0.0_p))) then
+            ps%overflow_loc = .true.
+        end if
+    
+    end subroutine add_tmp_to_total
+        
     subroutine update_pattempt_single(every_attempts, every_min_attempts, excit_gen_singles_sum, excit_gen_doubles_sum, &
             h_pgen_singles_sum_sum, h_pgen_doubles_sum_sum, counter, pattempt_single, pattempt_double)
 

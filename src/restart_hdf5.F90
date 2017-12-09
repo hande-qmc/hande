@@ -458,16 +458,16 @@ module restart_hdf5
                                     [qs%excit_gen_data%p_single_double%vary_psingles])
 
                         call hdf5_write(subsubgroup_id, dh_pgen_singles_sum, kinds, [1_int_64], &
-                                    [qs%excit_gen_data%p_single_double%h_pgen_singles_sum])
+                                    [qs%excit_gen_data%p_single_double%total%h_pgen_singles_sum])
                         
                         call hdf5_write(subsubgroup_id, dh_pgen_doubles_sum, kinds, [1_int_64], &
-                                    [qs%excit_gen_data%p_single_double%h_pgen_doubles_sum])
+                                    [qs%excit_gen_data%p_single_double%total%h_pgen_doubles_sum])
                         
                         call hdf5_write(subsubgroup_id, dexcit_gen_singles, kinds, [1_int_64], &
-                                    [qs%excit_gen_data%p_single_double%excit_gen_singles])
+                                    [qs%excit_gen_data%p_single_double%total%excit_gen_singles])
                         
                         call hdf5_write(subsubgroup_id, dexcit_gen_doubles, kinds, [1_int_64], &
-                                    [qs%excit_gen_data%p_single_double%excit_gen_doubles])
+                                    [qs%excit_gen_data%p_single_double%total%excit_gen_doubles])
                         
                         call hdf5_write(subsubgroup_id, dcounter, kinds, [1_int_64], &
                                     [qs%excit_gen_data%p_single_double%counter])
@@ -822,19 +822,19 @@ module restart_hdf5
 
                             call hdf5_read(subsubgroup_id, dh_pgen_singles_sum, kinds, [1_int_64], &
                                         pattempt_single_data_real_tmp)
-                                qs%excit_gen_data%p_single_double%h_pgen_singles_sum = pattempt_single_data_real_tmp(1)
+                                qs%excit_gen_data%p_single_double%total%h_pgen_singles_sum = pattempt_single_data_real_tmp(1)
                         
                             call hdf5_read(subsubgroup_id, dh_pgen_doubles_sum, kinds, [1_int_64], &
                                         pattempt_single_data_real_tmp)
-                                qs%excit_gen_data%p_single_double%h_pgen_doubles_sum = pattempt_single_data_real_tmp(1)
+                                qs%excit_gen_data%p_single_double%total%h_pgen_doubles_sum = pattempt_single_data_real_tmp(1)
                         
                             call hdf5_read(subsubgroup_id, dexcit_gen_singles, kinds, [1_int_64], &
                                         pattempt_single_data_real_tmp)
-                                qs%excit_gen_data%p_single_double%excit_gen_singles = pattempt_single_data_real_tmp(1)
+                                qs%excit_gen_data%p_single_double%total%excit_gen_singles = pattempt_single_data_real_tmp(1)
                         
                             call hdf5_read(subsubgroup_id, dexcit_gen_doubles, kinds, [1_int_64], &
                                         pattempt_single_data_real_tmp)
-                                qs%excit_gen_data%p_single_double%excit_gen_doubles = pattempt_single_data_real_tmp(1)
+                                qs%excit_gen_data%p_single_double%total%excit_gen_doubles = pattempt_single_data_real_tmp(1)
                         
                             call hdf5_read(subsubgroup_id, dcounter, kinds, [1_int_64], pattempt_single_data_real_tmp)
                                 qs%excit_gen_data%p_single_double%counter = pattempt_single_data_real_tmp(1)

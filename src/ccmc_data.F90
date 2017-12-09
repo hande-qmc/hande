@@ -37,7 +37,7 @@ type multispawn_stats_t
     integer :: nspawnings_max = 0
 end type multispawn_stats_t
 
-! type to collect temporary information for qmc_state%excit_gen_data%p_single_double
+! type to collect temporary information for qmc_state%excit_gen_data%p_single_double%tmp
 ! during the OpenMP loop in CCMC.
 type p_single_double_stats_t
     real(p) :: h_pgen_singles_sum = 0.0_p ! hmatel/pgen sum for singles
@@ -223,18 +223,19 @@ contains
 
         real(p) :: excit_gen_singles_old, excit_gen_doubles_old
 
-        excit_gen_singles_old = ps%excit_gen_singles
-        excit_gen_doubles_old = ps%excit_gen_doubles
+        excit_gen_singles_old = ps%tmp%excit_gen_singles
+        excit_gen_doubles_old = ps%tmp%excit_gen_doubles
 
-        ps%h_pgen_singles_sum = ps%h_pgen_singles_sum + sum(ps_stats%h_pgen_singles_sum)
-        ps%excit_gen_singles = ps%excit_gen_singles + sum(ps_stats%excit_gen_singles)
-        ps%h_pgen_doubles_sum = ps%h_pgen_doubles_sum + sum(ps_stats%h_pgen_doubles_sum)
-        ps%excit_gen_doubles = ps%excit_gen_doubles + sum(ps_stats%excit_gen_doubles)
+        ps%tmp%h_pgen_singles_sum = ps%tmp%h_pgen_singles_sum + sum(ps_stats%h_pgen_singles_sum)
+        ps%tmp%excit_gen_singles = ps%tmp%excit_gen_singles + sum(ps_stats%excit_gen_singles)
+        ps%tmp%h_pgen_doubles_sum = ps%tmp%h_pgen_doubles_sum + sum(ps_stats%h_pgen_doubles_sum)
+        ps%tmp%excit_gen_doubles = ps%tmp%excit_gen_doubles + sum(ps_stats%excit_gen_doubles)
         
         ! check for overflow
-        if (((abs(ps%excit_gen_singles-excit_gen_singles_old) < depsilon) .and. (sum(ps_stats%excit_gen_singles) > 0.0_p)) .or. &
-            ((abs(ps%excit_gen_doubles-excit_gen_doubles_old) < depsilon) .and. (sum(ps_stats%excit_gen_doubles) > 0.0_p)) .or. &
-             (any(ps_stats%overflow_loc))) then
+        if (((abs(ps%tmp%excit_gen_singles-excit_gen_singles_old) < depsilon) .and. (sum(ps_stats%excit_gen_singles) > 0.0_p)) &
+            .or. &
+            ((abs(ps%tmp%excit_gen_doubles-excit_gen_doubles_old) < depsilon) .and. (sum(ps_stats%excit_gen_doubles) > 0.0_p)) &
+            .or. (any(ps_stats%overflow_loc))) then
             ps%overflow_loc = .true.
         end if
 

@@ -901,10 +901,10 @@ contains
         else
             ! [todo] - is it wise that the user has to specify both *_single and *_double to overwrite?
             ! zero data received from restart file if user overwrittes it by specifying a qmc_in%pattempt_single and *_double.
-            excit_gen_data%p_single_double%h_pgen_singles_sum = 0.0_p ! hmatel/pgen sum for singles
-            excit_gen_data%p_single_double%h_pgen_doubles_sum = 0.0_p ! hamtel/pgen sum for doubles
-            excit_gen_data%p_single_double%excit_gen_singles = 0.0_p ! number of valid singles excitations created
-            excit_gen_data%p_single_double%excit_gen_doubles = 0.0_p ! number of valid doubles excitations created
+            excit_gen_data%p_single_double%total%h_pgen_singles_sum = 0.0_p ! hmatel/pgen sum for singles
+            excit_gen_data%p_single_double%total%h_pgen_doubles_sum = 0.0_p ! hamtel/pgen sum for doubles
+            excit_gen_data%p_single_double%total%excit_gen_singles = 0.0_p ! number of valid singles excitations created
+            excit_gen_data%p_single_double%total%excit_gen_doubles = 0.0_p ! number of valid doubles excitations created
             excit_gen_data%p_single_double%counter = 1.0_p
             excit_gen_data%p_single_double%overflow_loc = .false.
             ! renormalise just in case input wasn't
