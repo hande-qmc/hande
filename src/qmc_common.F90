@@ -792,12 +792,19 @@ contains
                            MPI_COMM_WORLD, ierr)
         qs%estimators%proj_energy = proj_energy_sum
         qs%estimators%proj_energy_comp = proj_energy_comp_sum
+        ! [todo] - Delete next two lines and some mpi_allreduce above.
         qs%estimators%D0_population = D0_population_sum
         qs%estimators%D0_population_comp = D0_population_comp_sum
+
+        ! D0_normalisation will have been broadcasted already. This is to be safe, in case D0 was not found above.
+        qs%estimators%D0_population_comp = D0_normalisation
 #else
         ntot_particles = qs%psip_list%nparticles
         qs%estimators%tot_nstates = qs%psip_list%nstates
 #endif
+        ! [todo] - be careful when implementing ccmc replica or something else using nspaces with the following line:
+        ! This is to be safe, in case D0 was not found above.
+        qs%estimators%D0_population = real(D0_normalisation)
     
     end subroutine initial_cc_projected_energy
 
