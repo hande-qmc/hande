@@ -28,6 +28,7 @@ target_sources(coreutils
     git_info.f90
     print_info.c
   )
+add_dependencies(coreutils build_info)
 # We need to pass all compiler definitions to have a coherent set up report in
 # print_info.c
 target_compile_definitions(coreutils
