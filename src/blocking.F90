@@ -861,7 +861,7 @@ contains
                             write (6, '("# Auto-Shift-Damping: Waiting for calculation to settle down.")')
                         else
                             write (6, '("# Auto-Shift-Damping: Increasing shift damping to compensate for slow approach.")')
-                            qs%shift_damping = min(0.5,max(0.01,qs%shift_damping * 5.0_p))
+                            qs%shift_damping = min(0.5_p,max(0.01_p,qs%shift_damping * 5.0_p))
                             modified = .true.
                             bl%n_increased_damping = bl%n_increased_damping + 1
                         end if
