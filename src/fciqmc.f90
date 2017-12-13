@@ -73,7 +73,8 @@ contains
 
         use logging, only: init_logging, end_logging, prep_logging_mc_cycle, write_logging_calc_fciqmc, &
                             logging_in_t, logging_t, logging_in_t_json, logging_t_json
-        use blocking, only: write_blocking_report_header, allocate_blocking, do_blocking, deallocate_blocking, write_blocking_report
+        use blocking, only: write_blocking_report_header, init_blocking, do_blocking, deallocate_blocking, &
+                            write_blocking_report, update_shift_damping
         use report, only: write_date_time_close
 
         type(sys_t), intent(in) :: sys
@@ -132,9 +133,9 @@ contains
             ! Check input options.
             restarting = present(qmc_state_restart) .or. restart_in%read_restart
             call check_qmc_opts(qmc_in, sys, .not.present(qmc_state_restart), restarting, qmc_state_restart)
-            call check_fciqmc_opts(sys, fciqmc_in)
+            call check_fciqmc_opts(sys, fciqmc_in, blocking_in)
             call check_load_bal_opts(load_bal_in)
-            call check_blocking_opts(blocking_in, restart_in)
+            call check_blocking_opts(sys, blocking_in, restart_in)
         end if
 
         ! Initialise data.
@@ -150,6 +151,7 @@ contains
             qmc_in_loc = qmc_in
             qmc_in_loc%pattempt_single = qs%excit_gen_data%pattempt_single
             qmc_in_loc%pattempt_double = qs%excit_gen_data%pattempt_double
+            qmc_in_loc%shift_damping = qs%shift_damping
             call qmc_in_t_json(js, qmc_in_loc)
             call fciqmc_in_t_json(js, fciqmc_in)
             call semi_stoch_in_t_json(js, semi_stoch_in)
@@ -214,7 +216,7 @@ contains
         ! Initialise timer.
         call cpu_time(t1)
         ! Allocate arrays needed for reblock analysis
-        if (blocking_in%blocking_on_the_fly) call allocate_blocking(qmc_in, blocking_in, bl)
+        if (blocking_in%blocking_on_the_fly) call init_blocking(qmc_in, blocking_in, bl, qs%shift_damping_status)
 
         if (parent .and. blocking_in%blocking_on_the_fly) then
             open(newunit=iunit, file=blocking_in%filename, status='unknown')
@@ -352,9 +354,12 @@ contains
                 if (bloom_stats%nblooms_curr > 0) call bloom_stats_warning(bloom_stats, io_unit=io_unit)
                 call write_qmc_report(qmc_in, qs, ireport, nparticles_old, t2-t1, .false., &
                                         fciqmc_in%non_blocking_comm, io_unit=io_unit, cmplx_est=sys%read_in%comp)
+                if (blocking_in%blocking_on_the_fly) then
+                    call do_blocking(bl, qs, qmc_in, ireport, iter, iunit, blocking_in)
+                end if
 
-                if (blocking_in%blocking_on_the_fly) call do_blocking(bl, qs, qmc_in, ireport, iter, iunit, blocking_in)
             end if
+            if (blocking_in%auto_shift_damping) call update_shift_damping(qs, bl, ireport)
 
             ! Update the time for the start of the next iteration.
             t1 = t2

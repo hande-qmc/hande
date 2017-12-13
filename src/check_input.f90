@@ -73,7 +73,7 @@ contains
 
     end subroutine check_sys
 
-    subroutine check_fciqmc_opts(sys, fciqmc_in)
+    subroutine check_fciqmc_opts(sys, fciqmc_in, blocking_in)
 
         ! Check the FCIQMC specific options.
 
@@ -81,12 +81,13 @@ contains
         !   sys: system being studied.
         !   fciqmc_in: FCIQMC input options.
 
-        use qmc_data, only: fciqmc_in_t, single_basis, no_guiding, neel_singlet_guiding, neel_singlet
+        use qmc_data, only: fciqmc_in_t, single_basis, no_guiding, neel_singlet_guiding, neel_singlet, blocking_in_t
         use system, only: sys_t, heisenberg
         use errors, only: stop_all
 
         type(sys_t), intent(in) :: sys
         type(fciqmc_in_t), intent(in) :: fciqmc_in
+        type(blocking_in_t), intent(in) :: blocking_in
 
         character(*), parameter :: this = 'check_fciqmc_opts'
 
@@ -116,6 +117,9 @@ contains
         ! Major unresolved issue is likely to be semistochastic restart files.
         if (sys%basis%info_string_len /= 0) call stop_all(this, &
             'Fciqmc is incompatible with additional information being stored in the bit string. Please implement if needed.')
+
+        if (fciqmc_in%replica_tricks .and. blocking_in%blocking_on_the_fly) call stop_all(this, &
+            'Blocking on the fly is not currently compatible with replica tricks in fciqmc.')
 
     end subroutine check_fciqmc_opts
 
@@ -377,19 +381,23 @@ contains
 
     end subroutine check_ccmc_opts
 
-    subroutine check_blocking_opts(blocking_in, restart_in)
+    subroutine check_blocking_opts(sys, blocking_in, restart_in)
 
         ! Check block on the fly input options.
         ! The majority of these can't be sanity-checked as a nonsensical (ie. negative)
         ! value is used to indicate that we should default to suitable values.
 
         ! In:
+        !   sys: system being studied.
         !   blocking_in: Reblocking on the fly input options.
         !   restart_in: Calculation restarting input options.
 
         use qmc_data, only: blocking_in_t, restart_in_t
-        use errors, only: warning
+        use errors, only: warning, stop_all
+        use system, only: sys_t
+        use const, only: p
 
+        type(sys_t), intent(in) :: sys
         type(blocking_in_t), intent(in) :: blocking_in
         type(restart_in_t), intent(in) :: restart_in
 
@@ -405,6 +413,20 @@ contains
                 call warning(this, 'Writing a restart file from a calculation using on-the-fly reblocking. &
                         &No reblocking data has been saved. If this annoys you send patches.')
             end if
+        end if
+
+        if (blocking_in%auto_shift_damping .and. .not. blocking_in%blocking_on_the_fly) then
+            call stop_all(this, 'Automatic shift damping optimisation requires blocking on the fly to be activated. &
+                        & Please restart calculation with blocking enabled.')
+        end if
+
+        if (blocking_in%auto_shift_damping .and. blocking_in%shift_damping_precision < 1.5_p) then
+            call stop_all(this, 'Automatic shift damping optimisation precision should be a positive float greater &
+                        than or equal to 1.5 for reasonable results.')
+        end if
+
+        if (sys%read_in%comp .and. blocking_in%blocking_on_the_fly) then
+            call stop_all(this, "Blocking on the fly is not currently compatible with complex calculations.")
         end if
 
     end subroutine check_blocking_opts

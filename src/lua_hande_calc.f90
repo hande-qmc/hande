@@ -1786,7 +1786,10 @@ contains
         !    start_point = niterations,
         !    error_limit = error_limit,
         !    blocks_used = blocks_used,
-        !    min_blocks_used = min_blocks_used
+        !    min_blocks_used = min_blocks_used,
+        !    auto_shift_damping = true/false,
+        !    shift_damping_precision = ratio,
+        !    force_shift_damping_opt = true/false,
         ! }
 
         ! If start_save_frequency, start_point_number, error_limit, min ratio and start_point
@@ -1812,9 +1815,10 @@ contains
         type(blocking_in_t), intent(out) :: blocking_in
 
         integer :: err, blocking_table
-        character(24),parameter :: keys(8) = [character(24) ::  'blocking_on_the_fly', 'start_save_frequency',   &
+        character(24),parameter :: keys(10) = [character(24) ::  'blocking_on_the_fly', 'start_save_frequency',   &
                                                                 'start_point_number', 'filename', 'start_point', &
-                                                                'error_limit', 'blocks_used', 'min_blocks_used']
+                                                                'error_limit', 'blocks_used', 'min_blocks_used', &
+                                                                'auto_shift_damping', 'shift_damping_precision']
 
         if (aot_exists(lua_state, opts, 'blocking')) then
 
@@ -1835,6 +1839,12 @@ contains
             call aot_get_val(blocking_in%blocks_used, err, lua_state, blocking_table, 'blocks_used')
 
             call aot_get_val(blocking_in%min_blocks_used, err, lua_state, blocking_table, 'min_blocks_used')
+
+            call aot_get_val(blocking_in%auto_shift_damping, err, lua_state, blocking_table, 'auto_shift_damping')
+
+            call aot_get_val(blocking_in%shift_damping_precision, err, lua_state, blocking_table, 'shift_damping_precision')
+
+            call aot_get_val(blocking_in%force_shift_damping_opt, err, lua_state, blocking_table, 'force_shift_damping_opt')
 
             call warn_unused_args(lua_state, keys, blocking_table)
 

@@ -327,7 +327,8 @@ contains
         use json_out, only: json_out_t, json_object_init, json_object_end
         use hamiltonian_data
         use energy_evaluation, only: get_sanitized_projected_energy, get_sanitized_projected_energy_cmplx
-        use blocking, only: write_blocking_report_header, allocate_blocking, do_blocking, deallocate_blocking, write_blocking_report
+        use blocking, only: write_blocking_report_header, init_blocking, do_blocking, deallocate_blocking, &
+                            write_blocking_report, update_shift_damping
 
         use logging, only: init_logging, end_logging, prep_logging_mc_cycle, write_logging_calc_ccmc
         use logging, only: logging_in_t, logging_t, logging_in_t_json, logging_t_json, write_logging_select_ccmc
@@ -398,7 +399,7 @@ contains
             restarting = present(qmc_state_restart) .or. restart_in%read_restart
             call check_qmc_opts(qmc_in, sys, .not.present(qmc_state_restart), restarting, qmc_state_restart)
             call check_ccmc_opts(sys, ccmc_in)
-            call check_blocking_opts(blocking_in, restart_in)
+            call check_blocking_opts(sys, blocking_in, restart_in)
         end if
 
         ! Initialise data.
@@ -421,6 +422,7 @@ contains
             qmc_in_loc = qmc_in
             qmc_in_loc%pattempt_single = qs%excit_gen_data%pattempt_single
             qmc_in_loc%pattempt_double = qs%excit_gen_data%pattempt_double
+            qmc_in_loc%shift_damping = qs%shift_damping
             call qmc_in_t_json(js, qmc_in_loc)
             call ccmc_in_t_json(js, ccmc_in)
             call semi_stoch_in_t_json(js, semi_stoch_in)
@@ -521,7 +523,9 @@ contains
             call write_blocking_report_header(iunit)
         end if
 
-        if (blocking_in%blocking_on_the_fly) call allocate_blocking(qmc_in, blocking_in, bl)
+        if (blocking_in%blocking_on_the_fly) &
+                    call init_blocking(qmc_in, blocking_in, bl, qs%shift_damping_status)
+
         do ireport = 1, qmc_in%nreport
 
             ! Projected energy from last report loop to correct death
@@ -838,6 +842,8 @@ contains
                                         nattempts=.true.)
                 if (blocking_in%blocking_on_the_fly) call do_blocking(bl, qs, qmc_in, ireport, iter, iunit, blocking_in)
             end if
+
+            if (blocking_in%auto_shift_damping) call update_shift_damping(qs, bl, ireport)
 
             ! Update the time for the start of the next iteration.
             t1 = t2

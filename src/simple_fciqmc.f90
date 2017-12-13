@@ -138,6 +138,17 @@ contains
         allocate(qs%estimators(1), stat=ierr)
         call check_allocate('qs%estimators', 1, ierr)
 
+        if (qmc_in%shift_damping < huge(1.0_p)) then
+            ! If we've passed in a specific value use that.
+            qs%shift_damping = qmc_in%shift_damping
+        else if (qs%shift_damping < huge(1.0)) then
+            ! If we've read in a restart file containing a shift damping value use that.
+            continue
+        else
+            ! Otherwise use normal default value.
+            qs%shift_damping = 0.050_p
+        end if
+
         qs%target_particles = qmc_in%target_particles
         qs%tau = qmc_in%tau
 

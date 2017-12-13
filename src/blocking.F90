@@ -1,7 +1,7 @@
 module blocking
 
 use qmc_data, only: dt_numerator, dt_denominator, dt_shift, dt_proj_energy
-use const, only: depsilon
+use const, only: p, depsilon
 
 ! Module for performing reblocking on the fly.
 
@@ -19,7 +19,7 @@ implicit none
 
 contains
 
-    subroutine allocate_blocking(qmc_in, blocking_in, bl)
+    subroutine init_blocking(qmc_in, blocking_in, bl, shift_damping_status)
 
         ! Allocate different arrays in blocking_t data according to the input
         ! options.
@@ -31,14 +31,15 @@ contains
         !   bl: Information needed to peform blocking on the fly. Maximum block
         !       size, frequency at which the data for changing start position
         !       and number of possible start positions are determined
+        !   shift_damping_status: current status of shift damping optimisation
+        !       within a calculation.
 
-        use qmc_data, only: qmc_in_t, blocking_t, blocking_in_t
-        use checking, only: check_allocate
+        use qmc_data, only: qmc_in_t, blocking_t, blocking_in_t, sd_wait1, sd_no_optimisation
 
         type(qmc_in_t), intent(in) :: qmc_in
         type(blocking_t), intent(inout) :: bl
         type(blocking_in_t), intent(in) :: blocking_in
-        integer :: ierr
+        integer, intent(inout) :: shift_damping_status
 
         ! Set 2^(lg_max) to a value that is approximately 4 times larger than nreport.
         bl%lg_max = nint(log(real(qmc_in%nreport))/log(2.0)) + 2
@@ -47,6 +48,8 @@ contains
         ! is negative (Default). If otherwise, set save_fq to 2^(start_save_frequency).
         if (blocking_in%start_save_frequency < 0) then
             bl%save_fq = 2 ** (bl%lg_max - 10)
+            ! Catch error if calculation is considered too short; don't do any restarts.
+            if (bl%save_fq < 1) bl%save_fq = qmc_in%nreport
         else
             bl%save_fq = 2 ** (blocking_in%start_save_frequency)
         end if
@@ -59,6 +62,30 @@ contains
         else
             bl%n_saved_startpoints = blocking_in%start_point_number
         end if
+
+        call allocate_blocking(bl)
+
+        ! Set status of shift damping to initialise automatic search for shift damping
+        ! If we have previously optimised shift damping shift_damping_status will equal
+        ! sd_optimised so not be updated.
+        if ((blocking_in%auto_shift_damping .and. shift_damping_status == sd_no_optimisation) .or. &
+                (blocking_in%force_shift_damping_opt)) then
+            shift_damping_status = sd_wait1
+        end if
+        bl%shift_damping_precision = blocking_in%shift_damping_precision
+
+    end subroutine init_blocking
+
+    subroutine allocate_blocking(bl)
+
+        ! Set up blocking_t object. Requires bl%lg_max, bl%save_fq,
+        ! bl%n_saved_startpoints to all be initialised appropriately.
+
+        use qmc_data, only: blocking_t
+        use checking, only: check_allocate
+
+        type(blocking_t), intent(inout) :: bl
+        integer :: ierr
 
         ! Each dimension and what they mean are listed in qmc_data.f90
         ! blocking_t and reblock_data_t.
@@ -253,7 +280,6 @@ contains
             if (bl%reblock_data_2(dt_numerator,i)%n_blocks > 1) then
                 bl%block_std(:,i) = (bl%reblock_data_2(:,i)%sum_of_block_squares/bl%reblock_data_2(:,i)%n_blocks - &
                                                                                                 bl%block_mean(:,i) ** 2)
-
                 bl%block_std(:,i) = sqrt(bl%block_std(:,i)/(bl%reblock_data_2(:,i)%n_blocks - 1))
 
                 bl%block_cov(i) = (bl%data_product_2(i) - (bl%block_mean(1,i)*bl%block_mean(2,i)  * &
@@ -264,6 +290,7 @@ contains
                 bl%block_cov(i) = 0.0_p
             end if
         end do
+
     end subroutine mean_std_cov
 
     pure function fraction_error(mean_1, mean_2, data_number, std_1, std_2, cov_in) result(error_est)
@@ -565,10 +592,13 @@ contains
         integer, intent(in) :: iunit
         type(blocking_in_t), intent(in) :: blocking_in
 
+        ! Detect whether blocking should have started yet.
         if (bl%start_ireport == -1 .and. blocking_in%start_point<0 .and. qs%vary_shift(1)) then
             bl%start_ireport = ireport
+            bl%first_iteration = .true.
         else if (blocking_in%start_point>=0) then
             bl%start_ireport = nint(real(blocking_in%start_point)/qmc_in%ncycles)
+            bl%first_iteration = .true.
         end if
 
         ! Once the shift is varied the data needed for reblocking is
@@ -707,5 +737,200 @@ contains
 
     end subroutine write_blocking_report
 
+    subroutine reset_blocking_info(bl)
+
+        ! Subroutine to clear all stored blocking information to its original state.
+        ! This is of use when using an initial short period of calculation to optimise
+        ! various parameters, before using optimal parameters for the rest of the
+        ! calculation.
+
+        ! In/Out:
+        !   bl: Information needed to peform blocking on the fly.
+
+        use qmc_data, only: blocking_t
+
+        type(blocking_t), intent(inout) :: bl
+        type(blocking_t) :: new_bl
+
+
+        new_bl%lg_max = bl%lg_max
+        new_bl%save_fq = bl%save_fq
+        new_bl%n_saved_startpoints = bl%n_saved_startpoints
+        new_bl%shift_damping_precision = bl%shift_damping_precision
+
+        call deallocate_blocking(bl)
+
+        call allocate_blocking(new_bl)
+
+        bl = new_bl
+
+    end subroutine reset_blocking_info
+
+! --- Automated shift damping optimisation ---
+
+! We optimise shift damping for a calculation by comparing the standard deviations of the
+! instantaneous projected energy and shift estimates. As the shift damping and standard
+! deviation of the instantaneous shift are approximately proportional to each other, given
+! the current shift damping and the standard deviations of both distributions we can simply
+! calculate a new shift damping that should ensure they are equal.
+! An appropriate standard deviation will vary dramatically depending upon the magnitude of
+! the correlation energy for a given calculation, so using the standard deviation of the
+! other energy measure ensures a reasonable value (assuming a stable calculation).
+
+! We must account for edge cases within our algorithm. If the shift starts from a value that
+! deviates largely from the true energy and the shift damping is low, it can take a
+! considerable time for to equilibrate. This will prevent effective evaluation of the standard
+! deviations of various distributions, prevent collection of statistics for our energy estimates
+! before equilibration, and lead to the population changing significantly after the start of
+! population control.
+! To avoid this, if the mean of our estimators deviates by greater than 30% of the smaller
+! value we increase the shift damping, to ensure more rapid equilibration, and restart the
+! shift from the instantaneous projected energy. This should hopefully allow more useful
+! statistics to be collected in the interim. If this does not rectify the situation we repeat
+! the increase, and wait a larger period of time before reattempting optimisation.
+
+! It should be noted that after each modification of the shift damping we must discard all
+! previous reblocking data. This makes it imperitive that we equilibrate rapidly.
+
+    subroutine update_shift_damping(qs, bl, ireport)
+
+        ! Updates the shift damping according to the stage of a shift damping
+        ! optimisation we are in. This should only be called on the parent
+        ! processor, which broadcasts the resulting values to other processors.
+        ! The mpi broadcasts are recieved within receive_shift_updates.
+
+        ! In/Out:
+        !   qs: qmc_state object containing information on current state of
+        !           qmc calculation.
+        !   bl: Information needed to peform blocking on the fly.
+
+        use parallel
+        use qmc_data, only: qmc_state_t, blocking_t, sd_no_optimisation
+        use qmc_data, only: sd_optimised, sd_optimising
+        use qmc_data, only: sd_wait1, sd_wait2
+        use qmc_data, only: dt_numerator, dt_denominator, dt_shift
+
+        type(qmc_state_t), intent(inout) :: qs
+        type(blocking_t), intent(inout) :: bl
+        integer, intent(in) :: ireport
+        real(p) :: stds(dt_numerator:dt_shift), means(dt_numerator:dt_shift)
+        real(p) :: sd_proj_energy_dist, instant_proj_e, diff
+        logical :: modified
+#ifdef PARALLEL
+        integer :: ierr
+
+        if (parent.and.bl%first_iteration) then
+            call mpi_bcast(bl%start_ireport, 1, mpi_integer, root, MPI_COMM_WORLD, ierr)
+            bl%first_iteration = .false.
+        else if ((.not.parent) .and. bl%start_ireport < 0 .and. qs%vary_shift(1)) then
+            call mpi_bcast(bl%start_ireport, 1, mpi_integer, root, MPI_COMM_WORLD, ierr)
+        end if
+#endif
+        modified = .false.
+        ! See qmc_data for description of each stage of shift_damping_status.
+        if (qs%shift_damping_status == sd_no_optimisation .or. qs%shift_damping_status == sd_optimised) then
+            continue
+        else if (ireport < bl%start_ireport .or. bl%start_ireport < 0 .or. mod(ireport,50)/=0) then
+            continue
+        else if (qs%shift_damping_status == sd_optimising) then
+            if (parent) then
+                if (bl%n_reports_blocked <= 1) then
+                    continue
+                else
+                    call get_instantaneous_distributions(bl, stds, means)
+                    ! Need to use currently collected information to update shift damping.
+                    sd_proj_energy_dist = fraction_error(means(dt_numerator), means(dt_denominator), &
+                        1, stds(dt_numerator), stds(dt_denominator), bl%block_cov(0))
+                    instant_proj_e = means(dt_numerator)/means(dt_denominator)
+
+                    diff = abs(instant_proj_e - means(dt_shift))
+
+                    if (abs(stds(dt_shift))<depsilon .or. isnan(sd_proj_energy_dist)) then
+                        ! Not enough data to get distributions; wait.
+                        write (6, '("# Auto-Shift-Damping: Waiting to accumulate data on standard deviations.")')
+                        qs%shift_damping_status = sd_optimising
+                    else if (abs(diff) > abs(10 * instant_proj_e) .or. abs(diff) > abs(10 * means(dt_shift))) then
+                        ! Values don't agree within reasonable tolerances; shift damping may be
+                        ! too low to effectively reach target value in reasonable time.
+                        ! Boost shift damping to rectify.
+                        ! Add a limit here to ensure we don't increase indefinitely and actually
+                        ! destabilise calculation.
+                        qs%shift_damping_status = sd_optimising
+                        if (bl%n_increased_damping >= 1) then
+                            bl%n_increased_damping = bl%n_increased_damping - 1
+                            write (6, '("# Auto-Shift-Damping: Waiting for calculation to settle down.")')
+                        else
+                            write (6, '("# Auto-Shift-Damping: Increasing shift damping to compensate for slow approach.")')
+                            qs%shift_damping = min(0.5_p,max(0.01_p,qs%shift_damping * 5.0_p))
+                            modified = .true.
+                            bl%n_increased_damping = bl%n_increased_damping + 1
+                        end if
+                    else if (sd_proj_energy_dist/stds(dt_shift) > bl%shift_damping_precision .or. &
+                            sd_proj_energy_dist/stds(dt_shift) < 1.0_p/bl%shift_damping_precision) then
+                        modified = .true.
+                        ! Outside acceptable range- attempt optimisation.
+                        write (6, '("# Auto-Shift-Damping: Attemping shift damping optimisation.")')
+                        ! Use linear relationship between sqrt(<S^2>-<S>^2) and shift damping
+                        ! parameter to set shift damping such that the standard deviation of
+                        ! the shift is approximately 1.0 times that of the projected energy.
+                        qs%shift_damping = qs%shift_damping * 1.0_p * sd_proj_energy_dist / stds(dt_shift)
+                        qs%shift_damping_status = sd_wait1
+                    else
+                        qs%shift_damping_status = sd_optimised
+                        write (6, '("# Auto-Shift-Damping: Shift damping optimised; variance within acceptable range.")')
+                    end if
+                end if
+
+                if (modified) then
+                    write (6, '("# Auto-Shift-Damping: Shift damping changed to",1X,es17.10)') qs%shift_damping
+                    qs%shift= qs%estimators(1)%proj_energy/qs%estimators(1)%D0_population
+                    call reset_blocking_info(bl)
+                end if
+            end if
+#ifdef PARALLEL
+            call mpi_bcast(qs%shift_damping_status, 1, mpi_integer, root, MPI_COMM_WORLD, ierr)
+            if (qs%shift_damping_status /= sd_optimised) then
+                call mpi_bcast(qs%shift_damping, 1, mpi_preal, root, MPI_COMM_WORLD, ierr)
+                call mpi_bcast(qs%shift, size(qs%shift), mpi_preal, root, MPI_COMM_WORLD, ierr)
+                call mpi_bcast(modified, 1, mpi_logical, root, MPI_COMM_WORLD, ierr)
+                if ((.not. parent) .and. modified) bl%start_ireport = -1
+            end if
+#endif
+        else if (qs%shift_damping_status == sd_wait1) then
+            qs%shift_damping_status = sd_optimising
+        else if (qs%shift_damping_status == sd_wait2) then
+            qs%shift_damping_status = sd_wait1
+        else if (parent) then
+            write (6, '("# Auto-Shift-Damping: Unknown shift damping status:",1X,i0)') qs%shift_damping_status
+        end if
+
+    end subroutine update_shift_damping
+
+    subroutine get_instantaneous_distributions(bl, std, mean)
+
+        ! Get the instantaneous distributions of parameters involved in energy estimation.
+
+        ! In:
+        !   bl: Information needed to peform blocking on the fly.
+
+        ! Out:
+        !   std: size-3 array of standard deviations of dt_numerator, dt_denominator and dt_shift
+        !   mean: size-3 array of means of dt_numerator, dt_denominator and dt_shift
+
+        use qmc_data, only: blocking_t
+        use qmc_data, only: dt_numerator, dt_denominator, dt_shift
+
+        type(blocking_t), intent(in) :: bl
+        real(p), intent(out) :: std(dt_numerator:dt_shift), mean(dt_numerator:dt_shift)
+
+        if (bl%reblock_data_2(dt_numerator,0)%n_blocks > 1) then
+            mean(:) = bl%reblock_data_2(:,0)%sum_of_blocks/bl%reblock_data_2(:,0)%n_blocks
+            std(:) = sqrt(bl%reblock_data_2(:,0)%sum_of_block_squares/bl%reblock_data_2(:,0)%n_blocks - &
+                                                                                            mean(:) ** 2)
+        else
+            mean(:) = 0.0_p
+            std(:) = 0.0_p
+        end if
+    end subroutine get_instantaneous_distributions
 
 end module blocking

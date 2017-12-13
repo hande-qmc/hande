@@ -74,6 +74,18 @@ enum, bind(c)
     enumerator :: dt_proj_energy
 end enum
 
+enum, bind(c)
+    ! We have not attempted any optimisation of the shift damping.
+    enumerator :: sd_no_optimisation = -2
+    ! The shift damping has been previous optimised.
+    enumerator :: sd_optimised = -1
+    ! We have accumulated information and should now attempt to optimise the shift damping.
+    enumerator :: sd_optimising = 0
+    ! We need to wait one blocking cycle before attempting optimisation.
+    enumerator :: sd_wait1 = 1
+    ! We need to wait two blocking cycles before attempting optimisation.
+    enumerator :: sd_wait2 = 2
+end enum
 
 ! --- QMC input ---
 
@@ -117,8 +129,8 @@ type qmc_in_t
     ! Initial shift.
     real(p) :: initial_shift = 0.0_p
     ! Factor by which the changes in the population are damped when updating the
-    ! shift.
-    real(p) :: shift_damping = 0.050_p
+    ! shift. Used to set initial value within qmc_state_t.
+    real(p) :: shift_damping = huge(1.0_p)
 
     logical :: vary_shift
     logical :: vary_shift_present = .false.
@@ -294,10 +306,13 @@ type blocking_in_t
     logical :: blocking_on_the_fly = .false.
     ! log2 of the frequency at which the start point is saved. If
     ! negative, the default value is used. Default is the nearest integer to the
-    ! log2(nreports) - 8.
+    ! log2(nreports) - 8, assuming this is greater than 1, or otherwise no start
+    ! points being saved.
     integer :: start_save_frequency = -1
     ! Number of start points that is to be saved. If negative, the default value
     ! is used. The default is the integer part of nreports/2^(start_save_frequency).
+    ! If this becomes greater than 1, we will instead save no start points (same
+    ! edge case as 0 < start_save_freq < 1.
     integer :: start_point_number = -1
     ! Name blocking on the fly output file.
     character(255) :: filename = 'BLOCKING'
@@ -308,17 +323,24 @@ type blocking_in_t
     ! Limit of the sum of error in error and standard deviation of projected
     ! energy. If this value is reached calculation is terminated. Default = 0
     real(p) :: error_limit = 0
-! [review] - AJWT: [also see docs].  Not entirely clear what this means.
-    ! Minimum number of blocks used to terminate the calculation.
-    ! The blocking analysis is more reliable with more blocks used.
-    ! The calculation terminated if the standard error of projected energy is
-    ! below the error_limit and the number_of_blocks used is above
-    ! min_blocks_used. Default = 10
+    ! The minimum number of optimal block lengths required for a calculation to
+    ! terminate. The calculation will not terminate due to the standard error
+    ! falling below error_limit until at least this number of optimal
+    ! reblock lengths are included within the calculation. This ensures that
+    ! our error estimate is reliable at termination.
     real(p) :: min_blocks_used = 10.0_p
     ! The lower limit of the number_of_blocks used to terminate the calculation.
     ! The calculation is terminated if this condition is met irrelevant of
     ! the standard error of the projected energy. Default = (huge)
     real(p) :: blocks_used = huge(1.0_p)
+    ! Enable automatic optimisation of the shift damping using the standard
+    ! deviations of the shift and projected energy distributions.
+    logical :: auto_shift_damping = .false.
+    ! Ratio that defines strictness of automatic shift damping optimisation.
+    real(p) :: shift_damping_precision = 2.0_p
+    ! Force shift damping optmisation when we've already performed one. For
+    ! use when restarting from previously optimised calculation.
+    logical :: force_shift_damping_opt = .false.
 end type
 
 ! --- Parallel info ---
@@ -639,7 +661,15 @@ type blocking_t
     integer :: n_saved = 1
     ! Optimal blocksize saved for the calculation of number of blocks used.
     integer :: opt_bl_size=0
-
+    ! Number of times we've increased the shift damping during calculation. This is to avoid
+    ! the shift damping becoming too large for a stable calculation.
+    integer :: n_increased_damping = 0
+    ! We need a logical flag to tell us when we need to communicate to non-parent processes
+    ! that reblocking has started. We can detect this on other processes (start_ireport < 0
+    ! and we've started varying the shift) but on the parent processor have no such luck.
+    logical :: first_iteration = .false.
+    ! Ratio that defines strictness of automatic shift damping optimisation.
+    real(p) :: shift_damping_precision
 end type blocking_t
 
 type estimators_t
@@ -730,6 +760,9 @@ type qmc_state_t
     logical, allocatable :: vary_shift(:) ! (psip_list%nspaces)
     ! Number of particles above which varyshift is turned on.
     real(p) :: target_particles = huge(1.0_p)
+    ! Factor by which the changes in the population are damped when updating the
+    ! shift.
+    real(p) :: shift_damping = 0.050_p
     ! Stores information used by the excitation generator
     type(excit_gen_data_t) :: excit_gen_data
     ! Value of beta which we propagate the density matrix to. Only used for DMQMC.
@@ -751,6 +784,8 @@ type qmc_state_t
     ! we may want to print a different message depending upon the cause.
     logical :: reblock_done = .false.
     type(estimators_t), allocatable :: estimators(:)
+    ! Internal flag to indicate status of shift damping optimisation.
+    integer :: shift_damping_status = sd_no_optimisation
 end type qmc_state_t
 
 ! Copies of various settings that are required during annihilation.  This avoids having to pass through lots of different
@@ -1025,7 +1060,10 @@ contains
         call json_write_key(js, 'start_point', blocking%start_point)
         call json_write_key(js, 'error_limit', blocking%error_limit)
         call json_write_key(js, 'blocks_used', blocking%blocks_used)
-        call json_write_key(js, 'min_blocks_used', blocking%min_blocks_used, .true.)
+        call json_write_key(js, 'min_blocks_used', blocking%min_blocks_used)
+        call json_write_key(js, 'auto_shift_damping', blocking%auto_shift_damping)
+        call json_write_key(js, 'shift_damping_precision', blocking%shift_damping_precision)
+        call json_write_key(js, 'force_shift_damping_opt', blocking%force_shift_damping_opt, .true.)
         call json_object_end(js, terminal)
 
     end subroutine blocking_in_t_json
