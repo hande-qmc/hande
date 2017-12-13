@@ -767,15 +767,19 @@ contains
                 ! Note: replica tricks is not yet implemented in CCMC so only have (at most) real and imaginary spaces, which are
                 ! handled in select_cluster/select_nc_cluster.
                 call update_proj_energy_ptr(sys, qs%ref%f0, qs%trial%wfn_dat, cdet, pop, qs%estimators(1), D0_excit, hmatel)
-                if (sys%read_in%comp) then
-                    qs%estimators(2)%D0_population_comp = qs%estimators(1)%D0_population_comp
-                    qs%estimators(2)%proj_energy_comp = qs%estimators(1)%proj_energy_comp
-                end if
             end if
         end do
         deallocate(cluster%excitors)
         call dealloc_det_info_t(cdet)
         call dSFMT_end(rng)
+        ! WARNING: be careful when implementing ccmc replica or something else using nspaces!
+        ! This is to be safe as get_D0_info sets D0_normalisation on all processors.
+        qs%estimators(1)%D0_population = D0_normalisation
+        qs%estimators(1)%D0_population_comp = D0_normalisation
+        if (sys%read_in%comp) then
+            qs%estimators(2)%D0_population_comp = qs%estimators(1)%D0_population_comp
+            qs%estimators(2)%proj_energy_comp = qs%estimators(1)%proj_energy_comp
+        end if
 
 #ifdef PARALLEL
         call mpi_allreduce(qs%estimators%proj_energy, proj_energy_sum, qs%psip_list%nspaces, mpi_preal, &
@@ -784,27 +788,14 @@ contains
                            MPI_SUM, MPI_COMM_WORLD, ierr)
         call mpi_allreduce(qs%psip_list%nparticles, ntot_particles, qs%psip_list%nspaces, MPI_REAL8, &
                            MPI_SUM, MPI_COMM_WORLD, ierr)
-        call mpi_allreduce(qs%estimators%D0_population, D0_population_sum, qs%psip_list%nspaces, mpi_preal, MPI_SUM, &
-                           MPI_COMM_WORLD, ierr)
-        call mpi_allreduce(qs%estimators%D0_population_comp, D0_population_comp_sum, qs%psip_list%nspaces, mpi_pcomplex, MPI_SUM, &
-                           MPI_COMM_WORLD, ierr)
         call mpi_allreduce(qs%psip_list%nstates, qs%estimators%tot_nstates, qs%psip_list%nspaces, MPI_INTEGER, MPI_SUM, &
                            MPI_COMM_WORLD, ierr)
         qs%estimators%proj_energy = proj_energy_sum
         qs%estimators%proj_energy_comp = proj_energy_comp_sum
-        ! [todo] - Delete next two lines and some mpi_allreduce above.
-        qs%estimators%D0_population = D0_population_sum
-        qs%estimators%D0_population_comp = D0_population_comp_sum
-
-        ! D0_normalisation will have been broadcasted already. This is to be safe, in case D0 was not found above.
-        qs%estimators%D0_population_comp = D0_normalisation
 #else
         ntot_particles = qs%psip_list%nparticles
         qs%estimators%tot_nstates = qs%psip_list%nstates
 #endif
-        ! [todo] - be careful when implementing ccmc replica or something else using nspaces with the following line:
-        ! This is to be safe, in case D0 was not found above.
-        qs%estimators%D0_population = real(D0_normalisation)
     
     end subroutine initial_cc_projected_energy
 
