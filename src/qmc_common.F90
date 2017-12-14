@@ -660,8 +660,8 @@ contains
                                MPI_SUM, MPI_COMM_WORLD, ierr)
             call mpi_allreduce(qs%estimators%D0_population, D0_population_sum, qs%psip_list%nspaces, mpi_preal, MPI_SUM, &
                                MPI_COMM_WORLD, ierr)
-            call mpi_allreduce(qs%estimators%D0_population_comp, D0_population_comp_sum, qs%psip_list%nspaces, mpi_pcomplex, MPI_SUM, &
-                               MPI_COMM_WORLD, ierr)
+            call mpi_allreduce(qs%estimators%D0_population_comp, D0_population_comp_sum, qs%psip_list%nspaces, mpi_pcomplex, &
+                               MPI_SUM, MPI_COMM_WORLD, ierr)
             call mpi_allreduce(qs%psip_list%nstates, qs%estimators%tot_nstates, qs%psip_list%nspaces, MPI_INTEGER, MPI_SUM, &
                                MPI_COMM_WORLD, ierr)
             qs%estimators%proj_energy = proj_energy_sum
