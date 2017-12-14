@@ -845,7 +845,8 @@ contains
 
                     diff = abs(instant_proj_e - means(dt_shift))
 
-                    if (abs(stds(dt_shift))<depsilon .or. isnan(sd_proj_energy_dist)) then
+                    if (abs(stds(dt_shift)) < depsilon .or. abs(means(dt_numerator)) < depsilon .or. &
+                                                abs(means(dt_denominator)) < depsilon) then
                         ! Not enough data to get distributions; wait.
                         write (6, '("# Auto-Shift-Damping: Waiting to accumulate data on standard deviations.")')
                         qs%shift_damping_status = sd_optimising
