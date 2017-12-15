@@ -3,10 +3,6 @@ dist: trusty
 
 language: python
 
-python:
-  - "2.7"
-  - "3.5"
-
 addons:
   apt:
     packages:
@@ -32,10 +28,20 @@ env:
 matrix:
   include:
     - os: linux
-      env:
-        - USE_CMAKE=false
+      python: '2.7'
+      env: USE_CMAKE=false
     - os: linux
+      python: '3.5'
+      env: USE_CMAKE=false
+    - os: linux
+      python: '2.7'
       env:
+        - LUA_DIR=$LUA_ROOT
+        - USE_CMAKE=true
+    - os: linux
+      python: '3.5'
+      env:
+        - LUA_DIR=$LUA_ROOT
         - USE_CMAKE=true
 
 before_install:
