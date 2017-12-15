@@ -20,7 +20,7 @@ def gen_cmake_command(config):
         s.append('    command.append({0})'.format(definition))
 
     s.append("    command.append('-DCMAKE_BUILD_TYPE={0}'.format(arguments['--type']))")
-    s.append("    command.append('-G \"{0}\"'.format(arguments['--generator']))")
+    s.append("    command.append('-G\"{0}\"'.format(arguments['--generator']))")
     s.append("    if arguments['--cmake-options'] != \"''\":")
     s.append("        command.append(arguments['--cmake-options'])")
     s.append("    if arguments['--prefix']:")

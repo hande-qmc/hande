@@ -18,10 +18,11 @@ def check_cmake_exists(cmake_command):
     """
     from subprocess import Popen, PIPE
 
-    p = Popen('{0} --version'.format(cmake_command),
-              shell=True,
-              stdin=PIPE,
-              stdout=PIPE)
+    p = Popen(
+        '{0} --version'.format(cmake_command),
+        shell=True,
+        stdin=PIPE,
+        stdout=PIPE)
     if not ('cmake version' in p.communicate()[0].decode('UTF-8')):
         sys.stderr.write('   This code is built using CMake\n\n')
         sys.stderr.write('   CMake is not found\n')
@@ -41,39 +42,14 @@ def setup_build_path(build_path):
         fname = os.path.join(build_path, 'CMakeCache.txt')
         if os.path.exists(fname):
             sys.stderr.write('aborting setup\n')
-            sys.stderr.write('build directory {0} which contains CMakeCache.txt already exists\n'.format(build_path))
-            sys.stderr.write('remove the build directory and then rerun setup\n')
+            sys.stderr.write(
+                'build directory {0} which contains CMakeCache.txt already exists\n'.
+                format(build_path))
+            sys.stderr.write(
+                'remove the build directory and then rerun setup\n')
             sys.exit(1)
     else:
         os.makedirs(build_path, 0o755)
-
-
-def test_adapt_cmake_command_to_platform():
-
-    cmake_command = "FC=foo CC=bar CXX=RABOOF cmake -DTHIS -DTHAT='this and that cmake' .."
-    res = adapt_cmake_command_to_platform(cmake_command, 'linux')
-    assert res == cmake_command
-    res = adapt_cmake_command_to_platform(cmake_command, 'win32')
-    assert res == "set FC=foo && set CC=bar && set CXX=RABOOF && cmake -DTHIS -DTHAT='this and that cmake' .."
-
-    cmake_command = "cmake -DTHIS -DTHAT='this and that cmake' .."
-    res = adapt_cmake_command_to_platform(cmake_command, 'linux')
-    assert res == cmake_command
-    res = adapt_cmake_command_to_platform(cmake_command, 'win32')
-    assert res == cmake_command
-
-
-def adapt_cmake_command_to_platform(cmake_command, platform):
-    """
-    Adapt CMake command to MS Windows platform.
-    """
-    if platform == 'win32':
-        pos = cmake_command.find('cmake')
-        s = ['set {0} &&'.format(e) for e in cmake_command[:pos].split()]
-        s.append(cmake_command[pos:])
-        return ' '.join(s)
-    else:
-        return cmake_command
 
 
 def run_cmake(command, build_path, default_build_path):
@@ -84,11 +60,7 @@ def run_cmake(command, build_path, default_build_path):
     from shutil import rmtree
 
     topdir = os.getcwd()
-    p = Popen(command + ' -B'+ build_path,
-              shell=True,
-              stdin=PIPE,
-              stdout=PIPE,
-              stderr=PIPE)
+    p = Popen(command, shell=True, stdin=PIPE, stdout=PIPE, stderr=PIPE)
     stdout_coded, stderr_coded = p.communicate()
     stdout = stdout_coded.decode('UTF-8')
     stderr = stderr_coded.decode('UTF-8')
@@ -103,7 +75,7 @@ def run_cmake(command, build_path, default_build_path):
         sys.stderr.write(stderr)
 
     # write cmake output to file
-    with open('cmake_output', 'w') as f:
+    with open(os.path.join(build_path, 'cmake_output'), 'w') as f:
         f.write(stdout)
 
     # change directory and return
@@ -163,8 +135,7 @@ def configure(root_directory, build_path, cmake_command, only_show):
     if not only_show:
         setup_build_path(build_path)
 
-    cmake_command = adapt_cmake_command_to_platform(cmake_command, sys.platform)
-
+    cmake_command += ' -B' + build_path
     print('{0}\n'.format(cmake_command))
     if only_show:
         sys.exit(0)

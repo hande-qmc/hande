@@ -29,8 +29,7 @@
 #   docopt:
 #     - "--fc=<FC> Fortran compiler [default: gfortran]."
 #     - "--extra-fc-flags=<EXTRA_FCFLAGS> Extra Fortran compiler flags [default: '']."
-#   export: "'FC={0}'.format(arguments['--fc'])"
-#   define: "'-DEXTRA_FCFLAGS=\"{0}\"'.format(arguments['--extra-fc-flags'])"
+#   define: "'-DCMAKE_Fortran_COMPILER={0} -DEXTRA_FCFLAGS=\"{1}\"'.format(arguments['--fc'], arguments['--extra-fc-flags'])"
 
 set(CMAKE_Fortran_MODULE_DIRECTORY ${PROJECT_BINARY_DIR}/modules)
 include_directories(${PROJECT_BINARY_DIR}/modules)

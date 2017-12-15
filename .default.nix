@@ -34,6 +34,7 @@ in
       python36Packages.matplotlib
       python36Packages.numpy
       python36Packages.pandas
+      python36Packages.pyyaml
       python36Packages.virtualenvwrapper
       valgrind
     ];

@@ -54,11 +54,9 @@ def gen_cmake_command(options, arguments):
     Generate CMake command based on options and arguments.
     """
     command = []
-    command.append('FC={0}'.format(arguments['--fc']))
-    command.append('CC={0}'.format(arguments['--cc']))
     command.append(arguments['--cmake-executable'])
-    command.append('-DEXTRA_FCFLAGS="{0}"'.format(arguments['--extra-fc-flags']))
-    command.append('-DEXTRA_CFLAGS="{0}"'.format(arguments['--extra-cc-flags']))
+    command.append('-DCMAKE_Fortran_COMPILER={0} -DEXTRA_FCFLAGS="{1}"'.format(arguments['--fc'], arguments['--extra-fc-flags']))
+    command.append('-DCMAKE_C_COMPILER={0} -DEXTRA_CFLAGS="{1}"'.format(arguments['--cc'], arguments['--extra-cc-flags']))
     command.append('-DENABLE_BLAS={0}'.format(arguments['--blas']))
     command.append('-DENABLE_LAPACK={0}'.format(arguments['--lapack']))
     command.append('-DMKL_FLAG={0}'.format(arguments['--mkl']))
@@ -80,7 +78,7 @@ def gen_cmake_command(options, arguments):
     command.append('-DENABLE_BACKTRACE="{0}"'.format(arguments['--backtrace']))
     command.append('-DENABLE_INTRINSIC_POPCNT="{0}"'.format(arguments['--popcnt']))
     command.append('-DCMAKE_BUILD_TYPE={0}'.format(arguments['--type']))
-    command.append('-G "{0}"'.format(arguments['--generator']))
+    command.append('-G"{0}"'.format(arguments['--generator']))
     if arguments['--cmake-options'] != "''":
         command.append(arguments['--cmake-options'])
     if arguments['--prefix']:

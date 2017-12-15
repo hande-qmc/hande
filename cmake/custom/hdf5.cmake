@@ -41,7 +41,7 @@ if(ENABLE_HDF5)
     LINK_LIBRARIES
       ${HDF5_Fortran_LIBRARIES}
     )
-  if(NOT has_Fortran2003)
+  if(NOT HDF5_Fortran2003)
     message(FATAL_ERROR "HDF5 requested, but library was not compiled with --enable-fortran2003")
   else()
     set(USE_HDF5 ON)

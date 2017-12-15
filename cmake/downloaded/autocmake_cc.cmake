@@ -25,8 +25,7 @@
 #   docopt:
 #     - "--cc=<CC> C compiler [default: gcc]."
 #     - "--extra-cc-flags=<EXTRA_CFLAGS> Extra C compiler flags [default: '']."
-#   export: "'CC={0}'.format(arguments['--cc'])"
-#   define: "'-DEXTRA_CFLAGS=\"{0}\"'.format(arguments['--extra-cc-flags'])"
+#   define: "'-DCMAKE_C_COMPILER={0} -DEXTRA_CFLAGS=\"{1}\"'.format(arguments['--cc'], arguments['--extra-cc-flags'])"
 
 if(NOT DEFINED CMAKE_C_COMPILER_ID)
     message(FATAL_ERROR "CMAKE_C_COMPILER_ID variable is not defined!")

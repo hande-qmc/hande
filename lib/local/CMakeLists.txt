@@ -22,6 +22,8 @@ add_library(coreutils
 target_include_directories(coreutils
   PRIVATE
     ${CMAKE_CURRENT_BINARY_DIR}
+  PUBLIC
+    $<$<BOOL:${USE_HDF5}>:${HDF5_INCLUDE_DIRS}>
   )
 target_sources(coreutils
   PRIVATE

@@ -5,28 +5,6 @@ add_library(hande-shared SHARED
             $<TARGET_OBJECTS:HANDE::external>
             )
 
-target_link_libraries(hande-shared
-  PUBLIC
-    HANDE::aotus
-  )
-
-target_compile_definitions(hande-shared
-  PRIVATE
-    $<$<BOOL:${USE_INTRINSIC_POPCNT}>:USE_POPCNT>
-    $<$<NOT:$<BOOL:${USE_HDF5}>>:DISABLE_HDF5>
-    $<$<NOT:$<BOOL:${USE_LANCZOS}>>:DISABLE_LANCZOS>
-    $<$<BOOL:${USE_MPI}>:PARALLEL>
-    $<$<NOT:$<BOOL:${USE_ScaLAPACK}>>:DISABLE_SCALAPACK>
-    $<$<BOOL:${USE_SINGLE_PRECISION}>:SINGLE_PRECISION>
-  )
-
-target_compile_options(hande-shared
-  PRIVATE
-    ${HANDE_Fortran_FLAGS}
-    $<$<CONFIG:Debug>:${HANDE_Fortran_FLAGS_DEBUG}>
-    $<$<CONFIG:Release>:${HANDE_Fortran_FLAGS_RELEASE}>
-  )
-
 target_sources(hande-shared
   PRIVATE
     interact.F90
@@ -172,22 +150,52 @@ target_sources(hande-shared
     ueg.f90
   )
 
+target_compile_definitions(hande-shared
+  PRIVATE
+    $<$<BOOL:${USE_INTRINSIC_POPCNT}>:USE_POPCNT>
+    $<$<NOT:$<BOOL:${USE_HDF5}>>:DISABLE_HDF5>
+    $<$<NOT:$<BOOL:${USE_LANCZOS}>>:DISABLE_LANCZOS>
+    $<$<BOOL:${USE_MPI}>:PARALLEL>
+    $<$<NOT:$<BOOL:${USE_ScaLAPACK}>>:DISABLE_SCALAPACK>
+    $<$<BOOL:${USE_SINGLE_PRECISION}>:SINGLE_PRECISION>
+    )
+target_compile_options(hande-shared
+  PRIVATE
+    ${HANDE_Fortran_FLAGS}
+    $<$<CONFIG:Debug>:${HANDE_Fortran_FLAGS_DEBUG}>
+    $<$<CONFIG:Release>:${HANDE_Fortran_FLAGS_RELEASE}>
+  )
+target_include_directories(hande-shared
+  PUBLIC
+    $<$<BOOL:${USE_HDF5}>:${HDF5_INCLUDE_DIRS}>
+  )
+target_link_libraries(hande-shared
+  PRIVATE
+    HANDE::aotus
+  PUBLIC
+    ${MATH_LIBS}
+    "$<$<BOOL:${USE_MPI}>:${MPI_Fortran_LIBRARIES}>"
+    # TODO "$<$<BOOL:${USE_LANCZOS}>:${LANCZOS_LIBRARIES}>"
+    "$<$<BOOL:${USE_ScaLAPACK}>:${ScaLAPACK_LIBRARIES}>"
+    "$<$<BOOL:${USE_UUID}>:${UUID_LIBRARIES}>"
+    "$<$<BOOL:${USE_HDF5}>:${HDF5_Fortran_LIBRARIES}>"
+  )
+
 set_target_properties(hande-shared PROPERTIES SOVERSION 1 #${PROJECT_VERSION_MAJOR}
                                             OUTPUT_NAME "hande"
                                             EXPORT_NAME "hande")
 
-add_executable(hande.x hande.f90)
-target_link_libraries(hande.x
+add_executable(hande.cmake.x hande.f90)
+target_link_libraries(hande.cmake.x
   PRIVATE
     hande-shared
-    HANDE::aotus
-  PUBLIC
-    ${MATH_LIBS}
-    ${ScaLAPACK_LIBRARIES}
   )
-
-target_link_libraries(hande.x
-  PUBLIC
-    $<$<BOOL:${USE_UUID}>:${UUID_LIBRARIES}>
-    $<$<BOOL:${USE_HDF5}>:${HDF5_Fortran_LIBRARIES}>
+add_custom_command(TARGET hande.cmake.x
+  POST_BUILD
+  COMMAND
+    ${CMAKE_COMMAND} -E copy_directory ${PROJECT_BINARY_DIR}/bin ${PROJECT_SOURCE_DIR}/bin
+  COMMAND
+    ${CMAKE_COMMAND} -E create_symlink ${PROJECT_SOURCE_DIR}/bin/hande.cmake.x ${PROJECT_SOURCE_DIR}/bin/hande.x
+  COMMENT
+    "Copying and symlinking executable hande.cmake.x to ${PROJECT_SOURCE_DIR}/bin/hande.x"
   )
