@@ -190,7 +190,7 @@ target_link_libraries(hande.cmake.x
   PRIVATE
     hande-shared
   )
-set_target_properties(hand.cmake.x
+set_target_properties(hande.cmake.x
   PROPERTIES
     POSITION_INDEPENDENT_CODE 1
   )
