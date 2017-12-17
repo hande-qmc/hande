@@ -1,11 +1,11 @@
-add_library(hande-shared SHARED
+add_library(hande-static STATIC
             $<TARGET_OBJECTS:HANDE::cephes>
             $<TARGET_OBJECTS:HANDE::coreutils>
             $<TARGET_OBJECTS:HANDE::dSFMT>
             $<TARGET_OBJECTS:HANDE::external>
             )
 
-target_sources(hande-shared
+target_sources(hande-static
   PRIVATE
     interact.F90
     lua_hande.F90
@@ -16,7 +16,7 @@ target_sources(hande-shared
     test.f90
 )
 
-target_sources(hande-shared
+target_sources(hande-static
   PRIVATE
     ccmc.F90
     ccmc_death_spawning.f90
@@ -26,7 +26,7 @@ target_sources(hande-shared
     ccmc_utils.f90
   )
 
-target_sources(hande-shared
+target_sources(hande-static
   PRIVATE
     basis_types.f90
     bit_utils.F90
@@ -52,7 +52,7 @@ target_sources(hande-shared
     ueg_types.f90
   )
 
-target_sources(hande-shared
+target_sources(hande-static
   PRIVATE
     bloom_handler.F90
     determinant_enumeration.f90
@@ -69,7 +69,7 @@ target_sources(hande-shared
     reference_determinant.f90
 )
 
-target_sources(hande-shared
+target_sources(hande-static
   PRIVATE
     dmqmc.f90
     dmqmc_data.f90
@@ -79,7 +79,7 @@ target_sources(hande-shared
     idmqmc.f90
 )
 
-target_sources(hande-shared
+target_sources(hande-static
   PRIVATE
     ct_fciqmc.F90
     fci_lanczos.F90
@@ -91,7 +91,7 @@ target_sources(hande-shared
     simple_fciqmc.f90
 )
 
-target_sources(hande-shared
+target_sources(hande-static
   PRIVATE
     hamiltonian.f90
     hamiltonian_chung_landau.f90
@@ -107,17 +107,19 @@ target_sources(hande-shared
     real_lattice.f90
 )
 
-target_sources(hande-shared
+target_sources(hande-static
   PRIVATE
     hfs_data.f90
     hfs_fciqmc.f90
 )
-target_sources(hande-shared
+
+target_sources(hande-static
   PRIVATE
     importance_sampling.f90
     importance_sampling_data.f90
 )
-target_sources(hande-shared
+
+target_sources(hande-static
   PRIVATE
     annihilation.f90
     death.f90
@@ -131,7 +133,7 @@ target_sources(hande-shared
     spawning.F90
   )
 
-target_sources(hande-shared
+target_sources(hande-static
   PRIVATE
     basis.f90
     chem_pot.f90
@@ -150,7 +152,7 @@ target_sources(hande-shared
     ueg.f90
   )
 
-target_compile_definitions(hande-shared
+target_compile_definitions(hande-static
   PRIVATE
     $<$<BOOL:${USE_INTRINSIC_POPCNT}>:USE_POPCNT>
     $<$<NOT:$<BOOL:${USE_HDF5}>>:DISABLE_HDF5>
@@ -159,17 +161,17 @@ target_compile_definitions(hande-shared
     $<$<NOT:$<BOOL:${USE_ScaLAPACK}>>:DISABLE_SCALAPACK>
     $<$<BOOL:${USE_SINGLE_PRECISION}>:SINGLE_PRECISION>
     )
-target_compile_options(hande-shared
+target_compile_options(hande-static
   PRIVATE
     ${HANDE_Fortran_FLAGS}
     $<$<CONFIG:Debug>:${HANDE_Fortran_FLAGS_DEBUG}>
     $<$<CONFIG:Release>:${HANDE_Fortran_FLAGS_RELEASE}>
   )
-target_include_directories(hande-shared
+target_include_directories(hande-static
   PUBLIC
     $<$<BOOL:${USE_HDF5}>:${HDF5_INCLUDE_DIRS}>
   )
-target_link_libraries(hande-shared
+target_link_libraries(hande-static
   PRIVATE
     HANDE::aotus
   PUBLIC
@@ -181,14 +183,14 @@ target_link_libraries(hande-shared
     "$<$<BOOL:${USE_HDF5}>:${HDF5_Fortran_LIBRARIES}>"
   )
 
-set_target_properties(hande-shared PROPERTIES SOVERSION 1 #${PROJECT_VERSION_MAJOR}
-                                            OUTPUT_NAME "hande"
-                                            EXPORT_NAME "hande")
+#set_target_properties(hande-shared PROPERTIES SOVERSION 1 #${PROJECT_VERSION_MAJOR}
+#                                            OUTPUT_NAME "hande"
+#                                            EXPORT_NAME "hande")
 
 add_executable(hande.cmake.x hande.f90)
 target_link_libraries(hande.cmake.x
   PRIVATE
-    hande-shared
+    hande-static
   )
 set_target_properties(hande.cmake.x
   PROPERTIES
