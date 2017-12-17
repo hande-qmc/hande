@@ -190,6 +190,11 @@ target_link_libraries(hande.cmake.x
   PRIVATE
     hande-shared
   )
+set_target_properties(hand.cmake.x
+  PROPERTIES
+    POSITION_INDEPENDENT_CODE 1
+  )
+
 add_custom_command(TARGET hande.cmake.x
   POST_BUILD
   COMMAND
