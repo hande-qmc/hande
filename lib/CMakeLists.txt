@@ -31,4 +31,8 @@ target_include_directories(dSFMT
   PRIVATE
     dSFMT-src-2.2
   )
+set_target_properties(dSFMT
+  PROPERTIES
+    POSITION_INDEPENDENT_CODE 1
+)
 add_library(HANDE::dSFMT ALIAS dSFMT)
