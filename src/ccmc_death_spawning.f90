@@ -115,11 +115,6 @@ contains
         call gen_excit_ptr%full(rng, sys, qs%excit_gen_data, cdet, spawn_pgen, connection, hmatel, allowed_excitation)
 
         if (allowed_excitation) then
-            if (qs%excit_gen_data%p_single_double%vary_psingles) then
-                call update_p_single_double_data(connection%nexcit, ps_stat%h_pgen_singles_sum, &
-                            ps_stat%h_pgen_doubles_sum, ps_stat%excit_gen_singles, ps_stat%excit_gen_doubles, &
-                            hmatel, spawn_pgen, qs%excit_gen_data, sys%read_in%comp, ps_stat%overflow_loc)
-            end if
 
             if (linked_ccmc) then
                 ! For Linked Coupled Cluster we reject any spawning where the
@@ -149,6 +144,13 @@ contains
         hmatel%r = hmatel%r*real(cluster%amplitude)*invdiagel*cluster%cluster_to_det_sign
         pgen = spawn_pgen*cluster%pselect*nspawnings_total
 
+        if (allowed_excitation) then
+            if (qs%excit_gen_data%p_single_double%vary_psingles) then
+                call update_p_single_double_data(connection%nexcit, ps_stat%h_pgen_singles_sum, &
+                            ps_stat%h_pgen_doubles_sum, ps_stat%excit_gen_singles, ps_stat%excit_gen_doubles, &
+                            hmatel, pgen, qs%excit_gen_data, sys%read_in%comp, ps_stat%overflow_loc)
+            end if
+        end if
         ! 3. Attempt spawning.
         nspawn = attempt_to_spawn(rng, qs%tau, spawn_cutoff, qs%psip_list%pop_real_factor, hmatel%r, pgen, parent_sign)
 
@@ -615,11 +617,6 @@ contains
         end if
 
         if (allowed) then
-            if (qs%excit_gen_data%p_single_double%vary_psingles) then
-                call update_p_single_double_data(connection%nexcit, ps_stat%h_pgen_singles_sum, ps_stat%h_pgen_doubles_sum, &
-                        ps_stat%excit_gen_singles, ps_stat%excit_gen_doubles, hmatel, pgen, qs%excit_gen_data, &
-                        sys%read_in%comp, ps_stat%overflow_loc)
-            end if
             ! check that left_cluster can be applied to the resulting excitor to
             ! give a cluster to spawn on to
             call create_excited_det(sys%basis, rdet%f, connection, fexcit)
@@ -712,6 +709,14 @@ contains
             nspawn = attempt_to_spawn(rng, qs%tau, spawn_cutoff, qs%psip_list%pop_real_factor, hmatel%r, pgen, parent_sign)
         else
             nspawn = 0
+        end if
+        
+        if (allowed) then
+            if (qs%excit_gen_data%p_single_double%vary_psingles) then
+                call update_p_single_double_data(connection%nexcit, ps_stat%h_pgen_singles_sum, ps_stat%h_pgen_doubles_sum, &
+                        ps_stat%excit_gen_singles, ps_stat%excit_gen_doubles, hmatel, pgen, qs%excit_gen_data, &
+                        sys%read_in%comp, ps_stat%overflow_loc)
+            end if
         end if
 
     end subroutine linked_spawner_ccmc
@@ -814,16 +819,16 @@ contains
         ! generators of the sys%lattice%lattice models.  It is trivial to implement and (at
         ! least for now) is left as an exercise to the interested reader.
         call gen_excit_ptr%full(rng, sys, qs%excit_gen_data, cdet, pgen, connection, hmatel, allowed_excitation)
+        
+        ! 2, Apply additional factors.
+        hmatel%c = hmatel%c*cluster%amplitude*cluster%cluster_to_det_sign
+        pgen = pgen*cluster%pselect*nspawnings_total
 
         if ((allowed_excitation == .true.) .and. (qs%excit_gen_data%p_single_double%vary_psingles == .true.)) then
             call update_p_single_double_data(connection%nexcit, ps_stat%h_pgen_singles_sum, ps_stat%h_pgen_doubles_sum, &
                         ps_stat%excit_gen_singles, ps_stat%excit_gen_doubles, hmatel, pgen, qs%excit_gen_data, &
                         sys%read_in%comp, ps_stat%overflow_loc)
         end if
-
-        ! 2, Apply additional factors.
-        hmatel%c = hmatel%c*cluster%amplitude*cluster%cluster_to_det_sign
-        pgen = pgen*cluster%pselect*nspawnings_total
 
         ! 3. Attempt spawning.
         nspawn = attempt_to_spawn(rng, qs%tau, spawn_cutoff, qs%psip_list%pop_real_factor, real(hmatel%c), pgen, parent_sign)

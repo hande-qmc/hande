@@ -90,7 +90,7 @@ contains
         type(excit_t), intent(out) :: connection
 
         real(p) :: pgen, qn_weight
-        type(hmatel_t) :: hmatel
+        type(hmatel_t) :: hmatel, hmatel_tmp
         logical :: allowed
 
         nspawn_im = 0_int_p
@@ -100,10 +100,12 @@ contains
 
         if (allowed) then
             qn_weight = calc_qn_spawned_weighting(sys, qmc_state%propagator, cdet%fock_sum, connection)
+            hmatel_tmp = hmatel
+            hmatel_tmp%r = hmatel%r * qn_weight
             if (qmc_state%excit_gen_data%p_single_double%vary_psingles) then
                 associate(ps=>qmc_state%excit_gen_data%p_single_double)
                     call update_p_single_double_data(connection%nexcit, ps%tmp%h_pgen_singles_sum, ps%tmp%h_pgen_doubles_sum, &
-                            ps%tmp%excit_gen_singles, ps%tmp%excit_gen_doubles, hmatel, pgen, qmc_state%excit_gen_data, &
+                            ps%tmp%excit_gen_singles, ps%tmp%excit_gen_doubles, hmatel_tmp, pgen, qmc_state%excit_gen_data, &
                             sys%read_in%comp, ps%overflow_loc)
                 end associate
             end if
@@ -194,6 +196,7 @@ contains
         call gen_excit_ptr%trial_fn(sys, cdet, connection, weights, hmatel%r)
 
         if (allowed) then
+            hmatel%r = hmatel%r * calc_qn_spawned_weighting(sys, qmc_state%propagator, cdet%fock_sum, connection)
             if (qmc_state%excit_gen_data%p_single_double%vary_psingles) then
                 associate(ps=>qmc_state%excit_gen_data%p_single_double)
                     call update_p_single_double_data(connection%nexcit, ps%tmp%h_pgen_singles_sum, ps%tmp%h_pgen_doubles_sum, &
@@ -201,7 +204,6 @@ contains
                                 sys%read_in%comp, ps%overflow_loc)
                 end associate
             end if
-            hmatel%r = hmatel%r * calc_qn_spawned_weighting(sys, qmc_state%propagator, cdet%fock_sum, connection)
         end if
 
         ! 3. Attempt spawning.
@@ -549,17 +551,19 @@ contains
 
         real(p) :: pgen, qn_weight
         logical :: allowed
-        type(hmatel_t) :: hmatel
+        type(hmatel_t) :: hmatel, hmatel_tmp
 
         ! 1. Generate random excitation.
         call gen_excit_ptr%full(rng, sys, qmc_state%excit_gen_data, cdet, pgen, connection, hmatel, allowed)
 
         if (allowed) then
-            qn_weight = calc_qn_spawned_weighting(sys, qmc_state%propagator, cdet%fock_sum, connection) 
+            qn_weight = calc_qn_spawned_weighting(sys, qmc_state%propagator, cdet%fock_sum, connection)
+            ! [todo] - check this multiplication
+            hmatel_tmp%c = qn_weight * hmatel%c
             if (qmc_state%excit_gen_data%p_single_double%vary_psingles) then
                 associate(ps=>qmc_state%excit_gen_data%p_single_double)
                     call update_p_single_double_data(connection%nexcit, ps%tmp%h_pgen_singles_sum, ps%tmp%h_pgen_doubles_sum, &
-                            ps%tmp%excit_gen_singles, ps%tmp%excit_gen_doubles, hmatel, pgen, qmc_state%excit_gen_data, &
+                            ps%tmp%excit_gen_singles, ps%tmp%excit_gen_doubles, hmatel_tmp, pgen, qmc_state%excit_gen_data, &
                             sys%read_in%comp, ps%overflow_loc)
                 end associate
             end if
