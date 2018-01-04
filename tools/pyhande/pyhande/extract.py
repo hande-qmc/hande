@@ -105,6 +105,11 @@ data_pairs : list of (dict, :class:`pandas.DataFrame` or :class:`pandas.Series`)
         tot_energy = 'Total energy:',
         err_in_err = 'Error in correlation energy:'
     )
+    bloom_footer = dict(
+        nblooms = 'Total number of blooming events:',
+        max_bloom = 'Maximum number of particles spawned in a blooming event:',
+        mean_bloom = 'Mean number of particles spawned in a blooming event:'
+    )
 
     md_generic_footer = dict(
         wall_time = 'Wall time (seconds):',
@@ -214,6 +219,12 @@ data_pairs : list of (dict, :class:`pandas.DataFrame` or :class:`pandas.Series`)
                 if val in line:
                     energy_val = line.split()[-1]
                     data_pairs[-1][0][key] = float(energy_val)
+
+            # Blooming statistics
+            for (key, val) in bloom_footer.items():
+                if val in line:
+                    bloom_val = line.split()[-1]
+                    data_pairs[-1][0][key] = float(bloom_val)
 
     f.close()
 
