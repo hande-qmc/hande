@@ -4,7 +4,7 @@ let
     owner = "NixOS";
     repo = "nixpkgs-channels";
     rev = "nixos-unstable";
-    sha256 = "1i3p5m0pnn86lzni5y1win0sacckw3wlg9kqaw15nszhykgz22zq";
+    sha256 = "0r92p2blm9k2dhy5xv41k9asqf9xfd6if4c801ab1wjzy8wsf1wi";
   });
 in
   with import nixpkgs {
@@ -31,11 +31,12 @@ in
       libuuid
       lua5_3
       openmpi
-      python36Packages.matplotlib
-      python36Packages.numpy
-      python36Packages.pandas
-      python36Packages.pyyaml
-      python36Packages.virtualenvwrapper
+      python3Packages.matplotlib
+      python3Packages.numpy
+      python3Packages.pandas
+      python3Packages.pyyaml
+      python3Packages.virtualenvwrapper
+      python3Packages.scipy
       valgrind
     ];
   }

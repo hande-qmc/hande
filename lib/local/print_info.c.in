@@ -19,8 +19,9 @@ const char *report_uuid();
 const char *report_scalapack();
 const char *report_single_precision();
 const char *report_popcnt();
-const char *report_mpi();
-const char *report_omp();
+const char *report_mpi_toggle();
+const char *report_omp_toggle();
+const char *report_parallel();
 void print_info();
 
 void print_info() {
@@ -54,8 +55,8 @@ void print_info() {
   printf("DET_SIZE set to          | %d\n", @_det_size@);
   printf("POP_SIZE set to          | %d\n", @_pop_size@);
   printf("dSFMT Mersenne exponent  | %d\n", @_dsfmt_mexp@);
-  printf("%s\n", report_mpi());
-  printf("%s\n", report_omp());
+  printf("%s\n", report_mpi_toggle());
+  printf("%s\n", report_omp_toggle());
   /* clang-format on */
 
   printf("\n");
@@ -66,9 +67,10 @@ void print_info() {
   printf("   %s\n", report_hdf5());
   printf("   %s\n", report_lanczos());
   printf("   %s\n", report_uuid());
+  printf("   %s\n", report_parallel());
   printf("   %s\n", report_scalapack());
-  printf("   %s\n", report_popcnt());
   printf("   %s\n", report_single_precision());
+  printf("   %s\n", report_popcnt());
 
   printf("\n");
   printf("\n");
@@ -152,7 +154,7 @@ const char *report_single_precision() {
   /* clang-format on */
 }
 
-const char *report_mpi() {
+const char *report_mpi_toggle() {
 /* clang-format off */
 #ifdef PARALLEL
   return "MPI parallelization      | ON\nMPI launcher             | @_mpi_launcher@";
@@ -162,12 +164,22 @@ const char *report_mpi() {
   /* clang-format on */
 }
 
-const char *report_omp() {
+const char *report_omp_toggle() {
 /* clang-format off */
 #ifdef _OPENMP
   return "OpenMP parallelization   | ON";
 #else
   return "OpenMP parallelization   | OFF";
+#endif
+  /* clang-format on */
+}
+
+const char *report_parallel() {
+/* clang-format off */
+#ifdef PARALLEL
+  return "PARALLEL defined.  MPI parallelization enabled.";
+#else
+  return "PARALLEL not defined.  MPI parallelization disabled.";
 #endif
   /* clang-format on */
 }

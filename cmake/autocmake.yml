@@ -14,6 +14,7 @@ modules:
     - '%(url_root)modules/cc.cmake'
 - cmake:
   - source:
+    - '%(url_root)modules/custom_color_messages.cmake'
     - '%(url_root)modules/safeguards.cmake'
     - '%(url_root)modules/default_build_paths.cmake'
     - '%(url_root)modules/math_libs.cmake'
