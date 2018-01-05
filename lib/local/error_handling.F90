@@ -6,14 +6,14 @@ implicit none
 interface
     function backtrace(buffer, size) bind(c, name="backtrace")
         use, intrinsic :: iso_c_binding, only: c_ptr, c_int
-        type(c_ptr) :: buffer
+        type(c_ptr), value :: buffer
         integer(c_int), value :: size
         integer(c_int) :: backtrace
     end function backtrace
 
     subroutine backtrace_symbols_fd(buffer, size, fd) bind(c, name="backtrace_symbols_fd")
         use, intrinsic :: iso_c_binding, only: c_ptr, c_int
-        type(c_ptr) :: buffer
+        type(c_ptr), value :: buffer
         integer(c_int), value :: size, fd
     end subroutine backtrace_symbols_fd
 end interface
