@@ -231,6 +231,13 @@ contains
         use alias, only: generate_alias_tables
         use read_in_symmetry, only: cross_product_basis_read_in
         use hamiltonian_data, only: hmatel_t
+#ifdef PARALLEL
+        use parallel
+
+        integer :: displs_nel(0:nprocs-1), displs_nbasis(0:nprocs-1)
+        integer :: sizes_nel(0:nprocs-1), sizes_nbasis(0:nprocs-1)
+        integer :: ierr
+#endif
         type(sys_t), intent(in) :: sys
         type(reference_t), intent(in) :: ref
         type(excit_gen_power_pitzer_t), intent(inout) :: pp
@@ -238,6 +245,8 @@ contains
 
         integer :: i, j, a, b, ind_a, ind_b, maxv, nv, bsym, ij_sym, isyma, isymb, ims, imsa
         integer :: i_tmp, j_tmp, a_tmp, b_tmp, nall
+        integer :: iproc_nel_start, iproc_nel_end, iproc_nbasis_start, iproc_nbasis_end
+        integer :: nel_start, nel_end, nbasis_start, nbasis_end
         real(p) :: i_weight, ij_weight
         
         ! Store weights and alias tables.
@@ -280,6 +289,45 @@ contains
         ! Now sort this, just in case we have an old restart file and the reference was not sorted then.
         call qsort(pp%occ_list,sys%nel)
 
+#ifdef PARALLEL
+        ! Initialise do-loop bounds for each processor, e.g. [iproc_nel_start,iproc_nel_end], in the case for
+        ! a do-loop over sys%nel.
+        nel_end = 0
+        nbasis_end = 0
+        do i = 0, nprocs-1
+            nel_start = nel_end + 1
+            nbasis_start = nbasis_end + 1
+            nel_end = nel_start + sys%nel/nprocs - 1
+            nbasis_end = nbasis_start + sys%basis%nbasis/nprocs - 1
+            if (i < mod(sys%nel,nprocs)) nel_end = nel_end + 1
+            if (i < mod(sys%basis%nbasis,nprocs)) nbasis_end = nbasis_end + 1
+            if (i == iproc) then
+                iproc_nel_start = nel_start
+                iproc_nel_end = nel_end
+                iproc_nbasis_start = nbasis_start
+                iproc_nbasis_end = nbasis_end
+            end if
+            if (i < sys%nel) then
+                displs_nel(i) = nel_start - 1 ! start starts with 1 but is 0 displaced.
+                displs_nbasis(i) = nbasis_start - 1
+            else if (i < sys%basis%nbasis) then ! nbasis => nel
+                displs_nel(i) = sys%nel - 1
+                displs_nbasis(i) = nbasis_start - 1
+            else
+                displs_nel(i) = sys%nel - 1
+                displs_nbasis(i) = sys%basis%nbasis - 1
+            end if
+            sizes_nel(i) = nel_end - nel_start + 1
+            sizes_nbasis(i) = nbasis_end - nbasis_start + 1
+        end do
+#else
+        iproc_nel_start = 1,
+        iproc_nbasis_start = 1,
+        iproc_nel_end = sys%nel,
+        iproc_nbasis_end = sys%basis%nbasis,
+#endif
+
+        
         ! Fill the list with alpha and the list with betas.
         ind_a = 0
         ind_b = 0
@@ -303,8 +351,7 @@ contains
 
         ! Now set up weight tables.
         ! Single Excitations.
-        pp%ppn_i_s%weights_tot = 0.0_p
-        do i = 1, sys%nel
+        do i = iproc_nel_start, iproc_nel_end
             i_weight = 0.0_p
             ims = sys%basis%basis_fns(pp%occ_list(i))%ms
             isyma = sys%read_in%cross_product_sym_ptr(sys%read_in, sys%basis%basis_fns(pp%occ_list(i))%sym, &
@@ -326,8 +373,14 @@ contains
                 i_weight = 10.0_p*depsilon
             end if
             pp%ppn_i_s%weights(i) = i_weight
-            pp%ppn_i_s%weights_tot = pp%ppn_i_s%weights_tot + i_weight
         end do
+
+#ifdef PARALLEL
+        call mpi_allgatherv(pp%ppn_i_s%weights(iproc_nel_start:iproc_nel_end), sizes_nel(iproc), &
+            mpi_preal, pp%ppn_i_s%weights, sizes_nel, displs_nel, mpi_preal, MPI_COMM_WORLD, ierr)
+#endif
+        pp%ppn_i_s%weights_tot = sum(pp%ppn_i_s%weights)
+
         ! The i that we find with i_weight is i_ref which is mapped to i_cdet later. If i_weight is very close to 0
         ! (i.e. if there is not a with a valid excitaiton i->a), we need to make that weight finite as the mapped
         ! i_cdet might have allowed exciations. This is to prevent a bias where a valid i cannot be selected.
