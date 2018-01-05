@@ -2113,8 +2113,9 @@ contains
 
         type(p_single_double_t), intent(in) :: ps
         real(p), intent(out) :: excit_gen_singles_sum, excit_gen_doubles_sum, h_pgen_singles_sum_sum, h_pgen_doubles_sum_sum
+#ifdef PARALLEL
         integer :: ierr
-
+        
         ! [todo] - Do they need initialising?
         excit_gen_singles_sum = 0.0_p
         excit_gen_doubles_sum = 0.0_p
@@ -2128,6 +2129,13 @@ contains
         call mpi_allreduce(ps%tmp%h_pgen_doubles_sum, h_pgen_doubles_sum_sum, 1, mpi_preal, MPI_SUM, MPI_COMM_WORLD, ierr)
         ! ps%counter does not need to be communicated as it increments a change done below (same calculation done on all
         ! processes.
+#else   
+        ! This function should only be called if in parallel mode but in case it was called in not parallel mode.
+        excit_gen_singles_sum = ps%tmp%excit_gen_singles
+        excit_gen_doubles_sum = ps%tmp%excit_gen_doubles
+        h_pgen_singles_sum_sum = ps%tmp%h_pgen_singles_sum
+        h_pgen_doubles_sum_sum = ps%tmp%h_pgen_doubles_sum
+#endif
     end subroutine communicate_pattempt_single_data
 
     subroutine add_tmp_to_total(ps, excit_gen_singles_sum, excit_gen_doubles_sum, h_pgen_singles_sum_sum, &

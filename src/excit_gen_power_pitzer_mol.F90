@@ -321,10 +321,10 @@ contains
             sizes_nbasis(i) = nbasis_end - nbasis_start + 1
         end do
 #else
-        iproc_nel_start = 1,
-        iproc_nbasis_start = 1,
-        iproc_nel_end = sys%nel,
-        iproc_nbasis_end = sys%basis%nbasis,
+        iproc_nel_start = 1
+        iproc_nbasis_start = 1
+        iproc_nel_end = sys%nel
+        iproc_nbasis_end = sys%basis%nbasis
 #endif
 
         

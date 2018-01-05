@@ -158,7 +158,7 @@ contains
             ! Test for bias and stop calculation if a bias is found.
             ! Test that all single excitation i -> a that are allowed have some non zero weight ija for some j.
             do a = 1, sys%basis%nbasis
-                if ((j_nonzero(a,i) < (sys%basis%nbasis - sys%nel)) .and. (original == .true.) .and. (i /= a)) then
+                if ((j_nonzero(a,i) < (sys%basis%nbasis - sys%nel)) .and. (original) .and. (i /= a)) then
                     ! no non zero weight ija for some j and (i /= a). Now check that i -> a is valid.
                     ims = sys%basis%basis_fns(i)%ms
                     isyma = sys%read_in%cross_product_sym_ptr(sys%read_in, sys%basis%basis_fns(i)%sym, &

@@ -407,7 +407,8 @@ contains
                vlist(j) = j*2 - mod(i,2)      !get the virtual of the right spin
             end do
             call create_weighted_excitation_list_ueg(sys, i, vlist, maxv, pp%pp_ia_d%weights(:,i), pp%pp_ia_d%weights_tot(i))
-            call generate_alias_tables(maxv, pp%pp_ia_d%weights(:,i), pp%pp_ia_d%weights_tot(i), pp%pp_ia_d%aliasU(:,i), pp%pp_ia_d%aliasK(:,i))        
+            call generate_alias_tables(maxv, pp%pp_ia_d%weights(:,i), pp%pp_ia_d%weights_tot(i), pp%pp_ia_d%aliasU(:,i), &
+                pp%pp_ia_d%aliasK(:,i)) 
         end do
 
     end subroutine init_excit_ueg_power_pitzer

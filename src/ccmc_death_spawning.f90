@@ -824,7 +824,7 @@ contains
         hmatel%c = hmatel%c*cluster%amplitude*cluster%cluster_to_det_sign
         pgen = pgen*cluster%pselect*nspawnings_total
 
-        if ((allowed_excitation == .true.) .and. (qs%excit_gen_data%p_single_double%vary_psingles == .true.)) then
+        if ((allowed_excitation) .and. (qs%excit_gen_data%p_single_double%vary_psingles)) then
             call update_p_single_double_data(connection%nexcit, ps_stat%h_pgen_singles_sum, ps_stat%h_pgen_doubles_sum, &
                         ps_stat%excit_gen_singles, ps_stat%excit_gen_doubles, hmatel, pgen, qs%excit_gen_data, &
                         sys%read_in%comp, ps_stat%overflow_loc)

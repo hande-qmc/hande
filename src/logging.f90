@@ -332,8 +332,8 @@ contains
         type(logging_t), intent(inout) :: logging_info
         type(logging_in_t), intent(in) :: logging_in
 
-        open(newunit=logging_info%stoch_select_unit, file=get_log_filename(logging_in%stoch_selection_filename, logging_in%write_to), &
-                status='unknown')
+        open(newunit=logging_info%stoch_select_unit, file=get_log_filename(logging_in%stoch_selection_filename, &
+            logging_in%write_to), status='unknown')
 
         if (logging_in%stoch_selection > 0) logging_info%write_valid_stoch_selection = .true.
         if (logging_in%stoch_selection > 1) logging_info%write_invalid_stoch_selection = .true.
