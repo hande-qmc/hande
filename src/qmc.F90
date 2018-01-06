@@ -721,11 +721,6 @@ contains
             ! User input overrides other factors determining whether to vary shift
             qmc_state%vary_shift = qmc_in%vary_shift
             if (.not. qmc_in%vary_shift) qmc_state%shift = qmc_in%initial_shift
-        else
-            ! If a calculation has been restarted after the shift was varying, we
-            ! still want to vary the shift even if the number of particles is
-            ! instantaneously below the target.
-            qmc_state%vary_shift = qmc_state%psip_list%tot_nparticles >= qmc_state%target_particles .or. qmc_state%vary_shift
         end if
 
         if (doing_calc(hfs_fciqmc_calc)) then

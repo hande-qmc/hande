@@ -1315,12 +1315,8 @@ module restart_hdf5
 
             if (dump_restart_shift .and. any(qs%vary_shift)) then
                 dump_restart_shift = .false.
-                ! We want the restart file to not have vary_shift true.
-                vary_shift = qs%vary_shift
-                qs%vary_shift = .false.
                 call dump_restart_hdf5(ri_shift, qs, qs%mc_cycles_done+ncycles*ireport, &
                                        ntot_particles, nbasis, nb_comm, info_string_len)
-                qs%vary_shift = vary_shift
             else if (mod(ireport*ncycles,dump_freq) == 0) then
                 call dump_restart_hdf5(ri_freq, qs, qs%mc_cycles_done+ncycles*ireport, &
                                        ntot_particles, nbasis, nb_comm, info_string_len)
