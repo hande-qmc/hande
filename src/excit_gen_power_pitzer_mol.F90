@@ -236,7 +236,7 @@ contains
 
         integer :: displs_nel(0:nprocs-1), displs_nbasis(0:nprocs-1)
         integer :: sizes_nel(0:nprocs-1), sizes_nbasis(0:nprocs-1)
-        integer :: ierr
+        integer :: ierr, sr
 #endif
         type(sys_t), intent(in) :: sys
         type(reference_t), intent(in) :: ref
@@ -327,7 +327,6 @@ contains
         iproc_nbasis_end = sys%basis%nbasis
 #endif
 
-        
         ! Fill the list with alpha and the list with betas.
         ind_a = 0
         ind_b = 0
@@ -389,8 +388,8 @@ contains
         ! Generate alias tables.
         call generate_alias_tables(sys%nel, pp%ppn_i_s%weights(:), pp%ppn_i_s%weights_tot, pp%ppn_i_s%aliasU(:), &
                                 pp%ppn_i_s%aliasK(:))
-
-        do i = 1, sys%basis%nbasis
+        
+        do i = iproc_nbasis_start, iproc_nbasis_end
             pp%ppn_ia_s%weights_tot(i) = 0.0_p
             ims = sys%basis%basis_fns(i)%ms
             ! Convert ims which is in {-1, +1} notation to imsa which is {1, 2}.
@@ -422,13 +421,27 @@ contains
                                     pp%ppn_ia_s%weights_tot(i), pp%ppn_ia_s%aliasU(:,i), pp%ppn_ia_s%aliasK(:,i))
         end do
 
+#ifdef PARALLEL
+        ! note how FORTRAN stores arrays: array(2,1) comes before array(1,2) in memory.
+        associate(mv=>maxval(sys%read_in%pg_sym%nbasis_sym_spin))
+            call mpi_allgatherv(pp%ppn_ia_s%weights(:,iproc_nbasis_start:iproc_nbasis_end), mv*sizes_nbasis(iproc), &
+                mpi_preal, pp%ppn_ia_s%weights, mv*sizes_nbasis, mv*displs_nbasis, mpi_preal, MPI_COMM_WORLD, ierr)
+            call mpi_allgatherv(pp%ppn_ia_s%weights_tot(iproc_nbasis_start:iproc_nbasis_end), sizes_nbasis(iproc), &
+                mpi_preal, pp%ppn_ia_s%weights_tot, sizes_nbasis, displs_nbasis, mpi_preal, MPI_COMM_WORLD, ierr)
+            call mpi_allgatherv(pp%ppn_ia_s%aliasU(:,iproc_nbasis_start:iproc_nbasis_end), mv*sizes_nbasis(iproc), &
+                mpi_preal, pp%ppn_ia_s%aliasU, mv*sizes_nbasis, mv*displs_nbasis, mpi_preal, MPI_COMM_WORLD, ierr)
+            ! [todo] - this is not the safest thing in the universe: Once someone changes whether aliasK is int_32 or int_64
+            ! [todo] - in excit_gens.f90, this needs to be changed too.
+            call mpi_allgatherv(pp%ppn_ia_s%aliasK(:,iproc_nbasis_start:iproc_nbasis_end), mv*sizes_nbasis(iproc), &
+                MPI_INTEGER, pp%ppn_ia_s%aliasK, mv*sizes_nbasis, mv*displs_nbasis, MPI_INTEGER, MPI_COMM_WORLD, ierr)
+        end associate
+#endif
         ! Double Excitations.
         ! Generate the i weighting lists and alias tables for possible (spin conserved - symmetry cannot be checked due to latter
         ! mapping which only conserves spin) double excitations.
         ! i and j are drawn from spinorbitals occupied in the reference and a and b can be all orbitals. i!=j and a!=b.
         ! i and j can equal a and b because we later map i. Single excitations are not considered. [todo]
-        pp%ppn_i_d%weights_tot = 0.0_p
-        do i = 1, sys%nel
+        do i = iproc_nel_start, iproc_nel_end
             i_weight = 0.0_p
             do j = 1, sys%nel
                 if (i /= j) then
@@ -485,8 +498,14 @@ contains
                 i_weight = 10.0_p*depsilon
             end if
             pp%ppn_i_d%weights(i) = i_weight
-            pp%ppn_i_d%weights_tot = pp%ppn_i_d%weights_tot + i_weight
         end do
+
+
+#ifdef PARALLEL
+        call mpi_allgatherv(pp%ppn_i_d%weights(iproc_nel_start:iproc_nel_end), sizes_nel(iproc), &
+            mpi_preal, pp%ppn_i_d%weights, sizes_nel, displs_nel, mpi_preal, MPI_COMM_WORLD, ierr)
+#endif
+        pp%ppn_i_d%weights_tot = sum(pp%ppn_i_d%weights)
 
         ! The i that we find with i_weight is i_ref which is mapped to i_cdet later. If i_weight is very close to 0,
         ! we need to make that weight finite as the mapped i_cdet might have allowed excitations. This is to prevent
@@ -497,7 +516,7 @@ contains
                                 pp%ppn_i_d%aliasK(:))
 
         ! Generate the j given i weighting lists and alias tables. a and b cannot equal i (they are drawn from the same set).
-        do i = 1, sys%basis%nbasis
+        do i = iproc_nbasis_start, iproc_nbasis_end
             pp%ppn_ij_d%weights_tot(i) = 0.0_p
             do j = 1, sys%nel
                 ij_weight = 0.0_p
@@ -562,11 +581,25 @@ contains
                                     pp%ppn_ij_d%aliasK(:,i))
         end do
 
+#ifdef PARALLEL
+        ! note how FORTRAN stores arrays: array(2,1) comes before array(1,2) in memory.
+        associate(ne=>sys%nel)
+            call mpi_allgatherv(pp%ppn_ij_d%weights(:,iproc_nbasis_start:iproc_nbasis_end), ne*sizes_nbasis(iproc), &
+                mpi_preal, pp%ppn_ij_d%weights, ne*sizes_nbasis, ne*displs_nbasis, mpi_preal, MPI_COMM_WORLD, ierr)
+            call mpi_allgatherv(pp%ppn_ij_d%weights_tot(iproc_nbasis_start:iproc_nbasis_end), sizes_nbasis(iproc), &
+                mpi_preal, pp%ppn_ij_d%weights_tot, sizes_nbasis, displs_nbasis, mpi_preal, MPI_COMM_WORLD, ierr)
+            call mpi_allgatherv(pp%ppn_ij_d%aliasU(:,iproc_nbasis_start:iproc_nbasis_end), ne*sizes_nbasis(iproc), &
+                mpi_preal, pp%ppn_ij_d%aliasU, ne*sizes_nbasis, ne*displs_nbasis, mpi_preal, MPI_COMM_WORLD, ierr)
+            call mpi_allgatherv(pp%ppn_ij_d%aliasK(:,iproc_nbasis_start:iproc_nbasis_end), ne*sizes_nbasis(iproc), &
+                MPI_INTEGER, pp%ppn_ij_d%aliasK, ne*sizes_nbasis, ne*displs_nbasis, MPI_INTEGER, MPI_COMM_WORLD, ierr)
+        end associate
+#endif
+
         ! Now generate the occ->virtual weighting lists and alias tables.
         ! This breaks in the case where there is only one spinorbital in the system with a certain spin. This is unlikely
         ! and will be ignored. [todo] - check for case where sys%nbeta and sys%nalpha are 1?
         ! [todo] - do we need min weights here? probably not because we do not map and if <ai|ia> = 0 that is probably deserved?
-        do i = 1, sys%basis%nbasis
+        do i = iproc_nbasis_start, iproc_nbasis_end
             if (sys%basis%basis_fns(i)%Ms == -1) then ! beta
                 nall = pp%n_all_beta
                 if (nall > 0) then
@@ -604,6 +637,32 @@ contains
                 end do
             end if
         end do
+#ifdef PARALLEL
+        sr = sys%sym_max_tot - sys%sym0_tot + 1
+        associate(mv=>maxval(sys%read_in%pg_sym%nbasis_sym_spin))
+            call mpi_allgatherv(pp%ppn_ia_d%weights(:,iproc_nbasis_start:iproc_nbasis_end), mv*sizes_nbasis(iproc), &
+                mpi_preal, pp%ppn_ia_d%weights, mv*sizes_nbasis, mv*displs_nbasis, mpi_preal, MPI_COMM_WORLD, ierr)
+            call mpi_allgatherv(pp%ppn_ia_d%weights_tot(iproc_nbasis_start:iproc_nbasis_end), sizes_nbasis(iproc), &
+                mpi_preal, pp%ppn_ia_d%weights_tot, sizes_nbasis, displs_nbasis, mpi_preal, MPI_COMM_WORLD, ierr)
+            call mpi_allgatherv(pp%ppn_ia_d%aliasU(:,iproc_nbasis_start:iproc_nbasis_end), mv*sizes_nbasis(iproc), &
+                mpi_preal, pp%ppn_ia_d%aliasU, mv*sizes_nbasis, mv*displs_nbasis, mpi_preal, MPI_COMM_WORLD, ierr)
+            call mpi_allgatherv(pp%ppn_ia_d%aliasK(:,iproc_nbasis_start:iproc_nbasis_end), mv*sizes_nbasis(iproc), &
+                MPI_INTEGER, pp%ppn_ia_d%aliasK, mv*sizes_nbasis, mv*displs_nbasis, MPI_INTEGER, MPI_COMM_WORLD, ierr)
+        
+            call mpi_allgatherv(pp%ppn_jb_d%weights(:,sys%sym0_tot:sys%sym_max_tot,iproc_nbasis_start:iproc_nbasis_end), &
+                sr*mv*sizes_nbasis(iproc), mpi_preal, pp%ppn_jb_d%weights(:,sys%sym0_tot:sys%sym_max_tot,:), &
+                sr*mv*sizes_nbasis, sr*mv*displs_nbasis, mpi_preal, MPI_COMM_WORLD, ierr)
+            call mpi_allgatherv(pp%ppn_jb_d%weights_tot(sys%sym0_tot:sys%sym_max_tot,iproc_nbasis_start:iproc_nbasis_end), &
+                sr*sizes_nbasis(iproc), mpi_preal, pp%ppn_jb_d%weights_tot(sys%sym0_tot:sys%sym_max_tot,:), sr*sizes_nbasis, &
+                sr*displs_nbasis, mpi_preal, MPI_COMM_WORLD, ierr)
+            call mpi_allgatherv(pp%ppn_jb_d%aliasU(:,sys%sym0_tot:sys%sym_max_tot,iproc_nbasis_start:iproc_nbasis_end), &
+                sr*mv*sizes_nbasis(iproc), mpi_preal, pp%ppn_jb_d%aliasU(:,sys%sym0_tot:sys%sym_max_tot,:), sr*mv*sizes_nbasis, &
+                sr*mv*displs_nbasis, mpi_preal, MPI_COMM_WORLD, ierr)
+            call mpi_allgatherv(pp%ppn_jb_d%aliasK(:,sys%sym0_tot:sys%sym_max_tot,iproc_nbasis_start:iproc_nbasis_end), &
+                sr*mv*sizes_nbasis(iproc), MPI_INTEGER, pp%ppn_jb_d%aliasK(:,sys%sym0_tot:sys%sym_max_tot,:), &
+                sr*mv*sizes_nbasis, sr*mv*displs_nbasis, MPI_INTEGER, MPI_COMM_WORLD, ierr)
+        end associate
+#endif
 
     end subroutine init_excit_mol_power_pitzer_orderN
 
