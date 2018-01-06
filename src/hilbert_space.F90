@@ -106,7 +106,7 @@ contains
         end if
 
         select case(sys%system)
-
+        ! [review] - VAN: what is space_size_mean and _se in the case of the heisenberg system?
         case(heisenberg)
 
             ! Symmetry not currently implemented for the Heisenberg code.
