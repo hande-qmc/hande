@@ -140,7 +140,7 @@ contains
         !    dmqmc_in: input options for dmqmc calculations.
         !    max_excit: maximum number of excitations in system.
 
-        use calc, only: doing_calc, hfs_fciqmc_calc, dmqmc_calc, doing_dmqmc_calc
+        use calc, only: doing_calc, doing_dmqmc_calc
         use dmqmc_data, only: dmqmc_in_t, dmqmc_estimates_t
         use calc, only: dmqmc_energy, dmqmc_energy_squared, dmqmc_staggered_magnetisation
         use calc, only: dmqmc_correlation, dmqmc_full_r2, dmqmc_rdm_r2, dmqmc_kinetic_energy
@@ -366,7 +366,7 @@ contains
         !    rdm_energy: Print energy calculated from RDM.
         !    nattempts: Print number of selection attempts made. Only used in CCMC.
 
-        use calc, only: doing_calc, hfs_fciqmc_calc
+        use calc, only: doing_calc
         use qmc_data, only: qmc_in_t, qmc_state_t
 
         type(qmc_in_t), intent(in) :: qmc_in
@@ -456,7 +456,7 @@ contains
         !    dmqmc_in: input options relating to DMQMC.
         !    dmqmc_estimates: type containing all DMQMC estimates to be printed.
 
-        use calc, only: doing_calc, dmqmc_calc, doing_dmqmc_calc
+        use calc, only: doing_calc, doing_dmqmc_calc
         use calc, only: dmqmc_energy, dmqmc_energy_squared, dmqmc_full_r2, dmqmc_rdm_r2
         use calc, only: dmqmc_correlation, dmqmc_staggered_magnetisation, dmqmc_kinetic_energy
         use calc, only: dmqmc_H0_energy, dmqmc_potential_energy, dmqmc_HI_energy

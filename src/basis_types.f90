@@ -141,7 +141,7 @@ module basis_types
             !   b: basis_t object to be set.  On input b%nbasis must be set.
             !      On output the bit string look-up tables are also set.
 
-            use const, only: i0_end, i0_length, int_64
+            use const, only: i0_end, i0_length
             use checking, only: check_allocate
 
             type(basis_t), intent(inout) :: b

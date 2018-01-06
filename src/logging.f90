@@ -201,8 +201,6 @@ contains
         !   logging_info: derived type to be used during calculation to
         !       control logging output
 
-        use const, only: int_p
-
         integer, intent(in) :: iter
         type(logging_t), intent(inout) :: logging_info
         type(logging_in_t), intent(in) :: logging_in
@@ -891,7 +889,7 @@ contains
         !   allowed: whether or not cluster is allowed within current calculation.
 
         use qmc_io, only: write_qmc_var
-        use const, only: int_p, p
+        use const, only: p
 
         type(logging_t), intent(in) :: logging_info
         integer, intent(in) :: nexcitors, max_size, ex_level
@@ -941,7 +939,6 @@ contains
         use const, only: dp
 
         use qmc_io, only: write_qmc_var
-        use const, only: int_p, int_64
         use ccmc_data, only: selection_data_t
 
         type(logging_t), intent(in) :: logging_info

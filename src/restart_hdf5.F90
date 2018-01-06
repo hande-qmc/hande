@@ -1311,8 +1311,6 @@ module restart_hdf5
             type(restart_info_t), intent(in) :: ri_freq, ri_shift
             logical, intent(in) :: nb_comm
 
-            logical :: vary_shift(size(qs%vary_shift))
-
             if (dump_restart_shift .and. any(qs%vary_shift)) then
                 dump_restart_shift = .false.
                 call dump_restart_hdf5(ri_shift, qs, qs%mc_cycles_done+ncycles*ireport, &
