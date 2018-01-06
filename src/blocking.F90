@@ -695,6 +695,8 @@ contains
         type(blocking_in_t), intent(in) :: blocking_in
         integer, intent(in) :: ireport
         real(p) :: error_sum = 50.0_p
+        ! [review] - VAN: if you check blocking_in_t in qmc_data.f90, you see that what it gets compared with here
+        ! [review] - VAN: e.g. blocking_in%min_blocks_used are all real(p)... so maybe it should not be an integer.
         integer :: number_of_blocks = 0
 
         if (bl%optimal_std(dt_proj_energy) > 0.0_p) then
