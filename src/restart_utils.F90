@@ -72,8 +72,7 @@ contains
         do i = 1, dims(2)
             ! Must convert each determinant separately as there is a different
             ! amount of padding if the number of 32 bit integers is odd
-            dets(:,i) = transfer(dets_tmp(:dims(1)-info_string_len_restart,i), dets, size(dets(:,i)))
-
+            call bit_string_32_to_64(dets_tmp(:dims(1)-info_string_len_restart,i), dets(:,i))
         end do
         ! First check there is information stored within information string
         ! and we want to store it again.
@@ -228,10 +227,10 @@ contains
 
         f0 = 0
         if (info_string_len > 0 .and. info_string_len_restart > 0) then
-            f0 = transfer(f0_tmp(:dims(1)-info_string_len_restart), f0, size(f0))
+            call bit_string_32_to_64(f0_tmp(:dims(1)-info_string_len_restart), f0)
             f0(size(f0,dim=1)-info_string_len+1:) = int(f0_tmp(dims(1)-info_string_len_restart+1:),kind=int_64)
         else
-            f0 = transfer(f0_tmp, f0, size(f0))
+            call bit_string_32_to_64(f0_tmp, f0)
         end if
         deallocate(f0_tmp)
 
@@ -319,7 +318,7 @@ contains
         do i = 1, dims(2)
             ! Must convert each determinant separately as there is a different
             ! amount of padding if the number of 32 bit integers is odd
-            dets(:,i) = transfer(dets_tmp(:dims(1)-info_string_len_restart,i), dets, size(dets(:,i)))
+            call bit_string_64_to_32(dets_tmp(:dims(1)-info_string_len_restart,i), dets(:,i))
         end do
 
         ! First check there is information stored within information string
@@ -368,10 +367,10 @@ contains
 
         f0 = 0
         if (info_string_len > 0 .and. info_string_len_restart > 0) then
-            f0 = transfer(f0_tmp(:dims(1)-info_string_len_restart), f0, size(f0))
+            call bit_string_64_to_32(f0_tmp(:dims(1)-info_string_len_restart), f0)
             f0(size(f0,dim=1)-info_string_len+1:) = int(f0_tmp(dims(1)-info_string_len_restart+1:),kind=int_32)
         else
-            f0 = transfer(f0_tmp, f0, size(f0))
+            call bit_string_64_to_32(f0_tmp, f0)
         end if
         deallocate(f0_tmp)
 
@@ -477,6 +476,53 @@ contains
             pops = pops/scaling_change
         end if
     end subroutine change_pop_scaling_64
+
+    subroutine bit_string_32_to_64(b32, b64)
+
+        ! In:
+        !   b32: a 32-bit string of size n containing up to n*32 bits
+        ! Out:
+        !   b64: a 64-bit string of size ceiling(n/2) containing the up to n*32 bits. All higher bits are set to 0.
+
+        ! NOTE: we assume b64 is just big enough to hold all the information in b32.
+
+        use const, only: int_32, int_64
+
+        integer(int_32), intent(in) :: b32(:)
+        integer(int_64), intent(out) :: b64(:)
+
+        b64 = transfer(b32, b64, size(b64))
+        if (mod(size(b32),2) == 1) then
+            ! b64 string is 32 bits longer than the b32 string.
+            ! Trailing bits are not set in the final integer and can be
+            ! set to arbitary values: https://gcc.gnu.org/onlinedocs/gfortran/TRANSFER.html
+            ! Easiest solution: simply mask out the trailing 32 bits.
+            associate (b64_high => b64(size(b64)), mask32 => maskr(32,int_64))
+                b64_high = iand(b64_high, mask32)
+            end associate
+        end if
+
+    end subroutine bit_string_32_to_64
+
+    subroutine bit_string_64_to_32(b64, b32)
+
+        ! In:
+        !   b64: a 64-bit string of size n containing up to n*64 bits
+        ! Out:
+        !   b32: a 64-bit string of size m. Set to hold the m*32 bits from b64 on output.
+
+        ! NOTE: we assume b32 is big enough to hold all the information in b64 -- ie m*32 is either n*64 or n*64-32, in which case
+        ! the top 32 bits of b64 are *not* set.
+
+        use const, only: int_32, int_64
+
+        integer(int_64), intent(in) :: b64(:)
+        integer(int_32), intent(out) :: b32(:)
+
+        ! Spec doesn't explicitly cover this but I believe transfer truncates the result from a 2*n array to a m array.
+        b32 = transfer(b64, b32, size(b32))
+
+    end subroutine bit_string_64_to_32
 
 #endif
 
