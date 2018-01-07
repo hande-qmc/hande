@@ -112,6 +112,7 @@ vquick =   ccmc/np1/Ne-RHF-cc-pVDZ-Lz-CCSDTQ5-multispawn-short
            ccmc/np1/Ne-RHF-cc-pVDZ_ccmc_even_selection
            ccmc/np1/polyyne_complex_ccsdt
            ccmc/np2/H2O-cc-pVDZ_tau_search
+           ccmc/np2/H2O-cc-pVDZ_ccsdt
            ccmc_real_32/np1/HOCl-6-31g_ccsd_short
            dmqmc/np1/heisenberg_1d
            dmqmc_real_32/np2/heisenberg_4_gs_entropy

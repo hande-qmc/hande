@@ -94,10 +94,11 @@ contains
         use, intrinsic :: iso_c_binding, only: c_ptr, c_int, c_f_pointer
 
         use flu_binding, only: flu_State, flu_copyptr
-        use aot_table_module, only: aot_table_top, aot_exists, aot_table_close
+        use aot_table_module, only: aot_table_top, aot_exists, aot_table_open, aot_table_close, aot_table_set_val
 
         use parallel, only: parent
         use errors, only: stop_all
+        use const, only: dp
         use lua_hande_system, only: get_sys_t
         use lua_hande_utils, only: warn_unused_args, register_timing
         use lua_hande_calc_utils, only: init_output_unit, end_output_unit
@@ -116,10 +117,10 @@ contains
         integer :: truncation_level, nattempts, ncycles, rng_seed
         type(output_in_t) :: output_in
         integer, allocatable :: ref_det(:)
-        integer :: opts, io_unit
+        integer :: opts, io_unit, ret_vals
         real :: t1, t2
+        real(dp) :: hs_mean, hs_se
         character(12), parameter :: keys(3) = [character(12) :: 'sys', 'hilbert', 'output']
-
 
         call cpu_time(t1)
 
@@ -141,11 +142,13 @@ contains
 
         calc_type = mc_hilbert_space
         call init_output_unit(output_in, sys, io_unit)
-        call estimate_hilbert_space(sys, truncation_level, nattempts, ncycles, ref_det, rng_seed, io_unit)
+        call estimate_hilbert_space(sys, truncation_level, nattempts, ncycles, ref_det, rng_seed, io_unit, hs_mean, hs_se)
         call end_output_unit(output_in%out_filename, io_unit)
 
-        ! [todo] - return estimate of space and error to lua.
-        nresult = 0
+        nresult = 1
+        call aot_table_open(lua_state, thandle=ret_vals)
+        call aot_table_set_val(hs_mean, lua_state, ret_vals, 'mean')
+        call aot_table_set_val(hs_se, lua_state, ret_vals, 'std. err.')
 
         call cpu_time(t2)
         call register_timing(lua_state, "Hilbert space estimation", t2-t1)

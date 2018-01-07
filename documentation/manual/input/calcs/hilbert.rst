@@ -16,6 +16,11 @@ the size of this subspace can be estimated via a simple Monte Carlo approach [Bo
         output = { ... },
     }
 
+Returns:
+    a table containing the mean (key: ``mean``) and associated standard
+    error (key: ``std. err.``) of the Monte Carlo estimate of the size of
+    the Hilbert space.
+
 Options
 -------
 
