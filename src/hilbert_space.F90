@@ -106,7 +106,6 @@ contains
         end if
 
         select case(sys%system)
-        ! [review] - VAN: what is space_size_mean and _se in the case of the heisenberg system?
         case(heisenberg)
 
             ! Symmetry not currently implemented for the Heisenberg code.
@@ -115,12 +114,13 @@ contains
             ! equivalently the nbeta spins across the lattice%nsites).
             ! See comments in system for how nel and nvirt are used in the
             ! Heisenberg model.
+            space_size_se = 0.0_dp
             if (truncate_space) then
-                full_space_size = binom_r(sys%lattice%nsites-(sys%nel-truncation_level),truncation_level)
+                space_size_mean = binom_r(sys%lattice%nsites-(sys%nel-truncation_level),truncation_level)
             else
-                full_space_size = binom_r(sys%lattice%nsites, sys%nel)
+                space_size_mean = binom_r(sys%lattice%nsites, sys%nel)
             end if
-            if (parent) write (io_unit,'(1X,a,g12.4,/)') 'Size of space is', full_space_size
+            if (parent) write (io_unit,'(1X,a,g12.4,/)') 'Size of space is', space_size_mean
 
         case default
 
@@ -133,8 +133,9 @@ contains
                 ! simplest possible lattice model, the number of orbitals of each
                 ! spin is equal to the number of sites.
                 associate(sg=>sys, sl=>sys%lattice)
-                    if (parent) write (io_unit,'(1X,a,g12.4,/)') 'Size of space is', &
-                                    binom_r(sl%nsites, sg%nalpha)*binom_r(sl%nsites, sg%nbeta)
+                    space_size_se = 0.0_dp
+                    space_size_mean = binom_r(sl%nsites, sg%nalpha)*binom_r(sl%nsites, sg%nbeta)
+                    if (parent) write (io_unit,'(1X,a,g12.4,/)') 'Size of space is', space_size_mean
                 end associate
             else
 
