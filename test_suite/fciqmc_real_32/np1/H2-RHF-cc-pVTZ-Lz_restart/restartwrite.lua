@@ -11,6 +11,7 @@ fciqmc {
     qmc = {
         tau = 0.0100,
         rng_seed = 7,
+        init_pop = 10,
         mc_cycles = 100,
         nreports = 500,
         target_population = 100,
@@ -21,7 +22,7 @@ fciqmc {
         real_amplitude_force_32 = true,
     },
     restart = {
-        read = 0,
+        write = 0,
     },
     reference = {
         ex_level = 2,

@@ -6,12 +6,6 @@ sys = hubbard_k {
     lattice = { {3,3},{3,-3} },
 }
 
--- restart file was obtained by running the calculation below on 1 core and
--- writing out a restart file rather than reading one in.
-np1_id = 0
-np2_id = 1
-redistribute { nprocs = 2, read = np1_id, write = np2_id, sys = sys, }
-
 fciqmc {
     sys = sys,
     qmc = {
@@ -24,5 +18,5 @@ fciqmc {
         state_size = -500,
         spawned_state_size = -200,
     },
-    restart = { read = np2_id },
+    restart = { write = 0 },
 }

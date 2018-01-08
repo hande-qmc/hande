@@ -1,5 +1,3 @@
--- The restart file has integer populations and POP_SIZE=32
-
 sys = read_in {
     int_file = "INTDUMP",
     nel = 4,
@@ -12,15 +10,16 @@ fciqmc {
     qmc = {
         tau = 0.01,
         rng_seed = 7,
+        init_pop = 100,
         mc_cycles = 10,
-        nreports = 100,
+        nreports = 900,
         target_population = 1000,
         state_size = -5,
         spawned_state_size = -1,
-        real_amplitudes = true,
+        real_amplitudes = false,
         spawn_cutoff = 0.1,
     },
     restart = {
-        read = 0,
+        write = 0,
     },
 }

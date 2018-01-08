@@ -9,6 +9,7 @@ ccmc {
     sys = sys,
     qmc = {
         tau = 0.0007,
+        init_pop = 1000,
         rng_seed = 30513,
         mc_cycles = 10,
         nreports = 2000,
@@ -21,7 +22,7 @@ ccmc {
         ex_level = 3,
     },
     -- restart uses real populations with POP_SIZE=32
-    restart = { read = 0, },
+    restart = { write = 0, },
 }
 -- Exact CCSDT energy: -0.124920 
 -- Integrals obtained using the following settings in PSI4: 
@@ -40,4 +41,4 @@ ccmc {
 -- set globals { 
 --   basis 6-31g* 
 --   freeze_core true 
--- } 
+-- }

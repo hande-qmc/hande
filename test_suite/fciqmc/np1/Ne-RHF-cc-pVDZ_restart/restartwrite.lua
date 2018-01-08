@@ -5,19 +5,17 @@ sys = read_in {
     sym = 0,
 }
 
-ccmc {
+fciqmc {
     sys = sys,
     qmc = {
-        tau = 0.01,
-        rng_seed = 1660032958,
+        tau = 0.005,
+        rng_seed = 5691,
+        init_pop = 10,
         mc_cycles = 10,
-        nreports = 175,
-        target_population = 50000,
+        nreports = 1000,
+        target_population = 20000,
         state_size = -100,
         spawned_state_size = -50,
     },
-    reference = {
-        ex_level = 2,
-    },
-    restart = { read = 0, },
+    restart = { write= 0}
 }

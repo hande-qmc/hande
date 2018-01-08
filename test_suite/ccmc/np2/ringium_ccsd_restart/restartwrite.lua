@@ -4,10 +4,6 @@ sys = ringium {
     radius = 3,
 }
 
--- Restart file obtained from running the same calculation on 2
--- cores and writing out (rather than reading in) a restart file.
-redistribute { read = 0, write = 1, }
-
 ccmc {
     sys = sys,
     qmc = {
@@ -25,5 +21,5 @@ ccmc {
     reference = {
         ex_level = 2,
     },
-    restart = { read = 1 },
+    restart = { write = 0 },
 }

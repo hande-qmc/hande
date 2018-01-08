@@ -11,16 +11,14 @@ fciqmc {
         tau = 0.05,
         rng_seed = 7,
         mc_cycles = 5,
-        nreports = 500,
-        target_population = -1,
+        nreports = 300,
+        target_population = 10000,
         state_size = 20000,
         spawned_state_size = 10000,
         real_amplitudes = true,
         spawn_cutoff = 0.1,
         init_pop = 40,
         initiator = true,
-        vary_shift = true, --allow shift to vary immediately
-        vary_shift_from = 'proje',
         shift_damping = 0.1,
     },
     blocking = {
@@ -29,6 +27,6 @@ fciqmc {
         shift_damping_precision = 1.5,
     },
     restart = {
-        read = 0,
-    },
+        write = 0,
+    },    
 }

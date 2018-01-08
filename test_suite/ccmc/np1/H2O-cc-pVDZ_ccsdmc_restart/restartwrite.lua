@@ -9,6 +9,7 @@ ccmc {
     sys = sys,
     qmc = {
         tau = 0.01,
+        init_pop = 1000,
         rng_seed = 1660032958,
         mc_cycles = 10,
         nreports = 175,
@@ -19,5 +20,5 @@ ccmc {
     reference = {
         ex_level = 2,
     },
-    restart = { read = 0, },
+    restart = { write = 0, },
 }
