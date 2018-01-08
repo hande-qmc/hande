@@ -214,6 +214,7 @@ contains
         if (qmc_in%excit_gen==excit_gen_power_pitzer_orderN) then
             if (parent) write(iunit, '(1X, "# Starting the Power Pitzer Order N excitation generator initialisation.")')
             call cpu_time(t1)
+            qmc_state%excit_gen_data%excit_gen_pp%power_pitzer_min_weight = qmc_in%power_pitzer_min_weight
             call init_excit_mol_power_pitzer_orderN(sys, qmc_state%ref, qmc_state%excit_gen_data%excit_gen_pp)
             call cpu_time(t2)
             set_up_time = t2 - t1

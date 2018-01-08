@@ -260,7 +260,8 @@ algorithms and control the core settings in the algorithms.
 
     Optional. Default: 0.01.
 
-    Only used in 'read_in' systems if the 'power_pitzer' excitation generator is used.
+    Only used in 'power_pitzer_orderN' excitation generator or in 'read_in' systems if
+    the 'power_pitzer' excitation generator is used.
     This number (approximately) sets the minimum value of
     weight(orbital to excite to)/(total weights times number of orbitals to excite to).
     The aim of this is to reduce the number of spawns with big abs(Hij)/pgen which can
