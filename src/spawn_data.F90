@@ -843,7 +843,7 @@ contains
 #else
         type(spawn_t), intent(inout) :: spawn
         integer, intent(in) :: send_counts(0:)
-        integer, intent(inout) :: req_data_s(0:)
+        integer, intent(out) :: req_data_s(0:)
 #endif
 
     end subroutine non_blocking_send

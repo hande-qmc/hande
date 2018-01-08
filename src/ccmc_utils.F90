@@ -62,6 +62,64 @@ contains
 
     end subroutine find_D0
 
+    subroutine get_D0_info(qs, complx, D0_proc, D0_pos, nD0_proc, D0_normalisation)
+
+        ! In:
+        !    qs: qmc_state_t object describing the current CCMC state.
+        !    complx: true if system has a complex wavefunction (i.e. sys_t%sys_read_in_t%comp).
+        ! Out:
+        !    D0_proc: the processor index on which the reference currently resides.
+        !    D0_pos: the position within the excip list of the reference. Set to -1 if iproc != D0_proc.
+        !    nD0_proc: 1 if iproc == D0_proc and 0 otherwise.
+        !    D0_normalisation: population of the reference.
+
+        use parallel
+        use qmc_data, only: qmc_state_t
+        use spawning, only: assign_particle_processor
+
+        type(qmc_state_t), intent(in) :: qs
+        logical, intent(in) :: complx
+        integer, intent(out) :: D0_proc, D0_pos, nD0_proc
+        complex(p), intent(out) :: D0_normalisation
+        integer :: slot
+#ifdef PARALLEL
+        integer :: ierr
+#endif
+
+        associate(spawn=>qs%spawn_store%spawn, pm=>qs%spawn_store%spawn%proc_map)
+            call assign_particle_processor(qs%ref%f0, spawn%bit_str_nbits, spawn%hash_seed, spawn%hash_shift, &
+                                           spawn%move_freq, nprocs, D0_proc, slot, pm%map, pm%nslots)
+
+        end associate
+
+        if (iproc == D0_proc) then
+
+            ! Population on reference determinant.
+            ! As we might select the reference determinant multiple times in
+            ! a cycle, the running total of D0_population is incorrect (by
+            ! a factor of the number of times it was selected).
+            call find_D0(qs%psip_list, qs%ref%f0, D0_pos)
+            if (complx) then
+                D0_normalisation = cmplx(qs%psip_list%pops(1,D0_pos), qs%psip_list%pops(2,D0_pos), p)/qs%psip_list%pop_real_factor
+            else
+                D0_normalisation = real(qs%psip_list%pops(1,D0_pos),p)/qs%psip_list%pop_real_factor
+            end if
+            nD0_proc = 1
+        else
+
+            ! Can't find D0 on this processor.  (See how D0_pos is used
+            ! in select_cluster.)
+            D0_pos = -1
+            nD0_proc = 0 ! No reference excitor on the processor.
+
+        end if
+
+#ifdef PARALLEL
+        call mpi_bcast(D0_normalisation, 1, mpi_pcomplex, D0_proc, MPI_COMM_WORLD, ierr)
+#endif
+
+    end subroutine get_D0_info
+
     pure subroutine collapse_cluster(basis, f0, excitor, excitor_population, cluster_excitor, cluster_population, allowed)
 
         ! Collapse two excitors.  The result is returned in-place.

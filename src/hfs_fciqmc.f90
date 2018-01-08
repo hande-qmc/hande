@@ -90,7 +90,7 @@ contains
         character(36) :: uuid_restart
         type(logging_t) :: logging_info
 
-        logical :: soft_exit, comms_found, error
+        logical :: soft_exit, comms_found, error, restart_proj_est
 
         real :: t1, t2
         integer :: iunit, restart_version_restart
@@ -122,7 +122,9 @@ contains
         ! Main fciqmc loop.
 
         if (parent) call write_qmc_report_header(qs%psip_list%nspaces)
-        call initial_fciqmc_status(sys, qmc_in, qs)
+        restart_proj_est = (restart_in%read_restart .and. restart_version_restart >= 2)
+        if (.not.restart_proj_est) call initial_ci_projected_energy(sys, qs, .false., nparticles_old)
+        call initial_qmc_status(sys, qmc_in, qs, nparticles_old, .false.)
 
         ! Initialise timer.
         call cpu_time(t1)

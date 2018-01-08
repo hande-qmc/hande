@@ -148,8 +148,7 @@ contains
             ! Initial walker distributions
             if (restart_in%read_restart) then
                 call read_restart_hdf5(ri, sys%basis%nbasis, fciqmc_in_loc%non_blocking_comm, sys%basis%info_string_len, &
-                                        sys%read_in%comp, qmc_state, uuid_restart, regenerate_info_loc, &
-                                        restart_version_restart)
+                                        qmc_state, uuid_restart, regenerate_info_loc, restart_version_restart)
             else if (doing_calc(dmqmc_calc)) then
                 ! Initial distribution handled later
                 qmc_state%psip_list%nstates = 0
@@ -747,12 +746,6 @@ contains
 
         ! Set initial values from input
         qmc_state%tau = qmc_in%tau
-        if (.not.restart_read_in .and. .not.qmc_state_restart) then
-            qmc_state%estimators%D0_population = qmc_in%D0_population
-            qmc_state%estimators%D0_population_old = qmc_in%D0_population
-        else
-            qmc_state%estimators%D0_population_old = qmc_state%estimators%D0_population
-        end if
 
     end subroutine init_estimators
 

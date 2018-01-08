@@ -534,8 +534,7 @@ contains
 
 ! --- Output routines ---
 
-    subroutine initial_fciqmc_status(sys, qmc_in, qs, nb_comm, spawn_elsewhere, doing_ccmc, io_unit, restarting_readin, &
-                            restarting_qs, restart_version_restart)
+    subroutine initial_qmc_status(sys, qmc_in, qs, ntot_particles, doing_ccmc, io_unit)
 
         ! Calculate the projected energy based upon the initial walker
         ! distribution (either via a restart or as set during initialisation)
@@ -544,108 +543,83 @@ contains
         ! In:
         !    sys: system being studied.
         !    qmc_in: input options relating to QMC methods.
+        !    ntot_particles: total number of particles in each space.
+        !    doing_ccmc: true if doing ccmc calculation.
         ! In/Out:
         !    qs: qmc_state_t object.
         ! In (optional):
-        !    nb_comm: using non-blocking communications?
-        !    spawn_elsewhere: number of particles spawned from the current
-        !       processor to other processors.  Relevant only when restarting
-        !       non-blocking calculations.
-        !    doing_ccmc: true if doing ccmc calculation.
         !    io_unit: io unit to write any reporting to.
-        !    restarting_readin: true if restarting with a restart file
-        !    restarting_qs: true if restarting by passing a qmc_state object
-        !    restart_version_restart: version of restart file to restart from.
 
-        use determinants, only: det_info_t, alloc_det_info_t, dealloc_det_info_t, decode_det
-        use energy_evaluation, only: local_energy_estimators, update_energy_estimators_send
-        use excitations, only: excit_t, get_excitation
+        use parallel, only: parent
         use qmc_io, only: write_qmc_report
-        use importance_sampling, only: importance_sampling_weight
-        use parallel
-        use proc_pointers, only: update_proj_energy_ptr
-        use qmc_data, only: qmc_in_t, qmc_state_t, nb_rep_t
+        use qmc_data, only: qmc_in_t, qmc_state_t
         use system, only: sys_t
-        use hamiltonian_data
-        use const, only: depsilon
-        use errors, only: warning
-        
+
         type(sys_t), intent(in) :: sys
         type(qmc_in_t), intent(in) :: qmc_in
         type(qmc_state_t), intent(inout), target :: qs
-        logical, optional, intent(in) :: nb_comm, doing_ccmc, restarting_readin, restarting_qs
-        integer, optional, intent(in) :: spawn_elsewhere, io_unit, restart_version_restart
-
-        integer :: idet, ispace, restart_version_restart_loc
-        real(dp) :: ntot_particles(qs%psip_list%nspaces)
-        real(p) :: real_population(qs%psip_list%nspaces), weighted_population(qs%psip_list%nspaces)
-        type(det_info_t) :: cdet
-        type(hmatel_t) :: hmatel
-        type(excit_t) :: D0_excit
-        logical :: nb_comm_local, doing_ccmc_loc, restarting_readin_loc, restarting_qs_loc, use_tmp
-        real(p) :: proj_energy_tmp(qs%psip_list%nspaces), D0_population_tmp(qs%psip_list%nspaces)
-        complex(p) :: proj_energy_comp_tmp(qs%psip_list%nspaces), D0_population_comp_tmp(qs%psip_list%nspaces)
-#ifdef PARALLEL
-        integer :: ierr
-        real(p) :: proj_energy_sum(qs%psip_list%nspaces), D0_population_sum(qs%psip_list%nspaces)
-#endif
+        real(dp), intent(in) :: ntot_particles(qs%psip_list%nspaces)
+        logical, intent(in) :: doing_ccmc
+        integer, optional, intent(in) :: io_unit
         
-        restarting_readin_loc = .false.
-        if (present(restarting_readin)) restarting_readin_loc = restarting_readin
-        restarting_qs_loc = .false.
-        if (present(restarting_qs)) restarting_qs_loc = restarting_qs
-        restart_version_restart_loc = 0
-        if (present(restart_version_restart)) restart_version_restart_loc = restart_version_restart
-        ! doing ccmc?
-        doing_ccmc_loc = .false.
-        if (present(doing_ccmc)) doing_ccmc_loc = doing_ccmc
-
-        use_tmp = .false.
-        ! Make sure projected energy/ D0 pop. does not get overwritten if restarting.
-        ! If we read in from a legacy restart file, estimate projected energy from shift
-        ! if and only if doing a ccmc calculation and shift is nonzero.
-        if ((restarting_readin_loc) .or. (restarting_qs_loc)) then
-            D0_population_tmp = qs%estimators%D0_population
-            D0_population_comp_tmp = qs%estimators%D0_population_comp
-            proj_energy_tmp = qs%estimators%proj_energy
-            proj_energy_comp_tmp = qs%estimators%proj_energy_comp
-            if (restarting_qs_loc) then
-                use_tmp = .true.
+        if (parent) then
+            if (doing_ccmc) then
+                qs%estimators%nattempts = nint(qs%estimators%D0_population)
+                call write_qmc_report(qmc_in, qs, 0, ntot_particles, 0.0, .true., .false., cmplx_est=sys%read_in%comp, &
+                                        nattempts=.true., io_unit=io_unit)
             else
-                if (restart_version_restart_loc > 1) then
-                    ! We do not have to deal with legacy restart.
-                    use_tmp = .true.
-                else
-                    if (doing_ccmc_loc) then
-                        ! doing ccmc, possibly estimate projected energy from shift.
-                        if (((all(abs(real(proj_energy_comp_tmp,p)) > 0.0_p)) .and. (sys%read_in%comp)) &
-                            .or. ((all(abs(proj_energy_tmp) > 0.0_p)) .and. (.not.sys%read_in%comp))) then
-                            ! Legacy restart but proj. energy was not estimated by a shift which was zero.
-                            use_tmp = .true.
-                        else
-                            ! This might be conservative but since one element of qs%estimators%proj_energy was zero
-                            ! which could have been because of the shift, we do not use estimated proj. energies.
-                            if (parent) then
-                                call warning('initial_fciqmc_status', 'Even though we are restarting a CCMC/FCIQMC'// &
-                                    ' calculation, information from previous calculation cannot be used to estimate'// &
-                                    ' projected energy.'// &
-                                    ' This is probably because the shift/one of the shifts is zero.')
-                            end if
-                        end if
-                    end if
-                end if
+                call write_qmc_report(qmc_in, qs, 0, ntot_particles, 0.0, .true., .false., cmplx_est=sys%read_in%comp, &
+                    io_unit=io_unit)
             end if
         end if
+
+    end subroutine initial_qmc_status
+
+    subroutine initial_ci_projected_energy(sys, qs, nb_comm, ntot_particles)
 
         ! Calculate the projected energy based upon the initial walker
         ! distribution.  proj_energy and D0_population are both accumulated in
         ! update_proj_energy.
-        qs%estimators%proj_energy = 0.0_p
-        qs%estimators%D0_population = 0.0_p
-        qs%estimators%proj_energy_comp = cmplx(0.0, 0.0, p)
-        qs%estimators%D0_population_comp = cmplx(0.0, 0.0, p)
+
+        ! In:
+        !    sys: system being studies
+        !    qmc_in: input options relating to QMC methods.
+        !    nb_comm: true if performing a calculation using non-blocking communications.
+        ! In/Out:
+        !    qs: qmc_state_t object. On output the estimator_t quantities are updated for each space based upon the particle
+        !        distribution in the space.
+        ! Out:
+        !    ntot_particles: total number of particles in each space.
+
+        use parallel
+
+        use determinants, only: det_info_t, alloc_det_info_t, dealloc_det_info_t, decode_det
+        use excitations, only: excit_t, get_excitation
+        use importance_sampling, only: importance_sampling_weight
+        use proc_pointers, only: update_proj_energy_ptr
+        use qmc_data, only: qmc_state_t, nb_rep_t, zero_estimators_t
+        use system, only: sys_t
+        use hamiltonian_data
+
+        type(sys_t), intent(in) :: sys
+        type(qmc_state_t), intent(inout), target :: qs
+        logical, intent(in) :: nb_comm
+        real(dp), intent(out) :: ntot_particles(qs%psip_list%nspaces)
+
+        integer :: idet, ispace
+        real(p) :: real_population(qs%psip_list%nspaces), weighted_population(qs%psip_list%nspaces)
+        type(det_info_t) :: cdet
+        type(hmatel_t) :: hmatel
+        type(excit_t) :: D0_excit
+#ifdef PARALLEL
+        integer :: ierr
+        real(p) :: proj_energy_sum(qs%psip_list%nspaces), D0_population_sum(qs%psip_list%nspaces)
+        complex(p) :: proj_energy_comp_sum(qs%psip_list%nspaces), D0_population_comp_sum(qs%psip_list%nspaces)
+#endif
+        call zero_estimators_t(qs%estimators)
+
+        ! [todo] - HFS, DMQMC quantities
         call alloc_det_info_t(sys, cdet)
-        ! [todo] - The following does not estimate the correct estimators for CCMC. Might be worth considering fixing that.
         do idet = 1, qs%psip_list%nstates
             cdet%f = qs%psip_list%states(:,idet)
             call decode_det(sys%basis, cdet%f, cdet%occ_list)
@@ -661,6 +635,8 @@ contains
                 do ispace = 1, qs%psip_list%nspaces, 2
                     call update_proj_energy_ptr(sys, qs%ref%f0, qs%trial%wfn_dat, cdet, weighted_population(ispace:ispace+1), &
                                                 qs%estimators(ispace), D0_excit, hmatel)
+                    qs%estimators(ispace+1)%D0_population_comp = qs%estimators(ispace)%D0_population_comp
+                    qs%estimators(ispace+1)%proj_energy_comp = qs%estimators(ispace)%proj_energy_comp
                 end do
             else
                 do ispace = 1, qs%psip_list%nspaces
@@ -672,63 +648,156 @@ contains
         end do
         call dealloc_det_info_t(cdet)
 
-        ! Initialise spawning rate to zero.
-        qs%estimators%tot_nspawn_events = 0
-        qs%spawn_store%rspawn = 0.0_p
-
-        ! Using non blocking communications?
-        nb_comm_local = .false.
-        if (present(nb_comm)) nb_comm_local = nb_comm
 #ifdef PARALLEL
-        if (nb_comm_local) then
-            ! The output in non-blocking comms is delayed one report loop, so initialise
-            ! the send here.
-            ! For simplicity, hook into the normal estimator communications, which normalises
-            ! by the number of MC cycles in a report loop (hence need to rescale to fake it).
-            qs%estimators%D0_population = qs%estimators%D0_population*qmc_in%ncycles
-            qs%estimators%proj_energy = qs%estimators%proj_energy*qmc_in%ncycles
-            call local_energy_estimators(qs, qs%par_info%report_comm%rep_info, spawn_elsewhere=spawn_elsewhere)
-            call update_energy_estimators_send(qs%par_info%report_comm)
-        else
+        ! Non-blocking delays reporting by a report loop and initialisation of summation of the
+        ! estimators is performed in init_non_blocking_comm.
+        if (.not.nb_comm) then
             call mpi_allreduce(qs%estimators%proj_energy, proj_energy_sum, qs%psip_list%nspaces, mpi_preal, &
+                               MPI_SUM, MPI_COMM_WORLD, ierr)
+            call mpi_allreduce(qs%estimators%proj_energy_comp, proj_energy_comp_sum, qs%psip_list%nspaces, mpi_pcomplex, &
                                MPI_SUM, MPI_COMM_WORLD, ierr)
             call mpi_allreduce(qs%psip_list%nparticles, ntot_particles, qs%psip_list%nspaces, MPI_REAL8, &
                                MPI_SUM, MPI_COMM_WORLD, ierr)
             call mpi_allreduce(qs%estimators%D0_population, D0_population_sum, qs%psip_list%nspaces, mpi_preal, MPI_SUM, &
                                MPI_COMM_WORLD, ierr)
+            call mpi_allreduce(qs%estimators%D0_population_comp, D0_population_comp_sum, qs%psip_list%nspaces, mpi_pcomplex, &
+                               MPI_SUM, MPI_COMM_WORLD, ierr)
             call mpi_allreduce(qs%psip_list%nstates, qs%estimators%tot_nstates, qs%psip_list%nspaces, MPI_INTEGER, MPI_SUM, &
                                MPI_COMM_WORLD, ierr)
             qs%estimators%proj_energy = proj_energy_sum
+            qs%estimators%proj_energy_comp = proj_energy_comp_sum
             qs%estimators%D0_population = D0_population_sum
-            ! TODO: HFS, DMQMC quantities
+            qs%estimators%D0_population_comp = D0_population_comp_sum
         end if
 #else
         ntot_particles = qs%psip_list%nparticles
         qs%estimators%tot_nstates = qs%psip_list%nstates
 #endif
 
-        if (use_tmp) then
-            qs%estimators%D0_population = D0_population_tmp
-            qs%estimators%D0_population_comp = D0_population_comp_tmp
-            qs%estimators%proj_energy = proj_energy_tmp
-            qs%estimators%proj_energy_comp = proj_energy_comp_tmp
-        end if
+    end subroutine initial_ci_projected_energy
+
+    subroutine initial_cc_projected_energy(sys, qs, rng_seed, logging_info, cumulative_abs_real_pops, ntot_particles)
+
+        ! Calculate the projected energy based upon the initial walker
+        ! distribution for a CC wavefunction ansatz.
+
+        ! In:
+        !    sys: system being studies
+        !    qmc_in: input options relating to QMC methods.
+        !    rng_seed: seed for DSFMT random number generator. Use our own RNG stream so we don't disturb
+        !        the subseuquent Markov chain in the QMC calculation.
+        !    logging_info: logging status. Used only in debugging runs.
+        ! In/Out:
+        !    qs: qmc_state_t object. On output the estimator_t quantities are updated for each space based upon the particle
+        !        distribution in the space.
+        !    cumulative_abs_real_pops: scratch space for calculating the cumulative population distribution. Must be at least
+        !        of size of current number of states. Do not use output unless the excip distribution has not been subseuquently
+        !        modified!
+        ! Out:
+        !    ntot_particles: total number of particles in each space.
+
+        use dSFMT_interface, only: dSFMT_t, dSFMT_init, dSFMT_end
+        use parallel
+
+        use ccmc_data, only: cluster_t, ex_lvl_dist_t
+        use ccmc_utils, only: cumulative_population, get_D0_info
+        use ccmc_selection, only: select_cluster, select_nc_cluster
+        use determinants, only: det_info_t, alloc_det_info_t, dealloc_det_info_t
+        use excitations, only: excit_t, get_excitation
+        use hamiltonian_data, only: hmatel_t
+        use logging, only: logging_t
+        use proc_pointers, only: update_proj_energy_ptr
+        use qmc_data, only: qmc_state_t, zero_estimators_t
+        use system, only: sys_t
+
+        type(sys_t), intent(in) :: sys
+        type(qmc_state_t), intent(inout), target :: qs
+        integer, intent(in) :: rng_seed
+        type(logging_t), intent(in) :: logging_info
+        real(p), intent(inout), allocatable :: cumulative_abs_real_pops(:)
+        real(dp), intent(out) :: ntot_particles(qs%psip_list%nspaces)
+
+        integer :: idet, ispace
+        type(det_info_t) :: cdet
+        type(cluster_t) :: cluster
+        type(hmatel_t) :: hmatel
+        type(excit_t) :: D0_excit
+        real(p) :: tot_abs_real_pop, pop(2)
+        type(ex_lvl_dist_t) :: ex_lvl_dist
+        type(dSFMT_t) :: rng
+        integer(int_64) :: iattempt, nattempts
+        integer :: D0_pos, D0_proc, nD0_proc
+        complex(p) :: D0_normalisation
+#ifdef PARALLEL
+        integer :: ierr
+        real(p) :: proj_energy_sum(qs%psip_list%nspaces), D0_population_sum(qs%psip_list%nspaces)
+        complex(p) :: proj_energy_comp_sum(qs%psip_list%nspaces), D0_population_comp_sum(qs%psip_list%nspaces)
+#endif
+
+        call zero_estimators_t(qs%estimators)
+
+        call dSFMT_init(rng_seed, 50000, rng)
         
-        ! Ensure D0_population from last cycle is set appropriately if restarting
-        qs%estimators%D0_population_old = qs%estimators%D0_population
+        D0_pos = 1
+        call get_D0_info(qs, sys%read_in%comp, D0_proc, D0_pos, nD0_proc, D0_normalisation)
+        associate(pl=>qs%psip_list)
+            call cumulative_population(pl%pops, pl%states(sys%basis%tot_string_len,:), pl%nstates, D0_proc, D0_pos, &
+                                       pl%pop_real_factor, .false., sys%read_in%comp, cumulative_abs_real_pops, &
+                                       tot_abs_real_pop, ex_lvl_dist)
+        end associate
+        ! Choose one cluster of size 2 for each excip we have.
+        nattempts = nint(tot_abs_real_pop, int_64)
 
-        if (.not. nb_comm_local .and. parent) then
-            if (doing_ccmc_loc) then
-                qs%estimators%nattempts = nint(qs%estimators%D0_population)
-                call write_qmc_report(qmc_in, qs, 0, ntot_particles, 0.0, .true., .false., cmplx_est=sys%read_in%comp, &
-                                        nattempts=.true., io_unit=io_unit)
+        ! Generate clusters of size 1 or 2; only these have a chance of connecting to the reference determinant.
+        call alloc_det_info_t(sys, cdet)
+        allocate(cluster%excitors(2))
+        do iattempt = 1, nattempts + qs%psip_list%nstates
+            if (iattempt < qs%psip_list%nstates) then
+                call select_nc_cluster(sys, qs%psip_list, qs%ref%f0, iattempt, 0.0_p, .false., cdet, cluster)
             else
-                call write_qmc_report(qmc_in, qs, 0, ntot_particles, 0.0, .true., .false., cmplx_est=sys%read_in%comp, &
-                    io_unit=io_unit)
+                ! Note: even if we're doing linked CC, the clusters contributing to the projected estimator must not contain
+                ! excitors involving the same orbitals so we need only look for unlinked clusters.
+                call select_cluster(rng, sys, qs%psip_list, qs%ref%f0, 2, .false., nattempts, D0_normalisation, 0.0_p, D0_pos, &
+                                cumulative_abs_real_pops, tot_abs_real_pop, 2, 2, logging_info, cdet, cluster)
             end if
+            if (cluster%excitation_level /= huge(0)) then
+
+                D0_excit = get_excitation(sys%nel, sys%basis, cdet%f, qs%ref%f0)
+                pop = [real(cluster%amplitude,p), aimag(cluster%amplitude)]*cluster%cluster_to_det_sign/cluster%pselect
+                ! Note: replica tricks is not yet implemented in CCMC so only have (at most) real and imaginary spaces, which are
+                ! handled in select_cluster/select_nc_cluster.
+                call update_proj_energy_ptr(sys, qs%ref%f0, qs%trial%wfn_dat, cdet, pop, qs%estimators(1), D0_excit, hmatel)
+            end if
+        end do
+        deallocate(cluster%excitors)
+        call dealloc_det_info_t(cdet)
+        call dSFMT_end(rng)
+        ! WARNING: be careful when implementing ccmc replica or something else using nspaces!
+        ! This is to be safe as get_D0_info sets D0_normalisation on all processors.
+        qs%estimators(1)%D0_population = D0_normalisation
+        qs%estimators(1)%D0_population_comp = D0_normalisation
+        if (sys%read_in%comp) then
+            qs%estimators(2)%D0_population_comp = qs%estimators(1)%D0_population_comp
+            qs%estimators(2)%proj_energy_comp = qs%estimators(1)%proj_energy_comp
         end if
 
-    end subroutine initial_fciqmc_status
+#ifdef PARALLEL
+        call mpi_allreduce(qs%estimators%proj_energy, proj_energy_sum, qs%psip_list%nspaces, mpi_preal, &
+                           MPI_SUM, MPI_COMM_WORLD, ierr)
+        call mpi_allreduce(qs%estimators%proj_energy_comp, proj_energy_comp_sum, qs%psip_list%nspaces, mpi_pcomplex, &
+                           MPI_SUM, MPI_COMM_WORLD, ierr)
+        call mpi_allreduce(qs%psip_list%nparticles, ntot_particles, qs%psip_list%nspaces, MPI_REAL8, &
+                           MPI_SUM, MPI_COMM_WORLD, ierr)
+        call mpi_allreduce(qs%psip_list%nstates, qs%estimators%tot_nstates, qs%psip_list%nspaces, MPI_INTEGER, MPI_SUM, &
+                           MPI_COMM_WORLD, ierr)
+        qs%estimators%proj_energy = proj_energy_sum
+        qs%estimators%proj_energy_comp = proj_energy_comp_sum
+#else
+        ntot_particles = qs%psip_list%nparticles
+        qs%estimators%tot_nstates = qs%psip_list%nstates
+#endif
+    
+    end subroutine initial_cc_projected_energy
 
 ! --- QMC loop and cycle initialisation routines ---
 
@@ -738,18 +807,18 @@ contains
         ! a report loop).
 
         use bloom_handler, only: bloom_stats_t, bloom_stats_init_report_loop
-        use qmc_data, only: qmc_state_t
+        use qmc_data, only: qmc_state_t, zero_estimators_t
 
         type(qmc_state_t), intent(inout) :: qs
         type(bloom_stats_t), intent(inout) :: bloom_stats
 
         call bloom_stats_init_report_loop(bloom_stats)
 
-        qs%estimators%proj_energy = 0.0_p
+        ! Ensure D0_population from last cycle is set appropriately if restarting
+        qs%estimators%D0_population_old = qs%estimators%D0_population
+
         qs%spawn_store%rspawn = 0.0_p
-        qs%estimators%D0_population = 0.0_p
-        qs%estimators%proj_energy_comp = cmplx(0.0, 0.0, p)
-        qs%estimators%D0_population_comp = cmplx(0.0, 0.0, p)
+        call zero_estimators_t(qs%estimators)
 
     end subroutine init_report_loop
 
