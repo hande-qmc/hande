@@ -16,7 +16,7 @@ fciqmc {
         rng_seed = 23,
         init_pop = 10,
         mc_cycles = 20,
-        nreports = 8,
+        nreports = 1000,
         target_population = 2000,
         state_size = 750000,
         spawned_state_size = 500000,
@@ -25,6 +25,7 @@ fciqmc {
         replica_tricks = true,
     },
     restart = {
-        read = 1,
+        write_shift = 0,
+        write = 1,
     },
 }

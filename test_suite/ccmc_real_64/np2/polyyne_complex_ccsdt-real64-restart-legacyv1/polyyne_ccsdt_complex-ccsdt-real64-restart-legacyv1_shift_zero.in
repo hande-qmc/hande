@@ -16,7 +16,7 @@ ccmc {
         init_pop = 1000,
         mc_cycles = 20,
         real_amplitudes = true,
-        nreports = 2,
+        nreports = 20,
         target_population = 12500,
         state_size = 12000,
         spawned_state_size = 15000,

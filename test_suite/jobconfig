@@ -78,6 +78,7 @@ quick =   vquick
           ccmc/np2/ringium_ccsd_restart/
           ccmc/np4/H2O-cc-pVDZ_ccsdmc_continue
           ccmc_real_32/np1/polyyne_complex_ccsd-real32-nc
+          ccmc_real_64/np2/polyyne_complex_ccsdt-real64-restart-legacyv1/
           dmqmc/np1/ueg_n7_rs1_e1_dmqmc/
           dmqmc/np2/hubbard_k_1d/
           dmqmc/np2/n2_sto3g/
@@ -88,7 +89,6 @@ quick =   vquick
           fciqmc/np1/heisenberg_1d_no_renorm/
           fciqmc/np1/heisenberg_2d_field_fciqmc/
           fciqmc/np1/hubbard_real_1d_fciqmc/
-          fciqmc/np2/polyyne_complex_replica_restart_legacyv1/
           fciqmc/np4/Ne-RHF-cc-pVDZ_calc_interact/
           fciqmc/np4/Ne-RHF-cc-pVDZ_softexit/
           fciqmc_real_32/np2/ueg_n10_rs2_e4_fciqmc_real_32_SS_large_restart/
@@ -116,7 +116,6 @@ vquick =   ccmc/np1/Ne-RHF-cc-pVDZ-Lz-CCSDTQ5-multispawn-short
            ccmc/np2/H2O-cc-pVDZ_tau_search
            ccmc/np2/H2O-cc-pVDZ_ccsdt
            ccmc_real_32/np1/HOCl-6-31g_ccsd_short
-           ccmc_real_64/np2/polyyne_complex_ccsdt-real64-restart-legacyv1/
            dmqmc/np1/heisenberg_1d
            dmqmc_real_32/np2/heisenberg_4_gs_entropy
            fci/H2-RHF-cc-pVTZ-Lz/
@@ -142,6 +141,7 @@ vquick =   ccmc/np1/Ne-RHF-cc-pVDZ-Lz-CCSDTQ5-multispawn-short
            fciqmc/np1/H2O-RHF-cc-pVTZ-debug-logging
            fciqmc/np1/hubbard_real_1d_change_sys
            fciqmc/np1/polyyne_complex_fciqmc
+           fciqmc/np2/polyyne_complex_replica_restart_legacyv1/
            fciqmc/np2/ueg_n10_rs2_e4_tau_search
            fciqmc_real_32/np1/He2-aug-cc-pVDZ_real_32_SS
            fciqmc_real_32/np1/He2-aug-cc-pVDZ_real_32_SS_replica
