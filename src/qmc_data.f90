@@ -1,12 +1,12 @@
 module qmc_data
 
 use const
-use spawn_data, only: spawn_t, proc_map_t
 use csr, only: csrp_t
 use parallel, only: parallel_timing_t
 use importance_sampling_data
 use excit_gens, only: excit_gen_data_t
 use reference_determinant, only: reference_t
+use spawn_data, only: proc_map_t, spawn_t
 
 implicit none
 
@@ -401,7 +401,7 @@ type particle_t
     ! Current number of walkers stored in the main list (processor dependent).
     ! This is updated during annihilation and merging of the spawned walkers into
     ! the main list.
-    integer :: nstates 
+    integer :: nstates
     ! Total number of particles on all walkers/determinants (processor dependent)
     ! Updated during death and annihilation and merging.
     ! The first element is the number of normal (Hamiltonian) particles.

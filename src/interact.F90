@@ -212,7 +212,7 @@ contains
         logical :: check_comms_file
 
         inquire(file=comms_file, exist=check_comms_file)
-        
+
     end function check_comms_file
 
 end module interact

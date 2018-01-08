@@ -142,7 +142,7 @@ contains
         nreport = nreport + 1
 
         ! Initialise all the required arrays, ie to store thermal quantities,
-        ! and to initalise reduced density matrix quantities if necessary.
+        ! and to initialise reduced density matrix quantities if necessary.
         call init_dmqmc(sys, qmc_in, dmqmc_in, qs%psip_list%nspaces, qs, dmqmc_estimates, weighted_sampling)
         ! Determine the chemical potential if doing the ip-dmqmc algorithm.
         if (dmqmc_in%propagate_to_beta .and. dmqmc_in%grand_canonical_initialisation) then

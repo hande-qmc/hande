@@ -35,7 +35,7 @@ contains
 
         use excitations, only: excit_t, create_excited_det
         use basis_types, only: basis_t
-        use ccmc_data, only: cluster_t
+        use determinants, only: cluster_t
 
         type(basis_t), intent(in) :: basis
         integer(i0), intent(in) :: f0(basis%string_len)
@@ -121,7 +121,7 @@ contains
 
         use system, only: sys_t
         use excitations, only: excit_t, create_excited_det, get_excitation_level
-        use ccmc_data, only: cluster_t
+        use determinants, only: cluster_t
         use ccmc_utils, only: collapse_cluster, convert_excitor_to_determinant
         use hamiltonian, only: get_hmatel
         use hamiltonian_data
@@ -217,7 +217,7 @@ contains
         !    allowed: are left_cluster and right_cluster both valid clusters
         !    sign_change: is there a net sign change on collapsing the two clusters
 
-        use ccmc_data, only: cluster_t
+        use determinants, only: cluster_t
         use ccmc_utils, only: collapse_cluster, convert_excitor_to_determinant
         use system, only: sys_t
         use dSFMT_interface, only: dSFMT_t, get_rand_close_open

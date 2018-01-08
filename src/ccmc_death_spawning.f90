@@ -64,7 +64,7 @@ contains
         !    connection: excitation connection between the current excitor
         !        and the child excitor, on which progeny are spawned.
 
-        use ccmc_data, only: cluster_t
+        use determinants, only: cluster_t
         use ccmc_utils, only: convert_excitor_to_determinant
         use ccmc_linked, only: unlinked_commutator, linked_excitation
         use determinants, only: det_info_t
@@ -196,7 +196,7 @@ contains
         !    spawn: spawn_t object to which the spanwed particle will be added.
 
         use const, only: debug
-        use ccmc_data, only: cluster_t
+        use determinants, only: cluster_t
         use determinants, only: det_info_t
         use excitations, only: excit_t
         use proc_pointers, only: sc0_ptr, create_spawned_particle_ptr
@@ -456,7 +456,7 @@ contains
         !    fexcit: the bitstring of the determinant to spawn on to (as it is
         !        not necessarily easy to get from the connection)
 
-        use ccmc_data, only: cluster_t
+        use determinants, only: cluster_t
         use ccmc_linked, only: calc_pgen, partition_cluster, linked_excitation
         use ccmc_utils, only: collapse_cluster, convert_excitor_to_determinant
         use determinants, only: det_info_t, sum_sp_eigenvalues_bit_string

@@ -34,7 +34,7 @@ contains
 
         ! In:
         !    sys: system object being studied.
-        !    excit_gen_data: Data for excitation generator (not used) 
+        !    excit_gen_data: Data for excitation generator (not used)
         !    cdet: info on the current determinant (cdet) that we will spawn
         !        from.
         ! In/Out:
@@ -192,7 +192,6 @@ contains
         use excitations, only: excit_t
         use excit_gens, only: excit_gen_data_t
         use hamiltonian_hub_k, only: slater_condon2_hub_k_excit
-        use qmc_data, only: qmc_state_t
         use system, only: sys_t
         use hamiltonian_data
 

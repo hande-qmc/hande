@@ -1,0 +1,25 @@
+[DEFAULT]
+include_f = -I /nix/store/53w5jkmhsfzdhnpwl9qsbm4a290g54wg-hdf5-1.10.1/include -I /nix/store/zvax2j39j2y7rrz1a4m6w3dbbbydlc1n-lua-5.3.4/include
+include_c = -I /nix/store/zvax2j39j2y7rrz1a4m6w3dbbbydlc1n-lua-5.3.4/include
+cppflags_opt = -DDISABLE_LANCZOS
+
+[main]
+fc = gfortran
+cc = gcc
+cxx = g++
+ld = gfortran
+ldflags = -L ${HOME}/lib -L/nix/store/0qgrrx22vlx7vj8djn3a6jhngv5syvmp-atlas-3.10.2/lib -L/nix/store/504skrdpz1ycnp0zbli7sj3bs80gibpl-liblapack-3.4.1/lib -L/nix/store/53w5jkmhsfzdhnpwl9qsbm4a290g54wg-hdf5-1.10.1/lib -L/nix/store/zvax2j39j2y7rrz1a4m6w3dbbbydlc1n-lua-5.3.4/lib
+libs = -llapack -latlas -lcblas -lf77blas -latlas -llua -ldl -lhdf5_fortran -lhdf5 -luuid -lz
+f90_module_flag = -J
+
+[opt]
+cppflags = %(cppflags_opt)s
+fflags = %(include_f)s -O3
+cflags = %(include_c)s -O3
+cxxflags = -O3
+
+[dbg]
+cppflags = %(cppflags_opt)s -DDEBUG
+fflags = %(include_f)s -g -fbounds-check -Wall -Wextra -fbacktrace
+cflags = %(include_c)s -g -Wall -Wextra -fbacktrace
+cxxflags = -g -Wall -Wextra -fbacktrace

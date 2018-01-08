@@ -6,7 +6,7 @@ use const, only: p, i0
 use basis_types
 
 implicit none
- 
+
 contains
 
     subroutine init_basis_fn(sys, b, l, sym, lz, ms)

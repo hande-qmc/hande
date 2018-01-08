@@ -1,0 +1,185 @@
+#include <stdio.h>
+#include <unistd.h>
+
+#if !defined(DET_SIZE)
+#define DET_SIZE 32
+#endif
+
+#if !defined(POP_SIZE)
+#define POP_SIZE 32
+#endif
+
+#if !defined(DSFMT_MEXP)
+#define DSFMT_MEXP 19937
+#endif
+
+const char *report_hdf5();
+const char *report_lanczos();
+const char *report_uuid();
+const char *report_scalapack();
+const char *report_single_precision();
+const char *report_popcnt();
+const char *report_mpi_toggle();
+const char *report_omp_toggle();
+const char *report_parallel();
+void print_info();
+
+void print_info() {
+  printf("\n");
+  printf("\n");
+  printf("Version information\n");
+  printf("-------------------\n");
+  printf("\n");
+  printf("Version       | %s\n", "@_git_describe@");
+  printf("Commit hash   | %s\n", "@_git_last_commit_hash@");
+  printf("Commit author | %s\n", "@_git_last_commit_author@");
+  printf("Commit date   | %s\n", "@_git_last_commit_date@");
+  printf("Branch        | %s\n", "@_git_branch@");
+
+  printf("\n");
+  printf("\n");
+  printf("Configuration and build information\n");
+  printf("-----------------------------------\n");
+  printf("\n");
+  printf("Who compiled             | %s\n", "@_user_name@");
+  printf("Compilation hostname     | %s\n", "@_host_name@");
+  printf("Operating system         | %s\n", "@_system@");
+  printf("CMake version            | %s\n", "@_cmake_version@");
+  printf("CMake generator          | %s\n", "@_cmake_generator@");
+  printf("Build type               | %s\n", "@_build_type@");
+  printf("Configuration time       | %s\n", "@_configuration_time@");
+  printf("Python version           | %s\n", "@_python_version@");
+  printf("Fortran compiler         | %s\n", "@_Fortran_compiler@");
+  printf("C compiler               | %s\n", "@_C_compiler@");
+  /* clang-format off */
+  printf("DET_SIZE set to          | %d\n", @_det_size@);
+  printf("POP_SIZE set to          | %d\n", @_pop_size@);
+  printf("dSFMT Mersenne exponent  | %d\n", @_dsfmt_mexp@);
+  printf("%s\n", report_mpi_toggle());
+  printf("%s\n", report_omp_toggle());
+  /* clang-format on */
+
+  printf("\n");
+  printf("\n");
+  printf("Further components\n");
+  printf("------------------\n");
+  printf("\n");
+  printf("   %s\n", report_hdf5());
+  printf("   %s\n", report_lanczos());
+  printf("   %s\n", report_uuid());
+  printf("   %s\n", report_parallel());
+  printf("   %s\n", report_scalapack());
+  printf("   %s\n", report_single_precision());
+  printf("   %s\n", report_popcnt());
+
+  printf("\n");
+  printf("\n");
+  printf("Runtime information\n");
+  printf("-------------------\n");
+  printf("\n");
+  char hostname[1024];
+  int stat = gethostname(hostname, 1024);
+  if (stat == 0) {
+    printf("Hostname:                               \n    %s\n", hostname);
+  } else {
+    printf("Hostname (truncated to 1024 characters):\n    %s\n", hostname);
+  }
+  char cwd[1024];
+  if (getcwd(cwd, sizeof(cwd)) != NULL) {
+    printf("Current working dir:                    \n    %s\n", cwd);
+  } else {
+    perror("getcwd() error");
+  }
+
+  fflush(stdout);
+}
+
+const char *report_hdf5() {
+/* clang-format off */
+#ifdef DISABLE_HDF5
+  return "DISABLE_HDF5 defined.  HDF5 disabled.";
+#else
+  return "DISABLE_HDF5 not defined.  HDF5 enabled.";
+#endif
+  /* clang-format on */
+}
+
+const char *report_lanczos() {
+/* clang-format off */
+#ifdef DISABLE_LANCZOS
+  return "DISABLE_LANCZOS defined.  Lanczos disabled.";
+#else
+  return "DISABLE_LANCZOS not defined.  Lanczos enabled.";
+#endif
+  /* clang-format on */
+}
+
+const char *report_uuid() {
+/* clang-format off */
+#ifdef DISABLE_UUID
+  return "DISABLE_UUID defined.  UUID disabled.";
+#else
+  return "DISABLE_UUID not defined.  UUID enabled.";
+#endif
+  /* clang-format on */
+}
+
+const char *report_scalapack() {
+/* clang-format off */
+#ifdef DISABLE_SCALAPACK
+  return "DISABLE_SCALAPACK defined.  ScaLAPACK disabled.";
+#else
+  return "DISABLE_SCALAPACK not defined.  ScaLAPACK enabled.";
+#endif
+  /* clang-format on */
+}
+
+const char *report_popcnt() {
+/* clang-format off */
+#ifdef USE_POPCNT
+  return "USE_POPCNT defined.  Fortran 2003 POPCNT procedure used.";
+#else
+  return "USE_POPCNT not defined. Internal POPCNT procedure used.";
+#endif
+  /* clang-format on */
+}
+
+const char *report_single_precision() {
+/* clang-format off */
+#ifdef SINGLE_PRECISION
+  return "SINGLE_PRECISION defined.  Single precision used where relevant.";
+#else
+  return "SINGLE_PRECISION not defined.  Double precision used throughout.";
+#endif
+  /* clang-format on */
+}
+
+const char *report_mpi_toggle() {
+/* clang-format off */
+#ifdef PARALLEL
+  return "MPI parallelization      | ON\nMPI launcher             | @_mpi_launcher@";
+#else
+  return "MPI parallelization      | OFF";
+#endif
+  /* clang-format on */
+}
+
+const char *report_omp_toggle() {
+/* clang-format off */
+#ifdef _OPENMP
+  return "OpenMP parallelization   | ON";
+#else
+  return "OpenMP parallelization   | OFF";
+#endif
+  /* clang-format on */
+}
+
+const char *report_parallel() {
+/* clang-format off */
+#ifdef PARALLEL
+  return "PARALLEL defined.  MPI parallelization enabled.";
+#else
+  return "PARALLEL not defined.  MPI parallelization disabled.";
+#endif
+  /* clang-format on */
+}

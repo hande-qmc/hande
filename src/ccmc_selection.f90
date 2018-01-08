@@ -60,7 +60,7 @@ contains
         !        output all fields in cluster have been set.
 
         use determinants, only: det_info_t
-        use ccmc_data, only: cluster_t
+        use determinants, only: cluster_t
         use ccmc_utils, only: convert_excitor_to_determinant, collapse_cluster
         use excitations, only: get_excitation_level
         use dSFMT_interface, only: dSFMT_t, get_rand_close_open
@@ -301,7 +301,7 @@ contains
 
         use system, only: sys_t
         use determinants, only: det_info_t
-        use ccmc_data, only: cluster_t
+        use determinants, only: cluster_t
         use proc_pointers, only: decoder_ptr
 
         type(sys_t), intent(in) :: sys
@@ -386,7 +386,7 @@ contains
 
         use system, only: sys_t
         use determinants, only: det_info_t
-        use ccmc_data, only: cluster_t
+        use determinants, only: cluster_t
         use ccmc_utils, only: convert_excitor_to_determinant
         use excitations, only: get_excitation_level
         use qmc_data, only: particle_t

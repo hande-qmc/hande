@@ -13,7 +13,7 @@ module hdf5_system
     ! For warnings and tutorials on using HDF5 functionality please see the start of
     ! restart_hdf5.F90.
 
-    ! HDF5 struncture used is:
+    ! HDF5 structure used is:
 
     ! /                                 # ROOT/
     !

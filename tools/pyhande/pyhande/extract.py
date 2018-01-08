@@ -81,9 +81,9 @@ data_pairs : list of (dict, :class:`pandas.DataFrame` or :class:`pandas.Series`)
     # metadata from ...
     # ... output header
     md_generic_header = dict(
-        UUID = 'Calculation UUID:',
-        git_hash = re.compile('git sha1 hash:|VCS BASE repository version:'),
-        hande_version = 'HANDE version:',
+        UUID = re.compile('Calculation UUID:'),
+        git_hash = re.compile('git sha1 hash:|VCS BASE repository version:|Commit hash  *\| '),
+        hande_version = re.compile('HANDE version:|Version  *\| '),
     )
     # ... footer of output (ie after QMC data table)
     comms_footer = dict(
@@ -153,10 +153,15 @@ data_pairs : list of (dict, :class:`pandas.DataFrame` or :class:`pandas.Series`)
         elif not calc_type:
             # Generic header
             for (key, val) in md_generic_header.items():
-                if key == 'git_hash':
-                    if val.search(line):
-                        md_generic[key] = next(f).strip()
-                elif val in line:
+                if val.search(line):
+                    entry = val.split(line)[-1].strip().strip('.')
+                    if entry:
+                        # data is on same line as regex (e.g. format: 'PATTERN DATA')
+                        md_generic[key] = entry
+                    else:
+                        # data is on the next line to regex (e.g. format: 'PATTERN\nDATA')
+                        md_generic[key] = next(f).strip().strip('.')
+                elif val.search(line):
                     md_generic[key] = line.split()[-1].strip('.')
             # Parse input block.
             if input_pattern in line:

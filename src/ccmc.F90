@@ -164,7 +164,7 @@ module ccmc
 ! In order for the correct dynamics to be performed, we must carefully
 ! accumulate all negative signs and take them into account when
 ! determining the sign of the child excips.
-!   
+!
 ! Shift
 ! -----
 !
@@ -185,11 +185,11 @@ module ccmc
 !   \Delta t_I = - dt < D_I | H - E | \Psi_{CC}(t) > - dt (E - S) t_I.      (13)
 !
 ! As the exact energy E_{CC} is not known during the calculation, we use the projected
-! energy estimator.  Once the shift has converged to E_{CC} (within stochastic 
+! energy estimator.  Once the shift has converged to E_{CC} (within stochastic
 ! fluctuations), the equations (3) and (13) are equivalent and either may be used.
 !
-! This new expression can be thought of as separating the two roles of the dynamics: 
-! the first term optimises the amplitudes to solve the coupled cluster equations, 
+! This new expression can be thought of as separating the two roles of the dynamics:
+! the first term optimises the amplitudes to solve the coupled cluster equations,
 ! and the second provides control of the total population.
 !
 ! Two sorts of clusters may be distinguished: composite clusters, that contain a product
@@ -295,12 +295,13 @@ contains
         use annihilation, only: direct_annihilation
         use bloom_handler, only: init_bloom_stats_t, bloom_stats_t, bloom_mode_fractionn, &
                                  accumulate_bloom_stats, write_bloom_report, bloom_stats_warning
-        use ccmc_data
         use ccmc_selection, only: select_cluster, create_null_cluster, select_cluster_non_composite
         use ccmc_death_spawning, only: spawner_ccmc, linked_spawner_ccmc, stochastic_ccmc_death, stochastic_ccmc_death_nc
         use ccmc_utils, only: init_cluster, find_D0
-        use determinants, only: det_info_t, dealloc_det_info_t, sum_sp_eigenvalues_occ_list, sum_sp_eigenvalues_bit_string
+        use determinants, only: cluster_t, det_info_t, dealloc_det_info_t, &
+                                sum_sp_eigenvalues_occ_list, sum_sp_eigenvalues_bit_string
         use excitations, only: excit_t, get_excitation_level, get_excitation
+        use ccmc_multispawn, only: multispawn_stats_t, ms_stats_update, multispawn_stats_report
         use qmc_io, only: write_qmc_report, write_qmc_report_header
         use qmc, only: init_qmc
         use qmc_common, only: initial_fciqmc_status, cumulative_population, load_balancing_report, &
