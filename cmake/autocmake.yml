@@ -12,6 +12,11 @@ modules:
   - source:
     - '%(url_root)modules/fc.cmake'
     - '%(url_root)modules/cc.cmake'
+- flags:
+  - source:
+    - 'custom/compilers/Fortran_C.cmake'
+    - 'custom/compilers/CFlags.cmake'
+    - 'custom/compilers/FortranFlags.cmake'
 - cmake:
   - source:
     - '%(url_root)modules/custom_color_messages.cmake'

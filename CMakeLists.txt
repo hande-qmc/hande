@@ -17,11 +17,15 @@ endif()
 
 # directories which hold included cmake modules
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${PROJECT_SOURCE_DIR}/cmake/custom)
+set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${PROJECT_SOURCE_DIR}/cmake/custom/compilers)
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${PROJECT_SOURCE_DIR}/cmake/downloaded)
 
 # included cmake modules
 include(autocmake_fc)
 include(autocmake_cc)
+include(Fortran_C)
+include(CFlags)
+include(FortranFlags)
 include(autocmake_custom_color_messages)
 include(autocmake_safeguards)
 include(autocmake_default_build_paths)
