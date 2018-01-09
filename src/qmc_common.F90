@@ -774,7 +774,7 @@ contains
         call dSFMT_end(rng)
         ! WARNING: be careful when implementing ccmc replica or something else using nspaces!
         ! This is to be safe as get_D0_info sets D0_normalisation on all processors.
-        qs%estimators(1)%D0_population = D0_normalisation
+        qs%estimators(1)%D0_population = real(D0_normalisation, p)
         qs%estimators(1)%D0_population_comp = D0_normalisation
         if (sys%read_in%comp) then
             qs%estimators(2)%D0_population_comp = qs%estimators(1)%D0_population_comp
