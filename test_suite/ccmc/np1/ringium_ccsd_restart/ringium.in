@@ -21,7 +21,6 @@ ccmc {
         spawned_state_size = -50,
         initial_shift = 0.2,
         vary_shift_from = "proje",
-        vary_shift = true,
     },
     reference = {
         ex_level = 2,

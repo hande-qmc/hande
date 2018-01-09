@@ -1,0 +1,31 @@
+system = {
+    int_file = "FCIDUMP",
+    nel = 24,
+    ms = 0,
+    sym = 1,
+    complex = true,
+    CAS = {8,8},
+}
+
+sys = read_in(system)
+
+fciqmc {
+    sys = sys,
+    qmc = {
+        tau = 1e-3,
+        rng_seed = 23,
+        init_pop = 10,
+        mc_cycles = 20,
+        nreports = 1000,
+        target_population = 2000,
+        state_size = 750000,
+        spawned_state_size = 500000,
+    },
+    fciqmc = {
+        replica_tricks = true,
+    },
+    restart = {
+        write_shift = 0,
+        write = 1,
+    },
+}

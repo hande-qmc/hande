@@ -566,7 +566,7 @@ type spawned_particle_t
     ! Rate of spawning.  This is a running total over MC cycles on each processor
     ! until it is summed over processors and averaged over cycles in
     ! update_energy_estimators.
-    real(p) :: rspawn
+    real(p) :: rspawn = 0.0_p
 end type spawned_particle_t
 
 type reblock_data_t
@@ -674,6 +674,15 @@ end type blocking_t
 
 type estimators_t
     ! Population of walkers on reference determinant/trace of density matrix.
+    ! [review] - JSS: This comment seems somewhat out of place and unclear.
+    ! [reply] - VAN: I look here for information on D0_population etc. Where else do
+    ! [reply] - VAN: you want me to put the relationship of D0_population and D0_population_comp?
+    ! Comment for developers:
+    ! Note that when using complex populations, the estimators array of D0_population
+    ! can be (a,b,0,0) (as in the case for nspaces = 4, e.g. fciqmc complex and replica tricks),
+    ! whereas real(D0_population_comp) would then be (a,a,b,b) for some floating point numbers a
+    ! and b. Due to this mapping that is not one-to-one, using *_comp variables in non complex
+    ! calculations and vice versa is dangerous and should not be done.
     real(p) :: D0_population = 0.0_p
     ! Population of walkers on reference determinant/trace of density matrix at previous timestep.
     real(p) :: D0_population_old = 0.0_p
@@ -686,6 +695,7 @@ type estimators_t
     !   <D_0|H|D_0> + \sum_{i/=0} <D_0|H|D_i> N_i/N_0
     ! and so proj_energy must be 'normalised' and averaged over the report loops
     ! accordingly.
+    ! See comment for developers above for D0_population which holds similary for proj_energy.
     real(p) :: proj_energy = 0.0_p
     ! The instantaneous projected energy of the previous iteration is required for
     ! various purposes.
@@ -809,7 +819,7 @@ end type annihilation_flags_t
 
 contains
 
-    subroutine zero_estimators_t(estimators)
+    elemental subroutine zero_estimators_t(estimators)
 
         ! Zeros all values associated with a estimators_t derived type.
 

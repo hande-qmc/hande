@@ -1,0 +1,428 @@
+
+   HANDE
+
+ ================================================================
+ Compiled on Jan 08 2018 at 21:13:54
+ Compiled using cuc3.intel13.mpi.pop64.(optimised)
+ HANDE version: 1.1-dev
+ git sha1 hash:
+     f3d91d2765c80d0e55a7b0a1bb15a56ca0fb9224
+ Hostname:
+     gritstone
+ Working directory: 
+     /home/van26/code/hande/test_suite/ccmc_real_64/np2/polyyne_complex_ccsdt-real64-restart-legacyv1
+ Started running on 08/01/2018 at 21:17:38
+ Calculation UUID: 3ae74716-aa33-424b-921f-9dc6ffa3e5d1.
+ Preprocessor settings:
+     DISABLE_HDF5 not defined.  HDF5 enabled.
+     DISABLE_LANCZOS defined.  Lanczos disabled.
+     DISABLE_UUID not defined.  UUID enabled.
+     PARALLEL defined.  MPI parallelization enabled.
+     DISABLE_SCALAPACK not defined.  ScaLAPACK enabled.
+     SINGLE_PRECISION not defined.  Double precision used throughout.
+     USE_POPCNT not defined.  Internal POPCNT procedure used.
+     DET_SIZE = 32.
+     POP_SIZE = 64.
+ ================================================================
+
+ Number of MPI processes running on: 2
+ Running with 1 thread per MPI process.
+
+ Input options
+ -------------
+
+system = {
+    int_file = "FCIDUMP",
+    nel = 24,
+    ms = 0,
+    sym = "aufbau",
+    complex = true,
+}
+
+sys = read_in(system)
+
+ccmc {
+    sys = sys,
+    qmc = {
+        tau = 5e-4,
+        rng_seed = 23,
+        init_pop = 1000,
+        mc_cycles = 20,
+        real_amplitudes = true,
+        nreports = 20,
+        target_population = 12500,
+        state_size = 12000,
+        spawned_state_size = 15000,
+    },
+    reference = {
+        ex_level = 3,
+    },
+    ccmc = {
+        full_non_composite = true,
+        even_selection = true,
+    },
+    restart = {
+        write = 1,
+        write_shift = 0,
+    },
+}
+
+ -------------
+
+ Memory required for all two body integrals (MB) on each processor: 0
+ It is left to the user to ensure that this does not exceed available resources.
+
+ Basis functions
+ ---------------
+
+ Spin given in units of 1/2.
+ k-points given in terms of the reciprocal lattice vectors of the crystal cell.
+
+ index   k-point            ms       <i|h|i>
+     1   (  0,  0,  0)      1       -1.00236005E+00
+     2   (  0,  0,  0)     -1       -1.00236005E+00
+     3   (  1,  0,  0)      1       -9.26018339E-01
+     4   (  1,  0,  0)     -1       -9.26018339E-01
+     5   (  2,  0,  0)      1       -9.26018339E-01
+     6   (  2,  0,  0)     -1       -9.26018339E-01
+     7   (  2,  0,  0)      1       -7.28383055E-01
+     8   (  2,  0,  0)     -1       -7.28383055E-01
+     9   (  1,  0,  0)      1       -7.28383055E-01
+    10   (  1,  0,  0)     -1       -7.28383055E-01
+    11   (  0,  0,  0)      1       -5.97827871E-01
+    12   (  0,  0,  0)     -1       -5.97827871E-01
+    13   (  0,  0,  0)      1       -4.42755448E-01
+    14   (  0,  0,  0)     -1       -4.42755448E-01
+    15   (  0,  0,  0)      1       -4.42755446E-01
+    16   (  0,  0,  0)     -1       -4.42755446E-01
+    17   (  1,  0,  0)      1       -2.63091309E-01
+    18   (  1,  0,  0)     -1       -2.63091309E-01
+    19   (  2,  0,  0)      1       -2.63091308E-01
+    20   (  2,  0,  0)     -1       -2.63091308E-01
+    21   (  1,  0,  0)      1       -2.63091308E-01
+    22   (  1,  0,  0)     -1       -2.63091308E-01
+    23   (  2,  0,  0)      1       -2.63091305E-01
+    24   (  2,  0,  0)     -1       -2.63091305E-01
+    25   (  1,  0,  0)      1        4.24212132E-01
+    26   (  1,  0,  0)     -1        4.24212132E-01
+    27   (  1,  0,  0)      1        4.24212136E-01
+    28   (  1,  0,  0)     -1        4.24212136E-01
+    29   (  2,  0,  0)      1        4.24212136E-01
+    30   (  2,  0,  0)     -1        4.24212136E-01
+    31   (  2,  0,  0)      1        4.24212141E-01
+    32   (  2,  0,  0)     -1        4.24212141E-01
+    33   (  0,  0,  0)      1        5.87812296E-01
+    34   (  0,  0,  0)     -1        5.87812296E-01
+    35   (  0,  0,  0)      1        7.92184979E-01
+    36   (  0,  0,  0)     -1        7.92184979E-01
+    37   (  0,  0,  0)      1        7.92184982E-01
+    38   (  0,  0,  0)     -1        7.92184982E-01
+    39   (  2,  0,  0)      1        8.74608188E-01
+    40   (  2,  0,  0)     -1        8.74608188E-01
+    41   (  1,  0,  0)      1        8.74608188E-01
+    42   (  1,  0,  0)     -1        8.74608188E-01
+    43   (  1,  0,  0)      1        1.55775862E+00
+    44   (  1,  0,  0)     -1        1.55775862E+00
+    45   (  2,  0,  0)      1        1.55775862E+00
+    46   (  2,  0,  0)     -1        1.55775862E+00
+    47   (  0,  0,  0)      1        2.00066738E+00
+    48   (  0,  0,  0)     -1        2.00066738E+00
+
+ E_core =  102.892373280773
+ Number of electrons: 24
+ Number of basis functions: 48
+
+ Bit-length of integers used to store determinant bit-strings: 32
+ Number of integers used to store determinant bit-strings: 2
+
+ Symmetry information
+ --------------------
+
+ The table below gives the label and inverse of each wavevector.
+
+ Index    k-point         Inverse
+   1      (  0,  0,  0)        1
+   2      (  1,  0,  0)        3
+   3      (  2,  0,  0)        2
+
+ The matrix below gives the result of k_i+k_j to within a reciprocal lattice vector.
+
+  1  2  3
+  2  3  1
+  3  1  2
+
+
+ Reference determinant and so symmetry sector selected using the Aufbau principle.
+ Selected symmetry  1.
+
+ CCMC
+ ----
+
+ Memory allocated per core for main walker list (MB):    0.58
+ Number of elements per core in main walker list: 12000
+ Memory allocated per core for spawned walker lists (MB):    1.20
+ Number of elements per core in spawned walker list: 15000
+
+ -- Start JSON block --
+ {
+     "system": {
+         "nbasis": 48,   
+         "nel": 24,   
+         "nvirt": 24,   
+         "Ms": 0,   
+         "nalpha": 12,   
+         "nbeta": 12,   
+         "nvirt_alpha": 12,   
+         "nvirt_beta": 12,   
+         "nsym": 3,   
+         "sym0": 1,   
+         "sym_max": 3,   
+         "nsym_tot": 3,   
+         "sym0_tot": 1,   
+         "sym_max_tot": 3,   
+         "symmetry": 1,   
+         "tot_sym": false,   
+         "aufbau_sym": true,   
+         "max_number_excitations": 24,   
+         "read_in": {
+             "int_file":  "FCIDUMP",   
+             "uhf": false,   
+             "Ecore": 102.89237328,   
+             "CAS": [ -1, -1],
+             "useLz": false,   
+             "complex": true    
+         }
+     },
+     "qmc": {
+         "rng_seed": 23,   
+         "real_amplitudes": true,   
+         "real_amplitude_force_32": false,   
+         "spawn_cutoff": 0.01000000,   
+         "excit_gen":  "renorm",   
+         "pattempt_single": 0.00968523,   
+         "pattempt_double": 0.99031477,   
+         "tau": 0.00050000,   
+         "tau_search": false,   
+         "vary_shift_from": 0.00000000,   
+         "vary_shift_from_proje": false,   
+         "initial_shift": 0.00000000,   
+         "shift_damping": 0.05000000,   
+         "walker_length": 12000,   
+         "spawned_walker_length": 15000,   
+         "D0_population": 1000.00000000,   
+         "target_particles": 12500.00000000,   
+         "target_reference": false,   
+         "initiator_approx": false,   
+         "initiator_pop": 3.00000000,   
+         "ncycles": 20,   
+         "nreport": 20,   
+         "quasi_newton": false,   
+         "quasi_newton_threshold": 0.00001000,   
+         "quasi_newton_value": 1.00000000,   
+         "use_mpi_barriers": false    
+     },
+     "ccmc": {
+         "move_freq": 5,   
+         "cluster_multispawn_threshold": 1.79769313E+308,   
+         "full_nc": true,   
+         "linked": false,   
+         "vary_shift_reference": false,   
+         "density_matrices": false,   
+         "density_matrix_file":  "RDM",   
+         "even_selection": true    
+     },
+     "semi_stoch": {
+         "start_iter": 1,   
+         "shift_iter": -1,   
+         "space_type":  "none",   
+         "target_size": 0,   
+         "write_determ_space": false,   
+         "projection_mode":  "separate",   
+         "read_id": 2147483647,   
+         "write_id": 2147483647,   
+         "ci_space": {
+             "ex_level": -1    
+         }
+     },
+     "restart": {
+         "read_restart": false,   
+         "read_id": 2147483647,   
+         "write_restart": true,   
+         "write_id": 1,   
+         "write_freq": 2147483647,   
+         "write_restart_shift": true,   
+         "write_shift_id": 0    
+     },
+     "reference": {
+         "det": [ 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24],
+         "det_ms": 0,   
+         "det_symmetry": 1,   
+         "H00": 0.00000000,   
+         "F0": -13.69373366,   
+         "hilbert_space_det": [ 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24],
+         "hilbert_space_det_ms": 0,   
+         "hilbert_space_det_symmetry": 1,   
+         "ex_level": 3    
+     },
+     "blocking": {
+         "blocking_on_the_fly": false,   
+         "start_save_frequency": -1,   
+         "start_point_number": -1,   
+         "filename":  "BLOCKING",   
+         "start_point": -1,   
+         "error_limit": 0.00000000,   
+         "blocks_used": 1.79769313E+308,   
+         "min_blocks_used": 10.00000000,   
+         "auto_shift_damping": false,   
+         "shift_damping_precision": 2.00000000,   
+         "force_shift_damping_opt": false    
+     },
+     "logging_in": {
+         "calc": 0,   
+         "calc_file":  "CALC",   
+         "spawn": 0,   
+         "spawn_file":  "SPAWN",   
+         "death": 0,   
+         "death_file":  "DEATH",   
+         "start_iter": 0,   
+         "end_iter": 9223372036854775807    
+     },
+     "logging": {
+         "write_highlevel_values": false,   
+         "calc_unit": 2147483647,   
+         "write_successful_spawn": false,   
+         "write_failed_spawn": false,   
+         "spawn_unit": 2147483647,   
+         "write_successful_death": false,   
+         "write_failed_death": false,   
+         "death_unit": 2147483647    
+     }
+ }
+ -- End JSON block --
+
+ Truncated Selection Initialisation
+ ----------------------------------
+
+ Setting up required data storage to sample all composite clusters of size <= 5, 
+ cluster excitation level <= 5 using excitors of excitation level <= 3.
+
+ Found 5 possible excitation level combinations for a cluster of size 2.
+ Combinations are:
+
+            |     N_excitors @ excitation level:
+      Combo |-----------------------------------------
+     Number |  ex level= 1  ex level= 2  ex level= 3
+    --------------------------------------------------
+          1 |        0            1            1
+          2 |        0            2            0
+          3 |        1            0            1
+          4 |        1            1            0
+          5 |        2            0            0
+
+ Found 4 possible excitation level combinations for a cluster of size 3.
+ Combinations are:
+
+            |     N_excitors @ excitation level:
+      Combo |-----------------------------------------
+     Number |  ex level= 1  ex level= 2  ex level= 3
+    --------------------------------------------------
+          1 |        1            2            0
+          2 |        2            0            1
+          3 |        2            1            0
+          4 |        3            0            0
+
+ Found 2 possible excitation level combinations for a cluster of size 4.
+ Combinations are:
+
+            |     N_excitors @ excitation level:
+      Combo |-----------------------------------------
+     Number |  ex level= 1  ex level= 2  ex level= 3
+    --------------------------------------------------
+          1 |        3            1            0
+          2 |        4            0            0
+
+ Found 1 possible excitation level combinations for a cluster of size 5.
+ Combinations are:
+
+            |     N_excitors @ excitation level:
+      Combo |-----------------------------------------
+     Number |  ex level= 1  ex level= 2  ex level= 3
+    --------------------------------------------------
+          1 |        5            0            0
+
+ Information printed out every QMC report loop:
+
+ Shift: the energy offset calculated at the end of the report loop.
+ H_0j: <D_0|H|D_j>, Hamiltonian matrix element.
+ N_j: population of Hamiltonian particles on determinant D_j.
+ # H psips: current total population of Hamiltonian particles.
+ # states: number of many-particle states occupied.
+ spawn_events: number of successful spawning events across all processors.
+ R_spawn: average rate of spawning across all processors.
+ time: average time per Monte Carlo cycle.
+
+ Note that all particle populations are averaged over the report loop.
+
+ #     iterations   Shift                 Re{\sum H_0j N_j}     Im{\sum H_0j N_j}     Re{N_0}               Im{N_0}               # H psips                  # states  # spawn_events      # attempts   R_spawn    time   
+ #              0   0.0000000000E+00      0.0000000000E+00      0.0000000000E+00      0.0000000000E+00      0.0000000000E+00      1.0000000000E+03                  1               0               0    0.0000    0.0000 
+               20   0.0000000000E+00     -5.4364753619E+00      1.4296156705E-02      1.0000000000E+03      0.0000000000E+00      1.5473851359E+03                467             998            2618    0.3998    0.0016 
+               40   0.0000000000E+00     -1.6836811700E+01      1.3298498662E-01      1.0000106828E+03      0.0000000000E+00      2.1723549981E+03                903            1071            3649    0.3322    0.0024 
+               60   0.0000000000E+00     -2.7510607933E+01      5.1207494419E-01      1.0001386524E+03      0.0000000000E+00      2.8315825085E+03               1306            1117            5014    0.2642    0.0033 
+               80   0.0000000000E+00     -3.7753359072E+01      5.1275611883E-01      1.0008098968E+03      0.0000000000E+00      3.5587466962E+03               1759            1191            6861    0.2172    0.0045 
+              100   0.0000000000E+00     -4.7554137112E+01      5.4398334936E-01      1.0009497312E+03      0.0000000000E+00      4.2761408171E+03               2180            1281            9054    0.1804    0.0061 
+              120   0.0000000000E+00     -5.6972493804E+01      5.8542725981E-01      1.0009652534E+03      0.0000000000E+00      5.0417636982E+03               2633            1348           11736    0.1489    0.0080 
+              140   0.0000000000E+00     -6.6007474440E+01      4.8544743336E-01      1.0014119152E+03      0.0000000000E+00      5.8958259981E+03               3163            1487           15031    0.1267    0.0104 
+              160   0.0000000000E+00     -7.5041511250E+01      5.9427954600E-01      1.0019914586E+03      0.0000000000E+00      6.8117803328E+03               3750            1542           19082    0.1098    0.0133 
+              180   0.0000000000E+00     -8.4421608592E+01      5.5628665557E-01      1.0032168242E+03      0.0000000000E+00      7.7559892574E+03               4342            1563           23625    0.0935    0.0169 
+              200   0.0000000000E+00     -9.3295451456E+01      5.1850629641E-01      1.0039566584E+03      0.0000000000E+00      8.7978192969E+03               5009            1717           29107    0.0817    0.0203 
+              220   0.0000000000E+00     -1.0131613519E+02      6.3755344514E-01      1.0052755142E+03      0.0000000000E+00      9.8699559201E+03               5724            1713           35112    0.0720    0.0255 
+              240   0.0000000000E+00     -1.0929459610E+02      7.8981199914E-01      1.0069771007E+03      0.0000000000E+00      1.0936007510E+04               6431            1774           41495    0.0641    0.0292 
+              260   0.0000000000E+00     -1.1663139903E+02      9.6041992530E-01      1.0080077533E+03     -4.5338271903E-01      1.2172884531E+04               7279            2020           49240    0.0581    0.0345 
+              280   0.0000000000E+00     -1.2415633816E+02      1.2428924581E+00      1.0090120240E+03     -1.0303773122E+00      1.3457113485E+04               8174            2012           57994    0.0525    0.0409 
+ # Writing restart file to HANDE.RS.0.p0.H5 family.
+              300  -4.4261662134E-01     -1.3195312264E+02      1.1379207152E+00      1.0104145386E+03     -1.0098725966E+00      1.4702700350E+04               9029            2135           67165    0.0476    0.0476 
+              320  -8.7898764045E-01     -1.3891101204E+02      9.8884724390E-01      1.0090339265E+03     -1.0728126934E+00      1.6043525587E+04              10011            2347           77661    0.0434    0.0558 
+              340  -1.2645947931E+00     -1.4513161676E+02      9.6132357847E-01      1.0047508816E+03     -1.3061435913E+00      1.7329786926E+04              10957            2299           88205    0.0401    0.0628 
+              360  -1.6121253094E+00     -1.5167960988E+02      8.1217859566E-01      9.9559488519E+02     -1.2824603760E+00      1.8577160792E+04              11880            2481           99325    0.0374    0.0695 
+              380  -1.9347686372E+00     -1.5702204494E+02      7.1016529715E-01      9.8458035749E+02     -1.1972365746E+00      1.9815442884E+04              12837            2514          110863    0.0350    0.0770 
+              400  -2.2325692933E+00     -1.6107325387E+02      8.6237080763E-01      9.6851033828E+02     -1.1717860930E+00      2.1031508301E+04              13800            2612          123265    0.0329    0.0883 
+
+ Load balancing
+ ^^^^^^^^^^^^^^
+
+ The final distribution of walkers and determinants across the processors was:
+
+ Particle type: 1
+ Min # of particles on a processor:       5.255485E+03
+ Max # of particles on a processor:       5.815488E+03
+ Mean # of particles on a processor:      5.535487E+03
+
+ Particle type: 2
+ Min # of particles on a processor:       4.922924E+03
+ Max # of particles on a processor:       5.037611E+03
+ Mean # of particles on a processor:      4.980267E+03
+
+ Min # of determinants on a processor:   6856
+ Max # of determinants on a processor:   6944
+ Mean # of determinants on a processor:   6.900000E+03
+
+ Min time taken by walker communication:         0.19s
+ Max time taken by walker communication:         0.50s
+ Mean time taken by walker communication:        0.35s
+
+ # Writing restart file to HANDE.RS.1.p0.H5 family.
+
+ Timing breakdown
+ ----------------
+
+ Time for each calculation section (seconds):
+
+ Generic system initialisation: .27
+ CCMC calculation             : 12.36
+
+ ================================================================
+ Finished running on 08/01/2018 at 21:17:50
+ Wall time (seconds):                          12.65
+ CPU time (per processor, seconds):            12.63
+ ================================================================
+

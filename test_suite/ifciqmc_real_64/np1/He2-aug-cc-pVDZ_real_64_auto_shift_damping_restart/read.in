@@ -19,6 +19,7 @@ fciqmc {
         spawn_cutoff = 0.1,
         init_pop = 40,
         initiator = true,
+        vary_shift = true, --allow shift to vary immediately
         vary_shift_from = 'proje',
         shift_damping = 0.1,
     },

@@ -19,7 +19,6 @@ fciqmc {
         spawned_state_size = -1,
         real_amplitudes = true,
         real_amplitude_force_32 = true,
-        vary_shift = true, -- old restart file without vary_shift set
     },
     restart = {
         read = 0,

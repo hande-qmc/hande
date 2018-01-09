@@ -9,7 +9,7 @@ contains
 ! --- Initialisation routines ---
 
     subroutine init_qmc(sys, qmc_in, restart_in, load_bal_in, reference_in, io_unit, annihilation_flags, qmc_state, uuid_restart, &
-                        dmqmc_in, fciqmc_in, qmc_state_restart, regenerate_info)
+                        restart_version_restart, dmqmc_in, fciqmc_in, qmc_state_restart, regenerate_info)
 
         ! Initialisation for fciqmc calculations.
         ! Setup the spin polarisation for the system, initialise the RNG,
@@ -39,6 +39,7 @@ contains
         !       correctly allocated and useful information printed out...
         !    uuid_restart: if using a restart file, the UUID of the calculations
         !       that generated it.
+        !    restart_version_restart: version of restart that was read in.
         !    regenerate_info (optional): true if additional information within
         !       bit string needs to be regenerated for a read-in restart file.
 
@@ -66,6 +67,7 @@ contains
         type(annihilation_flags_t), intent(out) :: annihilation_flags
         type(qmc_state_t), intent(out) :: qmc_state
         character(36), intent(out) :: uuid_restart
+        integer, intent(out) :: restart_version_restart
         type(dmqmc_in_t), intent(in), optional :: dmqmc_in
         type(fciqmc_in_t), intent(in), optional :: fciqmc_in
         type(qmc_state_t), intent(inout), optional :: qmc_state_restart
@@ -75,12 +77,15 @@ contains
         type(fciqmc_in_t) :: fciqmc_in_loc
         type(dmqmc_in_t) :: dmqmc_in_loc
         type(restart_info_t) :: ri
-        logical :: regenerate_info_loc
+        logical :: regenerate_info_loc, qmc_state_restart_loc
 
         regenerate_info_loc = .false.
+        restart_version_restart = 0
+        qmc_state_restart_loc = .false.
 
         if (present(fciqmc_in)) fciqmc_in_loc = fciqmc_in
         if (present(dmqmc_in)) dmqmc_in_loc = dmqmc_in
+        if (present(qmc_state_restart)) qmc_state_restart_loc = .true.
 
         if (restart_in%read_restart) call init_restart_info_t(ri, read_id=restart_in%read_id)
 
@@ -89,7 +94,7 @@ contains
         ! Note it is not possible to override a reference if restarting.
         if (restart_in%read_restart) then
             call init_reference_restart(sys, reference_in, ri, qmc_state%ref)
-        else if (present(qmc_state_restart)) then
+        else if (qmc_state_restart_loc) then
             qmc_state%ref = qmc_state_restart%ref
         else
             call init_reference(sys, reference_in, io_unit, qmc_state%ref)
@@ -115,7 +120,7 @@ contains
 
         ! Allocate main particle lists.  Include the memory used by semi_stoch_t%determ in the
         ! calculation of memory occupied by the main particle lists.
-        if (.not. present(qmc_state_restart)) then
+        if (.not. (qmc_state_restart_loc)) then
             call init_particle_t(qmc_in%walker_length, 1, sys%basis%tensor_label_len, qmc_in%real_amplitudes, &
                                  qmc_in%real_amplitude_force_32, qmc_state%psip_list, io_unit=io_unit)
         end if
@@ -123,7 +128,7 @@ contains
         call init_parallel_t(qmc_state%psip_list%nspaces, nparticles_start_ind-1, fciqmc_in_loc%non_blocking_comm, &
                              qmc_state%par_info, load_bal_in%nslots)
 
-        if (present(qmc_state_restart)) then
+        if (qmc_state_restart_loc) then
             call move_qmc_state_t(qmc_state_restart, qmc_state)
             qmc_state%mc_cycles_done = qmc_state_restart%mc_cycles_done
         else
@@ -143,7 +148,7 @@ contains
             ! Initial walker distributions
             if (restart_in%read_restart) then
                 call read_restart_hdf5(ri, sys%basis%nbasis, fciqmc_in_loc%non_blocking_comm, sys%basis%info_string_len, &
-                                        qmc_state, uuid_restart, regenerate_info_loc)
+                                        qmc_state, uuid_restart, regenerate_info_loc, restart_version_restart)
             else if (doing_calc(dmqmc_calc)) then
                 ! Initial distribution handled later
                 qmc_state%psip_list%nstates = 0
@@ -156,7 +161,8 @@ contains
 
         call init_annihilation_flags(qmc_in, fciqmc_in_loc, dmqmc_in_loc, annihilation_flags)
         call init_trial(sys, fciqmc_in_loc, qmc_state%trial)
-        call init_estimators(sys, qmc_in, restart_in%read_restart.and.fciqmc_in_loc%non_blocking_comm, qmc_state)
+        call init_estimators(sys, qmc_in, restart_in%read_restart, qmc_state_restart_loc, fciqmc_in_loc%non_blocking_comm, &
+                        qmc_state)
         if (present(qmc_state_restart)) call dealloc_excit_gen_data_t(qmc_state_restart%excit_gen_data)
         call init_excit_gen(sys, qmc_in, qmc_state%ref, qmc_state%excit_gen_data)
 
@@ -664,15 +670,15 @@ contains
 
     end subroutine init_annihilation_flags
 
-    subroutine init_estimators(sys, qmc_in, have_tot_nparticles, qmc_state)
+    subroutine init_estimators(sys, qmc_in, restart_read_in, qmc_state_restart, fciqmc_non_blocking_comm, qmc_state)
 
         ! Initialise estimators and related components of qmc_state
 
         ! In:
         !   sys: system being studied
         !   qmc_in: input options relating to qmc methods
-        !   have_tot_nparticles: if true, don't recalculate tot_nparticles as&
-        !       it is provided by a restart file.
+        !   restart_read_in : If true, have restarted and have read in restart file
+        !   fciqmc_non_blocking_comm : If true, use non blocking communication and fciqmc
         ! In/Out:
         !   qmc_state: current state of qmc calculation
 
@@ -685,14 +691,19 @@ contains
 
         type(sys_t), intent(in) :: sys
         type(qmc_in_t), intent(in) :: qmc_in
-        logical, intent(in) :: have_tot_nparticles
+        logical, intent(in) :: restart_read_in, qmc_state_restart, fciqmc_non_blocking_comm
         type(qmc_state_t), intent(inout) :: qmc_state
 
+        logical :: have_tot_nparticles
         integer :: i
 #ifdef PARALLEL
         real(dp) :: tmp_dp
         integer :: ierr
 #endif
+        have_tot_nparticles = .false.
+        if ((restart_read_in) .and. (fciqmc_non_blocking_comm)) then
+            have_tot_nparticles = .true.
+        end if
 
         associate(pl=>qmc_state%psip_list)
             ! Total number of particles on processor.
@@ -735,8 +746,6 @@ contains
 
         ! Set initial values from input
         qmc_state%tau = qmc_in%tau
-        qmc_state%estimators%D0_population = qmc_in%D0_population
-        qmc_state%estimators%D0_population_old = qmc_in%D0_population
 
     end subroutine init_estimators
 
