@@ -237,6 +237,7 @@ contains
         integer :: displs_nel(0:nprocs-1), displs_nbasis(0:nprocs-1)
         integer :: sizes_nel(0:nprocs-1), sizes_nbasis(0:nprocs-1)
         integer :: ierr, sr
+        integer :: nel_start, nel_end, nbasis_start, nbasis_end
 #endif
         type(sys_t), intent(in) :: sys
         type(reference_t), intent(in) :: ref
@@ -246,7 +247,6 @@ contains
         integer :: i, j, a, b, ind_a, ind_b, maxv, nv, bsym, ij_sym, isyma, isymb, ims, imsa
         integer :: i_tmp, j_tmp, a_tmp, b_tmp, nall
         integer :: iproc_nel_start, iproc_nel_end, iproc_nbasis_start, iproc_nbasis_end
-        integer :: nel_start, nel_end, nbasis_start, nbasis_end
         real(p) :: i_weight, ij_weight
         
         ! Store weights and alias tables.
@@ -331,6 +331,7 @@ contains
         ind_a = 0
         ind_b = 0
 
+        ! [todo] - consider MPI parallelising this loop.
         do i = 1, sys%basis%nbasis
             if (sys%basis%basis_fns(i)%Ms == -1) then ! beta
                 ind_b = ind_b + 1

@@ -30,6 +30,14 @@ contains
         use read_in_symmetry, only: cross_product_basis_read_in
         use hamiltonian_data, only: hmatel_t
         use errors, only: stop_all, warning
+#ifdef PARALLEL
+        use parallel
+
+        integer :: displs_nbasis(0:nprocs-1)
+        integer :: sizes_nbasis(0:nprocs-1)
+        integer :: ierr, sr
+        integer :: nbasis_start, nbasis_end
+#endif
         type(sys_t), intent(in) :: sys
         type(excit_gen_heat_bath_t), intent(inout) :: hb
         logical, intent(in) :: original
@@ -38,6 +46,7 @@ contains
         integer :: i, j, a, b, ij_sym, isymb, ims, isyma
         integer :: i_tmp, j_tmp, a_tmp, b_tmp
         real(p) :: i_weight, ij_weight, ija_weight, ijab_weight
+        integer :: iproc_nbasis_start, iproc_nbasis_end
         
         integer :: j_nonzero(sys%basis%nbasis,sys%basis%nbasis) 
         ! Temp storage
@@ -55,6 +64,29 @@ contains
         ! [todo] - consider setting hmatel%r and hmatel%c to zero to avoid undefined behaviour.
         ! [todo] - although it is probably fine, abs_hmatel_ptr ignores the irrelevant bit.
 
+#ifdef PARALLEL
+        ! Initialise do-loop bounds for each processor, e.g. [iproc_nel_start,iproc_nel_end], in the case for
+        ! a do-loop over sys%nel.
+        nbasis_end = 0
+        do i = 0, nprocs-1
+            nbasis_start = nbasis_end + 1
+            nbasis_end = nbasis_start + sys%basis%nbasis/nprocs - 1
+            if (i < mod(sys%basis%nbasis,nprocs)) nbasis_end = nbasis_end + 1
+            if (i == iproc) then
+                iproc_nbasis_start = nbasis_start
+                iproc_nbasis_end = nbasis_end
+            end if
+            if (i < sys%basis%nbasis) then ! nbasis => nel
+                displs_nbasis(i) = nbasis_start - 1
+            else
+                displs_nbasis(i) = sys%basis%nbasis - 1
+            end if
+            sizes_nbasis(i) = nbasis_end - nbasis_start + 1
+        end do
+#else
+        iproc_nbasis_start = 1
+        iproc_nbasis_end = sys%basis%nbasis
+#endif
         ! The following big for-loop/do-loop structure pre-computes weights to select i (hb%i_weights), to select j given i
         ! (hb%ij_weights), to select a given ij (hb%hb_ija%weights) and to select b given ija (hb%hb_ijab%weights).
         ! The weights are (as described in Holmes et al.):
@@ -78,7 +110,7 @@ contains
 
         j_nonzero = 0
 
-        do i = 1, sys%basis%nbasis
+        do i = iproc_nbasis_start, iproc_nbasis_end
             i_weight = 0.0_p
             do j = 1, sys%basis%nbasis
                 ij_weight = 0.0_p
@@ -171,10 +203,28 @@ contains
             end do
         end do
 
+#ifdef PARALLEL
+        ! note how FORTRAN stores arrays: array(2,1) comes before array(1,2) in memory.
+        associate(nb=>sys%basis%nbasis)
+            call mpi_allgatherv(hb%i_weights(iproc_nbasis_start:iproc_nbasis_end), sizes_nbasis(iproc), &
+                mpi_preal, hb%i_weights, sizes_nbasis, displs_nbasis, mpi_preal, MPI_COMM_WORLD, ierr)
+            call mpi_allgatherv(hb%ij_weights(:,iproc_nbasis_start:iproc_nbasis_end), nb*sizes_nbasis(iproc), &
+                mpi_preal, hb%ij_weights, nb*sizes_nbasis, nb*displs_nbasis, mpi_preal, MPI_COMM_WORLD, ierr)
+            call mpi_allgatherv(hb%hb_ija%weights_tot(:,iproc_nbasis_start:iproc_nbasis_end), nb*sizes_nbasis(iproc), &
+                mpi_preal, hb%hb_ija%weights_tot, nb*sizes_nbasis, nb*displs_nbasis, mpi_preal, MPI_COMM_WORLD, ierr)
+            call mpi_allgatherv(hb%hb_ija%weights(:,:,iproc_nbasis_start:iproc_nbasis_end), nb*nb*sizes_nbasis(iproc), &
+                mpi_preal, hb%hb_ija%weights, nb*nb*sizes_nbasis, nb*nb*displs_nbasis, mpi_preal, MPI_COMM_WORLD, ierr)
+            call mpi_allgatherv(hb%hb_ijab%weights_tot(:,:,iproc_nbasis_start:iproc_nbasis_end), nb*nb*sizes_nbasis(iproc), &
+                mpi_preal, hb%hb_ijab%weights_tot, nb*nb*sizes_nbasis, nb*nb*displs_nbasis, mpi_preal, MPI_COMM_WORLD, ierr)
+            call mpi_allgatherv(hb%hb_ijab%weights(:,:,:,iproc_nbasis_start:iproc_nbasis_end), nb*nb*nb*sizes_nbasis(iproc), &
+                mpi_preal, hb%hb_ijab%weights, nb*nb*nb*sizes_nbasis, nb*nb*nb*displs_nbasis, mpi_preal, MPI_COMM_WORLD, ierr)
+        end associate
+#endif
+
         ! Generate alias tables for hb%hb_ija%weights and hb%hb_ijab%weights. hb%i_weights and hb%ij_weights do not
         ! get pre-computed alias tables, they will be computed on-the-fly during the run, just including occupied
         ! spinorbitals.
-        do i = 1, sys%basis%nbasis
+        do i = iproc_nbasis_start, iproc_nbasis_end
             do j = 1, sys%basis%nbasis
                 if (abs(hb%hb_ija%weights_tot(j,i)) > 0.0_p) then
                     call generate_alias_tables(sys%basis%nbasis, hb%hb_ija%weights(:,j,i), hb%hb_ija%weights_tot(j,i), &
@@ -188,6 +238,20 @@ contains
                 end if
             end do
         end do
+
+#ifdef PARALLEL
+        ! note how FORTRAN stores arrays: array(2,1) comes before array(1,2) in memory.
+        associate(nb=>sys%basis%nbasis)
+            call mpi_allgatherv(hb%hb_ija%aliasU(:,:,iproc_nbasis_start:iproc_nbasis_end), nb*nb*sizes_nbasis(iproc), &
+                mpi_preal, hb%hb_ija%aliasU, nb*nb*sizes_nbasis, nb*nb*displs_nbasis, mpi_preal, MPI_COMM_WORLD, ierr)
+            call mpi_allgatherv(hb%hb_ija%aliasK(:,:,iproc_nbasis_start:iproc_nbasis_end), nb*nb*sizes_nbasis(iproc), &
+                MPI_INTEGER, hb%hb_ija%aliasK, nb*nb*sizes_nbasis, nb*nb*displs_nbasis, MPI_INTEGER, MPI_COMM_WORLD, ierr)
+            call mpi_allgatherv(hb%hb_ijab%aliasU(:,:,:,iproc_nbasis_start:iproc_nbasis_end), nb*nb*nb*sizes_nbasis(iproc), &
+                mpi_preal, hb%hb_ijab%aliasU, nb*nb*nb*sizes_nbasis, nb*nb*nb*displs_nbasis, mpi_preal, MPI_COMM_WORLD, ierr)
+            call mpi_allgatherv(hb%hb_ijab%aliasK(:,:,:,iproc_nbasis_start:iproc_nbasis_end), nb*nb*nb*sizes_nbasis(iproc), &
+                MPI_INTEGER, hb%hb_ijab%aliasK, nb*nb*nb*sizes_nbasis, nb*nb*nb*displs_nbasis, MPI_INTEGER, MPI_COMM_WORLD, ierr)
+        end associate
+#endif
 
     end subroutine init_excit_mol_heat_bath
 
