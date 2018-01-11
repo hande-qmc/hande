@@ -1493,9 +1493,9 @@ contains
         determ%sizes = ndeterm
         dets_this_proc(:,1:ndeterm) = determ%dets
 #else
-        allocate(dets_by_proc(sys%basis%tensor_label_len, ndeterm), stat=ierr)
-        call check_allocate('dets_by_proc', ndeterm*sys%basis%tensor_label_len, ierr)
         if (parent) then
+            allocate(dets_by_proc(sys%basis%tensor_label_len, ndeterm), stat=ierr)
+            call check_allocate('dets_by_proc', ndeterm*sys%basis%tensor_label_len, ierr)
             ! Find how many determinants belong to each process.
             determ%sizes = 0
             do i = 1, ndeterm
@@ -1532,7 +1532,10 @@ contains
                              dets_this_proc(:,1:ndeterm_this_proc), tbl*determ%sizes(iproc), &
                              mpi_det_integer, root, MPI_COMM_WORLD, ierr)
         end associate
-        deallocate(dets_by_proc)
+        if (parent) then
+            deallocate(dets_by_proc, stat=ierr)
+            call check_deallocate('dets_by_proc', ierr)
+        end if
 #endif
 
         ! determ%dets is used to store the list of all deterministic states, but
