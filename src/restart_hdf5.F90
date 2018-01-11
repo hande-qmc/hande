@@ -1119,7 +1119,7 @@ module restart_hdf5
 
                         call h5ocopy_f(orig_group_id, hdf5_path(gref, dref_pop), group_id, hdf5_path(gref, dref_pop), ierr)
 
-                        call h5lexists_f(orig_group_id, dref_pop, exists, ierr)
+                        call h5lexists_f(orig_subgroup_id, dref_pop_re, exists, ierr)
                         if (exists) then
                             call h5ocopy_f(orig_group_id, hdf5_path(gref, dref_pop_re), group_id, &
                                            hdf5_path(gref, dref_pop_re), ierr)
