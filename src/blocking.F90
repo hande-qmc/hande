@@ -695,13 +695,13 @@ contains
         type(blocking_in_t), intent(in) :: blocking_in
         integer, intent(in) :: ireport
         real(p) :: error_sum = 50.0_p
-        real(p) :: number_of_blocks = 0.0_p
+        integer :: number_of_blocks = 0
 
         if (bl%optimal_std(dt_proj_energy) > 0.0_p) then
 
             error_sum = bl%optimal_err(dt_proj_energy) + bl%optimal_std(dt_proj_energy)
 
-            number_of_blocks = real(int((ireport-(bl%start_point*bl%save_fq+bl%start_ireport))/(2.0_dp**bl%opt_bl_size)),p)
+            number_of_blocks = int((ireport-(bl%start_point*bl%save_fq+bl%start_ireport))/(2.0_dp**bl%opt_bl_size))
 
         end if
 

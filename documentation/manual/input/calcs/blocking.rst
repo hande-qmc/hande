@@ -56,7 +56,7 @@ blocking analysis on the fly.
     This specifies the upper limit of the sum of standard error and the error in error of projected energy.
 
 ``min_blocks_used``
-    type: real.
+    type: integer.
 
     Optional. Default: 10
 
@@ -69,11 +69,11 @@ blocking analysis on the fly.
     increases the minimum length of calculations.
 
 ``blocks_used``
-    type: real.
+    type: integer.
 
-    Optional. Default: (huge)
+    Optional. Default: 2**31-1
 
-    Irrelevant of the error_limit, if the number of blocks used to estimate the standard error of projected energy
+    Independent of the error_limit, if the number of blocks used to estimate the standard error of projected energy
     is more than the ``blocks_used``, the calculation is terminated. Larger ``blocks_used`` ensures a more reliable
     blocking analysis.
 
