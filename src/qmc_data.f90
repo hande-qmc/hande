@@ -328,11 +328,11 @@ type blocking_in_t
     ! falling below error_limit until at least this number of optimal
     ! reblock lengths are included within the calculation. This ensures that
     ! our error estimate is reliable at termination.
-    real(p) :: min_blocks_used = 10.0_p
+    integer :: min_blocks_used = 10
     ! The lower limit of the number_of_blocks used to terminate the calculation.
     ! The calculation is terminated if this condition is met irrelevant of
     ! the standard error of the projected energy. Default = (huge)
-    real(p) :: blocks_used = huge(1.0_p)
+    integer :: blocks_used = huge(0)
     ! Enable automatic optimisation of the shift damping using the standard
     ! deviations of the shift and projected energy distributions.
     logical :: auto_shift_damping = .false.

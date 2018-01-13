@@ -1159,8 +1159,8 @@ contains
 
         type(two_body_t), intent(inout) :: store
         integer, intent(in) :: data_proc, max_broadcast_chunk
-        integer :: iunit
 #ifdef PARALLEL
+        integer :: iunit
         integer :: i, ierr, nblocks, nnext, mpi_preal_block, optimal_block_size, j
         integer(int_64) :: nmain, ncurr
 

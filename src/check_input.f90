@@ -422,7 +422,7 @@ contains
 
         if (blocking_in%auto_shift_damping .and. blocking_in%shift_damping_precision < 1.5_p) then
             call stop_all(this, 'Automatic shift damping optimisation precision should be a positive float greater &
-                        than or equal to 1.5 for reasonable results.')
+                       &than or equal to 1.5 for reasonable results.')
         end if
 
         if (sys%read_in%comp .and. blocking_in%blocking_on_the_fly) then

@@ -441,7 +441,7 @@ contains
         do iattempt = 1, dmqmc_in%metropolis_attempts
             do proc = 0, nprocs-1
                 do idet = spawn%head_start(nthreads-1,proc)+1, spawn%head(thread_id,proc)
-                    cdet%f = spawn%sdata(:sys%basis%tot_string_len,idet)
+                    cdet%f = int(spawn%sdata(:sys%basis%tot_string_len,idet), i0)
                     E_old = h0_ptr(sys, cdet%f)
                     tmp_data(1) = E_old
                     cdet%data => tmp_data
