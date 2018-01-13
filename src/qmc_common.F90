@@ -717,7 +717,6 @@ contains
         real(p), intent(inout), allocatable :: cumulative_abs_real_pops(:)
         real(dp), intent(out) :: ntot_particles(qs%psip_list%nspaces)
 
-        integer :: idet, ispace
         type(det_info_t) :: cdet
         type(cluster_t) :: cluster
         type(hmatel_t) :: hmatel
@@ -730,8 +729,8 @@ contains
         complex(p) :: D0_normalisation
 #ifdef PARALLEL
         integer :: ierr
-        real(p) :: proj_energy_sum(qs%psip_list%nspaces), D0_population_sum(qs%psip_list%nspaces)
-        complex(p) :: proj_energy_comp_sum(qs%psip_list%nspaces), D0_population_comp_sum(qs%psip_list%nspaces)
+        real(p) :: proj_energy_sum(qs%psip_list%nspaces)
+        complex(p) :: proj_energy_comp_sum(qs%psip_list%nspaces)
 #endif
 
         call zero_estimators_t(qs%estimators)
