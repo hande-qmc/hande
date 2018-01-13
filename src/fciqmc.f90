@@ -105,7 +105,6 @@ contains
 
         integer(int_p) :: ndeath
         integer :: nattempts_current_det, nspawn_events
-        real(dp), allocatable :: ntot_particles(:) ! qs%psip_list%nspaces
         type(excit_t) :: connection
         type(hmatel_t) :: hmatel
         real(p), allocatable :: real_population(:), weighted_population(:)

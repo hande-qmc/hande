@@ -535,7 +535,6 @@ module restart_hdf5
             integer(HSIZE_T) :: dims(size(shape(qs%psip_list%states)))
             real(p) :: proj_energy_tmp_re(qs%psip_list%nspaces), proj_energy_tmp_im(qs%psip_list%nspaces)
             real(p) :: D0_population_tmp_re(qs%psip_list%nspaces), D0_population_tmp_im(qs%psip_list%nspaces)
-            integer :: i, j
 
             ! Initialise HDF5 and open file.
             call h5open_f(ierr)
