@@ -212,6 +212,7 @@ abstract interface
     pure function i_single_excitation_weight(sys, ref, i, a) result(weight)
         ! [todo] in the next line, the complex version and the real versions use different
         ! [todo] functions from molecular_integrals. Does that matter?
+! [review] - AJWT: Perhaps writing what explicitly from molecular_integrals is USEd here would be helpful.
         use molecular_integrals
         use system, only: sys_t
         use reference_determinant, only: reference_t
@@ -220,6 +221,7 @@ abstract interface
         type(reference_t), intent(in) :: ref
         real(p) :: weight
         ! [todo] - need to declare dummy variables here as well?
+! [review] - AJWT: Dummies are delcared above.  Internal variables aren't needed
     end function i_single_excitation_weight        
 
     pure function i_get_one_e_int(sys, i, a) result(intgrl)
@@ -270,6 +272,7 @@ procedure(i_create_spawned_particle_dm), pointer :: create_spawned_particle_dm_p
 procedure(i_slater_condon1_excit), pointer :: slater_condon1_excit_ptr
 procedure(i_slater_condon2_excit), pointer :: slater_condon2_excit_ptr
 
+! [review] - AJWT: Should these be set to null()?
 procedure(i_create_weighted_excitation_list), pointer :: create_weighted_excitation_list_ptr
 procedure(i_abs_hmatel), pointer :: abs_hmatel_ptr
 procedure(i_single_excitation_weight), pointer :: single_excitation_weight_ptr

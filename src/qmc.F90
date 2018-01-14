@@ -173,6 +173,9 @@ contains
         call init_estimators(sys, qmc_in, restart_in%read_restart, qmc_state_restart_loc, fciqmc_in_loc%non_blocking_comm, &
                         qmc_state)
         if (present(qmc_state_restart)) call dealloc_excit_gen_data_t(qmc_state_restart%excit_gen_data)
+
+! [review] - AJWT: Given these excitation generators might take a notable time to initialize, it's probably worth printing
+! [review] - AJWT: out what's going on and perhaps timing them.
         call init_excit_gen(sys, qmc_in, qmc_state%ref, qmc_state%excit_gen_data)
 
         qmc_state%propagator%quasi_newton = qmc_in%quasi_newton
@@ -873,6 +876,7 @@ contains
         ! If not set at input, set probability of selecting parallel ij to the ratio of |Hij->ab| with parallel spins to
         ! total |Hij->ab|.
         ! [todo] - desireable to store in restart file?
+! [review] - AJWT: This is probably worth storing in the restart file, given it's calculated here.
         if (qmc_in%pattempt_parallel < 0) then
             call find_parallel_prob(sys, excit_gen_data%pattempt_parallel)
         end if
@@ -1243,6 +1247,7 @@ contains
         call move_particle_t(qmc_state_old%psip_list, qmc_state_new%psip_list)
 
         ! [todo] - there are only logicals, reals and integers in there so is it as easy as this?
+! [review] - AJWT: Yes!
         qmc_state_new%excit_gen_data%p_single_double = qmc_state_old%excit_gen_data%p_single_double
 
     end subroutine move_qmc_state_t

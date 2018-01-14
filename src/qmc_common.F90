@@ -259,6 +259,7 @@ contains
 
     end subroutine find_single_double_prob
 
+! [review] - AJWT: parallel by itself is confusing - parallel computing or parallel spins?
     subroutine find_parallel_prob(sys, pparallel)
         
         ! Estimate pattempt_parallel by finding the ration of |Hij->ab|

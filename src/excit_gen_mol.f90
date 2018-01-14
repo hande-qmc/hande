@@ -1219,6 +1219,7 @@ contains
         !    an unoccupied orbital and b is selected from the set of unoccupied
         !    orbitals which conserve spin and spatial symmetry *and* given that
         !    a double excitation has been selected.
+        !    This does not include the probability of having chosen (i,j).
 
         ! WARNING: We assume that the excitation is actually valid.
         ! This routine does *not* calculate the correct probability that
@@ -1379,6 +1380,7 @@ contains
         !    which conserve spin and spatial symmetry *and* given that a double
         !    excitation has been selected.  (Note: in this scheme,
         !    b is not necessarily unoccupied.)
+        !    This does not include the probability of having selected (i,j).
 
         ! WARNING: We assume that the excitation is actually valid.
         ! This routine does *not* calculate the correct probability that

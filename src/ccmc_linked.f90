@@ -352,6 +352,7 @@ contains
                         pgen = excit_gen_data%pattempt_single * calc_pgen_single_mol_no_renorm(sys, a)
                     else
                         spin = sys%basis%basis_fns(a)%ms + sys%basis%basis_fns(b)%ms
+! [review] - AJWT: calc_pgen_double_mol_no_renorm has been modified to no-longer include the probability of selecting i and j, so this is now wrong.
                         pgen = excit_gen_data%pattempt_double * calc_pgen_double_mol_no_renorm(sys, a, b, spin)
                     end if
                 else
@@ -362,6 +363,7 @@ contains
                         spin = sys%basis%basis_fns(a)%ms + sys%basis%basis_fns(b)%ms
                         ij_sym = sys%read_in%sym_conj_ptr(sys%read_in, &
                                     cross_product_basis_read_in(sys, a, b))
+! [review] - AJWT: calc_pgen_double_mol has been modified to no-longer include the probability of selecting i and j, so this is now wrong.
                         pgen = excit_gen_data%pattempt_double * calc_pgen_double_mol(sys, ij_sym, a, b, spin, parent_det%symunocc)
                     end if
                 end if

@@ -19,8 +19,7 @@ contains
         ! Weight the double excitations according the the Power-Pitzer bound
         ! <ij|ab> <= Sqrt(<ia|ai><jb|bj>), see J.D. Power, R.M. Pitzer, Chem. Phys. Lett.,
         ! 478-483 (1974).
-        ! This is an O(M/64) version which pretends the determinant excited from is the reference,
-        ! [todo] - why O(M/64)?
+        ! This is an O(M) version which pretends the determinant excited from is the reference,
         ! then modifies the selected orbitals to be those of the determinant given.
         ! Each occupied and virtual not present in the det we're actually given will be
         ! mapped to the one of the equivalent free numerical index in the reference.
@@ -335,6 +334,7 @@ contains
                     pp%ia_single_weights(a, i) = single_excitation_weight_ptr(sys, ref, i, &
                         sys%read_in%pg_sym%sym_spin_basis_fns(a,imsa,isyma))
                     if (pp%ia_single_weights(a, i) < depsilon) then
+! [review] - AJWT: This hard-coded 0.01 is a bit arbitrary.
                         ! i-> a spin and symmetry allowed but weight assigned zero. fix this.
                         ! [todo] - really?
                         ! [todo] - need to cast with precision p?
@@ -403,6 +403,7 @@ contains
             end do
             if (i_weight < depsilon) then
                 ! [todo] - think of better min weight (needed because after mapping i might be a valid orbital to use)
+! [review] - AJWT: Need at least some reasoning behind this.
                 i_weight = 0.00001_p/real(sys%nel)
             end if
             pp%i_all_weights(i) = i_weight
@@ -413,6 +414,7 @@ contains
 
         ! Generate the j given i weighting lists and alias tables. a and b cannot equal i (they are drawn from the same set).
         ! [todo] - Does this work if orbitals are frozen?
+! [review] - AJWT: nbasis should know the number of available orbitals, so I don't see why this shouldn't work for systems with freezing.
         do i = 1, sys%basis%nbasis
             pp%ij_all_weights_tot(i) = 0.0_p
             do j = 1, sys%nel
@@ -454,6 +456,7 @@ contains
                         end if
                     end do
                     if (ij_weight < depsilon) then
+! [review] - AJWT: rationale behind this.
                         ! [todo] - think of better min weight (needed because after mapping i might be a valid orbital to use)
                         ij_weight = 0.00001_p/real(sys%nel)
                     end if
@@ -807,6 +810,8 @@ contains
         ! Weight the double excitations according the the Power-Pitzer bound
         ! <ij|ab> <= Sqrt(<ia|ai><jb|bj>), see J.D. Power, R.M. Pitzer, Chem. Phys. Lett.,
         ! 478-483 (1974).
+
+! [review] - AJWT: Meaning...
         ! [todo] - more
 
         ! In:

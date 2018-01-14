@@ -4,7 +4,7 @@ implicit none
 
 !Data for the power_pitzer excit gen
 
-! The integer types have been chosen to be int_32
+! The integer types have been chosen to be int_32 as they never need to index more than 2^31-1 basis functions.
 integer(int_32), parameter :: int_bas = int_32
 
 type p_single_double_t
@@ -64,6 +64,8 @@ type excit_gen_power_pitzer_t
     integer(int_bas), allocatable :: virt_list_beta(:) 
     ! occ_list(:) is the list of occupied orbitals in the reference.
     ! Length of array: (sys%nel+1) - The +1 is a pad.
+! [review] - AJWT: These all need more documentation about what the variables are (and perhaps when they're used).
+! [review] - AJWT: Consider using a further derived type to encapsulate the information for a given alias table.
     integer(int_bas), allocatable :: occ_list(:)
     ! Length of array: sys%nel
     real(p), allocatable :: i_all_aliasU(:)
@@ -122,6 +124,8 @@ type excit_gen_power_pitzer_t
 
 end type excit_gen_power_pitzer_t
 
+! [review] - AJWT: These all need more documentation about what the variables are (and perhaps when they're used).
+! [review] - AJWT: Consider using a further derived type to encapsulate the information for a given alias table.
 type excit_gen_heat_bath_t
     ! Length of array: sys%basis%nbasis
     real(p), allocatable :: i_weights(:) ! This will hold S_p in the Holmes JCTC paper.

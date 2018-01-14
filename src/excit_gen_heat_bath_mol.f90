@@ -65,6 +65,7 @@ contains
 
         hb%ia_weights = 0.0_p
 
+! [review] - AJWT: A very brief rundown of what's about to happen wouldn't hurt the unfamiliar reader.
         do i = 1, sys%basis%nbasis
             i_weight = 0.0_p
             do j = 1, sys%basis%nbasis
@@ -141,6 +142,7 @@ contains
             end do
             hb%i_weights(i) = i_weight
 
+! [review] - AJWT: Remove old code.
             ! Old test for bias. Replaced by subroutine check_heat_bath_bias
             ! Test that all single excitation i -> a that are allowed have some non zero weight ija for some j.
             !do a = 1, sys%basis%nbasis
@@ -220,12 +222,16 @@ contains
                 end if
             end do
             ! [todo] compare as > 0 or > depsilon?
+! [review] - AJWT: Given the integrals are only stored if above a certain value, this test might not correctly detect whether a symmetry is truly present.  
+! [review] - AJWT: I presume you didn't write abs(hij_comp) > 0.0_p to avoidance the square root.
             if (((sys%read_in%comp) .and. (abs(real(hij_comp)) > 0.0_p) .and. (abs(aimag(hij_comp)) > 0.0_p)) .or. &
                 ((sys%read_in%comp == .false.) .and. (abs(hij_real) > 0.0_p))) then
                 counter = counter + 1
             end if
         end do
 
+        ! counter is now the number of irreps.  
+! [review] - AJWT: this logic seems more tortuous than using the >= operator (which according to the comments should be a > operator)
         if ((counter < max(sys%nalpha, sys%nbeta)) == .false.) then
             ! [todo] - should only the parent process deal with this?
             call stop_all('check_heat_bath_bias','Maybe not all possible single excitations can be accounted for. &
@@ -237,6 +243,8 @@ contains
     subroutine gen_excit_mol_heat_bath(rng, sys, excit_gen_data, cdet, pgen, connection, hmatel, allowed_excitation)
 
         ! This is the main heat bath algorithm.
+! [review] - AJWT: Say whath the routine actually does...
+! [review] - AJWT: Also comment the various steps in the subroutine code itself - it's fairly opaque.
 
         ! In:
         !    sys: system object being studied.
@@ -296,6 +304,7 @@ contains
             allocate(i_weights_occ(1:sys%nel), stat=ierr)
             call check_allocate('i_weights_occ', sys%nel, ierr)
 
+! [review] - AJWT: non capisco
             ! [todo] can move iido to double.
             i_weights_occ_tot = 0.0_p
             do pos_occ = 1, sys%nel
@@ -476,7 +485,7 @@ contains
                         hmatel%r = 0.0_p
                         pgen = 1.0_p
                     end if
-                else
+                else !if not double
                     connection%from_orb(1) = i
                     connection%to_orb(1) = a
                     connection%nexcit = 1
@@ -510,7 +519,9 @@ contains
         end associate
 
     end subroutine gen_excit_mol_heat_bath
-    
+
+
+! [review] - AJWT: Is there any way for this to share code with gen_excit_mol_heat_bath. Also more comments would be helpful.
     subroutine gen_excit_mol_heat_bath_uniform(rng, sys, excit_gen_data, cdet, pgen, connection, hmatel, allowed_excitation)
 
         ! This is the heat bath algorithm that selects single excitations uniformly.
@@ -575,6 +586,7 @@ contains
                 call gen_single_excit_heat_bath_exact(rng, sys, excit_gen_data%pattempt_single, cdet, pgen, connection, hmatel,&
                                                     allowed_excitation)
             case default
+! [review] - AJWT: Indeed to remove
                 ! [todo] debug. remove.
                 print *, "something went wrong"
             end select

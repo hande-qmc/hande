@@ -100,6 +100,7 @@ contains
 
         if (allowed) then
             qn_weight = calc_qn_spawned_weighting(sys, qmc_state%propagator, cdet%fock_sum, connection)
+! [review] - AJWT: Code is repeated twice below - should it be in a subroutine?
             if (qmc_state%excit_gen_data%p_single_double%vary_psingles == .true.) then
                 associate(ps=>qmc_state%excit_gen_data%p_single_double)
                     if (connection%nexcit == 1) then

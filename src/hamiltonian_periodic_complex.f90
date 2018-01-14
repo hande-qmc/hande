@@ -419,6 +419,7 @@ contains
         abs_hmatel = abs(hmatel%c)
     end function abs_hmatel_periodic_complex
 
+! [review] - AJWT: Is this a partial rehash of the _mol version?  If it shares code, might that be shared too?
     pure function single_excitation_weight_periodic(sys, ref, i, a) result(weight)
 
         ! In:

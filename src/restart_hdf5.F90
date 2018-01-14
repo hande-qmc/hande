@@ -438,6 +438,7 @@ module restart_hdf5
 
                     call hdf5_write(subgroup_id, dshift_damping_status, qs%shift_damping_status)
                     
+! [review] - AJWT: Rather than a cryptic array, could these not be specifically named variables in an extra subgroup?
                     pattempt_info_store = (/qs%excit_gen_data%pattempt_single, &
                         qs%excit_gen_data%p_single_double%h_pgen_singles_sum, &
                         qs%excit_gen_data%p_single_double%h_pgen_doubles_sum, &

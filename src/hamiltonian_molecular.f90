@@ -375,7 +375,8 @@ contains
     end function abs_hmatel_mol
 
     pure function single_excitation_weight_mol(sys, ref, i, a) result(weight)
-
+! [review] - AJWT: be more explicit about what 'weight' means and what it might be used for.
+! [review] - AJWT: Also, why is this in this file exactly?
         ! In:
         !    sys: system to be studied.
         !    ref: reference determinant information
@@ -396,6 +397,7 @@ contains
         real(p) :: weight
         integer :: n_jb, pos, j, b, virt_pos, occ_pos, nvirt, virt_list(sys%basis%nbasis - sys%nel)
 
+! [review] - AJWT: remove old code.
         !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
         ! Old code. Kept for now until after testing of new code.
         ! < D | H | D_i^a > = < i | h(a) | a > + \sum_j < ij || aj >
@@ -420,6 +422,7 @@ contains
         ! end associate
         !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
+! [review] - AJWT: Do we want to check whether it does obey Brillouin?
         ! Assuming that we often have the RHF reference which obeys Brillouin's theorem
         ! (no single excitations from the reference), the main contribution to single
         ! excitations can be the single excitation from a double excitation a step
