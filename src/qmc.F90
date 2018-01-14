@@ -62,6 +62,7 @@ contains
         use excit_gen_power_pitzer_mol, only: init_excit_mol_power_pitzer_occ_ref, init_excit_mol_power_pitzer_orderN
         use excit_gen_heat_bath_mol, only: init_excit_mol_heat_bath
         use excit_gen_ueg, only: init_excit_ueg_power_pitzer
+        use parallel, only: parent
 
 
         type(sys_t), intent(in) :: sys
@@ -79,11 +80,14 @@ contains
         type(qmc_state_t), intent(inout), optional :: qmc_state_restart
         logical, intent(out), optional :: regenerate_info
 
-        integer :: ierr
+        integer :: ierr, iunit
         type(fciqmc_in_t) :: fciqmc_in_loc
         type(dmqmc_in_t) :: dmqmc_in_loc
         type(restart_info_t) :: ri
         logical :: regenerate_info_loc, qmc_state_restart_loc
+        real :: t1, t2, set_up_time
+
+        iunit = 6
 
         regenerate_info_loc = .false.
         restart_version_restart = 0
@@ -174,9 +178,12 @@ contains
                         qmc_state)
         if (present(qmc_state_restart)) call dealloc_excit_gen_data_t(qmc_state_restart%excit_gen_data)
 
-! [review] - AJWT: Given these excitation generators might take a notable time to initialize, it's probably worth printing
-! [review] - AJWT: out what's going on and perhaps timing them.
+        if (parent) write(iunit, '(1X, "# Starting the excitation generator initialisation.")')
+        call cpu_time(t1)
         call init_excit_gen(sys, qmc_in, qmc_state%ref, qmc_state%excit_gen_data)
+        call cpu_time(t2)
+        set_up_time = t2 - t1
+        if (parent) write(iunit, '(1X, "# Finishing the excitation generator initialisation, took time: ",f8.6)') set_up_time
 
         qmc_state%propagator%quasi_newton = qmc_in%quasi_newton
         qmc_state%propagator%quasi_newton_threshold = qmc_in%quasi_newton_threshold
@@ -190,23 +197,47 @@ contains
         end if
 
         if (qmc_in%excit_gen==excit_gen_power_pitzer) then
+            if (parent) write(iunit, '(1X, "# Starting the Power Pitzer excitation generator initialisation.")')
+            call cpu_time(t1)
             if (sys%system == read_in) then
                qmc_state%excit_gen_data%excit_gen_pp%power_pitzer_min_weight = qmc_in%power_pitzer_min_weight
                call init_excit_mol_power_pitzer_occ_ref(sys, qmc_state%ref, qmc_state%excit_gen_data%excit_gen_pp)
             else if (sys%system == ueg) then 
                call init_excit_ueg_power_pitzer(sys, qmc_state%ref, qmc_state%excit_gen_data%excit_gen_pp)
             end if
+            call cpu_time(t2)
+            set_up_time = t2 - t1
+            if (parent) write(iunit, &
+                '(1X, "# Finishing the Power Pitzer excitation generator initialisation, took time: ",f8.6)') set_up_time
         end if
 
         if (qmc_in%excit_gen==excit_gen_power_pitzer_orderN) then
-           call init_excit_mol_power_pitzer_orderN(sys, qmc_state%ref, qmc_state%excit_gen_data%excit_gen_pp)
+            if (parent) write(iunit, '(1X, "# Starting the Power Pitzer Order N excitation generator initialisation.")')
+            call cpu_time(t1)
+            call init_excit_mol_power_pitzer_orderN(sys, qmc_state%ref, qmc_state%excit_gen_data%excit_gen_pp)
+            call cpu_time(t2)
+            set_up_time = t2 - t1
+            if (parent) write(iunit, &
+                '(1X, "# Finishing the Power Pitzer Order N excitation generator initialisation, took time: ",f8.6)') set_up_time
         end if
 
         if (qmc_in%excit_gen==excit_gen_heat_bath) then
+            if (parent) write(iunit, '(1X, "# Starting the heat bath excitation generator initialisation.")')
+            call cpu_time(t1)
             call init_excit_mol_heat_bath(sys, qmc_state%excit_gen_data%excit_gen_hb, .true.)
+            call cpu_time(t2)
+            set_up_time = t2 - t1
+            if (parent) write(iunit, &
+                '(1X, "# Finishing the heat bath excitation generator initialisation, took time: ",f8.6)') set_up_time
         end if
         if ((qmc_in%excit_gen==excit_gen_heat_bath_uniform) .or. (qmc_in%excit_gen==excit_gen_heat_bath_single)) then
+            if (parent) write(iunit, '(1X, "# Starting the heat bath excitation generator initialisation.")')
+            call cpu_time(t1)
             call init_excit_mol_heat_bath(sys, qmc_state%excit_gen_data%excit_gen_hb, .false.)
+            call cpu_time(t2)
+            set_up_time = t2 - t1
+            if (parent) write(iunit, &
+                '(1X, "# Finishing the heat bath excitation generator initialisation, took time: ",f8.6)') set_up_time
         end if
 
         if ((all(qmc_state%vary_shift) == .false.) .and. (qmc_in%pattempt_update == .true.) .and. &
