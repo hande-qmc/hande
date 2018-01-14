@@ -1,4 +1,4 @@
-module excit_gen_cauchy_schwarz
+module excit_gen_cauchy_schwarz_mol
 
 use const, only: i0, p
 
@@ -349,7 +349,7 @@ contains
                 
                 ! We actually choose a|i then b|j, but since we could have also generated the excitation b from i and a from j, we need to include that prob too.
 
-                ! Given i, construct the weights of all possible a
+                ! Given i, use the alias table to select a
                 if (sys%basis%basis_fns(i)%Ms < 0) then
                     a_ind = select_weighted_value_prec(rng, sys%nvirt_beta, cs%aliasP(:,i_ind), cs%aliasY(:,i_ind))
                     ! Use the alias method to select i with the appropriate probability
@@ -359,7 +359,7 @@ contains
                     ! Use the alias method to select i with the appropriate probability
                     a = cs%virt_list_a(a_ind) 
                 endif 
-                ! Given j construct the weights of all possible b
+                ! Given j use the alias table to select b
                 if (sys%basis%basis_fns(j)%Ms < 0) then
                     b_ind = select_weighted_value_prec(rng, sys%nvirt_beta, cs%aliasP(:,j_ind), cs%aliasY(:,j_ind))
                     ! Use the alias method to select i with the appropriate probability
@@ -899,4 +899,4 @@ contains
 
         end if
     end subroutine gen_excit_mol_cauchy_schwarz_virt
-end module excit_gen_cauchy_schwarz
+end module excit_gen_cauchy_schwarz_mol
