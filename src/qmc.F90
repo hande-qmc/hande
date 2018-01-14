@@ -53,13 +53,13 @@ contains
         use restart_hdf5, only: read_restart_hdf5, restart_info_t, init_restart_info_t, get_reference_hdf5
 
         use qmc_data, only: qmc_in_t, fciqmc_in_t, restart_in_t, load_bal_in_t, annihilation_flags_t, qmc_state_t, &
-                            neel_singlet, excit_gen_cauchy_schwarz
+                            neel_singlet, excit_gen_power_pitzer
         use reference_determinant, only: reference_t
         use dmqmc_data, only: dmqmc_in_t
         use excit_gens, only: dealloc_excit_gen_data_t
         use const, only: p
-        use excit_gen_cauchy_schwarz_mol, only: init_excit_mol_cauchy_schwarz_occ_ref
-        use excit_gen_ueg, only: init_excit_ueg_cauchy_schwarz
+        use excit_gen_power_pitzer_mol, only: init_excit_mol_power_pitzer_occ_ref
+        use excit_gen_ueg, only: init_excit_ueg_power_pitzer
 
 
         type(sys_t), intent(in) :: sys
@@ -181,13 +181,13 @@ contains
             qmc_state%shift_damping = qmc_in%shift_damping
         end if
 
-        if (qmc_in%excit_gen==excit_gen_cauchy_schwarz) then
+        if (qmc_in%excit_gen==excit_gen_power_pitzer) then
             if (sys%system == read_in) then
-               call init_excit_mol_cauchy_schwarz_occ_ref(sys, qmc_state%ref, qmc_state%excit_gen_data%excit_gen_cs)
+               call init_excit_mol_power_pitzer_occ_ref(sys, qmc_state%ref, qmc_state%excit_gen_data%excit_gen_pp)
                ! [review] - JSS: see deallocation hooks for qmc_state_t.
                ! [review] - VAN: it is now being deallocated when excit_gen_data_t is deallocated.
             else if (sys%system == ueg) then 
-               call init_excit_ueg_cauchy_schwarz(sys, qmc_state%ref, qmc_state%excit_gen_data%excit_gen_cs)
+               call init_excit_ueg_power_pitzer(sys, qmc_state%ref, qmc_state%excit_gen_data%excit_gen_pp)
                ! [review] - JSS: see deallocation hooks for qmc_state_t.
                ! [review] - VAN: it is now being deallocated when excit_gen_data_t is deallocated.
             end if
@@ -214,8 +214,8 @@ contains
         use system
         use parallel, only: parent
         use qmc_data, only: qmc_in_t, fciqmc_in_t, single_basis, neel_singlet, neel_singlet_guiding, &
-                            excit_gen_renorm, excit_gen_no_renorm, excit_gen_cauchy_schwarz_occ, &
-                            excit_gen_cauchy_schwarz
+                            excit_gen_renorm, excit_gen_no_renorm, excit_gen_power_pitzer_occ, &
+                            excit_gen_power_pitzer
         use dmqmc_data, only: dmqmc_in_t, free_electron_dm
         use reference_determinant, only: reference_t
 
@@ -227,9 +227,9 @@ contains
         use dmqmc_data, only: hartree_fock_dm
         use energy_evaluation
         use excit_gen_mol
-        use excit_gen_cauchy_schwarz_mol, only: gen_excit_mol_cauchy_schwarz_occ
-        use excit_gen_cauchy_schwarz_mol, only: gen_excit_mol_cauchy_schwarz_occ_ref
-        use excit_gen_ueg, only:  gen_excit_ueg_cauchy_schwarz
+        use excit_gen_power_pitzer_mol, only: gen_excit_mol_power_pitzer_occ
+        use excit_gen_power_pitzer_mol, only: gen_excit_mol_power_pitzer_occ_ref
+        use excit_gen_ueg, only:  gen_excit_ueg_power_pitzer
         use excit_gen_op_mol
         use excit_gen_hub_k
         use excit_gen_op_hub_k
@@ -385,11 +385,11 @@ contains
                 gen_excit_ptr%full => gen_excit_mol
                 decoder_ptr => decode_det_occ_symunocc
                 ! [review] - JSS: check why read_in requires decode_det_spinocc_spinunocc but ueg doesn't. 
-            case(excit_gen_cauchy_schwarz_occ)
-                gen_excit_ptr%full => gen_excit_mol_cauchy_schwarz_occ
+            case(excit_gen_power_pitzer_occ)
+                gen_excit_ptr%full => gen_excit_mol_power_pitzer_occ
                 decoder_ptr => decode_det_spinocc_spinunocc
-            case(excit_gen_cauchy_schwarz)
-                gen_excit_ptr%full => gen_excit_mol_cauchy_schwarz_occ_ref
+            case(excit_gen_power_pitzer)
+                gen_excit_ptr%full => gen_excit_mol_power_pitzer_occ_ref
                 decoder_ptr => decode_det_spinocc_spinunocc
             case default
                 call stop_all('init_proc_pointers', 'Selected excitation generator not implemented.')
@@ -407,8 +407,8 @@ contains
             decoder_ptr => decode_det_occ
             select case(qmc_in%excit_gen)
             case(excit_gen_no_renorm)
-            case(excit_gen_cauchy_schwarz)
-                gen_excit_ptr%full => gen_excit_ueg_cauchy_schwarz
+            case(excit_gen_power_pitzer)
+                gen_excit_ptr%full => gen_excit_ueg_power_pitzer
             case(excit_gen_renorm)
                 if (parent) then
                     write (io_unit,'(1X,"WARNING: renormalised excitation generators not implemented.")')

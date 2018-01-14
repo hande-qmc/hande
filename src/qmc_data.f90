@@ -37,12 +37,12 @@ enum, bind(c)
     ! avoids an expensive renormalisation step to calculate the excitation generation
     ! probabilities.
     enumerator :: excit_gen_no_renorm
-    ! Weight the excitations according to a Cauchy-Schwarz limit on the bounds of the integrals
+    ! Weight the excitations according to a Power-Pitzer limit on the bounds of the integrals
     ! The version O(M/64) which chooses occ orbitals first, and excites with probabilities akin 
     ! to that of the reference.
-    enumerator :: excit_gen_cauchy_schwarz
+    enumerator :: excit_gen_power_pitzer
     ! The version O(M) which chooses occ orbitals first.
-    enumerator :: excit_gen_cauchy_schwarz_occ
+    enumerator :: excit_gen_power_pitzer_occ
 end enum
 
 ! Types of semi-stochastic space.

@@ -359,12 +359,12 @@ contains
 
     end function calc_pgen_ueg_no_renorm
 
-    subroutine init_excit_ueg_cauchy_schwarz(sys, ref, cs)
+    subroutine init_excit_ueg_power_pitzer(sys, ref, pp)
 
-        ! Initialize the cs data for the gen_excit_ueg_cauchy_schwarz excitation generator.
+        ! Initialize the pp data for the gen_excit_ueg_power_pitzer excitation generator.
         ! This creates a random excitation from cdet and calculate both the probability
         ! of selecting that excitation and the Hamiltonian matrix element.
-        ! Weight the double excitations according the the Cauchy-Schwarz bound
+        ! Weight the double excitations according the the Power-Pitzer bound
         ! <ij|ab> <= Sqrt(<ia|ai><jb|bj>). 
         ! Since the value of the integral in the UEG is uniquely determined from the i->a 
         ! excitation (momentum conservation), we can use exactly |<ia|ai>| as the upper 
@@ -378,17 +378,17 @@ contains
         !    sys: system object being studied.
         !    ref: the reference 
         ! Out:
-        !    cs: excit_gen_cauchy_schwarz_t which will be initialized with 
+        !    pp: excit_gen_power_pitzer_t which will be initialized with 
         !           the alias tables for the excitations.
 
         use system, only: sys_t
         use qmc_data, only: reference_t
         use sort, only: qsort
-        use excit_gens, only: excit_gen_cauchy_schwarz_t
+        use excit_gens, only: excit_gen_power_pitzer_t
         use alias, only: generate_alias_tables
         type(sys_t), intent(in) :: sys
         type(reference_t), intent(in) :: ref
-        type(excit_gen_cauchy_schwarz_t), intent(inout) :: cs
+        type(excit_gen_power_pitzer_t), intent(inout) :: pp
 
         integer :: i, j, maxv, nbas
         integer :: vlist(sys%basis%nbasis-1)   !List of 'virtuals' for each orbital
@@ -396,20 +396,20 @@ contains
         nbas = sys%basis%nbasis    
         maxv = nbas / 2
 
-        allocate(cs%ia_aliasU(maxv,nbas))
-        allocate(cs%ia_aliasK(maxv,nbas))
-        allocate(cs%ia_weights(maxv,nbas))
-        allocate(cs%ia_weights_tot(nbas))
+        allocate(pp%ia_aliasU(maxv,nbas))
+        allocate(pp%ia_aliasK(maxv,nbas))
+        allocate(pp%ia_weights(maxv,nbas))
+        allocate(pp%ia_weights_tot(nbas))
 
         do i=1, nbas
             do j=1, maxv     !make a temporary array of 'virtuals' for this occ.
                vlist(j) = j*2 - mod(i,2)      !get the virtual of the right spin
             end do
-            call create_weighted_excitation_list_ueg(sys, i, vlist, maxv, cs%ia_weights(:,i), cs%ia_weights_tot(i))
-            call generate_alias_tables(maxv, cs%ia_weights(:,i), cs%ia_weights_tot(i), cs%ia_aliasU(:,i), cs%ia_aliasK(:,i))        
+            call create_weighted_excitation_list_ueg(sys, i, vlist, maxv, pp%ia_weights(:,i), pp%ia_weights_tot(i))
+            call generate_alias_tables(maxv, pp%ia_weights(:,i), pp%ia_weights_tot(i), pp%ia_aliasU(:,i), pp%ia_aliasK(:,i))        
         end do
 
-    end subroutine init_excit_ueg_cauchy_schwarz
+    end subroutine init_excit_ueg_power_pitzer
 
     subroutine create_weighted_excitation_list_ueg(sys, i, a_list, a_list_len, weights, weight_tot)
 
@@ -449,11 +449,11 @@ contains
 
     end subroutine create_weighted_excitation_list_ueg
 
-    subroutine gen_excit_ueg_cauchy_schwarz(rng, sys, excit_gen_data, cdet, pgen, connection, hmatel, allowed_excitation)
+    subroutine gen_excit_ueg_power_pitzer(rng, sys, excit_gen_data, cdet, pgen, connection, hmatel, allowed_excitation)
 
         ! Create a random excitation from cdet and calculate both the probability
         ! of selecting that excitation and the Hamiltonian matrix element.
-        ! Weight the double excitations according the the Cauchy-Schwarz bound
+        ! Weight the double excitations according the the Power-Pitzer bound
         ! <ij|ab> <= Sqrt(<ia|ai><jb|bj>)
 
         ! In:
@@ -501,7 +501,7 @@ contains
         integer :: ibp, ibe
         integer :: kb(sys%lattice%ndim)
 
-        associate( cs => excit_gen_data%excit_gen_cs )
+        associate( pp => excit_gen_data%excit_gen_pp )
 
             ! 1. must have a double excitation.
             connection%nexcit = 2
@@ -517,7 +517,7 @@ contains
             maxv = sys%basis%nbasis / 2
 
             ! Just use electron i
-            a_ind = select_weighted_value_prec(rng, maxv, cs%ia_aliasU(:,i), cs%ia_aliasK(:,i))
+            a_ind = select_weighted_value_prec(rng, maxv, pp%ia_aliasU(:,i), pp%ia_aliasK(:,i))
             ! Use the alias method to select i with the appropriate probability
             ! Map those >=i to the one after ( we're not allowed to select i)
             ! convert from spatial orbital back to spin orbital
@@ -566,10 +566,10 @@ contains
               
                 if (ij_spin==0) then 
                     ! Not possible to have chosen the reversed excitation.
-                    pgen=cs%ia_weights(a_ind,i) / cs%ia_weights_tot(i)   ! p(j|b)=1
+                    pgen=pp%ia_weights(a_ind,i) / pp%ia_weights_tot(i)   ! p(j|b)=1
                 else
                     ! i and j have same spin, so could have been selected in the other order.
-                    pgen= ( cs%ia_weights(a_ind, i) + cs%ia_weights(b_ind, i) )  / (cs%ia_weights_tot(i))
+                    pgen= ( pp%ia_weights(a_ind, i) + pp%ia_weights(b_ind, i) )  / (pp%ia_weights_tot(i))
                 end if
 
                 pgen = pgen * 2.0_p/(sys%nel*(sys%nel-1)) ! pgen(ij)
@@ -605,6 +605,6 @@ contains
             end if
         end associate
 
-    end subroutine gen_excit_ueg_cauchy_schwarz
+    end subroutine gen_excit_ueg_power_pitzer
 
 end module excit_gen_ueg

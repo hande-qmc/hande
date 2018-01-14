@@ -2,7 +2,7 @@ module excit_gens
 use const
 implicit none
 
-!Data for the Cauchy_Schwarz excit gen
+!Data for the power_pitzer excit gen
 
 ! [review] - JSS: unclear why a new named parameter for int_32.
 ! [review] - VAN: Alex?
@@ -10,9 +10,9 @@ implicit none
 ! The integer types have been chosen to be int_32
 integer(int_32), parameter :: int_bas = int_32
 
-! Type containing alias tables, etc, needed when using the cauchy schwarz ("occ_ref") 
+! Type containing alias tables, etc, needed when using the power pitzer ("occ_ref") 
 ! excitation generator, that considers weights, etc, as seen from the reference.
-type excit_gen_cauchy_schwarz_t
+type excit_gen_power_pitzer_t
 
     ! ia_aliasU(:,i) stores the alias table of real U considering an excitation from i 
     ! to a virtual orbital of the same spin. 
@@ -54,7 +54,7 @@ type excit_gen_cauchy_schwarz_t
     ! Length of array: (sys%nel+1) - The +1 is a pad.
     integer(int_bas), allocatable :: occ_list(:)
 
-end type excit_gen_cauchy_schwarz_t
+end type excit_gen_power_pitzer_t
 
 
 !Type containing data for excitation generators
@@ -82,7 +82,7 @@ type excit_gen_data_t
     ! the energy cutoff.  Memory can be saved by not using a cubic array for
     ! k_i+k_j...
     integer(i0), allocatable :: ueg_ternary_conserve(:,:,:,:)
-    type(excit_gen_cauchy_schwarz_t) :: excit_gen_cs
+    type(excit_gen_power_pitzer_t) :: excit_gen_pp
 end type excit_gen_data_t
 
 contains
@@ -101,31 +101,31 @@ contains
 
         if (allocated(excit_gen_data%ueg_ternary_conserve)) deallocate(excit_gen_data%ueg_ternary_conserve)
 
-        call dealloc_excit_gen_cauchy_schwarz_t(excit_gen_data%excit_gen_cs)
+        call dealloc_excit_gen_power_pitzer_t(excit_gen_data%excit_gen_pp)
 
     end subroutine dealloc_excit_gen_data_t
 
-    subroutine dealloc_excit_gen_cauchy_schwarz_t(excit_gen_cs)
+    subroutine dealloc_excit_gen_power_pitzer_t(excit_gen_pp)
         
-        ! Deallocate the cauchy schwarz excitation generator data.
+        ! Deallocate the power pitzer excitation generator data.
 
         ! In/Out:
-        !   excit_gen_cs: excit_gen_cauchy_schwarz_t to be deallocated.
+        !   excit_gen_pp: excit_gen_power_pitzer_t to be deallocated.
 
-        type(excit_gen_cauchy_schwarz_t), intent(inout) :: excit_gen_cs
+        type(excit_gen_power_pitzer_t), intent(inout) :: excit_gen_pp
 
-        if (allocated(excit_gen_cs%ia_aliasU)) deallocate(excit_gen_cs%ia_aliasU)
-        if (allocated(excit_gen_cs%ia_aliasK)) deallocate(excit_gen_cs%ia_aliasK)
-        if (allocated(excit_gen_cs%ia_weights)) deallocate(excit_gen_cs%ia_weights)
-        if (allocated(excit_gen_cs%ia_weights_tot)) deallocate(excit_gen_cs%ia_weights_tot)
-        if (allocated(excit_gen_cs%jb_aliasU)) deallocate(excit_gen_cs%jb_aliasU)
-        if (allocated(excit_gen_cs%jb_aliasK)) deallocate(excit_gen_cs%jb_aliasK)
-        if (allocated(excit_gen_cs%jb_weights)) deallocate(excit_gen_cs%jb_weights)
-        if (allocated(excit_gen_cs%jb_weights_tot)) deallocate(excit_gen_cs%jb_weights_tot)
-        if (allocated(excit_gen_cs%virt_list_alpha)) deallocate(excit_gen_cs%virt_list_alpha)
-        if (allocated(excit_gen_cs%virt_list_beta)) deallocate(excit_gen_cs%virt_list_beta)
-        if (allocated(excit_gen_cs%occ_list)) deallocate(excit_gen_cs%occ_list)
+        if (allocated(excit_gen_pp%ia_aliasU)) deallocate(excit_gen_pp%ia_aliasU)
+        if (allocated(excit_gen_pp%ia_aliasK)) deallocate(excit_gen_pp%ia_aliasK)
+        if (allocated(excit_gen_pp%ia_weights)) deallocate(excit_gen_pp%ia_weights)
+        if (allocated(excit_gen_pp%ia_weights_tot)) deallocate(excit_gen_pp%ia_weights_tot)
+        if (allocated(excit_gen_pp%jb_aliasU)) deallocate(excit_gen_pp%jb_aliasU)
+        if (allocated(excit_gen_pp%jb_aliasK)) deallocate(excit_gen_pp%jb_aliasK)
+        if (allocated(excit_gen_pp%jb_weights)) deallocate(excit_gen_pp%jb_weights)
+        if (allocated(excit_gen_pp%jb_weights_tot)) deallocate(excit_gen_pp%jb_weights_tot)
+        if (allocated(excit_gen_pp%virt_list_alpha)) deallocate(excit_gen_pp%virt_list_alpha)
+        if (allocated(excit_gen_pp%virt_list_beta)) deallocate(excit_gen_pp%virt_list_beta)
+        if (allocated(excit_gen_pp%occ_list)) deallocate(excit_gen_pp%occ_list)
 
-    end subroutine dealloc_excit_gen_cauchy_schwarz_t
+    end subroutine dealloc_excit_gen_power_pitzer_t
 
 end module excit_gens

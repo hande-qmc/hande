@@ -170,7 +170,7 @@ algorithms and control the core settings in the algorithms.
 
     Optional.
 
-    Possible values: 'renorm', 'no_renorm', 'cauchy_schwarz', 'cauchy_schwarz_orderM'
+    Possible values: 'renorm', 'no_renorm', 'power_pitzer', 'power_pitzer_orderM'
 
     ============  =================                    =========
     System        Implemented                          Default
@@ -179,10 +179,10 @@ algorithms and control the core settings in the algorithms.
     heisenberg    renorm, no_renorm                    renorm
     hubbard_k     renorm, no_renorm                    renorm
     hubbard_real  renorm, no_renorm                    renorm
-    ueg           no_renorm, cauchy_schwarz            no_renorm
+    ueg           no_renorm, power_pitzer            no_renorm
     ringium       no_renorm                            no_renorm
-    read_in       renorm, no_renorm, cauchy_schwarz    renorm
-                  cauchy_schwarz_orderM  
+    read_in       renorm, no_renorm, power_pitzer    renorm
+                  power_pitzer_orderM  
     ============  =================                    =========
 
     The type of excitation generator to use.  Note that not all types are implemented for
@@ -200,7 +200,7 @@ algorithms and control the core settings in the algorithms.
     and 'no_renorm' is a good choice for large basis sets, especially with a small number
     of electrons (such that forbidden excitations are rarely generated).
 
-    The 'cauchy_schwarz' excitation generator generates excitations using an upper bound for
+    The 'power_pitzer' excitation generator generates excitations using an upper bound for
     the value of the Hamiltonian matrix element.  This involves some precalcalated alias
     tables, but should reduce both noise and shoulder heights.  Only available for the UEG
     and read_in systems, and in the latter it does not currently use symmetry information.
@@ -211,7 +211,7 @@ algorithms and control the core settings in the algorithms.
         [review] - JSS: Not convinced this is a more refined upper bound.
         [review] - AJWT: These docs probably need to be expanded now.
  
-    The 'cauchy_schwarz_orderM' uses a more refined upper bound for the Hamiltonian matrix
+    The 'power_pitzer_orderM' uses a more refined upper bound for the Hamiltonian matrix
     elements, but which requires O(Number of basis functions) time cost for each particle being spawned from.
     
 

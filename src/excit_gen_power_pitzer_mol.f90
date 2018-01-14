@@ -1,4 +1,4 @@
-module excit_gen_cauchy_schwarz_mol
+module excit_gen_power_pitzer_mol
 
 ! A module containing excitations generators for molecules which weight excitations according to the exchange matrix elements.
 
@@ -12,7 +12,7 @@ implicit none
 
 contains
 
-    subroutine init_excit_mol_cauchy_schwarz_occ_ref(sys, ref, cs)
+    subroutine init_excit_mol_power_pitzer_occ_ref(sys, ref, pp)
         ! [review] - JSS: How good is this really?  I suspect it's okish for single-reference truncated calculations and quickly
         ! [review] - JSS: becomes bad for multi-reference/as the truncation level increases.
         ! [review] - JSS: Is this an experiment?  Ready for use in production calculations?
@@ -20,10 +20,10 @@ contains
         ! [reply] - VAN: I will test this once I am in the testing stage (after I get first reviews)
 
         ! Generate excitation tables from the reference for the 
-        ! gen_excit_mol_cauchy_schwarz_occ_ref excitation generator.
+        ! gen_excit_mol_power_pitzer_occ_ref excitation generator.
         ! This creates a random excitation from a det and calculates both the probability
         ! of selecting that excitation and the Hamiltonian matrix element.
-        ! Weight the double excitations according the the Cauchy-Schwarz bound
+        ! Weight the double excitations according the the Power-Pitzer bound
         ! <ij|ab> <= Sqrt(<ia|ai><jb|bj>)
         ! This is an O(M/64) version which pretends the determinant excited from is the reference,
         ! then modifies the selected orbitals to be those of the determinant given.
@@ -34,40 +34,40 @@ contains
         !    sys: system object being studied.
         !    ref: the reference from which we are exciting.
         ! In/Out:
-        !    cs: an empty excit_gen_cauchy_schwarz_t object which gets filled with
+        !    pp: an empty excit_gen_power_pitzer_t object which gets filled with
         !           the alias tables required to generate excitations.
 
         use system, only: sys_t
         use qmc_data, only: reference_t
         use sort, only: qsort
         use proc_pointers, only: create_weighted_excitation_list_ptr
-        use excit_gens, only: excit_gen_cauchy_schwarz_t
+        use excit_gens, only: excit_gen_power_pitzer_t
         use alias, only: generate_alias_tables
         type(sys_t), intent(in) :: sys
         type(reference_t), intent(in) :: ref
-        type(excit_gen_cauchy_schwarz_t), intent(inout) :: cs
+        type(excit_gen_power_pitzer_t), intent(inout) :: pp
 
         integer :: i, j, ind_a, ind_b, maxv, nv, bsym
         
         ! Temp storage
         maxv = max(sys%nvirt_alpha,sys%nvirt_beta)
-        allocate(cs%ia_aliasU(maxv,sys%nel))
-        allocate(cs%ia_aliasK(maxv,sys%nel))
-        allocate(cs%ia_weights(maxv,sys%nel))
-        allocate(cs%ia_weights_tot(sys%nel))
-        allocate(cs%jb_aliasU(maxval(sys%read_in%pg_sym%nbasis_sym_spin), sys%sym0_tot:sys%sym_max_tot, sys%nel))
-        allocate(cs%jb_aliasK(maxval(sys%read_in%pg_sym%nbasis_sym_spin), sys%sym0_tot:sys%sym_max_tot, sys%nel))
-        allocate(cs%jb_weights(maxval(sys%read_in%pg_sym%nbasis_sym_spin), sys%sym0_tot:sys%sym_max_tot, sys%nel))
-        allocate(cs%jb_weights_tot(sys%sym0_tot:sys%sym_max_tot, sys%nel))
-        allocate(cs%occ_list(sys%nel+1))  ! The +1 is a pad to allow loops to look better
-        allocate(cs%virt_list_alpha(sys%nvirt_alpha))
-        allocate(cs%virt_list_beta(sys%nvirt_beta))
+        allocate(pp%ia_aliasU(maxv,sys%nel))
+        allocate(pp%ia_aliasK(maxv,sys%nel))
+        allocate(pp%ia_weights(maxv,sys%nel))
+        allocate(pp%ia_weights_tot(sys%nel))
+        allocate(pp%jb_aliasU(maxval(sys%read_in%pg_sym%nbasis_sym_spin), sys%sym0_tot:sys%sym_max_tot, sys%nel))
+        allocate(pp%jb_aliasK(maxval(sys%read_in%pg_sym%nbasis_sym_spin), sys%sym0_tot:sys%sym_max_tot, sys%nel))
+        allocate(pp%jb_weights(maxval(sys%read_in%pg_sym%nbasis_sym_spin), sys%sym0_tot:sys%sym_max_tot, sys%nel))
+        allocate(pp%jb_weights_tot(sys%sym0_tot:sys%sym_max_tot, sys%nel))
+        allocate(pp%occ_list(sys%nel+1))  ! The +1 is a pad to allow loops to look better
+        allocate(pp%virt_list_alpha(sys%nvirt_alpha))
+        allocate(pp%virt_list_beta(sys%nvirt_beta))
         
-        cs%occ_list(:sys%nel) = ref%occ_list0(:sys%nel)
-        cs%occ_list(sys%nel+1) = sys%basis%nbasis*2  ! A pad 
+        pp%occ_list(:sys%nel) = ref%occ_list0(:sys%nel)
+        pp%occ_list(sys%nel+1) = sys%basis%nbasis*2  ! A pad 
         
         ! Now sort this, just in case we have an old restart file and the reference was not sorted then.
-        call qsort(cs%occ_list,sys%nel)
+        call qsort(pp%occ_list,sys%nel)
 
         ! Make the unocc list.
         j = 1     ! The next occ to look at
@@ -75,7 +75,7 @@ contains
         ind_b = 0 ! The present position in the virt_list we're making
         
         do i = 1, sys%basis%nbasis
-            if (i==cs%occ_list(j)) then ! Our basis fn is in the ref
+            if (i==pp%occ_list(j)) then ! Our basis fn is in the ref
                 ! Due to the +1 pad in occ_list, there is not danger of going past array boundaries here.
                 ! [review] - VAN: is it not better to check whether j is <= sys%nel?
                 ! [review] - VAN: That might be safer. I am not a fan of assigning a number that is not
@@ -84,60 +84,60 @@ contains
             else ! Need to store it as a virt
                 if (sys%basis%basis_fns(i)%Ms == -1) then ! beta
                     ind_b = ind_b + 1
-                    cs%virt_list_beta(ind_b) = i
+                    pp%virt_list_beta(ind_b) = i
                 else
                     ind_a = ind_a + 1
-                    cs%virt_list_alpha(ind_a) = i
+                    pp%virt_list_alpha(ind_a) = i
                 end if
             end if
         end do
 
-        ! cs%virt_list_*(:) now contains the lists of virtual alpha and beta with respect to ref.
+        ! pp%virt_list_*(:) now contains the lists of virtual alpha and beta with respect to ref.
 
         ! Now generate the occ->virtual weighting lists and alias tables.
         do i = 1, sys%nel
-            j = cs%occ_list(i)  ! The elec we're looking at
+            j = pp%occ_list(i)  ! The elec we're looking at
             if (sys%basis%basis_fns(j)%Ms == -1) then ! beta
                 nv = sys%nvirt_beta
                 if (nv > 0) then
-                    call create_weighted_excitation_list_ptr(sys, j, 0, cs%virt_list_beta, nv, cs%ia_weights(:,i), &
-                                                            cs%ia_weights_tot(i))
-                    call generate_alias_tables(nv, cs%ia_weights(:,i), cs%ia_weights_tot(i), cs%ia_aliasU(:,i), &
-                                               cs%ia_aliasK(:,i))
+                    call create_weighted_excitation_list_ptr(sys, j, 0, pp%virt_list_beta, nv, pp%ia_weights(:,i), &
+                                                            pp%ia_weights_tot(i))
+                    call generate_alias_tables(nv, pp%ia_weights(:,i), pp%ia_weights_tot(i), pp%ia_aliasU(:,i), &
+                                               pp%ia_aliasK(:,i))
                 end if
                 do bsym = sys%sym0_tot, sys%sym_max_tot
                     if (sys%read_in%pg_sym%nbasis_sym_spin(1,bsym) > 0) then
                         call create_weighted_excitation_list_ptr(sys, j, 0, sys%read_in%pg_sym%sym_spin_basis_fns(:,1,bsym), &
-                            sys%read_in%pg_sym%nbasis_sym_spin(1,bsym), cs%jb_weights(:,bsym,i), cs%jb_weights_tot(bsym,i))
-                        call generate_alias_tables(sys%read_in%pg_sym%nbasis_sym_spin(1,bsym), cs%jb_weights(:,bsym,i), &
-                            cs%jb_weights_tot(bsym,i), cs%jb_aliasU(:,bsym,i), cs%jb_aliasK(:,bsym,i))
+                            sys%read_in%pg_sym%nbasis_sym_spin(1,bsym), pp%jb_weights(:,bsym,i), pp%jb_weights_tot(bsym,i))
+                        call generate_alias_tables(sys%read_in%pg_sym%nbasis_sym_spin(1,bsym), pp%jb_weights(:,bsym,i), &
+                            pp%jb_weights_tot(bsym,i), pp%jb_aliasU(:,bsym,i), pp%jb_aliasK(:,bsym,i))
                     end if
                 end do
             else ! alpha
                 nv = sys%nvirt_alpha
                 if (nv > 0) then
-                    call create_weighted_excitation_list_ptr(sys, j, 0, cs%virt_list_alpha, nv, cs%ia_weights(:,i), &
-                                                             cs%ia_weights_tot(i))
-                    call generate_alias_tables(nv, cs%ia_weights(:,i), cs%ia_weights_tot(i), cs%ia_aliasU(:,i), &
-                                               cs%ia_aliasK(:,i))
+                    call create_weighted_excitation_list_ptr(sys, j, 0, pp%virt_list_alpha, nv, pp%ia_weights(:,i), &
+                                                             pp%ia_weights_tot(i))
+                    call generate_alias_tables(nv, pp%ia_weights(:,i), pp%ia_weights_tot(i), pp%ia_aliasU(:,i), &
+                                               pp%ia_aliasK(:,i))
                 end if
                 do bsym = sys%sym0_tot, sys%sym_max_tot
                     if (sys%read_in%pg_sym%nbasis_sym_spin(2,bsym) > 0) then
                         call create_weighted_excitation_list_ptr(sys, j, 0, sys%read_in%pg_sym%sym_spin_basis_fns(:,2,bsym), &
-                            sys%read_in%pg_sym%nbasis_sym_spin(2,bsym), cs%jb_weights(:,bsym,i), cs%jb_weights_tot(bsym,i))
-                        call generate_alias_tables(sys%read_in%pg_sym%nbasis_sym_spin(2,bsym), cs%jb_weights(:,bsym,i), &
-                            cs%jb_weights_tot(bsym,i), cs%jb_aliasU(:,bsym,i), cs%jb_aliasK(:,bsym,i))
+                            sys%read_in%pg_sym%nbasis_sym_spin(2,bsym), pp%jb_weights(:,bsym,i), pp%jb_weights_tot(bsym,i))
+                        call generate_alias_tables(sys%read_in%pg_sym%nbasis_sym_spin(2,bsym), pp%jb_weights(:,bsym,i), &
+                            pp%jb_weights_tot(bsym,i), pp%jb_aliasU(:,bsym,i), pp%jb_aliasK(:,bsym,i))
                     end if
                 end do
             end if
         end do
-    end subroutine init_excit_mol_cauchy_schwarz_occ_ref
+    end subroutine init_excit_mol_power_pitzer_occ_ref
 
-    subroutine gen_excit_mol_cauchy_schwarz_occ_ref(rng, sys, excit_gen_data, cdet, pgen, connection, hmatel, allowed_excitation)
+    subroutine gen_excit_mol_power_pitzer_occ_ref(rng, sys, excit_gen_data, cdet, pgen, connection, hmatel, allowed_excitation)
 
         ! Create a random excitation from cdet and calculate both the probability
         ! of selecting that excitation and the Hamiltonian matrix element.
-        ! Weight the double excitations according the the Cauchy-Schwarz bound
+        ! Weight the double excitations according the the Power-Pitzer bound
         ! <ij|ab> <= Sqrt(<ia|ai><jb|bj>)
         ! This is an O(M/64) version which pretends the determinant excited from is the reference,
         ! then modifies the selected orbitals to be those of the determinant given.
@@ -167,7 +167,7 @@ contains
         use proc_pointers, only: slater_condon2_excit_ptr
         use system, only: sys_t
         use excit_gen_mol, only: gen_single_excit_mol_no_renorm
-        use excit_gens, only: excit_gen_cauchy_schwarz_t, excit_gen_data_t
+        use excit_gens, only: excit_gen_power_pitzer_t, excit_gen_data_t
         use alias, only: select_weighted_value_prec
         use dSFMT_interface, only: dSFMT_t, get_rand_close_open
         use hamiltonian_data, only: hmatel_t
@@ -213,15 +213,15 @@ contains
 
         else
             ! We have a double
-            associate( cs => excit_gen_data%excit_gen_cs )
+            associate( pp => excit_gen_data%excit_gen_pp )
 
                 ! 2b. Select orbitals to excite from
                 
-                call choose_ij_ind(rng, sys, cs%occ_list, i_ind_ref, j_ind_ref, ij_spin)
+                call choose_ij_ind(rng, sys, pp%occ_list, i_ind_ref, j_ind_ref, ij_spin)
 
                 ! At this point we pretend we're the reference, and fix up mapping ref's orbitals to cdet's orbitals later.
-                i_ref = cs%occ_list(i_ind_ref)
-                j_ref = cs%occ_list(j_ind_ref)
+                i_ref = pp%occ_list(i_ind_ref)
+                j_ref = pp%occ_list(j_ind_ref)
 
                 ! We now need to select the orbitals to excite into which we do with weighting:
                 ! p(ab|ij) = p(a|i) p(b|j) + p(a|j) p(b|i)
@@ -232,18 +232,18 @@ contains
                 ! of the same spin as i_ref that are unoccupied if all electrons are in the reference.
                 if (sys%basis%basis_fns(i_ref)%Ms < 0) then
                     if (sys%nvirt_beta > 0) then
-                        a_ind_ref = select_weighted_value_prec(rng, sys%nvirt_beta, cs%ia_aliasU(:,i_ind_ref), &
-                                                               cs%ia_aliasK(:,i_ind_ref))
-                        a_ref = cs%virt_list_beta(a_ind_ref)
+                        a_ind_ref = select_weighted_value_prec(rng, sys%nvirt_beta, pp%ia_aliasU(:,i_ind_ref), &
+                                                               pp%ia_aliasK(:,i_ind_ref))
+                        a_ref = pp%virt_list_beta(a_ind_ref)
                         a_found = .true.
                     else
                         a_found = .false.
                     end if
                 else
                     if (sys%nvirt_alpha > 0) then
-                        a_ind_ref = select_weighted_value_prec(rng, sys%nvirt_alpha, cs%ia_aliasU(:,i_ind_ref), &
-                                                               cs%ia_aliasK(:,i_ind_ref))
-                        a_ref = cs%virt_list_alpha(a_ind_ref)
+                        a_ind_ref = select_weighted_value_prec(rng, sys%nvirt_alpha, pp%ia_aliasU(:,i_ind_ref), &
+                                                               pp%ia_aliasK(:,i_ind_ref))
+                        a_ref = pp%virt_list_alpha(a_ind_ref)
                         a_found = .true.
                     else
                         a_found = .false.
@@ -259,20 +259,20 @@ contains
                     ! cdet which is not in ref, we need the location.
                     ! This is currently done with an O(N) step, but might be sped up at least.
 
-                    call get_excitation_locations(cs%occ_list, cdet%occ_list, ref_store, cdet_store, sys%nel, nex)
+                    call get_excitation_locations(pp%occ_list, cdet%occ_list, ref_store, cdet_store, sys%nel, nex)
                     ! These orbitals might not be aligned in the most efficient way:
                     !  They may not match in spin, so first deal with this
 
-                    ! ref store (e.g.) contains the indices within cs%occ_list of the orbitals
+                    ! ref store (e.g.) contains the indices within pp%occ_list of the orbitals
                     ! which have been excited from.
                     ! [review] - JSS: this could/should be done once per determinant/excitor rather than once per excit gen.
                     ! [reply] - VAN: Would you calculate it the moment that cdet is defined? and add it as cdet%cdet_store etc?
                     ! [reply] - AJWT: Quite possibly - this is certainly an optimization to consider, though it has structural implications.
                     do ii=1, nex
                         associate(bfns=>sys%basis%basis_fns)
-                            if (bfns(cs%occ_list(ref_store(ii)))%Ms /= bfns(cdet%occ_list(cdet_store(ii)))%Ms) then
+                            if (bfns(pp%occ_list(ref_store(ii)))%Ms /= bfns(cdet%occ_list(cdet_store(ii)))%Ms) then
                                 jj = ii + 1
-                                do while (bfns(cs%occ_list(ref_store(ii)))%Ms /= bfns(cdet%occ_list(cdet_store(jj)))%Ms)
+                                do while (bfns(pp%occ_list(ref_store(ii)))%Ms /= bfns(cdet%occ_list(cdet_store(jj)))%Ms)
                                     jj = jj + 1
                                 end do
                                 ! det's jj now points to an orb of the same spin as ref's ii, so swap cdet_store's ii and jj.
@@ -287,9 +287,9 @@ contains
                     i_cdet = i_ref
                     j_cdet = j_ref
                     a_cdet = a_ref
-                    ! ref_store  contains the indices within cs%occ_list of the orbitals which are excited out of ref into cdet
+                    ! ref_store  contains the indices within pp%occ_list of the orbitals which are excited out of ref into cdet
                     ! cdet_store  contains the indices within cdet%occ_list of the orbitals which are in cdet (excited out
-                    ! of ref).  i_ind_ref and j_ind_ref are the indices of the orbitals in cs%occ_list which we're exciting from.
+                    ! of ref).  i_ind_ref and j_ind_ref are the indices of the orbitals in pp%occ_list which we're exciting from.
                     do ii=1, nex
                         if (ref_store(ii)==i_ind_ref) then  ! i_ref isn't actually in cdet, so we assign i_cdet to the orb that is
                             i_cdet = cdet%occ_list(cdet_store(ii))
@@ -297,7 +297,7 @@ contains
                             j_cdet = cdet%occ_list(cdet_store(ii))
                         end if
                         if (cdet%occ_list(cdet_store(ii))==a_ref) then
-                            a_cdet = cs%occ_list(ref_store(ii)) ! a_ref is occupied in cdet, assign a_cdet to the orb that is not
+                            a_cdet = pp%occ_list(ref_store(ii)) ! a_ref is occupied in cdet, assign a_cdet to the orb that is not
                         end if   
                     end do
 
@@ -324,7 +324,7 @@ contains
                     ! cdet (although we only care about whether they are occupied in cdet which we deal with later). 
 
                     b_ind_cdet = select_weighted_value_prec(rng, sys%read_in%pg_sym%nbasis_sym_spin(imsb, isymb), &
-                                        cs%jb_aliasU(:, isymb, j_ind_ref), cs%jb_aliasK(:, isymb, j_ind_ref))
+                                        pp%jb_aliasU(:, isymb, j_ind_ref), pp%jb_aliasK(:, isymb, j_ind_ref))
                     b_cdet = sys%read_in%pg_sym%sym_spin_basis_fns(b_ind_cdet, imsb, isymb)
 
                     ! Check that a_cdet /= b_cdet and that b_cdet is not occupied in cdet:
@@ -336,15 +336,15 @@ contains
                         ! Calculate p(ab|ij) = p(a|i) p(j|b) + p(b|i)p(a|j)
                         if (ij_spin==0) then
                             ! Not possible to have chosen the reversed excitation.
-                            pgen = cs%ia_weights(a_ind_ref, i_ind_ref) / cs%ia_weights_tot(i_ind_ref) &
-                                    * cs%jb_weights(b_ind_cdet, isymb, j_ind_ref) / cs%jb_weights_tot(isymb, j_ind_ref)
+                            pgen = pp%ia_weights(a_ind_ref, i_ind_ref) / pp%ia_weights_tot(i_ind_ref) &
+                                    * pp%jb_weights(b_ind_cdet, isymb, j_ind_ref) / pp%jb_weights_tot(isymb, j_ind_ref)
                         else
                             ! i and j have same spin, so could have been selected in the other order.
                             ! Need to find b_ref, the orbital b would have been in the world where we focus on the reference.
                             b_ref = b_cdet
 
                             do ii=1, nex
-                                if (cs%occ_list(ref_store(ii))==b_cdet) then
+                                if (pp%occ_list(ref_store(ii))==b_cdet) then
                                     ! b_cdet is occupied in ref, assign b_ref to the orb that is not
                                     b_ref = cdet%occ_list(cdet_store(ii))
                                     exit
@@ -353,9 +353,9 @@ contains
 
                             if (imsb == 1) then 
                                 ! find index b as if we had it selected first and as a from list of unoccupied virtual orbitals.
-                                call binary_search(cs%virt_list_beta, b_ref, 1, sys%nvirt_beta, found, b_ind_rev_ref)
+                                call binary_search(pp%virt_list_beta, b_ref, 1, sys%nvirt_beta, found, b_ind_rev_ref)
                             else 
-                                call binary_search(cs%virt_list_alpha, b_ref, 1, sys%nvirt_alpha, found, b_ind_rev_ref)
+                                call binary_search(pp%virt_list_alpha, b_ref, 1, sys%nvirt_alpha, found, b_ind_rev_ref)
                             end if
                             isyma = sys%read_in%sym_conj_ptr(sys%read_in, &
                                         sys%read_in%cross_product_sym_ptr(sys%read_in, ij_sym, isymb))
@@ -363,10 +363,10 @@ contains
                             call binary_search(sys%read_in%pg_sym%sym_spin_basis_fns(:,imsb,isyma), a_cdet, 1, &
                                     sys%read_in%pg_sym%nbasis_sym_spin(imsb,isyma), found, a_ind_rev_cdet)
 
-                            pgen = cs%ia_weights(a_ind_ref, i_ind_ref) / cs%ia_weights_tot(i_ind_ref) &
-                                    * cs%jb_weights(b_ind_cdet, isymb, j_ind_ref) / cs%jb_weights_tot(isymb, j_ind_ref) &
-                                +  cs%ia_weights(b_ind_rev_ref, i_ind_ref) / cs%ia_weights_tot(i_ind_ref) &
-                                    * cs%jb_weights(a_ind_rev_cdet, isyma, j_ind_ref) / cs%jb_weights_tot(isyma, j_ind_ref)
+                            pgen = pp%ia_weights(a_ind_ref, i_ind_ref) / pp%ia_weights_tot(i_ind_ref) &
+                                    * pp%jb_weights(b_ind_cdet, isymb, j_ind_ref) / pp%jb_weights_tot(isymb, j_ind_ref) &
+                                +  pp%ia_weights(b_ind_rev_ref, i_ind_ref) / pp%ia_weights_tot(i_ind_ref) &
+                                    * pp%jb_weights(a_ind_rev_cdet, isyma, j_ind_ref) / pp%jb_weights_tot(isyma, j_ind_ref)
                         end if
 
                         pgen = excit_gen_data%pattempt_double * pgen * 2.0_p/(sys%nel*(sys%nel-1)) ! pgen(ab)
@@ -415,7 +415,7 @@ contains
             end associate
         end if
 
-    end subroutine gen_excit_mol_cauchy_schwarz_occ_ref
+    end subroutine gen_excit_mol_power_pitzer_occ_ref
 
     ! [review] - JSS: close to choose_ij_mol but without symmetry?  If so, unnecessary code duplication.
     ! [reply] - VAN: we need the indices of i and j here and we don't need ij_sym yet (we only need symmetry
@@ -476,11 +476,11 @@ contains
 
     end subroutine choose_ij_ind
 
-    subroutine gen_excit_mol_cauchy_schwarz_occ(rng, sys, excit_gen_data, cdet, pgen, connection, hmatel, allowed_excitation)
+    subroutine gen_excit_mol_power_pitzer_occ(rng, sys, excit_gen_data, cdet, pgen, connection, hmatel, allowed_excitation)
 
         ! Create a random excitation from cdet and calculate both the probability
         ! of selecting that excitation and the Hamiltonian matrix element.
-        ! Weight the double excitations according the the Cauchy-Schwarz bound
+        ! Weight the double excitations according the the Power-Pitzer bound
         ! <ij|ab> <= Sqrt(<ia|ai><jb|bj>)
         ! This requires a lookup of O(M) two-electron integrals in its setup.
 
@@ -511,7 +511,7 @@ contains
         use dSFMT_interface, only: dSFMT_t, get_rand_close_open
         use search, only: binary_search
         use checking, only: check_allocate, check_deallocate
-        use excit_gens, only: excit_gen_cauchy_schwarz_t, excit_gen_data_t
+        use excit_gens, only: excit_gen_power_pitzer_t, excit_gen_data_t
         use alias, only: select_weighted_value
 
         type(sys_t), intent(in) :: sys
@@ -710,6 +710,6 @@ contains
         if (allocated(jb_weights)) deallocate(jb_weights)
         if (allocated(ja_weights)) deallocate(ja_weights)
 
-    end subroutine gen_excit_mol_cauchy_schwarz_occ
+    end subroutine gen_excit_mol_power_pitzer_occ
 
-end module excit_gen_cauchy_schwarz_mol
+end module excit_gen_power_pitzer_mol
