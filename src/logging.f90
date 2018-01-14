@@ -493,8 +493,8 @@ contains
             call write_column_title(iunit, "# spawn", int_val=.true., justify=1, sep=',')
         end if
         call write_column_title(iunit, "spawn pgen", justify=-1, sep=',')
-        call write_column_title(iunit, "spawnee", justify=-1, sep=',')
         call write_column_title(iunit, "spawner", justify=-1, sep=',')
+        call write_column_title(iunit, "spawnee", justify=-1, sep=',')
         call write_column_title(iunit, "i", justify=-1, sep=',')
         call write_column_title(iunit, "j", justify=-1, sep=',')
         call write_column_title(iunit, "a", justify=-1, sep=',')
@@ -781,7 +781,7 @@ contains
     end subroutine write_logging_calc_ccmc
 
     subroutine write_logging_spawn(logging_info, hmatel, pgen, qn_weighting, nspawned, parent_sign, cmplx_wfn, pgen_spawn, &
-            det_to, det_from, connection)
+            det_from, det_to, connection)
 
         ! Write log entry for a single spawning event.
 
@@ -795,8 +795,8 @@ contains
         !   parent_sign: real. Total signed population on parent determinant.
         !   cmplx_wfn: logical. True if using complex wavefunction, false if not.
         !   pgen_spawn: real. Optional. p_gen as returned by the excitation generator.
-        !   det_to: integer i0. Optional. Determinant with attempt to spawn to.
         !   det_from: integer i0. Optional. Determinant attempting to spawn to det_to.
+        !   det_to: integer i0. Optional. Determinant with attempt to spawn to.
         !   connection: excit_t. Optional. Contains information about the excitation attempt.
 
         use qmc_io, only: write_qmc_var, write_hex_determinant
@@ -841,13 +841,13 @@ contains
                 else
                     call write_qmc_var(iunit, 0._p, sep=',')
                 end if
-                if (present(det_to)) then
-                    call write_hex_determinant(iunit, det_to, sep=',')
+                if (present(det_from)) then
+                    call write_hex_determinant(iunit, det_from, sep=',')
                 else
                     call write_qmc_var(iunit, 0, sep=',')
                 end if
-                if (present(det_from)) then
-                    call write_hex_determinant(iunit, det_from, sep=',')
+                if (present(det_to)) then
+                    call write_hex_determinant(iunit, det_to, sep=',')
                 else
                     call write_qmc_var(iunit, 0, sep=',')
                 end if

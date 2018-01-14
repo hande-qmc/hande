@@ -10,7 +10,9 @@ implicit none
 contains
 
     subroutine spawner_ccmc(rng, sys, qs, spawn_cutoff, linked_ccmc, cdet, cluster, &
-                            gen_excit_ptr, logging_info, nspawn, connection, nspawnings_total)
+                            gen_excit_ptr, logging_info, nspawn, connection, nspawnings_total, &
+                            h_pgen_singles_sum_tmp, h_pgen_doubles_sum_tmp, excit_gen_singles_tmp, &
+                            excit_gen_doubles_tmp)
 
         ! Attempt to spawn a new particle on a connected excitor with
         ! probability
@@ -58,6 +60,10 @@ contains
         !    rng: random number generator.
         !    nspawnings_total: The total number of spawnings attemped by the current cluster
         !        in the current timestep.
+        !    h_pgen_singles_sum_tmp: total of |Hij|/pgen for single excitations attempted.
+        !    h_pgen_doubles_sum_tmp: total on |Hij|/pgen for double excitations attempted.
+        !    excit_gen_singles_tmp: counter on number of single excitations attempted.
+        !    excit_gen_doubles_tmp: counter on number of double excitations attempted.
         ! Out:
         !    nspawn: number of particles spawned, in the encoded representation.
         !        0 indicates the spawning attempt was unsuccessful.
@@ -90,6 +96,7 @@ contains
         type(logging_t), intent(in) :: logging_info
         integer(int_p), intent(out) :: nspawn
         type(excit_t), intent(out) :: connection
+        real(p), intent(inout) :: h_pgen_singles_sum_tmp, h_pgen_doubles_sum_tmp, excit_gen_singles_tmp, excit_gen_doubles_tmp
 
         ! We incorporate the sign of the amplitude into the Hamiltonian matrix
         ! element, so we 'pretend' to attempt_to_spawn that all excips are
@@ -109,6 +116,18 @@ contains
         call gen_excit_ptr%full(rng, sys, qs%excit_gen_data, cdet, spawn_pgen, connection, hmatel, allowed_excitation)
 
         if (allowed_excitation) then
+            if (qs%excit_gen_data%p_single_double%vary_psingles == .true.) then
+                if (connection%nexcit == 1) then
+                    h_pgen_singles_sum_tmp = h_pgen_singles_sum_tmp + &
+                        ((abs(hmatel%r)*qs%excit_gen_data%pattempt_single)/spawn_pgen)
+                    excit_gen_singles_tmp = excit_gen_singles_tmp + 1.0_p
+                else if (connection%nexcit == 2) then
+                    h_pgen_doubles_sum_tmp = h_pgen_doubles_sum_tmp + &
+                        ((abs(hmatel%r)*qs%excit_gen_data%pattempt_double)/spawn_pgen)
+                    excit_gen_doubles_tmp = excit_gen_doubles_tmp + 1.0_p
+                end if
+            end if
+
             if (linked_ccmc) then
                 ! For Linked Coupled Cluster we reject any spawning where the
                 ! Hamiltonian is not linked to every cluster operator
@@ -151,7 +170,7 @@ contains
             call convert_excitor_to_determinant(fexcit, excitor_level, excitor_sign, qs%ref%f0)
             if (excitor_sign < 0) nspawn = -nspawn
             if (debug) call write_logging_spawn(logging_info, hmatel_save, pgen, invdiagel, [nspawn], &
-                        real(cluster%amplitude,p), sys%read_in%comp, spawn_pgen, fexcit, cdet%f, connection)
+                        real(cluster%amplitude,p), sys%read_in%comp, spawn_pgen, cdet%f, fexcit, connection)
         else
             if (debug) then
                 if (allowed_excitation) then
@@ -159,10 +178,10 @@ contains
                     excitor_level = get_excitation_level(qs%ref%f0, fexcit)
                     call convert_excitor_to_determinant(fexcit, excitor_level, excitor_sign, qs%ref%f0)
                     call write_logging_spawn(logging_info, hmatel_save, pgen, invdiagel, [nspawn], &
-                            real(cluster%amplitude,p), sys%read_in%comp, spawn_pgen, fexcit, cdet%f, connection)
+                            real(cluster%amplitude,p), sys%read_in%comp, spawn_pgen, cdet%f, fexcit, connection)
                 else
                     call write_logging_spawn(logging_info, hmatel_save, pgen, invdiagel, [nspawn], &
-                            real(cluster%amplitude,p), sys%read_in%comp, spawn_pgen)
+                            real(cluster%amplitude,p), sys%read_in%comp, spawn_pgen, cdet%f)
                 end if
             end if
         end if
@@ -497,8 +516,9 @@ contains
     end subroutine stochastic_ccmc_death_nc
 
     subroutine linked_spawner_ccmc(rng, sys, qs, spawn_cutoff, cluster, gen_excit_ptr, nspawn, &
-                            connection, nspawnings_total, fexcit, cdet, ldet, rdet, left_cluster, right_cluster)
-
+                            connection, nspawnings_total, fexcit, cdet, ldet, rdet, left_cluster, right_cluster, &
+                            h_pgen_singles_sum_tmp, h_pgen_doubles_sum_tmp, excit_gen_singles_tmp, &
+                            excit_gen_doubles_tmp)
         ! When sampling e^-T H e^T, clusters need to be considered where two
         ! operators excite from/to the same orbital (one in the "left cluster"
         ! for e^-T and one in the "right cluster" for e^T). This makes the
@@ -527,6 +547,10 @@ contains
         !    rng: random number generator.
         !    ldet, rdet, left_cluster, right_cluster: used to store temporary information for
         !        selecting an excitor
+        !    h_pgen_singles_sum_tmp: total of |Hij|/pgen for single excitations attempted.
+        !    h_pgen_doubles_sum_tmp: total on |Hij|/pgen for double excitations attempted.
+        !    excit_gen_singles_tmp: counter on number of single excitations attempted.
+        !    excit_gen_doubles_tmp: counter on number of double excitations attempted.
         ! Out:
         !    nspawn: number of particles spawned, in the encoded representation.
         !        0 indicates the spawning attempt was unsuccessful.
@@ -563,6 +587,7 @@ contains
         type(det_info_t), intent(inout) :: ldet, rdet
         type(det_info_t), intent(in) :: cdet
         type(cluster_t), intent(inout) :: left_cluster, right_cluster
+        real(p), intent(inout) :: h_pgen_singles_sum_tmp, h_pgen_doubles_sum_tmp, excit_gen_singles_tmp, excit_gen_doubles_tmp
 
         ! We incorporate the sign of the amplitude into the Hamiltonian matrix
         ! element, so we 'pretend' to attempt_to_spawn that all excips are
@@ -597,6 +622,17 @@ contains
         end if
 
         if (allowed) then
+            if (qs%excit_gen_data%p_single_double%vary_psingles == .true.) then
+                if (connection%nexcit == 1) then
+                    h_pgen_singles_sum_tmp = h_pgen_singles_sum_tmp + &
+                        ((abs(hmatel%r)*qs%excit_gen_data%pattempt_single)/pgen)
+                    excit_gen_singles_tmp = excit_gen_singles_tmp + 1.0_p
+                else if (connection%nexcit == 2) then
+                    h_pgen_doubles_sum_tmp = h_pgen_doubles_sum_tmp + & 
+                        ((abs(hmatel%r)*qs%excit_gen_data%pattempt_double)/pgen)
+                    excit_gen_doubles_tmp = excit_gen_doubles_tmp + 1.0_p
+                end if
+            end if
             ! check that left_cluster can be applied to the resulting excitor to
             ! give a cluster to spawn on to
             call create_excited_det(sys%basis, rdet%f, connection, fexcit)
@@ -694,7 +730,9 @@ contains
     end subroutine linked_spawner_ccmc
 
     subroutine spawner_complex_ccmc(rng, sys, qs, spawn_cutoff, cdet, cluster, &
-                            gen_excit_ptr, nspawn, nspawn_im, connection, nspawnings_total)
+                            gen_excit_ptr, nspawn, nspawn_im, connection, nspawnings_total, &
+                            h_pgen_singles_sum_tmp, h_pgen_doubles_sum_tmp, excit_gen_singles_tmp, &
+                            excit_gen_doubles_tmp)
         ! Attempt to spawn a new particle on a connected excitor with
         ! probability
         !     \tau |<D'|H|D_s> A_s|
@@ -740,6 +778,10 @@ contains
         !    rng: random number generator.
         !    nspawnings_total: The total number of spawnings attemped by the current cluster
         !        in the current timestep.
+        !    h_pgen_singles_sum_tmp: total of |Hij|/pgen for single excitations attempted.
+        !    h_pgen_doubles_sum_tmp: total on |Hij|/pgen for double excitations attempted.
+        !    excit_gen_singles_tmp: counter on number of single excitations attempted.
+        !    excit_gen_doubles_tmp: counter on number of double excitations attempted.
         ! Out:
         !    nspawn: number of particles spawned, in the encoded representation.
         !        0 indicates the spawning attempt was unsuccessful.
@@ -768,6 +810,7 @@ contains
         type(gen_excit_ptr_t), intent(in) :: gen_excit_ptr
         integer(int_p), intent(out) :: nspawn, nspawn_im
         type(excit_t), intent(out) :: connection
+        real(p), intent(inout) :: h_pgen_singles_sum_tmp, h_pgen_doubles_sum_tmp, excit_gen_singles_tmp, excit_gen_doubles_tmp
 
         ! We incorporate the sign of the amplitude into the Hamiltonian matrix
         ! element, so we 'pretend' to attempt_to_spawn that all excips are
@@ -784,6 +827,18 @@ contains
         ! generators of the sys%lattice%lattice models.  It is trivial to implement and (at
         ! least for now) is left as an exercise to the interested reader.
         call gen_excit_ptr%full(rng, sys, qs%excit_gen_data, cdet, pgen, connection, hmatel, allowed_excitation)
+
+        if ((allowed_excitation == .true.) .and. (qs%excit_gen_data%p_single_double%vary_psingles == .true.)) then
+            if (connection%nexcit == 1) then
+                h_pgen_singles_sum_tmp = h_pgen_singles_sum_tmp + &
+                    ((abs(hmatel%c)*qs%excit_gen_data%pattempt_single)/pgen)
+                excit_gen_singles_tmp = excit_gen_singles_tmp + 1.0_p
+            else if (connection%nexcit == 2) then
+                h_pgen_doubles_sum_tmp = h_pgen_doubles_sum_tmp + &
+                    ((abs(hmatel%c)*qs%excit_gen_data%pattempt_double)/pgen)
+                excit_gen_doubles_tmp = excit_gen_doubles_tmp + 1.0_p
+            end if
+        end if
 
         ! 2, Apply additional factors.
         hmatel%c = hmatel%c*cluster%amplitude*cluster%cluster_to_det_sign

@@ -42,9 +42,9 @@ contains
 
         ! In/Out:
         !    rng: random number generator.
+        !    qmc_state: input options relating to QMC methods.
         ! In:
         !    sys: system being studied.
-        !    qmc_state: input options relating to QMC methods.
         !    spawn_cutoff: The size of the minimum spawning event allowed, in
         !        the encoded representation. Events smaller than this will be
         !        stochastically rounded up to this value or down to zero.
@@ -78,7 +78,7 @@ contains
 
         type(dSFMT_t), intent(inout) :: rng
         type(sys_t), intent(in) :: sys
-        type(qmc_state_t), intent(in) :: qmc_state
+        type(qmc_state_t), intent(inout) :: qmc_state
         integer(int_p), intent(in) :: spawn_cutoff
         integer(int_p), intent(in) :: real_factor
         type(det_info_t), intent(in) :: cdet
@@ -100,6 +100,19 @@ contains
 
         if (allowed) then
             qn_weight = calc_qn_spawned_weighting(sys, qmc_state%propagator, cdet%fock_sum, connection)
+            if (qmc_state%excit_gen_data%p_single_double%vary_psingles == .true.) then
+                associate(ps=>qmc_state%excit_gen_data%p_single_double)
+                    if (connection%nexcit == 1) then
+                        ps%h_pgen_singles_sum = ps%h_pgen_singles_sum + &
+                            ((abs(hmatel%r)*qmc_state%excit_gen_data%pattempt_single)/pgen)
+                        ps%excit_gen_singles = ps%excit_gen_singles + 1.0_p
+                    else if (connection%nexcit == 2) then
+                        ps%h_pgen_doubles_sum = ps%h_pgen_doubles_sum + &
+                            ((abs(hmatel%r)*qmc_state%excit_gen_data%pattempt_double)/pgen)
+                        ps%excit_gen_doubles = ps%excit_gen_doubles + 1.0_p
+                    end if
+                end associate
+            end if
         else
             qn_weight = 1.0_p
         end if
@@ -127,9 +140,9 @@ contains
 
         ! In/Out:
         !    rng: random number generator.
+        !    qmc_state: input options relating to QMC methods.
         ! In:
         !    sys: system being studied.
-        !    qmc_state: input options relating to QMC methods.
         !    spawn_cutoff: The size of the minimum spawning event allowed, in
         !        the encoded representation. Events smaller than this will be
         !        stochastically rounded up to this value or down to zero.
@@ -163,7 +176,7 @@ contains
 
         type(dSFMT_t), intent(inout) :: rng
         type(sys_t), intent(in) :: sys
-        type(qmc_state_t), intent(in) :: qmc_state
+        type(qmc_state_t), intent(inout) :: qmc_state
         integer(int_p), intent(in) :: spawn_cutoff
         integer(int_p), intent(in) :: real_factor
         type(det_info_t), intent(in) :: cdet
@@ -187,7 +200,20 @@ contains
         call gen_excit_ptr%trial_fn(sys, cdet, connection, weights, hmatel%r)
 
         if (allowed) then
-           hmatel%r = hmatel%r * calc_qn_spawned_weighting(sys, qmc_state%propagator, cdet%fock_sum, connection)
+            if (qmc_state%excit_gen_data%p_single_double%vary_psingles == .true.) then
+                associate(ps=>qmc_state%excit_gen_data%p_single_double)
+                    if (connection%nexcit == 1) then
+                        ps%h_pgen_singles_sum = ps%h_pgen_singles_sum + &
+                            ((abs(hmatel%r)*qmc_state%excit_gen_data%pattempt_single)/pgen)
+                        ps%excit_gen_singles = ps%excit_gen_singles + 1.0_p
+                    else if (connection%nexcit == 2) then
+                        ps%h_pgen_doubles_sum = ps%h_pgen_doubles_sum + &
+                            ((abs(hmatel%r)*qmc_state%excit_gen_data%pattempt_double)/pgen)
+                        ps%excit_gen_doubles = ps%excit_gen_doubles + 1.0_p
+                    end if
+                end associate
+            end if
+            hmatel%r = hmatel%r * calc_qn_spawned_weighting(sys, qmc_state%propagator, cdet%fock_sum, connection)
         end if
 
         ! 3. Attempt spawning.
@@ -482,9 +508,9 @@ contains
 
         ! In/Out:
         !    rng: random number generator.
+        !    qmc_state: input options relating to QMC methods.
         ! In:
         !    sys: system being studied.
-        !    qmc_state: input options relating to QMC methods.
         !    spawn_cutoff: The size of the minimum spawning event allowed, in
         !        the encoded representation. Events smaller than this will be
         !        stochastically rounded up to this value or down to zero.
@@ -522,7 +548,7 @@ contains
 
         type(dSFMT_t), intent(inout) :: rng
         type(sys_t), intent(in) :: sys
-        type(qmc_state_t), intent(in) :: qmc_state
+        type(qmc_state_t), intent(inout) :: qmc_state
         integer(int_p), intent(in) :: spawn_cutoff
         integer(int_p), intent(in) :: real_factor
         type(det_info_t), intent(in) :: cdet
@@ -541,7 +567,20 @@ contains
         call gen_excit_ptr%full(rng, sys, qmc_state%excit_gen_data, cdet, pgen, connection, hmatel, allowed)
 
         if (allowed) then
-            qn_weight = calc_qn_spawned_weighting(sys, qmc_state%propagator, cdet%fock_sum, connection)
+            qn_weight = calc_qn_spawned_weighting(sys, qmc_state%propagator, cdet%fock_sum, connection) 
+            if (qmc_state%excit_gen_data%p_single_double%vary_psingles == .true.) then
+                associate(ps=>qmc_state%excit_gen_data%p_single_double)
+                    if (connection%nexcit == 1) then
+                        ps%h_pgen_singles_sum = ps%h_pgen_singles_sum + &
+                            ((abs(hmatel%c)*qmc_state%excit_gen_data%pattempt_single)/pgen)
+                        ps%excit_gen_singles = ps%excit_gen_singles + 1.0_p
+                    else if (connection%nexcit == 2) then
+                        ps%h_pgen_doubles_sum = ps%h_pgen_doubles_sum + &
+                            ((abs(hmatel%c)*qmc_state%excit_gen_data%pattempt_double)/pgen)
+                        ps%excit_gen_doubles = ps%excit_gen_doubles + 1.0_p
+                    end if
+                end associate
+            end if
         else
             qn_weight = 1.0_p
         end if

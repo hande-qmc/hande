@@ -203,6 +203,12 @@ contains
             call init_excit_mol_heat_bath(sys, qmc_state%excit_gen_data%excit_gen_hb, .false.)
         end if
 
+        if ((all(qmc_state%vary_shift) == .false.) .and. (qmc_in%pattempt_update == .true.) .and. &
+            (qmc_in%excit_gen/=excit_gen_heat_bath)) then
+            ! We sample singles with probability pattempt_single. It therefore makes sense to update pattempt_single 
+            ! for FCIQMC and CCMC on the fly (at least in the beginning of the calculation).
+            qmc_state%excit_gen_data%p_single_double%vary_psingles = .true.
+        end if
     end subroutine init_qmc
 
     subroutine init_proc_pointers(sys, qmc_in, reference, io_unit, dmqmc_in, fciqmc_in)

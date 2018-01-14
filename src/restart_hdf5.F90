@@ -60,6 +60,7 @@ module restart_hdf5
     !            vary shift            # Whether the shift was varying before the calculation stopped
     !            shift_damping         # Value of the shift damping used within the calculation
     !            shift_damping_status  # Current status of any shift damping optimisation.
+    !            pattempt_single       # Use pattempt_single from previous calculation.
     !      reference/
     !                reference determinant               # reference determinant
     !                reference population @ t-1          # population on reference (real, mainly used non complex calcs)
@@ -158,6 +159,7 @@ module restart_hdf5
                                dvary = 'vary shift',                &
                                dshift_damping = 'shift_damping',    &
                                dshift_damping_status = 'shift_damping_status', &
+                               dpattempt_single = 'pattempt_single', &
                                dinfo_string_len = 'info string len'
 
     contains
@@ -337,6 +339,7 @@ module restart_hdf5
             ! This allows us to use the same array functions for writing out (the small
             ! amount of) scalar data we have to write out.
             real(dp), allocatable, target :: tmp_pop(:)
+            real(p) :: pattempt_single_store(1) 
 
             ! Initialise HDF5 and open file.
             call h5open_f(ierr)
@@ -432,6 +435,11 @@ module restart_hdf5
                     call hdf5_write(subgroup_id, dshift_damping, kinds, [1_int_64], [qs%shift_damping])
 
                     call hdf5_write(subgroup_id, dshift_damping_status, qs%shift_damping_status)
+                    
+                    pattempt_single_store = qs%excit_gen_data%pattempt_single
+                    call hdf5_write(subgroup_id, dpattempt_single, kinds, shape(pattempt_single_store, kind=int_64), &
+                                pattempt_single_store)
+
                 call h5gclose_f(subgroup_id, ierr)
 
                 ! --- qmc/qs%ref group ---
@@ -535,6 +543,8 @@ module restart_hdf5
             integer(HSIZE_T) :: dims(size(shape(qs%psip_list%states)))
             real(p) :: proj_energy_tmp_re(qs%psip_list%nspaces), proj_energy_tmp_im(qs%psip_list%nspaces)
             real(p) :: D0_population_tmp_re(qs%psip_list%nspaces), D0_population_tmp_im(qs%psip_list%nspaces)
+            
+            real(p) :: pattempt_single_store(1) 
 
             ! Initialise HDF5 and open file.
             call h5open_f(ierr)
@@ -754,6 +764,7 @@ module restart_hdf5
                         ! If not present, keep old behaviour.
                         qs%vary_shift = .false.
                     end if
+                    
                     call h5lexists_f(subgroup_id, dshift_damping, exists, ierr)
                     ! If not present we just leave at default value.
                     ! If shift damping was written to restart file we'll also have written the current status of any optimisation.
@@ -762,6 +773,15 @@ module restart_hdf5
                         qs%shift_damping = shift_damp(1)
                         call hdf5_read(subgroup_id, dshift_damping_status, qs%shift_damping_status)
                     end if
+                    
+                    call h5lexists_f(subgroup_id, dpattempt_single, exists, ierr)
+                    if (exists) then
+                        call hdf5_read(subgroup_id, dpattempt_single, kinds, shape(pattempt_single_store, kind=int_64), &
+                            pattempt_single_store)
+                        qs%excit_gen_data%pattempt_single = pattempt_single_store(1)
+                        qs%excit_gen_data%pattempt_double = 1.0_p - qs%excit_gen_data%pattempt_single
+                    end if
+
 
                 call h5gclose_f(subgroup_id, ierr)
 

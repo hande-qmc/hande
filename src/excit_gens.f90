@@ -7,6 +7,19 @@ implicit none
 ! The integer types have been chosen to be int_32
 integer(int_32), parameter :: int_bas = int_32
 
+type p_single_double_t
+    ! collects data to update pattempt_single (and therefore pattempt_double) such that
+    ! the means in the distribution of hmatel/pgen for singles and doubles are roughly equal.
+    real(p) :: h_pgen_singles_sum = 0.0_p ! hmatel/pgen sum for singles
+    real(p) :: h_pgen_doubles_sum = 0.0_p ! hamtel/pgen sum for doubles
+    real(p) :: excit_gen_singles = 0.0_p ! number of valid singles excitations created
+    real(p) :: excit_gen_doubles = 0.0_p ! number of valid doubles excitations created
+    real(p) :: every_attempts = 1000000.0_p ! update pattempt_single every every_attempts a single or double ex. happened
+    real(p) :: every_min_attempts = 10.0_p ! unless there were not more than every_min_attempts of single or double ex. since
+    real(p) :: counter = 1.0_p
+    logical :: vary_psingles = .false. ! still update pattempt_singles
+end type p_single_double_t
+
 ! Type containing alias tables, etc, needed when using the power pitzer ("occ_ref") 
 ! excitation generator, that considers weights, etc, as seen from the reference.
 type excit_gen_power_pitzer_t
@@ -160,6 +173,7 @@ type excit_gen_data_t
     integer(i0), allocatable :: ueg_ternary_conserve(:,:,:,:)
     type(excit_gen_power_pitzer_t) :: excit_gen_pp
     type(excit_gen_heat_bath_t) :: excit_gen_hb
+    type (p_single_double_t) :: p_single_double
 end type excit_gen_data_t
 
 contains

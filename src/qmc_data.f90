@@ -124,6 +124,11 @@ type qmc_in_t
     ! probability of attempting single or double excitations...
     ! set to be nonsense value so can easily detect if it's given as an input option
     real(p) :: pattempt_single = -1, pattempt_double = -1
+    ! True if pattempt_single/pattempt_double should be varied until shift starts to vary.
+    ! They are varied in an attempt to make the means of |Hij|/pgen be the same for singles and doubles.
+    ! Only used for excitation generators using pattempt_single/pattempt_double.
+    ! If shift has already started varying, ignore pattempt_update.
+    logical :: pattempt_update = .false.
 
     ! timestep
     ! Note: qmc_state_t%tau is used and (if desired) updated during the course of a simulation)
@@ -881,6 +886,7 @@ contains
         case default
             call json_write_key(js, 'excit_gen', qmc%excit_gen)
         end select
+        call json_write_key(js, 'pattempt_update', qmc%pattempt_update)
         call json_write_key(js, 'pattempt_single', qmc%pattempt_single)
         call json_write_key(js, 'pattempt_double', qmc%pattempt_double)
         call json_write_key(js, 'tau', qmc%tau)

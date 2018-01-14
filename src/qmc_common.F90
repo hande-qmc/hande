@@ -994,7 +994,7 @@ contains
                                      update_energy_estimators_recv, update_energy_estimators_send, &
                                      nparticles_start_ind
         use interact, only: calc_interact, check_interact, check_comms_file
-        use parallel, only: nprocs
+        use parallel
         use system, only: sys_t
         use bloom_handler, only: bloom_stats_t, bloom_stats_warning
         use qmc_data, only: qmc_in_t, load_bal_in_t, qmc_state_t, nb_rep_t
@@ -1019,6 +1019,10 @@ contains
 
         logical :: update, vary_shift_before, nb_comm_local, comms_found, comp_param
         real(dp) :: rep_info_copy(nprocs*qs%psip_list%nspaces+nparticles_start_ind-1)
+#ifdef PARALLEL
+        integer :: ierr
+        real(p) :: pattempt_single_sum
+#endif
 
         ! Only update the timestep if not in vary shift mode.
         update_tau = update_tau .and. .not. any(qs%vary_shift) .and. qmc_in%tau_search
@@ -1029,6 +1033,19 @@ contains
 
         ! Are all the shifts currently varying?
         vary_shift_before = all(qs%vary_shift)
+
+        if ((qs%excit_gen_data%p_single_double%vary_psingles == .true.) .and. (vary_shift_before == .true.)) then
+            ! Stop varying pattempt_single when the shift has started varying.
+            ! The MPI processes communicate to decide on a common, average pattempt_single now.
+            qs%excit_gen_data%p_single_double%vary_psingles = .false.
+#ifdef PARALLEL
+            pattempt_single_sum = 0.0_p
+            call mpi_allreduce(qs%excit_gen_data%pattempt_single, pattempt_single_sum, 1, mpi_preal, MPI_SUM, MPI_COMM_WORLD, &
+                            ierr)
+            qs%excit_gen_data%pattempt_single = pattempt_single_sum/float(nprocs)
+            qs%excit_gen_data%pattempt_double = 1.0_p - qs%excit_gen_data%pattempt_single
+#endif
+        end if
 
         ! Test for a comms file so MPI communication can be combined with
         ! energy_estimators communication

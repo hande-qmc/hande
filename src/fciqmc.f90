@@ -335,6 +335,19 @@ contains
 
             end do
 
+            if (qs%excit_gen_data%p_single_double%vary_psingles == .true.) then
+                associate(ps=>qs%excit_gen_data%p_single_double)
+                    if (((ps%excit_gen_singles + ps%excit_gen_doubles) > (ps%counter*ps%every_attempts)) .and. &
+                        (ps%excit_gen_singles > (ps%counter*ps%every_min_attempts)) .and. &
+                        (ps%excit_gen_doubles > (ps%counter*ps%every_min_attempts))) then
+                        ps%counter = ps%counter + 1.0_p
+                        qs%excit_gen_data%pattempt_single = (ps%h_pgen_singles_sum/ps%excit_gen_singles) / &
+                                ((ps%h_pgen_doubles_sum/ps%excit_gen_doubles) + (ps%h_pgen_singles_sum/ps%excit_gen_singles))
+                        qs%excit_gen_data%pattempt_double = 1.0_p - qs%excit_gen_data%pattempt_single
+                    end if
+                end associate
+            end if
+            
             update_tau = bloom_stats%nblooms_curr > 0
 
             error = qs%spawn_store%spawn%error .or. qs%psip_list%error
