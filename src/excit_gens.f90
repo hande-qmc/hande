@@ -154,6 +154,9 @@ type excit_gen_data_t
 
     ! Probability of attempting single or double excitations.
     real(p) :: pattempt_single, pattempt_double
+    ! Probability of selecting ij to be parallel. Used in no_renorm_spin, renorm_spin
+    ! excitation generators.
+    real(p) :: pattempt_parallel
 
     ! When creating an arbitrary excitation, k_i,k_j->k_a,k_b, we must conserve
     ! crystal momentum, k_i+k_j-k_a-k_b=0.  Hence once we've chosen k_i, k_j and

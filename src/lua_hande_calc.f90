@@ -904,6 +904,7 @@ contains
         !     pattempt_single = prob,
         !     pattempt_double = prob,
         !     pattempt_update = true/false,
+        !     pattempt_parallel = prob,
         !     initial_shift = shift,
         !     shift_damping = damp_factor,
         !     initiator = true/false,
@@ -942,16 +943,16 @@ contains
         character(len=30) :: str
         logical :: skip, no_renorm
 
-        character(23), parameter :: keys(29) = [character(23) :: 'tau', 'init_pop', 'mc_cycles', 'nreports', 'state_size', &
+        character(23), parameter :: keys(30) = [character(23) :: 'tau', 'init_pop', 'mc_cycles', 'nreports', 'state_size', &
                                                                  'spawned_state_size', 'rng_seed', 'target_population', &
                                                                  'real_amplitudes', 'spawn_cutoff', 'no_renorm', 'tau_search', &
                                                                  'real_amplitude_force_32', &
                                                                  'pattempt_single', 'pattempt_double', 'pattempt_update', &
-                                                                 'initial_shift', 'shift_damping', 'initiator', &
-                                                                 'initiator_threshold', 'use_mpi_barriers', 'vary_shift_from', &
-                                                                 'excit_gen', 'power_pitzer_min_weight', 'reference_target', &
-                                                                 'vary_shift', 'quasi_newton','quasi_newton_threshold', &
-                                                                 'quasi_newton_value']
+                                                                 'pattempt_parallel', 'initial_shift', 'shift_damping', &
+                                                                 'initiator', 'initiator_threshold', 'use_mpi_barriers', &
+                                                                 'vary_shift_from', 'excit_gen', 'power_pitzer_min_weight', &
+                                                                 'reference_target', 'vary_shift', 'quasi_newton', &
+                                                                 'quasi_newton_threshold', 'quasi_newton_value']
 
         if (present(short)) then
             skip = short
@@ -985,6 +986,7 @@ contains
         call aot_get_val(qmc_in%pattempt_single, err, lua_state, qmc_table, 'pattempt_single')
         call aot_get_val(qmc_in%pattempt_double, err, lua_state, qmc_table, 'pattempt_double')
         call aot_get_val(qmc_in%pattempt_update, err, lua_state, qmc_table, 'pattempt_update')
+        call aot_get_val(qmc_in%pattempt_parallel, err, lua_state, qmc_table, 'pattempt_parallel')
         call aot_get_val(qmc_in%tau_search, err, lua_state, qmc_table, 'tau_search')
         call aot_get_val(qmc_in%initial_shift, err, lua_state, qmc_table, 'initial_shift')
         call aot_get_val(qmc_in%shift_damping, err, lua_state, qmc_table, 'shift_damping')

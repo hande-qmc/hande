@@ -855,6 +855,12 @@ contains
             excit_gen_data%pattempt_double = 1.0_p - qmc_in%pattempt_single
         end if
 
+        ! If not set at input, set probability of selecting parallel ij to 0.25.
+        ! [todo] - find more intelligent default. check restarting.
+        if (qmc_in%pattempt_parallel < 0) then
+            excit_gen_data%pattempt_parallel = 0.25_p
+        end if
+
         ! UEG allowed excitations
         if (sys%system == ueg) call init_ternary_conserve(sys, excit_gen_data%ueg_ternary_conserve)
 

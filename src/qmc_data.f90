@@ -130,6 +130,10 @@ type qmc_in_t
     ! If shift has already started varying, ignore pattempt_update.
     ! [todo] - check whether restarting works correctly with pattempt_update
     logical :: pattempt_update = .false.
+    ! probability of selecting ij to be parallel. Used in no_renorm_spin, renorm_spin
+    ! excitation generators.
+    ! set to a nonsense value so we can easily detect if it's given as an input option.
+    real(p) :: pattempt_parallel = -1
 
     ! timestep
     ! Note: qmc_state_t%tau is used and (if desired) updated during the course of a simulation)
@@ -900,6 +904,7 @@ contains
         call json_write_key(js, 'pattempt_update', qmc%pattempt_update)
         call json_write_key(js, 'pattempt_single', qmc%pattempt_single)
         call json_write_key(js, 'pattempt_double', qmc%pattempt_double)
+        call json_write_key(js, 'pattempt_parallel', qmc%pattempt_parallel)
         call json_write_key(js, 'tau', qmc%tau)
         call json_write_key(js, 'tau_search', qmc%tau_search)
         call json_write_key(js, 'vary_shift_from', qmc%vary_shift_from)
