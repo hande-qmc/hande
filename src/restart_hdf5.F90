@@ -60,9 +60,14 @@ module restart_hdf5
     !            vary shift            # Whether the shift was varying before the calculation stopped
     !            shift_damping         # Value of the shift damping used within the calculation
     !            shift_damping_status  # Current status of any shift damping optimisation.
-    !            pattempt_info         # Use pattempt_single from previous calculation and also store information
-    !                                  # to continue varying it, i.e. h_pgen_singles_sum, h_pgen_doubles_sum,
-    !                                  # excit_gen_singles, excit_gen_doubles, counter
+    !            pattempt_single       # pattempt_single, probability of a single excitation
+    !            pattempt_single_data/
+    !                           vary_psingles      # if true, pattempt_singles is (still) updated.
+    !                           h_pgen_singles_sum # sum of hmatel/(spawn_pgen/pattempt_single) for single excitations
+    !                           h_pgen_doubles_sum # sum of hmatel/(spawn_pgen/pattempt_single) for double excitations
+    !                           excit_gen_singles  # number of single excitations
+    !                           excit_gen_doubles  # number of double excitations
+    !                           counter            # (number of times - 1) pattempt_single was updated
     !      reference/
     !                reference determinant               # reference determinant
     !                reference population @ t-1          # population on reference (real, mainly used non complex calcs)
@@ -124,6 +129,7 @@ module restart_hdf5
                                gqmc = 'qmc',            &
                                gpsips = 'psips',        &
                                gstate = 'state',        &
+                               gpattempt_single_data = 'pattempt_single_data',        &
                                gref = 'reference',      &
                                grng = 'rng',            &
                                gbasis = 'basis'
@@ -161,7 +167,13 @@ module restart_hdf5
                                dvary = 'vary shift',                &
                                dshift_damping = 'shift_damping',    &
                                dshift_damping_status = 'shift_damping_status', &
-                               dpattempt_info = 'pattempt_info', &
+                               dpattempt_single = 'pattempt_single', &
+                               dvary_psingles = 'vary_psingles', &
+                               dh_pgen_singles_sum = 'h_pgen_singles_sum', &
+                               dh_pgen_doubles_sum = 'h_pgen_doubles_sum', &
+                               dexcit_gen_singles = 'excit_gen_singles', &
+                               dexcit_gen_doubles = 'excit_gen_doubles', &
+                               dcounter = 'counter', &
                                dinfo_string_len = 'info string len'
 
     contains
@@ -330,7 +342,7 @@ module restart_hdf5
             ! HDF5 kinds
             type(hdf5_kinds_t) :: kinds
             ! HDF5 handles
-            integer(hid_t) :: file_id, group_id, subgroup_id
+            integer(hid_t) :: file_id, group_id, subgroup_id, subsubgroup_id
 
             integer :: date_time(8)
             character(19) :: date_str
@@ -341,7 +353,6 @@ module restart_hdf5
             ! This allows us to use the same array functions for writing out (the small
             ! amount of) scalar data we have to write out.
             real(dp), allocatable, target :: tmp_pop(:)
-            real(p) :: pattempt_info_store(6) 
 
             ! Initialise HDF5 and open file.
             call h5open_f(ierr)
@@ -438,14 +449,31 @@ module restart_hdf5
 
                     call hdf5_write(subgroup_id, dshift_damping_status, qs%shift_damping_status)
                     
-! [review] - AJWT: Rather than a cryptic array, could these not be specifically named variables in an extra subgroup?
-                    pattempt_info_store = (/qs%excit_gen_data%pattempt_single, &
-                        qs%excit_gen_data%p_single_double%h_pgen_singles_sum, &
-                        qs%excit_gen_data%p_single_double%h_pgen_doubles_sum, &
-                        qs%excit_gen_data%p_single_double%excit_gen_singles, &
-                        qs%excit_gen_data%p_single_double%excit_gen_doubles, qs%excit_gen_data%p_single_double%counter/)
-                    call hdf5_write(subgroup_id, dpattempt_info, kinds, shape(pattempt_info_store, kind=int_64), &
-                                pattempt_info_store)
+                    call hdf5_write(subgroup_id, dpattempt_single, kinds, [1_int_64], [qs%excit_gen_data%pattempt_single])
+                    
+                    ! --- qmc/state/pattempt_single_data group ---
+                    call h5gcreate_f(subgroup_id, gpattempt_single_data, subsubgroup_id, ierr)
+                        
+                        call hdf5_write(subsubgroup_id, dvary_psingles, kinds, [1_int_64], &
+                                    [qs%excit_gen_data%p_single_double%vary_psingles])
+
+                        call hdf5_write(subsubgroup_id, dh_pgen_singles_sum, kinds, [1_int_64], &
+                                    [qs%excit_gen_data%p_single_double%h_pgen_singles_sum])
+                        
+                        call hdf5_write(subsubgroup_id, dh_pgen_doubles_sum, kinds, [1_int_64], &
+                                    [qs%excit_gen_data%p_single_double%h_pgen_doubles_sum])
+                        
+                        call hdf5_write(subsubgroup_id, dexcit_gen_singles, kinds, [1_int_64], &
+                                    [qs%excit_gen_data%p_single_double%excit_gen_singles])
+                        
+                        call hdf5_write(subsubgroup_id, dexcit_gen_doubles, kinds, [1_int_64], &
+                                    [qs%excit_gen_data%p_single_double%excit_gen_doubles])
+                        
+                        call hdf5_write(subsubgroup_id, dcounter, kinds, [1_int_64], &
+                                    [qs%excit_gen_data%p_single_double%counter])
+                        
+                    call h5gclose_f(subsubgroup_id, ierr)
+
                 call h5gclose_f(subgroup_id, ierr)
 
                 ! --- qmc/qs%ref group ---
@@ -536,7 +564,7 @@ module restart_hdf5
             ! HDF5 kinds
             type(hdf5_kinds_t) :: kinds
             ! HDF5 handles
-            integer(hid_t) :: file_id, group_id, subgroup_id
+            integer(hid_t) :: file_id, group_id, subgroup_id, subsubgroup_id
 
             character(255) :: restart_file
             integer :: calc_type_restart, nprocs_restart
@@ -545,13 +573,13 @@ module restart_hdf5
             logical :: exists, resort
             integer(int_64) :: restart_scale_factor(1)
             real(p) :: shift_damp(1)
+            real(p) :: pattempt_single_data_real_tmp(1)
+            logical :: pattempt_single_data_log_tmp(1)
 
             integer(HSIZE_T) :: dims(size(shape(qs%psip_list%states)))
             real(p) :: proj_energy_tmp_re(qs%psip_list%nspaces), proj_energy_tmp_im(qs%psip_list%nspaces)
             real(p) :: D0_population_tmp_re(qs%psip_list%nspaces), D0_population_tmp_im(qs%psip_list%nspaces)
             
-            real(p) :: pattempt_info_store(6) 
-
             ! Initialise HDF5 and open file.
             call h5open_f(ierr)
             call init_restart_hdf5(ri, .false., restart_file, kinds)
@@ -780,18 +808,41 @@ module restart_hdf5
                         call hdf5_read(subgroup_id, dshift_damping_status, qs%shift_damping_status)
                     end if
                     
-                    call h5lexists_f(subgroup_id, dpattempt_info, exists, ierr)
+                    call h5lexists_f(subgroup_id, dpattempt_single, exists, ierr)
                     if (exists) then
+                        call hdf5_read(subgroup_id, dpattempt_single, kinds, [1_int_64], pattempt_single_data_real_tmp)
+                        qs%excit_gen_data%pattempt_single = pattempt_single_data_real_tmp(1)
+                    
+                        ! --- qmc/state/pattempt_single_data group ---
+                        call h5gopen_f(subgroup_id, gpattempt_single_data, subsubgroup_id, ierr)
+                        
+                            call hdf5_read(subsubgroup_id, dvary_psingles, kinds, [1_int_64], &
+                                        pattempt_single_data_log_tmp)
+                                qs%excit_gen_data%p_single_double%vary_psingles = pattempt_single_data_log_tmp(1)
+
+                            call hdf5_read(subsubgroup_id, dh_pgen_singles_sum, kinds, [1_int_64], &
+                                        pattempt_single_data_real_tmp)
+                                qs%excit_gen_data%p_single_double%h_pgen_singles_sum = pattempt_single_data_real_tmp(1)
+                        
+                            call hdf5_read(subsubgroup_id, dh_pgen_doubles_sum, kinds, [1_int_64], &
+                                        pattempt_single_data_real_tmp)
+                                qs%excit_gen_data%p_single_double%h_pgen_doubles_sum = pattempt_single_data_real_tmp(1)
+                        
+                            call hdf5_read(subsubgroup_id, dexcit_gen_singles, kinds, [1_int_64], &
+                                        pattempt_single_data_real_tmp)
+                                qs%excit_gen_data%p_single_double%excit_gen_singles = pattempt_single_data_real_tmp(1)
+                        
+                            call hdf5_read(subsubgroup_id, dexcit_gen_doubles, kinds, [1_int_64], &
+                                        pattempt_single_data_real_tmp)
+                                qs%excit_gen_data%p_single_double%excit_gen_doubles = pattempt_single_data_real_tmp(1)
+                        
+                            call hdf5_read(subsubgroup_id, dcounter, kinds, [1_int_64], pattempt_single_data_real_tmp)
+                                qs%excit_gen_data%p_single_double%counter = pattempt_single_data_real_tmp(1)
+                        
+                        call h5gclose_f(subsubgroup_id, ierr)
+                        
                         qs%excit_gen_data%p_single_double%pattempt_restart_store = .true.
-                        call hdf5_read(subgroup_id, dpattempt_info, kinds, shape(pattempt_info_store, kind=int_64), &
-                            pattempt_info_store)
-                        qs%excit_gen_data%pattempt_single = pattempt_info_store(1)
                         qs%excit_gen_data%pattempt_double = 1.0_p - qs%excit_gen_data%pattempt_single
-                        qs%excit_gen_data%p_single_double%h_pgen_singles_sum = pattempt_info_store(2)
-                        qs%excit_gen_data%p_single_double%h_pgen_doubles_sum = pattempt_info_store(3)
-                        qs%excit_gen_data%p_single_double%excit_gen_singles = pattempt_info_store(4)
-                        qs%excit_gen_data%p_single_double%excit_gen_doubles = pattempt_info_store(5)
-                        qs%excit_gen_data%p_single_double%counter = pattempt_info_store(6)
                     end if
 
 
