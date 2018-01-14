@@ -51,6 +51,45 @@ type excit_gen_power_pitzer_t
     ! occ_list(:) is the list of occupied orbitals in the reference.
     ! Length of array: (sys%nel+1) - The +1 is a pad.
     integer(int_bas), allocatable :: occ_list(:)
+    ! Length of array: sys%nel
+    real(p), allocatable :: i_all_aliasU(:)
+    ! Length of array: sys%nel
+    integer(int_bas), allocatable :: i_all_aliasK(:)
+    ! Length of array: sys%nel
+    real(p), allocatable :: i_all_weights(:)
+    real(p) :: i_all_weights_tot
+    ! Length of array: sys%nel,sys%basis%nbasis
+    real(p), allocatable :: ij_all_aliasU(:,:)
+    ! Length of array: sys%nel,sys%basis%nbasis
+    integer(int_bas), allocatable :: ij_all_aliasK(:,:)
+    ! Length of array: sys%nel,sys%basis%nbasis
+    real(p), allocatable :: ij_all_weights(:,:)
+    ! Length of array: sys%basis%nbasis
+    real(p), allocatable :: ij_all_weights_tot(:)
+    ! Length of array: sys%basis%nbasis, sys%basis%nbasis
+    real(p), allocatable :: ia_all_aliasU(:,:)
+    ! Length of array: sys%basis%nbasis, sys%basis%nbasis
+    integer(int_bas), allocatable :: ia_all_aliasK(:,:)
+    ! Length of array: sys%basis%nbasis, sys%basis%nbasis
+    real(p), allocatable :: ia_all_weights(:,:)
+    ! Length of array: sys%basis%nbasis
+    real(p), allocatable :: ia_all_weights_tot(:)
+    ! Length of array: maxval(sys%read_in%pg_sym%nbasis_sym_spin), sys%sym0_tot:sys%sym_max_tot, sys%basis%nbasis
+    real(p), allocatable :: jb_all_aliasU(:,:,:)
+    ! Length of array: maxval(sys%read_in%pg_sym%nbasis_sym_spin), sys%sym0_tot:sys%sym_max_tot, sys%basis%nbasis
+    integer(int_bas), allocatable :: jb_all_aliasK(:,:,:)
+    ! Length of array: maxval(sys%read_in%pg_sym%nbasis_sym_spin), sys%sym0_tot:sys%sym_max_tot, sys%basis%nbasis
+    real(p), allocatable :: jb_all_weights(:,:,:)
+    ! Length of array: sys%sym0_tot:sys%sym_max_tot, sys%basis%nbasis
+    real(p), allocatable :: jb_all_weights_tot(:,:)
+    ! Length of array: sys%basis%nbasis 
+    integer(int_bas), allocatable :: all_list_alpha(:)
+    ! Length of array: sys%basis%nbasis
+    integer(int_bas), allocatable :: all_list_beta(:)
+    ! Number of alpha spinorbitals
+    integer(int_bas) :: n_all_alpha
+    ! Number of beta spinorbitals
+    integer(int_bas) :: n_all_beta
 
 end type excit_gen_power_pitzer_t
 
@@ -123,6 +162,23 @@ contains
         if (allocated(excit_gen_pp%virt_list_alpha)) deallocate(excit_gen_pp%virt_list_alpha)
         if (allocated(excit_gen_pp%virt_list_beta)) deallocate(excit_gen_pp%virt_list_beta)
         if (allocated(excit_gen_pp%occ_list)) deallocate(excit_gen_pp%occ_list)
+        if (allocated(excit_gen_pp%i_all_aliasU)) deallocate(excit_gen_pp%i_all_aliasU)
+        if (allocated(excit_gen_pp%i_all_aliasK)) deallocate(excit_gen_pp%i_all_aliasK)
+        if (allocated(excit_gen_pp%i_all_weights)) deallocate(excit_gen_pp%i_all_weights)
+        if (allocated(excit_gen_pp%ij_all_aliasU)) deallocate(excit_gen_pp%ij_all_aliasU)
+        if (allocated(excit_gen_pp%ij_all_aliasK)) deallocate(excit_gen_pp%ij_all_aliasK)
+        if (allocated(excit_gen_pp%ij_all_weights)) deallocate(excit_gen_pp%ij_all_weights)
+        if (allocated(excit_gen_pp%ij_all_weights_tot)) deallocate(excit_gen_pp%ij_all_weights_tot)
+        if (allocated(excit_gen_pp%ia_all_aliasU)) deallocate(excit_gen_pp%ia_all_aliasU)
+        if (allocated(excit_gen_pp%ia_all_aliasK)) deallocate(excit_gen_pp%ia_all_aliasK)
+        if (allocated(excit_gen_pp%ia_all_weights)) deallocate(excit_gen_pp%ia_all_weights)
+        if (allocated(excit_gen_pp%ia_all_weights_tot)) deallocate(excit_gen_pp%ia_all_weights_tot)
+        if (allocated(excit_gen_pp%jb_all_aliasU)) deallocate(excit_gen_pp%jb_all_aliasU)
+        if (allocated(excit_gen_pp%jb_all_aliasK)) deallocate(excit_gen_pp%jb_all_aliasK)
+        if (allocated(excit_gen_pp%jb_all_weights)) deallocate(excit_gen_pp%jb_all_weights)
+        if (allocated(excit_gen_pp%jb_all_weights_tot)) deallocate(excit_gen_pp%jb_all_weights_tot)
+        if (allocated(excit_gen_pp%all_list_alpha)) deallocate(excit_gen_pp%all_list_alpha)
+        if (allocated(excit_gen_pp%all_list_beta)) deallocate(excit_gen_pp%all_list_beta)
 
     end subroutine dealloc_excit_gen_power_pitzer_t
 

@@ -365,6 +365,15 @@ contains
 
     end subroutine create_weighted_excitation_list_mol
 
+    pure function abs_hmatel_mol(hmatel) result(abs_hmatel)
+        ! Return absolute value of hmatel. As we do not have a complex function here, hmatel is real.
+        use hamiltonian_data, only: hmatel_t
+        type(hmatel_t), intent(in) :: hmatel
+        real(p) :: abs_hmatel
+
+        abs_hmatel = abs(hmatel%r)
+    end function abs_hmatel_mol
+
     pure function hf_hamiltonian_energy_mol(sys, f) result(hf_energy)
 
         ! Work out expectation value of Hartree-Fock Hamiltonian between

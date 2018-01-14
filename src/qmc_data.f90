@@ -43,6 +43,8 @@ enum, bind(c)
     enumerator :: excit_gen_power_pitzer
     ! The version O(M) which chooses occ orbitals first.
     enumerator :: excit_gen_power_pitzer_occ
+    ! The version O(N) which precomputes more than excit_gen_power_pitzer.
+    enumerator :: excit_gen_power_pitzer_orderN
 end enum
 
 ! Types of semi-stochastic space.

@@ -202,6 +202,13 @@ abstract interface
         real(p), intent(out) :: weight_tot, weights(:)
     end subroutine i_create_weighted_excitation_list
 
+    pure function i_abs_hmatel(hmatel) result(abs_hmatel)
+        use hamiltonian_data, only: hmatel_t
+        import :: p
+        type(hmatel_t), intent(in) :: hmatel
+        real(p) :: abs_hmatel
+    end function i_abs_hmatel
+
     pure function i_get_one_e_int(sys, i, a) result(intgrl)
         use system, only: sys_t
         import :: p
@@ -251,6 +258,7 @@ procedure(i_slater_condon1_excit), pointer :: slater_condon1_excit_ptr
 procedure(i_slater_condon2_excit), pointer :: slater_condon2_excit_ptr
 
 procedure(i_create_weighted_excitation_list), pointer :: create_weighted_excitation_list_ptr
+procedure(i_abs_hmatel), pointer :: abs_hmatel_ptr
 
 procedure(i_get_one_e_int), pointer :: get_one_e_int_ptr => null()
 procedure(i_get_two_e_int), pointer :: get_two_e_int_ptr => null()

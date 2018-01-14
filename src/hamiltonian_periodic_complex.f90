@@ -10,7 +10,7 @@ implicit none
 private
 public :: get_hmatel_periodic_complex, slater_condon1_periodic_excit_complex
 public :: slater_condon2_periodic_excit_complex, slater_condon0_periodic_complex
-public :: create_weighted_excitation_list_periodic_complex
+public :: create_weighted_excitation_list_periodic_complex, abs_hmatel_periodic_complex
 contains
 
     pure function get_hmatel_periodic_complex(sys, f1, f2) result(hmatel)
@@ -407,5 +407,14 @@ contains
         end do
 
     end subroutine create_weighted_excitation_list_periodic_complex
+
+    pure function abs_hmatel_periodic_complex(hmatel) result(abs_hmatel)
+        ! Return absolute value of hmatel. As we have a complex function here, hmatel is complex.
+        use hamiltonian_data, only: hmatel_t
+        type(hmatel_t), intent(in) :: hmatel
+        real(p) :: abs_hmatel
+
+        abs_hmatel = abs(hmatel%c)
+    end function abs_hmatel_periodic_complex
 
 end module hamiltonian_periodic_complex

@@ -53,12 +53,12 @@ contains
         use restart_hdf5, only: read_restart_hdf5, restart_info_t, init_restart_info_t, get_reference_hdf5
 
         use qmc_data, only: qmc_in_t, fciqmc_in_t, restart_in_t, load_bal_in_t, annihilation_flags_t, qmc_state_t, &
-                            neel_singlet, excit_gen_power_pitzer
+                            neel_singlet, excit_gen_power_pitzer, excit_gen_power_pitzer_orderN
         use reference_determinant, only: reference_t
         use dmqmc_data, only: dmqmc_in_t
         use excit_gens, only: dealloc_excit_gen_data_t
         use const, only: p
-        use excit_gen_power_pitzer_mol, only: init_excit_mol_power_pitzer_occ_ref
+        use excit_gen_power_pitzer_mol, only: init_excit_mol_power_pitzer_occ_ref, init_excit_mol_power_pitzer_orderN
         use excit_gen_ueg, only: init_excit_ueg_power_pitzer
 
 
@@ -189,6 +189,10 @@ contains
                call init_excit_ueg_power_pitzer(sys, qmc_state%ref, qmc_state%excit_gen_data%excit_gen_pp)
             end if
         end if
+
+        if (qmc_in%excit_gen==excit_gen_power_pitzer_orderN) then
+           call init_excit_mol_power_pitzer_orderN(sys, qmc_state%ref, qmc_state%excit_gen_data%excit_gen_pp)
+        end if
     end subroutine init_qmc
 
     subroutine init_proc_pointers(sys, qmc_in, reference, io_unit, dmqmc_in, fciqmc_in)
@@ -212,7 +216,7 @@ contains
         use parallel, only: parent
         use qmc_data, only: qmc_in_t, fciqmc_in_t, single_basis, neel_singlet, neel_singlet_guiding, &
                             excit_gen_renorm, excit_gen_no_renorm, excit_gen_power_pitzer_occ, &
-                            excit_gen_power_pitzer
+                            excit_gen_power_pitzer, excit_gen_power_pitzer_orderN
         use dmqmc_data, only: dmqmc_in_t, free_electron_dm
         use reference_determinant, only: reference_t
 
@@ -225,7 +229,7 @@ contains
         use energy_evaluation
         use excit_gen_mol
         use excit_gen_power_pitzer_mol, only: gen_excit_mol_power_pitzer_occ
-        use excit_gen_power_pitzer_mol, only: gen_excit_mol_power_pitzer_occ_ref
+        use excit_gen_power_pitzer_mol, only: gen_excit_mol_power_pitzer_occ_ref, gen_excit_mol_power_pitzer_orderN
         use excit_gen_ueg, only:  gen_excit_ueg_power_pitzer
         use excit_gen_op_mol
         use excit_gen_hub_k
@@ -239,10 +243,10 @@ contains
         use hamiltonian_heisenberg, only: diagonal_element_heisenberg, diagonal_element_heisenberg_staggered
         use hamiltonian_molecular, only: slater_condon0_mol, double_counting_correction_mol, hf_hamiltonian_energy_mol, &
                                          slater_condon1_mol_excit, slater_condon2_mol_excit, get_one_e_int_mol, get_two_e_int_mol, & 
-                                         create_weighted_excitation_list_mol
+                                         create_weighted_excitation_list_mol, abs_hmatel_mol
         use hamiltonian_periodic_complex, only: slater_condon0_periodic_complex, slater_condon1_periodic_excit_complex, &
                                                 slater_condon2_periodic_excit_complex, &
-                                                create_weighted_excitation_list_periodic_complex
+                                                create_weighted_excitation_list_periodic_complex, abs_hmatel_periodic_complex
         use hamiltonian_ringium, only: slater_condon0_ringium
         use hamiltonian_ueg, only: slater_condon0_ueg, kinetic_energy_ueg, exchange_energy_ueg, potential_energy_ueg
         use heisenberg_estimators
@@ -366,6 +370,7 @@ contains
                 slater_condon1_excit_ptr => slater_condon1_periodic_excit_complex
                 slater_condon2_excit_ptr => slater_condon2_periodic_excit_complex
                 create_weighted_excitation_list_ptr => create_weighted_excitation_list_periodic_complex
+                abs_hmatel_ptr => abs_hmatel_periodic_complex
             else
                 update_proj_energy_ptr => update_proj_energy_mol
                 sc0_ptr => slater_condon0_mol
@@ -373,6 +378,7 @@ contains
                 slater_condon1_excit_ptr => slater_condon1_mol_excit
                 slater_condon2_excit_ptr => slater_condon2_mol_excit
                 create_weighted_excitation_list_ptr => create_weighted_excitation_list_mol
+                abs_hmatel_ptr => abs_hmatel_mol
             end if
 
             select case(qmc_in%excit_gen)
@@ -387,6 +393,10 @@ contains
                 decoder_ptr => decode_det_spinocc_spinunocc
             case(excit_gen_power_pitzer)
                 gen_excit_ptr%full => gen_excit_mol_power_pitzer_occ_ref
+                decoder_ptr => decode_det_occ
+            case(excit_gen_power_pitzer_orderN)
+                ! [todo] - check this decoder is correct.
+                gen_excit_ptr%full => gen_excit_mol_power_pitzer_orderN
                 decoder_ptr => decode_det_occ
             case default
                 call stop_all('init_proc_pointers', 'Selected excitation generator not implemented.')
