@@ -492,12 +492,19 @@ fdo:    do i=1, nel ! this will index in ref
             if (j > nel) exit fdo
         end do fdo 
 
-!deal with whatever's left over in ref
+!deal with whatever's left over in ref.  i is currently the last orbital we dealt with
         do while (i<nel)
-            ref_store(ref_sind) = i
             i = i + 1
             ref_sind = ref_sind + 1
+            ref_store(ref_sind) = i
         end do
+!deal with whatever's left in det. j is the NEXT orbital to  deal with
+        do while (j<=nel)
+            det_sind = det_sind + 1
+            det_store(det_sind) = j
+            j = j + 1
+        end do
+
         nexcit = ref_sind
     end subroutine get_excitation_locations
 end module excitations

@@ -42,6 +42,8 @@ enum, bind(c)
     enumerator :: excit_gen_cauchy_schwarz_virt
     ! The version O(M) which chooses occ orbitals first.
     enumerator :: excit_gen_cauchy_schwarz_occ
+    ! The version O(N) which chooses occ orbitals first, and excites with probabilities akin to that of the reference.
+    enumerator :: excit_gen_cauchy_schwarz_occ_ref
 end enum
 
 ! Types of semi-stochastic space.

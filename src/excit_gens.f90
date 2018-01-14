@@ -2,7 +2,23 @@ module excit_gens
 use const
 implicit none
 
-! Type containing data for excitation generators
+!Data for the Cauchy_Schwarz excit gen
+
+!The integer types have been chosen to be int_32
+integer(int_32), parameter :: int_bas = int_32
+
+type excit_gen_cauchy_schwarz_t
+    real(p), allocatable :: aliasP(:,:) !(max(sys%nvirt_alpha,sys%nvirt_beta),sys%nel)
+    integer(int_bas), allocatable :: aliasY(:,:) !(max(sys%nvirt_alpha,sys%nvirt_beta),sys%nel)
+    real(p), allocatable :: ia_weights(:,:) !(max(sys%nvirt_alpha,sys%nvirt_beta),sys%nel)
+    real(p), allocatable :: ia_weights_tot(:) !(sys%nel)
+    integer(int_bas), allocatable :: virt_list_a(:) !(sys%nvirt_alpha)
+    integer(int_bas), allocatable :: virt_list_b(:) !(sys%nvirt_beta)
+    integer(int_bas), allocatable :: occ_list(:) !(sys%nel+1)  !The +1 is a pad
+end type excit_gen_cauchy_schwarz_t
+
+
+!Type containing data for excitation generators
 type excit_gen_data_t
     ! Excitation generator to use, duplicated from qmc_in.
     integer :: excit_gen
@@ -27,6 +43,8 @@ type excit_gen_data_t
     ! the energy cutoff.  Memory can be saved by not using a cubic array for
     ! k_i+k_j...
     integer(i0), allocatable :: ueg_ternary_conserve(:,:,:,:)
+
+    type(excit_gen_cauchy_schwarz_t) :: excit_gen_cs
 end type excit_gen_data_t
 
 contains

@@ -2,17 +2,10 @@ module excit_gen_cauchy_schwarz
 
 use const, only: i0, p
 
-implicit none
+!Data structures in here
+use excit_gens 
 
-type excit_gen_cauchy_schwarz_t
-    real(p), allocatable :: aliasP(:,:) !(max(sys%nvirt_alpha,sys%nvirt_beta),sys%nel)
-    integer, allocatable :: aliasY(:,:) !(max(sys%nvirt_alpha,sys%nvirt_beta),sys%nel)
-    real(p), allocatable :: ia_weights(:,:) !(max(sys%nvirt_alpha,sys%nvirt_beta),sys%nel)
-    real(p), allocatable :: ia_weights_tot(:) !(sys%nel)
-    integer, allocatable :: virt_list_a(:) !(sys%nvirt_alpha)
-    integer, allocatable :: virt_list_b(:) !(sys%nvirt_beta)
-    integer, allocatable :: occ_list(:) !(nel)
-end type excit_gen_cauchy_schwarz_t
+implicit none
 
 
 contains
@@ -195,9 +188,10 @@ contains
         enddo 
     end subroutine generate_alias_tables        
 
-    subroutine init_excit_mol_cauchy_schwarz_occ_o1(sys, ref, cs)
+    subroutine init_excit_mol_cauchy_schwarz_occ_ref(sys, ref, cs)
         use system, only: sys_t
         use qmc_data, only: reference_t
+        use sort, only: qsort
         type(sys_t), intent(in) :: sys
         type(reference_t), intent(in) :: ref
         type(excit_gen_cauchy_schwarz_t), intent(inout) :: cs
@@ -213,31 +207,37 @@ contains
         allocate(cs%aliasY(maxv,sys%nel))
         allocate(cs%ia_weights(maxv,sys%nel))
         allocate(cs%ia_weights_tot(sys%nel))
-        allocate(cs%occ_list(sys%nel))
+        allocate(cs%occ_list(sys%nel+1))  !The +1 is a pad
         allocate(cs%virt_list_a(sys%nvirt_alpha))
         allocate(cs%virt_list_b(sys%nvirt_beta))
 
-        cs%occ_list(:)=ref%occ_list0(:)
+        cs%occ_list(:sys%nel)=ref%occ_list0(:sys%nel)
+        cs%occ_list(sys%nel+1)=sys%basis%nbasis*2  ! A pad 
+!Now sort this
+        call qsort(cs%occ_list,sys%nel)
+
 !make the unocc list  
         j = 1     !the next occ to look at
         ind_a = 0 !the present position in the virt_list we're making
         ind_b = 0 !the present position in the virt_list we're making
+
+        
         do i=1, sys%basis%nbasis
-            if (i==ref%occ_list0(j)) then !our basis fn is in the ref
+            if (i==cs%occ_list(j)) then !our basis fn is in the ref
                 j = j + 1
             else !need to store it as a virt
-                if (sys%basis%basis_fns(j)%Ms == -1) then !beta
+                if (sys%basis%basis_fns(i)%Ms == -1) then !beta
                     ind_b = ind_b + 1
-                    cs%virt_list_b(ind_b) = j
+                    cs%virt_list_b(ind_b) = i
                 else
                     ind_a = ind_a + 1
-                    cs%virt_list_a(ind_a) = j
+                    cs%virt_list_a(ind_a) = i
                 endif
             endif
         enddo
 
         do i=1, sys%nel
-            j = ref%occ_list0(i)  !The elec we're looking at
+            j = cs%occ_list(i)  !The elec we're looking at
             if (sys%basis%basis_fns(j)%Ms == -1) then !beta
                 nv = sys%nvirt_beta
                 call create_weighted_excitation_list(sys, j, cs%virt_list_b, nv, cs%ia_weights(:,i), cs%ia_weights_tot(i))
@@ -247,21 +247,21 @@ contains
             endif
             call generate_alias_tables(nv, cs%ia_weights(:,i), cs%ia_weights_tot(i), cs%aliasP(:,i), cs%aliasY(:,i))        
         enddo
-    end subroutine init_excit_mol_cauchy_schwarz_occ_o1
-    subroutine gen_excit_mol_cauchy_schwarz_occ_o1(rng, sys, cs, pattempt_single, cdet, pgen, connection, hmatel, allowed_excitation)
+    end subroutine init_excit_mol_cauchy_schwarz_occ_ref
+    subroutine gen_excit_mol_cauchy_schwarz_occ_ref(rng, sys, excit_gen_data, cdet, pgen, connection, hmatel, allowed_excitation)
 
         ! Create a random excitation from cdet and calculate both the probability
         ! of selecting that excitation and the Hamiltonian matrix element.
         ! Weight the double excitations according the the Cauchy-Schwarz bound
         ! <ij|ab> <= Sqrt(<ia|ai><jb|bj>)
-        ! This is an O(1) version which pretends the determinant excited from is the reference,
+        ! This is an O(N) version which pretends the determinant excited from is the reference,
         ! then modifies the selected orbitals to be those of the determinant given.
         ! Each occupied and virtual not present in the det we're actually given will be
         ! mapped to the one of the equivalent free numerical index in the reference.
 
         ! In:
         !    sys: system object being studied.
-        !    pattempt_single: Probability to attempt a single excitation.
+        !    excit_gen_data: Excitation generation data.
         !    cdet: info on the current determinant (cdet) that we will gen
         !        from.
         !    parent_sign: sign of the population on the parent determinant (i.e.
@@ -284,21 +284,17 @@ contains
         use excit_gen_mol, only: calc_pgen_single_mol_no_renorm,find_ia_mol
 
 
-! This introduces a circular dependency, so I've just copied the function for now
-!        use excit_gen_mol, only: calc_pgen_single_mol_no_renorm
-
         use dSFMT_interface, only: dSFMT_t, get_rand_close_open
 
         type(sys_t), intent(in) :: sys
-        type(excit_gen_cauchy_schwarz_t), intent(in) :: cs
-        real(p), intent(in) :: pattempt_single
+        type(excit_gen_data_t), intent(in) :: excit_gen_data
         type(det_info_t), intent(in) :: cdet
         type(dSFMT_t), intent(inout) :: rng
         real(p), intent(out) :: pgen, hmatel
         type(excit_t), intent(out) :: connection
         logical, intent(out) :: allowed_excitation
 
-        integer ::  ij_spin, ij_sym
+        integer ::  ij_spin
 
       
         integer :: a, b, i, j, a_ind, b_ind, i_ind, j_ind
@@ -311,7 +307,7 @@ contains
 
 
         ! 1. Select single or double.
-        if (get_rand_close_open(rng) < pattempt_single) then
+        if (get_rand_close_open(rng) < excit_gen_data%pattempt_single) then
 
 
             ! 2a. Select orbital to excite from and orbital to excite into.
@@ -321,7 +317,7 @@ contains
 
             if (allowed_excitation) then
                 ! 3a. Probability of generating this excitation.
-                pgen = pattempt_single*calc_pgen_single_mol_no_renorm(sys, connection%to_orb(1))
+                pgen = excit_gen_data%pattempt_single*calc_pgen_single_mol_no_renorm(sys, connection%to_orb(1))
 
                 ! 4a. Parity of permutation required to line up determinants.
                 call find_excitation_permutation1(sys%basis%excit_mask, cdet%f, connection)
@@ -336,136 +332,161 @@ contains
 
 
         else !we have a double
+            associate( cs => excit_gen_data%excit_gen_cs )
 
-            ! 2b. Select orbitals to excite from
-            
-            call choose_ij_ind(rng, sys, cdet%occ_list, i_ind, j_ind, ij_spin)
-            i = cdet%occ_list(i_ind)
-            j = cdet%occ_list(j_ind)
+                ! 2b. Select orbitals to excite from
+                
+                call choose_ij_ind(rng, sys, cs%occ_list, i_ind, j_ind, ij_spin)
 
+!At this point we pretend we're the reference, and fix up mapping ref's orbitals to cdet's orbitals later
+                i = cs%occ_list(i_ind)
+                j = cs%occ_list(j_ind)
 
-            !now we've chosen i and j. 
- 
-            ! We now need to select the orbitals to excite into which we do with weighting:
-            ! p(ab|ij) = p(a|i) p(b|j) + p(a|j) p(b|i)
-            
-            ! We actually choose a|i then b|j, but since we could have also generated the excitation b from i and a from j, we need to include that prob too.
+                !now we've chosen i and j. 
+     
+                ! We now need to select the orbitals to excite into which we do with weighting:
+                ! p(ab|ij) = p(a|i) p(b|j) + p(a|j) p(b|i)
+                
+                ! We actually choose a|i then b|j, but since we could have also generated the excitation b from i and a from j, we need to include that prob too.
 
-            ! Given i, construct the weights of all possible a
-            if (sys%basis%basis_fns(i)%Ms < 0) then
-                a_ind = select_weighted_value_prec(rng, sys%nvirt_beta, cs%aliasP(:,i_ind), cs%aliasY(:,i_ind))
-                ! Use the alias method to select i with the appropriate probability
-                a = cs%virt_list_b(a_ind) 
-            else
-                a_ind = select_weighted_value_prec(rng, sys%nvirt_alpha, cs%aliasP(:,i_ind), cs%aliasY(:,i_ind))
-                ! Use the alias method to select i with the appropriate probability
-                a = cs%virt_list_b(a_ind) 
-            endif 
-            ! Given j construct the weights of all possible b
-            if (sys%basis%basis_fns(j)%Ms < 0) then
-                b_ind = select_weighted_value_prec(rng, sys%nvirt_beta, cs%aliasP(:,j_ind), cs%aliasY(:,j_ind))
-                ! Use the alias method to select i with the appropriate probability
-                b = cs%virt_list_b(b_ind) 
-            else
-                b_ind = select_weighted_value_prec(rng, sys%nvirt_alpha, cs%aliasP(:,j_ind), cs%aliasY(:,j_ind))
-                ! Use the alias method to select i with the appropriate probability
-                b = cs%virt_list_b(b_ind) 
-            endif 
+                ! Given i, construct the weights of all possible a
+                if (sys%basis%basis_fns(i)%Ms < 0) then
+                    a_ind = select_weighted_value_prec(rng, sys%nvirt_beta, cs%aliasP(:,i_ind), cs%aliasY(:,i_ind))
+                    ! Use the alias method to select i with the appropriate probability
+                    a = cs%virt_list_b(a_ind) 
+                else
+                    a_ind = select_weighted_value_prec(rng, sys%nvirt_alpha, cs%aliasP(:,i_ind), cs%aliasY(:,i_ind))
+                    ! Use the alias method to select i with the appropriate probability
+                    a = cs%virt_list_a(a_ind) 
+                endif 
+                ! Given j construct the weights of all possible b
+                if (sys%basis%basis_fns(j)%Ms < 0) then
+                    b_ind = select_weighted_value_prec(rng, sys%nvirt_beta, cs%aliasP(:,j_ind), cs%aliasY(:,j_ind))
+                    ! Use the alias method to select i with the appropriate probability
+                    b = cs%virt_list_b(b_ind) 
+                else
+                    b_ind = select_weighted_value_prec(rng, sys%nvirt_alpha, cs%aliasP(:,j_ind), cs%aliasY(:,j_ind))
+                    ! Use the alias method to select i with the appropriate probability
+                    b = cs%virt_list_a(b_ind) 
+                endif 
+!                write(6,*) "AI, BI", a_ind,b_ind
+!                write(6,*) "WIA",cs%ia_weights(:,i_ind)
+!                write(6,*) "WJB",cs%ia_weights(:,j_ind)
 
-            ! 3b. Probability of generating this excitation.
+                ! 3b. Probability of generating this excitation.
 
-            ! Calculate p(ab|ij) = p(a|i) p(j|b) + p(b|i)p(a|j)
-          
-            if (ij_spin==0) then 
-                !not possible to have chosen the reversed excitation
-                pgen=cs%ia_weights(a_ind,i_ind) / cs%ia_weights_tot(i_ind) &
-                        * cs%ia_weights(b_ind,j_ind) / cs%ia_weights_tot(j_ind)
-            else !i and j have same spin, so could have been selected in the other order.
-                pgen= (   cs%ia_weights(a_ind, i_ind) * cs%ia_weights(b_ind, j_ind) &
-                        + cs%ia_weights(b_ind, j_ind) * cs%ia_weights(a_ind, i_ind) ) &
-                     /   (cs%ia_weights_tot(i_ind)*cs%ia_weights_tot(j_ind))
-            endif
-            pgen = (1.0_p - pattempt_single) * pgen *2.0_p/(sys%nel*(sys%nel-1)) ! pgen(ab)
-            connection%nexcit = 2
-            allowed_excitation = (a/=b)
-
-            if (allowed_excitation) then
-!Now do the translation.  We need a list of the substitutions in cdet vs the ref.
-! i.e. for each orbital in the ref-lined-up cdet which is not in ref, we need the
-! location.
-!  This is currently done with an O(N) step, but might be sped up at least.
-
-                call get_excitation_locations(cs%occ_list, cdet%occ_list, ref_store, cdet_store, sys%nel, nex)
-! These orbitals might not be aligned in the most efficient way:
-!  They may not match in spin, so first deal with this
-
-                do ii=1, nex
-                    if (sys%basis%basis_fns(ref_store(ii))%Ms/=sys%basis%basis_fns(cdet_store(ii))%Ms) then
-                        jj = ii + 1
-                        do while (sys%basis%basis_fns(ref_store(ii))%Ms/=sys%basis%basis_fns(cdet_store(jj))%Ms)
-                            jj = jj + 1
-                        enddo
-                        !j now points to an orb of the same spin as i, so swap
-                        t = cdet_store(ii)
-                        cdet_store(ii) = cdet_store(jj)
-                        cdet_store(jj) = t 
-                    endif
-                enddo
-                     
-! At this point we may want to align the orbitals even further to avoid strange cases where selection 
-! probabilities are zero, but let's leave that for another day.
-
-! Now see if i and j are in ref_store or a and b are in cdet_store and map appropriately
-
-                connection%from_orb(1)=i
-                connection%from_orb(2)=j
-                connection%to_orb(1)=a
-                connection%to_orb(2)=b 
-                do ii=1, nex
-                    if (ref_store(ii)==i_ind) then
-                        connection%from_orb(1) = cdet%occ_list(cdet_store(ii))
-                    else if (ref_store(ii)==j_ind) then
-                        connection%from_orb(2) = cdet%occ_list(cdet_store(ii))
-                    endif
-                    if (cdet%occ_list(cdet_store(ii))==a) then
-                        connection%to_orb(1) = cs%occ_list(ref_store(ii))
-                    else if (cdet%occ_list(cdet_store(ii))==b) then
-                        connection%to_orb(2) = cs%occ_list(ref_store(ii))
-                    endif
-                enddo
-!Now order the excitation
-                if( connection%to_orb(1) > connection%to_orb(2) ) then
-                    t = connection%to_orb(1)
-                    connection%to_orb(1) = connection%to_orb(2)
-                    connection%to_orb(2) = t
+                ! Calculate p(ab|ij) = p(a|i) p(j|b) + p(b|i)p(a|j)
+!                write(6,*) "WT", cs%ia_weights_tot(i_ind),cs%ia_weights_tot(j_ind), ij_spin
+                if (ij_spin==0) then 
+                    !not possible to have chosen the reversed excitation
+                    pgen=cs%ia_weights(a_ind,i_ind) / cs%ia_weights_tot(i_ind) &
+                            * cs%ia_weights(b_ind,j_ind) / cs%ia_weights_tot(j_ind)
+                else !i and j have same spin, so could have been selected in the other order.
+!                    write(6,*) cs%ia_weights(a_ind, i_ind) , cs%ia_weights(b_ind, j_ind), &
+!                             cs%ia_weights(b_ind, i_ind) , cs%ia_weights(a_ind, j_ind) , &
+!                             cs%ia_weights_tot(i_ind),cs%ia_weights_tot(j_ind)
+                    pgen= (   cs%ia_weights(a_ind, i_ind) * cs%ia_weights(b_ind, j_ind) &
+                            + cs%ia_weights(b_ind, i_ind) * cs%ia_weights(a_ind, j_ind) ) &
+                         /   (cs%ia_weights_tot(i_ind)*cs%ia_weights_tot(j_ind))
                 endif
-                if( connection%from_orb(1) > connection%from_orb(2) ) then
-                    t = connection%from_orb(1)
-                    connection%from_orb(1) = connection%from_orb(2)
-                    connection%from_orb(2) = t
-                endif
+                pgen = excit_gen_data%pattempt_double * pgen *2.0_p/(sys%nel*(sys%nel-1)) ! pgen(ab)
+                connection%nexcit = 2
+                allowed_excitation = (a/=b)
+
+                if (allowed_excitation) then
+    !Now do the translation.  We need a list of the substitutions in cdet vs the ref.
+    ! i.e. for each orbital in the ref-lined-up cdet which is not in ref, we need the
+    ! location.
+    !  This is currently done with an O(N) step, but might be sped up at least.
+
+                    call get_excitation_locations(cs%occ_list, cdet%occ_list, ref_store, cdet_store, sys%nel, nex)
+!                    write(6,*) "ref",cs%occ_list
+!                    write(6,*) "det",cdet%occ_list
+!                    write(6,*) "ref_store",ref_store(:nex)
+!                    write(6,*) "det_store",cdet_store(:nex)
+    ! These orbitals might not be aligned in the most efficient way:
+    !  They may not match in spin, so first deal with this
+
+                    ! ref store (e.g.) contains the indices within cs%occ_list of the orbitals
+                    ! which have been excited from.
+                    do ii=1, nex
+                        if (    sys%basis%basis_fns(cs%occ_list(ref_store(ii)))%Ms &
+                            /=  sys%basis%basis_fns(cdet%occ_list(cdet_store(ii)))%Ms) then
+                            jj = ii + 1
+                            do while (sys%basis%basis_fns(cs%occ_list(ref_store(ii)))%Ms &
+                                    /=sys%basis%basis_fns(cdet%occ_list(cdet_store(jj)))%Ms)
+                                jj = jj + 1
+                            enddo
+                            !det's jj now points to an orb of the same spin as ref's ii,
+                            ! so swap cdet_store's ii and jj.
+                            t = cdet_store(ii)
+                            cdet_store(ii) = cdet_store(jj)
+                            cdet_store(jj) = t 
+                        endif
+                    enddo
+                    if (nex>0) then
+!                        write(6,*) "ref_storeI",ref_store(:nex)
+!                        write(6,*) "det_storeI",cdet_store(:nex)
+!                        write(6,*) "ref_store ",(cs%occ_list(ref_store(ii)),ii=1,nex)
+!                        write(6,*) "det_store ",(cdet%occ_list(cdet_store(ii)),ii=1,nex)
+                    endif
+    ! At this point we may want to align the orbitals even further to avoid strange cases where selection 
+    ! probabilities are zero, but let's leave that for another day.
+
+    ! Now see if i and j are in ref_store or a and b are in cdet_store and map appropriately
+
+                    connection%from_orb(1)=i
+                    connection%from_orb(2)=j
+                    connection%to_orb(1)=a
+                    connection%to_orb(2)=b 
+! ref store (e.g.) contains the indices within cs%occ_list of the orbitals which are excited out of ref into cdet
+! det store (e.g.) contains the indices within cdet%occ_list of the orbitals which are in cdet (excited out of ref).
+! i_ind and j_ind are the indices of the orbitals in cs%occ_list which we're exciting from.
+                    do ii=1, nex
+                        if (ref_store(ii)==i_ind) then  !from_orb(1) isn't actually in cdet, so we replace it with the orb that is
+                            connection%from_orb(1) = cdet%occ_list(cdet_store(ii))
+                        else if (ref_store(ii)==j_ind) then !from_orb(2) isn't actually in cdet, so we replace it with the orb that is
+                            connection%from_orb(2) = cdet%occ_list(cdet_store(ii))
+                        endif
+                        if (cdet%occ_list(cdet_store(ii))==a) then
+                            connection%to_orb(1) = cs%occ_list(ref_store(ii))
+                        else if (cdet%occ_list(cdet_store(ii))==b) then
+                            connection%to_orb(2) = cs%occ_list(ref_store(ii))
+                        endif
+                    enddo
+    !Now order the excitation
+                    if( connection%to_orb(1) > connection%to_orb(2) ) then
+                        t = connection%to_orb(1)
+                        connection%to_orb(1) = connection%to_orb(2)
+                        connection%to_orb(2) = t
+                    endif
+                    if( connection%from_orb(1) > connection%from_orb(2) ) then
+                        t = connection%from_orb(1)
+                        connection%from_orb(1) = connection%from_orb(2)
+                        connection%from_orb(2) = t
+                    endif
 
 
-!            write(6,*) "EXC",cdet%f,connection%from_orb, connection%to_orb,pgen
+!                    write(6,"(A,5I,F18.12)") "EXC",cdet%f,connection%from_orb, connection%to_orb,pgen
 
-                ! 4b. Parity of permutation required to line up determinants.
-                ! NOTE: connection%from_orb and connection%to_orb *must* be ordered.
-                call find_excitation_permutation2(sys%basis%excit_mask, cdet%f, connection)
+                    ! 4b. Parity of permutation required to line up determinants.
+                    ! NOTE: connection%from_orb and connection%to_orb *must* be ordered.
+                    call find_excitation_permutation2(sys%basis%excit_mask, cdet%f, connection)
 
-                ! 5b. Find the connecting matrix element.
-                hmatel = slater_condon2_mol(sys, connection%from_orb(1), connection%from_orb(2), &
-                                                  connection%to_orb(1), connection%to_orb(2), connection%perm)
-            else
-                ! Carelessly selected ij with no possible excitations.  Such
-                ! events are not worth the cost of renormalising the generation
-                ! probabilities.
-                ! Return a null excitation.
-                hmatel = 0.0_p
-                pgen = 1.0_p
-            end if
-
+                    ! 5b. Find the connecting matrix element.
+                    hmatel = slater_condon2_mol(sys, connection%from_orb(1), connection%from_orb(2), &
+                                                      connection%to_orb(1), connection%to_orb(2), connection%perm)
+                else
+                    ! Carelessly selected ij with no possible excitations.  Such
+                    ! events are not worth the cost of renormalising the generation
+                    ! probabilities.
+                    ! Return a null excitation.
+                    hmatel = 0.0_p
+                    pgen = 1.0_p
+                end if
+            end associate
         end if
-    end subroutine gen_excit_mol_cauchy_schwarz_occ_o1
+    end subroutine gen_excit_mol_cauchy_schwarz_occ_ref
 
     subroutine choose_ij_ind(rng, sys, occ_list, i_ind, j_ind, ij_spin)
 
@@ -521,7 +542,7 @@ contains
         ij_spin = sys%basis%basis_fns(i)%Ms + sys%basis%basis_fns(j)%Ms
 
     end subroutine choose_ij_ind
-    subroutine gen_excit_mol_cauchy_schwarz_occ(rng, sys, pattempt_single, cdet, pgen, connection, hmatel, allowed_excitation)
+    subroutine gen_excit_mol_cauchy_schwarz_occ(rng, sys, excit_gen_data, cdet, pgen, connection, hmatel, allowed_excitation)
 
         ! Create a random excitation from cdet and calculate both the probability
         ! of selecting that excitation and the Hamiltonian matrix element.
@@ -530,7 +551,7 @@ contains
 
         ! In:
         !    sys: system object being studied.
-        !    pattempt_single: Probability to attempt a single excitation.
+        !    excit_gen_data: Excitation generation data.
         !    cdet: info on the current determinant (cdet) that we will gen
         !        from.
         !    parent_sign: sign of the population on the parent determinant (i.e.
@@ -555,7 +576,7 @@ contains
         use dSFMT_interface, only: dSFMT_t, get_rand_close_open
 
         type(sys_t), intent(in) :: sys
-        real(p), intent(in) :: pattempt_single
+        type(excit_gen_data_t), intent(in) :: excit_gen_data
         type(det_info_t), intent(in) :: cdet
         type(dSFMT_t), intent(inout) :: rng
         real(p), intent(out) :: pgen, hmatel
@@ -573,7 +594,7 @@ contains
 
 
         ! 1. Select single or double.
-        if (get_rand_close_open(rng) < pattempt_single) then
+        if (get_rand_close_open(rng) < excit_gen_data%pattempt_single) then
 
 
             ! 2a. Select orbital to excite from and orbital to excite into.
@@ -583,7 +604,7 @@ contains
 
             if (allowed_excitation) then
                 ! 3a. Probability of generating this excitation.
-                pgen = pattempt_single*calc_pgen_single_mol_no_renorm(sys, connection%to_orb(1))
+                pgen = excit_gen_data%pattempt_single*calc_pgen_single_mol_no_renorm(sys, connection%to_orb(1))
 
                 ! 4a. Parity of permutation required to line up determinants.
                 call find_excitation_permutation1(sys%basis%excit_mask, cdet%f, connection)
@@ -602,6 +623,7 @@ contains
             ! 2b. Select orbitals to excite from
             
             call choose_ij_mol(rng, sys, cdet%occ_list, i, j, ij_sym, ij_spin)
+!            write(6,*) "IJ:", i, j
 
             !now we've chosen i and j. 
  
@@ -635,18 +657,23 @@ contains
                 b = cdet%unocc_list_alpha(b_ind) 
             endif 
 
+!            write(6,*) "WIA",ia_weights
+!            write(6,*) "WJB",jb_weights
             ! 3b. Probability of generating this excitation.
 
             ! Calculate p(ab|ij) = p(a|i) p(j|b) + p(b|i)p(a|j)
           
+!            write(6,*) "WT", ia_weights_tot,jb_weights_tot, ij_spin
             if (ij_spin==0) then 
                 !not possible to have chosen the reversed excitation
                 pgen=ia_weights(a_ind)/ia_weights_tot*jb_weights(b_ind)/jb_weights_tot
             else !i and j have same spin, so could have been selected in the other order.
+!                write(6,*) ia_weights(a_ind),jb_weights(b_ind),ia_weights(b_ind),jb_weights(a_ind), &
+!                           ia_weights_tot,jb_weights_tot
                 pgen=       (ia_weights(a_ind)*jb_weights(b_ind) + ia_weights(b_ind)*jb_weights(a_ind) ) &
                         /   (ia_weights_tot*jb_weights_tot)
             endif
-            pgen = (1.0_p - pattempt_single) * pgen *2.0_p/(sys%nel*(sys%nel-1)) ! pgen(ab)
+            pgen = excit_gen_data%pattempt_double * pgen *2.0_p/(sys%nel*(sys%nel-1)) ! pgen(ab)
             connection%nexcit = 2
 
             allowed_excitation = (a/=b)
@@ -665,8 +692,8 @@ contains
                 connection%to_orb(2)=a
                 connection%to_orb(1)=b 
             endif
-!            write(6,*) "EXC",cdet%f,connection%from_orb, connection%to_orb,pgen
             if (allowed_excitation) then
+!                write(6,"(A,5I,F18.12)") "EXC",cdet%f,connection%from_orb, connection%to_orb,pgen
 
                 ! 4b. Parity of permutation required to line up determinants.
                 ! NOTE: connection%from_orb and connection%to_orb *must* be ordered.
@@ -687,7 +714,7 @@ contains
         end if
     end subroutine gen_excit_mol_cauchy_schwarz_occ
 
-    subroutine gen_excit_mol_cauchy_schwarz_virt(rng, sys, pattempt_single, cdet, pgen, connection, hmatel, allowed_excitation)
+    subroutine gen_excit_mol_cauchy_schwarz_virt(rng, sys, excit_gen_data, cdet, pgen, connection, hmatel, allowed_excitation)
 
         ! Create a random excitation from cdet and calculate both the probability
         ! of selecting that excitation and the Hamiltonian matrix element.
@@ -696,7 +723,7 @@ contains
 
         ! In:
         !    sys: system object being studied.
-        !    pattempt_single: Probability to attempt a single excitation.
+        !    excit_gen_data: Excitation generation data.
         !    cdet: info on the current determinant (cdet) that we will gen
         !        from.
         !    parent_sign: sign of the population on the parent determinant (i.e.
@@ -721,7 +748,7 @@ contains
         use dSFMT_interface, only: dSFMT_t, get_rand_close_open
 
         type(sys_t), intent(in) :: sys
-        real(p), intent(in) :: pattempt_single
+        type(excit_gen_data_t), intent(in) :: excit_gen_data
         type(det_info_t), intent(in) :: cdet
         type(dSFMT_t), intent(inout) :: rng
         real(p), intent(out) :: pgen, hmatel
@@ -739,7 +766,7 @@ contains
 
 
         ! 1. Select single or double.
-        if (get_rand_close_open(rng) < pattempt_single) then
+        if (get_rand_close_open(rng) < excit_gen_data%pattempt_single) then
 
 
             ! 2a. Select orbital to excite from and orbital to excite into.
@@ -749,7 +776,7 @@ contains
 
             if (allowed_excitation) then
                 ! 3a. Probability of generating this excitation.
-                pgen = pattempt_single*calc_pgen_single_mol_no_renorm(sys, connection%to_orb(1))
+                pgen = excit_gen_data%pattempt_single*calc_pgen_single_mol_no_renorm(sys, connection%to_orb(1))
 
                 ! 4a. Parity of permutation required to line up determinants.
                 call find_excitation_permutation1(sys%basis%excit_mask, cdet%f, connection)
@@ -832,7 +859,7 @@ contains
                 pgen=       (ia_weights(i_ind)*jb_weights(j_ind) + ia_weights(j_ind)*jb_weights(i_ind) ) &
                         /   (ia_weights_tot*jb_weights_tot)
             endif
-            pgen = (1.0_p - pattempt_single) * pgen *2.0_p/(sys%nvirt*(sys%nvirt-1)) ! pgen(ab)
+            pgen = (1.0_p - excit_gen_data%pattempt_single) * pgen *2.0_p/(sys%nvirt*(sys%nvirt-1)) ! pgen(ab)
             connection%nexcit = 2
 
             allowed_excitation = (i/=j)
@@ -851,7 +878,7 @@ contains
                 connection%to_orb(2)=a
                 connection%to_orb(1)=b 
             endif
-!            write(6,*) "EXC",cdet%f,connection%from_orb, connection%to_orb,pgen
+!            write(6,"(A,5I,F18.12)") "EXC",cdet%f,connection%from_orb, connection%to_orb,pgen
             if (allowed_excitation) then
 
                 ! 4b. Parity of permutation required to line up determinants.
