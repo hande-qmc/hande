@@ -337,21 +337,24 @@ contains
 
     end subroutine check_dmqmc_opts
 
-    subroutine check_ccmc_opts(sys, ccmc_in)
+    subroutine check_ccmc_opts(sys, ccmc_in, qmc_in)
 
         ! Check the CCMC input options
 
         ! In:
         !   sys: system being studied.
         !   ccmc_in: CCMC options
+        !   qmc_in: QMC options
 
 
-        use qmc_data, only: ccmc_in_t
+        use qmc_data, only: ccmc_in_t, qmc_in_t
+        use qmc_data, only: excit_gen_no_renorm, excit_gen_renorm
         use system, only: sys_t, read_in
         use errors, only: stop_all
 
         type(sys_t), intent(in) :: sys
         type(ccmc_in_t), intent(in) :: ccmc_in
+        type(qmc_in_t), intent(in) :: qmc_in
 
         character(*), parameter :: this = 'check_ccmc_opts'
 
@@ -382,6 +385,11 @@ contains
 
         if (sys%basis%info_string_len /= 0 .and. .not. ccmc_in%even_selection) call stop_all(this, &
             'Additional space allocated in bit strings for no reason. Something has gone wrong.')
+
+        if ((ccmc_in%linked) .and. .not.((qmc_in%excit_gen == excit_gen_no_renorm) .or. &
+                                         (qmc_in%excit_gen == excit_gen_renorm))) then
+            call stop_all(this, 'Excitation Generators other than no_renorm and renorm not yet implemented for linked CCMC.')
+        end if
 
     end subroutine check_ccmc_opts
 
