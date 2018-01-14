@@ -311,6 +311,7 @@ contains
         use qmc_common, only: initial_qmc_status, initial_cc_projected_energy, load_balancing_report, init_report_loop, &
                               init_mc_cycle, end_report_loop, end_mc_cycle, redistribute_particles, rescale_tau
         use proc_pointers
+        use spawning, only: assign_particle_processor, update_pattempt_single
         use system, only: sys_t, sys_t_json
         use spawn_data, only: calc_events_spawn_t, write_memcheck_report
         use replica_rdm, only: update_rdm, calc_rdm_energy, write_final_rdm
@@ -355,6 +356,7 @@ contains
         integer :: nspawn_events, ierr
         type(wfn_contrib_t), allocatable :: contrib(:)
         type(multispawn_stats_t), allocatable :: ms_stats(:)
+        type(p_single_double_stats_t), allocatable :: ps_stats(:)
         type(dSFMT_t), allocatable :: rng(:)
         type(json_out_t) :: js
         type(qmc_in_t) :: qmc_in_loc
@@ -386,9 +388,6 @@ contains
         type(blocking_t) :: bl
         integer :: iunit, restart_version_restart
         integer :: date_values(8)
-
-! [review] - AJWT: Might be worth stating what these will be used for as there's a lot to take in in this subroutine.
-        real(p) :: h_pgen_singles_sum_tmp, h_pgen_doubles_sum_tmp, excit_gen_singles_tmp, excit_gen_doubles_tmp
 
         if (parent) then
             write (io_unit,'(1X,"CCMC")')
@@ -422,7 +421,7 @@ contains
             call sys_t_json(js, sys)
             ! The default values of pattempt_* are not in qmc_in
             qmc_in_loc = qmc_in
-! [review] - AJWT: This is repeated in DMQMC (and FCIQMC?).  Should it be a subroutine?
+            ! [todo] -  This is repeated in DMQMC (and FCIQMC?).  Should it be a subroutine?
             qmc_in_loc%pattempt_single = qs%excit_gen_data%pattempt_single
             qmc_in_loc%pattempt_double = qs%excit_gen_data%pattempt_double
             qmc_in_loc%shift_damping = qs%shift_damping
@@ -462,6 +461,8 @@ contains
         call check_allocate('rng', nthreads, ierr)
         allocate(ms_stats(0:nthreads-1), stat=ierr)
         call check_allocate('ms_stats', nthreads, ierr)
+        allocate(ps_stats(0:nthreads-1), stat=ierr)
+        call check_allocate('ps_stats', nthreads, ierr)
 
         call init_contrib(sys, qs%ref%ex_level+2, ccmc_in%linked, contrib)
 
@@ -654,22 +655,16 @@ contains
                 !$omp        qs, sys, bloom_stats, min_cluster_size, ref_det,             &
                 !$omp        proj_energy_cycle, D0_population_cycle, selection_data,      &
                 !$omp        nattempts_spawn, ex_lvl_dist, &
-                !$omp        ccmc_in, nprocs, ms_stats, qmc_in, load_bal_in, ndeath_nc,   &
+                !$omp        ccmc_in, nprocs, ms_stats, ps_stats, qmc_in, load_bal_in, &
+                !$omp        ndeath_nc,   &
                 !$omp        nparticles_change, ndeath, logging_info,                     &
-                !$omp        h_pgen_singles_sum_tmp, h_pgen_doubles_sum_tmp,              &
-                !$omp        excit_gen_singles_tmp, excit_gen_doubles_tmp)
                 it = get_thread_id()
                 iexcip_pos = 0
                 seen_D0 = .false.
                 proj_energy_cycle = cmplx(0.0, 0.0, p)
                 D0_population_cycle = cmplx(0.0, 0.0, p)
-                h_pgen_singles_sum_tmp = 0.0_p
-                h_pgen_doubles_sum_tmp = 0.0_p
-                excit_gen_singles_tmp = 0.0_p
-                excit_gen_doubles_tmp = 0.0_p
-                !$omp do schedule(dynamic,200) reduction(+:D0_population_cycle,proj_energy_cycle,nattempts_spawn,ndeath, &
-                !$omp                                   h_pgen_singles_sum_tmp,h_pgen_doubles_sum_tmp,excit_gen_singles_tmp, & 
-                !$omp                                   excit_gen_doubles_tmp)
+                call zero_ps_stats(ps_stats)
+                !$omp do schedule(dynamic,200) reduction(+:D0_population_cycle,proj_energy_cycle,nattempts_spawn,ndeath)
                 do iattempt = 1, selection_data%nclusters
                     if (iattempt <= selection_data%nsingle_excitors) then
                         ! As noncomposite clusters can't be above truncation level or linked-only all can accumulate +
@@ -686,9 +681,7 @@ contains
                             call do_ccmc_accumulation(sys, qs, contrib(it)%cdet, contrib(it)%cluster, logging_info, &
                                                     D0_population_cycle, proj_energy_cycle, ccmc_in, ref_det, rdm, selection_data)
                             call do_nc_ccmc_propagation(rng(it), sys, qs, ccmc_in, logging_info, bloom_stats, &
-                                                                contrib(it), nattempts_spawn, h_pgen_singles_sum_tmp, &
-                                                                h_pgen_doubles_sum_tmp, excit_gen_singles_tmp, &
-                                                                excit_gen_doubles_tmp)
+                                                                contrib(it), nattempts_spawn, ps_stats(it))
                         end if
 
                     ! For OpenMP scalability, have this test inside a single loop rather
@@ -720,9 +713,7 @@ contains
                                                     D0_population_cycle, proj_energy_cycle, ccmc_in, ref_det, rdm, selection_data)
                             call do_stochastic_ccmc_propagation(rng(it), sys, qs, &
                                                                 ccmc_in, logging_info, ms_stats(it), bloom_stats, &
-                                                                contrib(it), nattempts_spawn, ndeath, h_pgen_singles_sum_tmp, &
-                                                                h_pgen_doubles_sum_tmp, excit_gen_singles_tmp, &
-                                                                excit_gen_doubles_tmp)
+                                                                contrib(it), nattempts_spawn, ndeath, ps_stats(it))
                         end if
                     else
                         ! We just select the empty cluster.
@@ -746,22 +737,14 @@ contains
                                                 D0_population_cycle, proj_energy_cycle, ccmc_in, ref_det, rdm, selection_data)
                         nattempts_spawn = nattempts_spawn + 1
                         call perform_ccmc_spawning_attempt(rng(it), sys, qs, ccmc_in, logging_info, bloom_stats, contrib(it), 1, &
-                                                h_pgen_singles_sum_tmp, h_pgen_doubles_sum_tmp, excit_gen_singles_tmp, &
-                                                excit_gen_doubles_tmp)
+                                                        ps_stats(it))
                     end if
                 end do
                 !$omp end do
 
-! [review] - AJWT: This is tautologous, but perhaps ok. 
-                if (qs%excit_gen_data%p_single_double%vary_psingles == .true.) then
-                    qs%excit_gen_data%p_single_double%h_pgen_singles_sum = &
-                        qs%excit_gen_data%p_single_double%h_pgen_singles_sum + h_pgen_singles_sum_tmp
-                    qs%excit_gen_data%p_single_double%excit_gen_singles = &
-                        qs%excit_gen_data%p_single_double%excit_gen_singles + excit_gen_singles_tmp
-                    qs%excit_gen_data%p_single_double%h_pgen_doubles_sum = &
-                        qs%excit_gen_data%p_single_double%h_pgen_doubles_sum + h_pgen_doubles_sum_tmp
-                    qs%excit_gen_data%p_single_double%excit_gen_doubles = &
-                        qs%excit_gen_data%p_single_double%excit_gen_doubles + excit_gen_doubles_tmp
+                ! Add the accumulated ps_stats data to qs%excit_gen_data%p_single_double.
+                if (qs%excit_gen_data%p_single_double%vary_psingles) then
+                    call ps_stats_reduction_update(qs%excit_gen_data%p_single_double, ps_stats)
                 end if
 
                 ndeath_nc = 0
@@ -821,18 +804,8 @@ contains
                 call end_mc_cycle(nspawn_events, ndeath_nc, qs%psip_list%pop_real_factor, nattempts_spawn, qs%spawn_store%rspawn)
             end do
 
-! [review] - AJWT: Should this be put into a subroutine? I presume it's used in FCIQMC as well.
-            if (qs%excit_gen_data%p_single_double%vary_psingles == .true.) then 
-                associate(ps=>qs%excit_gen_data%p_single_double)
-                    if (((ps%excit_gen_singles + ps%excit_gen_doubles) > (ps%counter*ps%every_attempts)) .and. &
-                        (ps%excit_gen_singles > (ps%counter*ps%every_min_attempts)) .and. &
-                        (ps%excit_gen_doubles > (ps%counter*ps%every_min_attempts))) then
-                        ps%counter = ps%counter + 1.0_p
-                        qs%excit_gen_data%pattempt_single = (ps%h_pgen_singles_sum/ps%excit_gen_singles) / &
-                            ((ps%h_pgen_doubles_sum/ps%excit_gen_doubles) + (ps%h_pgen_singles_sum/ps%excit_gen_singles))
-                        qs%excit_gen_data%pattempt_double = 1.0_p - qs%excit_gen_data%pattempt_single
-                    end if
-                end associate
+            if (qs%excit_gen_data%p_single_double%vary_psingles) then 
+                call update_pattempt_single(qs)
             end if
 
             update_tau = bloom_stats%nblooms_curr > 0
@@ -916,6 +889,7 @@ contains
             call dealloc_det_info_t(ref_det)
         end if
 
+        ! [reply] - VAN: Do we not have to deallocate ms_stats,qs_stats,rng?
         call dealloc_contrib(contrib, ccmc_in%linked)
         do i = 0, nthreads-1
             call dSFMT_end(rng(i))
@@ -1014,15 +988,9 @@ contains
 
     end subroutine do_ccmc_accumulation
 
-! [review] - AJWT: Perhaps the four _tmp variables should exist in a structure which is more abstracted.  
-! [review] - AJWT: Their purpose isn't anything to do with the propagation, but just need to passed around for
-! [review] - AJWT: data accumulation for excitation generators.  Something like calc_stats?
-! [review] - AJWT: This is distinct from the nattempts_spawn_tot which is just THIS cycle.
     subroutine do_stochastic_ccmc_propagation(rng, sys, qs, &
                                             ccmc_in, logging_info, ms_stats, bloom_stats, &
-                                            contrib, nattempts_spawn_tot, ndeath, h_pgen_singles_sum_tmp, &
-                                            h_pgen_doubles_sum_tmp, excit_gen_singles_tmp, &
-                                            excit_gen_doubles_tmp)
+                                            contrib, nattempts_spawn_tot, ndeath, ps_stat)
 
         ! Perform stochastic propogation of a cluster in an appropriate manner
         ! for the given inputs. For stochastically selected clusters this
@@ -1048,16 +1016,17 @@ contains
         !   nattempts_spawn_tot: running total of number of spawning attempts
         !       made during this mc cycle.
         !   ndeath: total number of particles created via death.
-        !   h_pgen_singles_sum_tmp: total of |Hij|/pgen for single excitations attempted.
-        !   h_pgen_doubles_sum_tmp: total on |Hij|/pgen for double excitations attempted.
-        !   excit_gen_singles_tmp: counter on number of single excitations attempted.
-        !   excit_gen_doubles_tmp: counter on number of double excitations attempted.
+        !   ps_stat: Accumulating the following on this OpenMP thread:
+        !       h_pgen_singles_sum: total of |Hij|/pgen for single excitations attempted.
+        !       h_pgen_doubles_sum: total on |Hij|/pgen for double excitations attempted.
+        !       excit_gen_singles: counter on number of single excitations attempted.
+        !       excit_gen_doubles: counter on number of double excitations attempted.
 
 
         use dSFMT_interface, only: dSFMT_t
         use system, only: sys_t
         use qmc_data, only: qmc_state_t, ccmc_in_t
-        use ccmc_data, only: multispawn_stats_t, ms_stats_update, wfn_contrib_t
+        use ccmc_data, only: multispawn_stats_t, ms_stats_update, wfn_contrib_t, p_single_double_stats_t
 
         use ccmc_death_spawning, only: spawner_ccmc, linked_spawner_ccmc, stochastic_ccmc_death
         use ccmc_death_spawning, only: stochastic_ccmc_death_nc, spawner_complex_ccmc
@@ -1075,7 +1044,7 @@ contains
         integer(int_64), intent(inout) :: nattempts_spawn_tot
         integer(int_p), intent(inout) :: ndeath
         type(multispawn_stats_t), intent(inout) :: ms_stats
-        real(p), intent(inout) :: h_pgen_singles_sum_tmp, h_pgen_doubles_sum_tmp, excit_gen_singles_tmp, excit_gen_doubles_tmp
+        type(p_single_double_stats_t), intent(inout) :: ps_stat
 
         integer :: i, nspawnings_cluster
 
@@ -1094,7 +1063,7 @@ contains
 
         do i = 1, nspawnings_cluster
             call perform_ccmc_spawning_attempt(rng, sys, qs, ccmc_in, logging_info, bloom_stats, contrib, nspawnings_cluster, &
-                                    h_pgen_singles_sum_tmp, h_pgen_doubles_sum_tmp, excit_gen_singles_tmp, excit_gen_doubles_tmp)
+                                        ps_stat)
         end do
 
         ! Does the cluster collapsed onto D0 produce
@@ -1115,9 +1084,7 @@ contains
     end subroutine do_stochastic_ccmc_propagation
 
     subroutine do_nc_ccmc_propagation(rng, sys, qs, ccmc_in, logging_info, bloom_stats, &
-                                            contrib, nattempts_spawn_tot, h_pgen_singles_sum_tmp, &
-                                            h_pgen_doubles_sum_tmp, excit_gen_singles_tmp, &
-                                            excit_gen_doubles_tmp)
+                                            contrib, nattempts_spawn_tot, ps_stat)
 
         ! Perform stochastic propogation of a cluster selected deterministically
         ! in full non-composite selection. This performs all spawning attempts
@@ -1146,15 +1113,16 @@ contains
         !       wavefunction contribution being considered.
         !   nattempts_spawn: running total of number of spawning attempts
         !       made during this mc cycle.
-        !   h_pgen_singles_sum_tmp: total of |Hij|/pgen for single excitations attempted.
-        !   h_pgen_doubles_sum_tmp: total on |Hij|/pgen for double excitations attempted.
-        !   excit_gen_singles_tmp: counter on number of single excitations attempted.
-        !   excit_gen_doubles_tmp: counter on number of double excitations attempted.
+        !   ps_stat: Accumulating the following on this OpenMP thread:
+        !       h_pgen_singles_sum: total of |Hij|/pgen for single excitations attempted.
+        !       h_pgen_doubles_sum: total on |Hij|/pgen for double excitations attempted.
+        !       excit_gen_singles: counter on number of single excitations attempted.
+        !       excit_gen_doubles: counter on number of double excitations attempted.
 
         use dSFMT_interface, only: dSFMT_t
         use system, only: sys_t
         use qmc_data, only: qmc_state_t, ccmc_in_t
-        use ccmc_data, only: multispawn_stats_t, ms_stats_update, wfn_contrib_t
+        use ccmc_data, only: multispawn_stats_t, ms_stats_update, wfn_contrib_t, p_single_double_stats_t
         use qmc_common, only: decide_nattempts
 
         use ccmc_death_spawning, only: spawner_ccmc, linked_spawner_ccmc, stochastic_ccmc_death
@@ -1171,7 +1139,7 @@ contains
         type(logging_t), intent(in) :: logging_info
 
         integer(int_64), intent(inout) :: nattempts_spawn_tot
-        real(p), intent(inout) :: h_pgen_singles_sum_tmp, h_pgen_doubles_sum_tmp, excit_gen_singles_tmp, excit_gen_doubles_tmp
+        type(p_single_double_stats_t), intent(inout) :: ps_stat
         integer :: i, nspawnings_cluster
 
         ! Spawning
@@ -1192,14 +1160,13 @@ contains
         contrib%cluster%amplitude = contrib%cluster%amplitude / abs(contrib%cluster%amplitude)
 
         do i = 1, nspawnings_cluster
-            call perform_ccmc_spawning_attempt(rng, sys, qs, ccmc_in, logging_info, bloom_stats, contrib, 1, &
-                h_pgen_singles_sum_tmp, h_pgen_doubles_sum_tmp, excit_gen_singles_tmp, excit_gen_doubles_tmp)
+            call perform_ccmc_spawning_attempt(rng, sys, qs, ccmc_in, logging_info, bloom_stats, contrib, 1, ps_stat)
         end do
 
     end subroutine do_nc_ccmc_propagation
 
     subroutine perform_ccmc_spawning_attempt(rng, sys, qs, ccmc_in, logging_info, bloom_stats, contrib, nspawnings_total, &
-                                h_pgen_singles_sum_tmp, h_pgen_doubles_sum_tmp, excit_gen_singles_tmp, excit_gen_doubles_tmp)
+                                        ps_stat)
 
         ! Performs a single ccmc spawning attempt, as appropriate for a
         ! given setting combination of linked, complex or none of the above.
@@ -1221,14 +1188,15 @@ contains
         !       cluster selected and the determinant formed on
         !       collapsing, as well as scratch spaces for partitoning
         !       within linked.
-        !   h_pgen_singles_sum_tmp: total of |Hij|/pgen for single excitations attempted.
-        !   h_pgen_doubles_sum_tmp: total on |Hij|/pgen for double excitations attempted.
-        !   excit_gen_singles_tmp: counter on number of single excitations attempted.
-        !   excit_gen_doubles_tmp: counter on number of double excitations attempted.
+        !   ps_stat: Accumulating the following on this OpenMP thread:
+        !       h_pgen_singles_sum: total of |Hij|/pgen for single excitations attempted.
+        !       h_pgen_doubles_sum: total on |Hij|/pgen for double excitations attempted.
+        !       excit_gen_singles: counter on number of single excitations attempted.
+        !       excit_gen_doubles: counter on number of double excitations attempted.
         use dSFMT_interface, only: dSFMT_t
         use system, only: sys_t
         use qmc_data, only: qmc_state_t, ccmc_in_t
-        use ccmc_data, only: wfn_contrib_t
+        use ccmc_data, only: wfn_contrib_t, p_single_double_stats_t
 
         use excitations, only: excit_t
         use proc_pointers, only: gen_excit_ptr
@@ -1248,7 +1216,7 @@ contains
         type(logging_t), intent(in) :: logging_info
 
         integer, intent(in) :: nspawnings_total
-        real(p), intent(inout) :: h_pgen_singles_sum_tmp, h_pgen_doubles_sum_tmp, excit_gen_singles_tmp, excit_gen_doubles_tmp
+        type(p_single_double_stats_t), intent(inout) :: ps_stat
         integer(int_p) :: nspawned, nspawned_im
         integer(i0) :: fexcit(sys%basis%tot_string_len)
 
@@ -1258,19 +1226,16 @@ contains
             ! a different spawning routine
             call linked_spawner_ccmc(rng, sys, qs, qs%spawn_store%spawn%cutoff, &
                       contrib%cluster, gen_excit_ptr, nspawned, connection, nspawnings_total, &
-                      fexcit, contrib%cdet, contrib%ldet, contrib%rdet, contrib%left_cluster, contrib%right_cluster, &
-                      h_pgen_singles_sum_tmp, h_pgen_doubles_sum_tmp, excit_gen_singles_tmp, excit_gen_doubles_tmp)
+                      fexcit, contrib%cdet, contrib%ldet, contrib%rdet, contrib%left_cluster, contrib%right_cluster, ps_stat)
             nspawned_im = 0_int_p
         else if (sys%read_in%comp) then
             call spawner_complex_ccmc(rng, sys, qs, qs%spawn_store%spawn%cutoff, &
                       contrib%cdet, contrib%cluster, gen_excit_ptr, nspawned, nspawned_im, &
-                      connection, nspawnings_total, h_pgen_singles_sum_tmp, h_pgen_doubles_sum_tmp, excit_gen_singles_tmp, &
-                      excit_gen_doubles_tmp)
+                      connection, nspawnings_total, ps_stat)
         else
             call spawner_ccmc(rng, sys, qs, qs%spawn_store%spawn%cutoff, &
                       ccmc_in%linked, contrib%cdet, contrib%cluster, gen_excit_ptr, logging_info, nspawned, &
-                      connection, nspawnings_total, h_pgen_singles_sum_tmp, h_pgen_doubles_sum_tmp, excit_gen_singles_tmp, &
-                      excit_gen_doubles_tmp)
+                      connection, nspawnings_total, ps_stat)
             nspawned_im = 0_int_p
         end if
 

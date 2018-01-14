@@ -37,6 +37,15 @@ type multispawn_stats_t
     integer :: nspawnings_max = 0
 end type multispawn_stats_t
 
+! type to collect temporary information for qmc_state%excit_gen_data%p_single_double
+! during the OpenMP loop in CCMC.
+type p_single_double_stats_t
+    real(p) :: h_pgen_singles_sum = 0.0_p ! hmatel/pgen sum for singles
+    real(p) :: h_pgen_doubles_sum = 0.0_p ! hamtel/pgen sum for doubles
+    real(p) :: excit_gen_singles = 0.0_p ! number of valid singles excitations created
+    real(p) :: excit_gen_doubles = 0.0_p ! number of valid doubles excitations created
+end type p_single_double_stats_t
+
 ! Derived type to store all required information about the contribution selected
 ! (cluster, the determinant resulting from collapse and the partition in linked
 ! CCMC).
@@ -181,6 +190,43 @@ contains
 
     end subroutine multispawn_stats_report
 
+    subroutine zero_ps_stats(ps_stats)
+
+        ! Zero the ps_stats(:) components.
+
+        ! In/Out:
+        !    ps_stats: array of p_single_double_stats_t objects.
+
+        type(p_single_double_stats_t), intent(inout) :: ps_stats(:)
+
+        ps_stats%h_pgen_singles_sum = 0.0_p
+        ps_stats%excit_gen_singles = 0.0_p
+        ps_stats%h_pgen_doubles_sum = 0.0_p
+        ps_stats%excit_gen_doubles = 0.0_p
+
+    end subroutine zero_ps_stats
+    
+    subroutine ps_stats_reduction_update(ps, ps_stats)
+
+        ! Reduce the ps_stats(:) components after the OpenMP loop and update ps.
+
+        ! In:
+        !    ps_stats: array of p_single_double_stats_t objects.
+        ! In/Out:
+        !    ps: the qmc_state%excit_gen_data%p_single_double_t object to be updated.
+
+        use excit_gens, only: p_single_double_t
+
+        type(p_single_double_stats_t), intent(in) :: ps_stats(:)
+        type(p_single_double_t), intent(inout) :: ps
+
+        ps%h_pgen_singles_sum = ps%h_pgen_singles_sum + sum(ps_stats%h_pgen_singles_sum)
+        ps%excit_gen_singles = ps%excit_gen_singles + sum(ps_stats%excit_gen_singles)
+        ps%h_pgen_doubles_sum = ps%h_pgen_doubles_sum + sum(ps_stats%h_pgen_doubles_sum)
+        ps%excit_gen_doubles = ps%excit_gen_doubles + sum(ps_stats%excit_gen_doubles)
+
+    end subroutine ps_stats_reduction_update
+    
     subroutine end_selection_data(sd)
 
         ! Fully deallocate a passed in selection_data_t object.

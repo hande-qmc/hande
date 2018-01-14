@@ -100,18 +100,10 @@ contains
 
         if (allowed) then
             qn_weight = calc_qn_spawned_weighting(sys, qmc_state%propagator, cdet%fock_sum, connection)
-! [review] - AJWT: Code is repeated twice below - should it be in a subroutine?
-            if (qmc_state%excit_gen_data%p_single_double%vary_psingles == .true.) then
+            if (qmc_state%excit_gen_data%p_single_double%vary_psingles) then
                 associate(ps=>qmc_state%excit_gen_data%p_single_double)
-                    if (connection%nexcit == 1) then
-                        ps%h_pgen_singles_sum = ps%h_pgen_singles_sum + &
-                            ((abs(hmatel%r)*qmc_state%excit_gen_data%pattempt_single)/pgen)
-                        ps%excit_gen_singles = ps%excit_gen_singles + 1.0_p
-                    else if (connection%nexcit == 2) then
-                        ps%h_pgen_doubles_sum = ps%h_pgen_doubles_sum + &
-                            ((abs(hmatel%r)*qmc_state%excit_gen_data%pattempt_double)/pgen)
-                        ps%excit_gen_doubles = ps%excit_gen_doubles + 1.0_p
-                    end if
+                    call update_p_single_double_data(connection%nexcit, ps%h_pgen_singles_sum, ps%h_pgen_doubles_sum, &
+                            ps%excit_gen_singles, ps%excit_gen_doubles, hmatel, pgen, qmc_state%excit_gen_data, sys%read_in%comp)
                 end associate
             end if
         else
@@ -201,17 +193,11 @@ contains
         call gen_excit_ptr%trial_fn(sys, cdet, connection, weights, hmatel%r)
 
         if (allowed) then
-            if (qmc_state%excit_gen_data%p_single_double%vary_psingles == .true.) then
+            if (qmc_state%excit_gen_data%p_single_double%vary_psingles) then
                 associate(ps=>qmc_state%excit_gen_data%p_single_double)
-                    if (connection%nexcit == 1) then
-                        ps%h_pgen_singles_sum = ps%h_pgen_singles_sum + &
-                            ((abs(hmatel%r)*qmc_state%excit_gen_data%pattempt_single)/pgen)
-                        ps%excit_gen_singles = ps%excit_gen_singles + 1.0_p
-                    else if (connection%nexcit == 2) then
-                        ps%h_pgen_doubles_sum = ps%h_pgen_doubles_sum + &
-                            ((abs(hmatel%r)*qmc_state%excit_gen_data%pattempt_double)/pgen)
-                        ps%excit_gen_doubles = ps%excit_gen_doubles + 1.0_p
-                    end if
+                    call update_p_single_double_data(connection%nexcit, ps%h_pgen_singles_sum, ps%h_pgen_doubles_sum, &
+                                ps%excit_gen_singles, ps%excit_gen_doubles, hmatel, pgen, qmc_state%excit_gen_data, &
+                                sys%read_in%comp)
                 end associate
             end if
             hmatel%r = hmatel%r * calc_qn_spawned_weighting(sys, qmc_state%propagator, cdet%fock_sum, connection)
@@ -569,17 +555,10 @@ contains
 
         if (allowed) then
             qn_weight = calc_qn_spawned_weighting(sys, qmc_state%propagator, cdet%fock_sum, connection) 
-            if (qmc_state%excit_gen_data%p_single_double%vary_psingles == .true.) then
+            if (qmc_state%excit_gen_data%p_single_double%vary_psingles) then
                 associate(ps=>qmc_state%excit_gen_data%p_single_double)
-                    if (connection%nexcit == 1) then
-                        ps%h_pgen_singles_sum = ps%h_pgen_singles_sum + &
-                            ((abs(hmatel%c)*qmc_state%excit_gen_data%pattempt_single)/pgen)
-                        ps%excit_gen_singles = ps%excit_gen_singles + 1.0_p
-                    else if (connection%nexcit == 2) then
-                        ps%h_pgen_doubles_sum = ps%h_pgen_doubles_sum + &
-                            ((abs(hmatel%c)*qmc_state%excit_gen_data%pattempt_double)/pgen)
-                        ps%excit_gen_doubles = ps%excit_gen_doubles + 1.0_p
-                    end if
+                    call update_p_single_double_data(connection%nexcit, ps%h_pgen_singles_sum, ps%h_pgen_doubles_sum, &
+                            ps%excit_gen_singles, ps%excit_gen_doubles, hmatel, pgen, qmc_state%excit_gen_data, sys%read_in%comp)
                 end associate
             end if
         else
@@ -1999,5 +1978,81 @@ contains
         end if
 
     end function calc_qn_weighting
+
+    subroutine update_p_single_double_data(nexcit, h_pgen_singles_sum, h_pgen_doubles_sum, excit_gen_singles, excit_gen_doubles,&
+                                        hmatel, spawn_pgen, excit_gen_data, complx)
+        ! Update h_pgen_singles_sum/h_pgen_doubles_sum (the sum of pattempt_single*hmatel/spawn_pgen
+        ! for a single/double excitation), as well as excit_gen_singles/excit_gen_doubles, the number
+        ! of single/double excitations.
+
+        ! In:
+        !    nexcit: the order of the excitation (1 for single, 2 for double)
+        !    hmatel: hamiltonian matrix element
+        !    spawn_pgen: pgen as it comes out of the excitation generator, probability of choosing
+        !            a certain combination of orbitals for excitation.
+        !    excit_gen_data: excitation generator data
+        !    complx: true if populations are complex.
+        ! In/Out:
+        !    h_pgen_singles_sum: the sum of pattempt_single*hmatel/spawn_pgen for a single excitation
+        !    h_pgen_doubles_sum: the sum of pattempt_double*hmatel/spawn_pgen for a double excitation
+        !    excit_gen_singles: the number of singles excitations.
+        !    excit_gen_doubles: the number of doubles excitations.
+
+        use hamiltonian_data, only: hmatel_t
+        use excit_gens, only: excit_gen_data_t
+
+        integer, intent(in) :: nexcit
+        type(hmatel_t), intent(in) :: hmatel
+        real(p), intent(in) :: spawn_pgen
+        type(excit_gen_data_t), intent(in) :: excit_gen_data
+        logical, intent(in) :: complx
+        real(p), intent(inout) :: h_pgen_singles_sum, h_pgen_doubles_sum, excit_gen_singles, excit_gen_doubles
+
+        if (nexcit == 1) then
+            if (complx) then
+                h_pgen_singles_sum = h_pgen_singles_sum + &
+                        ((abs(hmatel%c)*excit_gen_data%pattempt_single)/spawn_pgen)
+            else
+                h_pgen_singles_sum = h_pgen_singles_sum + &
+                        ((abs(hmatel%r)*excit_gen_data%pattempt_single)/spawn_pgen)
+            end if
+            excit_gen_singles = excit_gen_singles + 1.0_p
+        ! [todo] - should this be an else? Using else if is another check but is it necessary?
+        else if (nexcit == 2) then
+            if (complx) then
+                h_pgen_doubles_sum = h_pgen_doubles_sum + &
+                        ((abs(hmatel%c)*excit_gen_data%pattempt_double)/spawn_pgen)
+            else
+                h_pgen_doubles_sum = h_pgen_doubles_sum + &
+                        ((abs(hmatel%r)*excit_gen_data%pattempt_double)/spawn_pgen)
+            end if
+            excit_gen_doubles = excit_gen_doubles + 1.0_p
+        end if
+    end subroutine update_p_single_double_data
+
+    subroutine update_pattempt_single(qs)
+
+        ! Update pattempt single using the sums of pattempt_single%hmatel/spawn_pgen for and the numbers
+        ! of single and double excitations. The aim is align the means of hmatel/spawn_pgen of single
+        ! and double excitations.
+
+        ! In/Out:
+        !   qs: qmc state.
+
+        use qmc_data, only: qmc_state_t
+
+        type(qmc_state_t), intent(inout) :: qs
+
+        associate(ps=>qs%excit_gen_data%p_single_double)
+            if (((ps%excit_gen_singles + ps%excit_gen_doubles) > (ps%counter*ps%every_attempts)) .and. &
+                (ps%excit_gen_singles > (ps%counter*ps%every_min_attempts)) .and. &
+                (ps%excit_gen_doubles > (ps%counter*ps%every_min_attempts))) then
+                ps%counter = ps%counter + 1.0_p
+                qs%excit_gen_data%pattempt_single = (ps%h_pgen_singles_sum/ps%excit_gen_singles) / &
+                    ((ps%h_pgen_doubles_sum/ps%excit_gen_doubles) + (ps%h_pgen_singles_sum/ps%excit_gen_singles))
+                qs%excit_gen_data%pattempt_double = 1.0_p - qs%excit_gen_data%pattempt_single
+            end if
+        end associate
+    end subroutine update_pattempt_single
 
 end module spawning

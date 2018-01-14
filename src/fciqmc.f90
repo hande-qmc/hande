@@ -52,7 +52,7 @@ contains
         use importance_sampling, only: importance_sampling_weight
         use ifciqmc
         use non_blocking_comm_m, only: init_non_blocking_comm, end_non_blocking_comm
-        use spawning, only: create_spawned_particle_initiator
+        use spawning, only: create_spawned_particle_initiator, update_pattempt_single
         use qmc, only: init_qmc
         use qmc_common
         use dSFMT_interface, only: dSFMT_t, dSFMT_init, dSFMT_end
@@ -336,17 +336,8 @@ contains
 
             end do
 
-            if (qs%excit_gen_data%p_single_double%vary_psingles == .true.) then
-                associate(ps=>qs%excit_gen_data%p_single_double)
-                    if (((ps%excit_gen_singles + ps%excit_gen_doubles) > (ps%counter*ps%every_attempts)) .and. &
-                        (ps%excit_gen_singles > (ps%counter*ps%every_min_attempts)) .and. &
-                        (ps%excit_gen_doubles > (ps%counter*ps%every_min_attempts))) then
-                        ps%counter = ps%counter + 1.0_p
-                        qs%excit_gen_data%pattempt_single = (ps%h_pgen_singles_sum/ps%excit_gen_singles) / &
-                                ((ps%h_pgen_doubles_sum/ps%excit_gen_doubles) + (ps%h_pgen_singles_sum/ps%excit_gen_singles))
-                        qs%excit_gen_data%pattempt_double = 1.0_p - qs%excit_gen_data%pattempt_single
-                    end if
-                end associate
+            if (qs%excit_gen_data%p_single_double%vary_psingles) then
+                call update_pattempt_single(qs)
             end if
             
             update_tau = bloom_stats%nblooms_curr > 0

@@ -10,9 +10,7 @@ implicit none
 contains
 
     subroutine spawner_ccmc(rng, sys, qs, spawn_cutoff, linked_ccmc, cdet, cluster, &
-                            gen_excit_ptr, logging_info, nspawn, connection, nspawnings_total, &
-                            h_pgen_singles_sum_tmp, h_pgen_doubles_sum_tmp, excit_gen_singles_tmp, &
-                            excit_gen_doubles_tmp)
+                            gen_excit_ptr, logging_info, nspawn, connection, nspawnings_total, ps_stat)
 
         ! Attempt to spawn a new particle on a connected excitor with
         ! probability
@@ -60,24 +58,25 @@ contains
         !    rng: random number generator.
         !    nspawnings_total: The total number of spawnings attemped by the current cluster
         !        in the current timestep.
-        !    h_pgen_singles_sum_tmp: total of |Hij|/pgen for single excitations attempted.
-        !    h_pgen_doubles_sum_tmp: total on |Hij|/pgen for double excitations attempted.
-        !    excit_gen_singles_tmp: counter on number of single excitations attempted.
-        !    excit_gen_doubles_tmp: counter on number of double excitations attempted.
+        !    ps_stat: Accumulating the following on this OpenMP thread:
+        !        h_pgen_singles_sum: total of |Hij|/pgen for single excitations attempted.
+        !        h_pgen_doubles_sum: total on |Hij|/pgen for double excitations attempted.
+        !        excit_gen_singles: counter on number of single excitations attempted.
+        !        excit_gen_doubles: counter on number of double excitations attempted.
         ! Out:
         !    nspawn: number of particles spawned, in the encoded representation.
         !        0 indicates the spawning attempt was unsuccessful.
         !    connection: excitation connection between the current excitor
         !        and the child excitor, on which progeny are spawned.
 
-        use ccmc_data, only: cluster_t
+        use ccmc_data, only: cluster_t, p_single_double_stats_t
         use ccmc_utils, only: convert_excitor_to_determinant
         use ccmc_linked, only: unlinked_commutator, linked_excitation
         use determinants, only: det_info_t
         use dSFMT_interface, only: dSFMT_t
         use excitations, only: excit_t, create_excited_det, get_excitation_level
         use proc_pointers, only: gen_excit_ptr_t
-        use spawning, only: attempt_to_spawn, calc_qn_spawned_weighting
+        use spawning, only: attempt_to_spawn, calc_qn_spawned_weighting, update_p_single_double_data
         use system, only: sys_t
         use const, only: depsilon, debug
         use qmc_data, only: qmc_state_t
@@ -91,12 +90,12 @@ contains
         type(det_info_t), intent(in) :: cdet
         type(cluster_t), intent(in) :: cluster
         type(dSFMT_t), intent(inout) :: rng
+        type(p_single_double_stats_t), intent(inout) :: ps_stat
         integer, intent(in) :: nspawnings_total
         type(gen_excit_ptr_t), intent(in) :: gen_excit_ptr
         type(logging_t), intent(in) :: logging_info
         integer(int_p), intent(out) :: nspawn
         type(excit_t), intent(out) :: connection
-        real(p), intent(inout) :: h_pgen_singles_sum_tmp, h_pgen_doubles_sum_tmp, excit_gen_singles_tmp, excit_gen_doubles_tmp
 
         ! We incorporate the sign of the amplitude into the Hamiltonian matrix
         ! element, so we 'pretend' to attempt_to_spawn that all excips are
@@ -116,17 +115,10 @@ contains
         call gen_excit_ptr%full(rng, sys, qs%excit_gen_data, cdet, spawn_pgen, connection, hmatel, allowed_excitation)
 
         if (allowed_excitation) then
-! [review] - AJWT: This code is repeated later, so should be put into a subroutine.
-            if (qs%excit_gen_data%p_single_double%vary_psingles == .true.) then
-                if (connection%nexcit == 1) then
-                    h_pgen_singles_sum_tmp = h_pgen_singles_sum_tmp + &
-                        ((abs(hmatel%r)*qs%excit_gen_data%pattempt_single)/spawn_pgen)
-                    excit_gen_singles_tmp = excit_gen_singles_tmp + 1.0_p
-                else if (connection%nexcit == 2) then
-                    h_pgen_doubles_sum_tmp = h_pgen_doubles_sum_tmp + &
-                        ((abs(hmatel%r)*qs%excit_gen_data%pattempt_double)/spawn_pgen)
-                    excit_gen_doubles_tmp = excit_gen_doubles_tmp + 1.0_p
-                end if
+            if (qs%excit_gen_data%p_single_double%vary_psingles) then
+                call update_p_single_double_data(connection%nexcit, ps_stat%h_pgen_singles_sum, &
+                            ps_stat%h_pgen_doubles_sum, ps_stat%excit_gen_singles, ps_stat%excit_gen_doubles, &
+                            hmatel, spawn_pgen, qs%excit_gen_data, sys%read_in%comp)
             end if
 
             if (linked_ccmc) then
@@ -517,9 +509,8 @@ contains
     end subroutine stochastic_ccmc_death_nc
 
     subroutine linked_spawner_ccmc(rng, sys, qs, spawn_cutoff, cluster, gen_excit_ptr, nspawn, &
-                            connection, nspawnings_total, fexcit, cdet, ldet, rdet, left_cluster, right_cluster, &
-                            h_pgen_singles_sum_tmp, h_pgen_doubles_sum_tmp, excit_gen_singles_tmp, &
-                            excit_gen_doubles_tmp)
+                            connection, nspawnings_total, fexcit, cdet, ldet, rdet, left_cluster, right_cluster, ps_stat)
+
         ! When sampling e^-T H e^T, clusters need to be considered where two
         ! operators excite from/to the same orbital (one in the "left cluster"
         ! for e^-T and one in the "right cluster" for e^T). This makes the
@@ -548,10 +539,11 @@ contains
         !    rng: random number generator.
         !    ldet, rdet, left_cluster, right_cluster: used to store temporary information for
         !        selecting an excitor
-        !    h_pgen_singles_sum_tmp: total of |Hij|/pgen for single excitations attempted.
-        !    h_pgen_doubles_sum_tmp: total on |Hij|/pgen for double excitations attempted.
-        !    excit_gen_singles_tmp: counter on number of single excitations attempted.
-        !    excit_gen_doubles_tmp: counter on number of double excitations attempted.
+        !    ps_stat: Accumulating the following on this OpenMP thread:
+        !        h_pgen_singles_sum: total of |Hij|/pgen for single excitations attempted.
+        !        h_pgen_doubles_sum: total on |Hij|/pgen for double excitations attempted.
+        !        excit_gen_singles: counter on number of single excitations attempted.
+        !        excit_gen_doubles: counter on number of double excitations attempted.
         ! Out:
         !    nspawn: number of particles spawned, in the encoded representation.
         !        0 indicates the spawning attempt was unsuccessful.
@@ -560,14 +552,14 @@ contains
         !    fexcit: the bitstring of the determinant to spawn on to (as it is
         !        not necessarily easy to get from the connection)
 
-        use ccmc_data, only: cluster_t
+        use ccmc_data, only: cluster_t, p_single_double_stats_t
         use ccmc_linked, only: calc_pgen, partition_cluster, linked_excitation
         use ccmc_utils, only: collapse_cluster, convert_excitor_to_determinant
         use determinants, only: det_info_t, sum_sp_eigenvalues_bit_string
         use dSFMT_interface, only: dSFMT_t
         use excitations, only: excit_t, create_excited_det, get_excitation_level
         use proc_pointers, only: gen_excit_ptr_t, decoder_ptr
-        use spawning, only: attempt_to_spawn, calc_qn_weighting, calc_qn_spawned_weighting
+        use spawning, only: attempt_to_spawn, calc_qn_weighting, calc_qn_spawned_weighting, update_p_single_double_data
         use system, only: sys_t
         use const, only: depsilon
         use hamiltonian, only: get_hmatel
@@ -588,7 +580,7 @@ contains
         type(det_info_t), intent(inout) :: ldet, rdet
         type(det_info_t), intent(in) :: cdet
         type(cluster_t), intent(inout) :: left_cluster, right_cluster
-        real(p), intent(inout) :: h_pgen_singles_sum_tmp, h_pgen_doubles_sum_tmp, excit_gen_singles_tmp, excit_gen_doubles_tmp
+        type(p_single_double_stats_t), intent(inout) :: ps_stat
 
         ! We incorporate the sign of the amplitude into the Hamiltonian matrix
         ! element, so we 'pretend' to attempt_to_spawn that all excips are
@@ -623,17 +615,9 @@ contains
         end if
 
         if (allowed) then
-! [review] - AJWT: Repeated code.
-            if (qs%excit_gen_data%p_single_double%vary_psingles == .true.) then
-                if (connection%nexcit == 1) then
-                    h_pgen_singles_sum_tmp = h_pgen_singles_sum_tmp + &
-                        ((abs(hmatel%r)*qs%excit_gen_data%pattempt_single)/pgen)
-                    excit_gen_singles_tmp = excit_gen_singles_tmp + 1.0_p
-                else if (connection%nexcit == 2) then
-                    h_pgen_doubles_sum_tmp = h_pgen_doubles_sum_tmp + & 
-                        ((abs(hmatel%r)*qs%excit_gen_data%pattempt_double)/pgen)
-                    excit_gen_doubles_tmp = excit_gen_doubles_tmp + 1.0_p
-                end if
+            if (qs%excit_gen_data%p_single_double%vary_psingles) then
+                call update_p_single_double_data(connection%nexcit, ps_stat%h_pgen_singles_sum, ps_stat%h_pgen_doubles_sum, &
+                        ps_stat%excit_gen_singles, ps_stat%excit_gen_doubles, hmatel, pgen, qs%excit_gen_data, sys%read_in%comp)
             end if
             ! check that left_cluster can be applied to the resulting excitor to
             ! give a cluster to spawn on to
@@ -732,9 +716,8 @@ contains
     end subroutine linked_spawner_ccmc
 
     subroutine spawner_complex_ccmc(rng, sys, qs, spawn_cutoff, cdet, cluster, &
-                            gen_excit_ptr, nspawn, nspawn_im, connection, nspawnings_total, &
-                            h_pgen_singles_sum_tmp, h_pgen_doubles_sum_tmp, excit_gen_singles_tmp, &
-                            excit_gen_doubles_tmp)
+                            gen_excit_ptr, nspawn, nspawn_im, connection, nspawnings_total, ps_stat)
+        
         ! Attempt to spawn a new particle on a connected excitor with
         ! probability
         !     \tau |<D'|H|D_s> A_s|
@@ -780,23 +763,24 @@ contains
         !    rng: random number generator.
         !    nspawnings_total: The total number of spawnings attemped by the current cluster
         !        in the current timestep.
-        !    h_pgen_singles_sum_tmp: total of |Hij|/pgen for single excitations attempted.
-        !    h_pgen_doubles_sum_tmp: total on |Hij|/pgen for double excitations attempted.
-        !    excit_gen_singles_tmp: counter on number of single excitations attempted.
-        !    excit_gen_doubles_tmp: counter on number of double excitations attempted.
+        !    ps_stat: Accumulating the following on this OpenMP thread:
+        !        h_pgen_singles_sum: total of |Hij|/pgen for single excitations attempted.
+        !        h_pgen_doubles_sum: total on |Hij|/pgen for double excitations attempted.
+        !        excit_gen_singles: counter on number of single excitations attempted.
+        !        excit_gen_doubles: counter on number of double excitations attempted.
         ! Out:
         !    nspawn: number of particles spawned, in the encoded representation.
         !        0 indicates the spawning attempt was unsuccessful.
         !    connection: excitation connection between the current excitor
         !        and the child excitor, on which progeny are spawned.
 
-        use ccmc_data, only: cluster_t
+        use ccmc_data, only: cluster_t, p_single_double_stats_t
         use ccmc_utils, only: convert_excitor_to_determinant
         use determinants, only: det_info_t
         use dSFMT_interface, only: dSFMT_t
         use excitations, only: excit_t, create_excited_det, get_excitation_level
         use proc_pointers, only: gen_excit_ptr_t
-        use spawning, only: attempt_to_spawn
+        use spawning, only: attempt_to_spawn, update_p_single_double_data
         use system, only: sys_t
         use const, only: depsilon
         use qmc_data, only: qmc_state_t
@@ -812,7 +796,7 @@ contains
         type(gen_excit_ptr_t), intent(in) :: gen_excit_ptr
         integer(int_p), intent(out) :: nspawn, nspawn_im
         type(excit_t), intent(out) :: connection
-        real(p), intent(inout) :: h_pgen_singles_sum_tmp, h_pgen_doubles_sum_tmp, excit_gen_singles_tmp, excit_gen_doubles_tmp
+        type(p_single_double_stats_t), intent(inout) :: ps_stat
 
         ! We incorporate the sign of the amplitude into the Hamiltonian matrix
         ! element, so we 'pretend' to attempt_to_spawn that all excips are
@@ -830,17 +814,9 @@ contains
         ! least for now) is left as an exercise to the interested reader.
         call gen_excit_ptr%full(rng, sys, qs%excit_gen_data, cdet, pgen, connection, hmatel, allowed_excitation)
 
-! [review] - AJWT: Repeated code.
         if ((allowed_excitation == .true.) .and. (qs%excit_gen_data%p_single_double%vary_psingles == .true.)) then
-            if (connection%nexcit == 1) then
-                h_pgen_singles_sum_tmp = h_pgen_singles_sum_tmp + &
-                    ((abs(hmatel%c)*qs%excit_gen_data%pattempt_single)/pgen)
-                excit_gen_singles_tmp = excit_gen_singles_tmp + 1.0_p
-            else if (connection%nexcit == 2) then
-                h_pgen_doubles_sum_tmp = h_pgen_doubles_sum_tmp + &
-                    ((abs(hmatel%c)*qs%excit_gen_data%pattempt_double)/pgen)
-                excit_gen_doubles_tmp = excit_gen_doubles_tmp + 1.0_p
-            end if
+            call update_p_single_double_data(connection%nexcit, ps_stat%h_pgen_singles_sum, ps_stat%h_pgen_doubles_sum, &
+                        ps_stat%excit_gen_singles, ps_stat%excit_gen_doubles, hmatel, pgen, qs%excit_gen_data, sys%read_in%comp)
         end if
 
         ! 2, Apply additional factors.
