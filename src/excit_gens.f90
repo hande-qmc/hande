@@ -18,6 +18,7 @@ type p_single_double_t
     real(p) :: every_min_attempts = 10.0_p ! unless there were not more than every_min_attempts of single or double ex. since
     real(p) :: counter = 1.0_p
     logical :: vary_psingles = .false. ! still update pattempt_singles
+    logical :: pattempt_restart_store = .false. ! has pattempt_* information from p_single_double been stored when restarting
 end type p_single_double_t
 
 ! Type containing alias tables, etc, needed when using the power pitzer ("occ_ref") 

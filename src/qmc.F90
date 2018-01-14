@@ -836,17 +836,19 @@ contains
         type(sys_t), intent(in) :: sys
         type(qmc_in_t), intent(in) :: qmc_in
         type(reference_t), intent(in) :: ref
-        type(excit_gen_data_t), intent(out) :: excit_gen_data
+        type(excit_gen_data_t), intent(inout) :: excit_gen_data
 
         ! Set type of excitation generator to use
         excit_gen_data%excit_gen = qmc_in%excit_gen
 
-        ! If not set at input, set probability of selecting single or double
+        ! If not set at input or available from restart file, set probability of selecting single or double
         ! excitations based upon the reference determinant and assume other
         ! determinants have a roughly similar ratio of single:double
-        ! excitations.
+        ! excitations. Input overrides information stored in restart file.
         if (qmc_in%pattempt_single < 0 .or. qmc_in%pattempt_double < 0) then
-            call find_single_double_prob(sys, ref%occ_list0, excit_gen_data%pattempt_single, excit_gen_data%pattempt_double)
+            if (excit_gen_data%p_single_double%pattempt_restart_store == .false.) then
+                call find_single_double_prob(sys, ref%occ_list0, excit_gen_data%pattempt_single, excit_gen_data%pattempt_double)
+            end if
         else
             ! renormalise just in case input wasn't
             excit_gen_data%pattempt_single = qmc_in%pattempt_single/(qmc_in%pattempt_single+qmc_in%pattempt_double)
