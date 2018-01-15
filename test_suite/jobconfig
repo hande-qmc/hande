@@ -113,6 +113,7 @@ vquick =   ccmc/np1/Ne-RHF-cc-pVDZ-Lz-CCSDTQ5-multispawn-short
            ccmc/np1/Ne-RHF-cc-pVDZ-Lz-CCSDTQ5-multispawn-short-debug-logging
            ccmc/np1/Ne-RHF-cc-pVDZ_ccmc_even_selection
            ccmc/np1/polyyne_complex_ccsdt
+           ccmc/np1/hubbard_real_1d_ccmc_even_selection
            ccmc/np2/H2O-cc-pVDZ_tau_search
            ccmc/np2/H2O-cc-pVDZ_ccsdt
            ccmc_real_32/np1/HOCl-6-31g_ccsd_short
