@@ -149,7 +149,7 @@ contains
     
         use const, only: depsilon
 
-        integer :: weights_len
+        integer, intent(in) :: weights_len
         real(p), intent(in) :: min_ratio
         real(p), intent(inout) :: weights(:), weights_tot
 
@@ -416,12 +416,11 @@ contains
                 pp%ppn_ia_s%weights_tot(i) = pp%ppn_ia_s%weights_tot(i) + pp%ppn_ia_s%weights(a, i)
             end do
             ! Make sure that very small non zero weights get raised to the minimum weight.
-            call check_min_weight_ratio(pp%ppn_ia_s%weights(:,i), pp%ppn_ia_s%weights_tot(i), sys%basis%nbasis, &
-                                    pp%power_pitzer_min_weight)
+            call check_min_weight_ratio(pp%ppn_ia_s%weights(:,i), pp%ppn_ia_s%weights_tot(i), &
+                sys%read_in%pg_sym%nbasis_sym_spin(imsa,isyma), pp%power_pitzer_min_weight)
             call generate_alias_tables(sys%read_in%pg_sym%nbasis_sym_spin(imsa,isyma), pp%ppn_ia_s%weights(:,i), &
                                     pp%ppn_ia_s%weights_tot(i), pp%ppn_ia_s%aliasU(:,i), pp%ppn_ia_s%aliasK(:,i))
         end do
-
 #ifdef PARALLEL
         ! note how FORTRAN stores arrays: array(2,1) comes before array(1,2) in memory.
         associate(mv=>maxval(sys%read_in%pg_sym%nbasis_sym_spin))
@@ -640,15 +639,15 @@ contains
         end do
 #ifdef PARALLEL
         sr = sys%sym_max_tot - sys%sym0_tot + 1
-        associate(mv=>maxval(sys%read_in%pg_sym%nbasis_sym_spin))
-            call mpi_allgatherv(pp%ppn_ia_d%weights(:,iproc_nbasis_start:iproc_nbasis_end), mv*sizes_nbasis(iproc), &
-                mpi_preal, pp%ppn_ia_d%weights, mv*sizes_nbasis, mv*displs_nbasis, mpi_preal, MPI_COMM_WORLD, ierr)
+        associate(mv=>maxval(sys%read_in%pg_sym%nbasis_sym_spin), na=>max(pp%n_all_alpha,pp%n_all_beta))
+            call mpi_allgatherv(pp%ppn_ia_d%weights(:,iproc_nbasis_start:iproc_nbasis_end), na*sizes_nbasis(iproc), &
+                mpi_preal, pp%ppn_ia_d%weights, na*sizes_nbasis, na*displs_nbasis, mpi_preal, MPI_COMM_WORLD, ierr)
             call mpi_allgatherv(pp%ppn_ia_d%weights_tot(iproc_nbasis_start:iproc_nbasis_end), sizes_nbasis(iproc), &
                 mpi_preal, pp%ppn_ia_d%weights_tot, sizes_nbasis, displs_nbasis, mpi_preal, MPI_COMM_WORLD, ierr)
-            call mpi_allgatherv(pp%ppn_ia_d%aliasU(:,iproc_nbasis_start:iproc_nbasis_end), mv*sizes_nbasis(iproc), &
-                mpi_preal, pp%ppn_ia_d%aliasU, mv*sizes_nbasis, mv*displs_nbasis, mpi_preal, MPI_COMM_WORLD, ierr)
-            call mpi_allgatherv(pp%ppn_ia_d%aliasK(:,iproc_nbasis_start:iproc_nbasis_end), mv*sizes_nbasis(iproc), &
-                MPI_INTEGER, pp%ppn_ia_d%aliasK, mv*sizes_nbasis, mv*displs_nbasis, MPI_INTEGER, MPI_COMM_WORLD, ierr)
+            call mpi_allgatherv(pp%ppn_ia_d%aliasU(:,iproc_nbasis_start:iproc_nbasis_end), na*sizes_nbasis(iproc), &
+                mpi_preal, pp%ppn_ia_d%aliasU, na*sizes_nbasis, na*displs_nbasis, mpi_preal, MPI_COMM_WORLD, ierr)
+            call mpi_allgatherv(pp%ppn_ia_d%aliasK(:,iproc_nbasis_start:iproc_nbasis_end), na*sizes_nbasis(iproc), &
+                MPI_INTEGER, pp%ppn_ia_d%aliasK, na*sizes_nbasis, na*displs_nbasis, MPI_INTEGER, MPI_COMM_WORLD, ierr)
         
             call mpi_allgatherv(pp%ppn_jb_d%weights(:,sys%sym0_tot:sys%sym_max_tot,iproc_nbasis_start:iproc_nbasis_end), &
                 sr*mv*sizes_nbasis(iproc), mpi_preal, pp%ppn_jb_d%weights(:,sys%sym0_tot:sys%sym_max_tot,:), &
