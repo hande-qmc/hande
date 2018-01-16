@@ -183,7 +183,8 @@ contains
         call init_excit_gen(sys, qmc_in, qmc_state%ref, qmc_state%excit_gen_data)
         call cpu_time(t2)
         set_up_time = t2 - t1
-        if (parent) write(iunit, '(1X, "# Finishing the excitation generator initialisation, time taken: ",f8.5)') set_up_time
+        if (parent) write(iunit, &
+            '(1X, "# Finishing the excitation generator initialisation, time taken:",1X,es17.10)') set_up_time
 
         qmc_state%propagator%quasi_newton = qmc_in%quasi_newton
         qmc_state%propagator%quasi_newton_threshold = qmc_in%quasi_newton_threshold
@@ -208,18 +209,18 @@ contains
             call cpu_time(t2)
             set_up_time = t2 - t1
             if (parent) write(iunit, &
-                '(1X, "# Finishing the Power Pitzer excitation generator initialisation, time taken: ",f8.5)') set_up_time
+                '(1X, "# Finishing the Power Pitzer excitation generator initialisation, time taken:",1X,es17.10)') set_up_time
         end if
 
         if (qmc_in%excit_gen==excit_gen_power_pitzer_orderN) then
-            if (parent) write(iunit, '(1X, "# Starting the Power Pitzer Order N excitation generator initialisation.")')
+            if (parent) write(iunit, '(1X, "# Starting the P.P. Order N excitation generator initialisation.")')
             call cpu_time(t1)
             qmc_state%excit_gen_data%excit_gen_pp%power_pitzer_min_weight = qmc_in%power_pitzer_min_weight
             call init_excit_mol_power_pitzer_orderN(sys, qmc_state%ref, qmc_state%excit_gen_data%excit_gen_pp)
             call cpu_time(t2)
             set_up_time = t2 - t1
             if (parent) write(iunit, &
-                '(1X, "# Finishing the Power Pitzer Order N excitation generator initialisation, time taken: ",f8.5)') set_up_time
+                '(1X, "# Finishing the P.P. Order N excitation generator initialisation, time taken:",1X,es17.10)') set_up_time
         end if
 
         if (qmc_in%excit_gen==excit_gen_heat_bath) then
@@ -229,7 +230,7 @@ contains
             call cpu_time(t2)
             set_up_time = t2 - t1
             if (parent) write(iunit, &
-                '(1X, "# Finishing the heat bath excitation generator initialisation, time taken: ",f8.5)') set_up_time
+                '(1X, "# Finishing the heat bath excitation generator initialisation, time taken:",1X,es17.10)') set_up_time
         end if
         if ((qmc_in%excit_gen==excit_gen_heat_bath_uniform) .or. (qmc_in%excit_gen==excit_gen_heat_bath_single)) then
             if (parent) write(iunit, '(1X, "# Starting the heat bath excitation generator initialisation.")')
@@ -238,7 +239,7 @@ contains
             call cpu_time(t2)
             set_up_time = t2 - t1
             if (parent) write(iunit, &
-                '(1X, "# Finishing the heat bath excitation generator initialisation, time taken: ",f8.5)') set_up_time
+                '(1X, "# Finishing the heat bath excitation generator initialisation, time taken:",1X,es17.10)') set_up_time
         end if
 
         ! check_input makes sure the pattempt_update cannot be true if we are using the heat bath excitation generator.

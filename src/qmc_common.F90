@@ -1178,7 +1178,8 @@ contains
                 ! pattempt_single at the end of this report loop and of any future report loops.
                 qs%excit_gen_data%p_single_double%vary_psingles = .false.
                 ! Write (final) pattempt_single to output file.
-                if (parent) write(iunit, '(1X, "# pattempt_single chosen to be: ",f8.5)') qs%excit_gen_data%pattempt_single
+                ! Format adapted from writing out shift damping.
+                if (parent) write(iunit, '(1X, "# pattempt_single chosen to be:",1X,es17.10)') qs%excit_gen_data%pattempt_single
             else
                 ! Possibly (if there were enough excitations) update pattempt_single.
                 call update_pattempt(qs%excit_gen_data)
