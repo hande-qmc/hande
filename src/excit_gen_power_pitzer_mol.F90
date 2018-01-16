@@ -376,7 +376,7 @@ contains
         end do
 
 #ifdef PARALLEL
-        call mpi_allgatherv(pp%ppn_i_s%weights(iproc_nel_start:iproc_nel_end), sizes_nel(iproc), &
+        call mpi_allgatherv(MPI_IN_PLACE, sizes_nel(iproc), &
             mpi_preal, pp%ppn_i_s%weights, sizes_nel, displs_nel, mpi_preal, MPI_COMM_WORLD, ierr)
 #endif
         pp%ppn_i_s%weights_tot = sum(pp%ppn_i_s%weights)
@@ -424,15 +424,15 @@ contains
 #ifdef PARALLEL
         ! note how FORTRAN stores arrays: array(2,1) comes before array(1,2) in memory.
         associate(mv=>maxval(sys%read_in%pg_sym%nbasis_sym_spin))
-            call mpi_allgatherv(pp%ppn_ia_s%weights(:,iproc_nbasis_start:iproc_nbasis_end), mv*sizes_nbasis(iproc), &
+            call mpi_allgatherv(MPI_IN_PLACE, mv*sizes_nbasis(iproc), &
                 mpi_preal, pp%ppn_ia_s%weights, mv*sizes_nbasis, mv*displs_nbasis, mpi_preal, MPI_COMM_WORLD, ierr)
-            call mpi_allgatherv(pp%ppn_ia_s%weights_tot(iproc_nbasis_start:iproc_nbasis_end), sizes_nbasis(iproc), &
+            call mpi_allgatherv(MPI_IN_PLACE, sizes_nbasis(iproc), &
                 mpi_preal, pp%ppn_ia_s%weights_tot, sizes_nbasis, displs_nbasis, mpi_preal, MPI_COMM_WORLD, ierr)
-            call mpi_allgatherv(pp%ppn_ia_s%aliasU(:,iproc_nbasis_start:iproc_nbasis_end), mv*sizes_nbasis(iproc), &
+            call mpi_allgatherv(MPI_IN_PLACE, mv*sizes_nbasis(iproc), &
                 mpi_preal, pp%ppn_ia_s%aliasU, mv*sizes_nbasis, mv*displs_nbasis, mpi_preal, MPI_COMM_WORLD, ierr)
             ! [todo] - this is not the safest thing in the universe: Once someone changes whether aliasK is int_32 or int_64
             ! [todo] - in excit_gens.f90, this needs to be changed too.
-            call mpi_allgatherv(pp%ppn_ia_s%aliasK(:,iproc_nbasis_start:iproc_nbasis_end), mv*sizes_nbasis(iproc), &
+            call mpi_allgatherv(MPI_IN_PLACE, mv*sizes_nbasis(iproc), &
                 MPI_INTEGER, pp%ppn_ia_s%aliasK, mv*sizes_nbasis, mv*displs_nbasis, MPI_INTEGER, MPI_COMM_WORLD, ierr)
         end associate
 #endif
@@ -502,7 +502,7 @@ contains
 
 
 #ifdef PARALLEL
-        call mpi_allgatherv(pp%ppn_i_d%weights(iproc_nel_start:iproc_nel_end), sizes_nel(iproc), &
+        call mpi_allgatherv(MPI_IN_PLACE, sizes_nel(iproc), &
             mpi_preal, pp%ppn_i_d%weights, sizes_nel, displs_nel, mpi_preal, MPI_COMM_WORLD, ierr)
 #endif
         pp%ppn_i_d%weights_tot = sum(pp%ppn_i_d%weights)
@@ -584,13 +584,13 @@ contains
 #ifdef PARALLEL
         ! note how FORTRAN stores arrays: array(2,1) comes before array(1,2) in memory.
         associate(ne=>sys%nel)
-            call mpi_allgatherv(pp%ppn_ij_d%weights(:,iproc_nbasis_start:iproc_nbasis_end), ne*sizes_nbasis(iproc), &
+            call mpi_allgatherv(MPI_IN_PLACE, ne*sizes_nbasis(iproc), &
                 mpi_preal, pp%ppn_ij_d%weights, ne*sizes_nbasis, ne*displs_nbasis, mpi_preal, MPI_COMM_WORLD, ierr)
-            call mpi_allgatherv(pp%ppn_ij_d%weights_tot(iproc_nbasis_start:iproc_nbasis_end), sizes_nbasis(iproc), &
+            call mpi_allgatherv(MPI_IN_PLACE, sizes_nbasis(iproc), &
                 mpi_preal, pp%ppn_ij_d%weights_tot, sizes_nbasis, displs_nbasis, mpi_preal, MPI_COMM_WORLD, ierr)
-            call mpi_allgatherv(pp%ppn_ij_d%aliasU(:,iproc_nbasis_start:iproc_nbasis_end), ne*sizes_nbasis(iproc), &
+            call mpi_allgatherv(MPI_IN_PLACE, ne*sizes_nbasis(iproc), &
                 mpi_preal, pp%ppn_ij_d%aliasU, ne*sizes_nbasis, ne*displs_nbasis, mpi_preal, MPI_COMM_WORLD, ierr)
-            call mpi_allgatherv(pp%ppn_ij_d%aliasK(:,iproc_nbasis_start:iproc_nbasis_end), ne*sizes_nbasis(iproc), &
+            call mpi_allgatherv(MPI_IN_PLACE, ne*sizes_nbasis(iproc), &
                 MPI_INTEGER, pp%ppn_ij_d%aliasK, ne*sizes_nbasis, ne*displs_nbasis, MPI_INTEGER, MPI_COMM_WORLD, ierr)
         end associate
 #endif
@@ -640,25 +640,25 @@ contains
 #ifdef PARALLEL
         sr = sys%sym_max_tot - sys%sym0_tot + 1
         associate(mv=>maxval(sys%read_in%pg_sym%nbasis_sym_spin), na=>max(pp%n_all_alpha,pp%n_all_beta))
-            call mpi_allgatherv(pp%ppn_ia_d%weights(:,iproc_nbasis_start:iproc_nbasis_end), na*sizes_nbasis(iproc), &
+            call mpi_allgatherv(MPI_IN_PLACE, na*sizes_nbasis(iproc), &
                 mpi_preal, pp%ppn_ia_d%weights, na*sizes_nbasis, na*displs_nbasis, mpi_preal, MPI_COMM_WORLD, ierr)
-            call mpi_allgatherv(pp%ppn_ia_d%weights_tot(iproc_nbasis_start:iproc_nbasis_end), sizes_nbasis(iproc), &
+            call mpi_allgatherv(MPI_IN_PLACE, sizes_nbasis(iproc), &
                 mpi_preal, pp%ppn_ia_d%weights_tot, sizes_nbasis, displs_nbasis, mpi_preal, MPI_COMM_WORLD, ierr)
-            call mpi_allgatherv(pp%ppn_ia_d%aliasU(:,iproc_nbasis_start:iproc_nbasis_end), na*sizes_nbasis(iproc), &
+            call mpi_allgatherv(MPI_IN_PLACE, na*sizes_nbasis(iproc), &
                 mpi_preal, pp%ppn_ia_d%aliasU, na*sizes_nbasis, na*displs_nbasis, mpi_preal, MPI_COMM_WORLD, ierr)
-            call mpi_allgatherv(pp%ppn_ia_d%aliasK(:,iproc_nbasis_start:iproc_nbasis_end), na*sizes_nbasis(iproc), &
+            call mpi_allgatherv(MPI_IN_PLACE, na*sizes_nbasis(iproc), &
                 MPI_INTEGER, pp%ppn_ia_d%aliasK, na*sizes_nbasis, na*displs_nbasis, MPI_INTEGER, MPI_COMM_WORLD, ierr)
         
-            call mpi_allgatherv(pp%ppn_jb_d%weights(:,sys%sym0_tot:sys%sym_max_tot,iproc_nbasis_start:iproc_nbasis_end), &
+            call mpi_allgatherv(MPI_IN_PLACE, &
                 sr*mv*sizes_nbasis(iproc), mpi_preal, pp%ppn_jb_d%weights(:,sys%sym0_tot:sys%sym_max_tot,:), &
                 sr*mv*sizes_nbasis, sr*mv*displs_nbasis, mpi_preal, MPI_COMM_WORLD, ierr)
-            call mpi_allgatherv(pp%ppn_jb_d%weights_tot(sys%sym0_tot:sys%sym_max_tot,iproc_nbasis_start:iproc_nbasis_end), &
+            call mpi_allgatherv(MPI_IN_PLACE, &
                 sr*sizes_nbasis(iproc), mpi_preal, pp%ppn_jb_d%weights_tot(sys%sym0_tot:sys%sym_max_tot,:), sr*sizes_nbasis, &
                 sr*displs_nbasis, mpi_preal, MPI_COMM_WORLD, ierr)
-            call mpi_allgatherv(pp%ppn_jb_d%aliasU(:,sys%sym0_tot:sys%sym_max_tot,iproc_nbasis_start:iproc_nbasis_end), &
+            call mpi_allgatherv(MPI_IN_PLACE, &
                 sr*mv*sizes_nbasis(iproc), mpi_preal, pp%ppn_jb_d%aliasU(:,sys%sym0_tot:sys%sym_max_tot,:), sr*mv*sizes_nbasis, &
                 sr*mv*displs_nbasis, mpi_preal, MPI_COMM_WORLD, ierr)
-            call mpi_allgatherv(pp%ppn_jb_d%aliasK(:,sys%sym0_tot:sys%sym_max_tot,iproc_nbasis_start:iproc_nbasis_end), &
+            call mpi_allgatherv(MPI_IN_PLACE, &
                 sr*mv*sizes_nbasis(iproc), MPI_INTEGER, pp%ppn_jb_d%aliasK(:,sys%sym0_tot:sys%sym_max_tot,:), &
                 sr*mv*sizes_nbasis, sr*mv*displs_nbasis, MPI_INTEGER, MPI_COMM_WORLD, ierr)
         end associate
