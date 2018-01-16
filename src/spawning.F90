@@ -2210,7 +2210,7 @@ contains
             pattempt_single = (h_pgen_singles_sum_sum/excit_gen_singles_sum) / &
                     ((h_pgen_doubles_sum_sum/excit_gen_doubles_sum) + (h_pgen_singles_sum_sum/excit_gen_singles_sum))
             pattempt_double = 1.0_p - pattempt_single
-            if (parent) write(iunit, '(1X, "# pattempt_single changed to be: ",f8.5)') pattempt_single
+            if (parent) write(iunit, '(1X, "# pattempt_single changed to be:",1X,es17.10)') pattempt_single
         end if
     end subroutine update_pattempt_single
 
