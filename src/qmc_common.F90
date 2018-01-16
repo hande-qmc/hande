@@ -1280,7 +1280,7 @@ contains
         else
             tau = 0.950_p*tau
         end if
-        if (parent) write(iunit, '(1X, "# Warning timestep changed to: ",f8.5)') tau
+        if (parent) write(iunit, '(1X, "# Warning timestep changed to:",1X,es17.10)') tau
 
     end subroutine rescale_tau
 
