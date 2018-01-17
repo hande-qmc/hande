@@ -1,0 +1,268 @@
+
+   HANDE
+
+ ================================================================
+ Compiled on Jan 17 2018 at 13:59:33
+ Compiled using cuc3.intel13.mpi.pop64.lan.(optimised)
+ HANDE version: 1.1-dev
+ git sha1 hash:
+     f56c749a5ae1ad69430293f5e95be46b9b7523ed
+ Hostname:
+     gritstone
+ Working directory: 
+     /home/van26/code/hande/test_suite/lanczos/CN-UHF-sto-3g
+ Started running on 17/01/2018 at 15:42:44
+ Calculation UUID: cc41e192-6fa9-4e90-b07c-519b76c286d5.
+ Preprocessor settings:
+     DISABLE_HDF5 not defined.  HDF5 enabled.
+     DISABLE_LANCZOS not defined.  Lanczos enabled.
+     DISABLE_UUID not defined.  UUID enabled.
+     PARALLEL defined.  MPI parallelization enabled.
+     DISABLE_SCALAPACK not defined.  ScaLAPACK enabled.
+     SINGLE_PRECISION not defined.  Double precision used throughout.
+     USE_POPCNT not defined.  Internal POPCNT procedure used.
+     DET_SIZE = 32.
+     POP_SIZE = 64.
+ ================================================================
+
+ Input options
+ -------------
+
+sys = read_in {
+    int_file = "INTDUMP",
+    nel = 13,
+    ms = 1,
+    sym = 0,
+}
+
+fci {
+    sys = sys,
+    lanczos = {
+        neigv = 40,
+        sparse = false,
+    },
+}
+--    SCF calculation produced by Q-Chem using:  
+--[[
+$molecule
+    0 2
+    6  0  0  0
+    7  0  0  1.1941
+$end
+
+$rem
+    basis sto-3g
+    exchange hf
+    correlation idump
+    scf_convergence 14
+    thresh 16
+    jobtype sp
+    iprint 20000011
+    geom_opt_coords 0
+    print_orbitals 999
+    unrestricted false
+    use_abelian_subgroup true
+    scf_restrict_sym 3
+$end
+--]]
+
+
+ -------------
+
+ Memory required for all two body integrals (MB) on each processor: 0
+ It is left to the user to ensure that this does not exceed available resources.
+
+ Basis functions
+ ---------------
+
+ Spin given in units of 1/2.
+
+ index  spatial symmetry sym_index lz     ms       <i|h|i>
+     1      1       0       1       0       1       -1.53974060E+01
+     2      1       0       2       0      -1       -1.53937731E+01
+     3      2       0       3       0       1       -1.11090258E+01
+     4      2       0       4       0      -1       -1.10801164E+01
+     5      3       0       5       0       1       -1.18877138E+00
+     6      3       0       6       0      -1       -1.15136153E+00
+     7      4       0       7       0       1       -5.86008818E-01
+     8      4       0       8       0      -1       -5.04443936E-01
+     9      5       0       9       0       1       -5.59509370E-01
+    10      5       3       1      -1      -1       -4.20149715E-01
+    11      6       3       2      -1       1       -4.47197958E-01
+    12      6       2       1       1      -1       -4.20149715E-01
+    13      7       2       2       1       1       -4.47197958E-01
+    14      7       0      10       0      -1        9.22011205E-02
+    15      8       3       3      -1       1        3.00889870E-01
+    16      8       3       4      -1      -1        3.45718301E-01
+    17      9       2       3       1       1        3.00889870E-01
+    18      9       2       4       1      -1        3.45718301E-01
+    19     10       0      11       0       1        1.04454506E+00
+    20     10       0      12       0      -1        1.11295876E+00
+
+ E_core =   18.612714887955
+ Number of electrons: 13
+ Number of basis functions: 20
+
+ Bit-length of integers used to store determinant bit-strings: 32
+ Number of integers used to store determinant bit-strings: 1
+
+ Symmetry information
+ --------------------
+
+ Number of point group symmetries: 4
+ Not using Lz symmetry.
+ Totally symmetric symmetry: 0
+ The matrix below gives the direct products of the irreducible representations.
+
+  0  1  2  3
+  1  0  3  2
+  2  3  0  1
+  3  2  1  0
+
+ The table below gives the number of basis functions spanning each irreducible representation.
+
+ irrep  Lz   sym  nbasis  nbasis_up  nbasis_down
+   0     0    0     12       6          6
+   1     0    1      0       0          0
+   2     0    2      4       2          2
+   3     0    3      4       2          2
+
+ FCI
+ ---
+
+ -- Start JSON block --
+ {
+     "system": {
+         "nbasis": 20,   
+         "nel": 13,   
+         "nvirt": 7,   
+         "Ms": 1,   
+         "nalpha": 7,   
+         "nbeta": 6,   
+         "nvirt_alpha": 3,   
+         "nvirt_beta": 4,   
+         "nsym": 3,   
+         "sym0": 0,   
+         "sym_max": 3,   
+         "nsym_tot": 4,   
+         "sym0_tot": 0,   
+         "sym_max_tot": 3,   
+         "symmetry": 0,   
+         "tot_sym": false,   
+         "aufbau_sym": false,   
+         "max_number_excitations": 7,   
+         "read_in": {
+             "int_file":  "INTDUMP",   
+             "uhf": true,   
+             "Ecore": 18.61271489,   
+             "CAS": [ -1, -1],
+             "useLz": false,   
+             "complex": false    
+         }
+     },
+     "fci_in": {
+         "write_hamiltonian": false,   
+         "hamiltonian_file":  "HAMIL",   
+         "write_determinants": false,   
+         "determinant_file":  "DETS",   
+         "print_fci_wfn": 0,   
+         "print_fci_wfn_file":  "FCI_WFN",   
+         "analyse_fci_wfn": 0,   
+         "block_size": 64,   
+         "nlanczos_eigv": 40,   
+         "lanczos_string_len": 40,   
+         "direct_lanczos": false    
+     },
+     "reference": {
+         "ex_level": 13    
+     }
+ }
+ -- End JSON block --
+
+ The table below gives the number of determinants for each symmetry with Ms=1.
+
+ Symmetry index      # dets
+         0             6240
+         1             6352
+         2             6304
+         3             6304
+
+ Performing Lanczos diagonalisation...
+
+ TRLan (Lanczos) information:
+
+                                        2018/01/17 15:42:53.634 (-00:00)
+ TRLAN execution summary (exit status =           0 )
+Number of SMALLEST eigenpairs:         43 (computed),         40 (wanted)
+Times the operator is applied:       1346 (MAX:             6240 ).
+Problem size:                        6240 (PE:   0),        6240 (Global)
+Convergence tolerance:           1.49E-08 (rel),       1.359E-06 (abs)
+Maximum basis size:                    80
+Restarting scheme:                      0
+Number of re-orthogonalizations      1346
+Number of (re)start loops:             35
+Number of eigenpairs locked:           26
+OP(MATVEC):             6.9116E+00 sec,  2.5673E+08 FLOP/S ( 1.7744E+09 FLOP)
+Re-Orthogonalization:   5.6970E-01 sec,  3.6102E+09 FLOP/S ( 2.0567E+09 FLOP)
+Restarting:             1.0230E-01 sec,  8.3326E+09 FLOP/S ( 8.5242E+08 FLOP)
+TRLAN on this PE:       7.7627E+00 sec,  1.3891E+10 FLOP/S ( 1.0783E+11 FLOP)
+
+ Lanczos diagonalisation results
+ ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+  State     Energy
+      1   -91.177672131061
+      2   -91.032825562772
+      3   -90.949714393713
+      4   -90.882270887624
+      5   -90.828944366538
+      6   -90.797076966570
+      7   -90.784443534616
+      8   -90.780235781793
+      9   -90.726410611042
+     10   -90.716622996879
+     11   -90.675367196816
+     12   -90.630314810382
+     13   -90.588971583818
+     14   -90.588136083158
+     15   -90.549884502821
+     16   -90.535666473225
+     17   -90.507877389090
+     18   -90.466235474099
+     19   -90.463123303989
+     20   -90.460680962222
+     21   -90.420840543565
+     22   -90.406294191722
+     23   -90.382980461714
+     24   -90.377910902580
+     25   -90.359785261588
+     26   -90.357702782766
+     27   -90.342123060864
+     28   -90.327454993585
+     29   -90.321605713255
+     30   -90.314584201726
+     31   -90.302155544716
+     32   -90.276177522202
+     33   -90.260537511449
+     34   -90.258311968683
+     35   -90.239059401992
+     36   -90.235736370385
+     37   -90.204394559091
+     38   -90.192310666199
+     39   -90.189146662111
+     40   -90.168899813567
+
+ Timing breakdown
+ ----------------
+
+ Time for each calculation section (seconds):
+
+ Generic system initialisation: .01
+ FCI calculation              : 46.13
+
+ ================================================================
+ Finished running on 17/01/2018 at 15:42:53
+ Wall time (seconds):                           8.78
+ CPU time (per processor, seconds):            46.15
+ ================================================================
+
