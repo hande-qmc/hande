@@ -1,0 +1,53 @@
+.. _v1.2:
+
+What's new in version 1.2? (not an exhaustive list)
+===================================================
+
+* We are now on restart file version number 2.
+
+Features
+--------
+
+* Auto-shift-damping
+* Blocking-on-the-fly
+* Complex CCMC
+* DMQMC structure factor
+* DMQMC momentum distribution
+* Logging of CCMC stochastic selection
+* Lua "cookbook"
+* Reduced Density Matrices
+* Replica Tricks for CIQMC
+* Semi stochastic quasi-Newton
+* Truncated and Even Selection
+* Use of real cumulative populations in CCMC
+* Write to arbitrary output file
+
+Bug Fixes
+---------
+
+* Storing projected energy in restart file to avoid estimation based on configuration
+  interaction when restarting coupled cluster. Once we allow the rng state to be
+  stored as well, this means continous Markov chains across restarting in CCMC.
+  Before this bug fix, the initial projected energy when restarting was (usually) different
+  from what it should have been.
+* Reading in semistochastic restart files.
+
+Improvements to Stability and Robustness and Version Updates
+------------------------------------------------------------
+
+* Move to LUA 5.3.3
+* Removed support for GCC 4.7 and below
+* Improve HDF5 support
+* Improve broadcasting of integrals
+* Alter how HANDE decides whether the shift should be varied or not when restarting.
+* Improve direct LANCZOS hamiltonian memory handling.
+* Improve dealing with HANDE.COMM in multi node calculations.
+* Fix logging of death step
+* Correctly convert 32 and 64 bit strings in restart files.
+
+Pyhande Updates
+---------------
+
+* Compatibility with Pandas 0.20
+* Extend lazy.py to deal with Simple FCIQMC and fix how QMC calculations are detected.
+* Allow multiple canonical calculations to be averaged.

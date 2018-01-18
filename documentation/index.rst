@@ -8,6 +8,7 @@ Contents
    manual/index
    pyhande/pyhande
    dev_guide/index
+   release_notes/index
 
    bibliography
 
