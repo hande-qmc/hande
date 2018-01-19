@@ -206,17 +206,17 @@ contains
 #ifdef PARALLEL
         ! note how FORTRAN stores arrays: array(2,1) comes before array(1,2) in memory.
         associate(nb=>sys%basis%nbasis)
-            call mpi_allgatherv(hb%i_weights(iproc_nbasis_start:iproc_nbasis_end), sizes_nbasis(iproc), &
+            call mpi_allgatherv(MPI_IN_PLACE, sizes_nbasis(iproc), &
                 mpi_preal, hb%i_weights, sizes_nbasis, displs_nbasis, mpi_preal, MPI_COMM_WORLD, ierr)
-            call mpi_allgatherv(hb%ij_weights(:,iproc_nbasis_start:iproc_nbasis_end), nb*sizes_nbasis(iproc), &
+            call mpi_allgatherv(MPI_IN_PLACE, nb*sizes_nbasis(iproc), &
                 mpi_preal, hb%ij_weights, nb*sizes_nbasis, nb*displs_nbasis, mpi_preal, MPI_COMM_WORLD, ierr)
-            call mpi_allgatherv(hb%hb_ija%weights_tot(:,iproc_nbasis_start:iproc_nbasis_end), nb*sizes_nbasis(iproc), &
+            call mpi_allgatherv(MPI_IN_PLACE, nb*sizes_nbasis(iproc), &
                 mpi_preal, hb%hb_ija%weights_tot, nb*sizes_nbasis, nb*displs_nbasis, mpi_preal, MPI_COMM_WORLD, ierr)
-            call mpi_allgatherv(hb%hb_ija%weights(:,:,iproc_nbasis_start:iproc_nbasis_end), nb*nb*sizes_nbasis(iproc), &
+            call mpi_allgatherv(MPI_IN_PLACE, nb*nb*sizes_nbasis(iproc), &
                 mpi_preal, hb%hb_ija%weights, nb*nb*sizes_nbasis, nb*nb*displs_nbasis, mpi_preal, MPI_COMM_WORLD, ierr)
-            call mpi_allgatherv(hb%hb_ijab%weights_tot(:,:,iproc_nbasis_start:iproc_nbasis_end), nb*nb*sizes_nbasis(iproc), &
+            call mpi_allgatherv(MPI_IN_PLACE, nb*nb*sizes_nbasis(iproc), &
                 mpi_preal, hb%hb_ijab%weights_tot, nb*nb*sizes_nbasis, nb*nb*displs_nbasis, mpi_preal, MPI_COMM_WORLD, ierr)
-            call mpi_allgatherv(hb%hb_ijab%weights(:,:,:,iproc_nbasis_start:iproc_nbasis_end), nb*nb*nb*sizes_nbasis(iproc), &
+            call mpi_allgatherv(MPI_IN_PLACE, nb*nb*nb*sizes_nbasis(iproc), &
                 mpi_preal, hb%hb_ijab%weights, nb*nb*nb*sizes_nbasis, nb*nb*nb*displs_nbasis, mpi_preal, MPI_COMM_WORLD, ierr)
         end associate
 #endif
@@ -242,13 +242,13 @@ contains
 #ifdef PARALLEL
         ! note how FORTRAN stores arrays: array(2,1) comes before array(1,2) in memory.
         associate(nb=>sys%basis%nbasis)
-            call mpi_allgatherv(hb%hb_ija%aliasU(:,:,iproc_nbasis_start:iproc_nbasis_end), nb*nb*sizes_nbasis(iproc), &
+            call mpi_allgatherv(MPI_IN_PLACE, nb*nb*sizes_nbasis(iproc), &
                 mpi_preal, hb%hb_ija%aliasU, nb*nb*sizes_nbasis, nb*nb*displs_nbasis, mpi_preal, MPI_COMM_WORLD, ierr)
-            call mpi_allgatherv(hb%hb_ija%aliasK(:,:,iproc_nbasis_start:iproc_nbasis_end), nb*nb*sizes_nbasis(iproc), &
+            call mpi_allgatherv(MPI_IN_PLACE, nb*nb*sizes_nbasis(iproc), &
                 MPI_INTEGER, hb%hb_ija%aliasK, nb*nb*sizes_nbasis, nb*nb*displs_nbasis, MPI_INTEGER, MPI_COMM_WORLD, ierr)
-            call mpi_allgatherv(hb%hb_ijab%aliasU(:,:,:,iproc_nbasis_start:iproc_nbasis_end), nb*nb*nb*sizes_nbasis(iproc), &
+            call mpi_allgatherv(MPI_IN_PLACE, nb*nb*nb*sizes_nbasis(iproc), &
                 mpi_preal, hb%hb_ijab%aliasU, nb*nb*nb*sizes_nbasis, nb*nb*nb*displs_nbasis, mpi_preal, MPI_COMM_WORLD, ierr)
-            call mpi_allgatherv(hb%hb_ijab%aliasK(:,:,:,iproc_nbasis_start:iproc_nbasis_end), nb*nb*nb*sizes_nbasis(iproc), &
+            call mpi_allgatherv(MPI_IN_PLACE, nb*nb*nb*sizes_nbasis(iproc), &
                 MPI_INTEGER, hb%hb_ijab%aliasK, nb*nb*nb*sizes_nbasis, nb*nb*nb*displs_nbasis, MPI_INTEGER, MPI_COMM_WORLD, ierr)
         end associate
 #endif
