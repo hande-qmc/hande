@@ -1,6 +1,6 @@
 module linalg
 
-! Set of helper wrappers around LPAACK calls.
+! Set of helper wrappers around LAPACK calls.
 
 implicit none
 
