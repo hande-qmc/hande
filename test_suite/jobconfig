@@ -78,7 +78,6 @@ quick =   vquick
           ccmc/np2/ringium_ccsd_restart/
           ccmc/np4/H2O-cc-pVDZ_ccsdmc_continue
           ccmc_real_32/np1/polyyne_complex_ccsd-real32-nc
-          ccmc_real_64/np2/polyyne_complex_ccsdt-real64-restart-legacyv1/
           dmqmc/np1/ueg_n7_rs1_e1_dmqmc/
           dmqmc/np2/hubbard_k_1d/
           dmqmc/np2/n2_sto3g/
@@ -103,6 +102,7 @@ quick64 = quick
           ccmc_real_64/np4/NH3-6-31g_ccsdt_even_selection
           ccmc_real_64/np1/ueg_n10_rs2_e4_ccmc_even_fnc_restart
           ccmc_real_64/np4/NH3-6-31g_ccsdt_blocking
+          ccmc_real_64/np2/polyyne_complex_ccsdt-real64-restart-legacyv1/
           dmqmc_real_64/np4/heisenberg_4x4_replica/
           dmqmc_real_64/np4/n2_sto3g/
           dmqmc_real_64/np4/ueg_n4_rs2_e4/
