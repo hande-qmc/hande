@@ -276,18 +276,55 @@ contains
         use proc_pointers, only: slater_condon2_excit_ptr, abs_hmatel_ptr
         use read_in_symmetry, only: cross_product_basis_read_in
         use hamiltonian_data, only: hmatel_t
+#ifdef PARALLEL
+        use parallel
+
+        integer :: displs_nbasis(0:nprocs-1)
+        integer :: sizes_nbasis(0:nprocs-1)
+        integer :: ierr, sr
+        integer :: nbasis_start, nbasis_end
+        real(p) :: parallel_weight_tot, ortho_weight_tot
+#endif
 
         type(sys_t), intent(in) :: sys
         real(p), intent(out) :: pparallel
         
+        integer :: iproc_nbasis_start, iproc_nbasis_end
         type(hmatel_t)  :: hmatel
         integer :: i, j, a, b, i_tmp, j_tmp, a_tmp, b_tmp, ij_sym, isymb
         real(p) :: parallel_weight, ortho_weight
 
+#ifdef PARALLEL
+        ! Initialise do-loop bounds for each processor, e.g. [iproc_nel_start,iproc_nel_end], in the case for
+        ! a do-loop over sys%nel.
+        nbasis_end = 0
+        do i = 0, nprocs-1
+            nbasis_start = nbasis_end + 1
+            nbasis_end = nbasis_start + sys%basis%nbasis/nprocs - 1
+            if (i < mod(sys%basis%nbasis,nprocs)) nbasis_end = nbasis_end + 1
+            if (i == iproc) then
+                iproc_nbasis_start = nbasis_start
+                iproc_nbasis_end = nbasis_end
+            end if
+            if (i < sys%basis%nbasis) then ! nbasis => nel
+                displs_nbasis(i) = nbasis_start - 1
+            else
+                displs_nbasis(i) = sys%basis%nbasis - 1
+            end if
+            sizes_nbasis(i) = nbasis_end - nbasis_start + 1
+        end do
+
+        parallel_weight_tot = 0.0_p
+        ortho_weight_tot = 0.0_p
+#else
+        iproc_nbasis_start = 1
+        iproc_nbasis_end = sys%basis%nbasis
+#endif
+
         parallel_weight = 0.0_p
         ortho_weight = 0.0_p
 
-        do i = 1, sys%basis%nbasis
+        do i = iproc_nbasis_start, iproc_nbasis_end
             do j = 1, sys%basis%nbasis
                 if (i /= j) then
                     if (j < i) then
@@ -339,7 +376,14 @@ contains
             end do
         end do
 
+#ifdef PARALLEL
+        call mpi_reduce(parallel_weight, parallel_weight_tot, 1, mpi_preal, MPI_SUM, root, MPI_COMM_WORLD, ierr)
+        call mpi_reduce(ortho_weight, ortho_weight_tot, 1, mpi_preal, MPI_SUM, root, MPI_COMM_WORLD, ierr)
+        if (iproc == root) pparallel = parallel_weight_tot/(parallel_weight_tot + ortho_weight_tot)
+        call MPI_BCast(pparallel, 1, mpi_preal, root, MPI_COMM_WORLD, ierr)
+#else
         pparallel = parallel_weight/(parallel_weight + ortho_weight)
+#endif
 
     end subroutine find_parallel_spin_prob_mol
 
