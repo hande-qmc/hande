@@ -601,9 +601,11 @@ module restart_hdf5
                                 'Projected energy and imaginary part of D0 population not stored '// &
                                 'and will be estimated from the stored population distribution.')
                         end if
+                    else if (restart_version_restart < restart_version) then
+                        if (parent) call warning('read_restart_hdf5', 'Restarting from an older restart version.')
                     else
                         call stop_all('read_restart_hdf5', &
-                                  'Restarting from a different restart version not supported.  Please implement.')
+                                  'Restarting from a newer restart version not supported.  Please implement or upgrade HANDE.')
                     end if
                 end if
                 ! Different processor counts requires figuring out if
