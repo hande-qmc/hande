@@ -19,5 +19,8 @@ ccmc {
     reference = {
         ex_level = 2,
     },
-    restart = { read = 0, },
+    restart = {
+        read = 0,
+        rng = false,
+    },
 }

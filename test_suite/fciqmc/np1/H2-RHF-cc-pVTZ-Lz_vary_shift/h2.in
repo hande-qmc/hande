@@ -34,5 +34,6 @@ fciqmc {
     restart = {
         read = 0,
         write = 1,
+        rng = false,
     },
 }

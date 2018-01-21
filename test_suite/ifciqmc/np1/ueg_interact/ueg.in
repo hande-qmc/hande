@@ -40,4 +40,5 @@ fciqmc {
     qmc = qmc,
     reference = ref,
     qmc_state = qs,
+    restart = { rng = false, },
 }

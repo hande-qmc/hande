@@ -41,6 +41,7 @@ ccmc {
     },
     restart = {
         read = 0,
+        rng = false,
     },
     ccmc = {
         full_non_composite = true,

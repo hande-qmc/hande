@@ -29,4 +29,5 @@ fciqmc {
     qmc = qmc_opts,
     reference = { det = {2, 3, 5}, },
     qmc_state = qmc_state,
+    restart = { rng = false, },
 }
