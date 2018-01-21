@@ -1,0 +1,39 @@
+-- Markov chain followed by the combined calculations is identical to
+-- if the calculation was run in one go (see single.in).
+
+sys = ringium {
+    nel = 4,
+    maxlz = 15,
+    radius = 3,
+}
+
+ccmc_args = {
+    sys = sys,
+    qmc = {
+        tau = 0.01,
+        rng_seed = 5691,
+        init_pop = 10,
+        mc_cycles = 10,
+        nreports = 100,
+        target_population = 2000,
+        state_size = -100,
+        spawned_state_size = -50,
+        initial_shift = 0.2,
+        vary_shift_from = "proje",
+    },
+    reference = {
+        ex_level = 2,
+    },
+}
+
+ccmc_args.restart = { write = 10 }
+ccmc(ccmc_args)
+
+-- Not strictly necessary but remove arguments that the restart
+-- calculation doesn't need/use.
+for _, key in pairs({'rng_seed', 'init_pop'}) do
+    ccmc_args.qmc[key] = nil
+end
+
+ccmc_args.restart = { read = 10, }
+ccmc(ccmc_args)
