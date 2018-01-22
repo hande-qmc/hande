@@ -1,3 +1,4 @@
 pandas>=0.14.1
 matplotlib
 scipy
+pyyaml

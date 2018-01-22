@@ -26,6 +26,7 @@ target_compile_definitions(dSFMT
   PRIVATE
     DSFMT_MEXP=${HANDE_DSFMT_MEXP}
     $<$<BOOL:${USE_MPI}>:PARALLEL>
+    $<$<CONFIG:Debug>:DEBUG>
   )
 target_include_directories(dSFMT
   PRIVATE

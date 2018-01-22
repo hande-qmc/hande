@@ -22,19 +22,20 @@ Options:
   --extra-fc-flags=<EXTRA_FCFLAGS>       Extra Fortran compiler flags [default: ''].
   --cc=<CC>                              C compiler [default: gcc].
   --extra-cc-flags=<EXTRA_CFLAGS>        Extra C compiler flags [default: ''].
+  --python=<PYTHON_INTERPRETER>          The Python interpreter (development version) to use. [default: ''].
+  --mpi                                  Enable MPI parallelization [default: False].
+  --omp                                  Enable OpenMP parallelization [default: False].
   --blas=<BLAS>                          Detect and link BLAS library (auto or off) [default: auto].
   --lapack=<LAPACK>                      Detect and link LAPACK library (auto or off) [default: auto].
   --mkl=<MKL>                            Pass MKL flag to the Intel compiler and linker and skip BLAS/LAPACK detection (sequential, parallel, cluster, or off) [default: off].
-  --python=<PYTHON_INTERPRETER>          The Python interpreter (development version) to use. [default: ''].
-  --mpi                                  Enable MPI parallelization [default: False].
-  --scalapack=<ScaLAPACK_LIBRARIES>      Set ScaLAPACK libraries to be linked in [default: ].
-  --omp                                  Enable OpenMP parallelization [default: False].
+  --scalapack=<SCALAPACK_LIBRARIES>      Link line for ScaLAPACK libraries [default: ]
+  --blacs=<BLACS_IMPLEMENTATION>         Implementation of BLACS for MKL ScaLAPACK (openmpi, intelmpi, sgimpt) [default: openmpi]
   --dsfmt-mexp=<HANDE_DSFMT_MEXP>        An integer among 521, 1279, 2203, 4253, 11213, 19937, 44497, 86243, 1322049, 216091 [default: 19937].
   --det-size=<HANDE_DET_SIZE>            An integer among 32 or 64 [default: 32].
   --pop-size=<HANDE_POP_SIZE>            An integer among 32 or 64 [default: 32].
   --hdf5                                 Enable HDF5 [default: False].
   --uuid                                 Whether to activate UUID generation [default: False].
-  --lanczos                              Toggle use of Lanczos diagonalisation [default: False].
+  --lanczos=<TRLan_LIBRARIES>            Set TRLan libraries to be linked in [default: ].
   --single                               Enable usage of single precision, where appropriate [default: False].
   --backtrace                            Enable backtrace functionality [default: False].
   --popcnt                               Enable use of intrinsic popcnt [default: False].
@@ -57,23 +58,25 @@ def gen_cmake_command(options, arguments):
     command.append(arguments['--cmake-executable'])
     command.append('-DCMAKE_Fortran_COMPILER={0} -DEXTRA_FCFLAGS="{1}"'.format(arguments['--fc'], arguments['--extra-fc-flags']))
     command.append('-DCMAKE_C_COMPILER={0} -DEXTRA_CFLAGS="{1}"'.format(arguments['--cc'], arguments['--extra-cc-flags']))
+    command.append('-DPYTHON_INTERPRETER="{0}"'.format(arguments['--python']))
+    command.append('-DENABLE_MPI="{0}"'.format(arguments['--mpi']))
+    command.append('-DENABLE_SCALAPACK="{0}"'.format(arguments['--mpi']))
+    command.append('-DENABLE_OPENMP="{0}"'.format(arguments['--omp']))
     command.append('-DENABLE_BLAS={0}'.format(arguments['--blas']))
     command.append('-DENABLE_LAPACK={0}'.format(arguments['--lapack']))
     command.append('-DMKL_FLAG={0}'.format(arguments['--mkl']))
     command.append('-DMATH_LIB_SEARCH_ORDER="MKL;ESSL;OPENBLAS;ATLAS;ACML;SYSTEM_NATIVE"')
     command.append('-DBLAS_LANG=Fortran')
     command.append('-DLAPACK_LANG=Fortran')
-    command.append('-DPYTHON_INTERPRETER="{0}"'.format(arguments['--python']))
-    command.append('-DENABLE_MPI="{0}"'.format(arguments['--mpi']))
-    command.append('-DENABLE_ScaLAPACK="{0}"'.format(arguments['--mpi']))
-    command.append('-DScaLAPACK_LIBRARIES="{0}"'.format(arguments['--scalapack']))
-    command.append('-DENABLE_OPENMP="{0}"'.format(arguments['--omp']))
+    command.append('-DSCALAPACK_LIBRARIES="{0}"'.format(arguments['--scalapack']))
+    command.append('-DBLACS_IMPLEMENTATION="{0}"'.format(arguments['--blacs']))
     command.append('-DHANDE_DSFMT_MEXP="{0}"'.format(arguments['--dsfmt-mexp']))
     command.append('-DHANDE_DET_SIZE="{0}"'.format(arguments['--det-size']))
     command.append('-DHANDE_POP_SIZE="{0}"'.format(arguments['--pop-size']))
     command.append('-DENABLE_HDF5="{0}"'.format(arguments['--hdf5']))
     command.append('-DENABLE_UUID="{0}"'.format(arguments['--uuid']))
-    command.append('-DENABLE_LANCZOS="{0}"'.format(arguments['--lanczos']))
+    command.append('-DENABLE_LANCZOS="{0}"'.format(True if arguments['--lanczos'] else False))
+    command.append('-DTRLan_LIBRARIES="{0}"'.format(arguments['--lanczos']))
     command.append('-DENABLE_SINGLE_PRECISION="{0}"'.format(arguments['--single']))
     command.append('-DENABLE_BACKTRACE="{0}"'.format(arguments['--backtrace']))
     command.append('-DENABLE_INTRINSIC_POPCNT="{0}"'.format(arguments['--popcnt']))

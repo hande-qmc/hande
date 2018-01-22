@@ -129,6 +129,7 @@ target_compile_definitions(hande-static
     $<$<BOOL:${USE_MPI}>:PARALLEL>
     $<$<NOT:$<BOOL:${USE_ScaLAPACK}>>:DISABLE_SCALAPACK>
     $<$<BOOL:${USE_SINGLE_PRECISION}>:SINGLE_PRECISION>
+    $<$<CONFIG:Debug>:DEBUG>
     )
 target_compile_options(hande-static
   PRIVATE
@@ -144,10 +145,9 @@ target_link_libraries(hande-static
   PRIVATE
     HANDE::aotus
   PUBLIC
+    "$<$<BOOL:${USE_LANCZOS}>:${TRLan_LIBRARIES}>"
     ${MATH_LIBS}
     "$<$<BOOL:${USE_MPI}>:${MPI_Fortran_LIBRARIES}>"
-    # TODO "$<$<BOOL:${USE_LANCZOS}>:${LANCZOS_LIBRARIES}>"
-    "$<$<BOOL:${USE_ScaLAPACK}>:${ScaLAPACK_LIBRARIES}>"
     "$<$<BOOL:${USE_UUID}>:${UUID_LIBRARIES}>"
     "$<$<BOOL:${USE_HDF5}>:${HDF5_Fortran_LIBRARIES}>"
   )

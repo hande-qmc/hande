@@ -46,6 +46,7 @@ target_compile_definitions(coreutils
     $<$<BOOL:${USE_INTRINSIC_POPCNT}>:USE_POPCNT>
     $<$<BOOL:${USE_SINGLE_PRECISION}>:SINGLE_PRECISION>
     $<$<BOOL:${USE_MPI}>:PARALLEL>
+    $<$<CONFIG:Debug>:DEBUG>
   )
 set_target_properties(coreutils
   PROPERTIES

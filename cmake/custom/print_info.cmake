@@ -33,7 +33,7 @@ cf.configure_file(conf_dict, 'git_info.f90', in_path=os.path.join('${PROJECT_SOU
   add_custom_target(
     build_info
     ALL DEPENDS
-      ${PROJECT_SOURCE_DIR}/lib/local/print_info.c.in
-      ${PROJECT_SOURCE_DIR}/lib/local/git_info.f90.in
+      ${PROJECT_SOURCE_DIR}/lib/local/print_info.c
+      ${PROJECT_SOURCE_DIR}/lib/local/git_info.f90
     )
 endfunction()

@@ -63,7 +63,7 @@ install:
 before_script:
   - >
     if [[ "$USE_CMAKE" = true ]]; then
-      ./mkconfig.py --hdf5 --uuid --type=release
+      ./mkconfig.py --hdf5 --uuid --type=release --mpi --scalapack="-L$ScaLAPACK_ROOT/lib -lscalapack" --lanczos="-L$DEPS/trlan/lib -ltrlan"
     else
       tools/mkconfig.py travis.linux
     fi
