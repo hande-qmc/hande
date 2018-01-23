@@ -40,6 +40,7 @@ contains
         use json_out
 
         use const, only: debug
+        use errors, only: stop_all
 
         use bloom_handler, only: init_bloom_stats_t, bloom_mode_fixedn, bloom_stats_warning, &
                                  bloom_stats_t, accumulate_bloom_stats, write_bloom_report
@@ -55,7 +56,8 @@ contains
         use spawning, only: create_spawned_particle_initiator
         use qmc, only: init_qmc
         use qmc_common
-        use dSFMT_interface, only: dSFMT_t, dSFMT_init, dSFMT_end
+        use dSFMT_interface, only: dSFMT_t, dSFMT_init, dSFMT_end, dSFMT_state_t_to_dSFMT_t, dSFMT_t_to_dSFMT_state_t, &
+                                   free_dSFMT_state_t
         use semi_stoch, only: semi_stoch_t, check_if_determ, determ_projection
         use semi_stoch, only: dealloc_semi_stoch_t, init_semi_stoch_t, init_semi_stoch_t_flags, set_determ_info
         use system, only: sys_t, sys_t_json, read_in
@@ -122,6 +124,7 @@ contains
         type(blocking_t) :: bl
         integer :: iunit, restart_version_restart
         integer :: date_values(8)
+        character(:), allocatable :: err_msg
 
         if (parent) then
             write (io_unit,'(1X,"FCIQMC")')
@@ -172,6 +175,11 @@ contains
         call check_allocate('weighted_population', qs%psip_list%nspaces, ierr)
 
         call dSFMT_init(qmc_in%seed+iproc, 50000, rng)
+        if (restart_in%restart_rng .and. allocated(qs%rng_state%dsfmt_state)) then
+            call dSFMT_state_t_to_dSFMT_t(rng, qs%rng_state, err_msg=err_msg)
+            if (allocated(err_msg)) call stop_all('do_fciqmc', 'Failed to reset RNG state: '//err_msg)
+            call free_dSFMT_state_t(qs%rng_state)
+        end if
 
         ! Initialise bloom_stats components to the following parameters.
         call init_bloom_stats_t(bloom_stats, mode=bloom_mode_fixedn, encoding_factor=qs%psip_list%pop_real_factor)
@@ -365,7 +373,7 @@ contains
 
             call dump_restart_file_wrapper(qs, write_restart_shift, restart_in%write_freq, nparticles_old, ireport, &
                                            qmc_in%ncycles, sys%basis%nbasis, ri, ri_shift, fciqmc_in%non_blocking_comm, &
-                                           sys%basis%info_string_len)
+                                           sys%basis%info_string_len, rng)
 
             qs%psip_list%tot_nparticles = nparticles_old
 
@@ -376,6 +384,8 @@ contains
                     call select_ref_det(sys, fciqmc_in%ref_det_factor, qs)
 
         end do
+
+        call dSFMT_t_to_dSFMT_state_t(rng, qs%rng_state)
 
         if (blocking_in%blocking_on_the_fly) call deallocate_blocking(bl)
         if (blocking_in%blocking_on_the_fly .and. parent) call date_and_time(VALUES=date_values)

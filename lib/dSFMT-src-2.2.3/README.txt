@@ -1,5 +1,10 @@
+HANDE note:
+
+Upstream source is http://www.math.sci.hiroshima-u.ac.jp/~m-mat/MT/SFMT/.
+Only files required by HANDE are included here.
+
  =================================================================
- dSFMT ver. 2.1.1
+ dSFMT ver. 2.2.1
  2011.11.10
 
  double precision SIMD oriented Fast Mersenne Twister(dSFMT)
@@ -10,7 +15,7 @@
 
  Copyright (C) 2007, 2008, 2009 Mutsuo Saito, Makoto Matsumoto and
  Hiroshima University.
- Copyright (C) 2011 Mutsuo Saito, Makoto Matsumoto, Hiroshima
+ Copyright (C) 2011, 2013 Mutsuo Saito, Makoto Matsumoto, Hiroshima
  University and The University of Tokyo.
  All rights reserved.
 

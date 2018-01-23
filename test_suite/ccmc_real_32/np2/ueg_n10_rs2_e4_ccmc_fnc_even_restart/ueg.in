@@ -50,6 +50,7 @@ ccmc {
     },
     restart = {
         read = 0,
+        rng = false,
     },
 }
 

@@ -9,32 +9,14 @@ system = {
 
 sys = read_in(system)
 
-qs = fciqmc {
+fciqmc_args = {
     sys = sys,
     qmc = {
         tau = 1e-3,
         rng_seed = 23,
         init_pop = 10,
         mc_cycles = 20,
-        nreports = 600,
-        target_population = 2000,
-        state_size = 750000,
-        spawned_state_size = 500000,
-    },
-    fciqmc = {
-        replica_tricks = true,
-    },
-}
-
-fciqmc {
-    sys = sys,
-    qmc_state = qs,
-    qmc = {
-        tau = 1e-3,
-        rng_seed = 23,
-        init_pop = 10,
-        mc_cycles = 20,
-        nreports = 600,
+        nreports = 150,
         target_population = 2000,
         state_size = 750000,
         spawned_state_size = 500000,
@@ -43,6 +25,12 @@ fciqmc {
         replica_tricks = true,
     },
     restart = {
-        rng = false,
-    },
+        write = 12,
+    }
 }
+
+fciqmc(fciqmc_args)
+fciqmc_args.restart = {
+    read = 12,
+}
+fciqmc(fciqmc_args)

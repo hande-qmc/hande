@@ -69,6 +69,7 @@ module hdf5_helper
 
     interface hdf5_read
         module procedure read_string
+        module procedure read_vlen_string
         module procedure read_integer
         module procedure read_boolean
         module procedure read_array_1d_int_32
@@ -1010,7 +1011,7 @@ module hdf5_helper
 
         subroutine read_string(id, dset, length, string)
 
-            ! Read a string from an open HDF5 file/group.
+            ! Read a string of known size from an open HDF5 file/group.
 
             ! In:
             !    id: file or group HD5 identifier.
@@ -1038,6 +1039,37 @@ module hdf5_helper
             call h5dclose_f(dset_id, ierr)
 
         end subroutine read_string
+
+        subroutine read_vlen_string(id, dset, string)
+
+            ! Read a string of arbitrary length from an open HDF5 file/group. The output string is allocated to the size of the
+            ! stored string and must be deallocated by the caller.
+
+            !    id: file or group HD5 identifier.
+            !    dset: dataset name.
+            !    length: length of the string to read
+            ! Out:
+            !    string: string read from HDF5 file. Must be deallocated after use.
+
+            use hdf5
+
+            integer(hid_t), intent(in) :: id
+            character(*), intent(in) :: dset
+            character(:), intent(out), allocatable :: string
+
+            integer(hid_t) :: dset_id, type_id
+            integer(hsize_t) :: string_length
+            integer :: ierr
+
+            call h5dopen_f(id, dset, dset_id, ierr)
+            call h5dget_type_f(dset_id, type_id, ierr)
+            call h5tget_size_f(type_id, string_length, ierr)
+            allocate(character(string_length) :: string)
+            call h5dread_f(dset_id, type_id, string, [0_HSIZE_T], ierr)
+            call h5tclose_f(type_id, ierr)
+            call h5dclose_f(dset_id, ierr)
+
+        end subroutine read_vlen_string
 
         subroutine read_integer(id, dset, val)
 

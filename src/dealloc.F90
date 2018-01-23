@@ -19,6 +19,7 @@ contains
         use reference_determinant, only: dealloc_reference_t
         use load_balancing, only: dealloc_parallel_t
         use excit_gens, only: dealloc_excit_gen_data_t
+        use dSFMT_interface, only: free_dSFMT_state_t
 
         type(qmc_state_t), intent(inout) :: qs
 
@@ -27,6 +28,7 @@ contains
 
         if (allocated(qs%trial%wfn_dat)) deallocate(qs%trial%wfn_dat)
 
+        call free_dSFMT_state_t(qs%rng_state)
         call dealloc_particle_t(qs%psip_list)
         call dealloc_spawn_t(qs%spawn_store%spawn)
         call dealloc_spawn_t(qs%spawn_store%spawn_recv)

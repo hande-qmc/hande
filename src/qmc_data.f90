@@ -7,6 +7,7 @@ use parallel, only: parallel_timing_t
 use importance_sampling_data
 use excit_gens, only: excit_gen_data_t
 use reference_determinant, only: reference_t
+use dSFMT_interface, only: dSFMT_state_t
 
 implicit none
 
@@ -290,6 +291,8 @@ type restart_in_t
     logical :: write_restart_shift = .false.
     ! Index to write to (huge indicates not set).
     integer :: write_shift_id = huge(0)
+    ! Restart the RNG state (if possible) from the previous calculation?
+    logical :: restart_rng = .true.
 end type restart_in_t
 
 type output_in_t
@@ -796,6 +799,9 @@ type qmc_state_t
     type(estimators_t), allocatable :: estimators(:)
     ! Internal flag to indicate status of shift damping optimisation.
     integer :: shift_damping_status = sd_no_optimisation
+    ! String representing state of RNG. Should be set, used and deallocated as quickly as possible as it becomes invalid as soon as
+    ! the next random number is drawn -- only present really for a convenient way of handling the RNG state during restarts.
+    type(dSFMT_state_t) :: rng_state
 end type qmc_state_t
 
 ! Copies of various settings that are required during annihilation.  This avoids having to pass through lots of different
@@ -1038,7 +1044,8 @@ contains
         call json_write_key(js, 'write_id', restart%write_id)
         call json_write_key(js, 'write_freq', restart%write_freq)
         call json_write_key(js, 'write_restart_shift', restart%write_restart_shift)
-        call json_write_key(js, 'write_shift_id', restart%write_shift_id, .not.restart%read_restart)
+        call json_write_key(js, 'write_shift_id', restart%write_shift_id)
+        call json_write_key(js, 'restart_rng', restart%restart_rng, .not.restart%read_restart)
         if (restart%read_restart) call json_write_key(js, 'uuid_restart', uuid_restart, .true.)
         call json_object_end(js, terminal)
 

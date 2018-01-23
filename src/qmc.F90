@@ -45,7 +45,7 @@ contains
 
         use checking, only: check_allocate
 
-        use calc, only: doing_calc, hfs_fciqmc_calc, dmqmc_calc
+        use calc, only: doing_calc, hfs_fciqmc_calc, dmqmc_calc, GLOBAL_META
         use energy_evaluation, only: nparticles_start_ind
         use load_balancing, only: init_parallel_t
         use particle_t_utils, only: init_particle_t
@@ -128,9 +128,11 @@ contains
         call init_parallel_t(qmc_state%psip_list%nspaces, nparticles_start_ind-1, fciqmc_in_loc%non_blocking_comm, &
                              qmc_state%par_info, load_bal_in%nslots)
 
-        if (qmc_state_restart_loc) then
+        uuid_restart = ''
+        if (present(qmc_state_restart)) then
             call move_qmc_state_t(qmc_state_restart, qmc_state)
             qmc_state%mc_cycles_done = qmc_state_restart%mc_cycles_done
+            uuid_restart = GLOBAL_META%uuid
         else
             call init_spawn_store(qmc_in, qmc_state%psip_list%nspaces, qmc_state%psip_list%pop_real_factor, sys%basis, &
                                   fciqmc_in_loc%non_blocking_comm, qmc_state%par_info%load%proc_map, io_unit, &
@@ -1140,6 +1142,7 @@ contains
         !   qmc_state_old: existing qmc_state.  Deallocated on exit.
         !   qmc_state_new: qmc_state_t.  Components allocated an initialised on exit.
 
+        use dSFMT_interface, only: move_dSFMT_state_t
         use qmc_data, only: qmc_state_t
         use spawn_data, only: move_spawn_t
         use particle_t_utils, only: move_particle_t
@@ -1151,6 +1154,7 @@ contains
         call move_alloc(qmc_state_old%shift, qmc_state_new%shift)
         call move_alloc(qmc_state_old%vary_shift, qmc_state_new%vary_shift)
         call move_alloc(qmc_state_old%estimators, qmc_state_new%estimators)
+        call move_dSFMT_state_t(qmc_state_old%rng_state, qmc_state_new%rng_state)
         call move_particle_t(qmc_state_old%psip_list, qmc_state_new%psip_list)
 
     end subroutine move_qmc_state_t
