@@ -325,8 +325,10 @@ contains
         parallel_weight = 0.0_p
         ortho_weight = 0.0_p
 
-! [review] - AJWT: Consider parallelizing with OpenMP over j
         do i = iproc_nbasis_start, iproc_nbasis_end
+            !$omp parallel do default(none) &
+            !$omp shared(sys,i) &
+            !$omp private(i_tmp, j_tmp, a_tmp, b_tmp, j, a, b, ij_sym, isymb, hmatel) reduction(+:parallel_weight,ortho_weight)
             do j = 1, sys%basis%nbasis
                 if (i /= j) then
                     if (j < i) then
@@ -376,6 +378,7 @@ contains
                     end do
                 end if
             end do
+            !$omp end parallel do
         end do
 
 #ifdef PARALLEL

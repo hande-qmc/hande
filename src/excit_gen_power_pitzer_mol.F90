@@ -248,7 +248,7 @@ contains
         integer :: i, j, a, b, ind_a, ind_b, maxv, nv, bsym, ij_sym, isyma, isymb, ims, imsa
         integer :: i_tmp, j_tmp, a_tmp, b_tmp, nall
         integer :: iproc_nel_start, iproc_nel_end, iproc_nbasis_start, iproc_nbasis_end
-        real(p) :: i_weight, ij_weight
+        real(p) :: i_weight, ij_weight, ia_s_weights_tot, ij_d_weights_tot
         
         ! Store weights and alias tables.
         ! pp%ppn_i_d%weights(:) selects i from orbitals occupied in the reference in a double excitation.
@@ -393,13 +393,16 @@ contains
         call generate_alias_tables(sys%nel, pp%ppn_i_s%weights(:), pp%ppn_i_s%weights_tot, pp%ppn_i_s%aliasU(:), &
                                 pp%ppn_i_s%aliasK(:))
         
-! [review] - AJWT: Perhaps OpenMP parallelize this if it's likely to take a long time.
         do i = iproc_nbasis_start, iproc_nbasis_end
-            pp%ppn_ia_s%weights_tot(i) = 0.0_p
+            ia_s_weights_tot = 0.0_p
             ims = sys%basis%basis_fns(i)%ms
             ! Convert ims which is in {-1, +1} notation to imsa which is {1, 2}.
             imsa = (3 + ims)/2
             isyma = sys%read_in%cross_product_sym_ptr(sys%read_in, sys%basis%basis_fns(i)%sym, sys%read_in%pg_sym%gamma_sym)
+        
+            !$omp parallel do default(none) &
+            !$omp shared(sys,i,imsa,isyma,pp,ref) &
+            !$omp private(a) reduction(+:ia_s_weights_tot)
             do a = 1, sys%read_in%pg_sym%nbasis_sym_spin(imsa,isyma)
                 pp%ppn_ia_s%weights(a, i) = 0.0_p
                 if (sys%read_in%pg_sym%sym_spin_basis_fns(a,imsa, isyma) /= i) then
@@ -417,8 +420,13 @@ contains
                         pp%ppn_ia_s%weights(a, i) = 10.0_p*depsilon
                     end if
                 end if
-                pp%ppn_ia_s%weights_tot(i) = pp%ppn_ia_s%weights_tot(i) + pp%ppn_ia_s%weights(a, i)
+                ia_s_weights_tot = ia_s_weights_tot + pp%ppn_ia_s%weights(a, i)
             end do
+            !$omp end parallel do
+            
+            ! Use of tmp variable ia_s_weights_tot to make openmp happy.
+            pp%ppn_ia_s%weights_tot(i) = ia_s_weights_tot
+        
             ! Make sure that very small non zero weights get raised to the minimum weight.
             call check_min_weight_ratio(pp%ppn_ia_s%weights(:,i), pp%ppn_ia_s%weights_tot(i), &
                 sys%read_in%pg_sym%nbasis_sym_spin(imsa,isyma), pp%power_pitzer_min_weight)
@@ -446,9 +454,12 @@ contains
         ! mapping which only conserves spin) double excitations.
         ! i and j are drawn from spinorbitals occupied in the reference and a and b can be all orbitals. i!=j and a!=b.
         ! i and j can equal a and b because we later map i. Single excitations are not considered. [todo]
-! [review] - AJWT: This fourth-order loop could do with OpenMP parallelization - perhaps over j or a?
         do i = iproc_nel_start, iproc_nel_end
             i_weight = 0.0_p
+            
+            !$omp parallel do default(none) &
+            !$omp shared(sys,i,pp) &
+            !$omp private(a,i_tmp,j_tmp,ij_sym,isymb,b,hmatel,a_tmp,b_tmp) reduction(+:i_weight)
             do j = 1, sys%nel
                 if (i /= j) then
                     if (pp%occ_list(j) < pp%occ_list(i)) then
@@ -494,6 +505,8 @@ contains
                     end do
                 end if
             end do
+            !$omp end parallel do
+            
             if (i_weight < depsilon) then
                 ! because we map i later, even if i->a is not allowed/ has been wrongly assigned a zero weight,
                 ! it needs a weight. It will be assigned a minimum weight by the routine check_in_weight_ratio
@@ -523,9 +536,12 @@ contains
                                 pp%ppn_i_d%aliasK(:))
 
         ! Generate the j given i weighting lists and alias tables. a and b cannot equal i (they are drawn from the same set).
-! [review] - AJWT: This fourth-order loop could do with OpenMP parallelization - perhaps over j or a?
         do i = iproc_nbasis_start, iproc_nbasis_end
-            pp%ppn_ij_d%weights_tot(i) = 0.0_p
+            ij_d_weights_tot = 0.0_p
+
+            !$omp parallel do default(none) &
+            !$omp shared(sys,i,pp) &
+            !$omp private(i_tmp,j_tmp,a_tmp,b_tmp,a,b,ij_weight,ij_sym,isymb,hmatel) reduction(+:ij_d_weights_tot)
             do j = 1, sys%nel
                 ij_weight = 0.0_p
                 if (pp%occ_list(j) /= i) then
@@ -577,8 +593,13 @@ contains
                     ij_weight = 10.0_p*depsilon
                 end if
                 pp%ppn_ij_d%weights(j,i) = ij_weight
-                pp%ppn_ij_d%weights_tot(i) = pp%ppn_ij_d%weights_tot(i) + ij_weight
+                ij_d_weights_tot = ij_d_weights_tot + ij_weight
             end do
+            !$omp end parallel do
+            
+            ! Use of tmp variable to keep OpenMP happy.
+            pp%ppn_ij_d%weights_tot(i) = ij_d_weights_tot
+
             ! The j that we find with ij_weight is j_ref which is mapped to j_cdet later. If ij_weight is very close to 0,
             ! we need to make that weight finite as the mapped j_cdet might have allowed excitations. This is to prevent
             ! a bias where a valid j cannot be selected.

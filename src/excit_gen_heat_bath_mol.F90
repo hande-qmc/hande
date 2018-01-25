@@ -45,7 +45,7 @@ contains
 
         integer :: i, j, a, b, ij_sym, isymb, ims, isyma
         integer :: i_tmp, j_tmp, a_tmp, b_tmp
-        real(p) :: i_weight, ij_weight, ija_weight, ijab_weight
+        real(p) :: i_weight, ij_weight, ija_weight, ijab_weight, ija_weights_tot, i_weight_extra
         integer :: iproc_nbasis_start, iproc_nbasis_end
         
         integer :: j_nonzero(sys%basis%nbasis,sys%basis%nbasis) 
@@ -87,7 +87,7 @@ contains
         end do
 ![review] - AJWT: Doing this here seems logically cleaner - need to check I've actually done it correctly though
         iproc_nbasis_start = displs_nbasis(iproc) + 1
-        iproc_nbasis_end = displs_nbasis(iproc) + size_nbasis(iproc)
+        iproc_nbasis_end = displs_nbasis(iproc) + sizes_nbasis(iproc)
 #else
         iproc_nbasis_start = 1
         iproc_nbasis_end = sys%basis%nbasis
@@ -115,9 +115,6 @@ contains
 
         j_nonzero = 0
 
-![review] - AJWT: Might this loop also be parallelized under OpenMP?
-![review] - AJWT: Given it's possible there might not be that many basis functions allocated to this processor, perhaps
-![review] - AJWT: it would be better to parallelize the j look under OpenMP.
         do i = iproc_nbasis_start, iproc_nbasis_end
             i_weight = 0.0_p
             do j = 1, sys%basis%nbasis
@@ -139,6 +136,13 @@ contains
                     !        \phi_i*\phi_j. (We assume that ij is going to be in the bra of the excitation.)
                     ! [todo] - Check whether order of i and j matters here.
                     ij_sym = sys%read_in%sym_conj_ptr(sys%read_in, cross_product_basis_read_in(sys, i_tmp, j_tmp))
+                    ija_weights_tot = 0.0_p
+                    i_weight_extra = 0.0_p
+            
+                    !$omp parallel do default(none) &
+                    !$omp shared(sys,i,j,i_tmp,j_tmp,hb,ij_sym,j_nonzero) &
+                    !$omp private(a,ija_weight,isymb,ijab_weight,b,a_tmp,b_tmp,hmatel) &
+                    !$omp reduction(+:i_weight_extra,ij_weight,ija_weights_tot)
                     do a = 1, sys%basis%nbasis
                         ija_weight = 0.0_p
                         hb%hb_ijab%weights_tot(a,j,i) = 0.0_p
@@ -162,7 +166,7 @@ contains
                                         b_tmp = b
                                     end if
                                     hmatel = slater_condon2_excit_ptr(sys, i_tmp, j_tmp, a_tmp, b_tmp, .false.)
-                                    i_weight = i_weight + abs_hmatel_ptr(hmatel)
+                                    i_weight_extra = i_weight_extra + abs_hmatel_ptr(hmatel)
                                     ij_weight = ij_weight + abs_hmatel_ptr(hmatel)
                                     ija_weight = ija_weight + abs_hmatel_ptr(hmatel)
                                     ijab_weight = ijab_weight + abs_hmatel_ptr(hmatel)
@@ -176,13 +180,20 @@ contains
                             end do
                         end if
                         hb%hb_ija%weights(a,j,i) = ija_weight
-                        hb%hb_ija%weights_tot(j,i) = hb%hb_ija%weights_tot(j,i) + ija_weight
+                        ija_weights_tot = ija_weights_tot + ija_weight
                         ! [todo] - depsilon or 0.0_p?
                         if (ija_weight > depsilon) then
                             j_nonzero(a,i) = j_nonzero(a,i) + 1
                         end if
                     end do
+                    !$omp end parallel do
+
+                    i_weight = i_weight + i_weight_extra
+                    hb%hb_ija%weights_tot(j,i) = hb%hb_ija%weights_tot(j,i) + ija_weights_tot
                 else
+                    !$omp parallel do default(none) &
+                    !$omp shared(hb,i,j,sys) &
+                    !$omp private(a,b)
                     do a = 1, sys%basis%nbasis
                         hb%hb_ija%weights(a,j,i) = 0.0_p
                         hb%hb_ijab%weights_tot(a,j,i) = 0.0_p
@@ -190,6 +201,7 @@ contains
                             hb%hb_ijab%weights(b,a,j,i) = 0.0_p
                         end do
                     end do
+                    !$omp end parallel do
                 end if
                 hb%ij_weights(j,i) = ij_weight
             end do
