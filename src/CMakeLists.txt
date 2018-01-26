@@ -146,7 +146,8 @@ target_link_libraries(hande-static
     HANDE::aotus
   PUBLIC
     "$<$<BOOL:${USE_LANCZOS}>:${TRLan_LIBRARIES}>"
-    ${MATH_LIBS}
+    "${MATH_LIBS}"
+    "${EXPLICIT_LIBS}"
     "$<$<BOOL:${USE_MPI}>:${MPI_Fortran_LIBRARIES}>"
     "$<$<BOOL:${USE_UUID}>:${UUID_LIBRARIES}>"
     "$<$<BOOL:${USE_HDF5}>:${HDF5_Fortran_LIBRARIES}>"

@@ -30,6 +30,7 @@ Options:
   --mkl=<MKL>                            Pass MKL flag to the Intel compiler and linker and skip BLAS/LAPACK detection (sequential, parallel, cluster, or off) [default: off].
   --scalapack=<SCALAPACK_LIBRARIES>      Link line for ScaLAPACK libraries [default: ]
   --blacs=<BLACS_IMPLEMENTATION>         Implementation of BLACS for MKL ScaLAPACK (openmpi, intelmpi, sgimpt) [default: openmpi]
+  --explicit-libs=<EXPLICIT_LIBS>        Explicit linker options for extra libraries to be linked in [default: ].
   --dsfmt-mexp=<HANDE_DSFMT_MEXP>        An integer among 521, 1279, 2203, 4253, 11213, 19937, 44497, 86243, 1322049, 216091 [default: 19937].
   --det-size=<HANDE_DET_SIZE>            An integer among 32 or 64 [default: 32].
   --pop-size=<HANDE_POP_SIZE>            An integer among 32 or 64 [default: 32].
@@ -70,12 +71,12 @@ def gen_cmake_command(options, arguments):
     command.append('-DLAPACK_LANG=Fortran')
     command.append('-DSCALAPACK_LIBRARIES="{0}"'.format(arguments['--scalapack']))
     command.append('-DBLACS_IMPLEMENTATION="{0}"'.format(arguments['--blacs']))
+    command.append('-DEXPLICIT_LIBS="{0}"'.format(arguments['--explicit-libs']))
     command.append('-DHANDE_DSFMT_MEXP="{0}"'.format(arguments['--dsfmt-mexp']))
     command.append('-DHANDE_DET_SIZE="{0}"'.format(arguments['--det-size']))
     command.append('-DHANDE_POP_SIZE="{0}"'.format(arguments['--pop-size']))
     command.append('-DENABLE_HDF5="{0}"'.format(arguments['--hdf5']))
     command.append('-DENABLE_UUID="{0}"'.format(arguments['--uuid']))
-    command.append('-DENABLE_LANCZOS="{0}"'.format(True if arguments['--lanczos'] else False))
     command.append('-DTRLan_LIBRARIES="{0}"'.format(arguments['--lanczos']))
     command.append('-DENABLE_SINGLE_PRECISION="{0}"'.format(arguments['--single']))
     command.append('-DENABLE_BACKTRACE="{0}"'.format(arguments['--backtrace']))

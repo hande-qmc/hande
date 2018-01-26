@@ -12,8 +12,7 @@
 #
 # Variables modified::
 #
-#   HANDE_Fortran_COMPILER_FLAGS
-#   HANDE_C_COMPILER_FLAGS
+#   CMAKE_Fortran_FLAGS
 #
 # autocmake.yml configuration::
 #
@@ -49,11 +48,11 @@ if(ENABLE_INTRINSIC_POPCNT)
     if(_march_native_fortran_works)
       set(USE_INTRINSIC_POPCNT ON)
       message(STATUS "Using processor's intrinsic popcnt instruction (-march=native compiler flag set)")
-      list(APPEND HANDE_Fortran_FLAGS "-march=native")
+      list(APPEND CMAKE_Fortran_FLAGS "-march=native")
     elseif(_xhost_fortran_works)
       set(USE_INTRINSIC_POPCNT ON)
       message(STATUS "Using processor's intrinsic popcnt instruction (-xHost compiler flag set)")
-      list(APPEND HANDE_Fortran_FLAGS "-xHost")
+      list(APPEND CMAKE_Fortran_FLAGS "-xHost")
     else()
       set(USE_INTRINSIC_POPCNT OFF)
       message(STATUS "No suitable Fortran compiler flag found: falling back to HANDE's own popcnt")

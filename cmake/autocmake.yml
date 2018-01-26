@@ -27,6 +27,7 @@ modules:
     - 'custom/mpi.cmake'
     - 'custom/omp.cmake'
     - 'custom/math_libs.cmake'
+    - 'custom/explicit_libs.cmake'
 - nonbooloptions:
   - source:
     - 'custom/dsfmt_mexp.cmake'

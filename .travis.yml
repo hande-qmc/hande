@@ -64,6 +64,14 @@ before_script:
   - >
     if [[ "$USE_CMAKE" = true ]]; then
       ./mkconfig.py --hdf5 --uuid --type=release --mpi --scalapack="-L$ScaLAPACK_ROOT/lib -lscalapack" --lanczos="-L$DEPS/trlan/lib -ltrlan"
+      # This is equivalent to
+      # cmake -H. -Bbuild \
+      #           -DENABLE_HDF5=ON \
+      #           -DENABLE_UUID=ON \
+      #           -DCMAKE_BUILD_TYPE=Release \
+      #           -DENABLE_MPI=ON \
+      #           -DSCALAPACK_LIBRARIES="-L$ScaLAPACK_ROOT/lib -lscalapack" \
+      #           -DTRLan_LIBRARIES="-L$DEPS/trlan/lib -ltrlan"
     else
       tools/mkconfig.py travis.linux
     fi
