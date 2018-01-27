@@ -21,11 +21,12 @@ contains
         !    hb: an empty excit_gen_heat_bath_t object which gets filled with
         !           the alias tables required to generate excitations.
 
+        use checking, only: check_allocate
         use system, only: sys_t
         use sort, only: qsort
         use proc_pointers, only: create_weighted_excitation_list_ptr, slater_condon2_excit_ptr
         use proc_pointers, only: abs_hmatel_ptr
-        use excit_gens, only: excit_gen_heat_bath_t
+        use excit_gens, only: excit_gen_heat_bath_t, alloc_alias_table_data_t
         use alias, only: generate_alias_tables
         use read_in_symmetry, only: cross_product_basis_read_in
         use hamiltonian_data, only: hmatel_t
@@ -45,23 +46,18 @@ contains
 
         integer :: i, j, a, b, ij_sym, isymb, ims, isyma
         integer :: i_tmp, j_tmp, a_tmp, b_tmp
+        integer :: ierr_alloc
         real(p) :: i_weight, ij_weight, ija_weight, ijab_weight, ija_weights_tot, i_weight_extra
         integer :: iproc_nbasis_start, iproc_nbasis_end
         
         integer :: j_nonzero(sys%basis%nbasis,sys%basis%nbasis) 
         ! Temp storage
-        allocate(hb%i_weights(sys%basis%nbasis)) ! This will hold S_p in the Holmes JCTC paper.
-        allocate(hb%ij_weights(sys%basis%nbasis,sys%basis%nbasis)) ! This stores D_pq.
-![review] - AJWT: can these four calls be replaced with a single call to e.g. a (new) alias_t_allocate_3ind ?
-![review] - AJWT: Shouldn't check_allocate be called as well?
-        allocate(hb%hb_ija%weights(sys%basis%nbasis,sys%basis%nbasis,sys%basis%nbasis))
-        allocate(hb%hb_ija%aliasU(sys%basis%nbasis,sys%basis%nbasis,sys%basis%nbasis))
-        allocate(hb%hb_ija%aliasK(sys%basis%nbasis,sys%basis%nbasis,sys%basis%nbasis))
-        allocate(hb%hb_ija%weights_tot(sys%basis%nbasis,sys%basis%nbasis))
-        allocate(hb%hb_ijab%weights(sys%basis%nbasis,sys%basis%nbasis,sys%basis%nbasis,sys%basis%nbasis))
-        allocate(hb%hb_ijab%aliasU(sys%basis%nbasis,sys%basis%nbasis,sys%basis%nbasis,sys%basis%nbasis))
-        allocate(hb%hb_ijab%aliasK(sys%basis%nbasis,sys%basis%nbasis,sys%basis%nbasis,sys%basis%nbasis))
-        allocate(hb%hb_ijab%weights_tot(sys%basis%nbasis,sys%basis%nbasis,sys%basis%nbasis))
+        allocate(hb%i_weights(sys%basis%nbasis), stat=ierr_alloc) ! This will hold S_p in the Holmes JCTC paper.
+        call check_allocate('hb%i_weights', sys%basis%nbasis, ierr_alloc)
+        allocate(hb%ij_weights(sys%basis%nbasis,sys%basis%nbasis), stat=ierr_alloc) ! This stores D_pq.
+        call check_allocate('hb%ij_weights', (sys%basis%nbasis*sys%basis%nbasis), ierr_alloc)
+        call alloc_alias_table_data_t(hb%hb_ija, sys%basis%nbasis,sys%basis%nbasis,sys%basis%nbasis)
+        call alloc_alias_table_data_t(hb%hb_ijab, sys%basis%nbasis,sys%basis%nbasis,sys%basis%nbasis,sys%basis%nbasis)
 
         ! [todo] - consider setting hmatel%r and hmatel%c to zero to avoid undefined behaviour.
         ! [todo] - although it is probably fine, abs_hmatel_ptr ignores the irrelevant bit.

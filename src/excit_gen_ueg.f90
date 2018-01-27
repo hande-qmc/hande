@@ -384,7 +384,7 @@ contains
         use system, only: sys_t
         use qmc_data, only: reference_t
         use sort, only: qsort
-        use excit_gens, only: excit_gen_power_pitzer_t
+        use excit_gens, only: excit_gen_power_pitzer_t, alloc_alias_table_data_t
         use alias, only: generate_alias_tables
         use hamiltonian_ueg, only: create_weighted_excitation_list_ueg 
         type(sys_t), intent(in) :: sys
@@ -397,11 +397,7 @@ contains
         nbas = sys%basis%nbasis    
         maxv = nbas / 2
 
-! [review] - AJWT: best combined in e.g. alias_table_allocate_1ind.
-        allocate(pp%pp_ia_d%aliasU(maxv,nbas))
-        allocate(pp%pp_ia_d%aliasK(maxv,nbas))
-        allocate(pp%pp_ia_d%weights(maxv,nbas))
-        allocate(pp%pp_ia_d%weights_tot(nbas))
+        call alloc_alias_table_data_t(pp%pp_ia_d, maxv, nbas)
 
         do i=1, nbas
             do j=1, maxv     !make a temporary array of 'virtuals' for this occ.

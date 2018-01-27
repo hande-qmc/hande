@@ -31,32 +31,30 @@ contains
         !    pp: an empty excit_gen_power_pitzer_t object which gets filled with
         !           the alias tables required to generate excitations.
 
+        use checking, only: check_allocate
         use system, only: sys_t
         use qmc_data, only: reference_t
         use sort, only: qsort
         use proc_pointers, only: create_weighted_excitation_list_ptr
-        use excit_gens, only: excit_gen_power_pitzer_t
+        use excit_gens, only: excit_gen_power_pitzer_t, alloc_alias_table_data_t
         use alias, only: generate_alias_tables
         type(sys_t), intent(in) :: sys
         type(reference_t), intent(in) :: ref
         type(excit_gen_power_pitzer_t), intent(inout) :: pp
 
-        integer :: i, j, ind_a, ind_b, maxv, nv, bsym
+        integer :: i, j, ind_a, ind_b, maxv, nv, bsym, ierr_alloc
         
         ! Temp storage
         maxv = max(sys%nvirt_alpha,sys%nvirt_beta)
-! [review] - AJWT: A call to e.g. alias_table_allocate_1ind would be nice here, and it could include check_allocate.  Ditto below.
-        allocate(pp%pp_ia_d%aliasU(maxv,sys%nel))
-        allocate(pp%pp_ia_d%aliasK(maxv,sys%nel))
-        allocate(pp%pp_ia_d%weights(maxv,sys%nel))
-        allocate(pp%pp_ia_d%weights_tot(sys%nel))
-        allocate(pp%pp_jb_d%aliasU(maxval(sys%read_in%pg_sym%nbasis_sym_spin), sys%sym0_tot:sys%sym_max_tot, sys%nel))
-        allocate(pp%pp_jb_d%aliasK(maxval(sys%read_in%pg_sym%nbasis_sym_spin), sys%sym0_tot:sys%sym_max_tot, sys%nel))
-        allocate(pp%pp_jb_d%weights(maxval(sys%read_in%pg_sym%nbasis_sym_spin), sys%sym0_tot:sys%sym_max_tot, sys%nel))
-        allocate(pp%pp_jb_d%weights_tot(sys%sym0_tot:sys%sym_max_tot, sys%nel))
-        allocate(pp%occ_list(sys%nel + 1))  ! The +1 is a pad to allow loops to look better
-        allocate(pp%virt_list_alpha(sys%nvirt_alpha))
-        allocate(pp%virt_list_beta(sys%nvirt_beta))
+        call alloc_alias_table_data_t(pp%pp_ia_d, maxv, sys%nel)
+        call alloc_alias_table_data_t(pp%pp_jb_d, maxval(sys%read_in%pg_sym%nbasis_sym_spin), &
+            (/sys%sym0_tot,sys%sym_max_tot/), sys%nel)
+        allocate(pp%occ_list(sys%nel + 1), stat=ierr_alloc)  ! The +1 is a pad to allow loops to look better
+        call check_allocate('pp%occ_list', (sys%nel + 1), ierr_alloc)
+        allocate(pp%virt_list_alpha(sys%nvirt_alpha), stat=ierr_alloc)
+        call check_allocate('pp%virt_list_alpha', sys%nvirt_alpha, ierr_alloc)
+        allocate(pp%virt_list_beta(sys%nvirt_beta), stat=ierr_alloc)
+        call check_allocate('pp%virt_list_beta', sys%nvirt_beta, ierr_alloc)
         
         pp%occ_list(:sys%nel) = ref%occ_list0(:sys%nel)
         pp%occ_list(sys%nel + 1) = sys%basis%nbasis*2  ! A pad
@@ -223,12 +221,13 @@ contains
         !    pp: an empty excit_gen_power_pitzer_t object which gets filled with
         !           the alias tables required to generate excitations.
 
+        use checking, only: check_allocate
         use system, only: sys_t
         use qmc_data, only: reference_t
         use sort, only: qsort
         use proc_pointers, only: create_weighted_excitation_list_ptr, slater_condon2_excit_ptr
         use proc_pointers, only: abs_hmatel_ptr, single_excitation_weight_ptr
-        use excit_gens, only: excit_gen_power_pitzer_t
+        use excit_gens, only: excit_gen_power_pitzer_t, alloc_alias_table_data_t
         use alias, only: generate_alias_tables
         use read_in_symmetry, only: cross_product_basis_read_in
         use hamiltonian_data, only: hmatel_t
@@ -248,42 +247,29 @@ contains
         integer :: i, j, a, b, ind_a, ind_b, maxv, nv, bsym, ij_sym, isyma, isymb, ims, imsa
         integer :: i_tmp, j_tmp, a_tmp, b_tmp, nall
         integer :: iproc_nel_start, iproc_nel_end, iproc_nbasis_start, iproc_nbasis_end
+        integer :: ierr_alloc
         real(p) :: i_weight, ij_weight, ia_s_weights_tot, ij_d_weights_tot
         
         ! Store weights and alias tables.
         ! pp%ppn_i_d%weights(:) selects i from orbitals occupied in the reference in a double excitation.
-! [review] - AJWT: Call allocators.
-        allocate(pp%ppn_i_d%aliasU(sys%nel))
-        allocate(pp%ppn_i_d%aliasK(sys%nel))
-        allocate(pp%ppn_i_d%weights(sys%nel))
-! [review] - AJWT: Why doesn't this need to be allocated
-        ! allocate(pp%ppn_i_d%weights_tot)
+        call alloc_alias_table_data_t(pp%ppn_i_d, sys%nel)
         ! pp%ppn_i_s%weights(:) selects i from orbitals occupied in the reference in a single excitation.
-        allocate(pp%ppn_i_s%aliasU(sys%nel))
-        allocate(pp%ppn_i_s%aliasK(sys%nel))
-        allocate(pp%ppn_i_s%weights(sys%nel))
-        ! allocate(pp%ppn_i_s%weights_tot) 
+        call alloc_alias_table_data_t(pp%ppn_i_s, sys%nel)
         ! pp%ppn_ij_d%weights(:,i) selects j from orbitals occupied in the reference in a double excitation.
-        allocate(pp%ppn_ij_d%aliasU(sys%nel,sys%basis%nbasis))
-        allocate(pp%ppn_ij_d%aliasK(sys%nel,sys%basis%nbasis))
-        allocate(pp%ppn_ij_d%weights(sys%nel,sys%basis%nbasis))
-        allocate(pp%ppn_ij_d%weights_tot(sys%basis%nbasis))
+        call alloc_alias_table_data_t(pp%ppn_ij_d, sys%nel, sys%basis%nbasis)
         ! pp%ppn_ia_d%weights(:,i) select a from all orbitals in a double excitation.
         ! Note that the alias table values for this are allocated further below.
-        allocate(pp%ppn_ia_d%weights_tot(sys%basis%nbasis))
         ! pp%ppn_ia_s%weights(:,i) selects a from all orbitals in a single excitation.
-        allocate(pp%ppn_ia_s%weights_tot(sys%basis%nbasis))
-        allocate(pp%ppn_ia_s%aliasU(maxval(sys%read_in%pg_sym%nbasis_sym_spin),sys%basis%nbasis))
-        allocate(pp%ppn_ia_s%aliasK(maxval(sys%read_in%pg_sym%nbasis_sym_spin),sys%basis%nbasis))
-        allocate(pp%ppn_ia_s%weights(maxval(sys%read_in%pg_sym%nbasis_sym_spin),sys%basis%nbasis))
+        call alloc_alias_table_data_t(pp%ppn_ia_s, maxval(sys%read_in%pg_sym%nbasis_sym_spin), sys%basis%nbasis)
         ! pp%ppn_jb_d%weights(:,symb,j) selects b from orbitals with j's spin and symmetry symb in a double excitation.
-        allocate(pp%ppn_jb_d%aliasU(maxval(sys%read_in%pg_sym%nbasis_sym_spin), sys%sym0_tot:sys%sym_max_tot, sys%basis%nbasis))
-        allocate(pp%ppn_jb_d%aliasK(maxval(sys%read_in%pg_sym%nbasis_sym_spin), sys%sym0_tot:sys%sym_max_tot, sys%basis%nbasis))
-        allocate(pp%ppn_jb_d%weights(maxval(sys%read_in%pg_sym%nbasis_sym_spin), sys%sym0_tot:sys%sym_max_tot, sys%basis%nbasis))
-        allocate(pp%ppn_jb_d%weights_tot(sys%sym0_tot:sys%sym_max_tot, sys%basis%nbasis))
-        allocate(pp%occ_list(sys%nel + 1))  ! The +1 is a pad to allow loops to look better
-        allocate(pp%all_list_alpha(sys%basis%nbasis))
-        allocate(pp%all_list_beta(sys%basis%nbasis))
+        call alloc_alias_table_data_t(pp%ppn_jb_d, maxval(sys%read_in%pg_sym%nbasis_sym_spin), (/sys%sym0_tot,sys%sym_max_tot/),&
+            sys%basis%nbasis)
+        allocate(pp%occ_list(sys%nel + 1), stat=ierr_alloc)  ! The +1 is a pad to allow loops to look better
+        call check_allocate('pp%occ_list', (sys%nel + 1), ierr_alloc)
+        allocate(pp%all_list_alpha(sys%basis%nbasis), stat=ierr_alloc)
+        call check_allocate('pp%all_list_alpha', sys%basis%nbasis, ierr_alloc)
+        allocate(pp%all_list_beta(sys%basis%nbasis), stat=ierr_alloc)
+        call check_allocate('pp%all_list_beta', sys%basis%nbasis, ierr_alloc)
 
         pp%occ_list(:sys%nel) = ref%occ_list0(:sys%nel)
         pp%occ_list(sys%nel + 1) = sys%basis%nbasis*2  ! A pad
@@ -348,9 +334,7 @@ contains
         pp%n_all_alpha = ind_a
         pp%n_all_beta = ind_b
 
-        allocate(pp%ppn_ia_d%aliasU(max(pp%n_all_alpha,pp%n_all_beta),sys%basis%nbasis))
-        allocate(pp%ppn_ia_d%aliasK(max(pp%n_all_alpha,pp%n_all_beta),sys%basis%nbasis))
-        allocate(pp%ppn_ia_d%weights(max(pp%n_all_alpha,pp%n_all_beta),sys%basis%nbasis))
+        call alloc_alias_table_data_t(pp%ppn_ia_d, max(pp%n_all_alpha,pp%n_all_beta), sys%basis%nbasis)
 
         ! Now set up weight tables.
         ! Single Excitations.
@@ -524,7 +508,7 @@ contains
         call mpi_allgatherv(MPI_IN_PLACE, sizes_nel(iproc), &
             mpi_preal, pp%ppn_i_d%weights, sizes_nel, displs_nel, mpi_preal, MPI_COMM_WORLD, ierr)
 #endif
-! [review] - AJWT: weights_tot hasn't been allocated above.
+        
         pp%ppn_i_d%weights_tot = sum(pp%ppn_i_d%weights)
 
         ! The i that we find with i_weight is i_ref which is mapped to i_cdet later. If i_weight is very close to 0,

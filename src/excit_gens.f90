@@ -3,8 +3,8 @@ use const
 implicit none
 
 private
-public :: dealloc_excit_gen_data_t, p_single_double_t, excit_gen_power_pitzer_t, excit_gen_heat_bath_t, excit_gen_data_t
-public :: move_pattempt_data
+public :: alloc_alias_table_data_t, dealloc_excit_gen_data_t, p_single_double_t, excit_gen_power_pitzer_t, excit_gen_heat_bath_t
+public :: move_pattempt_data, excit_gen_data_t
 
 !Data for the power_pitzer/heat bath excit gens
 
@@ -176,6 +176,14 @@ type excit_gen_data_t
     type (p_single_double_t) :: p_single_double
 end type excit_gen_data_t
 
+interface alloc_alias_table_data_t
+    module procedure :: alloc_alias_table_data_one_ind_t
+    module procedure :: alloc_alias_table_data_two_ind_t
+    module procedure :: alloc_alias_table_data_three_ind_t
+    module procedure :: alloc_alias_table_data_2indarray_three_ind_t
+    module procedure :: alloc_alias_table_data_four_ind_t
+end interface
+
 interface dealloc_alias_table_data_t
     module procedure :: dealloc_alias_table_data_one_ind_t
     module procedure :: dealloc_alias_table_data_two_ind_t
@@ -231,8 +239,10 @@ contains
 
         ! In/Out:
         !   excit_gen_pp: excit_gen_power_pitzer_t to be deallocated.
+        use checking, only: check_deallocate
 
         type(excit_gen_power_pitzer_t), intent(inout) :: excit_gen_pp
+        integer :: ierr
 
         call dealloc_alias_table_data_t(excit_gen_pp%pp_ia_d)
         call dealloc_alias_table_data_t(excit_gen_pp%pp_jb_d)
@@ -243,12 +253,27 @@ contains
         call dealloc_alias_table_data_t(excit_gen_pp%ppn_ia_s)
         call dealloc_alias_table_data_t(excit_gen_pp%ppn_jb_d)
         
-        if (allocated(excit_gen_pp%virt_list_alpha)) deallocate(excit_gen_pp%virt_list_alpha)
-        if (allocated(excit_gen_pp%virt_list_beta)) deallocate(excit_gen_pp%virt_list_beta)
-        if (allocated(excit_gen_pp%occ_list)) deallocate(excit_gen_pp%occ_list)
-        if (allocated(excit_gen_pp%all_list_alpha)) deallocate(excit_gen_pp%all_list_alpha)
-        if (allocated(excit_gen_pp%all_list_beta)) deallocate(excit_gen_pp%all_list_beta)
-
+        if (allocated(excit_gen_pp%virt_list_alpha)) then
+            deallocate(excit_gen_pp%virt_list_alpha, stat=ierr)
+            call check_deallocate('excit_gen_pp%virt_list_alpha',ierr)
+        end if
+        if (allocated(excit_gen_pp%virt_list_beta)) then
+            deallocate(excit_gen_pp%virt_list_beta, stat=ierr)
+            call check_deallocate('excit_gen_pp%virt_list_beta',ierr)
+        end if
+        if (allocated(excit_gen_pp%occ_list)) then
+            deallocate(excit_gen_pp%occ_list, stat=ierr)
+            call check_deallocate('excit_gen_pp%occ_list',ierr)
+        end if
+        if (allocated(excit_gen_pp%all_list_alpha)) then
+            deallocate(excit_gen_pp%all_list_alpha, stat=ierr)
+            call check_deallocate('excit_gen_pp%all_list_alpha',ierr)
+        end if
+        if (allocated(excit_gen_pp%all_list_beta)) then
+            deallocate(excit_gen_pp%all_list_beta, stat=ierr)
+            call check_deallocate('excit_gen_pp%all_list_beta',ierr)
+        end if
+    
     end subroutine dealloc_excit_gen_power_pitzer_t
 
     subroutine dealloc_excit_gen_heat_bath_t(excit_gen_hb)
@@ -258,18 +283,126 @@ contains
         ! In/Out:
         !   excit_gen_hb: excit_gen_heat_bath_t to be deallocated.
 
+        use checking, only: check_deallocate
         type(excit_gen_heat_bath_t), intent(inout) :: excit_gen_hb
+        integer :: ierr
 
-        if (allocated(excit_gen_hb%i_weights)) deallocate(excit_gen_hb%i_weights)
-        if (allocated(excit_gen_hb%ij_weights)) deallocate(excit_gen_hb%ij_weights)
+        if (allocated(excit_gen_hb%i_weights)) then
+            deallocate(excit_gen_hb%i_weights, stat=ierr)
+            call check_deallocate('excit_gen_hb%i_weights',ierr)
+        end if
+        if (allocated(excit_gen_hb%ij_weights)) then
+            deallocate(excit_gen_hb%ij_weights, stat=ierr)
+            call check_deallocate('excit_gen_hb%ij_weights',ierr)
+        end if
         
         call dealloc_alias_table_data_t(excit_gen_hb%hb_ija)
         call dealloc_alias_table_data_t(excit_gen_hb%hb_ijab)
 
     end subroutine dealloc_excit_gen_heat_bath_t
 
-! [review] - AJWT: This looks like an excellent place to put an allocator routine for the alias tables.
-! [review] - AJWT: It can even have a nice interface like dealloc_alias_table_data_t
+!--------------------------------------------------------------------------------!
+    ! alloc_alias_table_t(alias_data)
+        ! Allocate alias table data.
+
+        ! In/Out:
+        !   alias_data: alias_table_data_one_ind_t to be deallocated.
+    subroutine alloc_alias_table_data_one_ind_t(alias_data, len_one)
+ 
+        use checking, only: check_allocate
+
+        type(alias_table_data_one_ind_t), intent(inout) :: alias_data
+        integer, intent(in) :: len_one
+        integer :: ierr
+
+        allocate(alias_data%weights(len_one), stat=ierr)
+        call check_allocate('alias_data%weights', len_one, ierr)
+        allocate(alias_data%aliasU(len_one), stat=ierr)
+        call check_allocate('alias_data%aliasU', len_one, ierr)
+        allocate(alias_data%aliasK(len_one), stat=ierr)
+        call check_allocate('alias_data%aliasK', len_one, ierr)
+
+    end subroutine alloc_alias_table_data_one_ind_t
+    
+    subroutine alloc_alias_table_data_two_ind_t(alias_data, len_two, len_one)
+
+        use checking, only: check_allocate
+        
+        type(alias_table_data_two_ind_t), intent(inout) :: alias_data
+        integer, intent(in) :: len_one, len_two
+        integer :: ierr
+
+        allocate(alias_data%weights(len_two, len_one), stat=ierr)
+        call check_allocate('alias_data%weights', (len_one*len_two), ierr)
+        allocate(alias_data%aliasU(len_two, len_one), stat=ierr)
+        call check_allocate('alias_data%aliasU', (len_one*len_two), ierr)
+        allocate(alias_data%aliasK(len_two, len_one), stat=ierr)
+        call check_allocate('alias_data%aliasK', (len_one*len_two), ierr)
+        allocate(alias_data%weights_tot(len_one), stat=ierr)
+        call check_allocate('alias_data%weights_tot', len_one, ierr)
+
+    end subroutine alloc_alias_table_data_two_ind_t
+
+    subroutine alloc_alias_table_data_three_ind_t(alias_data, len_three, len_two, len_one)
+
+        use checking, only: check_allocate
+        
+        type(alias_table_data_three_ind_t), intent(inout) :: alias_data
+        integer, intent(in) :: len_one, len_two, len_three
+        integer :: ierr
+
+        allocate(alias_data%weights(len_three, len_two, len_one), stat=ierr)
+        call check_allocate('alias_data%weights', (len_one*len_two*len_three), ierr)
+        allocate(alias_data%aliasU(len_three, len_two, len_one), stat=ierr)
+        call check_allocate('alias_data%aliasU', (len_one*len_two*len_three), ierr)
+        allocate(alias_data%aliasK(len_three, len_two, len_one), stat=ierr)
+        call check_allocate('alias_data%aliasK', (len_one*len_two*len_three), ierr)
+        allocate(alias_data%weights_tot(len_two, len_one), stat=ierr)
+        call check_allocate('alias_data%weights_tot', (len_one*len_two), ierr)
+
+    end subroutine alloc_alias_table_data_three_ind_t
+    
+    subroutine alloc_alias_table_data_2indarray_three_ind_t(alias_data, len_three, array_two, len_one)
+
+        use checking, only: check_allocate
+        
+        type(alias_table_data_three_ind_t), intent(inout) :: alias_data
+        integer, intent(in) :: len_one, array_two(2), len_three
+        integer :: ierr, len_two
+
+        len_two = array_two(2) - array_two(1) + 1
+
+        allocate(alias_data%weights(len_three, array_two(1):array_two(2), len_one), stat=ierr)
+        call check_allocate('alias_data%weights', (len_one*len_two*len_three), ierr)
+        allocate(alias_data%aliasU(len_three, array_two(1):array_two(2), len_one), stat=ierr)
+        call check_allocate('alias_data%aliasU', (len_one*len_two*len_three), ierr)
+        allocate(alias_data%aliasK(len_three, array_two(1):array_two(2), len_one), stat=ierr)
+        call check_allocate('alias_data%aliasK', (len_one*len_two*len_three), ierr)
+        allocate(alias_data%weights_tot(array_two(1):array_two(2), len_one), stat=ierr)
+        call check_allocate('alias_data%weights_tot', (len_one*len_two), ierr)
+
+    end subroutine alloc_alias_table_data_2indarray_three_ind_t
+
+    subroutine alloc_alias_table_data_four_ind_t(alias_data, len_four, len_three, len_two, len_one)
+
+        use checking, only: check_allocate
+        
+        type(alias_table_data_four_ind_t), intent(inout) :: alias_data
+        integer, intent(in) :: len_one, len_two, len_three, len_four
+        integer :: ierr
+
+        allocate(alias_data%weights(len_four, len_three, len_two, len_one), stat=ierr)
+        call check_allocate('alias_data%weights', (len_one*len_two*len_three*len_four), ierr)
+        allocate(alias_data%aliasU(len_four, len_three, len_two, len_one), stat=ierr)
+        call check_allocate('alias_data%aliasU', (len_one*len_two*len_three*len_four), ierr)
+        allocate(alias_data%aliasK(len_four, len_three, len_two, len_one), stat=ierr)
+        call check_allocate('alias_data%aliasK', (len_one*len_two*len_three*len_four), ierr)
+        allocate(alias_data%weights_tot(len_three, len_two, len_one), stat=ierr)
+        call check_allocate('alias_data%weights_tot', (len_one*len_two*len_three), ierr)
+
+    end subroutine alloc_alias_table_data_four_ind_t
+!--------------------------------------------------------------------------------!
+
 !--------------------------------------------------------------------------------!
     ! dealloc_alias_table_t(alias_data)
         ! Deallocate alias table data.
@@ -277,45 +410,98 @@ contains
         ! In/Out:
         !   alias_data: alias_table_data_one_ind_t to be deallocated.
     subroutine dealloc_alias_table_data_one_ind_t(alias_data)
-
+        
+        use checking, only: check_deallocate
         type(alias_table_data_one_ind_t), intent(inout) :: alias_data
+        integer :: ierr
 
-        if (allocated(alias_data%weights)) deallocate(alias_data%weights)
-        if (allocated(alias_data%aliasU)) deallocate(alias_data%aliasU)
-        if (allocated(alias_data%aliasK)) deallocate(alias_data%aliasK)
+        if (allocated(alias_data%weights)) then
+            deallocate(alias_data%weights, stat=ierr)
+            call check_deallocate('alias_data%weights',ierr)
+        end if
+        if (allocated(alias_data%aliasU)) then
+            deallocate(alias_data%aliasU, stat=ierr)
+            call check_deallocate('alias_data%aliasU',ierr)
+        end if
+        if (allocated(alias_data%aliasK)) then
+            deallocate(alias_data%aliasK, stat=ierr)
+            call check_deallocate('alias_data%aliasK',ierr)
+        end if
 
     end subroutine dealloc_alias_table_data_one_ind_t
     
     subroutine dealloc_alias_table_data_two_ind_t(alias_data)
 
+        use checking, only: check_deallocate
         type(alias_table_data_two_ind_t), intent(inout) :: alias_data
+        integer :: ierr
 
-        if (allocated(alias_data%weights)) deallocate(alias_data%weights)
-        if (allocated(alias_data%aliasU)) deallocate(alias_data%aliasU)
-        if (allocated(alias_data%aliasK)) deallocate(alias_data%aliasK)
-        if (allocated(alias_data%weights_tot)) deallocate(alias_data%weights_tot)
+        if (allocated(alias_data%weights)) then
+            deallocate(alias_data%weights, stat=ierr)
+            call check_deallocate('alias_data%weights',ierr)
+        end if
+        if (allocated(alias_data%aliasU)) then
+            deallocate(alias_data%aliasU, stat=ierr)
+            call check_deallocate('alias_data%aliasU',ierr)
+        end if
+        if (allocated(alias_data%aliasK)) then
+            deallocate(alias_data%aliasK, stat=ierr)
+            call check_deallocate('alias_data%aliasK',ierr)
+        end if
+        if (allocated(alias_data%weights_tot)) then
+            deallocate(alias_data%weights_tot, stat=ierr)
+            call check_deallocate('alias_data%weights_tot',ierr)
+        end if
 
     end subroutine dealloc_alias_table_data_two_ind_t
 
     subroutine dealloc_alias_table_data_three_ind_t(alias_data)
 
+        use checking, only: check_deallocate
         type(alias_table_data_three_ind_t), intent(inout) :: alias_data
+        integer :: ierr
 
-        if (allocated(alias_data%weights)) deallocate(alias_data%weights)
-        if (allocated(alias_data%aliasU)) deallocate(alias_data%aliasU)
-        if (allocated(alias_data%aliasK)) deallocate(alias_data%aliasK)
-        if (allocated(alias_data%weights_tot)) deallocate(alias_data%weights_tot)
+        if (allocated(alias_data%weights)) then
+            deallocate(alias_data%weights, stat=ierr)
+            call check_deallocate('alias_data%weights',ierr)
+        end if
+        if (allocated(alias_data%aliasU)) then
+            deallocate(alias_data%aliasU, stat=ierr)
+            call check_deallocate('alias_data%aliasU',ierr)
+        end if
+        if (allocated(alias_data%aliasK)) then
+            deallocate(alias_data%aliasK, stat=ierr)
+            call check_deallocate('alias_data%aliasK',ierr)
+        end if
+        if (allocated(alias_data%weights_tot)) then
+            deallocate(alias_data%weights_tot, stat=ierr)
+            call check_deallocate('alias_data%weights_tot',ierr)
+        end if
 
     end subroutine dealloc_alias_table_data_three_ind_t
 
     subroutine dealloc_alias_table_data_four_ind_t(alias_data)
 
+        use checking, only: check_deallocate
         type(alias_table_data_four_ind_t), intent(inout) :: alias_data
+        integer :: ierr
 
-        if (allocated(alias_data%weights)) deallocate(alias_data%weights)
-        if (allocated(alias_data%aliasU)) deallocate(alias_data%aliasU)
-        if (allocated(alias_data%aliasK)) deallocate(alias_data%aliasK)
-        if (allocated(alias_data%weights_tot)) deallocate(alias_data%weights_tot)
+        if (allocated(alias_data%weights)) then
+            deallocate(alias_data%weights, stat=ierr)
+            call check_deallocate('alias_data%weights',ierr)
+        end if
+        if (allocated(alias_data%aliasU)) then
+            deallocate(alias_data%aliasU, stat=ierr)
+            call check_deallocate('alias_data%aliasU',ierr)
+        end if
+        if (allocated(alias_data%aliasK)) then
+            deallocate(alias_data%aliasK, stat=ierr)
+            call check_deallocate('alias_data%aliasK',ierr)
+        end if
+        if (allocated(alias_data%weights_tot)) then
+            deallocate(alias_data%weights_tot, stat=ierr)
+            call check_deallocate('alias_data%weights_tot',ierr)
+        end if
 
     end subroutine dealloc_alias_table_data_four_ind_t
 !--------------------------------------------------------------------------------!
