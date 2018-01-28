@@ -375,9 +375,8 @@ contains
     end function abs_hmatel_mol
 
     pure function single_excitation_weight_mol(sys, ref, i, a) result(weight)
-! [review] - AJWT: Also, why is this in this file exactly?
-! [reply] - VAN: I put excitation generator weights calculated for reals here and for complex, the pointers will point to
-! [reply] - VAN: functions in hamiltonian_periodic_complex.
+        ! Note that this function is very similar to single_excitation_weight_periodic in hamiltonian_periodic_complex.
+        
         ! In:
         !    sys: system to be studied.
         !    ref: reference determinant information
@@ -401,9 +400,8 @@ contains
         real(p) :: weight
         integer :: n_jb, pos, j, b, virt_pos, occ_pos, nvirt, virt_list(sys%basis%nbasis - sys%nel)
 
-! [review] - AJWT: Do we want to check whether it does obey Brillouin?
-! [reply] - VAN: Why? Would you do something different if it does not?
-! [reply] - AJWT: No idea - but if not we should say that we don't actually care!
+        ! Note that we do not check whether Brillouin's theorem is obeyed or not.
+        
         ! Assuming that we often have the RHF reference which obeys Brillouin's theorem
         ! (no single excitations from the reference), the main contribution to single
         ! excitations can be the single excitation from a double excitation a step

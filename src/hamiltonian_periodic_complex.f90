@@ -419,11 +419,8 @@ contains
         abs_hmatel = abs(hmatel%c)
     end function abs_hmatel_periodic_complex
 
-! [review] - AJWT: Is this a partial rehash of the _mol version?  If it shares code, might that be shared too?
-! [reply] - VAN: They share making the virt_list but the calls to the integrals are different. The function has a lot
-! [reply] - VAN: comments but not so much content otherwise.
-! [reply] - AJWT: Might be worth commenting somewhere that the functions do the same thing in different systems for future proofing.
     pure function single_excitation_weight_periodic(sys, ref, i, a) result(weight)
+        ! Note that this function is very similar to single_excitation_weight_mol in hamiltonian_molecular.
 
         ! In:
         !    sys: system to be studied.
@@ -447,6 +444,8 @@ contains
         type(reference_t), intent(in) :: ref
         real(p) :: weight
         integer :: n_jb, pos, j, b, virt_pos, occ_pos, nvirt, virt_list(sys%basis%nbasis - sys%nel)
+        
+        ! Note that we do not check whether Brillouin's theorem is obeyed or not.
 
         ! Assuming that we often have the RHF reference which obeys Brillouin's theorem
         ! (no single excitations from the reference), the main contribution to single
