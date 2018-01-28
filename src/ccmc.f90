@@ -885,13 +885,19 @@ contains
             call dealloc_det_info_t(ref_det)
         end if
 
-        ! [reply] - VAN: Do we not have to deallocate ms_stats,qs_stats,rng?
-! [review] - AJWT: I think we probably do!  Does the new rng branch merge do this for rng?
         call dealloc_contrib(contrib, ccmc_in%linked)
         do i = 0, nthreads-1
             call dSFMT_end(rng(i))
         end do
 
+        ! Deallocate arrays for OpenMP threads.
+        deallocate(rng, stat=ierr)
+        call check_deallocate('rng', ierr)
+        deallocate(ms_stats, stat=ierr)
+        call check_deallocate('ms_stats', ierr)
+        deallocate(ps_stats, stat=ierr)
+        call check_deallocate('ps_stats', ierr)
+    
     end subroutine do_ccmc
 
     subroutine do_ccmc_accumulation(sys, qs, cdet, cluster, logging_info, D0_population_cycle, proj_energy_cycle, &
