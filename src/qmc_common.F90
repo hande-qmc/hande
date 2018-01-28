@@ -295,25 +295,10 @@ contains
         real(p) :: parallel_weight, ortho_weight
 
 #ifdef PARALLEL
-! [review] - AJWT: should use a routine as in src/excit_gen_heat_bath_mol.f90
-        ! Initialise do-loop bounds for each processor, e.g. [iproc_nel_start,iproc_nel_end], in the case for
-        ! a do-loop over sys%nel.
-        nbasis_end = 0
-        do i = 0, nprocs-1
-            nbasis_start = nbasis_end + 1
-            nbasis_end = nbasis_start + sys%basis%nbasis/nprocs - 1
-            if (i < mod(sys%basis%nbasis,nprocs)) nbasis_end = nbasis_end + 1
-            if (i == iproc) then
-                iproc_nbasis_start = nbasis_start
-                iproc_nbasis_end = nbasis_end
-            end if
-            if (i < sys%basis%nbasis) then ! nbasis => nel
-                displs_nbasis(i) = nbasis_start - 1
-            else
-                displs_nbasis(i) = sys%basis%nbasis - 1
-            end if
-            sizes_nbasis(i) = nbasis_end - nbasis_start + 1
-        end do
+        ! Initialise do-loop range for each processor, [iproc_nbasis_start,iproc_nbasis_end].
+        ! [todo] - parallel_start_end can also assign in serial mode. Disadvantage: would need to define displs_nbasis
+        ! [todo] - and sizes_nbasis for serial mode.
+        call parallel_start_end(sys%basis%nbasis, iproc_nbasis_start, iproc_nbasis_end, displs_nbasis, sizes_nbasis)
 
         parallel_weight_tot = 0.0_p
         ortho_weight_tot = 0.0_p

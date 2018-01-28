@@ -279,37 +279,10 @@ contains
         call qsort(pp%occ_list,sys%nel)
 
 #ifdef PARALLEL
-! [review] - AJWT: This logic is basically repeated from excit_gen_heat_bath_mol, and might as well go into a subroutine, with one call for nel and one for nbasis.
-        ! Initialise do-loop bounds for each processor, e.g. [iproc_nel_start,iproc_nel_end], in the case for
+        ! Initialise do-loop range for each processor, e.g. [iproc_nel_start,iproc_nel_end], in the case for
         ! a do-loop over sys%nel.
-        nel_end = 0
-        nbasis_end = 0
-        do i = 0, nprocs-1
-            nel_start = nel_end + 1
-            nbasis_start = nbasis_end + 1
-            nel_end = nel_start + sys%nel/nprocs - 1
-            nbasis_end = nbasis_start + sys%basis%nbasis/nprocs - 1
-            if (i < mod(sys%nel,nprocs)) nel_end = nel_end + 1
-            if (i < mod(sys%basis%nbasis,nprocs)) nbasis_end = nbasis_end + 1
-            if (i == iproc) then
-                iproc_nel_start = nel_start
-                iproc_nel_end = nel_end
-                iproc_nbasis_start = nbasis_start
-                iproc_nbasis_end = nbasis_end
-            end if
-            if (i < sys%nel) then
-                displs_nel(i) = nel_start - 1 ! start starts with 1 but is 0 displaced.
-                displs_nbasis(i) = nbasis_start - 1
-            else if (i < sys%basis%nbasis) then ! nbasis => nel
-                displs_nel(i) = sys%nel - 1
-                displs_nbasis(i) = nbasis_start - 1
-            else
-                displs_nel(i) = sys%nel - 1
-                displs_nbasis(i) = sys%basis%nbasis - 1
-            end if
-            sizes_nel(i) = nel_end - nel_start + 1
-            sizes_nbasis(i) = nbasis_end - nbasis_start + 1
-        end do
+        call parallel_start_end(sys%nel, iproc_nel_start, iproc_nel_end, displs_nel, sizes_nel)
+        call parallel_start_end(sys%basis%nbasis, iproc_nbasis_start, iproc_nbasis_end, displs_nbasis, sizes_nbasis)
 #else
         iproc_nel_start = 1
         iproc_nbasis_start = 1
@@ -428,7 +401,7 @@ contains
                 mpi_preal, pp%ppn_ia_s%aliasU, mv*sizes_nbasis, mv*displs_nbasis, mpi_preal, MPI_COMM_WORLD, ierr)
             ! [todo] - this is not the safest thing in the universe: Once someone changes whether aliasK is int_32 or int_64
             ! [todo] - in excit_gens.f90, this needs to be changed too.
-! [review] - AJWT: One could do a test on int_bas to be sure.
+            ! [todo] -  One could do a test on int_bas to be sure.
             call mpi_allgatherv(MPI_IN_PLACE, mv*sizes_nbasis(iproc), &
                 MPI_INTEGER, pp%ppn_ia_s%aliasK, mv*sizes_nbasis, mv*displs_nbasis, MPI_INTEGER, MPI_COMM_WORLD, ierr)
         end associate

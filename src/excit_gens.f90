@@ -9,6 +9,7 @@ public :: move_pattempt_data, excit_gen_data_t
 !Data for the power_pitzer/heat bath excit gens
 
 ! The integer types have been chosen to be int_32 as they never need to index more than 2^31-1 basis functions.
+! WARNING: If int_bas gets modified, MPI calls have to be modified as well (in other files).
 integer(int_32), parameter :: int_bas = int_32
 
 ! [review] - AJWT: What is this type for?

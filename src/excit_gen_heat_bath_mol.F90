@@ -63,27 +63,10 @@ contains
         ! [todo] - although it is probably fine, abs_hmatel_ptr ignores the irrelevant bit.
 
 #ifdef PARALLEL
-        ! Initialise do-loop bounds for each processor, e.g. [iproc_nel_start,iproc_nel_end], in the case for
-        ! a do-loop over sys%nel.
-        nbasis_end = 0
-! [review] - AJWT: each processor gets at least floor(nbasis/nprocs), with the remainder allocated one to each of the early numbered processors.
-        do i = 0, nprocs-1
-            nbasis_start = nbasis_end + 1
-            nbasis_end = nbasis_start + sys%basis%nbasis/nprocs - 1
-! [review] - AJWT: allocate one of the remainder to the early processors.
-            if (i < mod(sys%basis%nbasis,nprocs)) nbasis_end = nbasis_end + 1
-! [review] - AJWT: If nbasis<nproc (which is I think what's meant) then use the calculated value
-! [review] - AJWT: Otherwise set it to not do anything.  Does't the above algorithm already do that?
-            if (i < sys%basis%nbasis) then ! nbasis => nel
-                displs_nbasis(i) = nbasis_start - 1
-            else
-                displs_nbasis(i) = sys%basis%nbasis - 1
-            end if
-            sizes_nbasis(i) = nbasis_end - nbasis_start + 1
-        end do
-![review] - AJWT: Doing this here seems logically cleaner - need to check I've actually done it correctly though
-        iproc_nbasis_start = displs_nbasis(iproc) + 1
-        iproc_nbasis_end = displs_nbasis(iproc) + sizes_nbasis(iproc)
+        ! Initialise do-loop range for each processor, [iproc_nbasis_start,iproc_nbasis_end].
+        ! [todo] - parallel_start_end can also assign in serial mode. Disadvantage: would need to define displs_nbasis
+        ! [todo] - and sizes_nbasis for serial mode.
+        call parallel_start_end(sys%basis%nbasis, iproc_nbasis_start, iproc_nbasis_end, displs_nbasis, sizes_nbasis)
 #else
         iproc_nbasis_start = 1
         iproc_nbasis_end = sys%basis%nbasis
