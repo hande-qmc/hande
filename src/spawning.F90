@@ -2030,7 +2030,8 @@ contains
             end if
             excit_gen_singles_old = excit_gen_singles
             excit_gen_singles = excit_gen_singles + 1.0_p
-            ! check for overflow
+            ! If excit_gen_singles is sufficienctly large after a lot of cycles, the addition above may not
+            ! change the value within the float, so we check for this and call it an overflow.
             if (abs(excit_gen_singles - excit_gen_singles_old) < depsilon) then
                 overflow_loc = .true.
             end if
@@ -2045,7 +2046,8 @@ contains
             end if
             excit_gen_doubles_old = excit_gen_doubles
             excit_gen_doubles = excit_gen_doubles + 1.0_p
-            ! check for overflow
+            ! If excit_gen_singles is sufficienctly large after a lot of cycles, the addition above may not
+            ! change the value within the float, so we check for this and call it an overflow.
             if (abs(excit_gen_doubles - excit_gen_doubles_old) < depsilon) then
                 overflow_loc = .true.
             end if
@@ -2169,6 +2171,8 @@ contains
         ps%total%h_pgen_doubles_sum = ps%total%h_pgen_doubles_sum + h_pgen_doubles_sum_sum
 
         ! Check whether precision is high enough to detect change in the number of single/double excitations.
+        ! If ps%total%excit_gen_singles is sufficienctly large after a lot of cycles, the addition above may not
+        ! change the value within the float, so we check for this and call it an overflow.
         if (((abs(ps%total%excit_gen_singles - excit_gen_singles_old) < depsilon) .and. (excit_gen_singles_sum > 0.0_p)) .or. &
             ((abs(ps%total%excit_gen_doubles - excit_gen_doubles_old) < depsilon) .and. (excit_gen_doubles_sum > 0.0_p))) then
             ps%overflow_loc = .true.

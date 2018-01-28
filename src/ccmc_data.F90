@@ -232,13 +232,8 @@ contains
         ps%tmp%h_pgen_doubles_sum = ps%tmp%h_pgen_doubles_sum + sum(ps_stats%h_pgen_doubles_sum)
         ps%tmp%excit_gen_doubles = ps%tmp%excit_gen_doubles + sum(ps_stats%excit_gen_doubles)
         
-! [review] - AJWT: This isn't actually an overflow (which confused me when reading it).
-! [review] - AJWT: You might categorize it as an underflow (i.e. the additional information has to be shifted
-! [review] - AJWT: beyond the precision of the floating point number before it's mantissa is added.).  Either
-! [review] - AJWT: way an explanation would be helpful such as
-! [review] - AJWT: If excit_gen_singles is sufficienctly large after a lot of cycles, the addition above may not
-! [review] - AJWT: change the value within the float, so we check for this and call it an overflow.
-        ! check for overflow
+        ! If excit_gen_singles is sufficienctly large after a lot of cycles, the addition above may not
+        ! change the value within the float, so we check for this and call it an overflow.
         if (((abs(ps%tmp%excit_gen_singles-excit_gen_singles_old) < depsilon) .and. (sum(ps_stats%excit_gen_singles) > 0.0_p)) &
             .or. &
             ((abs(ps%tmp%excit_gen_doubles-excit_gen_doubles_old) < depsilon) .and. (sum(ps_stats%excit_gen_doubles) > 0.0_p)) &
