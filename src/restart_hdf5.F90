@@ -60,8 +60,8 @@ module restart_hdf5
     !            vary shift            # Whether the shift was varying before the calculation stopped
     !            shift_damping         # Value of the shift damping used within the calculation
     !            shift_damping_status  # Current status of any shift damping optimisation.
-    !            pattempt_single       # pattempt_single, probability of a single excitation
-    !            pattempt_single_data/
+    !            pattempt_single       # (Version 3) pattempt_single, probability of a single excitation
+    !            pattempt_single_data/ # (all Version 3)
     !                           vary_psingles      # if true, pattempt_singles is (still) updated.
     !                           h_pgen_singles_sum # sum of hmatel/(spawn_pgen/pattempt_single) for single excitations
     !                           h_pgen_doubles_sum # sum of hmatel/(spawn_pgen/pattempt_single) for double excitations
