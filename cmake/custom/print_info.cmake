@@ -21,8 +21,8 @@ conf_dict = cf.prepare_configuration_dictionary(cmake_version='${CMAKE_VERSION}'
             C_compiler='${CMAKE_C_COMPILER}',
             build_type='${CMAKE_BUILD_TYPE}',
             mpi_launcher='${_mpi_launcher}',
-            lua_version='\"${LUA_VERSION_STRING}\"',
-            hdf5_version='\"${HDF5_VERSION}\"')
+            lua_version='${LUA_VERSION_STRING}',
+            hdf5_version='${HDF5_VERSION}')
 cf.configure_file(conf_dict, 'print_info.c', in_path=os.path.join('${PROJECT_SOURCE_DIR}', 'lib/local'), suffix='.in')
 cf.configure_file(conf_dict, 'git_info.f90', in_path=os.path.join('${PROJECT_SOURCE_DIR}', 'lib/local'), suffix='.in')
 ")
@@ -35,7 +35,7 @@ cf.configure_file(conf_dict, 'git_info.f90', in_path=os.path.join('${PROJECT_SOU
   add_custom_target(
     build_info
     ALL DEPENDS
-      ${PROJECT_SOURCE_DIR}/tools/configurator.py
+      ${CMAKE_CURRENT_BINARY_DIR}/configurator.py
       ${PROJECT_SOURCE_DIR}/lib/local/print_info.c
       ${PROJECT_SOURCE_DIR}/lib/local/git_info.f90
     )

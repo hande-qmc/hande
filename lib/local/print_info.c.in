@@ -57,8 +57,8 @@ void print_info() {
   printf("dSFMT Mersenne exponent  | %d\n", @_dsfmt_mexp@);
   printf("%s\n", report_mpi_toggle());
   printf("%s\n", report_omp_toggle());
-  printf("Lua version              | %s\n", @_lua_version@);
-  printf("HDF5 library version     | %s\n", @_hdf5_version@);
+  printf("Lua version              | %s\n", "@_lua_version@");
+  printf("HDF5 library version     | %s\n", "@_hdf5_version@");
   /* clang-format on */
 
   printf("\n");

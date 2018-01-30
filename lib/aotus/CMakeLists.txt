@@ -28,4 +28,8 @@ add_library(aotus OBJECT
   source/dummy_quadruple_top_module.f90
   source/dummy_quadruple_vector_module.f90
   )
+target_include_directories(aotus
+  PRIVATE
+    ${LUA_INCLUDE_DIR}
+  )
 add_library(HANDE::aotus ALIAS aotus)

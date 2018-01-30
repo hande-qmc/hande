@@ -63,7 +63,7 @@ install:
 before_script:
   - >
     if [[ "$USE_CMAKE" = true ]]; then
-      ./mkconfig.py --type=release --mpi --scalapack="-L$ScaLAPACK_ROOT/lib -lscalapack" --lanczos="-L$DEPS/trlan/lib -ltrlan"
+      ./mkconfig.py --type=release --mpi --scalapack="-L$ScaLAPACK_ROOT/lib -lscalapack" --lanczos="-L$DEPS/trlan/lib -ltrlan" --exe-name="hande.travis.linux.cmake.x"
       # This is equivalent to
       # cmake -H. -Bbuild \
       #           -DENABLE_HDF5=ON \
@@ -71,7 +71,8 @@ before_script:
       #           -DCMAKE_BUILD_TYPE=Release \
       #           -DENABLE_MPI=ON \
       #           -DSCALAPACK_LIBRARIES="-L$ScaLAPACK_ROOT/lib -lscalapack" \
-      #           -DTRLan_LIBRARIES="-L$DEPS/trlan/lib -ltrlan"
+      #           -DTRLan_LIBRARIES="-L$DEPS/trlan/lib -ltrlan" \
+      #           -DHANDE_EXE_NAME="hande.travis.linux.cmake.x"
     else
       tools/mkconfig.py travis.linux
     fi
