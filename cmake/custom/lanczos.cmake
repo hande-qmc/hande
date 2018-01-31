@@ -13,7 +13,7 @@
 # autocmake.yml configuration::
 #
 #   docopt:
-#     - "--lanczos=<TRLan_LIBRARIES> Set TRLan libraries to be linked in [default: ]."
+#     - "--lanczos=<TRLan_LIBRARIES> Set TRLan libraries to be linked in [default: '']."
 #   define:
 #     - "'-DTRLan_LIBRARIES=\"{0}\"'.format(arguments['--lanczos'])"
 

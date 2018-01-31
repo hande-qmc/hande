@@ -51,21 +51,22 @@ The help menu for the ``mkconfig.py`` script shows the available options:
      --cc=<CC>                              C compiler [default: gcc].
      --extra-cc-flags=<EXTRA_CFLAGS>        Extra C compiler flags [default: ''].
      --python=<PYTHON_INTERPRETER>          The Python interpreter (development version) to use. [default: ''].
+     --lua=<LUA_ROOT>                       Specify the path to the Lua installation to use [default: ''].
      --mpi                                  Enable MPI parallelization [default: False].
      --omp                                  Enable OpenMP parallelization [default: False].
      --blas=<BLAS>                          Detect and link BLAS library (auto or off) [default: auto].
      --lapack=<LAPACK>                      Detect and link LAPACK library (auto or off) [default: auto].
      --mkl=<MKL>                            Pass MKL flag to the Intel compiler and linker and skip BLAS/LAPACK detection (sequential, parallel, cluster, or off) [default: off].
-     --scalapack=<SCALAPACK_LIBRARIES>      Link line for ScaLAPACK libraries [default: ]
+     --scalapack=<SCALAPACK_LIBRARIES>      Link line for ScaLAPACK libraries [default: '']
      --blacs=<BLACS_IMPLEMENTATION>         Implementation of BLACS for MKL ScaLAPACK (openmpi, intelmpi, sgimpt) [default: openmpi]
-     --explicit-libs=<EXPLICIT_LIBS>        Explicit linker options for extra libraries to be linked in [default: ].
+     --explicit-libs=<EXPLICIT_LIBS>        Explicit linker options for extra libraries to be linked in [default: ''].
      --dsfmt-mexp=<HANDE_DSFMT_MEXP>        An integer among 521, 1279, 2203, 4253, 11213, 19937, 44497, 86243, 1322049, 216091 [default: 19937].
      --det-size=<HANDE_DET_SIZE>            An integer among 32 or 64 [default: 32].
      --pop-size=<HANDE_POP_SIZE>            An integer among 32 or 64 [default: 32].
      --exe-name=<HANDE_EXE_NAME>            [default: "hande.cmake.x"].
      --hdf5=<ENABLE_HDF5>                   Enable HDF5 [default: True].
      --uuid=<ENABLE_UUID>                   Whether to activate UUID generation [default: True].
-     --lanczos=<TRLan_LIBRARIES>            Set TRLan libraries to be linked in [default: ].
+     --lanczos=<TRLan_LIBRARIES>            Set TRLan libraries to be linked in [default: ''].
      --single                               Enable usage of single precision, where appropriate [default: False].
      --backtrace                            Enable backtrace functionality [default: False].
      --popcnt                               Enable use of intrinsic popcnt [default: False].
@@ -89,7 +90,17 @@ translation guide between the frontend script and "bare" CMake:
 - ``--extra-cc-flags="list-of-flags"``/``-DEXTRA_CFLAGS="list-of-flags"``. To set additional flags
   for the C compiler.
 - ``--python=INTERP``/``-DPYTHON_INTERPRETER=INTERP``. To set the Python interpreter. The
-  default is empyt, so that CMake will attempt to find a suitable version.
+  default is empty, so that CMake will attempt to find a suitable version.
+- ``--lua=LUA``/``-DLUA_ROOT=LUA``. To set the Lua installation to use. Minimum
+  required version of Lua is 5.3. The default is empty, so that CMake will attempt to
+  find a suitable version.
+  See below for Lua detection issues.
+
+.. warning::
+   CMake will not pick up Lua from a nonstandard location, even though it is on
+   path (any or all of ``CPATH``, ``LIBRARY_PATH``, ``LD_LIBRARY_PATH``,
+   ``PATH``)
+
 - ``--mpi``/``-DENABLE_MPI=ON``. Enables MPI parallelization. CMake will
   attempt to find a suitable implementation of MPI and set the compilers
   accordingly.
@@ -180,12 +191,12 @@ and pointed in the right direction:
    cmake -H. -DENABLE_BLAS=OFF -DENABLE_LAPACK=OFF -DEXPLICIT_LIBS="-L/usr/lib -lblas -llapack"
 
 - Lua in a non-standard directory. Exporting the root directory of the Lua
-  installation as ``LUA_DIR`` or directly passing it as an option:
+  installation as ``LUA_ROOT`` (or ``LUA_DIR``) or directly passing it as an option:
 
 .. code-block:: bash
-   ./mkconfig.py --cmake-options="-DLUA_DIR=/install/dir/for/Lua" build
+   ./mkconfig.py --lua=/install/dir/for/Lua build
 
-   cmake -H. -Bbuild -DLUA_DIR=/install/dir/for/Lua
+   cmake -H. -Bbuild -DLUA_ROOT=/install/dir/for/Lua
 
 - HDF5 in a non-standard directory. Exporting the root directory of the HDF5
   installation as ``HDF5_ROOT`` os directly passing it as an option:

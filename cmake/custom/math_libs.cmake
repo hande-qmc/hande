@@ -46,7 +46,7 @@
 #     - "--blas=<BLAS> Detect and link BLAS library (auto or off) [default: auto]."
 #     - "--lapack=<LAPACK> Detect and link LAPACK library (auto or off) [default: auto]."
 #     - "--mkl=<MKL> Pass MKL flag to the Intel compiler and linker and skip BLAS/LAPACK detection (sequential, parallel, cluster, or off) [default: off]."
-#     - "--scalapack=<SCALAPACK_LIBRARIES> Link line for ScaLAPACK libraries [default: ]"
+#     - "--scalapack=<SCALAPACK_LIBRARIES> Link line for ScaLAPACK libraries [default: '']"
 #     - "--blacs=<BLACS_IMPLEMENTATION> Implementation of BLACS for MKL ScaLAPACK (openmpi, intelmpi, sgimpt) [default: openmpi]"
 #   define:
 #     - "'-DENABLE_BLAS={0}'.format(arguments['--blas'])"

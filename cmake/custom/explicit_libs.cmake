@@ -9,7 +9,7 @@
 # autocmake.yml configuration::
 #
 #   docopt:
-#     - "--explicit-libs=<EXPLICIT_LIBS> Explicit linker options for extra libraries to be linked in [default: ]."
+#     - "--explicit-libs=<EXPLICIT_LIBS> Explicit linker options for extra libraries to be linked in [default: '']."
 #   define:
 #     - "'-DEXPLICIT_LIBS=\"{0}\"'.format(arguments['--explicit-libs'])"
 
