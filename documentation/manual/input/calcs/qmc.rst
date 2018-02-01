@@ -172,14 +172,14 @@ algorithms and control the core settings in the algorithms.
 
     Possible values: 'renorm', 'no_renorm', 'power_pitzer', 'power_pitzer_orderM'
 
-    ============  ===================  =========
-    System        Implemented          Default
-    ============  ===================  =========
-    chung_landau  renorm, no_renorm    renorm
-    heisenberg    renorm, no_renorm    renorm
-    hubbard_k     renorm, no_renorm    renorm
-    hubbard_real  renorm, no_renorm    renorm
-    read_in       renorm, no_renorm,   renorm
+    ============  ========================  =========
+    System        Implemented               Default
+    ============  ========================  =========
+    chung_landau  renorm, no_renorm         renorm
+    heisenberg    renorm, no_renorm         renorm
+    hubbard_k     renorm, no_renorm         renorm
+    hubbard_real  renorm, no_renorm         renorm
+    read_in       renorm, no_renorm,        renorm
                   renorm_spin,
                   no_renorm_spin,
                   heat_bath,
@@ -187,11 +187,12 @@ algorithms and control the core settings in the algorithms.
                   heat_bath_single,
                   power_pitzer,
                   power_pitzer_orderM,
+                  power_pitzer_orderM_ij,
                   power_pitzer_orderN
-    ringium       no_renorm            no_renorm
-    ueg           no_renorm,           no_renorm
+    ringium       no_renorm                 no_renorm
+    ueg           no_renorm,                no_renorm
                   power_pitzer
-    ============  ===================  =========
+    ============  ========================  =========
 
     The type of excitation generator to use.  Note that not all types are implemented for
     all systems, usually because a specific type is not suitable for (large) production
@@ -246,10 +247,14 @@ algorithms and control the core settings in the algorithms.
     elements, where the weights for selecting an excitation are calculated each time the
     excitation is called for the actual determinant we are spawning from. This requires
     O(Number of basis functions) time cost for each particle being spawned from. The 
-    memory requirements are of O(Number of basis functions).
+    memory requirements are of O(Number of basis functions). 'power_pitzer_orderM_ij'
+    is similar to 'power_pitzer_orderM' but samples selects i and j similarly to the
+    heat bath excitation generators. The memory cost is then 
+    O(Number of basis functions^2).
 
     The 'power_pitzer_orderN' excitation generator uses precalculated weights and unlike
-    'power_pitzer', it also samples i and j with weighted probabilities.
+    'power_pitzer', it also samples i and j with weighted probabilities. It also samples
+    single excitations in a weighted manner.
 
     In the case of the UEG, the 'power_pitzer' excitation generator pre-calculates
     Power-Pitzer like weights for the selecting of orbital a. i and j are selected like
