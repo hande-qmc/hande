@@ -268,10 +268,6 @@ algorithms and control the core settings in the algorithms.
     happen if orbital connections with low pgen are mapped to orbital connections with
     big abs(Hij).
 
-.. [review] - AJWT: 
-    It's worth noting that if pattempt_single and pattempt_double don't sum to 1, then
-    we renormalize them I think.
-
 ``pattempt_single``
     type: float.
 
@@ -286,6 +282,9 @@ algorithms and control the core settings in the algorithms.
     reference determinant that correspond to double excitations.
 
     The probability of generating a double excitation.
+
+    .. note::
+        If ``pattempt_single`` and ``pattempt_double`` do not sum to 1, we renormalize them.
 ``pattempt_update``
     type: boolean.
 
@@ -297,9 +296,8 @@ algorithms and control the core settings in the algorithms.
     "original" heat bath algorithm. Note that when restarting if this is set to
     true and both ``pattempt_single`` and ``pattempt_double`` are specified by the
     user, previous update information is lost and the update (provided shift has
-    not started varying yet) starts from zero.
-.. [review] - AJWT: 
-    Does 'zero' mean that pattempt_single is set to zero rather than the previous pattempt_single
+    not started varying yet) starts from scratch (information to update
+    ``pattempt_single`` from previous runs gets lost).
 ``pattempt_parallel``
     type: float.
 
