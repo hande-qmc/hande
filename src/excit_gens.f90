@@ -3,7 +3,8 @@ use const
 implicit none
 
 private
-public :: alloc_alias_table_data_t, dealloc_excit_gen_data_t, p_single_double_t, excit_gen_power_pitzer_t, excit_gen_heat_bath_t
+public :: alloc_alias_table_data_t, dealloc_excit_gen_data_t, p_single_double_coll_t
+public :: p_single_double_t, excit_gen_power_pitzer_t, excit_gen_heat_bath_t
 public :: move_pattempt_data, excit_gen_data_t
 
 !Data for the power_pitzer/heat bath excit gens
@@ -12,20 +13,22 @@ public :: move_pattempt_data, excit_gen_data_t
 ! WARNING: If int_bas gets modified, MPI calls have to be modified as well (in other files).
 integer(int_32), parameter :: int_bas = int_32
 
-! [review] - AJWT: What is this type for?
+! Type to collect data for averaging pattempt_single. It is its own type because
+! we distinguish between data collected on each MPI proc. over a report loop (rep_accum)
+! and the running total (total).
 type p_single_double_coll_t
     real(p) :: h_pgen_singles_sum = 0.0_p ! hmatel/pgen sum for singles
     real(p) :: h_pgen_doubles_sum = 0.0_p ! hamtel/pgen sum for doubles
     real(p) :: excit_gen_singles = 0.0_p ! number of valid singles excitations created
     real(p) :: excit_gen_doubles = 0.0_p ! number of valid doubles excitations created
+    logical :: overflow_loc = .false. ! Does adding a 1 still increase the number (excit_gen_singles and excit_gen_doubles)?
 end type p_single_double_coll_t
 
 type p_single_double_t
     ! collects data to update pattempt_single (and therefore pattempt_double) such that
     ! the means in the distribution of hmatel/pgen for singles and doubles are roughly equal.
     type(p_single_double_coll_t) :: total ! the same on all MPI procs, stored in restart file.
-![review] - AJWT: tmp is quite a bad name.  accum?  accum_proc?
-    type(p_single_double_coll_t) :: tmp ! gets zeroed after each report loop, different on each MPI proc. Gets added onto total.
+    type(p_single_double_coll_t) :: rep_accum ! gets zeroed after each report loop, different on each MPI proc. Gets added onto total.
     ! [todo] - find a way to make the next two variables parameters inside types.
     ! [todo] - Be careful when changing them - if restarting from a legacy file that might be confusing.
     real(p) :: every_attempts = 10000.0_p ! update pattempt_single every every_attempts a single or double ex. happened
@@ -33,7 +36,6 @@ type p_single_double_t
     real(p) :: counter = 1.0_p
     logical :: vary_psingles = .false. ! still update pattempt_singles
     logical :: pattempt_restart_store = .false. ! has pattempt_* information from p_single_double been stored when restarting
-    logical :: overflow_loc = .false. ! Does adding a 1 still increase the number (excit_gen_singles and excit_gen_doubles)?
 end type p_single_double_t
 
 type alias_table_data_one_ind_t

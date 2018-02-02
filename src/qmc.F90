@@ -909,7 +909,6 @@ contains
             excit_gen_data%p_single_double%total%excit_gen_singles = 0.0_p ! number of valid singles excitations created
             excit_gen_data%p_single_double%total%excit_gen_doubles = 0.0_p ! number of valid doubles excitations created
             excit_gen_data%p_single_double%counter = 1.0_p
-            excit_gen_data%p_single_double%overflow_loc = .false.
             ! renormalise just in case input wasn't
             excit_gen_data%pattempt_single = qmc_in%pattempt_single/(qmc_in%pattempt_single+qmc_in%pattempt_double)
             excit_gen_data%pattempt_double = 1.0_p - qmc_in%pattempt_single

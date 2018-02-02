@@ -103,10 +103,9 @@ contains
             hmatel_tmp = hmatel
             hmatel_tmp%r = hmatel%r * qn_weight
             if (qmc_state%excit_gen_data%p_single_double%vary_psingles) then
-                associate(ps=>qmc_state%excit_gen_data%p_single_double)
-                    call update_p_single_double_data(connection%nexcit, ps%tmp%h_pgen_singles_sum, ps%tmp%h_pgen_doubles_sum, &
-                            ps%tmp%excit_gen_singles, ps%tmp%excit_gen_doubles, hmatel_tmp, pgen, qmc_state%excit_gen_data, &
-                            sys%read_in%comp, ps%overflow_loc)
+                associate(exdat=>qmc_state%excit_gen_data) 
+                    call update_p_single_double_data(connection%nexcit, hmatel_tmp, pgen, exdat%pattempt_single, &
+                        exdat%pattempt_double, sys%read_in%comp, exdat%p_single_double%rep_accum)
                 end associate
             end if
         else
@@ -198,10 +197,9 @@ contains
         if (allowed) then
             hmatel%r = hmatel%r * calc_qn_spawned_weighting(sys, qmc_state%propagator, cdet%fock_sum, connection)
             if (qmc_state%excit_gen_data%p_single_double%vary_psingles) then
-                associate(ps=>qmc_state%excit_gen_data%p_single_double)
-                    call update_p_single_double_data(connection%nexcit, ps%tmp%h_pgen_singles_sum, ps%tmp%h_pgen_doubles_sum, &
-                                ps%tmp%excit_gen_singles, ps%tmp%excit_gen_doubles, hmatel, pgen, qmc_state%excit_gen_data, &
-                                sys%read_in%comp, ps%overflow_loc)
+                associate(exdat=>qmc_state%excit_gen_data) 
+                    call update_p_single_double_data(connection%nexcit, hmatel, pgen, exdat%pattempt_single, &
+                        exdat%pattempt_double, sys%read_in%comp, exdat%p_single_double%rep_accum)
                 end associate
             end if
         end if
@@ -561,10 +559,9 @@ contains
             ! [todo] - check this multiplication
             hmatel_tmp%c = qn_weight * hmatel%c
             if (qmc_state%excit_gen_data%p_single_double%vary_psingles) then
-                associate(ps=>qmc_state%excit_gen_data%p_single_double)
-                    call update_p_single_double_data(connection%nexcit, ps%tmp%h_pgen_singles_sum, ps%tmp%h_pgen_doubles_sum, &
-                            ps%tmp%excit_gen_singles, ps%tmp%excit_gen_doubles, hmatel_tmp, pgen, qmc_state%excit_gen_data, &
-                            sys%read_in%comp, ps%overflow_loc)
+                associate(exdat=>qmc_state%excit_gen_data) 
+                    call update_p_single_double_data(connection%nexcit, hmatel_tmp, pgen, exdat%pattempt_single, &
+                        exdat%pattempt_double, sys%read_in%comp, exdat%p_single_double%rep_accum)
                 end associate
             end if
         else
@@ -1985,8 +1982,8 @@ contains
 
     end function calc_qn_weighting
 
-    subroutine update_p_single_double_data(nexcit, h_pgen_singles_sum, h_pgen_doubles_sum, excit_gen_singles, excit_gen_doubles,&
-                                        hmatel, spawn_pgen, excit_gen_data, complx, overflow_loc)
+    subroutine update_p_single_double_data(nexcit, hmatel, spawn_pgen, pattempt_single, pattempt_double, complx, loc_accum)
+        
         ! Update h_pgen_singles_sum/h_pgen_doubles_sum (the sum of pattempt_single*hmatel/spawn_pgen
         ! for a single/double excitation), as well as excit_gen_singles/excit_gen_doubles, the number
         ! of single/double excitations.
@@ -1997,62 +1994,71 @@ contains
         !    spawn_pgen: pgen as it comes out of the excitation generator, probability of choosing
         !            a certain combination of orbitals for excitation.
         !    complx: true if populations are complex.
-        !    excit_gen_data: excitation generator data
+        !    pattempt_{single,double}: probability of a {single,double} excitation.
         ! In/Out:
-        !    h_pgen_singles_sum: the sum of pattempt_single*hmatel/spawn_pgen for a single excitation
-        !    h_pgen_doubles_sum: the sum of pattempt_double*hmatel/spawn_pgen for a double excitation
-        !    excit_gen_singles: the number of singles excitations.
-        !    excit_gen_doubles: the number of doubles excitations.
-        ! Out:
-        !    overflow_loc: true if precision is so low that updates on excit_gen_singles/excit_gen_doubles
-        !            are lost.
+        !    loc_accum: accumulates data for updating pattempt_single
 
         use hamiltonian_data, only: hmatel_t
-        use excit_gens, only: excit_gen_data_t
+        use excit_gens, only: p_single_double_coll_t
 
         integer, intent(in) :: nexcit
         type(hmatel_t), intent(in) :: hmatel
-        real(p), intent(in) :: spawn_pgen
-        type(excit_gen_data_t), intent(in) :: excit_gen_data
+        real(p), intent(in) :: spawn_pgen, pattempt_single, pattempt_double
         logical, intent(in) :: complx
-        real(p), intent(inout) :: h_pgen_singles_sum, h_pgen_doubles_sum, excit_gen_singles, excit_gen_doubles
-        logical, intent(out) :: overflow_loc
+        type(p_single_double_coll_t), intent(inout) :: loc_accum
 
-        real(p) :: excit_gen_singles_old, excit_gen_doubles_old
+        real(p) :: hmatel_loc
+
+        if (complx) then
+            hmatel_loc = abs(hmatel%c)
+        else
+            hmatel_loc = abs(hmatel%r)
+        end if
 
         if (nexcit == 1) then
-            if (complx) then
-                h_pgen_singles_sum = h_pgen_singles_sum + &
-                        ((abs(hmatel%c)*excit_gen_data%pattempt_single)/spawn_pgen)
-            else
-                h_pgen_singles_sum = h_pgen_singles_sum + &
-                        ((abs(hmatel%r)*excit_gen_data%pattempt_single)/spawn_pgen)
-            end if
-            excit_gen_singles_old = excit_gen_singles
-            excit_gen_singles = excit_gen_singles + 1.0_p
-            ! If excit_gen_singles is sufficienctly large after a lot of cycles, the addition above may not
-            ! change the value within the float, so we check for this and call it an overflow.
-            if (abs(excit_gen_singles - excit_gen_singles_old) < depsilon) then
-                overflow_loc = .true.
-            end if
+            call update_p_single_double_data_helper(loc_accum%h_pgen_singles_sum, loc_accum%excit_gen_singles, &
+                loc_accum%overflow_loc, hmatel_loc, spawn_pgen, pattempt_single)
+        
         ! [todo] - should this be an else? Using else if is another check but is it necessary?
         else if (nexcit == 2) then
-            if (complx) then
-                h_pgen_doubles_sum = h_pgen_doubles_sum + &
-                        ((abs(hmatel%c)*excit_gen_data%pattempt_double)/spawn_pgen)
-            else
-                h_pgen_doubles_sum = h_pgen_doubles_sum + &
-                        ((abs(hmatel%r)*excit_gen_data%pattempt_double)/spawn_pgen)
-            end if
-            excit_gen_doubles_old = excit_gen_doubles
-            excit_gen_doubles = excit_gen_doubles + 1.0_p
-            ! If excit_gen_singles is sufficienctly large after a lot of cycles, the addition above may not
-            ! change the value within the float, so we check for this and call it an overflow.
-            if (abs(excit_gen_doubles - excit_gen_doubles_old) < depsilon) then
-                overflow_loc = .true.
-            end if
+            call update_p_single_double_data_helper(loc_accum%h_pgen_doubles_sum, loc_accum%excit_gen_doubles, &
+                loc_accum%overflow_loc, hmatel_loc, spawn_pgen, pattempt_double)
         end if
+    
     end subroutine update_p_single_double_data
+
+    subroutine update_p_single_double_data_helper(h_pgen_sd_sum, excit_gen_sd, overflow_loc, hmatel_loc, &
+            spawn_pgen, pattempt_sd)
+        
+        ! Part of update_p_single_double_data function. Separate to avoid too much code duplication.
+
+        ! In:
+        !   hmatel_loc: either abs(hmatel%c) or abs(hmatel%r)
+        !   spawn_pgen: spawn probability (includes pattempt_{single,double})
+        !   pattempt_sd: pattempt_{single,double}
+
+        ! In/Out:
+        !   h_pgen_sd_sum: loc_accum%h_pgen_{singles,doubles}_sum
+        !   excit_gen_sd: loc_accum%excit_gen_{singles,doubles}
+        !   overflow_loc: loc_accum%overflow_loc
+        
+        real(p), intent(in) :: hmatel_loc, spawn_pgen, pattempt_sd
+        real(p), intent(inout) :: h_pgen_sd_sum, excit_gen_sd
+        logical :: overflow_loc
+        
+        real(p) :: excit_gen_sd_old
+
+        h_pgen_sd_sum = h_pgen_sd_sum + ((hmatel_loc*pattempt_sd)/spawn_pgen)
+        
+        excit_gen_sd_old = excit_gen_sd
+        excit_gen_sd = excit_gen_sd + 1.0_p
+        ! If excit_gen_{singles,doubles} is sufficienctly large after a lot of cycles, the addition above may not
+        ! change the value within the float, so we check for this and call it an overflow.
+        if (abs(excit_gen_sd - excit_gen_sd_old) < depsilon) then
+            overflow_loc = .true.
+        end if
+
+    end subroutine update_p_single_double_data_helper
 
     subroutine update_pattempt(excit_gen_data)
         
@@ -2066,160 +2072,131 @@ contains
 
         type(excit_gen_data_t), intent(inout) :: excit_gen_data
 
+        associate(ps=>excit_gen_data%p_single_double)
 #ifdef PARALLEL
-        real(p) :: excit_gen_singles_sum, excit_gen_doubles_sum, h_pgen_singles_sum_sum, h_pgen_doubles_sum_sum
-                
-        associate(ps=>excit_gen_data%p_single_double)
-            call communicate_pattempt_single_data(ps, excit_gen_singles_sum, excit_gen_doubles_sum, &
-                                h_pgen_singles_sum_sum, h_pgen_doubles_sum_sum)
-            call add_tmp_to_total(ps, excit_gen_singles_sum, excit_gen_doubles_sum, h_pgen_singles_sum_sum, &
-                                            h_pgen_doubles_sum_sum)
-        end associate
-#else
-        associate(ps=>excit_gen_data%p_single_double)
-            call add_tmp_to_total(ps, ps%tmp%excit_gen_singles, ps%tmp%excit_gen_doubles, ps%tmp%h_pgen_singles_sum, &
-                                            ps%tmp%h_pgen_doubles_sum)
-        end associate 
+            call communicate_pattempt_single_data(ps%rep_accum)
 #endif
-        associate(ps=>excit_gen_data%p_single_double)
-            call update_pattempt_single(ps%every_attempts, ps%every_min_attempts, ps%total%excit_gen_singles, &
-                ps%total%excit_gen_doubles, ps%total%h_pgen_singles_sum, ps%total%h_pgen_doubles_sum, ps%counter, &
-                excit_gen_data%pattempt_single, excit_gen_data%pattempt_double)
+            call add_rep_accum_to_total(ps)
+            
+            call update_pattempt_single(ps, excit_gen_data%pattempt_single, excit_gen_data%pattempt_double)
 
-            ! Zero tmp variables to be prepared for next report loop.
-            ps%tmp%excit_gen_singles = 0.0_p
-            ps%tmp%excit_gen_doubles = 0.0_p
-            ps%tmp%h_pgen_singles_sum = 0.0_p
-            ps%tmp%h_pgen_doubles_sum = 0.0_p
+            ! Zero rep_accum variables to be prepared for next report loop.
+            ps%rep_accum%excit_gen_singles = 0.0_p
+            ps%rep_accum%excit_gen_doubles = 0.0_p
+            ps%rep_accum%h_pgen_singles_sum = 0.0_p
+            ps%rep_accum%h_pgen_doubles_sum = 0.0_p
         end associate
 
     end subroutine update_pattempt
 
-! [review] - AJWT: Do all the output variables needed to be listed separately, or could they be in a derived type?
-    subroutine communicate_pattempt_single_data(ps, excit_gen_singles_sum, excit_gen_doubles_sum, h_pgen_singles_sum_sum, &
-                                            h_pgen_doubles_sum_sum)
+    subroutine communicate_pattempt_single_data(rep_accum)
 
         ! Data from all MPI procs is accumulated.
         ! WARNING: only call in parallel mode.
 
-        ! In:
-        !   qs: qmc state.
-        ! Out:
-        !   excit_gen_singles_sum: Sum of number of single excitations during calculation
-        !   excit_gen_doubles_sum: Sum of number of double excitations during calculation
-        !   h_pgen_singles_sum_sum: Sum of hmatel/pgen (excluding pattempt_single) for single excitations.
-        !   h_pgen_doubles_sum_sum: Sum of hmatel/pgen (excluding pattempt_single) for double excitations.
+        ! In/Out:
+        !   rep_accum: p_single_double_coll_t object
 
         use parallel
-        use excit_gens, only: p_single_double_t
+        use excit_gens, only: p_single_double_coll_t
         use qmc_data, only: qmc_state_t
 
-        type(p_single_double_t), intent(in) :: ps
-        real(p), intent(out) :: excit_gen_singles_sum, excit_gen_doubles_sum, h_pgen_singles_sum_sum, h_pgen_doubles_sum_sum
+        type(p_single_double_coll_t), intent(inout) :: rep_accum
+       
 #ifdef PARALLEL
+        real(p) :: excit_gen_singles_sum, excit_gen_doubles_sum, h_pgen_singles_sum_sum, h_pgen_doubles_sum_sum
         integer :: ierr
+        logical :: overflow_loc
         
-        ! [todo] - Do they need initialising?
         excit_gen_singles_sum = 0.0_p
         excit_gen_doubles_sum = 0.0_p
         h_pgen_singles_sum_sum = 0.0_p
         h_pgen_doubles_sum_sum = 0.0_p
+        overflow_loc = .false.
 
         ! [todo] - is MPI communication best here or together with energy estimators? Do we need to disable non blocking comm?
 ! [review] - AJWT: It looks like this might be best done with the energy estimators, but I don't know the performance implications.  Since it's not actually critical information for the next step, it could end up being communicated between cycles in a non-blocking manner?
-        call mpi_allreduce(ps%tmp%excit_gen_singles, excit_gen_singles_sum, 1, mpi_preal, MPI_SUM, MPI_COMM_WORLD, ierr)
-        call mpi_allreduce(ps%tmp%excit_gen_doubles, excit_gen_doubles_sum, 1, mpi_preal, MPI_SUM, MPI_COMM_WORLD, ierr)
-        call mpi_allreduce(ps%tmp%h_pgen_singles_sum, h_pgen_singles_sum_sum, 1, mpi_preal, MPI_SUM, MPI_COMM_WORLD, ierr)
-        call mpi_allreduce(ps%tmp%h_pgen_doubles_sum, h_pgen_doubles_sum_sum, 1, mpi_preal, MPI_SUM, MPI_COMM_WORLD, ierr)
+        call mpi_allreduce(rep_accum%excit_gen_singles, excit_gen_singles_sum, 1, mpi_preal, MPI_SUM, MPI_COMM_WORLD, ierr)
+        call mpi_allreduce(rep_accum%excit_gen_doubles, excit_gen_doubles_sum, 1, mpi_preal, MPI_SUM, MPI_COMM_WORLD, ierr)
+        call mpi_allreduce(rep_accum%h_pgen_singles_sum, h_pgen_singles_sum_sum, 1, mpi_preal, MPI_SUM, MPI_COMM_WORLD, ierr)
+        call mpi_allreduce(rep_accum%h_pgen_doubles_sum, h_pgen_doubles_sum_sum, 1, mpi_preal, MPI_SUM, MPI_COMM_WORLD, ierr)
+        ! ps%rep_accum%overflow_loc is reduced in qmc_common before this function is called.
+        ! [todo] - could reduce it here.
         ! ps%counter does not need to be communicated as it increments a change done below (same calculation done on all
         ! processes.
-#else   
-        ! This function should only be called if in parallel mode but in case it was called in not parallel mode.
-        excit_gen_singles_sum = ps%tmp%excit_gen_singles
-        excit_gen_doubles_sum = ps%tmp%excit_gen_doubles
-        h_pgen_singles_sum_sum = ps%tmp%h_pgen_singles_sum
-        h_pgen_doubles_sum_sum = ps%tmp%h_pgen_doubles_sum
+        rep_accum%excit_gen_singles = excit_gen_singles_sum
+        rep_accum%excit_gen_doubles = excit_gen_doubles_sum
+        rep_accum%h_pgen_singles_sum = h_pgen_singles_sum_sum
+        rep_accum%h_pgen_doubles_sum = h_pgen_doubles_sum_sum
 #endif
+
     end subroutine communicate_pattempt_single_data
 
-! [review] - AJWT: Do all the input variables needed to be listed separately, or could they be in a derived type?
-    subroutine add_tmp_to_total(ps, excit_gen_singles_sum, excit_gen_doubles_sum, h_pgen_singles_sum_sum, &
-                                            h_pgen_doubles_sum_sum)
+    subroutine add_rep_accum_to_total(ps)
 
         ! Data from the report loop gets added to total.
         
-        ! In:
-        !   excit_gen_singles_sum: Sum of number of single excitations during calculation
-        !   excit_gen_doubles_sum: Sum of number of double excitations during calculation
-        !   h_pgen_singles_sum_sum: Sum of hmatel/pgen (excluding pattempt_single) for single excitations.
-        !   h_pgen_doubles_sum_sum: Sum of hmatel/pgen (excluding pattempt_single) for double excitations.
         ! In/Out:
         !   ps: p_single_double_t object with the pattempt single update data
 
         use excit_gens, only: p_single_double_t
 
-        real(p), intent(in) :: excit_gen_singles_sum, excit_gen_doubles_sum, h_pgen_singles_sum_sum, h_pgen_doubles_sum_sum
         type(p_single_double_t), intent(inout) :: ps
         real(p) :: excit_gen_singles_old, excit_gen_doubles_old
 
         excit_gen_singles_old = ps%total%excit_gen_singles
         excit_gen_doubles_old = ps%total%excit_gen_doubles
     
-        ps%total%excit_gen_singles = ps%total%excit_gen_singles + excit_gen_singles_sum
-        ps%total%excit_gen_doubles = ps%total%excit_gen_doubles + excit_gen_doubles_sum
-        ps%total%h_pgen_singles_sum = ps%total%h_pgen_singles_sum + h_pgen_singles_sum_sum
-        ps%total%h_pgen_doubles_sum = ps%total%h_pgen_doubles_sum + h_pgen_doubles_sum_sum
+        ps%total%excit_gen_singles = ps%total%excit_gen_singles + ps%rep_accum%excit_gen_singles
+        ps%total%excit_gen_doubles = ps%total%excit_gen_doubles + ps%rep_accum%excit_gen_doubles
+        ps%total%h_pgen_singles_sum = ps%total%h_pgen_singles_sum + ps%rep_accum%h_pgen_singles_sum
+        ps%total%h_pgen_doubles_sum = ps%total%h_pgen_doubles_sum + ps%rep_accum%h_pgen_doubles_sum
 
         ! Check whether precision is high enough to detect change in the number of single/double excitations.
         ! If ps%total%excit_gen_singles is sufficienctly large after a lot of cycles, the addition above may not
         ! change the value within the float, so we check for this and call it an overflow.
-        if (((abs(ps%total%excit_gen_singles - excit_gen_singles_old) < depsilon) .and. (excit_gen_singles_sum > 0.0_p)) .or. &
-            ((abs(ps%total%excit_gen_doubles - excit_gen_doubles_old) < depsilon) .and. (excit_gen_doubles_sum > 0.0_p))) then
-            ps%overflow_loc = .true.
+        if ((.not. ps%rep_accum%overflow_loc) .and. (((abs(ps%total%excit_gen_singles - excit_gen_singles_old) < depsilon) .and. &
+            (ps%rep_accum%excit_gen_singles > 0.0_p)) .or. &
+            ((abs(ps%total%excit_gen_doubles - excit_gen_doubles_old) < depsilon) .and. &
+            (ps%rep_accum%excit_gen_doubles > 0.0_p)))) then
+            ps%total%overflow_loc = .true.
+            ps%rep_accum%overflow_loc = .true.
         end if
     
-    end subroutine add_tmp_to_total
+    end subroutine add_rep_accum_to_total
         
-! [review] - AJWT: Do all the input variables needed to be listed separately, or could they be in a derived type?
-    subroutine update_pattempt_single(every_attempts, every_min_attempts, excit_gen_singles_sum, excit_gen_doubles_sum, &
-            h_pgen_singles_sum_sum, h_pgen_doubles_sum_sum, counter, pattempt_single, pattempt_double)
+    subroutine update_pattempt_single(ps, pattempt_single, pattempt_double)
 
         ! Update pattempt single using the sums of pattempt_single%hmatel/spawn_pgen for and the numbers
         ! of single and double excitations. The aim is align the means of hmatel/spawn_pgen of single
         ! and double excitations.
 
-        ! In:
-        !   every_attempts: minimum number of valid excitations before next update
-        !   every_min_attempts: minimum number of valid excitations of either single or double before next update.
-        !   excit_gen_singles_sum: Sum of number of single excitations during calculation
-        !   excit_gen_doubles_sum: Sum of number of double excitations during calculation
-        !   h_pgen_singles_sum_sum: Sum of hmatel/pgen (excluding pattempt_single) for single excitations.
-        !   h_pgen_doubles_sum_sum: Sum of hmatel/pgen (excluding pattempt_single) for double excitations.
         ! In/Out:
-        !   counter: number of times pattempt_single was updated.
+        !   ps: p_single_double_t object
         ! Out:
         !   pattempt_single: probability of a single excitation
         !   pattempt_double: probability of a double excitation
 
+        use excit_gens, only: p_single_double_t
         use parallel, only: parent
 
-        real(p), intent(in) :: every_attempts, every_min_attempts, excit_gen_singles_sum, excit_gen_doubles_sum
-        real(p), intent(in) :: h_pgen_singles_sum_sum, h_pgen_doubles_sum_sum
-        real(p), intent(inout) :: counter
+        type(p_single_double_t), intent(inout) :: ps
         real(p), intent(out) :: pattempt_single, pattempt_double
         integer :: iunit
 
         iunit = 6
  
-        if (((excit_gen_singles_sum + excit_gen_doubles_sum) > (counter*every_attempts)) .and. &
-            (excit_gen_singles_sum > (counter*every_min_attempts)) .and. &
-            (excit_gen_doubles_sum > (counter*every_min_attempts))) then
-            counter = counter + 1.0_p
-            pattempt_single = (h_pgen_singles_sum_sum/excit_gen_singles_sum) / &
-                    ((h_pgen_doubles_sum_sum/excit_gen_doubles_sum) + (h_pgen_singles_sum_sum/excit_gen_singles_sum))
+        if (((ps%total%excit_gen_singles + ps%total%excit_gen_doubles) > (ps%counter*ps%every_attempts)) .and. &
+            (ps%total%excit_gen_singles > (ps%counter*ps%every_min_attempts)) .and. &
+            (ps%total%excit_gen_doubles > (ps%counter*ps%every_min_attempts))) then
+            ps%counter = ps%counter + 1.0_p
+            pattempt_single = (ps%total%h_pgen_singles_sum/ps%total%excit_gen_singles) / &
+                    ((ps%total%h_pgen_doubles_sum/ps%total%excit_gen_doubles) + &
+                    (ps%total%h_pgen_singles_sum/ps%total%excit_gen_singles))
             pattempt_double = 1.0_p - pattempt_single
             if (parent) write(iunit, '(1X, "# pattempt_single changed to be:",1X,es17.10)') pattempt_single
         end if
+
     end subroutine update_pattempt_single
 
 end module spawning

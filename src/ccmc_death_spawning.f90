@@ -69,7 +69,7 @@ contains
         !    connection: excitation connection between the current excitor
         !        and the child excitor, on which progeny are spawned.
 
-        use ccmc_data, only: cluster_t, p_single_double_stats_t
+        use ccmc_data, only: cluster_t
         use ccmc_utils, only: convert_excitor_to_determinant
         use ccmc_linked, only: unlinked_commutator, linked_excitation
         use determinants, only: det_info_t
@@ -82,6 +82,7 @@ contains
         use qmc_data, only: qmc_state_t
         use hamiltonian_data
         use logging, only: logging_t, write_logging_spawn
+        use excit_gens, only: p_single_double_coll_t
 
         type(sys_t), intent(in) :: sys
         type(qmc_state_t), intent(in) :: qs
@@ -90,7 +91,7 @@ contains
         type(det_info_t), intent(in) :: cdet
         type(cluster_t), intent(in) :: cluster
         type(dSFMT_t), intent(inout) :: rng
-        type(p_single_double_stats_t), intent(inout) :: ps_stat
+        type(p_single_double_coll_t), intent(inout) :: ps_stat
         integer, intent(in) :: nspawnings_total
         type(gen_excit_ptr_t), intent(in) :: gen_excit_ptr
         type(logging_t), intent(in) :: logging_info
@@ -146,9 +147,10 @@ contains
 
         if (allowed_excitation) then
             if (qs%excit_gen_data%p_single_double%vary_psingles) then
-                call update_p_single_double_data(connection%nexcit, ps_stat%h_pgen_singles_sum, &
-                            ps_stat%h_pgen_doubles_sum, ps_stat%excit_gen_singles, ps_stat%excit_gen_doubles, &
-                            hmatel, pgen, qs%excit_gen_data, sys%read_in%comp, ps_stat%overflow_loc)
+                associate(exdat=>qs%excit_gen_data) 
+                    call update_p_single_double_data(connection%nexcit, hmatel, pgen, exdat%pattempt_single, &
+                        exdat%pattempt_double, sys%read_in%comp, ps_stat)
+                end associate
             end if
         end if
         ! 3. Attempt spawning.
@@ -554,7 +556,7 @@ contains
         !    fexcit: the bitstring of the determinant to spawn on to (as it is
         !        not necessarily easy to get from the connection)
 
-        use ccmc_data, only: cluster_t, p_single_double_stats_t
+        use ccmc_data, only: cluster_t
         use ccmc_linked, only: calc_pgen, partition_cluster, linked_excitation
         use ccmc_utils, only: collapse_cluster, convert_excitor_to_determinant
         use determinants, only: det_info_t, sum_sp_eigenvalues_bit_string
@@ -568,6 +570,7 @@ contains
         use bit_utils, only: count_set_bits
         use qmc_data, only: qmc_state_t
         use hamiltonian_data
+        use excit_gens, only: p_single_double_coll_t
 
         type(sys_t), intent(in) :: sys
         type(qmc_state_t), intent(in) :: qs
@@ -582,7 +585,7 @@ contains
         type(det_info_t), intent(inout) :: ldet, rdet
         type(det_info_t), intent(in) :: cdet
         type(cluster_t), intent(inout) :: left_cluster, right_cluster
-        type(p_single_double_stats_t), intent(inout) :: ps_stat
+        type(p_single_double_coll_t), intent(inout) :: ps_stat
 
         ! We incorporate the sign of the amplitude into the Hamiltonian matrix
         ! element, so we 'pretend' to attempt_to_spawn that all excips are
@@ -713,9 +716,10 @@ contains
         
         if (allowed) then
             if (qs%excit_gen_data%p_single_double%vary_psingles) then
-                call update_p_single_double_data(connection%nexcit, ps_stat%h_pgen_singles_sum, ps_stat%h_pgen_doubles_sum, &
-                        ps_stat%excit_gen_singles, ps_stat%excit_gen_doubles, hmatel, pgen, qs%excit_gen_data, &
-                        sys%read_in%comp, ps_stat%overflow_loc)
+                associate(exdat=>qs%excit_gen_data) 
+                    call update_p_single_double_data(connection%nexcit, hmatel, pgen, exdat%pattempt_single, &
+                        exdat%pattempt_double, sys%read_in%comp, ps_stat)
+                end associate
             end if
         end if
 
@@ -780,7 +784,7 @@ contains
         !    connection: excitation connection between the current excitor
         !        and the child excitor, on which progeny are spawned.
 
-        use ccmc_data, only: cluster_t, p_single_double_stats_t
+        use ccmc_data, only: cluster_t
         use ccmc_utils, only: convert_excitor_to_determinant
         use determinants, only: det_info_t
         use dSFMT_interface, only: dSFMT_t
@@ -791,6 +795,7 @@ contains
         use const, only: depsilon
         use qmc_data, only: qmc_state_t
         use hamiltonian_data, only: hmatel_t
+        use excit_gens, only: p_single_double_coll_t
 
         type(sys_t), intent(in) :: sys
         type(qmc_state_t), intent(in) :: qs
@@ -802,7 +807,7 @@ contains
         type(gen_excit_ptr_t), intent(in) :: gen_excit_ptr
         integer(int_p), intent(out) :: nspawn, nspawn_im
         type(excit_t), intent(out) :: connection
-        type(p_single_double_stats_t), intent(inout) :: ps_stat
+        type(p_single_double_coll_t), intent(inout) :: ps_stat
 
         ! We incorporate the sign of the amplitude into the Hamiltonian matrix
         ! element, so we 'pretend' to attempt_to_spawn that all excips are
@@ -825,9 +830,10 @@ contains
         pgen = pgen*cluster%pselect*nspawnings_total
 
         if ((allowed_excitation) .and. (qs%excit_gen_data%p_single_double%vary_psingles)) then
-            call update_p_single_double_data(connection%nexcit, ps_stat%h_pgen_singles_sum, ps_stat%h_pgen_doubles_sum, &
-                        ps_stat%excit_gen_singles, ps_stat%excit_gen_doubles, hmatel, pgen, qs%excit_gen_data, &
-                        sys%read_in%comp, ps_stat%overflow_loc)
+            associate(exdat=>qs%excit_gen_data) 
+                call update_p_single_double_data(connection%nexcit, hmatel, pgen, exdat%pattempt_single, &
+                    exdat%pattempt_double, sys%read_in%comp, ps_stat)
+            end associate
         end if
 
         ! 3. Attempt spawning.

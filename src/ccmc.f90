@@ -332,6 +332,7 @@ contains
         use logging, only: init_logging, end_logging, prep_logging_mc_cycle, write_logging_calc_ccmc
         use logging, only: logging_in_t, logging_t, logging_in_t_json, logging_t_json, write_logging_select_ccmc
         use report, only: write_date_time_close
+        use excit_gens, only: p_single_double_coll_t
 
         type(sys_t), intent(in) :: sys
         type(qmc_in_t), intent(in) :: qmc_in
@@ -356,7 +357,7 @@ contains
         integer :: nspawn_events, ierr
         type(wfn_contrib_t), allocatable :: contrib(:)
         type(multispawn_stats_t), allocatable :: ms_stats(:)
-        type(p_single_double_stats_t), allocatable :: ps_stats(:)
+        type(p_single_double_coll_t), allocatable :: ps_stats(:)
         type(dSFMT_t), allocatable :: rng(:)
         type(json_out_t) :: js
         type(qmc_in_t) :: qmc_in_loc
@@ -744,7 +745,7 @@ contains
 
                 ! Add the accumulated ps_stats data to qs%excit_gen_data%p_single_double.
                 if (qs%excit_gen_data%p_single_double%vary_psingles) then
-                    call ps_stats_reduction_update(qs%excit_gen_data%p_single_double, ps_stats)
+                    call ps_stats_reduction_update(qs%excit_gen_data%p_single_double%rep_accum, ps_stats)
                 end if
 
                 ndeath_nc = 0
@@ -1019,7 +1020,7 @@ contains
         !   nattempts_spawn_tot: running total of number of spawning attempts
         !       made during this mc cycle.
         !   ndeath: total number of particles created via death.
-        !   ps_stat: Accumulating the following on this OpenMP thread:
+        !   ps_stat: Accumulating the following (and more) on this OpenMP thread:
         !       h_pgen_singles_sum: total of |Hij|/pgen for single excitations attempted.
         !       h_pgen_doubles_sum: total on |Hij|/pgen for double excitations attempted.
         !       excit_gen_singles: counter on number of single excitations attempted.
@@ -1029,12 +1030,13 @@ contains
         use dSFMT_interface, only: dSFMT_t
         use system, only: sys_t
         use qmc_data, only: qmc_state_t, ccmc_in_t
-        use ccmc_data, only: multispawn_stats_t, ms_stats_update, wfn_contrib_t, p_single_double_stats_t
+        use ccmc_data, only: multispawn_stats_t, ms_stats_update, wfn_contrib_t
 
         use ccmc_death_spawning, only: spawner_ccmc, linked_spawner_ccmc, stochastic_ccmc_death
         use ccmc_death_spawning, only: stochastic_ccmc_death_nc, spawner_complex_ccmc
         use bloom_handler, only: bloom_stats_t, accumulate_bloom_stats
         use logging, only: logging_t
+        use excit_gens, only: p_single_double_coll_t
 
         type(sys_t), intent(in) :: sys
         type(dSFMT_T), intent(inout) :: rng
@@ -1047,7 +1049,7 @@ contains
         integer(int_64), intent(inout) :: nattempts_spawn_tot
         integer(int_p), intent(inout) :: ndeath
         type(multispawn_stats_t), intent(inout) :: ms_stats
-        type(p_single_double_stats_t), intent(inout) :: ps_stat
+        type(p_single_double_coll_t), intent(inout) :: ps_stat
 
         integer :: i, nspawnings_cluster
 
@@ -1116,7 +1118,7 @@ contains
         !       wavefunction contribution being considered.
         !   nattempts_spawn: running total of number of spawning attempts
         !       made during this mc cycle.
-        !   ps_stat: Accumulating the following on this OpenMP thread:
+        !   ps_stat: Accumulating the following (and more) on this OpenMP thread:
         !       h_pgen_singles_sum: total of |Hij|/pgen for single excitations attempted.
         !       h_pgen_doubles_sum: total on |Hij|/pgen for double excitations attempted.
         !       excit_gen_singles: counter on number of single excitations attempted.
@@ -1125,13 +1127,14 @@ contains
         use dSFMT_interface, only: dSFMT_t
         use system, only: sys_t
         use qmc_data, only: qmc_state_t, ccmc_in_t
-        use ccmc_data, only: multispawn_stats_t, ms_stats_update, wfn_contrib_t, p_single_double_stats_t
+        use ccmc_data, only: multispawn_stats_t, ms_stats_update, wfn_contrib_t
         use qmc_common, only: decide_nattempts
 
         use ccmc_death_spawning, only: spawner_ccmc, linked_spawner_ccmc, stochastic_ccmc_death
         use ccmc_death_spawning, only: stochastic_ccmc_death_nc, spawner_complex_ccmc
         use bloom_handler, only: bloom_stats_t, accumulate_bloom_stats
         use logging, only: logging_t
+        use excit_gens, only: p_single_double_coll_t
 
         type(sys_t), intent(in) :: sys
         type(dSFMT_T), intent(inout) :: rng
@@ -1142,7 +1145,7 @@ contains
         type(logging_t), intent(in) :: logging_info
 
         integer(int_64), intent(inout) :: nattempts_spawn_tot
-        type(p_single_double_stats_t), intent(inout) :: ps_stat
+        type(p_single_double_coll_t), intent(inout) :: ps_stat
         integer :: i, nspawnings_cluster
 
         ! Spawning
@@ -1191,7 +1194,7 @@ contains
         !       cluster selected and the determinant formed on
         !       collapsing, as well as scratch spaces for partitoning
         !       within linked.
-        !   ps_stat: Accumulating the following on this OpenMP thread:
+        !   ps_stat: Accumulating the following (and more) on this OpenMP thread:
         !       h_pgen_singles_sum: total of |Hij|/pgen for single excitations attempted.
         !       h_pgen_doubles_sum: total on |Hij|/pgen for double excitations attempted.
         !       excit_gen_singles: counter on number of single excitations attempted.
@@ -1199,7 +1202,7 @@ contains
         use dSFMT_interface, only: dSFMT_t
         use system, only: sys_t
         use qmc_data, only: qmc_state_t, ccmc_in_t
-        use ccmc_data, only: wfn_contrib_t, p_single_double_stats_t
+        use ccmc_data, only: wfn_contrib_t
 
         use excitations, only: excit_t
         use proc_pointers, only: gen_excit_ptr
@@ -1208,6 +1211,7 @@ contains
         use ccmc_death_spawning, only: spawner_complex_ccmc, create_spawned_particle_ccmc
         use bloom_handler, only: bloom_stats_t, accumulate_bloom_stats
         use logging, only: logging_t
+        use excit_gens, only: p_single_double_coll_t
 
         type(sys_t), intent(in) :: sys
         type(dSFMT_T), intent(inout) :: rng
@@ -1219,7 +1223,7 @@ contains
         type(logging_t), intent(in) :: logging_info
 
         integer, intent(in) :: nspawnings_total
-        type(p_single_double_stats_t), intent(inout) :: ps_stat
+        type(p_single_double_coll_t), intent(inout) :: ps_stat
         integer(int_p) :: nspawned, nspawned_im
         integer(i0) :: fexcit(sys%basis%tot_string_len)
 

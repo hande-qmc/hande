@@ -37,16 +37,6 @@ type multispawn_stats_t
     integer :: nspawnings_max = 0
 end type multispawn_stats_t
 
-! type to collect temporary information for qmc_state%excit_gen_data%p_single_double%tmp
-! during the OpenMP loop in CCMC.
-type p_single_double_stats_t
-    real(p) :: h_pgen_singles_sum = 0.0_p ! hmatel/pgen sum for singles
-    real(p) :: h_pgen_doubles_sum = 0.0_p ! hamtel/pgen sum for doubles
-    real(p) :: excit_gen_singles = 0.0_p ! number of valid singles excitations created
-    real(p) :: excit_gen_doubles = 0.0_p ! number of valid doubles excitations created
-    logical :: overflow_loc = .false. ! true if precision has become too low for changes to be recognised.
-end type p_single_double_stats_t
-
 ! Derived type to store all required information about the contribution selected
 ! (cluster, the determinant resulting from collapse and the partition in linked
 ! CCMC).
@@ -196,9 +186,11 @@ contains
         ! Zero the ps_stats(:) components.
 
         ! In/Out:
-        !    ps_stats: array of p_single_double_stats_t objects.
+        !    ps_stats: array of p_single_double_coll_t objects.
 
-        type(p_single_double_stats_t), intent(inout) :: ps_stats(:)
+        use excit_gens, only: p_single_double_coll_t
+
+        type(p_single_double_coll_t), intent(inout) :: ps_stats(:)
 
         ps_stats%h_pgen_singles_sum = 0.0_p
         ps_stats%excit_gen_singles = 0.0_p
@@ -208,37 +200,37 @@ contains
 
     end subroutine zero_ps_stats
     
-    subroutine ps_stats_reduction_update(ps, ps_stats)
+    subroutine ps_stats_reduction_update(rep_accum, ps_stats)
 
-        ! Reduce the ps_stats(:) components after the OpenMP loop and update ps.
+        ! Reduce the ps_stats(:) components after the OpenMP loop and update ps%rep_accum.
 
         ! In:
         !    ps_stats: array of p_single_double_stats_t objects.
         ! In/Out:
-        !    ps: the qmc_state%excit_gen_data%p_single_double_t object to be updated.
+        !    rep_accum: Object to be updated, collect data over a report loop.
 
-        use excit_gens, only: p_single_double_t
+        use excit_gens, only: p_single_double_coll_t
 
-        type(p_single_double_stats_t), intent(in) :: ps_stats(:)
-        type(p_single_double_t), intent(inout) :: ps
+        type(p_single_double_coll_t), intent(in) :: ps_stats(:)
+        type(p_single_double_coll_t), intent(inout) :: rep_accum
 
         real(p) :: excit_gen_singles_old, excit_gen_doubles_old
 
-        excit_gen_singles_old = ps%tmp%excit_gen_singles
-        excit_gen_doubles_old = ps%tmp%excit_gen_doubles
+        excit_gen_singles_old = rep_accum%excit_gen_singles
+        excit_gen_doubles_old = rep_accum%excit_gen_doubles
 
-        ps%tmp%h_pgen_singles_sum = ps%tmp%h_pgen_singles_sum + sum(ps_stats%h_pgen_singles_sum)
-        ps%tmp%excit_gen_singles = ps%tmp%excit_gen_singles + sum(ps_stats%excit_gen_singles)
-        ps%tmp%h_pgen_doubles_sum = ps%tmp%h_pgen_doubles_sum + sum(ps_stats%h_pgen_doubles_sum)
-        ps%tmp%excit_gen_doubles = ps%tmp%excit_gen_doubles + sum(ps_stats%excit_gen_doubles)
+        rep_accum%h_pgen_singles_sum = rep_accum%h_pgen_singles_sum + sum(ps_stats%h_pgen_singles_sum)
+        rep_accum%excit_gen_singles = rep_accum%excit_gen_singles + sum(ps_stats%excit_gen_singles)
+        rep_accum%h_pgen_doubles_sum = rep_accum%h_pgen_doubles_sum + sum(ps_stats%h_pgen_doubles_sum)
+        rep_accum%excit_gen_doubles = rep_accum%excit_gen_doubles + sum(ps_stats%excit_gen_doubles)
         
         ! If excit_gen_singles is sufficienctly large after a lot of cycles, the addition above may not
         ! change the value within the float, so we check for this and call it an overflow.
-        if (((abs(ps%tmp%excit_gen_singles-excit_gen_singles_old) < depsilon) .and. (sum(ps_stats%excit_gen_singles) > 0.0_p)) &
-            .or. &
-            ((abs(ps%tmp%excit_gen_doubles-excit_gen_doubles_old) < depsilon) .and. (sum(ps_stats%excit_gen_doubles) > 0.0_p)) &
-            .or. (any(ps_stats%overflow_loc))) then
-            ps%overflow_loc = .true.
+        if (((abs(rep_accum%excit_gen_singles-excit_gen_singles_old) < depsilon) .and. &
+            (sum(ps_stats%excit_gen_singles) > 0.0_p)) .or. &
+            ((abs(rep_accum%excit_gen_doubles-excit_gen_doubles_old) < depsilon) .and. &
+            (sum(ps_stats%excit_gen_doubles) > 0.0_p)) .or. (any(ps_stats%overflow_loc))) then
+            rep_accum%overflow_loc = .true.
         end if
 
     end subroutine ps_stats_reduction_update
