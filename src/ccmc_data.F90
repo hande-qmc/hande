@@ -181,22 +181,28 @@ contains
 
     end subroutine multispawn_stats_report
 
-    subroutine zero_ps_stats(ps_stats)
+    subroutine zero_ps_stats(ps_stats, overflow)
 
-        ! Zero the ps_stats(:) components.
+        ! Zero the ps_stats(:) components. Set overflow_loc to .true. if at least one thread
+        ! has it as .true..
 
-        ! In/Out:
+        ! In:
+        !   overflow: Is precision too low to keep accumulating data?
+
+        ! Out:
         !    ps_stats: array of p_single_double_coll_t objects.
 
         use excit_gens, only: p_single_double_coll_t
 
-        type(p_single_double_coll_t), intent(inout) :: ps_stats(:)
+        logical, intent(in) :: overflow
+        type(p_single_double_coll_t), intent(out) :: ps_stats(:)
 
         ps_stats%h_pgen_singles_sum = 0.0_p
         ps_stats%excit_gen_singles = 0.0_p
         ps_stats%h_pgen_doubles_sum = 0.0_p
         ps_stats%excit_gen_doubles = 0.0_p
-![review] - AJWT: does overflow_loc need initializing? (at which point ps_stats can be intent(out))
+
+        ps_stats%overflow_loc = overflow
 
     end subroutine zero_ps_stats
     
