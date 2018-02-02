@@ -15,11 +15,10 @@
 #
 # autocmake.yml configuration::
 #
-#   docopt:
-#     - "--hdf5 Enable HDF5 [default: False]."
+#   docopt: "--hdf5=<ENABLE_HDF5> Enable HDF5 [default: True]."
 #   define: "'-DENABLE_HDF5=\"{0}\"'.format(arguments['--hdf5'])"
 
-option_with_print(ENABLE_HDF5 "Enable usage of HDF5 (requires Fortran 2003 bindings)" OFF)
+option_with_print(ENABLE_HDF5 "Enable usage of HDF5 (requires Fortran 2003 bindings)" ON)
 set(USE_HDF5 OFF)
 if(ENABLE_HDF5)
   find_package(HDF5 1.8.15 COMPONENTS Fortran REQUIRED)

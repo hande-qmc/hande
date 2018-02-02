@@ -16,15 +16,14 @@
 #
 # autocmake.yml configuration::
 #
-#   docopt:
-#     - "--uuid Whether to activate UUID generation [default: False]."
+#   docopt: "--uuid=<ENABLE_UUID> Whether to activate UUID generation [default: True]."
 #   define: "'-DENABLE_UUID=\"{0}\"'.format(arguments['--uuid'])"
 
-option_with_print(ENABLE_UUID "Enable usage of UUID" OFF)
+option_with_print(ENABLE_UUID "Enable usage of UUID" ON)
 set(USE_UUID OFF)
 if(ENABLE_UUID)
   find_package(PkgConfig REQUIRED QUIET)
-  pkg_search_module(UUID REQUIRED uuid)
+  pkg_search_module(UUID REQUIRED uuid IMPORTED_TARGET)
   if(UUID_FOUND)
     message(STATUS "Found libuuid")
     set(USE_UUID ON)

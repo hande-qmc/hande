@@ -33,6 +33,7 @@ import getpass
 import platform
 import datetime
 
+
 def configure_file(rep, fname, **kwargs):
     ''' Configure a file.
     This functions acts more or less like CMake's configure_file command.
@@ -65,11 +66,18 @@ def configure_file(rep, fname, **kwargs):
     with open(os.path.join(out_path, fname_out), 'w+') as fout:
         fout.write(filedata)
 
+
 def prepare_configuration_dictionary(**kwargs):
     '''
     Some of the configuration variables are set _via_ preprocessor variables.
     Others are set either in the configuration dictionary prepared by
     mkconfig.py or by variables set within the CMake build system.
+
+    Note that the HANDE version is encoded in this file as the value
+    corresponding to the @_git_describe@ key. When tagging a commit, update
+    this (directly on master is probably best). In the immediate commit after
+    the tag, append -dev to it to "re-open" the code base for further
+    development.
 
     :Keyword arguments:
        * *build_type*
@@ -78,6 +86,8 @@ def prepare_configuration_dictionary(**kwargs):
        * *cmake_version*
        * *cmake_generator*
        * *mpi_launcher*
+       * *lua_version*
+       * *hdf5_version*
     '''
 
     build_type = kwargs.get('build_type', 'unknown')
@@ -86,7 +96,10 @@ def prepare_configuration_dictionary(**kwargs):
     cmake_version = kwargs.get('cmake_version', 'Not built using CMake')
     cmake_generator = kwargs.get('cmake_generator', 'Not built using CMake')
     mpi_launcher = kwargs.get('mpi_launcher', 'unknown')
+    lua_version = kwargs.get('lua_version', 'unknown')
+    hdf5_version = kwargs.get('hdf5_version', 'unknown')
 
+    # yapf: disable
     conf_dict = {
         '@_user_name@' : getpass.getuser(),
         '@_host_name@' : platform.node(),
@@ -100,47 +113,47 @@ def prepare_configuration_dictionary(**kwargs):
                                                 sys.version_info[2]),
         '@_Fortran_compiler@' : Fortran_compiler,
         '@_C_compiler@' : C_compiler,
-        '@_pop_size@' : 'POP_SIZE',
         '@_det_size@' : 'DET_SIZE',
-        '@_use_hdf5@' : 'DISABLE_HDF5',
-        '@_use_lanczos@' : 'DISABLE_LANCZOS',
-        '@_use_uuid@' : 'DISABLE_UUID',
-        '@_use_scalapack@' : 'DISABLE_SCALAPACK',
-        '@_use_single_precision@' : 'SINGLE_PRECISION',
-        '@_use_popcnt@' : 'USE_POPCNT',
-        '@_use_backtrace@' : 'DISABLE_BACKTRACE',
+        '@_pop_size@' : 'POP_SIZE',
         '@_dsfmt_mexp@' : 'DSFMT_MEXP',
-        '@_enable_mpi@' : 'PARALLEL',
+        '@_lua_version@' : lua_version,
+        '@_hdf5_version@' : hdf5_version,
         '@_mpi_launcher@' : mpi_launcher,
-        '@_enable_omp@' : '_OPENMP',
+        '@_git_describe@' : '1.2-dev',
         '@_git_last_commit_hash@' : 'unknown',
         '@_git_last_commit_author@' : 'unknown',
         '@_git_last_commit_date@' : 'unknown',
-        '@_git_branch@' : 'unknown',
-        '@_git_describe@' : '1.1-dev'
+        '@_git_branch@' : 'unknown'
     }
+    # yapf: enable
 
-    git_last_commit_hash = run_git('--no-pager show -s --pretty=format:%H -n 1')
-    conf_dict.update({ '@_git_last_commit_hash@' : git_last_commit_hash })
-    git_last_commit_author = run_git('--no-pager show -s --pretty=format:%aN -n 1')
-    conf_dict.update({ '@_git_last_commit_author@' : git_last_commit_author })
-    git_last_commit_date = run_git('--no-pager show -s --pretty=format:%ad -n 1')
-    conf_dict.update({ '@_git_last_commit_date@' : git_last_commit_date })
+    git_last_commit_hash = run_git(
+        '--no-pager show -s --pretty=format:%H -n 1')
+    conf_dict.update({'@_git_last_commit_hash@': git_last_commit_hash})
+    git_last_commit_author = run_git(
+        '--no-pager show -s --pretty=format:%aN -n 1')
+    conf_dict.update({'@_git_last_commit_author@': git_last_commit_author})
+    git_last_commit_date = run_git(
+        '--no-pager show -s --pretty=format:%ad -n 1')
+    conf_dict.update({'@_git_last_commit_date@': git_last_commit_date})
     git_branch = run_git('rev-parse --abbrev-ref HEAD')
-    conf_dict.update({ '@_git_branch@' : git_branch })
-    git_describe = run_git('describe --abbrev=7 --long --always --dirty --tags')
-    conf_dict.update({ '@_git_describe@' : git_describe })
+    conf_dict.update({'@_git_branch@': git_branch})
+    git_describe = run_git(
+        'describe --abbrev=7 --long --always --dirty --tags')
+    conf_dict.update({'@_git_describe@': git_describe})
 
     return conf_dict
+
 
 def run_git(args):
     """Run Git with provided arguments"""
     try:
-        p = subprocess.Popen('git ' + args,
-                             stdin=subprocess.PIPE,
-                             stdout=subprocess.PIPE,
-                             stderr=subprocess.PIPE,
-                             shell=True)
+        p = subprocess.Popen(
+            'git ' + args,
+            stdin=subprocess.PIPE,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            shell=True)
         stdout_coded, stderr_coded = p.communicate()
         stdout = stdout_coded.decode('UTF-8')
         stderr = stderr_coded.decode('UTF-8')

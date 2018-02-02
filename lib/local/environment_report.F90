@@ -25,15 +25,9 @@ module report
 ! FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
 ! OTHER DEALINGS IN THE SOFTWARE.
 
-! git sha1 hash.  Created at compile-time in make.inc.
-! -dirty is appended if the source directories contain uncommitted changes.
 use git_info, only: HANDE_VCS_VERSION => GIT_COMMIT_HASH
 
 implicit none
-
-! HANDE version.  When tagging a commit, update this (directly on master is probably best).  In the immediate commit after the tag,
-! append -dev to it to 're-open' the code base for further development.
-!character(*), parameter :: HANDE_VERSION = '1.2'
 
 ! Global uuid
 character(36) :: GLOBAL_UUID

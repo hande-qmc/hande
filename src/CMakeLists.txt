@@ -1,9 +1,10 @@
 add_library(hande-static STATIC
-            $<TARGET_OBJECTS:HANDE::cephes>
-            $<TARGET_OBJECTS:HANDE::coreutils>
-            $<TARGET_OBJECTS:HANDE::dSFMT>
-            $<TARGET_OBJECTS:HANDE::external>
-            )
+  $<TARGET_OBJECTS:HANDE::aotus>
+  $<TARGET_OBJECTS:HANDE::cephes>
+  $<TARGET_OBJECTS:HANDE::coreutils>
+  $<TARGET_OBJECTS:HANDE::dSFMT>
+  $<TARGET_OBJECTS:HANDE::external>
+  )
 
 # Sources that depend on Lua
 target_sources(hande-static
@@ -18,6 +19,7 @@ target_sources(hande-static
     test.f90
 )
 
+# All other sources
 target_sources(hande-static
   PRIVATE
     annihilation.f90
@@ -120,7 +122,6 @@ target_sources(hande-static
     ueg.f90
     ueg_types.f90
   )
-
 target_compile_definitions(hande-static
   PRIVATE
     $<$<BOOL:${USE_INTRINSIC_POPCNT}>:USE_POPCNT>
@@ -131,48 +132,32 @@ target_compile_definitions(hande-static
     $<$<BOOL:${USE_SINGLE_PRECISION}>:SINGLE_PRECISION>
     $<$<CONFIG:Debug>:DEBUG>
     )
-target_compile_options(hande-static
-  PRIVATE
-    ${HANDE_Fortran_FLAGS}
-    $<$<CONFIG:Debug>:${HANDE_Fortran_FLAGS_DEBUG}>
-    $<$<CONFIG:Release>:${HANDE_Fortran_FLAGS_RELEASE}>
-  )
 target_include_directories(hande-static
   PUBLIC
-    $<$<BOOL:${USE_HDF5}>:${HDF5_INCLUDE_DIRS}>
+    "$<$<BOOL:${USE_HDF5}>:${HDF5_INCLUDE_DIRS}>"
+    "${LUA_INCLUDE_DIR}"
   )
 target_link_libraries(hande-static
-  PRIVATE
-    HANDE::aotus
   PUBLIC
     "$<$<BOOL:${USE_LANCZOS}>:${TRLan_LIBRARIES}>"
     "${MATH_LIBS}"
     "${EXPLICIT_LIBS}"
     "$<$<BOOL:${USE_MPI}>:${MPI_Fortran_LIBRARIES}>"
-    "$<$<BOOL:${USE_UUID}>:${UUID_LIBRARIES}>"
+    "$<$<BOOL:${USE_UUID}>:PkgConfig::UUID>"
     "$<$<BOOL:${USE_HDF5}>:${HDF5_Fortran_LIBRARIES}>"
+    "${LUA_LIBRARIES}"
   )
-
-#set_target_properties(hande-shared PROPERTIES SOVERSION 1 #${PROJECT_VERSION_MAJOR}
-#                                            OUTPUT_NAME "hande"
-#                                            EXPORT_NAME "hande")
-
-add_executable(hande.cmake.x core.f90)
-target_link_libraries(hande.cmake.x
+add_executable(${HANDE_EXE_NAME} core.f90)
+target_link_libraries(${HANDE_EXE_NAME}
   PRIVATE
     hande-static
   )
-set_target_properties(hande.cmake.x
-  PROPERTIES
-    POSITION_INDEPENDENT_CODE 1
-  )
-
-add_custom_command(TARGET hande.cmake.x
+add_custom_command(TARGET ${HANDE_EXE_NAME}
   POST_BUILD
   COMMAND
     ${CMAKE_COMMAND} -E copy_directory ${PROJECT_BINARY_DIR}/bin ${PROJECT_SOURCE_DIR}/bin
   COMMAND
-    ${CMAKE_COMMAND} -E create_symlink ${PROJECT_SOURCE_DIR}/bin/hande.cmake.x ${PROJECT_SOURCE_DIR}/bin/hande.x
+  ${CMAKE_COMMAND} -E create_symlink ${PROJECT_SOURCE_DIR}/bin/${HANDE_EXE_NAME} ${PROJECT_SOURCE_DIR}/bin/hande.x
   COMMENT
-    "Copying and symlinking executable hande.cmake.x to ${PROJECT_SOURCE_DIR}/bin/hande.x"
+    "Copying executable ${HANDE_EXE_NAME} to ${PROJECT_SOURCE_DIR}/bin and symlinking it to ${PROJECT_SOURCE_DIR}/bin/hande.x"
   )

@@ -2,7 +2,7 @@
 # Copyright (c) 2015-2018 by Radovan Bast, Roberto Di Remigio, Jonas Juselius, and contributors.
 
 # set minimum cmake version
-cmake_minimum_required(VERSION 3.3 FATAL_ERROR)
+cmake_minimum_required(VERSION 3.6 FATAL_ERROR)
 
 # project name
 project(HANDE Fortran C)
@@ -10,9 +10,9 @@ project(HANDE Fortran C)
 # do not rebuild if rules (compiler flags) change
 set(CMAKE_SKIP_RULE_DEPENDENCY TRUE)
 
-# if CMAKE_BUILD_TYPE undefined, we set it to Debug
+# if CMAKE_BUILD_TYPE undefined, we set it to Release
 if(NOT CMAKE_BUILD_TYPE)
-    set(CMAKE_BUILD_TYPE "Debug")
+    set(CMAKE_BUILD_TYPE "Release")
 endif()
 
 # directories which hold included cmake modules
@@ -31,6 +31,7 @@ include(autocmake_custom_color_messages)
 include(autocmake_safeguards)
 include(autocmake_default_build_paths)
 include(autocmake_python_interpreter)
+include(lua)
 include(mpi)
 include(omp)
 include(math_libs)
@@ -38,6 +39,7 @@ include(explicit_libs)
 include(dsfmt_mexp)
 include(detsize)
 include(popsize)
+include(hande_exe_name)
 include(hdf5)
 include(uuid)
 include(lanczos)

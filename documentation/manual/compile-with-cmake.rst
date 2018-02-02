@@ -3,7 +3,7 @@
 Compilation using CMake
 =======================
 
-It is possible to configure and build HANDE using CMake. At least version 3.3
+It is possible to configure and build HANDE using CMake. At least version 3.6
 of CMake is required. You can get CMake either *via* your package manager or by
 downloading an executable tarball from `here <https://cmake.org/download/>`_
 Unpacking and adding to your ``PATH`` will do the trick:
@@ -62,13 +62,14 @@ The help menu for the ``mkconfig.py`` script shows the available options:
      --dsfmt-mexp=<HANDE_DSFMT_MEXP>        An integer among 521, 1279, 2203, 4253, 11213, 19937, 44497, 86243, 1322049, 216091 [default: 19937].
      --det-size=<HANDE_DET_SIZE>            An integer among 32 or 64 [default: 32].
      --pop-size=<HANDE_POP_SIZE>            An integer among 32 or 64 [default: 32].
-     --hdf5                                 Enable HDF5 [default: False].
-     --uuid                                 Whether to activate UUID generation [default: False].
+     --exe-name=<HANDE_EXE_NAME>            [default: "hande.cmake.x"].
+     --hdf5=<ENABLE_HDF5>                   Enable HDF5 [default: True].
+     --uuid=<ENABLE_UUID>                   Whether to activate UUID generation [default: True].
      --lanczos=<TRLan_LIBRARIES>            Set TRLan libraries to be linked in [default: ].
      --single                               Enable usage of single precision, where appropriate [default: False].
      --backtrace                            Enable backtrace functionality [default: False].
      --popcnt                               Enable use of intrinsic popcnt [default: False].
-     --type=<TYPE>                          Set the CMake build type (debug, release, relwithdebinfo, minsizerel) [default: debug].
+     --type=<TYPE>                          Set the CMake build type (debug, release, relwithdebinfo, minsizerel) [default: release].
      --generator=<STRING>                   Set the CMake build system generator [default: Unix Makefiles].
      --show                                 Show CMake command and exit.
      --cmake-executable=<CMAKE_EXECUTABLE>  Set the CMake executable [default: cmake].
@@ -132,11 +133,18 @@ translation guide between the frontend script and "bare" CMake:
 - ``--pop-size=VALUE``/``-DHANDE_POP_SIZE=VALUE``. Set the integer length for storing
   walker populations. Valid values are 32 and 64, with 32
   being the default.
-- ``--hdf5``/``-DENABLE_HDF5=ON``. Enables use of HDF5, turned off by default.
-  The library has to be compiled with the Fortran 2003 bindings enabled.
+- ``--exe-name=NAME``/``-DHANDE_EXE_NAME=NAME``. Set the name for the generated HANDE executable.
+  The default is ``hande.cmake.x``. The executable is copied to the ``bin``
+  directory in the root of the project and symlinked to ``hande.x``. Passing
+  the executable name will let you preserve executables generated with
+  different configuration settings.
+- ``--hdf5=<ON/OFF>``/``-DENABLE_HDF5=<ON/OFF>``. Enables use of HDF5. By
+  default, this is turned on. At least HDF5 1.8.15 is required and with Fortran
+  2003 bindings enabled. CMake will search for a suitable version of HDF5 and
+  check that all necessary components are available.
   See below for HDF5 detection issues.
-- ``--uuid``/``-DENABLE_UUID=ON``. Enables use of the UUID library, turned off
-  by default.
+- ``--uuid=<ON/OFF>``/``-DENABLE_UUID=<ON/OFF>``. Enables use of the UUID library.
+  By default, this is turned on.
 - ``--lanczos="link-line"``/``-DTRLan_LIBRARIES="link-line"``. Set the TRLan
   libraries to be linked in. By default empty, thus disabling use of TRLan.
 - ``--single``/``-DENABLE_SINGLE_PRECISION=ON``. Enables use of single
@@ -149,7 +157,6 @@ translation guide between the frontend script and "bare" CMake:
   The default is a debug build.
 - ``--cmake-options="-DTHIS -DTHAT"``. Sets options to be forwarded as-is to
   CMake.
-
 
 Compilation issues
 ------------------

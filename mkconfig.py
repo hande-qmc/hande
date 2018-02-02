@@ -34,13 +34,14 @@ Options:
   --dsfmt-mexp=<HANDE_DSFMT_MEXP>        An integer among 521, 1279, 2203, 4253, 11213, 19937, 44497, 86243, 1322049, 216091 [default: 19937].
   --det-size=<HANDE_DET_SIZE>            An integer among 32 or 64 [default: 32].
   --pop-size=<HANDE_POP_SIZE>            An integer among 32 or 64 [default: 32].
-  --hdf5                                 Enable HDF5 [default: False].
-  --uuid                                 Whether to activate UUID generation [default: False].
+  --exe-name=<HANDE_EXE_NAME>            [default: "hande.cmake.x"].
+  --hdf5=<ENABLE_HDF5>                   Enable HDF5 [default: True].
+  --uuid=<ENABLE_UUID>                   Whether to activate UUID generation [default: True].
   --lanczos=<TRLan_LIBRARIES>            Set TRLan libraries to be linked in [default: ].
   --single                               Enable usage of single precision, where appropriate [default: False].
   --backtrace                            Enable backtrace functionality [default: False].
   --popcnt                               Enable use of intrinsic popcnt [default: False].
-  --type=<TYPE>                          Set the CMake build type (debug, release, relwithdebinfo, minsizerel) [default: debug].
+  --type=<TYPE>                          Set the CMake build type (debug, release, relwithdebinfo, minsizerel) [default: release].
   --generator=<STRING>                   Set the CMake build system generator [default: Unix Makefiles].
   --show                                 Show CMake command and exit.
   --cmake-executable=<CMAKE_EXECUTABLE>  Set the CMake executable [default: cmake].
@@ -75,6 +76,7 @@ def gen_cmake_command(options, arguments):
     command.append('-DHANDE_DSFMT_MEXP="{0}"'.format(arguments['--dsfmt-mexp']))
     command.append('-DHANDE_DET_SIZE="{0}"'.format(arguments['--det-size']))
     command.append('-DHANDE_POP_SIZE="{0}"'.format(arguments['--pop-size']))
+    command.append('-DHANDE_EXE_NAME="{0}"'.format(arguments['--exe-name']))
     command.append('-DENABLE_HDF5="{0}"'.format(arguments['--hdf5']))
     command.append('-DENABLE_UUID="{0}"'.format(arguments['--uuid']))
     command.append('-DTRLan_LIBRARIES="{0}"'.format(arguments['--lanczos']))
