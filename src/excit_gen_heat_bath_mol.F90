@@ -52,6 +52,8 @@ contains
         ! Temp storage
         allocate(hb%i_weights(sys%basis%nbasis)) ! This will hold S_p in the Holmes JCTC paper.
         allocate(hb%ij_weights(sys%basis%nbasis,sys%basis%nbasis)) ! This stores D_pq.
+![review] - AJWT: can these four calls be replaced with a single call to e.g. a (new) alias_t_allocate_3ind ?
+![review] - AJWT: Shouldn't check_allocate be called as well?
         allocate(hb%hb_ija%weights(sys%basis%nbasis,sys%basis%nbasis,sys%basis%nbasis))
         allocate(hb%hb_ija%aliasU(sys%basis%nbasis,sys%basis%nbasis,sys%basis%nbasis))
         allocate(hb%hb_ija%aliasK(sys%basis%nbasis,sys%basis%nbasis,sys%basis%nbasis))
@@ -68,14 +70,14 @@ contains
         ! Initialise do-loop bounds for each processor, e.g. [iproc_nel_start,iproc_nel_end], in the case for
         ! a do-loop over sys%nel.
         nbasis_end = 0
+! [review] - AJWT: each processor gets at least floor(nbasis/nprocs), with the remainder allocated one to each of the early numbered processors.
         do i = 0, nprocs-1
             nbasis_start = nbasis_end + 1
             nbasis_end = nbasis_start + sys%basis%nbasis/nprocs - 1
+! [review] - AJWT: allocate one of the remainder to the early processors.
             if (i < mod(sys%basis%nbasis,nprocs)) nbasis_end = nbasis_end + 1
-            if (i == iproc) then
-                iproc_nbasis_start = nbasis_start
-                iproc_nbasis_end = nbasis_end
-            end if
+! [review] - AJWT: If nbasis<nproc (which is I think what's meant) then use the calculated value
+! [review] - AJWT: Otherwise set it to not do anything.  Does't the above algorithm already do that?
             if (i < sys%basis%nbasis) then ! nbasis => nel
                 displs_nbasis(i) = nbasis_start - 1
             else
@@ -83,6 +85,9 @@ contains
             end if
             sizes_nbasis(i) = nbasis_end - nbasis_start + 1
         end do
+![review] - AJWT: Doing this here seems logically cleaner - need to check I've actually done it correctly though
+        iproc_nbasis_start = displs_nbasis(iproc) + 1
+        iproc_nbasis_end = displs_nbasis(iproc) + size_nbasis(iproc)
 #else
         iproc_nbasis_start = 1
         iproc_nbasis_end = sys%basis%nbasis
@@ -110,6 +115,9 @@ contains
 
         j_nonzero = 0
 
+![review] - AJWT: Might this loop also be parallelized under OpenMP?
+![review] - AJWT: Given it's possible there might not be that many basis functions allocated to this processor, perhaps
+![review] - AJWT: it would be better to parallelize the j look under OpenMP.
         do i = iproc_nbasis_start, iproc_nbasis_end
             i_weight = 0.0_p
             do j = 1, sys%basis%nbasis

@@ -2093,6 +2093,7 @@ contains
 
     end subroutine update_pattempt
 
+! [review] - AJWT: Do all the output variables needed to be listed separately, or could they be in a derived type?
     subroutine communicate_pattempt_single_data(ps, excit_gen_singles_sum, excit_gen_doubles_sum, h_pgen_singles_sum_sum, &
                                             h_pgen_doubles_sum_sum)
 
@@ -2123,6 +2124,7 @@ contains
         h_pgen_doubles_sum_sum = 0.0_p
 
         ! [todo] - is MPI communication best here or together with energy estimators? Do we need to disable non blocking comm?
+! [review] - AJWT: It looks like this might be best done with the energy estimators, but I don't know the performance implications.  Since it's not actually critical information for the next step, it could end up being communicated between cycles in a non-blocking manner?
         call mpi_allreduce(ps%tmp%excit_gen_singles, excit_gen_singles_sum, 1, mpi_preal, MPI_SUM, MPI_COMM_WORLD, ierr)
         call mpi_allreduce(ps%tmp%excit_gen_doubles, excit_gen_doubles_sum, 1, mpi_preal, MPI_SUM, MPI_COMM_WORLD, ierr)
         call mpi_allreduce(ps%tmp%h_pgen_singles_sum, h_pgen_singles_sum_sum, 1, mpi_preal, MPI_SUM, MPI_COMM_WORLD, ierr)
@@ -2138,6 +2140,7 @@ contains
 #endif
     end subroutine communicate_pattempt_single_data
 
+! [review] - AJWT: Do all the input variables needed to be listed separately, or could they be in a derived type?
     subroutine add_tmp_to_total(ps, excit_gen_singles_sum, excit_gen_doubles_sum, h_pgen_singles_sum_sum, &
                                             h_pgen_doubles_sum_sum)
 
@@ -2173,6 +2176,7 @@ contains
     
     end subroutine add_tmp_to_total
         
+! [review] - AJWT: Do all the input variables needed to be listed separately, or could they be in a derived type?
     subroutine update_pattempt_single(every_attempts, every_min_attempts, excit_gen_singles_sum, excit_gen_doubles_sum, &
             h_pgen_singles_sum_sum, h_pgen_doubles_sum_sum, counter, pattempt_single, pattempt_double)
 

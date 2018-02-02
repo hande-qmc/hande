@@ -886,6 +886,7 @@ contains
         end if
 
         ! [reply] - VAN: Do we not have to deallocate ms_stats,qs_stats,rng?
+! [review] - AJWT: I think we probably do!  Does the new rng branch merge do this for rng?
         call dealloc_contrib(contrib, ccmc_in%linked)
         do i = 0, nthreads-1
             call dSFMT_end(rng(i))

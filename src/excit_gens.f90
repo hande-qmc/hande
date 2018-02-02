@@ -11,6 +11,7 @@ public :: move_pattempt_data
 ! The integer types have been chosen to be int_32 as they never need to index more than 2^31-1 basis functions.
 integer(int_32), parameter :: int_bas = int_32
 
+! [review] - AJWT: What is this type for?
 type p_single_double_coll_t
     real(p) :: h_pgen_singles_sum = 0.0_p ! hmatel/pgen sum for singles
     real(p) :: h_pgen_doubles_sum = 0.0_p ! hamtel/pgen sum for doubles
@@ -22,6 +23,7 @@ type p_single_double_t
     ! collects data to update pattempt_single (and therefore pattempt_double) such that
     ! the means in the distribution of hmatel/pgen for singles and doubles are roughly equal.
     type(p_single_double_coll_t) :: total ! the same on all MPI procs, stored in restart file.
+![review] - AJWT: tmp is quite a bad name.  accum?  accum_proc?
     type(p_single_double_coll_t) :: tmp ! gets zeroed after each report loop, different on each MPI proc. Gets added onto total.
     ! [todo] - find a way to make the next two variables parameters inside types.
     ! [todo] - Be careful when changing them - if restarting from a legacy file that might be confusing.
@@ -266,6 +268,8 @@ contains
 
     end subroutine dealloc_excit_gen_heat_bath_t
 
+! [review] - AJWT: This looks like an excellent place to put an allocator routine for the alias tables.
+! [review] - AJWT: It can even have a nice interface like dealloc_alias_table_data_t
 !--------------------------------------------------------------------------------!
     ! dealloc_alias_table_t(alias_data)
         ! Deallocate alias table data.

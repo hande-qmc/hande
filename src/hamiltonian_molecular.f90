@@ -403,6 +403,7 @@ contains
 
 ! [review] - AJWT: Do we want to check whether it does obey Brillouin?
 ! [reply] - VAN: Why? Would you do something different if it does not?
+! [reply] - AJWT: No idea - but if not we should say that we don't actually care!
         ! Assuming that we often have the RHF reference which obeys Brillouin's theorem
         ! (no single excitations from the reference), the main contribution to single
         ! excitations can be the single excitation from a double excitation a step

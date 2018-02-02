@@ -268,6 +268,10 @@ algorithms and control the core settings in the algorithms.
     happen if orbital connections with low pgen are mapped to orbital connections with
     big abs(Hij).
 
+.. [review] - AJWT: 
+    It's worth noting that if pattempt_single and pattempt_double don't sum to 1, then
+    we renormalize them I think.
+
 ``pattempt_single``
     type: float.
 
@@ -290,10 +294,12 @@ algorithms and control the core settings in the algorithms.
     If true, then pattempt_single is varied during the run
     to attempt to align the means of |Hij|/pgen for single and double excitations.
     Update of pattempt_single only happens if shift is constant. Not applicable to
-    "original" heat bath algorithm. Note that when restarting and this is set to
+    "original" heat bath algorithm. Note that when restarting if this is set to
     true and both ``pattempt_single`` and ``pattempt_double`` are specified by the
     user, previous update information is lost and the update (provided shift has
     not started varying yet) starts from zero.
+.. [review] - AJWT: 
+    Does 'zero' mean that pattempt_single is set to zero rather than the previous pattempt_single
 ``pattempt_parallel``
     type: float.
 

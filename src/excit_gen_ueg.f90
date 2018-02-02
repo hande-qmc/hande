@@ -397,6 +397,7 @@ contains
         nbas = sys%basis%nbasis    
         maxv = nbas / 2
 
+! [review] - AJWT: best combined in e.g. alias_table_allocate_1ind.
         allocate(pp%pp_ia_d%aliasU(maxv,nbas))
         allocate(pp%pp_ia_d%aliasK(maxv,nbas))
         allocate(pp%pp_ia_d%weights(maxv,nbas))

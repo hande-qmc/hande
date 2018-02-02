@@ -422,6 +422,7 @@ contains
 ! [review] - AJWT: Is this a partial rehash of the _mol version?  If it shares code, might that be shared too?
 ! [reply] - VAN: They share making the virt_list but the calls to the integrals are different. The function has a lot
 ! [reply] - VAN: comments but not so much content otherwise.
+! [reply] - AJWT: Might be worth commenting somewhere that the functions do the same thing in different systems for future proofing.
     pure function single_excitation_weight_periodic(sys, ref, i, a) result(weight)
 
         ! In:

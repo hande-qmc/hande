@@ -45,6 +45,7 @@ contains
         
         ! Temp storage
         maxv = max(sys%nvirt_alpha,sys%nvirt_beta)
+! [review] - AJWT: A call to e.g. alias_table_allocate_1ind would be nice here, and it could include check_allocate.  Ditto below.
         allocate(pp%pp_ia_d%aliasU(maxv,sys%nel))
         allocate(pp%pp_ia_d%aliasK(maxv,sys%nel))
         allocate(pp%pp_ia_d%weights(maxv,sys%nel))
@@ -251,9 +252,11 @@ contains
         
         ! Store weights and alias tables.
         ! pp%ppn_i_d%weights(:) selects i from orbitals occupied in the reference in a double excitation.
+! [review] - AJWT: Call allocators.
         allocate(pp%ppn_i_d%aliasU(sys%nel))
         allocate(pp%ppn_i_d%aliasK(sys%nel))
         allocate(pp%ppn_i_d%weights(sys%nel))
+! [review] - AJWT: Why doesn't this need to be allocated
         ! allocate(pp%ppn_i_d%weights_tot)
         ! pp%ppn_i_s%weights(:) selects i from orbitals occupied in the reference in a single excitation.
         allocate(pp%ppn_i_s%aliasU(sys%nel))
@@ -290,6 +293,7 @@ contains
         call qsort(pp%occ_list,sys%nel)
 
 #ifdef PARALLEL
+! [review] - AJWT: This logic is basically repeated from excit_gen_heat_bath_mol, and might as well go into a subroutine, with one call for nel and one for nbasis.
         ! Initialise do-loop bounds for each processor, e.g. [iproc_nel_start,iproc_nel_end], in the case for
         ! a do-loop over sys%nel.
         nel_end = 0
@@ -331,7 +335,6 @@ contains
         ind_a = 0
         ind_b = 0
 
-        ! [todo] - consider MPI parallelising this loop.
         do i = 1, sys%basis%nbasis
             if (sys%basis%basis_fns(i)%Ms == -1) then ! beta
                 ind_b = ind_b + 1
@@ -390,6 +393,7 @@ contains
         call generate_alias_tables(sys%nel, pp%ppn_i_s%weights(:), pp%ppn_i_s%weights_tot, pp%ppn_i_s%aliasU(:), &
                                 pp%ppn_i_s%aliasK(:))
         
+! [review] - AJWT: Perhaps OpenMP parallelize this if it's likely to take a long time.
         do i = iproc_nbasis_start, iproc_nbasis_end
             pp%ppn_ia_s%weights_tot(i) = 0.0_p
             ims = sys%basis%basis_fns(i)%ms
@@ -432,6 +436,7 @@ contains
                 mpi_preal, pp%ppn_ia_s%aliasU, mv*sizes_nbasis, mv*displs_nbasis, mpi_preal, MPI_COMM_WORLD, ierr)
             ! [todo] - this is not the safest thing in the universe: Once someone changes whether aliasK is int_32 or int_64
             ! [todo] - in excit_gens.f90, this needs to be changed too.
+! [review] - AJWT: One could do a test on int_bas to be sure.
             call mpi_allgatherv(MPI_IN_PLACE, mv*sizes_nbasis(iproc), &
                 MPI_INTEGER, pp%ppn_ia_s%aliasK, mv*sizes_nbasis, mv*displs_nbasis, MPI_INTEGER, MPI_COMM_WORLD, ierr)
         end associate
@@ -441,6 +446,7 @@ contains
         ! mapping which only conserves spin) double excitations.
         ! i and j are drawn from spinorbitals occupied in the reference and a and b can be all orbitals. i!=j and a!=b.
         ! i and j can equal a and b because we later map i. Single excitations are not considered. [todo]
+! [review] - AJWT: This fourth-order loop could do with OpenMP parallelization - perhaps over j or a?
         do i = iproc_nel_start, iproc_nel_end
             i_weight = 0.0_p
             do j = 1, sys%nel
@@ -505,6 +511,7 @@ contains
         call mpi_allgatherv(MPI_IN_PLACE, sizes_nel(iproc), &
             mpi_preal, pp%ppn_i_d%weights, sizes_nel, displs_nel, mpi_preal, MPI_COMM_WORLD, ierr)
 #endif
+! [review] - AJWT: weights_tot hasn't been allocated above.
         pp%ppn_i_d%weights_tot = sum(pp%ppn_i_d%weights)
 
         ! The i that we find with i_weight is i_ref which is mapped to i_cdet later. If i_weight is very close to 0,
@@ -516,6 +523,7 @@ contains
                                 pp%ppn_i_d%aliasK(:))
 
         ! Generate the j given i weighting lists and alias tables. a and b cannot equal i (they are drawn from the same set).
+! [review] - AJWT: This fourth-order loop could do with OpenMP parallelization - perhaps over j or a?
         do i = iproc_nbasis_start, iproc_nbasis_end
             pp%ppn_ij_d%weights_tot(i) = 0.0_p
             do j = 1, sys%nel

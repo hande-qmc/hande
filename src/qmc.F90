@@ -922,6 +922,7 @@ contains
 ! [reply] - VAN: If I don't store it, it will be recalculated. If the user wants to keep the old value, they can manually
 ! [reply] - VAN: specify it. If they don't want the old value but the system is new, there is no way to call the function
 ! [reply] - VAN: find_parallel_spin_prob. The only disadvantage of not storing it is timing but that might be fine (?).
+! [review] - AJWT: There is a fourth order loop inside there - does it take a lot of time? 
         if ((qmc_in%pattempt_parallel < 0) .and. (sys%system == read_in) .and. &
             ((qmc_in%excit_gen == excit_gen_renorm_spin) .or. (qmc_in%excit_gen == excit_gen_no_renorm_spin))) then
             call find_parallel_spin_prob_mol(sys, excit_gen_data%pattempt_parallel)

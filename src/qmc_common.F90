@@ -295,6 +295,7 @@ contains
         real(p) :: parallel_weight, ortho_weight
 
 #ifdef PARALLEL
+! [review] - AJWT: should use a routine as in src/excit_gen_heat_bath_mol.f90
         ! Initialise do-loop bounds for each processor, e.g. [iproc_nel_start,iproc_nel_end], in the case for
         ! a do-loop over sys%nel.
         nbasis_end = 0
@@ -324,6 +325,7 @@ contains
         parallel_weight = 0.0_p
         ortho_weight = 0.0_p
 
+! [review] - AJWT: Consider parallelizing with OpenMP over j
         do i = iproc_nbasis_start, iproc_nbasis_end
             do j = 1, sys%basis%nbasis
                 if (i /= j) then
