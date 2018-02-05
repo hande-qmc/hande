@@ -448,14 +448,13 @@ contains
                 decoder_ptr => decode_det_occ
             case(excit_gen_no_renorm_spin)
                 gen_excit_ptr%full => gen_excit_mol_no_renorm_spin
-                ! [todo] we need occlist_alpha/beta but is spinocc_spinunocc the most efficient solution?
-                decoder_ptr => decode_det_spinocc_spinunocc
+                decoder_ptr => decode_det_spinocc
             case(excit_gen_renorm)
                 gen_excit_ptr%full => gen_excit_mol
                 decoder_ptr => decode_det_occ_symunocc
             case(excit_gen_renorm_spin)
                 gen_excit_ptr%full => gen_excit_mol_spin
-                decoder_ptr => decode_det_spinocc_spinunocc
+                decoder_ptr => decode_det_spinocc_symunocc
             case(excit_gen_power_pitzer_occ)
                 gen_excit_ptr%full => gen_excit_mol_power_pitzer_occ
                 decoder_ptr => decode_det_spinocc_spinunocc
