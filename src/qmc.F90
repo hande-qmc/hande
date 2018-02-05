@@ -470,7 +470,7 @@ contains
                 decoder_ptr => decode_det_occ
             case(excit_gen_heat_bath_uniform)
                 gen_excit_ptr%full => gen_excit_mol_heat_bath_uniform
-                decoder_ptr => decode_det_occ
+                decoder_ptr => decode_det_occ_symunocc
             case(excit_gen_heat_bath_single)
                 ! [todo] uses basically same function as hb_uniform but
                 ! [todo] has varying function call with singles.
