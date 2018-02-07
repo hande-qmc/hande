@@ -2079,7 +2079,8 @@ contains
             call add_rep_accum_to_total(ps)
             
             call update_pattempt_single(ps, excit_gen_data%pattempt_single, excit_gen_data%pattempt_double)
-
+            
+            ! WARNING: Do not zero these before the "update_pattempt_single" call (the values are still needed).
             ! Zero rep_accum variables to be prepared for next report loop.
             ps%rep_accum%excit_gen_singles = 0.0_p
             ps%rep_accum%excit_gen_doubles = 0.0_p
@@ -2193,7 +2194,24 @@ contains
             pattempt_single = (ps%total%h_pgen_singles_sum/ps%total%excit_gen_singles) / &
                     ((ps%total%h_pgen_doubles_sum/ps%total%excit_gen_doubles) + &
                     (ps%total%h_pgen_singles_sum/ps%total%excit_gen_singles))
+
+            ! Make sure that pattempt_single does not get too small. Allow at least one single excitation (expected)
+            ! per pattempt_single update cycle.
+            if (pattempt_single < (1.0_p/real(ps%rep_accum%excit_gen_singles + ps%rep_accum%excit_gen_doubles))) then
+                pattempt_single = 1.0_p/real(ps%rep_accum%excit_gen_singles + ps%rep_accum%excit_gen_doubles)
+                if (parent) write(iunit, '(1X, "# WARNING: min. pattempt_single!")')
+            end if 
+
             pattempt_double = 1.0_p - pattempt_single
+            
+            ! Make sure that pattempt_double does not get too small. Allow at least one double excitation (expected)
+            ! per pattempt_single update cycle.
+            if (pattempt_double < (1.0_p/real(ps%rep_accum%excit_gen_singles + ps%rep_accum%excit_gen_doubles))) then
+                pattempt_double = 1.0_p/real(ps%rep_accum%excit_gen_singles + ps%rep_accum%excit_gen_doubles)
+                pattempt_single = 1.0_p - pattempt_double
+                if (parent) write(iunit, '(1X, "# WARNING: min. pattempt_double!")')
+            end if 
+            
             if (parent) write(iunit, '(1X, "# pattempt_single changed to be:",1X,es17.10)') pattempt_single
         end if
 
