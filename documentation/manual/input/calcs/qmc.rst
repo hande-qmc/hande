@@ -290,13 +290,15 @@ algorithms and control the core settings in the algorithms.
 
     Optional. Default: False.
     
-    If true, then pattempt_single is varied during the run
+    If true, then ``pattempt_single`` is varied during the run
     to attempt to align the means of |Hij|/pgen for single and double excitations.
-    Update of pattempt_single only happens if shift is constant. Not applicable to
-    "original" heat bath algorithm. Note that when restarting if this is set to
-    true and both ``pattempt_single`` and ``pattempt_double`` are specified by the
-    user, previous update information is lost and the update (provided shift has
-    not started varying yet) starts from scratch (information to update
+    Update of pattempt_single only happens if shift has not started varying yet. If
+    ``pattempt_single`` or ``pattempt_double`` fall below a minimum value (1 over number of
+    successful spawn attempts in the last pattempt update cycle), they are set to that minimum
+    Not applicable to "original" heat bath algorithm excitation generator. Note that when
+    restarting if this is set to true and both ``pattempt_single`` and ``pattempt_double``
+    are specified by the user, previous update information is lost and the update (provided
+    shift has not started varying yet) starts from scratch (information to update
     ``pattempt_single`` from previous runs gets lost).
 ``pattempt_parallel``
     type: float.
