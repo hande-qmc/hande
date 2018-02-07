@@ -242,15 +242,17 @@ contains
 
     end subroutine check_load_bal_opts
 
-    subroutine check_dmqmc_opts(sys, dmqmc_in)
+    subroutine check_dmqmc_opts(sys, dmqmc_in, qmc_in)
 
         ! Check validity of dmqmc input options.
 
         ! In:
         !   sys: system being studied.
         !   dmqmc_in: DMQMC options.
+        !   qmc_in: QMC input options.
 
         use system, only: sys_t, heisenberg, ueg, read_in
+        use qmc_data, only: excit_gen_no_renorm, excit_gen_renorm, qmc_in_t
         use dmqmc_data, only: dmqmc_in_t, hartree_fock_dm
         use calc, only: dmqmc_rdm_r2, doing_dmqmc_calc, dmqmc_full_r2
         use calc, only: dmqmc_staggered_magnetisation, dmqmc_energy_squared, dmqmc_correlation
@@ -261,6 +263,7 @@ contains
 
         type(sys_t), intent(in) :: sys
         type(dmqmc_in_t), intent(in) :: dmqmc_in
+        type(qmc_in_t), intent(in) :: qmc_in
 
         character(*), parameter :: this = 'check_dmqmc_opts'
 
@@ -337,6 +340,15 @@ contains
         if (dmqmc_in%metropolis_attempts < 0) then
             call stop_all(this, 'metropolis_attempts must be greater than zero.')
         end if
+        
+        if (.not.((qmc_in%excit_gen == excit_gen_no_renorm) .or. &
+                                         (qmc_in%excit_gen == excit_gen_renorm))) then
+            call stop_all(this, 'Excitation Generators other than no_renorm and renorm not yet tested for DMQMC.')
+        end if
+        
+        if (qmc_in%pattempt_update) call stop_all(this, 'pattempt_update not yet tested for DMQMC.')
+        
+        if (qmc_in%quasi_newton) call stop_all(this, 'Quasi-Newton not implemented for DMQMC.')
 
         if (sys%read_in%comp) call stop_all(this, 'Complex DMQMC not yet implemented')
 

@@ -258,6 +258,10 @@ algorithms and control the core settings in the algorithms.
     ..
 
         [todo] - Add paper citation once it is published.
+    
+    .. note::
+        Currently only the no_renorm and renorm excitation generators are available in
+        DMQMC.
 
 ``power_pitzer_min_weight``
     type: float.
@@ -304,6 +308,8 @@ algorithms and control the core settings in the algorithms.
     are specified by the user, previous update information is lost and the update (provided
     shift has not started varying yet) starts from scratch (information to update
     ``pattempt_single`` from previous runs gets lost).
+    .. note::
+        Currently not available in DMQMC.
 ``pattempt_parallel``
     type: float.
 

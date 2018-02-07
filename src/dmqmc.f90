@@ -117,8 +117,7 @@ contains
         if (parent) then
             restarting = present(qmc_state_restart) .or. restart_in%read_restart
             call check_qmc_opts(qmc_in, sys, .not. present(qmc_state_restart), restarting)
-            call check_dmqmc_opts(sys, dmqmc_in)
-            if (qmc_in%quasi_newton) call stop_all('do_dmqmc', 'Quasi-Newton not implemented for DMQMC.')
+            call check_dmqmc_opts(sys, dmqmc_in, qmc_in)
         end if
 
         ! Initialise data.
