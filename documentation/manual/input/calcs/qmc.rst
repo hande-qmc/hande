@@ -251,9 +251,13 @@ algorithms and control the core settings in the algorithms.
     The 'power_pitzer_orderN' excitation generator uses precalculated weights and unlike
     'power_pitzer', it also samples i and j with weighted probabilities.
 
+    In the case of the UEG, the 'power_pitzer' excitation generator pre-calculates
+    Power-Pitzer like weights for the selecting of orbital a. i and j are selected like
+    the 'no_renorm' UEG excitation generator.
+    If a is occupied, the excitation is forbidden.
     ..
 
-        [todo] - Add paper citation once it is published. Highlight special case of UEG.
+        [todo] - Add paper citation once it is published.
 
 ``power_pitzer_min_weight``
     type: float.
