@@ -916,6 +916,8 @@ contains
             call json_write_key(js, 'excit_gen', 'power_pitzer')
         case (excit_gen_power_pitzer_occ)
             call json_write_key(js, 'excit_gen', 'power_pitzer_orderM')
+        case (excit_gen_power_pitzer_occ_ij)
+            call json_write_key(js, 'excit_gen', 'power_pitzer_orderM_ij')
         case (excit_gen_power_pitzer_orderN)
             call json_write_key(js, 'excit_gen', 'power_pitzer_orderN')
         case (excit_gen_heat_bath)
