@@ -22,6 +22,8 @@ module importance_sampling
 
 ! and \psi^{(T)}_i is the weight of the trial function on i.
 
+! [todo] - Do weighted excitation generators behave differently here?
+
 ! As we currently generate the excitations uniformly, this amounts to simply
 ! scaling H_{ij} appropriately after generating the excitation (as usual) but
 ! before testing whether or not to accept the spawning attempt (which depends
