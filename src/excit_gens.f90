@@ -5,7 +5,7 @@ implicit none
 private
 public :: alloc_alias_table_data_t, dealloc_excit_gen_data_t, p_single_double_coll_t
 public :: p_single_double_t, excit_gen_power_pitzer_t, excit_gen_heat_bath_t
-public :: move_pattempt_data, excit_gen_data_t
+public :: move_pattempt_data, excit_gen_data_t, zero_p_single_double_coll_t
 
 !Data for the power_pitzer/heat bath excit gens
 
@@ -216,6 +216,23 @@ contains
         excit_gen_data_new%p_single_double%total = excit_gen_data_old%p_single_double%total
         
     end subroutine move_pattempt_data
+
+    subroutine zero_p_single_double_coll_t(coll)
+    
+        ! Zero p_single_double_coll_t (e.g. after when restarting)
+
+        ! In/Out:
+        !   coll: p_single_double_coll_t object to be reset.
+
+        type(p_single_double_coll_t), intent(inout) :: coll
+
+        coll%h_pgen_singles_sum = 0.0_p ! hmatel/pgen sum for singles
+        coll%h_pgen_doubles_sum = 0.0_p ! hamtel/pgen sum for doubles
+        coll%excit_gen_singles = 0.0_p ! number of valid singles excitations created
+        coll%excit_gen_doubles = 0.0_p ! number of valid doubles excitations created
+        coll%overflow_loc = .false. ! Does adding a 1 still increase the number (excit_gen_singles and excit_gen_doubles)?
+    
+    end subroutine zero_p_single_double_coll_t
 
     subroutine dealloc_excit_gen_data_t(excit_gen_data)
 

@@ -136,7 +136,7 @@ contains
         !   qmc_state_restart (optional): qmc_state object being restarted from.
 
         use qmc_data, only: qmc_in_t, qmc_state_t, excit_gen_heat_bath, fciqmc_in_t
-        use errors, only: stop_all
+        use errors, only: stop_all, warning
         use system, only: sys_t, read_in
 
         type(qmc_in_t), intent(in) :: qmc_in
@@ -187,6 +187,10 @@ contains
                 call warning(this, 'Using pattempt_update together with replica_tricks is experimental. &
                     pattempt_single will stop being varied when the first shift starts varying. It does not &
                     consider the second shift. So be careful.')
+            end if
+        else
+            if (qmc_in%pattempt_zero_accum_data) then
+               call stop_all(this, 'pattempt_zero_accum_data not to be used without pattempt_update.')
             end if 
         end if
 

@@ -139,6 +139,9 @@ type qmc_in_t
     ! If shift has already started varying, ignore pattempt_update.
     ! [todo] - check whether restarting works correctly with pattempt_update
     logical :: pattempt_update = .false.
+    ! If true and restarting, accumulated data to vary pattempt_single/double is reset.
+    ! If not restarting, this will not have any effect.
+    logical :: pattempt_zero_accum_data = .false.
     ! probability of selecting ij to be parallel. Used in no_renorm_spin, renorm_spin
     ! excitation generators.
     ! set to a nonsense value so we can easily detect if it's given as an input option.
@@ -917,6 +920,7 @@ contains
             call json_write_key(js, 'excit_gen', qmc%excit_gen)
         end select
         call json_write_key(js, 'pattempt_update', qmc%pattempt_update)
+        call json_write_key(js, 'pattempt_zero_accum_data', qmc%pattempt_zero_accum_data)
         call json_write_key(js, 'pattempt_single', qmc%pattempt_single)
         call json_write_key(js, 'pattempt_double', qmc%pattempt_double)
         call json_write_key(js, 'pattempt_parallel', qmc%pattempt_parallel)

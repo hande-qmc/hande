@@ -310,6 +310,14 @@ algorithms and control the core settings in the algorithms.
     ``pattempt_single`` from previous runs gets lost).
     .. note::
         Currently not available in DMQMC.
+``pattempt_zero_accum_data``
+    type: boolean
+
+    Optional. Default: False.
+
+    If true and restarting, accumulated data needed to update ``pattempt_single`` and
+    ``pattempt_double`` is reset (set to zero, overflow boolean is set to false).
+    Only to be used together with ``pattempt_update``. Only to be used by experienced users.
 ``pattempt_parallel``
     type: float.
 

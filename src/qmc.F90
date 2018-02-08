@@ -879,7 +879,7 @@ contains
         use const, only: p
         use system, only: sys_t, ueg, read_in
         use qmc_data, only: qmc_in_t, excit_gen_renorm_spin, excit_gen_no_renorm_spin
-        use excit_gens, only: excit_gen_data_t
+        use excit_gens, only: excit_gen_data_t, zero_p_single_double_coll_t
         use ueg_system, only: init_ternary_conserve
         use qmc_common, only: find_single_double_prob, find_parallel_spin_prob_mol
         use reference_determinant, only: reference_t
@@ -897,16 +897,18 @@ contains
         ! determinants have a roughly similar ratio of single:double
         ! excitations. Input overrides pattempt_single stored in restart file.
         if (qmc_in%pattempt_single < 0 .or. qmc_in%pattempt_double < 0) then
-            if (excit_gen_data%p_single_double%pattempt_restart_store == .false.) then
+            if (.not. excit_gen_data%p_single_double%pattempt_restart_store) then
                 call find_single_double_prob(sys, ref%occ_list0, excit_gen_data%pattempt_single, excit_gen_data%pattempt_double)
+            else if (qmc_in%pattempt_zero_accum_data) then
+                ! User wants accumulated data to be zeroed (e.g. restarting with a different excitation generator).
+                ! pattempt_single and pattempt_double stay what they were.
+                call zero_p_single_double_coll_t(excit_gen_data%p_single_double%total)
+                excit_gen_data%p_single_double%counter = 1.0_p
             end if
         else
             ! [todo] - is it wise that the user has to specify both *_single and *_double to overwrite?
             ! zero data received from restart file if user overwrittes it by specifying a qmc_in%pattempt_single and *_double.
-            excit_gen_data%p_single_double%total%h_pgen_singles_sum = 0.0_p ! hmatel/pgen sum for singles
-            excit_gen_data%p_single_double%total%h_pgen_doubles_sum = 0.0_p ! hamtel/pgen sum for doubles
-            excit_gen_data%p_single_double%total%excit_gen_singles = 0.0_p ! number of valid singles excitations created
-            excit_gen_data%p_single_double%total%excit_gen_doubles = 0.0_p ! number of valid doubles excitations created
+            call zero_p_single_double_coll_t(excit_gen_data%p_single_double%total)
             excit_gen_data%p_single_double%counter = 1.0_p
             ! renormalise just in case input wasn't
             excit_gen_data%pattempt_single = qmc_in%pattempt_single/(qmc_in%pattempt_single+qmc_in%pattempt_double)
