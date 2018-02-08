@@ -524,7 +524,7 @@ contains
         !        and the child determinant, on which progeny are spawned.
 
         use determinants, only: det_info_t
-        use excitations, only: excit_t
+        use excitations, only: excit_t, create_excited_det
         use qmc_data, only: qmc_state_t
         use system, only: sys_t, read_in
         use proc_pointers, only: gen_excit_ptr_t
@@ -547,6 +547,7 @@ contains
         integer(int_p), intent(out) :: nspawn, nspawn_im
         type(excit_t), intent(out) :: connection
 
+        integer(i0) :: fexcit(sys%basis%tot_string_len)
         real(p) :: pgen, qn_weight
         logical :: allowed
         type(hmatel_t) :: hmatel, hmatel_tmp
@@ -574,7 +575,16 @@ contains
         nspawn_im = attempt_to_spawn(rng, qmc_state%tau, spawn_cutoff, real_factor, qn_weight*aimag(hmatel%c), &
                                     pgen, parent_sign)
 
-        if (debug) call write_logging_spawn(logging_info, hmatel, pgen, qn_weight, [nspawn, nspawn_im], real(parent_sign,p), .true.)
+        if (debug) then
+            if (allowed) then
+                call create_excited_det(sys%basis, cdet%f, connection, fexcit)
+                call write_logging_spawn(logging_info, hmatel, pgen, qn_weight, [nspawn, nspawn_im], real(parent_sign,p), &
+                    .true., pgen, cdet%f, fexcit, connection)
+            else
+                call write_logging_spawn(logging_info, hmatel, pgen, qn_weight, [nspawn, nspawn_im], real(parent_sign,p), &
+                    .true., pgen, cdet%f)
+            end if
+        end if
 
     end subroutine spawn_complex
 
