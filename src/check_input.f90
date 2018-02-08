@@ -123,7 +123,7 @@ contains
 
     end subroutine check_fciqmc_opts
 
-    subroutine check_qmc_opts(qmc_in, sys, need_length, restarting, qmc_state_restart)
+    subroutine check_qmc_opts(qmc_in, sys, need_length, restarting, qmc_state_restart, fciqmc_in)
 
         ! Check options common to QMC methods.
 
@@ -132,9 +132,10 @@ contains
         !   need_length: whether the size of main/spawned particle arrays is needed.
         !       false if using simple fciqmc algorithm or restarting from memory.
         !   restarting: whether the calculation is restarting from a previous one.
+        !   fciqmc_in: FCIQMC input options.
         !   qmc_state_restart (optional): qmc_state object being restarted from.
 
-        use qmc_data, only: qmc_in_t, qmc_state_t, excit_gen_heat_bath
+        use qmc_data, only: qmc_in_t, qmc_state_t, excit_gen_heat_bath, fciqmc_in_t
         use errors, only: stop_all
         use system, only: sys_t, read_in
 
@@ -142,6 +143,7 @@ contains
         type(sys_t), intent(in) :: sys
         logical, intent(in) :: need_length, restarting
         type(qmc_state_t), intent(in), optional :: qmc_state_restart
+        type(fciqmc_in_t), intent(in), optional :: fciqmc_in
 
         character(*), parameter :: this = 'check_qmc_opts'
 
@@ -180,6 +182,12 @@ contains
             else if (qmc_in%excit_gen == excit_gen_heat_bath) then
                 call stop_all(this, 'pattempt_update is not used with heat bath excitation generator.')
             end if
+            ! Note that this applies to anything using more than one shift in qmc_state%shift.
+            if (fciqmc_in%replica_tricks) then
+                call warning(this, 'Using pattempt_update together with replica_tricks is experimental. &
+                    pattempt_single will stop being varied when the first shift starts varying. It does not &
+                    consider the second shift. So be careful.')
+            end if 
         end if
 
     end subroutine check_qmc_opts

@@ -1203,7 +1203,7 @@ contains
             call mpi_allreduce(qs%excit_gen_data%p_single_double%rep_accum%overflow_loc, overflow, 1, MPI_LOGICAL, MPI_LAND, &
                             MPI_COMM_WORLD, ierr)
             
-            if ((all(qs%vary_shift)) .or. (overflow)) then
+            if ((qs%vary_shift(1)) .or. (overflow)) then
                 if ((overflow) .and. (parent)) then
                     ! Make a note of the overflow.
                     write(iunit, '(1X, "# Had to stop varying pattempt_single due to lack of precision.")')
