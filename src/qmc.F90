@@ -243,11 +243,15 @@ contains
         end if
 
         ! check_input makes sure the pattempt_update cannot be true if we are using the heat bath excitation generator.
-        if ((.not. all(qmc_state%vary_shift)) .and. (qmc_in%pattempt_update)) then
+        if (.not. (qmc_state%vary_shift(1)) .and. (qmc_in%pattempt_update)) then
             ! We sample singles with probability pattempt_single. It therefore makes sense to update pattempt_single 
             ! [todo] - DMQMC
             ! for FCIQMC and CCMC on the fly (at least in the beginning of the calculation).
             qmc_state%excit_gen_data%p_single_double%vary_psingles = .true.
+        else if ((qmc_state%excit_gen_data%p_single_double%vary_psingles) .and. .not.(qmc_in%pattempt_update)) then
+            ! If we are restarting say and vary_psingles is true in the restart file but now pattempt_update is false,
+            ! set vary_psingles to false as well.
+            qmc_state%excit_gen_data%p_single_double%vary_psingles = .false.
         end if
     end subroutine init_qmc
 
