@@ -168,9 +168,9 @@ algorithms and control the core settings in the algorithms.
 ``excit_gen``
     type: string
 
-    Optional.
+    Optional. Default: system dependent.
 
-    Possible values: 'renorm', 'no_renorm', 'power_pitzer', 'power_pitzer_orderM'
+    Possible values are system dependent:
 
     ============  ========================  =========
     System        Implemented               Default
@@ -223,7 +223,7 @@ algorithms and control the core settings in the algorithms.
     there might be no occupied :math:`j` that lets us select :math:`ija`. See Holmes et al.
     for details. We check for the bias in the beginning of a calculation and stop it if
     necessary.
-    The power pitzer excitation generators use approximate upper bounds for these weights.
+    The Power-Pitzer excitation generators use approximate upper bounds for these weights.
     'heat_bath_uniform' is very similar to 'heat_bath' but samples single excitations
     uniformly (mentioned by Holmes et al.) and 'heat_bath_single' is also very similar
     but samples single excitations with the correct weighting (following a
