@@ -121,12 +121,13 @@ interface
         type(c_ptr), value, intent(in) :: prefix
         type(c_ptr) :: rng_state
     end function dsfmt_state_to_str_c
-    function dsfmt_str_to_state_c(dSFMT_state, rng_state, prefix) result(ret_str) bind(c, name='dsfmt_str_to_state')
-        import :: c_ptr, c_char
+    function dsfmt_str_to_state_c(dSFMT_state, rng_state, prefix, error) result(err_str) bind(c, name='dsfmt_str_to_state_wrapper')
+        import :: c_ptr, c_char, c_int32_t
         type(c_ptr), value, intent(in) :: dSFMT_state
         type(c_ptr), value, intent(in) :: rng_state
         type(c_ptr), value, intent(in) :: prefix
-        type(c_ptr) :: ret_str
+        type(c_ptr), value, intent(in) :: error
+        type(c_ptr) :: err_str
     end function dsfmt_str_to_state_c
 end interface
 
@@ -685,6 +686,7 @@ contains
         type(c_ptr) :: prefix_ptr, ret_ptr
         character(c_char), allocatable, target :: state_str(:)
         character(c_char), pointer :: ret_str_c(:)
+        integer(c_int32_t), target :: error
 
         prefix_ptr = C_NULL_PTR
         if (present(prefix)) then
@@ -693,10 +695,10 @@ contains
         end if
 
         call fstring_to_cstring(rng_state, state_str)
-        ret_ptr = dsfmt_str_to_state_c(rng%dSFMT_state, c_loc(state_str), prefix_ptr)
+        ret_ptr = dsfmt_str_to_state_c(rng%dSFMT_state, c_loc(state_str), prefix_ptr, c_loc(error))
         deallocate(state_str)
 
-        if (c_associated(ret_ptr)) then
+        if (error /= 0) then
             call c_f_pointer(ret_ptr, ret_str_c, [int(strlen(ret_ptr))])
             if (present(err_msg)) then
                 call cstring_to_fstring(ret_str_c, err_msg)
