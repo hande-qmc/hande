@@ -1198,10 +1198,13 @@ contains
             semi_stoch_start_it = semi_stoch_shift_it + iteration + 1
 
         if (qs%excit_gen_data%p_single_double%vary_psingles) then
+
+#ifdef PARALLEL
             ! If any ps%rep_accum%overflow_loc is true (i.e. at least in one MPI proc there was a lack of precision in the
             ! number of single/double excitations), stop here and fix pattempt_single.
             call mpi_allreduce(qs%excit_gen_data%p_single_double%rep_accum%overflow_loc, overflow, 1, MPI_LOGICAL, MPI_LAND, &
                             MPI_COMM_WORLD, ierr)
+#endif
             
             if ((qs%vary_shift(1)) .or. (overflow)) then
                 if ((overflow) .and. (parent)) then

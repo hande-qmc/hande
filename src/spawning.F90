@@ -232,9 +232,9 @@ contains
 
         ! In/Out:
         !    rng: random number generator.
+        !    qmc_state: input options relating to QMC methods.
         ! In:
         !    sys: system being studied.
-        !    qmc_state: input options relating to QMC methods.
         !    spawn_cutoff: The size of the minimum spawning event allowed, in
         !        the encoded representation. Events smaller than this will be
         !        stochastically rounded up to this value or down to zero.
@@ -272,7 +272,7 @@ contains
 
         type(dSFMT_t), intent(inout) :: rng
         type(sys_t), intent(in) :: sys
-        type(qmc_state_t), intent(in) :: qmc_state
+        type(qmc_state_t), intent(inout) :: qmc_state
         integer(int_p), intent(in) :: spawn_cutoff
         integer(int_p), intent(in) :: real_factor
         type(det_info_t), intent(in) :: cdet
@@ -332,9 +332,9 @@ contains
 
         ! In/Out:
         !    rng: random number generator.
+        !    qmc_state: input options relating to QMC methods.
         ! In:
         !    sys: system being studied.
-        !    qmc_state: input options relating to QMC methods.
         !    spawn_cutoff: The size of the minimum spawning event allowed, in
         !        the encoded representation. Events smaller than this will be
         !        stochastically rounded up to this value or down to zero.
@@ -372,7 +372,7 @@ contains
 
         type(dSFMT_t), intent(inout) :: rng
         type(sys_t), intent(in) :: sys
-        type(qmc_state_t), intent(in) :: qmc_state
+        type(qmc_state_t), intent(inout) :: qmc_state
         integer(int_p), intent(in) :: spawn_cutoff
         integer(int_p), intent(in) :: real_factor
         type(det_info_t), intent(in) :: cdet
@@ -431,9 +431,9 @@ contains
 
         ! In/Out:
         !    rng: random number generator.
+        !    qmc_state: input options relating to QMC methods.
         ! In:
         !    sys: system being studied.
-        !    qmc_state: input options relating to QMC methods.
         !    spawn_cutoff: The size of the minimum spawning event allowed, in
         !        the encoded representation. Events smaller than this will be
         !        stochastically rounded up to this value or down to zero.
@@ -464,7 +464,7 @@ contains
 
         type(dSFMT_t), intent(inout) :: rng
         type(sys_t), intent(in) :: sys
-        type(qmc_state_t), intent(in) :: qmc_state
+        type(qmc_state_t), intent(inout) :: qmc_state
         integer(int_p), intent(in) :: spawn_cutoff
         integer(int_p), intent(in) :: real_factor
         type(det_info_t), intent(in) :: cdet

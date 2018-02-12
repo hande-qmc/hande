@@ -297,7 +297,7 @@ abstract interface
         implicit none
         type(dSFMT_t), intent(inout) :: rng
         type(sys_t), intent(in) :: sys
-        type(qmc_state_t), intent(in) :: qmc_state
+        type(qmc_state_t), intent(inout) :: qmc_state
         integer(int_p), intent(in) :: spawn_cutoff
         integer(int_p), intent(in) :: real_factor
         type(det_info_t), intent(in) :: d

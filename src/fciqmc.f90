@@ -539,8 +539,6 @@ contains
 
         ! In:
         !   sys: information on system under consideration.
-        !   qs: qmc_state_t derived type with information on
-        !       current calculation.
         !   logging_info: information on current logging
         !       settings.
         !   nattempts_current_det: total number of spawning attempts
@@ -557,6 +555,8 @@ contains
         ! In/Out:
         !   rng: random number generator.
         !   bloom_stats: information on blooms during calculation.
+        !   qs: qmc_state_t derived type with information on
+        !       current calculation.
         !   spawn: stored information on spawning.
 
         use dSFMT_interface, only: dSFMT_t
@@ -572,7 +572,7 @@ contains
         use spawn_data, only: spawn_t
 
         type(sys_t), intent(in) :: sys
-        type(qmc_state_t), intent(in) :: qs
+        type(qmc_state_t), intent(inout) :: qs
         type(logging_t), intent(in) :: logging_info
         integer, intent(in) :: nattempts_current_det, ispace
         type(det_info_t), intent(in) :: cdet
