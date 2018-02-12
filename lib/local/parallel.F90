@@ -195,46 +195,48 @@ contains
 
     end subroutine end_parallel
 
-    subroutine parallel_start_end(basis_len, iproc_start, iproc_end, displs, sizes)
-        ! Initialise do-loop range for each processor, [iproc_start,iproc_end].
-        ! Each processor gets at least floor(basis_len/nprocs), with the remainder allocated
+! [review] - AJWT: This initialls sounds like it actually starts something.  perhaps get_proc_loop_range?
+! [review] - AJWT: I've modified this to remove references to basis functions as it's actually generic.
+    subroutine parallel_start_end(list_length, this_proc_start, this_proc_end, starts, sizes)
+        ! Choose loop variables which split a list with length list_length evenly across processors.
+        ! Each processor gets at least floor(list_length/nprocs), with the remainder allocated
         ! one to each of the early numbered processors.
 
         ! In:
-        !   basis_len: number of iterations in do loop (e.g. sys%nel if over number of electrons)
+        !   list_length: number of items to iterate over (e.g. sys%nel if over number of electrons).
         ! Out:
-        !   iproc_start, iproc_end: part of do loop done by processes with rank iproc.
-        !   displs: displacements of iproc_start to beginning of array of iterations in do loop.
-        !   sizes: sizes of chunks iproc_start to iproc_end.
+        !   this_proc_start, this_proc_end: range done by processes with rank iproc (i.e. this processor).
+        !   starts: the starting value for each processor.
+        !   sizes: sizes of chunk for each processor.
         
-        integer, intent(in) :: basis_len
-        integer, intent(out) :: iproc_start, iproc_end
-        integer, intent(out) :: displs(0:nprocs-1), sizes(0:nprocs-1)
+        integer, intent(in) :: list_length
+        integer, intent(out) :: this_proc_start, this_proc_end
+        integer, intent(out) :: starts(0:nprocs-1), sizes(0:nprocs-1)
         integer :: i, i_start, i_end
 
 #ifdef PARALLEL
         i_end = 0
         do i = 0, nprocs-1
             i_start = i_end + 1
-            i_end = i_start + basis_len/nprocs - 1
+            i_end = i_start + list_length/nprocs - 1
             ! allocate one of the remainder to the early processors.
-            if (i < mod(basis_len,nprocs)) i_end = i_end + 1
-            ! If basis_len<nprocs then use the calculated value otherwise set it to not do anything.
-            if (i < basis_len) then
-                displs(i) = i_start - 1
+            if (i < mod(list_length,nprocs)) i_end = i_end + 1
+            ! If list_length<nprocs then use the calculated value otherwise set it to not do anything.
+            if (i < list_length) then
+                starts(i) = i_start - 1
             else
-                displs(i) = basis_len - 1
+                starts(i) = list_length - 1
             end if
             sizes(i) = i_end - i_start + 1
         end do
         
-        iproc_start = displs(iproc) + 1
-        iproc_end = displs(iproc) + sizes(iproc)
+        this_proc_start = starts(iproc) + 1
+        this_proc_end = starts(iproc) + sizes(iproc)
 #else
-        iproc_start = 1
-        iproc_end = basis_len
-        displs = 0
-        sizes = basis_len
+        this_proc_start = 1
+        this_proc_end = list_length
+        starts = 0
+        sizes = list_length
 #endif
 
     end subroutine parallel_start_end

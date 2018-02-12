@@ -303,11 +303,12 @@ algorithms and control the core settings in the algorithms.
     Update of pattempt_single only happens if shift has not started varying yet. If
     ``pattempt_single`` or ``pattempt_double`` fall below a minimum value (1 over number of
     successful spawn attempts in the last pattempt update cycle), they are set to that minimum
-    Not applicable to "original" heat bath algorithm excitation generator. Note that when
-    restarting if this is set to true and both ``pattempt_single`` and ``pattempt_double``
+    Not applicable to "original" heat bath algorithm excitation generator (excit_gen="heat_bath").
+    When restarting a calculation, if ``pattempt_update`` is set to true and both ``pattempt_single``
+    and ``pattempt_double``
     are specified by the user, previous update information is lost and the update (provided
-    shift has not started varying yet) starts from scratch (information to update
-    ``pattempt_single`` from previous runs gets lost).
+    shift has not started varying yet) starts from scratch (the information to update
+    ``pattempt_single`` from previous runs is lost).
     .. note::
         Currently not available in DMQMC.
 ``pattempt_zero_accum_data``
@@ -315,8 +316,8 @@ algorithms and control the core settings in the algorithms.
 
     Optional. Default: False.
 
-    If true and restarting, accumulated data needed to update ``pattempt_single`` and
-    ``pattempt_double`` is reset (set to zero, overflow boolean is set to false).
+    If true and restarting a calculation, accumulated data needed to update ``pattempt_single``
+    and ``pattempt_double`` is reset (set to zero, overflow boolean is set to false).
     Only to be used together with ``pattempt_update``. Only to be used by experienced users.
 ``pattempt_parallel``
     type: float.
