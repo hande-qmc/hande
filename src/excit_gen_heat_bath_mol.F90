@@ -64,9 +64,9 @@ contains
 
 #ifdef PARALLEL
         ! Initialise do-loop range for each processor, [iproc_nbasis_start,iproc_nbasis_end].
-        ! [todo] - parallel_start_end can also assign in serial mode. Disadvantage: would need to define displs_nbasis
+        ! [todo] - get_proc_loop_range can also assign in serial mode. Disadvantage: would need to define displs_nbasis
         ! [todo] - and sizes_nbasis for serial mode.
-        call parallel_start_end(sys%basis%nbasis, iproc_nbasis_start, iproc_nbasis_end, displs_nbasis, sizes_nbasis)
+        call get_proc_loop_range(sys%basis%nbasis, iproc_nbasis_start, iproc_nbasis_end, displs_nbasis, sizes_nbasis)
 #else
         iproc_nbasis_start = 1
         iproc_nbasis_end = sys%basis%nbasis

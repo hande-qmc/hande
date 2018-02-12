@@ -398,8 +398,12 @@ contains
         restarting = present(qmc_state_restart) .or. restart_in%read_restart
         ! Check input options.
         if (parent) then
-! [review] - AJWT: I think referencing an optional variable which might not be present isn't allowed in the standard.
-            call check_qmc_opts(qmc_in, sys, .not.present(qmc_state_restart), restarting, qmc_state_restart=qmc_state_restart)
+            if (present(qmc_state_restart)) then
+                call check_qmc_opts(qmc_in, sys, .not.present(qmc_state_restart), restarting, &
+                    qmc_state_restart=qmc_state_restart)
+            else
+                call check_qmc_opts(qmc_in, sys, .not.present(qmc_state_restart), restarting)
+            end if
             call check_ccmc_opts(sys, ccmc_in, qmc_in)
             call check_blocking_opts(sys, blocking_in, restart_in)
         end if

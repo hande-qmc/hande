@@ -195,9 +195,7 @@ contains
 
     end subroutine end_parallel
 
-! [review] - AJWT: This initialls sounds like it actually starts something.  perhaps get_proc_loop_range?
-! [review] - AJWT: I've modified this to remove references to basis functions as it's actually generic.
-    subroutine parallel_start_end(list_length, this_proc_start, this_proc_end, starts, sizes)
+    subroutine get_proc_loop_range(list_length, this_proc_start, this_proc_end, starts, sizes)
         ! Choose loop variables which split a list with length list_length evenly across processors.
         ! Each processor gets at least floor(list_length/nprocs), with the remainder allocated
         ! one to each of the early numbered processors.
@@ -239,7 +237,7 @@ contains
         sizes = list_length
 #endif
 
-    end subroutine parallel_start_end
+    end subroutine get_proc_loop_range
     
     function get_blacs_info(matrix_size, block_size, proc_grid) result(my_blacs_info)
 
