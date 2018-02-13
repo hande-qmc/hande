@@ -645,7 +645,7 @@ module restart_hdf5
                 call mpi_reduce(qs%psip_list%nstates, qs%estimators%tot_nstates, qs%psip_list%nspaces, MPI_INTEGER, MPI_SUM, &
                                 root, MPI_COMM_WORLD, ierr)
 #else
-               qs%estimators%tot_nstates = qs%psip_list%nstates
+                qs%estimators%tot_nstates = qs%psip_list%nstates
 #endif
 
                 if (i0_length == i0_length_restart) then
