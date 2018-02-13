@@ -281,8 +281,7 @@ contains
 
         integer :: displs_nbasis(0:nprocs-1)
         integer :: sizes_nbasis(0:nprocs-1)
-        integer :: ierr, sr
-        integer :: nbasis_start, nbasis_end
+        integer :: ierr
         real(p) :: parallel_weight_tot, ortho_weight_tot
 #endif
 
@@ -1142,7 +1141,6 @@ contains
 
 #ifdef PARALLEL
         integer :: ierr
-        real(p) :: pattempt_single_sum
 #endif
 
         iunit = 6

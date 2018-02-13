@@ -237,14 +237,13 @@ contains
         integer :: displs_nel(0:nprocs-1), displs_nbasis(0:nprocs-1)
         integer :: sizes_nel(0:nprocs-1), sizes_nbasis(0:nprocs-1)
         integer :: ierr, sr
-        integer :: nel_start, nel_end, nbasis_start, nbasis_end
 #endif
         type(sys_t), intent(in) :: sys
         type(reference_t), intent(in) :: ref
         type(excit_gen_power_pitzer_t), intent(inout) :: pp
         type(hmatel_t) :: hmatel
 
-        integer :: i, j, a, b, ind_a, ind_b, maxv, nv, bsym, ij_sym, isyma, isymb, ims, imsa
+        integer :: i, j, a, b, ind_a, ind_b, bsym, ij_sym, isyma, isymb, ims, imsa
         integer :: i_tmp, j_tmp, a_tmp, b_tmp, nall
         integer :: iproc_nel_start, iproc_nel_end, iproc_nbasis_start, iproc_nbasis_end
         integer :: ierr_alloc

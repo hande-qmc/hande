@@ -1036,7 +1036,7 @@ contains
         integer, intent(in) :: write_to
         character(255) :: suffix
         character(255) :: out_name
-        integer :: id, write_to_neg
+        integer :: id
 
         write(suffix,'(".p",i0,".log")') iproc
         call get_unique_filename(trim(in_name), suffix, .true., write_to, out_name, id, .true.)

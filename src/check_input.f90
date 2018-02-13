@@ -185,8 +185,8 @@ contains
             ! Note that this applies to anything using more than one shift in qmc_state%shift.
             if (fciqmc_in%replica_tricks) then
                 call warning(this, 'Using pattempt_update together with replica_tricks is experimental. &
-                    pattempt_single will stop being varied when the first shift starts varying. It does not &
-                    consider the second shift. So be careful.')
+                    &pattempt_single will stop being varied when the first shift starts varying. It does not &
+                    &consider the second shift. So be careful.')
             end if
         else
             if (qmc_in%pattempt_zero_accum_data) then

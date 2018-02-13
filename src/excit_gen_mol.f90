@@ -142,7 +142,7 @@ contains
         type(excit_t), intent(out) :: connection
         logical, intent(out) :: allowed_excitation
 
-        integer :: ij_sym, ij_spin, i_ind, j_ind
+        integer :: ij_sym, ij_spin
         real(p) :: pgen_ij
 
         ! 1. Select single or double.
@@ -332,7 +332,7 @@ contains
         type(excit_t), intent(out) :: connection
         logical, intent(out) :: allowed_excitation
 
-        integer :: i_ind, j_ind, ij_sym, ij_spin
+        integer :: ij_sym, ij_spin
         real(p) :: pgen_ij
 
         ! 1. Select single or double.

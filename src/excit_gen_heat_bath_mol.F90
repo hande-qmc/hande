@@ -36,8 +36,7 @@ contains
 
         integer :: displs_nbasis(0:nprocs-1)
         integer :: sizes_nbasis(0:nprocs-1)
-        integer :: ierr, sr
-        integer :: nbasis_start, nbasis_end
+        integer :: ierr
 #endif
         type(sys_t), intent(in) :: sys
         type(excit_gen_heat_bath_t), intent(inout) :: hb
@@ -196,7 +195,7 @@ contains
                                                     sys%read_in%pg_sym%gamma_sym)
                     if ((sys%basis%basis_fns(a)%sym == isyma) .and. (sys%basis%basis_fns(a)%ms == ims)) then
                         call stop_all('init_excit_mol_heat_bath','Not all possible single excitations can be accounted for. &
-                            Use another excitation generator.')
+                            &Use another excitation generator.')
                     end if
                 end if
             end do
@@ -319,9 +318,9 @@ contains
         real(p), allocatable :: ij_weights_occ(:)
         real(p), allocatable :: ji_weights_occ(:)
 
-        integer :: pos_bas, pos_occ, pos_q, i_ind, j_ind, i, j, a, b, ierr, ims, isyma
+        integer :: pos_q, i_ind, j_ind, i, j, a, b, ierr, ims, isyma
         
-        real(p) :: i_weights_occ_tot, ij_weights_occ_tot, ji_weights_occ_tot, pgen_ij, hmatel_mod_ia, x, psingle
+        real(p) :: i_weights_occ_tot, ij_weights_occ_tot, ji_weights_occ_tot, hmatel_mod_ia, x, psingle
         real(p) :: pgen_ija, pgen_ijb, pgen_jia, pgen_jib, psingle_q
         logical :: double
         type(hmatel_t) :: hmatel_single
@@ -601,7 +600,7 @@ contains
         real(p), allocatable :: ij_weights_occ(:)
         real(p), allocatable :: ji_weights_occ(:)
 
-        integer :: pos_bas, pos_occ, i_ind, j_ind, i, j, a, b, ierr, j_tmp
+        integer :: i_ind, j_ind, i, j, a, b, ierr, j_tmp
         
         real(p) :: i_weights_occ_tot, ij_weights_occ_tot, ji_weights_occ_tot
 
