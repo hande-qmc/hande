@@ -118,7 +118,7 @@ contains
                     i_weight_extra = 0.0_p
             
                     !$omp parallel do default(none) &
-                    !$omp shared(sys,i,j,i_tmp,j_tmp,hb,ij_sym,j_nonzero) &
+                    !$omp shared(sys,i,j,i_tmp,j_tmp,hb,ij_sym,j_nonzero,slater_condon2_excit_ptr,abs_hmatel_ptr) &
                     !$omp private(a,ija_weight,isymb,ijab_weight,b,a_tmp,b_tmp,hmatel) &
                     !$omp reduction(+:i_weight_extra,ij_weight,ija_weights_tot)
                     do a = 1, sys%basis%nbasis

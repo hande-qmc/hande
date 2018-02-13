@@ -357,7 +357,7 @@ contains
             isyma = sys%read_in%cross_product_sym_ptr(sys%read_in, sys%basis%basis_fns(i)%sym, sys%read_in%pg_sym%gamma_sym)
         
             !$omp parallel do default(none) &
-            !$omp shared(sys,i,imsa,isyma,pp,ref) &
+            !$omp shared(sys,i,imsa,isyma,pp,ref,single_excitation_weight_ptr) &
             !$omp private(a) reduction(+:ia_s_weights_tot)
             do a = 1, sys%read_in%pg_sym%nbasis_sym_spin(imsa,isyma)
                 pp%ppn_ia_s%weights(a, i) = 0.0_p
@@ -414,7 +414,7 @@ contains
             i_weight = 0.0_p
             
             !$omp parallel do default(none) &
-            !$omp shared(sys,i,pp) &
+            !$omp shared(sys,i,pp,slater_condon2_excit_ptr,abs_hmatel_ptr) &
             !$omp private(a,i_tmp,j_tmp,ij_sym,isymb,b,hmatel,a_tmp,b_tmp) reduction(+:i_weight)
             do j = 1, sys%nel
                 if (i /= j) then
@@ -496,7 +496,7 @@ contains
             ij_d_weights_tot = 0.0_p
 
             !$omp parallel do default(none) &
-            !$omp shared(sys,i,pp) &
+            !$omp shared(sys,i,pp,slater_condon2_excit_ptr,abs_hmatel_ptr) &
             !$omp private(i_tmp,j_tmp,a_tmp,b_tmp,a,b,ij_weight,ij_sym,isymb,hmatel) reduction(+:ij_d_weights_tot)
             do j = 1, sys%nel
                 ij_weight = 0.0_p
