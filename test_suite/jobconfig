@@ -101,7 +101,9 @@ quick =   vquick
 
 quick64 = quick
           ccmc_real_64/np4/NH3-6-31g_ccsdt_even_selection
+          ccmc_real_64/np4/NH3-6-31g_ccsdt_excit_gens/
           ccmc_real_64/np1/ueg_n10_rs2_e4_ccmc_even_fnc_restart
+          ccmc_real_64/np1/ueg_n10_rs2_e4_ccmc_even_ex_pp_qmc_restart/
           ccmc_real_64/np4/NH3-6-31g_ccsdt_blocking
           dmqmc_real_64/np4/heisenberg_4x4_replica/
           dmqmc_real_64/np4/n2_sto3g/
@@ -141,6 +143,7 @@ vquick =   ccmc/np1/Ne-RHF-cc-pVDZ-Lz-CCSDTQ5-multispawn-short
            fciqmc/np1/H2O-RHF-cc-pVTZ-debug-logging
            fciqmc/np1/hubbard_real_1d_change_sys
            fciqmc/np1/polyyne_complex_fciqmc
+           fciqmc/np2/polyyne_complex_replica_restart/
            fciqmc/np2/polyyne_complex_replica_restart_legacyv1/
            fciqmc/np2/ueg_n10_rs2_e4_tau_search
            fciqmc_real_32/np1/He2-aug-cc-pVDZ_real_32_SS
