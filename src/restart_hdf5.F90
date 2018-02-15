@@ -1419,12 +1419,10 @@ module restart_hdf5
             type(restart_info_t) :: ri
             logical :: dump_restart
 
-            dump_restart = (dump_restart_shift .and. any(qs%vary_shift)) .or. (mod(ireport+ncycles, dump_freq) == 0)
+            dump_restart = (dump_restart_shift .and. any(qs%vary_shift)) .or. (mod(ireport*ncycles, dump_freq) == 0)
             if (dump_restart_shift .and. any(qs%vary_shift)) then
                 dump_restart_shift = .false.
                 ri = ri_shift
-            ! [review] - VAN: should it be addition or multiplication of ireport and ncycles. Below you have multiplication,
-            ! [review] - VAN: above you have addition. Is that correct?
             else if (mod(ireport*ncycles,dump_freq) == 0) then
                 ri = ri_freq
             end if
