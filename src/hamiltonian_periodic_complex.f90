@@ -3,7 +3,7 @@ module hamiltonian_periodic_complex
 ! Module for evaluating Hamiltonian matrix elements for periodic
 ! systems where the integrals have been read in from file.
 
-use const, only: p, i0
+use const, only: p, i0, depsilon
 
 implicit none
 
@@ -412,11 +412,30 @@ contains
 
     pure function abs_hmatel_periodic_complex(hmatel) result(abs_hmatel)
         ! Return absolute value of hmatel. As we have a complex function here, hmatel is complex.
+        
+        ! https://math.stackexchange.com/questions/750648/absolute-value-of-complex-number-in-numerical-recipes
+        
+        ! Following Cabs() for C as described on page 949 "Numerical Recipes in C - the art of scientific computing.
+        ! Second Edition" by W. H. Press, S. A. Teukolsky, W. T. Vetterling, B. P. Flannery.
+        ! Cambridge University Press, 1992.
         use hamiltonian_data, only: hmatel_t
         type(hmatel_t), intent(in) :: hmatel
         real(p) :: abs_hmatel
+        real(p) :: a, b
 
-        abs_hmatel = abs(hmatel%c)
+        a = real(hmatel%c)
+        b = aimag(hmatel%c)
+
+        if (abs(a) < depsilon) then
+            abs_hmatel = abs(b)
+        else if (abs(b) < depsilon) then
+            abs_hmatel = abs(a)
+        else if (abs(a) > abs(b)) then
+            abs_hmatel = abs(a) * sqrt(1.0_p + (b/a)**2)
+        else
+            abs_hmatel = abs(b) * sqrt(1.0_p + (a/b)**2)
+        end if
+
     end function abs_hmatel_periodic_complex
 
     pure function single_excitation_weight_periodic(sys, ref, i, a) result(weight)
