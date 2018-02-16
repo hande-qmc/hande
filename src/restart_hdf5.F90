@@ -514,7 +514,7 @@ module restart_hdf5
             use hdf5_helper, only: hdf5_kinds_t, hdf5_read, dtype_equal, dset_shape, hdf5_path, hdf5_file_close
             use restart_utils, only: convert_dets, convert_ref, convert_pops, change_pop_scaling, change_nbasis
             use calc, only: calc_type, exact_diag, lanczos_diag, mc_hilbert_space
-            use parallel, only: nprocs
+            use parallel
 #endif
             use errors, only: stop_all, warning
             use const
@@ -657,6 +657,12 @@ module restart_hdf5
                 call dset_shape(subgroup_id, ddets, dims)
                 ! Number of determinants is the last index...
                 qs%psip_list%nstates = int(dims(size(dims)))
+#ifdef PARALLEL
+                call mpi_reduce(qs%psip_list%nstates, qs%estimators%tot_nstates, qs%psip_list%nspaces, MPI_INTEGER, MPI_SUM, &
+                                root, MPI_COMM_WORLD, ierr)
+#else
+                qs%estimators%tot_nstates = qs%psip_list%nstates
+#endif
 
                 if (i0_length == i0_length_restart) then
                     if (nbasis == nbasis_restart .and. info_string_len == info_string_len_restart) then
