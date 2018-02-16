@@ -298,7 +298,8 @@ is not possible.  Issues and, where known, workarounds we have found are:
 
 * gcc 7.1.0 has a bug that prevents reading in molecular integrals correctly and instead
   causes HANDE to exit with an error.
-  See https://gcc.gnu.org/bugzilla/show_bug.cgi?id=80741 for details.
+  See https://gcc.gnu.org/bugzilla/show_bug.cgi?id=80741 for details. A mitigation has
+  been implemented to avoid this.
 
 * gcc 7.1.0 and 7.2.0 have a bug that causes `c_associated` to sometimes return incorrect
   values. This might affect the error reporting from reading a restart file but should not
