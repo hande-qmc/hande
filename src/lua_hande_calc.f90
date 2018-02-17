@@ -897,10 +897,16 @@ contains
         !     real_amplitudes = true/false,
         !     real_amplitude_force_32 = true/false,
         !     spawn_cutoff = cutoff,
-        !     excit_gen = 'renorm'/'no_renorm',
+        !     excit_gen =
+        !     'renorm'/'renorm_spin'/'no_renorm'/'no_renorm_spin'/'power_pitzer'/'power_pitzer_orderM'/'power_pitzer_orderN'/
+        !     'heat_bath'/'heat_bath_uniform'/'heat_bath_single'
+        !     power_pitzer_min_weight = power_pitzer_min_weight,
         !     tau_search = true/false,
         !     pattempt_single = prob,
         !     pattempt_double = prob,
+        !     pattempt_update = true/false,
+        !     pattempt_zero_accum_data = true/false,
+        !     pattempt_parallel = prob,
         !     initial_shift = shift,
         !     shift_damping = damp_factor,
         !     initiator = true/false,
@@ -922,7 +928,10 @@ contains
         use flu_binding, only: flu_State
         use aot_table_module, only: aot_get_val, aot_exists, aot_table_open, aot_table_close
 
-        use qmc_data, only: qmc_in_t, excit_gen_renorm, excit_gen_no_renorm
+        use qmc_data, only: qmc_in_t, excit_gen_renorm, excit_gen_no_renorm, excit_gen_renorm_spin, excit_gen_no_renorm_spin
+        use qmc_data, only: excit_gen_power_pitzer
+        use qmc_data, only: excit_gen_power_pitzer_occ, excit_gen_power_pitzer_orderN
+        use qmc_data, only: excit_gen_heat_bath, excit_gen_heat_bath_uniform, excit_gen_heat_bath_single
         use lua_hande_utils, only: warn_unused_args, get_rng_seed
         use parallel, only: parent
         use errors, only: stop_all, warning
@@ -933,18 +942,20 @@ contains
         logical, intent(in), optional :: short
 
         integer :: qmc_table, err
-        character(len=10) :: str
+        character(len=30) :: str
         logical :: skip, no_renorm
 
-        character(23), parameter :: keys(27) = [character(23) :: 'tau', 'init_pop', 'mc_cycles', 'nreports', 'state_size', &
+        character(24), parameter :: keys(31) = [character(24) :: 'tau', 'init_pop', 'mc_cycles', 'nreports', 'state_size', &
                                                                  'spawned_state_size', 'rng_seed', 'target_population', &
                                                                  'real_amplitudes', 'spawn_cutoff', 'no_renorm', 'tau_search', &
                                                                  'real_amplitude_force_32', &
-                                                                 'pattempt_single', 'pattempt_double', 'initial_shift', &
-                                                                 'shift_damping', 'initiator', 'initiator_threshold', &
-                                                                 'use_mpi_barriers', 'vary_shift_from', &
-                                                                 'excit_gen', 'reference_target', 'vary_shift', &
-                                                                 'quasi_newton','quasi_newton_threshold', 'quasi_newton_value']
+                                                                 'pattempt_single', 'pattempt_double', 'pattempt_update', &
+                                                                 'pattempt_zero_accum_data', &
+                                                                 'pattempt_parallel', 'initial_shift', 'shift_damping', &
+                                                                 'initiator', 'initiator_threshold', 'use_mpi_barriers', &
+                                                                 'vary_shift_from', 'excit_gen', 'power_pitzer_min_weight', &
+                                                                 'reference_target', 'vary_shift', 'quasi_newton', &
+                                                                 'quasi_newton_threshold', 'quasi_newton_value']
 
         if (present(short)) then
             skip = short
@@ -977,6 +988,9 @@ contains
         call aot_get_val(qmc_in%spawn_cutoff, err, lua_state, qmc_table, 'spawn_cutoff')
         call aot_get_val(qmc_in%pattempt_single, err, lua_state, qmc_table, 'pattempt_single')
         call aot_get_val(qmc_in%pattempt_double, err, lua_state, qmc_table, 'pattempt_double')
+        call aot_get_val(qmc_in%pattempt_update, err, lua_state, qmc_table, 'pattempt_update')
+        call aot_get_val(qmc_in%pattempt_zero_accum_data, err, lua_state, qmc_table, 'pattempt_zero_accum_data')
+        call aot_get_val(qmc_in%pattempt_parallel, err, lua_state, qmc_table, 'pattempt_parallel')
         call aot_get_val(qmc_in%tau_search, err, lua_state, qmc_table, 'tau_search')
         call aot_get_val(qmc_in%initial_shift, err, lua_state, qmc_table, 'initial_shift')
         call aot_get_val(qmc_in%shift_damping, err, lua_state, qmc_table, 'shift_damping')
@@ -984,6 +998,7 @@ contains
         call aot_get_val(qmc_in%initiator_approx, err, lua_state, qmc_table, 'initiator')
         call aot_get_val(qmc_in%initiator_pop, err, lua_state, qmc_table, 'initiator_threshold')
         call aot_get_val(qmc_in%use_mpi_barriers, err, lua_state, qmc_table, 'use_mpi_barriers')
+        call aot_get_val(qmc_in%power_pitzer_min_weight, err, lua_state, qmc_table, 'power_pitzer_min_weight')
         call aot_get_val(qmc_in%quasi_newton, err, lua_state, qmc_table, 'quasi_newton')
         call aot_get_val(qmc_in%quasi_newton_threshold, err, lua_state, qmc_table, 'quasi_newton_threshold')
         call aot_get_val(qmc_in%quasi_newton_value, err, lua_state, qmc_table, 'quasi_newton_value')
@@ -1016,8 +1031,24 @@ contains
             select case(str)
             case('renorm')
                 qmc_in%excit_gen = excit_gen_renorm
+            case('renorm_spin')
+                qmc_in%excit_gen = excit_gen_renorm_spin
             case('no_renorm')
                 qmc_in%excit_gen = excit_gen_no_renorm
+            case('no_renorm_spin')
+                qmc_in%excit_gen = excit_gen_no_renorm_spin
+            case('power_pitzer_orderM')
+                qmc_in%excit_gen = excit_gen_power_pitzer_occ
+            case('power_pitzer')
+                qmc_in%excit_gen = excit_gen_power_pitzer
+            case('power_pitzer_orderN')
+                qmc_in%excit_gen = excit_gen_power_pitzer_orderN
+            case('heat_bath')
+                qmc_in%excit_gen = excit_gen_heat_bath
+            case('heat_bath_uniform')
+                qmc_in%excit_gen = excit_gen_heat_bath_uniform
+            case('heat_bath_single')
+                qmc_in%excit_gen = excit_gen_heat_bath_single
             case default
                 call stop_all('read_qmc_in', 'Invalid excit_gen setting: '//trim(str))
             end select
@@ -2020,8 +2051,8 @@ contains
         type(logging_in_t), intent(out) :: logging_in
         integer :: logging_table, err
 
-        character(15), parameter :: keys(7) = [character(15) :: 'calc', 'spawn', 'death', &
-                                                'stoch_selection', 'select', 'start', 'finish']
+        character(15), parameter :: keys(8) = [character(15) :: 'calc', 'spawn', 'death', &
+                                                'stoch_selection', 'select', 'start', 'finish', 'write']
 
         if (aot_exists(lua_state, opts, 'logging')) then
 
@@ -2042,6 +2073,8 @@ contains
                 call aot_get_val(logging_in%start_iter, err, lua_state, logging_table, 'start')
 
                 call aot_get_val(logging_in%end_iter, err, lua_state, logging_table, 'finish')
+
+                call aot_get_val(logging_in%write_to, err, lua_state, logging_table, 'write')
 
                 call warn_unused_args(lua_state, keys, logging_table)
                 call aot_table_close(lua_state, logging_table)

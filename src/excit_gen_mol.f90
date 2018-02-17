@@ -54,42 +54,21 @@ contains
         type(excit_t), intent(out) :: connection
         logical, intent(out) :: allowed_excitation
 
-        integer :: ij_sym, ij_spin
+        integer :: ij_sym, ij_spin, i_ind, j_ind
+        real(p) :: pgen_ij
 
         ! 1. Select single or double.
 
         if (get_rand_close_open(rng) < excit_gen_data%pattempt_single) then
-
-            ! 2a. Select orbital to excite from and orbital to excite into.
-            call choose_ia_mol(rng, sys, sys%read_in%pg_sym%gamma_sym, cdet%f, cdet%occ_list, cdet%symunocc, &
-                               connection%from_orb(1), connection%to_orb(1), allowed_excitation)
-            connection%nexcit = 1
-
-            if (allowed_excitation) then
-                ! 3a. Probability of generating this excitation.
-                pgen = excit_gen_data%pattempt_single*calc_pgen_single_mol(sys, sys%read_in%pg_sym%gamma_sym, cdet%occ_list, &
-                                                                   cdet%symunocc, connection%to_orb(1))
-
-                ! 4a. Parity of permutation required to line up determinants.
-                call find_excitation_permutation1(sys%basis%excit_mask, cdet%f, connection)
-
-                ! 5a. Find the connecting matrix element.
-                hmatel = slater_condon1_excit_ptr(sys, cdet%occ_list, connection%from_orb(1), &
-                                          connection%to_orb(1), connection%perm)
-            else
-                ! We have a highly restrained system and this det has no single
-                ! excitations at all.  To avoid reweighting pattempt_single and
-                ! pattempt_double (an O(N^3) operation), we simply return a null
-                ! excitation
-                hmatel%c = cmplx(0.0_p, 0.0_p, p)
-                hmatel%r = 0.0_p
-                pgen = 1.0_p
-            end if
+            
+            call gen_single_excit_mol(rng, sys, excit_gen_data%pattempt_single, cdet, pgen, connection, hmatel, &
+                                    allowed_excitation)
 
         else
 
             ! 2b. Select orbitals to excite from and orbitals to excite into.
-            call choose_ij_mol(rng, sys, cdet%occ_list, connection%from_orb(1), connection%from_orb(2), ij_sym, ij_spin)
+            call choose_ij_mol(rng, sys, cdet%occ_list, i_ind, j_ind, connection%from_orb(1), connection%from_orb(2), ij_sym, &
+                            ij_spin, pgen_ij)
             call choose_ab_mol(rng, sys, cdet%f, ij_sym, ij_spin, cdet%symunocc, connection%to_orb(1), &
                                connection%to_orb(2), allowed_excitation)
             connection%nexcit = 2
@@ -97,7 +76,7 @@ contains
             if (allowed_excitation) then
 
                 ! 3b. Probability of generating this excitation.
-                pgen = excit_gen_data%pattempt_double*calc_pgen_double_mol(sys, ij_sym, connection%to_orb(1), &
+                pgen = excit_gen_data%pattempt_double*pgen_ij*calc_pgen_double_mol(sys, ij_sym, connection%to_orb(1), &
                                                                                    connection%to_orb(2), ij_spin, cdet%symunocc)
 
                 ! 4b. Parity of permutation required to line up determinants.
@@ -121,6 +100,97 @@ contains
 
     end subroutine gen_excit_mol
 
+    subroutine gen_excit_mol_spin(rng, sys, excit_gen_data, cdet, pgen, connection, hmatel, allowed_excitation)
+
+        ! Create a random excitation from cdet and calculate both the probability
+        ! of selecting that excitation and the Hamiltonian matrix element.
+        ! When selecting i and j, first decide whether their spins are parallel or not.
+
+        ! In:
+        !    sys: system object being studied.
+        !    excit_gen_data: Data for the excitation generator.
+        !    cdet: info on the current determinant (cdet) that we will gen
+        !        from.
+        !    parent_sign: sign of the population on the parent determinant (i.e.
+        !        either a positive or negative integer).
+        ! In/Out:
+        !    rng: random number generator.
+        ! Out:
+        !    pgen: probability of generating the excited determinant from cdet.
+        !    connection: excitation connection between the current determinant
+        !        and the child determinant, on which progeny are gened.
+        !    hmatel: < D | H | D' >, the Hamiltonian matrix element between a
+        !        determinant and a connected determinant in molecular systems.
+        !    allowed_excitation: false if a valid symmetry allowed excitation was not generated
+
+        use determinants, only: det_info_t
+        use excitations, only: excit_t
+        use excitations, only: find_excitation_permutation2
+        use excit_gens, only: excit_gen_data_t
+        use system, only: sys_t
+        use hamiltonian_data
+        use proc_pointers, only: slater_condon2_excit_ptr
+
+        use dSFMT_interface, only: dSFMT_t, get_rand_close_open
+
+        type(sys_t), intent(in) :: sys
+        type(excit_gen_data_t), intent(in) :: excit_gen_data
+        type(det_info_t), intent(in) :: cdet
+        type(dSFMT_t), intent(inout) :: rng
+        real(p), intent(out) :: pgen
+        type(hmatel_t), intent(out) :: hmatel
+        type(excit_t), intent(out) :: connection
+        logical, intent(out) :: allowed_excitation
+
+        integer :: ij_sym, ij_spin
+        real(p) :: pgen_ij
+
+        ! 1. Select single or double.
+
+        if (get_rand_close_open(rng) < excit_gen_data%pattempt_single) then
+            
+            call gen_single_excit_mol(rng, sys, excit_gen_data%pattempt_single, cdet, pgen, connection, hmatel, &
+                                    allowed_excitation)
+
+        else
+
+            ! 2b. Select orbitals to excite from and orbitals to excite into.
+            call choose_ij_spin_mol(rng, sys, cdet, excit_gen_data%pattempt_parallel, connection%from_orb(1), &
+                            connection%from_orb(2), ij_sym, ij_spin, pgen_ij, allowed_excitation)
+            
+            if (allowed_excitation) then
+                call choose_ab_mol(rng, sys, cdet%f, ij_sym, ij_spin, cdet%symunocc, connection%to_orb(1), &
+                               connection%to_orb(2), allowed_excitation)
+                connection%nexcit = 2
+            end if
+
+            if (allowed_excitation) then
+
+                ! 3b. Probability of generating this excitation.
+                pgen = excit_gen_data%pattempt_double*pgen_ij*calc_pgen_double_mol(sys, ij_sym, connection%to_orb(1), &
+                                                                                   connection%to_orb(2), ij_spin, cdet%symunocc)
+
+                ! 4b. Parity of permutation required to line up determinants.
+                ! NOTE: connection%from_orb and connection%to_orb *must* be ordered.
+                call find_excitation_permutation2(sys%basis%excit_mask, cdet%f, connection)
+
+                ! 5b. Find the connecting matrix element.
+                hmatel = slater_condon2_excit_ptr(sys, connection%from_orb(1), connection%from_orb(2), &
+                                                  connection%to_orb(1), connection%to_orb(2), connection%perm)
+            else
+                ! Carelessly selected ij with no possible excitations or did not
+                ! find required ij.  Such events are not worth the cost of
+                ! renormalising the generation probabilities.
+                ! Return a null excitation.
+                hmatel%c = cmplx(0.0_p, 0.0_p, p)
+                hmatel%r = 0.0_p
+                pgen = 1.0_p
+            end if
+
+        end if
+
+    end subroutine gen_excit_mol_spin
+    
     subroutine gen_excit_mol_no_renorm(rng, sys, excit_gen_data, cdet, pgen, connection, hmatel, allowed_excitation)
 
         ! Create a random excitation from cdet and calculate both the probability
@@ -152,9 +222,9 @@ contains
 
         use determinants, only: det_info_t
         use excitations, only: excit_t
-        use excitations, only: find_excitation_permutation1, find_excitation_permutation2
+        use excitations, only: find_excitation_permutation2
         use excit_gens, only: excit_gen_data_t
-        use proc_pointers, only: slater_condon1_excit_ptr, slater_condon2_excit_ptr
+        use proc_pointers, only: slater_condon2_excit_ptr
         use system, only: sys_t
         use hamiltonian_data, only: hmatel_t
 
@@ -169,38 +239,21 @@ contains
         type(excit_t), intent(out) :: connection
         logical, intent(out) :: allowed_excitation
 
-        integer :: ij_sym, ij_spin
+        integer :: i_ind, j_ind, ij_sym, ij_spin
+        real(p) :: pgen_ij
 
         ! 1. Select single or double.
 
         if (get_rand_close_open(rng) < excit_gen_data%pattempt_single) then
 
-            ! 2a. Select orbital to excite from and orbital to excite into.
-            call find_ia_mol(rng, sys, sys%read_in%pg_sym%gamma_sym, cdet%f, cdet%occ_list, connection%from_orb(1), &
-                             connection%to_orb(1), allowed_excitation)
-            connection%nexcit = 1
-
-            if (allowed_excitation) then
-                ! 3a. Probability of generating this excitation.
-                pgen = excit_gen_data%pattempt_single*calc_pgen_single_mol_no_renorm(sys, connection%to_orb(1))
-
-                ! 4a. Parity of permutation required to line up determinants.
-                call find_excitation_permutation1(sys%basis%excit_mask, cdet%f, connection)
-
-                ! 5a. Find the connecting matrix element.
-                hmatel = slater_condon1_excit_ptr(sys, cdet%occ_list, connection%from_orb(1), &
-                                          connection%to_orb(1), connection%perm)
-            else
-                ! Forbidden---connection%to_orb(1) is already occupied.
-                hmatel%c = cmplx(0.0_p, 0.0_p, p)
-                hmatel%r = 0.0_p
-                pgen = 1.0_p ! Avoid any dangerous division by pgen by returning a sane (but cheap) value.
-            end if
+            call gen_single_excit_mol_no_renorm(rng, sys, excit_gen_data%pattempt_single, cdet, pgen, connection, hmatel, &
+                                            allowed_excitation)
 
         else
 
             ! 2b. Select orbitals to excite from and orbitals to excite into.
-            call choose_ij_mol(rng, sys, cdet%occ_list, connection%from_orb(1), connection%from_orb(2), ij_sym, ij_spin)
+            call choose_ij_mol(rng, sys, cdet%occ_list, i_ind, j_ind, connection%from_orb(1), connection%from_orb(2), ij_sym, &
+                            ij_spin, pgen_ij)
             call find_ab_mol(rng, cdet%f, ij_sym, ij_spin, sys,  &
                              connection%to_orb(1), connection%to_orb(2), &
                              allowed_excitation)
@@ -208,7 +261,7 @@ contains
 
             if (allowed_excitation) then
                 ! 3b. Probability of generating this excitation.
-                pgen = excit_gen_data%pattempt_double*calc_pgen_double_mol_no_renorm(sys, connection%to_orb(1), &
+                pgen = excit_gen_data%pattempt_double*pgen_ij*calc_pgen_double_mol_no_renorm(sys, connection%to_orb(1), &
                                                                              connection%to_orb(2), ij_spin)
 
                 ! 4b. Parity of permutation required to line up determinants.
@@ -228,6 +281,238 @@ contains
         end if
 
     end subroutine gen_excit_mol_no_renorm
+
+    subroutine gen_excit_mol_no_renorm_spin(rng, sys, excit_gen_data, cdet, pgen, connection, hmatel, allowed_excitation)
+
+        ! Create a random excitation from cdet and calculate both the probability
+        ! of selecting that excitation and the Hamiltonian matrix element.
+        ! First decide whether i and j should have parallel spins or not (when
+        ! attempting a double excitation).
+
+        ! This doesn't exclude the case where, having selected all orbitals
+        ! involved in the excitation, the final orbital selected is already
+        ! occupied and so cannot be excited into.  Whilst this is somewhat
+        ! wasteful (generating excitations which can't be performed), there is
+        ! a balance between the cost of generating forbidden excitations and the
+        ! O(N) cost of renormalising the generation probabilities.
+
+        ! In:
+        !    sys: system object being studied.
+        !    excit_gen_data: Data for the excitation generator.
+        !    cdet: info on the current determinant (cdet) that we will gen
+        !        from.
+        !    parent_sign: sign of the population on the parent determinant (i.e.
+        !        either a positive or negative integer).
+        ! In/Out:
+        !    rng: random number generator.
+        ! Out:
+        !    pgen: probability of generating the excited determinant from cdet.
+        !    connection: excitation connection between the current determinant
+        !        and the child determinant, on which progeny are gened.
+        !    hmatel: < D | H | D' >, the Hamiltonian matrix element between a
+        !       determinant and a connected determinant in molecular systems.
+        !    allowed_excitation: false if a valid symmetry allowed excitation was not generated
+
+        use determinants, only: det_info_t
+        use excitations, only: excit_t
+        use excitations, only: find_excitation_permutation2
+        use excit_gens, only: excit_gen_data_t
+        use proc_pointers, only: slater_condon2_excit_ptr
+        use system, only: sys_t
+        use hamiltonian_data, only: hmatel_t
+
+        use dSFMT_interface, only: dSFMT_t, get_rand_close_open
+
+        type(sys_t), intent(in) :: sys
+        type(excit_gen_data_t), intent(in) :: excit_gen_data
+        type(det_info_t), intent(in) :: cdet
+        type(dSFMT_t), intent(inout) :: rng
+        real(p), intent(out) :: pgen
+        type(hmatel_t), intent(out) :: hmatel
+        type(excit_t), intent(out) :: connection
+        logical, intent(out) :: allowed_excitation
+
+        integer :: ij_sym, ij_spin
+        real(p) :: pgen_ij
+
+        ! 1. Select single or double.
+
+        if (get_rand_close_open(rng) < excit_gen_data%pattempt_single) then
+
+            call gen_single_excit_mol_no_renorm(rng, sys, excit_gen_data%pattempt_single, cdet, pgen, connection, hmatel, &
+                                            allowed_excitation)
+
+        else
+
+            ! 2b. Select orbitals to excite from and orbitals to excite into.
+            call choose_ij_spin_mol(rng, sys, cdet, excit_gen_data%pattempt_parallel, connection%from_orb(1), &
+                            connection%from_orb(2), ij_sym, ij_spin, pgen_ij, allowed_excitation)
+           
+            if (allowed_excitation) then
+                call find_ab_mol(rng, cdet%f, ij_sym, ij_spin, sys,  &
+                             connection%to_orb(1), connection%to_orb(2), allowed_excitation)
+                connection%nexcit = 2
+            end if
+
+            if (allowed_excitation) then
+                ! 3b. Probability of generating this excitation.
+                pgen = excit_gen_data%pattempt_double*pgen_ij*calc_pgen_double_mol_no_renorm(sys, connection%to_orb(1), &
+                                                                             connection%to_orb(2), ij_spin)
+
+                ! 4b. Parity of permutation required to line up determinants.
+                ! NOTE: connection%from_orb and connection%to_orb *must* be ordered.
+                call find_excitation_permutation2(sys%basis%excit_mask, cdet%f, connection)
+
+                ! 5b. Find the connecting matrix element.
+                hmatel = slater_condon2_excit_ptr(sys, connection%from_orb(1), connection%from_orb(2), &
+                                                  connection%to_orb(1), connection%to_orb(2), connection%perm)
+            else
+                ! Forbidden---connection%to_orb(2) is already occupied or combination of ij was forbidden.
+                hmatel%c = cmplx(0.0_p, 0.0_p, p)
+                hmatel%r = 0.0_p
+                pgen = 1.0_p ! Avoid any dangerous division by pgen by returning a sane (but cheap) value.
+            end if
+
+        end if
+
+    end subroutine gen_excit_mol_no_renorm_spin
+
+!--- Part of renorm and no_renorm excitation generators that finds a single excitation ---
+
+    subroutine gen_single_excit_mol(rng, sys, pattempt_single, cdet, pgen, connection, hmatel, allowed_excitation)
+
+        ! Create a random single excitation from cdet and calculate both the probability
+        ! of selecting that excitation and the Hamiltonian matrix element.
+
+        ! In:
+        !    sys: system object being studied.
+        !    pattempt_single: the probability to attempt a single and not
+        !         a double excitation with.
+        !    cdet: info on the current determinant (cdet) that we will gen
+        !        from.
+        ! In/Out:
+        !    rng: random number generator.
+        ! Out:
+        !    pgen: probability of generating the excited determinant from cdet.
+        !    connection: excitation connection between the current determinant
+        !        and the child determinant, on which progeny are gened.
+        !    hmatel: < D | H | D' >, the Hamiltonian matrix element between a
+        !       determinant and a connected determinant in molecular systems.
+        !    allowed_excitation: false if a valid symmetry allowed excitation was not generated
+
+        use determinants, only: det_info_t
+        use excitations, only: excit_t
+        use excitations, only: find_excitation_permutation1
+        use proc_pointers, only: slater_condon1_excit_ptr
+        use system, only: sys_t
+        use hamiltonian_data, only: hmatel_t
+        use dSFMT_interface, only: dSFMT_t
+
+        type(sys_t), intent(in) :: sys
+        real(p), intent(in) :: pattempt_single
+        type(det_info_t), intent(in) :: cdet
+        type(dSFMT_t), intent(inout) :: rng
+        real(p), intent(out) :: pgen
+        type(hmatel_t), intent(out) :: hmatel
+        type(excit_t), intent(out) :: connection
+        logical, intent(out) :: allowed_excitation
+
+        ! 2a. Select orbital to excite from and orbital to excite into.
+        call choose_ia_mol(rng, sys, sys%read_in%pg_sym%gamma_sym, cdet%f, cdet%occ_list, cdet%symunocc, &
+                            connection%from_orb(1), connection%to_orb(1), allowed_excitation)
+        connection%nexcit = 1
+
+        if (allowed_excitation) then
+            ! 3a. Probability of generating this excitation.
+            pgen = pattempt_single*calc_pgen_single_mol(sys, sys%read_in%pg_sym%gamma_sym, cdet%occ_list, &
+                                                                   cdet%symunocc, connection%to_orb(1))
+
+            ! 4a. Parity of permutation required to line up determinants.
+            call find_excitation_permutation1(sys%basis%excit_mask, cdet%f, connection)
+
+            ! 5a. Find the connecting matrix element.
+            hmatel = slater_condon1_excit_ptr(sys, cdet%occ_list, connection%from_orb(1), &
+                                          connection%to_orb(1), connection%perm)
+        else
+            ! We have a highly restrained system and this det has no single
+            ! excitations at all.  To avoid reweighting pattempt_single and
+            ! pattempt_double (an O(N^3) operation), we simply return a null
+            ! excitation
+            hmatel%c = cmplx(0.0_p, 0.0_p, p)
+            hmatel%r = 0.0_p
+            pgen = 1.0_p
+        end if
+
+    end subroutine gen_single_excit_mol
+    
+    subroutine gen_single_excit_mol_no_renorm(rng, sys, pattempt_single, cdet, pgen, connection, hmatel, allowed_excitation)
+
+        ! Create a random single excitation from cdet and calculate both the probability
+        ! of selecting that excitation and the Hamiltonian matrix element.
+
+        ! This doesn't exclude the case where, having selected all orbitals
+        ! involved in the excitation, the final orbital selected is already
+        ! occupied and so cannot be excited into.  Whilst this is somewhat
+        ! wasteful (generating excitations which can't be performed), there is
+        ! a balance between the cost of generating forbidden excitations and the
+        ! O(N) cost of renormalising the generation probabilities.
+
+        ! In:
+        !    sys: system object being studied.
+        !    excit_gen_data: Data for the excitation generator.
+        !    cdet: info on the current determinant (cdet) that we will gen
+        !        from.
+        ! In/Out:
+        !    rng: random number generator.
+        ! Out:
+        !    pgen: probability of generating the excited determinant from cdet.
+        !    connection: excitation connection between the current determinant
+        !        and the child determinant, on which progeny are gened.
+        !    hmatel: < D | H | D' >, the Hamiltonian matrix element between a
+        !       determinant and a connected determinant in molecular systems.
+        !    allowed_excitation: false if a valid symmetry allowed excitation was not generated
+
+        use determinants, only: det_info_t
+        use excitations, only: excit_t
+        use excitations, only: find_excitation_permutation1
+        use proc_pointers, only: slater_condon1_excit_ptr
+        use system, only: sys_t
+        use hamiltonian_data, only: hmatel_t
+        use dSFMT_interface, only: dSFMT_t
+
+        type(sys_t), intent(in) :: sys
+        real(p), intent(in) :: pattempt_single
+        type(det_info_t), intent(in) :: cdet
+        type(dSFMT_t), intent(inout) :: rng
+        real(p), intent(out) :: pgen
+        type(hmatel_t), intent(out) :: hmatel
+        type(excit_t), intent(out) :: connection
+        logical, intent(out) :: allowed_excitation
+
+
+        ! 2a. Select orbital to excite from and orbital to excite into.
+        call find_ia_mol(rng, sys, sys%read_in%pg_sym%gamma_sym, cdet%f, cdet%occ_list, connection%from_orb(1), &
+                             connection%to_orb(1), allowed_excitation)
+        connection%nexcit = 1
+
+        if (allowed_excitation) then
+            ! 3a. Probability of generating this excitation.
+            pgen = pattempt_single*calc_pgen_single_mol_no_renorm(sys, connection%to_orb(1))
+
+            ! 4a. Parity of permutation required to line up determinants.
+            call find_excitation_permutation1(sys%basis%excit_mask, cdet%f, connection)
+
+            ! 5a. Find the connecting matrix element.
+            hmatel = slater_condon1_excit_ptr(sys, cdet%occ_list, connection%from_orb(1), &
+                                          connection%to_orb(1), connection%perm)
+        else
+            ! Forbidden---connection%to_orb(1) is already occupied.
+            hmatel%c = cmplx(0.0_p, 0.0_p, p)
+            hmatel%r = 0.0_p
+            pgen = 1.0_p ! Avoid any dangerous division by pgen by returning a sane (but cheap) value.
+        end if
+        
+    end subroutine gen_single_excit_mol_no_renorm
 
 !--- Select random orbitals involved in a valid single excitation ---
 
@@ -330,7 +615,7 @@ contains
 
 !--- Select random orbitals involved in a valid double excitation ---
 
-    subroutine choose_ij_mol(rng, sys, occ_list, i, j, ij_sym, ij_spin)
+    subroutine choose_ij_mol(rng, sys, occ_list, i_ind, j_ind, i, j, ij_sym, ij_spin, pgen_ij)
 
         ! Randomly select two occupied orbitals in a determinant from which
         ! electrons are excited as part of a double excitation.
@@ -342,6 +627,7 @@ contains
         ! In/Out:
         !    rng: random number generator.
         ! Out:
+        !    i_ind, j_ind: indices in occ_list of i and j.
         !    i, j: orbitals in determinant from which two electrons are excited.
         !        Note that i,j are ordered such that i<j.
         !    ij_sym: symmetry conjugate of the irreducible representation spanned by the codensity
@@ -350,22 +636,25 @@ contains
         !        ij_spin = -2   i,j both down
         !                =  0   i up and j down or vice versa
         !                =  2   i,j both up
+        !    pgen_ij : probability of having selected i and j given we decided to do a double
+        !        excitation from cdet.
 
         use system, only: sys_t
-        use dSFMT_interface, only: dSFMT_t, get_rand_close_open
         use read_in_symmetry, only: cross_product_basis_read_in
+        use dSFMT_interface, only: dSFMT_t, get_rand_close_open
 
         type(sys_t), intent(in) :: sys
         integer, intent(in) :: occ_list(:)
         type(dSFMT_t), intent(inout) :: rng
-        integer, intent(out) :: i, j, ij_sym, ij_spin
+        integer, intent(out) :: i_ind, j_ind, i, j, ij_sym, ij_spin
+        real(p), intent(out) :: pgen_ij
 
         integer :: ind
 
         ! See comments in choose_ij_k for how the occupied orbitals are indexed
         ! to allow one random number to decide the ij pair.
 
-        ind = int(get_rand_close_open(rng)*sys%nel*(sys%nel-1)/2) + 1
+        ind = int(get_rand_close_open(rng)*sys%nel*(sys%nel - 1)/2) + 1
 
         ! i,j initially refer to the indices in the lists of occupied spin-orbitals
         ! rather than the spin-orbitals.
@@ -374,18 +663,139 @@ contains
         ! i,j (referring to spin-orbitals) where j>i.  This ordering is
         ! convenient subsequently, e.g. is assumed in the
         ! find_excitation_permutation2 routine.
-        j = int(1.50_p + sqrt(2*ind-1.750_p))
-        i = ind - ((j-1)*(j-2))/2
+        j_ind = int(1.50_p + sqrt(2*ind - 1.750_p))
+        i_ind = ind - ((j_ind - 1)*(j_ind - 2))/2
 
-        i = occ_list(i)
-        j = occ_list(j)
+        i = occ_list(i_ind)
+        j = occ_list(j_ind)
 
         ij_sym = sys%read_in%sym_conj_ptr(sys%read_in, &
                     cross_product_basis_read_in(sys, i,j))
+
         ! ij_spin = -2 (down, down), 0 (up, down or down, up), +2 (up, up)
         ij_spin = sys%basis%basis_fns(i)%Ms + sys%basis%basis_fns(j)%Ms
 
+        pgen_ij = 2.0_p/(sys%nel*(sys%nel-1))
+
     end subroutine choose_ij_mol
+
+    subroutine choose_ij_spin_mol(rng, sys, cdet, pattempt_parallel, i, j, ij_sym, ij_spin, pgen_ij, allowed_excitation)
+
+        ! Randomly select two occupied orbitals in a determinant from which
+        ! electrons are excited as part of a double excitation.
+        ! As opposed to choose_ij_mol, we first decide whether we want i and j
+        ! to have parallel spins or not. This is based on an idea of Alavi et al.
+        !
+        ! In:
+        !    sys: system object being studied.
+        !    cdet: the current determinant considered
+        !    pattempt_parallel: probability that i and j have parallel spins
+        ! In/Out:
+        !    rng: random number generator.
+        ! Out:
+        !    i, j: orbitals in determinant from which two electrons are excited.
+        !        Note that i,j are ordered such that i<j.
+        !    ij_sym: symmetry conjugate of the irreducible representation spanned by the codensity
+        !        \phi_i*\phi_j. (We assume that ij is going to be in the bra of the excitation.)
+        !    ij_spin: spin label of the combined ij codensity.
+        !        ij_spin = -2   i,j both down
+        !                =  0   i up and j down or vice versa
+        !                =  2   i,j both up
+        !    pgen_ij: probability of having selected ij
+        !    allowed_excitation: whether the selection of ij lead to a valid combination of ij or not.
+
+        use system, only: sys_t
+        use determinants, only: det_info_t
+        use read_in_symmetry, only: cross_product_basis_read_in
+        use dSFMT_interface, only: dSFMT_t, get_rand_close_open
+
+        type(sys_t), intent(in) :: sys
+        type(det_info_t), intent(in) :: cdet
+        real(p), intent(in) :: pattempt_parallel
+        type(dSFMT_t), intent(inout) :: rng
+        integer, intent(out) :: i, j, ij_sym, ij_spin
+        real(p), intent(out) :: pgen_ij
+        logical, intent(out) :: allowed_excitation
+
+        integer :: ind, i_ind, j_ind, i_tmp
+
+        allowed_excitation = .true.
+        if (get_rand_close_open(rng) < pattempt_parallel) then
+            ! i and j have parallel spin. With probability n_alpha/(n_alpha + n_beta)
+            ! select from alpha spins and vice versa. n_alpha is the number of alpha spin
+            ! electrons.
+            if (get_rand_close_open(rng) < (real(sys%nalpha,p)/real((sys%nalpha + sys%nbeta),p))) then
+                ! i and j are both alpha
+                if (sys%nalpha < 2) then
+                    ! not enough alphas, forbidden excitation
+                    allowed_excitation = .false.
+                else 
+                    ! See comments in choose_ij_k for how the occupied orbitals are indexed
+                    ! to allow one random number to decide the ij pair.
+                    ind = int(get_rand_close_open(rng) * real((sys%nalpha * (sys%nalpha - 1)),p)/2.0_p) + 1
+                    ! [todo] - is casting necessary in the lines below?
+                    j_ind = int(1.50_p + sqrt(2*ind - 1.750_p))
+                    i_ind = ind - ((j_ind - 1) * (j_ind - 2))/2
+                    i = cdet%occ_list_alpha(i_ind)
+                    j = cdet%occ_list_alpha(j_ind)
+                    pgen_ij = (pattempt_parallel * (real(sys%nalpha,p)/real((sys%nalpha + sys%nbeta),p)) * &
+                            2.0_p * (1.0_p/sys%nalpha) * (1.0_p/(sys%nalpha - 1)))
+                end if
+            else
+                ! i and j are both beta
+                if (sys%nbeta < 2) then
+                    ! not enough betas, forbidden excitation
+                    allowed_excitation = .false.
+                else
+                    ! See comments in choose_ij_k for how the occupied orbitals are indexed
+                    ! to allow one random number to decide the ij pair.
+                    ind = int(get_rand_close_open(rng) * real((sys%nbeta * (sys%nbeta - 1)),p)/2.0_p) + 1
+                    j_ind = int(1.50_p + sqrt(2*ind - 1.750_p))
+                    i_ind = ind - ((j_ind - 1) * (j_ind - 2))/2
+                    i = cdet%occ_list_beta(i_ind)
+                    j = cdet%occ_list_beta(j_ind)
+                    pgen_ij = (pattempt_parallel * (real(sys%nbeta,p)/real((sys%nalpha + sys%nbeta),p)) * &
+                            2.0_p * (1.0_p/sys%nbeta) * (1.0_p/(sys%nbeta - 1)))
+                end if
+            end if
+        else
+            ! i and j have opposite spin. Select i out of the alpha orbitals and j
+            ! out of the beta orbitals (order later).
+            if ((sys%nbeta < 1) .or. (sys%nalpha < 1)) then
+                ! do not have one of each, forbidden excitation
+                ! [todo] - set pattempt_parallel so that this is avoided.
+                allowed_excitation = .false.
+            else
+                i_ind = int(get_rand_close_open(rng) * sys%nalpha) + 1
+                j_ind = int(get_rand_close_open(rng) * sys%nbeta) + 1
+                i = cdet%occ_list_alpha(i_ind)
+                j = cdet%occ_list_beta(j_ind)
+                ! Order i and j.
+                if (j < i) then
+                    i_tmp = i
+                    i = j
+                    j = i_tmp
+                end if
+                pgen_ij = (1.0_p - pattempt_parallel) * (1.0_p/(sys%nalpha * sys%nbeta))
+            end if
+        end if
+
+        if (allowed_excitation) then
+            ij_sym = sys%read_in%sym_conj_ptr(sys%read_in, &
+                        cross_product_basis_read_in(sys, i,j))
+
+            ! ij_spin = -2 (down, down), 0 (up, down or down, up), +2 (up, up)
+            ij_spin = sys%basis%basis_fns(i)%Ms + sys%basis%basis_fns(j)%Ms
+        else
+            pgen_ij = 1.0_p
+            ! [todo] - is this a good idea?
+            i = -1
+            j = -1
+            ij_sym = -1
+            ij_spin = -1
+        end if
+
+    end subroutine choose_ij_spin_mol
 
     subroutine choose_ab_mol(rng, sys, f, sym, spin, symunocc, a, b, allowed_excitation)
 
@@ -809,6 +1219,7 @@ contains
         !    an unoccupied orbital and b is selected from the set of unoccupied
         !    orbitals which conserve spin and spatial symmetry *and* given that
         !    a double excitation has been selected.
+        !    This does not include the probability of having chosen (i,j).
 
         ! WARNING: We assume that the excitation is actually valid.
         ! This routine does *not* calculate the correct probability that
@@ -909,7 +1320,7 @@ contains
             end if
         end select
 
-        pgen = 2.0_p/(sys%nel*(sys%nel-1)*n_aij)*(p_bija+p_aijb)
+        pgen = (1.0_p/n_aij)*(p_bija+p_aijb)
 
     end function calc_pgen_double_mol
 
@@ -969,6 +1380,7 @@ contains
         !    which conserve spin and spatial symmetry *and* given that a double
         !    excitation has been selected.  (Note: in this scheme,
         !    b is not necessarily unoccupied.)
+        !    This does not include the probability of having selected (i,j).
 
         ! WARNING: We assume that the excitation is actually valid.
         ! This routine does *not* calculate the correct probability that
@@ -1026,7 +1438,7 @@ contains
             p_bija = 1.0_p/sys%read_in%pg_sym%nbasis_sym_spin(imsb, isymb)
         end if
 
-        pgen = 2.0_p/(sys%nel*(sys%nel-1)*n_aij)*(p_bija+p_aijb)
+        pgen = (1.0_p/n_aij)*(p_bija+p_aijb)
 
     end function calc_pgen_double_mol_no_renorm
 

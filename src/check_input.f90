@@ -123,7 +123,7 @@ contains
 
     end subroutine check_fciqmc_opts
 
-    subroutine check_qmc_opts(qmc_in, sys, need_length, restarting, qmc_state_restart)
+    subroutine check_qmc_opts(qmc_in, sys, need_length, restarting, qmc_state_restart, fciqmc_in)
 
         ! Check options common to QMC methods.
 
@@ -132,16 +132,18 @@ contains
         !   need_length: whether the size of main/spawned particle arrays is needed.
         !       false if using simple fciqmc algorithm or restarting from memory.
         !   restarting: whether the calculation is restarting from a previous one.
+        !   fciqmc_in: FCIQMC input options.
         !   qmc_state_restart (optional): qmc_state object being restarted from.
 
-        use qmc_data, only: qmc_in_t, qmc_state_t
-        use errors, only: stop_all
-        use system, only: sys_t
+        use qmc_data, only: qmc_in_t, qmc_state_t, excit_gen_heat_bath, fciqmc_in_t
+        use errors, only: stop_all, warning
+        use system, only: sys_t, read_in
 
         type(qmc_in_t), intent(in) :: qmc_in
         type(sys_t), intent(in) :: sys
         logical, intent(in) :: need_length, restarting
         type(qmc_state_t), intent(in), optional :: qmc_state_restart
+        type(fciqmc_in_t), intent(in), optional :: fciqmc_in
 
         character(*), parameter :: this = 'check_qmc_opts'
 
@@ -163,11 +165,35 @@ contains
 
         if (qmc_in%ncycles <= 0) call stop_all(this, 'mc_cycles must be positive.')
         if (qmc_in%nreport <= 0) call stop_all(this, 'nreports must be positive.')
+        
+        if ((qmc_in%power_pitzer_min_weight < 0) .or. (qmc_in%power_pitzer_min_weight > 1)) then
+            call stop_all(this,'Power Pitzer Min. Weight Ratio must be between 0 and 1 inclusive.')
+        end if
 
         if (present(qmc_state_restart)) then
             if (sys%basis%tot_string_len /= size(qmc_state_restart%psip_list%states,dim=1)) call stop_all(this, &
                 'Attempting to restart calculation within lua using different information string lengths.&
                 & This is only possible by producing and reading back in a restart file.')
+        end if
+
+        if (qmc_in%pattempt_update) then
+            if (sys%system /= read_in) then
+                call stop_all(this, 'pattempt_update only used in read_in systems.')
+            else if (qmc_in%excit_gen == excit_gen_heat_bath) then
+                call stop_all(this, 'pattempt_update is not used with heat bath excitation generator.')
+            end if
+            ! Note that this applies to anything using more than one shift in qmc_state%shift.
+            if (present(fciqmc_in)) then
+                if (fciqmc_in%replica_tricks) then
+                    call warning(this, 'Using pattempt_update together with replica_tricks is experimental. &
+                        &pattempt_single will stop being varied when the first shift starts varying. It does not &
+                        &consider the second shift. So be careful.')
+                end if
+            end if
+        else
+            if (qmc_in%pattempt_zero_accum_data) then
+               call stop_all(this, 'pattempt_zero_accum_data not to be used without pattempt_update.')
+            end if 
         end if
 
     end subroutine check_qmc_opts
@@ -230,15 +256,17 @@ contains
 
     end subroutine check_load_bal_opts
 
-    subroutine check_dmqmc_opts(sys, dmqmc_in)
+    subroutine check_dmqmc_opts(sys, dmqmc_in, qmc_in)
 
         ! Check validity of dmqmc input options.
 
         ! In:
         !   sys: system being studied.
         !   dmqmc_in: DMQMC options.
+        !   qmc_in: QMC input options.
 
         use system, only: sys_t, heisenberg, ueg, read_in
+        use qmc_data, only: excit_gen_no_renorm, excit_gen_renorm, qmc_in_t
         use dmqmc_data, only: dmqmc_in_t, hartree_fock_dm
         use calc, only: dmqmc_rdm_r2, doing_dmqmc_calc, dmqmc_full_r2
         use calc, only: dmqmc_staggered_magnetisation, dmqmc_energy_squared, dmqmc_correlation
@@ -249,6 +277,7 @@ contains
 
         type(sys_t), intent(in) :: sys
         type(dmqmc_in_t), intent(in) :: dmqmc_in
+        type(qmc_in_t), intent(in) :: qmc_in
 
         character(*), parameter :: this = 'check_dmqmc_opts'
 
@@ -325,6 +354,15 @@ contains
         if (dmqmc_in%metropolis_attempts < 0) then
             call stop_all(this, 'metropolis_attempts must be greater than zero.')
         end if
+        
+        if (.not.((qmc_in%excit_gen == excit_gen_no_renorm) .or. &
+                                         (qmc_in%excit_gen == excit_gen_renorm))) then
+            call stop_all(this, 'Excitation Generators other than no_renorm and renorm not yet tested for DMQMC.')
+        end if
+        
+        if (qmc_in%pattempt_update) call stop_all(this, 'pattempt_update not yet tested for DMQMC.')
+        
+        if (qmc_in%quasi_newton) call stop_all(this, 'Quasi-Newton not implemented for DMQMC.')
 
         if (sys%read_in%comp) call stop_all(this, 'Complex DMQMC not yet implemented')
 
@@ -333,21 +371,24 @@ contains
 
     end subroutine check_dmqmc_opts
 
-    subroutine check_ccmc_opts(sys, ccmc_in)
+    subroutine check_ccmc_opts(sys, ccmc_in, qmc_in)
 
         ! Check the CCMC input options
 
         ! In:
         !   sys: system being studied.
         !   ccmc_in: CCMC options
+        !   qmc_in: QMC options
 
 
-        use qmc_data, only: ccmc_in_t
+        use qmc_data, only: ccmc_in_t, qmc_in_t
+        use qmc_data, only: excit_gen_no_renorm, excit_gen_renorm
         use system, only: sys_t, read_in
         use errors, only: stop_all
 
         type(sys_t), intent(in) :: sys
         type(ccmc_in_t), intent(in) :: ccmc_in
+        type(qmc_in_t), intent(in) :: qmc_in
 
         character(*), parameter :: this = 'check_ccmc_opts'
 
@@ -378,6 +419,11 @@ contains
 
         if (sys%basis%info_string_len /= 0 .and. .not. ccmc_in%even_selection) call stop_all(this, &
             'Additional space allocated in bit strings for no reason. Something has gone wrong.')
+
+        if ((ccmc_in%linked) .and. .not.((qmc_in%excit_gen == excit_gen_no_renorm) .or. &
+                                         (qmc_in%excit_gen == excit_gen_renorm))) then
+            call stop_all(this, 'Excitation Generators other than no_renorm and renorm not yet implemented for linked CCMC.')
+        end if
 
     end subroutine check_ccmc_opts
 

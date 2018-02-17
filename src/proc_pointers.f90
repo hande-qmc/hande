@@ -193,6 +193,33 @@ abstract interface
         type(hmatel_t) :: hmatel
     end function i_slater_condon2_excit
 
+    pure subroutine i_create_weighted_excitation_list(sys, i, b, a_list, a_list_len, weights, weight_tot)
+        use system, only: sys_t
+        use molecular_integrals, only: get_two_body_int_mol
+        import :: p
+        type(sys_t), intent(in) :: sys
+        integer, intent(in) :: i, b, a_list_len, a_list(:)
+        real(p), intent(out) :: weight_tot, weights(:)
+    end subroutine i_create_weighted_excitation_list
+
+    pure function i_abs_hmatel(hmatel) result(abs_hmatel)
+        use hamiltonian_data, only: hmatel_t
+        import :: p
+        type(hmatel_t), intent(in) :: hmatel
+        real(p) :: abs_hmatel
+    end function i_abs_hmatel
+
+    pure function i_single_excitation_weight(sys, ref, i, a) result(weight)
+        use molecular_integrals, only: get_two_body_int_mol_real, get_two_body_int_mol_complex
+        use system, only: sys_t
+        use reference_determinant, only: reference_t
+        import :: p
+        type(sys_t), intent(in) :: sys
+        integer, intent(in) :: i, a
+        type(reference_t), intent(in) :: ref
+        real(p) :: weight
+    end function i_single_excitation_weight        
+
     pure function i_get_one_e_int(sys, i, a) result(intgrl)
         use system, only: sys_t
         import :: p
@@ -241,6 +268,10 @@ procedure(i_create_spawned_particle_dm), pointer :: create_spawned_particle_dm_p
 procedure(i_slater_condon1_excit), pointer :: slater_condon1_excit_ptr
 procedure(i_slater_condon2_excit), pointer :: slater_condon2_excit_ptr
 
+procedure(i_create_weighted_excitation_list), pointer :: create_weighted_excitation_list_ptr => null()
+procedure(i_abs_hmatel), pointer :: abs_hmatel_ptr => null()
+procedure(i_single_excitation_weight), pointer :: single_excitation_weight_ptr => null()
+
 procedure(i_get_one_e_int), pointer :: get_one_e_int_ptr => null()
 procedure(i_get_two_e_int), pointer :: get_two_e_int_ptr => null()
 
@@ -266,7 +297,7 @@ abstract interface
         implicit none
         type(dSFMT_t), intent(inout) :: rng
         type(sys_t), intent(in) :: sys
-        type(qmc_state_t), intent(in) :: qmc_state
+        type(qmc_state_t), intent(inout) :: qmc_state
         integer(int_p), intent(in) :: spawn_cutoff
         integer(int_p), intent(in) :: real_factor
         type(det_info_t), intent(in) :: d

@@ -33,11 +33,32 @@ enum, bind(c)
     ! correct symmetry and the double excitation i,j->a,b such that given the choice of
     ! (i,j) a is only chosen if there exists an unoccupied b of the correct symmetry.
     enumerator :: excit_gen_renorm
+    ! Similar to excit_gen_renorm but when selecting ij in a double excitation, first
+    ! decide whether their spins are parallel or not. Based on an idea of Alavi et al.
+    enumerator :: excit_gen_renorm_spin
     ! Don't require i (single) and i,j,a (double) to have allowed excitations.  This gives
     ! slightly less efficient excitation generation (negligible in large systems) but
     ! avoids an expensive renormalisation step to calculate the excitation generation
     ! probabilities.
     enumerator :: excit_gen_no_renorm
+    ! Similar to excit_gen_no_renorm but when selecting ij in a double excitation, first
+    ! decide whether their spins are parallel or not. Based on an idea of Alavi et al.
+    enumerator :: excit_gen_no_renorm_spin
+    ! Weight the excitations according to a Power-Pitzer limit on the bounds of the integrals
+    ! The version O(M/64) which chooses occ orbitals first, and excites with probabilities akin 
+    ! to that of the reference.
+    enumerator :: excit_gen_power_pitzer
+    ! The version O(M) which chooses occ orbitals first.
+    enumerator :: excit_gen_power_pitzer_occ
+    ! The version O(N) which precomputes more than excit_gen_power_pitzer.
+    enumerator :: excit_gen_power_pitzer_orderN
+    ! Heat bath excitation generators, based on Holmes, A. A.; Changlani, H. J.; Umrigar, 
+    ! C. J. J. Chem. Theory Comput. 2016, 12, 1561–1571
+    enumerator :: excit_gen_heat_bath
+    ! Finds single excitations uniformly, like renorm
+    enumerator :: excit_gen_heat_bath_uniform
+    ! Finds single excitations with exact weights.
+    enumerator :: excit_gen_heat_bath_single
 end enum
 
 ! Types of semi-stochastic space.
@@ -113,6 +134,19 @@ type qmc_in_t
     ! probability of attempting single or double excitations...
     ! set to be nonsense value so can easily detect if it's given as an input option
     real(p) :: pattempt_single = -1, pattempt_double = -1
+    ! True if pattempt_single/pattempt_double should be varied until shift starts to vary.
+    ! They are varied in an attempt to make the means of |Hij|/pgen be the same for singles and doubles.
+    ! Only used for excitation generators using pattempt_single/pattempt_double.
+    ! If shift has already started varying, ignore pattempt_update.
+    ! [todo] - check whether restarting works correctly with pattempt_update
+    logical :: pattempt_update = .false.
+    ! If true and restarting, accumulated data to vary pattempt_single/double is reset.
+    ! If not restarting, this will not have any effect.
+    logical :: pattempt_zero_accum_data = .false.
+    ! probability of selecting ij to be parallel. Used in no_renorm_spin, renorm_spin
+    ! excitation generators.
+    ! set to a nonsense value so we can easily detect if it's given as an input option.
+    real(p) :: pattempt_parallel = -1
 
     ! timestep
     ! Note: qmc_state_t%tau is used and (if desired) updated during the course of a simulation)
@@ -166,6 +200,10 @@ type qmc_in_t
 
     ! If true then allow the use of MPI barrier calls.
     logical :: use_mpi_barriers = .false.
+
+    ! The minimum ratio over number of orbitals of individual weight over total weight when using the
+    ! occref power pitzer excitation generator.
+    real(p) :: power_pitzer_min_weight = 0.01_p
 
     ! If true, use a quasiNewton step
     logical :: quasi_newton = .false.
@@ -866,13 +904,32 @@ contains
         select case (qmc%excit_gen)
         case (excit_gen_renorm)
             call json_write_key(js, 'excit_gen', 'renorm')
+        case (excit_gen_renorm_spin)
+            call json_write_key(js, 'excit_gen', 'renorm_spin')
         case (excit_gen_no_renorm)
             call json_write_key(js, 'excit_gen', 'no_renorm')
+        case (excit_gen_no_renorm_spin)
+            call json_write_key(js, 'excit_gen', 'no_renorm_spin')
+        case (excit_gen_power_pitzer)
+            call json_write_key(js, 'excit_gen', 'power_pitzer')
+        case (excit_gen_power_pitzer_occ)
+            call json_write_key(js, 'excit_gen', 'power_pitzer_orderM')
+        case (excit_gen_power_pitzer_orderN)
+            call json_write_key(js, 'excit_gen', 'power_pitzer_orderN')
+        case (excit_gen_heat_bath)
+            call json_write_key(js, 'excit_gen', 'heat_bath')
+        case (excit_gen_heat_bath_uniform)
+            call json_write_key(js, 'excit_gen', 'heat_bath_uniform')
+        case (excit_gen_heat_bath_single)
+            call json_write_key(js, 'excit_gen', 'heat_bath_single')
         case default
             call json_write_key(js, 'excit_gen', qmc%excit_gen)
         end select
+        call json_write_key(js, 'pattempt_update', qmc%pattempt_update)
+        call json_write_key(js, 'pattempt_zero_accum_data', qmc%pattempt_zero_accum_data)
         call json_write_key(js, 'pattempt_single', qmc%pattempt_single)
         call json_write_key(js, 'pattempt_double', qmc%pattempt_double)
+        call json_write_key(js, 'pattempt_parallel', qmc%pattempt_parallel)
         call json_write_key(js, 'tau', qmc%tau)
         call json_write_key(js, 'tau_search', qmc%tau_search)
         call json_write_key(js, 'vary_shift_from', qmc%vary_shift_from)
@@ -889,6 +946,7 @@ contains
         call json_write_key(js, 'initiator_pop', qmc%initiator_pop)
         call json_write_key(js, 'ncycles', qmc%ncycles)
         call json_write_key(js, 'nreport', qmc%nreport)
+        call json_write_key(js, 'power_pitzer_min_weight', qmc%power_pitzer_min_weight)
         call json_write_key(js, 'quasi_newton', qmc%quasi_newton)
         call json_write_key(js, 'quasi_newton_threshold', qmc%quasi_newton_threshold)
         call json_write_key(js, 'quasi_newton_value', qmc%quasi_newton_value)

@@ -326,6 +326,47 @@ contains
         call decode_det(sys%basis, f, d%occ_list)
 
     end subroutine decode_det_occ
+    
+    pure subroutine decode_det_spinocc(sys, f, d)
+
+        ! Decode determinant bit string into integer list containing the
+        ! occupied orbitals and integer lists containing occupied alpha and
+        ! beta orbitals.
+        ! In:
+        !    f(tot_string_len): bit string representation of the Slater
+        !        determinant.
+        ! Out:
+        !    d: det_info_t variable.  The following components are set:
+        !        occ_list: integer list of occupied spin-orbitals in the
+        !            Slater determinant.
+        !        occ_list_alpha/_beta: integer list of occupied alpha/beta
+        !            spin-orbitals in the Slater determinant.
+
+        use system, only: sys_t
+
+        type(sys_t), intent(in) :: sys
+        integer(i0), intent(in) :: f(sys%basis%tot_string_len)
+        type(det_info_t), intent(inout) :: d
+        integer :: i, ialpha, ibeta
+
+        call decode_det(sys%basis, f, d%occ_list)
+
+        ialpha = 1
+        ibeta = 1
+
+        do i = 1, sys%nel
+            associate(orb=>d%occ_list(i))
+                if (sys%basis%basis_fns(orb)%ms > 0) then
+                    d%occ_list_alpha(ialpha) = orb
+                    ialpha = ialpha + 1
+                else
+                    d%occ_list_beta(ibeta) = orb
+                    ibeta = ibeta + 1
+                end if
+            end associate
+        end do
+
+    end subroutine decode_det_spinocc
 
     pure subroutine decode_det_occ_symunocc(sys, f, d)
 
@@ -363,6 +404,53 @@ contains
 
     end subroutine decode_det_occ_symunocc
 
+    pure subroutine decode_det_spinocc_symunocc(sys, f, d)
+
+        ! Decode determinant bit string into integer list containing the
+        ! occupied orbitals.
+        ! In:
+        !    f(tot_string_len): bit string representation of the Slater
+        !        determinant.
+        ! Out:
+        !    d: det_info_t variable.  The following components are set:
+        !        occ_list: integer list of occupied spin-orbitals in the
+        !            Slater determinant.
+        !        occ_list_alpha/_beta: integer list of occupied alpha/beta
+        !            spin-orbitals in the Slater determinant.
+        !        symunocc(2, sym0_tot:symmax_tot): number of unoccupied orbitals of each
+        !            spin/symmetry.  The same indexing scheme is used for
+        !            nbasis_sym_spin.
+
+        use system, only: sys_t
+
+        type(sys_t), intent(in) :: sys
+        integer(i0), intent(in) :: f(sys%basis%tot_string_len)
+        type(det_info_t), intent(inout) :: d
+        integer :: i, ims, isym, ialpha, ibeta
+
+        call decode_det(sys%basis, f, d%occ_list)
+
+        d%symunocc = sys%read_in%pg_sym%nbasis_sym_spin
+        ialpha = 1
+        ibeta = 1
+
+        do i = 1, sys%nel
+            associate(orb=>d%occ_list(i))
+                ims = (sys%basis%basis_fns(orb)%ms+3)/2
+                isym = sys%basis%basis_fns(orb)%sym
+                if (ims == 2) then
+                    d%occ_list_alpha(ialpha) = orb
+                    ialpha = ialpha + 1
+                else
+                    d%occ_list_beta(ibeta) = orb
+                    ibeta = ibeta + 1
+                end if
+            end associate
+            d%symunocc(ims, isym) = d%symunocc(ims, isym) - 1
+        end do
+
+    end subroutine decode_det_spinocc_symunocc
+    
     pure subroutine decode_det_spinocc_spinunocc(sys, f, d)
 
         ! Decode determinant bit string into integer lists containing the

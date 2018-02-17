@@ -134,7 +134,12 @@ contains
         restarting = present(qmc_state_restart) .or. restart_in%read_restart
         if (parent) then
             ! Check input options.
-            call check_qmc_opts(qmc_in, sys, .not.present(qmc_state_restart), restarting, qmc_state_restart)
+            if (present(qmc_state_restart)) then
+                call check_qmc_opts(qmc_in, sys, .not.present(qmc_state_restart), restarting, &
+                    qmc_state_restart=qmc_state_restart, fciqmc_in=fciqmc_in)
+            else
+                call check_qmc_opts(qmc_in, sys, .not.present(qmc_state_restart), restarting, fciqmc_in=fciqmc_in)
+            end if
             call check_fciqmc_opts(sys, fciqmc_in, blocking_in)
             call check_load_bal_opts(load_bal_in)
             call check_blocking_opts(sys, blocking_in, restart_in)
@@ -154,6 +159,7 @@ contains
             qmc_in_loc%pattempt_single = qs%excit_gen_data%pattempt_single
             qmc_in_loc%pattempt_double = qs%excit_gen_data%pattempt_double
             qmc_in_loc%shift_damping = qs%shift_damping
+            qmc_in_loc%pattempt_parallel = qs%excit_gen_data%pattempt_parallel
             call qmc_in_t_json(js, qmc_in_loc)
             call fciqmc_in_t_json(js, fciqmc_in)
             call semi_stoch_in_t_json(js, semi_stoch_in)
@@ -546,8 +552,6 @@ contains
 
         ! In:
         !   sys: information on system under consideration.
-        !   qs: qmc_state_t derived type with information on
-        !       current calculation.
         !   logging_info: information on current logging
         !       settings.
         !   nattempts_current_det: total number of spawning attempts
@@ -564,6 +568,8 @@ contains
         ! In/Out:
         !   rng: random number generator.
         !   bloom_stats: information on blooms during calculation.
+        !   qs: qmc_state_t derived type with information on
+        !       current calculation.
         !   spawn: stored information on spawning.
 
         use dSFMT_interface, only: dSFMT_t
@@ -579,7 +585,7 @@ contains
         use spawn_data, only: spawn_t
 
         type(sys_t), intent(in) :: sys
-        type(qmc_state_t), intent(in) :: qs
+        type(qmc_state_t), intent(inout) :: qs
         type(logging_t), intent(in) :: logging_info
         integer, intent(in) :: nattempts_current_det, ispace
         type(det_info_t), intent(in) :: cdet

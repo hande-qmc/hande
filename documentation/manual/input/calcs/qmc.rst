@@ -170,19 +170,28 @@ algorithms and control the core settings in the algorithms.
 
     Optional.
 
-    Possible values: 'renorm', 'no_renorm'.
+    Possible values: 'renorm', 'no_renorm', 'power_pitzer', 'power_pitzer_orderM'
 
-    ============  =================     =========
-    System        Implemented           Default
-    ============  =================     =========
-    chung_landau  renorm, no_renorm     renorm
-    heisenberg    renorm, no_renorm     renorm
-    hubbard_k     renorm, no_renorm     renorm
-    hubbard_real  renorm, no_renorm     renorm
-    ueg           no_renorm             no_renorm
-    ringium       no_renorm             no_renorm
-    read_in       renorm, no_renorm     renorm
-    ============  =================     =========
+    ============  ===================  =========
+    System        Implemented          Default
+    ============  ===================  =========
+    chung_landau  renorm, no_renorm    renorm
+    heisenberg    renorm, no_renorm    renorm
+    hubbard_k     renorm, no_renorm    renorm
+    hubbard_real  renorm, no_renorm    renorm
+    read_in       renorm, no_renorm,   renorm
+                  renorm_spin,
+                  no_renorm_spin,
+                  heat_bath,
+                  heat_bath_uniform,
+                  heat_bath_single,
+                  power_pitzer,
+                  power_pitzer_orderM,
+                  power_pitzer_orderN
+    ringium       no_renorm            no_renorm
+    ueg           no_renorm,           no_renorm
+                  power_pitzer
+    ============  ===================  =========
 
     The type of excitation generator to use.  Note that not all types are implemented for
     all systems, usually because a specific type is not suitable for (large) production
@@ -198,6 +207,74 @@ algorithms and control the core settings in the algorithms.
     consequently much faster.  In general, 'renorm' is a good choice for small basis sets
     and 'no_renorm' is a good choice for large basis sets, especially with a small number
     of electrons (such that forbidden excitations are rarely generated).
+    'renorm_spin' and 'no_renorm_spin' are very similar to 'renorm' and 'no_renorm'
+    respectively but when selecting :math:`i` and :maths:`j`, they first decide with
+    probability ``pattempt_parallel`` whether :math:`i` and :maths:`j` should have
+    parallel spins or not.
+
+    The 'heat_bath' excitation generator is very similar to the "original" heat bath
+    excitation generator described by Holmes et al. [Holmes16]_. :math:`i,j,a,b` are chosen
+    with weighted, precalculated probabilities that aim to make |Hij|/pgen as constant
+    as possible. The difference to Holmes et al. is that we never do a single and a double
+    excitation at the same time. When Holmes et al. decide to do both, we do a single
+    excitation with probability of 0.5 and a double with 0.5. The 'heat_bath' excitation
+    generator can have a bias if for a valid excitation :math:`i` going to :math:`a`,
+    there might be no occupied :math:`j` that lets us select :math:`ija`. See Holmes et al.
+    for details. We check for the bias in the beginning of a calculation and stop it if
+    necessary.
+    The power pitzer excitation generators use approximate upper bounds for these weights.
+    'heat_bath_uniform' is very similar to 'heat_bath' but samples single excitations
+    uniformly (mentioned by Holmes et al.) and 'heat_bath_single' is also very similar
+    but samples single excitations with the correct weighting (following a
+    recommendation by Pablo Lopez Rios). 'heat_bath_uniform' and 'heat_bath_single' do
+    not have this potential bias that 'heat_bath' can have.
+
+    The 'power_pitzer' excitation generator generates excitations using a Power-Pitzer
+    [Power74]_ upper bound for the value of the Hamiltonian matrix element, 
+    :math`|\langle ij|ab\rangle|^2 > \langle ia|ai\rangle\langle jb|bj\rangle`.
+     This involves some precalcalated weights and alias tables, but should reduce both noise
+    and shoulder heights. The weights to select a certain excitation are calculated for
+    the reference in the beginning of the QMC calculation. Each time the excitation
+    generator is called, the weights are mapped from the reference to the actual 
+    determinant we attempt a spawn from. Only available for the UEG and read_in systems.
+    The time spent in this excitation generator scales as O(Number of electrons) and the
+    memory requirements are of O(Number of electrons times Number of basis functions).
+    This excitation generator is recommended for a single-referenced systems when doing
+    CCMC.
+
+    The 'power_pitzer_orderM' uses a more refined upper bound for the Hamiltonian matrix
+    elements, where the weights for selecting an excitation are calculated each time the
+    excitation is called for the actual determinant we are spawning from. This requires
+    O(Number of basis functions) time cost for each particle being spawned from. The 
+    memory requirements are of O(Number of basis functions).
+
+    The 'power_pitzer_orderN' excitation generator uses precalculated weights and unlike
+    'power_pitzer', it also samples i and j with weighted probabilities.
+
+    In the case of the UEG, the 'power_pitzer' excitation generator pre-calculates
+    Power-Pitzer like weights for the selecting of orbital a. i and j are selected like
+    the 'no_renorm' UEG excitation generator.
+    If a is occupied, the excitation is forbidden.
+    ..
+
+        [todo] - Add paper citation once it is published.
+    
+    .. note::
+        Currently only the no_renorm and renorm excitation generators are available in
+        DMQMC.
+
+``power_pitzer_min_weight``
+    type: float.
+
+    Optional. Default: 0.01.
+
+    Only used in 'power_pitzer_orderN' excitation generator or in 'read_in' systems if
+    the 'power_pitzer' excitation generator is used.
+    This number (approximately) sets the minimum value of
+    weight(orbital to excite to)/(total weights times number of orbitals to excite to).
+    The aim of this is to reduce the number of spawns with big abs(Hij)/pgen which can
+    happen if orbital connections with low pgen are mapped to orbital connections with
+    big abs(Hij).
 
 ``pattempt_single``
     type: float.
@@ -213,6 +290,44 @@ algorithms and control the core settings in the algorithms.
     reference determinant that correspond to double excitations.
 
     The probability of generating a double excitation.
+
+    .. note::
+        If ``pattempt_single`` and ``pattempt_double`` do not sum to 1, we renormalize them.
+``pattempt_update``
+    type: boolean.
+
+    Optional. Default: False.
+    
+    If true, then ``pattempt_single`` is varied during the run
+    to attempt to align the means of |Hij|/pgen for single and double excitations.
+    Update of pattempt_single only happens if shift has not started varying yet. If
+    ``pattempt_single`` or ``pattempt_double`` fall below a minimum value (1 over number of
+    successful spawn attempts in the last pattempt update cycle), they are set to that minimum
+    Not applicable to "original" heat bath algorithm excitation generator (excit_gen="heat_bath").
+    When restarting a calculation, if ``pattempt_update`` is set to true and both ``pattempt_single``
+    and ``pattempt_double``
+    are specified by the user, previous update information is lost and the update (provided
+    shift has not started varying yet) starts from scratch (the information to update
+    ``pattempt_single`` from previous runs is lost).
+    .. note::
+        Currently not available in DMQMC.
+``pattempt_zero_accum_data``
+    type: boolean
+
+    Optional. Default: False.
+
+    If true and restarting a calculation, accumulated data needed to update ``pattempt_single``
+    and ``pattempt_double`` is reset (set to zero, overflow boolean is set to false).
+    Only to be used together with ``pattempt_update``. Only to be used by experienced users.
+``pattempt_parallel``
+    type: float.
+
+    Optional. Default: Estimate it by sum of |Hijab| with :math:`ij` parallel over
+    the total sum of |Hijab|.
+
+    Only relevant for ``excit_gen`` == 'no_renorm_spin' and 'renorm_spin'.
+    Probability that :math:`ij` have parallel spins.
+    
 ``initial_shift``
     type: float.
 

@@ -442,4 +442,82 @@ contains
 
     end function connection_exists
 
+    subroutine get_excitation_locations(ref_list, det_list, ref_store, det_store, nel, nexcit)
+
+        ! Given lists of nel orbitals, ref_list and det_list, determine the indices of
+        ! the orbitals in these which cannot be paired up and place each in the appropriate _store
+
+        ! In:
+        !    ref_list: integer list of nel occupied orbitals
+        !    det_list: integer list of nel occupied orbitals
+        !    nel:  number of electrons
+        ! Out:
+        !    nexcit:  The number of differences
+        !    ref_store(1:nexcit): the indices of the different orbitals in ref. 
+        !    det_store(1:nexcit): the indices of the different orbitals in det.
+        
+        ! Note: ref and cdet are assumed to be ordered.
+        ! This procedure is O(nel)
+
+        integer, intent(in) :: nel
+        integer, intent(in) :: ref_list(nel)
+        integer, intent(in) :: det_list(nel)
+        integer, intent(out) :: ref_store(nel)
+        integer, intent(out) :: det_store(nel)
+        integer, intent(out) :: nexcit
+
+        integer :: i, j, det_sind, ref_sind, i_backwards, i_backwards_position
+
+        j = 1  ! This is the index in det_list.
+
+        ! det_store contains a list of positions within det_list of the orbitals which are non-matching.
+        ! similarly with ref_store
+        det_sind = 0 ! the position in cdet_store of the last non-matching orbital
+        ref_sind = 0 ! the position in ref_store of the last non-matching orbital
+
+        ! [todo] - Consider sorting these lists by spin.
+
+fdo:    do i=1, nel ! this will index in ref
+            do while (det_list(j)<ref_list(i))
+                ! det's orb isn't in ref, so we store its index in det_store
+                det_sind = det_sind + 1
+                det_store(det_sind) = j
+                j = j + 1
+                if (j > nel)  exit fdo 
+            end do
+            if (det_list(j)>ref_list(i)) then
+                ! ref's orb isn't in det, so store that
+                ref_sind = ref_sind + 1
+                ref_store(ref_sind) = i
+            else
+                ! both are equal so we increment j
+                j = j + 1
+            end if
+            if (j > nel) exit fdo
+        end do fdo 
+        
+        ! Deal with whatever's left in det. j is the NEXT orbital to  deal with.
+        do while (j<=nel)
+            det_sind = det_sind + 1
+            det_store(det_sind) = j
+            j = j + 1
+        end do
+
+        ! Deal with whatever's left over in ref.  i is currently the last orbital we dealt with.
+        ! We fill this up backwards as having filled up j
+        ! we know the final value of ref_sind (= det_sind).
+        i_backwards = nel
+        i_backwards_position = det_sind
+        do while (ref_sind < det_sind)
+            ref_store(i_backwards_position) = i_backwards
+            i_backwards = i_backwards - 1
+            i_backwards_position = i_backwards_position - 1
+            ref_sind = ref_sind + 1
+        end do
+
+
+        nexcit = ref_sind
+
+    end subroutine get_excitation_locations
+
 end module excitations

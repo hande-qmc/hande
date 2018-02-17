@@ -222,6 +222,42 @@ contains
 
     end function slater_condon2_ueg_excit
 
+    subroutine create_weighted_excitation_list_ueg(sys, i, a_list, a_list_len, weights, weight_tot)
+
+        ! Generate a list of allowed excitations from a to an element in a_list with their weights based on
+        ! |<ia|ai>|. 
+        !
+        ! In:
+        !    sys:   The system in which the orbitals live
+        !    i:  integer specifying the from orbital
+        !    a_list:   list of integers specifying the basis functions we're allowed to excite to
+        !    a_list_len:   The length of a_list
+        ! Out:
+        !    weights:   A list of reals (length a_list_len), with the weight of each of the to_list orbitals
+        !    weight_tot: The sum of all the weights.
+        
+        use system, only: sys_t
+        type(sys_t), intent(in) :: sys
+        integer, intent(in) :: i, a_list_len, a_list(a_list_len)
+        real(p), intent(out) :: weights(a_list_len), weight_tot
+        
+        integer :: k
+        real(p) :: weight
+
+        weight_tot = 0.0_p 
+        do k=1, a_list_len
+            if (a_list(k) /= i) then
+                weight = sys%ueg%coulomb_int(sys%lattice%box_length(1), sys%basis, i, a_list(k))
+                weight = abs(weight)
+            else
+                weight = 0.0_p
+            end if
+            weights(k) = weight
+            weight_tot = weight_tot + weight
+        end do
+
+    end subroutine create_weighted_excitation_list_ueg
+
     pure function potential_energy_ueg(sys, f1, f2, excitation) result (potential_energy)
 
         ! In:

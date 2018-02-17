@@ -195,6 +195,50 @@ contains
 
     end subroutine end_parallel
 
+    subroutine get_proc_loop_range(list_length, this_proc_start, this_proc_end, starts, sizes)
+        ! Choose loop variables which split a list with length list_length evenly across processors.
+        ! Each processor gets at least floor(list_length/nprocs), with the remainder allocated
+        ! one to each of the early numbered processors.
+
+        ! In:
+        !   list_length: number of items to iterate over (e.g. sys%nel if over number of electrons).
+        ! Out:
+        !   this_proc_start, this_proc_end: range done by processes with rank iproc (i.e. this processor).
+        !   starts: the starting value for each processor.
+        !   sizes: sizes of chunk for each processor.
+        
+        integer, intent(in) :: list_length
+        integer, intent(out) :: this_proc_start, this_proc_end
+        integer, intent(out) :: starts(0:nprocs-1), sizes(0:nprocs-1)
+        integer :: i, i_start, i_end
+
+#ifdef PARALLEL
+        i_end = 0
+        do i = 0, nprocs-1
+            i_start = i_end + 1
+            i_end = i_start + list_length/nprocs - 1
+            ! allocate one of the remainder to the early processors.
+            if (i < mod(list_length,nprocs)) i_end = i_end + 1
+            ! If list_length<nprocs then use the calculated value otherwise set it to not do anything.
+            if (i < list_length) then
+                starts(i) = i_start - 1
+            else
+                starts(i) = list_length - 1
+            end if
+            sizes(i) = i_end - i_start + 1
+        end do
+        
+        this_proc_start = starts(iproc) + 1
+        this_proc_end = starts(iproc) + sizes(iproc)
+#else
+        this_proc_start = 1
+        this_proc_end = list_length
+        starts = 0
+        sizes = list_length
+#endif
+
+    end subroutine get_proc_loop_range
+    
     function get_blacs_info(matrix_size, block_size, proc_grid) result(my_blacs_info)
 
         ! In:

@@ -53,6 +53,8 @@ type logging_in_t
     integer(int_64) :: start_iter = 0_int_64
     ! Iteration to stop outputting logs from.
     integer(int_64) :: end_iter = huge(0_int_64)
+    ! Index of files to write to, e.g. Y in SPAWN.Y.pX.log.
+    integer :: write_to = 0
 end type logging_in_t
 
 ! Derived type to contain debugging flags and avoid passing lots of different
@@ -265,7 +267,7 @@ contains
         type(logging_t), intent(inout) :: logging_info
         type(logging_in_t), intent(in) :: logging_in
 
-        open(newunit=logging_info%calc_unit, file=get_log_filename(logging_in%calc_filename), &
+        open(newunit=logging_info%calc_unit, file=get_log_filename(logging_in%calc_filename, logging_in%write_to), &
                 status='unknown')
 
         if (logging_in%calc > 0) logging_info%write_highlevel_values = .true.
@@ -286,7 +288,7 @@ contains
         type(logging_t), intent(inout) :: logging_info
         type(logging_in_t), intent(in) :: logging_in
 
-        open(newunit=logging_info%spawn_unit, file=get_log_filename(logging_in%spawn_filename), &
+        open(newunit=logging_info%spawn_unit, file=get_log_filename(logging_in%spawn_filename, logging_in%write_to), &
                 status='unknown')
 
         if (logging_in%spawn > 0) logging_info%write_successful_spawn = .true.
@@ -308,7 +310,7 @@ contains
         type(logging_t), intent(inout) :: logging_info
         type(logging_in_t), intent(in) :: logging_in
 
-        open(newunit=logging_info%death_unit, file=get_log_filename(logging_in%death_filename), &
+        open(newunit=logging_info%death_unit, file=get_log_filename(logging_in%death_filename, logging_in%write_to), &
                 status='unknown')
 
         if (logging_in%death > 0) logging_info%write_successful_death = .true.
@@ -330,8 +332,8 @@ contains
         type(logging_t), intent(inout) :: logging_info
         type(logging_in_t), intent(in) :: logging_in
 
-        open(newunit=logging_info%stoch_select_unit, file=get_log_filename(logging_in%stoch_selection_filename), &
-                status='unknown')
+        open(newunit=logging_info%stoch_select_unit, file=get_log_filename(logging_in%stoch_selection_filename, &
+            logging_in%write_to), status='unknown')
 
         if (logging_in%stoch_selection > 0) logging_info%write_valid_stoch_selection = .true.
         if (logging_in%stoch_selection > 1) logging_info%write_invalid_stoch_selection = .true.
@@ -353,7 +355,7 @@ contains
         type(logging_in_t), intent(in) :: logging_in
         integer, intent(in) :: max_ex_level
 
-        open(newunit=logging_info%select_unit, file=get_log_filename(logging_in%select_filename), &
+        open(newunit=logging_info%select_unit, file=get_log_filename(logging_in%select_filename, logging_in%write_to), &
                 status='unknown')
 
         if (logging_in%selection > 0) logging_info%write_amp_psel = .true.
@@ -490,6 +492,13 @@ contains
         else
             call write_column_title(iunit, "# spawn", int_val=.true., justify=1, sep=',')
         end if
+        call write_column_title(iunit, "spawn pgen", justify=-1, sep=',')
+        call write_column_title(iunit, "spawner", justify=-1, sep=',')
+        call write_column_title(iunit, "spawnee", justify=-1, sep=',')
+        call write_column_title(iunit, "i", justify=-1, sep=',')
+        call write_column_title(iunit, "j", justify=-1, sep=',')
+        call write_column_title(iunit, "a", justify=-1, sep=',')
+        call write_column_title(iunit, "b", justify=-1, sep=',')
         write (iunit,'()')
 
     end subroutine write_logging_spawn_header
@@ -771,7 +780,8 @@ contains
 
     end subroutine write_logging_calc_ccmc
 
-    subroutine write_logging_spawn(logging_info, hmatel, pgen, qn_weighting, nspawned, parent_sign, cmplx_wfn)
+    subroutine write_logging_spawn(logging_info, hmatel, pgen, qn_weighting, nspawned, parent_sign, cmplx_wfn, pgen_spawn, &
+            det_from, det_to, connection)
 
         ! Write log entry for a single spawning event.
 
@@ -784,10 +794,15 @@ contains
         !   nspawned: integer. Total signed walkers spawned in this event.
         !   parent_sign: real. Total signed population on parent determinant.
         !   cmplx_wfn: logical. True if using complex wavefunction, false if not.
+        !   pgen_spawn: real. Optional. p_gen as returned by the excitation generator.
+        !   det_from: integer i0. Optional. Determinant attempting to spawn to det_to.
+        !   det_to: integer i0. Optional. Determinant with attempt to spawn to.
+        !   connection: excit_t. Optional. Contains information about the excitation attempt.
 
-        use qmc_io, only: write_qmc_var
-        use const, only: int_p, p
+        use qmc_io, only: write_qmc_var, write_hex_determinant
+        use const, only: int_p, p, i0
         use hamiltonian_data, only: hmatel_t
+        use excitations, only: excit_t
 
         type(logging_t), intent(in) :: logging_info
         type(hmatel_t), intent(in) :: hmatel
@@ -795,6 +810,9 @@ contains
         integer(int_p), intent(in) :: nspawned(:)
         logical, intent(in) ::  cmplx_wfn
         integer :: iunit
+        real(p), intent(in), optional :: pgen_spawn
+        integer(i0), intent(in), optional :: det_to(:), det_from(:)
+        type(excit_t), intent(in),optional :: connection
 
         iunit = logging_info%spawn_unit
 
@@ -818,6 +836,37 @@ contains
 
                 if (cmplx_wfn) call write_qmc_var(iunit, nspawned(2), sep=',')
 
+                if (present(pgen_spawn)) then
+                    call write_qmc_var(iunit, pgen_spawn, sep=',')
+                else
+                    call write_qmc_var(iunit, 0._p, sep=',')
+                end if
+                if (present(det_from)) then
+                    call write_hex_determinant(iunit, det_from, sep=',')
+                else
+                    call write_qmc_var(iunit, 0, sep=',')
+                end if
+                if (present(det_to)) then
+                    call write_hex_determinant(iunit, det_to, sep=',')
+                else
+                    call write_qmc_var(iunit, 0, sep=',')
+                end if
+                if (present(connection)) then
+                    call write_qmc_var(iunit, connection%from_orb(1), sep=',')
+                    if (connection%nexcit == 2) then
+                        call write_qmc_var(iunit, connection%from_orb(2), sep=',')
+                    else
+                        call write_qmc_var(iunit, 0, sep=',')
+                    end if
+                    call write_qmc_var(iunit, connection%to_orb(1), sep=',')
+                    if (connection%nexcit == 2) then
+                        call write_qmc_var(iunit, connection%to_orb(2), sep=',')
+                    else
+                        call write_qmc_var(iunit, 0, sep=',')
+                    end if
+                else
+                    call write_qmc_var(iunit, 0, sep=',')
+                end if
                 write (iunit,'()')
             end if
         end if
@@ -971,11 +1020,12 @@ contains
 
 ! --- Generic helper functions ---
 
-    function get_log_filename(in_name) result(out_name)
+    function get_log_filename(in_name, write_to) result(out_name)
 
         ! Helper function to generate filenames to use for a generic log file.
         ! In:
         !   in_name: base name of log to give (eg. CALC)
+        !   write_to: Y in in_name.Y.pX.log
         ! Out:
         !   out_name: filename to be used. Will be of
         !       form in_name.Y.pX.log for process number X.
@@ -983,12 +1033,13 @@ contains
         use parallel, only: iproc
         use utils, only: get_unique_filename
         character(255), intent(in) :: in_name
+        integer, intent(in) :: write_to
         character(255) :: suffix
         character(255) :: out_name
         integer :: id
 
         write(suffix,'(".p",i0,".log")') iproc
-        call get_unique_filename(trim(in_name), suffix, .true., 0, out_name, id, .true.)
+        call get_unique_filename(trim(in_name), suffix, .true., write_to, out_name, id, .true.)
 
     end function get_log_filename
 

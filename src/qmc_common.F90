@@ -259,6 +259,123 @@ contains
 
     end subroutine find_single_double_prob
 
+    subroutine find_parallel_spin_prob_mol(sys, pparallel)
+        
+        ! WARNING:
+        ! Only call for read_in systems.
+
+        ! Estimate pattempt_parallel by finding the ration of |Hij->ab|
+        ! where ij are parallel to when they are not.
+
+        ! In:
+        !   sys: information about the system to be studied
+        ! Out:
+        !   pparallel: Estimate for pattempt_parallel
+
+        use system, only: sys_t
+        use proc_pointers, only: slater_condon2_excit_ptr, abs_hmatel_ptr
+        use read_in_symmetry, only: cross_product_basis_read_in
+        use hamiltonian_data, only: hmatel_t
+#ifdef PARALLEL
+        use parallel
+
+        integer :: displs_nbasis(0:nprocs-1)
+        integer :: sizes_nbasis(0:nprocs-1)
+        integer :: ierr
+        real(p) :: parallel_weight_tot, ortho_weight_tot
+#endif
+
+        type(sys_t), intent(in) :: sys
+        real(p), intent(out) :: pparallel
+        
+        integer :: iproc_nbasis_start, iproc_nbasis_end
+        type(hmatel_t)  :: hmatel
+        integer :: i, j, a, b, i_tmp, j_tmp, a_tmp, b_tmp, ij_sym, isymb
+        real(p) :: parallel_weight, ortho_weight
+
+#ifdef PARALLEL
+        ! Initialise do-loop range for each processor, [iproc_nbasis_start,iproc_nbasis_end].
+        ! [todo] - get_proc_loop_range can also assign in serial mode. Disadvantage: would need to define displs_nbasis
+        ! [todo] - and sizes_nbasis for serial mode.
+        call get_proc_loop_range(sys%basis%nbasis, iproc_nbasis_start, iproc_nbasis_end, displs_nbasis, sizes_nbasis)
+
+        parallel_weight_tot = 0.0_p
+        ortho_weight_tot = 0.0_p
+#else
+        iproc_nbasis_start = 1
+        iproc_nbasis_end = sys%basis%nbasis
+#endif
+
+        parallel_weight = 0.0_p
+        ortho_weight = 0.0_p
+
+        do i = iproc_nbasis_start, iproc_nbasis_end
+            !$omp parallel do default(none) &
+            !$omp shared(sys,i,slater_condon2_excit_ptr,abs_hmatel_ptr) &
+            !$omp private(i_tmp, j_tmp, a_tmp, b_tmp, j, a, b, ij_sym, isymb, hmatel) reduction(+:parallel_weight,ortho_weight)
+            do j = 1, sys%basis%nbasis
+                if (i /= j) then
+                    if (j < i) then
+                        i_tmp = j
+                        j_tmp = i
+                    else
+                        i_tmp = i
+                        j_tmp = j
+                    end if
+                    ! The symmetry of b, isymb, is given by
+                    ! (sym_i* x sym_j* x sym_a)* = sym_b
+                    ! (at least for Abelian point groups)
+                    ! ij_sym: symmetry conjugate of the irreducible representation spanned by the codensity
+                    !        \phi_i*\phi_j. (We assume that ij is going to be in the bra of the excitation.)
+                    ! [todo] - Check whether order of i and j matters here.
+                    ij_sym = sys%read_in%sym_conj_ptr(sys%read_in, cross_product_basis_read_in(sys, i_tmp, j_tmp))
+                    do a = 1, sys%basis%nbasis
+                        if ((a /= i) .and. (a /= j)) then
+                            isymb = sys%read_in%sym_conj_ptr(sys%read_in, &
+                                        sys%read_in%cross_product_sym_ptr(sys%read_in, ij_sym, sys%basis%basis_fns(a)%sym))
+                            do b = 1, sys%basis%nbasis
+                                ! Check spin conservation and symmetry conservation.
+                                if ((((sys%basis%basis_fns(i_tmp)%Ms == sys%basis%basis_fns(a)%Ms) .and. &
+                                    (sys%basis%basis_fns(j_tmp)%Ms == sys%basis%basis_fns(b)%Ms)) .or. &
+                                    ((sys%basis%basis_fns(i_tmp)%Ms == sys%basis%basis_fns(b)%Ms) .and. &
+                                    (sys%basis%basis_fns(j_tmp)%Ms == sys%basis%basis_fns(a)%Ms))) .and. &
+                                    (sys%basis%basis_fns(b)%sym == isymb) .and. ((b /= a) .and. (b /= i) .and. &
+                                    (b /= j))) then
+                                    if (b < a) then
+                                        a_tmp = b
+                                        b_tmp = a
+                                    else
+                                        a_tmp = a
+                                        b_tmp = b
+                                    end if
+                                    hmatel = slater_condon2_excit_ptr(sys, i_tmp, j_tmp, a_tmp, b_tmp, .false.)
+                                    if (sys%basis%basis_fns(i_tmp)%Ms == sys%basis%basis_fns(j_tmp)%Ms) then
+                                        ! parallel spins
+                                        parallel_weight = parallel_weight + abs_hmatel_ptr(hmatel)
+                                    else
+                                        ! not parallel
+                                        ortho_weight = ortho_weight + abs_hmatel_ptr(hmatel)
+                                    end if
+                                end if
+                            end do
+                        end if
+                    end do
+                end if
+            end do
+            !$omp end parallel do
+        end do
+
+#ifdef PARALLEL
+        call mpi_reduce(parallel_weight, parallel_weight_tot, 1, mpi_preal, MPI_SUM, root, MPI_COMM_WORLD, ierr)
+        call mpi_reduce(ortho_weight, ortho_weight_tot, 1, mpi_preal, MPI_SUM, root, MPI_COMM_WORLD, ierr)
+        if (iproc == root) pparallel = parallel_weight_tot/(parallel_weight_tot + ortho_weight_tot)
+        call MPI_BCast(pparallel, 1, mpi_preal, root, MPI_COMM_WORLD, ierr)
+#else
+        pparallel = parallel_weight/(parallel_weight + ortho_weight)
+#endif
+
+    end subroutine find_parallel_spin_prob_mol
+
     function decide_nattempts(rng, population) result(nattempts)
 
         ! Decide how many spawning attempts should be made from a determinant
@@ -994,10 +1111,11 @@ contains
                                      update_energy_estimators_recv, update_energy_estimators_send, &
                                      nparticles_start_ind
         use interact, only: calc_interact, check_interact, check_comms_file
-        use parallel, only: nprocs
+        use parallel
         use system, only: sys_t
         use bloom_handler, only: bloom_stats_t, bloom_stats_warning
         use qmc_data, only: qmc_in_t, load_bal_in_t, qmc_state_t, nb_rep_t
+        use spawning, only: update_pattempt
 
         integer, intent(in) :: out_unit
         type(qmc_in_t), intent(in) :: qmc_in
@@ -1017,9 +1135,15 @@ contains
         logical, optional, intent(in) :: doing_lb, nb_comm
         logical, optional, intent(inout) :: error
 
-        logical :: update, vary_shift_before, nb_comm_local, comms_found, comp_param
+        logical :: update, vary_shift_before, nb_comm_local, comms_found, comp_param, overflow
         real(dp) :: rep_info_copy(nprocs*qs%psip_list%nspaces+nparticles_start_ind-1)
+        integer :: iunit
 
+#ifdef PARALLEL
+        integer :: ierr
+#endif
+
+        iunit = 6
         ! Only update the timestep if not in vary shift mode.
         update_tau = update_tau .and. .not. any(qs%vary_shift) .and. qmc_in%tau_search
 
@@ -1071,6 +1195,32 @@ contains
         if ((.not. vary_shift_before) .and. all(qs%vary_shift) .and. (semi_stoch_shift_it /= -1)) &
             semi_stoch_start_it = semi_stoch_shift_it + iteration + 1
 
+        if (qs%excit_gen_data%p_single_double%vary_psingles) then
+
+#ifdef PARALLEL
+            ! If any ps%rep_accum%overflow_loc is true (i.e. at least in one MPI proc there was a lack of precision in the
+            ! number of single/double excitations), stop here and fix pattempt_single.
+            call mpi_allreduce(qs%excit_gen_data%p_single_double%rep_accum%overflow_loc, overflow, 1, MPI_LOGICAL, MPI_LAND, &
+                            MPI_COMM_WORLD, ierr)
+#endif
+            
+            if ((qs%vary_shift(1)) .or. (overflow)) then
+                if ((overflow) .and. (parent)) then
+                    ! Make a note of the overflow.
+                    write(iunit, '(1X, "# Had to stop varying pattempt_single due to lack of precision.")')
+                end if
+                ! Stop varying pattempt_single when the shift has started varying. This means that we do not update
+                ! pattempt_single at the end of this report loop and of any future report loops.
+                qs%excit_gen_data%p_single_double%vary_psingles = .false.
+                ! Write (final) pattempt_single to output file.
+                ! Format adapted from writing out shift damping.
+                if (parent) write(iunit, '(1X, "# pattempt_single chosen to be:",1X,es17.10)') qs%excit_gen_data%pattempt_single
+            else
+                ! Possibly (if there were enough excitations) update pattempt_single.
+                call update_pattempt(qs%excit_gen_data)
+            end if
+        end if
+        
         call calc_interact(comms_found, out_unit, soft_exit, qs)
 
         if (qs%reblock_done) soft_exit = .true.
@@ -1165,7 +1315,7 @@ contains
         else
             tau = 0.950_p*tau
         end if
-        if (parent) write(iunit, '(1X, "# Warning timestep changed to: ",f8.5)') tau
+        if (parent) write(iunit, '(1X, "# Warning timestep changed to:",1X,es17.10)') tau
 
     end subroutine rescale_tau
 

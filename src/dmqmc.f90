@@ -117,8 +117,7 @@ contains
         if (parent) then
             restarting = present(qmc_state_restart) .or. restart_in%read_restart
             call check_qmc_opts(qmc_in, sys, .not. present(qmc_state_restart), restarting)
-            call check_dmqmc_opts(sys, dmqmc_in)
-            if (qmc_in%quasi_newton) call stop_all('do_dmqmc', 'Quasi-Newton not implemented for DMQMC.')
+            call check_dmqmc_opts(sys, dmqmc_in, qmc_in)
         end if
 
         ! Initialise data.
@@ -166,6 +165,7 @@ contains
             qmc_in_loc%pattempt_single = qs%excit_gen_data%pattempt_single
             qmc_in_loc%pattempt_double = qs%excit_gen_data%pattempt_double
             qmc_in_loc%shift_damping = qs%shift_damping
+            qmc_in_loc%pattempt_parallel = qs%excit_gen_data%pattempt_parallel
             call qmc_in_t_json(js, qmc_in_loc)
             call dmqmc_in_t_json(js, dmqmc_in)
             dmqmc_in_loc = dmqmc_in

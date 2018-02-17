@@ -9,6 +9,7 @@ Bibliography
 .. [Dunning89] Dunning, Thom H., Gaussian basis sets for use in correlated molecular calculations. I. The atoms boron through neon and hydrogen. J. Chem. Phys. 90, 1007 (1989) 
 .. [Flyvbjerg89] H. Flyvbjerg, H. G. Petersen, Error estimates on averages of correlated data, J. Chem. Phys. 91, 461 (1989). 
 .. [Franklin16] R.S.T. Franklin, J.S. Spencer, A. Zoccante and A.J.W Thom, Linked coupled cluster Monte Carlo, J Chem. Phys. 144, 044111 (2016).
+.. [Holmes16] A.A. Holmes, H.J. Changlani, C.J. Umrigar, Efficient Heat-Bath Sampling in Fock Space, J. Chem. Theory Comput., 12, 1561–1571 (2016).
 .. [Knowles89] P.J. Knowles, N.C. Handy, A determinant based full configuration interaction program, Comput. Phys. Comm. 54, 75 (1989).
 .. [Lee11] R. M. Lee, G. J. Conduit, N. Nemec, P. Lopez Rios, and N. D. Drummond, Strategies for improving the efficiency of quantum Monte Carlo calculations", Phys. Rev. E. 83, 066706 (2011).
 .. [Loos13] P.F. Loos, P.M.W. Gill, Uniform electron gases. I. Electrons on a ring. J. Chem. Phys. 138, 164124 (2013).
@@ -17,6 +18,7 @@ Bibliography
 .. [Malone16a] F.D. Malone, W.M.C. Foulkes, J.S. Spencer, Improved parallel algorithms for full configuration interaction quantum Monte Carlo, in preparation.
 .. [Overy2014] C. Overy, G.H. Booth, N.S. Blunt, J.J. Shepherd, D. Cleland, A. Alavi, Unbiased reduced density matrices and electronic properties from full configuration interaction quantum Monte Carlo, J. Chem. Phys. 141, 244117 (2014).
 .. [Petruzielo12] F.R. Petruzielo, A.A. Holmes, H.J. Changlani, M.P. Nightingale, C. J. Umrigar, Semistochastic projector monte carlo method, Phys. Rev. Lett. 109, 230201 (2012).
+.. [Power74] J.D. Power, R.M. Pitzer, Inequalities for electron repulsion integrals, Chem. Phys. Lett., 478-483 (1974).
 .. [Shepherd14] J.J. Shepherd, G.E. Scuseria, J.S. Spencer, Sign problem in full configuration interaction quantum Monte Carlo: Linear and sublinear representation regimes for the exact wave function, Phys. Rev. B 90, 155130 (2014).
 .. [Spencer12] J.S. Spencer, N.S. Blunt, W.M.C. Foulkes, The sign problem and population dynamics in the full configuration interaction quantum Monte Carlo method, J. Chem. Phys. 136, 054110 (2012).
 .. [Spencer14] J.S. Spencer, N.S. Blunt, W.A. Vigor, F.D. Malone, W.M.C. Foulkes, J.J. Shepherd, and A.J.W. Thom, The Highly Accurate N-DEterminant (HANDE) quantum Monte Carlo project: Open-source stochastic diagonalisation for quantum chemistry, arXiv:1407.5407 (2014).

@@ -49,14 +49,21 @@ contains
         use energy_evaluation, only: nparticles_start_ind
         use load_balancing, only: init_parallel_t
         use particle_t_utils, only: init_particle_t
-        use system, only: sys_t, read_in
+        use system
         use restart_hdf5, only: read_restart_hdf5, restart_info_t, init_restart_info_t, get_reference_hdf5
 
-        use qmc_data, only: qmc_in_t, fciqmc_in_t, restart_in_t, load_bal_in_t, annihilation_flags_t, qmc_state_t, neel_singlet
+        use qmc_data, only: qmc_in_t, fciqmc_in_t, restart_in_t, load_bal_in_t, annihilation_flags_t, qmc_state_t, &
+                            neel_singlet, excit_gen_power_pitzer, excit_gen_power_pitzer_orderN, excit_gen_heat_bath, &
+                            excit_gen_heat_bath_uniform, excit_gen_heat_bath_single
         use reference_determinant, only: reference_t
         use dmqmc_data, only: dmqmc_in_t
         use excit_gens, only: dealloc_excit_gen_data_t
         use const, only: p
+        use excit_gen_power_pitzer_mol, only: init_excit_mol_power_pitzer_occ_ref, init_excit_mol_power_pitzer_orderN
+        use excit_gen_heat_bath_mol, only: init_excit_mol_heat_bath
+        use excit_gen_ueg, only: init_excit_ueg_power_pitzer
+        use parallel, only: parent
+
 
         type(sys_t), intent(in) :: sys
         type(qmc_in_t), intent(in) :: qmc_in
@@ -73,11 +80,14 @@ contains
         type(qmc_state_t), intent(inout), optional :: qmc_state_restart
         logical, intent(out), optional :: regenerate_info
 
-        integer :: ierr
+        integer :: ierr, iunit
         type(fciqmc_in_t) :: fciqmc_in_loc
         type(dmqmc_in_t) :: dmqmc_in_loc
         type(restart_info_t) :: ri
         logical :: regenerate_info_loc, qmc_state_restart_loc
+        real :: t1, t2, set_up_time
+
+        iunit = 6
 
         regenerate_info_loc = .false.
         restart_version_restart = 0
@@ -133,6 +143,9 @@ contains
             call move_qmc_state_t(qmc_state_restart, qmc_state)
             qmc_state%mc_cycles_done = qmc_state_restart%mc_cycles_done
             uuid_restart = GLOBAL_META%uuid
+            ! Prevent pattempt_single to be overwritten by default value in init_excit_gen.
+            ! It is only overwritten if user specifies pattempt_single by qmc_in.
+            qmc_state%excit_gen_data%p_single_double%pattempt_restart_store = .true.
         else
             call init_spawn_store(qmc_in, qmc_state%psip_list%nspaces, qmc_state%psip_list%pop_real_factor, sys%basis, &
                                   fciqmc_in_loc%non_blocking_comm, qmc_state%par_info%load%proc_map, io_unit, &
@@ -166,7 +179,14 @@ contains
         call init_estimators(sys, qmc_in, restart_in%read_restart, qmc_state_restart_loc, fciqmc_in_loc%non_blocking_comm, &
                         qmc_state)
         if (present(qmc_state_restart)) call dealloc_excit_gen_data_t(qmc_state_restart%excit_gen_data)
+
+        if (parent) write(iunit, '(1X, "# Starting the excitation generator initialisation.")')
+        call cpu_time(t1)
         call init_excit_gen(sys, qmc_in, qmc_state%ref, qmc_state%excit_gen_data)
+        call cpu_time(t2)
+        set_up_time = t2 - t1
+        if (parent) write(iunit, &
+            '(1X, "# Finishing the excitation generator initialisation, time taken:",1X,es17.10)') set_up_time
 
         qmc_state%propagator%quasi_newton = qmc_in%quasi_newton
         qmc_state%propagator%quasi_newton_threshold = qmc_in%quasi_newton_threshold
@@ -179,6 +199,62 @@ contains
             qmc_state%shift_damping = qmc_in%shift_damping
         end if
 
+        if (qmc_in%excit_gen==excit_gen_power_pitzer) then
+            if (parent) write(iunit, '(1X, "# Starting the Power Pitzer excitation generator initialisation.")')
+            call cpu_time(t1)
+            if (sys%system == read_in) then
+               qmc_state%excit_gen_data%excit_gen_pp%power_pitzer_min_weight = qmc_in%power_pitzer_min_weight
+               call init_excit_mol_power_pitzer_occ_ref(sys, qmc_state%ref, qmc_state%excit_gen_data%excit_gen_pp)
+            else if (sys%system == ueg) then 
+               call init_excit_ueg_power_pitzer(sys, qmc_state%ref, qmc_state%excit_gen_data%excit_gen_pp)
+            end if
+            call cpu_time(t2)
+            set_up_time = t2 - t1
+            if (parent) write(iunit, &
+                '(1X, "# Finishing the Power Pitzer excitation generator initialisation, time taken:",1X,es17.10)') set_up_time
+        end if
+
+        if (qmc_in%excit_gen==excit_gen_power_pitzer_orderN) then
+            if (parent) write(iunit, '(1X, "# Starting the P.P. Order N excitation generator initialisation.")')
+            call cpu_time(t1)
+            qmc_state%excit_gen_data%excit_gen_pp%power_pitzer_min_weight = qmc_in%power_pitzer_min_weight
+            call init_excit_mol_power_pitzer_orderN(sys, qmc_state%ref, qmc_state%excit_gen_data%excit_gen_pp)
+            call cpu_time(t2)
+            set_up_time = t2 - t1
+            if (parent) write(iunit, &
+                '(1X, "# Finishing the P.P. Order N excitation generator initialisation, time taken:",1X,es17.10)') set_up_time
+        end if
+
+        if (qmc_in%excit_gen==excit_gen_heat_bath) then
+            if (parent) write(iunit, '(1X, "# Starting the heat bath excitation generator initialisation.")')
+            call cpu_time(t1)
+            call init_excit_mol_heat_bath(sys, qmc_state%excit_gen_data%excit_gen_hb, .true.)
+            call cpu_time(t2)
+            set_up_time = t2 - t1
+            if (parent) write(iunit, &
+                '(1X, "# Finishing the heat bath excitation generator initialisation, time taken:",1X,es17.10)') set_up_time
+        end if
+        if ((qmc_in%excit_gen==excit_gen_heat_bath_uniform) .or. (qmc_in%excit_gen==excit_gen_heat_bath_single)) then
+            if (parent) write(iunit, '(1X, "# Starting the heat bath excitation generator initialisation.")')
+            call cpu_time(t1)
+            call init_excit_mol_heat_bath(sys, qmc_state%excit_gen_data%excit_gen_hb, .false.)
+            call cpu_time(t2)
+            set_up_time = t2 - t1
+            if (parent) write(iunit, &
+                '(1X, "# Finishing the heat bath excitation generator initialisation, time taken:",1X,es17.10)') set_up_time
+        end if
+
+        ! check_input makes sure the pattempt_update cannot be true if we are using the heat bath excitation generator.
+        if (.not. (qmc_state%vary_shift(1)) .and. (qmc_in%pattempt_update)) then
+            ! We sample singles with probability pattempt_single. It therefore makes sense to update pattempt_single 
+            ! [todo] - DMQMC
+            ! for FCIQMC and CCMC on the fly (at least in the beginning of the calculation).
+            qmc_state%excit_gen_data%p_single_double%vary_psingles = .true.
+        else if ((qmc_state%excit_gen_data%p_single_double%vary_psingles) .and. .not.(qmc_in%pattempt_update)) then
+            ! If we are restarting say and vary_psingles is true in the restart file but now pattempt_update is false,
+            ! set vary_psingles to false as well.
+            qmc_state%excit_gen_data%p_single_double%vary_psingles = .false.
+        end if
     end subroutine init_qmc
 
     subroutine init_proc_pointers(sys, qmc_in, reference, io_unit, dmqmc_in, fciqmc_in)
@@ -201,7 +277,9 @@ contains
         use system
         use parallel, only: parent
         use qmc_data, only: qmc_in_t, fciqmc_in_t, single_basis, neel_singlet, neel_singlet_guiding, &
-                            excit_gen_renorm, excit_gen_no_renorm
+                            excit_gen_renorm, excit_gen_renorm_spin, excit_gen_no_renorm, excit_gen_no_renorm_spin, &
+                            excit_gen_power_pitzer_occ, excit_gen_power_pitzer, excit_gen_power_pitzer_orderN, &
+                            excit_gen_heat_bath, excit_gen_heat_bath_uniform, excit_gen_heat_bath_single
         use dmqmc_data, only: dmqmc_in_t, free_electron_dm
         use reference_determinant, only: reference_t
 
@@ -213,6 +291,10 @@ contains
         use dmqmc_data, only: hartree_fock_dm
         use energy_evaluation
         use excit_gen_mol
+        use excit_gen_power_pitzer_mol, only: gen_excit_mol_power_pitzer_occ
+        use excit_gen_power_pitzer_mol, only: gen_excit_mol_power_pitzer_occ_ref, gen_excit_mol_power_pitzer_orderN
+        use excit_gen_heat_bath_mol, only: gen_excit_mol_heat_bath, gen_excit_mol_heat_bath_uniform
+        use excit_gen_ueg, only:  gen_excit_ueg_power_pitzer
         use excit_gen_op_mol
         use excit_gen_hub_k
         use excit_gen_op_hub_k
@@ -224,9 +306,12 @@ contains
         use hamiltonian_hub_real, only: slater_condon0_hub_real
         use hamiltonian_heisenberg, only: diagonal_element_heisenberg, diagonal_element_heisenberg_staggered
         use hamiltonian_molecular, only: slater_condon0_mol, double_counting_correction_mol, hf_hamiltonian_energy_mol, &
-                                         slater_condon1_mol_excit, slater_condon2_mol_excit, get_one_e_int_mol, get_two_e_int_mol
+                                         slater_condon1_mol_excit, slater_condon2_mol_excit, get_one_e_int_mol, get_two_e_int_mol, & 
+                                         create_weighted_excitation_list_mol, abs_hmatel_mol, single_excitation_weight_mol 
         use hamiltonian_periodic_complex, only: slater_condon0_periodic_complex, slater_condon1_periodic_excit_complex, &
-                                                slater_condon2_periodic_excit_complex
+                                                slater_condon2_periodic_excit_complex, &
+                                                create_weighted_excitation_list_periodic_complex, abs_hmatel_periodic_complex, &
+                                                single_excitation_weight_periodic
         use hamiltonian_ringium, only: slater_condon0_ringium
         use hamiltonian_ueg, only: slater_condon0_ueg, kinetic_energy_ueg, exchange_energy_ueg, potential_energy_ueg
         use heisenberg_estimators
@@ -349,21 +434,54 @@ contains
                 spawner_ptr => spawn_complex
                 slater_condon1_excit_ptr => slater_condon1_periodic_excit_complex
                 slater_condon2_excit_ptr => slater_condon2_periodic_excit_complex
+                create_weighted_excitation_list_ptr => create_weighted_excitation_list_periodic_complex
+                abs_hmatel_ptr => abs_hmatel_periodic_complex
+                single_excitation_weight_ptr => single_excitation_weight_periodic
             else
                 update_proj_energy_ptr => update_proj_energy_mol
                 sc0_ptr => slater_condon0_mol
                 energy_diff_ptr => double_counting_correction_mol
                 slater_condon1_excit_ptr => slater_condon1_mol_excit
                 slater_condon2_excit_ptr => slater_condon2_mol_excit
+                create_weighted_excitation_list_ptr => create_weighted_excitation_list_mol
+                abs_hmatel_ptr => abs_hmatel_mol
+                single_excitation_weight_ptr => single_excitation_weight_mol
             end if
 
             select case(qmc_in%excit_gen)
             case(excit_gen_no_renorm)
                 gen_excit_ptr%full => gen_excit_mol_no_renorm
                 decoder_ptr => decode_det_occ
+            case(excit_gen_no_renorm_spin)
+                gen_excit_ptr%full => gen_excit_mol_no_renorm_spin
+                decoder_ptr => decode_det_spinocc
             case(excit_gen_renorm)
                 gen_excit_ptr%full => gen_excit_mol
                 decoder_ptr => decode_det_occ_symunocc
+            case(excit_gen_renorm_spin)
+                gen_excit_ptr%full => gen_excit_mol_spin
+                decoder_ptr => decode_det_spinocc_symunocc
+            case(excit_gen_power_pitzer_occ)
+                gen_excit_ptr%full => gen_excit_mol_power_pitzer_occ
+                decoder_ptr => decode_det_spinocc_spinunocc
+            case(excit_gen_power_pitzer)
+                gen_excit_ptr%full => gen_excit_mol_power_pitzer_occ_ref
+                decoder_ptr => decode_det_occ
+            case(excit_gen_power_pitzer_orderN)
+                ! [todo] - check this decoder is correct.
+                gen_excit_ptr%full => gen_excit_mol_power_pitzer_orderN
+                decoder_ptr => decode_det_occ
+            case(excit_gen_heat_bath)
+                gen_excit_ptr%full => gen_excit_mol_heat_bath
+                decoder_ptr => decode_det_occ
+            case(excit_gen_heat_bath_uniform)
+                gen_excit_ptr%full => gen_excit_mol_heat_bath_uniform
+                decoder_ptr => decode_det_occ_symunocc
+            case(excit_gen_heat_bath_single)
+                ! [todo] uses basically same function as hb_uniform but
+                ! [todo] has varying function call with singles.
+                gen_excit_ptr%full => gen_excit_mol_heat_bath_uniform
+                decoder_ptr => decode_det_occ
             case default
                 call stop_all('init_proc_pointers', 'Selected excitation generator not implemented.')
             end select
@@ -380,6 +498,8 @@ contains
             decoder_ptr => decode_det_occ
             select case(qmc_in%excit_gen)
             case(excit_gen_no_renorm)
+            case(excit_gen_power_pitzer)
+                gen_excit_ptr%full => gen_excit_ueg_power_pitzer
             case(excit_gen_renorm)
                 if (parent) then
                     write (io_unit,'(1X,"WARNING: renormalised excitation generators not implemented.")')
@@ -763,31 +883,55 @@ contains
         !   excit_gen_data: pre-computed data for fast excitation generation.
 
         use const, only: p
-        use system, only: sys_t, ueg
-        use qmc_data, only: qmc_in_t
-        use excit_gens, only: excit_gen_data_t
+        use system, only: sys_t, ueg, read_in
+        use qmc_data, only: qmc_in_t, excit_gen_renorm_spin, excit_gen_no_renorm_spin
+        use excit_gens, only: excit_gen_data_t, zero_p_single_double_coll_t
         use ueg_system, only: init_ternary_conserve
-        use qmc_common, only: find_single_double_prob
+        use qmc_common, only: find_single_double_prob, find_parallel_spin_prob_mol
         use reference_determinant, only: reference_t
 
         type(sys_t), intent(in) :: sys
         type(qmc_in_t), intent(in) :: qmc_in
         type(reference_t), intent(in) :: ref
-        type(excit_gen_data_t), intent(out) :: excit_gen_data
+        type(excit_gen_data_t), intent(inout) :: excit_gen_data
 
         ! Set type of excitation generator to use
         excit_gen_data%excit_gen = qmc_in%excit_gen
 
-        ! If not set at input, set probability of selecting single or double
+        ! If not set at input or available from restart file, set probability of selecting single or double
         ! excitations based upon the reference determinant and assume other
         ! determinants have a roughly similar ratio of single:double
-        ! excitations.
+        ! excitations. Input overrides pattempt_single stored in restart file.
         if (qmc_in%pattempt_single < 0 .or. qmc_in%pattempt_double < 0) then
-            call find_single_double_prob(sys, ref%occ_list0, excit_gen_data%pattempt_single, excit_gen_data%pattempt_double)
+            if (.not. excit_gen_data%p_single_double%pattempt_restart_store) then
+                call find_single_double_prob(sys, ref%occ_list0, excit_gen_data%pattempt_single, excit_gen_data%pattempt_double)
+            else if (qmc_in%pattempt_zero_accum_data) then
+                ! User wants accumulated data to be zeroed (e.g. restarting with a different excitation generator).
+                ! pattempt_single and pattempt_double stay what they were.
+                call zero_p_single_double_coll_t(excit_gen_data%p_single_double%total)
+                excit_gen_data%p_single_double%counter = 1.0_p
+            end if
         else
+            ! [todo] - is it wise that the user has to specify both *_single and *_double to overwrite?
+            ! zero data received from restart file if user overwrittes it by specifying a qmc_in%pattempt_single and *_double.
+            call zero_p_single_double_coll_t(excit_gen_data%p_single_double%total)
+            excit_gen_data%p_single_double%counter = 1.0_p
             ! renormalise just in case input wasn't
             excit_gen_data%pattempt_single = qmc_in%pattempt_single/(qmc_in%pattempt_single+qmc_in%pattempt_double)
             excit_gen_data%pattempt_double = 1.0_p - qmc_in%pattempt_single
+        end if
+
+        ! If not set at input, set probability of selecting parallel ij to the ratio of |Hij->ab| with parallel spins to
+        ! total |Hij->ab|.
+        ! [todo] - desireable to store in restart file?
+! [review] - AJWT: This is probably worth storing in the restart file, given it's calculated here.
+! [reply] - VAN: If I don't store it, it will be recalculated. If the user wants to keep the old value, they can manually
+! [reply] - VAN: specify it. If they don't want the old value but the system is new, there is no way to call the function
+! [reply] - VAN: find_parallel_spin_prob. The only disadvantage of not storing it is timing but that might be fine (?).
+! [review] - AJWT: There is a fourth order loop inside there - does it take a lot of time? 
+        if ((qmc_in%pattempt_parallel < 0) .and. (sys%system == read_in) .and. &
+            ((qmc_in%excit_gen == excit_gen_renorm_spin) .or. (qmc_in%excit_gen == excit_gen_no_renorm_spin))) then
+            call find_parallel_spin_prob_mol(sys, excit_gen_data%pattempt_parallel)
         end if
 
         ! UEG allowed excitations
@@ -1145,6 +1289,7 @@ contains
         use dSFMT_interface, only: move_dSFMT_state_t
         use qmc_data, only: qmc_state_t
         use spawn_data, only: move_spawn_t
+        use excit_gens, only: move_pattempt_data
         use particle_t_utils, only: move_particle_t
 
         type(qmc_state_t), intent(inout) :: qmc_state_old, qmc_state_new
@@ -1156,6 +1301,7 @@ contains
         call move_alloc(qmc_state_old%estimators, qmc_state_new%estimators)
         call move_dSFMT_state_t(qmc_state_old%rng_state, qmc_state_new%rng_state)
         call move_particle_t(qmc_state_old%psip_list, qmc_state_new%psip_list)
+        call move_pattempt_data(qmc_state_old%excit_gen_data, qmc_state_new%excit_gen_data)
 
     end subroutine move_qmc_state_t
 
