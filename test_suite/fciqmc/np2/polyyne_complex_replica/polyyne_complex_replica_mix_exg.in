@@ -46,4 +46,7 @@ fciqmc {
     fciqmc = {
         replica_tricks = true,
     },
+    restart = {
+        rng = false,
+    },
 }
