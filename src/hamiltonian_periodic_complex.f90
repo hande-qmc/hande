@@ -412,7 +412,7 @@ contains
 
     pure function abs_hmatel_periodic_complex(hmatel) result(abs_hmatel)
         ! Return absolute value of hmatel. As we have a complex function here, hmatel is complex.
-        
+        ! This version is more numerically stable than some versions in fortran libraries.      
         ! https://math.stackexchange.com/questions/750648/absolute-value-of-complex-number-in-numerical-recipes
         
         ! Following Cabs() for C as described on page 949 "Numerical Recipes in C - the art of scientific computing.
