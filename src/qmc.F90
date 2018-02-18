@@ -53,13 +53,15 @@ contains
         use restart_hdf5, only: read_restart_hdf5, restart_info_t, init_restart_info_t, get_reference_hdf5
 
         use qmc_data, only: qmc_in_t, fciqmc_in_t, restart_in_t, load_bal_in_t, annihilation_flags_t, qmc_state_t, &
-                            neel_singlet, excit_gen_power_pitzer, excit_gen_power_pitzer_orderN, excit_gen_heat_bath, &
-                            excit_gen_heat_bath_uniform, excit_gen_heat_bath_single
+                            neel_singlet, &
+                            excit_gen_power_pitzer, excit_gen_power_pitzer_orderN, excit_gen_power_pitzer_occ_ij, &
+                            excit_gen_heat_bath, excit_gen_heat_bath_uniform, excit_gen_heat_bath_single
         use reference_determinant, only: reference_t
         use dmqmc_data, only: dmqmc_in_t
         use excit_gens, only: dealloc_excit_gen_data_t
         use const, only: p
-        use excit_gen_power_pitzer_mol, only: init_excit_mol_power_pitzer_occ_ref, init_excit_mol_power_pitzer_orderN
+        use excit_gen_power_pitzer_mol, only: init_excit_mol_power_pitzer_occ_ref, init_excit_mol_power_pitzer_orderM_ij, &
+                                              init_excit_mol_power_pitzer_orderN
         use excit_gen_heat_bath_mol, only: init_excit_mol_heat_bath
         use excit_gen_ueg, only: init_excit_ueg_power_pitzer
         use parallel, only: parent
@@ -224,6 +226,16 @@ contains
             if (parent) write(iunit, &
                 '(1X, "# Finishing the P.P. Order N excitation generator initialisation, time taken:",1X,es17.10)') set_up_time
         end if
+        
+        if (qmc_in%excit_gen==excit_gen_power_pitzer_occ_ij) then
+            if (parent) write(iunit, '(1X, "# Starting the P.P. Order M ij excitation generator initialisation.")')
+            call cpu_time(t1)
+            call init_excit_mol_power_pitzer_orderM_ij(sys, qmc_state%ref, qmc_state%excit_gen_data%excit_gen_pp)
+            call cpu_time(t2)
+            set_up_time = t2 - t1
+            if (parent) write(iunit, &
+                '(1X, "# Finishing the P.P. Order M ij excitation generator initialisation, time taken:",1X,es17.10)') set_up_time
+        end if
 
         if (qmc_in%excit_gen==excit_gen_heat_bath) then
             if (parent) write(iunit, '(1X, "# Starting the heat bath excitation generator initialisation.")')
@@ -278,7 +290,8 @@ contains
         use parallel, only: parent
         use qmc_data, only: qmc_in_t, fciqmc_in_t, single_basis, neel_singlet, neel_singlet_guiding, &
                             excit_gen_renorm, excit_gen_renorm_spin, excit_gen_no_renorm, excit_gen_no_renorm_spin, &
-                            excit_gen_power_pitzer_occ, excit_gen_power_pitzer, excit_gen_power_pitzer_orderN, &
+                            excit_gen_power_pitzer_occ, excit_gen_power_pitzer_occ_ij, excit_gen_power_pitzer, &
+                            excit_gen_power_pitzer_orderN, &
                             excit_gen_heat_bath, excit_gen_heat_bath_uniform, excit_gen_heat_bath_single
         use dmqmc_data, only: dmqmc_in_t, free_electron_dm
         use reference_determinant, only: reference_t
@@ -462,6 +475,9 @@ contains
                 gen_excit_ptr%full => gen_excit_mol_spin
                 decoder_ptr => decode_det_spinocc_symunocc
             case(excit_gen_power_pitzer_occ)
+                gen_excit_ptr%full => gen_excit_mol_power_pitzer_occ
+                decoder_ptr => decode_det_spinocc_spinunocc
+            case(excit_gen_power_pitzer_occ_ij)
                 gen_excit_ptr%full => gen_excit_mol_power_pitzer_occ
                 decoder_ptr => decode_det_spinocc_spinunocc
             case(excit_gen_power_pitzer)

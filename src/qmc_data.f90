@@ -48,8 +48,10 @@ enum, bind(c)
     ! The version O(M/64) which chooses occ orbitals first, and excites with probabilities akin 
     ! to that of the reference.
     enumerator :: excit_gen_power_pitzer
-    ! The version O(M) which chooses occ orbitals first.
+    ! The version O(M) which chooses occ orbitals first. ij are found uniformly.
     enumerator :: excit_gen_power_pitzer_occ
+    ! The version O(M) which chooses occ orbitals first. ij are found with heat bath.
+    enumerator :: excit_gen_power_pitzer_occ_ij
     ! The version O(N) which precomputes more than excit_gen_power_pitzer.
     enumerator :: excit_gen_power_pitzer_orderN
     ! Heat bath excitation generators, based on Holmes, A. A.; Changlani, H. J.; Umrigar, 

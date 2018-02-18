@@ -298,7 +298,7 @@ contains
         use checking, only: check_allocate, check_deallocate
         use system, only: sys_t
         use excit_gen_mol, only: gen_single_excit_mol_no_renorm
-        use excit_gens, only: excit_gen_heat_bath_t, excit_gen_data_t
+        use excit_gens, only: excit_gen_heat_bath_t, excit_gen_data_t, select_ij_heat_bath
         use alias, only: select_weighted_value_precalc, select_weighted_value
         use dSFMT_interface, only: dSFMT_t, get_rand_close_open
         use hamiltonian_data, only: hmatel_t
@@ -334,8 +334,15 @@ contains
             allocate(ji_weights_occ(1:sys%nel), stat=ierr)
             call check_allocate('ji_weights_occ', sys%nel, ierr)
             
-            call  select_ij_heat_bath(rng, sys%nel, hb, cdet, i, j, i_ind, j_ind, i_weights_occ, i_weights_occ_tot, &
-                                ij_weights_occ, ij_weights_occ_tot, ji_weights_occ, ji_weights_occ_tot, allowed_excitation)
+            call select_ij_heat_bath(rng, sys%nel, hb%i_weights, hb%ij_weights, cdet, i, j, i_ind, j_ind, i_weights_occ, &
+                i_weights_occ_tot, ij_weights_occ, ij_weights_occ_tot, ji_weights_occ, ji_weights_occ_tot, allowed_excitation)
+            
+            ! Is there a possible a?
+            if ((allowed_excitation) .and. (abs(hb%hb_ija%weights_tot(j, i)) > 0.0_p)) then
+                allowed_excitation = .true.
+            else
+                allowed_excitation = .false.
+            end if
             
             ! Important: We do not order i and j here as the original order matters before we decide whether to do a single
             ! excitation i -> a or a double excitation ij -> ab.
@@ -579,7 +586,7 @@ contains
         use checking, only: check_allocate, check_deallocate
         use system, only: sys_t
         use excit_gen_mol, only: gen_single_excit_mol
-        use excit_gens, only: excit_gen_heat_bath_t, excit_gen_data_t
+        use excit_gens, only: excit_gen_heat_bath_t, excit_gen_data_t, select_ij_heat_bath
         use alias, only: select_weighted_value_precalc, select_weighted_value
         use dSFMT_interface, only: dSFMT_t, get_rand_close_open
         use hamiltonian_data, only: hmatel_t
@@ -627,9 +634,17 @@ contains
                 allocate(ji_weights_occ(1:sys%nel), stat=ierr)
                 call check_allocate('ji_weights_occ', sys%nel, ierr)
                 
-                call  select_ij_heat_bath(rng, sys%nel, hb, cdet, i, j, i_ind, j_ind, i_weights_occ, i_weights_occ_tot, &
-                                    ij_weights_occ, ij_weights_occ_tot, ji_weights_occ, ji_weights_occ_tot, allowed_excitation)
+                call select_ij_heat_bath(rng, sys%nel, hb%i_weights, hb%ij_weights, cdet, i, j, i_ind, j_ind, i_weights_occ, &
+                    i_weights_occ_tot, ij_weights_occ, ij_weights_occ_tot, ji_weights_occ, ji_weights_occ_tot, &
+                    allowed_excitation)
 
+                ! Is there a possible a?
+                if ((allowed_excitation) .and. (abs(hb%hb_ija%weights_tot(j, i)) > 0.0_p)) then
+                    allowed_excitation = .true.
+                else
+                    allowed_excitation = .false.
+                end if
+                
                 pgen = ((i_weights_occ(i_ind)/i_weights_occ_tot) * (ij_weights_occ(j_ind)/ij_weights_occ_tot)) + &
                         ((i_weights_occ(j_ind)/i_weights_occ_tot) * (ji_weights_occ(i_ind)/ji_weights_occ_tot))
 
@@ -706,78 +721,6 @@ contains
         end if
 
     end subroutine gen_excit_mol_heat_bath_uniform
-
-    subroutine select_ij_heat_bath(rng, nel, hb, cdet, i, j, i_ind, j_ind, i_weights_occ, i_weights_occ_tot, ij_weights_occ, &
-            ij_weights_occ_tot, ji_weights_occ, ji_weights_occ_tot, allowed_excitation)
-        ! Routine to select i and j according to the heat bath algorithm.
-
-        ! In:
-        !   nel: number of electrons (= sys%nel)
-        !   hb: excit_gen_heat_bath_t object containing precalculated weights and alias tables
-        !   cdet: current determinant to attempt spawning from.
-        ! In/Out:
-        !   rng: random number generator
-        ! Out:
-        !   allowed_excitation: true if excitation with ij is possible.
-        !   i_weights_occ: weights of i for all occupied spinorbitals.
-        !   ij_weights_occ: weights of j for all occupied spinorbitals, given i.
-        !   ji_weights_occ: weights of i for all occupied spinorbitals, given j (reverse selection for pgen calculation).
-        !   i_weights_occ_tot: sum of weights of i for all occupied spinorbitals.
-        !   ij_weights_occ_tot: sum of weights of j for all occupied spinorbitals, given i.
-        !   ji_weights_occ_tot: sum of weights of i for all occupied spinorbitals, given j.
-
-        use determinants, only: det_info_t
-        use dSFMT_interface, only: dSFMT_t
-        use alias, only: select_weighted_value
-        use excit_gens, only: excit_gen_heat_bath_t
-
-        integer, intent(in) :: nel
-        type(excit_gen_heat_bath_t), intent(in) :: hb
-        type(det_info_t), intent(in) :: cdet
-        type(dSFMT_t), intent(inout) :: rng
-        real(p), intent(out) :: i_weights_occ(:), ij_weights_occ(:), ji_weights_occ(:)
-        real(p), intent(out) :: i_weights_occ_tot, ij_weights_occ_tot, ji_weights_occ_tot
-        logical, intent(out) :: allowed_excitation
-        
-        integer :: pos_occ, i_ind, j_ind, i, j
-
-        i_weights_occ_tot = 0.0_p
-        do pos_occ = 1, nel
-            i_weights_occ(pos_occ) = hb%i_weights(cdet%occ_list(pos_occ))
-            i_weights_occ_tot = i_weights_occ_tot + i_weights_occ(pos_occ)
-         end do
-                
-        i_ind = select_weighted_value(rng, nel, i_weights_occ, i_weights_occ_tot)
-        i = cdet%occ_list(i_ind)
-
-        ij_weights_occ_tot = 0.0_p
-        do pos_occ = 1, nel
-            ij_weights_occ(pos_occ) = hb%ij_weights(cdet%occ_list(pos_occ),i)
-            ij_weights_occ_tot = ij_weights_occ_tot + ij_weights_occ(pos_occ)
-        end do
-
-        if (ij_weights_occ_tot > 0.0_p) then
-            ! There is a j for this i.
-            j_ind = select_weighted_value(rng, nel, ij_weights_occ, ij_weights_occ_tot)
-            j = cdet%occ_list(j_ind)
-
-            ! Pre-compute the other direction (first selecting j then i) as well as that is required for pgen.
-            ji_weights_occ_tot = 0.0_p
-            do pos_occ = 1, nel
-                ji_weights_occ(pos_occ) = hb%ij_weights(cdet%occ_list(pos_occ),j)
-                ji_weights_occ_tot = ji_weights_occ_tot + ji_weights_occ(pos_occ)
-            end do
-            ! Is there a possible a?
-            if (abs(hb%hb_ija%weights_tot(j, i)) > 0.0_p) then
-                allowed_excitation = .true.
-            else
-                allowed_excitation = .false.
-            end if
-        else
-            allowed_excitation = .false.
-        end if
-
-    end subroutine select_ij_heat_bath
 
     subroutine gen_single_excit_heat_bath_exact(rng, sys, pattempt_single, cdet, pgen, connection, hmatel, &
             allowed_excitation)
