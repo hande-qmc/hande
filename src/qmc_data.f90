@@ -285,7 +285,7 @@ type restart_in_t
     logical :: write_restart = .false.
     ! Index to write to (huge indicates not set).
     integer :: write_id = huge(0)
-    ! Print out restart file every X iterations (in addition to at the end).
+    ! Print out restart file every X reports (in addition to at the end).
     integer :: write_freq = huge(0)
     ! Print out a restart file just before the shift turns on.
     logical :: write_restart_shift = .false.
