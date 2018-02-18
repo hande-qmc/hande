@@ -646,6 +646,7 @@ contains
         character(c_char), allocatable, target :: prefix_str(:)
         character(c_char), pointer :: state_str_c(:)
         type(c_ptr) :: prefix_ptr, state_ptr
+        integer :: ilen
 
         prefix_ptr = C_NULL_PTR
         if (present(prefix)) then
@@ -654,8 +655,9 @@ contains
         end if
 
         state_ptr = dsfmt_state_to_str_c(rng%dSFMT_state, prefix_ptr)
-        call c_f_pointer(state_ptr, state_str_c, [int(strlen(state_ptr))])
-        call cstring_to_fstring(state_str_c, rng_state)
+        ilen = int(strlen(state_ptr))
+        call c_f_pointer(state_ptr, state_str_c, [ilen])
+        call cstring_to_fstring(state_str_c, rng_state, ilen)
         call free_c(state_ptr)
 
         if (present(prefix)) deallocate(prefix_str)
@@ -687,6 +689,7 @@ contains
         character(c_char), allocatable, target :: state_str(:)
         character(c_char), pointer :: ret_str_c(:)
         integer(c_int32_t), target :: error
+        integer :: ilen
 
         prefix_ptr = C_NULL_PTR
         if (present(prefix)) then
@@ -699,9 +702,10 @@ contains
         deallocate(state_str)
 
         if (error /= 0) then
-            call c_f_pointer(ret_ptr, ret_str_c, [int(strlen(ret_ptr))])
+            ilen = int(strlen(ret_ptr))
+            call c_f_pointer(ret_ptr, ret_str_c, [ilen])
             if (present(err_msg)) then
-                call cstring_to_fstring(ret_str_c, err_msg)
+                call cstring_to_fstring(ret_str_c, err_msg, ilen)
             else
                 write (6,*) 'dsfmt_str_to_state error: ', ret_str_c
             end if
@@ -811,7 +815,7 @@ contains
 
 !--- Private string utilities ---
 
-    pure subroutine cstring_to_fstring(cstring, fstring)
+    pure subroutine cstring_to_fstring(cstring, fstring, ilen)
 
         ! Convert a C character array to a Fortran string.
 
@@ -822,9 +826,10 @@ contains
 
         character(c_char), intent(in) :: cstring(:)
         character(:), allocatable, intent(out) :: fstring
+        integer, intent(in) :: ilen
         integer :: i
 
-        allocate(character(len=size(cstring)) :: fstring)
+        allocate(character(len=ilen) :: fstring)
         do i = 1, size(cstring)
             fstring(i:i) = cstring(i)
         end do
