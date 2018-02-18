@@ -701,7 +701,7 @@ contains
         
 #ifdef PARALLEL
         ! Initialise do-loop range for each processor, [iproc_nbasis_start,iproc_nbasis_end].
-        call parallel_start_end(sys%basis%nbasis, iproc_nbasis_start, iproc_nbasis_end, displs_nbasis, sizes_nbasis)
+        call get_proc_loop_range(sys%basis%nbasis, iproc_nbasis_start, iproc_nbasis_end, displs_nbasis, sizes_nbasis)
 #else
         iproc_nbasis_start = 1
         iproc_nbasis_end = sys%basis%nbasis
