@@ -929,9 +929,13 @@ contains
 ! [reply] - VAN: specify it. If they don't want the old value but the system is new, there is no way to call the function
 ! [reply] - VAN: find_parallel_spin_prob. The only disadvantage of not storing it is timing but that might be fine (?).
 ! [review] - AJWT: There is a fourth order loop inside there - does it take a lot of time? 
-        if ((qmc_in%pattempt_parallel < 0) .and. (sys%system == read_in) .and. &
+        if ((qmc_in%pattempt_parallel < 0.0_p) .and. (sys%system == read_in) .and. &
             ((qmc_in%excit_gen == excit_gen_renorm_spin) .or. (qmc_in%excit_gen == excit_gen_no_renorm_spin))) then
             call find_parallel_spin_prob_mol(sys, excit_gen_data%pattempt_parallel)
+        else if (.not.(qmc_in%pattempt_parallel < 0.0_p)) then
+            ! pattempt_parallel set by user. check_input.f90 makes sure this is only set if read_in system and excit. gens.
+            ! are no_renorm_spin or renorm_spin.
+            excit_gen_data%pattempt_parallel = qmc_in%pattempt_parallel
         end if
 
         ! UEG allowed excitations

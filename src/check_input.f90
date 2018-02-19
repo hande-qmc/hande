@@ -135,7 +135,8 @@ contains
         !   fciqmc_in: FCIQMC input options.
         !   qmc_state_restart (optional): qmc_state object being restarted from.
 
-        use qmc_data, only: qmc_in_t, qmc_state_t, excit_gen_heat_bath, fciqmc_in_t
+        use qmc_data, only: qmc_in_t, qmc_state_t, excit_gen_heat_bath, excit_gen_no_renorm_spin, excit_gen_renorm_spin, &
+                            fciqmc_in_t
         use errors, only: stop_all, warning
         use system, only: sys_t, read_in
 
@@ -194,6 +195,12 @@ contains
             if (qmc_in%pattempt_zero_accum_data) then
                call stop_all(this, 'pattempt_zero_accum_data not to be used without pattempt_update.')
             end if 
+        end if
+        
+        ! qmc_in%pattempt_parallel < 0 if unset.
+        if ((qmc_in%pattempt_parallel > 0) .and. .not.((sys%system == read_in) .and. &
+            ((qmc_in%excit_gen == excit_gen_renorm_spin) .or. (qmc_in%excit_gen == excit_gen_no_renorm_spin)))) then
+            call stop_all(this, 'pattempt_parallel only to be used with read_in systems and *_spin excit. gens')
         end if
 
     end subroutine check_qmc_opts
