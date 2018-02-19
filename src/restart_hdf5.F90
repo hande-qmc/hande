@@ -514,7 +514,7 @@ module restart_hdf5
             use hdf5_helper, only: hdf5_kinds_t, hdf5_read, dtype_equal, dset_shape, hdf5_path, hdf5_file_close
             use restart_utils, only: convert_dets, convert_ref, convert_pops, change_pop_scaling, change_nbasis
             use calc, only: calc_type, exact_diag, lanczos_diag, mc_hilbert_space
-            use parallel, only: nprocs
+            use parallel, only: nprocs, parent
 #endif
             use errors, only: stop_all, warning
             use const
@@ -523,7 +523,6 @@ module restart_hdf5
             use qmc_data, only: qmc_state_t
             use sort, only: qsort
             use qmc_common, only: redistribute_particles
-            use parallel, only: parent
 
             type(restart_info_t), intent(in) :: ri
             logical, intent(in) :: nb_comm
