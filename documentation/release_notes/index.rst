@@ -5,4 +5,5 @@ Notes on Releases
    :maxdepth: 2
    :glob:
 
+   current
    v1.2
