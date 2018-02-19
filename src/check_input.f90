@@ -139,6 +139,7 @@ contains
                             fciqmc_in_t
         use errors, only: stop_all, warning
         use system, only: sys_t, read_in
+        use const, only: p
 
         type(qmc_in_t), intent(in) :: qmc_in
         type(sys_t), intent(in) :: sys
@@ -198,9 +199,13 @@ contains
         end if
         
         ! qmc_in%pattempt_parallel < 0 if unset.
-        if ((qmc_in%pattempt_parallel > 0) .and. .not.((sys%system == read_in) .and. &
-            ((qmc_in%excit_gen == excit_gen_renorm_spin) .or. (qmc_in%excit_gen == excit_gen_no_renorm_spin)))) then
-            call stop_all(this, 'pattempt_parallel only to be used with read_in systems and *_spin excit. gens')
+        if (qmc_in%pattempt_parallel > 0) then
+            if (.not.((sys%system == read_in) .and. &
+                ((qmc_in%excit_gen == excit_gen_renorm_spin) .or. (qmc_in%excit_gen == excit_gen_no_renorm_spin)))) then
+                call stop_all(this, 'pattempt_parallel only to be used with read_in systems and *_spin excit. gens')
+            else if (qmc_in%pattempt_parallel > 1.0_p) then
+                call stop_all(this, 'pattempt_parallel has to be positive and less then or equal to 1')
+            end if
         end if
 
     end subroutine check_qmc_opts

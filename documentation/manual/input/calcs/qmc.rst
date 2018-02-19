@@ -327,6 +327,8 @@ algorithms and control the core settings in the algorithms.
 
     Only to be used with ``excit_gen`` == 'no_renorm_spin' and 'renorm_spin'.
     Probability that :math:`ij` have parallel spins.
+
+    Cannot be bigger than 1 and if negative, the default estimate is applied.
     
 ``initial_shift``
     type: float.
