@@ -821,6 +821,7 @@ contains
 
         ! In:
         !    cstring: C-format string.
+        !    ilen: length of C string (not including null character)
         ! Out:
         !    fstring: Fortran-format string. Must be deallocated by caller.
 
@@ -830,7 +831,7 @@ contains
         integer :: i
 
         allocate(character(len=ilen) :: fstring)
-        do i = 1, size(cstring)
+        do i = 1, ilen
             fstring(i:i) = cstring(i)
         end do
 
