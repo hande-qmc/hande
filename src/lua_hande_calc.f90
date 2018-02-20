@@ -1717,7 +1717,7 @@ contains
         !    read = true/false/id,
         !    write = true/false/id,
         !    write_shift = true/false/id,
-        !    write_frequency = niterations,
+        !    write_frequency = nreports,
         !    rng = true/false,
         ! }
 

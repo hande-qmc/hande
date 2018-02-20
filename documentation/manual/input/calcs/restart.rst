@@ -44,7 +44,7 @@ HANDE currently uses one restart file per MPI rank with a filename of the form
 
     Optional.  Default: :math:`2^{31}-1`.
 
-    Write out checkpointing files every `N` iterations, where `N` is the
+    Write out checkpointing files every `N` report loops, where `N` is the
     specified value.
 
     .. note::

@@ -565,7 +565,6 @@ module restart_hdf5
             use qmc_data, only: qmc_state_t
             use sort, only: qsort
             use qmc_common, only: redistribute_particles
-            use parallel, only: parent
 
             type(restart_info_t), intent(in) :: ri
             logical, intent(in) :: nb_comm
@@ -1474,7 +1473,7 @@ module restart_hdf5
             ! Check if a restart file needs to be written, and if so then do so.
 
             ! In:
-            !     dump_freq: How often (in iterations) to write out a restart file.  Pass in
+            !     dump_freq: How often (in report loops) to write out a restart file.  Pass in
             !         huge(0) to (effectively) disable.
             !     ntot_particles: total number of particles in each space.
             !     ireport: index of current report loop.
@@ -1505,17 +1504,23 @@ module restart_hdf5
             type(restart_info_t), intent(in) :: ri_freq, ri_shift
             logical, intent(in) :: nb_comm
             type(dSFMT_t), intent(in), optional :: rng
+            type(restart_info_t) :: ri
+            logical :: dump_restart
 
-            if (present(rng)) call dSFMT_t_to_dSFMT_state_t(rng, qs%rng_state)
+            dump_restart = (dump_restart_shift .and. any(qs%vary_shift)) .or. (mod(ireport, dump_freq) == 0)
             if (dump_restart_shift .and. any(qs%vary_shift)) then
                 dump_restart_shift = .false.
-                call dump_restart_hdf5(ri_shift, qs, qs%mc_cycles_done+ncycles*ireport, &
-                                       ntot_particles, nbasis, nb_comm, info_string_len)
-            else if (mod(ireport*ncycles,dump_freq) == 0) then
-                call dump_restart_hdf5(ri_freq, qs, qs%mc_cycles_done+ncycles*ireport, &
-                                       ntot_particles, nbasis, nb_comm, info_string_len)
+                ri = ri_shift
+            else if (mod(ireport,dump_freq) == 0) then
+                ri = ri_freq
             end if
-            call free_dSFMT_state_t(qs%rng_state)
+
+            if (dump_restart) then
+                if (present(rng)) call dSFMT_t_to_dSFMT_state_t(rng, qs%rng_state)
+                call dump_restart_hdf5(ri, qs, qs%mc_cycles_done+ncycles*ireport, &
+                                       ntot_particles, nbasis, nb_comm, info_string_len)
+                call free_dSFMT_state_t(qs%rng_state)
+            end if
 
         end subroutine dump_restart_file_wrapper
 
