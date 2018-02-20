@@ -543,7 +543,10 @@ json_dict : dict
             else:
                 json_text += line
     if json_text:
-        return json.loads(json_text)
+        try:
+         return json.loads(json_text)
+        except:
+         return {}
     else:
         return {}
 
