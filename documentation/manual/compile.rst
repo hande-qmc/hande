@@ -307,6 +307,10 @@ is not possible.  Issues and, where known, workarounds we have found are:
   a later version of gcc or a different compiler. See
   https://gcc.gnu.org/bugzilla/show_bug.cgi?id=82869 for more details.
 
+* gcc 7.3.0 (and possibly earlier) has a bug affecting inquire on internal units.
+  A workaround is in place for gcc 7.3.0. See
+  https://gcc.gnu.org/bugzilla/show_bug.cgi?id=84412 for more details.
+
 * HDF5 1.8.14 (and possibly 1.8.13) has a bug revealed by Intel compilers v15 onwards.
   This results in unusual error messages and/or segmentation faults when writing out
   restart files.  Possibly workarounds:

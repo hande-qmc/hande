@@ -293,7 +293,13 @@ contains
         integer, intent(in) :: iunit, date_values(8)
         logical :: io_open
 
+#if __GNUC__ == 7 && __GNUC_MINOR__ < 4
+        ! Can't use inquire if iunit is less than 0 (ie was created with open(unit=newunit, ...)
+        ! Assume file is open -- see  https://gcc.gnu.org/bugzilla/show_bug.cgi?id=84412
+        io_open = .true.
+#else
         inquire(unit=iunit, opened = io_open)
+#endif
 
         if (io_open) then
             write (iunit,'(1X,64("="))')

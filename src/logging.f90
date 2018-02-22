@@ -245,11 +245,15 @@ contains
 
         call date_and_time(VALUES=date_values)
 
-        call write_date_time_close(logging_info%calc_unit, date_values)
-        call write_date_time_close(logging_info%spawn_unit, date_values)
-        call write_date_time_close(logging_info%death_unit, date_values)
-        call write_date_time_close(logging_info%stoch_select_unit, date_values)
-        call write_date_time_close(logging_info%select_unit, date_values)
+        ! Protect the write_date_time_close calls due to workaround for gcc 7.3.0 bug.
+        ! See  https://gcc.gnu.org/bugzilla/show_bug.cgi?id=84412
+        associate(info => logging_info)
+            if (info%calc_unit /= huge(0)) call write_date_time_close(info%calc_unit, date_values)
+            if (info%spawn_unit /= huge(0)) call write_date_time_close(info%spawn_unit, date_values)
+            if (info%death_unit /= huge(0)) call write_date_time_close(info%death_unit, date_values)
+            if (info%stoch_select_unit /= huge(0)) call write_date_time_close(info%stoch_select_unit, date_values)
+            if (info%select_unit /= huge(0)) call write_date_time_close(info%select_unit, date_values)
+        end associate
 
     end subroutine end_logging
 
