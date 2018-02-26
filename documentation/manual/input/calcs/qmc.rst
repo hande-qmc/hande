@@ -240,6 +240,9 @@ algorithms and control the core settings in the algorithms.
     determinant we attempt a spawn from. Only available for the UEG and read_in systems.
     The time spent in this excitation generator scales as O(Number of electrons) and the
     memory requirements are of O(Number of electrons times Number of basis functions).
+    ..
+        [review] AJWT: Is this actually recommended?  What is the treatment of singles?
+
     This excitation generator is recommended for a single-referenced systems when doing
     CCMC.
 
