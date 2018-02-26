@@ -821,7 +821,7 @@ contains
         ! actually spawned by positive excips.
         integer(int_p), parameter :: parent_sign = 1_int_p
         type(hmatel_t) :: hmatel, hmatel_save
-        real(p) :: pgen
+        real(p) :: pgen, spawn_pgen
         integer(i0) :: fexcit(sys%basis%tot_string_len), funlinked(sys%basis%tot_string_len)
         integer :: excitor_sign, excitor_level
         logical :: linked, single_unlinked, allowed_excitation
@@ -860,6 +860,7 @@ contains
         ! 2, Apply additional factors.
         hmatel_save = hmatel
         hmatel%c = hmatel%c*cluster%amplitude*invdiagel*cluster%cluster_to_det_sign
+        spawn_pgen = pgen
         pgen = pgen*cluster%pselect*nspawnings_total
 
         if ((allowed_excitation) .and. (qs%excit_gen_data%p_single_double%vary_psingles)) then
@@ -872,9 +873,7 @@ contains
         ! 3. Attempt spawning.
         nspawn = attempt_to_spawn(rng, qs%tau, spawn_cutoff, qs%psip_list%pop_real_factor, real(hmatel%c), pgen, parent_sign)
         nspawn_im = attempt_to_spawn(rng, qs%tau, spawn_cutoff, qs%psip_list%pop_real_factor, aimag(hmatel%c), pgen, parent_sign)
-        if (debug) call write_logging_spawn(logging_info, hmatel_save, pgen, invdiagel, [nspawn, nspawn_im], &
-                        real(cluster%amplitude)*qs%psip_list%pop_real_factor, sys%read_in%comp)
-
+        
         if (nspawn /= 0_int_p .or. nspawn_im /= 0_int_p) then
             ! 4. Convert the random excitation from a determinant into an
             ! excitor.  This might incur a sign change and hence result in
@@ -887,6 +886,22 @@ contains
             if (excitor_sign < 0) then
                 nspawn = -nspawn
                 nspawn_im = -nspawn_im
+            end if
+        end if
+        
+        if (debug) then
+            if (allowed_excitation) then
+                ! Only need to convert excitor -> determinant if not done previously (see above).
+                if (.not.(nspawn /= 0_int_p .or. nspawn_im /= 0_int_p)) then
+                    call create_excited_det(sys%basis, cdet%f, connection, fexcit)
+                    excitor_level = get_excitation_level(qs%ref%f0, fexcit)
+                    call convert_excitor_to_determinant(fexcit, excitor_level, excitor_sign, qs%ref%f0)
+                end if
+                call write_logging_spawn(logging_info, hmatel_save, pgen, invdiagel, [nspawn, nspawn_im], &
+                    real(cluster%amplitude)*qs%psip_list%pop_real_factor, sys%read_in%comp, spawn_pgen, cdet%f,fexcit,connection)
+            else
+                call write_logging_spawn(logging_info, hmatel_save, pgen, invdiagel, [nspawn, nspawn_im], &
+                    real(cluster%amplitude)*qs%psip_list%pop_real_factor, sys%read_in%comp, spawn_pgen, cdet%f)
             end if
         end if
     end subroutine spawner_complex_ccmc
