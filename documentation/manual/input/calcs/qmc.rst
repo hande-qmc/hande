@@ -230,7 +230,7 @@ algorithms and control the core settings in the algorithms.
     recommendation by Pablo Lopez Rios). 'heat_bath_uniform' and 'heat_bath_single' do
     not have this potential bias that 'heat_bath' can have.
 
-    The 'power_pitzer' excitation generator generates excitations using a Power-Pitzer
+    The 'power_pitzer' excitation generator generates double excitations using a Power-Pitzer
     [Power74]_ upper bound for the value of the Hamiltonian matrix element, 
     :math`|\langle ij|ab\rangle|^2 > \langle ia|ai\rangle\langle jb|bj\rangle`.
      This involves some precalcalated weights and alias tables, but should reduce both noise
@@ -240,11 +240,7 @@ algorithms and control the core settings in the algorithms.
     determinant we attempt a spawn from. Only available for the UEG and read_in systems.
     The time spent in this excitation generator scales as O(Number of electrons) and the
     memory requirements are of O(Number of electrons times Number of basis functions).
-    ..
-        [review] AJWT: Is this actually recommended?  What is the treatment of singles?
-
-    This excitation generator is recommended for a single-referenced systems when doing
-    CCMC.
+    Single excitations are done uniformly.
 
     The 'power_pitzer_orderM' uses a more refined upper bound for the Hamiltonian matrix
     elements, where the weights for selecting an excitation are calculated each time the
@@ -258,6 +254,9 @@ algorithms and control the core settings in the algorithms.
     The 'power_pitzer_orderN' excitation generator uses precalculated weights and unlike
     'power_pitzer', it also samples i and j with weighted probabilities. It also samples
     single excitations in a weighted manner.
+    This excitation generator can be useful in single-referenced systems when doing
+    CCMC especially where the basis set size gets too big for 'power_pitzer_orderM' and
+    'heat_bath_uniform'.
 
     In the case of the UEG, the 'power_pitzer' excitation generator pre-calculates
     Power-Pitzer like weights for the selecting of orbital a. i and j are selected like
