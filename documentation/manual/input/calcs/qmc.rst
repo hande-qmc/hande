@@ -329,6 +329,7 @@ algorithms and control the core settings in the algorithms.
     Probability that :math:`ij` have parallel spins.
 
     Cannot be bigger than 1 and if negative, the default estimate is applied.
+    It is recalculated in the beginning of each (restarted) calculation.
     
 ``initial_shift``
     type: float.
