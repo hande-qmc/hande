@@ -2207,8 +2207,8 @@ contains
 
             ! Make sure that pattempt_single does not get too small. Allow at least one single excitation (expected)
             ! per pattempt_single update cycle.
-            if (pattempt_single < (1.0_p/real(ps%rep_accum%excit_gen_singles + ps%rep_accum%excit_gen_doubles))) then
-                pattempt_single = 1.0_p/real(ps%rep_accum%excit_gen_singles + ps%rep_accum%excit_gen_doubles)
+            if (pattempt_single < (1.0_p/ps%every_attempts)) then
+                pattempt_single = 1.0_p/ps%every_attempts
                 if (parent) write(iunit, '(1X, "# WARNING: min. pattempt_single!")')
             end if 
 
@@ -2216,8 +2216,8 @@ contains
             
             ! Make sure that pattempt_double does not get too small. Allow at least one double excitation (expected)
             ! per pattempt_single update cycle.
-            if (pattempt_double < (1.0_p/real(ps%rep_accum%excit_gen_singles + ps%rep_accum%excit_gen_doubles))) then
-                pattempt_double = 1.0_p/real(ps%rep_accum%excit_gen_singles + ps%rep_accum%excit_gen_doubles)
+            if (pattempt_double < (1.0_p/ps%every_attempts)) then
+                pattempt_double = 1.0_p/ps%every_attempts
                 pattempt_single = 1.0_p - pattempt_double
                 if (parent) write(iunit, '(1X, "# WARNING: min. pattempt_double!")')
             end if 

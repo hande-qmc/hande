@@ -300,17 +300,24 @@ algorithms and control the core settings in the algorithms.
     
     If true, then ``pattempt_single`` is varied during the run
     to attempt to align the means of |Hij|/pgen for single and double excitations.
-    Update of pattempt_single only happens if shift has not started varying yet. If
-    ``pattempt_single`` or ``pattempt_double`` fall below a minimum value (1 over number of
-    successful spawn attempts in the last pattempt update cycle), they are set to that minimum
+    Update of pattempt_single only happens if shift has not started varying yet.
     Not applicable to "original" heat bath algorithm excitation generator (excit_gen="heat_bath").
     When restarting a calculation, if ``pattempt_update`` is set to true and both ``pattempt_single``
     and ``pattempt_double``
     are specified by the user, previous update information is lost and the update (provided
     shift has not started varying yet) starts from scratch (the information to update
     ``pattempt_single`` from previous runs is lost).
+    If ``pattempt_single`` or ``pattempt_double`` are in danger of getting too small, they will
+    be set to 1/the number of allowed spawn attempts needed before they are updated again
+    which is 10000 currently. A warning will be printed "WARNING: min. pattempt_single/double!" if
+    that is the case. Do make sure that before accepting a final ``pattempt_single`` or
+    ``pattempt_double``, this warning will have not been printed for a while.
     .. note::
         Currently not available in DMQMC.
+    .. note::
+        By the way we set the minimum values for ``pattempt_single`` and ``pattempt_double``, the
+        minimum value for these is 0.0001. If that is too high, consider setting them manually by
+        specifying both (only one is not sufficient) in the input file.
 ``pattempt_zero_accum_data``
     type: boolean
 
