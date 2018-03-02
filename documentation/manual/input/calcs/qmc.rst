@@ -251,6 +251,11 @@ algorithms and control the core settings in the algorithms.
     heat bath excitation generators. The memory cost is then 
     O(Number of basis functions^2).
 
+    .. review AJWT:
+        What's the memorhy cost for power_pitzer_orderN.  It sounds like it should really be
+        named order_Nij?  Is there a version which doesn't weight the ij (which might reduce
+        the memory cost)?
+
     The 'power_pitzer_orderN' excitation generator uses precalculated weights and unlike
     'power_pitzer', it also samples i and j with weighted probabilities. It also samples
     single excitations in a weighted manner.
