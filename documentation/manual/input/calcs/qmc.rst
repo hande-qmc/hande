@@ -255,10 +255,15 @@ algorithms and control the core settings in the algorithms.
         What's the memorhy cost for power_pitzer_orderN.  It sounds like it should really be
         named order_Nij?  Is there a version which doesn't weight the ij (which might reduce
         the memory cost)?
+    .. review VAN:
+        There is a subtle difference in the way ij are samples. power_pitzer_orderN samples
+        them similarly but not the same as power_pitzer_orderM_ij/heat_bath (the set to choose
+        i and j from is different).
 
     The 'power_pitzer_orderN' excitation generator uses precalculated weights and unlike
     'power_pitzer', it also samples i and j with weighted probabilities. It also samples
-    single excitations in a weighted manner.
+    single excitations in a weighted manner. Its memory cost is O(M^2) where M is the
+    number of basis functions.
     This excitation generator can be useful in single-referenced systems when doing
     CCMC especially where the basis set size gets too big for 'power_pitzer_orderM' and
     'heat_bath_uniform'.
@@ -269,7 +274,8 @@ algorithms and control the core settings in the algorithms.
     If a is occupied, the excitation is forbidden.
     ..
 
-        [todo] - Add paper citation once it is published.
+        [todo] - Add paper citation once it is published. Rewrite documentation to
+        highlight differences/similarities in excitation generators.
     
     .. note::
         Currently only the no_renorm and renorm excitation generators are available in
