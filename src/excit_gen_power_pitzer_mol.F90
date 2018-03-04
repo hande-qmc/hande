@@ -228,6 +228,7 @@ contains
         use proc_pointers, only: create_weighted_excitation_list_ptr, slater_condon2_excit_ptr
         use proc_pointers, only: abs_hmatel_ptr, single_excitation_weight_ptr
         use excit_gens, only: excit_gen_power_pitzer_t, alloc_alias_table_data_t
+        use excit_gen_utils, only: init_double_weights_ab
         use alias, only: generate_alias_tables
         use read_in_symmetry, only: cross_product_basis_read_in
         use hamiltonian_data, only: hmatel_t
@@ -410,58 +411,15 @@ contains
         ! mapping which only conserves spin) double excitations.
         ! i and j are drawn from spinorbitals occupied in the reference and a and b can be all orbitals. i!=j and a!=b.
         ! i and j can equal a and b because we later map i. Single excitations are not considered. [todo]
+        ! subroutine init_double_weights_ab is OpenMP parallelised.
         do i = iproc_nel_start, iproc_nel_end
             i_weight = 0.0_p
             
-            !$omp parallel do default(none) &
-            !$omp shared(sys,i,pp,slater_condon2_excit_ptr,abs_hmatel_ptr) &
-            !$omp private(a,i_tmp,j_tmp,ij_sym,isymb,b,hmatel,a_tmp,b_tmp) reduction(+:i_weight)
             do j = 1, sys%nel
                 if (i /= j) then
-                    if (pp%occ_list(j) < pp%occ_list(i)) then
-                        i_tmp = pp%occ_list(j)
-                        j_tmp = pp%occ_list(i)
-                    else
-                        i_tmp = pp%occ_list(i)
-                        j_tmp = pp%occ_list(j)
-                    end if
-                    ! The symmetry of b (=b_cdet), isymb, is given by
-                    ! (sym_i_cdet* x sym_j_cdet* x sym_a_cdet)* = sym_b_cdet
-                    ! (at least for Abelian point groups)
-                    ! ij_sym: symmetry conjugate of the irreducible representation spanned by the codensity
-                    !        \phi_i_cdet*\phi_j_cdet. (We assume that ij is going to be in the bra of the excitation.)
-                    ! [todo] - Check whether order of i and j matters here.
-                    ij_sym = sys%read_in%sym_conj_ptr(sys%read_in, cross_product_basis_read_in(sys, i_tmp, j_tmp))
-                    do a = 1, sys%basis%nbasis
-                        if ((a /= i_tmp) .and. (a /= j_tmp)) then
-                            isymb = sys%read_in%sym_conj_ptr(sys%read_in, &
-                                        sys%read_in%cross_product_sym_ptr(sys%read_in, ij_sym, sys%basis%basis_fns(a)%sym))
-                            do b = 1, sys%basis%nbasis
-                                ! Check spin conservation and symmetry conservation.
-                                if ((((sys%basis%basis_fns(i_tmp)%Ms == sys%basis%basis_fns(a)%Ms) .and. &
-                                    (sys%basis%basis_fns(j_tmp)%Ms == sys%basis%basis_fns(b)%Ms)) .or. &
-                                    ((sys%basis%basis_fns(i_tmp)%Ms == sys%basis%basis_fns(b)%Ms) .and. &
-                                    (sys%basis%basis_fns(j_tmp)%Ms == sys%basis%basis_fns(a)%Ms))) .and. &
-                                    (sys%basis%basis_fns(b)%sym == isymb) .and. (b /= a) .and. (b /= i_tmp) .and. &
-                                    (b/=j_tmp)) then
-                                    if (b < a) then
-                                        a_tmp = b
-                                        b_tmp = a
-                                    else
-                                        a_tmp = a
-                                        b_tmp = b
-                                    end if
-                                    ! slater_condon2_excit does not check whether ij -> ab is allowed but have
-                                    ! checked for that, so it is ok.
-                                    hmatel = slater_condon2_excit_ptr(sys, i_tmp, j_tmp, a_tmp, b_tmp, .false.)
-                                    i_weight = i_weight + abs_hmatel_ptr(hmatel)
-                                end if
-                            end do
-                        end if 
-                    end do
+                    call init_double_weights_ab(sys, pp%occ_list(i), pp%occ_list(j), i_weight)
                 end if
             end do
-            !$omp end parallel do
             
             if (i_weight < depsilon) then
                 ! because we map i later, even if i->a is not allowed/ has been wrongly assigned a zero weight,
@@ -492,50 +450,13 @@ contains
                                 pp%ppn_i_d%aliasK(:))
 
         ! Generate the j given i weighting lists and alias tables. a and b cannot equal i (they are drawn from the same set).
+        ! subroutine init_double_weights_ab is OpenMP parallelised.
         do i = iproc_nbasis_start, iproc_nbasis_end
             ij_d_weights_tot = 0.0_p
-
-            !$omp parallel do default(none) &
-            !$omp shared(sys,i,pp,slater_condon2_excit_ptr,abs_hmatel_ptr) &
-            !$omp private(i_tmp,j_tmp,a_tmp,b_tmp,a,b,ij_weight,ij_sym,isymb,hmatel) reduction(+:ij_d_weights_tot)
             do j = 1, sys%nel
                 ij_weight = 0.0_p
                 if (pp%occ_list(j) /= i) then
-                    ! Make sure i and j are ordered.
-                    if (pp%occ_list(j) < i) then
-                        i_tmp = pp%occ_list(j)
-                        j_tmp = i
-                    else
-                        i_tmp = i
-                        j_tmp = pp%occ_list(j)
-                    end if
-                    ij_sym = sys%read_in%sym_conj_ptr(sys%read_in, cross_product_basis_read_in(sys, i_tmp, j_tmp))
-                    do a = 1, sys%basis%nbasis
-                        if ((a /= i_tmp) .and. (a /= j_tmp)) then
-                            isymb = sys%read_in%sym_conj_ptr(sys%read_in, &
-                                    sys%read_in%cross_product_sym_ptr(sys%read_in, ij_sym, sys%basis%basis_fns(a)%sym))
-                            do b = 1, sys%basis%nbasis 
-                                if ((((sys%basis%basis_fns(i_tmp)%Ms == sys%basis%basis_fns(a)%Ms) .and. &
-                                    (sys%basis%basis_fns(j_tmp)%Ms == sys%basis%basis_fns(b)%Ms)) .or. &
-                                    ((sys%basis%basis_fns(i_tmp)%Ms == sys%basis%basis_fns(b)%Ms) .and. &
-                                    (sys%basis%basis_fns(j_tmp)%Ms == sys%basis%basis_fns(a)%Ms))) .and. &
-                                    (sys%basis%basis_fns(b)%sym == isymb) .and. (a /= b) .and. (b /= i_tmp) .and. &
-                                    (b /= j_tmp)) then
-                                    if (b < a) then
-                                        a_tmp = b
-                                        b_tmp = a
-                                    else
-                                        a_tmp = a
-                                        b_tmp = b
-                                    end if
-                                    ! slater_condon2 does not check whether ij -> ab is allowed by symmetry/spin
-                                    ! but we have checked for that here so it is ok.
-                                    hmatel = slater_condon2_excit_ptr(sys, i_tmp, j_tmp, a_tmp, b_tmp, .false.)
-                                    ij_weight = ij_weight + abs_hmatel_ptr(hmatel)
-                                end if
-                            end do
-                        end if
-                    end do
+                    call init_double_weights_ab(sys, i, pp%occ_list(j), ij_weight)
                 end if
                 if (ij_weight < depsilon) then
                     ! because we map i later, even if ij->ab is never allowed for any ab/ has been wrongly assigned
@@ -551,7 +472,6 @@ contains
                 pp%ppn_ij_d%weights(j,i) = ij_weight
                 ij_d_weights_tot = ij_d_weights_tot + ij_weight
             end do
-            !$omp end parallel do
             
             ! Use of tmp variable to keep OpenMP happy.
             pp%ppn_ij_d%weights_tot(i) = ij_d_weights_tot
@@ -670,6 +590,7 @@ contains
         use proc_pointers, only: create_weighted_excitation_list_ptr, slater_condon2_excit_ptr
         use proc_pointers, only: abs_hmatel_ptr, single_excitation_weight_ptr
         use excit_gens, only: excit_gen_power_pitzer_t, alloc_alias_table_data_t
+        use excit_gen_utils, only: init_double_weights_ab
         use alias, only: generate_alias_tables
         use read_in_symmetry, only: cross_product_basis_read_in
         use hamiltonian_data, only: hmatel_t
@@ -686,8 +607,7 @@ contains
         type(excit_gen_power_pitzer_t), intent(inout) :: pp
         type(hmatel_t) :: hmatel
 
-        integer :: i, j, a, b, ind_a, ind_b, maxv, nv, bsym, ij_sym, isyma, isymb, ims, imsa
-        integer :: i_tmp, j_tmp, a_tmp, b_tmp
+        integer :: i, j, a, b
         integer :: iproc_nbasis_start, iproc_nbasis_end
         integer :: ierr_alloc
 
@@ -707,60 +627,16 @@ contains
         iproc_nbasis_end = sys%basis%nbasis
 #endif
 
+        ! subroutine init_double_weights_ab is OpenMP parallelised.
         do i = iproc_nbasis_start, iproc_nbasis_end
             i_weight_extra = 0.0_p
-            !$omp parallel do default(none) &
-            !$omp shared(sys,i,pp) &
-            !$omp private(j,i_tmp,j_tmp,a,b,ij_sym,isymb,a_tmp,b_tmp,hmatel) &
-            !$omp reduction(+:i_weight_extra)
             do j = 1, sys%basis%nbasis
                 pp%ppm_ij_d_weights(j,i) = 0.0_p
                 if (i /= j) then
-                    ! [todo] - is sorting really necessary?
-                    if (j < i) then
-                        i_tmp = j
-                        j_tmp = i
-                    else
-                        i_tmp = i
-                        j_tmp = j
-                    end if
-                    ! The symmetry of b, isymb, is given by
-                    ! (sym_i* x sym_j* x sym_a)* = sym_b
-                    ! (at least for Abelian point groups)
-                    ! ij_sym: symmetry conjugate of the irreducible representation spanned by the codensity
-                    !        \phi_i*\phi_j. (We assume that ij is going to be in the bra of the excitation.)
-                    ! [todo] - Check whether order of i and j matters here.
-                    ij_sym = sys%read_in%sym_conj_ptr(sys%read_in, cross_product_basis_read_in(sys, i_tmp, j_tmp))
-            
-                    do a = 1, sys%basis%nbasis
-                        if ((a /= i) .and. (a /= j)) then
-                            isymb = sys%read_in%sym_conj_ptr(sys%read_in, &
-                                        sys%read_in%cross_product_sym_ptr(sys%read_in, ij_sym, sys%basis%basis_fns(a)%sym))
-                            do b = 1, sys%basis%nbasis
-                                ! Check spin conservation and symmetry conservation.
-                                if ((((sys%basis%basis_fns(i_tmp)%Ms == sys%basis%basis_fns(a)%Ms) .and. &
-                                    (sys%basis%basis_fns(j_tmp)%Ms == sys%basis%basis_fns(b)%Ms)) .or. &
-                                    ((sys%basis%basis_fns(i_tmp)%Ms == sys%basis%basis_fns(b)%Ms) .and. &
-                                    (sys%basis%basis_fns(j_tmp)%Ms == sys%basis%basis_fns(a)%Ms))) .and. &
-                                    (sys%basis%basis_fns(b)%sym == isymb) .and. ((b /= a) .and. (b /= i) .and. &
-                                    (b /= j))) then
-                                    if (b < a) then
-                                        a_tmp = b
-                                        b_tmp = a
-                                    else
-                                        a_tmp = a
-                                        b_tmp = b
-                                    end if
-                                    hmatel = slater_condon2_excit_ptr(sys, i_tmp, j_tmp, a_tmp, b_tmp, .false.)
-                                    i_weight_extra = i_weight_extra + abs_hmatel_ptr(hmatel)
-                                    pp%ppm_ij_d_weights(j,i) = pp%ppm_ij_d_weights(j,i) + abs_hmatel_ptr(hmatel)
-                                end if
-                            end do
-                        end if
-                    end do
+                    call init_double_weights_ab(sys, i, j, pp%ppm_ij_d_weights(j,i))
                 end if
+                i_weight_extra = i_weight_extra + pp%ppm_ij_d_weights(j,i)
             end do
-            !$omp end parallel do
             pp%ppm_i_d_weights(i) = i_weight_extra
         end do
 
@@ -1500,7 +1376,8 @@ contains
         use dSFMT_interface, only: dSFMT_t, get_rand_close_open
         use search, only: binary_search
         use checking, only: check_allocate, check_deallocate
-        use excit_gens, only: excit_gen_power_pitzer_t, excit_gen_data_t, select_ij_heat_bath
+        use excit_gens, only: excit_gen_power_pitzer_t, excit_gen_data_t
+        use excit_gen_utils, only: select_ij_heat_bath
         use alias, only: select_weighted_value
         use read_in_symmetry, only: cross_product_basis_read_in
         use qmc_data, only: excit_gen_power_pitzer_occ_ij

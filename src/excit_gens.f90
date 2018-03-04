@@ -5,7 +5,7 @@ implicit none
 private
 public :: alloc_alias_table_data_t, dealloc_excit_gen_data_t, p_single_double_coll_t
 public :: p_single_double_t, excit_gen_power_pitzer_t, excit_gen_heat_bath_t
-public :: select_ij_heat_bath, move_pattempt_data, excit_gen_data_t, zero_p_single_double_coll_t
+public :: move_pattempt_data, excit_gen_data_t, zero_p_single_double_coll_t
 
 !Routines and data for the power_pitzer/heat bath excit gens
 
@@ -199,74 +199,6 @@ interface dealloc_alias_table_data_t
 end interface
 
 contains
-
-    subroutine select_ij_heat_bath(rng, nel, i_weights_precalc, ij_weights_precalc, cdet, i, j, i_ind, j_ind, i_weights_occ, &
-            i_weights_occ_tot, ij_weights_occ, ij_weights_occ_tot, ji_weights_occ, ji_weights_occ_tot, allowed_excitation)
-        ! Routine to select i and j according to the heat bath algorithm. Used by heat_bath_uniform, heat_bath_single,
-        ! power_pitzer_orderM_ij
-
-        ! In:
-        !   nel: number of electrons (= sys%nel)
-        !   i_weights_precalc: precalculated weights for i
-        !   ij_weights_precalc: precalculated weights for j given i
-        !   cdet: current determinant to attempt spawning from.
-        ! In/Out:
-        !   rng: random number generator
-        ! Out:
-        !   allowed_excitation: true if excitation with ij is possible.
-        !   i_weights_occ: weights of i for all occupied spinorbitals.
-        !   ij_weights_occ: weights of j for all occupied spinorbitals, given i.
-        !   ji_weights_occ: weights of i for all occupied spinorbitals, given j (reverse selection for pgen calculation).
-        !   i_weights_occ_tot: sum of weights of i for all occupied spinorbitals.
-        !   ij_weights_occ_tot: sum of weights of j for all occupied spinorbitals, given i.
-        !   ji_weights_occ_tot: sum of weights of i for all occupied spinorbitals, given j.
-
-        use determinants, only: det_info_t
-        use dSFMT_interface, only: dSFMT_t
-        use alias, only: select_weighted_value
-
-        integer, intent(in) :: nel
-        real(p), intent(in) :: i_weights_precalc(:), ij_weights_precalc(:,:)
-        type(det_info_t), intent(in) :: cdet
-        type(dSFMT_t), intent(inout) :: rng
-        real(p), intent(out) :: i_weights_occ(:), ij_weights_occ(:), ji_weights_occ(:)
-        real(p), intent(out) :: i_weights_occ_tot, ij_weights_occ_tot, ji_weights_occ_tot
-        logical, intent(out) :: allowed_excitation
-        
-        integer :: pos_occ, i_ind, j_ind, i, j
-
-        i_weights_occ_tot = 0.0_p
-        do pos_occ = 1, nel
-            i_weights_occ(pos_occ) = i_weights_precalc(cdet%occ_list(pos_occ))
-            i_weights_occ_tot = i_weights_occ_tot + i_weights_occ(pos_occ)
-         end do
-                
-        i_ind = select_weighted_value(rng, nel, i_weights_occ, i_weights_occ_tot)
-        i = cdet%occ_list(i_ind)
-
-        ij_weights_occ_tot = 0.0_p
-        do pos_occ = 1, nel
-            ij_weights_occ(pos_occ) = ij_weights_precalc(cdet%occ_list(pos_occ),i)
-            ij_weights_occ_tot = ij_weights_occ_tot + ij_weights_occ(pos_occ)
-        end do
-
-        if (ij_weights_occ_tot > 0.0_p) then
-            ! There is a j for this i.
-            j_ind = select_weighted_value(rng, nel, ij_weights_occ, ij_weights_occ_tot)
-            j = cdet%occ_list(j_ind)
-
-            ! Pre-compute the other direction (first selecting j then i) as well as that is required for pgen.
-            ji_weights_occ_tot = 0.0_p
-            do pos_occ = 1, nel
-                ji_weights_occ(pos_occ) = ij_weights_precalc(cdet%occ_list(pos_occ),j)
-                ji_weights_occ_tot = ji_weights_occ_tot + ji_weights_occ(pos_occ)
-            end do
-            allowed_excitation = .true.
-        else
-            allowed_excitation = .false.
-        end if
-
-    end subroutine select_ij_heat_bath
 
     subroutine move_pattempt_data(excit_gen_data_old, excit_gen_data_new)
 

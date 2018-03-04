@@ -298,7 +298,8 @@ contains
         use checking, only: check_allocate, check_deallocate
         use system, only: sys_t
         use excit_gen_mol, only: gen_single_excit_mol_no_renorm
-        use excit_gens, only: excit_gen_heat_bath_t, excit_gen_data_t, select_ij_heat_bath
+        use excit_gens, only: excit_gen_heat_bath_t, excit_gen_data_t
+        use excit_gen_utils, only: select_ij_heat_bath
         use alias, only: select_weighted_value_precalc, select_weighted_value
         use dSFMT_interface, only: dSFMT_t, get_rand_close_open
         use hamiltonian_data, only: hmatel_t
@@ -586,7 +587,8 @@ contains
         use checking, only: check_allocate, check_deallocate
         use system, only: sys_t
         use excit_gen_mol, only: gen_single_excit_mol
-        use excit_gens, only: excit_gen_heat_bath_t, excit_gen_data_t, select_ij_heat_bath
+        use excit_gens, only: excit_gen_heat_bath_t, excit_gen_data_t
+        use excit_gen_utils, only: select_ij_heat_bath
         use alias, only: select_weighted_value_precalc, select_weighted_value
         use dSFMT_interface, only: dSFMT_t, get_rand_close_open
         use hamiltonian_data, only: hmatel_t
