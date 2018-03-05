@@ -61,12 +61,21 @@ install:
 before_script:
   - >
     if [[ "$USE_CMAKE" = true ]]; then
-      ./mkconfig.py --type=release --mpi --lua=$LUA_ROOT --scalapack="-L$ScaLAPACK_ROOT/lib -lscalapack" --lanczos="-L$DEPS/trlan/lib -ltrlan" --exe-name="hande.travis.linux.cmake.x"
+      ./mkconfig.py --type=release \
+                    --fc=mpif90 \
+                    --cc=mpicc \
+                    --mpi \
+                    --lua=$LUA_ROOT \
+                    --scalapack="-L$ScaLAPACK_ROOT/lib -lscalapack" \
+                    --lanczos="-L$DEPS/trlan/lib -ltrlan" \
+                    --exe-name="hande.travis.linux.cmake.x"
       # This is equivalent to
       # cmake -H. -Bbuild \
       #           -DENABLE_HDF5=ON \
       #           -DENABLE_UUID=ON \
       #           -DCMAKE_BUILD_TYPE=Release \
+      #           -DCMAKE_Fortran_COMPILER=mpif90 \
+      #           -DCMAKE_C_COMPILER=mpicc \
       #           -DENABLE_MPI=ON \
       #           -DLUA_ROOT=$LUA_ROOT
       #           -DSCALAPACK_LIBRARIES="-L$ScaLAPACK_ROOT/lib -lscalapack" \

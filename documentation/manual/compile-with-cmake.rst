@@ -181,7 +181,7 @@ and pointed in the right direction:
   you want to use.
   The detection scripts will attempt to provide a link line for math libraries
   based on the search order in the CMake variable ``MATH_LIB_SEARCH_ORDER``.
-  By default, Intel MKL is searched for first, using the ``MKL_ROOT``
+  By default, Intel MKL is searched for first, using the ``MKLROOT``
   environment variable.
   If math detection fails, libraries can be set manually:
 
@@ -205,3 +205,42 @@ and pointed in the right direction:
    ./mkconfig.py --hdf5 --cmake-options="-DHDF5_ROOT=/install/dir/for/HDF5" build
 
    cmake -H. -Bbuild -DENABLE_HDF5=ON -DHDF5_ROOT=/install/dir/for/HDF5
+
+Compiling with MPI
+------------------
+
+To compile with MPI it is necessary to pass **both** the ``--mpi`` option
+**and** the correct compiler wrappers with the ``--cc`` and ``--fc``:
+
+.. code-block:: bash
+   ./mkconfig.py --mpi --fc=mpif90 --cc=mpicc
+
+   cmake -H. -Bbuild -DCMAKE_Fortran_COMPILER=mpif90 -DCMAKE_C_COMPILER=mpicc -DENABLE_MPI=ON
+
+CMake can in fact botch the identification of the compiler wrappers and MPI
+libraries, a mismatch that will result in linker errors.
+Here are some examples of configuration lines. In all cases, remember to set
+the ``MATH_ROOT`` variable to point to the location of the math libraries:
+
+- OpenMPI with GNU compilers and OpenBLAS ScaLAPACK.
+
+.. code-block:: bash
+   ./mkconfig.py --mpi --fc=mpif90 --cc=mpicc --scalapack="-L/location/of/scalapack -lscalapack"
+
+   cmake -H. -Bbuild -DCMAKE_Fortran_COMPILER=mpif90 -DCMAKE_C_COMPILER=mpicc -DENABLE_MPI=ON -DSCALAPACK_LIBRARIES="-L/location/of/scalapack -lscalapack"
+
+- OpenMPI with Intel compilers and MKL ScaLAPACK. The math detection script
+  will use the OpenMPI implementation of BLACS by default.
+
+.. code-block:: bash
+   ./mkconfig.py --mpi --fc=mpif90 --cc=mpicc
+
+   cmake -H. -Bbuild -DCMAKE_Fortran_COMPILER=mpif90 -DCMAKE_C_COMPILER=mpicc -DENABLE_MPI=ON
+
+- IntelMPI with Intel compiler and MKL ScaLAPACK. In this case we need to tell
+  CMake what BLACS implementation to use with ScaLAPACK.
+
+.. code-block:: bash
+   ./mkconfig.py --mpi --fc=mpiifort --cc=mpiicc --blacs=intelmpi
+
+   cmake -H. -Bbuild -DCMAKE_Fortran_COMPILER=mpiifort -DCMAKE_C_COMPILER=mpiicc -DENABLE_MPI=ON -DBLACS_IMPLEMENTATION=intelmpi
