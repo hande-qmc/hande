@@ -31,6 +31,8 @@ type p_single_double_t
     type(p_single_double_coll_t) :: rep_accum ! gets zeroed after each report loop, different on each MPI proc. Gets added onto total.
     ! [todo] - find a way to make the next two variables parameters inside types.
     ! [todo] - Be careful when changing them - if restarting from a legacy file that might be confusing.
+    ! [todo] - Don't set every_attempts or every_min_attempts to less than 2. It is used as a check for whether pattempt_single
+    ! [todo] - gets too small.
     real(p) :: every_attempts = 10000.0_p ! update pattempt_single every every_attempts a single or double ex. happened
     real(p) :: every_min_attempts = 10.0_p ! unless there were not more than every_min_attempts of single or double ex. since
     real(p) :: counter = 1.0_p
