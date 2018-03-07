@@ -923,15 +923,18 @@ contains
 
         ! If not set at input, set probability of selecting parallel ij to the ratio of |Hij->ab| with parallel spins to
         ! total |Hij->ab|.
-        ! [todo] - desireable to store in restart file?
-! [review] - AJWT: This is probably worth storing in the restart file, given it's calculated here.
-! [reply] - VAN: If I don't store it, it will be recalculated. If the user wants to keep the old value, they can manually
-! [reply] - VAN: specify it. If they don't want the old value but the system is new, there is no way to call the function
-! [reply] - VAN: find_parallel_spin_prob. The only disadvantage of not storing it is timing but that might be fine (?).
-! [review] - AJWT: There is a fourth order loop inside there - does it take a lot of time? 
-        if ((qmc_in%pattempt_parallel < 0) .and. (sys%system == read_in) .and. &
+        ! [todo] - It might be desireable in the future to store pattempt_parallel in the restart file.
+        ! [todo] - Currently, we have decided not to store it so a user can easily restart from another system without
+        ! [todo] - having to specify that a new pattempt_parallel needs to be calculated. In a sample calculation with 120
+        ! [todo] - orbitals it took 14 seconds to initialise (6 mpi procs on three nodes with 12 threads each on ARCHER
+        ! [todo] - http://archer.ac.uk/).
+        if ((qmc_in%pattempt_parallel < 0.0_p) .and. (sys%system == read_in) .and. &
             ((qmc_in%excit_gen == excit_gen_renorm_spin) .or. (qmc_in%excit_gen == excit_gen_no_renorm_spin))) then
             call find_parallel_spin_prob_mol(sys, excit_gen_data%pattempt_parallel)
+        else if (.not.(qmc_in%pattempt_parallel < 0.0_p)) then
+            ! pattempt_parallel set by user. check_input.f90 makes sure this is only set if read_in system and excit. gens.
+            ! are no_renorm_spin or renorm_spin.
+            excit_gen_data%pattempt_parallel = qmc_in%pattempt_parallel
         end if
 
         ! UEG allowed excitations
