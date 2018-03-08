@@ -438,7 +438,7 @@ contains
         end if
         if (present(bloom_stats)) then
             bloom_stats%tot_bloom_curr = real(rep_loop_sum(bloom_tot_ind), p)
-            bloom_stats%nblooms_curr = nint(rep_loop_sum(bloom_num_ind))
+            bloom_stats%nblooms_curr = nint(rep_loop_sum(bloom_num_ind), int_64)
             ! Also add to running totals.
             bloom_stats%tot_bloom = bloom_stats%tot_bloom + bloom_stats%tot_bloom_curr 
             bloom_stats%nblooms = bloom_stats%nblooms + bloom_stats%nblooms_curr
