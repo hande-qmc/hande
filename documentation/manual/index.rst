@@ -9,7 +9,6 @@ User's guide
    source
    prereq
    compile
-   compile-with-cmake
    tests
    running
    input/input

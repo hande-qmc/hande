@@ -61,7 +61,7 @@ install:
 before_script:
   - >
     if [[ "$USE_CMAKE" = true ]]; then
-      ./mkconfig.py --type=release \
+      ./cmakeconfi.py --type=release \
                     --fc=mpif90 \
                     --cc=mpicc \
                     --mpi \
