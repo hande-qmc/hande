@@ -42,8 +42,8 @@ The help menu for the ``mkconfig.py`` script shows the available options:
 
 .. code-block:: bash
    Usage:
-     ./mkconfig.py [options] [<builddir>]
-     ./mkconfig.py (-h | --help)
+     ./cmakeconfig.py [options] [<builddir>]
+     ./cmakeconfig.py (-h | --help)
 
    Options:
      --fc=<FC>                              Fortran compiler [default: gfortran].
@@ -53,6 +53,7 @@ The help menu for the ``mkconfig.py`` script shows the available options:
      --python=<PYTHON_INTERPRETER>          The Python interpreter (development version) to use. [default: ''].
      --lua=<LUA_ROOT>                       Specify the path to the Lua installation to use [default: ''].
      --mpi                                  Enable MPI parallelization [default: False].
+     --mpi-with-scalapack                   Enable ScaLAPACK usage with MPI [default: False].
      --omp                                  Enable OpenMP parallelization [default: False].
      --blas=<BLAS>                          Detect and link BLAS library (auto or off) [default: auto].
      --lapack=<LAPACK>                      Detect and link LAPACK library (auto or off) [default: auto].
@@ -64,8 +65,8 @@ The help menu for the ``mkconfig.py`` script shows the available options:
      --det-size=<HANDE_DET_SIZE>            An integer among 32 or 64 [default: 32].
      --pop-size=<HANDE_POP_SIZE>            An integer among 32 or 64 [default: 32].
      --exe-name=<HANDE_EXE_NAME>            [default: "hande.cmake.x"].
-     --hdf5=<ENABLE_HDF5>                   Enable HDF5 [default: True].
-     --uuid=<ENABLE_UUID>                   Whether to activate UUID generation [default: True].
+     --hdf5                                 Enable HDF5 [default: True].
+     --uuid                                 Whether to activate UUID generation [default: True].
      --lanczos=<TRLan_LIBRARIES>            Set TRLan libraries to be linked in [default: ''].
      --single                               Enable usage of single precision, where appropriate [default: False].
      --backtrace                            Enable backtrace functionality [default: False].
@@ -110,6 +111,9 @@ translation guide between the frontend script and "bare" CMake:
    wrappers as arguments to ``--fc`` (``-DCMAKE_Fortran_COMPILER``) and
    ``--cc`` (``-DCMAKE_C_COMPILER``)
 
+- ``--mpi-with-scalapack``/``-DENABLE_SCALAPACK=OFF``. Enables linking to
+  ScaLAPACK. This requires that MPI is enabled and that a ScaLAPACK
+  implementation is available.
 - ``--omp``/``-DENABLE_OPENMP=ON``. Enables OpenMP parallelization. CMake will
   check which flags are supported by your choice of compilers and add them to
   the compiler flags.
@@ -222,25 +226,46 @@ libraries, a mismatch that will result in linker errors.
 Here are some examples of configuration lines. In all cases, remember to set
 the ``MATH_ROOT`` variable to point to the location of the math libraries:
 
-- OpenMPI with GNU compilers and OpenBLAS ScaLAPACK.
-
-.. code-block:: bash
-   ./mkconfig.py --mpi --fc=mpif90 --cc=mpicc --scalapack="-L/location/of/scalapack -lscalapack"
-
-   cmake -H. -Bbuild -DCMAKE_Fortran_COMPILER=mpif90 -DCMAKE_C_COMPILER=mpicc -DENABLE_MPI=ON -DSCALAPACK_LIBRARIES="-L/location/of/scalapack -lscalapack"
-
-- OpenMPI with Intel compilers and MKL ScaLAPACK. The math detection script
-  will use the OpenMPI implementation of BLACS by default.
+- OpenMPI with GNU compilers.
 
 .. code-block:: bash
    ./mkconfig.py --mpi --fc=mpif90 --cc=mpicc
 
    cmake -H. -Bbuild -DCMAKE_Fortran_COMPILER=mpif90 -DCMAKE_C_COMPILER=mpicc -DENABLE_MPI=ON
 
+- OpenMPI with Intel compilers.
+
+.. code-block:: bash
+   ./mkconfig.py --mpi --fc=mpif90 --cc=mpicc
+
+   cmake -H. -Bbuild -DCMAKE_Fortran_COMPILER=mpif90 -DCMAKE_C_COMPILER=mpicc -DENABLE_MPI=ON
+
+- IntelMPI with Intel compiler.
+
+.. code-block:: bash
+   ./mkconfig.py --mpi --fc=mpiifort --cc=mpiicc
+
+   cmake -H. -Bbuild -DCMAKE_Fortran_COMPILER=mpiifort -DCMAKE_C_COMPILER=mpiicc -DENABLE_MPI=ON
+
+- OpenMPI with GNU compilers and OpenBLAS ScaLAPACK.
+
+.. code-block:: bash
+   ./mkconfig.py --mpi --fc=mpif90 --cc=mpicc --mpi-with-scalapack --scalapack="-L/location/of/scalapack -lscalapack"
+
+   cmake -H. -Bbuild -DCMAKE_Fortran_COMPILER=mpif90 -DCMAKE_C_COMPILER=mpicc -DENABLE_MPI=ON -DENABLE_SCALAPACK=ON -DSCALAPACK_LIBRARIES="-L/location/of/scalapack -lscalapack"
+
+- OpenMPI with Intel compilers and MKL ScaLAPACK. The math detection script
+  will use the OpenMPI implementation of BLACS by default.
+
+.. code-block:: bash
+   ./mkconfig.py --mpi --fc=mpif90 --cc=mpicc --mpi-with-scalapack
+
+   cmake -H. -Bbuild -DCMAKE_Fortran_COMPILER=mpif90 -DCMAKE_C_COMPILER=mpicc -DENABLE_MPI=ON -DENABLE_SCALAPACK=ON
+
 - IntelMPI with Intel compiler and MKL ScaLAPACK. In this case we need to tell
   CMake what BLACS implementation to use with ScaLAPACK.
 
 .. code-block:: bash
-   ./mkconfig.py --mpi --fc=mpiifort --cc=mpiicc --blacs=intelmpi
+   ./mkconfig.py --mpi --fc=mpiifort --cc=mpiicc --mpi-with-scalapack --blacs=intelmpi
 
-   cmake -H. -Bbuild -DCMAKE_Fortran_COMPILER=mpiifort -DCMAKE_C_COMPILER=mpiicc -DENABLE_MPI=ON -DBLACS_IMPLEMENTATION=intelmpi
+   cmake -H. -Bbuild -DCMAKE_Fortran_COMPILER=mpiifort -DCMAKE_C_COMPILER=mpiicc -DENABLE_MPI=ON -DENABLE_SCALAPACK=ON -DBLACS_IMPLEMENTATION=intelmpi

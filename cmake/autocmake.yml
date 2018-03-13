@@ -25,10 +25,10 @@ modules:
     - '%(url_root)modules/default_build_paths.cmake'
     - '%(url_root)modules/python_interpreter.cmake'
     - 'custom/lua.cmake'
-    - 'custom/math_libs.cmake'
-    - 'custom/explicit_libs.cmake'
     - 'custom/mpi.cmake'
     - 'custom/omp.cmake'
+    - 'custom/math_libs.cmake'
+    - 'custom/explicit_libs.cmake'
 - nonbooloptions:
   - source:
     - 'custom/dsfmt_mexp.cmake'

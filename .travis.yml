@@ -61,11 +61,12 @@ install:
 before_script:
   - >
     if [[ "$USE_CMAKE" = true ]]; then
-      ./cmakeconfi.py --type=release \
+      ./cmakeconfig.py --type=release \
                     --fc=mpif90 \
                     --cc=mpicc \
                     --mpi \
                     --lua=$LUA_ROOT \
+                    --mpi-with-scalapack \
                     --scalapack="-L$ScaLAPACK_ROOT/lib -lscalapack" \
                     --lanczos="-L$DEPS/trlan/lib -ltrlan" \
                     --exe-name="hande.travis.linux.cmake.x"
@@ -78,6 +79,7 @@ before_script:
       #           -DCMAKE_C_COMPILER=mpicc \
       #           -DENABLE_MPI=ON \
       #           -DLUA_ROOT=$LUA_ROOT
+      #           -DENABLE_SCALAPACK=ON \
       #           -DSCALAPACK_LIBRARIES="-L$ScaLAPACK_ROOT/lib -lscalapack" \
       #           -DTRLan_LIBRARIES="-L$DEPS/trlan/lib -ltrlan" \
       #           -DHANDE_EXE_NAME="hande.travis.linux.cmake.x"

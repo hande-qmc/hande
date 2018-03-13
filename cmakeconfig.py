@@ -24,20 +24,21 @@ Options:
   --extra-cc-flags=<EXTRA_CFLAGS>        Extra C compiler flags [default: ''].
   --python=<PYTHON_INTERPRETER>          The Python interpreter (development version) to use. [default: ''].
   --lua=<LUA_ROOT>                       Specify the path to the Lua installation to use [default: ''].
+  --mpi                                  Enable MPI parallelization [default: False].
+  --mpi-with-scalapack                   Enable ScaLAPACK usage with MPI [default: False].
+  --omp                                  Enable OpenMP parallelization [default: False].
   --blas=<BLAS>                          Detect and link BLAS library (auto or off) [default: auto].
   --lapack=<LAPACK>                      Detect and link LAPACK library (auto or off) [default: auto].
   --mkl=<MKL>                            Pass MKL flag to the Intel compiler and linker and skip BLAS/LAPACK detection (sequential, parallel, cluster, or off) [default: off].
   --scalapack=<SCALAPACK_LIBRARIES>      Link line for ScaLAPACK libraries [default: '']
   --blacs=<BLACS_IMPLEMENTATION>         Implementation of BLACS for MKL ScaLAPACK (openmpi, intelmpi, sgimpt) [default: openmpi]
   --explicit-libs=<EXPLICIT_LIBS>        Explicit linker options for extra libraries to be linked in [default: ''].
-  --mpi                                  Enable MPI parallelization [default: False].
-  --omp                                  Enable OpenMP parallelization [default: False].
   --dsfmt-mexp=<HANDE_DSFMT_MEXP>        An integer among 521, 1279, 2203, 4253, 11213, 19937, 44497, 86243, 1322049, 216091 [default: 19937].
   --det-size=<HANDE_DET_SIZE>            An integer among 32 or 64 [default: 32].
   --pop-size=<HANDE_POP_SIZE>            An integer among 32 or 64 [default: 32].
   --exe-name=<HANDE_EXE_NAME>            [default: "hande.cmake.x"].
-  --hdf5=<ENABLE_HDF5>                   Enable HDF5 [default: True].
-  --uuid=<ENABLE_UUID>                   Whether to activate UUID generation [default: True].
+  --hdf5                                 Enable HDF5 [default: True].
+  --uuid                                 Whether to activate UUID generation [default: True].
   --lanczos=<TRLan_LIBRARIES>            Set TRLan libraries to be linked in [default: ''].
   --single                               Enable usage of single precision, where appropriate [default: False].
   --backtrace                            Enable backtrace functionality [default: False].
@@ -63,6 +64,9 @@ def gen_cmake_command(options, arguments):
     command.append('-DCMAKE_C_COMPILER={0} -DEXTRA_CFLAGS="{1}"'.format(arguments['--cc'], arguments['--extra-cc-flags']))
     command.append('-DPYTHON_INTERPRETER="{0}"'.format(arguments['--python']))
     command.append('-DLUA_ROOT="{0}"'.format(arguments['--lua']))
+    command.append('-DENABLE_MPI="{0}"'.format(arguments['--mpi']))
+    command.append('-DENABLE_SCALAPACK="{0}"'.format(arguments['--mpi-with-scalapack']))
+    command.append('-DENABLE_OPENMP="{0}"'.format(arguments['--omp']))
     command.append('-DENABLE_BLAS={0}'.format(arguments['--blas']))
     command.append('-DENABLE_LAPACK={0}'.format(arguments['--lapack']))
     command.append('-DMKL_FLAG={0}'.format(arguments['--mkl']))
@@ -72,9 +76,6 @@ def gen_cmake_command(options, arguments):
     command.append('-DSCALAPACK_LIBRARIES="{0}"'.format(arguments['--scalapack']))
     command.append('-DBLACS_IMPLEMENTATION="{0}"'.format(arguments['--blacs']))
     command.append('-DEXPLICIT_LIBS="{0}"'.format(arguments['--explicit-libs']))
-    command.append('-DENABLE_MPI="{0}"'.format(arguments['--mpi']))
-    command.append('-DENABLE_SCALAPACK="{0}"'.format(arguments['--mpi']))
-    command.append('-DENABLE_OPENMP="{0}"'.format(arguments['--omp']))
     command.append('-DHANDE_DSFMT_MEXP="{0}"'.format(arguments['--dsfmt-mexp']))
     command.append('-DHANDE_DET_SIZE="{0}"'.format(arguments['--det-size']))
     command.append('-DHANDE_POP_SIZE="{0}"'.format(arguments['--pop-size']))

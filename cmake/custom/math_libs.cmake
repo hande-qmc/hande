@@ -210,21 +210,22 @@ if(${CMAKE_HOST_SYSTEM_PROCESSOR} STREQUAL "x86_64")
     endif()
 endif()
 
-if(ENABLE_SCALAPACK AND NOT SCALAPACK_LIBRARIES)
-    set(_scalapack_lib      mkl_scalapack${_lib_suffix})
-    if(${BLACS_IMPLEMENTATION} STREQUAL "intelmpi")
-        set(_blacs_lib mkl_blacs_intelmpi${_lib_suffix})
-    elseif(${BLACS_IMPLEMENTATION} STREQUAL "openmpi")
-        set(_blacs_lib mkl_blacs_openmpi${_lib_suffix})
-    elseif(${BLACS_IMPLEMENTATION} STREQUAL "sgimpt")
-        set(_blacs_lib mkl_blacs_sgimpt${_lib_suffix})
-    else()
-        message(FATAL_ERROR "BLACS implementation ${BLACS_IMPLEMENTATION} not recognized/supported")
-    endif()
+# This section is only relevant for Intel MKL
+if(ENABLE_SCALAPACK)
+  set(_scalapack_lib      mkl_scalapack${_lib_suffix})
+  if(${BLACS_IMPLEMENTATION} STREQUAL "intelmpi")
+      set(_blacs_lib mkl_blacs_intelmpi${_lib_suffix})
+  elseif(${BLACS_IMPLEMENTATION} STREQUAL "openmpi")
+      set(_blacs_lib mkl_blacs_openmpi${_lib_suffix})
+  elseif(${BLACS_IMPLEMENTATION} STREQUAL "sgimpt")
+      set(_blacs_lib mkl_blacs_sgimpt${_lib_suffix})
+  else()
+      message(FATAL_ERROR "BLACS implementation ${BLACS_IMPLEMENTATION} not recognized/supported")
+  endif()
 else()
-    set(_scalapack_lib)
-    set(_blacs_lib)
-    set(BLACS_IMPLEMENTATION)
+  set(_scalapack_lib)
+  set(_blacs_lib)
+  set(BLACS_IMPLEMENTATION)
 endif()
 
 # MKL 10.0.1.014
@@ -508,21 +509,19 @@ foreach(_service BLAS LAPACK)
     set(${_service}_FOUND ${${_service}_FOUND} CACHE BOOL "${_service} found")
 endforeach()
 
-# first lapack, then blas as lapack might need blas routine
-if(SCALAPACK_LIBRARIES)
-  list(APPEND MATH_LIBS
-      ${MATH_LIBS}
-      ${SCALAPACK_LIBRARIES}
-      ${LAPACK_LIBRARIES}
-      ${BLAS_LIBRARIES}
-      )
-else()
-  list(APPEND MATH_LIBS
-      ${MATH_LIBS}
-      ${LAPACK_LIBRARIES}
-      ${BLAS_LIBRARIES}
-      )
+if(ENABLE_SCALAPACK AND NOT SCALAPACK_LIBRARIES)
+  if((NOT BLAS_TYPE STREQUAL MKL) AND (NOT LAPACK_TYPE STREQUAL MKL))
+    message(FATAL_ERROR "You requested linking to ScaLAPACK, but an implementation was not set")
+  endif()
 endif()
+
+# first lapack, then blas as lapack might need blas routine
+list(APPEND MATH_LIBS
+    ${MATH_LIBS}
+    ${SCALAPACK_LIBRARIES}
+    ${LAPACK_LIBRARIES}
+    ${BLAS_LIBRARIES}
+    )
 set(MATH_LIBS ${MATH_LIBS} CACHE STRING "Math libraries")
 
 # further adaptation for the static linking
