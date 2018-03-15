@@ -89,7 +89,7 @@ contains
         integer(int_p) :: nspawned, ndeath, dummy
         type(excit_t) :: connection
         integer :: spawning_end, nspawn_events
-        logical :: soft_exit, write_restart_shift, update_tau
+        logical :: soft_exit, write_restart_shift, update_tau, dump_restart_interact, dump_restart_user
         logical :: error, rdm_error, attempt_spawning, restarting
         real :: t1, t2
         real(p) :: mu, energy_shift
@@ -119,6 +119,9 @@ contains
             call check_qmc_opts(qmc_in, sys, .not. present(qmc_state_restart), restarting)
             call check_dmqmc_opts(sys, dmqmc_in, qmc_in)
         end if
+        
+        ! Will be set to .true. if user interacts with calc and sys WRITERESTART
+        dump_restart_user = .false.
 
         ! Initialise data.
         call init_qmc(sys, qmc_in, restart_in, load_bal_in, reference_in, 6, annihilation_flags, qs, uuid_restart, &
@@ -371,8 +374,10 @@ contains
                 ! and hence want to use the same timestep throughout.
                 update_tau = .false.
                 call end_report_loop(iunit, qmc_in, iteration, update_tau, qs, tot_nparticles_old, &
-                                     nspawn_events, unused_int_1, unused_int_2, soft_exit, &
+                                     nspawn_events, unused_int_1, unused_int_2, soft_exit, dump_restart_interact, &
                                      load_bal_in, .false., bloom_stats=bloom_stats)
+
+                if (dump_restart_interact) dump_restart_user = .true.
 
                 call cpu_time(t2)
                 if (parent) then
@@ -409,7 +414,7 @@ contains
             qs%mc_cycles_done = qs%mc_cycles_done + qmc_in%ncycles*nreport
         end if
 
-        if (restart_in%write_restart) then
+        if ((restart_in%write_restart) .or. (dump_restart_user)) then
             call dump_restart_hdf5(ri, qs, qs%mc_cycles_done, qs%psip_list%tot_nparticles, sys%basis%nbasis, .false., &
                                     sys%basis%info_string_len)
             if (parent) write (iunit,'()')

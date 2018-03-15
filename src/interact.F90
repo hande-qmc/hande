@@ -8,7 +8,7 @@ character(*), parameter :: comms_file = "HANDE.COMM"
 
 contains
 
-    subroutine calc_interact(comms_found, out_unit, soft_exit, qs)
+    subroutine calc_interact(comms_found, out_unit, soft_exit, qs, dump_restart_interact)
 
         ! Read HANDE.COMM if it exists in the working directory of any
         ! processor and set the variables according to the options defined in
@@ -21,6 +21,8 @@ contains
         !    softexit: true if SOFTEXIT is defined in HANDE.COMM, in which case
         !        any calculation should exit immediately and go to the
         !        post-processing steps.
+        !    dump_restart_interact (optional): true if DUMPRESTART is defined in HANDE.COMM.
+        !        It means that restart files are written out at the end of the calculation.
         ! In/Out:
         !    qs (optional): QMC calculation state. The shift and/or timestep may be updated.
 
@@ -38,6 +40,7 @@ contains
         logical, intent(in) :: comms_found
         integer, intent(in) :: out_unit
         logical, intent(out) :: soft_exit
+        logical, optional, intent(out) :: dump_restart_interact
         type(qmc_state_t), optional, intent(inout) :: qs
 
         real(p), allocatable :: tmpshift(:)
@@ -57,6 +60,7 @@ contains
         ! data analysis.
 
         soft_exit = .false.
+        if (present(dump_restart_interact)) dump_restart_interact = .false.
 
         if (comms_found) then
             ! Check if file is on *this* process
@@ -139,6 +143,9 @@ contains
             if (lua_err == 0) then
                 ! ... and get variables from global state.
                 call aot_get_val(soft_exit, ierr, lua_state, key='softexit')
+                if (present(dump_restart_interact)) then
+                    call aot_get_val(dump_restart_interact, ierr, lua_state, key='writerestart')
+                end if
                 if (present(qs)) then
                     call aot_get_val(qs%tau, ierr, lua_state, key='tau')
                     ! Only get shift if it is given, to avoid unwanted reallocation.

@@ -382,6 +382,8 @@ contains
 
         logical :: update_tau, error
 
+        logical :: dump_restart_interact, dump_restart_user
+
         logical :: seen_D0, regenerate_info
         real(p) :: dfock
         complex(p) :: D0_population_cycle, proj_energy_cycle
@@ -410,6 +412,9 @@ contains
             call check_ccmc_opts(sys, ccmc_in, qmc_in)
             call check_blocking_opts(sys, blocking_in, restart_in)
         end if
+
+        ! Will be set to .true. if user interacts with calc and sys WRITERESTART
+        dump_restart_user = .false.
 
         ! Initialise data.
         call init_qmc(sys, qmc_in, restart_in, load_bal_in, reference_in, io_unit, annihilation_flags, qs, &
@@ -832,9 +837,12 @@ contains
             if (debug) call write_logging_select_ccmc(logging_info, iter, selection_data)
 
             call end_report_loop(io_unit, qmc_in, iter, update_tau, qs, nparticles_old, nspawn_events, &
-                                 semi_stoch_in%shift_iter, semi_stoch_iter, soft_exit, &
+                                 semi_stoch_in%shift_iter, semi_stoch_iter, soft_exit, dump_restart_interact, &
                                  load_bal_in, bloom_stats=bloom_stats, comp=sys%read_in%comp, &
                                  error=error, vary_shift_reference=ccmc_in%vary_shift_reference)
+            
+            if (dump_restart_interact) dump_restart_user = .true.
+
             if (error) exit
 
             call cpu_time(t2)
@@ -884,7 +892,7 @@ contains
             qs%mc_cycles_done = qs%mc_cycles_done + qmc_in%ncycles*qmc_in%nreport
         end if
 
-        if (restart_in%write_restart) then
+        if ((restart_in%write_restart) .or. (dump_restart_user)) then
             call dump_restart_hdf5(ri, qs, qs%mc_cycles_done, nparticles_old, sys%basis%nbasis, .false., sys%basis%info_string_len)
             if (parent) write (io_unit,'()')
         end if
