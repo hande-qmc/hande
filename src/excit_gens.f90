@@ -7,7 +7,7 @@ public :: alloc_alias_table_data_t, dealloc_excit_gen_data_t, p_single_double_co
 public :: p_single_double_t, excit_gen_power_pitzer_t, excit_gen_heat_bath_t
 public :: move_pattempt_data, excit_gen_data_t, zero_p_single_double_coll_t
 
-!Data for the power_pitzer/heat bath excit gens
+!Routines and data for the power_pitzer/heat bath excit gens
 
 ! The integer types have been chosen to be int_32 as they never need to index more than 2^31-1 basis functions.
 ! WARNING: If int_bas gets modified, MPI calls have to be modified as well (in other files).
@@ -113,6 +113,10 @@ type excit_gen_power_pitzer_t
     type(alias_table_data_two_ind_t) :: ppn_ia_s
     ! Alias table information for the Power Pitzer order N excitation generator, selecting b from j in a double excitation.
     type(alias_table_data_three_ind_t) :: ppn_jb_d
+    ! Weights for the Power Pitzer order M ij excitation generator, selecting i in a double excitation.
+    real(p), allocatable :: ppm_i_d_weights(:)
+    ! Weights for the Power Pitzer order M ij excitation generator, selecting j (after i) in a double excitation
+    real(p), allocatable :: ppm_ij_d_weights(:,:)
     ! virt_list_alpha is a list of all virtual alpha orbitals as seen from the reference.
     ! Length of array: (sys%nvirt_alpha)
     integer(int_bas), allocatable :: virt_list_alpha(:) 
@@ -197,7 +201,7 @@ interface dealloc_alias_table_data_t
 end interface
 
 contains
-    
+
     subroutine move_pattempt_data(excit_gen_data_old, excit_gen_data_new)
 
         ! [todo] - Move more excit_gen_data?
@@ -274,6 +278,15 @@ contains
         call dealloc_alias_table_data_t(excit_gen_pp%ppn_ia_d)
         call dealloc_alias_table_data_t(excit_gen_pp%ppn_ia_s)
         call dealloc_alias_table_data_t(excit_gen_pp%ppn_jb_d)
+        
+        if (allocated(excit_gen_pp%ppm_i_d_weights)) then
+            deallocate(excit_gen_pp%ppm_i_d_weights, stat=ierr)
+            call check_deallocate('excit_gen_pp%ppm_i_d_weights',ierr)
+        end if
+        if (allocated(excit_gen_pp%ppm_ij_d_weights)) then
+            deallocate(excit_gen_pp%ppm_ij_d_weights, stat=ierr)
+            call check_deallocate('excit_gen_pp%ppm_ij_d_weights',ierr)
+        end if
         
         if (allocated(excit_gen_pp%virt_list_alpha)) then
             deallocate(excit_gen_pp%virt_list_alpha, stat=ierr)

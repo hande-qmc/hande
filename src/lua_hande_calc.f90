@@ -898,8 +898,8 @@ contains
         !     real_amplitude_force_32 = true/false,
         !     spawn_cutoff = cutoff,
         !     excit_gen =
-        !     'renorm'/'renorm_spin'/'no_renorm'/'no_renorm_spin'/'power_pitzer'/'power_pitzer_orderM'/'power_pitzer_orderN'/
-        !     'heat_bath'/'heat_bath_uniform'/'heat_bath_single'
+        !     'renorm'/'renorm_spin'/'no_renorm'/'no_renorm_spin'/'power_pitzer'/'power_pitzer_orderM'/'power_pitzer_orderM_ij'/
+        !     'power_pitzer_orderN'/'heat_bath'/'heat_bath_uniform'/'heat_bath_single'
         !     power_pitzer_min_weight = power_pitzer_min_weight,
         !     tau_search = true/false,
         !     pattempt_single = prob,
@@ -930,7 +930,7 @@ contains
 
         use qmc_data, only: qmc_in_t, excit_gen_renorm, excit_gen_no_renorm, excit_gen_renorm_spin, excit_gen_no_renorm_spin
         use qmc_data, only: excit_gen_power_pitzer
-        use qmc_data, only: excit_gen_power_pitzer_occ, excit_gen_power_pitzer_orderN
+        use qmc_data, only: excit_gen_power_pitzer_occ, excit_gen_power_pitzer_occ_ij, excit_gen_power_pitzer_orderN
         use qmc_data, only: excit_gen_heat_bath, excit_gen_heat_bath_uniform, excit_gen_heat_bath_single
         use lua_hande_utils, only: warn_unused_args, get_rng_seed
         use parallel, only: parent
@@ -1039,6 +1039,8 @@ contains
                 qmc_in%excit_gen = excit_gen_no_renorm_spin
             case('power_pitzer_orderM')
                 qmc_in%excit_gen = excit_gen_power_pitzer_occ
+            case('power_pitzer_orderM_ij')
+                qmc_in%excit_gen = excit_gen_power_pitzer_occ_ij
             case('power_pitzer')
                 qmc_in%excit_gen = excit_gen_power_pitzer
             case('power_pitzer_orderN')

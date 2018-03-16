@@ -228,6 +228,7 @@ contains
         use proc_pointers, only: create_weighted_excitation_list_ptr, slater_condon2_excit_ptr
         use proc_pointers, only: abs_hmatel_ptr, single_excitation_weight_ptr
         use excit_gens, only: excit_gen_power_pitzer_t, alloc_alias_table_data_t
+        use excit_gen_utils, only: init_double_weights_ab
         use alias, only: generate_alias_tables
         use read_in_symmetry, only: cross_product_basis_read_in
         use hamiltonian_data, only: hmatel_t
@@ -410,58 +411,15 @@ contains
         ! mapping which only conserves spin) double excitations.
         ! i and j are drawn from spinorbitals occupied in the reference and a and b can be all orbitals. i!=j and a!=b.
         ! i and j can equal a and b because we later map i. Single excitations are not considered. [todo]
+        ! subroutine init_double_weights_ab is OpenMP parallelised.
         do i = iproc_nel_start, iproc_nel_end
             i_weight = 0.0_p
             
-            !$omp parallel do default(none) &
-            !$omp shared(sys,i,pp,slater_condon2_excit_ptr,abs_hmatel_ptr) &
-            !$omp private(a,i_tmp,j_tmp,ij_sym,isymb,b,hmatel,a_tmp,b_tmp) reduction(+:i_weight)
             do j = 1, sys%nel
                 if (i /= j) then
-                    if (pp%occ_list(j) < pp%occ_list(i)) then
-                        i_tmp = pp%occ_list(j)
-                        j_tmp = pp%occ_list(i)
-                    else
-                        i_tmp = pp%occ_list(i)
-                        j_tmp = pp%occ_list(j)
-                    end if
-                    ! The symmetry of b (=b_cdet), isymb, is given by
-                    ! (sym_i_cdet* x sym_j_cdet* x sym_a_cdet)* = sym_b_cdet
-                    ! (at least for Abelian point groups)
-                    ! ij_sym: symmetry conjugate of the irreducible representation spanned by the codensity
-                    !        \phi_i_cdet*\phi_j_cdet. (We assume that ij is going to be in the bra of the excitation.)
-                    ! [todo] - Check whether order of i and j matters here.
-                    ij_sym = sys%read_in%sym_conj_ptr(sys%read_in, cross_product_basis_read_in(sys, i_tmp, j_tmp))
-                    do a = 1, sys%basis%nbasis
-                        if ((a /= i_tmp) .and. (a /= j_tmp)) then
-                            isymb = sys%read_in%sym_conj_ptr(sys%read_in, &
-                                        sys%read_in%cross_product_sym_ptr(sys%read_in, ij_sym, sys%basis%basis_fns(a)%sym))
-                            do b = 1, sys%basis%nbasis
-                                ! Check spin conservation and symmetry conservation.
-                                if ((((sys%basis%basis_fns(i_tmp)%Ms == sys%basis%basis_fns(a)%Ms) .and. &
-                                    (sys%basis%basis_fns(j_tmp)%Ms == sys%basis%basis_fns(b)%Ms)) .or. &
-                                    ((sys%basis%basis_fns(i_tmp)%Ms == sys%basis%basis_fns(b)%Ms) .and. &
-                                    (sys%basis%basis_fns(j_tmp)%Ms == sys%basis%basis_fns(a)%Ms))) .and. &
-                                    (sys%basis%basis_fns(b)%sym == isymb) .and. (b /= a) .and. (b /= i_tmp) .and. &
-                                    (b/=j_tmp)) then
-                                    if (b < a) then
-                                        a_tmp = b
-                                        b_tmp = a
-                                    else
-                                        a_tmp = a
-                                        b_tmp = b
-                                    end if
-                                    ! slater_condon2_excit does not check whether ij -> ab is allowed but have
-                                    ! checked for that, so it is ok.
-                                    hmatel = slater_condon2_excit_ptr(sys, i_tmp, j_tmp, a_tmp, b_tmp, .false.)
-                                    i_weight = i_weight + abs_hmatel_ptr(hmatel)
-                                end if
-                            end do
-                        end if 
-                    end do
+                    call init_double_weights_ab(sys, pp%occ_list(i), pp%occ_list(j), i_weight)
                 end if
             end do
-            !$omp end parallel do
             
             if (i_weight < depsilon) then
                 ! because we map i later, even if i->a is not allowed/ has been wrongly assigned a zero weight,
@@ -492,50 +450,13 @@ contains
                                 pp%ppn_i_d%aliasK(:))
 
         ! Generate the j given i weighting lists and alias tables. a and b cannot equal i (they are drawn from the same set).
+        ! subroutine init_double_weights_ab is OpenMP parallelised.
         do i = iproc_nbasis_start, iproc_nbasis_end
             ij_d_weights_tot = 0.0_p
-
-            !$omp parallel do default(none) &
-            !$omp shared(sys,i,pp,slater_condon2_excit_ptr,abs_hmatel_ptr) &
-            !$omp private(i_tmp,j_tmp,a_tmp,b_tmp,a,b,ij_weight,ij_sym,isymb,hmatel) reduction(+:ij_d_weights_tot)
             do j = 1, sys%nel
                 ij_weight = 0.0_p
                 if (pp%occ_list(j) /= i) then
-                    ! Make sure i and j are ordered.
-                    if (pp%occ_list(j) < i) then
-                        i_tmp = pp%occ_list(j)
-                        j_tmp = i
-                    else
-                        i_tmp = i
-                        j_tmp = pp%occ_list(j)
-                    end if
-                    ij_sym = sys%read_in%sym_conj_ptr(sys%read_in, cross_product_basis_read_in(sys, i_tmp, j_tmp))
-                    do a = 1, sys%basis%nbasis
-                        if ((a /= i_tmp) .and. (a /= j_tmp)) then
-                            isymb = sys%read_in%sym_conj_ptr(sys%read_in, &
-                                    sys%read_in%cross_product_sym_ptr(sys%read_in, ij_sym, sys%basis%basis_fns(a)%sym))
-                            do b = 1, sys%basis%nbasis 
-                                if ((((sys%basis%basis_fns(i_tmp)%Ms == sys%basis%basis_fns(a)%Ms) .and. &
-                                    (sys%basis%basis_fns(j_tmp)%Ms == sys%basis%basis_fns(b)%Ms)) .or. &
-                                    ((sys%basis%basis_fns(i_tmp)%Ms == sys%basis%basis_fns(b)%Ms) .and. &
-                                    (sys%basis%basis_fns(j_tmp)%Ms == sys%basis%basis_fns(a)%Ms))) .and. &
-                                    (sys%basis%basis_fns(b)%sym == isymb) .and. (a /= b) .and. (b /= i_tmp) .and. &
-                                    (b /= j_tmp)) then
-                                    if (b < a) then
-                                        a_tmp = b
-                                        b_tmp = a
-                                    else
-                                        a_tmp = a
-                                        b_tmp = b
-                                    end if
-                                    ! slater_condon2 does not check whether ij -> ab is allowed by symmetry/spin
-                                    ! but we have checked for that here so it is ok.
-                                    hmatel = slater_condon2_excit_ptr(sys, i_tmp, j_tmp, a_tmp, b_tmp, .false.)
-                                    ij_weight = ij_weight + abs_hmatel_ptr(hmatel)
-                                end if
-                            end do
-                        end if
-                    end do
+                    call init_double_weights_ab(sys, i, pp%occ_list(j), ij_weight)
                 end if
                 if (ij_weight < depsilon) then
                     ! because we map i later, even if ij->ab is never allowed for any ab/ has been wrongly assigned
@@ -551,7 +472,6 @@ contains
                 pp%ppn_ij_d%weights(j,i) = ij_weight
                 ij_d_weights_tot = ij_d_weights_tot + ij_weight
             end do
-            !$omp end parallel do
             
             ! Use of tmp variable to keep OpenMP happy.
             pp%ppn_ij_d%weights_tot(i) = ij_d_weights_tot
@@ -650,6 +570,87 @@ contains
 #endif
 
     end subroutine init_excit_mol_power_pitzer_orderN
+
+    subroutine init_excit_mol_power_pitzer_orderM_ij(sys, ref, pp)
+
+        ! Generate weights for i and j for the gen_excit_mol_power_pitzer_orderM_ij
+        ! excitation generator based on heat bath approach (Holmes et al.).
+
+        ! In:
+        !    sys: system object being studied.
+        !    ref: the reference from which we are exciting.
+        ! In/Out:
+        !    pp: an empty excit_gen_power_pitzer_t object which gets filled with
+        !           the alias tables required to generate excitations.
+
+        use checking, only: check_allocate
+        use system, only: sys_t
+        use qmc_data, only: reference_t
+        use sort, only: qsort
+        use proc_pointers, only: create_weighted_excitation_list_ptr, slater_condon2_excit_ptr
+        use proc_pointers, only: abs_hmatel_ptr, single_excitation_weight_ptr
+        use excit_gens, only: excit_gen_power_pitzer_t, alloc_alias_table_data_t
+        use excit_gen_utils, only: init_double_weights_ab
+        use alias, only: generate_alias_tables
+        use read_in_symmetry, only: cross_product_basis_read_in
+        use hamiltonian_data, only: hmatel_t
+#ifdef PARALLEL
+        use parallel
+
+        integer :: displs_nel(0:nprocs-1), displs_nbasis(0:nprocs-1)
+        integer :: sizes_nel(0:nprocs-1), sizes_nbasis(0:nprocs-1)
+        integer :: ierr, sr
+        integer :: nbasis_start, nbasis_end
+#endif
+        type(sys_t), intent(in) :: sys
+        type(reference_t), intent(in) :: ref
+        type(excit_gen_power_pitzer_t), intent(inout) :: pp
+        type(hmatel_t) :: hmatel
+
+        integer :: i, j, a, b
+        integer :: iproc_nbasis_start, iproc_nbasis_end
+        integer :: ierr_alloc
+
+        real(p) :: i_weight_extra
+
+        ! Store weights and alias tables.
+        allocate(pp%ppm_i_d_weights(sys%basis%nbasis), stat=ierr_alloc)
+        call check_allocate('pp%ppm_i_d_weights', sys%basis%nbasis, ierr_alloc)
+        allocate(pp%ppm_ij_d_weights(sys%basis%nbasis,sys%basis%nbasis), stat=ierr_alloc)
+        call check_allocate('pp%ppm_ij_d_weights', (sys%basis%nbasis*sys%basis%nbasis), ierr_alloc)
+        
+#ifdef PARALLEL
+        ! Initialise do-loop range for each processor, [iproc_nbasis_start,iproc_nbasis_end].
+        call get_proc_loop_range(sys%basis%nbasis, iproc_nbasis_start, iproc_nbasis_end, displs_nbasis, sizes_nbasis)
+#else
+        iproc_nbasis_start = 1
+        iproc_nbasis_end = sys%basis%nbasis
+#endif
+
+        ! subroutine init_double_weights_ab is OpenMP parallelised.
+        do i = iproc_nbasis_start, iproc_nbasis_end
+            i_weight_extra = 0.0_p
+            do j = 1, sys%basis%nbasis
+                pp%ppm_ij_d_weights(j,i) = 0.0_p
+                if (i /= j) then
+                    call init_double_weights_ab(sys, i, j, pp%ppm_ij_d_weights(j,i))
+                end if
+                i_weight_extra = i_weight_extra + pp%ppm_ij_d_weights(j,i)
+            end do
+            pp%ppm_i_d_weights(i) = i_weight_extra
+        end do
+
+#ifdef PARALLEL
+        ! note how FORTRAN stores arrays: array(2,1) comes before array(1,2) in memory.
+        associate(nb=>sys%basis%nbasis)
+            call mpi_allgatherv(MPI_IN_PLACE, sizes_nbasis(iproc), &
+                mpi_preal, pp%ppm_i_d_weights, sizes_nbasis, displs_nbasis, mpi_preal, MPI_COMM_WORLD, ierr)
+            call mpi_allgatherv(MPI_IN_PLACE, nb*sizes_nbasis(iproc), &
+                mpi_preal, pp%ppm_ij_d_weights, nb*sizes_nbasis, nb*displs_nbasis, mpi_preal, MPI_COMM_WORLD, ierr)
+        end associate
+#endif
+
+    end subroutine init_excit_mol_power_pitzer_orderM_ij
 
     subroutine gen_excit_mol_power_pitzer_occ_ref(rng, sys, excit_gen_data, cdet, pgen, connection, hmatel, allowed_excitation)
 
@@ -1347,15 +1348,13 @@ contains
         ! 478-483 (1974).
         ! This requires a lookup of O(M) two-electron integrals in its setup.
         ! This calculates weights on-the-fly. Single excitations are currently treated uniformly and ij are also
-        ! selected uniformly currently.
+        ! selected uniformly currently or according to heat bath.
 
         ! In:
         !    sys: system object being studied.
         !    excit_gen_data: Excitation generation data.
         !    cdet: info on the current determinant (cdet) that we will gen
         !        from.
-        !    parent_sign: sign of the population on the parent determinant (i.e.
-        !        either a positive or negative integer).
         ! In/Out:
         !    rng: random number generator.
         ! Out:
@@ -1366,6 +1365,7 @@ contains
         !        determinant and a connected determinant in molecular systems.
         !    allowed_excitation: false if a valid symmetry allowed excitation was not generated
 
+        use checking, only: check_deallocate
         use determinants, only: det_info_t
         use excitations, only: excit_t
         use excitations, only: find_excitation_permutation2
@@ -1377,7 +1377,10 @@ contains
         use search, only: binary_search
         use checking, only: check_allocate, check_deallocate
         use excit_gens, only: excit_gen_power_pitzer_t, excit_gen_data_t
+        use excit_gen_utils, only: select_ij_heat_bath
         use alias, only: select_weighted_value
+        use read_in_symmetry, only: cross_product_basis_read_in
+        use qmc_data, only: excit_gen_power_pitzer_occ_ij
 
         type(sys_t), intent(in) :: sys
         type(excit_gen_data_t), intent(in) :: excit_gen_data
@@ -1392,8 +1395,11 @@ contains
         logical :: found, a_found
         real(p), allocatable :: ia_weights(:), ja_weights(:), jb_weights(:)
         real(p) :: ia_weights_tot, ja_weights_tot, jb_weights_tot
+        real(p), allocatable :: i_weights_occ(:), ij_weights_occ(:), ji_weights_occ(:)
+        real(p) :: i_weights_occ_tot, ij_weights_occ_tot, ji_weights_occ_tot
         real(p) :: pgen_ij
-        integer :: a, b, i, j, a_ind, b_ind, a_ind_rev, b_ind_rev, i_ind, j_ind, isymb, imsb, isyma
+        integer :: a, b, i, j, j_tmp, a_ind, b_ind, a_ind_rev, b_ind_rev, i_ind, j_ind, isymb, imsb, isyma
+        integer :: ierr_dealloc
 
         ! 1. Select single or double.
         if (get_rand_close_open(rng) < excit_gen_data%pattempt_single) then
@@ -1405,10 +1411,42 @@ contains
             ! We have a double
 
             ! 2. Select orbitals to excite from
-            
-            call choose_ij_mol(rng, sys, cdet%occ_list, i_ind, j_ind, i, j, ij_sym, ij_spin, pgen_ij)
+            if (excit_gen_data%excit_gen == excit_gen_power_pitzer_occ_ij) then
+                ! Select ij using heat bath excit. gen. techniques.
+                allocate(i_weights_occ(1:sys%nel), stat=ierr)
+                call check_allocate('i_weights_occ', sys%nel, ierr)
+                allocate(ij_weights_occ(1:sys%nel), stat=ierr)
+                call check_allocate('ij_weights_occ', sys%nel, ierr)
+                allocate(ji_weights_occ(1:sys%nel), stat=ierr)
+                call check_allocate('ji_weights_occ', sys%nel, ierr)
 
-            ! Now we've chosen i and j.
+                call select_ij_heat_bath(rng, sys%nel, excit_gen_data%excit_gen_pp%ppm_i_d_weights, &
+                    excit_gen_data%excit_gen_pp%ppm_ij_d_weights, cdet, i, j, i_ind, j_ind, &
+                    i_weights_occ, i_weights_occ_tot, ij_weights_occ, ij_weights_occ_tot, ji_weights_occ, ji_weights_occ_tot, &
+                    allowed_excitation)
+
+                ij_spin = sys%basis%basis_fns(i)%Ms + sys%basis%basis_fns(j)%Ms
+                ! ij_sym: symmetry conjugate of the irreducible representation spanned by the codensity
+                !        \phi_i_cdet*\phi_j_cdet. (We assume that ij is going to be in the bra of the excitation.)
+                ij_sym = sys%read_in%sym_conj_ptr(sys%read_in, cross_product_basis_read_in(sys, i, j))
+                
+                pgen_ij = ((i_weights_occ(i_ind)/i_weights_occ_tot) * (ij_weights_occ(j_ind)/ij_weights_occ_tot)) + &
+                    ((i_weights_occ(j_ind)/i_weights_occ_tot) * (ji_weights_occ(i_ind)/ji_weights_occ_tot))
+
+                ! Sort i and j such that j>i.
+                if (j < i) then
+                    j_tmp = j
+                    j = i
+                    i = j_tmp
+                end if
+
+            else
+                ! Select ij uniformly.
+                call choose_ij_mol(rng, sys, cdet%occ_list, i_ind, j_ind, i, j, ij_sym, ij_spin, pgen_ij)
+                allowed_excitation = .true.
+            end if
+
+            ! Now we've chosen i and j. They are ordered, j>i.
  
             ! We now need to select the orbitals to excite into which we do with weighting:
             ! p(ab|ij) = p(a|i) p(b|j) + p(a|j) p(b|i)
@@ -1418,45 +1456,47 @@ contains
 
             ! 3. Find a.
             ! Given i, construct the weights of all possible a
-            if (sys%basis%basis_fns(i)%Ms < 0) then
-                ! [todo] - Consider doing a binary/linear search instead of using the alias method.
-                if (sys%nvirt_beta > 0) then
-                    allocate(ia_weights(1:sys%nvirt_beta), stat=ierr)
-                    call check_allocate('ia_weights', sys%nvirt_beta, ierr)
-                    call create_weighted_excitation_list_ptr(sys, i, 0, cdet%unocc_list_beta, sys%nvirt_beta, ia_weights, &
+            if (allowed_excitation) then
+                if (sys%basis%basis_fns(i)%Ms < 0) then
+                    ! [todo] - Consider doing a binary/linear search instead of using the alias method.
+                    if (sys%nvirt_beta > 0) then
+                        allocate(ia_weights(1:sys%nvirt_beta), stat=ierr)
+                        call check_allocate('ia_weights', sys%nvirt_beta, ierr)
+                        call create_weighted_excitation_list_ptr(sys, i, 0, cdet%unocc_list_beta, sys%nvirt_beta, ia_weights, &
                                                              ia_weights_tot)
-                    if (ia_weights_tot > 0.0_p) then
-                        ! Use the alias method to select i with the appropriate probability
-                        a_ind = select_weighted_value(rng, sys%nvirt_beta, ia_weights, ia_weights_tot)
-                        a = cdet%unocc_list_beta(a_ind)
-                        a_found = .true.
+                        if (ia_weights_tot > 0.0_p) then
+                            ! Use the alias method to select i with the appropriate probability
+                            a_ind = select_weighted_value(rng, sys%nvirt_beta, ia_weights, ia_weights_tot)
+                            a = cdet%unocc_list_beta(a_ind)
+                            a_found = .true.
+                        else
+                            a_found = .false.
+                        end if
                     else
                         a_found = .false.
                     end if
                 else
-                    a_found = .false.
-                end if
-            else
-                if (sys%nvirt_alpha > 0) then
-                    allocate(ia_weights(1:sys%nvirt_alpha), stat=ierr)
-                    call check_allocate('ia_weights', sys%nvirt_alpha, ierr)
+                    if (sys%nvirt_alpha > 0) then
+                        allocate(ia_weights(1:sys%nvirt_alpha), stat=ierr)
+                        call check_allocate('ia_weights', sys%nvirt_alpha, ierr)
 
-                    call create_weighted_excitation_list_ptr(sys, i, 0, cdet%unocc_list_alpha, sys%nvirt_alpha, ia_weights, &
+                        call create_weighted_excitation_list_ptr(sys, i, 0, cdet%unocc_list_alpha, sys%nvirt_alpha, ia_weights, &
                                                              ia_weights_tot)
-                    if (ia_weights_tot > 0.0_p) then
-                        ! Use the alias method to select i with the appropriate probability
-                        a_ind = select_weighted_value(rng, sys%nvirt_alpha, ia_weights, ia_weights_tot)
-                        a = cdet%unocc_list_alpha(a_ind)
-                        a_found = .true.
+                        if (ia_weights_tot > 0.0_p) then
+                            ! Use the alias method to select i with the appropriate probability
+                            a_ind = select_weighted_value(rng, sys%nvirt_alpha, ia_weights, ia_weights_tot)
+                            a = cdet%unocc_list_alpha(a_ind)
+                            a_found = .true.
+                        else
+                            a_found = .false.
+                        end if
                     else
                         a_found = .false.
                     end if
-                else
-                    a_found = .false.
                 end if
             end if
 
-            if (a_found) then
+            if ((a_found) .and. (allowed_excitation)) then
                 ! Given i,j,a construct the weights of all possible b
                 ! This requires that total symmetry and spin are conserved.
                 ! The symmetry of b (isymb) is given by
@@ -1483,7 +1523,7 @@ contains
             ! Note that we did not need a btest for orbital a because we only considered
             ! virtual orbitals there.
 
-            if (a_found .and. (jb_weights_tot > 0.0_p)) then
+            if (a_found .and. (jb_weights_tot > 0.0_p) .and. (allowed_excitation)) then
                 ! 4. Use the alias method to select b with the appropriate probability
                 b_ind = select_weighted_value(rng, sys%read_in%pg_sym%nbasis_sym_spin(imsb,isymb), jb_weights, jb_weights_tot)
                 b = sys%read_in%pg_sym%sym_spin_basis_fns(b_ind,imsb,isymb)
@@ -1569,9 +1609,30 @@ contains
         end if
 
         ! deallocate weight arrays if allocated
-        if (allocated(ia_weights)) deallocate(ia_weights)
-        if (allocated(jb_weights)) deallocate(jb_weights)
-        if (allocated(ja_weights)) deallocate(ja_weights)
+        if (allocated(ia_weights)) then
+            deallocate(ia_weights, stat=ierr_dealloc)
+            call check_deallocate('ia_weights', ierr_dealloc)
+        end if
+        if (allocated(jb_weights)) then
+            deallocate(jb_weights, stat=ierr_dealloc)
+            call check_deallocate('jb_weights', ierr_dealloc)
+        end if
+        if (allocated(ja_weights)) then
+            deallocate(ja_weights, stat=ierr_dealloc)
+            call check_deallocate('ja_weights', ierr_dealloc)
+        end if
+        if (allocated(i_weights_occ)) then
+            deallocate(i_weights_occ, stat=ierr_dealloc)
+            call check_deallocate('i_weights_occ', ierr_dealloc)
+        end if
+        if (allocated(ij_weights_occ)) then
+            deallocate(ij_weights_occ, stat=ierr_dealloc)
+            call check_deallocate('ij_weights_occ', ierr_dealloc)
+        end if
+        if (allocated(ji_weights_occ)) then
+            deallocate(ji_weights_occ, stat=ierr_dealloc)
+            call check_deallocate('ji_weights_occ', ierr_dealloc)
+        end if
 
     end subroutine gen_excit_mol_power_pitzer_occ
 
