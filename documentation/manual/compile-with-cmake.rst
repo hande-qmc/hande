@@ -21,24 +21,24 @@ Once dependencies are installed, you can configure HANDE either by running the
 .. code-block:: bash
    cmake -H. -Bbuild
 
-or by using the frontend Python script ``mkconfig.py``:
+or by using the frontend Python script ``cmakeconfig.py``:
 
 .. code-block:: bash
-   ./mkconfig.py build
+   ./cmakeconfig.py build
 
 The result of using the two methods is exactly the same: a subdirectory
 ``build`` will be created containing the build system.
 Using the frontend script however results in more compact configure lines.
 
 After ensuring HANDE's dependencies are installed, produce a makefile by running the
-``mkconfig.py`` (residing in the tools subdirectory) script in the root directory:
+``cmakeconfig.py`` (residing in the tools subdirectory) script in the root directory:
 
 Configuration options
 ---------------------
 
 Building of HANDE can be tweaked in various ways passing options to the
 frontend script (or CMake directly).
-The help menu for the ``mkconfig.py`` script shows the available options:
+The help menu for the ``cmakeconfig.py`` script shows the available options:
 
 .. code-block:: bash
    Usage:
@@ -190,7 +190,7 @@ and pointed in the right direction:
   If math detection fails, libraries can be set manually:
 
 .. code-block:: bash
-   ./mkconfig.py --blas=off --lapack=off --explicit-libs="-L/usr/lib -lblas -llapack"
+   ./cmakeconfig.py --blas=off --lapack=off --explicit-libs="-L/usr/lib -lblas -llapack"
 
    cmake -H. -DENABLE_BLAS=OFF -DENABLE_LAPACK=OFF -DEXPLICIT_LIBS="-L/usr/lib -lblas -llapack"
 
@@ -198,7 +198,7 @@ and pointed in the right direction:
   installation as ``LUA_ROOT`` (or ``LUA_DIR``) or directly passing it as an option:
 
 .. code-block:: bash
-   ./mkconfig.py --lua=/install/dir/for/Lua build
+   ./cmakeconfig.py --lua=/install/dir/for/Lua build
 
    cmake -H. -Bbuild -DLUA_ROOT=/install/dir/for/Lua
 
@@ -206,7 +206,7 @@ and pointed in the right direction:
   installation as ``HDF5_ROOT`` os directly passing it as an option:
 
 .. code-block:: bash
-   ./mkconfig.py --hdf5 --cmake-options="-DHDF5_ROOT=/install/dir/for/HDF5" build
+   ./cmakeconfig.py --hdf5 --cmake-options="-DHDF5_ROOT=/install/dir/for/HDF5" build
 
    cmake -H. -Bbuild -DENABLE_HDF5=ON -DHDF5_ROOT=/install/dir/for/HDF5
 
@@ -217,7 +217,7 @@ To compile with MPI it is necessary to pass **both** the ``--mpi`` option
 **and** the correct compiler wrappers with the ``--cc`` and ``--fc``:
 
 .. code-block:: bash
-   ./mkconfig.py --mpi --fc=mpif90 --cc=mpicc
+   ./cmakeconfig.py --mpi --fc=mpif90 --cc=mpicc
 
    cmake -H. -Bbuild -DCMAKE_Fortran_COMPILER=mpif90 -DCMAKE_C_COMPILER=mpicc -DENABLE_MPI=ON
 
@@ -229,28 +229,28 @@ the ``MATH_ROOT`` variable to point to the location of the math libraries:
 - OpenMPI with GNU compilers.
 
 .. code-block:: bash
-   ./mkconfig.py --mpi --fc=mpif90 --cc=mpicc
+   ./cmakeconfig.py --mpi --fc=mpif90 --cc=mpicc
 
    cmake -H. -Bbuild -DCMAKE_Fortran_COMPILER=mpif90 -DCMAKE_C_COMPILER=mpicc -DENABLE_MPI=ON
 
 - OpenMPI with Intel compilers.
 
 .. code-block:: bash
-   ./mkconfig.py --mpi --fc=mpif90 --cc=mpicc
+   ./cmakeconfig.py --mpi --fc=mpif90 --cc=mpicc
 
    cmake -H. -Bbuild -DCMAKE_Fortran_COMPILER=mpif90 -DCMAKE_C_COMPILER=mpicc -DENABLE_MPI=ON
 
 - IntelMPI with Intel compiler.
 
 .. code-block:: bash
-   ./mkconfig.py --mpi --fc=mpiifort --cc=mpiicc
+   ./cmakeconfig.py --mpi --fc=mpiifort --cc=mpiicc
 
    cmake -H. -Bbuild -DCMAKE_Fortran_COMPILER=mpiifort -DCMAKE_C_COMPILER=mpiicc -DENABLE_MPI=ON
 
 - OpenMPI with GNU compilers and OpenBLAS ScaLAPACK.
 
 .. code-block:: bash
-   ./mkconfig.py --mpi --fc=mpif90 --cc=mpicc --mpi-with-scalapack --scalapack="-L/location/of/scalapack -lscalapack"
+   ./cmakeconfig.py --mpi --fc=mpif90 --cc=mpicc --mpi-with-scalapack --scalapack="-L/location/of/scalapack -lscalapack"
 
    cmake -H. -Bbuild -DCMAKE_Fortran_COMPILER=mpif90 -DCMAKE_C_COMPILER=mpicc -DENABLE_MPI=ON -DENABLE_SCALAPACK=ON -DSCALAPACK_LIBRARIES="-L/location/of/scalapack -lscalapack"
 
@@ -258,7 +258,7 @@ the ``MATH_ROOT`` variable to point to the location of the math libraries:
   will use the OpenMPI implementation of BLACS by default.
 
 .. code-block:: bash
-   ./mkconfig.py --mpi --fc=mpif90 --cc=mpicc --mpi-with-scalapack
+   ./cmakeconfig.py --mpi --fc=mpif90 --cc=mpicc --mpi-with-scalapack
 
    cmake -H. -Bbuild -DCMAKE_Fortran_COMPILER=mpif90 -DCMAKE_C_COMPILER=mpicc -DENABLE_MPI=ON -DENABLE_SCALAPACK=ON
 
@@ -266,6 +266,6 @@ the ``MATH_ROOT`` variable to point to the location of the math libraries:
   CMake what BLACS implementation to use with ScaLAPACK.
 
 .. code-block:: bash
-   ./mkconfig.py --mpi --fc=mpiifort --cc=mpiicc --mpi-with-scalapack --blacs=intelmpi
+   ./cmakeconfig.py --mpi --fc=mpiifort --cc=mpiicc --mpi-with-scalapack --blacs=intelmpi
 
    cmake -H. -Bbuild -DCMAKE_Fortran_COMPILER=mpiifort -DCMAKE_C_COMPILER=mpiicc -DENABLE_MPI=ON -DENABLE_SCALAPACK=ON -DBLACS_IMPLEMENTATION=intelmpi
