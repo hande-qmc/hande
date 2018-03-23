@@ -1,0 +1,11 @@
+module git_info
+
+implicit none
+
+character(*), parameter :: GIT_COMMIT_HASH = "@_git_last_commit_hash@"
+character(*), parameter :: GIT_COMMIT_AUTHOR = "@_git_last_commit_author@"
+character(*), parameter :: GIT_COMMIT_DATE = "@_git_last_commit_date@"
+character(*), parameter :: GIT_BRANCH = "@_git_branch@"
+character(*), parameter :: GIT_DESCRIBE = "@_git_describe@"
+
+end module git_info

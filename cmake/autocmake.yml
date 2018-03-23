@@ -1,0 +1,50 @@
+name: HANDE
+min_cmake_version: 3.6
+setup_script: cmakeconfig.py
+url_root: https://github.com/coderefinery/autocmake/raw/master/
+default_build_type: release
+language:
+  - Fortran
+  - C
+
+modules:
+- compilers:
+  - source:
+    - '%(url_root)modules/fc.cmake'
+    - '%(url_root)modules/cc.cmake'
+- flags:
+  - source:
+    - 'custom/compilers/Fortran_C.cmake'
+    - 'custom/compilers/CFlags.cmake'
+    - 'custom/compilers/FortranFlags.cmake'
+- cmake:
+  - source:
+    - 'custom/options_wrappers.cmake'
+    - '%(url_root)modules/custom_color_messages.cmake'
+    - '%(url_root)modules/safeguards.cmake'
+    - '%(url_root)modules/default_build_paths.cmake'
+    - '%(url_root)modules/python_interpreter.cmake'
+    - 'custom/lua.cmake'
+    - 'custom/mpi.cmake'
+    - 'custom/omp.cmake'
+    - 'custom/math_libs.cmake'
+    - 'custom/explicit_libs.cmake'
+- nonbooloptions:
+  - source:
+    - 'custom/dsfmt_mexp.cmake'
+    - 'custom/detsize.cmake'
+    - 'custom/popsize.cmake'
+    - 'custom/hande_exe_name.cmake'
+- booloptions:
+  - source:
+    - 'custom/hdf5.cmake'
+    - 'custom/uuid.cmake'
+    - 'custom/lanczos.cmake'
+    - 'custom/single_precision.cmake'
+    - 'custom/backtrace.cmake'
+    - 'custom/popcnt.cmake'
+- sourcefiles:
+  - source:
+    - 'custom/print_info.cmake'
+    - 'custom/lib.cmake'
+    - '%(url_root)modules/src.cmake'
