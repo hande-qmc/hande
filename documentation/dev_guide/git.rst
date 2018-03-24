@@ -274,11 +274,11 @@ future, would like to keep around but without cluttering up the main
 repository, making it unclear which branches need some TLC before merging?  We
 have a separate repository where such branches can be sent, to be resurrected
 if desired later.  The repository is at
-hande@tycpc15.cmth.ph.ic.ac.uk:hande_graveyard.git.  To push a local branch there:
+ch-hande@git.uis.cam.ac.uk:hande_graveyard.git.  To push a local branch there:
 
 .. code-block:: bash
 
-    $ git remote add graveyard hande@tycpc15:hande_graveyard.git
+    $ git remote add graveyard ch-hande@git.uis.cam.ac.uk:hande_graveyard.git
     $ git push remote graveyard unwanted_branch
 
 and then delete the branch (both local and remote) from the main repository
@@ -287,7 +287,7 @@ either check it out and then do the push and delete (easier) or use a refspec:
 
 .. code-block:: bash
 
-    $ git push graveyard refs/remotes/origin/unwanted_branch:refs/head/unwanted_branch
+    $ git push graveyard refs/remotes/origin/unwanted_branch:refs/heads/unwanted_branch
 
 where origin/unwanted_branch is the remote branch to be moved to the graveyard
 repository.  The branch on origin can then be deleted as before.
