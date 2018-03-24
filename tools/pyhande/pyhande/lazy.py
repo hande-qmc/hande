@@ -434,14 +434,6 @@ starting_iteration: integer
         # Default end is the last iteration.
         end = data['iterations'].iloc[-1]
     before_end_indx = data['iterations'] <= end
-    # [review] - JSS: not obvious why this is necessary when lazy_block takes end as well.
-    # [review] - JSS: I think we already assume that the timestep and iterations
-    # [review] - JSS: between shift updates are constant across the data, so only
-    # [review] - JSS: need to adjust the end point for number_of_reblockings...
-    # [reply] - VAN: This is more rigorous as the size of the steps I am using depends
-    # [reply] - VAN: on the number of iterations I am including in the analysis. If a
-    # [reply] - VAN: user only wants to consider data from start to end, the remaining
-    # [reply] - VAN: data points should not be part of the decision where to start from.
     data_before_end = data.ix[before_end_indx]
 
     # Find the point the shift began to vary.
