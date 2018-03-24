@@ -30,11 +30,7 @@ private
 public :: allocate_shared, deallocate_shared, shmem_handle_t
 
 type shmem_handle_t
-#if ! defined(__GNUC__) || __GNUC__ > 4 || (__GNUC__ == 4 && (__GNUC_MINOR__ > 7))
     character(:), allocatable :: shmem_name
-#else
-    character(255) :: shmem_name
-#endif
     integer :: mpi_win
 end type shmem_handle_t
 
@@ -146,6 +142,7 @@ contains
 
         use const, only: sp, int_64
         use checking, only: check_allocate
+        use report, only: GLOBAL_UUID
         use utils, only: fstring_to_carray
         use, intrinsic :: iso_c_binding, only: c_f_pointer, c_ptr, c_null_ptr
 
@@ -158,7 +155,7 @@ contains
         type(c_ptr) :: ptr
         ptr = c_null_ptr
 
-        handle = shmem_handle_t(A_name, -1)
+        handle = shmem_handle_t(GLOBAL_UUID//A_name, -1)
 
 #if defined PARALLEL && defined ENABLE_SHMEM_POSIX
         ierr = 0
@@ -178,6 +175,7 @@ contains
 
         use const, only: sp, int_64
         use checking, only: check_allocate
+        use report, only: GLOBAL_UUID
         use utils, only: fstring_to_carray
         use, intrinsic :: iso_c_binding, only: c_f_pointer, c_ptr, c_null_ptr
 
@@ -190,7 +188,7 @@ contains
         type(c_ptr) :: ptr
         ptr = c_null_ptr
 
-        handle = shmem_handle_t(A_name, -1)
+        handle = shmem_handle_t(GLOBAL_UUID//A_name, -1)
 
 #if defined PARALLEL && defined ENABLE_SHMEM_POSIX
         ierr = 0
@@ -210,6 +208,7 @@ contains
 
         use const, only: dp, int_64
         use checking, only: check_allocate
+        use report, only: GLOBAL_UUID
         use utils, only: fstring_to_carray
         use, intrinsic :: iso_c_binding, only: c_f_pointer, c_ptr, c_null_ptr
 
@@ -222,7 +221,7 @@ contains
         type(c_ptr) :: ptr
         ptr = c_null_ptr
 
-        handle = shmem_handle_t(A_name, -1)
+        handle = shmem_handle_t(GLOBAL_UUID//A_name, -1)
 
 #if defined PARALLEL && defined ENABLE_SHMEM_POSIX
         ierr = 0
@@ -242,6 +241,7 @@ contains
 
         use const, only: dp, int_64
         use checking, only: check_allocate
+        use report, only: GLOBAL_UUID
         use utils, only: fstring_to_carray
         use, intrinsic :: iso_c_binding, only: c_f_pointer, c_ptr, c_null_ptr
 
@@ -254,7 +254,7 @@ contains
         type(c_ptr) :: ptr
         ptr = c_null_ptr
 
-        handle = shmem_handle_t(A_name, -1)
+        handle = shmem_handle_t(GLOBAL_UUID//A_name, -1)
 
 #if defined PARALLEL && defined ENABLE_SHMEM_POSIX
         ierr = 0
