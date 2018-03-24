@@ -1853,10 +1853,11 @@ contains
         type(blocking_in_t), intent(out) :: blocking_in
 
         integer :: err, blocking_table
-        character(24),parameter :: keys(10) = [character(24) ::  'blocking_on_the_fly', 'start_save_frequency',   &
+        character(24),parameter :: keys(11) = [character(24) ::  'blocking_on_the_fly', 'start_save_frequency',   &
                                                                 'start_point_number', 'filename', 'start_point', &
                                                                 'error_limit', 'blocks_used', 'min_blocks_used', &
-                                                                'auto_shift_damping', 'shift_damping_precision']
+                                                                'auto_shift_damping', 'shift_damping_precision', &
+                                                                'force_shift_damping_opt']
 
         if (aot_exists(lua_state, opts, 'blocking')) then
 
