@@ -46,7 +46,7 @@ contains
         use checking, only: check_allocate
 
         use calc, only: doing_calc, hfs_fciqmc_calc, dmqmc_calc, GLOBAL_META
-        use energy_evaluation, only: comm_processor_indx, est_buf_data_size, est_buf_n_per_proc
+        use energy_evaluation, only: get_comm_processor_indx, est_buf_data_size, est_buf_n_per_proc
         use load_balancing, only: init_parallel_t
         use particle_t_utils, only: init_particle_t
         use system
@@ -137,7 +137,7 @@ contains
                                  qmc_in%real_amplitude_force_32, qmc_state%psip_list, io_unit=io_unit)
         end if
 
-        call comm_processor_indx(qmc_state%psip_list%nspaces, proc_data_info, ntot_proc_data)
+        call get_comm_processor_indx(qmc_state%psip_list%nspaces, proc_data_info, ntot_proc_data)
         call init_parallel_t(ntot_proc_data, est_buf_data_size, fciqmc_in_loc%non_blocking_comm, &
                              qmc_state%par_info, load_bal_in%nslots)
 

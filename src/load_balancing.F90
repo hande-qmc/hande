@@ -107,7 +107,7 @@ contains
         !        receive this from all processors (i.e. nprocs*per processor amount), as calculated
         !        in comm_processor_indx.
         !    ndata: the number of additional data elements accumulated over all
-        !        processors (e.g. error_ind).
+        !        processors (e.g. est_buf_data_size) .
         !    non_blocking_comm: true if using non-blocking communications
         !    nslots: number of slots we divide proc_map into
         ! In/Out:
