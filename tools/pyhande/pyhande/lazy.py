@@ -532,8 +532,8 @@ starting_iteration: integer
     return starting_iteration
 
 def reweighting_graph(datafiles, start=None, verbosity=1, mean_shift=0.0,
-        arith_mean=False):
-        '''Plot a graph of reweighted projected energy vs. reweighted factor W.
+                      arith_mean=False):
+    '''Plot a graph of reweighted projected energy vs. reweighted factor W.
     
 Detecting biases by reweighting is described in [Umrigar93]_ and [Vigor15]_ , 
 see pyhande.weight for details. The graph produced by this function is similar
@@ -559,13 +559,11 @@ arith_mean : bool
 
 References
 ----------
-Umrigar93
-    C.J. Umirigar et al., J. Chem. Phys. 99, 2865 (1993)
-Vigor15
-    W.A. Vigor, et al., J. Chem. Phys. 142, 104101 (2015).
+.. [Umrigar93] C.J. Umirigar et al., J. Chem. Phys. 99, 2865 (1993)
+.. [Vigor15] W.A. Vigor, et al., J. Chem. Phys. 142, 104101 (2015).
 
-Thanks to Will Vigor for original implementation '''
-
+Thanks to Will Vigor for original implementation.
+'''
     weights = [2,4,8,16,32,64,128,256]
     infos_collection = []
     infos = std_analysis(datafiles=datafiles, start=start, extract_psips=True, 
@@ -596,7 +594,7 @@ Thanks to Will Vigor for original implementation '''
                 print("Reweighting with " + str(weights[j]) + " and further failed.") 
                 break
         
-        #plotting the graph
+        # Plotting the graph
         plt.xlabel('Reweights')
         plt.ylabel('(Reweighted) Projected Energy')
         plt.errorbar(reweights, weighted_proj_energies, yerr=weighted_proj_energy_errs, fmt='o')
