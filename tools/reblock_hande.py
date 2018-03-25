@@ -21,8 +21,9 @@ if not pkgutil.find_loader('pyhande'):
 import pyblock
 import pyhande
 
-def run_hande_blocking(files, start_iteration, reblock_plot=None, verbose=1,
-                       width=0, out_method='to_string', inefficiency=False):
+def run_hande_blocking(files, start_iteration=None, end_iteration=None,
+                        reblock_plot=None, verbose=1, width=0,
+                        out_method='to_string', inefficiency=False):
     '''Run a reblocking analysis on HANDE output and print to STDOUT.
 
 See :func:`pyblock.pd_utils.reblock` and :func:`pyblock.blocking.reblock` for
@@ -35,7 +36,11 @@ files : list of list of strings
     the a set of files which are analysed together (ie a series of calculations
     restarted from the previous calculation).
 start_iteration : int or None (Default)
-    QMC iteration from which statistics are gathered.
+    QMC iteration from which statistics are gathered. While the end_iteration
+    is included in analysis, the start_iteration is not.
+end_iteration : int or None (Default)
+    QMC iteration until which statistics are gathered. If None, the last QMC
+    iteration included is the last iteration of the data set.
 reblock_plot : string
     Filename to which the reblocking convergence plot (standard error vs reblock
     iteration) is saved.  The plot is not created if None and shown
@@ -106,6 +111,7 @@ opt_block: :class:`pandas.DataFrame`
     for calc in files:
         try:
             info = pyhande.lazy.std_analysis(calc, start_iteration,
+                                             end=end_iteration,
                                              extract_psips=True,
                                              calc_inefficiency=inefficiency,
                                              verbosity = verbose)
@@ -225,8 +231,13 @@ reblock_plot : string
                         'Overrides --verbose.')
     parser.add_argument('-s', '--start', type=int, dest='start_iteration',
                         default=None, help='Iteration number from which to '
-                        'gather statistics.  Default: Try finding starting '
-                        'iteration automatically. ')
+                        'gather statistics. The start iteration itself is not '
+                        'included in the analysis. Default: Try finding '
+                        'starting iteration automatically. ')
+    parser.add_argument('-e', '--end', type=int, dest='end_iteration',
+                        default=None, help='Iteration number until which to '
+                        'gather statistics.  Default: Last iteration in data '
+                        'set. ')
     parser.add_argument('-v', '--verbose', dest='verbose', action='count',
                         default=1, help='Increase verbosity of the output.  Can '
                         'be specified multiple times.')
@@ -279,8 +290,9 @@ None.
 
     options = parse_args(args)
     run_hande_blocking(options.filenames, options.start_iteration,
-                       options.plotfile, options.verbose, options.width,
-                       options.output, options.inefficiency)
+                       options.end_iteration, options.plotfile,
+                       options.verbose, options.width, options.output,
+                       options.inefficiency)
 
 if __name__ == '__main__':
 
