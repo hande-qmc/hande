@@ -242,10 +242,9 @@ contains
         type(sys_t), intent(in) :: sys
         type(reference_t), intent(in) :: ref
         type(excit_gen_power_pitzer_t), intent(inout) :: pp
-        type(hmatel_t) :: hmatel
 
-        integer :: i, j, a, b, ind_a, ind_b, bsym, ij_sym, isyma, isymb, ims, imsa
-        integer :: i_tmp, j_tmp, a_tmp, b_tmp, nall
+        integer :: i, j, a, ind_a, ind_b, bsym, isyma, ims, imsa
+        integer :: nall
         integer :: iproc_nel_start, iproc_nel_end, iproc_nbasis_start, iproc_nbasis_end
         integer :: ierr_alloc
         real(p) :: i_weight, ij_weight, ia_s_weights_tot, ij_d_weights_tot
@@ -597,17 +596,15 @@ contains
 #ifdef PARALLEL
         use parallel
 
-        integer :: displs_nel(0:nprocs-1), displs_nbasis(0:nprocs-1)
-        integer :: sizes_nel(0:nprocs-1), sizes_nbasis(0:nprocs-1)
-        integer :: ierr, sr
-        integer :: nbasis_start, nbasis_end
+        integer :: displs_nbasis(0:nprocs-1)
+        integer :: sizes_nbasis(0:nprocs-1)
+        integer :: ierr
 #endif
         type(sys_t), intent(in) :: sys
         type(reference_t), intent(in) :: ref
         type(excit_gen_power_pitzer_t), intent(inout) :: pp
-        type(hmatel_t) :: hmatel
 
-        integer :: i, j, a, b
+        integer :: i, j
         integer :: iproc_nbasis_start, iproc_nbasis_end
         integer :: ierr_alloc
 
