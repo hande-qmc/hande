@@ -159,14 +159,14 @@ contains
 
 #if defined PARALLEL && defined ENABLE_SHMEM_POSIX
         ierr = 0
-        call alloc_shared_posix(ptr, fstring_to_carray(A_name), N1*nbytes)
+        call alloc_shared_posix(ptr, fstring_to_carray(handle%shmem_name), N1*nbytes)
         call c_f_pointer(ptr, A, [N1])
 #elif defined PARALLEL && ! defined DISABLE_MPI3
         call mpi3_shared_alloc(N1*nbytes, ptr, handle%mpi_win)
         call c_f_pointer(ptr, A, [N1])
 #else
         allocate(A(N1), stat=ierr)
-        call check_allocate(A_name, N1, ierr)
+        call check_allocate(handle%shmem_name, N1, ierr)
 #endif
 
     end subroutine alloc_shared_real_sp_1D
@@ -192,14 +192,14 @@ contains
 
 #if defined PARALLEL && defined ENABLE_SHMEM_POSIX
         ierr = 0
-        call alloc_shared_posix(ptr, fstring_to_carray(A_name), N1*N2*nbytes)
+        call alloc_shared_posix(ptr, fstring_to_carray(handle%shmem_name), N1*N2*nbytes)
         call c_f_pointer(ptr, A, [N1, N2])
 #elif defined PARALLEL && ! defined DISABLE_MPI3
         call mpi3_shared_alloc(N1*N2*nbytes, ptr, handle%mpi_win)
         call c_f_pointer(ptr, A, [N1,N2])
 #else
         allocate(A(N1, N2), stat=ierr)
-        call check_allocate(A_name, N1*N2, ierr)
+        call check_allocate(handle%shmem_name, N1*N2, ierr)
 #endif
 
     end subroutine alloc_shared_real_sp_2D
@@ -225,14 +225,14 @@ contains
 
 #if defined PARALLEL && defined ENABLE_SHMEM_POSIX
         ierr = 0
-        call alloc_shared_posix(ptr, fstring_to_carray(A_name), N1*nbytes)
+        call alloc_shared_posix(ptr, fstring_to_carray(handle%shmem_name), N1*nbytes)
         call c_f_pointer(ptr, A, [N1])
 #elif defined PARALLEL && ! defined DISABLE_MPI3
         call mpi3_shared_alloc(N1*nbytes, ptr, handle%mpi_win)
         call c_f_pointer(ptr, A, [N1])
 #else
         allocate(A(N1), stat=ierr)
-        call check_allocate(A_name, N1, ierr)
+        call check_allocate(handle%shmem_name, N1, ierr)
 #endif
 
     end subroutine alloc_shared_real_dp_1D
@@ -258,14 +258,14 @@ contains
 
 #if defined PARALLEL && defined ENABLE_SHMEM_POSIX
         ierr = 0
-        call alloc_shared_posix(ptr, fstring_to_carray(A_name), N1*N2*nbytes)
+        call alloc_shared_posix(ptr, fstring_to_carray(handle%shmem_name), N1*N2*nbytes)
         call c_f_pointer(ptr, A, [N1, N2])
 #elif defined PARALLEL && ! defined DISABLE_MPI3
         call mpi3_shared_alloc(N1*N2*nbytes, ptr, handle%mpi_win)
         call c_f_pointer(ptr, A, [N1,N2])
 #else
         allocate(A(N1, N2), stat=ierr)
-        call check_allocate(A_name, N1*N2, ierr)
+        call check_allocate(handle%shmem_name, N1*N2, ierr)
 #endif
 
     end subroutine alloc_shared_real_dp_2D
