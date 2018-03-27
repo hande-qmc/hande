@@ -242,7 +242,7 @@ ENABLE_SHMEM_POSIX
     to various system-level functionality and so, depending upon local configuration, may
     not work when run as a non-privileged user (and hande should **not** be run by
     privileged users!).  As a result, we recommend using MPI 3 instead of this where
-    possible.
+    possible.  This may require the rt library to be added to the link line.
 PARALLEL  
     Default: not defined.
 
