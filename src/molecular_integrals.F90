@@ -148,6 +148,10 @@ contains
         !    store: two-body integral store with components allocated to hold
         !       interals.  Note that the integral store is *not* zeroed.
 
+        ! NB with shared memory, this will return the same chunk of memory for
+        !    each given spin/imag combination, even if called a second time.
+        !    i.e. you cannot have more than one type of 2-body integral store.
+
         use checking, only: check_allocate
         use const, only: int_64
         use parallel, only: parent
@@ -161,7 +165,7 @@ contains
 
         integer :: ierr, ispin, nspin, mem_reqd, iunit
         integer(int_64):: npairs, nintgrls
-        character(25) :: int_name
+        character(30) :: int_name
 
         iunit = 6
 
@@ -214,7 +218,11 @@ contains
         end if
 
         do ispin = 1, nspin
-            write (int_name, '("two_body_store_component",i1)') ispin
+            if (.not.imag) then
+                write (int_name, '("two_body_store_component",i1)') ispin
+            else
+                write (int_name, '("two_body_store_component",i1,"imag")') ispin
+            end if
             associate(int_store=>store%integrals(ispin))
                 call allocate_shared(int_store%v, int_name, int_store%shmem_handle, nintgrls)
             end associate
