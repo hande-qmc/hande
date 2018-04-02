@@ -119,6 +119,7 @@ contains
             call check_qmc_opts(qmc_in, sys, .not. present(qmc_state_restart), restarting)
             call check_dmqmc_opts(sys, dmqmc_in, qmc_in)
         end if
+! [review] - JSS: please try to avoid trailing whitespace
         
         ! Will be set to .true. if user interacts with calc and sys WRITERESTART
         dump_restart_user = .false.

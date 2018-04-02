@@ -144,6 +144,12 @@ contains
                 ! ... and get variables from global state.
                 call aot_get_val(soft_exit, ierr, lua_state, key='softexit')
                 if (present(dump_restart_interact)) then
+                    ! [review] - JSS: 1. writerestart is hard to parse. Suggest using hypen or underscore to split up words.
+                    !                    (Bonus: be consistent with what we do in the main input).
+                    !                 2. Having this as just a boolean flag is inconsistent with how we handle the analagous option
+                    !                    in the main input. How about instead extending qmc_state_t with the restart info (e.g.
+                    !                    restart_in_t) and then modifying it if not already set? This would also make the logic
+                    !                    in the ccmc/fciqmc/dmqmc run functions simpler I think.
                     call aot_get_val(dump_restart_interact, ierr, lua_state, key='writerestart')
                 end if
                 if (present(qs)) then

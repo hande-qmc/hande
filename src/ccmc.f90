@@ -840,6 +840,7 @@ contains
                                  semi_stoch_in%shift_iter, semi_stoch_iter, soft_exit, dump_restart_interact, &
                                  load_bal_in, bloom_stats=bloom_stats, comp=sys%read_in%comp, &
                                  error=error, vary_shift_reference=ccmc_in%vary_shift_reference)
+! [review] - JSS: please try to avoid trailing whitespace
             
             if (dump_restart_interact) dump_restart_user = .true.
 
