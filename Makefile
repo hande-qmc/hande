@@ -24,7 +24,7 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-SHELL=/bin/bash # For our sanity!
+SHELL=/usr/bin/env bash # For our sanity!
 
 #-----
 # Configuration

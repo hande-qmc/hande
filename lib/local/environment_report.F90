@@ -25,17 +25,9 @@ module report
 ! FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
 ! OTHER DEALINGS IN THE SOFTWARE.
 
-implicit none
+use git_info, only: HANDE_VCS_VERSION => GIT_COMMIT_HASH
 
-#ifndef _VCS_VERSION
-#define _VCS_VERSION 'unknown'
-#endif
-! git sha1 hash.  Created at compile-time in make.inc.
-! -dirty is appended if the source directories contain uncommitted changes.
-character(*), parameter :: HANDE_VCS_VERSION = _VCS_VERSION
-! HANDE version.  When tagging a commit, update this (directly on master is probably best).  In the immediate commit after the tag,
-! append -dev to it to 're-open' the code base for further development.
-character(*), parameter :: HANDE_VERSION = '1.2-dev'
+implicit none
 
 ! Global uuid
 character(36) :: GLOBAL_UUID
@@ -56,25 +48,6 @@ contains
         !   * the working directory;
         !   * the host computer.
 
-        ! The VCS information is passed to environment_report via C-preprocessing.  The
-        ! following definitions are used:
-        !
-        ! * __DATE__ and __TIME__: date and time of compilation.
-        ! * _VCS_VERSION: set to a (quoted!) string containing the VCS revision id of the current
-        !   commit.
-        ! * _CONFIG: set to quoted string containing the configuration (e.g compilers) used.
-        !
-        ! The VCS information can be simply obtained via shell commands in the makefile, e.g. for git:
-        !
-        !    GIT_SHA1 := $(shell git rev-parse HEAD 2> /dev/null || echo "unknown")
-        !    GIT_SHA1 := $(GIT_SHA1)$(shell test -z "$$(git status --porcelain -- $(SRCDIRS))" || echo -dirty)
-        !
-        ! environment_report.F90 can thus be appropriately compiled with the command::
-        !
-        !    $(FC) -D_VCS_VERSION="$(GIT_SHA1)" -D_CONFIG="<config>" environment_report.F90 -o environment_report.o
-        !
-        ! where $(FC) is defined to be the desired fortran compiler.
-
         use, intrinsic :: iso_c_binding, only: c_char, c_ptr, c_size_t, c_int, c_associated
         use utils, only: carray_to_fstring
         use const, only: i0, int_p
@@ -84,18 +57,8 @@ contains
         ! existing *cough*ibmandnag*cough*.  It is safer to use POSIX-standard
         ! functions.
         interface
-            function gethostname(hostname, len) result(stat) bind(c)
-                use, intrinsic :: iso_c_binding, only: c_int, c_char, c_size_t
-                integer(c_int) :: stat
-                integer(c_size_t), intent(in), value :: len
-                character(kind=c_char), intent(inout) :: hostname(len)
-            end function gethostname
-            function getcwd_c(cwd, len) result(path) bind(c, name='getcwd')
-                use, intrinsic :: iso_c_binding, only: c_ptr, c_size_t, c_char
-                type(c_ptr) :: path
-                integer(c_size_t), intent(in), value :: len
-                character(kind=c_char), intent(inout) :: cwd(len)
-            end function getcwd_c
+            subroutine print_info() bind(C, name="print_info")
+            end subroutine print_info
         end interface
 
         integer, intent(in), optional :: io
@@ -107,17 +70,6 @@ contains
         type(c_ptr) :: path
         integer(c_int) :: stat
 
-! Set defaults in case not provided by the preprocessor.
-#ifndef __DATE__
-#define __DATE__ 'unknown'
-#endif
-#ifndef __TIME__
-#define __TIME__ 'unknown'
-#endif
-#ifndef _CONFIG
-#define _CONFIG 'unknown'
-#endif
-
         if (present(io)) then
             io_unit = io
         else
@@ -125,74 +77,15 @@ contains
         end if
 
         write (io_unit,'(1X,64("="))')
+        call flush(io_unit)
 
-        write (io_unit,'(a13,a,a4,a)') 'Compiled on ',__DATE__,'at ',__TIME__
-        write (io_unit,'(a16,a)') 'Compiled using ', _CONFIG
-
-        write (io_unit,'(1X,"HANDE version: '//trim(HANDE_VERSION)//'")')
-        write (io_unit,'(1X,"git sha1 hash:",/,5X,a)') HANDE_VCS_VERSION
-
-        stat = gethostname(str, str_len)
-        if (stat == 0) then
-            write (io_unit, '(a10)') 'Hostname:'
-        else
-            write (io_unit, '(a53)') 'Hostname exceeds 255 characters; truncated hostname:'
-        end if
-        write (io_unit,'(5X,a)') trim(carray_to_fstring(str))
-
-        path = getcwd_c(str, str_len)
-        if (c_associated(path)) then
-            write (io_unit,'(a20)') 'Working directory: '
-        else
-            write (io_unit,'(a63)') 'Working directory exceeds 255 characters; truncated directory:'
-        end if
-        write (io_unit,'(5X,a)') trim(carray_to_fstring(str))
+        call print_info()
 
         call date_and_time(VALUES=date_values)
 
-        write (io_unit,'(1X,a18,1X,i2.2,"/",i2.2,"/",i4.4,1X,a2,1X,i2.2,2(":",i2.2))') &
+        write (io_unit,'(a18,1X,i2.2,"/",i2.2,"/",i4.4,1X,a2,1X,i2.2,2(":",i2.2))') &
                    "Started running on", date_values(3:1:-1), "at", date_values(5:7)
         write (io_unit,'(1X,"Calculation UUID:",1X,a36,".")') GLOBAL_UUID
-
-        write (io_unit,'(1X,"Preprocessor settings:")')
-        ! Sadly preprocessor does not retokenize the output, so have to do this by hand...
-#ifdef DISABLE_HDF5
-        write (io_unit,'(5X,"DISABLE_HDF5 defined.  HDF5 disabled.")')
-#else
-        write (io_unit,'(5X,"DISABLE_HDF5 not defined.  HDF5 enabled.")')
-#endif
-#ifdef DISABLE_LANCZOS
-        write (io_unit,'(5X,"DISABLE_LANCZOS defined.  Lanczos disabled.")')
-#else
-        write (io_unit,'(5X,"DISABLE_LANCZOS not defined.  Lanczos enabled.")')
-#endif
-#ifdef DISABLE_UUID
-        write (io_unit,'(5X,"DISABLE_UUID defined.  UUID disabled.")')
-#else
-        write (io_unit,'(5X,"DISABLE_UUID not defined.  UUID enabled.")')
-#endif
-#ifdef PARALLEL
-        write (io_unit,'(5X,"PARALLEL defined.  MPI parallelization enabled.")')
-#else
-        write (io_unit,'(5X,"PARALLEL not defined.  MPI parallelization disabled.")')
-#endif
-#ifdef DISABLE_SCALAPACK
-        write (io_unit,'(5X,"DISABLE_SCALAPACK defined.  ScaLAPACK disabled.")')
-#else
-        write (io_unit,'(5X,"DISABLE_SCALAPACK not defined.  ScaLAPACK enabled.")')
-#endif
-#ifdef SINGLE_PRECISION
-        write (io_unit,'(5X,"SINGLE_PRECISION defined.  Single precision used where relevant.")')
-#else
-        write (io_unit,'(5X,"SINGLE_PRECISION not defined.  Double precision used throughout.")')
-#endif
-#ifdef USE_POPCNT
-        write (io_unit,'(5X,"USE_POPCNT defined.  Fortran 2003 POPCNT procedure used.")')
-#else
-        write (io_unit,'(5X,"USE_POPCNT not defined.  Internal POPCNT procedure used.")')
-#endif
-        write (io_unit,'(5X,"DET_SIZE = ",i2,".")') bit_size(0_i0)
-        write (io_unit,'(5X,"POP_SIZE = ",i2,".")') bit_size(0_int_p)
 
         write (io_unit,'(1X,64("="),/)')
 
