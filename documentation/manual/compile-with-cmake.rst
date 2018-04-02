@@ -9,8 +9,9 @@ downloading an executable tarball from `here <https://cmake.org/download/>`_
 Unpacking and adding to your ``PATH`` will do the trick:
 
 .. code-block:: bash
-   curl -L https://cmake.org/files/v3.10/cmake-3.10.2-Linux-x86_64.tar.gz | tar -xz
-   export PATH=$HOME/Software/cmake-3.10.2-Linux-x86_64/bin${PATH:+:$PATH}
+
+   $ curl -L https://cmake.org/files/v3.10/cmake-3.10.2-Linux-x86_64.tar.gz | tar -xz
+   $ export PATH=$HOME/Software/cmake-3.10.2-Linux-x86_64/bin${PATH:+:$PATH}
 
 where we have assumed the tarball was downloaded in the ``$HOME/Software``
 directory.
@@ -19,12 +20,14 @@ Once dependencies are installed, you can configure HANDE either by running the
 ``cmake`` executable directly:
 
 .. code-block:: bash
-   cmake -H. -Bbuild
+
+   $ cmake -H. -Bbuild
 
 or by using the frontend Python script ``cmakeconfig.py``:
 
 .. code-block:: bash
-   ./cmakeconfig.py build
+
+   $ ./cmakeconfig.py build
 
 The result of using the two methods is exactly the same: a subdirectory
 ``build`` will be created containing the build system.
@@ -41,6 +44,7 @@ frontend script (or CMake directly).
 The help menu for the ``cmakeconfig.py`` script shows the available options:
 
 .. code-block:: bash
+
    Usage:
      ./cmakeconfig.py [options] [<builddir>]
      ./cmakeconfig.py (-h | --help)
@@ -80,8 +84,9 @@ The help menu for the ``cmakeconfig.py`` script shows the available options:
      <builddir>                             Build directory.
      -h --help                              Show this screen.
 
-These options are translated to CMake native options. The following list is a
-translation guide between the frontend script and "bare" CMake:
+These options are translated to CMake native options. For more detailed information on
+HANDE-specific compile-time settings, see :ref:`compilation-settings`. The following list
+is a translation guide between the frontend script and "bare" CMake:
 
 - ``--fc=FC``/``-DCMAKE_Fortran_COMPILER=FC``. To set the Fortran compiler. Default
   is ``gfortran``.
@@ -97,19 +102,21 @@ translation guide between the frontend script and "bare" CMake:
   find a suitable version.
   See below for Lua detection issues.
 
-.. warning::
-   CMake will not pick up Lua from a nonstandard location, even though it is on
-   path (any or all of ``CPATH``, ``LIBRARY_PATH``, ``LD_LIBRARY_PATH``,
-   ``PATH``)
+  .. warning::
+
+     CMake will not pick up Lua from a nonstandard location, even though it is on
+     path (any or all of ``CPATH``, ``LIBRARY_PATH``, ``LD_LIBRARY_PATH``,
+     ``PATH``)
 
 - ``--mpi``/``-DENABLE_MPI=ON``. Enables MPI parallelization. CMake will
   attempt to find a suitable implementation of MPI and set the compilers
   accordingly.
 
-.. warning::
-   To use a specific MPI implementation, pass the appropriate MPI compiler
-   wrappers as arguments to ``--fc`` (``-DCMAKE_Fortran_COMPILER``) and
-   ``--cc`` (``-DCMAKE_C_COMPILER``)
+  .. warning::
+
+     To use a specific MPI implementation, pass the appropriate MPI compiler
+     wrappers as arguments to ``--fc`` (``-DCMAKE_Fortran_COMPILER``) and
+     ``--cc`` (``-DCMAKE_C_COMPILER``)
 
 - ``--mpi-with-scalapack``/``-DENABLE_SCALAPACK=OFF``. Enables linking to
   ScaLAPACK. This requires that MPI is enabled and that a ScaLAPACK
@@ -125,8 +132,9 @@ translation guide between the frontend script and "bare" CMake:
   compiler and linker. Valid values are ``sequential``, ``parallel``, ``cluster``, or
   ``off``, with ``off`` being the default.
 
-.. warning::
-   Passing this option overrides automatic math detection
+  .. warning::
+
+     Passing this option overrides automatic math detection
 
 - ``--scalapack="link-line"``/``-DSCALAPACK_LIBRARIES="link-line"``. Link line for ScaLAPACK libraries.
   If using Intel MKL, CMake will be able to correctly locate and set these for
@@ -173,11 +181,13 @@ translation guide between the frontend script and "bare" CMake:
 - ``--cmake-options="-DTHIS -DTHAT"``. Sets options to be forwarded as-is to
   CMake.
 
-Compilation issues
-------------------
+CMake compilation issues
+------------------------
 
 When dependencies are not in standard search paths, CMake needs to be nudged
-and pointed in the right direction:
+and pointed in the right direction. This can be done directly using either ``cmake`` or
+``cmakeconfig``; the equivalent commands for both are given below but only one should be
+used.
 
 - Detection of math libraries is usually the trickiest part. The CMake math
   detection scripts shipped with HANDE rely on the ``MATH_ROOT`` environment
@@ -189,26 +199,28 @@ and pointed in the right direction:
   environment variable.
   If math detection fails, libraries can be set manually:
 
-.. code-block:: bash
-   ./cmakeconfig.py --blas=off --lapack=off --explicit-libs="-L/usr/lib -lblas -llapack"
+  .. code-block:: bash
 
-   cmake -H. -DENABLE_BLAS=OFF -DENABLE_LAPACK=OFF -DEXPLICIT_LIBS="-L/usr/lib -lblas -llapack"
+     $ ./cmakeconfig.py --blas=off --lapack=off --explicit-libs="-L/usr/lib -lblas -llapack"
+     $ cmake -H. -DENABLE_BLAS=OFF -DENABLE_LAPACK=OFF -DEXPLICIT_LIBS="-L/usr/lib -lblas -llapack"
 
 - Lua in a non-standard directory. Exporting the root directory of the Lua
   installation as ``LUA_ROOT`` (or ``LUA_DIR``) or directly passing it as an option:
 
-.. code-block:: bash
-   ./cmakeconfig.py --lua=/install/dir/for/Lua build
+  .. code-block:: bash
 
-   cmake -H. -Bbuild -DLUA_ROOT=/install/dir/for/Lua
+     $ ./cmakeconfig.py --lua=/install/dir/for/Lua build
+     $ cmake -H. -Bbuild -DLUA_ROOT=/install/dir/for/Lua
 
 - HDF5 in a non-standard directory. Exporting the root directory of the HDF5
   installation as ``HDF5_ROOT`` os directly passing it as an option:
 
-.. code-block:: bash
-   ./cmakeconfig.py --hdf5 --cmake-options="-DHDF5_ROOT=/install/dir/for/HDF5" build
+  .. code-block:: bash
 
-   cmake -H. -Bbuild -DENABLE_HDF5=ON -DHDF5_ROOT=/install/dir/for/HDF5
+     $ ./cmakeconfig.py --hdf5 --cmake-options="-DHDF5_ROOT=/install/dir/for/HDF5" build
+     $ cmake -H. -Bbuild -DENABLE_HDF5=ON -DHDF5_ROOT=/install/dir/for/HDF5
+
+For compiler- and library-specific issues, see :ref:`compiler-issues`.
 
 Compiling with MPI
 ------------------
@@ -217,9 +229,9 @@ To compile with MPI it is necessary to pass **both** the ``--mpi`` option
 **and** the correct compiler wrappers with the ``--cc`` and ``--fc``:
 
 .. code-block:: bash
-   ./cmakeconfig.py --mpi --fc=mpif90 --cc=mpicc
 
-   cmake -H. -Bbuild -DCMAKE_Fortran_COMPILER=mpif90 -DCMAKE_C_COMPILER=mpicc -DENABLE_MPI=ON
+   $ ./cmakeconfig.py --mpi --fc=mpif90 --cc=mpicc
+   $ cmake -H. -Bbuild -DCMAKE_Fortran_COMPILER=mpif90 -DCMAKE_C_COMPILER=mpicc -DENABLE_MPI=ON
 
 CMake can in fact botch the identification of the compiler wrappers and MPI
 libraries, a mismatch that will result in linker errors.
@@ -228,44 +240,44 @@ the ``MATH_ROOT`` variable to point to the location of the math libraries:
 
 - OpenMPI with GNU compilers.
 
-.. code-block:: bash
-   ./cmakeconfig.py --mpi --fc=mpif90 --cc=mpicc
+  .. code-block:: bash
 
-   cmake -H. -Bbuild -DCMAKE_Fortran_COMPILER=mpif90 -DCMAKE_C_COMPILER=mpicc -DENABLE_MPI=ON
+     $ ./cmakeconfig.py --mpi --fc=mpif90 --cc=mpicc
+     $ cmake -H. -Bbuild -DCMAKE_Fortran_COMPILER=mpif90 -DCMAKE_C_COMPILER=mpicc -DENABLE_MPI=ON
 
 - OpenMPI with Intel compilers.
 
-.. code-block:: bash
-   ./cmakeconfig.py --mpi --fc=mpif90 --cc=mpicc
+  .. code-block:: bash
 
-   cmake -H. -Bbuild -DCMAKE_Fortran_COMPILER=mpif90 -DCMAKE_C_COMPILER=mpicc -DENABLE_MPI=ON
+     $ ./cmakeconfig.py --mpi --fc=mpif90 --cc=mpicc
+     $ cmake -H. -Bbuild -DCMAKE_Fortran_COMPILER=mpif90 -DCMAKE_C_COMPILER=mpicc -DENABLE_MPI=ON
 
 - IntelMPI with Intel compiler.
 
-.. code-block:: bash
-   ./cmakeconfig.py --mpi --fc=mpiifort --cc=mpiicc
+  .. code-block:: bash
 
-   cmake -H. -Bbuild -DCMAKE_Fortran_COMPILER=mpiifort -DCMAKE_C_COMPILER=mpiicc -DENABLE_MPI=ON
+     $ ./cmakeconfig.py --mpi --fc=mpiifort --cc=mpiicc
+     $ cmake -H. -Bbuild -DCMAKE_Fortran_COMPILER=mpiifort -DCMAKE_C_COMPILER=mpiicc -DENABLE_MPI=ON
 
 - OpenMPI with GNU compilers and OpenBLAS ScaLAPACK.
 
-.. code-block:: bash
-   ./cmakeconfig.py --mpi --fc=mpif90 --cc=mpicc --mpi-with-scalapack --scalapack="-L/location/of/scalapack -lscalapack"
+  .. code-block:: bash
 
-   cmake -H. -Bbuild -DCMAKE_Fortran_COMPILER=mpif90 -DCMAKE_C_COMPILER=mpicc -DENABLE_MPI=ON -DENABLE_SCALAPACK=ON -DSCALAPACK_LIBRARIES="-L/location/of/scalapack -lscalapack"
+     $ ./cmakeconfig.py --mpi --fc=mpif90 --cc=mpicc --mpi-with-scalapack --scalapack="-L/location/of/scalapack -lscalapack"
+     $ cmake -H. -Bbuild -DCMAKE_Fortran_COMPILER=mpif90 -DCMAKE_C_COMPILER=mpicc -DENABLE_MPI=ON -DENABLE_SCALAPACK=ON -DSCALAPACK_LIBRARIES="-L/location/of/scalapack -lscalapack"
 
 - OpenMPI with Intel compilers and MKL ScaLAPACK. The math detection script
   will use the OpenMPI implementation of BLACS by default.
 
-.. code-block:: bash
-   ./cmakeconfig.py --mpi --fc=mpif90 --cc=mpicc --mpi-with-scalapack
+  .. code-block:: bash
 
-   cmake -H. -Bbuild -DCMAKE_Fortran_COMPILER=mpif90 -DCMAKE_C_COMPILER=mpicc -DENABLE_MPI=ON -DENABLE_SCALAPACK=ON
+     $ ./cmakeconfig.py --mpi --fc=mpif90 --cc=mpicc --mpi-with-scalapack
+     $ cmake -H. -Bbuild -DCMAKE_Fortran_COMPILER=mpif90 -DCMAKE_C_COMPILER=mpicc -DENABLE_MPI=ON -DENABLE_SCALAPACK=ON
 
 - IntelMPI with Intel compiler and MKL ScaLAPACK. In this case we need to tell
   CMake what BLACS implementation to use with ScaLAPACK.
 
-.. code-block:: bash
-   ./cmakeconfig.py --mpi --fc=mpiifort --cc=mpiicc --mpi-with-scalapack --blacs=intelmpi
+  .. code-block:: bash
 
-   cmake -H. -Bbuild -DCMAKE_Fortran_COMPILER=mpiifort -DCMAKE_C_COMPILER=mpiicc -DENABLE_MPI=ON -DENABLE_SCALAPACK=ON -DBLACS_IMPLEMENTATION=intelmpi
+     $ ./cmakeconfig.py --mpi --fc=mpiifort --cc=mpiicc --mpi-with-scalapack --blacs=intelmpi
+     $ cmake -H. -Bbuild -DCMAKE_Fortran_COMPILER=mpiifort -DCMAKE_C_COMPILER=mpiicc -DENABLE_MPI=ON -DENABLE_SCALAPACK=ON -DBLACS_IMPLEMENTATION=intelmpi
