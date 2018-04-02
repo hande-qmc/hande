@@ -124,6 +124,8 @@ There are various goals in the makefile.  Run
 
 to see the available goals.
 
+.. _compilation-settings:
+
 Compile-time settings
 ---------------------
 
@@ -283,8 +285,10 @@ USE_POPCNT
     indicates HANDE is using the popcnt instruction.  If the above command does not give
     any output, then USE_POPCNT has most likely not been defined.
 
-Compilation issues
-------------------
+.. _compiler-issues:
+
+Compiler and library issues
+---------------------------
 
 We attempt to work round any compiler and library issues we encounter but sometimes this
 is not possible.  Issues and, where known, workarounds we have found are:

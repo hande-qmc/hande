@@ -84,8 +84,9 @@ The help menu for the ``cmakeconfig.py`` script shows the available options:
      <builddir>                             Build directory.
      -h --help                              Show this screen.
 
-These options are translated to CMake native options. The following list is a
-translation guide between the frontend script and "bare" CMake:
+These options are translated to CMake native options. For more detailed information on
+HANDE-specific compile-time settings, see :ref:`compilation-settings`. The following list
+is a translation guide between the frontend script and "bare" CMake:
 
 - ``--fc=FC``/``-DCMAKE_Fortran_COMPILER=FC``. To set the Fortran compiler. Default
   is ``gfortran``.
@@ -180,8 +181,8 @@ translation guide between the frontend script and "bare" CMake:
 - ``--cmake-options="-DTHIS -DTHAT"``. Sets options to be forwarded as-is to
   CMake.
 
-Compilation issues
-------------------
+CMake compilation issues
+------------------------
 
 When dependencies are not in standard search paths, CMake needs to be nudged
 and pointed in the right direction. This can be done directly using either ``cmake`` or
@@ -218,6 +219,8 @@ used.
 
      $ ./cmakeconfig.py --hdf5 --cmake-options="-DHDF5_ROOT=/install/dir/for/HDF5" build
      $ cmake -H. -Bbuild -DENABLE_HDF5=ON -DHDF5_ROOT=/install/dir/for/HDF5
+
+For compiler- and library-specific issues, see :ref:`compiler-issues`.
 
 Compiling with MPI
 ------------------
