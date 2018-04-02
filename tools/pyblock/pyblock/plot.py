@@ -4,9 +4,6 @@
 # license: modified BSD license; see LICENSE for further details.
 
 import matplotlib.pyplot as plt
-import mpl_toolkits
-import mpl_toolkits.axisartist as mpl_aa
-import matplotlib.tight_layout as mpl_tl
 
 def plot_reblocking(block_info, plotfile=None, plotshow=True):
     '''Plot the reblocking data.
@@ -27,58 +24,45 @@ fig : :class:`matplotlib.figure.Figure`
     plot of the reblocking data.
 '''
 
-    # See http://matplotlib.org/examples/axes_grid/demo_parasite_axes2.html.
-
-    # Create host axes.  Must plot to here first and then clone...
     fig = plt.figure()
-    host = mpl_toolkits.axes_grid1.host_subplot(111, axes_class=mpl_aa.Axes)
+    data_sets = block_info.columns.get_level_values(0).unique()
 
-    offset = -90 # distance between y axes.
-    axes = []
-    for (i, col) in enumerate(block_info.columns.get_level_values(0).unique()):
-        if i == 0:
-            ax = host
-        else:
-            ax = host.twinx()
-            # Create a new y axis a little to the left of the current figure.
-            new_fixed_axis = ax.get_grid_helper().new_fixed_axis
-            ax.axis["left"] = new_fixed_axis(loc='left', axes=ax,
-                                             offset=(i*offset,0))
-            # Hide right-hand side ticks as the multiple y axes just interfere
-            # with each other.
-            ax.axis["right"].toggle(all=False)
+    for (i, col) in enumerate(data_sets):
 
-        block = block_info.index.values
-        std_err = block_info.ix[:,(col, 'standard error')].values
-        if 'standard error error' in block_info[col]:
-            std_err_err = block_info.ix[:,(col, 'standard error error')].values
-        else:
-            std_err_err = 0*std_err
-        line = ax.errorbar(block, std_err, std_err_err, marker='o', label=col)
+        ax = fig.add_subplot(len(data_sets), 1, i+1)
 
         # There should only be (at most) one non-null value for optimal block.
-        opt = block_info.xs((col, 'optimal block'), axis=1, copy=False)
-        opt = opt[opt != ''].index.values
+        opt = block_info[block_info[(col,'optimal block')] != ''].index.values
         if opt:
             opt = opt[0]
-            ax.annotate('', (block[opt], std_err[opt]-std_err_err[opt]),
-                         xytext=(0, -30), textcoords='offset points',
+
+        std_err = block_info[(col, 'standard error')]
+        if 'standard error error' in block_info[col]:
+            std_err_err = block_info[(col, 'standard error error')]
+        else:
+            std_err_err = 0*std_err
+        line = ax.errorbar(block_info.index, std_err, std_err_err, marker='o',
+                           label=col)
+
+        if opt:
+            ax.annotate('', (opt, std_err[opt]-std_err_err[opt]),
+                         xytext=(0, -20), textcoords='offset points',
                          arrowprops=dict(
-                             arrowstyle="->", color=line[0].get_color()
+                             arrowstyle="->", #color=line[0].get_color()
+                             linewidth=1.2*line[0].get_linewidth(),
                        ),)
 
-        ax.set_ylabel('%s standard error' % col, labelpad=0)
-        ax.set_xlim((-0.1,len(block)-0.9))
-        axes.append(ax)
+        ax.legend(loc=2)
+        ax.set_ylabel('standard error')
+        ax.set_xlabel('Reblock iteration')
 
-    plt.xlabel('Reblock iteration')
-    plt.legend(loc=2)
-
-    plt.tight_layout()
+    size = fig.get_size_inches()
+    fig.set_size_inches(size[0], size[1]*len(data_sets))
+    fig.tight_layout()
 
     if plotfile == '-' or (not plotfile and plotshow):
         plt.show()
     elif plotfile:
-        plt.savefig(plotfile)
+        fig.savefig(plotfile)
 
     return fig
