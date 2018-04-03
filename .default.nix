@@ -38,6 +38,7 @@ in
       libuuid
       lua5_3
       openmpi
+      pipenv
       python3Full
       python3Packages.matplotlib
       python3Packages.numpy

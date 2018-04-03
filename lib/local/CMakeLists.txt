@@ -44,6 +44,7 @@ target_compile_definitions(coreutils
     $<$<BOOL:${USE_INTRINSIC_POPCNT}>:USE_POPCNT>
     $<$<BOOL:${USE_SINGLE_PRECISION}>:SINGLE_PRECISION>
     $<$<BOOL:${USE_MPI}>:PARALLEL>
+    $<$<BOOL:${HAS_MPI3_features}>:HAS_MPI3>
     $<$<CONFIG:Debug>:DEBUG>
   )
 add_library(HANDE::coreutils ALIAS coreutils)
