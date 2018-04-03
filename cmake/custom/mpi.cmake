@@ -43,7 +43,7 @@ endif()
 include(CMakeDependentOption)
 cmake_dependent_option(
   ENABLE_SCALAPACK "Enable usage of ScaLAPACK" OFF
-  "ENABLE_MPI" ON
+  "NOT ENABLE_MPI" ON
   )
 if(ENABLE_SCALAPACK)
   set(USE_ScaLAPACK ON)
