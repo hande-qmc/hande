@@ -98,11 +98,6 @@ before_script:
                        --fc=gfortran \
                        --cc=gcc \
                        --lua=$LUA_ROOT \
-                       --dsfmt-mexp=86243 \
-                       --single \
-                       --popcnt \
-                       --det-size=64 \
-                       --pop-size=64 \
                        --backtrace \
                        --exe-name="hande.travis.serial.linux.cmake.x"
       # This is equivalent to
@@ -113,11 +108,6 @@ before_script:
       #           -DLUA_ROOT=$LUA_ROOT \
       #           -DENABLE_HDF5=ON \
       #           -DENABLE_UUID=ON \
-      #           -DHANDE_DSFMT_MEXP="86243" \
-      #           -DENABLE_SINGLE_PRECISION="True" \
-      #           -DENABLE_INTRINSIC_POPCNT="True" \
-      #           -DHANDE_DET_SIZE="64" \
-      #           -DHANDE_POP_SIZE="64" \
       #           -DENABLE_BACKTRACE="True" \
       #           -DHANDE_EXE_NAME="hande.travis.serial.linux.cmake.x"
     else
