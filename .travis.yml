@@ -41,6 +41,16 @@ matrix:
       python: '3.5'
       env:
         - USE_CMAKE=true
+    - os: linux
+      python: '2.7'
+      env:
+        - USE_CMAKE=true
+        - SERIAL=true
+    - os: linux
+      python: '3.5'
+      env:
+        - USE_CMAKE=true
+        - SERIAL=true
 
 before_install:
   # Dependencies are downloaded in $HOME/Downloads and installed in $HOME/Deps
@@ -60,16 +70,16 @@ install:
 
 before_script:
   - >
-    if [[ "$USE_CMAKE" = true ]]; then
+    if [[ "$USE_CMAKE" = "true" && "$SERIAL" != "true" ]]; then
       ./cmakeconfig.py --type=release \
-                    --fc=mpif90 \
-                    --cc=mpicc \
-                    --mpi \
-                    --lua=$LUA_ROOT \
-                    --mpi-with-scalapack \
-                    --scalapack="-L$ScaLAPACK_ROOT/lib -lscalapack" \
-                    --lanczos="-L$DEPS/trlan/lib -ltrlan" \
-                    --exe-name="hande.travis.linux.cmake.x"
+                       --fc=mpif90 \
+                       --cc=mpicc \
+                       --mpi \
+                       --lua=$LUA_ROOT \
+                       --mpi-with-scalapack \
+                       --scalapack="-L$ScaLAPACK_ROOT/lib -lscalapack" \
+                       --lanczos="-L$DEPS/trlan/lib -ltrlan" \
+                       --exe-name="hande.travis.mpi.linux.cmake.x"
       # This is equivalent to
       # cmake -H. -Bbuild \
       #           -DENABLE_HDF5=ON \
@@ -82,7 +92,34 @@ before_script:
       #           -DENABLE_SCALAPACK=ON \
       #           -DSCALAPACK_LIBRARIES="-L$ScaLAPACK_ROOT/lib -lscalapack" \
       #           -DTRLan_LIBRARIES="-L$DEPS/trlan/lib -ltrlan" \
-      #           -DHANDE_EXE_NAME="hande.travis.linux.cmake.x"
+      #           -DHANDE_EXE_NAME="hande.travis.mpi.linux.cmake.x"
+  elif [[ "$USE_CMAKE" = "true" && "$SERIAL" = "true" ]]; then
+      ./cmakeconfig.py --type=release \
+                       --fc=gfortran \
+                       --cc=gcc \
+                       --lua=$LUA_ROOT \
+                       --dsfmt-mexp=86243 \
+                       --single \
+                       --popcnt \
+                       --det-size=64 \
+                       --pop-size=64 \
+                       --backtrace \
+                       --exe-name="hande.travis.serial.linux.cmake.x"
+      # This is equivalent to
+      # cmake -H. -Bbuild \
+      #           -DCMAKE_BUILD_TYPE=Release \
+      #           -DCMAKE_Fortran_COMPILER=gfortran \
+      #           -DCMAKE_C_COMPILER=gcc \
+      #           -DLUA_ROOT=$LUA_ROOT \
+      #           -DENABLE_HDF5=ON \
+      #           -DENABLE_UUID=ON \
+      #           -DHANDE_DSFMT_MEXP="86243" \
+      #           -DENABLE_SINGLE_PRECISION="True" \
+      #           -DENABLE_INTRINSIC_POPCNT="True" \
+      #           -DHANDE_DET_SIZE="64" \
+      #           -DHANDE_POP_SIZE="64" \
+      #           -DENABLE_BACKTRACE="True" \
+      #           -DHANDE_EXE_NAME="hande.travis.serial.linux.cmake.x"
     else
       tools/mkconfig.py travis.linux
     fi
