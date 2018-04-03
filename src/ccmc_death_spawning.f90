@@ -167,7 +167,8 @@ contains
             excitor_level = get_excitation_level(qs%ref%f0(:sys%basis%bit_string_len), fexcit(:sys%basis%bit_string_len))
             call convert_excitor_to_determinant(fexcit, excitor_level, excitor_sign, qs%ref%f0)
             if (ccmc_in%multiref) then
-                excitor_level_2 = get_excitation_level(qs%second_ref%f0(:sys%basis%bit_string_len), fexcit(:sys%basis%bit_string_len))
+                excitor_level_2 = get_excitation_level(qs%second_ref%f0(:sys%basis%bit_string_len), &
+                                                                 fexcit(:sys%basis%bit_string_len))
 !	            !print*, excitor_level, excitor_level_2
                 if (excitor_level > qs%ref%ex_level .and.  excitor_level_2 >qs%ref%ex_level) nspawn=0
             end if

@@ -1125,8 +1125,8 @@ contains
                       get_excitation_level(contrib%cdet%f(:sys%basis%bit_string_len),qs%second_ref%f0(:sys%basis%bit_string_len)) &
                       <= qs%second_ref%ex_level+2) then
                 do i = 1, nspawnings_cluster
-                   call perform_ccmc_spawning_attempt(rng, sys, qs, ccmc_in, logging_info, bloom_stats, contrib, nspawnings_cluster, &
-                                                ps_stat)
+                   call perform_ccmc_spawning_attempt(rng, sys, qs, ccmc_in, logging_info, bloom_stats, contrib, &
+                                                      nspawnings_cluster, ps_stat)
                 end do
 
                ! Does the cluster collapsed onto D0 produce
@@ -1148,8 +1148,8 @@ contains
              end if
        else
            do i = 1, nspawnings_cluster
-                call perform_ccmc_spawning_attempt(rng, sys, qs, ccmc_in, logging_info, bloom_stats, contrib, nspawnings_cluster, &
-                                                ps_stat)
+                call perform_ccmc_spawning_attempt(rng, sys, qs, ccmc_in, logging_info, bloom_stats, contrib, &
+                                                   nspawnings_cluster, ps_stat)
            end do
 
            ! Does the cluster collapsed onto D0 produce
@@ -1323,8 +1323,8 @@ contains
                       connection, nspawnings_total, ps_stat)
         else
             call spawner_ccmc(rng, sys, qs, qs%spawn_store%spawn%cutoff, &
-                      ccmc_in%linked, contrib%cdet, contrib%cluster, gen_excit_ptr, logging_info, nspawned, &
-                      connection, nspawnings_total, ps_stat)
+                      ccmc_in%linked, contrib%cdet, contrib%cluster, ccmc_in, gen_excit_ptr, logging_info, &
+                      nspawned, connection, nspawnings_total, ps_stat)
             nspawned_im = 0_int_p
         end if
 
