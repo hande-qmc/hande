@@ -93,7 +93,7 @@ before_script:
       #           -DSCALAPACK_LIBRARIES="-L$ScaLAPACK_ROOT/lib -lscalapack" \
       #           -DTRLan_LIBRARIES="-L$DEPS/trlan/lib -ltrlan" \
       #           -DHANDE_EXE_NAME="hande.travis.mpi.linux.cmake.x"
-  elif [[ "$USE_CMAKE" = "true" && "$SERIAL" = "true" ]]; then
+    elif [[ "$USE_CMAKE" = "true" && "$SERIAL" = "true" ]]; then
       ./cmakeconfig.py --type=release \
                        --fc=gfortran \
                        --cc=gcc \
