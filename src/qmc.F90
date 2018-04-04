@@ -477,10 +477,10 @@ contains
                 decoder_ptr => decode_det_spinocc_symunocc
             case(excit_gen_power_pitzer_occ)
                 gen_excit_ptr%full => gen_excit_mol_power_pitzer_occ
-                decoder_ptr => decode_det_spinocc_spinunocc
+                decoder_ptr => decode_det_spinocc_spinsymunocc
             case(excit_gen_power_pitzer_occ_ij)
                 gen_excit_ptr%full => gen_excit_mol_power_pitzer_occ
-                decoder_ptr => decode_det_spinocc_spinunocc
+                decoder_ptr => decode_det_spinocc_spinsymunocc
             case(excit_gen_power_pitzer)
                 gen_excit_ptr%full => gen_excit_mol_power_pitzer_occ_ref
                 decoder_ptr => decode_det_occ
