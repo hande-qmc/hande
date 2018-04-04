@@ -1368,7 +1368,7 @@ contains
         use excitations, only: find_excitation_permutation2
         use proc_pointers, only: slater_condon2_excit_ptr, create_weighted_excitation_list_ptr
         use system, only: sys_t
-        use excit_gen_mol, only: gen_single_excit_mol_no_renorm, choose_ij_mol
+        use excit_gen_mol, only: gen_single_excit_mol, choose_ij_mol
         use hamiltonian_data, only: hmatel_t
         use dSFMT_interface, only: dSFMT_t, get_rand_close_open
         use search, only: binary_search
@@ -1400,10 +1400,8 @@ contains
 
         ! 1. Select single or double.
         if (get_rand_close_open(rng) < excit_gen_data%pattempt_single) then
-
-            call gen_single_excit_mol_no_renorm(rng, sys, excit_gen_data%pattempt_single, cdet, pgen, connection, hmatel, &
-                                            allowed_excitation)
-
+            call gen_single_excit_mol(rng, sys, excit_gen_data%pattempt_single, cdet, pgen, connection, hmatel, &
+                                        allowed_excitation)
         else
             ! We have a double
 
