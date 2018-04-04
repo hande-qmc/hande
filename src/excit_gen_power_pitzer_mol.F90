@@ -1603,32 +1603,32 @@ contains
                 pgen = 1.0_p
             end if
 
-        end if
+            ! deallocate weight arrays if allocated
+            if (allocated(ia_weights)) then
+                deallocate(ia_weights, stat=ierr_dealloc)
+                call check_deallocate('ia_weights', ierr_dealloc)
+            end if
+            if (allocated(jb_weights)) then
+                deallocate(jb_weights, stat=ierr_dealloc)
+                call check_deallocate('jb_weights', ierr_dealloc)
+            end if
+            if (allocated(ja_weights)) then
+                deallocate(ja_weights, stat=ierr_dealloc)
+                call check_deallocate('ja_weights', ierr_dealloc)
+            end if
+            if (allocated(i_weights_occ)) then
+                deallocate(i_weights_occ, stat=ierr_dealloc)
+                call check_deallocate('i_weights_occ', ierr_dealloc)
+            end if
+            if (allocated(ij_weights_occ)) then
+                deallocate(ij_weights_occ, stat=ierr_dealloc)
+                call check_deallocate('ij_weights_occ', ierr_dealloc)
+            end if
+            if (allocated(ji_weights_occ)) then
+                deallocate(ji_weights_occ, stat=ierr_dealloc)
+                call check_deallocate('ji_weights_occ', ierr_dealloc)
+            end if
 
-        ! deallocate weight arrays if allocated
-        if (allocated(ia_weights)) then
-            deallocate(ia_weights, stat=ierr_dealloc)
-            call check_deallocate('ia_weights', ierr_dealloc)
-        end if
-        if (allocated(jb_weights)) then
-            deallocate(jb_weights, stat=ierr_dealloc)
-            call check_deallocate('jb_weights', ierr_dealloc)
-        end if
-        if (allocated(ja_weights)) then
-            deallocate(ja_weights, stat=ierr_dealloc)
-            call check_deallocate('ja_weights', ierr_dealloc)
-        end if
-        if (allocated(i_weights_occ)) then
-            deallocate(i_weights_occ, stat=ierr_dealloc)
-            call check_deallocate('i_weights_occ', ierr_dealloc)
-        end if
-        if (allocated(ij_weights_occ)) then
-            deallocate(ij_weights_occ, stat=ierr_dealloc)
-            call check_deallocate('ij_weights_occ', ierr_dealloc)
-        end if
-        if (allocated(ji_weights_occ)) then
-            deallocate(ji_weights_occ, stat=ierr_dealloc)
-            call check_deallocate('ji_weights_occ', ierr_dealloc)
         end if
 
     end subroutine gen_excit_mol_power_pitzer_occ
