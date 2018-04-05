@@ -77,7 +77,7 @@ contains
         end if
 
         write (io_unit,'(1X,64("="))')
-        call flush(io_unit)
+        flush(io_unit)
 
         call print_info()
 
