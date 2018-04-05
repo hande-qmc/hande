@@ -16,7 +16,7 @@
 #
 # autocmake.yml configuration::
 #
-#   docopt: "--uuid Whether to activate UUID generation [default: True]."
+#   docopt: "--uuid=<UUID> Whether to activate UUID generation [default: True]."
 #   define: "'-DENABLE_UUID=\"{0}\"'.format(arguments['--uuid'])"
 
 option_with_print(ENABLE_UUID "Enable usage of UUID" ON)

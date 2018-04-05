@@ -69,8 +69,8 @@ The help menu for the ``cmakeconfig.py`` script shows the available options:
      --det-size=<HANDE_DET_SIZE>            An integer among 32 or 64 [default: 32].
      --pop-size=<HANDE_POP_SIZE>            An integer among 32 or 64 [default: 32].
      --exe-name=<HANDE_EXE_NAME>            [default: "hande.cmake.x"].
-     --hdf5                                 Enable HDF5 [default: True].
-     --uuid                                 Whether to activate UUID generation [default: True].
+     --hdf5=<HDF5>                          Enable HDF5 [default: True].
+     --uuid=<UUID>                          Whether to activate UUID generation [default: True].
      --lanczos=<TRLan_LIBRARIES>            Set TRLan libraries to be linked in [default: ''].
      --single                               Enable usage of single precision, where appropriate [default: False].
      --backtrace                            Enable backtrace functionality [default: False].
