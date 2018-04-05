@@ -1108,8 +1108,7 @@ contains
         !    error: true if an error has occured and we need to quit.
 
         use energy_evaluation, only: update_energy_estimators, local_energy_estimators,         &
-                                     update_energy_estimators_recv, update_energy_estimators_send, &
-                                     nparticles_start_ind
+                                     update_energy_estimators_recv, update_energy_estimators_send
         use interact, only: calc_interact, check_interact, check_comms_file
         use parallel
         use system, only: sys_t
@@ -1136,7 +1135,7 @@ contains
         logical, optional, intent(inout) :: error
 
         logical :: update, vary_shift_before, nb_comm_local, comms_found, comp_param, overflow
-        real(dp) :: rep_info_copy(nprocs*qs%psip_list%nspaces+nparticles_start_ind-1)
+        real(dp) :: rep_info_copy(size(qs%par_info%report_comm%rep_info))
         integer :: iunit
 
 #ifdef PARALLEL
@@ -1178,7 +1177,7 @@ contains
             call local_energy_estimators(qs, rep_info_copy, nspawn_events, comms_found, error, update_tau, &
                                           bloom_stats, qs%par_info%report_comm%nb_spawn(2), comp_param)
             ! Receive previous iterations report loop quantities.
-            call update_energy_estimators_recv(qmc_in, qs, qs%psip_list%nspaces, qs%par_info%report_comm%request, ntot_particles, &
+            call update_energy_estimators_recv(qmc_in, qs, qs%par_info%report_comm%request, ntot_particles, &
                                                qs%psip_list%nparticles_proc, load_bal_in, doing_lb, comms_found, error, &
                                                update_tau, bloom_stats, comp=comp_param)
             ! Send current report loop quantities.

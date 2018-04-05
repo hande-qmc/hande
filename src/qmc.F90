@@ -46,7 +46,7 @@ contains
         use checking, only: check_allocate
 
         use calc, only: doing_calc, hfs_fciqmc_calc, dmqmc_calc, GLOBAL_META
-        use energy_evaluation, only: nparticles_start_ind
+        use energy_evaluation, only: get_comm_processor_indx, est_buf_data_size, est_buf_n_per_proc
         use load_balancing, only: init_parallel_t
         use particle_t_utils, only: init_particle_t
         use system
@@ -82,7 +82,7 @@ contains
         type(qmc_state_t), intent(inout), optional :: qmc_state_restart
         logical, intent(out), optional :: regenerate_info
 
-        integer :: ierr, iunit
+        integer :: ierr, iunit, proc_data_info(2,est_buf_n_per_proc), ntot_proc_data
         type(fciqmc_in_t) :: fciqmc_in_loc
         type(dmqmc_in_t) :: dmqmc_in_loc
         type(restart_info_t) :: ri
@@ -137,7 +137,8 @@ contains
                                  qmc_in%real_amplitude_force_32, qmc_state%psip_list, io_unit=io_unit)
         end if
 
-        call init_parallel_t(qmc_state%psip_list%nspaces, nparticles_start_ind-1, fciqmc_in_loc%non_blocking_comm, &
+        call get_comm_processor_indx(qmc_state%psip_list%nspaces, proc_data_info, ntot_proc_data)
+        call init_parallel_t(ntot_proc_data, est_buf_data_size, fciqmc_in_loc%non_blocking_comm, &
                              qmc_state%par_info, load_bal_in%nslots)
 
         uuid_restart = ''
