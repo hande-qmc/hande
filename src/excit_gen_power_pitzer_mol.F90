@@ -1392,7 +1392,7 @@ contains
         logical :: found, a_found
         real(p), allocatable :: ia_weights(:), ja_weights(:), jb_weights(:)
         real(p) :: ia_weights_tot, ja_weights_tot, jb_weights_tot
-        real(p), allocatable :: i_weights_occ(:), ij_weights_occ(:), ji_weights_occ(:)
+        real(p) :: i_weights_occ(sys%nel), ij_weights_occ(sys%nel), ji_weights_occ(sys%nel)
         real(p) :: i_weights_occ_tot, ij_weights_occ_tot, ji_weights_occ_tot
         real(p) :: pgen_ij
         integer :: a, b, i, j, j_tmp, a_ind, b_ind, a_ind_rev, b_ind_rev, i_ind, j_ind, isymb, imsb, isyma
@@ -1408,12 +1408,6 @@ contains
             ! 2. Select orbitals to excite from
             if (excit_gen_data%excit_gen == excit_gen_power_pitzer_occ_ij) then
                 ! Select ij using heat bath excit. gen. techniques.
-                allocate(i_weights_occ(1:sys%nel), stat=ierr)
-                call check_allocate('i_weights_occ', sys%nel, ierr)
-                allocate(ij_weights_occ(1:sys%nel), stat=ierr)
-                call check_allocate('ij_weights_occ', sys%nel, ierr)
-                allocate(ji_weights_occ(1:sys%nel), stat=ierr)
-                call check_allocate('ji_weights_occ', sys%nel, ierr)
 
                 call select_ij_heat_bath(rng, sys%nel, excit_gen_data%excit_gen_pp%ppm_i_d_weights, &
                     excit_gen_data%excit_gen_pp%ppm_ij_d_weights, cdet, i, j, i_ind, j_ind, &
@@ -1614,19 +1608,6 @@ contains
                 deallocate(ja_weights, stat=ierr_dealloc)
                 call check_deallocate('ja_weights', ierr_dealloc)
             end if
-            if (allocated(i_weights_occ)) then
-                deallocate(i_weights_occ, stat=ierr_dealloc)
-                call check_deallocate('i_weights_occ', ierr_dealloc)
-            end if
-            if (allocated(ij_weights_occ)) then
-                deallocate(ij_weights_occ, stat=ierr_dealloc)
-                call check_deallocate('ij_weights_occ', ierr_dealloc)
-            end if
-            if (allocated(ji_weights_occ)) then
-                deallocate(ji_weights_occ, stat=ierr_dealloc)
-                call check_deallocate('ji_weights_occ', ierr_dealloc)
-            end if
-
         end if
 
     end subroutine gen_excit_mol_power_pitzer_occ

@@ -315,9 +315,9 @@ contains
         type(hmatel_t), intent(out) :: hmatel
         type(excit_t), intent(out) :: connection
         logical, intent(out) :: allowed_excitation
-        real(p), allocatable :: i_weights_occ(:)
-        real(p), allocatable :: ij_weights_occ(:)
-        real(p), allocatable :: ji_weights_occ(:)
+        real(p) :: i_weights_occ(sys%nel)
+        real(p) :: ij_weights_occ(sys%nel)
+        real(p) :: ji_weights_occ(sys%nel)
 
         integer :: pos_q, i_ind, j_ind, i, j, a, b, ierr, ims, isyma
         
@@ -328,12 +328,6 @@ contains
 
         associate( hb => excit_gen_data%excit_gen_hb )
             ! 1: Select orbitals i and j to excite from.
-            allocate(i_weights_occ(1:sys%nel), stat=ierr)
-            call check_allocate('i_weights_occ', sys%nel, ierr)
-            allocate(ij_weights_occ(1:sys%nel), stat=ierr)
-            call check_allocate('ij_weights_occ', sys%nel, ierr)
-            allocate(ji_weights_occ(1:sys%nel), stat=ierr)
-            call check_allocate('ji_weights_occ', sys%nel, ierr)
             
             call select_ij_heat_bath(rng, sys%nel, hb%i_weights, hb%ij_weights, cdet, i, j, i_ind, j_ind, i_weights_occ, &
                 i_weights_occ_tot, ij_weights_occ, ij_weights_occ_tot, ji_weights_occ, ji_weights_occ_tot, allowed_excitation)
@@ -536,10 +530,6 @@ contains
                 pgen = 1.0_p
             end if
 
-            ! deallocate weight arrays if allocated
-            if (allocated(i_weights_occ)) deallocate(i_weights_occ)
-            if (allocated(ij_weights_occ)) deallocate(ij_weights_occ)
-            if (allocated(ji_weights_occ)) deallocate(ji_weights_occ)
         end associate
 
     end subroutine gen_excit_mol_heat_bath
@@ -605,9 +595,9 @@ contains
         type(hmatel_t), intent(out) :: hmatel
         type(excit_t), intent(out) :: connection
         logical, intent(out) :: allowed_excitation
-        real(p), allocatable :: i_weights_occ(:)
-        real(p), allocatable :: ij_weights_occ(:)
-        real(p), allocatable :: ji_weights_occ(:)
+        real(p) :: i_weights_occ(sys%nel)
+        real(p) :: ij_weights_occ(sys%nel)
+        real(p) :: ji_weights_occ(sys%nel)
 
         integer :: i_ind, j_ind, i, j, a, b, ierr, j_tmp
         
@@ -629,12 +619,6 @@ contains
             ! We have a double
             associate( hb => excit_gen_data%excit_gen_hb )
                 ! 1: Select orbitals i and j to excite from.
-                allocate(i_weights_occ(1:sys%nel), stat=ierr)
-                call check_allocate('i_weights_occ', sys%nel, ierr)
-                allocate(ij_weights_occ(1:sys%nel), stat=ierr)
-                call check_allocate('ij_weights_occ', sys%nel, ierr)
-                allocate(ji_weights_occ(1:sys%nel), stat=ierr)
-                call check_allocate('ji_weights_occ', sys%nel, ierr)
                 
                 call select_ij_heat_bath(rng, sys%nel, hb%i_weights, hb%ij_weights, cdet, i, j, i_ind, j_ind, i_weights_occ, &
                     i_weights_occ_tot, ij_weights_occ, ij_weights_occ_tot, ji_weights_occ, ji_weights_occ_tot, &
@@ -715,10 +699,6 @@ contains
                     hmatel%r = 0.0_p
                     pgen = 1.0_p
                 end if
-                ! deallocate weight arrays if allocated
-                if (allocated(i_weights_occ)) deallocate(i_weights_occ)
-                if (allocated(ij_weights_occ)) deallocate(ij_weights_occ)
-                if (allocated(ji_weights_occ)) deallocate(ji_weights_occ)
             end associate
         end if
 
