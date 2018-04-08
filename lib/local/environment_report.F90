@@ -65,10 +65,6 @@ contains
 
         integer :: io_unit
         integer :: date_values(8)
-        integer(c_size_t), parameter :: str_len = 255
-        character(kind=c_char) :: str(str_len)
-        type(c_ptr) :: path
-        integer(c_int) :: stat
 
         if (present(io)) then
             io_unit = io
