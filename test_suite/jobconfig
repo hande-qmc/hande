@@ -110,16 +110,13 @@ quick64 = quick
           dmqmc_real_64/np4/ueg_n4_rs2_e4/
           fciqmc_real_64/np1/He2-aug-cc-pVDZ_real_64_restart_replica_legacyv1/
           fciqmc_real_64/np4/He2-aug-cc-pVDZ_real_64_SS/
-          
-vquick =   ccmc/np1/Ne-RHF-cc-pVDZ-Lz-CCSDTQ5-multispawn-short
+
+vquick_serial = ccmc/np1/Ne-RHF-cc-pVDZ-Lz-CCSDTQ5-multispawn-short
            ccmc/np1/Ne-RHF-cc-pVDZ-Lz-CCSDTQ5-multispawn-short-debug-logging
            ccmc/np1/Ne-RHF-cc-pVDZ_ccmc_even_selection
            ccmc/np1/polyyne_complex_ccsdt
-           ccmc/np2/H2O-cc-pVDZ_tau_search
-           ccmc/np2/H2O-cc-pVDZ_ccsdt
            ccmc_real_32/np1/HOCl-6-31g_ccsd_short
            dmqmc/np1/heisenberg_1d
-           dmqmc_real_32/np2/heisenberg_4_gs_entropy
            fci/H2-RHF-cc-pVTZ-Lz/
            fci/H2O-RHF-sto-2g
            fci/H2O-RHF-sto-2g-contiguous-broadcast
@@ -143,32 +140,39 @@ vquick =   ccmc/np1/Ne-RHF-cc-pVDZ-Lz-CCSDTQ5-multispawn-short
            fciqmc/np1/H2O-RHF-cc-pVTZ-debug-logging
            fciqmc/np1/hubbard_real_1d_change_sys
            fciqmc/np1/polyyne_complex_fciqmc
-           fciqmc/np2/polyyne_complex_replica_restart/
-           fciqmc/np2/polyyne_complex_replica_restart_legacyv1/
-           fciqmc/np2/ueg_n10_rs2_e4_tau_search
            fciqmc_real_32/np1/He2-aug-cc-pVDZ_real_32_SS
            fciqmc_real_32/np1/He2-aug-cc-pVDZ_real_32_SS_replica
            fciqmc_real_32/np1/He2-aug-cc-pVDZ_real_32_SS_Extra_MPI
-           fciqmc_real_32/np4/ueg_n7_rs1_e1_SS_cisdtq_replica
            ifciqmc/np1/hubbard_k_1d_ifciqmc
            ifciqmc/np1/hubbard_k_1d_ifciqmc_cas
            ifciqmc/np1/hubbard_k_nontilted_2d_ifciqmc
-           ifciqmc/np4/H2O-RHF-cc-pVTZ-non-block-hdf5-system
            ifciqmc_real_32/np1/hubbard_k_1d_ifciqmc_real_32
            ifciqmc_real_32/np1/hubbard_k_1d_ifciqmc_real_32_SS
-           ifciqmc_real_32/np2/polyyne_complex_ifciqmc-real32
-           ifciqmc_real_32/np4/hubbard_k_1d_ifciqmc_ss_restart
            lanczos/hubbard_k_nontilted_2d_lanczos
            lanczos/hubbard_k_tilted_2d_sparse
            lanczos/hubbard_real_nontilted_2d_direct
            lanczos/hubbard_real_rectangle_2d_lanczos
            mc_canonical_estimates/np1/H2O_ccpvdz_RHF
-           mc_canonical_estimates/np2/H2O_ccpvdz_RHF
            mc_hilbert_space/np1/hf_hilbert_space
            mc_hilbert_space/np1/hubbard_k_tilted_2d_mchilbert
            mc_hilbert_space/np1/ueg_n7_rs1_e3_hilbert_space
            mc_hilbert_space/np1/ueg_n7_rs1_e3_hilbert_space_write-to-file
            simple_fciqmc/hubbard_k_nontilted_2d_sfciqmc
+
+vquick =   vquick_serial
+           ccmc/np2/H2O-cc-pVDZ_tau_search
+           ccmc/np2/H2O-cc-pVDZ_ccsdt
+           dmqmc_real_32/np2/heisenberg_4_gs_entropy
+           fciqmc/np2/polyyne_complex_replica_restart_legacyv1/
+           fciqmc/np2/polyyne_complex_replica_restart/
+           fciqmc/np2/polyyne_complex_replica_restart_legacyv1/
+           fciqmc/np2/ueg_n10_rs2_e4_tau_search
+           fciqmc/np2/ueg_n10_rs2_e4_tau_search
+           ifciqmc/np4/H2O-RHF-cc-pVTZ-non-block-hdf5-system
+           fciqmc_real_32/np4/ueg_n7_rs1_e1_SS_cisdtq_replica
+           ifciqmc_real_32/np2/polyyne_complex_ifciqmc-real32
+           ifciqmc_real_32/np4/hubbard_k_1d_ifciqmc_ss_restart
+           mc_canonical_estimates/np2/H2O_ccpvdz_RHF
 
 vquick64 = vquick
            ccmc_real_64/np2/NH3-6-31g_ccsdt_linked_short

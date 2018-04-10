@@ -65,7 +65,6 @@ contains
 
         integer :: io_unit
         integer :: date_values(8)
-        integer(c_size_t), parameter :: str_len = 255
 
         if (present(io)) then
             io_unit = io
