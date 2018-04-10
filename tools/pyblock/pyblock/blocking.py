@@ -11,12 +11,12 @@ def reblock(data, rowvar=1, ddof=None, weights=None):
 
 Repeatedly average neighbouring data points in order to remove the effect of
 serial correlation on the estimate of the standard error of a data set, as
-described by Flyvbjerg and Petersen [1]_.  The standard error is constant
+described by Flyvbjerg and Petersen [Flyvbjerg]_.  The standard error is constant
 (within error bars) once the correlation has been removed.
 
 If a weighting is provided then the weighted variance and standard error of
-each variable is calculated, as described in [2]_. Bessel correction is
-obtained using the "effective sample size" from [3]_.
+each variable is calculated, as described in [Pozzi]_. Bessel correction is
+obtained using the "effective sample size" from [Madansky]_.
 
 .. default-role:: math
 
@@ -59,12 +59,12 @@ block_info : :class:`list` of :func:`collections.namedtuple`
 
 References
 ----------
-.. [1]  "Error estimates on averages of correlated data", H. Flyvbjerg and
+.. [Flyvbjerg]  "Error estimates on averages of correlated data", H. Flyvbjerg,
    H.G. Petersen, J. Chem. Phys. 91, 461 (1989).
-.. [2]  "Exponential smoothing weighted correlations", F. Pozzi, T. Matteo,
-   and T. Aste, Eur. Phys. J. B. 85, 175 (2012).
-.. [3]  "An Analysis of WinCross, SPSS, and Mentor Procedures for Estimating
-   the Variance of a Weighted Mean", A. Madansky and H. G. B. Alexander,
+.. [Pozzi]  "Exponential smoothing weighted correlations", F. Pozzi, T. Matteo,
+   T. Aste, Eur. Phys. J. B. 85, 175 (2012).
+.. [Madansky]  "An Analysis of WinCross, SPSS, and Mentor Procedures for
+   Estimating the Variance of a Weighted Mean", A. Madansky, H. G. B. Alexander,
    www.analyticalgroup.com/download/weighted_variance.pdf
 '''
 
@@ -173,7 +173,7 @@ def find_optimal_block(ndata, stats):
 
 Inspect a reblocking calculation and find the block length which minimises the
 stochastic error and removes the effect of correlation from the data set.  This
-follows the procedures detailed by Wolff [2]_ and Lee et al. [3]_.
+follows the procedures detailed by [Wolff]_ and [Lee]_ et al.
 
 .. default-role:: math
 
@@ -194,7 +194,7 @@ list of int
 
 Notes
 -----
-Wolff [2]_ (Eq 47) and Lee et al. [3]_ (Eq 14) give the optimal block size to be
+[Wolff]_ (Eq 47) and [Lee]_ et al. (Eq 14) give the optimal block size to be
 
 .. math::
 
@@ -204,14 +204,14 @@ where `n` is the number of data points in the data set, `B` is the number of
 data points in each 'block' (ie the data set has been divided into `n/B`
 contiguous blocks) and `n_{\\text{corr}}`.
 [todo] - describe n_corr.
-Following the scheme proposed by Lee et al. [3]_, we hence look for the largest
+Following the scheme proposed by [Lee]_ et al., we hence look for the largest
 block size which satisfies 
 
 .. math::
 
     B^3 >= 2 n n_{\\text{corr}}^2.
 
-From Eq 13 in Lee et al. [3]_ (which they cast in terms of the variance):
+From Eq 13 in [Lee]_ et al. (which they cast in terms of the variance):
 
 .. math::
 
@@ -233,11 +233,11 @@ I am grateful to Will Vigor for discussions and the initial implementation.
 
 References
 ----------
-.. [2] "Monte Carlo errors with less errors", U. Wolff, Comput. Phys. Commun.
+.. [Wolff] "Monte Carlo errors with less errors", U. Wolff, Comput. Phys. Commun.
        156, 143 (2004) and arXiv:hep-lat/0306017.
-.. [3] "Strategies for improving the efficiency of quantum Monte Carlo
-       calculations", R. M. Lee, G. J. Conduit, N. Nemec, P. Lopez Rios, and N.
-       D.  Drummond, Phys. Rev. E. 83, 066706 (2011).
+.. [Lee] "Strategies for improving the efficiency of quantum Monte Carlo
+       calculations", R.M. Lee, G.J. Conduit, N. Nemec, P. Lopez Rios,
+       N.D.  Drummond, Phys. Rev. E. 83, 066706 (2011).
 '''
 
     # Get the number of variables by looking at the number of means calculated

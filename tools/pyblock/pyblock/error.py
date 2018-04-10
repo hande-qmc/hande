@@ -14,7 +14,7 @@ import pandas as pd
 import pyblock.pd_utils as pd_utils
 
 def ratio(stats_A, stats_B, cov_AB, data_len):
-    '''Calculate the mean and standard error of :math:`f = A/B`.
+    '''Calculate the mean and standard error of :math:`f(A,B) = A/B`.
 
 Parameters
 ----------
@@ -37,96 +37,91 @@ data_len : int or :class:`pandas.Series`
 
 Returns
 -------
-ratio_stats : :class:`pandas.Series` or :class:`pandas.DataFrame`
+stats : :class:`pandas.Series` or :class:`pandas.DataFrame`
     Mean and standard error (and, if possible/relevant, optimal reblock
-    iteration) for :math:`f = A/B`.  If ``stats_A``, ``stats_B`` are
+    iteration) for :math:`f(A,B)`.  If ``stats_A``, ``stats_B`` are
     :class:`pandas.DataFrame`, this is a :class:`pandas.DataFrame` with the
     same index, otherwise a :class:`pandas.Series` is returned.
 '''
-
-    return _quadratic(stats_A, stats_B, cov_AB, data_len, -1)
+    (m_A, m_B) = (stats_A['mean'], stats_B['mean'])
+    mean = m_A / m_B
+    (se_A, se_B) = (stats_A['standard error'], stats_B['standard error'])
+    std_err = abs(mean*numpy.sqrt(
+                (se_A/m_A)**2 + (se_B/m_B)**2 - 2*cov_AB/(data_len*m_A*m_B)
+              ))
+    return _stats_summary(mean, std_err, stats_A, stats_B)
 
 def product(stats_A, stats_B, cov_AB, data_len):
-    '''Calculate the mean and standard error of :math:`f = A \\times B`.
+    '''Calculate the mean and standard error of :math:`f(A,B) = A \\times B`.
 
 Parameters
 ----------
-stats_A : :class:`pandas.Series` or :class:`pandas.DataFrame`
-    Statistics (containing at least the 'mean' and 'standard error' fields) for
-    variable :math:`A`.  The rows contain different values of these statistics
-    (e.g. from a reblocking analysis) if :class:`pandas.DataFrame` are passed.
-stats_B : :class:`pandas.Series` or :class:`pandas.DataFrame`
-    Similarly for variable :math:`B`.
-cov_AB : float or :class:`pandas.Series`
-    Covariance between variables `A and B.  If ``stats_A`` and ``stats_B`` are
-    :class:`pandas.DataFrame`, then this must be a :class:`pandas.Series`, with
-    the same index as ``stats_A`` and ``stats_B``.
-data_len : int or :class:`pandas.Series`
-    Number of data points ('observations') used to obtain the statistics given
-    in ``stats_A`` and ``stats_B``.  If ``stats_A`` and ``stats_B`` are
-    :class:`pandas.DataFrame`, then this must be a :class:`pandas.Series`, with
-    the same index as ``stats_A`` and ``stats_B``.
+See :func:`ratio`.
 
 Returns
 -------
-product_stats : :class:`pandas.Series` or :class:`pandas.DataFrame`
-    Mean and standard error (and, if possible/relevant, optimal reblock
-    iteration) for :math:`f = A \\times B`.  If ``stats_A``, ``stats_B`` are
-    :class:`pandas.DataFrame`, this is a :class:`pandas.DataFrame` with the
-    same index, otherwise a :class:`pandas.Series` is returned.
+See :func:`ratio`.
+
 '''
+    (m_A, m_B) = (stats_A['mean'], stats_B['mean'])
+    mean = m_A * m_B
+    (se_A, se_B) = (stats_A['standard error'], stats_B['standard error'])
+    std_err = abs(mean*numpy.sqrt(
+                (se_A/m_A)**2 + (se_B/m_B)**2 + 2*cov_AB/(data_len*m_A*m_B)
+              ))
+    return _stats_summary(mean, std_err, stats_A, stats_B)
 
-    return _quadratic(stats_A, stats_B, cov_AB, data_len, 1)
-
-def _quadratic(stats_A, stats_B, cov_AB, data_len, sign):
-    '''Calculate the mean and standard error of :math:`f = g(A,B)`.
+def subtraction(stats_A, stats_B, cov_AB, data_len):
+    '''Calculate the mean and standard error of :math:`f(A,B) = A - B`.
 
 Parameters
 ----------
-stats_A : :class:`pandas.Series` or :class:`pandas.DataFrame`
-    Statistics (containing at least the 'mean' and 'standard error' fields) for
-    variable :math:`A`.  The rows contain different values of these statistics
-    (e.g. from a reblocking analysis) if :class:`pandas.DataFrame` are passed.
-stats_B : :class:`pandas.Series` or :class:`pandas.DataFrame`
-    Similarly for variable :math:`B`.
-cov_AB : float or :class:`pandas.Series`
-    Covariance between variables `A and B.  If ``stats_A`` and ``stats_B`` are
-    :class:`pandas.DataFrame`, then this must be a :class:`pandas.Series`, with
-    the same index as ``stats_A`` and ``stats_B``.
-data_len : int or :class:`pandas.Series`
-    Number of data points ('observations') used to obtain the statistics given
-    in ``stats_A`` and ``stats_B``.  If ``stats_A`` and ``stats_B`` are
-    :class:`pandas.DataFrame`, then this must be a :class:`pandas.Series`, with
-    the same index as ``stats_A`` and ``stats_B``.
-sign : int
-    :math:`g(A,B) = A*B` for sign=1 and :math:`f = A/B` for sign=-1.
+See :func:`ratio`.
 
 Returns
 -------
-func_data : :class:`pandas.Series` or :class:`pandas.DataFrame`
-    Mean and standard error (and, if possible/relevant, optimal reblock
-    iteration) for :math:`f = g(A,B)`.  If ``stats_A``, ``stats_B`` are
-    :class:`pandas.DataFrame`, this is a :class:`pandas.DataFrame` with the
-    same index, otherwise a :class:`pandas.Series` is returned.
-
-Raises
-------
-ValueError
-    ``sign`` is not +1 nor -1.
+See :func:`ratio`.
 '''
+    mean = stats_A['mean'] - stats_B['mean']
+    se = 'standard error'
+    std_err = stats_A[se]**2 + stats_B[se]**2 - 2*cov_AB/data_len
+    std_err = abs(numpy.sqrt(std_err))
+    return _stats_summary(mean, std_err, stats_A, stats_B)
 
-    if sign not in (1,-1):
-        raise ValueError('sign must be either +1 or -1')
-    
-    mean = stats_A['mean'] / stats_B['mean']
+def addition(stats_A, stats_B, cov_AB, data_len):
+    '''Calculate the mean and standard error of :math:`f(A,B) = A \\plus B`.
 
-    std_err = mean*numpy.sqrt(
-                (stats_A['standard error']/stats_A['mean'])**2 +
-                (stats_B['standard error']/stats_B['mean'])**2 +
-                2*sign*cov_AB/(data_len*stats_A['mean']*stats_B['mean'])
-            )
-    std_err = abs(std_err)
+Parameters
+----------
+See :func:`ratio`.
 
+Returns
+-------
+See :func:`ratio`.
+'''
+    mean = stats_A['mean'] + stats_B['mean']
+    se = 'standard error'
+    std_err = stats_A[se]**2 + stats_B[se]**2 + 2*cov_AB/data_len
+    std_err = abs(numpy.sqrt(std_err))
+    return _stats_summary(mean, std_err, stats_A, stats_B)
+
+def _stats_summary(mean, std_err, stats_A, stats_B):
+    '''Summarise error propogation.
+
+Parameters
+----------
+mean : float or :class:`pandas.Series`
+    mean of of :math:`f(A,B)`.
+std_err: float or :class:`pandas.Series`
+    standard error of :math:`f(A,B)`.
+stats_A, stats_B:
+    see `func:`ratio`.
+
+Returns
+-------
+
+See :func:`ratio`.
+'''
     stats_dict = dict( (('mean', mean), ('standard error', std_err)) )
     try:
         stats = pd.DataFrame(stats_dict)
@@ -140,7 +135,6 @@ ValueError
     except ValueError:
         # Were given a single data point rather than a set.
         stats = pd.Series(stats_dict)
-
     return stats
 
 def pretty_fmt_err(val, err):
