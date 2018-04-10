@@ -1071,8 +1071,8 @@ contains
 ! --- QMC loop and cycle termination routines ---
 
     subroutine end_report_loop(out_unit, qmc_in, iteration, update_tau, qs, ntot_particles, nspawn_events, semi_stoch_shift_it, &
-                               semi_stoch_start_it, soft_exit, dump_restart_interact, load_bal_in, update_estimators, &
-                               bloom_stats, doing_lb, nb_comm, comp, error, vary_shift_reference)
+                               semi_stoch_start_it, soft_exit, load_bal_in, update_estimators, bloom_stats, doing_lb, nb_comm, &
+                               comp, error, vary_shift_reference)
 
         ! In:
         !    out_unit: File unit to write ouput to.
@@ -1096,8 +1096,6 @@ contains
         ! Out:
         !    soft_exit: true if the user has requested an immediate exit of the
         !        QMC algorithm via the interactive functionality.
-        !    dump_restart_interact: true if the user has interactively requested to dump a
-        !        restart file at the end of the calculation.
         ! In (optional):
         !    update_estimators: update the (FCIQMC/CCMC) energy estimators.  Default: true.
         !    doing_lb: true if doing load balancing.
@@ -1129,7 +1127,7 @@ contains
         real(dp), intent(inout) :: ntot_particles(qs%psip_list%nspaces)
         integer, intent(in) :: semi_stoch_shift_it
         integer, intent(inout) :: semi_stoch_start_it
-        logical, intent(out) :: soft_exit, dump_restart_interact
+        logical, intent(out) :: soft_exit
         logical, intent(in), optional :: vary_shift_reference
 
         type(load_bal_in_t), intent(in) :: load_bal_in
@@ -1222,7 +1220,7 @@ contains
             end if
         end if
         
-        call calc_interact(comms_found, out_unit, soft_exit, qs, dump_restart_interact)
+        call calc_interact(comms_found, out_unit, soft_exit, qs)
 
         if (qs%reblock_done) soft_exit = .true.
 

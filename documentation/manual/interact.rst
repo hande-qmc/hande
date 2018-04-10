@@ -23,12 +23,13 @@ restricted range of options.  Options which can be set or modified are:
     The send_softexit.py script in the tools subdirectory is useful for running
     HANDE on a queueing system as it writes **softexit = true** to HANDE.COMM a certain amount
     of time before the walltime is reached.
-``writerestart``
+``write_restart``
     type: boolean.
 
-    If true and set in HANDE.COMM, restart files will be dumped at the end of the calculation.
+    If true or set to an integer, and set in HANDE.COMM, restart files will be dumped at
+    the end of the calculation (with the index given by the integer if supplied).
     If ``write = true`` (or equal to an integer) was set in the ``restart`` table, this
-    interactive command is redundant.
+    interactive command overwrites what was set in the input file.
     Note that warnings related to restart files (e.g. blocking on the fly information not
     stored) will not be printed.
 ``tau``

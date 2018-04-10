@@ -268,6 +268,8 @@ contains
             ! set vary_psingles to false as well.
             qmc_state%excit_gen_data%p_single_double%vary_psingles = .false.
         end if
+
+        qmc_state%restart_in = restart_in
     end subroutine init_qmc
 
     subroutine init_proc_pointers(sys, qmc_in, reference, io_unit, dmqmc_in, fciqmc_in)

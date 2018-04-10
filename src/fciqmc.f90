@@ -115,7 +115,7 @@ contains
         type(restart_info_t) :: ri, ri_shift
         character(36) :: uuid_restart
 
-        logical :: soft_exit, write_restart_shift, error, dump_restart_interact, dump_restart_user, dump_restart_file
+        logical :: soft_exit, write_restart_shift, error
         logical :: determ_parent, restart_proj_est
 
         real :: t1, t2
@@ -144,10 +144,6 @@ contains
             call check_load_bal_opts(load_bal_in)
             call check_blocking_opts(sys, blocking_in, restart_in)
         end if
-
-        ! Will be set to .true. if user interacts with calc and sys WRITERESTART
-        dump_restart_user = .false.
-        dump_restart_file = .false.
 
         ! Initialise data.
         call init_qmc(sys, qmc_in, restart_in, load_bal_in, reference_in, io_unit, annihilation_flags, qs, uuid_restart, &
@@ -358,13 +354,10 @@ contains
             error = qs%spawn_store%spawn%error .or. qs%psip_list%error
 
             call end_report_loop(io_unit, qmc_in, iter, update_tau, qs, nparticles_old, &
-                                 nspawn_events, semi_stoch_in%shift_iter, semi_stoch_iter, soft_exit, dump_restart_interact, &
+                                 nspawn_events, semi_stoch_in%shift_iter, semi_stoch_iter, soft_exit, &
                                  load_bal_in, bloom_stats=bloom_stats, doing_lb=fciqmc_in%doing_load_balancing, &
                                  nb_comm=fciqmc_in%non_blocking_comm, comp=sys%read_in%comp, &
                                  error=error)
-
-            if (dump_restart_interact) dump_restart_user = .true.
-
             if (error) exit
 
             if (update_tau) call rescale_tau(qs%tau)
@@ -404,12 +397,10 @@ contains
         if (blocking_in%blocking_on_the_fly .and. parent) call date_and_time(VALUES=date_values)
         if (blocking_in%blocking_on_the_fly .and. parent) call write_date_time_close(iunit, date_values)
 
-        if ((restart_in%write_restart) .or. (dump_restart_user)) dump_restart_file = .true.
-        
         if (fciqmc_in%non_blocking_comm) call end_non_blocking_comm(sys, rng, qmc_in, annihilation_flags, ireport, &
                                                                     qs, qs%spawn_store%spawn_recv,  req_data_s,  &
                                                                     qs%par_info%report_comm%request, t1, nparticles_old, &
-                                                                    qs%shift(1), dump_restart_file, load_bal_in)
+                                                                    qs%shift(1), restart_in%write_restart, load_bal_in)
 
         if (parent) write (io_unit,'()')
         call write_bloom_report(bloom_stats, io_unit=io_unit)
@@ -430,7 +421,7 @@ contains
             qs%mc_cycles_done = qs%mc_cycles_done + qmc_in%ncycles*qmc_in%nreport
         end if
 
-        if (dump_restart_file) then
+        if (qs%restart_in%write_restart) then
             call dump_restart_hdf5(ri, qs, qs%mc_cycles_done, nparticles_old, sys%basis%nbasis, fciqmc_in%non_blocking_comm, &
                                     sys%basis%info_string_len)
             if (parent) write (io_unit,'()')
