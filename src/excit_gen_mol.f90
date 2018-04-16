@@ -67,15 +67,15 @@ contains
 
             if (allowed_excitation) then
                 ! 3a. Probability of generating this excitation.
-                pgen = excit_gen_data%pattempt_single*calc_pgen_single_mol(sys, sys%read_in%pg_sym%gamma_sym, cdet%occ_list, &
-                                                                   cdet%symunocc, connection%to_orb(1))
+                pgen = excit_gen_data%pattempt_single*calc_pgen_single_mol&
+                    (sys, sys%read_in%pg_sym%gamma_sym, cdet%occ_list, cdet%symunocc, connection%to_orb(1))
 
                 ! 4a. Parity of permutation required to line up determinants.
                 call find_excitation_permutation1(sys%basis%excit_mask, cdet%f, connection)
 
                 ! 5a. Find the connecting matrix element.
-                hmatel = slater_condon1_excit_ptr(sys, cdet%occ_list, connection%from_orb(1), &
-                                          connection%to_orb(1), connection%perm)
+                hmatel = slater_condon1_excit_ptr(sys, cdet%occ_list, &
+                                                 &connection%from_orb(1), connection%to_orb(1), connection%perm)
             else
                 ! We have a highly restrained system and this det has no single
                 ! excitations at all.  To avoid reweighting pattempt_single and
@@ -277,7 +277,7 @@ contains
             ! In principle here we should have (Gamma_i* Gamma_op)*.  We'll assume Gamma_op*=Gamma_op
             ! We want
             !   Gamma_totsym = Gamma_(<D|op|D_i^a>)
-            !                = Gamma_(<D|op|a^†_a a_i D>)
+            !                = Gamma_(<D|op|a^\dag_a a_i D>)
             !                = Gamma_D* Gamma_op Gamma_i^-1 Gamma_a Gamma_D
             !                = Gamma_i^-1 Gamma_op Gamma_a
             ! Thus we require
@@ -303,7 +303,7 @@ contains
                 ! Assume op_sym is self-conjugate.
                 ! We want
                 !   Gamma_totsym = Gamma_(<D|o|D_i^a>)
-                !                = Gamma_(<D|op|a^†_a a_i D>)
+                !                = Gamma_(<D|op|a^\dag_a a_i D>)
                 !                = Gamma_D* Gamma_op Gamma_i^-1 Gamma_a Gamma_D
                 !                = Gamma_i^-1 Gamma_op Gamma_a
                 ! Thus we require
@@ -582,7 +582,7 @@ contains
         imsa = (sys%basis%basis_fns(i)%Ms+3)/2
         ! We want
         !   Gamma_totsym = Gamma_(<D|o|D_i^a>)
-        !                = Gamma_(<D|op|a^†_a a_i D>)
+        !                = Gamma_(<D|op|a^\dag_a a_i D>)
         !                = Gamma_D* Gamma_op Gamma_i^-1 Gamma_a Gamma_D
         !                = Gamma_i^-1 Gamma_op Gamma_a
         ! Thus we require
@@ -772,7 +772,7 @@ contains
             imsa = (sys%basis%basis_fns(occ_list(i))%Ms+3)/2
             ! We want
             !   Gamma_totsym = Gamma_(<D|o|D_i^a>)
-            !                = Gamma_(<D|op|a^†_a a_i D>)
+            !                = Gamma_(<D|op|a^\dag_a a_i D>)
             !                = Gamma_D* Gamma_op Gamma_i^-1 Gamma_a Gamma_D
             !                = Gamma_i^-1 Gamma_op Gamma_a
             ! Thus we require

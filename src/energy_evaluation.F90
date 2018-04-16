@@ -14,6 +14,8 @@ implicit none
 enum, bind(c)
     enumerator :: proj_energy_ind = 1
     enumerator :: D0_pop_ind
+    enumerator :: dipole_ind
+    enumerator :: sc_gap_ind
     ! [todo] - having a separate index for each space is not very general.
     enumerator :: proj_energy_replica_ind
     enumerator :: D0_pop_replica_ind
@@ -27,6 +29,8 @@ enum, bind(c)
     enumerator :: hf_D0_pop_ind
     enumerator :: proj_energy_imag_ind
     enumerator :: D0_pop_imag_ind
+    enumerator :: dipole_imag_ind
+    enumerator :: sc_gap_imag_ind
     enumerator :: proj_energy_imag_replica_ind
     enumerator :: D0_pop_imag_replica_ind
     enumerator :: nocc_states_ind
@@ -64,7 +68,8 @@ contains
     ! All other elements are set to zero.
 
     subroutine update_energy_estimators(qmc_in, qs, nspawn_events, ntot_particles_old, load_bal_in, doing_lb, &
-                                        comms_found, error, update_tau, bloom_stats, vary_shift_reference, comp)
+                                        comms_found, error, update_tau, bloom_stats, vary_shift_reference, comp, &
+                                        eval_opr)
 
         ! Update the shift and average the shift and projected energy
         ! estimators.
@@ -81,6 +86,8 @@ contains
         !       - pairwise combine total populations when calculating shift variation and generate a
         !         combined shift for both.
         !       - have complex proj energy estimator to pass real and imaginary components of via mpi.
+        !    eval_opr(optional): if to evaluate the 1-body dipole operator (eval_opr(1))
+        !                                    or the 2-body sc-gap operator (eval_opr(2)).
         ! In/Out:
         !    qs: qmc state. Estimators are updated on output.
         !    ntot_particles_old: total number (across all processors) of
@@ -105,21 +112,21 @@ contains
         type(qmc_in_t), intent(in) :: qmc_in
         integer, intent(in) :: nspawn_events
         type(qmc_state_t), intent(inout) :: qs
+        type(load_bal_in_t), intent(in) :: load_bal_in
         real(dp), intent(inout) :: ntot_particles_old(qs%psip_list%nspaces)
         logical, optional, intent(in) :: doing_lb, comp
         logical, intent(inout) :: comms_found
         logical, intent(inout), optional :: error
         type(bloom_stats_t), intent(inout), optional :: bloom_stats
         logical, intent(inout), optional :: update_tau
-        type(load_bal_in_t), intent(in) :: load_bal_in
-        logical, intent(in), optional :: vary_shift_reference
+        logical, intent(in), optional :: vary_shift_reference, eval_opr(2)
 
         real(dp) :: rep_loop_loc(qs%psip_list%nspaces*nprocs+nparticles_start_ind-1)
         real(dp) :: rep_loop_sum(qs%psip_list%nspaces*nprocs+nparticles_start_ind-1)
         integer :: ierr
 
         call local_energy_estimators(qs, rep_loop_loc, nspawn_events, comms_found, error, update_tau, &
-                                    bloom_stats, comp = comp)
+                                    &bloom_stats, comp = comp, eval_opr=eval_opr)
         ! Don't bother to optimise for running in serial.  This is a fast
         ! routine and is run only once per report loop anyway!
 
@@ -160,7 +167,8 @@ contains
     end subroutine update_energy_estimators_send
 
     subroutine update_energy_estimators_recv(qmc_in, qs, ntypes, rep_request_s, ntot_particles_old, nparticles_proc, &
-                                             load_bal_in, doing_lb, comms_found, error, update_tau, bloom_stats, comp)
+                                             load_bal_in, doing_lb, comms_found, error, update_tau, bloom_stats, &
+                                             comp, eval_opr)
 
         ! Receive report loop quantities from all other processors and reduce.
 
@@ -201,9 +209,8 @@ contains
         real(dp), intent(inout) :: ntot_particles_old(:)
         type(load_bal_in_t), intent(in) :: load_bal_in
         real(dp), intent(out) :: nparticles_proc(:,:)
-        logical, optional, intent(in) :: doing_lb, comp
-        logical, intent(out), optional :: comms_found, error
-        logical, intent(out), optional :: update_tau
+        logical, intent(in), optional :: doing_lb, comp, eval_opr(2)
+        logical, intent(out), optional :: comms_found, error, update_tau
         type(bloom_stats_t), intent(inout), optional :: bloom_stats
 
         real(dp) :: rep_info_sum(nprocs*ntypes+nparticles_start_ind-1)
@@ -213,10 +220,6 @@ contains
         integer :: stat_ir_s(MPI_STATUS_SIZE, nprocs), stat_ir_r(MPI_STATUS_SIZE, nprocs), ierr
 #endif
         integer :: i, j, data_size
-        logical :: comp_loc
-
-        comp_loc = .false.
-        if (present(comp)) comp_loc = comp
 
         data_size = nprocs*ntypes+ nparticles_start_ind-1
 #ifdef PARALLEL
@@ -238,12 +241,13 @@ contains
                 rep_info_sum(i+j) = sum(rep_loop_reduce(i+j::data_size))
 
         call communicated_energy_estimators(qmc_in, qs, rep_info_sum, ntot_particles_old, load_bal_in, doing_lb, &
-                                    nparticles_proc, comms_found, error, update_tau, bloom_stats, comp_loc)
+                                            nparticles_proc, comms_found, error, update_tau, bloom_stats, &
+                                            comp=comp, eval_opr=eval_opr)
 
     end subroutine update_energy_estimators_recv
 
     subroutine local_energy_estimators(qs, rep_loop_loc, nspawn_events, comms_found, error, update_tau, &
-                                       bloom_stats, spawn_elsewhere, comp)
+                                       bloom_stats, spawn_elsewhere, comp, eval_opr)
 
         ! Enter processor dependent report loop quantites into array for
         ! efficient sending to other processors.
@@ -260,6 +264,8 @@ contains
         !        not including those spawned to current processor.
         !    comp: if true running a calculation with complex walkers and so complex
         !        projected energy to pass for reporting.
+        !    eval_opr: if to evaluate the 1-body dipole operator (eval_opr(1))
+        !                          or the 2-body sc-gap operator (eval_opr(2)).
         ! Out:
         !    rep_loop_loc: array containing local quantities required for energy
         !       evaluation.
@@ -272,15 +278,16 @@ contains
         type(qmc_state_t), intent(in) :: qs
         real(dp), intent(out) :: rep_loop_loc(:)
         type(bloom_stats_t), intent(in), optional :: bloom_stats
-        integer, intent(in), optional :: nspawn_events
-        logical, intent(in), optional :: update_tau
-        integer, intent(in) , optional :: spawn_elsewhere
-        logical, intent(in), optional :: comms_found, error, comp
+        integer, intent(in), optional :: nspawn_events, spawn_elsewhere
+        logical, intent(in), optional :: update_tau, comms_found, error, comp, eval_opr(2)
 
-        integer :: offset
-        logical :: comp_param
+        integer :: offset, nopr
+        logical :: comp_param, eval_opr_set(2)
 
         rep_loop_loc = 0.0_dp
+
+        eval_opr_set = .false.
+        if (present(eval_opr)) eval_opr_set = eval_opr
 
         comp_param = .false.
         if (present(comp)) comp_param = comp
@@ -291,10 +298,20 @@ contains
             rep_loop_loc(proj_energy_imag_ind) = aimag(qs%estimators(1)%proj_energy_comp)
             rep_loop_loc(D0_pop_imag_ind) = aimag(qs%estimators(1)%D0_population_comp)
             if (qs%psip_list%nspaces > 2) then
-                rep_loop_loc(proj_energy_replica_ind) = real(qs%estimators(3)%proj_energy_comp, p)
-                rep_loop_loc(D0_pop_replica_ind) = real(qs%estimators(3)%D0_population_comp, p)
-                rep_loop_loc(proj_energy_imag_replica_ind) = aimag(qs%estimators(3)%proj_energy_comp)
-                rep_loop_loc(D0_pop_imag_replica_ind) = aimag(qs%estimators(3)%D0_population_comp)
+                rep_loop_loc(proj_energy_replica_ind) = real(qs%estimators(2)%proj_energy_comp, p)
+                rep_loop_loc(D0_pop_replica_ind) = real(qs%estimators(2)%D0_population_comp, p)
+                rep_loop_loc(proj_energy_imag_replica_ind) = aimag(qs%estimators(2)%proj_energy_comp)
+                rep_loop_loc(D0_pop_imag_replica_ind) = aimag(qs%estimators(2)%D0_population_comp)
+            end if
+            nopr = 1
+            if (eval_opr_set(1)) then
+                rep_loop_loc(dipole_ind) = real(qs%estimators(qs%psip_list%nspaces/2+nopr)%proj_energy_comp, p)
+                rep_loop_loc(dipole_imag_ind) = aimag(qs%estimators(qs%psip_list%nspaces/2+nopr)%proj_energy_comp)
+                nopr = nopr + 1
+            end if
+            if (eval_opr_set(2)) then
+                rep_loop_loc(sc_gap_ind) = real(qs%estimators(qs%psip_list%nspaces/2+nopr)%proj_energy_comp, p)
+                rep_loop_loc(sc_gap_imag_ind) = aimag(qs%estimators(qs%psip_list%nspaces/2+nopr)%proj_energy_comp)
             end if
         else
             rep_loop_loc(proj_energy_ind) = qs%estimators(1)%proj_energy
@@ -303,6 +320,13 @@ contains
                 rep_loop_loc(proj_energy_replica_ind) = qs%estimators(2)%proj_energy
                 rep_loop_loc(D0_pop_replica_ind) = qs%estimators(2)%D0_population
             end if
+            nopr = 1
+            if (eval_opr_set(1)) then
+                rep_loop_loc(dipole_ind) = qs%estimators(qs%psip_list%nspaces+nopr)%proj_energy
+                nopr = 1
+            end if
+            if (eval_opr_set(2)) &
+                rep_loop_loc(sc_gap_ind) = qs%estimators(qs%psip_list%nspaces+nopr)%proj_energy
         end if
         rep_loop_loc(rspawn_ind) = qs%spawn_store%rspawn
         if (present(update_tau)) then
@@ -344,7 +368,7 @@ contains
 
     subroutine communicated_energy_estimators(qmc_in, qs, rep_loop_sum, ntot_particles_old, load_bal_in, doing_lb, &
                                               nparticles_proc, comms_found, error, update_tau, bloom_stats, &
-                                              vary_shift_reference, comp)
+                                              vary_shift_reference, comp, eval_opr)
 
         ! Update report loop quantites with information received from other
         ! processors.
@@ -367,6 +391,8 @@ contains
         !    vary_shift_reference: if true, vary the shift to control the reference, rather than the
         !    total, population.
         !    comp: true if qmc calculation with real and imaginary walkers.
+        !    eval_opr: if to evaluate the 1-body dipole operator (eval_opr(1))
+        !                          or the 2-body sc-gap operator (eval_opr(2)).
         ! In/Out (optional):
         !    bloom_stats: blooming stats.
         ! Out (optional):
@@ -386,50 +412,67 @@ contains
         real(dp), intent(inout) :: ntot_particles_old(:)
         real(dp), intent(out) :: nparticles_proc(:,:)
         type(load_bal_in_t), intent(in) :: load_bal_in
-        logical, optional, intent(in) :: doing_lb, vary_shift_reference, comp
+        logical, optional, intent(in) :: doing_lb, vary_shift_reference, comp, eval_opr(2)
         type(bloom_stats_t), intent(inout), optional :: bloom_stats
         logical, intent(out), optional :: comms_found, error
         logical, intent(out), optional :: update_tau
 
         real(dp) :: ntot_particles(size(ntot_particles_old)), new_hf_signed_pop
         real(p) :: pop_av
-        integer :: i, ntypes
-        logical :: comp_param, vary_shift_reference_loc
+        integer :: i, ntypes, nenergy, nopr
+        logical :: comp_param, vary_shift_reference_loc, eval_opr_set(2)
 
         comp_param = .false.
         if (present(comp)) comp_param = comp
 
+        eval_opr_set = .false.
+        if (present(eval_opr)) eval_opr_set = eval_opr
+
         vary_shift_reference_loc = .false.
         if (present(vary_shift_reference)) vary_shift_reference_loc = vary_shift_reference
 
-        ntypes = size(ntot_particles_old) ! Just to save passing in another parameter...
-
-        qs%estimators(1)%proj_energy_comp = cmplx(rep_loop_sum(proj_energy_ind), &
-                                                rep_loop_sum(proj_energy_imag_ind), p)
-        qs%estimators(1)%D0_population_comp = cmplx(rep_loop_sum(D0_pop_ind), &
-                                                rep_loop_sum(D0_pop_imag_ind), p)
-        if (size(qs%estimators) > 1) then
-            qs%estimators(2)%proj_energy_comp = cmplx(rep_loop_sum(proj_energy_ind), &
-                                                    rep_loop_sum(proj_energy_imag_ind), p)
-            qs%estimators(2)%D0_population_comp = cmplx(rep_loop_sum(D0_pop_ind), &
-                                                    rep_loop_sum(D0_pop_imag_ind), p)
+        ! Just to save passing in another parameter...
+        ntypes = qs%psip_list%nspaces 
+        if (comp_param) then
+            nenergy = (ntypes + 1)/2
+        else
+            nenergy = ntypes
         end if
-        if (size(qs%estimators) > 2) then
-            qs%estimators(3)%proj_energy_comp = cmplx(rep_loop_sum(proj_energy_replica_ind), &
-                                                    rep_loop_sum(proj_energy_imag_replica_ind), p)
-            qs%estimators(4)%proj_energy_comp = cmplx(rep_loop_sum(proj_energy_replica_ind), &
-                                                    rep_loop_sum(proj_energy_imag_replica_ind), p)
-            qs%estimators(3)%D0_population_comp = cmplx(rep_loop_sum(D0_pop_replica_ind), &
-                                                    rep_loop_sum(D0_pop_imag_replica_ind), p)
-            qs%estimators(4)%D0_population_comp = cmplx(rep_loop_sum(D0_pop_replica_ind), &
-                                                    rep_loop_sum(D0_pop_imag_replica_ind), p)
+
+        qs%estimators(1)%proj_energy_comp = cmplx(rep_loop_sum(proj_energy_ind), rep_loop_sum(proj_energy_imag_ind), p)
+        qs%estimators(1)%D0_population_comp = cmplx(rep_loop_sum(D0_pop_ind), rep_loop_sum(D0_pop_imag_ind), p)
+        if (comp_param) then
+            if (qs%psip_list%nspaces > 2) then ! Update replicas.
+                qs%estimators(2)%proj_energy_comp = cmplx(rep_loop_sum(proj_energy_replica_ind), &
+                                                         &rep_loop_sum(proj_energy_imag_replica_ind), p)
+                qs%estimators(2)%D0_population_comp = cmplx(rep_loop_sum(D0_pop_replica_ind), &
+                                                           &rep_loop_sum(D0_pop_imag_replica_ind), p)
+            end if
+            nopr = 1
+            if (eval_opr_set(1)) then
+                qs%estimators(nenergy+nopr)%proj_energy_comp = &
+                    cmplx(rep_loop_sum(dipole_ind), rep_loop_sum(dipole_imag_ind), p)
+                nopr = nopr + 1
+            end if
+            if (eval_opr_set(2)) &
+                qs%estimators(nenergy+nopr)%proj_energy_comp = &
+                    cmplx(rep_loop_sum(sc_gap_ind), rep_loop_sum(sc_gap_imag_ind), p)
         end if
 
         qs%estimators(1)%proj_energy = real(rep_loop_sum(proj_energy_ind), p)
         qs%estimators(1)%D0_population = real(rep_loop_sum(D0_pop_ind), p)
-        if (size(qs%estimators) > 1) then
-            qs%estimators(2)%proj_energy = real(rep_loop_sum(proj_energy_replica_ind), p)
-            qs%estimators(2)%D0_population = real(rep_loop_sum(D0_pop_replica_ind), p)
+        if (.not. comp_param) then
+            if (qs%psip_list%nspaces > 1) then
+                qs%estimators(2)%proj_energy = real(rep_loop_sum(proj_energy_replica_ind), p)
+                qs%estimators(2)%D0_population = real(rep_loop_sum(D0_pop_replica_ind), p)
+            end if
+            nopr = 1
+            if (eval_opr_set(1)) then
+                qs%estimators(nenergy+nopr)%proj_energy = real(rep_loop_sum(dipole_ind), p)
+                nopr = nopr + 1
+            end if
+            if (eval_opr_set(2)) &
+                qs%estimators(nenergy+nopr)%proj_energy = real(rep_loop_sum(sc_gap_ind), p)
         end if
 
         qs%spawn_store%rspawn = real(rep_loop_sum(rspawn_ind), p)
@@ -440,7 +483,7 @@ contains
             bloom_stats%tot_bloom_curr = real(rep_loop_sum(bloom_tot_ind), p)
             bloom_stats%nblooms_curr = nint(rep_loop_sum(bloom_num_ind))
             ! Also add to running totals.
-            bloom_stats%tot_bloom = bloom_stats%tot_bloom + bloom_stats%tot_bloom_curr 
+            bloom_stats%tot_bloom = bloom_stats%tot_bloom + bloom_stats%tot_bloom_curr
             bloom_stats%nblooms = bloom_stats%nblooms + bloom_stats%nblooms_curr
         end if
         new_hf_signed_pop = rep_loop_sum(hf_signed_pop_ind)
@@ -469,7 +512,8 @@ contains
 
         associate(lb=>qs%par_info%load)
             if (present(doing_lb)) then
-                if (doing_lb .and. ntot_particles(1) > load_bal_in%pop .and. lb%nattempts < load_bal_in%max_attempts) then
+                if (doing_lb .and. ntot_particles(1) > load_bal_in%pop .and. lb%nattempts < load_bal_in%max_attempts) &
+                   &then
                     pop_av = real(sum(nparticles_proc(1,:nprocs))/nprocs, p)
                     ! Check if there is at least one processor with load imbalance.
                     call check_imbalance(real(nparticles_proc,p), pop_av, load_bal_in%percent, lb%needed)
@@ -477,50 +521,56 @@ contains
             end if
         end associate
 
-        ! average energy quantities over report loop.
-        qs%estimators%proj_energy = qs%estimators%proj_energy/qmc_in%ncycles
-        qs%estimators%D0_population = qs%estimators%D0_population/qmc_in%ncycles
+        ! Average energy quantities over report loop.
+        ! Do not average for custom operators as they are only evaluated once per report loop.
+        qs%estimators(1:nenergy)%proj_energy   = qs%estimators(1:nenergy)%proj_energy  /qmc_in%ncycles
+        qs%estimators(1:nenergy)%D0_population = qs%estimators(1:nenergy)%D0_population/qmc_in%ncycles
         ! Similarly for the HFS estimator
         qs%estimators%D0_hf_population = qs%estimators%D0_hf_population/qmc_in%ncycles
         qs%estimators%proj_hf_O_hpsip = qs%estimators%proj_hf_O_hpsip/qmc_in%ncycles
         qs%estimators%proj_hf_H_hfpsip = qs%estimators%proj_hf_H_hfpsip/qmc_in%ncycles
         ! Similarly for complex quantities.
-        qs%estimators%proj_energy_comp = qs%estimators%proj_energy_comp/qmc_in%ncycles
-        qs%estimators%D0_population_comp = qs%estimators%D0_population_comp/qmc_in%ncycles
-        ! average spawning rate over report loop and processor.
+        qs%estimators(1:nenergy)%proj_energy_comp   = qs%estimators(1:nenergy)%proj_energy_comp  /qmc_in%ncycles
+        qs%estimators(1:nenergy)%D0_population_comp = qs%estimators(1:nenergy)%D0_population_comp/qmc_in%ncycles
+        ! Average spawning rate over report loop and processor.
         qs%spawn_store%rspawn = qs%spawn_store%rspawn/(qmc_in%ncycles*nprocs)
+        ! D0_population of custom operators should follow that of Hamiltonian
+        if (size(qs%estimators) > nenergy) then
+            qs%estimators(nenergy+1:size(qs%estimators))%D0_population_comp = qs%estimators(1)%D0_population_comp
+            qs%estimators(nenergy+1:size(qs%estimators))%D0_population      = qs%estimators(1)%D0_population
+        end if
 
         if (doing_calc(hfs_fciqmc_calc)) then
             if (qs%vary_shift(1)) then
                 call update_shift(qmc_in, qs, qs%shift(1), ntot_particles_old(1), ntot_particles(1), qmc_in%ncycles)
                 call update_hf_shift(qmc_in, qs, qs%shift(2), ntot_particles_old(1), ntot_particles(1), &
-                                     qs%estimators(1)%hf_signed_pop, new_hf_signed_pop, qmc_in%ncycles)
+                                    &qs%estimators(1)%hf_signed_pop, new_hf_signed_pop, qmc_in%ncycles)
             end if
         else if (comp_param) then
             do i = 1, ntypes, 2
                 if (qs%vary_shift(i)) then
                     call update_shift(qmc_in, qs, qs%shift(i), ntot_particles_old(i) + ntot_particles_old(i+1), &
-                                        ntot_particles(i) + ntot_particles(i+1), qmc_in%ncycles)
+                                     &ntot_particles(i) + ntot_particles(i+1), qmc_in%ncycles)
                     qs%shift(i+1) = qs%shift(i)
                 end if
             end do
         else
-            do i = 1, ntypes
+            do i = 1, ntypes ! for real systems, ndata = nspaces + nopr
                 if (qs%vary_shift(i)) then
                     if (vary_shift_reference_loc) then
                         call update_shift(qmc_in, qs, qs%shift(i), real(qs%estimators(i)%D0_population_old, dp), &
-                                          real(qs%estimators(i)%D0_population, dp), qmc_in%ncycles)
+                                         &real(qs%estimators(i)%D0_population, dp), qmc_in%ncycles)
                     else
                         call update_shift(qmc_in, qs, qs%shift(i), ntot_particles_old(i), &
-                                                        ntot_particles(i), qmc_in%ncycles)
+                                         &ntot_particles(i), qmc_in%ncycles)
                     end if
                 end if
             end do
         end if
 
         qs%estimators%D0_population_old = qs%estimators%D0_population
-        ntot_particles_old = ntot_particles
         qs%estimators(1)%hf_signed_pop = new_hf_signed_pop
+        ntot_particles_old = ntot_particles
 
         associate (est=>qs%estimators)
             if (comp_param) then
@@ -529,7 +579,7 @@ contains
                         qs%vary_shift(i) = .true.
                         if (qmc_in%vary_shift_from_proje) then
                             ! Set shift to be instantaneous projected energy.
-                            qs%shift(i) = real(est(i)%proj_energy_comp/est(i)%D0_population_comp, p)
+                            qs%shift(i) = real(est((i+1)/2)%proj_energy_comp/est((i+1)/2)%D0_population_comp, p)
                         else
                             qs%shift(i) = qmc_in%vary_shift_from
                         end if
@@ -541,8 +591,9 @@ contains
                     qs%vary_shift = .true.
                     if (qmc_in%vary_shift_from_proje) then
                         qs%shift(1) = est(1)%proj_energy/est(1)%D0_population
-                        qs%shift(2) = est(1)%proj_hf_O_hpsip/est(1)%D0_population + est(1)%proj_hf_H_hfpsip/est(1)%D0_population &
-                                                             - (est(1)%proj_energy*est(1)%D0_hf_population)/est(1)%D0_population**2
+                        qs%shift(2) = est(1)%proj_hf_O_hpsip/est(1)%D0_population + &
+                                      est(1)%proj_hf_H_hfpsip/est(1)%D0_population - &
+                                     (est(1)%proj_energy*est(1)%D0_hf_population)/est(1)%D0_population**2
                     else
                         qs%shift = qmc_in%vary_shift_from
                     end if
@@ -600,11 +651,13 @@ contains
 
         ! dmqmc_factor is included to account for a factor of 1/2 introduced into tau in
         ! DMQMC calculations. In all other calculation types, it is set to 1, and so can be ignored.
-        loc_shift = loc_shift - real(log(nparticles/nparticles_old)*qs%shift_damping/(qs%dmqmc_factor*qs%tau*nupdate_steps) ,p)
+        loc_shift = loc_shift - &
+            real(log(nparticles/nparticles_old)*qs%shift_damping/(qs%dmqmc_factor*qs%tau*nupdate_steps) ,p)
 
     end subroutine update_shift
 
-    subroutine update_hf_shift(qmc_in, qs, hf_shift, nparticles_old, nparticles, nhf_particles_old, nhf_particles, nupdate_steps)
+    subroutine update_hf_shift(qmc_in, qs, hf_shift, nparticles_old, nparticles, nhf_particles_old, nhf_particles, &
+                              &nupdate_steps)
 
         ! Update the Hellmann-Feynman shift, \tilde{S}.
 
@@ -847,7 +900,7 @@ contains
         hmatel%r = 0.0_p
 
         select case(excitation%nexcit)
-        case (0)
+        case(0)
             ! Have reference determinant.
             estimators%D0_population = estimators%D0_population + pop(1)
         case(1)
@@ -855,9 +908,9 @@ contains
             ! a single excitation: add to projected energy.
             ! Is excitation symmetry allowed?
             if (sys%basis%basis_fns(excitation%from_orb(1))%Ms == sys%basis%basis_fns(excitation%to_orb(1))%Ms .and. &
-                    sys%basis%basis_fns(excitation%from_orb(1))%sym == sys%basis%basis_fns(excitation%to_orb(1))%sym) then
+                sys%basis%basis_fns(excitation%from_orb(1))%sym == sys%basis%basis_fns(excitation%to_orb(1))%sym) then
                 hmatel = slater_condon1_mol_excit(sys, cdet%occ_list, excitation%from_orb(1), excitation%to_orb(1), &
-                                                  excitation%perm)
+                                                 &excitation%perm)
                 estimators%proj_energy = estimators%proj_energy + hmatel%r*pop(1)
             end if
         case(2)
@@ -870,8 +923,7 @@ contains
                 ab_sym = cross_product_basis_read_in(sys, excitation%to_orb(1), excitation%to_orb(2))
                 if (ij_sym == ab_sym) then
                     hmatel = slater_condon2_mol_excit(sys, excitation%from_orb(1), excitation%from_orb(2), &
-                                                      excitation%to_orb(1), excitation%to_orb(2),     &
-                                                      excitation%perm)
+                                                     &excitation%to_orb(1), excitation%to_orb(2), excitation%perm)
                     estimators%proj_energy = estimators%proj_energy + hmatel%r*pop(1)
                 end if
             end if
@@ -931,7 +983,7 @@ contains
         hmatel%c = cmplx(0.0, 0.0, p)
 
         select case(excitation%nexcit)
-        case (0)
+        case(0)
             ! Have reference determinant.
             estimators%D0_population_comp = estimators%D0_population_comp + cmplx(pop(1),pop(2),p)
         case(1)
@@ -939,9 +991,10 @@ contains
             ! a single excitation: add to projected energy.
             ! Is excitation symmetry allowed?
             if (sys%basis%basis_fns(excitation%from_orb(1))%Ms == sys%basis%basis_fns(excitation%to_orb(1))%Ms .and. &
-                    sys%basis%basis_fns(excitation%from_orb(1))%sym == sys%basis%basis_fns(excitation%to_orb(1))%sym) then
-                hmatel = slater_condon1_periodic_excit_complex(sys, cdet%occ_list, excitation%from_orb(1), excitation%to_orb(1), &
-                                                  excitation%perm)
+                sys%basis%basis_fns(excitation%from_orb(1))%sym == sys%basis%basis_fns(excitation%to_orb(1))%sym) then
+                hmatel = slater_condon1_periodic_excit_complex(sys, cdet%occ_list, &
+                                                              &excitation%from_orb(1), excitation%to_orb(1), &
+                                                              &excitation%perm)
                 estimators%proj_energy_comp = estimators%proj_energy_comp + hmatel%c*cmplx(pop(1),pop(2),p)
             end if
         case(2)
@@ -953,9 +1006,9 @@ contains
                 ij_sym = cross_product_basis_read_in(sys, excitation%from_orb(1), excitation%from_orb(2))
                 ab_sym = cross_product_basis_read_in(sys, excitation%to_orb(1), excitation%to_orb(2))
                 if (ij_sym == ab_sym) then
-                    hmatel = slater_condon2_periodic_excit_complex(sys, excitation%from_orb(1), excitation%from_orb(2), &
-                                                      excitation%to_orb(1), excitation%to_orb(2),     &
-                                                      excitation%perm)
+                    hmatel = slater_condon2_periodic_excit_complex(sys, excitation%from_orb(1), excitation%from_orb(2),&
+                                                                        excitation%to_orb(1), excitation%to_orb(2), &
+                                                                        excitation%perm)
                     estimators%proj_energy_comp = estimators%proj_energy_comp + hmatel%c*cmplx(pop(1),pop(2),p)
                 end if
             end if
@@ -1256,7 +1309,7 @@ contains
     end subroutine update_proj_hfs_double_occ_hub_k
 
     subroutine update_proj_hfs_one_body_mol(sys, f, fpop, f_hfpop, fdata, excitation, hmatel, &
-                                              D0_hf_pop,proj_hf_O_hpsip, proj_hf_H_hfpsip)
+                                            D0_hf_pop,proj_hf_O_hpsip, proj_hf_H_hfpsip)
 
         ! Add the contribution of the current determinant to the running
         ! total of the projected Hellmann--Feynman estimator.
@@ -1296,7 +1349,7 @@ contains
         type(excit_t), intent(in) :: excitation
         real(p), intent(inout) :: D0_hf_pop, proj_hf_O_hpsip, proj_hf_H_hfpsip
 
-        real(p) :: matel
+        type(hmatel_t) :: oprmatel
 
         ! Note: one-electron operator.
 
@@ -1309,8 +1362,9 @@ contains
             ! projected energy.
 
             ! \sum_j O_0j c_j
-            matel = one_body1_mol(sys, excitation%from_orb(1), excitation%to_orb(1), excitation%perm)
-            proj_hf_O_hpsip = proj_hf_O_hpsip + matel*fpop
+            oprmatel = one_body1_mol(sys%read_in%dipole_sys_ptr, &
+                                    &excitation%from_orb(1), excitation%to_orb(1), excitation%perm)
+            proj_hf_O_hpsip = proj_hf_O_hpsip + oprmatel%r*fpop
 
             ! \sum_j H_0j \tilde{c}_j
             proj_hf_H_hfpsip = proj_hf_H_hfpsip + hmatel%r*f_hfpop
@@ -1325,7 +1379,7 @@ contains
     end subroutine update_proj_hfs_one_body_mol
 
     pure function get_sanitized_projected_energy(qs) result(proje)
-        
+
         ! From a qmc_state, qs, return either the value of the projected energy,
         ! or 0 if this is undefined.
 
@@ -1338,14 +1392,14 @@ contains
         use qmc_data, only: qmc_state_t
         type(qmc_state_t), intent(in) :: qs
         real(p) ::  proje(size(qs%estimators))
- 
+
         where (abs(qs%estimators%D0_population) < tiny(0.0_p))
             proje = 0.0_p
         elsewhere
             proje = qs%estimators%proj_energy/qs%estimators%D0_population
         end where
 
-    end function get_sanitized_projected_energy 
+    end function get_sanitized_projected_energy
 
     pure function get_sanitized_projected_energy_cmplx(qs) result(proje)
 

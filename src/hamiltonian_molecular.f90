@@ -15,6 +15,8 @@ contains
         !    sys: system to be studied.
         !    f1, f2: bit string representation of the Slater
         !        determinants D1 and D2 respectively.
+        !    restricted: true if we're evaluating a 1-body only operator.
+        !       This is an adaption for one-body dipole operator wrappers.
         ! Returns:
         !    Hamiltonian matrix element between the two determinants,
         !    < D1 | H | D2 >, where the determinants are formed from
@@ -44,26 +46,20 @@ contains
 
             select case(excitation%nexcit)
             ! Apply Slater--Condon rules.
-
             case(0)
-
                 ! < D | H | D > = \sum_i < i | h(i) | i > + \sum_i \sum_{j>i} < ij || ij >
-                hmatel%r = slater_condon0_mol(sys, f1)
-
+                call decode_det(sys%basis, f1, occ_list)
+                hmatel%r = slater_condon0_mol_orb_list(sys, occ_list)
             case(1)
-
                 ! < D | H | D_i^a > = < i | h(a) | a > + \sum_j < ij || aj >
                 call decode_det(sys%basis, f1, occ_list)
-                hmatel%r = slater_condon1_mol(sys, occ_list, excitation%from_orb(1), &
-                                            excitation%to_orb(1), excitation%perm)
-
+                hmatel%r = slater_condon1_mol(sys, occ_list, excitation%from_orb(1), excitation%to_orb(1), &
+                                             &excitation%perm)
             case(2)
-
-                ! < D | H | D_{ij}^{ab} > = < ij || ab >
-
                 ! Two electron operator
+                ! < D | H | D_{ij}^{ab} > = < ij || ab >
                 hmatel%r = slater_condon2_mol(sys, excitation%from_orb(1), excitation%from_orb(2), &
-                                            & excitation%to_orb(1), excitation%to_orb(2), excitation%perm)
+                                             &excitation%to_orb(1), excitation%to_orb(2), excitation%perm)
             end select
 
         end if
@@ -89,9 +85,7 @@ contains
 
         integer :: occ_list(sys%nel)
 
-        ! < D | H | D > = Ecore + \sum_i < i | h(i) | i > + \sum_i \sum_{j>i} < ij || ij >
         call decode_det(sys%basis, f, occ_list)
-
         hmatel = slater_condon0_mol_orb_list(sys, occ_list)
 
     end function slater_condon0_mol
@@ -114,6 +108,7 @@ contains
 
         integer :: iel, jel, i, j
 
+        ! < D | H | D > = Ecore + \sum_i < i | h(i) | i > + \sum_i \sum_{j>i} < ij || ij >
         associate(one_e_ints=>sys%read_in%one_e_h_integrals, coulomb_ints=>sys%read_in%coulomb_integrals)
             hmatel = sys%read_in%Ecore
             do iel = 1, sys%nel
@@ -123,7 +118,7 @@ contains
                     j = occ_list(jel)
                     hmatel = hmatel + get_two_body_int_mol_nonzero(coulomb_ints, i, j, i, j, sys%basis%basis_fns)
                     if (sys%basis%basis_fns(i)%Ms == sys%basis%basis_fns(j)%Ms) &
-                                  hmatel = hmatel - get_two_body_int_mol_nonzero(coulomb_ints, i, j, j, i, sys%basis%basis_fns)
+                        hmatel = hmatel - get_two_body_int_mol_nonzero(coulomb_ints, i, j, j, i, sys%basis%basis_fns)
                 end do
             end do
         end associate
@@ -151,8 +146,9 @@ contains
 
         real(p) :: hmatel
         type(sys_t), intent(in) :: sys
-        integer, intent(in) :: occ_list(sys%nel), i, a
+        integer, intent(in) :: i, a
         logical, intent(in) :: perm
+        integer, intent(in) :: occ_list(sys%nel)
 
         integer :: iel
 
@@ -161,6 +157,8 @@ contains
             hmatel = 0.0_p
         else
             ! < D | H | D_i^a > = < i | h(a) | a > + \sum_j < ij || aj >
+            ! When evaluating a 1-body operator (dipole operator), the latter term
+            ! should be skipped. We do this by making occ_list optional.
 
             associate(one_e_ints=>sys%read_in%one_e_h_integrals, coulomb_ints=>sys%read_in%coulomb_integrals)
                 hmatel = get_one_body_int_mol_real(one_e_ints, i, a, sys)
@@ -168,10 +166,8 @@ contains
                 do iel = 1, sys%nel
                     if (occ_list(iel) /= i) &
                         hmatel = hmatel &
-                            + get_two_body_int_mol_real(coulomb_ints, i, occ_list(iel), a, occ_list(iel), &
-                                                    sys) &
-                            - get_two_body_int_mol_real(coulomb_ints, i, occ_list(iel), occ_list(iel), a, &
-                                                    sys)
+                            + get_two_body_int_mol_real(coulomb_ints, i, occ_list(iel), a, occ_list(iel), sys) &
+                            - get_two_body_int_mol_real(coulomb_ints, i, occ_list(iel), occ_list(iel), a, sys)
                 end do
             end associate
 
@@ -202,17 +198,20 @@ contains
         ! as it allows symmetry checking to be skipped in the integral lookups.
 
         use molecular_integrals, only: get_one_body_int_mol_nonzero, get_two_body_int_mol_nonzero
-        use system, only: sys_t
         use hamiltonian_data, only: hmatel_t
+        use system, only: sys_t
 
         type(hmatel_t) :: hmatel
         type(sys_t), intent(in) :: sys
-        integer, intent(in) :: occ_list(sys%nel), i, a
+        integer, intent(in) :: i, a
         logical, intent(in) :: perm
+        integer, intent(in) :: occ_list(sys%nel)
 
         integer :: iel
 
         ! < D | H | D_i^a > = < i | h(a) | a > + \sum_j < ij || aj >
+        ! When evaluating a 1-body operator (dipole operator), the latter term
+        ! should be skipped. We do this by making occ_list optional.
 
         associate(basis_fns=>sys%basis%basis_fns, &
                   one_e_ints=>sys%read_in%one_e_h_integrals, &
@@ -221,11 +220,11 @@ contains
 
             do iel = 1, sys%nel
                 if (occ_list(iel) /= i) then
-                    hmatel%r = hmatel%r &
-                                + get_two_body_int_mol_nonzero(coulomb_ints, i, occ_list(iel), a, occ_list(iel), basis_fns)
+                    hmatel%r = hmatel%r + &
+                               get_two_body_int_mol_nonzero(coulomb_ints, i, occ_list(iel), a, occ_list(iel), basis_fns)
                     if (basis_fns(occ_list(iel))%Ms == basis_fns(i)%Ms) &
-                        hmatel%r = hmatel%r &
-                                    - get_two_body_int_mol_nonzero(coulomb_ints, i, occ_list(iel), occ_list(iel), a, basis_fns)
+                        hmatel%r = hmatel%r - get_two_body_int_mol_nonzero&
+                            &(coulomb_ints, i, occ_list(iel), occ_list(iel), a, basis_fns)
                 end if
             end do
         end associate
@@ -266,8 +265,8 @@ contains
 
         ! < D | H | D_{ij}^{ab} > = < ij || ab >
 
-        hmatel = get_two_body_int_mol_real(sys%read_in%coulomb_integrals, i, j, a, b, sys) &
-                 - get_two_body_int_mol_real(sys%read_in%coulomb_integrals, i, j, b, a, sys)
+        hmatel = get_two_body_int_mol_real(sys%read_in%coulomb_integrals, i, j, a, b, sys) - &
+                 get_two_body_int_mol_real(sys%read_in%coulomb_integrals, i, j, b, a, sys)
 
         if (perm) hmatel = -hmatel
 
@@ -315,7 +314,8 @@ contains
         if (sys%basis%basis_fns(i)%Ms == sys%basis%basis_fns(a)%Ms) &
             hmatel%r = get_two_body_int_mol_nonzero(sys%read_in%coulomb_integrals, i, j, a, b, sys%basis%basis_fns)
         if (sys%basis%basis_fns(i)%Ms == sys%basis%basis_fns(b)%Ms) &
-            hmatel%r = hmatel%r - get_two_body_int_mol_nonzero(sys%read_in%coulomb_integrals, i, j, b, a, sys%basis%basis_fns)
+            hmatel%r = hmatel%r - get_two_body_int_mol_nonzero(sys%read_in%coulomb_integrals, i, j, b, a, &
+                                                              &sys%basis%basis_fns)
 
         if (perm) hmatel%r = -hmatel%r
 

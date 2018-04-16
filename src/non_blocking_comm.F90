@@ -57,7 +57,7 @@ implicit none
 
 contains
 
-    subroutine init_non_blocking_comm(qs, request, send_counts, ncycles, restart, restart_proj_est)
+    subroutine init_non_blocking_comm(qs, request, send_counts, ncycles, restart, restart_proj_est, complx, eval_opr)
 
         ! Deal with initial send of data when using non-blocking communications.
 
@@ -73,6 +73,7 @@ contains
         !    restart: doing a restart calculation or not.
         !    restart_proj_est: true if the projected estimator quantities were saved or re-estimated
         !        based on the restarted particle distribution.
+        !    complx(optional): if the system is complex.
 
         use const, only: p
         use parallel, only: iproc, nthreads, parent
@@ -84,10 +85,16 @@ contains
         integer, intent(out) :: request(0:), send_counts(0:)
         integer, intent(in) :: ncycles
         logical, intent(in) :: restart, restart_proj_est
+        logical, intent(in), optional :: complx, eval_opr(2)
 
-        integer :: start, nspawn
+        integer :: start, nspawn, nenergy
 
         send_counts = 0
+        if (present(complx) .and. complx) then
+            nenergy = (qs%psip_list%nspaces + 1)/2
+        else
+            nenergy = qs%psip_list%nspaces
+        end if
 
         if (restart) then
             associate(spawn=>qs%spawn_store%spawn, restart_list=>qs%spawn_store%spawn_recv)
@@ -110,17 +117,19 @@ contains
             qs%estimators%D0_population = 0.0_p
             qs%estimators%proj_energy = 0.0_p
         end if
-        qs%estimators%D0_population = qs%estimators%D0_population*ncycles
-        qs%estimators%proj_energy = qs%estimators%proj_energy*ncycles
+        qs%estimators(1:nenergy)%D0_population = qs%estimators(1:nenergy)%D0_population*ncycles
+        qs%estimators(1:nenergy)%proj_energy   = qs%estimators(1:nenergy)%proj_energy*ncycles
         associate(spawn_elsewhere=>send_counts(iproc)/qs%spawn_store%spawn_recv%element_len)
-            call local_energy_estimators(qs, qs%par_info%report_comm%rep_info, spawn_elsewhere=spawn_elsewhere)
+            call local_energy_estimators(qs, qs%par_info%report_comm%rep_info, spawn_elsewhere=spawn_elsewhere, &
+                                         comp=complx, eval_opr=eval_opr)
         end associate
         call update_energy_estimators_send(qs%par_info%report_comm)
 
     end subroutine init_non_blocking_comm
 
     subroutine end_non_blocking_comm(sys, rng, qmc_in, annihilation_flags, ireport, qs, spawn, request_s, &
-                                     request_rep, report_time, ntot_particles, shift, dump_restart_file, load_bal_in)
+                                     request_rep, report_time, ntot_particles, shift, dump_restart_file, load_bal_in, &
+                                     eval_opr)
 
         ! Subroutine dealing with the last iteration when using non-blocking communications.
 
@@ -177,6 +186,7 @@ contains
         real(p), intent(inout) :: shift
         logical, intent(in) :: dump_restart_file
         type(load_bal_in_t), intent(in) :: load_bal_in
+        logical, intent(in), optional :: eval_opr(2)
 
         real :: curr_time
         real(p) :: shift_save
@@ -194,8 +204,10 @@ contains
         ntot_particles_save = ntot_particles
         shift_save = shift
         call update_energy_estimators_recv(qmc_in, qs, qs%psip_list%nspaces, request_rep, ntot_particles, &
-                                           qs%psip_list%nparticles_proc, load_bal_in)
-        if (parent) call write_qmc_report(qmc_in, qs, ireport, ntot_particles, curr_time-report_time, .false., .true.)
+                                           qs%psip_list%nparticles_proc, load_bal_in, &
+                                           comp=sys%read_in%comp, eval_opr=eval_opr)
+        if (parent) call write_qmc_report(qmc_in, qs, ireport, ntot_particles, curr_time-report_time, .false., .true.,&
+                                          cmplx_est=sys%read_in%comp, eval_opr=eval_opr)
         ! The call to update_energy_estimators updates the shift and ntot_particles.
         ! When restarting a calculation we actually need the old (before the call)
         ! values of these quantites to be written to the restart file, so reset

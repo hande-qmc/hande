@@ -377,7 +377,7 @@ contains
 
     end subroutine stochastic_death_attempt
 
-    subroutine stochastic_ccmc_death_nc(rng, linked_ccmc,  sys, qs, isD0, dfock, Hii, proj_energy, population, &
+    subroutine stochastic_ccmc_death_nc(rng, linked_ccmc, sys, qs, isD0, dfock, Hii, proj_energy, population, &
                                         tot_population, ndeath, logging_info)
 
         ! Attempt to 'die' (ie create an excip on the current excitor, cdet%f)

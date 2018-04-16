@@ -132,7 +132,7 @@ contains
 
     end subroutine end_one_body_t
 
-    subroutine init_two_body_t(sys, op_sym, imag, store)
+    subroutine init_two_body_t(sys, op_sym, imag, store, is_sc)
 
         ! Allocate memory required for the integrals involving a two-body
         ! operator.
@@ -146,6 +146,7 @@ contains
         !       of a point group.  See point_group_symmetry.
         !    imag: whether integral store contains imaginary component of complex
         !       integrals.
+        !    opr_kind: if it is a SC gap operator, see read_in.F90.
         ! Out:
         !    store: two-body integral store with components allocated to hold
         !       interals.  Note that the integral store is *not* zeroed.
@@ -159,11 +160,15 @@ contains
         integer, intent(in) :: op_sym
         type(sys_t), intent(in) :: sys
         type(two_body_t), intent(out) :: store
+        logical, intent(in), optional :: is_sc
 
         integer :: ierr, ispin, nspin, mem_reqd, iunit
         integer(int_64):: npairs, nintgrls
+        logical :: is_sc_set
 
         iunit = 6
+        is_sc_set = .false.
+        if (present(is_sc)) is_sc_set = is_sc
 
         store%op_sym = op_sym
         store%uhf = sys%read_in%uhf
@@ -208,9 +213,13 @@ contains
             mem_reqd = int((nintgrls*8*nspin)/10**6)
 #endif
             if (store%comp) mem_reqd = 2 * mem_reqd
-            write(iunit,'(1X,a,i0)') 'Memory required for all two body integrals (MB) on each processor: ', &
-                            mem_reqd
-            write(iunit,'(1X, a,/)') 'It is left to the user to ensure that this does not exceed available resources.'
+            if (.not.is_sc_set) then
+                write(iunit,'(1X,a,i0)') 'Memory required for two body Hamiltonian (MB) on each processor: ', mem_reqd
+                write(iunit,'(1X, a,/)') 'It is left to the user to ensure that this does not exceed resource limits.'
+            else
+                write(iunit,'(1X,a,i0,/)') 'Additional memory required by 2-body part of SC Gap (MB) on &
+                                           &each processor: ', mem_reqd
+            end if
         end if
 
         do ispin = 1, nspin

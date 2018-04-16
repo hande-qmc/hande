@@ -423,7 +423,7 @@ module hdf5_system
             use basis_types, only: init_basis_strings, print_basis_metadata
             use determinants, only: init_determinants
             use excitations, only: init_excitations
-            use read_in_system, only: read_in_one_body
+            ! use read_in_system, only: read_in_one_body [TODO]
             use molecular_integrals, only: init_one_body_t, init_two_body_t, broadcast_one_body_t, broadcast_two_body_t
             use momentum_sym_read_in, only: init_read_in_momentum_symmetry
 
@@ -719,9 +719,9 @@ module hdf5_system
                         sp_fcidump_rank(i) = i
                     end do
                 end if
-                call read_in_one_body(sys%read_in%dipole_int_file, sys, &
-                                      sp_fcidump_rank, sys%nel, &
-                                      sys%read_in%one_body_op_integrals, sys%read_in%dipole_core)
+                ! call read_in_one_body(sys%read_in%dipole_int_file, sys, &
+                !                       sp_fcidump_rank, sys%nel, &
+                !                       sys%read_in%one_body_op_integrals, sys%read_in%dipole_core)
                 deallocate(sp_fcidump_rank, stat=ierr)
                 call check_deallocate('sp_fcidump_rank', ierr)
             end if

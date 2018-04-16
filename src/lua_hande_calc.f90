@@ -142,7 +142,8 @@ contains
 
         calc_type = mc_hilbert_space
         call init_output_unit(output_in, sys, io_unit)
-        call estimate_hilbert_space(sys, truncation_level, nattempts, ncycles, ref_det, rng_seed, io_unit, hs_mean, hs_se)
+        call estimate_hilbert_space(sys, truncation_level, nattempts, ncycles, ref_det, rng_seed, io_unit, hs_mean, &
+                                   &hs_se)
         call end_output_unit(output_in%out_filename, io_unit)
 
         nresult = 1
@@ -201,7 +202,8 @@ contains
         call get_sys_t(lua_state, sys)
 
         opts = aot_table_top(lua_state)
-        call read_canonical_args(lua_state, opts, fermi_temperature, beta, nattempts, ncycles, rng_seed, all_spin_sectors)
+        call read_canonical_args(lua_state, opts, fermi_temperature, beta, nattempts, ncycles, rng_seed, &
+                                &all_spin_sectors)
         call warn_unused_args(lua_state, keys, opts)
         call aot_table_close(lua_state, opts)
 
@@ -266,7 +268,8 @@ contains
 
         integer :: opts, err
         real :: t1, t2
-        character(12), parameter :: keys(6) = [character(12) :: 'sys', 'qmc', 'restart', 'reference', 'sparse', 'qmc_state']
+        character(12), parameter :: keys(6) = [character(12) :: &
+            'sys', 'qmc', 'restart', 'reference', 'sparse', 'qmc_state']
 
         call cpu_time(t1)
 
@@ -290,7 +293,8 @@ contains
         calc_type = simple_fciqmc_calc + fciqmc_calc
         allocate(qmc_state_out)
         if (have_qmc_state) then
-            call do_simple_fciqmc(sys, qmc_in, restart_in, reference, use_sparse_hamil, qmc_state_out, qmc_state_restart)
+            call do_simple_fciqmc(sys, qmc_in, restart_in, reference, use_sparse_hamil, qmc_state_out, &
+                                 &qmc_state_restart)
         else
             call do_simple_fciqmc(sys, qmc_in, restart_in, reference, use_sparse_hamil, qmc_state_out)
         end if
@@ -366,9 +370,9 @@ contains
 
         integer :: opts, io_unit
         real :: t1, t2
-        character(10), parameter :: keys(11) = [character(10) :: 'sys', 'qmc', 'fciqmc', 'semi_stoch', 'restart', &
-                                                                'load_bal', 'reference', 'qmc_state', 'logging', &
-                                                                'output', 'blocking']
+        character(10), parameter :: keys(11) = [character(10) :: &
+            'sys', 'qmc', 'fciqmc', 'semi_stoch', 'restart', 'load_bal', 'reference', 'qmc_state', &
+            'logging', 'output', 'blocking']
 
         call cpu_time(t1)
 
@@ -404,11 +408,11 @@ contains
         if (sys%aufbau_sym) call set_symmetry_aufbau(sys, io_unit)
 
         if (have_restart_state) then
-            call do_fciqmc(sys, qmc_in, fciqmc_in, semi_stoch_in, restart_in, load_bal_in, io_unit, reference, logging_in, &
-                           blocking_in, qmc_state_out, qmc_state_restart)
+            call do_fciqmc(sys, qmc_in, fciqmc_in, semi_stoch_in, restart_in, load_bal_in, io_unit, reference, &
+                          &logging_in, blocking_in, qmc_state_out, qmc_state_restart)
         else
-            call do_fciqmc(sys, qmc_in, fciqmc_in, semi_stoch_in, restart_in, load_bal_in, io_unit, reference, logging_in, &
-                           blocking_in, qmc_state_out)
+            call do_fciqmc(sys, qmc_in, fciqmc_in, semi_stoch_in, restart_in, load_bal_in, io_unit, reference, &
+                          &logging_in, blocking_in, qmc_state_out)
         end if
 
         call end_output_unit(output_in%out_filename, io_unit)
@@ -483,8 +487,8 @@ contains
         logical :: have_restart_state
         integer :: opts, io_unit
         real :: t1, t2
-        character(10), parameter :: keys(9) = [character(10) :: 'sys', 'qmc', 'ccmc', 'restart', 'reference', 'qmc_state', &
-                                                                'logging', 'output', 'blocking']
+        character(10), parameter :: keys(9) = [character(10) :: &
+            'sys', 'qmc', 'ccmc', 'restart', 'reference', 'qmc_state', 'logging', 'output', 'blocking']
 
         call cpu_time(t1)
 
@@ -529,11 +533,11 @@ contains
         if (sys%aufbau_sym) call set_symmetry_aufbau(sys, io_unit)
 
         if (have_restart_state) then
-            call do_ccmc(sys, qmc_in, ccmc_in, semi_stoch_in, restart_in, load_bal_in, reference, logging_in, blocking_in, &
-                            io_unit, qmc_state_out, qmc_state_restart)
+            call do_ccmc(sys, qmc_in, ccmc_in, semi_stoch_in, restart_in, load_bal_in, reference, logging_in, &
+                        &blocking_in, io_unit, qmc_state_out, qmc_state_restart)
         else
-            call do_ccmc(sys, qmc_in, ccmc_in, semi_stoch_in, restart_in, load_bal_in, reference, logging_in, blocking_in, &
-                            io_unit, qmc_state_out)
+            call do_ccmc(sys, qmc_in, ccmc_in, semi_stoch_in, restart_in, load_bal_in, reference, logging_in, &
+                        &blocking_in, io_unit, qmc_state_out)
         end if
 
         ! Reset bit string length for reuse.
@@ -613,8 +617,8 @@ contains
         integer :: opts, ierr
         real :: t1, t2
         real(p), allocatable :: sampling_probs(:)
-        character(10), parameter :: keys(9) = [character(10) :: 'sys', 'qmc', 'dmqmc', 'ipdmqmc', 'operators', 'rdm', &
-                                                                'restart', 'reference', 'qmc_state']
+        character(10), parameter :: keys(9) = [character(10) :: &
+            'sys', 'qmc', 'dmqmc', 'ipdmqmc', 'operators', 'rdm', 'restart', 'reference', 'qmc_state']
 
         call cpu_time(t1)
 
@@ -661,7 +665,8 @@ contains
             call do_dmqmc(sys, qmc_in, dmqmc_in, dmqmc_estimates, restart_in, load_bal_in, reference, qmc_state_out, &
                           sampling_probs, qmc_state_restart)
         else
-            call do_dmqmc(sys, qmc_in, dmqmc_in, dmqmc_estimates, restart_in, load_bal_in, reference, qmc_state_out, sampling_probs)
+            call do_dmqmc(sys, qmc_in, dmqmc_in, dmqmc_estimates, restart_in, load_bal_in, reference, qmc_state_out, &
+                          sampling_probs)
         end if
 
         sys%basis%tensor_label_len = sys%basis%tot_string_len
@@ -729,9 +734,9 @@ contains
         integer :: fci_table, err, fci_nrdms
         integer, allocatable :: err_arr(:)
 
-        character(18), parameter :: fci_keys(9) = [character(18) :: 'write_hamiltonian', 'hamiltonian_file', &
-                                                                    'write_determinants', 'determinant_file', 'write_nwfns', &
-                                                                    'wfn_file', 'nanalyse', 'blacs_block_size', 'rdm']
+        character(18), parameter :: fci_keys(9) = [character(18) :: &
+            'write_hamiltonian', 'hamiltonian_file', 'write_determinants', 'determinant_file', 'write_nwfns', &
+            'wfn_file', 'nanalyse', 'blacs_block_size', 'rdm']
         character(6), parameter :: lanczos_keys(4) = [character(6) :: 'neigv', 'nbasis', 'direct', 'sparse']
 
         if (aot_exists(lua_state, opts, 'fci')) then
@@ -753,7 +758,8 @@ contains
                 fci_nrdms = 1
                 allocate(fci_in%subsys_info(fci_nrdms), stat=err)
                 call check_allocate('fci_in%subsys_info', fci_nrdms, err)
-                call aot_get_val(fci_in%subsys_info(fci_nrdms)%subsystem_A, err_arr, basis%nbasis, lua_state, fci_table, 'rdm')
+                call aot_get_val(fci_in%subsys_info(fci_nrdms)%subsystem_A, err_arr, basis%nbasis, lua_state, &
+                                &fci_table, 'rdm')
                 fci_in%subsys_info(fci_nrdms)%A_nsites = size(fci_in%subsys_info(fci_nrdms)%subsystem_A)
             end if
 
@@ -808,7 +814,8 @@ contains
 
         integer :: hilbert_table, err
         integer, allocatable :: err_arr(:)
-        character(10), parameter :: keys(6) = [character(10) :: 'sys', 'nattempts', 'ncycles', 'ex_level', 'reference', 'rng_seed']
+        character(10), parameter :: keys(6) = [character(10) :: &
+            'sys', 'nattempts', 'ncycles', 'ex_level', 'reference', 'rng_seed']
 
         if (.not. aot_exists(lua_state, opts, 'hilbert') .and. parent) &
             call stop_all('read_hilbert_args','"hilbert" table not present.')
@@ -826,7 +833,8 @@ contains
 
     end subroutine read_hilbert_args
 
-    subroutine read_canonical_args(lua_state, opts, fermi_temperature, beta, nattempts, ncycles, rng_seed, all_spin_sectors)
+    subroutine read_canonical_args(lua_state, opts, fermi_temperature, beta, nattempts, ncycles, rng_seed, &
+                                  &all_spin_sectors)
 
         ! In/Out:
         !    lua_state: flu/Lua state to which the HANDE API is added.
@@ -857,24 +865,27 @@ contains
         real(p), intent(out) :: beta
 
         integer :: canonical_estimates_table, err
-        character(17), parameter :: keys(6) = [character(17) :: 'nattempts', 'ncycles', 'beta', &
-                                                                'fermi_temperature', 'rng_seed', 'all_spin_sectors']
+        character(17), parameter :: keys(6) = [character(17) :: &
+            'nattempts', 'ncycles', 'beta', 'fermi_temperature', 'rng_seed', 'all_spin_sectors']
 
         if (.not. aot_exists(lua_state, opts, 'canonical_estimates') .and. parent) &
             call stop_all('read_canonical_args','"canonical_estimates" table not present.')
         call aot_table_open(lua_state, opts, canonical_estimates_table, 'canonical_estimates')
 
         call aot_get_val(nattempts, err, lua_state, canonical_estimates_table, 'nattempts')
-        if (err /= 0 .and. parent) call stop_all('read_canonical_args', 'nattempts: Number of attempts/cycle not supplied.')
+        if (err /= 0 .and. parent) call stop_all('read_canonical_args', &
+                                                &'nattempts: Number of attempts/cycle not supplied.')
         call aot_get_val(ncycles, err, lua_state, canonical_estimates_table, 'ncycles')
         if (err /= 0 .and. parent) call stop_all('read_canonical_args', 'ncycles: Number of cycles not supplied.')
 
         call aot_get_val(beta, err, lua_state, canonical_estimates_table, 'beta')
         if (err /= 0 .and. parent) call stop_all('read_canonical_args', 'beta: target temperature not supplied.')
-        call aot_get_val(fermi_temperature, err, lua_state, canonical_estimates_table, 'fermi_temperature', default=.false.)
+        call aot_get_val(fermi_temperature, err, lua_state, canonical_estimates_table, 'fermi_temperature', &
+                        &default=.false.)
 
         call get_rng_seed(lua_state, canonical_estimates_table, rng_seed)
-        call aot_get_val(all_spin_sectors, err, lua_state, canonical_estimates_table, 'all_spin_sectors', default=.false.)
+        call aot_get_val(all_spin_sectors, err, lua_state, canonical_estimates_table, 'all_spin_sectors', &
+                        &default=.false.)
 
         call warn_unused_args(lua_state, keys, canonical_estimates_table)
         call aot_table_close(lua_state, canonical_estimates_table)
@@ -936,15 +947,12 @@ contains
         character(len=10) :: str
         logical :: skip, no_renorm
 
-        character(23), parameter :: keys(27) = [character(23) :: 'tau', 'init_pop', 'mc_cycles', 'nreports', 'state_size', &
-                                                                 'spawned_state_size', 'rng_seed', 'target_population', &
-                                                                 'real_amplitudes', 'spawn_cutoff', 'no_renorm', 'tau_search', &
-                                                                 'real_amplitude_force_32', &
-                                                                 'pattempt_single', 'pattempt_double', 'initial_shift', &
-                                                                 'shift_damping', 'initiator', 'initiator_threshold', &
-                                                                 'use_mpi_barriers', 'vary_shift_from', &
-                                                                 'excit_gen', 'reference_target', 'vary_shift', &
-                                                                 'quasi_newton','quasi_newton_threshold', 'quasi_newton_value']
+        character(23), parameter :: keys(27) = [character(23) :: &
+            'tau', 'init_pop', 'mc_cycles', 'nreports', 'state_size', 'spawned_state_size', 'rng_seed', &
+            'target_population', 'real_amplitudes', 'spawn_cutoff', 'no_renorm', 'tau_search', &
+            'real_amplitude_force_32', 'pattempt_single', 'pattempt_double', 'initial_shift', 'shift_damping', &
+            'initiator', 'initiator_threshold', 'use_mpi_barriers', 'vary_shift_from', 'excit_gen', 'reference_target',&
+            'vary_shift', 'quasi_newton','quasi_newton_threshold', 'quasi_newton_value']
 
         if (present(short)) then
             skip = short
@@ -952,7 +960,8 @@ contains
             skip = .false.
         end if
 
-        if (.not. aot_exists(lua_state, opts, 'qmc') .and. parent) call stop_all('read_qmc_in','"qmc" table not present.')
+        if (.not. aot_exists(lua_state, opts, 'qmc') .and. parent) &
+            call stop_all('read_qmc_in','"qmc" table not present.')
 
         call aot_table_open(lua_state, opts, qmc_table, 'qmc')
 
@@ -1062,6 +1071,8 @@ contains
         !     }
         !     quadrature_initiator = true/false,
         !     replica_tricks = true/false,
+        !     estimate_dipole = true/false,
+        !     estimate_sc = true/false,
         ! }
 
         ! In/Out:
@@ -1086,10 +1097,10 @@ contains
         integer :: fciqmc_table, ref_det, err
         character(len=12) :: str
         logical :: ref_det_flag
-        character(31), parameter :: keys(8) = [character(31) :: 'non_blocking_comm', 'load_balancing', 'guiding_function', &
-                                                                'init_spin_inverse_reference_det', 'trial_function', &
-                                                                'select_reference_det', 'quadrature_initiator', &
-                                                                'replica_tricks']
+        character(31), parameter :: keys(8) = [character(31) :: &
+            'non_blocking_comm', 'load_balancing', 'guiding_function', 'init_spin_inverse_reference_det', &
+            'trial_function', 'select_reference_det', 'quadrature_initiator', 'replica_tricks']
+            ! [todo] complete disabled operators: { 'estimate_dipole', 'estimate_sc' }
 
         if (aot_exists(lua_state, opts, 'fciqmc')) then
 
@@ -1098,19 +1109,24 @@ contains
             ! Optional arguments (defaults set in derived type).
             call aot_get_val(fciqmc_in%non_blocking_comm, err, lua_state, fciqmc_table, 'non_blocking_comm')
             call aot_get_val(fciqmc_in%doing_load_balancing, err, lua_state, fciqmc_table, 'load_balancing')
-            call aot_get_val(fciqmc_in%init_spin_inv_D0, err, lua_state, fciqmc_table, 'init_spin_inverse_reference_det')
+            call aot_get_val(fciqmc_in%init_spin_inv_D0, err, lua_state, fciqmc_table, &
+                            'init_spin_inverse_reference_det')
             call aot_get_val(fciqmc_in%quadrature_initiator, err, lua_state, fciqmc_table, 'quadrature_initiator')
             call aot_get_val(fciqmc_in%replica_tricks, err, lua_state, fciqmc_table, 'replica_tricks')
+            ! call aot_get_val(fciqmc_in%estimate_dipole, err, lua_state, fciqmc_table, 'estimate_dipole')
+            ! call aot_get_val(fciqmc_in%estimate_sc, err, lua_state, fciqmc_table, 'estimate_sc')
 
             ! Optional arguments requiring special care.
             if (aot_exists(lua_state, fciqmc_table, 'select_reference_det')) then
                 call aot_table_open(lua_state, fciqmc_table, ref_det, 'select_reference_det')
                 if (ref_det == 0) then
                     ! Just passed a boolean (hopefully).
-                    call aot_get_val(ref_det_flag, err, lua_state, fciqmc_table, 'select_reference_det', default=.false.)
+                    call aot_get_val(ref_det_flag, err, lua_state, fciqmc_table, 'select_reference_det', &
+                                    &default=.false.)
                     if (ref_det_flag) fciqmc_in%select_ref_det_every_nreports = 20
                 else
-                    call aot_get_val(fciqmc_in%select_ref_det_every_nreports, err, lua_state, ref_det, 'update_every', default=20)
+                    call aot_get_val(fciqmc_in%select_ref_det_every_nreports, err, lua_state, ref_det, 'update_every', &
+                                    &default=20)
                     call aot_get_val(fciqmc_in%ref_det_factor, err, lua_state, ref_det, 'pop_factor')
                     call aot_table_close(lua_state, ref_det)
                 end if
@@ -1188,9 +1204,9 @@ contains
         integer :: semi_stoch_table, err
         character(len=10) :: str
         logical :: separate_annihilation
-        character(21), parameter :: keys(9) = [character(21) :: 'space', 'size', 'start_iteration', 'separate_annihilation', &
-                                                                'shift_start_iteration', 'write_determ_space', 'write', 'read', &
-                                                                'ci_space']
+        character(21), parameter :: keys(9) = [character(21) :: &
+            'space', 'size', 'start_iteration', 'separate_annihilation', 'shift_start_iteration', 'write_determ_space',&
+            'write', 'read', 'ci_space']
 
         if (aot_exists(lua_state, opts, 'semi_stoch')) then
 
@@ -1213,7 +1229,8 @@ contains
                     if (err /= 0 .and. parent) call stop_all('read_semi_stoch_in', 'Target space size not given.')
                 case('ci')
                     semi_stoch_in%space_type = ci_determ_space
-                    call read_reference_t(lua_state, semi_stoch_table, semi_stoch_in%ci_space, ref_table_name='ci_space')
+                    call read_reference_t(lua_state, semi_stoch_table, semi_stoch_in%ci_space, &
+                                         &ref_table_name='ci_space')
                     if (semi_stoch_in%ci_space%ex_level < 0) &
                         call stop_all('read_semi_stoch_in', 'Max excitation level not given for ci_space')
                 case default
@@ -1225,9 +1242,11 @@ contains
 
             ! Optional arguments (defaults set in derived type).
             call aot_get_val(semi_stoch_in%start_iter, err, lua_state, semi_stoch_table, 'start_iteration')
-            call aot_get_val(separate_annihilation, err, lua_state, semi_stoch_table, 'separate_annihilation', default=.true.)
+            call aot_get_val(separate_annihilation, err, lua_state, semi_stoch_table, 'separate_annihilation', &
+                            &default=.true.)
             call aot_get_val(semi_stoch_in%read_id, err, lua_state, semi_stoch_table, 'read')
-            call get_flag_and_id(lua_state, semi_stoch_table, semi_stoch_in%write_determ_space, semi_stoch_in%write_id, 'write')
+            call get_flag_and_id(lua_state, semi_stoch_table, semi_stoch_in%write_determ_space, semi_stoch_in%write_id,&
+                                'write')
             if (separate_annihilation) then
                 semi_stoch_in%projection_mode = semi_stoch_separate_annihilation
             else
@@ -1236,8 +1255,10 @@ contains
 
             ! Optional arguments requiring special care.
             if (aot_exists(lua_state, semi_stoch_table, 'write_determ_space')) then
-                call aot_get_val(semi_stoch_in%write_determ_space, err, lua_state, semi_stoch_table, 'write_determ_space')
-                if (parent) call warning('read_semi_stoch_in', 'write_determ_space is deprecated.  Please use write instead.')
+                call aot_get_val(semi_stoch_in%write_determ_space, err, lua_state, semi_stoch_table, &
+                                'write_determ_space')
+                if (parent) call warning('read_semi_stoch_in', 'write_determ_space is deprecated. &
+                                        & Please use write instead.')
             end if
             if (aot_exists(lua_state, semi_stoch_table, 'shift_start_iteration')) then
                 semi_stoch_in%start_iter = huge(0) ! fixed up once the shift comes on...
@@ -1285,9 +1306,9 @@ contains
         type(ccmc_in_t), intent(out) :: ccmc_in
 
         integer :: ccmc_table, err
-        character(28), parameter :: keys(8) = [character(28) :: 'move_frequency', 'cluster_multispawn_threshold', &
-                                                                'full_non_composite', 'linked', 'vary_shift_reference', &
-                                                                'density_matrices', 'density_matrix_file', 'even_selection']
+        character(28), parameter :: keys(8) = [character(28) :: &
+            'move_frequency', 'cluster_multispawn_threshold', 'full_non_composite', 'linked', 'vary_shift_reference', &
+            'density_matrices', 'density_matrix_file', 'even_selection']
 
         if (aot_exists(lua_state, opts, 'ccmc')) then
 
@@ -1295,7 +1316,8 @@ contains
 
             ! Optional arguments (defaults set in derived type).
             call aot_get_val(ccmc_in%move_freq, err, lua_state, ccmc_table, 'move_frequency')
-            call aot_get_val(ccmc_in%cluster_multispawn_threshold, err, lua_state, ccmc_table, 'cluster_multispawn_threshold')
+            call aot_get_val(ccmc_in%cluster_multispawn_threshold, err, lua_state, ccmc_table, &
+                            'cluster_multispawn_threshold')
             call aot_get_val(ccmc_in%full_nc, err, lua_state, ccmc_table, 'full_non_composite')
             call aot_get_val(ccmc_in%linked, err, lua_state, ccmc_table, 'linked')
             call aot_get_val(ccmc_in%vary_shift_reference, err, lua_state, ccmc_table, 'vary_shift_reference')
@@ -1395,20 +1417,19 @@ contains
         logical :: op
         character(len=13) :: str
 
-        character(30), parameter :: dmqmc_keys(11) = [character(30) :: 'replica_tricks', 'fermi_temperature', 'all_sym_sectors', &
-                                                                      'all_spin_sectors', 'beta_loops', 'sampling_weights',      &
-                                                                      'find_weights', 'find_weights_start', 'symmetrize',        &
-                                                                      'vary_weights', 'initiator_level']
-        character(30), parameter :: ip_keys(6)    = [character(30) :: 'target_beta', 'initial_beta', 'initial_matrix',           &
-                                                                      'grand_canonical_initialisation', 'metropolis_attempts',   &
-                                                                      'symmetric']
-        character(30), parameter :: op_keys(12)    = [character(30) :: 'renyi2', 'energy', 'energy2', 'staggered_magnetisation',  &
-                                                                       'correlation', 'excit_dist', 'kinetic_energy',             &
-                                                                       'H0_energy', 'potential_energy', 'HI_energy', 'mom_dist',  &
-                                                                       'structure_factor']
-        character(30), parameter :: rdm_keys(9)   = [character(30) :: 'spawned_state_size', 'rdms', 'ground_state',              &
-                                                                      'ground_state_start', 'instantaneous', 'write',              &
-                                                                      'concurrence', 'von_neumann', 'renyi2']
+        character(30), parameter :: dmqmc_keys(11) = [character(30) :: &
+            'replica_tricks', 'fermi_temperature', 'all_sym_sectors', 'all_spin_sectors', 'beta_loops', &
+            'sampling_weights', 'find_weights', 'find_weights_start', 'symmetrize', 'vary_weights', 'initiator_level']
+        character(30), parameter :: ip_keys(6) = [character(30) :: &
+            'target_beta', 'initial_beta', 'initial_matrix', 'grand_canonical_initialisation', 'metropolis_attempts', &
+            'symmetric']
+        character(30), parameter :: op_keys(12) = [character(30) :: &
+            'renyi2', 'energy', 'energy2', 'staggered_magnetisation', 'correlation', 'excit_dist', 'kinetic_energy', &
+            'H0_energy', 'potential_energy', 'HI_energy', 'mom_dist', 'structure_factor']
+            ! [todo] complete custom operators: { 'dipole', 'sc' }
+        character(30), parameter :: rdm_keys(9) = [character(30) :: &
+            'spawned_state_size', 'rdms', 'ground_state', 'ground_state_start', 'instantaneous', 'write', &
+            'concurrence', 'von_neumann', 'renyi2']
 
         dmqmc_calc_type = 0
 
@@ -1447,7 +1468,8 @@ contains
             call aot_table_open(lua_state, opts, table, 'ipdmqmc')
             if (aot_exists(lua_state, table, 'initial_beta')) then
                 call aot_get_val(dmqmc_in%target_beta, err, lua_state, table, 'initial_beta')
-                if (parent) call warning('read_dmqmc_in', 'initial_beta is deprecated.  Please use target_beta instead.')
+                if (parent) call warning('read_dmqmc_in', &
+                                        &'initial_beta is deprecated.  Please use target_beta instead.')
             end if
             call aot_get_val(dmqmc_in%target_beta, err, lua_state, table, 'target_beta')
             if (aot_exists(lua_state, table, 'initial_matrix')) then
@@ -1462,7 +1484,8 @@ contains
                 end select
             end if
             call aot_get_val(dmqmc_in%symmetric, err, lua_state, table, 'symmetric', default=.true.)
-            call aot_get_val(dmqmc_in%grand_canonical_initialisation, err, lua_state, table, 'grand_canonical_initialisation')
+            call aot_get_val(dmqmc_in%grand_canonical_initialisation, err, lua_state, table, &
+                            'grand_canonical_initialisation')
             call aot_get_val(dmqmc_in%metropolis_attempts, err, lua_state, table, 'metropolis_attempts')
             call warn_unused_args(lua_state, ip_keys, table)
             call aot_table_close(lua_state, table)
@@ -1486,6 +1509,10 @@ contains
             if (op) dmqmc_calc_type = dmqmc_calc_type + dmqmc_potential_energy
             call aot_get_val(op, err, lua_state, table, 'HI_energy', default=.false.)
             if (op) dmqmc_calc_type = dmqmc_calc_type + dmqmc_HI_energy
+            ! call aot_get_val(op, err, lua_state, table, 'dipole', default=.false.)
+            ! if (op) dmqmc_calc_type = dmqmc_calc_type + dmqmc_dipole
+            ! call aot_get_val(op, err, lua_state, table, 'sc', default=.false.)
+            ! if (op) dmqmc_calc_type = dmqmc_calc_type + dmqmc_SC_gap
             if (aot_exists(lua_state, table, 'correlation')) then
                 dmqmc_calc_type = dmqmc_calc_type + dmqmc_correlation
                 call aot_get_val(dmqmc_in%correlation_sites, err_arr, nbasis, lua_state, table, 'correlation')
@@ -1543,8 +1570,8 @@ contains
             dmqmc_in%rdm%nrdms = 0
         end if
         ! Can't average over spin sectors alone in normal dmqmc calculation.
-        if (dmqmc_in%all_spin_sectors .and. .not. dmqmc_in%all_sym_sectors .and. system_name /= heisenberg .and. parent) &
-                                            & call stop_all('read_dmqmc_in', 'specified symmetry averaging not imlemented')
+        if (dmqmc_in%all_spin_sectors .and. .not.dmqmc_in%all_sym_sectors .and. system_name /= heisenberg .and. parent)&
+            call stop_all('read_dmqmc_in', 'specified symmetry averaging not imlemented')
 
     end subroutine read_dmqmc_in
 
@@ -1721,7 +1748,8 @@ contains
             associate(r_in=>restart_in)
                 call get_flag_and_id(lua_state, restart_table, r_in%read_restart, r_in%read_id, 'read')
                 call get_flag_and_id(lua_state, restart_table, r_in%write_restart, r_in%write_id, 'write')
-                call get_flag_and_id(lua_state, restart_table, r_in%write_restart_shift, r_in%write_shift_id, 'write_shift')
+                call get_flag_and_id(lua_state, restart_table, r_in%write_restart_shift, r_in%write_shift_id, &
+                                    'write_shift')
             end associate
 
             call warn_unused_args(lua_state, keys, restart_table)
@@ -1818,39 +1846,27 @@ contains
         type(blocking_in_t), intent(out) :: blocking_in
 
         integer :: err, blocking_table
-        character(24),parameter :: keys(10) = [character(24) ::  'blocking_on_the_fly', 'start_save_frequency',   &
-                                                                'start_point_number', 'filename', 'start_point', &
-                                                                'error_limit', 'blocks_used', 'min_blocks_used', &
-                                                                'auto_shift_damping', 'shift_damping_precision']
+        character(24),parameter :: keys(10) = [character(24) ::  &
+            'blocking_on_the_fly', 'start_save_frequency', 'start_point_number', 'filename', 'start_point', &
+            'error_limit', 'blocks_used', 'min_blocks_used', 'auto_shift_damping', 'shift_damping_precision']
 
         if (aot_exists(lua_state, opts, 'blocking')) then
 
             call aot_table_open(lua_state, opts, blocking_table, 'blocking')
-
             call aot_get_val(blocking_in%blocking_on_the_fly, err, lua_state, blocking_table, 'blocking_on_the_fly')
-
             call aot_get_val(blocking_in%start_save_frequency, err, lua_state, blocking_table, 'start_save_frequency')
-
             call aot_get_val(blocking_in%start_point_number, err, lua_state, blocking_table, 'start_point_number')
-
             call aot_get_val(blocking_in%filename, err, lua_state, blocking_table, 'filename')
-
             call aot_get_val(blocking_in%start_point, err, lua_state, blocking_table, 'start_point')
-
             call aot_get_val(blocking_in%error_limit, err, lua_state, blocking_table, 'error_limit')
-
             call aot_get_val(blocking_in%blocks_used, err, lua_state, blocking_table, 'blocks_used')
-
             call aot_get_val(blocking_in%min_blocks_used, err, lua_state, blocking_table, 'min_blocks_used')
-
             call aot_get_val(blocking_in%auto_shift_damping, err, lua_state, blocking_table, 'auto_shift_damping')
-
-            call aot_get_val(blocking_in%shift_damping_precision, err, lua_state, blocking_table, 'shift_damping_precision')
-
-            call aot_get_val(blocking_in%force_shift_damping_opt, err, lua_state, blocking_table, 'force_shift_damping_opt')
-
+            call aot_get_val(blocking_in%shift_damping_precision, err, lua_state, blocking_table, &
+                            &'shift_damping_precision')
+            call aot_get_val(blocking_in%force_shift_damping_opt, err, lua_state, blocking_table, &
+                            &'force_shift_damping_opt')
             call warn_unused_args(lua_state, keys, blocking_table)
-
             call aot_table_close(lua_state, blocking_table)
 
         end if
@@ -1906,7 +1922,8 @@ contains
         !   qmc_state: the qmc_state object to return to lua
 
         use, intrinsic :: iso_c_binding, only: c_loc
-        use flu_binding, only: flu_State, flu_pushlightuserdata, flu_pushstring, flu_settable, flu_pushcclosure, fluL_setmetatable
+        use flu_binding, only: flu_State, flu_pushlightuserdata, flu_pushstring, flu_settable, flu_pushcclosure, &
+                               fluL_setmetatable
         use aot_table_ops_module, only: aot_table_open, aot_table_close
 
         use qmc_data, only: qmc_state_t
@@ -1918,7 +1935,7 @@ contains
 
         ! Create table to become qmc_state object
         call aot_table_open(lua_state, thandle=table)
-        
+
         ! Add qmc_state pointer as t.qmc_state
         call flu_pushstring(lua_state, "qmc_state")
         call flu_pushlightuserdata(lua_state, c_loc(qmc_state))
@@ -2018,29 +2035,21 @@ contains
         type(logging_in_t), intent(out) :: logging_in
         integer :: logging_table, err
 
-        character(15), parameter :: keys(7) = [character(15) :: 'calc', 'spawn', 'death', &
-                                                'stoch_selection', 'select', 'start', 'finish']
+        character(15), parameter :: keys(7) = [character(15) :: &
+            'calc', 'spawn', 'death', 'stoch_selection', 'select', 'start', 'finish']
 
         if (aot_exists(lua_state, opts, 'logging')) then
 
             if (debug) then
 
                 call aot_table_open(lua_state, opts, logging_table, 'logging')
-
                 call aot_get_val(logging_in%calc, err, lua_state, logging_table, 'calc')
-
                 call aot_get_val(logging_in%spawn, err, lua_state, logging_table, 'spawn')
-
                 call aot_get_val(logging_in%death, err, lua_state, logging_table, 'death')
-
                 call aot_get_val(logging_in%stoch_selection, err, lua_state, logging_table, 'stoch_selection')
-
                 call aot_get_val(logging_in%selection, err, lua_state, logging_table, 'select')
-
                 call aot_get_val(logging_in%start_iter, err, lua_state, logging_table, 'start')
-
                 call aot_get_val(logging_in%end_iter, err, lua_state, logging_table, 'finish')
-
                 call warn_unused_args(lua_state, keys, logging_table)
                 call aot_table_close(lua_state, logging_table)
 

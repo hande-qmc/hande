@@ -9,14 +9,21 @@ implicit none
 ! The following indicies are used to access components of DMQMC numerators.
 enum, bind(c)
     enumerator :: energy_ind = 1
+    enumerator :: energy_imag_ind
     enumerator :: energy_squared_ind
     enumerator :: correlation_fn_ind
     enumerator :: staggered_mag_ind
     enumerator :: full_r2_ind
     enumerator :: kinetic_ind
-    enumerator :: H0_ind
     enumerator :: potential_ind
+    enumerator :: H0_ind
     enumerator :: HI_ind
+    ! Expectation values of custom 1- and 2-body operators. Note that if the
+    ! calculation is real, only the first element is used.
+    enumerator :: dipole_ind
+    enumerator :: dipole_imag_ind
+    enumerator :: sc_ind
+    enumerator :: sc_imag_ind
     enumerator :: terminator ! unused except in num_dmqmc_operators
    ! NOTE: if you add a new estimator then you must insert it before terminator.
 end enum
@@ -438,7 +445,7 @@ contains
 
     subroutine operators_in_t_json(js, dmqmc, terminal)
 
-        ! serialise operators in json format.
+        ! Serialise operators in json format.
         ! options.
 
         ! in/out:
@@ -450,7 +457,7 @@ contains
         use json_out
         use calc, only: doing_dmqmc_calc, dmqmc_energy, dmqmc_energy_squared, dmqmc_correlation, &
                         dmqmc_staggered_magnetisation, dmqmc_rdm_r2, dmqmc_full_r2, dmqmc_kinetic_energy, &
-                        dmqmc_potential_energy, dmqmc_H0_energy, dmqmc_HI_energy
+                        dmqmc_potential_energy, dmqmc_H0_energy, dmqmc_HI_energy, dmqmc_dipole, dmqmc_SC_gap
 
         type(json_out_t), intent(inout) :: js
         type(dmqmc_in_t), intent(in) :: dmqmc
@@ -467,6 +474,8 @@ contains
         call json_write_key(js, 'staggered_mad_ind', doing_dmqmc_calc(dmqmc_staggered_magnetisation))
         call json_write_key(js, 'rdm_r2', doing_dmqmc_calc(dmqmc_rdm_r2))
         call json_write_key(js, 'full_r2', doing_dmqmc_calc(dmqmc_full_r2))
+        ! call json_write_key(js, 'dipole', doing_dmqmc_calc(dmqmc_dipole))
+        ! call json_write_key(js, 'sc', doing_dmqmc_calc(dmqmc_SC_gap))
         call json_write_key(js, 'mom_dist', dmqmc%calc_mom_dist, terminal=.true.)
         call json_object_end(js, terminal)
 

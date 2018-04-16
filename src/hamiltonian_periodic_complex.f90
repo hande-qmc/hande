@@ -47,29 +47,20 @@ contains
 
             select case(excitation%nexcit)
             ! Apply Slater--Condon rules.
-
             case(0)
-
                 ! < D | H | D > = \sum_i < i | h(i) | i > + \sum_i \sum_{j>i} < ij || ij >
                 hmatel%c = cmplx(slater_condon0_periodic_complex(sys, f1), 0.0_p, p)
-
             case(1)
-
                 ! < D | H | D_i^a > = < i | h(a) | a > + \sum_j < ij || aj >
                 call decode_det(sys%basis, f1, occ_list)
                 hmatel%c = slater_condon1_periodic_complex(sys, occ_list, excitation%from_orb(1), &
-                                            excitation%to_orb(1), excitation%perm)
-
+                                                          &excitation%to_orb(1), excitation%perm)
             case(2)
-
                 ! < D | H | D_{ij}^{ab} > = < ij || ab >
-
-                ! Two electron operator
                 hmatel%c = slater_condon2_periodic_complex(sys, excitation%from_orb(1), excitation%from_orb(2), &
-                                            & excitation%to_orb(1), excitation%to_orb(2), excitation%perm)
+                                                          &excitation%to_orb(1), excitation%to_orb(2), excitation%perm)
             case default
                 ! If f1 & f2 differ by more than two spin orbitals integral value is zero.
-
             end select
 
         end if
@@ -129,7 +120,7 @@ contains
         integer :: iel, jel, i, j
 
         associate(one_e_ints=>sys%read_in%one_e_h_integrals, coulomb_ints=>sys%read_in%coulomb_integrals, &
-                    one_e_ints_im=>sys%read_in%one_e_h_integrals_imag, coulomb_ints_im=>sys%read_in%coulomb_integrals_imag)
+                 &one_e_ints_im=>sys%read_in%one_e_h_integrals_imag,coulomb_ints_im=>sys%read_in%coulomb_integrals_imag)
             hmatel = sys%read_in%Ecore
             do iel = 1, sys%nel
                 i = occ_list(iel)
@@ -151,7 +142,6 @@ contains
         end associate
 
     end function slater_condon0_periodic_orb_list_complex
-
 
     pure function slater_condon1_periodic_complex(sys, occ_list, i, a, perm) result(hmatel)
 
@@ -193,11 +183,11 @@ contains
 
                 do iel = 1, sys%nel
                     if (occ_list(iel) /= i) &
-                        hmatel = hmatel &
-                            + get_two_body_int_mol(coulomb_ints, coulomb_ints_im, i, occ_list(iel), a, occ_list(iel), &
-                                                    sys) &
-                            - get_two_body_int_mol(coulomb_ints, coulomb_ints_im, i, occ_list(iel), occ_list(iel), a, &
-                                                    sys)
+                        hmatel = hmatel + &
+                            get_two_body_int_mol(coulomb_ints, coulomb_ints_im, i, occ_list(iel), a, occ_list(iel), &
+                                                &sys) - &
+                            get_two_body_int_mol(coulomb_ints, coulomb_ints_im, i, occ_list(iel), occ_list(iel), a, &
+                                                &sys)
                 end do
             end associate
 

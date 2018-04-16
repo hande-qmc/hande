@@ -68,7 +68,8 @@ contains
                 call annihilate_wrapper_spawn_t(spawn, annihilation_flags%initiator_approx, determ%sizes(iproc))
             end if
 
-            call annihilate_main_list_wrapper(sys, rng, reference, annihilation_flags, psip_list, spawn, determ_flags=determ%flags)
+            call annihilate_main_list_wrapper(sys, rng, reference, annihilation_flags, psip_list, spawn, &
+                                             &determ_flags=determ%flags)
         else
             call annihilate_wrapper_spawn_t(spawn, annihilation_flags%initiator_approx)
             call annihilate_main_list_wrapper(sys, rng, reference, annihilation_flags, psip_list, spawn)
@@ -134,7 +135,7 @@ contains
 
     end subroutine direct_annihilation_received_list
 
-    subroutine direct_annihilation_spawned_list(sys, rng, reference, annihilation_flags, psip_list, spawn, send_counts, &
+    subroutine direct_annihilation_spawned_list(sys, rng, reference, annihilation_flags, psip_list, spawn, send_counts,&
                                                 req_data_s, non_block_spawn, nspawn_events)
 
         ! Annihilation algorithm for non-blocking communications.
@@ -271,9 +272,8 @@ contains
 
             ! Remove low-population spawned walkers by stochastically
             ! rounding their population up to one or down to zero.
-            if (annihilation_flags%real_amplitudes) then
+            if (annihilation_flags%real_amplitudes) &
                 call round_low_population_spawns(rng, psip_list%pop_real_factor, spawn, lower_bound)
-            end if
 
             ! Insert new walkers into main walker list.
             call insert_new_walkers(sys, psip_list, reference, annihilation_flags, spawn, determ_flags, lower_bound)
@@ -349,7 +349,8 @@ contains
                 ! iii) annihilation changing the sign of the population (i.e.
                 !      killing the population and then some).
                 associate(nparticles=>psip_list%nparticles)
-                    nparticles = nparticles + real(abs(psip_list%pops(:,pos)) - abs(old_pop),p)/psip_list%pop_real_factor
+                    nparticles = nparticles + real(abs(psip_list%pops(:,pos)) - &
+                        abs(old_pop),p)/psip_list%pop_real_factor
                 end associate
                 ! Next spawned walker cannot annihilate any determinant prior to
                 ! this one as the lists are sorted.
@@ -525,7 +526,8 @@ contains
             ! Add in the now-encoded deterministic spawning amplitude.
             old_pop = psip_list%pops(:,ind)
             psip_list%pops(:,ind) = psip_list%pops(:,ind) + spawn_sign*nspawn
-            psip_list%nparticles = psip_list%nparticles + real(abs(psip_list%pops(:,ind))-abs(old_pop),p)/psip_list%pop_real_factor
+            psip_list%nparticles = psip_list%nparticles + &
+                real(abs(psip_list%pops(:,ind))-abs(old_pop),p)/psip_list%pop_real_factor
         end do
 
     end subroutine deterministic_annihilation
@@ -746,19 +748,19 @@ contains
         if (.not. psip_list%error) then
             fill_fraction = real(psip_list%nstates+(spawn%head(thread_id,0)-spawn_start+1))/size(psip_list%states,2)
             if (fill_fraction > 1.00) then
-                write (error_unit,'(1X,"# Error: No space left in main particle array on processor",'//int_fmt(iproc,1)//',".")') &
-                              iproc
+                write (error_unit, '(1X,"# Error: No space left in main particle array on processor",'&
+                                 & //int_fmt(iproc,1)//',".")') iproc
                 write (error_unit,'(1X,"# Error: HANDE will exit at the end of this report loop.")')
-                write (error_unit,'(1X,"# Error: Note that spawning until the end of the report loop will be affected and&
-                              & so results from this final loop may be slightly incorrect.")')
+                write (error_unit,'(1X,"# Error: Note that spawning until the end of the report loop will be affected&
+                                 & and so results from this final loop may be slightly incorrect.")')
                 write (error_unit,'(1X,"# Error: Some reconvergence time should be allowed if continuing from a&
-                              & subsequent restart file.")')
+                                 & subsequent restart file.")')
 
                 psip_list%error = .true.
             else if (fill_fraction > 0.95) then
                 if (psip_list%warn) then
-                    write (error_unit,'(1X,"# Warning: filled over 95% of main particle array on processor",'//int_fmt(iproc,1)&
-                              //',".")') iproc
+                    write (error_unit, '(1X,"# Warning: filled over 95% of main particle array on processor",' &
+                                     & //int_fmt(iproc,1)//',".")') iproc
                     write (error_unit,'(1x,"This warning only prints once")')
                     psip_list%warn = .false.
                 end if
@@ -831,7 +833,8 @@ contains
         !    population: The population to insert into psip_list%pops.
         !    ref: reference determinant.
 
-        use calc, only: doing_calc, hfs_fciqmc_calc, dmqmc_calc
+        use calc, only: doing_calc, hfs_fciqmc_calc, dmqmc_calc, &
+                        doing_dmqmc_calc, dmqmc_dipole, dmqmc_SC_gap
         use heisenberg_estimators, only: neel_singlet_data
         use proc_pointers, only: sc0_ptr, op0_ptr, h0_ptr
         use system, only: sys_t
@@ -845,6 +848,14 @@ contains
         integer(i0), intent(in) :: det(sys%basis%tensor_label_len)
         integer(int_p), intent(in) :: population(psip_list%nspaces)
         type(reference_t), intent(in) :: ref
+        integer :: nham, nopr
+
+        ! Determine the number of diagonal Hamiltonian elements in the dat array
+        if (sys%read_in%comp) then 
+            nham = psip_list%nspaces/2
+        else
+            nham = psip_list%nspaces
+        end if
 
         ! Insert the new determinant.
         psip_list%states(:,pos) = det
@@ -852,14 +863,19 @@ contains
         psip_list%pops(:,pos) = population
         ! Calculate and insert all new components of psip_list%dat.
         psip_list%dat(1,pos) = sc0_ptr(sys, det) - ref%H00
+
         associate(pl=>psip_list)
             if (annihilation_flags%trial_function == neel_singlet) &
-                pl%dat(pl%nspaces+1:pl%nspaces+2,pos) = neel_singlet_data(sys, det)
+                pl%dat(pl%ndata+1:pl%ndata+2,pos) = neel_singlet_data(sys, det)
         end associate
+
         if (doing_calc(hfs_fciqmc_calc)) then
+
             ! Set psip_list%dat(2:,k) = <D_i|O|D_i> - <D_0|O|D_0>.
             psip_list%dat(2,pos) = op0_ptr(sys, det) - ref%O00
+
         else if (doing_calc(dmqmc_calc)) then
+
             if (annihilation_flags%ipdmqmc .and. .not. annihilation_flags%symmetric) then
                 ! Store H^0_ii-H_jj so we can propagate with ~ 1 + \Delta\beta(H^0_ii - H_jj),
                 ! where H^0_ii is the zeroth-order Hamiltonian: H = H^0 + H'
@@ -873,13 +889,25 @@ contains
                 end associate
             else
                 ! Set the energy to be the average of the two induvidual energies.
+                ! [todo] isn't this two equal?
                 associate(bl=>sys%basis%tot_string_len, pl=>psip_list)
                     pl%dat(1,pos) = (pl%dat(1,pos) + sc0_ptr(sys, pl%states((bl+1):(2*bl),pos)) - ref%H00)/2
                 end associate
-                if (annihilation_flags%replica_tricks) then
-                    psip_list%dat(2:psip_list%nspaces,pos) = psip_list%dat(1,pos)
+                ! Copy data across replicas (have to skip complex components).
+                if (annihilation_flags%replica_tricks) &
+                    psip_list%dat(2:nham,pos) = psip_list%dat(1,pos)
+                ! Update for custom operators.
+                ! This variable counts number of custom operators.
+                nopr = 1
+                if (doing_dmqmc_calc(dmqmc_dipole)) then
+                    psip_list%dat(nham+nopr, pos) = op0_ptr(sys, det) - ref%O00
+                    nopr = nopr + 1
+                end if
+                if (doing_dmqmc_calc(dmqmc_SC_gap)) then
+                    psip_list%dat(nham+nopr, pos) = sc0_ptr(sys%read_in%sc_sys_ptr, det) - ref%O200
                 end if
             end if
+
         end if
 
     end subroutine insert_new_walker

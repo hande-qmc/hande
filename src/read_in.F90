@@ -7,6 +7,12 @@ use const
 
 implicit none
 
+enum, bind(c)
+    enumerator :: opr_is_h = 1
+    enumerator :: opr_is_dipole
+    enumerator :: opr_is_sc
+end enum
+
 contains
 
     subroutine read_in_integrals(sys, store_info, verbose)
@@ -34,7 +40,7 @@ contains
         use point_group_symmetry, only: init_pg_symmetry
         use read_in_symmetry, only: is_gamma_irrep_read_in
         use momentum_sym_read_in, only: init_read_in_momentum_symmetry
-        use system, only: sys_t
+        use system, only: sys_t, copy_sys_info_read_in
 
         use checking, only: check_allocate, check_deallocate
         use errors, only: stop_all, warning
@@ -55,42 +61,33 @@ contains
         ! namelist, so have to hardcode the array sizes.
         ! It's reasonably safe to assume that we'll never use more than 1000
         ! orbitals!
-        integer :: norb, nelec, ms2,  isym, syml(1000), symlz(1000), nprop(3), propbitlen
+        integer :: norb, nelec, ms2,  isym, syml(1000), symlz(1000), nprop(3), propbitlen, opsym1e, opsym2e
         integer(int_64) :: orbsym(1000)
         ! all basis functions, including inactive ones.
         type(basis_fn_t), allocatable :: all_basis_fns(:)
 
-        ! Integrals
-        integer :: i, j, a, b, ii, jj, aa, bb, orbs(4), active(2), core(2), ia, ic, iorb
-        integer(int_64) :: ti
-        real(p) :: x, y, im_core
-        complex(p) :: compint
-
-        ! reading in...
-        integer :: ir, ios, ierr
-        logical :: t_exists
+        integer :: i, ir, iunit, ierr, ir1e, ir2e
+        logical :: t_exists, calc_dipole, calc_sc
         integer :: active_basis_offset, rhf_fac
-        integer, allocatable :: seen_ijij(:), seen_iaib(:,:), sp_eigv_rank(:), sp_fcidump_rank(:)
-        logical, allocatable :: seen_iha(:)
+        integer, allocatable :: sp_eigv_rank(:), sp_fcidump_rank(:)
         real(p), allocatable :: sp_eigv(:)
         logical :: uhf
-        integer :: int_err, max_err_msg, iunit
-        character(1024) :: err_msg
 
         namelist /FCI/ norb, nelec, ms2, orbsym, uhf, isym, syml, symlz, nprop, propbitlen
+        namelist /OPR/ norb, uhf
 
         iunit = 6
 
         ! avoid annoying compiler warnings over unused variables in FCI namelist
         ! that are present for NECI compatibility.
-        isym = 0
-        syml = 0
+        isym  = 0
+        syml  = 0
         symlz = 0
         ! Set namelist parameters to defaults that can't be confused for actual input.
         nelec = 0
-        ms2 = huge(0)
-        norb = 0
-        uhf = .false.
+        ms2   = huge(0)
+        norb  = 0
+        uhf   = .false.
         ! Set orbsym to be zero to ensure sensible behaviour if no symmetry
         ! information is provided in FCIDUMP.
         orbsym(:) = 0
@@ -99,9 +96,12 @@ contains
         propbitlen = -1
 
         t_store = .true.
-        if (present(store_info)) t_store = store_info
         t_verbose = .true.
+        if (present(store_info)) t_store = store_info
         if (present(verbose)) t_verbose = verbose
+
+        calc_dipole = len_trim(sys%read_in%dipole_int_file) > 0
+        calc_sc = len_trim(sys%read_in%sc_int_file) > 0
 
         ! FCIDUMP file format is as follows:
 
@@ -184,8 +184,7 @@ contains
         ! Only do i/o on root processor.
         if (parent) then
             inquire(file=sys%read_in%fcidump, exist=t_exists)
-            if (.not.t_exists) call stop_all('read_in_integrals', 'FCIDUMP does not &
-                                                               &exist:'//trim(sys%read_in%fcidump))
+            if (.not.t_exists) call stop_all('read_in_integrals', 'FCIDUMP does not exist:'//trim(sys%read_in%fcidump))
             open (newunit=ir, file=sys%read_in%fcidump, status='old', form='formatted')
 
             ! If FCIDUMP doesn't contain uhf data, can end up accessing uninitalised value for uhf.
@@ -193,10 +192,9 @@ contains
             ! read system data
             read (ir, FCI)
             sys%read_in%uhf = uhf
-            if (norb == 0) call stop_all('read_in_integrals', &
-                'norb not provided in FCIDUMP header.')
+            if (norb == 0)   call stop_all('read_in_integrals', 'norb not provided in FCIDUMP header.')
             if (norb > 1000) call stop_all('read_in_integrals', &
-                'norb > 1000. Please increase hard-coded limits within read_in.F90!')
+                                          &'norb > 1000. Please increase hard-coded limits within read_in.F90!')
         end if
 
 #ifdef PARALLEL
@@ -264,7 +262,8 @@ contains
                 ! CAS(2) is in terms of spatial orbitals.
                 write (error_unit,'(1X,"Number of spin-orbitals: ",i0,".")') sys%basis%nbasis
                 write (error_unit,'(1X,"Number of core electrons: ",i0,".")') sys%nel-sys%cas(1)
-                write (error_unit,'(1X,"Number of possible active spin-orbitals: ",i0,".")') sys%basis%nbasis-(sys%nel-sys%cas(1))
+                write (error_unit,'(1X,"Number of possible active spin-orbitals: ",i0,".")') &
+                    sys%basis%nbasis-(sys%nel-sys%cas(1))
                 write (error_unit,'(1X,"Number of active spin-orbitals in CAS: ",i0,".")') 2*sys%cas(2)
                 call stop_all('read_in_integrals', 'CAS cannot have more active basis functions than in the system')
             end if
@@ -280,15 +279,16 @@ contains
                 sys%read_in%mom_sym%propbitlen = propbitlen
                 sys%read_in%uhf = .false.
                 if (minval(orbsym(1:norb)) < 0) then
-                    if (parent) write (iunit,'(1X,a62,/)') 'Unconverged symmetry found.  Turning translational symmetry off.'
+                    if (parent) write (iunit,'(1X,a62,/)') &
+                        'Unconverged symmetry found. Turning translational symmetry off.'
                     orbsym(:) = 0_int_64
                 end if
             else
                 ! If system isn't complex but contains symmetry information, must have real supercell with
                 ! single kpoint. In this case using momentum symmetry or pg symmetry will make no difference,
                 ! so we use pg_sym for easy compatibility with conventional routines.
-                momentum_sym = .false.
                 if (parent) write (iunit,'(1X,a62,/)') 'Performing supercell calculation.  Turning symmetry off.'
+                momentum_sym = .false.
                 orbsym(:) = 0_int_64
             end if
         end if
@@ -336,16 +336,11 @@ contains
         ! to handle that...
         sp_eigv_rank(0) = 0
 
-        ! sp_eigv_rank(i) = i' takes us from the {i'} basis (as ordered in
-        ! the FCIDUMP file) to the {i} basis (ordered by energy).  We also
-        ! need the inverse.
+        ! sp_eigv_rank(i) = i' takes us to the {i'} basis.  We also
+        ! need the inverse. (i.e. If we have i' in FCIDUMP, then we store it in
+        ! the position i = sp_fcidump_rank(i'))
         do i = 0, norb
-            do j = 0, norb
-                if (sp_eigv_rank(j) == i) then
-                    sp_fcidump_rank(i) = j
-                    exit
-                end if
-            end do
+            sp_fcidump_rank(sp_eigv_rank(i)) = i
         end do
 
         ! Set up basis functions, including those which are subsequently frozen.
@@ -356,8 +351,7 @@ contains
         ! From sys%CAS work out the start of the active basis functions, the number
         ! of active basis functions and the number of active electrons.
 
-        ! NOTE: this sets sys%basis%nbasis to be the number of spin orbitals in the active
-        ! basis.
+        ! NOTE: this sets sys%basis%nbasis to be the number of spin orbitals in the active basis.
 
         if (all(sys%cas > 0)) then
             active_basis_offset = sys%nel-sys%cas(1) ! number of core *spin* orbitals
@@ -370,7 +364,7 @@ contains
         end if
         sys%nvirt = sys%basis%nbasis - sys%nel
         if (sys%read_in%uhf) then
-            norb =  sys%basis%nbasis
+            norb = sys%basis%nbasis
         else
             norb = sys%basis%nbasis/2
         end if
@@ -387,27 +381,98 @@ contains
         ! Was a symmetry found for all basis functions?  If not, then we must
         ! turn symmetry off.
         if (.not. momentum_sym .and. minval(sys%basis%basis_fns(:)%sym) < 0) then
-            if (parent) write (iunit,'(1X,a62,/)') 'Unconverged symmetry found.  Turning point group symmetry off.'
+            if (parent) write (iunit,'(1X,a62,/)') 'Unconverged symmetry found. Turning point group symmetry off.'
             forall (i=1:sys%basis%nbasis) sys%basis%basis_fns(i)%sym = 0
+        end if
+
+        ! Initialise fake systems for operators and do the copy-in
+        if (calc_dipole) then
+            allocate(sys%read_in%dipole_sys_ptr)
+            call copy_sys_info_read_in(sys, sys%read_in%dipole_sys_ptr)
+            sys%read_in%dipole_sys_ptr%read_in%fcidump = sys%read_in%dipole_int_file
+        end if
+        if (calc_sc) then
+            allocate(sys%read_in%sc_sys_ptr)
+            call copy_sys_info_read_in(sys, sys%read_in%sc_sys_ptr)
+            sys%read_in%sc_sys_ptr%read_in%fcidump = sys%read_in%sc_int_file
+        end if
+
+        ! Check dipole and SC integral files
+        if (parent) then
+            if (calc_dipole) then
+                inquire(file=sys%read_in%dipole_int_file, exist=t_exists)
+                if (.not.t_exists) call stop_all('read_in_custom_integrals', &
+                    'dipole moment input does not exist:'//trim(sys%read_in%dipole_int_file))
+                open (newunit=ir1e, file=sys%read_in%dipole_int_file, status='old', form='formatted')
+
+                uhf = .false.
+                read (ir1e, OPR)
+                sys%read_in%dipole_sys_ptr%read_in%uhf = uhf
+                if (.not.uhf) norb = norb*2
+                if (norb /= sys%basis%nbasis) call stop_all('read_in_custom_integrals', &
+                    'basis mismatch for dipole moment operator:'//trim(sys%read_in%dipole_int_file))
+            end if
+            if (calc_sc) then
+                inquire(file=sys%read_in%sc_int_file, exist=t_exists)
+                if (.not.t_exists) call stop_all('read_in_custom_integrals', &
+                    'superconducting energy gap operator input does not exist:'//trim(sys%read_in%sc_int_file))
+                open (newunit=ir2e, file=sys%read_in%sc_int_file, status='old', form='formatted')
+
+                uhf = .false.
+                read (ir2e, OPR)
+                sys%read_in%sc_sys_ptr%read_in%uhf = uhf
+                if (.not.uhf) norb = norb*2
+                if (norb /= sys%basis%nbasis) call stop_all('read_in_custom_integrals', &
+                    'basis mismatch for superconducting energy gap operator:'//trim(sys%read_in%sc_int_file))
+            end if
         end if
 
         ! Set up symmetry information.
         if (t_store) then
             if (momentum_sym) then
                 call init_read_in_momentum_symmetry(sys)
+                ! [todo] setting up symmetries in fakes systems is in fact
+                ! unnecessary, but just in for completeness... (maybe we can
+                ! remove this some day...)
+                if (calc_dipole) call init_read_in_momentum_symmetry(sys%read_in%dipole_sys_ptr)
+                if (calc_sc) call init_read_in_momentum_symmetry(sys%read_in%sc_sys_ptr)
             else
                 call init_pg_symmetry(sys)
+                if (calc_dipole) call init_pg_symmetry(sys%read_in%dipole_sys_ptr)
+                if (calc_sc) call init_pg_symmetry(sys%read_in%sc_sys_ptr)
             end if
         end if
+        ! Init operator symmetry
+        if (calc_dipole) opsym1e = find_sym_one_body(sys%read_in%dipole_sys_ptr, &
+                                                    &ir1e, sp_fcidump_rank, active_basis_offset)
+        if (calc_sc) opsym2e = -1
+
         ! Initialise integral stores.
         ! If using momentum symmetry don't use value of op_sym currently, so can set to read_in value (which
         ! will be default value) even if not valid in system.
         if (t_store) then
             call init_one_body_t(sys, sys%read_in%pg_sym%gamma_sym, .false., sys%read_in%one_e_h_integrals)
             call init_two_body_t(sys, sys%read_in%pg_sym%gamma_sym, .false., sys%read_in%coulomb_integrals)
+            ! Though copied, prefer information from the orignal system
+            if (calc_dipole) call init_one_body_t(sys%read_in%dipole_sys_ptr, opsym1e, .false., &
+                                                 &sys%read_in%dipole_sys_ptr%read_in%one_e_h_integrals)
+            if (calc_sc) then
+                call init_one_body_t(sys%read_in%sc_sys_ptr, opsym2e, .false., &
+                                    &sys%read_in%sc_sys_ptr%read_in%one_e_h_integrals)
+                call init_two_body_t(sys%read_in%sc_sys_ptr, opsym2e, .false., &
+                                    &sys%read_in%sc_sys_ptr%read_in%coulomb_integrals, is_sc=.true.)
+            end if
             if (sys%read_in%comp) then
                 call init_one_body_t(sys, sys%read_in%pg_sym%gamma_sym, .true., sys%read_in%one_e_h_integrals_imag)
                 call init_two_body_t(sys, sys%read_in%pg_sym%gamma_sym, .true., sys%read_in%coulomb_integrals_imag)
+                if (calc_dipole) call init_one_body_t(sys%read_in%dipole_sys_ptr, opsym1e, &
+                                             &.true., sys%read_in%dipole_sys_ptr%read_in%one_e_h_integrals_imag)
+                if (calc_sc) then
+                    call init_one_body_t(sys%read_in%sc_sys_ptr, opsym2e, .true., &
+                                        &sys%read_in%sc_sys_ptr%read_in%one_e_h_integrals_imag)
+                    call init_two_body_t(sys%read_in%sc_sys_ptr, opsym2e, .true., &
+                                        &sys%read_in%sc_sys_ptr%read_in%coulomb_integrals_imag, is_sc=.true.)
+                end if
             end if
         end if
 
@@ -444,338 +509,82 @@ contains
         ! memory.
 
         sys%read_in%Ecore = 0.0_p
-        im_core = 0.0_p
+        sys%read_in%Ecore_imag = 0.0_p
+        if (calc_dipole) sys%read_in%dipole_sys_ptr%read_in%Ecore = 0.0_p
+        if (calc_sc) sys%read_in%sc_sys_ptr%read_in%Ecore = 0.0_p
         if (t_store) then
             call zero_one_body_int_store(sys%read_in%one_e_h_integrals)
             call zero_two_body_int_store(sys%read_in%coulomb_integrals)
+            if (calc_dipole) call zero_one_body_int_store(sys%read_in%dipole_sys_ptr%read_in%one_e_h_integrals)
+            if (calc_sc) then
+                call zero_one_body_int_store(sys%read_in%sc_sys_ptr%read_in%one_e_h_integrals)
+                call zero_two_body_int_store(sys%read_in%sc_sys_ptr%read_in%coulomb_integrals)
+            end if
             if (sys%read_in%comp) then
                 call zero_one_body_int_store(sys%read_in%one_e_h_integrals_imag)
                 call zero_two_body_int_store(sys%read_in%coulomb_integrals_imag)
+                if (calc_dipole) call zero_one_body_int_store(sys%read_in%dipole_sys_ptr%read_in%one_e_h_integrals_imag)
+                if (calc_sc) then
+                    call zero_one_body_int_store(sys%read_in%sc_sys_ptr%read_in%one_e_h_integrals_imag)
+                    call zero_two_body_int_store(sys%read_in%sc_sys_ptr%read_in%coulomb_integrals_imag)
+                end if
             end if
         end if
 
-        ! Now, there is no guarantee that FCIDUMP files will include all
-        ! permutation symmetry and so we must avoid double-counting when
-        ! accumulating Ecore and <a|h'|b>.
-
-        ! * <i|h|i> can only occur once (and requires a factor of 2 in RHF
-        !   calculations), hence there is no risk of double counting.
-        ! * <ij|ij> and <ij|ji>: store whether seen in a triangular array.
-        ! * <ia|ib> and <ia|bi>: store whether seen in a triangular array for
-        !   each i.
-
-        ! In the 'seen' arrays, +1 indicates the Coulomb integral has already
-        ! been seen and +2 indicates the exchange integral has already been
-        ! seen.  We only vaguely attempt to save memory in these arrays (ie one
-        ! can do better if needed---see integral stores in molecular_integrals
-        ! for inspiration).
-
-        ! We similarly need to remember if we've seen <i|h|a> or <a|h|i> as we
-        ! only store one of the pair.
-
-        ! If using complex orbitals, <ii|jj> =/= <ij|ji>, etc, so no longer
-        ! accept some permutations.
-        ! For complex have also assumed expressions above for E_core and <a|h'|b>
-        ! hold; if not the case then likely incorrect values obtained.
-
-        ! Accumulate errors so we can print out (at most) max_err_msg errors from this file.
-        int_err = 0
-        max_err_msg = 10
-
         if (parent) then
-
-            allocate(seen_iha((sys%basis%nbasis*(sys%basis%nbasis+1))/2), stat=ierr)
-            call check_allocate('seen_iha', sys%basis%nbasis*(sys%basis%nbasis+1)/2, ierr)
-            allocate(seen_ijij((active_basis_offset*(active_basis_offset+1))/2), stat=ierr)
-            call check_allocate('seen_ijij', active_basis_offset*(active_basis_offset+1)/2, ierr)
-            allocate(seen_iaib(-active_basis_offset+1:0,(sys%basis%nbasis*(sys%basis%nbasis+1))/2), stat=ierr)
-            call check_allocate('seen_iaib', sys%basis%nbasis*(sys%basis%nbasis+1)/2, ierr)
-            seen_iha = .false.
-            seen_ijij = 0
-            seen_iaib = 0
-
-            ! Freezing virtual orbitals amounts to simply not exciting into them,
-            ! which can easily be enforced by removing them from the basis set.
-
-            ! read integrals and eigenvalues
-            ios = 0
-            do
-
-                ! loop over lines.
-                if (sys%read_in%comp) then
-                    read (ir,*, iostat=ios) compint, i, a, j, b
-                    x=real(compint,p)
-                    y=aimag(compint)
-                else
-                    read (ir,*, iostat=ios) x, i, a, j, b
-                end if
-
-                if (ios == iostat_end) exit ! reached end of file
-                if (ios /= 0) call stop_all('read_in_integrals', &
-                                            'Problem reading integrals file: '//trim(sys%read_in%fcidump))
-
-                ! Working in spin orbitals but FCIDUMP is in spatial orbitals in RHF
-                ! calculations and spin orbitals in UHF calculations, and te basis
-                ! is ! not necessarily ordered by energy.  We wish to work in spin
-                ! orbitals ordered by energy.
-                ! Need to only store integrals in one spin-channel in RHF, so
-                ! can just get away with referring (e.g.) beta orbitals, hence the
-                ! factor of 2 in RHF.  The integral store routines convert the
-                ! indices further to compress the integral stores as much as
-                ! possible.
-                i = rhf_fac*sp_fcidump_rank(i)
-                j = rhf_fac*sp_fcidump_rank(j)
-                a = rhf_fac*sp_fcidump_rank(a)
-                b = rhf_fac*sp_fcidump_rank(b)
-
-                ! Adjust indices to take into account frozen core orbitals and to
-                ! convert to an energy ordering.
-                ii = i - active_basis_offset
-                jj = j - active_basis_offset
-                aa = a - active_basis_offset
-                bb = b - active_basis_offset
-
-                if (max(ii,jj,aa,bb) <= sys%basis%nbasis) then
-
-                    ! Have integrals involving only core or active orbitals.
-                    if (i == 0 .and. j == 0 .and. a == 0 .and. b == 0) then
-
-                        ! Nuclear energy.
-                        sys%read_in%Ecore = sys%read_in%Ecore + x
-                        if (sys%read_in%comp) then
-                            ! Imaginary component should be 0 but just in case...
-                            im_core = im_core + y
-                        end if
-                    else if (i > 0 .and. j == 0 .and. a == 0 .and. b == 0) then
-
-                        ! \epsilon_i
-                        ! Already dealt with in previous pass over FCIDUMP.
-
-                    else if (j == 0 .and. b == 0) then
-
-                        ! < i | h | a >
-                        if (t_store) then
-                            if (ii < 1 .and. ii == aa) then
-                                ! Have <i|h|i> from a core orbital.  Add
-                                ! contribution to sys%read_in%Ecore.
-                                ! If RHF need to include <i,up|h|i,up> and
-                                ! <i,down|h|i,down>.
-                                sys%read_in%Ecore = sys%read_in%Ecore + x*rhf_fac
-                                if (sys%read_in%comp) then
-                                    im_core = im_core + y*rhf_fac
-                                end if
-                            else if (all( (/ ii, aa /) > 0)) then
-                                if (.not.seen_iha(tri_ind_reorder(ii,aa))) then
-                                    x = x + get_one_body_int_mol_real(sys%read_in%one_e_h_integrals, ii, aa, &
-                                                                 sys)
-                                    call store_one_body_int(ii, aa, x, sys, int_err > max_err_msg, &
-                                                            sys%read_in%one_e_h_integrals, ierr)
-                                    int_err = int_err + ierr
-                                    if (sys%read_in%comp) then
-                                        y = y + get_one_body_int_mol_real(sys%read_in%one_e_h_integrals_imag, ii, aa, &
-                                                                     sys)
-                                        call store_one_body_int(ii, aa, y, sys, int_err > max_err_msg, &
-                                                                sys%read_in%one_e_h_integrals_imag, ierr)
-                                        int_err = int_err + ierr
-                                    end if
-
-                                    seen_iha(tri_ind_reorder(ii,aa)) = .true.
-                                end if
-                            end if
-                        end if
-
-                    else
-
-                        ! < i j | 1/r_12 | a b >
-                        if (t_store) then
-                            orbs = (/ ii, jj, aa, bb /)
-                            select case(count(orbs > 0))
-                            case(0)
-                                ! Have <ij|ab> involving only core orbitals.
-                                ! We should only run over i<j but there's no
-                                ! guarantee that the FCIDUMP file contains the
-                                ! permutations we expect (ie it might contain
-                                ! <ji|ji> but not <ij|ij>, where i<j), so
-                                ! instead we let the seen_ijij array make sure
-                                ! we only use a unique integral once, no matter
-                                ! which permutation(s) occur in the FCIDUMP
-                                ! file.
-                                ! For core orbitals, sum imaginary components;
-                                ! if overall core energy has non-negligible
-                                ! imaginary component raise error as something
-                                ! gone wrong.
-                                if (ii == aa .and. jj == bb .and. ii == jj) then
-                                    if (.not.sys%read_in%uhf .and. mod(seen_ijij(tri_ind_reorder(i,j)),2) == 0) then
-                                        ! RHF calculations: need to include <i,up i,down|i,up i,down>.
-
-                                        sys%read_in%Ecore = sys%read_in%Ecore + x
-                                        if (sys%read_in%comp) then
-                                            im_core = im_core + y
-                                        end if
-                                        seen_ijij(tri_ind_reorder(i,j)) = seen_ijij(tri_ind_reorder(i,j)) + 1
-                                    end if
-                                else if (ii == aa .and. jj == bb .and. ii /= jj) then
-                                    ! <ij|ij>, i/=j
-                                    if (mod(seen_ijij(tri_ind_reorder(i,j)),2) == 0) then
-                                        ! If RHF, then need to include:
-                                        !   <i,up j,up|i,up, j,up>
-                                        !   <i,up j,down|i,up, j,down>
-                                        !   <i,down j,up|i,down, j,up>
-                                        !   <i,down j,down|i,down, j,down>
-                                        sys%read_in%Ecore = sys%read_in%Ecore + x*rhf_fac**2
-                                        if (sys%read_in%comp) then
-                                            im_core = im_core + y*rhf_fac**2
-                                        end if
-                                        seen_ijij(tri_ind_reorder(i,j)) = seen_ijij(tri_ind_reorder(i,j)) + 1
-                                    end if
-                                else if (ii == bb .and. jj == aa .and. ii /= jj .or. &
-                                         (ii == jj .and. aa == bb .and. ii /= aa .and. .not. sys%read_in%comp)) then
-                                    ! <ij|ji>, i/=j (or <ii|jj> version) can be treated together if real orbitals
-                                    ! but not if complex orbitals.
-                                    ! Only accept complex if is <ij|ji>
-                                    if (ii == jj) then
-                                        ti = tri_ind_reorder(i, a)
-                                    else
-                                        ti = tri_ind_reorder(i, j)
-                                    end if
-                                    if (seen_ijij(ti) < 2) then
-                                        ! If RHF, then need to include:
-                                        !   <i,up j,up|j,up, i,up>
-                                        !   <i,down j,down|j,down, i,down>
-                                        sys%read_in%Ecore = sys%read_in%Ecore - rhf_fac*x
-                                        if (sys%read_in%comp) then
-                                            im_core = im_core - rhf_fac*y
-                                        end if
-                                        seen_ijij(ti) = seen_ijij(ti) + 2
-                                    end if
-                                end if
-                            case(2)
-                                ! Have an integral involving two core and two active orbitals.
-                                ic = 1
-                                ia = 1
-                                do iorb = 1, 4
-                                    if (orbs(iorb) > 0) then
-                                        active(ia) = orbs(iorb)
-                                        ia = ia +1
-                                    else
-                                        core(ic) = orbs(iorb)
-                                        ic = ic + 1
-                                    end if
-                                end do
-                                if (core(1) == core(2)) then
-                                    ! Have integral of type < i a | i b > or < i a | b i >,
-                                    ! where i is a core orbital and a and b are
-                                    ! active orbitals.
-                                    if ((ii == core(1) .and. aa == core(1)) .or. (jj == core(1) .and. bb == core(1))) then
-                                        ! < i a | i b > or < a i | b i >
-                                        if (mod(seen_iaib(core(1), tri_ind_reorder(active(1),active(2))),2) == 0) then
-                                            ! Update <a|h|b> with contribution <ia|ib>.
-                                            x = x*rhf_fac + &
-                                                get_one_body_int_mol_real(sys%read_in%one_e_h_integrals, active(1), &
-                                                                     active(2), sys)
-                                            call store_one_body_int(active(1), active(2), x, sys, int_err > max_err_msg, &
-                                                                        sys%read_in%one_e_h_integrals, ierr)
-                                            int_err = int_err + ierr
-                                            if (sys%read_in%comp) then
-                                                y = y*rhf_fac + &
-                                                    get_one_body_int_mol_real(sys%read_in%one_e_h_integrals_imag, active(1), &
-                                                                         active(2), sys)
-                                                call store_one_body_int(active(1), active(2), y, sys, int_err > max_err_msg, &
-                                                                            sys%read_in%one_e_h_integrals_imag, ierr)
-                                                int_err = int_err + ierr
-                                            end if
-                                            seen_iaib(core(1), tri_ind_reorder(active(1),active(2))) = &
-                                                seen_iaib(core(1), tri_ind_reorder(active(1),active(2))) + 1
-                                        end if
-                                    else if ((.not. sys%read_in%comp) .or. ((ii == core(1) .and. bb == core(2)) &
-                                                .or. (jj == core(1) .and. aa == core(2)))) then
-                                        ! < i a | b i > (or allowed permutation thereof)
-                                        ! For systems with complex orbitals (but real integrals)
-                                        ! it's possible for <ii|ba> to be nonzero, but <ia|bi>=0 so we test sym
-
-                                        ! For complex we can only accept <ia|bi> or <ai|ib>, which gives the second two
-                                        ! conditions above.
-                                        ! For real we can also accept <ii|ab>/<ii|ba> etc, which are all remaining cases
-                                        ! of core(1) == core(2) after the inital if statement. As such if real automatically
-                                        ! accept.
-                                        if (seen_iaib(core(1), tri_ind_reorder(active(1),active(2))) < 2 .and. &
-                                            is_gamma_irrep_read_in(sys%read_in%pg_sym, &
-                                                sys%read_in%cross_product_sym_ptr(sys%read_in, &
-                                                            sys%read_in%sym_conj_ptr(sys%read_in, &
-                                                            sys%basis%basis_fns(active(1))%sym), &
-                                                            sys%basis%basis_fns(active(2))%sym))) then
-                                            ! Update <j|h|a> with contribution <ij|ai>.
-                                            x = get_one_body_int_mol_real(sys%read_in%one_e_h_integrals, active(1), active(2), &
-                                                                     sys)  - x
-                                            call store_one_body_int(active(1), active(2), x, sys, int_err > max_err_msg, &
-                                                                        sys%read_in%one_e_h_integrals, ierr)
-                                            int_err = int_err + ierr
-                                            if (sys%read_in%comp) then
-                                                ! Possible sign change due to ordering of active(1) & active(2) accounted for in get_one_body...
-                                                ! and store_one_body... function ordering adjustments.
-                                                y = get_one_body_int_mol_real(sys%read_in%one_e_h_integrals_imag, active(1), &
-                                                                        active(2), sys)  - y
-                                                call store_one_body_int(active(1), active(2), y, sys, int_err > max_err_msg, &
-                                                                            sys%read_in%one_e_h_integrals_imag, ierr)
-                                                int_err = int_err + ierr
-                                            end if
-                                            seen_iaib(core(1), tri_ind_reorder(active(1),active(2))) = &
-                                                seen_iaib(core(1), tri_ind_reorder(active(1),active(2))) + 2
-                                        end if
-                                    end if
-                                end if
-                            case(4)
-                                ! Have <ij|ab> involving active orbitals.
-                                call store_two_body_int(ii, jj, aa, bb, x, sys, int_err > max_err_msg, &
-                                                        sys%read_in%coulomb_integrals, ierr)
-                                int_err = int_err + ierr
-                                if (sys%read_in%comp) then
-                                    call store_two_body_int(ii, jj, aa, bb, y, sys, int_err > max_err_msg, &
-                                                sys%read_in%coulomb_integrals_imag, ierr)
-                                    int_err = int_err + ierr
-                                end if
-                            end select
-                        end if
-
-                    end if
-
-                end if
-
-            end do
-
-            if (int_err /= 0) then
-                write (err_msg, '("Found and ignored",'//int_fmt(int_err,1)//'," integrals which should be zero &
-                                  &by symmetry in file: '//trim(sys%read_in%fcidump)//'")') int_err
-                call warning('read_in_integrals', trim(err_msg), 1)
-                if (int_err > max_err_msg) &
-                    write (iunit,'(1X,"Only the first",'//int_fmt(max_err_msg)//'," error messages are shown.",/)') max_err_msg
+            call process_and_store_integrals(sys, ir, active_basis_offset, sp_fcidump_rank, t_store)
+            if (calc_dipole) then
+                call process_and_store_integrals(sys%read_in%dipole_sys_ptr, &
+                                                &ir1e, active_basis_offset ,sp_fcidump_rank , t_store, &
+                                                &opr_is_dipole)
+                close(ir1e, status='keep')
             end if
-
-            ! If system is sensible, total Ecore including any CAS contribution will be purely real as is just the sum of Ecore and single
-            ! particle energies of core orbitals; if not then either these assumptions are wrong or something's up with the INTDUMP.
-            ! Either way will want to know.
-            if (abs(im_core) > depsilon) then
-                call stop_all('read_in_integrals' ,'Nonzero imaginary core energy found; check your CAS settings.')
+            if (calc_sc) then
+                call process_and_store_integrals(sys%read_in%sc_sys_ptr, &
+                                                &ir2e, active_basis_offset ,sp_fcidump_rank , t_store, &
+                                                &opr_is_sc)
+                close(ir2e, status='keep')
             end if
-
-            deallocate(seen_iha, stat=ierr)
-            call check_deallocate('seen_iha', ierr)
-            deallocate(seen_ijij, stat=ierr)
-            call check_deallocate('seen_ijij', ierr)
-            deallocate(seen_iaib, stat=ierr)
-            call check_deallocate('seen_iaib', ierr)
             close(ir, status='keep')
-
         end if
 
 #ifdef PARALLEL
         call MPI_BCast(sys%read_in%Ecore, 1, mpi_preal, root, MPI_COMM_WORLD, ierr)
+        call MPI_BCast(sys%read_in%Ecore_imag, 1, mpi_preal, root, MPI_COMM_WORLD, ierr)
+        if (calc_dipole) then
+            call MPI_BCast(sys%read_in%dipole_sys_ptr%read_in%Ecore, 1, mpi_preal, root, MPI_COMM_WORLD, ierr)
+            call MPI_BCast(sys%read_in%dipole_sys_ptr%read_in%Ecore_imag, 1, mpi_preal, root, MPI_COMM_WORLD, ierr)
+        end if
+        if (calc_sc) then
+            call MPI_BCast(sys%read_in%sc_sys_ptr%read_in%Ecore, 1, mpi_preal, root, MPI_COMM_WORLD, ierr)
+            call MPI_BCast(sys%read_in%sc_sys_ptr%read_in%Ecore_imag, 1, mpi_preal, root, MPI_COMM_WORLD, ierr)
+        end if
 #endif
         call broadcast_one_body_t(sys%read_in%one_e_h_integrals, root)
         call broadcast_two_body_t(sys%read_in%coulomb_integrals, root, sys%read_in%max_broadcast_chunk)
+        if (calc_dipole) then
+            call broadcast_one_body_t(sys%read_in%dipole_sys_ptr%read_in%one_e_h_integrals, root)
+            call broadcast_two_body_t(sys%read_in%dipole_sys_ptr%read_in%coulomb_integrals, root, &
+                                     &sys%read_in%max_broadcast_chunk)
+        end if
+        if (calc_dipole) then
+            call broadcast_one_body_t(sys%read_in%sc_sys_ptr%read_in%one_e_h_integrals, root)
+            call broadcast_two_body_t(sys%read_in%sc_sys_ptr%read_in%coulomb_integrals, root, &
+                                     &sys%read_in%max_broadcast_chunk)
+        end if
         if (sys%read_in%comp) then
             call broadcast_one_body_t(sys%read_in%one_e_h_integrals_imag, root)
             call broadcast_two_body_t(sys%read_in%coulomb_integrals_imag, root, sys%read_in%max_broadcast_chunk)
+            if (calc_dipole) then
+                call broadcast_one_body_t(sys%read_in%dipole_sys_ptr%read_in%one_e_h_integrals_imag, root)
+                call broadcast_two_body_t(sys%read_in%dipole_sys_ptr%read_in%coulomb_integrals_imag, root, &
+                                         &sys%read_in%max_broadcast_chunk)
+            end if
+            if (calc_dipole) then
+                call broadcast_one_body_t(sys%read_in%sc_sys_ptr%read_in%one_e_h_integrals_imag, root)
+                call broadcast_two_body_t(sys%read_in%sc_sys_ptr%read_in%coulomb_integrals_imag, root, &
+                                         &sys%read_in%max_broadcast_chunk)
+            end if
         end if
 
         if (size(sys%basis%basis_fns) /= size(all_basis_fns) .and. parent .and. t_verbose) then
@@ -800,12 +609,6 @@ contains
             call write_basis_fn_title()
         end if
 
-        if (t_store .and. sys%read_in%dipole_int_file /= '') then
-            call read_in_one_body(sys%read_in%dipole_int_file, sys, &
-                                  sp_fcidump_rank, active_basis_offset, sys%read_in%one_body_op_integrals, &
-                                  sys%read_in%dipole_core)
-        end if
-
         deallocate(sp_eigv_rank, stat=ierr)
         call check_deallocate('sp_eigv_rank', ierr)
         deallocate(sp_fcidump_rank, stat=ierr)
@@ -814,9 +617,429 @@ contains
         if (.not.t_store) then
             ! Should tidy up and deallocate everything we allocated.
             call dealloc_basis_fn_t_array(sys%basis%basis_fns)
+            if (calc_dipole) then
+                call dealloc_basis_fn_t_array(sys%read_in%dipole_sys_ptr%basis%basis_fns)
+                deallocate(sys%read_in%dipole_sys_ptr)
+            end if
+            if (calc_sc) then
+                call dealloc_basis_fn_t_array(sys%read_in%sc_sys_ptr%basis%basis_fns)
+                deallocate(sys%read_in%sc_sys_ptr)
+            end if
         end if
 
     end subroutine read_in_integrals
+
+    subroutine process_and_store_integrals(sys, ir, active_basis_offset, sp_fcidump_rank, t_store, opr_type)
+
+        ! Read integrals from input unit with operator type specified
+
+        ! In:
+        !   sys: System object to store the integrals (fake_system for custom
+        !     operators)
+        !   ir: Integral file unit
+        !   rhf_fac: RHF factor - if RHF is on, then rhf_fac = 2, 1 otherwise.
+
+        use system, only: sys_t
+        use molecular_integrals, only: get_one_body_int_mol_real, store_one_body_int, store_two_body_int
+        use read_in_symmetry, only: is_gamma_irrep_read_in
+        use utils, only: tri_ind_reorder, int_fmt
+        use errors, only: stop_all, warning
+        use checking, only: check_allocate, check_deallocate
+
+        use, intrinsic :: iso_fortran_env, only: iostat_end
+
+        type(sys_t), intent(inout) :: sys
+        integer, intent(in) :: active_basis_offset, sp_fcidump_rank(0:), ir
+        logical, intent(in) :: t_store
+        integer, intent(in), optional :: opr_type ! 1-Hamiltonian 2-Dipole 3-SC
+
+        integer :: rhf_fac, rhf_exponent, ios, ierr, iunit, int_err, max_err_msg, opr_type_set
+        integer :: i, j, a, b, ii, aa, jj, bb, ic, ia, iorb, orbs(4), active(2), core(2)
+        integer(int_64) :: ti
+        real(p) :: x, y
+        complex(p) :: compint
+        character(1024) :: err_msg
+        integer, allocatable :: seen_ijij(:), seen_iaib(:, :)
+        logical, allocatable :: seen_iha(:)
+
+        iunit = 6
+        opr_type_set = opr_is_h
+        if (present(opr_type)) opr_type_set = opr_type
+
+        if (sys%read_in%uhf) then
+            rhf_fac = 1
+        else
+            rhf_fac = 2
+        end if
+
+        allocate(seen_iha((sys%basis%nbasis*(sys%basis%nbasis+1))/2), stat=ierr)
+        call check_allocate('seen_iha', (sys%basis%nbasis*(sys%basis%nbasis+1))/2, ierr)
+        allocate(seen_ijij((active_basis_offset*(active_basis_offset+1))/2), stat=ierr)
+        call check_allocate('seen_ijij', (active_basis_offset*(active_basis_offset+1))/2, ierr)
+        allocate(seen_iaib(-active_basis_offset+1:0, (sys%basis%nbasis*(sys%basis%nbasis+1))/2), stat=ierr)
+        call check_allocate('seen_iaib', sys%basis%nbasis*(sys%basis%nbasis+1)/2, ierr)
+        seen_iha  = .false.
+        seen_ijij = 0
+        seen_iaib = 0
+
+        ! Now, there is no guarantee that input operator files will include all
+        ! permutation symmetry and so we must avoid double-counting when
+        ! accumulating Ecore and <a|b>.
+
+        ! * <i|i> can only occur once (and requires a factor of 2 in RHF
+        !   calculations), hence there is no risk of double counting.
+        ! * <ij|ij> and <ij|ji>: store whether seen in a triangular array.
+        ! * <ia|ib> and <ia|bi>: store whether seen in a triangular array for
+        !   each i.
+
+        ! In the 'seen' arrays, +1 indicates the Coulomb integral has already
+        ! been seen and +2 indicates the exchange integral has already been
+        ! seen.  We only vaguely attempt to save memory in these arrays (ie one
+        ! can do better if needed---see integral stores in molecular_integrals
+        ! for inspiration).
+
+        ! We similarly need to remember if we've seen <i|h|a> or <a|h|i> as we
+        ! only store one of the pair.
+
+        ! If using complex orbitals, <ii|jj> =/= <ij|ji>, etc, so no longer
+        ! accept some permutations.
+        ! For complex have also assumed expressions above for E_core and <a|b>
+        ! hold; if not the case then likely incorrect values obtained.
+
+        ! Accumulate errors so we can print out (at most) max_err_msg errors
+        ! from this file.
+        int_err     = 0
+        max_err_msg = 10
+
+        ! read integrals and eigenvalues
+        ios = 0
+        do
+            ! line-by-line input
+            if (opr_type_set == opr_is_dipole) then
+                j = 0
+                b = 0
+                if (sys%read_in%comp) then
+                    read(ir, *, iostat=ios) compint, i, a
+                    x = real(compint, p)
+                    y = aimag(compint)
+                else
+                    read(ir, *, iostat=ios) x, i, a
+                end if
+            else
+                if (sys%read_in%comp) then
+                    read(ir, *, iostat=ios) compint, i, a, j, b
+                    x = real(compint, p)
+                    y = aimag(compint)
+                else
+                    read(ir, *, iostat=ios) x, i, a, j, b
+                end if
+            end if
+
+            if (ios == iostat_end) exit ! EOF reached
+            if (ios /= 0) call stop_all('process_and_store_integrals', 'Problem reading integral file: '&
+                                       &//trim(sys%read_in%fcidump))
+
+            ! Working in spin orbitals but FCIDUMP is in spatial orbitals in RHF
+            ! calculations and spin orbitals in UHF calculations, and te basis
+            ! is ! not necessarily ordered by energy.  We wish to work in spin
+            ! orbitals ordered by energy.
+            ! Need to only store integrals in one spin-channel in RHF, so
+            ! can just get away with referring (e.g.) beta orbitals, hence the
+            ! factor of 2 in RHF.  The integral store routines convert the
+            ! indices further to compress the integral stores as much as
+            ! possible.
+            i = rhf_fac*sp_fcidump_rank(i)
+            j = rhf_fac*sp_fcidump_rank(j)
+            a = rhf_fac*sp_fcidump_rank(a)
+            b = rhf_fac*sp_fcidump_rank(b)
+
+            ! Adjust indices to take into account frozen core orbitals and to
+            ! convert to an energy ordering.
+            ii = i - active_basis_offset
+            jj = j - active_basis_offset
+            aa = a - active_basis_offset
+            bb = b - active_basis_offset
+
+            if (max(ii,jj,aa,bb) <= sys%basis%nbasis) then
+
+                ! Have integrals involving only core or active orbitals.
+                if (i == 0 .and. j == 0 .and. a == 0 .and. b == 0) then
+
+                    ! Nuclear energy.
+                    sys%read_in%Ecore = sys%read_in%Ecore + x
+                    if (sys%read_in%comp) then
+                        ! Imaginary component of a Hermite operator should be 0
+                        ! but just in case...
+                        sys%read_in%Ecore_imag = sys%read_in%Ecore_imag + y
+                    end if
+
+                else if (i > 0 .and. j == 0 .and. a == 0 .and. b == 0) then
+
+                    ! \epsilon_i
+                    ! Already dealt with in previous pass over FCIDUMP.
+                    ! And such a term should not appear in operator integral
+                    ! files.
+
+                else if (j == 0 .and. b == 0) then
+
+                    if (opr_type_set == opr_is_sc) call warning('process_and_store_integrals', &
+                        &'usually SC energy gap does not conain 1-body component')
+
+                    ! <i|a>
+                    if (t_store) then
+                        if (ii < 1 .and. ii == aa) then
+                            ! Have <i|i> from a core orbital. Add contribution
+                            ! to sys%read_in%Ecore. If RHF is on, <i,up|i,up> as
+                            ! well as <i,down|i,down> should be included.
+                            sys%read_in%Ecore = sys%read_in%Ecore + x*rhf_fac
+                            if (sys%read_in%comp) sys%read_in%Ecore_imag = sys%read_in%Ecore_imag + y*rhf_fac
+
+                        else if (all( (/ ii, aa /) > 0)) then
+                            ! Usual storage of 1-orbital integrals
+                            if (.not.seen_iha(tri_ind_reorder(ii, aa))) then
+                                x = x + get_one_body_int_mol_real(sys%read_in%one_e_h_integrals, ii, aa, sys)
+                                call store_one_body_int(ii, aa, x, sys, int_err > max_err_msg, &
+                                                       &sys%read_in%one_e_h_integrals, ierr)
+                                int_err = int_err + ierr
+                                if (sys%read_in%comp) then
+                                    y = y + get_one_body_int_mol_real(sys%read_in%one_e_h_integrals_imag, ii, aa, sys)
+                                    call store_one_body_int(ii, aa, y, sys, int_err > max_err_msg, &
+                                                           &sys%read_in%one_e_h_integrals_imag, ierr)
+                                    int_err = int_err + ierr
+                                end if
+                                seen_iha(tri_ind_reorder(ii, aa)) = .true.
+                            end if
+                        end if
+                    end if
+
+                else
+
+                    if (opr_type_set == opr_is_dipole) call stop_all('process_and_store_integrals', &
+                        &'2-body component found in the dipole integral file')
+
+                    ! <ij|ab>
+                    if (t_store) then
+                        orbs = (/ ii, jj, aa, bb /)
+                        select case(count(orbs > 0))
+                        case(0)
+                            ! Have <ij|ab> involving only core orbitals. We
+                            ! should only run over i<j but there's no guarantee
+                            ! that the FCIDUMP file contains the permutations we
+                            ! expect (ie it might contain <ji|ji> but not
+                            ! <ij|ij>, where i<j), so instead we let the
+                            ! seen_ijij array make sure we only use a unique
+                            ! integral once, no matter which permutation(s)
+                            ! occur in the FCIDUMP file.
+                            ! For core orbitals, sum imaginary components; if
+                            ! overall core energy has non-negligible imaginary
+                            ! component raise warning as something gone wrong.
+                            if (ii == aa .and. jj == bb .and. ii == jj) then
+                                if (.not.sys%read_in%uhf .and. mod(seen_ijij(tri_ind_reorder(i, j)), 2) == 0) then
+                                    ! <i,up i,down|i,up i,down> for RHF calculations
+                                    sys%read_in%Ecore = sys%read_in%Ecore + x
+                                    if (sys%read_in%comp) sys%read_in%Ecore_imag = sys%read_in%Ecore_imag + y
+                                    seen_ijij(tri_ind_reorder(i, j)) = seen_ijij(tri_ind_reorder(i, j)) + 1
+                                end if
+                            else if (ii == aa .and. jj == bb .and. ii /= jj) then
+                                ! <ij|ij>, where i/=j
+                                if (mod(seen_ijij(tri_ind_reorder(i, j)),2) == 0) then
+                                    ! For RHF Hamiltonian, we need to include all spin channels:
+                                    !   <i,up j,up|i,up, j,up>
+                                    !   <i,up j,down|i,up, j,down>
+                                    !   <i,down j,up|i,down, j,up>
+                                    !   <i,down j,down|i,down, j,down>
+                                    ! But in RHF SC operators, spin paring is restricted to:
+                                    !   <i,up j,down|i,up, j,down>
+                                    !   <i,down j,up|i,down, j,up>
+                                    select case(opr_type_set)
+                                    case(opr_is_h)
+                                        rhf_exponent = 2
+                                    case(opr_is_sc)
+                                        rhf_exponent = 1
+                                    end select
+                                    sys%read_in%Ecore = sys%read_in%Ecore + x*rhf_fac**rhf_exponent
+                                    if (sys%read_in%comp) then
+                                        sys%read_in%Ecore_imag = sys%read_in%Ecore_imag + y*rhf_fac**rhf_exponent
+                                    end if
+                                    seen_ijij(tri_ind_reorder(i,j)) = seen_ijij(tri_ind_reorder(i,j)) + 1
+                                end if
+                            else if (((ii == bb .and. jj == aa .and. ii /= jj) .or. &
+                                      (ii == jj .and. aa == bb .and. ii /= aa .and. .not.sys%read_in%comp)) .and. &
+                                     (rhf_fac == 1 .or. opr_type_set == opr_is_h)) then
+                                ! <ij|ji>, i/=j (or the deprecated <ii|jj>
+                                ! version) can be treated together for real
+                                ! orbitals. For complex ones, only <ij|ji> is
+                                ! accepted.
+                                ! Usually for SC gap, <ij|ji> is zero as SC only
+                                ! has terms of <up, down|up, down>. Hence if
+                                ! this kind of terms are encountered, we treat
+                                ! it as ``canceled'' for RHF operators and make
+                                ! a warning if UHF is specified.
+                                if (opr_type_set == opr_is_sc) call warning('process_and_store_integrals', &
+                                                                   &'SC integral violates the <up,down|up,down> rule')
+                                if (ii == jj) then
+                                    ti = tri_ind_reorder(i, a)
+                                else
+                                    ti = tri_ind_reorder(i, j)
+                                end if
+                                if (seen_ijij(ti) < 2) then
+                                    ! If RHF, then need to include (for Hamiltonian):
+                                    !   <i,up j,up|j,up, i,up>
+                                    !   <i,down j,down|j,down, i,down>
+                                    sys%read_in%Ecore = sys%read_in%Ecore - x*rhf_fac
+                                    if (sys%read_in%comp) sys%read_in%Ecore_imag = sys%read_in%Ecore_imag - y*rhf_fac
+                                    seen_ijij(ti) = seen_ijij(ti) + 2
+                                end if
+                            end if
+                        case(2)
+                            ! Have an integral involving two core and two active orbitals.
+                            ic = 1
+                            ia = 1
+                            do iorb = 1, 4
+                                if (orbs(iorb) > 0) then
+                                    active(ia) = orbs(iorb)
+                                    ia = ia + 1
+                                else
+                                    core(ic) = orbs(iorb)
+                                    ic = ic + 1
+                                end if
+                            end do
+                            if (core(1) == core(2)) then
+                                ! Have integral of type <ia|ib> or <ia|bi>,
+                                ! where i is a core orbital and a and b are
+                                ! active orbitals.
+                                if ((ii == core(1) .and. aa == core(1)) .or. (jj == core(1) .and. bb == core(1))) then
+                                    ! <ia|ib> or <ai|bi>
+                                    if (mod(seen_iaib(core(1), tri_ind_reorder(active(1), active(2))), 2) == 0) then
+                                        ! Update <a|b> with contribution <ia|ib>.
+                                        ! For Hamiltonian, we should consider
+                                        ! both <up a|up b> and <down a|down b>,
+                                        ! but in SC gap, for each a->b spin,
+                                        ! only one of the i->i spins can have
+                                        ! contribution.
+                                        select case(opr_type_set)
+                                        case(opr_is_h)
+                                            rhf_exponent = 1
+                                        case(opr_is_sc)
+                                            rhf_exponent = 0
+                                        end select
+                                        x = x*rhf_fac**rhf_exponent + get_one_body_int_mol_real&
+                                            &(sys%read_in%one_e_h_integrals, active(1), active(2), sys)
+                                        call store_one_body_int(active(1), active(2), x, sys, int_err > max_err_msg, &
+                                                               &sys%read_in%one_e_h_integrals, ierr)
+                                        int_err = int_err + ierr
+                                        if (sys%read_in%comp) then
+                                            y = y*rhf_fac**rhf_exponent + get_one_body_int_mol_real&
+                                                &(sys%read_in%one_e_h_integrals_imag, active(1), active(2), sys)
+                                            call store_one_body_int(active(1), active(2),                   &
+                                                                   &y, sys, int_err > max_err_msg,          &
+                                                                   &sys%read_in%one_e_h_integrals_imag, ierr)
+                                            int_err = int_err + ierr
+                                        end if
+                                        seen_iaib(core(1), tri_ind_reorder(active(1), active(2))) = &
+                                            seen_iaib(core(1), tri_ind_reorder(active(1), active(2))) + 1
+                                    end if
+                                else if (((.not. sys%read_in%comp) .or. ((ii == core(1) .and. bb == core(2)) &
+                                                                   .or.  (jj == core(1) .and. aa == core(2)))) .and. &
+                                         (rhf_fac == 1 .or. opr_type_set == opr_is_h)) then
+                                    ! <ia|bi> (or allowed permutation thereof)
+                                    ! For systems with complex orbitals (but
+                                    ! real integrals) it's possible for <ii|ba>
+                                    ! to be nonzero, but <ia|bi>=0 so we test
+                                    ! the symmery.
+
+                                    ! For complex we can only accept <ia|bi> or
+                                    ! <ai|ib>, which gives the second two
+                                    ! conditions above.
+                                    ! For real we can also accept <ii|ab>,
+                                    ! <ii|ba> etc, which are all remaining cases
+                                    ! of core(1) == core(2) after the inital if
+                                    ! statement. As such if real automatically
+                                    ! accept.
+
+                                    ! This term should be zero for SC gap
+                                    ! because of the spin up-down requirement
+                                    ! If this kind of terms are encountered, we
+                                    ! treat it as ``canceled'' for RHF operators
+                                    ! and make a warning if UHF is specified.
+                                    if (opr_type_set == opr_is_sc) &
+                                        call warning('process_and_store_integrals', &
+                                                    &'SC integral violates the <up,down|up,down> rule')
+                                    if (seen_iaib(core(1), tri_ind_reorder(active(1),active(2))) < 2 .and. &
+                                        is_gamma_irrep_read_in(sys%read_in%pg_sym, sys%read_in%cross_product_sym_ptr(  &
+                                            &sys%read_in,                                                              &
+                                            &sys%read_in%sym_conj_ptr(sys%read_in, sys%basis%basis_fns(active(1))%sym),&
+                                            &sys%basis%basis_fns(active(2))%sym)                                       &
+                                        )) then
+                                        ! Update <j|a> with contribution <ij|ai>.
+                                        x = get_one_body_int_mol_real(sys%read_in%one_e_h_integrals, &
+                                                                      active(1), active(2), sys) - x
+                                        call store_one_body_int(active(1), active(2),              &
+                                                               &x, sys, int_err > max_err_msg,     &
+                                                               &sys%read_in%one_e_h_integrals, ierr)
+                                        int_err = int_err + ierr
+                                        if (sys%read_in%comp) then
+                                            ! Possible sign change due to ordering of active(1) & active(2)
+                                            ! accounted for in get_one_body... and store_one_body...
+                                            ! function ordering adjustments.
+                                            y = get_one_body_int_mol_real(sys%read_in%one_e_h_integrals_imag, &
+                                                                         &active(1), active(2), sys) - y
+                                            call store_one_body_int(active(1), active(2),                   &
+                                                                   &y, sys, int_err > max_err_msg,          &
+                                                                   &sys%read_in%one_e_h_integrals_imag, ierr)
+                                            int_err = int_err + ierr
+                                        end if
+                                        seen_iaib(core(1), tri_ind_reorder(active(1),active(2))) = &
+                                            seen_iaib(core(1), tri_ind_reorder(active(1),active(2))) + 2
+                                    end if
+                                end if
+                            end if
+                        case(4)
+                            ! Have <ij|ab> involving active orbitals.
+                            call store_two_body_int(ii, jj, aa, bb, x, sys,                                   &
+                                                   &int_err > max_err_msg, sys%read_in%coulomb_integrals, ierr)
+                            int_err = int_err + ierr
+                            if (sys%read_in%comp) then
+                                call store_two_body_int(ii, jj, aa, bb, y, sys,                                        &
+                                                       &int_err > max_err_msg, sys%read_in%coulomb_integrals_imag, ierr)
+                                int_err = int_err + ierr
+                            end if
+                        end select
+                    end if
+
+                end if
+
+            end if
+
+        end do
+
+        if (int_err /= 0) then
+            write (err_msg, '("Found and ignored",'//int_fmt(int_err,1)//'," integrals which should be zero &
+                            &by symmetry in file: '//trim(sys%read_in%fcidump)//'")') int_err
+            call warning('read_in_integrals', trim(err_msg), 1)
+            if (int_err > max_err_msg) &
+                write (iunit,'(1X,"Only the first",'//int_fmt(max_err_msg)//'," error messages are shown.",/)') &
+                      &max_err_msg
+        end if
+
+        ! If system is sensible, total Ecore including any CAS contribution will be purely real as is just the sum
+        ! of Ecore and single particle energies of core orbitals; if not then either these assumptions are wrong or
+        ! something's up with the integral dump file. Either way will want to know.
+        ! For custom operators, we all know that observables should be Hermitian and smapling non-Hermitinan operators
+        ! makes no physical significance.
+        if (abs(sys%read_in%Ecore_imag) > depsilon) &
+            call stop_all('read_in_integrals' ,'Nonzero imaginary core integrals found; check your CAS settings. &
+                                              &(Hamiltonian should of course be Hermitian, and non-Hermitian operator&
+                                              & sampling is not supported.)')
+
+        deallocate(seen_iha, stat=ierr)
+        call check_deallocate('seen_iha', ierr)
+        deallocate(seen_ijij, stat=ierr)
+        call check_deallocate('seen_ijij', ierr)
+        deallocate(seen_iaib, stat=ierr)
+        call check_deallocate('seen_iaib', ierr)
+
+    end subroutine process_and_store_integrals
 
     subroutine init_basis_fns_read_in(norb, sys, orbsym, lz, sp_eigv, sp_eigv_rank, basis_arr)
 
@@ -906,27 +1129,13 @@ contains
 
     end subroutine init_basis_fns_read_in
 
-    subroutine read_in_one_body(integral_file, sys, sp_fcidump_rank, active_basis_offset, &
-                                store, core_term)
+    function find_sym_one_body(sys, ir, sp_fcidump_rank, active_basis_offset) result(op_sym)
 
-        ! Read in an integral file containing the integrals <i|O|a>, where O is
-        ! a one-body operator which is not part of the Hamiltonian.
-
-        ! The integral file consists soley of lines with the format:
-        !    x i a
-        ! where <i|O|a> = x.
-
-        ! We assume the orbitals have the same indexing as used in the FCIDUMP
-        ! file and i,a are in spatial (spin) indices if produced by a RHF (UHF)
-        ! calculation.
+        ! Finds symmetry in one-body (dipole) operator.
 
         ! In:
-        !    integral_file: file containing integrals.
-        !    sys: object containing information on the system. We use:
-        !           -sys%basis%nbasis
-        !           -sys%basis%basis_fns
-        !           -sys%read_in%uhf
-        !           -sys%read_in%pg_sym
+        !    sys: object containing information on the system.
+        !    ir: read-in unit of the integral file
         !    sp_fcidump_rank: ranking array which converts index in the
         !         integrals file(s) to the (energy-ordered) index used in HANDE,
         !         i.e. sp_fcidump_rank(a) = i, where a is the a-th
@@ -936,48 +1145,27 @@ contains
         !         commments about this special case.
         !    active_basis_offset: number of frozen core orbitals.
         ! Out:
-        !    store: one-body store of integrals given in integral_file..
-        !    core_term: contribution to <\Psi|O|\Psi> from the
-        !         frozen core orbitals and the nucleii.
+        !    op_sym: operator symmetry information
 
-        use basis_types, only: basis_fn_t
         use read_in_symmetry, only: cross_product_basis_read_in
-        use symmetry_types, only: pg_sym_t
-        use molecular_integrals, only: one_body_t, init_one_body_t,              &
-                                       end_one_body_t, store_one_body_int, &
-                                       zero_one_body_int_store, broadcast_one_body_t
-
-        use errors, only: stop_all
         use parallel
-        use utils, only: int_fmt
-        use errors, only: warning
+        use errors, only: stop_all
         use system, only: sys_t
 
         use, intrinsic :: iso_fortran_env, only: iostat_end
 
-        character(*), intent(in) :: integral_file
         type(sys_t), intent(in) :: sys
-        integer, intent(in) :: sp_fcidump_rank(0:), active_basis_offset
-        type(one_body_t), intent(out) :: store
-        real(p), intent(out) :: core_term
+        integer, intent(in) :: sp_fcidump_rank(0:), active_basis_offset, ir
+        integer :: op_sym
 
-        integer :: ir, op_sym, ios, i, a, ii, aa, rhf_fac, ierr
-        logical :: t_exists
-        integer :: int_err, max_err_msg, iunit
-        character(1024) :: err_msg
-
+        integer :: ios, i, a, ii, aa, rhf_fac, norb, uhf
         real(p) :: x
-
-        iunit = 6
-
-        ! Accumulate errors so we can print out (at most) max_err_msg errors from this file.
-        int_err = 0
-        max_err_msg = 10
+        namelist /OPR/ norb, uhf
 
         if (sys%read_in%uhf) then
             rhf_fac = 1
         else
-            rhf_fac = 2  ! need to double count some integrals.
+            rhf_fac = 2
         end if
 
         ! Only do i/o on root processor.
@@ -985,104 +1173,32 @@ contains
             ! We don't know the symmetry of the operator.
             ! However, we do know that a non-zero integral must have a totally
             ! symmetric integrand *and* we know the symmetries of all the orbitals.
-            inquire(file=integral_file, exist=t_exists)
-            if (.not.t_exists) call stop_all('read_in_one_body', 'Integral file does not &
-                                                               &exist:'//trim(integral_file))
-            open (newunit=ir, file=integral_file, status='old', form='formatted')
-
             do
-                read (ir,*, iostat=ios) x, i, a
+                read (ir, *, iostat=ios) x, i, a
                 if (ios == iostat_end) exit ! reached end of file
-                if (ios /= 0) call stop_all('read_in_one_body','Problem reading integrals file: '//trim(integral_file))
+                if (ios /= 0) call stop_all('read_in_one_body', &
+                                           &'Problem reading integrals file: '//trim(sys%read_in%fcidump))
                 ii = rhf_fac*sp_fcidump_rank(i) - active_basis_offset
                 aa = rhf_fac*sp_fcidump_rank(a) - active_basis_offset
-                if (abs(x) > depsilon .and. ii > 0 .and. aa > 0) exit ! Found the first non-zero integral in active space.
+                if (abs(x) > depsilon .and. ii > 0 .and. aa > 0) exit ! Found the first non-zero int in active space.
             end do
             ! We only use Abelian symmetries so all representations are their own
             ! inverse.
-            op_sym = cross_product_basis_read_in(sys, ii,aa)
+            op_sym = cross_product_basis_read_in(sys, ii, aa)
+
+            ! Rewind the file pointer to the beginning of the integrals
+            rewind(ir)
+            read(ir, OPR)
         else
             ! We'll broadcast the symmetry and the integrals to all other
             ! processors later.
             op_sym = -1
         end if
 
-        ! Allocate integral store on *all* processors.
-        if (allocated(store%integrals)) call end_one_body_t(store)
-        call init_one_body_t(sys, op_sym, .false., store)
-        ! Integrals might be allowed by symmetry (and hence stored) but still
-        ! be zero (and so not be included in the integral file).  To protect
-        ! ourselves against accessing uninitialised memory:
-        call zero_one_body_int_store(store)
-
-        ! In addition to reading in the integrals, we must also calculate the
-        ! contribution from the core (frozen) orbitals.
-        !
-        ! Consider |\Psi> = c_i |D_i>, where {|D_i>} includes the frozen core
-        ! electrons and Einstein summation is used throughout. Then:
-        !
-        !     <\Psi | O | \Psi> = <D_i|O|D_j> c_i^* c_j
-        !
-        ! where, for spin-orbitals {|a>}:
-        !
-        !     <D_i|O|D_j> = | <a|O|a> if |D_i>=|D_j>
-        !                   | <a|O|b> if |D_i> and |D_j> are related by the excitation a->b
-        !                   | 0       otherwise
-        !
-        !     <\Psi |O | \Psi > = <a_c|O|a_c> c_i^* c_i + <D_i'|O|D_j'> c_i^* c_j
-        !
-        ! where {|D_i'>} now only incude active occupied orbitals and {|a_c>} are
-        ! the frozen core electrons.  As {|a_c>} is indentical for all
-        ! determinants and |\Psi> is normalised, the summation over i in the first
-        ! term is unity and hence:
-        !
-        !     <\Psi |O | \Psi > = <a_c|O|a_c> + <D_i'|O|D_j'> c_i^* c_j
-        !
-        ! The contribution from the frozen core electrons is hence just the sum
-        ! over the diagonal integrals.
-
-        ! And back to root...
-        core_term = 0.0_p
-        if (parent) then
-            rewind(ir)
-            do
-                read (ir,*, iostat=ios) x, i, a
-                if (ios == iostat_end) exit ! reached end of file
-                if (ios /= 0) call stop_all('read_in_one_body','Problem reading integrals file: '//trim(integral_file))
-                ii = rhf_fac*sp_fcidump_rank(i) - active_basis_offset
-                aa = rhf_fac*sp_fcidump_rank(a) - active_basis_offset
-                if (i == 0 .and. a == 0) then
-                    ! Nuclear contributions.
-                    core_term = core_term + x
-                else if (ii < 1 .and. ii == aa) then
-                    core_term = core_term + rhf_fac*x
-                else if (min(ii,aa) >= 1 .and. max(ii,aa) <= sys%basis%nbasis) then
-                    call store_one_body_int(ii, aa, x, sys, &
-                                            int_err > max_err_msg, store, ierr)
-                    int_err = int_err + ierr
-                end if
-            end do
-        end if
-
-        if (int_err /= 0) then
-            write (err_msg, '("Found and ignored",'//int_fmt(int_err,1)//'," integrals which should be zero &
-                              &by symmetry in file: '//trim(integral_file)//'")') int_err
-            call warning('read_in_one_body', trim(err_msg), 1)
-            if (int_err > max_err_msg) &
-                write (iunit,'(1X,"Only the first",'//int_fmt(max_err_msg)//'," error messages are shown.",/)') max_err_msg
-        end if
-
-
-        ! And now send info everywhere...
-#ifdef PARALLEL
-        call MPI_BCast(core_term, 1, mpi_preal, root, MPI_COMM_WORLD, ierr)
-#endif
-        call broadcast_one_body_t(store, root)
-
-    end subroutine read_in_one_body
+    end function find_sym_one_body
 
     subroutine get_sp_eigv(sys, ir, sp_eigv)
-        
+
         ! Get Fock energies: either read from FCIDUMP or calculate from other integrals if not provided
 
         ! In:
@@ -1164,8 +1280,10 @@ contains
 
         if (.not. found_sp_eigv) then
             ! Using Fock energies calculated from other integrals
-            if (sys%read_in%uhf) call stop_all('get_sp_eigv', 'Calculation of single particle eigenvalues not implemented for UHF.')
-            call warning('get_sp_eigv', 'Assuming orbitals are in energy order.  If not, calculated eigenvalues may be incorrect')
+            if (sys%read_in%uhf) call stop_all('get_sp_eigv', &
+                                              &'Calculation of single particle eigenvalues not implemented for UHF.')
+            call warning('get_sp_eigv', &
+                        &'Assuming orbitals are in energy order.  If not, calculated eigenvalues may be incorrect')
         end if
 
     end subroutine get_sp_eigv

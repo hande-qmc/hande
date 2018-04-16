@@ -240,11 +240,11 @@ contains
 
         use system, only: sys_t, heisenberg, ueg, read_in
         use dmqmc_data, only: dmqmc_in_t, hartree_fock_dm
-        use calc, only: dmqmc_rdm_r2, doing_dmqmc_calc, dmqmc_full_r2
-        use calc, only: dmqmc_staggered_magnetisation, dmqmc_energy_squared, dmqmc_correlation
-        use calc, only: dmqmc_potential_energy, dmqmc_kinetic_energy, dmqmc_HI_energy
+        use calc, only: dmqmc_rdm_r2, doing_dmqmc_calc, dmqmc_full_r2, dmqmc_staggered_magnetisation, &
+                        dmqmc_energy_squared, dmqmc_correlation, dmqmc_potential_energy, dmqmc_kinetic_energy, &
+                        dmqmc_H0_energy, dmqmc_HI_energy
 
-        use errors, only: stop_all
+        use errors, only: stop_all, warning
         use const, only: depsilon, p
 
         type(sys_t), intent(in) :: sys
@@ -252,7 +252,8 @@ contains
 
         character(*), parameter :: this = 'check_dmqmc_opts'
 
-        if (dmqmc_in%rdm%calc_inst_rdm .and. dmqmc_in%rdm%spawned_length == 0) call stop_all(this,'Spawned RDM length zero.')
+        if (dmqmc_in%rdm%calc_inst_rdm .and. dmqmc_in%rdm%spawned_length == 0) &
+            call stop_all(this,'Spawned RDM length zero.')
 
         if (doing_dmqmc_calc(dmqmc_staggered_magnetisation) .and. (.not.sys%lattice%bipartite_lattice)) &
             call stop_all(this,'Staggered magnetisation calculation is only supported on a bipartite lattice.')
@@ -265,7 +266,8 @@ contains
             if (doing_dmqmc_calc(dmqmc_correlation)) &
                 call stop_all(this,'The correlation function operator is not supported for this system.')
             if (dmqmc_in%rdm%calc_ground_rdm .or. dmqmc_in%rdm%calc_inst_rdm) &
-                call stop_all(this,'The calculation of reduced density matrices is not supported for this system.')
+                call stop_all(this,'The calculation of reduced density matrices is not supported for this &
+                                   &system.')
         end if
         if (.not. sys%system == ueg) then
             if (doing_dmqmc_calc(dmqmc_kinetic_energy)) &
@@ -283,33 +285,40 @@ contains
             call stop_all(this, 'find_weights and excit_dist options cannot be used together.')
 
         if (doing_dmqmc_calc(dmqmc_rdm_r2) .and. (.not. dmqmc_in%replica_tricks)) &
-            call stop_all(this, 'The replica_tricks option must be used in order to calculate the Renyi-2 entropy.')
+            call stop_all(this, 'The replica_tricks option must be used in order to calculate &
+                                &the Renyi-2 entropy.')
         if (doing_dmqmc_calc(dmqmc_rdm_r2) .and. (.not. dmqmc_in%rdm%calc_inst_rdm)) &
-            call stop_all(this, 'The instantaneous_rdm option must be used in order to calculate the Renyi-2 entropy.')
+            call stop_all(this, 'The instantaneous_rdm option must be used in order to calculate &
+                                &the Renyi-2 entropy.')
         if (doing_dmqmc_calc(dmqmc_full_r2) .and. (.not. dmqmc_in%replica_tricks)) &
-            call stop_all(this, 'The replica_tricks option must be used in order to calculate the Renyi-2 entropy.')
+            call stop_all(this, 'The replica_tricks option must be used in order to calculate the &
+                                &Renyi-2 entropy.')
         if (doing_dmqmc_calc(dmqmc_HI_energy) .and. (.not. dmqmc_in%symmetric)) &
-            call stop_all(this, 'Evaluation of interaction picture Hamiltonian only possible when using symmetric algorithm.')
+            call stop_all(this, 'Evaluation of interaction picture Hamiltonian only possible when &
+                                &using symmetric algorithm.')
 
         if (dmqmc_in%all_spin_sectors) then
             if (abs(sys%heisenberg%magnetic_field) > depsilon .or. &
                 abs(sys%heisenberg%staggered_magnetic_field) > depsilon) &
-                call stop_all(this, 'The use of all spin sectors simultaneously is not supported with magnetic fields.')
+                call stop_all(this, 'The use of all spin sectors simultaneously is not supported &
+                                    &with magnetic fields.')
             if (dmqmc_in%rdm%calc_ground_rdm) &
-                call stop_all(this, 'The use of all spin sectors simultaneously is not supported with ground-state RDMs.')
+                call stop_all(this, 'The use of all spin sectors simultaneously is not supported &
+                                    &with ground-state RDMs.')
         end if
 
         if (dmqmc_in%vary_weights .and. (.not. dmqmc_in%weighted_sampling)) then
-            call stop_all(this, 'The vary_weights option can only be used together with the weighted_sampling option.')
+            call stop_all(this, 'The vary_weights option can only be used together with the &
+                                &weighted_sampling option.')
         end if
 
-        if (dmqmc_in%ipdmqmc .and. .not. dmqmc_in%grand_canonical_initialisation &
-            & .and.  dmqmc_in%metropolis_attempts == 0) then
-            call stop_all(this, 'metropolis_attempts must be non-zero to sample the correct initial density matrix&
-                                 & if not using grand_canonical_initialisation.')
+        if (dmqmc_in%ipdmqmc .and. .not. dmqmc_in%grand_canonical_initialisation .and. &
+           &dmqmc_in%metropolis_attempts == 0) then
+            call stop_all(this, 'metropolis_attempts must be non-zero to sample the correct initial density &
+                                &matrix if not using grand_canonical_initialisation.')
         end if
-        if (dmqmc_in%grand_canonical_initialisation .and. dmqmc_in%initial_matrix == hartree_fock_dm &
-            .and. sys%system /= ueg .and. sys%system /= read_in) then
+        if (dmqmc_in%grand_canonical_initialisation .and. dmqmc_in%initial_matrix == hartree_fock_dm .and. &
+           &sys%system /= ueg .and. sys%system /= read_in) then
             call stop_all(this, 'Reweighting of initial matrix not supported for this system. Please implement.')
         end if
         if (dmqmc_in%symmetric .and. dmqmc_in%ipdmqmc .and. sys%system /= ueg) then
@@ -317,7 +326,8 @@ contains
         end if
 
         if (dmqmc_in%target_beta < depsilon .and. dmqmc_in%grand_canonical_initialisation) then
-            call stop_all(this, 'target_beta must be greater than zero if grand_canonical_initialisation is to be used.')
+            call stop_all(this, 'target_beta must be greater than zero if grand_canonical_initialisation &
+                                &is to be used.')
         else if (dmqmc_in%target_beta < 0) then
             call stop_all(this, 'target_beta must be non-negative.')
         end if
@@ -326,10 +336,15 @@ contains
             call stop_all(this, 'metropolis_attempts must be greater than zero.')
         end if
 
-        if (sys%read_in%comp) call stop_all(this, 'Complex DMQMC not yet implemented')
+        if (sys%read_in%comp) then
+            call warning(this, 'Complex DMQMC is yet very experimental and will work with only a few operators.')
+            if (dmqmc_in%ipdmqmc) &
+                call stop_all(this, 'Complex DMQMC does not support IP-DMQMC yet.')
+        end if
 
-        if (sys%basis%info_string_len /= 0) call stop_all(this, &
-            'DMQMC is incompatible with additional information being stored in the bit string. Please implement if needed.')
+        if (sys%basis%info_string_len /= 0) &
+            call stop_all(this, 'DMQMC is incompatible with additional information being stored in the bit &
+                                &string. Please implement if needed.')
 
     end subroutine check_dmqmc_opts
 

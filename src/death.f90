@@ -21,7 +21,8 @@ contains
         ! In:
         !    sys: the system
         !    qs: qmc_state_t object. tau, propagator and dmqmc_factor are used.
-        !    dfock: \sum_i (f_i - f^0_i), where f_i (f^0_i) is the Fock eigenvalue of the i-th orbital occupied in D_i (D_0).
+        !    dfock: \sum_i (f_i - f^0_i), where f_i (f^0_i) is the Fock
+        !         eigenvalue of the i-th orbital occupied in D_i (D_0).
         !    Kii: < D_i | H | D_i > - E_0, where D_i is the determinant on
         !         which the particles reside.
         !    loc_shift: The value of the shift to be used in the death step.
@@ -114,8 +115,8 @@ contains
             population = population - kill
         end if
         if (debug) call write_logging_death(logging_info, Kii, proj_energy, loc_shift, weight, kill, pd_saved, &
-                                        real(old_population,p)/qs%psip_list%pop_real_factor, &
-                                        real(population,p)/qs%psip_list%pop_real_factor)
+                                           &real(old_population,p)/qs%psip_list%pop_real_factor, &
+                                           &real(population,p)/qs%psip_list%pop_real_factor)
         tot_population = tot_population + &
             real(abs(population) - abs(old_population),p)/qs%psip_list%pop_real_factor
         ndeath = ndeath + abs(kill)

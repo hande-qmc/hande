@@ -1900,7 +1900,7 @@ contains
         ! At present this uses the weight is 1/(F(spawnee)-F(reference)).
         ! If the difference in Fock energy between the reference and the spawnee is less than
         ! propagator%quasi_newton_threshold then the weight 1/(propagator%quasi_newton_value) is used instead.
-    
+
         use qmc_data, only:  propagator_t
         use system, only: sys_t
         use determinants, only: decode_det, det_info_t

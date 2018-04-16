@@ -533,8 +533,8 @@ module restart_hdf5
             real(p) :: shift_damp(1)
 
             integer(HSIZE_T) :: dims(size(shape(qs%psip_list%states)))
-            real(p) :: proj_energy_tmp_re(qs%psip_list%nspaces), proj_energy_tmp_im(qs%psip_list%nspaces)
-            real(p) :: D0_population_tmp_re(qs%psip_list%nspaces), D0_population_tmp_im(qs%psip_list%nspaces)
+            real(p) :: proj_energy_tmp_re(qs%psip_list%ndata), proj_energy_tmp_im(qs%psip_list%ndata)
+            real(p) :: D0_population_tmp_re(qs%psip_list%ndata), D0_population_tmp_im(qs%psip_list%ndata)
 
             ! Initialise HDF5 and open file.
             call h5open_f(ierr)
@@ -557,17 +557,17 @@ module restart_hdf5
 
                 call hdf5_read(group_id, duuid, 36, uuid_restart)
 
-                ! [todo] - Allow restart files for one calculation types to be used to
-                ! [todo] - restart a (suitably compatible) different calculation.
+                ! [todo] - Allow restart files for one calculation types to be used
+                !          to restart a (suitably compatible) different calculation.
                 ! AJWT (correctly) doesn't like the low-level handling of the
-                ! calc_type bit string.  It's not very modular and doesn't
-                ! really belong in the restart code.
+                ! calc_type bit string.  It's not very modular and doesn't really
+                ! belong in the restart code.
                 ! However, this will all change as the purity work progresses.
-                ! [todo] - refactor calc_type handling into a reusable procedure.
+                ! [todo] - Refactor calc_type handling into a reusable procedure.
 
-                ! Different calc types are either not compatible or require
-                ! hyperslabs (fewer particle types) or require copying (more
-                ! particle types).
+                ! Different calc types are either not compatible or
+                ! require hyperslabs (fewer particle types) or require copying
+                ! (more particle types).
                 ! Clear the flags for non-QMC calculations (which aren't
                 ! restarted anyway and don't affect the QMC calculation).
                 calc_type_restart = ieor(calc_type, calc_type_restart)
