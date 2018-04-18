@@ -480,7 +480,7 @@ contains
                 decoder_ptr => decode_det_spinocc_spinsymunocc
             case(excit_gen_power_pitzer_occ_ij)
                 gen_excit_ptr%full => gen_excit_mol_power_pitzer_occ
-                decoder_ptr => decode_det_spinocc_spinsymunocc
+                decoder_ptr => decode_det_ppMij
             case(excit_gen_power_pitzer)
                 gen_excit_ptr%full => gen_excit_mol_power_pitzer_occ_ref
                 decoder_ptr => decode_det_occ
@@ -490,10 +490,10 @@ contains
                 decoder_ptr => decode_det_occ
             case(excit_gen_heat_bath)
                 gen_excit_ptr%full => gen_excit_mol_heat_bath
-                decoder_ptr => decode_det_occ
+                decoder_ptr => decode_det_hb
             case(excit_gen_heat_bath_uniform)
                 gen_excit_ptr%full => gen_excit_mol_heat_bath_uniform
-                decoder_ptr => decode_det_occ_symunocc
+                decoder_ptr => decode_det_hbu
             case(excit_gen_heat_bath_single)
                 ! [todo] uses basically same function as hb_uniform but
                 ! [todo] has varying function call with singles.

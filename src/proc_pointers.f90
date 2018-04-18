@@ -12,13 +12,15 @@ implicit none
 ! that's imported as a array size in abstract interfaces.
 
 abstract interface
-    pure subroutine i_decoder(sys,f,d)
+    pure subroutine i_decoder(sys,f,d,excit_gen_data)
         use system, only: sys_t
+        use excit_gens, only: excit_gen_data_t
         import :: i0, det_info_t
         implicit none
         type(sys_t), intent(in) :: sys
         integer(i0), intent(in) :: f(sys%basis%tot_string_len)
         type(det_info_t), intent(inout) :: d
+        type(excit_gen_data_t), optional, intent(in) :: excit_gen_data
     end subroutine i_decoder
     pure subroutine i_update_proj_energy(sys, f0, wfn_dat, d, pop, estimators, excitation, hmatel)
         use system, only: sys_t
