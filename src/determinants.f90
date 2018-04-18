@@ -27,6 +27,17 @@ type det_info_t
     ! The first index maps to spin using (Ms+3)/2, where Ms=-1 is spin-down and
     ! Ms=1 is spin-up.
     integer, pointer :: symunocc(:,:) ! (2,sym0_tot:sym_max_tot)
+    ! heat_bath weights to select i in a double excitation
+    real(p), pointer :: i_d_weights(:) ! (nel)
+    ! heat bath weights to select i in a single excitation
+    real(p), pointer :: i_s_weights(:) ! (nel)
+    ! heat bath weights to select a given i in a single excitation
+    real(p), pointer :: ia_s_weights(:,:) ! (virt, nel)
+    ! position of different orbitals in this det compared to reference
+    ! First column refers to orbitals in reference, second column to corresponding orbitals in det.
+    integer, pointer :: diff_det_to_ref_orbs(:,:) ! (nel, 2)
+    ! Number of orbitals that are different between det and reference.
+    integer :: nex
     ! is the determinant an initiator determinant or not? (used only in
     ! i-FCIQMC). The i-th bit is set if the determinant is not an initiator in
     ! space i.
@@ -166,6 +177,18 @@ contains
         allocate(det_info%symunocc(2,sys%sym0_tot:sys%sym_max_tot), stat=ierr)
         call check_allocate('det_info%symunocc', 2*sys%nsym_tot, ierr)
 
+        ! Weights for excitation generators for this det. 
+        allocate(det_info%i_d_weights(sys%nel), stat=ierr)
+        call check_allocate('det_info%i_d_weights', sys%nel, ierr)
+        allocate(det_info%i_s_weights(sys%nel), stat=ierr)
+        call check_allocate('det_info%i_s_weights', sys%nel, ierr)
+        allocate(det_info%ia_s_weights(sys%nvirt, sys%nel), stat=ierr)
+        call check_allocate('det_info%ia_s_weights', sys%nvirt*sys%nel, ierr)
+
+        ! Orbitals that are different between this det and the ref det.
+        allocate(det_info%diff_det_to_ref_orbs(sys%nel, sys%nel), stat=ierr)
+        call check_allocate('det_info%diff_det_to_ref_orbs', sys%nel**2, ierr)
+
     end subroutine alloc_det_info_t
 
     subroutine dealloc_det_info_t(det_info, allocated_bit_strings)
@@ -214,6 +237,14 @@ contains
         call check_deallocate('det_info%unocc_list_beta',ierr)
         deallocate(det_info%symunocc, stat=ierr)
         call check_deallocate('det_info%symunocc',ierr)
+        deallocate(det_info%i_d_weights, stat=ierr)
+        call check_deallocate('det_info%i_d_weights', ierr)
+        deallocate(det_info%i_s_weights, stat=ierr)
+        call check_deallocate('det_info%i_s_weights', ierr)
+        deallocate(det_info%ia_s_weights, stat=ierr)
+        call check_deallocate('det_info%ia_s_weights', ierr)
+        deallocate(det_info%diff_det_to_ref_orbs, stat=ierr)
+        call check_deallocate('det_info%diff_det_to_ref_orbs', ierr)
 
     end subroutine dealloc_det_info_t
 
