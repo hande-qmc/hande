@@ -207,7 +207,7 @@ contains
         nparticles_old = qs%psip_list%tot_nparticles
 
         ! Main fciqmc loop.
-        if (parent) call write_qmc_report_header(qs%psip_list%ndata, cmplx_est=sys%read_in%comp, io_unit=io_unit, &
+        if (parent) call write_qmc_report_header(qs%psip_list%nspaces, cmplx_est=sys%read_in%comp, io_unit=io_unit, &
                                                 &eval_opr=eval_opr)
         restart_proj_est = present(qmc_state_restart) .or. (restart_in%read_restart .and. restart_version_restart >= 2)
         if (.not.restart_proj_est) call initial_ci_projected_energy(sys, qs, fciqmc_in%non_blocking_comm, &

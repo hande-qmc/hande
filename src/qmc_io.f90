@@ -468,17 +468,19 @@ contains
 
         ! NOTE: HFS and complex are not currently compatible.
         do i = 1, nham
-            call write_qmc_var(iunit, qs%shift(i))
             if (cmplx_est_set) then
+                call write_qmc_var(iunit, qs%shift(2*i-1))
                 call write_qmc_var(iunit, real(qs%estimators(i)%proj_energy_comp, p))
                 call write_qmc_var(iunit, aimag(qs%estimators(i)%proj_energy_comp))
                 call write_qmc_var(iunit, real(qs%estimators(i)%D0_population_comp, p))
                 call write_qmc_var(iunit, aimag(qs%estimators(i)%D0_population_comp))
+                call write_qmc_var(iunit, ntot_particles(2*i-1)+ntot_particles(2*i))
             else
+                call write_qmc_var(iunit, qs%shift(i))
                 call write_qmc_var(iunit, qs%estimators(i)%proj_energy)
                 call write_qmc_var(iunit, qs%estimators(i)%D0_population)
+                call write_qmc_var(iunit, ntot_particles(i))
             end if
-            call write_qmc_var(iunit, ntot_particles(i)+ntot_particles(i+1))
             if (i == 1) then ! wrapper for custom operators
                 do iopr = 1, nopr
                     if (cmplx_est_set) then
