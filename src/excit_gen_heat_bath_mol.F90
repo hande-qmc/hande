@@ -329,8 +329,8 @@ contains
         associate( hb => excit_gen_data%excit_gen_hb )
             ! 1: Select orbitals i and j to excite from.
             
-            call select_ij_heat_bath(rng, sys%nel, hb%i_weights, hb%ij_weights, cdet, i, j, i_ind, j_ind, i_weights_occ, &
-                i_weights_occ_tot, ij_weights_occ, ij_weights_occ_tot, ji_weights_occ, ji_weights_occ_tot, allowed_excitation)
+            call select_ij_heat_bath(rng, sys%nel, hb%ij_weights, cdet, i, j, i_ind, j_ind, ij_weights_occ, ij_weights_occ_tot, &
+                ji_weights_occ, ji_weights_occ_tot, allowed_excitation)
             
             ! Is there a possible a?
             if ((allowed_excitation) .and. (abs(hb%hb_ija%weights_tot(j, i)) > 0.0_p)) then
@@ -396,7 +396,7 @@ contains
                         
                         ! Calculate all contributions to pgen (need to consider different orders of having selected i and j
                         ! and different combinations of a and b. Sub-pgens are pgen_ija, pgen_ijb, pgen_jia, pgen_jib.
-                        pgen_ija = ((i_weights_occ(i_ind)/i_weights_occ_tot) * (ij_weights_occ(j_ind)/ij_weights_occ_tot)) * &
+                        pgen_ija = ((cdet%i_d_weights_occ(i_ind)/cdet%i_d_weights_occ_tot) * (ij_weights_occ(j_ind)/ij_weights_occ_tot)) * &
                             (hb%hb_ija%weights(a,j,i)/hb%hb_ija%weights_tot(j,i)) * (1.0_p - psingle) * &
                             (hb%hb_ijab%weights(b,a,j,i)/hb%hb_ijab%weights_tot(a,j,i))
 
@@ -421,7 +421,7 @@ contains
                             psingle = 0.0_p
                         end if
 
-                        pgen_ijb = ((i_weights_occ(i_ind)/i_weights_occ_tot) * (ij_weights_occ(j_ind)/ij_weights_occ_tot)) * &
+                        pgen_ijb = ((cdet%i_d_weights_occ(i_ind)/cdet%i_d_weights_occ_tot) * (ij_weights_occ(j_ind)/ij_weights_occ_tot)) * &
                             (hb%hb_ija%weights(b,j,i)/hb%hb_ija%weights_tot(j,i)) * (1.0_p - psingle) * &
                             (hb%hb_ijab%weights(a,b,j,i)/hb%hb_ijab%weights_tot(b,j,i))
 
@@ -446,7 +446,7 @@ contains
                             psingle = 0.0_p
                         end if
 
-                        pgen_jia = ((i_weights_occ(j_ind)/i_weights_occ_tot) * (ji_weights_occ(i_ind)/ji_weights_occ_tot)) * &
+                        pgen_jia = ((cdet%i_d_weights_occ(j_ind)/cdet%i_d_weights_occ_tot) * (ji_weights_occ(i_ind)/ji_weights_occ_tot)) * &
                             (hb%hb_ija%weights(a,i,j)/hb%hb_ija%weights_tot(i,j)) * (1.0_p - psingle) * &
                             (hb%hb_ijab%weights(b,a,i,j)/hb%hb_ijab%weights_tot(a,i,j))
 
@@ -467,7 +467,7 @@ contains
                             psingle = 0.0_p
                         end if
 
-                        pgen_jib = ((i_weights_occ(j_ind)/i_weights_occ_tot) * (ji_weights_occ(i_ind)/ji_weights_occ_tot)) * &
+                        pgen_jib = ((cdet%i_d_weights_occ(j_ind)/cdet%i_d_weights_occ_tot) * (ji_weights_occ(i_ind)/ji_weights_occ_tot)) * &
                             (hb%hb_ija%weights(b,i,j)/hb%hb_ija%weights_tot(i,j)) * (1.0_p - psingle) * &
                             (hb%hb_ijab%weights(a,b,i,j)/hb%hb_ijab%weights_tot(b,i,j))
 
@@ -520,7 +520,7 @@ contains
                                 (hb%hb_ija%weights(a, cdet%occ_list(pos_q), i)/hb%hb_ija%weights_tot(cdet%occ_list(pos_q), i)))
                         end if
                     end do
-                    pgen = pgen * (i_weights_occ(i_ind)/i_weights_occ_tot)
+                    pgen = pgen * (cdet%i_d_weights_occ(i_ind)/cdet%i_d_weights_occ_tot)
                 end if
             else
                 ! We have not found a valid excitation.
@@ -595,13 +595,12 @@ contains
         type(hmatel_t), intent(out) :: hmatel
         type(excit_t), intent(out) :: connection
         logical, intent(out) :: allowed_excitation
-        real(p) :: i_weights_occ(sys%nel)
         real(p) :: ij_weights_occ(sys%nel)
         real(p) :: ji_weights_occ(sys%nel)
 
         integer :: i_ind, j_ind, i, j, a, b, ierr, j_tmp
         
-        real(p) :: i_weights_occ_tot, ij_weights_occ_tot, ji_weights_occ_tot
+        real(p) :: ij_weights_occ_tot, ji_weights_occ_tot
 
         ! 0: Select single or double.
         if (get_rand_close_open(rng) < excit_gen_data%pattempt_single) then  
@@ -620,10 +619,9 @@ contains
             associate( hb => excit_gen_data%excit_gen_hb )
                 ! 1: Select orbitals i and j to excite from.
                 
-                call select_ij_heat_bath(rng, sys%nel, hb%i_weights, hb%ij_weights, cdet, i, j, i_ind, j_ind, i_weights_occ, &
-                    i_weights_occ_tot, ij_weights_occ, ij_weights_occ_tot, ji_weights_occ, ji_weights_occ_tot, &
-                    allowed_excitation)
-
+                call select_ij_heat_bath(rng, sys%nel, hb%ij_weights, cdet, i, j, i_ind, j_ind, ij_weights_occ, ij_weights_occ_tot, &
+                    ji_weights_occ, ji_weights_occ_tot, allowed_excitation)
+            
                 ! Is there a possible a?
                 if ((allowed_excitation) .and. (abs(hb%hb_ija%weights_tot(j, i)) > 0.0_p)) then
                     allowed_excitation = .true.
@@ -631,8 +629,8 @@ contains
                     allowed_excitation = .false.
                 end if
                 
-                pgen = ((i_weights_occ(i_ind)/i_weights_occ_tot) * (ij_weights_occ(j_ind)/ij_weights_occ_tot)) + &
-                        ((i_weights_occ(j_ind)/i_weights_occ_tot) * (ji_weights_occ(i_ind)/ji_weights_occ_tot))
+                pgen = ((cdet%i_d_weights_occ(i_ind)/cdet%i_d_weights_occ_tot) * (ij_weights_occ(j_ind)/ij_weights_occ_tot)) + &
+                        ((cdet%i_d_weights_occ(j_ind)/cdet%i_d_weights_occ_tot) * (ji_weights_occ(i_ind)/ji_weights_occ_tot))
 
                 ! [todo] - this is technically not necessary at this stage, the weights are symmetric in i and j (and in fact
                 ! [todo] - when precalculating the weights, we sort i and j such that i < j).
@@ -710,7 +708,7 @@ contains
         ! Create a random single excitation from cdet and calculate both the probability
         ! of selecting that excitation and the Hamiltonian matrix element.
 
-        ! This calculates the weights for i and a as exact as possibly. Called if user selected
+        ! This uses weights for i and a calculated as exact as possibly. Called if user selected
         ! heat bath single option and we are doing a single excitation.
         ! For i, the weight is \sum_a H_ia, for a given i (a|i) it is H_ia.
 
@@ -732,13 +730,11 @@ contains
         use determinant_data, only: det_info_t
         use excitations, only: excit_t
         use excitations, only: find_excitation_permutation1
-        use proc_pointers, only: abs_hmatel_ptr, slater_condon1_excit_ptr
         use system, only: sys_t
-        use hamiltonian_data, only: hmatel_t
-        use hamiltonian_molecular, only: slater_condon1_mol
-        use hamiltonian_periodic_complex, only: slater_condon1_periodic_complex
         use dSFMT_interface, only: dSFMT_t
         use alias, only: select_weighted_value
+        use hamiltonian_data, only: hmatel_t
+        use proc_pointers, only: slater_condon1_excit_ptr
 
         type(sys_t), intent(in) :: sys
         real(p), intent(in) :: pattempt_single
@@ -749,59 +745,12 @@ contains
         type(excit_t), intent(out) :: connection
         logical, intent(out) :: allowed_excitation
 
-        integer :: virt_list(sys%basis%nbasis - sys%nel)
-        real(p) :: i_weights(sys%nel), ia_weights(sys%basis%nbasis - sys%nel, sys%nel), ia_weights_tot(sys%nel)
-        real(p) :: i_weights_tot
-        integer :: pos, virt_pos, occ_pos, i_ind, a_ind, i, a, nvirt
+        integer :: i_ind, a_ind, i, a
 
-        nvirt = sys%basis%nbasis - sys%nel
         allowed_excitation = .true.
         connection%nexcit = 1
         
-        ! Make list of virtual orbitals, virt_list.
-        virt_pos = 1
-        occ_pos = 1
-        do pos = 1, sys%basis%nbasis
-            if (occ_pos > sys%nel) then
-                virt_list(virt_pos) = pos
-                virt_pos = virt_pos + 1
-            else
-                if (cdet%occ_list(occ_pos) == pos) then
-                    occ_pos = occ_pos + 1
-                else
-                    virt_list(virt_pos) = pos
-                    virt_pos = virt_pos + 1
-                end if
-            end if
-        end do
-        
-        ! Calculate weights.
-        i_weights_tot = 0.0_p
-        ia_weights_tot = 0.0_p
-        do i_ind = 1, sys%nel
-            i_weights(i_ind) = 0.0_p
-            do a_ind = 1, nvirt
-                ! [todo] - this reduces the computational time (by calculation ia_weights here)
-                ! but more memory costs as after we have selected i, we don't need all elements in ia_weights. Need to balance
-                ! these costs.
-                ! [todo] - could consider rewritting with proc_pointer here but that would imply having to rewrite slater
-                ! condon 1 mol / periodic complex. slater_condon1_excit_mol is not safe enough (no checks).
-                if (sys%read_in%comp) then
-                    hmatel%r = 0.0_p
-                    hmatel%c = slater_condon1_periodic_complex(sys, cdet%occ_list, cdet%occ_list(i_ind), virt_list(a_ind), &
-                        .false.)
-                else
-                    hmatel%r = slater_condon1_mol(sys, cdet%occ_list, cdet%occ_list(i_ind), virt_list(a_ind), .false.)
-                    hmatel%c = cmplx(0.0_p, 0.0_p, p)
-                end if
-                ia_weights(a_ind, i_ind) = abs_hmatel_ptr(hmatel)
-                ia_weights_tot(i_ind) = ia_weights_tot(i_ind) + ia_weights(a_ind, i_ind)
-                i_weights(i_ind) = i_weights(i_ind) + ia_weights(a_ind, i_ind)
-            end do
-            i_weights_tot = i_weights_tot + i_weights(i_ind)
-        end do
-
-        if (i_weights_tot < depsilon) then
+        if (cdet%i_s_weights_occ_tot < depsilon) then
             ! no allowed single excitations.
             allowed_excitation = .false.
             hmatel%c = cmplx(0.0_p, 0.0_p, p)
@@ -809,18 +758,19 @@ contains
             pgen = 1.0_p ! Avoid any dangerous division by pgen by returning a sane (but cheap) value.
         else
             ! Select i.
-            i_ind = select_weighted_value(rng, sys%nel, i_weights, i_weights_tot)
+            i_ind = select_weighted_value(rng, sys%nel, cdet%i_s_weights_occ, cdet%i_s_weights_occ_tot)
             i = cdet%occ_list(i_ind)
 
             ! Select a.
-            a_ind = select_weighted_value(rng, nvirt, ia_weights(:, i_ind), ia_weights_tot(i_ind))
-            a = virt_list(a_ind)
+            a_ind = select_weighted_value(rng, sys%nvirt, cdet%ia_s_weights_occ(:, i_ind), cdet%i_s_weights_occ(i_ind))
+            a = cdet%unocc_list(a_ind)
 
             connection%from_orb(1) = i
             connection%to_orb(1) = a
 
             ! Calculate pgen and hmatel.
-            pgen = pattempt_single * (i_weights(i_ind)/i_weights_tot) * (ia_weights(a_ind, i_ind)/ia_weights_tot(i_ind))
+            pgen = pattempt_single * (cdet%i_s_weights_occ(i_ind)/cdet%i_s_weights_occ_tot) * &
+                                    (cdet%ia_s_weights_occ(a_ind, i_ind)/cdet%i_s_weights_occ(i_ind))
 
             ! Parity of permutation required to line up determinants.
             call find_excitation_permutation1(sys%basis%excit_mask, cdet%f, connection)

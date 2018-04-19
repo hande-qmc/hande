@@ -1392,8 +1392,8 @@ contains
         logical :: found, a_found
         real(p), allocatable :: ia_weights(:), ja_weights(:), jb_weights(:)
         real(p) :: ia_weights_tot, ja_weights_tot, jb_weights_tot
-        real(p) :: i_weights_occ(sys%nel), ij_weights_occ(sys%nel), ji_weights_occ(sys%nel)
-        real(p) :: i_weights_occ_tot, ij_weights_occ_tot, ji_weights_occ_tot
+        real(p) :: ij_weights_occ(sys%nel), ji_weights_occ(sys%nel)
+        real(p) :: ij_weights_occ_tot, ji_weights_occ_tot
         real(p) :: pgen_ij
         integer :: a, b, i, j, j_tmp, a_ind, b_ind, a_ind_rev, b_ind_rev, i_ind, j_ind, isymb, imsb, isyma
         integer :: ierr_dealloc
@@ -1409,18 +1409,16 @@ contains
             if (excit_gen_data%excit_gen == excit_gen_power_pitzer_occ_ij) then
                 ! Select ij using heat bath excit. gen. techniques.
 
-                call select_ij_heat_bath(rng, sys%nel, excit_gen_data%excit_gen_pp%ppm_i_d_weights, &
-                    excit_gen_data%excit_gen_pp%ppm_ij_d_weights, cdet, i, j, i_ind, j_ind, &
-                    i_weights_occ, i_weights_occ_tot, ij_weights_occ, ij_weights_occ_tot, ji_weights_occ, ji_weights_occ_tot, &
-                    allowed_excitation)
+                call select_ij_heat_bath(rng, sys%nel, excit_gen_data%excit_gen_pp%ppm_ij_d_weights, cdet, i, j, i_ind, j_ind, &
+                    ij_weights_occ, ij_weights_occ_tot, ji_weights_occ, ji_weights_occ_tot, allowed_excitation)
 
                 ij_spin = sys%basis%basis_fns(i)%Ms + sys%basis%basis_fns(j)%Ms
                 ! ij_sym: symmetry conjugate of the irreducible representation spanned by the codensity
                 !        \phi_i_cdet*\phi_j_cdet. (We assume that ij is going to be in the bra of the excitation.)
                 ij_sym = sys%read_in%sym_conj_ptr(sys%read_in, cross_product_basis_read_in(sys, i, j))
                 
-                pgen_ij = ((i_weights_occ(i_ind)/i_weights_occ_tot) * (ij_weights_occ(j_ind)/ij_weights_occ_tot)) + &
-                    ((i_weights_occ(j_ind)/i_weights_occ_tot) * (ji_weights_occ(i_ind)/ji_weights_occ_tot))
+                pgen_ij = ((cdet%i_d_weights_occ(i_ind)/cdet%i_d_weights_occ_tot) * (ij_weights_occ(j_ind)/ij_weights_occ_tot)) + &
+                    ((cdet%i_d_weights_occ(j_ind)/cdet%i_d_weights_occ_tot) * (ji_weights_occ(i_ind)/ji_weights_occ_tot))
 
                 ! Sort i and j such that j>i.
                 if (j < i) then
