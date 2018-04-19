@@ -6,6 +6,7 @@ module determinant_enumeration
 
 use const
 use determinants
+use determinant_data
 
 implicit none
 

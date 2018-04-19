@@ -67,7 +67,7 @@ contains
         !    connection: excitation connection between the current determinant
         !        and the child determinant, on which progeny are spawned.
 
-        use determinants, only: det_info_t
+        use determinant_data, only: det_info_t
         use excitations, only: excit_t
         use qmc_data, only: qmc_state_t
         use system, only: sys_t
@@ -160,7 +160,7 @@ contains
         !    connection: excitation connection between the current determinant
         !        and the child determinant, on which progeny are spawned.
 
-        use determinants, only: det_info_t
+        use determinant_data, only: det_info_t
         use system, only: sys_t
         use excitations, only: excit_t
         use proc_pointers, only: gen_excit_ptr_t
@@ -260,7 +260,7 @@ contains
         !    connection: excitation connection between the current determinant
         !        and the child determinant, on which progeny are spawned.
 
-        use determinants, only: det_info_t
+        use determinant_data, only: det_info_t
         use system, only: sys_t
         use excitations, only: excit_t
         use proc_pointers, only: gen_excit_ptr_t
@@ -360,7 +360,7 @@ contains
         !    connection: excitation connection between the current determinant
         !        and the child determinant, on which progeny are spawned.
 
-        use determinants, only: det_info_t
+        use determinant_data, only: det_info_t
         use system, only: sys_t
         use excitations, only: excit_t
         use proc_pointers, only: gen_excit_ptr_t
@@ -454,7 +454,7 @@ contains
         !    connection: excitation connection between the current determinant
         !        and the child determinant, on which progeny are spawned.
 
-        use determinants, only: det_info_t
+        use determinant_data, only: det_info_t
         use system, only: sys_t
         use excitations, only: excit_t
         use proc_pointers, only: gen_excit_ptr_t
@@ -523,7 +523,7 @@ contains
         !    connection: excitation connection between the current determinant
         !        and the child determinant, on which progeny are spawned.
 
-        use determinants, only: det_info_t
+        use determinant_data, only: det_info_t
         use excitations, only: excit_t, create_excited_det
         use qmc_data, only: qmc_state_t
         use system, only: sys_t, read_in
@@ -1007,7 +1007,7 @@ contains
         use parallel, only: nprocs
 
         use basis_types, only: basis_t
-        use determinants, only: det_info_t
+        use determinant_data, only: det_info_t
         use excitations, only: excit_t, create_excited_det
         use spawn_data, only: spawn_t
         use reference_determinant, only: reference_t
@@ -1062,7 +1062,7 @@ contains
         use parallel, only: nprocs
 
         use basis_types, only: basis_t
-        use determinants, only: det_info_t
+        use determinant_data, only: det_info_t
         use excitations, only: excit_t, create_excited_det
         use spawn_data, only: spawn_t
         use reference_determinant, only: reference_t
@@ -1117,7 +1117,7 @@ contains
         use parallel, only: nprocs
 
         use basis_types, only: basis_t
-        use determinants, only: det_info_t
+        use determinant_data, only: det_info_t
         use excitations, only: excit_t, create_excited_det, get_excitation_level
         use spawn_data, only: spawn_t
         use reference_determinant, only: reference_t
@@ -1178,7 +1178,7 @@ contains
         use parallel, only: nprocs
 
         use basis_types, only: basis_t
-        use determinants, only: det_info_t
+        use determinant_data, only: det_info_t
         use excitations, only: excit_t, create_excited_det, get_excitation_level
         use spawn_data, only: spawn_t
         use reference_determinant, only: reference_t
@@ -1240,7 +1240,7 @@ contains
         use basis_types, only: basis_t
         use bit_utils, only: count_set_bits
         use calc, only: ras1, ras3, ras1_min, ras3_max
-        use determinants, only: det_info_t
+        use determinant_data, only: det_info_t
         use excitations, only: excit_t, create_excited_det, get_excitation_level, in_ras
         use spawn_data, only: spawn_t
         use reference_determinant, only: reference_t
@@ -1303,7 +1303,7 @@ contains
         use basis_types, only: basis_t
         use bit_utils, only: count_set_bits
         use calc, only: ras1, ras3, ras1_min, ras3_max
-        use determinants, only: det_info_t
+        use determinant_data, only: det_info_t
         use excitations, only: excit_t, create_excited_det, get_excitation_level, in_ras
         use spawn_data, only: spawn_t
         use reference_determinant, only: reference_t
@@ -1368,7 +1368,7 @@ contains
         use excitations, only: excit_t, create_excited_det
         use parallel, only: nprocs
         use reference_determinant, only: reference_t
-        use determinants, only: det_info_t
+        use determinant_data, only: det_info_t
         use spawn_data, only: spawn_t
 
         type(basis_t), intent(in) :: basis
@@ -1437,7 +1437,7 @@ contains
         use excitations, only: excit_t, create_excited_det
         use parallel, only: nprocs
         use reference_determinant, only: reference_t
-        use determinants, only: det_info_t
+        use determinant_data, only: det_info_t
         use spawn_data, only: spawn_t
 
         type(basis_t), intent(in) :: basis
@@ -1507,7 +1507,7 @@ contains
         use bit_utils, only: bit_str_cmp
         use basis_types, only: basis_t
         use excitations, only: excit_t, create_excited_det
-        use determinants, only: det_info_t
+        use determinant_data, only: det_info_t
         use parallel, only: nprocs
         use reference_determinant, only: reference_t
         use spawn_data, only: spawn_t
@@ -1583,7 +1583,7 @@ contains
         use bit_utils, only: bit_str_cmp
         use basis_types, only: basis_t
         use excitations, only: excit_t, create_excited_det
-        use determinants, only: det_info_t
+        use determinant_data, only: det_info_t
         use parallel, only: nprocs
         use reference_determinant, only: reference_t
         use spawn_data, only: spawn_t
@@ -1666,7 +1666,7 @@ contains
         use bit_utils, only: bit_str_cmp
         use basis_types, only: basis_t
         use excitations, only: excit_t, create_excited_det, get_excitation_level
-        use determinants, only: det_info_t
+        use determinant_data, only: det_info_t
         use parallel, only: nprocs
         use reference_determinant, only: reference_t
         use spawn_data, only: spawn_t
@@ -1748,7 +1748,7 @@ contains
 
         use basis_types, only: basis_t
         use excitations, only: excit_t, create_excited_det, get_excitation_level
-        use determinants, only: det_info_t
+        use determinant_data, only: det_info_t
         use parallel, only: nprocs
         use reference_determinant, only: reference_t
         use spawn_data, only: spawn_t
@@ -1935,7 +1935,8 @@ contains
     
         use qmc_data, only:  propagator_t
         use system, only: sys_t
-        use determinants, only: decode_det, det_info_t
+        use determinants, only: decode_det
+        use determinant_data, only: det_info_t
         use excitations, only: excit_t, create_excited_det, get_excitation_level
 
         real(p) :: weight

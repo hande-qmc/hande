@@ -46,7 +46,7 @@ contains
         !        systems.
         !    allowed_excitation: false if a valid symmetry allowed excitation was not generated
 
-        use determinants, only: det_info_t
+        use determinant_data, only: det_info_t
         use excitations, only: excit_t, find_excitation_permutation1
         use excit_gens, only: excit_gen_data_t
         use excit_gen_mol, only: choose_ia_mol, calc_pgen_single_mol
@@ -125,7 +125,7 @@ contains
         !        systems.
         !    allowed_excitation: false if a valid symmetry allowed excitation was not generated
 
-        use determinants, only: det_info_t
+        use determinant_data, only: det_info_t
         use excitations, only: excit_t, find_excitation_permutation1
         use excit_gens, only: excit_gen_data_t
         use excit_gen_mol, only: find_ia_mol, calc_pgen_single_mol_no_renorm

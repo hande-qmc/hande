@@ -27,7 +27,7 @@ contains
         !   ij_weights_occ_tot: sum of weights of j for all occupied spinorbitals, given i.
         !   ji_weights_occ_tot: sum of weights of i for all occupied spinorbitals, given j.
 
-        use determinants, only: det_info_t
+        use determinant_data, only: det_info_t
         use dSFMT_interface, only: dSFMT_t
         use alias, only: select_weighted_value
 

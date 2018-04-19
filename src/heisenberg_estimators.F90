@@ -39,7 +39,7 @@ contains
         ! NOTE: it is the programmer's responsibility to ensure D0_pop_sum and
         ! proj_energy_sum are zero before the first call.
 
-        use determinants, only: det_info_t
+        use determinant_data, only: det_info_t
         use excitations, only: excit_t
         use system, only: sys_t
         use hamiltonian_data
@@ -120,7 +120,7 @@ contains
         !    is the amplitude of |D_i> in the trial ground state.   pop represents
         !    c_i rather than f_i.
 
-        use determinants, only: det_info_t
+        use determinant_data, only: det_info_t
         use excitations, only: excit_t
         use system, only: sys_t
         use hamiltonian_data

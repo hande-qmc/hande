@@ -710,7 +710,8 @@ contains
 
         use parallel
 
-        use determinants, only: det_info_t, alloc_det_info_t, dealloc_det_info_t, decode_det
+        use determinants, only: alloc_det_info_t, dealloc_det_info_t, decode_det
+        use determinant_data, only: det_info_t
         use excitations, only: excit_t, get_excitation
         use importance_sampling, only: importance_sampling_weight
         use proc_pointers, only: update_proj_energy_ptr
@@ -819,7 +820,8 @@ contains
         use ccmc_data, only: cluster_t, ex_lvl_dist_t
         use ccmc_utils, only: cumulative_population, get_D0_info
         use ccmc_selection, only: select_cluster, select_nc_cluster
-        use determinants, only: det_info_t, alloc_det_info_t, dealloc_det_info_t
+        use determinants, only: alloc_det_info_t, dealloc_det_info_t
+        use determinant_data, only: det_info_t
         use excitations, only: excit_t, get_excitation
         use hamiltonian_data, only: hmatel_t
         use logging, only: logging_t

@@ -23,7 +23,7 @@ contains
 
         use system, only: sys_t
         use excitations, only: excit_t, get_excitation
-        use determinants, only: det_info_t
+        use determinant_data, only: det_info_t
         use utils, only: tri_ind_distinct_reorder
 
         type(sys_t), intent(in) :: sys

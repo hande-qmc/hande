@@ -678,7 +678,7 @@ contains
         !        determinant and a connected determinant in molecular systems.
         !    allowed_excitation: false if a valid symmetry allowed excitation was not generated
 
-        use determinants, only: det_info_t
+        use determinant_data, only: det_info_t
         use excitations, only: excit_t
         use excitations, only: find_excitation_permutation2,get_excitation_locations
         use proc_pointers, only: slater_condon2_excit_ptr
@@ -1003,7 +1003,7 @@ contains
         !        determinant and a connected determinant in molecular systems.
         !    allowed_excitation: false if a valid symmetry allowed excitation was not generated
 
-        use determinants, only: det_info_t
+        use determinant_data, only: det_info_t
         use excitations, only: excit_t
         use excitations, only: find_excitation_permutation1, find_excitation_permutation2, get_excitation_locations
         use proc_pointers, only: slater_condon1_excit_ptr, slater_condon2_excit_ptr
@@ -1363,7 +1363,7 @@ contains
         !    allowed_excitation: false if a valid symmetry allowed excitation was not generated
 
         use checking, only: check_deallocate
-        use determinants, only: det_info_t
+        use determinant_data, only: det_info_t
         use excitations, only: excit_t
         use excitations, only: find_excitation_permutation2
         use proc_pointers, only: slater_condon2_excit_ptr, create_weighted_excitation_list_ptr

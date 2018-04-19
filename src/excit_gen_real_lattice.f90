@@ -39,7 +39,7 @@ contains
         !       formulation of the Hubbard model.
         !    allowed_excitation: false if a valid symmetry allowed excitation was not generated
 
-        use determinants, only: det_info_t
+        use determinant_data, only: det_info_t
         use excitations, only: excit_t
         use excit_gens, only: excit_gen_data_t
         use hamiltonian_hub_real, only: slater_condon1_hub_real_excit
@@ -105,7 +105,7 @@ contains
         !       formulation of the Hubbard model.
         !    allowed_excitation: false if a valid symmetry allowed excitation was not generated
 
-        use determinants, only: det_info_t
+        use determinant_data, only: det_info_t
         use dSFMT_interface, only: dSFMT_t, get_rand_close_open
         use excitations, only: excit_t
         use excit_gens, only: excit_gen_data_t
@@ -187,7 +187,7 @@ contains
         !    formulation of the Hubbard model.
         !    allowed_excitation: false if a valid symmetry allowed excitation was not generated
 
-        use determinants, only: det_info_t
+        use determinant_data, only: det_info_t
         use excitations, only: excit_t
         use excit_gens, only: excit_gen_data_t
         use system, only: sys_t
@@ -254,7 +254,7 @@ contains
         !    determinant and a single excitation of it in the real space
         !    formulation of the Hubbard model.
 
-        use determinants, only: det_info_t
+        use determinant_data, only: det_info_t
         use excitations, only: excit_t
         use excit_gens, only: excit_gen_data_t
         use system, only: sys_t

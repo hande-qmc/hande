@@ -142,7 +142,7 @@ contains
         !        allocated to the maximum number of excitors in a cluster.  On
         !        output all fields in cluster have been set.
 
-        use determinants, only: det_info_t
+        use determinant_data, only: det_info_t
         use ccmc_data, only: cluster_t
         use ccmc_utils, only: convert_excitor_to_determinant, collapse_cluster
         use excitations, only: get_excitation_level
@@ -407,7 +407,7 @@ contains
         !        output all fields in cluster have been set.
 
         use system, only: sys_t
-        use determinants, only: det_info_t
+        use determinant_data, only: det_info_t
         use ccmc_data, only: cluster_t
         use proc_pointers, only: decoder_ptr
 
@@ -476,7 +476,7 @@ contains
         !        output all fields in cluster have been set.
 
         use system, only: sys_t
-        use determinants, only: det_info_t
+        use determinant_data, only: det_info_t
         use basis_types, only: reset_extra_info_bit_string
         use ccmc_data, only: cluster_t
         use ccmc_utils, only: convert_excitor_to_determinant
@@ -591,7 +591,7 @@ contains
 
         use ccmc_data, only: cluster_t, selection_data_t, ex_lvl_dist_t
         use ccmc_utils, only: convert_excitor_to_determinant
-        use determinants, only: det_info_t
+        use determinant_data, only: det_info_t
         use excitations, only: get_excitation_level
         use qmc_data, only: particle_t
         use dSFMT_interface, only: dSFMT_t, get_rand_close_open
@@ -767,7 +767,7 @@ contains
         !       same spinorbital twice).
         use ccmc_data, only: cluster_t, ex_lvl_dist_t
         use ccmc_utils, only: collapse_cluster
-        use determinants, only: det_info_t
+        use determinant_data, only: det_info_t
         use qmc_data, only: particle_t
         use dSFMT_interface, only: dSFMT_t, get_rand_close_open
         use sort, only: insert_sort

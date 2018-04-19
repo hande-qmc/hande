@@ -498,7 +498,7 @@ contains
                 ! [todo] uses basically same function as hb_uniform but
                 ! [todo] has varying function call with singles.
                 gen_excit_ptr%full => gen_excit_mol_heat_bath_uniform
-                decoder_ptr => decode_det_occ
+                decoder_ptr => decode_det_hbs
             case default
                 call stop_all('init_proc_pointers', 'Selected excitation generator not implemented.')
             end select

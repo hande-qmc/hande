@@ -44,7 +44,8 @@ contains
 
         use bloom_handler, only: init_bloom_stats_t, bloom_mode_fixedn, bloom_stats_warning, &
                                  bloom_stats_t, accumulate_bloom_stats, write_bloom_report
-        use determinants, only: det_info_t, alloc_det_info_t, dealloc_det_info_t, sum_sp_eigenvalues_occ_list
+        use determinants, only: alloc_det_info_t, dealloc_det_info_t, sum_sp_eigenvalues_occ_list
+        use determinant_data, only: det_info_t
         use excitations, only: excit_t, create_excited_det, get_excitation
         use annihilation, only: direct_annihilation, direct_annihilation_received_list, &
                                 direct_annihilation_spawned_list, deterministic_annihilation
@@ -458,7 +459,8 @@ contains
 
         use proc_pointers, only: sc0_ptr
         use death, only: stochastic_death
-        use determinants, only: det_info_t, sum_sp_eigenvalues_occ_list
+        use determinants, only: sum_sp_eigenvalues_occ_list
+        use determinant_data, only: det_info_t
         use dSFMT_interface, only: dSFMT_t
         use excitations, only: excit_t, get_excitation
         use ifciqmc
@@ -576,7 +578,7 @@ contains
         use system, only: sys_t
         use qmc_data, only: qmc_state_t
         use logging, only: logging_t
-        use determinants, only: det_info_t
+        use determinant_data, only: det_info_t
         use bloom_handler, only: bloom_stats_t, accumulate_bloom_stats
         use semi_stoch, only: semi_stoch_t, check_if_determ
 

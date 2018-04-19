@@ -326,7 +326,7 @@ contains
         use excit_gen_ueg, only: calc_pgen_ueg_no_renorm
         use excit_gen_ringium, only: calc_pgen_ringium
         use read_in_symmetry, only: cross_product_basis_read_in
-        use determinants, only: det_info_t
+        use determinant_data, only: det_info_t
         use qmc_data, only: excit_gen_no_renorm
         use excit_gens, only: excit_gen_data_t
         use basis_types, only: reset_extra_info_bit_string

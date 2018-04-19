@@ -3,55 +3,10 @@ module determinants
 ! Generation, inspection and manipulation of Slater determinants.
 
 use const
+use determinant_data
 use parallel, only: parent
 
 implicit none
-
-! --- FCIQMC info ---
-
-! A handy type for containing a lot of information about a determinant.
-! This is convenient for passing around different amounts of info when
-! we need consistent interfaces.
-! Not all compenents are necessarily allocated: only those needed at the time.
-type det_info_t
-    ! bit representation of determinant.
-    integer(i0), pointer :: f(:)  => NULL()  ! (tot_string_len)
-    integer(i0), pointer :: f2(:)  => NULL()  ! (tot_string_len); for DMQMC
-    ! List of occupied spin-orbitals.
-    integer, pointer :: occ_list(:)  => NULL()  ! (nel)
-    ! List of occupied alpha/beta spin-orbitals
-    integer, pointer :: occ_list_alpha(:), occ_list_beta(:) !(nel) WARNING: don't assume otherwise.
-    ! List of unoccupied alpha/beta spin-orbitals
-    integer, pointer :: unocc_list_alpha(:), unocc_list_beta(:)
-    ! Number of unoccupied orbitals with each spin and symmetry.
-    ! The first index maps to spin using (Ms+3)/2, where Ms=-1 is spin-down and
-    ! Ms=1 is spin-up.
-    integer, pointer :: symunocc(:,:) ! (2,sym0_tot:sym_max_tot)
-    ! heat_bath weights to select i in a double excitation
-    real(p), pointer :: i_d_weights_occ(:) ! (nel)
-    real(p) :: i_d_weights_occ_tot
-    ! heat bath weights to select i in a single excitation
-    real(p), pointer :: i_s_weights(:) ! (nel)
-    ! heat bath weights to select a given i in a single excitation
-    real(p), pointer :: ia_s_weights(:,:) ! (virt, nel)
-    ! position of different orbitals in this det compared to reference
-    ! First column refers to orbitals in reference, second column to corresponding orbitals in det.
-    integer, pointer :: diff_det_to_ref_orbs(:,:) ! (nel, 2)
-    ! Number of orbitals that are different between det and reference.
-    integer :: nex
-    ! is the determinant an initiator determinant or not? (used only in
-    ! i-FCIQMC). The i-th bit is set if the determinant is not an initiator in
-    ! space i.
-    integer :: initiator_flag
-    ! \sum_i F_i - F_0, where F_i is the single-particle eigenvalue of the i-th occupied orbital 
-    ! and F_0 is the corresponding sum for the reference determinant.
-    ! Initialize this as a signalling nan just in case
-    real(p) :: fock_sum = huge(1.0_p) 
-    ! TODO when appropriate more universal fortran support is available, use some sort of NaN above.
-
-    ! Pointer (never allocated) to corresponding elements in particle_t%dat array.
-    real(p), pointer :: data(:) => NULL()
-end type det_info_t
 
 contains
 
@@ -166,9 +121,11 @@ contains
         allocate(det_info%occ_list_alpha(sys%nel), stat=ierr)
         call check_allocate('det_info%occ_list_alpha',sys%nalpha,ierr)
         allocate(det_info%occ_list_beta(sys%nel), stat=ierr)
+        call check_allocate('det_info%occ_list_beta',sys%nbeta,ierr)
 
         ! Components for unoccupied basis functions...
-        call check_allocate('det_info%occ_list_beta',sys%nbeta,ierr)
+        allocate(det_info%unocc_list(sys%nvirt), stat=ierr)
+        call check_allocate('det_info%unocc_list',sys%nvirt,ierr)
         allocate(det_info%unocc_list_alpha(sys%nvirt), stat=ierr)
         call check_allocate('det_info%unocc_list_alpha',sys%nvirt_alpha,ierr)
         allocate(det_info%unocc_list_beta(sys%nvirt), stat=ierr)
@@ -179,12 +136,12 @@ contains
         call check_allocate('det_info%symunocc', 2*sys%nsym_tot, ierr)
 
         ! Weights for excitation generators for this det. 
-        allocate(det_info%i_d_weights(sys%nel), stat=ierr)
-        call check_allocate('det_info%i_d_weights', sys%nel, ierr)
-        allocate(det_info%i_s_weights(sys%nel), stat=ierr)
-        call check_allocate('det_info%i_s_weights', sys%nel, ierr)
-        allocate(det_info%ia_s_weights(sys%nvirt, sys%nel), stat=ierr)
-        call check_allocate('det_info%ia_s_weights', sys%nvirt*sys%nel, ierr)
+        allocate(det_info%i_d_weights_occ(sys%nel), stat=ierr)
+        call check_allocate('det_info%i_d_weights_occ', sys%nel, ierr)
+        allocate(det_info%i_s_weights_occ(sys%nel), stat=ierr)
+        call check_allocate('det_info%i_s_weights_occ', sys%nel, ierr)
+        allocate(det_info%ia_s_weights_occ(sys%nvirt, sys%nel), stat=ierr)
+        call check_allocate('det_info%ia_s_weights_occ', sys%nvirt*sys%nel, ierr)
 
         ! Orbitals that are different between this det and the ref det.
         allocate(det_info%diff_det_to_ref_orbs(sys%nel, sys%nel), stat=ierr)
@@ -228,6 +185,8 @@ contains
         end if
         deallocate(det_info%occ_list, stat=ierr)
         call check_deallocate('det_info%occ_list',ierr)
+        deallocate(det_info%unocc_list, stat=ierr)
+        call check_deallocate('det_info%unocc_list',ierr)
         deallocate(det_info%occ_list_alpha, stat=ierr)
         call check_deallocate('det_info%occ_list_alpha',ierr)
         deallocate(det_info%occ_list_beta, stat=ierr)
@@ -238,12 +197,12 @@ contains
         call check_deallocate('det_info%unocc_list_beta',ierr)
         deallocate(det_info%symunocc, stat=ierr)
         call check_deallocate('det_info%symunocc',ierr)
-        deallocate(det_info%i_d_weights, stat=ierr)
-        call check_deallocate('det_info%i_d_weights', ierr)
-        deallocate(det_info%i_s_weights, stat=ierr)
-        call check_deallocate('det_info%i_s_weights', ierr)
-        deallocate(det_info%ia_s_weights, stat=ierr)
-        call check_deallocate('det_info%ia_s_weights', ierr)
+        deallocate(det_info%i_d_weights_occ, stat=ierr)
+        call check_deallocate('det_info%i_d_weights_occ', ierr)
+        deallocate(det_info%i_s_weights_occ, stat=ierr)
+        call check_deallocate('det_info%i_s_weights_occ', ierr)
+        deallocate(det_info%ia_s_weights_occ, stat=ierr)
+        call check_deallocate('det_info%ia_s_weights_occ', ierr)
         deallocate(det_info%diff_det_to_ref_orbs, stat=ierr)
         call check_deallocate('det_info%diff_det_to_ref_orbs', ierr)
 
@@ -405,6 +364,76 @@ contains
         end do
 
     end subroutine decode_det_spinocc
+    
+    pure subroutine decode_det_occ_unocc(sys, f, d, excit_gen_data)
+
+        ! Decode determinant bit string into integer lists containing the
+        ! occupied and unoccupied orbitals.
+        !
+        ! We return the lists for alpha and beta electrons separately.
+        !
+        ! In:
+        !    f(tot_string_len): bit string representation of the Slater
+        !        determinant.
+        ! Out:
+        !    d: det_info_t variable.  The following components are set:
+        !        occ_list: integer list of occupied spin-orbitals in the
+        !            Slater determinant.
+        !        unocc_list: integer list of unoccupied
+        !            spin-orbitals in the Slater determinant.
+
+        use system, only: sys_t
+        use excit_gens, only: excit_gen_data_t
+
+        type(sys_t), intent(in) :: sys
+        integer(i0), intent(in) :: f(sys%basis%tot_string_len)
+        type(det_info_t), intent(inout) :: d
+        type(excit_gen_data_t), optional, intent(in) :: excit_gen_data
+        integer :: i, j, iocc, iunocc, orb, last_basis_ind
+
+        ! A bit too much to do the chunk-based decoding of the occupied list and then fill
+        ! in the remaining information.  We only use this in Hubbard model calculations in
+        ! k-space, so for now just do a (slow) bit-wise inspection.
+
+        iocc = 0
+        iunocc = 0
+        orb = 0
+
+        do i = 1, sys%basis%bit_string_len - 1
+            ! Manual unrolling allows us to avoid 2 mod statements
+            ! and some branching.
+            ! [todo] - note above still relevant?
+            do j = 0, i0_end
+                orb = orb + 1
+                if (btest(f(i), j)) then
+                    iocc = iocc + 1
+                    d%occ_list(iocc) = orb
+                else
+                    iunocc = iunocc + 1
+                    d%unocc_list(iunocc) = orb
+                end if
+            end do
+        end do
+
+        ! Deal with the last element in the determinant bit array separately.
+        ! Note that decoding a bit string is surprisingly slow (or, more
+        ! importantly, adds up when doing billions of times).
+        ! Treating the last element as a special case rather than having an if
+        ! statement in the above loop results a speedup of the Hubbard k-space
+        ! FCIQMC calculations of 1.5%.
+        last_basis_ind = sys%basis%nbasis - i0_length*(sys%basis%bit_string_len-1) - 1
+        do j = 0, last_basis_ind, 2
+            orb = orb + 1
+            if (btest(f(i), j)) then
+                iocc = iocc + 1
+                d%occ_list(iocc) = orb
+            else
+                iunocc = iunocc + 1
+                d%unocc_list(iunocc) = orb
+            end if
+        end do
+
+    end subroutine decode_det_occ_unocc
 
     pure subroutine decode_det_occ_symunocc(sys, f, d, excit_gen_data)
 
@@ -760,8 +789,7 @@ contains
         type(excit_gen_data_t), optional, intent(in) :: excit_gen_data
 
         call decode_det_spinocc_spinsymunocc(sys, f, d)
-        call find_i_d_weights(sys%nel, excit_gen_data%excit_gen_pp%ppm_i_d_weights, d%occ_list, d%i_d_weights_occ, &
-                            d%i_d_weights_occ_tot)
+        call find_i_d_weights(sys%nel, excit_gen_data%excit_gen_pp%ppm_i_d_weights, d)
 
     end subroutine decode_det_ppMij
     
@@ -791,8 +819,7 @@ contains
         type(excit_gen_data_t), optional, intent(in) :: excit_gen_data
 
         call decode_det(sys%basis, f, d%occ_list)
-        call find_i_d_weights(sys%nel, excit_gen_data%excit_gen_hb%i_weights, d%occ_list, d%i_d_weights_occ, &
-                            d%i_d_weights_occ_tot)
+        call find_i_d_weights(sys%nel, excit_gen_data%excit_gen_hb%i_weights, d)
 
     end subroutine decode_det_hb
     
@@ -825,8 +852,7 @@ contains
         integer :: i, ims, isym
 
         call decode_det_occ_symunocc(sys, f, d)
-        call find_i_d_weights(sys%nel, excit_gen_data%excit_gen_hb%i_weights, d%occ_list, d%i_d_weights_occ, &
-                            d%i_d_weights_occ_tot)
+        call find_i_d_weights(sys%nel, excit_gen_data%excit_gen_hb%i_weights, d)
 
     end subroutine decode_det_hbu
     
@@ -855,7 +881,8 @@ contains
         type(det_info_t), intent(inout) :: d
         type(excit_gen_data_t), optional, intent(in) :: excit_gen_data
 
-        call decode_det_hb(sys%basis, f, d%occ_list, excit_gen_data)
+        call decode_det_occ_unocc(sys, f, d)
+        call find_ia_single_weights(sys, d)
 
     end subroutine decode_det_hbs
 
@@ -886,7 +913,7 @@ contains
 
 !--- Helper Functions ---
 
-    pure subroutine find_i_d_weights(nel, i_weights_precalc, occ_list, i_weights_occ, i_weights_occ_tot)
+    pure subroutine find_i_d_weights(nel, i_weights_precalc, d)
 
         ! Find weights to select i in a double excitation using pre-calculed heat bath weights.
 
@@ -894,26 +921,72 @@ contains
         !   nel: number of electrons
         !   i_weights_precalc: precalculated weights that i could have. Need to reduce them to the ones
         !        that are actually occupied.
-        !   occ_list: list of occupied spinorbitals
-        ! Out:
-        !   i_weights_occ: weights that i could have
-        !   i_weights_occ_tot: sum of i_weights_occ
+        ! In/Out:
+        !   d: det_code_t object. Information about the determinant to decode.
         
         integer, intent(in) :: nel
         real(p), intent(in) :: i_weights_precalc(:)
-        integer, intent(in) :: occ_list(nel)
-        real(p), intent(out) :: i_weights_occ(nel)
-        real(p), intent(out) :: i_weights_occ_tot
+        type(det_info_t), intent(inout) :: d
 
         integer :: pos_occ
 
-        i_weights_occ_tot = 0.0_p
+        d%i_d_weights_occ_tot = 0.0_p
         do pos_occ = 1, nel
-            i_weights_occ(pos_occ) = i_weights_precalc(cdet%occ_list(pos_occ))
-            i_weights_occ_tot = i_weights_occ_tot + i_weights_occ(pos_occ)
+            d%i_d_weights_occ(pos_occ) = i_weights_precalc(d%occ_list(pos_occ))
+            d%i_d_weights_occ_tot = d%i_d_weights_occ_tot + d%i_d_weights_occ(pos_occ)
         end do
 
     end subroutine find_i_d_weights
+    
+    pure subroutine find_ia_single_weights(sys, d)
+
+        ! Create a random single excitation from cdet and calculate both the probability
+        ! of selecting that excitation and the Hamiltonian matrix element.
+
+        ! This calculates the weights for i and a as exact as possibly.
+        ! For i, the weight is \sum_a H_ia, for a given i (a|i) it is H_ia.
+
+        ! In:
+        !    sys: system object being studied.
+        ! In/Out:
+        !    d: information about current determinant to decode
+
+        use proc_pointers, only: abs_hmatel_ptr
+        use system, only: sys_t
+        use hamiltonian_data, only: hmatel_t
+        use hamiltonian_molecular, only: slater_condon1_mol
+        use hamiltonian_periodic_complex, only: slater_condon1_periodic_complex
+
+        type(sys_t), intent(in) :: sys
+        type(det_info_t), intent(inout) :: d
+        
+        type(hmatel_t) :: hmatel
+        integer :: pos, i_ind, a_ind
+        
+        d%i_s_weights_occ_tot = 0.0_p
+        do i_ind = 1, sys%nel
+            d%i_s_weights_occ(i_ind) = 0.0_p
+            do a_ind = 1, sys%nvirt
+                ! [todo] - this reduces the computational time (by calculation ia_weights here)
+                ! but more memory costs as after we have selected i, we don't need all elements in ia_weights. Need to balance
+                ! these costs.
+                ! [todo] - could consider rewritting with proc_pointer here but that would imply having to rewrite slater
+                ! condon 1 mol / periodic complex. slater_condon1_excit_mol is not safe enough (no checks).
+                if (sys%read_in%comp) then
+                    hmatel%r = 0.0_p
+                    hmatel%c = slater_condon1_periodic_complex(sys, d%occ_list, d%occ_list(i_ind), d%unocc_list(a_ind), &
+                        .false.)
+                else
+                    hmatel%r = slater_condon1_mol(sys, d%occ_list, d%occ_list(i_ind), d%unocc_list(a_ind), .false.)
+                    hmatel%c = cmplx(0.0_p, 0.0_p, p)
+                end if
+                d%ia_s_weights_occ(a_ind, i_ind) = abs_hmatel_ptr(hmatel)
+                d%i_s_weights_occ(i_ind) = d%i_s_weights_occ(i_ind) + d%ia_s_weights_occ(a_ind, i_ind)
+            end do
+            d%i_s_weights_occ_tot = d%i_s_weights_occ_tot + d%i_s_weights_occ(i_ind)
+        end do
+
+    end subroutine find_ia_single_weights
 
 !--- Output ---
 
