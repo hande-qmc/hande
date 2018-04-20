@@ -123,6 +123,7 @@ contains
                 do jel = iel+1, sys%nel
                     j = occ_list(jel)
                     hmatel = hmatel + get_two_body_int_mol_nonzero(coulomb_ints, i, j, i, j, sys%basis%basis_fns)
+! [review] - AJWT: replace with a pointer initialized at the start of the function to speed this up?
                     if (sys%basis%basis_fns(i)%Ms == sys%basis%basis_fns(j)%Ms) then
                         if (sys%read_in%extra_exchange_integrals) then
                             hmatel = hmatel - get_two_body_exchange_pbc_int_nonzero(sys%read_in%additional_exchange_ints, &
@@ -178,6 +179,7 @@ contains
                         hmatel = hmatel &
                             + get_two_body_int_mol_real(coulomb_ints, i, occ_list(iel), a, occ_list(iel), &
                                                     sys)
+! [review] - AJWT: replace with a pointer initialized at the start of the function to speed this up?
                         if (sys%read_in%extra_exchange_integrals) then
                             hmatel = hmatel - get_two_body_exchange_pbc_int_real(sys%read_in%additional_exchange_ints, &
                                                     i, occ_list(iel), occ_list(iel), a, sys)
@@ -238,6 +240,7 @@ contains
                     hmatel%r = hmatel%r &
                                 + get_two_body_int_mol_nonzero(coulomb_ints, i, occ_list(iel), a, occ_list(iel), basis_fns)
                     if (basis_fns(occ_list(iel))%Ms == basis_fns(i)%Ms) then
+! [review] - AJWT: replace with a pointer initialized at the start of the function to speed this up?
                         if (sys%read_in%extra_exchange_integrals) then
                             hmatel%r = hmatel%r - get_two_body_exchange_pbc_int_nonzero(sys%read_in%additional_exchange_ints, &
                                                     i, occ_list(iel), occ_list(iel), a, basis_fns)

@@ -79,6 +79,7 @@ type two_body_t
     logical :: imag = .false.
 end type
 
+! [review] - AJWT: This name is a bit specific - really this is a three-index integral
 type two_body_exchange_t
     ! This type is also used for storage of two body exchange-type integrals
     ! in complex systems. This requires indexing by three indexes due to symmetry

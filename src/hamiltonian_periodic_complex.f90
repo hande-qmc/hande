@@ -146,6 +146,7 @@ contains
                     im =  get_two_body_int_mol_nonzero(coulomb_ints_im, i, j, i, j, sys%basis%basis_fns)
                     hmatel = hmatel + cmplx(re, im, p)
                     if (sys%basis%basis_fns(i)%Ms == sys%basis%basis_fns(j)%Ms) then
+! [review] - AJWT: replace if with a pointer at the top of function to avoid if?
                         if (sys%read_in%extra_exchange_integrals) then
                             re = get_two_body_exchange_pbc_int_nonzero(sys%read_in%additional_exchange_ints, &
                                         i, j, j, i, sys%basis%basis_fns)
@@ -207,6 +208,7 @@ contains
                         hmatel = hmatel &
                             + get_two_body_int_mol(coulomb_ints, coulomb_ints_im, i, occ_list(iel), a, occ_list(iel), &
                                                     sys)
+! [review] - AJWT: replace if with a pointer at the top of function to avoid if?
                         if (sys%read_in%extra_exchange_integrals) then
                             hmatel = hmatel &
                                         - get_two_body_exchange_pbc_int_complex(sys%read_in%additional_exchange_ints, &
@@ -277,6 +279,7 @@ contains
                     im = get_two_body_int_mol_nonzero(coulomb_ints_im, i, occ_list(iel), a, occ_list(iel), basis_fns)
                     hmatel%c = hmatel%c + cmplx(re, im, p)
                     if (basis_fns(occ_list(iel))%Ms == basis_fns(i)%Ms) then
+! [review] - AJWT: replace if with a pointer at the top of function to avoid if?
                         if (sys%read_in%extra_exchange_integrals) then
                             re = get_two_body_exchange_pbc_int_nonzero(sys%read_in%additional_exchange_ints, &
                                         i, occ_list(iel), occ_list(iel), a, sys%basis%basis_fns)
