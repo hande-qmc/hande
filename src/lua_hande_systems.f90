@@ -87,8 +87,7 @@ contains
         !   new: if false, do not create a new system object
 
         use, intrinsic :: iso_c_binding, only: c_loc
-        use flu_binding, only: flu_State, flu_pushlightuserdata, flu_pushstring, flu_settable, flu_pushcclosure, &
-                               fluL_setmetatable
+        use flu_binding, only: flu_State, flu_pushlightuserdata, flu_pushstring, flu_settable, flu_pushcclosure, fluL_setmetatable
         use aot_table_ops_module, only: aot_table_open, aot_table_close
 
         use system, only: sys_t
@@ -556,7 +555,7 @@ contains
         use point_group_symmetry, only: print_pg_symmetry_info
         use momentum_sym_read_in, only: print_mom_sym_info
         use read_in_system, only: read_in_integrals
-        use system, only: sys_t, read_in, init_system, copy_basis_setup_generic
+        use system, only: sys_t, read_in, init_system
         use check_input, only: check_sys
         use parallel, only: parent
         use errors, only: stop_all
@@ -572,9 +571,8 @@ contains
         logical :: new, new_basis, verbose, hdf5, t_exists
         integer :: err
 
-        character(20), parameter :: keys(13) = [character(20) :: 'sys', 'nel', 'electrons', 'int_file', &
-                                                                 'dipole_int_file', 'sc_int_file', 'Lz', 'sym', 'ms', &
-                                                                 'CAS', 'complex', 'verbose', 'max_broadcast_chunk']
+        character(20), parameter :: keys(12) = [character(20) :: 'sys', 'nel', 'electrons', 'int_file', 'dipole_int_file', 'Lz', &
+                                                                'sym', 'ms', 'CAS', 'complex', 'verbose', 'max_broadcast_chunk']
 
         call cpu_time(t1)
 
@@ -588,10 +586,13 @@ contains
 
         ! Parse table for options...
         call set_common_sys_options(lua_state, sys, verbose, opts)
+
         call aot_get_val(sys%read_in%fcidump, err, lua_state, opts, 'int_file')
+
         call aot_get_val(sys%read_in%dipole_int_file, err, lua_state, opts, 'dipole_int_file')
-        call aot_get_val(sys%read_in%sc_int_file, err, lua_state, opts, 'sc_int_file')
+
         call aot_get_val(sys%read_in%max_broadcast_chunk, err, lua_state, opts, 'max_broadcast_chunk')
+
 
         if (parent) then
             ! Verify that the specified file exists and check whether it is HDF5 or text.
@@ -600,7 +601,6 @@ contains
         end if
         call ishdf5_wrapper(sys%read_in%fcidump, hdf5, err)
 
-        ! [TODO] - modify hdf5 module for complex systems
         if (hdf5) then
             call init_system(sys)
             call read_system_hdf5(sys, verbose)
@@ -626,11 +626,6 @@ contains
                 if (parent) call check_sys(sys)
                 call read_in_integrals(sys, verbose=verbose)
                 call init_generic_system_basis(sys)
-
-                if (len_trim(sys%read_in%dipole_int_file) /= 0) &
-                    call copy_basis_setup_generic(sys%basis, sys%read_in%dipole_sys_ptr%basis)
-                if (len_trim(sys%read_in%sc_int_file) /= 0) &
-                    call copy_basis_setup_generic(sys%basis, sys%read_in%sc_sys_ptr%basis)
 
                 if (sys%momentum_space) then
                     call print_mom_sym_info(sys)
@@ -698,8 +693,7 @@ contains
         integer :: err
 
         character(24), parameter :: keys(9) = [character(24) :: 'sys', 'ms', 'J', 'lattice', 'magnetic_field', &
-                                                                'staggered_magnetic_field', 'triangular', 'finite', &
-                                                                'verbose']
+                                                                'staggered_magnetic_field', 'triangular', 'finite', 'verbose']
 
         call cpu_time(t1)
 
@@ -878,8 +872,7 @@ contains
         logical :: new_basis, new, verbose
         integer :: err
 
-        character(10), parameter :: keys(7) = [character(10) :: 'sys', 'nel', 'electrons', 'radius', 'maxlz', 'sym', &
-                                                                'verbose']
+        character(10), parameter :: keys(7) = [character(10) :: 'sys', 'nel', 'electrons', 'radius', 'maxlz', 'sym', 'verbose']
 
         call cpu_time(t1)
 

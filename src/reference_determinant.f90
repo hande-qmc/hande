@@ -30,12 +30,9 @@ type reference_t
     integer :: ex_level = -1
     ! Energy of reference determinant.
     real(p) :: H00
-    ! Value of <D0|O|D0>, where O is the dipole operator we are sampling.
-    ! (Applicable/set if H-F/DMQMC/FCIQMC sampling of dipole operator is in operation.)
+    ! Value of <D0|O|D0>, where O is the operator we are sampling.
+    ! (Applicable/set only if Hellmann--Feynman sampling is in operation.)
     real(p) :: O00
-    ! Value of <D0|O2|D0>, where O2 is the superconducting energy gap operator we are sampling.
-    ! (Applicable/set if H-F/DMQMC/FCIQMC sampling of sc gap operator is in operation.)
-    real(p) :: O200
     ! \sum_i f_i, where f_i is the single-particle (often Fock) eigenvalue of the i-th occupied orbital.
     real(p) :: fock_sum
 end type reference_t

@@ -833,8 +833,7 @@ contains
         !    population: The population to insert into psip_list%pops.
         !    ref: reference determinant.
 
-        use calc, only: doing_calc, hfs_fciqmc_calc, dmqmc_calc, &
-                        doing_dmqmc_calc, dmqmc_dipole, dmqmc_SC_gap
+        use calc, only: doing_calc, hfs_fciqmc_calc, dmqmc_calc
         use heisenberg_estimators, only: neel_singlet_data
         use proc_pointers, only: sc0_ptr, op0_ptr, h0_ptr
         use system, only: sys_t
@@ -848,7 +847,7 @@ contains
         integer(i0), intent(in) :: det(sys%basis%tensor_label_len)
         integer(int_p), intent(in) :: population(psip_list%nspaces)
         type(reference_t), intent(in) :: ref
-        integer :: nham, nopr
+        integer :: nham
 
         ! Determine the number of diagonal Hamiltonian elements in the dat array
         if (sys%read_in%comp) then 
@@ -889,23 +888,12 @@ contains
                 end associate
             else
                 ! Set the energy to be the average of the two induvidual energies.
-                ! [todo] isn't this two equal?
                 associate(bl=>sys%basis%tot_string_len, pl=>psip_list)
                     pl%dat(1,pos) = (pl%dat(1,pos) + sc0_ptr(sys, pl%states((bl+1):(2*bl),pos)) - ref%H00)/2
                 end associate
                 ! Copy data across replicas (have to skip complex components).
                 if (annihilation_flags%replica_tricks) &
                     psip_list%dat(2:nham,pos) = psip_list%dat(1,pos)
-                ! Update for custom operators.
-                ! This variable counts number of custom operators.
-                nopr = 1
-                if (doing_dmqmc_calc(dmqmc_dipole)) then
-                    psip_list%dat(nham+nopr, pos) = op0_ptr(sys, det) - ref%O00
-                    nopr = nopr + 1
-                end if
-                if (doing_dmqmc_calc(dmqmc_SC_gap)) then
-                    psip_list%dat(nham+nopr, pos) = sc0_ptr(sys%read_in%sc_sys_ptr, det) - ref%O200
-                end if
             end if
 
         end if

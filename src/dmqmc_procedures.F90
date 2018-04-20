@@ -54,9 +54,8 @@ contains
             dmqmc_estimates%correlation_mask = 0_i0
             do i = 1, 2
                 bit_position = sys%basis%bit_lookup(1,dmqmc_in%correlation_sites(i))
-                bit_element  = sys%basis%bit_lookup(2,dmqmc_in%correlation_sites(i))
-                dmqmc_estimates%correlation_mask(bit_element) = ibset(dmqmc_estimates%correlation_mask(bit_element), &
-                                                                      bit_position)
+                bit_element = sys%basis%bit_lookup(2,dmqmc_in%correlation_sites(i))
+                dmqmc_estimates%correlation_mask(bit_element) = ibset(dmqmc_estimates%correlation_mask(bit_element), bit_position)
             end do
         end if
 
@@ -135,8 +134,7 @@ contains
                 allocate(weighted_sampling%altering_factors(0:sys%max_number_excitations), stat=ierr)
                 call check_allocate('weighted_sampling%altering_factors',sys%max_number_excitations+1,ierr)
                 weighted_sampling%altering_factors = &
-                    & real(weighted_sampling%probs(:sys%max_number_excitations),dp)**&
-                        &(1/real(dmqmc_in%finish_varying_weights,dp))
+                    & real(weighted_sampling%probs(:sys%max_number_excitations),dp)**(1/real(dmqmc_in%finish_varying_weights,dp))
                 ! If varying the weights, start the accumulated probabilties
                 ! as all 1.0 initially, and then alter them gradually later.
                 weighted_sampling%probs = 1.0_p
@@ -165,8 +163,7 @@ contains
         ! subsystems A or B.
         if (dmqmc_in%rdm%doing_rdm) call setup_rdm_arrays(sys, .true., dmqmc_estimates%subsys_info, &
                                                           dmqmc_estimates%ground_rdm%rdm, qmc_in, dmqmc_in%rdm, &
-                                                          dmqmc_estimates%inst_rdm, nreplicas, &
-                                                          qs%psip_list%pop_real_factor)
+                                                          dmqmc_estimates%inst_rdm, nreplicas, qs%psip_list%pop_real_factor)
         if (dmqmc_in%calc_mom_dist) call allocate_kspace_correlation_functions(sys, dmqmc_in%mom_dist_kmax, .true., &
                                                                                dmqmc_estimates%mom_dist%f_k, &
                                                                                dmqmc_estimates%mom_dist%kpoints)
@@ -176,8 +173,7 @@ contains
 
     end subroutine init_dmqmc
 
-    subroutine setup_rdm_arrays(sys, called_from_dmqmc, subsys_info, ground_rdm, qmc_in, rdm_in, inst_rdms, nreplicas, &
-                               &real_factor)
+    subroutine setup_rdm_arrays(sys, called_from_dmqmc, subsys_info, ground_rdm, qmc_in, rdm_in, inst_rdms, nreplicas, real_factor)
 
         ! Setup the bit masks needed for RDM calculations. These are masks for
         ! the bits referring to either subsystem A or B. Also calculate the
@@ -195,7 +191,8 @@ contains
         !    qmc_in: Input options relating to QMC methods.  Only needed for
         !        spawn_cutoff and if calc_inst_rdm is true.
         !    rdm_in: Input options relating to reduced density matrices.
-        !    nreplicas: number of replicas being used.
+        !    nreplicas: number of replicas being used.  Must be specified if
+        !        qmc_in is.
         !    real_factor: The factor by which populations are multiplied to
         !        enable non-integer populations.  Must be specified if
         !        calc_inst_rdm is true.
@@ -337,9 +334,9 @@ contains
                     ! Also we use spawn_t only as a lookup/storage/compression device for the RDMs so
                     ! need not worry about hashing identical amounts of data irrespective of DET_SIZE.
                     if (.not.present(real_factor)) call stop_all('setup_rdm_arrays', 'real_factor not supplied.')
-                    call alloc_spawn_t(subsys_info(i)%string_len*2, subsys_info(i)%string_len*2*i0_length, nreplicas, &
-                                      &.false., spawn_length_loc, qmc_in%spawn_cutoff, real_factor, pm_dummy, 27, &
-                                      &qmc_in%use_mpi_barriers, inst_rdms%spawn(i)%spawn) ! [TODO]
+                    call alloc_spawn_t(subsys_info(i)%string_len*2, subsys_info(i)%string_len*2*i0_length, nreplicas, .false., &
+                                       spawn_length_loc, qmc_in%spawn_cutoff, real_factor, pm_dummy, 27, &
+                                       qmc_in%use_mpi_barriers, inst_rdms%spawn(i)%spawn)
                     ! Hard code hash table collision limit for now.  The length of
                     ! the table is three times as large as the spawning arrays and
                     ! each hash value can have 7 clashes. This was found to give
@@ -422,7 +419,7 @@ contains
                     ! shift it by the appropriate lattice vector so that it is
                     ! in this cell.
                     call map_vec_to_cell(sys%basis%nbasis, sys%basis%basis_fns, sys%lattice%ndim, lvecs, r)
-                    ! Now need to find which basis function this site
+                    ! Now need to find which basis function this site 
                     ! corresponds to. Simply loopover all basis functions and
                     ! check...
                     do l = 1, sys%basis%nbasis
@@ -511,16 +508,14 @@ contains
         ! for convenience of not changing any additional interfaces.
         ! If this is not the case in future this must be changed to be
         ! compatible.
-        call assign_particle_processor_dmqmc(f_new, spawn%bit_str_nbits, 0, &
-                                            &spawn%hash_seed, spawn%hash_shift, spawn%move_freq, &
-                                            &nprocs, iproc_spawn, slot, spawn%proc_map%map, spawn%proc_map%nslots)
+        call assign_particle_processor_dmqmc(f_new, spawn%bit_str_nbits, 0, spawn%hash_seed, spawn%hash_shift, spawn%move_freq, &
+                                       nprocs, iproc_spawn, slot, spawn%proc_map%map, spawn%proc_map%nslots)
 #endif
 
         call add_spawned_particle(f_new, nspawn, particle_type, iproc_spawn, spawn)
 
-        if (spawn%error) call stop_all('create_diagonal_density_matrix_particle', &
-                                      &'Ran out of space in the spawned list while&
-                                      & generating the initial density matrix.')
+        if (spawn%error) call stop_all('create_diagonal_density_matrix_particle', 'Ran out of space in the spawned list while&
+                                  & generating the initial density matrix.')
 
     end subroutine create_diagonal_density_matrix_particle
 
@@ -578,17 +573,15 @@ contains
 
 #ifdef PARALLEL
         ! Need to determine which processor the spawned psip should be sent to.
-        call assign_particle_processor_dmqmc(f_new, spawn%bit_str_nbits, 0, &
-                                            &spawn%hash_seed, spawn%hash_shift, spawn%move_freq, &
-                                            &nprocs, iproc_spawn, slot, spawn%proc_map%map, spawn%proc_map%nslots)
+        call assign_particle_processor_dmqmc(f_new, spawn%bit_str_nbits, 0, spawn%hash_seed, spawn%hash_shift, spawn%move_freq, &
+                                       nprocs, iproc_spawn, slot, spawn%proc_map%map, spawn%proc_map%nslots)
 #endif
 
         call set_parent_flag_dmqmc(real(nspawn,p)/pop_real_factor, initiator_pop, f_new, f_new, 0, flag)
         call add_flagged_spawned_particle(f_new, nspawn, particle_type, flag, iproc_spawn, spawn)
 
         if (spawn%error) call stop_all('create_diagonal_density_matrix_particle_initiator', &
-                                      &'Ran out of space in the spawned list while&
-                                      & generating the initial density matrix.')
+                                        'Ran out of space in the spawned list while generating the initial density matrix.')
 
     end subroutine create_diagonal_density_matrix_particle_initiator
 
@@ -725,8 +718,7 @@ contains
             end do
 
             ! Update the total number of walkers.
-            psip_list%nparticles = psip_list%nparticles + &
-                real(new_population - old_population, p)/psip_list%pop_real_factor
+            psip_list%nparticles = psip_list%nparticles + real(new_population - old_population, p)/psip_list%pop_real_factor
 
         end do
 
@@ -789,8 +781,7 @@ contains
                     ! distribution.
                     weighted_sampling%sampling_probs(i) = weighted_sampling%sampling_probs(i)*&
                         (excit_dist(i)/excit_dist(i-1))
-                    weighted_sampling%sampling_probs(sys%max_number_excitations+1-i) = &
-                        weighted_sampling%sampling_probs(i)**(-1)
+                    weighted_sampling%sampling_probs(sys%max_number_excitations+1-i) = weighted_sampling%sampling_probs(i)**(-1)
                 end if
             end do
         case (ueg, hub_k, ringium)
@@ -825,8 +816,7 @@ contains
         ! weighted_sampling%altering_factors to coincide with the new sampling weights.
         if (dmqmc_in%vary_weights) then
             weighted_sampling%altering_factors = &
-                & real(weighted_sampling%probs(:sys%max_number_excitations),dp)**&
-                    &(1/real(dmqmc_in%finish_varying_weights,dp))
+                & real(weighted_sampling%probs(:sys%max_number_excitations),dp)**(1/real(dmqmc_in%finish_varying_weights,dp))
             ! Reset the weights for the next loop.
             weighted_sampling%probs = 1.0_p
         end if

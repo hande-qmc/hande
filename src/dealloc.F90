@@ -166,45 +166,19 @@ contains
         use system, only: sys_read_in_t
         use molecular_integrals, only: end_one_body_t, end_two_body_t
         use symmetry_types, only: dealloc_pg_sym_t, dealloc_mom_sym_t
-        use basis_types, only: dealloc_basis_t
 
         type(sys_read_in_t), intent(inout) :: read_in
 
         call end_one_body_t(read_in%one_e_h_integrals)
+        call end_one_body_t(read_in%one_body_op_integrals)
         call end_two_body_t(read_in%coulomb_integrals)
+        ! Deallocate imaginary parts as well.
         if (read_in%comp) then
             call end_one_body_t(read_in%one_e_h_integrals_imag)
             call end_two_body_t(read_in%coulomb_integrals_imag)
         end if
         call dealloc_pg_sym_t(read_in%pg_sym)
         call dealloc_mom_sym_t(read_in%mom_sym)
-
-        ! Deallocate fake systems.
-        ! As I'm a little afraid that calling dealloc_sys_t might cause
-        ! recursion, I'll just DIY...
-        if (associated(read_in%dipole_sys_ptr)) then
-            associate(fakeinp=>read_in%dipole_sys_ptr%read_in)
-                call end_one_body_t(fakeinp%one_e_h_integrals)
-                if (read_in%comp) &
-                    call end_one_body_t(fakeinp%one_e_h_integrals_imag)
-            end associate
-            call dealloc_basis_t(read_in%dipole_sys_ptr%basis)
-            deallocate(read_in%dipole_sys_ptr)
-        end if
-        if (associated(read_in%sc_sys_ptr)) then
-            associate(fakeinp=>read_in%sc_sys_ptr%read_in)
-                call end_one_body_t(fakeinp%one_e_h_integrals)
-                call end_two_body_t(fakeinp%coulomb_integrals)
-                if (read_in%comp) then
-                    call end_one_body_t(fakeinp%one_e_h_integrals_imag)
-                    call end_two_body_t(fakeinp%coulomb_integrals_imag)
-                end if
-            end associate
-            call dealloc_basis_t(read_in%sc_sys_ptr%basis)
-            deallocate(read_in%sc_sys_ptr)
-        end if
-        read_in%dipole_sys_ptr => null()
-        read_in%sc_sys_ptr => null()
 
     end subroutine dealloc_sys_read_in_t
 

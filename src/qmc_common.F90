@@ -534,7 +534,7 @@ contains
 
 ! --- Output routines ---
 
-    subroutine initial_qmc_status(sys, qmc_in, qs, ntot_particles, doing_ccmc, io_unit, eval_opr)
+    subroutine initial_qmc_status(sys, qmc_in, qs, ntot_particles, doing_ccmc, io_unit)
 
         ! Calculate the projected energy based upon the initial walker
         ! distribution (either via a restart or as set during initialisation)
@@ -549,8 +549,6 @@ contains
         !    qs: qmc_state_t object.
         ! In (optional):
         !    io_unit: io unit to write any reporting to.
-        !    eval_opr: if to evaluate the 1-body dipole operator (eval_opr(1))
-        !                          or the 2-body sc-gap operator (eval_opr(2))
 
         use parallel, only: parent
         use qmc_io, only: write_qmc_report
@@ -563,16 +561,15 @@ contains
         real(dp), intent(in) :: ntot_particles(qs%psip_list%nspaces)
         logical, intent(in) :: doing_ccmc
         integer, optional, intent(in) :: io_unit
-        logical, optional, intent(in) :: eval_opr(2)
-
+        
         if (parent) then
             if (doing_ccmc) then
                 qs%estimators%nattempts = nint(qs%estimators%D0_population)
                 call write_qmc_report(qmc_in, qs, 0, ntot_particles, 0.0, .true., .false., cmplx_est=sys%read_in%comp, &
-                                      nattempts=.true., io_unit=io_unit)
+                                        nattempts=.true., io_unit=io_unit)
             else
                 call write_qmc_report(qmc_in, qs, 0, ntot_particles, 0.0, .true., .false., cmplx_est=sys%read_in%comp, &
-                                      io_unit=io_unit, eval_opr=eval_opr)
+                    io_unit=io_unit)
             end if
         end if
 
@@ -609,15 +606,15 @@ contains
         logical, intent(in) :: nb_comm
         real(dp), intent(out) :: ntot_particles(qs%psip_list%nspaces)
 
-        integer :: idet, ispace, idata
+        integer :: idet, ispace
         real(p) :: real_population(qs%psip_list%nspaces), weighted_population(qs%psip_list%nspaces)
         type(det_info_t) :: cdet
         type(hmatel_t) :: hmatel
         type(excit_t) :: D0_excit
 #ifdef PARALLEL
         integer :: ierr
-        real(p) :: proj_energy_sum(qs%psip_list%ndata), D0_population_sum(qs%psip_list%ndata)
-        complex(p) :: proj_energy_comp_sum(qs%psip_list%ndata), D0_population_comp_sum(qs%psip_list%ndata)
+        real(p) :: proj_energy_sum(qs%psip_list%nspaces), D0_population_sum(qs%psip_list%nspaces)
+        complex(p) :: proj_energy_comp_sum(qs%psip_list%nspaces), D0_population_comp_sum(qs%psip_list%nspaces)
 #endif
         call zero_estimators_t(qs%estimators)
 
@@ -636,16 +633,15 @@ contains
             D0_excit = get_excitation(sys%nel, sys%basis, cdet%f, qs%ref%f0)
             if (sys%read_in%comp) then
                 do ispace = 1, qs%psip_list%nspaces, 2
-                    idata = (ispace + 1)/2
-                    call update_proj_energy_ptr(sys, qs%ref%f0, qs%trial%wfn_dat, cdet, &
-                                                weighted_population(ispace:ispace+1),   &
-                                                qs%estimators(idata), D0_excit, hmatel)
+                    call update_proj_energy_ptr(sys, qs%ref%f0, qs%trial%wfn_dat, cdet, weighted_population(ispace:ispace+1), &
+                                                qs%estimators(ispace), D0_excit, hmatel)
+                    qs%estimators(ispace+1)%D0_population_comp = qs%estimators(ispace)%D0_population_comp
+                    qs%estimators(ispace+1)%proj_energy_comp = qs%estimators(ispace)%proj_energy_comp
                 end do
             else
                 do ispace = 1, qs%psip_list%nspaces
-                    idata = ispace
                     call update_proj_energy_ptr(sys, qs%ref%f0, qs%trial%wfn_dat, cdet, [weighted_population(ispace)], &
-                                                qs%estimators(idata), D0_excit, hmatel)
+                                                qs%estimators(ispace), D0_excit, hmatel)
                 end do
             end if
 
@@ -656,18 +652,18 @@ contains
         ! Non-blocking delays reporting by a report loop and initialisation of summation of the
         ! estimators is performed in init_non_blocking_comm.
         if (.not.nb_comm) then
-            call mpi_allreduce(qs%estimators%proj_energy, proj_energy_sum, qs%psip_list%ndata, mpi_preal, &
+            call mpi_allreduce(qs%estimators%proj_energy, proj_energy_sum, qs%psip_list%nspaces, mpi_preal, &
                                MPI_SUM, MPI_COMM_WORLD, ierr)
-            call mpi_allreduce(qs%estimators%proj_energy_comp, proj_energy_comp_sum, qs%psip_list%ndata, mpi_pcomplex, &
+            call mpi_allreduce(qs%estimators%proj_energy_comp, proj_energy_comp_sum, qs%psip_list%nspaces, mpi_pcomplex, &
                                MPI_SUM, MPI_COMM_WORLD, ierr)
-            call mpi_allreduce(qs%estimators%D0_population, D0_population_sum, qs%psip_list%ndata, mpi_preal, MPI_SUM, &
+            call mpi_allreduce(qs%psip_list%nparticles, ntot_particles, qs%psip_list%nspaces, MPI_REAL8, &
+                               MPI_SUM, MPI_COMM_WORLD, ierr)
+            call mpi_allreduce(qs%estimators%D0_population, D0_population_sum, qs%psip_list%nspaces, mpi_preal, MPI_SUM, &
                                MPI_COMM_WORLD, ierr)
-            call mpi_allreduce(qs%estimators%D0_population_comp, D0_population_comp_sum, qs%psip_list%ndata, mpi_pcomplex, &
+            call mpi_allreduce(qs%estimators%D0_population_comp, D0_population_comp_sum, qs%psip_list%nspaces, mpi_pcomplex, &
                                MPI_SUM, MPI_COMM_WORLD, ierr)
             call mpi_allreduce(qs%psip_list%nstates, qs%estimators%tot_nstates, qs%psip_list%nspaces, MPI_INTEGER, MPI_SUM, &
                                MPI_COMM_WORLD, ierr)
-            call mpi_allreduce(qs%psip_list%nparticles, ntot_particles, qs%psip_list%nspaces, MPI_REAL8, &
-                               MPI_SUM, MPI_COMM_WORLD, ierr)
             qs%estimators%proj_energy = proj_energy_sum
             qs%estimators%proj_energy_comp = proj_energy_comp_sum
             qs%estimators%D0_population = D0_population_sum
@@ -733,14 +729,14 @@ contains
         complex(p) :: D0_normalisation
 #ifdef PARALLEL
         integer :: ierr
-        real(p) :: proj_energy_sum(qs%psip_list%ndata)
-        complex(p) :: proj_energy_comp_sum(qs%psip_list%ndata)
+        real(p) :: proj_energy_sum(qs%psip_list%nspaces)
+        complex(p) :: proj_energy_comp_sum(qs%psip_list%nspaces)
 #endif
 
         call zero_estimators_t(qs%estimators)
 
         call dSFMT_init(rng_seed, 50000, rng)
-
+        
         D0_pos = 1
         call get_D0_info(qs, sys%read_in%comp, D0_proc, D0_pos, nD0_proc, D0_normalisation)
         associate(pl=>qs%psip_list)
@@ -779,6 +775,10 @@ contains
         ! This is to be safe as get_D0_info sets D0_normalisation on all processors.
         qs%estimators(1)%D0_population = real(D0_normalisation, p)
         qs%estimators(1)%D0_population_comp = D0_normalisation
+        if (sys%read_in%comp) then
+            qs%estimators(2)%D0_population_comp = qs%estimators(1)%D0_population_comp
+            qs%estimators(2)%proj_energy_comp = qs%estimators(1)%proj_energy_comp
+        end if
 
 #ifdef PARALLEL
         call mpi_allreduce(qs%estimators%proj_energy, proj_energy_sum, qs%psip_list%nspaces, mpi_preal, &
@@ -795,7 +795,7 @@ contains
         ntot_particles = qs%psip_list%nparticles
         qs%estimators%tot_nstates = qs%psip_list%nstates
 #endif
-
+    
     end subroutine initial_cc_projected_energy
 
 ! --- QMC loop and cycle initialisation routines ---
@@ -953,9 +953,9 @@ contains
 
 ! --- QMC loop and cycle termination routines ---
 
-    subroutine end_report_loop(out_unit, qmc_in, iteration, update_tau, qs, ntot_particles, nspawn_events, &
-                               semi_stoch_shift_it, semi_stoch_start_it, soft_exit, load_bal_in, update_estimators, &
-                               bloom_stats, doing_lb, nb_comm, comp, error, vary_shift_reference, eval_opr)
+    subroutine end_report_loop(out_unit, qmc_in, iteration, update_tau, qs, ntot_particles, nspawn_events, semi_stoch_shift_it, &
+                               semi_stoch_start_it, soft_exit, load_bal_in, update_estimators, bloom_stats, doing_lb, &
+                               nb_comm, comp, error, vary_shift_reference)
 
         ! In:
         !    out_unit: File unit to write ouput to.
@@ -989,8 +989,6 @@ contains
         ! In/Out (optional):
         !    bloom_stats: particle blooming statistics to accumulate.
         !    error: true if an error has occured and we need to quit.
-        !    eval_opr: if to evaluate the 1-body dipole operator (eval_opr(1))
-        !                          or the 2-body sc-gap operator (eval_opr(2)).
 
         use energy_evaluation, only: update_energy_estimators, local_energy_estimators,         &
                                      update_energy_estimators_recv, update_energy_estimators_send, &
@@ -1013,7 +1011,7 @@ contains
         integer, intent(in) :: semi_stoch_shift_it
         integer, intent(inout) :: semi_stoch_start_it
         logical, intent(out) :: soft_exit
-        logical, intent(in), optional :: vary_shift_reference, eval_opr(2)
+        logical, intent(in), optional :: vary_shift_reference
 
         type(load_bal_in_t), intent(in) :: load_bal_in
         logical, optional, intent(in) :: doing_lb, nb_comm
@@ -1038,29 +1036,27 @@ contains
 
         ! Update the energy estimators (shift & projected energy).
         update = .true.
-        if (present(update_estimators)) update = update_estimators
-
         ! Check if complex parameter passed to function, and if not set to
         ! value that will have no effect.
-        comp_param = .false.
-        if (present(comp)) comp_param = comp
-
+        if (present(comp)) then
+            comp_param = comp
+        else
+            comp_param = .false.
+        end if
+        if (present(update_estimators)) update = update_estimators
         if (update .and. .not. nb_comm_local) then
             call update_energy_estimators(qmc_in, qs, nspawn_events, ntot_particles, load_bal_in, doing_lb, &
-                                          comms_found, error, update_tau, bloom_stats, vary_shift_reference, &
-                                          comp_param, eval_opr=eval_opr)
+                                          comms_found, error, update_tau, bloom_stats, vary_shift_reference, comp_param)
         else if (update) then
             ! Save current report loop quantitites.
             ! Can't overwrite the send buffer before message completion
             ! so copy information somewhere else.
             call local_energy_estimators(qs, rep_info_copy, nspawn_events, comms_found, error, update_tau, &
-                                         bloom_stats, qs%par_info%report_comm%nb_spawn(2), &
-                                         comp_param, eval_opr=eval_opr)
+                                          bloom_stats, qs%par_info%report_comm%nb_spawn(2), comp_param)
             ! Receive previous iterations report loop quantities.
-            call update_energy_estimators_recv(qmc_in, qs, qs%psip_list%nspaces, qs%par_info%report_comm%request, &
-                                               ntot_particles, qs%psip_list%nparticles_proc, load_bal_in, doing_lb, &
-                                               comms_found, error, update_tau, bloom_stats, &
-                                               comp=comp_param, eval_opr=eval_opr)
+            call update_energy_estimators_recv(qmc_in, qs, qs%psip_list%nspaces, qs%par_info%report_comm%request, ntot_particles, &
+                                               qs%psip_list%nparticles_proc, load_bal_in, doing_lb, comms_found, error, &
+                                               update_tau, bloom_stats, comp=comp_param)
             ! Send current report loop quantities.
             qs%par_info%report_comm%rep_info = rep_info_copy
             call update_energy_estimators_send(qs%par_info%report_comm)
@@ -1229,68 +1225,8 @@ contains
         spawn%head = spawn%head_start
 
         if (present(determ)) call redistribute_semi_stoch_t(sys, propagator, reference, annihilation_flags, &
-                                                           &psip_list, spawn, io_unit, determ)
+                                                             psip_list, spawn, io_unit, determ)
 
     end subroutine redistribute_load_balancing_dets
 
-    pure subroutine update_dipole_operator(sys, f, trial_wfn_dat, cdet, pop, dipole_est, excitation, complx)
-
-        use system, only: sys_t
-        use determinants, only: det_info_t
-        use hamiltonian, only: hmatel_t
-        use excitations, only: excit_t
-        use qmc_data, only: estimators_t
-        use operators, only: one_body1_mol
-
-        type(sys_t), intent(in) :: sys
-        integer(i0), intent(in) :: f(:)
-        real(p), intent(in) :: trial_wfn_dat(:)
-        type(det_info_t), intent(in) :: cdet
-        real(p), intent(in) :: pop(:)
-        type(estimators_t), intent(inout) :: dipole_est
-        type(excit_t), intent(inout) :: excitation
-        logical, intent(in), optional :: complx
-
-        type(hmatel_t) :: opmatel
-        logical :: complx_set
-
-        complx_set = .false.
-        if (present(complx)) complx_set = complx
-
-        if (excitation%nexcit == 1) then
-            opmatel = one_body1_mol(sys, excitation%from_orb(1), excitation%to_orb(1), excitation%perm)
-            if (.not.complx_set) then
-                dipole_est%proj_energy = dipole_est%proj_energy + opmatel%r*pop(1)
-            else
-                dipole_est%proj_energy_comp = dipole_est%proj_energy_comp + opmatel%c*cmplx(pop(1), pop(2))
-            end if
-        end if
-
-    end subroutine update_dipole_operator
-
-    pure subroutine update_sc_operator(sys, f, trial_wfn_dat, cdet, pop, sc_est, excitation, complx)
-
-        use system, only: sys_t
-        use determinants, only: det_info_t
-        use hamiltonian, only: hmatel_t
-        use excitations, only: excit_t
-        use qmc_data, only: estimators_t
-        use proc_pointers
-
-        type(sys_t), intent(in) :: sys
-        integer(i0), intent(in) :: f(:)
-        real(p), intent(in) :: trial_wfn_dat(:)
-        type(det_info_t), intent(in) :: cdet
-        real(p), intent(in) :: pop(:)
-        type(estimators_t), intent(inout) :: sc_est
-        type(excit_t), intent(inout) :: excitation
-        logical, intent(in), optional :: complx
-
-        type(hmatel_t) :: opmatel
-
-        call update_proj_energy_ptr(sys, f, trial_wfn_dat, cdet, pop, sc_est, excitation, opmatel)
-
-    end subroutine update_sc_operator
-
 end module qmc_common
-

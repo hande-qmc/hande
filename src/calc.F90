@@ -65,8 +65,6 @@ integer, parameter :: dmqmc_kinetic_energy = 2**6
 integer, parameter :: dmqmc_potential_energy = 2**7
 integer, parameter :: dmqmc_H0_energy = 2**8
 integer, parameter :: dmqmc_HI_energy = 2**9
-integer, parameter :: dmqmc_dipole = 2**10
-integer, parameter :: dmqmc_SC_gap = 2**11 
 
 !--- global data (to deal with in HANDE 1.1)
 

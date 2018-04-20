@@ -14,10 +14,13 @@ implicit none
 
 contains
 
-! There are, in fact, wrappers for Hamiltonian excitation routines where a fake-
-! system for operators is parsed instead.
-
 !=== One-body operators ===
+
+! If \hat{O_1} is a one-body operator, then we can largely re-use the single
+! excitation generators.
+
+! This is a hack until the excitation generators support generating excitations
+! for operators of arbitrary symmetries.
 
     subroutine gen_excit_one_body_mol(rng, sys, excit_gen_data, cdet, pgen, connection, matel, allowed_excitation)
 
@@ -27,7 +30,7 @@ contains
 
         ! In:
         !    sys: system object being studied.
-        !    excit_gen_data: Data for excitation generator (not used)
+        !    excit_gen_data: Data for excitation generator (not used) 
         !    cdet: info on the current determinant (cdet) that we will gen
         !        from.
         !    parent_sign: sign of the population on the parent determinant (i.e.
@@ -54,52 +57,44 @@ contains
         use dSFMT_interface, only: dSFMT_t
 
         type(dSFMT_t), intent(inout) :: rng
+        type(sys_t), intent(in) :: sys
         type(excit_gen_data_t), intent(in) :: excit_gen_data
         type(det_info_t), intent(in) :: cdet
-        type(sys_t), intent(in) :: sys
         real(p), intent(out) :: pgen
-        type(hmatel_t), intent(out) :: matel
         type(excit_t), intent(out) :: connection
+        type(hmatel_t), intent(out) :: matel
         logical, intent(out) :: allowed_excitation
 
         integer :: op_sym
 
+        op_sym = sys%read_in%one_body_op_integrals%op_sym
 
-        associate(fakesys=>sys%read_in%dipole_sys_ptr)
+        ! 1. Select orbital to excite from and orbital to excite into.
+        call choose_ia_mol(rng, sys, op_sym, cdet%f, cdet%occ_list, cdet%symunocc, connection%from_orb(1), &
+                           connection%to_orb(1), allowed_excitation)
+        connection%nexcit = 1
 
-            op_sym = sys%read_in%one_e_h_integrals%op_sym
+        if (allowed_excitation) then
+            ! 2. Probability of generating this excitation.
+            pgen = calc_pgen_single_mol(sys, op_sym, cdet%occ_list, cdet%symunocc, connection%to_orb(1))
 
-            ! 1. Select orbital to excite from and orbital to excite into.
-            call choose_ia_mol(rng, sys, op_sym, cdet%f, cdet%occ_list, cdet%symunocc, connection%from_orb(1), &
-                               connection%to_orb(1), allowed_excitation)
-            connection%nexcit = 1
+            ! 3. Parity of permutation required to line up determinants.
+            call find_excitation_permutation1(sys%basis%excit_mask, cdet%f, connection)
 
-            if (allowed_excitation) then
-                ! 2. Probability of generating this excitation.
-                pgen = calc_pgen_single_mol(sys, op_sym, cdet%occ_list, cdet%symunocc, connection%to_orb(1))
-
-                ! 3. Parity of permutation required to line up determinants.
-                call find_excitation_permutation1(sys%basis%excit_mask, cdet%f, connection)
-
-                ! 4. Find the connecting matrix element.
-                matel = one_body1_mol_excit(sys, connection%from_orb(1), connection%to_orb(1), connection%perm)
-            else
-                ! We have a highly restrained system and this det has no single
-                ! excitations at all.  To avoid reweighting pattempt_single and
-                ! pattempt_double (an O(N^3) operation), we simply return a null
-
-                ! excitation
-                matel%r = 0.0_p
-                matel%c = 0.0_p
-                pgen = 1.0_p
-            end if
-
-        end associate
+            ! 4. Find the connecting matrix element.
+            matel%r = one_body1_mol_excit(sys, connection%from_orb(1), connection%to_orb(1), connection%perm)
+        else
+            ! We have a highly restrained system and this det has no single
+            ! excitations at all.  To avoid reweighting pattempt_single and
+            ! pattempt_double (an O(N^3) operation), we simply return a null
+            ! excitation
+            matel%r = 0.0_p
+            pgen = 1.0_p
+        end if
 
     end subroutine gen_excit_one_body_mol
 
-    subroutine gen_excit_one_body_mol_no_renorm(rng, sys, excit_gen_data, cdet, pgen, connection, matel, &
-                                                allowed_excitation)
+    subroutine gen_excit_one_body_mol_no_renorm(rng, sys, excit_gen_data, cdet, pgen, connection, matel, allowed_excitation)
 
         ! Create a random excitation from cdet and calculate both the probability
         ! of selecting that excitation and the corresponding matrix element of
@@ -114,7 +109,7 @@ contains
 
         ! In:
         !    sys: system object being studied.
-        !    excit_gen_data: Data for excitation generator (not used)
+        !    excit_gen_data: Data for excitation generator (not used) 
         !    cdet: info on the current determinant (cdet) that we will gen
         !        from.
         !    parent_sign: sign of the population on the parent determinant (i.e.
@@ -140,9 +135,9 @@ contains
         use hamiltonian_data
 
         type(dSFMT_t), intent(inout) :: rng
+        type(sys_t), intent(in) :: sys
         type(excit_gen_data_t), intent(in) :: excit_gen_data
         type(det_info_t), intent(in) :: cdet
-        type(sys_t), intent(in) :: sys
         real(p), intent(out) :: pgen
         type(excit_t), intent(out) :: connection
         type(hmatel_t), intent(out) :: matel
@@ -150,41 +145,32 @@ contains
 
         integer :: op_sym
 
-        associate(fakesys=>sys%read_in%dipole_sys_ptr)
+        op_sym = sys%read_in%one_body_op_integrals%op_sym
 
-            op_sym = sys%read_in%one_e_h_integrals%op_sym
+        ! 1. Select orbital to excite from and orbital to excite into.
+        call find_ia_mol(rng, sys, op_sym, cdet%f, cdet%occ_list, connection%from_orb(1), &
+                         connection%to_orb(1), allowed_excitation)
+        connection%nexcit = 1
 
-            ! 1. Select orbital to excite from and orbital to excite into.
-            call find_ia_mol(rng, sys, op_sym, cdet%f, cdet%occ_list, connection%from_orb(1), &
-                             connection%to_orb(1), allowed_excitation)
-            connection%nexcit = 1
+        if (allowed_excitation) then
+            ! 2. Probability of generating this excitation.
+            pgen = calc_pgen_single_mol_no_renorm(sys, connection%to_orb(1))
 
-            if (allowed_excitation) then
-                ! 2. Probability of generating this excitation.
-                pgen = calc_pgen_single_mol_no_renorm(sys, connection%to_orb(1))
+            ! 3. Parity of permutation required to line up determinants.
+            call find_excitation_permutation1(sys%basis%excit_mask, cdet%f, connection)
 
-                ! 3. Parity of permutation required to line up determinants.
-                call find_excitation_permutation1(sys%basis%excit_mask, cdet%f, connection)
+            ! 4. Find the connecting matrix element.
+            matel%r = one_body1_mol_excit(sys, connection%from_orb(1), connection%to_orb(1), connection%perm)
+        else
+            ! We have a highly restrained system and this det has no single
+            ! excitations at all.  To avoid reweighting pattempt_single and
+            ! pattempt_double (an O(N^3) operation), we simply return a null
 
-                ! 4. Find the connecting matrix element.
-                matel = one_body1_mol_excit(sys, connection%from_orb(1), connection%to_orb(1), connection%perm)
-            else
-                ! We have a highly restrained system and this det has no single
-                ! excitations at all.  To avoid reweighting pattempt_single and
-                ! pattempt_double (an O(N^3) operation), we simply return a null
-
-                ! excitation
-                matel%c = 0.0_p
-                matel%r = 0.0_p
-                pgen = 1.0_p
-            end if
-
-        end associate
+            ! excitation
+            matel%r = 0.0_p
+            pgen = 1.0_p
+        end if
 
     end subroutine gen_excit_one_body_mol_no_renorm
-
-!=== Two-body Operators ===
-! F-H excitation wrapper for two-body (SC) gap functions is unnecessary as
-! we do don't need to rip off 2-body excitations
 
 end module excit_gen_op_mol

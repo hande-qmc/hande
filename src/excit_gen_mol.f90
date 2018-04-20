@@ -67,15 +67,15 @@ contains
 
             if (allowed_excitation) then
                 ! 3a. Probability of generating this excitation.
-                pgen = excit_gen_data%pattempt_single*calc_pgen_single_mol&
-                    (sys, sys%read_in%pg_sym%gamma_sym, cdet%occ_list, cdet%symunocc, connection%to_orb(1))
+                pgen = excit_gen_data%pattempt_single*calc_pgen_single_mol(sys, sys%read_in%pg_sym%gamma_sym, cdet%occ_list, &
+                                                                   cdet%symunocc, connection%to_orb(1))
 
                 ! 4a. Parity of permutation required to line up determinants.
                 call find_excitation_permutation1(sys%basis%excit_mask, cdet%f, connection)
 
                 ! 5a. Find the connecting matrix element.
-                hmatel = slater_condon1_excit_ptr(sys, cdet%occ_list, &
-                                                 &connection%from_orb(1), connection%to_orb(1), connection%perm)
+                hmatel = slater_condon1_excit_ptr(sys, cdet%occ_list, connection%from_orb(1), &
+                                          connection%to_orb(1), connection%perm)
             else
                 ! We have a highly restrained system and this det has no single
                 ! excitations at all.  To avoid reweighting pattempt_single and

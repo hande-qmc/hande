@@ -283,9 +283,8 @@ contains
                         ! temperature/imaginary time so only get data from one
                         ! temperature value per ncycles.
                         if (icycle == 1) &
-                            call update_dmqmc_estimators(sys, dmqmc_in, idet, iteration, cdet1, &
-                                                        &qs%ref%H00, qs%ref%O00, qs%ref%O200, qs%psip_list, &
-                                                        &dmqmc_estimates, weighted_sampling, rdm_error)
+                            call update_dmqmc_estimators(sys, dmqmc_in, idet, iteration, cdet1, qs%ref%H00, &
+                                                        &qs%psip_list, dmqmc_estimates, weighted_sampling, rdm_error)
 
                         ! Only attempt spawning if a valid connection exists.
                         attempt_spawning = connection_exists(sys)
@@ -320,7 +319,7 @@ contains
                             ! of the two diagonal elements corresponding to the
                             ! two indicies of the density matrix.
                             call stochastic_death(rng, sys, qs, cdet1%fock_sum, qs%psip_list%dat(idata, idet), &
-                                                 &qs%shift(ireplica), qs%estimators(idata)%proj_energy_old, &
+                                                 &qs%shift(ireplica), qs%estimators(1)%proj_energy_old, &
                                                  &logging_info, qs%psip_list%pops(ireplica, idet), &
                                                  &qs%psip_list%nparticles(ireplica), ndeath)
                         end do
@@ -339,7 +338,6 @@ contains
                     ! the trial function, call a routine to update these weights
                     ! and alter the number of psips on each excitation level
                     ! accordingly.
-                    ! [todo] Add complex support
                     if (dmqmc_in%vary_weights .and. iteration <= dmqmc_in%finish_varying_weights) &
                         call update_sampling_weights(rng, sys%basis, qmc_in, qs%psip_list, sys%max_number_excitations, &
                                                     &weighted_sampling)

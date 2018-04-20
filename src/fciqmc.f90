@@ -98,7 +98,7 @@ contains
         type(json_out_t) :: js
         type(qmc_in_t) :: qmc_in_loc
 
-        integer :: idet, ireport, icycle, ideterm, ierr, ispace, ipop, idata, nenergy, nopr
+        integer :: idet, ireport, icycle, ideterm, ierr, ispace
         integer :: iter, semi_stoch_iter
         integer(int_64) :: nattempts
         real(dp), allocatable :: nparticles_old(:)
@@ -115,7 +115,6 @@ contains
 
         logical :: soft_exit, write_restart_shift, error
         logical :: determ_parent, restart_proj_est
-        logical :: eval_opr(2)
 
         real :: t1, t2
         logical :: update_tau, restarting, imag
@@ -129,9 +128,7 @@ contains
             write (io_unit,'(1X,"------",/)')
         end if
 
-        eval_opr = [fciqmc_in%estimate_dipole, fciqmc_in%estimate_sc]
         restarting = present(qmc_state_restart) .or. restart_in%read_restart
-
         if (parent) then
             ! Check input options.
             call check_qmc_opts(qmc_in, sys, .not.present(qmc_state_restart), restarting, qmc_state_restart)
@@ -141,9 +138,8 @@ contains
         end if
 
         ! Initialise data.
-        call init_qmc(sys, qmc_in, restart_in, load_bal_in, reference_in, io_unit, &
-                     &annihilation_flags, qs, uuid_restart, restart_version_restart, &
-                     &fciqmc_in=fciqmc_in, qmc_state_restart=qmc_state_restart)
+        call init_qmc(sys, qmc_in, restart_in, load_bal_in, reference_in, io_unit, annihilation_flags, qs, uuid_restart, &
+                      restart_version_restart, fciqmc_in=fciqmc_in, qmc_state_restart=qmc_state_restart)
 
         if (debug) call init_logging(logging_in, logging_info, 0)
 
@@ -207,16 +203,13 @@ contains
         nparticles_old = qs%psip_list%tot_nparticles
 
         ! Main fciqmc loop.
-        if (parent) call write_qmc_report_header(qs%psip_list%nspaces, cmplx_est=sys%read_in%comp, io_unit=io_unit, &
-                                                &eval_opr=eval_opr)
+        if (parent) call write_qmc_report_header(qs%psip_list%nspaces, cmplx_est=sys%read_in%comp, io_unit=io_unit)
         restart_proj_est = present(qmc_state_restart) .or. (restart_in%read_restart .and. restart_version_restart >= 2)
-        if (.not.restart_proj_est) call initial_ci_projected_energy(sys, qs, fciqmc_in%non_blocking_comm, &
-                                                                   &nparticles_old)
+        if (.not.restart_proj_est) call initial_ci_projected_energy(sys, qs, fciqmc_in%non_blocking_comm, nparticles_old)
         if (fciqmc_in%non_blocking_comm) then
-            call init_non_blocking_comm(qs, req_data_s, send_counts, qmc_in%ncycles, restart_in%read_restart, &
-                                        restart_proj_est, complx=sys%read_in%comp, eval_opr=eval_opr)
+            call init_non_blocking_comm(qs, req_data_s, send_counts, qmc_in%ncycles, restart_in%read_restart, restart_proj_est)
         else
-            call initial_qmc_status(sys, qmc_in, qs, nparticles_old, .false., io_unit, eval_opr=eval_opr)
+            call initial_qmc_status(sys, qmc_in, qs, nparticles_old, .false., io_unit)
         end if
 
         ! Initialise timer.
@@ -245,14 +238,15 @@ contains
                 ! Should we turn semi-stochastic on now?
                 if (iter == semi_stoch_iter .and. semi_stoch_in%space_type /= empty_determ_space) then
                     determ%doing_semi_stoch = .true.
-                    call init_semi_stoch_t(determ, semi_stoch_in, sys, qs%propagator, qs%psip_list, qs%ref, &
-                                          &annihilation_flags, qs%spawn_store%spawn, qmc_in%use_mpi_barriers, io_unit)
+                    call init_semi_stoch_t(determ, semi_stoch_in, sys, qs%propagator, qs%psip_list, qs%ref, annihilation_flags, &
+                                           qs%spawn_store%spawn, qmc_in%use_mpi_barriers, io_unit)
                 end if
 
-                call init_mc_cycle(qs%psip_list, qs%spawn_store%spawn, nattempts, ndeath, complx = sys%read_in%comp)
+                call init_mc_cycle(qs%psip_list, qs%spawn_store%spawn, nattempts, ndeath, &
+                                            complx = sys%read_in%comp)
                 call load_balancing_wrapper(sys, qs%propagator, qs%ref, load_bal_in, annihilation_flags, &
-                                            fciqmc_in%non_blocking_comm, io_unit, rng, qs%psip_list, &
-                                            qs%spawn_store%spawn, qs%par_info, determ)
+                                            fciqmc_in%non_blocking_comm, io_unit, rng, qs%psip_list, qs%spawn_store%spawn, &
+                                            qs%par_info, determ)
                 if (fciqmc_in%non_blocking_comm) qs%spawn_store%spawn_recv%proc_map = qs%par_info%load%proc_map
                 ideterm = 0
 
@@ -268,8 +262,7 @@ contains
                     do ispace = 1, qs%psip_list%nspaces
                         ! Extract the real sign from the encoded sign.
                         real_population(ispace) = real(qs%psip_list%pops(ispace,idet),p)/qs%psip_list%pop_real_factor
-                        weighted_population(ispace) = importance_sampling_weight(qs%trial, &
-                                                                                &cdet, real_population(ispace))
+                        weighted_population(ispace) = importance_sampling_weight(qs%trial, cdet, real_population(ispace))
                     end do
 
                     ! If this is a deterministic state then copy its population
@@ -283,55 +276,34 @@ contains
 
                     do ispace = 1, qs%psip_list%nspaces
 
-                        imag = sys%read_in%comp .and. mod(ispace, 2) == 0
-
-                        if (sys%read_in%comp) then
-                            idata = (ispace + 1)/2
-                            ipop = ispace + 1
-                            nenergy = qs%psip_list%nspaces/2
-                        else
-                            idata = ispace
-                            ipop = ispace
-                            nenergy = (qs%psip_list%nspaces + 1)/2
-                        end if
+                        imag = sys%read_in%comp .and. mod(ispace,2) == 0
 
                         ! It is much easier to evaluate the projected energy at the
                         ! start of the i-FCIQMC cycle than at the end, as we're
                         ! already looping over the determinants.
                         connection = get_excitation(sys%nel, sys%basis, cdet%f, qs%ref%f0)
-                        if (.not. imag) then
-                            call update_proj_energy_ptr(sys, qs%ref%f0, qs%trial%wfn_dat, &
-                                                        cdet, weighted_population(ispace:ipop), &
-                                                        qs%estimators(idata), connection, hmatel)
-
-                            ! Custom operators are only updated at the end of each report loop.
-                            if (icycle == qmc_in%ncycles .and. ispace == 1) then 
-                                nopr = 1 ! Operators counted one-by-one.
-                                if (fciqmc_in%estimate_dipole) then
-                                    call update_dipole_operator(sys, qs%ref%f0, qs%trial%wfn_dat, &
-                                                                cdet, weighted_population(ispace:ipop), &
-                                                                qs%estimators(nenergy+nopr), connection)
-                                    nopr = nopr + 1
-                                end if
-                                if (fciqmc_in%estimate_sc) &
-                                    call update_sc_operator(sys, qs%ref%f0, qs%trial%wfn_dat, &
-                                                            cdet, weighted_population(ispace:ipop), &
-                                                            qs%estimators(nenergy+nopr), connection)
-                            end if
+                        if (.not. sys%read_in%comp) then
+                            call update_proj_energy_ptr(sys, qs%ref%f0, qs%trial%wfn_dat, cdet, [weighted_population(ispace)], &
+                                                        qs%estimators(ispace), connection, hmatel)
+                        else if (.not. imag) then
+                            call update_proj_energy_ptr(sys, qs%ref%f0, qs%trial%wfn_dat, cdet, &
+                                                        weighted_population(ispace:ispace+1), &
+                                                        qs%estimators(ispace), connection, hmatel)
                         end if
+
 
                         nattempts_current_det = decide_nattempts(rng, real_population(ispace))
 
-                        call do_fciqmc_spawning_attempt(rng, qs%spawn_store%spawn, bloom_stats, sys, qs, &
-                                                        nattempts_current_det, cdet, determ, determ_parent, &
-                                                        qs%psip_list%pops(ispace, idet), imag, ispace, logging_info)
+                        call do_fciqmc_spawning_attempt(rng, qs%spawn_store%spawn, bloom_stats, sys, qs, nattempts_current_det, &
+                                                        cdet, determ, determ_parent, qs%psip_list%pops(ispace, idet), &
+                                                        sys%read_in%comp .and. modulo(ispace,2)==0, &
+                                                        ispace, logging_info)
 
                         ! Clone or die.
                         if (.not. determ_parent) then
-                            call stochastic_death&
-                                &(rng, sys, qs, cdet%fock_sum, qs%psip_list%dat(1,idet), &
-                                & qs%shift(ispace), qs%estimators(idata)%proj_energy_old, logging_info, &
-                                & qs%psip_list%pops(ispace,idet), qs%psip_list%nparticles(ispace), ndeath)
+                            call stochastic_death(rng, sys, qs, cdet%fock_sum, qs%psip_list%dat(1,idet), &
+                                            qs%shift(ispace), qs%estimators(ispace)%proj_energy_old, logging_info, &
+                                            qs%psip_list%pops(ispace,idet), qs%psip_list%nparticles(ispace), ndeath)
                         end if
                     end do
                 end do
@@ -339,25 +311,21 @@ contains
                 associate(pl=>qs%psip_list, spawn=>qs%spawn_store%spawn, spawn_recv=>qs%spawn_store%spawn_recv)
                     if (fciqmc_in%non_blocking_comm) then
                         call receive_spawned_walkers(spawn_recv, req_data_s)
-                        call evolve_spawned_walkers(sys, qmc_in, fciqmc_in, qs, spawn_recv, spawn, cdet, rng, ndeath, &
-                                                    fciqmc_in%quadrature_initiator, logging_info, bloom_stats, &
-                                                    update_custom_est=(icycle==qmc_in%ncycles))
+                        call evolve_spawned_walkers(sys, qmc_in, qs, spawn_recv, spawn, cdet, rng, ndeath, &
+                                                    fciqmc_in%quadrature_initiator, logging_info, bloom_stats)
                         call direct_annihilation_received_list(sys, rng, qs%ref, annihilation_flags, pl, spawn_recv)
                         ! Need to add walkers which have potentially moved processor to the spawned walker list.
                         if (qs%par_info%load%needed) then
-                            call redistribute_particles(pl%states, pl%pop_real_factor,  pl%pops, pl%nstates, &
-                                                       &pl%nparticles, spawn)
+                            call redistribute_particles(pl%states, pl%pop_real_factor,  pl%pops, pl%nstates,  pl%nparticles, spawn)
                             qs%par_info%load%needed = .false.
                         end if
-                        call direct_annihilation_spawned_list(sys, rng, qs%ref, &
-                                                             &annihilation_flags, pl, spawn, send_counts, req_data_s, &
-                                                             &qs%par_info%report_comm%nb_spawn, nspawn_events)
+                        call direct_annihilation_spawned_list(sys, rng, qs%ref, annihilation_flags, pl, spawn, send_counts, &
+                                                              req_data_s, qs%par_info%report_comm%nb_spawn, nspawn_events)
                         call end_mc_cycle(qs%par_info%report_comm%nb_spawn(1), ndeath, pl%pop_real_factor, nattempts, &
                                           qs%spawn_store%rspawn)
                     else
                         ! If using semi-stochastic then perform the deterministic projection step.
-                        if (determ%doing_semi_stoch) call determ_projection(rng, qmc_in, qs, spawn, determ, &
-                                                                           &sys%read_in%comp)
+                        if (determ%doing_semi_stoch) call determ_projection(rng, qmc_in, qs, spawn, determ)
 
                         call direct_annihilation(sys, rng, qs%ref, annihilation_flags, pl, spawn, nspawn_events, determ)
                         if (debug) call write_logging_calc_fciqmc(logging_info, iter, nspawn_events, ndeath, nattempts)
@@ -372,10 +340,10 @@ contains
             error = qs%spawn_store%spawn%error .or. qs%psip_list%error
 
             call end_report_loop(io_unit, qmc_in, iter, update_tau, qs, nparticles_old, &
-                                &nspawn_events, semi_stoch_in%shift_iter, semi_stoch_iter, soft_exit, &
-                                &load_bal_in, bloom_stats=bloom_stats, doing_lb=fciqmc_in%doing_load_balancing, &
-                                &nb_comm=fciqmc_in%non_blocking_comm, comp=sys%read_in%comp, error=error, &
-                                &eval_opr=eval_opr)
+                                 nspawn_events, semi_stoch_in%shift_iter, semi_stoch_iter, soft_exit, &
+                                 load_bal_in, bloom_stats=bloom_stats, doing_lb=fciqmc_in%doing_load_balancing, &
+                                 nb_comm=fciqmc_in%non_blocking_comm, comp=sys%read_in%comp, &
+                                 error=error)
             if (error) exit
 
             if (update_tau) call rescale_tau(qs%tau)
@@ -383,8 +351,8 @@ contains
             call cpu_time(t2)
             if (parent) then
                 if (bloom_stats%nblooms_curr > 0) call bloom_stats_warning(bloom_stats, io_unit=io_unit)
-                call write_qmc_report(qmc_in, qs, ireport, nparticles_old, t2-t1, .false., fciqmc_in%non_blocking_comm,&
-                                     &io_unit=io_unit, cmplx_est=sys%read_in%comp, eval_opr=eval_opr)
+                call write_qmc_report(qmc_in, qs, ireport, nparticles_old, t2-t1, .false., &
+                                        fciqmc_in%non_blocking_comm, io_unit=io_unit, cmplx_est=sys%read_in%comp)
                 if (blocking_in%blocking_on_the_fly) then
                     call do_blocking(bl, qs, qmc_in, ireport, iter, iunit, blocking_in)
                 end if
@@ -396,7 +364,7 @@ contains
             t1 = t2
 
             call dump_restart_file_wrapper(qs, write_restart_shift, restart_in%write_freq, nparticles_old, ireport, &
-                                           qmc_in%ncycles, sys%basis%nbasis, ri, ri_shift, fciqmc_in%non_blocking_comm,&
+                                           qmc_in%ncycles, sys%basis%nbasis, ri, ri_shift, fciqmc_in%non_blocking_comm, &
                                            sys%basis%info_string_len)
 
             qs%psip_list%tot_nparticles = nparticles_old
@@ -413,10 +381,10 @@ contains
         if (blocking_in%blocking_on_the_fly .and. parent) call date_and_time(VALUES=date_values)
         if (blocking_in%blocking_on_the_fly .and. parent) call write_date_time_close(iunit, date_values)
 
-        if (fciqmc_in%non_blocking_comm) call end_non_blocking_comm&
-            &(sys, rng, qmc_in, annihilation_flags, ireport, qs, qs%spawn_store%spawn_recv,  req_data_s,  &
-            & qs%par_info%report_comm%request, t1, nparticles_old, qs%shift(1), restart_in%write_restart, load_bal_in, &
-            & eval_opr=eval_opr)
+        if (fciqmc_in%non_blocking_comm) call end_non_blocking_comm(sys, rng, qmc_in, annihilation_flags, ireport, &
+                                                                    qs, qs%spawn_store%spawn_recv,  req_data_s,  &
+                                                                    qs%par_info%report_comm%request, t1, nparticles_old, &
+                                                                    qs%shift(1), restart_in%write_restart, load_bal_in)
 
         if (parent) write (io_unit,'()')
         call write_bloom_report(bloom_stats, io_unit=io_unit)
@@ -425,8 +393,7 @@ contains
                 call load_balancing_report(pl%nparticles, pl%nstates, qmc_in%use_mpi_barriers, spawn%mpi_time, &
                                            determ%mpi_time, io_unit=io_unit)
             else
-                call load_balancing_report(pl%nparticles, pl%nstates, qmc_in%use_mpi_barriers, spawn%mpi_time, &
-                                          &io_unit=io_unit)
+                call load_balancing_report(pl%nparticles, pl%nstates, qmc_in%use_mpi_barriers, spawn%mpi_time, io_unit=io_unit)
             end if
         if (parent .and. blocking_in%blocking_on_the_fly .and. soft_exit) call write_blocking_report(bl, qs)
         end associate
@@ -439,8 +406,8 @@ contains
         end if
 
         if (restart_in%write_restart) then
-            call dump_restart_hdf5(ri, qs, qs%mc_cycles_done, nparticles_old, sys%basis%nbasis, &
-                                  &fciqmc_in%non_blocking_comm, sys%basis%info_string_len)
+            call dump_restart_hdf5(ri, qs, qs%mc_cycles_done, nparticles_old, sys%basis%nbasis, fciqmc_in%non_blocking_comm, &
+                                    sys%basis%info_string_len)
             if (parent) write (io_unit,'()')
         end if
 
@@ -453,8 +420,8 @@ contains
 
     end subroutine do_fciqmc
 
-    subroutine evolve_spawned_walkers(sys, qmc_in, fciqmc_in, qs, spawn_recv, spawn_to_send, cdet, rng, ndeath, &
-                                      quadrature_initiator, logging_info, bloom_stats, update_custom_est)
+    subroutine evolve_spawned_walkers(sys, qmc_in, qs, spawn_recv, spawn_to_send, cdet, rng, ndeath, &
+                                    quadrature_initiator, logging_info, bloom_stats)
 
         ! Evolve spawned list of walkers one time step.
         ! Used for non-blocking communications.
@@ -462,7 +429,6 @@ contains
         ! In:
         !   sys: system being studied.
         !   qmc_in: input options relating to QMC methods.
-        !   fciqmc_in: input options relating to FCIQMC.
         !   quadrature_initiator: how to apply initiator approximation in complex systems.
         !   logging_info: information on level of logging to use within calculation.
         ! In/Out:
@@ -473,7 +439,6 @@ contains
         !   rng: random number generator.
         !   ndeath: running total of number of particles which have died or been cloned.
         !   bloom_stats: information on blooming within calculation.
-        !   update_custom_est(optional): if to update custom estimators
 
         use proc_pointers, only: sc0_ptr
         use death, only: stochastic_death
@@ -481,48 +446,42 @@ contains
         use dSFMT_interface, only: dSFMT_t
         use excitations, only: excit_t, get_excitation
         use ifciqmc
-        use qmc_data, only: qmc_state_t, qmc_in_t, fciqmc_in_t
+        use qmc_data, only: qmc_in_t, qmc_state_t
         use logging, only: logging_t
         use spawn_data, only: spawn_t
         use system, only: sys_t
-        use qmc_common, only: decide_nattempts, update_dipole_operator, update_sc_operator
+        use qmc_common, only: decide_nattempts
         use hamiltonian_data
         use bloom_handler, only: bloom_stats_t
         use semi_stoch, only: semi_stoch_t
 
         type(sys_t), intent(in) :: sys
         type(qmc_in_t), intent(in) :: qmc_in
-        type(fciqmc_in_t), intent(in) :: fciqmc_in
         type(qmc_state_t), intent(inout) :: qs
         type(spawn_t), intent(inout) :: spawn_recv, spawn_to_send
         type(dSFMT_t), intent(inout) :: rng
         type(det_info_t), intent(inout) :: cdet
         integer(int_p), intent(inout) :: ndeath
         logical, intent(in) :: quadrature_initiator
-        logical, intent(in), optional :: update_custom_est
 
         type(excit_t) :: connection
         type(hmatel_t) :: hmatel
-        integer :: idet, nattempts_current_det, ispace, idata, nenergy, nopr
+        integer :: idet, nattempts_current_det, ispace
         integer(int_p) :: int_pop(spawn_recv%ntypes)
         real(p) :: real_pop(spawn_recv%ntypes)
         real(dp) :: list_pop
-        logical :: imag, update_custom_est_set
+        logical :: imag
 
         type(logging_t), intent(in) :: logging_info
         type(bloom_stats_t), intent(inout) :: bloom_stats
         type(semi_stoch_t) :: determ
-
-        update_custom_est_set = .false.
-        if (present(update_custom_est)) update_custom_est_set = update_custom_est
 
         allocate(cdet%f(sys%basis%tensor_label_len))
         allocate(cdet%data(1))
 
         do idet = 1, spawn_recv%head(0,0) ! loop over walkers/dets
 
-            int_pop = int(spawn_recv%sdata(spawn_recv%bit_str_len+1:spawn_recv%bit_str_len+spawn_recv%ntypes, idet), &
-                         &int_p)
+            int_pop = int(spawn_recv%sdata(spawn_recv%bit_str_len+1:spawn_recv%bit_str_len+spawn_recv%ntypes, idet), int_p)
 
             real_pop = real(int_pop,p) / qs%psip_list%pop_real_factor
             cdet%f = int(spawn_recv%sdata(:sys%basis%tensor_label_len,idet),i0)
@@ -530,8 +489,7 @@ contains
             cdet%data(1) = sc0_ptr(sys, cdet%f) - qs%ref%H00
 
             call decoder_ptr(sys, cdet%f, cdet)
-            if (qs%propagator%quasi_newton) &
-                cdet%fock_sum = sum_sp_eigenvalues_occ_list(sys, cdet%occ_list) - qs%ref%fock_sum
+            if (qs%propagator%quasi_newton) cdet%fock_sum = sum_sp_eigenvalues_occ_list(sys, cdet%occ_list) - qs%ref%fock_sum
 
             ! Is this determinant an initiator?
             ! [todo] - pass determ_flag rather than 1.
@@ -540,46 +498,25 @@ contains
             do ispace = 1, qs%psip_list%nspaces
 
                 imag = sys%read_in%comp .and. mod(ispace,2) == 0
-                
-                if (sys%read_in%comp) then
-                    idata = (ispace + 1)/2
-                    nenergy = qs%psip_list%nspaces/2
-                else
-                    idata = ispace
-                    nenergy = (qs%psip_list%nspaces + 1)/2
-                end if
 
                 ! It is much easier to evaluate the projected energy at the
                 ! start of the i-FCIQMC cycle than at the end, as we're
                 ! already looping over the determinants.
                 connection = get_excitation(sys%nel, sys%basis, cdet%f, qs%ref%f0)
-                if (.not. imag) then
-                    call update_proj_energy_ptr(sys, qs%ref%f0, qs%trial%wfn_dat, cdet, real_pop, &
-                                                qs%estimators(idata), connection, hmatel)
-                    if (update_custom_est_set .and. ispace == 1) then
-                        nopr = 1
-                        if (fciqmc_in%estimate_dipole) then
-                            call update_dipole_operator(sys, qs%ref%f0, qs%trial%wfn_dat, cdet, real_pop, &
-                                                        qs%estimators(nenergy+nopr), connection)
-                            nopr = nopr + 1
-                        end if
-                        if (fciqmc_in%estimate_sc) &
-                            call update_sc_operator(sys, qs%ref%f0, qs%trial%wfn_dat, cdet, real_pop, &
-                                                    qs%estimators(nenergy+nopr), connection)
-                    end if
-                end if
+                call update_proj_energy_ptr(sys, qs%ref%f0, qs%trial%wfn_dat, cdet, real_pop, qs%estimators(ispace), &
+                                            connection, hmatel)
 
                 nattempts_current_det = decide_nattempts(rng, real_pop(ispace))
 
                 call do_fciqmc_spawning_attempt(rng, spawn_to_send, bloom_stats, sys, qs, nattempts_current_det, &
-                                               &cdet, determ, .false., int_pop(ispace), imag, ispace, logging_info)
-
+                                            cdet, determ, .false., int_pop(ispace), &
+                                            sys%read_in%comp .and. modulo(ispace,2) == 0, &
+                                            ispace, logging_info)
 
                 ! Clone or die.
                 ! list_pop is meaningless as particle_t%nparticles is updated upon annihilation.
                 call stochastic_death(rng, sys, qs, cdet%fock_sum, cdet%data(1), qs%shift(ispace), &
-                                      qs%estimators(idata)%proj_energy, logging_info, int_pop(ispace), &
-                                      list_pop, ndeath)
+                                      qs%estimators(ispace)%proj_energy, logging_info, int_pop(ispace), list_pop, ndeath)
 
                 ! Update population of walkers on current determinant.
                 spawn_recv%sdata(spawn_recv%bit_str_len+1:spawn_recv%bit_str_len+spawn_recv%ntypes, idet) = int_pop
@@ -601,7 +538,8 @@ contains
         !   sys: information on system under consideration.
         !   qs: qmc_state_t derived type with information on
         !       current calculation.
-        !   logging_info: information on current logging settings.
+        !   logging_info: information on current logging
+        !       settings.
         !   nattempts_current_det: total number of spawning attempts
         !       to make on this determinant.
         !   ispace: space currently under consideration.
@@ -669,8 +607,8 @@ contains
 
             ! Attempt to spawn.
             call spawner_ptr(rng, sys, qs, qs%spawn_store%spawn%cutoff, qs%psip_list%pop_real_factor, &
-                            &cdet, pop, gen_excit_ptr, qs%trial%wfn_dat, &
-                            &logging_info, nspawned, nspawned_im, connection)
+                            cdet, pop, gen_excit_ptr, qs%trial%wfn_dat, &
+                            logging_info, nspawned, nspawned_im, connection)
             if (imag_parent) then
                 ! If imaginary parent have to factor into resulting signs/reality.
                 scratch = nspawned_im
@@ -686,17 +624,19 @@ contains
                     ! If the spawning is both from and to the deterministic space, cancel it.
                     if (.not. determ_child) then
                         call create_spawned_particle_ptr(sys%basis, qs%ref, cdet, connection, nspawned, &
-                                                        &space_real, spawn, f_child)
+                                                         space_real, spawn, f_child)
                     else
                         nspawned = 0_int_p
                     end if
                 else
-                    call create_spawned_particle_ptr(sys%basis, qs%ref, cdet, connection, nspawned, space_real, spawn)
+                    call create_spawned_particle_ptr(sys%basis, qs%ref, cdet, connection, nspawned, space_real, &
+                                                     spawn)
                 end if
                 call accumulate_bloom_stats(bloom_stats, nspawned)
             end if
             if (nspawned_im /= 0_int_p) then
-                call create_spawned_particle_ptr(sys%basis, qs%ref, cdet, connection, nspawned_im, space_imag, spawn)
+                call create_spawned_particle_ptr(sys%basis, qs%ref, cdet, connection, nspawned_im, space_imag, &
+                                                     spawn)
                 call accumulate_bloom_stats(bloom_stats, nspawned_im)
             end if
         end do

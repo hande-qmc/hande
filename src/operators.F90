@@ -190,7 +190,7 @@ contains
 ! Because we read in the integrals for generic systems, any one-body operator is
 ! identical in form.
 
-    pure function one_body_mol(sys, f1, f2) result(opmatel)
+    pure function one_body_mol(sys, f1, f2) result(occ)
 
         ! In:
         !    sys: system being studied.
@@ -203,26 +203,24 @@ contains
         !    a one-body operator.
 
         use excitations, only: excit_t, get_excitation
-        use hamiltonian_data, only: hmatel_t
         use system, only: sys_t
+
         use const, only: p, i0
 
-        type(hmatel_t) :: opmatel
+        real(p) :: occ
         type(sys_t), intent(in) :: sys
         integer(i0), intent(in) :: f1(sys%basis%tot_string_len), f2(sys%basis%tot_string_len)
         type(excit_t) :: excitation
 
-        excitation = get_excitation(sys%nel, sys%basis, f1, f2)
+        excitation = get_excitation(sys%nel, sys%basis, f1,f2)
 
         select case(excitation%nexcit)
         case(0)
-            opmatel%r = one_body0_mol(sys, f1)
-            opmatel%c = opmatel%r
+            occ = one_body0_mol(sys, f1)
         case(1)
-            opmatel = one_body1_mol(sys, excitation%from_orb(1), excitation%to_orb(1), excitation%perm)
+            occ = one_body1_mol(sys, excitation%from_orb(1), excitation%to_orb(1), excitation%perm)
         case default
-            opmatel%r = 0.0_p
-            opmatel%c = 0.0_p
+            occ = 0.0_p
         end select
 
     end function one_body_mol
@@ -254,24 +252,18 @@ contains
 
         ! <D | O_1 | D > = \sum_i <i|O_1|i>
         ! The integrals can only be non-zero if the operator is totally symmetric.
-        ! NB we directly ignore the imaginary part, but if someone wants to make a checking, just add a call to
-        !    get_one_body_int_mol_nonzero with sys%read_in%dipole_sys_ptr%read_in%one_e_h_integrals_imag.
 
-        associate(fakesys=>sys%read_in%dipole_sys_ptr)
-            intgrl = fakesys%read_in%Ecore
-            if (fakesys%read_in%one_e_h_integrals%op_sym == sys%read_in%pg_sym%gamma_sym) then
-                do iel = 1, sys%nel
-                    iorb = occ_list(iel)
-                    ! Still prefer original system's basis.
-                    intgrl = intgrl + get_one_body_int_mol_nonzero(fakesys%read_in%one_e_h_integrals, &
-                                                                  &iorb, iorb, sys%basis%basis_fns)
-                end do
-            end if
-        end associate
+        intgrl = sys%read_in%dipole_core
+        if (sys%read_in%one_body_op_integrals%op_sym == sys%read_in%pg_sym%gamma_sym) then
+            do iel = 1, sys%nel
+                iorb = occ_list(iel)
+                intgrl = intgrl + get_one_body_int_mol_nonzero(sys%read_in%one_body_op_integrals, iorb, iorb, sys%basis%basis_fns)
+            end do
+        end if
 
     end function one_body0_mol
 
-    pure function one_body1_mol(sys, i, a, perm) result(opmatel)
+    pure function one_body1_mol(sys, i, a, perm) result(intgrl)
 
         ! In:
         !    sys: system being studied.
@@ -287,33 +279,22 @@ contains
         !        defined by integrals read in from an FCIDUMP file.
 
         use molecular_integrals, only: get_one_body_int_mol_real
-        use hamiltonian_data, only: hmatel_t
         use system, only: sys_t
+
         use const, only: p
 
-        type(hmatel_t) :: opmatel
+        real(p) :: intgrl
         type(sys_t), intent(in) :: sys
         integer, intent(in) :: i, a
         logical, intent(in) :: perm
 
-        associate(fakesys=>sys%read_in%dipole_sys_ptr)
-            if (sys%read_in%comp) then
-                opmatel%c = cmplx&
-                    (get_one_body_int_mol_real(fakesys%read_in%one_e_h_integrals, i, a, sys), &
-                    &get_one_body_int_mol_real(fakesys%read_in%one_e_h_integrals_imag, i, a, sys), p)
-            else
-                opmatel%r = get_one_body_int_mol_real(fakesys%read_in%one_e_h_integrals, i, a, sys)
-            end if
-        end associate
+        intgrl = get_one_body_int_mol_real(sys%read_in%one_body_op_integrals, i, a, sys)
 
-        if (perm) then
-            opmatel%r = -opmatel%r
-            opmatel%c = -opmatel%c
-        end if
+        if (perm) intgrl = -intgrl
 
     end function one_body1_mol
 
-    pure function one_body1_mol_excit(sys, i, a, perm) result(opmatel)
+    pure function one_body1_mol_excit(sys, i, a, perm) result(intgrl)
 
         ! In:
         !    sys: system being studied.
@@ -334,36 +315,20 @@ contains
         ! allows symmetry checking to be skipped in the integral lookups.
 
         use molecular_integrals, only: get_one_body_int_mol_nonzero
-        use hamiltonian_data, only: hmatel_t
         use system, only: sys_t
+
         use const, only: p
 
-        type(hmatel_t) :: opmatel
+        real(p) :: intgrl
         type(sys_t), intent(in) :: sys
         integer, intent(in) :: i, a
         logical, intent(in) :: perm
 
-        associate(fakesys=>sys%read_in%dipole_sys_ptr)
-            if (sys%read_in%comp) then
-                opmatel%c = cmplx&
-                    (get_one_body_int_mol_nonzero(fakesys%read_in%one_e_h_integrals, i, a, sys%basis%basis_fns), &
-                    &get_one_body_int_mol_nonzero(fakesys%read_in%one_e_h_integrals_imag, i, a, sys%basis%basis_fns), p)
-            else
-                opmatel%r = get_one_body_int_mol_nonzero(fakesys%read_in%one_e_h_integrals, i, a, sys%basis%basis_fns)
-            end if
-        end associate
+        intgrl = get_one_body_int_mol_nonzero(sys%read_in%one_body_op_integrals, i, a, sys%basis%basis_fns)
 
-        if (perm) then
-            opmatel%r = -opmatel%r
-            opmatel%c = -opmatel%c
-        end if
+        if (perm) intgrl = -intgrl
 
     end function one_body1_mol_excit
-
-!--- Two-body operator ---
-
-! NB Two body operators are no different from Hamiltonian, hence no wrapper subroutine is needed.
-! Just call sc0 routines with a fake system would be all right.
 
 !== Debug/test routines for operating on exact wavefunction ===
 
@@ -379,7 +344,6 @@ contains
         !    proc_blacs_info: BLACS information describing distribution of wfn.
 
         use const, only: i0, p
-        use hamiltonian_data, only: hmatel_t
         use parallel
         use system
 
@@ -388,7 +352,6 @@ contains
         real(p), intent(in) :: wfn(:)
         integer(i0), intent(in) :: dets(:,:)
 
-        type(hmatel_t) :: hmatel
         real(p) :: expectation_val(2), cicj
         integer :: idet, i, ii, ilocal, jdet, j, jj, jlocal, ndets
 
@@ -424,9 +387,8 @@ contains
                         expectation_val(2) = expectation_val(2) + &
                                              2*cicj*double_occ_hub_k(sys, dets(:,jdet), dets(:,idet))
                     case (read_in)
-                        ! [todo] no complex suppport for now
-                        hmatel = one_body_mol(sys, dets(:,jdet), dets(:,idet))
-                        expectation_val(1) = expectation_val(1) + 2*cicj*hmatel%r
+                        expectation_val(1) = expectation_val(1) + &
+                                             2*cicj*one_body_mol(sys, dets(:,jdet), dets(:,idet))
                     end select
                 end do
             end do
@@ -454,9 +416,8 @@ contains
                                 expectation_val(2) = expectation_val(2) + &
                                                     cicj*double_occ_hub_k(sys, dets(:,idet), dets(:,jdet))
                             case (read_in)
-                                ! [todo] no complex suppport for now
-                                hmatel = one_body_mol(sys, dets(:,jdet), dets(:,idet))
-                                expectation_val(1) = expectation_val(1) + 2*cicj*hmatel%r
+                                expectation_val(1) = expectation_val(1) + &
+                                                     2*cicj*one_body_mol(sys, dets(:,idet), dets(:,jdet))
                             end select
                         end do
                     end do

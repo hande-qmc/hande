@@ -808,7 +808,7 @@ contains
 
     end subroutine set_determ_info
 
-    subroutine determ_projection(rng, qmc_in, qs, spawn, determ, complx)
+    subroutine determ_projection(rng, qmc_in, qs, spawn, determ)
 
         ! A wrapper function for calling the correct routine for deterministic
         ! projection.
@@ -831,18 +831,17 @@ contains
         type(qmc_state_t), intent(in) :: qs
         type(spawn_t), intent(inout) :: spawn
         type(semi_stoch_t), intent(inout) :: determ
-        logical, intent(in), optional :: complx
 
         select case(determ%projection_mode)
         case(semi_stoch_separate_annihilation)
-            call determ_proj_separate_annihil(determ, qs, qs%estimators%proj_energy_old, complx)
+            call determ_proj_separate_annihil(determ, qs, qs%estimators%proj_energy_old)
         case(semi_stoch_combined_annihilation)
-            call determ_proj_combined_annihil(rng, qmc_in, qs, qs%estimators%proj_energy_old, spawn, determ, complx)
+            call determ_proj_combined_annihil(rng, qmc_in, qs, qs%estimators%proj_energy_old, spawn, determ)
         end select
 
     end subroutine determ_projection
 
-    subroutine determ_proj_combined_annihil(rng, qmc_in, qs, proj_energy, spawn, determ, complx)
+    subroutine determ_proj_combined_annihil(rng, qmc_in, qs, proj_energy, spawn, determ)
 
         ! Apply the deterministic part of the FCIQMC projector to the
         ! amplitudes in the deterministic space. The corresponding spawned
@@ -869,14 +868,9 @@ contains
         real(p), intent(in) :: proj_energy(:)
         type(spawn_t), intent(inout) :: spawn
         type(semi_stoch_t), intent(in) :: determ
-        logical, intent(in), optional :: complx
 
+        integer :: i, proc, row, ispace
         real(p) :: out_vec
-        integer :: i, proc, row, ispace, idata
-        logical :: complx_set
-
-        complx_set = .true.
-        if (present(complx)) complx_set = complx
 
         row = 0
 
@@ -902,16 +896,10 @@ contains
                         !                       (where w_i is the quasi_newton weight).
                         ! w_i is subsumed into H_ii already, so we now just include
                         ! the shift/projE component.
-                        if (complx_set) then
-                            idata = (ispace + 1)/2
-                        else
-                            idata = ispace
-                        end if
-
-                        out_vec = -qs%tau * (out_vec + determ%vector(ispace,i) * &
-                            (proj_energy(idata) * determ%one_minus_qn_weight(row) - qs%shift(ispace)))
-                        call create_spawned_particle_determ(determ%dets(:,row), out_vec, qs%psip_list%pop_real_factor, &
-                                                            proc, ispace, qmc_in%initiator_approx, rng, spawn)
+                        out_vec = -qs%tau * (out_vec + (proj_energy(ispace) * determ%one_minus_qn_weight(row) - qs%shift(ispace)) &
+                            * determ%vector(ispace,i))
+                        call create_spawned_particle_determ(determ%dets(:,row), out_vec, qs%psip_list%pop_real_factor, proc, &
+                                                            ispace, qmc_in%initiator_approx, rng, spawn)
                     end do
                 end do
             else
@@ -932,7 +920,7 @@ contains
 
     end subroutine determ_proj_combined_annihil
 
-    subroutine determ_proj_separate_annihil(determ, qs, proj_energy, complx)
+    subroutine determ_proj_separate_annihil(determ, qs, proj_energy)
 
         ! Perform the deterministic part of the projection. This is done here
         ! without adding deterministic spawnings to the spawned list, but
@@ -942,7 +930,6 @@ contains
         ! In:
         !    qs: state of QMC calculation. Shift and timestep are used.
         !    proj_energy: the projected energy used for quasinewton spawning
-        !    complx(optional): if the system is complex, used to adjust indices
         ! In/Out:
         !    determ: Deterministic space being used. On input determ%vector
         !       should hold the amplitudes of deterministic states on this
@@ -961,18 +948,13 @@ contains
         type(semi_stoch_t), intent(inout) :: determ
         type(qmc_state_t), intent(in) :: qs
         real(p), intent(in) :: proj_energy(:)
-        logical, intent(in), optional :: complx
 
-        integer :: ispace, idata
-        logical :: complx_set
+        integer :: ispace
 
 #ifdef PARALLEL
         integer :: i, ierr
         integer :: disps(0:nprocs-1)
         real(p) :: t1
-
-        complx_set = .true.
-        if (present(complx)) complx_set = complx
 
         ! Start by timing an MPI_Barrier call, which can indicate potential
         ! load balancing issues.
@@ -1013,14 +995,8 @@ contains
             ! w_i is subsumed into H_ii already, so we now just include
             ! the shift/projE component.
 
-            if (complx_set) then
-                idata = (ispace + 1)/2
-            else
-                idata = ispace
-            end if
-
-            determ%vector(ispace,:) = determ%vector(ispace,:) * &
-                (-qs%tau * (proj_energy(idata)*determ%one_minus_qn_weight(:)-qs%shift(ispace)))
+            determ%vector(ispace,:) = (-qs%tau * (proj_energy(ispace)*determ%one_minus_qn_weight(:)-qs%shift(ispace))) &
+                * determ%vector(ispace,:)
 
             ! Perform the multiplication of the deterministic Hamiltonian on the
             ! full deterministic vector. A factor of minus one is applied to the

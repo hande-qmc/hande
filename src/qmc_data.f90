@@ -217,12 +217,6 @@ type fciqmc_in_t
     ! Evolve two copies of the wavefunction to enable unbiased sampling of the RDM
     logical :: replica_tricks = .false.
 
-    ! Estimate custom 1-electron operators
-    logical :: estimate_dipole = .false.
-
-    ! Estimate custom 2-electron operators
-    logical :: estimate_sc = .false.
-
 end type fciqmc_in_t
 
 type semi_stoch_in_t
@@ -520,7 +514,6 @@ type particle_t
     ! components require no diagonal Hamiltonian storage or DMQMC-
     ! operator-sampling where additional space is required to store 
     ! operator diagonals.
-    ! [todo] check Hellmann-Feynman sampling
     integer :: ndata = 1
     ! number of additional elements stored for each determinant in dat for
     ! (e.g.) importance sampling.
@@ -557,9 +550,6 @@ type particle_t
     !   the number of storage elements for consistency with pops.
     ! * If we're doing Hellmann--Feynmann sampling, matrix elements for the
     !   1-body operator's diagonal is in 2:sampling_size elements.
-    ! * If we're including 1- or 2-body operators in DMQMC calculations,
-    !   diagonal elements of the 1- or 2-body operators are stored in
-    !   nspaces+1:nspaces+num_of_operators elements.
     ! * Further data in ndata+1:ndata+info_size. For example, when
     !   calculating the projected energy with various trial wavefunctions, it is
     !   useful to store quantites which are expensive to calculate and which are
@@ -954,9 +944,6 @@ contains
         end select
         call json_write_key(js, 'quadrature_initiator', fciqmc%quadrature_initiator)
         call json_write_key(js, 'replica_tricks', fciqmc%replica_tricks, .true.)
-        ! [todo] I've commented it out, will enable after the operator feature is complete.
-        ! call json_write_key(js, 'estimate_dipole', fciqmc%estimate_dipole)
-        ! call json_write_key(js, 'estimate_sc', fciqmc%estimate_sc)
         call json_object_end(js, terminal)
 
     end subroutine fciqmc_in_t_json

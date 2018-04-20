@@ -256,34 +256,31 @@ type sys_read_in_t
     character(255) :: fcidump = 'FCIDUMP'
     ! Dipole integral file, contains integrals <i|O|a>, where O=x, y or z.
     character(255) :: dipole_int_file = ''
-    ! Superconducting correlation integral file, contains <ij|O'|ab>,
-    ! where O' = \sum_q c_{k+q}^\dag c_{-k-q}^\dag c_k c_{-k}
-    character(255) :: sc_int_file = ''
-
     ! UHF or RHF orbitals?
     logical :: uhf = .false.
     ! Core energy (e.g. nuclear-nuclear terms, contributions from frozen orbitals...
-    real(p) :: Ecore, Ecore_imag
+    real(p) :: Ecore
+    ! Contribution from frozen core orbitals and nucleii terms to dipole moment
+    real(p) :: dipole_core
 
     ! Single-particle orbitals transform according to Lz symmetry
     logical :: useLz = .false.
 
     ! Store for <i|h|j>, where h is the one-electron Hamiltonian operator.
     type(one_body_t) :: one_e_h_integrals
+
     ! Store for imaginary component of <i|h|j>, if using complex.
     type(one_body_t) :: one_e_h_integrals_imag
 
-    ! Fake system for storing dipole moment information
-    type(sys_t), pointer :: dipole_sys_ptr => null()
-    ! Fake system for storing SC energy gap information
-    type(sys_t), pointer :: sc_sys_ptr => null()
+    ! Store for <i|o|j>, where o is a one-electron operator.
+    type(one_body_t) :: one_body_op_integrals
 
     ! Store for the two-body integrals, <ij|1/r_12|ab>, where i,j,a,b are spin basis
     ! functions and 1/r_12 is the Coulomb operator.
     type(two_body_t) :: coulomb_integrals
+
     ! Store for imaginary component of two-body integrals
     type(two_body_t) :: coulomb_integrals_imag
-
 
     ! Data about the orbital symmetries
     type(pg_sym_t) :: pg_sym
@@ -461,8 +458,7 @@ contains
                 case(ueg)
 
                     ! UEG specific information.
-                    if (sl%ndim /= 2 .and. sl%ndim /= 3) &
-                        call stop_all('init_system','2D or 3D UEG not specified in input.')
+                    if (sl%ndim /= 2 .and. sl%ndim /= 3) call stop_all('init_system','2D or 3D UEG not specified in input.')
 
                     ! Lattice vectors (integers) are not used in the UEG as the
                     ! simulation cell might well be defined by non-integers.
@@ -490,8 +486,7 @@ contains
 
                     ! Lattice-model specific information.
 
-                    forall (ivec=1:sl%ndim) sl%box_length(ivec) = &
-                        sqrt(real(dot_product(sl%lattice(:,ivec),sl%lattice(:,ivec)),p))
+                    forall (ivec=1:sl%ndim) sl%box_length(ivec) = sqrt(real(dot_product(sl%lattice(:,ivec),sl%lattice(:,ivec)),p))
                     sl%nsites = nint(product(sl%box_length))
 
                     forall (ivec=1:sl%ndim) sl%rlattice(:,ivec) = sl%lattice(:,ivec)/sl%box_length(ivec)**2
@@ -660,111 +655,14 @@ contains
         type(sys_t), intent(in) :: sys1
         type(sys_t), intent(inout) :: sys2
 
-        sys2%nel         = sys1%nel
-        sys2%nvirt       = sys1%nvirt
-        sys2%nalpha      = sys1%nalpha
-        sys2%nbeta       = sys1%nbeta
+        sys2%nel = sys1%nel
+        sys2%nvirt = sys1%nvirt
+        sys2%nalpha = sys1%nalpha
+        sys2%nbeta = sys1%nbeta
         sys2%nvirt_alpha = sys1%nvirt_alpha
-        sys2%nvirt_beta  = sys1%nvirt_beta
+        sys2%nvirt_beta = sys1%nvirt_beta
 
     end subroutine copy_sys_spin_info
-
-    subroutine copy_sys_info_read_in(sys, sys_dest)
-
-        ! Copies current read_in system parameters to the destination.
-        ! Note that this routine does not set up symmetry information for the
-        ! copied system.
-
-        ! In:
-        !   sys: source system
-        ! Out:
-        !   sys_dest: destination system
-
-        use checking, only: check_allocate
-
-        type(sys_t), intent(in) :: sys
-        type(sys_t), intent(inout) :: sys_dest
-        integer :: ierr, i
-
-        sys_dest%nel        = sys%nel
-        sys_dest%Ms         = sys%ms
-        sys_dest%symmetry   = sys%symmetry
-        sys_dest%tot_sym    = sys%tot_sym
-        sys_dest%aufbau_sym = sys%aufbau_sym
-        sys_dest%CAS        = sys%CAS
-
-        sys_dest%read_in%useLz = sys%read_in%useLz
-        sys_dest%read_in%comp  = sys%read_in%comp
-        sys_dest%read_in%uhf   = sys%read_in%uhf
-
-        call init_system(sys_dest)
-
-        sys_dest%lattice%ndim               = sys%lattice%ndim
-        sys_dest%momentum_space             = sys%momentum_space
-        sys_dest%read_in%mom_sym%nprop      = sys%read_in%mom_sym%nprop
-        sys_dest%read_in%mom_sym%propbitlen = sys%read_in%mom_sym%propbitlen
-        sys_dest%nvirt                      = sys%nvirt
-
-        ! For basis, note that these are only some of the basis information,
-        ! while the remaining should be copied after init_generic_system_basis
-        ! is called
-
-        sys_dest%basis%nbasis = sys%basis%nbasis
-
-        allocate(sys_dest%basis%basis_fns(sys_dest%basis%nbasis), stat=ierr)
-        call check_allocate('sys_dest%basis%basis_fns', sys_dest%basis%nbasis, ierr)
-
-        sys_dest%basis%basis_fns(:)%lz             = sys%basis%basis_fns(:)%lz
-        sys_dest%basis%basis_fns(:)%ms             = sys%basis%basis_fns(:)%ms
-        sys_dest%basis%basis_fns(:)%sp_eigv        = sys%basis%basis_fns(:)%sp_eigv
-        sys_dest%basis%basis_fns(:)%spatial_index  = sys%basis%basis_fns(:)%spatial_index
-        sys_dest%basis%basis_fns(:)%sym            = sys%basis%basis_fns(:)%lz
-        sys_dest%basis%basis_fns(:)%sym_index      = sys%basis%basis_fns(:)%sym_index
-        sys_dest%basis%basis_fns(:)%sym_spin_index = sys%basis%basis_fns(:)%sym_spin_index
-        do i = 1, sys_dest%basis%nbasis
-            allocate(sys_dest%basis%basis_fns(i)%l(size(sys%basis%basis_fns(i)%l)), stat=ierr)
-            call check_allocate('sys_dest%basis%basis_fns(i)%l', size(sys%basis%basis_fns(i)%l), ierr)
-            sys_dest%basis%basis_fns(i)%l = sys%basis%basis_fns(i)%l
-        end do
-
-    end subroutine
-
-    subroutine copy_basis_setup_generic(basis, basis_dest)
-
-        ! Copy initialized generic basis information.
-        ! (those who are not copied by copy_sys_info_read_in)
-        ! [todo] maybe I should move this routine to basis.f90
-
-        ! In:
-        !   sys: source basis type
-        ! Out:
-        !   sys_dest: destination basis type
-
-        use checking, only: check_allocate
-
-        type(basis_t) :: basis, basis_dest
-        integer :: ierr
-
-        basis_dest%bit_string_len   = basis%bit_string_len  
-        basis_dest%info_string_len  = basis%info_string_len 
-        basis_dest%tot_string_len   = basis%tot_string_len  
-        basis_dest%tensor_label_len = basis%tensor_label_len
-        basis_dest%alpha_mask       = basis%alpha_mask
-        basis_dest%beta_mask        = basis%beta_mask
-
-        allocate(basis_dest%bit_lookup(2, basis%nbasis), stat=ierr)
-        call check_allocate('basis_dest%bit_lookup', 2*basis_dest%nbasis, ierr)
-        basis_dest%bit_lookup = basis%bit_lookup
-
-        allocate(basis_dest%basis_lookup(0:i0_end, basis%bit_string_len), stat=ierr)
-        call check_allocate('basis_dest%basis_lookup', i0_length*basis%bit_string_len, ierr)
-        basis_dest%basis_lookup = basis%basis_lookup
-
-        allocate(basis_dest%excit_mask(basis%tot_string_len, basis%nbasis), stat=ierr)
-        call check_allocate('basis_dest%excit_mask', basis%tot_string_len*basis%nbasis, ierr)
-        basis_dest%excit_mask = basis%excit_mask
-
-    end subroutine copy_basis_setup_generic
 
     subroutine set_fermi_energy(sys)
 
@@ -906,11 +804,7 @@ contains
             call json_write_key(js, 'Ecore', sys%read_in%Ecore)
             if (trim(sys%read_in%dipole_int_file) /= '') then
                 call json_write_key(js, 'dipole_int_file', trim(sys%read_in%dipole_int_file))
-                call json_write_key(js, 'dipole_core', sys%read_in%dipole_sys_ptr%read_in%Ecore)
-            end if
-            if (trim(sys%read_in%sc_int_file) /= '') then
-                call json_write_key(js, 'sc_int_file', trim(sys%read_in%sc_int_file))
-                call json_write_key(js, 'sc_core', sys%read_in%sc_sys_ptr%read_in%Ecore)
+                call json_write_key(js, 'dipole_core', sys%read_in%dipole_core)
             end if
             call json_write_key(js, 'CAS', sys%CAS)
             call json_write_key(js, 'useLz', sys%read_in%useLz)

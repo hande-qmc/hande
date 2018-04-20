@@ -45,8 +45,7 @@ contains
 
         use checking, only: check_allocate
 
-        use calc, only: doing_calc, hfs_fciqmc_calc, dmqmc_calc, &
-                        doing_dmqmc_calc, dmqmc_dipole, dmqmc_SC_gap
+        use calc, only: doing_calc, hfs_fciqmc_calc, dmqmc_calc
         use energy_evaluation, only: nparticles_start_ind
         use load_balancing, only: init_parallel_t
         use particle_t_utils, only: init_particle_t
@@ -113,13 +112,6 @@ contains
         ! Figure out qmc_state%psip_list%ndata BEFORE doubling nspaces
         ! for complex population storage (as Kii is always real).
         qmc_state%psip_list%ndata = qmc_state%psip_list%nspaces
-        if (doing_calc(dmqmc_calc)) then
-            if (doing_dmqmc_calc(dmqmc_dipole)) qmc_state%psip_list%ndata = qmc_state%psip_list%ndata + 1
-            if (doing_dmqmc_calc(dmqmc_SC_gap)) qmc_state%psip_list%ndata = qmc_state%psip_list%ndata + 1
-        end if
-        ! Note that custom operators would only be evaluated on the first replica.
-        if (fciqmc_in_loc%estimate_dipole) qmc_state%psip_list%ndata = qmc_state%psip_list%ndata + 1
-        if (fciqmc_in_loc%estimate_sc)     qmc_state%psip_list%ndata = qmc_state%psip_list%ndata + 1
 
         if (sys%read_in%comp) qmc_state%psip_list%nspaces = qmc_state%psip_list%nspaces * 2
         ! Each determinant occupies tot_string_len kind=i0 integers,
@@ -153,7 +145,7 @@ contains
             qmc_state%shift = qmc_in%initial_shift
             qmc_state%vary_shift = .false.
 
-            allocate(qmc_state%estimators(qmc_state%psip_list%ndata))
+            allocate(qmc_state%estimators(qmc_state%psip_list%nspaces))
 
             ! Initial walker distributions
             if (restart_in%read_restart) then
@@ -824,8 +816,7 @@ contains
 
         use system, only: sys_t, ueg, read_in
         use proc_pointers, only: sc0_ptr, op0_ptr
-        use calc, only: doing_calc, hfs_fciqmc_calc, &
-                        doing_dmqmc_calc, dmqmc_dipole, dmqmc_SC_gap
+        use calc, only: doing_calc, hfs_fciqmc_calc
         use reference_determinant, only: reference_t, set_reference_det
         use determinants, only: encode_det, sum_sp_eigenvalues_occ_list
         use checking, only: check_allocate
@@ -868,11 +859,8 @@ contains
 
         ! Energy of reference determinant.
         reference%H00 = sc0_ptr(sys, reference%f0)
-        ! Operators. Note that the 1-body opr uses a wrapper, while the 2-body opr calls Hamiltonian function
-        ! directly with the fake system.
-        if (doing_calc(hfs_fciqmc_calc) .or. &
-            doing_dmqmc_calc(dmqmc_dipole)) reference%O00 = op0_ptr(sys, reference%f0)
-        if (doing_dmqmc_calc(dmqmc_SC_gap)) reference%O200 = sc0_ptr(sys%read_in%sc_sys_ptr, reference%f0)
+        ! Operators of HFS sampling.
+        if (doing_calc(hfs_fciqmc_calc)) reference%O00 = op0_ptr(sys, reference%f0)
         reference%fock_sum = sum_sp_eigenvalues_occ_list(sys, reference%occ_list0)
 
     end subroutine init_reference
@@ -892,8 +880,7 @@ contains
         use system, only: sys_t
         use restart_hdf5, only: restart_info_t, get_reference_hdf5
         use determinants, only: decode_det, sum_sp_eigenvalues_occ_list
-        use calc, only: doing_calc, hfs_fciqmc_calc, &
-                        doing_dmqmc_calc, dmqmc_dipole, dmqmc_SC_gap
+        use calc, only: doing_calc, hfs_fciqmc_calc
         use proc_pointers, only: sc0_ptr, op0_ptr
         use checking, only: check_allocate
 
@@ -919,9 +906,7 @@ contains
         call decode_det(sys%basis, reference%hs_f0, reference%hs_occ_list0)
 
         reference%H00 = sc0_ptr(sys, reference%f0)
-        if (doing_calc(hfs_fciqmc_calc) .or. &
-            doing_dmqmc_calc(dmqmc_dipole)) reference%O00 = op0_ptr(sys, reference%f0)
-        if (doing_dmqmc_calc(dmqmc_SC_gap)) reference%O200 = sc0_ptr(sys%read_in%sc_sys_ptr, reference%f0)
+        if (doing_calc(hfs_fciqmc_calc)) reference%O00 = op0_ptr(sys, reference%f0)
         reference%fock_sum = sum_sp_eigenvalues_occ_list(sys, reference%occ_list0)
 
         reference%ex_level = reference_in%ex_level

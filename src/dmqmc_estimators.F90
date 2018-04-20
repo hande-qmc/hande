@@ -376,7 +376,7 @@ contains
 
     end subroutine update_shift_dmqmc
 
-    subroutine update_dmqmc_estimators(sys, dmqmc_in, idet, iteration, cdet, H00, O00, O200, psip_list, &
+    subroutine update_dmqmc_estimators(sys, dmqmc_in, idet, iteration, cdet, H00, psip_list, &
                                        dmqmc_estimates, weighted_sampling, rdm_error)
 
         ! This function calls the processes to update the estimators which have
@@ -392,9 +392,6 @@ contains
         !    idet: Current position in the main particle list.
         !    iteration: current Monte Carlo cycle.
         !    H00: diagonal Hamiltonian element for the reference.
-        !    O00: diagonal dipole operator element for the reference.
-        !    O200: diagonal superconducting energy gap operator element
-        !        for the reference.
         !    nload_slots: number of load balancing slots (per processor).
         !    psip_list: particle information/lists.
         ! In/Out:
@@ -407,7 +404,7 @@ contains
 
         use calc, only: doing_dmqmc_calc, dmqmc_energy, dmqmc_staggered_magnetisation
         use calc, only: dmqmc_energy_squared, dmqmc_correlation, dmqmc_full_r2, dmqmc_kinetic_energy, &
-                        dmqmc_H0_energy, dmqmc_potential_energy, dmqmc_HI_energy, dmqmc_dipole, dmqmc_SC_gap
+                        dmqmc_H0_energy, dmqmc_potential_energy, dmqmc_HI_energy
         use excitations, only: get_excitation, excit_t
         use proc_pointers, only:  update_dmqmc_energy_and_trace_ptr, update_dmqmc_stag_mag_ptr
         use proc_pointers, only: update_dmqmc_energy_squared_ptr, update_dmqmc_correlation_ptr
@@ -417,14 +414,13 @@ contains
         use qmc_data, only: particle_t
         use dmqmc_data, only: dmqmc_in_t, dmqmc_estimates_t, energy_ind, energy_imag_ind, energy_squared_ind, &
                               correlation_fn_ind, staggered_mag_ind, full_r2_ind, dmqmc_weighted_sampling_t,  &
-                              kinetic_ind, potential_ind, H0_ind, HI_ind, dipole_ind, dipole_imag_ind, &
-                              sc_ind, sc_imag_ind
+                              kinetic_ind, potential_ind, H0_ind, HI_ind
 
         type(sys_t), intent(in) :: sys
         type(dmqmc_in_t), intent(in) :: dmqmc_in
-        integer, intent(in) :: idet, iteration
         type(det_info_t), intent(inout) :: cdet
-        real(p), intent(in) :: H00, O00, O200
+        integer, intent(in) :: idet, iteration
+        real(p), intent(in) :: H00
         type(particle_t), intent(in) :: psip_list
         type(dmqmc_estimates_t), intent(inout) :: dmqmc_estimates
         type(dmqmc_weighted_sampling_t), intent(inout) :: weighted_sampling
@@ -432,7 +428,7 @@ contains
 
         type(excit_t) :: excitation
         real(p) :: unweighted_walker_pop(psip_list%nspaces)
-        integer :: curropr, nham
+        integer :: nham
 
         ! Number of diagonal Hamiltonian elements in the dat array.
         if (sys%read_in%comp) then 
@@ -443,7 +439,7 @@ contains
 
         ! Get excitation.
         excitation = get_excitation(sys%nel, sys%basis, psip_list%states(:sys%basis%tot_string_len,idet), &
-                         psip_list%states((1+sys%basis%tot_string_len):sys%basis%tensor_label_len,idet))
+                                    psip_list%states((1+sys%basis%tot_string_len):sys%basis%tensor_label_len,idet))
 
         ! When performing importance sampling the result is that certain
         ! excitation levels have smaller psips populations than the true density
@@ -472,7 +468,7 @@ contains
                         &(sys, cdet, excitation, H00, unweighted_walker_pop(1), est%numerators(energy_squared_ind))
                     ! Spin-spin correlation function.
                     if (doing_dmqmc_calc(dmqmc_correlation)) call update_dmqmc_correlation_ptr&
-                        &(sys, cdet, excitation, H00, unweighted_walker_pop(1), dmqmc_estimates%correlation_mask, &
+                        &(sys, cdet, excitation, H00, unweighted_walker_pop(1), est%correlation_mask, &
                           est%numerators(correlation_fn_ind))
                     ! Staggered magnetisation.
                     if (doing_dmqmc_calc(dmqmc_staggered_magnetisation)) call update_dmqmc_stag_mag_ptr&
@@ -504,17 +500,6 @@ contains
                     if (dmqmc_in%calc_excit_dist) &
                         &est%excit_dist(excitation%nexcit) = est%excit_dist(excitation%nexcit) + &
                         &real(abs(psip_list%pops(1,idet)),p)/psip_list%pop_real_factor
-                    ! Dipole/SC
-                    curropr = 1
-                    if (doing_dmqmc_calc(dmqmc_dipole)) then
-                        call update_dmqmc_dipole(sys, excitation, cdet, O00, unweighted_walker_pop(1:1), &
-                                                &psip_list%dat(nham+curropr, idet), est%trace, &
-                                                &est%numerators(dipole_ind:dipole_ind))
-                        curropr = curropr + 1
-                    end if
-                    if (doing_dmqmc_calc(dmqmc_SC_gap)) call update_dmqmc_sc&
-                        &(sys, excitation, cdet, O200, unweighted_walker_pop(1:1), &
-                        & psip_list%dat(nham+curropr, idet), est%trace, est%numerators(sc_ind:sc_ind))
                 end if
 
                 ! Full Renyi entropy (S_2).
@@ -535,26 +520,15 @@ contains
                 end if
 
             else
-                ! Currently, only a few operators are implemented for complex DMQMC
+                ! Currently, only the energy operator is implemented for complex DMQMC.
                 if (abs(unweighted_walker_pop(1)) > 0 .or. abs(unweighted_walker_pop(2)) > 0) then
                     ! Energy
                     if (doing_dmqmc_calc(dmqmc_energy)) call update_dmqmc_energy_and_trace_ptr&
                         &(sys, excitation, cdet, H00, unweighted_walker_pop(1:2), psip_list%dat(1, idet), &
                         & est%trace, est%numerators(energy_ind:energy_imag_ind), .true.)
-                    ! Dipole/SC
-                    curropr = 1
-                    if (doing_dmqmc_calc(dmqmc_dipole)) then
-                        call update_dmqmc_dipole(sys, excitation, cdet, O00, unweighted_walker_pop(1:2), &
-                                                &psip_list%dat(nham+curropr, idet), est%trace, &
-                                                &est%numerators(dipole_ind:dipole_imag_ind))
-                        curropr = curropr + 1
-                    end if
-                    if (doing_dmqmc_calc(dmqmc_SC_gap)) call update_dmqmc_sc&
-                        &(sys, excitation, cdet, O200, unweighted_walker_pop(1:2), &
-                        & psip_list%dat(nham+curropr, idet), est%trace, est%numerators(sc_ind:sc_imag_ind))
                 end if
 
-                ! [TODO] Add replica support
+                ! [todo] Add support for complex replica estimators.
             end if
             weighted_sampling%probs_old = weighted_sampling%probs
 
@@ -655,8 +629,7 @@ contains
         real(p) :: trial_wfn_dat(0)
 
         ! Update trace and off-diagonal contributions to the total enegy.
-        ! [TODO] Should I add complex support?
-        call update_proj_energy_dmqmc(sys, cdet%f2, trial_wfn_dat, cdet, pop, trace, energy, excitation, hmatel)
+        call update_proj_energy_dmqmc(sys, cdet%f2, trial_wfn_dat, cdet, pop, trace, energy, excitation, hmatel, complx)
 
         ! Update diagaonal contribution to the total energy
         if (excitation%nexcit == 0) energy = energy + sc0_ptr(sys, cdet%f)*pop
@@ -1447,143 +1420,6 @@ contains
 
     end subroutine dmqmc_kinetic_energy_diag
 
-    subroutine update_dmqmc_dipole(sys, excitation, cdet, O00, pop, diagonal_contribution, trace, dipole, complx)
-
-        ! Add the contribution for the current density matrix element to the
-        ! thermal estimate of the dipole operator.
-
-        ! In:
-        !    sys: system being studied.
-        !    cdet: det_info_t object containing bit strings of densitry matrix
-        !       element under consideration.
-        !    excitation: excit_t type variable which stores information on
-        !        the excitation between the two bitstring ends, corresponding
-        !        to the two labels for the density matrix element.
-        !    O00: diagonal of the dipole operator element for the reference.
-        !    pop: number of particles on the current density matrix element.
-        !    diagonal_contribution: <D_i|O|D_i>-<D0|O|D0>.
-        !    complx: if the system is complex-valued.
-        ! In/Out:
-        !    trace: if energy is not measured, we need to measure trace
-        !        here.
-        !    dipole: dipole operator estimation.
-
-        use system, only: sys_t
-        use calc, only: doing_dmqmc_calc, dmqmc_dipole, dmqmc_energy
-        use determinants, only: det_info_t, decode_det
-        use operators, only: one_body1_mol
-        use excitations, only: excit_t
-        use basis_types, only: basis_t
-        use hamiltonian_data, only: hmatel_t
-
-        type(sys_t), intent(in) :: sys
-        type(det_info_t), intent(in) :: cdet
-        type(excit_t), intent(inout) :: excitation
-        real(p), intent(in) :: O00, diagonal_contribution
-        real(p), intent(in) :: pop(:)
-        logical, intent(in), optional :: complx
-        real(p), intent(inout), target :: trace(:)
-        real(p), intent(inout) :: dipole(:)
-
-        ! Temporary types
-        type(hmatel_t) :: opmatel
-        real(p), target :: dummy(size(trace))
-        real(p), pointer :: trace_ptr(:)
-        logical :: complx_set
-
-        complx_set = .false.
-        if (present(complx)) complx_set = complx
-
-        ! Update off-diagonal contributions to the total dipole operator and, if
-        ! energy is not calculated, trace.
-        if (doing_dmqmc_calc(dmqmc_energy)) then
-            trace_ptr => dummy
-        else
-            trace_ptr => trace
-        end if
-
-        ! Dipole moment has no 2-body component 
-        ! (so that it's two-body integral storage is not initialized).
-        if (excitation%nexcit == 1) then 
-            opmatel = one_body1_mol(sys, excitation%from_orb(1), excitation%to_orb(1), excitation%perm)
-            if (.not.complx_set) then
-                dipole = dipole + opmatel%r*pop
-            else
-                ! manual computation of complex values
-                dipole(1) = dipole(1) + sum((/ real(opmatel%c, p),-aimag(opmatel%c) /)*pop)
-                dipole(2) = dipole(2) + sum((/ aimag(opmatel%c), real(opmatel%c, p) /)*pop)
-            end if
-        end if
-
-        ! And diagonal contribution to the operator value. Here, too, 
-        ! the diagonals should be all real.
-        if (excitation%nexcit == 0) then
-            dipole = dipole + (diagonal_contribution+O00)*pop
-            trace_ptr = trace_ptr + pop
-        end if
-
-    end subroutine update_dmqmc_dipole
-
-    subroutine update_dmqmc_sc(sys, excitation, cdet, O200, pop, diagonal_contribution, trace, sc, complx)
-
-        ! Add the contribution for the current density matrix element to the
-        ! thermal estimate of the superconducting energy gap operator.
-
-        ! In:
-        !    sys: system being studied.
-        !    cdet: det_info_t object containing bit strings of densitry matrix
-        !       element under consideration.
-        !    excitation: excit_t type variable which stores information on
-        !        the excitation between the two bitstring ends, corresponding
-        !        to the two labels for the density matrix element.
-        !    O200: diagonal of the SC operator element for the reference.
-        !    pop: number of particles on the current density matrix element.
-        !    diagonal_contribution: <D_i|O2|D_i>-<D0|O2|D0>.
-        !    complx: if the system is complex-valued.
-        ! In/Out:
-        !    trace: if neither energy nor dipole moment is measured, we
-        !        should measure the trace here.
-        !    sc: SC gap operator estimation.
-
-        use system, only: sys_t
-        use calc, only: doing_dmqmc_calc, dmqmc_energy, dmqmc_dipole
-        use hamiltonian_data, only: hmatel_t
-        use determinants, only: det_info_t, decode_det
-        use excitations, only: excit_t
-        use basis_types, only: basis_t
-
-        type(sys_t), intent(in) :: sys
-        type(det_info_t), intent(in) :: cdet
-        type(excit_t), intent(inout) :: excitation
-        real(p), intent(in) :: O200, diagonal_contribution
-        real(p), intent(in) :: pop(:)
-        logical, intent(in), optional :: complx
-        real(p), intent(inout), target :: trace(:)
-        real(p), intent(inout) :: sc(:)
-
-        ! Temporary types
-        type(hmatel_t) :: hmatel
-        real(p) :: trial_wfn_dat(0)
-        real(p), target :: dummy(size(trace))
-        real(p), pointer :: trace_ptr(:)
-
-        ! Update off-diagonal contributions to the total dipole operator and, 
-        ! if neither energy nor dipole moment calculated, the trace.
-        if (doing_dmqmc_calc(dmqmc_energy) .or. doing_dmqmc_calc(dmqmc_dipole)) then
-            trace_ptr => dummy
-        else
-            trace_ptr => trace
-        end if
-
-        call update_proj_energy_dmqmc(sys%read_in%sc_sys_ptr, cdet%f2, trial_wfn_dat, cdet, pop, &
-                                     &trace_ptr, sc, excitation, hmatel, complx)
-
-        ! And diagonal contribution to the operator value. Here, too, 
-        ! the diagonals should be all real.
-        if (excitation%nexcit == 0) sc = sc + (diagonal_contribution+O200)*pop
-
-    end subroutine update_dmqmc_sc
-
     subroutine update_dmqmc_momentum_distribution(sys, cdet, excitation, H00, pop, momentum_dist)
 
         ! Add the contribution for the current density matrix element to the thermal
@@ -1928,6 +1764,7 @@ contains
         !        element.
         !    excitation: excit_t type variable which stores information on
         !        the excitation between the two bitstring ends, corresponding
+        !    complx(optional): true if the system is complex
         ! In/Out:
         !    trace: total population on diagonal elements of density matrix
         !    energy: current thermal energy estimate.

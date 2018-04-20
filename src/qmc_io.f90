@@ -20,7 +20,7 @@ end interface
 
 contains
 
-    subroutine write_qmc_report_header(ntypes, cmplx_est, rdm_energy, nattempts, io_unit, eval_opr)
+    subroutine write_qmc_report_header(ntypes, cmplx_est, rdm_energy, nattempts, io_unit)
 
         ! In:
         !    ntypes: number of particle types being sampled.
@@ -30,17 +30,15 @@ contains
         !    nattempts: Print out number of attempts made each iteration
         !       (for CCMC).
         !    io_unit: io unit to write to.
-        !    eval_opr: if to evaluate the 1-body dipole operator (eval_opr(1))
-        !                          or the 2-body sc-gap operator (eval_opr(2)).
 
         use calc, only: doing_calc, hfs_fciqmc_calc
 
         integer, intent(in) :: ntypes
-        logical, optional, intent(in) :: cmplx_est, rdm_energy, nattempts, eval_opr(2)
+        logical, optional, intent(in) :: cmplx_est, rdm_energy, nattempts
         integer, intent(in), optional :: io_unit
 
-        logical :: cmplx_est_set, eval_opr_set(2)
-        integer :: i, nreplicas, iunit, nopr, iopr
+        logical :: cmplx_est_set
+        integer :: i, nreplicas, iunit
         character(20) :: column_title
 
         iunit = 6
@@ -49,21 +47,14 @@ contains
         cmplx_est_set = .false.
         if (present(cmplx_est)) cmplx_est_set = cmplx_est
 
-        eval_opr_set = .false.
-        if (present(eval_opr)) eval_opr_set = eval_opr
-
         ! Data table info.
         write (iunit,'(1X,"Information printed out every QMC report loop:",/)')
         write (iunit,'(1X,"Shift: the energy offset calculated at the end of the report loop.")')
         write (iunit,'(1X,"H_0j: <D_0|H|D_j>, Hamiltonian matrix element.")')
-        if (eval_opr_set(1)) &
-            write (iunit, '(1x, "Dipole: the numerator of the 1-body dipole operator")')
-        if (eval_opr_set(2)) &
-            write (iunit, '(1x, "SC_Gap: the numerator of the 2-body superconducting energy gap operator")')
         write (iunit,'(1X,"N_j: population of Hamiltonian particles on determinant D_j.")')
         if (doing_calc(hfs_fciqmc_calc)) then
             write (iunit,'(1X,"O_0j: <D_0|O|D_j>, operator matrix element.")')
-            write (iunit,'(1X,A67)') "N'_j: population of Hellmann--Feynman particles on determinant D_j."
+            write (iunit,'(1X,a67)') "N'_j: population of Hellmann--Feynman particles on determinant D_j."
             write (iunit,'(1X,"# HF psips: current total population of Hellmann--Feynman particles.")')
         end if
 
@@ -93,15 +84,6 @@ contains
                 if (cmplx_est_set) then
                     call write_column_title(iunit, '')
                     call write_column_title(iunit, '')
-                    nopr = count(eval_opr_set) * 2
-                else
-                    nopr = count(eval_opr_set)
-                end if
-                ! Leave space at the first replica for custom operators.
-                if (i == 1) then 
-                    do iopr = 1, nopr
-                        call write_column_title(iunit, '')
-                    end do
                 end if
             end do
             write (iunit,'()')
@@ -110,45 +92,30 @@ contains
         write (iunit,'(1X,"#",1X)', advance='no')
         call write_column_title(iunit, 'iterations', int_val=.true., justify=1)
         ! NOTE: HFS and complex are not currently compatible.
-        do i = 1, nreplicas
-            call write_column_title(iunit, 'Shift')
-            if (cmplx_est_set) then
+        if (cmplx_est_set) then
+            do i = 1, ntypes, 2
+                call write_column_title(iunit, 'Shift')
                 call write_column_title(iunit, 'Re{\sum H_0j N_j}')
                 call write_column_title(iunit, 'Im{\sum H_0j N_j}')
                 call write_column_title(iunit, 'Re{N_0}')
                 call write_column_title(iunit, 'Im{N_0}')
-            else
+                call write_column_title(iunit, '# H psips')
+            end do
+        else
+            do i = 1, ntypes
+                call write_column_title(iunit, 'Shift')
                 call write_column_title(iunit, '\sum H_0j N_j')
                 call write_column_title(iunit, 'N_0')
-            end if
-            if (doing_calc(hfs_fciqmc_calc)) then
-                call write_column_title(iunit, 'HF shift')
-                call write_column_title(iunit, '\sum O_0j N_j')
-                call write_column_title(iunit, "\sum H_0j N'_j")
-                call write_column_title(iunit, "N'_0")
-            end if
-            call write_column_title(iunit, '# H psips')
-            if (i == 1) then
-                if (eval_opr_set(1)) then
-                    if (cmplx_est_set) then
-                        call write_column_title(iunit, 'Re{Dipole}')
-                        call write_column_title(iunit, 'Im{Dipole}')
-                    else
-                        call write_column_title(iunit, 'Dipole')
-                    end if
+                if (doing_calc(hfs_fciqmc_calc)) then
+                    call write_column_title(iunit, 'HF shift')
+                    call write_column_title(iunit, '\sum O_0j N_j')
+                    call write_column_title(iunit, "\sum H_0j N'_j")
+                    call write_column_title(iunit, "N'_0")
                 end if
-                if (eval_opr_set(2)) then
-                    if (cmplx_est_set) then
-                        call write_column_title(iunit, 'Re{SC_Gap}')
-                        call write_column_title(iunit, 'Im{SC_Gap}')
-                    else
-                        call write_column_title(iunit, 'SC_Gap')
-                    end if
-                end if
-            end if
-            if (doing_calc(hfs_fciqmc_calc)) &
-                call write_column_title(iunit, '# HF psips')
-        end do
+                call write_column_title(iunit, '# H psips')
+                if (doing_calc(hfs_fciqmc_calc)) call write_column_title(iunit, '# HF psips')
+            end do
+        end if
         if (present(rdm_energy)) then
             if (rdm_energy) call write_column_title(iunit, 'RDM Energy')
         end if
@@ -163,7 +130,6 @@ contains
         write (iunit,'()')
 
     end subroutine write_qmc_report_header
-
     subroutine write_dmqmc_report_header(ntypes, dmqmc_in, max_excit, estimates, complx_est)
 
         ! Write header for DMQMC specific information.
@@ -177,8 +143,7 @@ contains
         use dmqmc_data, only: dmqmc_in_t, dmqmc_estimates_t
         use calc, only: dmqmc_energy, dmqmc_energy_squared, dmqmc_staggered_magnetisation, &
                         dmqmc_correlation, dmqmc_full_r2, dmqmc_rdm_r2, dmqmc_kinetic_energy, &
-                        dmqmc_H0_energy, dmqmc_potential_energy, dmqmc_HI_energy, &
-                        dmqmc_dipole, dmqmc_SC_gap
+                        dmqmc_H0_energy, dmqmc_potential_energy, dmqmc_HI_energy
         use utils, only: int_fmt
 
         integer, intent(in) :: ntypes
@@ -224,10 +189,6 @@ contains
                           & value of the staggered magnetisation.")')
         if (doing_dmqmc_calc(dmqmc_rdm_r2)) &
             write (iunit, '(1x, "RDM(n) S2: The numerator of the estimator for the Renyi entropy of RDM n.")')
-        if (doing_dmqmc_calc(dmqmc_dipole)) &
-            write (iunit, '(1x, "Dipole: the numerator of the 1-body dipole operator")')
-        if (doing_dmqmc_calc(dmqmc_SC_gap)) &
-            write (iunit, '(1x, "SC_Gap: the numerator of the 2-body superconducting energy gap operator")')
         if (dmqmc_in%rdm%calc_inst_rdm) &
             write (iunit, '(1x, "RDM(n) trace m: The current total population on the diagonal of replica m&
                           & of RDM n.")')
@@ -262,7 +223,7 @@ contains
         else
             call write_column_title(iunit, 'Trace')
         end if
-        ! [TODO] add support to other operators for complex systems?
+        ! [todo] Add support to other operators for complex systems.
         if (doing_dmqmc_calc(dmqmc_full_r2)) then
             call write_column_title(iunit, 'Trace 2')
             call write_column_title(iunit, 'Full S2')
@@ -294,22 +255,6 @@ contains
                 write(header_iidx, '('//int_fmt(i,0)//')') i
                 call write_column_title(iunit, 'RDM'//trim(header_iidx)//' S2')
             end do
-        end if
-        if (doing_dmqmc_calc(dmqmc_dipole)) then
-            if (complx_est_set) then
-                call write_column_title(iunit, 'Re{Dipole}')
-                call write_column_title(iunit, 'Im{Dipole}')
-            else
-                call write_column_title(iunit, 'Dipole')
-            end if
-        end if
-        if (doing_dmqmc_calc(dmqmc_SC_gap)) then
-            if (complx_est_set) then
-                call write_column_title(iunit, 'Re{SC_Gap}')
-                call write_column_title(iunit, 'Im{SC_Gap}')
-            else
-                call write_column_title(iunit, 'SC_Gap')
-            end if
         end if
         if (dmqmc_in%rdm%calc_inst_rdm) then
             do i = 1, dmqmc_in%rdm%nrdms
@@ -396,8 +341,8 @@ contains
 
     end subroutine write_column_title
 
-    subroutine write_qmc_report(qmc_in, qs, ireport, ntot_particles, elapsed_time, comment, non_blocking_comm, &
-                                io_unit, cmplx_est, rdm_energy, nattempts, eval_opr)
+    subroutine write_qmc_report(qmc_in, qs, ireport, ntot_particles, elapsed_time, comment, non_blocking_comm, io_unit, cmplx_est, &
+                                rdm_energy, nattempts)
 
         ! Write the report line at the end of a report loop.
 
@@ -415,8 +360,6 @@ contains
         !       so need to print extra parameters.
         !    rdm_energy: Print energy calculated from RDM.
         !    nattempts: Print number of selection attempts made. Only used in CCMC.
-        !    eval_opr: if to evaluate the 1-body dipole operator (eval_opr(1))
-        !                          or the 2-body sc-gap operator (eval_opr(2))
 
         use calc, only: doing_calc
         use qmc_data, only: qmc_in_t, qmc_state_t
@@ -427,18 +370,15 @@ contains
         real(dp), intent(in) :: ntot_particles(:)
         real, intent(in) :: elapsed_time
         logical, intent(in) :: comment, non_blocking_comm
-        logical, intent(in), optional :: cmplx_est, rdm_energy, nattempts, eval_opr(2)
+        logical, intent(in), optional :: cmplx_est, rdm_energy, nattempts
         integer, intent(in), optional :: io_unit
 
-        logical :: cmplx_est_set, nattempts_set, eval_opr_set(2)
-        integer :: mc_cycles, ntypes, nham, nopr, i, iunit, iopr
+        logical :: cmplx_est_set, nattempts_set
+        integer :: mc_cycles, ntypes, i, iunit
 
+        ntypes = size(ntot_particles)
         iunit = 6
         if (present(io_unit)) iunit = io_unit
-        ntypes = qs%psip_list%ndata
-
-        eval_opr_set = .false.
-        if (present(eval_opr)) eval_opr_set = eval_opr
         ! For non-blocking communications we print out the nth report loop
         ! after the (n+1)st iteration. Adjust mc_cycles accordingly
         if (.not. non_blocking_comm) then
@@ -451,12 +391,6 @@ contains
         if (present(cmplx_est)) cmplx_est_set = cmplx_est
         nattempts_set = .false.
         if (present(nattempts)) nattempts_set = nattempts
-        if (cmplx_est_set) then
-            nham = qs%psip_list%nspaces/2
-        else
-            nham = qs%psip_list%nspaces
-        end if
-        nopr = count(eval_opr_set)
 
         if (comment) then
             write (iunit,'(1X,"#",1X)', advance='no')
@@ -467,38 +401,33 @@ contains
         call write_qmc_var(iunit, qs%mc_cycles_done+mc_cycles)
 
         ! NOTE: HFS and complex are not currently compatible.
-        do i = 1, nham
-            if (cmplx_est_set) then
-                call write_qmc_var(iunit, qs%shift(2*i-1))
+        if (cmplx_est_set) then
+            do i = 1, ntypes, 2
+                call write_qmc_var(iunit, qs%shift(i))
                 call write_qmc_var(iunit, real(qs%estimators(i)%proj_energy_comp, p))
                 call write_qmc_var(iunit, aimag(qs%estimators(i)%proj_energy_comp))
                 call write_qmc_var(iunit, real(qs%estimators(i)%D0_population_comp, p))
                 call write_qmc_var(iunit, aimag(qs%estimators(i)%D0_population_comp))
-                call write_qmc_var(iunit, ntot_particles(2*i-1)+ntot_particles(2*i))
-            else
+                call write_qmc_var(iunit, ntot_particles(i)+ntot_particles(i+1))
+            end do
+        else
+            do i = 1, ntypes
                 call write_qmc_var(iunit, qs%shift(i))
                 call write_qmc_var(iunit, qs%estimators(i)%proj_energy)
                 call write_qmc_var(iunit, qs%estimators(i)%D0_population)
                 call write_qmc_var(iunit, ntot_particles(i))
-            end if
-            if (i == 1) then ! wrapper for custom operators
-                do iopr = 1, nopr
-                    if (cmplx_est_set) then
-                        call write_qmc_var(iunit, real(qs%estimators(nham+iopr)%proj_energy_comp, p))
-                        call write_qmc_var(iunit, aimag(qs%estimators(nham+iopr)%proj_energy_comp))
-                    else
-                        call write_qmc_var(iunit, qs%estimators(i)%proj_energy)
-                    end if
-                end do
-            end if
-        end do
+            end do
+        end if
 
-        if (present(rdm_energy) .and. rdm_energy) &
-            call write_qmc_var(iunit, qs%estimators(1)%rdm_energy/qs%estimators(1)%rdm_trace)
+        if (present(rdm_energy)) then
+            if (rdm_energy) call write_qmc_var(iunit, qs%estimators(1)%rdm_energy/qs%estimators(1)%rdm_trace)
+        end if
 
         call write_qmc_var(iunit, qs%estimators(1)%tot_nstates)
         call write_qmc_var(iunit, qs%estimators(1)%tot_nspawn_events)
-        if (nattempts_set) call write_qmc_var(iunit, qs%estimators(1)%nattempts)
+        if (nattempts_set) then
+            call write_qmc_var(iunit, qs%estimators(1)%nattempts)
+        end if
 
         call write_qmc_var(iunit, qs%spawn_store%rspawn, low_prec=.true.)
         call write_qmc_var(iunit, elapsed_time/qmc_in%ncycles, low_prec=.true.)
@@ -525,8 +454,7 @@ contains
         use calc, only: doing_calc, doing_dmqmc_calc
         use calc, only: dmqmc_energy, dmqmc_energy_squared, dmqmc_full_r2, dmqmc_rdm_r2, &
                         dmqmc_correlation, dmqmc_staggered_magnetisation, dmqmc_kinetic_energy, &
-                        dmqmc_H0_energy, dmqmc_potential_energy, dmqmc_HI_energy, &
-                        dmqmc_dipole, dmqmc_SC_gap
+                        dmqmc_H0_energy, dmqmc_potential_energy, dmqmc_HI_energy
         use qmc_data, only: qmc_in_t, qmc_state_t
         use dmqmc_data
         use system, only: sys_t
@@ -567,7 +495,6 @@ contains
             call write_qmc_var(iunit, dmqmc_estimates%trace(2))
 
         ! The trace on the second replica.
-        ! [TODO] complex support.
         if (doing_dmqmc_calc(dmqmc_full_r2)) &
             call write_qmc_var(iunit, dmqmc_estimates%trace(2))
 
@@ -615,20 +542,6 @@ contains
             do i = 1, dmqmc_in%rdm%nrdms
                 call write_qmc_var(iunit, dmqmc_estimates%inst_rdm%renyi_2(i))
             end do
-        end if
-
-        ! Dipole operator.
-        if (doing_dmqmc_calc(dmqmc_dipole)) then
-            call write_qmc_var(iunit, dmqmc_estimates%numerators(dipole_ind))
-            if (complx_est_set) &
-                call write_qmc_var(iunit, dmqmc_estimates%numerators(dipole_imag_ind))
-        end if
-
-        ! SC gap operator.
-        if (doing_dmqmc_calc(dmqmc_SC_gap)) then
-            call write_qmc_var(iunit, dmqmc_estimates%numerators(sc_ind))
-            if (complx_est_set) &
-                call write_qmc_var(iunit, dmqmc_estimates%numerators(sc_imag_ind))
         end if
 
         ! Traces for instantaneous RDM estimates.
