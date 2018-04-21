@@ -18,7 +18,6 @@ contains
 
         use basis, only: set_orb
         use calc, only: doing_dmqmc_calc, dmqmc_energy_squared
-        use determinants, only: decode_det
         use system
         use bit_utils
         use checking, only: check_allocate, check_deallocate

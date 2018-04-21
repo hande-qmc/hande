@@ -300,6 +300,7 @@ contains
         ! Procedures to be pointed to.
         use death, only: stochastic_death
         use determinants
+        use determinant_decoders
         use dmqmc_estimators
         use dmqmc_procedures
         use dmqmc_data, only: hartree_fock_dm
@@ -487,7 +488,7 @@ contains
             case(excit_gen_power_pitzer_orderN)
                 ! [todo] - check this decoder is correct.
                 gen_excit_ptr%full => gen_excit_mol_power_pitzer_orderN
-                decoder_ptr => decode_det_occ
+                decoder_ptr => decode_det_ppN
             case(excit_gen_heat_bath)
                 gen_excit_ptr%full => gen_excit_mol_heat_bath
                 decoder_ptr => decode_det_hb

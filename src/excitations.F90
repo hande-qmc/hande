@@ -442,7 +442,7 @@ contains
 
     end function connection_exists
 
-    subroutine get_excitation_locations(ref_list, det_list, ref_store, det_store, nel, nexcit)
+    pure subroutine get_excitation_locations(ref_list, det_list, ref_store, det_store, nel, nexcit)
 
         ! Given lists of nel orbitals, ref_list and det_list, determine the indices of
         ! the orbitals in these which cannot be paired up and place each in the appropriate _store

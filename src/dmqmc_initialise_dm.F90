@@ -392,8 +392,9 @@ contains
 
         use dSFMT_interface, only: dSFMT_t, get_rand_close_open
         use system, only: sys_t, copy_sys_spin_info
-        use determinants, only: alloc_det_info_t, dealloc_det_info_t, decode_det_spinocc_spinunocc, &
-                                encode_det, decode_det, update_sys_spin_info
+        use determinants, only: alloc_det_info_t, dealloc_det_info_t, &
+                                encode_det, update_sys_spin_info, decode_det
+        use determinant_decoders, only: decode_det_spinocc_spinunocc
         use determinant_data, only: det_info_t
         use excitations, only: excit_t, create_excited_det
         use parallel, only: nprocs, nthreads, parent

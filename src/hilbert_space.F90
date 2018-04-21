@@ -49,7 +49,8 @@ contains
         use const, only: dp
         use checking, only: check_allocate, check_deallocate
         use determinants, only: encode_det, alloc_det_info_t,  &
-                                dealloc_det_info_t, decode_det_spinocc_spinunocc
+                                dealloc_det_info_t
+        use determinant_decoders, only: decode_det_spinocc_spinunocc
         use determinant_data, only: det_info_t
         use dSFMT_interface, only: dSFMT_t, dSFMT_init, dSFMT_end
         use json_out

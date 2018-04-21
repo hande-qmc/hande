@@ -1935,7 +1935,6 @@ contains
     
         use qmc_data, only:  propagator_t
         use system, only: sys_t
-        use determinants, only: decode_det
         use determinant_data, only: det_info_t
         use excitations, only: excit_t, create_excited_det, get_excitation_level
 
