@@ -140,7 +140,7 @@ contains
         ! statement in the above loop results a speedup of the Hubbard k-space
         ! FCIQMC calculations of 1.5%.
         last_basis_ind = sys%basis%nbasis - i0_length*(sys%basis%bit_string_len-1) - 1
-        do j = 0, last_basis_ind, 2
+        do j = 0, last_basis_ind
             orb = orb + 1
             if (btest(f(i), j)) then
                 iocc = iocc + 1
