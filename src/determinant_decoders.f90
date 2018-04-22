@@ -475,7 +475,10 @@ contains
         ! WARNING: this decoder needs excit_gen_data!!!!
 
         ! Decode determinant bit string into integer lists containing the
-        ! occupied and unoccupied orbitals.
+        ! occupied orbitals and a reordered list of occupied list that is equal to the
+        ! occupied list of orbitals of the reference where orbitals that differ between
+        ! the current determinant and the reference are substituted by occupied orbitals
+        ! from the current determinant. These substituted orbitals are sorted by spin.
         !
         ! We return the lists for alpha and beta electrons separately.
         ! Also return the weights to select i in a double excitation.
@@ -487,17 +490,7 @@ contains
         !    d: det_info_t variable.  The following components are set:
         !        occ_list: integer list of occupied spin-orbitals in the
         !            Slater determinant.
-        !        occ_list_alpha: integer list of occupied alpha
-        !            spin-orbitals in the Slater determinant.
-        !        occ_list_beta: integer list of occupied beta
-        !            spin-orbitals in the Slater determinant.
-        !        unocc_list_alpha: integer list of unoccupied alpha
-        !            spin-orbitals in the Slater determinant.
-        !        unocc_list_beta: integer list of unoccupied beta
-        !            spin-orbitals in the Slater determinant.
-        !        i_d_weights_occ: weights to select i in a double excitation
-        !            during excit gen call.
-        !        i_d_weights_occ_tot: sum of i_d_weights_occ
+        !        ref_cdet_occ_list: reordered list of occ. spin orbitals.
 
         use system, only: sys_t
         use excit_gens, only: excit_gen_data_t
@@ -508,9 +501,33 @@ contains
         type(det_info_t), intent(inout) :: d
         type(excit_gen_data_t), optional, intent(in) :: excit_gen_data
 
+        integer :: ref_store(sys%nel), det_store(sys%nel)
+        integer :: ii, jj, nex, t
+
         call decode_det_occ(sys, f, d)
-        call get_excitation_locations(excit_gen_data%excit_gen_pp%occ_list, d%occ_list, d%diff_det_to_ref_orbs(:,1), &
-            d%diff_det_to_ref_orbs(:,2), sys%nel, d%nex)
+        call get_excitation_locations(excit_gen_data%excit_gen_pp%occ_list, d%occ_list, ref_store, &
+            det_store, sys%nel, nex)
+        ! These orbitals might not be aligned in the most efficient way:
+        !  They may not match in spin, so first deal with this
+
+        d%ref_cdet_occ_list = excit_gen_data%excit_gen_pp%occ_list
+        ! ref store (e.g.) contains the indices within excit_gen_pp%occ_list of the orbitals
+        ! which have been excited from.
+        do ii=1, nex
+            associate(bfns=>sys%basis%basis_fns, pp=>excit_gen_data%excit_gen_pp)
+                if (bfns(pp%occ_list(ref_store(ii)))%Ms /= bfns(d%occ_list(det_store(ii)))%Ms) then
+                    jj = ii + 1
+                    do while (bfns(pp%occ_list(ref_store(ii)))%Ms /= bfns(d%occ_list(det_store(jj)))%Ms)
+                        jj = jj + 1
+                    end do
+                    ! det's jj now points to an orb of the same spin as ref's ii, so swap cdet_store's ii and jj.
+                    t = det_store(ii)
+                    det_store(ii) = det_store(jj)
+                    det_store(jj) = t
+                end if
+            end associate
+            d%ref_cdet_occ_list(ref_store(ii)) = d%occ_list(det_store(ii))
+        end do
 
     end subroutine decode_det_ppN
     

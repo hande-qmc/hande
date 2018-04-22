@@ -36,9 +36,13 @@ type det_info_t
     real(p) :: i_s_weights_occ_tot
     ! heat bath weights to select a given i in a single excitation
     real(p), pointer :: ia_s_weights_occ(:,:) ! (virt, nel)
-    ! position of different orbitals in this det compared to reference
-    ! First column refers to orbitals in reference, second column to corresponding orbitals in det.
-    integer, pointer :: diff_det_to_ref_orbs(:,:) ! (nel, 2)
+    ! list of occupied spinorbitals that is reordered such that orbitals that are the same
+    ! between ref. and current determinant are at the same position as they are in the
+    ! reference determinant. Spinorbitals that are occupied in the reference but not in
+    ! the current determinant are substuted by orbitals that are unoccupied in the reference
+    ! but occupied in the current determinant in a way that the order of spins is the same
+    ! between this list and the list of occupied orbitals in the reference.
+    integer, pointer :: ref_cdet_occ_list(:) ! (nel)
     ! Number of orbitals that are different between det and reference.
     integer :: nex
     ! is the determinant an initiator determinant or not? (used only in

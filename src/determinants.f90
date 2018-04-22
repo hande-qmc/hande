@@ -144,8 +144,8 @@ contains
         call check_allocate('det_info%ia_s_weights_occ', sys%nvirt*sys%nel, ierr)
 
         ! Orbitals that are different between this det and the ref det.
-        allocate(det_info%diff_det_to_ref_orbs(sys%nel, sys%nel), stat=ierr)
-        call check_allocate('det_info%diff_det_to_ref_orbs', sys%nel**2, ierr)
+        allocate(det_info%ref_cdet_occ_list(sys%nel), stat=ierr)
+        call check_allocate('det_info%ref_cdet_occ_list', sys%nel, ierr)
 
     end subroutine alloc_det_info_t
 
@@ -203,8 +203,8 @@ contains
         call check_deallocate('det_info%i_s_weights_occ', ierr)
         deallocate(det_info%ia_s_weights_occ, stat=ierr)
         call check_deallocate('det_info%ia_s_weights_occ', ierr)
-        deallocate(det_info%diff_det_to_ref_orbs, stat=ierr)
-        call check_deallocate('det_info%diff_det_to_ref_orbs', ierr)
+        deallocate(det_info%ref_cdet_occ_list, stat=ierr)
+        call check_deallocate('det_info%ref_cdet_occ_list', ierr)
 
     end subroutine dealloc_det_info_t
 
