@@ -871,12 +871,12 @@ contains
         allocate(cluster%excitors(2))
         do iattempt = 1, nattempts + qs%psip_list%nstates
             if (iattempt < qs%psip_list%nstates) then
-                call select_nc_cluster(sys, qs%psip_list, qs%ref%f0, iattempt, 0.0_p, .false., cdet, cluster)
+                call select_nc_cluster(sys, qs%psip_list, qs%ref%f0, iattempt, 0.0_p, .false., cdet, cluster, qs%excit_gen_data)
             else
                 ! Note: even if we're doing linked CC, the clusters contributing to the projected estimator must not contain
                 ! excitors involving the same orbitals so we need only look for unlinked clusters.
                 call select_cluster(rng, sys, qs%psip_list, qs%ref%f0, 2, .false., nattempts, D0_normalisation, 0.0_p, D0_pos, &
-                                cumulative_abs_real_pops, tot_abs_real_pop, 2, 2, logging_info, cdet, cluster)
+                                cumulative_abs_real_pops, tot_abs_real_pop, 2, 2, logging_info, cdet, cluster, qs%excit_gen_data)
             end if
             if (cluster%excitation_level /= huge(0)) then
 

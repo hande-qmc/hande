@@ -616,7 +616,7 @@ contains
 
         ! 2) Choose excitation from right_cluster|D_0>
         if (allowed) then
-            call decoder_ptr(sys, rdet%f, rdet)
+            call decoder_ptr(sys, rdet%f, rdet, qs%excit_gen_data)
             call gen_excit_ptr%full(rng, sys, qs%excit_gen_data, rdet, pgen, connection, hmatel, allowed)
         end if
 

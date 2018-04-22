@@ -270,7 +270,7 @@ contains
                     cdet%f => qs%psip_list%states(:,idet)
                     cdet%data => qs%psip_list%dat(:,idet)
 
-                    call decoder_ptr(sys, cdet%f, cdet)
+                    call decoder_ptr(sys, cdet%f, cdet, qs%excit_gen_data)
                     if (qs%propagator%quasi_newton) &
                         cdet%fock_sum = sum_sp_eigenvalues_occ_list(sys, cdet%occ_list) - qs%ref%fock_sum
 
@@ -506,7 +506,7 @@ contains
             ! Need to generate spawned walker data to perform evolution.
             cdet%data(1) = sc0_ptr(sys, cdet%f) - qs%ref%H00
 
-            call decoder_ptr(sys, cdet%f, cdet)
+            call decoder_ptr(sys, cdet%f, cdet, qs%excit_gen_data)
             if (qs%propagator%quasi_newton) cdet%fock_sum = sum_sp_eigenvalues_occ_list(sys, cdet%occ_list) - qs%ref%fock_sum
 
             ! Is this determinant an initiator?
