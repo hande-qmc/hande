@@ -115,10 +115,11 @@ contains
         allocate(pl%tot_nparticles(pl%nspaces), stat=ierr)
         call check_allocate('pl%tot_nparticles', pl%nspaces, ierr)
 
-        allocate(pl%states(tensor_label_len,max_nstates_elements), stat=ierr)
+        ! The source forces a non-lazy allocation which will give an error if there isn't enough RAM
+        allocate(pl%states(tensor_label_len,max_nstates_elements), stat=ierr, source=0_int_p)
         call check_allocate('pl%states', tensor_label_len*max_nstates_elements, ierr)
 
-        allocate(pl%pops(pl%nspaces,max_nstates_elements), stat=ierr)
+        allocate(pl%pops(pl%nspaces,max_nstates_elements), stat=ierr, source=0_int_p)
         call check_allocate('pl%pops', pl%nspaces*max_nstates_elements, ierr)
 
         allocate(pl%dat(pl%nspaces+pl%info_size,max_nstates_elements), stat=ierr)
