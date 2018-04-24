@@ -208,7 +208,7 @@ contains
         if (i == 0 .or. i==1) then
             logi = 1.0
         else
-            logi = log10(real(abs(i)+1,dp))
+            logi = log10(abs(real(i,dp))+1)
         end if
         if (i < 0) logi = logi + 1
 
@@ -238,7 +238,7 @@ contains
         if (i == 0 .or. i==1) then
             logi = 1.0
         else
-            logi = log10(real(abs(i)+1,dp))
+            logi = log10(abs(real(i,dp))+1)
         end if
         if (i < 0) logi = logi + 1
 
