@@ -1117,7 +1117,7 @@ contains
             max_nspawned_states = int((-real(max_nspawned_states,p)*10**6)/(2*size_spawned_walker))
         end if
         if (parent) then
-            write (io_unit,'(1X,a57,f7.2)') &
+            write (io_unit,'(1X,a57,f9.2)') &
                 'Memory allocated per core for spawned walker lists (MB): ', &
                 size_spawned_walker*real(2*max_nspawned_states,p)/10**6
             write (io_unit,'(1X,a51,1x,i0,/)') &
