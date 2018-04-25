@@ -21,6 +21,7 @@ contains
         !    sys: system being studied (contains required basis information).
         !    f(tot_string_len): bit string representation of the Slater
         !        determinant.
+! [review] - AJWT: Add excit_gen_data here and to others below.
         ! Out:
         !    d: det_info_t variable.  The following components are set:
         !        occ_list: integer list of occupied spin-orbitals in the
@@ -170,7 +171,6 @@ contains
 
         use system, only: sys_t
         use excit_gens, only: excit_gen_data_t
-        use determinants, only: decode_det
 
         type(sys_t), intent(in) :: sys
         integer(i0), intent(in) :: f(sys%basis%tot_string_len)
@@ -610,6 +610,7 @@ contains
 
         ! Decode determinant bit string into integer list containing the
         ! occupied orbitals and some weights for hbu excit gen.
+! [review] - AJWT: need sys and excit_gen_data
         ! In:
         !    f(tot_string_len): bit string representation of the Slater
         !        determinant.

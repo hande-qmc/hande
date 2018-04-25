@@ -28,6 +28,9 @@ type det_info_t
     ! The first index maps to spin using (Ms+3)/2, where Ms=-1 is spin-down and
     ! Ms=1 is spin-up.
     integer, pointer :: symunocc(:,:) ! (2,sym0_tot:sym_max_tot)
+! [review] - AJWT: It feels like this type has become a bit bloated and that these weights might want
+! [review] - AJWT: to be included together in a separate derived type (which itself could be an element of
+! [review] - AJWT: det_info_t or perhaps passed elswehere). 
     ! heat_bath weights to select i in a double excitation
     real(p), pointer :: i_d_weights_occ(:) ! (nel)
     real(p) :: i_d_weights_occ_tot
