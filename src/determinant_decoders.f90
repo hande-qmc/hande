@@ -171,6 +171,7 @@ contains
 
         use system, only: sys_t
         use excit_gens, only: excit_gen_data_t
+        use determinants, only: decode_det
 
         type(sys_t), intent(in) :: sys
         integer(i0), intent(in) :: f(sys%basis%tot_string_len)
