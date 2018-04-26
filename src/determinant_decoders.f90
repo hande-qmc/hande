@@ -21,7 +21,7 @@ contains
         !    sys: system being studied (contains required basis information).
         !    f(tot_string_len): bit string representation of the Slater
         !        determinant.
-! [review] - AJWT: Add excit_gen_data here and to others below.
+        !    excit_gen_data (optional): information for excitation generators.
         ! Out:
         !    d: det_info_t variable.  The following components are set:
         !        occ_list: integer list of occupied spin-orbitals in the
@@ -46,8 +46,10 @@ contains
         ! occupied orbitals and integer lists containing occupied alpha and
         ! beta orbitals.
         ! In:
+        !    sys: system being studied (contains required basis information).
         !    f(tot_string_len): bit string representation of the Slater
         !        determinant.
+        !    excit_gen_data (optional): information for excitation generators.
         ! Out:
         !    d: det_info_t variable.  The following components are set:
         !        occ_list: integer list of occupied spin-orbitals in the
@@ -62,8 +64,9 @@ contains
         type(sys_t), intent(in) :: sys
         integer(i0), intent(in) :: f(sys%basis%tot_string_len)
         type(det_info_t), intent(inout) :: d
-        integer :: i, ialpha, ibeta
         type(excit_gen_data_t), optional, intent(in) :: excit_gen_data
+        
+        integer :: i, ialpha, ibeta
 
         call decode_det(sys%basis, f, d%occ_list)
 
@@ -92,8 +95,10 @@ contains
         ! We return the lists for alpha and beta electrons separately.
         !
         ! In:
+        !    sys: system being studied (contains required basis information).
         !    f(tot_string_len): bit string representation of the Slater
         !        determinant.
+        !    excit_gen_data (optional): information for excitation generators.
         ! Out:
         !    d: det_info_t variable.  The following components are set:
         !        occ_list: integer list of occupied spin-orbitals in the
@@ -159,8 +164,10 @@ contains
         ! Decode determinant bit string into integer list containing the
         ! occupied orbitals.
         ! In:
+        !    sys: system being studied (contains required basis information).
         !    f(tot_string_len): bit string representation of the Slater
         !        determinant.
+        !    excit_gen_data (optional): information for excitation generators.
         ! Out:
         !    d: det_info_t variable.  The following components are set:
         !        occ_list: integer list of occupied spin-orbitals in the
@@ -198,8 +205,10 @@ contains
         ! Decode determinant bit string into integer list containing the
         ! occupied orbitals.
         ! In:
+        !    sys: system being studied (contains required basis information).
         !    f(tot_string_len): bit string representation of the Slater
         !        determinant.
+        !    excit_gen_data (optional): information for excitation generators.
         ! Out:
         !    d: det_info_t variable.  The following components are set:
         !        occ_list: integer list of occupied spin-orbitals in the
@@ -251,8 +260,10 @@ contains
         ! We return the lists for alpha and beta electrons separately.
         !
         ! In:
+        !    sys: system being studied (contains required basis information).
         !    f(tot_string_len): bit string representation of the Slater
         !        determinant.
+        !    excit_gen_data (optional): information for excitation generators.
         ! Out:
         !    d: det_info_t variable.  The following components are set:
         !        occ_list: integer list of occupied spin-orbitals in the
@@ -357,8 +368,10 @@ contains
         ! We return the lists for alpha and beta electrons separately.
         !
         ! In:
+        !    sys: system being studied (contains required basis information).
         !    f(tot_string_len): bit string representation of the Slater
         !        determinant.
+        !    excit_gen_data (optional): information for excitation generators.
         ! Out:
         !    d: det_info_t variable.  The following components are set:
         !        occ_list: integer list of occupied spin-orbitals in the
@@ -485,8 +498,10 @@ contains
         ! Also return the weights to select i in a double excitation.
         !
         ! In:
+        !    sys: system being studied (contains required basis information).
         !    f(tot_string_len): bit string representation of the Slater
         !        determinant.
+        !    excit_gen_data (optional): information for excitation generators.
         ! Out:
         !    d: det_info_t variable.  The following components are set:
         !        occ_list: integer list of occupied spin-orbitals in the
@@ -543,8 +558,10 @@ contains
         ! Also return the weights to select i in a double excitation.
         !
         ! In:
+        !    sys: system being studied (contains required basis information).
         !    f(tot_string_len): bit string representation of the Slater
         !        determinant.
+        !    excit_gen_data (optional): information for excitation generators.
         ! Out:
         !    d: det_info_t variable.  The following components are set:
         !        occ_list: integer list of occupied spin-orbitals in the
@@ -584,6 +601,7 @@ contains
         !    sys: system being studied (contains required basis information).
         !    f(tot_string_len): bit string representation of the Slater
         !        determinant.
+        !    excit_gen_data (optional): information for excitation generators.
         ! Out:
         !    d: det_info_t variable.  The following components are set:
         !        occ_list: integer list of occupied spin-orbitals in the
@@ -611,10 +629,11 @@ contains
 
         ! Decode determinant bit string into integer list containing the
         ! occupied orbitals and some weights for hbu excit gen.
-! [review] - AJWT: need sys and excit_gen_data
         ! In:
+        !    sys: system being studied (contains required basis information).
         !    f(tot_string_len): bit string representation of the Slater
         !        determinant.
+        !    excit_gen_data (optional): information for excitation generators.
         ! Out:
         !    d: det_info_t variable.  The following components are set:
         !        occ_list: integer list of occupied spin-orbitals in the
@@ -650,6 +669,7 @@ contains
         !    sys: system being studied (contains required basis information).
         !    f(tot_string_len): bit string representation of the Slater
         !        determinant.
+        !    excit_gen_data (optional): information for excitation generators.
         ! Out:
         !    d: det_info_t variable.  The following components are set:
         !        occ_list: integer list of occupied spin-orbitals in the
