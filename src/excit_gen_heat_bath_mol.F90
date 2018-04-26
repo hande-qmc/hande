@@ -315,13 +315,12 @@ contains
         type(hmatel_t), intent(out) :: hmatel
         type(excit_t), intent(out) :: connection
         logical, intent(out) :: allowed_excitation
-        real(p) :: i_weights_occ(sys%nel)
         real(p) :: ij_weights_occ(sys%nel)
         real(p) :: ji_weights_occ(sys%nel)
 
-        integer :: pos_q, i_ind, j_ind, i, j, a, b, ierr, ims, isyma
+        integer :: pos_q, i_ind, j_ind, i, j, a, b, ims, isyma
         
-        real(p) :: i_weights_occ_tot, ij_weights_occ_tot, ji_weights_occ_tot, hmatel_mod_ia, x, psingle
+        real(p) :: ij_weights_occ_tot, ji_weights_occ_tot, hmatel_mod_ia, x, psingle
         real(p) :: pgen_ija, pgen_ijb, pgen_jia, pgen_jib, psingle_q
         logical :: double
         type(hmatel_t) :: hmatel_single
@@ -396,7 +395,8 @@ contains
                         
                         ! Calculate all contributions to pgen (need to consider different orders of having selected i and j
                         ! and different combinations of a and b. Sub-pgens are pgen_ija, pgen_ijb, pgen_jia, pgen_jib.
-                        pgen_ija = ((cdet%i_d_weights_occ(i_ind)/cdet%i_d_weights_occ_tot) * (ij_weights_occ(j_ind)/ij_weights_occ_tot)) * &
+                        pgen_ija = ((cdet%i_d_weights_occ(i_ind)/cdet%i_d_weights_occ_tot) * & 
+                                   (ij_weights_occ(j_ind)/ij_weights_occ_tot)) * &
                             (hb%hb_ija%weights(a,j,i)/hb%hb_ija%weights_tot(j,i)) * (1.0_p - psingle) * &
                             (hb%hb_ijab%weights(b,a,j,i)/hb%hb_ijab%weights_tot(a,j,i))
 
@@ -421,7 +421,8 @@ contains
                             psingle = 0.0_p
                         end if
 
-                        pgen_ijb = ((cdet%i_d_weights_occ(i_ind)/cdet%i_d_weights_occ_tot) * (ij_weights_occ(j_ind)/ij_weights_occ_tot)) * &
+                        pgen_ijb = ((cdet%i_d_weights_occ(i_ind)/cdet%i_d_weights_occ_tot) * &
+                             (ij_weights_occ(j_ind)/ij_weights_occ_tot)) * &
                             (hb%hb_ija%weights(b,j,i)/hb%hb_ija%weights_tot(j,i)) * (1.0_p - psingle) * &
                             (hb%hb_ijab%weights(a,b,j,i)/hb%hb_ijab%weights_tot(b,j,i))
 
@@ -446,7 +447,8 @@ contains
                             psingle = 0.0_p
                         end if
 
-                        pgen_jia = ((cdet%i_d_weights_occ(j_ind)/cdet%i_d_weights_occ_tot) * (ji_weights_occ(i_ind)/ji_weights_occ_tot)) * &
+                        pgen_jia = ((cdet%i_d_weights_occ(j_ind)/cdet%i_d_weights_occ_tot) * &
+                            (ji_weights_occ(i_ind)/ji_weights_occ_tot)) * &
                             (hb%hb_ija%weights(a,i,j)/hb%hb_ija%weights_tot(i,j)) * (1.0_p - psingle) * &
                             (hb%hb_ijab%weights(b,a,i,j)/hb%hb_ijab%weights_tot(a,i,j))
 
@@ -467,7 +469,8 @@ contains
                             psingle = 0.0_p
                         end if
 
-                        pgen_jib = ((cdet%i_d_weights_occ(j_ind)/cdet%i_d_weights_occ_tot) * (ji_weights_occ(i_ind)/ji_weights_occ_tot)) * &
+                        pgen_jib = ((cdet%i_d_weights_occ(j_ind)/cdet%i_d_weights_occ_tot) * &
+                            (ji_weights_occ(i_ind)/ji_weights_occ_tot)) * &
                             (hb%hb_ija%weights(b,i,j)/hb%hb_ija%weights_tot(i,j)) * (1.0_p - psingle) * &
                             (hb%hb_ijab%weights(a,b,i,j)/hb%hb_ijab%weights_tot(b,i,j))
 
@@ -598,7 +601,7 @@ contains
         real(p) :: ij_weights_occ(sys%nel)
         real(p) :: ji_weights_occ(sys%nel)
 
-        integer :: i_ind, j_ind, i, j, a, b, ierr, j_tmp
+        integer :: i_ind, j_ind, i, j, a, b, j_tmp
         
         real(p) :: ij_weights_occ_tot, ji_weights_occ_tot
 
@@ -619,8 +622,8 @@ contains
             associate( hb => excit_gen_data%excit_gen_hb )
                 ! 1: Select orbitals i and j to excite from.
                 
-                call select_ij_heat_bath(rng, sys%nel, hb%ij_weights, cdet, i, j, i_ind, j_ind, ij_weights_occ, ij_weights_occ_tot, &
-                    ji_weights_occ, ji_weights_occ_tot, allowed_excitation)
+                call select_ij_heat_bath(rng, sys%nel, hb%ij_weights, cdet, i, j, i_ind, j_ind, ij_weights_occ, &
+                    ij_weights_occ_tot, ji_weights_occ, ji_weights_occ_tot, allowed_excitation)
             
                 ! Is there a possible a?
                 if ((allowed_excitation) .and. (abs(hb%hb_ija%weights_tot(j, i)) > 0.0_p)) then

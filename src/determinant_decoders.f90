@@ -653,7 +653,6 @@ contains
         integer(i0), intent(in) :: f(sys%basis%tot_string_len)
         type(det_info_t), intent(inout) :: d
         type(excit_gen_data_t), optional, intent(in) :: excit_gen_data
-        integer :: i, ims, isym
 
         call decode_det_occ_symunocc(sys, f, d)
         call find_i_d_weights(sys%nel, excit_gen_data%excit_gen_hb%i_weights, d)

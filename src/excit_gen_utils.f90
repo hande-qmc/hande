@@ -190,7 +190,7 @@ contains
         type(det_info_t), intent(inout) :: d
         
         type(hmatel_t) :: hmatel
-        integer :: pos, i_ind, a_ind
+        integer :: i_ind, a_ind
         
         d%i_s_weights_occ_tot = 0.0_p
         do i_ind = 1, sys%nel
