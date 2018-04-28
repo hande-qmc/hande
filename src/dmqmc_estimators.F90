@@ -413,8 +413,8 @@ contains
         use system, only: sys_t
         use qmc_data, only: particle_t
         use dmqmc_data, only: dmqmc_in_t, dmqmc_estimates_t, energy_ind, energy_imag_ind, energy_squared_ind, &
-                              correlation_fn_ind, staggered_mag_ind, full_r2_ind, dmqmc_weighted_sampling_t,  &
-                              kinetic_ind, potential_ind, H0_ind, HI_ind
+                              correlation_fn_ind, staggered_mag_ind, full_r2_ind, full_r2_imag_ind, &
+                              dmqmc_weighted_sampling_t, kinetic_ind, potential_ind, H0_ind, HI_ind
 
         type(sys_t), intent(in) :: sys
         type(dmqmc_in_t), intent(in) :: dmqmc_in
@@ -505,7 +505,7 @@ contains
                 ! Full Renyi entropy (S_2).
                 if (doing_dmqmc_calc(dmqmc_full_r2)) call update_full_renyi_2&
                     &(unweighted_walker_pop, excitation%nexcit, dmqmc_in%half_density_matrix, &
-                    & est%numerators(full_r2_ind))
+                    & est%numerators(full_r2_ind:full_r2_ind))
 
                 ! Update the contribution to the trace from other replicas
                 if (dmqmc_in%replica_tricks .and. excitation%nexcit == 0) &
@@ -520,15 +520,28 @@ contains
                 end if
 
             else
-                ! Currently, only the energy operator is implemented for complex DMQMC.
+                ! The following only works for complex read_in systems.
                 if (abs(unweighted_walker_pop(1)) > 0 .or. abs(unweighted_walker_pop(2)) > 0) then
                     ! Energy
                     if (doing_dmqmc_calc(dmqmc_energy)) call update_dmqmc_energy_and_trace_ptr&
                         &(sys, excitation, cdet, H00, unweighted_walker_pop(1:2), psip_list%dat(1, idet), &
                         & est%trace, est%numerators(energy_ind:energy_imag_ind), .true.)
+                    ! Excitation distribution. 
+                    ! Now we just sum the particles from the real and imaginary components.
+                    if (dmqmc_in%calc_excit_dist) &
+                        &est%excit_dist(excitation%nexcit) = est%excit_dist(excitation%nexcit) + &
+                        &sum(real(abs(psip_list%pops(1:2,idet)),p))/psip_list%pop_real_factor
                 end if
 
-                ! [todo] Add support for complex replica estimators.
+                ! Complex Renyi-2 entropy.
+                if (doing_dmqmc_calc(dmqmc_full_r2)) call update_full_renyi_2&
+                    &(unweighted_walker_pop, excitation%nexcit, dmqmc_in%half_density_matrix, &
+                    & est%numerators(full_r2_ind:full_r2_imag_ind), complx=.true.)
+
+                ! Update the contribution to the trace from other replicas
+                if (dmqmc_in%replica_tricks .and. excitation%nexcit == 0) &
+                    est%trace(3:4) = est%trace(3:4) + unweighted_walker_pop(3:4)
+
             end if
             weighted_sampling%probs_old = weighted_sampling%probs
 
@@ -908,7 +921,7 @@ contains
 
     end subroutine dmqmc_stag_mag_heisenberg
 
-    subroutine update_full_renyi_2(walker_pop, excit_level, half_density_matrix, full_r2)
+    subroutine update_full_renyi_2(walker_pop, excit_level, half_density_matrix, full_r2, complx)
 
         ! Add the contribution from the current density matrix element to the
         ! Renyi entropy (S_2) of the full density matrix.
@@ -920,6 +933,7 @@ contains
         !        contributing to the full density matrix bitstring.
         !    half_density_matrix: reflect psips spawned from lower triangle into
         !        the upper one?
+        !    complx: if we are sampling a complex read_in system.
         ! In/Out:
         !    full_r2: running estimate for Renyi entropy of the full density
         !       matrix.
@@ -927,7 +941,16 @@ contains
         real(p), intent(in) :: walker_pop(:)
         integer, intent(in) :: excit_level
         logical, intent(in) :: half_density_matrix
-        real(p), intent(inout) :: full_r2
+        logical, intent(in), optional :: complx
+        real(p), intent(inout) :: full_r2(:)
+        real(p) :: delta_r2(size(full_r2))
+
+        if (present(complx) .and. complx) then
+            delta_r2(1) = walker_pop(1)*walker_pop(3) - walker_pop(2)*walker_pop(4)
+            delta_r2(2) = walker_pop(1)*walker_pop(4) + walker_pop(2)*walker_pop(3)
+        else
+            delta_r2 = walker_pop(1)*walker_pop(2)
+        end if
 
         if (half_density_matrix .and. excit_level /= 0) then
             ! With the half-density matrix option, only the upper-half of the
@@ -935,9 +958,9 @@ contains
             ! as large instead. Thus, a product of off-diagonal elements is four
             ! times as large. We want two 'correct size' contributions, so we
             ! need to divide these contirbutions by two to get this.
-            full_r2 = full_r2 + walker_pop(1)*walker_pop(2)/2.0_p
+            full_r2 = full_r2 + delta_r2/2.0_p
         else
-            full_r2 = full_r2 + walker_pop(1)*walker_pop(2)
+            full_r2 = full_r2 + delta_r2
         end if
 
     end subroutine update_full_renyi_2

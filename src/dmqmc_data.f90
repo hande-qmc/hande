@@ -14,6 +14,7 @@ enum, bind(c)
     enumerator :: correlation_fn_ind
     enumerator :: staggered_mag_ind
     enumerator :: full_r2_ind
+    enumerator :: full_r2_imag_ind
     enumerator :: kinetic_ind
     enumerator :: potential_ind
     enumerator :: H0_ind

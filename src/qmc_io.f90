@@ -223,10 +223,16 @@ contains
         else
             call write_column_title(iunit, 'Trace')
         end if
-        ! [todo] Add support to other operators for complex systems.
         if (doing_dmqmc_calc(dmqmc_full_r2)) then
-            call write_column_title(iunit, 'Trace 2')
-            call write_column_title(iunit, 'Full S2')
+            if (complx_est_set) then
+                call write_column_title(iunit, 'Re{Trace 2}')
+                call write_column_title(iunit, 'Im{Trace 2}')
+                call write_column_title(iunit, 'Re{S2}')
+                call write_column_title(iunit, 'Im{S2}')
+            else
+                call write_column_title(iunit, 'Trace 2')
+                call write_column_title(iunit, 'Full S2')
+            end if
         end if
         if (doing_dmqmc_calc(dmqmc_energy)) then
             if (complx_est_set) then
@@ -495,12 +501,21 @@ contains
             call write_qmc_var(iunit, dmqmc_estimates%trace(2))
 
         ! The trace on the second replica.
-        if (doing_dmqmc_calc(dmqmc_full_r2)) &
-            call write_qmc_var(iunit, dmqmc_estimates%trace(2))
+        if (doing_dmqmc_calc(dmqmc_full_r2)) then
+            if (complx_est_set) then
+                call write_qmc_var(iunit, dmqmc_estimates%trace(3))
+                call write_qmc_var(iunit, dmqmc_estimates%trace(4))
+            else
+                call write_qmc_var(iunit, dmqmc_estimates%trace(2))
+            end if
+        end if
 
         ! Renyi-2 entropy for the full density matrix.
-        if (doing_dmqmc_calc(dmqmc_full_r2)) &
+        if (doing_dmqmc_calc(dmqmc_full_r2)) then
             call write_qmc_var(iunit, dmqmc_estimates%numerators(full_r2_ind))
+            if (complx_est_set) &
+                call write_qmc_var(iunit, dmqmc_estimates%numerators(full_r2_imag_ind))
+        end if
 
         ! Energy.
         if (doing_dmqmc_calc(dmqmc_energy)) then
