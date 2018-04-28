@@ -106,8 +106,8 @@ contains
         end if
 
         if (parent .and. verbose) then
-            write (iunit,'(1X,a53,f7.2)') 'Memory allocated per core for main walker list (MB): ', &
-                                          &size_main_walker*real(max_nstates_elements,p)/10**6
+            write (iunit,'(1X,a53,f9.2)') 'Memory allocated per core for main walker list (MB): ', &
+                                      size_main_walker*real(max_nstates_elements,p)/10**6
             write (iunit,'(1X,a48,'//int_fmt(max_nstates_elements,1)//')') &
                   'Number of elements per core in main walker list:', max_nstates_elements
         end if
@@ -118,10 +118,11 @@ contains
         allocate(pl%tot_nparticles(pl%nspaces), stat=ierr)
         call check_allocate('pl%tot_nparticles', pl%nspaces, ierr)
 
-        allocate(pl%states(tensor_label_len, max_nstates_elements), stat=ierr)
+        ! The source forces a non-lazy allocation which will give an error if there isn't enough RAM
+        allocate(pl%states(tensor_label_len,max_nstates_elements), stat=ierr, source=0_int_p)
         call check_allocate('pl%states', tensor_label_len*max_nstates_elements, ierr)
 
-        allocate(pl%pops(pl%nspaces, max_nstates_elements), stat=ierr)
+        allocate(pl%pops(pl%nspaces,max_nstates_elements), stat=ierr, source=0_int_p)
         call check_allocate('pl%pops', pl%nspaces*max_nstates_elements, ierr)
 
         allocate(pl%dat(pl%ndata+pl%info_size, max_nstates_elements), stat=ierr)
