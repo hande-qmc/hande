@@ -574,9 +574,8 @@ contains
         !            spin-orbitals in the Slater determinant.
         !        unocc_list_beta: integer list of unoccupied beta
         !            spin-orbitals in the Slater determinant.
-        !        i_d_weights_occ: weights to select i in a double excitation
+        !        i_d_occ: weights to select i in a double excitation
         !            during excit gen call.
-        !        i_d_weights_occ_tot: sum of i_d_weights_occ
 
         use system, only: sys_t
         use excit_gens, only: excit_gen_data_t
@@ -606,9 +605,8 @@ contains
         !    d: det_info_t variable.  The following components are set:
         !        occ_list: integer list of occupied spin-orbitals in the
         !            Slater determinant.
-        !        i_d_weights_occ: weights to select i in a double excitation
+        !        i_d_occ: weights to select i in a double excitation
         !            during excit gen call.
-        !        i_d_weights_occ_tot: sum of i_d_weights_occ
 
         use system, only: sys_t
         use excit_gens, only: excit_gen_data_t
@@ -641,9 +639,8 @@ contains
         !        symunocc(2, sym0_tot:symmax_tot): number of unoccupied orbitals of each
         !            spin/symmetry.  The same indexing scheme is used for
         !            nbasis_sym_spin.
-        !        i_d_weights_occ: weights to select i in a double excitation
+        !        i_d_occ: weights to select i in a double excitation
         !            during excit gen call.
-        !        i_d_weights_occ_tot: sum of i_d_weights_occ
 
         use system, only: sys_t
         use excit_gens, only: excit_gen_data_t
@@ -673,9 +670,8 @@ contains
         !    d: det_info_t variable.  The following components are set:
         !        occ_list: integer list of occupied spin-orbitals in the
         !            Slater determinant.
-        !        i_d_weights_occ: weights to select i in a double excitation
+        !        i_d_occ: weights to select i in a double excitation
         !            during excit gen call.
-        !        i_d_weights_occ_tot: sum of i_d_weights_occ
 
         use system, only: sys_t
         use excit_gens, only: excit_gen_data_t

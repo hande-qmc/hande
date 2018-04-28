@@ -395,7 +395,7 @@ contains
                         
                         ! Calculate all contributions to pgen (need to consider different orders of having selected i and j
                         ! and different combinations of a and b. Sub-pgens are pgen_ija, pgen_ijb, pgen_jia, pgen_jib.
-                        pgen_ija = ((cdet%i_d_weights_occ(i_ind)/cdet%i_d_weights_occ_tot) * & 
+                        pgen_ija = ((cdet%i_d_occ%weights(i_ind)/cdet%i_d_occ%weights_tot) * & 
                                    (ij_weights_occ(j_ind)/ij_weights_occ_tot)) * &
                             (hb%hb_ija%weights(a,j,i)/hb%hb_ija%weights_tot(j,i)) * (1.0_p - psingle) * &
                             (hb%hb_ijab%weights(b,a,j,i)/hb%hb_ijab%weights_tot(a,j,i))
@@ -421,7 +421,7 @@ contains
                             psingle = 0.0_p
                         end if
 
-                        pgen_ijb = ((cdet%i_d_weights_occ(i_ind)/cdet%i_d_weights_occ_tot) * &
+                        pgen_ijb = ((cdet%i_d_occ%weights(i_ind)/cdet%i_d_occ%weights_tot) * &
                              (ij_weights_occ(j_ind)/ij_weights_occ_tot)) * &
                             (hb%hb_ija%weights(b,j,i)/hb%hb_ija%weights_tot(j,i)) * (1.0_p - psingle) * &
                             (hb%hb_ijab%weights(a,b,j,i)/hb%hb_ijab%weights_tot(b,j,i))
@@ -447,7 +447,7 @@ contains
                             psingle = 0.0_p
                         end if
 
-                        pgen_jia = ((cdet%i_d_weights_occ(j_ind)/cdet%i_d_weights_occ_tot) * &
+                        pgen_jia = ((cdet%i_d_occ%weights(j_ind)/cdet%i_d_occ%weights_tot) * &
                             (ji_weights_occ(i_ind)/ji_weights_occ_tot)) * &
                             (hb%hb_ija%weights(a,i,j)/hb%hb_ija%weights_tot(i,j)) * (1.0_p - psingle) * &
                             (hb%hb_ijab%weights(b,a,i,j)/hb%hb_ijab%weights_tot(a,i,j))
@@ -469,7 +469,7 @@ contains
                             psingle = 0.0_p
                         end if
 
-                        pgen_jib = ((cdet%i_d_weights_occ(j_ind)/cdet%i_d_weights_occ_tot) * &
+                        pgen_jib = ((cdet%i_d_occ%weights(j_ind)/cdet%i_d_occ%weights_tot) * &
                             (ji_weights_occ(i_ind)/ji_weights_occ_tot)) * &
                             (hb%hb_ija%weights(b,i,j)/hb%hb_ija%weights_tot(i,j)) * (1.0_p - psingle) * &
                             (hb%hb_ijab%weights(a,b,i,j)/hb%hb_ijab%weights_tot(b,i,j))
@@ -523,7 +523,7 @@ contains
                                 (hb%hb_ija%weights(a, cdet%occ_list(pos_q), i)/hb%hb_ija%weights_tot(cdet%occ_list(pos_q), i)))
                         end if
                     end do
-                    pgen = pgen * (cdet%i_d_weights_occ(i_ind)/cdet%i_d_weights_occ_tot)
+                    pgen = pgen * (cdet%i_d_occ%weights(i_ind)/cdet%i_d_occ%weights_tot)
                 end if
             else
                 ! We have not found a valid excitation.
@@ -632,8 +632,8 @@ contains
                     allowed_excitation = .false.
                 end if
                 
-                pgen = ((cdet%i_d_weights_occ(i_ind)/cdet%i_d_weights_occ_tot) * (ij_weights_occ(j_ind)/ij_weights_occ_tot)) + &
-                        ((cdet%i_d_weights_occ(j_ind)/cdet%i_d_weights_occ_tot) * (ji_weights_occ(i_ind)/ji_weights_occ_tot))
+                pgen = ((cdet%i_d_occ%weights(i_ind)/cdet%i_d_occ%weights_tot) * (ij_weights_occ(j_ind)/ij_weights_occ_tot)) + &
+                        ((cdet%i_d_occ%weights(j_ind)/cdet%i_d_occ%weights_tot) * (ji_weights_occ(i_ind)/ji_weights_occ_tot))
 
                 ! [todo] - this is technically not necessary at this stage, the weights are symmetric in i and j (and in fact
                 ! [todo] - when precalculating the weights, we sort i and j such that i < j).
@@ -753,7 +753,7 @@ contains
         allowed_excitation = .true.
         connection%nexcit = 1
         
-        if (cdet%i_s_weights_occ_tot < depsilon) then
+        if (cdet%i_s_occ%weights_tot < depsilon) then
             ! no allowed single excitations.
             allowed_excitation = .false.
             hmatel%c = cmplx(0.0_p, 0.0_p, p)
@@ -761,19 +761,19 @@ contains
             pgen = 1.0_p ! Avoid any dangerous division by pgen by returning a sane (but cheap) value.
         else
             ! Select i.
-            i_ind = select_weighted_value(rng, sys%nel, cdet%i_s_weights_occ, cdet%i_s_weights_occ_tot)
+            i_ind = select_weighted_value(rng, sys%nel, cdet%i_s_occ%weights, cdet%i_s_occ%weights_tot)
             i = cdet%occ_list(i_ind)
 
             ! Select a.
-            a_ind = select_weighted_value(rng, sys%nvirt, cdet%ia_s_weights_occ(:, i_ind), cdet%i_s_weights_occ(i_ind))
+            a_ind = select_weighted_value(rng, sys%nvirt, cdet%ia_s_weights_occ(:, i_ind), cdet%i_s_occ%weights(i_ind))
             a = cdet%unocc_list(a_ind)
 
             connection%from_orb(1) = i
             connection%to_orb(1) = a
 
             ! Calculate pgen and hmatel.
-            pgen = pattempt_single * (cdet%i_s_weights_occ(i_ind)/cdet%i_s_weights_occ_tot) * &
-                                    (cdet%ia_s_weights_occ(a_ind, i_ind)/cdet%i_s_weights_occ(i_ind))
+            pgen = pattempt_single * (cdet%i_s_occ%weights(i_ind)/cdet%i_s_occ%weights_tot) * &
+                                    (cdet%ia_s_weights_occ(a_ind, i_ind)/cdet%i_s_occ%weights(i_ind))
 
             ! Parity of permutation required to line up determinants.
             call find_excitation_permutation1(sys%basis%excit_mask, cdet%f, connection)

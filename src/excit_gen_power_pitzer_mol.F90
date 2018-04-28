@@ -1330,8 +1330,8 @@ contains
                 !        \phi_i_cdet*\phi_j_cdet. (We assume that ij is going to be in the bra of the excitation.)
                 ij_sym = sys%read_in%sym_conj_ptr(sys%read_in, cross_product_basis_read_in(sys, i, j))
                 
-                pgen_ij = ((cdet%i_d_weights_occ(i_ind)/cdet%i_d_weights_occ_tot) * (ij_weights_occ(j_ind)/ij_weights_occ_tot)) + &
-                    ((cdet%i_d_weights_occ(j_ind)/cdet%i_d_weights_occ_tot) * (ji_weights_occ(i_ind)/ji_weights_occ_tot))
+                pgen_ij = ((cdet%i_d_occ%weights(i_ind)/cdet%i_d_occ%weights_tot) * (ij_weights_occ(j_ind)/ij_weights_occ_tot)) + &
+                    ((cdet%i_d_occ%weights(j_ind)/cdet%i_d_occ%weights_tot) * (ji_weights_occ(i_ind)/ji_weights_occ_tot))
 
                 ! Sort i and j such that j>i.
                 if (j < i) then

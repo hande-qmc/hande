@@ -38,7 +38,7 @@ contains
         
         integer :: pos_occ, i_ind, j_ind, i, j
 
-        i_ind = select_weighted_value(rng, nel, cdet%i_d_weights_occ, cdet%i_d_weights_occ_tot)
+        i_ind = select_weighted_value(rng, nel, cdet%i_d_occ%weights, cdet%i_d_occ%weights_tot)
         i = cdet%occ_list(i_ind)
 
         ij_weights_occ_tot = 0.0_p
@@ -158,10 +158,10 @@ contains
 
         integer :: pos_occ
 
-        d%i_d_weights_occ_tot = 0.0_p
+        d%i_d_occ%weights_tot = 0.0_p
         do pos_occ = 1, nel
-            d%i_d_weights_occ(pos_occ) = i_weights_precalc(d%occ_list(pos_occ))
-            d%i_d_weights_occ_tot = d%i_d_weights_occ_tot + d%i_d_weights_occ(pos_occ)
+            d%i_d_occ%weights(pos_occ) = i_weights_precalc(d%occ_list(pos_occ))
+            d%i_d_occ%weights_tot = d%i_d_occ%weights_tot + d%i_d_occ%weights(pos_occ)
         end do
 
     end subroutine find_i_d_weights
@@ -192,9 +192,9 @@ contains
         type(hmatel_t) :: hmatel
         integer :: i_ind, a_ind
         
-        d%i_s_weights_occ_tot = 0.0_p
+        d%i_s_occ%weights_tot = 0.0_p
         do i_ind = 1, sys%nel
-            d%i_s_weights_occ(i_ind) = 0.0_p
+            d%i_s_occ%weights(i_ind) = 0.0_p
             do a_ind = 1, sys%nvirt
                 ! [todo] - this reduces the computational time (by calculation ia_weights here)
                 ! but more memory costs as after we have selected i, we don't need all elements in ia_weights. Need to balance
@@ -210,9 +210,9 @@ contains
                     hmatel%c = cmplx(0.0_p, 0.0_p, p)
                 end if
                 d%ia_s_weights_occ(a_ind, i_ind) = abs_hmatel_ptr(hmatel)
-                d%i_s_weights_occ(i_ind) = d%i_s_weights_occ(i_ind) + d%ia_s_weights_occ(a_ind, i_ind)
+                d%i_s_occ%weights(i_ind) = d%i_s_occ%weights(i_ind) + d%ia_s_weights_occ(a_ind, i_ind)
             end do
-            d%i_s_weights_occ_tot = d%i_s_weights_occ_tot + d%i_s_weights_occ(i_ind)
+            d%i_s_occ%weights_tot = d%i_s_occ%weights_tot + d%i_s_occ%weights(i_ind)
         end do
 
     end subroutine find_ia_single_weights
