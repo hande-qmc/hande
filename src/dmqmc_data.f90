@@ -9,15 +9,13 @@ implicit none
 ! The following indicies are used to access components of DMQMC numerators.
 enum, bind(c)
     enumerator :: energy_ind = 1
-    enumerator :: energy_imag_ind
     enumerator :: energy_squared_ind
     enumerator :: correlation_fn_ind
     enumerator :: staggered_mag_ind
     enumerator :: full_r2_ind
-    enumerator :: full_r2_imag_ind
     enumerator :: kinetic_ind
-    enumerator :: potential_ind
     enumerator :: H0_ind
+    enumerator :: potential_ind
     enumerator :: HI_ind
     enumerator :: terminator ! unused except in num_dmqmc_operators
    ! NOTE: if you add a new estimator then you must insert it before terminator.
@@ -440,7 +438,7 @@ contains
 
     subroutine operators_in_t_json(js, dmqmc, terminal)
 
-        ! Serialise operators in json format.
+        ! serialise operators in json format.
         ! options.
 
         ! in/out:

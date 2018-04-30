@@ -494,7 +494,7 @@ type particle_t
     ! Current number of walkers stored in the main list (processor dependent).
     ! This is updated during annihilation and merging of the spawned walkers into
     ! the main list.
-    integer :: nstates
+    integer :: nstates 
     ! Total number of particles on all walkers/determinants (processor dependent)
     ! Updated during death and annihilation and merging.
     ! The first element is the number of normal (Hamiltonian) particles.
@@ -503,18 +503,12 @@ type particle_t
     ! Total number of particles across *all* processors, i.e. \sum_{proc} nparticles_{proc}
     real(dp), allocatable :: tot_nparticles(:) ! (sampling_size)
     ! Total number of particles on all determinants for each processor
-    real(dp), allocatable :: nparticles_proc(:, :) ! (sampling_size,nprocs)
+    real(dp), allocatable :: nparticles_proc(:,:) ! (sampling_size,nprocs)
     ! Walker information: main list.
     ! sampling_size is one for each quantity sampled (i.e. 1 for standard
     ! FCIQMC/initiator-FCIQMC, 2 for FCIQMC+Hellmann--Feynman sampling or
-    ! complex FCIQMC/CCMC/DMQMC).
+    ! complex FCIQMC).
     integer :: nspaces = 1
-    ! Size of psip_list%dat's 1st dimension. This usually equals to
-    ! nspaces (sampling_size) except for complex systems where imaginary
-    ! components require no diagonal Hamiltonian storage or DMQMC-
-    ! operator-sampling where additional space is required to store 
-    ! operator diagonals.
-    integer :: ndata = 1
     ! number of additional elements stored for each determinant in dat for
     ! (e.g.) importance sampling.
     integer :: info_size = 0
@@ -525,7 +519,7 @@ type particle_t
     ! with bit shifts and care over the sign...
     integer(int_p) :: pop_real_factor
     ! a) determinants
-    integer(i0), allocatable :: states(:, :) ! (string_len, walker_length)
+    integer(i0), allocatable :: states(:,:) ! (string_len, walker_length)
     ! [todo] - nicer referencing for elements of dat and ! pops
     ! b) walker population
     ! NOTE:
@@ -538,26 +532,21 @@ type particle_t
     !   option, real_factor will be equal to 1, allowing only integer
     !   populations. In general, when one sees that a integer is of kind int_p, it
     !   should be understood that it stores a population in its encoded form.
-    integer(int_p), allocatable :: pops(:, :) ! (nspaces, walker_length)
+    integer(int_p), allocatable :: pops(:,:) ! (nspaces,walker_length)
     ! c) Walker information.  This contains:
     ! * Diagonal matrix elements, K_ii.  Storing them avoids recalculation.
     !   K_ii = < D_i | H | D_i > - E_0, where E_0 = <D_0 | H | D_0> and |D_0> is the
-    !   reference determinant.
-    !   For DMQMC the number of storage elements is nreplicas (if complex,
-    !   2*nreplicas, see below) as each replica evolves independently.
-    !   In FCIQMC, CCMC and DMQMC, if the calculation is complex, although the
-    !   diagonal elements of Hermitian operators are all real, we still double
-    !   the number of storage elements for consistency with pops.
-    ! * If we're doing Hellmann--Feynmann sampling, matrix elements for the
-    !   1-body operator's diagonal is in 2:sampling_size elements.
-    ! * Further data in ndata+1:ndata+info_size. For example, when
+    !   reference determinant.  Always the first element.
+    ! * Diagonal matrix elements for Hellmann--Feynmann sampling in 2:sampling_size
+    !   elements.
+    ! * Further data in sampling_size+1:sampling_size:info_size.  For example, when
     !   calculating the projected energy with various trial wavefunctions, it is
     !   useful to store quantites which are expensive to calculate and which are
     !   instead of recalculating them. For the Neel singlet state, the first component
     !   gives the total number of spins up on the first sublattice. The second
     !   component gives the number of 0-1 bonds where the 1 is on the first
     !   sublattice.
-    real(p), allocatable :: dat(:, :) ! (ndata+info_size, walker_length)
+    real(p), allocatable :: dat(:,:) ! (sampling_size+info_size,walker_length)
     ! This variable will become equal to true if we ever run out of memory in
     ! particle lists, in which case the program will exit at the next
     ! opportunity.
@@ -804,16 +793,14 @@ type qmc_state_t
     ! Need additional parameter to identify the cause of calculation termination;
     ! we may want to print a different message depending upon the cause.
     logical :: reblock_done = .false.
-
     type(estimators_t), allocatable :: estimators(:)
     ! Internal flag to indicate status of shift damping optimisation.
     integer :: shift_damping_status = sd_no_optimisation
 end type qmc_state_t
 
-! Copies of various settings that are required during annihilation. This avoids having to pass through lots of different
+! Copies of various settings that are required during annihilation.  This avoids having to pass through lots of different
 ! structs/flags for various settings.  Set in init_qmc.
-! NOTE: the defaults here correspond to the defaults for the corresponding components of qmc_in_t, fciqmc_in_t and
-!       dmqmc_in_t.
+! NOTE: the defaults here correspond to the defaults for the corresponding components of qmc_in_t, fciqmc_in_t and dmqmc_in_t.
 type annihilation_flags_t
     ! Using the initiator approximation?
     logical :: initiator_approx = .false.

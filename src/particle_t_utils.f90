@@ -8,7 +8,7 @@ implicit none
 contains
 
     subroutine init_particle_t(max_nstates, nwalker_int_extra, tensor_label_len, real_amplitudes, real32, pl, &
-                              &verbose_output, io_unit)
+                                verbose_output, io_unit)
 
         ! In:
         !    max_nstates: maximum number of states that can be held in pl.  Sets the
@@ -27,7 +27,7 @@ contains
         !    pl: particle_t object.  On input pl%nspaces and pl%info_size must be set.  On
         !       output all allocatable components are appropriately allocated.
 
-        use const, only: int_p, i0, i0_length, int_p_length, p, sp
+        use const, only: int_p, i0_length, int_p_length, p, sp
         use errors, only: warning
         use parallel, only: nprocs, parent
         use utils, only: int_fmt
@@ -41,10 +41,9 @@ contains
         type(particle_t), intent(inout) :: pl
         logical, intent(in), optional :: verbose_output
         integer, intent(in), optional :: io_unit
-
         integer :: ierr, nwalker_int_p, nwalker_real, size_main_walker, pop_bit_shift, max_nstates_elements
-        integer :: iunit
         logical :: verbose
+        integer :: iunit
 
         iunit = 6
         if (present(io_unit)) iunit = io_unit
@@ -69,10 +68,10 @@ contains
                 pop_bit_shift = 11
                 if (parent) then
                     call warning('init_particle_t', &
-                                &'You are using 32-bit walker populations with real amplitudes.'//new_line('')//' The&
-                                & maximum population size on a given determinant is 2^20=1048576. Errors will occur if&
-                                & this is exceeded.'//new_line('')//' Compile HANDE with the CPPFLAG -DPOP_SIZE=64 to&
-                                & use 64-bit populations.', 2)
+                        'You are using 32-bit walker populations with real amplitudes.'//new_line('')// &
+                        ' The maximum population size on a given determinant is 2^20=1048576.&
+                        & Errors will occur if this is exceeded.'//new_line('')//&
+                        ' Compile HANDE with the CPPFLAG -DPOP_SIZE=64 to use 64-bit populations.', 2)
                 end if
             end if
         else
@@ -86,11 +85,8 @@ contains
         ! walker list is given by string_len*i0_length+nwalker_int_extra*32+
         ! nwalker_int_p*int_p_length+nwalker_real*32 (*64 if double precision).
         ! The number of bytes is simply 1/8 this.
-        ! [todo] For dmqmc's pl%dat, imaginary parts are compressd so that
-        !        ndata = nspaces/2. Is it OK to just change pl%nspaces to
-        !        pl%ndata for nwalker_real?
         nwalker_int_p = pl%nspaces ! for populations
-        nwalker_real = pl%ndata + pl%info_size ! for <D_i|O|D_i> and info storage.
+        nwalker_real = pl%nspaces + pl%info_size ! for <D_i|O|D_i> and info storage.
         if (p == sp) then
             ! SINGLE_PRECISION
             size_main_walker = tensor_label_len*i0_length/8 + nwalker_int_p*int_p_length/8 + &
@@ -101,7 +97,8 @@ contains
         end if
         max_nstates_elements = max_nstates
         if (max_nstates_elements < 0) then
-            ! Given in MB.  Convert.  Note: important to avoid overflow in the conversion!
+            ! Given in MB.  Convert.  Note: important to avoid overflow in the
+            ! conversion!
             max_nstates_elements = int((-real(max_nstates_elements,p)*10**6)/size_main_walker)
         end if
 
@@ -109,7 +106,7 @@ contains
             write (iunit,'(1X,a53,f9.2)') 'Memory allocated per core for main walker list (MB): ', &
                                       size_main_walker*real(max_nstates_elements,p)/10**6
             write (iunit,'(1X,a48,'//int_fmt(max_nstates_elements,1)//')') &
-                  'Number of elements per core in main walker list:', max_nstates_elements
+                    'Number of elements per core in main walker list:', max_nstates_elements
         end if
 
         allocate(pl%nparticles(pl%nspaces), stat=ierr)
@@ -119,14 +116,14 @@ contains
         call check_allocate('pl%tot_nparticles', pl%nspaces, ierr)
 
         ! The source forces a non-lazy allocation which will give an error if there isn't enough RAM
-        allocate(pl%states(tensor_label_len,max_nstates_elements), stat=ierr, source=0_i0)
+        allocate(pl%states(tensor_label_len,max_nstates_elements), stat=ierr, source=0_int_p)
         call check_allocate('pl%states', tensor_label_len*max_nstates_elements, ierr)
 
         allocate(pl%pops(pl%nspaces,max_nstates_elements), stat=ierr, source=0_int_p)
         call check_allocate('pl%pops', pl%nspaces*max_nstates_elements, ierr)
 
-        allocate(pl%dat(pl%ndata+pl%info_size, max_nstates_elements), stat=ierr)
-        call check_allocate('pl%dat', (pl%ndata+pl%info_size)*max_nstates_elements, ierr)
+        allocate(pl%dat(pl%nspaces+pl%info_size,max_nstates_elements), stat=ierr)
+        call check_allocate('pl%dat', (pl%nspaces+pl%info_size)*max_nstates_elements, ierr)
 
         allocate(pl%nparticles_proc(pl%nspaces, nprocs), stat=ierr)
         call check_allocate('pl%nparticles_proc', nprocs*pl%nspaces, ierr)

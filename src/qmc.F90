@@ -8,8 +8,8 @@ contains
 
 ! --- Initialisation routines ---
 
-    subroutine init_qmc(sys, qmc_in, restart_in, load_bal_in, reference_in, io_unit, annihilation_flags, qmc_state, &
-                        uuid_restart, restart_version_restart, dmqmc_in, fciqmc_in, qmc_state_restart, regenerate_info)
+    subroutine init_qmc(sys, qmc_in, restart_in, load_bal_in, reference_in, io_unit, annihilation_flags, qmc_state, uuid_restart, &
+                        restart_version_restart, dmqmc_in, fciqmc_in, qmc_state_restart, regenerate_info)
 
         ! Initialisation for fciqmc calculations.
         ! Setup the spin polarisation for the system, initialise the RNG,
@@ -52,8 +52,7 @@ contains
         use system, only: sys_t, read_in
         use restart_hdf5, only: read_restart_hdf5, restart_info_t, init_restart_info_t, get_reference_hdf5
 
-        use qmc_data, only: qmc_in_t, fciqmc_in_t, restart_in_t, load_bal_in_t, annihilation_flags_t, qmc_state_t, &
-                            neel_singlet
+        use qmc_data, only: qmc_in_t, fciqmc_in_t, restart_in_t, load_bal_in_t, annihilation_flags_t, qmc_state_t, neel_singlet
         use reference_determinant, only: reference_t
         use dmqmc_data, only: dmqmc_in_t
         use excit_gens, only: dealloc_excit_gen_data_t
@@ -81,12 +80,12 @@ contains
         logical :: regenerate_info_loc, qmc_state_restart_loc
 
         regenerate_info_loc = .false.
-        qmc_state_restart_loc = .false.
         restart_version_restart = 0
+        qmc_state_restart_loc = .false.
 
-        if (present(qmc_state_restart)) qmc_state_restart_loc = .true.
         if (present(fciqmc_in)) fciqmc_in_loc = fciqmc_in
         if (present(dmqmc_in)) dmqmc_in_loc = dmqmc_in
+        if (present(qmc_state_restart)) qmc_state_restart_loc = .true.
 
         if (restart_in%read_restart) call init_restart_info_t(ri, read_id=restart_in%read_id)
 
@@ -104,28 +103,27 @@ contains
         ! --- Allocate psip list ---
         if (doing_calc(hfs_fciqmc_calc)) then
             qmc_state%psip_list%nspaces = qmc_state%psip_list%nspaces + 1
-        else if (dmqmc_in_loc%replica_tricks) then
-            qmc_state%psip_list%nspaces = qmc_state%psip_list%nspaces + 1
+        else if (present(dmqmc_in)) then
+            if (dmqmc_in%replica_tricks) qmc_state%psip_list%nspaces = qmc_state%psip_list%nspaces + 1
         else if (fciqmc_in_loc%replica_tricks) then
             qmc_state%psip_list%nspaces = qmc_state%psip_list%nspaces * 2
         end if
-        ! Figure out qmc_state%psip_list%ndata BEFORE doubling nspaces
-        ! for complex population storage (as Kii is always real).
-        qmc_state%psip_list%ndata = qmc_state%psip_list%nspaces
-
-        if (sys%read_in%comp) qmc_state%psip_list%nspaces = qmc_state%psip_list%nspaces * 2
+        if (sys%read_in%comp) then
+            qmc_state%psip_list%nspaces = qmc_state%psip_list%nspaces * 2
+        end if
         ! Each determinant occupies tot_string_len kind=i0 integers,
         ! qmc_state%psip_list%nspaces kind=int_p integers, qmc_state%psip_list%nspaces kind=p reals and one
         ! integer. If the Neel singlet state is used as the reference state for
-        ! the projected estimator, then a further 2 reals are used per determinant.
+        ! the projected estimator, then a further 2 reals are used per
+        ! determinant.
         if (fciqmc_in_loc%trial_function == neel_singlet) qmc_state%psip_list%info_size = 2
 
         ! Allocate main particle lists.  Include the memory used by semi_stoch_t%determ in the
         ! calculation of memory occupied by the main particle lists.
-        if (.not. (qmc_state_restart_loc)) &
-            call init_particle_t(qmc_in%walker_length, 1, sys%basis%tensor_label_len, &
-                                &qmc_in%real_amplitudes, qmc_in%real_amplitude_force_32, qmc_state%psip_list, &
-                                &io_unit=io_unit)
+        if (.not. (qmc_state_restart_loc)) then
+            call init_particle_t(qmc_in%walker_length, 1, sys%basis%tensor_label_len, qmc_in%real_amplitudes, &
+                                 qmc_in%real_amplitude_force_32, qmc_state%psip_list, io_unit=io_unit)
+        end if
 
         call init_parallel_t(qmc_state%psip_list%nspaces, nparticles_start_ind-1, fciqmc_in_loc%non_blocking_comm, &
                              qmc_state%par_info, load_bal_in%nslots)
@@ -149,9 +147,8 @@ contains
 
             ! Initial walker distributions
             if (restart_in%read_restart) then
-                call read_restart_hdf5(ri, &
-                                       sys%basis%nbasis, fciqmc_in_loc%non_blocking_comm, sys%basis%info_string_len, &
-                                       qmc_state, uuid_restart, regenerate_info_loc, restart_version_restart)
+                call read_restart_hdf5(ri, sys%basis%nbasis, fciqmc_in_loc%non_blocking_comm, sys%basis%info_string_len, &
+                                        qmc_state, uuid_restart, regenerate_info_loc, restart_version_restart)
             else if (doing_calc(dmqmc_calc)) then
                 ! Initial distribution handled later
                 qmc_state%psip_list%nstates = 0
@@ -164,8 +161,8 @@ contains
 
         call init_annihilation_flags(qmc_in, fciqmc_in_loc, dmqmc_in_loc, annihilation_flags)
         call init_trial(sys, fciqmc_in_loc, qmc_state%trial)
-        call init_estimators(sys, qmc_in, restart_in%read_restart, qmc_state_restart_loc, &
-                             fciqmc_in_loc%non_blocking_comm, qmc_state)
+        call init_estimators(sys, qmc_in, restart_in%read_restart, qmc_state_restart_loc, fciqmc_in_loc%non_blocking_comm, &
+                        qmc_state)
         if (present(qmc_state_restart)) call dealloc_excit_gen_data_t(qmc_state_restart%excit_gen_data)
         call init_excit_gen(sys, qmc_in, qmc_state%ref, qmc_state%excit_gen_data)
 
@@ -224,12 +221,9 @@ contains
         use hamiltonian_hub_k, only: slater_condon0_hub_k
         use hamiltonian_hub_real, only: slater_condon0_hub_real
         use hamiltonian_heisenberg, only: diagonal_element_heisenberg, diagonal_element_heisenberg_staggered
-        use hamiltonian_molecular, only: slater_condon0_mol, double_counting_correction_mol, &
-                                         hf_hamiltonian_energy_mol, &
-                                         slater_condon1_mol_excit, slater_condon2_mol_excit, &
-                                         get_one_e_int_mol, get_two_e_int_mol
-        use hamiltonian_periodic_complex, only: slater_condon0_periodic_complex, &
-                                                slater_condon1_periodic_excit_complex, &
+        use hamiltonian_molecular, only: slater_condon0_mol, double_counting_correction_mol, hf_hamiltonian_energy_mol, &
+                                         slater_condon1_mol_excit, slater_condon2_mol_excit, get_one_e_int_mol, get_two_e_int_mol
+        use hamiltonian_periodic_complex, only: slater_condon0_periodic_complex, slater_condon1_periodic_excit_complex, &
                                                 slater_condon2_periodic_excit_complex
         use hamiltonian_ringium, only: slater_condon0_ringium
         use hamiltonian_ueg, only: slater_condon0_ueg, kinetic_energy_ueg, exchange_energy_ueg, potential_energy_ueg
@@ -242,7 +236,7 @@ contains
         use proc_pointers
 
         ! Utilities
-        use errors, only: stop_all, warning
+        use errors, only: stop_all
 
         type(sys_t), intent(in) :: sys
         type(qmc_in_t), intent(in) :: qmc_in
@@ -372,7 +366,6 @@ contains
                 call stop_all('init_proc_pointers', 'Selected excitation generator not implemented.')
             end select
 
-            op0_ptr => one_body0_mol
             get_one_e_int_ptr => get_one_e_int_mol
             get_two_e_int_ptr => get_two_e_int_mol
 
@@ -441,8 +434,7 @@ contains
         ! 2: density-matrix
         if (doing_calc(dmqmc_calc)) then
 
-            if (.not.present(dmqmc_in)) &
-                call stop_all('init_proc_pointers', 'DMQMC options not present.')
+            if (.not.present(dmqmc_in)) call stop_all('init_proc_pointers', 'DMQMC options not present.')
 
             ! Spawned particle creation.
             if (dmqmc_in%half_density_matrix) then
@@ -496,11 +488,11 @@ contains
             select case(sys%system)
             case(heisenberg)
                 if (doing_dmqmc_calc(dmqmc_energy_squared)) &
-                                     update_dmqmc_energy_squared_ptr => dmqmc_energy_squared_heisenberg
+                                         update_dmqmc_energy_squared_ptr => dmqmc_energy_squared_heisenberg
                 if (doing_dmqmc_calc(dmqmc_correlation)) update_dmqmc_correlation_ptr => &
                                      dmqmc_correlation_function_heisenberg
                 if (doing_dmqmc_calc(dmqmc_staggered_magnetisation)) &
-                                     update_dmqmc_stag_mag_ptr => dmqmc_stag_mag_heisenberg
+                                         update_dmqmc_stag_mag_ptr => dmqmc_stag_mag_heisenberg
             case(ueg)
                 if (dmqmc_in%ipdmqmc) then
                     if (dmqmc_in%initial_matrix == free_electron_dm) then
@@ -717,12 +709,11 @@ contains
             ! Total number of particles on processor.
             ! Probably should be handled more simply by setting it to be either 0 or
             ! D0_population or obtaining it from the restart file, as appropriate.
-            forall (i=1:pl%nspaces) pl%nparticles(i) = sum(abs(real(pl%pops(i,:pl%nstates),p)/pl%pop_real_factor))
+            forall (i=1:pl%nspaces) pl%nparticles(i) = sum(abs( real(pl%pops(i,:pl%nstates),p)/pl%pop_real_factor))
             ! Should we already be in varyshift mode (e.g. restarting a calculation)?
 #ifdef PARALLEL
             do i=1, pl%nspaces
-                call mpi_allgather(pl%nparticles(i), 1, MPI_REAL8, pl%nparticles_proc(i,:), &
-                                                     1, MPI_REAL8, MPI_COMM_WORLD, ierr)
+                call mpi_allgather(pl%nparticles(i), 1, MPI_REAL8, pl%nparticles_proc(i,:), 1, MPI_REAL8, MPI_COMM_WORLD, ierr)
             end do
             ! When restarting a non-blocking calculation this sum will not equal
             ! tot_nparticles as some walkers have been communicated around the report
@@ -746,8 +737,8 @@ contains
         if (doing_calc(hfs_fciqmc_calc)) then
 #ifdef PARALLEL
             tmp_dp = calculate_hf_signed_pop(qmc_state%psip_list)
-            call mpi_allreduce(tmp_dp, qmc_state%estimators%hf_signed_pop, qmc_state%psip_list%nspaces, mpi_real8, &
-                              &MPI_SUM, MPI_COMM_WORLD, ierr)
+            call mpi_allreduce(tmp_dp, qmc_state%estimators%hf_signed_pop, qmc_state%psip_list%nspaces, mpi_real8, MPI_SUM, &
+                               MPI_COMM_WORLD, ierr)
 #else
             qmc_state%estimators%hf_signed_pop = calculate_hf_signed_pop(qmc_state%psip_list)
 #endif
@@ -790,8 +781,7 @@ contains
         ! determinants have a roughly similar ratio of single:double
         ! excitations.
         if (qmc_in%pattempt_single < 0 .or. qmc_in%pattempt_double < 0) then
-            call find_single_double_prob(sys, ref%occ_list0, &
-                                        &excit_gen_data%pattempt_single, excit_gen_data%pattempt_double)
+            call find_single_double_prob(sys, ref%occ_list0, excit_gen_data%pattempt_single, excit_gen_data%pattempt_double)
         else
             ! renormalise just in case input wasn't
             excit_gen_data%pattempt_single = qmc_in%pattempt_single/(qmc_in%pattempt_single+qmc_in%pattempt_double)
@@ -818,8 +808,8 @@ contains
         use proc_pointers, only: sc0_ptr, op0_ptr
         use calc, only: doing_calc, hfs_fciqmc_calc
         use reference_determinant, only: reference_t, set_reference_det
-        use determinants, only: encode_det, sum_sp_eigenvalues_occ_list
         use checking, only: check_allocate
+        use determinants, only: encode_det, sum_sp_eigenvalues_occ_list
 
         type(sys_t), intent(in) :: sys
         type(reference_t), intent(in) :: reference_in
@@ -859,7 +849,6 @@ contains
 
         ! Energy of reference determinant.
         reference%H00 = sc0_ptr(sys, reference%f0)
-        ! Operators of HFS sampling.
         if (doing_calc(hfs_fciqmc_calc)) reference%O00 = op0_ptr(sys, reference%f0)
         reference%fock_sum = sum_sp_eigenvalues_occ_list(sys, reference%occ_list0)
 
@@ -879,10 +868,11 @@ contains
         use reference_determinant, only: reference_t
         use system, only: sys_t
         use restart_hdf5, only: restart_info_t, get_reference_hdf5
-        use determinants, only: decode_det, sum_sp_eigenvalues_occ_list
         use calc, only: doing_calc, hfs_fciqmc_calc
         use proc_pointers, only: sc0_ptr, op0_ptr
         use checking, only: check_allocate
+        use determinants, only: decode_det
+        use determinants, only: sum_sp_eigenvalues_occ_list
 
         type(sys_t), intent(in) :: sys
         type(reference_t), intent(in) :: reference_in
@@ -904,7 +894,6 @@ contains
         ! Need to re-calculate the reference determinant data
         call decode_det(sys%basis, reference%f0, reference%occ_list0)
         call decode_det(sys%basis, reference%hs_f0, reference%hs_occ_list0)
-
         reference%H00 = sc0_ptr(sys, reference%f0)
         if (doing_calc(hfs_fciqmc_calc)) reference%O00 = op0_ptr(sys, reference%f0)
         reference%fock_sum = sum_sp_eigenvalues_occ_list(sys, reference%occ_list0)
@@ -913,8 +902,7 @@ contains
 
     end subroutine init_reference_restart
 
-    subroutine init_spawn_store(qmc_in, nspaces, pop_real_factor, basis, non_blocking_comm, proc_map, io_unit, &
-                               &spawn_store)
+    subroutine init_spawn_store(qmc_in, nspaces, pop_real_factor, basis, non_blocking_comm, proc_map, io_unit, spawn_store)
 
         ! Allocate and initialise spawn store
 
@@ -1063,18 +1051,17 @@ contains
             pl%dat(1,pl%nstates) = reference%H00
             reference%H00 = 0.0_p
 
-            pl%dat(pl%ndata+1,pl%nstates) = sys%lattice%nsites/2
+            pl%dat(pl%nspaces+1,pl%nstates) = sys%lattice%nsites/2
             ! For a rectangular bipartite lattice, nbonds = ndim*nsites.
             ! The Neel state cannot be used for non-bipartite lattices.
-            pl%dat(pl%ndata+2,pl%nstates) = sys%lattice%ndim*sys%lattice%nsites
+            pl%dat(pl%nspaces+2,pl%nstates) = sys%lattice%ndim*sys%lattice%nsites
         end if
 
         ! Finally, we need to check if the reference determinant actually
         ! belongs on this processor.
         ! If it doesn't, set the walkers array to be empty.
         call assign_particle_processor(reference%f0, spawn%bit_str_nbits, spawn%hash_seed, spawn%hash_shift, &
-                                      &spawn%move_freq, nprocs, D0_proc, slot, &
-                                      &spawn%proc_map%map, spawn%proc_map%nslots)
+                                       spawn%move_freq, nprocs, D0_proc, slot, spawn%proc_map%map, spawn%proc_map%nslots)
         if (D0_proc /= iproc) pl%nstates = 0
 
         ! For the Heisenberg model and open shell systems, it is often useful to
@@ -1113,8 +1100,7 @@ contains
             end select
 
             call assign_particle_processor(f0_inv, spawn%bit_str_nbits, spawn%hash_seed, spawn%hash_shift, &
-                                          &spawn%move_freq, nprocs, D0_inv_proc, slot, &
-                                          &spawn%proc_map%map, spawn%proc_map%nslots)
+                                           spawn%move_freq, nprocs, D0_inv_proc, slot, spawn%proc_map%map, spawn%proc_map%nslots)
 
             ! Store if not identical to reference det.
             if (D0_inv_proc == iproc .and. any(reference%f0 /= f0_inv)) then
@@ -1138,8 +1124,8 @@ contains
                 ! If we are using the Neel state as a reference in the
                 ! Heisenberg model, then set the required data.
                 if (fciqmc_in%trial_function == neel_singlet) then
-                    pl%dat(pl%ndata+1,pl%nstates) = 0
-                    pl%dat(pl%ndata+2,pl%nstates) = 0
+                    pl%dat(pl%nspaces+1,pl%nstates) = 0
+                    pl%dat(pl%nspaces+2,pl%nstates) = 0
                 end if
             end if
         end if

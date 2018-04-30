@@ -130,7 +130,8 @@ contains
         write (iunit,'()')
 
     end subroutine write_qmc_report_header
-    subroutine write_dmqmc_report_header(ntypes, dmqmc_in, max_excit, estimates, complx_est)
+
+    subroutine write_dmqmc_report_header(ntypes, dmqmc_in, max_excit, estimates)
 
         ! Write header for DMQMC specific information.
 
@@ -141,25 +142,21 @@ contains
 
         use calc, only: doing_calc, doing_dmqmc_calc
         use dmqmc_data, only: dmqmc_in_t, dmqmc_estimates_t
-        use calc, only: dmqmc_energy, dmqmc_energy_squared, dmqmc_staggered_magnetisation, &
-                        dmqmc_correlation, dmqmc_full_r2, dmqmc_rdm_r2, dmqmc_kinetic_energy, &
-                        dmqmc_H0_energy, dmqmc_potential_energy, dmqmc_HI_energy
+        use calc, only: dmqmc_energy, dmqmc_energy_squared, dmqmc_staggered_magnetisation
+        use calc, only: dmqmc_correlation, dmqmc_full_r2, dmqmc_rdm_r2, dmqmc_kinetic_energy
+        use calc, only: dmqmc_H0_energy, dmqmc_potential_energy, dmqmc_HI_energy
         use utils, only: int_fmt
 
         integer, intent(in) :: ntypes
         type(dmqmc_in_t), intent(in) :: dmqmc_in
         integer, intent(in) :: max_excit
         type(dmqmc_estimates_t), intent(in) :: estimates
-        logical, intent(in), optional :: complx_est
 
         integer :: i, j, iunit
         character(16) :: excit_header
         character(10) :: header_iidx, header_jidx
-        logical :: complx_est_set
 
         iunit = 6
-        complx_est_set = .false.
-        if (present(complx_est)) complx_est_set = complx_est
 
         write (iunit,'(1X,"Information printed out every QMC report loop:",/)')
         write (iunit,'(1X,"Shift: the energy offset calculated at the end of the report loop.")')
@@ -172,38 +169,49 @@ contains
             write (iunit, '(1X, "Trace: The current total population on the diagonal elements of the &
                                  &density matrix.")')
         end if
-        if (doing_dmqmc_calc(dmqmc_full_r2)) &
+        if (doing_dmqmc_calc(dmqmc_full_r2)) then
             write (iunit, '(1X, "Full S2: The numerator of the estimator for the Renyi entropy of the &
                                   &full system.")')
-        if (doing_dmqmc_calc(dmqmc_energy)) &
+        end if
+        if (doing_dmqmc_calc(dmqmc_energy)) then
             write (iunit, '(1X, "\sum\rho_{ij}H_{ji}: The numerator of the estimator for the expectation &
                                  &value of the energy.")')
-        if (doing_dmqmc_calc(dmqmc_energy_squared)) &
+        end if
+        if (doing_dmqmc_calc(dmqmc_energy_squared)) then
             write (iunit, '(1X, "\sum\rho_{ij}H2{ji}: The numerator of the estimator for the expectation &
                                  &value of the energy squared.")')
-        if (doing_dmqmc_calc(dmqmc_correlation)) &
+        end if
+        if (doing_dmqmc_calc(dmqmc_correlation)) then
             write (iunit, '(1X, "\sum\rho_{ij}S_{ji}: The numerator of the estimator for the expectation &
                                  &value of the spin correlation function.")')
-        if (doing_dmqmc_calc(dmqmc_staggered_magnetisation)) &
-            write (iunit, '(1X, "\sum\rho_{ij}M2{ji}: The numerator of the estimator for the expectation&
-                          & value of the staggered magnetisation.")')
-        if (doing_dmqmc_calc(dmqmc_rdm_r2)) &
+        end if
+        if (doing_dmqmc_calc(dmqmc_staggered_magnetisation)) then
+            write (iunit, '(1X, "\sum\rho_{ij}M2{ji}: The numerator of the estimator for the expectation &
+                                 &value of the staggered magnetisation.")')
+        end if
+        if (doing_dmqmc_calc(dmqmc_rdm_r2)) then
             write (iunit, '(1x, "RDM(n) S2: The numerator of the estimator for the Renyi entropy of RDM n.")')
-        if (dmqmc_in%rdm%calc_inst_rdm) &
-            write (iunit, '(1x, "RDM(n) trace m: The current total population on the diagonal of replica m&
-                          & of RDM n.")')
-        if (dmqmc_in%calc_excit_dist) &
-            write (iunit, '(1x, "Excit. level n: The fraction of particles on excitation level n of the&
-                          & density matrix.")')
-        if (dmqmc_in%calc_mom_dist) &
-            write (iunit, '(1x, "n_k: The numerator of the estimator for the momentum distribution at momentum k")')
+        end if
+        if (dmqmc_in%rdm%calc_inst_rdm) then
+            write (iunit, '(1x, "RDM(n) trace m: The current total population on the diagonal of replica m &
+                                  &of RDM n.")')
+        end if
+        if (dmqmc_in%calc_excit_dist) then
+            write (iunit, '(1x, "Excit. level n: The fraction of particles on excitation level n of the &
+                             &density matrix.")')
+        end if
+        if (dmqmc_in%calc_mom_dist) write (iunit, '(1x, "n_k: The numerator of the estimator for the &
+                                                     &momentum distribution at momentum k")')
         if (dmqmc_in%calc_struc_fac) then
-            write (iunit, '(1x, "S_q: The numerator of the estimator for the&
-                          & spin-averaged static structure factor distribution at momentum transfer q")')
-            write (iunit, '(1x, "Suu_q: The numerator of the estimator for the like-spin&
-                          & contribution to the static structure factor distribution at momentum transfer q")')
-            write (iunit, '(1x, "Sud_q: The numerator of the estimator for the &
-                          & unlike-spin static structure factor distribution at momentum transfer q")')
+            write (6, '(1x, "S_q: The numerator of the estimator for the &
+                             &spin-averaged static structure factor distribution &
+                             &at momentum transfer q")')
+            write (6, '(1x, "Suu_q: The numerator of the estimator for the &
+                             &like-spin contribution to the static structure factor distribution &
+                             &at momentum transfer q")')
+            write (6, '(1x, "Sud_q: The numerator of the estimator for the &
+                             &unlike-spin static structure factor distribution &
+                             &at momentum transfer q")')
         end if
 
         write (iunit,'(1X,"# particles: current total population of Hamiltonian particles.")')
@@ -217,45 +225,35 @@ contains
         write (iunit,'(1X,"#",1X)', advance='no')
         call write_column_title(iunit, 'iterations', int_val=.true., justify=1)
         call write_column_title(iunit, 'Instant shift')
-        if (complx_est_set) then
-            call write_column_title(iunit, 'Re{Trace}')
-            call write_column_title(iunit, 'Im{Trace}')
-        else
-            call write_column_title(iunit, 'Trace')
-        end if
+        call write_column_title(iunit, 'Trace')
         if (doing_dmqmc_calc(dmqmc_full_r2)) then
-            if (complx_est_set) then
-                call write_column_title(iunit, 'Re{Trace 2}')
-                call write_column_title(iunit, 'Im{Trace 2}')
-                call write_column_title(iunit, 'Re{S2}')
-                call write_column_title(iunit, 'Im{S2}')
-            else
-                call write_column_title(iunit, 'Trace 2')
-                call write_column_title(iunit, 'Full S2')
-            end if
+            call write_column_title(iunit, 'Trace 2')
+            call write_column_title(iunit, 'Full S2')
         end if
         if (doing_dmqmc_calc(dmqmc_energy)) then
-            if (complx_est_set) then
-                call write_column_title(iunit, 'Re{\sum \rho H}')
-                call write_column_title(iunit, 'Im{\sum \rho H}')
-            else
-                call write_column_title(iunit, '\sum\rho_{ij}H_{ji}')
-            end if
+            call write_column_title(iunit, '\sum\rho_{ij}H_{ji}')
         end if
-        if (doing_dmqmc_calc(dmqmc_energy_squared)) &
+        if (doing_dmqmc_calc(dmqmc_energy_squared)) then
             call write_column_title(iunit, '\sum\rho_{ij}H2{ji}')
-        if (doing_dmqmc_calc(dmqmc_correlation)) &
+        end if
+        if (doing_dmqmc_calc(dmqmc_correlation)) then
             call write_column_title(iunit, '\sum\rho_{ij}S_{ji}')
-        if (doing_dmqmc_calc(dmqmc_staggered_magnetisation)) &
+        end if
+        if (doing_dmqmc_calc(dmqmc_staggered_magnetisation)) then
             call write_column_title(iunit, '\sum\rho_{ij}M2{ji}')
-        if (doing_dmqmc_calc(dmqmc_kinetic_energy)) &
+        end if
+        if (doing_dmqmc_calc(dmqmc_kinetic_energy)) then
             call write_column_title(iunit, '\sum\rho_{ij}T_{ji}')
-        if (doing_dmqmc_calc(dmqmc_H0_energy)) &
+        end if
+        if (doing_dmqmc_calc(dmqmc_H0_energy)) then
             call write_column_title(iunit, '\sum\rho_{ij}H0{ji}')
-        if (doing_dmqmc_calc(dmqmc_HI_energy)) &
+        end if
+        if (doing_dmqmc_calc(dmqmc_HI_energy)) then
             call write_column_title(iunit, '\sum\rho_{ij}HI{ji}')
-        if (doing_dmqmc_calc(dmqmc_potential_energy)) &
+        end if
+        if (doing_dmqmc_calc(dmqmc_potential_energy)) then
             call write_column_title(iunit, '\sum\rho_{ij}U_{ji}')
+        end if
         if (doing_dmqmc_calc(dmqmc_rdm_r2)) then
             do i = 1, dmqmc_in%rdm%nrdms
                 write(header_iidx, '('//int_fmt(i,0)//')') i
@@ -277,8 +275,9 @@ contains
                 call write_column_title(iunit, excit_header)
             end do
         end if
-        if (dmqmc_in%calc_mom_dist) &
+        if (dmqmc_in%calc_mom_dist) then
             call write_momentum_array_header('   n_', .true., estimates%mom_dist%kpoints)
+        end if
         if (dmqmc_in%calc_struc_fac) then
             call write_momentum_array_header('   S_', .true., estimates%struc_fac%kpoints)
             call write_momentum_array_header(' Suu_', .true., estimates%struc_fac%kpoints)
@@ -443,7 +442,7 @@ contains
     end subroutine write_qmc_report
 
     subroutine write_dmqmc_report(sys, qmc_in, qs, ireport, ntot_particles, elapsed_time, comment, &
-                                  dmqmc_in, dmqmc_estimates, complx_est)
+                                  dmqmc_in, dmqmc_estimates)
 
         ! Write the report line at the end of a report loop.
 
@@ -458,9 +457,9 @@ contains
         !    dmqmc_estimates: type containing all DMQMC estimates to be printed.
 
         use calc, only: doing_calc, doing_dmqmc_calc
-        use calc, only: dmqmc_energy, dmqmc_energy_squared, dmqmc_full_r2, dmqmc_rdm_r2, &
-                        dmqmc_correlation, dmqmc_staggered_magnetisation, dmqmc_kinetic_energy, &
-                        dmqmc_H0_energy, dmqmc_potential_energy, dmqmc_HI_energy
+        use calc, only: dmqmc_energy, dmqmc_energy_squared, dmqmc_full_r2, dmqmc_rdm_r2
+        use calc, only: dmqmc_correlation, dmqmc_staggered_magnetisation, dmqmc_kinetic_energy
+        use calc, only: dmqmc_H0_energy, dmqmc_potential_energy, dmqmc_HI_energy
         use qmc_data, only: qmc_in_t, qmc_state_t
         use dmqmc_data
         use system, only: sys_t
@@ -472,18 +471,15 @@ contains
         real(dp), intent(in) :: ntot_particles(:)
         real, intent(in) :: elapsed_time
         logical, intent(in) :: comment
-        logical, intent(in), optional :: complx_est
-        type(dmqmc_estimates_t), intent(in) :: dmqmc_estimates
         type(dmqmc_in_t), intent(in) :: dmqmc_in
+        type(dmqmc_estimates_t), intent(in) :: dmqmc_estimates
 
         integer :: mc_cycles, i, j, ntypes, endp, iunit
-        logical :: complx_est_set
-
-        complx_est_set = .false.
-        if (present(complx_est)) complx_est_set = complx_est
 
         iunit = 6
+
         ntypes = size(ntot_particles)
+
         mc_cycles = ireport*qmc_in%ncycles
 
         if (comment) then
@@ -494,63 +490,56 @@ contains
 
         call write_qmc_var(iunit, qs%mc_cycles_done+mc_cycles-qmc_in%ncycles)
         call write_qmc_var(iunit, qs%shift(1))
-        
-        ! Trace, should be real.
         call write_qmc_var(iunit, dmqmc_estimates%trace(1))
-        if (complx_est_set) &
-            call write_qmc_var(iunit, dmqmc_estimates%trace(2))
-
         ! The trace on the second replica.
         if (doing_dmqmc_calc(dmqmc_full_r2)) then
-            if (complx_est_set) then
-                call write_qmc_var(iunit, dmqmc_estimates%trace(3))
-                call write_qmc_var(iunit, dmqmc_estimates%trace(4))
-            else
-                call write_qmc_var(iunit, dmqmc_estimates%trace(2))
-            end if
+            call write_qmc_var(iunit, dmqmc_estimates%trace(2))
         end if
 
         ! Renyi-2 entropy for the full density matrix.
         if (doing_dmqmc_calc(dmqmc_full_r2)) then
             call write_qmc_var(iunit, dmqmc_estimates%numerators(full_r2_ind))
-            if (complx_est_set) &
-                call write_qmc_var(iunit, dmqmc_estimates%numerators(full_r2_imag_ind))
         end if
 
         ! Energy.
         if (doing_dmqmc_calc(dmqmc_energy)) then
             call write_qmc_var(iunit, dmqmc_estimates%numerators(energy_ind))
-            if (complx_est_set) &
-                call write_qmc_var(iunit, dmqmc_estimates%numerators(energy_imag_ind))
         end if
 
         ! Energy squared.
-        if (doing_dmqmc_calc(dmqmc_energy_squared)) &
+        if (doing_dmqmc_calc(dmqmc_energy_squared)) then
             call write_qmc_var(iunit, dmqmc_estimates%numerators(energy_squared_ind))
+        end if
 
         ! Correlation function.
-        if (doing_dmqmc_calc(dmqmc_correlation)) &
+        if (doing_dmqmc_calc(dmqmc_correlation)) then
             call write_qmc_var(iunit, dmqmc_estimates%numerators(correlation_fn_ind))
+        end if
 
         ! Staggered magnetisation.
-        if (doing_dmqmc_calc(dmqmc_staggered_magnetisation)) &
+        if (doing_dmqmc_calc(dmqmc_staggered_magnetisation)) then
             call write_qmc_var(iunit, dmqmc_estimates%numerators(staggered_mag_ind))
+        end if
 
         ! Kinetic energy
-        if (doing_dmqmc_calc(dmqmc_kinetic_energy)) &
+        if (doing_dmqmc_calc(dmqmc_kinetic_energy)) then
             call write_qmc_var(iunit, dmqmc_estimates%numerators(kinetic_ind))
+        end if
 
         ! H^0 energy, where H = H^0 + V.
-        if (doing_dmqmc_calc(dmqmc_H0_energy)) &
+        if (doing_dmqmc_calc(dmqmc_H0_energy)) then
             call write_qmc_var(iunit, dmqmc_estimates%numerators(H0_ind))
+        end if
 
         ! H^I energy, where H^I = exp(-(beta-tau)/2 H^0) H exp(-(beta-tau)/2. H^0).
-        if (doing_dmqmc_calc(dmqmc_HI_energy)) &
+        if (doing_dmqmc_calc(dmqmc_HI_energy)) then
             call write_qmc_var(iunit, dmqmc_estimates%numerators(HI_ind))
+        end if
 
         ! Potential energy.
-        if (doing_dmqmc_calc(dmqmc_potential_energy)) &
+        if (doing_dmqmc_calc(dmqmc_potential_energy)) then
             call write_qmc_var(iunit, dmqmc_estimates%numerators(potential_ind))
+        end if
 
         ! Renyi-2 entropy for all RDMs being sampled.
         if (doing_dmqmc_calc(dmqmc_rdm_r2)) then
@@ -576,9 +565,9 @@ contains
             end do
         end if
 
-        if (dmqmc_in%calc_mom_dist) &
+        if (dmqmc_in%calc_mom_dist) then
             call write_momentum_array(dmqmc_estimates%mom_dist%f_k, dmqmc_estimates%mom_dist%kpoints, .true.)
-
+        end if
         if (dmqmc_in%calc_struc_fac) then
             endp = size(dmqmc_estimates%struc_fac%f_k)
             ! \sum_{s,s'} S_{s,s'}
