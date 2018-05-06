@@ -27,7 +27,7 @@ contains
         !    pl: particle_t object.  On input pl%nspaces and pl%info_size must be set.  On
         !       output all allocatable components are appropriately allocated.
 
-        use const, only: int_p, i0_length, int_p_length, p, sp
+        use const, only: int_p, i0, i0_length, int_p_length, p, sp
         use errors, only: warning
         use parallel, only: nprocs, parent
         use utils, only: int_fmt
@@ -115,10 +115,11 @@ contains
         allocate(pl%tot_nparticles(pl%nspaces), stat=ierr)
         call check_allocate('pl%tot_nparticles', pl%nspaces, ierr)
 
-        allocate(pl%states(tensor_label_len,max_nstates_elements), stat=ierr)
+        ! The source forces a non-lazy allocation which will give an error if there isn't enough RAM
+        allocate(pl%states(tensor_label_len,max_nstates_elements), stat=ierr, source=0_i0)
         call check_allocate('pl%states', tensor_label_len*max_nstates_elements, ierr)
 
-        allocate(pl%pops(pl%nspaces,max_nstates_elements), stat=ierr)
+        allocate(pl%pops(pl%nspaces,max_nstates_elements), stat=ierr, source=0_int_p)
         call check_allocate('pl%pops', pl%nspaces*max_nstates_elements, ierr)
 
         allocate(pl%dat(pl%nspaces+pl%info_size,max_nstates_elements), stat=ierr)
