@@ -34,7 +34,10 @@ submit.*
 __pycache__
 _build/
 build/
+.vscode/
 .vimrc
+.fortls
+.DS_Store
 *.combine
 *.egg-info/
 *.H5

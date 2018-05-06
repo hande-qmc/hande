@@ -277,7 +277,7 @@ contains
             ! In principle here we should have (Gamma_i* Gamma_op)*.  We'll assume Gamma_op*=Gamma_op
             ! We want
             !   Gamma_totsym = Gamma_(<D|op|D_i^a>)
-            !                = Gamma_(<D|op|a^†_a a_i D>)
+            !                = Gamma_(<D|op|a^\dag_a a_i D>)
             !                = Gamma_D* Gamma_op Gamma_i^-1 Gamma_a Gamma_D
             !                = Gamma_i^-1 Gamma_op Gamma_a
             ! Thus we require
@@ -303,7 +303,7 @@ contains
                 ! Assume op_sym is self-conjugate.
                 ! We want
                 !   Gamma_totsym = Gamma_(<D|o|D_i^a>)
-                !                = Gamma_(<D|op|a^†_a a_i D>)
+                !                = Gamma_(<D|op|a^\dag_a a_i D>)
                 !                = Gamma_D* Gamma_op Gamma_i^-1 Gamma_a Gamma_D
                 !                = Gamma_i^-1 Gamma_op Gamma_a
                 ! Thus we require
@@ -582,7 +582,7 @@ contains
         imsa = (sys%basis%basis_fns(i)%Ms+3)/2
         ! We want
         !   Gamma_totsym = Gamma_(<D|o|D_i^a>)
-        !                = Gamma_(<D|op|a^†_a a_i D>)
+        !                = Gamma_(<D|op|a^\dag_a a_i D>)
         !                = Gamma_D* Gamma_op Gamma_i^-1 Gamma_a Gamma_D
         !                = Gamma_i^-1 Gamma_op Gamma_a
         ! Thus we require
@@ -772,7 +772,7 @@ contains
             imsa = (sys%basis%basis_fns(occ_list(i))%Ms+3)/2
             ! We want
             !   Gamma_totsym = Gamma_(<D|o|D_i^a>)
-            !                = Gamma_(<D|op|a^†_a a_i D>)
+            !                = Gamma_(<D|op|a^\dag_a a_i D>)
             !                = Gamma_D* Gamma_op Gamma_i^-1 Gamma_a Gamma_D
             !                = Gamma_i^-1 Gamma_op Gamma_a
             ! Thus we require

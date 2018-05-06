@@ -8,7 +8,7 @@ contains
     subroutine init_dmqmc(sys, qmc_in, dmqmc_in, nreplicas, qs, dmqmc_estimates, weighted_sampling)
 
         ! In:
-        !    nreplicas: number of replicas being used.
+        !    nreplicas: number of replicas being used (if complex, 2 * [replica_trick replicas]).
         !    sys: system being studied. This should be left in an unmodified
         !       state on output.
         !    qmc_in: Input options relating to QMC methods.
