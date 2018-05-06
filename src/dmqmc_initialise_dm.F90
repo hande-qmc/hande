@@ -473,7 +473,11 @@ contains
                                                &allowed)
                         ! Check that we didn't generate a null excitation.
                         ! [todo] - Modify accordingly if pgen is ever calculated in for the ueg.
-                        if (abs(hmatel%r) < depsilon) cycle
+                        if (sys%read_in%comp) then
+                            if (abs(hmatel%c) < depsilon) cycle
+                        else
+                            if (abs(hmatel%r) < depsilon) cycle
+                        end if
                         nsuccess = nsuccess + 1
                         call create_excited_det(sys%basis, cdet%f, connection, f_new)
                     end if
