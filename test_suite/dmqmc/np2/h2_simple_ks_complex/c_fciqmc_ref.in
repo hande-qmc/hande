@@ -1,0 +1,21 @@
+system = read_in {
+	int_file = 'FCIDUMP',
+	complex = true,
+}
+
+fciqmc {
+	sys = system,
+	qmc = {
+		tau = 0.01,
+		init_pop = 100,
+		mc_cycles = 10,
+		nreports = 200,
+		state_size = 50,
+		spawned_state_size = 100,
+		target_population = 1E3,
+	},
+	restart = {
+		write = false,
+		read = false,
+	},
+}

@@ -7,18 +7,21 @@ dmqmc {
 	sys = system,
 	qmc = {
 		tau = 0.001,
-		rng_seed = 977344036,
-		init_pop = 2000,
+		init_pop = 200,
 		mc_cycles = 10,
-		nreports = 380,
-		state_size = -4096,
-		spawned_state_size = -1024,
-		target_population = 8E6,
+		nreports = 200,
+		state_size = 40000,
+		spawned_state_size = 3000,
+		target_population = 1E3,
 	},
 	dmqmc = { 
-		beta_loops = 4,
+		beta_loops = 10,
 	},
 	operators = { 
 		energy = true,
+	},
+	restart = {
+		write = false,
+		read = false,
 	},
 }
