@@ -103,14 +103,16 @@ contains
         ! --- Allocate psip list ---
         if (doing_calc(hfs_fciqmc_calc)) then
             qmc_state%psip_list%nspaces = qmc_state%psip_list%nspaces + 1
-        else if (present(dmqmc_in)) then
-            if (dmqmc_in%replica_tricks) qmc_state%psip_list%nspaces = qmc_state%psip_list%nspaces + 1
+        else if (dmqmc_in_loc%replica_tricks) then
+            qmc_state%psip_list%nspaces = qmc_state%psip_list%nspaces + 1
         else if (fciqmc_in_loc%replica_tricks) then
             qmc_state%psip_list%nspaces = qmc_state%psip_list%nspaces * 2
         end if
-        if (sys%read_in%comp) then
-            qmc_state%psip_list%nspaces = qmc_state%psip_list%nspaces * 2
-        end if
+        ! Figure out qmc_state%psip_list%ndata BEFORE doubling nspaces
+        ! for complex population storage (as Kii is always real).
+        qmc_state%psip_list%ndata = qmc_state%psip_list%nspaces
+
+        if (sys%read_in%comp) qmc_state%psip_list%nspaces = qmc_state%psip_list%nspaces * 2
         ! Each determinant occupies tot_string_len kind=i0 integers,
         ! qmc_state%psip_list%nspaces kind=int_p integers, qmc_state%psip_list%nspaces kind=p reals and one
         ! integer. If the Neel singlet state is used as the reference state for
@@ -236,7 +238,7 @@ contains
         use proc_pointers
 
         ! Utilities
-        use errors, only: stop_all
+        use errors, only: stop_all, warning
 
         type(sys_t), intent(in) :: sys
         type(qmc_in_t), intent(in) :: qmc_in
@@ -849,6 +851,7 @@ contains
 
         ! Energy of reference determinant.
         reference%H00 = sc0_ptr(sys, reference%f0)
+        ! Operators of HFS sampling.
         if (doing_calc(hfs_fciqmc_calc)) reference%O00 = op0_ptr(sys, reference%f0)
         reference%fock_sum = sum_sp_eigenvalues_occ_list(sys, reference%occ_list0)
 
@@ -894,6 +897,7 @@ contains
         ! Need to re-calculate the reference determinant data
         call decode_det(sys%basis, reference%f0, reference%occ_list0)
         call decode_det(sys%basis, reference%hs_f0, reference%hs_occ_list0)
+
         reference%H00 = sc0_ptr(sys, reference%f0)
         if (doing_calc(hfs_fciqmc_calc)) reference%O00 = op0_ptr(sys, reference%f0)
         reference%fock_sum = sum_sp_eigenvalues_occ_list(sys, reference%occ_list0)
@@ -1051,10 +1055,10 @@ contains
             pl%dat(1,pl%nstates) = reference%H00
             reference%H00 = 0.0_p
 
-            pl%dat(pl%nspaces+1,pl%nstates) = sys%lattice%nsites/2
+            pl%dat(pl%ndata+1,pl%nstates) = sys%lattice%nsites/2
             ! For a rectangular bipartite lattice, nbonds = ndim*nsites.
             ! The Neel state cannot be used for non-bipartite lattices.
-            pl%dat(pl%nspaces+2,pl%nstates) = sys%lattice%ndim*sys%lattice%nsites
+            pl%dat(pl%ndata+2,pl%nstates) = sys%lattice%ndim*sys%lattice%nsites
         end if
 
         ! Finally, we need to check if the reference determinant actually
@@ -1124,8 +1128,8 @@ contains
                 ! If we are using the Neel state as a reference in the
                 ! Heisenberg model, then set the required data.
                 if (fciqmc_in%trial_function == neel_singlet) then
-                    pl%dat(pl%nspaces+1,pl%nstates) = 0
-                    pl%dat(pl%nspaces+2,pl%nstates) = 0
+                    pl%dat(pl%ndata+1,pl%nstates) = 0
+                    pl%dat(pl%ndata+2,pl%nstates) = 0
                 end if
             end if
         end if
