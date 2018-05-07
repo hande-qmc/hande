@@ -244,7 +244,7 @@ contains
         use calc, only: dmqmc_staggered_magnetisation, dmqmc_energy_squared, dmqmc_correlation
         use calc, only: dmqmc_potential_energy, dmqmc_kinetic_energy, dmqmc_HI_energy
 
-        use errors, only: stop_all
+        use errors, only: stop_all, warning
         use const, only: depsilon, p
 
         type(sys_t), intent(in) :: sys
@@ -326,7 +326,7 @@ contains
             call stop_all(this, 'metropolis_attempts must be greater than zero.')
         end if
 
-        if (sys%read_in%comp .and. dmqmc_in%ipdmqmc) call stop_all(this, 'Complex IP-DMQMC not yet implemented')
+        if (sys%read_in%comp) call warning(this, 'Complex DMQMC is yet very experimental.')
 
         if (sys%basis%info_string_len /= 0) call stop_all(this, &
             'DMQMC is incompatible with additional information being stored in the bit string. Please implement if needed.')
