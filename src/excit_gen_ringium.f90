@@ -31,7 +31,7 @@ contains
         !        determinant and a connected determinant 
         !    allowed_excitation: false if a valid symmetry allowed excitation was not generated
 
-        use determinants, only: det_info_t
+        use determinant_data, only: det_info_t
         use excitations, only: excit_t, find_excitation_permutation2
         use excit_gens, only: excit_gen_data_t
         use system, only: sys_t

@@ -798,7 +798,7 @@ contains
         ! NOTE: it is the programmer's responsibility to ensure D0_pop_sum and
         ! proj_energy_sum are zero before the first call.
 
-        use determinants, only: det_info_t
+        use determinant_data, only: det_info_t
         use excitations, only: excit_t
         use hamiltonian_hub_k, only: slater_condon2_hub_k
         use system, only: sys_t
@@ -854,7 +854,7 @@ contains
         ! NOTE: it is the programmer's responsibility to ensure D0_pop_sum and
         ! proj_energy_sum are zero before the first call.
 
-        use determinants, only: det_info_t
+        use determinant_data, only: det_info_t
         use excitations, only: excit_t
         use hamiltonian_hub_real, only: slater_condon1_hub_real
         use system, only: sys_t
@@ -910,7 +910,7 @@ contains
         ! NOTE: it is the programmer's responsibility to ensure D0_pop_sum and
         ! proj_energy_sum are zero before the first call.
 
-        use determinants, only: det_info_t
+        use determinant_data, only: det_info_t
         use excitations, only: excit_t
         use hamiltonian_molecular, only: slater_condon1_mol_excit, slater_condon2_mol_excit
         use read_in_symmetry, only: cross_product_basis_read_in
@@ -993,7 +993,7 @@ contains
         ! NOTE: it is the programmer's responsibility to ensure D0_pop_sum and
         ! proj_energy_sum are zero before the first call.
 
-        use determinants, only: det_info_t
+        use determinant_data, only: det_info_t
         use excitations, only: excit_t
         use hamiltonian_periodic_complex, only: slater_condon1_periodic_excit_complex, &
                                                 slater_condon2_periodic_excit_complex
@@ -1074,7 +1074,7 @@ contains
         ! NOTE: it is the programmer's responsibility to ensure D0_pop_sum and
         ! proj_energy_sum are zero before the first call.
 
-        use determinants, only: det_info_t
+        use determinant_data, only: det_info_t
         use excitations, only: excit_t
         use hamiltonian_ueg, only: slater_condon2_ueg
         use system, only: sys_t
@@ -1131,7 +1131,7 @@ contains
         ! NOTE: it is the programmer's responsibility to ensure D0_pop_sum and
         ! proj_energy_sum are zero before the first call.
 
-        use determinants, only: det_info_t
+        use determinant_data, only: det_info_t
         use excitations, only: excit_t, get_excitation
         use hamiltonian_ringium, only: slater_condon2_ringium
         use system, only: sys_t

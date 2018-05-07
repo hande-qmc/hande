@@ -42,7 +42,8 @@ contains
         use bloom_handler, only: init_bloom_stats_t, bloom_mode_fixedn, bloom_stats_warning, &
                                  bloom_stats_t, accumulate_bloom_stats, write_bloom_report
         use death, only: stochastic_death
-        use determinants, only: det_info_t, alloc_det_info_t, dealloc_det_info_t, decode_det, update_sys_spin_info
+        use determinants, only: alloc_det_info_t, dealloc_det_info_t, decode_det, update_sys_spin_info
+        use determinant_data, only: det_info_t
         use dmqmc_estimators
         use dmqmc_procedures
         use dmqmc_initialise_dm, only: create_initial_density_matrix

@@ -1,7 +1,7 @@
 module proc_pointers
 
 use const, only: i0, p, dp, int_64, int_p
-use determinants, only: det_info_t
+use determinant_data, only: det_info_t
 use excitations, only: excit_t
 use excit_gens, only: excit_gen_data_t
 use hamiltonian_data, only: hmatel_t
@@ -12,13 +12,15 @@ implicit none
 ! that's imported as a array size in abstract interfaces.
 
 abstract interface
-    pure subroutine i_decoder(sys,f,d)
+    pure subroutine i_decoder(sys,f,d,excit_gen_data)
         use system, only: sys_t
+        use excit_gens, only: excit_gen_data_t
         import :: i0, det_info_t
         implicit none
         type(sys_t), intent(in) :: sys
         integer(i0), intent(in) :: f(sys%basis%tot_string_len)
         type(det_info_t), intent(inout) :: d
+        type(excit_gen_data_t), optional, intent(in) :: excit_gen_data
     end subroutine i_decoder
     pure subroutine i_update_proj_energy(sys, f0, wfn_dat, d, pop, estimators, excitation, hmatel)
         use system, only: sys_t
@@ -63,7 +65,7 @@ abstract interface
     end subroutine i_update_dmqmc_energy_and_trace
     subroutine i_update_dmqmc_estimators(sys, cdet, excitation, H00, walker_pop, estimate)
         use system, only: sys_t
-        use determinants, only: det_info_t
+        use determinant_data, only: det_info_t
         import :: excit_t, p
         implicit none
         type(sys_t), intent(in) :: sys
@@ -74,7 +76,7 @@ abstract interface
     end subroutine i_update_dmqmc_estimators
     subroutine i_update_dmqmc_correlation_function(sys, cdet, excitation, H00, walker_pop, mask, cfunc)
         use system, only: sys_t
-        use determinants, only: det_info_t
+        use determinant_data, only: det_info_t
         import :: excit_t, p, i0
         implicit none
         type(sys_t), intent(in) :: sys

@@ -55,7 +55,7 @@ contains
         !    hmatel: on input, the Hamiltonian matrix element, < D | \hat{H} | D'>.
         !        On output, the operator matrix element, < D | \hat{D} | D' >.
 
-        use determinants, only: det_info_t
+        use determinant_data, only: det_info_t
         use excitations, only: excit_t
         use system, only: sys_t
 

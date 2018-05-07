@@ -6,48 +6,39 @@ implicit none
 
 contains
 
-    subroutine select_ij_heat_bath(rng, nel, i_weights_precalc, ij_weights_precalc, cdet, i, j, i_ind, j_ind, i_weights_occ, &
-            i_weights_occ_tot, ij_weights_occ, ij_weights_occ_tot, ji_weights_occ, ji_weights_occ_tot, allowed_excitation)
+    subroutine select_ij_heat_bath(rng, nel, ij_weights_precalc, cdet, i, j, i_ind, j_ind, &
+            ij_weights_occ, ij_weights_occ_tot, ji_weights_occ, ji_weights_occ_tot, allowed_excitation)
         ! Routine to select i and j according to the heat bath algorithm. Used by heat_bath_uniform, heat_bath_single,
         ! power_pitzer_orderM_ij
 
         ! In:
         !   nel: number of electrons (= sys%nel)
-        !   i_weights_precalc: precalculated weights for i
         !   ij_weights_precalc: precalculated weights for j given i
         !   cdet: current determinant to attempt spawning from.
         ! In/Out:
         !   rng: random number generator
         ! Out:
         !   allowed_excitation: true if excitation with ij is possible.
-        !   i_weights_occ: weights of i for all occupied spinorbitals.
         !   ij_weights_occ: weights of j for all occupied spinorbitals, given i.
         !   ji_weights_occ: weights of i for all occupied spinorbitals, given j (reverse selection for pgen calculation).
-        !   i_weights_occ_tot: sum of weights of i for all occupied spinorbitals.
         !   ij_weights_occ_tot: sum of weights of j for all occupied spinorbitals, given i.
         !   ji_weights_occ_tot: sum of weights of i for all occupied spinorbitals, given j.
 
-        use determinants, only: det_info_t
+        use determinant_data, only: det_info_t
         use dSFMT_interface, only: dSFMT_t
         use alias, only: select_weighted_value
 
         integer, intent(in) :: nel
-        real(p), intent(in) :: i_weights_precalc(:), ij_weights_precalc(:,:)
+        real(p), intent(in) :: ij_weights_precalc(:,:)
         type(det_info_t), intent(in) :: cdet
         type(dSFMT_t), intent(inout) :: rng
-        real(p), intent(out) :: i_weights_occ(:), ij_weights_occ(:), ji_weights_occ(:)
-        real(p), intent(out) :: i_weights_occ_tot, ij_weights_occ_tot, ji_weights_occ_tot
+        real(p), intent(out) :: ij_weights_occ(:), ji_weights_occ(:)
+        real(p), intent(out) :: ij_weights_occ_tot, ji_weights_occ_tot
         logical, intent(out) :: allowed_excitation
         
         integer :: pos_occ, i_ind, j_ind, i, j
 
-        i_weights_occ_tot = 0.0_p
-        do pos_occ = 1, nel
-            i_weights_occ(pos_occ) = i_weights_precalc(cdet%occ_list(pos_occ))
-            i_weights_occ_tot = i_weights_occ_tot + i_weights_occ(pos_occ)
-         end do
-                
-        i_ind = select_weighted_value(rng, nel, i_weights_occ, i_weights_occ_tot)
+        i_ind = select_weighted_value(rng, nel, cdet%i_d_occ%weights, cdet%i_d_occ%weights_tot)
         i = cdet%occ_list(i_ind)
 
         ij_weights_occ_tot = 0.0_p
@@ -145,4 +136,85 @@ contains
         !$omp end parallel do
 
     end subroutine init_double_weights_ab
+
+    !--- Helper Functions for calculating weights in decoder ---
+
+    pure subroutine find_i_d_weights(nel, i_weights_precalc, d)
+
+        ! Find weights to select i in a double excitation using pre-calculed heat bath weights.
+
+        ! In:
+        !   nel: number of electrons
+        !   i_weights_precalc: precalculated weights that i could have. Need to reduce them to the ones
+        !        that are actually occupied.
+        ! In/Out:
+        !   d: det_code_t object. Information about the determinant to decode.
+        
+        use determinant_data, only: det_info_t
+        
+        integer, intent(in) :: nel
+        real(p), intent(in) :: i_weights_precalc(:)
+        type(det_info_t), intent(inout) :: d
+
+        integer :: pos_occ
+
+        d%i_d_occ%weights_tot = 0.0_p
+        do pos_occ = 1, nel
+            d%i_d_occ%weights(pos_occ) = i_weights_precalc(d%occ_list(pos_occ))
+            d%i_d_occ%weights_tot = d%i_d_occ%weights_tot + d%i_d_occ%weights(pos_occ)
+        end do
+
+    end subroutine find_i_d_weights
+    
+    pure subroutine find_ia_single_weights(sys, d)
+
+        ! Create a random single excitation from cdet and calculate both the probability
+        ! of selecting that excitation and the Hamiltonian matrix element.
+
+        ! This calculates the weights for i and a as exact as possibly.
+        ! For i, the weight is \sum_a H_ia, for a given i (a|i) it is H_ia.
+
+        ! In:
+        !    sys: system object being studied.
+        ! In/Out:
+        !    d: information about current determinant to decode
+
+        use determinant_data, only: det_info_t
+        use proc_pointers, only: abs_hmatel_ptr
+        use system, only: sys_t
+        use hamiltonian_data, only: hmatel_t
+        use hamiltonian_molecular, only: slater_condon1_mol
+        use hamiltonian_periodic_complex, only: slater_condon1_periodic_complex
+
+        type(sys_t), intent(in) :: sys
+        type(det_info_t), intent(inout) :: d
+        
+        type(hmatel_t) :: hmatel
+        integer :: i_ind, a_ind
+        
+        d%i_s_occ%weights_tot = 0.0_p
+        do i_ind = 1, sys%nel
+            d%i_s_occ%weights(i_ind) = 0.0_p
+            do a_ind = 1, sys%nvirt
+                ! [todo] - this reduces the computational time (by calculation ia_weights here)
+                ! but more memory costs as after we have selected i, we don't need all elements in ia_weights. Need to balance
+                ! these costs.
+                ! [todo] - could consider rewritting with proc_pointer here but that would imply having to rewrite slater
+                ! condon 1 mol / periodic complex. slater_condon1_excit_mol is not safe enough (no checks).
+                if (sys%read_in%comp) then
+                    hmatel%r = 0.0_p
+                    hmatel%c = slater_condon1_periodic_complex(sys, d%occ_list, d%occ_list(i_ind), d%unocc_list(a_ind), &
+                        .false.)
+                else
+                    hmatel%r = slater_condon1_mol(sys, d%occ_list, d%occ_list(i_ind), d%unocc_list(a_ind), .false.)
+                    hmatel%c = cmplx(0.0_p, 0.0_p, p)
+                end if
+                d%ia_s_weights_occ(a_ind, i_ind) = abs_hmatel_ptr(hmatel)
+                d%i_s_occ%weights(i_ind) = d%i_s_occ%weights(i_ind) + d%ia_s_weights_occ(a_ind, i_ind)
+            end do
+            d%i_s_occ%weights_tot = d%i_s_occ%weights_tot + d%i_s_occ%weights(i_ind)
+        end do
+
+    end subroutine find_ia_single_weights
+
 end module excit_gen_utils

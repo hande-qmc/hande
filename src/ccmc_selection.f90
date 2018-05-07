@@ -92,7 +92,7 @@ contains
 
     subroutine select_cluster(rng, sys, psip_list, f0, ex_level, linked_ccmc, nattempts, normalisation, &
                               initiator_pop, D0_pos, cumulative_excip_pop, tot_excip_pop, min_size, max_size, &
-                              logging_info, cdet, cluster)
+                              logging_info, cdet, cluster, excit_gen_data)
 
         ! Select a random cluster of excitors from the excitors on the
         ! processor.  A cluster of excitors is itself an excitor.  For clarity
@@ -121,6 +121,7 @@ contains
         !    min_size: the minimum size cluster to allow.
         !    max_size: the maximum size cluster to allow.
         !    logging_info: derived type containing information on currently logging status
+        !    excit_gen_data: information about excitation generators
 
         ! NOTE: cumulative_excip_pop and tot_excip_pop ignore the population on the
         ! reference as excips on the reference cannot form a cluster and the rounds the
@@ -142,7 +143,7 @@ contains
         !        allocated to the maximum number of excitors in a cluster.  On
         !        output all fields in cluster have been set.
 
-        use determinants, only: det_info_t
+        use determinant_data, only: det_info_t
         use ccmc_data, only: cluster_t
         use ccmc_utils, only: convert_excitor_to_determinant, collapse_cluster
         use excitations, only: get_excitation_level
@@ -155,6 +156,7 @@ contains
         use parallel, only: nprocs
         use system, only: sys_t
         use logging, only: write_logging_stoch_selection, logging_t
+        use excit_gens, only: excit_gen_data_t
 
         type(sys_t), intent(in) :: sys
         type(particle_t), intent(in), target :: psip_list
@@ -171,6 +173,7 @@ contains
         type(det_info_t), intent(inout) :: cdet
         type(cluster_t), intent(inout) :: cluster
         type(logging_t), intent(in) :: logging_info
+        type(excit_gen_data_t), intent(in) :: excit_gen_data
 
         real(dp) :: rand
         real(p) :: psize
@@ -257,7 +260,7 @@ contains
         select case(cluster%nexcitors)
         case(0)
             call create_null_cluster(sys, f0, cluster%pselect, normalisation, initiator_pop, &
-                                    cdet, cluster)
+                                    cdet, cluster, excit_gen_data)
         case default
             ! Select cluster from the excitors on the current processor with
             ! probability for choosing an excitor proportional to the excip
@@ -361,7 +364,7 @@ contains
                 ! Sign change due to difference between determinant
                 ! representation and excitors and excitation level.
                 call convert_excitor_to_determinant(cdet%f, cluster%excitation_level, cluster%cluster_to_det_sign, f0)
-                call decoder_ptr(sys, cdet%f, cdet)
+                call decoder_ptr(sys, cdet%f, cdet, excit_gen_data)
 
                 ! Normalisation factor for cluster%amplitudes...
                 cluster%amplitude = cluster_population/(normalisation**(cluster%nexcitors-1))
@@ -380,7 +383,7 @@ contains
 
     end subroutine select_cluster
 
-    subroutine create_null_cluster(sys, f0, prob, D0_normalisation, initiator_pop, cdet, cluster)
+    subroutine create_null_cluster(sys, f0, prob, D0_normalisation, initiator_pop, cdet, cluster, excit_gen_data)
 
         ! Create a cluster with no excitors in it, and set it to have
         ! probability of generation prob.
@@ -392,6 +395,7 @@ contains
         !    D0_normalisation:  The number of excips at the reference (which
         !        will become the amplitude of this cluster)
         !    initiator_pop: the population above which a determinant is an initiator.
+        !    excit_gen_data: info for excitation generators.
 
         ! In/Out:
         !    cdet: information about the cluster of excitors applied to the
@@ -407,14 +411,16 @@ contains
         !        output all fields in cluster have been set.
 
         use system, only: sys_t
-        use determinants, only: det_info_t
+        use determinant_data, only: det_info_t
         use ccmc_data, only: cluster_t
         use proc_pointers, only: decoder_ptr
+        use excit_gens, only: excit_gen_data_t
 
         type(sys_t), intent(in) :: sys
         integer(i0), intent(in) :: f0(sys%basis%tot_string_len)
         real(p), intent(in) :: prob, initiator_pop
         complex(p), intent(in) :: D0_normalisation
+        type(excit_gen_data_t), intent(in) :: excit_gen_data
         type(det_info_t), intent(inout) :: cdet
         type(cluster_t), intent(inout) :: cluster
 
@@ -441,12 +447,12 @@ contains
         ! Let the user be an idiot if they want to be...
         if (abs(D0_normalisation) <= initiator_pop) cdet%initiator_flag = 3
 
-        call decoder_ptr(sys, cdet%f, cdet)
+        call decoder_ptr(sys, cdet%f, cdet, excit_gen_data)
 
     end subroutine create_null_cluster
 
     subroutine select_nc_cluster(sys, psip_list, f0, iexcitor, initiator_pop, ex_lvl_sort, &
-                                            cdet, cluster)
+                                            cdet, cluster, excit_gen_data)
 
         ! Select (deterministically) the non-composite cluster containing only
         ! the single excitor iexcitor and set the same information as select_cluster.
@@ -461,6 +467,7 @@ contains
         !    ex_lvl_sort: if true, excitors are sorted by excitation level and so have
         !       information about the excitation level also encoded in their bit string
         !       that should be removed before being passed on.
+        !    excit_gen_data: data for excitation generators.
 
         ! In/Out:
         !    cdet: information about the cluster of excitors applied to the
@@ -476,7 +483,7 @@ contains
         !        output all fields in cluster have been set.
 
         use system, only: sys_t
-        use determinants, only: det_info_t
+        use determinant_data, only: det_info_t
         use basis_types, only: reset_extra_info_bit_string
         use ccmc_data, only: cluster_t
         use ccmc_utils, only: convert_excitor_to_determinant
@@ -484,6 +491,7 @@ contains
         use qmc_data, only: particle_t
         use search, only: binary_search
         use proc_pointers, only: decoder_ptr
+        use excit_gens, only: excit_gen_data_t
 
         type(sys_t), intent(in) :: sys
         type(particle_t), intent(in), target :: psip_list
@@ -491,6 +499,7 @@ contains
         integer(int_64), intent(in) :: iexcitor
         real(p), intent(in) :: initiator_pop
         logical, intent(in) :: ex_lvl_sort
+        type(excit_gen_data_t), intent(in) :: excit_gen_data
         type(det_info_t), intent(inout) :: cdet
         type(cluster_t), intent(inout) :: cluster
         complex(p) :: excitor_pop
@@ -539,12 +548,13 @@ contains
         ! Sign change due to difference between determinant
         ! representation and excitors and excitation level.
         call convert_excitor_to_determinant(cdet%f, cluster%excitation_level, cluster%cluster_to_det_sign, f0)
-        call decoder_ptr(sys, cdet%f, cdet)
+        call decoder_ptr(sys, cdet%f, cdet, excit_gen_data)
 
     end subroutine select_nc_cluster
 
     subroutine select_cluster_truncated(rng, sys, psip_list, f0, linked_ccmc, nattempts, normalisation, initiator_pop, &
-                        selection_data, cumulative_excip_pop, ex_level, min_size, max_size, ex_lvl_dist, cluster, cdet)
+                        selection_data, cumulative_excip_pop, ex_level, min_size, max_size, ex_lvl_dist, cluster, cdet, &
+                        excit_gen_data)
 
         ! Select (stochastically) cluster of size 2+ with restriction to ensure only
         ! select clusters with overall excitation level within truncation level+2.
@@ -569,6 +579,7 @@ contains
         !    max_size: maximum size of cluster to select stochastically.
         !    ex_lvl_dist: derived type containing information on distribution of
         !       wavefunction between different excitation levels.
+        !    excit_gen_data: data for excitation generators.
 
         ! NOTE: cumulative_excip_pop and tot_excip_pop ignore the population on the
         ! reference as excips on the reference cannot form a cluster.  Both these
@@ -591,14 +602,14 @@ contains
 
         use ccmc_data, only: cluster_t, selection_data_t, ex_lvl_dist_t
         use ccmc_utils, only: convert_excitor_to_determinant
-        use determinants, only: det_info_t
+        use determinant_data, only: det_info_t
         use excitations, only: get_excitation_level
         use qmc_data, only: particle_t
         use dSFMT_interface, only: dSFMT_t, get_rand_close_open
         use proc_pointers, only: decoder_ptr
         use system, only: sys_t
         use utils, only: factorial
-
+        use excit_gens, only: excit_gen_data_t
         use bit_utils, only: count_set_bits
         use errors, only: stop_all
 
@@ -614,6 +625,7 @@ contains
         integer(int_64), intent(in) :: nattempts
         integer, intent(in) :: min_size, max_size, ex_level
         logical, intent(in) :: linked_ccmc
+        type(excit_gen_data_t), intent(in) :: excit_gen_data
 
         type(selection_data_t), intent(in) :: selection_data
         type(ex_lvl_dist_t), intent(in) :: ex_lvl_dist
@@ -724,7 +736,7 @@ contains
                 ! Sign change due to difference between determinant
                 ! representation and excitors and excitation level.
                 call convert_excitor_to_determinant(cdet%f, cluster%excitation_level, cluster%cluster_to_det_sign, f0)
-                call decoder_ptr(sys, cdet%f, cdet)
+                call decoder_ptr(sys, cdet%f, cdet, excit_gen_data)
 
                 ! Normalisation factor for cluster%amplitudes...
                 cluster%amplitude = cluster_population/(normalisation**(cluster%nexcitors-1))
@@ -767,7 +779,7 @@ contains
         !       same spinorbital twice).
         use ccmc_data, only: cluster_t, ex_lvl_dist_t
         use ccmc_utils, only: collapse_cluster
-        use determinants, only: det_info_t
+        use determinant_data, only: det_info_t
         use qmc_data, only: particle_t
         use dSFMT_interface, only: dSFMT_t, get_rand_close_open
         use sort, only: insert_sort

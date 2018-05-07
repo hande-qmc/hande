@@ -72,7 +72,7 @@ contains
         use ccmc_data, only: cluster_t
         use ccmc_utils, only: convert_excitor_to_determinant
         use ccmc_linked, only: unlinked_commutator, linked_excitation
-        use determinants, only: det_info_t
+        use determinant_data, only: det_info_t
         use dSFMT_interface, only: dSFMT_t
         use excitations, only: excit_t, create_excited_det, get_excitation_level
         use proc_pointers, only: gen_excit_ptr_t
@@ -230,7 +230,7 @@ contains
 
         use ccmc_data, only: cluster_t
         use ccmc_utils, only: add_ex_level_bit_string_provided
-        use determinants, only: det_info_t
+        use determinant_data, only: det_info_t
         use const, only: debug
 
         use proc_pointers, only: sc0_ptr
@@ -348,7 +348,7 @@ contains
         use dSFMT_interface, only: dSFMT_t, get_rand_close_open
         use spawn_data, only: spawn_t
         use excitations, only: excit_t
-        use determinants, only: det_info_t
+        use determinant_data, only: det_info_t
         use reference_determinant, only: reference_t
         use basis_types, only: basis_t
         use proc_pointers, only: create_spawned_particle_ptr
@@ -559,7 +559,8 @@ contains
         use ccmc_data, only: cluster_t
         use ccmc_linked, only: calc_pgen, partition_cluster, linked_excitation
         use ccmc_utils, only: collapse_cluster, convert_excitor_to_determinant
-        use determinants, only: det_info_t, sum_sp_eigenvalues_bit_string
+        use determinants, only: sum_sp_eigenvalues_bit_string
+        use determinant_data, only: det_info_t
         use dSFMT_interface, only: dSFMT_t
         use excitations, only: excit_t, create_excited_det, get_excitation_level
         use proc_pointers, only: gen_excit_ptr_t, decoder_ptr
@@ -615,7 +616,7 @@ contains
 
         ! 2) Choose excitation from right_cluster|D_0>
         if (allowed) then
-            call decoder_ptr(sys, rdet%f, rdet)
+            call decoder_ptr(sys, rdet%f, rdet, qs%excit_gen_data)
             call gen_excit_ptr%full(rng, sys, qs%excit_gen_data, rdet, pgen, connection, hmatel, allowed)
         end if
 
@@ -786,7 +787,7 @@ contains
 
         use ccmc_data, only: cluster_t
         use ccmc_utils, only: convert_excitor_to_determinant
-        use determinants, only: det_info_t
+        use determinant_data, only: det_info_t
         use dSFMT_interface, only: dSFMT_t
         use excitations, only: excit_t, create_excited_det, get_excitation_level
         use proc_pointers, only: gen_excit_ptr_t
@@ -889,7 +890,7 @@ contains
         use basis_types, only: basis_t
         use reference_determinant, only: reference_t
         use spawn_data, only: spawn_t
-        use determinants, only: det_info_t
+        use determinant_data, only: det_info_t
         use bloom_handler, only: bloom_stats_t, accumulate_bloom_stats
         use excitations, only: excit_t, create_excited_det
         use proc_pointers, only: create_spawned_particle_ptr

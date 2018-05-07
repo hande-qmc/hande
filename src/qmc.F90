@@ -300,6 +300,7 @@ contains
         ! Procedures to be pointed to.
         use death, only: stochastic_death
         use determinants
+        use determinant_decoders
         use dmqmc_estimators
         use dmqmc_procedures
         use dmqmc_data, only: hartree_fock_dm
@@ -477,28 +478,28 @@ contains
                 decoder_ptr => decode_det_spinocc_symunocc
             case(excit_gen_power_pitzer_occ)
                 gen_excit_ptr%full => gen_excit_mol_power_pitzer_occ
-                decoder_ptr => decode_det_spinocc_spinunocc
+                decoder_ptr => decode_det_spinocc_spinsymunocc
             case(excit_gen_power_pitzer_occ_ij)
                 gen_excit_ptr%full => gen_excit_mol_power_pitzer_occ
-                decoder_ptr => decode_det_spinocc_spinunocc
+                decoder_ptr => decode_det_ppMij
             case(excit_gen_power_pitzer)
                 gen_excit_ptr%full => gen_excit_mol_power_pitzer_occ_ref
                 decoder_ptr => decode_det_occ
             case(excit_gen_power_pitzer_orderN)
                 ! [todo] - check this decoder is correct.
                 gen_excit_ptr%full => gen_excit_mol_power_pitzer_orderN
-                decoder_ptr => decode_det_occ
+                decoder_ptr => decode_det_ppN
             case(excit_gen_heat_bath)
                 gen_excit_ptr%full => gen_excit_mol_heat_bath
-                decoder_ptr => decode_det_occ
+                decoder_ptr => decode_det_hb
             case(excit_gen_heat_bath_uniform)
                 gen_excit_ptr%full => gen_excit_mol_heat_bath_uniform
-                decoder_ptr => decode_det_occ_symunocc
+                decoder_ptr => decode_det_hbu
             case(excit_gen_heat_bath_single)
                 ! [todo] uses basically same function as hb_uniform but
                 ! [todo] has varying function call with singles.
                 gen_excit_ptr%full => gen_excit_mol_heat_bath_uniform
-                decoder_ptr => decode_det_occ
+                decoder_ptr => decode_det_hbs
             case default
                 call stop_all('init_proc_pointers', 'Selected excitation generator not implemented.')
             end select

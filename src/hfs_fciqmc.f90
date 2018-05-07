@@ -46,7 +46,8 @@ contains
 
         use annihilation, only: direct_annihilation
         use death, only: stochastic_death, stochastic_hf_cloning
-        use determinants, only:det_info_t, alloc_det_info_t, dealloc_det_info_t, sum_sp_eigenvalues_occ_list
+        use determinants, only: alloc_det_info_t, dealloc_det_info_t, sum_sp_eigenvalues_occ_list
+        use determinant_data, only: det_info_t
         use energy_evaluation, only: update_energy_estimators
         use excitations, only: excit_t, get_excitation
         use qmc_io, only: write_qmc_report_header, write_qmc_report

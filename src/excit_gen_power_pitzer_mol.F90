@@ -678,7 +678,7 @@ contains
         !        determinant and a connected determinant in molecular systems.
         !    allowed_excitation: false if a valid symmetry allowed excitation was not generated
 
-        use determinants, only: det_info_t
+        use determinant_data, only: det_info_t
         use excitations, only: excit_t
         use excitations, only: find_excitation_permutation2,get_excitation_locations
         use proc_pointers, only: slater_condon2_excit_ptr
@@ -959,7 +959,7 @@ contains
         ! Single excitation:
         ! 2. Select i_ref from the set of occupied orbitals in the reference using pre-computed
         !    alias tables pp%ppn_i_s%alias{K,U}(:).
-        ! 3. Map i_ref to i_cdet. This is a one-to-one mapping. All spinorbitals that are occupied
+        ! 3. Done in decoder: Map i_ref to i_cdet. This is a one-to-one mapping. All spinorbitals that are occupied
         !    in one of the two frames but not the other are separated by spin and then ordered.
         !    If i_ref is occupied in both frames, i_ref = i_cdet. If not, a spinorbital of the same
         !    spin is found that is at the same position in the lists of differing orbitals.
@@ -970,13 +970,13 @@ contains
         ! Double excitation:
         ! 2. Select i_ref from occupied orbitals in the reference using pre-calculated alias tables
         !    pp%ppn_i_d%alias{K,U}.
-        ! 3. Map i_ref to i_cdet. This is a one-to-one mapping. All spinorbitals that are occupied
+        ! 3. Done in decoder: Map i_ref to i_cdet. This is a one-to-one mapping. All spinorbitals that are occupied
         !    in one of the two frames but not the other are separated by spin and then ordered.
         !    If i_ref is occupied in both frames, i_ref = i_cdet. If not, a spinorbital of the same
         !    spin is found that is at the same position in the lists of differing orbitals.
         ! 4. Find j_ref from occupied orbitals in the reference using pre-calculated alias tables
         !    pp%ppn_ij_d%alias{K,U}(:,i_cdet).
-        ! 5. Map j_ref to j_cdet.
+        ! 5. Done in decoder: Map j_ref to j_cdet.
         ! 6. Select a_cdet from all orbitals of the same spin as i using pre-calculated alias tables
         !    pp%ppn_ia_d%alias{K,U}(:,i_cdet). If a_cdet is occupied, excitation is forbidden.
         ! 7. Select b_cdet from all orbitals of required spin and symmetry isymb using pre-calculated
@@ -1003,9 +1003,9 @@ contains
         !        determinant and a connected determinant in molecular systems.
         !    allowed_excitation: false if a valid symmetry allowed excitation was not generated
 
-        use determinants, only: det_info_t
+        use determinant_data, only: det_info_t
         use excitations, only: excit_t
-        use excitations, only: find_excitation_permutation1, find_excitation_permutation2, get_excitation_locations
+        use excitations, only: find_excitation_permutation1, find_excitation_permutation2
         use proc_pointers, only: slater_condon1_excit_ptr, slater_condon2_excit_ptr
         use system, only: sys_t
         use excit_gens, only: excit_gen_power_pitzer_t, excit_gen_data_t
@@ -1038,12 +1038,7 @@ contains
         
         integer :: i_ind_ref, j_ind_ref, a_ind_cdet, b_ind_cdet
         integer :: a_ind_rev_cdet, b_ind_rev_cdet
-        integer :: i_ref, j_ref, i_cdet, j_cdet, a_cdet, b_cdet, j_cdet_tmp
-
-        integer :: nex
-        integer :: cdet_store(sys%nel)
-        integer :: ref_store(sys%nel)
-        integer :: ii, jj, t
+        integer :: i_cdet, j_cdet, a_cdet, b_cdet, j_cdet_tmp
 
         logical :: found
 
@@ -1054,45 +1049,8 @@ contains
                 ! 2. Select i_ref.
                 
                 i_ind_ref = select_weighted_value_precalc(rng, sys%nel, pp%ppn_i_s%aliasU(:), pp%ppn_i_s%aliasK(:))
-                i_ref = pp%occ_list(i_ind_ref)
+                i_cdet = cdet%ref_cdet_occ_list(i_ind_ref)
                 
-                ! 3. Now map i_ref to i_cdet.
-                call get_excitation_locations(pp%occ_list, cdet%occ_list, ref_store, cdet_store, sys%nel, nex)
-                ! These orbitals might not be aligned in the most efficient way:
-                !  They may not match in spin, so first deal with this
-
-                ! ref store (e.g.) contains the indices within pp%occ_list of the orbitals
-                ! which have been excited from.
-                ! [todo] - Consider having four lists separated by spin instead of two, i.e. ref_store_alpha and
-                ! [todo] - ref_store_beta instead of ref_store and the same for cdet_store.
-                ! [todo] - Consider calculating these lists once per determinants/excitor instead of once per excitation
-                ! [todo] - generator call.
-                do ii=1, nex
-                    associate(bfns=>sys%basis%basis_fns)
-                        if (bfns(pp%occ_list(ref_store(ii)))%Ms /= bfns(cdet%occ_list(cdet_store(ii)))%Ms) then
-                            jj = ii + 1
-                            do while (bfns(pp%occ_list(ref_store(ii)))%Ms /= bfns(cdet%occ_list(cdet_store(jj)))%Ms)
-                                jj = jj + 1
-                            end do
-                            ! det's jj now points to an orb of the same spin as ref's ii, so swap cdet_store's ii and jj.
-                            t = cdet_store(ii)
-                            cdet_store(ii) = cdet_store(jj)
-                            cdet_store(jj) = t
-                        end if
-                    end associate
-                end do
-                ! Now see if i_ref is in ref_store and map appropriately
-                i_cdet = i_ref
-                ! ref_store  contains the indices within pp%occ_list of the orbitals which are excited out of ref into cdet
-                ! cdet_store  contains the indices within cdet%occ_list of the orbitals which are in cdet (excited out
-                ! of ref).  i_ind_ref is the index of the orbital in pp%occ_list which we're exciting from.
-                do ii=1, nex
-                    if (ref_store(ii) == i_ind_ref) then  ! i_ref isn't actually in cdet, so we assign i_cdet to the orb that is
-                        i_cdet = cdet%occ_list(cdet_store(ii))
-                        exit
-                    end if
-                end do
-    
                 ! 4. Select a_cdet.
                 ! Convert ims which is in {-1, +1} notation to imsa which is {1, 2}.
                 imsa = (3 + sys%basis%basis_fns(i_cdet)%ms)/2
@@ -1140,59 +1098,14 @@ contains
                 ! 2. Select i_ref.
                 
                 i_ind_ref = select_weighted_value_precalc(rng, sys%nel, pp%ppn_i_d%aliasU(:), pp%ppn_i_d%aliasK(:))
-                i_ref = pp%occ_list(i_ind_ref)
-                
-                ! 3. Now map i_ref to i_cdet.
-                call get_excitation_locations(pp%occ_list, cdet%occ_list, ref_store, cdet_store, sys%nel, nex)
-                ! These orbitals might not be aligned in the most efficient way:
-                !  They may not match in spin, so first deal with this
-
-                ! ref store (e.g.) contains the indices within pp%occ_list of the orbitals
-                ! which have been excited from.
-                ! [todo] - Consider having four lists separated by spin instead of two, i.e. ref_store_alpha and
-                ! [todo] - ref_store_beta instead of ref_store and the same for cdet_store.
-                ! [todo] - Consider calculating these lists once per determinants/excitor instead of once per excitation
-                ! [todo] - generator call.
-                do ii=1, nex
-                    associate(bfns=>sys%basis%basis_fns)
-                        if (bfns(pp%occ_list(ref_store(ii)))%Ms /= bfns(cdet%occ_list(cdet_store(ii)))%Ms) then
-                            jj = ii + 1
-                            do while (bfns(pp%occ_list(ref_store(ii)))%Ms /= bfns(cdet%occ_list(cdet_store(jj)))%Ms)
-                                jj = jj + 1
-                            end do
-                            ! det's jj now points to an orb of the same spin as ref's ii, so swap cdet_store's ii and jj.
-                            t = cdet_store(ii)
-                            cdet_store(ii) = cdet_store(jj)
-                            cdet_store(jj) = t
-                        end if
-                    end associate
-                end do
-                ! Now see if i_ref is in ref_store and map appropriately
-                i_cdet = i_ref
-                ! ref_store  contains the indices within pp%occ_list of the orbitals which are excited out of ref into cdet
-                ! cdet_store  contains the indices within cdet%occ_list of the orbitals which are in cdet (excited out
-                ! of ref).  i_ind_ref is the index of the orbital in pp%occ_list which we're exciting from.
-                do ii=1, nex
-                    if (ref_store(ii) == i_ind_ref) then  ! i_ref isn't actually in cdet, so we assign i_cdet to the orb that is
-                        i_cdet = cdet%occ_list(cdet_store(ii))
-                        exit
-                    end if
-                end do
+                i_cdet = cdet%ref_cdet_occ_list(i_ind_ref)
                 
                 ! 4. Find j_ref.
                 ! j is chosen from set of occupied spinorbitals in reference but with weights calculated for i_cdet.
                 j_ind_ref = select_weighted_value_precalc(rng, sys%nel, pp%ppn_ij_d%aliasU(:,i_cdet), &
                                                     pp%ppn_ij_d%aliasK(:,i_cdet))
-                j_ref = pp%occ_list(j_ind_ref)
+                j_cdet = cdet%ref_cdet_occ_list(j_ind_ref)
 
-                ! 5. Map j_ref to j_cdet.
-                j_cdet = j_ref
-                do ii=1, nex
-                    if (ref_store(ii) == j_ind_ref) then  ! j_ref isn't actually in cdet, so we assign j_cdet to the orb that is
-                        j_cdet = cdet%occ_list(cdet_store(ii))
-                        exit
-                    end if
-                end do
                 if (j_cdet /= i_cdet) then
                     allowed_excitation = .true. ! for now - that can change.
                     pgen = (pp%ppn_i_d%weights(i_ind_ref) / pp%ppn_i_d%weights_tot) * &
@@ -1363,12 +1276,12 @@ contains
         !    allowed_excitation: false if a valid symmetry allowed excitation was not generated
 
         use checking, only: check_deallocate
-        use determinants, only: det_info_t
+        use determinant_data, only: det_info_t
         use excitations, only: excit_t
         use excitations, only: find_excitation_permutation2
         use proc_pointers, only: slater_condon2_excit_ptr, create_weighted_excitation_list_ptr
         use system, only: sys_t
-        use excit_gen_mol, only: gen_single_excit_mol_no_renorm, choose_ij_mol
+        use excit_gen_mol, only: gen_single_excit_mol, choose_ij_mol
         use hamiltonian_data, only: hmatel_t
         use dSFMT_interface, only: dSFMT_t, get_rand_close_open
         use search, only: binary_search
@@ -1392,43 +1305,33 @@ contains
         logical :: found, a_found
         real(p), allocatable :: ia_weights(:), ja_weights(:), jb_weights(:)
         real(p) :: ia_weights_tot, ja_weights_tot, jb_weights_tot
-        real(p), allocatable :: i_weights_occ(:), ij_weights_occ(:), ji_weights_occ(:)
-        real(p) :: i_weights_occ_tot, ij_weights_occ_tot, ji_weights_occ_tot
+        real(p) :: ij_weights_occ(sys%nel), ji_weights_occ(sys%nel)
+        real(p) :: ij_weights_occ_tot, ji_weights_occ_tot
         real(p) :: pgen_ij
         integer :: a, b, i, j, j_tmp, a_ind, b_ind, a_ind_rev, b_ind_rev, i_ind, j_ind, isymb, imsb, isyma
         integer :: ierr_dealloc
 
         ! 1. Select single or double.
         if (get_rand_close_open(rng) < excit_gen_data%pattempt_single) then
-
-            call gen_single_excit_mol_no_renorm(rng, sys, excit_gen_data%pattempt_single, cdet, pgen, connection, hmatel, &
-                                            allowed_excitation)
-
+            call gen_single_excit_mol(rng, sys, excit_gen_data%pattempt_single, cdet, pgen, connection, hmatel, &
+                                        allowed_excitation)
         else
             ! We have a double
 
             ! 2. Select orbitals to excite from
             if (excit_gen_data%excit_gen == excit_gen_power_pitzer_occ_ij) then
                 ! Select ij using heat bath excit. gen. techniques.
-                allocate(i_weights_occ(1:sys%nel), stat=ierr)
-                call check_allocate('i_weights_occ', sys%nel, ierr)
-                allocate(ij_weights_occ(1:sys%nel), stat=ierr)
-                call check_allocate('ij_weights_occ', sys%nel, ierr)
-                allocate(ji_weights_occ(1:sys%nel), stat=ierr)
-                call check_allocate('ji_weights_occ', sys%nel, ierr)
 
-                call select_ij_heat_bath(rng, sys%nel, excit_gen_data%excit_gen_pp%ppm_i_d_weights, &
-                    excit_gen_data%excit_gen_pp%ppm_ij_d_weights, cdet, i, j, i_ind, j_ind, &
-                    i_weights_occ, i_weights_occ_tot, ij_weights_occ, ij_weights_occ_tot, ji_weights_occ, ji_weights_occ_tot, &
-                    allowed_excitation)
+                call select_ij_heat_bath(rng, sys%nel, excit_gen_data%excit_gen_pp%ppm_ij_d_weights, cdet, i, j, i_ind, j_ind, &
+                    ij_weights_occ, ij_weights_occ_tot, ji_weights_occ, ji_weights_occ_tot, allowed_excitation)
 
                 ij_spin = sys%basis%basis_fns(i)%Ms + sys%basis%basis_fns(j)%Ms
                 ! ij_sym: symmetry conjugate of the irreducible representation spanned by the codensity
                 !        \phi_i_cdet*\phi_j_cdet. (We assume that ij is going to be in the bra of the excitation.)
                 ij_sym = sys%read_in%sym_conj_ptr(sys%read_in, cross_product_basis_read_in(sys, i, j))
                 
-                pgen_ij = ((i_weights_occ(i_ind)/i_weights_occ_tot) * (ij_weights_occ(j_ind)/ij_weights_occ_tot)) + &
-                    ((i_weights_occ(j_ind)/i_weights_occ_tot) * (ji_weights_occ(i_ind)/ji_weights_occ_tot))
+                pgen_ij = ((cdet%i_d_occ%weights(i_ind)/cdet%i_d_occ%weights_tot) * (ij_weights_occ(j_ind)/ij_weights_occ_tot)) + &
+                    ((cdet%i_d_occ%weights(j_ind)/cdet%i_d_occ%weights_tot) * (ji_weights_occ(i_ind)/ji_weights_occ_tot))
 
                 ! Sort i and j such that j>i.
                 if (j < i) then
@@ -1603,32 +1506,19 @@ contains
                 pgen = 1.0_p
             end if
 
-        end if
-
-        ! deallocate weight arrays if allocated
-        if (allocated(ia_weights)) then
-            deallocate(ia_weights, stat=ierr_dealloc)
-            call check_deallocate('ia_weights', ierr_dealloc)
-        end if
-        if (allocated(jb_weights)) then
-            deallocate(jb_weights, stat=ierr_dealloc)
-            call check_deallocate('jb_weights', ierr_dealloc)
-        end if
-        if (allocated(ja_weights)) then
-            deallocate(ja_weights, stat=ierr_dealloc)
-            call check_deallocate('ja_weights', ierr_dealloc)
-        end if
-        if (allocated(i_weights_occ)) then
-            deallocate(i_weights_occ, stat=ierr_dealloc)
-            call check_deallocate('i_weights_occ', ierr_dealloc)
-        end if
-        if (allocated(ij_weights_occ)) then
-            deallocate(ij_weights_occ, stat=ierr_dealloc)
-            call check_deallocate('ij_weights_occ', ierr_dealloc)
-        end if
-        if (allocated(ji_weights_occ)) then
-            deallocate(ji_weights_occ, stat=ierr_dealloc)
-            call check_deallocate('ji_weights_occ', ierr_dealloc)
+            ! deallocate weight arrays if allocated
+            if (allocated(ia_weights)) then
+                deallocate(ia_weights, stat=ierr_dealloc)
+                call check_deallocate('ia_weights', ierr_dealloc)
+            end if
+            if (allocated(jb_weights)) then
+                deallocate(jb_weights, stat=ierr_dealloc)
+                call check_deallocate('jb_weights', ierr_dealloc)
+            end if
+            if (allocated(ja_weights)) then
+                deallocate(ja_weights, stat=ierr_dealloc)
+                call check_deallocate('ja_weights', ierr_dealloc)
+            end if
         end if
 
     end subroutine gen_excit_mol_power_pitzer_occ

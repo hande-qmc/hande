@@ -305,8 +305,9 @@ contains
         use ccmc_death_spawning, only: stochastic_ccmc_death_nc
         use ccmc_utils, only: get_D0_info, init_contrib, dealloc_contrib, cumulative_population, init_ex_lvl_dist_t, &
                               update_ex_lvl_dist, regenerate_ex_levels_psip_list
-        use determinants, only: det_info_t, alloc_det_info_t, dealloc_det_info_t, sum_sp_eigenvalues_occ_list, &
+        use determinants, only: alloc_det_info_t, dealloc_det_info_t, sum_sp_eigenvalues_occ_list, &
                                 sum_sp_eigenvalues_bit_string, decode_det
+        use determinant_data, only: det_info_t
         use excitations, only: excit_t, get_excitation_level, get_excitation
         use qmc_io, only: write_qmc_report, write_qmc_report_header
         use qmc, only: init_qmc
@@ -687,7 +688,7 @@ contains
                             ! Deterministically select each excip as a non-composite cluster.
                             call select_nc_cluster(sys, qs%psip_list, qs%ref%f0, &
                                         iattempt, qmc_in%initiator_pop, ccmc_in%even_selection, &
-                                        contrib(it)%cdet, contrib(it)%cluster)
+                                        contrib(it)%cdet, contrib(it)%cluster, qs%excit_gen_data)
 
                             if (qs%propagator%quasi_newton) contrib(it)%cdet%fock_sum = &
                                             sum_sp_eigenvalues_occ_list(sys, contrib(it)%cdet%occ_list) - qs%ref%fock_sum
@@ -706,13 +707,13 @@ contains
                                                         ccmc_in%linked, selection_data%nstochastic_clusters, D0_normalisation, &
                                                         qmc_in%initiator_pop, selection_data, cumulative_abs_real_pops, &
                                                         qs%ref%ex_level, min_cluster_size, max_cluster_size, &
-                                                        ex_lvl_dist, contrib(it)%cluster, contrib(it)%cdet)
+                                                        ex_lvl_dist, contrib(it)%cluster, contrib(it)%cdet, qs%excit_gen_data)
 
                         else
                             call select_cluster(rng(it), sys, qs%psip_list, qs%ref%f0, qs%ref%ex_level, ccmc_in%linked, &
                                             selection_data%nstochastic_clusters, D0_normalisation, qmc_in%initiator_pop, D0_pos, &
                                             cumulative_abs_real_pops, tot_abs_real_pop, min_cluster_size, max_cluster_size, &
-                                            logging_info, contrib(it)%cdet, contrib(it)%cluster)
+                                            logging_info, contrib(it)%cdet, contrib(it)%cluster, qs%excit_gen_data)
                         end if
 
                         if (contrib(it)%cluster%excitation_level <= qs%ref%ex_level+2 .or. &
@@ -741,7 +742,7 @@ contains
                             ! generators. On subsequent calls, cdet does not need to change.
                             seen_D0 = .true.
                             call create_null_cluster(sys, qs%ref%f0, nprocs*real(selection_data%nD0_select,p), D0_normalisation, &
-                                                     qmc_in%initiator_pop, contrib(it)%cdet, contrib(it)%cluster)
+                                                     qmc_in%initiator_pop, contrib(it)%cdet, contrib(it)%cluster, qs%excit_gen_data)
                         end if
 
                         if (qs%propagator%quasi_newton) contrib(it)%cdet%fock_sum = &

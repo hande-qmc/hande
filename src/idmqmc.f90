@@ -26,7 +26,7 @@ contains
         !    parent_flag: set to 0 if the determinant is an initiator and 1 otherwise.
 
         use excitations, only: get_excitation_level
-        use determinants, only: det_info_t
+        use determinant_data, only: det_info_t
         use system, only: sys_t
 
         real(p), intent(in) :: parent_population, initiator_pop
