@@ -331,7 +331,7 @@ contains
 
     end subroutine communicate_inst_rdms
 
-    subroutine update_shift_dmqmc(qmc_in, qs, loc_totnparticles, loc_totnparticles_old)
+    subroutine update_shift_dmqmc(qmc_in, qs, loc_totnparticles, loc_totnparticles_old, comp)
 
         ! In:
         !    qmc_in: input options relating to QMC methods.
@@ -339,6 +339,7 @@ contains
         !        particles in the simulation at end of the previous report loop.
         !    loc_totnparticles_old: total number (across all processors) of
         !        particles in the simulation currently.
+        !    comp: if what we're doing is a complex calculation.
         ! In/Out:
         !    qs: QMC state. Shift is updated.
 
@@ -349,15 +350,26 @@ contains
         type(qmc_state_t), intent(inout) :: qs
         real(dp), intent(in) :: loc_totnparticles(:)
         real(dp), intent(in) :: loc_totnparticles_old(:)
+        logical, intent(in), optional :: comp
+        logical :: comp_set
         integer :: ireplica
 
+        comp_set = .false.
+        if (present(comp)) comp_set = comp
+
         do ireplica = 1, size(loc_totnparticles)
-            if (qs%vary_shift(ireplica)) then
-                call update_shift(qmc_in, qs, qs%shift(ireplica), loc_totnparticles_old(ireplica), &
-                    loc_totnparticles(ireplica), qmc_in%ncycles)
+            if (.not.comp_set .or. mod(ireplica, 2) /= 0) then
+                if (qs%vary_shift(ireplica)) then
+                    call update_shift(qmc_in, qs, qs%shift(ireplica), loc_totnparticles_old(ireplica), &
+                                     &loc_totnparticles(ireplica), qmc_in%ncycles)
+                end if
+                if (loc_totnparticles(ireplica) > qs%target_particles .and. (.not. qs%vary_shift(ireplica))) &
+                    qs%vary_shift(ireplica) = .true.
+            else
+                ! imaginary parts only needs to follow its real counterpart
+                qs%shift(ireplica) = qs%shift(ireplica-1)
+                qs%vary_shift(ireplica) = qs%vary_shift(ireplica-1)
             end if
-            if (loc_totnparticles(ireplica) > qs%target_particles .and. (.not. qs%vary_shift(ireplica))) &
-                qs%vary_shift(ireplica) = .true.
         end do
 
     end subroutine update_shift_dmqmc
@@ -398,8 +410,8 @@ contains
         use determinants, only: det_info_t
         use system, only: sys_t
         use qmc_data, only: particle_t
-        use dmqmc_data, only: dmqmc_in_t, dmqmc_estimates_t, energy_ind, energy_squared_ind, &
-                              correlation_fn_ind, staggered_mag_ind, full_r2_ind, dmqmc_weighted_sampling_t, &
+        use dmqmc_data, only: dmqmc_in_t, dmqmc_estimates_t, energy_ind, energy_imag_ind, energy_squared_ind, &
+                              correlation_fn_ind, staggered_mag_ind, full_r2_ind, full_r2_imag_ind, dmqmc_weighted_sampling_t, &
                               kinetic_ind, H0_ind, potential_ind, HI_ind
 
         type(sys_t), intent(in) :: sys
@@ -414,6 +426,14 @@ contains
 
         type(excit_t) :: excitation
         real(p) :: unweighted_walker_pop(psip_list%nspaces)
+        integer :: nham
+
+        ! Number of diagonal Hamiltonian elements in the dat array.
+        if (sys%read_in%comp) then 
+            nham = psip_list%nspaces/2
+        else
+            nham = psip_list%nspaces
+        end if
 
         ! Get excitation.
         excitation = get_excitation(sys%nel, sys%basis, psip_list%states(:sys%basis%tot_string_len,idet), &
@@ -431,72 +451,103 @@ contains
         ! The following only use the populations with ireplica = 1, so only call
         ! them if the determinant is occupied in the first replica.
         associate (est => dmqmc_estimates)
-            if (abs(unweighted_walker_pop(1)) > 0) then
-                ! See which estimators are to be calculated, and call the
-                ! corresponding procedures.
-                ! Energy
-                if (doing_dmqmc_calc(dmqmc_energy)) call update_dmqmc_energy_and_trace_ptr&
-                        &(sys, excitation, cdet, H00, unweighted_walker_pop(1), psip_list%dat(1, idet), &
-                          est%trace, est%numerators(energy_ind))
-                ! Energy squared.
-                if (doing_dmqmc_calc(dmqmc_energy_squared)) call update_dmqmc_energy_squared_ptr&
-                    &(sys, cdet, excitation, H00, unweighted_walker_pop(1), est%numerators(energy_squared_ind))
-                ! Spin-spin correlation function.
-                if (doing_dmqmc_calc(dmqmc_correlation)) call update_dmqmc_correlation_ptr&
-                    &(sys, cdet, excitation, H00, unweighted_walker_pop(1), dmqmc_estimates%correlation_mask, &
-                      est%numerators(correlation_fn_ind))
-                ! Staggered magnetisation.
-                if (doing_dmqmc_calc(dmqmc_staggered_magnetisation)) call update_dmqmc_stag_mag_ptr&
-                    &(sys, cdet, excitation, H00, unweighted_walker_pop(1), est%numerators(staggered_mag_ind))
-                ! Kinetic energy.
-                if (doing_dmqmc_calc(dmqmc_kinetic_energy)) call update_dmqmc_kinetic_energy_ptr&
-                    &(sys, cdet, excitation, H00, unweighted_walker_pop(1), est%numerators(kinetic_ind))
-                ! Potential energy.
-                if (doing_dmqmc_calc(dmqmc_potential_energy)) call update_dmqmc_potential_energy&
-                    &(sys, cdet, excitation, unweighted_walker_pop(1), est%numerators(potential_ind))
-                ! H^0 energy, where H^0 = H - V. See subroutines interface
-                ! comments for description.
-                if (doing_dmqmc_calc(dmqmc_H0_energy)) call update_dmqmc_H0_energy&
-                    &(sys, cdet, excitation, unweighted_walker_pop(1), est%numerators(H0_ind))
-                ! HI energy, HI(tau-beta) = e^{-0.5(beta-tau)H^0} H e^{0.5(beta-tau)H^0}
-                if (doing_dmqmc_calc(dmqmc_HI_energy)) call update_dmqmc_HI_energy&
-                    &(sys, cdet, excitation, unweighted_walker_pop(1), weighted_sampling%probs(sys%max_number_excitations+1), &
-                    & est%numerators(HI_ind))
-                ! Excitation distribution.
-                if (dmqmc_in%calc_excit_dist) est%excit_dist(excitation%nexcit) = &
-                    est%excit_dist(excitation%nexcit) + real(abs(psip_list%pops(1,idet)),p)/psip_list%pop_real_factor
-                ! Excitation distribtuion for calculating importance sampling weights.
-                if (dmqmc_in%find_weights .and. iteration > dmqmc_in%find_weights_start) est%excit_dist(excitation%nexcit) = &
-                    est%excit_dist(excitation%nexcit) + real(abs(psip_list%pops(1,idet)),p)/psip_list%pop_real_factor
-                if (dmqmc_in%calc_mom_dist) call update_dmqmc_momentum_distribution(sys, cdet, excitation, H00,&
-                                                                                      &unweighted_walker_pop(1), est%mom_dist%f_k)
-                if (dmqmc_in%calc_struc_fac) call update_dmqmc_structure_factor_ueg(sys, cdet, excitation, H00,&
-                                                                                      &unweighted_walker_pop(1), est%struc_fac%f_k)
+
+            if (.not.sys%read_in%comp) then
+                if (abs(unweighted_walker_pop(1)) > 0) then
+                    ! See which estimators are to be calculated, and call the
+                    ! corresponding procedures.
+                    ! Energy
+                    if (doing_dmqmc_calc(dmqmc_energy)) call update_dmqmc_energy_and_trace_ptr&
+                        &(sys, excitation, cdet, H00, unweighted_walker_pop(1:1), psip_list%dat(1, idet), &
+                        & est%trace, est%numerators(energy_ind:energy_ind))
+                    ! Energy squared.
+                    if (doing_dmqmc_calc(dmqmc_energy_squared)) call update_dmqmc_energy_squared_ptr&
+                        &(sys, cdet, excitation, H00, unweighted_walker_pop(1), est%numerators(energy_squared_ind))
+                    ! Spin-spin correlation function.
+                    if (doing_dmqmc_calc(dmqmc_correlation)) call update_dmqmc_correlation_ptr&
+                        &(sys, cdet, excitation, H00, unweighted_walker_pop(1), est%correlation_mask, &
+                          est%numerators(correlation_fn_ind))
+                    ! Staggered magnetisation.
+                    if (doing_dmqmc_calc(dmqmc_staggered_magnetisation)) call update_dmqmc_stag_mag_ptr&
+                        &(sys, cdet, excitation, H00, unweighted_walker_pop(1), est%numerators(staggered_mag_ind))
+                    ! Kinetic energy.
+                    if (doing_dmqmc_calc(dmqmc_kinetic_energy)) call update_dmqmc_kinetic_energy_ptr&
+                        &(sys, cdet, excitation, H00, unweighted_walker_pop(1), est%numerators(kinetic_ind))
+                    ! Potential energy.
+                    if (doing_dmqmc_calc(dmqmc_potential_energy)) call update_dmqmc_potential_energy&
+                        &(sys, cdet, excitation, unweighted_walker_pop(1), est%numerators(potential_ind))
+                    ! H^0 energy, where H^0 = H - V. See subroutines interface
+                    ! comments for description.
+                    if (doing_dmqmc_calc(dmqmc_H0_energy)) call update_dmqmc_H0_energy&
+                        &(sys, cdet, excitation, unweighted_walker_pop(1), est%numerators(H0_ind))
+                    ! HI energy, HI(tau-beta) = e^{-0.5(beta-tau)H^0} H e^{0.5(beta-tau)H^0}
+                    if (doing_dmqmc_calc(dmqmc_HI_energy)) call update_dmqmc_HI_energy&
+                        &(sys, cdet, excitation, unweighted_walker_pop(1), &
+                        & weighted_sampling%probs(sys%max_number_excitations+1), &
+                        & est%numerators(HI_ind))
+                    ! Excitation distribtuion for calculating importance sampling weights.
+                    if (dmqmc_in%find_weights .and. iteration > dmqmc_in%find_weights_start) &
+                        &est%excit_dist(excitation%nexcit) = est%excit_dist(excitation%nexcit) + &
+                        &real(abs(psip_list%pops(1,idet)),p)/psip_list%pop_real_factor
+                    if (dmqmc_in%calc_mom_dist) call update_dmqmc_momentum_distribution&
+                        &(sys, cdet, excitation, H00, unweighted_walker_pop(1), est%mom_dist%f_k)
+                    if (dmqmc_in%calc_struc_fac) call update_dmqmc_structure_factor_ueg&
+                        &(sys, cdet, excitation, H00, unweighted_walker_pop(1), est%struc_fac%f_k)
+                    ! Excitation distribution.
+                    if (dmqmc_in%calc_excit_dist) &
+                        &est%excit_dist(excitation%nexcit) = est%excit_dist(excitation%nexcit) + &
+                        &real(abs(psip_list%pops(1,idet)),p)/psip_list%pop_real_factor
+                end if
+
+                ! Full Renyi entropy (S_2).
+                if (doing_dmqmc_calc(dmqmc_full_r2)) call update_full_renyi_2&
+                    &(unweighted_walker_pop, excitation%nexcit, dmqmc_in%half_density_matrix, &
+                    & est%numerators(full_r2_ind:full_r2_ind))
+
+                ! Update the contribution to the trace from other replicas
+                if (dmqmc_in%replica_tricks .and. excitation%nexcit == 0) &
+                    est%trace(2) = est%trace(2) + unweighted_walker_pop(2)
+
+                ! Reduced density matrices.
+                if (dmqmc_in%rdm%doing_rdm) then
+                    call update_reduced_density_matrix_heisenberg&
+                        &(sys%basis, est, dmqmc_in%rdm, cdet, excitation, psip_list%pops(:,idet), &
+                        & psip_list%pop_real_factor, iteration, dmqmc_in%start_av_rdm, weighted_sampling%probs, &
+                        & rdm_error)
+                end if
+
+            else
+                ! The following only works for complex read_in systems.
+                if (abs(unweighted_walker_pop(1)) > 0 .or. abs(unweighted_walker_pop(2)) > 0) then
+                    ! Energy
+                    if (doing_dmqmc_calc(dmqmc_energy)) call update_dmqmc_energy_and_trace_ptr&
+                        &(sys, excitation, cdet, H00, unweighted_walker_pop(1:2), psip_list%dat(1, idet), &
+                        & est%trace, est%numerators(energy_ind:energy_imag_ind), .true.)
+                    ! Excitation distribution. 
+                    ! Now we just sum the particles from the real and imaginary components.
+                    if (dmqmc_in%calc_excit_dist) &
+                        &est%excit_dist(excitation%nexcit) = est%excit_dist(excitation%nexcit) + &
+                        &sum(real(abs(psip_list%pops(1:2,idet)),p))/psip_list%pop_real_factor
+                end if
+
+                ! Complex Renyi-2 entropy.
+                if (doing_dmqmc_calc(dmqmc_full_r2)) call update_full_renyi_2&
+                    &(unweighted_walker_pop, excitation%nexcit, dmqmc_in%half_density_matrix, &
+                    & est%numerators(full_r2_ind:full_r2_imag_ind), complx=.true.)
+
+                ! Update the contribution to the trace from other replicas
+                if (dmqmc_in%replica_tricks .and. excitation%nexcit == 0) &
+                    est%trace(3:4) = est%trace(3:4) + unweighted_walker_pop(3:4)
+
             end if
-
-            ! Full Renyi entropy (S_2).
-            if (doing_dmqmc_calc(dmqmc_full_r2)) call update_full_renyi_2(unweighted_walker_pop, excitation%nexcit, &
-                                                                          dmqmc_in%half_density_matrix, est%numerators(full_r2_ind))
-
-            ! Update the contribution to the trace from other replicas
-            if (dmqmc_in%replica_tricks .and. excitation%nexcit == 0) then
-                est%trace(2) = est%trace(2) + unweighted_walker_pop(2)
-            end if
-
-            ! Reduced density matrices.
-            if (dmqmc_in%rdm%doing_rdm) then
-                call update_reduced_density_matrix_heisenberg(sys%basis, est, dmqmc_in%rdm, cdet, excitation,               &
-                                                              psip_list%pops(:,idet), psip_list%pop_real_factor, iteration, &
-                                                              dmqmc_in%start_av_rdm, weighted_sampling%probs, rdm_error)
-            end if
-
             weighted_sampling%probs_old = weighted_sampling%probs
 
         end associate
 
     end subroutine update_dmqmc_estimators
 
-    subroutine dmqmc_energy_and_trace(sys, excitation, cdet, H00, pop, diagonal_contribution, trace, energy)
+    subroutine dmqmc_energy_and_trace(sys, excitation, cdet, H00, pop, diagonal_contribution, trace, energy, &
+                                     &complx)
 
         ! Add the contribution for the current density matrix element to the thermal
         ! energy estimate.
@@ -512,6 +563,7 @@ contains
         !    cdet: det_info_t object containing bit strings of densitry matrix
         !    element under consideration.
         !    diagonal_contribution: <D_i|H|D_i>-<D0|H|D0>
+        !    complex: if the system is complex-valued.
         ! In/Out:
         !    trace: total population on diagonal elements of density matrix
         !    energy: current thermal energy estimate.
@@ -524,24 +576,28 @@ contains
         type(sys_t), intent(in) :: sys
         type(excit_t), intent(inout) :: excitation
         type(det_info_t), intent(in) :: cdet
-        real(p), intent(in) :: H00, pop
-        real(p), intent(in) :: diagonal_contribution
+        real(p), intent(in) :: H00, diagonal_contribution
+        real(p), intent(in) :: pop(:)
+        logical, intent(in), optional :: complx
         real(p), intent(inout) :: trace(:)
-        real(p), intent(inout) :: energy
+        real(p), intent(inout) :: energy(:)
 
         type(hmatel_t) :: hmatel
         ! Importance sampling (in the FCIQMC-sense) isn't used in DMQMC...
         real(p) :: trial_wfn_dat(0)
 
         ! Update trace and off-diagonal contributions to the total enegy
-        call update_proj_energy_dmqmc(sys, cdet%f2, trial_wfn_dat, cdet, pop, trace(1), energy, excitation, hmatel)
+        call update_proj_energy_dmqmc(sys, cdet%f2, trial_wfn_dat, cdet, pop, trace, energy, excitation, hmatel, complx)
 
-        ! Update diagaonal contribution to the total energy
+        ! Update diagaonal contribution to the total energy.
+        ! NB The diagonal elements of Hermitian operators (namely, all observables)
+        !    should be all real (cf. read_in.f90 and hamiltonian_periodic_complex.f90)
         if (excitation%nexcit == 0) energy = energy + (diagonal_contribution+H00)*pop
 
     end subroutine dmqmc_energy_and_trace
 
-    subroutine dmqmc_energy_and_trace_propagate(sys, excitation, cdet, H00, pop, diagonal_contribution, trace, energy)
+    subroutine dmqmc_energy_and_trace_propagate(sys, excitation, cdet, H00, pop, diagonal_contribution, trace, energy, &
+                                               &complx)
 
         ! Add the contribution for the current density matrix element to the thermal
         ! energy estimate. Routine is specific to when using ipdmqmc
@@ -555,8 +611,9 @@ contains
         !    H00: diagonal Hamiltonian element for the reference.
         !    pop: number of particles on the current density matrix
         !        element.
+        !    pop_im: imaginary population, not used here.
         !    cdet: det_info_t object containing bit strings of densitry matrix
-        !    element under consideration.
+        !        element under consideration.
         !    diagonal_contribution: <D_i|H|D_i>-<D0|H|D0>
         ! In/Out:
         !    trace: total population on diagonal elements of density matrix
@@ -571,17 +628,18 @@ contains
         type(sys_t), intent(in) :: sys
         type(excit_t), intent(inout) :: excitation
         type(det_info_t), intent(in) :: cdet
-        real(p), intent(in) :: H00, pop
-        real(p), intent(in) :: diagonal_contribution
+        real(p), intent(in) :: H00, diagonal_contribution
+        real(p), intent(in) :: pop(:)
+        logical, intent(in), optional :: complx
         real(p), intent(inout) :: trace(:)
-        real(p), intent(inout) :: energy
+        real(p), intent(inout) :: energy(:)
 
         type(hmatel_t) :: hmatel
         ! Importance sampling (in the FCIQMC-sense) isn't used in DMQMC...
         real(p) :: trial_wfn_dat(0)
 
-        ! Update trace and off-diagonal contributions to the total enegy
-        call update_proj_energy_dmqmc(sys, cdet%f2, trial_wfn_dat, cdet, pop, trace(1), energy, excitation, hmatel)
+        ! Update trace and off-diagonal contributions to the total enegy.
+        call update_proj_energy_dmqmc(sys, cdet%f2, trial_wfn_dat, cdet, pop, trace, energy, excitation, hmatel, complx)
 
         ! Update diagaonal contribution to the total energy
         if (excitation%nexcit == 0) energy = energy + sc0_ptr(sys, cdet%f)*pop
@@ -858,7 +916,7 @@ contains
 
     end subroutine dmqmc_stag_mag_heisenberg
 
-    subroutine update_full_renyi_2(walker_pop, excit_level, half_density_matrix, full_r2)
+    subroutine update_full_renyi_2(walker_pop, excit_level, half_density_matrix, full_r2, complx)
 
         ! Add the contribution from the current density matrix element to the
         ! Renyi entropy (S_2) of the full density matrix.
@@ -870,6 +928,7 @@ contains
         !        contributing to the full density matrix bitstring.
         !    half_density_matrix: reflect psips spawned from lower triangle into
         !        the upper one?
+        !    complx: if we are sampling a complex read_in system.
         ! In/Out:
         !    full_r2: running estimate for Renyi entropy of the full density
         !       matrix.
@@ -877,7 +936,16 @@ contains
         real(p), intent(in) :: walker_pop(:)
         integer, intent(in) :: excit_level
         logical, intent(in) :: half_density_matrix
-        real(p), intent(inout) :: full_r2
+        logical, intent(in), optional :: complx
+        real(p), intent(inout) :: full_r2(:)
+        real(p) :: delta_r2(size(full_r2))
+
+        if (present(complx) .and. complx) then
+            delta_r2(1) = walker_pop(1)*walker_pop(3) - walker_pop(2)*walker_pop(4)
+            delta_r2(2) = walker_pop(1)*walker_pop(4) + walker_pop(2)*walker_pop(3)
+        else
+            delta_r2 = walker_pop(1)*walker_pop(2)
+        end if
 
         if (half_density_matrix .and. excit_level /= 0) then
             ! With the half-density matrix option, only the upper-half of the
@@ -885,9 +953,9 @@ contains
             ! as large instead. Thus, a product of off-diagonal elements is four
             ! times as large. We want two 'correct size' contributions, so we
             ! need to divide these contirbutions by two to get this.
-            full_r2 = full_r2 + walker_pop(1)*walker_pop(2)/2.0_p
+            full_r2 = full_r2 + delta_r2/2.0_p
         else
-            full_r2 = full_r2 + walker_pop(1)*walker_pop(2)
+            full_r2 = full_r2 + delta_r2
         end if
 
     end subroutine update_full_renyi_2
@@ -1645,7 +1713,7 @@ contains
         real(p), intent(in) :: tdiff
         real(p), intent(inout) :: HI_energy
 
-        real(p) :: diff_ijab, trace(2), energy
+        real(p) :: diff_ijab, trace(2), energy(2)
         type(hmatel_t) :: hmatel
         ! Importance sampling (in the FCIQMC-sense) isn't used in DMQMC...
         real(p) :: trial_wfn_dat(0)
@@ -1655,7 +1723,7 @@ contains
         energy = 0.0_p
 
         ! Hamiltonian matrix element.
-        call update_proj_energy_dmqmc(sys, cdet%f2, trial_wfn_dat, cdet, pop, trace(1), energy, excitation, hmatel)
+        call update_proj_energy_dmqmc(sys, cdet%f2, trial_wfn_dat, cdet, [pop], trace, energy, excitation, hmatel)
         if (excitation%nexcit == 0) then
             hmatel%r = sc0_ptr(sys, cdet%f)
         else
@@ -1698,7 +1766,7 @@ contains
 
     end subroutine update_dmqmc_potential_energy
 
-    subroutine update_proj_energy_dmqmc(sys, f, trial_wfn_dat, cdet, pop, trace, energy, excitation, hmatel)
+    subroutine update_proj_energy_dmqmc(sys, f, trial_wfn_dat, cdet, pop, trace, energy, excitation, hmatel, complx)
 
         ! Update projected energy contribution from current density matrix element.
 
@@ -1709,12 +1777,13 @@ contains
         !    cdet: det_info_t object containing bit strings of densitry matrix
         !    pop: number of particles on the current density matrix
         !        element.
+        !    complx(optional): true if the system is complex
         ! In/Out:
+        !    excitation: excit_t type variable which stores information on
+        !        the excitation between the two bitstring ends, corresponding
         !    trace: total population on diagonal elements of density matrix
         !    energy: current thermal energy estimate.
         ! Out:
-        !    excitation: excit_t type variable which stores information on
-        !        the excitation between the two bitstring ends, corresponding
         !        to the two labels for the density matrix element.
         !    hmatel: Hamiltonian matrix element between f and the reference.
 
@@ -1729,20 +1798,38 @@ contains
         type(sys_t), intent(in) :: sys
         integer(i0), intent(in) :: f(:)
         type(det_info_t), intent(in) :: cdet
-        type(excit_t), intent(out) :: excitation
-        real(p), intent(in) :: pop
-        real(p), intent(inout) :: trace, energy
+        type(excit_t), intent(inout) :: excitation
+        real(p), intent(in) :: pop(:)
+        real(p), intent(inout) :: trace(:), energy(:)
         type(hmatel_t), intent(out) :: hmatel
-        type(estimators_t) :: dummy_estimators
         real(p), intent(in) :: trial_wfn_dat(0)
+        logical, intent(in), optional :: complx
 
-        dummy_estimators%proj_energy = energy
-        dummy_estimators%D0_population = trace
+        type(estimators_t) :: dummy_estimators
+        logical :: complx_set
 
-        call update_proj_energy_ptr(sys, f, trial_wfn_dat, cdet, [pop], dummy_estimators, excitation, hmatel)
+        complx_set = .false.
+        if (present(complx)) complx_set = complx
 
-        energy = dummy_estimators%proj_energy
-        trace = dummy_estimators%D0_population
+        if (complx_set) then
+            dummy_estimators%proj_energy_comp = cmplx(energy(1), energy(2), p)
+            dummy_estimators%D0_population_comp = cmplx(trace(1), trace(2), p)
+        else
+            dummy_estimators%proj_energy = energy(1)
+            dummy_estimators%D0_population = trace(1)
+        end if
+
+        call update_proj_energy_ptr(sys, f, trial_wfn_dat, cdet, pop, dummy_estimators, excitation, hmatel)
+
+        if (complx_set) then
+            energy(1) = real(dummy_estimators%proj_energy_comp, p)
+            energy(2) = aimag(dummy_estimators%proj_energy_comp)
+            trace(1) = real(dummy_estimators%D0_population_comp, p)
+            trace(2) = aimag(dummy_estimators%D0_population_comp)
+        else
+            energy(1) = dummy_estimators%proj_energy
+            trace(1) = dummy_estimators%D0_population
+        end if
 
     end subroutine update_proj_energy_dmqmc
 

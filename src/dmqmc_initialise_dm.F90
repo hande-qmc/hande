@@ -115,61 +115,65 @@ contains
                                                         ireplica, qmc_in%initiator_approx, qmc_in%initiator_pop, spawn)
                 end if
             case(ueg, hub_k, read_in)
-                if (dmqmc_in%ipdmqmc) then
-                    ! Initially distribute psips along the diagonal according to
-                    ! a guess.
-                    if (dmqmc_in%grand_canonical_initialisation) then
-                        call init_grand_canonical_ensemble(sys, dmqmc_in, npsips_this_proc, psip_list%pop_real_factor, spawn, &
-                                                           energy_shift, qmc_state%target_beta, &
-                                                           & qmc_in%initiator_approx, qmc_in%initiator_pop, rng, chem_pot)
+                ! Only spawn into real components
+                if (.not.sys%read_in%comp .or. mod(ireplica, 2) /= 0) then
+                    if (dmqmc_in%ipdmqmc) then
+                        ! Initially distribute psips along the diagonal
+                        ! according to a guess.
+                        if (dmqmc_in%grand_canonical_initialisation) then
+                            call init_grand_canonical_ensemble&
+                                (sys, dmqmc_in, npsips_this_proc, psip_list%pop_real_factor, spawn, energy_shift, &
+                                 qmc_state%target_beta, qmc_in%initiator_approx, qmc_in%initiator_pop, rng, chem_pot)
+                        else
+                            call random_distribution_electronic&
+                                (rng, sys, npsips_this_proc, psip_list%pop_real_factor, ireplica, &
+                                 dmqmc_in%all_sym_sectors, qmc_in%initiator_approx, qmc_in%initiator_pop, spawn)
+                        end if
+                        ! Perform metropolis algorithm on initial distribution
+                        ! so that we are sampling the trial density matrix.
+                        if (dmqmc_in%metropolis_attempts > 0) &
+                            call initialise_dm_metropolis(sys, rng, qmc_state, dmqmc_in, npsips_this_proc, spawn)
                     else
-                        call random_distribution_electronic(rng, sys, npsips_this_proc, psip_list%pop_real_factor, ireplica, &
-                                                            dmqmc_in%all_sym_sectors, qmc_in%initiator_approx, &
-                                                            & qmc_in%initiator_pop, spawn)
-                    end if
-                    ! Perform metropolis algorithm on initial distribution so
-                    ! that we are sampling the trial density matrix.
-                    if (dmqmc_in%metropolis_attempts > 0) call initialise_dm_metropolis(sys, rng, qmc_state, dmqmc_in, &
-                                                                       npsips_this_proc, spawn)
-                else
-                    if (dmqmc_in%all_spin_sectors) then
-                        ! Need to set spin variables appropriately.
-                        call copy_sys_spin_info(sys, sys_copy)
-                        ! The size (number of configurations) of all spin symmetry
-                        ! sectors combined.
-                        total_size = 0
-                        do ialpha = max(0,sys%nel-sys%basis%nbasis/2), min(sys%nel, sys%basis%nbasis/2)
-                            total_size = total_size + &
-                                    binom_r(sys%basis%nbasis/2, ialpha)*binom_r(sys%basis%nbasis/2, sys%nel-ialpha)
-                        end do
+                        if (dmqmc_in%all_spin_sectors) then
+                            ! Need to set spin variables appropriately.
+                            call copy_sys_spin_info(sys, sys_copy)
+                            ! The size (number of configurations) of all spin
+                            ! symmetry sectors combined.
+                            total_size = 0
+                            do ialpha = max(0,sys%nel-sys%basis%nbasis/2), min(sys%nel, sys%basis%nbasis/2)
+                                total_size = total_size + &
+                                        binom_r(sys%basis%nbasis/2, ialpha)*binom_r(sys%basis%nbasis/2, sys%nel-ialpha)
+                            end do
 
-                        do ialpha = max(0,sys%nel-sys%basis%nbasis/2), min(sys%nel, sys%basis%nbasis/2)
-                            ! The size of this spin symmetry sector alone.
-                            sector_size = binom_r(sys%basis%nbasis/2, ialpha)*binom_r(sys%basis%nbasis/2, sys%nel-ialpha)
-                            prob = real(npsips_this_proc,dp)*sector_size/total_size
-                            npsips = floor(prob, int_64)
-                            ! If there are a non-integer number of psips to be
-                            ! spawned in this sector then add an extra psip with the
-                            ! required probability.
-                            prob = prob - npsips
-                            r = get_rand_close_open(rng)
-                            if (r < prob) npsips = npsips + 1_int_64
+                            do ialpha = max(0,sys%nel-sys%basis%nbasis/2), min(sys%nel, sys%basis%nbasis/2)
+                                ! The size of this spin symmetry sector alone.
+                                sector_size = binom_r(sys%basis%nbasis/2, ialpha)*binom_r(sys%basis%nbasis/2, &
+                                                     &sys%nel-ialpha)
+                                prob = real(npsips_this_proc,dp)*sector_size/total_size
+                                npsips = floor(prob, int_64)
+                                ! If there are a non-integer number of psips to
+                                ! be spawned in this sector then add an extra
+                                ! psip with the required probability.
+                                prob = prob - npsips
+                                r = get_rand_close_open(rng)
+                                if (r < prob) npsips = npsips + 1_int_64
 
-                            nparticles_temp(ireplica) = nparticles_temp(ireplica) + real(npsips, p)
-                            ms = 2*ialpha - sys%nel
-                            sys%nalpha = (ms + sys%nel) / 2
-                            sys%nbeta = sys%nel - sys%nalpha
-                            sys%nvirt_alpha = sys%basis%nbasis/2 - sys%nalpha
-                            sys%nvirt_beta = sys%basis%nbasis/2 - sys%nbeta
-                            call random_distribution_electronic(rng, sys, npsips, psip_list%pop_real_factor, ireplica, &
-                                                                dmqmc_in%all_sym_sectors, qmc_in%initiator_approx, &
-                                                                & qmc_in%initiator_pop, spawn)
-                        end do
-                        call copy_sys_spin_info(sys_copy, sys)
-                    else
-                        call random_distribution_electronic(rng, sys, npsips_this_proc, psip_list%pop_real_factor, ireplica, &
-                                                            dmqmc_in%all_sym_sectors, qmc_in%initiator_approx, &
-                                                            & qmc_in%initiator_pop, spawn)
+                                nparticles_temp(ireplica) = nparticles_temp(ireplica) + real(npsips, p)
+                                ms = 2*ialpha - sys%nel
+                                sys%nalpha = (ms + sys%nel) / 2
+                                sys%nbeta = sys%nel - sys%nalpha
+                                sys%nvirt_alpha = sys%basis%nbasis/2 - sys%nalpha
+                                sys%nvirt_beta = sys%basis%nbasis/2 - sys%nbeta
+                                call random_distribution_electronic&
+                                    (rng, sys, npsips, psip_list%pop_real_factor, ireplica, dmqmc_in%all_sym_sectors, &
+                                     qmc_in%initiator_approx, qmc_in%initiator_pop, spawn)
+                            end do
+                            call copy_sys_spin_info(sys_copy, sys)
+                        else
+                            call random_distribution_electronic&
+                                (rng, sys, npsips_this_proc, psip_list%pop_real_factor, ireplica, &
+                                 dmqmc_in%all_sym_sectors, qmc_in%initiator_approx, qmc_in%initiator_pop, spawn)
+                        end if
                     end if
                 end if
             case(hub_real)
