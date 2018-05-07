@@ -172,6 +172,11 @@ contains
         call end_one_body_t(read_in%one_e_h_integrals)
         call end_one_body_t(read_in%one_body_op_integrals)
         call end_two_body_t(read_in%coulomb_integrals)
+        ! Deallocate imaginary parts as well.
+        if (read_in%comp) then
+            call end_one_body_t(read_in%one_e_h_integrals_imag)
+            call end_two_body_t(read_in%coulomb_integrals_imag)
+        end if
         call dealloc_pg_sym_t(read_in%pg_sym)
         call dealloc_mom_sym_t(read_in%mom_sym)
 
