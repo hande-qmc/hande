@@ -32,6 +32,10 @@ max_nprocs = 1
 [*mc_real_32/np?/*/]
 [*mc_real_64/np?/*/]
 
+# There are a lot of tests in here which don't need to be run sequentially, so allow them to be concurrent
+[ccmc_real_64/np4/NH3-6-31g_ccsdt_excit_gens/]
+run_concurrent = true
+
 ## Processor options.
 # force MC jobs to run on the same number of cores as the benchmarks in order to have the same Markov chains...
 [*/np1/*/]
