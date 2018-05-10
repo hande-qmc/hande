@@ -876,9 +876,10 @@ contains
                 associate(bl=>sys%basis%tot_string_len, pl=>psip_list)
                     pl%dat(1,pos) = (pl%dat(1,pos) + sc0_ptr(sys, pl%states((bl+1):(2*bl),pos)) - ref%H00)/2
                 end associate
-                if (annihilation_flags%replica_tricks) then
-                    psip_list%dat(2:psip_list%nspaces,pos) = psip_list%dat(1,pos)
-                end if
+            end if
+            ! Copy the calculated Hamiltonian diagonal across replicas.
+            if (annihilation_flags%replica_tricks) then
+                psip_list%dat(2:psip_list%nspaces,pos) = psip_list%dat(1,pos)
             end if
         end if
 

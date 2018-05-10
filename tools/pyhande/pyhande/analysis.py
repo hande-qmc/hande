@@ -177,7 +177,7 @@ plateau_data : :class:`pandas.DataFrame`
         pop_data = extract_pop_growth(data, ref_key, shift_key, min_ref_pop)
 
     pop_data['Shoulder'] = pop_data[total_key]/abs(pop_data[ref_key])
-    sorted_data = pop_data.sort('Shoulder')
+    sorted_data = pop_data.sort_values('Shoulder')
     plateau_data.append([sorted_data[-10:]['Shoulder'].mean(),
                          sorted_data[-10:]['Shoulder'].sem()])
     plateau_data.append([sorted_data[-10:][total_key].mean(),
