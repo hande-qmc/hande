@@ -22,6 +22,16 @@ abstract interface
         type(det_info_t), intent(inout) :: d
         type(excit_gen_data_t), optional, intent(in) :: excit_gen_data
     end subroutine i_decoder
+    pure subroutine i_decoder_excit_gen(sys,d,excit_gen_data,nattempts)
+        use system, only: sys_t
+        use excit_gens, only: excit_gen_data_t
+        import :: det_info_t
+        implicit none
+        type(sys_t), intent(in) :: sys
+        type(det_info_t), intent(inout) :: d
+        type(excit_gen_data_t), intent(in) :: excit_gen_data
+        integer, optional, intent(in) :: nattempts
+    end subroutine i_decoder_excit_gen
     pure subroutine i_update_proj_energy(sys, f0, wfn_dat, d, pop, estimators, excitation, hmatel)
         use system, only: sys_t
         use hamiltonian_data, only: hmatel_t
@@ -245,6 +255,7 @@ abstract interface
 end interface
 
 procedure(i_decoder), pointer :: decoder_ptr => null()
+procedure(i_decoder_excit_gen), pointer :: decoder_excit_gen_ptr => null()
 
 procedure(i_update_proj_energy), pointer :: update_proj_energy_ptr => null()
 procedure(i_update_proj_hfs), pointer :: update_proj_hfs_ptr => null()

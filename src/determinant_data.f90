@@ -49,6 +49,11 @@ type det_info_t
     integer, pointer :: ref_cdet_occ_list(:) ! (nel)
     ! Number of orbitals that are different between det and reference.
     integer :: nex
+    ! Single excitation weights are pre-calculated (only relevant for heat bath single excit gen)
+    logical :: single_precalc = .false.
+    ! Double excitation weights are pre-calculated (only relevant for heat bath (/single/uniform) and
+    ! Power Pitzer Order Mij excit gens
+    logical :: double_precalc = .false.
     ! is the determinant an initiator determinant or not? (used only in
     ! i-FCIQMC). The i-th bit is set if the determinant is not an initiator in
     ! space i.

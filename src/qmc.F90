@@ -483,25 +483,29 @@ contains
                 decoder_ptr => decode_det_spinocc_spinsymunocc
             case(excit_gen_power_pitzer_occ_ij)
                 gen_excit_ptr%full => gen_excit_mol_power_pitzer_occ
-                decoder_ptr => decode_det_ppMij
+                decoder_ptr => decode_det_spinocc_spinsymunocc
+                decoder_excit_gen_ptr => decode_excit_gen_hbij
             case(excit_gen_power_pitzer)
                 gen_excit_ptr%full => gen_excit_mol_power_pitzer_occ_ref
                 decoder_ptr => decode_det_occ
             case(excit_gen_power_pitzer_orderN)
                 ! [todo] - check this decoder is correct.
                 gen_excit_ptr%full => gen_excit_mol_power_pitzer_orderN
-                decoder_ptr => decode_det_ppN
+                decoder_ptr => decode_det_occ
+                decoder_excit_gen_ptr => decode_excit_gen_ppN
             case(excit_gen_heat_bath)
                 gen_excit_ptr%full => gen_excit_mol_heat_bath
-                decoder_ptr => decode_det_hb
+                decoder_ptr => decode_det_occ
+                decoder_excit_gen_ptr => decode_excit_gen_hbij
             case(excit_gen_heat_bath_uniform)
                 gen_excit_ptr%full => gen_excit_mol_heat_bath_uniform
-                decoder_ptr => decode_det_hbu
+                decoder_ptr => decode_det_occ_symunocc
+                decoder_excit_gen_ptr => decode_excit_gen_hbij
             case(excit_gen_heat_bath_single)
-                ! [todo] uses basically same function as hb_uniform but
-                ! [todo] has varying function call with singles.
                 gen_excit_ptr%full => gen_excit_mol_heat_bath_uniform
-                decoder_ptr => decode_det_hbs
+                ! [todo] - the unocc part is only needed for singles. Too expensive here?
+                decoder_ptr => decode_det_occ_unocc
+                decoder_excit_gen_ptr => decode_excit_gen_hbs
             case default
                 call stop_all('init_proc_pointers', 'Selected excitation generator not implemented.')
             end select
