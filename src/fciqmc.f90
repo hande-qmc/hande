@@ -36,7 +36,7 @@ contains
         !    qs: qmc_state for use if restarting the calculation
 
         use parallel
-        use checking, only: check_allocate
+        use checking, only: check_allocate, check_deallocate
         use json_out
 
         use const, only: debug
@@ -78,6 +78,7 @@ contains
         use blocking, only: write_blocking_report_header, init_blocking, do_blocking, deallocate_blocking, &
                             write_blocking_report, update_shift_damping
         use report, only: write_date_time_close
+        use proc_pointers, only: decoder_excit_gen_ptr
 
         type(sys_t), intent(in) :: sys
         type(qmc_in_t), intent(in) :: qmc_in
@@ -107,7 +108,8 @@ contains
         real(dp), allocatable :: nparticles_old(:)
 
         integer(int_p) :: ndeath
-        integer :: nattempts_current_det, nspawn_events
+        integer :: nspawn_events
+        integer, allocatable :: nattempts_current_det(:)
         type(excit_t) :: connection
         type(hmatel_t) :: hmatel
         real(p), allocatable :: real_population(:), weighted_population(:)
@@ -180,6 +182,8 @@ contains
         call check_allocate('real_population', qs%psip_list%nspaces, ierr)
         allocate(weighted_population(qs%psip_list%nspaces), stat=ierr)
         call check_allocate('weighted_population', qs%psip_list%nspaces, ierr)
+        allocate(nattempts_current_det(qs%psip_list%nspaces), stat=ierr)
+        call check_allocate('nattempts_current_det', qs%psip_list%nspaces, ierr)
 
         call dSFMT_init(qmc_in%seed+iproc, 50000, rng)
         if (restart_in%restart_rng .and. allocated(qs%rng_state%dsfmt_state)) then
@@ -278,7 +282,13 @@ contains
                         ! Extract the real sign from the encoded sign.
                         real_population(ispace) = real(qs%psip_list%pops(ispace,idet),p)/qs%psip_list%pop_real_factor
                         weighted_population(ispace) = importance_sampling_weight(qs%trial, cdet, real_population(ispace))
+                        nattempts_current_det(ispace) = decide_nattempts(rng, real_population(ispace))
                     end do
+
+                    ! If we use a weighted excitation generator where weights can be pre-calculated, need additional decoder:
+                    if (qs%excit_gen_data%weight_decoder) then
+                        call decoder_excit_gen_ptr(sys, cdet, qs%excit_gen_data, nattempts=sum(nattempts_current_det))
+                    end if
 
                     ! If this is a deterministic state then copy its population
                     ! across to the determ%vector array. (Both replicas use the
@@ -307,9 +317,8 @@ contains
                         end if
 
 
-                        nattempts_current_det = decide_nattempts(rng, real_population(ispace))
-
-                        call do_fciqmc_spawning_attempt(rng, qs%spawn_store%spawn, bloom_stats, sys, qs, nattempts_current_det, &
+                        call do_fciqmc_spawning_attempt(rng, qs%spawn_store%spawn, bloom_stats, sys, qs, &
+                                                        nattempts_current_det(ispace), &
                                                         cdet, determ, determ_parent, qs%psip_list%pops(ispace, idet), &
                                                         sys%read_in%comp .and. modulo(ispace,2)==0, &
                                                         ispace, logging_info)
@@ -432,6 +441,10 @@ contains
         if (debug) call end_logging(logging_info)
 
         call dealloc_det_info_t(cdet, .false.)
+        
+        ! [todo] Do we want to deallocate the other arrays that were allocated in this function as well?
+        deallocate(nattempts_current_det, stat=ierr)
+        call check_deallocate('nattempts_current_det', ierr)
 
         call dSFMT_end(rng)
 
@@ -457,7 +470,7 @@ contains
         !   ndeath: running total of number of particles which have died or been cloned.
         !   bloom_stats: information on blooming within calculation.
 
-        use proc_pointers, only: sc0_ptr
+        use proc_pointers, only: sc0_ptr, decoder_excit_gen_ptr
         use death, only: stochastic_death
         use determinants, only: sum_sp_eigenvalues_occ_list
         use determinant_data, only: det_info_t
@@ -484,7 +497,8 @@ contains
 
         type(excit_t) :: connection
         type(hmatel_t) :: hmatel
-        integer :: idet, nattempts_current_det, ispace
+        integer :: idet, ispace
+        integer :: nattempts_current_det(qs%psip_list%nspaces)
         integer(int_p) :: int_pop(spawn_recv%ntypes)
         real(p) :: real_pop(spawn_recv%ntypes)
         real(dp) :: list_pop
@@ -514,6 +528,14 @@ contains
             call set_parent_flag(real_pop, qmc_in%initiator_pop, 1, quadrature_initiator, cdet%initiator_flag)
 
             do ispace = 1, qs%psip_list%nspaces
+                nattempts_current_det(ispace) = decide_nattempts(rng, real_pop(ispace))
+            end do
+
+            if (qs%excit_gen_data%weight_decoder) then
+                call decoder_excit_gen_ptr(sys, cdet, qs%excit_gen_data, nattempts=sum(nattempts_current_det))
+            end if
+
+            do ispace = 1, qs%psip_list%nspaces
 
                 imag = sys%read_in%comp .and. mod(ispace,2) == 0
 
@@ -524,9 +546,7 @@ contains
                 call update_proj_energy_ptr(sys, qs%ref%f0, qs%trial%wfn_dat, cdet, real_pop, qs%estimators(ispace), &
                                             connection, hmatel)
 
-                nattempts_current_det = decide_nattempts(rng, real_pop(ispace))
-
-                call do_fciqmc_spawning_attempt(rng, spawn_to_send, bloom_stats, sys, qs, nattempts_current_det, &
+                call do_fciqmc_spawning_attempt(rng, spawn_to_send, bloom_stats, sys, qs, nattempts_current_det(ispace), &
                                             cdet, determ, .false., int_pop(ispace), &
                                             sys%read_in%comp .and. modulo(ispace,2) == 0, &
                                             ispace, logging_info)
