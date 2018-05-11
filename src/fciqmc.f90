@@ -273,6 +273,8 @@ contains
 
                     cdet%f => qs%psip_list%states(:,idet)
                     cdet%data => qs%psip_list%dat(:,idet)
+                    cdet%single_precalc = .false.
+                    cdet%double_precalc = .false.
 
                     call decoder_ptr(sys, cdet%f, cdet, qs%excit_gen_data)
                     if (qs%propagator%quasi_newton) &
@@ -334,6 +336,8 @@ contains
 
                 associate(pl=>qs%psip_list, spawn=>qs%spawn_store%spawn, spawn_recv=>qs%spawn_store%spawn_recv)
                     if (fciqmc_in%non_blocking_comm) then
+                        cdet%single_precalc = .false.
+                        cdet%double_precalc = .false.
                         call receive_spawned_walkers(spawn_recv, req_data_s)
                         call evolve_spawned_walkers(sys, qmc_in, qs, spawn_recv, spawn, cdet, rng, ndeath, &
                                                     fciqmc_in%quadrature_initiator, logging_info, bloom_stats)

@@ -535,6 +535,8 @@ contains
             end associate
             d%ref_cdet_occ_list(ref_store(ii)) = d%occ_list(det_store(ii))
         end do
+        d%single_precalc = .true.
+        d%double_precalc = .true.
 
     end subroutine decode_excit_gen_ppN
     

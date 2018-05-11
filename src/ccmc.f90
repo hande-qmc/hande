@@ -323,7 +323,7 @@ contains
         use qmc_data, only: blocking_in_t
         use qmc_data, only: load_bal_in_t, qmc_state_t, annihilation_flags_t, estimators_t, blocking_t
         use qmc_data, only: qmc_in_t_json, ccmc_in_t_json, semi_stoch_in_t_json, restart_in_t_json
-        use qmc_data, only: blocking_in_t_json
+        use qmc_data, only: blocking_in_t_json, excit_gen_power_pitzer_orderN
         use reference_determinant, only: reference_t, reference_t_json
         use check_input, only: check_qmc_opts, check_ccmc_opts, check_blocking_opts
         use json_out, only: json_out_t, json_object_init, json_object_end
@@ -681,6 +681,8 @@ contains
                 call zero_ps_stats(ps_stats, qs%excit_gen_data%p_single_double%rep_accum%overflow_loc)
                 !$omp do schedule(dynamic,200) reduction(+:D0_population_cycle,proj_energy_cycle,nattempts_spawn,ndeath)
                 do iattempt = 1, selection_data%nclusters
+                    contrib(it)%cdet%single_precalc = .false.
+                    contrib(it)%cdet%double_precalc = .false.
                     if (iattempt <= selection_data%nsingle_excitors) then
                         ! As noncomposite clusters can't be above truncation level or linked-only all can accumulate +
                         ! propagate. Only need to check not selecting the reference as we treat it separately.
@@ -751,6 +753,16 @@ contains
                         call do_ccmc_accumulation(sys, qs, contrib(it)%cdet, contrib(it)%cluster, logging_info, &
                                                 D0_population_cycle, proj_energy_cycle, ccmc_in, ref_det, rdm, selection_data)
                         nattempts_spawn = nattempts_spawn + 1
+                        
+                        ! We will only call the excitation generator once here. Power Pitzer Order N is the only excitation
+                        ! generator that will also pre calculate the weights, independent of nattempts and is therefore the only
+                        ! one we need to consider here (the other excit gen will create a single or double excitation with an
+                        ! expected number of time of less than 1 which means we definitely don't want to pre calculate weights
+                        ! there).
+                        if (qs%excit_gen_data%excit_gen == excit_gen_power_pitzer_orderN) then
+                            call decoder_excit_gen_ptr(sys, contrib(it)%cdet, qs%excit_gen_data, nattempts=1)
+                        end if
+                        
                         call perform_ccmc_spawning_attempt(rng(it), sys, qs, ccmc_in, logging_info, bloom_stats, contrib(it), 1, &
                                                         ps_stats(it))
                     end if
@@ -1054,6 +1066,7 @@ contains
         use bloom_handler, only: bloom_stats_t, accumulate_bloom_stats
         use logging, only: logging_t
         use excit_gens, only: p_single_double_coll_t
+        use proc_pointers, only: decoder_excit_gen_ptr
 
         type(sys_t), intent(in) :: sys
         type(dSFMT_T), intent(inout) :: rng
@@ -1082,6 +1095,11 @@ contains
 
         call ms_stats_update(nspawnings_cluster, ms_stats)
         nattempts_spawn_tot = nattempts_spawn_tot + nspawnings_cluster
+        
+        ! If we use a weighted excitation generator where weights can be pre-calculated, need additional decoder:
+        if (qs%excit_gen_data%weight_decoder) then
+            call decoder_excit_gen_ptr(sys, contrib%cdet, qs%excit_gen_data, nattempts=nspawnings_cluster)
+        end if
 
         do i = 1, nspawnings_cluster
             call perform_ccmc_spawning_attempt(rng, sys, qs, ccmc_in, logging_info, bloom_stats, contrib, nspawnings_cluster, &
@@ -1153,6 +1171,8 @@ contains
         use logging, only: logging_t
         use excit_gens, only: p_single_double_coll_t
 
+        use proc_pointers, only: decoder_excit_gen_ptr
+
         type(sys_t), intent(in) :: sys
         type(dSFMT_T), intent(inout) :: rng
         type(qmc_state_t), intent(inout) :: qs
@@ -1181,6 +1201,11 @@ contains
         nattempts_spawn_tot = nattempts_spawn_tot + nspawnings_cluster
 
         contrib%cluster%amplitude = contrib%cluster%amplitude / abs(contrib%cluster%amplitude)
+        
+        ! If we use a weighted excitation generator where weights can be pre-calculated, need additional decoder:
+        if (qs%excit_gen_data%weight_decoder) then
+            call decoder_excit_gen_ptr(sys, contrib%cdet, qs%excit_gen_data, nattempts=nspawnings_cluster)
+        end if
 
         do i = 1, nspawnings_cluster
             call perform_ccmc_spawning_attempt(rng, sys, qs, ccmc_in, logging_info, bloom_stats, contrib, 1, ps_stat)
