@@ -2,7 +2,7 @@ module excit_gen_power_pitzer_mol
 
 ! A module containing excitations generators for molecules which weight excitations according to the exchange matrix elements.
 
-use const, only: i0, p, depsilon
+use const, only: i0, p, depsilon, debug
 
 implicit none
 
@@ -1009,6 +1009,7 @@ contains
         use hamiltonian_data, only: hmatel_t
         use read_in_symmetry, only: cross_product_basis_read_in
         use search, only: binary_search
+        use errors, only: stop_all
 
         type(sys_t), intent(in) :: sys
         type(excit_gen_data_t), intent(in) :: excit_gen_data
@@ -1042,6 +1043,14 @@ contains
             ! We have a single
             associate( pp => excit_gen_data%excit_gen_pp )
                 ! 2. Select i_ref.
+
+                if (debug) then
+                    ! Don't really need to test this but just in case:
+                    ! (unless there is a bug in the code, ppN should always be decoded before coming here)
+                    if (.not. cdet%single_precalc) then
+                        call stop_all('gen_excit_mol_power_pitzer_orderN','PPN excit gen data was not decoded as expected!')
+                    end if
+                end if
                 
                 i_ind_ref = select_weighted_value_precalc(rng, sys%nel, pp%ppn_i_s%aliasU(:), pp%ppn_i_s%aliasK(:))
                 i_cdet = cdet%ref_cdet_occ_list(i_ind_ref)
@@ -1091,6 +1100,13 @@ contains
             ! We have a double
             associate( pp => excit_gen_data%excit_gen_pp )
                 ! 2. Select i_ref.
+                if (debug) then
+                    ! Don't really need to test this but just in case:
+                    ! (unless there is a bug in the code, ppN should always be decoded before coming here)
+                    if (.not. cdet%double_precalc) then
+                        call stop_all('gen_excit_mol_power_pitzer_orderN','PPN excit gen data was not decoded as expected!') 
+                    end if
+                end if
                 
                 i_ind_ref = select_weighted_value_precalc(rng, sys%nel, pp%ppn_i_d%aliasU(:), pp%ppn_i_d%aliasK(:))
                 i_cdet = cdet%ref_cdet_occ_list(i_ind_ref)
@@ -1282,14 +1298,14 @@ contains
         use search, only: binary_search
         use checking, only: check_allocate, check_deallocate
         use excit_gens, only: excit_gen_power_pitzer_t, excit_gen_data_t
-        use excit_gen_utils, only: select_ij_heat_bath
+        use excit_gen_utils, only: select_ij_heat_bath, find_i_d_weights
         use alias, only: select_weighted_value
         use read_in_symmetry, only: cross_product_basis_read_in
         use qmc_data, only: excit_gen_power_pitzer_occ_ij
 
         type(sys_t), intent(in) :: sys
         type(excit_gen_data_t), intent(in) :: excit_gen_data
-        type(det_info_t), intent(in) :: cdet
+        type(det_info_t), intent(inout) :: cdet
         type(dSFMT_t), intent(inout) :: rng
         real(p), intent(out) :: pgen
         type(hmatel_t), intent(out) :: hmatel
@@ -1316,6 +1332,11 @@ contains
             ! 2. Select orbitals to excite from
             if (excit_gen_data%excit_gen == excit_gen_power_pitzer_occ_ij) then
                 ! Select ij using heat bath excit. gen. techniques.
+                ! If we did not expect more than once double excitation with this cdet, weights have not be pre calculated:
+                if (.not. cdet%double_precalc) then
+                    call find_i_d_weights(sys%nel, excit_gen_data%excit_gen_pp%ppm_i_d_weights, cdet)
+                    cdet%double_precalc = .true.
+                end if
 
                 call select_ij_heat_bath(rng, sys%nel, excit_gen_data%excit_gen_pp%ppm_ij_d_weights, cdet, i, j, i_ind, j_ind, &
                     ij_weights_occ, ij_weights_occ_tot, ji_weights_occ, ji_weights_occ_tot, allowed_excitation)
