@@ -43,6 +43,8 @@ contains
         ! In/Out:
         !    rng: random number generator.
         !    qmc_state: input options relating to QMC methods.
+        !    cdet: info on the current determinant (cdet) that we will spawn
+        !        from.
         ! In:
         !    sys: system being studied.
         !    spawn_cutoff: The size of the minimum spawning event allowed, in
@@ -50,8 +52,6 @@ contains
         !        stochastically rounded up to this value or down to zero.
         !    real_factor: The factor by which populations are multiplied to
         !        enable non-integer populations.
-        !    cdet: info on the current determinant (cdet) that we will spawn
-        !        from.
         !    parent_sign: sign of the population on the parent determinant (i.e.
         !        either a positive or negative integer).
         !    gen_excit_ptr: procedure pointer to excitation generators.
@@ -81,7 +81,7 @@ contains
         type(qmc_state_t), intent(inout) :: qmc_state
         integer(int_p), intent(in) :: spawn_cutoff
         integer(int_p), intent(in) :: real_factor
-        type(det_info_t), intent(in) :: cdet
+        type(det_info_t), intent(inout) :: cdet
         integer(int_p), intent(in) :: parent_sign
         type(gen_excit_ptr_t), intent(in) :: gen_excit_ptr
         real(p), allocatable, intent(in) :: weights(:)
@@ -136,6 +136,8 @@ contains
         ! In/Out:
         !    rng: random number generator.
         !    qmc_state: input options relating to QMC methods.
+        !    cdet: info on the current determinant (cdet) that we will spawn
+        !        from.
         ! In:
         !    sys: system being studied.
         !    spawn_cutoff: The size of the minimum spawning event allowed, in
@@ -143,8 +145,6 @@ contains
         !        stochastically rounded up to this value or down to zero.
         !    real_factor: The factor by which populations are multiplied to
         !        enable non-integer populations.
-        !    cdet: info on the current determinant (cdet) that we will spawn
-        !        from.
         !    parent_sign: sign of the population on the parent determinant (i.e.
         !        either a positive or negative integer).
         !    gen_excit_ptr: procedure pointer to excitation generators.
@@ -174,7 +174,7 @@ contains
         type(qmc_state_t), intent(inout) :: qmc_state
         integer(int_p), intent(in) :: spawn_cutoff
         integer(int_p), intent(in) :: real_factor
-        type(det_info_t), intent(in) :: cdet
+        type(det_info_t), intent(inout) :: cdet
         integer(int_p), intent(in) :: parent_sign
         type(gen_excit_ptr_t), intent(in) :: gen_excit_ptr
         real(p), allocatable, intent(in) :: weights(:)
@@ -232,6 +232,8 @@ contains
         ! In/Out:
         !    rng: random number generator.
         !    qmc_state: input options relating to QMC methods.
+        !    cdet: info on the current determinant (cdet) that we will spawn
+        !        from.
         ! In:
         !    sys: system being studied.
         !    spawn_cutoff: The size of the minimum spawning event allowed, in
@@ -239,8 +241,6 @@ contains
         !        stochastically rounded up to this value or down to zero.
         !    real_factor: The factor by which populations are multiplied to
         !        enable non-integer populations.
-        !    cdet: info on the current determinant (cdet) that we will spawn
-        !        from.
         !    parent_sign: sign of the population on the parent determinant (i.e.
         !        either a positive or negative integer).
         !    gen_excit_ptr: procedure pointer to excitation generators.
@@ -274,7 +274,7 @@ contains
         type(qmc_state_t), intent(inout) :: qmc_state
         integer(int_p), intent(in) :: spawn_cutoff
         integer(int_p), intent(in) :: real_factor
-        type(det_info_t), intent(in) :: cdet
+        type(det_info_t), intent(inout) :: cdet
         integer(int_p), intent(in) :: parent_sign
         type(gen_excit_ptr_t), intent(in) :: gen_excit_ptr
         real(p), allocatable, intent(in) :: weights(:)
@@ -332,6 +332,8 @@ contains
         ! In/Out:
         !    rng: random number generator.
         !    qmc_state: input options relating to QMC methods.
+        !    cdet: info on the current determinant (cdet) that we will spawn
+        !        from.
         ! In:
         !    sys: system being studied.
         !    spawn_cutoff: The size of the minimum spawning event allowed, in
@@ -339,8 +341,6 @@ contains
         !        stochastically rounded up to this value or down to zero.
         !    real_factor: The factor by which populations are multiplied to
         !        enable non-integer populations.
-        !    cdet: info on the current determinant (cdet) that we will spawn
-        !        from.
         !    parent_sign: sign of the population on the parent determinant (i.e.
         !        either a positive or negative integer).
         !    gen_excit_ptr: procedure pointer to excitation generators.
@@ -374,7 +374,7 @@ contains
         type(qmc_state_t), intent(inout) :: qmc_state
         integer(int_p), intent(in) :: spawn_cutoff
         integer(int_p), intent(in) :: real_factor
-        type(det_info_t), intent(in) :: cdet
+        type(det_info_t), intent(inout) :: cdet
         integer(int_p), intent(in) :: parent_sign
         type(gen_excit_ptr_t), intent(in) :: gen_excit_ptr
         real(p), allocatable, intent(in) :: weights(:)
@@ -431,6 +431,8 @@ contains
         ! In/Out:
         !    rng: random number generator.
         !    qmc_state: input options relating to QMC methods.
+        !    cdet: info on the current determinant (cdet) that we will spawn
+        !        from (or not, in this case!).
         ! In:
         !    sys: system being studied.
         !    spawn_cutoff: The size of the minimum spawning event allowed, in
@@ -438,8 +440,6 @@ contains
         !        stochastically rounded up to this value or down to zero.
         !    real_factor: The factor by which populations are multiplied to
         !        enable non-integer populations.
-        !    cdet: info on the current determinant (cdet) that we will spawn
-        !        from (or not, in this case!).
         !    parent_sign: sign of the population on the parent determinant (i.e.
         !        either a positive or negative integer).
         !    gen_excit_ptr: procedure pointer to excitation generators.
@@ -466,7 +466,7 @@ contains
         type(qmc_state_t), intent(inout) :: qmc_state
         integer(int_p), intent(in) :: spawn_cutoff
         integer(int_p), intent(in) :: real_factor
-        type(det_info_t), intent(in) :: cdet
+        type(det_info_t), intent(inout) :: cdet
         integer(int_p), intent(in) :: parent_sign
         type(gen_excit_ptr_t), intent(in) :: gen_excit_ptr
         real(p), allocatable, intent(in) :: weights(:)
@@ -496,6 +496,8 @@ contains
         ! In/Out:
         !    rng: random number generator.
         !    qmc_state: input options relating to QMC methods.
+        !    cdet: info on the current determinant (cdet) that we will spawn
+        !        from.
         ! In:
         !    sys: system being studied.
         !    spawn_cutoff: The size of the minimum spawning event allowed, in
@@ -503,8 +505,6 @@ contains
         !        stochastically rounded up to this value or down to zero.
         !    real_factor: The factor by which populations are multiplied to
         !        enable non-integer populations.
-        !    cdet: info on the current determinant (cdet) that we will spawn
-        !        from.
         !    parent_sign: sign of the population on the parent determinant (i.e.
         !        either a positive or negative integer).
         !    gen_excit_ptr: procedure pointer to excitation generators.
@@ -538,7 +538,7 @@ contains
         type(qmc_state_t), intent(inout) :: qmc_state
         integer(int_p), intent(in) :: spawn_cutoff
         integer(int_p), intent(in) :: real_factor
-        type(det_info_t), intent(in) :: cdet
+        type(det_info_t), intent(inout) :: cdet
         integer(int_p), intent(in) :: parent_sign
         type(gen_excit_ptr_t), intent(in) :: gen_excit_ptr
         real(p), allocatable, intent(in) :: weights(:)

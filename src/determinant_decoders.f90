@@ -506,7 +506,7 @@ contains
 
         type(sys_t), intent(in) :: sys
         type(det_info_t), intent(inout) :: d
-        type(excit_gen_data_t), optional, intent(in) :: excit_gen_data
+        type(excit_gen_data_t), intent(in) :: excit_gen_data
         integer, optional, intent(in) :: nattempts
 
         integer :: ref_store(sys%nel), det_store(sys%nel)

@@ -583,7 +583,6 @@ contains
         !   nattempts_current_det: total number of spawning attempts
         !       to make on this determinant.
         !   ispace: space currently under consideration.
-        !   cdet: determinant spawning is originating from.
         !   determ_parent: true if parent determinant is within the
         !       semistochastic space, otherwise false.
         !   imag_parent: true if spawning from psips within an imaginary
@@ -597,6 +596,7 @@ contains
         !   qs: qmc_state_t derived type with information on
         !       current calculation.
         !   spawn: stored information on spawning.
+        !   cdet: determinant spawning is originating from.
 
         use dSFMT_interface, only: dSFMT_t
         use system, only: sys_t
@@ -614,7 +614,7 @@ contains
         type(qmc_state_t), intent(inout) :: qs
         type(logging_t), intent(in) :: logging_info
         integer, intent(in) :: nattempts_current_det, ispace
-        type(det_info_t), intent(in) :: cdet
+        type(det_info_t), intent(inout) :: cdet
         logical, intent(in) :: determ_parent, imag_parent
         integer(int_p), intent(in) :: pop
 

@@ -39,12 +39,12 @@ contains
         ! In:
         !    sys: system object being studied.
         !    excit_gen_data: Data for excitation generator (not used) 
-        !    cdet: info on the current determinant (cdet) that we will gen
-        !        from.
         !    parent_sign: sign of the population on the parent determinant (i.e.
         !        either a positive or negative integer).
         ! In/Out:
         !    rng: random number generator.
+        !    cdet: info on the current determinant (cdet) that we will gen
+        !        from.
         ! Out:
         !    pgen: probability of generating the excited determinant from cdet.
         !    connection: excitation connection between the current determinant
@@ -66,7 +66,7 @@ contains
 
         type(sys_t), intent(in) :: sys
         type(excit_gen_data_t), intent(in) :: excit_gen_data
-        type(det_info_t), intent(in) :: cdet
+        type(det_info_t), intent(inout) :: cdet
         type(dSFMT_t), intent(inout) :: rng
         real(p), intent(out) :: pgen
         type(hmatel_t), intent(out) :: hmatel
@@ -420,12 +420,12 @@ contains
         ! In:
         !    sys: system object being studied.
         !    excit_gen_data: Excitation generation data.
-        !    cdet: info on the current determinant (cdet) that we will gen
-        !        from.
         !    parent_sign: sign of the population on the parent determinant (i.e.
         !        either a positive or negative integer).
         ! In/Out:
         !    rng: random number generator.
+        !    cdet: info on the current determinant (cdet) that we will gen
+        !        from.
         ! Out:
         !    pgen: probability of generating the excited determinant from cdet.
         !    connection: excitation connection between the current determinant
@@ -448,7 +448,7 @@ contains
 
         type(sys_t), intent(in) :: sys
         type(excit_gen_data_t), intent(in) :: excit_gen_data
-        type(det_info_t), intent(in) :: cdet
+        type(det_info_t), intent(inout) :: cdet
         type(dSFMT_t), intent(inout) :: rng
         real(p), intent(out) :: pgen
         type(hmatel_t), intent(out) :: hmatel
