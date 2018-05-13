@@ -45,7 +45,10 @@ MAIN = core.f90
 
 # Name of source files (if any) which must be recompiled if any other source
 # files need to be recompiled.
-FORCE_REBUILD_FILES = environment_report.F90
+FORCE_REBUILD_FILES = print_info.c git_info.f90
+# Set empty if FORCE_REBUILD_FILES don't need to be generated. Otherwise, need to ensure
+# they're added to the object list.
+GENERATE_REBUILD_FILES = yes
 
 # Allow files to be compiled into a program (MODE = program), or into a library
 # (MODE = library) or both (MODE = all).
@@ -210,8 +213,14 @@ SRCFILES := $(foreach dir,$(SRCDIRS),$(find_files))
 # Function to obtain full path to all objects from source filename(s).
 objects_path = $(addprefix $(DEST)/, $(addsuffix .o,$(basename $(notdir $(1)))))
 
+# Path to objects that must be rebuilt.
+FORCE_REBUILD_OBJECTS := $(call objects_path, $(FORCE_REBUILD_FILES))
+
 # Full path to all objects.
 OBJECTS := $(call objects_path, $(SRCFILES))
+ifeq ($(GENERATE_REBUILD_FILES),yes)
+OBJECTS := $(OBJECTS) $(FORCE_REBUILD_OBJECTS)
+endif
 
 # Full path to all objects in library.
 ifneq ($(MAIN),)
@@ -449,9 +458,23 @@ endif
 
 # Other dependencies.
 # Rebuild objects from files given in FORCE_REBUILD_FILES if any other source file has changed.
-ifneq ($(FORCE_REBUILD_FILES),)
-FORCE_REBUILD_OBJECTS := $(call objects_path, $(FORCE_REBUILD_FILES))
+ifneq ($(FORCE_REBUILD_OBJECTS),)
 $(FORCE_REBUILD_OBJECTS): $(SRCFILES)
 endif
 # Create object directory if required before compiling anything.
 $(OBJECTS): | $(DEST)
+
+#-----
+# HANDE-specific rules
+
+$(DEST)/git_info.f90: lib/local/git_info.f90.in $(SRCFILES)
+$(DEST)/print_info.c: lib/local/print_info.c.in $(SRCFILES)
+$(DEST)/git_info.mod: $(DEST)/git_info.o
+$(DEST)/environment_report.o: $(DEST)/git_info.mod
+
+$(DEST)/git_info.f90 $(DEST)/print_info.c : | $(DEST)
+$(DEST)/git_info.f90 $(DEST)/print_info.c:
+	python tools/configurator.py -d $(DEST) Fortran_compiler $(FC) build_type $(OPT) C_compiler $(CC)
+
+vpath git_info.f90 $(DEST)
+vpath print_info.c $(DEST)
