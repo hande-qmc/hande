@@ -3,7 +3,7 @@ module excit_gen_heat_bath_mol
 ! A module containing excitations generators which weight excitations according to the heat bath algorithm
 ! by Holmes et al. (Holmes, A. A.; Changlani, H. J.; Umrigar, C. J. J. Chem. Theory Comput. 2016, 12, 1561–1571).
 
-use const, only: i0, p, depsilon
+use const, only: i0, p, depsilon, debug
 
 implicit none
 
@@ -327,10 +327,12 @@ contains
 
         associate( hb => excit_gen_data%excit_gen_hb )
             ! 1: Select orbitals i and j to excite from.
-            ! If we expected this cdet not to be passed to the excit gens more than once, weights have not be pre calculated:
-            if (.not. cdet%double_precalc) then
-                call find_i_d_weights(sys%nel, excit_gen_data%excit_gen_hb%i_weights, cdet)
-                cdet%double_precalc = .true.
+            if (debug) then
+                ! Don't really need to test this but just in case:
+                ! (unless there is a bug in the code, hb should always be decoded before coming here)
+                if (.not. cdet%double_precalc) then
+                    call stop_all('gen_excit_mol_heat_bath','hb excit gen data was not decoded as expected!')
+                end if
             end if
             
             call select_ij_heat_bath(rng, sys%nel, hb%ij_weights, cdet, i, j, i_ind, j_ind, ij_weights_occ, ij_weights_occ_tot, &

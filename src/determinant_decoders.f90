@@ -540,7 +540,66 @@ contains
 
     end subroutine decode_excit_gen_ppN
     
-    pure subroutine decode_excit_gen_hbij(sys, d, excit_gen_data, nattempts)
+    pure subroutine decode_excit_gen_ppMij(sys, d, excit_gen_data, nattempts)
+
+        ! Pre-calculate weights needed to select ij in a double excitation according to the
+        ! heat bath algorithm.
+        ! In:
+        !    sys: system being studied (contains required basis information).
+        !    excit_gen_data: information for excitation generators.
+        !    nattempts (optional): total number of times this det is passed to excit gen.
+        ! In/Out:
+        !    d: det_info_t variable.  The following components are set here:
+        !        i_d_occ: weights to select i in a double excitation
+        !            during excit gen call.
+
+        use system, only: sys_t
+        use excit_gens, only: excit_gen_data_t
+        use excit_gen_utils, only: find_i_d_weights
+
+        type(sys_t), intent(in) :: sys
+        type(det_info_t), intent(inout) :: d
+        type(excit_gen_data_t), intent(in) :: excit_gen_data
+        integer, optional, intent(in) :: nattempts
+        
+        d%double_precalc = .false.
+        if ((nattempts * (1.0_p - excit_gen_data%pattempt_single)) > 1.0_p) then
+            call find_i_d_weights(sys%nel, excit_gen_data%excit_gen_pp%ppm_i_d_weights, d)
+            d%double_precalc = .true.
+        end if
+
+    end subroutine decode_excit_gen_ppMij
+    
+    pure subroutine decode_excit_gen_hb(sys, d, excit_gen_data, nattempts)
+
+        ! Pre-calculate weights needed to select ij in a double excitation according to the
+        ! heat bath algorithm.
+        ! In:
+        !    sys: system being studied (contains required basis information).
+        !    excit_gen_data: information for excitation generators.
+        !    nattempts (optional): total number of times this det is passed to excit gen.
+        ! In/Out:
+        !    d: det_info_t variable.  The following components are set here:
+        !        i_d_occ: weights to select i in a double excitation
+        !            during excit gen call.
+
+        use system, only: sys_t
+        use excit_gens, only: excit_gen_data_t
+        use excit_gen_utils, only: find_i_d_weights
+
+        type(sys_t), intent(in) :: sys
+        type(det_info_t), intent(inout) :: d
+        type(excit_gen_data_t), intent(in) :: excit_gen_data
+        integer, optional, intent(in) :: nattempts
+       
+        ! No matter what type of excitation we are doing, we will need to decode this. 
+        call find_i_d_weights(sys%nel, excit_gen_data%excit_gen_hb%i_weights, d)
+        d%double_precalc = .true.
+        d%single_precalc = .true.
+
+    end subroutine decode_excit_gen_hb
+    
+    pure subroutine decode_excit_gen_hbu(sys, d, excit_gen_data, nattempts)
 
         ! Pre-calculate weights needed to select ij in a double excitation according to the
         ! heat bath algorithm.
@@ -568,7 +627,7 @@ contains
             d%double_precalc = .true.
         end if
 
-    end subroutine decode_excit_gen_hbij
+    end subroutine decode_excit_gen_hbu
     
     pure subroutine decode_excit_gen_hbs(sys, d, excit_gen_data, nattempts)
 

@@ -490,7 +490,7 @@ contains
             case(excit_gen_power_pitzer_occ_ij)
                 gen_excit_ptr%full => gen_excit_mol_power_pitzer_occ
                 decoder_ptr => decode_det_spinocc_spinsymunocc
-                decoder_excit_gen_ptr => decode_excit_gen_hbij
+                decoder_excit_gen_ptr => decode_excit_gen_ppMij
                 weight_decoder = .true.
             case(excit_gen_power_pitzer)
                 gen_excit_ptr%full => gen_excit_mol_power_pitzer_occ_ref
@@ -504,12 +504,12 @@ contains
             case(excit_gen_heat_bath)
                 gen_excit_ptr%full => gen_excit_mol_heat_bath
                 decoder_ptr => decode_det_occ
-                decoder_excit_gen_ptr => decode_excit_gen_hbij
+                decoder_excit_gen_ptr => decode_excit_gen_hb
                 weight_decoder = .true.
             case(excit_gen_heat_bath_uniform)
                 gen_excit_ptr%full => gen_excit_mol_heat_bath_uniform
                 decoder_ptr => decode_det_occ_symunocc
-                decoder_excit_gen_ptr => decode_excit_gen_hbij
+                decoder_excit_gen_ptr => decode_excit_gen_hbu
                 weight_decoder = .true.
             case(excit_gen_heat_bath_single)
                 gen_excit_ptr%full => gen_excit_mol_heat_bath_uniform
