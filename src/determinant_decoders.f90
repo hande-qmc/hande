@@ -526,7 +526,7 @@ contains
         ! These orbitals might not be aligned in the most efficient way:
         !  They may not match in spin, so first deal with this
 
-        d%ref_cdet_occ_list = excit_gen_data%excit_gen_pp%occ_list(:sys%nel)
+        d%ref_cdet_occ_list = excit_gen_data%excit_gen_pp%occ_list
         ! ref store (e.g.) contains the indices within excit_gen_pp%occ_list of the orbitals
         ! which have been excited from.
         do ii=1, nex

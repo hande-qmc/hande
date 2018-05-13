@@ -124,7 +124,7 @@ type excit_gen_power_pitzer_t
     ! Length of array: (sys%nvirt_beta)
     integer(int_bas), allocatable :: virt_list_beta(:) 
     ! occ_list(:) is the list of occupied orbitals in the reference.
-    ! Length of array: (sys%nel+1) - The +1 is a pad.
+    ! Length of array: (sys%nel)
     integer(int_bas), allocatable :: occ_list(:)
     ! List of all alpha orbitals.
     ! Length of array: sys%basis%nbasis 
