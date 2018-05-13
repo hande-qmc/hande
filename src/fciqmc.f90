@@ -108,8 +108,8 @@ contains
         real(dp), allocatable :: nparticles_old(:)
 
         integer(int_p) :: ndeath
-        integer :: nspawn_events
-        integer, allocatable :: nattempts_current_det(:)
+        ! [todo] - Should some of these be int_p?
+        integer :: nspawn_events, nattempts_current_det_ispace
         type(excit_t) :: connection
         type(hmatel_t) :: hmatel
         real(p), allocatable :: real_population(:), weighted_population(:)
@@ -182,8 +182,6 @@ contains
         call check_allocate('real_population', qs%psip_list%nspaces, ierr)
         allocate(weighted_population(qs%psip_list%nspaces), stat=ierr)
         call check_allocate('weighted_population', qs%psip_list%nspaces, ierr)
-        allocate(nattempts_current_det(qs%psip_list%nspaces), stat=ierr)
-        call check_allocate('nattempts_current_det', qs%psip_list%nspaces, ierr)
 
         call dSFMT_init(qmc_in%seed+iproc, 50000, rng)
         if (restart_in%restart_rng .and. allocated(qs%rng_state%dsfmt_state)) then
@@ -284,12 +282,14 @@ contains
                         ! Extract the real sign from the encoded sign.
                         real_population(ispace) = real(qs%psip_list%pops(ispace,idet),p)/qs%psip_list%pop_real_factor
                         weighted_population(ispace) = importance_sampling_weight(qs%trial, cdet, real_population(ispace))
-                        nattempts_current_det(ispace) = decide_nattempts(rng, real_population(ispace))
                     end do
 
                     ! If we use a weighted excitation generator where weights can be pre-calculated, need additional decoder:
+                    ! Note that we estimate the number of attempts by the sum of populations in all spaces. This is not to
+                    ! alter Markov chains and call the function decide_nattempts early and pre-calculate.
                     if (qs%excit_gen_data%weight_decoder) then
-                        call decoder_excit_gen_ptr(sys, cdet, qs%excit_gen_data, nattempts=sum(nattempts_current_det))
+                        call decoder_excit_gen_ptr(sys, cdet, qs%excit_gen_data, &
+                            nattempts=int(sum(real_population(1:qs%psip_list%nspaces))))
                     end if
 
                     ! If this is a deterministic state then copy its population
@@ -318,9 +318,10 @@ contains
                                                         qs%estimators(ispace), connection, hmatel)
                         end if
 
+                        nattempts_current_det_ispace = decide_nattempts(rng, real_population(ispace))
 
                         call do_fciqmc_spawning_attempt(rng, qs%spawn_store%spawn, bloom_stats, sys, qs, &
-                                                        nattempts_current_det(ispace), &
+                                                        nattempts_current_det_ispace, &
                                                         cdet, determ, determ_parent, qs%psip_list%pops(ispace, idet), &
                                                         sys%read_in%comp .and. modulo(ispace,2)==0, &
                                                         ispace, logging_info)
@@ -446,10 +447,6 @@ contains
 
         call dealloc_det_info_t(cdet, .false.)
         
-        ! [todo] Do we want to deallocate the other arrays that were allocated in this function as well?
-        deallocate(nattempts_current_det, stat=ierr)
-        call check_deallocate('nattempts_current_det', ierr)
-
         call dSFMT_end(rng)
 
     end subroutine do_fciqmc
