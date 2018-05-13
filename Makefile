@@ -476,5 +476,12 @@ $(DEST)/git_info.f90 $(DEST)/print_info.c : | $(DEST)
 $(DEST)/git_info.f90 $(DEST)/print_info.c:
 	python tools/configurator.py -d $(DEST) Fortran_compiler $(FC) build_type $(OPT) C_compiler $(CC)
 
-vpath git_info.f90 $(DEST)
-vpath print_info.c $(DEST)
+# Avoid using vpath to set the search path for the generated files as this doesn't work
+# with make 3.81 (which is sadly still in use...). Instead duplicate pattern rules for the
+# case where source and object files are in DEST.
+#vpath git_info.f90 $(DEST)
+#vpath print_info.c $(DEST)
+$(DEST)/print_info.o: $(DEST)/print_info.c
+	$(CC) $(CPPFLAGS) $(INCLUDE) -c $(CFLAGS) $< -o $@
+$(DEST)/git_info.o: $(DEST)/git_info.f90
+	$(FC) -c $(FFLAGS) $< -o $@ $(F90_MOD_FLAG)$(DEST)
