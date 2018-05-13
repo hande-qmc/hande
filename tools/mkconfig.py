@@ -392,9 +392,6 @@ args is the list of arguments which is re-encoded in the make.inc.
         config["defs"] = " -D".join([""]+defs)
     else:
         config["defs"] = ""
-    conf_dict = prepare_configuration_dictionary(Fortran_compiler=config['fc'], build_type=config['opt_level'], C_compiler=config['cc'])
-    configure_file(conf_dict, 'print_info.c', in_path=os.path.join(os.getcwd(), 'lib/local'), suffix='.in')
-    configure_file(conf_dict, 'git_info.f90', in_path=os.path.join(os.getcwd(), 'lib/local'), suffix='.in')
     return (MAKEFILE_TEMPLATE % config)
 
 @contextlib.contextmanager
