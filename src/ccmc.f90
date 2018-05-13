@@ -323,7 +323,7 @@ contains
         use qmc_data, only: blocking_in_t
         use qmc_data, only: load_bal_in_t, qmc_state_t, annihilation_flags_t, estimators_t, blocking_t
         use qmc_data, only: qmc_in_t_json, ccmc_in_t_json, semi_stoch_in_t_json, restart_in_t_json
-        use qmc_data, only: blocking_in_t_json, excit_gen_power_pitzer_orderN
+        use qmc_data, only: blocking_in_t_json, excit_gen_power_pitzer_orderN, excit_gen_heat_bath
         use reference_determinant, only: reference_t, reference_t_json
         use check_input, only: check_qmc_opts, check_ccmc_opts, check_blocking_opts
         use json_out, only: json_out_t, json_object_init, json_object_end
@@ -754,12 +754,13 @@ contains
                                                 D0_population_cycle, proj_energy_cycle, ccmc_in, ref_det, rdm, selection_data)
                         nattempts_spawn = nattempts_spawn + 1
                         
-                        ! We will only call the excitation generator once here. Power Pitzer Order N is the only excitation
-                        ! generator that will also pre calculate the weights, independent of nattempts and is therefore the only
-                        ! one we need to consider here (the other excit gen will create a single or double excitation with an
+                        ! We will only call the excitation generator once here. Power Pitzer Order N and heat bath are the only excitation
+                        ! generators that will also pre calculate the weights, independent of nattempts and is therefore the only
+                        ! ones we need to consider here (the other excit gen will create a single or double excitation with an
                         ! expected number of time of less than 1 which means we definitely don't want to pre calculate weights
                         ! there).
-                        if (qs%excit_gen_data%excit_gen == excit_gen_power_pitzer_orderN) then
+                        if ((qs%excit_gen_data%excit_gen == excit_gen_power_pitzer_orderN) .or. &
+                            (qs%excit_gen_data%excit_gen == excit_gen_heat_bath)) then
                             call decoder_excit_gen_ptr(sys, contrib(it)%cdet, qs%excit_gen_data, nattempts=1)
                         end if
                         
