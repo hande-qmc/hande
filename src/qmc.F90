@@ -1143,8 +1143,15 @@ contains
         use qmc_data, only: qmc_state_t
         use spawn_data, only: move_spawn_t
         use particle_t_utils, only: move_particle_t
+        use errors, only: stop_all
 
         type(qmc_state_t), intent(inout) :: qmc_state_old, qmc_state_new
+
+        ! Assume if particle_t is correctly present in qmc_state_old, other components are as well. This is a first-order
+        ! sanity check on whether qmc_state_old is actually allocated and valid (e.g. has not been already passed in to a previous
+        ! calculation and deallocated).
+        if (.not.allocated(qmc_state_old%psip_list%states)) call stop_all('move_qmc_state_t', &
+                                                                          'Attempting to restart from an invalid qmc_state.')
 
         call move_spawn_t(qmc_state_old%spawn_store%spawn, qmc_state_new%spawn_store%spawn)
         call move_spawn_t(qmc_state_old%spawn_store%spawn_recv, qmc_state_new%spawn_store%spawn_recv)
