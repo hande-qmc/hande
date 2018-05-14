@@ -56,11 +56,17 @@ if(ENABLE_MPI)
   endif()
 endif()
 
+option_with_print(ENABLE_SCALAPACK "Enable usage of ScaLAPACK" OFF)
+# Usage of ScaLAPACK is conditional to:
+#   1. Having enabled and detected a working MPI implementation
+#   2. Having explicitly requested to link against ScaLAPACK
+# Thus, we introduced an internal _enable_scalapack dependent option
+# as an helper here.
 include(CMakeDependentOption)
 cmake_dependent_option(
-  ENABLE_SCALAPACK "Enable usage of ScaLAPACK" OFF
-  "NOT ENABLE_MPI" ON
+  _enable_scalapack "Enable usage of ScaLAPACK" OFF
+  "ENABLE_MPI;USE_MPI;ENABLE_SCALAPACK" ON
   )
-if(ENABLE_SCALAPACK)
+if(_enable_scalapack)
   set(USE_ScaLAPACK ON)
 endif()

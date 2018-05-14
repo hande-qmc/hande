@@ -19,8 +19,6 @@ modules:
     - 'custom/compilers/FortranFlags.cmake'
 - cmake:
   - source:
-    - 'custom/options_wrappers.cmake'
-    - '%(url_root)modules/custom_color_messages.cmake'
     - '%(url_root)modules/safeguards.cmake'
     - '%(url_root)modules/default_build_paths.cmake'
     - '%(url_root)modules/python_interpreter.cmake'
