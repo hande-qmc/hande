@@ -30,7 +30,10 @@ qs = fciqmc {
 }
 
 f = io.open('HANDE.COMM', 'w')
-f:write('target_population = -1')
+f:write([[-- interact via commands for next calculation
+target_population = -1
+write_restart = 3
+]])
 f:close()
 
 qmc.nreports = 50
