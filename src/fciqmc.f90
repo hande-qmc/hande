@@ -422,7 +422,9 @@ contains
         end if
 
         if (qs%restart_in%write_restart) then
-            call dump_restart_hdf5(ri, qs, qs%mc_cycles_done, nparticles_old, sys%basis%nbasis, fciqmc_in%non_blocking_comm, &
+            ! Update restart_info_t if it was modified by HANDE.COMM.
+            if (qs%restart_in%write_id /= restart_in%write_id) call init_restart_info_t(ri, write_id=qs%restart_in%write_id)
+            call dump_restart_hdf5(qs, qs%mc_cycles_done, nparticles_old, sys%basis%nbasis, fciqmc_in%non_blocking_comm, &
                                     sys%basis%info_string_len)
             if (parent) write (io_unit,'()')
         end if

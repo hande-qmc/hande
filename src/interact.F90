@@ -139,12 +139,6 @@ contains
             if (lua_err == 0) then
                 ! ... and get variables from global state.
                 call aot_get_val(soft_exit, ierr, lua_state, key='softexit')
-                    ! [review] - JSS: 1. writerestart is hard to parse. Suggest using hypen or underscore to split up words.
-                    !                    (Bonus: be consistent with what we do in the main input).
-                    !                 2. Having this as just a boolean flag is inconsistent with how we handle the analagous option
-                    !                    in the main input. How about instead extending qmc_state_t with the restart info (e.g.
-                    !                    restart_in_t) and then modifying it if not already set? This would also make the logic
-                    !                    in the ccmc/fciqmc/dmqmc run functions simpler I think.
                 if (present(qs)) then
                     if (aot_exists(lua_state, key='write_restart')) then
                         ! This is very similar to get_flag_and_id in lua_hand_utils but it does less checks and does not need a handle.

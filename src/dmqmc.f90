@@ -410,7 +410,7 @@ contains
         end if
 
         if (restart_in%write_restart) then
-            call dump_restart_hdf5(ri, qs, qs%mc_cycles_done, qs%psip_list%tot_nparticles, sys%basis%nbasis, .false., &
+            call dump_restart_hdf5(qs, qs%mc_cycles_done, qs%psip_list%tot_nparticles, sys%basis%nbasis, .false., &
                                     sys%basis%info_string_len)
             if (parent) write (iunit,'()')
         end if
