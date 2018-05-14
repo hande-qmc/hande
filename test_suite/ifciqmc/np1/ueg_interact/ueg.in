@@ -45,3 +45,12 @@ fciqmc {
     qmc_state = qs,
     restart = { rng = false, },
 }
+
+qmc.nreports = 10
+
+fciqmc {
+    sys = sys,
+    qmc = qmc,
+    reference = ref,
+    restart = { read = 3 }
+}
