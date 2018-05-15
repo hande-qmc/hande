@@ -111,6 +111,11 @@ Options
         The qmc_state object must have been returned by a previous FCIQMC calculation.
         The validity of this is not checked.  The system must also be unchanged.
 
+    .. warning::
+
+        This destroys the qmc_state object and so it cannot be re-used in subsequent
+        QMC calculations.
+
 .. _fciqmc_table:
 
 fciqmc options
