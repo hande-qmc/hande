@@ -68,7 +68,7 @@ contains
         
         do i = 1, sys%basis%nbasis
             if (i==pp%occ_list(j)) then ! Our basis fn is in the ref
-                if (j <= sys%nel) j = j + 1
+                if (j < sys%nel) j = j + 1
             else ! Need to store it as a virt
                 if (sys%basis%basis_fns(i)%Ms == -1) then ! beta
                     ind_b = ind_b + 1
