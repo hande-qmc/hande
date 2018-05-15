@@ -128,6 +128,7 @@ target_compile_definitions(hande-static
     $<$<NOT:$<BOOL:${USE_HDF5}>>:DISABLE_HDF5>
     $<$<NOT:$<BOOL:${USE_LANCZOS}>>:DISABLE_LANCZOS>
     $<$<BOOL:${USE_MPI}>:PARALLEL>
+    $<$<NOT:$<BOOL:${HAS_MPI3}>>:DISABLE_MPI3>
     $<$<NOT:$<BOOL:${USE_ScaLAPACK}>>:DISABLE_SCALAPACK>
     $<$<BOOL:${USE_SINGLE_PRECISION}>:SINGLE_PRECISION>
     $<$<CONFIG:Debug>:DEBUG>

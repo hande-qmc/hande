@@ -26,8 +26,8 @@ PROGRAM compound_complex_fortran2003
   INTEGER, PARAMETER :: NMAX = 3
 
   TYPE sample
-     COMPLEX(KIND=r_k8), DIMENSION(1:NMAX) :: nlev
-     REAL(KIND=r_k8) :: N
+    COMPLEX(KIND=r_k8), DIMENSION(1:NMAX) :: nlev
+    REAL(KIND=r_k8) :: N
   END TYPE sample
 
   INTEGER(HID_T)   :: sample_type_id, dset_id, dspace_id, file_id
@@ -38,13 +38,13 @@ PROGRAM compound_complex_fortran2003
   INTEGER :: i
 
   TYPE(C_PTR) :: f_ptr
-  INTEGER(HSIZE_T), DIMENSION(1) :: array_dims=(/2*NMAX/) ! complex is really (real,real) so double size of array
-  INTEGER(hid_t) :: array_type_id                    ! Nested Array Datatype ID
+  INTEGER(HSIZE_T), DIMENSION(1) :: array_dims = (/2*NMAX/) ! complex is really (real,real) so double size of array
+  INTEGER(hid_t) :: array_type_id ! Nested Array Datatype ID
 
   ! Initialize data
-  DO i=1,NMAX
-     samples(i)%nlev(1:NMAX) = (3.14159_r_k8, 2.71828_r_k8)
-     samples(i)%N = i
+  DO i = 1, NMAX
+    samples(i)%nlev(1:NMAX) = (3.14159_r_k8, 2.71828_r_k8)
+    samples(i)%N = i
   END DO
 
   ! Initialize FORTRAN interface.
@@ -60,10 +60,10 @@ PROGRAM compound_complex_fortran2003
   ! Create the array type
   CALL h5Tarray_create_f(H5T_NATIVE_DOUBLE, 1, array_dims, array_type_id, error)
   ! Then use that array type to insert values into
-  CALL H5Tinsert_f( sample_type_id, "nlev", &
-       H5OFFSETOF(C_LOC(samples(1)),C_LOC(samples(1)%nlev(1))), array_type_id, error)
-  CALL H5Tinsert_f( sample_type_id, "N", &
-       H5OFFSETOF(C_LOC(samples(1)),C_LOC(samples(1)%N)), h5kind_to_type(r_k8,H5_REAL_KIND), error)
+  CALL H5Tinsert_f(sample_type_id, "nlev", &
+                   H5OFFSETOF(C_LOC(samples(1)), C_LOC(samples(1)%nlev(1))), array_type_id, error)
+  CALL H5Tinsert_f(sample_type_id, "N", &
+                   H5OFFSETOF(C_LOC(samples(1)), C_LOC(samples(1)%N)), h5kind_to_type(r_k8, H5_REAL_KIND), error)
   !
   ! Create dataspace
   !
@@ -71,7 +71,7 @@ PROGRAM compound_complex_fortran2003
   !
   ! Create the dataset.
   !
-  CALL H5Dcreate_f(file_id, "samples",  sample_type_id, dspace_id, dset_id, error)
+  CALL H5Dcreate_f(file_id, "samples", sample_type_id, dspace_id, dset_id, error)
   !
   ! Write data to the dataset
   !
@@ -90,12 +90,12 @@ PROGRAM compound_complex_fortran2003
   !
   ! Create the memory data type.
   !
-  CALL H5Tcreate_f(H5T_COMPOUND_F,H5OFFSETOF(C_LOC(samples(1)), C_LOC(samples(2))), sample_type_id,error)
+  CALL H5Tcreate_f(H5T_COMPOUND_F, H5OFFSETOF(C_LOC(samples(1)), C_LOC(samples(2))), sample_type_id, error)
 
-  CALL H5Tinsert_f( sample_type_id, "nlev", &
-       H5OFFSETOF(C_LOC(samples(1)),C_LOC(samples(1)%nlev(1))), array_type_id, error)
-  CALL H5Tinsert_f( sample_type_id, "N", &
-       H5OFFSETOF(C_LOC(samples(1)),C_LOC(samples(1)%N)), h5kind_to_type(r_k8,H5_REAL_KIND), error)
+  CALL H5Tinsert_f(sample_type_id, "nlev", &
+                   H5OFFSETOF(C_LOC(samples(1)), C_LOC(samples(1)%nlev(1))), array_type_id, error)
+  CALL H5Tinsert_f(sample_type_id, "N", &
+                   H5OFFSETOF(C_LOC(samples(1)), C_LOC(samples(1)%N)), h5kind_to_type(r_k8, H5_REAL_KIND), error)
 
   f_ptr = C_LOC(read_samples(1))
   CALL H5Dread_f(dset_id, sample_type_id, f_ptr, error)
@@ -103,9 +103,9 @@ PROGRAM compound_complex_fortran2003
   !
   ! Display the fields
   !
-  DO i=1,NMAX
-     WRITE(*,'(A,3(" (",F8.5,",",F8.5,")"))') "SAMPLES =",read_samples(i)%nlev(1:NMAX)
-     WRITE(*,'(A,F8.5)') "N =", read_samples(i)%N
+  DO i = 1, NMAX
+    WRITE (*, '(A,3(" (",F8.5,",",F8.5,")"))') "SAMPLES =", read_samples(i)%nlev(1:NMAX)
+    WRITE (*, '(A,F8.5)') "N =", read_samples(i)%N
   END DO
 
   CALL H5Tclose_f(sample_type_id, error)
