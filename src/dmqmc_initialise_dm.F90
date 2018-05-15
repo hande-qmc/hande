@@ -121,13 +121,13 @@ contains
                         ! Initially distribute psips along the diagonal
                         ! according to a guess.
                         if (dmqmc_in%grand_canonical_initialisation) then
-                            call init_grand_canonical_ensemble&
-                                (sys, dmqmc_in, npsips_this_proc, psip_list%pop_real_factor, spawn, energy_shift, &
-                                 qmc_state%target_beta, qmc_in%initiator_approx, qmc_in%initiator_pop, rng, chem_pot)
+                            call init_grand_canonical_ensemble(sys, dmqmc_in, npsips_this_proc, psip_list%pop_real_factor, spawn, &
+                                                               energy_shift, qmc_state%target_beta, qmc_in%initiator_approx, & 
+                                                               qmc_in%initiator_pop, rng, chem_pot)
                         else
-                            call random_distribution_electronic&
-                                (rng, sys, npsips_this_proc, psip_list%pop_real_factor, ireplica, &
-                                 dmqmc_in%all_sym_sectors, qmc_in%initiator_approx, qmc_in%initiator_pop, spawn)
+                            call random_distribution_electronic(rng, sys, npsips_this_proc, psip_list%pop_real_factor, ireplica, &
+                                                                dmqmc_in%all_sym_sectors, qmc_in%initiator_approx, &
+                                                                qmc_in%initiator_pop, spawn)
                         end if
                         ! Perform metropolis algorithm on initial distribution
                         ! so that we are sampling the trial density matrix.
@@ -164,15 +164,15 @@ contains
                                 sys%nbeta = sys%nel - sys%nalpha
                                 sys%nvirt_alpha = sys%basis%nbasis/2 - sys%nalpha
                                 sys%nvirt_beta = sys%basis%nbasis/2 - sys%nbeta
-                                call random_distribution_electronic&
-                                    (rng, sys, npsips, psip_list%pop_real_factor, ireplica, dmqmc_in%all_sym_sectors, &
-                                     qmc_in%initiator_approx, qmc_in%initiator_pop, spawn)
+                                call random_distribution_electronic(rng, sys, npsips, psip_list%pop_real_factor, ireplica, &
+                                                                    dmqmc_in%all_sym_sectors, qmc_in%initiator_approx, &
+                                                                    qmc_in%initiator_pop, spawn)
                             end do
                             call copy_sys_spin_info(sys_copy, sys)
                         else
-                            call random_distribution_electronic&
-                                (rng, sys, npsips_this_proc, psip_list%pop_real_factor, ireplica, &
-                                 dmqmc_in%all_sym_sectors, qmc_in%initiator_approx, qmc_in%initiator_pop, spawn)
+                            call random_distribution_electronic(rng, sys, npsips_this_proc, psip_list%pop_real_factor, &
+                                                                ireplica, dmqmc_in%all_sym_sectors, &
+                                                                qmc_in%initiator_approx, qmc_in%initiator_pop, spawn)
                         end if
                     end if
                 end if

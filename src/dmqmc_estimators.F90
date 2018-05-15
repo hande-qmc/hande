@@ -457,52 +457,56 @@ contains
                     ! See which estimators are to be calculated, and call the
                     ! corresponding procedures.
                     ! Energy
-                    if (doing_dmqmc_calc(dmqmc_energy)) call update_dmqmc_energy_and_trace_ptr&
-                        &(sys, excitation, cdet, H00, unweighted_walker_pop(1:1), psip_list%dat(1, idet), &
-                        & est%trace, est%numerators(energy_ind:energy_ind))
+                    if (doing_dmqmc_calc(dmqmc_energy)) &
+                        call update_dmqmc_energy_and_trace_ptr(sys, excitation, cdet, H00, unweighted_walker_pop(1:1), &
+                                                               psip_list%dat(1, idet), est%trace, est%numerators(energy_ind:energy_ind))
                     ! Energy squared.
-                    if (doing_dmqmc_calc(dmqmc_energy_squared)) call update_dmqmc_energy_squared_ptr&
-                        &(sys, cdet, excitation, H00, unweighted_walker_pop(1), est%numerators(energy_squared_ind))
+                    if (doing_dmqmc_calc(dmqmc_energy_squared)) &
+                        call update_dmqmc_energy_squared_ptr(sys, cdet, excitation, H00, unweighted_walker_pop(1), &
+                                                             est%numerators(energy_squared_ind))
                     ! Spin-spin correlation function.
-                    if (doing_dmqmc_calc(dmqmc_correlation)) call update_dmqmc_correlation_ptr&
-                        &(sys, cdet, excitation, H00, unweighted_walker_pop(1), est%correlation_mask, &
-                          est%numerators(correlation_fn_ind))
+                    if (doing_dmqmc_calc(dmqmc_correlation)) &
+                        call update_dmqmc_correlation_ptr(sys, cdet, excitation, H00, unweighted_walker_pop(1), &
+                                                          est%correlation_mask, est%numerators(correlation_fn_ind))
                     ! Staggered magnetisation.
-                    if (doing_dmqmc_calc(dmqmc_staggered_magnetisation)) call update_dmqmc_stag_mag_ptr&
-                        &(sys, cdet, excitation, H00, unweighted_walker_pop(1), est%numerators(staggered_mag_ind))
+                    if (doing_dmqmc_calc(dmqmc_staggered_magnetisation)) &
+                        call update_dmqmc_stag_mag_ptr(sys, cdet, excitation, H00, unweighted_walker_pop(1), &
+                                                       est%numerators(staggered_mag_ind))
                     ! Kinetic energy.
-                    if (doing_dmqmc_calc(dmqmc_kinetic_energy)) call update_dmqmc_kinetic_energy_ptr&
-                        &(sys, cdet, excitation, H00, unweighted_walker_pop(1), est%numerators(kinetic_ind))
+                    if (doing_dmqmc_calc(dmqmc_kinetic_energy)) &
+                        call update_dmqmc_kinetic_energy_ptr(sys, cdet, excitation, H00, unweighted_walker_pop(1), &
+                                                             est%numerators(kinetic_ind))
                     ! Potential energy.
-                    if (doing_dmqmc_calc(dmqmc_potential_energy)) call update_dmqmc_potential_energy&
-                        &(sys, cdet, excitation, unweighted_walker_pop(1), est%numerators(potential_ind))
+                    if (doing_dmqmc_calc(dmqmc_potential_energy)) &
+                        call update_dmqmc_potential_energy(sys, cdet, excitation, unweighted_walker_pop(1), &
+                                                           est%numerators(potential_ind))
                     ! H^0 energy, where H^0 = H - V. See subroutines interface
                     ! comments for description.
-                    if (doing_dmqmc_calc(dmqmc_H0_energy)) call update_dmqmc_H0_energy&
-                        &(sys, cdet, excitation, unweighted_walker_pop(1), est%numerators(H0_ind))
+                    if (doing_dmqmc_calc(dmqmc_H0_energy)) &
+                        call update_dmqmc_H0_energy(sys, cdet, excitation, unweighted_walker_pop(1), est%numerators(H0_ind))
                     ! HI energy, HI(tau-beta) = e^{-0.5(beta-tau)H^0} H e^{0.5(beta-tau)H^0}
-                    if (doing_dmqmc_calc(dmqmc_HI_energy)) call update_dmqmc_HI_energy&
-                        &(sys, cdet, excitation, unweighted_walker_pop(1), &
-                        & weighted_sampling%probs(sys%max_number_excitations+1), &
-                        & est%numerators(HI_ind))
+                    if (doing_dmqmc_calc(dmqmc_HI_energy)) &
+                        call update_dmqmc_HI_energy(sys, cdet, excitation, unweighted_walker_pop(1), &
+                                                    weighted_sampling%probs(sys%max_number_excitations+1), &
+                                                    est%numerators(HI_ind))
                     ! Excitation distribtuion for calculating importance sampling weights.
                     if (dmqmc_in%find_weights .and. iteration > dmqmc_in%find_weights_start) &
-                        &est%excit_dist(excitation%nexcit) = est%excit_dist(excitation%nexcit) + &
-                        &real(abs(psip_list%pops(1,idet)),p)/psip_list%pop_real_factor
-                    if (dmqmc_in%calc_mom_dist) call update_dmqmc_momentum_distribution&
-                        &(sys, cdet, excitation, H00, unweighted_walker_pop(1), est%mom_dist%f_k)
-                    if (dmqmc_in%calc_struc_fac) call update_dmqmc_structure_factor_ueg&
-                        &(sys, cdet, excitation, H00, unweighted_walker_pop(1), est%struc_fac%f_k)
+                        est%excit_dist(excitation%nexcit) = est%excit_dist(excitation%nexcit) + &
+                            &real(abs(psip_list%pops(1,idet)),p)/psip_list%pop_real_factor
+                    if (dmqmc_in%calc_mom_dist) &
+                        call update_dmqmc_momentum_distribution(sys, cdet, excitation, H00, unweighted_walker_pop(1), est%mom_dist%f_k)
+                    if (dmqmc_in%calc_struc_fac) &
+                        call update_dmqmc_structure_factor_ueg(sys, cdet, excitation, H00, unweighted_walker_pop(1), est%struc_fac%f_k)
                     ! Excitation distribution.
                     if (dmqmc_in%calc_excit_dist) &
-                        &est%excit_dist(excitation%nexcit) = est%excit_dist(excitation%nexcit) + &
-                        &real(abs(psip_list%pops(1,idet)),p)/psip_list%pop_real_factor
+                        est%excit_dist(excitation%nexcit) = est%excit_dist(excitation%nexcit) + &
+                            &real(abs(psip_list%pops(1,idet)),p)/psip_list%pop_real_factor
                 end if
 
                 ! Full Renyi entropy (S_2).
-                if (doing_dmqmc_calc(dmqmc_full_r2)) call update_full_renyi_2&
-                    &(unweighted_walker_pop, excitation%nexcit, dmqmc_in%half_density_matrix, &
-                    & est%numerators(full_r2_ind:full_r2_ind))
+                if (doing_dmqmc_calc(dmqmc_full_r2)) &
+                    call update_full_renyi_2(unweighted_walker_pop, excitation%nexcit, dmqmc_in%half_density_matrix, &
+                                             est%numerators(full_r2_ind:full_r2_ind))
 
                 ! Update the contribution to the trace from other replicas
                 if (dmqmc_in%replica_tricks .and. excitation%nexcit == 0) &
@@ -510,30 +514,31 @@ contains
 
                 ! Reduced density matrices.
                 if (dmqmc_in%rdm%doing_rdm) then
-                    call update_reduced_density_matrix_heisenberg&
-                        &(sys%basis, est, dmqmc_in%rdm, cdet, excitation, psip_list%pops(:,idet), &
-                        & psip_list%pop_real_factor, iteration, dmqmc_in%start_av_rdm, weighted_sampling%probs, &
-                        & rdm_error)
+                    call update_reduced_density_matrix_heisenberg(sys%basis, est, dmqmc_in%rdm, cdet, excitation, &
+                                                                  psip_list%pops(:,idet), psip_list%pop_real_factor, &
+                                                                  iteration, dmqmc_in%start_av_rdm, weighted_sampling%probs, &
+                                                                  rdm_error)
                 end if
 
             else
                 ! The following only works for complex read_in systems.
                 if (abs(unweighted_walker_pop(1)) > 0 .or. abs(unweighted_walker_pop(2)) > 0) then
                     ! Energy
-                    if (doing_dmqmc_calc(dmqmc_energy)) call update_dmqmc_energy_and_trace_ptr&
-                        &(sys, excitation, cdet, H00, unweighted_walker_pop(1:2), psip_list%dat(1, idet), &
-                        & est%trace, est%numerators(energy_ind:energy_imag_ind), .true.)
+                    if (doing_dmqmc_calc(dmqmc_energy)) &
+                        call update_dmqmc_energy_and_trace_ptr(sys, excitation, cdet, H00, unweighted_walker_pop(1:2), &
+                                                               psip_list%dat(1, idet),  est%trace, &
+                                                               est%numerators(energy_ind:energy_imag_ind), .true.)
                     ! Excitation distribution. 
                     ! Now we just sum the particles from the real and imaginary components.
                     if (dmqmc_in%calc_excit_dist) &
-                        &est%excit_dist(excitation%nexcit) = est%excit_dist(excitation%nexcit) + &
-                        &sum(real(abs(psip_list%pops(1:2,idet)),p))/psip_list%pop_real_factor
+                        est%excit_dist(excitation%nexcit) = est%excit_dist(excitation%nexcit) + &
+                            &sum(real(abs(psip_list%pops(1:2,idet)),p))/psip_list%pop_real_factor
                 end if
 
                 ! Complex Renyi-2 entropy.
-                if (doing_dmqmc_calc(dmqmc_full_r2)) call update_full_renyi_2&
-                    &(unweighted_walker_pop, excitation%nexcit, dmqmc_in%half_density_matrix, &
-                    & est%numerators(full_r2_ind:full_r2_imag_ind), complx=.true.)
+                if (doing_dmqmc_calc(dmqmc_full_r2)) &
+                    call update_full_renyi_2(unweighted_walker_pop, excitation%nexcit, dmqmc_in%half_density_matrix, &
+                                             est%numerators(full_r2_ind:full_r2_imag_ind), complx=.true.)
 
                 ! Update the contribution to the trace from other replicas
                 if (dmqmc_in%replica_tricks .and. excitation%nexcit == 0) &
