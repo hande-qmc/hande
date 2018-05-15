@@ -6,8 +6,6 @@ language: python
 addons:
   apt:
     packages:
-      - cmake3
-      - cmake3-data
       - gfortran
       - libblas-dev
       - liblapack-dev
@@ -59,6 +57,7 @@ before_install:
 cache:
   pip: true
   directories:
+    - $HOME/Deps/cmake/3.6.3
     - $HOME/Deps/lua
     - $HOME/Deps/hdf5
     - $HOME/Deps/scalapack
@@ -79,7 +78,8 @@ before_script:
                        --mpi-with-scalapack \
                        --scalapack="-L$ScaLAPACK_ROOT/lib -lscalapack" \
                        --lanczos="-L$DEPS/trlan/lib -ltrlan" \
-                       --exe-name="hande.travis.mpi.linux.cmake.x"
+                       --exe-name="hande.travis.mpi.linux.cmake.x" \
+                       --cmake-executable="$HOME/Deps/cmake/3.6.3/bin/cmake"
       # This is equivalent to
       # cmake -H. -Bbuild \
       #           -DENABLE_HDF5=ON \
@@ -99,7 +99,8 @@ before_script:
                        --cc=gcc \
                        --lua=$LUA_ROOT \
                        --backtrace \
-                       --exe-name="hande.travis.serial.linux.cmake.x"
+                       --exe-name="hande.travis.serial.linux.cmake.x" \
+                       --cmake-executable="$HOME/Deps/cmake/3.6.3/bin/cmake"
       # This is equivalent to
       # cmake -H. -Bbuild \
       #           -DCMAKE_BUILD_TYPE=Release \
