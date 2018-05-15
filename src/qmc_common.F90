@@ -1073,8 +1073,8 @@ contains
 ! --- QMC loop and cycle termination routines ---
 
     subroutine end_report_loop(out_unit, qmc_in, iteration, update_tau, qs, ntot_particles, nspawn_events, semi_stoch_shift_it, &
-                               semi_stoch_start_it, soft_exit, load_bal_in, update_estimators, bloom_stats, doing_lb, &
-                               nb_comm, comp, error, vary_shift_reference)
+                               semi_stoch_start_it, soft_exit, load_bal_in, update_estimators, bloom_stats, doing_lb, nb_comm, &
+                               comp, error, vary_shift_reference)
 
         ! In:
         !    out_unit: File unit to write ouput to.

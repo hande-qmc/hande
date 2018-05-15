@@ -827,6 +827,7 @@ type qmc_state_t
     type(spawned_particle_t) :: spawn_store
     type(reference_t) :: ref
     type(trial_t) :: trial
+    type(restart_in_t) :: restart_in
     ! WARNING: par_info is the 'reference/master' (ie correct) version
     ! of parallel_t, in particular of proc_map_t.  However, copies of it
     ! are kept in spawn_t objects, and it is these copies which are used

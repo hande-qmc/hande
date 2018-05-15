@@ -304,12 +304,11 @@ module restart_hdf5
         end subroutine init_restart_hdf5
 #endif
 
-        subroutine dump_restart_hdf5(ri, qs, ncycles, total_population, nbasis, nb_comm, info_string_len)
+        subroutine dump_restart_hdf5(qs, ncycles, total_population, nbasis, nb_comm, info_string_len, ri)
 
             ! Write out a restart file.
 
             ! In:
-            !    ri: restart information.  ri%restart_stem and ri%write_id are used.
             !    qs: QMC state to write to restart file.
             !    ncycles: number of Monte Carlo cycles performed.
             !    total_population: the total population of each particle type.
@@ -319,6 +318,8 @@ module restart_hdf5
             !       to the restart file.
             !    info_string_len: length in i0 integers of used to store additional
             !       information in bit string.
+            !    ri (optional) : restart information.  ri%restart_stem and ri%write_id are used.
+            !       If not present, the settings in qs%restart_in are used.
 
 #ifndef DISABLE_HDF5
             use hdf5
@@ -336,7 +337,7 @@ module restart_hdf5
             use errors, only: warning
             use qmc_data, only: qmc_state_t
 
-            type(restart_info_t), intent(in) :: ri
+            type(restart_info_t), intent(in), optional :: ri
             type(qmc_state_t), intent(in) :: qs
             integer, intent(in) :: ncycles
             real(dp), intent(in) :: total_population(:)
@@ -344,7 +345,6 @@ module restart_hdf5
             logical, intent(in) :: nb_comm
 #ifndef DISABLE_HDF5
             character(255) :: restart_file
-
 
             ! HDF5 kinds
             type(hdf5_kinds_t) :: kinds
@@ -360,10 +360,16 @@ module restart_hdf5
             ! This allows us to use the same array functions for writing out (the small
             ! amount of) scalar data we have to write out.
             real(dp), allocatable, target :: tmp_pop(:)
+            type(restart_info_t) :: qs_ri
 
             ! Initialise HDF5 and open file.
             call h5open_f(ierr)
-            call init_restart_hdf5(ri, .true., restart_file, kinds)
+            if (present(ri)) then
+                call init_restart_hdf5(ri, .true., restart_file, kinds)
+            else
+                call init_restart_info_t(qs_ri, write_id=qs%restart_in%write_id)
+                call init_restart_hdf5(qs_ri, .true., restart_file, kinds)
+            end if
             ! NOTE: if file exists (ie user requested we re-use an existing file), then it is overwritten.
             call h5fcreate_f(restart_file, H5F_ACC_TRUNC_F, file_id, ierr)
 
@@ -1517,8 +1523,7 @@ module restart_hdf5
 
             if (dump_restart) then
                 if (present(rng)) call dSFMT_t_to_dSFMT_state_t(rng, qs%rng_state)
-                call dump_restart_hdf5(ri, qs, qs%mc_cycles_done+ncycles*ireport, &
-                                       ntot_particles, nbasis, nb_comm, info_string_len)
+                call dump_restart_hdf5(qs, qs%mc_cycles_done+ncycles*ireport, ntot_particles, nbasis, nb_comm, info_string_len, ri)
                 call free_dSFMT_state_t(qs%rng_state)
             end if
 
