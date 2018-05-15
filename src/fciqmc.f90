@@ -329,9 +329,6 @@ contains
 
                 associate(pl=>qs%psip_list, spawn=>qs%spawn_store%spawn, spawn_recv=>qs%spawn_store%spawn_recv)
                     if (fciqmc_in%non_blocking_comm) then
-! [review] - AJWT why do this now?
-                        cdet%single_precalc = .false.
-                        cdet%double_precalc = .false.
                         call receive_spawned_walkers(spawn_recv, req_data_s)
                         call evolve_spawned_walkers(sys, qmc_in, qs, spawn_recv, spawn, cdet, rng, ndeath, &
                                                     fciqmc_in%quadrature_initiator, logging_info, bloom_stats)
@@ -513,6 +510,8 @@ contains
             cdet%f = int(spawn_recv%sdata(:sys%basis%tensor_label_len,idet),i0)
             ! Need to generate spawned walker data to perform evolution.
             cdet%data(1) = sc0_ptr(sys, cdet%f) - qs%ref%H00
+            cdet%single_precalc = .false.
+            cdet%double_precalc = .false.
 
             call decoder_ptr(sys, cdet%f, cdet, qs%excit_gen_data)
             if (qs%propagator%quasi_newton) cdet%fock_sum = sum_sp_eigenvalues_occ_list(sys, cdet%occ_list) - qs%ref%fock_sum
