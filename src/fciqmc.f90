@@ -271,6 +271,7 @@ contains
 
                     cdet%f => qs%psip_list%states(:,idet)
                     cdet%data => qs%psip_list%dat(:,idet)
+! [review] - AJWT: Do terrible things happen if the programmer forgets to do this? Should there be an initializer function?
                     cdet%single_precalc = .false.
                     cdet%double_precalc = .false.
 
@@ -337,6 +338,7 @@ contains
 
                 associate(pl=>qs%psip_list, spawn=>qs%spawn_store%spawn, spawn_recv=>qs%spawn_store%spawn_recv)
                     if (fciqmc_in%non_blocking_comm) then
+! [review] - AJWT why do this now?
                         cdet%single_precalc = .false.
                         cdet%double_precalc = .false.
                         call receive_spawned_walkers(spawn_recv, req_data_s)

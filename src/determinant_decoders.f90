@@ -561,7 +561,8 @@ contains
         type(det_info_t), intent(inout) :: d
         type(excit_gen_data_t), intent(in) :: excit_gen_data
         integer, optional, intent(in) :: nattempts
-        
+       
+! [review] - AJWT: Are we assuming that d%single_precalc is .false. or do we not care? 
         d%double_precalc = .false.
         if ((nattempts * (1.0_p - excit_gen_data%pattempt_single)) > 1.0_p) then
             call find_i_d_weights(sys%nel, excit_gen_data%excit_gen_pp%ppm_i_d_weights, d)
@@ -621,6 +622,7 @@ contains
         type(excit_gen_data_t), intent(in) :: excit_gen_data
         integer, optional, intent(in) :: nattempts
         
+! [review] - AJWT: Are we assuming that d%single_precalc is .false. or do we not care? 
         d%double_precalc = .false.
         if ((nattempts * (1.0_p - excit_gen_data%pattempt_single)) > 1.0_p) then
             call find_i_d_weights(sys%nel, excit_gen_data%excit_gen_hb%i_weights, d)

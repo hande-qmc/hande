@@ -753,7 +753,10 @@ contains
                         call do_ccmc_accumulation(sys, qs, contrib(it)%cdet, contrib(it)%cluster, logging_info, &
                                                 D0_population_cycle, proj_energy_cycle, ccmc_in, ref_det, rdm, selection_data)
                         nattempts_spawn = nattempts_spawn + 1
-                        
+                       
+! [review] - AJWT: I really don't like this explicit reference to the excitation generator type - it's against the philosophy which gave us
+! [review] - AJWT: function pointers.  Either add a qmc_state variable which you check, or try to include this in the excitation generator
+! [review] - AJWT: spawning itself.
                         ! We will only call the excitation generator once here. Power Pitzer Order N and heat bath are the only excitation
                         ! generators that will also pre calculate the weights, independent of nattempts and is therefore the only
                         ! ones we need to consider here (the other excit gen will create a single or double excitation with an
@@ -1096,7 +1099,8 @@ contains
 
         call ms_stats_update(nspawnings_cluster, ms_stats)
         nattempts_spawn_tot = nattempts_spawn_tot + nspawnings_cluster
-        
+       
+! [review] - AJWT: Is the decoder_excit_gen_ptr set to null if it's not to be used?  In which case can we just use ASSOCIATED() to test it.
         ! If we use a weighted excitation generator where weights can be pre-calculated, need additional decoder:
         if (qs%excit_gen_data%weight_decoder) then
             call decoder_excit_gen_ptr(sys, contrib%cdet, qs%excit_gen_data, nattempts=nspawnings_cluster)
@@ -1203,6 +1207,7 @@ contains
 
         contrib%cluster%amplitude = contrib%cluster%amplitude / abs(contrib%cluster%amplitude)
         
+! [review] - AJWT: Is the decoder_excit_gen_ptr set to null if it's not to be used?  In which case can we just use ASSOCIATED() to test it.
         ! If we use a weighted excitation generator where weights can be pre-calculated, need additional decoder:
         if (qs%excit_gen_data%weight_decoder) then
             call decoder_excit_gen_ptr(sys, contrib%cdet, qs%excit_gen_data, nattempts=nspawnings_cluster)

@@ -422,6 +422,8 @@ contains
 
         type(sys_t), intent(in) :: sys
         type(excit_gen_data_t), intent(in) :: excit_gen_data
+! [review] - AJWT: This is not strictly true as cdet isn't modified.  Isn't intent(in) compatible with the
+! [review] - AJWT: specification intent(inout)?
         type(det_info_t), intent(inout) :: cdet
         type(dSFMT_t), intent(inout) :: rng
         real(p), intent(out) :: pgen

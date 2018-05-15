@@ -14,7 +14,8 @@ end type one_dim_weights_t
 
 ! --- FCIQMC info ---
 
-! A handy type for containing a lot of information about a determinant.
+! A handy type for containing a lot of information about a determinant,
+! including weighting data and lists for excitation generators to use.
 ! This is convenient for passing around different amounts of info when
 ! we need consistent interfaces.
 ! Not all compenents are necessarily allocated: only those needed at the time.
@@ -49,6 +50,7 @@ type det_info_t
     integer, pointer :: ref_cdet_occ_list(:) ! (nel)
     ! Number of orbitals that are different between det and reference.
     integer :: nex
+! [review] - AJWT: Does 'are' mean 'will be' or 'have been'?
     ! Single excitation weights are pre-calculated (only relevant for heat bath single excit gen)
     logical :: single_precalc = .false.
     ! Double excitation weights are pre-calculated (only relevant for heat bath (/single/uniform) and
