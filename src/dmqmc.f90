@@ -423,22 +423,25 @@ contains
     subroutine do_dmqmc_spawning_attempt(rng, spawn, bloom_stats, sys, qs, nattempts_current_det, cdet1, cdet2, pop, &
                                         &imag_parent, symmetric, ireplica, weighted_probs, logging_info)
 
-        ! Perform spawning from a given determinant in a given space.
+        ! Perform spawning from a given matrix element in a given space.
 
         ! In:
         !   sys: information on system under consideration.
         !   qs: qmc_state_t derived type with information on
         !       current calculation.
         !   logging_info: information on current logging settings.
+        !   weighted_sampling: stores sampling weights information when using
+        !       importance sampling.
         !   nattempts_current_det: total number of spawning attempts
-        !       to make on this determinant.
+        !       to make on this matrix element.
         !   ireplica: replica (and its re/im part) currently under
         !       consideration.
-        !   cdet[1/2]: determinant spawning is originating from.
+        !   cdet[1/2]: determinants corresponding to the row and column of 
+        !       density matrix element spawning is originating from.
         !   imag_parent: true if spawning from psips within an imaginary
         !       space.
-        !   pop: population of given determinant in given space.
-        !   symmetric: if we should spawn into raws and columns
+        !   pop: population of given density matrix element in given space.
+        !   symmetric: if we should spawn into rows and columns
         !       symmetrically.
         ! In/Out:
         !   rng: random number generator.
@@ -465,7 +468,7 @@ contains
         type(dSFMT_t), intent(inout) :: rng
         type(spawn_t), intent(inout) :: spawn
         type(bloom_stats_t), intent(inout) :: bloom_stats
-        real(p), intent(inout), allocatable :: weighted_probs(:)
+        real(p), intent(in), allocatable :: weighted_probs(:)
 
         type(excit_t) :: connection
         integer(int_p) :: nspawned, nspawned_im

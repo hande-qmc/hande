@@ -339,7 +339,7 @@ contains
         !        particles in the simulation at end of the previous report loop.
         !    loc_totnparticles_old: total number (across all processors) of
         !        particles in the simulation currently.
-        !    comp: if what we're doing is a complex calculation.
+        !    comp: if what we're doing a complex calculation.
         ! In/Out:
         !    qs: QMC state. Shift is updated.
 

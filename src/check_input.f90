@@ -326,7 +326,7 @@ contains
             call stop_all(this, 'metropolis_attempts must be greater than zero.')
         end if
 
-        if (sys%read_in%comp) call warning(this, 'Complex DMQMC is yet very experimental.')
+        if (sys%read_in%comp) call warning(this, 'Complex DMQMC is experimental.')
 
         if (sys%basis%info_string_len /= 0) call stop_all(this, &
             'DMQMC is incompatible with additional information being stored in the bit string. Please implement if needed.')
