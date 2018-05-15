@@ -459,7 +459,8 @@ contains
                     ! Energy
                     if (doing_dmqmc_calc(dmqmc_energy)) &
                         call update_dmqmc_energy_and_trace_ptr(sys, excitation, cdet, H00, unweighted_walker_pop(1:1), &
-                                                               psip_list%dat(1, idet), est%trace, est%numerators(energy_ind:energy_ind))
+                                                               psip_list%dat(1, idet), est%trace, &
+                                                               est%numerators(energy_ind:energy_ind))
                     ! Energy squared.
                     if (doing_dmqmc_calc(dmqmc_energy_squared)) &
                         call update_dmqmc_energy_squared_ptr(sys, cdet, excitation, H00, unweighted_walker_pop(1), &
@@ -494,9 +495,11 @@ contains
                         est%excit_dist(excitation%nexcit) = est%excit_dist(excitation%nexcit) + &
                             &real(abs(psip_list%pops(1,idet)),p)/psip_list%pop_real_factor
                     if (dmqmc_in%calc_mom_dist) &
-                        call update_dmqmc_momentum_distribution(sys, cdet, excitation, H00, unweighted_walker_pop(1), est%mom_dist%f_k)
+                        call update_dmqmc_momentum_distribution(sys, cdet, excitation, H00, unweighted_walker_pop(1), &
+                                                                est%mom_dist%f_k)
                     if (dmqmc_in%calc_struc_fac) &
-                        call update_dmqmc_structure_factor_ueg(sys, cdet, excitation, H00, unweighted_walker_pop(1), est%struc_fac%f_k)
+                        call update_dmqmc_structure_factor_ueg(sys, cdet, excitation, H00, unweighted_walker_pop(1), &
+                                                               est%struc_fac%f_k)
                     ! Excitation distribution.
                     if (dmqmc_in%calc_excit_dist) &
                         est%excit_dist(excitation%nexcit) = est%excit_dist(excitation%nexcit) + &
