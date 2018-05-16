@@ -43,6 +43,8 @@ target_sources(hande-static
     ct_fciqmc.F90
     dealloc.F90
     death.f90
+    determinant_data.f90
+    determinant_decoders.f90
     determinant_enumeration.f90
     determinants.f90
     dmqmc.f90
@@ -51,14 +53,17 @@ target_sources(hande-static
     dmqmc_initialise_dm.F90
     dmqmc_procedures.F90
     energy_evaluation.F90
+    excit_gen_heat_bath_mol.F90
     excit_gen_hub_k.f90
     excit_gen_mol.f90
     excit_gen_op_hub_k.f90
     excit_gen_op_mol.f90
+    excit_gen_power_pitzer_mol.F90
     excit_gen_real_lattice.f90
     excit_gen_ringium.f90
-    excit_gen_ueg.f90
     excit_gens.f90
+    excit_gen_ueg.f90
+    excit_gen_utils.f90
     excitations.F90
     fci_lanczos.F90
     fci_lapack.F90

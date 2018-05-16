@@ -1,6 +1,7 @@
 generate_info_header()
 
 add_library(coreutils OBJECT
+  alias.f90
   base_types.f90
   bit_table_256.f90
   checking.f90
