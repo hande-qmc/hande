@@ -16,9 +16,11 @@ enum, bind(c)
     enumerator :: full_r2_ind
     enumerator :: full_r2_imag_ind
     enumerator :: kinetic_ind
-    enumerator :: H0_ind
     enumerator :: potential_ind
+    enumerator :: H0_ind
+    enumerator :: H0_imag_ind
     enumerator :: HI_ind
+    enumerator :: HI_imag_ind
     enumerator :: terminator ! unused except in num_dmqmc_operators
    ! NOTE: if you add a new estimator then you must insert it before terminator.
 end enum

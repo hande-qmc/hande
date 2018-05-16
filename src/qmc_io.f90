@@ -130,6 +130,7 @@ contains
         write (iunit,'()')
 
     end subroutine write_qmc_report_header
+
     subroutine write_dmqmc_report_header(ntypes, dmqmc_in, max_excit, estimates, complx_est)
 
         ! Write header for DMQMC specific information.
@@ -266,10 +267,20 @@ contains
             call write_column_title(iunit, '\sum\rho_{ij}T_{ji}')
         end if
         if (doing_dmqmc_calc(dmqmc_H0_energy)) then
-            call write_column_title(iunit, '\sum\rho_{ij}H0{ji}')
+            if (complx_est_set) then
+                call write_column_title(iunit, 'Re{\sum \rho H0}')
+                call write_column_title(iunit, 'Im{\sum \rho H0}')
+            else
+                call write_column_title(iunit, '\sum\rho_{ij}H0{ji}')
+            end if
         end if
         if (doing_dmqmc_calc(dmqmc_HI_energy)) then
-            call write_column_title(iunit, '\sum\rho_{ij}HI{ji}')
+            if (complx_est_set) then
+                call write_column_title(iunit, 'Re{\sum \rho HI}')
+                call write_column_title(iunit, 'Im{\sum \rho HI}')
+            else
+                call write_column_title(iunit, '\sum\rho_{ij}HI{ji}')
+            end if
         end if
         if (doing_dmqmc_calc(dmqmc_potential_energy)) then
             call write_column_title(iunit, '\sum\rho_{ij}U_{ji}')
@@ -571,11 +582,17 @@ contains
         ! H^0 energy, where H = H^0 + V.
         if (doing_dmqmc_calc(dmqmc_H0_energy)) then
             call write_qmc_var(iunit, dmqmc_estimates%numerators(H0_ind))
+            if (complx_est_set) then
+                call write_qmc_var(iunit, dmqmc_estimates%numerators(H0_imag_ind))
+            end if
         end if
 
         ! H^I energy, where H^I = exp(-(beta-tau)/2 H^0) H exp(-(beta-tau)/2. H^0).
         if (doing_dmqmc_calc(dmqmc_HI_energy)) then
             call write_qmc_var(iunit, dmqmc_estimates%numerators(HI_ind))
+            if (complx_est_set) then
+                call write_qmc_var(iunit, dmqmc_estimates%numerators(HI_imag_ind))
+            end if
         end if
 
         ! Potential energy.

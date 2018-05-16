@@ -412,7 +412,7 @@ contains
         use qmc_data, only: particle_t
         use dmqmc_data, only: dmqmc_in_t, dmqmc_estimates_t, energy_ind, energy_imag_ind, energy_squared_ind, &
                               correlation_fn_ind, staggered_mag_ind, full_r2_ind, full_r2_imag_ind, dmqmc_weighted_sampling_t, &
-                              kinetic_ind, H0_ind, potential_ind, HI_ind
+                              kinetic_ind, potential_ind, H0_ind, H0_imag_ind, HI_ind, HI_imag_ind
 
         type(sys_t), intent(in) :: sys
         type(dmqmc_in_t), intent(in) :: dmqmc_in
@@ -480,11 +480,13 @@ contains
                 ! H^0 energy, where H^0 = H - V. See subroutines interface
                 ! comments for description.
                 if (doing_dmqmc_calc(dmqmc_H0_energy)) &
-                    call update_dmqmc_H0_energy(sys, cdet, excitation, unweighted_walker_pop(1), est%numerators(H0_ind))
+                    call update_dmqmc_H0_energy(sys, cdet, excitation, unweighted_walker_pop, &
+                                                est%numerators(H0_ind:H0_imag_ind), comp)
                 ! HI energy, HI(tau-beta) = e^{-0.5(beta-tau)H^0} H e^{0.5(beta-tau)H^0}
                 if (doing_dmqmc_calc(dmqmc_HI_energy)) &
-                    call update_dmqmc_HI_energy(sys, cdet, excitation, unweighted_walker_pop(1), &
-                                                weighted_sampling%probs(sys%max_number_excitations+1), est%numerators(HI_ind))
+                    call update_dmqmc_HI_energy(sys, cdet, excitation, unweighted_walker_pop, &
+                                                weighted_sampling%probs(sys%max_number_excitations+1), &
+                                                est%numerators(HI_ind:HI_imag_ind), comp)
                 ! Momentum distribution.
                 if (dmqmc_in%calc_mom_dist) &
                     call update_dmqmc_momentum_distribution(sys, cdet, excitation, H00, unweighted_walker_pop(1), &
@@ -1641,7 +1643,7 @@ contains
 
     end subroutine update_dmqmc_structure_factor_ueg
 
-    subroutine update_dmqmc_H0_energy(sys, cdet, excitation, pop, H0_energy)
+    subroutine update_dmqmc_H0_energy(sys, cdet, excitation, pop, H0_energy, complx)
 
         ! Add the contribution for the current density matrix element to the thermal
         ! zeroth-order Hamiltonian (H^0) energy estimate used.
@@ -1675,14 +1677,29 @@ contains
         type(sys_t), intent(in) :: sys
         type(det_info_t), intent(in) :: cdet
         type(excit_t), intent(in) :: excitation
-        real(p), intent(in) :: pop
-        real(p), intent(inout) :: H0_energy
+        real(p), intent(in) :: pop(:)
+        logical, intent(in), optional :: complx
+        real(p), intent(inout) :: H0_energy(:)
 
-        if (excitation%nexcit == 0) H0_energy = H0_energy + pop*h0_ptr(sys, cdet%f)
+        logical :: complx_set
+
+        complx_set = .false.
+        if (present(complx)) complx_set = complx
+
+        if (excitation%nexcit == 0) then 
+            if (.not.complx_set) then
+                H0_energy = H0_energy + pop(1)*h0_ptr(sys, cdet%f)
+            else
+                ! Although H0 should be real in all cases, in complex 
+                ! simulations, we cannot guarantee the that the trace doesn't
+                ! have a phase shift.
+                H0_energy = H0_energy + pop(1:2)*h0_ptr(sys, cdet%f)
+            end if
+        end if
 
     end subroutine update_dmqmc_H0_energy
 
-    subroutine update_dmqmc_HI_energy(sys, cdet, excitation, pop, tdiff, HI_energy)
+    subroutine update_dmqmc_HI_energy(sys, cdet, excitation, pop, tdiff, HI_energy, complx)
 
         ! Add the contribution for the current density matrix element to the thermal
         ! interaction picture Hamiltonian (H^I) energy estimate used.
@@ -1720,28 +1737,44 @@ contains
         type(sys_t), intent(in) :: sys
         type(det_info_t), intent(in) :: cdet
         type(excit_t), intent(inout) :: excitation
-        real(p), intent(in) :: pop
+        real(p), intent(in) :: pop(:)
         real(p), intent(in) :: tdiff
-        real(p), intent(inout) :: HI_energy
+        logical, intent(in), optional :: complx
+        real(p), intent(inout) :: HI_energy(:)
 
         real(p) :: diff_ijab, trace(2), energy(2)
         type(hmatel_t) :: hmatel
+        logical :: complx_set
         ! Importance sampling (in the FCIQMC-sense) isn't used in DMQMC...
         real(p) :: trial_wfn_dat(0)
 
         diff_ijab = 0.0_p
         trace = 0.0_p
         energy = 0.0_p
+        complx_set = .false.
+        if (present(complx)) complx_set = complx
 
         ! Hamiltonian matrix element.
-        call update_proj_energy_dmqmc(sys, cdet%f2, trial_wfn_dat, cdet, [pop], trace, energy, excitation, hmatel)
+        call update_proj_energy_dmqmc(sys, cdet%f2, trial_wfn_dat, cdet, pop, trace, energy, excitation, hmatel, complx=complx)
+
         if (excitation%nexcit == 0) then
+            ! Diagonal Hamiltonian elements.
             hmatel%r = sc0_ptr(sys, cdet%f)
+            ! No additional test for complex system required here as the value 
+            ! is always real and only one component actually used below.
+            hmatel%c = hmatel%r
         else
             diff_ijab = h0_ptr(sys, cdet%f) - h0_ptr(sys, cdet%f2)
         end if
 
-        HI_energy = HI_energy + exp(-tdiff*diff_ijab)*hmatel%r*pop
+        if (.not.complx_set) then
+            HI_energy(1) = HI_energy(1) + exp(-tdiff*diff_ijab)*hmatel%r*pop(1)
+        else
+            HI_energy(1) = HI_energy(1) + real(exp(-tdiff*diff_ijab)*hmatel%c, p)*pop(1) - &
+                                        &aimag(exp(-tdiff*diff_ijab)*hmatel%c)*pop(2)
+            HI_energy(2) = HI_energy(2) + real(exp(-tdiff*diff_ijab)*hmatel%c, p)*pop(2) + &
+                                        &aimag(exp(-tdiff*diff_ijab)*hmatel%c)*pop(1)
+        end if
 
     end subroutine update_dmqmc_HI_energy
 
