@@ -424,6 +424,7 @@ contains
         type(dmqmc_weighted_sampling_t), intent(inout) :: weighted_sampling
         logical, intent(inout) :: rdm_error
 
+        logical :: nonzero_pop
         type(excit_t) :: excitation
         real(p) :: unweighted_walker_pop(psip_list%nspaces)
 
@@ -444,7 +445,11 @@ contains
         ! them if the determinant is occupied in the first replica.
         associate (est => dmqmc_estimates, comp => sys%read_in%comp)
 
-            if (abs(unweighted_walker_pop(1)) > 0 .or. (comp .and. abs(unweighted_walker_pop(2)) > 0)) then
+            ! Check if we have a non-zero population.
+            nonzero_pop = abs(unweighted_walker_pop(1)) > 0
+            if (comp) nonzero_pop = nonzero_pop .or. abs(unweighted_walker_pop(2)) > 0
+
+            if (nonzero_pop) then
                 ! See which estimators are to be calculated, and call the
                 ! corresponding procedures.
                 ! Energy.
