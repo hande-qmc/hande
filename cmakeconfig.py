@@ -23,6 +23,7 @@ Options:
   --cc=<CC>                              C compiler [default: gcc].
   --extra-cc-flags=<EXTRA_CFLAGS>        Extra C compiler flags [default: ''].
   --python=<PYTHON_INTERPRETER>          The Python interpreter (development version) to use. [default: ''].
+  --add-definitions=<STRING>             Add preprocesor definitions [default: ''].
   --lua=<LUA_ROOT>                       Specify the path to the Lua installation to use [default: ''].
   --mpi                                  Enable MPI parallelization [default: False].
   --mpi-with-scalapack                   Enable ScaLAPACK usage with MPI [default: False].
@@ -63,6 +64,7 @@ def gen_cmake_command(options, arguments):
     command.append('-DCMAKE_Fortran_COMPILER={0} -DEXTRA_FCFLAGS="{1}"'.format(arguments['--fc'], arguments['--extra-fc-flags']))
     command.append('-DCMAKE_C_COMPILER={0} -DEXTRA_CFLAGS="{1}"'.format(arguments['--cc'], arguments['--extra-cc-flags']))
     command.append('-DPYTHON_INTERPRETER="{0}"'.format(arguments['--python']))
+    command.append('-DPREPROCESSOR_DEFINITIONS="{0}"'.format(arguments['--add-definitions']))
     command.append('-DLUA_ROOT="{0}"'.format(arguments['--lua']))
     command.append('-DENABLE_MPI="{0}"'.format(arguments['--mpi']))
     command.append('-DENABLE_SCALAPACK="{0}"'.format(arguments['--mpi-with-scalapack']))
