@@ -37,6 +37,7 @@ contains
         type(excit_gen_data_t), optional, intent(in) :: excit_gen_data
 
         call decode_det(sys%basis, f, d%occ_list)
+        call init_cdet_excit_gen_flags(d)
 
     end subroutine decode_det_occ
     
@@ -69,6 +70,7 @@ contains
         integer :: i, ialpha, ibeta
 
         call decode_det(sys%basis, f, d%occ_list)
+        call init_cdet_excit_gen_flags(d)
 
         ialpha = 1
         ibeta = 1
@@ -156,6 +158,8 @@ contains
                 d%unocc_list(iunocc) = orb
             end if
         end do
+        
+        call init_cdet_excit_gen_flags(d)
 
     end subroutine decode_det_occ_unocc
 
@@ -187,6 +191,7 @@ contains
         integer :: i, ims, isym
 
         call decode_det(sys%basis, f, d%occ_list)
+        call init_cdet_excit_gen_flags(d)
 
         d%symunocc = sys%read_in%pg_sym%nbasis_sym_spin
 
@@ -230,6 +235,7 @@ contains
         integer :: i, ims, isym, ialpha, ibeta
 
         call decode_det(sys%basis, f, d%occ_list)
+        call init_cdet_excit_gen_flags(d)
 
         d%symunocc = sys%read_in%pg_sym%nbasis_sym_spin
         ialpha = 1
@@ -285,6 +291,8 @@ contains
         type(det_info_t), intent(inout) :: d
         type(excit_gen_data_t), optional, intent(in) :: excit_gen_data
         integer :: i, j, iocc, iocc_a, iocc_b, iunocc_a, iunocc_b, orb, last_basis_ind
+        
+        call init_cdet_excit_gen_flags(d)
 
         ! A bit too much to do the chunk-based decoding of the occupied list and then fill
         ! in the remaining information.  We only use this in Hubbard model calculations in
@@ -396,6 +404,8 @@ contains
         type(det_info_t), intent(inout) :: d
         type(excit_gen_data_t), optional, intent(in) :: excit_gen_data
         integer :: i, j, iocc, iocc_a, iocc_b, iunocc_a, iunocc_b, orb, last_basis_ind, isym, ims
+        
+        call init_cdet_excit_gen_flags(d)
 
         d%symunocc = sys%read_in%pg_sym%nbasis_sym_spin
         

@@ -270,11 +270,9 @@ contains
 
                     cdet%f => qs%psip_list%states(:,idet)
                     cdet%data => qs%psip_list%dat(:,idet)
-! [review] - AJWT: Do terrible things happen if the programmer forgets to do this? Should there be an initializer function?
-                    cdet%single_precalc = .false.
-                    cdet%double_precalc = .false.
 
                     call decoder_ptr(sys, cdet%f, cdet, qs%excit_gen_data)
+                    
                     if (qs%propagator%quasi_newton) &
                         cdet%fock_sum = sum_sp_eigenvalues_occ_list(sys, cdet%occ_list) - qs%ref%fock_sum
 
@@ -510,8 +508,6 @@ contains
             cdet%f = int(spawn_recv%sdata(:sys%basis%tensor_label_len,idet),i0)
             ! Need to generate spawned walker data to perform evolution.
             cdet%data(1) = sc0_ptr(sys, cdet%f) - qs%ref%H00
-            cdet%single_precalc = .false.
-            cdet%double_precalc = .false.
 
             call decoder_ptr(sys, cdet%f, cdet, qs%excit_gen_data)
             if (qs%propagator%quasi_newton) cdet%fock_sum = sum_sp_eigenvalues_occ_list(sys, cdet%occ_list) - qs%ref%fock_sum

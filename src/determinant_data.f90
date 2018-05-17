@@ -68,4 +68,21 @@ type det_info_t
     real(p), pointer :: data(:) => NULL()
 end type det_info_t
 
+contains
+
+    pure subroutine init_cdet_excit_gen_flags(d)
+        
+        ! Sets the initial flags for a cdet once a cdet has been defined.
+        ! IMPORTANT: needs to be called once cdet is defined.
+
+        ! In/Out:
+        !   d: det_info_t variable (cdet information)
+
+        type(det_info_t), intent(inout) :: d
+
+        d%single_precalc = .false.
+        d%double_precalc = .false.
+
+    end subroutine init_cdet_excit_gen_flags
+
 end module determinant_data
