@@ -49,16 +49,14 @@ contains
         call alloc_alias_table_data_t(pp%pp_ia_d, maxv, sys%nel)
         call alloc_alias_table_data_t(pp%pp_jb_d, maxval(sys%read_in%pg_sym%nbasis_sym_spin), &
             (/sys%sym0_tot,sys%sym_max_tot/), sys%nel)
-        allocate(pp%occ_list(sys%nel + 1), stat=ierr_alloc)  ! The +1 is a pad to allow loops to look better
-        call check_allocate('pp%occ_list', (sys%nel + 1), ierr_alloc)
+        allocate(pp%occ_list(sys%nel), stat=ierr_alloc)
+        call check_allocate('pp%occ_list', sys%nel, ierr_alloc)
         allocate(pp%virt_list_alpha(sys%nvirt_alpha), stat=ierr_alloc)
         call check_allocate('pp%virt_list_alpha', sys%nvirt_alpha, ierr_alloc)
         allocate(pp%virt_list_beta(sys%nvirt_beta), stat=ierr_alloc)
         call check_allocate('pp%virt_list_beta', sys%nvirt_beta, ierr_alloc)
         
-        pp%occ_list(:sys%nel) = ref%occ_list0(:sys%nel)
-        pp%occ_list(sys%nel + 1) = sys%basis%nbasis*2  ! A pad
-        ! [todo] - Consider testing j <= sys%nel below instead of having this pad.
+        pp%occ_list = ref%occ_list0
         
         ! Now sort this, just in case we have an old restart file and the reference was not sorted then.
         call qsort(pp%occ_list,sys%nel)
@@ -70,8 +68,7 @@ contains
         
         do i = 1, sys%basis%nbasis
             if (i==pp%occ_list(j)) then ! Our basis fn is in the ref
-                ! Due to the +1 pad in occ_list, there is not danger of going past array boundaries here.
-                j = j + 1
+                if (j < sys%nel) j = j + 1
             else ! Need to store it as a virt
                 if (sys%basis%basis_fns(i)%Ms == -1) then ! beta
                     ind_b = ind_b + 1
@@ -263,16 +260,14 @@ contains
         ! pp%ppn_jb_d%weights(:,symb,j) selects b from orbitals with j's spin and symmetry symb in a double excitation.
         call alloc_alias_table_data_t(pp%ppn_jb_d, maxval(sys%read_in%pg_sym%nbasis_sym_spin), (/sys%sym0_tot,sys%sym_max_tot/),&
             sys%basis%nbasis)
-        allocate(pp%occ_list(sys%nel + 1), stat=ierr_alloc)  ! The +1 is a pad to allow loops to look better
-        call check_allocate('pp%occ_list', (sys%nel + 1), ierr_alloc)
+        allocate(pp%occ_list(sys%nel), stat=ierr_alloc)
+        call check_allocate('pp%occ_list', sys%nel, ierr_alloc)
         allocate(pp%all_list_alpha(sys%basis%nbasis), stat=ierr_alloc)
         call check_allocate('pp%all_list_alpha', sys%basis%nbasis, ierr_alloc)
         allocate(pp%all_list_beta(sys%basis%nbasis), stat=ierr_alloc)
         call check_allocate('pp%all_list_beta', sys%basis%nbasis, ierr_alloc)
 
-        pp%occ_list(:sys%nel) = ref%occ_list0(:sys%nel)
-        pp%occ_list(sys%nel + 1) = sys%basis%nbasis*2  ! A pad
-        ! [todo] - Consider testing j <= sys%nel below instead of having this pad.
+        pp%occ_list = ref%occ_list0
 
         ! Now sort this, just in case we have an old restart file and the reference was not sorted then.
         call qsort(pp%occ_list,sys%nel)
