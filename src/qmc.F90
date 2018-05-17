@@ -365,7 +365,7 @@ contains
             decoder_ptr => decode_det_spinocc_spinunocc
             update_proj_energy_ptr => update_proj_energy_hub_k
             sc0_ptr => slater_condon0_hub_k
-            spawner_ptr => spawn_lattice_split_gen
+            if (.not.qmc_in%quasi_newton) spawner_ptr => spawn_lattice_split_gen
             select case(qmc_in%excit_gen)
             case(excit_gen_no_renorm)
                 gen_excit_ptr%full => gen_excit_hub_k_no_renorm
