@@ -82,7 +82,6 @@ contains
         write (io_unit,'(a18,1X,i2.2,"/",i2.2,"/",i4.4,1X,a2,1X,i2.2,2(":",i2.2))') &
                    "Started running on", date_values(3:1:-1), "at", date_values(5:7)
         write (io_unit,'(1X,"Calculation UUID:",1X,a36,".")') GLOBAL_UUID
-
         write (io_unit,'(1X,64("="),/)')
 
     end subroutine environment_report

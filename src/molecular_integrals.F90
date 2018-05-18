@@ -4,8 +4,6 @@ module molecular_integrals
 ! These integrals are previously calculated using a quantum chemistry package
 ! (e.g. PSI4, MOLPRO or QChem).
 
-! [todo] - (compile-time option) allocate arrays using shmem.
-
 use const, only: p
 use molecular_integral_types
 use const, only: int_64
@@ -150,10 +148,15 @@ contains
         !    store: two-body integral store with components allocated to hold
         !       interals.  Note that the integral store is *not* zeroed.
 
+        ! NB with shared memory, this will return the same chunk of memory for
+        !    each given spin/imag combination, even if called a second time.
+        !    i.e. you cannot have more than one type of 2-body integral store.
+
         use checking, only: check_allocate
         use const, only: int_64
         use parallel, only: parent
         use system, only: sys_t
+        use shmem, only: allocate_shared
 
         logical, intent(in) :: imag
         integer, intent(in) :: op_sym
@@ -162,6 +165,7 @@ contains
 
         integer :: ierr, ispin, nspin, mem_reqd, iunit
         integer(int_64):: npairs, nintgrls
+        character(30) :: int_name
 
         iunit = 6
 
@@ -214,8 +218,14 @@ contains
         end if
 
         do ispin = 1, nspin
-            allocate(store%integrals(ispin)%v(nintgrls), stat=ierr)
-            call check_allocate('two_body_store_component', nintgrls, ierr)
+            if (.not.imag) then
+                write (int_name, '("two_body_store_component",i1)') ispin
+            else
+                write (int_name, '("two_body_store_component",i1,"imag")') ispin
+            end if
+            associate(int_store=>store%integrals(ispin))
+                call allocate_shared(int_store%v, int_name, int_store%shmem_handle, nintgrls)
+            end associate
         end do
 
     end subroutine init_two_body_t
@@ -229,14 +239,16 @@ contains
         !    integrals which are deallocated upon exit.
 
         use checking, only: check_deallocate
+        use shmem, only: deallocate_shared
 
         type(two_body_t), intent(inout) :: store
         integer :: ierr, ispin
 
         if (allocated(store%integrals)) then
             do ispin = lbound(store%integrals, dim=1), ubound(store%integrals, dim=1)
-                deallocate(store%integrals(ispin)%v, stat=ierr)
-                call check_deallocate('two_body_store_component', ierr)
+                associate(int_store=>store%integrals(ispin))
+                    call deallocate_shared(int_store%v, int_store%shmem_handle)
+                end associate
             end do
             deallocate(store%integrals, stat=ierr)
             call check_deallocate('two_body_store', ierr)
@@ -1166,6 +1178,10 @@ contains
 
         iunit = 6
         call MPI_BCast(store%op_sym, 1, mpi_integer, data_proc, MPI_COMM_WORLD, ierr)
+
+        ! Broadcast integrals between **nodes** such that each processor can access the integrals.
+        ! Note intra_node_comm is the MPI_COMM_WORLD internode communicator if MPI-3 shared memory is not in use
+        ! (i.e. each processor is effectively its own node).  See comments in parallel for more details.
         do i = lbound(store%integrals, dim=1), ubound(store%integrals, dim=1)
             ! Only use chunked broadcasting if have more elements than can broadcast in
             ! single MPI call.
@@ -1198,11 +1214,13 @@ contains
                                     &,/,1X,"and ", es11.4E3," in the remainder.")') real(nmain), real(nnext)
 
                     end if
+
                     ncurr = 1
                     do j = 1,nblocks
-                       call MPI_BCast(ints(ncurr), 1, mpi_preal_block, data_proc, MPI_COMM_WORLD, ierr)
+                       call MPI_BCast(ints(ncurr), 1, mpi_preal_block, data_proc, intra_node_comm, ierr)
                        ncurr = ncurr + optimal_block_size
                     end do
+
                     ! Finally broadcast the remaining values not included in previous block.
                     ! In some compilers (intel) passing array slices into mpi calls leads to
                     ! creation of a temporary array the size of the full integral list. To
@@ -1212,7 +1230,8 @@ contains
                     ! to MPI_BCast will enable array slicing without risk of array temporary
                     ! creation.
 
-                    if (nnext > 0) call MPI_BCast(ints(nmain+1), nnext, mpi_preal, data_proc, MPI_COMM_WORLD, ierr)
+                    if (nnext > 0 .and. intra_node_comm /= MPI_COMM_NULL) &
+                        call MPI_BCast(ints(nmain+1), nnext, mpi_preal, data_proc, intra_node_comm, ierr)
                     ! Finally tidy up mpi types.
                     call mpi_type_free(mpi_preal_block, ierr)
                     if (parent) then
@@ -1220,10 +1239,11 @@ contains
                         write(iunit,'(/,1X,21("-"),/)')
                     end if
                 end associate
-            else
-                call MPI_BCast(store%integrals(i)%v, size(store%integrals(i)%v), mpi_preal, data_proc, MPI_COMM_WORLD, ierr)
+            else if (intra_node_comm /= MPI_COMM_NULL) then
+                call MPI_BCast(store%integrals(i)%v, size(store%integrals(i)%v), mpi_preal, data_proc, intra_node_comm, ierr)
             end if
         end do
+        if (inter_node_comm /= MPI_COMM_NULL) call MPI_Barrier(inter_node_comm, ierr)
 #else
         integer :: i
         ! A null operation so I can use -Werror when compiling

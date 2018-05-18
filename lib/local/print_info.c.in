@@ -22,6 +22,8 @@ const char *report_popcnt();
 const char *report_mpi_toggle();
 const char *report_omp_toggle();
 const char *report_parallel();
+const char *report_mpi3();
+const char *report_shmem();
 void print_info();
 
 void print_info() {
@@ -70,6 +72,8 @@ void print_info() {
   printf("   %s\n", report_lanczos());
   printf("   %s\n", report_uuid());
   printf("   %s\n", report_parallel());
+  printf("   %s\n", report_mpi3());
+  printf("   %s\n", report_shmem());
   printf("   %s\n", report_scalapack());
   printf("   %s\n", report_single_precision());
   printf("   %s\n", report_popcnt());
@@ -185,3 +189,29 @@ const char *report_parallel() {
 #endif
   /* clang-format on */
 }
+
+
+const char *report_mpi3() {
+/* clang-format off */
+#if ! defined PARALLEL
+  return "PARALLEL not defined. MPI-3 functionality disabled";
+#elif defined DISABLE_MPI3
+  return "DISABLE_MPI3 defined.  MPI-3 functionality disabled.";
+#else
+  return "DISABLE_MPI3 not defined.  MPI-3 functionality enabled.";
+#endif
+  /* clang-format on */
+}
+
+const char *report_shmem() {
+/* clang-format off */
+#if ! defined PARALLEL
+  return "PARALLEL not enabled. POSIX shared memory disabled.";
+#elif ! defined DISABLE_MPI3 && defined ENABLE_SHMEM_POSIX
+  return "ENABLE_SHMEM_POSIX defined.  POSIX shared memory enabled.";
+#else
+  return "ENABLE_SHMEM_POSIX not defined or MPI-3 in use.  POSIX shared memory disabled.";
+#endif
+  /* clang-format on */
+}
+

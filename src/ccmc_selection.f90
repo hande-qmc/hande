@@ -1310,7 +1310,7 @@ contains
         !   main_storage: 2d integer array to store all found combinations.
         !       main_storage(j,k) stores number of individual excitors of
         !       excitation level k in combination j.
-        integer, allocatable, intent(inout) :: main_storage(:,:)
+        integer, intent(inout) :: main_storage(:,:)
         integer, intent(in) :: temporary(:), max_excit_level, excitor_excit_level
         integer, intent(inout) :: nfound
         integer, intent(in) :: selections_remain, current_excit_level
