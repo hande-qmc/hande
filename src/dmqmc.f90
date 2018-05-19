@@ -77,7 +77,7 @@ contains
         type(qmc_state_t), intent(inout), optional :: qmc_state_restart
         real(p), intent(out), allocatable :: sampling_probs(:)
 
-        integer :: idet, ireport, icycle, iparticle, iteration, ireplica, ierr, idata
+        integer :: idet, ireport, icycle, iparticle, iteration, ireplica, ierr
         integer :: beta_cycle, nreport
         integer :: unused_int_1 = -1, unused_int_2 = 0
         integer(int_64) :: init_tot_nparticles
@@ -292,17 +292,9 @@ contains
 
                         do ireplica = 1, qs%psip_list%nspaces
 
-                            ! if the system is complex, ireplica will be:
+                            ! If the system is complex, ireplica will be:
                             ! { replica1_real, replica1_imag, replica2_real, replica2_imag }
-                            ! but in psip_list%dat(:, idat), we only have:
-                            ! { replica1, replica2 } as there is no imaginary part
-                            ! hence a traslation is needed
                             imag = sys%read_in%comp .and. mod(ireplica, 2) == 0
-                            if (sys%read_in%comp) then
-                                idata = (ireplica + 1)/2
-                            else
-                                idata = ireplica
-                            end if
 
                             ! Only attempt spawning if a valid excitation exists.
                             if (attempt_spawning) &
@@ -319,7 +311,7 @@ contains
                             ! when running a DMQMC algorithm, stores the average
                             ! of the two diagonal elements corresponding to the
                             ! two indicies of the density matrix.
-                            call stochastic_death(rng, sys, qs, cdet1%fock_sum, qs%psip_list%dat(idata, idet), &
+                            call stochastic_death(rng, sys, qs, cdet1%fock_sum, qs%psip_list%dat(1, idet), &
                                                   qs%shift(ireplica), qs%estimators(1)%proj_energy_old, logging_info, &
                                                   qs%psip_list%pops(ireplica,idet), qs%psip_list%nparticles(ireplica), ndeath)
                         end do

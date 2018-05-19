@@ -509,10 +509,6 @@ type particle_t
     ! FCIQMC/initiator-FCIQMC, 2 for FCIQMC+Hellmann--Feynman sampling or
     ! complex FCIQMC/CCMC/DMQMC).
     integer :: nspaces = 1
-    ! Size of psip_list%dat's 1st dimension. This usually equals to
-    ! nspaces (sampling_size) except for complex systems where imaginary
-    ! components require no diagonal Hamiltonian storage.
-    integer :: ndata = 1
     ! number of additional elements stored for each determinant in dat for
     ! (e.g.) importance sampling.
     integer :: info_size = 0
@@ -539,21 +535,18 @@ type particle_t
     integer(int_p), allocatable :: pops(:,:) ! (nspaces,walker_length)
     ! c) Walker information.  This contains:
     ! * Diagonal matrix elements, K_ii.  Storing them avoids recalculation.
-    !   K_ii = < D_i | H | D_i > - E_0, 
-    !   where E_0 = <D_0 | H | D_0> and |D_0> is the reference determinant.
-    !   For DMQMC the number of storage elements is ndata (namely, number of
-    !   replicas) as each replica evolves independently. See comments of
-    !   the variable ndata above for more information.
+    !   K_ii = < D_i | H | D_i > - E_0, where E_0 = <D_0 | H | D_0> and |D_0> 
+    !   is the reference determinant.
     ! * If we're doing Hellmann--Feynmann sampling, matrix elements for the
     !   1-body operator's diagonal is in 2:sampling_size elements.
-    ! * Further data in ndata+1:ndata+info_size. For example, when
+    ! * Further data in sampling_size+1:sampling_size+info_size. For example, when
     !   calculating the projected energy with various trial wavefunctions, it is
     !   useful to store quantites which are expensive to calculate and which are
     !   instead of recalculating them. For the Neel singlet state, the first component
     !   gives the total number of spins up on the first sublattice. The second
     !   component gives the number of 0-1 bonds where the 1 is on the first
     !   sublattice.
-    real(p), allocatable :: dat(:,:) ! (ndata+info_size,walker_length)
+    real(p), allocatable :: dat(:,:) ! (sampling_size+info_size,walker_length)
     ! This variable will become equal to true if we ever run out of memory in
     ! particle lists, in which case the program will exit at the next
     ! opportunity.

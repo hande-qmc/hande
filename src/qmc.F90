@@ -108,11 +108,9 @@ contains
         else if (fciqmc_in_loc%replica_tricks) then
             qmc_state%psip_list%nspaces = qmc_state%psip_list%nspaces * 2
         end if
-        ! Figure out qmc_state%psip_list%ndata BEFORE doubling nspaces
-        ! for complex population storage (as Kii is always real).
-        qmc_state%psip_list%ndata = qmc_state%psip_list%nspaces
-
-        if (sys%read_in%comp) qmc_state%psip_list%nspaces = qmc_state%psip_list%nspaces * 2
+        if (sys%read_in%comp) then
+            qmc_state%psip_list%nspaces = qmc_state%psip_list%nspaces * 2
+        end if
         ! Each determinant occupies tot_string_len kind=i0 integers,
         ! qmc_state%psip_list%nspaces kind=int_p integers, qmc_state%psip_list%nspaces kind=p reals and one
         ! integer. If the Neel singlet state is used as the reference state for
@@ -238,7 +236,7 @@ contains
         use proc_pointers
 
         ! Utilities
-        use errors, only: stop_all, warning
+        use errors, only: stop_all
 
         type(sys_t), intent(in) :: sys
         type(qmc_in_t), intent(in) :: qmc_in
@@ -1055,10 +1053,10 @@ contains
             pl%dat(1,pl%nstates) = reference%H00
             reference%H00 = 0.0_p
 
-            pl%dat(pl%ndata+1,pl%nstates) = sys%lattice%nsites/2
+            pl%dat(pl%nspaces+1,pl%nstates) = sys%lattice%nsites/2
             ! For a rectangular bipartite lattice, nbonds = ndim*nsites.
             ! The Neel state cannot be used for non-bipartite lattices.
-            pl%dat(pl%ndata+2,pl%nstates) = sys%lattice%ndim*sys%lattice%nsites
+            pl%dat(pl%nspaces+2,pl%nstates) = sys%lattice%ndim*sys%lattice%nsites
         end if
 
         ! Finally, we need to check if the reference determinant actually
@@ -1128,8 +1126,8 @@ contains
                 ! If we are using the Neel state as a reference in the
                 ! Heisenberg model, then set the required data.
                 if (fciqmc_in%trial_function == neel_singlet) then
-                    pl%dat(pl%ndata+1,pl%nstates) = 0
-                    pl%dat(pl%ndata+2,pl%nstates) = 0
+                    pl%dat(pl%nspaces+1,pl%nstates) = 0
+                    pl%dat(pl%nspaces+2,pl%nstates) = 0
                 end if
             end if
         end if

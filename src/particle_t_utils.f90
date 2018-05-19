@@ -85,11 +85,8 @@ contains
         ! walker list is given by string_len*i0_length+nwalker_int_extra*32+
         ! nwalker_int_p*int_p_length+nwalker_real*32 (*64 if double precision).
         ! The number of bytes is simply 1/8 this.
-        ! [todo] For dmqmc's pl%dat, imaginary parts are compressd so that
-        !        ndata = nspaces/2. Is it OK to just change pl%nspaces to
-        !        pl%ndata for nwalker_real?
         nwalker_int_p = pl%nspaces ! for populations
-        nwalker_real = pl%ndata + pl%info_size ! for <D_i|O|D_i> and info storage.
+        nwalker_real = pl%nspaces + pl%info_size ! for <D_i|O|D_i> and info storage.
         if (p == sp) then
             ! SINGLE_PRECISION
             size_main_walker = tensor_label_len*i0_length/8 + nwalker_int_p*int_p_length/8 + &

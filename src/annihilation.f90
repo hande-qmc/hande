@@ -845,14 +845,6 @@ contains
         integer(i0), intent(in) :: det(sys%basis%tensor_label_len)
         integer(int_p), intent(in) :: population(psip_list%nspaces)
         type(reference_t), intent(in) :: ref
-        integer :: nham
-
-        ! Determine the number of diagonal Hamiltonian elements in the dat array
-        if (sys%read_in%comp) then 
-            nham = psip_list%nspaces/2
-        else
-            nham = psip_list%nspaces
-        end if
 
         ! Insert the new determinant.
         psip_list%states(:,pos) = det
@@ -863,7 +855,7 @@ contains
 
         associate(pl=>psip_list)
             if (annihilation_flags%trial_function == neel_singlet) &
-                pl%dat(pl%ndata+1:pl%ndata+2,pos) = neel_singlet_data(sys, det)
+                pl%dat(pl%nspaces+1:pl%nspaces+2,pos) = neel_singlet_data(sys, det)
         end associate
 
         if (doing_calc(hfs_fciqmc_calc)) then
@@ -891,9 +883,13 @@ contains
                 end associate
             end if
 
-            ! Copy data across replicas (have to skip complex components).
+            ! Copy data across replicas.
+            ! NB As all replicas and complex components share the same 
+            !    state array, only the first element of psip_list%dat(:,pos)
+            !    is actuallly used in DMQMC. Doing this is just for data
+            !    structure consistency.
             if (annihilation_flags%replica_tricks) then
-                psip_list%dat(2:nham,pos) = psip_list%dat(1,pos)
+                psip_list%dat(2:psip_list%nspaces,pos) = psip_list%dat(1,pos)
             end if
 
         end if
