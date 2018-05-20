@@ -312,6 +312,9 @@ contains
             .and. sys%system /= ueg .and. sys%system /= read_in) then
             call stop_all(this, 'Reweighting of initial matrix not supported for this system. Please implement.')
         end if
+        if (dmqmc_in%grand_canonical_initialisation .and. dmqmc_in%replica_tricks) then
+            call stop_all(this, 'Grand canonical initialisation is currently incompatible with replica tricks.')
+        end if
         if (dmqmc_in%symmetric .and. dmqmc_in%ipdmqmc .and. sys%system /= ueg) then
             call stop_all(this, 'Symmetric propagation is only implemented for the UEG. Please implement.')
         end if
