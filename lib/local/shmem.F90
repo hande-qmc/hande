@@ -101,9 +101,9 @@ contains
         type(c_ptr), intent(out) :: ptr
         integer, intent(out) :: win
         integer :: win_info, ierr, disp
+#if defined PARALLEL && ! defined DISABLE_MPI3
         integer(MPI_ADDRESS_KIND) :: n
 
-#if defined PARALLEL && ! defined DISABLE_MPI3
         call MPI_Info_create(win_info, ierr)
         call MPI_Info_set(win_info, "alloc_shared_non_contig", "true", ierr)
         if (intra_node_comm == MPI_COMM_NULL) then
@@ -120,7 +120,6 @@ contains
         win = 0
         win_info = 0
         ierr = 0
-        n = 0
         disp = 0
         call stop_all('mpi3_shared_alloc', 'MPI-3 is not available.')
 #endif
