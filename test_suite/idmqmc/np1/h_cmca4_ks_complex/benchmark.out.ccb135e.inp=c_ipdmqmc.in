@@ -1,0 +1,355 @@
+
+   HANDE
+
+ ================================================================
+
+
+Version information
+-------------------
+
+Version       | v1.2-55-gccb135e-dirty
+Commit hash   | ccb135eefba6925fdad72d07d553b9beb262df2d
+Commit author | RuQing Xu
+Commit date   | Mon May 7 11:41:36 2018 +0800
+Branch        | complex-dmqmc
+
+
+Configuration and build information
+-----------------------------------
+
+Who compiled             | rubidium
+Compilation hostname     | Rogers-MBP.local
+Operating system         | Darwin-17.5.0
+CMake version            | Not built using CMake
+CMake generator          | Not built using CMake
+Build type               | debug
+Configuration time       | 2018-05-07 03:53:08 [UTC]
+Python version           | 2.7.13
+Fortran compiler         | mpif90
+C compiler               | mpicc
+DET_SIZE set to          | 32
+POP_SIZE set to          | 64
+dSFMT Mersenne exponent  | 19937
+MPI parallelization      | ON
+MPI launcher             | unknown
+OpenMP parallelization   | OFF
+Lua version              | unknown
+HDF5 library version     | unknown
+
+
+Further components
+------------------
+
+   DISABLE_HDF5 not defined.  HDF5 enabled.
+   DISABLE_LANCZOS defined.  Lanczos disabled.
+   DISABLE_UUID not defined.  UUID enabled.
+   PARALLEL defined.  MPI parallelization enabled.
+   DISABLE_SCALAPACK not defined.  ScaLAPACK enabled.
+   SINGLE_PRECISION not defined.  Double precision used throughout.
+   USE_POPCNT not defined. Internal POPCNT procedure used.
+
+
+Runtime information
+-------------------
+
+Hostname:                               
+    Rogers-MBP.local
+Current working dir:                    
+    /Users/rubidium/Projects/hande-public/test_suite/idmqmc/np1/h_cmca4_ks_complex
+Started running on 07/05/2018 at 13:30:04
+ Calculation UUID: E17BEA44-4B96-473A-9A95-239F633DF64B.
+ ================================================================
+
+ Input options
+ -------------
+
+system = read_in {
+	int_file = 'FCIDUMP',
+	complex = true,
+}
+
+dmqmc {
+	sys = system,
+	qmc = {
+		tau = 0.01,
+		rng_seed = 200,
+		init_pop = 200,
+		mc_cycles = 10,
+		nreports = 200,
+		state_size = 3E6,
+		spawned_state_size = 4E5,
+		target_population = 2E3,
+	},
+	dmqmc = {
+		beta_loops = 1,
+	},
+	ipdmqmc = {
+		target_beta = 1,
+		initial_matrix = 'hartree_fock',
+		grand_canonical_initialisation = true,
+		metropolis_attempts = 100,
+		symmetric = false,
+	},
+	operators = { 
+		energy = true,
+	},
+	restart = {
+		write = false,
+		read = false,
+	},
+}
+
+ -------------
+
+ Unconverged symmetry found.  Turning point group symmetry off.
+
+ Memory required for all two body integrals (MB) on each processor: 0
+ It is left to the user to ensure that this does not exceed available resources.
+
+ Basis functions
+ ---------------
+
+ Spin given in units of 1/2.
+
+ index  spatial symmetry sym_index lz     ms       <i|h|i>
+     1      1       0       1       0       1       -6.68297410E-01
+     2      1       0       2       0      -1       -6.68297410E-01
+     3      2       0       3       0       1        4.97435108E-02
+     4      2       0       4       0      -1        4.97435108E-02
+     5      3       0       5       0       1        7.47293681E-02
+     6      3       0       6       0      -1        7.47293681E-02
+     7      4       0       7       0       1        1.58547953E-01
+     8      4       0       8       0      -1        1.58547953E-01
+     9      5       0       9       0       1        4.62126344E-01
+    10      5       0      10       0      -1        4.62126344E-01
+    11      6       0      11       0       1        8.11237514E-01
+    12      6       0      12       0      -1        8.11237514E-01
+    13      7       0      13       0       1        8.91340017E-01
+    14      7       0      14       0      -1        8.91340017E-01
+    15      8       0      15       0       1        1.23189592E+00
+    16      8       0      16       0      -1        1.23189592E+00
+    17      9       0      17       0       1        1.26582301E+00
+    18      9       0      18       0      -1        1.26582301E+00
+    19     10       0      19       0       1        1.72316074E+00
+    20     10       0      20       0      -1        1.72316074E+00
+    21     11       0      21       0       1        1.76588559E+00
+    22     11       0      22       0      -1        1.76588559E+00
+    23     12       0      23       0       1        2.03014255E+00
+    24     12       0      24       0      -1        2.03014255E+00
+
+ E_core =    0.000000000000
+ Number of electrons: 8
+ Number of basis functions: 24
+
+ Bit-length of integers used to store determinant bit-strings: 32
+ Number of integers used to store determinant bit-strings: 1
+
+ Symmetry information
+ --------------------
+
+ Number of point group symmetries: 1
+ Not using Lz symmetry.
+ Totally symmetric symmetry: 0
+ The matrix below gives the direct products of the irreducible representations.
+
+  0
+
+ The table below gives the number of basis functions spanning each irreducible representation.
+
+ irrep  Lz   sym  nbasis  nbasis_up  nbasis_down
+   0     0    0     24      12         12
+
+
+ Reference determinant and so symmetry sector selected using the Aufbau principle.
+ Selected symmetry  0.
+
+ DMQMC
+ -----
+
+ Memory allocated per core for main walker list (MB):    108.00
+ Number of elements per core in main walker list: 3000000
+ Memory allocated per core for spawned walker lists (MB):     25.60
+ Number of elements per core in spawned walker list: 400000
+
+ -- Start JSON block --
+ {
+     "system": {
+         "nbasis": 24,   
+         "nel": 8,   
+         "nvirt": 16,   
+         "Ms": 0,   
+         "nalpha": 4,   
+         "nbeta": 4,   
+         "nvirt_alpha": 8,   
+         "nvirt_beta": 8,   
+         "nsym": 0,   
+         "sym0": 0,   
+         "sym_max": 0,   
+         "nsym_tot": 1,   
+         "sym0_tot": 0,   
+         "sym_max_tot": 0,   
+         "symmetry": 0,   
+         "tot_sym": false,   
+         "aufbau_sym": true,   
+         "max_number_excitations": 8,   
+         "read_in": {
+             "int_file":  "FCIDUMP",   
+             "uhf": false,   
+             "Ecore": 0.00000000,   
+             "CAS": [ -1, -1],
+             "useLz": false,   
+             "complex": true    
+         }
+     },
+     "qmc": {
+         "rng_seed": 200,   
+         "real_amplitudes": false,   
+         "real_amplitude_force_32": false,   
+         "spawn_cutoff": 0.01000000,   
+         "excit_gen":  "renorm",   
+         "pattempt_single": 0.04494382,   
+         "pattempt_double": 0.95505618,   
+         "tau": 0.01000000,   
+         "tau_search": false,   
+         "vary_shift_from": 0.00000000,   
+         "vary_shift_from_proje": false,   
+         "initial_shift": 0.00000000,   
+         "shift_damping": 0.05000000,   
+         "walker_length": 3000000,   
+         "spawned_walker_length": 400000,   
+         "D0_population": 200.00000000,   
+         "target_particles": 2000.00000000,   
+         "target_reference": false,   
+         "initiator_approx": false,   
+         "initiator_pop": 3.00000000,   
+         "ncycles": 10,   
+         "nreport": 200,   
+         "quasi_newton": false,   
+         "quasi_newton_threshold": 0.00001000,   
+         "quasi_newton_value": 1.00000000,   
+         "use_mpi_barriers": false    
+     },
+     "dmqmc": {
+         "beta_loops": 1,   
+         "replica_tricks": false,   
+         "start_av_rdm": 0,   
+         "weighted_sampling": false,   
+         "vary_weights": false,   
+         "find_weights": false,   
+         "find_weights_start": 0,   
+         "calc_excit_dist": false,   
+         "all_sym_sectors": false,   
+         "all_spin_sectors": false,   
+         "initiator_level": -1,   
+         "sampling_probs":  "[]",   
+         "finish_varying_weights": 0,   
+         "fermi_temperature": false,   
+         "target_beta": 1.00000000,   
+         "mom_dist_kmax": 0.00000000,   
+         "struc_fac_qmax": 0.00000000    
+     },
+     "ipdmqmc": {
+         "ipdmqmc": true,   
+         "initial_matrix":  "hartree_fock",   
+         "grand_canonical_initialisation": true,   
+         "symmetric": false,   
+         "chem_pot": 0.02786288,   
+         "metropolis_attempts": 100    
+     },
+     "rdm": {
+         "nrdms": 0,   
+         "spawned_length": 0,   
+         "doing_rdm": false,   
+         "calc_ground_rdm": false,   
+         "calc_inst_rdm": false,   
+         "doing_concurrence": false,   
+         "doing_vn_entropy": false,   
+         "output_rdm": false    
+     },
+     "operators": {
+         "energy": true,   
+         "energy_squared": false,   
+         "kinetic_energy": false,   
+         "potential_energy": false,   
+         "H0_energy": false,   
+         "HI_energy": false,   
+         "correlation_fn": false,   
+         "staggered_mad_ind": false,   
+         "rdm_r2": false,   
+         "full_r2": false,   
+         "mom_dist": false    
+     },
+     "restart": {
+         "read_restart": false,   
+         "read_id": 2147483647,   
+         "write_restart": false,   
+         "write_id": 2147483647,   
+         "write_freq": 2147483647,   
+         "write_restart_shift": false,   
+         "write_shift_id": 2147483647    
+     },
+     "load balancing": {
+         "nslots": 1,   
+         "pop": 1000,   
+         "percent": 0.05000000,   
+         "max_attempts": 2,   
+         "write_info": false    
+     },
+     "reference": {
+         "det": [ 1, 2, 3, 4, 5, 6, 7, 8],
+         "det_ms": 0,   
+         "det_symmetry": 0,   
+         "H00": -2.12164985,   
+         "F0": -0.77055316,   
+         "hilbert_space_det": [ 1, 2, 3, 4, 5, 6, 7, 8],
+         "hilbert_space_det_ms": 0,   
+         "hilbert_space_det_symmetry": 0,   
+         "ex_level": 8    
+     }
+ }
+ -- End JSON block --
+
+ Information printed out every QMC report loop:
+
+ Shift: the energy offset calculated at the end of the report loop.
+ Trace: The current total population on the diagonal elements of the density matrix.
+ \sum\rho_{ij}H_{ji}: The numerator of the estimator for the expectation value of the energy.
+ # particles: current total population of Hamiltonian particles.
+ # states: number of many-particle states occupied.
+ # spawn_events: number of successful spawning events across all processors.
+ R_spawn: average rate of spawning across all processors.
+ time: average time per Monte Carlo cycle.
+
+ Note that all particle populations are averaged over the report loop.
+
+ #     iterations   Instant shift         Re{Trace}             Im{Trace}             Re{\sum \rho H}       Im{\sum \rho H}       # particles                # states  # spawn_events   R_spawn    time    
+ # Average acceptance ratio: .8452961  Average number of null excitations: .8565000
+ # WARNING: more than 3 particles spawned in a single event 5 times in the last report loop.
+ # Mean number of particles created in blooms:      3.0
+ # This warning only prints  1 time(s). You may wish to reduce the time step.
+                0   0.0000000000E+00      2.0000000000E+02      0.0000000000E+00     -3.2028224898E+02      0.0000000000E+00      2.0000000000E+02                259               8    0.0033    0.0192  
+               10   0.0000000000E+00      2.0000000000E+02      0.0000000000E+00     -3.2653727497E+02      7.8558734749E-03      2.7600000000E+02                373              17    0.0049    0.0015  
+               20   0.0000000000E+00      2.0000000000E+02      0.0000000000E+00     -3.3247787348E+02      2.9795629322E-02      4.0600000000E+02                538              18    0.0052    0.0023  
+               30   0.0000000000E+00      2.0200000000E+02      0.0000000000E+00     -3.3885256013E+02     -2.8783190839E-01      5.9200000000E+02                760              26    0.0049    0.0032  
+               40   0.0000000000E+00      2.0300000000E+02      0.0000000000E+00     -3.4394287189E+02     -4.8228465494E-01      8.4600000000E+02               1071              54    0.0049    0.0045  
+               50   0.0000000000E+00      2.0800000000E+02     -1.0000000000E+00     -3.5866976161E+02      1.2088109694E+00      1.2270000000E+03               1514              63    0.0047    0.0064  
+               60   0.0000000000E+00      2.1200000000E+02     -1.0000000000E+00     -3.6788052129E+02      1.3039476941E+00      1.7230000000E+03               2165              86    0.0050    0.0083  
+               70  -1.8231580805E-01      2.1400000000E+02      0.0000000000E+00     -3.7484145875E+02     -4.0309475248E-02      2.4160000000E+03               3079             125    0.0052    0.0128  
+               80  -3.5243725176E-01      2.2000000000E+02      0.0000000000E+00     -3.8760465370E+02      3.2413017758E-01      3.4790000000E+03               4423             174    0.0055    0.0170  
+               90  -5.1901970196E-01      2.2700000000E+02     -2.0000000000E+00     -3.9815404158E+02      5.4369812279E+00      4.8890000000E+03               6330             265    0.0058    0.0256  
+              100  -6.7550727395E-01      2.2200000000E+02     -2.0000000000E+00     -3.9550206901E+02      5.1348761118E+00      6.8220000000E+03               8872             356    0.0060    0.0354  
+
+ Timing breakdown
+ ----------------
+
+ Time for each calculation section (seconds):
+
+ Generic system initialisation: .01
+ DMQMC calculation            : 1.42
+
+ ================================================================
+ Finished running on 07/05/2018 at 13:30:05
+ Wall time (seconds):                           1.46
+ CPU time (per processor, seconds):             1.44
+ ================================================================
+

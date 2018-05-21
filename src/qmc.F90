@@ -103,8 +103,8 @@ contains
         ! --- Allocate psip list ---
         if (doing_calc(hfs_fciqmc_calc)) then
             qmc_state%psip_list%nspaces = qmc_state%psip_list%nspaces + 1
-        else if (present(dmqmc_in)) then
-            if (dmqmc_in%replica_tricks) qmc_state%psip_list%nspaces = qmc_state%psip_list%nspaces + 1
+        else if (dmqmc_in_loc%replica_tricks) then
+            qmc_state%psip_list%nspaces = qmc_state%psip_list%nspaces + 1
         else if (fciqmc_in_loc%replica_tricks) then
             qmc_state%psip_list%nspaces = qmc_state%psip_list%nspaces * 2
         end if
@@ -849,6 +849,7 @@ contains
 
         ! Energy of reference determinant.
         reference%H00 = sc0_ptr(sys, reference%f0)
+        ! Operators of HFS sampling.
         if (doing_calc(hfs_fciqmc_calc)) reference%O00 = op0_ptr(sys, reference%f0)
         reference%fock_sum = sum_sp_eigenvalues_occ_list(sys, reference%occ_list0)
 
@@ -894,6 +895,7 @@ contains
         ! Need to re-calculate the reference determinant data
         call decode_det(sys%basis, reference%f0, reference%occ_list0)
         call decode_det(sys%basis, reference%hs_f0, reference%hs_occ_list0)
+
         reference%H00 = sc0_ptr(sys, reference%f0)
         if (doing_calc(hfs_fciqmc_calc)) reference%O00 = op0_ptr(sys, reference%f0)
         reference%fock_sum = sum_sp_eigenvalues_occ_list(sys, reference%occ_list0)

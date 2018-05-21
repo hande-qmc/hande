@@ -507,7 +507,7 @@ type particle_t
     ! Walker information: main list.
     ! sampling_size is one for each quantity sampled (i.e. 1 for standard
     ! FCIQMC/initiator-FCIQMC, 2 for FCIQMC+Hellmann--Feynman sampling or
-    ! complex FCIQMC).
+    ! complex FCIQMC/CCMC/DMQMC).
     integer :: nspaces = 1
     ! number of additional elements stored for each determinant in dat for
     ! (e.g.) importance sampling.
@@ -535,11 +535,11 @@ type particle_t
     integer(int_p), allocatable :: pops(:,:) ! (nspaces,walker_length)
     ! c) Walker information.  This contains:
     ! * Diagonal matrix elements, K_ii.  Storing them avoids recalculation.
-    !   K_ii = < D_i | H | D_i > - E_0, where E_0 = <D_0 | H | D_0> and |D_0> is the
-    !   reference determinant.  Always the first element.
-    ! * Diagonal matrix elements for Hellmann--Feynmann sampling in 2:sampling_size
-    !   elements.
-    ! * Further data in sampling_size+1:sampling_size:info_size.  For example, when
+    !   K_ii = < D_i | H | D_i > - E_0, where E_0 = <D_0 | H | D_0> and |D_0> 
+    !   is the reference determinant.
+    ! * If we're doing Hellmann--Feynmann sampling, matrix elements for the
+    !   1-body operator's diagonal is in 2:sampling_size elements.
+    ! * Further data in sampling_size+1:sampling_size+info_size. For example, when
     !   calculating the projected energy with various trial wavefunctions, it is
     !   useful to store quantites which are expensive to calculate and which are
     !   instead of recalculating them. For the Neel singlet state, the first component
@@ -793,6 +793,7 @@ type qmc_state_t
     ! Need additional parameter to identify the cause of calculation termination;
     ! we may want to print a different message depending upon the cause.
     logical :: reblock_done = .false.
+
     type(estimators_t), allocatable :: estimators(:)
     ! Internal flag to indicate status of shift damping optimisation.
     integer :: shift_damping_status = sd_no_optimisation
