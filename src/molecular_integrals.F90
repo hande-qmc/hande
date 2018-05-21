@@ -1212,14 +1212,15 @@ contains
                                     &es11.4E3,".")') nblocks, real(optimal_block_size)
                         write(iunit,'(1X,"This corresponds to ", es11.4E3," integrals in the main broadcast "&
                                     &,/,1X,"and ", es11.4E3," in the remainder.")') real(nmain), real(nnext)
-
                     end if
 
                     ncurr = 1
-                    do j = 1,nblocks
-                       call MPI_BCast(ints(ncurr), 1, mpi_preal_block, data_proc, intra_node_comm, ierr)
-                       ncurr = ncurr + optimal_block_size
-                    end do
+                    if (intra_node_comm /= MPI_COMM_NULL) then
+                        do j = 1,nblocks
+                           call MPI_BCast(ints(ncurr), optimal_block_size, mpi_preal, data_proc, intra_node_comm, ierr)
+                           ncurr = ncurr + optimal_block_size
+                        end do
+                    end if
 
                     ! Finally broadcast the remaining values not included in previous block.
                     ! In some compilers (intel) passing array slices into mpi calls leads to
