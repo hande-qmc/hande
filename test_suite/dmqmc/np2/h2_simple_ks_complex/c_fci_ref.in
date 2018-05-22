@@ -1,9 +1,0 @@
-sys = read_in {
-    int_file = "FCIDUMP",
-    complex = true,
-}
-
-fci {
-    sys = sys,
-}
-
