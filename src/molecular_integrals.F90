@@ -20,6 +20,7 @@ type, private :: int_indx
     logical :: conjugate        ! Indicates if we need to take the complex conjugate of the integral
 end type int_indx
 
+![review] - AJWT: What do each of these elements mean?
 type :: int_ex_indx
     integer :: spin_channel
     integer :: repeat_ind
@@ -263,6 +264,7 @@ contains
 
     end subroutine end_two_body_t
 
+! [review] - AJWT: Consider a different name which is less specific, and comment on memory requirements.
     subroutine init_two_body_exchange_t(sys, op_sym, imag, store)
 
         ! Allocate memory required for the integrals involving a two-body
@@ -1354,6 +1356,7 @@ contains
 
 ! 3. additional < i j | o_2 | a i > for PBC.
 
+![review] - AJWT: comment on variables and what the function does
     subroutine store_pbc_int_mol(i, j, a, b, intgrl, basis_fns, store, ierr)
 
         use basis_types, only: basis_fn_t
@@ -1380,6 +1383,7 @@ contains
 
     end subroutine store_pbc_int_mol
 
+![review] - AJWT: comment on variables
     pure function pbc_ex_int_indx(uhf, i, j, a, b, basis_fns) result(indx)
 
         use basis_types, only: basis_fn_t
@@ -1609,6 +1613,7 @@ contains
 
     end subroutine broadcast_two_body_t
 
+![review] - AJWT: comment on variables and what the function does
     subroutine broadcast_two_body_exchange_t(store, data_proc)
 
         use parallel

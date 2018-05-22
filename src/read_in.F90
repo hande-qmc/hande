@@ -1176,6 +1176,7 @@ contains
 
     end subroutine get_sp_eigv
 
+![review] - AJWT: Where are the integrals read from and where do they go?
     subroutine read_additional_exchange_integrals(sys, sp_fcidump_rank, verbose)
 
         ! For periodic bounary conditions we require additional integrals, to be read
@@ -1269,6 +1270,7 @@ contains
 
     end subroutine read_additional_exchange_integrals
 
+! [review] - AJWT: Include expression we're using and some sort of reference
     subroutine modify_one_body_ints(sys, two_e_ints, pbc_ex_ints, one_e_ints)
 
         ! If using additional exchange integrals with modified electron-electron
@@ -1282,7 +1284,7 @@ contains
         ! In/Out:
         !   one_e_ints: object containing one body integrals to be modified.
 
-        ! NB this function uses separately passed onjects for the different integrals
+        ! NB this function uses separately passed objects for the different integrals
         ! to enable use of the same function for both the real and imaginary components
         ! of all integrals.
 

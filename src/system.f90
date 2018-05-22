@@ -292,6 +292,7 @@ type sys_read_in_t
 
     ! FCIDUMP filename (contains additional exchange integrals which can be required to make up
     ! Hamiltonian matrix with periodic boundary conditions).
+![review] - AJWT: Do we want to consider HDF5 support at some point? 
     ! Must be text file.
     character(255) :: ex_fcidump = ''
     ! Whether this file has been provided.
