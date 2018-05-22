@@ -16,6 +16,7 @@ add_library(coreutils OBJECT
   linalg.F90
   parallel.F90
   ranking.f90
+  shmem.F90
   utils.F90
   )
 target_include_directories(coreutils
