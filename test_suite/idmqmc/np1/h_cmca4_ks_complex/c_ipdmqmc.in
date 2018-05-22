@@ -1,0 +1,35 @@
+system = read_in {
+	int_file = 'FCIDUMP',
+	complex = true,
+}
+
+dmqmc {
+	sys = system,
+	qmc = {
+		tau = 0.01,
+		rng_seed = 200,
+		init_pop = 200,
+		mc_cycles = 10,
+		nreports = 200,
+		state_size = 3E6,
+		spawned_state_size = 4E5,
+		target_population = 2E3,
+	},
+	dmqmc = {
+		beta_loops = 1,
+	},
+	ipdmqmc = {
+		target_beta = 1,
+		initial_matrix = 'hartree_fock',
+		grand_canonical_initialisation = true,
+		metropolis_attempts = 100,
+		symmetric = false,
+	},
+	operators = { 
+		energy = true,
+	},
+	restart = {
+		write = false,
+		read = false,
+	},
+}

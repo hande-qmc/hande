@@ -852,14 +852,19 @@ contains
         psip_list%pops(:,pos) = population
         ! Calculate and insert all new components of psip_list%dat.
         psip_list%dat(1,pos) = sc0_ptr(sys, det) - ref%H00
+
         associate(pl=>psip_list)
             if (annihilation_flags%trial_function == neel_singlet) &
                 pl%dat(pl%nspaces+1:pl%nspaces+2,pos) = neel_singlet_data(sys, det)
         end associate
+
         if (doing_calc(hfs_fciqmc_calc)) then
+
             ! Set psip_list%dat(2:,k) = <D_i|O|D_i> - <D_0|O|D_0>.
             psip_list%dat(2,pos) = op0_ptr(sys, det) - ref%O00
+
         else if (doing_calc(dmqmc_calc)) then
+
             if (annihilation_flags%ipdmqmc .and. .not. annihilation_flags%symmetric) then
                 ! Store H^0_ii-H_jj so we can propagate with ~ 1 + \Delta\beta(H^0_ii - H_jj),
                 ! where H^0_ii is the zeroth-order Hamiltonian: H = H^0 + H'
@@ -877,10 +882,16 @@ contains
                     pl%dat(1,pos) = (pl%dat(1,pos) + sc0_ptr(sys, pl%states((bl+1):(2*bl),pos)) - ref%H00)/2
                 end associate
             end if
-            ! Copy the calculated Hamiltonian diagonal across replicas.
+
+            ! Copy data across replicas.
+            ! NB As all replicas and complex components share the same 
+            !    state array, only the first element of psip_list%dat(:,pos)
+            !    is actuallly used in DMQMC. Doing this is just for data
+            !    structure consistency.
             if (annihilation_flags%replica_tricks) then
                 psip_list%dat(2:psip_list%nspaces,pos) = psip_list%dat(1,pos)
             end if
+
         end if
 
     end subroutine insert_new_walker

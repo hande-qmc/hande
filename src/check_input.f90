@@ -290,7 +290,7 @@ contains
         use calc, only: dmqmc_staggered_magnetisation, dmqmc_energy_squared, dmqmc_correlation
         use calc, only: dmqmc_potential_energy, dmqmc_kinetic_energy, dmqmc_HI_energy
 
-        use errors, only: stop_all
+        use errors, only: stop_all, warning
         use const, only: depsilon, p
 
         type(sys_t), intent(in) :: sys
@@ -359,6 +359,9 @@ contains
             .and. sys%system /= ueg .and. sys%system /= read_in) then
             call stop_all(this, 'Reweighting of initial matrix not supported for this system. Please implement.')
         end if
+        if (dmqmc_in%grand_canonical_initialisation .and. dmqmc_in%replica_tricks) then
+            call stop_all(this, 'Grand canonical initialisation is currently incompatible with replica tricks.')
+        end if
         if (dmqmc_in%symmetric .and. dmqmc_in%ipdmqmc .and. sys%system /= ueg) then
             call stop_all(this, 'Symmetric propagation is only implemented for the UEG. Please implement.')
         end if
@@ -382,7 +385,7 @@ contains
         
         if (qmc_in%quasi_newton) call stop_all(this, 'Quasi-Newton not implemented for DMQMC.')
 
-        if (sys%read_in%comp) call stop_all(this, 'Complex DMQMC not yet implemented')
+        if (sys%read_in%comp) call warning(this, 'Complex DMQMC is experimental.')
 
         if (sys%basis%info_string_len /= 0) call stop_all(this, &
             'DMQMC is incompatible with additional information being stored in the bit string. Please implement if needed.')

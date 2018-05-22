@@ -93,6 +93,11 @@ Options
         must not have a different even selection setting. To switch between using
         even selection and not a written restart file must be used.
 
+    .. warning::
+
+        This destroys the qmc_state object and so it cannot be re-used in subsequent
+        QMC calculations.
+
 .. _ccmc_table:
 
 ccmc options

@@ -8,5 +8,5 @@ setup(
     license='Modified BSD license',
     description='Analysis framework for HANDE calculations',
     long_description=open('README.rst').read(),
-    requires=['numpy', 'pandas (>= 0.13)', 'pyblock',],
+    install_requires=['numpy', 'scipy', 'pandas', 'pyblock', 'matplotlib'],
 )

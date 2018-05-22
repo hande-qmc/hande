@@ -131,7 +131,7 @@ contains
 
     end subroutine write_qmc_report_header
 
-    subroutine write_dmqmc_report_header(ntypes, dmqmc_in, max_excit, estimates)
+    subroutine write_dmqmc_report_header(ntypes, dmqmc_in, max_excit, estimates, complx_est)
 
         ! Write header for DMQMC specific information.
 
@@ -151,12 +151,16 @@ contains
         type(dmqmc_in_t), intent(in) :: dmqmc_in
         integer, intent(in) :: max_excit
         type(dmqmc_estimates_t), intent(in) :: estimates
+        logical, intent(in), optional :: complx_est
 
         integer :: i, j, iunit
         character(16) :: excit_header
         character(10) :: header_iidx, header_jidx
+        logical :: complx_est_set
 
         iunit = 6
+        complx_est_set = .false.
+        if (present(complx_est)) complx_est_set = complx_est
 
         write (iunit,'(1X,"Information printed out every QMC report loop:",/)')
         write (iunit,'(1X,"Shift: the energy offset calculated at the end of the report loop.")')
@@ -225,13 +229,30 @@ contains
         write (iunit,'(1X,"#",1X)', advance='no')
         call write_column_title(iunit, 'iterations', int_val=.true., justify=1)
         call write_column_title(iunit, 'Instant shift')
-        call write_column_title(iunit, 'Trace')
+        if (complx_est_set) then
+            call write_column_title(iunit, 'Re{Trace}')
+            call write_column_title(iunit, 'Im{Trace}')
+        else
+            call write_column_title(iunit, 'Trace')
+        end if
         if (doing_dmqmc_calc(dmqmc_full_r2)) then
-            call write_column_title(iunit, 'Trace 2')
-            call write_column_title(iunit, 'Full S2')
+            if (complx_est_set) then
+                call write_column_title(iunit, 'Re{Trace 2}')
+                call write_column_title(iunit, 'Im{Trace 2}')
+                call write_column_title(iunit, 'Re{S2}')
+                call write_column_title(iunit, 'Im{S2}')
+            else
+                call write_column_title(iunit, 'Trace 2')
+                call write_column_title(iunit, 'Full S2')
+            end if
         end if
         if (doing_dmqmc_calc(dmqmc_energy)) then
-            call write_column_title(iunit, '\sum\rho_{ij}H_{ji}')
+            if (complx_est_set) then
+                call write_column_title(iunit, 'Re{\sum \rho H}')
+                call write_column_title(iunit, 'Im{\sum \rho H}')
+            else
+                call write_column_title(iunit, '\sum\rho_{ij}H_{ji}')
+            end if
         end if
         if (doing_dmqmc_calc(dmqmc_energy_squared)) then
             call write_column_title(iunit, '\sum\rho_{ij}H2{ji}')
@@ -246,10 +267,20 @@ contains
             call write_column_title(iunit, '\sum\rho_{ij}T_{ji}')
         end if
         if (doing_dmqmc_calc(dmqmc_H0_energy)) then
-            call write_column_title(iunit, '\sum\rho_{ij}H0{ji}')
+            if (complx_est_set) then
+                call write_column_title(iunit, 'Re{\sum \rho H0}')
+                call write_column_title(iunit, 'Im{\sum \rho H0}')
+            else
+                call write_column_title(iunit, '\sum\rho_{ij}H0{ji}')
+            end if
         end if
         if (doing_dmqmc_calc(dmqmc_HI_energy)) then
-            call write_column_title(iunit, '\sum\rho_{ij}HI{ji}')
+            if (complx_est_set) then
+                call write_column_title(iunit, 'Re{\sum \rho HI}')
+                call write_column_title(iunit, 'Im{\sum \rho HI}')
+            else
+                call write_column_title(iunit, '\sum\rho_{ij}HI{ji}')
+            end if
         end if
         if (doing_dmqmc_calc(dmqmc_potential_energy)) then
             call write_column_title(iunit, '\sum\rho_{ij}U_{ji}')
@@ -442,7 +473,7 @@ contains
     end subroutine write_qmc_report
 
     subroutine write_dmqmc_report(sys, qmc_in, qs, ireport, ntot_particles, elapsed_time, comment, &
-                                  dmqmc_in, dmqmc_estimates)
+                                  dmqmc_in, dmqmc_estimates, complx_est)
 
         ! Write the report line at the end of a report loop.
 
@@ -472,9 +503,14 @@ contains
         real, intent(in) :: elapsed_time
         logical, intent(in) :: comment
         type(dmqmc_in_t), intent(in) :: dmqmc_in
+        logical, intent(in), optional :: complx_est
         type(dmqmc_estimates_t), intent(in) :: dmqmc_estimates
 
         integer :: mc_cycles, i, j, ntypes, endp, iunit
+        logical :: complx_est_set
+
+        complx_est_set = .false.
+        if (present(complx_est)) complx_est_set = complx_est
 
         iunit = 6
 
@@ -490,20 +526,37 @@ contains
 
         call write_qmc_var(iunit, qs%mc_cycles_done+mc_cycles-qmc_in%ncycles)
         call write_qmc_var(iunit, qs%shift(1))
+        
+        ! Trace, should be real.
         call write_qmc_var(iunit, dmqmc_estimates%trace(1))
+        if (complx_est_set) then
+            call write_qmc_var(iunit, dmqmc_estimates%trace(2))
+        end if
+
         ! The trace on the second replica.
         if (doing_dmqmc_calc(dmqmc_full_r2)) then
-            call write_qmc_var(iunit, dmqmc_estimates%trace(2))
+            if (complx_est_set) then
+                call write_qmc_var(iunit, dmqmc_estimates%trace(3))
+                call write_qmc_var(iunit, dmqmc_estimates%trace(4))
+            else
+                call write_qmc_var(iunit, dmqmc_estimates%trace(2))
+            end if
         end if
 
         ! Renyi-2 entropy for the full density matrix.
         if (doing_dmqmc_calc(dmqmc_full_r2)) then
             call write_qmc_var(iunit, dmqmc_estimates%numerators(full_r2_ind))
+            if (complx_est_set) then
+                call write_qmc_var(iunit, dmqmc_estimates%numerators(full_r2_imag_ind))
+            end if
         end if
 
         ! Energy.
         if (doing_dmqmc_calc(dmqmc_energy)) then
             call write_qmc_var(iunit, dmqmc_estimates%numerators(energy_ind))
+            if (complx_est_set) then
+                call write_qmc_var(iunit, dmqmc_estimates%numerators(energy_imag_ind))
+            end if
         end if
 
         ! Energy squared.
@@ -529,11 +582,17 @@ contains
         ! H^0 energy, where H = H^0 + V.
         if (doing_dmqmc_calc(dmqmc_H0_energy)) then
             call write_qmc_var(iunit, dmqmc_estimates%numerators(H0_ind))
+            if (complx_est_set) then
+                call write_qmc_var(iunit, dmqmc_estimates%numerators(H0_imag_ind))
+            end if
         end if
 
         ! H^I energy, where H^I = exp(-(beta-tau)/2 H^0) H exp(-(beta-tau)/2. H^0).
         if (doing_dmqmc_calc(dmqmc_HI_energy)) then
             call write_qmc_var(iunit, dmqmc_estimates%numerators(HI_ind))
+            if (complx_est_set) then
+                call write_qmc_var(iunit, dmqmc_estimates%numerators(HI_imag_ind))
+            end if
         end if
 
         ! Potential energy.
@@ -568,6 +627,7 @@ contains
         if (dmqmc_in%calc_mom_dist) then
             call write_momentum_array(dmqmc_estimates%mom_dist%f_k, dmqmc_estimates%mom_dist%kpoints, .true.)
         end if
+
         if (dmqmc_in%calc_struc_fac) then
             endp = size(dmqmc_estimates%struc_fac%f_k)
             ! \sum_{s,s'} S_{s,s'}
