@@ -329,9 +329,9 @@ contains
             ! If this is the first call to this excitation generator after having selected cdet, we need to calculate weights.
             ! When selecting ij, the type of excitation (single/double) is still unknown.
             if (.not. cdet%double_precalc) then
+                ! find_i_d_weights finds the weights to select ij which usually is only needed in the case of double excitations.
+                ! However, here, we find ij even if we end up doing a single excitation.
                 call find_i_d_weights(sys%nel, excit_gen_data%excit_gen_hb%i_weights, cdet)
-! [review] - AJWT: does find_i_d_weights do the single precalculation?  Its comment is:
-! [review] - AJWT:"! Find weights to select i in a double excitation using pre-calculed heat bath weights."
                 cdet%single_precalc = .true.
                 cdet%double_precalc = .true.
             end if
