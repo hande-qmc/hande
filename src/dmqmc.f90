@@ -420,8 +420,6 @@ contains
 
         ! In:
         !   sys: information on system under consideration.
-        !   qs: qmc_state_t derived type with information on
-        !       current calculation.
         !   logging_info: information on current logging settings.
         !   weighted_sampling: stores sampling weights information when using
         !       importance sampling.
@@ -438,6 +436,9 @@ contains
         !       symmetrically.
         ! In/Out:
         !   rng: random number generator.
+        !   qs: qmc_state_t derived type with information on
+        !       current calculation. In/Out for compatibility with the
+        !       Power-Pitzer excitation generators (not used for DMQMC).
         !   bloom_stats: information on blooms during calculation.
         !   spawn: stored information on spawning.
 
@@ -451,7 +452,7 @@ contains
         use spawn_data, only: spawn_t
 
         type(sys_t), intent(in) :: sys
-        type(qmc_state_t), intent(in) :: qs
+        type(qmc_state_t), intent(inout) :: qs
         type(logging_t), intent(in) :: logging_info
         type(det_info_t), intent(in) :: cdet1, cdet2
         integer, intent(in) :: nattempts_current_det, ireplica
