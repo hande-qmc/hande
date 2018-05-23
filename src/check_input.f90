@@ -329,7 +329,11 @@ contains
             call stop_all(this, 'metropolis_attempts must be greater than zero.')
         end if
 
-        if (sys%read_in%comp) call warning(this, 'Complex DMQMC is experimental.')
+        if (sys%read_in%comp) then 
+            if (dmqmc_in%weighted_sampling) &
+                call stop_all(this, 'Weighted sampling is not supported in complex DMQMC. Please implement.')
+            call warning(this, 'Complex DMQMC is experimental.')
+        end if
 
         if (sys%basis%info_string_len /= 0) call stop_all(this, &
             'DMQMC is incompatible with additional information being stored in the bit string. Please implement if needed.')
