@@ -365,6 +365,8 @@ contains
             decoder_ptr => decode_det_spinocc_spinunocc
             update_proj_energy_ptr => update_proj_energy_hub_k
             sc0_ptr => slater_condon0_hub_k
+            ! Quasi-newton requires cdet%fock_sum to be set and this is not provided
+            ! by the split excitation generators.
             if (.not.qmc_in%quasi_newton) spawner_ptr => spawn_lattice_split_gen
             select case(qmc_in%excit_gen)
             case(excit_gen_no_renorm)
