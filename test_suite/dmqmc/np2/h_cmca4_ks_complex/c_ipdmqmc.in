@@ -6,9 +6,9 @@ system = read_in {
 dmqmc {
 	sys = system,
 	qmc = {
-		tau = 0.01,
+		tau = 0.001,
 		rng_seed = 200,
-		init_pop = 200,
+		init_pop = 2000,
 		mc_cycles = 10,
 		nreports = 200,
 		state_size = 3E6,
@@ -19,13 +19,12 @@ dmqmc {
 		beta_loops = 1,
 	},
 	ipdmqmc = {
-		target_beta = 1,
+		target_beta = 0.3,
 		initial_matrix = 'hartree_fock',
 		grand_canonical_initialisation = true,
-		metropolis_attempts = 100,
 		symmetric = false,
 	},
-	operators = { 
+	operators = {
 		energy = true,
 	},
 	restart = {
