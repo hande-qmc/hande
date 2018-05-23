@@ -537,7 +537,12 @@ def reweighting_graph(datafiles, start=None, verbosity=1, mean_shift=0.0,
     
 Detecting biases by reweighting is described in [Umrigar93]_ and [Vigor15]_ , 
 see pyhande.weight for details. The graph produced by this function is similar
-to figure 4 in [Vigor15]_. 
+to figure 4 in [Vigor15]_.
+
+A similar function has been published in
+Neufeld, V., & Thom, A. J. Research data and further information supporting
+"A study of the dense uniform electron gas with high orders of coupled cluster" [Dataset].
+https://doi.org/10.17863/CAM.14336 under Attribution 4.0 International (CC BY 4.0).
    
 Parameters
 ----------
