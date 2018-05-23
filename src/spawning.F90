@@ -229,6 +229,9 @@ contains
         ! finalising the excitation.
 
         ! Only for use with non-complex systems.
+        
+        ! This does not set cdet%fock_sum (as the full excitation is not known),
+        ! so cannot be used with quasi-newton.
 
         ! In/Out:
         !    rng: random number generator.
