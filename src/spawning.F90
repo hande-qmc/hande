@@ -192,9 +192,8 @@ contains
         call gen_excit_ptr%full(rng, sys, qmc_state%excit_gen_data, cdet, pgen, connection, hmatel, allowed)
 
         ! 2. Transform Hamiltonian matrix element by trial function.
-        call gen_excit_ptr%trial_fn(sys, cdet, connection, weights, hmatel%r)
-
         if (allowed) then
+            call gen_excit_ptr%trial_fn(sys, cdet, connection, weights, hmatel%r)
             hmatel%r = hmatel%r * calc_qn_spawned_weighting(sys, qmc_state%propagator, cdet%fock_sum, connection)
             if (qmc_state%excit_gen_data%p_single_double%vary_psingles) then
                 associate(exdat=>qmc_state%excit_gen_data) 

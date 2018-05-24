@@ -7,34 +7,34 @@
 Version information
 -------------------
 
-Version       | v1.2-55-gccb135e-dirty
-Commit hash   | ccb135eefba6925fdad72d07d553b9beb262df2d
-Commit author | RuQing Xu
-Commit date   | Mon May 7 11:41:36 2018 +0800
-Branch        | complex-dmqmc
+Version       | v1.2-88-g9f56fb0
+Commit hash   | 9f56fb0869586a81ac4b319dc18e93be2cad383f
+Commit author | Fionn Malone
+Commit date   | Mon May 21 10:58:00 2018 -0700
+Branch        | master
 
 
 Configuration and build information
 -----------------------------------
 
-Who compiled             | rubidium
-Compilation hostname     | Rogers-MBP.local
-Operating system         | Darwin-17.5.0
-CMake version            | Not built using CMake
-CMake generator          | Not built using CMake
-Build type               | debug
-Configuration time       | 2018-05-07 03:53:08 [UTC]
+Who compiled             | fm813
+Compilation hostname     | kirchhoff
+Operating system         | Linux-4.9.0-6-amd64
+CMake version            | 3.7.2
+CMake generator          | Unix Makefiles
+Build type               | release
+Configuration time       | 2018-05-22 23:23:37 [UTC]
 Python version           | 2.7.13
-Fortran compiler         | mpif90
-C compiler               | mpicc
+Fortran compiler         | /common/debian/9.1/Compiler/intel/2017.4/openmpi/openmpi-2.1.1/bin/mpif90
+C compiler               | /common/debian/9.1/Compiler/intel/2017.4/openmpi/openmpi-2.1.1/bin/mpicc
 DET_SIZE set to          | 32
-POP_SIZE set to          | 64
+POP_SIZE set to          | 32
 dSFMT Mersenne exponent  | 19937
 MPI parallelization      | ON
-MPI launcher             | unknown
+MPI launcher             | /common/debian/9.1/Compiler/intel/2017.4/openmpi/openmpi-2.1.1/bin/mpiexec
 OpenMP parallelization   | OFF
-Lua version              | unknown
-HDF5 library version     | unknown
+Lua version              | 5.3.4
+HDF5 library version     | 1.8.19
 
 
 Further components
@@ -44,7 +44,7 @@ Further components
    DISABLE_LANCZOS defined.  Lanczos disabled.
    DISABLE_UUID not defined.  UUID enabled.
    PARALLEL defined.  MPI parallelization enabled.
-   DISABLE_SCALAPACK not defined.  ScaLAPACK enabled.
+   DISABLE_SCALAPACK defined.  ScaLAPACK disabled.
    SINGLE_PRECISION not defined.  Double precision used throughout.
    USE_POPCNT not defined. Internal POPCNT procedure used.
 
@@ -53,12 +53,15 @@ Runtime information
 -------------------
 
 Hostname:                               
-    Rogers-MBP.local
+    kirchhoff
 Current working dir:                    
-    /Users/rubidium/Projects/hande-public/test_suite/idmqmc/np1/h_cmca4_ks_complex
-Started running on 07/05/2018 at 13:30:04
- Calculation UUID: E17BEA44-4B96-473A-9A95-239F633DF64B.
+    /home/fm813/projects/public/hande/test_suite/dmqmc/np2/h_cmca4_ks_complex
+Started running on 23/05/2018 at 01:08:01
+ Calculation UUID: 711f60d8-d7b6-4419-9396-64621f868a2b.
  ================================================================
+
+ Number of MPI processes running on: 2
+ Running with 1 thread per MPI process.
 
  Input options
  -------------
@@ -71,9 +74,9 @@ system = read_in {
 dmqmc {
 	sys = system,
 	qmc = {
-		tau = 0.01,
+		tau = 0.001,
 		rng_seed = 200,
-		init_pop = 200,
+		init_pop = 2000,
 		mc_cycles = 10,
 		nreports = 200,
 		state_size = 3E6,
@@ -84,13 +87,12 @@ dmqmc {
 		beta_loops = 1,
 	},
 	ipdmqmc = {
-		target_beta = 1,
+		target_beta = 0.3,
 		initial_matrix = 'hartree_fock',
 		grand_canonical_initialisation = true,
-		metropolis_attempts = 100,
 		symmetric = false,
 	},
-	operators = { 
+	operators = {
 		energy = true,
 	},
 	restart = {
@@ -168,7 +170,7 @@ dmqmc {
 
  Memory allocated per core for main walker list (MB):    108.00
  Number of elements per core in main walker list: 3000000
- Memory allocated per core for spawned walker lists (MB):     25.60
+ Memory allocated per core for spawned walker lists (MB):     12.80
  Number of elements per core in spawned walker list: 400000
 
  -- Start JSON block --
@@ -209,7 +211,7 @@ dmqmc {
          "excit_gen":  "renorm",   
          "pattempt_single": 0.04494382,   
          "pattempt_double": 0.95505618,   
-         "tau": 0.01000000,   
+         "tau": 0.00100000,   
          "tau_search": false,   
          "vary_shift_from": 0.00000000,   
          "vary_shift_from_proje": false,   
@@ -217,7 +219,7 @@ dmqmc {
          "shift_damping": 0.05000000,   
          "walker_length": 3000000,   
          "spawned_walker_length": 400000,   
-         "D0_population": 200.00000000,   
+         "D0_population": 2000.00000000,   
          "target_particles": 2000.00000000,   
          "target_reference": false,   
          "initiator_approx": false,   
@@ -244,7 +246,7 @@ dmqmc {
          "sampling_probs":  "[]",   
          "finish_varying_weights": 0,   
          "fermi_temperature": false,   
-         "target_beta": 1.00000000,   
+         "target_beta": 0.30000000,   
          "mom_dist_kmax": 0.00000000,   
          "struc_fac_qmax": 0.00000000    
      },
@@ -253,8 +255,8 @@ dmqmc {
          "initial_matrix":  "hartree_fock",   
          "grand_canonical_initialisation": true,   
          "symmetric": false,   
-         "chem_pot": 0.02786288,   
-         "metropolis_attempts": 100    
+         "chem_pot": -1.52476452,   
+         "metropolis_attempts": 0    
      },
      "rdm": {
          "nrdms": 0,   
@@ -322,22 +324,61 @@ dmqmc {
 
  Note that all particle populations are averaged over the report loop.
 
- #     iterations   Instant shift         Re{Trace}             Im{Trace}             Re{\sum \rho H}       Im{\sum \rho H}       # particles                # states  # spawn_events   R_spawn    time    
- # Average acceptance ratio: .8452961  Average number of null excitations: .8565000
- # WARNING: more than 3 particles spawned in a single event 5 times in the last report loop.
- # Mean number of particles created in blooms:      3.0
- # This warning only prints  1 time(s). You may wish to reduce the time step.
-                0   0.0000000000E+00      2.0000000000E+02      0.0000000000E+00     -3.2028224898E+02      0.0000000000E+00      2.0000000000E+02                259               8    0.0033    0.0192  
-               10   0.0000000000E+00      2.0000000000E+02      0.0000000000E+00     -3.2653727497E+02      7.8558734749E-03      2.7600000000E+02                373              17    0.0049    0.0015  
-               20   0.0000000000E+00      2.0000000000E+02      0.0000000000E+00     -3.3247787348E+02      2.9795629322E-02      4.0600000000E+02                538              18    0.0052    0.0023  
-               30   0.0000000000E+00      2.0200000000E+02      0.0000000000E+00     -3.3885256013E+02     -2.8783190839E-01      5.9200000000E+02                760              26    0.0049    0.0032  
-               40   0.0000000000E+00      2.0300000000E+02      0.0000000000E+00     -3.4394287189E+02     -4.8228465494E-01      8.4600000000E+02               1071              54    0.0049    0.0045  
-               50   0.0000000000E+00      2.0800000000E+02     -1.0000000000E+00     -3.5866976161E+02      1.2088109694E+00      1.2270000000E+03               1514              63    0.0047    0.0064  
-               60   0.0000000000E+00      2.1200000000E+02     -1.0000000000E+00     -3.6788052129E+02      1.3039476941E+00      1.7230000000E+03               2165              86    0.0050    0.0083  
-               70  -1.8231580805E-01      2.1400000000E+02      0.0000000000E+00     -3.7484145875E+02     -4.0309475248E-02      2.4160000000E+03               3079             125    0.0052    0.0128  
-               80  -3.5243725176E-01      2.2000000000E+02      0.0000000000E+00     -3.8760465370E+02      3.2413017758E-01      3.4790000000E+03               4423             174    0.0055    0.0170  
-               90  -5.1901970196E-01      2.2700000000E+02     -2.0000000000E+00     -3.9815404158E+02      5.4369812279E+00      4.8890000000E+03               6330             265    0.0058    0.0256  
-              100  -6.7550727395E-01      2.2200000000E+02     -2.0000000000E+00     -3.9550206901E+02      5.1348761118E+00      6.8220000000E+03               8872             356    0.0060    0.0354  
+ #     iterations   Instant shift         Re{Trace}             Im{Trace}             Re{\sum \rho H}       Im{\sum \rho H}       # particles                # states  # spawn_events   R_spawn    time   
+                0  -9.3048726912E+00      1.2437000000E+04      0.0000000000E+00     -1.7829579682E+04      0.0000000000E+00      2.0000000000E+03               2432              46    0.0004    0.0048 
+               10  -9.0254346472E+00      1.2437000000E+04      0.0000000000E+00     -1.7857808887E+04     -1.4682771243E-01      1.2860000000E+04               2837              50    0.0016    0.0036 
+               20  -8.7272685818E+00      1.1348000000E+04      0.0000000000E+00     -1.6320018909E+04      1.3525705318E-01      1.2161000000E+04               3116              35    0.0016    0.0028 
+               30  -8.4583142634E+00      1.0371000000E+04      0.0000000000E+00     -1.4950367619E+04      3.9215136909E-01      1.1457000000E+04               3415              37    0.0016    0.0028 
+               40  -8.2346317842E+00      9.4850000000E+03      0.0000000000E+00     -1.3698185113E+04      1.3148870289E-01      1.0857000000E+04               3693              34    0.0015    0.0028 
+               50  -7.9893563803E+00      8.7460000000E+03      0.0000000000E+00     -1.2659148008E+04      4.5961755324E-01      1.0382000000E+04               3889              37    0.0016    0.0028 
+               60  -7.7457849077E+00      8.0550000000E+03      0.0000000000E+00     -1.1685851264E+04     -1.1175984696E-01      9.8850000000E+03               4072              32    0.0016    0.0028 
+               70  -7.5292679809E+00      7.3880000000E+03      0.0000000000E+00     -1.0713757285E+04     -3.6745449217E-01      9.4150000000E+03               4235              45    0.0015    0.0028 
+               80  -7.3133826552E+00      6.8320000000E+03      0.0000000000E+00     -9.9328360743E+03      2.6615409311E-01      9.0160000000E+03               4371              41    0.0014    0.0024 
+               90  -7.1221637901E+00      6.3220000000E+03      1.0000000000E+00     -9.2001257227E+03     -3.5099424574E-01      8.6350000000E+03               4507              27    0.0015    0.0024 
+              100  -6.9483183929E+00      5.8750000000E+03      1.0000000000E+00     -8.5792756498E+03     -3.6639850336E-02      8.3110000000E+03               4607              26    0.0014    0.0028 
+              110  -6.7849713770E+00      5.4810000000E+03      2.0000000000E+00     -8.0167348843E+03     -8.5129634582E-01      8.0270000000E+03               4714              25    0.0014    0.0024 
+              120  -6.5981011393E+00      5.1130000000E+03      2.0000000000E+00     -7.4936995875E+03     -1.2111260029E+00      7.7690000000E+03               4768              27    0.0015    0.0024 
+              130  -6.4599184082E+00      4.7650000000E+03      2.0000000000E+00     -6.9899937559E+03     -1.3189616279E+00      7.4840000000E+03               4855              32    0.0014    0.0024 
+              140  -6.2773678859E+00      4.4590000000E+03      2.0000000000E+00     -6.5399430734E+03     -1.6415266704E+00      7.2800000000E+03               4898              28    0.0014    0.0024 
+              150  -6.1364931481E+00      4.1680000000E+03      2.0000000000E+00     -6.1187703185E+03     -1.9165859802E+00      7.0190000000E+03               4972              25    0.0014    0.0024 
+              160  -6.0425624218E+00      3.9110000000E+03      3.0000000000E+00     -5.7479794249E+03     -2.8507832478E+00      6.8240000000E+03               5070              23    0.0014    0.0024 
+              170  -5.9140011955E+00      3.6960000000E+03      3.0000000000E+00     -5.4426640051E+03     -2.3975949415E+00      6.6970000000E+03               5130              15    0.0014    0.0024 
+              180  -5.7875496496E+00      3.4770000000E+03      3.0000000000E+00     -5.1193770554E+03     -3.3410733722E+00      6.5270000000E+03               5192              38    0.0014    0.0024 
+              190  -5.6827506400E+00      3.2820000000E+03      3.0000000000E+00     -4.8422848831E+03     -3.6423752404E+00      6.3640000000E+03               5264              29    0.0013    0.0020 
+              200  -5.5617540739E+00      3.0970000000E+03      3.0000000000E+00     -4.5910850297E+03     -3.6861165402E+00      6.2320000000E+03               5295              30    0.0013    0.0024 
+              210  -5.4980589450E+00      2.9170000000E+03      4.0000000000E+00     -4.3268746363E+03     -5.3006208577E+00      6.0830000000E+03               5381              27    0.0013    0.0024 
+              220  -5.3860919799E+00      2.7860000000E+03      4.0000000000E+00     -4.1334351779E+03     -5.1604734048E+00      6.0060000000E+03               5439              26    0.0013    0.0024 
+              230  -5.2941570933E+00      2.6360000000E+03      5.0000000000E+00     -3.9171526846E+03     -6.7371981881E+00      5.8730000000E+03               5500              29    0.0013    0.0024 
+              240  -5.2251784388E+00      2.5000000000E+03      4.0000000000E+00     -3.7226866541E+03     -4.4078860878E+00      5.7660000000E+03               5542              36    0.0013    0.0024 
+              250  -5.1712576475E+00      2.3820000000E+03      4.0000000000E+00     -3.5507102925E+03     -4.3136744388E+00      5.6870000000E+03               5619              28    0.0014    0.0020 
+              260  -5.0969434494E+00      2.2630000000E+03      3.0000000000E+00     -3.3869056318E+03     -2.0548302472E+00      5.6260000000E+03               5684              30    0.0013    0.0024 
+              270  -5.0570953848E+00      2.1450000000E+03      2.0000000000E+00     -3.2055899652E+03     -1.0729461205E+00      5.5430000000E+03               5802              32    0.0014    0.0024 
+              280  -4.9745852616E+00      2.0400000000E+03      3.0000000000E+00     -3.0536669229E+03     -1.3310684567E+00      5.4990000000E+03               5859              27    0.0013    0.0024 
+              290  -4.8972665342E+00      1.9350000000E+03      3.0000000000E+00     -2.9051003363E+03     -7.4620833520E-01      5.4090000000E+03               5900              28    0.0012    0.0024 
+              300  -4.8005810571E+00      1.8420000000E+03      2.0000000000E+00     -2.7645923993E+03      1.7162387499E+00      5.3260000000E+03               5951              31    0.0013    0.0024 
+
+ Load balancing
+ ^^^^^^^^^^^^^^
+
+ The final distribution of walkers and determinants across the processors was:
+
+ Particle type: 1
+ Min # of particles on a processor:       2.578000E+03
+ Max # of particles on a processor:       2.646000E+03
+ Mean # of particles on a processor:      2.612000E+03
+
+ Particle type: 2
+ Min # of particles on a processor:       1.081000E+03
+ Max # of particles on a processor:       1.091000E+03
+ Mean # of particles on a processor:      1.086000E+03
+
+ Min # of determinants on a processor:   2932
+ Max # of determinants on a processor:   3019
+ Mean # of determinants on a processor:   2.975500E+03
+
+ Min time taken by walker communication:         0.01s
+ Max time taken by walker communication:         0.02s
+ Mean time taken by walker communication:        0.02s
 
  Timing breakdown
  ----------------
@@ -345,11 +386,11 @@ dmqmc {
  Time for each calculation section (seconds):
 
  Generic system initialisation: .01
- DMQMC calculation            : 1.42
+ DMQMC calculation            : .84
 
  ================================================================
- Finished running on 07/05/2018 at 13:30:05
- Wall time (seconds):                           1.46
- CPU time (per processor, seconds):             1.44
+ Finished running on 23/05/2018 at 01:08:01
+ Wall time (seconds):                           0.86
+ CPU time (per processor, seconds):             0.85
  ================================================================
 
