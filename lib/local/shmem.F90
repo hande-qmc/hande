@@ -161,6 +161,7 @@ contains
         call alloc_shared_posix(ptr, fstring_to_carray(handle%shmem_name), N1*nbytes)
         call c_f_pointer(ptr, A, [N1])
 #elif defined PARALLEL && ! defined DISABLE_MPI3
+        ierr = 0
         call mpi3_shared_alloc(N1*nbytes, ptr, handle%mpi_win)
         call c_f_pointer(ptr, A, [N1])
 #else
@@ -194,6 +195,7 @@ contains
         call alloc_shared_posix(ptr, fstring_to_carray(handle%shmem_name), N1*N2*nbytes)
         call c_f_pointer(ptr, A, [N1, N2])
 #elif defined PARALLEL && ! defined DISABLE_MPI3
+        ierr = 0
         call mpi3_shared_alloc(N1*N2*nbytes, ptr, handle%mpi_win)
         call c_f_pointer(ptr, A, [N1,N2])
 #else
@@ -227,6 +229,7 @@ contains
         call alloc_shared_posix(ptr, fstring_to_carray(handle%shmem_name), N1*nbytes)
         call c_f_pointer(ptr, A, [N1])
 #elif defined PARALLEL && ! defined DISABLE_MPI3
+        ierr = 0
         call mpi3_shared_alloc(N1*nbytes, ptr, handle%mpi_win)
         call c_f_pointer(ptr, A, [N1])
 #else
@@ -260,6 +263,7 @@ contains
         call alloc_shared_posix(ptr, fstring_to_carray(handle%shmem_name), N1*N2*nbytes)
         call c_f_pointer(ptr, A, [N1, N2])
 #elif defined PARALLEL && ! defined DISABLE_MPI3
+        ierr = 0
         call mpi3_shared_alloc(N1*N2*nbytes, ptr, handle%mpi_win)
         call c_f_pointer(ptr, A, [N1,N2])
 #else
@@ -298,6 +302,7 @@ contains
         call free_shared_posix(ptr, fstring_to_carray(handle%shmem_name), size(A, kind=int_64)*nbytes)
         nullify(A)
 #elif defined PARALLEL && ! defined DISABLE_MPI3
+        ierr = 0
         call MPI_Win_Free(handle%mpi_win, ierr)
         nullify(A)
 #else
@@ -328,6 +333,7 @@ contains
         call free_shared_posix(ptr, fstring_to_carray(handle%shmem_name), size(A, kind=int_64)*nbytes)
         nullify(A)
 #elif defined PARALLEL && ! defined DISABLE_MPI3
+        ierr = 0
         call MPI_Win_Free(handle%mpi_win, ierr)
         nullify(A)
 #else
@@ -359,6 +365,7 @@ contains
         call free_shared_posix(ptr, fstring_to_carray(handle%shmem_name), size(A, kind=int_64)*nbytes)
         nullify(A)
 #elif defined PARALLEL && ! defined DISABLE_MPI3
+        ierr = 0
         call MPI_Win_Free(handle%mpi_win, ierr)
         nullify(A)
 #else
@@ -389,6 +396,7 @@ contains
         call free_shared_posix(ptr, fstring_to_carray(handle%shmem_name), size(A, kind=int_64)*nbytes)
         nullify(A)
 #elif defined PARALLEL && ! defined DISABLE_MPI3
+        ierr = 0
         call MPI_Win_Free(handle%mpi_win, ierr)
         nullify(A)
 #else
