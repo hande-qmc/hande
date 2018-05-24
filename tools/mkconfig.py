@@ -92,7 +92,7 @@ cflags
 ccd
     Set the C compiler used to generate the C dependency files.  Only required
     if cc doesn't support -MM and -MT flags.  Default: use cc.
-cdflags
+ccdflags
     Set the flags for the c++ compiler used to generate the C++ dependency files.
     Default: -MM -MT $CFLAGS
 cxx
