@@ -75,7 +75,7 @@ qmc_state, weights = dmqmc {
 qmc_state:free()
 
 -- Check excit dist
-dmqmc_rw.find_weights = "false"
+dmqmc_rw.find_weights = false
 dmqmc_rw.sampling_weights = weights
 operators.excit_dist = true
 dmqmc_rw.beta_loops = 1
