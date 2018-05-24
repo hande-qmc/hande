@@ -162,8 +162,6 @@ contains
             if (qmc_in%D0_population <= 0) call stop_all(this, 'Initial population must be positive.')
         end if
 
-        if (sys%read_in%comp .and. qmc_in%quasi_newton) call stop_all(this, 'Quasi-Newton not currently &
-            &compatible with complex systems.')
 
         if (qmc_in%ncycles <= 0) call stop_all(this, 'mc_cycles must be positive.')
         if (qmc_in%nreport <= 0) call stop_all(this, 'nreports must be positive.')
