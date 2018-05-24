@@ -118,6 +118,7 @@ quick64 = quick
 vquick_serial = ccmc/np1/Ne-RHF-cc-pVDZ-Lz-CCSDTQ5-multispawn-short
            ccmc/np1/Ne-RHF-cc-pVDZ-Lz-CCSDTQ5-multispawn-short-debug-logging
            ccmc/np1/Ne-RHF-cc-pVDZ_ccmc_even_selection
+           ccmc/np1/polyyne_complex_ccsd_qn
            ccmc/np1/polyyne_complex_ccsdt
            ccmc/np1/hubbard_real_1d_ccmc_even_selection
            ccmc_real_32/np1/HOCl-6-31g_ccsd_short
@@ -145,6 +146,7 @@ vquick_serial = ccmc/np1/Ne-RHF-cc-pVDZ-Lz-CCSDTQ5-multispawn-short
            fciqmc/np1/H2O-RHF-cc-pVTZ-debug-logging
            fciqmc/np1/hubbard_real_1d_change_sys
            fciqmc/np1/polyyne_complex_fciqmc
+           fciqmc/np1/polyyne_complex_fciqmc_qn
            fciqmc_real_32/np1/He2-aug-cc-pVDZ_real_32_SS
            fciqmc_real_32/np1/He2-aug-cc-pVDZ_real_32_SS_replica
            fciqmc_real_32/np1/He2-aug-cc-pVDZ_real_32_SS_Extra_MPI
