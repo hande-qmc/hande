@@ -604,4 +604,5 @@ Thanks to Will Vigor for original implementation.
         plt.ylabel('(Reweighted) Projected Energy')
         plt.errorbar(reweights, weighted_proj_energies, yerr=weighted_proj_energy_errs, fmt='o')
         plt.title('Calculation #' + str(k+1))
+        plt.tight_layout()
         plt.show()
