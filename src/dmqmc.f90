@@ -78,7 +78,7 @@ contains
         type(qmc_state_t), intent(inout), optional :: qmc_state_restart
         real(p), intent(out), allocatable :: sampling_probs(:)
 
-        integer :: idet, ireport, icycle, iparticle, iteration, ireplica, ierr
+        integer :: idet, ireport, icycle, iteration, ireplica, ierr
         integer :: beta_cycle, nreport
         integer :: unused_int_1 = -1, unused_int_2 = 0
         integer(int_64) :: init_tot_nparticles
@@ -87,9 +87,8 @@ contains
         integer(int_64) :: nattempts
         integer :: nel_temp
         type(det_info_t) :: cdet1, cdet2
-        integer(int_p) :: nspawned, nspawned_im, ndeath
-        type(excit_t) :: connection
-        integer :: spawning_end, nspawn_events
+        integer(int_p) :: ndeath
+        integer :: nspawn_events
         logical :: imag
         logical :: soft_exit, write_restart_shift, update_tau
         logical :: error, rdm_error, attempt_spawning, restarting
@@ -467,7 +466,6 @@ contains
         type(excit_t) :: connection
         integer(int_p) :: nspawned, nspawned_im
         integer :: iparticle, replica_real, replica_imag, spawning_end
-        integer(i0) :: f_child(sys%basis%tot_string_len)
         integer(int_p) :: scratch
 
         ! First, determine the particle types possibly created by spawning.
