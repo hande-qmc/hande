@@ -437,8 +437,8 @@ contains
         ! In/Out:
         !   rng: random number generator.
         !   qs: qmc_state_t derived type with information on
-        !       current calculation. In/Out for compatibility with the
-        !       Power-Pitzer excitation generators (not used for DMQMC).
+        !       current calculation. In/Out for compatibility with some
+        !       excitation generator features (not currently used in DMQMC).
         !   bloom_stats: information on blooms during calculation.
         !   spawn: stored information on spawning.
 
