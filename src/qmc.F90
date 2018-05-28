@@ -890,7 +890,7 @@ contains
         call check_allocate('reference%occ_list0',sys%nel,ierr)
         allocate(reference%hs_occ_list0(sys%nel), stat=ierr)
         call check_allocate('reference%hs_occ_list0',sys%nel,ierr)
-        call get_reference_hdf5(ri, sys%basis%info_string_len, reference)
+        call get_reference_hdf5(ri, sys%basis%nbasis, sys%basis%info_string_len, reference)
 
         ! Need to re-calculate the reference determinant data
         call decode_det(sys%basis, reference%f0, reference%occ_list0)

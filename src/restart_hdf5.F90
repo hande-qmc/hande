@@ -797,12 +797,13 @@ module restart_hdf5
 
         end subroutine read_restart_hdf5
 
-        subroutine get_reference_hdf5(ri, info_string_len, reference)
+        subroutine get_reference_hdf5(ri, nbasis, info_string_len, reference)
 
             ! Read a reference determinant from a restart file.
 
             ! In:
             !    ri: restart information.  ri%restart_stem and ri%read_id are used.
+            !    nbasis: number of basis functions in system. Must be >= that in the restart.
             !    info_string_len: length in integers of additional information stored
             !       in bit string.
             ! In/Out:
@@ -819,11 +820,11 @@ module restart_hdf5
             use reference_determinant, only: reference_t
 
             type(restart_info_t), intent(in) :: ri
-            integer, intent(in) :: info_string_len
+            integer, intent(in) :: nbasis, info_string_len
             type(reference_t), intent(inout) :: reference
 
 #ifndef DISABLE_HDF5
-            integer :: info_string_len_restart
+            integer :: info_string_len_restart, nbasis_restart
             integer :: ierr, i0_length_restart
             character(255) :: restart_file
             type(hdf5_kinds_t) :: kinds
@@ -835,7 +836,7 @@ module restart_hdf5
             call init_restart_hdf5(ri, .false., restart_file, kinds)
             call h5fopen_f(restart_file, H5F_ACC_RDONLY_F, file_id, ierr)
             if (ierr/=0) then
-               call stop_all('read_restart_hdf5', "Unable to open restart file.")
+               call stop_all('get_reference_hdf5', "Unable to open restart file.")
             endif
 
             call h5gopen_f(file_id, gmetadata, group_id, ierr)
@@ -847,6 +848,9 @@ module restart_hdf5
             call h5lexists_f(file_id, gbasis, exists, ierr)
             if (exists) then
                 call h5gopen_f(file_id, gbasis, group_id, ierr)
+                call hdf5_read(group_id, dnbasis, nbasis_restart)
+                if (nbasis_restart > nbasis) &
+                    call stop_all('get_reference_hdf5', 'Restarting with a smaller basis not supported.  Please implement.')
                 call h5lexists_f(group_id, dinfo_string_len, exists, ierr)
                 if (exists) then
                     call hdf5_read(group_id, dinfo_string_len, info_string_len_restart)
