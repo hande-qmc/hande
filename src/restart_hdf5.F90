@@ -806,6 +806,15 @@ module restart_hdf5
 
                     call hdf5_read(subgroup_id, dncycles, qs%mc_cycles_done)
 
+                    call h5lexists_f(subgroup_id, dhash_seed, exists, ierr)
+                    if (exists) then
+                        ! hash_seed and move_freq must exists together.
+                        associate(spawn=>qs%spawn_store%spawn)
+                            call hdf5_read(subgroup_id, dhash_seed, spawn%hash_seed)
+                            call hdf5_read(subgroup_id, dmove_freq, spawn%move_freq)
+                        end associate
+                    end if
+
                     call hdf5_read(subgroup_id, dshift, kinds, shape(qs%shift, kind=int_64), qs%shift)
 
                     if (restart_version_restart > 1) then
