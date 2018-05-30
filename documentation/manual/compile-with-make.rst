@@ -1,4 +1,4 @@
-.. _compilation:
+.. _compilation-with-make:
 
 Compilation
 ===========

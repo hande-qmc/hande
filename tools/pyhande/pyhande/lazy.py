@@ -564,8 +564,10 @@ arith_mean : bool
 
 References
 ----------
-.. [Umrigar93] C.J. Umirigar et al., J. Chem. Phys. 99, 2865 (1993)
-.. [Vigor15] W.A. Vigor, et al., J. Chem. Phys. 142, 104101 (2015).
+Umrigar93
+    C.J. Umirigar et al., J. Chem. Phys. 99, 2865 (1993)
+Vigor15
+    W.A. Vigor, et al., J. Chem. Phys. 142, 104101 (2015).
 
 Thanks to Will Vigor for original implementation.
 '''
