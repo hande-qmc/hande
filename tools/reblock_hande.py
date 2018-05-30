@@ -24,7 +24,7 @@ import pyhande
 def run_hande_blocking(files, start_iteration=None, end_iteration=None,
                         reblock_plot=None, verbose=1, width=0,
                         out_method='to_string', inefficiency=False,
-                        reweight_plot=False):
+                        reweight_plot=False, extract_rl_time=False):
     '''Run a reblocking analysis on HANDE output and print to STDOUT.
 
 See :func:`pyblock.pd_utils.reblock` and :func:`pyblock.blocking.reblock` for
@@ -69,6 +69,7 @@ inefficiency : bool
     include it in the output.
 reweight_plot: do reweighting the projected energy and show plot to determine
     population bias.
+extract_rl_time: extract times taken for a report loop and find mean and errors.
 
 Returns
 -------
@@ -117,7 +118,8 @@ opt_block: :class:`pandas.DataFrame`
                                              end=end_iteration,
                                              extract_psips=True,
                                              calc_inefficiency=inefficiency,
-                                             verbosity = verbose)
+                                             verbosity = verbose,
+                                             extract_rep_loop_time=extract_rl_time)
             for (i, i_info) in enumerate(info):
                 if verbose >= v_analysis:
                     msg = 'Analysing file(s): %s.' % (' '.join(calc))
@@ -260,6 +262,8 @@ reblock_plot : string
     parser.add_argument('-i','--inefficiency', default=False, action='store_true',
                         help='Calculate the inefficiency factor for the calculation '
                         'if possible.')
+    parser.add_argument('-t','--extract_rl_time', default=False, action='store_true',
+                        help='Find the mean time taken for a report loop.')
     parser.add_argument('filenames', nargs=argparse.REMAINDER,
                         help='Space-separated list of files to analyse.')
 
@@ -303,7 +307,8 @@ None.
     run_hande_blocking(options.filenames, options.start_iteration,
                        options.end_iteration, options.plotfile,
                        options.verbose, options.width, options.output,
-                       options.inefficiency, options.reweight_plot)
+                       options.inefficiency, options.reweight_plot,
+                       options.extract_rl_time)
 
 if __name__ == '__main__':
 
