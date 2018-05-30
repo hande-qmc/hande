@@ -54,6 +54,13 @@ Options:
     not yet exist.
 
     Set the index, ``X`` of the set of restart files to be written out.
+``move_frequency``
+    type: integer.
+
+    Optional. Default: use the value from the original calculation.
+
+    Relevant only for CCMC calculations. See corresponding option in :ref:`ccmc_table` for
+    details.
 ``sys``
     type: system object.
 

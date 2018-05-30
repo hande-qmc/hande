@@ -111,7 +111,9 @@ ccmc options
     Allow excitors to move processors every :math:`2^x` iterations, where :math:`x` is the
     value of ``move_frequency``, in order to allow all composite excitors to be correctly
     sampled.  Relevant only when performing CCMC with MPI parallelisation.  A large value
-    may introduce a bias.  Modify with caution.
+    may introduce a bias.  Modify with caution. Can be changed when restarting
+    calculations (and/or when :ref:`redistributing restart files <utils>`) but may impose
+    some initialisation overhead whilst excitors are reassigned to different processors.
 ``cluster_multispawn_threshold``
     type: float.
 
