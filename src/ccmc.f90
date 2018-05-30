@@ -505,11 +505,6 @@ contains
         ! Initialise D0_pos to be somewhere (anywhere) in the list.
         D0_pos = 1
 
-        if (parent) then
-            call write_qmc_report_header(qs%psip_list%nspaces, cmplx_est=sys%read_in%comp, rdm_energy=ccmc_in%density_matrices, &
-                                         nattempts=.true., io_unit=io_unit)
-        end if
-        
         associate(pl=>qs%psip_list, spawn=>qs%spawn_store%spawn)
             ! Initialise hash shift if restarting...
             spawn%hash_shift = qs%mc_cycles_done
@@ -518,13 +513,18 @@ contains
             ! which can be altered which can change an excitors location since the restart files were written is move_freq.
             if (ccmc_in%move_freq /= spawn%move_freq .and. nprocs > 1) then
                 spawn%move_freq = ccmc_in%move_freq
-                call warning('do_ccmc', 'move_freq is different from that in the restart file. Reassigning processors.  &
+                if (parent) call warning('do_ccmc', 'move_freq is different from that in the restart file. Reassigning processors. &
                                         &Please check for equilibration effects.')
                 call redistribute_particles(pl%states, pl%pop_real_factor, pl%pops, pl%nstates, pl%nparticles, spawn)
                 call direct_annihilation(sys, rng(0), qs%ref, annihilation_flags, pl, spawn)
             end if
         end associate
-        
+
+        if (parent) then
+            call write_qmc_report_header(qs%psip_list%nspaces, cmplx_est=sys%read_in%comp, rdm_energy=ccmc_in%density_matrices, &
+                                         nattempts=.true., io_unit=io_unit)
+        end if
+
         restart_proj_est = present(qmc_state_restart) .or. (restart_in%read_restart .and. restart_version_restart >= 2)
         if (.not.restart_proj_est) then
             call initial_cc_projected_energy(sys, qs, qmc_in%seed+iproc, logging_info, cumulative_abs_real_pops, nparticles_old)
