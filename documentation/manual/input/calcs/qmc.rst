@@ -215,7 +215,7 @@ algorithms and control the core settings in the algorithms.
 
     The 'heat_bath' excitation generator is very similar to the "original" heat bath
     excitation generator described by Holmes et al. [Holmes16]_. :math:`i,j,a,b` are chosen
-    with weighted, precalculated probabilities that aim to make :math:`|H_{ij}|`/pgen as constant
+    with weighted, precalculated probabilities that aim to make :math:`|H_{ij}|/p_\mathrm{gen}` as constant
     as possible. The difference to Holmes et al. is that we never do a single and a double
     excitation at the same time. When Holmes et al. decide to do both, we do a single
     excitation with probability of 0.5 and a double with 0.5. The 'heat_bath' excitation
@@ -281,8 +281,8 @@ algorithms and control the core settings in the algorithms.
     the 'power_pitzer' excitation generator is used.
     This number (approximately) sets the minimum value of
     weight(orbital to excite to)/(total weights times number of orbitals to excite to).
-    The aim of this is to reduce the number of spawns with larger :math:`|H_{ij}|`/pgen
-    which can happen if orbital connections with small values of pgen are mapped to
+    The aim of this is to reduce the number of spawns with larger :math:`|H_{ij}|/p_\mathrm{gen}`
+    which can happen if orbital connections with small values of :math:`p_\mathrm{gen}` are mapped to
     orbital connections with large values of :math:`|H_{ij}|`.
 
 ``pattempt_single``
@@ -308,7 +308,7 @@ algorithms and control the core settings in the algorithms.
     Optional. Default: False.
     
     If true, then ``pattempt_single`` is varied during the run
-    to attempt to align the means of :math:`|H_{ij}|`/pgen for single and double excitations.
+    to attempt to align the means of :math:`|H_{ij}|/p_\mathrm{gen}` for single and double excitations.
     Update of pattempt_single only happens if shift has not started varying yet.
     Not applicable to "original" heat bath algorithm excitation generator (excit_gen="heat_bath").
     When restarting a calculation, if ``pattempt_update`` is set to true and both ``pattempt_single``
@@ -340,7 +340,7 @@ algorithms and control the core settings in the algorithms.
 ``pattempt_parallel``
     type: float.
 
-    Optional. Default: Estimate it using :math:`\frac{ \sum_{ijab} |H_{ijab}| }{ \sum_{i_{\Vert}j_{\Vert}ab} |H_{ijab}| }`, where :math:`i_{\Vert} j_{\Vert}` indicates :math:`i, j` are restricted to having parallel spins. 
+    Optional. Default: Estimate it using :math:`\frac{ \sum_{i_{\Vert}j_{\Vert}ab} |H_{ijab}| }{ \sum_{ijab} |H_{ijab}| }`, where :math:`i_{\Vert} j_{\Vert}` indicates :math:`i, j` are restricted to having parallel spins. 
 
     Probability that :math:`i, j` have parallel spins.
     Only to be used with ``excit_gen`` == 'no_renorm_spin' and 'renorm_spin'.
