@@ -20,7 +20,7 @@ import pyhande.weight
 def std_analysis(datafiles, start=None, end=None, select_function=None,
         extract_psips=False, reweight_history=0, mean_shift=0.0,
         arith_mean=False, calc_inefficiency=False, verbosity = 1, 
-        starts_reweighting=None):
+        starts_reweighting=None, extract_rep_loop_time=False):
     '''Perform a 'standard' analysis of HANDE output files.
 
 Parameters
@@ -55,6 +55,8 @@ verbosity : int
 starts_reweighting : list of floats
     used by the reweighting_graph function to pass more than one starting 
     iteration
+extract_rep_loop_time : bool
+    also extract the mean time taken per report loop from the calculation.
 
 Returns
 -------
@@ -106,7 +108,8 @@ Umrigar93
         if (verbosity > -1) :
             print('Block from: %i' % calc_start)
         infos.append(lazy_block(calc, md, calc_start, calc_end,
-                    select_function, extract_psips, calc_inefficiency))
+                    select_function, extract_psips, calc_inefficiency,
+                    extract_rep_loop_time))
     return infos
 
 def zeroT_qmc(datafiles, reweight_history=0, mean_shift=0.0, arith_mean=False):
@@ -154,7 +157,8 @@ metadata : list of dict
     return (calcs, calcs_metadata)
 
 def lazy_block(calc, md, start=0, end=None, select_function=None,
-            extract_psips=False, calc_inefficiency=False):
+            extract_psips=False, calc_inefficiency=False,
+            extract_rep_loop_time=False):
     '''Standard blocking analysis on zero-temperature QMC calcaulations.
 
 .. note::
@@ -168,7 +172,8 @@ calc : :class:`pandas.DataFrame`
     Zero-temperature QMC calculation output.
 md : dict
     Metadata for the calculation in `calc`.
-start, end, select_function, extract_psips, calc_inefficiency:
+start, end, select_function, extract_psips, calc_inefficiency,
+    extract_rep_loop_time:
     See :func:`std_analysis`.
 
 Returns
@@ -199,6 +204,8 @@ info : :func:`collections.namedtuple`
     to_block.extend(['\sum H_0j N_j', 'N_0', 'Shift'])
     if reweight_calc:
         to_block.extend(['W * \sum H_0j N_j', 'W * N_0'])
+    if extract_rep_loop_time:
+        to_block.append('time')
 
     mc_data = calc.ix[indx, to_block]
     if mc_data['Shift'].iloc[0] == mc_data['Shift'].iloc[1]:
