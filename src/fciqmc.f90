@@ -78,7 +78,6 @@ contains
         use blocking, only: write_blocking_report_header, init_blocking, do_blocking, deallocate_blocking, &
                             write_blocking_report, update_shift_damping
         use report, only: write_date_time_close
-        use proc_pointers, only: decoder_excit_gen_ptr
 
         type(sys_t), intent(in) :: sys
         type(qmc_in_t), intent(in) :: qmc_in
@@ -285,14 +284,6 @@ contains
                         weighted_population(ispace) = importance_sampling_weight(qs%trial, cdet, real_population(ispace))
                     end do
 
-                    ! If we use a weighted excitation generator where weights can be pre-calculated, need additional decoder:
-                    ! Note that we estimate the number of attempts by the sum of populations in all spaces. This is not to
-                    ! alter Markov chains and call the function decide_nattempts early and pre-calculate.
-                    if (qs%excit_gen_data%weight_decoder) then
-                        call decoder_excit_gen_ptr(sys, cdet, qs%excit_gen_data, &
-                            nattempts=int(sum(real_population(1:qs%psip_list%nspaces))))
-                    end if
-
                     ! If this is a deterministic state then copy its population
                     ! across to the determ%vector array. (Both replicas use the
                     ! same deterministic space.)
@@ -473,7 +464,7 @@ contains
         !   ndeath: running total of number of particles which have died or been cloned.
         !   bloom_stats: information on blooming within calculation.
 
-        use proc_pointers, only: sc0_ptr, decoder_excit_gen_ptr
+        use proc_pointers, only: sc0_ptr
         use death, only: stochastic_death
         use determinants, only: sum_sp_eigenvalues_occ_list
         use determinant_data, only: det_info_t
@@ -533,10 +524,6 @@ contains
             do ispace = 1, qs%psip_list%nspaces
                 nattempts_current_det(ispace) = decide_nattempts(rng, real_pop(ispace))
             end do
-
-            if (qs%excit_gen_data%weight_decoder) then
-                call decoder_excit_gen_ptr(sys, cdet, qs%excit_gen_data, nattempts=sum(nattempts_current_det))
-            end if
 
             do ispace = 1, qs%psip_list%nspaces
 

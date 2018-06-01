@@ -101,7 +101,7 @@ contains
 
         if (restart_in%read_restart) call init_restart_info_t(ri, read_id=restart_in%read_id)
 
-        call init_proc_pointers(sys, qmc_in, reference_in, io_unit, dmqmc_in, fciqmc_in, qmc_state%excit_gen_data%weight_decoder)
+        call init_proc_pointers(sys, qmc_in, reference_in, io_unit, dmqmc_in, fciqmc_in)
 
         ! Note it is not possible to override a reference if restarting.
         if (restart_in%read_restart) then
@@ -272,7 +272,7 @@ contains
         qmc_state%restart_in = restart_in
     end subroutine init_qmc
 
-    subroutine init_proc_pointers(sys, qmc_in, reference, io_unit, dmqmc_in, fciqmc_in, weight_decoder)
+    subroutine init_proc_pointers(sys, qmc_in, reference, io_unit, dmqmc_in, fciqmc_in)
 
         ! Set function pointers for QMC calculations.
 
@@ -283,9 +283,6 @@ contains
         !    io_unit: io unit to write all output to.
         !    dmqmc_in (optional): input options relating to DMQMC, only required if doing DMQMC.
         !    fciqmc_in (optional): input options relating to FCIQMC, only required if doing FCIQMC.
-
-        ! Out:
-        !    weight_decoder (optiona): has a pre-calculated weight decoder been set - for certain excit. gens.
 
         ! System and calculation data
         use calc, only: doing_calc, doing_dmqmc_calc, dmqmc_calc, hfs_fciqmc_calc, &
@@ -351,11 +348,8 @@ contains
         integer, intent(in) :: io_unit
         type(dmqmc_in_t), intent(in), optional :: dmqmc_in
         type(fciqmc_in_t), intent(in), optional :: fciqmc_in
-        logical, intent(out), optional :: weight_decoder
 
         logical :: truncate_space
-
-        weight_decoder = .false.
 
         ! 0. In general, use the default spawning routine.
         spawner_ptr => spawn_standard
@@ -490,8 +484,6 @@ contains
             case(excit_gen_power_pitzer_occ_ij)
                 gen_excit_ptr%full => gen_excit_mol_power_pitzer_occ
                 decoder_ptr => decode_det_spinocc_spinsymunocc
-                decoder_excit_gen_ptr => decode_excit_gen_ppMij
-                weight_decoder = .true.
             case(excit_gen_power_pitzer)
                 gen_excit_ptr%full => gen_excit_mol_power_pitzer_occ_ref
                 decoder_ptr => decode_det_occ
@@ -499,24 +491,16 @@ contains
                 ! [todo] - check this decoder is correct.
                 gen_excit_ptr%full => gen_excit_mol_power_pitzer_orderN
                 decoder_ptr => decode_det_occ
-                decoder_excit_gen_ptr => decode_excit_gen_ppN
-                weight_decoder = .true.
             case(excit_gen_heat_bath)
                 gen_excit_ptr%full => gen_excit_mol_heat_bath
                 decoder_ptr => decode_det_occ
-                decoder_excit_gen_ptr => decode_excit_gen_hb
-                weight_decoder = .true.
             case(excit_gen_heat_bath_uniform)
                 gen_excit_ptr%full => gen_excit_mol_heat_bath_uniform
                 decoder_ptr => decode_det_occ_symunocc
-                decoder_excit_gen_ptr => decode_excit_gen_hbu
-                weight_decoder = .true.
             case(excit_gen_heat_bath_single)
                 gen_excit_ptr%full => gen_excit_mol_heat_bath_uniform
                 ! [todo] - the unocc part is only needed for singles. Too expensive here?
                 decoder_ptr => decode_det_occ_unocc
-                decoder_excit_gen_ptr => decode_excit_gen_hbs
-                weight_decoder = .true.
             case default
                 call stop_all('init_proc_pointers', 'Selected excitation generator not implemented.')
             end select

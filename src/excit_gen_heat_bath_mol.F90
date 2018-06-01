@@ -326,13 +326,12 @@ contains
         type(hmatel_t) :: hmatel_single
 
         associate( hb => excit_gen_data%excit_gen_hb )
-            ! 1: Select orbitals i and j to excite from.
-            if (debug) then
-                ! Don't really need to test this but just in case:
-                ! (unless there is a bug in the code, hb should always be decoded before coming here)
-                if (.not. cdet%double_precalc) then
-                    call stop_all('gen_excit_mol_heat_bath','hb excit gen data was not decoded as expected!')
-                end if
+            ! If this is the first call to this excitation generator after having selected cdet, we need to calculate weights.
+            ! When selecting ij, the type of excitation (single/double) is still unknown.
+            if (.not. cdet%double_precalc) then
+                call find_i_d_weights(sys%nel, excit_gen_data%excit_gen_hb%i_weights, cdet)
+                cdet%single_precalc = .true.
+                cdet%double_precalc = .true.
             end if
             
             call select_ij_heat_bath(rng, sys%nel, hb%ij_weights, cdet, i, j, i_ind, j_ind, ij_weights_occ, ij_weights_occ_tot, &
@@ -621,7 +620,8 @@ contains
                                                 allowed_excitation)
             else
                 ! The user has chosen the single option (exact weights). Call subroutine below.
-                ! If we did not expect more than one single excitation, weights have not be pre calculated:
+                ! If this is the first call to this excitation generator after having selected cdet with a single excitation,
+                ! we need to calculate weights.
                 if (.not. cdet%single_precalc) then
                     call find_ia_single_weights(sys, cdet)
                     cdet%single_precalc = .true.
@@ -633,7 +633,8 @@ contains
             ! We have a double
             associate( hb => excit_gen_data%excit_gen_hb )
                 ! 1: Select orbitals i and j to excite from.
-                ! If we did not expect more than once double excitation with this cdet, weights have not be pre calculated:
+                ! If this is the first call to this excitation generator after having selected cdet with a double excitation,
+                ! we need to calculate weights.
                 if (.not. cdet%double_precalc) then
                     call find_i_d_weights(sys%nel, excit_gen_data%excit_gen_hb%i_weights, cdet)
                     cdet%double_precalc = .true.

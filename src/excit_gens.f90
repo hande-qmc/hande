@@ -156,8 +156,6 @@ end type excit_gen_heat_bath_t
 type excit_gen_data_t
     ! Excitation generator to use, duplicated from qmc_in.
     integer :: excit_gen
-    ! Need additional decoder to pre calculate weights for excit gens.
-    logical :: weight_decoder = .false.
     ! Probability of attempting single or double excitations.
     real(p) :: pattempt_single, pattempt_double
     ! Probability of selecting ij to be parallel. Used in no_renorm_spin, renorm_spin

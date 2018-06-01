@@ -1010,6 +1010,7 @@ contains
         use read_in_symmetry, only: cross_product_basis_read_in
         use search, only: binary_search
         use errors, only: stop_all
+        use excit_gen_utils, only: find_diff_ref_cdet
 
         type(sys_t), intent(in) :: sys
         type(excit_gen_data_t), intent(in) :: excit_gen_data
@@ -1038,19 +1039,19 @@ contains
 
         logical :: found
 
+        ! Pre-calculate the list of differing orbitals between reference and cdet.
+        ! The pre-calculation is the same for both single and double excitation.
+        if (.not. cdet%single_precalc) then
+            call find_diff_ref_cdet(sys, cdet, excit_gen_data%excit_gen_pp)
+            cdet%single_precalc = .true.
+            cdet%double_precalc = .true.
+        end if
+        
         ! 1. Select single or double.
         if (get_rand_close_open(rng) < excit_gen_data%pattempt_single) then  
             ! We have a single
             associate( pp => excit_gen_data%excit_gen_pp )
                 ! 2. Select i_ref.
-
-                if (debug) then
-                    ! Don't really need to test this but just in case:
-                    ! (unless there is a bug in the code, ppN should always be decoded before coming here)
-                    if (.not. cdet%single_precalc) then
-                        call stop_all('gen_excit_mol_power_pitzer_orderN','PPN excit gen data was not decoded as expected!')
-                    end if
-                end if
                 
                 i_ind_ref = select_weighted_value_precalc(rng, sys%nel, pp%ppn_i_s%aliasU(:), pp%ppn_i_s%aliasK(:))
                 i_cdet = cdet%ref_cdet_occ_list(i_ind_ref)
@@ -1100,13 +1101,6 @@ contains
             ! We have a double
             associate( pp => excit_gen_data%excit_gen_pp )
                 ! 2. Select i_ref.
-                if (debug) then
-                    ! Don't really need to test this but just in case:
-                    ! (unless there is a bug in the code, ppN should always be decoded before coming here)
-                    if (.not. cdet%double_precalc) then
-                        call stop_all('gen_excit_mol_power_pitzer_orderN','PPN excit gen data was not decoded as expected!') 
-                    end if
-                end if
                 
                 i_ind_ref = select_weighted_value_precalc(rng, sys%nel, pp%ppn_i_d%aliasU(:), pp%ppn_i_d%aliasK(:))
                 i_cdet = cdet%ref_cdet_occ_list(i_ind_ref)
@@ -1332,7 +1326,8 @@ contains
             ! 2. Select orbitals to excite from
             if (excit_gen_data%excit_gen == excit_gen_power_pitzer_occ_ij) then
                 ! Select ij using heat bath excit. gen. techniques.
-                ! If we did not expect more than once double excitation with this cdet, weights have not be pre calculated:
+                ! If this is the first time this excitation generator has been called in a double excitation with this cdet,
+                ! need to calculate weights.
                 if (.not. cdet%double_precalc) then
                     call find_i_d_weights(sys%nel, excit_gen_data%excit_gen_pp%ppm_i_d_weights, cdet)
                     cdet%double_precalc = .true.

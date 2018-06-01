@@ -216,5 +216,56 @@ contains
         end do
 
     end subroutine find_ia_single_weights
+    
+    pure subroutine find_diff_ref_cdet(sys, d, pp)
+
+        ! Pre-calculate the reordered list of occupied list that is equal to the
+        ! occupied list of orbitals of the reference where orbitals that differ between
+        ! the current determinant and the reference are substituted by occupied orbitals
+        ! from the current determinant. These substituted orbitals are sorted by spin.
+        !
+        ! In:
+        !    sys: system being studied (contains required basis information).
+        !    pp: information for pp excitation generators
+        ! In/Out:
+        !    d: det_info_t variable.  The following components are set here:
+        !        ref_cdet_occ_list: reordered list of occ. spin orbitals.
+
+        use system, only: sys_t
+        use excit_gens, only: excit_gen_power_pitzer_t
+        use excitations, only: get_excitation_locations
+        use determinant_data, only: det_info_t
+
+        type(sys_t), intent(in) :: sys
+        type(det_info_t), intent(inout) :: d
+        type(excit_gen_power_pitzer_t), intent(in) :: pp
+
+        integer :: ref_store(sys%nel), det_store(sys%nel)
+        integer :: ii, jj, nex, t
+
+        call get_excitation_locations(pp%occ_list, d%occ_list, ref_store, det_store, sys%nel, nex)
+        ! These orbitals might not be aligned in the most efficient way:
+        !  They may not match in spin, so first deal with this
+
+        d%ref_cdet_occ_list = pp%occ_list(:sys%nel)
+        ! ref store (e.g.) contains the indices within excit_gen_pp%occ_list of the orbitals
+        ! which have been excited from.
+        do ii=1, nex
+            associate(bfns=>sys%basis%basis_fns)
+                if (bfns(pp%occ_list(ref_store(ii)))%Ms /= bfns(d%occ_list(det_store(ii)))%Ms) then
+                    jj = ii + 1
+                    do while (bfns(pp%occ_list(ref_store(ii)))%Ms /= bfns(d%occ_list(det_store(jj)))%Ms)
+                        jj = jj + 1
+                    end do
+                    ! det's jj now points to an orb of the same spin as ref's ii, so swap cdet_store's ii and jj.
+                    t = det_store(ii)
+                    det_store(ii) = det_store(jj)
+                    det_store(jj) = t
+                end if
+            end associate
+            d%ref_cdet_occ_list(ref_store(ii)) = d%occ_list(det_store(ii))
+        end do
+
+    end subroutine find_diff_ref_cdet
 
 end module excit_gen_utils

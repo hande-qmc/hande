@@ -754,19 +754,6 @@ contains
                                                 D0_population_cycle, proj_energy_cycle, ccmc_in, ref_det, rdm, selection_data)
                         nattempts_spawn = nattempts_spawn + 1
                        
-! [review] - AJWT: I really don't like this explicit reference to the excitation generator type - it's against the philosophy which gave us
-! [review] - AJWT: function pointers.  Either add a qmc_state variable which you check, or try to include this in the excitation generator
-! [review] - AJWT: spawning itself.
-                        ! We will only call the excitation generator once here. Power Pitzer Order N and heat bath are the only excitation
-                        ! generators that will also pre calculate the weights, independent of nattempts and is therefore the only
-                        ! ones we need to consider here (the other excit gen will create a single or double excitation with an
-                        ! expected number of time of less than 1 which means we definitely don't want to pre calculate weights
-                        ! there).
-                        if ((qs%excit_gen_data%excit_gen == excit_gen_power_pitzer_orderN) .or. &
-                            (qs%excit_gen_data%excit_gen == excit_gen_heat_bath)) then
-                            call decoder_excit_gen_ptr(sys, contrib(it)%cdet, qs%excit_gen_data, nattempts=1)
-                        end if
-                        
                         call perform_ccmc_spawning_attempt(rng(it), sys, qs, ccmc_in, logging_info, bloom_stats, contrib(it), 1, &
                                                         ps_stats(it))
                     end if
@@ -1070,7 +1057,6 @@ contains
         use bloom_handler, only: bloom_stats_t, accumulate_bloom_stats
         use logging, only: logging_t
         use excit_gens, only: p_single_double_coll_t
-        use proc_pointers, only: decoder_excit_gen_ptr
 
         type(sys_t), intent(in) :: sys
         type(dSFMT_T), intent(inout) :: rng
@@ -1100,12 +1086,6 @@ contains
         call ms_stats_update(nspawnings_cluster, ms_stats)
         nattempts_spawn_tot = nattempts_spawn_tot + nspawnings_cluster
        
-! [review] - AJWT: Is the decoder_excit_gen_ptr set to null if it's not to be used?  In which case can we just use ASSOCIATED() to test it.
-        ! If we use a weighted excitation generator where weights can be pre-calculated, need additional decoder:
-        if (qs%excit_gen_data%weight_decoder) then
-            call decoder_excit_gen_ptr(sys, contrib%cdet, qs%excit_gen_data, nattempts=nspawnings_cluster)
-        end if
-
         do i = 1, nspawnings_cluster
             call perform_ccmc_spawning_attempt(rng, sys, qs, ccmc_in, logging_info, bloom_stats, contrib, nspawnings_cluster, &
                                         ps_stat)
@@ -1176,8 +1156,6 @@ contains
         use logging, only: logging_t
         use excit_gens, only: p_single_double_coll_t
 
-        use proc_pointers, only: decoder_excit_gen_ptr
-
         type(sys_t), intent(in) :: sys
         type(dSFMT_T), intent(inout) :: rng
         type(qmc_state_t), intent(inout) :: qs
@@ -1207,12 +1185,6 @@ contains
 
         contrib%cluster%amplitude = contrib%cluster%amplitude / abs(contrib%cluster%amplitude)
         
-! [review] - AJWT: Is the decoder_excit_gen_ptr set to null if it's not to be used?  In which case can we just use ASSOCIATED() to test it.
-        ! If we use a weighted excitation generator where weights can be pre-calculated, need additional decoder:
-        if (qs%excit_gen_data%weight_decoder) then
-            call decoder_excit_gen_ptr(sys, contrib%cdet, qs%excit_gen_data, nattempts=nspawnings_cluster)
-        end if
-
         do i = 1, nspawnings_cluster
             call perform_ccmc_spawning_attempt(rng, sys, qs, ccmc_in, logging_info, bloom_stats, contrib, 1, ps_stat)
         end do
