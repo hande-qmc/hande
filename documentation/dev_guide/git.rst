@@ -20,6 +20,12 @@ be cloned using:
 
     $ git clone https://github.com/hande-qmc/hande-dev
 
+or if using ssh keys, 
+
+.. code-block:: bash
+
+    $ git clone git@github.com:hande-qmc/hande-dev
+
 If you would like access, please speak to one of the developers.  The rest of
 this guide assumes you used the default remote name during the clone (i.e.
 ``origin``).  If this is not the case, we assume you are capable of
