@@ -426,8 +426,6 @@ contains
         !       to make on this matrix element.
         !   ireplica: replica (and its re/im part) currently under
         !       consideration.
-        !   cdet[1/2]: determinants corresponding to the row and column of 
-        !       density matrix element spawning is originating from.
         !   imag_parent: true if spawning from psips within an imaginary
         !       space.
         !   pop: population of given density matrix element in given space.
@@ -440,6 +438,8 @@ contains
         !       excitation generator features (not currently used in DMQMC).
         !   bloom_stats: information on blooms during calculation.
         !   spawn: stored information on spawning.
+        !   cdet[1/2]: determinants corresponding to the row and column of 
+        !       density matrix element spawning is originating from.
 
         use dSFMT_interface, only: dSFMT_t
         use system, only: sys_t
