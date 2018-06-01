@@ -453,7 +453,7 @@ contains
         type(sys_t), intent(in) :: sys
         type(qmc_state_t), intent(inout) :: qs
         type(logging_t), intent(in) :: logging_info
-        type(det_info_t), intent(in) :: cdet1, cdet2
+        type(det_info_t), intent(inout) :: cdet1, cdet2
         integer, intent(in) :: nattempts_current_det, ireplica
         logical, intent(in) :: imag_parent, symmetric
         integer(int_p), intent(in) :: pop
