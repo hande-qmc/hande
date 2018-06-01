@@ -14,7 +14,8 @@ end type one_dim_weights_t
 
 ! --- FCIQMC info ---
 
-! A handy type for containing a lot of information about a determinant.
+! A handy type for containing a lot of information about a determinant,
+! including weighting data and lists for excitation generators to use.
 ! This is convenient for passing around different amounts of info when
 ! we need consistent interfaces.
 ! Not all compenents are necessarily allocated: only those needed at the time.
@@ -49,6 +50,10 @@ type det_info_t
     integer, pointer :: ref_cdet_occ_list(:) ! (nel)
     ! Number of orbitals that are different between det and reference.
     integer :: nex
+    ! If true, single excitation weights/ppN information have/has been pre-calculated.
+    logical :: single_precalc = .false.
+    ! If true, double excitation weights/ppN information have/has been pre-calculated.
+    logical :: double_precalc = .false.
     ! is the determinant an initiator determinant or not? (used only in
     ! i-FCIQMC). The i-th bit is set if the determinant is not an initiator in
     ! space i.
@@ -62,5 +67,22 @@ type det_info_t
     ! Pointer (never allocated) to corresponding elements in particle_t%dat array.
     real(p), pointer :: data(:) => NULL()
 end type det_info_t
+
+contains
+
+    pure subroutine init_cdet_excit_gen_flags(d)
+        
+        ! Sets the initial flags for a cdet once a cdet has been defined.
+        ! IMPORTANT: needs to be called once cdet is defined.
+
+        ! In/Out:
+        !   d: det_info_t variable (cdet information)
+
+        type(det_info_t), intent(inout) :: d
+
+        d%single_precalc = .false.
+        d%double_precalc = .false.
+
+    end subroutine init_cdet_excit_gen_flags
 
 end module determinant_data

@@ -96,12 +96,27 @@ abstract interface
         type(dSFMT_t), intent(inout) :: rng
         type(sys_t), intent(in) :: sys
         type(excit_gen_data_t), intent(in) :: excit_gen_data
-        type(det_info_t), intent(in) :: d
+        type(det_info_t), intent(inout) :: d
         real(p), intent(out) :: pgen
         type(hmatel_t), intent(out) :: hmatel
         type(excit_t), intent(out) :: connection
         logical, intent(out) :: allowed
     end subroutine i_gen_excit
+    subroutine i_gen_excit_init(rng, sys, excit_gen_data, d, pgen, connection, hmatel, allowed)
+        use dSFMT_interface, only: dSFMT_t
+        use system, only: sys_t
+        use hamiltonian_data, only: hmatel_t
+        import :: det_info_t, excit_t, p, excit_gen_data_t
+        implicit none
+        type(dSFMT_t), intent(inout) :: rng
+        type(sys_t), intent(in) :: sys
+        type(excit_gen_data_t), intent(in) :: excit_gen_data
+        type(det_info_t), intent(in) :: d
+        real(p), intent(out) :: pgen
+        type(hmatel_t), intent(out) :: hmatel
+        type(excit_t), intent(out) :: connection
+        logical, intent(out) :: allowed
+    end subroutine i_gen_excit_init
     subroutine i_gen_excit_finalise(rng, sys, d, connection, hmatel)
         use dSFMT_interface, only: dSFMT_t
         use system, only: sys_t
@@ -282,7 +297,7 @@ procedure(i_get_two_e_int), pointer :: get_two_e_int_ptr => null()
 ! interface for spawning routines which use different types of generator.
 type gen_excit_ptr_t
     procedure(i_gen_excit), nopass, pointer :: full => null()
-    procedure(i_gen_excit), nopass, pointer :: init => null()
+    procedure(i_gen_excit_init), nopass, pointer :: init => null()
     procedure(i_gen_excit_finalise), nopass, pointer :: finalise => null()
     procedure(i_trial_fn), nopass, pointer :: trial_fn => null()
 end type gen_excit_ptr_t
@@ -303,7 +318,7 @@ abstract interface
         type(qmc_state_t), intent(inout) :: qmc_state
         integer(int_p), intent(in) :: spawn_cutoff
         integer(int_p), intent(in) :: real_factor
-        type(det_info_t), intent(in) :: d
+        type(det_info_t), intent(inout) :: d
         integer(int_p), intent(in) :: parent_sign
         type(gen_excit_ptr_t), intent(in) :: gen_excit_ptr
         real(p), allocatable, intent(in) :: weights(:)

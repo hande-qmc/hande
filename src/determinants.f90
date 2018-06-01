@@ -242,6 +242,8 @@ contains
 
     pure subroutine decode_det(basis_set, f, occ_list, excit_gen_data)
 
+        ! WARNING: This decoder does not initialise flags for a cdet needed for excitation generators!
+
         ! In:
         !    basis_set: information about the single-particle basis.
         !    f(:): bit string representation of the Slater

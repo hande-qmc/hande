@@ -19,11 +19,11 @@ contains
         ! In:
         !    sys: system object being studied.
         !    excit_gen_data: Data for excitation generator (not used) 
-        !    cdet: info on the current determinant (cdet) that we will spawn
-        !        from.
         ! Out:
         ! In/Out:
         !    rng: random number generator.
+        !    cdet: info on the current determinant (cdet) that we will spawn
+        !        from.
         !    pgen: probability of generating the excited determinant from cdet.
         !    connection: excitation connection between the current determinant
         !        and the child determinant, on which progeny are spawned.
@@ -41,7 +41,7 @@ contains
         use hamiltonian_data
 
         type(sys_t), intent(in) :: sys
-        type(det_info_t), intent(in) :: cdet
+        type(det_info_t), intent(inout) :: cdet
         type(excit_gen_data_t), intent(in) :: excit_gen_data
         type(dSFMT_t), intent(inout) :: rng
         real(p), intent(out) :: pgen

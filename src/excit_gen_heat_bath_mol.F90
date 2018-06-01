@@ -3,7 +3,7 @@ module excit_gen_heat_bath_mol
 ! A module containing excitations generators which weight excitations according to the heat bath algorithm
 ! by Holmes et al. (Holmes, A. A.; Changlani, H. J.; Umrigar, C. J. J. Chem. Theory Comput. 2016, 12, 1561–1571).
 
-use const, only: i0, p, depsilon
+use const, only: i0, p, depsilon, debug
 
 implicit none
 
@@ -299,7 +299,7 @@ contains
         use system, only: sys_t
         use excit_gen_mol, only: gen_single_excit_mol_no_renorm
         use excit_gens, only: excit_gen_heat_bath_t, excit_gen_data_t
-        use excit_gen_utils, only: select_ij_heat_bath
+        use excit_gen_utils, only: select_ij_heat_bath, find_i_d_weights
         use alias, only: select_weighted_value_precalc, select_weighted_value
         use dSFMT_interface, only: dSFMT_t, get_rand_close_open
         use hamiltonian_data, only: hmatel_t
@@ -309,7 +309,7 @@ contains
 
         type(sys_t), intent(in) :: sys
         type(excit_gen_data_t), intent(in) :: excit_gen_data
-        type(det_info_t), intent(in) :: cdet
+        type(det_info_t), intent(inout) :: cdet
         type(dSFMT_t), intent(inout) :: rng
         real(p), intent(out) :: pgen
         type(hmatel_t), intent(out) :: hmatel
@@ -326,7 +326,15 @@ contains
         type(hmatel_t) :: hmatel_single
 
         associate( hb => excit_gen_data%excit_gen_hb )
-            ! 1: Select orbitals i and j to excite from.
+            ! If this is the first call to this excitation generator after having selected cdet, we need to calculate weights.
+            ! When selecting ij, the type of excitation (single/double) is still unknown.
+            if (.not. cdet%double_precalc) then
+                ! find_i_d_weights finds the weights to select ij which usually is only needed in the case of double excitations.
+                ! However, here, we find ij even if we end up doing a single excitation.
+                call find_i_d_weights(sys%nel, excit_gen_data%excit_gen_hb%i_weights, cdet)
+                cdet%single_precalc = .true.
+                cdet%double_precalc = .true.
+            end if
             
             call select_ij_heat_bath(rng, sys%nel, hb%ij_weights, cdet, i, j, i_ind, j_ind, ij_weights_occ, ij_weights_occ_tot, &
                 ji_weights_occ, ji_weights_occ_tot, allowed_excitation)
@@ -581,7 +589,7 @@ contains
         use system, only: sys_t
         use excit_gen_mol, only: gen_single_excit_mol
         use excit_gens, only: excit_gen_heat_bath_t, excit_gen_data_t
-        use excit_gen_utils, only: select_ij_heat_bath
+        use excit_gen_utils, only: select_ij_heat_bath, find_i_d_weights, find_ia_single_weights
         use alias, only: select_weighted_value_precalc, select_weighted_value
         use dSFMT_interface, only: dSFMT_t, get_rand_close_open
         use hamiltonian_data, only: hmatel_t
@@ -592,7 +600,7 @@ contains
 
         type(sys_t), intent(in) :: sys
         type(excit_gen_data_t), intent(in) :: excit_gen_data
-        type(det_info_t), intent(in) :: cdet
+        type(det_info_t), intent(inout) :: cdet
         type(dSFMT_t), intent(inout) :: rng
         real(p), intent(out) :: pgen
         type(hmatel_t), intent(out) :: hmatel
@@ -614,6 +622,12 @@ contains
                                                 allowed_excitation)
             else
                 ! The user has chosen the single option (exact weights). Call subroutine below.
+                ! If this is the first call to this excitation generator after having selected cdet with a single excitation,
+                ! we need to calculate weights.
+                if (.not. cdet%single_precalc) then
+                    call find_ia_single_weights(sys, cdet)
+                    cdet%single_precalc = .true.
+                end if
                 call gen_single_excit_heat_bath_exact(rng, sys, excit_gen_data%pattempt_single, cdet, pgen, connection, hmatel,&
                                                     allowed_excitation)
             end if
@@ -621,6 +635,12 @@ contains
             ! We have a double
             associate( hb => excit_gen_data%excit_gen_hb )
                 ! 1: Select orbitals i and j to excite from.
+                ! If this is the first call to this excitation generator after having selected cdet with a double excitation,
+                ! we need to calculate weights.
+                if (.not. cdet%double_precalc) then
+                    call find_i_d_weights(sys%nel, excit_gen_data%excit_gen_hb%i_weights, cdet)
+                    cdet%double_precalc = .true.
+                end if
                 
                 call select_ij_heat_bath(rng, sys%nel, hb%ij_weights, cdet, i, j, i_ind, j_ind, ij_weights_occ, &
                     ij_weights_occ_tot, ji_weights_occ, ji_weights_occ_tot, allowed_excitation)

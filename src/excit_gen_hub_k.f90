@@ -316,10 +316,10 @@ contains
         ! In:
         !    sys: system object being studied.
         !    excit_gen_data: Data for excitation generator (unused)
-        !    cdet: info on the current determinant (cdet) that we will spawn
-        !        from.
         ! Out:
         ! In/Out:
+        !    cdet: info on the current determinant (cdet) that we will spawn
+        !        from.
         !    rng: random number generator.
         !    pgen: probability of generating the excited determinant from cdet.
         !    connection: excitation connection between the current determinant
@@ -339,7 +339,7 @@ contains
 
         type(sys_t), intent(in) :: sys
         type(excit_gen_data_t), intent(in) :: excit_gen_data
-        type(det_info_t), intent(in) :: cdet
+        type(det_info_t), intent(inout) :: cdet
         type(dSFMT_t), intent(inout) :: rng
         real(p), intent(out) :: pgen
         type(hmatel_t), intent(out) :: hmatel
@@ -399,10 +399,10 @@ contains
         ! In:
         !    sys: system object being studied.
         !    excit_gen_data: Data for excitation generator (unused)
-        !    cdet: info on the current determinant (cdet) that we will spawn
-        !        from.
         ! In/Out:
         !    rng: random number generator.
+        !    cdet: info on the current determinant (cdet) that we will spawn
+        !        from.
         ! Out:
         !    pgen: probability of generating the excited determinant from cdet.
         !    connection: excitation connection between the current determinant
@@ -422,7 +422,7 @@ contains
 
         type(sys_t), intent(in) :: sys
         type(excit_gen_data_t), intent(in) :: excit_gen_data
-        type(det_info_t), intent(in) :: cdet
+        type(det_info_t), intent(inout) :: cdet
         type(dSFMT_t), intent(inout) :: rng
         real(p), intent(out) :: pgen
         type(hmatel_t), intent(out) :: hmatel

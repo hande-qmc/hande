@@ -37,6 +37,7 @@ contains
         type(excit_gen_data_t), optional, intent(in) :: excit_gen_data
 
         call decode_det(sys%basis, f, d%occ_list)
+        call init_cdet_excit_gen_flags(d)
 
     end subroutine decode_det_occ
     
@@ -69,6 +70,7 @@ contains
         integer :: i, ialpha, ibeta
 
         call decode_det(sys%basis, f, d%occ_list)
+        call init_cdet_excit_gen_flags(d)
 
         ialpha = 1
         ibeta = 1
@@ -156,6 +158,8 @@ contains
                 d%unocc_list(iunocc) = orb
             end if
         end do
+        
+        call init_cdet_excit_gen_flags(d)
 
     end subroutine decode_det_occ_unocc
 
@@ -187,6 +191,7 @@ contains
         integer :: i, ims, isym
 
         call decode_det(sys%basis, f, d%occ_list)
+        call init_cdet_excit_gen_flags(d)
 
         d%symunocc = sys%read_in%pg_sym%nbasis_sym_spin
 
@@ -230,6 +235,7 @@ contains
         integer :: i, ims, isym, ialpha, ibeta
 
         call decode_det(sys%basis, f, d%occ_list)
+        call init_cdet_excit_gen_flags(d)
 
         d%symunocc = sys%read_in%pg_sym%nbasis_sym_spin
         ialpha = 1
@@ -285,6 +291,8 @@ contains
         type(det_info_t), intent(inout) :: d
         type(excit_gen_data_t), optional, intent(in) :: excit_gen_data
         integer :: i, j, iocc, iocc_a, iocc_b, iunocc_a, iunocc_b, orb, last_basis_ind
+        
+        call init_cdet_excit_gen_flags(d)
 
         ! A bit too much to do the chunk-based decoding of the occupied list and then fill
         ! in the remaining information.  We only use this in Hubbard model calculations in
@@ -396,6 +404,8 @@ contains
         type(det_info_t), intent(inout) :: d
         type(excit_gen_data_t), optional, intent(in) :: excit_gen_data
         integer :: i, j, iocc, iocc_a, iocc_b, iunocc_a, iunocc_b, orb, last_basis_ind, isym, ims
+        
+        call init_cdet_excit_gen_flags(d)
 
         d%symunocc = sys%read_in%pg_sym%nbasis_sym_spin
         
@@ -484,208 +494,4 @@ contains
 
     end subroutine decode_det_spinocc_spinsymunocc
     
-    pure subroutine decode_det_ppN(sys, f, d, excit_gen_data)
-
-        ! WARNING: this decoder needs excit_gen_data!!!!
-
-        ! Decode determinant bit string into integer lists containing the
-        ! occupied orbitals and a reordered list of occupied list that is equal to the
-        ! occupied list of orbitals of the reference where orbitals that differ between
-        ! the current determinant and the reference are substituted by occupied orbitals
-        ! from the current determinant. These substituted orbitals are sorted by spin.
-        !
-        ! We return the lists for alpha and beta electrons separately.
-        ! Also return the weights to select i in a double excitation.
-        !
-        ! In:
-        !    sys: system being studied (contains required basis information).
-        !    f(tot_string_len): bit string representation of the Slater
-        !        determinant.
-        !    excit_gen_data (optional): information for excitation generators.
-        ! Out:
-        !    d: det_info_t variable.  The following components are set:
-        !        occ_list: integer list of occupied spin-orbitals in the
-        !            Slater determinant.
-        !        ref_cdet_occ_list: reordered list of occ. spin orbitals.
-
-        use system, only: sys_t
-        use excit_gens, only: excit_gen_data_t
-        use excitations, only: get_excitation_locations
-
-        type(sys_t), intent(in) :: sys
-        integer(i0), intent(in) :: f(sys%basis%tot_string_len)
-        type(det_info_t), intent(inout) :: d
-        type(excit_gen_data_t), optional, intent(in) :: excit_gen_data
-
-        integer :: ref_store(sys%nel), det_store(sys%nel)
-        integer :: ii, jj, nex, t
-
-        call decode_det_occ(sys, f, d)
-        call get_excitation_locations(excit_gen_data%excit_gen_pp%occ_list, d%occ_list, ref_store, &
-            det_store, sys%nel, nex)
-        ! These orbitals might not be aligned in the most efficient way:
-        !  They may not match in spin, so first deal with this
-
-        d%ref_cdet_occ_list = excit_gen_data%excit_gen_pp%occ_list
-        ! ref store (e.g.) contains the indices within excit_gen_pp%occ_list of the orbitals
-        ! which have been excited from.
-        do ii=1, nex
-            associate(bfns=>sys%basis%basis_fns, pp=>excit_gen_data%excit_gen_pp)
-                if (bfns(pp%occ_list(ref_store(ii)))%Ms /= bfns(d%occ_list(det_store(ii)))%Ms) then
-                    jj = ii + 1
-                    do while (bfns(pp%occ_list(ref_store(ii)))%Ms /= bfns(d%occ_list(det_store(jj)))%Ms)
-                        jj = jj + 1
-                    end do
-                    ! det's jj now points to an orb of the same spin as ref's ii, so swap cdet_store's ii and jj.
-                    t = det_store(ii)
-                    det_store(ii) = det_store(jj)
-                    det_store(jj) = t
-                end if
-            end associate
-            d%ref_cdet_occ_list(ref_store(ii)) = d%occ_list(det_store(ii))
-        end do
-
-    end subroutine decode_det_ppN
-    
-    pure subroutine decode_det_ppMij(sys, f, d, excit_gen_data)
-
-        ! WARNING: this decoder needs excit_gen_data!!!!
-
-        ! Decode determinant bit string into integer lists containing the
-        ! occupied and unoccupied orbitals.
-        !
-        ! We return the lists for alpha and beta electrons separately.
-        ! Also return the weights to select i in a double excitation.
-        !
-        ! In:
-        !    sys: system being studied (contains required basis information).
-        !    f(tot_string_len): bit string representation of the Slater
-        !        determinant.
-        !    excit_gen_data (optional): information for excitation generators.
-        ! Out:
-        !    d: det_info_t variable.  The following components are set:
-        !        occ_list: integer list of occupied spin-orbitals in the
-        !            Slater determinant.
-        !        occ_list_alpha: integer list of occupied alpha
-        !            spin-orbitals in the Slater determinant.
-        !        occ_list_beta: integer list of occupied beta
-        !            spin-orbitals in the Slater determinant.
-        !        unocc_list_alpha: integer list of unoccupied alpha
-        !            spin-orbitals in the Slater determinant.
-        !        unocc_list_beta: integer list of unoccupied beta
-        !            spin-orbitals in the Slater determinant.
-        !        i_d_occ: weights to select i in a double excitation
-        !            during excit gen call.
-
-        use system, only: sys_t
-        use excit_gens, only: excit_gen_data_t
-        use excit_gen_utils, only: find_i_d_weights
-
-        type(sys_t), intent(in) :: sys
-        integer(i0), intent(in) :: f(sys%basis%tot_string_len)
-        type(det_info_t), intent(inout) :: d
-        type(excit_gen_data_t), optional, intent(in) :: excit_gen_data
-
-        call decode_det_spinocc_spinsymunocc(sys, f, d)
-        call find_i_d_weights(sys%nel, excit_gen_data%excit_gen_pp%ppm_i_d_weights, d)
-
-    end subroutine decode_det_ppMij
-    
-    pure subroutine decode_det_hb(sys, f, d, excit_gen_data)
-
-        ! Decode determinant bit string into integer list containing the
-        ! occupied orbitals and some weights for heat bath excit gen.
-        !
-        ! In:
-        !    sys: system being studied (contains required basis information).
-        !    f(tot_string_len): bit string representation of the Slater
-        !        determinant.
-        !    excit_gen_data (optional): information for excitation generators.
-        ! Out:
-        !    d: det_info_t variable.  The following components are set:
-        !        occ_list: integer list of occupied spin-orbitals in the
-        !            Slater determinant.
-        !        i_d_occ: weights to select i in a double excitation
-        !            during excit gen call.
-
-        use system, only: sys_t
-        use excit_gens, only: excit_gen_data_t
-        use excit_gen_utils, only: find_i_d_weights
-        use determinants, only: decode_det
-
-        type(sys_t), intent(in) :: sys
-        integer(i0), intent(in) :: f(sys%basis%tot_string_len)
-        type(det_info_t), intent(inout) :: d
-        type(excit_gen_data_t), optional, intent(in) :: excit_gen_data
-
-        call decode_det(sys%basis, f, d%occ_list)
-        call find_i_d_weights(sys%nel, excit_gen_data%excit_gen_hb%i_weights, d)
-
-    end subroutine decode_det_hb
-    
-    pure subroutine decode_det_hbu(sys, f, d, excit_gen_data)
-
-        ! Decode determinant bit string into integer list containing the
-        ! occupied orbitals and some weights for hbu excit gen.
-        ! In:
-        !    sys: system being studied (contains required basis information).
-        !    f(tot_string_len): bit string representation of the Slater
-        !        determinant.
-        !    excit_gen_data (optional): information for excitation generators.
-        ! Out:
-        !    d: det_info_t variable.  The following components are set:
-        !        occ_list: integer list of occupied spin-orbitals in the
-        !            Slater determinant.
-        !        symunocc(2, sym0_tot:symmax_tot): number of unoccupied orbitals of each
-        !            spin/symmetry.  The same indexing scheme is used for
-        !            nbasis_sym_spin.
-        !        i_d_occ: weights to select i in a double excitation
-        !            during excit gen call.
-
-        use system, only: sys_t
-        use excit_gens, only: excit_gen_data_t
-        use excit_gen_utils, only: find_i_d_weights
-
-        type(sys_t), intent(in) :: sys
-        integer(i0), intent(in) :: f(sys%basis%tot_string_len)
-        type(det_info_t), intent(inout) :: d
-        type(excit_gen_data_t), optional, intent(in) :: excit_gen_data
-
-        call decode_det_occ_symunocc(sys, f, d)
-        call find_i_d_weights(sys%nel, excit_gen_data%excit_gen_hb%i_weights, d)
-
-    end subroutine decode_det_hbu
-    
-    pure subroutine decode_det_hbs(sys, f, d, excit_gen_data)
-
-        ! Decode determinant bit string into integer list containing the
-        ! occupied orbitals and some weights for hbs excit gen.
-        !
-        ! In:
-        !    sys: system being studied (contains required basis information).
-        !    f(tot_string_len): bit string representation of the Slater
-        !        determinant.
-        !    excit_gen_data (optional): information for excitation generators.
-        ! Out:
-        !    d: det_info_t variable.  The following components are set:
-        !        occ_list: integer list of occupied spin-orbitals in the
-        !            Slater determinant.
-        !        i_d_occ: weights to select i in a double excitation
-        !            during excit gen call.
-
-        use system, only: sys_t
-        use excit_gens, only: excit_gen_data_t
-        use excit_gen_utils, only: find_i_d_weights, find_ia_single_weights
-
-        type(sys_t), intent(in) :: sys
-        integer(i0), intent(in) :: f(sys%basis%tot_string_len)
-        type(det_info_t), intent(inout) :: d
-        type(excit_gen_data_t), optional, intent(in) :: excit_gen_data
-
-        call decode_det_occ_unocc(sys, f, d)
-        call find_i_d_weights(sys%nel, excit_gen_data%excit_gen_hb%i_weights, d)
-        call find_ia_single_weights(sys, d)
-
-    end subroutine decode_det_hbs
-
 end module determinant_decoders
