@@ -1221,7 +1221,7 @@ module restart_hdf5
             ! Can just copy it from the first old restart file as it is the same on all files...
             do i = iproc_target_start, iproc_target_end
                 call h5fopen_f(new_names(i), H5F_ACC_RDWR_F, new_id, ierr)
-                ! /metadata, /basis and /rng
+                ! /metadata, /basis
                 call h5ocopy_f(orig_id, gmetadata, new_id, gmetadata, ierr)
                 call h5lexists_f(orig_id, gbasis, exists, ierr)
                 if (exists) call h5ocopy_f(orig_id, gbasis, new_id, gbasis, ierr)
@@ -1233,9 +1233,6 @@ module restart_hdf5
                     call h5dwrite_f(dset_id, H5T_NATIVE_INTEGER, i0_length, [0_HSIZE_T,0_HSIZE_T], ierr)
                     call h5dclose_f(dset_id, ierr)
                 end if
-                ! Create the RNG group but don't copy the RNG state as we can't restart RNG streams for processors we didn't have...
-                call h5gcreate_f(new_id, grng, group_id, ierr)
-                call h5gclose_f(group_id, ierr)
                 ! ...and non-psip-specific groups in the /qmc group.
                 call h5gcreate_f(new_id, gqmc, group_id, ierr)
                     ! /qmc/state
@@ -1291,6 +1288,21 @@ module restart_hdf5
 
             call h5gclose_f(orig_group_id, ierr)
             call hdf5_file_close(orig_id)
+
+
+            do i = iproc_target_start, iproc_target_end
+                call h5fopen_f(new_names(i), H5F_ACC_RDWR_F, new_id, ierr)
+                if (nprocs_read /= nprocs_target) then
+                    ! Create the RNG group but don't copy the RNG state as we can't restart RNG streams for processors we didn't have...
+                    call h5gcreate_f(new_id, grng, group_id, ierr)
+                    call h5gclose_f(group_id, ierr)
+                else
+                    call h5fopen_f(orig_names(i), H5F_ACC_RDONLY_F, orig_id, ierr)
+                    call h5ocopy_f(orig_id, grng, new_id, grng, ierr)
+                    call hdf5_file_close(orig_id)
+                end if
+                call hdf5_file_close(new_id)
+            end do
 
             ! Read the old restart file for each processor in turn and place the psip
             ! information into the new restart file for the appropriate processor.
