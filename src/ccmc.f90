@@ -512,10 +512,15 @@ contains
             ! which can be altered which can change an excitors location since the restart files were written is move_freq.
             if (ccmc_in%move_freq /= spawn%move_freq .and. nprocs > 1) then
                 spawn%move_freq = ccmc_in%move_freq
-                if (parent) call warning('do_ccmc', 'move_freq is different from that in the restart file. Reassigning processors. &
-                                        &Please check for equilibration effects.')
-                call redistribute_particles(pl%states, pl%pop_real_factor, pl%pops, pl%nstates, pl%nparticles, spawn)
-                call direct_annihilation(sys, rng(0), qs%ref, annihilation_flags, pl, spawn)
+                if (restarting) then
+                    if (parent) call warning('do_ccmc', 'move_freq is different from that in the restart file. &
+                                            &Reassigning processors. Please check for equilibration effects.')
+                    ! Cannot rely on spawn%head being initialised to indicate an empty spawn_t object so reset it before
+                    ! redistributing,.
+                    spawn%head = spawn%head_start
+                    call redistribute_particles(pl%states, pl%pop_real_factor, pl%pops, pl%nstates, pl%nparticles, spawn)
+                    call direct_annihilation(sys, rng(0), qs%ref, annihilation_flags, pl, spawn)
+                end if
             end if
         end associate
 
