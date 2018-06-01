@@ -288,7 +288,6 @@ contains
         !    qs: qmc_state for use if restarting the calculation
 
         use checking, only: check_allocate, check_deallocate
-        use dSFMT_interface, only: dSFMT_t, dSFMT_init, dSFMT_end
         use dSFMT_interface, only: dSFMT_t, dSFMT_init, dSFMT_end, dSFMT_state_t_to_dSFMT_t, dSFMT_t_to_dSFMT_state_t, &
                                    free_dSFMT_state_t
         use errors, only: stop_all, warning
