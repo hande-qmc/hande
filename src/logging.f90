@@ -616,7 +616,7 @@ contains
 
         iunit = logging_info%stoch_select_unit
 
-        write (logging_info%death_unit,'("#")', advance='no')
+        write (iunit,'("#")', advance='no')
 
         call write_column_title(iunit, "nexcitors", sep=',', int_val=.true.)
         call write_column_title(iunit, "ex_level", sep=',', int_val=.true.)
