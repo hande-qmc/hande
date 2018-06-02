@@ -168,7 +168,7 @@ CPP = %(cpp)s
 # Preprocessing flags
 # Used for *.F, *.F90, *.c and *.cpp files.
 # Note three additional defintions specific to HANDE.
-CPPFLAGS += %(cppflags)s
+CPPFLAGS += %(cppflags)s %(defs)s
 
 # --- Fortran ---
 # compiler
