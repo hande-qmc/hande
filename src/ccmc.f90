@@ -288,10 +288,9 @@ contains
         !    qs: qmc_state for use if restarting the calculation
 
         use checking, only: check_allocate, check_deallocate
-        use dSFMT_interface, only: dSFMT_t, dSFMT_init, dSFMT_end
         use dSFMT_interface, only: dSFMT_t, dSFMT_init, dSFMT_end, dSFMT_state_t_to_dSFMT_t, dSFMT_t_to_dSFMT_state_t, &
                                    free_dSFMT_state_t
-        use errors, only: stop_all
+        use errors, only: stop_all, warning
         use parallel
         use restart_hdf5, only: dump_restart_hdf5, restart_info_t, init_restart_info_t, dump_restart_file_wrapper
 
@@ -505,18 +504,31 @@ contains
         ! Initialise D0_pos to be somewhere (anywhere) in the list.
         D0_pos = 1
 
+        associate(pl=>qs%psip_list, spawn=>qs%spawn_store%spawn)
+            ! Initialise hash shift if restarting...
+            spawn%hash_shift = qs%mc_cycles_done
+            ! NOTE: currently hash_seed is not exposed and so cannot change unless the hard-coded value changes. Therefore, as we
+            ! have not evolved the particles since the were written out (i.e. hash_shift hasn't changed) the only parameter
+            ! which can be altered which can change an excitors location since the restart files were written is move_freq.
+            if (ccmc_in%move_freq /= spawn%move_freq .and. nprocs > 1) then
+                spawn%move_freq = ccmc_in%move_freq
+                if (restarting) then
+                    if (parent) call warning('do_ccmc', 'move_freq is different from that in the restart file. &
+                                            &Reassigning processors. Please check for equilibration effects.')
+                    ! Cannot rely on spawn%head being initialised to indicate an empty spawn_t object so reset it before
+                    ! redistributing,.
+                    spawn%head = spawn%head_start
+                    call redistribute_particles(pl%states, pl%pop_real_factor, pl%pops, pl%nstates, pl%nparticles, spawn)
+                    call direct_annihilation(sys, rng(0), qs%ref, annihilation_flags, pl, spawn)
+                end if
+            end if
+        end associate
+
         if (parent) then
             call write_qmc_report_header(qs%psip_list%nspaces, cmplx_est=sys%read_in%comp, rdm_energy=ccmc_in%density_matrices, &
                                          nattempts=.true., io_unit=io_unit)
         end if
-        
-        associate(spawn=>qs%spawn_store%spawn)
-            ! Initialise hash shift if restarting...
-            spawn%hash_shift = qs%mc_cycles_done
-            ! Hard code how frequently (ie 2^10) a determinant can move.
-            spawn%move_freq = ccmc_in%move_freq
-        end associate
-        
+
         restart_proj_est = present(qmc_state_restart) .or. (restart_in%read_restart .and. restart_version_restart >= 2)
         if (.not.restart_proj_est) then
             call initial_cc_projected_energy(sys, qs, qmc_in%seed+iproc, logging_info, cumulative_abs_real_pops, nparticles_old)
