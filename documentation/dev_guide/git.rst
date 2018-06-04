@@ -13,12 +13,18 @@ HANDE can be downloaded by cloning the repository from github:
 We periodically tag releases
 
 A private git repository, where much of the day-to-day development work takes
-place, is currently located at ``ch-hande@git.uis.cam.ac.uk`` and can
+place, is currently located at a private repository at github and can
 be cloned using:
 
 .. code-block:: bash
 
-    $ git clone ch-hande@git.uis.cam.ac.uk:hande.git
+    $ git clone https://github.com/hande-qmc/hande-dev
+
+or if using ssh keys, 
+
+.. code-block:: bash
+
+    $ git clone git@github.com:hande-qmc/hande-dev
 
 If you would like access, please speak to one of the developers.  The rest of
 this guide assumes you used the default remote name during the clone (i.e.

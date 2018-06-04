@@ -1,0 +1,67 @@
+heg = ueg {
+    electrons = 6,
+    ms = 0,
+    dim = 2,
+    cutoff = 2,
+    rs = 2,
+    sym = 1,
+}
+
+cc_args = {
+    sys = heg,
+    qmc = {
+        tau = 0.001,
+        init_pop = 10,
+        mc_cycles = 10,
+        nreports = 100,
+        target_population = 2500,
+        rng_seed = 78630,
+        state_size = 2000,
+        spawned_state_size = 1000,
+    },
+    ccmc = {
+        move_frequency = 1,
+    },
+    reference = {
+        ex_level = 3,
+    },
+    restart = {
+        write = 10,
+    },
+}
+
+-- some population growth
+qs = ccmc(cc_args)
+
+-- reference is on processor 0
+-- can verify by doing h5dump -g /qmc/psips/determinants on each restart file and checking
+-- for the reference bit string (363)
+
+-- now change move_frequency to 2, which shifts the reference to processor 1.
+-- the following set of calculations should be identical.
+
+cc_args.qmc.nreports = 2
+cc_args.ccmc.move_frequency = 2
+
+-- 1. implicit redistribute due to change in move_frequency
+-- A warning should be printed out at the start of CCMC to show the need for reassigning
+-- processors has been detected.
+cc_args.restart = { read = 10 }
+qs2 = ccmc(cc_args)
+qs2:free()
+
+-- 2. explicit redistribute with set move_frequency
+redistribute {
+    read = 10,
+    write = 11,
+    move_frequency = cc_args.ccmc.move_frequency,
+}
+cc_args.restart.read = 11
+qs2 = ccmc(cc_args)
+qs2:free()
+
+-- 3. qmc_state restart. As with 1., an implicit reassignment of excitors to processors is
+-- performed (and should trigger the same warning).
+cc_args.restart = nil
+cc_args.qmc_state = qs
+ccmc(cc_args)

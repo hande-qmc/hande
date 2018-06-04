@@ -39,12 +39,12 @@ contains
 
         type(flu_State) :: lua_state
 
-        integer :: opts, nprocs_target, read_id, write_id, err
-        logical :: read_exists, write_exists
+        integer :: opts, nprocs_target, read_id, write_id, err, move_freq
+        logical :: read_exists, write_exists, move_freq_exists, sys_exists
         real :: t1, t2
         type(restart_info_t) :: ri
         type(sys_t), pointer :: sys
-        character(6), parameter :: keys(4) = [character(6) :: 'sys', 'read', 'write', 'nprocs']
+        character(14), parameter :: keys(5) = [character(14) :: 'sys', 'read', 'write', 'nprocs', 'move_frequency']
 
         call cpu_time(t1)
 
@@ -55,6 +55,8 @@ contains
 
         read_exists = aot_exists(lua_state, opts, 'read')
         write_exists = aot_exists(lua_state, opts, 'write')
+        move_freq_exists = aot_exists(lua_state, opts, 'move_frequency')
+        sys_exists = aot_exists(lua_state, opts, 'sys')
 
         if (read_exists .and. write_exists) then
             call aot_get_val(read_id, err, lua_state, opts, 'read')
@@ -70,11 +72,17 @@ contains
             call init_restart_info_t(ri)
         end if
 
+        if (sys_exists) call get_sys_t(lua_state, sys)
+        if (move_freq_exists) call aot_get_val(move_freq, err, lua_state, opts, 'move_frequency')
+
         call warn_unused_args(lua_state, keys, opts)
 
-        if (aot_exists(lua_state, opts, 'sys')) then
-            call get_sys_t(lua_state, sys)
-            call redistribute_restart_hdf5(ri, nprocs_target, sys)
+        if (sys_exists .and. move_freq_exists) then
+            call redistribute_restart_hdf5(ri, nprocs_target, move_freq_in=move_freq, sys=sys)
+        else if (sys_exists) then
+            call redistribute_restart_hdf5(ri, nprocs_target, sys=sys)
+        else if (move_freq_exists) then
+            call redistribute_restart_hdf5(ri, nprocs_target, move_freq_in=move_freq)
         else
             call redistribute_restart_hdf5(ri, nprocs_target)
         end if

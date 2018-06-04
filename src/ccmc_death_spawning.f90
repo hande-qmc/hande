@@ -44,8 +44,6 @@ contains
         !        the encoded representation. Events smaller than this will be
         !        stochastically rounded up to this value or down to zero.
         !    linked_ccmc: if true then only sample linked clusters.
-        !    cdet: info on the current excitor (cdet) that we will spawn
-        !        from.
         !    cluster: information about the cluster which forms the excitor.  In
         !        particular, we use the amplitude, cluster_to_det_sign and pselect
         !        (i.e. n_sel.p_s.p_clust) attributes in addition to any used in
@@ -58,6 +56,8 @@ contains
         !    rng: random number generator.
         !    nspawnings_total: The total number of spawnings attemped by the current cluster
         !        in the current timestep.
+        !    cdet: info on the current excitor (cdet) that we will spawn
+        !        from.
         !    ps_stat: Accumulating the following on this OpenMP thread:
         !        h_pgen_singles_sum: total of |Hij|/pgen for single excitations attempted.
         !        h_pgen_doubles_sum: total on |Hij|/pgen for double excitations attempted.
@@ -88,7 +88,7 @@ contains
         type(qmc_state_t), intent(in) :: qs
         integer(int_p), intent(in) :: spawn_cutoff
         logical, intent(in) :: linked_ccmc
-        type(det_info_t), intent(in) :: cdet
+        type(det_info_t), intent(inout) :: cdet
         type(cluster_t), intent(in) :: cluster
         type(dSFMT_t), intent(inout) :: rng
         type(p_single_double_coll_t), intent(inout) :: ps_stat
@@ -584,7 +584,7 @@ contains
         type(excit_t), intent(out) :: connection
         integer(i0), intent(out) :: fexcit(sys%basis%tot_string_len)
         type(det_info_t), intent(inout) :: ldet, rdet
-        type(det_info_t), intent(in) :: cdet
+        type(det_info_t), intent(inout) :: cdet
         type(cluster_t), intent(inout) :: left_cluster, right_cluster
         type(p_single_double_coll_t), intent(inout) :: ps_stat
 
@@ -761,8 +761,6 @@ contains
         !        the encoded representation. Events smaller than this will be
         !        stochastically rounded up to this value or down to zero.
         !    linked_ccmc: if true then only sample linked clusters.
-        !    cdet: info on the current excitor (cdet) that we will spawn
-        !        from.
         !    cluster: information about the cluster which forms the excitor.  In
         !        particular, we use the amplitude, cluster_to_det_sign and pselect
         !        (i.e. n_sel.p_s.p_clust) attributes in addition to any used in
@@ -775,6 +773,8 @@ contains
         !    rng: random number generator.
         !    nspawnings_total: The total number of spawnings attemped by the current cluster
         !        in the current timestep.
+        !    cdet: info on the current excitor (cdet) that we will spawn
+        !        from.
         !    ps_stat: Accumulating the following on this OpenMP thread:
         !        h_pgen_singles_sum: total of |Hij|/pgen for single excitations attempted.
         !        h_pgen_doubles_sum: total on |Hij|/pgen for double excitations attempted.
@@ -806,7 +806,7 @@ contains
         type(qmc_state_t), intent(in) :: qs
         integer(int_p), intent(in) :: spawn_cutoff
         logical, intent(in) :: linked_ccmc
-        type(det_info_t), intent(in) :: cdet
+        type(det_info_t), intent(inout) :: cdet
         type(cluster_t), intent(in) :: cluster
         type(dSFMT_t), intent(inout) :: rng
         integer, intent(in) :: nspawnings_total

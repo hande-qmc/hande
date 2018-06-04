@@ -36,7 +36,7 @@ contains
         !    qs: qmc_state for use if restarting the calculation
 
         use parallel
-        use checking, only: check_allocate
+        use checking, only: check_allocate, check_deallocate
         use json_out
 
         use const, only: debug
@@ -107,7 +107,8 @@ contains
         real(dp), allocatable :: nparticles_old(:)
 
         integer(int_p) :: ndeath
-        integer :: nattempts_current_det, nspawn_events
+        ! [todo] - Should some of these be int_p?
+        integer :: nspawn_events, nattempts_current_det_ispace
         type(excit_t) :: connection
         type(hmatel_t) :: hmatel
         real(p), allocatable :: real_population(:), weighted_population(:)
@@ -271,6 +272,7 @@ contains
                     cdet%data => qs%psip_list%dat(:,idet)
 
                     call decoder_ptr(sys, cdet%f, cdet, qs%excit_gen_data)
+                    
                     if (qs%propagator%quasi_newton) &
                         cdet%fock_sum = sum_sp_eigenvalues_occ_list(sys, cdet%occ_list) - qs%ref%fock_sum
 
@@ -306,10 +308,10 @@ contains
                                                         qs%estimators(ispace), connection, hmatel)
                         end if
 
+                        nattempts_current_det_ispace = decide_nattempts(rng, real_population(ispace))
 
-                        nattempts_current_det = decide_nattempts(rng, real_population(ispace))
-
-                        call do_fciqmc_spawning_attempt(rng, qs%spawn_store%spawn, bloom_stats, sys, qs, nattempts_current_det, &
+                        call do_fciqmc_spawning_attempt(rng, qs%spawn_store%spawn, bloom_stats, sys, qs, &
+                                                        nattempts_current_det_ispace, &
                                                         cdet, determ, determ_parent, qs%psip_list%pops(ispace, idet), &
                                                         sys%read_in%comp .and. modulo(ispace,2)==0, &
                                                         ispace, logging_info)
@@ -432,7 +434,7 @@ contains
         if (debug) call end_logging(logging_info)
 
         call dealloc_det_info_t(cdet, .false.)
-
+        
         call dSFMT_end(rng)
 
     end subroutine do_fciqmc
@@ -484,7 +486,8 @@ contains
 
         type(excit_t) :: connection
         type(hmatel_t) :: hmatel
-        integer :: idet, nattempts_current_det, ispace
+        integer :: idet, ispace
+        integer :: nattempts_current_det(qs%psip_list%nspaces)
         integer(int_p) :: int_pop(spawn_recv%ntypes)
         real(p) :: real_pop(spawn_recv%ntypes)
         real(dp) :: list_pop
@@ -514,6 +517,10 @@ contains
             call set_parent_flag(real_pop, qmc_in%initiator_pop, 1, quadrature_initiator, cdet%initiator_flag)
 
             do ispace = 1, qs%psip_list%nspaces
+                nattempts_current_det(ispace) = decide_nattempts(rng, real_pop(ispace))
+            end do
+
+            do ispace = 1, qs%psip_list%nspaces
 
                 imag = sys%read_in%comp .and. mod(ispace,2) == 0
 
@@ -524,9 +531,7 @@ contains
                 call update_proj_energy_ptr(sys, qs%ref%f0, qs%trial%wfn_dat, cdet, real_pop, qs%estimators(ispace), &
                                             connection, hmatel)
 
-                nattempts_current_det = decide_nattempts(rng, real_pop(ispace))
-
-                call do_fciqmc_spawning_attempt(rng, spawn_to_send, bloom_stats, sys, qs, nattempts_current_det, &
+                call do_fciqmc_spawning_attempt(rng, spawn_to_send, bloom_stats, sys, qs, nattempts_current_det(ispace), &
                                             cdet, determ, .false., int_pop(ispace), &
                                             sys%read_in%comp .and. modulo(ispace,2) == 0, &
                                             ispace, logging_info)
@@ -559,7 +564,6 @@ contains
         !   nattempts_current_det: total number of spawning attempts
         !       to make on this determinant.
         !   ispace: space currently under consideration.
-        !   cdet: determinant spawning is originating from.
         !   determ_parent: true if parent determinant is within the
         !       semistochastic space, otherwise false.
         !   imag_parent: true if spawning from psips within an imaginary
@@ -573,6 +577,7 @@ contains
         !   qs: qmc_state_t derived type with information on
         !       current calculation.
         !   spawn: stored information on spawning.
+        !   cdet: determinant spawning is originating from.
 
         use dSFMT_interface, only: dSFMT_t
         use system, only: sys_t
@@ -590,7 +595,7 @@ contains
         type(qmc_state_t), intent(inout) :: qs
         type(logging_t), intent(in) :: logging_info
         integer, intent(in) :: nattempts_current_det, ispace
-        type(det_info_t), intent(in) :: cdet
+        type(det_info_t), intent(inout) :: cdet
         logical, intent(in) :: determ_parent, imag_parent
         integer(int_p), intent(in) :: pop
 

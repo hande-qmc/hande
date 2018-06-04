@@ -19,7 +19,8 @@ import pyhande.weight
 
 def std_analysis(datafiles, start=None, end=None, select_function=None,
         extract_psips=False, reweight_history=0, mean_shift=0.0,
-        arith_mean=False, calc_inefficiency=False, verbosity = 1):
+        arith_mean=False, calc_inefficiency=False, verbosity = 1, 
+        starts_reweighting=None, extract_rep_loop_time=False):
     '''Perform a 'standard' analysis of HANDE output files.
 
 Parameters
@@ -42,12 +43,20 @@ reweight_history : integer
     reweight in an attempt to remove population control bias. According to
     [Umrigar93]_ this should be set to be a few correlation times.
 mean_shift : float
-    prevent the weights from beoming to large.
+    prevent the weights from becoming to large.
+arith_mean : bool
+calc_inefficiency : bool
+    determines whether inefficiency should be calculated.
 verbosity : int
     values greater than 1 print out blocking information when automatically
     finding the starting iteration. 0 and 1 print out the starting iteration if
     automatically found. Negative values print out nothing from the automatic
     starting point search.
+starts_reweighting : list of floats
+    used by the reweighting_graph function to pass more than one starting 
+    iteration
+extract_rep_loop_time : bool
+    also extract the mean time taken per report loop from the calculation.
 
 Returns
 -------
@@ -90,13 +99,17 @@ Umrigar93
         calc_start = start
         calc_end = end
         if calc_start is None:
-            calc_start = find_starting_iteration(calc, md, verbose=verbosity,
+            if starts_reweighting is None:
+                calc_start = find_starting_iteration(calc, md, verbose=verbosity,
                                                  end=calc_end)
+            else:
+                calc_start = starts_reweighting[len(infos)]
         md['pyhande'] = {'reblock_start': calc_start}
         if (verbosity > -1) :
             print('Block from: %i' % calc_start)
         infos.append(lazy_block(calc, md, calc_start, calc_end,
-                    select_function, extract_psips, calc_inefficiency))
+                    select_function, extract_psips, calc_inefficiency,
+                    extract_rep_loop_time))
     return infos
 
 def zeroT_qmc(datafiles, reweight_history=0, mean_shift=0.0, arith_mean=False):
@@ -144,7 +157,8 @@ metadata : list of dict
     return (calcs, calcs_metadata)
 
 def lazy_block(calc, md, start=0, end=None, select_function=None,
-            extract_psips=False, calc_inefficiency=False):
+            extract_psips=False, calc_inefficiency=False,
+            extract_rep_loop_time=False):
     '''Standard blocking analysis on zero-temperature QMC calcaulations.
 
 .. note::
@@ -158,7 +172,8 @@ calc : :class:`pandas.DataFrame`
     Zero-temperature QMC calculation output.
 md : dict
     Metadata for the calculation in `calc`.
-start, end, select_function, extract_psips, calc_inefficiency:
+start, end, select_function, extract_psips, calc_inefficiency,
+    extract_rep_loop_time:
     See :func:`std_analysis`.
 
 Returns
@@ -189,6 +204,8 @@ info : :func:`collections.namedtuple`
     to_block.extend(['\sum H_0j N_j', 'N_0', 'Shift'])
     if reweight_calc:
         to_block.extend(['W * \sum H_0j N_j', 'W * N_0'])
+    if extract_rep_loop_time:
+        to_block.append('time')
 
     mc_data = calc.ix[indx, to_block]
     if mc_data['Shift'].iloc[0] == mc_data['Shift'].iloc[1]:
@@ -520,3 +537,81 @@ starting_iteration: integer
         plt.show()
 
     return starting_iteration
+
+def reweighting_graph(datafiles, start=None, verbosity=1, mean_shift=0.0,
+                      arith_mean=False):
+    '''Plot a graph of reweighted projected energy vs. reweighted factor W.
+    
+Detecting biases by reweighting is described in [Umrigar93]_ and [Vigor15]_ , 
+see pyhande.weight for details. The graph produced by this function is similar
+to figure 4 in [Vigor15]_.
+
+A similar function has been published in
+Neufeld, V., & Thom, A. J. Research data and further information supporting
+"A study of the dense uniform electron gas with high orders of coupled cluster" [Dataset].
+https://doi.org/10.17863/CAM.14336 under Attribution 4.0 International (CC BY 4.0).
+   
+Parameters
+----------
+datafiles : list of strings
+    names of files containing HANDE QMC calculation output.
+start : int or None
+    iteration from which the blocking analysis is performed.  If None, then
+    attempt to automatically determine a good iteration using
+    :func:`find_starting_iteration`.
+verbosity : int
+    values greater than 1 print out blocking information when automatically
+    finding the starting iteration. 0 and 1 print out the starting iteration if
+    automatically found. Negative values print out nothing from the automatic 
+    starting point search.
+mean_shift : float
+    prevent the weights from becoming to large.
+arith_mean : bool
+        
+
+References
+----------
+Umrigar93
+    C.J. Umirigar et al., J. Chem. Phys. 99, 2865 (1993)
+Vigor15
+    W.A. Vigor, et al., J. Chem. Phys. 142, 104101 (2015).
+
+Thanks to Will Vigor for original implementation.
+'''
+    weights = [2,4,8,16,32,64,128,256]
+    infos_collection = []
+    infos = std_analysis(datafiles=datafiles, start=start, extract_psips=True, 
+            verbosity = verbosity)
+    infos_collection.append(infos)
+    ndiff_calcs = len(infos)
+    starts = [info.metadata['pyhande']['reblock_start'] for info in infos]
+    
+    for weight in weights:
+        infos = std_analysis(datafiles=datafiles, start=start, 
+                extract_psips=True, reweight_history=weight, 
+                mean_shift=mean_shift, arith_mean=arith_mean, 
+                verbosity=verbosity, starts_reweighting=starts)
+        infos_collection.append(infos)
+    
+    for k in range(0, ndiff_calcs):
+        reweights = [0]
+        weighted_proj_energies = []
+        weighted_proj_energy_errs = []
+        weighted_proj_energies.append(infos_collection[0][k].opt_block['mean']['Proj. Energy'])
+        weighted_proj_energy_errs.append(infos_collection[0][k].opt_block['standard error']['Proj. Energy'])
+        for j in range(0,len(weights)):
+            try:
+                weighted_proj_energies.append(infos_collection[j+1][k].opt_block['mean']['Weighted Proj. E.'])
+                weighted_proj_energy_errs.append(infos_collection[j+1][k].opt_block['standard error']['Weighted Proj. E.'])
+                reweights.append(weights[j])
+            except:
+                print("Reweighting with " + str(weights[j]) + " and further failed.") 
+                break
+        
+        # Plotting the graph
+        plt.xlabel('Reweights')
+        plt.ylabel('(Reweighted) Projected Energy')
+        plt.errorbar(reweights, weighted_proj_energies, yerr=weighted_proj_energy_errs, fmt='o')
+        plt.title('Calculation #' + str(k+1))
+        plt.tight_layout()
+        plt.show()

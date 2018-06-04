@@ -904,22 +904,22 @@ contains
             ! reference is not on the current processor.  Instead work
             ! out how many clusters of each type we will sample
             ! explicitly.
-            min_cluster_size = 2
-            selection_data%nD0_select = nint(abs(D0_normalisation))
-            selection_data%nstochastic_clusters = ceiling(tot_abs_pop)
-            selection_data%nsingle_excitors = nstates
+            min_cluster_size = 2_int_32
+            selection_data%nD0_select = nint(abs(D0_normalisation),kind=int_64)
+            selection_data%nstochastic_clusters = ceiling(tot_abs_pop,kind=int_64)
+            selection_data%nsingle_excitors = int(nstates,kind=int_64)
             if (even_selection) then
                 if (max_size > 1) then
                     ! Set total selections so that expected proportion of selections of noncomposite gives
                     ! correct number of selections.
                     nselections = ceiling(tot_abs_pop / selection_data%size_weighting(1), kind=int_64)
-                    selection_data%nD0_select = ceiling(nselections * selection_data%size_weighting(0))
-                    selection_data%nstochastic_clusters = ceiling(nselections * sum(selection_data%size_weighting(2:)))
+                    selection_data%nD0_select = ceiling(nselections * selection_data%size_weighting(0), kind=int_64)
+                    selection_data%nstochastic_clusters = ceiling(nselections * sum(selection_data%size_weighting(2:)), kind=int_64)
                 else
-                    selection_data%nstochastic_clusters = 0
+                    selection_data%nstochastic_clusters = 0_int_64
                 end if
             end if
-            nattempts = nint(tot_abs_pop) + selection_data%nD0_select + selection_data%nstochastic_clusters
+            nattempts = nint(tot_abs_pop, kind=int_64) + selection_data%nD0_select + selection_data%nstochastic_clusters
         else
             min_cluster_size = 0
             selection_data%nD0_select = 0 ! instead of this number of deterministic selections, these are chosen stochastically

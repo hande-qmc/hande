@@ -2,7 +2,7 @@ module excit_gen_power_pitzer_mol
 
 ! A module containing excitations generators for molecules which weight excitations according to the exchange matrix elements.
 
-use const, only: i0, p, depsilon
+use const, only: i0, p, depsilon, debug
 
 implicit none
 
@@ -659,12 +659,12 @@ contains
         ! In:
         !    sys: system object being studied.
         !    excit_gen_data: Excitation generation data.
-        !    cdet: info on the current determinant (cdet) that we will gen
-        !        from.
         !    parent_sign: sign of the population on the parent determinant (i.e.
         !        either a positive or negative integer).
         ! In/Out:
         !    rng: random number generator.
+        !    cdet: info on the current determinant (cdet) that we will gen
+        !        from.
         ! Out:
         !    pgen: probability of generating the excited determinant from cdet.
         !    connection: excitation connection between the current determinant
@@ -688,7 +688,7 @@ contains
 
         type(sys_t), intent(in) :: sys
         type(excit_gen_data_t), intent(in) :: excit_gen_data
-        type(det_info_t), intent(in) :: cdet
+        type(det_info_t), intent(inout) :: cdet
         type(dSFMT_t), intent(inout) :: rng
         real(p), intent(out) :: pgen
         type(hmatel_t), intent(out) :: hmatel
@@ -984,12 +984,12 @@ contains
         ! In:
         !    sys: system object being studied.
         !    excit_gen_data: Excitation generation data.
-        !    cdet: info on the current determinant (cdet) that we will gen
-        !        from.
         !    parent_sign: sign of the population on the parent determinant (i.e.
         !        either a positive or negative integer).
         ! In/Out:
         !    rng: random number generator.
+        !    cdet: info on the current determinant (cdet) that we will gen
+        !        from.
         ! Out:
         !    pgen: probability of generating the excited determinant from cdet.
         !    connection: excitation connection between the current determinant
@@ -1009,10 +1009,12 @@ contains
         use hamiltonian_data, only: hmatel_t
         use read_in_symmetry, only: cross_product_basis_read_in
         use search, only: binary_search
+        use errors, only: stop_all
+        use excit_gen_utils, only: find_diff_ref_cdet
 
         type(sys_t), intent(in) :: sys
         type(excit_gen_data_t), intent(in) :: excit_gen_data
-        type(det_info_t), intent(in) :: cdet
+        type(det_info_t), intent(inout) :: cdet
         type(dSFMT_t), intent(inout) :: rng
         real(p), intent(out) :: pgen
         type(hmatel_t), intent(out) :: hmatel
@@ -1037,6 +1039,14 @@ contains
 
         logical :: found
 
+        ! Pre-calculate the list of differing orbitals between reference and cdet.
+        ! The pre-calculation is the same for both single and double excitation.
+        if (.not. cdet%single_precalc) then
+            call find_diff_ref_cdet(sys, cdet, excit_gen_data%excit_gen_pp)
+            cdet%single_precalc = .true.
+            cdet%double_precalc = .true.
+        end if
+        
         ! 1. Select single or double.
         if (get_rand_close_open(rng) < excit_gen_data%pattempt_single) then  
             ! We have a single
@@ -1258,10 +1268,10 @@ contains
         ! In:
         !    sys: system object being studied.
         !    excit_gen_data: Excitation generation data.
-        !    cdet: info on the current determinant (cdet) that we will gen
-        !        from.
         ! In/Out:
         !    rng: random number generator.
+        !    cdet: info on the current determinant (cdet) that we will gen
+        !        from.
         ! Out:
         !    pgen: probability of generating the excited determinant from cdet.
         !    connection: excitation connection between the current determinant
@@ -1282,14 +1292,14 @@ contains
         use search, only: binary_search
         use checking, only: check_allocate, check_deallocate
         use excit_gens, only: excit_gen_power_pitzer_t, excit_gen_data_t
-        use excit_gen_utils, only: select_ij_heat_bath
+        use excit_gen_utils, only: select_ij_heat_bath, find_i_d_weights
         use alias, only: select_weighted_value
         use read_in_symmetry, only: cross_product_basis_read_in
         use qmc_data, only: excit_gen_power_pitzer_occ_ij
 
         type(sys_t), intent(in) :: sys
         type(excit_gen_data_t), intent(in) :: excit_gen_data
-        type(det_info_t), intent(in) :: cdet
+        type(det_info_t), intent(inout) :: cdet
         type(dSFMT_t), intent(inout) :: rng
         real(p), intent(out) :: pgen
         type(hmatel_t), intent(out) :: hmatel
@@ -1316,6 +1326,12 @@ contains
             ! 2. Select orbitals to excite from
             if (excit_gen_data%excit_gen == excit_gen_power_pitzer_occ_ij) then
                 ! Select ij using heat bath excit. gen. techniques.
+                ! If this is the first time this excitation generator has been called in a double excitation with this cdet,
+                ! need to calculate weights.
+                if (.not. cdet%double_precalc) then
+                    call find_i_d_weights(sys%nel, excit_gen_data%excit_gen_pp%ppm_i_d_weights, cdet)
+                    cdet%double_precalc = .true.
+                end if
 
                 call select_ij_heat_bath(rng, sys%nel, excit_gen_data%excit_gen_pp%ppm_ij_d_weights, cdet, i, j, i_ind, j_ind, &
                     ij_weights_occ, ij_weights_occ_tot, ji_weights_occ, ji_weights_occ_tot, allowed_excitation)

@@ -483,25 +483,24 @@ contains
                 decoder_ptr => decode_det_spinocc_spinsymunocc
             case(excit_gen_power_pitzer_occ_ij)
                 gen_excit_ptr%full => gen_excit_mol_power_pitzer_occ
-                decoder_ptr => decode_det_ppMij
+                decoder_ptr => decode_det_spinocc_spinsymunocc
             case(excit_gen_power_pitzer)
                 gen_excit_ptr%full => gen_excit_mol_power_pitzer_occ_ref
                 decoder_ptr => decode_det_occ
             case(excit_gen_power_pitzer_orderN)
                 ! [todo] - check this decoder is correct.
                 gen_excit_ptr%full => gen_excit_mol_power_pitzer_orderN
-                decoder_ptr => decode_det_ppN
+                decoder_ptr => decode_det_occ
             case(excit_gen_heat_bath)
                 gen_excit_ptr%full => gen_excit_mol_heat_bath
-                decoder_ptr => decode_det_hb
+                decoder_ptr => decode_det_occ
             case(excit_gen_heat_bath_uniform)
                 gen_excit_ptr%full => gen_excit_mol_heat_bath_uniform
-                decoder_ptr => decode_det_hbu
+                decoder_ptr => decode_det_occ_symunocc
             case(excit_gen_heat_bath_single)
-                ! [todo] uses basically same function as hb_uniform but
-                ! [todo] has varying function call with singles.
                 gen_excit_ptr%full => gen_excit_mol_heat_bath_uniform
-                decoder_ptr => decode_det_hbs
+                ! [todo] - the unocc part is only needed for singles. Too expensive here?
+                decoder_ptr => decode_det_occ_unocc
             case default
                 call stop_all('init_proc_pointers', 'Selected excitation generator not implemented.')
             end select
@@ -1059,7 +1058,7 @@ contains
         call check_allocate('reference%occ_list0',sys%nel,ierr)
         allocate(reference%hs_occ_list0(sys%nel), stat=ierr)
         call check_allocate('reference%hs_occ_list0',sys%nel,ierr)
-        call get_reference_hdf5(ri, sys%basis%info_string_len, reference)
+        call get_reference_hdf5(ri, sys%basis%nbasis, sys%basis%info_string_len, reference)
 
         ! Need to re-calculate the reference determinant data
         call decode_det(sys%basis, reference%f0, reference%occ_list0)
