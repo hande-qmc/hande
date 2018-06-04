@@ -1267,7 +1267,7 @@ contains
             nspawned_im = 0_int_p
         else if (sys%read_in%comp) then
             call spawner_complex_ccmc(rng, sys, qs, qs%spawn_store%spawn%cutoff, &
-                      contrib%cdet, contrib%cluster, gen_excit_ptr, nspawned, nspawned_im, &
+                      ccmc_in%linked, contrib%cdet, contrib%cluster, gen_excit_ptr, logging_info,  nspawned, nspawned_im, &
                       connection, nspawnings_total, ps_stat)
         else
             call spawner_ccmc(rng, sys, qs, qs%spawn_store%spawn%cutoff, &
