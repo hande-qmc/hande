@@ -219,11 +219,11 @@ contains
         psize = 0.0_p
         cluster%nexcitors = -1
         do i = 0, max_size-min_size-1
-            psize = psize + 1.0_p/2**(i+1)
+            psize = psize + 1.0_p/2_int_64**(i+1)
             if (rand < psize) then
                 ! Found size!
                 cluster%nexcitors = i+min_size
-                cluster%pselect = cluster%pselect/2**(i+1)
+                cluster%pselect = cluster%pselect/2_int_64**(i+1)
                 exit
             end if
         end do
@@ -1018,7 +1018,7 @@ contains
                 ! Must include factor of D0_normalisation from wavefunction anzatx expansion and factor of
                 ! 1/(nprocs^(i-1)) to account for the probability of two excitors being on the same
                 ! proccessor on any given iteration.
-                cluster_selection%size_weighting(i) = cluster_selection%size_weighting(i) * (nprocs ** (i-1)) &
+                cluster_selection%size_weighting(i) = cluster_selection%size_weighting(i) * (int(nprocs, kind=int_64) ** (i-1)) &
                                                     / ((abs_D0_normalisation) ** (i-1))
             end associate
         end do
