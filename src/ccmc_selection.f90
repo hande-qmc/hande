@@ -1030,8 +1030,8 @@ contains
                 ! Must include factor of D0_normalisation from wavefunction anzatx expansion and factor of
                 ! 1/(nprocs^(i-1)) to account for the probability of two excitors being on the same
                 ! proccessor on any given iteration.
-                cluster_selection%size_weighting(i) = cluster_selection%size_weighting(i) * (int(nprocs, kind=int_64) ** (i-1)) &
-                                                    / ((abs_D0_normalisation) ** (i-1))
+                cluster_selection%size_weighting(i) = cluster_selection%size_weighting(i) * &
+                                                        ((nprocs/abs_D0_normalisation) ** (i-1))
             end associate
         end do
 
