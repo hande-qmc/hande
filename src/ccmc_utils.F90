@@ -440,7 +440,7 @@ contains
             else
                 ex_lvl_dist%cumulative_nstates_ex_lvl(0:ex_lvls(1)) = 0
             end if
-            ex_lvl_dist%cumulative_pop_ex_lvl(0) = 0
+            ex_lvl_dist%cumulative_pop_ex_lvl = 0.0_p
             ex_lvl = 0_i0
         end if
 
