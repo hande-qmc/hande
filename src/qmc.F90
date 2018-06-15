@@ -56,7 +56,7 @@ contains
                             neel_singlet, &
                             excit_gen_power_pitzer, excit_gen_power_pitzer_orderN, excit_gen_power_pitzer_occ_ij, &
                             excit_gen_heat_bath, excit_gen_heat_bath_uniform, excit_gen_heat_bath_single, &
-                            excit_gen_cauchy_schwarz_occ_ij
+                            excit_gen_cauchy_schwarz_occ, excit_gen_cauchy_schwarz_occ_ij
         use reference_determinant, only: reference_t
         use dmqmc_data, only: dmqmc_in_t
         use excit_gens, only: dealloc_excit_gen_data_t
@@ -295,7 +295,7 @@ contains
         use qmc_data, only: qmc_in_t, fciqmc_in_t, single_basis, neel_singlet, neel_singlet_guiding, &
                             excit_gen_renorm, excit_gen_renorm_spin, excit_gen_no_renorm, excit_gen_no_renorm_spin, &
                             excit_gen_power_pitzer_occ, excit_gen_power_pitzer_occ_ij, excit_gen_power_pitzer, &
-                            excit_gen_power_pitzer_orderN, excit_gen_cauchy_schwarz_occ_ij, &
+                            excit_gen_power_pitzer_orderN, excit_gen_cauchy_schwarz_occ, excit_gen_cauchy_schwarz_occ_ij, &
                             excit_gen_heat_bath, excit_gen_heat_bath_uniform, excit_gen_heat_bath_single
         use dmqmc_data, only: dmqmc_in_t, free_electron_dm
         use reference_determinant, only: reference_t
@@ -488,6 +488,10 @@ contains
             case(excit_gen_power_pitzer_occ_ij)
                 gen_excit_ptr%full => gen_excit_mol_power_pitzer_occ
                 decoder_ptr => decode_det_spinocc_spinsymunocc
+            case(excit_gen_cauchy_schwarz_occ)
+                gen_excit_ptr%full => gen_excit_mol_power_pitzer_occ
+                decoder_ptr => decode_det_spinocc_spinsymunocc
+                get_two_body_int_cou_ex_mol_real_ptr => get_two_body_int_cou_mol_real
             case(excit_gen_cauchy_schwarz_occ_ij)
                 gen_excit_ptr%full => gen_excit_mol_power_pitzer_occ
                 decoder_ptr => decode_det_spinocc_spinsymunocc
