@@ -944,19 +944,18 @@ contains
         type(logging_t), intent(in) :: logging_info
         integer, intent(in) :: iter
         type(selection_data_t), intent(inout) :: selection_info
-        real(dp) :: var(lbound(selection_info%average_amplitude,dim=1): &
-                        ubound(selection_info%average_amplitude,dim=1))
+        real(dp) :: var
         integer :: i
 
         if (logging_info%write_logging .and. logging_info%write_amp_psel) then
-            var = selection_info%variance_amplitude - selection_info%average_amplitude**2
 
             write (logging_info%select_unit, '(1X)', advance='no')
             call write_qmc_var(logging_info%select_unit, iter, sep=',')
 
             do i = lbound(selection_info%average_amplitude,dim=1), ubound(selection_info%average_amplitude,dim=1)
                 call write_qmc_var(logging_info%select_unit, selection_info%average_amplitude(i), sep=',')
-                call write_qmc_var(logging_info%select_unit, var(i), sep=',')
+                var = selection_info%variance_amplitude(i) - selection_info%average_amplitude(i)**2
+                call write_qmc_var(logging_info%select_unit, var, sep=',')
             end do
 
             write (logging_info%select_unit, '()')
