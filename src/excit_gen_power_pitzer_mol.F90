@@ -1295,7 +1295,7 @@ contains
         use excit_gen_utils, only: select_ij_heat_bath, find_i_d_weights
         use alias, only: select_weighted_value
         use read_in_symmetry, only: cross_product_basis_read_in
-        use qmc_data, only: excit_gen_power_pitzer_occ_ij
+        use qmc_data, only: excit_gen_power_pitzer_occ_ij, excit_gen_cauchy_schwarz_occ_ij
 
         type(sys_t), intent(in) :: sys
         type(excit_gen_data_t), intent(in) :: excit_gen_data
@@ -1324,7 +1324,8 @@ contains
             ! We have a double
 
             ! 2. Select orbitals to excite from
-            if (excit_gen_data%excit_gen == excit_gen_power_pitzer_occ_ij) then
+            if ((excit_gen_data%excit_gen == excit_gen_power_pitzer_occ_ij) .or. &
+                (excit_gen_data%excit_gen == excit_gen_cauchy_schwarz_occ_ij)) then
                 ! Select ij using heat bath excit. gen. techniques.
                 ! If this is the first time this excitation generator has been called in a double excitation with this cdet,
                 ! need to calculate weights.
