@@ -213,7 +213,7 @@ algorithms and control the core settings in the algorithms.
     'renorm_spin' and 'no_renorm_spin' are very similar to 'renorm' and 'no_renorm'
     respectively but when selecting :math:`i` and :math:`j`, they first decide with
     probability ``pattempt_parallel`` whether :math:`i` and :math:`j` should have
-    parallel spins or not.
+    parallel spins or not. The idea for those comes from Alavi and others.
 
     The 'heat_bath' excitation generator is very similar to the "original" heat bath
     excitation generator described by Holmes et al. [Holmes16]_. :math:`i,j,a,b` are chosen
