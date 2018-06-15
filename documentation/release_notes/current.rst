@@ -11,3 +11,5 @@ Bug Fixes
   Incorrect even selection weightings only affect the efficiency of the selection, and will not in general introduce a bias.
   Effects on systems without single excitations (e.g. UEG and Hubbard models) are undefined. 
   The bug-fix changes Markov chains.
+* Even selection also had a bug that caused integer overflow when the number of MPI processes raised to the power of (coupled cluster level - 1) is
+  bigger then a 32 bit integer.
