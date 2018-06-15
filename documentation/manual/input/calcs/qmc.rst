@@ -189,6 +189,8 @@ algorithms and control the core settings in the algorithms.
                   power_pitzer_orderM,
                   power_pitzer_orderM_ij,
                   power_pitzer_orderN
+                  cauchy_schwarz_orderM,
+                  cauchy_schwarz_orderM_ij
     ringium       no_renorm                 no_renorm
     ueg           no_renorm,                no_renorm
                   power_pitzer
@@ -223,7 +225,10 @@ algorithms and control the core settings in the algorithms.
     there might be no occupied :math:`j` that lets us select :math:`ija`. See Holmes et al.
     for details. We check for the bias in the beginning of a calculation and stop it if
     necessary.
-    The Power-Pitzer excitation generators use approximate upper bounds for these weights.
+    The Cauchy-Scharz ([SmartXX]_, described in [Blunt17]_)
+    and Power-Pitzer excitation generators use approximate upper bounds
+    for these weights. Cauchy-Scharz uses Coulomb integrals and Power-Pitzer uses
+    exchange integrals to approximate weights.
     'heat_bath_uniform' is very similar to 'heat_bath' but samples single excitations
     uniformly (mentioned by Holmes et al.) and 'heat_bath_single' is also very similar
     but samples single excitations with the correct weighting (following a
@@ -232,7 +237,9 @@ algorithms and control the core settings in the algorithms.
 
     The 'power_pitzer' excitation generator generates double excitations using a Power-Pitzer
     [Power74]_ upper bound for the value of the Hamiltonian matrix element, 
-    :math:`|\langle ij|ab\rangle|^2 > \langle ia|ai\rangle\langle jb|bj\rangle`.
+    :math:`|\langle ij|ab\rangle|^2 => \langle ia|ai\rangle\langle jb|bj\rangle`
+    (:math:`|\langle ij|ab\rangle|^2 => \langle ia|ia\rangle\langle jb|jb\rangle` for
+    Cauchy-Schwarz excitation generators).
     This involves some precalcalated weights and alias tables, but should reduce both noise
     and shoulder heights. The weights to select a certain excitation are calculated for
     the reference in the beginning of the QMC calculation. Each time the excitation
@@ -250,6 +257,9 @@ algorithms and control the core settings in the algorithms.
     is similar to 'power_pitzer_orderM' but samples selects :math:`i` and :math:`j`
     similarly to the heat bath excitation generators. The memory cost is
     :math:`\mathcal{O}(M^2)`.
+    'cauchy_schwarz_orderM' is similar to 'power_pitzer_orderM' and 'cauchy_schwarz_orderM_ij'
+    is similar to 'power_pitzer_orderM_ij', the distinction being the types of weights used
+    to select :math:`ab`.
 
     The 'power_pitzer_orderN' excitation generator uses precalculated weights and unlike
     'power_pitzer', it also samples :math:`i` and :math:`j` with weighted probabilities.
