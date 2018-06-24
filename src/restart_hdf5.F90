@@ -995,8 +995,8 @@ module restart_hdf5
             if (iproc_target_start > iproc_target_end) nprocs_read = 0
 
             ! Create filenames and HDF5 IDs for all old and new files.
-            ! even if this proc has nothing to do, we still need a name to read
-            ! in metatdata from.
+            ! Even if this proc has nothing to do, we still need an old filename to read
+            ! in metadata from, stored in orig_names(0)
             allocate(orig_names(0:max(0 , nprocs_read-1)))
             do i = 0, max(0 , nprocs_read-1)
                 call init_restart_hdf5(ri, .false., orig_names(i), ip=i, verbose=i==0.and.parent)
