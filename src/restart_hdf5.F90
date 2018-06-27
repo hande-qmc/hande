@@ -971,7 +971,6 @@ module restart_hdf5
                 iproc_target_end = iproc_target_start + nprocs_target/nprocs - 1
                 if (i < mod(nprocs_target,nprocs)) iproc_target_end = iproc_target_end + 1
             end do
-
             ! Hard code 1 load-balancing slot per processor for simplicity.  If the user wishes to use multiple
             ! slots, we should allow this to change when reading in the redistributed restart files.
             call init_proc_map_t(1, pm_dummy, nprocs_target)
@@ -996,8 +995,10 @@ module restart_hdf5
             if (iproc_target_start > iproc_target_end) nprocs_read = 0
 
             ! Create filenames and HDF5 IDs for all old and new files.
-            allocate(orig_names(0:nprocs_read-1))
-            do i = 0, nprocs_read-1
+            ! Even if this proc has nothing to do, we still need an old filename to read
+            ! in metadata from, stored in orig_names(0)
+            allocate(orig_names(0:max(0 , nprocs_read-1)))
+            do i = 0, max(0 , nprocs_read-1)
                 call init_restart_hdf5(ri, .false., orig_names(i), ip=i, verbose=i==0.and.parent)
             end do
             allocate(new_names(iproc_target_start:iproc_target_end))
