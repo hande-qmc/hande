@@ -167,3 +167,16 @@ add_custom_command(TARGET ${HANDE_EXE_NAME}
   COMMENT
     "Copying executable ${HANDE_EXE_NAME} to ${PROJECT_SOURCE_DIR}/bin and symlinking it to ${PROJECT_SOURCE_DIR}/bin/hande.x"
   )
+install(
+  TARGETS
+    hande-static ${HANDE_EXE_NAME}
+  ARCHIVE
+    DESTINATION ${CMAKE_INSTALL_LIBDIR}
+    COMPONENT lib
+  RUNTIME
+    DESTINATION ${CMAKE_INSTALL_BINDIR}
+    COMPONENT bin
+  LIBRARY
+    DESTINATION ${CMAKE_INSTALL_LIBDIR}
+    COMPONENT lib
+  )
