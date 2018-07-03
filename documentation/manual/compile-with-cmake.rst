@@ -205,6 +205,12 @@ set *via* the ``--prefix`` option to the frontend script or, equivalently,
 passing the desired path to CMake *via* the ``CMAKE_INSTALL_PREFIX`` variable.
 The HANDE executable and static library will be installed to the ``bin`` and
 ``lib`` (``lib64`` on 64-bit systems) subdirectories of the install prefix.
+
+.. note::
+
+    It might be advisable to install pyhande to the same prefix as the HANDE
+    executable.
+
 Assuming the install prefix to have been set to ``$HOME/Software/hande``, the
 install tree will thus look as follows:
 
