@@ -153,6 +153,11 @@ target_link_libraries(hande-static
     "$<$<BOOL:${USE_HDF5}>:${HDF5_Fortran_LIBRARIES}>"
     "${LUA_LIBRARIES}"
   )
+set_target_properties(hande-static
+  PROPERTIES
+    OUTPUT_NAME "hande"
+  )
+
 add_executable(${HANDE_EXE_NAME} core.f90)
 target_link_libraries(${HANDE_EXE_NAME}
   PRIVATE
