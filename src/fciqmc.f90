@@ -487,7 +487,7 @@ contains
         type(excit_t) :: connection
         type(hmatel_t) :: hmatel
         integer :: idet, ispace
-        integer :: nattempts_current_det(qs%psip_list%nspaces)
+        integer :: nattempts_current_det
         integer(int_p) :: int_pop(spawn_recv%ntypes)
         real(p) :: real_pop(spawn_recv%ntypes)
         real(dp) :: list_pop
@@ -516,12 +516,10 @@ contains
             ! [todo] - pass determ_flag rather than 1.
             call set_parent_flag(real_pop, qmc_in%initiator_pop, 1, quadrature_initiator, cdet%initiator_flag)
 
-            do ispace = 1, qs%psip_list%nspaces
-                nattempts_current_det(ispace) = decide_nattempts(rng, real_pop(ispace))
-            end do
 
             do ispace = 1, qs%psip_list%nspaces
 
+                nattempts_current_det = decide_nattempts(rng, real_pop(ispace))
                 imag = sys%read_in%comp .and. mod(ispace,2) == 0
 
                 ! It is much easier to evaluate the projected energy at the
@@ -531,7 +529,7 @@ contains
                 call update_proj_energy_ptr(sys, qs%ref%f0, qs%trial%wfn_dat, cdet, real_pop, qs%estimators(ispace), &
                                             connection, hmatel)
 
-                call do_fciqmc_spawning_attempt(rng, spawn_to_send, bloom_stats, sys, qs, nattempts_current_det(ispace), &
+                call do_fciqmc_spawning_attempt(rng, spawn_to_send, bloom_stats, sys, qs, nattempts_current_det, &
                                             cdet, determ, .false., int_pop(ispace), &
                                             sys%read_in%comp .and. modulo(ispace,2) == 0, &
                                             ispace, logging_info)
