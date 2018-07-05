@@ -209,7 +209,8 @@ The HANDE executable and static library will be installed to the ``bin`` and
 .. note::
 
     It might be advisable to install pyhande to the same prefix as the HANDE
-    executable.
+    executable. Refer to pyhande's `README <https://github.com/hande-qmc/hande/blob/master/tools/pyhande/README.rst>`_
+    for detailed instructions.
 
 Assuming the install prefix to have been set to ``$HOME/Software/hande``, the
 install tree will thus look as follows:
