@@ -170,6 +170,13 @@ contains
         if (dmqmc_in%calc_struc_fac) call allocate_kspace_correlation_functions(sys, dmqmc_in%struc_fac_qmax, .false., &
                                                                                dmqmc_estimates%struc_fac%f_k, &
                                                                                dmqmc_estimates%struc_fac%kpoints)
+        ! The 2-Body RDM (Green Function).
+        if (dmqmc_in%green_calc_frequency /= 0) then
+            associate(nbasis=>sys%basis%nbasis)
+                allocate(dmqmc_estimates%green(nbasis*(nbasis-1)/2,nbasis*(nbasis-1)/2), stat=ierr)
+                call check_allocate('dmqmc_estimates%green', nbasis**2*(nbasis-1)**2/4, ierr)
+            end associate
+        end if
 
     end subroutine init_dmqmc
 

@@ -1414,6 +1414,104 @@ contains
 
     end subroutine calculate_rdm_renyi_2
 
+    subroutine calculate_green_function(sys, psip_list, weighted_sampling, green)
+
+        ! Calculate 2-RDM (Green Function) for the current density matrix.
+
+        ! In:
+        !   sys: system being studied.
+        !   psip_list: arrays containing information about psips.
+        !   weighted_sampling: information about weighted DMQMC sampling.
+        ! In/Out:
+        !   green: the 2-RDM matrix.
+
+        use system, only: sys_t
+        use qmc_data, only: particle_t
+        use determinants, only: det_info_t, alloc_det_info_t
+        use dmqmc_data, only: dmqmc_weighted_sampling_t
+        use excitations, only: excit_t, get_excitation_level
+        use proc_pointers, only: decoder_ptr
+        use replica_rdm, only: update_rdm
+        
+        type(sys_t), intent(in) :: sys
+        type(particle_t), intent(in), target :: psip_list
+        type(dmqmc_weighted_sampling_t), intent(in) :: weighted_sampling
+        real(p), intent(inout) :: green(:, :)
+
+        type(det_info_t) :: cdet1, cdet2
+        real(p) :: unweighted_walker_pop(psip_list%nspaces)
+        integer :: idet, nexcit
+
+        green = 0._p
+        call alloc_det_info_t(sys, cdet1, .false.)
+        call alloc_det_info_t(sys, cdet2, .false.)
+
+        do idet = 1, psip_list%nstates
+
+            ! Decode the two Slater determinants into cdet1 and cdet2.
+            cdet1%f => psip_list%states(:sys%basis%tot_string_len,idet)
+            cdet2%f => psip_list%states((sys%basis%tot_string_len+1):(2*sys%basis%tot_string_len),idet)
+            call decoder_ptr(sys, cdet1%f, cdet1)
+            call decoder_ptr(sys, cdet2%f, cdet2)
+
+            ! Need to get unweighted walker population for weighted sampling first.
+            ! [fixme] Excitation-related routines are called twice (once here and once in update_rdm). Maybe the redundant call 
+            !         can be removed by modifying a little the update_rdm procedure.
+            nexcit = get_excitation_level(cdet1%f, cdet2%f)
+            if (nexcit < 3) then
+                unweighted_walker_pop = real(psip_list%pops(:,idet),p)*weighted_sampling%probs(nexcit)/psip_list%pop_real_factor
+                call update_rdm(sys, cdet1, cdet2, unweighted_walker_pop(1), 1.0_p, 1.0_p, green)
+            end if
+
+        end do
+
+    end subroutine calculate_green_function
+
+    subroutine write_green_function(sys, reference, prefix, green)
+
+        ! Write the 2-RDM (Green Function).
+
+        ! In:
+        !   sys: system being studied.
+        !   reference: reference state (H00 is used for evaluating energy).
+        !   prefix: filename prefix of the output RDM file (the output filename 
+        !      will be prefix.X where X is an increasing index).
+        ! In/Out:
+        !   green: the 2-RDM matrix.
+
+        use parallel
+        use utils, only: append_ext
+        use system, only: sys_t
+        use qmc_data, only: reference_t
+        use replica_rdm, only: write_final_rdm, calc_rdm_energy
+        
+        type(sys_t), intent(in) :: sys
+        type(reference_t), intent(in) :: reference
+        character(*), intent(in) :: prefix
+        real(p), intent(inout) :: green(:, :)
+
+        ! fnum is number X in the filename prefix.X.
+        integer :: iunit, fnum
+        real(p) :: energy, trace
+        logical :: exist_t
+        character(10) :: green_filename
+
+        iunit = 6
+        fnum = 1
+        do
+            call append_ext(trim(prefix), fnum, green_filename)
+            inquire(file=green_filename, exist=exist_t)
+            if (.not. exist_t) exit
+            fnum = fnum + 1
+        end do
+
+        if (parent) write(iunit, '(1x,"# Writing RDM-2 (Normalized Green Function) to file ",2x,A10, /)') green_filename
+        call write_final_rdm(green, sys%nel, sys%basis%nbasis, green_filename, iunit)
+        call calc_rdm_energy(sys, reference, green, energy, trace)
+        if (parent) write(iunit, '(1x,"# Final energy from RDM-2 ",2x,es17.10, /)') energy/trace
+    
+    end subroutine write_green_function
+
     subroutine dmqmc_kinetic_energy_diag(sys, cdet, excitation, H00, pop, kinetic_energy)
 
         ! Add the contribution for the current density matrix element to the thermal

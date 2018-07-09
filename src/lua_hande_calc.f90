@@ -1402,10 +1402,10 @@ contains
         character(30), parameter :: ip_keys(6)    = [character(30) :: 'target_beta', 'initial_beta', 'initial_matrix',           &
                                                                       'grand_canonical_initialisation', 'metropolis_attempts',   &
                                                                       'symmetric']
-        character(30), parameter :: op_keys(12)    = [character(30) :: 'renyi2', 'energy', 'energy2', 'staggered_magnetisation',  &
+        character(30), parameter :: op_keys(14)    = [character(30) :: 'renyi2', 'energy', 'energy2', 'staggered_magnetisation',  &
                                                                        'correlation', 'excit_dist', 'kinetic_energy',             &
                                                                        'H0_energy', 'potential_energy', 'HI_energy', 'mom_dist',  &
-                                                                       'structure_factor']
+                                                                       'structure_factor', 'rdm2_freqency', 'rdm2_filename']
         character(30), parameter :: rdm_keys(9)   = [character(30) :: 'spawned_state_size', 'rdms', 'ground_state',              &
                                                                       'ground_state_start', 'instantaneous', 'write',              &
                                                                       'concurrence', 'von_neumann', 'renyi2']
@@ -1498,6 +1498,8 @@ contains
                 call aot_get_val(dmqmc_in%struc_fac_qmax, err, lua_state, table, 'structure_factor')
                 dmqmc_in%calc_struc_fac = .true.
             end if
+            call aot_get_val(dmqmc_in%green_calc_frequency, err, lua_state, table, 'rdm2_frequency', default=0)
+            call aot_get_val(dmqmc_in%green_file_prefix, err, lua_state, table, 'rdm2_filename', default='RDM')
             call aot_get_val(dmqmc_in%calc_excit_dist, err, lua_state, table, 'excit_dist')
             call warn_unused_args(lua_state, op_keys, table)
             call aot_table_close(lua_state, table)

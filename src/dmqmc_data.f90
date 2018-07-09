@@ -215,6 +215,12 @@ type dmqmc_in_t
     logical :: calc_struc_fac = .false.
     ! Maximum momentum transfer to consider in structure factor (in terms of the Fermi wave vector).
     real(p) :: struc_fac_qmax = 0.0
+    ! If non-zero RDM-2 will be evalutated at the end of each N cycles.
+    ! NB: Here RDM-2 means the 2-body Green function (not to be confused with the one for subsystems):
+    !     < c_a^\dag c_b^\dag c_i c_j >
+    integer :: green_calc_frequency = 0
+    ! Filename prefix to write RDM-2 (Green Function) to.
+    character(10) :: green_file_prefix = 'RDM'
 
 end type dmqmc_in_t
 
@@ -285,6 +291,9 @@ type dmqmc_estimates_t
     ! This array is used to hold the number of particles on each excitation
     ! level of the density matrix.
     real(p), allocatable :: excit_dist(:) ! (0:max_number_excitations)
+
+    ! Estimation for RDM-2 (2-body Green Functions)
+    real(p), allocatable :: green(:, :)
 
     ! Momentum distribution.
     type(momentum_corr_t) :: mom_dist

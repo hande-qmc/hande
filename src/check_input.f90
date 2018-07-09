@@ -290,6 +290,8 @@ contains
             call stop_all(this, 'The replica_tricks option must be used in order to calculate the Renyi-2 entropy.')
         if (doing_dmqmc_calc(dmqmc_HI_energy) .and. (.not. dmqmc_in%symmetric)) &
             call stop_all(this, 'Evaluation of interaction picture Hamiltonian only possible when using symmetric algorithm.')
+        if (dmqmc_in%green_calc_frequency /= 0 .and. sys%system /= read_in) &
+            call stop_all(this, "2-body density matrices not implemented for this system type.")
 
         if (dmqmc_in%all_spin_sectors) then
             if (abs(sys%heisenberg%magnetic_field) > depsilon .or. &
@@ -369,7 +371,7 @@ contains
         end if
 
         if (ccmc_in%density_matrices .and. sys%system /= read_in) then
-            call stop_all(this, "CCMC density matrices not implemented for this system type.")
+            call stop_all(this, "2-body density matrices not implemented for this system type.")
         end if
 
         if (sys%read_in%comp .and. ccmc_in%linked) call stop_all(this, 'Linked complex CCMC not yet implemented')

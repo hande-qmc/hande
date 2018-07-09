@@ -360,6 +360,12 @@ contains
                 ! Update the time for the start of the next iteration.
                 t1 = t2
 
+                ! Call RDM-2 (Green Function) routines if conditions are met.
+                if (dmqmc_in%green_calc_frequency /= 0 .and. mod(ireport*qmc_in%ncycles, dmqmc_in%green_calc_frequency) == 0) then
+                    call calculate_green_function(sys, qs%psip_list, weighted_sampling, dmqmc_estimates%green)
+                    call write_green_function(sys, qs%ref, dmqmc_in%green_file_prefix, dmqmc_estimates%green)
+                end if
+
                 if (soft_exit) exit outer_loop
 
             end do
