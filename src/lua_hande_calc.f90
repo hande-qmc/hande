@@ -1405,7 +1405,7 @@ contains
         character(30), parameter :: op_keys(14)    = [character(30) :: 'renyi2', 'energy', 'energy2', 'staggered_magnetisation',  &
                                                                        'correlation', 'excit_dist', 'kinetic_energy',             &
                                                                        'H0_energy', 'potential_energy', 'HI_energy', 'mom_dist',  &
-                                                                       'structure_factor', 'rdm2_freqency', 'rdm2_filename']
+                                                                       'structure_factor', 'rdm2_frequency', 'rdm2_filename']
         character(30), parameter :: rdm_keys(9)   = [character(30) :: 'spawned_state_size', 'rdms', 'ground_state',              &
                                                                       'ground_state_start', 'instantaneous', 'write',              &
                                                                       'concurrence', 'von_neumann', 'renyi2']
