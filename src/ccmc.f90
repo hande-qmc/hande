@@ -559,7 +559,7 @@ contains
 
         if (parent .and. blocking_in%blocking_on_the_fly) then
             open(newunit=iunit, file=blocking_in%filename, status='unknown')
-            call write_blocking_report_header(iunit)
+            call write_blocking_report_header(iunit, sys%read_in%comp)
         end if
 
         if (blocking_in%blocking_on_the_fly) &
@@ -857,10 +857,12 @@ contains
                 call write_qmc_report(qmc_in, qs, ireport, nparticles_old, t2-t1, .false., .false., &
                                         io_unit=io_unit, cmplx_est=sys%read_in%comp, rdm_energy=ccmc_in%density_matrices, &
                                         nattempts=.true.)
-                if (blocking_in%blocking_on_the_fly) call do_blocking(bl, qs, qmc_in, ireport, iter, iunit, blocking_in)
+                if (blocking_in%blocking_on_the_fly) then
+                    call do_blocking(bl, qs, qmc_in, ireport, iter, iunit, blocking_in, sys%read_in%comp)
+                end if
             end if
 
-            if (blocking_in%auto_shift_damping) call update_shift_damping(qs, bl, ireport)
+            if (blocking_in%auto_shift_damping) call update_shift_damping(qs, bl, ireport, sys%read_in%comp)
 
             ! Update the time for the start of the next iteration.
             t1 = t2
