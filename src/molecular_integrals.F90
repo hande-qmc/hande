@@ -284,6 +284,7 @@ contains
         use const, only: int_64
         use parallel, only: parent
         use system, only: sys_t
+        use shmem, only: allocate_shared
 
         integer, intent(in) :: op_sym
         type(sys_t), intent(in) :: sys
@@ -341,8 +342,8 @@ contains
         end if
 
         do ispin = 1, nspin
-            allocate(store%integrals(ispin)%v(sys%basis%nbasis/2,npairs), stat=ierr)
-            call check_allocate('two_body_store_component', nintgrls, ierr)
+            call allocate_shared(store%integrals(ispin)%v, 'two_body_store_component', &
+                store%integrals(ispin)%shmem_handle, sys%basis%nbasis/2, npairs)
         end do
 
     end subroutine init_two_body_exchange_t
@@ -356,19 +357,19 @@ contains
         !    integrals which are deallocated upon exit.
 
         use checking, only: check_deallocate
+        use shmem, only: deallocate_shared
 
         type(two_body_exchange_t), intent(inout) :: store
         integer :: ierr, ispin
 
         if (allocated(store%integrals)) then
             do ispin = lbound(store%integrals, dim=1), ubound(store%integrals, dim=1)
-                deallocate(store%integrals(ispin)%v, stat=ierr)
-                call check_deallocate('two_body_store_component', ierr)
+                call deallocate_shared(store%integrals(ispin)%v, store%integrals(ispin)%shmem_handle)
             end do
             deallocate(store%integrals, stat=ierr)
             call check_deallocate('two_body_store', ierr)
         end if
-
+        
     end subroutine end_two_body_exchange_t
 
 !--- Zeroing ---
