@@ -293,6 +293,7 @@ contains
 
         integer :: ierr, ispin, nspin, mem_reqd, iunit
         integer(int_64):: npairs, nintgrls
+        character(26) :: int_name
 
         iunit = 6
 
@@ -342,7 +343,8 @@ contains
         end if
 
         do ispin = 1, nspin
-            call allocate_shared(store%integrals(ispin)%v, 'two_body_store_component', &
+            write (int_name, '("two_body_store_component",i1)') ispin
+            call allocate_shared(store%integrals(ispin)%v, int_name, &
                 store%integrals(ispin)%shmem_handle, sys%basis%nbasis/2, npairs)
         end do
 
