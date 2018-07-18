@@ -292,7 +292,7 @@ contains
         type(two_body_exchange_t), intent(out) :: store
 
         integer :: ierr, ispin, nspin, mem_reqd, iunit
-        integer(int_64):: npairs, nintgrls
+        integer(int_64):: npairs, nintgrls, nsingles
         character(26) :: int_name
 
         iunit = 6
@@ -328,8 +328,9 @@ contains
         ! value of i.
         ! NOTE:
         ! Compression due to symmetry not yet implemented.
-        npairs = ((sys%basis%nbasis/2)*(sys%basis%nbasis/2 + 1))/2
-        nintgrls = npairs * sys%basis%nbasis/2
+        nsingles = sys%basis%nbasis/2
+        npairs = (nsingles*(nsingles + 1))/2
+        nintgrls = npairs * nsingles
 
         if (parent ) then
 #ifdef SINGLE_PRECISION
@@ -344,8 +345,9 @@ contains
 
         do ispin = 1, nspin
             write (int_name, '("two_body_store_component",i1)') ispin
-            call allocate_shared(store%integrals(ispin)%v, int_name, &
-                store%integrals(ispin)%shmem_handle, sys%basis%nbasis/2, npairs)
+            associate(int_store=>store%integrals(ispin))
+                call allocate_shared(int_store%v, int_name, int_store%shmem_handle, nsingles, npairs)
+            end associate
         end do
 
     end subroutine init_two_body_exchange_t
@@ -1139,6 +1141,7 @@ contains
             store%integrals(indx%spin_channel)%v(indx%indx) = intgrl
         end if
 
+        ierr = 0
     end subroutine store_two_body_int_nonzero
 
     pure function get_two_body_int_mol_real(store, i, j, a, b, sys) result(intgrl)
@@ -1383,6 +1386,8 @@ contains
         end if
 
         store%integrals(indx%spin_channel)%v(indx%repeat_ind,indx%triind) = intgrl_loc
+      
+        ierr = 0
 
     end subroutine store_pbc_int_mol
 
