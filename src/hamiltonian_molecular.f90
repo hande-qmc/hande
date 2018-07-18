@@ -175,7 +175,7 @@ contains
                 hmatel = get_one_body_int_mol_real(one_e_ints, i, a, sys)
 
                 do iel = 1, sys%nel
-                    if (occ_list(iel) /= i) &
+                    if (occ_list(iel) /= i) then
                         hmatel = hmatel &
                             + get_two_body_int_mol_real(coulomb_ints, i, occ_list(iel), a, occ_list(iel), &
                                                     sys)
@@ -187,6 +187,7 @@ contains
                             hmatel = hmatel - get_two_body_int_mol_real(coulomb_ints, i, occ_list(iel), &
                                                 occ_list(iel), a, sys)
                         end if
+                    end if
                 end do
             end associate
 
