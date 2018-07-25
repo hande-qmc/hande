@@ -414,6 +414,29 @@ operators options
 
     Only currently implemented for the UEG.
 
+``rdm2_frequency``
+    type: integer.
+
+    Optional.  Default: 0.
+
+    If non-zero, calculate and print two-body reduced density matrix (two-body Green function)
+    at the end of each :math:`N` cycles. Here :math:`N` is the number specified and 
+    definition of the two-body reduced density matrix is given by:
+
+    .. math::
+
+        d_{abij} = \langle c_a^\dagger c_b^\dagger c_i c_j \rangle = 
+            \sum_{ij} \rho_{ij} \langle \phi_i | c_a^\dagger c_b^\dagger c_i c_j | \phi_j \rangle
+
+``rdm2_filename``
+    type: string.
+
+    Optional.  Default: 'RDM'.
+
+    Specifies the prefix of filenames to which the two-body density matries are written. 
+    RDM-2 files will be named 'PREFIX.X' where 'PREFIX' is the prefix specified here
+    and X is an increasing number.
+
 ``structure_factor``
     type: float
 
