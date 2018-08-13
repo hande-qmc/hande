@@ -1,0 +1,6 @@
+Block from: 31250
+Recommended statistics from optimal block size:
+
+                           Block from # H psips \sum H_0j N_j      N_0       Shift Proj. Energy
+diamond_ccmc_final.out 3.12500000e+04  13676(2)     -385.2(4)  1264(1)  -0.3048(1)  -0.30481(7)
+
