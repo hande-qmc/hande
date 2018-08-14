@@ -4,7 +4,9 @@ Solid state calculations
 ==================================================
 
 In this tutorial we will run periodic boundary conditions CCMC calculation on a diamond
-crystal in STO-3G basis with 2x1x1 sampling of the Brillouin zone. Familiarity with :ref:`CCMC <ccmc_tutorial>` and :ref:`FCIQMC <fciqmc_tutorial>` tutorials is assumed. The input and output files can be found under the ``documentation/manual/tutorials/calcs/ccmc_solids`` subdirectory of the source distribution.
+crystal in STO-3G basis with 2x1x1 sampling of the Brillouin zone. Familiarity with
+:ref:`CCMC <ccmc_tutorial>` and :ref:`FCIQMC <fciqmc_tutorial>` tutorials is assumed.
+The input and output files can be found under the ``documentation/manual/tutorials/calcs/ccmc_solids`` subdirectory of the source distribution.
 
 First of all, we need the one- and two- electron integrals from an external source. We will
 use PySCF_ software package to perform preliminary Hartree-Fock calculation
@@ -44,8 +46,9 @@ There are two points to notice
 
     - to properly exploit translational symmetry in the crystal lattice, the orbitals and hence the integrals must be complex. The complex mode of HANDE is enabled by setting ``complex = true``. Consequently, numbers of particles on excitors also have both real and imaginary part, as well as projected energy.
 
-Choice of parameters for the calculation is beyond the scope of this tutorial and generally
-requires some trial and error. A shoulder plot should be used to determine target population.
+In a non-initiator calculation, we try setting the time step ``tau`` as big as possible before too many blooms happen.
+A shoulder plot should be used to determine ``target_population``.
+The ``heat_bath`` excitation generator [Holmes16]_ is often a good choice in small systems.
 The input script used in this tutorial is:
 
 .. literalinclude:: calcs/ccmc_solids/ccmc.lua
@@ -53,7 +56,7 @@ The input script used in this tutorial is:
 
 The Hilbert space of the system we are dealing with is quite small and so is the target population.
 The general rule is that in order to use MPI parallelism, each process should contain at least :math:`1 \times 10^{5}`
-excitors. Having less excitors on each process is both inefficient and in extreme cases can lead
+excitors [Spencer18]_. Having less excitors on each process is both inefficient and in extreme cases can lead
 to biased results. This is why we will use only one process here. However, use of openMP shared 
 memory threads is recommended in order to make full use of the available resources.
 
@@ -87,7 +90,7 @@ and correlation energy:
     plt.ylabel('Correlation energy/' + r'$E_h$')
 
 It is worth noting that the projected energy is in fact a complex quantity, whose imaginary part evaluates to zero
-in a non-trivial way. For the plot (as well as the following analysis) we calculate the result by only
+in a non-trivial way [Booth13]_. For the plot (as well as the following analysis) we calculate the result by only
 using real parts of both :math:`\sum_j H_{0j} N_j(\tau)` and :math:`N_0(\tau)`, using the fact that
 
 :math:`E(\tau) = \Re(\sum_j H_{0j} N_j(\tau)/(N_0(\tau)) = \Re(\sum_j H_{0j} N_j(\tau))/\Re(N_0(\tau))`
