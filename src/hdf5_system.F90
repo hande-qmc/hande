@@ -443,7 +443,7 @@ module hdf5_system
             ! reading reals.
             real(p) :: ecore(1)
 
-            integer :: i, nel, ms, ibasis
+            integer :: i, nel, ms, ibasis, norb
             logical :: verbose_t
             integer, allocatable :: sp_fcidump_rank(:), lscratch(:,:)
 
@@ -691,8 +691,29 @@ module hdf5_system
                 call broadcast_one_body_t(sys%read_in%one_e_h_integrals_imag, root)
                 call broadcast_two_body_t(sys%read_in%coulomb_integrals_imag, root, sys%read_in%max_broadcast_chunk)
             end if
+            if (sys%read_in%extra_exchange_integrals) then
+                if (sys%read_in%uhf) then
+                    norb = sys%basis%nbasis
+                else
+                    norb = sys%basis%nbasis/2
+                end if
+            
+                allocate(sp_fcidump_rank(0:norb), stat=ierr)
+                call check_allocate('sp_fcidump_rank', norb+1, ierr)
 
-            if (sys%read_in%extra_exchange_integrals) call read_additional_exchange_integrals(sys, sp_fcidump_rank, verbose_t)
+                do i = 0, norb
+                    do j = 0, norb
+                        if (sp_eigv_rank(j) == i) then
+                            sp_fcidump_rank(i) = j
+                            exit
+                        end if
+                    end do
+                end do
+
+                call read_additional_exchange_integrals(sys, sp_fcidump_rank, verbose_t)
+                deallocate(sp_fcidump_rank, stat=ierr)
+                call check_deallocate('sp_fcidump_rank', ierr)
+            end if
 
             if (parent) then
                 if (verbose_t) then
