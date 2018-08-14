@@ -423,7 +423,7 @@ module hdf5_system
             use basis_types, only: init_basis_strings, print_basis_metadata
             use determinants, only: init_determinants
             use excitations, only: init_excitations
-            use read_in_system, only: read_in_one_body
+            use read_in_system, only: read_in_one_body, read_additional_exchange_integrals
             use molecular_integrals, only: init_one_body_t, init_two_body_t, broadcast_one_body_t, broadcast_two_body_t
             use momentum_sym_read_in, only: init_read_in_momentum_symmetry
 
@@ -691,6 +691,9 @@ module hdf5_system
                 call broadcast_one_body_t(sys%read_in%one_e_h_integrals_imag, root)
                 call broadcast_two_body_t(sys%read_in%coulomb_integrals_imag, root, sys%read_in%max_broadcast_chunk)
             end if
+
+            if (sys%read_in%extra_exchange_integrals) call read_additional_exchange_integrals(sys, sp_fcidump_rank, verbose_t)
+
             if (parent) then
                 if (verbose_t) then
                     call write_basis_fn_header(sys)
