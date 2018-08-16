@@ -110,6 +110,8 @@ module hdf5_system
                                 duselz = 'uselz',               &
                                 dintegrals = 'integrals',       &
                                 dcomp = 'comp',                 &
+                                dex_fcidump = 'ex_fcidump',     &
+                                dex_exchange_ints = 'ex_exchange_ints',  &
 
                                 done_body = 'one_body',         &
                                 done_body_im = 'one_body_im',   &
@@ -129,7 +131,9 @@ module hdf5_system
                                 dbasis_sp_eigv = 'basis_sp_eigv',&
                                 dbasis_l_numbers = 'basis_l_numbers',   &
                                 dpg_mask = 'pg_mask',           &
-                                dnprop = 'nprop'
+                                dnprop = 'nprop',               &
+                                dadditional_exchange_ints = 'additional_exchange_ints',   &
+                                dadditional_exchange_ints_im = 'additional_exchange_ints_im'
 
     contains
 
@@ -255,8 +259,9 @@ module hdf5_system
             use errors, only: stop_all, warning
             use system, only: sys_t
             use checking, only: check_allocate, check_deallocate
+            use molecular_integrals, only: print_two_body_exchange_t
 
-            type(sys_t), intent(in) :: sys
+            type(sys_t), intent(inout) :: sys
             character(255), intent(inout) :: filename
 
 #ifndef DISABLE_HDF5
@@ -359,6 +364,11 @@ module hdf5_system
                 call hdf5_write(subgroup_id, duselz, sys%read_in%uselz)
                 call hdf5_write(subgroup_id, dcomp, sys%read_in%comp)
 
+                if (sys%read_in%extra_exchange_integrals) then
+                    call hdf5_write(subgroup_id, dex_fcidump, sys%read_in%ex_fcidump)
+                end if
+                call hdf5_write(subgroup_id, dex_exchange_ints, sys%read_in%extra_exchange_integrals)
+
                 ! Need to pass this values to be able to reinitiate symmetry
                 if (sys%momentum_space) then
                     call hdf5_write(subgroup_id, dnprop, kinds, [3_int_64], &
@@ -376,12 +386,24 @@ module hdf5_system
                             sys%read_in%one_e_h_integrals%integrals)
                     call write_coulomb_integrals(subsubgroup_id, dcoulomb_ints, kinds, &
                             sys%read_in%coulomb_integrals%integrals)
+                    if (sys%read_in%extra_exchange_integrals) call write_additional_exchange_integrals(subsubgroup_id, &
+                            dadditional_exchange_ints, kinds, sys%read_in%additional_exchange_ints%integrals)
+
                     if (sys%read_in%comp) then
                         call write_1body_integrals(subsubgroup_id, done_body_im, kinds, &
                                 sys%read_in%one_e_h_integrals_imag%integrals)
                         call write_coulomb_integrals(subsubgroup_id, dcoulomb_ints_im, kinds, &
                                 sys%read_in%coulomb_integrals_imag%integrals)
+                        if (sys%read_in%extra_exchange_integrals) call write_additional_exchange_integrals(subsubgroup_id, &
+                            dadditional_exchange_ints_im, kinds, sys%read_in%additional_exchange_ints_imag%integrals)
+
                     end if
+
+                    if (sys%read_in%extra_exchange_integrals) call print_two_body_exchange_t(sys%read_in%additional_exchange_ints, &
+                                   0)
+                    if (sys%read_in%extra_exchange_integrals) call print_two_body_exchange_t(&
+                                   sys%read_in%additional_exchange_ints_imag, 0)
+
 
                     call h5gclose_f(subsubgroup_id, ierr)
 
@@ -423,8 +445,9 @@ module hdf5_system
             use basis_types, only: init_basis_strings, print_basis_metadata
             use determinants, only: init_determinants
             use excitations, only: init_excitations
-            use read_in_system, only: read_in_one_body, read_additional_exchange_integrals
-            use molecular_integrals, only: init_one_body_t, init_two_body_t, broadcast_one_body_t, broadcast_two_body_t
+            use read_in_system, only: read_in_one_body, modify_one_body_ints
+            use molecular_integrals, only: init_one_body_t, init_two_body_t, broadcast_one_body_t, broadcast_two_body_t, &
+                                           broadcast_two_body_exchange_t, init_two_body_exchange_t, print_two_body_exchange_t
             use momentum_sym_read_in, only: init_read_in_momentum_symmetry
 
             type(sys_t), intent(inout) :: sys
@@ -443,7 +466,7 @@ module hdf5_system
             ! reading reals.
             real(p) :: ecore(1)
 
-            integer :: i, nel, ms, ibasis, norb
+            integer :: i, nel, ms, ibasis
             logical :: verbose_t
             integer, allocatable :: sp_fcidump_rank(:), lscratch(:,:)
 
@@ -564,6 +587,10 @@ module hdf5_system
                     sys%read_in%Ecore = ecore(1)
                     call hdf5_read(subgroup_id, duselz, sys%read_in%uselz)
                     call hdf5_read(subgroup_id, dcomp, sys%read_in%comp)
+
+                    call hdf5_read(subgroup_id, dex_exchange_ints, sys%read_in%extra_exchange_integrals)
+                    if (sys%read_in%extra_exchange_integrals) print *, 'I know there are extra integrals'
+
                     ! All the symmetry information we need to initiate either:
                     if (sys%momentum_space) then
                         ! a) momentum symmetry.
@@ -621,6 +648,8 @@ module hdf5_system
             call MPI_BCast(sys%read_in%Ecore, 1, MPI_PREAL, root, MPI_COMM_WORLD, ierr)
             call MPI_BCast(sys%read_in%uselz, 1, MPI_LOGICAL, root, MPI_COMM_WORLD, ierr)
             call MPI_BCast(sys%read_in%comp, 1, MPI_LOGICAL, root, MPI_COMM_WORLD, ierr)
+
+            call MPI_BCast(sys%read_in%extra_exchange_integrals, 1, MPI_LOGICAL, root, MPI_COMM_WORLD, ierr)
 #endif
             if (sys%momentum_space) then
                 do ibasis = 1, sys%basis%nbasis
@@ -655,11 +684,15 @@ module hdf5_system
                                 .false., sys%read_in%one_e_h_integrals)
             call init_two_body_t(sys, sys%read_in%pg_sym%gamma_sym, &
                                 .false., sys%read_in%coulomb_integrals)
+            if (sys%read_in%extra_exchange_integrals) call init_two_body_exchange_t(sys, sys%read_in%pg_sym%gamma_sym, &
+                                .false., sys%read_in%additional_exchange_ints)
             if (sys%read_in%comp) then
                 call init_one_body_t(sys, sys%read_in%pg_sym%gamma_sym, &
                                     .true., sys%read_in%one_e_h_integrals_imag)
                 call init_two_body_t(sys, sys%read_in%pg_sym%gamma_sym,&
                                     .true., sys%read_in%coulomb_integrals_imag)
+                if (sys%read_in%extra_exchange_integrals) call init_two_body_exchange_t(sys, sys%read_in%pg_sym%gamma_sym, &
+                                .false., sys%read_in%additional_exchange_ints_imag)
             end if
 
             if (parent) then
@@ -672,48 +705,41 @@ module hdf5_system
                     call read_coulomb_integrals(subsubgroup_id, dcoulomb_ints, &
                         kinds, sys%read_in%coulomb_integrals)
 
+                    if (sys%read_in%extra_exchange_integrals) call read_additional_exchange_integrals(subsubgroup_id, &
+                        dadditional_exchange_ints, kinds, sys%read_in%additional_exchange_ints)
+
                     if (sys%read_in%comp) then
                         call read_1body_integrals(subsubgroup_id, done_body_im, kinds, &
                             sys%read_in%one_e_h_integrals_imag)
 
                         call read_coulomb_integrals(subsubgroup_id, dcoulomb_ints_im, &
                             kinds, sys%read_in%coulomb_integrals_imag)
+
+                        if (sys%read_in%extra_exchange_integrals) call read_additional_exchange_integrals(subsubgroup_id, &
+                        dadditional_exchange_ints_im, kinds, sys%read_in%additional_exchange_ints_imag)
+
                     end if
                 call h5gclose_f(subsubgroup_id, ierr)
                 call hdf5_file_close(file_id)
                 call h5close_f(ierr)
+
             end if
 
             ! Broadcast integrals.
             call broadcast_one_body_t(sys%read_in%one_e_h_integrals, root)
             call broadcast_two_body_t(sys%read_in%coulomb_integrals, root, sys%read_in%max_broadcast_chunk)
+            if (sys%read_in%extra_exchange_integrals) call broadcast_two_body_exchange_t(sys%read_in%additional_exchange_ints, root)
             if (sys%read_in%comp) then
                 call broadcast_one_body_t(sys%read_in%one_e_h_integrals_imag, root)
                 call broadcast_two_body_t(sys%read_in%coulomb_integrals_imag, root, sys%read_in%max_broadcast_chunk)
+                if (sys%read_in%extra_exchange_integrals) call broadcast_two_body_exchange_t(&
+                        sys%read_in%additional_exchange_ints_imag, root)
             end if
-            if (sys%read_in%extra_exchange_integrals) then
-                if (sys%read_in%uhf) then
-                    norb = sys%basis%nbasis
-                else
-                    norb = sys%basis%nbasis/2
-                end if
-            
-                allocate(sp_fcidump_rank(0:norb), stat=ierr)
-                call check_allocate('sp_fcidump_rank', norb+1, ierr)
 
-                do i = 0, norb
-                    do j = 0, norb
-                        if (sp_eigv_rank(j) == i) then
-                            sp_fcidump_rank(i) = j
-                            exit
-                        end if
-                    end do
-                end do
-
-                call read_additional_exchange_integrals(sys, sp_fcidump_rank, verbose_t)
-                deallocate(sp_fcidump_rank, stat=ierr)
-                call check_deallocate('sp_fcidump_rank', ierr)
-            end if
+            if (sys%read_in%extra_exchange_integrals) call print_two_body_exchange_t(&
+                       sys%read_in%additional_exchange_ints, root)
+            if (sys%read_in%extra_exchange_integrals) call print_two_body_exchange_t(&
+                       sys%read_in%additional_exchange_ints_imag, root)
 
             if (parent) then
                 if (verbose_t) then
@@ -821,6 +847,36 @@ module hdf5_system
 
         end subroutine write_coulomb_integrals
 
+        subroutine write_additional_exchange_integrals(id, dname, kinds, integs)
+
+            ! Writes Coulomb integral value out in spin chunks, as stored.
+            ! In:
+            !   id: hdf5 group id to write in.
+            !   dname: name of dataset values will belong to.
+            !   kinds: derived tpe containing HDF5 types which correspond to the
+            !       non-standard integer and real kinds used in HANDE.
+            !   integs: integral storage from one_body_t.
+
+            use hdf5
+            use hdf5_helper, only: hdf5_write, hdf5_kinds_t
+            use base_types, only: alloc_rp2d
+            use const, only: int_64
+
+            character(*), intent(in) :: dname
+
+            type(alloc_rp2d), allocatable :: integs(:)
+            type(hdf5_kinds_t), intent(in) :: kinds
+            integer(hid_t), intent(in) :: id
+            integer :: ispin
+            character(155) :: dentr_name
+
+            do ispin = lbound(integs, dim=1), ubound(integs, dim=1)
+                call get_coulomb_name(dname, ispin, dentr_name)
+                call hdf5_write(id, dentr_name, kinds, shape(integs(ispin)%v, kind=int_64), integs(ispin)%v)
+            end do
+
+        end subroutine write_additional_exchange_integrals
+
         subroutine read_1body_integrals(id, dname, kinds, store)
 
             ! Reads one body integrals from hdf5 previously output by hande.
@@ -895,6 +951,41 @@ module hdf5_system
             end do
 
         end subroutine read_coulomb_integrals
+
+        subroutine read_additional_exchange_integrals(id, dname, kinds, store)
+            ! Reads coulomb integrals from hdf5 previously output by hande.
+
+            ! In:
+            !   id: hdf5 group id to write in.
+            !   dname: name of dataset values will belong to.
+            !   kinds: derived tpe containing HDF5 types which correspond to the
+            !       non-standard integer and real kinds used in HANDE.
+            ! In/Out:
+            !   store: Fully allocated two_body_t passed in, returned with all
+            !       appropriate integral values stored.
+
+            ! NB. must be called after allocating integral arrays within store.
+
+            use hdf5
+            use hdf5_helper, only: hdf5_read, hdf5_kinds_t
+            use molecular_integral_types, only: two_body_exchange_t
+            use const, only: int_64
+
+            integer(hid_t), intent(in) :: id
+            character(*), intent(in) :: dname
+            type(hdf5_kinds_t), intent(in) :: kinds
+            type(two_body_exchange_t), intent(inout) :: store
+
+            integer :: ispin
+            character(155) :: dentr_name
+
+            do ispin = lbound(store%integrals, dim=1), ubound(store%integrals, dim=1)
+                call get_coulomb_name(dname, ispin, dentr_name)
+                call hdf5_read(id, dentr_name, kinds, shape(store%integrals(ispin)%v, kind=int_64), &
+                                store%integrals(ispin)%v)
+            end do
+
+        end subroutine read_additional_exchange_integrals
 
         subroutine get_onebody_name(dname, ispin, isym, entry_name)
 
