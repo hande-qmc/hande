@@ -8,6 +8,8 @@ Files are organised in the HANDE repository as follows:
 ``bin/``
     Directory containing the compiled program, hande.x.  Created during
     compilation.
+``cmake/``
+    Directory containing the configuration used to by the cmake build system.
 ``config/``
     Directory containing the configuration input files used to generate makefiles.
 ``dest/``
