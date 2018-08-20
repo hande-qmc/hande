@@ -55,8 +55,8 @@ The input script used in this tutorial is:
     :language: lua
 
 The Hilbert space of the system we are dealing with is quite small and so is the target population.
-The general rule is that in order to use MPI parallelism, each process should contain at least :math:`1 \times 10^{5}`
-excitors [Spencer18]_. Having less excitors on each process is both inefficient and in extreme cases can lead
+The general rule is that in order to use MPI parallelism, each process should contain at least :math:`10^{5}`
+occupied excitors [Spencer18]_. Having fewer excitors on each process is both inefficient and in extreme cases can lead
 to biased results. This is why we will use only one process here. However, use of openMP shared 
 memory threads is recommended in order to make full use of the available resources.
 
@@ -93,10 +93,10 @@ It is worth noting that the projected energy is in fact a complex quantity, whos
 in a non-trivial way [Booth13]_. For the plot (as well as the following analysis) we calculate the result by only
 using real parts of both :math:`\sum_j H_{0j} N_j(\tau)` and :math:`N_0(\tau)`, using the fact that
 
-:math:`E(\tau) = \Re(\sum_j H_{0j} N_j(\tau)/(N_0(\tau)) = \Re(\sum_j H_{0j} N_j(\tau))/\Re(N_0(\tau))`
+:math:`E(\tau) = \Re\left(\frac{\sum_j H_{0j} N_j(\tau)}{N_0(\tau)}\right) = \frac{\Re\left(\sum_j H_{0j} N_j(\tau)\right)}{\Re\left(N_0(\tau)\right)}`
 
 where the second equality holds provided that imaginary part of :math:`E(\tau)` is zero.
-Anyway, the shift remains a strictly real measure of the correlation energy [#]_.
+In any case, the shift remains a strictly real measure of the correlation energy [#]_.
 
 To analyse the calculation we can use reblock_hande.py script:
 
