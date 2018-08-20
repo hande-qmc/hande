@@ -28,9 +28,10 @@ HANDE development team
 | Charlie Scott, University of Cambridge.
 | Verena Neufeld, University of Cambridge.
 | James Shepherd, University of Iowa.
+! Roberto Di Remigio, University of Tromso and Virginia Tech.
 
-Past HANDE developers
----------------------
+Some past HANDE developers
+--------------------------
 | James Spencer, Imperial College London.
 | Will Vigor, Imperial College London.
 
