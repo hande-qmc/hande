@@ -34,6 +34,25 @@ character(36) :: GLOBAL_UUID
 
 contains
 
+    subroutine host_writer(message, io_unit)
+
+      use, intrinsic :: iso_c_binding, only: c_char, c_int, c_null_char
+
+      character(kind=c_char), intent(in) :: message(*)
+      integer(c_int), intent(in) :: io_unit
+      integer(c_int) :: length, i
+
+      length = 0
+      do
+         if (message(length + 1) == c_null_char) exit
+         length = length + 1
+      end do
+
+      ! Let whoever sends a message decide its newlines
+      write (unit=io_unit, fmt='(1000A)', advance="no") (message(i), i=1, length)
+
+    end subroutine host_writer
+
     subroutine environment_report(io)
 
         ! In:
@@ -48,7 +67,7 @@ contains
         !   * the working directory;
         !   * the host computer.
 
-        use, intrinsic :: iso_c_binding, only: c_char, c_ptr, c_size_t, c_int, c_associated
+        use, intrinsic :: iso_c_binding, only: c_char, c_ptr, c_size_t, c_int, c_associated, c_funloc, c_funptr
         use utils, only: carray_to_fstring
         use const, only: i0, int_p
 
@@ -57,7 +76,10 @@ contains
         ! existing *cough*ibmandnag*cough*.  It is safer to use POSIX-standard
         ! functions.
         interface
-            subroutine print_info() bind(C, name="print_info")
+            subroutine print_info(writer, io_unit) bind(C, name="print_info")
+              import
+              type(c_funptr), intent(in), value :: writer
+              integer(c_int), intent(in) :: io_unit
             end subroutine print_info
         end interface
 
@@ -75,7 +97,7 @@ contains
         write (io_unit,'(1X,64("="))')
         flush(io_unit)
 
-        call print_info()
+        call print_info(c_funloc(host_writer), io_unit)
 
         call date_and_time(VALUES=date_values)
 
