@@ -20,16 +20,19 @@ subdirectory and on `readthedocs <https://hande.readthedocs.org>`_.
 HANDE development team
 ----------------------
 
-| James Spencer, Imperial College London, j.spencer@imperial.ac.uk.
 | Alex Thom, University of Cambridge, ajwt3@cam.ac.uk.
 | Nick Blunt, University of Cambridge.
-| Fionn Malone, Imperial College London.
+| Fionn Malone, Lawrence Livermore National Laboratory.
 | Matthew Foulkes, Imperial College London.
-| Will Vigor, Imperial College London.
 | Ruth Franklin, University of Cambridge.
 | Charlie Scott, University of Cambridge.
 | Verena Neufeld, University of Cambridge.
-| James Shepherd, MIT.
+| James Shepherd, University of Iowa.
+
+Past HANDE developers
+---------------------
+| James Spencer, Imperial College London.
+| Will Vigor, Imperial College London.
 
 LICENSE
 -------
