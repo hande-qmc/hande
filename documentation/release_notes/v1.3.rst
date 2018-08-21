@@ -1,5 +1,5 @@
-Current release notes after v1.2
-===================
+Release notes for v1.3
+======================
 
 Added
 -----
