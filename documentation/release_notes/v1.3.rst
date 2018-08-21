@@ -4,9 +4,19 @@ Current release notes after v1.2
 Added
 -----
 
+* Weighted excitation generators for CCMC and FCIQMC as published in
+  V. A. Neufeld, and A. J. W. Thom, arXiv:1808.05093 and
+  A. A. Holmes, H. J. Changlani, and C. J. Umrigar, J. Chem. Theory Comput. 12, 1561 (2016) and
+  S. D. Smart, G. H. Booth, and A. Alavi, unpublished.
+* Complex DMQMC.
+* Making to possible to compile with CMake.
 * Ability to restart the state of the dSFMT RNG stream, allowing for restarted
   calculations to have the same Markov chain as single calculations. Enabled by default.
-  Can be disabled in the :ref:`restart_table`. 
+  Can be disabled in the :ref:`restart_table`.
+* Quasi-Newton propagation for complex particles.
+* Shared memory MPI with the integrals.
+* Pyhande: reweighting plot to check for population bias as published in
+  W. A. Vigor, J. S. Spencer, M. J. Bearpark, and A. J. W. Thom, J. Chem. Phys, 142, 104101 (2015).
 
 Changed
 -------
@@ -31,4 +41,3 @@ Bug Fixes
   The bug-fix changes Markov chains.
 * Even selection also had a bug that caused integer overflow when the number of MPI processes raised to the power of (coupled cluster level - 1) is
   bigger then a 32 bit integer.
->>>>>>> github/master
