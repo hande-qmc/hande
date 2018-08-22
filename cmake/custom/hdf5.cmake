@@ -10,16 +10,26 @@
 # Variables defined::
 #
 #   USE_HDF5
+#   HDF5_ROOT
 #   HDF5_Fortran_LIBRARIES
 #   HDF5_INCLUDE_DIRS
 #
 # autocmake.yml configuration::
 #
-#   docopt: "--hdf5=<HDF5> Enable HDF5 [default: True]."
-#   define: "'-DENABLE_HDF5=\"{0}\"'.format(arguments['--hdf5'])"
+#   docopt:
+#     - "--hdf5=<HDF5_ROOT> Specify the path to the HDF5 installation to use [default: '']."
+#     - "--without-hdf5=<HDF5_ROOT> Specify the path to the HDF5 installation to use [default: '']."
+#   define:
+#     - "'-DENABLE_HDF5=\"{0}\"'.format('FALSE' if arguments['--hdf5'] in ['False', 'false', 'OFF', 'off'] else 'TRUE')"
+#     - "'-DHDF5_ROOT=\"{0}\"'.format(arguments['--hdf5'])"
 
 option_with_print(ENABLE_HDF5 "Enable usage of HDF5 (requires Fortran 2003 bindings)" ON)
 set(USE_HDF5 OFF)
+# Just unset the variable if empty
+# This avoids an annoying CMake warning _and_ mucking up the environment variable.
+if(NOT HDF5_ROOT)
+  unset(HDF5_ROOT)
+endif()
 if(ENABLE_HDF5)
   find_package(HDF5 1.8.15 COMPONENTS Fortran REQUIRED)
   # Was the Fortran 2003 interface to HDF5 enabled?

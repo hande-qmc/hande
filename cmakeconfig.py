@@ -38,7 +38,8 @@ Options:
   --det-size=<HANDE_DET_SIZE>            An integer among 32 or 64 [default: 32].
   --pop-size=<HANDE_POP_SIZE>            An integer among 32 or 64 [default: 32].
   --exe-name=<HANDE_EXE_NAME>            [default: "hande.cmake.x"].
-  --hdf5=<HDF5>                          Enable HDF5 [default: True].
+  --hdf5=<HDF5_ROOT>                     Specify the path to the HDF5 installation to use [default: ''].
+  --without-hdf5=<HDF5_ROOT>             Specify the path to the HDF5 installation to use [default: ''].
   --uuid=<UUID>                          Whether to activate UUID generation [default: True].
   --lanczos=<TRLan_LIBRARIES>            Set TRLan libraries to be linked in [default: ''].
   --single                               Enable usage of single precision, where appropriate [default: False].
@@ -82,7 +83,8 @@ def gen_cmake_command(options, arguments):
     command.append('-DHANDE_DET_SIZE="{0}"'.format(arguments['--det-size']))
     command.append('-DHANDE_POP_SIZE="{0}"'.format(arguments['--pop-size']))
     command.append('-DHANDE_EXE_NAME="{0}"'.format(arguments['--exe-name']))
-    command.append('-DENABLE_HDF5="{0}"'.format(arguments['--hdf5']))
+    command.append('-DENABLE_HDF5="{0}"'.format('FALSE' if arguments['--hdf5'] in ['False', 'false', 'OFF', 'off'] else 'TRUE'))
+    command.append('-DHDF5_ROOT="{0}"'.format(arguments['--hdf5']))
     command.append('-DENABLE_UUID="{0}"'.format(arguments['--uuid']))
     command.append('-DTRLan_LIBRARIES="{0}"'.format(arguments['--lanczos']))
     command.append('-DENABLE_SINGLE_PRECISION="{0}"'.format(arguments['--single']))
