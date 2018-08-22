@@ -22,11 +22,6 @@ option_with_print(ENABLE_HDF5 "Enable usage of HDF5 (requires Fortran 2003 bindi
 set(USE_HDF5 OFF)
 if(ENABLE_HDF5)
   find_package(HDF5 1.8.15 COMPONENTS Fortran REQUIRED)
-  if(HDF5_IS_PARALLEL)
-    message(STATUS "Parallel HDF5 FOUND")
-  else()
-    message(STATUS "Parallel HDF5 NOT FOUND")
-  endif()
   # Was the Fortran 2003 interface to HDF5 enabled?
   # Compile an example from the HDF5 website:
   # https://support.hdfgroup.org/HDF5/examples/f-src.html
@@ -39,9 +34,12 @@ if(ENABLE_HDF5)
       -DINCLUDE_DIRECTORIES=${HDF5_INCLUDE_DIRS}
     LINK_LIBRARIES
       ${HDF5_Fortran_LIBRARIES}
+    OUTPUT_VARIABLE
+      HDF5_HAS_Fortran2003-test-output
     )
   if(NOT HDF5_HAS_Fortran2003)
-    message(FATAL_ERROR "HDF5 requested, but library was not compiled with --enable-fortran2003")
+         message(FATAL_ERROR "HDF5 requested, but library was not compiled with --enable-fortran2003 Compiling a simple test executable failed with the following message:
+${HDF5_HAS_Fortran2003-test-output}")
   else()
     set(USE_HDF5 ON)
   endif()
