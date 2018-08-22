@@ -39,7 +39,6 @@ Options:
   --pop-size=<HANDE_POP_SIZE>            An integer among 32 or 64 [default: 32].
   --exe-name=<HANDE_EXE_NAME>            [default: "hande.cmake.x"].
   --hdf5=<HDF5_ROOT>                     Specify the path to the HDF5 installation to use [default: ''].
-  --without-hdf5=<HDF5_ROOT>             Specify the path to the HDF5 installation to use [default: ''].
   --uuid=<UUID>                          Whether to activate UUID generation [default: True].
   --lanczos=<TRLan_LIBRARIES>            Set TRLan libraries to be linked in [default: ''].
   --single                               Enable usage of single precision, where appropriate [default: False].

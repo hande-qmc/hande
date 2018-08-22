@@ -18,7 +18,6 @@
 #
 #   docopt:
 #     - "--hdf5=<HDF5_ROOT> Specify the path to the HDF5 installation to use [default: '']."
-#     - "--without-hdf5=<HDF5_ROOT> Specify the path to the HDF5 installation to use [default: '']."
 #   define:
 #     - "'-DENABLE_HDF5=\"{0}\"'.format('FALSE' if arguments['--hdf5'] in ['False', 'false', 'OFF', 'off'] else 'TRUE')"
 #     - "'-DHDF5_ROOT=\"{0}\"'.format(arguments['--hdf5'])"
