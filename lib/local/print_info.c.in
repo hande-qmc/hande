@@ -22,86 +22,81 @@ const char *report_popcnt();
 const char *report_mpi_toggle();
 const char *report_omp_toggle();
 const char *report_parallel();
-void print_info();
+typedef void (*HostWriter)(const char * message, int * io_unit);
+void print_info(HostWriter writer, int * io_unit);
 
-void print_info() {
-  printf("\n");
-  printf("\n");
-  printf("Version information\n");
-  printf("-------------------\n");
-  printf("\n");
-  printf("Version       | %s\n", "@_git_describe@");
-  printf("Commit hash   | %s\n", "@_git_last_commit_hash@");
-  printf("Commit author | %s\n", "@_git_last_commit_author@");
-  printf("Commit date   | %s\n", "@_git_last_commit_date@");
-  printf("Branch        | %s\n", "@_git_branch@");
+void print_info(HostWriter writer, int * io_unit) {
+  writer("Version information\n", io_unit);
+  writer("-------------------\n", io_unit);
+  writer("Version       | @_git_describe@\n", io_unit);
+  writer("Commit hash   | @_git_last_commit_hash@\n", io_unit);
+  writer("Commit author | @_git_last_commit_author@\n", io_unit);
+  writer("Commit date   | @_git_last_commit_date@\n", io_unit);
+  writer("Branch        | @_git_branch@\n", io_unit);
 
-  printf("\n");
-  printf("\n");
-  printf("Configuration and build information\n");
-  printf("-----------------------------------\n");
-  printf("\n");
-  printf("Who compiled             | %s\n", "@_user_name@");
-  printf("Compilation hostname     | %s\n", "@_host_name@");
-  printf("Operating system         | %s\n", "@_system@");
-  printf("CMake version            | %s\n", "@_cmake_version@");
-  printf("CMake generator          | %s\n", "@_cmake_generator@");
-  printf("Build type               | %s\n", "@_build_type@");
-  printf("Configuration time       | %s\n", "@_configuration_time@");
-  printf("Python version           | %s\n", "@_python_version@");
-  printf("Fortran compiler         | %s\n", "@_Fortran_compiler@");
-  printf("C compiler               | %s\n", "@_C_compiler@");
+  writer("\n", io_unit);
+  writer("Configuration and build information\n", io_unit);
+  writer("-----------------------------------\n", io_unit);
+  writer("Who compiled             | @_user_name@\n", io_unit);
+  writer("Compilation hostname     | @_host_name@\n", io_unit);
+  writer("Operating system         | @_system@\n", io_unit);
+  writer("CMake version            | @_cmake_version@\n", io_unit);
+  writer("CMake generator          | @_cmake_generator@\n", io_unit);
+  writer("Build type               | @_build_type@\n", io_unit);
+  writer("Configuration time       | @_configuration_time@\n", io_unit);
+  writer("Python version           | @_python_version@\n", io_unit);
+  writer("Fortran compiler         | @_Fortran_compiler@\n", io_unit);
+  writer("C compiler               | @_C_compiler@\n", io_unit);
   /* clang-format off */
-  printf("DET_SIZE set to          | %d\n", @_det_size@);
-  printf("POP_SIZE set to          | %d\n", @_pop_size@);
-  printf("dSFMT Mersenne exponent  | %d\n", @_dsfmt_mexp@);
-  printf("%s\n", report_mpi_toggle());
-  printf("%s\n", report_omp_toggle());
-  printf("Lua version              | %s\n", "@_lua_version@");
-  printf("HDF5 library version     | %s\n", "@_hdf5_version@");
+  char buf[10000];
+  snprintf(buf, sizeof(buf),
+           "DET_SIZE set to          | %d\nPOP_SIZE set to          | %d\ndSFMT Mersenne exponent  | %d\n",
+           @_det_size@, @_pop_size@, @_dsfmt_mexp@);
+  writer(buf, io_unit);
+  writer(report_mpi_toggle(), io_unit);
+  writer(report_omp_toggle(), io_unit);
+  writer("Lua version              | @_lua_version@\n", io_unit);
+  writer("HDF5 library version     | @_hdf5_version@\n", io_unit);
   /* clang-format on */
 
-  printf("\n");
-  printf("\n");
-  printf("Further components\n");
-  printf("------------------\n");
-  printf("\n");
-  printf("   %s\n", report_hdf5());
-  printf("   %s\n", report_lanczos());
-  printf("   %s\n", report_uuid());
-  printf("   %s\n", report_parallel());
-  printf("   %s\n", report_scalapack());
-  printf("   %s\n", report_single_precision());
-  printf("   %s\n", report_popcnt());
+  writer("\n", io_unit);
+  writer("Further components\n", io_unit);
+  writer("------------------\n", io_unit);
+  writer(report_hdf5(), io_unit);
+  writer(report_lanczos(), io_unit);
+  writer(report_uuid(), io_unit);
+  writer(report_parallel(), io_unit);
+  writer(report_scalapack(), io_unit);
+  writer(report_single_precision(), io_unit);
+  writer(report_popcnt(), io_unit);
 
-  printf("\n");
-  printf("\n");
-  printf("Runtime information\n");
-  printf("-------------------\n");
-  printf("\n");
-  char hostname[1024];
+  writer("\n", io_unit);
+  writer("Runtime information\n", io_unit);
+  writer("-------------------\n", io_unit);
+  char hostname[1024], hostname_report[10000];
   int stat = gethostname(hostname, 1024);
   if (stat == 0) {
-    printf("Hostname:                               \n    %s\n", hostname);
+    snprintf(hostname_report, sizeof(hostname_report), "Hostname:\n    %s\n", hostname);
   } else {
-    printf("Hostname (truncated to 1024 characters):\n    %s\n", hostname);
+    snprintf(hostname_report, sizeof(hostname_report), "Hostname (truncated to 1024 characters):\n    %s\n", hostname);
   }
-  char cwd[1024];
+  writer(hostname_report, io_unit);
+
+  char cwd[1024], cwd_report[10000];
   if (getcwd(cwd, sizeof(cwd)) != NULL) {
-    printf("Current working dir:                    \n    %s\n", cwd);
+    snprintf(cwd_report, sizeof(cwd_report), "Current working dir:\n    %s\n", cwd);
+    writer(cwd_report, io_unit);
   } else {
     perror("getcwd() error");
   }
-
-  fflush(stdout);
 }
 
 const char *report_hdf5() {
 /* clang-format off */
 #ifdef DISABLE_HDF5
-  return "DISABLE_HDF5 defined.  HDF5 disabled.";
+  return "DISABLE_HDF5 defined.  HDF5 disabled.\n";
 #else
-  return "DISABLE_HDF5 not defined.  HDF5 enabled.";
+  return "DISABLE_HDF5 not defined.  HDF5 enabled.\n";
 #endif
   /* clang-format on */
 }
@@ -109,49 +104,49 @@ const char *report_hdf5() {
 const char *report_lanczos() {
 /* clang-format off */
 #ifdef DISABLE_LANCZOS
-  return "DISABLE_LANCZOS defined.  Lanczos disabled.";
+  return "DISABLE_LANCZOS defined.  Lanczos disabled.\n";
 #else
-  return "DISABLE_LANCZOS not defined.  Lanczos enabled.";
+  return "DISABLE_LANCZOS not defined.  Lanczos enabled.\n";
 #endif
   /* clang-format on */
 }
 
 const char *report_uuid() {
-/* clang-format off */
+  /* clang-format off */
 #ifdef DISABLE_UUID
-  return "DISABLE_UUID defined.  UUID disabled.";
+  return "DISABLE_UUID defined.  UUID disabled.\n";
 #else
-  return "DISABLE_UUID not defined.  UUID enabled.";
+  return "DISABLE_UUID not defined.  UUID enabled.\n";
 #endif
   /* clang-format on */
 }
 
 const char *report_scalapack() {
-/* clang-format off */
+  /* clang-format off */
 #ifdef DISABLE_SCALAPACK
-  return "DISABLE_SCALAPACK defined.  ScaLAPACK disabled.";
+  return "DISABLE_SCALAPACK defined.  ScaLAPACK disabled.\n";
 #else
-  return "DISABLE_SCALAPACK not defined.  ScaLAPACK enabled.";
+  return "DISABLE_SCALAPACK not defined.  ScaLAPACK enabled.\n";
 #endif
   /* clang-format on */
 }
 
 const char *report_popcnt() {
-/* clang-format off */
+  /* clang-format off */
 #ifdef USE_POPCNT
-  return "USE_POPCNT defined.  Fortran 2003 POPCNT procedure used.";
+  return "USE_POPCNT defined.  Fortran 2003 POPCNT procedure used.\n";
 #else
-  return "USE_POPCNT not defined. Internal POPCNT procedure used.";
+  return "USE_POPCNT not defined. Internal POPCNT procedure used.\n";
 #endif
   /* clang-format on */
 }
 
 const char *report_single_precision() {
-/* clang-format off */
+  /* clang-format off */
 #ifdef SINGLE_PRECISION
-  return "SINGLE_PRECISION defined.  Single precision used where relevant.";
+  return "SINGLE_PRECISION defined.  Single precision used where relevant.\n";
 #else
-  return "SINGLE_PRECISION not defined.  Double precision used throughout.";
+  return "SINGLE_PRECISION not defined.  Double precision used throughout.\n";
 #endif
   /* clang-format on */
 }
@@ -159,9 +154,9 @@ const char *report_single_precision() {
 const char *report_mpi_toggle() {
 /* clang-format off */
 #ifdef PARALLEL
-  return "MPI parallelization      | ON\nMPI launcher             | @_mpi_launcher@";
+  return "MPI parallelization      | ON\nMPI launcher             | @_mpi_launcher@\n";
 #else
-  return "MPI parallelization      | OFF";
+  return "MPI parallelization      | OFF\n";
 #endif
   /* clang-format on */
 }
@@ -169,9 +164,9 @@ const char *report_mpi_toggle() {
 const char *report_omp_toggle() {
 /* clang-format off */
 #ifdef _OPENMP
-  return "OpenMP parallelization   | ON";
+  return "OpenMP parallelization   | ON\n";
 #else
-  return "OpenMP parallelization   | OFF";
+  return "OpenMP parallelization   | OFF\n";
 #endif
   /* clang-format on */
 }
@@ -179,9 +174,9 @@ const char *report_omp_toggle() {
 const char *report_parallel() {
 /* clang-format off */
 #ifdef PARALLEL
-  return "PARALLEL defined.  MPI parallelization enabled.";
+  return "PARALLEL defined.  MPI parallelization enabled.\n";
 #else
-  return "PARALLEL not defined.  MPI parallelization disabled.";
+  return "PARALLEL not defined.  MPI parallelization disabled.\n";
 #endif
   /* clang-format on */
 }
