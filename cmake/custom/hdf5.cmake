@@ -38,8 +38,9 @@ if(ENABLE_HDF5)
       HDF5_HAS_Fortran2003-test-output
     )
   if(NOT HDF5_HAS_Fortran2003)
-         message(FATAL_ERROR "HDF5 requested, but library was not compiled with --enable-fortran2003 Compiling a simple test executable failed with the following message:
-${HDF5_HAS_Fortran2003-test-output}")
+    file(WRITE ${CMAKE_CURRENT_BINARY_DIR}/HDF5_HAS_Fortran2003-test.log ${HDF5_HAS_Fortran2003-test-output})
+    message(FATAL_ERROR "HDF5 requested, but library was not compiled with --enable-fortran2003 \
+Compiling a simple test executable failed, consult the log file: ${CMAKE_CURRENT_BINARY_DIR}/HDF5_HAS_Fortran2003-test.log")
   else()
     set(USE_HDF5 ON)
   endif()
