@@ -229,7 +229,7 @@ DSFMT_MEXP
     DSFMT_EXP sets the exponent of the period of the RNG.  Allowed values are
     521, 1279, 2203, 4253, 11213, 19937, 44497, 86243,
     132049 and 216091 and lead to, for example, random numbers with a period of
-    a Mersenne Prime such as :math:`2^{512}-1`.
+    a Mersenne Prime such as :math:`2^{521}-1`.
 NAGF95  
     Default: not defined.
 

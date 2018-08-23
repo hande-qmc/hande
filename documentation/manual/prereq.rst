@@ -42,6 +42,7 @@ lua 5.3
 MPI (parallel compilation only)
     MPI 2 is required.  We have used a variety of implementations (including OpenMPI and
     various vendor implementations).
+    MPI 3 shared memory functionality is used if detected.
 scalapack (parallel compilation only)
     Available from http://www.netlib.org/scalapack/ and vendor implementations.  Often
     already installed on HPC systems, included in Intel Maths Kernel Library and can be
@@ -126,8 +127,8 @@ Lua is straightforward to compile.  For example:
 
 .. code-block:: bash
 
-    $ wget -O - http://www.lua.org/ftp/lua-5.3.4.tar.gz | tar xvzf -
-    $ cd lua-5.3.4
+    $ wget -O - http://www.lua.org/ftp/lua-5.3.5.tar.gz | tar xvzf -
+    $ cd lua-5.3.5
     $ make linux
     $ make install INSTALL_TOP=$HOME/local
 
@@ -143,8 +144,8 @@ example:
 
 .. code-block:: bash
 
-    $ wget -O - https://support.hdfgroup.org/ftp/HDF5/releases/hdf5-1.8/hdf5-1.8.19/src/hdf5-1.8.19.tar.gz | tar xvzf -
-    $ cd hdf5-1.8.19
+    $ wget -O - https://support.hdfgroup.org/ftp/HDF5/releases/hdf5-1.10/hdf5-1.10.2/src/hdf5-1.10.2.tar.gz | tar xvzf -
+    $ cd hdf5-1.10.2
     $ ./configure --prefix=$HOME/local --enable-fortran --enable-fortran2003 --enable-cxx
     $ make
     $ make install
