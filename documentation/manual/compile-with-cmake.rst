@@ -33,9 +33,6 @@ The result of using the two methods is exactly the same: a subdirectory
 ``build`` will be created containing the build system.
 Using the frontend script however results in more compact configure lines.
 
-After ensuring HANDE's dependencies are installed, produce a makefile by running the
-``cmakeconfig.py`` (residing in the tools subdirectory) script in the root directory:
-
 Configuration options
 ---------------------
 
@@ -55,6 +52,7 @@ The help menu for the ``cmakeconfig.py`` script shows the available options:
      --cc=<CC>                              C compiler [default: gcc].
      --extra-cc-flags=<EXTRA_CFLAGS>        Extra C compiler flags [default: ''].
      --python=<PYTHON_INTERPRETER>          The Python interpreter (development version) to use. [default: ''].
+     --add-definitions=<STRING>             Add preprocesor definitions [default: ''].
      --lua=<LUA_ROOT>                       Specify the path to the Lua installation to use [default: ''].
      --mpi                                  Enable MPI parallelization [default: False].
      --mpi-with-scalapack                   Enable ScaLAPACK usage with MPI [default: False].
@@ -69,7 +67,7 @@ The help menu for the ``cmakeconfig.py`` script shows the available options:
      --det-size=<HANDE_DET_SIZE>            An integer among 32 or 64 [default: 32].
      --pop-size=<HANDE_POP_SIZE>            An integer among 32 or 64 [default: 32].
      --exe-name=<HANDE_EXE_NAME>            [default: "hande.cmake.x"].
-     --hdf5=<HDF5>                          Enable HDF5 [default: True].
+     --hdf5=<HDF5_ROOT>                     Specify the path to the HDF5 installation to use [default: ''].
      --uuid=<UUID>                          Whether to activate UUID generation [default: True].
      --lanczos=<TRLan_LIBRARIES>            Set TRLan libraries to be linked in [default: ''].
      --single                               Enable usage of single precision, where appropriate [default: False].
@@ -117,6 +115,8 @@ is a translation guide between the frontend script and "bare" CMake:
      To use a specific MPI implementation, pass the appropriate MPI compiler
      wrappers as arguments to ``--fc`` (``-DCMAKE_Fortran_COMPILER``) and
      ``--cc`` (``-DCMAKE_C_COMPILER``)
+     For example, for the Intel MPI compiler wrappers ``mpiifort`` and ``mpiicc`` use
+     ``./cmakeconfig.py --mpi --fc=mpiifort --cc=mpiicc``.
 
 - ``--mpi-with-scalapack``/``-DENABLE_SCALAPACK=OFF``. Enables linking to
   ScaLAPACK. This requires that MPI is enabled and that a ScaLAPACK
@@ -134,12 +134,12 @@ is a translation guide between the frontend script and "bare" CMake:
 
   .. warning::
 
-     Passing this option overrides automatic math detection
+     Passing this option overrides automatic detection of math libraries
 
 - ``--scalapack="link-line"``/``-DSCALAPACK_LIBRARIES="link-line"``. Link line for ScaLAPACK libraries.
   If using Intel MKL, CMake will be able to correctly locate and set these for
   you. Use this option in case you run into trouble with detecting ScaLAPACK
-  and prefer setting the link line explictly.
+  and prefer setting the link line explicitly.
 - ``--blacs=openmpi``/``-DBLACS_IMPLEMENTATION=openmpi``. Sets the implementation of
   BLACS for the Intel MKL ScaLAPACK libraries. Valid values are ``openmpi``,
   ``intelmpi`` and ``sgimpt``, with ``openmpi`` being the default.
@@ -161,10 +161,13 @@ is a translation guide between the frontend script and "bare" CMake:
   directory in the root of the project and symlinked to ``hande.x``. Passing
   the executable name will let you preserve executables generated with
   different configuration settings.
-- ``--hdf5=<ON/OFF>``/``-DENABLE_HDF5=<ON/OFF>``. Enables use of HDF5. By
-  default, this is turned on. At least HDF5 1.8.15 is required and with Fortran
-  2003 bindings enabled. CMake will search for a suitable version of HDF5 and
-  check that all necessary components are available.
+- ``--hdf5=<HDF5>``/``-DENABLE_HDF5=<ON/OFF> -DHDF5_ROOT=<HDF5>``.
+  Enables use of HDF5 and specifies the path to the HDF5 installation to use.
+  By default, use of HDF5 is turned on. At least HDF5 1.8.15 is required and
+  with Fortran 2003 bindings enabled. CMake will search for a suitable version
+  of HDF5 and check that all necessary components are available. In addition,
+  CMake will check the compatibility of the chosen HDF5 implementation and
+  Fortran compiler.
   See below for HDF5 detection issues.
 - ``--uuid=<ON/OFF>``/``-DENABLE_UUID=<ON/OFF>``. Enables use of the UUID library.
   By default, this is turned on.
@@ -186,7 +189,7 @@ CMake compilation issues
 
 When dependencies are not in standard search paths, CMake needs to be nudged
 and pointed in the right direction. This can be done directly using either ``cmake`` or
-``cmakeconfig``; the equivalent commands for both are given below but only one should be
+``cmakeconfig.py``; the equivalent commands for both are given below but only one should be
 used.
 
 - Detection of math libraries is usually the trickiest part. The CMake math
@@ -217,8 +220,19 @@ used.
 
   .. code-block:: bash
 
-     $ ./cmakeconfig.py --hdf5 --cmake-options="-DHDF5_ROOT=/install/dir/for/HDF5" build
+     $ ./cmakeconfig.py --hdf5=/install/dir/for/HDF5 build
      $ cmake -H. -Bbuild -DENABLE_HDF5=ON -DHDF5_ROOT=/install/dir/for/HDF5
+
+  CMake will check that the chosen HDF5 library and Fortran compiler are
+  compatible. If this test fails, configuration will abort. The output from the
+  compatibility file will be saved to the log file
+  ``HDF5_HAS_Fortran2003-test.log`` in the build directory.
+  Note that is is possible to completely deactivate usage of HDF5:
+
+  .. code-block:: bash
+
+     $ ./cmakeconfig.py --hdf5=False
+     $ cmake -H. -Bbuild -DENABLE_HDF5=OFF
 
 For compiler- and library-specific issues, see :ref:`compiler-issues`.
 
