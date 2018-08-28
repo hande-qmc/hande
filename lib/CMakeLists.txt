@@ -3,6 +3,9 @@ add_subdirectory(cephes)
 add_subdirectory(external)
 add_subdirectory(local)
 
+# Check whether the system supports the SSE2 instruction set
+system_has_sse2(_has_sse2)
+
 # Compile dSFMT and dSFMT_F03_interface
 add_library(dSFMT OBJECT
   dSFMT-src-2.2/dSFMT-common.h
@@ -25,6 +28,7 @@ add_library(dSFMT OBJECT
 target_compile_definitions(dSFMT
   PRIVATE
     DSFMT_MEXP=${HANDE_DSFMT_MEXP}
+    $<$<BOOL:${_has_sse2}>:HAVE_SSE2>
     $<$<BOOL:${USE_MPI}>:PARALLEL>
     $<$<NOT:$<BOOL:${HAS_MPI3}>>:DISABLE_MPI3>
     $<$<CONFIG:Debug>:DEBUG>
