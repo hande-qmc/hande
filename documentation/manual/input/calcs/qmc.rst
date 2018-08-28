@@ -211,7 +211,8 @@ algorithms and control the core settings in the algorithms.
     'renorm_spin' and 'no_renorm_spin' are very similar to 'renorm' and 'no_renorm'
     respectively but when selecting :math:`i` and :math:`j`, they first decide with
     probability ``pattempt_parallel`` whether :math:`i` and :math:`j` should have
-    parallel spins or not.
+    parallel spins or not. The idea is by Alavi and co-workers, see [Booth09]_ and [Booth14]_
+    for example for more details on these excitation generators.
 
     The 'heat_bath' excitation generator is very similar to the "original" heat bath
     excitation generator described by Holmes et al. [Holmes16]_. :math:`i,j,a,b` are chosen
@@ -229,6 +230,11 @@ algorithms and control the core settings in the algorithms.
     but samples single excitations with the correct weighting (following a
     recommendation by Pablo Lopez Rios). 'heat_bath_uniform' and 'heat_bath_single' do
     not have this potential bias that 'heat_bath' can have.
+
+    Some of the Power-Pitzer excitation generators use elements of the heat-bath excitation
+    generators ([Holmes16]_) and their approximations for selecting :math:`a` and :math:`b`
+    are inspired by the Cauchy-Schwarz excitation generators by Alavi and co-workers
+    [Smartunpub]_. See more details on all these weighted excitations generator in Ref. [Neufeld18]_.
 
     The 'power_pitzer' excitation generator generates double excitations using a Power-Pitzer
     [Power74]_ upper bound for the value of the Hamiltonian matrix element, 
@@ -265,7 +271,7 @@ algorithms and control the core settings in the algorithms.
     occupied, the excitation is forbidden.
 
     ..
-        [todo] - Add paper citation once it is published. Rewrite documentation to
+        [todo] - Rewrite documentation to
         highlight differences/similarities in excitation generators.
     
     .. note::
