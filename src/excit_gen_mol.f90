@@ -105,6 +105,7 @@ contains
         ! Create a random excitation from cdet and calculate both the probability
         ! of selecting that excitation and the Hamiltonian matrix element.
         ! When selecting i and j, first decide whether their spins are parallel or not.
+        ! Idea by Alavi and co-workers.
 
         ! In:
         !    sys: system object being studied.
@@ -288,6 +289,7 @@ contains
         ! of selecting that excitation and the Hamiltonian matrix element.
         ! First decide whether i and j should have parallel spins or not (when
         ! attempting a double excitation).
+        ! Idea by Alavi and co-workers.
 
         ! This doesn't exclude the case where, having selected all orbitals
         ! involved in the excitation, the final orbital selected is already
