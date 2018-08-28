@@ -20,24 +20,28 @@ subdirectory and on `readthedocs <https://hande.readthedocs.org>`_.
 HANDE development team
 ----------------------
 
-| James Spencer, Imperial College London, j.spencer@imperial.ac.uk.
 | Alex Thom, University of Cambridge, ajwt3@cam.ac.uk.
 | Nick Blunt, University of Cambridge.
-| Fionn Malone, Imperial College London.
+| Fionn Malone, Lawrence Livermore National Laboratory.
 | Matthew Foulkes, Imperial College London.
-| Will Vigor, Imperial College London.
 | Ruth Franklin, University of Cambridge.
 | Charlie Scott, University of Cambridge.
 | Verena Neufeld, University of Cambridge.
-| James Shepherd, MIT.
+| James Shepherd, University of Iowa.
+| Roberto Di Remigio, University of Tromsø and Virginia Tech.
 
-LICENSE
+Some past HANDE developers
+--------------------------
+| James Spencer, Imperial College London.
+| Will Vigor, Imperial College London.
+
+LICENCE
 -------
 
-Except where otherwise stated, HANDE is under the Lesser GNU Public License v2.1.
+Except where otherwise stated, HANDE is under the 'Lesser GNU Public License v2.1'.
 
 (Note that many bundled libraries, including dSFMT, aotus and pyblock are under
-a different license.  Please see the license information in the relevant subdirectory for
+a different licence.  Please see the licence information in the relevant subdirectory for
 more details).
 
-Note that this license does not apply prior to HANDE 0.9.
+Note that this licence does not apply prior to HANDE 0.9.

@@ -235,7 +235,7 @@ DSFMT_MEXP
     DSFMT_EXP sets the exponent of the period of the RNG.  Allowed values are
     521, 1279, 2203, 4253, 11213, 19937, 44497, 86243,
     132049 and 216091 and lead to, for example, random numbers with a period of
-    a Mersenne Prime such as :math:`2^{512}-1`.
+    a Mersenne Prime such as :math:`2^{521}-1`.
 ENABLE_SHMEM_POSIX
     Default: not defined.  Only relevant when PARALLEL is defined.
 
@@ -245,6 +245,11 @@ ENABLE_SHMEM_POSIX
     not work when run as a non-privileged user (and hande should **not** be run by
     privileged users!).  As a result, we recommend using MPI 3 instead of this where
     possible.  This may require the rt library to be added to the link line.
+NAGF95  
+    Default: not defined.
+
+    If defined then code specific to, and necessary for compilation using, the
+    NAG Fortran compiler is included.
 PARALLEL  
     Default: not defined.
 
