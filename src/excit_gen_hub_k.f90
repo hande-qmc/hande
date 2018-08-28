@@ -49,7 +49,7 @@ contains
         !        the Hubbard model in a Bloch basis.
         !    allowed_excitation: false if a valid symmetry allowed excitation was not generated
 
-        use determinants, only: det_info_t
+        use determinant_data, only: det_info_t
         use excitations, only: excit_t
         use excit_gens, only: excit_gen_data_t
         use system, only: sys_t
@@ -125,7 +125,7 @@ contains
         !        between a determinant and the connected determinant in the Hubbard
         !        model in a Bloch basis.
 
-        use determinants, only: det_info_t
+        use determinant_data, only: det_info_t
         use excitations, only: excit_t
         use hamiltonian_hub_k, only: slater_condon2_hub_k_excit
         use system, only: sys_t
@@ -187,7 +187,7 @@ contains
         !        the Hubbard model in a Bloch basis.
         !    allowed_excitation: false if a valid symmetry allowed excitation was not generated
 
-        use determinants, only: det_info_t
+        use determinant_data, only: det_info_t
         use dSFMT_interface, only: dSFMT_t, get_rand_close_open
         use excitations, only: excit_t
         use excit_gens, only: excit_gen_data_t
@@ -284,7 +284,7 @@ contains
         !        between a determinant and the connected determinant in the Hubbard
         !        model in a Bloch basis.
 
-        use determinants, only: det_info_t
+        use determinant_data, only: det_info_t
         use excitations, only: excit_t
         use hamiltonian_hub_k, only: slater_condon2_hub_k_excit
         use system, only: sys_t
@@ -316,10 +316,10 @@ contains
         ! In:
         !    sys: system object being studied.
         !    excit_gen_data: Data for excitation generator (unused)
-        !    cdet: info on the current determinant (cdet) that we will spawn
-        !        from.
         ! Out:
         ! In/Out:
+        !    cdet: info on the current determinant (cdet) that we will spawn
+        !        from.
         !    rng: random number generator.
         !    pgen: probability of generating the excited determinant from cdet.
         !    connection: excitation connection between the current determinant
@@ -329,7 +329,7 @@ contains
         !        a Bloch basis.
         !    allowed_excitation: false if a valid symmetry allowed excitation was not generated
 
-        use determinants, only: det_info_t
+        use determinant_data, only: det_info_t
         use excitations, only: excit_t
         use excit_gens, only: excit_gen_data_t
         use system, only: sys_t
@@ -339,7 +339,7 @@ contains
 
         type(sys_t), intent(in) :: sys
         type(excit_gen_data_t), intent(in) :: excit_gen_data
-        type(det_info_t), intent(in) :: cdet
+        type(det_info_t), intent(inout) :: cdet
         type(dSFMT_t), intent(inout) :: rng
         real(p), intent(out) :: pgen
         type(hmatel_t), intent(out) :: hmatel
@@ -399,10 +399,10 @@ contains
         ! In:
         !    sys: system object being studied.
         !    excit_gen_data: Data for excitation generator (unused)
-        !    cdet: info on the current determinant (cdet) that we will spawn
-        !        from.
         ! In/Out:
         !    rng: random number generator.
+        !    cdet: info on the current determinant (cdet) that we will spawn
+        !        from.
         ! Out:
         !    pgen: probability of generating the excited determinant from cdet.
         !    connection: excitation connection between the current determinant
@@ -412,7 +412,7 @@ contains
         !        a Bloch basis.
         !    allowed_excitation: false if a valid symmetry allowed excitation was not generated
 
-        use determinants, only: det_info_t
+        use determinant_data, only: det_info_t
         use excitations, only: excit_t
         use excit_gens, only: excit_gen_data_t
         use system, only: sys_t
@@ -422,7 +422,7 @@ contains
 
         type(sys_t), intent(in) :: sys
         type(excit_gen_data_t), intent(in) :: excit_gen_data
-        type(det_info_t), intent(in) :: cdet
+        type(det_info_t), intent(inout) :: cdet
         type(dSFMT_t), intent(inout) :: rng
         real(p), intent(out) :: pgen
         type(hmatel_t), intent(out) :: hmatel

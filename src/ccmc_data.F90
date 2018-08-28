@@ -1,7 +1,7 @@
 module ccmc_data
 
-use const, only: i0, p, dp, int_64
-use determinants, only: det_info_t
+use const, only: i0, p, dp, int_64, depsilon
+use determinant_data, only: det_info_t
 use base_types, only: alloc_int2d, alloc_rdp1d
 
 implicit none
@@ -181,6 +181,66 @@ contains
 
     end subroutine multispawn_stats_report
 
+    subroutine zero_ps_stats(ps_stats, overflow)
+
+        ! Zero the ps_stats(:) components. Set overflow_loc to .true. if at least one thread
+        ! has it as .true..
+
+        ! In:
+        !   overflow: Is precision too low to keep accumulating data?
+
+        ! Out:
+        !    ps_stats: array of p_single_double_coll_t objects.
+
+        use excit_gens, only: p_single_double_coll_t
+
+        logical, intent(in) :: overflow
+        type(p_single_double_coll_t), intent(out) :: ps_stats(:)
+
+        ps_stats%h_pgen_singles_sum = 0.0_p
+        ps_stats%excit_gen_singles = 0.0_p
+        ps_stats%h_pgen_doubles_sum = 0.0_p
+        ps_stats%excit_gen_doubles = 0.0_p
+
+        ps_stats%overflow_loc = overflow
+
+    end subroutine zero_ps_stats
+    
+    subroutine ps_stats_reduction_update(rep_accum, ps_stats)
+
+        ! Reduce the ps_stats(:) components after the OpenMP loop and update ps%rep_accum.
+
+        ! In:
+        !    ps_stats: array of p_single_double_stats_t objects.
+        ! In/Out:
+        !    rep_accum: Object to be updated, collect data over a report loop.
+
+        use excit_gens, only: p_single_double_coll_t
+
+        type(p_single_double_coll_t), intent(in) :: ps_stats(:)
+        type(p_single_double_coll_t), intent(inout) :: rep_accum
+
+        real(p) :: excit_gen_singles_old, excit_gen_doubles_old
+
+        excit_gen_singles_old = rep_accum%excit_gen_singles
+        excit_gen_doubles_old = rep_accum%excit_gen_doubles
+
+        rep_accum%h_pgen_singles_sum = rep_accum%h_pgen_singles_sum + sum(ps_stats%h_pgen_singles_sum)
+        rep_accum%excit_gen_singles = rep_accum%excit_gen_singles + sum(ps_stats%excit_gen_singles)
+        rep_accum%h_pgen_doubles_sum = rep_accum%h_pgen_doubles_sum + sum(ps_stats%h_pgen_doubles_sum)
+        rep_accum%excit_gen_doubles = rep_accum%excit_gen_doubles + sum(ps_stats%excit_gen_doubles)
+        
+        ! If excit_gen_singles is sufficienctly large after a lot of cycles, the addition above may not
+        ! change the value within the float, so we check for this and call it an overflow.
+        if (((abs(rep_accum%excit_gen_singles-excit_gen_singles_old) < depsilon) .and. &
+            (sum(ps_stats%excit_gen_singles) > 0.0_p)) .or. &
+            ((abs(rep_accum%excit_gen_doubles-excit_gen_doubles_old) < depsilon) .and. &
+            (sum(ps_stats%excit_gen_doubles) > 0.0_p)) .or. (any(ps_stats%overflow_loc))) then
+            rep_accum%overflow_loc = .true.
+        end if
+
+    end subroutine ps_stats_reduction_update
+    
     subroutine end_selection_data(sd)
 
         ! Fully deallocate a passed in selection_data_t object.

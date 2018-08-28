@@ -180,3 +180,29 @@ const char *report_parallel() {
 #endif
   /* clang-format on */
 }
+
+
+const char *report_mpi3() {
+/* clang-format off */
+#if ! defined PARALLEL
+  return "PARALLEL not defined. MPI-3 functionality disabled";
+#elif defined DISABLE_MPI3
+  return "DISABLE_MPI3 defined.  MPI-3 functionality disabled.";
+#else
+  return "DISABLE_MPI3 not defined.  MPI-3 functionality enabled.";
+#endif
+  /* clang-format on */
+}
+
+const char *report_shmem() {
+/* clang-format off */
+#if ! defined PARALLEL
+  return "PARALLEL not enabled. POSIX shared memory disabled.";
+#elif ! defined DISABLE_MPI3 && defined ENABLE_SHMEM_POSIX
+  return "ENABLE_SHMEM_POSIX defined.  POSIX shared memory enabled.";
+#else
+  return "ENABLE_SHMEM_POSIX not defined or MPI-3 in use.  POSIX shared memory disabled.";
+#endif
+  /* clang-format on */
+}
+

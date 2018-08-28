@@ -44,7 +44,7 @@ HANDE currently uses one restart file per MPI rank with a filename of the form
 
     Optional.  Default: :math:`2^{31}-1`.
 
-    Write out checkpointing files every `N` iterations, where `N` is the
+    Write out checkpointing files every `N` report loops, where `N` is the
     specified value.
 
     .. note::
@@ -54,3 +54,33 @@ HANDE currently uses one restart file per MPI rank with a filename of the form
         may be created.  As such, this option is typically only relevant for debugging or
         explicitly examining the evolution of the stochastic representation of the
         wavefunction.
+``rng``
+    type: boolean
+
+    Optional. Default: true.
+
+    Restart the state of the DSFMT random number generator from the previous calculation,
+    allowing restarted calculations to follow the same Markov chain as if the entire
+    series of calculations had been performed as a single calculation.
+
+    .. note::
+
+        #. Calculations using OpenMP threads will not follow the same Markov chain due to
+           the non-deterministic load balancing behaviour of the OpenMP implementation.
+        #. Restart files from older restart files do not contain the necessary information
+           to recreate the RNG state. This option is ignored automatically in such cases.
+        #. Due to each processor using its own RNG stream, this functionality can only be
+           used when restarting calculations on the same number of processors.
+           Restart files created by the ``redistribute`` function will not contain RNG
+           information as a result. This option is automatically ignored in such cases.
+        #. The presence of the RNG information in a restart file can be detected by
+           running the command
+
+           .. code-block:: bash
+
+               $ h5dump -A -d rng/state <restart file>
+
+           where ``<restart file>`` is the appropriate filename, which will return some
+           metadata information on the ``rng/state`` dataset if the RNG state is present
+           and an error otherwise.
+

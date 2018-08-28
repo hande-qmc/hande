@@ -1,0 +1,52 @@
+system = {
+    int_file = "FCIDUMP",
+    nel = 24,
+    ms = 0,
+    sym = 1,
+    complex = true,
+    CAS = {8,8},
+}
+
+sys = read_in(system)
+
+qs = fciqmc {
+    sys = sys,
+    qmc = {
+        tau = 1e-3,
+        rng_seed = 23,
+        init_pop = 10,
+        mc_cycles = 20,
+        nreports = 600,
+        target_population = 2000,
+        state_size = 750000,
+        spawned_state_size = 500000,
+        excit_gen = "power_pitzer_orderN",
+        pattempt_update = true,
+    },
+    fciqmc = {
+        replica_tricks = true,
+    },
+}
+
+fciqmc {
+    sys = sys,
+    qmc_state = qs,
+    qmc = {
+        tau = 1e-3,
+        rng_seed = 23,
+        init_pop = 10,
+        mc_cycles = 20,
+        nreports = 600,
+        target_population = 2000,
+        state_size = 750000,
+        spawned_state_size = 500000,
+        excit_gen = "no_renorm",
+        pattempt_update = false,
+    },
+    fciqmc = {
+        replica_tricks = true,
+    },
+    restart = {
+        rng = false,
+    },
+}

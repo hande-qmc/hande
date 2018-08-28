@@ -9,7 +9,7 @@ implicit none
 
 private
 public :: write_qmc_report_header, write_qmc_report, write_dmqmc_report_header, write_dmqmc_report
-public :: write_qmc_var, write_column_title
+public :: write_qmc_var, write_column_title, write_hex_determinant
 
 interface write_qmc_var
     module procedure :: write_qmc_var_int_32
@@ -651,6 +651,30 @@ contains
         write (iunit,'()')
 
     end subroutine write_dmqmc_report
+
+    ! -- write_qmc_var --
+    ! Write a determinant as a hex string.
+    ! In:
+    !    io: unit to write to.
+    !    val: value to print out.
+    !    low_prec (optional, real values only, default false): only write 4 decimal places instead of 10.
+    subroutine write_hex_determinant(io, det, sep)
+        integer, intent(in) :: io
+        integer(i0), intent(in) :: det(:)
+        character(1), intent(in), optional :: sep
+        character(1) :: sep_loc
+        integer :: i
+        sep_loc = ' '
+        if (present(sep)) sep_loc = sep
+        do i = size(det),1,-1
+           if (i0_length == 32) then
+               write (io, '(Z8.8)', advance='no') det(i)
+           else
+               write (io, '(Z16.16)', advance='no') det(i)
+           end if
+        end do
+        write (io, '(a1,1X)', advance='no') sep_loc
+    end subroutine write_hex_determinant
 
     ! -- write_qmc_var --
     ! Write a QMC variable to a fixed-width column (header created in write_qmc_report_header).

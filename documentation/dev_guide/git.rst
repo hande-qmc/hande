@@ -13,12 +13,18 @@ HANDE can be downloaded by cloning the repository from github:
 We periodically tag releases
 
 A private git repository, where much of the day-to-day development work takes
-place, is currently located at ``ch-hande@git.uis.cam.ac.uk`` and can
+place, is currently located at a private repository at github and can
 be cloned using:
 
 .. code-block:: bash
 
-    $ git clone ch-hande@git.uis.cam.ac.uk:hande.git
+    $ git clone https://github.com/hande-qmc/hande-dev
+
+or if using ssh keys, 
+
+.. code-block:: bash
+
+    $ git clone git@github.com:hande-qmc/hande-dev
 
 If you would like access, please speak to one of the developers.  The rest of
 this guide assumes you used the default remote name during the clone (i.e.
@@ -274,11 +280,11 @@ future, would like to keep around but without cluttering up the main
 repository, making it unclear which branches need some TLC before merging?  We
 have a separate repository where such branches can be sent, to be resurrected
 if desired later.  The repository is at
-hande@tycpc15.cmth.ph.ic.ac.uk:hande_graveyard.git.  To push a local branch there:
+ch-hande@git.uis.cam.ac.uk:hande_graveyard.git.  To push a local branch there:
 
 .. code-block:: bash
 
-    $ git remote add graveyard hande@tycpc15:hande_graveyard.git
+    $ git remote add graveyard ch-hande@git.uis.cam.ac.uk:hande_graveyard.git
     $ git push remote graveyard unwanted_branch
 
 and then delete the branch (both local and remote) from the main repository
@@ -287,7 +293,7 @@ either check it out and then do the push and delete (easier) or use a refspec:
 
 .. code-block:: bash
 
-    $ git push graveyard refs/remotes/origin/unwanted_branch:refs/head/unwanted_branch
+    $ git push graveyard refs/remotes/origin/unwanted_branch:refs/heads/unwanted_branch
 
 where origin/unwanted_branch is the remote branch to be moved to the graveyard
 repository.  The branch on origin can then be deleted as before.

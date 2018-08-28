@@ -12,13 +12,13 @@ contains
 
         ! Initialise real space Hubbard model and Heisenberg model: find and store
         ! the matrix elements < i | T | j > where i and j are real space basis functions.
+        ! NB The basis must have been previously set up (in init_model_basis_fns in basis.f90)
 
         ! In/Out:
         !    sys: system to be studied.  On output the symmetry components are set.
 
         use basis, only: set_orb
         use calc, only: doing_dmqmc_calc, dmqmc_energy_squared
-        use determinants, only: decode_det
         use system
         use bit_utils
         use checking, only: check_allocate, check_deallocate
@@ -46,8 +46,8 @@ contains
             allocate(sr%tmat(sys%basis%bit_string_len,sys%basis%nbasis), stat=ierr)
             call check_allocate('sr%tmat',sys%basis%bit_string_len*sys%basis%nbasis,ierr)
             ! Information bits are not used but need to enable easy comparison to bit strings.
-            allocate(sr%connected_orbs(sys%basis%tot_string_len,sys%basis%nbasis), stat=ierr)
-            call check_allocate('sr%connected_orbs',sys%basis%tot_string_len*sys%basis%nbasis,ierr)
+            allocate(sr%connected_orbs(sys%basis%bit_string_len,sys%basis%nbasis), stat=ierr)
+            call check_allocate('sr%connected_orbs',sys%basis%bit_string_len*sys%basis%nbasis,ierr)
             allocate(lvecs(sl%ndim,3**sl%ndim), stat=ierr)
             call check_allocate('lvecs', sl%ndim*3**sl%ndim, ierr)
             if (sl%triangular_lattice) then
@@ -78,7 +78,7 @@ contains
                 isystem = 2
             end select
 
-            call enumerate_lattice_vectors(sl, lvecs)
+            call enumerate_lattice_vectors_in_ws(sl, lvecs)
 
             ! Construct how the sl%lattice is connected.
             diag_connection = .false. ! For sl%ndim /= 2.
@@ -160,9 +160,9 @@ contains
             sys%heisenberg%nbonds = sum(sys%real_lattice%connected_sites(0,:))/2
             ! Find lattice_mask for a gerenal bipartite lattice.
             if (sys%lattice%bipartite_lattice) then
-                allocate (sys%heisenberg%lattice_mask(sys%basis%tot_string_len), stat=ierr)
+                allocate (sys%heisenberg%lattice_mask(sys%basis%bit_string_len), stat=ierr)
                 associate(lattice_mask=>sys%heisenberg%lattice_mask)
-                    call check_allocate('lattice_mask',sys%basis%tot_string_len,ierr)
+                    call check_allocate('lattice_mask',sys%basis%bit_string_len,ierr)
                     ! lattice_size is such that any loops over higher dimensions
                     ! than that of the model are single iterations but allows us to not have
                     ! to handle each dimension separately.
@@ -192,28 +192,10 @@ contains
 
     end subroutine init_real_space
 
-    subroutine end_real_space(sh)
-
-        ! Clean up real_lattice specific allocations.
-
-        ! In/Out:
-        !    sh: Heisenberg system object to be deallocated.
-
-        use checking, only: check_deallocate
-        use system, only: sys_heisenberg_t
-
-        type(sys_heisenberg_t), intent(inout) :: sh
-
-        integer :: ierr
-
-        if (allocated(sh%lattice_mask)) then
-            deallocate(sh%lattice_mask, stat=ierr)
-            call check_deallocate('sh%lattice_mask', ierr)
-        end if
-
-    end subroutine end_real_space
-
-    subroutine enumerate_lattice_vectors(sl, lvecs)
+! [review] - AJWT: The name of this function is a little misleading as it enumerates all combinations
+! [review] - AJWT: which lie in the WS cell, not the lattice or boundary vectors themselves.
+! [reply] - CJCS: Changed to hopefully clearer name?
+    subroutine enumerate_lattice_vectors_in_ws(sl, lvecs)
 
         ! Enumerate combinations of lattice vectors which define the Wigner--Seitz cell.
 
@@ -223,7 +205,7 @@ contains
         !    lvecs: all possible primitive combinations of the above lattice vectors,
         !         where the amplitude for each lattice vector can be either -1, 0 or +1.
         !         lvec(:,i) stores the i'th such combination.  lvecs must have dimension
-        !         (at least) (ndim, 3^ndim).
+        !         (at least) (ndim, 3**ndim), and only these elements are set in this routine
 
         use system, only: sys_lattice_t
 
@@ -253,7 +235,7 @@ contains
             end do
         end select
 
-    end subroutine enumerate_lattice_vectors
+    end subroutine enumerate_lattice_vectors_in_ws
 
     elemental function get_one_e_int_real(sys, i, j) result(one_e_int)
 
@@ -281,7 +263,7 @@ contains
         if (btest(sys%real_lattice%tmat(ind,i),pos)) one_e_int = one_e_int - sys%hubbard%t
         pos = sys%basis%bit_lookup(1,i)
         ind = sys%basis%bit_lookup(2,i)
-        ! Test if i <-> j.  If so there's a kinetic interaction.
+        ! Test if j <-> i.  If so there's a kinetic interaction.
         if (btest(sys%real_lattice%tmat(ind,j),pos)) one_e_int = one_e_int - sys%hubbard%t
 
     end function get_one_e_int_real
@@ -290,7 +272,7 @@ contains
 
         ! In:
         !    sys: system being studied.
-        !    f(tot_string_len): bit string representation of the Slater
+        !    f(bit_string_len): bit string representation of the Slater
         !        determinant, D.
         ! Returns:
         !    The matrix element < D | U | D >
@@ -303,7 +285,7 @@ contains
 
         real(p) :: umatel
         type(sys_t), intent(in) :: sys
-        integer(i0), intent(in) :: f(sys%basis%tot_string_len)
+        integer(i0), intent(in) :: f(sys%basis%bit_string_len)
         integer :: i
         integer(i0) :: b
 
@@ -377,7 +359,7 @@ contains
         !     sys: system being studied.
         ! In/Out:
         !     sym_vecs: An array which on output will hold all translational
-        !         symmetry vectors. Should be deallocated on input.
+        !         symmetry vectors. Should not have been allocated on input.
         ! Out:
         !     nsym: The total number of symmetry vectors.
 

@@ -21,6 +21,7 @@ fciqmc {
     },
     restart = {
         read = 1,
+        rng = false,
     },
     reference = {
         det = {2, 3, 5},

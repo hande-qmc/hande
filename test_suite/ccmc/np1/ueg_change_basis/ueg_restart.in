@@ -3,7 +3,8 @@
 cutoff = { write = 2, read = 2.5 }
 
 for _, act in ipairs { "write", "read" } do
-    restart = {}; restart[act] = 0
+    restart = {rng = false}
+    restart[act] = 0
     ccmc {
         sys = ueg {
             electrons = 6,

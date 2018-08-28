@@ -1,7 +1,7 @@
 module proc_pointers
 
 use const, only: i0, p, dp, int_64, int_p
-use determinants, only: det_info_t
+use determinant_data, only: det_info_t
 use excitations, only: excit_t
 use excit_gens, only: excit_gen_data_t
 use hamiltonian_data, only: hmatel_t
@@ -12,13 +12,15 @@ implicit none
 ! that's imported as a array size in abstract interfaces.
 
 abstract interface
-    pure subroutine i_decoder(sys,f,d)
+    pure subroutine i_decoder(sys,f,d,excit_gen_data)
         use system, only: sys_t
+        use excit_gens, only: excit_gen_data_t
         import :: i0, det_info_t
         implicit none
         type(sys_t), intent(in) :: sys
         integer(i0), intent(in) :: f(sys%basis%tot_string_len)
         type(det_info_t), intent(inout) :: d
+        type(excit_gen_data_t), optional, intent(in) :: excit_gen_data
     end subroutine i_decoder
     pure subroutine i_update_proj_energy(sys, f0, wfn_dat, d, pop, estimators, excitation, hmatel)
         use system, only: sys_t
@@ -64,7 +66,7 @@ abstract interface
     end subroutine i_update_dmqmc_energy_and_trace
     subroutine i_update_dmqmc_estimators(sys, cdet, excitation, H00, walker_pop, estimate)
         use system, only: sys_t
-        use determinants, only: det_info_t
+        use determinant_data, only: det_info_t
         import :: excit_t, p
         implicit none
         type(sys_t), intent(in) :: sys
@@ -75,7 +77,7 @@ abstract interface
     end subroutine i_update_dmqmc_estimators
     subroutine i_update_dmqmc_correlation_function(sys, cdet, excitation, H00, walker_pop, mask, cfunc)
         use system, only: sys_t
-        use determinants, only: det_info_t
+        use determinant_data, only: det_info_t
         import :: excit_t, p, i0
         implicit none
         type(sys_t), intent(in) :: sys
@@ -94,12 +96,27 @@ abstract interface
         type(dSFMT_t), intent(inout) :: rng
         type(sys_t), intent(in) :: sys
         type(excit_gen_data_t), intent(in) :: excit_gen_data
-        type(det_info_t), intent(in) :: d
+        type(det_info_t), intent(inout) :: d
         real(p), intent(out) :: pgen
         type(hmatel_t), intent(out) :: hmatel
         type(excit_t), intent(out) :: connection
         logical, intent(out) :: allowed
     end subroutine i_gen_excit
+    subroutine i_gen_excit_init(rng, sys, excit_gen_data, d, pgen, connection, hmatel, allowed)
+        use dSFMT_interface, only: dSFMT_t
+        use system, only: sys_t
+        use hamiltonian_data, only: hmatel_t
+        import :: det_info_t, excit_t, p, excit_gen_data_t
+        implicit none
+        type(dSFMT_t), intent(inout) :: rng
+        type(sys_t), intent(in) :: sys
+        type(excit_gen_data_t), intent(in) :: excit_gen_data
+        type(det_info_t), intent(in) :: d
+        real(p), intent(out) :: pgen
+        type(hmatel_t), intent(out) :: hmatel
+        type(excit_t), intent(out) :: connection
+        logical, intent(out) :: allowed
+    end subroutine i_gen_excit_init
     subroutine i_gen_excit_finalise(rng, sys, d, connection, hmatel)
         use dSFMT_interface, only: dSFMT_t
         use system, only: sys_t
@@ -194,6 +211,33 @@ abstract interface
         type(hmatel_t) :: hmatel
     end function i_slater_condon2_excit
 
+    pure subroutine i_create_weighted_excitation_list(sys, i, b, a_list, a_list_len, weights, weight_tot)
+        use system, only: sys_t
+        use molecular_integrals, only: get_two_body_int_mol
+        import :: p
+        type(sys_t), intent(in) :: sys
+        integer, intent(in) :: i, b, a_list_len, a_list(:)
+        real(p), intent(out) :: weight_tot, weights(:)
+    end subroutine i_create_weighted_excitation_list
+
+    pure function i_abs_hmatel(hmatel) result(abs_hmatel)
+        use hamiltonian_data, only: hmatel_t
+        import :: p
+        type(hmatel_t), intent(in) :: hmatel
+        real(p) :: abs_hmatel
+    end function i_abs_hmatel
+
+    pure function i_single_excitation_weight(sys, ref, i, a) result(weight)
+        use molecular_integrals, only: get_two_body_int_mol_real, get_two_body_int_mol_complex
+        use system, only: sys_t
+        use reference_determinant, only: reference_t
+        import :: p
+        type(sys_t), intent(in) :: sys
+        integer, intent(in) :: i, a
+        type(reference_t), intent(in) :: ref
+        real(p) :: weight
+    end function i_single_excitation_weight        
+
     pure function i_get_one_e_int(sys, i, a) result(intgrl)
         use system, only: sys_t
         import :: p
@@ -242,6 +286,10 @@ procedure(i_create_spawned_particle_dm), pointer :: create_spawned_particle_dm_p
 procedure(i_slater_condon1_excit), pointer :: slater_condon1_excit_ptr
 procedure(i_slater_condon2_excit), pointer :: slater_condon2_excit_ptr
 
+procedure(i_create_weighted_excitation_list), pointer :: create_weighted_excitation_list_ptr => null()
+procedure(i_abs_hmatel), pointer :: abs_hmatel_ptr => null()
+procedure(i_single_excitation_weight), pointer :: single_excitation_weight_ptr => null()
+
 procedure(i_get_one_e_int), pointer :: get_one_e_int_ptr => null()
 procedure(i_get_two_e_int), pointer :: get_two_e_int_ptr => null()
 
@@ -249,7 +297,7 @@ procedure(i_get_two_e_int), pointer :: get_two_e_int_ptr => null()
 ! interface for spawning routines which use different types of generator.
 type gen_excit_ptr_t
     procedure(i_gen_excit), nopass, pointer :: full => null()
-    procedure(i_gen_excit), nopass, pointer :: init => null()
+    procedure(i_gen_excit_init), nopass, pointer :: init => null()
     procedure(i_gen_excit_finalise), nopass, pointer :: finalise => null()
     procedure(i_trial_fn), nopass, pointer :: trial_fn => null()
 end type gen_excit_ptr_t
@@ -267,10 +315,10 @@ abstract interface
         implicit none
         type(dSFMT_t), intent(inout) :: rng
         type(sys_t), intent(in) :: sys
-        type(qmc_state_t), intent(in) :: qmc_state
+        type(qmc_state_t), intent(inout) :: qmc_state
         integer(int_p), intent(in) :: spawn_cutoff
         integer(int_p), intent(in) :: real_factor
-        type(det_info_t), intent(in) :: d
+        type(det_info_t), intent(inout) :: d
         integer(int_p), intent(in) :: parent_sign
         type(gen_excit_ptr_t), intent(in) :: gen_excit_ptr
         real(p), allocatable, intent(in) :: weights(:)

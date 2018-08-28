@@ -1,33 +1,38 @@
 # This uses 
 #Currently Loaded Modulefiles:
-#  1) torque/2.5.12
-#  2) maui/3.3.1
-#  3) use.own
-#  4) /home/ajwt3/privatemodules/hdf5/1.8.12/ifort2013_sp1_2_144
-#  5) /home/ajwt3/privatemodules/trlan/201009/openmpi_intel_2013
-#  6) mpi/intel/64/intel/4.0.0/028
-#  7) ifort/64/2013/5/192
-#  8) mkl/64/11.0/lp64/5
+#
+#   icc/64/2017/5/239
+#   gcc/4.8.3                   
+#   mkl/64/2017/0/4            
+#   anaconda/python2/4.4.0
+#   mpi/openmpi/intel17/3.0.0   
+#   use.own                     
+#   trlan/201009/ifort2017_5
+#   hdf5/1.8.20/ifort2017_5
+#   lua/5.3.4/icc2017_5         
+#
+#   The last three are private modules.
 
 [DEFAULT]
-cppflags_opt = -DHAVE_SSE2 -DPARALLEL -DDET_SIZE=64  -DPOP_SIZE=64
+cppflags_opt = -DHAVE_SSE2 -DPARALLEL -DDET_SIZE=64 -DPOP_SIZE=64
 
 [main]
 fc = mpif90
 cc = mpicc
 cxx = mpicxx
 ld = mpif90
-LIBS =  $(MKLROOT)/lib/intel64/libmkl_blas95_lp64.a $(MKLROOT)/lib/intel64/libmkl_lapack95_lp64.a -L$(MKLROOT)/lib/intel64 -lmkl_scalapack_lp64 -lmkl_intel_lp64 -lmkl_core -lmkl_intel_thread -lmkl_blacs_intelmpi_lp64 -lpthread -lm -liomp5 -cxxlib -lhdf5_fortran -luuid -ltrlan_mpi -llua
+# As specified by the intel link line advisor.  trlan_mpi needs to be first to pick up the mkl libraries.
+LIBS =-ltrlan_mpi  $(MKLROOT)/lib/intel64/libmkl_blas95_lp64.a $(MKLROOT)/lib/intel64/libmkl_lapack95_lp64.a $(MKLROOT)/lib/intel64/libmkl_scalapack_lp64.a -Wl,--start-group ${MKLROOT}/lib/intel64/libmkl_intel_lp64.a ${MKLROOT}/lib/intel64/libmkl_intel_thread.a ${MKLROOT}/lib/intel64/libmkl_core.a ${MKLROOT}/lib/intel64/libmkl_blacs_openmpi_lp64.a -Wl,--end-group  -liomp5 -lpthread -lm -ldl -cxxlib -lhdf5_fortran -luuid -llua
 f90_module_flag = -module
 
 [opt]
 cppflags = %(cppflags_opt)s
-fflags = -O3 -openmp -ipo
-cxxflags = -O3 -openmp -ipo
-ldflags =  -openmp -ipo
+fflags = -O3 -qopenmp -ipo
+cxxflags = -O3 -qopenmp -ipo
+ldflags =  -qopenmp -ipo
 cflags = -O3 -ipo
 
 [dbg]
 cppflags = %(cppflags_opt)s -DDEBUG
-fflags = -g -traceback -CB -openmp
-cxxflags = -g -traceback  -openmp
+fflags = -g -traceback -CB -qopenmp
+cxxflags = -g -traceback -qopenmp

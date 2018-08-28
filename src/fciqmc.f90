@@ -36,14 +36,16 @@ contains
         !    qs: qmc_state for use if restarting the calculation
 
         use parallel
-        use checking, only: check_allocate
+        use checking, only: check_allocate, check_deallocate
         use json_out
 
         use const, only: debug
+        use errors, only: stop_all
 
         use bloom_handler, only: init_bloom_stats_t, bloom_mode_fixedn, bloom_stats_warning, &
                                  bloom_stats_t, accumulate_bloom_stats, write_bloom_report
-        use determinants, only: det_info_t, alloc_det_info_t, dealloc_det_info_t, sum_sp_eigenvalues_occ_list
+        use determinants, only: alloc_det_info_t, dealloc_det_info_t, sum_sp_eigenvalues_occ_list
+        use determinant_data, only: det_info_t
         use excitations, only: excit_t, create_excited_det, get_excitation
         use annihilation, only: direct_annihilation, direct_annihilation_received_list, &
                                 direct_annihilation_spawned_list, deterministic_annihilation
@@ -55,7 +57,8 @@ contains
         use spawning, only: create_spawned_particle_initiator
         use qmc, only: init_qmc
         use qmc_common
-        use dSFMT_interface, only: dSFMT_t, dSFMT_init, dSFMT_end
+        use dSFMT_interface, only: dSFMT_t, dSFMT_init, dSFMT_end, dSFMT_state_t_to_dSFMT_t, dSFMT_t_to_dSFMT_state_t, &
+                                   free_dSFMT_state_t
         use semi_stoch, only: semi_stoch_t, check_if_determ, determ_projection
         use semi_stoch, only: dealloc_semi_stoch_t, init_semi_stoch_t, init_semi_stoch_t_flags, set_determ_info
         use system, only: sys_t, sys_t_json, read_in
@@ -104,7 +107,8 @@ contains
         real(dp), allocatable :: nparticles_old(:)
 
         integer(int_p) :: ndeath
-        integer :: nattempts_current_det, nspawn_events
+        ! [todo] - Should some of these be int_p?
+        integer :: nspawn_events, nattempts_current_det_ispace
         type(excit_t) :: connection
         type(hmatel_t) :: hmatel
         real(p), allocatable :: real_population(:), weighted_population(:)
@@ -122,6 +126,7 @@ contains
         type(blocking_t) :: bl
         integer :: iunit, restart_version_restart
         integer :: date_values(8)
+        character(:), allocatable :: err_msg
 
         if (parent) then
             write (io_unit,'(1X,"FCIQMC")')
@@ -131,7 +136,12 @@ contains
         restarting = present(qmc_state_restart) .or. restart_in%read_restart
         if (parent) then
             ! Check input options.
-            call check_qmc_opts(qmc_in, sys, .not.present(qmc_state_restart), restarting, qmc_state_restart)
+            if (present(qmc_state_restart)) then
+                call check_qmc_opts(qmc_in, sys, .not.present(qmc_state_restart), restarting, &
+                    qmc_state_restart=qmc_state_restart, fciqmc_in=fciqmc_in)
+            else
+                call check_qmc_opts(qmc_in, sys, .not.present(qmc_state_restart), restarting, fciqmc_in=fciqmc_in)
+            end if
             call check_fciqmc_opts(sys, fciqmc_in, blocking_in)
             call check_load_bal_opts(load_bal_in)
             call check_blocking_opts(sys, blocking_in, restart_in)
@@ -151,6 +161,7 @@ contains
             qmc_in_loc%pattempt_single = qs%excit_gen_data%pattempt_single
             qmc_in_loc%pattempt_double = qs%excit_gen_data%pattempt_double
             qmc_in_loc%shift_damping = qs%shift_damping
+            qmc_in_loc%pattempt_parallel = qs%excit_gen_data%pattempt_parallel
             call qmc_in_t_json(js, qmc_in_loc)
             call fciqmc_in_t_json(js, fciqmc_in)
             call semi_stoch_in_t_json(js, semi_stoch_in)
@@ -172,6 +183,11 @@ contains
         call check_allocate('weighted_population', qs%psip_list%nspaces, ierr)
 
         call dSFMT_init(qmc_in%seed+iproc, 50000, rng)
+        if (restart_in%restart_rng .and. allocated(qs%rng_state%dsfmt_state)) then
+            call dSFMT_state_t_to_dSFMT_t(rng, qs%rng_state, err_msg=err_msg)
+            if (allocated(err_msg)) call stop_all('do_fciqmc', 'Failed to reset RNG state: '//err_msg)
+            call free_dSFMT_state_t(qs%rng_state)
+        end if
 
         ! Initialise bloom_stats components to the following parameters.
         call init_bloom_stats_t(bloom_stats, mode=bloom_mode_fixedn, encoding_factor=qs%psip_list%pop_real_factor)
@@ -255,7 +271,8 @@ contains
                     cdet%f => qs%psip_list%states(:,idet)
                     cdet%data => qs%psip_list%dat(:,idet)
 
-                    call decoder_ptr(sys, cdet%f, cdet)
+                    call decoder_ptr(sys, cdet%f, cdet, qs%excit_gen_data)
+                    
                     if (qs%propagator%quasi_newton) &
                         cdet%fock_sum = sum_sp_eigenvalues_occ_list(sys, cdet%occ_list) - qs%ref%fock_sum
 
@@ -291,10 +308,10 @@ contains
                                                         qs%estimators(ispace), connection, hmatel)
                         end if
 
+                        nattempts_current_det_ispace = decide_nattempts(rng, real_population(ispace))
 
-                        nattempts_current_det = decide_nattempts(rng, real_population(ispace))
-
-                        call do_fciqmc_spawning_attempt(rng, qs%spawn_store%spawn, bloom_stats, sys, qs, nattempts_current_det, &
+                        call do_fciqmc_spawning_attempt(rng, qs%spawn_store%spawn, bloom_stats, sys, qs, &
+                                                        nattempts_current_det_ispace, &
                                                         cdet, determ, determ_parent, qs%psip_list%pops(ispace, idet), &
                                                         sys%read_in%comp .and. modulo(ispace,2)==0, &
                                                         ispace, logging_info)
@@ -365,7 +382,7 @@ contains
 
             call dump_restart_file_wrapper(qs, write_restart_shift, restart_in%write_freq, nparticles_old, ireport, &
                                            qmc_in%ncycles, sys%basis%nbasis, ri, ri_shift, fciqmc_in%non_blocking_comm, &
-                                           sys%basis%info_string_len)
+                                           sys%basis%info_string_len, rng)
 
             qs%psip_list%tot_nparticles = nparticles_old
 
@@ -376,6 +393,8 @@ contains
                     call select_ref_det(sys, fciqmc_in%ref_det_factor, qs)
 
         end do
+
+        call dSFMT_t_to_dSFMT_state_t(rng, qs%rng_state)
 
         if (blocking_in%blocking_on_the_fly) call deallocate_blocking(bl)
         if (blocking_in%blocking_on_the_fly .and. parent) call date_and_time(VALUES=date_values)
@@ -405,8 +424,8 @@ contains
             qs%mc_cycles_done = qs%mc_cycles_done + qmc_in%ncycles*qmc_in%nreport
         end if
 
-        if (restart_in%write_restart) then
-            call dump_restart_hdf5(ri, qs, qs%mc_cycles_done, nparticles_old, sys%basis%nbasis, fciqmc_in%non_blocking_comm, &
+        if (qs%restart_in%write_restart) then
+            call dump_restart_hdf5(qs, qs%mc_cycles_done, nparticles_old, sys%basis%nbasis, fciqmc_in%non_blocking_comm, &
                                     sys%basis%info_string_len)
             if (parent) write (io_unit,'()')
         end if
@@ -415,7 +434,7 @@ contains
         if (debug) call end_logging(logging_info)
 
         call dealloc_det_info_t(cdet, .false.)
-
+        
         call dSFMT_end(rng)
 
     end subroutine do_fciqmc
@@ -442,7 +461,8 @@ contains
 
         use proc_pointers, only: sc0_ptr
         use death, only: stochastic_death
-        use determinants, only: det_info_t, sum_sp_eigenvalues_occ_list
+        use determinants, only: sum_sp_eigenvalues_occ_list
+        use determinant_data, only: det_info_t
         use dSFMT_interface, only: dSFMT_t
         use excitations, only: excit_t, get_excitation
         use ifciqmc
@@ -466,7 +486,8 @@ contains
 
         type(excit_t) :: connection
         type(hmatel_t) :: hmatel
-        integer :: idet, nattempts_current_det, ispace
+        integer :: idet, ispace
+        integer :: nattempts_current_det(qs%psip_list%nspaces)
         integer(int_p) :: int_pop(spawn_recv%ntypes)
         real(p) :: real_pop(spawn_recv%ntypes)
         real(dp) :: list_pop
@@ -488,12 +509,16 @@ contains
             ! Need to generate spawned walker data to perform evolution.
             cdet%data(1) = sc0_ptr(sys, cdet%f) - qs%ref%H00
 
-            call decoder_ptr(sys, cdet%f, cdet)
+            call decoder_ptr(sys, cdet%f, cdet, qs%excit_gen_data)
             if (qs%propagator%quasi_newton) cdet%fock_sum = sum_sp_eigenvalues_occ_list(sys, cdet%occ_list) - qs%ref%fock_sum
 
             ! Is this determinant an initiator?
             ! [todo] - pass determ_flag rather than 1.
             call set_parent_flag(real_pop, qmc_in%initiator_pop, 1, quadrature_initiator, cdet%initiator_flag)
+
+            do ispace = 1, qs%psip_list%nspaces
+                nattempts_current_det(ispace) = decide_nattempts(rng, real_pop(ispace))
+            end do
 
             do ispace = 1, qs%psip_list%nspaces
 
@@ -506,9 +531,7 @@ contains
                 call update_proj_energy_ptr(sys, qs%ref%f0, qs%trial%wfn_dat, cdet, real_pop, qs%estimators(ispace), &
                                             connection, hmatel)
 
-                nattempts_current_det = decide_nattempts(rng, real_pop(ispace))
-
-                call do_fciqmc_spawning_attempt(rng, spawn_to_send, bloom_stats, sys, qs, nattempts_current_det, &
+                call do_fciqmc_spawning_attempt(rng, spawn_to_send, bloom_stats, sys, qs, nattempts_current_det(ispace), &
                                             cdet, determ, .false., int_pop(ispace), &
                                             sys%read_in%comp .and. modulo(ispace,2) == 0, &
                                             ispace, logging_info)
@@ -536,14 +559,11 @@ contains
 
         ! In:
         !   sys: information on system under consideration.
-        !   qs: qmc_state_t derived type with information on
-        !       current calculation.
         !   logging_info: information on current logging
         !       settings.
         !   nattempts_current_det: total number of spawning attempts
         !       to make on this determinant.
         !   ispace: space currently under consideration.
-        !   cdet: determinant spawning is originating from.
         !   determ_parent: true if parent determinant is within the
         !       semistochastic space, otherwise false.
         !   imag_parent: true if spawning from psips within an imaginary
@@ -554,13 +574,16 @@ contains
         ! In/Out:
         !   rng: random number generator.
         !   bloom_stats: information on blooms during calculation.
+        !   qs: qmc_state_t derived type with information on
+        !       current calculation.
         !   spawn: stored information on spawning.
+        !   cdet: determinant spawning is originating from.
 
         use dSFMT_interface, only: dSFMT_t
         use system, only: sys_t
         use qmc_data, only: qmc_state_t
         use logging, only: logging_t
-        use determinants, only: det_info_t
+        use determinant_data, only: det_info_t
         use bloom_handler, only: bloom_stats_t, accumulate_bloom_stats
         use semi_stoch, only: semi_stoch_t, check_if_determ
 
@@ -569,10 +592,10 @@ contains
         use spawn_data, only: spawn_t
 
         type(sys_t), intent(in) :: sys
-        type(qmc_state_t), intent(in) :: qs
+        type(qmc_state_t), intent(inout) :: qs
         type(logging_t), intent(in) :: logging_info
         integer, intent(in) :: nattempts_current_det, ispace
-        type(det_info_t), intent(in) :: cdet
+        type(det_info_t), intent(inout) :: cdet
         logical, intent(in) :: determ_parent, imag_parent
         integer(int_p), intent(in) :: pop
 

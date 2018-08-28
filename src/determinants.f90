@@ -3,43 +3,10 @@ module determinants
 ! Generation, inspection and manipulation of Slater determinants.
 
 use const
+use determinant_data
 use parallel, only: parent
 
 implicit none
-
-! --- FCIQMC info ---
-
-! A handy type for containing a lot of information about a determinant.
-! This is convenient for passing around different amounts of info when
-! we need consistent interfaces.
-! Not all compenents are necessarily allocated: only those needed at the time.
-type det_info_t
-    ! bit representation of determinant.
-    integer(i0), pointer :: f(:)  => NULL()  ! (tot_string_len)
-    integer(i0), pointer :: f2(:)  => NULL()  ! (tot_string_len); for DMQMC
-    ! List of occupied spin-orbitals.
-    integer, pointer :: occ_list(:)  => NULL()  ! (nel)
-    ! List of occupied alpha/beta spin-orbitals
-    integer, pointer :: occ_list_alpha(:), occ_list_beta(:) !(nel) WARNING: don't assume otherwise.
-    ! List of unoccupied alpha/beta spin-orbitals
-    integer, pointer :: unocc_list_alpha(:), unocc_list_beta(:)
-    ! Number of unoccupied orbitals with each spin and symmetry.
-    ! The first index maps to spin using (Ms+3)/2, where Ms=-1 is spin-down and
-    ! Ms=1 is spin-up.
-    integer, pointer :: symunocc(:,:) ! (2,sym0_tot:sym_max_tot)
-    ! is the determinant an initiator determinant or not? (used only in
-    ! i-FCIQMC). The i-th bit is set if the determinant is not an initiator in
-    ! space i.
-    integer :: initiator_flag
-    ! \sum_i F_i - F_0, where F_i is the single-particle eigenvalue of the i-th occupied orbital 
-    ! and F_0 is the corresponding sum for the reference determinant.
-    ! Initialize this as a signalling nan just in case
-    real(p) :: fock_sum = huge(1.0_p) 
-    ! TODO when appropriate more universal fortran support is available, use some sort of NaN above.
-
-    ! Pointer (never allocated) to corresponding elements in particle_t%dat array.
-    real(p), pointer :: data(:) => NULL()
-end type det_info_t
 
 contains
 
@@ -154,9 +121,11 @@ contains
         allocate(det_info%occ_list_alpha(sys%nel), stat=ierr)
         call check_allocate('det_info%occ_list_alpha',sys%nalpha,ierr)
         allocate(det_info%occ_list_beta(sys%nel), stat=ierr)
+        call check_allocate('det_info%occ_list_beta',sys%nbeta,ierr)
 
         ! Components for unoccupied basis functions...
-        call check_allocate('det_info%occ_list_beta',sys%nbeta,ierr)
+        allocate(det_info%unocc_list(sys%nvirt), stat=ierr)
+        call check_allocate('det_info%unocc_list',sys%nvirt,ierr)
         allocate(det_info%unocc_list_alpha(sys%nvirt), stat=ierr)
         call check_allocate('det_info%unocc_list_alpha',sys%nvirt_alpha,ierr)
         allocate(det_info%unocc_list_beta(sys%nvirt), stat=ierr)
@@ -165,6 +134,18 @@ contains
         ! Components for symmetry summary of unoccupied basis functions...
         allocate(det_info%symunocc(2,sys%sym0_tot:sys%sym_max_tot), stat=ierr)
         call check_allocate('det_info%symunocc', 2*sys%nsym_tot, ierr)
+
+        ! Weights for excitation generators for this det. 
+        allocate(det_info%i_d_occ%weights(sys%nel), stat=ierr)
+        call check_allocate('det_info%i_d_occ%weights', sys%nel, ierr)
+        allocate(det_info%i_s_occ%weights(sys%nel), stat=ierr)
+        call check_allocate('det_info%i_s_occ%weights', sys%nel, ierr)
+        allocate(det_info%ia_s_weights_occ(sys%nvirt, sys%nel), stat=ierr)
+        call check_allocate('det_info%ia_s_weights_occ', sys%nvirt*sys%nel, ierr)
+
+        ! Orbitals that are different between this det and the ref det.
+        allocate(det_info%ref_cdet_occ_list(sys%nel), stat=ierr)
+        call check_allocate('det_info%ref_cdet_occ_list', sys%nel, ierr)
 
     end subroutine alloc_det_info_t
 
@@ -204,6 +185,8 @@ contains
         end if
         deallocate(det_info%occ_list, stat=ierr)
         call check_deallocate('det_info%occ_list',ierr)
+        deallocate(det_info%unocc_list, stat=ierr)
+        call check_deallocate('det_info%unocc_list',ierr)
         deallocate(det_info%occ_list_alpha, stat=ierr)
         call check_deallocate('det_info%occ_list_alpha',ierr)
         deallocate(det_info%occ_list_beta, stat=ierr)
@@ -214,6 +197,14 @@ contains
         call check_deallocate('det_info%unocc_list_beta',ierr)
         deallocate(det_info%symunocc, stat=ierr)
         call check_deallocate('det_info%symunocc',ierr)
+        deallocate(det_info%i_d_occ%weights, stat=ierr)
+        call check_deallocate('det_info%i_d_occ%weights', ierr)
+        deallocate(det_info%i_s_occ%weights, stat=ierr)
+        call check_deallocate('det_info%i_s_occ%weights', ierr)
+        deallocate(det_info%ia_s_weights_occ, stat=ierr)
+        call check_deallocate('det_info%ia_s_weights_occ', ierr)
+        deallocate(det_info%ref_cdet_occ_list, stat=ierr)
+        call check_deallocate('det_info%ref_cdet_occ_list', ierr)
 
     end subroutine dealloc_det_info_t
 
@@ -249,7 +240,9 @@ contains
 
 !--- Decode determinant bit strings ---
 
-    pure subroutine decode_det(basis_set, f, occ_list)
+    pure subroutine decode_det(basis_set, f, occ_list, excit_gen_data)
+
+        ! WARNING: This decoder does not initialise flags for a cdet needed for excitation generators!
 
         ! In:
         !    basis_set: information about the single-particle basis.
@@ -264,10 +257,12 @@ contains
 
         use basis_types, only: basis_t
         use bit_table_256_m, only: bit_table_256
+        use excit_gens, only: excit_gen_data_t
 
         type(basis_t), intent(in) :: basis_set
         integer(i0), intent(in) :: f(basis_set%tot_string_len)
         integer, intent(out) :: occ_list(:)
+        type(excit_gen_data_t), optional, intent(in) :: excit_gen_data
 
         ! The lookup table contains the list of bits set for all possible integers contained in a given number of bits.
         ! Number of bits in integers in the lookup table (assume a power of 2!).
@@ -302,170 +297,6 @@ contains
         end do outer
 
     end subroutine decode_det
-
-    pure subroutine decode_det_occ(sys, f, d)
-
-        ! Decode determinant bit string into integer list containing the
-        ! occupied orbitals.
-        !
-        ! In:
-        !    sys: system being studied (contains required basis information).
-        !    f(tot_string_len): bit string representation of the Slater
-        !        determinant.
-        ! Out:
-        !    d: det_info_t variable.  The following components are set:
-        !        occ_list: integer list of occupied spin-orbitals in the
-        !            Slater determinant.
-
-        use system, only: sys_t
-
-        type(sys_t), intent(in) :: sys
-        integer(i0), intent(in) :: f(sys%basis%tot_string_len)
-        type(det_info_t), intent(inout) :: d
-
-        call decode_det(sys%basis, f, d%occ_list)
-
-    end subroutine decode_det_occ
-
-    pure subroutine decode_det_occ_symunocc(sys, f, d)
-
-        ! Decode determinant bit string into integer list containing the
-        ! occupied orbitals.
-        ! In:
-        !    f(tot_string_len): bit string representation of the Slater
-        !        determinant.
-        ! Out:
-        !    d: det_info_t variable.  The following components are set:
-        !        occ_list: integer list of occupied spin-orbitals in the
-        !            Slater determinant.
-        !        symunocc(2, sym0_tot:symmax_tot): number of unoccupied orbitals of each
-        !            spin/symmetry.  The same indexing scheme is used for
-        !            nbasis_sym_spin.
-
-        use system, only: sys_t
-
-        type(sys_t), intent(in) :: sys
-        integer(i0), intent(in) :: f(sys%basis%tot_string_len)
-        type(det_info_t), intent(inout) :: d
-        integer :: i, ims, isym
-
-        call decode_det(sys%basis, f, d%occ_list)
-
-        d%symunocc = sys%read_in%pg_sym%nbasis_sym_spin
-
-        do i = 1, sys%nel
-            associate(orb=>d%occ_list(i))
-                ims = (sys%basis%basis_fns(orb)%ms+3)/2
-                isym = sys%basis%basis_fns(orb)%sym
-            end associate
-            d%symunocc(ims, isym) = d%symunocc(ims, isym) - 1
-        end do
-
-    end subroutine decode_det_occ_symunocc
-
-    pure subroutine decode_det_spinocc_spinunocc(sys, f, d)
-
-        ! Decode determinant bit string into integer lists containing the
-        ! occupied and unoccupied orbitals.
-        !
-        ! We return the lists for alpha and beta electrons separately.
-        !
-        ! In:
-        !    f(tot_string_len): bit string representation of the Slater
-        !        determinant.
-        ! Out:
-        !    d: det_info_t variable.  The following components are set:
-        !        occ_list: integer list of occupied spin-orbitals in the
-        !            Slater determinant.
-        !        occ_list_alpha: integer list of occupied alpha
-        !            spin-orbitals in the Slater determinant.
-        !        occ_list_beta: integer list of occupied beta
-        !            spin-orbitals in the Slater determinant.
-        !        unocc_list_alpha: integer list of unoccupied alpha
-        !            spin-orbitals in the Slater determinant.
-        !        unocc_list_beta: integer list of unoccupied beta
-        !            spin-orbitals in the Slater determinant.
-
-        use system, only: sys_t
-
-        type(sys_t), intent(in) :: sys
-        integer(i0), intent(in) :: f(sys%basis%tot_string_len)
-        type(det_info_t), intent(inout) :: d
-        integer :: i, j, iocc, iocc_a, iocc_b, iunocc_a, iunocc_b, orb, last_basis_ind
-
-        ! A bit too much to do the chunk-based decoding of the occupied list and then fill
-        ! in the remaining information.  We only use this in Hubbard model calculations in
-        ! k-space, so for now just do a (slow) bit-wise inspection.
-
-        iocc = 0
-        iocc_a = 0
-        iocc_b = 0
-        iunocc_a = 0
-        iunocc_b = 0
-        orb = 0
-
-        do i = 1, sys%basis%bit_string_len - 1
-            ! Manual unrolling allows us to avoid 2 mod statements
-            ! and some branching.
-            do j = 0, i0_end, 2
-                ! Test alpha orbital.
-                orb = orb + 1
-                if (btest(f(i), j)) then
-                    iocc = iocc + 1
-                    iocc_a = iocc_a + 1
-                    d%occ_list(iocc) = orb
-                    d%occ_list_alpha(iocc_a) = orb
-                else
-                    iunocc_a = iunocc_a + 1
-                    d%unocc_list_alpha(iunocc_a) = orb
-                end if
-                ! Test beta orbital.
-                orb = orb + 1
-                if (btest(f(i), j+1)) then
-                    iocc = iocc + 1
-                    iocc_b = iocc_b + 1
-                    d%occ_list(iocc) = orb
-                    d%occ_list_beta(iocc_b) = orb
-                else
-                    iunocc_b = iunocc_b + 1
-                    d%unocc_list_beta(iunocc_b) = orb
-                end if
-            end do
-        end do
-
-        ! Deal with the last element in the determinant bit array separately.
-        ! Note that decoding a bit string is surprisingly slow (or, more
-        ! importantly, adds up when doing billions of times).
-        ! Treating the last element as a special case rather than having an if
-        ! statement in the above loop results a speedup of the Hubbard k-space
-        ! FCIQMC calculations of 1.5%.
-        last_basis_ind = sys%basis%nbasis - i0_length*(sys%basis%bit_string_len-1) - 1
-        do j = 0, last_basis_ind, 2
-            ! Test alpha orbital.
-            orb = orb + 1
-            if (btest(f(i), j)) then
-                iocc = iocc + 1
-                iocc_a = iocc_a + 1
-                d%occ_list(iocc) = orb
-                d%occ_list_alpha(iocc_a) = orb
-            else
-                iunocc_a = iunocc_a + 1
-                d%unocc_list_alpha(iunocc_a) = orb
-            end if
-            ! Test beta orbital.
-            orb = orb + 1
-            if (btest(f(i), j+1)) then
-                iocc = iocc + 1
-                iocc_b = iocc_b + 1
-                d%occ_list(iocc) = orb
-                d%occ_list_beta(iocc_b) = orb
-            else
-                iunocc_b = iunocc_b + 1
-                d%unocc_list_beta(iunocc_b) = orb
-            end if
-        end do
-
-    end subroutine decode_det_spinocc_spinunocc
 
 !--- Extract information from bit strings ---
 

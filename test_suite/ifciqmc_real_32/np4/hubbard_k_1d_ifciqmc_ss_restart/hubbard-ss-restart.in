@@ -38,5 +38,8 @@ fciqmc {
          shift_start_iteration = 50,
          space = "read",
      },
-     restart = {read=0,},
+     restart = {
+         read = 0,
+         rng = false,
+     },
 }

@@ -22,6 +22,8 @@ module importance_sampling
 
 ! and \psi^{(T)}_i is the weight of the trial function on i.
 
+! [todo] - Do weighted excitation generators behave differently here?
+
 ! As we currently generate the excitations uniformly, this amounts to simply
 ! scaling H_{ij} appropriately after generating the excitation (as usual) but
 ! before testing whether or not to accept the spawning attempt (which depends
@@ -53,7 +55,7 @@ contains
         ! Returns:
         !    stochastic representation of c_i.
 
-        use determinants, only: det_info_t
+        use determinant_data, only: det_info_t
         use importance_sampling_data
 
         real(p) :: weight
@@ -89,7 +91,7 @@ contains
         !        functions (kets).  On output, transformed matrix element,
         !        \Psi_i^T H_{ij} 1/\Psi_j^T.
 
-        use determinants, only: det_info_t
+        use determinant_data, only: det_info_t
         use excitations, only: excit_t
         use system, only: sys_t
 
@@ -155,7 +157,7 @@ contains
         !        bitstring we spawn onto. Note this is different to more conventional
         !        importance sampling.
 
-        use determinants, only: det_info_t
+        use determinant_data, only: det_info_t
         use excitations, only: excit_t, get_excitation_level, create_excited_det
         use system, only: sys_t
 
@@ -201,7 +203,7 @@ contains
         !        bitstring we spawn onto. Note this is different to more conventional
         !        importance sampling.
 
-        use determinants, only: det_info_t
+        use determinant_data, only: det_info_t
         use excitations, only: excit_t, get_excitation_level, create_excited_det
         use system, only: sys_t
 
@@ -242,7 +244,7 @@ contains
         !        bitstring we spawn onto. Note this is different to more conventional
         !        importance sampling.
 
-        use determinants, only: det_info_t
+        use determinant_data, only: det_info_t
         use excitations, only: excit_t, get_excitation_level, create_excited_det
         use system, only: sys_t
 
@@ -291,7 +293,7 @@ contains
         !        bitstring we spawn onto. Note this is not really importance sampling
         !        in the usual sense.
 
-        use determinants, only: det_info_t
+        use determinant_data, only: det_info_t
         use excitations, only: excit_t, get_excitation_level, create_excited_det
         use system, only: sys_t
 
@@ -347,7 +349,7 @@ contains
         !        bitstring we spawn onto. Note this is not really importance sampling
         !        in the usual sense.
 
-        use determinants, only: det_info_t
+        use determinant_data, only: det_info_t
         use excitations, only: excit_t, get_excitation_level, create_excited_det
         use system, only: sys_t
         use proc_pointers, only: h0_ptr

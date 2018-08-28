@@ -27,4 +27,5 @@ ccmc {
     qmc = qmc_opts,
     reference = { ex_level = 2, },
     qmc_state = qmc_state,
+    restart = { rng = false, }
 }

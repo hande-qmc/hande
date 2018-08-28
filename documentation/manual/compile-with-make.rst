@@ -1,4 +1,4 @@
-.. _compilation:
+.. _compilation-with-make:
 
 Compilation
 ===========
@@ -196,6 +196,13 @@ DISABLE_LANCZOS
     Default: not defined.
 
     If defined then Lanczos diagonalisation is disabled.  This removes the dependency on the TRLan library.
+DISABLE_MPI3
+    Default: not defined.  Only relevant when PARALLEL is defined.
+
+    If defined then additional functionality provided by the MPI 3 standard is not used.
+    This disables some functionality (e.g. exploiting MPI 3 shared memory to store large
+    integral arrays only once per node rather than once per processor) and causes
+    slower fallback communication procedures to be used in some cases.
 DISABLE_HDF5
     Default: not defined.
 
@@ -217,7 +224,6 @@ DISABLE_BACKTRACE
 
     If defined then the backtrace is disabled.  The backtrace functionality is a GNU extension and not
     available on all POSIX architectures.  No working functionality is lost.
-
 DSFMT_MEXP 
     Default: 19937.
 
@@ -230,6 +236,15 @@ DSFMT_MEXP
     521, 1279, 2203, 4253, 11213, 19937, 44497, 86243,
     132049 and 216091 and lead to, for example, random numbers with a period of
     a Mersenne Prime such as :math:`2^{521}-1`.
+ENABLE_SHMEM_POSIX
+    Default: not defined.  Only relevant when PARALLEL is defined.
+
+    If defined, then use POSIX functions to allocate large arrays using shared memory
+    (i.e. once per node rather than once per processor).  This depends upon having access
+    to various system-level functionality and so, depending upon local configuration, may
+    not work when run as a non-privileged user (and hande should **not** be run by
+    privileged users!).  As a result, we recommend using MPI 3 instead of this where
+    possible.  This may require the rt library to be added to the link line.
 NAGF95  
     Default: not defined.
 
@@ -302,13 +317,18 @@ is not possible.  Issues and, where known, workarounds we have found are:
 
 * gcc 7.1.0 has a bug that prevents reading in molecular integrals correctly and instead
   causes HANDE to exit with an error.
-  See https://gcc.gnu.org/bugzilla/show_bug.cgi?id=80741 for details.
+  See https://gcc.gnu.org/bugzilla/show_bug.cgi?id=80741 for details. A mitigation has
+  been implemented to avoid this.
 
 * gcc 7.1.0 and 7.2.0 have a bug that causes `c_associated` to sometimes return incorrect
   values. This might affect the error reporting from reading a restart file but should not
   cause any problems under normal usage. If affected, the only workaround is to use
   a later version of gcc or a different compiler. See
   https://gcc.gnu.org/bugzilla/show_bug.cgi?id=82869 for more details.
+
+* gcc 7.3.0 (and possibly earlier) has a bug affecting inquire on internal units.
+  A workaround is in place for gcc 7.3.0. See
+  https://gcc.gnu.org/bugzilla/show_bug.cgi?id=84412 for more details.
 
 * HDF5 1.8.14 (and possibly 1.8.13) has a bug revealed by Intel compilers v15 onwards.
   This results in unusual error messages and/or segmentation faults when writing out

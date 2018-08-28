@@ -48,8 +48,10 @@ contains
         use basis, only: write_basis_fn
         use const, only: dp
         use checking, only: check_allocate, check_deallocate
-        use determinants, only: encode_det, det_info_t, alloc_det_info_t,  &
-                                dealloc_det_info_t, decode_det_spinocc_spinunocc
+        use determinants, only: encode_det, alloc_det_info_t,  &
+                                dealloc_det_info_t
+        use determinant_decoders, only: decode_det_spinocc_spinunocc
+        use determinant_data, only: det_info_t
         use dSFMT_interface, only: dSFMT_t, dSFMT_init, dSFMT_end
         use json_out
         use reference_determinant, only: set_reference_det
@@ -372,7 +374,7 @@ contains
         ! such routines.
 
         use const, only: dp
-        use determinants, only: det_info_t
+        use determinant_data, only: det_info_t
         use dSFMT_interface, only: dSFMT_t, get_rand_close_open
         use system, only: sys_t
 

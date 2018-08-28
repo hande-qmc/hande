@@ -171,31 +171,6 @@ contains
 
     end function ueg_basis_index
 
-    subroutine end_ueg_indexing(sys_ueg)
-
-        ! Clean up UEG index arrays.
-
-        ! In/Out:
-        !    sys_ueg_t: On output, all allocatable components are deallocated.
-
-        use checking, only: check_deallocate
-        use system, only: sys_ueg_t
-
-        type(sys_ueg_t), intent(inout) :: sys_ueg
-
-        integer :: ierr
-
-        if (allocated(sys_ueg%basis%lookup)) then
-            deallocate(sys_ueg%basis%lookup, stat=ierr)
-            call check_deallocate('sys_ueg%basis%lookup', ierr)
-        end if
-        if (allocated(sys_ueg%basis%offset_inds)) then
-            deallocate(sys_ueg%basis%offset_inds, stat=ierr)
-            call check_deallocate('sys_ueg%basis%offset_inds', ierr)
-        end if
-
-    end subroutine end_ueg_indexing
-
 !-------
 ! Integrals
 

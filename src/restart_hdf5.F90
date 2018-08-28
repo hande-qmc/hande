@@ -60,6 +60,14 @@ module restart_hdf5
     !            vary shift            # Whether the shift was varying before the calculation stopped
     !            shift_damping         # Value of the shift damping used within the calculation
     !            shift_damping_status  # Current status of any shift damping optimisation.
+    !            pattempt_single       # (Version 3) pattempt_single, probability of a single excitation
+    !            pattempt_single_data/ # (all Version 3)
+    !                           vary_psingles      # if true, pattempt_singles is (still) updated.
+    !                           h_pgen_singles_sum # sum of hmatel/(spawn_pgen/pattempt_single) for single excitations
+    !                           h_pgen_doubles_sum # sum of hmatel/(spawn_pgen/pattempt_single) for double excitations
+    !                           excit_gen_singles  # number of single excitations
+    !                           excit_gen_doubles  # number of double excitations
+    !                           counter            # (number of times - 1) pattempt_single was updated
     !      reference/
     !                reference determinant               # reference determinant
     !                reference population @ t-1          # population on reference (real, mainly used non complex calcs)
@@ -74,7 +82,11 @@ module restart_hdf5
     !      info_string_len             # Length in integers of additional information
     !                                  # stored in bit string.
     !
-    !  rng/                            # Not used yet.
+    !  rng/                            # Should be used to restore a dSFMT_state_t object and then that object
+    !                                  # used to restore a dSFMT_t state.
+    !      state                       # (Version 3) State of DSFMT RNG.
+    !      distribution                # (Version 3) Type of pre-computed random numbers
+    !      random_store                # (Version 3) Set of pre-computed (but unused) random numbers.
 
     ! where XXX/ indicates a group called XXX, YYY indicates a dataset called
     ! YYY and a nested structure indicates group membership and # is used to
@@ -114,13 +126,14 @@ module restart_hdf5
     ! needed following updates to code.
     ! In addition it might be helpful when writing post-processing utilities which act upon
     ! restart files.
-    integer, parameter :: restart_version = 2
+    integer, parameter :: restart_version = 3
 
     ! Group names...
     character(*), parameter :: gmetadata = 'metadata',  &
                                gqmc = 'qmc',            &
                                gpsips = 'psips',        &
                                gstate = 'state',        &
+                               gpattempt_single_data = 'pattempt_single_data',        &
                                gref = 'reference',      &
                                grng = 'rng',            &
                                gbasis = 'basis'
@@ -158,7 +171,17 @@ module restart_hdf5
                                dvary = 'vary shift',                &
                                dshift_damping = 'shift_damping',    &
                                dshift_damping_status = 'shift_damping_status', &
-                               dinfo_string_len = 'info string len'
+                               dinfo_string_len = 'info string len',&
+                               drng_state = 'state',                &
+                               drng_dist = 'distribution',          &
+                               drng_store = 'random_store',         &
+                               dpattempt_single = 'pattempt_single', &
+                               dvary_psingles = 'vary_psingles', &
+                               dh_pgen_singles_sum = 'h_pgen_singles_sum', &
+                               dh_pgen_doubles_sum = 'h_pgen_doubles_sum', &
+                               dexcit_gen_singles = 'excit_gen_singles', &
+                               dexcit_gen_doubles = 'excit_gen_doubles', &
+                               dcounter = 'counter'
 
     contains
 
@@ -281,12 +304,11 @@ module restart_hdf5
         end subroutine init_restart_hdf5
 #endif
 
-        subroutine dump_restart_hdf5(ri, qs, ncycles, total_population, nbasis, nb_comm, info_string_len)
+        subroutine dump_restart_hdf5(qs, ncycles, total_population, nbasis, nb_comm, info_string_len, ri)
 
             ! Write out a restart file.
 
             ! In:
-            !    ri: restart information.  ri%restart_stem and ri%write_id are used.
             !    qs: QMC state to write to restart file.
             !    ncycles: number of Monte Carlo cycles performed.
             !    total_population: the total population of each particle type.
@@ -296,6 +318,8 @@ module restart_hdf5
             !       to the restart file.
             !    info_string_len: length in i0 integers of used to store additional
             !       information in bit string.
+            !    ri (optional) : restart information.  ri%restart_stem and ri%write_id are used.
+            !       If not present, the settings in qs%restart_in are used.
 
 #ifndef DISABLE_HDF5
             use hdf5
@@ -313,7 +337,7 @@ module restart_hdf5
             use errors, only: warning
             use qmc_data, only: qmc_state_t
 
-            type(restart_info_t), intent(in) :: ri
+            type(restart_info_t), intent(in), optional :: ri
             type(qmc_state_t), intent(in) :: qs
             integer, intent(in) :: ncycles
             real(dp), intent(in) :: total_population(:)
@@ -322,11 +346,10 @@ module restart_hdf5
 #ifndef DISABLE_HDF5
             character(255) :: restart_file
 
-
             ! HDF5 kinds
             type(hdf5_kinds_t) :: kinds
             ! HDF5 handles
-            integer(hid_t) :: file_id, group_id, subgroup_id
+            integer(hid_t) :: file_id, group_id, subgroup_id, subsubgroup_id
 
             integer :: date_time(8)
             character(19) :: date_str
@@ -337,10 +360,16 @@ module restart_hdf5
             ! This allows us to use the same array functions for writing out (the small
             ! amount of) scalar data we have to write out.
             real(dp), allocatable, target :: tmp_pop(:)
+            type(restart_info_t) :: qs_ri
 
             ! Initialise HDF5 and open file.
             call h5open_f(ierr)
-            call init_restart_hdf5(ri, .true., restart_file, kinds)
+            if (present(ri)) then
+                call init_restart_hdf5(ri, .true., restart_file, kinds)
+            else
+                call init_restart_info_t(qs_ri, write_id=qs%restart_in%write_id)
+                call init_restart_hdf5(qs_ri, .true., restart_file, kinds)
+            end if
             ! NOTE: if file exists (ie user requested we re-use an existing file), then it is overwritten.
             call h5fcreate_f(restart_file, H5F_ACC_TRUNC_F, file_id, ierr)
 
@@ -432,6 +461,32 @@ module restart_hdf5
                     call hdf5_write(subgroup_id, dshift_damping, kinds, [1_int_64], [qs%shift_damping])
 
                     call hdf5_write(subgroup_id, dshift_damping_status, qs%shift_damping_status)
+                    
+                    call hdf5_write(subgroup_id, dpattempt_single, kinds, [1_int_64], [qs%excit_gen_data%pattempt_single])
+                    
+                    ! --- qmc/state/pattempt_single_data group ---
+                    call h5gcreate_f(subgroup_id, gpattempt_single_data, subsubgroup_id, ierr)
+                        
+                        call hdf5_write(subsubgroup_id, dvary_psingles, kinds, [1_int_64], &
+                                    [qs%excit_gen_data%p_single_double%vary_psingles])
+
+                        call hdf5_write(subsubgroup_id, dh_pgen_singles_sum, kinds, [1_int_64], &
+                                    [qs%excit_gen_data%p_single_double%total%h_pgen_singles_sum])
+                        
+                        call hdf5_write(subsubgroup_id, dh_pgen_doubles_sum, kinds, [1_int_64], &
+                                    [qs%excit_gen_data%p_single_double%total%h_pgen_doubles_sum])
+                        
+                        call hdf5_write(subsubgroup_id, dexcit_gen_singles, kinds, [1_int_64], &
+                                    [qs%excit_gen_data%p_single_double%total%excit_gen_singles])
+                        
+                        call hdf5_write(subsubgroup_id, dexcit_gen_doubles, kinds, [1_int_64], &
+                                    [qs%excit_gen_data%p_single_double%total%excit_gen_doubles])
+                        
+                        call hdf5_write(subsubgroup_id, dcounter, kinds, [1_int_64], &
+                                    [qs%excit_gen_data%p_single_double%counter])
+                        
+                    call h5gclose_f(subsubgroup_id, ierr)
+
                 call h5gclose_f(subgroup_id, ierr)
 
                 ! --- qmc/qs%ref group ---
@@ -457,6 +512,13 @@ module restart_hdf5
 
             ! --- rng group ---
             call h5gcreate_f(file_id, grng, group_id, ierr)
+                if (allocated(qs%rng_state%dsfmt_state)) then
+                    associate(state=>qs%rng_state)
+                        call hdf5_write(group_id, drng_state, state%dsfmt_state)
+                        call hdf5_write(group_id, drng_dist, state%distribution)
+                        call hdf5_write(group_id, drng_store, kinds, shape(state%random_store, kind=int_64), state%random_store)
+                    end associate
+                end if
             call h5gclose_f(group_id, ierr)
 
             ! --- basis group ---
@@ -500,7 +562,7 @@ module restart_hdf5
             use hdf5_helper, only: hdf5_kinds_t, hdf5_read, dtype_equal, dset_shape, hdf5_path, hdf5_file_close
             use restart_utils, only: convert_dets, convert_ref, convert_pops, change_pop_scaling, change_nbasis
             use calc, only: calc_type, exact_diag, lanczos_diag, mc_hilbert_space
-            use parallel, only: nprocs
+            use parallel
 #endif
             use errors, only: stop_all, warning
             use const
@@ -509,7 +571,6 @@ module restart_hdf5
             use qmc_data, only: qmc_state_t
             use sort, only: qsort
             use qmc_common, only: redistribute_particles
-            use parallel, only: parent
 
             type(restart_info_t), intent(in) :: ri
             logical, intent(in) :: nb_comm
@@ -522,7 +583,7 @@ module restart_hdf5
             ! HDF5 kinds
             type(hdf5_kinds_t) :: kinds
             ! HDF5 handles
-            integer(hid_t) :: file_id, group_id, subgroup_id
+            integer(hid_t) :: file_id, group_id, subgroup_id, subsubgroup_id
 
             character(255) :: restart_file
             integer :: calc_type_restart, nprocs_restart
@@ -531,11 +592,13 @@ module restart_hdf5
             logical :: exists, resort
             integer(int_64) :: restart_scale_factor(1)
             real(p) :: shift_damp(1)
+            real(p) :: pattempt_single_data_real_tmp(1)
+            logical :: pattempt_single_data_log_tmp(1)
 
             integer(HSIZE_T) :: dims(size(shape(qs%psip_list%states)))
             real(p) :: proj_energy_tmp_re(qs%psip_list%nspaces), proj_energy_tmp_im(qs%psip_list%nspaces)
             real(p) :: D0_population_tmp_re(qs%psip_list%nspaces), D0_population_tmp_im(qs%psip_list%nspaces)
-
+            
             ! Initialise HDF5 and open file.
             call h5open_f(ierr)
             call init_restart_hdf5(ri, .false., restart_file, kinds)
@@ -587,9 +650,11 @@ module restart_hdf5
                                 'Projected energy and imaginary part of D0 population not stored '// &
                                 'and will be estimated from the stored population distribution.')
                         end if
+                    else if (restart_version_restart < restart_version) then
+                        if (parent) call warning('read_restart_hdf5', 'Restarting from an older restart version.')
                     else
                         call stop_all('read_restart_hdf5', &
-                                  'Restarting from a different restart version not supported.  Please implement.')
+                                  'Restarting from a newer restart version not supported.  Please implement or upgrade HANDE.')
                     end if
                 end if
                 ! Different processor counts requires figuring out if
@@ -641,6 +706,12 @@ module restart_hdf5
                 call dset_shape(subgroup_id, ddets, dims)
                 ! Number of determinants is the last index...
                 qs%psip_list%nstates = int(dims(size(dims)))
+#ifdef PARALLEL
+                call mpi_reduce(qs%psip_list%nstates, qs%estimators%tot_nstates, qs%psip_list%nspaces, MPI_INTEGER, MPI_SUM, &
+                                root, MPI_COMM_WORLD, ierr)
+#else
+                qs%estimators%tot_nstates = qs%psip_list%nstates
+#endif
 
                 if (i0_length == i0_length_restart) then
                     if (nbasis == nbasis_restart .and. info_string_len == info_string_len_restart) then
@@ -735,6 +806,15 @@ module restart_hdf5
 
                     call hdf5_read(subgroup_id, dncycles, qs%mc_cycles_done)
 
+                    call h5lexists_f(subgroup_id, dhash_seed, exists, ierr)
+                    if (exists) then
+                        ! hash_seed and move_freq must exists together.
+                        associate(spawn=>qs%spawn_store%spawn)
+                            call hdf5_read(subgroup_id, dhash_seed, spawn%hash_seed)
+                            call hdf5_read(subgroup_id, dmove_freq, spawn%move_freq)
+                        end associate
+                    end if
+
                     call hdf5_read(subgroup_id, dshift, kinds, shape(qs%shift, kind=int_64), qs%shift)
 
                     if (restart_version_restart > 1) then
@@ -754,6 +834,7 @@ module restart_hdf5
                         ! If not present, keep old behaviour.
                         qs%vary_shift = .false.
                     end if
+                    
                     call h5lexists_f(subgroup_id, dshift_damping, exists, ierr)
                     ! If not present we just leave at default value.
                     ! If shift damping was written to restart file we'll also have written the current status of any optimisation.
@@ -762,6 +843,44 @@ module restart_hdf5
                         qs%shift_damping = shift_damp(1)
                         call hdf5_read(subgroup_id, dshift_damping_status, qs%shift_damping_status)
                     end if
+                    
+                    call h5lexists_f(subgroup_id, dpattempt_single, exists, ierr)
+                    if (exists) then
+                        call hdf5_read(subgroup_id, dpattempt_single, kinds, [1_int_64], pattempt_single_data_real_tmp)
+                        qs%excit_gen_data%pattempt_single = pattempt_single_data_real_tmp(1)
+                    
+                        ! --- qmc/state/pattempt_single_data group ---
+                        call h5gopen_f(subgroup_id, gpattempt_single_data, subsubgroup_id, ierr)
+                        
+                            call hdf5_read(subsubgroup_id, dvary_psingles, kinds, [1_int_64], &
+                                        pattempt_single_data_log_tmp)
+                                qs%excit_gen_data%p_single_double%vary_psingles = pattempt_single_data_log_tmp(1)
+
+                            call hdf5_read(subsubgroup_id, dh_pgen_singles_sum, kinds, [1_int_64], &
+                                        pattempt_single_data_real_tmp)
+                                qs%excit_gen_data%p_single_double%total%h_pgen_singles_sum = pattempt_single_data_real_tmp(1)
+                        
+                            call hdf5_read(subsubgroup_id, dh_pgen_doubles_sum, kinds, [1_int_64], &
+                                        pattempt_single_data_real_tmp)
+                                qs%excit_gen_data%p_single_double%total%h_pgen_doubles_sum = pattempt_single_data_real_tmp(1)
+                        
+                            call hdf5_read(subsubgroup_id, dexcit_gen_singles, kinds, [1_int_64], &
+                                        pattempt_single_data_real_tmp)
+                                qs%excit_gen_data%p_single_double%total%excit_gen_singles = pattempt_single_data_real_tmp(1)
+                        
+                            call hdf5_read(subsubgroup_id, dexcit_gen_doubles, kinds, [1_int_64], &
+                                        pattempt_single_data_real_tmp)
+                                qs%excit_gen_data%p_single_double%total%excit_gen_doubles = pattempt_single_data_real_tmp(1)
+                        
+                            call hdf5_read(subsubgroup_id, dcounter, kinds, [1_int_64], pattempt_single_data_real_tmp)
+                                qs%excit_gen_data%p_single_double%counter = pattempt_single_data_real_tmp(1)
+                        
+                        call h5gclose_f(subsubgroup_id, ierr)
+                        
+                        qs%excit_gen_data%p_single_double%pattempt_restart_store = .true.
+                        qs%excit_gen_data%pattempt_double = 1.0_p - qs%excit_gen_data%pattempt_single
+                    end if
+
 
                 call h5gclose_f(subgroup_id, ierr)
 
@@ -785,6 +904,16 @@ module restart_hdf5
 
             ! --- rng group ---
             call h5gopen_f(file_id, grng, group_id, ierr)
+                call h5lexists_f(group_id, drng_state, exists, ierr)
+                if (exists) then
+                    associate(state=>qs%rng_state)
+                        call hdf5_read(group_id, drng_state, state%dsfmt_state)
+                        call hdf5_read(group_id, drng_dist, state%distribution)
+                        call dset_shape(group_id, drng_store, dims(:1))
+                        allocate(state%random_store(dims(1)))
+                        call hdf5_read(group_id, drng_store, kinds, shape(state%random_store, kind=int_64), state%random_store)
+                    end associate
+                end if
             call h5gclose_f(group_id, ierr)
 
             ! And terminate HDF5.
@@ -888,7 +1017,7 @@ module restart_hdf5
 
         end subroutine get_reference_hdf5
 
-        subroutine redistribute_restart_hdf5(ri, nprocs_target, sys)
+        subroutine redistribute_restart_hdf5(ri, nprocs_target, move_freq_in , sys)
 
             ! Create a new set of restart files for a different number of processors than they
             ! were created from.
@@ -899,6 +1028,8 @@ module restart_hdf5
             ! In:
             !    nprocs_target: number of processors the restart files are to be split over (ie the number of
             !        processors the user wishes to restart the calculation on).
+            !    move_freq_in (optional): updated value for the CCMC input parameter move_frequency. Only used if restart files were
+            !        generated by a CCMC calculation.
             !    sys (optional): a sys_t object, used to get the basis size.  Only necessary if
             !        changing DET_SIZE for an old restart file.
 
@@ -925,6 +1056,7 @@ module restart_hdf5
             type(restart_info_t), intent(in) :: ri
             integer, intent(in) :: nprocs_target
             type(sys_t), intent(in), optional :: sys
+            integer, intent(in), optional :: move_freq_in
 
 #ifndef DISABLE_HDF5
 
@@ -1049,13 +1181,16 @@ module restart_hdf5
             end if
 
             call h5lexists_f(orig_id, hdf5_path(gqmc, gstate, dmove_freq), exists, ierr)
-            if (exists) then
-                call hdf5_read(orig_id, hdf5_path(gqmc, gstate, dmove_freq), move_freq)
-            else if (iand(calc_type_restart, ccmc_calc) /= 0) then
+            if (exists) call hdf5_read(orig_id, hdf5_path(gqmc, gstate, dmove_freq), move_freq)
+            if (iand(calc_type_restart, ccmc_calc) /= 0) then
                 ! Only relevant in CCMC.  Require user to set it in input file manually.
-                move_freq = ccmc_in_defaults%move_freq
-                if (parent) call warning('redistribute_restart_hdf5', &
-                                         'move_freq not found in the restart file.  Using a default hard-coded value.')
+                if (present(move_freq_in)) then
+                    move_freq = move_freq_in
+                else if (.not.exists) then
+                    move_freq = ccmc_in_defaults%move_freq
+                    if (parent) call warning('redistribute_restart_hdf5', &
+                                             'move_freq not found in the restart file.  Using a default hard-coded value.')
+                end if
             end if
 
             call h5gopen_f(orig_id, gqmc, orig_group_id, ierr)
@@ -1091,7 +1226,7 @@ module restart_hdf5
             ! Can just copy it from the first old restart file as it is the same on all files...
             do i = iproc_target_start, iproc_target_end
                 call h5fopen_f(new_names(i), H5F_ACC_RDWR_F, new_id, ierr)
-                ! /metadata, /basis and /rng
+                ! /metadata, /basis
                 call h5ocopy_f(orig_id, gmetadata, new_id, gmetadata, ierr)
                 call h5lexists_f(orig_id, gbasis, exists, ierr)
                 if (exists) call h5ocopy_f(orig_id, gbasis, new_id, gbasis, ierr)
@@ -1103,11 +1238,15 @@ module restart_hdf5
                     call h5dwrite_f(dset_id, H5T_NATIVE_INTEGER, i0_length, [0_HSIZE_T,0_HSIZE_T], ierr)
                     call h5dclose_f(dset_id, ierr)
                 end if
-                call h5ocopy_f(orig_id, grng, new_id, grng, ierr)
                 ! ...and non-psip-specific groups in the /qmc group.
                 call h5gcreate_f(new_id, gqmc, group_id, ierr)
-                    ! /qmc/state and /qmc/reference
+                    ! /qmc/state
                     call h5ocopy_f(orig_group_id, gstate, group_id, gstate, ierr)
+                    ! overwrite move_freq with (possibly) updated value. Single integer so space demands in HDF5 file is not an issue.
+                    call h5dopen_f(group_id, hdf5_path(gstate, dmove_freq), dset_id, ierr)
+                    call h5dwrite_f(dset_id, H5T_NATIVE_INTEGER, move_freq, [0_HSIZE_T, 0_HSIZE_T], ierr)
+                    call h5dclose_f(dset_id, ierr)
+                    ! /qmc/reference
                     if (i0_length == i0_length_restart) then
                         call h5ocopy_f(orig_group_id, gref, group_id, gref, ierr)
                     else
@@ -1154,6 +1293,21 @@ module restart_hdf5
 
             call h5gclose_f(orig_group_id, ierr)
             call hdf5_file_close(orig_id)
+
+
+            do i = iproc_target_start, iproc_target_end
+                call h5fopen_f(new_names(i), H5F_ACC_RDWR_F, new_id, ierr)
+                if (nprocs_read /= nprocs_target) then
+                    ! Create the RNG group but don't copy the RNG state as we can't restart RNG streams for processors we didn't have...
+                    call h5gcreate_f(new_id, grng, group_id, ierr)
+                    call h5gclose_f(group_id, ierr)
+                else
+                    call h5fopen_f(orig_names(i), H5F_ACC_RDONLY_F, orig_id, ierr)
+                    call h5ocopy_f(orig_id, grng, new_id, grng, ierr)
+                    call hdf5_file_close(orig_id)
+                end if
+                call hdf5_file_close(new_id)
+            end do
 
             ! Read the old restart file for each processor in turn and place the psip
             ! information into the new restart file for the appropriate processor.
@@ -1357,13 +1511,12 @@ module restart_hdf5
         end subroutine redistribute_restart_hdf5
 
         subroutine dump_restart_file_wrapper(qs, dump_restart_shift, dump_freq, ntot_particles, ireport, ncycles, &
-                                             nbasis, ri_freq, ri_shift, nb_comm, info_string_len)
+                                             nbasis, ri_freq, ri_shift, nb_comm, info_string_len, rng)
 
             ! Check if a restart file needs to be written, and if so then do so.
 
             ! In:
-            !     qs: qmc_state_t object.  Particle and related info written out (if desired).
-            !     dump_freq: How often (in iterations) to write out a restart file.  Pass in
+            !     dump_freq: How often (in report loops) to write out a restart file.  Pass in
             !         huge(0) to (effectively) disable.
             !     ntot_particles: total number of particles in each space.
             !     ireport: index of current report loop.
@@ -1375,13 +1528,17 @@ module restart_hdf5
             !     nb_comm: true if using non-blocking communications.
             !     info_string_len: length of integers used to store additional information in
             !         the bit string.
+            !     rng (optional): if present, include the DSFMT state with qmc_state_t for writing to the restart file.
             ! In/Out:
+            !     qs: qmc_state_t object.  Particle and related info written out (if desired). A few fields are modified but reset
+            !         to their original values at the end.
             !     dump_restart_shift: should we dump a restart file just before
             !         the shift turns on?  If true and a restart file is written out, then
             !         returned as false.
 
             use const, only: dp
             use qmc_data, only: qmc_state_t
+            use dSFMT_interface, only: dSFMT_t, dSFMT_t_to_dSFMT_state_t, free_dSFMT_state_t
 
             type(qmc_state_t), intent(inout) :: qs
             logical, intent(inout) :: dump_restart_shift
@@ -1389,14 +1546,22 @@ module restart_hdf5
             integer, intent(in) :: ireport, ncycles, dump_freq, nbasis, info_string_len
             type(restart_info_t), intent(in) :: ri_freq, ri_shift
             logical, intent(in) :: nb_comm
+            type(dSFMT_t), intent(in), optional :: rng
+            type(restart_info_t) :: ri
+            logical :: dump_restart
 
+            dump_restart = (dump_restart_shift .and. any(qs%vary_shift)) .or. (mod(ireport, dump_freq) == 0)
             if (dump_restart_shift .and. any(qs%vary_shift)) then
                 dump_restart_shift = .false.
-                call dump_restart_hdf5(ri_shift, qs, qs%mc_cycles_done+ncycles*ireport, &
-                                       ntot_particles, nbasis, nb_comm, info_string_len)
-            else if (mod(ireport*ncycles,dump_freq) == 0) then
-                call dump_restart_hdf5(ri_freq, qs, qs%mc_cycles_done+ncycles*ireport, &
-                                       ntot_particles, nbasis, nb_comm, info_string_len)
+                ri = ri_shift
+            else if (mod(ireport,dump_freq) == 0) then
+                ri = ri_freq
+            end if
+
+            if (dump_restart) then
+                if (present(rng)) call dSFMT_t_to_dSFMT_state_t(rng, qs%rng_state)
+                call dump_restart_hdf5(qs, qs%mc_cycles_done+ncycles*ireport, ntot_particles, nbasis, nb_comm, info_string_len, ri)
+                call free_dSFMT_state_t(qs%rng_state)
             end if
 
         end subroutine dump_restart_file_wrapper

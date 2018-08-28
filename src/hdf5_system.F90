@@ -429,8 +429,8 @@ module hdf5_system
 
             type(sys_t), intent(inout) :: sys
             logical, optional, intent(in) :: verbose
-            integer :: iunit
 #ifndef DISABLE_HDF5
+            integer :: iunit
             character(255) :: filename
             integer :: ierr, sysdump_dump_version, cas(2)
 

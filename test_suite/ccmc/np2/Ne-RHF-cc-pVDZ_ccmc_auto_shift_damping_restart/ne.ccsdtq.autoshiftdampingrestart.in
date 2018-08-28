@@ -31,7 +31,7 @@ ccmc {
     },
     restart = {
         write = 1
-        },
+    },
 }
 
 ccmc {
@@ -56,6 +56,7 @@ ccmc {
         auto_shift_damping = true,
     },
     restart = {
-        read = 1
-        },
+        read = 1,
+        rng = false,
+    },
 }

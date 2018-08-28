@@ -49,11 +49,11 @@ except ImportError:
     extensions.append('sphinxcontrib.napoleon')
 
 intersphinx_mapping = {
-    'python': ('http://docs.python.org/2.7', None),
-    'numpy':('http://docs.scipy.org/doc/numpy', 'http://docs.scipy.org/doc/numpy/objects.inv'),
+    'python': ('https://docs.python.org/2.7', None),
+    'numpy':('https://docs.scipy.org/doc/numpy', 'https://docs.scipy.org/doc/numpy/objects.inv'),
     'pandas': ('http://pandas.pydata.org/pandas-docs/stable/',   None),
-    'matplotlib': ('http://matplotlib.sourceforge.net', None),
-    'pyblock': ('http://pyblock.readthedocs.org/en/latest/', None),
+    'matplotlib': ('https://matplotlib.org', None),
+    'pyblock': ('http://pyblock.readthedocs.io/en/latest/', None),
 }
 
 # Add any paths that contain templates here, relative to this directory.

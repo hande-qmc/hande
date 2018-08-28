@@ -31,12 +31,12 @@ contains
         ! In:
         !    sys: system object being studied.
         !    excit_gen_data: Data for excitation generator (not used) 
-        !    cdet: info on the current determinant (cdet) that we will gen
-        !        from.
         !    parent_sign: sign of the population on the parent determinant (i.e.
         !        either a positive or negative integer).
         ! In/Out:
         !    rng: random number generator.
+        !    cdet: info on the current determinant (cdet) that we will gen
+        !        from.
         ! Out:
         !    pgen: probability of generating the excited determinant from cdet.
         !    connection: excitation connection between the current determinant
@@ -46,7 +46,7 @@ contains
         !        systems.
         !    allowed_excitation: false if a valid symmetry allowed excitation was not generated
 
-        use determinants, only: det_info_t
+        use determinant_data, only: det_info_t
         use excitations, only: excit_t, find_excitation_permutation1
         use excit_gens, only: excit_gen_data_t
         use excit_gen_mol, only: choose_ia_mol, calc_pgen_single_mol
@@ -59,7 +59,7 @@ contains
         type(dSFMT_t), intent(inout) :: rng
         type(sys_t), intent(in) :: sys
         type(excit_gen_data_t), intent(in) :: excit_gen_data
-        type(det_info_t), intent(in) :: cdet
+        type(det_info_t), intent(inout) :: cdet
         real(p), intent(out) :: pgen
         type(excit_t), intent(out) :: connection
         type(hmatel_t), intent(out) :: matel
@@ -110,12 +110,12 @@ contains
         ! In:
         !    sys: system object being studied.
         !    excit_gen_data: Data for excitation generator (not used) 
-        !    cdet: info on the current determinant (cdet) that we will gen
-        !        from.
         !    parent_sign: sign of the population on the parent determinant (i.e.
         !        either a positive or negative integer).
         ! In/Out:
         !    rng: random number generator.
+        !    cdet: info on the current determinant (cdet) that we will gen
+        !        from.
         ! Out:
         !    pgen: probability of generating the excited determinant from cdet.
         !    connection: excitation connection between the current determinant
@@ -125,7 +125,7 @@ contains
         !        systems.
         !    allowed_excitation: false if a valid symmetry allowed excitation was not generated
 
-        use determinants, only: det_info_t
+        use determinant_data, only: det_info_t
         use excitations, only: excit_t, find_excitation_permutation1
         use excit_gens, only: excit_gen_data_t
         use excit_gen_mol, only: find_ia_mol, calc_pgen_single_mol_no_renorm
@@ -137,7 +137,7 @@ contains
         type(dSFMT_t), intent(inout) :: rng
         type(sys_t), intent(in) :: sys
         type(excit_gen_data_t), intent(in) :: excit_gen_data
-        type(det_info_t), intent(in) :: cdet
+        type(det_info_t), intent(inout) :: cdet
         real(p), intent(out) :: pgen
         type(excit_t), intent(out) :: connection
         type(hmatel_t), intent(out) :: matel

@@ -24,11 +24,24 @@ integer :: iproc
 integer :: nprocs
 
 ! Choose root processor to have rank 0.
+! This is used as id for the root both for world and node communicators.
 integer, parameter :: root = 0
 
 ! True if the processor is the root (i.e. iproc==root) processor.
 ! In particular, output should only be performed on the parent processor.
 logical :: parent
+
+!--- MPI-3 ---
+
+! Inter-node communicator
+! Set to MPI_COMM_NULL if MPI 3 is not available.
+integer :: inter_node_comm
+
+! Intra-node communicator
+! **WARNING** - set to MPI_COMM_NULL unless on the 0-th (root) processor within a node.
+!             - the programmer must check this is not MPI_COMM_NULL before using it.
+! Set to MPI_COMM_WORLD if MPI 3 is not available.
+integer :: intra_node_comm
 
 !--- OpenMP ---
 
@@ -136,12 +149,28 @@ contains
         use errors
 
 #ifdef PARALLEL
-        integer :: ierr
+        integer :: ierr, node_rank, colour
 
         call mpi_init(ierr)
         if (ierr /= mpi_success) call stop_all('init_parallel','Error initialising MPI.')
         call mpi_comm_size(mpi_comm_world, nprocs, ierr)
         call mpi_comm_rank(mpi_comm_world, iproc, ierr)
+
+#ifdef DISABLE_MPI3
+        ! :-(
+        inter_node_comm = MPI_COMM_NULL
+        intra_node_comm = MPI_COMM_WORLD
+#else
+        ! Get communicator for processors which can share memory.
+        call MPI_Comm_split_type(MPI_COMM_WORLD, MPI_COMM_TYPE_SHARED, iproc, MPI_INFO_NULL, inter_node_comm, ierr)
+        ! Now create a communicator between the 0-th processor of each node.
+        ! No idea why there isn't a MPI_COMM_TYPE_* for this...
+        colour = MPI_UNDEFINED
+        call MPI_Comm_rank(inter_node_comm, node_rank, ierr)
+        if (node_rank == root) colour = 0
+        call MPI_Comm_split(MPI_COMM_WORLD, colour, node_rank, intra_node_comm, ierr)
+#endif
+
 #else
         iproc = 0
         nprocs = 1
@@ -195,6 +224,50 @@ contains
 
     end subroutine end_parallel
 
+    subroutine get_proc_loop_range(list_length, this_proc_start, this_proc_end, starts, sizes)
+        ! Choose loop variables which split a list with length list_length evenly across processors.
+        ! Each processor gets at least floor(list_length/nprocs), with the remainder allocated
+        ! one to each of the early numbered processors.
+
+        ! In:
+        !   list_length: number of items to iterate over (e.g. sys%nel if over number of electrons).
+        ! Out:
+        !   this_proc_start, this_proc_end: range done by processes with rank iproc (i.e. this processor).
+        !   starts: the starting value for each processor.
+        !   sizes: sizes of chunk for each processor.
+        
+        integer, intent(in) :: list_length
+        integer, intent(out) :: this_proc_start, this_proc_end
+        integer, intent(out) :: starts(0:nprocs-1), sizes(0:nprocs-1)
+        integer :: i, i_start, i_end
+
+#ifdef PARALLEL
+        i_end = 0
+        do i = 0, nprocs-1
+            i_start = i_end + 1
+            i_end = i_start + list_length/nprocs - 1
+            ! allocate one of the remainder to the early processors.
+            if (i < mod(list_length,nprocs)) i_end = i_end + 1
+            ! If list_length<nprocs then use the calculated value otherwise set it to not do anything.
+            if (i < list_length) then
+                starts(i) = i_start - 1
+            else
+                starts(i) = list_length - 1
+            end if
+            sizes(i) = i_end - i_start + 1
+        end do
+        
+        this_proc_start = starts(iproc) + 1
+        this_proc_end = starts(iproc) + sizes(iproc)
+#else
+        this_proc_start = 1
+        this_proc_end = list_length
+        starts = 0
+        sizes = list_length
+#endif
+
+    end subroutine get_proc_loop_range
+    
     function get_blacs_info(matrix_size, block_size, proc_grid) result(my_blacs_info)
 
         ! In:

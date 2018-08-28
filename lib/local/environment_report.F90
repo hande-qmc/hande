@@ -104,7 +104,6 @@ contains
         write (io_unit,'(a18,1X,i2.2,"/",i2.2,"/",i4.4,1X,a2,1X,i2.2,2(":",i2.2))') &
                    "Started running on", date_values(3:1:-1), "at", date_values(5:7)
         write (io_unit,'(1X,"Calculation UUID:",1X,a36,".")') GLOBAL_UUID
-
         write (io_unit,'(1X,64("="),/)')
 
     end subroutine environment_report
@@ -204,7 +203,13 @@ contains
         integer, intent(in) :: iunit, date_values(8)
         logical :: io_open
 
+#if __GNUC__ == 7 && __GNUC_MINOR__ < 4
+        ! Can't use inquire if iunit is less than 0 (ie was created with open(unit=newunit, ...)
+        ! Assume file is open -- see  https://gcc.gnu.org/bugzilla/show_bug.cgi?id=84412
+        io_open = .true.
+#else
         inquire(unit=iunit, opened = io_open)
+#endif
 
         if (io_open) then
             write (iunit,'(1X,64("="))')

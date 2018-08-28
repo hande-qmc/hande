@@ -34,5 +34,6 @@ fciqmc {
     qmc = qmc,
     restart = {
         read = 0,
+        rng = false,
     },
 }

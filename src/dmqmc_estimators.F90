@@ -407,7 +407,7 @@ contains
         use proc_pointers, only:  update_dmqmc_energy_and_trace_ptr, update_dmqmc_stag_mag_ptr
         use proc_pointers, only: update_dmqmc_energy_squared_ptr, update_dmqmc_correlation_ptr
         use proc_pointers, only: update_dmqmc_kinetic_energy_ptr
-        use determinants, only: det_info_t
+        use determinant_data, only: det_info_t
         use system, only: sys_t
         use qmc_data, only: particle_t
         use dmqmc_data, only: dmqmc_in_t, dmqmc_estimates_t, energy_ind, energy_imag_ind, energy_squared_ind, &
@@ -559,7 +559,7 @@ contains
         !    trace: total population on diagonal elements of density matrix
         !    energy: current thermal energy estimate.
 
-        use determinants, only: det_info_t
+        use determinant_data, only: det_info_t
         use system, only: sys_t
         use excitations, only: excit_t
         use hamiltonian_data
@@ -621,7 +621,7 @@ contains
         !    trace: total population on diagonal elements of density matrix
         !    energy: current thermal energy estimate.
 
-        use determinants, only: det_info_t
+        use determinant_data, only: det_info_t
         use system, only: sys_t
         use excitations, only: excit_t
         use proc_pointers, only: sc0_ptr
@@ -681,7 +681,7 @@ contains
         !    energy_sq: running total of thermal energy squared estimate.
 
         use excitations, only: excit_t
-        use determinants, only: det_info_t
+        use determinant_data, only: det_info_t
         use system, only: sys_t
 
         type(sys_t), intent(in) :: sys
@@ -799,7 +799,7 @@ contains
         !    correlation_fn: running estimate for the correlation function estimator.
 
         use bit_utils, only: count_set_bits
-        use determinants, only: det_info_t
+        use determinant_data, only: det_info_t
         use excitations, only: excit_t
         use system, only: sys_t
 
@@ -869,7 +869,7 @@ contains
         !    staggered_mag: running estimate for the staggered magnitisation.
 
         use bit_utils, only: count_set_bits
-        use determinants, only: det_info_t
+        use determinant_data, only: det_info_t
         use excitations, only: excit_t
         use system, only: sys_t
 
@@ -1013,7 +1013,7 @@ contains
         !        call.
 
         use basis_types, only: basis_t
-        use determinants, only: det_info_t
+        use determinant_data, only: det_info_t
         use dmqmc_data, only: dmqmc_rdm_in_t, dmqmc_estimates_t
         use dmqmc_procedures, only: decode_dm_bitstring
         use excitations, only: excit_t
@@ -1433,7 +1433,7 @@ contains
         ! In/Out:
         !    kinetic_energy: current thermal kinetic energy estimate.
 
-        use determinants, only: det_info_t
+        use determinant_data, only: det_info_t
         use system, only: sys_t
         use excitations, only: excit_t
         use proc_pointers, only: kinetic_diag_ptr
@@ -1469,7 +1469,7 @@ contains
         !        for each k point
 
 
-        use determinants, only: det_info_t
+        use determinant_data, only: det_info_t
         use system, only: sys_t
         use excitations, only: excit_t
 
@@ -1523,7 +1523,7 @@ contains
         !    structure_factor : array expressing the numerator for the estimator of the
         !        structure factor (up to a few constants (see above)) for each k point.
 
-        use determinants, only: det_info_t
+        use determinant_data, only: det_info_t
         use system, only: sys_t
         use excitations, only: excit_t
 
@@ -1669,7 +1669,7 @@ contains
         ! In/Out:
         !    H0_energy: current thermal zeroth order Hamiltonian energy estimate.
 
-        use determinants, only: det_info_t
+        use determinant_data, only: det_info_t
         use system, only: sys_t
         use excitations, only: excit_t
         use proc_pointers, only: h0_ptr
@@ -1728,7 +1728,7 @@ contains
         ! In/Out:
         !    HI_energy: current thermal interaction picture Hamiltonian energy estimate.
 
-        use determinants, only: det_info_t
+        use determinant_data, only: det_info_t
         use system, only: sys_t
         use excitations, only: excit_t
         use proc_pointers, only: sc0_ptr, h0_ptr
@@ -1795,7 +1795,7 @@ contains
         ! In/Out:
         !    potential_energy: current thermal potential energy estimate.
 
-        use determinants, only: det_info_t
+        use determinant_data, only: det_info_t
         use system, only: sys_t
         use excitations, only: excit_t
         use proc_pointers, only: potential_energy_ptr
@@ -1831,7 +1831,7 @@ contains
         !        to the two labels for the density matrix element.
         !    hmatel: Hamiltonian matrix element between f and the reference.
 
-        use determinants, only: det_info_t
+        use determinant_data, only: det_info_t
         use system, only: sys_t
         use excitations, only: excit_t
         use proc_pointers, only: update_proj_energy_ptr

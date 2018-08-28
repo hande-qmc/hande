@@ -42,7 +42,8 @@ contains
         use bloom_handler, only: init_bloom_stats_t, bloom_mode_fixedn, bloom_stats_warning, &
                                  bloom_stats_t, accumulate_bloom_stats, write_bloom_report
         use death, only: stochastic_death
-        use determinants, only: det_info_t, alloc_det_info_t, dealloc_det_info_t, decode_det, update_sys_spin_info
+        use determinants, only: alloc_det_info_t, dealloc_det_info_t, decode_det, update_sys_spin_info
+        use determinant_data, only: det_info_t
         use dmqmc_estimators
         use dmqmc_procedures
         use dmqmc_initialise_dm, only: create_initial_density_matrix
@@ -77,7 +78,7 @@ contains
         type(qmc_state_t), intent(inout), optional :: qmc_state_restart
         real(p), intent(out), allocatable :: sampling_probs(:)
 
-        integer :: idet, ireport, icycle, iparticle, iteration, ireplica, ierr
+        integer :: idet, ireport, icycle, iteration, ireplica, ierr
         integer :: beta_cycle, nreport
         integer :: unused_int_1 = -1, unused_int_2 = 0
         integer(int_64) :: init_tot_nparticles
@@ -86,9 +87,8 @@ contains
         integer(int_64) :: nattempts
         integer :: nel_temp
         type(det_info_t) :: cdet1, cdet2
-        integer(int_p) :: nspawned, nspawned_im, ndeath
-        type(excit_t) :: connection
-        integer :: spawning_end, nspawn_events
+        integer(int_p) :: ndeath
+        integer :: nspawn_events
         logical :: imag
         logical :: soft_exit, write_restart_shift, update_tau
         logical :: error, rdm_error, attempt_spawning, restarting
@@ -118,8 +118,7 @@ contains
         if (parent) then
             restarting = present(qmc_state_restart) .or. restart_in%read_restart
             call check_qmc_opts(qmc_in, sys, .not. present(qmc_state_restart), restarting)
-            call check_dmqmc_opts(sys, dmqmc_in)
-            if (qmc_in%quasi_newton) call stop_all('do_dmqmc', 'Quasi-Newton not implemented for DMQMC.')
+            call check_dmqmc_opts(sys, dmqmc_in, qmc_in)
         end if
 
         ! Initialise data.
@@ -168,6 +167,7 @@ contains
             qmc_in_loc%pattempt_single = qs%excit_gen_data%pattempt_single
             qmc_in_loc%pattempt_double = qs%excit_gen_data%pattempt_double
             qmc_in_loc%shift_damping = qs%shift_damping
+            qmc_in_loc%pattempt_parallel = qs%excit_gen_data%pattempt_parallel
             call qmc_in_t_json(js, qmc_in_loc)
             call dmqmc_in_t_json(js, dmqmc_in)
             dmqmc_in_loc = dmqmc_in
@@ -386,7 +386,7 @@ contains
         end if
 
         if (restart_in%write_restart) then
-            call dump_restart_hdf5(ri, qs, qs%mc_cycles_done, qs%psip_list%tot_nparticles, sys%basis%nbasis, .false., &
+            call dump_restart_hdf5(qs, qs%mc_cycles_done, qs%psip_list%tot_nparticles, sys%basis%nbasis, .false., &
                                     sys%basis%info_string_len)
             if (parent) write (iunit,'()')
         end if
@@ -419,8 +419,6 @@ contains
 
         ! In:
         !   sys: information on system under consideration.
-        !   qs: qmc_state_t derived type with information on
-        !       current calculation.
         !   logging_info: information on current logging settings.
         !   weighted_sampling: stores sampling weights information when using
         !       importance sampling.
@@ -428,8 +426,6 @@ contains
         !       to make on this matrix element.
         !   ireplica: replica (and its re/im part) currently under
         !       consideration.
-        !   cdet[1/2]: determinants corresponding to the row and column of 
-        !       density matrix element spawning is originating from.
         !   imag_parent: true if spawning from psips within an imaginary
         !       space.
         !   pop: population of given density matrix element in given space.
@@ -437,8 +433,13 @@ contains
         !       symmetrically.
         ! In/Out:
         !   rng: random number generator.
+        !   qs: qmc_state_t derived type with information on
+        !       current calculation. In/Out for compatibility with some
+        !       excitation generator features (not currently used in DMQMC).
         !   bloom_stats: information on blooms during calculation.
         !   spawn: stored information on spawning.
+        !   cdet[1/2]: determinants corresponding to the row and column of 
+        !       density matrix element spawning is originating from.
 
         use dSFMT_interface, only: dSFMT_t
         use system, only: sys_t
@@ -450,9 +451,9 @@ contains
         use spawn_data, only: spawn_t
 
         type(sys_t), intent(in) :: sys
-        type(qmc_state_t), intent(in) :: qs
+        type(qmc_state_t), intent(inout) :: qs
         type(logging_t), intent(in) :: logging_info
-        type(det_info_t), intent(in) :: cdet1, cdet2
+        type(det_info_t), intent(inout) :: cdet1, cdet2
         integer, intent(in) :: nattempts_current_det, ireplica
         logical, intent(in) :: imag_parent, symmetric
         integer(int_p), intent(in) :: pop
@@ -465,7 +466,6 @@ contains
         type(excit_t) :: connection
         integer(int_p) :: nspawned, nspawned_im
         integer :: iparticle, replica_real, replica_imag, spawning_end
-        integer(i0) :: f_child(sys%basis%tot_string_len)
         integer(int_p) :: scratch
 
         ! First, determine the particle types possibly created by spawning.

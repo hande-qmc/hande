@@ -2,7 +2,7 @@ module bloom_handler
 
     ! Module for handling blooms (single spawning events which create multiple particles).
 
-    use const, only: p, int_p, dp
+    use const, only: p, int_p, dp, int_64
 
     implicit none
 
@@ -50,7 +50,7 @@ module bloom_handler
         real(p) :: tot_bloom_curr = 0.0_p
         ! The number of blooms in the current iteration (should be zeroed at the start of
         ! each iteration).
-        integer :: nblooms_curr = 0
+        integer(int_64) :: nblooms_curr = 0
 
         ! -- Current processor quantities --
         ! The maximum number of particles spawned by a single bloom on the current processor.
@@ -60,7 +60,7 @@ module bloom_handler
 
         ! -- All processor quantities (updated in write_bloom_report) --
         ! The total number of blooms.
-        integer :: nblooms = 0
+        integer(int_64) :: nblooms = 0
         ! The total number of particles spawned by all blooms on the current processor.
         real(p) :: tot_bloom = 0.0_p
         ! Largest bloom

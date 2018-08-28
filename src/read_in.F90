@@ -413,7 +413,9 @@ contains
 
         if (parent) then
             ! Now, read in FCIDUMP again to get the integrals.
-            rewind(ir)
+            ! Don't use rewind to avoid gcc 7.1.0 bug: https://gcc.gnu.org/bugzilla/show_bug.cgi?id=80741
+            close(ir)
+            open (newunit=ir, file=sys%read_in%fcidump, status='old', form='formatted')
             ! Have to re-read the FCI namelist.
             ! ***WARNING***
             ! This will, e.g. overwrite norb, but we don't need those variables any
@@ -1044,7 +1046,9 @@ contains
         ! And back to root...
         core_term = 0.0_p
         if (parent) then
-            rewind(ir)
+            ! Don't use rewind to avoid gcc 7.1.0 bug: https://gcc.gnu.org/bugzilla/show_bug.cgi?id=80741
+            close(ir)
+            open(newunit=ir, file=integral_file, status='old', form='formatted')
             do
                 read (ir,*, iostat=ios) x, i, a
                 if (ios == iostat_end) exit ! reached end of file

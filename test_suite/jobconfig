@@ -32,6 +32,10 @@ max_nprocs = 1
 [*mc_real_32/np?/*/]
 [*mc_real_64/np?/*/]
 
+# There are a lot of tests in here which don't need to be run sequentially, so allow them to be concurrent
+[ccmc_real_64/np4/NH3-6-31g_ccsdt_excit_gens/]
+run_concurrent = true
+
 ## Processor options.
 # force MC jobs to run on the same number of cores as the benchmarks in order to have the same Markov chains...
 [*/np1/*/]
@@ -78,7 +82,6 @@ quick =   vquick
           ccmc/np2/ringium_ccsd_restart/
           ccmc/np4/H2O-cc-pVDZ_ccsdmc_continue
           ccmc_real_32/np1/polyyne_complex_ccsd-real32-nc
-          ccmc_real_64/np2/polyyne_complex_ccsdt-real64-restart-legacyv1/
           dmqmc/np1/ueg_n7_rs1_e1_dmqmc/
           dmqmc/np2/hubbard_k_1d/
           dmqmc/np2/n2_sto3g/
@@ -101,8 +104,11 @@ quick =   vquick
 
 quick64 = quick
           ccmc_real_64/np4/NH3-6-31g_ccsdt_even_selection
+          ccmc_real_64/np4/NH3-6-31g_ccsdt_excit_gens/
           ccmc_real_64/np1/ueg_n10_rs2_e4_ccmc_even_fnc_restart
+          ccmc_real_64/np1/ueg_n10_rs2_e4_ccmc_even_ex_pp_qmc_restart/
           ccmc_real_64/np4/NH3-6-31g_ccsdt_blocking
+          ccmc_real_64/np2/polyyne_complex_ccsdt-real64-restart-legacyv1/
           dmqmc_real_64/np4/heisenberg_4x4_replica/
           dmqmc_real_64/np4/n2_sto3g/
           dmqmc_real_64/np4/ueg_n4_rs2_e4/
@@ -112,7 +118,9 @@ quick64 = quick
 vquick_serial = ccmc/np1/Ne-RHF-cc-pVDZ-Lz-CCSDTQ5-multispawn-short
            ccmc/np1/Ne-RHF-cc-pVDZ-Lz-CCSDTQ5-multispawn-short-debug-logging
            ccmc/np1/Ne-RHF-cc-pVDZ_ccmc_even_selection
+           ccmc/np1/polyyne_complex_ccsd_qn
            ccmc/np1/polyyne_complex_ccsdt
+           ccmc/np1/hubbard_real_1d_ccmc_even_selection
            ccmc_real_32/np1/HOCl-6-31g_ccsd_short
            dmqmc/np1/heisenberg_1d
            fci/H2-RHF-cc-pVTZ-Lz/
@@ -138,6 +146,7 @@ vquick_serial = ccmc/np1/Ne-RHF-cc-pVDZ-Lz-CCSDTQ5-multispawn-short
            fciqmc/np1/H2O-RHF-cc-pVTZ-debug-logging
            fciqmc/np1/hubbard_real_1d_change_sys
            fciqmc/np1/polyyne_complex_fciqmc
+           fciqmc/np1/polyyne_complex_fciqmc_qn
            fciqmc_real_32/np1/He2-aug-cc-pVDZ_real_32_SS
            fciqmc_real_32/np1/He2-aug-cc-pVDZ_real_32_SS_replica
            fciqmc_real_32/np1/He2-aug-cc-pVDZ_real_32_SS_Extra_MPI
@@ -162,6 +171,9 @@ vquick =   vquick_serial
            ccmc/np2/H2O-cc-pVDZ_ccsdt
            dmqmc_real_32/np2/heisenberg_4_gs_entropy
            fciqmc/np2/polyyne_complex_replica_restart_legacyv1/
+           fciqmc/np2/polyyne_complex_replica_restart/
+           fciqmc/np2/polyyne_complex_replica_restart_legacyv1/
+           fciqmc/np2/ueg_n10_rs2_e4_tau_search
            fciqmc/np2/ueg_n10_rs2_e4_tau_search
            ifciqmc/np4/H2O-RHF-cc-pVTZ-non-block-hdf5-system
            fciqmc_real_32/np4/ueg_n7_rs1_e1_SS_cisdtq_replica

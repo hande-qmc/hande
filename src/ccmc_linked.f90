@@ -326,7 +326,7 @@ contains
         use excit_gen_ueg, only: calc_pgen_ueg_no_renorm
         use excit_gen_ringium, only: calc_pgen_ringium
         use read_in_symmetry, only: cross_product_basis_read_in
-        use determinants, only: det_info_t
+        use determinant_data, only: det_info_t
         use qmc_data, only: excit_gen_no_renorm
         use excit_gens, only: excit_gen_data_t
         use basis_types, only: reset_extra_info_bit_string
@@ -352,7 +352,8 @@ contains
                         pgen = excit_gen_data%pattempt_single * calc_pgen_single_mol_no_renorm(sys, a)
                     else
                         spin = sys%basis%basis_fns(a)%ms + sys%basis%basis_fns(b)%ms
-                        pgen = excit_gen_data%pattempt_double * calc_pgen_double_mol_no_renorm(sys, a, b, spin)
+                        pgen = excit_gen_data%pattempt_double * ((2.0_p/(sys%nel*(sys%nel-1))) * &
+                                    calc_pgen_double_mol_no_renorm(sys, a, b, spin))
                     end if
                 else
                     if (connection%nexcit == 1) then
@@ -362,7 +363,8 @@ contains
                         spin = sys%basis%basis_fns(a)%ms + sys%basis%basis_fns(b)%ms
                         ij_sym = sys%read_in%sym_conj_ptr(sys%read_in, &
                                     cross_product_basis_read_in(sys, a, b))
-                        pgen = excit_gen_data%pattempt_double * calc_pgen_double_mol(sys, ij_sym, a, b, spin, parent_det%symunocc)
+                        pgen = excit_gen_data%pattempt_double * (2.0_p/(sys%nel*(sys%nel-1)) * &
+                                    calc_pgen_double_mol(sys, ij_sym, a, b, spin, parent_det%symunocc))
                     end if
                 end if
             case(ueg)

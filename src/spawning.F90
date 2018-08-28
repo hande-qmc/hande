@@ -42,16 +42,16 @@ contains
 
         ! In/Out:
         !    rng: random number generator.
+        !    qmc_state: input options relating to QMC methods.
+        !    cdet: info on the current determinant (cdet) that we will spawn
+        !        from.
         ! In:
         !    sys: system being studied.
-        !    qmc_state: input options relating to QMC methods.
         !    spawn_cutoff: The size of the minimum spawning event allowed, in
         !        the encoded representation. Events smaller than this will be
         !        stochastically rounded up to this value or down to zero.
         !    real_factor: The factor by which populations are multiplied to
         !        enable non-integer populations.
-        !    cdet: info on the current determinant (cdet) that we will spawn
-        !        from.
         !    parent_sign: sign of the population on the parent determinant (i.e.
         !        either a positive or negative integer).
         !    gen_excit_ptr: procedure pointer to excitation generators.
@@ -67,7 +67,7 @@ contains
         !    connection: excitation connection between the current determinant
         !        and the child determinant, on which progeny are spawned.
 
-        use determinants, only: det_info_t
+        use determinant_data, only: det_info_t
         use excitations, only: excit_t
         use qmc_data, only: qmc_state_t
         use system, only: sys_t
@@ -78,10 +78,10 @@ contains
 
         type(dSFMT_t), intent(inout) :: rng
         type(sys_t), intent(in) :: sys
-        type(qmc_state_t), intent(in) :: qmc_state
+        type(qmc_state_t), intent(inout) :: qmc_state
         integer(int_p), intent(in) :: spawn_cutoff
         integer(int_p), intent(in) :: real_factor
-        type(det_info_t), intent(in) :: cdet
+        type(det_info_t), intent(inout) :: cdet
         integer(int_p), intent(in) :: parent_sign
         type(gen_excit_ptr_t), intent(in) :: gen_excit_ptr
         real(p), allocatable, intent(in) :: weights(:)
@@ -90,7 +90,7 @@ contains
         type(excit_t), intent(out) :: connection
 
         real(p) :: pgen, qn_weight
-        type(hmatel_t) :: hmatel
+        type(hmatel_t) :: hmatel, hmatel_tmp
         logical :: allowed
 
         nspawn_im = 0_int_p
@@ -100,6 +100,14 @@ contains
 
         if (allowed) then
             qn_weight = calc_qn_spawned_weighting(sys, qmc_state%propagator, cdet%fock_sum, connection)
+            hmatel_tmp = hmatel
+            hmatel_tmp%r = hmatel%r * qn_weight
+            if (qmc_state%excit_gen_data%p_single_double%vary_psingles) then
+                associate(exdat=>qmc_state%excit_gen_data) 
+                    call update_p_single_double_data(connection%nexcit, hmatel_tmp, pgen, exdat%pattempt_single, &
+                        exdat%pattempt_double, sys%read_in%comp, exdat%p_single_double%rep_accum)
+                end associate
+            end if
         else
             qn_weight = 1.0_p
         end if
@@ -127,16 +135,16 @@ contains
 
         ! In/Out:
         !    rng: random number generator.
+        !    qmc_state: input options relating to QMC methods.
+        !    cdet: info on the current determinant (cdet) that we will spawn
+        !        from.
         ! In:
         !    sys: system being studied.
-        !    qmc_state: input options relating to QMC methods.
         !    spawn_cutoff: The size of the minimum spawning event allowed, in
         !        the encoded representation. Events smaller than this will be
         !        stochastically rounded up to this value or down to zero.
         !    real_factor: The factor by which populations are multiplied to
         !        enable non-integer populations.
-        !    cdet: info on the current determinant (cdet) that we will spawn
-        !        from.
         !    parent_sign: sign of the population on the parent determinant (i.e.
         !        either a positive or negative integer).
         !    gen_excit_ptr: procedure pointer to excitation generators.
@@ -152,7 +160,7 @@ contains
         !    connection: excitation connection between the current determinant
         !        and the child determinant, on which progeny are spawned.
 
-        use determinants, only: det_info_t
+        use determinant_data, only: det_info_t
         use system, only: sys_t
         use excitations, only: excit_t
         use proc_pointers, only: gen_excit_ptr_t
@@ -163,10 +171,10 @@ contains
 
         type(dSFMT_t), intent(inout) :: rng
         type(sys_t), intent(in) :: sys
-        type(qmc_state_t), intent(in) :: qmc_state
+        type(qmc_state_t), intent(inout) :: qmc_state
         integer(int_p), intent(in) :: spawn_cutoff
         integer(int_p), intent(in) :: real_factor
-        type(det_info_t), intent(in) :: cdet
+        type(det_info_t), intent(inout) :: cdet
         integer(int_p), intent(in) :: parent_sign
         type(gen_excit_ptr_t), intent(in) :: gen_excit_ptr
         real(p), allocatable, intent(in) :: weights(:)
@@ -185,8 +193,14 @@ contains
 
         ! 2. Transform Hamiltonian matrix element by trial function.
         if (allowed) then
-           call gen_excit_ptr%trial_fn(sys, cdet, connection, weights, hmatel%r)
-           hmatel%r = hmatel%r * calc_qn_spawned_weighting(sys, qmc_state%propagator, cdet%fock_sum, connection)
+            call gen_excit_ptr%trial_fn(sys, cdet, connection, weights, hmatel%r)
+            hmatel%r = hmatel%r * calc_qn_spawned_weighting(sys, qmc_state%propagator, cdet%fock_sum, connection)
+            if (qmc_state%excit_gen_data%p_single_double%vary_psingles) then
+                associate(exdat=>qmc_state%excit_gen_data) 
+                    call update_p_single_double_data(connection%nexcit, hmatel, pgen, exdat%pattempt_single, &
+                        exdat%pattempt_double, sys%read_in%comp, exdat%p_single_double%rep_accum)
+                end associate
+            end if
         end if
 
         ! 3. Attempt spawning.
@@ -217,16 +231,16 @@ contains
 
         ! In/Out:
         !    rng: random number generator.
+        !    qmc_state: input options relating to QMC methods.
+        !    cdet: info on the current determinant (cdet) that we will spawn
+        !        from.
         ! In:
         !    sys: system being studied.
-        !    qmc_state: input options relating to QMC methods.
         !    spawn_cutoff: The size of the minimum spawning event allowed, in
         !        the encoded representation. Events smaller than this will be
         !        stochastically rounded up to this value or down to zero.
         !    real_factor: The factor by which populations are multiplied to
         !        enable non-integer populations.
-        !    cdet: info on the current determinant (cdet) that we will spawn
-        !        from.
         !    parent_sign: sign of the population on the parent determinant (i.e.
         !        either a positive or negative integer).
         !    gen_excit_ptr: procedure pointer to excitation generators.
@@ -245,7 +259,7 @@ contains
         !    connection: excitation connection between the current determinant
         !        and the child determinant, on which progeny are spawned.
 
-        use determinants, only: det_info_t
+        use determinant_data, only: det_info_t
         use system, only: sys_t
         use excitations, only: excit_t
         use proc_pointers, only: gen_excit_ptr_t
@@ -257,10 +271,10 @@ contains
 
         type(dSFMT_t), intent(inout) :: rng
         type(sys_t), intent(in) :: sys
-        type(qmc_state_t), intent(in) :: qmc_state
+        type(qmc_state_t), intent(inout) :: qmc_state
         integer(int_p), intent(in) :: spawn_cutoff
         integer(int_p), intent(in) :: real_factor
-        type(det_info_t), intent(in) :: cdet
+        type(det_info_t), intent(inout) :: cdet
         integer(int_p), intent(in) :: parent_sign
         type(gen_excit_ptr_t), intent(in) :: gen_excit_ptr
         real(p), allocatable, intent(in) :: weights(:)
@@ -317,16 +331,16 @@ contains
 
         ! In/Out:
         !    rng: random number generator.
+        !    qmc_state: input options relating to QMC methods.
+        !    cdet: info on the current determinant (cdet) that we will spawn
+        !        from.
         ! In:
         !    sys: system being studied.
-        !    qmc_state: input options relating to QMC methods.
         !    spawn_cutoff: The size of the minimum spawning event allowed, in
         !        the encoded representation. Events smaller than this will be
         !        stochastically rounded up to this value or down to zero.
         !    real_factor: The factor by which populations are multiplied to
         !        enable non-integer populations.
-        !    cdet: info on the current determinant (cdet) that we will spawn
-        !        from.
         !    parent_sign: sign of the population on the parent determinant (i.e.
         !        either a positive or negative integer).
         !    gen_excit_ptr: procedure pointer to excitation generators.
@@ -345,7 +359,7 @@ contains
         !    connection: excitation connection between the current determinant
         !        and the child determinant, on which progeny are spawned.
 
-        use determinants, only: det_info_t
+        use determinant_data, only: det_info_t
         use system, only: sys_t
         use excitations, only: excit_t
         use proc_pointers, only: gen_excit_ptr_t
@@ -357,10 +371,10 @@ contains
 
         type(dSFMT_t), intent(inout) :: rng
         type(sys_t), intent(in) :: sys
-        type(qmc_state_t), intent(in) :: qmc_state
+        type(qmc_state_t), intent(inout) :: qmc_state
         integer(int_p), intent(in) :: spawn_cutoff
         integer(int_p), intent(in) :: real_factor
-        type(det_info_t), intent(in) :: cdet
+        type(det_info_t), intent(inout) :: cdet
         integer(int_p), intent(in) :: parent_sign
         type(gen_excit_ptr_t), intent(in) :: gen_excit_ptr
         real(p), allocatable, intent(in) :: weights(:)
@@ -416,16 +430,16 @@ contains
 
         ! In/Out:
         !    rng: random number generator.
+        !    qmc_state: input options relating to QMC methods.
+        !    cdet: info on the current determinant (cdet) that we will spawn
+        !        from (or not, in this case!).
         ! In:
         !    sys: system being studied.
-        !    qmc_state: input options relating to QMC methods.
         !    spawn_cutoff: The size of the minimum spawning event allowed, in
         !        the encoded representation. Events smaller than this will be
         !        stochastically rounded up to this value or down to zero.
         !    real_factor: The factor by which populations are multiplied to
         !        enable non-integer populations.
-        !    cdet: info on the current determinant (cdet) that we will spawn
-        !        from (or not, in this case!).
         !    parent_sign: sign of the population on the parent determinant (i.e.
         !        either a positive or negative integer).
         !    gen_excit_ptr: procedure pointer to excitation generators.
@@ -439,7 +453,7 @@ contains
         !    connection: excitation connection between the current determinant
         !        and the child determinant, on which progeny are spawned.
 
-        use determinants, only: det_info_t
+        use determinant_data, only: det_info_t
         use system, only: sys_t
         use excitations, only: excit_t
         use proc_pointers, only: gen_excit_ptr_t
@@ -449,10 +463,10 @@ contains
 
         type(dSFMT_t), intent(inout) :: rng
         type(sys_t), intent(in) :: sys
-        type(qmc_state_t), intent(in) :: qmc_state
+        type(qmc_state_t), intent(inout) :: qmc_state
         integer(int_p), intent(in) :: spawn_cutoff
         integer(int_p), intent(in) :: real_factor
-        type(det_info_t), intent(in) :: cdet
+        type(det_info_t), intent(inout) :: cdet
         integer(int_p), intent(in) :: parent_sign
         type(gen_excit_ptr_t), intent(in) :: gen_excit_ptr
         real(p), allocatable, intent(in) :: weights(:)
@@ -481,16 +495,16 @@ contains
 
         ! In/Out:
         !    rng: random number generator.
+        !    qmc_state: input options relating to QMC methods.
+        !    cdet: info on the current determinant (cdet) that we will spawn
+        !        from.
         ! In:
         !    sys: system being studied.
-        !    qmc_state: input options relating to QMC methods.
         !    spawn_cutoff: The size of the minimum spawning event allowed, in
         !        the encoded representation. Events smaller than this will be
         !        stochastically rounded up to this value or down to zero.
         !    real_factor: The factor by which populations are multiplied to
         !        enable non-integer populations.
-        !    cdet: info on the current determinant (cdet) that we will spawn
-        !        from.
         !    parent_sign: sign of the population on the parent determinant (i.e.
         !        either a positive or negative integer).
         !    gen_excit_ptr: procedure pointer to excitation generators.
@@ -508,8 +522,8 @@ contains
         !    connection: excitation connection between the current determinant
         !        and the child determinant, on which progeny are spawned.
 
-        use determinants, only: det_info_t
-        use excitations, only: excit_t
+        use determinant_data, only: det_info_t
+        use excitations, only: excit_t, create_excited_det
         use qmc_data, only: qmc_state_t
         use system, only: sys_t, read_in
         use proc_pointers, only: gen_excit_ptr_t
@@ -521,10 +535,10 @@ contains
 
         type(dSFMT_t), intent(inout) :: rng
         type(sys_t), intent(in) :: sys
-        type(qmc_state_t), intent(in) :: qmc_state
+        type(qmc_state_t), intent(inout) :: qmc_state
         integer(int_p), intent(in) :: spawn_cutoff
         integer(int_p), intent(in) :: real_factor
-        type(det_info_t), intent(in) :: cdet
+        type(det_info_t), intent(inout) :: cdet
         integer(int_p), intent(in) :: parent_sign
         type(gen_excit_ptr_t), intent(in) :: gen_excit_ptr
         real(p), allocatable, intent(in) :: weights(:)
@@ -532,15 +546,24 @@ contains
         integer(int_p), intent(out) :: nspawn, nspawn_im
         type(excit_t), intent(out) :: connection
 
+        integer(i0) :: fexcit(sys%basis%tot_string_len)
         real(p) :: pgen, qn_weight
         logical :: allowed
-        type(hmatel_t) :: hmatel
+        type(hmatel_t) :: hmatel, hmatel_tmp
 
         ! 1. Generate random excitation.
         call gen_excit_ptr%full(rng, sys, qmc_state%excit_gen_data, cdet, pgen, connection, hmatel, allowed)
 
         if (allowed) then
             qn_weight = calc_qn_spawned_weighting(sys, qmc_state%propagator, cdet%fock_sum, connection)
+            ! [todo] - check this multiplication
+            hmatel_tmp%c = qn_weight * hmatel%c
+            if (qmc_state%excit_gen_data%p_single_double%vary_psingles) then
+                associate(exdat=>qmc_state%excit_gen_data) 
+                    call update_p_single_double_data(connection%nexcit, hmatel_tmp, pgen, exdat%pattempt_single, &
+                        exdat%pattempt_double, sys%read_in%comp, exdat%p_single_double%rep_accum)
+                end associate
+            end if
         else
             qn_weight = 1.0_p
         end if
@@ -551,7 +574,16 @@ contains
         nspawn_im = attempt_to_spawn(rng, qmc_state%tau, spawn_cutoff, real_factor, qn_weight*aimag(hmatel%c), &
                                     pgen, parent_sign)
 
-        if (debug) call write_logging_spawn(logging_info, hmatel, pgen, qn_weight, [nspawn, nspawn_im], real(parent_sign,p), .true.)
+        if (debug) then
+            if (allowed) then
+                call create_excited_det(sys%basis, cdet%f, connection, fexcit)
+                call write_logging_spawn(logging_info, hmatel, pgen, qn_weight, [nspawn, nspawn_im], real(parent_sign,p), &
+                    .true., pgen, cdet%f, fexcit, connection)
+            else
+                call write_logging_spawn(logging_info, hmatel, pgen, qn_weight, [nspawn, nspawn_im], real(parent_sign,p), &
+                    .true., pgen, cdet%f)
+            end if
+        end if
 
     end subroutine spawn_complex
 
@@ -974,7 +1006,7 @@ contains
         use parallel, only: nprocs
 
         use basis_types, only: basis_t
-        use determinants, only: det_info_t
+        use determinant_data, only: det_info_t
         use excitations, only: excit_t, create_excited_det
         use spawn_data, only: spawn_t
         use reference_determinant, only: reference_t
@@ -1029,7 +1061,7 @@ contains
         use parallel, only: nprocs
 
         use basis_types, only: basis_t
-        use determinants, only: det_info_t
+        use determinant_data, only: det_info_t
         use excitations, only: excit_t, create_excited_det
         use spawn_data, only: spawn_t
         use reference_determinant, only: reference_t
@@ -1084,7 +1116,7 @@ contains
         use parallel, only: nprocs
 
         use basis_types, only: basis_t
-        use determinants, only: det_info_t
+        use determinant_data, only: det_info_t
         use excitations, only: excit_t, create_excited_det, get_excitation_level
         use spawn_data, only: spawn_t
         use reference_determinant, only: reference_t
@@ -1145,7 +1177,7 @@ contains
         use parallel, only: nprocs
 
         use basis_types, only: basis_t
-        use determinants, only: det_info_t
+        use determinant_data, only: det_info_t
         use excitations, only: excit_t, create_excited_det, get_excitation_level
         use spawn_data, only: spawn_t
         use reference_determinant, only: reference_t
@@ -1207,7 +1239,7 @@ contains
         use basis_types, only: basis_t
         use bit_utils, only: count_set_bits
         use calc, only: ras1, ras3, ras1_min, ras3_max
-        use determinants, only: det_info_t
+        use determinant_data, only: det_info_t
         use excitations, only: excit_t, create_excited_det, get_excitation_level, in_ras
         use spawn_data, only: spawn_t
         use reference_determinant, only: reference_t
@@ -1270,7 +1302,7 @@ contains
         use basis_types, only: basis_t
         use bit_utils, only: count_set_bits
         use calc, only: ras1, ras3, ras1_min, ras3_max
-        use determinants, only: det_info_t
+        use determinant_data, only: det_info_t
         use excitations, only: excit_t, create_excited_det, get_excitation_level, in_ras
         use spawn_data, only: spawn_t
         use reference_determinant, only: reference_t
@@ -1335,7 +1367,7 @@ contains
         use excitations, only: excit_t, create_excited_det
         use parallel, only: nprocs
         use reference_determinant, only: reference_t
-        use determinants, only: det_info_t
+        use determinant_data, only: det_info_t
         use spawn_data, only: spawn_t
 
         type(basis_t), intent(in) :: basis
@@ -1404,7 +1436,7 @@ contains
         use excitations, only: excit_t, create_excited_det
         use parallel, only: nprocs
         use reference_determinant, only: reference_t
-        use determinants, only: det_info_t
+        use determinant_data, only: det_info_t
         use spawn_data, only: spawn_t
 
         type(basis_t), intent(in) :: basis
@@ -1474,7 +1506,7 @@ contains
         use bit_utils, only: bit_str_cmp
         use basis_types, only: basis_t
         use excitations, only: excit_t, create_excited_det
-        use determinants, only: det_info_t
+        use determinant_data, only: det_info_t
         use parallel, only: nprocs
         use reference_determinant, only: reference_t
         use spawn_data, only: spawn_t
@@ -1550,7 +1582,7 @@ contains
         use bit_utils, only: bit_str_cmp
         use basis_types, only: basis_t
         use excitations, only: excit_t, create_excited_det
-        use determinants, only: det_info_t
+        use determinant_data, only: det_info_t
         use parallel, only: nprocs
         use reference_determinant, only: reference_t
         use spawn_data, only: spawn_t
@@ -1633,7 +1665,7 @@ contains
         use bit_utils, only: bit_str_cmp
         use basis_types, only: basis_t
         use excitations, only: excit_t, create_excited_det, get_excitation_level
-        use determinants, only: det_info_t
+        use determinant_data, only: det_info_t
         use parallel, only: nprocs
         use reference_determinant, only: reference_t
         use spawn_data, only: spawn_t
@@ -1715,7 +1747,7 @@ contains
 
         use basis_types, only: basis_t
         use excitations, only: excit_t, create_excited_det, get_excitation_level
-        use determinants, only: det_info_t
+        use determinant_data, only: det_info_t
         use parallel, only: nprocs
         use reference_determinant, only: reference_t
         use spawn_data, only: spawn_t
@@ -1902,7 +1934,7 @@ contains
     
         use qmc_data, only:  propagator_t
         use system, only: sys_t
-        use determinants, only: decode_det, det_info_t
+        use determinant_data, only: det_info_t
         use excitations, only: excit_t, create_excited_det, get_excitation_level
 
         real(p) :: weight
@@ -1958,5 +1990,240 @@ contains
         end if
 
     end function calc_qn_weighting
+
+    subroutine update_p_single_double_data(nexcit, hmatel, spawn_pgen, pattempt_single, pattempt_double, complx, loc_accum)
+        
+        ! Update h_pgen_singles_sum/h_pgen_doubles_sum (the sum of pattempt_single*hmatel/spawn_pgen
+        ! for a single/double excitation), as well as excit_gen_singles/excit_gen_doubles, the number
+        ! of single/double excitations.
+
+        ! In:
+        !    nexcit: the order of the excitation (1 for single, 2 for double)
+        !    hmatel: hamiltonian matrix element
+        !    spawn_pgen: pgen as it comes out of the excitation generator, probability of choosing
+        !            a certain combination of orbitals for excitation.
+        !    complx: true if populations are complex.
+        !    pattempt_{single,double}: probability of a {single,double} excitation.
+        ! In/Out:
+        !    loc_accum: accumulates data for updating pattempt_single
+
+        use hamiltonian_data, only: hmatel_t
+        use excit_gens, only: p_single_double_coll_t
+
+        integer, intent(in) :: nexcit
+        type(hmatel_t), intent(in) :: hmatel
+        real(p), intent(in) :: spawn_pgen, pattempt_single, pattempt_double
+        logical, intent(in) :: complx
+        type(p_single_double_coll_t), intent(inout) :: loc_accum
+
+        real(p) :: hmatel_loc
+
+        if (complx) then
+            hmatel_loc = abs(hmatel%c)
+        else
+            hmatel_loc = abs(hmatel%r)
+        end if
+
+        if (nexcit == 1) then
+            call update_p_single_double_data_helper(loc_accum%h_pgen_singles_sum, loc_accum%excit_gen_singles, &
+                loc_accum%overflow_loc, hmatel_loc, spawn_pgen, pattempt_single)
+        
+        ! [todo] - should this be an else? Using else if is another check but is it necessary?
+        else if (nexcit == 2) then
+            call update_p_single_double_data_helper(loc_accum%h_pgen_doubles_sum, loc_accum%excit_gen_doubles, &
+                loc_accum%overflow_loc, hmatel_loc, spawn_pgen, pattempt_double)
+        end if
+    
+    end subroutine update_p_single_double_data
+
+    subroutine update_p_single_double_data_helper(h_pgen_sd_sum, excit_gen_sd, overflow_loc, hmatel_loc, &
+            spawn_pgen, pattempt_sd)
+        
+        ! Part of update_p_single_double_data function. Separate to avoid too much code duplication.
+
+        ! In:
+        !   hmatel_loc: either abs(hmatel%c) or abs(hmatel%r)
+        !   spawn_pgen: spawn probability (includes pattempt_{single,double})
+        !   pattempt_sd: pattempt_{single,double}
+
+        ! In/Out:
+        !   h_pgen_sd_sum: loc_accum%h_pgen_{singles,doubles}_sum
+        !   excit_gen_sd: loc_accum%excit_gen_{singles,doubles}
+        !   overflow_loc: loc_accum%overflow_loc
+        
+        real(p), intent(in) :: hmatel_loc, spawn_pgen, pattempt_sd
+        real(p), intent(inout) :: h_pgen_sd_sum, excit_gen_sd
+        logical :: overflow_loc
+        
+        real(p) :: excit_gen_sd_old
+
+        h_pgen_sd_sum = h_pgen_sd_sum + ((hmatel_loc*pattempt_sd)/spawn_pgen)
+        
+        excit_gen_sd_old = excit_gen_sd
+        excit_gen_sd = excit_gen_sd + 1.0_p
+        ! If excit_gen_{singles,doubles} is sufficienctly large after a lot of cycles, the addition above may not
+        ! change the value within the float, so we check for this and call it an overflow.
+        if (abs(excit_gen_sd - excit_gen_sd_old) < depsilon) then
+            overflow_loc = .true.
+        end if
+
+    end subroutine update_p_single_double_data_helper
+
+    subroutine update_pattempt(excit_gen_data)
+        
+        ! First accumulate data from all MPI procs onto dummy variables if necessary, then update pattempt_single
+        ! and pattempt_double.
+
+        ! In/Out:
+        !   excit_gen_data: Object containing pattempt_{single,double} and information for updating them.
+        
+        use excit_gens, only: excit_gen_data_t
+
+        type(excit_gen_data_t), intent(inout) :: excit_gen_data
+
+        associate(ps=>excit_gen_data%p_single_double)
+#ifdef PARALLEL
+            call communicate_pattempt_single_data(ps%rep_accum)
+#endif
+            call add_rep_accum_to_total(ps)
+            
+            call update_pattempt_single(ps, excit_gen_data%pattempt_single, excit_gen_data%pattempt_double)
+            
+            ! WARNING: Do not zero these before the "update_pattempt_single" call (the values are still needed).
+            ! Zero rep_accum variables to be prepared for next report loop.
+            ps%rep_accum%excit_gen_singles = 0.0_p
+            ps%rep_accum%excit_gen_doubles = 0.0_p
+            ps%rep_accum%h_pgen_singles_sum = 0.0_p
+            ps%rep_accum%h_pgen_doubles_sum = 0.0_p
+        end associate
+
+    end subroutine update_pattempt
+
+    subroutine communicate_pattempt_single_data(rep_accum)
+
+        ! Data from all MPI procs is accumulated.
+        ! WARNING: only call in parallel mode.
+
+        ! In/Out:
+        !   rep_accum: p_single_double_coll_t object
+
+        use parallel
+        use excit_gens, only: p_single_double_coll_t
+        use qmc_data, only: qmc_state_t
+
+        type(p_single_double_coll_t), intent(inout) :: rep_accum
+       
+#ifdef PARALLEL
+        real(p) :: excit_gen_singles_sum, excit_gen_doubles_sum, h_pgen_singles_sum_sum, h_pgen_doubles_sum_sum
+        integer :: ierr
+        logical :: overflow_loc
+        
+        excit_gen_singles_sum = 0.0_p
+        excit_gen_doubles_sum = 0.0_p
+        h_pgen_singles_sum_sum = 0.0_p
+        h_pgen_doubles_sum_sum = 0.0_p
+        overflow_loc = .false.
+
+        ! [todo] - is MPI communication best here or together with energy estimators? Do we need to disable non blocking comm?
+! [review] - AJWT: It looks like this might be best done with the energy estimators, but I don't know the performance implications.  Since it's not actually critical information for the next step, it could end up being communicated between cycles in a non-blocking manner?
+        call mpi_allreduce(rep_accum%excit_gen_singles, excit_gen_singles_sum, 1, mpi_preal, MPI_SUM, MPI_COMM_WORLD, ierr)
+        call mpi_allreduce(rep_accum%excit_gen_doubles, excit_gen_doubles_sum, 1, mpi_preal, MPI_SUM, MPI_COMM_WORLD, ierr)
+        call mpi_allreduce(rep_accum%h_pgen_singles_sum, h_pgen_singles_sum_sum, 1, mpi_preal, MPI_SUM, MPI_COMM_WORLD, ierr)
+        call mpi_allreduce(rep_accum%h_pgen_doubles_sum, h_pgen_doubles_sum_sum, 1, mpi_preal, MPI_SUM, MPI_COMM_WORLD, ierr)
+        ! ps%rep_accum%overflow_loc is reduced in qmc_common before this function is called.
+        ! [todo] - could reduce it here.
+        ! ps%counter does not need to be communicated as it increments a change done below (same calculation done on all
+        ! processes.
+        rep_accum%excit_gen_singles = excit_gen_singles_sum
+        rep_accum%excit_gen_doubles = excit_gen_doubles_sum
+        rep_accum%h_pgen_singles_sum = h_pgen_singles_sum_sum
+        rep_accum%h_pgen_doubles_sum = h_pgen_doubles_sum_sum
+#endif
+
+    end subroutine communicate_pattempt_single_data
+
+    subroutine add_rep_accum_to_total(ps)
+
+        ! Data from the report loop gets added to total.
+        
+        ! In/Out:
+        !   ps: p_single_double_t object with the pattempt single update data
+
+        use excit_gens, only: p_single_double_t
+
+        type(p_single_double_t), intent(inout) :: ps
+        real(p) :: excit_gen_singles_old, excit_gen_doubles_old
+
+        excit_gen_singles_old = ps%total%excit_gen_singles
+        excit_gen_doubles_old = ps%total%excit_gen_doubles
+    
+        ps%total%excit_gen_singles = ps%total%excit_gen_singles + ps%rep_accum%excit_gen_singles
+        ps%total%excit_gen_doubles = ps%total%excit_gen_doubles + ps%rep_accum%excit_gen_doubles
+        ps%total%h_pgen_singles_sum = ps%total%h_pgen_singles_sum + ps%rep_accum%h_pgen_singles_sum
+        ps%total%h_pgen_doubles_sum = ps%total%h_pgen_doubles_sum + ps%rep_accum%h_pgen_doubles_sum
+
+        ! Check whether precision is high enough to detect change in the number of single/double excitations.
+        ! If ps%total%excit_gen_singles is sufficienctly large after a lot of cycles, the addition above may not
+        ! change the value within the float, so we check for this and call it an overflow.
+        if ((.not. ps%rep_accum%overflow_loc) .and. (((abs(ps%total%excit_gen_singles - excit_gen_singles_old) < depsilon) .and. &
+            (ps%rep_accum%excit_gen_singles > 0.0_p)) .or. &
+            ((abs(ps%total%excit_gen_doubles - excit_gen_doubles_old) < depsilon) .and. &
+            (ps%rep_accum%excit_gen_doubles > 0.0_p)))) then
+            ps%total%overflow_loc = .true.
+            ps%rep_accum%overflow_loc = .true.
+        end if
+    
+    end subroutine add_rep_accum_to_total
+        
+    subroutine update_pattempt_single(ps, pattempt_single, pattempt_double)
+
+        ! Update pattempt single using the sums of pattempt_single%hmatel/spawn_pgen for and the numbers
+        ! of single and double excitations. The aim is align the means of hmatel/spawn_pgen of single
+        ! and double excitations.
+
+        ! In/Out:
+        !   ps: p_single_double_t object
+        ! Out:
+        !   pattempt_single: probability of a single excitation
+        !   pattempt_double: probability of a double excitation
+
+        use excit_gens, only: p_single_double_t
+        use parallel, only: parent
+
+        type(p_single_double_t), intent(inout) :: ps
+        real(p), intent(out) :: pattempt_single, pattempt_double
+        integer :: iunit
+
+        iunit = 6
+ 
+        if (((ps%total%excit_gen_singles + ps%total%excit_gen_doubles) > (ps%counter*ps%every_attempts)) .and. &
+            (ps%total%excit_gen_singles > (ps%counter*ps%every_min_attempts)) .and. &
+            (ps%total%excit_gen_doubles > (ps%counter*ps%every_min_attempts))) then
+            ps%counter = ps%counter + 1.0_p
+            pattempt_single = (ps%total%h_pgen_singles_sum/ps%total%excit_gen_singles) / &
+                    ((ps%total%h_pgen_doubles_sum/ps%total%excit_gen_doubles) + &
+                    (ps%total%h_pgen_singles_sum/ps%total%excit_gen_singles))
+
+            ! Make sure that pattempt_single does not get too small. Allow at least one single excitation (expected)
+            ! per pattempt_single update cycle.
+            if (pattempt_single < (1.0_p/ps%every_attempts)) then
+                pattempt_single = 1.0_p/ps%every_attempts
+                if (parent) write(iunit, '(1X, "# WARNING: min. pattempt_single!")')
+            end if 
+
+            pattempt_double = 1.0_p - pattempt_single
+            
+            ! Make sure that pattempt_double does not get too small. Allow at least one double excitation (expected)
+            ! per pattempt_single update cycle.
+            if (pattempt_double < (1.0_p/ps%every_attempts)) then
+                pattempt_double = 1.0_p/ps%every_attempts
+                pattempt_single = 1.0_p - pattempt_double
+                if (parent) write(iunit, '(1X, "# WARNING: min. pattempt_double!")')
+            end if 
+            
+            if (parent) write(iunit, '(1X, "# pattempt_single changed to be:",1X,es17.10)') pattempt_single
+        end if
+
+    end subroutine update_pattempt_single
 
 end module spawning

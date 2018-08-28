@@ -140,6 +140,15 @@ contains
                 ! ... and get variables from global state.
                 call aot_get_val(soft_exit, ierr, lua_state, key='softexit')
                 if (present(qs)) then
+                    if (aot_exists(lua_state, key='write_restart')) then
+                        ! This is very similar to get_flag_and_id in lua_hand_utils but it does less checks and does not need a handle.
+                        call aot_get_val(qs%restart_in%write_restart, ierr, lua_state, key='write_restart')
+                        if (ierr /= 0) then
+                            ! Passed an id instead.
+                            qs%restart_in%write_restart = .true.
+                            call aot_get_val(qs%restart_in%write_id, ierr, lua_state, key='write_restart')
+                        end if
+                    end if
                     call aot_get_val(qs%tau, ierr, lua_state, key='tau')
                     ! Only get shift if it is given, to avoid unwanted reallocation.
                     if (aot_exists(lua_state, key='shift')) then
