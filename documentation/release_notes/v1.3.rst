@@ -9,7 +9,7 @@ Added
   A. A. Holmes, H. J. Changlani, and C. J. Umrigar, J. Chem. Theory Comput. 12, 1561 (2016) and
   S. D. Smart, G. H. Booth, and A. Alavi, unpublished.
 * Complex DMQMC.
-* Making to possible to compile with CMake.
+* CMake-based build system also available.
 * Ability to restart the state of the dSFMT RNG stream, allowing for restarted
   calculations to have the same Markov chain as single calculations. Enabled by default.
   Can be disabled in the :ref:`restart_table`.
