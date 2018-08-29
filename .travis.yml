@@ -5,8 +5,11 @@ language: python
 
 addons:
   apt:
+    sources:
+      - ubuntu-toolchain-r-test
     packages:
-      - gfortran
+      - gcc-8
+      - gfortran-8
       - libblas-dev
       - liblapack-dev
       - libopenmpi-dev
@@ -68,13 +71,10 @@ install:
   - pip install -r requirements.txt
 
 before_script:
-  - gfortran --version
-  - mpifort --version
-  - mpifort -showme
   - >
     if [[ "$USE_CMAKE" = "true" && "$SERIAL" != "true" ]]; then
       ./cmakeconfig.py --type=release \
-                       --fc=mpifort \
+                       --fc=mpif90 \
                        --cc=mpicc \
                        --mpi \
                        --hdf5=$HDF5_ROOT \
@@ -89,7 +89,7 @@ before_script:
       #           -DENABLE_HDF5=ON \
       #           -DENABLE_UUID=ON \
       #           -DCMAKE_BUILD_TYPE=Release \
-      #           -DCMAKE_Fortran_COMPILER=mpifort \
+      #           -DCMAKE_Fortran_COMPILER=mpif90 \
       #           -DCMAKE_C_COMPILER=mpicc \
       #           -DENABLE_MPI=ON \
       #           -DHDF5_ROOT=$HDF5_ROOT \
@@ -100,8 +100,8 @@ before_script:
       #           -DHANDE_EXE_NAME="hande.travis.mpi.linux.cmake.x"
     elif [[ "$USE_CMAKE" = "true" && "$SERIAL" = "true" ]]; then
       ./cmakeconfig.py --type=release \
-                       --fc=gfortran \
-                       --cc=gcc \
+                       --fc=gfortran-8 \
+                       --cc=gcc-8 \
                        --hdf5=$HDF5_ROOT \
                        --lua=$LUA_ROOT \
                        --backtrace \
