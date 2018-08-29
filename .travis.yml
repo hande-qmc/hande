@@ -68,12 +68,16 @@ install:
   - pip install -r requirements.txt
 
 before_script:
+  - gfortran --version
+  - mpifort --version
+  - mpifort -showme
   - >
     if [[ "$USE_CMAKE" = "true" && "$SERIAL" != "true" ]]; then
       ./cmakeconfig.py --type=release \
-                       --fc=mpif90 \
+                       --fc=mpifort \
                        --cc=mpicc \
                        --mpi \
+                       --hdf5=$HDF5_ROOT \
                        --lua=$LUA_ROOT \
                        --mpi-with-scalapack \
                        --scalapack="-L$ScaLAPACK_ROOT/lib -lscalapack" \
@@ -85,10 +89,11 @@ before_script:
       #           -DENABLE_HDF5=ON \
       #           -DENABLE_UUID=ON \
       #           -DCMAKE_BUILD_TYPE=Release \
-      #           -DCMAKE_Fortran_COMPILER=mpif90 \
+      #           -DCMAKE_Fortran_COMPILER=mpifort \
       #           -DCMAKE_C_COMPILER=mpicc \
       #           -DENABLE_MPI=ON \
-      #           -DLUA_ROOT=$LUA_ROOT
+      #           -DHDF5_ROOT=$HDF5_ROOT \
+      #           -DLUA_ROOT=$LUA_ROOT \
       #           -DENABLE_SCALAPACK=ON \
       #           -DSCALAPACK_LIBRARIES="-L$ScaLAPACK_ROOT/lib -lscalapack" \
       #           -DTRLan_LIBRARIES="-L$DEPS/trlan/lib -ltrlan" \
@@ -97,6 +102,7 @@ before_script:
       ./cmakeconfig.py --type=release \
                        --fc=gfortran \
                        --cc=gcc \
+                       --hdf5=$HDF5_ROOT \
                        --lua=$LUA_ROOT \
                        --backtrace \
                        --exe-name="hande.travis.serial.linux.cmake.x" \
@@ -106,6 +112,7 @@ before_script:
       #           -DCMAKE_BUILD_TYPE=Release \
       #           -DCMAKE_Fortran_COMPILER=gfortran \
       #           -DCMAKE_C_COMPILER=gcc \
+      #           -DHDF5_ROOT=$HDF5_ROOT \
       #           -DLUA_ROOT=$LUA_ROOT \
       #           -DENABLE_HDF5=ON \
       #           -DENABLE_UUID=ON \
