@@ -3,7 +3,7 @@
 set -euo pipefail
 
 echo "-- Download testcode"
-git clone git://github.com/jsspencer/testcode.git $HOME/Deps/testcode &> /dev/null
+git clone git://github.com/jsspencer/testcode.git "$HOME"/Deps/testcode &> /dev/null
 echo "-- Done with testcode"
 
 # OS-dependent operations
