@@ -8,7 +8,7 @@ ex_l=2
 ccmc {
     sys = sys,
     qmc = {
-        tau = 0.005,
+        tau = 0.02,
         rng_seed = 13086,
         mc_cycles = 10,
         init_pop = 200,
@@ -20,6 +20,7 @@ ccmc {
         real_amplitudes = true,
     },
     ccmc = {
+	    even_selection = true,
             full_non_composite=true,
            },
     reference = {
@@ -32,5 +33,8 @@ ccmc {
     restart = {
         write = true,
     },
+   -- logging = {
+   --     kpoint = 2,
+  --  },
 }
 

@@ -90,12 +90,15 @@ and correlation energy:
     plt.ylabel('Correlation energy/' + r'$E_h$')
 
 It is worth noting that the projected energy is in fact a complex quantity, whose imaginary part evaluates to zero
-in a non-trivial way [Booth13]_. For the plot (as well as the following analysis) we calculate the result by only
+in a non-trivial way [Booth13]_. For the plot we calculate the result by only
 using real parts of both :math:`\sum_j H_{0j} N_j(\tau)` and :math:`N_0(\tau)`, using the fact that
 
 :math:`E(\tau) = \Re\left(\frac{\sum_j H_{0j} N_j(\tau)}{N_0(\tau)}\right) = \frac{\Re\left(\sum_j H_{0j} N_j(\tau)\right)}{\Re\left(N_0(\tau)\right)}`
 
 where the second equality holds provided that imaginary part of :math:`E(\tau)` is zero.
+
+The reblocking analysis uses magnitudes rather than real parts as this prevents problems with potential changes of phase during the calculation. Neverthless, for a well behaved calculation such as the one presented here, it is found that reblocking using real parts would give identical results.
+
 In any case, the shift remains a strictly real measure of the correlation energy [#]_.
 
 To analyse the calculation we can use reblock_hande.py script:
