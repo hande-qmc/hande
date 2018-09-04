@@ -11,8 +11,6 @@ addons:
       - gcc-8
       - gfortran-8
       - g++-8
-      - libblas-dev
-      - liblapack-dev
       - uuid-dev
 
 env:
@@ -21,10 +19,11 @@ env:
     - LUA_ROOT=$DEPS/lua
     - OpenMPI_ROOT=$DEPS/openmpi
     - HDF5_ROOT=$DEPS/hdf5
+    - LAPACK_ROOT=$DEPS/lapack
     - ScaLAPACK_ROOT=$DEPS/scalapack
-    # Paths for BLAS, LAPACK, and UUID from packages
-    - LD_LIBRARY_PATH=/usr/lib/x86_64-linux-gnu:/usr/lib/libblas:/usr/lib/lapack${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}
-    - LD_LIBRARY_PATH=$LUA_ROOT/lib:$HDF5_ROOT/lib:$ScaLAPACK_ROOT/lib:$DEPS/trlan/lib${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}
+    # Paths for UUID from packages
+    - LD_LIBRARY_PATH=/usr/lib/x86_64-linux-gnu${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}
+    - MATH_ROOT=$LAPACK_ROOT
     # Put custom OpenMPI on PATH
     - PATH=$OpenMPI_ROOT/bin${PATH:+:$PATH}
 
@@ -68,12 +67,14 @@ cache:
     - $HOME/Deps/hdf5
     - $HOME/Deps/scalapack
     - $HOME/Deps/trlan
+    - $HOME/Deps/lapack
 
 install:
   - git clone git://github.com/jsspencer/testcode.git "$HOME"/Deps/testcode &> /dev/null
   - ./.ci/cmake.sh
   - ./.ci/lua.sh
   - ./.ci/trlan.sh
+  - ./.ci/lapack.sh
   - travis_wait 20 ./.ci/openmpi.sh
   - travis_wait 20 ./.ci/hdf5.sh
   - ./.ci/scalapack.sh
