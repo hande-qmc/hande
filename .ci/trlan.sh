@@ -10,7 +10,9 @@ if [[ ! -f $DEPS/trlan/lib/libtrlan.a ]]; then
   curl -Ls https://codeforge.lbl.gov/frs/download.php/210/trlan-201009.tar.gz | tar -xz
   (
    cd trlan-201009
-   env CC=gcc-8 FC=gfortran-8 make lib &> /dev/null
+   # Patch Make.inc to use gfortran-8
+   patch < "$TRAVIS_BUILD_DIR"/.ci/Make.inc.patch
+   make lib &> /dev/null
    # Install by hand
    mkdir -p "$DEPS"/trlan/lib
    cp libtrlan.a "$DEPS"/trlan/lib

@@ -1,0 +1,30 @@
+--- Make.inc	2010-09-17 20:10:04.000000000 +0200
++++ myMake.inc	2018-09-04 21:02:19.826331045 +0200
+@@ -40,14 +40,14 @@
+ #FFLAGS=-g -O0 -64 -mips4 -OPT:alias=restrict
+ 
+ ########
+-# IBM RS 6000 and others that use XLF 
++# IBM RS 6000 and others that use XLF
+ #FC=xlf
+ #F90=xlf90
+ #FFLAGS=-O3
+ #FFLAGS=-g -C -qinit=f90ptr -qinitauto
+ 
+ ########
+-# IBM SP2 and others that use MPXLF 
++# IBM SP2 and others that use MPXLF
+ #FC=mpxlf
+ #F90=mpxlf90 -qsuffix=f=f90 # -qlanglvl=90pure
+ #FFLAGS=-O3 -qstrict -qmaxmem=-1# -qxref -qextchk -bnoquiet
+@@ -60,8 +60,8 @@
+ 
+ ########
+ # gfortran compiler from GNU
+-FC=gfortran
+-F90=gfortran
++FC=gfortran-8
++F90=gfortran-8
+ FFLAGS=-O0 -g -Wall -fbounds-check
+ 
+ 
