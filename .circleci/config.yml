@@ -5,7 +5,7 @@ variables:
     docker:
       - image: handeqmc/circleci_ubuntu-18.04
         name: tsubame
-        #user: merzbow 
+        user: merzbow 
     working_directory: ~/hande
   setup: &setup
     run:
