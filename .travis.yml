@@ -10,21 +10,23 @@ addons:
     packages:
       - gcc-8
       - gfortran-8
+      - g++-8
       - libblas-dev
       - liblapack-dev
-      - libopenmpi-dev
-      - openmpi-bin
       - uuid-dev
 
 env:
   global:
     - DEPS=$HOME/Deps
     - LUA_ROOT=$DEPS/lua
+    - OpenMPI_ROOT=$DEPS/openmpi
     - HDF5_ROOT=$DEPS/hdf5
     - ScaLAPACK_ROOT=$DEPS/scalapack
     # Paths for BLAS, LAPACK, and UUID from packages
     - LD_LIBRARY_PATH=/usr/lib/x86_64-linux-gnu:/usr/lib/libblas:/usr/lib/lapack${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}
     - LD_LIBRARY_PATH=$LUA_ROOT/lib:$HDF5_ROOT/lib:$ScaLAPACK_ROOT/lib:$DEPS/trlan/lib${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}
+    # Put custom OpenMPI on PATH
+    - PATH=$OpenMPI_ROOT/bin${PATH:+:$PATH}
 
 matrix:
   include:
@@ -62,12 +64,19 @@ cache:
   directories:
     - $HOME/Deps/cmake/3.6.3
     - $HOME/Deps/lua
+    - $HOME/Deps/openmpi
     - $HOME/Deps/hdf5
     - $HOME/Deps/scalapack
     - $HOME/Deps/trlan
 
 install:
-  - ./.ci/install_deps.sh
+  - git clone git://github.com/jsspencer/testcode.git "$HOME"/Deps/testcode &> /dev/null
+  - ./.ci/cmake.sh
+  - ./.ci/lua.sh
+  - travis_wait 20 ./.ci/openmpi.sh
+  - travis_wait 20 ./.ci/hdf5.sh
+  - ./.ci/scalapack.sh
+  - ./.ci/trlan.sh
   - pip install -r requirements.txt
 
 before_script:
