@@ -23,9 +23,12 @@ env:
     - ScaLAPACK_ROOT=$DEPS/scalapack
     # Paths for UUID from packages
     - LD_LIBRARY_PATH=/usr/lib/x86_64-linux-gnu${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}
-    - MATH_ROOT=$LAPACK_ROOT
+    # Put custom built stack (dynamic) libraries on LD_LIBRARY_PATH
+    - LD_LIBRARY_PATH=$HDF5_ROOT/lib:$OpenMPI_ROOT/lib${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}
     # Put custom OpenMPI on PATH
     - PATH=$OpenMPI_ROOT/bin${PATH:+:$PATH}
+    # To help CMake find BLAS and LAPACK
+    - MATH_ROOT=$LAPACK_ROOT
 
 matrix:
   include:
