@@ -20,12 +20,14 @@ type, private :: int_indx
     logical :: conjugate        ! Indicates if we need to take the complex conjugate of the integral
 end type int_indx
 
-![review] - AJWT: What do each of these elements mean?
 type :: int_ex_indx
-    integer :: spin_channel
-    integer :: repeat_ind
-    integer(int_64) :: triind
-    logical :: conjugate
+    ! These indices will appear as integrals(spin_channel)%v(repeat_ind,triind):
+    integer :: spin_channel !If alpha and beta spin-orbitals differ, we store
+                            ! different combinations of these in different spin channels
+                            ! 1=bbbb, 2=aaaa, 3=baba, 4=ababa
+    integer :: repeat_ind   ! i index in <ij|ai>. 
+    integer(int_64) :: triind ! trigonal index based on j & a in <ij|ai>.
+    logical :: conjugate    ! Indicates if we need to take the complex conjugate of the integral
 end type int_ex_indx
 
 interface get_one_body_int_mol
@@ -265,10 +267,11 @@ contains
     end subroutine end_two_body_t
 
 ! [review] - AJWT: Consider a different name which is less specific, and comment on memory requirements.
+! [review] - VAN: See my other reply. I think we can keep name for now.
     subroutine init_two_body_exchange_t(sys, op_sym, imag, store)
 
         ! Allocate memory required for the integrals involving a two-body
-        ! operator.
+        ! operator. Memory requirements are written to output.
 
         ! In:
         !    sys: sys_t object containing info on current system. We use:
@@ -279,6 +282,8 @@ contains
         ! Out:
         !    store: two-body integral store with components allocated to hold
         !       interals.  Note that the integral store is *not* zeroed.
+
+        ! [todo] - shared memory comment possibly (as above for init_two_body_t)
 
         use checking, only: check_allocate
         use const, only: int_64
@@ -1340,8 +1345,8 @@ contains
         !    This assumes that <ij|ab> is known the be non-zero by spin and
         !    spatial symmetry.  If this is not true then this routine will return
         !    either an incorrect value or cause an array-bounds error.  If
-        !    <ij|ab> might be zero by symmetry, get_two_body_int_mol must be called
-        !    instead.
+        !    <ij|ab> might be zero by symmetry, get_two_body_int_complex or
+        !    get_two_body_int_real must be called instead.
         !    It is faster to call RHF- or UHF-specific routines.
 
         use basis_types, only: basis_fn_t
@@ -1362,8 +1367,20 @@ contains
 
 ! 3. additional < i j | o_2 | a i > for PBC.
 
-![review] - AJWT: comment on variables and what the function does
     subroutine store_pbc_int_mol(i, j, a, b, intgrl, basis_fns, store, ierr)
+
+        ! Stores value of additional <ij|o_2|ab> integrals in pbc calculations.
+
+        ! In:
+        !  i,j,a,b: (indices of) spin-orbitals
+        !  intgrl: absolute value of real or imag part of <ij|o_2|ab>.
+        !  basis_fns: list of single-particle basis functions.
+        
+        ! In/Out:
+        !  store: two-body integral store
+
+        ! Out:
+        !   ierr: equals 0 here.
 
         use basis_types, only: basis_fn_t
         use errors, only: warning
@@ -1391,8 +1408,15 @@ contains
 
     end subroutine store_pbc_int_mol
 
-![review] - AJWT: comment on variables
     pure function pbc_ex_int_indx(uhf, i, j, a, b, basis_fns) result(indx)
+
+        ! In:
+        !   uhf: UHF calculation?
+        !   i,j,a,b:  (indices of) spin-orbitals
+        !   basis_fns: list of single-particle basis functions
+
+        ! Returns:
+        !   indx: information of spin symmetry, indices or i,j,a,b, etc.
 
         use basis_types, only: basis_fn_t
         use utils, only: tri_ind
@@ -1621,8 +1645,16 @@ contains
 
     end subroutine broadcast_two_body_t
 
-![review] - AJWT: comment on variables and what the function does
     subroutine broadcast_two_body_exchange_t(store, data_proc)
+
+        ! Broadcast the pbc exchange integrals from data_proc to all processors.
+        ! In/Out:
+        !    store: two-body exchange integral store.  On input the integrals are only
+        !       stored on data_proc.  On output all processors have an identical
+        !       copy of the integral store.
+        ! In:
+        !    data_proc: processor on which the integral store is already filled.
+
 
         use parallel
         use errors, only: warning

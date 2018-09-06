@@ -1176,11 +1176,10 @@ contains
 
     end subroutine get_sp_eigv
 
-![review] - AJWT: Where are the integrals read from and where do they go?
     subroutine read_additional_exchange_integrals(sys, sp_fcidump_rank, verbose)
 
         ! For periodic bounary conditions we require additional integrals, to be read
-        ! in from a separate FCIDUMP.
+        ! in from a separate FCIDUMP to be stored in sys%read_in%additional_exchange_ints{_imag}.
         !    sp_fcidump_rank: ranking array which converts index in the
         !         integrals file(s) to the (energy-ordered) index used in HANDE,
         !         i.e. sp_fcidump_rank(a) = i, where a is the a-th
@@ -1270,12 +1269,15 @@ contains
 
     end subroutine read_additional_exchange_integrals
 
-! [review] - AJWT: Include expression we're using and some sort of reference
+    ! [reply] - Double check and References?.
     subroutine modify_one_body_ints(sys, two_e_ints, pbc_ex_ints, one_e_ints)
 
-        ! If using additional exchange integrals with modified electron-electron
-        ! interaction we need to modify our diagonal one electron integrals to
-        ! ensure different energy expressions agree.
+        ! These two expressions for the Hartree-Fock energy are made identical here:
+        ! 1) E_HF = \sum_i <i|H|i> + \sum_{i<j} (<ij|ij> + <ij|ji>_exchange)
+        ! 2) E_HF = \sum_i <i|H|i> + 1/2\sum_{i,j} (<ij|ij> + <ij|ji>_exchange)
+        ! by including the expression +1/2\sum_{i} (<ii|ii> + <ii|ii>_exchange)
+        ! into the one_body integrals.
+        ! Note that this is necessary as <ii|ii> and <ii|ii>_exchange (may) differ (by cutoffs).
 
         ! In:
         !   sys: information on system being studied.

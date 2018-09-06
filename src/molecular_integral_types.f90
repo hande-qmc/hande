@@ -80,6 +80,7 @@ type two_body_t
 end type
 
 ! [review] - AJWT: This name is a bit specific - really this is a three-index integral
+! [reply] - VAN: Or two-index as the spin is not a true index?
 type two_body_exchange_t
     ! This type is also used for storage of two body exchange-type integrals
     ! in complex systems. This requires indexing by three indexes due to symmetry
