@@ -8,6 +8,9 @@ chemistry code.
 .. image:: https://travis-ci.org/hande-qmc/hande.svg?branch=master
     :target: https://travis-ci.org/hande-qmc/hande
 
+.. image:: https://circleci.com/gh/hande-qmc/hande/tree/master.svg?style=svg
+    :target: https://circleci.com/gh/hande-qmc/hande/tree/master
+
 Documentation
 -------------
 
