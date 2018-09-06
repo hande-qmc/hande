@@ -147,6 +147,9 @@ contains
                     hmatel = hmatel + cmplx(re, im, p)
                     if (sys%basis%basis_fns(i)%Ms == sys%basis%basis_fns(j)%Ms) then
 ! [review] - AJWT: replace if with a pointer at the top of function to avoid if?
+! [review] - VAN: mmmh, if I did, here, we would need another if later on, asking whether we want the imag or the real integral
+! [review] - VAN: store as we would not pass say coulomb_ints and coulomb_ints_im anymore but rather sys as coulomb_ints
+! [review] - VAN: are of a different type as sys%read_in%additional_exchange_ints. Feel free to suggest another way!
                         if (sys%read_in%extra_exchange_integrals) then
                             re = get_two_body_exchange_pbc_int_nonzero(sys%read_in%additional_exchange_ints, &
                                         i, j, j, i, sys%basis%basis_fns)
