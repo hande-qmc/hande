@@ -424,11 +424,9 @@ contains
         end if
 
         if (ccmc_in%multiref) then
-!	   print*, '11111111111111111',allocated(ccmc_in%second_ref%occ_list0)
             call init_reference(sys, ccmc_in%second_ref, io_unit, qs%second_ref)
             qs%ref%max_ex_level = qs%ref%ex_level + get_excitation_level(qs%ref%f0(:sys%basis%bit_string_len), &
                                                                   qs%second_ref%f0(:sys%basis%bit_string_len))
-!           print*,"!!!!!!!!!!!!!!!!!!!!!!!",qs%second_ref%f0
         else 
             qs%ref%max_ex_level = qs%ref%ex_level
         end if

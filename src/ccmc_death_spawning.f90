@@ -169,7 +169,6 @@ contains
             if (ccmc_in%multiref) then
                 excitor_level_2 = get_excitation_level(qs%second_ref%f0(:sys%basis%bit_string_len), &
                                                                  fexcit(:sys%basis%bit_string_len))
-!	            !print*, excitor_level, excitor_level_2
                 if (excitor_level > qs%ref%ex_level .and.  excitor_level_2 >qs%ref%ex_level) nspawn=0
             end if
             if (excitor_sign < 0) nspawn = -nspawn

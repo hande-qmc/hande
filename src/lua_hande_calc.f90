@@ -1298,8 +1298,8 @@ contains
         !     density_matrices = true/false,
         !     density_matrix_file = filename,
         !     even_selection = true/false,
-	!     multiref = true/false,
-	!     second_ref ={...},
+	    !     multiref = true/false,
+	    !     second_ref ={...},
         ! }
 
         ! In/Out:
@@ -1341,11 +1341,6 @@ contains
             call aot_get_val(ccmc_in%density_matrix_file, err, lua_state, ccmc_table, 'density_matrix_file')
             call aot_get_val(ccmc_in%even_selection, err, lua_state, ccmc_table, 'even_selection')
             call aot_get_val(ccmc_in%multiref, err, lua_state, ccmc_table, 'multiref')
-        if (aot_exists(lua_state, ccmc_table, 'second_ref')) then
-            print*, 'I can see the second ref table!======================================='
-        else
-            print*,'I cant see the table.+++++++++++++++++++++++++++++++++++++++'
-        end if
 
             call read_reference_t(lua_state, ccmc_table, ccmc_in%second_ref, sys, 'second_ref')
 
