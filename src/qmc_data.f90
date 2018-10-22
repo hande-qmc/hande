@@ -6,7 +6,7 @@ use csr, only: csrp_t
 use parallel, only: parallel_timing_t
 use importance_sampling_data
 use excit_gens, only: excit_gen_data_t
-use reference_determinant, only: reference_t
+use reference_determinant, only: reference_t, reference_t_json
 use dSFMT_interface, only: dSFMT_state_t
 
 implicit none
@@ -1082,7 +1082,9 @@ contains
         call json_write_key(js, 'vary_shift_reference', ccmc%vary_shift_reference)
         call json_write_key(js, 'density_matrices', ccmc%density_matrices)
         call json_write_key(js, 'density_matrix_file', ccmc%density_matrix_file)
-        call json_write_key(js, 'even_selection', ccmc%even_selection, .true.)
+        call json_write_key(js, 'even_selection', ccmc%even_selection)
+        call json_write_key(js,'multiref', ccmc%multiref)
+        call reference_t_json(js, ccmc%second_ref, key = 'second_ref')
         call json_object_end(js, terminal)
 
     end subroutine ccmc_in_t_json
