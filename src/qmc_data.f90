@@ -1084,7 +1084,7 @@ contains
         call json_write_key(js, 'density_matrix_file', ccmc%density_matrix_file)
         call json_write_key(js, 'even_selection', ccmc%even_selection)
         call json_write_key(js,'multiref', ccmc%multiref)
-        call reference_t_json(js, ccmc%second_ref, key = 'second_ref')
+        call reference_t_json(js, ccmc%second_ref, key = 'second_ref',terminal=.true.)
         call json_object_end(js, terminal)
 
     end subroutine ccmc_in_t_json

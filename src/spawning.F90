@@ -1218,7 +1218,7 @@ contains
 
 
         ! Only accept spawning if it's within the truncation level.
-          if (get_excitation_level(reference%hs_f0(:basis%bit_string_len), &
+        if (get_excitation_level(reference%hs_f0(:basis%bit_string_len), &
                                 f_new(:basis%bit_string_len)) <= max_ex_level) then
 
               call assign_particle_processor(f_new, spawn%bit_str_nbits, spawn%hash_seed, spawn%hash_shift, spawn%move_freq, &

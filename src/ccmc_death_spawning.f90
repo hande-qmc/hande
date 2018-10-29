@@ -315,19 +315,8 @@ contains
         KiiAi = KiiAi * qs%tau / cluster%pselect
 
         if (ex_lvl_sort) call add_ex_level_bit_string_provided(sys%basis, cluster%excitation_level, cdet%f)
-!	if (ccmc_in%multiref) then
-!	    if (get_excitation_level(qs%ref%f0(:sys%basis%bit_string_len),cdet%f(:sys%basis%bit_string_len)) > qs%ref%ex_level .and. &
-!                                            get_excitation_level(qs%second_ref%f0(:sys%basis%bit_string_len), &
-!                                             cdet%f(:sys%basis%bit_string_len)) > qs%ref%ex_level) then
-!	        nkill=0
-!	   else
-!                call stochastic_death_attempt(rng, real(KiiAi, p), 1, cdet, qs%ref, sys%basis, spawn, &
-!                           nkill, pdeath)
-!	    end if
-!	else
         call stochastic_death_attempt(rng, real(KiiAi, p), 1, cdet, qs%ref, sys%basis, spawn, &
                            nkill, pdeath)
-!	end if
 
         ndeath_tot = ndeath_tot + abs(nkill)
 

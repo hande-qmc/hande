@@ -1298,7 +1298,7 @@ contains
         !     density_matrices = true/false,
         !     density_matrix_file = filename,
         !     even_selection = true/false,
-	    !     multiref = true/false,
+        !     multiref = true/false,
 	    !     second_ref ={...},
         ! }
 
@@ -1717,8 +1717,6 @@ contains
             call warn_unused_args(lua_state, keys, ref_table)
 
             call aot_table_close(lua_state, ref_table)
-            print*,'@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@',ref_name,ref%occ_list0
-            print*,allocated(ref%occ_list0)
         end if
 
     end subroutine read_reference_t

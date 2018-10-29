@@ -110,7 +110,6 @@ contains
                 end select
             end if
             set = .true.
-        print*,'Using passed in ref##############'
         else
             ! Allocate memory if required.
             allocate(occ_list(sys%nel), stat=ierr)
