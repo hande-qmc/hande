@@ -1095,6 +1095,7 @@ contains
         type(p_single_double_coll_t), intent(inout) :: ps_stat
 
         integer :: i, nspawnings_cluster
+        logical :: try_death
 
         ! Spawning
         ! This has the potential to create blooms, so we allow for multiple
@@ -1112,52 +1113,123 @@ contains
             if (contrib%cluster%excitation_level <= qs%ref%ex_level+2 .or. &
                       get_excitation_level(contrib%cdet%f(:sys%basis%bit_string_len),qs%second_ref%f0(:sys%basis%bit_string_len)) &
                       <= qs%second_ref%ex_level+2) then
-                do i = 1, nspawnings_cluster
-                   call perform_ccmc_spawning_attempt(rng, sys, qs, ccmc_in, logging_info, bloom_stats, contrib, &
-                                                      nspawnings_cluster, ps_stat)
-                end do
-
-               ! Does the cluster collapsed onto D0 produce
-               ! a determinant is in the truncation space?  If so, also
-               ! need to attempt a death/cloning step.
-               ! optimisation: call only once per iteration for clusters of size 0 or 1 for ccmc_in%full_nc.
-                if (contrib%cluster%excitation_level <= qs%ref%ex_level .or. &
+                try_death = (contrib%cluster%excitation_level <= qs%ref%ex_level .or. &
                       get_excitation_level(contrib%cdet%f(:sys%basis%bit_string_len),qs%second_ref%f0(:sys%basis%bit_string_len)) &
-                      <= qs%second_ref%ex_level) then
-                  ! Clusters above size 2 can't die in linked ccmc.
-                    if ((.not. ccmc_in%linked) .or. contrib%cluster%nexcitors <= 2) then
-                  ! Do death for non-composite clusters directly and in a separate loop
-                        if (contrib%cluster%nexcitors >= 2 .or. .not. ccmc_in%full_nc) then
-                          call stochastic_ccmc_death(rng, qs%spawn_store%spawn, ccmc_in%linked, ccmc_in%even_selection, sys, &
-                                              qs, contrib%cdet, contrib%cluster, logging_info, ndeath, ccmc_in)
-                        end if
-                    end if
-                end if
+                      <= qs%second_ref%ex_level) 
+
+                call do_spawning_death(rng, sys, qs, ccmc_in, &
+                                 logging_info, ms_stats, bloom_stats, contrib, &
+                                 nattempts_spawn_tot, ndeath, ps_stat, nspawnings_cluster, try_death)
+
+ 
+!                do i = 1, nspawnings_cluster
+!                   call perform_ccmc_spawning_attempt(rng, sys, qs, ccmc_in, logging_info, bloom_stats, contrib, &
+!                                                      nspawnings_cluster, ps_stat)
+!                end do
+!
+!               ! Does the cluster collapsed onto D0 produce
+!               ! a determinant is in the truncation space?  If so, also
+!               ! need to attempt a death/cloning step.
+!               ! optimisation: call only once per iteration for clusters of size 0 or 1 for ccmc_in%full_nc.
+!                if (contrib%cluster%excitation_level <= qs%ref%ex_level .or. &
+!                      get_excitation_level(contrib%cdet%f(:sys%basis%bit_string_len),qs%second_ref%f0(:sys%basis%bit_string_len)) &
+!                      <= qs%second_ref%ex_level) then
+!                  ! Clusters above size 2 can't die in linked ccmc.
+!                    if ((.not. ccmc_in%linked) .or. contrib%cluster%nexcitors <= 2) then
+!                  ! Do death for non-composite clusters directly and in a separate loop
+!                        if (contrib%cluster%nexcitors >= 2 .or. .not. ccmc_in%full_nc) then
+!                          call stochastic_ccmc_death(rng, qs%spawn_store%spawn, ccmc_in%linked, ccmc_in%even_selection, sys, &
+!                                              qs, contrib%cdet, contrib%cluster, logging_info, ndeath, ccmc_in)
+!                        end if
+!                    end if
+!                end if
             end if
         else
-            do i = 1, nspawnings_cluster
-                call perform_ccmc_spawning_attempt(rng, sys, qs, ccmc_in, logging_info, bloom_stats, contrib, &
-                                                   nspawnings_cluster, ps_stat)
-            end do
 
-            ! Does the cluster collapsed onto D0 produce
-            ! a determinant is in the truncation space?  If so, also
-            ! need to attempt a death/cloning step.
-            ! optimisation: call only once per iteration for clusters of size 0 or 1 for ccmc_in%full_nc.
-            if (contrib%cluster%excitation_level <= qs%ref%ex_level) then
-               ! Clusters above size 2 can't die in linked ccmc.
-                if ((.not. ccmc_in%linked) .or. contrib%cluster%nexcitors <= 2) then
-                   ! Do death for non-composite clusters directly and in a separate loop
-                    if (contrib%cluster%nexcitors >= 2 .or. .not. ccmc_in%full_nc) then
-                       call stochastic_ccmc_death(rng, qs%spawn_store%spawn, ccmc_in%linked, ccmc_in%even_selection, sys, &
-                                               qs, contrib%cdet, contrib%cluster, logging_info, ndeath, ccmc_in)
-                    end if
+            try_death = (contrib%cluster%excitation_level <= qs%ref%ex_level) 
+
+            call do_spawning_death(rng, sys, qs, ccmc_in, &
+                             logging_info, ms_stats, bloom_stats, contrib, &
+                             nattempts_spawn_tot, ndeath, ps_stat, nspawnings_cluster, try_death)
+
+!            do i = 1, nspawnings_cluster
+!                call perform_ccmc_spawning_attempt(rng, sys, qs, ccmc_in, logging_info, bloom_stats, contrib, &
+!                                                   nspawnings_cluster, ps_stat)
+!            end do
+!
+!            ! Does the cluster collapsed onto D0 produce
+!            ! a determinant is in the truncation space?  If so, also
+!            ! need to attempt a death/cloning step.
+!            ! optimisation: call only once per iteration for clusters of size 0 or 1 for ccmc_in%full_nc.
+!            if (contrib%cluster%excitation_level <= qs%ref%ex_level) then
+!               ! Clusters above size 2 can't die in linked ccmc.
+!                if ((.not. ccmc_in%linked) .or. contrib%cluster%nexcitors <= 2) then
+!                   ! Do death for non-composite clusters directly and in a separate loop
+!                    if (contrib%cluster%nexcitors >= 2 .or. .not. ccmc_in%full_nc) then
+!                       call stochastic_ccmc_death(rng, qs%spawn_store%spawn, ccmc_in%linked, ccmc_in%even_selection, sys, &
+!                                               qs, contrib%cdet, contrib%cluster, logging_info, ndeath, ccmc_in)
+!                    end if
+!                end if
+!            end if
+        end if
+
+    end subroutine do_stochastic_ccmc_propagation  
+
+    subroutine do_spawning_death(rng, sys, qs, ccmc_in, &
+                                 logging_info, ms_stats, bloom_stats, contrib, &
+                                 nattempts_spawn_tot, ndeath, ps_stat, nspawnings_cluster, try_death)
+
+        use dSFMT_interface, only: dSFMT_t
+        use system, only: sys_t
+        use qmc_data, only: qmc_state_t, ccmc_in_t
+        use ccmc_data, only: multispawn_stats_t, ms_stats_update, wfn_contrib_t
+
+        use ccmc_death_spawning, only: spawner_ccmc, linked_spawner_ccmc, stochastic_ccmc_death
+        use ccmc_death_spawning, only: stochastic_ccmc_death_nc, spawner_complex_ccmc
+        use bloom_handler, only: bloom_stats_t, accumulate_bloom_stats
+        use logging, only: logging_t
+        use excit_gens, only: p_single_double_coll_t
+
+        use excitations, only: get_excitation_level
+        
+        type(sys_t), intent(in) :: sys
+        type(dSFMT_T), intent(inout) :: rng
+        type(qmc_state_t), intent(inout) :: qs
+        type(ccmc_in_t), intent(in) :: ccmc_in
+        type(wfn_contrib_t), intent(inout) :: contrib
+        type(bloom_stats_t), intent(inout) :: bloom_stats
+        type(logging_t), intent(in) :: logging_info
+
+        integer(int_64), intent(inout) :: nattempts_spawn_tot
+        integer(int_p), intent(inout) :: ndeath
+        type(multispawn_stats_t), intent(inout) :: ms_stats
+        type(p_single_double_coll_t), intent(inout) :: ps_stat
+        integer, intent(in) :: nspawnings_cluster
+        logical, intent(in) :: try_death
+
+        integer :: i
+
+        do i = 1, nspawnings_cluster
+            call perform_ccmc_spawning_attempt(rng, sys, qs, ccmc_in, logging_info, bloom_stats, contrib, &
+                                               nspawnings_cluster, ps_stat)
+        end do
+
+        ! Does the cluster collapsed onto D0 produce
+        ! a determinant is in the truncation space?  If so, also
+        ! need to attempt a death/cloning step.
+        ! optimisation: call only once per iteration for clusters of size 0 or 1 for ccmc_in%full_nc.
+        if (try_death) then
+           ! Clusters above size 2 can't die in linked ccmc.
+            if ((.not. ccmc_in%linked) .or. contrib%cluster%nexcitors <= 2) then
+               ! Do death for non-composite clusters directly and in a separate loop
+                if (contrib%cluster%nexcitors >= 2 .or. .not. ccmc_in%full_nc) then
+                   call stochastic_ccmc_death(rng, qs%spawn_store%spawn, ccmc_in%linked, ccmc_in%even_selection, sys, &
+                                           qs, contrib%cdet, contrib%cluster, logging_info, ndeath, ccmc_in)
                 end if
             end if
         end if
-
-    end subroutine do_stochastic_ccmc_propagation
-
+    end subroutine do_spawning_death
+ 
     subroutine do_nc_ccmc_propagation(rng, sys, qs, ccmc_in, logging_info, bloom_stats, &
                                             contrib, nattempts_spawn_tot, ps_stat)
 

@@ -115,7 +115,6 @@ contains
             allocate(occ_list(sys%nel), stat=ierr)
             call check_allocate('occ_list',sys%nel,ierr)
             set = .false.
-        print*,'Regenerating ref ###############'
         end if
 
         if (.not.set .or. override_input) then
