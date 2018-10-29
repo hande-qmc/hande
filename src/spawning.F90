@@ -1224,7 +1224,7 @@ contains
               call assign_particle_processor(f_new, spawn%bit_str_nbits, spawn%hash_seed, spawn%hash_shift, spawn%move_freq, &
                                                           nprocs, iproc_spawn, slot, spawn%proc_map%map, spawn%proc_map%nslots)
 
-              call add_spawned_particle(f_new, nspawn, particle_type, iproc_spawn, spawn)
+              call add_flagged_spawned_particle(f_new, nspawn, particle_type, cdet%initiator_flag, iproc_spawn, spawn)
 
         end if
 
