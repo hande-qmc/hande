@@ -1072,9 +1072,6 @@ contains
         use system, only: sys_t
         use qmc_data, only: qmc_state_t, ccmc_in_t
         use ccmc_data, only: multispawn_stats_t, ms_stats_update, wfn_contrib_t
-
-        use ccmc_death_spawning, only: spawner_ccmc, linked_spawner_ccmc, stochastic_ccmc_death
-        use ccmc_death_spawning, only: stochastic_ccmc_death_nc, spawner_complex_ccmc
         use bloom_handler, only: bloom_stats_t, accumulate_bloom_stats
         use logging, only: logging_t
         use excit_gens, only: p_single_double_coll_t
@@ -1095,7 +1092,7 @@ contains
         type(p_single_double_coll_t), intent(inout) :: ps_stat
 
         integer :: i, nspawnings_cluster
-        logical :: try_death
+        logical :: attempt_death
 
         ! Spawning
         ! This has the potential to create blooms, so we allow for multiple
@@ -1113,13 +1110,13 @@ contains
             if (contrib%cluster%excitation_level <= qs%ref%ex_level+2 .or. &
                       get_excitation_level(contrib%cdet%f(:sys%basis%bit_string_len),qs%second_ref%f0(:sys%basis%bit_string_len)) &
                       <= qs%second_ref%ex_level+2) then
-                try_death = (contrib%cluster%excitation_level <= qs%ref%ex_level .or. &
+                attempt_death = (contrib%cluster%excitation_level <= qs%ref%ex_level .or. &
                       get_excitation_level(contrib%cdet%f(:sys%basis%bit_string_len),qs%second_ref%f0(:sys%basis%bit_string_len)) &
                       <= qs%second_ref%ex_level) 
 
                 call do_spawning_death(rng, sys, qs, ccmc_in, &
                                  logging_info, ms_stats, bloom_stats, contrib, &
-                                 nattempts_spawn_tot, ndeath, ps_stat, nspawnings_cluster, try_death)
+                                 nattempts_spawn_tot, ndeath, ps_stat, nspawnings_cluster, attempt_death)
 
  
 !                do i = 1, nspawnings_cluster
@@ -1146,11 +1143,11 @@ contains
             end if
         else
 
-            try_death = (contrib%cluster%excitation_level <= qs%ref%ex_level) 
+            attempt_death = (contrib%cluster%excitation_level <= qs%ref%ex_level) 
 
             call do_spawning_death(rng, sys, qs, ccmc_in, &
                              logging_info, ms_stats, bloom_stats, contrib, &
-                             nattempts_spawn_tot, ndeath, ps_stat, nspawnings_cluster, try_death)
+                             nattempts_spawn_tot, ndeath, ps_stat, nspawnings_cluster, attempt_death)
 
 !            do i = 1, nspawnings_cluster
 !                call perform_ccmc_spawning_attempt(rng, sys, qs, ccmc_in, logging_info, bloom_stats, contrib, &
@@ -1177,15 +1174,14 @@ contains
 
     subroutine do_spawning_death(rng, sys, qs, ccmc_in, &
                                  logging_info, ms_stats, bloom_stats, contrib, &
-                                 nattempts_spawn_tot, ndeath, ps_stat, nspawnings_cluster, try_death)
+                                 nattempts_spawn_tot, ndeath, ps_stat, nspawnings_cluster, attempt_death)
 
         use dSFMT_interface, only: dSFMT_t
         use system, only: sys_t
         use qmc_data, only: qmc_state_t, ccmc_in_t
         use ccmc_data, only: multispawn_stats_t, ms_stats_update, wfn_contrib_t
 
-        use ccmc_death_spawning, only: spawner_ccmc, linked_spawner_ccmc, stochastic_ccmc_death
-        use ccmc_death_spawning, only: stochastic_ccmc_death_nc, spawner_complex_ccmc
+        use ccmc_death_spawning, only: stochastic_ccmc_death
         use bloom_handler, only: bloom_stats_t, accumulate_bloom_stats
         use logging, only: logging_t
         use excit_gens, only: p_single_double_coll_t
@@ -1205,7 +1201,7 @@ contains
         type(multispawn_stats_t), intent(inout) :: ms_stats
         type(p_single_double_coll_t), intent(inout) :: ps_stat
         integer, intent(in) :: nspawnings_cluster
-        logical, intent(in) :: try_death
+        logical, intent(in) :: attempt_death
 
         integer :: i
 
@@ -1218,7 +1214,7 @@ contains
         ! a determinant is in the truncation space?  If so, also
         ! need to attempt a death/cloning step.
         ! optimisation: call only once per iteration for clusters of size 0 or 1 for ccmc_in%full_nc.
-        if (try_death) then
+        if (attempt_death) then
            ! Clusters above size 2 can't die in linked ccmc.
             if ((.not. ccmc_in%linked) .or. contrib%cluster%nexcitors <= 2) then
                ! Do death for non-composite clusters directly and in a separate loop
