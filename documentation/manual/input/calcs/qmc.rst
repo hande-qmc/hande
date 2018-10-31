@@ -244,7 +244,9 @@ algorithms and control the core settings in the algorithms.
     necessary.
     The Cauchy-Scharz ([SmartXX]_, described in [Blunt17]_)
     and Power-Pitzer excitation generators use approximate upper bounds
-    for these weights. Cauchy-Scharz uses Coulomb integrals and Power-Pitzer uses
+    for these weights. A version of Cauchy-Schwarz excitation generators is described in [Schwarz]_
+    but the weights used here and the implementation differ.
+    Here, Cauchy-Scharz uses Coulomb integrals and Power-Pitzer uses
     exchange integrals to approximate weights.
     'heat_bath_uniform' is very similar to 'heat_bath' but samples single excitations
     uniformly (mentioned by Holmes et al.) and 'heat_bath_single' is also very similar
