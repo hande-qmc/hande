@@ -1,6 +1,10 @@
 module excit_gen_power_pitzer_mol
 
 ! A module containing excitations generators for molecules which weight excitations according to the exchange matrix elements.
+! The on-the-fly excitation generators ("orderM") are based on Alavi and others (Smart et al., unpublished).
+! How they have been adapted to HANDE and the pre-calculated power_pitzer_orderN/heat bath Power--Pitzer ref.
+! excitation generator is described by Neufeld and Thom
+! (V.A. Neufeld, A.J.W. Thom, J. Chem. Theory Comput. 2018, XXXX, XXX, XXX-XXX (10.1021/acs.jctc.8b00844)).
 
 use const, only: i0, p, depsilon, debug
 

@@ -215,6 +215,23 @@ algorithms and control the core settings in the algorithms.
     probability ``pattempt_parallel`` whether :math:`i` and :math:`j` should have
     parallel spins or not. The idea for those comes from Alavi and others.
 
+    Note that the implementations of the weighted excitation generators here are all
+    described in [Neufeld18]_. The names here correspond to the names in [Neufeld18]_
+    as follows:
+
+    ========================    ============================
+    HANDE                       [Neufeld18]_
+    ========================    ============================
+    heat_bath                   heat bath
+    heat_bath_uniform           heat bath uniform singles
+    heat_bath_single            heat bath exact singles
+    power_pitzer_orderM         uniform Power--Pitzer
+    power_pitzer_orderM_ij      heat bath Power--Pitzer
+    power_pitzer_orderN         heat bath Power--Pitzer ref.
+    cauchy_schwarz_orderM       uniform Cauchy--Schwarz
+    cauchy_schwarz_orderM_ij    heat bath Cauchy--Schwarz
+    ========================    ============================
+
     The 'heat_bath' excitation generator is very similar to the "original" heat bath
     excitation generator described by Holmes et al. [Holmes16]_. :math:`i,j,a,b` are chosen
     with weighted, precalculated probabilities that aim to make :math:`|H_{ij}|/p_\mathrm{gen}` as constant
@@ -261,7 +278,7 @@ algorithms and control the core settings in the algorithms.
     is similar to 'power_pitzer_orderM_ij', the distinction being the types of weights used
     to select :math:`ab`.
 
-    The 'power_pitzer_orderN' excitation generator uses precalculated weights and unlike
+    The 'power_pitzer_orderN' excitation generator [Neufeld18]_ uses precalculated weights and unlike
     'power_pitzer', it also samples :math:`i` and :math:`j` with weighted probabilities.
     It also samples single excitations in a weighted manner. Its memory cost is
     :math:`\mathcal{O}(M^2)`.

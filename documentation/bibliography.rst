@@ -17,6 +17,7 @@ Bibliography
 .. [Malone15] F.D. Malone, N.S. Blunt, J.J. Shepherd, D.K.K. Lee, J.S. Spencer, W.M.C. Foulkes, Interaction picture density matrix quantum Monte Carlo, J. Chem. Phys. 143, 044116 (2015).
 .. [Malone16] F.D. Malone, N.S. Blunt, E.W. Brown, D.K.K. Lee, J.S. Spencer, W.M.C. Foulkes, J.J. Shepherd, Accurate exchange-correlation energies for the warm dense electron gas arXiv:1602.05104 [cond-mat.str-el].
 .. [Malone16a] F.D. Malone, W.M.C. Foulkes, J.S. Spencer, Improved parallel algorithms for full configuration interaction quantum Monte Carlo, in preparation.
+.. [Neufeld18] V.A. Neufeld, A.J.W. Thom, Exciting determinants in Quantum Monte Carlo: Loading the dice with fast, low memory weights, J. Chem. Theory Comput., XXXX, XXX, XXX-XXX (10.1021/acs.jctc.8b00844) (2018)
 .. [Overy2014] C. Overy, G.H. Booth, N.S. Blunt, J.J. Shepherd, D. Cleland, A. Alavi, Unbiased reduced density matrices and electronic properties from full configuration interaction quantum Monte Carlo, J. Chem. Phys. 141, 244117 (2014).
 .. [Petruzielo12] F.R. Petruzielo, A.A. Holmes, H.J. Changlani, M.P. Nightingale, C. J. Umrigar, Semistochastic projector monte carlo method, Phys. Rev. Lett. 109, 230201 (2012).
 .. [Power74] J.D. Power, R.M. Pitzer, Inequalities for electron repulsion integrals, Chem. Phys. Lett., 478-483 (1974).
