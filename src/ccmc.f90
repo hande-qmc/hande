@@ -1037,13 +1037,8 @@ contains
                                             contrib, nattempts_spawn_tot, ndeath, ps_stat)
 
         ! Perform stochastic propogation of a cluster in an appropriate manner
-        ! for the given inputs. For stochastically selected clusters this
-        ! attempts spawning and death, adding any created particles to the
-        ! spawned list. For deterministically selected clusters spawning is
-        ! performed, while death is performed in-place separately.
-
-        ! This is currently non-specific to a any given type of selected
-        ! cluster, though this may change in future.
+        ! for the given inputs. For multireference systems, it allows death for
+        ! clusters within the desired truncation level of either reference.
 
         ! In:
         !   sys: information on system under consideration.
@@ -1116,57 +1111,13 @@ contains
                 call do_spawning_death(rng, sys, qs, ccmc_in, &
                                  logging_info, ms_stats, bloom_stats, contrib, &
                                  nattempts_spawn_tot, ndeath, ps_stat, nspawnings_cluster, attempt_death)
-
- 
-!                do i = 1, nspawnings_cluster
-!                   call perform_ccmc_spawning_attempt(rng, sys, qs, ccmc_in, logging_info, bloom_stats, contrib, &
-!                                                      nspawnings_cluster, ps_stat)
-!                end do
-!
-!               ! Does the cluster collapsed onto D0 produce
-!               ! a determinant is in the truncation space?  If so, also
-!               ! need to attempt a death/cloning step.
-!               ! optimisation: call only once per iteration for clusters of size 0 or 1 for ccmc_in%full_nc.
-!                if (contrib%cluster%excitation_level <= qs%ref%ex_level .or. &
-!                      get_excitation_level(contrib%cdet%f(:sys%basis%bit_string_len),qs%second_ref%f0(:sys%basis%bit_string_len)) &
-!                      <= qs%second_ref%ex_level) then
-!                  ! Clusters above size 2 can't die in linked ccmc.
-!                    if ((.not. ccmc_in%linked) .or. contrib%cluster%nexcitors <= 2) then
-!                  ! Do death for non-composite clusters directly and in a separate loop
-!                        if (contrib%cluster%nexcitors >= 2 .or. .not. ccmc_in%full_nc) then
-!                          call stochastic_ccmc_death(rng, qs%spawn_store%spawn, ccmc_in%linked, ccmc_in%even_selection, sys, &
-!                                              qs, contrib%cdet, contrib%cluster, logging_info, ndeath, ccmc_in)
-!                        end if
-!                    end if
-!                end if
             end if
         else
-
             attempt_death = (contrib%cluster%excitation_level <= qs%ref%ex_level) 
 
             call do_spawning_death(rng, sys, qs, ccmc_in, &
                              logging_info, ms_stats, bloom_stats, contrib, &
                              nattempts_spawn_tot, ndeath, ps_stat, nspawnings_cluster, attempt_death)
-
-!            do i = 1, nspawnings_cluster
-!                call perform_ccmc_spawning_attempt(rng, sys, qs, ccmc_in, logging_info, bloom_stats, contrib, &
-!                                                   nspawnings_cluster, ps_stat)
-!            end do
-!
-!            ! Does the cluster collapsed onto D0 produce
-!            ! a determinant is in the truncation space?  If so, also
-!            ! need to attempt a death/cloning step.
-!            ! optimisation: call only once per iteration for clusters of size 0 or 1 for ccmc_in%full_nc.
-!            if (contrib%cluster%excitation_level <= qs%ref%ex_level) then
-!               ! Clusters above size 2 can't die in linked ccmc.
-!                if ((.not. ccmc_in%linked) .or. contrib%cluster%nexcitors <= 2) then
-!                   ! Do death for non-composite clusters directly and in a separate loop
-!                    if (contrib%cluster%nexcitors >= 2 .or. .not. ccmc_in%full_nc) then
-!                       call stochastic_ccmc_death(rng, qs%spawn_store%spawn, ccmc_in%linked, ccmc_in%even_selection, sys, &
-!                                               qs, contrib%cdet, contrib%cluster, logging_info, ndeath, ccmc_in)
-!                    end if
-!                end if
-!            end if
         end if
 
     end subroutine do_stochastic_ccmc_propagation  
@@ -1174,6 +1125,37 @@ contains
     subroutine do_spawning_death(rng, sys, qs, ccmc_in, &
                                  logging_info, ms_stats, bloom_stats, contrib, &
                                  nattempts_spawn_tot, ndeath, ps_stat, nspawnings_cluster, attempt_death)
+
+        ! For stochastically selected clusters this
+        ! attempts spawning and death, adding any created particles to the
+        ! spawned list. For deterministically selected clusters spawning is
+        ! performed, while death is performed in-place separately.
+
+        ! This is currently non-specific to a any given type of selected
+        ! cluster, though this may change in future.
+
+        ! In:
+        !   sys: information on system under consideration.
+        !   ccmc_in: options relating to ccmc passed in to calculation.
+        !   logging_info: logging_t object with info about current logging
+        !        when debug is true. 
+        !   attempt_death = logical variable that encodes whether the selected 
+        !        cluster is within the desired CC truncation. 
+        ! In/Out:
+        !   rng: random number generator.
+        !   qs: qmc_state_t type, contains information about calculation.
+        !   ms_stats: statistics on multispawn performance.
+        !   bloom_stats: statistics on blooms during calculation.
+        !   contrib: derived type containing information on the current
+        !       wavefunction contribution being considered.
+        !   nattempts_spawn_tot: running total of number of spawning attempts
+        !       made during this mc cycle.
+        !   ndeath: total number of particles created via death.
+        !   ps_stat: Accumulating the following (and more) on this OpenMP thread:
+        !       h_pgen_singles_sum: total of |Hij|/pgen for single excitations attempted.
+        !       h_pgen_doubles_sum: total on |Hij|/pgen for double excitations attempted.
+        !       excit_gen_singles: counter on number of single excitations attempted.
+        !       excit_gen_doubles: counter on number of double excitations attempted.
 
         use dSFMT_interface, only: dSFMT_t
         use system, only: sys_t
