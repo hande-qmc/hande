@@ -500,7 +500,6 @@ contains
         call check_allocate('cumulative_abs_real_pops', size(qs%psip_list%states, dim=2), ierr)
 
         if (ccmc_in%even_selection) then
-            print*, qs%ref%max_ex_level
             if (ccmc_in%linked) then
                 call init_selection_data(qs%ref%max_ex_level, 4, selection_data)
             else
