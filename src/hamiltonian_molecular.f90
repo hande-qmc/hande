@@ -366,8 +366,7 @@ contains
     end subroutine create_weighted_excitation_list_mol
     
     pure function get_two_body_int_ex_mol_real(sys, i, a) result(integral)
-        
-        ! Perform <ia|ia> (exchange) for real system.
+        ! Get integral <ia|ai> (exchange) for real system.
         !
         ! In:
         !   sys: system object
@@ -389,7 +388,7 @@ contains
 
     pure function get_two_body_int_cou_mol_real(sys, i, a) result(integral)
         
-        ! Perform <ia|ia> (Coulomb) for real system.
+        ! Get integral <ia|ia> (Coulomb) for real system.
         !
         ! In:
         !   sys: system object
