@@ -10,7 +10,7 @@ ccmc {
         real_amplitudes = true,
         init_pop = 200,
         mc_cycles = 20,
-        nreports = 7500, 
+        nreports = 500, 
         target_population = 1e5,
         state_size =3e5,
         spawned_state_size = 3e5,
@@ -18,7 +18,7 @@ ccmc {
         vary_shift_from = 'proje',
     },
     restart = {
-        write = 3,
+        read = 3,
     },
     reference = {
         ex_level = 2,
