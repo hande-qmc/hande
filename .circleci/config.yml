@@ -61,12 +61,24 @@ variables:
                        --scalapack="-L/usr/lib/x86_64-linux-gnu -lscalapack-openmpi" \
                        --lanczos="-L/opt/trlan/lib -ltrlan" \
                        --exe-name="hande.circle.hybrid.linux.cmake.x"
-  build: &build
+  configure-legacy: &configure-legacy
+    run:
+      name: Configuring with legacy toolset
+      shell: /bin/bash
+      command: |
+        pipenv run python tools/mkconfig.py circleci.linux
+  build-cmake: &build-cmake
     run:
       name: Building
       shell: /bin/bash
       command: |
         pipenv run cmake --build build -- VERBOSE=1 
+  build-legacy: &build-legacy
+    run:
+      name: Building
+      shell: /bin/bash
+      command: |
+        env VERBOSE=1 make
   tests: &tests
     run:
       name: Testing
@@ -92,7 +104,7 @@ jobs:
       - *setup
       - *report
       - *configure-cmake
-      - *build
+      - *build-cmake
       - *tests-serial
   cmake-mpi-py2:
     <<: *ubuntu-1804
@@ -103,7 +115,18 @@ jobs:
       - *setup
       - *report
       - *configure-cmake-mpi
-      - *build
+      - *build-cmake
+      - *tests
+  legacy-mpi-py2:
+    <<: *ubuntu-1804
+    environment:
+      - PYTHON_VER: "2"
+    steps:
+      - checkout
+      - *setup
+      - *report
+      - *configure-legacy
+      - *build-legacy
       - *tests
   cmake-mpi-py3:
     <<: *ubuntu-1804
@@ -114,7 +137,18 @@ jobs:
       - *setup
       - *report
       - *configure-cmake-mpi
-      - *build
+      - *build-cmake
+      - *tests
+  legacy-mpi-py3:
+    <<: *ubuntu-1804
+    environment:
+      - PYTHON_VER: "3"
+    steps:
+      - checkout
+      - *setup
+      - *report
+      - *configure-legacy
+      - *build-legacy
       - *tests
 
 workflows:
@@ -123,4 +157,6 @@ workflows:
     jobs:
       - cmake-py2
       - cmake-mpi-py2
+      - legacy-mpi-py2
       - cmake-mpi-py3
+      - legacy-mpi-py3
