@@ -78,8 +78,9 @@ contains
         type(sys_t), intent(inout) :: sys
         ! [VAN]: Why is this a(3) but ksum(sys%lattice%ndim)?
 ! [reply] - AJWT: the kpoint routines are 3d, so we cope with that.
+! [VAN] - Good observation. I have made is safer with ksum as well.
         integer :: i, j, k, ierr, a(3)
-        integer :: ksum(sys%lattice%ndim)
+        integer :: ksum(3)
 
         ! Use 1-index in common with model periodic systems.
         sys%sym0 = 1
@@ -221,7 +222,7 @@ contains
 
         type(sys_t), intent(in) :: sys
         integer, intent(in), optional :: io_unit
-        integer :: i, j, iunit, k_vector(sys%lattice%ndim)
+        integer :: i, j, iunit, k_vector(3)
 
         iunit = 6
         if (present(io_unit)) iunit = io_unit
@@ -240,7 +241,7 @@ contains
                 call get_kpoint_vector(i, sys%read_in%mom_sym%nprop, k_vector)
                 write (iunit,'(1X,"(")', advance='no')
                 write (iunit,'(i3)',advance='no') k_vector(1)
-                do j = 2,sys%lattice%ndim
+                do j = 2,3
                     write (iunit,'(",",i3)',advance='no') k_vector(j)
                 end do
                 write (iunit,'(")")', advance='no')
