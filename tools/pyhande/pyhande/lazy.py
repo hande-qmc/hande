@@ -6,9 +6,14 @@ from os import path
 import pkgutil
 import sys
 import warnings
-
 import matplotlib.pyplot as plt
 import pandas as pd
+
+##### ichibha########
+import numpy
+import statsmodels.tsa.ar_model as ar_model
+import statsmodels.tsa.stattools as tsastats
+#####################
 
 if pkgutil.find_loader('pyblock'):
     sys.path.append(path.join(path.abspath(path.dirname(__file__)), '../../pyblock'))
@@ -16,6 +21,95 @@ import pyblock
 import pyhande.extract
 import pyhande.analysis
 import pyhande.weight
+
+#############################
+# added by ichibha
+#############################
+def std_analysis_for_hybrid(datafiles, start=None, end=None, select_function=None,
+        extract_psips=False, reweight_history=0, mean_shift=0.0,
+        arith_mean=False, calc_inefficiency=False, verbosity = 1, 
+        starts_reweighting=None, extract_rep_loop_time=False):
+
+    (calcs, calcs_md) = zeroT_qmc(datafiles, reweight_history, mean_shift, arith_mean)
+    #print calcs
+    for (calc, md) in zip(calcs, calcs_md):
+        batches, calc_end = batching(data=calc, size=10, end=end)
+        if start is None:
+            calc_start = find_starting_iteration_mser_min(data=None, list=batches, md=md)
+        res = lazy_hybrid(list=batches, starting_iteration=calc_start)
+    return (res[0], res[1], res[2], calc_start, calc_end, datafiles)
+
+def find_starting_iteration_mser_min(data, list, md, data_max_frac=0.9, n_blocks=100, 
+                                     verbose=None, end=None):
+    if(list is None):
+        nominators   = data['\sum H_0j N_j']
+        denominators = data['N_0']
+        starting_iteration = 0
+        list = [0]*end_iteration
+        for i in range(len(nominators)):
+            list[i] = nominators.iloc[i] / denominators.iloc[i]
+    
+    n_data=len(list)
+    mser_min = sys.float_info.max
+    for i in range(n_blocks): 
+        start = int(i*(n_data*data_max_frac)/n_blocks)
+        mser = numpy.var(list[start:n_data]) / (n_data-start)
+        if ( mser < mser_min):
+            mser_min = mser
+            starting_iteration = start
+    return starting_iteration
+
+def lazy_hybrid(list, starting_iteration=0):
+    # statitic quantities
+    list = list[starting_iteration:]
+
+    #print list
+    mean = numpy.mean(list)
+    var  = numpy.var(list)
+    n_data = len(list)
+    acf = tsastats.acf(x=list, unbiased=True, nlags=n_data-1, fft=True)
+        
+    # ar model
+    ar = ar_model.AR(list)
+    model_ar = ar.fit(ic='aic', trend='c', method='cmle')
+    params = model_ar.params
+    denom = nom = 1
+    for j in range( len(params)-1 ):
+        denom -= params[j+1]
+        nom -= params[j+1] * acf[j+1]
+    tau =  nom / denom**2
+    error_ar = numpy.sqrt(var/n_data*tau)
+
+    # autocorr
+    tau = 1.0    
+    for i in range(1, n_data-1):
+        if(acf[i]<0):
+            break
+        tau += 2.0*acf[i]
+    error_ac = numpy.sqrt(var/n_data*tau)    
+    return mean, error_ar, error_ac
+
+def batching(data, size=10, verbose=None, end=None):
+    if end is None:
+        end = data['iterations'].iloc[-1]
+    before_end_indx = data['iterations'] <= end
+    data = data.ix[before_end_indx]
+
+    nominators   = data['\sum H_0j N_j']
+    denominators = data['N_0'] 
+    n_data = len(nominators)
+    proj_energies = [0]*n_data
+    for i in range(n_data):
+        proj_energies[i] = nominators.iloc[i] / denominators.iloc[i]
+    n_batch = int(n_data / size)
+    batches = [0]*n_batch
+    for i in range(n_batch):
+        batches[i] = (sum(proj_energies[size*i:size*(i+1)]))/size
+    return batches, len(data)
+#############################
+# End
+#############################
+
 
 def std_analysis(datafiles, start=None, end=None, select_function=None,
         extract_psips=False, reweight_history=0, mean_shift=0.0,
