@@ -6,14 +6,9 @@ from os import path
 import pkgutil
 import sys
 import warnings
+
 import matplotlib.pyplot as plt
 import pandas as pd
-
-##### ichibha########
-import numpy
-import statsmodels.tsa.ar_model as ar_model
-import statsmodels.tsa.stattools as tsastats
-#####################
 
 if pkgutil.find_loader('pyblock'):
     sys.path.append(path.join(path.abspath(path.dirname(__file__)), '../../pyblock'))
@@ -22,46 +17,48 @@ import pyhande.extract
 import pyhande.analysis
 import pyhande.weight
 
-#############################
-# added by ichibha
-#############################
-def std_analysis_for_hybrid(datafiles, start=None, end=None, select_function=None,
-        extract_psips=False, reweight_history=0, mean_shift=0.0,
-        arith_mean=False, calc_inefficiency=False, verbosity = 1, 
-        starts_reweighting=None, extract_rep_loop_time=False):
+##### added_by_ichibha ########
+import numpy
+import statsmodels.tsa.ar_model as ar_model
+import statsmodels.tsa.stattools as tsastats
+#####################
 
-    (calcs, calcs_md) = zeroT_qmc(datafiles, reweight_history, mean_shift, arith_mean)
-    #print calcs
-    for (calc, md) in zip(calcs, calcs_md):
-        batches, calc_end = batching(data=calc, size=10, end=end)
-        if start is None:
-            calc_start = find_starting_iteration_mser_min(data=None, list=batches, md=md)
-        res = lazy_hybrid(list=batches, starting_iteration=calc_start)
-    return (res[0], res[1], res[2], calc_start, calc_end, datafiles)
 
-def find_starting_iteration_mser_min(data, list, md, data_max_frac=0.9, n_blocks=100, 
-                                     verbose=None, end=None):
-    if(list is None):
-        nominators   = data['\sum H_0j N_j']
-        denominators = data['N_0']
-        starting_iteration = 0
-        list = [0]*end_iteration
-        for i in range(len(nominators)):
-            list[i] = nominators.iloc[i] / denominators.iloc[i]
+#############################
+# added_by_ichibha
+#############################
+def find_starting_iteration_mser_min(data, md, data_max_frac=0.9, n_blocks=100, verbose=None, end=None):
+    if end is None:
+        end = data['iterations'].iloc[-1]
+    before_end_indx = data['iterations'] <= end
+    data_before_end = data.ix[before_end_indx]
     
+    list = data_before_end['Proj. Energy']
     n_data=len(list)
+
     mser_min = sys.float_info.max
     for i in range(n_blocks): 
-        start = int(i*(n_data*data_max_frac)/n_blocks)
-        mser = numpy.var(list[start:n_data]) / (n_data-start)
+        start_line = int(i*(n_data*data_max_frac)/n_blocks)
+        mser = numpy.var(list[start_line:n_data]) / (n_data-start_line)
         if ( mser < mser_min):
             mser_min = mser
-            starting_iteration = start
+            starting_iteration = start_line * md['qmc']['ncycles']
+
+        #print "starting_iteration = ", starting_iteration # added
     return starting_iteration
 
-def lazy_hybrid(list, starting_iteration=0):
-    # statitic quantities
-    list = list[starting_iteration:]
+def lazy_hybrid(calc, md, start=0, end=None, batch_size=10):
+
+    if end is None:
+        end = calc['iterations'].iloc[-1]
+    before_end_indx = calc['iterations'] <= end
+    data_before_end = calc.ix[before_end_indx]
+    
+    after_start_indx = data_before_end['iterations'] >= start
+    calc_tr          = data_before_end[after_start_indx]
+    #print calc_tr added
+
+    list = calc_tr['Proj. Energy']
 
     #print list
     mean = numpy.mean(list)
@@ -87,7 +84,22 @@ def lazy_hybrid(list, starting_iteration=0):
             break
         tau += 2.0*acf[i]
     error_ac = numpy.sqrt(var/n_data*tau)    
-    return mean, error_ar, error_ac
+
+    # return value
+    error = max(error_ar, error_ac)
+    opt_block = pd.DataFrame(
+        {'mean': mean,
+         'standard error': error,
+         'standard error error': None,
+         'estimate': pyblock.error.pretty_fmt_err(mean, error)},
+        columns=['mean', 'standard error', 'standard error error', 'estimate'],
+        index=['Proj. Energy'])
+    no_opt_block = ['N_0','Shift','# H psips','\sum H_0j N_j']
+    tuple_fields = ('metadata data data_len reblock covariance opt_block '
+                    'no_opt_block'.split())
+    info_tuple = collections.namedtuple('HandeInfo', tuple_fields)
+    info = info_tuple(md, calc, None, None, None, opt_block, no_opt_block)
+    return info
 
 def batching(data, size=10, verbose=None, end=None):
     if end is None:
@@ -106,15 +118,17 @@ def batching(data, size=10, verbose=None, end=None):
     for i in range(n_batch):
         batches[i] = (sum(proj_energies[size*i:size*(i+1)]))/size
     return batches, len(data)
-#############################
-# End
-#############################
+
+#############################################
+# end of added_by_ichibha
+##############################################
 
 
 def std_analysis(datafiles, start=None, end=None, select_function=None,
         extract_psips=False, reweight_history=0, mean_shift=0.0,
         arith_mean=False, calc_inefficiency=False, verbosity = 1, 
-        starts_reweighting=None, extract_rep_loop_time=False):
+        starts_reweighting=None, extract_rep_loop_time=False,
+        analysis_method=None, warmup_detection=None):
     '''Perform a 'standard' analysis of HANDE output files.
 
 Parameters
@@ -189,21 +203,30 @@ Umrigar93
     (calcs, calcs_md) = zeroT_qmc(datafiles, reweight_history, mean_shift,
                                   arith_mean)
     infos = []
-    for (calc, md) in zip(calcs, calcs_md):
+    for (calc, md) in zip(calcs, calcs_md):        
         calc_start = start
         calc_end = end
         if calc_start is None:
             if starts_reweighting is None:
-                calc_start = find_starting_iteration(calc, md, verbose=verbosity,
-                                                 end=calc_end)
+                
+                if (warmup_detection == 'hande_org'): # added_by_ichibha
+                    calc_start = find_starting_iteration(calc, md, verbose=verbosity,
+                                                         end=calc_end)
+                elif (warmup_detection == 'mser_min'): # added_by_ichibha
+                    calc_start = find_starting_iteration_mser_min(calc, md, verbose=verbosity,
+                                                                  end=calc_end) # added_by_ichibha                             
             else:
                 calc_start = starts_reweighting[len(infos)]
         md['pyhande'] = {'reblock_start': calc_start}
         if (verbosity > -1) :
             print('Block from: %i' % calc_start)
-        infos.append(lazy_block(calc, md, calc_start, calc_end,
-                    select_function, extract_psips, calc_inefficiency,
-                    extract_rep_loop_time))
+            
+        if (analysis_method == 'reblocking'):  # added_by_ichibha
+            infos.append(lazy_block(calc, md, calc_start, calc_end,          
+                                    select_function, extract_psips, calc_inefficiency,
+                                    extract_rep_loop_time))
+        elif (analysis_method == 'hybrid'):  # added_by_ichibha
+            infos.append(lazy_hybrid(calc, md, calc_start, calc_end))      # added_by_ichibha
     return infos
 
 def zeroT_qmc(datafiles, reweight_history=0, mean_shift=0.0, arith_mean=False):
@@ -242,6 +265,7 @@ metadata : list of dict
                 arith_mean=arith_mean)
             df['W * \sum H_0j N_j'] = df['\sum H_0j N_j'] * df['Weight']
             df['W * N_0'] = df['N_0'] * df['Weight']
+        df['Proj. Energy'] = df['\sum H_0j N_j'] / df['N_0'] # added_by_ichibha
         data.append(df)
         metadata.append(md)
     if data:

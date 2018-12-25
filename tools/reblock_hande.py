@@ -24,7 +24,8 @@ import pyhande
 def run_hande_blocking(files, start_iteration=None, end_iteration=None,
                         reblock_plot=None, verbose=1, width=0,
                         out_method='to_string', inefficiency=False,
-                        reweight_plot=False, extract_rl_time=False):
+                        reweight_plot=False, extract_rl_time=False,
+                        analysis_method=None, warmup_detection=None):
     '''Run a reblocking analysis on HANDE output and print to STDOUT.
 
 See :func:`pyblock.pd_utils.reblock` and :func:`pyblock.blocking.reblock` for
@@ -119,7 +120,9 @@ opt_block: :class:`pandas.DataFrame`
                                              extract_psips=True,
                                              calc_inefficiency=inefficiency,
                                              verbosity = verbose,
-                                             extract_rep_loop_time=extract_rl_time)
+                                             extract_rep_loop_time=extract_rl_time,
+                                             analysis_method=analysis_method,
+                                             warmup_detection=warmup_detection)
             for (i, i_info) in enumerate(info):
                 if verbose >= v_analysis:
                     msg = 'Analysing file(s): %s.' % (' '.join(calc))
@@ -264,8 +267,16 @@ reblock_plot : string
                         'if possible.')
     parser.add_argument('-t','--extract_rl_time', default=False, action='store_true',
                         help='Find the mean time taken for a report loop.')
+    parser.add_argument('-a','--analysis_method',  dest='analysis_method', #added_by_ichibha
+                        default='reblocking', help='Designate post-analysis method '
+                        'to estimate statistic error. [reblocking or hybrid] '
+                        'Default: reblocking')
+    parser.add_argument('-b','--warmup_detection', dest='warmup_detection', #added_by_ichibha 
+                        default='hande_org', help='Designate method to determine '
+                        'starting iteration. [hande_org or mser_min] Default: hande_org')
     parser.add_argument('filenames', nargs=argparse.REMAINDER,
                         help='Space-separated list of files to analyse.')
+
 
     options = parser.parse_args(args)
 
@@ -308,7 +319,8 @@ None.
                        options.end_iteration, options.plotfile,
                        options.verbose, options.width, options.output,
                        options.inefficiency, options.reweight_plot,
-                       options.extract_rl_time)
+                       options.extract_rl_time, 
+                       options.analysis_method, options.warmup_detection) # added_by_ichibha
 
 if __name__ == '__main__':
 
