@@ -17,17 +17,50 @@ import pyhande.extract
 import pyhande.analysis
 import pyhande.weight
 
-##### added_by_ichibha ########
 import numpy
 import statsmodels.tsa.ar_model as ar_model
 import statsmodels.tsa.stattools as tsastats
-#####################
 
 
-#############################
-# added_by_ichibha
-#############################
 def find_starting_iteration_mser_min(data, md, data_max_frac=0.9, n_blocks=100, verbose=None, end=None):
+    '''Find the best iteration to start analysing CCMC/FCIQMC data based on MSER minimization scheme.
+
+.. warning::
+
+    Use with caution, check whether output is sensible and adjust parameters if
+    necessary.
+
+The algorithm is based on MSER-5 scheme (https://ieeexplore.ieee.org/document/4736111/).
+Calculate MSER(d) = ( \sum_{i=1}^{n-d}{ ( x(i+d) - (x's average) )^2 } / (n-d)^2
+with changing d value, and d minimizing MSER(d) is the best estimation of the starting iteration. 
+Here, n is the number of data and x(i) is the `projected energy' of the i-th iteration. 
+`Projected energy' is given as [(\sum H_0j N_j) / N_0] for each iteration.  
+
+Parameters
+----------
+data : :class:`pandas.DataFrame`
+    Calculation output for a FCIQMC or CCMC calculation.
+md : dict
+    Metadata corresponding to the calculation in `data`.
+start_max_frac : float
+    MSER(d) may oscilates when (n-d) is small and MSER(d) becomes unreasonably small.
+    Thus, MSER(d) is calculated just for d younger than (data_max_frac * n).
+n_blocks : int
+    It is sometimes very expensive to calculate MSER(d) for d=0,1,2,3,....
+    Thus, select (n_blocks) number of d uniformly between 0 and (data_max_frac * n)
+    and calculate MSER(d) and decide the best starting iteration just among these d.
+verbose : int
+    Inactive. Nothing is affected by this variable.
+end : int or None
+    Last iteration included in analysis. If None, the last iteration included
+    is the last iteration of the data set.
+
+Returns
+-------
+starting_iteration: integer
+    Iteration from which to start reblocking analysis for this calculation.
+'''
+
     if end is None:
         end = data['iterations'].iloc[-1]
     before_end_indx = data['iterations'] <= end
@@ -38,7 +71,7 @@ def find_starting_iteration_mser_min(data, md, data_max_frac=0.9, n_blocks=100, 
 
     mser_min = sys.float_info.max
     for i in range(n_blocks): 
-        start_line = int(i*(n_data*data_max_frac)/n_blocks)
+        start_line = int(i*(n_data*start_max_frac)/n_blocks)
         mser = numpy.var(list[start_line:n_data]) / (n_data-start_line)
         if ( mser < mser_min):
             mser_min = mser
@@ -47,7 +80,39 @@ def find_starting_iteration_mser_min(data, md, data_max_frac=0.9, n_blocks=100, 
         #print "starting_iteration = ", starting_iteration # added
     return starting_iteration
 
-def lazy_hybrid(calc, md, start=0, end=None, batch_size=10):
+def lazy_hybrid(calc, md, start=0, end=None, batch_size=1):
+    '''Standard analysis for zero-temperature QMC calculations
+       based on the work established by T. Ichibha et al.
+       T
+.. note::
+
+    :func:`std_analysis` is recommended unless custom processing is required
+    before blocking analysis is performed.
+
+The algorithm is hybrid of autocorrelation method and AR model.
+    autocorrelation method : section 2.3 of arXiv:1011.0175v1 
+    AR model : section 2.4 of arXiv:1011.0175v1 and 
+
+TO_BE_WRITTEN
+
+Parameters
+----------
+calc : :class:`pandas.DataFrame`
+    Zero-temperature QMC calculation output.
+md : dict
+    Metadata for the calculation in `calc`.
+start, end : See :func:`std_analysis`.
+batch_size : int
+    NOT YET IMPLEMENTED.
+    When the number of data is huge, the analysis may take a long time.
+    In that case, first the time-series data is divided into batches
+    and the statistic error is calculated for the batch means. 
+
+Returns
+--------
+info : :func:`collections.namedtuple`
+    See :func:`std_analysis`.
+'''
 
     if end is None:
         end = calc['iterations'].iloc[-1]
@@ -101,27 +166,23 @@ def lazy_hybrid(calc, md, start=0, end=None, batch_size=10):
     info = info_tuple(md, calc, None, None, None, opt_block, no_opt_block)
     return info
 
-def batching(data, size=10, verbose=None, end=None):
-    if end is None:
-        end = data['iterations'].iloc[-1]
-    before_end_indx = data['iterations'] <= end
-    data = data.ix[before_end_indx]
-
-    nominators   = data['\sum H_0j N_j']
-    denominators = data['N_0'] 
-    n_data = len(nominators)
-    proj_energies = [0]*n_data
-    for i in range(n_data):
-        proj_energies[i] = nominators.iloc[i] / denominators.iloc[i]
-    n_batch = int(n_data / size)
-    batches = [0]*n_batch
-    for i in range(n_batch):
-        batches[i] = (sum(proj_energies[size*i:size*(i+1)]))/size
-    return batches, len(data)
-
-#############################################
-# end of added_by_ichibha
-##############################################
+#def batching(data, size=10, verbose=None, end=None):
+#    if end is None:
+#        end = data['iterations'].iloc[-1]
+#    before_end_indx = data['iterations'] <= end
+#    data = data.ix[before_end_indx]
+#
+#    nominators   = data['\sum H_0j N_j']
+#    denominators = data['N_0'] 
+#    n_data = len(nominators)
+#    proj_energies = [0]*n_data
+#    for i in range(n_data):
+#        proj_energies[i] = nominators.iloc[i] / denominators.iloc[i]
+#    n_batch = int(n_data / size)
+#    batches = [0]*n_batch
+#    for i in range(n_batch):
+#        batches[i] = (sum(proj_energies[size*i:size*(i+1)]))/size
+#    return batches, len(data)
 
 
 def std_analysis(datafiles, start=None, end=None, select_function=None,
@@ -165,6 +226,13 @@ starts_reweighting : list of floats
     iteration
 extract_rep_loop_time : bool
     also extract the mean time taken per report loop from the calculation.
+analysis_method : string
+    determines which post-analysis method is used to estimate the statistic
+    error. Currently 'reblocking' and 'hybrid' are prepared.
+warmup_detection : string
+    determines which method is used to decide the starting iterations 
+    to be discarded before calculation the statistic error. Currently
+    'hande_org' and 'mser_min' are prepared.
 
 Returns
 -------
@@ -265,7 +333,7 @@ metadata : list of dict
                 arith_mean=arith_mean)
             df['W * \sum H_0j N_j'] = df['\sum H_0j N_j'] * df['Weight']
             df['W * N_0'] = df['N_0'] * df['Weight']
-        df['Proj. Energy'] = df['\sum H_0j N_j'] / df['N_0'] # added_by_ichibha
+        df['Proj. Energy'] = df['\sum H_0j N_j'] / df['N_0'] 
         data.append(df)
         metadata.append(md)
     if data:

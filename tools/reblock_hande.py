@@ -267,13 +267,14 @@ reblock_plot : string
                         'if possible.')
     parser.add_argument('-t','--extract_rl_time', default=False, action='store_true',
                         help='Find the mean time taken for a report loop.')
-    parser.add_argument('-a','--analysis_method',  dest='analysis_method', #added_by_ichibha
-                        default='reblocking', help='Designate post-analysis method '
-                        'to estimate statistic error. [reblocking or hybrid] '
+    parser.add_argument('-a','--analysis_method',  dest='analysis_method', 
+                        default='reblocking', help='Designate the post-analysis method '
+                        'to estimate the statistic error. [reblocking or hybrid] '
                         'Default: reblocking')
-    parser.add_argument('-b','--warmup_detection', dest='warmup_detection', #added_by_ichibha 
-                        default='hande_org', help='Designate method to determine '
-                        'starting iteration. [hande_org or mser_min] Default: hande_org')
+    parser.add_argument('-b','--warmup_detection', dest='warmup_detection', 
+                        default='hande_org', help='Designate the method to determine '
+                        'the starting iterations to be discarded before calculating '
+                        'the statistic error. [hande_org or mser_min] Default: hande_org')
     parser.add_argument('filenames', nargs=argparse.REMAINDER,
                         help='Space-separated list of files to analyse.')
 
@@ -320,7 +321,7 @@ None.
                        options.verbose, options.width, options.output,
                        options.inefficiency, options.reweight_plot,
                        options.extract_rl_time, 
-                       options.analysis_method, options.warmup_detection) # added_by_ichibha
+                       options.analysis_method, options.warmup_detection) 
 
 if __name__ == '__main__':
 
