@@ -228,6 +228,9 @@ contains
         ! finalising the excitation.
 
         ! Only for use with non-complex systems.
+        
+        ! This does not set cdet%fock_sum (as the full excitation is not known),
+        ! so cannot be used with quasi-newton.
 
         ! In/Out:
         !    rng: random number generator.
@@ -291,10 +294,6 @@ contains
         ! 1. Generate enough of a random excitation to determinant the
         ! generation probability and |H_ij|.
         call gen_excit_ptr%init(rng, sys, qmc_state%excit_gen_data, cdet, pgen, connection, abs_hmatel, allowed)
-
-        if (allowed) then
-           abs_hmatel%r = abs_hmatel%r * calc_qn_spawned_weighting(sys, qmc_state%propagator, cdet%fock_sum, connection)
-        end if
 
         ! 2. Attempt spawning.
         nspawn = stochastic_round_spawned_particle(spawn_cutoff, real_factor*qmc_state%tau*abs_hmatel%r/pgen, rng)
@@ -394,11 +393,6 @@ contains
 
         ! 2. Transform Hamiltonian matrix element by trial function.
         call gen_excit_ptr%trial_fn(sys, cdet, connection, weights, tilde_hmatel%r)
-
-        if (allowed) then
-           tilde_hmatel%r = tilde_hmatel%r * calc_qn_spawned_weighting(sys, qmc_state%propagator, cdet%fock_sum, connection)
-        end if
-
 
         ! 3. Attempt spawning.
         nspawn = stochastic_round_spawned_particle(spawn_cutoff, real_factor*qmc_state%tau*abs(tilde_hmatel%r)/pgen, rng)
