@@ -76,9 +76,6 @@ contains
         use errors, only: stop_all
 
         type(sys_t), intent(inout) :: sys
-        ! [VAN]: Why is this a(3) but ksum(sys%lattice%ndim)?
-! [reply] - AJWT: the kpoint routines are 3d, so we cope with that.
-! [VAN] - Good observation. I have made is safer with ksum as well.
         integer :: i, j, k, ierr, a(3)
         integer :: ksum(3)
 
@@ -237,7 +234,6 @@ contains
             write (iunit,'(a7)') 'Inverse'
             do i = 1, sys%nsym
                 write (iunit,'(i4,5X)', advance='no') i
-! [review] - AJWT: get_kpoint_vector takes a 3-dimensional vector as its last parameter, so this may fail horribly for lower dimensionality systems
                 call get_kpoint_vector(i, sys%read_in%mom_sym%nprop, k_vector)
                 write (iunit,'(1X,"(")', advance='no')
                 write (iunit,'(i3)',advance='no') k_vector(1)
