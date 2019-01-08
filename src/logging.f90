@@ -134,7 +134,7 @@ contains
 
         ! No OpenMP with logging!
         if ((nthreads > 1) .and. ((logging_in%calc > 0) .or. (logging_in%spawn > 0) .or. (logging_in%death > 0) .or. &
-            (logging_in_loc%stoch_selection > 0) .or. (logging_in%selection > 0)))
+            (logging_in%stoch_selection > 0) .or. (logging_in%selection > 0))) then
             if (parent) call stop_all('check_logging_inputs', 'Cannot use OpenMP with logging.')
         end if
 
