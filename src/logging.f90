@@ -131,12 +131,9 @@ contains
         use parallel, only: parent, nthreads
 
         type(logging_in_t), intent(inout) :: logging_in
-        logical :: logging_is_on
-
-        logging_is_on = is_logging_on(logging_in)
 
         ! No OpenMP with logging!
-        if ((nthreads > 1) .and. (logging_is_on)) then
+        if ((nthreads > 1) .and. is_logging_on(logging_in)) then
             if (parent) call stop_all('check_logging_inputs', 'Cannot use OpenMP with logging.')
         end if
 
@@ -161,19 +158,18 @@ contains
 
     end subroutine check_logging_inputs
 
-    function is_logging_on(logging_in) result(logging_is_on)
+    pure function is_logging_on(logging_in) result(logging_is_on)
         
         ! Function to check whether any form of logging is used.
         
         type(logging_in_t), intent(in) :: logging_in
         logical :: logging_is_on
         
-        logging_is_on = .false.
-
-        if ((logging_in%calc > 0) .or. (logging_in%spawn > 0) .or. (logging_in%death > 0) .or. &
-            (logging_in%stoch_selection > 0) .or. (logging_in%selection > 0)) then
-            logging_is_on = .true.
-        end if
+        logging_is_on = (logging_in%calc > 0)               .or.  &
+                        (logging_in%spawn > 0)              .or.  &
+                        (logging_in%death > 0)              .or.  &
+                        (logging_in%stoch_selection > 0)    .or.  &
+                        (logging_in%selection > 0)
 
     end function
 
