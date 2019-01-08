@@ -132,6 +132,9 @@ contains
 
         type(logging_in_t), intent(inout) :: logging_in
 
+! [review] - AJWT: This check for logging being on is very specific. Is it the case it doesn't work with any form of logging
+! [review] - AJWT: or that it doesn't work with just these forms of logging.  The former might merit a general function to call
+! [review] - AJWT: to ask if logging is on.
         ! No OpenMP with logging!
         if ((nthreads > 1) .and. ((logging_in%calc > 0) .or. (logging_in%spawn > 0) .or. (logging_in%death > 0) .or. &
             (logging_in%stoch_selection > 0) .or. (logging_in%selection > 0))) then
