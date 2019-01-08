@@ -669,6 +669,7 @@ contains
                 call set_cluster_selections(selection_data, qs%estimators(1)%nattempts, min_cluster_size, max_cluster_size, &
                                             D0_normalisation, tot_abs_real_pop, qs%psip_list%nstates, ccmc_in%full_nc, &
                                             ccmc_in%even_selection)
+                call zero_ps_stats(ps_stats, qs%excit_gen_data%p_single_double%rep_accum%overflow_loc)
                 ! OpenMP chunk size determined completely empirically from a single
                 ! test.  Please feel free to improve...
                 ! NOTE: we can't refer to procedure pointers in shared blocks so
@@ -690,7 +691,6 @@ contains
                 seen_D0 = .false.
                 proj_energy_cycle = cmplx(0.0, 0.0, p)
                 D0_population_cycle = cmplx(0.0, 0.0, p)
-                call zero_ps_stats(ps_stats, qs%excit_gen_data%p_single_double%rep_accum%overflow_loc)
                 !$omp do schedule(dynamic,200) reduction(+:D0_population_cycle,proj_energy_cycle,nattempts_spawn,ndeath)
                 do iattempt = 1, selection_data%nclusters
                     if (iattempt <= selection_data%nsingle_excitors) then
@@ -704,7 +704,9 @@ contains
 
                             if (qs%propagator%quasi_newton) contrib(it)%cdet%fock_sum = &
                                             sum_sp_eigenvalues_occ_list(sys, contrib(it)%cdet%occ_list) - qs%ref%fock_sum
-
+                            ! [VAN]: This is quite dangerous when using OpenMP as selection_data is shared but updated here if
+                            ! [VAN]: in debug mode. However, this updated selection_data will only be used if selection logging
+                            ! [VAN]: according to comments. And logging cannot be used with openmp. Dangerous though.
                             call do_ccmc_accumulation(sys, qs, contrib(it)%cdet, contrib(it)%cluster, logging_info, &
                                                     D0_population_cycle, proj_energy_cycle, ccmc_in, ref_det, rdm, selection_data)
                             call do_nc_ccmc_propagation(rng(it), sys, qs, ccmc_in, logging_info, bloom_stats, &
@@ -770,11 +772,6 @@ contains
                 end do
                 !$omp end do
 
-                ! Add the accumulated ps_stats data to qs%excit_gen_data%p_single_double.
-                if (qs%excit_gen_data%p_single_double%vary_psingles) then
-                    call ps_stats_reduction_update(qs%excit_gen_data%p_single_double%rep_accum, ps_stats)
-                end if
-
                 ndeath_nc = 0
                 if (ccmc_in%full_nc .and. qs%psip_list%nstates > 0) then
                     ! Do death exactly and directly for non-composite clusters
@@ -800,6 +797,11 @@ contains
                     !$omp end do
                 end if
                 !$omp end parallel
+
+                ! Add the accumulated ps_stats data to qs%excit_gen_data%p_single_double.
+                if (qs%excit_gen_data%p_single_double%vary_psingles) then
+                    call ps_stats_reduction_update(qs%excit_gen_data%p_single_double%rep_accum, ps_stats)
+                end if
 
                 if (ccmc_in%density_matrices .and. qs%vary_shift(1) .and. parent .and. .not. sys%read_in%comp) then
                     ! Add in diagonal contribution to RDM (only once per cycle not each time reference
