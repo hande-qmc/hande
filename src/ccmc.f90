@@ -704,7 +704,9 @@ contains
 
                             if (qs%propagator%quasi_newton) contrib(it)%cdet%fock_sum = &
                                             sum_sp_eigenvalues_occ_list(sys, contrib(it)%cdet%occ_list) - qs%ref%fock_sum
-
+                            ! [VAN]: This is quite dangerous when using OpenMP as selection_data is shared but updated here if
+                            ! [VAN]: in debug mode. However, this updated selection_data will only be used if selection logging
+                            ! [VAN]: according to comments. And logging cannot be used with openmp. Dangerous though.
                             call do_ccmc_accumulation(sys, qs, contrib(it)%cdet, contrib(it)%cluster, logging_info, &
                                                     D0_population_cycle, proj_energy_cycle, ccmc_in, ref_det, rdm, selection_data)
                             call do_nc_ccmc_propagation(rng(it), sys, qs, ccmc_in, logging_info, bloom_stats, &

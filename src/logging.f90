@@ -127,10 +127,16 @@ contains
         ! As additional functionality is added should be updated appropriately.
 
         use calc, only: fciqmc_calc, ccmc_calc, calc_type
-        use errors, only: warning
-        use parallel, only: parent
+        use errors, only: warning, stop_all
+        use parallel, only: parent, nthreads
 
         type(logging_in_t), intent(inout) :: logging_in
+
+        ! No OpenMP with logging!
+        if ((nthreads > 1) .and. ((logging_in%calc > 0) .or. (logging_in%spawn > 0) .or. (logging_in%death > 0) .or. &
+            (logging_in_loc%stoch_selection > 0) .or. (logging_in%selection > 0)))
+            if (parent) call stop_all('check_logging_inputs', 'Cannot use OpenMP with logging.')
+        end if
 
         select case(calc_type)
         case(ccmc_calc, fciqmc_calc)
