@@ -131,13 +131,12 @@ contains
         use parallel, only: parent, nthreads
 
         type(logging_in_t), intent(inout) :: logging_in
+        logical :: logging_is_on
 
-! [review] - AJWT: This check for logging being on is very specific. Is it the case it doesn't work with any form of logging
-! [review] - AJWT: or that it doesn't work with just these forms of logging.  The former might merit a general function to call
-! [review] - AJWT: to ask if logging is on.
+        logging_is_on = is_logging_on(logging_in)
+
         ! No OpenMP with logging!
-        if ((nthreads > 1) .and. ((logging_in%calc > 0) .or. (logging_in%spawn > 0) .or. (logging_in%death > 0) .or. &
-            (logging_in%stoch_selection > 0) .or. (logging_in%selection > 0))) then
+        if ((nthreads > 1) .and. (logging_is_on)) then
             if (parent) call stop_all('check_logging_inputs', 'Cannot use OpenMP with logging.')
         end if
 
@@ -161,6 +160,22 @@ contains
         end if
 
     end subroutine check_logging_inputs
+
+    function is_logging_on(logging_in) result(logging_is_on)
+        
+        ! Function to check whether any form of logging is used.
+        
+        type(logging_in_t), intent(in) :: logging_in
+        logical :: logging_is_on
+        
+        logging_is_on = .false.
+
+        if ((logging_in%calc > 0) .or. (logging_in%spawn > 0) .or. (logging_in%death > 0) .or. &
+            (logging_in%stoch_selection > 0) .or. (logging_in%selection > 0)) then
+            logging_is_on = .true.
+        end if
+
+    end function
 
     subroutine write_logging_warning(log_type, verbosity_level)
 
