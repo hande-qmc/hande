@@ -155,7 +155,7 @@ example:
 
     $ wget -O - https://support.hdfgroup.org/ftp/HDF5/releases/hdf5-1.10/hdf5-1.10.4/src/hdf5-1.10.4.tar.gz | tar xvzf -
     $ cd hdf5-1.10.4
-    $ ./configure --prefix=$HOME/local --enable-fortran --enable-cxx
+    $ ./configure --prefix=$HOME/local --enable-fortran
     $ make
     $ make install
 
