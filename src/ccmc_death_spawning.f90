@@ -78,7 +78,7 @@ contains
         use ccmc_linked, only: unlinked_commutator, linked_excitation
         use determinant_data, only: det_info_t
         use dSFMT_interface, only: dSFMT_t
-        use excitations, only: excit_t, create_excited_det, get_excitation_level
+        use excitations, only: excit_t, create_excited_det, get_excitation_level, det_string
         use proc_pointers, only: gen_excit_ptr_t
         use spawning, only: attempt_to_spawn, calc_qn_spawned_weighting, update_p_single_double_data
         use system, only: sys_t
@@ -168,16 +168,12 @@ contains
             ! This is the same process as excitor to determinant and hence we
             ! can reuse code...
             call create_excited_det(sys%basis, cdet%f, connection, fexcit)
-! [review] - AJWT: This seems very unwieldy and error prone.
-! [review] - AJWT: Perhaps we should have an accessor function det_string(qs%ref%f0,sys%basis)?
 ! [review] - AJWT: Even safer (but perhaps for another day) is to create a det_string derived type which
 ! [review] - AJWT: get_excitation_level accepts.
-            excitor_level = get_excitation_level(qs%ref%f0(:sys%basis%bit_string_len), fexcit(:sys%basis%bit_string_len))
+            excitor_level = get_excitation_level(det_string(qs%ref%f0, sys%basis), det_string(fexcit,sys%basis))
             call convert_excitor_to_determinant(fexcit, excitor_level, excitor_sign, qs%ref%f0)
             if (ccmc_in%multiref) then
-! [review] - AJWT: This feels like it should be in a pure function.
-                excitor_level_2 = get_excitation_level(qs%second_ref%f0(:sys%basis%bit_string_len), &
-                                                                 fexcit(:sys%basis%bit_string_len))
+                excitor_level_2 = get_excitation_level(det_string(qs%second_ref%f0, sys%basis), det_string(fexcit,sys%basis))
                 if (excitor_level > qs%ref%ex_level .and.  excitor_level_2 >qs%ref%ex_level) nspawn=0
             end if
             if (excitor_sign < 0) nspawn = -nspawn
@@ -201,9 +197,8 @@ contains
 
     end subroutine spawner_ccmc
 
-! [review] - AJWT: Document ccmc_in.  Is it even used?
     subroutine stochastic_ccmc_death(rng, spawn, linked_ccmc, ex_lvl_sort, sys, qs, cdet, cluster, &
-                                    logging_info, ndeath_tot, ccmc_in)
+                                    logging_info, ndeath_tot)
 
         ! Attempt to 'die' (ie create an excip on the current excitor, cdet%f)
         ! with probability
@@ -255,12 +250,11 @@ contains
         use spawn_data, only: spawn_t
         use spawning, only: calc_qn_weighting
         use system, only: sys_t
-        use qmc_data, only: qmc_state_t, ccmc_in_t
+        use qmc_data, only: qmc_state_t
         use logging, only: logging_t, write_logging_death
 
         type(sys_t), intent(in) :: sys
         type(qmc_state_t), intent(in) :: qs
-        type (ccmc_in_t), intent (in) :: ccmc_in
         logical, intent(in) :: linked_ccmc, ex_lvl_sort
         type(det_info_t), intent(inout) :: cdet
         type(cluster_t), intent(in) :: cluster

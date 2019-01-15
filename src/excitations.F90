@@ -205,11 +205,10 @@ contains
         ! f1 and f2 should have any additional information cleared from
         ! their bit string before being passed in.
 
-![review] - AJWT: Shouldn't these be bit_string_len?
         ! In:
-        !    f1(tot_string_len): bit string representation of the Slater
+        !    f1(bit_string_len): bit string representation of the Slater
         !        determinant.
-        !    f2(tot_string_len): bit string representation of the Slater
+        !    f2(bit_string_len): bit string representation of the Slater
         !        determinant.
         ! Returns:
         !    Excitation level connecting determinants f1 and f2.
@@ -222,6 +221,21 @@ contains
         level = sum(count_set_bits(ieor(f1,f2)))/2
 
     end function get_excitation_level
+
+    pure function det_string(f0, basis) result(string)
+
+        use basis_types, only: basis_t
+    
+        type(basis_t), intent(in) :: basis
+        integer(i0), intent(in) :: f0(:)
+        integer(i0), allocatable :: string(:)
+
+        allocate(string(basis%bit_string_len))
+    
+        string = f0(:basis%bit_string_len)
+     
+    end function
+
 
     pure subroutine find_excitation_permutation1(excit_mask, f, excitation)
 
