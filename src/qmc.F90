@@ -1076,6 +1076,34 @@ contains
 
     end subroutine init_reference_restart
 
+    subroutine init_secondary_reference(sys,reference_in,io_unit,qs)
+        ! Set the secondary reference determinant from input options
+        ! and use it to set up the maximum considered excitation level
+        ! for the calculation.
+
+        ! In:
+        !   sys: system being studied.
+        !   reference_in: secondary reference provided in input.
+        !   io_unit: io unit to write any information to.
+        ! In/Out:
+        !   qs: qmc_state used in the calculation.
+    
+        use reference_determinant, only: reference_t
+        use system, only: sys_t
+        use qmc_data, only: qmc_state_t 
+        use excitations, only: get_excitation_level
+        type(sys_t), intent(in) :: sys
+        type(reference_t), intent(in) :: reference_in
+        integer, intent(in) :: io_unit
+        type(qmc_state_t), intent(inout) :: qs
+
+        call init_reference(sys, reference_in, io_unit, qs%second_ref)
+        qs%ref%max_ex_level = qs%ref%ex_level + get_excitation_level(qs%ref%f0(:sys%basis%bit_string_len), &
+                                                                  qs%second_ref%f0(:sys%basis%bit_string_len))
+  
+    end subroutine
+
+
     subroutine init_spawn_store(qmc_in, nspaces, pop_real_factor, basis, non_blocking_comm, proc_map, io_unit, spawn_store)
 
         ! Allocate and initialise spawn store

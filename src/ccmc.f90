@@ -309,7 +309,7 @@ contains
         use determinant_data, only: det_info_t
         use excitations, only: excit_t, get_excitation_level, get_excitation
         use qmc_io, only: write_qmc_report, write_qmc_report_header
-        use qmc, only: init_qmc, init_reference
+        use qmc, only: init_qmc, init_secondary_reference
         use qmc_common, only: initial_qmc_status, initial_cc_projected_energy, load_balancing_report, init_report_loop, &
                               init_mc_cycle, end_report_loop, end_mc_cycle, redistribute_particles, rescale_tau
         use proc_pointers
@@ -424,15 +424,10 @@ contains
         end if
 
         if (ccmc_in%multiref) then
-! [review] - AJWT: Put in a function
-            call init_reference(sys, ccmc_in%second_ref, io_unit, qs%second_ref)
-            qs%ref%max_ex_level = qs%ref%ex_level + get_excitation_level(qs%ref%f0(:sys%basis%bit_string_len), &
-                                                                  qs%second_ref%f0(:sys%basis%bit_string_len))
+             call init_secondary_reference(sys,ccmc_in%second_ref,io_unit,qs)
         else 
             qs%ref%max_ex_level = qs%ref%ex_level
         end if
-
-!        print*, qs%ref%max_ex_level
 
         if (debug) call init_logging(logging_in, logging_info, qs%ref%ex_level)
 
@@ -1102,14 +1097,8 @@ contains
         call ms_stats_update(nspawnings_cluster, ms_stats)
         nattempts_spawn_tot = nattempts_spawn_tot + nspawnings_cluster
         if (ccmc_in%multiref) then
-! [review] - AJWT: This is quite unreadable - make the clause of the if a pure function
-            if (contrib%cluster%excitation_level <= qs%ref%ex_level+2 .or. &
-                      get_excitation_level(contrib%cdet%f(:sys%basis%bit_string_len),qs%second_ref%f0(:sys%basis%bit_string_len)) &
-                      <= qs%second_ref%ex_level+2) then
-! [review] - AJWT: Probably also a pure function here.
-                attempt_death = (contrib%cluster%excitation_level <= qs%ref%ex_level .or. &
-                      get_excitation_level(contrib%cdet%f(:sys%basis%bit_string_len),qs%second_ref%f0(:sys%basis%bit_string_len)) &
-                      <= qs%second_ref%ex_level) 
+            if (multiref_check_ex_level(sys,contrib,qs,2)) then
+                attempt_death = multiref_check_ex_level(sys,contrib,qs,0)
 
                 call do_spawning_death(rng, sys, qs, ccmc_in, &
                                  logging_info, ms_stats, bloom_stats, contrib, &
@@ -1204,7 +1193,7 @@ contains
                ! Do death for non-composite clusters directly and in a separate loop
                 if (contrib%cluster%nexcitors >= 2 .or. .not. ccmc_in%full_nc) then
                    call stochastic_ccmc_death(rng, qs%spawn_store%spawn, ccmc_in%linked, ccmc_in%even_selection, sys, &
-                                           qs, contrib%cdet, contrib%cluster, logging_info, ndeath, ccmc_in)
+                                           qs, contrib%cdet, contrib%cluster, logging_info, ndeath)
                 end if
             end if
         end if
@@ -1326,8 +1315,7 @@ contains
         use qmc_data, only: qmc_state_t, ccmc_in_t
         use ccmc_data, only: wfn_contrib_t
 
-! [review] - get_excitation_level isn't used.
-        use excitations, only: excit_t, get_excitation_level
+        use excitations, only: excit_t
         use proc_pointers, only: gen_excit_ptr
 
         use ccmc_death_spawning, only: spawner_ccmc, linked_spawner_ccmc
@@ -1377,5 +1365,24 @@ contains
                                             ccmc_in%even_selection, fexcit, qs%spawn_store%spawn, bloom_stats)
 
     end subroutine perform_ccmc_spawning_attempt
+
+    pure function multiref_check_ex_level(sys,contrib, qs, offset) result(assert)
+
+        use excitations, only:  get_excitation_level
+        use qmc_data, only: qmc_state_t
+        use ccmc_data, only: wfn_contrib_t
+        use system, only: sys_t
+ 
+        type(qmc_state_t), intent(in) :: qs
+        type(wfn_contrib_t), intent(in) :: contrib
+        type(sys_t), intent(in) :: sys
+        integer, intent(in) :: offset
+        logical :: assert
+ 
+        assert = (contrib%cluster%excitation_level <= qs%ref%ex_level+offset .or. &
+                 get_excitation_level(contrib%cdet%f(:sys%basis%bit_string_len),qs%second_ref%f0(:sys%basis%bit_string_len)) &
+                 <= qs%second_ref%ex_level+offset)
+
+    end function
 
 end module ccmc

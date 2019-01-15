@@ -1285,7 +1285,6 @@ contains
 
     end subroutine read_semi_stoch_in
 
-! [review] - AJWT: document sys.
     subroutine read_ccmc_in(lua_state, opts, ccmc_in, sys)
 
         ! Read in an ccmc table (if it exists) to an ccmc_in object.
@@ -1307,6 +1306,7 @@ contains
         !    lua_state: flu/Lua state to which the HANDE API is added.
         ! In:
         !    opts: handle for the table containing the ccmc table.
+        !    sys:  sys_t object containing information of current system. 
         ! Out:
         !    ccmc_in: ccmc_in_t object containing ccmc-specific input options.
 
