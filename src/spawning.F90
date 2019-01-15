@@ -1148,6 +1148,7 @@ contains
         end if
 
         ! Only accept spawning if it's within the truncation level.
+! [review] - AJWT: consider det_string accessor function.
         if (get_excitation_level(reference%hs_f0(:basis%bit_string_len), &
                                 f_new(:basis%bit_string_len)) <= max_ex_level) then
 
@@ -1156,7 +1157,7 @@ contains
 
             call add_spawned_particle(f_new, nspawn, particle_type, iproc_spawn, spawn)
 
-         end if
+        end if
  
 
     end subroutine create_spawned_particle_truncated
@@ -1218,6 +1219,7 @@ contains
 
 
         ! Only accept spawning if it's within the truncation level.
+! [review] - AJWT: Consider det_string accessor function
         if (get_excitation_level(reference%hs_f0(:basis%bit_string_len), &
                                 f_new(:basis%bit_string_len)) <= max_ex_level) then
 

@@ -961,6 +961,7 @@ contains
 
     end subroutine init_excit_gen
 
+! [review] - AJWT: document occlist.  Does any call to this function actually use it?
     subroutine init_reference(sys, reference_in, io_unit, reference, occlist)
 
         ! Set the reference determinant from input options

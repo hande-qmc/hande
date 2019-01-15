@@ -1285,7 +1285,8 @@ contains
 
     end subroutine read_semi_stoch_in
 
-    subroutine read_ccmc_in(lua_state, opts, ccmc_in,sys)
+! [review] - AJWT: document sys.
+    subroutine read_ccmc_in(lua_state, opts, ccmc_in, sys)
 
         ! Read in an ccmc table (if it exists) to an ccmc_in object.
 
@@ -1641,6 +1642,7 @@ contains
 
     end subroutine read_load_bal_in
 
+! [review] - Add max_ex_level to the reference table docs.
     subroutine read_reference_t(lua_state, opts, ref, sys, ref_table_name)
 
         ! Read in a reference table (if it exists) to a reference_t object.

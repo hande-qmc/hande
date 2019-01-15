@@ -8,7 +8,11 @@ use const, only: i0, int_p, int_64, p, dp, debug
 implicit none
 
 contains
-
+! [review] - AJWT: a potential quandry - ccmc_in contains linked_ccmc.  Unless we need all of ccmc_in, might 
+! [review] - AJWT: it be worth creating a subset in a derived type which we pass in.  What if we want to 
+! [review] - AJWT: modify something during the calculation (ccmc_in is read-only). 
+! [review] - AJWT: Also qs contains the second_ref, so could it contain multiref?
+! [review] - AJWT: ccmc_in must be added to the doc header below.
     subroutine spawner_ccmc(rng, sys, qs, spawn_cutoff, linked_ccmc, cdet, cluster, ccmc_in, &
                             gen_excit_ptr, logging_info, nspawn, connection, nspawnings_total, ps_stat)
 
@@ -164,9 +168,14 @@ contains
             ! This is the same process as excitor to determinant and hence we
             ! can reuse code...
             call create_excited_det(sys%basis, cdet%f, connection, fexcit)
+! [review] - AJWT: This seems very unwieldy and error prone.
+! [review] - AJWT: Perhaps we should have an accessor function det_string(qs%ref%f0,sys%basis)?
+! [review] - AJWT: Even safer (but perhaps for another day) is to create a det_string derived type which
+! [review] - AJWT: get_excitation_level accepts.
             excitor_level = get_excitation_level(qs%ref%f0(:sys%basis%bit_string_len), fexcit(:sys%basis%bit_string_len))
             call convert_excitor_to_determinant(fexcit, excitor_level, excitor_sign, qs%ref%f0)
             if (ccmc_in%multiref) then
+! [review] - AJWT: This feels like it should be in a pure function.
                 excitor_level_2 = get_excitation_level(qs%second_ref%f0(:sys%basis%bit_string_len), &
                                                                  fexcit(:sys%basis%bit_string_len))
                 if (excitor_level > qs%ref%ex_level .and.  excitor_level_2 >qs%ref%ex_level) nspawn=0
@@ -192,6 +201,7 @@ contains
 
     end subroutine spawner_ccmc
 
+! [review] - AJWT: Document ccmc_in.  Is it even used?
     subroutine stochastic_ccmc_death(rng, spawn, linked_ccmc, ex_lvl_sort, sys, qs, cdet, cluster, &
                                     logging_info, ndeath_tot, ccmc_in)
 

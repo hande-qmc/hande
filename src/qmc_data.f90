@@ -829,6 +829,7 @@ type qmc_state_t
     type(particle_t) :: psip_list
     type(spawned_particle_t) :: spawn_store
     type(reference_t) :: ref
+! [review] - AJWT: document.
     type(reference_t) :: second_ref
     type(trial_t) :: trial
     type(restart_in_t) :: restart_in

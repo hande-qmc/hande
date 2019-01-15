@@ -13,7 +13,7 @@ implicit none
 
 type reference_t
     ! Bit string of reference determinant.
-    integer(i0), allocatable :: f0(:)
+    integer(i0), allocatable :: f0(:) !This should be sys%basis%tot_string_len long
     ! List of occupied orbitals in reference determinant.
     integer, allocatable :: occ_list0(:)
     ! Bit string of reference determinant used to generate the Hilbert space.

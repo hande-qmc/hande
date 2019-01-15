@@ -424,6 +424,7 @@ contains
         end if
 
         if (ccmc_in%multiref) then
+! [review] - AJWT: Put in a function
             call init_reference(sys, ccmc_in%second_ref, io_unit, qs%second_ref)
             qs%ref%max_ex_level = qs%ref%ex_level + get_excitation_level(qs%ref%f0(:sys%basis%bit_string_len), &
                                                                   qs%second_ref%f0(:sys%basis%bit_string_len))
@@ -1101,9 +1102,11 @@ contains
         call ms_stats_update(nspawnings_cluster, ms_stats)
         nattempts_spawn_tot = nattempts_spawn_tot + nspawnings_cluster
         if (ccmc_in%multiref) then
+! [review] - AJWT: This is quite unreadable - make the clause of the if a pure function
             if (contrib%cluster%excitation_level <= qs%ref%ex_level+2 .or. &
                       get_excitation_level(contrib%cdet%f(:sys%basis%bit_string_len),qs%second_ref%f0(:sys%basis%bit_string_len)) &
                       <= qs%second_ref%ex_level+2) then
+! [review] - AJWT: Probably also a pure function here.
                 attempt_death = (contrib%cluster%excitation_level <= qs%ref%ex_level .or. &
                       get_excitation_level(contrib%cdet%f(:sys%basis%bit_string_len),qs%second_ref%f0(:sys%basis%bit_string_len)) &
                       <= qs%second_ref%ex_level) 
@@ -1323,6 +1326,7 @@ contains
         use qmc_data, only: qmc_state_t, ccmc_in_t
         use ccmc_data, only: wfn_contrib_t
 
+! [review] - get_excitation_level isn't used.
         use excitations, only: excit_t, get_excitation_level
         use proc_pointers, only: gen_excit_ptr
 

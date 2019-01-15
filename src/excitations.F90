@@ -205,6 +205,7 @@ contains
         ! f1 and f2 should have any additional information cleared from
         ! their bit string before being passed in.
 
+![review] - AJWT: Shouldn't these be bit_string_len?
         ! In:
         !    f1(tot_string_len): bit string representation of the Slater
         !        determinant.
