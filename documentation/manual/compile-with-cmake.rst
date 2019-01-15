@@ -184,6 +184,62 @@ is a translation guide between the frontend script and "bare" CMake:
 - ``--cmake-options="-DTHIS -DTHAT"``. Sets options to be forwarded as-is to
   CMake.
 
+Installation
+------------
+
+It is possible to install HANDE either running outside the ``build`` directory:
+
+.. code-block:: bash
+
+   $ cmake --build build --target install
+
+or from within the ``build`` directory:
+
+.. code-block:: bash
+
+   $ make install
+
+By default, CMake will set the install prefix to ``/usr/local`` and you might
+hence not have permissions to successfully install. The install prefix can be
+set *via* the ``--prefix`` option to the frontend script or, equivalently,
+passing the desired path to CMake *via* the ``CMAKE_INSTALL_PREFIX`` variable.
+The HANDE executable and static library will be installed to the ``bin`` and
+``lib`` (``lib64`` on 64-bit systems) subdirectories of the install prefix.
+
+.. note::
+
+    It might be advisable to install pyhande to the same prefix as the HANDE
+    executable. Refer to pyhande's `README <https://github.com/hande-qmc/hande/blob/master/tools/pyhande/README.rst>`_
+    for detailed instructions.
+
+Assuming the install prefix to have been set to ``$HOME/Software/hande``, the
+install tree will thus look as follows:
+
+.. code-block:: bash
+
+   $HOME/Software/hande/
+   ├── bin
+   │   └── hande.cmake.x
+   └── lib64
+       └── libhande.a
+
+The ```DESTDIR`` mechanism <https://www.gnu.org/prep/standards/html_node/DESTDIR.html>`_ can be used to
+adjust the install location:
+
+.. code-block:: bash
+
+   $ env DESTDIR=/tmp/local make install
+
+will result in the following install tree:
+
+.. code-block:: bash
+
+   /tmp/local/$HOME/Software/hande
+   ├── bin
+   │   └── hande.cmake.x
+   └── lib64
+       └── libhande.a
+
 CMake compilation issues
 ------------------------
 
@@ -294,4 +350,6 @@ the ``MATH_ROOT`` variable to point to the location of the math libraries:
   .. code-block:: bash
 
      $ ./cmakeconfig.py --mpi --fc=mpiifort --cc=mpiicc --mpi-with-scalapack --blacs=intelmpi
-     $ cmake -H. -Bbuild -DCMAKE_Fortran_COMPILER=mpiifort -DCMAKE_C_COMPILER=mpiicc -DENABLE_MPI=ON -DENABLE_SCALAPACK=ON -DBLACS_IMPLEMENTATION=intelmpi
+     $ cmake -H. -Bbuild -DCMAKE_Fortran_COMPILER=mpiifort
+     -DCMAKE_C_COMPILER=mpiicc -DENABLE_MPI=ON -DENABLE_SCALAPACK=ON
+     -DBLACS_IMPLEMENTATION=intelmpi

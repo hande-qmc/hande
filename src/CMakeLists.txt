@@ -153,6 +153,11 @@ target_link_libraries(hande-static
     "$<$<BOOL:${USE_HDF5}>:${HDF5_Fortran_LIBRARIES}>"
     "${LUA_LIBRARIES}"
   )
+set_target_properties(hande-static
+  PROPERTIES
+    OUTPUT_NAME "hande"
+  )
+
 add_executable(${HANDE_EXE_NAME} core.f90)
 target_link_libraries(${HANDE_EXE_NAME}
   PRIVATE
@@ -166,4 +171,17 @@ add_custom_command(TARGET ${HANDE_EXE_NAME}
   ${CMAKE_COMMAND} -E create_symlink ${PROJECT_SOURCE_DIR}/bin/${HANDE_EXE_NAME} ${PROJECT_SOURCE_DIR}/bin/hande.x
   COMMENT
     "Copying executable ${HANDE_EXE_NAME} to ${PROJECT_SOURCE_DIR}/bin and symlinking it to ${PROJECT_SOURCE_DIR}/bin/hande.x"
+  )
+install(
+  TARGETS
+    hande-static ${HANDE_EXE_NAME}
+  ARCHIVE
+    DESTINATION ${CMAKE_INSTALL_LIBDIR}
+    COMPONENT lib
+  RUNTIME
+    DESTINATION ${CMAKE_INSTALL_BINDIR}
+    COMPONENT bin
+  LIBRARY
+    DESTINATION ${CMAKE_INSTALL_LIBDIR}
+    COMPONENT lib
   )
