@@ -223,7 +223,16 @@ contains
     end function get_excitation_level
 
     pure function det_string(f0, basis) result(string)
+        ! Function to obtain the bit string representation of a Slater determinant.
+        
+        ! In:
+        !    f0(tot_string_len): bit string representation of the determinant with 
+        !        excitation information.
+        !    basis: information about the 1 particle basis.
 
+        ! Out:
+        !    string(bit_string_len): bit string representation of the determinant
+        !        without added information.
         use basis_types, only: basis_t
     
         type(basis_t), intent(in) :: basis

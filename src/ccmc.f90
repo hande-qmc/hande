@@ -1368,7 +1368,21 @@ contains
     end subroutine perform_ccmc_spawning_attempt
 
     pure function multiref_check_ex_level(sys,contrib, qs, offset) result(assert)
+        !Used in mr-CCMC.
+        !Checks whether a cluster is within some number of excitations of any of the references supplied.
 
+        !In:
+        !   sys: system being studied.
+        !   contrib: information on contribution to wavefunction
+        !       currently under consideration. Contains both the
+        !       cluster selected and the determinant formed on
+        !       collapsing, as well as scratch spaces for partitoning
+        !       within linked.
+        !   qs: information on current state of calculation.
+        !   offset: changes acceptable excitation level from the calculation truncation level.
+        
+        !Out:
+        !   assert: true if at least one of the excitation levels is below the threshold. False otherwise.
         use excitations, only:  get_excitation_level
         use qmc_data, only: qmc_state_t
         use ccmc_data, only: wfn_contrib_t
