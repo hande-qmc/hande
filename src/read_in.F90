@@ -1269,7 +1269,6 @@ contains
 
     end subroutine read_additional_exchange_integrals
 
-    ! [reply] - Double check and References?.
     subroutine modify_one_body_ints(sys, two_e_ints, pbc_ex_ints, one_e_ints)
 
         ! These two expressions for the Hartree-Fock energy are made identical here:

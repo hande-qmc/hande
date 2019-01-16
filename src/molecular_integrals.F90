@@ -266,8 +266,6 @@ contains
 
     end subroutine end_two_body_t
 
-! [review] - AJWT: Consider a different name which is less specific, and comment on memory requirements.
-! [review] - VAN: See my other reply. I think we can keep name for now.
     subroutine init_two_body_exchange_t(sys, op_sym, imag, store)
 
         ! Allocate memory required for the integrals involving a two-body
@@ -283,6 +281,7 @@ contains
         !    store: two-body integral store with components allocated to hold
         !       interals.  Note that the integral store is *not* zeroed.
 
+! [review] - AJWT: resolve this todo
         ! [todo] - shared memory comment possibly (as above for init_two_body_t)
 
         use checking, only: check_allocate
@@ -1411,7 +1410,7 @@ contains
     pure function pbc_ex_int_indx(uhf, i, j, a, b, basis_fns) result(indx)
 
         ! In:
-        !   uhf: UHF calculation?
+        !   uhf: .True eis this is a UHF calculation.
         !   i,j,a,b:  (indices of) spin-orbitals
         !   basis_fns: list of single-particle basis functions
 

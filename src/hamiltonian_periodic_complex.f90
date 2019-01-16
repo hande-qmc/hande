@@ -150,6 +150,25 @@ contains
 ! [review] - VAN: mmmh, if I did, here, we would need another if later on, asking whether we want the imag or the real integral
 ! [review] - VAN: store as we would not pass say coulomb_ints and coulomb_ints_im anymore but rather sys as coulomb_ints
 ! [review] - VAN: are of a different type as sys%read_in%additional_exchange_ints. Feel free to suggest another way!
+! [review] - AJWT: I shall.  It's perfectly possible to replace (inside a loop)
+! [review] - AJWT: if(A) then
+! [review] - AJWT:     do_A(sys)
+! [review] - AJWT: else
+! [review] - AJWT:     do_B(sys)
+! [review] - AJWT: end if
+! [review] - AJWT: 
+! [review] - AJWT: by (outside the loop)
+! [review] - AJWT: if(A) then 
+! [review] - AJWT:   myfnpointer => do_A 
+! [review] - AJWT: else
+! [review] - AJWT:   myfnpointer => do_B
+! [review] - AJWT: end if
+! [review] - AJWT: 
+! [review] - AJWT: (and then in the loop)
+! [review] - AJWT: myfnpointer(sys)
+! [review] - AJWT: 
+! [review] - AJWT: do_A and do_B could be newly made functions.
+
                         if (sys%read_in%extra_exchange_integrals) then
                             re = get_two_body_exchange_pbc_int_nonzero(sys%read_in%additional_exchange_ints, &
                                         i, j, j, i, sys%basis%basis_fns)
