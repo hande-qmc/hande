@@ -829,10 +829,11 @@ type qmc_state_t
     type(particle_t) :: psip_list
     type(spawned_particle_t) :: spawn_store
     type(reference_t) :: ref
-! [review] - AJWT: document.
-    type(reference_t) :: second_ref
     type(trial_t) :: trial
     type(restart_in_t) :: restart_in
+    ! Flags for multireference CCMC calculations.
+    logical :: multiref = .false.
+    type(reference_t) :: second_ref
     ! WARNING: par_info is the 'reference/master' (ie correct) version
     ! of parallel_t, in particular of proc_map_t.  However, copies of it
     ! are kept in spawn_t objects, and it is these copies which are used

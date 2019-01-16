@@ -8,12 +8,7 @@ use const, only: i0, int_p, int_64, p, dp, debug
 implicit none
 
 contains
-! [review] - AJWT: a potential quandry - ccmc_in contains linked_ccmc.  Unless we need all of ccmc_in, might 
-! [review] - AJWT: it be worth creating a subset in a derived type which we pass in.  What if we want to 
-! [review] - AJWT: modify something during the calculation (ccmc_in is read-only). 
-! [review] - AJWT: Also qs contains the second_ref, so could it contain multiref?
-! [review] - AJWT: ccmc_in must be added to the doc header below.
-    subroutine spawner_ccmc(rng, sys, qs, spawn_cutoff, linked_ccmc, cdet, cluster, ccmc_in, &
+    subroutine spawner_ccmc(rng, sys, qs, spawn_cutoff, linked_ccmc, cdet, cluster, &
                             gen_excit_ptr, logging_info, nspawn, connection, nspawnings_total, ps_stat)
 
         ! Attempt to spawn a new particle on a connected excitor with
@@ -99,7 +94,7 @@ contains
         integer, intent(in) :: nspawnings_total
         type(gen_excit_ptr_t), intent(in) :: gen_excit_ptr
         type(logging_t), intent(in) :: logging_info
-        type (ccmc_in_t), intent(in) :: ccmc_in
+!        type (ccmc_in_t), intent(in) :: ccmc_in
         integer(int_p), intent(out) :: nspawn
         type(excit_t), intent(out) :: connection
 
@@ -172,7 +167,7 @@ contains
 ! [review] - AJWT: get_excitation_level accepts.
             excitor_level = get_excitation_level(det_string(qs%ref%f0, sys%basis), det_string(fexcit,sys%basis))
             call convert_excitor_to_determinant(fexcit, excitor_level, excitor_sign, qs%ref%f0)
-            if (ccmc_in%multiref) then
+            if (qs%multiref) then
                 excitor_level_2 = get_excitation_level(det_string(qs%second_ref%f0, sys%basis), det_string(fexcit,sys%basis))
                 if (excitor_level > qs%ref%ex_level .and.  excitor_level_2 >qs%ref%ex_level) nspawn=0
             end if

@@ -1117,7 +1117,7 @@ contains
 
         use basis_types, only: basis_t
         use determinant_data, only: det_info_t
-        use excitations, only: excit_t, create_excited_det, get_excitation_level
+        use excitations, only: excit_t, create_excited_det, get_excitation_level, det_string
         use spawn_data, only: spawn_t
         use reference_determinant, only: reference_t
 
@@ -1148,9 +1148,8 @@ contains
         end if
 
         ! Only accept spawning if it's within the truncation level.
-! [review] - AJWT: consider det_string accessor function.
-        if (get_excitation_level(reference%hs_f0(:basis%bit_string_len), &
-                                f_new(:basis%bit_string_len)) <= max_ex_level) then
+        if (get_excitation_level(det_string(reference%hs_f0, basis), &
+                                det_string(f_new,basis)) <= max_ex_level) then
 
             call assign_particle_processor(f_new, spawn%bit_str_nbits, spawn%hash_seed, spawn%hash_shift, spawn%move_freq, &
                                                           nprocs, iproc_spawn, slot, spawn%proc_map%map, spawn%proc_map%nslots)
@@ -1187,7 +1186,7 @@ contains
 
         use basis_types, only: basis_t
         use determinant_data, only: det_info_t
-        use excitations, only: excit_t, create_excited_det, get_excitation_level
+        use excitations, only: excit_t, create_excited_det, get_excitation_level, det_string
         use spawn_data, only: spawn_t
         use reference_determinant, only: reference_t
 
@@ -1219,9 +1218,8 @@ contains
 
 
         ! Only accept spawning if it's within the truncation level.
-! [review] - AJWT: Consider det_string accessor function
-        if (get_excitation_level(reference%hs_f0(:basis%bit_string_len), &
-                                f_new(:basis%bit_string_len)) <= max_ex_level) then
+        if (get_excitation_level(det_string(reference%hs_f0, basis), &
+                                det_string(f_new,basis)) <= max_ex_level) then
 
               call assign_particle_processor(f_new, spawn%bit_str_nbits, spawn%hash_seed, spawn%hash_shift, spawn%move_freq, &
                                                           nprocs, iproc_spawn, slot, spawn%proc_map%map, spawn%proc_map%nslots)

@@ -1642,7 +1642,6 @@ contains
 
     end subroutine read_load_bal_in
 
-! [review] - Add max_ex_level to the reference table docs.
     subroutine read_reference_t(lua_state, opts, ref, sys, ref_table_name)
 
         ! Read in a reference table (if it exists) to a reference_t object.
@@ -1651,6 +1650,10 @@ contains
         !     det = { ... }, -- N-electron vector
         !     hilbert_space_det = { ... }, -- N-electron vector
         !     ex_level = truncation_level,
+        !     (max_ex_level - this is set in the code either to ex_level in
+        !                     single reference calculations or to truncation
+        !                     level + second reference excitation level in
+        !                     multireference calculations)
         ! }
 
         ! In/Out:

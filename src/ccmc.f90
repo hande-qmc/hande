@@ -424,6 +424,7 @@ contains
         end if
 
         if (ccmc_in%multiref) then
+             qs%multiref = .true.
              call init_secondary_reference(sys,ccmc_in%second_ref,io_unit,qs)
         else 
             qs%ref%max_ex_level = qs%ref%ex_level
@@ -1028,8 +1029,8 @@ contains
 
     end subroutine do_ccmc_accumulation
 
-    subroutine do_stochastic_ccmc_propagation(rng, sys, qs, &
-                                            ccmc_in, logging_info, ms_stats, bloom_stats, &
+    subroutine do_stochastic_ccmc_propagation(rng, sys, qs, ccmc_in, &
+                                            logging_info, ms_stats, bloom_stats, &
                                             contrib, nattempts_spawn_tot, ndeath, ps_stat)
 
         ! Perform stochastic propogation of a cluster in an appropriate manner
@@ -1096,7 +1097,7 @@ contains
 
         call ms_stats_update(nspawnings_cluster, ms_stats)
         nattempts_spawn_tot = nattempts_spawn_tot + nspawnings_cluster
-        if (ccmc_in%multiref) then
+        if (qs%multiref) then
             if (multiref_check_ex_level(sys,contrib,qs,2)) then
                 attempt_death = multiref_check_ex_level(sys,contrib,qs,0)
 
@@ -1352,7 +1353,7 @@ contains
                       connection, nspawnings_total, ps_stat)
         else
             call spawner_ccmc(rng, sys, qs, qs%spawn_store%spawn%cutoff, &
-                      ccmc_in%linked, contrib%cdet, contrib%cluster, ccmc_in, gen_excit_ptr, logging_info, &
+                      ccmc_in%linked, contrib%cdet, contrib%cluster, gen_excit_ptr, logging_info, &
                       nspawned, connection, nspawnings_total, ps_stat)
             nspawned_im = 0_int_p
         end if
