@@ -222,7 +222,7 @@ contains
 
     end function get_excitation_level
 
-    pure function det_string(f0, basis) result(string)
+    function det_string(f0, basis) result(determinant_string)
         ! Function to obtain the bit string representation of a Slater determinant.
         
         ! In:
@@ -231,21 +231,15 @@ contains
         !    basis: information about the 1 particle basis.
 
         ! Out:
-        !    string(bit_string_len): bit string representation of the determinant
+        !    string(bit_string_len): pointer to bit string representation of the determinant
         !        without added information.
         use basis_types, only: basis_t
     
         type(basis_t), intent(in) :: basis
-        integer(i0), intent(in) :: f0(:)
-        integer(i0), allocatable :: string(:)
+        integer(i0), target, intent(in) :: f0(:)
+        integer(i0), pointer :: determinant_string(:)
 
-! [review] - AJWT: Apologies - I didn't mean to add overhead by inserting a copy.
-! [review] - AJWT:  Perhaps it's not possible to perform this efficiently in FORTRAN.
-! [review] - AJWT: It would be possible (though perhaps not elegant) to implement this
-! [review] - AJWT: as a #define function.
-        allocate(string(basis%bit_string_len))
-    
-        string = f0(:basis%bit_string_len)
+        determinant_string => f0(:basis%bit_string_len)
      
     end function
 

@@ -1649,11 +1649,7 @@ contains
         ! reference = {
         !     det = { ... }, -- N-electron vector
         !     hilbert_space_det = { ... }, -- N-electron vector
-        !     ex_level = truncation_level,
-        !     (max_ex_level - this is set in the code either to ex_level in
-        !                     single reference calculations or to truncation
-        !                     level + second reference excitation level in
-        !                     multireference calculations)
+        !     ex_level = truncation_level
         ! }
 
         ! In/Out:
@@ -1686,14 +1682,13 @@ contains
 
         integer :: ref_table, err
         integer, allocatable :: err_arr(:)
-        character(17), parameter :: keys(4) = [character(17) :: 'det', 'hilbert_space_det', 'ex_level', 'max_ex_level']
+        character(17), parameter :: keys(3) = [character(17) :: 'det', 'hilbert_space_det', 'ex_level']
         ! Avoid using allocatable strings here for old compiler support.
         character(100) :: ref_name
 
         ! Set to full space/a problematic value by default.
         ref%ex_level = -1
         if (present(sys)) ref%ex_level = sys%nel
-        ref%max_ex_level = -1
 
         ref_name = 'reference'
         if (present(ref_table_name)) then
@@ -1717,8 +1712,6 @@ contains
 
             call aot_get_val(ref%ex_level, err, lua_state, ref_table, 'ex_level')
            
-            call aot_get_val (ref%max_ex_level, err, lua_state, ref_table, 'max_ex_level')
-
             call warn_unused_args(lua_state, keys, ref_table)
 
             call aot_table_close(lua_state, ref_table)
