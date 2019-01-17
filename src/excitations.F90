@@ -239,6 +239,10 @@ contains
         integer(i0), intent(in) :: f0(:)
         integer(i0), allocatable :: string(:)
 
+! [review] - AJWT: Apologies - I didn't mean to add overhead by inserting a copy.
+! [review] - AJWT:  Perhaps it's not possible to perform this efficiently in FORTRAN.
+! [review] - AJWT: It would be possible (though perhaps not elegant) to implement this
+! [review] - AJWT: as a #define function.
         allocate(string(basis%bit_string_len))
     
         string = f0(:basis%bit_string_len)

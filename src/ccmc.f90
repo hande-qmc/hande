@@ -1367,7 +1367,7 @@ contains
 
     end subroutine perform_ccmc_spawning_attempt
 
-    pure function multiref_check_ex_level(sys,contrib, qs, offset) result(assert)
+    pure function multiref_check_ex_level(sys, contrib, qs, offset) result(assert)
         !Used in mr-CCMC.
         !Checks whether a cluster is within some number of excitations of any of the references supplied.
 
@@ -1393,7 +1393,7 @@ contains
         type(sys_t), intent(in) :: sys
         integer, intent(in) :: offset
         logical :: assert
- 
+ ! [review] - AJWT: det_string?
         assert = (contrib%cluster%excitation_level <= qs%ref%ex_level+offset .or. &
                  get_excitation_level(contrib%cdet%f(:sys%basis%bit_string_len),qs%second_ref%f0(:sys%basis%bit_string_len)) &
                  <= qs%second_ref%ex_level+offset)
