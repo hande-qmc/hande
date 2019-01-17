@@ -1316,6 +1316,7 @@ contains
         use qmc_data, only: ccmc_in_t
         use lua_hande_utils, only: warn_unused_args
         use system, only: sys_t
+        use errors, only: stop_all
 
         type(flu_State), intent(inout) :: lua_state
         integer, intent(in) :: opts
@@ -1344,7 +1345,12 @@ contains
             call aot_get_val(ccmc_in%multiref, err, lua_state, ccmc_table, 'multiref')
 
             call read_reference_t(lua_state, ccmc_table, ccmc_in%second_ref, sys, 'second_ref')
-
+            if (ccmc_in%multiref .and. .not. allocated(ccmc_in%second_ref%occ_list0)) then
+                call stop_all('read_ccmc_in', 'Uninitialised second reference determinant.') 
+            end if
+            if (ccmc_in%multiref .and. (ccmc_in%second_ref%ex_level == -1 .or. ccmc_in%second_ref%ex_level == sys%nel)) then
+                call stop_all('read_ccmc_in', 'Uninitialised second reference excitation level.')
+            end if
             call warn_unused_args(lua_state, keys, ccmc_table)
 
             call aot_table_close(lua_state, ccmc_table)
