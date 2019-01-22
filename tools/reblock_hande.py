@@ -186,9 +186,10 @@ opt_block: :class:`pandas.DataFrame`
                 except AttributeError:
                     # if there is more than one calculation in the file calc is a tuple
                     fnames = ' in ' + calc[0] + ' ' + str(calc[1])
-            print('WARNING: could not find optimal block size%s.' % (fnames))
-            print('Insufficient statistics collected for the following '
-                  'variables: %s.' % (', '.join(info.no_opt_block)))
+            if (analysis_method != 'hybrid'):
+                print('WARNING: could not find optimal block size%s.' % (fnames))
+                print('Insufficient statistics collected for the following '
+                      'variables: %s.' % (', '.join(info.no_opt_block)))
 
     if reblock_plot:
         for info in infos:

@@ -22,7 +22,7 @@ import statsmodels.tsa.ar_model as ar_model
 import statsmodels.tsa.stattools as tsastats
 
 
-def find_starting_iteration_mser_min(data, md, data_max_frac=0.9, n_blocks=100, verbose=None, end=None):
+def find_starting_iteration_mser_min(data, md, start_max_frac=0.9, n_blocks=100, verbose=None, end=None):
     '''Find the best iteration to start analysing CCMC/FCIQMC data based on MSER minimization scheme.
 
 .. warning::
@@ -125,15 +125,18 @@ info : :func:`collections.namedtuple`
     
     after_start_indx = data_before_end['iterations'] >= start
     calc_tr          = data_before_end[after_start_indx]
-    #print calc_tr added
-
-    list_org = calc_tr['Proj. Energy']
-    n_data = len(list_org) // batch_size
-    list = [0]*n_data
-    for i in range(len):
-        list[i] = numpy.mean(list[i*batch_size:(i+1)*batch_size])
+        
+    #list = calc_tr['Proj. Energy'].as_matrix()
+    #n_data = len(list)
     
+    list_org = calc_tr['Proj. Energy'].as_matrix()
+    n_data = len(list_org) / batch_size
+    list = [0]*n_data
+    for i in range(n_data):
+        list[i] = numpy.mean(list_org[i*batch_size:(i+1)*batch_size])
     #print list
+
+    #print list    
     mean = numpy.mean(list)
     var  = numpy.var(list)
     acf = tsastats.acf(x=list, unbiased=True, nlags=n_data-1, fft=True)
