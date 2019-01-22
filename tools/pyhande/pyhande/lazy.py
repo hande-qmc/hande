@@ -31,23 +31,24 @@ def find_starting_iteration_mser_min(data, md, data_max_frac=0.9, n_blocks=100, 
     necessary.
 
 The algorithm is based on MSER-5 scheme (https://ieeexplore.ieee.org/document/4736111/).
-Calculate MSER(d) = ( \sum_{i=1}^{n-d}{ ( x(i+d) - (x's average) )^2 } / (n-d)^2
-for different d value and decide the starting iteration as d which minimizes MSER(d).
-Here, n is the number of data and x(i) is the projected energy of the i-th iteration.
-The projected energy is given as [(\sum H_0j N_j) / N_0] for every step.
+Calculate :Math: `MSER(d) = ( \sum_{i=1}^{n-d}{ ( x(i+d) - (x's average) )^2 } / (n-d)^2`
+for different :Math: `d` values and decide the starting iteration as :Math: `d` which 
+minimizes :Math: `MSER(d)`. Here, :Math: `n` is `the number of data` and :Math: `x(i)` 
+is `the projected energy of the i-th iteration`, which is given as 
+`(\sum H_0j N_j) / N_0` for every step.
 
 Parameters 
 ----------
-(Here, n represents 'number of data points')
 data : :class:`pandas.DataFrame`
     Calculation output for a FCIQMC or CCMC calculation.
 md : dict
     Metadata corresponding to the calculation in `data`.
 start_max_frac : float
-    MSER(d) is calculated for d yonger than (data_max_fac * n),
-    in which d giving the smallest MSER(d) is chosen to be 
-    the starting iteration. This trucation aims to avoid 
-    unreasonbaly small MSER(d) with very small n.
+    :Math: `MSER(d)` is calculated for :Math: `d` yonger than 
+    :Math: `(data_max_fac * n)`, in which :Math: `d` giving the 
+    smallest :Math: `MSER(d)` is chosen to be the starting iteration. 
+    This trucation aims to ignore unreasonbaly small :Math: `MSER(d)` 
+    with very small :Math: `n`.
 n_blocks : int
     Decide the initialization steps only from multiples
     of this variable.
@@ -83,12 +84,19 @@ starting_iteration: integer
     return starting_iteration
 
 def lazy_hybrid(calc, md, start=0, end=None, batch_size=1):
-    '''New blocking analysis on zero-temperature QMC calcaulations.
+    '''New post-analysis on zero-temperature QMC calcaulations.
 
 .. note::
 
     :func:`std_analysis` is recommended unless custom processing is required
     before blocking analysis is performed.
+
+This scheme is a hybrid of two different post-analysis methods,
+AR model and Autocorre. The former (the latter) is comparatively 
+good at estimating the statistic error for smaller (larger) length
+of time-series, respectively. This method just picks up the larger
+statistic error from the ones given by both methods. The mathematical
+details are explained in a under-prepared paper.
 
 Parameters
 ----------
