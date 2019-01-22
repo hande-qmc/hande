@@ -32,25 +32,27 @@ def find_starting_iteration_mser_min(data, md, data_max_frac=0.9, n_blocks=100, 
 
 The algorithm is based on MSER-5 scheme (https://ieeexplore.ieee.org/document/4736111/).
 Calculate MSER(d) = ( \sum_{i=1}^{n-d}{ ( x(i+d) - (x's average) )^2 } / (n-d)^2
-with changing d value, and d minimizing MSER(d) is the best estimation of the starting iteration. 
-Here, n is the number of data and x(i) is the `projected energy' of the i-th iteration. 
-`Projected energy' is given as [(\sum H_0j N_j) / N_0] for each iteration.  
+for different d value and decide the starting iteration as d which minimizes MSER(d).
+Here, n is the number of data and x(i) is the projected energy of the i-th iteration.
+The projected energy is given as [(\sum H_0j N_j) / N_0] for every step.
 
-Parameters
+Parameters 
 ----------
+(Here, n represents 'number of data points')
 data : :class:`pandas.DataFrame`
     Calculation output for a FCIQMC or CCMC calculation.
 md : dict
     Metadata corresponding to the calculation in `data`.
 start_max_frac : float
-    MSER(d) may oscilates when (n-d) is small and MSER(d) becomes unreasonably small.
-    Thus, MSER(d) is calculated just for d younger than (data_max_frac * n).
+    MSER(d) is calculated for d yonger than (data_max_fac * n),
+    in which d giving the smallest MSER(d) is chosen to be 
+    the starting iteration. This trucation aims to avoid 
+    unreasonbaly small MSER(d) with very small n.
 n_blocks : int
-    It is sometimes very expensive to calculate MSER(d) for d=0,1,2,3,....
-    Thus, select (n_blocks) number of d uniformly between 0 and (data_max_frac * n)
-    and calculate MSER(d) and decide the best starting iteration just among these d.
+    Decide the initialization steps only from multiples
+    of this variable.
 verbose : int
-    Inactive. Nothing is affected by this variable.
+    Inactive. This valuable does not change anything.
 end : int or None
     Last iteration included in analysis. If None, the last iteration included
     is the last iteration of the data set.
@@ -81,19 +83,12 @@ starting_iteration: integer
     return starting_iteration
 
 def lazy_hybrid(calc, md, start=0, end=None, batch_size=1):
-    '''Standard analysis for zero-temperature QMC calculations
-       based on the work established by T. Ichibha et al.
-       T
+    '''New blocking analysis on zero-temperature QMC calcaulations.
+
 .. note::
 
     :func:`std_analysis` is recommended unless custom processing is required
     before blocking analysis is performed.
-
-The algorithm is hybrid of autocorrelation method and AR model.
-    autocorrelation method : section 2.3 of arXiv:1011.0175v1 
-    AR model : section 2.4 of arXiv:1011.0175v1 and 
-
-TO_BE_WRITTEN
 
 Parameters
 ----------
@@ -101,12 +96,13 @@ calc : :class:`pandas.DataFrame`
     Zero-temperature QMC calculation output.
 md : dict
     Metadata for the calculation in `calc`.
-start, end : See :func:`std_analysis`.
+start, end : 
+    See :func:`std_analysis`.
 batch_size : int
-    NOT YET IMPLEMENTED.
-    When the number of data is huge, the analysis may take a long time.
-    In that case, first the time-series data is divided into batches
-    and the statistic error is calculated for the batch means. 
+    The energy time-series data is devided into batches with 
+    this size, for which the statistic error is calculated.
+    This significantly reduce the time for the analysis when
+    the original data size is huge.
 
 Returns
 --------
@@ -123,12 +119,15 @@ info : :func:`collections.namedtuple`
     calc_tr          = data_before_end[after_start_indx]
     #print calc_tr added
 
-    list = calc_tr['Proj. Energy']
-
+    list_org = calc_tr['Proj. Energy']
+    n_data = len(list_org) // batch_size
+    list = [0]*n_data
+    for i in range(len):
+        list[i] = numpy.mean(list[i*batch_size:(i+1)*batch_size])
+    
     #print list
     mean = numpy.mean(list)
     var  = numpy.var(list)
-    n_data = len(list)
     acf = tsastats.acf(x=list, unbiased=True, nlags=n_data-1, fft=True)
         
     # ar model
@@ -165,24 +164,6 @@ info : :func:`collections.namedtuple`
     info_tuple = collections.namedtuple('HandeInfo', tuple_fields)
     info = info_tuple(md, calc, None, None, None, opt_block, no_opt_block)
     return info
-
-#def batching(data, size=10, verbose=None, end=None):
-#    if end is None:
-#        end = data['iterations'].iloc[-1]
-#    before_end_indx = data['iterations'] <= end
-#    data = data.ix[before_end_indx]
-#
-#    nominators   = data['\sum H_0j N_j']
-#    denominators = data['N_0'] 
-#    n_data = len(nominators)
-#    proj_energies = [0]*n_data
-#    for i in range(n_data):
-#        proj_energies[i] = nominators.iloc[i] / denominators.iloc[i]
-#    n_batch = int(n_data / size)
-#    batches = [0]*n_batch
-#    for i in range(n_batch):
-#        batches[i] = (sum(proj_energies[size*i:size*(i+1)]))/size
-#    return batches, len(data)
 
 
 def std_analysis(datafiles, start=None, end=None, select_function=None,
