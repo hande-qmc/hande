@@ -6,17 +6,14 @@ from os import path
 import pkgutil
 import sys
 import warnings
-
 import matplotlib.pyplot as plt
 import pandas as pd
-
 if pkgutil.find_loader('pyblock'):
     sys.path.append(path.join(path.abspath(path.dirname(__file__)), '../../pyblock'))
 import pyblock
 import pyhande.extract
 import pyhande.analysis
 import pyhande.weight
-
 import numpy
 import statsmodels.tsa.ar_model as ar_model
 import statsmodels.tsa.stattools as tsastats
@@ -26,16 +23,17 @@ def find_starting_iteration_mser_min(data, md, start_max_frac=0.9, n_blocks=100,
     '''Find the best iteration to start analysing CCMC/FCIQMC data based on MSER minimization scheme.
 
 .. warning::
+    
+    Use with caution, check whether output is sensible and adjust parameters 
+    if necessary.
 
-    Use with caution, check whether output is sensible and adjust parameters if
-    necessary.
-
-The algorithm is based on MSER-5 scheme (https://ieeexplore.ieee.org/document/4736111/).
-Calculate :Math: `MSER(d) = ( \sum_{i=1}^{n-d}{ ( x(i+d) - (x's average) )^2 } / (n-d)^2`
-for different :Math: `d` values and decide the starting iteration as :Math: `d` which 
-minimizes :Math: `MSER(d)`. Here, :Math: `n` is `the number of data` and :Math: `x(i)` 
-is `the projected energy of the i-th iteration`, which is given as 
-`(\sum H_0j N_j) / N_0` for every step.
+This function gives an optimal estimation of the starting interations 
+based on MSER minimization heuristics. 
+This methods decides the starting iterations :math:`d` as minimizing an evalualtion 
+function 
+MSER(:math:`d`) = :math:`\Sigma_{i=1}^{n-d} ( X_{i+d} - X_{mean}(d) ) / (n-d)^2`.
+Here, :math:`n` is length of time-series, :math:`X_i` is '\sum H_0j N_j' / 'N_0' of :math:`i`-th step, and
+:math:`X_{mean}` is the average of :math:`X_i` after the :math:`d`-th step.
 
 Parameters 
 ----------
@@ -43,15 +41,18 @@ data : :class:`pandas.DataFrame`
     Calculation output for a FCIQMC or CCMC calculation.
 md : dict
     Metadata corresponding to the calculation in `data`.
-start_max_frac : float
-    :Math: `MSER(d)` is calculated for :Math: `d` yonger than 
-    :Math: `(data_max_fac * n)`, in which :Math: `d` giving the 
-    smallest :Math: `MSER(d)` is chosen to be the starting iteration. 
-    This trucation aims to ignore unreasonbaly small :Math: `MSER(d)` 
-    with very small :Math: `n`.
 n_blocks : int
-    Decide the initialization steps only from multiples
-    of this variable.
+    This analysis takes long time when :math:`n` is large.
+    Thus, we pick up :math:`d` for every 'n_blocks'
+    samples, calculate MSER(:math:`d`), and decide the 
+    optimal estimation of the starting iterations only 
+    from these `d`.
+start_max_frac : float
+    MSER(d) may oscillate when become unreanably small 
+    when :math:`n-d` is large. Thus, we calculate MSER(:math:`d`) 
+    for :math:`d` < (:math:`n` * start_max_frac) and 
+    give the optimal estimation of the starting iterations
+    only in this range of :math:`d`.
 verbose : int
     Inactive. This valuable does not change anything.
 end : int or None
@@ -91,12 +92,13 @@ def lazy_hybrid(calc, md, start=0, end=None, batch_size=1):
     :func:`std_analysis` is recommended unless custom processing is required
     before blocking analysis is performed.
 
-This scheme is a hybrid of two different post-analysis methods,
-AR model and Autocorre. The former (the latter) is comparatively 
+This scheme is made by hybridizing two different post-analysis methods,
+AR model and Straatsma. The former (the latter) is comparatively 
 good at estimating the statistic error for smaller (larger) length
 of time-series, respectively. This method just picks up the larger
-statistic error from the ones given by both methods. The mathematical
-details are explained in a under-prepared paper.
+statistic error from the ones given by both methods. The mathematical 
+details of both methods are explained in an upcoming paper.
+
 
 Parameters
 ----------
@@ -107,10 +109,12 @@ md : dict
 start, end : 
     See :func:`std_analysis`.
 batch_size : int
-    The energy time-series data is devided into batches with 
-    this size, for which the statistic error is calculated.
-    This significantly reduce the time for the analysis when
-    the original data size is huge.
+    The energy time-series is coarse-grained by 
+    averaging several sequential samples 
+    into just one sample and the statistic error
+    is calculated for the coarse-grained time-series.
+    This variable designates how many sequential 
+    samples are averaged together.
 
 Returns
 --------
