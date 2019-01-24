@@ -80,8 +80,11 @@ starting_iteration: integer
         if ( mser < mser_min):
             mser_min = mser
             starting_iteration = start_line * md['qmc']['ncycles']
+            final_start_line = start_line
+        
+    if ( final_start_line > n_data*start_max_frac*0.8):
+        warnings.warn('Proj. energy may not be converged. MSER min. may underestimate the starting iteration. One should check 1:$3/$4 plot.')
 
-        #print "starting_iteration = ", starting_iteration # added
     return starting_iteration
 
 def lazy_hybrid(calc, md, start=0, end=None, batch_size=1):
