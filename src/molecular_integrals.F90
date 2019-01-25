@@ -281,7 +281,6 @@ contains
         !    store: two-body integral store with components allocated to hold
         !       interals.  Note that the integral store is *not* zeroed.
 
-! [review] - AJWT: resolve this todo
         ! [todo] - shared memory comment possibly (as above for init_two_body_t)
 
         use checking, only: check_allocate

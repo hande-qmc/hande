@@ -146,28 +146,28 @@ contains
                     im =  get_two_body_int_mol_nonzero(coulomb_ints_im, i, j, i, j, sys%basis%basis_fns)
                     hmatel = hmatel + cmplx(re, im, p)
                     if (sys%basis%basis_fns(i)%Ms == sys%basis%basis_fns(j)%Ms) then
-! [review] - AJWT: replace if with a pointer at the top of function to avoid if?
-! [review] - VAN: mmmh, if I did, here, we would need another if later on, asking whether we want the imag or the real integral
-! [review] - VAN: store as we would not pass say coulomb_ints and coulomb_ints_im anymore but rather sys as coulomb_ints
-! [review] - VAN: are of a different type as sys%read_in%additional_exchange_ints. Feel free to suggest another way!
-! [review] - AJWT: I shall.  It's perfectly possible to replace (inside a loop)
-! [review] - AJWT: if(A) then
-! [review] - AJWT:     do_A(sys)
-! [review] - AJWT: else
-! [review] - AJWT:     do_B(sys)
-! [review] - AJWT: end if
-! [review] - AJWT: 
-! [review] - AJWT: by (outside the loop)
-! [review] - AJWT: if(A) then 
-! [review] - AJWT:   myfnpointer => do_A 
-! [review] - AJWT: else
-! [review] - AJWT:   myfnpointer => do_B
-! [review] - AJWT: end if
-! [review] - AJWT: 
-! [review] - AJWT: (and then in the loop)
-! [review] - AJWT: myfnpointer(sys)
-! [review] - AJWT: 
-! [review] - AJWT: do_A and do_B could be newly made functions.
+! [todo] - AJWT: replace if with a pointer at the top of function to avoid if?
+! [todo] - VAN: mmmh, if I did, here, we would need another if later on, asking whether we want the imag or the real integral
+! [todo] - VAN: store as we would not pass say coulomb_ints and coulomb_ints_im anymore but rather sys as coulomb_ints
+! [todo] - VAN: are of a different type as sys%read_in%additional_exchange_ints. Feel free to suggest another way!
+! [todo] - AJWT: I shall.  It's perfectly possible to replace (inside a loop)
+! [todo] - AJWT: if(A) then
+! [todo] - AJWT:     do_A(sys)
+! [todo] - AJWT: else
+! [todo] - AJWT:     do_B(sys)
+! [todo] - AJWT: end if
+! [todo] - AJWT: 
+! [todo] - AJWT: by (outside the loop)
+! [todo] - AJWT: if(A) then 
+! [todo] - AJWT:   myfnpointer => do_A 
+! [todo] - AJWT: else
+! [todo] - AJWT:   myfnpointer => do_B
+! [todo] - AJWT: end if
+! [todo] - AJWT: 
+! [todo] - AJWT: (and then in the loop)
+! [todo] - AJWT: myfnpointer(sys)
+! [todo] - AJWT: 
+! [todo] - AJWT: do_A and do_B could be newly made functions.
 
                         if (sys%read_in%extra_exchange_integrals) then
                             re = get_two_body_exchange_pbc_int_nonzero(sys%read_in%additional_exchange_ints, &
@@ -230,7 +230,7 @@ contains
                         hmatel = hmatel &
                             + get_two_body_int_mol(coulomb_ints, coulomb_ints_im, i, occ_list(iel), a, occ_list(iel), &
                                                     sys)
-! [review] - AJWT: replace if with a pointer at the top of function to avoid if?
+! [todo] - AJWT: replace if with a pointer at the top of function to avoid if?
                         if (sys%read_in%extra_exchange_integrals) then
                             hmatel = hmatel &
                                         - get_two_body_exchange_pbc_int_complex(sys%read_in%additional_exchange_ints, &
@@ -301,7 +301,7 @@ contains
                     im = get_two_body_int_mol_nonzero(coulomb_ints_im, i, occ_list(iel), a, occ_list(iel), basis_fns)
                     hmatel%c = hmatel%c + cmplx(re, im, p)
                     if (basis_fns(occ_list(iel))%Ms == basis_fns(i)%Ms) then
-! [review] - AJWT: replace if with a pointer at the top of function to avoid if?
+! [todo] - AJWT: replace if with a pointer at the top of function to avoid if?
                         if (sys%read_in%extra_exchange_integrals) then
                             re = get_two_body_exchange_pbc_int_nonzero(sys%read_in%additional_exchange_ints, &
                                         i, occ_list(iel), occ_list(iel), a, sys%basis%basis_fns)
