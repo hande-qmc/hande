@@ -559,7 +559,7 @@ contains
                         if (t_store) then
                             if (ii < 1 .and. ii == aa) then
                                 ! Have <i|h|i> from a core orbital.  Add
-                                ! contribution to sys%read_in%Ecore.
+                               ! contribution to sys%read_in%Ecore.
                                 ! If RHF need to include <i,up|h|i,up> and
                                 ! <i,down|h|i,down>.
                                 sys%read_in%Ecore = sys%read_in%Ecore + x*rhf_fac
@@ -779,6 +779,8 @@ contains
             call broadcast_one_body_t(sys%read_in%one_e_h_integrals_imag, root)
             call broadcast_two_body_t(sys%read_in%coulomb_integrals_imag, root, sys%read_in%max_broadcast_chunk)
         end if
+
+        if (sys%read_in%extra_exchange_integrals) call read_additional_exchange_integrals(sys, sp_fcidump_rank, t_verbose)
 
         if (size(sys%basis%basis_fns) /= size(all_basis_fns) .and. parent .and. t_verbose) then
             ! We froze some orbitals...
@@ -1173,5 +1175,144 @@ contains
         end if
 
     end subroutine get_sp_eigv
+
+    subroutine read_additional_exchange_integrals(sys, sp_fcidump_rank, verbose)
+
+        ! For periodic bounary conditions we require additional integrals, to be read
+        ! in from a separate FCIDUMP to be stored in sys%read_in%additional_exchange_ints{_imag}.
+        !    sp_fcidump_rank: ranking array which converts index in the
+        !         integrals file(s) to the (energy-ordered) index used in HANDE,
+        !         i.e. sp_fcidump_rank(a) = i, where a is the a-th
+        !         orbital according to the ordering used in the integral files
+        !         and i is the i-th orbital by energy ordering.
+        !         Note: must be 0-indexed and sp_fcidump_rank(0) = 0.  See above
+        !         commments about this special case.
+
+        use molecular_integrals, only: init_two_body_exchange_t, zero_two_body_exchange_int_store, &
+                                       store_pbc_int_mol, broadcast_two_body_exchange_t
+        use system, only: sys_t
+        use errors, only: stop_all
+        use parallel, only: parent, root
+
+        use, intrinsic :: iso_fortran_env, only: iostat_end
+
+        type(sys_t), intent(inout) :: sys
+        integer, intent(in) :: sp_fcidump_rank(0:)
+
+        logical, intent(in), optional :: verbose
+        integer :: ir, ierr
+        logical  :: t_exists
+        integer :: i,j,a,b, ios
+        real(p) :: x, y
+        complex(p) :: compint
+        integer :: rhf_fac
+
+        ios = 0
+
+        if (sys%read_in%uhf) then
+            rhf_fac = 1
+        else
+            rhf_fac = 2  ! need to double count some integrals.
+        end if
+
+        call init_two_body_exchange_t(sys, sys%read_in%pg_sym%gamma_sym, .false., sys%read_in%additional_exchange_ints)
+        call zero_two_body_exchange_int_store(sys%read_in%additional_exchange_ints)
+        if (sys%read_in%comp) then
+            call init_two_body_exchange_t(sys, sys%read_in%pg_sym%gamma_sym, .true., sys%read_in%additional_exchange_ints_imag)
+            call zero_two_body_exchange_int_store(sys%read_in%additional_exchange_ints_imag)
+        end if
+
+        if (parent) then
+            inquire(file=sys%read_in%ex_fcidump, exist=t_exists)
+            if (.not.t_exists) call stop_all('read_in_integrals', 'FCIDUMP does not &
+                                                               &exist:'//trim(sys%read_in%ex_fcidump))
+            open (newunit=ir, file=sys%read_in%ex_fcidump, status='old', form='formatted')
+
+            do
+                if (sys%read_in%comp) then
+                    read (ir,*, iostat=ios) compint, i, a, j, b
+                    x=real(compint,p)
+                    y=aimag(compint)
+                else
+                    read (ir,*, iostat=ios) x, i, a, j, b
+                end if
+
+                if (ios == iostat_end) exit
+                if (ios /= 0) call stop_all('read_additional_exchange_integrals', &
+                                            'Problem reading integrals file: '//trim(sys%read_in%ex_fcidump))
+
+                if (.not. (i == b .or. a == j)) call stop_all('read_additional_exchange_integrals',&
+                                        "Unexpected integral indexes encountered.")
+                i = rhf_fac*sp_fcidump_rank(i)
+                j = rhf_fac*sp_fcidump_rank(j)
+                a = rhf_fac*sp_fcidump_rank(a)
+                b = rhf_fac*sp_fcidump_rank(b)
+
+                call store_pbc_int_mol(i,j,a,b,x,sys%basis%basis_fns, sys%read_in%additional_exchange_ints, ierr)
+                if (sys%read_in%comp) then
+                    call store_pbc_int_mol(i,j,a,b,y,sys%basis%basis_fns, sys%read_in%additional_exchange_ints_imag, ierr)
+                end if
+            end do
+        end if
+
+        call broadcast_two_body_exchange_t(sys%read_in%additional_exchange_ints, root)
+        if (sys%read_in%comp) then
+            call broadcast_two_body_exchange_t(sys%read_in%additional_exchange_ints_imag, root)
+        end if
+
+        call modify_one_body_ints(sys, sys%read_in%coulomb_integrals, sys%read_in%additional_exchange_ints, &
+                                    sys%read_in%one_e_h_integrals)
+        if (sys%read_in%comp) then
+            call modify_one_body_ints(sys, sys%read_in%coulomb_integrals_imag, sys%read_in%additional_exchange_ints_imag, &
+                                    sys%read_in%one_e_h_integrals_imag)
+        end if
+
+    end subroutine read_additional_exchange_integrals
+
+    subroutine modify_one_body_ints(sys, two_e_ints, pbc_ex_ints, one_e_ints)
+
+        ! These two expressions for the Hartree-Fock energy are made identical here:
+        ! 1) E_HF = \sum_i <i|H|i> + \sum_{i<j} (<ij|ij> + <ij|ji>_exchange)
+        ! 2) E_HF = \sum_i <i|H|i> + 1/2\sum_{i,j} (<ij|ij> + <ij|ji>_exchange)
+        ! by including the expression +1/2\sum_{i} (<ii|ii> + <ii|ii>_exchange)
+        ! into the one_body integrals.
+        ! Note that this is necessary as <ii|ii> and <ii|ii>_exchange (may) differ (by cutoffs).
+
+        ! In:
+        !   sys: information on system being studied.
+        !   two_e_ints: object storing coulomb integrals to be used in modification.
+        !   pbc_ex_ints: object storing additional pbc ints.
+        ! In/Out:
+        !   one_e_ints: object containing one body integrals to be modified.
+
+        ! NB this function uses separately passed objects for the different integrals
+        ! to enable use of the same function for both the real and imaginary components
+        ! of all integrals.
+
+        use molecular_integrals, only: store_one_body_int, get_one_body_int_mol_nonzero, &
+                               get_two_body_int_mol_nonzero, get_two_body_exchange_pbc_int_nonzero,&
+                               pbc_ex_int_indx, int_ex_indx
+        use system, only: sys_t
+        use molecular_integral_types, only: two_body_t, one_body_t, two_body_exchange_t
+
+        type(sys_t), intent(in) :: sys
+        type(two_body_t), intent(in) :: two_e_ints
+        type(two_body_exchange_t), intent(in) :: pbc_ex_ints
+        type(one_body_t), intent(inout) :: one_e_ints
+        real(p) :: intgrl
+        integer :: i, ierr
+        type(int_ex_indx) :: indx
+
+        do i = 1, sys%basis%nbasis, 2
+            indx = pbc_ex_int_indx(.false., i,i,i,i,sys%basis%basis_fns)
+            intgrl = get_one_body_int_mol_nonzero(one_e_ints, i, i, sys%basis%basis_fns)
+
+            intgrl = intgrl + 0.5_p * get_two_body_int_mol_nonzero(two_e_ints, i, i, i, i, sys%basis%basis_fns)
+            intgrl = intgrl - 0.5_p * get_two_body_exchange_pbc_int_nonzero(pbc_ex_ints, i, i, i, i, sys%basis%basis_fns)
+
+            call store_one_body_int(i, i, intgrl, sys, .false., one_e_ints, ierr)
+        end do
+
+    end subroutine modify_one_body_ints
 
 end module read_in_system

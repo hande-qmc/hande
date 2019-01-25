@@ -1,0 +1,37 @@
+sys = read_in {
+    int_file = "fcidumpfile",
+    complex = true,
+    ex_int_file = "fcidumpfile_X",
+}
+ex_l=2
+hs = hilbert_space {
+    sys=sys,
+    hilbert = {
+        nattempts = 500000,
+        ex_level=ex_l,
+        rng_seed= 5,
+    }
+}
+ccmc {
+    sys = sys,
+    qmc = {
+        tau = 0.01,
+        rng_seed = 13086,
+        mc_cycles = 5,
+        init_pop = 500,
+        nreports = 200,
+        target_population = 20000,
+        state_size = -500,
+        spawned_state_size = -200,
+        quasi_newton = true,
+        shift_damping = 0.3,
+        rng_seed= 5,
+    },
+    ccmc = {
+            even_selection = true,
+            full_non_composite=true,
+           },
+    reference = {
+        ex_level = ex_l,
+    },
+}
