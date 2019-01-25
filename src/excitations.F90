@@ -206,9 +206,9 @@ contains
         ! their bit string before being passed in.
 
         ! In:
-        !    f1(tot_string_len): bit string representation of the Slater
+        !    f1(bit_string_len): bit string representation of the Slater
         !        determinant.
-        !    f2(tot_string_len): bit string representation of the Slater
+        !    f2(bit_string_len): bit string representation of the Slater
         !        determinant.
         ! Returns:
         !    Excitation level connecting determinants f1 and f2.
@@ -221,6 +221,28 @@ contains
         level = sum(count_set_bits(ieor(f1,f2)))/2
 
     end function get_excitation_level
+
+    function det_string(f0, basis) result(determinant_string)
+        ! Function to obtain the bit string representation of a Slater determinant.
+        
+        ! In:
+        !    f0(tot_string_len): bit string representation of the determinant with 
+        !        excitation information.
+        !    basis: information about the 1 particle basis.
+
+        ! Out:
+        !    string(bit_string_len): pointer to bit string representation of the determinant
+        !        without added information.
+        use basis_types, only: basis_t
+    
+        type(basis_t), intent(in) :: basis
+        integer(i0), target, intent(in) :: f0(:)
+        integer(i0), pointer :: determinant_string(:)
+
+        determinant_string => f0(:basis%bit_string_len)
+     
+    end function
+
 
     pure subroutine find_excitation_permutation1(excit_mask, f, excitation)
 

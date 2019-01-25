@@ -26,13 +26,13 @@
 #
 
 import argparse
-import os
-import sys
-import subprocess
-import re
-import getpass
-import platform
 import datetime
+import getpass
+import os
+import platform
+import re
+import subprocess
+import sys
 
 
 def configure_file(rep, fname, **kwargs):
@@ -120,7 +120,7 @@ def prepare_configuration_dictionary(**kwargs):
         '@_lua_version@' : lua_version,
         '@_hdf5_version@' : hdf5_version,
         '@_mpi_launcher@' : mpi_launcher,
-        '@_git_describe@' : '1.2-dev',
+        '@_git_describe@' : '1.3-dev',
         '@_git_last_commit_hash@' : 'unknown',
         '@_git_last_commit_author@' : 'unknown',
         '@_git_last_commit_date@' : 'unknown',
@@ -166,6 +166,7 @@ def run_git(args):
         sys.stderr.write('Git execution failed: {}'.format(e))
     return stdout.rstrip()
 
+
 def parse_args(args):
     """Convert args list into a dict for `prepare_configuration_dictionary`"""
 
@@ -173,26 +174,35 @@ def parse_args(args):
     path = os.path.normpath(os.path.join(path, '../lib/local'))
 
     parser = argparse.ArgumentParser(
-            description='Configure print_info.c and git_info.f90.')
-    parser.add_argument('-d', '--dest', default=path,
-            help='Output directory. Default: %(default)s.')
-    parser.add_argument('-s', '--src', default=path,
-            help='Input directory. Default: %(default)s.')
-    parser.add_argument('config', nargs=argparse.REMAINDER,
-            help='Space-separated list of pairs of keywords and values. '
-            'See comments for permitted values.')
+        description='Configure print_info.c and git_info.f90.')
+    parser.add_argument(
+        '-d',
+        '--dest',
+        default=path,
+        help='Output directory. Default: %(default)s.')
+    parser.add_argument(
+        '-s',
+        '--src',
+        default=path,
+        help='Input directory. Default: %(default)s.')
+    parser.add_argument(
+        'config',
+        nargs=argparse.REMAINDER,
+        help='Space-separated list of pairs of keywords and values. '
+        'See comments for permitted values.')
     options = parser.parse_args(args)
     if not options.config:
         parser.print_help()
         sys.exit(1)
     config_it = iter(options.config)
-    config_args = dict((k,v) for (k,v) in zip(config_it, config_it))
+    config_args = dict((k, v) for (k, v) in zip(config_it, config_it))
     return (options.src, options.dest, config_args)
+
 
 if __name__ == '__main__':
 
     in_path, out_path, kwargs = parse_args(sys.argv[1:])
     conf_dict = prepare_configuration_dictionary(**kwargs)
     for fname in ('print_info.c', 'git_info.f90'):
-        configure_file(conf_dict, fname, in_path=in_path, out_path=out_path,
-                suffix='.in')
+        configure_file(
+            conf_dict, fname, in_path=in_path, out_path=out_path, suffix='.in')

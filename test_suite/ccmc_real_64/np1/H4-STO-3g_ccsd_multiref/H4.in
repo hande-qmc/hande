@@ -1,0 +1,36 @@
+sys = read_in {
+    int_file = 'INTDUMP',
+    sym = 0,
+}
+
+ccmc {
+    sys = sys,
+    qmc = {
+        tau = 0.001,
+        real_amplitudes = true,
+        init_pop = 200,
+        mc_cycles = 2,
+        nreports = 100, 
+        target_population = 1e5,
+        state_size =3e5,
+        spawned_state_size = 3e5,
+        vary_shift = false,
+        vary_shift_from = 'proje',
+    },
+    restart = {
+        read = 3,
+    },
+    reference = {
+        ex_level = 2,
+    },
+    ccmc = {
+        full_non_composite = true,
+        even_selection = true,
+        multiref = true,
+        second_ref = {
+            ex_level = 2,
+            det = {5, 6, 7, 8},
+            },
+        },
+}
+

@@ -30,7 +30,7 @@ modules:
     - 'custom/explicit_libs.cmake'
 - nonbooloptions:
   - source:
-    - 'custom/dsfmt_mexp.cmake'
+    - 'custom/dsfmt.cmake'
     - 'custom/detsize.cmake'
     - 'custom/popsize.cmake'
     - 'custom/hande_exe_name.cmake'
