@@ -365,7 +365,9 @@ contains
             decoder_ptr => decode_det_spinocc_spinunocc
             update_proj_energy_ptr => update_proj_energy_hub_k
             sc0_ptr => slater_condon0_hub_k
-            spawner_ptr => spawn_lattice_split_gen
+            ! Quasi-newton requires cdet%fock_sum to be set and this is not provided
+            ! by the split excitation generators.
+            if (.not.qmc_in%quasi_newton) spawner_ptr => spawn_lattice_split_gen
             select case(qmc_in%excit_gen)
             case(excit_gen_no_renorm)
                 gen_excit_ptr%full => gen_excit_hub_k_no_renorm
@@ -961,7 +963,8 @@ contains
 
     end subroutine init_excit_gen
 
-    subroutine init_reference(sys, reference_in, io_unit, reference)
+! [review] - AJWT: document occlist.  Does any call to this function actually use it?
+    subroutine init_reference(sys, reference_in, io_unit, reference, occlist)
 
         ! Set the reference determinant from input options
 
@@ -983,15 +986,18 @@ contains
         type(reference_t), intent(in) :: reference_in
         integer, intent(in) :: io_unit
         type(reference_t), intent(out) :: reference
+        integer, allocatable, optional :: occlist(:)
 
         integer :: ierr
-
         ! Note occ_list could be set and allocated in the input.
         reference = reference_in
+
+    if (present(occlist)) reference%occ_list0 = occlist
 
         ! Set the reference determinant to be the spin-orbitals with the lowest
         ! single-particle eigenvalues which satisfy the spin polarisation and, if
         ! specified, the symmetry.
+
         call set_reference_det(sys, reference%occ_list0, .false., sys%symmetry, io_unit)
 
         if (.not. allocated(reference%f0)) then
@@ -1071,6 +1077,34 @@ contains
         reference%ex_level = reference_in%ex_level
 
     end subroutine init_reference_restart
+
+    subroutine init_secondary_reference(sys,reference_in,io_unit,qs)
+        ! Set the secondary reference determinant from input options
+        ! and use it to set up the maximum considered excitation level
+        ! for the calculation.
+
+        ! In:
+        !   sys: system being studied.
+        !   reference_in: secondary reference provided in input.
+        !   io_unit: io unit to write any information to.
+        ! In/Out:
+        !   qs: qmc_state used in the calculation.
+    
+        use reference_determinant, only: reference_t
+        use system, only: sys_t
+        use qmc_data, only: qmc_state_t 
+        use excitations, only: get_excitation_level
+        type(sys_t), intent(in) :: sys
+        type(reference_t), intent(in) :: reference_in
+        integer, intent(in) :: io_unit
+        type(qmc_state_t), intent(inout) :: qs
+
+        call init_reference(sys, reference_in, io_unit, qs%second_ref)
+        qs%ref%max_ex_level = qs%ref%ex_level + get_excitation_level(qs%ref%f0(:sys%basis%bit_string_len), &
+                                                                  qs%second_ref%f0(:sys%basis%bit_string_len))
+  
+    end subroutine
+
 
     subroutine init_spawn_store(qmc_in, nspaces, pop_real_factor, basis, non_blocking_comm, proc_map, io_unit, spawn_store)
 

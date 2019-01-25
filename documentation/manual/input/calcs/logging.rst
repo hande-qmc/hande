@@ -13,6 +13,10 @@ This functionality is recommended for developers only. It should allow easy iden
 the causes of any changes in Markov chain between two calculations.
 
 Additional logging functionality can be added upon request. Current coverage is by no means complete.
+    
+.. note::
+
+    This functionality cannot be used with OpenMP parallelisation.    
 
 ``calc``
     type: integer
