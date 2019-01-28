@@ -1084,7 +1084,7 @@ contains
         type(multispawn_stats_t), intent(inout) :: ms_stats
         type(p_single_double_coll_t), intent(inout) :: ps_stat
 
-        integer :: i, nspawnings_cluster
+        integer :: nspawnings_cluster
         logical :: attempt_death
 
         ! Spawning
