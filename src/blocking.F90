@@ -172,14 +172,18 @@ contains
 
     end subroutine deallocate_blocking
 
-    subroutine write_blocking_report_header(iunit)
+    subroutine write_blocking_report_header(iunit, complx)
 
         ! Write the block analysis report to a file identified by iunit.
 
         ! In:
         !   iunit: identifies the file to which the header is written out to.
+        !   complx: complex wavefunction?
 
         integer, intent(in) :: iunit
+        logical, intent(in) :: complx
+
+        if (complx) write(iunit, '(1X, "#WARNING: Using Complex. Imaginary Parts Ignored.")')
 
         write(iunit, '(1X, "#iterations")', advance = 'no')
         write(iunit, '(1X, "Start")', advance = 'no')
@@ -199,7 +203,7 @@ contains
 
     end subroutine write_blocking_report_header
 
-    subroutine collect_data(qmc_in, qs, bl, ireport)
+    subroutine collect_data(qmc_in, qs, bl, ireport, complx)
 
         ! Collecting data for the reblock analysis
 
@@ -207,6 +211,7 @@ contains
         !   qmc_in: input options relating to QMC methods.
         !   qs: qmc_state where the data for current iteration is taken
         !   ireport: number of reports
+        !   complx: complex wavefunction?
         ! In/Out:
         !   bl: Information needed to peform blocking on the fly. The data is
         !       collected every report and reblock_data and data_product is updated.
@@ -217,6 +222,7 @@ contains
         type(qmc_in_t), intent(in) :: qmc_in
         type(qmc_state_t), intent(in) :: qs
         integer, intent(in) :: ireport
+        logical, intent(in) :: complx
         type(blocking_t), intent(inout) :: bl
         integer :: i
         integer(int_64) :: reblock_size
@@ -224,10 +230,17 @@ contains
         ! \sum H_0j N_j, reference population and shift are added to
         ! data_accumulator of every block size.
 
-        bl%reblock_data(dt_numerator,:)%data_accumulator = bl%reblock_data(dt_numerator,:)%data_accumulator + &
+        if (complx) then
+            bl%reblock_data(dt_numerator,:)%data_accumulator = bl%reblock_data(dt_numerator,:)%data_accumulator + &
+                                                                                        real(qs%estimators(1)%proj_energy_comp,p)
+            bl%reblock_data(dt_denominator,:)%data_accumulator = bl%reblock_data(dt_denominator,:)%data_accumulator + &
+                                                                                        real(qs%estimators(1)%D0_population_comp,p)
+        else
+            bl%reblock_data(dt_numerator,:)%data_accumulator = bl%reblock_data(dt_numerator,:)%data_accumulator + &
                                                                                         qs%estimators(1)%proj_energy
-        bl%reblock_data(dt_denominator,:)%data_accumulator = bl%reblock_data(dt_denominator,:)%data_accumulator + &
+            bl%reblock_data(dt_denominator,:)%data_accumulator = bl%reblock_data(dt_denominator,:)%data_accumulator + &
                                                                                         qs%estimators(1)%D0_population
+        end if
         bl%reblock_data(dt_shift,:)%data_accumulator = bl%reblock_data(dt_shift,:)%data_accumulator + qs%shift(1)
 
         ! Everytime enough data is collected for each block size, the
@@ -566,7 +579,7 @@ contains
 
     end subroutine err_comparison
 
-    subroutine do_blocking(bl, qs, qmc_in, ireport, iter, iunit, blocking_in)
+    subroutine do_blocking(bl, qs, qmc_in, ireport, iter, iunit, blocking_in, complx)
 
         ! Carries out blocking on the fly and changes the start point to
         ! minimise the fractional error in standard deviation weighted by the
@@ -579,6 +592,7 @@ contains
         !   iunit: Number identifying the file to which the blocking report is
         !   written out to.
         !   blocking_in: input options for blocking on the fly.
+        !   complx: complex wavefunction?
         ! In/Out:
         !   bl: Information needed to peform blocking on the fly.
         !   qs: qmc_state where the data for current iteration is taken.
@@ -591,6 +605,7 @@ contains
         integer, intent(in) :: ireport, iter
         integer, intent(in) :: iunit
         type(blocking_in_t), intent(in) :: blocking_in
+        logical, intent(in) :: complx
 
         ! Detect whether blocking should have started yet.
         if (bl%start_ireport == -1 .and. blocking_in%start_point<0 .and. qs%vary_shift(1)) then
@@ -606,7 +621,7 @@ contains
 
         if (ireport >= bl%start_ireport .and. bl%start_ireport>=0) then
             bl%n_reports_blocked = ireport - bl%start_ireport + 1
-            call collect_data(qmc_in, qs, bl, ireport)
+            call collect_data(qmc_in, qs, bl, ireport, complx)
             call copy_block(bl)
         end if
 
@@ -793,13 +808,15 @@ contains
 ! It should be noted that after each modification of the shift damping we must discard all
 ! previous reblocking data. This makes it imperitive that we equilibrate rapidly.
 
-    subroutine update_shift_damping(qs, bl, ireport)
+    subroutine update_shift_damping(qs, bl, ireport, complx)
 
         ! Updates the shift damping according to the stage of a shift damping
         ! optimisation we are in. This should only be called on the parent
         ! processor, which broadcasts the resulting values to other processors.
         ! The mpi broadcasts are recieved within receive_shift_updates.
 
+        ! In:
+        !   complx: complex wavefunction?
         ! In/Out:
         !   qs: qmc_state object containing information on current state of
         !           qmc calculation.
@@ -814,6 +831,7 @@ contains
         type(qmc_state_t), intent(inout) :: qs
         type(blocking_t), intent(inout) :: bl
         integer, intent(in) :: ireport
+        logical, intent(in) :: complx
         real(p) :: stds(dt_numerator:dt_shift), means(dt_numerator:dt_shift)
         real(p) :: sd_proj_energy_dist, instant_proj_e, diff
         logical :: modified
@@ -885,7 +903,12 @@ contains
 
                 if (modified) then
                     write (6, '("# Auto-Shift-Damping: Shift damping changed to",1X,es17.10)') qs%shift_damping
-                    qs%shift= qs%estimators(1)%proj_energy/qs%estimators(1)%D0_population
+                    if (complx) then
+                        ! Here, we don't ignore imaginary part since it is cheap.
+                        qs%shift = real(qs%estimators%proj_energy_comp/qs%estimators%D0_population_comp, p) 
+                    else
+                        qs%shift= qs%estimators(1)%proj_energy/qs%estimators(1)%D0_population
+                    end if
                     call reset_blocking_info(bl)
                 end if
             end if
