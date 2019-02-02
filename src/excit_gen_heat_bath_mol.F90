@@ -1,9 +1,9 @@
 module excit_gen_heat_bath_mol
 
 ! A module containing excitations generators which weight excitations according to the heat bath algorithm
-! by Holmes et al. (Holmes, A. A.; Changlani, H. J.; Umrigar, C. J. J. Chem. Theory Comput. 2016, 12, 1561–1571).
+! by Holmes et al. (Holmes, A. A.; Changlani, H. J.; Umrigar, C. J. J. Chem. Theory Comput. 12, 1561–1571 (2016)).
 ! The heat bath algorithm has been adapted to HANDE as described by Neufeld and Thom
-! (V.A. Neufeld, A.J.W. Thom, J. Chem. Theory Comput. 2018, XXXX, XXX, XXX-XXX (10.1021/acs.jctc.8b00844)).
+! (V.A. Neufeld, A.J.W. Thom, J. Chem. Theory Comput., 15, 1, 127-140 (2019)).
 
 use const, only: i0, p, depsilon, debug
 

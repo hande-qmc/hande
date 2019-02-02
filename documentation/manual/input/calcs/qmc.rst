@@ -222,7 +222,7 @@ algorithms and control the core settings in the algorithms.
     parallel spins or not. The idea for those comes from Alavi and others.
 
     Note that the implementations of the weighted excitation generators here are all
-    described in [Neufeld18]_.
+    described in [Neufeld19]_.
 
     The 'heat_bath' excitation generator is very similar to the "original" heat bath
     excitation generator described by Holmes et al. [Holmes16]_. :math:`i,j,a,b` are chosen
@@ -272,7 +272,7 @@ algorithms and control the core settings in the algorithms.
     is similar to 'heat_bath_power_pitzer', the distinction being the types of weights used
     to select :math:`ab`.
 
-    The 'heat_bath_power_pitzer_ref' excitation generator [Neufeld18]_ uses precalculated weights and unlike
+    The 'heat_bath_power_pitzer_ref' excitation generator [Neufeld19]_ uses precalculated weights and unlike
     'uniform_power_pitzer', it also samples :math:`i` and :math:`j` with weighted probabilities.
     It also samples single excitations in a weighted manner. Its memory cost is
     :math:`\mathcal{O}(M^2)`.

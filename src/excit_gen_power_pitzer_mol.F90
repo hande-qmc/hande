@@ -6,7 +6,7 @@ module excit_gen_power_pitzer_mol
 ! excitation generators differ here.
 ! How they have been adapted to HANDE and the pre-calculated power_pitzer_orderN/heat bath Power--Pitzer ref.
 ! excitation generator is described by Neufeld and Thom
-! (V.A. Neufeld, A.J.W. Thom, J. Chem. Theory Comput. 2018, XXXX, XXX, XXX-XXX (10.1021/acs.jctc.8b00844)).
+! (V.A. Neufeld, A.J.W. Thom, J. Chem. Theory Comput., 15, 1, 127-140 (2019)).
 
 use const, only: i0, p, depsilon, debug
 
