@@ -17,7 +17,7 @@ ccmc {
         real_amplitudes = true,
         state_size = -200,
         spawned_state_size = -200,
-        excit_gen = 'cauchy_schwarz_orderM_ij',
+        excit_gen = 'heat_bath_cauchy_schwarz',
         pattempt_update = true,
     },
     reference = {

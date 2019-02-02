@@ -17,7 +17,7 @@ ccmc {
         real_amplitudes = true,
         state_size = -200,
         spawned_state_size = -200,
-        excit_gen = 'heat_bath_single',
+        excit_gen = 'heat_bath_exact_singles',
         pattempt_update = true,
     },
     reference = {
