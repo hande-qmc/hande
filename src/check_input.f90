@@ -208,13 +208,13 @@ contains
 
         if ((sys%system == read_in) .and. (qmc_in%excit_gen == excit_gen_power_pitzer)) then
             call stop_all(this, 'Bugs were found in Power Pitzer for read_in systems. Do not use until further notice. &
-                        &Use another excitation generator such as Power Pitzer Order N or &
-                        &Power Pitzer Order M instead if you want Power Pitzer weights.')
+                        &Use another excitation generator such as Heat Bath Power Pitzer Ref or &
+                        &Heat Bath Power Pitzer instead if you want Power Pitzer weights.')
         end if
         
         if ((sys%read_in%comp) .and. ((qmc_in%excit_gen == excit_gen_cauchy_schwarz_occ) .or. &
             (qmc_in%excit_gen == excit_gen_cauchy_schwarz_occ_ij))) then
-            call stop_all(this, 'Complex calculations not implemented with Cauchy Schwarz order M(ij) yet.')
+            call stop_all(this, 'Complex calculations not implemented with Uniform/Heat Bath Cauchy Schwarz yet.')
         end if
 
     end subroutine check_qmc_opts
