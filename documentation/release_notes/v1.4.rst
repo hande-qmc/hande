@@ -1,0 +1,31 @@
+Release notes for v1.4
+======================
+
+Added
+-----
+
+* Modified exchange integrals for complex read in systems for CCMC and FCIQMC solids calculations as mentioned in
+  HANDE-QMC developers/J. S. Spencer et al., J. Chem. Theory Comput., published online (2019)
+* Multiref. CCMC TODO cite
+* Weighted excitation generators for CCMC and FCIQMC called "Heat-Bath/Uniform Cauchy-Schwarz" excitation generators in
+  V.A. Neufeld, A.J.W. Thom, J. Chem. Theory Comput., 15, 1, 127-140 (2019), related to
+  S. D. Smart, G. H. Booth, and A. Alavi, unpublished (whose excitation generators are mentioned in L. R. Schwarz, PhD thesis, Cambridge (2017))
+  for molecular read in systems.
+
+Changed
+-------
+
+n/a
+
+Removed
+-------
+
+n/a
+
+Bug Fixes
+----------
+
+* When using ``pattempt_update`` and OpenMP simulataneously, there were potential race conditions when updating
+  ``pattempt_single`` which have been fixed now.
+* Previously, the k-points were printed off incorrectly in the symmetry table when doing solids CCMC/FCIQMC calculations.
+* Fixed problems when using Quasi-Newton and k space lattice model systems (Hubbard model).
