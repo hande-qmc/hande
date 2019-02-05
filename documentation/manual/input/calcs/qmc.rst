@@ -287,6 +287,13 @@ algorithms and control the core settings in the algorithms.
     occupied, the excitation is forbidden.
 
     .. note::
+        Our current advise for selecting an excitation generator to use with read_in systems [Neufeld19]_:
+        First consider the 'heat_bath' excitation generator. A bias test will be run at the beginning of
+        the calculation then. If the bias test fails, try 'heat_bath_uniform_singles'.
+        If 'heat_bath' and/or 'heat_bath_uniform_singles' fail due to memory constraints,
+        try 'heat_bath_power_pitzer_ref'. Note that only 'heat_bath' requires a bias test.
+    
+    .. note::
         Currently only the no_renorm and renorm excitation generators are available in
         DMQMC.
 
