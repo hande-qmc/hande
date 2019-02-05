@@ -9,7 +9,7 @@ crystal in STO-3G basis with 2x1x1 sampling of the Brillouin zone. Familiarity w
 The input and output files can be found under the ``documentation/manual/tutorials/calcs/ccmc_solids`` subdirectory of the source distribution.
 
 First of all, we need the one- and two- electron integrals from an external source. We will
-use PySCF_ software package to perform preliminary Hartree-Fock calculation
+use PySCF_ software package [Sun18]_ to perform preliminary Hartree-Fock calculation
 and generate the integrals. PySCFDump script can be used to save the integrals in the FCIDUMP
 format readable by HANDE [#pyscfdump]_ .
 
@@ -48,8 +48,8 @@ There are two points to notice
 
 In a non-initiator calculation, we try setting the time step ``tau`` as big as possible before too many blooms happen.
 A shoulder plot should be used to determine ``target_population``.
-The ``heat_bath`` excitation generator [Holmes16]_ is often a good choice in small systems.
-The input script used in this tutorial is:
+The ``heat_bath`` excitation generator [Holmes16]_ (adapted to HANDE as described in [Neufeld19]_)
+is often a good choice in small systems. The input script used in this tutorial is:
 
 .. literalinclude:: calcs/ccmc_solids/ccmc.lua
     :language: lua
@@ -83,7 +83,7 @@ and correlation energy:
     import matplotlib.pyplot as plt
     (metadata, qmc_data) = pyhande.extract.extract_data('calcs/ccmc_solids/diamond_ccmc.out')[0]
     plt.plot(qmc_data['iterations'], qmc_data['Shift'], label=r'$S(\tau)$')
-    plt.plot(qmc_data['iterations'], qmc_data['Re{\sum H_0j N_j}']/qmc_data['Re{N_0}'], label=r'$E(\tau) = \Re(\sum_j H_{0j} N_j(\tau))/\Re(N_0(\tau))$')
+    plt.plot(qmc_data['iterations'], qmc_data['Re{\sum H_0j N_j}']/qmc_data['Re{N_0}'], label=r'$E(\tau) = \Re\left(\sum_j H_{0j} N_j(\tau)\right)/\Re(N_0(\tau))$')
     plt.legend()
     plt.ylim(-0.4,0)
     plt.xlabel('iteration')
