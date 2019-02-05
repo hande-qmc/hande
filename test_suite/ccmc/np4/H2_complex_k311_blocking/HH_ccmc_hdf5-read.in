@@ -29,5 +29,6 @@ ccmc {
         blocking_on_the_fly = true,
         min_blocks_used = 1,
         error_limit = 5e-3,
+        auto_shift_damping=true,
     },
 }
