@@ -234,7 +234,7 @@ algorithms and control the core settings in the algorithms.
     there might be no occupied :math:`j` that lets us select :math:`ija`. See Holmes et al.
     for details. We check for the bias in the beginning of a calculation and stop it if
     necessary.
-    The Cauchy-Scharz ([SmartXX]_, described in [Blunt17]_)
+    The Cauchy-Schwarz ([SmartXX]_, described in [Blunt17]_)
     and Power-Pitzer excitation generators use approximate upper bounds
     for these weights. A version of Cauchy-Schwarz excitation generators is described in [Schwarz]_
     but the weights used here and the implementation differ.
@@ -293,6 +293,9 @@ algorithms and control the core settings in the algorithms.
         If 'heat_bath' and/or 'heat_bath_uniform_singles' fail due to memory constraints,
         try 'heat_bath_power_pitzer_ref'. Note that only 'heat_bath' requires a bias test.
     
+    .. note::
+        The Cauchy-Schwarz excitation generators are not implemented for complex read_in systems!
+
     .. note::
         Currently only the no_renorm and renorm excitation generators are available in
         DMQMC.
