@@ -543,6 +543,7 @@ contains
         !        CAS = {cas1, cas2}
         !        complex = true/false,
         !        max_broadcast_chunk = block_size,
+        !        ex_int_file = '...',
         !    }
 
         use, intrinsic :: iso_c_binding, only: c_ptr, c_int
@@ -571,8 +572,9 @@ contains
         logical :: new, new_basis, verbose, hdf5, t_exists
         integer :: err
 
-        character(20), parameter :: keys(12) = [character(20) :: 'sys', 'nel', 'electrons', 'int_file', 'dipole_int_file', 'Lz', &
-                                                                'sym', 'ms', 'CAS', 'complex', 'verbose', 'max_broadcast_chunk']
+        character(20), parameter :: keys(13) = [character(20) :: 'sys', 'nel', 'electrons', 'int_file', 'dipole_int_file', 'Lz', &
+                                                                'sym', 'ms', 'CAS', 'complex', 'verbose', 'max_broadcast_chunk', &
+                                                                'ex_int_file']
 
         call cpu_time(t1)
 
@@ -593,6 +595,9 @@ contains
 
         call aot_get_val(sys%read_in%max_broadcast_chunk, err, lua_state, opts, 'max_broadcast_chunk')
 
+        call aot_get_val(sys%read_in%ex_fcidump, err, lua_state, opts, 'ex_int_file')
+
+        sys%read_in%extra_exchange_integrals = (.not.sys%read_in%ex_fcidump=='')
 
         if (parent) then
             ! Verify that the specified file exists and check whether it is HDF5 or text.

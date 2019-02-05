@@ -6,6 +6,7 @@ Bibliography
 .. [Booth09] G.H. Booth, A.J.W. Thom, A. Alavi, Fermion Monte Carlo without fixed nodes: a game of life, death, and annihilation in Slater determinant space, J. Chem. Phys. 131, 054106 (2009).
 .. [Booth10] G.H. Booth, A novel Quantum Monte Carlo method for molecular systems, PhD thesis, University of Cambridge (2010).
 .. [Booth13] G.H. Booth, A. Grüneis, G. Kresse, A. Alavi, Towards an exact description of electronic wavefunctions in real solids: Nature 493, 365-370 (2013).
+.. [Booth14] G.H. Booth, S.D. Smart, A.Alavi, Linear-scaling and parallelisable algorithms for stochastic quantum chemistry, Mol. Phys. 112, 1855 (2014).
 .. [Cleland10] D. Cleland, G.H. Booth, A. Alavi, Communications: Survival of the fittest: accelerating convergence in full configuration-interaction quantum Monte Carlo. J. Chem. Phys. 132, 041103 (2010).
 .. [Dunning89] Dunning, Thom H., Gaussian basis sets for use in correlated molecular calculations. I. The atoms boron through neon and hydrogen. J. Chem. Phys. 90, 1007 (1989) 
 .. [Flyvbjerg89] H. Flyvbjerg, H. G. Petersen, Error estimates on averages of correlated data, J. Chem. Phys. 91, 461 (1989). 
@@ -21,6 +22,7 @@ Bibliography
 .. [Overy2014] C. Overy, G.H. Booth, N.S. Blunt, J.J. Shepherd, D. Cleland, A. Alavi, Unbiased reduced density matrices and electronic properties from full configuration interaction quantum Monte Carlo, J. Chem. Phys. 141, 244117 (2014).
 .. [Petruzielo12] F.R. Petruzielo, A.A. Holmes, H.J. Changlani, M.P. Nightingale, C. J. Umrigar, Semistochastic projector monte carlo method, Phys. Rev. Lett. 109, 230201 (2012).
 .. [Power74] J.D. Power, R.M. Pitzer, Inequalities for electron repulsion integrals, Chem. Phys. Lett., 478-483 (1974).
+.. [Smartunpub] S.D. Smart, G.H. Booth, A. Alavi, Excitation generation in full configuration interaction quantum Monte Carlo based on Cauchy-Schwarz distributions (unpublished).
 .. [Shepherd14] J.J. Shepherd, G.E. Scuseria, J.S. Spencer, Sign problem in full configuration interaction quantum Monte Carlo: Linear and sublinear representation regimes for the exact wave function, Phys. Rev. B 90, 155130 (2014).
 .. [Spencer12] J.S. Spencer, N.S. Blunt, W.M.C. Foulkes, The sign problem and population dynamics in the full configuration interaction quantum Monte Carlo method, J. Chem. Phys. 136, 054110 (2012).
 .. [Spencer14] J.S. Spencer, N.S. Blunt, W.A. Vigor, F.D. Malone, W.M.C. Foulkes, J.J. Shepherd, and A.J.W. Thom, The Highly Accurate N-DEterminant (HANDE) quantum Monte Carlo project: Open-source stochastic diagonalisation for quantum chemistry, arXiv:1407.5407 (2014).

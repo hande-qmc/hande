@@ -210,3 +210,21 @@ ccmc options
         research. As such, the situations in which this is the optimal approach are not yet
         entirely clear (benchmarking is underway). In addition, it is not currently confirmed
         to be compatible with propagation of the linked coupled cluster equations.
+
+``multiref``
+    type: boolean.
+
+    Optional. Default: false.
+
+    If true, perform a coupled cluster calculation using multiple references. second_ref must
+    then be defined. Currently only one additional reference can be used.
+
+``second_ref``
+    type: 
+
+    Optional. 
+ 
+    Options to select the secondary reference state used. See :ref:`reference_table`.
+    Must include at least ``det`` and ``ex_level``.
+ 
+

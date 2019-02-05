@@ -1,0 +1,16 @@
+fcidumpfile and fcidumpfile performed with pyscf v 1.3.1 and pyscfdump commit:
+
+commit 56a572396764dab6b3086524b07e1c8084425ce1
+Author: Alex Thom <ajwt3@cam.ac.uk>
+Date:   Mon Jul 31 16:51:04 2017 -0600
+
+    Fix for >2 k-points in a direction. HF energy in HANDE now correct.
+
+
+-------
+CCSD energy from pyscf will differ to that from HANDE as a different exchange integral treatment is used.
+System is H2 in STO-3G in a box size 10.0 bohr with bond length 4.0 bohr and k.e. cutoff 50 Ry.
+
+generated with wrapper script "python ../HH_molcryst_new.py H STO-3G 50 3 1 1 1 10 4.0 4.1 .8"
+
+See hh_311_k50.scf.output for its output.

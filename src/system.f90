@@ -290,6 +290,17 @@ type sys_read_in_t
     ! Is system complex?
     logical :: comp = .false.
 
+    ! FCIDUMP filename (contains additional exchange integrals which can be required to make up
+    ! Hamiltonian matrix with periodic boundary conditions).
+    ! Must be text file for now. 
+! [todo]: Add HDF5 support.
+    character(255) :: ex_fcidump = ''
+    ! Whether this file has been provided.
+    logical :: extra_exchange_integrals = .false.
+    ! Note that these integrals must be purely real.
+    type(two_body_exchange_t) :: additional_exchange_ints
+    type(two_body_exchange_t) :: additional_exchange_ints_imag
+
     ! Data about momentum/translational symmetry. Some momentum symmetry
     ! information is also stored within pg_sym to avoid duplication of
     ! data strunctures.

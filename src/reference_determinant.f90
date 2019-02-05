@@ -13,7 +13,7 @@ implicit none
 
 type reference_t
     ! Bit string of reference determinant.
-    integer(i0), allocatable :: f0(:)
+    integer(i0), allocatable :: f0(:) !This should be sys%basis%tot_string_len long
     ! List of occupied orbitals in reference determinant.
     integer, allocatable :: occ_list0(:)
     ! Bit string of reference determinant used to generate the Hilbert space.
@@ -28,6 +28,8 @@ type reference_t
     ! determinants differ by at most ex_level excitations.
     ! Set to the number of electrons in the system to use the full space.
     integer :: ex_level = -1
+    ! Set to the maximum acceptable excitation level (for use in multireference CCMC).
+    integer :: max_ex_level = -1 
     ! Energy of reference determinant.
     real(p) :: H00
     ! Value of <D0|O|D0>, where O is the operator we are sampling.

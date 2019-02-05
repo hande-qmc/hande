@@ -1,6 +1,7 @@
 module excit_gen_power_pitzer_mol
 
 ! A module containing excitations generators for molecules which weight excitations according to the exchange matrix elements.
+! For details on most of these excitation generators, refer to V.A. Neufeld, A.J.W. Thom, arXiv:1808.05093.
 
 use const, only: i0, p, depsilon, debug
 
