@@ -20,9 +20,9 @@ ccmc {
         real_amplitudes = true,
     },
     ccmc = {
-	    even_selection = true,
-            full_non_composite=true,
-           },
+	even_selection = true,
+        full_non_composite=true,
+    },
     reference = {
         ex_level = ex_l,
     },
@@ -33,9 +33,5 @@ ccmc {
     restart = {
         write = true,
     },
--- [review] - AJWT: Can these comments be removed?
-   -- logging = {
-   --     kpoint = 2,
-  --  },
 }
 
