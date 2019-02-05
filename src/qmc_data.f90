@@ -54,6 +54,10 @@ enum, bind(c)
     enumerator :: excit_gen_power_pitzer_occ_ij
     ! The version O(N) which precomputes more than excit_gen_power_pitzer.
     enumerator :: excit_gen_power_pitzer_orderN
+    ! The Cauchy Schwarz version O(M) which chooses occ orbitals first. ij are found uniformly.
+    enumerator :: excit_gen_cauchy_schwarz_occ
+    ! The Cauchy Schwarz version O(M) which chooses occ orbitals first. ij are found with heat bath.
+    enumerator :: excit_gen_cauchy_schwarz_occ_ij
     ! Heat bath excitation generators, based on Holmes, A. A.; Changlani, H. J.; Umrigar, 
     ! C. J. J. Chem. Theory Comput. 2016, 12, 1561–1571
     enumerator :: excit_gen_heat_bath
@@ -923,17 +927,21 @@ contains
         case (excit_gen_power_pitzer)
             call json_write_key(js, 'excit_gen', 'power_pitzer')
         case (excit_gen_power_pitzer_occ)
-            call json_write_key(js, 'excit_gen', 'power_pitzer_orderM')
+            call json_write_key(js, 'excit_gen', 'uniform_power_pitzer')
         case (excit_gen_power_pitzer_occ_ij)
-            call json_write_key(js, 'excit_gen', 'power_pitzer_orderM_ij')
+            call json_write_key(js, 'excit_gen', 'heat_bath_power_pitzer')
         case (excit_gen_power_pitzer_orderN)
-            call json_write_key(js, 'excit_gen', 'power_pitzer_orderN')
+            call json_write_key(js, 'excit_gen', 'heat_bath_power_pitzer_ref')
+        case (excit_gen_cauchy_schwarz_occ)
+            call json_write_key(js, 'excit_gen', 'uniform_cauchy_schwarz')
+        case (excit_gen_cauchy_schwarz_occ_ij)
+            call json_write_key(js, 'excit_gen', 'heat_bath_cauchy_schwarz')
         case (excit_gen_heat_bath)
             call json_write_key(js, 'excit_gen', 'heat_bath')
         case (excit_gen_heat_bath_uniform)
-            call json_write_key(js, 'excit_gen', 'heat_bath_uniform')
+            call json_write_key(js, 'excit_gen', 'heat_bath_uniform_singles')
         case (excit_gen_heat_bath_single)
-            call json_write_key(js, 'excit_gen', 'heat_bath_single')
+            call json_write_key(js, 'excit_gen', 'heat_bath_exact_singles')
         case default
             call json_write_key(js, 'excit_gen', qmc%excit_gen)
         end select

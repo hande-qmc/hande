@@ -1,7 +1,12 @@
 module excit_gen_power_pitzer_mol
 
 ! A module containing excitations generators for molecules which weight excitations according to the exchange matrix elements.
-! For details on most of these excitation generators, refer to V.A. Neufeld, A.J.W. Thom, arXiv:1808.05093.
+! The on-the-fly excitation generators ("orderM") are based on Alavi and others (Smart et al., unpublished).
+! For some description of the on-the-fly excitation generators see PhD Thesis (Cambridge, 2017) by L.R. Schwarz but note that
+! excitation generators differ here.
+! How they have been adapted to HANDE and the pre-calculated power_pitzer_orderN/heat bath Power--Pitzer ref.
+! excitation generator is described by Neufeld and Thom
+! (V.A. Neufeld, A.J.W. Thom, J. Chem. Theory Comput., 15, 1, 127-140 (2019)).
 
 use const, only: i0, p, depsilon, debug
 
@@ -1259,9 +1264,17 @@ contains
 
         ! Create a random excitation from cdet and calculate both the probability
         ! of selecting that excitation and the Hamiltonian matrix element.
+        
         ! Weight the double excitations according the the Power-Pitzer bound
         ! <ij|ab> <= Sqrt(<ia|ai><jb|bj>), see J.D. Power, R.M. Pitzer, Chem. Phys. Lett.,
-        ! 478-483 (1974).
+        ! 478-483 (1974) if using a power_pitzer excitation generator.
+        ! Weight the double excitation according to Cauchy-Schwarz inequalitiy
+        ! <ij|ab> <= Sqrt(<ia|ia><jb|jb>) if using a cauchy_schwarz excitation generator.
+        ! This is following ideas by Alavi and others and is mentioned in
+        ! Blunt, N. S., Booth, G. H., Alavi, A. JCP, 146, 244105 (2017) or
+        ! Schwarz, L. R., PhD Thesis, Cambridge (2017).
+        ! We note that the excitation generators here differ from the description in Schwarz.
+        
         ! This requires a lookup of O(M) two-electron integrals in its setup.
         ! This calculates weights on-the-fly. Single excitations are currently treated uniformly and ij are also
         ! selected uniformly currently or according to heat bath.
@@ -1296,7 +1309,7 @@ contains
         use excit_gen_utils, only: select_ij_heat_bath, find_i_d_weights
         use alias, only: select_weighted_value
         use read_in_symmetry, only: cross_product_basis_read_in
-        use qmc_data, only: excit_gen_power_pitzer_occ_ij
+        use qmc_data, only: excit_gen_power_pitzer_occ_ij, excit_gen_cauchy_schwarz_occ_ij
 
         type(sys_t), intent(in) :: sys
         type(excit_gen_data_t), intent(in) :: excit_gen_data
@@ -1325,7 +1338,8 @@ contains
             ! We have a double
 
             ! 2. Select orbitals to excite from
-            if (excit_gen_data%excit_gen == excit_gen_power_pitzer_occ_ij) then
+            if ((excit_gen_data%excit_gen == excit_gen_power_pitzer_occ_ij) .or. &
+                (excit_gen_data%excit_gen == excit_gen_cauchy_schwarz_occ_ij)) then
                 ! Select ij using heat bath excit. gen. techniques.
                 ! If this is the first time this excitation generator has been called in a double excitation with this cdet,
                 ! need to calculate weights.

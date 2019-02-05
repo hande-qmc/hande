@@ -55,7 +55,8 @@ contains
         use qmc_data, only: qmc_in_t, fciqmc_in_t, restart_in_t, load_bal_in_t, annihilation_flags_t, qmc_state_t, &
                             neel_singlet, &
                             excit_gen_power_pitzer, excit_gen_power_pitzer_orderN, excit_gen_power_pitzer_occ_ij, &
-                            excit_gen_heat_bath, excit_gen_heat_bath_uniform, excit_gen_heat_bath_single
+                            excit_gen_heat_bath, excit_gen_heat_bath_uniform, excit_gen_heat_bath_single, &
+                            excit_gen_cauchy_schwarz_occ, excit_gen_cauchy_schwarz_occ_ij
         use reference_determinant, only: reference_t
         use dmqmc_data, only: dmqmc_in_t
         use excit_gens, only: dealloc_excit_gen_data_t
@@ -228,14 +229,14 @@ contains
                 '(1X, "# Finishing the P.P. Order N excitation generator initialisation, time taken:",1X,es17.10)') set_up_time
         end if
         
-        if (qmc_in%excit_gen==excit_gen_power_pitzer_occ_ij) then
-            if (parent) write(iunit, '(1X, "# Starting the P.P. Order M ij excitation generator initialisation.")')
+        if ((qmc_in%excit_gen==excit_gen_power_pitzer_occ_ij) .or. (qmc_in%excit_gen==excit_gen_cauchy_schwarz_occ_ij)) then
+            if (parent) write(iunit, '(1X, "# Starting the P.P./C.S. O(M)ij excitation generator initialisation.")')
             call cpu_time(t1)
             call init_excit_mol_power_pitzer_orderM_ij(sys, qmc_state%ref, qmc_state%excit_gen_data%excit_gen_pp)
             call cpu_time(t2)
             set_up_time = t2 - t1
             if (parent) write(iunit, &
-                '(1X, "# Finishing the P.P. Order M ij excitation generator initialisation, time taken:",1X,es17.10)') set_up_time
+                '(1X, "# Finishing P.P./C.S. O(M)ij excitation generator initialisation, time taken:",1X,es17.10)') set_up_time
         end if
 
         if (qmc_in%excit_gen==excit_gen_heat_bath) then
@@ -294,7 +295,7 @@ contains
         use qmc_data, only: qmc_in_t, fciqmc_in_t, single_basis, neel_singlet, neel_singlet_guiding, &
                             excit_gen_renorm, excit_gen_renorm_spin, excit_gen_no_renorm, excit_gen_no_renorm_spin, &
                             excit_gen_power_pitzer_occ, excit_gen_power_pitzer_occ_ij, excit_gen_power_pitzer, &
-                            excit_gen_power_pitzer_orderN, &
+                            excit_gen_power_pitzer_orderN, excit_gen_cauchy_schwarz_occ, excit_gen_cauchy_schwarz_occ_ij, &
                             excit_gen_heat_bath, excit_gen_heat_bath_uniform, excit_gen_heat_bath_single
         use dmqmc_data, only: dmqmc_in_t, free_electron_dm
         use reference_determinant, only: reference_t
@@ -324,7 +325,8 @@ contains
         use hamiltonian_heisenberg, only: diagonal_element_heisenberg, diagonal_element_heisenberg_staggered
         use hamiltonian_molecular, only: slater_condon0_mol, double_counting_correction_mol, hf_hamiltonian_energy_mol, &
                                          slater_condon1_mol_excit, slater_condon2_mol_excit, get_one_e_int_mol, get_two_e_int_mol, & 
-                                         create_weighted_excitation_list_mol, abs_hmatel_mol, single_excitation_weight_mol 
+                                         create_weighted_excitation_list_mol, abs_hmatel_mol, single_excitation_weight_mol, &
+                                         get_two_body_int_cou_mol_real, get_two_body_int_ex_mol_real 
         use hamiltonian_periodic_complex, only: slater_condon0_periodic_complex, slater_condon1_periodic_excit_complex, &
                                                 slater_condon2_periodic_excit_complex, &
                                                 create_weighted_excitation_list_periodic_complex, abs_hmatel_periodic_complex, &
@@ -463,6 +465,8 @@ contains
                 slater_condon1_excit_ptr => slater_condon1_mol_excit
                 slater_condon2_excit_ptr => slater_condon2_mol_excit
                 create_weighted_excitation_list_ptr => create_weighted_excitation_list_mol
+                ! Default: we use Power Pitzer type integrals when using on-the-fly weights for doubles.
+                get_two_body_int_cou_ex_mol_real_ptr => get_two_body_int_ex_mol_real
                 abs_hmatel_ptr => abs_hmatel_mol
                 single_excitation_weight_ptr => single_excitation_weight_mol
             end if
@@ -486,6 +490,14 @@ contains
             case(excit_gen_power_pitzer_occ_ij)
                 gen_excit_ptr%full => gen_excit_mol_power_pitzer_occ
                 decoder_ptr => decode_det_spinocc_spinsymunocc
+            case(excit_gen_cauchy_schwarz_occ)
+                gen_excit_ptr%full => gen_excit_mol_power_pitzer_occ
+                decoder_ptr => decode_det_spinocc_spinsymunocc
+                get_two_body_int_cou_ex_mol_real_ptr => get_two_body_int_cou_mol_real
+            case(excit_gen_cauchy_schwarz_occ_ij)
+                gen_excit_ptr%full => gen_excit_mol_power_pitzer_occ
+                decoder_ptr => decode_det_spinocc_spinsymunocc
+                get_two_body_int_cou_ex_mol_real_ptr => get_two_body_int_cou_mol_real
             case(excit_gen_power_pitzer)
                 gen_excit_ptr%full => gen_excit_mol_power_pitzer_occ_ref
                 decoder_ptr => decode_det_occ

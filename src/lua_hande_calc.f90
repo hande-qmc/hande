@@ -898,8 +898,10 @@ contains
         !     real_amplitude_force_32 = true/false,
         !     spawn_cutoff = cutoff,
         !     excit_gen =
-        !     'renorm'/'renorm_spin'/'no_renorm'/'no_renorm_spin'/'power_pitzer'/'power_pitzer_orderM'/'power_pitzer_orderM_ij'/
-        !     'power_pitzer_orderN'/'heat_bath'/'heat_bath_uniform'/'heat_bath_single'
+        !     'renorm'/'renorm_spin'/'no_renorm'/'no_renorm_spin'/'power_pitzer'/'uniform_power_pitzer'('power_pitzer_orderM')/
+        !     'heat_bath_power_pitzer'('power_pitzer_orderM_ij')/'heat_bath_power_pitzer_ref'('power_pitzer_orderN')/
+        !     'uniform_cauchy_schwarz'('cauchy_schwarz_orderM')/'heat_bath_cauchy_schwarz'('cauchy_schwarz_orderM_ij')/
+        !     'heat_bath'/'heat_bath_uniform_singles'('heat_bath_uniform')/'heat_bath_exact_singles'('heat_bath_single')
         !     power_pitzer_min_weight = power_pitzer_min_weight,
         !     tau_search = true/false,
         !     pattempt_single = prob,
@@ -929,7 +931,7 @@ contains
         use aot_table_module, only: aot_get_val, aot_exists, aot_table_open, aot_table_close
 
         use qmc_data, only: qmc_in_t, excit_gen_renorm, excit_gen_no_renorm, excit_gen_renorm_spin, excit_gen_no_renorm_spin
-        use qmc_data, only: excit_gen_power_pitzer
+        use qmc_data, only: excit_gen_power_pitzer, excit_gen_cauchy_schwarz_occ, excit_gen_cauchy_schwarz_occ_ij
         use qmc_data, only: excit_gen_power_pitzer_occ, excit_gen_power_pitzer_occ_ij, excit_gen_power_pitzer_orderN
         use qmc_data, only: excit_gen_heat_bath, excit_gen_heat_bath_uniform, excit_gen_heat_bath_single
         use lua_hande_utils, only: warn_unused_args, get_rng_seed
@@ -1037,18 +1039,36 @@ contains
                 qmc_in%excit_gen = excit_gen_no_renorm
             case('no_renorm_spin')
                 qmc_in%excit_gen = excit_gen_no_renorm_spin
+            case('uniform_power_pitzer')
+                qmc_in%excit_gen = excit_gen_power_pitzer_occ
             case('power_pitzer_orderM')
                 qmc_in%excit_gen = excit_gen_power_pitzer_occ
+            case('heat_bath_power_pitzer')
+                qmc_in%excit_gen = excit_gen_power_pitzer_occ_ij
             case('power_pitzer_orderM_ij')
                 qmc_in%excit_gen = excit_gen_power_pitzer_occ_ij
             case('power_pitzer')
                 qmc_in%excit_gen = excit_gen_power_pitzer
+            case('heat_bath_power_pitzer_ref')
+                qmc_in%excit_gen = excit_gen_power_pitzer_orderN
             case('power_pitzer_orderN')
                 qmc_in%excit_gen = excit_gen_power_pitzer_orderN
+            case('uniform_cauchy_schwarz')
+                qmc_in%excit_gen = excit_gen_cauchy_schwarz_occ
+            case('cauchy_schwarz_orderM')
+                qmc_in%excit_gen = excit_gen_cauchy_schwarz_occ
+            case('heat_bath_cauchy_schwarz')
+                qmc_in%excit_gen = excit_gen_cauchy_schwarz_occ_ij
+            case('cauchy_schwarz_orderM_ij')
+                qmc_in%excit_gen = excit_gen_cauchy_schwarz_occ_ij
             case('heat_bath')
                 qmc_in%excit_gen = excit_gen_heat_bath
+            case('heat_bath_uniform_singles')
+                qmc_in%excit_gen = excit_gen_heat_bath_uniform
             case('heat_bath_uniform')
                 qmc_in%excit_gen = excit_gen_heat_bath_uniform
+            case('heat_bath_exact_singles')
+                qmc_in%excit_gen = excit_gen_heat_bath_single
             case('heat_bath_single')
                 qmc_in%excit_gen = excit_gen_heat_bath_single
             case default

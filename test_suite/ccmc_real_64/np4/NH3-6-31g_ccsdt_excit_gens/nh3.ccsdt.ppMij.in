@@ -17,7 +17,7 @@ ccmc {
         real_amplitudes = true,
         state_size = -200,
         spawned_state_size = -200,
-        excit_gen = 'power_pitzer_orderM_ij',
+        excit_gen = 'heat_bath_power_pitzer',
         pattempt_update = true,
     },
     reference = {
