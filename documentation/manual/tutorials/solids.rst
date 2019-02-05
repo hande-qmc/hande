@@ -11,7 +11,7 @@ The input and output files can be found under the ``documentation/manual/tutoria
 First of all, we need the one- and two- electron integrals from an external source. We will
 use PySCF_ software package to perform preliminary Hartree-Fock calculation
 and generate the integrals. PySCFDump script can be used to save the integrals in the FCIDUMP
-format readable by HANDE.
+format readable by HANDE [#pyscfdump]_ .
 
 .. _PySCF: http://www.pyscf.org/
 
@@ -99,7 +99,7 @@ where the second equality holds provided that imaginary part of :math:`E(\tau)` 
 
 The reblocking analysis uses magnitudes rather than real parts as this prevents problems with potential changes of phase during the calculation. Neverthless, for a well behaved calculation such as the one presented here, it is found that reblocking using real parts would give identical results.
 
-In any case, the shift remains a strictly real measure of the correlation energy [#]_.
+In any case, the shift remains a strictly real measure of the correlation energy [#booth]_.
 
 To analyse the calculation we can use reblock_hande.py script:
 
@@ -114,4 +114,5 @@ which results in:
 
 .. rubric:: Footnotes
 
-.. [#] As discussed  in [Booth13]_ for FCIQMC - the CCMC case is exactly analogous.
+.. [#pyscfdump] The pyscfdump module code will be released shortly.  For preliminary access contact Alex Thom at ajwt3@cam.ac.uk .
+.. [#booth] As discussed  in [Booth13]_ for FCIQMC - the CCMC case is exactly analogous.

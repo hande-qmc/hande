@@ -33,6 +33,7 @@ ccmc {
     restart = {
         write = true,
     },
+-- [review] - AJWT: Can these comments be removed?
    -- logging = {
    --     kpoint = 2,
   --  },
