@@ -9,7 +9,7 @@ if sys.version_info[0] == 2 and sys.version_info[1] < 7:
     sys.exit(-1)
 
 
-AUTOCMAKE_GITHUB_URL = 'https://github.com/coderefinery/autocmake/raw/master/'
+AUTOCMAKE_GITHUB_URL = 'https://github.com/dev-cafe/autocmake/raw/master/'
 
 
 def licensing_info():

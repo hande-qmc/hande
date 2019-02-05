@@ -8,7 +8,6 @@ use const, only: i0, int_p, int_64, p, dp, debug
 implicit none
 
 contains
-
     subroutine spawner_ccmc(rng, sys, qs, spawn_cutoff, linked_ccmc, cdet, cluster, &
                             gen_excit_ptr, logging_info, nspawn, connection, nspawnings_total, ps_stat)
 
@@ -74,12 +73,12 @@ contains
         use ccmc_linked, only: unlinked_commutator, linked_excitation
         use determinant_data, only: det_info_t
         use dSFMT_interface, only: dSFMT_t
-        use excitations, only: excit_t, create_excited_det, get_excitation_level
+        use excitations, only: excit_t, create_excited_det, get_excitation_level, det_string
         use proc_pointers, only: gen_excit_ptr_t
         use spawning, only: attempt_to_spawn, calc_qn_spawned_weighting, update_p_single_double_data
         use system, only: sys_t
         use const, only: depsilon, debug
-        use qmc_data, only: qmc_state_t
+        use qmc_data, only: qmc_state_t, ccmc_in_t
         use hamiltonian_data
         use logging, only: logging_t, write_logging_spawn
         use excit_gens, only: p_single_double_coll_t
@@ -95,6 +94,7 @@ contains
         integer, intent(in) :: nspawnings_total
         type(gen_excit_ptr_t), intent(in) :: gen_excit_ptr
         type(logging_t), intent(in) :: logging_info
+!        type (ccmc_in_t), intent(in) :: ccmc_in
         integer(int_p), intent(out) :: nspawn
         type(excit_t), intent(out) :: connection
 
@@ -105,7 +105,7 @@ contains
         type(hmatel_t) :: hmatel, hmatel_save
         real(p) :: pgen, spawn_pgen
         integer(i0) :: fexcit(sys%basis%tot_string_len), funlinked(sys%basis%tot_string_len)
-        integer :: excitor_sign, excitor_level
+        integer :: excitor_sign, excitor_level, excitor_level_2
         logical :: linked, single_unlinked, allowed_excitation
         real(p) :: invdiagel
 
@@ -163,8 +163,14 @@ contains
             ! This is the same process as excitor to determinant and hence we
             ! can reuse code...
             call create_excited_det(sys%basis, cdet%f, connection, fexcit)
-            excitor_level = get_excitation_level(qs%ref%f0, fexcit)
+! [review] - AJWT: Even safer (but perhaps for another day) is to create a det_string derived type which
+! [review] - AJWT: get_excitation_level accepts.
+            excitor_level = get_excitation_level(det_string(qs%ref%f0, sys%basis), det_string(fexcit,sys%basis))
             call convert_excitor_to_determinant(fexcit, excitor_level, excitor_sign, qs%ref%f0)
+            if (qs%multiref) then
+                excitor_level_2 = get_excitation_level(det_string(qs%second_ref%f0, sys%basis), det_string(fexcit,sys%basis))
+                if (excitor_level > qs%ref%ex_level .and.  excitor_level_2 >qs%ref%ex_level) nspawn=0
+            end if
             if (excitor_sign < 0) nspawn = -nspawn
             if (debug) call write_logging_spawn(logging_info, hmatel_save, pgen, invdiagel, [nspawn], &
                         real(cluster%amplitude,p), sys%read_in%comp, spawn_pgen, cdet%f, fexcit, connection)
@@ -232,6 +238,7 @@ contains
         use ccmc_utils, only: add_ex_level_bit_string_provided
         use determinant_data, only: det_info_t
         use const, only: debug
+        use excitations, only: get_excitation_level
 
         use proc_pointers, only: sc0_ptr
         use dSFMT_interface, only: dSFMT_t
@@ -307,9 +314,9 @@ contains
         KiiAi = KiiAi * qs%tau / cluster%pselect
 
         if (ex_lvl_sort) call add_ex_level_bit_string_provided(sys%basis, cluster%excitation_level, cdet%f)
-
         call stochastic_death_attempt(rng, real(KiiAi, p), 1, cdet, qs%ref, sys%basis, spawn, &
                            nkill, pdeath)
+
         ndeath_tot = ndeath_tot + abs(nkill)
 
         if (debug) call write_logging_death(logging_info, real(KiiAi,p), qs%estimators(1)%proj_energy_old, qs%shift(1), invdiagel, &
@@ -329,7 +336,7 @@ contains
     subroutine stochastic_death_attempt(rng, KiiAi, ispace, cdet, ref, basis, spawn, nkill, pdeath)
 
         ! Perform a single attempt at stochastic ccmc death. Abstracted to enable calls for
-        ! arbitrary spaces.
+        ! arbitrary spaces
 
         ! In:
         !   KiiAi: Value of diagonal matrix element, appropriately scaled by tau and select,

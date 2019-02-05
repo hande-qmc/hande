@@ -219,7 +219,8 @@ algorithms and control the core settings in the algorithms.
     'renorm_spin' and 'no_renorm_spin' are very similar to 'renorm' and 'no_renorm'
     respectively but when selecting :math:`i` and :math:`j`, they first decide with
     probability ``pattempt_parallel`` whether :math:`i` and :math:`j` should have
-    parallel spins or not. The idea for those comes from Alavi and others.
+    parallel spins or not. The idea is by Alavi and co-workers, see [Booth09]_ and [Booth14]_
+    for example for more details on these excitation generators.
 
     Note that the implementations of the weighted excitation generators here are all
     described in [Neufeld19]_.
@@ -234,7 +235,7 @@ algorithms and control the core settings in the algorithms.
     there might be no occupied :math:`j` that lets us select :math:`ija`. See Holmes et al.
     for details. We check for the bias in the beginning of a calculation and stop it if
     necessary.
-    The Cauchy-Schwarz ([SmartXX]_, described in [Blunt17]_)
+    The Cauchy-Schwarz ([Smartunpub]_, described in [Blunt17]_)
     and Power-Pitzer excitation generators use approximate upper bounds
     for these weights. A version of Cauchy-Schwarz excitation generators is described in [Schwarz]_
     but the weights used here and the implementation differ.
@@ -245,6 +246,11 @@ algorithms and control the core settings in the algorithms.
     but samples single excitations with the correct weighting (following a
     recommendation by Pablo Lopez Rios). 'heat_bath_uniform_singles' and 'heat_bath_exact_singles' do
     not have this potential bias that 'heat_bath' can have.
+
+    Some of the Power-Pitzer excitation generators use elements of the heat-bath excitation
+    generators ([Holmes16]_) and their approximations for selecting :math:`a` and :math:`b`
+    are inspired by the Cauchy-Schwarz excitation generators by Alavi and co-workers
+    [Smartunpub]_. See more details on all these weighted excitations generator in Ref. [Neufeld19]_.
 
     The 'power_pitzer' excitation generator generates double excitations using a Power-Pitzer
     [Power74]_ upper bound for the value of the Hamiltonian matrix element, 

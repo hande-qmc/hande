@@ -1,0 +1,212 @@
+cell.h is deprecated.  It is replaced by the (row-based) lattice vectors cell.a:  cell.a = cell.h.T
+4.0
+From MP
+[[-0.33333333  0.          0.        ]
+ [ 0.          0.          0.        ]
+ [ 0.33333333  0.          0.        ]]
+Moving! True
+Before shifting back
+[[-0.33333333  0.          0.        ]
+ [ 0.          0.          0.        ]
+ [ 0.33333333  0.          0.        ]]
+After shifting back
+[[-0.33333333  0.          0.        ]
+ [ 0.          0.          0.        ]
+ [ 0.33333333  0.          0.        ]]
+
+
+******** <class 'pyscf.pbc.scf.khf.KRHF'> flags ********
+method = KRHF
+initial guess = minao
+damping factor = 0
+level shift factor = 0
+Do DIIS = True
+DIIS start cycle = 1
+DIIS space = 8
+SCF tol = 1e-09
+SCF gradient tol = None
+max. SCF cycles = 50
+direct_scf = False
+chkfile to save SCF result = /home/ajwt3/calc/pyscf/pbcH/k311_ke50/tmp9X7kxh
+max_memory 4000 MB (current use 51 MB)
+
+
+******** PBC SCF flags ********
+N kpts = 3
+kpts = [[-0.20943951  0.          0.        ]
+ [ 0.          0.          0.        ]
+ [ 0.20943951  0.          0.        ]]
+DF object = <pyscf.pbc.df.fft.FFTDF object at 0x7fb4b19f3e10>
+Exchange divergence treatment (exxdiv) = vcut_ws
+Set gradient conv threshold to 3.16228e-05
+Nelec from initial guess = 5.92411
+cond(S) = [ 1.2039417   1.24892992  1.2039417 ]
+    CPU time for vj and vk     82.34 sec, wall time     17.47 sec
+E_coul = 0.119239788234673
+init E= -0.554910879634302
+    CPU time for initialize scf     94.55 sec, wall time     18.42 sec
+HOMO = -0.136002709836  LUMO = -0.00559307970876
+     k-point                  mo_energy
+   0 (-0.333  0.000  0.000)   [-0.13600271] [-0.00559308]
+   1 ( 0.000  0.000  0.000)   [-0.1474404] [ 0.00972595]
+   2 ( 0.333  0.000  0.000)   [-0.13600271] [-0.00559308]
+    CPU time for vj and vk     66.56 sec, wall time      5.92 sec
+E_coul = -0.00903633264759781
+cycle= 1 E= -0.761511428343898  delta_E= -0.207  |g|= 0.0168  |ddm|=  2.1
+    CPU time for cycle= 1     67.84 sec, wall time      6.01 sec
+diis-norm(errvec)=0.0236437
+diis-c [ -5.59024985e-04+0.j   1.00000000e+00+0.j]
+HOMO = -0.242697764123  LUMO = 0.0913567898771
+     k-point                  mo_energy
+   0 (-0.333  0.000  0.000)   [-0.24269776] [ 0.09135679]
+   1 ( 0.000  0.000  0.000)   [-0.25734541] [ 0.11094139]
+   2 ( 0.333  0.000  0.000)   [-0.24269776] [ 0.09135679]
+    CPU time for vj and vk     70.25 sec, wall time      6.17 sec
+E_coul = -0.00926281748470411
+cycle= 2 E= -0.761705212868102  delta_E= -0.000194  |g|= 0.00631  |ddm|= 0.0714
+    CPU time for cycle= 2     70.86 sec, wall time      6.21 sec
+diis-norm(errvec)=0.00888484
+diis-c [ -5.42660593e-08+0.j  -6.01715517e-01+0.j   1.60171552e+00+0.j]
+HOMO = -0.243743548807  LUMO = 0.0925291510714
+     k-point                  mo_energy
+   0 (-0.333  0.000  0.000)   [-0.24374355] [ 0.09252915]
+   1 ( 0.000  0.000  0.000)   [-0.25600153] [ 0.1096876]
+   2 ( 0.333  0.000  0.000)   [-0.24374355] [ 0.09252915]
+    CPU time for vj and vk     72.12 sec, wall time      5.65 sec
+E_coul = -0.00934645843508022
+cycle= 3 E= -0.761736613804384  delta_E= -3.14e-05  |g|= 0.000107  |ddm|= 0.0427
+    CPU time for cycle= 3     72.81 sec, wall time      5.69 sec
+diis-norm(errvec)=0.000150895
+diis-c [ -2.22172281e-12+0.j  -2.17891547e-01+0.j   5.84811108e-01+0.j
+   6.33080439e-01+0.j]
+HOMO = -0.243700481158  LUMO = 0.0924888055488
+     k-point                  mo_energy
+   0 (-0.333  0.000  0.000)   [-0.24370048] [ 0.09248881]
+   1 ( 0.000  0.000  0.000)   [-0.2559876] [ 0.10967663]
+   2 ( 0.333  0.000  0.000)   [-0.24370048] [ 0.09248881]
+    CPU time for vj and vk     74.32 sec, wall time      5.17 sec
+E_coul = -0.00934614942250571
+cycle= 4 E= -0.761736618227997  delta_E= -4.42e-09  |g|= 1.82e-05  |ddm|= 0.000324
+    CPU time for cycle= 4     74.77 sec, wall time      5.20 sec
+diis-norm(errvec)=2.55804e-05
+diis-c [ -2.06223927e-14+0.j   2.39354910e-03+0.j  -3.51387935e-03+0.j
+  -5.37009678e-03+0.j   1.00649043e+00+0.j]
+HOMO = -0.24367580631  LUMO = 0.0924656723776
+     k-point                  mo_energy
+   0 (-0.333  0.000  0.000)   [-0.24367581] [ 0.09246567]
+   1 ( 0.000  0.000  0.000)   [-0.25597978] [ 0.10967048]
+   2 ( 0.333  0.000  0.000)   [-0.24367581] [ 0.09246567]
+    CPU time for vj and vk     64.62 sec, wall time      5.24 sec
+E_coul = -0.00934596432852183
+cycle= 5 E= -0.761736618486546  delta_E= -2.59e-10  |g|= 2.53e-07  |ddm|= 0.000123
+    CPU time for cycle= 5     64.95 sec, wall time      5.26 sec
+HOMO = -0.243676132877  LUMO = 0.0924659755813
+     k-point                  mo_energy
+   0 (-0.333  0.000  0.000)   [-0.24367613] [ 0.09246598]
+   1 ( 0.000  0.000  0.000)   [-0.2559799] [ 0.10967058]
+   2 ( 0.333  0.000  0.000)   [-0.24367613] [ 0.09246598]
+    CPU time for scf_cycle    445.86 sec, wall time     46.78 sec
+    CPU time for SCF    445.86 sec, wall time     46.79 sec
+converged SCF energy = -0.761736618486546
+-0.761736618487
+Max difference in (pq|rs) - (rs|pq) = 4.38538094726937e-15
+    CPU time for CCSD integral transformation     93.06 sec, wall time      6.04 sec
+Init t2, MP2 energy = -0.117199373492452
+    CPU time for init mp2      0.06 sec, wall time      0.00 sec
+    CPU time for update t1 t2      3.57 sec, wall time      0.22 sec
+istep = 0  E(CCSD) = -0.138320361410383  dE = -0.138320361  norm(t1,t2) = 0.20384
+    CPU time for CCSD iter      3.61 sec, wall time      0.23 sec
+    CPU time for update t1 t2      2.31 sec, wall time      0.22 sec
+DIIS for step 1
+istep = 1  E(CCSD) = -0.14430798246622  dE = -0.00598762106  norm(t1,t2) = 0.0845845
+    CPU time for CCSD iter      2.31 sec, wall time      0.22 sec
+    CPU time for update t1 t2      0.19 sec, wall time      0.19 sec
+diis-c [-0.00325046+0.j  1.00000000+0.j]
+DIIS for step 2
+istep = 2  E(CCSD) = -0.140260060557198  dE = 0.00404792191  norm(t1,t2) = 0.0703597
+    CPU time for CCSD iter      0.19 sec, wall time      0.19 sec
+    CPU time for update t1 t2      0.19 sec, wall time      0.19 sec
+diis-c [ -1.09198958e-04 +0.00000000e+00j   4.93139496e-01 -1.69331157e-15j
+   5.06860504e-01 +1.69331157e-15j]
+DIIS for step 3
+istep = 3  E(CCSD) = -0.141898881151178  dE = -0.00163882059  norm(t1,t2) = 0.0665722
+    CPU time for CCSD iter      0.19 sec, wall time      0.19 sec
+    CPU time for update t1 t2      0.19 sec, wall time      0.18 sec
+diis-c [ -6.28632222e-07 +0.00000000e+00j   3.02193465e-01 -2.37633228e-15j
+   3.45304640e-01 +1.14239258e-15j   3.52501895e-01 +1.23393970e-15j]
+DIIS for step 4
+istep = 4  E(CCSD) = -0.142037626328051  dE = -0.000138745177  norm(t1,t2) = 0.0219963
+    CPU time for CCSD iter      0.19 sec, wall time      0.19 sec
+    CPU time for update t1 t2      0.16 sec, wall time      0.16 sec
+diis-c [ -1.91139351e-07 +0.00000000e+00j   1.11036996e-01 -2.22236952e-14j
+   1.29247282e-01 -2.14362841e-14j   1.34889153e-01 -1.93848152e-14j
+   6.24826569e-01 +6.30447945e-14j]
+DIIS for step 5
+istep = 5  E(CCSD) = -0.142025757250666  dE = 1.18690774e-05  norm(t1,t2) = 0.000791705
+    CPU time for CCSD iter      0.16 sec, wall time      0.16 sec
+    CPU time for update t1 t2      0.16 sec, wall time      0.16 sec
+diis-c [ -9.78493716e-08 +0.00000000e+00j  -6.65071493e-02 -2.98612358e-14j
+  -7.03194254e-02 -3.01710744e-14j  -6.74195490e-02 -2.71565490e-14j
+   2.04124647e-01 +7.96988496e-14j   1.00012148e+00 +7.49000960e-15j]
+DIIS for step 6
+istep = 6  E(CCSD) = -0.142010093725047  dE = 1.56635256e-05  norm(t1,t2) = 0.000481135
+    CPU time for CCSD iter      0.16 sec, wall time      0.16 sec
+    CPU time for update t1 t2      0.16 sec, wall time      0.16 sec
+diis-c [ -4.15806312e-08 +0.00000000e+00j  -1.54173423e-01 -1.15140081e-14j
+  -1.68711925e-01 -1.05025663e-14j  -1.67050167e-01 -7.86539034e-15j
+  -1.77401288e-01 +1.26508640e-13j   8.19649186e-01 +2.57428884e-14j
+   8.47687618e-01 -1.22369564e-13j]
+DIIS for step 7
+istep = 7  E(CCSD) = -0.14199964636151  dE = 1.04473635e-05  norm(t1,t2) = 0.000473508
+    CPU time for CCSD iter      0.16 sec, wall time      0.16 sec
+    CPU time for update t1 t2      0.15 sec, wall time      0.16 sec
+diis-c [ -2.87894125e-08 +0.00000000e+00j   1.41238191e+00 -2.43616903e-14j
+   2.82191006e-03 +1.03577456e-15j   5.25642318e-03 +1.90352454e-15j
+   1.28361367e-01 +6.41973172e-14j  -1.13534280e-01 +5.36314729e-14j
+  -4.35287333e-01 -9.64063989e-14j]
+DIIS for step 8
+istep = 8  E(CCSD) = -0.142011474311186  dE = -1.18279497e-05  norm(t1,t2) = 0.000267956
+    CPU time for CCSD iter      0.16 sec, wall time      0.16 sec
+    CPU time for update t1 t2      0.15 sec, wall time      0.16 sec
+diis-c [ -1.78679502e-09 +0.00000000e+00j   2.24642734e-01 +1.42951680e-13j
+   1.30393229e+00 +3.05593189e-14j   8.50414862e-05 +1.21457795e-15j
+   1.61261007e-02 -2.06026471e-14j  -1.72596734e-01 -9.18068732e-14j
+  -3.72189428e-01 -6.23160563e-14j]
+DIIS for step 9
+istep = 9  E(CCSD) = -0.142011015794476  dE = 4.5851671e-07  norm(t1,t2) = 0.000126414
+    CPU time for CCSD iter      0.17 sec, wall time      0.16 sec
+    CPU time for update t1 t2      0.15 sec, wall time      0.16 sec
+diis-c [ -1.68064201e-10 +0.00000000e+00j   7.41608476e-02 +1.08932216e-13j
+   7.04369501e-01 -7.42400116e-14j   5.14251012e-01 +4.67336489e-14j
+   9.38541287e-03 -4.01034593e-15j  -9.75224818e-02 -4.50910172e-14j
+  -2.04644292e-01 -3.23244899e-14j]
+DIIS for step 10
+istep = 10  E(CCSD) = -0.142010805488466  dE = 2.10306011e-07  norm(t1,t2) = 6.97347e-05
+    CPU time for CCSD iter      0.15 sec, wall time      0.16 sec
+    CPU time for update t1 t2      0.16 sec, wall time      0.16 sec
+diis-c [ -3.06138448e-12 +0.00000000e+00j   1.90912837e-03 +1.00795105e-13j
+   1.99185295e-01 +1.60908393e-13j   2.10086569e-01 -5.60896740e-14j
+   6.85358437e-01 -9.10591136e-14j  -3.47582783e-02 -5.80223139e-14j
+  -6.17811510e-02 -5.65323973e-14j]
+DIIS for step 11
+istep = 11  E(CCSD) = -0.142010526393033  dE = 2.79095433e-07  norm(t1,t2) = 1.83181e-05
+    CPU time for CCSD iter      0.16 sec, wall time      0.16 sec
+    CPU time for update t1 t2      0.16 sec, wall time      0.16 sec
+diis-c [ -4.13802326e-12 +0.00000000e+00j  -9.68157880e-03 -7.98568143e-15j
+  -5.82581503e-03 +4.98399265e-14j   2.64930133e-02 +1.05878535e-13j
+   2.13632107e-01 -1.41761898e-14j   7.75997219e-01 -1.21470304e-13j
+  -6.14945679e-04 -1.20862868e-14j]
+DIIS for step 12
+istep = 12  E(CCSD) = -0.142010505014812  dE = 2.13782206e-08  norm(t1,t2) = 3.35695e-06
+    CPU time for CCSD iter      0.16 sec, wall time      0.16 sec
+    CPU time for CCSD      7.77 sec, wall time      2.29 sec
+CCSD converged
+E(CCSD) = -0.9037471235013582  E_corr = -0.142010505014812
+Max difference in (pq|rs) - (rs|pq) = 4.44089209850063e-15
+    CPU time for vj and vk     71.81 sec, wall time      6.51 sec
+    CPU time for vj and vk     67.62 sec, wall time      6.27 sec
+    CPU time for vj and vk     65.92 sec, wall time      5.61 sec
+    CPU time for vj and vk     68.71 sec, wall time      6.38 sec
+    CPU time for vj and vk     69.00 sec, wall time      6.42 sec
+    CPU time for vj and vk     63.56 sec, wall time      6.20 sec
+    CPU time for vj and vk     64.06 sec, wall time      6.05 sec

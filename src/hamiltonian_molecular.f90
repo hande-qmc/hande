@@ -105,7 +105,8 @@ contains
         !    <D|H|D>, the diagonal Hamiltonian matrix element involving D for
         !    systems defined by integrals read in from an FCIDUMP file.
 
-        use molecular_integrals, only: get_one_body_int_mol_nonzero, get_two_body_int_mol_nonzero
+        use molecular_integrals, only: get_one_body_int_mol_nonzero, get_two_body_int_mol_nonzero, &
+                                        get_two_body_exchange_pbc_int_nonzero
         use system, only: sys_t
 
         real(p) :: hmatel
@@ -122,8 +123,15 @@ contains
                 do jel = iel+1, sys%nel
                     j = occ_list(jel)
                     hmatel = hmatel + get_two_body_int_mol_nonzero(coulomb_ints, i, j, i, j, sys%basis%basis_fns)
-                    if (sys%basis%basis_fns(i)%Ms == sys%basis%basis_fns(j)%Ms) &
-                                  hmatel = hmatel - get_two_body_int_mol_nonzero(coulomb_ints, i, j, j, i, sys%basis%basis_fns)
+! [todo] - AJWT: replace with a pointer initialized at the start of the function to speed this up?
+                    if (sys%basis%basis_fns(i)%Ms == sys%basis%basis_fns(j)%Ms) then
+                        if (sys%read_in%extra_exchange_integrals) then
+                            hmatel = hmatel - get_two_body_exchange_pbc_int_nonzero(sys%read_in%additional_exchange_ints, &
+                                                    i, j, j, i, sys%basis%basis_fns)
+                        else
+                            hmatel = hmatel - get_two_body_int_mol_nonzero(coulomb_ints, i, j, j, i, sys%basis%basis_fns)
+                        end if
+                    end if
                 end do
             end do
         end associate
@@ -146,7 +154,8 @@ contains
         !        determinant and a single excitation of it for systems defined
         !        by integrals read in from an FCIDUMP file.
 
-        use molecular_integrals, only: get_one_body_int_mol_real, get_two_body_int_mol_real
+        use molecular_integrals, only: get_one_body_int_mol_real, get_two_body_int_mol_real, &
+                                       get_two_body_exchange_pbc_int_real
         use system, only: sys_t
 
         real(p) :: hmatel
@@ -166,12 +175,19 @@ contains
                 hmatel = get_one_body_int_mol_real(one_e_ints, i, a, sys)
 
                 do iel = 1, sys%nel
-                    if (occ_list(iel) /= i) &
+                    if (occ_list(iel) /= i) then
                         hmatel = hmatel &
                             + get_two_body_int_mol_real(coulomb_ints, i, occ_list(iel), a, occ_list(iel), &
-                                                    sys) &
-                            - get_two_body_int_mol_real(coulomb_ints, i, occ_list(iel), occ_list(iel), a, &
                                                     sys)
+! [todo] - AJWT: replace with a pointer initialized at the start of the function to speed this up?
+                        if (sys%read_in%extra_exchange_integrals) then
+                            hmatel = hmatel - get_two_body_exchange_pbc_int_real(sys%read_in%additional_exchange_ints, &
+                                                    i, occ_list(iel), occ_list(iel), a, sys)
+                        else
+                            hmatel = hmatel - get_two_body_int_mol_real(coulomb_ints, i, occ_list(iel), &
+                                                occ_list(iel), a, sys)
+                        end if
+                    end if
                 end do
             end associate
 
@@ -201,7 +217,8 @@ contains
         ! symmetry).  This is less safe that slater_condon1_mol but much faster
         ! as it allows symmetry checking to be skipped in the integral lookups.
 
-        use molecular_integrals, only: get_one_body_int_mol_nonzero, get_two_body_int_mol_nonzero
+        use molecular_integrals, only: get_one_body_int_mol_nonzero, get_two_body_int_mol_nonzero, &
+                                       get_two_body_exchange_pbc_int_nonzero
         use system, only: sys_t
         use hamiltonian_data, only: hmatel_t
 
@@ -223,9 +240,16 @@ contains
                 if (occ_list(iel) /= i) then
                     hmatel%r = hmatel%r &
                                 + get_two_body_int_mol_nonzero(coulomb_ints, i, occ_list(iel), a, occ_list(iel), basis_fns)
-                    if (basis_fns(occ_list(iel))%Ms == basis_fns(i)%Ms) &
-                        hmatel%r = hmatel%r &
+                    if (basis_fns(occ_list(iel))%Ms == basis_fns(i)%Ms) then
+! [todo] - AJWT: replace with a pointer initialized at the start of the function to speed this up?
+                        if (sys%read_in%extra_exchange_integrals) then
+                            hmatel%r = hmatel%r - get_two_body_exchange_pbc_int_nonzero(sys%read_in%additional_exchange_ints, &
+                                                    i, occ_list(iel), occ_list(iel), a, basis_fns)
+                        else
+                            hmatel%r = hmatel%r &
                                     - get_two_body_int_mol_nonzero(coulomb_ints, i, occ_list(iel), occ_list(iel), a, basis_fns)
+                        end if
+                    end if
                 end if
             end do
         end associate

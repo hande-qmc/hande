@@ -228,6 +228,9 @@ contains
         ! finalising the excitation.
 
         ! Only for use with non-complex systems.
+        
+        ! This does not set cdet%fock_sum (as the full excitation is not known),
+        ! so cannot be used with quasi-newton.
 
         ! In/Out:
         !    rng: random number generator.
@@ -291,10 +294,6 @@ contains
         ! 1. Generate enough of a random excitation to determinant the
         ! generation probability and |H_ij|.
         call gen_excit_ptr%init(rng, sys, qmc_state%excit_gen_data, cdet, pgen, connection, abs_hmatel, allowed)
-
-        if (allowed) then
-           abs_hmatel%r = abs_hmatel%r * calc_qn_spawned_weighting(sys, qmc_state%propagator, cdet%fock_sum, connection)
-        end if
 
         ! 2. Attempt spawning.
         nspawn = stochastic_round_spawned_particle(spawn_cutoff, real_factor*qmc_state%tau*abs_hmatel%r/pgen, rng)
@@ -394,11 +393,6 @@ contains
 
         ! 2. Transform Hamiltonian matrix element by trial function.
         call gen_excit_ptr%trial_fn(sys, cdet, connection, weights, tilde_hmatel%r)
-
-        if (allowed) then
-           tilde_hmatel%r = tilde_hmatel%r * calc_qn_spawned_weighting(sys, qmc_state%propagator, cdet%fock_sum, connection)
-        end if
-
 
         ! 3. Attempt spawning.
         nspawn = stochastic_round_spawned_particle(spawn_cutoff, real_factor*qmc_state%tau*abs(tilde_hmatel%r)/pgen, rng)
@@ -1117,7 +1111,7 @@ contains
 
         use basis_types, only: basis_t
         use determinant_data, only: det_info_t
-        use excitations, only: excit_t, create_excited_det, get_excitation_level
+        use excitations, only: excit_t, create_excited_det, get_excitation_level, det_string
         use spawn_data, only: spawn_t
         use reference_determinant, only: reference_t
 
@@ -1132,24 +1126,32 @@ contains
 
         integer(i0), target :: f_local(basis%tot_string_len)
         integer(i0), pointer :: f_new(:)
-        integer :: iproc_spawn, slot
-
+        integer :: iproc_spawn, slot, max_ex_level
+                                 
         if (present(fexcit)) then
             f_new => fexcit
         else
             call create_excited_det(basis, cdet%f, connection, f_local)
             f_new => f_local
         end if
+        
+        if (reference%max_ex_level == -1) then
+            max_ex_level=reference%ex_level
+        else
+            max_ex_level=reference%max_ex_level
+        end if
 
         ! Only accept spawning if it's within the truncation level.
-        if (get_excitation_level(reference%hs_f0(:basis%bit_string_len), f_new(:basis%bit_string_len)) <= reference%ex_level) then
+        if (get_excitation_level(det_string(reference%hs_f0, basis), &
+                                det_string(f_new,basis)) <= max_ex_level) then
 
-            call assign_particle_processor(f_new, spawn%bit_str_nbits, spawn%hash_seed, spawn%hash_shift, spawn%move_freq, nprocs, &
-                                           iproc_spawn, slot, spawn%proc_map%map, spawn%proc_map%nslots)
+            call assign_particle_processor(f_new, spawn%bit_str_nbits, spawn%hash_seed, spawn%hash_shift, spawn%move_freq, &
+                                                          nprocs, iproc_spawn, slot, spawn%proc_map%map, spawn%proc_map%nslots)
 
             call add_spawned_particle(f_new, nspawn, particle_type, iproc_spawn, spawn)
 
         end if
+ 
 
     end subroutine create_spawned_particle_truncated
 
@@ -1178,7 +1180,7 @@ contains
 
         use basis_types, only: basis_t
         use determinant_data, only: det_info_t
-        use excitations, only: excit_t, create_excited_det, get_excitation_level
+        use excitations, only: excit_t, create_excited_det, get_excitation_level, det_string
         use spawn_data, only: spawn_t
         use reference_determinant, only: reference_t
 
@@ -1193,7 +1195,7 @@ contains
 
         integer(i0), target :: f_local(basis%tot_string_len)
         integer(i0), pointer :: f_new(:)
-        integer :: iproc_spawn, slot
+        integer :: iproc_spawn, slot, max_ex_level
 
         if (present(fexcit)) then
             f_new => fexcit
@@ -1202,13 +1204,21 @@ contains
             f_new => f_local
         end if
 
+        if (reference%max_ex_level == -1) then
+            max_ex_level=reference%ex_level
+        else
+            max_ex_level=reference%max_ex_level
+        end if
+
+
         ! Only accept spawning if it's within the truncation level.
-        if (get_excitation_level(reference%hs_f0, f_new) <= reference%ex_level) then
+        if (get_excitation_level(det_string(reference%hs_f0, basis), &
+                                det_string(f_new,basis)) <= max_ex_level) then
 
-            call assign_particle_processor(f_new, spawn%bit_str_nbits, spawn%hash_seed, spawn%hash_shift, spawn%move_freq, nprocs, &
-                                           iproc_spawn, slot, spawn%proc_map%map, spawn%proc_map%nslots)
+              call assign_particle_processor(f_new, spawn%bit_str_nbits, spawn%hash_seed, spawn%hash_shift, spawn%move_freq, &
+                                                          nprocs, iproc_spawn, slot, spawn%proc_map%map, spawn%proc_map%nslots)
 
-            call add_flagged_spawned_particle(f_new, nspawn, particle_type, cdet%initiator_flag, iproc_spawn, spawn)
+              call add_flagged_spawned_particle(f_new, nspawn, particle_type, cdet%initiator_flag, iproc_spawn, spawn)
 
         end if
 

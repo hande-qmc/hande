@@ -500,7 +500,9 @@ contains
         end if
 
         if (sys%read_in%comp .and. blocking_in%blocking_on_the_fly) then
-            call stop_all(this, "Blocking on the fly is not currently compatible with complex calculations.")
+            call warning(this, 'Blocking on the fly uses crude approximations when using complex - imag. parts are ignored!')
+            if (blocking_in%auto_shift_damping) call warning(this, 'Using experimantal blocking which auto shift damping depends &
+                &on! Be careful and send us feedback.')
         end if
 
     end subroutine check_blocking_opts
