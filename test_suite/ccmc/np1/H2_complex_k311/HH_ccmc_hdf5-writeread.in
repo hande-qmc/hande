@@ -12,6 +12,9 @@ hdf5_file = write_read_in_system {
 sys:free()
 system.int_file = hdf5_file
 
+-- not required as ex_int_file is ignored for a .H5 files, but just to check it works.
+system.ex_int_file = nil
+
 sys = read_in(system)
 
 ex_l=2
