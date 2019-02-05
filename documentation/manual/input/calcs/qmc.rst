@@ -234,7 +234,7 @@ algorithms and control the core settings in the algorithms.
     Some of the Power-Pitzer excitation generators use elements of the heat-bath excitation
     generators ([Holmes16]_) and their approximations for selecting :math:`a` and :math:`b`
     are inspired by the Cauchy-Schwarz excitation generators by Alavi and co-workers
-    [Smartunpub]_. See more details on all these weighted excitations generator in Ref. [Neufeld18]_.
+    [Smartunpub]_. See more details on all these weighted excitations generator in Ref. [Neufeld19]_.
 
     The 'power_pitzer' excitation generator generates double excitations using a Power-Pitzer
     [Power74]_ upper bound for the value of the Hamiltonian matrix element, 
