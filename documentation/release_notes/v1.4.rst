@@ -6,7 +6,8 @@ Added
 
 * Modified exchange integrals for complex read in systems for CCMC and FCIQMC solids calculations as mentioned in
   HANDE-QMC developers/J. S. Spencer et al., J. Chem. Theory Comput., published online (2019)
-* Multiref. CCMC TODO cite
+* Functionality for multireference stochastic coupled cluster, as implemented by M-A. Filip, C. J. C. Scott and
+  A. J. W Thom (unpublished)
 * Weighted excitation generators for CCMC and FCIQMC called "Heat-Bath/Uniform Cauchy-Schwarz" excitation generators in
   V.A. Neufeld, A.J.W. Thom, J. Chem. Theory Comput., 15, 1, 127-140 (2019), related to
   S. D. Smart, G. H. Booth, and A. Alavi, unpublished (whose excitation generators are mentioned in L. R. Schwarz, PhD thesis, Cambridge (2017))
