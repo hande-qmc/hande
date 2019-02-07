@@ -1,0 +1,27 @@
+
+[DEFAULT]
+hdf5_root = /usr/lib/x86_64-linux-gnu/hdf5/serial
+lapack_root = /usr/lib/x86_64-linux-gnu/lapack
+syslib_root = /usr/lib/x86_64-linux-gnu
+include_f = -I %(hdf5_root)s/include -I /usr/include/lua5.3
+include_c = -I /usr/include/lua5.3
+cppflags_opt = -DHAVE_SSE2 -DPARALLEL -DDET_SIZE=32 -DDSFMT_MEXP=19937
+
+[main]
+fc = mpif90
+cc = mpicc
+cxx = mpiCC
+ld = mpif90
+ldflags = -L/opt/trlan/lib -L%(syslib_root)s/lib -L%(lapack_root)s/lib -L%(hdf5_root)s/lib
+libs = -ltrlan -lscalapack-openmpi -llapack -lblas -lstdc++ -lhdf5_fortran -lhdf5 -luuid -llua5.3 -ldl
+f90_module_flag = -J
+
+[opt]
+cppflags = %(cppflags_opt)s
+fflags = %(include_f)s -O3
+cflags = %(include_c)s -O3
+
+[dbg]
+cppflags = %(cppflags_opt)s -DDEBUG
+fflags = %(include_f)s -g -fbacktrace -fbounds-check
+cflags = %(include_c)s -g

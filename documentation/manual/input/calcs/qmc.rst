@@ -343,6 +343,7 @@ algorithms and control the core settings in the algorithms.
     
     If true, then ``pattempt_single`` is varied during the run
     to attempt to align the means of :math:`|H_{ij}|/p_\mathrm{gen}` for single and double excitations.
+    Mentioned in [Holmes16]_.
     Update of pattempt_single only happens if shift has not started varying yet.
     Not applicable to "original" heat bath algorithm excitation generator (excit_gen="heat_bath").
     When restarting a calculation, if ``pattempt_update`` is set to true and both ``pattempt_single``

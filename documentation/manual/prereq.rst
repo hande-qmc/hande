@@ -153,16 +153,15 @@ example:
 
 .. code-block:: bash
 
-    $ wget -O - https://support.hdfgroup.org/ftp/HDF5/releases/hdf5-1.10/hdf5-1.10.2/src/hdf5-1.10.2.tar.gz | tar xvzf -
-    $ cd hdf5-1.10.2
-    $ ./configure --prefix=$HOME/local --enable-fortran --enable-fortran2003 --enable-cxx
+    $ wget -O - https://support.hdfgroup.org/ftp/HDF5/releases/hdf5-1.10/hdf5-1.10.4/src/hdf5-1.10.4.tar.gz | tar xvzf -
+    $ cd hdf5-1.10.4
+    $ ./configure --prefix=$HOME/local --enable-fortran
     $ make
     $ make install
 
 will compile HDF5 and install it to subdirectories in $HOME/local.  By default this will
 use the GCC compiler suite; other compilers can be used by setting the CC, CXX and F77
-environment variables.  Note the use of ``--enable-fortran2003``; the Fortran 2003
-interface is required by HANDE.
+environment variables.  Note that for versions of HDF5 prior to 1.10.0 it is necessary to use the additional flag ``--enable-fortran2003`` to include the Fortran 2003 interface which is required by HANDE.
 
 pandas
 ^^^^^^
