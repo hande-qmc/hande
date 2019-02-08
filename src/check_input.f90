@@ -136,7 +136,7 @@ contains
         !   qmc_state_restart (optional): qmc_state object being restarted from.
 
         use qmc_data, only: qmc_in_t, qmc_state_t, excit_gen_heat_bath, excit_gen_no_renorm_spin, excit_gen_renorm_spin, &
-                            excit_gen_power_pitzer, fciqmc_in_t
+                            excit_gen_power_pitzer, excit_gen_cauchy_schwarz_occ, excit_gen_cauchy_schwarz_occ_ij, fciqmc_in_t
         use errors, only: stop_all, warning
         use system, only: sys_t, read_in
         use const, only: p
@@ -208,8 +208,13 @@ contains
 
         if ((sys%system == read_in) .and. (qmc_in%excit_gen == excit_gen_power_pitzer)) then
             call stop_all(this, 'Bugs were found in Power Pitzer for read_in systems. Do not use until further notice. &
-                        &Use another excitation generator such as Power Pitzer Order N or &
-                        &Power Pitzer Order M instead if you want Power Pitzer weights.')
+                        &Use another excitation generator such as Heat Bath Power Pitzer Ref or &
+                        &Heat Bath Power Pitzer instead if you want Power Pitzer weights.')
+        end if
+        
+        if ((sys%read_in%comp) .and. ((qmc_in%excit_gen == excit_gen_cauchy_schwarz_occ) .or. &
+            (qmc_in%excit_gen == excit_gen_cauchy_schwarz_occ_ij))) then
+            call stop_all(this, 'Complex calculations not implemented with Uniform/Heat Bath Cauchy Schwarz yet.')
         end if
 
     end subroutine check_qmc_opts
@@ -495,7 +500,9 @@ contains
         end if
 
         if (sys%read_in%comp .and. blocking_in%blocking_on_the_fly) then
-            call stop_all(this, "Blocking on the fly is not currently compatible with complex calculations.")
+            call warning(this, 'Blocking on the fly uses crude approximations when using complex - imag. parts are ignored!')
+            if (blocking_in%auto_shift_damping) call warning(this, 'Using experimantal blocking which auto shift damping depends &
+                &on! Be careful and send us feedback.')
         end if
 
     end subroutine check_blocking_opts

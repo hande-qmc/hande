@@ -3,8 +3,10 @@ Bibliography
 
 .. [Blunt14] N.S. Blunt, T.W. Rogers, J.S. Spencer, W.M.C. Foulkes, Density-matrix quantum Monte Carlo method, Phys. Rev. B 89, 245124 (2014).
 .. [Blunt15] N.S. Blunt, S.D. Smart, J.A.F. Kersten, J.S. Spencer, G.H. Booth, A. Alavi, Semi-stochastic full configuration interaction quantum Monte Carlo: Developments and application, J. Chem. Phys. 142, 184107 (2015).
+.. [Blunt17] N.S. Blunt, G.H. Booth, A. Alavi, Density matrices in full configuration interaction quantum Monte Carlo: Excited states, transition dipole moments, and parallel distribution, J. Chem. Phys. 146, 244105 (2017).
 .. [Booth09] G.H. Booth, A.J.W. Thom, A. Alavi, Fermion Monte Carlo without fixed nodes: a game of life, death, and annihilation in Slater determinant space, J. Chem. Phys. 131, 054106 (2009).
 .. [Booth10] G.H. Booth, A novel Quantum Monte Carlo method for molecular systems, PhD thesis, University of Cambridge (2010).
+.. [Booth13] G.H. Booth, A. Grüneis, G. Kresse, A. Alavi, Towards an exact description of electronic wavefunctions in real solids: Nature 493, 365-370 (2013).
 .. [Booth14] G.H. Booth, S.D. Smart, A.Alavi, Linear-scaling and parallelisable algorithms for stochastic quantum chemistry, Mol. Phys. 112, 1855 (2014).
 .. [Cleland10] D. Cleland, G.H. Booth, A. Alavi, Communications: Survival of the fittest: accelerating convergence in full configuration-interaction quantum Monte Carlo. J. Chem. Phys. 132, 041103 (2010).
 .. [Dunning89] Dunning, Thom H., Gaussian basis sets for use in correlated molecular calculations. I. The atoms boron through neon and hydrogen. J. Chem. Phys. 90, 1007 (1989) 
@@ -17,15 +19,18 @@ Bibliography
 .. [Malone15] F.D. Malone, N.S. Blunt, J.J. Shepherd, D.K.K. Lee, J.S. Spencer, W.M.C. Foulkes, Interaction picture density matrix quantum Monte Carlo, J. Chem. Phys. 143, 044116 (2015).
 .. [Malone16] F.D. Malone, N.S. Blunt, E.W. Brown, D.K.K. Lee, J.S. Spencer, W.M.C. Foulkes, J.J. Shepherd, Accurate exchange-correlation energies for the warm dense electron gas arXiv:1602.05104 [cond-mat.str-el].
 .. [Malone16a] F.D. Malone, W.M.C. Foulkes, J.S. Spencer, Improved parallel algorithms for full configuration interaction quantum Monte Carlo, in preparation.
-.. [Neufeld18] V.A. Neufeld, A.J.W. Thom, Exciting determinants in Quantum Monte Carlo: Loading the dice with fast, low memory weights, arXiv:1808.05093.
+.. [Neufeld19] V.A. Neufeld, A.J.W. Thom, Exciting determinants in Quantum Monte Carlo: Loading the dice with fast, low memory weights, J. Chem. Theory Comput., 15, 1, 127-140 (2019).
 .. [Overy2014] C. Overy, G.H. Booth, N.S. Blunt, J.J. Shepherd, D. Cleland, A. Alavi, Unbiased reduced density matrices and electronic properties from full configuration interaction quantum Monte Carlo, J. Chem. Phys. 141, 244117 (2014).
 .. [Petruzielo12] F.R. Petruzielo, A.A. Holmes, H.J. Changlani, M.P. Nightingale, C. J. Umrigar, Semistochastic projector monte carlo method, Phys. Rev. Lett. 109, 230201 (2012).
 .. [Power74] J.D. Power, R.M. Pitzer, Inequalities for electron repulsion integrals, Chem. Phys. Lett., 478-483 (1974).
+.. [Schwarz] L.R. Schwarz, Projector Quantum Monte Carlo Methods for Linear and Non-linear Wavefunction Ansatzes, PhD Thesis, Cambridge (2017).
 .. [Smartunpub] S.D. Smart, G.H. Booth, A. Alavi, Excitation generation in full configuration interaction quantum Monte Carlo based on Cauchy-Schwarz distributions (unpublished).
 .. [Shepherd14] J.J. Shepherd, G.E. Scuseria, J.S. Spencer, Sign problem in full configuration interaction quantum Monte Carlo: Linear and sublinear representation regimes for the exact wave function, Phys. Rev. B 90, 155130 (2014).
 .. [Spencer12] J.S. Spencer, N.S. Blunt, W.M.C. Foulkes, The sign problem and population dynamics in the full configuration interaction quantum Monte Carlo method, J. Chem. Phys. 136, 054110 (2012).
 .. [Spencer14] J.S. Spencer, N.S. Blunt, W.A. Vigor, F.D. Malone, W.M.C. Foulkes, J.J. Shepherd, and A.J.W. Thom, The Highly Accurate N-DEterminant (HANDE) quantum Monte Carlo project: Open-source stochastic diagonalisation for quantum chemistry, arXiv:1407.5407 (2014).
 .. [Spencer15] J.S. Spencer, A.J.W. Thom, Developments in Stochastic Coupled Cluster Theory:  The initiator approximation and application to the Uniform Electron Gas, J. Chem. Phys. 144, 084108 (2016), arXiv:1511.05752 [physics.chem-ph].
+.. [Spencer18] J.S. Spencer, V.A. Neufeld, W.A. Vigor, R.S.T. Franklin, A.J.W. Thom, Large Scale Parallelization in Stochastic Coupled Cluster, J. Chem. Phys. 149, 204103 (2018).
+.. [Sun18] Q. Sun, T. S. Berkelbach, N. S. Blunt, et. al, PYSCF: The Python-based simulations of chemistry framework, WIREs: Computational Molecular Science 8, 1, e1340 (2018).
 .. [Thom10] A.J.W. Thom, Stochastic Coupled Cluster Theory, Phys. Rev. Lett. 105, 236004 (2010).
 .. [Umrigar93] C.J. Umrigar, M.P. Nightingale, K.J. Runge, A diffusion Monte Carlo algorithm with very small time-step errors, J. Chem. Phys. 99, 2865 (1993).
 .. [Vigor15] W.A. Vigor, J.S. Spencer, M.J. Bearpark, A.J.W. Thom, Minimising biases in full configuration interaction quantum Monte Carlo, J. Chem. Phys. 142, 104101 (2015).

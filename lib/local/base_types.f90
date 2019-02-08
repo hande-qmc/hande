@@ -33,6 +33,7 @@ end type
 
 type alloc_rp2d
     real(p), pointer :: v(:,:)
+    type(shmem_handle_t) :: shmem_handle
 end type
 
 contains

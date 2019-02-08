@@ -105,7 +105,8 @@ contains
         !    <D|H|D>, the diagonal Hamiltonian matrix element involving D for
         !    systems defined by integrals read in from an FCIDUMP file.
 
-        use molecular_integrals, only: get_one_body_int_mol_nonzero, get_two_body_int_mol_nonzero
+        use molecular_integrals, only: get_one_body_int_mol_nonzero, get_two_body_int_mol_nonzero, &
+                                        get_two_body_exchange_pbc_int_nonzero
         use system, only: sys_t
 
         real(p) :: hmatel
@@ -122,8 +123,15 @@ contains
                 do jel = iel+1, sys%nel
                     j = occ_list(jel)
                     hmatel = hmatel + get_two_body_int_mol_nonzero(coulomb_ints, i, j, i, j, sys%basis%basis_fns)
-                    if (sys%basis%basis_fns(i)%Ms == sys%basis%basis_fns(j)%Ms) &
-                                  hmatel = hmatel - get_two_body_int_mol_nonzero(coulomb_ints, i, j, j, i, sys%basis%basis_fns)
+! [todo] - AJWT: replace with a pointer initialized at the start of the function to speed this up?
+                    if (sys%basis%basis_fns(i)%Ms == sys%basis%basis_fns(j)%Ms) then
+                        if (sys%read_in%extra_exchange_integrals) then
+                            hmatel = hmatel - get_two_body_exchange_pbc_int_nonzero(sys%read_in%additional_exchange_ints, &
+                                                    i, j, j, i, sys%basis%basis_fns)
+                        else
+                            hmatel = hmatel - get_two_body_int_mol_nonzero(coulomb_ints, i, j, j, i, sys%basis%basis_fns)
+                        end if
+                    end if
                 end do
             end do
         end associate
@@ -146,7 +154,8 @@ contains
         !        determinant and a single excitation of it for systems defined
         !        by integrals read in from an FCIDUMP file.
 
-        use molecular_integrals, only: get_one_body_int_mol_real, get_two_body_int_mol_real
+        use molecular_integrals, only: get_one_body_int_mol_real, get_two_body_int_mol_real, &
+                                       get_two_body_exchange_pbc_int_real
         use system, only: sys_t
 
         real(p) :: hmatel
@@ -166,12 +175,19 @@ contains
                 hmatel = get_one_body_int_mol_real(one_e_ints, i, a, sys)
 
                 do iel = 1, sys%nel
-                    if (occ_list(iel) /= i) &
+                    if (occ_list(iel) /= i) then
                         hmatel = hmatel &
                             + get_two_body_int_mol_real(coulomb_ints, i, occ_list(iel), a, occ_list(iel), &
-                                                    sys) &
-                            - get_two_body_int_mol_real(coulomb_ints, i, occ_list(iel), occ_list(iel), a, &
                                                     sys)
+! [todo] - AJWT: replace with a pointer initialized at the start of the function to speed this up?
+                        if (sys%read_in%extra_exchange_integrals) then
+                            hmatel = hmatel - get_two_body_exchange_pbc_int_real(sys%read_in%additional_exchange_ints, &
+                                                    i, occ_list(iel), occ_list(iel), a, sys)
+                        else
+                            hmatel = hmatel - get_two_body_int_mol_real(coulomb_ints, i, occ_list(iel), &
+                                                occ_list(iel), a, sys)
+                        end if
+                    end if
                 end do
             end associate
 
@@ -201,7 +217,8 @@ contains
         ! symmetry).  This is less safe that slater_condon1_mol but much faster
         ! as it allows symmetry checking to be skipped in the integral lookups.
 
-        use molecular_integrals, only: get_one_body_int_mol_nonzero, get_two_body_int_mol_nonzero
+        use molecular_integrals, only: get_one_body_int_mol_nonzero, get_two_body_int_mol_nonzero, &
+                                       get_two_body_exchange_pbc_int_nonzero
         use system, only: sys_t
         use hamiltonian_data, only: hmatel_t
 
@@ -223,9 +240,16 @@ contains
                 if (occ_list(iel) /= i) then
                     hmatel%r = hmatel%r &
                                 + get_two_body_int_mol_nonzero(coulomb_ints, i, occ_list(iel), a, occ_list(iel), basis_fns)
-                    if (basis_fns(occ_list(iel))%Ms == basis_fns(i)%Ms) &
-                        hmatel%r = hmatel%r &
+                    if (basis_fns(occ_list(iel))%Ms == basis_fns(i)%Ms) then
+! [todo] - AJWT: replace with a pointer initialized at the start of the function to speed this up?
+                        if (sys%read_in%extra_exchange_integrals) then
+                            hmatel%r = hmatel%r - get_two_body_exchange_pbc_int_nonzero(sys%read_in%additional_exchange_ints, &
+                                                    i, occ_list(iel), occ_list(iel), a, basis_fns)
+                        else
+                            hmatel%r = hmatel%r &
                                     - get_two_body_int_mol_nonzero(coulomb_ints, i, occ_list(iel), occ_list(iel), a, basis_fns)
+                        end if
+                    end if
                 end if
             end do
         end associate
@@ -324,7 +348,7 @@ contains
     pure subroutine create_weighted_excitation_list_mol(sys, i, b, a_list, a_list_len, weights, weight_tot)
 
         ! Generate a list of allowed excitations from i to one a of a_list with their weights based on
-        ! sqrt(|<ia|ai>|)
+        ! sqrt(|<ia|ai>|) (Power-Pitzer) or sqrt(|<ia|ia>|) (Cauchy Schwarz)
         !
         ! In:
         !    sys:   The system in which the orbitals live
@@ -337,7 +361,7 @@ contains
         !    weight_tot: The sum of all the weights.
 
         use system, only: sys_t
-        use molecular_integrals, only: get_two_body_int_mol_real
+        use proc_pointers, only: get_two_body_int_cou_ex_mol_real_ptr
 
         type(sys_t), intent(in) :: sys
         integer, intent(in) :: i, b, a_list_len, a_list(:)
@@ -353,8 +377,8 @@ contains
             if (a_list(k) /= b) then
                 ! [review] - JSS: could avoid the abs with an assumption or a one-off O(N2) check during initialisation?
                 ! [review] - VAN: where in initialisation would that check be?
-                ! This exchange integral should be +ve, but best abs below in case!
-                weight = get_two_body_int_mol_real(sys%read_in%coulomb_integrals, i, a_list(k), a_list(k), i, sys)
+                ! If exchange integral, then should be +ve, but best abs below in case!
+                weight = get_two_body_int_cou_ex_mol_real_ptr(sys, i, a_list(k))
                 weights(k) = sqrt(abs(weight))
                 weight_tot = weight_tot + weights(k)
             else
@@ -364,6 +388,49 @@ contains
         end do
 
     end subroutine create_weighted_excitation_list_mol
+    
+    pure function get_two_body_int_ex_mol_real(sys, i, a) result(integral)
+        ! Get integral <ia|ai> (exchange) for real system.
+        !
+        ! In:
+        !   sys: system object
+        !   i: orbital to excite from
+        !   a: orbital to excite to
+        ! Out:
+        !   integral: resulting exchange integral
+        
+        use system, only: sys_t
+        use molecular_integrals, only: get_two_body_int_mol_real
+
+        type(sys_t), intent(in) :: sys
+        integer, intent(in) :: i, a
+        real(p) :: integral
+
+        integral = get_two_body_int_mol_real(sys%read_in%coulomb_integrals, i, a, a, i, sys)
+
+    end function get_two_body_int_ex_mol_real
+
+    pure function get_two_body_int_cou_mol_real(sys, i, a) result(integral)
+        
+        ! Get integral <ia|ia> (Coulomb) for real system.
+        !
+        ! In:
+        !   sys: system object
+        !   i: orbital to excite from
+        !   a: orbital to excite to
+        ! Out:
+        !   integral: resulting Coulomb integral
+        
+        use system, only: sys_t
+        use molecular_integrals, only: get_two_body_int_mol_real
+
+        type(sys_t), intent(in) :: sys
+        integer, intent(in) :: i, a
+        real(p) :: integral
+
+        integral = get_two_body_int_mol_real(sys%read_in%coulomb_integrals, i, a, i, a, sys)
+
+    end function get_two_body_int_cou_mol_real
 
     pure function abs_hmatel_mol(hmatel) result(abs_hmatel)
         ! Return absolute value of hmatel. As we do not have a complex function here, hmatel is real.

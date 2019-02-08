@@ -5,7 +5,7 @@ module molecular_integral_types
 ! We only define the types here; all procedures are in molecular_integrals.
 
 use const, only: p
-use base_types, only: alloc_rp1d
+use base_types, only: alloc_rp1d, alloc_rp2d
 
 implicit none
 
@@ -78,5 +78,27 @@ type two_body_t
     ! Imaginary component of integrals?
     logical :: imag = .false.
 end type
+
+type two_body_exchange_t
+    ! This type is also used for storage of two body exchange-type integrals
+    ! in complex systems. This requires indexing by three indexes due to symmetry
+    ! constraints so differs from the conventional indexing.
+
+    ! We require storage of the integrals <ij|ai>, so if we enforce j >= a we can
+    ! have integrals(ispins)%v(i_index,ja_index) storing the integral <ij|ai>.
+    ! ja_index is just a trigonal index based on j & a.
+
+    type(alloc_rp2d), allocatable :: integrals(:)
+
+    ! bit string representations of irreducible representations
+    integer :: op_sym
+    ! From a UHF calculation?
+    logical :: uhf
+    ! From complex calculation? (Should always be the case but just in case)
+    logical :: comp = .false.
+    ! Imaginary component of integrals?
+    logical :: imag = .false.
+
+end type two_body_exchange_t
 
 end module molecular_integral_types

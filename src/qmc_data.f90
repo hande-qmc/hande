@@ -6,7 +6,7 @@ use csr, only: csrp_t
 use parallel, only: parallel_timing_t
 use importance_sampling_data
 use excit_gens, only: excit_gen_data_t
-use reference_determinant, only: reference_t
+use reference_determinant, only: reference_t, reference_t_json
 use dSFMT_interface, only: dSFMT_state_t
 
 implicit none
@@ -54,6 +54,10 @@ enum, bind(c)
     enumerator :: excit_gen_power_pitzer_occ_ij
     ! The version O(N) which precomputes more than excit_gen_power_pitzer.
     enumerator :: excit_gen_power_pitzer_orderN
+    ! The Cauchy Schwarz version O(M) which chooses occ orbitals first. ij are found uniformly.
+    enumerator :: excit_gen_cauchy_schwarz_occ
+    ! The Cauchy Schwarz version O(M) which chooses occ orbitals first. ij are found with heat bath.
+    enumerator :: excit_gen_cauchy_schwarz_occ_ij
     ! Heat bath excitation generators, based on Holmes, A. A.; Changlani, H. J.; Umrigar, 
     ! C. J. J. Chem. Theory Comput. 2016, 12, 1561–1571
     enumerator :: excit_gen_heat_bath
@@ -314,6 +318,9 @@ type ccmc_in_t
     character(255) :: density_matrix_file = 'RDM'
     ! Whether to use even cluster selection approach.
     logical :: even_selection = .false.
+    ! Whether to use a second reference.
+    logical :: multiref = .false.
+    type(reference_t) :: second_ref
 end type ccmc_in_t
 
 type restart_in_t
@@ -828,6 +835,9 @@ type qmc_state_t
     type(reference_t) :: ref
     type(trial_t) :: trial
     type(restart_in_t) :: restart_in
+    ! Flags for multireference CCMC calculations.
+    logical :: multiref = .false.
+    type(reference_t) :: second_ref
     ! WARNING: par_info is the 'reference/master' (ie correct) version
     ! of parallel_t, in particular of proc_map_t.  However, copies of it
     ! are kept in spawn_t objects, and it is these copies which are used
@@ -917,17 +927,21 @@ contains
         case (excit_gen_power_pitzer)
             call json_write_key(js, 'excit_gen', 'power_pitzer')
         case (excit_gen_power_pitzer_occ)
-            call json_write_key(js, 'excit_gen', 'power_pitzer_orderM')
+            call json_write_key(js, 'excit_gen', 'uniform_power_pitzer')
         case (excit_gen_power_pitzer_occ_ij)
-            call json_write_key(js, 'excit_gen', 'power_pitzer_orderM_ij')
+            call json_write_key(js, 'excit_gen', 'heat_bath_power_pitzer')
         case (excit_gen_power_pitzer_orderN)
-            call json_write_key(js, 'excit_gen', 'power_pitzer_orderN')
+            call json_write_key(js, 'excit_gen', 'heat_bath_power_pitzer_ref')
+        case (excit_gen_cauchy_schwarz_occ)
+            call json_write_key(js, 'excit_gen', 'uniform_cauchy_schwarz')
+        case (excit_gen_cauchy_schwarz_occ_ij)
+            call json_write_key(js, 'excit_gen', 'heat_bath_cauchy_schwarz')
         case (excit_gen_heat_bath)
             call json_write_key(js, 'excit_gen', 'heat_bath')
         case (excit_gen_heat_bath_uniform)
-            call json_write_key(js, 'excit_gen', 'heat_bath_uniform')
+            call json_write_key(js, 'excit_gen', 'heat_bath_uniform_singles')
         case (excit_gen_heat_bath_single)
-            call json_write_key(js, 'excit_gen', 'heat_bath_single')
+            call json_write_key(js, 'excit_gen', 'heat_bath_exact_singles')
         case default
             call json_write_key(js, 'excit_gen', qmc%excit_gen)
         end select
@@ -1078,7 +1092,9 @@ contains
         call json_write_key(js, 'vary_shift_reference', ccmc%vary_shift_reference)
         call json_write_key(js, 'density_matrices', ccmc%density_matrices)
         call json_write_key(js, 'density_matrix_file', ccmc%density_matrix_file)
-        call json_write_key(js, 'even_selection', ccmc%even_selection, .true.)
+        call json_write_key(js, 'even_selection', ccmc%even_selection)
+        if (ccmc%multiref) call reference_t_json(js, ccmc%second_ref, key = 'second_ref')
+        call json_write_key(js,'multiref', ccmc%multiref,terminal=.true.)
         call json_object_end(js, terminal)
 
     end subroutine ccmc_in_t_json

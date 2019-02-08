@@ -76,9 +76,8 @@ contains
         use errors, only: stop_all
 
         type(sys_t), intent(inout) :: sys
-
         integer :: i, j, k, ierr, a(3)
-        integer :: ksum(sys%lattice%ndim)
+        integer :: ksum(3)
 
         ! Use 1-index in common with model periodic systems.
         sys%sym0 = 1
@@ -217,11 +216,10 @@ contains
 
         use system, only: sys_t
         use parallel, only: parent
-        use basis, only: write_basis_fn
 
         type(sys_t), intent(in) :: sys
         integer, intent(in), optional :: io_unit
-        integer :: i, j, iunit
+        integer :: i, j, iunit, k_vector(3)
 
         iunit = 6
         if (present(io_unit)) iunit = io_unit
@@ -236,7 +234,13 @@ contains
             write (iunit,'(a7)') 'Inverse'
             do i = 1, sys%nsym
                 write (iunit,'(i4,5X)', advance='no') i
-                call write_basis_fn(sys, sys%basis%basis_fns(2*i), new_line=.false., print_full=.false.)
+                call get_kpoint_vector(i, sys%read_in%mom_sym%nprop, k_vector)
+                write (iunit,'(1X,"(")', advance='no')
+                write (iunit,'(i3)',advance='no') k_vector(1)
+                do j = 2,3
+                    write (iunit,'(",",i3)',advance='no') k_vector(j)
+                end do
+                write (iunit,'(")")', advance='no')
                 write (iunit,'(5X,i4)') sys%read_in%mom_sym%inv_sym(i)
             end do
             write (iunit,'()')

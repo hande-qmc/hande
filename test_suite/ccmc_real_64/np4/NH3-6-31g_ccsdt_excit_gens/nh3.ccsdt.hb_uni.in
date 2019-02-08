@@ -17,7 +17,7 @@ ccmc {
         real_amplitudes = true,
         state_size = -200,
         spawned_state_size = -200,
-        excit_gen = 'heat_bath_uniform',
+        excit_gen = 'heat_bath_uniform_singles',
     },
     reference = {
         ex_level = 3,

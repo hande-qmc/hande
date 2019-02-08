@@ -496,7 +496,7 @@ contains
         ! Get main table.
         opts = aot_table_top(lua_state)
         call read_qmc_in(lua_state, opts, qmc_in)
-        call read_ccmc_in(lua_state, opts, ccmc_in)
+        call read_ccmc_in(lua_state, opts, ccmc_in, sys)
 
         ! Need to extend bit strings for additional excitation level information if needed.
         if (ccmc_in%even_selection) then
@@ -898,8 +898,10 @@ contains
         !     real_amplitude_force_32 = true/false,
         !     spawn_cutoff = cutoff,
         !     excit_gen =
-        !     'renorm'/'renorm_spin'/'no_renorm'/'no_renorm_spin'/'power_pitzer'/'power_pitzer_orderM'/'power_pitzer_orderM_ij'/
-        !     'power_pitzer_orderN'/'heat_bath'/'heat_bath_uniform'/'heat_bath_single'
+        !     'renorm'/'renorm_spin'/'no_renorm'/'no_renorm_spin'/'power_pitzer'/'uniform_power_pitzer'('power_pitzer_orderM')/
+        !     'heat_bath_power_pitzer'('power_pitzer_orderM_ij')/'heat_bath_power_pitzer_ref'('power_pitzer_orderN')/
+        !     'uniform_cauchy_schwarz'('cauchy_schwarz_orderM')/'heat_bath_cauchy_schwarz'('cauchy_schwarz_orderM_ij')/
+        !     'heat_bath'/'heat_bath_uniform_singles'('heat_bath_uniform')/'heat_bath_exact_singles'('heat_bath_single')
         !     power_pitzer_min_weight = power_pitzer_min_weight,
         !     tau_search = true/false,
         !     pattempt_single = prob,
@@ -929,7 +931,7 @@ contains
         use aot_table_module, only: aot_get_val, aot_exists, aot_table_open, aot_table_close
 
         use qmc_data, only: qmc_in_t, excit_gen_renorm, excit_gen_no_renorm, excit_gen_renorm_spin, excit_gen_no_renorm_spin
-        use qmc_data, only: excit_gen_power_pitzer
+        use qmc_data, only: excit_gen_power_pitzer, excit_gen_cauchy_schwarz_occ, excit_gen_cauchy_schwarz_occ_ij
         use qmc_data, only: excit_gen_power_pitzer_occ, excit_gen_power_pitzer_occ_ij, excit_gen_power_pitzer_orderN
         use qmc_data, only: excit_gen_heat_bath, excit_gen_heat_bath_uniform, excit_gen_heat_bath_single
         use lua_hande_utils, only: warn_unused_args, get_rng_seed
@@ -1037,18 +1039,36 @@ contains
                 qmc_in%excit_gen = excit_gen_no_renorm
             case('no_renorm_spin')
                 qmc_in%excit_gen = excit_gen_no_renorm_spin
+            case('uniform_power_pitzer')
+                qmc_in%excit_gen = excit_gen_power_pitzer_occ
             case('power_pitzer_orderM')
                 qmc_in%excit_gen = excit_gen_power_pitzer_occ
+            case('heat_bath_power_pitzer')
+                qmc_in%excit_gen = excit_gen_power_pitzer_occ_ij
             case('power_pitzer_orderM_ij')
                 qmc_in%excit_gen = excit_gen_power_pitzer_occ_ij
             case('power_pitzer')
                 qmc_in%excit_gen = excit_gen_power_pitzer
+            case('heat_bath_power_pitzer_ref')
+                qmc_in%excit_gen = excit_gen_power_pitzer_orderN
             case('power_pitzer_orderN')
                 qmc_in%excit_gen = excit_gen_power_pitzer_orderN
+            case('uniform_cauchy_schwarz')
+                qmc_in%excit_gen = excit_gen_cauchy_schwarz_occ
+            case('cauchy_schwarz_orderM')
+                qmc_in%excit_gen = excit_gen_cauchy_schwarz_occ
+            case('heat_bath_cauchy_schwarz')
+                qmc_in%excit_gen = excit_gen_cauchy_schwarz_occ_ij
+            case('cauchy_schwarz_orderM_ij')
+                qmc_in%excit_gen = excit_gen_cauchy_schwarz_occ_ij
             case('heat_bath')
                 qmc_in%excit_gen = excit_gen_heat_bath
+            case('heat_bath_uniform_singles')
+                qmc_in%excit_gen = excit_gen_heat_bath_uniform
             case('heat_bath_uniform')
                 qmc_in%excit_gen = excit_gen_heat_bath_uniform
+            case('heat_bath_exact_singles')
+                qmc_in%excit_gen = excit_gen_heat_bath_single
             case('heat_bath_single')
                 qmc_in%excit_gen = excit_gen_heat_bath_single
             case default
@@ -1285,7 +1305,7 @@ contains
 
     end subroutine read_semi_stoch_in
 
-    subroutine read_ccmc_in(lua_state, opts, ccmc_in)
+    subroutine read_ccmc_in(lua_state, opts, ccmc_in, sys)
 
         ! Read in an ccmc table (if it exists) to an ccmc_in object.
 
@@ -1298,12 +1318,15 @@ contains
         !     density_matrices = true/false,
         !     density_matrix_file = filename,
         !     even_selection = true/false,
+        !     multiref = true/false,
+	    !     second_ref ={...},
         ! }
 
         ! In/Out:
         !    lua_state: flu/Lua state to which the HANDE API is added.
         ! In:
         !    opts: handle for the table containing the ccmc table.
+        !    sys:  sys_t object containing information of current system. 
         ! Out:
         !    ccmc_in: ccmc_in_t object containing ccmc-specific input options.
 
@@ -1312,15 +1335,19 @@ contains
 
         use qmc_data, only: ccmc_in_t
         use lua_hande_utils, only: warn_unused_args
+        use system, only: sys_t
+        use errors, only: stop_all
 
         type(flu_State), intent(inout) :: lua_state
         integer, intent(in) :: opts
+        type (sys_t), intent(in) :: sys
         type(ccmc_in_t), intent(out) :: ccmc_in
 
         integer :: ccmc_table, err
-        character(28), parameter :: keys(8) = [character(28) :: 'move_frequency', 'cluster_multispawn_threshold', &
+        character(28), parameter :: keys(10) = [character(28) :: 'move_frequency', 'cluster_multispawn_threshold', &
                                                                 'full_non_composite', 'linked', 'vary_shift_reference', &
-                                                                'density_matrices', 'density_matrix_file', 'even_selection']
+                                                                'density_matrices', 'density_matrix_file', 'even_selection', &
+                                                                'multiref', 'second_ref']
 
         if (aot_exists(lua_state, opts, 'ccmc')) then
 
@@ -1335,7 +1362,15 @@ contains
             call aot_get_val(ccmc_in%density_matrices, err, lua_state, ccmc_table, 'density_matrices')
             call aot_get_val(ccmc_in%density_matrix_file, err, lua_state, ccmc_table, 'density_matrix_file')
             call aot_get_val(ccmc_in%even_selection, err, lua_state, ccmc_table, 'even_selection')
+            call aot_get_val(ccmc_in%multiref, err, lua_state, ccmc_table, 'multiref')
 
+            call read_reference_t(lua_state, ccmc_table, ccmc_in%second_ref, sys, 'second_ref')
+            if (ccmc_in%multiref .and. .not. allocated(ccmc_in%second_ref%occ_list0)) then
+                call stop_all('read_ccmc_in', 'Uninitialised second reference determinant.') 
+            end if
+            if (ccmc_in%multiref .and. (ccmc_in%second_ref%ex_level == -1 .or. ccmc_in%second_ref%ex_level == sys%nel)) then
+                call stop_all('read_ccmc_in', 'Uninitialised second reference excitation level.')
+            end if
             call warn_unused_args(lua_state, keys, ccmc_table)
 
             call aot_table_close(lua_state, ccmc_table)
@@ -1640,7 +1675,7 @@ contains
         ! reference = {
         !     det = { ... }, -- N-electron vector
         !     hilbert_space_det = { ... }, -- N-electron vector
-        !     ex_level = truncation_level,
+        !     ex_level = truncation_level
         ! }
 
         ! In/Out:
@@ -1702,11 +1737,10 @@ contains
             end if
 
             call aot_get_val(ref%ex_level, err, lua_state, ref_table, 'ex_level')
-
+           
             call warn_unused_args(lua_state, keys, ref_table)
 
             call aot_table_close(lua_state, ref_table)
-
         end if
 
     end subroutine read_reference_t

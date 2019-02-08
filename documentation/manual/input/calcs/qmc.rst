@@ -170,29 +170,37 @@ algorithms and control the core settings in the algorithms.
 
     Optional. Default: system dependent.
 
-    Possible values are system dependent:
+    Possible values are system dependent (alternative, deprecated names in bracket):
 
-    ============  ========================  =========
-    System        Implemented               Default
-    ============  ========================  =========
-    chung_landau  renorm, no_renorm         renorm
-    heisenberg    renorm, no_renorm         renorm
-    hubbard_k     renorm, no_renorm         renorm
-    hubbard_real  renorm, no_renorm         renorm
-    read_in       renorm, no_renorm,        renorm
+    ============  ==========================  =========
+    System        Implemented                 Default
+    ============  ==========================  =========
+    chung_landau  renorm, no_renorm           renorm
+    heisenberg    renorm, no_renorm           renorm
+    hubbard_k     renorm, no_renorm           renorm
+    hubbard_real  renorm, no_renorm           renorm
+    read_in       renorm, no_renorm,          renorm
                   renorm_spin,
                   no_renorm_spin,
                   heat_bath,
-                  heat_bath_uniform,
-                  heat_bath_single,
-                  power_pitzer,
-                  power_pitzer_orderM,
-                  power_pitzer_orderM_ij,
-                  power_pitzer_orderN
-    ringium       no_renorm                 no_renorm
-    ueg           no_renorm,                no_renorm
+                  heat_bath_uniform_singles
+                  (heat_bath_uniform),
+                  heat_bath_exact_singles
+                  (heat_bath_single),
+                  uniform_power_pitzer
+                  (power_pitzer_orderM),
+                  heat_bath_power_pitzer
+                  (power_pitzer_orderM_ij),
+                  heat_bath_power_pitzer_ref
+                  (power_pitzer_orderN),
+                  uniform_cauchy_schwarz
+                  (cauchy_schwarz_orderM),
+                  heat_bath_cauchy_schwarz
+                  (cauchy_schwarz_orderM_ij)
+    ringium       no_renorm                   no_renorm
+    ueg           no_renorm,                  no_renorm
                   power_pitzer
-    ============  ========================  =========
+    ============  ==========================  =========
 
     The type of excitation generator to use.  Note that not all types are implemented for
     all systems, usually because a specific type is not suitable for (large) production
@@ -214,6 +222,9 @@ algorithms and control the core settings in the algorithms.
     parallel spins or not. The idea is by Alavi and co-workers, see [Booth09]_ and [Booth14]_
     for example for more details on these excitation generators.
 
+    Note that the implementations of the weighted excitation generators here are all
+    described in [Neufeld19]_.
+
     The 'heat_bath' excitation generator is very similar to the "original" heat bath
     excitation generator described by Holmes et al. [Holmes16]_. :math:`i,j,a,b` are chosen
     with weighted, precalculated probabilities that aim to make :math:`|H_{ij}|/p_\mathrm{gen}` as constant
@@ -224,21 +235,28 @@ algorithms and control the core settings in the algorithms.
     there might be no occupied :math:`j` that lets us select :math:`ija`. See Holmes et al.
     for details. We check for the bias in the beginning of a calculation and stop it if
     necessary.
-    The Power-Pitzer excitation generators use approximate upper bounds for these weights.
-    'heat_bath_uniform' is very similar to 'heat_bath' but samples single excitations
-    uniformly (mentioned by Holmes et al.) and 'heat_bath_single' is also very similar
+    The Cauchy-Schwarz ([Smartunpub]_, described in [Blunt17]_)
+    and Power-Pitzer excitation generators use approximate upper bounds
+    for these weights. A version of Cauchy-Schwarz excitation generators is described in [Schwarz]_
+    but the weights used here and the implementation differ.
+    Here, Cauchy-Scharz uses Coulomb integrals and Power-Pitzer uses
+    exchange integrals to approximate weights.
+    'heat_bath_uniform_singles' is very similar to 'heat_bath' but samples single excitations
+    uniformly (mentioned by Holmes et al.) and 'heat_bath_exact_singles' is also very similar
     but samples single excitations with the correct weighting (following a
-    recommendation by Pablo Lopez Rios). 'heat_bath_uniform' and 'heat_bath_single' do
+    recommendation by Pablo Lopez Rios). 'heat_bath_uniform_singles' and 'heat_bath_exact_singles' do
     not have this potential bias that 'heat_bath' can have.
 
     Some of the Power-Pitzer excitation generators use elements of the heat-bath excitation
     generators ([Holmes16]_) and their approximations for selecting :math:`a` and :math:`b`
     are inspired by the Cauchy-Schwarz excitation generators by Alavi and co-workers
-    [Smartunpub]_. See more details on all these weighted excitations generator in Ref. [Neufeld18]_.
+    [Smartunpub]_. See more details on all these weighted excitations generator in Ref. [Neufeld19]_.
 
     The 'power_pitzer' excitation generator generates double excitations using a Power-Pitzer
     [Power74]_ upper bound for the value of the Hamiltonian matrix element, 
-    :math:`|\langle ij|ab\rangle|^2 > \langle ia|ai\rangle\langle jb|bj\rangle`.
+    :math:`|\langle ij|ab\rangle|^2 => \langle ia|ai\rangle\langle jb|bj\rangle`
+    (:math:`|\langle ij|ab\rangle|^2 => \langle ia|ia\rangle\langle jb|jb\rangle` for
+    Cauchy-Schwarz excitation generators).
     This involves some precalcalated weights and alias tables, but should reduce both noise
     and shoulder heights. The weights to select a certain excitation are calculated for
     the reference in the beginning of the QMC calculation. Each time the excitation
@@ -248,32 +266,42 @@ algorithms and control the core settings in the algorithms.
     :math:`N` is the number of electrons and the memory requirements are :math:`\mathcal{O}(N M)`,
     where :math:`M` is the number of basis functions.  Single excitations are done uniformly.
 
-    'power_pitzer_orderM' uses a more refined upper bound for the Hamiltonian matrix
+    'uniform_power_pitzer' uses a more refined upper bound for the Hamiltonian matrix
     elements, where the weights for selecting an excitation are calculated each time the
     excitation is called for the actual determinant we are spawning from. This requires
     :math:`\mathcal{O}(M)` time cost for each particle being spawned from. The 
-    memory requirements are of :math:`\mathcal{O}(M)`. 'power_pitzer_orderM_ij'
-    is similar to 'power_pitzer_orderM' but samples selects :math:`i` and :math:`j`
+    memory requirements are of :math:`\mathcal{O}(M)`. 'heat_bath_power_pitzer'
+    is similar to 'uniform_power_pitzer' but samples selects :math:`i` and :math:`j`
     similarly to the heat bath excitation generators. The memory cost is
     :math:`\mathcal{O}(M^2)`.
+    'uniform_cauchy_schwarz' is similar to 'uniform_power_pitzer' and 'heat_bath_cauchy_schwarz'
+    is similar to 'heat_bath_power_pitzer', the distinction being the types of weights used
+    to select :math:`ab`.
 
-    The 'power_pitzer_orderN' excitation generator uses precalculated weights and unlike
-    'power_pitzer', it also samples :math:`i` and :math:`j` with weighted probabilities.
+    The 'heat_bath_power_pitzer_ref' excitation generator [Neufeld19]_ uses precalculated weights and unlike
+    'uniform_power_pitzer', it also samples :math:`i` and :math:`j` with weighted probabilities.
     It also samples single excitations in a weighted manner. Its memory cost is
     :math:`\mathcal{O}(M^2)`.
     This excitation generator can be useful in single-referenced systems when doing
-    CCMC especially where the basis set size gets too big for 'power_pitzer_orderM' and
-    'heat_bath_uniform'.
+    CCMC especially where the basis set size gets too big for 'heat_bath_power_pitzer' and
+    'heat_bath_uniform_singles'. The computational scaling is also more favourable than
+    with 'heat_bath_power_pitzer'.
 
     In the case of the UEG, the 'power_pitzer' excitation generator pre-calculates
     Power-Pitzer like weights for the selecting of orbital :math:`a`. :math:`i` and
     :math:`j` are selected like the 'no_renorm' UEG excitation generator.  If :math:`a` is
     occupied, the excitation is forbidden.
 
-    ..
-        [todo] - Rewrite documentation to
-        highlight differences/similarities in excitation generators.
+    .. note::
+        Our current advice for selecting an excitation generator to use with read_in systems [Neufeld19]_:
+        First consider the 'heat_bath' excitation generator. A bias test will be run at the beginning of
+        the calculation then. If the bias test fails, try 'heat_bath_uniform_singles'.
+        If 'heat_bath' and/or 'heat_bath_uniform_singles' fail due to memory constraints,
+        try 'heat_bath_power_pitzer_ref'. Note that only 'heat_bath' requires a bias test.
     
+    .. note::
+        The Cauchy-Schwarz excitation generators are not implemented for complex read_in systems.
+
     .. note::
         Currently only the no_renorm and renorm excitation generators are available in
         DMQMC.
