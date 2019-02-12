@@ -269,13 +269,14 @@ reblock_plot : string
     parser.add_argument('-t','--extract_rl_time', default=False, action='store_true',
                         help='Find the mean time taken for a report loop.')
     parser.add_argument('-a','--analysis_method',  dest='analysis_method', 
-                        default='reblocking', help='Designate the post-analysis method '
-                        'to estimate the statistic error. [reblocking or hybrid] '
-                        'Default: reblocking')
+                        default='reblocking', choices=['reblocking','hybrid'],
+                        help='Designate the post-analysis method '
+                        'to estimate the statistic error. Default: %(default)s')
     parser.add_argument('-b','--warmup_detection', dest='warmup_detection', 
-                        default='hande_org', help='Designate the method to determine '
+                        default='hande_org', choices=['hande_org','mser_min'],
+                        help='Designate the method to determine '
                         'the starting iterations to be discarded before calculating '
-                        'the statistic error. [hande_org or mser_min] Default: hande_org')
+                        'the statistic error. Default: %(default)s')
     parser.add_argument('filenames', nargs=argparse.REMAINDER,
                         help='Space-separated list of files to analyse.')
 
