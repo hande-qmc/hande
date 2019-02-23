@@ -47,10 +47,17 @@ typically obtained using
 
 respectively, where ``N`` is the iteration from which data should be blocked (i.e.
 after the calculation has equilibrated) and ``out`` is the file to which the
-calculation output was saved.
+calculation output was saved. Without --start option, this script automatically 
+estimates the appropriate ``N``, so you don't have to its value basically.
 
 Note that reblock_hande.py can accept multiple output files for the case when
-a calculation is restarted.  More complicated analysis can be performed in python by
+a calculation is restarted as follows:
+
+.. code-block:: bash
+
+    $ reblock_hande.py -m out1 out2 out3
+
+More complicated analysis can be performed in python by
 using the ``pyhande`` library --- ``reblock_hande.py`` simply provides a convenient
 interface for the most common analysis tasks.
 
