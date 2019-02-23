@@ -15,6 +15,8 @@ with complex analysis, data-driven investigation or bulk data analysis.
 
 FCIQMC and CCMC
 ---------------
+Basic Usage
+^^^^^^^^^^^^^^^
 
 QMC calculations print out data from a block of iterations (a 'report loop'), the length
 of which is controlled by the **mc_cycles** input option.  Care should be taken analysing
@@ -60,6 +62,9 @@ a calculation is restarted as follows:
 More complicated analysis can be performed in python by
 using the ``pyhande`` library --- ``reblock_hande.py`` simply provides a convenient
 interface for the most common analysis tasks.
+
+New Features
+^^^^^^^^^^^^^^^
 
 Canonical Total Energy MC
 ---------------------------
