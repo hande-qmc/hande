@@ -65,20 +65,24 @@ interface for the most common analysis tasks.
 
 New methods for error estimation
 ^^^^^^^^^^^^^^^
-我々は、新たな誤差評価手法を実装した。
-当該手法は、時系列が短い場合に有効なAR modelと
-時系列が長い場合に有効なStraatsma法
-(自己相関関数の足し上げ)を組み合わせたものである。
-当該手法を使用するには次のコマンドようなコマンドとなる:
+Hybrid method is another choice for error estimation.
+It consists of `AR model' and `Straatsma (Intergration 
+of autocorrelation function)', which are superior in 
+different length of time-series. This method is avaliable 
+using
 
 .. code-block:: bash
 
     $ reblock_hande.py -a hybrid out
 
+我々の実験は、当該手法がreblockingよりも、信頼性の高い結果を与え、
+
+
+
 従来法と比較するために、1000個の異なるCCMC-SD計算を実行し、
-それぞれに対してエネルギー平均値と1\sigma誤差を算定し、
-等価なCCSD結果とのCondi&onal Concordance rate,
-Uncondi&onal Concordance rateを算定した。
+それぞれに対してエネルギー平均値と1 sigma 誤差を算定し、
+等価なCCSD結果とのConditional Concordance rate,
+Unconditional Concordance rateを算定した。
 
 
 New Feature on Warm-up Steps Detection
