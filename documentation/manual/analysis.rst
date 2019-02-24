@@ -15,7 +15,7 @@ with complex analysis, data-driven investigation or bulk data analysis.
 
 FCIQMC and CCMC
 ---------------
-Basic Usage
+Fundamental Usage
 ^^^^^^^^^^^^^^^
 
 QMC calculations print out data from a block of iterations (a 'report loop'), the length
@@ -63,8 +63,18 @@ More complicated analysis can be performed in python by
 using the ``pyhande`` library --- ``reblock_hande.py`` simply provides a convenient
 interface for the most common analysis tasks.
 
-New Features
+New Feature on Error Estimation
 ^^^^^^^^^^^^^^^
+'N_0','Shift','# H psips',]
+新たに実装した解析手法では、次のような改良点が見られる。
+新たに実装した手法では、<\sum H_0j N_j>/<N_0>ではなく、
+<\sum H_0j N_j / N_0>として、射影エネルギーを算定する。
+
+
+
+New Feature on Warm-up Steps Detection
+^^^^^^^^^^^^^^^
+
 
 Canonical Total Energy MC
 ---------------------------
