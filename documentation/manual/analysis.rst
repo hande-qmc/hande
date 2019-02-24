@@ -63,13 +63,22 @@ More complicated analysis can be performed in python by
 using the ``pyhande`` library --- ``reblock_hande.py`` simply provides a convenient
 interface for the most common analysis tasks.
 
-New Feature on Error Estimation
+New methods for error estimation
 ^^^^^^^^^^^^^^^
-'N_0','Shift','# H psips',]
-新たに実装した解析手法では、次のような改良点が見られる。
-新たに実装した手法では、<\sum H_0j N_j>/<N_0>ではなく、
-<\sum H_0j N_j / N_0>として、射影エネルギーを算定する。
+我々は、新たな誤差評価手法を実装した。
+当該手法は、時系列が短い場合に有効なAR modelと
+時系列が長い場合に有効なStraatsma法
+(自己相関関数の足し上げ)を組み合わせたものである。
+当該手法を使用するには次のコマンドようなコマンドとなる:
 
+.. code-block:: bash
+
+    $ reblock_hande.py -a hybrid out
+
+従来法と比較するために、1000個の異なるCCMC-SD計算を実行し、
+それぞれに対してエネルギー平均値と1\sigma誤差を算定し、
+等価なCCSD結果とのCondi&onal Concordance rate,
+Uncondi&onal Concordance rateを算定した。
 
 
 New Feature on Warm-up Steps Detection
