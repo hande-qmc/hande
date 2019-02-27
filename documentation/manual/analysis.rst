@@ -1,7 +1,7 @@
 .. _analysis:
 
 Analysis
-========
+=====================
 
 The following provides a brief overview for the most common analysis required for each
 type of Monte Carlo calculation.  The guides in :ref:`tutorials` provide a step-by-step
@@ -14,9 +14,9 @@ these only provide a simple, command-line interface.  A comprehensive python mod
 with complex analysis, data-driven investigation or bulk data analysis.
 
 FCIQMC and CCMC
----------------
+---------------------
 Fundamental Usage
-^^^^^^^^^^^^^^^
+^^^^^^^^^^^^^^^^^^^^^
 
 QMC calculations print out data from a block of iterations (a 'report loop'), the length
 of which is controlled by the **mc_cycles** input option.  Care should be taken analysing
@@ -63,30 +63,103 @@ More complicated analysis can be performed in python by
 using the ``pyhande`` library --- ``reblock_hande.py`` simply provides a convenient
 interface for the most common analysis tasks.
 
-New methods for error estimation
-^^^^^^^^^^^^^^^
-Hybrid method is another choice for error estimation.
-It consists of `AR model' and `Straatsma (Intergration 
-of autocorrelation function)', which are superior in 
-different length of time-series. This method is avaliable 
-using
+Hybrid method
+^^^^^^^^^^^^^^^^^^^^^
+
+Hybrid method is another choice to estimate 
+errors, which is available as 
 
 .. code-block:: bash
 
     $ reblock_hande.py -a hybrid out
 
-我々の実験は、当該手法がreblockingよりも、信頼性の高い結果を与え、
+It has been shown by our experiment that
+hybrid method gives more reliable estimation
+of errors than blocking method: In the experiment,
+1000 different CCMC-SD energy time-series were 
+obtained for Nitrogen atom, using the same calculation 
+setting but with different random seeds.
+The mean and the errors were obtained by hybrid method
+and blocking method, and it is examined how many means
+coincide with the CCSD energy within the calculated
+standard errors with respect to both methods.
+The expected coincidence rate for standard errors 
+is 68.27%. Thus, when the actual coincidence rate 
+is closer to this value, the using post-analysis 
+method is more reliable.
+
+Two types of coincidence rate were used to evaluate 
+reliabilities, conditional coincidence rate (CCR) 
+and unconditional coincidence rate (UCR).
+They are given as 
+
+    CCR = Hit / ( Total - Failed ) * 100 改行 
+    UCR = Hit /       Total        * 100
+
+Here, 'Total' is the total number of post-analyses (=1000),
+'Failed' is the number of post-analyses which fails to
+make an estimation of the error(*), and 
+'Hit' is the number of post-analyses which make an estimation
+of the error and the estimated error coincided with 
+the CCMC-SD energy within the standard error.
+(*: e.g. 'Shift is not started yet' in the case of blocking method)
+
+The below figures compare the CCRs and UCRs obtained for 
+different lengths of time-series using hybrid method and
+blocking method, respectively. Both figures shows that
+hybrid method is more reliable than blocking method
+especially for long lengths of time-series. 
+
+.. plot::
+
+    import pandas
+    import matplotlib.pyplot as plt
+    
+    filename='calcs/hybrid.result'
+    res_hyb = pandas.read_csv(filename, delim_whitespace=True)
+    plt.plot(res_hyb['data_size'], res_hyb['ccr'])
+    
+    filename='calcs/blocking.result'
+    res_blk = pandas.read_csv(filename, delim_whitespace=True)
+    plt.plot(res_blk['data_size'], res_blk['ccr'])
+
+    plt.axhline(y=68.27, linestyle='-')
+
+
+.. plot::
+
+    import pandas
+    import matplotlib.pyplot as plt
+    
+    filename='calcs/hybrid.result'
+    res_hyb = pandas.read_csv(filename, delim_whitespace=True)
+    plt.plot(res_hyb['data_size'], res_hyb['ucr'])
+    
+    filename='calcs/blocking.result'
+    res_blk = pandas.read_csv(filename, delim_whitespace=True)
+    plt.plot(res_blk['data_size'], res_blk['ucr'])
+
+    plt.axhline(y=68.27, linestyle='-')
 
 
 
-従来法と比較するために、1000個の異なるCCMC-SD計算を実行し、
-それぞれに対してエネルギー平均値と1 sigma 誤差を算定し、
-等価なCCSD結果とのConditional Concordance rate,
-Unconditional Concordance rateを算定した。
+MSER minimization
+^^^^^^^^^^^^^^^^^^^^^
 
+MSER minimization method is another choice 
+to estimate starting iterations. 
+One can use the method as
 
-New Feature on Warm-up Steps Detection
-^^^^^^^^^^^^^^^
+.. code-block:: bash
+
+    $ reblock_hande.py -b mser_min out
+
+Applying MSER min. and WREE min. to 1000
+different CCMC-SD energy time-series,
+MSER min. gave almost the same starting
+iteration for different length of time-series 
+and, meanwhile, the starting iteration predicted 
+by WREE min. increased according to the length of time-series.
 
 
 Canonical Total Energy MC
