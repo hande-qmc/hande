@@ -81,7 +81,7 @@ for Nitrogen atom, with the same calculation settung
 but just different random seeds. Then, the energy means
 and the standard errors were obtained by hybrid method
 and blocking analysis, and it was examined how many
-means conincide with the CCSD energy within the range
+means coincide with the CCSD energy within the range
 of the errors, respectively. The expected coincidence
 rate for 1 sigma accuracy is 68.27%. Thus, when the
 actual coincidence rate is closer to this percent,
@@ -103,7 +103,7 @@ of the error and the energy mean coincides with the CCSD energy
 within the standard error.
 (\*: e.g. 'Shift is not started yet' in the case of blocking method)
 
-In the folloing figures, the former (latter) compares the CCRs (UCRs)
+In the following figures, the former (latter) compares the CCRs (UCRs)
 obtained using hybrid method and blocking analysis for different
 lengths of time-series.
 Both figure shows that the CR of hybrid method is closer to 68.27%
