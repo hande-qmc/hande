@@ -127,6 +127,7 @@ for short lengths of time-series.
     res_blk = pandas.read_csv(filename, delim_whitespace=True)
     plt.plot(res_blk['data_size'], res_blk['ccr'], color='blue', label='Blocking')
 
+    plt.legend()
     plt.axhline(y=68.27, linestyle='-', color='black', label='68.27 %')
 
 .. plot::
@@ -147,6 +148,7 @@ for short lengths of time-series.
     res_blk = pandas.read_csv(filename, delim_whitespace=True)
     plt.plot(res_blk['data_size'], res_blk['ucr'], color='blue', label='Blocking')
 
+    plt.legend()
     plt.axhline(y=68.27, linestyle='-', color='black', label='68.27 %')
 
 MSER minimization
