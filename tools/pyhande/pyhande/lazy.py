@@ -6,21 +6,189 @@ from os import path
 import pkgutil
 import sys
 import warnings
-
 import matplotlib.pyplot as plt
 import pandas as pd
-
 if pkgutil.find_loader('pyblock'):
     sys.path.append(path.join(path.abspath(path.dirname(__file__)), '../../pyblock'))
 import pyblock
 import pyhande.extract
 import pyhande.analysis
 import pyhande.weight
+import numpy
+import statsmodels.tsa.ar_model as ar_model
+import statsmodels.tsa.stattools as tsastats
+
+
+def find_starting_iteration_mser_min(data, md, start_max_frac=0.9, n_blocks=100, verbose=None, end=None):
+    '''Find the best iteration to start analysing CCMC/FCIQMC data based on MSER minimization scheme.
+
+.. warning::
+    
+    Use with caution, check whether output is sensible and adjust parameters 
+    if necessary.
+
+This function gives an optimal estimation of the starting interations 
+based on MSER minimization heuristics. 
+This methods decides the starting iterations :math:`d` as minimizing an evalualtion 
+function 
+MSER(:math:`d`) = :math:`\Sigma_{i=1}^{n-d} ( X_{i+d} - X_{mean}(d) ) / (n-d)^2`.
+Here, :math:`n` is length of time-series, :math:`X_i` is '\sum H_0j N_j' / 'N_0' of :math:`i`-th step, and
+:math:`X_{mean}` is the average of :math:`X_i` after the :math:`d`-th step.
+
+Parameters 
+----------
+data : :class:`pandas.DataFrame`
+    Calculation output for a FCIQMC or CCMC calculation.
+md : dict
+    Metadata corresponding to the calculation in `data`.
+n_blocks : int
+    This analysis takes long time when :math:`n` is large.
+    Thus, we pick up :math:`d` for every 'n_blocks'
+    samples, calculate MSER(:math:`d`), and decide the 
+    optimal estimation of the starting iterations only 
+    from these `d`.
+start_max_frac : float
+    MSER(d) may oscillate when become unreanably small 
+    when :math:`n-d` is large. Thus, we calculate MSER(:math:`d`) 
+    for :math:`d` < (:math:`n` * start_max_frac) and 
+    give the optimal estimation of the starting iterations
+    only in this range of :math:`d`.
+verbose : int
+    Inactive. This valuable does not change anything.
+end : int or None
+    Last iteration included in analysis. If None, the last iteration included
+    is the last iteration of the data set.
+
+Returns
+-------
+starting_iteration: integer
+    Iteration from which to start reblocking analysis for this calculation.
+'''
+
+    if end is None:
+        end = data['iterations'].iloc[-1]
+    before_end_indx = data['iterations'] <= end
+    data_before_end = data.ix[before_end_indx]
+    
+    list = data_before_end['Proj. Energy']
+    n_data=len(list)
+
+    mser_min = sys.float_info.max
+    for i in range(n_blocks): 
+        start_line = int(i*(n_data*start_max_frac)/n_blocks)
+        mser = numpy.var(list[start_line:n_data]) / (n_data-start_line)
+        if ( mser < mser_min):
+            mser_min = mser
+            starting_iteration = start_line * md['qmc']['ncycles']
+            final_start_line = start_line
+        
+    if ( final_start_line > n_data*start_max_frac*0.8):
+        warnings.warn('Proj. energy may not be converged. MSER min. may underestimate the starting iteration. One should check 1:$3/$4 plot.')
+
+    return starting_iteration
+
+def lazy_hybrid(calc, md, start=0, end=None, batch_size=1):
+    '''New post-analysis on zero-temperature QMC calcaulations.
+
+.. note::
+
+    :func:`std_analysis` is recommended unless custom processing is required
+    before blocking analysis is performed.
+
+This scheme is made by hybridizing two different post-analysis methods,
+AR model and Straatsma. The former (the latter) is comparatively 
+good at estimating the statistic error for smaller (larger) length
+of time-series, respectively. This method just picks up the larger
+statistic error from the ones given by both methods. The mathematical 
+details of both methods are explained in an upcoming paper.
+
+
+Parameters
+----------
+calc : :class:`pandas.DataFrame`
+    Zero-temperature QMC calculation output.
+md : dict
+    Metadata for the calculation in `calc`.
+start, end : 
+    See :func:`std_analysis`.
+batch_size : int
+    The energy time-series is coarse-grained by 
+    averaging several sequential samples 
+    into just one sample and the statistic error
+    is calculated for the coarse-grained time-series.
+    This variable designates how many sequential 
+    samples are averaged together.
+
+Returns
+--------
+info : :func:`collections.namedtuple`
+    See :func:`std_analysis`.
+'''
+
+    if end is None:
+        end = calc['iterations'].iloc[-1]
+    before_end_indx = calc['iterations'] <= end
+    data_before_end = calc.ix[before_end_indx]
+    
+    after_start_indx = data_before_end['iterations'] >= start
+    calc_tr          = data_before_end[after_start_indx]
+        
+    #list = calc_tr['Proj. Energy'].as_matrix()
+    #n_data = len(list)
+    
+    list_org = calc_tr['Proj. Energy'].as_matrix()
+    n_data = len(list_org) / batch_size
+    list = [0]*n_data
+    for i in range(n_data):
+        list[i] = numpy.mean(list_org[i*batch_size:(i+1)*batch_size])
+    #print list
+
+    #print list    
+    mean = numpy.mean(list)
+    var  = numpy.var(list)
+    acf = tsastats.acf(x=list, unbiased=True, nlags=n_data-1, fft=True)
+        
+    # ar model
+    ar = ar_model.AR(list)
+    model_ar = ar.fit(ic='aic', trend='c', method='cmle')
+    params = model_ar.params
+    denom = nom = 1
+    for j in range( len(params)-1 ):
+        denom -= params[j+1]
+        nom -= params[j+1] * acf[j+1]
+    tau =  nom / denom**2
+    error_ar = numpy.sqrt(var/n_data*tau)
+
+    # autocorr
+    tau = 1.0    
+    for i in range(1, n_data-1):
+        if(acf[i]<0):
+            break
+        tau += 2.0*acf[i]
+    error_ac = numpy.sqrt(var/n_data*tau)    
+
+    # return value
+    error = max(error_ar, error_ac)
+    opt_block = pd.DataFrame(
+        {'mean': mean,
+         'standard error': error,
+         'standard error error': None,
+         'estimate': pyblock.error.pretty_fmt_err(mean, error)},
+        columns=['mean', 'standard error', 'standard error error', 'estimate'],
+        index=['Proj. Energy'])
+    no_opt_block = ['N_0','Shift','# H psips','\sum H_0j N_j']
+    tuple_fields = ('metadata data data_len reblock covariance opt_block '
+                    'no_opt_block'.split())
+    info_tuple = collections.namedtuple('HandeInfo', tuple_fields)
+    info = info_tuple(md, calc, None, None, None, opt_block, no_opt_block)
+    return info
+
 
 def std_analysis(datafiles, start=None, end=None, select_function=None,
         extract_psips=False, reweight_history=0, mean_shift=0.0,
         arith_mean=False, calc_inefficiency=False, verbosity = 1, 
-        starts_reweighting=None, extract_rep_loop_time=False):
+        starts_reweighting=None, extract_rep_loop_time=False,
+        analysis_method=None, warmup_detection=None):
     '''Perform a 'standard' analysis of HANDE output files.
 
 Parameters
@@ -57,6 +225,13 @@ starts_reweighting : list of floats
     iteration
 extract_rep_loop_time : bool
     also extract the mean time taken per report loop from the calculation.
+analysis_method : string
+    determines which post-analysis method is used to estimate the statistic
+    error. Currently 'reblocking' and 'hybrid' are prepared.
+warmup_detection : string
+    determines which method is used to decide the starting iterations 
+    to be discarded before calculation the statistic error. Currently
+    'hande_org' and 'mser_min' are prepared.
 
 Returns
 -------
@@ -95,21 +270,30 @@ Umrigar93
     (calcs, calcs_md) = zeroT_qmc(datafiles, reweight_history, mean_shift,
                                   arith_mean)
     infos = []
-    for (calc, md) in zip(calcs, calcs_md):
+    for (calc, md) in zip(calcs, calcs_md):        
         calc_start = start
         calc_end = end
         if calc_start is None:
             if starts_reweighting is None:
-                calc_start = find_starting_iteration(calc, md, verbose=verbosity,
-                                                 end=calc_end)
+                
+                if (warmup_detection == 'hande_org'): # added_by_ichibha
+                    calc_start = find_starting_iteration(calc, md, verbose=verbosity,
+                                                         end=calc_end)
+                elif (warmup_detection == 'mser_min'): # added_by_ichibha
+                    calc_start = find_starting_iteration_mser_min(calc, md, verbose=verbosity,
+                                                                  end=calc_end) # added_by_ichibha                             
             else:
                 calc_start = starts_reweighting[len(infos)]
         md['pyhande'] = {'reblock_start': calc_start}
         if (verbosity > -1) :
             print('Block from: %i' % calc_start)
-        infos.append(lazy_block(calc, md, calc_start, calc_end,
-                    select_function, extract_psips, calc_inefficiency,
-                    extract_rep_loop_time))
+            
+        if (analysis_method == 'reblocking'):  # added_by_ichibha
+            infos.append(lazy_block(calc, md, calc_start, calc_end,          
+                                    select_function, extract_psips, calc_inefficiency,
+                                    extract_rep_loop_time))
+        elif (analysis_method == 'hybrid'):  # added_by_ichibha
+            infos.append(lazy_hybrid(calc, md, calc_start, calc_end))      # added_by_ichibha
     return infos
 
 def zeroT_qmc(datafiles, reweight_history=0, mean_shift=0.0, arith_mean=False):
@@ -148,6 +332,7 @@ metadata : list of dict
                 arith_mean=arith_mean)
             df['W * \sum H_0j N_j'] = df['\sum H_0j N_j'] * df['Weight']
             df['W * N_0'] = df['N_0'] * df['Weight']
+        df['Proj. Energy'] = df['\sum H_0j N_j'] / df['N_0'] 
         data.append(df)
         metadata.append(md)
     if data:
