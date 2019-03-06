@@ -46,6 +46,7 @@ module hdf5_system
     !       basis_ms
     !       basis_lz
     !       basis_sp_eigv
+    !       basis_sp_fock
     !       basis_l_numbers
     !
     !   read_in/
@@ -134,6 +135,7 @@ module hdf5_system
                                 dbasis_ms = 'basis_ms',         &
                                 dbasis_lz = 'basis_lz',         &
                                 dbasis_sp_eigv = 'basis_sp_eigv',&
+                                dbasis_sp_fock = 'basis_sp_fock',&
                                 dbasis_l_numbers = 'basis_l_numbers',   &
                                 dpg_mask = 'pg_mask',           &
                                 dnprop = 'nprop',               &
@@ -338,6 +340,8 @@ module hdf5_system
                                 sys%basis%basis_fns(:)%lz)
                     call hdf5_write(subgroup_id, dbasis_sp_eigv, kinds, [int(nbasis, kind=int_64)],&
                                 sys%basis%basis_fns(:)%sp_eigv)
+                    call hdf5_write(subgroup_id, dbasis_sp_fock, kinds, [int(nbasis, kind=int_64)],&
+                                sys%basis%basis_fns(:)%sp_fock)
 
                     if (sys%momentum_space) then
                         allocate(lscratch(1:nbasis, 1:3), stat=ierr)
@@ -550,6 +554,8 @@ module hdf5_system
                                     sys%basis%basis_fns(:)%lz)
                         call hdf5_read(subgroup_id, dbasis_sp_eigv, kinds, [int(nbasis, kind=int_64)],&
                                     sys%basis%basis_fns(:)%sp_eigv)
+                        call hdf5_read(subgroup_id, dbasis_sp_fock, kinds, [int(nbasis, kind=int_64)],&
+                                    sys%basis%basis_fns(:)%sp_fock)
 
                         if (sys%momentum_space) then
                             allocate(lscratch(nbasis, 3), stat=ierr)
@@ -636,6 +642,7 @@ module hdf5_system
                 call MPI_BCast(sys%basis%basis_fns(:)%ms, nbasis, MPI_INTEGER, root, MPI_COMM_WORLD, ierr)
                 call MPI_BCast(sys%basis%basis_fns(:)%lz, nbasis, MPI_INTEGER, root, MPI_COMM_WORLD, ierr)
                 call MPI_BCast(sys%basis%basis_fns(:)%sp_eigv, nbasis, MPI_PREAL, root, MPI_COMM_WORLD, ierr)
+                call MPI_BCast(sys%basis%basis_fns(:)%sp_fock, nbasis, MPI_PREAL, root, MPI_COMM_WORLD, ierr)
                 if (sys%momentum_space) then
                     call MPI_BCast(lscratch, nbasis*3, MPI_INTEGER, root, MPI_COMM_WORLD, ierr)
                 end if

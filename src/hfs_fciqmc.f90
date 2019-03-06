@@ -46,7 +46,7 @@ contains
 
         use annihilation, only: direct_annihilation
         use death, only: stochastic_death, stochastic_hf_cloning
-        use determinants, only: alloc_det_info_t, dealloc_det_info_t, sum_sp_eigenvalues_occ_list
+        use determinants, only: alloc_det_info_t, dealloc_det_info_t, sum_fock_values_occ_list
         use determinant_data, only: det_info_t
         use energy_evaluation, only: update_energy_estimators
         use excitations, only: excit_t, get_excitation
@@ -66,7 +66,7 @@ contains
         use hamiltonian_data
         use energy_evaluation, only: get_sanitized_projected_energy
 
-        type(sys_t), intent(in) :: sys
+        type(sys_t), intent(inout) :: sys
         type(qmc_in_t), intent(in) :: qmc_in
         type(restart_in_t), intent(in) :: restart_in
         type(load_bal_in_t), intent(in) :: load_bal_in
@@ -167,7 +167,7 @@ contains
 
                     call decoder_ptr(sys, cdet%f, cdet)
                     if (qs%propagator%quasi_newton) &
-                        cdet%fock_sum = sum_sp_eigenvalues_occ_list(sys, cdet%occ_list) - qs%ref%fock_sum
+                        cdet%fock_sum = sum_fock_values_occ_list(sys, cdet%occ_list) - qs%ref%fock_sum
 
                     ! Extract the real sign from the encoded sign.
                     real_population = real(qs%psip_list%pops(1,idet),p)/qs%psip_list%pop_real_factor

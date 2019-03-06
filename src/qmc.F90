@@ -68,7 +68,7 @@ contains
         use parallel, only: parent
 
 
-        type(sys_t), intent(in) :: sys
+        type(sys_t), intent(inout) :: sys
         type(qmc_in_t), intent(in) :: qmc_in
         type(restart_in_t), intent(in) :: restart_in
         type(load_bal_in_t), intent(in) :: load_bal_in
@@ -992,9 +992,10 @@ contains
         use calc, only: doing_calc, hfs_fciqmc_calc
         use reference_determinant, only: reference_t, set_reference_det
         use checking, only: check_allocate
-        use determinants, only: encode_det, sum_sp_eigenvalues_occ_list
+        use determinants, only: encode_det, sum_fock_values_occ_list
+        use hamiltonian_ueg, only: calc_fock_values_3d_ueg
 
-        type(sys_t), intent(in) :: sys
+        type(sys_t), intent(inout) :: sys
         type(reference_t), intent(in) :: reference_in
         integer, intent(in) :: io_unit
         type(reference_t), intent(out) :: reference
@@ -1037,7 +1038,10 @@ contains
         reference%H00 = sc0_ptr(sys, reference%f0)
         ! Operators of HFS sampling.
         if (doing_calc(hfs_fciqmc_calc)) reference%O00 = op0_ptr(sys, reference%f0)
-        reference%fock_sum = sum_sp_eigenvalues_occ_list(sys, reference%occ_list0)
+        if ((sys%system == ueg) .and. (sys%lattice%ndim == 3)) then
+            call calc_fock_values_3d_ueg(sys, reference%occ_list0)
+        end if
+        reference%fock_sum = sum_fock_values_occ_list(sys, reference%occ_list0)
 
     end subroutine init_reference
 
@@ -1053,15 +1057,16 @@ contains
         !   reference: reference selected for the qmc calculation.
 
         use reference_determinant, only: reference_t
-        use system, only: sys_t
+        use system, only: sys_t, ueg
         use restart_hdf5, only: restart_info_t, get_reference_hdf5
         use calc, only: doing_calc, hfs_fciqmc_calc
         use proc_pointers, only: sc0_ptr, op0_ptr
         use checking, only: check_allocate
         use determinants, only: decode_det
-        use determinants, only: sum_sp_eigenvalues_occ_list
+        use determinants, only: sum_fock_values_occ_list
+        use hamiltonian_ueg, only: calc_fock_values_3d_ueg
 
-        type(sys_t), intent(in) :: sys
+        type(sys_t), intent(inout) :: sys
         type(reference_t), intent(in) :: reference_in
         type(restart_info_t), intent(in) :: ri
         type(reference_t), intent(out) :: reference
@@ -1084,7 +1089,10 @@ contains
 
         reference%H00 = sc0_ptr(sys, reference%f0)
         if (doing_calc(hfs_fciqmc_calc)) reference%O00 = op0_ptr(sys, reference%f0)
-        reference%fock_sum = sum_sp_eigenvalues_occ_list(sys, reference%occ_list0)
+        if ((sys%system == ueg) .and. (sys%lattice%ndim == 3)) then
+            call calc_fock_values_3d_ueg(sys, reference%occ_list0)
+        end if
+        reference%fock_sum = sum_fock_values_occ_list(sys, reference%occ_list0)
 
         reference%ex_level = reference_in%ex_level
 
@@ -1106,7 +1114,7 @@ contains
         use system, only: sys_t
         use qmc_data, only: qmc_state_t 
         use excitations, only: get_excitation_level
-        type(sys_t), intent(in) :: sys
+        type(sys_t), intent(inout) :: sys
         type(reference_t), intent(in) :: reference_in
         integer, intent(in) :: io_unit
         type(qmc_state_t), intent(inout) :: qs

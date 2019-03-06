@@ -49,6 +49,10 @@ module basis_types
         !     sp_eigv is the single-particle energy read in from the FCIDUMP file
         !     (e.g. Hartree--Fock or Kohn--Sham eigenvalue).
         real(p) :: sp_eigv
+        ! This stores the Fock expectation value <i|f|i> which is equal to sp_eigv in read_in systems.
+        ! In the 3D UEG this includes the exchange and Madelung terms.
+        ! In other model systems, including the 2D UEG, this is just equal to sp_eigv for now.
+        real(p) :: sp_fock
         !     Store the Lz of the an orbital when reading in from an FCIDUMP
         !     This is later encoded in the symmetry information.
         integer :: lz=0

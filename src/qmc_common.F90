@@ -33,7 +33,7 @@ contains
         !        updated, and the diagagonal matrix elements in psip_list also.
 
         use calc, only: doing_calc, hfs_fciqmc_calc
-        use determinants, only: decode_det, write_det, sum_sp_eigenvalues_occ_list
+        use determinants, only: decode_det, write_det, sum_fock_values_occ_list
         use system, only: sys_t
 
         use parallel
@@ -132,7 +132,7 @@ contains
             ! Now set H00 = <D_0|H|D_0> so that future references to it are
             ! correct.
             qs%ref%H00 = qs%ref%H00 + H00_old
-            qs%ref%fock_sum = sum_sp_eigenvalues_occ_list(sys, qs%ref%occ_list0)
+            qs%ref%fock_sum = sum_fock_values_occ_list(sys, qs%ref%occ_list0)
             if (doing_calc(hfs_fciqmc_calc)) call stop_all('select_ref_det', 'Not implemented for HFS.')
             if (parent) then
                 write (iunit,'(1X,"#",1X,62("-"))')

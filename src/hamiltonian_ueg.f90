@@ -325,4 +325,53 @@ contains
 
     end function exchange_energy_orb
 
+    function madelung_orb(sys, ref_occ_list, i) result (mad)
+
+        ! Madelung contribution per electron.
+        ! Expression fitted by Schoof et al., Phys. Rev. Lett. 115, 130402 (2015) using Fraser et al. Phys. Rev. B 53, 1814 (1996).
+
+        use system, only: sys_t
+
+        type(sys_t), intent(in) :: sys
+        integer, intent(in) :: ref_occ_list(:)
+        integer, intent(in) :: i
+
+        real(p) :: mad
+        logical :: in_ref
+        integer :: j
+
+        ! Check whether orbital i is in reference.
+        in_ref = .false.
+        do j = 1, sys%nel
+            if (ref_occ_list(j) == i) then
+                in_ref = .true.
+            end if
+        end do
+
+        if (in_ref) then
+            mad = -0.5_p*2.837297*(0.75_p/(pi * (sys%ueg%r_s**3) * sys%nel))**(1.0_p/3.0_p)
+        else
+            mad = 0.0_p
+        end if
+
+
+    end function madelung_orb
+
+    subroutine calc_fock_values_3d_ueg(sys, ref_occ_list)
+        
+        use system, only: sys_t
+
+        type(sys_t), intent(inout) :: sys
+        integer, intent(in) :: ref_occ_list(:)
+        
+        integer :: iorb
+        
+        ! [todo]: Probably does not work properly if there is CAS since some ref det orbs are frozen!
+        do iorb = 1, sys%basis%nbasis
+            sys%basis%basis_fns(iorb)%sp_fock = sys%basis%basis_fns(iorb)%sp_fock + exchange_energy_orb(sys, ref_occ_list, iorb) + &
+                0.5_p*madelung_orb(sys, ref_occ_list, iorb)
+        end do
+
+    end subroutine calc_fock_values_3d_ueg
+
 end module hamiltonian_ueg

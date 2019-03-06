@@ -1959,7 +1959,7 @@ contains
             diagel = spawner_dfock
             associate(basis_fns=>sys%basis%basis_fns, to=>connection%to_orb, from=>connection%from_orb)
                 do iel = 1, connection%nexcit
-                    diagel = diagel + basis_fns(to(iel))%sp_eigv - basis_fns(from(iel))%sp_eigv
+                    diagel = diagel + basis_fns(to(iel))%sp_fock - basis_fns(from(iel))%sp_fock
                 end do
             end associate
             if (diagel < propagator%quasi_newton_threshold) diagel = propagator%quasi_newton_value
