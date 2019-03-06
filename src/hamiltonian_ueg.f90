@@ -349,7 +349,7 @@ contains
         end do
 
         if (in_ref) then
-            mad = -2.837297*(0.75_p/(pi * (sys%ueg%r_s**3) * sys%nel))**(1.0_p/3.0_p)
+            mad = -2.837297*(0.75_p/(pi * (sys%ueg%r_s**3) * real(sys%nel,p)))**(1.0_p/3.0_p)
         else
             mad = 0.0_p
         end if
