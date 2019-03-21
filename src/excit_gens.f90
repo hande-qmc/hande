@@ -386,8 +386,9 @@ contains
         type(alias_table_data_three_ind_t), intent(inout) :: alias_data
         integer, intent(in) :: len_one, len_two, len_three
         integer :: ierr
-        integer(int_64) :: len_tot
+        integer(int_64) :: len_tot, len_tot_2
         len_tot=(int(len_one,int_64)*len_two)*len_three
+        len_tot_2=int(len_one,int_64)*len_two
 
         allocate(alias_data%weights(len_three, len_two, len_one), stat=ierr)
         call check_allocate('alias_data%weights', len_tot, ierr)
@@ -396,7 +397,7 @@ contains
         allocate(alias_data%aliasK(len_three, len_two, len_one), stat=ierr)
         call check_allocate('alias_data%aliasK', len_tot, ierr)
         allocate(alias_data%weights_tot(len_two, len_one), stat=ierr)
-        call check_allocate('alias_data%weights_tot', (len_one*len_two), ierr)
+        call check_allocate('alias_data%weights_tot', len_tot_2, ierr)
 
     end subroutine alloc_alias_table_data_three_ind_t
     
@@ -407,10 +408,11 @@ contains
         type(alias_table_data_three_ind_t), intent(inout) :: alias_data
         integer, intent(in) :: len_one, array_two(2), len_three
         integer :: ierr, len_two
-        integer(int_64) :: len_tot
+        integer(int_64) :: len_tot, len_tot_2
 
         len_two = array_two(2) - array_two(1) + 1
         len_tot=(int(len_one,int_64)*len_two)*len_three
+        len_tot_2=int(len_one,int_64)*len_two
 
         allocate(alias_data%weights(len_three, array_two(1):array_two(2), len_one), stat=ierr)
         call check_allocate('alias_data%weights', len_tot, ierr)
@@ -419,7 +421,7 @@ contains
         allocate(alias_data%aliasK(len_three, array_two(1):array_two(2), len_one), stat=ierr)
         call check_allocate('alias_data%aliasK', len_tot, ierr)
         allocate(alias_data%weights_tot(array_two(1):array_two(2), len_one), stat=ierr)
-        call check_allocate('alias_data%weights_tot', (len_one*len_two), ierr)
+        call check_allocate('alias_data%weights_tot', len_tot_2, ierr)
 
     end subroutine alloc_alias_table_data_2indarray_three_ind_t
 
@@ -430,9 +432,10 @@ contains
         type(alias_table_data_four_ind_t), intent(inout) :: alias_data
         integer, intent(in) :: len_one, len_two, len_three, len_four
         integer :: ierr
-        integer(int_64) :: len_tot
+        integer(int_64) :: len_tot, len_tot_2
 
         len_tot=((int(len_one,int_64)*len_two)*len_three)*len_four
+        len_tot_2=(int(len_one,int_64)*len_two)*len_three
 
         allocate(alias_data%weights(len_four, len_three, len_two, len_one), stat=ierr)
         call check_allocate('alias_data%weights', len_tot, ierr)
@@ -441,7 +444,7 @@ contains
         allocate(alias_data%aliasK(len_four, len_three, len_two, len_one), stat=ierr)
         call check_allocate('alias_data%aliasK', len_tot, ierr)
         allocate(alias_data%weights_tot(len_three, len_two, len_one), stat=ierr)
-        call check_allocate('alias_data%weights_tot', (len_one*len_two*len_three), ierr)
+        call check_allocate('alias_data%weights_tot', len_tot_2, ierr)
 
     end subroutine alloc_alias_table_data_four_ind_t
 !--------------------------------------------------------------------------------!
