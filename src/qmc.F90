@@ -223,7 +223,7 @@ contains
                 qmc_state%propagator%quasi_newton_pop_control = qmc_in%quasi_newton_pop_control
             else
                 ! Set to zero initially before shift starts varying.
-                qmc_state%propagator%quasi_newton_pop_control = 0.0_p
+                qmc_state%propagator%quasi_newton_pop_control = qmc_in%quasi_newton_pop_control
             end if
         end if
         ! Need to ensure we end up with a sensible value of shift damping to use.
