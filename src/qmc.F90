@@ -197,7 +197,19 @@ contains
             '(1X, "# Finishing the excitation generator initialisation, time taken:",1X,es17.10)') set_up_time
 
         qmc_state%propagator%quasi_newton = qmc_in%quasi_newton
-        qmc_state%propagator%quasi_newton_threshold = qmc_in%quasi_newton_threshold
+        if (qmc_in%quasi_newton_threshold < 0.0_p) then ! Not set by user, use auto value.
+            ! Assume that fock values are ordered and that the number of basis functions is bigger than the number
+            ! of electrons!
+            qmc_state%propagator%quasi_newton_threshold = &
+                sys%basis%basis_fns(sys%nel+1)%sp_fock - sys%basis%basis_fns(sys%nel)%sp_fock
+            if (sys%system == ueg) then
+                ! Know that by symmetry, the sum of Fock values of ref det to next excited det is twice the HOMO LUMO gap.
+                ! Ignore symmetry for the other systems for now...
+                qmc_state%propagator%quasi_newton_threshold = 2.0_p*qmc_state%propagator%quasi_newton_threshold
+            end if
+        else
+            qmc_state%propagator%quasi_newton_threshold = qmc_in%quasi_newton_threshold
+        end if
         qmc_state%propagator%quasi_newton_value = qmc_in%quasi_newton_value
         ! Need to ensure we end up with a sensible value of shift damping to use.
         ! qmc_state%shift_damping will be set to either its default value or one

@@ -215,7 +215,9 @@ type qmc_in_t
     logical :: quasi_newton = .false.
 
     ! The lower threshold for a quasiNewton enegy difference
-    real(p) :: quasi_newton_threshold = 1.e-5_p
+    ! Set to non sensible value by default so it is easily detectable if user did not specify it.
+    ! The value is approximated by HOMO-LUMO gap unless user overwrites it.
+    real(p) :: quasi_newton_threshold = -1.0_p
 
     ! The value to set the quasiNewton energy difference to if lower than the
     ! threshold
