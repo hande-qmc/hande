@@ -217,14 +217,24 @@ contains
             qmc_state%propagator%quasi_newton_threshold = qmc_in%quasi_newton_threshold
         end if
         qmc_state%propagator%quasi_newton_value = qmc_in%quasi_newton_value
-        qmc_state%propagator%quasi_newton_pop_control = 1.0_p ! Default, when not using quasiNewton.
         if (qmc_state%propagator%quasi_newton) then
             if (qmc_state%vary_shift(1)) then
-                qmc_state%propagator%quasi_newton_pop_control = qmc_in%quasi_newton_pop_control
+                if (qmc_in%quasi_newton_pop_control < 0.0_p) then
+                    qmc_state%propagator%quasi_newton_pop_control = 1.0_p/qmc_state%propagator%quasi_newton_threshold
+                else
+                    qmc_state%propagator%quasi_newton_pop_control = qmc_in%quasi_newton_pop_control
+                end if
             else
                 ! Set to zero initially before shift starts varying.
-                qmc_state%propagator%quasi_newton_pop_control = qmc_in%quasi_newton_pop_control
+                if (qmc_in%quasi_newton_pop_control < 0.0_p) then
+                    qmc_state%propagator%quasi_newton_pop_control = 1.0_p/qmc_state%propagator%quasi_newton_threshold
+                else
+                    qmc_state%propagator%quasi_newton_pop_control = qmc_in%quasi_newton_pop_control
+                end if
             end if
+        else
+            ! Set to 1 if not using QN!
+            qmc_state%propagator%quasi_newton_pop_control = 1.0_p
         end if
         ! Need to ensure we end up with a sensible value of shift damping to use.
         ! qmc_state%shift_damping will be set to either its default value or one

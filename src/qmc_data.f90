@@ -226,7 +226,7 @@ type qmc_in_t
     ! In death step when using QuasiNewton, scale the difference of inst. projected energy and shift
     ! by time step times quasi_newton_pop_control in equilibrium, zero before shift varies.
     ! Set to 1 if not using quasiNewton.
-    real(p) :: quasi_newton_pop_control = 1.0_p
+    real(p) :: quasi_newton_pop_control = -1.0_p
 
 end type qmc_in_t
 
@@ -985,6 +985,7 @@ contains
         call json_write_key(js, 'quasi_newton', qmc%quasi_newton)
         call json_write_key(js, 'quasi_newton_threshold', qmc%quasi_newton_threshold)
         call json_write_key(js, 'quasi_newton_value', qmc%quasi_newton_value)
+        call json_write_key(js, 'quasi_newton_pop_control', qmc%quasi_newton_pop_control)
         call json_write_key(js, 'use_mpi_barriers', qmc%use_mpi_barriers, .true.)
         call json_object_end(js, terminal)
 
