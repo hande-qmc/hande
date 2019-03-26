@@ -66,6 +66,7 @@ contains
         use excit_gen_heat_bath_mol, only: init_excit_mol_heat_bath
         use excit_gen_ueg, only: init_excit_ueg_power_pitzer
         use parallel, only: parent
+        use hamiltonian_ueg, only: calc_fock_values_3d_ueg
 
 
         type(sys_t), intent(inout) :: sys
@@ -109,6 +110,9 @@ contains
             call init_reference_restart(sys, reference_in, ri, qmc_state%ref)
         else if (qmc_state_restart_loc) then
             qmc_state%ref = qmc_state_restart%ref
+            if ((sys%system == ueg) .and. (sys%lattice%ndim == 3)) then
+                call calc_fock_values_3d_ueg(sys, qmc_state%ref%occ_list0)
+            end if
         else
             call init_reference(sys, reference_in, io_unit, qmc_state%ref)
         end if
