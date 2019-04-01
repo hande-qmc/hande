@@ -357,18 +357,20 @@ contains
 
     end function madelung_orb
 
-    subroutine calc_fock_values_3d_ueg(sys, ref_occ_list)
+    subroutine calc_fock_values_3d_ueg(sys, propagator, ref_occ_list)
         
         use system, only: sys_t
+        use qmc_data, only: propagator_t
 
-        type(sys_t), intent(inout) :: sys
+        type(sys_t), intent(in) :: sys
+        type(propagator_t), intent(inout) :: propagator
         integer, intent(in) :: ref_occ_list(:)
         
         integer :: iorb
         
         ! [todo]: Probably does not work properly if there is CAS since some ref det orbs are frozen!
         do iorb = 1, sys%basis%nbasis
-            sys%basis%basis_fns(iorb)%sp_fock = sys%basis%basis_fns(iorb)%sp_fock + exchange_energy_orb(sys, ref_occ_list, iorb) + &
+            propagator%sp_fock(iorb) = propagator%sp_fock(iorb) + exchange_energy_orb(sys, ref_occ_list, iorb) + &
                 0.5_p*madelung_orb(sys, ref_occ_list, iorb)
         end do
 

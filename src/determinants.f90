@@ -426,10 +426,11 @@ contains
 
     end function sum_sp_eigenvalues_occ_list
     
-    pure function sum_fock_values_occ_list(sys, occ_list) result(fock_sum)
+    pure function sum_fock_values_occ_list(sys, sp_fock, occ_list) result(fock_sum)
 
         ! In:
         !    sys: system being studied.
+        !    sp_fock: fock values
         !    occ_list: list of occupied orbitals.
         ! Returns:
         !    Sum of the fock energies, <i|F|i>.
@@ -437,6 +438,7 @@ contains
         use system, only: sys_t
 
         type(sys_t), intent(in) :: sys
+        real(p), intent(in) :: sp_fock(sys%basis%nbasis)
         integer, intent(in) :: occ_list(sys%nel)
 
         integer :: iorb
@@ -445,15 +447,16 @@ contains
         fock_sum = 0.0_p
 
         do iorb = 1, sys%nel
-            fock_sum = fock_sum + sys%basis%basis_fns(occ_list(iorb))%sp_fock
+            fock_sum = fock_sum + sp_fock(occ_list(iorb))
         end do
 
     end function sum_fock_values_occ_list
 
-    pure function sum_fock_values_bit_string(sys, f) result(fock_sum)
+    pure function sum_fock_values_bit_string(sys, sp_fock, f) result(fock_sum)
 
         ! In:
         !    sys: system being studied.
+        !    sp_fock: fock values
         !    f: bit-string representation of a determinant.
         ! Returns:
         !    Sum of the fock energies, <i|F|i>.
@@ -462,11 +465,12 @@ contains
 
         real(p) :: fock_sum
         type(sys_t), intent(in) :: sys
+        real(p), intent(in) :: sp_fock(sys%basis%nbasis)
         integer(i0), intent(in) :: f(:)
         integer :: occ(sys%nel)
 
         call decode_det(sys%basis, f, occ)
-        fock_sum = sum_fock_values_occ_list(sys, occ)
+        fock_sum = sum_fock_values_occ_list(sys, sp_fock, occ)
 
     end function sum_fock_values_bit_string
 

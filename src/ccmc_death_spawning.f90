@@ -136,7 +136,7 @@ contains
                     end if
                 end if
             end if
-            invdiagel = calc_qn_spawned_weighting(sys, qs%propagator, cdet%fock_sum, connection)
+            invdiagel = calc_qn_spawned_weighting(qs%propagator, cdet%fock_sum, connection)
         else
             invdiagel = 1
         end if
@@ -708,7 +708,7 @@ contains
             ! apply additional factors to pgen
             pgen = pgen*cluster%pselect*nspawnings_total/npartitions
 
-            fock_sum = sum_fock_values_bit_string(sys, fexcit)
+            fock_sum = sum_fock_values_bit_string(sys, qs%propagator%sp_fock, fexcit)
             invdiagel = calc_qn_weighting(qs%propagator, fock_sum - qs%ref%fock_sum)
             ! correct hmatel for cluster amplitude
             hmatel%r = hmatel%r * invdiagel * real(cluster%amplitude)
@@ -860,7 +860,7 @@ contains
                     end if
                 end if
             end if
-            invdiagel = calc_qn_spawned_weighting(sys, qs%propagator, cdet%fock_sum, connection)
+            invdiagel = calc_qn_spawned_weighting(qs%propagator, cdet%fock_sum, connection)
         else
             invdiagel = 1
         end if

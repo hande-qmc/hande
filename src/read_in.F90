@@ -889,7 +889,6 @@ contains
                 ! Assume orbitals are ordered appropriately in FCIDUMP...
                 basis_arr(i)%spatial_index = (i+1)/2
                 basis_arr(i)%sp_eigv = sp_eigv(rank)
-                basis_arr(i)%sp_fock = basis_arr(i)%sp_eigv
             else
                 ! Need to initialise both up- and down-spin basis functions.
                 ! If we have translational symmetry to account for want to have different basis function info.
@@ -906,8 +905,6 @@ contains
                 basis_arr(2*i)%spatial_index = i
                 basis_arr(2*i-1)%sp_eigv = sp_eigv(rank)
                 basis_arr(2*i)%sp_eigv = sp_eigv(rank)
-                basis_arr(2*i-1)%sp_fock = basis_arr(2*i-1)%sp_eigv
-                basis_arr(2*i)%sp_fock = basis_arr(2*i)%sp_eigv
             end if
         end do
 

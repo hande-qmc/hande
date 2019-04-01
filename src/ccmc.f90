@@ -712,7 +712,8 @@ contains
                                         contrib(it)%cdet, contrib(it)%cluster, qs%excit_gen_data)
 
                             if (qs%propagator%quasi_newton) contrib(it)%cdet%fock_sum = &
-                                            sum_fock_values_occ_list(sys, contrib(it)%cdet%occ_list) - qs%ref%fock_sum
+                                            sum_fock_values_occ_list(sys, qs%propagator%sp_fock, contrib(it)%cdet%occ_list) &
+                                            - qs%ref%fock_sum
                             ! [VAN]: This is quite dangerous when using OpenMP as selection_data is shared but updated here if
                             ! [VAN]: in debug mode. However, this updated selection_data will only be used if selection logging
                             ! [VAN]: according to comments. And logging cannot be used with openmp. Dangerous though.
@@ -744,7 +745,8 @@ contains
                             ! cluster%excitation_level == huge(0) indicates a cluster
                             ! where two excitors share an elementary operator
                             if (qs%propagator%quasi_newton) contrib(it)%cdet%fock_sum = &
-                                            sum_fock_values_occ_list(sys, contrib(it)%cdet%occ_list) - qs%ref%fock_sum
+                                            sum_fock_values_occ_list(sys, qs%propagator%sp_fock, contrib(it)%cdet%occ_list) &
+                                            - qs%ref%fock_sum
 
                             call do_ccmc_accumulation(sys, qs, contrib(it)%cdet, contrib(it)%cluster, logging_info, &
                                                     D0_population_cycle, proj_energy_cycle, ccmc_in, ref_det, rdm, selection_data)
@@ -768,7 +770,8 @@ contains
                         end if
 
                         if (qs%propagator%quasi_newton) contrib(it)%cdet%fock_sum = &
-                                        sum_fock_values_occ_list(sys, contrib(it)%cdet%occ_list) - qs%ref%fock_sum
+                                        sum_fock_values_occ_list(sys, qs%propagator%sp_fock, contrib(it)%cdet%occ_list) &
+                                        - qs%ref%fock_sum
 
                         call do_ccmc_accumulation(sys, qs, contrib(it)%cdet, contrib(it)%cluster, logging_info, &
                                                 D0_population_cycle, proj_energy_cycle, ccmc_in, ref_det, rdm, selection_data)
@@ -789,7 +792,8 @@ contains
                         ! (unlike the stochastic_ccmc_death) to avoid unnecessary decoding/encoding
                         ! steps (cf comments in stochastic_death for FCIQMC).
                         if (qs%propagator%quasi_newton) then
-                            dfock = sum_fock_values_bit_string(sys, qs%psip_list%states(:,iattempt)) - qs%ref%fock_sum
+                            dfock = sum_fock_values_bit_string(sys, qs%propagator%sp_fock, qs%psip_list%states(:,iattempt)) &
+                                - qs%ref%fock_sum
                         end if
                         call stochastic_ccmc_death_nc(rng(it), ccmc_in%linked, sys, qs, iattempt==D0_pos, dfock, &
                                           qs%psip_list%dat(1,iattempt), qs%estimators(1)%proj_energy_old, &

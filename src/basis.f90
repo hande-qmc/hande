@@ -61,12 +61,8 @@ contains
             b%l = l
             if (sys%momentum_space .and. .not. sys%system == read_in) then
                 b%sp_eigv = calc_kinetic(sys, l)
-                b%sp_fock = b%sp_eigv
-                ! In a later function, when ref det is known, convert to correct Fock values by adding exchange and Madelung contribution
-                ! when doing 3D UEG. Only implemented for the 3D UEG!
             else
                 b%sp_eigv = 0.0_p
-                b%sp_fock = 0.0_p
             end if
         end if
 

@@ -67,6 +67,7 @@ contains
         use excit_gen_ueg, only: init_excit_ueg_power_pitzer
         use parallel, only: parent
         use hamiltonian_ueg, only: calc_fock_values_3d_ueg
+        use determinants, only: sum_fock_values_occ_list
 
 
         type(sys_t), intent(inout) :: sys
@@ -110,12 +111,17 @@ contains
             call init_reference_restart(sys, reference_in, ri, qmc_state%ref)
         else if (qmc_state_restart_loc) then
             qmc_state%ref = qmc_state_restart%ref
-            if ((sys%system == ueg) .and. (sys%lattice%ndim == 3)) then
-                call calc_fock_values_3d_ueg(sys, qmc_state%ref%occ_list0)
-            end if
         else
             call init_reference(sys, reference_in, io_unit, qmc_state%ref)
         end if
+
+        allocate(qmc_state%propagator%sp_fock(sys%basis%nbasis), stat=ierr)
+        call check_allocate('qmc_state%propagator%sp_fock', sys%basis%nbasis, ierr)
+        qmc_state%propagator%sp_fock = sys%basis%basis_fns%sp_eigv
+        if ((sys%system == ueg) .and. (sys%lattice%ndim == 3)) then
+            call calc_fock_values_3d_ueg(sys, qmc_state%propagator, qmc_state%ref%occ_list0)
+        end if
+        qmc_state%ref%fock_sum = sum_fock_values_occ_list(sys, qmc_state%propagator%sp_fock, qmc_state%ref%occ_list0)
 
         ! --- Allocate psip list ---
         if (doing_calc(hfs_fciqmc_calc)) then
@@ -201,7 +207,7 @@ contains
             ! Assume that fock values are ordered and that the number of basis functions is bigger than the number
             ! of electrons!
             qmc_state%propagator%quasi_newton_threshold = &
-                sys%basis%basis_fns(sys%nel+1)%sp_fock - sys%basis%basis_fns(sys%nel)%sp_fock
+                qmc_state%propagator%sp_fock(sys%nel+1) - qmc_state%propagator%sp_fock(sys%nel)
             if (sys%system == ueg) then
                 ! Know that by symmetry, the sum of Fock values of ref det to next excited det is twice the HOMO LUMO gap.
                 ! Ignore symmetry for the other systems for now...
@@ -1008,8 +1014,7 @@ contains
         use calc, only: doing_calc, hfs_fciqmc_calc
         use reference_determinant, only: reference_t, set_reference_det
         use checking, only: check_allocate
-        use determinants, only: encode_det, sum_fock_values_occ_list
-        use hamiltonian_ueg, only: calc_fock_values_3d_ueg
+        use determinants, only: encode_det
 
         type(sys_t), intent(inout) :: sys
         type(reference_t), intent(in) :: reference_in
@@ -1054,10 +1059,6 @@ contains
         reference%H00 = sc0_ptr(sys, reference%f0)
         ! Operators of HFS sampling.
         if (doing_calc(hfs_fciqmc_calc)) reference%O00 = op0_ptr(sys, reference%f0)
-        if ((sys%system == ueg) .and. (sys%lattice%ndim == 3)) then
-            call calc_fock_values_3d_ueg(sys, reference%occ_list0)
-        end if
-        reference%fock_sum = sum_fock_values_occ_list(sys, reference%occ_list0)
 
     end subroutine init_reference
 
@@ -1079,8 +1080,6 @@ contains
         use proc_pointers, only: sc0_ptr, op0_ptr
         use checking, only: check_allocate
         use determinants, only: decode_det
-        use determinants, only: sum_fock_values_occ_list
-        use hamiltonian_ueg, only: calc_fock_values_3d_ueg
 
         type(sys_t), intent(inout) :: sys
         type(reference_t), intent(in) :: reference_in
@@ -1105,10 +1104,6 @@ contains
 
         reference%H00 = sc0_ptr(sys, reference%f0)
         if (doing_calc(hfs_fciqmc_calc)) reference%O00 = op0_ptr(sys, reference%f0)
-        if ((sys%system == ueg) .and. (sys%lattice%ndim == 3)) then
-            call calc_fock_values_3d_ueg(sys, reference%occ_list0)
-        end if
-        reference%fock_sum = sum_fock_values_occ_list(sys, reference%occ_list0)
 
         reference%ex_level = reference_in%ex_level
 

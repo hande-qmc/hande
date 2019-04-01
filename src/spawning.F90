@@ -99,7 +99,7 @@ contains
         call gen_excit_ptr%full(rng, sys, qmc_state%excit_gen_data, cdet, pgen, connection, hmatel, allowed)
 
         if (allowed) then
-            qn_weight = calc_qn_spawned_weighting(sys, qmc_state%propagator, cdet%fock_sum, connection)
+            qn_weight = calc_qn_spawned_weighting(qmc_state%propagator, cdet%fock_sum, connection)
             hmatel_tmp = hmatel
             hmatel_tmp%r = hmatel%r * qn_weight
             if (qmc_state%excit_gen_data%p_single_double%vary_psingles) then
@@ -194,7 +194,7 @@ contains
         ! 2. Transform Hamiltonian matrix element by trial function.
         if (allowed) then
             call gen_excit_ptr%trial_fn(sys, cdet, connection, weights, hmatel%r)
-            hmatel%r = hmatel%r * calc_qn_spawned_weighting(sys, qmc_state%propagator, cdet%fock_sum, connection)
+            hmatel%r = hmatel%r * calc_qn_spawned_weighting(qmc_state%propagator, cdet%fock_sum, connection)
             if (qmc_state%excit_gen_data%p_single_double%vary_psingles) then
                 associate(exdat=>qmc_state%excit_gen_data) 
                     call update_p_single_double_data(connection%nexcit, hmatel, pgen, exdat%pattempt_single, &
@@ -549,7 +549,7 @@ contains
         call gen_excit_ptr%full(rng, sys, qmc_state%excit_gen_data, cdet, pgen, connection, hmatel, allowed)
 
         if (allowed) then
-            qn_weight = calc_qn_spawned_weighting(sys, qmc_state%propagator, cdet%fock_sum, connection)
+            qn_weight = calc_qn_spawned_weighting(qmc_state%propagator, cdet%fock_sum, connection)
             ! [todo] - check this multiplication
             hmatel_tmp%c = qn_weight * hmatel%c
             if (qmc_state%excit_gen_data%p_single_double%vary_psingles) then
@@ -1922,14 +1922,13 @@ contains
 
     end subroutine create_spawned_particle_rdm
 
-    pure function calc_qn_spawned_weighting(sys, propagator, spawner_dfock, connection) result(weight)
+    pure function calc_qn_spawned_weighting(propagator, spawner_dfock, connection) result(weight)
 
         ! The step in FCIQMC-like methods can be modified by a non-identity transformation
         ! to weight the particles being created to take a quasi-Newton step.
         ! This routine determines the weight to apply to the the resulting particle from this.
 
         ! In:
-        !   sys:        sys_t object which specifies the system
         !   propagator: propagator_t object to determine if weighting is needed
         !   spawner_dfock: \sum_i (f_i - f^0_i) where f_i (f^0_i) is the Fock eigenvalue of the i-th occupied
         !       orbital in the spawner (reference) determinant.
@@ -1943,12 +1942,10 @@ contains
         ! propagator%quasi_newton_threshold then the weight 1/(propagator%quasi_newton_value) is used instead.
     
         use qmc_data, only:  propagator_t
-        use system, only: sys_t
         use determinant_data, only: det_info_t
         use excitations, only: excit_t, create_excited_det, get_excitation_level
 
         real(p) :: weight
-        type(sys_t), intent(in) :: sys
         type(propagator_t), intent(in) :: propagator
         real(p), intent(in) :: spawner_dfock
         type(excit_t), intent(in) :: connection
@@ -1957,9 +1954,9 @@ contains
 
         if (propagator%quasi_newton) then
             diagel = spawner_dfock
-            associate(basis_fns=>sys%basis%basis_fns, to=>connection%to_orb, from=>connection%from_orb)
+            associate(to=>connection%to_orb, from=>connection%from_orb)
                 do iel = 1, connection%nexcit
-                    diagel = diagel + basis_fns(to(iel))%sp_fock - basis_fns(from(iel))%sp_fock
+                    diagel = diagel + propagator%sp_fock(to(iel)) - propagator%sp_fock(from(iel))
                 end do
             end associate
             if (diagel < propagator%quasi_newton_threshold) diagel = propagator%quasi_newton_value

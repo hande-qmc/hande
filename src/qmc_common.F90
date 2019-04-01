@@ -132,7 +132,7 @@ contains
             ! Now set H00 = <D_0|H|D_0> so that future references to it are
             ! correct.
             qs%ref%H00 = qs%ref%H00 + H00_old
-            qs%ref%fock_sum = sum_fock_values_occ_list(sys, qs%ref%occ_list0)
+            qs%ref%fock_sum = sum_fock_values_occ_list(sys, qs%propagator%sp_fock, qs%ref%occ_list0)
             if (doing_calc(hfs_fciqmc_calc)) call stop_all('select_ref_det', 'Not implemented for HFS.')
             if (parent) then
                 write (iunit,'(1X,"#",1X,62("-"))')

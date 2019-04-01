@@ -575,13 +575,13 @@ contains
         if (propagator%quasi_newton) then
             if (transp) then 
                 do j = 1, size(determ%one_minus_qn_weight)
-                    fock_sum = sum_fock_values_bit_string(sys, dets_this_proc(:,j))
+                    fock_sum = sum_fock_values_bit_string(sys, propagator%sp_fock, dets_this_proc(:,j))
                     weight = calc_qn_weighting(propagator, fock_sum - ref%fock_sum)
                     determ%one_minus_qn_weight(j) =  weight
                 end do
             else
                 do j = 1, size(determ%one_minus_qn_weight)
-                    fock_sum = sum_fock_values_bit_string(sys, determ%dets(:,j))
+                    fock_sum = sum_fock_values_bit_string(sys, propagator%sp_fock, determ%dets(:,j))
                     weight = calc_qn_weighting(propagator, fock_sum - ref%fock_sum)
                     determ%one_minus_qn_weight(j) =  weight
                 end do
