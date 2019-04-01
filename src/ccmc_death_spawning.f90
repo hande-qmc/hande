@@ -273,12 +273,13 @@ contains
             case(0)
                 ! Death on the reference has H_ii - E_HF = 0.
                 KiiAi = ((-qs%estimators(1)%proj_energy_old)*invdiagel + &
-                                    (qs%estimators(1)%proj_energy_old - qs%shift(1)))*cluster%amplitude
+                    (qs%estimators(1)%proj_energy_old - qs%shift(1))*qs%propagator%quasi_newton_pop_control)*cluster%amplitude
             case(1)
                 ! Evaluating the commutator gives
                 ! <D1|[H,a1]|D0> = <D1|H|D1> - <D0|H|D0>
                 ! (this is scaled for quasinewton approaches)
-                KiiAi = (cdet%data(1) * invdiagel + qs%estimators(1)%proj_energy_old - qs%shift(1))*cluster%amplitude
+                KiiAi = (cdet%data(1) * invdiagel + &
+                    (qs%estimators(1)%proj_energy_old - qs%shift(1))*qs%propagator%quasi_newton_pop_control)*cluster%amplitude
             case(2)
                 ! Evaluate the commutator
                 ! The cluster operators are a1 and a2 (with a1 D0 = D1, a2 D0 = D2,
@@ -297,10 +298,10 @@ contains
             select case (cluster%nexcitors)
             case(0)
                 KiiAi = ((-qs%estimators(1)%proj_energy_old)*invdiagel + &
-                                (qs%estimators(1)%proj_energy_old - qs%shift(1)))*cluster%amplitude
+                    (qs%estimators(1)%proj_energy_old - qs%shift(1))*qs%propagator%quasi_newton_pop_control)*cluster%amplitude
             case(1)
                 KiiAi = ((cdet%data(1) - qs%estimators(1)%proj_energy_old)*invdiagel + &
-                                (qs%estimators(1)%proj_energy_old - qs%shift(1)))*cluster%amplitude
+                    (qs%estimators(1)%proj_energy_old - qs%shift(1))*qs%propagator%quasi_newton_pop_control)*cluster%amplitude
             case default
                 KiiAi = ((sc0_ptr(sys, cdet%f) - qs%ref%H00) - qs%estimators(1)%proj_energy_old)*invdiagel *cluster%amplitude
             end select
@@ -479,12 +480,13 @@ contains
 
         invdiagel = calc_qn_weighting(qs%propagator, dfock)
         if (isD0) then
-            KiiAi = ((- proj_energy)*invdiagel + (proj_energy - qs%shift(1)))*population
+            KiiAi = ((- proj_energy)*invdiagel + (proj_energy - qs%shift(1))*qs%propagator%quasi_newton_pop_control)*population
         else
             if (linked_ccmc) then
-                KiiAi = (Hii*invdiagel + proj_energy - qs%shift(1))*population
+                KiiAi = (Hii*invdiagel + (proj_energy - qs%shift(1))*qs%propagator%quasi_newton_pop_control)*population
             else
-                KiiAi = ((Hii - proj_energy)*invdiagel + (proj_energy - qs%shift(1)))*population
+                KiiAi = ((Hii - proj_energy)*invdiagel + &
+                    (proj_energy - qs%shift(1))*qs%propagator%quasi_newton_pop_control)*population
             end if
         end if
 

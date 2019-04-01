@@ -79,7 +79,7 @@ contains
         ! Hence we have to multiply by an extra factor of 2 to account for the extra 1/2 in tau.
 
         weight = calc_qn_weighting(qs%propagator, dfock)
-        pd = qs%tau*((Kii-proj_energy)*weight+(proj_energy-loc_shift))*qs%dmqmc_factor
+        pd = qs%tau*((Kii-proj_energy)*weight+(proj_energy-loc_shift)*qs%propagator%quasi_newton_pop_control)*qs%dmqmc_factor
 
         pd_saved = pd
 

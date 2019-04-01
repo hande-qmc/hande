@@ -139,7 +139,7 @@ contains
                             excit_gen_power_pitzer, excit_gen_cauchy_schwarz_occ, excit_gen_cauchy_schwarz_occ_ij, fciqmc_in_t
         use errors, only: stop_all, warning
         use system, only: sys_t, read_in
-        use const, only: p
+        use const, only: p, depsilon
 
         type(qmc_in_t), intent(in) :: qmc_in
         type(sys_t), intent(in) :: sys
@@ -215,6 +215,10 @@ contains
         if ((sys%read_in%comp) .and. ((qmc_in%excit_gen == excit_gen_cauchy_schwarz_occ) .or. &
             (qmc_in%excit_gen == excit_gen_cauchy_schwarz_occ_ij))) then
             call stop_all(this, 'Complex calculations not implemented with Uniform/Heat Bath Cauchy Schwarz yet.')
+        end if
+
+        if ((.not. qmc_in%quasi_newton) .and. (abs(qmc_in%quasi_newton_pop_control - 1.0_p) > depsilon)) then
+            call warning(this, 'Since quasiNewton is not used, quasi_newton_pop_control is set to 1.')
         end if
 
     end subroutine check_qmc_opts

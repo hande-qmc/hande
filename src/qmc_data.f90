@@ -223,6 +223,11 @@ type qmc_in_t
     ! threshold
     real(p) :: quasi_newton_value = 1_p
 
+    ! In death step when using QuasiNewton, scale the difference of inst. projected energy and shift
+    ! by time step times quasi_newton_pop_control in equilibrium, zero before shift varies.
+    ! Set to 1 if not using quasiNewton.
+    real(p) :: quasi_newton_pop_control = 1.0_p
+
 end type qmc_in_t
 
 type fciqmc_in_t
@@ -800,6 +805,10 @@ type propagator_t
     ! In the 3D UEG this includes the exchange and Madelung terms.
     ! In other model systems, including the 2D UEG, this is just equal to sp_eigv for now.
     real(p), allocatable :: sp_fock(:) ! (sys%basis%nbasis)
+    ! In death step when using QuasiNewton, scale the difference of inst. projected energy and shift
+    ! by time step times quasi_newton_pop_control in equilibrium, zero before shift varies.
+    ! Set to 1 if not using quasiNewton.
+    real(p) :: quasi_newton_pop_control = 1.0_p
 end type propagator_t
 
 type qmc_state_t
