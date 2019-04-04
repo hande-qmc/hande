@@ -221,7 +221,7 @@ type qmc_in_t
 
     ! The value to set the quasiNewton energy difference to if lower than the
     ! threshold
-    real(p) :: quasi_newton_value = 1_p
+    real(p) :: quasi_newton_value = -1.0_p
 
     ! In death step when using QuasiNewton, scale the difference of inst. projected energy and shift
     ! by time step times quasi_newton_pop_control in equilibrium, zero before shift varies.

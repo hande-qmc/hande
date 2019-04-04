@@ -170,6 +170,7 @@ contains
             qmc_in_loc%pattempt_parallel = qs%excit_gen_data%pattempt_parallel
             ! Not actually used in DMQMC!
             qmc_in_loc%quasi_newton_threshold = qs%propagator%quasi_newton_threshold
+            qmc_in_loc%quasi_newton_value = qs%propagator%quasi_newton_value
             qmc_in_loc%quasi_newton_pop_control = qs%propagator%quasi_newton_pop_control
             call qmc_in_t_json(js, qmc_in_loc)
             call dmqmc_in_t_json(js, dmqmc_in)

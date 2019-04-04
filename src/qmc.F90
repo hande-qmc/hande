@@ -216,7 +216,12 @@ contains
         else
             qmc_state%propagator%quasi_newton_threshold = qmc_in%quasi_newton_threshold
         end if
-        qmc_state%propagator%quasi_newton_value = qmc_in%quasi_newton_value
+        if (qmc_in%quasi_newton_value < 0.0_p) then
+            ! Default, set equal to quasi_newton_threshold.
+            qmc_state%propagator%quasi_newton_value = qmc_state%propagator%quasi_newton_threshold
+        else
+            qmc_state%propagator%quasi_newton_value = qmc_in%quasi_newton_value
+        end if
         if (qmc_state%propagator%quasi_newton) then
             if (qmc_state%vary_shift(1)) then
                 if (qmc_in%quasi_newton_pop_control < 0.0_p) then
