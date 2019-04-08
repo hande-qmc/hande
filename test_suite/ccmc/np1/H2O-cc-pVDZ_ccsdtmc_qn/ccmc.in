@@ -17,7 +17,9 @@ ccmc {
         state_size = -100,
         spawned_state_size = -50,
         quasi_newton=true,
-        quasi_newton_threshold = 1e-5, 
+        quasi_newton_threshold = 1e-5,
+        quasi_newton_value = 1.0,
+        quasi_newton_pop_control = 1.0,
     },
     reference = {
         ex_level = 3,
