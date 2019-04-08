@@ -610,7 +610,7 @@ contains
                 do i = 1, qs%psip_list%nspaces, 2
                     if (.not. qs%vary_shift(i) .and. sum(ntot_particles(i:i+1)) > qs%target_particles) then
                         qs%vary_shift(i) = .true.
-                        if (qs%propagator%quasi_newton .and. not (qmc_in%quasi_newton_pop_control < 0.0)) then
+                        if (qs%propagator%quasi_newton .and. (.not.(qmc_in%quasi_newton_pop_control < 0.0))) then
                             qs%propagator%quasi_newton_pop_control = qmc_in%quasi_newton_pop_control 
                         end if
                         if (qmc_in%vary_shift_from_proje) then
@@ -627,7 +627,7 @@ contains
                     qs%vary_shift = .true.
                     ! [todo] - is the following actually used? And does it to auto qn_pop_control, i.e. can that input be left empty
                     ! [todo] - in input file?
-                    if (qs%propagator%quasi_newton .and. not (qmc_in%quasi_newton_pop_control < 0.0)) then
+                    if (qs%propagator%quasi_newton .and. (.not. (qmc_in%quasi_newton_pop_control < 0.0))) then
                         qs%propagator%quasi_newton_pop_control = qmc_in%quasi_newton_pop_control
                     end if
                     if (qmc_in%vary_shift_from_proje) then
@@ -644,7 +644,7 @@ contains
                         if ((ntot_particles(i) > qs%target_particles .and. .not. qmc_in%target_reference) .or. &
                             (est(i)%D0_population > qs%target_particles .and. qmc_in%target_reference)) then
                             qs%vary_shift(i) = .true.
-                            if (qs%propagator%quasi_newton .and. not (qmc_in%quasi_newton_pop_control < 0.0)) then
+                            if (qs%propagator%quasi_newton .and. (.not. (qmc_in%quasi_newton_pop_control < 0.0))) then
                                 qs%propagator%quasi_newton_pop_control = qmc_in%quasi_newton_pop_control
                             end if
                             if (qmc_in%vary_shift_from_proje) then
