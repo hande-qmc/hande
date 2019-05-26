@@ -325,10 +325,18 @@ contains
 
     end function exchange_energy_orb
 
-    function madelung_orb(sys, ref_occ_list, i) result (mad)
+    function madelung_orb_3D_ueg(sys, ref_occ_list, i) result (mad)
 
-        ! Madelung contribution per electron.
+        ! Madelung contribution per electron for a particular orbital for the 3D UEG.
         ! Expression fitted by Schoof et al., Phys. Rev. Lett. 115, 130402 (2015) using Fraser et al. Phys. Rev. B 53, 1814 (1996).
+        
+        ! In:
+        !    sys: system to be studied.
+        !    ref_occ_list: list of occ. orbitals on the reference.
+        !    i: orbital to calculate Madelung contribution for (either 0.0, if not occupied in the reference, or expression by
+        !       Schoof et al.)
+        ! Returns:
+        !    mad: Madelung contribution to Fock energy per electron on this orbital i.
 
         use system, only: sys_t
 
@@ -355,9 +363,16 @@ contains
         end if
 
 
-    end function madelung_orb
+    end function madelung_orb_3D_ueg
 
     subroutine calc_fock_values_3d_ueg(sys, propagator, ref_occ_list)
+        
+        ! Calculate Fock energies <i|F|i> for all orbitals i for the 3D UEG.
+        
+        ! In:
+        !    sys: system to be studied.
+        !    propagator: contains information on the propagation (e.g. QN propagation information or sp_fock values). 
+        !    ref_occ_list: list of occ. orbitals on the reference.
         
         use system, only: sys_t
         use qmc_data, only: propagator_t
@@ -371,7 +386,7 @@ contains
         ! [todo]: Probably does not work properly if there is CAS since some ref det orbs are frozen!
         do iorb = 1, sys%basis%nbasis
             propagator%sp_fock(iorb) = propagator%sp_fock(iorb) + exchange_energy_orb(sys, ref_occ_list, iorb) + &
-                0.5_p*madelung_orb(sys, ref_occ_list, iorb)
+                0.5_p*madelung_orb_3D_ueg(sys, ref_occ_list, iorb)
         end do
 
     end subroutine calc_fock_values_3d_ueg

@@ -114,7 +114,10 @@ contains
         else
             call init_reference(sys, reference_in, io_unit, qmc_state%ref)
         end if
-
+        
+        ! In read-in systems, sp_fock = sp_eigv. This is different in the case of the UEG, where sp_fock is filled with <i|F|i>.
+        ! For the UEG, the Fock values are only implemented for the 3D version!
+        ! [todo] - implement 2D, etc.
         allocate(qmc_state%propagator%sp_fock(sys%basis%nbasis), stat=ierr)
         call check_allocate('qmc_state%propagator%sp_fock', sys%basis%nbasis, ierr)
         qmc_state%propagator%sp_fock = sys%basis%basis_fns%sp_eigv
