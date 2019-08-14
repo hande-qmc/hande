@@ -94,9 +94,9 @@ contains
         integer, intent(in) :: nspawnings_total
         type(gen_excit_ptr_t), intent(in) :: gen_excit_ptr
         type(logging_t), intent(in) :: logging_info
-!        type (ccmc_in_t), intent(in) :: ccmc_in
         integer(int_p), intent(out) :: nspawn
         type(excit_t), intent(out) :: connection
+        integer :: i
 
         ! We incorporate the sign of the amplitude into the Hamiltonian matrix
         ! element, so we 'pretend' to attempt_to_spawn that all excips are
@@ -105,7 +105,7 @@ contains
         type(hmatel_t) :: hmatel, hmatel_save
         real(p) :: pgen, spawn_pgen
         integer(i0) :: fexcit(sys%basis%tot_string_len), funlinked(sys%basis%tot_string_len)
-        integer :: excitor_sign, excitor_level, excitor_level_2
+        integer :: excitor_sign, excitor_level, excitor_level_2(size(qs%second_ref))
         logical :: linked, single_unlinked, allowed_excitation
         real(p) :: invdiagel
 
@@ -168,8 +168,11 @@ contains
             excitor_level = get_excitation_level(det_string(qs%ref%f0, sys%basis), det_string(fexcit,sys%basis))
             call convert_excitor_to_determinant(fexcit, excitor_level, excitor_sign, qs%ref%f0)
             if (qs%multiref) then
-                excitor_level_2 = get_excitation_level(det_string(qs%second_ref%f0, sys%basis), det_string(fexcit,sys%basis))
-                if (excitor_level > qs%ref%ex_level .and.  excitor_level_2 >qs%ref%ex_level) nspawn=0
+                do i = 1, size(qs%second_ref)
+                     excitor_level_2(i) = get_excitation_level(det_string(qs%second_ref(i)%f0, sys%basis), &
+                                                               det_string(fexcit,sys%basis))
+                end do
+                if (excitor_level > qs%ref%ex_level .and.  minval(excitor_level_2) > qs%ref%ex_level) nspawn=0
             end if
             if (excitor_sign < 0) nspawn = -nspawn
             if (debug) call write_logging_spawn(logging_info, hmatel_save, pgen, invdiagel, [nspawn], &

@@ -318,9 +318,12 @@ type ccmc_in_t
     character(255) :: density_matrix_file = 'RDM'
     ! Whether to use even cluster selection approach.
     logical :: even_selection = .false.
-    ! Whether to use a second reference.
+    ! Whether to use a secondary reference.
     logical :: multiref = .false.
-    type(reference_t) :: second_ref
+    ! Number of additional references to use.
+    integer :: n_secondary_ref = 0
+    ! The secondary references.
+    type(reference_t), allocatable :: secondary_ref(:)
 end type ccmc_in_t
 
 type restart_in_t
@@ -837,7 +840,8 @@ type qmc_state_t
     type(restart_in_t) :: restart_in
     ! Flags for multireference CCMC calculations.
     logical :: multiref = .false.
-    type(reference_t) :: second_ref
+    integer :: n_secondary_ref = 0
+    type(reference_t), allocatable :: second_ref(:)
     ! WARNING: par_info is the 'reference/master' (ie correct) version
     ! of parallel_t, in particular of proc_map_t.  However, copies of it
     ! are kept in spawn_t objects, and it is these copies which are used
@@ -1082,6 +1086,8 @@ contains
 
         type(json_out_t), intent(inout) :: js
         type(ccmc_in_t), intent(in) :: ccmc
+        character(10) :: string
+        integer :: i
         logical, intent(in), optional :: terminal
 
         call json_object_init(js, 'ccmc')
@@ -1093,7 +1099,18 @@ contains
         call json_write_key(js, 'density_matrices', ccmc%density_matrices)
         call json_write_key(js, 'density_matrix_file', ccmc%density_matrix_file)
         call json_write_key(js, 'even_selection', ccmc%even_selection)
-        if (ccmc%multiref) call reference_t_json(js, ccmc%second_ref, key = 'second_ref')
+        if (ccmc%multiref) then
+            do i=1, size(ccmc%secondary_ref)
+                if (i<10) then
+                    write(string,'(I1)') i
+                else if (i>=10 .and. i<100) then 
+                    write (string,'(I2)') i
+                else
+                    write (string,'(I3)') i
+                end if
+                call reference_t_json(js, ccmc%secondary_ref(i), key = 'secondary_ref'//string)
+            end do
+        end if
         call json_write_key(js,'multiref', ccmc%multiref,terminal=.true.)
         call json_object_end(js, terminal)
 

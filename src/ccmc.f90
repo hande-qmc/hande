@@ -425,7 +425,9 @@ contains
 
         if (ccmc_in%multiref) then
              qs%multiref = .true.
-             call init_secondary_reference(sys,ccmc_in%second_ref,io_unit,qs)
+             qs%n_secondary_ref = ccmc_in%n_secondary_ref
+             allocate (qs%second_ref(qs%n_secondary_ref))
+             call init_secondary_reference(sys,ccmc_in%secondary_ref,io_unit,qs)
         else 
             qs%ref%max_ex_level = qs%ref%ex_level
         end if
@@ -466,7 +468,7 @@ contains
             call init_bloom_stats_t(bloom_stats, mode=bloom_mode_fractionn, encoding_factor=qs%psip_list%pop_real_factor)
         end if
 
-        if (qs%ref%ex_level+2 > 12 .and. .not. ccmc_in%linked) then
+        if (qs%ref%max_ex_level+2 > 12 .and. .not. ccmc_in%linked) then
             call stop_all('do_ccmc', 'CCMC can currently only handle clusters up to size 12 due to&
                                      &integer overflow in factorial routines for larger clusters.  &
                                      &Please implement better factorial routines or use linked-CCMC.')
@@ -1086,7 +1088,7 @@ contains
         type(multispawn_stats_t), intent(inout) :: ms_stats
         type(p_single_double_coll_t), intent(inout) :: ps_stat
 
-        integer :: nspawnings_cluster
+        integer :: i, nspawnings_cluster
         logical :: attempt_death
 
         ! Spawning
@@ -1371,7 +1373,7 @@ contains
 
     end subroutine perform_ccmc_spawning_attempt
 
-    function multiref_check_ex_level(sys, contrib, qs, offset) result(assert)
+    function multiref_check_ex_level(sys, contrib, qs, offset) result(assert1)
         !Used in mr-CCMC.
         !Checks whether a cluster is within some number of excitations of any of the references supplied.
 
@@ -1396,10 +1398,15 @@ contains
         type(wfn_contrib_t), intent(in) :: contrib
         type(sys_t), intent(in) :: sys
         integer, intent(in) :: offset
-        logical :: assert
-        assert = (contrib%cluster%excitation_level <= qs%ref%ex_level+offset .or. &
-                 get_excitation_level(det_string(contrib%cdet%f, sys%basis), det_string(qs%second_ref%f0, sys%basis)) &
-                 <= qs%second_ref%ex_level+offset)
+        integer :: ex_level, i
+        logical :: assert1, assert2 = .false.
+        
+        do i = 1, size(qs%second_ref)
+           ex_level =   get_excitation_level(det_string(contrib%cdet%f, sys%basis), det_string(qs%second_ref(i)%f0, sys%basis)) 
+           assert2 = (ex_level<=qs%second_ref(i)%ex_level+offset)
+           if (assert2) exit
+        end do
+        assert1 = (contrib%cluster%excitation_level <= qs%ref%ex_level+offset .or. assert2)
 
     end function
 

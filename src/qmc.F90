@@ -1067,7 +1067,6 @@ contains
         type(reference_t), intent(out) :: reference
 
         integer :: ierr
-
         allocate(reference%f0(sys%basis%tot_string_len), stat=ierr)
         call check_allocate('reference%f0',sys%basis%tot_string_len,ierr)
         allocate(reference%hs_f0(sys%basis%tot_string_len), stat=ierr)
@@ -1105,15 +1104,22 @@ contains
         use reference_determinant, only: reference_t
         use system, only: sys_t
         use qmc_data, only: qmc_state_t 
-        use excitations, only: get_excitation_level
+        use excitations, only: get_excitation_level, det_string
+
         type(sys_t), intent(in) :: sys
-        type(reference_t), intent(in) :: reference_in
+        type(reference_t), intent(in) :: reference_in(:)
         integer, intent(in) :: io_unit
         type(qmc_state_t), intent(inout) :: qs
+        integer :: i, current_max, total_max = 0
+        
+        do i = 1, size(reference_in)
+           call init_reference(sys, reference_in(i), io_unit, qs%second_ref(i))
+           current_max = qs%ref%ex_level + get_excitation_level(det_string(qs%ref%f0,sys%basis), &
+                                                                 det_string(qs%second_ref(i)%f0,sys%basis)) 
+           if (current_max > total_max) total_max = current_max
+        end do
 
-        call init_reference(sys, reference_in, io_unit, qs%second_ref)
-        qs%ref%max_ex_level = qs%ref%ex_level + get_excitation_level(qs%ref%f0(:sys%basis%bit_string_len), &
-                                                                  qs%second_ref%f0(:sys%basis%bit_string_len))
+        qs%ref%max_ex_level = total_max
   
     end subroutine
 
