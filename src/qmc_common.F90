@@ -1203,6 +1203,8 @@ contains
             ! number of single/double excitations), stop here and fix pattempt_single.
             call mpi_allreduce(qs%excit_gen_data%p_single_double%rep_accum%overflow_loc, overflow, 1, MPI_LOGICAL, MPI_LAND, &
                             MPI_COMM_WORLD, ierr)
+#else
+            overflow = .false.
 #endif
             
             if ((qs%vary_shift(1)) .or. (overflow)) then

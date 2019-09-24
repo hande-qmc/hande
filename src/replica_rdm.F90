@@ -212,11 +212,14 @@ contains
         integer, intent(in) :: nel, nbasis, comment_unit
         character(*), intent(in) :: filename
 
-        integer :: i, j, k, l, fileunit, ierr
+        integer :: i, j, k, l, fileunit
+        
+
+#ifdef PARALLEL
+        integer :: ierr
 
         real(p), allocatable :: rdm_total(:,:)
 
-#ifdef PARALLEL
         if (parent) allocate(rdm_total(size(rdm, dim=1),size(rdm,dim=2)))
         call mpi_reduce(rdm, rdm_total, size(rdm), MPI_preal, MPI_SUM, root, MPI_COMM_WORLD, ierr)
         if (parent) then

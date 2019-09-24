@@ -11,12 +11,12 @@ f90_module_flag = -module
 
 [opt]
 cppflags = %(cppflags_opt)s
-fflags = -O3 -openmp -ipo
-cxxflags = -O3 -openmp -ipo
-ldflags =  -openmp -ipo
-cflags = -O3 -ipo
+fflags = -O3 -qopenmp -ipo
+cxxflags = -O3 -qopenmp -ipo
+ldflags =  -qopenmp -ipo
+cflags = -O3 -qopenmp -ipo
 
 [dbg]
 cppflags = %(cppflags_opt)s -DDEBUG
-fflags = -g -traceback -CB -openmp
-cxxflags = -g -traceback  -openmp
+fflags = -g -traceback -CB -qopenmp -check bounds
+cxxflags = -g -traceback  -qopenmp

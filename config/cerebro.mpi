@@ -14,7 +14,7 @@
 #   The last three are private modules.
 
 [DEFAULT]
-cppflags_opt = -DHAVE_SSE2 -DPARALLEL -DDET_SIZE=64 -DPOP_SIZE=64
+cppflags_opt = -DHAVE_SSE2 -DPARALLEL -DDET_SIZE=64 -DPOP_SIZE=64 -DUSE_POPCNT
 
 [main]
 fc = mpif90
@@ -30,9 +30,11 @@ cppflags = %(cppflags_opt)s
 fflags = -O3 -qopenmp -ipo
 cxxflags = -O3 -qopenmp -ipo
 ldflags =  -qopenmp -ipo
-cflags = -O3 -ipo
+cflags = -O3 -ipo -qopenmp
 
 [dbg]
 cppflags = %(cppflags_opt)s -DDEBUG
 fflags = -g -traceback -CB -qopenmp
 cxxflags = -g -traceback -qopenmp
+ldflags =  -qopenmp
+cflags = -g -qopenmp

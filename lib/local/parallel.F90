@@ -239,9 +239,9 @@ contains
         integer, intent(in) :: list_length
         integer, intent(out) :: this_proc_start, this_proc_end
         integer, intent(out) :: starts(0:nprocs-1), sizes(0:nprocs-1)
-        integer :: i, i_start, i_end
 
 #ifdef PARALLEL
+        integer :: i, i_start, i_end
         i_end = 0
         do i = 0, nprocs-1
             i_start = i_end + 1

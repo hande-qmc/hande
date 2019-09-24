@@ -7,7 +7,8 @@ fc = mpif90
 cc = mpicc
 cxx = mpiCC
 ld = mpif90
-libs = -ltrlan_mpi -lmkl_scalapack_lp64 -Wl,--start-group -lmkl_gf_lp64 -lmkl_sequential -lmkl_core -lmkl_blacs_openmpi_lp64 -Wl,--end-group -lpthread -lstdc++ -lhdf5_fortran -luuid -llua -ldl
+LIBS =-ltrlan_mpi  $(MKLROOT)/lib/intel64/libmkl_blas95_lp64.a $(MKLROOT)/lib/intel64/libmkl_lapack95_lp64.a $(MKLROOT)/lib/intel64/libmkl_scalapack_lp64.a -Wl,--start-group ${MKLROOT}/lib/intel64/libmkl_intel_lp64.a ${MKLROOT}/lib/intel64/libmkl_intel_thread.a ${MKLROOT}/lib/intel64/libmkl_core.a ${MKLROOT}/lib/intel64/libmkl_blacs_openmpi_lp64.a -Wl,--end-group  -liomp5 -lpthread -lm -ldl -lhdf5_fortran -luuid -llua -lstdc++
+# libs = -ltrlan_mpi -lmkl_scalapack_lp64 -Wl,--start-group -lmkl_gf_lp64 -lmkl_sequential -lmkl_core -lmkl_blacs_openmpi_lp64 -Wl,--end-group -lpthread -lstdc++ -lhdf5_fortran -luuid -llua -ldl
 f90_module_flag = -J
 
 [opt]
@@ -19,3 +20,4 @@ cxxflags = -O3
 cppflags = %(cppflags_opt)s -DDEBUG
 fflags = %(include_f)s -g -fbacktrace -fbounds-check -Wall -Wextra -Wno-unused-dummy-argument -Wno-unused-parameter -Werror
 cxxflags = -g -fbacktrace
+ldflags = -g -fbacktrace
