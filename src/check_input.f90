@@ -71,6 +71,7 @@ contains
         if (sys%read_in%comp .and. sys%read_in%uhf) then
             if (all(sys%cas > 0)) then
                 ! Freezing orbitals not compatible with UHF and complex.
+                ! If statement follows test for number of active orbitals in read_in.F90.
                 call stop_all(this,'Freezing orbitals not currently compatible with UHF and complex')
             else
                 call warning(this, 'UHF translational symmetry currently untested. Use with caution!')
