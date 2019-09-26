@@ -68,8 +68,14 @@ contains
             call warning(this, 'Not using default max_broadcast_chunk. This option is only intended for testing of &
                 &broadcasting functionality and gives no benefit to functionality.')
 
-        if (sys%read_in%comp .and. sys%read_in%uhf) call warning(this, &
-                            'UHF translational symmetry currently untested. Use with caution!')
+        if (sys%read_in%comp .and. sys%read_in%uhf) then
+            if (all(sys%cas > 0)) then
+                ! Freezing orbitals not compatible with UHF and complex.
+                call stop_all(this,'Freezing orbitals not currently compatible with UHF and complex')
+            else
+                call warning(this, 'UHF translational symmetry currently untested. Use with caution!')
+            end if
+        end if
 
     end subroutine check_sys
 
