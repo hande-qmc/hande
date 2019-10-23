@@ -323,6 +323,22 @@ type ccmc_in_t
     type(reference_t) :: second_ref
 end type ccmc_in_t
 
+type uccmc_in_t
+    ! How frequently (in log_2) an excitor can be moved to a different processor.
+    ! See comments in spawn_t and assign_particle_processor.
+    integer :: move_freq = 5
+    ! Value of cluster%amplitude/cluster%pselect above which spawns are split up
+    ! The default value corresponds to off.
+    real(p) :: cluster_multispawn_threshold = huge(1.0_p)
+    ! If true, vary shift to control reference, not total, population
+    logical :: vary_shift_reference = .false.
+    ! Calculate the (unrelaxed) density matrices?
+    logical :: density_matrices = .false.
+    ! Filename to write density matrix to
+    character(255) :: density_matrix_file = 'RDM'
+    logical :: linked = .false.
+end type ccmc_in_t
+
 type restart_in_t
     ! Restart calculation from file.
     logical :: read_restart = .false.
@@ -1098,6 +1114,33 @@ contains
         call json_object_end(js, terminal)
 
     end subroutine ccmc_in_t_json
+
+    subroutine uccmc_in_t_json(js, uccmc, terminal)
+
+        ! Serialise a uccmc_in_t object in JSON format.
+
+        ! In/Out:
+        !   js: json_out_t controlling the output unit and handling JSON internal state.  Unchanged on output.
+        ! In:
+        !   uccmc: uccmc_in_t object containing uccmc input values (including any defaults set).
+        !   terminal (optional): if true, this is the last entry in the enclosing JSON object.  Default: false.
+
+        use json_out
+
+        type(json_out_t), intent(inout) :: js
+        type(uccmc_in_t), intent(in) :: uccmc
+        logical, intent(in), optional :: terminal
+
+        call json_object_init(js, 'uccmc')
+        call json_write_key(js, 'move_freq', uccmc%move_freq)
+        call json_write_key(js, 'cluster_multispawn_threshold', uccmc%cluster_multispawn_threshold)
+        call json_write_key(js, 'linked', uccmc%linked)
+        call json_write_key(js, 'vary_shift_reference', uccmc%vary_shift_reference)
+        call json_write_key(js, 'density_matrices', uccmc%density_matrices)
+        call json_write_key(js, 'density_matrix_file', uccmc%density_matrix_file,terminal=.true.)
+        call json_object_end(js, terminal)
+
+    end subroutine uccmc_in_t_json
 
     subroutine restart_in_t_json(js, restart, uuid_restart, terminal)
 
