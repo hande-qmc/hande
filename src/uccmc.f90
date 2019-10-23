@@ -285,8 +285,9 @@ contains
                     ! Can't include the reference in the cluster, so -1 from the
                     ! total number of excitors.
                 ![TODO] how does this apply to UCC?
-                max_cluster_size = min(sys%nel,qs%ref%max_ex_level+2, &
-                                                           qs%psip_list%nstates-nD0_proc)
+                max_cluster_size = uccmc_in%pow_trunc
+                !max_cluster_size = min(sys%nel,qs%ref%max_ex_level+2, &
+                                                           !qs%psip_list%nstates-nD0_proc)
 
                 ! Note that 'death' in CCMC creates particles in the spawned
                 ! list, so the number of deaths not in the spawned list is

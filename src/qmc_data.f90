@@ -337,6 +337,7 @@ type uccmc_in_t
     ! Filename to write density matrix to
     character(255) :: density_matrix_file = 'RDM'
     logical :: linked = .false.
+    integer :: pow_trunc = 12
 end type ccmc_in_t
 
 type restart_in_t
@@ -1137,7 +1138,8 @@ contains
         call json_write_key(js, 'linked', uccmc%linked)
         call json_write_key(js, 'vary_shift_reference', uccmc%vary_shift_reference)
         call json_write_key(js, 'density_matrices', uccmc%density_matrices)
-        call json_write_key(js, 'density_matrix_file', uccmc%density_matrix_file,terminal=.true.)
+        call json_write_key(js, 'density_matrix_file', uccmc%density_matrix_file)
+        call json_write_key(js, 'pow_trunc', uccmc%pow_trunc,terminal=.true.)
         call json_object_end(js, terminal)
 
     end subroutine uccmc_in_t_json
