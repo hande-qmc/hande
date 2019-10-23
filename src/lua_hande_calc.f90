@@ -1379,6 +1379,68 @@ contains
 
     end subroutine read_ccmc_in
 
+    subroutine read_uccmc_in(lua_state, opts, uccmc_in, sys)
+
+
+        ! Read in an uccmc table (if it exists) to an uccmc_in object.
+
+        ! uccmc = {
+        !     move_frequency = frequency,
+        !     cluster_multispawn_threshold = threshold,
+        !     linked = true/false,
+        !     vary_shift_reference = true/false,
+        !     density_matrices = true/false,
+        !     density_matrix_file = filename,
+        !     pow_trunc = trunc,
+        ! }
+
+        ! In/Out:
+        !    lua_state: flu/Lua state to which the HANDE API is added.
+        ! In:
+        !    opts: handle for the table containing the ccmc table.
+        !    sys:  sys_t object containing information of current system. 
+        ! Out:
+        !    uccmc_in: uccmc_in_t object containing uccmc-specific input options.
+
+        use flu_binding, only: flu_State
+        use aot_table_module, only: aot_get_val, aot_exists, aot_table_open, aot_table_close
+
+        use qmc_data, only: uccmc_in_t
+        use lua_hande_utils, only: warn_unused_args
+        use system, only: sys_t
+        use errors, only: stop_all
+
+        type(flu_State), intent(inout) :: lua_state
+        integer, intent(in) :: opts
+        type (sys_t), intent(in) :: sys
+        type(uccmc_in_t), intent(out) :: uccmc_in
+
+        integer :: uccmc_table, err
+        character(28), parameter :: keys(7) = [character(28) :: 'move_frequency', 'cluster_multispawn_threshold', &
+                                                                'linked', 'vary_shift_reference', &
+                                                                'density_matrices', 'density_matrix_file', 'pow_trunc']
+
+        if (aot_exists(lua_state, opts, 'uccmc')) then
+
+            call aot_table_open(lua_state, opts, uccmc_table, 'uccmc')
+
+            ! Optional arguments (defaults set in derived type).
+            call aot_get_val(uccmc_in%move_freq, err, lua_state, uccmc_table, 'move_frequency')
+            call aot_get_val(uccmc_in%cluster_multispawn_threshold, err, lua_state, uccmc_table, 'cluster_multispawn_threshold')
+            call aot_get_val(uccmc_in%linked, err, lua_state, uccmc_table, 'linked')
+            call aot_get_val(uccmc_in%vary_shift_reference, err, lua_state, uccmc_table, 'vary_shift_reference')
+            call aot_get_val(uccmc_in%density_matrices, err, lua_state, uccmc_table, 'density_matrices')
+            call aot_get_val(uccmc_in%density_matrix_file, err, lua_state, uccmc_table, 'density_matrix_file')
+            call aot_get_val(uccmc_in%pow_trunc, err, lua_state, uccmc_table, 'pow_trunc')
+
+            call warn_unused_args(lua_state, keys, uccmc_table)
+
+            call aot_table_close(lua_state, uccmc_table)
+
+        end if
+
+    end subroutine read_uccmc_in
+
     subroutine read_dmqmc_in(lua_state, nbasis, opts, system_name, dmqmc_in, subsys_info)
 
         ! Read in DMQMC-related input options from various tables to a dmqmc_in_t object.
