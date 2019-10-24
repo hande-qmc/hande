@@ -68,11 +68,11 @@ contains
         use qmc_data, only: qmc_in_t_json, uccmc_in_t_json, restart_in_t_json
         use qmc_data, only: excit_gen_power_pitzer_orderN, excit_gen_heat_bath
         use reference_determinant, only: reference_t, reference_t_json
-        use check_input, only: check_qmc_opts, check_uccmc_opts, check_blocking_opts
+        use check_input, only: check_qmc_opts, check_uccmc_opts
         use json_out, only: json_out_t, json_object_init, json_object_end
         use hamiltonian_data
         use energy_evaluation, only: get_sanitized_projected_energy, get_sanitized_projected_energy_cmplx
-                            write_blocking_report, update_shift_damping
+                            update_shift_damping
 
         use logging, only: init_logging, end_logging, prep_logging_mc_cycle, write_logging_calc_ccmc
         use logging, only: logging_in_t, logging_t, logging_in_t_json, logging_t_json, write_logging_select_ccmc
@@ -284,7 +284,6 @@ contains
                     ! excitors.
                     ! Can't include the reference in the cluster, so -1 from the
                     ! total number of excitors.
-                ![TODO] how does this apply to UCC?
                 max_cluster_size = uccmc_in%pow_trunc
                 !max_cluster_size = min(sys%nel,qs%ref%max_ex_level+2, &
                                                            !qs%psip_list%nstates-nD0_proc)
@@ -383,40 +382,15 @@ contains
                         if (qs%propagator%quasi_newton) contrib(it)%cdet%fock_sum = &
                                             sum_sp_eigenvalues_occ_list(sys, contrib(it)%cdet%occ_list) - qs%ref%fock_sum
 
-                        call do_ccmc_accumulation(sys, qs, contrib(it)%cdet, contrib(it)%cluster, logging_info, &
+                        call do_uccmc_accumulation(sys, qs, contrib(it)%cdet, contrib(it)%cluster, logging_info, &
                                                     D0_population_cycle, proj_energy_cycle, uccmc_in, ref_det, rdm, selection_data)
-                        call do_stochastic_ccmc_propagation(rng(it), sys, qs, &
+                        call do_stochastic_uccmc_propagation(rng(it), sys, qs, &
                                                                 uccmc_in, logging_info, ms_stats(it), bloom_stats, &
                                                                 contrib(it), nattempts_spawn, ndeath, ps_stats(it))
                     end if
                 end do
                 !$omp end do
-                ![TODO] up to here for selection
 
-                ndeath_nc = 0
-                if (ccmc_in%full_nc .and. qs%psip_list%nstates > 0) then
-                    ! Do death exactly and directly for non-composite clusters
-                    !$omp do schedule(dynamic,200) private(dfock) reduction(+:ndeath_nc,nparticles_change)
-                    do iattempt = 1, qs%psip_list%nstates
-                        ! Note we use the (encoded) population directly in stochastic_ccmc_death_nc
-                        ! (unlike the stochastic_ccmc_death) to avoid unnecessary decoding/encoding
-                        ! steps (cf comments in stochastic_death for FCIQMC).
-                        if (qs%propagator%quasi_newton) then
-                            dfock = sum_sp_eigenvalues_bit_string(sys, qs%psip_list%states(:,iattempt)) - qs%ref%fock_sum
-                        end if
-                        call stochastic_ccmc_death_nc(rng(it), ccmc_in%linked, sys, qs, iattempt==D0_pos, dfock, &
-                                          qs%psip_list%dat(1,iattempt), qs%estimators(1)%proj_energy_old, &
-                                          qs%psip_list%pops(1, iattempt), nparticles_change(1), ndeath_nc, &
-                                          logging_info)
-                        if (sys%read_in%comp) then
-                            call stochastic_ccmc_death_nc(rng(it), ccmc_in%linked, sys, qs, iattempt==D0_pos, dfock, &
-                                              qs%psip_list%dat(1,iattempt), qs%estimators(2)%proj_energy_old, &
-                                              qs%psip_list%pops(2, iattempt), nparticles_change(2), ndeath_nc, &
-                                              logging_info)
-                        end if
-                    end do
-                    !$omp end do
-                end if
                 !$omp end parallel
 
                 ! Add the accumulated ps_stats data to qs%excit_gen_data%p_single_double.
@@ -424,7 +398,7 @@ contains
                     call ps_stats_reduction_update(qs%excit_gen_data%p_single_double%rep_accum, ps_stats)
                 end if
 
-                if (ccmc_in%density_matrices .and. qs%vary_shift(1) .and. parent .and. .not. sys%read_in%comp) then
+                if (uccmc_in%density_matrices .and. qs%vary_shift(1) .and. parent .and. .not. sys%read_in%comp) then
                     ! Add in diagonal contribution to RDM (only once per cycle not each time reference
                     ! is selected as this is O(N^2))
                     call update_rdm(sys, ref_det, ref_det, real(D0_normalisation,p), 1.0_p, 1.0_p, rdm)
@@ -457,7 +431,7 @@ contains
 
             update_tau = bloom_stats%nblooms_curr > 0
 
-            if (ccmc_in%density_matrices .and. qs%vary_shift(1)) then
+            if (uccmc_in%density_matrices .and. qs%vary_shift(1)) then
                 call calc_rdm_energy(sys, qs%ref, rdm, qs%estimators(1)%rdm_energy, qs%estimators(1)%rdm_trace)
             end if
 
@@ -467,7 +441,7 @@ contains
             qs%estimators%proj_energy = real(qs%estimators%proj_energy_comp,p)
 
             if (debug) call write_logging_select_ccmc(logging_info, iter, selection_data)
-
+            ![TODO] fix this to work without semi+stoch
             call end_report_loop(io_unit, qmc_in, iter, update_tau, qs, nparticles_old, nspawn_events, &
                                  semi_stoch_in%shift_iter, semi_stoch_iter, soft_exit, &
                                  load_bal_in, bloom_stats=bloom_stats, comp=sys%read_in%comp, &
@@ -478,14 +452,10 @@ contains
             if (parent) then
                 if (bloom_stats%nblooms_curr > 0) call bloom_stats_warning(bloom_stats, io_unit=io_unit)
                 call write_qmc_report(qmc_in, qs, ireport, nparticles_old, t2-t1, .false., .false., &
-                                        io_unit=io_unit, cmplx_est=sys%read_in%comp, rdm_energy=ccmc_in%density_matrices, &
+                                        io_unit=io_unit, cmplx_est=sys%read_in%comp, rdm_energy=uccmc_in%density_matrices, &
                                         nattempts=.true.)
-                if (blocking_in%blocking_on_the_fly) then
-                    call do_blocking(bl, qs, qmc_in, ireport, iter, iunit, blocking_in, sys%read_in%comp)
-                end if
             end if
 
-            if (blocking_in%auto_shift_damping) call update_shift_damping(qs, bl, ireport, sys%read_in%comp)
 
             ! Update the time for the start of the next iteration.
             t1 = t2
@@ -504,9 +474,6 @@ contains
 
         call dSFMT_t_to_dSFMT_state_t(rng(0), qs%rng_state)
 
-        if (blocking_in%blocking_on_the_fly) call deallocate_blocking(bl)
-        if (blocking_in%blocking_on_the_fly .and. parent) call date_and_time(VALUES=date_values)
-        if (blocking_in%blocking_on_the_fly .and. parent) call write_date_time_close(iunit, date_values)
 
         if (parent) write (io_unit,'()')
         call write_bloom_report(bloom_stats, io_unit=io_unit)
@@ -514,7 +481,6 @@ contains
 
         call load_balancing_report(qs%psip_list%nparticles, qs%psip_list%nstates, qmc_in%use_mpi_barriers,&
                                    qs%spawn_store%spawn%mpi_time, io_unit=io_unit)
-        if (parent .and. blocking_in%blocking_on_the_fly .and. soft_exit) call write_blocking_report(bl, qs)
         call write_memcheck_report(qs%spawn_store%spawn, io_unit)
 
         if (soft_exit .or. error) then
@@ -529,10 +495,10 @@ contains
         end if
 
         if (debug) call end_logging(logging_info)
-        if (debug .or. ccmc_in%even_selection) call end_selection_data(selection_data)
+        if (debug call end_selection_data(selection_data)
 
-        if (ccmc_in%density_matrices) then
-            call write_final_rdm(rdm, sys%nel, sys%basis%nbasis, ccmc_in%density_matrix_file, io_unit)
+        if (uccmc_in%density_matrices) then
+            call write_final_rdm(rdm, sys%nel, sys%basis%nbasis, uccmc_in%density_matrix_file, io_unit)
             call calc_rdm_energy(sys, qs%ref, rdm, qs%estimators(1)%rdm_energy, qs%estimators(1)%rdm_trace)
             if (parent) &
                 write (io_unit,'(1x,"# Final energy from RDM",2x,es17.10, /)') qs%estimators%rdm_energy/qs%estimators%rdm_trace
@@ -541,7 +507,7 @@ contains
             call dealloc_det_info_t(ref_det)
         end if
 
-        call dealloc_contrib(contrib, ccmc_in%linked)
+        call dealloc_contrib(contrib, uccmc_in%linked)
         do i = 0, nthreads-1
             call dSFMT_end(rng(i))
         end do
@@ -554,7 +520,7 @@ contains
         deallocate(ps_stats, stat=ierr)
         call check_deallocate('ps_stats', ierr)
     
-    end subroutine do_ccmc
+    end subroutine do_uccmc
 
     subroutine ucc_set_cluster_selections(selection_data, nattempts, min_cluster_size, max_size, D0_normalisation, tot_abs_pop, &
                                     nstates)
@@ -836,7 +802,6 @@ contains
                     ! Counter the additional *nprocs above.
                     cluster%pselect = cluster%pselect/nprocs
                 else
-                    ![TODO] need to collapse in a way that accounts for Hermitian conjugate
                     call ucc_collapse_cluster(sys%basis, f0, psip_list%states(:,pos), excitor_pop, cdet%f, &
                                           cluster_population, allowed, deexcitation(i))
                     if (.not.allowed) exit
@@ -1174,3 +1139,254 @@ contains
         end if
 
     end subroutine ucc_cumulative_population
+
+    subroutine do_uccmc_accumulation(sys, qs, cdet, cluster, logging_info, D0_population_cycle, proj_energy_cycle, &
+                                    uccmc_in, ref_det, rdm, selection_data)
+
+
+
+        ! Performs all accumulation of values required for given ccmc clusters.
+        ! Updates projected energy and any RDMs with the contribution from the
+        ! current cluster.
+
+        ! In:
+        !   sys: information on system under consideration.
+        !   qs: information on current state of qmc calculation.
+        !   ccmc_in: options relating to ccmc passed in to calculation.
+        !   cdet: information on determinant resulting from collapsing current
+        !       cluster.
+        !   ref_det: reference determinant information.
+        !   cluster: information on cluster currently under consideration.
+        !   logging_info: current logging settings in use.
+
+        ! In/Out:
+        !   D0_population_cycle: running total of reference population.
+        !   proj_energy_cycle: running total of projected energy contributions.
+        !   rdm: array containing reduced density matrix.
+        !   selection_data: info on clsuter selection.
+
+        use system, only: sys_t
+        use qmc_data, only: qmc_state_t, uccmc_in_t, estimators_t
+        use determinants, only: det_info_t
+        use ccmc_data, only: cluster_t, selection_data_t
+        use ccmc_selection, only: update_selection_data
+        use qmc_data, only: zero_estimators_t
+
+        use excitations, only: excit_t, get_excitation
+        use hamiltonian_data, only: hmatel_t
+        use proc_pointers, only: update_proj_energy_ptr
+        use replica_rdm, only: update_rdm
+        use logging, only: logging_t
+
+        type(sys_t), intent(in) :: sys
+        type(qmc_state_t), intent(in) :: qs
+        type(uccmc_in_t), intent(in) :: uccmc_in
+        type(det_info_t), intent(in) :: cdet, ref_det
+        type(cluster_t), intent(in) :: cluster
+        type(logging_t), intent(in) :: logging_info
+        complex(p), intent(inout) :: D0_population_cycle, proj_energy_cycle
+        real(p), allocatable, intent(inout) :: rdm(:,:)
+        type(selection_data_t), intent(inout) :: selection_data
+        type(excit_t) :: connection
+        type(hmatel_t) :: hmatel
+        type(estimators_t) :: estimators_cycle
+
+        if (debug) call update_selection_data(selection_data, cluster, logging_info)
+
+        if (cluster%excitation_level /= huge(0)) then
+            ! FCIQMC calculates the projected energy exactly.  To do
+            ! so in CCMC would involve enumerating over all pairs of
+            ! single excitors, which is rather painful and slow.
+            ! Instead, as we are randomly sampling clusters in order
+            ! to evolve the excip population anyway, we can just use
+            ! the random clusters to *sample* the projected
+            ! estimator.  See comments in spawning.F90 for why we
+            ! must divide through by the probability of selecting
+            ! the cluster.
+            call zero_estimators_t(estimators_cycle)
+            connection = get_excitation(sys%nel, sys%basis, cdet%f, qs%ref%f0)
+            ![TODO]
+            call update_proj_energy_ptr(sys, qs%ref%f0, qs%trial%wfn_dat, cdet, &
+                     [real(cluster%amplitude,p),aimag(cluster%amplitude)]*&
+                     cluster%cluster_to_det_sign/cluster%pselect, &
+                     estimators_cycle, connection, hmatel)
+            if (sys%read_in%comp) then
+                D0_population_cycle = D0_population_cycle + estimators_cycle%D0_population_comp
+                proj_energy_cycle = proj_energy_cycle + estimators_cycle%proj_energy_comp
+            else
+                D0_population_cycle = D0_population_cycle + estimators_cycle%D0_population
+                proj_energy_cycle = proj_energy_cycle + estimators_cycle%proj_energy
+            end if
+        end if
+
+        if (uccmc_in%density_matrices .and. cluster%excitation_level <= 2 .and. qs%vary_shift(1) &
+            .and. cluster%excitation_level /= 0 .and. .not. sys%read_in%comp) then
+            ! Add contribution to density matrix
+            ! d_pqrs = <HF|a_p^+a_q^+a_sa_r|CC>
+            !$omp critical
+            call update_rdm(sys, cdet, ref_det, &
+                            real(cluster%amplitude, p)*cluster%cluster_to_det_sign, &
+                            1.0_p, cluster%pselect, rdm)
+            !$omp end critical
+        end if
+
+    end subroutine do_uccmc_accumulation
+
+    subroutine do_stochastic_uccmc_propagation(rng, sys, qs, uccmc_in, &
+                                            logging_info, ms_stats, bloom_stats, &
+                                            contrib, nattempts_spawn_tot, ndeath, ps_stat)
+
+        ! Perform stochastic propogation of a cluster in an appropriate manner
+        ! for the given inputs. For multireference systems, it allows death for
+        ! clusters within the desired truncation level of either reference.
+
+        ! In:
+        !   sys: information on system under consideration.
+        !   uccmc_in: options relating to uccmc passed in to calculation.
+        !   logging_info: logging_t object with info about current logging
+        !        when debug is true. 
+        ! In/Out:
+        !   rng: random number generator.
+        !   qs: qmc_state_t type, contains information about calculation.
+        !   ms_stats: statistics on multispawn performance.
+        !   bloom_stats: statistics on blooms during calculation.
+        !   contrib: derived type containing information on the current
+        !       wavefunction contribution being considered.
+        !   nattempts_spawn_tot: running total of number of spawning attempts
+        !       made during this mc cycle.
+        !   ndeath: total number of particles created via death.
+        !   ps_stat: Accumulating the following (and more) on this OpenMP thread:
+        !       h_pgen_singles_sum: total of |Hij|/pgen for single excitations attempted.
+        !       h_pgen_doubles_sum: total on |Hij|/pgen for double excitations attempted.
+        !       excit_gen_singles: counter on number of single excitations attempted.
+        !       excit_gen_doubles: counter on number of double excitations attempted.
+
+
+        use dSFMT_interface, only: dSFMT_t
+        use system, only: sys_t
+        use qmc_data, only: qmc_state_t, uccmc_in_t
+        use ccmc_data, only: multispawn_stats_t, ms_stats_update, wfn_contrib_t
+        use bloom_handler, only: bloom_stats_t, accumulate_bloom_stats
+        use logging, only: logging_t
+        use excit_gens, only: p_single_double_coll_t
+
+        use excitations, only: get_excitation_level
+        
+        type(sys_t), intent(in) :: sys
+        type(dSFMT_T), intent(inout) :: rng
+        type(qmc_state_t), intent(inout) :: qs
+        type(uccmc_in_t), intent(in) :: uccmc_in
+        type(wfn_contrib_t), intent(inout) :: contrib
+        type(bloom_stats_t), intent(inout) :: bloom_stats
+        type(logging_t), intent(in) :: logging_info
+
+        integer(int_64), intent(inout) :: nattempts_spawn_tot
+        integer(int_p), intent(inout) :: ndeath
+        type(multispawn_stats_t), intent(inout) :: ms_stats
+        type(p_single_double_coll_t), intent(inout) :: ps_stat
+
+        integer :: nspawnings_cluster
+        logical :: attempt_death
+
+        ! Spawning
+        ! This has the potential to create blooms, so we allow for multiple
+        ! spawning events per cluster.
+        ! The number of spawning events is decided by the value
+        ! of cluster%amplitude/cluster%pselect.  If this is
+        ! greater than cluster_multispawn_threshold, then nspawnings is
+        ! increased to the ratio of these.
+        nspawnings_cluster=max(1,ceiling((abs(contrib%cluster%amplitude)&
+                                     /contrib%cluster%pselect)/ ccmc_in%cluster_multispawn_threshold))
+
+        call ms_stats_update(nspawnings_cluster, ms_stats)
+        nattempts_spawn_tot = nattempts_spawn_tot + nspawnings_cluster
+        attempt_death = (contrib%cluster%excitation_level <= qs%ref%ex_level) 
+
+        call do_ucc_spawning_death(rng, sys, qs, ccmc_in, &
+                             logging_info, ms_stats, bloom_stats, contrib, &
+                             nattempts_spawn_tot, ndeath, ps_stat, nspawnings_cluster, attempt_death)
+
+    end subroutine do_stochastic_uccmc_propagation  
+
+    subroutine do_ucc_spawning_death(rng, sys, qs, uccmc_in, &
+                                 logging_info, ms_stats, bloom_stats, contrib, &
+                                 nattempts_spawn_tot, ndeath, ps_stat, nspawnings_cluster, attempt_death)
+
+        ! For stochastically selected clusters this
+        ! attempts spawning and death, adding any created particles to the
+        ! spawned list. For deterministically selected clusters spawning is
+        ! performed, while death is performed in-place separately.
+
+        ! This is currently non-specific to a any given type of selected
+        ! cluster, though this may change in future.
+
+        ! In:
+        !   sys: information on system under consideration.
+        !   ccmc_in: options relating to ccmc passed in to calculation.
+        !   logging_info: logging_t object with info about current logging
+        !        when debug is true. 
+        !   attempt_death = logical variable that encodes whether the selected 
+        !        cluster is within the desired CC truncation. 
+        ! In/Out:
+        !   rng: random number generator.
+        !   qs: qmc_state_t type, contains information about calculation.
+        !   ms_stats: statistics on multispawn performance.
+        !   bloom_stats: statistics on blooms during calculation.
+        !   contrib: derived type containing information on the current
+        !       wavefunction contribution being considered.
+        !   nattempts_spawn_tot: running total of number of spawning attempts
+        !       made during this mc cycle.
+        !   ndeath: total number of particles created via death.
+        !   ps_stat: Accumulating the following (and more) on this OpenMP thread:
+        !       h_pgen_singles_sum: total of |Hij|/pgen for single excitations attempted.
+        !       h_pgen_doubles_sum: total on |Hij|/pgen for double excitations attempted.
+        !       excit_gen_singles: counter on number of single excitations attempted.
+        !       excit_gen_doubles: counter on number of double excitations attempted.
+
+        use dSFMT_interface, only: dSFMT_t
+        use system, only: sys_t
+        use qmc_data, only: qmc_state_t, uccmc_in_t
+        use ccmc_data, only: multispawn_stats_t, ms_stats_update, wfn_contrib_t
+
+        use ccmc_death_spawning, only: stochastic_ccmc_death
+        use bloom_handler, only: bloom_stats_t, accumulate_bloom_stats
+        use logging, only: logging_t
+        use excit_gens, only: p_single_double_coll_t
+
+        use excitations, only: get_excitation_level
+        
+        type(sys_t), intent(in) :: sys
+        type(dSFMT_T), intent(inout) :: rng
+        type(qmc_state_t), intent(inout) :: qs
+        type(uccmc_in_t), intent(in) :: uccmc_in
+        type(wfn_contrib_t), intent(inout) :: contrib
+        type(bloom_stats_t), intent(inout) :: bloom_stats
+        type(logging_t), intent(in) :: logging_info
+
+        integer(int_64), intent(inout) :: nattempts_spawn_tot
+        integer(int_p), intent(inout) :: ndeath
+        type(multispawn_stats_t), intent(inout) :: ms_stats
+        type(p_single_double_coll_t), intent(inout) :: ps_stat
+        integer, intent(in) :: nspawnings_cluster
+        logical, intent(in) :: attempt_death
+
+        integer :: i
+
+        do i = 1, nspawnings_cluster
+            call perform_uccmc_spawning_attempt(rng, sys, qs, uccmc_in, logging_info, bloom_stats, contrib, &
+                                               nspawnings_cluster, ps_stat)
+        end do
+
+        ! Does the cluster collapsed onto D0 produce
+        ! a determinant is in the truncation space?  If so, also
+        ! need to attempt a death/cloning step.
+        ! optimisation: call only once per iteration for clusters of size 0 or 1 for ccmc_in%full_nc.
+        if (attempt_death) then
+           ! Clusters above size 2 can't die in linked ccmc.
+            if ((.not. uccmc_in%linked) .or. contrib%cluster%nexcitors <= 2) then
+                call stochastic_ccmc_death(rng, qs%spawn_store%spawn, uccmc_in%linked, .false., sys, &
+                                           qs, contrib%cdet, contrib%cluster, logging_info, ndeath)
+            end if
+        end if
+    end subroutine do_ucc_spawning_death
+
