@@ -124,6 +124,7 @@ contains
         if ((sys%system == ueg) .and. (sys%lattice%ndim == 3)) then
             call calc_fock_values_3d_ueg(sys, qmc_state%propagator, qmc_state%ref%occ_list0)
         end if
+        ! [WARNING - TODO] - ref%fock_sum not initialised in init_reference, etc! 
         qmc_state%ref%fock_sum = sum_fock_values_occ_list(sys, qmc_state%propagator%sp_fock, qmc_state%ref%occ_list0)
 
         ! --- Allocate psip list ---
@@ -1062,6 +1063,7 @@ contains
         reference%H00 = sc0_ptr(sys, reference%f0)
         ! Operators of HFS sampling.
         if (doing_calc(hfs_fciqmc_calc)) reference%O00 = op0_ptr(sys, reference%f0)
+        ! [WARNING - TODO] - ref%fock_sum not initialised here! 
 
     end subroutine init_reference
 
@@ -1109,6 +1111,7 @@ contains
         if (doing_calc(hfs_fciqmc_calc)) reference%O00 = op0_ptr(sys, reference%f0)
 
         reference%ex_level = reference_in%ex_level
+        ! [WARNING - TODO] - ref%fock_sum not initialised here! 
 
     end subroutine init_reference_restart
 
@@ -1136,7 +1139,7 @@ contains
         call init_reference(sys, reference_in, io_unit, qs%second_ref)
         qs%ref%max_ex_level = qs%ref%ex_level + get_excitation_level(qs%ref%f0(:sys%basis%bit_string_len), &
                                                                   qs%second_ref%f0(:sys%basis%bit_string_len))
-  
+        ! [WARNING - TODO] - ref%fock_sum not initialised here! 
     end subroutine
 
 
