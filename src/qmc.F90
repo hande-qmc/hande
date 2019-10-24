@@ -70,7 +70,7 @@ contains
         use determinants, only: sum_fock_values_occ_list
 
 
-        type(sys_t), intent(inout) :: sys
+        type(sys_t), intent(in) :: sys
         type(qmc_in_t), intent(in) :: qmc_in
         type(restart_in_t), intent(in) :: restart_in
         type(load_bal_in_t), intent(in) :: load_bal_in
@@ -1020,7 +1020,7 @@ contains
         use checking, only: check_allocate
         use determinants, only: encode_det
 
-        type(sys_t), intent(inout) :: sys
+        type(sys_t), intent(in) :: sys
         type(reference_t), intent(in) :: reference_in
         integer, intent(in) :: io_unit
         type(reference_t), intent(out) :: reference
@@ -1086,7 +1086,7 @@ contains
         use checking, only: check_allocate
         use determinants, only: decode_det
 
-        type(sys_t), intent(inout) :: sys
+        type(sys_t), intent(in) :: sys
         type(reference_t), intent(in) :: reference_in
         type(restart_info_t), intent(in) :: ri
         type(reference_t), intent(out) :: reference
@@ -1131,7 +1131,7 @@ contains
         use system, only: sys_t
         use qmc_data, only: qmc_state_t 
         use excitations, only: get_excitation_level
-        type(sys_t), intent(inout) :: sys
+        type(sys_t), intent(in) :: sys
         type(reference_t), intent(in) :: reference_in
         integer, intent(in) :: io_unit
         type(qmc_state_t), intent(inout) :: qs

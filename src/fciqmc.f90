@@ -79,7 +79,7 @@ contains
                             write_blocking_report, update_shift_damping
         use report, only: write_date_time_close
 
-        type(sys_t), intent(inout) :: sys
+        type(sys_t), intent(in) :: sys
         type(qmc_in_t), intent(in) :: qmc_in
         type(fciqmc_in_t), intent(in) :: fciqmc_in
         type(semi_stoch_in_t), intent(in) :: semi_stoch_in

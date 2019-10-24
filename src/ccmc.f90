@@ -336,7 +336,7 @@ contains
         use report, only: write_date_time_close
         use excit_gens, only: p_single_double_coll_t
 
-        type(sys_t), intent(inout) :: sys
+        type(sys_t), intent(in) :: sys
         type(qmc_in_t), intent(in) :: qmc_in
         type(ccmc_in_t), intent(in) :: ccmc_in
         type(blocking_in_t), intent(in) :: blocking_in
