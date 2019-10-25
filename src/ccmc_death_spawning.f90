@@ -215,6 +215,7 @@ contains
         ! would break population control.  Instead, we split H-S into
         ! (H - E_proj) + (E_proj - S).
         ! The former is scaled and produces the step.  The latter effects the population control.
+! [review] - AJWT: Update with the qn population control parameter.
 
         ! NB This currently only handles non-linked complex amplitudes, not linked complex.
 

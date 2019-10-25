@@ -625,6 +625,7 @@ contains
             else if (doing_calc(hfs_fciqmc_calc)) then
                 if (.not. qs%vary_shift(1) .and. ntot_particles(1) > qs%target_particles) then
                     qs%vary_shift = .true.
+! [review] - AJWT: Either remove or resolve this.  
                     ! [todo] - is the following actually used? And does it to auto qn_pop_control, i.e. can that input be left empty
                     ! [todo] - in input file?
                     if (qs%propagator%quasi_newton .and. (.not. (qmc_in%quasi_newton_pop_control < 0.0))) then

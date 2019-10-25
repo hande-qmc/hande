@@ -17,6 +17,7 @@ contains
         ! matrix element.
         ! For FCIQMC M_ii = K_ii - S where S is the shift and K_ii is
         !  K_ii =  < D_i | H | D_i > - E_0.
+! [review] - AJWT: comment on quasinewton
 
         ! In:
         !    sys: the system
