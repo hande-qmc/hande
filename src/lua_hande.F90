@@ -170,6 +170,7 @@ contains
         call flu_register(lua_state, 'simple_fciqmc', lua_simple_fciqmc)
         call flu_register(lua_state, 'fciqmc', lua_fciqmc)
         call flu_register(lua_state, 'ccmc', lua_ccmc)
+        call flu_register(lua_state, 'uccmc', lua_uccmc)
         call flu_register(lua_state, 'dmqmc', lua_dmqmc)
 
         ! Helper functions

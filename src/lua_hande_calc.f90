@@ -555,6 +555,122 @@ contains
 
     end function lua_ccmc
 
+    function lua_uccmc(L) result(nresult) bind(c)
+
+        ! In/Out:
+        !    L: lua state (bare C pointer).
+
+        ! Lua:
+        !    uccmc{
+        !       sys = system,         --  required
+        !       qmc = { ... },        --  required
+        !       uccmc = { ... }
+        !       restart = { ... },
+        !       reference = { ... },
+        !       logging = { ... },
+        !       output = { ... },
+        !       blocking = { ... },
+        !       qmc_state = qmc_state,
+        !    }
+
+        ! Returns a qmc_state.
+
+        ! See interface documentation for the relevant read_TYPE procedure to
+        ! understand the options available within a given subtable.
+
+        use, intrinsic :: iso_c_binding, only: c_ptr, c_int
+        use flu_binding, only: flu_State, flu_copyptr
+        use aot_table_module, only: aot_table_top, aot_table_close
+
+        use dmqmc_data, only: dmqmc_in_t
+        use uccmc, only: do_uccmc
+        use lua_hande_system, only: get_sys_t
+        use lua_hande_utils, only: warn_unused_args, register_timing
+        use lua_hande_calc_utils, only: init_output_unit, end_output_unit
+        use qmc_data, only: qmc_in_t, ccmc_in_t, semi_stoch_in_t, restart_in_t, load_bal_in_t, &
+                            qmc_state_t, output_in_t, blocking_in_t, uccmc_in_t
+        use logging, only: logging_in_t
+        use reference_determinant, only: reference_t
+        use system, only: sys_t
+
+        use calc, only: calc_type, ccmc_calc
+        use calc_system_init, only: set_spin_polarisation, set_symmetry_aufbau
+        use excitations, only: end_excitations, init_excitations
+
+        integer(c_int) :: nresult
+        type(c_ptr), value :: L
+
+        type(flu_state) :: lua_state
+        type(sys_t), pointer :: sys
+        type(qmc_in_t) :: qmc_in
+        type(uccmc_in_t) :: uccmc_in
+        type(semi_stoch_in_t) :: semi_stoch_in
+        type(restart_in_t) :: restart_in
+        type(load_bal_in_t) :: load_bal_in
+        type(reference_t) :: reference
+        type(qmc_state_t), pointer :: qmc_state_restart, qmc_state_out
+        type(logging_in_t) :: logging_in
+        type(output_in_t) :: output_in
+        type(blocking_in_t) :: blocking_in
+
+        logical :: have_restart_state
+        integer :: opts, io_unit
+        real :: t1, t2
+        character(10), parameter :: keys(9) = [character(10) :: 'sys', 'qmc', 'uccmc', 'restart', 'reference', 'qmc_state', &
+                                                                'logging', 'output', 'blocking']
+
+        call cpu_time(t1)
+
+        lua_state = flu_copyptr(L)
+        call get_sys_t(lua_state, sys)
+        ! [todo] - do spin polarisation in system setup.
+        call set_spin_polarisation(sys%basis%nbasis, sys)
+
+        ! Get main table.
+        opts = aot_table_top(lua_state)
+        call read_qmc_in(lua_state, opts, qmc_in)
+        call read_uccmc_in(lua_state, opts, uccmc_in, sys)
+
+        !call read_blocking_in(lua_state, opts, blocking_in)
+        ! note that semi-stochastic is not (yet) available in CCMC.
+        !call read_semi_stoch_in(lua_state, opts, qmc_in, semi_stoch_in)
+        call read_restart_in(lua_state, opts, restart_in)
+        ! load balancing is not available in CCMC; must use default settings.
+        call read_reference_t(lua_state, opts, reference, sys)
+
+        call read_logging_in_t(lua_state, opts, logging_in)
+        call read_output_in_t(lua_state, opts, output_in)
+
+        call get_qmc_state(lua_state, have_restart_state, qmc_state_restart)
+        call warn_unused_args(lua_state, keys, opts)
+        call aot_table_close(lua_state, opts)
+
+        calc_type = ccmc_calc
+        allocate(qmc_state_out)
+
+        call init_output_unit(output_in, sys, io_unit)
+        ! If using Aufbau determined symmetry need to do after setting spin polarisation.
+        if (sys%aufbau_sym) call set_symmetry_aufbau(sys, io_unit)
+
+        if (have_restart_state) then
+            call do_uccmc(sys, qmc_in, uccmc_in, restart_in, load_bal_in, reference, logging_in, &
+                            io_unit, qmc_state_out, qmc_state_restart)
+        else
+            call do_uccmc(sys, qmc_in, uccmc_in,  restart_in, load_bal_in, reference, logging_in, &
+                            io_unit, qmc_state_out)
+        end if
+
+
+        call end_output_unit(output_in%out_filename, io_unit)
+
+        call push_qmc_state(lua_state, qmc_state_out)
+        nresult = 1
+
+        call cpu_time(t2)
+        call register_timing(lua_state, "UCCMC calculation", t2-t1)
+
+    end function lua_uccmc
+
     function lua_dmqmc(L) result(nresult) bind(c)
 
         ! In/Out:
@@ -1392,6 +1508,7 @@ contains
         !     density_matrices = true/false,
         !     density_matrix_file = filename,
         !     pow_trunc = trunc,
+        !     variational_energy = true/false,
         ! }
 
         ! In/Out:
@@ -1416,9 +1533,10 @@ contains
         type(uccmc_in_t), intent(out) :: uccmc_in
 
         integer :: uccmc_table, err
-        character(28), parameter :: keys(7) = [character(28) :: 'move_frequency', 'cluster_multispawn_threshold', &
+        character(28), parameter :: keys(8) = [character(28) :: 'move_frequency', 'cluster_multispawn_threshold', &
                                                                 'linked', 'vary_shift_reference', &
-                                                                'density_matrices', 'density_matrix_file', 'pow_trunc']
+                                                                'density_matrices', 'density_matrix_file', 'pow_trunc', &
+                                                                'variational_energy']
 
         if (aot_exists(lua_state, opts, 'uccmc')) then
 
@@ -1432,6 +1550,7 @@ contains
             call aot_get_val(uccmc_in%density_matrices, err, lua_state, uccmc_table, 'density_matrices')
             call aot_get_val(uccmc_in%density_matrix_file, err, lua_state, uccmc_table, 'density_matrix_file')
             call aot_get_val(uccmc_in%pow_trunc, err, lua_state, uccmc_table, 'pow_trunc')
+            call aot_get_val(uccmc_in%variational_energy, err, lua_state, uccmc_table, 'variational_energy')
 
             call warn_unused_args(lua_state, keys, uccmc_table)
 

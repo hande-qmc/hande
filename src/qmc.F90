@@ -9,7 +9,7 @@ contains
 ! --- Initialisation routines ---
 
     subroutine init_qmc(sys, qmc_in, restart_in, load_bal_in, reference_in, io_unit, annihilation_flags, qmc_state, uuid_restart, &
-                        restart_version_restart, dmqmc_in, fciqmc_in, qmc_state_restart, regenerate_info)
+                        restart_version_restart, dmqmc_in, fciqmc_in, qmc_state_restart, regenerate_info, uccmc_in)
 
         ! Initialisation for fciqmc calculations.
         ! Setup the spin polarisation for the system, initialise the RNG,
@@ -53,7 +53,7 @@ contains
         use restart_hdf5, only: read_restart_hdf5, restart_info_t, init_restart_info_t, get_reference_hdf5
 
         use qmc_data, only: qmc_in_t, fciqmc_in_t, restart_in_t, load_bal_in_t, annihilation_flags_t, qmc_state_t, &
-                            neel_singlet, &
+                            neel_singlet, uccmc_in_t,&
                             excit_gen_power_pitzer, excit_gen_power_pitzer_orderN, excit_gen_power_pitzer_occ_ij, &
                             excit_gen_heat_bath, excit_gen_heat_bath_uniform, excit_gen_heat_bath_single, &
                             excit_gen_cauchy_schwarz_occ, excit_gen_cauchy_schwarz_occ_ij
@@ -80,6 +80,7 @@ contains
         integer, intent(out) :: restart_version_restart
         type(dmqmc_in_t), intent(in), optional :: dmqmc_in
         type(fciqmc_in_t), intent(in), optional :: fciqmc_in
+        type(uccmc_in_t), intent(in), optional :: uccmc_in
         type(qmc_state_t), intent(inout), optional :: qmc_state_restart
         logical, intent(out), optional :: regenerate_info
 

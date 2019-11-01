@@ -64,7 +64,7 @@ contains
 
         use qmc_data, only: qmc_in_t, uccmc_in_t, restart_in_t
 
-        use qmc_data, only: load_bal_in_t, qmc_state_t, annihilation_flags_t, estimators_t
+        use qmc_data, only: load_bal_in_t, qmc_state_t, annihilation_flags_t, estimators_t, particle_t
         use qmc_data, only: qmc_in_t_json, uccmc_in_t_json, restart_in_t_json
         use qmc_data, only: excit_gen_power_pitzer_orderN, excit_gen_heat_bath
         use reference_determinant, only: reference_t, reference_t_json
@@ -72,12 +72,12 @@ contains
         use json_out, only: json_out_t, json_object_init, json_object_end
         use hamiltonian_data
         use energy_evaluation, only: get_sanitized_projected_energy, get_sanitized_projected_energy_cmplx
-                            update_shift_damping
 
         use logging, only: init_logging, end_logging, prep_logging_mc_cycle, write_logging_calc_ccmc
         use logging, only: logging_in_t, logging_t, logging_in_t_json, logging_t_json, write_logging_select_ccmc
         use report, only: write_date_time_close
         use excit_gens, only: p_single_double_coll_t
+        use particle_t_utils, only: init_particle_t
 
         type(sys_t), intent(in) :: sys
         type(qmc_in_t), intent(in) :: qmc_in
@@ -131,7 +131,9 @@ contains
         integer :: iunit, restart_version_restart
         integer :: date_values(8)
         character(:), allocatable :: err_msg
-
+ 
+        type(particle_t) :: time_avg_psip_list
+        integer :: semi_stoch_it
         if (parent) then
             write (io_unit,'(1X,"UCCMC")')
             write (io_unit,'(1X,"----",/)')
@@ -146,14 +148,16 @@ contains
             else
                 call check_qmc_opts(qmc_in, sys, .not.present(qmc_state_restart), restarting)
             end if
-            call check_uccmc_opts(sys, ccmc_in, qmc_in)
+            call check_uccmc_opts(sys, uccmc_in, qmc_in)
         end if
 
         ! Initialise data.
         call init_qmc(sys, qmc_in, restart_in, load_bal_in, reference_in, io_unit, annihilation_flags, qs, &
                       uuid_restart, restart_version_restart, qmc_state_restart=qmc_state_restart, &
-                      regenerate_info=regenerate_info)
-
+                      regenerate_info=regenerate_info, uccmc_in=uccmc_in)
+        if(uccmc_in%variational_energy) &
+             call init_particle_t(qmc_in%walker_length, 1, sys%basis%tensor_label_len, qmc_in%real_amplitudes, &
+                             qmc_in%real_amplitude_force_32, time_avg_psip_list, io_unit=io_unit)
         qs%ref%max_ex_level = qs%ref%ex_level
 
         if (debug) call init_logging(logging_in, logging_info, qs%ref%ex_level)
@@ -443,9 +447,9 @@ contains
             if (debug) call write_logging_select_ccmc(logging_info, iter, selection_data)
             ![TODO] fix this to work without semi+stoch
             call end_report_loop(io_unit, qmc_in, iter, update_tau, qs, nparticles_old, nspawn_events, &
-                                 semi_stoch_in%shift_iter, semi_stoch_iter, soft_exit, &
-                                 load_bal_in, bloom_stats=bloom_stats, comp=sys%read_in%comp, &
-                                 error=error, vary_shift_reference=ccmc_in%vary_shift_reference)
+                                 -1, semi_stoch_it, soft_exit=soft_exit, &
+                                 load_bal_in=load_bal_in, bloom_stats=bloom_stats, comp=sys%read_in%comp, &
+                                 error=error, vary_shift_reference=uccmc_in%vary_shift_reference)
             if (error) exit
 
             call cpu_time(t2)
@@ -495,7 +499,7 @@ contains
         end if
 
         if (debug) call end_logging(logging_info)
-        if (debug call end_selection_data(selection_data)
+        if (debug) call end_selection_data(selection_data)
 
         if (uccmc_in%density_matrices) then
             call write_final_rdm(rdm, sys%nel, sys%basis%nbasis, uccmc_in%density_matrix_file, io_unit)
@@ -631,6 +635,8 @@ contains
         use system, only: sys_t
         use logging, only: write_logging_stoch_selection, logging_t
         use excit_gens, only: excit_gen_data_t
+        use const, only: depsilon
+        use ccmc_selection, only: create_null_cluster
 
         type(sys_t), intent(in) :: sys
         type(particle_t), intent(in), target :: psip_list
@@ -655,7 +661,7 @@ contains
         real(p) :: pop(max_size)
         logical :: hit, allowed
         logical, allocatable :: deexcitation(:)
-
+       
         ! We shall accumulate the factors which comprise cluster%pselect as we go.
         !   cluster%pselect = n_sel p_size p_clust
         ! where
@@ -899,7 +905,7 @@ contains
         complex(p), intent(in) :: excitor_population
         integer(i0), intent(inout) :: cluster_excitor(basis%tot_string_len)
         complex(p), intent(inout) :: cluster_population
-        logical,  intent(out) :: allowed
+        logical,  intent(out) :: allowed, conjugate
 
         integer(i0) :: excitor_loc(basis%tot_string_len)
 
@@ -911,7 +917,6 @@ contains
         integer(i0) :: cluster_annihilation(basis%tot_string_len)
         integer(i0) :: cluster_creation(basis%tot_string_len)
         integer(i0) :: permute_operators(basis%tot_string_len)
-
         excitor_loc = excitor
         call reset_extra_info_bit_string(basis, excitor_loc)
 
@@ -936,7 +941,7 @@ contains
         cluster_creation = iand(cluster_excitation, cluster_excitor)
 
         ! First, let's find out if the excitor is valid...
-        if(conjugate)
+        if(conjugate) then
            allowed = .true.
            do ibasis = 1, basis%bit_string_len
                 do ibit = 0, i0_end
@@ -1093,6 +1098,7 @@ contains
         ! once/Hellmann-Feynman sampling/etc.
 
         use parallel, only: iproc
+        use ccmc_utils, only: get_pop_contrib
 
         integer(int_p), intent(in) :: pops(:,:), real_factor
         integer, intent(in) :: nactive, D0_proc, D0_pos
@@ -1296,13 +1302,13 @@ contains
         ! greater than cluster_multispawn_threshold, then nspawnings is
         ! increased to the ratio of these.
         nspawnings_cluster=max(1,ceiling((abs(contrib%cluster%amplitude)&
-                                     /contrib%cluster%pselect)/ ccmc_in%cluster_multispawn_threshold))
+                                     /contrib%cluster%pselect)/ uccmc_in%cluster_multispawn_threshold))
 
         call ms_stats_update(nspawnings_cluster, ms_stats)
         nattempts_spawn_tot = nattempts_spawn_tot + nspawnings_cluster
         attempt_death = (contrib%cluster%excitation_level <= qs%ref%ex_level) 
 
-        call do_ucc_spawning_death(rng, sys, qs, ccmc_in, &
+        call do_ucc_spawning_death(rng, sys, qs, uccmc_in, &
                              logging_info, ms_stats, bloom_stats, contrib, &
                              nattempts_spawn_tot, ndeath, ps_stat, nspawnings_cluster, attempt_death)
 
@@ -1389,4 +1395,87 @@ contains
             end if
         end if
     end subroutine do_ucc_spawning_death
+    subroutine perform_uccmc_spawning_attempt(rng, sys, qs, uccmc_in, logging_info, bloom_stats, contrib, nspawnings_total, &
+                                        ps_stat)
 
+        ! Performs a single ccmc spawning attempt, as appropriate for a
+        ! given setting combination of linked, complex or none of the above.
+
+        ! This could be replaced by a procedure pointer with a little
+        ! refactoring if desired.
+
+        ! In:
+        !   sys: the system being studied.
+        !   ccmc_in: input settings related to ccmc.
+        !   logging_info: input settings related to logging.
+        !   nspawnings_total: number of spawning attempts made
+        !       from the same cluster if using multispawn.
+        ! In/Out:
+        !   rng: random number generator.
+        !   qs: information on current state of calculation.
+        !   contrib: information on contribution to wavefunction
+        !       currently under consideration. Contains both the
+        !       cluster selected and the determinant formed on
+        !       collapsing, as well as scratch spaces for partitoning
+        !       within linked.
+        !   ps_stat: Accumulating the following (and more) on this OpenMP thread:
+        !       h_pgen_singles_sum: total of |Hij|/pgen for single excitations attempted.
+        !       h_pgen_doubles_sum: total on |Hij|/pgen for double excitations attempted.
+        !       excit_gen_singles: counter on number of single excitations attempted.
+        !       excit_gen_doubles: counter on number of double excitations attempted.
+        use dSFMT_interface, only: dSFMT_t
+        use system, only: sys_t
+        use qmc_data, only: qmc_state_t, uccmc_in_t
+        use ccmc_data, only: wfn_contrib_t
+
+        use excitations, only: excit_t
+        use proc_pointers, only: gen_excit_ptr
+
+        use ccmc_death_spawning, only: spawner_ccmc, linked_spawner_ccmc
+        use ccmc_death_spawning, only: spawner_complex_ccmc, create_spawned_particle_ccmc
+        use bloom_handler, only: bloom_stats_t, accumulate_bloom_stats
+        use logging, only: logging_t
+        use excit_gens, only: p_single_double_coll_t
+
+        type(sys_t), intent(in) :: sys
+        type(dSFMT_T), intent(inout) :: rng
+        type(qmc_state_t), intent(inout) :: qs
+        type(uccmc_in_t), intent(in) :: uccmc_in
+        type(wfn_contrib_t), intent(inout) :: contrib
+        type(excit_t) :: connection
+        type(bloom_stats_t), intent(inout) :: bloom_stats
+        type(logging_t), intent(in) :: logging_info
+
+        integer, intent(in) :: nspawnings_total
+        type(p_single_double_coll_t), intent(inout) :: ps_stat
+        integer(int_p) :: nspawned, nspawned_im
+        integer(i0) :: fexcit(sys%basis%tot_string_len)
+ 
+        if (contrib%cluster%excitation_level == huge(0)) then
+            ! When sampling e^-T H e^T, the cluster operators in e^-T
+            ! and e^T can excite to/from the same orbital, requiring
+            ! a different spawning routine
+            call linked_spawner_ccmc(rng, sys, qs, qs%spawn_store%spawn%cutoff, &
+                      contrib%cluster, gen_excit_ptr, nspawned, connection, nspawnings_total, &
+                      fexcit, contrib%cdet, contrib%ldet, contrib%rdet, contrib%left_cluster, contrib%right_cluster, ps_stat)
+            nspawned_im = 0_int_p
+        else if (sys%read_in%comp) then
+            call spawner_complex_ccmc(rng, sys, qs, qs%spawn_store%spawn%cutoff, &
+                      uccmc_in%linked, contrib%cdet, contrib%cluster, gen_excit_ptr, logging_info,  nspawned, nspawned_im, &
+                      connection, nspawnings_total, ps_stat)
+        else
+            call spawner_ccmc(rng, sys, qs, qs%spawn_store%spawn%cutoff, &
+                      uccmc_in%linked, contrib%cdet, contrib%cluster, gen_excit_ptr, logging_info, &
+                      nspawned, connection, nspawnings_total, ps_stat)
+            nspawned_im = 0_int_p
+        end if
+
+        if (nspawned /= 0_int_p) call create_spawned_particle_ccmc(sys%basis, qs%ref, contrib%cdet, connection, &
+                                            nspawned, 1, contrib%cluster%excitation_level, &
+                                            .false., fexcit, qs%spawn_store%spawn, bloom_stats)
+        if (nspawned_im /= 0_int_p) call create_spawned_particle_ccmc(sys%basis, qs%ref, contrib%cdet, connection,&
+                                            nspawned_im, 2, contrib%cluster%excitation_level, &
+                                            .false., fexcit, qs%spawn_store%spawn, bloom_stats)
+
+    end subroutine perform_uccmc_spawning_attempt
+end module
