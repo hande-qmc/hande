@@ -120,7 +120,7 @@ data_pairs : list of (dict, :class:`pandas.DataFrame` or :class:`pandas.Series`)
     md_generic = {'input':[]}
 
     calc_types = '(FCI|FCIQMC|CCMC|DMQMC|Simple FCIQMC|'\
-                            'Hilbert space|Canonical energy)'
+                       'Hilbert space|Canonical energy|UCCMC)'
     calc_block = re.compile('^ '+calc_types+'$')
     fci_block = re.compile('Exact|Lanczos|LAPACK|LANCZOS|RDM')
     timing_pattern = re.compile('^ '+calc_types+
