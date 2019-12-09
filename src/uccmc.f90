@@ -17,7 +17,7 @@ contains
 
         ! In:
         !    sys: system being studied.
-        !    uccmc_in: input options relating to CCMC.
+        !    uccmc_in: input options relating to UCCMC.
         !    restart_in: input options for HDF5 restart files.
         !    reference_in: current reference determinant.  If not set (ie
         !       components allocated) then a best guess is made based upon the
@@ -38,14 +38,13 @@ contains
         use parallel
         use restart_hdf5, only: dump_restart_hdf5, restart_info_t, init_restart_info_t, dump_restart_file_wrapper
 
-        use annihilation, only: direct_annihilation
+        use annihilation, only: direct_annihilation, insert_new_walker
         use bloom_handler, only: init_bloom_stats_t, bloom_stats_t, bloom_mode_fractionn, bloom_mode_fixedn, &
                                  write_bloom_report, bloom_stats_warning, update_bloom_threshold_prop
         use ccmc_data
         use ccmc_selection, only: create_null_cluster
         use ccmc_selection, only: init_selection_data, update_selection_probabilities, set_cluster_selections, &
                                   init_amp_psel_accumulation
-        use ccmc_death_spawning, only: stochastic_ccmc_death_nc
         use ccmc_utils, only: get_D0_info, init_contrib, dealloc_contrib, cumulative_population, & 
                               regenerate_ex_levels_psip_list
         use determinants, only: alloc_det_info_t, dealloc_det_info_t, sum_sp_eigenvalues_occ_list, &
@@ -78,6 +77,7 @@ contains
         use report, only: write_date_time_close
         use excit_gens, only: p_single_double_coll_t
         use particle_t_utils, only: init_particle_t
+        use search, only: binary_search
 
         type(sys_t), intent(in) :: sys
         type(qmc_in_t), intent(in) :: qmc_in
@@ -132,8 +132,13 @@ contains
         integer :: date_values(8)
         character(:), allocatable :: err_msg
  
-        type(particle_t) :: time_avg_psip_list
-        integer :: semi_stoch_it
+        type(particle_t) :: time_avg_psip_list_ci, time_avg_psip_list
+        integer :: semi_stoch_it, pos, j, k
+        logical :: hit
+        integer(i0), allocatable :: state(:)
+        integer(int_p), allocatable :: population(:)
+        real(p), allocatable :: real_population(:)
+
         if (parent) then
             write (io_unit,'(1X,"UCCMC")')
             write (io_unit,'(1X,"----",/)')
@@ -155,9 +160,30 @@ contains
         call init_qmc(sys, qmc_in, restart_in, load_bal_in, reference_in, io_unit, annihilation_flags, qs, &
                       uuid_restart, restart_version_restart, qmc_state_restart=qmc_state_restart, &
                       regenerate_info=regenerate_info, uccmc_in=uccmc_in)
-        if(uccmc_in%variational_energy) &
+
+        allocate(state(sys%basis%bit_string_len))
+        allocate(real_population(qs%psip_list%nspaces))
+
+        if(uccmc_in%variational_energy) then
+             allocate(population(qs%psip_list%nspaces))
+             population(:) = 0
              call init_particle_t(qmc_in%walker_length, 1, sys%basis%tensor_label_len, qmc_in%real_amplitudes, &
+                             qmc_in%real_amplitude_force_32, time_avg_psip_list_ci, io_unit=io_unit)
+             time_avg_psip_list_ci%pops(:,1) = qs%psip_list%pops(:,1)
+             time_avg_psip_list_ci%states(:,1) = qs%psip_list%states(:,1)
+             time_avg_psip_list_ci%nparticles = qs%psip_list%pops(:,1)/qs%psip_list%pop_real_factor
+             time_avg_psip_list_ci%nstates = 1
+             ![todo] deal with restarting
+        end if
+        call init_particle_t(qmc_in%walker_length, 1, sys%basis%tensor_label_len, qmc_in%real_amplitudes, &
                              qmc_in%real_amplitude_force_32, time_avg_psip_list, io_unit=io_unit)
+             time_avg_psip_list%pops(:,1) = qs%psip_list%pops(:,1)
+             time_avg_psip_list%states(:,1) = qs%psip_list%states(:,1)
+             time_avg_psip_list%nparticles = qs%psip_list%pops(:,1)/qs%psip_list%pop_real_factor
+             time_avg_psip_list%nstates = 1
+        !print*,'initialize'
+        !print*,time_avg_psip_list%states(:,:2)
+        !print*,time_avg_psip_list%pops(:,:2)
         qs%ref%max_ex_level = qs%ref%ex_level
 
         if (debug) call init_logging(logging_in, logging_info, qs%ref%ex_level)
@@ -198,12 +224,13 @@ contains
         allocate(ps_stats(0:nthreads-1), stat=ierr)
         call check_allocate('ps_stats', nthreads, ierr)
 
-        call init_contrib(sys, qs%ref%max_ex_level+2, uccmc_in%linked, contrib)
+        call init_contrib(sys, uccmc_in%pow_trunc, uccmc_in%linked, contrib)
 
         do i = 0, nthreads-1
             ! Initialise and allocate RNG store.
             call dSFMT_init(qmc_in%seed+iproc+i*nprocs, 50000, rng(i))
         end do
+
         if (restart_in%restart_rng .and. allocated(qs%rng_state%dsfmt_state)) then
             call dSFMT_state_t_to_dSFMT_t(rng(0), qs%rng_state, err_msg=err_msg)
             if (allocated(err_msg)) call stop_all('do_uccmc', 'Failed to reset RNG state: '//err_msg)
@@ -211,6 +238,7 @@ contains
         end if
 
         ! ...and scratch space for calculative cumulative probabilities.
+
         allocate(cumulative_abs_real_pops(size(qs%psip_list%states,dim=2)), stat=ierr)
         call check_allocate('cumulative_abs_real_pops', size(qs%psip_list%states, dim=2), ierr)
 
@@ -248,10 +276,9 @@ contains
 
         restart_proj_est = present(qmc_state_restart) .or. (restart_in%read_restart .and. restart_version_restart >= 2)
         if (.not.restart_proj_est) then
-        ![TODO] write a ucc projected energy
             call initial_cc_projected_energy(sys, qs, qmc_in%seed+iproc, logging_info, cumulative_abs_real_pops, nparticles_old)
         end if
-        ![TODO] check what all these initialization steps do
+
         call initial_qmc_status(sys, qmc_in, qs, nparticles_old, doing_ccmc=.true., io_unit=io_unit)
 
         ! Initialise timer.
@@ -265,44 +292,52 @@ contains
         do ireport = 1, qmc_in%nreport
 
             ! Projected energy from last report loop to correct death
-            ![TODO] UCC proj energy
             qs%estimators%proj_energy_old = get_sanitized_projected_energy(qs)
             call init_report_loop(qs, bloom_stats)
 
             do icycle = 1, qmc_in%ncycles
-
+                
                 iter = qs%mc_cycles_done + (ireport-1)*qmc_in%ncycles + icycle
+
+                if(uccmc_in%variational_energy) then
+                          time_avg_psip_list_ci%nparticles = time_avg_psip_list_ci%nparticles*(iter-1)
+                          time_avg_psip_list_ci%pops(:,:time_avg_psip_list_ci%nstates) =  time_avg_psip_list_ci%pops(:,:time_avg_psip_list_ci%nstates)*(iter-1)
+                end if
+                time_avg_psip_list%nparticles = time_avg_psip_list%nparticles*(iter-1)
+                time_avg_psip_list%pops(:,:time_avg_psip_list%nstates) =  time_avg_psip_list%pops(:,:time_avg_psip_list%nstates)*(iter-1)
+                !print*, 'multiply by iteration number'
+                !print*, time_avg_psip_list%pops(:,:2)
 
                 if (debug) call prep_logging_mc_cycle(iter, logging_in, logging_info, sys%read_in%comp, &
                                                         min(sys%nel, qs%ref%ex_level+2))
 
                 call get_D0_info(qs, sys%read_in%comp, D0_proc, D0_pos, nD0_proc, D0_normalisation)
+
                 ! Update the shift of the excitor locations to be the end of this
                 ! current iteration.
                 qs%spawn_store%spawn%hash_shift = qs%spawn_store%spawn%hash_shift + 1
 
-                    ! Maximum possible cluster size that we can generate.
-                    ! Usually this is either the number of electrons or the
-                    ! truncation level + 2 but we must handle the case where we are
-                    ! growing the initial population from a single/small number of
-                    ! excitors.
-                    ! Can't include the reference in the cluster, so -1 from the
-                    ! total number of excitors.
-                max_cluster_size = uccmc_in%pow_trunc
-                !max_cluster_size = min(sys%nel,qs%ref%max_ex_level+2, &
-                                                           !qs%psip_list%nstates-nD0_proc)
+                ! Maximum possible cluster size that we can generate.
+                ! If only the reference is populated, we can only generate clusters of size 0.
+                ! Otherwise we can generate clusters up to our chosen truncation level.
 
-                ! Note that 'death' in CCMC creates particles in the spawned
-                ! list, so the number of deaths not in the spawned list is
-                ! always 0.
+                if(qs%psip_list%nstates-nD0_proc == 0) then
+                    max_cluster_size = 0
+                else
+                    max_cluster_size = uccmc_in%pow_trunc
+                end if
+
                 call init_mc_cycle(qs%psip_list, qs%spawn_store%spawn, qs%estimators(1)%nattempts, ndeath, &
                                    min_attempts=nint(abs(D0_normalisation), kind=int_64), &
                                    complx=sys%read_in%comp)
+
                 nparticles_change = 0.0_p
 
                 ! We need to count spawning attempts differently as there may be multiple spawns
                 ! per cluster
+
                 nattempts_spawn=0
+
                 ! Find cumulative population...
                 ! NOTE: for simplicity we only consider the integer part of the population on each excitor.
                 ! (Populations under 1 are stochastically rounded in the annihilation process, so each excitor in the list has
@@ -318,6 +353,7 @@ contains
                 ! (normalised) selection scheme we want...
                 ! Given the contribution to the projected energy is divided by the cluster generation probability and
                 ! multiplied by the actual weight, doing this has absolutely no effect on the projected energy.
+
                 call ucc_cumulative_population(qs%psip_list%pops, qs%psip_list%states(sys%basis%tot_string_len,:), &
                                            qs%psip_list%nstates, D0_proc, D0_pos, qs%psip_list%pop_real_factor, &
                                            sys%read_in%comp, cumulative_abs_real_pops, &
@@ -346,15 +382,18 @@ contains
                 !       + composite clusters more complicated selection probability required.
 
                 !Initially for UCC we will simply use a modification of the original algorithm.
+
                 call ucc_set_cluster_selections(selection_data, qs%estimators(1)%nattempts, min_cluster_size, max_cluster_size, &
                                             D0_normalisation, tot_abs_real_pop, qs%psip_list%nstates)
                 call zero_ps_stats(ps_stats, qs%excit_gen_data%p_single_double%rep_accum%overflow_loc)
+
                 ! OpenMP chunk size determined completely empirically from a single
                 ! test.  Please feel free to improve...
                 ! NOTE: we can't refer to procedure pointers in shared blocks so
                 ! can't use default(none).  I *strongly* recommend turning
                 ! default(none) on when making changes and ensure that the only
                 ! errors relate to the procedure pointers...
+
                 !$omp parallel default(none) &
                 !$omp private(it, iexcip_pos, i, seen_D0) &
                 !$omp shared(rng, cumulative_abs_real_pops, tot_abs_real_pop,  &
@@ -364,21 +403,50 @@ contains
                 !$omp        nattempts_spawn, &
                 !$omp        uccmc_in, nprocs, ms_stats, ps_stats, qmc_in, load_bal_in, &
                 !$omp        ndeath_nc,   &
-                !$omp        nparticles_change, ndeath, logging_info)
+                !$omp        nparticles_change, ndeath, logging_info, state, time_avg_psip_list_ci,&
+                !$omp        hit, pos, population, real_population, k, annihilation_flags)
+
                 it = get_thread_id()
                 iexcip_pos = 0
                 seen_D0 = .false.
                 proj_energy_cycle = cmplx(0.0, 0.0, p)
                 D0_population_cycle = cmplx(0.0, 0.0, p)
+
                 !$omp do schedule(dynamic,200) reduction(+:D0_population_cycle,proj_energy_cycle,nattempts_spawn,ndeath)
                 do iattempt = 1, selection_data%nclusters
-
                     ! For OpenMP scalability, have this test inside a single loop rather
                     ! than attempt to parallelise over three separate loops.
                     call select_ucc_cluster(rng(it), sys, qs%psip_list, qs%ref%f0, qs%ref%max_ex_level, &
                                             selection_data%nstochastic_clusters, D0_normalisation, qmc_in%initiator_pop, D0_pos, &
                                             cumulative_abs_real_pops, tot_abs_real_pop, min_cluster_size, max_cluster_size, &
                                             logging_info, contrib(it)%cdet, contrib(it)%cluster, qs%excit_gen_data)
+
+                    if (uccmc_in%variational_energy) then
+                       state = contrib(it)%cdet%f 
+                       call binary_search(time_avg_psip_list_ci%states, state, 1, time_avg_psip_list_ci%nstates, hit, pos)
+                       population(1) = int(contrib(it)%cluster%amplitude*contrib(it)%cluster%cluster_to_det_sign*time_avg_psip_list_ci%pop_real_factor, int_p)
+                       if (hit) then
+
+                          time_avg_psip_list_ci%nparticles = time_avg_psip_list_ci%nparticles - abs(real(time_avg_psip_list_ci%pops(:,pos))/time_avg_psip_list_ci%pop_real_factor)
+                          time_avg_psip_list_ci%pops(:,pos) = time_avg_psip_list_ci%pops(:,pos) + population 
+                          time_avg_psip_list_ci%nparticles = time_avg_psip_list_ci%nparticles + abs(real(time_avg_psip_list_ci%pops(:,pos))/time_avg_psip_list_ci%pop_real_factor)
+                       else
+                           do j = time_avg_psip_list_ci%nstates, pos, -1
+                               ! i is the number of determinants that will be inserted below j.
+                               k = j + 1 
+                               time_avg_psip_list_ci%states(:,k) = time_avg_psip_list_ci%states(:,j)
+                               time_avg_psip_list_ci%pops(:,k) = time_avg_psip_list_ci%pops(:,j)
+                               time_avg_psip_list_ci%dat(:,k) = time_avg_psip_list_ci%dat(:,j)
+                           end do
+
+                           call insert_new_walker(sys, time_avg_psip_list_ci, annihilation_flags, pos, &
+                               contrib(it)%cdet%f, population, qs%ref)
+                           ! Extract the real sign from the encoded sign.
+                           real_population = real(time_avg_psip_list_ci%pops(:,pos))/time_avg_psip_list_ci%pop_real_factor
+                           time_avg_psip_list_ci%nparticles = time_avg_psip_list_ci%nparticles + abs(real_population)
+
+                       end if
+                    end if
 
                     if (contrib(it)%cluster%excitation_level <= qs%ref%max_ex_level+2) then
                             ! cluster%excitation_level == huge(0) indicates a cluster
@@ -388,13 +456,14 @@ contains
 
                         call do_uccmc_accumulation(sys, qs, contrib(it)%cdet, contrib(it)%cluster, logging_info, &
                                                     D0_population_cycle, proj_energy_cycle, uccmc_in, ref_det, rdm, selection_data)
+
                         call do_stochastic_uccmc_propagation(rng(it), sys, qs, &
                                                                 uccmc_in, logging_info, ms_stats(it), bloom_stats, &
                                                                 contrib(it), nattempts_spawn, ndeath, ps_stats(it))
                     end if
                 end do
                 !$omp end do
-
+                ndeath_nc=0
                 !$omp end parallel
 
                 ! Add the accumulated ps_stats data to qs%excit_gen_data%p_single_double.
@@ -423,13 +492,53 @@ contains
                 associate(pl=>qs%psip_list, spawn=>qs%spawn_store%spawn)
                     if (nprocs > 1) call redistribute_particles(pl%states, pl%pop_real_factor, pl%pops, pl%nstates, &
                                                                 pl%nparticles, spawn)
-
                     call direct_annihilation(sys, rng(0), qs%ref, annihilation_flags, pl, spawn)
                 end associate
                 if (debug) call write_logging_calc_ccmc(logging_info, iter, nspawn_events, ndeath + ndeath_nc, &
                                                         selection_data%nD0_select, &
                                                         selection_data%nclusters, selection_data%nstochastic_clusters, &
                                                         selection_data%nsingle_excitors)
+
+                if(uccmc_in%variational_energy) then
+                          time_avg_psip_list_ci%nparticles = time_avg_psip_list_ci%nparticles/(iter)
+                          time_avg_psip_list_ci%pops(:,:time_avg_psip_list_ci%nstates) =  time_avg_psip_list_ci%pops(:,:time_avg_psip_list_ci%nstates)/(iter)
+                end if
+                !print*,'same with states'
+                !print*, time_avg_psip_list%states(:,:2)
+                !print*, time_avg_psip_list%pops(:,:2)
+                do i = 1, qs%psip_list%nstates
+                    state = qs%psip_list%states(:,i) 
+                    !print*, 'looking for'
+                    !print*, state
+                    call binary_search(time_avg_psip_list%states, state, 1, time_avg_psip_list%nstates, hit, pos)
+                    !print*, hit
+                    if (hit) then
+                          time_avg_psip_list%nparticles = time_avg_psip_list%nparticles - abs(real(time_avg_psip_list%pops(:,pos))/time_avg_psip_list%pop_real_factor)
+                          time_avg_psip_list%pops(:,pos) = time_avg_psip_list%pops(:,pos) + qs%psip_list%pops(:,i) 
+                          time_avg_psip_list%nparticles = time_avg_psip_list%nparticles + abs(real(time_avg_psip_list%pops(:,pos))/time_avg_psip_list%pop_real_factor)
+                       else
+                           do j = time_avg_psip_list%nstates, pos, -1
+                               ! i is the number of determinants that will be inserted below j.
+                               k = j + 1 
+                               time_avg_psip_list%states(:,k) = time_avg_psip_list%states(:,j)
+                               time_avg_psip_list%pops(:,k) = time_avg_psip_list%pops(:,j)
+                               time_avg_psip_list%dat(:,k) = time_avg_psip_list%dat(:,j)
+                           end do
+                           call insert_new_walker(sys, time_avg_psip_list, annihilation_flags, pos, &
+                               state, qs%psip_list%pops(:,i), qs%ref)
+                           time_avg_psip_list%nstates = time_avg_psip_list%nstates+1
+                           ! Extract the real sign from the encoded sign.
+                           real_population = real(time_avg_psip_list%pops(:,pos))/time_avg_psip_list%pop_real_factor
+                           time_avg_psip_list%nparticles = time_avg_psip_list%nparticles + abs(real_population)
+                       end if
+                end do
+                !print*, 'after changes'
+                !print*, time_avg_psip_list%states(:,:2)
+                !print*, time_avg_psip_list%pops(:,:2)
+                time_avg_psip_list%nparticles = time_avg_psip_list%nparticles/(iter)
+                time_avg_psip_list%pops(:,:time_avg_psip_list%nstates) =  time_avg_psip_list%pops(:,:time_avg_psip_list%nstates)/(iter)
+                !print*,'divided by iterations'
+                !print*, time_avg_psip_list%pops(:,:2)
                 call end_mc_cycle(nspawn_events, ndeath_nc, qs%psip_list%pop_real_factor, nattempts_spawn, qs%spawn_store%rspawn)
             end do
 
@@ -445,7 +554,7 @@ contains
             qs%estimators%proj_energy = real(qs%estimators%proj_energy_comp,p)
 
             if (debug) call write_logging_select_ccmc(logging_info, iter, selection_data)
-            ![TODO] fix this to work without semi+stoch
+            !print*, qs%psip_list%pops(1,:2)
             call end_report_loop(io_unit, qmc_in, iter, update_tau, qs, nparticles_old, nspawn_events, &
                                  -1, semi_stoch_it, soft_exit=soft_exit, &
                                  load_bal_in=load_bal_in, bloom_stats=bloom_stats, comp=sys%read_in%comp, &
@@ -474,6 +583,8 @@ contains
 
             if (update_tau) call rescale_tau(qs%tau)
 
+        !print*, time_avg_psip_list%pops(1,:time_avg_psip_list%nstates)
+
         end do
 
         call dSFMT_t_to_dSFMT_state_t(rng(0), qs%rng_state)
@@ -498,6 +609,15 @@ contains
             if (parent) write (io_unit,'()')
         end if
 
+        print*, qs%psip_list%states(1,:qs%psip_list%nstates)
+        print*, qs%psip_list%pops(1,:qs%psip_list%nstates)
+        
+        print*, 'Time avg'
+        print*,time_avg_psip_list%nparticles
+        print*, time_avg_psip_list%nparticles*time_avg_psip_list%pop_real_factor
+        print*, time_avg_psip_list%states(1,:time_avg_psip_list%nstates)
+        print*, time_avg_psip_list%pops(1,:time_avg_psip_list%nstates)
+        
         if (debug) call end_logging(logging_info)
         if (debug) call end_selection_data(selection_data)
 
@@ -523,6 +643,15 @@ contains
         call check_deallocate('ms_stats', ierr)
         deallocate(ps_stats, stat=ierr)
         call check_deallocate('ps_stats', ierr)
+
+        if(uccmc_in%variational_energy) then 
+             deallocate(state, stat=ierr)
+             call check_deallocate('state', ierr)
+             deallocate(real_population, stat=ierr)
+             call check_deallocate('real_population', ierr)
+             deallocate(population, stat=ierr)
+             call check_deallocate('population', ierr)
+        end if 
     
     end subroutine do_uccmc
 
@@ -621,6 +750,7 @@ contains
         !        allocated to the maximum number of excitors in a cluster.  On
         !        output all fields in cluster have been set.
 
+        use checking, only: check_deallocate
         use determinant_data, only: det_info_t
         use ccmc_data, only: cluster_t
         use ccmc_utils, only: convert_excitor_to_determinant, collapse_cluster
@@ -657,7 +787,7 @@ contains
         real(dp) :: rand
         real(p) :: psize
         complex(p) :: cluster_population, excitor_pop
-        integer :: i, pos, prev_pos, deexcit_count
+        integer :: i, pos, prev_pos, deexcit_count, ierr
         real(p) :: pop(max_size)
         logical :: hit, allowed
         logical, allocatable :: deexcitation(:)
@@ -669,7 +799,6 @@ contains
         !   p_size  is the probability of choosing a cluster of that size;
         !   p_clust is the probability of choosing a specific cluster given
         !           the choice of size.
-
         ! Each processor does nattempts.
         ! However:
         ! * if min_size=0, then each processor is allowed to select the reference (on
@@ -686,7 +815,6 @@ contains
         ! NB within a processor those nattempts can be split amongst OpenMP
         ! threads though that doesn't affect this probability.
         cluster%pselect = real(nattempts*nprocs, p)
-
         ! Select the cluster size, i.e. the number of excitors in a cluster.
         ! For a given truncation level, only clusters containing at most
         ! ex_level+2 excitors.
@@ -716,8 +844,10 @@ contains
             cluster%nexcitors = max_size
             cluster%pselect = cluster%pselect*(1.0_p - psize)
         end if
-        allocate(deexcitation(cluster%nexcitors))
-        deexcitation(:) = .false.
+        if(cluster%nexcitors>0) then
+              allocate(deexcitation(cluster%nexcitors))
+              deexcitation(:) = .false.
+        end if 
 
         ! If could be using logging set to easily identifiable nonsense value.
         if (debug) pop = -1_int_p
@@ -762,8 +892,10 @@ contains
                 ! Select a position in the excitors list.
                 pop(i) = get_rand_close_open(rng)*tot_excip_pop
                 rand = get_rand_close_open(rng)
-                if(i > 1 .and. rand > 0.5) deexcitation(i) = .true.
-                deexcit_count = deexcit_count + 1
+                if(i > 1 .and. rand > 0.5) then
+                   deexcitation(i) = .true.
+                   deexcit_count = deexcit_count + 1
+                end if
             end do
             if (mod(deexcit_count,2)==1) then
                deexcit_count = -1
@@ -791,10 +923,13 @@ contains
                 ! that which we're currently concerned with. More general test
                 ! should account for this.
                 do
-                    if (pos == 1) exit
+                    if (pos == 1) then
+                    exit
+                    end if
                     if (abs(cumulative_excip_pop(pos) - cumulative_excip_pop(pos-1)) > depsilon) exit
                     pos = pos - 1
                 end do
+
                 if (sys%read_in%comp) then
                     excitor_pop = cmplx(psip_list%pops(1,pos), psip_list%pops(2,pos),p)/psip_list%pop_real_factor
                 else
@@ -810,7 +945,10 @@ contains
                 else
                     call ucc_collapse_cluster(sys%basis, f0, psip_list%states(:,pos), excitor_pop, cdet%f, &
                                           cluster_population, allowed, deexcitation(i))
-                    if (.not.allowed) exit
+                    if (.not.allowed) then
+                        cluster%excitation_level = huge(0)
+                        exit
+                    end if
                     ! Each excitor spends the same amount of time on each processor on
                     ! average.  If this excitor is different from the previous excitor,
                     ! then the probability this excitor is on the same processor as the
@@ -861,11 +999,20 @@ contains
                 ! this cluster being used.
                 cluster%excitation_level = huge(0)
             end if
-
+               
         end select
 
+        if(cluster%nexcitors>0)  then
+            deallocate(deexcitation, stat=ierr)
+            call check_deallocate('deexcitation',ierr)
+        end if 
+        !if(cluster%nexcitors == 1 .and. cluster%excitation_level == 2) then
+           !print*, excitor_pop
+           !print*, real(cluster_population)
+           !print*, cumulative_excip_pop(:2)
+        !end if
         if (debug) call write_logging_stoch_selection(logging_info, cluster%nexcitors, cluster%excitation_level, pop, &
-                min(sys%nel, ex_level+2), cluster%pselect, cluster%amplitude, allowed)
+                max_size, cluster%pselect, cluster%amplitude, allowed)
 
     end subroutine select_ucc_cluster
 
@@ -980,16 +1127,16 @@ contains
                                 ! annihilation operators and the list of creation
                                 ! operators.
                                 ! First annihilation operators:
-                                permute_operators = iand(not(basis%excit_mask(:,basis%basis_lookup(ibit,ibasis))),cluster_creation)
-                                permute_operators(ibasis) = ibclr(permute_operators(ibasis),ibit)
+                                permute_operators = iand(basis%excit_mask(:,basis%basis_lookup(ibit,ibasis)),cluster_annihilation)
+                                ! Now add the creation operators:
+                                permute_operators = ior(permute_operators,cluster_creation)
                             else
                                 ! Exciting into this orbital.
                                 cluster_excitor(ibasis) = ibset(cluster_excitor(ibasis),ibit)
                                 ! Need to swap it with every creation operator with
                                 ! a lower index already in the cluster.
-                                permute_operators = iand(basis%excit_mask(:,basis%basis_lookup(ibit,ibasis)),cluster_annihilation)
-                                ! Now add the creation operators:
-                                permute_operators = ior(permute_operators,cluster_creation)
+                                permute_operators = iand(not(basis%excit_mask(:,basis%basis_lookup(ibit,ibasis))),cluster_creation)
+                                permute_operators(ibasis) = ibclr(permute_operators(ibasis),ibit)
                             end if
                             if (mod(sum(count_set_bits(permute_operators)),2) == 1) &
                                 cluster_population = -cluster_population
@@ -1109,8 +1256,6 @@ contains
 
         integer :: i
         integer(i0) :: j, ex_lvl
-
-
         ! Need to combine spaces if doing complex; we choose combining in quadrature.
         cumulative_pops(1) = get_pop_contrib(pops(:,1), real_factor, complx)
         if (D0_proc == iproc) then
@@ -1180,7 +1325,6 @@ contains
 
         use excitations, only: excit_t, get_excitation
         use hamiltonian_data, only: hmatel_t
-        use proc_pointers, only: update_proj_energy_ptr
         use replica_rdm, only: update_rdm
         use logging, only: logging_t
 
@@ -1211,11 +1355,17 @@ contains
             ! the cluster.
             call zero_estimators_t(estimators_cycle)
             connection = get_excitation(sys%nel, sys%basis, cdet%f, qs%ref%f0)
-            ![TODO]
-            call update_proj_energy_ptr(sys, qs%ref%f0, qs%trial%wfn_dat, cdet, &
+            !if(cluster%excitation_level == 2) then
+              !print*, 'clust 2'
+              !print*, cluster%nexcitors
+              !print*, cluster%amplitude
+              !print*, cluster%cluster_to_det_sign
+              !print*, cluster%pselect
+            !end if
+            call update_proj_energy_mol_ucc(sys, qs%ref%f0, qs%trial%wfn_dat, cdet, &
                      [real(cluster%amplitude,p),aimag(cluster%amplitude)]*&
                      cluster%cluster_to_det_sign/cluster%pselect, &
-                     estimators_cycle, connection, hmatel)
+                     estimators_cycle, connection, hmatel, cluster%nexcitors)
             if (sys%read_in%comp) then
                 D0_population_cycle = D0_population_cycle + estimators_cycle%D0_population_comp
                 proj_energy_cycle = proj_energy_cycle + estimators_cycle%proj_energy_comp
@@ -1303,11 +1453,9 @@ contains
         ! increased to the ratio of these.
         nspawnings_cluster=max(1,ceiling((abs(contrib%cluster%amplitude)&
                                      /contrib%cluster%pselect)/ uccmc_in%cluster_multispawn_threshold))
-
         call ms_stats_update(nspawnings_cluster, ms_stats)
         nattempts_spawn_tot = nattempts_spawn_tot + nspawnings_cluster
         attempt_death = (contrib%cluster%excitation_level <= qs%ref%ex_level) 
-
         call do_ucc_spawning_death(rng, sys, qs, uccmc_in, &
                              logging_info, ms_stats, bloom_stats, contrib, &
                              nattempts_spawn_tot, ndeath, ps_stat, nspawnings_cluster, attempt_death)
@@ -1395,6 +1543,7 @@ contains
             end if
         end if
     end subroutine do_ucc_spawning_death
+
     subroutine perform_uccmc_spawning_attempt(rng, sys, qs, uccmc_in, logging_info, bloom_stats, contrib, nspawnings_total, &
                                         ps_stat)
 
@@ -1459,23 +1608,274 @@ contains
                       contrib%cluster, gen_excit_ptr, nspawned, connection, nspawnings_total, &
                       fexcit, contrib%cdet, contrib%ldet, contrib%rdet, contrib%left_cluster, contrib%right_cluster, ps_stat)
             nspawned_im = 0_int_p
-        else if (sys%read_in%comp) then
-            call spawner_complex_ccmc(rng, sys, qs, qs%spawn_store%spawn%cutoff, &
-                      uccmc_in%linked, contrib%cdet, contrib%cluster, gen_excit_ptr, logging_info,  nspawned, nspawned_im, &
-                      connection, nspawnings_total, ps_stat)
+        !else if (sys%read_in%comp) then
+        !    call spawner_complex_ccmc(rng, sys, qs, qs%spawn_store%spawn%cutoff, &
+        !              uccmc_in%linked, contrib%cdet, contrib%cluster, gen_excit_ptr, logging_info,  nspawned, nspawned_im, &
+        !              connection, nspawnings_total, ps_stat)
         else
             call spawner_ccmc(rng, sys, qs, qs%spawn_store%spawn%cutoff, &
                       uccmc_in%linked, contrib%cdet, contrib%cluster, gen_excit_ptr, logging_info, &
                       nspawned, connection, nspawnings_total, ps_stat)
             nspawned_im = 0_int_p
         end if
-
         if (nspawned /= 0_int_p) call create_spawned_particle_ccmc(sys%basis, qs%ref, contrib%cdet, connection, &
                                             nspawned, 1, contrib%cluster%excitation_level, &
                                             .false., fexcit, qs%spawn_store%spawn, bloom_stats)
-        if (nspawned_im /= 0_int_p) call create_spawned_particle_ccmc(sys%basis, qs%ref, contrib%cdet, connection,&
-                                            nspawned_im, 2, contrib%cluster%excitation_level, &
-                                            .false., fexcit, qs%spawn_store%spawn, bloom_stats)
+        !if (nspawned_im /= 0_int_p) call create_spawned_particle_ccmc(sys%basis, qs%ref, contrib%cdet, connection,&
+        !                                    nspawned_im, 2, contrib%cluster%excitation_level, &
+        !                                    .false., fexcit, qs%spawn_store%spawn, bloom_stats)
 
     end subroutine perform_uccmc_spawning_attempt
+
+    subroutine update_proj_energy_mol_ucc(sys, f0, wfn_dat, cdet, pop, estimators, excitation, hmatel, cluster_size)
+
+        ! Add the contribution of the current determinant to the projected
+        ! energy.
+        ! The correlation energy given by the projected energy is:
+        !   \sum_{i \neq 0} <D_i|H|D_0> N_i/N_0
+        ! where N_i is the population on the i-th determinant, D_i,
+        ! and 0 refers to the reference determinant.
+        ! During a MC cycle we store N_0 and \sum_{i \neq 0} <D_i|H|D_0> N_i.
+        ! This procedure is for molecular systems (i.e. those defined by an
+        ! FCIDUMP file).
+
+        ! In:
+        !    sys: system being studied.
+        !    f0: reference determinant.
+        !    wfn_dat: trial wavefunction data (unused, included for interface compatibility).
+        !    cdet: info on the current determinant (cdet) that we will spawn
+        !        from.  Only the bit string field needs to be set.
+        !    pop: population on current determinant.
+        ! In/Out:
+        !    estimators: estimators_t object containing running totals of N_0
+        !        and proj energy contribution.
+        !    excitation: excitation connecting the determinant to the reference determinant.
+        ! Out:
+        !    hmatel: <D_i|H|D_0>, the Hamiltonian matrix element between the
+        !       determinant and the reference determinant.
+
+        ! NOTE: it is the programmer's responsibility to ensure D0_pop_sum and
+        ! proj_energy_sum are zero before the first call.
+
+        use determinant_data, only: det_info_t
+        use excitations, only: excit_t
+        use hamiltonian_molecular, only: slater_condon1_mol_excit, slater_condon2_mol_excit
+        use read_in_symmetry, only: cross_product_basis_read_in
+        use system, only: sys_t
+        use energy_evaluation, only: estimators_t, hmatel_t
+
+        type(sys_t), intent(in) :: sys
+        integer(i0), intent(in) :: f0(:)
+        real(p), intent(in) :: wfn_dat(:)
+        type(det_info_t), intent(in) :: cdet
+        real(p), intent(in) :: pop(:)
+        type(estimators_t), intent(inout) :: estimators
+        type(excit_t), intent(inout) :: excitation
+        type(hmatel_t), intent(out) :: hmatel
+        integer, intent(in) :: cluster_size
+
+        integer :: ij_sym, ab_sym
+
+        hmatel%r = 0.0_p
+
+        select case(excitation%nexcit)
+        case (0)
+            ! Have reference determinant.
+            if (cluster_size == 0) then
+            !    print*,'ref_pop'
+            !    print*,pop(1)
+                estimators%D0_population = estimators%D0_population + pop(1)
+            end if
+        case(1)
+            ! Have a determinant connected to the reference determinant by
+            ! a single excitation: add to projected energy.
+            ! Is excitation symmetry allowed?
+            if (sys%basis%basis_fns(excitation%from_orb(1))%Ms == sys%basis%basis_fns(excitation%to_orb(1))%Ms .and. &
+                    sys%basis%basis_fns(excitation%from_orb(1))%sym == sys%basis%basis_fns(excitation%to_orb(1))%sym) then
+                hmatel = slater_condon1_mol_excit(sys, cdet%occ_list, excitation%from_orb(1), excitation%to_orb(1), &
+                                                  excitation%perm)
+                estimators%proj_energy = estimators%proj_energy + hmatel%r*pop(1)
+            end if
+        case(2)
+            ! Have a determinant connected to the reference determinant by
+            ! a double excitation: add to projected energy.
+            ! Is excitation symmetry allowed?
+            if (sys%basis%basis_fns(excitation%from_orb(1))%Ms+sys%basis%basis_fns(excitation%from_orb(2))%Ms == &
+                    sys%basis%basis_fns(excitation%to_orb(1))%Ms+sys%basis%basis_fns(excitation%to_orb(2))%Ms) then
+                ij_sym = cross_product_basis_read_in(sys, excitation%from_orb(1), excitation%from_orb(2))
+                ab_sym = cross_product_basis_read_in(sys, excitation%to_orb(1), excitation%to_orb(2))
+                if (ij_sym == ab_sym) then
+                    hmatel = slater_condon2_mol_excit(sys, excitation%from_orb(1), excitation%from_orb(2), &
+                                                      excitation%to_orb(1), excitation%to_orb(2),     &
+                                                      excitation%perm)
+                    !print*, hmatel%r
+                    !print*, pop(1)
+                    estimators%proj_energy = estimators%proj_energy + hmatel%r*pop(1)
+                end if
+            end if
+        end select
+
+    end subroutine update_proj_energy_mol_ucc
+
+    subroutine stochastic_uccmc_death(rng, spawn, linked_ccmc, ex_lvl_sort, sys, qs, cdet, cluster, &
+                                    logging_info, ndeath_tot)
+
+        ! Attempt to 'die' (ie create an excip on the current excitor, cdet%f)
+        ! with probability
+        !    \tau |<D_s|H|D_s> A_s|
+        !    ----------------------
+        !       n_sel p_s p_clust
+        ! where |D_s> is the determinant formed by applying the excitor to the
+        ! reference determinant and A_s is the amplitude.  See comments in
+        ! select_cluster about the probabilities.
+
+        ! When doing linked CCMC, the matrix elements
+        !   <D_s|H|D_s> = <D_s|H T^n|D_0>
+        ! are replaced by
+        !   <D_s|[..[H,T],..T]|D_0>
+        ! which changes the death probabilities, and also means the shift only
+        ! applies on the reference determinant.
+
+        ! Quasinewtwon approaches scale this death step, but doing this naively
+        ! would break population control.  Instead, we split H-S into
+        ! (H - E_proj) + (E_proj - S).
+        ! The former is scaled and produces the step.  The latter effects the population control.
+
+        ! NB This currently only handles non-linked complex amplitudes, not linked complex.
+
+        ! In:
+        !    linked_ccmc: if true then only sample linked clusters.
+        !    ex_lvl_sort: logical. If true add excitation level to bit string if successfully
+        !       die.
+        !    sys: system being studied.
+        !    qs: qmc_state_t containing information about the reference and estimators.
+        !    cluster: information about the cluster which forms the excitor.
+        !    logging_info: logging_t derived type containing information on logging behaviour.
+
+        ! In/Out:
+        !    rng: random number generator.
+        !    spawn: spawn_t object to which the spanwed particle will be added.
+        !    cdet: info on the current excitor (cdet) that we will spawn
+        !        from.
+        !    ndeath_tot: total number of deaths (added to by this function)
+
+        use ccmc_data, only: cluster_t
+        use ccmc_utils, only: add_ex_level_bit_string_provided
+        use determinant_data, only: det_info_t
+        use const, only: debug
+        use excitations, only: get_excitation_level
+
+        use proc_pointers, only: sc0_ptr
+        use dSFMT_interface, only: dSFMT_t
+        use spawn_data, only: spawn_t
+        use spawning, only: calc_qn_weighting
+        use system, only: sys_t
+        use qmc_data, only: qmc_state_t
+        use logging, only: logging_t, write_logging_death
+        use ccmc_death_spawning, only: stochastic_death_attempt
+
+        type(sys_t), intent(in) :: sys
+        type(qmc_state_t), intent(in) :: qs
+        logical, intent(in) :: linked_ccmc, ex_lvl_sort
+        type(det_info_t), intent(inout) :: cdet
+        type(cluster_t), intent(in) :: cluster
+        type(logging_t), intent(in) :: logging_info
+        type(dSFMT_t), intent(inout) :: rng
+        type(spawn_t), intent(inout) :: spawn
+        integer(int_p), intent(inout) :: ndeath_tot
+
+        complex(p) :: KiiAi
+
+        real(p) :: invdiagel, pdeath
+        integer(int_p) :: nkill
+
+        ! Spawning onto the same excitor so no change in sign due to
+        ! a difference in the sign of the determinant formed from applying the
+        ! parent excitor to the qs%ref and that formed from applying the
+        ! child excitor.
+        invdiagel = calc_qn_weighting(qs%propagator, cdet%fock_sum)
+        !print*, 'quantities'
+        !print*, invdiagel
+        !print*, qs%estimators(1)%proj_energy_old
+        !print*, cluster%amplitude
+        if (linked_ccmc) then
+            select case (cluster%nexcitors)
+            case(0)
+                ! Death on the reference has H_ii - E_HF = 0.
+                KiiAi = ((-qs%estimators(1)%proj_energy_old)*invdiagel + &
+                                    (qs%estimators(1)%proj_energy_old - qs%shift(1)))*cluster%amplitude
+            case(1)
+                ! Evaluating the commutator gives
+                ! <D1|[H,a1]|D0> = <D1|H|D1> - <D0|H|D0>
+                ! (this is scaled for quasinewton approaches)
+                KiiAi = (cdet%data(1) * invdiagel + qs%estimators(1)%proj_energy_old - qs%shift(1))*cluster%amplitude
+            case(2)
+                ! Evaluate the commutator
+                ! The cluster operators are a1 and a2 (with a1 D0 = D1, a2 D0 = D2,
+                ! a1 a2 D0 = D3) so the commutator gives:
+                ! <D3|[[H,a1],a2]|D0> = <D3|H|D3> - <D2|H|D2> - <D1|H|D1> + <D0|H|D0>
+                KiiAi = (sc0_ptr(sys, cdet%f) - sc0_ptr(sys, cluster%excitors(1)%f) &
+                                - sc0_ptr(sys, cluster%excitors(2)%f) + qs%ref%H00)*cluster%amplitude
+                ! (this is scaled for quasinewton approaches)
+                KiiAi = KiiAi*invdiagel
+            case default
+                ! At most two cluster operators can be linked to the diagonal
+                ! part of H so this must be an unlinked cluster
+                KiiAi = cmplx(0.0_p,0.0_p,p)
+            end select
+        else
+            select case (cluster%nexcitors)
+            case(0)
+                !print*, invdiagel
+                !print*, qs%estimators(1)%proj_energy_old
+                !print*, qs%shift(1)
+                !print*, cluster%amplitude
+                !print*, qs%estimators(1)%proj_energy_old*(invdiagel + 1)*cluster%amplitude
+                !print*,((-qs%estimators(1)%proj_energy_old)*invdiagel + &
+                                !(qs%estimators(1)%proj_energy_old - qs%shift(1)))*cluster%amplitude
+                KiiAi = ((-qs%estimators(1)%proj_energy_old)*invdiagel + &
+                                (qs%estimators(1)%proj_energy_old - qs%shift(1)))*cluster%amplitude
+                !print*, 'ref KiiAi'
+                !print*, KiiAi
+            case(1)
+                KiiAi = ((cdet%data(1) - qs%estimators(1)%proj_energy_old)*invdiagel + &
+                                (qs%estimators(1)%proj_energy_old - qs%shift(1)))*cluster%amplitude
+            case default
+                if (cluster%excitation_level == 0) then
+                KiiAi = ((-qs%estimators(1)%proj_energy_old)*invdiagel + &
+                                (qs%estimators(1)%proj_energy_old - qs%shift(1)))*cluster%amplitude
+                else
+                KiiAi = ((sc0_ptr(sys, cdet%f) - qs%ref%H00) - qs%estimators(1)%proj_energy_old)*invdiagel *cluster%amplitude
+                end if
+            end select
+        end if
+
+        ! Amplitude is the decoded value.  Scale here so death is performed exactly (bar precision).
+        ! See comments in stochastic_death.
+        KiiAi = qs%psip_list%pop_real_factor*KiiAi
+        !print*, KiiAi
+
+        ! Scale by tau and pselect before pass to specific functions.
+        KiiAi = KiiAi * qs%tau / cluster%pselect
+        !print*, KiiAi
+        !print*, spawn%cutoff
+        if (ex_lvl_sort) call add_ex_level_bit_string_provided(sys%basis, cluster%excitation_level, cdet%f)
+        call stochastic_death_attempt(rng, real(KiiAi, p), 1, cdet, qs%ref, sys%basis, spawn, &
+                           nkill, pdeath)
+        
+        ndeath_tot = ndeath_tot + abs(nkill)
+
+        if (debug) call write_logging_death(logging_info, real(KiiAi,p), qs%estimators(1)%proj_energy_old, qs%shift(1), invdiagel, &
+                                            nkill, pdeath, real(cluster%amplitude,p), 0.0_p)
+
+        if (sys%read_in%comp) then
+            call stochastic_death_attempt(rng, aimag(KiiAi), 2, cdet, qs%ref, sys%basis, spawn, &
+                               nkill, pdeath)
+            ndeath_tot = ndeath_tot + abs(nkill)
+
+            if (debug) call write_logging_death(logging_info, aimag(KiiAi), qs%estimators(1)%proj_energy_old, qs%shift(1), &
+                                                invdiagel, nkill, pdeath, aimag(cluster%amplitude), 0.0_p)
+        end if
+
+    end subroutine stochastic_uccmc_death
 end module
