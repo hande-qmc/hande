@@ -269,6 +269,12 @@ type fciqmc_in_t
     ! Evolve two copies of the wavefunction to enable unbiased sampling of the RDM
     logical :: replica_tricks = .false.
 
+    ! Stochastically sample the two-body reduced density matrix.
+    logical :: density_matrices = .false.
+
+    ! Filename to write density matrix to
+    character(255) :: density_matrix_file = 'RDM'
+
 end type fciqmc_in_t
 
 type semi_stoch_in_t
@@ -1037,6 +1043,8 @@ contains
         end select
         call json_write_key(js, 'quadrature_initiator', fciqmc%quadrature_initiator)
         call json_write_key(js, 'replica_tricks', fciqmc%replica_tricks, .true.)
+        call json_write_key(js, 'density_matrices', fciqmc%density_matrices, .true.)
+        call json_write_key(js, 'density_matrix_file', fciqmc%density_matrix_file)
         call json_object_end(js, terminal)
 
     end subroutine fciqmc_in_t_json
