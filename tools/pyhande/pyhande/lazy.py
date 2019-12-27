@@ -366,7 +366,6 @@ Returns
 info : :func:`collections.namedtuple`
     See :func:`std_analysis`.
 '''
-
     tuple_fields = ('metadata data data_len reblock covariance opt_block '
                    'no_opt_block'.split())
     info_tuple = collections.namedtuple('HandeInfo', tuple_fields)
@@ -391,7 +390,8 @@ info : :func:`collections.namedtuple`
         to_block.extend(['W * \sum H_0j N_j', 'W * N_0'])
     if extract_rep_loop_time:
         to_block.append('time')
-
+    if 'uccmc' in md.keys():
+        to_block.append('N_0 UCCMC')
     mc_data = calc.ix[indx, to_block]
     if mc_data['Shift'].iloc[0] == mc_data['Shift'].iloc[1]:
         if calc['Shift'][~indx].iloc[-1] == mc_data['Shift'].iloc[0]:
