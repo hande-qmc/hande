@@ -1662,7 +1662,7 @@ contains
         select case(excitation%nexcit)
         case (0)
             ! Have reference determinant.
-            estimators%D0_population = estimators%D0_population_ucc + pop(1)
+            estimators%D0_population = estimators%D0_population + pop(1)
             if (cluster_size == 0) then
                 estimators%D0_population_ucc = estimators%D0_population_ucc + pop(1)
             end if
