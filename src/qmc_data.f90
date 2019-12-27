@@ -802,6 +802,10 @@ type estimators_t
     ! The total number of attempts made to select cluster from current distribution, across all
     ! processes.
     integer(int_64) :: nattempts = 0_int_64
+
+    !For UCCMC need to store true D0_population, as well as total D0 contribution to wfn. To simplify
+    !compatibility, the latter will be stored in D0_population
+    real(p) :: D0_population_ucc = 0.0_p
 end type estimators_t
 
 type propagator_t
@@ -905,6 +909,7 @@ contains
         type(estimators_t), intent(inout) :: estimators
 
         estimators%D0_population = 0.0_p
+        estimators%D0_population_ucc = 0.0_p
         estimators%proj_energy = 0.0_p
         estimators%D0_population_comp = cmplx(0.0, 0.0, p)
         estimators%proj_energy_comp = cmplx(0.0, 0.0, p)

@@ -563,6 +563,7 @@ contains
         ! average energy quantities over report loop.
         qs%estimators%proj_energy = qs%estimators%proj_energy/qmc_in%ncycles
         qs%estimators%D0_population = qs%estimators%D0_population/qmc_in%ncycles
+        qs%estimators%D0_population_ucc = qs%estimators%D0_population_ucc/qmc_in%ncycles
         ! Similarly for the HFS estimator
         qs%estimators%D0_hf_population = qs%estimators%D0_hf_population/qmc_in%ncycles
         qs%estimators%proj_hf_O_hpsip = qs%estimators%proj_hf_O_hpsip/qmc_in%ncycles

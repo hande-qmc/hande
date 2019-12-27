@@ -45,6 +45,8 @@ integer, parameter :: ccmc_calc = 2**9
 integer, parameter :: mc_canonical_estimates = 2**10
 ! Redistributing restart info.
 integer, parameter :: restart_redistribute = 2**11
+! Doing Unitary Coupled Cluster Monte Carlo?
+integer, parameter :: uccmc_calc = 2**12
 
 !--- Info for DMQMC calculations ---
 
@@ -210,6 +212,8 @@ contains
             calc_name = "Monte Carlo canonical estimates"
         case(restart_redistribute)
             calc_name = "Restart Redistribution"
+        case(uccmc_calc)
+            calc_name = "UCCMC"
         end select
 
     end function get_calculation_string

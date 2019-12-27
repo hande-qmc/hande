@@ -593,7 +593,7 @@ contains
         use reference_determinant, only: reference_t
         use system, only: sys_t
 
-        use calc, only: calc_type, ccmc_calc
+        use calc, only: calc_type, uccmc_calc
         use calc_system_init, only: set_spin_polarisation, set_symmetry_aufbau
         use excitations, only: end_excitations, init_excitations
 
@@ -645,7 +645,7 @@ contains
         call warn_unused_args(lua_state, keys, opts)
         call aot_table_close(lua_state, opts)
 
-        calc_type = ccmc_calc
+        calc_type = uccmc_calc
         allocate(qmc_state_out)
 
         call init_output_unit(output_in, sys, io_unit)
