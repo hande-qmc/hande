@@ -1064,9 +1064,9 @@ contains
         cluster_annihilation = iand(cluster_excitation, f0)
         ! creation operators (relative to the reference)
         if (conjugate) then
-            excitor_creation = iand(excitor_excitation, excitor_loc)
-        else
             excitor_creation = iand(excitor_excitation, f0)
+        else
+            excitor_creation = iand(excitor_excitation, excitor_loc)
         end if
         cluster_creation = iand(cluster_excitation, cluster_excitor)
 
