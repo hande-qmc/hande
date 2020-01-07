@@ -584,6 +584,7 @@ contains
 
         use dmqmc_data, only: dmqmc_in_t
         use uccmc, only: do_uccmc
+        use trotterized_uccmc, only: do_trot_uccmc
         use lua_hande_system, only: get_sys_t
         use lua_hande_utils, only: warn_unused_args, register_timing
         use lua_hande_calc_utils, only: init_output_unit, end_output_unit
@@ -593,7 +594,7 @@ contains
         use reference_determinant, only: reference_t
         use system, only: sys_t
 
-        use calc, only: calc_type, uccmc_calc
+        use calc, only: calc_type, uccmc_calc, trot_uccmc_calc
         use calc_system_init, only: set_spin_polarisation, set_symmetry_aufbau
         use excitations, only: end_excitations, init_excitations
 
@@ -644,8 +645,11 @@ contains
         call get_qmc_state(lua_state, have_restart_state, qmc_state_restart)
         call warn_unused_args(lua_state, keys, opts)
         call aot_table_close(lua_state, opts)
-
-        calc_type = uccmc_calc
+        if (uccmc_in%trot) then
+            calc_type = trot_uccmc_calc
+        else
+            calc_type = uccmc_calc
+        end if
         allocate(qmc_state_out)
 
         call init_output_unit(output_in, sys, io_unit)
@@ -653,11 +657,21 @@ contains
         if (sys%aufbau_sym) call set_symmetry_aufbau(sys, io_unit)
 
         if (have_restart_state) then
-            call do_uccmc(sys, qmc_in, uccmc_in, restart_in, load_bal_in, reference, logging_in, &
+            if (uccmc_in%trot) then
+                call do_trot_uccmc(sys, qmc_in, uccmc_in, restart_in, load_bal_in, reference, logging_in, &
                             io_unit, qmc_state_out, qmc_state_restart)
+            else
+                call do_uccmc(sys, qmc_in, uccmc_in, restart_in, load_bal_in, reference, logging_in, &
+                            io_unit, qmc_state_out, qmc_state_restart)
+            end if
         else
-            call do_uccmc(sys, qmc_in, uccmc_in,  restart_in, load_bal_in, reference, logging_in, &
+            if (uccmc_in%trot) then
+                call do_trot_uccmc(sys, qmc_in, uccmc_in, restart_in, load_bal_in, reference, logging_in, &
                             io_unit, qmc_state_out)
+            else
+                call do_uccmc(sys, qmc_in, uccmc_in,  restart_in, load_bal_in, reference, logging_in, &
+                            io_unit, qmc_state_out)
+            end if
         end if
 
 
@@ -1533,10 +1547,10 @@ contains
         type(uccmc_in_t), intent(out) :: uccmc_in
 
         integer :: uccmc_table, err
-        character(28), parameter :: keys(8) = [character(28) :: 'move_frequency', 'cluster_multispawn_threshold', &
+        character(28), parameter :: keys(9) = [character(28) :: 'move_frequency', 'cluster_multispawn_threshold', &
                                                                 'linked', 'vary_shift_reference', &
                                                                 'density_matrices', 'density_matrix_file', 'pow_trunc', &
-                                                                'variational_energy']
+                                                                'variational_energy', 'trotterized']
 
         if (aot_exists(lua_state, opts, 'uccmc')) then
 
@@ -1551,6 +1565,7 @@ contains
             call aot_get_val(uccmc_in%density_matrix_file, err, lua_state, uccmc_table, 'density_matrix_file')
             call aot_get_val(uccmc_in%pow_trunc, err, lua_state, uccmc_table, 'pow_trunc')
             call aot_get_val(uccmc_in%variational_energy, err, lua_state, uccmc_table, 'variational_energy')
+            call aot_get_val(uccmc_in%trot, err, lua_state, uccmc_table, 'trotterized')
 
             call warn_unused_args(lua_state, keys, uccmc_table)
 

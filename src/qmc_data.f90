@@ -339,6 +339,7 @@ type uccmc_in_t
     logical :: linked = .false.
     integer :: pow_trunc = 12
     logical :: variational_energy = .false.
+    logical :: trot = .false.
 end type uccmc_in_t
 
 type restart_in_t
@@ -1146,7 +1147,8 @@ contains
         call json_write_key(js, 'density_matrices', uccmc%density_matrices)
         call json_write_key(js, 'density_matrix_file', uccmc%density_matrix_file)
         call json_write_key(js, 'pow_trunc', uccmc%pow_trunc)
-        call json_write_key(js, 'variational_energy', uccmc%variational_energy,terminal=.true.)
+        call json_write_key(js, 'variational_energy', uccmc%variational_energy)
+        call json_write_key(js, 'trot', uccmc%trot,terminal=.true.)
         call json_object_end(js, terminal)
 
     end subroutine uccmc_in_t_json

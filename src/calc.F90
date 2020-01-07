@@ -47,7 +47,8 @@ integer, parameter :: mc_canonical_estimates = 2**10
 integer, parameter :: restart_redistribute = 2**11
 ! Doing Unitary Coupled Cluster Monte Carlo?
 integer, parameter :: uccmc_calc = 2**12
-
+! Doing Trotterized Unitary Coupled Cluster Monte Carlo?
+integer, parameter :: trot_uccmc_calc = 2**13
 !--- Info for DMQMC calculations ---
 
 ! For DMQMC, the user may want to calculate many different combinations
@@ -214,6 +215,8 @@ contains
             calc_name = "Restart Redistribution"
         case(uccmc_calc)
             calc_name = "UCCMC"
+        case(trot_uccmc_calc)
+            calc_name = "Trotterized UCCMC"
         end select
 
     end function get_calculation_string

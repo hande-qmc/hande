@@ -959,7 +959,7 @@ contains
         !    min_attempts: if present, set nattempts to be at least this value.
         !    complx: true if using real and imaginary psips.
 
-        use calc, only: doing_calc, ct_fciqmc_calc, ccmc_calc, dmqmc_calc
+        use calc, only: doing_calc, ct_fciqmc_calc, ccmc_calc, dmqmc_calc, uccmc_calc, trot_uccmc_calc
         use const, only: int_64, int_p
         use qmc_data, only: particle_t
         use spawn_data, only: spawn_t
@@ -985,7 +985,7 @@ contains
         ! Number of spawning attempts that will be made.
         ! For FCIQMC, this is used for accounting later, not for controlling the
         ! spawning.
-        if (doing_calc(ct_fciqmc_calc) .or. doing_calc(ccmc_calc)) then
+        if (doing_calc(ct_fciqmc_calc) .or. doing_calc(ccmc_calc) .or. doing_calc(uccmc_calc) .or. doing_calc(trot_uccmc_calc)) then
             ! ct algorithm: kinda poorly defined.
             ! ccmc: number of excitor clusters we'll randomly generate and
             ! attempt to spawn from.

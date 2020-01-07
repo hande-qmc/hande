@@ -124,6 +124,7 @@ target_sources(hande-static
     symmetry.f90
     symmetry_types.f90
     system.f90
+    trotterized_uccmc.f90
     uccmc.f90
     ueg.f90
     ueg_types.f90
