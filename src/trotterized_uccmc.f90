@@ -38,7 +38,7 @@ contains
         use parallel
         use restart_hdf5, only: dump_restart_hdf5, restart_info_t, init_restart_info_t, dump_restart_file_wrapper
 
-        use annihilation, only: direct_annihilation, insert_new_walker
+        use annihilation, only: insert_new_walker
         use bloom_handler, only: init_bloom_stats_t, bloom_stats_t, bloom_mode_fractionn, bloom_mode_fixedn, &
                                  write_bloom_report, bloom_stats_warning, update_bloom_threshold_prop
         use ccmc_data
@@ -574,8 +574,8 @@ contains
         end do
 
         print*, 'end coeffs'
-        print*, time_avg_psip_list%states(1,:qs%psip_list%nstates)
-        print*, time_avg_psip_list%pops(1,:qs%psip_list%nstates)
+        print*, time_avg_psip_list%states(1,:time_avg_psip_list%nstates)
+        print*, time_avg_psip_list%pops(1,:time_avg_psip_list%nstates)
         call dSFMT_t_to_dSFMT_state_t(rng(0), qs%rng_state)
 
 
@@ -841,7 +841,7 @@ contains
         else 
 
             if (allowed) then
-                cluster%excitation_level = get_excitation_level(f0, cdet%f)
+                cluster%excitation_level = get_excitation_level(f0(:sys%basis%bit_string_len), cdet%f(:sys%basis%bit_string_len))
                 ! To contribute the cluster must be within a double excitation of
                 ! the maximum excitation included in the CC wavefunction.
                 allowed = cluster%excitation_level <= ex_level+2
@@ -1483,7 +1483,7 @@ contains
 
    type(basis_t), intent(in) :: basis
    integer(i0), intent(in) :: f(basis%tot_string_len), f0(basis%tot_string_len)
-   integer(i0) :: annihilation(basis%tot_string_len)
+   integer(i0) :: annihilation(basis%bit_string_len)
    integer :: nunset(basis%bit_string_len)
 
    annihilation = iand(ieor(f(:basis%bit_string_len),f0(:basis%bit_string_len)),f0(:basis%bit_string_len))
@@ -1963,7 +1963,8 @@ contains
                 ! f should be in slot pos.  Move all determinants above it.
                 do j = iend, pos, -1
                     ! i is the number of determinants that will be inserted below j.
-                    k = j + i - disp
+                    k = j + 1
+                    !k = j + i - disp
                     psip_list%states(:,k) = psip_list%states(:,j)
                     psip_list%pops(:,k) = psip_list%pops(:,j)
                     psip_list%dat(:,k) = psip_list%dat(:,j)
@@ -1972,7 +1973,8 @@ contains
 
                 ! Insert new walker into pos and shift it to accommodate the number
                 ! of elements that are still to be inserted below it.
-                k = pos + i - 1 - disp
+                k = pos 
+                !k = pos + i - 1 - disp
 
                 ! The encoded spawned walker sign.
                 associate(spawned_population => spawn%sdata(spawn%bit_str_len+1:spawn%bit_str_len+spawn%ntypes, i), &
@@ -1990,7 +1992,8 @@ contains
                 if (present(determ_flags)) determ_flags(k) = 1
 
                 ! Next walker will be inserted below this one.
-                iend = pos - 1
+                iend = iend + 1
+                !iend = pos - 1
             end do
 
             ! Update psip_list%nstates.
