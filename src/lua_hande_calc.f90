@@ -632,6 +632,14 @@ contains
         call read_qmc_in(lua_state, opts, qmc_in)
         call read_uccmc_in(lua_state, opts, uccmc_in, sys)
 
+        if (uccmc_in%trot) then
+            sys%basis%info_string_len = 2
+            sys%basis%tot_string_len = sys%basis%bit_string_len + sys%basis%info_string_len
+            sys%basis%tensor_label_len = sys%basis%tot_string_len
+            call end_excitations(sys%basis%excit_mask)
+            call init_excitations(sys%basis)
+        end if
+
         !call read_blocking_in(lua_state, opts, blocking_in)
         ! note that semi-stochastic is not (yet) available in CCMC.
         !call read_semi_stoch_in(lua_state, opts, qmc_in, semi_stoch_in)
@@ -645,11 +653,13 @@ contains
         call get_qmc_state(lua_state, have_restart_state, qmc_state_restart)
         call warn_unused_args(lua_state, keys, opts)
         call aot_table_close(lua_state, opts)
+
         if (uccmc_in%trot) then
             calc_type = trot_uccmc_calc
         else
             calc_type = uccmc_calc
         end if
+
         allocate(qmc_state_out)
 
         call init_output_unit(output_in, sys, io_unit)
@@ -674,6 +684,13 @@ contains
             end if
         end if
 
+        if (uccmc_in%trot) then
+            sys%basis%info_string_len = 0
+            sys%basis%tot_string_len = sys%basis%bit_string_len + sys%basis%info_string_len
+            sys%basis%tensor_label_len = sys%basis%tot_string_len
+            call end_excitations(sys%basis%excit_mask)
+            call init_excitations(sys%basis)
+        end if
 
         call end_output_unit(output_in%out_filename, io_unit)
 

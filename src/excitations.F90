@@ -116,7 +116,7 @@ contains
             perm = 0
 
             ! Excitation level...
-            excitation%nexcit = sum(count_set_bits(ieor(f1,f2)))/2
+            excitation%nexcit = sum(count_set_bits(ieor(f1(:basis%bit_string_len),f2(:basis%bit_string_len))))/2
 
             ! Finding the permutation to align the determinants is non-trivial.
             ! It turns out to be quite easy with bit operations.

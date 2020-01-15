@@ -578,6 +578,9 @@ contains
 
 
         end do
+        print*, 'end coeffs'
+        print*, time_avg_psip_list%states(1,:qs%psip_list%nstates)
+        print*, time_avg_psip_list%pops(1,:qs%psip_list%nstates)
 
         call dSFMT_t_to_dSFMT_state_t(rng(0), qs%rng_state)
 

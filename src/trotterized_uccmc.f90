@@ -4,6 +4,14 @@ use const, only: i0, int_p, int_64, p, dp, debug
 
 implicit none
 
+interface operator(.bitstrget.)
+    module procedure bit_str_i0_ge_trot
+end interface
+
+interface operator(.bitstrgtt.)
+    module procedure bit_str_i0_gt_trot
+end interface
+
 contains
 
     subroutine do_trot_uccmc(sys, qmc_in, uccmc_in, restart_in, load_bal_in, reference_in, &
@@ -58,7 +66,7 @@ contains
         use proc_pointers
         use spawning, only: assign_particle_processor
         use system, only: sys_t, sys_t_json
-        use spawn_data, only: calc_events_spawn_t, write_memcheck_report
+        use spawn_data, only: calc_events_spawn_t, write_memcheck_report, spawn_t, alloc_spawn_t
         use replica_rdm, only: update_rdm, calc_rdm_energy, write_final_rdm
 
         use qmc_data, only: qmc_in_t, uccmc_in_t, restart_in_t
@@ -132,7 +140,8 @@ contains
         integer :: date_values(8)
         character(:), allocatable :: err_msg
  
-        type(particle_t) :: time_avg_psip_list_ci, time_avg_psip_list
+        type(particle_t) :: time_avg_psip_list_ci, time_avg_psip_list, backup_psip
+        type(spawn_t) :: backup_spawn
         integer :: semi_stoch_it, pos, j, k
         logical :: hit
         integer(i0), allocatable :: state(:)
@@ -161,8 +170,10 @@ contains
                       uuid_restart, restart_version_restart, qmc_state_restart=qmc_state_restart, &
                       regenerate_info=regenerate_info, uccmc_in=uccmc_in)
 
+        call regenerate_trot_info_psip_list(sys%basis, sys%nel, qs)
+        qs%ref%f0(3) = sys%nel
 
-        allocate(state(sys%basis%bit_string_len))
+        allocate(state(sys%basis%tot_string_len))
         allocate(real_population(qs%psip_list%nspaces))
 
         if(uccmc_in%variational_energy) then
@@ -186,6 +197,13 @@ contains
              time_avg_psip_list%states(:,1) = qs%psip_list%states(:,1)
              time_avg_psip_list%nparticles = qs%psip_list%pops(:,1)/qs%psip_list%pop_real_factor
              time_avg_psip_list%nstates = 1
+
+        call init_particle_t(qmc_in%walker_length, 1, sys%basis%tensor_label_len, qmc_in%real_amplitudes, &
+                             qmc_in%real_amplitude_force_32, backup_psip, io_unit=io_unit)
+        associate(spawn=>qs%spawn_store%spawn)
+        call alloc_spawn_t(spawn%bit_str_len, spawn%bit_str_nbits, spawn%ntypes, .false., spawn%array_len, real(spawn%cutoff,p)/qs%psip_list%pop_real_factor, qs%psip_list%pop_real_factor, spawn%proc_map, spawn%hash_seed, spawn%mpi_time%check_barrier_time, backup_spawn)
+        end associate
+
         qs%ref%max_ex_level = qs%ref%ex_level
 
         if (debug) call init_logging(logging_in, logging_info, qs%ref%ex_level)
@@ -300,7 +318,7 @@ contains
             do icycle = 1, qmc_in%ncycles
                 
                 iter = qs%mc_cycles_done + (ireport-1)*qmc_in%ncycles + icycle
-
+                
                 if(uccmc_in%variational_energy) then
                           time_avg_psip_list_ci%nparticles = time_avg_psip_list_ci%nparticles*(iter-1)
                           time_avg_psip_list_ci%pops(:,:time_avg_psip_list_ci%nstates) =  time_avg_psip_list_ci%pops(:,:time_avg_psip_list_ci%nstates)*(iter-1)
@@ -332,7 +350,6 @@ contains
                                    complx=sys%read_in%comp)
 
                 nparticles_change = 0.0_p
-
                 ! We need to count spawning attempts differently as there may be multiple spawns
                 ! per cluster
 
@@ -380,7 +397,6 @@ contains
 
                 call trot_ucc_set_cluster_selections(selection_data, qs%estimators(1)%nattempts, min_cluster_size)
                 call zero_ps_stats(ps_stats, qs%excit_gen_data%p_single_double%rep_accum%overflow_loc)
-
                 ! OpenMP chunk size determined completely empirically from a single
                 ! test.  Please feel free to improve...
                 ! NOTE: we can't refer to procedure pointers in shared blocks so
@@ -413,7 +429,7 @@ contains
                     call select_trot_ucc_cluster(rng(it), sys, qs%psip_list, qs%ref%f0, qs%ref%max_ex_level, &
                                             selection_data%nstochastic_clusters, D0_normalisation, qmc_in%initiator_pop, D0_pos, &
                                             logging_info, contrib(it)%cdet, contrib(it)%cluster, qs%excit_gen_data)
-
+                    if (uccmc_in%trot) call add_info_str_trot(sys%basis, qs%ref%f0, sys%nel, contrib(it)%cdet%f)
                     if (uccmc_in%variational_energy .and. .not. all(contrib(it)%cdet%f==0) .and. contrib(it)%cluster%excitation_level <= qs%ref%ex_level)  then
                        state = contrib(it)%cdet%f 
                        call binary_search(time_avg_psip_list_ci%states, state, 1, time_avg_psip_list_ci%nstates, hit, pos)
@@ -442,7 +458,6 @@ contains
 
                        end if
                     end if
-
                     if (contrib(it)%cluster%excitation_level <= qs%ref%max_ex_level+2) then
                             ! cluster%excitation_level == huge(0) indicates a cluster
                             ! where two excitors share an elementary operator
@@ -451,7 +466,6 @@ contains
 
                         call do_trot_uccmc_accumulation(sys, qs, contrib(it)%cdet, contrib(it)%cluster, logging_info, &
                                                     D0_population_cycle, proj_energy_cycle, uccmc_in, ref_det, rdm, selection_data)
-
                         call do_stochastic_uccmc_propagation(rng(it), sys, qs, &
                                                                 uccmc_in, logging_info, ms_stats(it), bloom_stats, &
                                                                 contrib(it), nattempts_spawn, ndeath, ps_stats(it))
@@ -460,7 +474,6 @@ contains
                 !$omp end do
                 ndeath_nc=0
                 !$omp end parallel
-
                 ! Add the accumulated ps_stats data to qs%excit_gen_data%p_single_double.
                 if (qs%excit_gen_data%p_single_double%vary_psingles) then
                     call ps_stats_reduction_update(qs%excit_gen_data%p_single_double%rep_accum, ps_stats)
@@ -480,7 +493,6 @@ contains
                 ! Calculate the number of spawning events before the particles are redistributed,
                 ! otherwise sending particles to other processors is counted as a spawning event.
                 nspawn_events = calc_events_spawn_t(qs%spawn_store%spawn)
-
                 ! Redistribute excips to new processors.
                 ! The spawned excips were sent to the correct processors with
                 ! the current hash shift, so it's just those in the main list
@@ -488,20 +500,25 @@ contains
                 associate(pl=>qs%psip_list, spawn=>qs%spawn_store%spawn)
                     if (nprocs > 1) call redistribute_particles(pl%states, pl%pop_real_factor, pl%pops, pl%nstates, &
                                                                 pl%nparticles, spawn)
-                    call direct_annihilation_trot(sys, rng(0), qs%ref, annihilation_flags, pl, spawn)
+                    backup_psip%nparticles = pl%nparticles
+                    backup_psip%nstates = pl%nstates
+                    backup_psip%states(:,:) = pl%states(:,:)
+                    backup_psip%pops(:,:) = pl%pops(:,:)
+                    call direct_annihilation_trot(sys, rng(0), qs%ref, annihilation_flags, pl, spawn, backup_spawn)
                 end associate
                 if (debug) call write_logging_calc_ccmc(logging_info, iter, nspawn_events, ndeath + ndeath_nc, &
                                                         selection_data%nD0_select, &
                                                         selection_data%nclusters, selection_data%nstochastic_clusters, &
-                                                        selection_data%nsingle_excitors)
-
+                                                       selection_data%nsingle_excitors)
                 if(uccmc_in%variational_energy) then
                           time_avg_psip_list_ci%nparticles = time_avg_psip_list_ci%nparticles/(iter)
                           time_avg_psip_list_ci%pops(:,:time_avg_psip_list_ci%nstates) =  time_avg_psip_list_ci%pops(:,:time_avg_psip_list_ci%nstates)/(iter)
                 end if
+              
                 do i = 1, qs%psip_list%nstates
                     state = qs%psip_list%states(:,i) 
-                    call binary_search_trot(time_avg_psip_list%states, state, 1, time_avg_psip_list%nstates, hit, pos, qs%ref%f0, sys%nel, sys%basis)
+                     call binary_search_i0_list_trot(time_avg_psip_list%states, state, 1, time_avg_psip_list%nstates, hit, pos)
+                    !call binary_search_trot(time_avg_psip_list%states, state, 1, time_avg_psip_list%nstates, hit, pos, qs%ref%f0, sys%nel, sys%basis)
                     if (hit) then
                           time_avg_psip_list%nparticles = time_avg_psip_list%nparticles - abs(real(time_avg_psip_list%pops(:,pos))/time_avg_psip_list%pop_real_factor)
                           time_avg_psip_list%pops(:,pos) = time_avg_psip_list%pops(:,pos) + qs%psip_list%pops(:,i) 
@@ -522,7 +539,6 @@ contains
                            time_avg_psip_list%nparticles = time_avg_psip_list%nparticles + abs(real_population)
                        end if
                 end do
-
                 time_avg_psip_list%nparticles = time_avg_psip_list%nparticles/(iter)
                 time_avg_psip_list%pops(:,:time_avg_psip_list%nstates) =  time_avg_psip_list%pops(:,:time_avg_psip_list%nstates)/(iter)
 
@@ -881,7 +897,7 @@ contains
 
     end subroutine select_trot_ucc_cluster
 
-    pure subroutine trot_ucc_collapse_cluster(basis, f0, excitor, excitor_population, cluster_excitor, cluster_population, &
+    subroutine trot_ucc_collapse_cluster(basis, f0, excitor, excitor_population, cluster_excitor, cluster_population, &
                     allowed)
 
         ! Collapse two excitors.  The result is returned in-place.
@@ -920,6 +936,7 @@ contains
         logical,  intent(out) :: allowed
 
         integer(i0) :: excitor_loc(basis%tot_string_len)
+        integer(i0) :: f0_loc(basis%tot_string_len)
 
         integer :: ibasis, ibit
         integer(i0) :: excitor_excitation(basis%tot_string_len)
@@ -930,16 +947,18 @@ contains
         integer(i0) :: cluster_creation(basis%tot_string_len)
         integer(i0) :: permute_operators(basis%tot_string_len)
         excitor_loc = excitor
+        f0_loc = f0
+ 
         call reset_extra_info_bit_string(basis, excitor_loc)
-
+        call reset_extra_info_bit_string(basis, f0_loc)
         ! Apply excitor to the cluster of excitors.
 
         ! orbitals involved in excitation from reference
-        excitor_excitation = ieor(f0, excitor_loc)
-        cluster_excitation = ieor(f0, cluster_excitor)
+        excitor_excitation = ieor(f0_loc, excitor_loc)
+        cluster_excitation = ieor(f0_loc, cluster_excitor)
         ! annihilation operators (relative to the reference)
-        excitor_annihilation = iand(excitor_excitation, f0)
-        cluster_annihilation = iand(cluster_excitation, f0)
+        excitor_annihilation = iand(excitor_excitation, f0_loc)
+        cluster_annihilation = iand(cluster_excitation, f0_loc)
         ! creation operators (relative to the reference)
         excitor_creation = iand(excitor_excitation, excitor_loc)
         cluster_creation = iand(cluster_excitation, cluster_excitor)
@@ -1085,7 +1104,6 @@ contains
                 proj_energy_cycle = proj_energy_cycle + estimators_cycle%proj_energy
             end if
         end if
-
         if (uccmc_in%density_matrices .and. cluster%excitation_level <= 2 .and. qs%vary_shift(1) &
             .and. cluster%excitation_level /= 0 .and. .not. sys%read_in%comp) then
             ! Add contribution to density matrix
@@ -1096,7 +1114,6 @@ contains
                             1.0_p, cluster%pselect, rdm)
             !$omp end critical
         end if
-
     end subroutine do_trot_uccmc_accumulation
 
     subroutine do_stochastic_uccmc_propagation(rng, sys, qs, uccmc_in, &
@@ -1236,7 +1253,6 @@ contains
         logical, intent(in) :: attempt_death
 
         integer :: i
-
         do i = 1, nspawnings_cluster
             call perform_uccmc_spawning_attempt(rng, sys, qs, uccmc_in, logging_info, bloom_stats, contrib, &
                                                nspawnings_cluster, ps_stat)
@@ -1251,6 +1267,7 @@ contains
             if ((.not. uccmc_in%linked) .or. contrib%cluster%nexcitors <= 2) then
                 call stochastic_ccmc_death(rng, qs%spawn_store%spawn, uccmc_in%linked, .false., sys, &
                                            qs, contrib%cdet, contrib%cluster, logging_info, ndeath)
+                if (uccmc_in%trot) call add_info_str_trot(sys%basis, qs%ref%f0, sys%nel, contrib%cdet%f)
             end if
         end if
     end subroutine do_ucc_spawning_death
@@ -1329,14 +1346,80 @@ contains
                       nspawned, connection, nspawnings_total, ps_stat)
             nspawned_im = 0_int_p
         end if
-        if (nspawned /= 0_int_p) call create_spawned_particle_ccmc(sys%basis, qs%ref, contrib%cdet, connection, &
+        if (nspawned /= 0_int_p) call create_spawned_particle_uccmc_trot(sys, qs%ref, contrib%cdet, connection, &
                                             nspawned, 1, contrib%cluster%excitation_level, &
-                                            .false., fexcit, qs%spawn_store%spawn, bloom_stats)
+                                            .true., fexcit, qs%spawn_store%spawn, bloom_stats)
         !if (nspawned_im /= 0_int_p) call create_spawned_particle_ccmc(sys%basis, qs%ref, contrib%cdet, connection,&
         !                                    nspawned_im, 2, contrib%cluster%excitation_level, &
         !                                    .false., fexcit, qs%spawn_store%spawn, bloom_stats)
 
     end subroutine perform_uccmc_spawning_attempt
+
+    subroutine create_spawned_particle_uccmc_trot(sys, ref, cdet, connection, nspawned, ispace, &
+                                            parent_cluster_ex_level, trot, fexcit, spawn, bloom_stats)
+
+        ! Function to create spawned particle in spawned list for ccmc
+        ! calculations. Performs required manipulations of bit string
+        ! beforehand and accumulation on blooming.
+
+        ! In:
+        !   basis: info on current basis functions.
+        !   reference: info on current reference state.
+        !   cdet: determinant representing state currently spawning
+        !       spawning from.
+        !   connection: connection from state cdet particle has been spawned
+        !       from.
+        !   nspawned: number of (encoded) particles to be created via this spawning.
+        !   ispace: index of space particles are to be added to.
+        !   parent_cluster_ex_level: excitation level of parent cluster.
+        !   fexcit: bit string for state spawned to. Only available for linked
+        !       ccmc, otherwise generated using cdet+connection.
+        !   ex_lvl_sort: true if require states to be sorted by excitation
+        !       level within walker list, false otherwise.
+        ! In/Out:
+        !   spawn: spawn_t type containing information on particles created
+        !       via spawning this iteration. Spawned particles will be added
+        !       to this on exit.
+        !   bloom_stats: information on blooms within a calculation. Will be
+        !       updated if a bloom has occurred.
+
+        use system, only: sys_t
+        use reference_determinant, only: reference_t
+        use spawn_data, only: spawn_t
+        use determinant_data, only: det_info_t
+        use bloom_handler, only: bloom_stats_t, accumulate_bloom_stats
+        use excitations, only: excit_t, create_excited_det
+        use proc_pointers, only: create_spawned_particle_ptr
+        use ccmc_utils, only: add_ex_level_bit_string_calc
+
+        type(sys_t), intent(in) :: sys
+        type(reference_t), intent(in) :: ref
+        type(spawn_t), intent(inout) :: spawn
+        type(det_info_t), intent(in) :: cdet
+        type(bloom_stats_t), intent(inout) :: bloom_stats
+        type(excit_t), intent(in) :: connection
+
+        integer(int_p), intent(in) :: nspawned
+        integer, intent(in) :: ispace, parent_cluster_ex_level
+        integer(i0), intent(in) :: fexcit(:)
+        logical, intent(in) :: trot 
+        integer(i0) :: fexcit_loc(lbound(fexcit,dim=1):ubound(fexcit,dim=1))
+
+        
+        if (parent_cluster_ex_level /= huge(0)) then
+            call create_excited_det(sys%basis, cdet%f, connection, fexcit_loc)
+        else
+            fexcit_loc = fexcit
+        end if
+
+        if (trot) call add_info_str_trot(sys%basis, ref%f0, sys%nel, fexcit_loc)
+
+        
+        call create_spawned_particle_ptr(sys%basis, ref, cdet, connection, nspawned, &
+                                        ispace, spawn, fexcit_loc)
+        call accumulate_bloom_stats(bloom_stats, nspawned)
+
+    end subroutine create_spawned_particle_uccmc_trot
 
     subroutine update_proj_energy_mol_ucc(sys, f0, wfn_dat, cdet, pop, estimators, excitation, hmatel, cluster_size)
 
@@ -1639,8 +1722,8 @@ contains
 
     end subroutine binary_search_trot
 
-    subroutine direct_annihilation_trot(sys, rng, reference, annihilation_flags, psip_list, spawn, &
-                                   nspawn_events, determ)
+    subroutine direct_annihilation_trot(sys, rng, reference, annihilation_flags, psip_list, spawn, backup_spawn, &
+                                   nspawn_events,determ)
 
         ! Annihilation algorithm.
         ! Spawned walkers are added to the main list, by which new walkers are
@@ -1682,6 +1765,7 @@ contains
         type(spawn_t), intent(inout) :: spawn
         integer, optional, intent(out) :: nspawn_events
         type(semi_stoch_t), intent(inout), optional :: determ
+        type(spawn_t), intent(inout), optional :: backup_spawn
         logical :: doing_semi_stoch
 
         doing_semi_stoch = .false.
@@ -1693,10 +1777,76 @@ contains
         ! If performing a semi-stochastic calculation then the annihilation
         ! process is slightly different, so call the correct routines depending
         ! on the situation.
-        call annihilate_wrapper_spawn_t(spawn, annihilation_flags%initiator_approx)
+        call annihilate_wrapper_spawn_t_single_trot(spawn, annihilation_flags%initiator_approx)
+        if (present(backup_spawn)) then
+                    backup_spawn%sdata = spawn%sdata
+                    backup_spawn%head = spawn%head
+                    backup_spawn%head_start = spawn%head_start
+        end if
         call annihilate_main_list_wrapper_trot(sys, rng, reference, annihilation_flags, psip_list, spawn)
 
     end subroutine direct_annihilation_trot
+
+    subroutine annihilate_wrapper_spawn_t_single_trot(spawn, tinitiator, determ_size)!f0, nel, basis, determ_size)
+
+        ! Helper procedure for performing annihilation within a spawn_t object.
+
+        ! In:
+        !    tinitiator: true if the initiator approximation is being used.
+        !    determ_size (optional): The size of the deterministic space in
+        !       use, on this process. If input then the deterministic states
+        !       received from the various processes will be combined in a
+        !       separate call to compress_determ_repeats.
+        ! In/Out:
+        !    spawn: spawn_t object containing spawned particles.  On output, the
+        !        spawned particles are sent to the processor which 'owns' the
+        !        determinant they are located on and annihilation is performed
+        !        internally, so each determinant appears (at most) once in the
+        !        spawn%sdata array.
+
+        use parallel, only: nthreads, nprocs
+        use basis_types, only: basis_t
+        use spawn_data, only: compress_threaded_spawn_t, comm_spawn_t, compress_determ_repeats, annihilate_spawn_t, &
+                        annihilate_spawn_t_initiator, spawn_t
+
+        type(spawn_t), intent(inout) :: spawn
+        logical, intent(in) :: tinitiator
+        integer, intent(in), optional :: determ_size
+!        type(basis_t), intent(in) :: basis
+!        integer(i0), intent(in) :: f0(:)
+!        integer, intent(in) :: nel
+
+        integer :: nstates_received(0:nprocs-1)
+        integer, parameter :: thread_id = 0
+        integer :: i
+
+        ! Compress the successful spawning events from each thread so the
+        ! spawned list being sent to each processor contains no gaps.
+        if (nthreads > 1) call compress_threaded_spawn_t(spawn)
+        if (nprocs > 1) then
+            ! Send spawned walkers to the processor which "owns" them and
+            ! receive the walkers "owned" by this processor.
+            call comm_spawn_t(spawn, nstates_received)
+
+            ! Compress the repeats of the various deterministic states, each of
+            ! which is received once from each process.
+            if (present(determ_size)) call compress_determ_repeats(spawn, nstates_received, determ_size)
+        end if
+        if (spawn%head(thread_id,0) > 0) then
+            ! Have spawned walkers on this processor.
+            call qsort_i0_list_trot(spawn%sdata, spawn%head(thread_id,0), spawn%bit_str_len)
+            !call qsort_int_64_list_trot(spawn%sdata, spawn%head(thread_id,0), spawn%bit_str_len, f0, basis, nel)
+            ! Annihilate within spawned walkers list.
+            ! Compress the remaining spawned walkers list.
+
+            if (tinitiator) then
+                call annihilate_spawn_t_initiator(spawn)
+            else
+                call annihilate_spawn_t(spawn)
+            end if
+        end if
+
+    end subroutine annihilate_wrapper_spawn_t_single_trot
 
     subroutine annihilate_main_list_wrapper_trot(sys, rng, reference, annihilation_flags, psip_list, spawn, &
                                             lower_bound, determ_flags)
@@ -1765,6 +1915,7 @@ contains
             ! Insert new walkers into main walker list.
             call insert_new_walkers_trot(sys, psip_list, reference, annihilation_flags, spawn, determ_flags, lower_bound)
 
+            call remove_unoccupied_dets(rng, psip_list, annihilation_flags%real_amplitudes, determ_flags)
         else
 
             ! No spawned walkers so we only have to check to see if death has
@@ -1825,7 +1976,8 @@ contains
 
         do i = spawn_start, spawn%head(thread_id,0)
             f = int(spawn%sdata(:sys%basis%tensor_label_len,i), i0)
-            call binary_search_trot(psip_list%states, f, istart, iend, hit, pos, ref%f0, sys%nel, sys%basis)
+            call binary_search_i0_list_trot(psip_list%states, f, istart, iend, hit, pos)
+            !call binary_search_trot(psip_list%states, f, istart, iend, hit, pos, ref%f0, sys%nel, sys%basis)
             if (hit) then
                 ! Annihilate!
                 old_pop = psip_list%pops(:,pos)
@@ -1843,7 +1995,7 @@ contains
                 end associate
                 ! Next spawned walker cannot annihilate any determinant prior to
                 ! this one as the lists are sorted.
-                !istart = pos + 1
+                istart = pos + 1
             else
                 ! Compress spawned list.
                 k = i - nannihilate
@@ -1958,13 +2110,15 @@ contains
             do i = spawn%head(thread_id,0), spawn_start, -1
 
                 ! spawned det is not in the main walker list.
-                call binary_search_trot(psip_list%states, int(spawn%sdata(:sys%basis%tensor_label_len,i), i0), &
-                                   istart, iend, hit, pos, ref%f0, sys%nel, sys%basis)
+                call binary_search_i0_list_trot(psip_list%states, int(spawn%sdata(:sys%basis%tensor_label_len,i), i0), &
+                                   istart, iend, hit, pos)
+                !call binary_search_trot(psip_list%states, int(spawn%sdata(:sys%basis%tensor_label_len,i), i0), &
+                !                   istart, iend, hit, pos, ref%f0, sys%nel, sys%basis)
                 ! f should be in slot pos.  Move all determinants above it.
                 do j = iend, pos, -1
                     ! i is the number of determinants that will be inserted below j.
-                    k = j + 1
-                    !k = j + i - disp
+                    !k = j + 1
+                    k = j + i -disp
                     psip_list%states(:,k) = psip_list%states(:,j)
                     psip_list%pops(:,k) = psip_list%pops(:,j)
                     psip_list%dat(:,k) = psip_list%dat(:,j)
@@ -1973,9 +2127,8 @@ contains
 
                 ! Insert new walker into pos and shift it to accommodate the number
                 ! of elements that are still to be inserted below it.
-                k = pos 
-                !k = pos + i - 1 - disp
-
+                !k = pos 
+                k = pos + i -1 - disp
                 ! The encoded spawned walker sign.
                 associate(spawned_population => spawn%sdata(spawn%bit_str_len+1:spawn%bit_str_len+spawn%ntypes, i), &
                         tbl=>sys%basis%tensor_label_len)
@@ -1992,8 +2145,8 @@ contains
                 if (present(determ_flags)) determ_flags(k) = 1
 
                 ! Next walker will be inserted below this one.
-                iend = iend + 1
-                !iend = pos - 1
+                !iend = iend + 1
+                 iend = pos - 1
             end do
 
             ! Update psip_list%nstates.
@@ -2051,7 +2204,6 @@ contains
         integer :: ij_sym, ab_sym
 
         hmatel%r = 0.0_p
-
         select case(excitation%nexcit)
         case (0)
             ! Have reference determinant.
@@ -2082,6 +2234,945 @@ contains
                 end if
             end if
         end select
-
     end subroutine update_proj_energy_trot
+
+    pure subroutine qsort_i0_list_trot(list, head, nsort)
+
+        ! Sort a 2D array of int_64 integers.
+
+        ! list(:,i) is regarded as greater than list(:,j) if the first
+        ! non-identical element between list(:,i) and list(:,j) is greater in
+        ! list(:,i).
+
+        ! In/Out:
+        !    list: 2D array of int_64 integers.  Sorted on output.
+        ! In:
+        !    head (optional): sort list up to and including list(:,:head) and
+        !        leave the rest of the array untouched.  Default: sort the
+        !        entire array.
+        !    nsort (optional): sort list only using the first nsort elements in
+        !        each 1D slice to compare entries (ie compare list(:nsort,i) and
+        !        list(:nsort,j), so list is sorted according to list(:nsort,:)).
+        !        Default: use entire slice.
+
+        use bit_utils, only: operator(.bitstrge.), operator(.bitstrgt.)
+
+        integer(i0), intent(inout) :: list(:,:)
+        integer, intent(in), optional :: head, nsort
+
+        ! Threshold.  When a sublist gets to this length, switch to using
+        ! insertion sort to sort the sublist.
+        integer, parameter :: switch_threshold = 7
+
+        ! sort needs auxiliary storage of length 2*log_2(n).
+        integer, parameter :: stack_max = 50
+
+        integer :: pivot, lo, hi, i, j, ns
+        integer(int_64) :: tmp(ubound(list,dim=1))
+
+        ! Stack.  This is the auxilliary memory required by quicksort.
+        integer :: stack(2,stack_max), nstack
+
+        if (present(nsort)) then
+            ns = nsort
+        else
+            ns = ubound(list, dim=1)
+        end if
+
+        nstack = 0
+        lo = 1
+        if (present(head)) then
+            hi = head
+        else
+            hi = ubound(list, dim=2)
+        end if
+        do
+            ! If the section/partition we are looking at is smaller than
+            ! switch_threshold then perform an insertion sort.
+            if (hi - lo < switch_threshold) then
+                do j = lo + 1, hi
+                    tmp = list(:,j)
+                    do i = j - 1, 1, -1
+                        !if (.not.(tmp(1:ns) .bitstrgt. list(1:ns,i))) exit
+                        if (.not.(tmp(1:ns) .bitstrgtt. list(1:ns,i))) exit
+                        list(:,i+1) = list(:,i)
+                    end do
+                    list(:,i+1) = tmp
+                end do
+
+                if (nstack == 0) exit
+                hi = stack(2,nstack)
+                lo = stack(1,nstack)
+                nstack = nstack - 1
+
+            else
+                ! Otherwise start partitioning with quicksort.
+
+                ! Pick the pivot element to be the median of list(:,lo), list(:,hi)
+                ! and list(:,(lo+hi)/2).
+                ! This largely overcomes a major problem with quicksort, where it
+                ! degrades if the pivot is always the smallest element.
+                pivot = (lo + hi)/2
+                call swap_sublist(list(:,pivot), list(:,lo + 1))
+                !if (.not.(list(1:ns,lo) .bitstrge. list(1:ns,hi))) then
+                if (.not.(list(1:ns,lo) .bitstrget. list(1:ns,hi))) then
+                    call swap_sublist(list(:,lo), list(:,hi))
+                end if
+                !if (.not.(list(1:ns,lo+1) .bitstrge. list(1:ns,hi))) then
+                if (.not.(list(1:ns,lo+1) .bitstrget. list(1:ns,hi))) then
+                    call swap_sublist(list(:,lo+1), list(:,hi))
+                end if
+                !if (.not.(list(1:ns,lo) .bitstrge. list(1:ns,lo+1))) then
+                if (.not.(list(1:ns,lo) .bitstrget. list(1:ns,lo+1))) then
+                    call swap_sublist(list(:,lo), list(:,lo+1))
+                end if
+
+                i = lo + 1
+                j = hi
+                tmp = list(:,lo + 1) ! a is the pivot value
+                do while (.true.)
+                    ! Scan down list to find element > a.
+                    i = i + 1
+                    !do while (.not.(tmp(1:ns) .bitstrge. list(1:ns,i)))
+                    do while (.not.(tmp(1:ns) .bitstrget. list(1:ns,i)))
+                        i = i + 1
+                    end do
+
+                    ! Scan down list to find element < a.
+                    j = j - 1
+                    !do while (.not.(list(1:ns,j) .bitstrge. tmp(1:ns)))
+                    do while (.not.(list(1:ns,j) .bitstrget. tmp(1:ns)))
+                        j = j - 1
+                    end do
+
+                    ! When the pointers crossed, partitioning is complete.
+                    if (j < i) exit
+
+                    ! Swap the elements, so that all elements < a end up
+                    ! in lower indexed variables.
+                    call swap_sublist(list(:,i), list(:,j))
+                end do
+
+                ! Insert partitioning element
+                list(:,lo + 1) = list(:,j)
+                list(:,j) = tmp
+
+                ! Push the larger of the partitioned sections onto the stack
+                ! of sections to look at later.
+                ! --> need fewest stack elements.
+                nstack = nstack + 1
+
+                ! With a stack_max of 50, we can sort arrays of length
+                ! 1125899906842624.  It is safe to say this will never be
+                ! exceeded, and so this test can be skipped.
+!                if (nstack > stack_max) call stop_all('qsort_int_64_list', "parameter stack_max too small")
+
+                if (hi - i + 1 >= j - lo) then
+                    stack(2,nstack) = hi
+                    stack(1,nstack) = i
+                    hi = j - 1
+                else
+                    stack(2,nstack) = j - 1
+                    stack(1,nstack) = lo
+                    lo = i
+                end if
+
+            end if
+        end do
+
+    contains
+
+        pure subroutine swap_sublist(s1,s2)
+
+            integer(int_64), intent(inout) :: s1(:), s2(:)
+            integer(int_64) :: tmp(ubound(s1,dim=1))
+
+            tmp = s1
+            s1 = s2
+            s2 = tmp
+
+        end subroutine swap_sublist
+
+    end subroutine qsort_i0_list_trot
+    subroutine qsort_int_64_list_trot(list, head, nsort, f0, basis, nel)
+
+        ! Sort a 2D array of int_64 integers.
+
+        ! list(:,i) is regarded as greater than list(:,j) if the first
+        ! non-identical element between list(:,i) and list(:,j) is greater in
+        ! list(:,i).
+
+        ! In/Out:
+        !    list: 2D array of int_64 integers.  Sorted on output.
+        ! In:
+        !    head (optional): sort list up to and including list(:,:head) and
+        !        leave the rest of the array untouched.  Default: sort the
+        !        entire array.
+        !    nsort (optional): sort list only using the first nsort elements in
+        !        each 1D slice to compare entries (ie compare list(:nsort,i) and
+        !        list(:nsort,j), so list is sorted according to list(:nsort,:)).
+        !        Default: use entire slice.
+
+        use basis_types, only: basis_t
+
+        integer(int_64), intent(inout) :: list(:,:)
+        integer, intent(in), optional :: head, nsort
+        type(basis_t), intent(in) :: basis
+        integer, intent(in) :: nel
+        integer(i0), intent(in) :: f0(:)
+
+        ! Threshold.  When a sublist gets to this length, switch to using
+        ! insertion sort to sort the sublist.
+        integer, parameter :: switch_threshold = 7
+
+        ! sort needs auxiliary storage of length 2*log_2(n).
+        integer, parameter :: stack_max = 50
+
+        integer :: pivot, lo, hi, i, j, ns, comp
+        integer(int_64) :: tmp(ubound(list,dim=1))
+
+        ! Stack.  This is the auxilliary memory required by quicksort.
+        integer :: stack(2,stack_max), nstack
+
+        if (present(nsort)) then
+            ns = nsort
+        else
+            ns = ubound(list, dim=1)
+        end if
+
+        nstack = 0
+        lo = 1
+        if (present(head)) then
+            hi = head
+        else
+            hi = ubound(list, dim=2)
+        end if
+        do
+            ! If the section/partition we are looking at is smaller than
+            ! switch_threshold then perform an insertion sort.
+            if (hi - lo < switch_threshold) then
+                do j = lo + 1, hi
+                    tmp = list(:,j)
+                    do i = j - 1, 1, -1
+                        comp = compare_trot(tmp(1:ns), list(1:ns, i), f0(1:ns), basis, nel) 
+                        if (comp /= -1) exit
+                        list(:,i+1) = list(:,i)
+                    end do
+                    list(:,i+1) = tmp
+                end do
+                if (nstack == 0) exit
+                hi = stack(2,nstack)
+                lo = stack(1,nstack)
+                nstack = nstack - 1
+            else
+                ! Otherwise start partitioning with quicksort.
+
+                ! Pick the pivot element to be the median of list(:,lo), list(:,hi)
+                ! and list(:,(lo+hi)/2).
+                ! This largely overcomes a major problem with quicksort, where it
+                ! degrades if the pivot is always the smallest element.
+                pivot = (lo + hi)/2
+                call swap_sublist(list(:,pivot), list(:,lo + 1))
+                comp = compare_trot(list(1:ns, lo), list(1:ns, hi), f0(1:ns), basis, nel)
+                if (comp /= -1) then
+                    call swap_sublist(list(:,lo), list(:,hi))
+                end if
+                comp = compare_trot(list(1:ns, lo+1), list(1:ns, hi), f0(1:ns), basis, nel)
+                if (comp /= -1) then
+                    call swap_sublist(list(:,lo+1), list(:,hi))
+                end if
+                comp = compare_trot(list(1:ns, lo), list(1:ns, lo+1), f0(1:ns), basis, nel)
+                if (comp /= -1) then
+                    call swap_sublist(list(:,lo), list(:,lo+1))
+                end if
+                i = lo + 1
+                j = hi
+                tmp = list(:,lo + 1) ! a is the pivot value
+                           
+                do while (.true.)
+                    ! Scan down list to find element > a.
+                    i = i + 1
+                    comp = compare_trot(tmp(1:ns), list(1:ns, i), f0(1:ns), basis, nel) 
+                    do while (comp == 1)
+                        i = i + 1
+                        comp = compare_trot(tmp(1:ns), list(1:ns, i), f0(1:ns), basis, nel) 
+                    end do
+                    ! Scan down list to find element < a.
+                    j = j - 1
+                    comp = compare_trot(tmp(1:ns), list(1:ns, j), f0(1:ns), basis, nel) 
+                    do while (comp == -1)
+                        j = j - 1
+                        comp = compare_trot(tmp(1:ns), list(1:ns, j), f0(1:ns), basis, nel) 
+                    end do
+                    ! When the pointers crossed, partitioning is complete.
+                    if (j < i) exit
+
+                    ! Swap the elements, so that all elements < a end up
+                    ! in lower indexed variables.
+                    call swap_sublist(list(:,i), list(:,j))
+                end do
+                ! Insert partitioning element
+                list(:,lo + 1) = list(:,j)
+                list(:,j) = tmp
+
+                ! Push the larger of the partitioned sections onto the stack
+                ! of sections to look at later.
+                ! --> need fewest stack elements.
+                nstack = nstack + 1
+
+                ! With a stack_max of 50, we can sort arrays of length
+                ! 1125899906842624.  It is safe to say this will never be
+                ! exceeded, and so this test can be skipped.
+!                if (nstack > stack_max) call stop_all('qsort_int_64_list', "parameter stack_max too small")
+
+                if (hi - i + 1 >= j - lo) then
+                    stack(2,nstack) = hi
+                    stack(1,nstack) = i
+                    hi = j - 1
+                else
+                    stack(2,nstack) = j - 1
+                    stack(1,nstack) = lo
+                    lo = i
+                end if
+
+            end if
+        end do
+    contains
+
+        pure subroutine swap_sublist(s1,s2)
+
+            integer(int_64), intent(inout) :: s1(:), s2(:)
+            integer(int_64) :: tmp(ubound(s1,dim=1))
+
+            tmp = s1
+            s1 = s2
+            s2 = tmp
+
+        end subroutine swap_sublist
+
+    end subroutine qsort_int_64_list_trot
+
+    pure function compare_trot(f1, f2, f0, basis, nel) result (comp)
+
+        use basis_types, only: basis_t
+        use bit_utils, only: bit_str_cmp
+
+        integer :: comp
+        integer(i0), intent(in) :: f1(:), f2(:), f0(:)
+        type(basis_t), intent(in) :: basis
+        integer, intent(in) :: nel
+        integer :: count1(size(f1)), count2(size(f2))
+
+        if (earliest_unset(f1, nel, basis) > earliest_unset(f2, nel, basis)) then
+           comp = -1
+        else if (earliest_unset(f1, nel, basis) < earliest_unset(f2, nel, basis)) then
+           comp = +1
+        else 
+            count1 = count_unset(f1, f0, basis)
+            count2 = count_unset(f2, f0, basis)
+            if(count1(1) > count2(1)) then
+                comp = -1
+            else if(count1(1) < count2(1)) then
+                comp = +1
+            else 
+                comp = bit_str_cmp(f2,f1)
+            end if
+        end if
+   end function compare_trot
+
+   function list_sorted(list, list_len, f0, nel, basis) result(sorted)
+
+   use basis_types, only: basis_t
+
+   integer(i0), intent(in) :: list(:,:)
+   integer(i0), intent(in) :: f0(:)
+   type(basis_t), intent(in) :: basis
+   integer, intent(in) :: nel, list_len
+
+   integer :: comp, i
+   logical :: sorted
+ 
+   sorted = .true.
+
+   do i = 1, list_len-1
+      comp = compare_trot(list(:,i), list(:,i+1), f0 , basis, nel)
+      if (comp /= -1) then
+          sorted = .false.
+          exit
+      end if
+   end do
+  
+   end function list_sorted
+
+    subroutine add_info_str_trot(basis, f0, nel, f)
+
+        ! Sets bits within bit string to give excitation level at end of bit strings.
+        ! This routine sets ex level from provided reference.
+
+        use basis_types, only: basis_t
+
+        type(basis_t), intent(in) :: basis
+        integer(i0), intent(inout) :: f(:)
+        integer(i0), intent(in) :: f0(:)
+        integer, intent(in) :: nel
+
+        integer(i0) :: counter(basis%tot_string_len)
+
+        if (basis%info_string_len/=0) then
+
+            f(basis%bit_string_len+2) = earliest_unset(f, nel, basis)     
+            counter = count_unset(f,f0,basis)
+            f(basis%bit_string_len+1) = counter(1)
+
+        end if
+ 
+    end subroutine add_info_str_trot
+
+    subroutine regenerate_trot_info_psip_list(basis, nel, qs)
+
+        ! Regenerates excitation level information stored at start of bit string
+        ! within states in psip list. For use when restarting from a restart file
+        ! not containing this information.
+        ! Also sorts the list, as ordering will change.
+        ! Hashing only uses nbasis bits, so should be unaffected by the additional
+        ! information at the start of the bit string.
+        ! [todo] figure out a way to double check this is the case.
+
+        ! In:
+        !   basis: information on single-particle basis in use.
+        ! In/Out:
+        !   qmc_state: information on current state of calculation. We update and
+        !       reorder the bit strings within the psip list, using the reference
+        !       determinant bit string stored within qs%ref%f0.
+
+        use basis_types, only: basis_t
+        use qmc_data, only: qmc_state_t
+        use sort, only: qsort
+
+        type(basis_t), intent(in) :: basis
+        type(qmc_state_t), intent(inout) :: qs
+        integer, intent(in) :: nel
+
+        integer :: istate
+
+        do istate = 1, qs%psip_list%nstates
+            call add_info_str_trot(basis, qs%ref%f0, nel, qs%psip_list%states(:,istate))
+        end do
+
+        associate(pl=>qs%psip_list)
+             call qsort_psip_info_trot(pl%nstates, pl%states, pl%pops, pl%dat)
+        end associate
+
+    end subroutine regenerate_trot_info_psip_list
+
+    pure function bit_str_cmp_trot(b1, b2) result(cmp)
+
+        ! In:
+        !    b1(:), b2(:): bit string.
+        ! Returns:
+        !    0 if b1 and b2 are identical;
+        !    1 if the most significant non-identical element in b1 is bitwise
+        !      less than the corresponding element in b2;
+        !    -1 if the most significant non-identical element in b1 is bitwise
+        !      greater than the corresponding element in b2;
+
+        integer :: cmp
+        integer(i0), intent(in) :: b1(:), b2(:)
+
+        integer :: i
+
+        cmp = 0
+        do i = ubound(b1, dim=1), 1, -1
+            if (blt(b1(i),b2(i))) then
+                cmp = -1
+                exit
+            else if (bgt(b1(i),b2(i))) then
+                cmp = 1
+                exit
+            end if
+        end do
+
+    end function bit_str_cmp_trot
+
+    pure subroutine binary_search_i0_list_trot(list, item, istart, iend, hit, pos)
+
+        ! Find where an item resides in a list of such items.
+        ! Only elements between istart and iend are examined (use the
+        ! array boundaries in the worst case).
+        !
+        ! In:
+        !    list: a sorted i0 integer 2D list/array; the first dimension
+        !        corresponds to 1D arrays to compare to item.
+        !    item: an i0 integer 1D list/array.
+        !    istart: first position to examine in the list.
+        !    iend: last position to examine in the list.
+        ! Out:
+        !    hit: true if found item in list.
+        !    pos: the position corresponding to item in list.
+        !        If hit is true, then the element in this position is the same
+        !        as item, else this is where item should go to keep the list
+        !        sorted.
+
+        use const, only: i0
+
+        integer(i0), intent(in) :: list(:,:), item(:)
+        integer, intent(in) :: istart, iend
+        logical, intent(out) :: hit
+        integer, intent(out) :: pos
+
+        integer :: hi, lo, compare
+
+        if (istart > iend) then
+
+            ! Already know the element has to be appended to the list.
+            ! This should only occur if istart = iend + 1.
+            pos = istart
+            hit = .false.
+
+        else
+
+            ! Search range.
+            lo = istart
+            hi = iend
+
+            ! Assume item doesn't exist in the list initially.
+            hit = .false.
+
+            do while (hi /= lo)
+                ! Narrow the search range down in steps.
+
+                ! Mid-point.
+                ! We shift one of the search limits to be the mid-point.
+                ! The successive dividing the search range by 2 gives a O[log N]
+                ! search algorithm.
+                pos = (hi+lo)/2
+
+                !compare = bit_str_cmp_trot(list(:,pos), item)
+                compare = bit_str_i0_cmp_trot(list(:,pos), item)
+                select case(compare)
+                case (0)
+                    ! hit!
+                    hit = .true.
+                    exit
+                case(1)
+                    ! list(:,pos) is "smaller" than item.
+                    ! The lowest position item can take is hence pos + 1 (i.e. if
+                    ! item is greater than pos by smaller than pos + 1).
+                    lo = pos + 1
+                case(-1)
+                    ! list(:,pos) is "greater" than item.
+                    ! The highest position item can take is hence pos (i.e. if item is
+                    ! smaller than pos but greater than pos - 1).  This is why
+                    ! we differ slightly from a standard binary search (where lo
+                    ! is set to be pos+1 and hi to be pos-1 accordingly), as
+                    ! a standard binary search assumes that the element you are
+                    ! searching for actually appears in the array being
+                    ! searched...
+                    hi = pos
+                end select
+
+            end do
+
+            ! If hi == lo, then we have narrowed the search down to one position but
+            ! not checked if that position is the item we're hunting for.
+            ! Because list can expand (i.e. we might be searching for an
+            ! element which doesn't exist yet) the binary search can find either
+            ! the element before or after where item should be placed.
+            if (hi == lo) then
+                !compare = bit_str_cmp_trot(list(:,hi), item)
+                compare = bit_str_i0_cmp_trot(list(:,hi), item)
+                select case(compare)
+                case (0)
+                    ! hit!
+                    hit = .true.
+                    pos = hi
+                case(1)
+                    ! list(:,pos) is "smaller" than item.
+                    ! item should be placed in the next slot.
+                    pos = hi + 1
+                case(-1)
+                    ! list(:,pos) is "greater" than item.
+                    ! item should ber placed here.
+                    pos = hi
+                end select
+            end if
+
+        end if
+
+    end subroutine binary_search_i0_list_trot
+
+    pure subroutine qsort_psip_info_trot(nstates, states, pops, dat)
+
+        ! Sort a set of psip information (states, populations and data) in order according
+        ! to the state labels.
+
+        ! states(:,i) is regarded as greater than states(:,j) if the first
+        ! non-identical element between states(:,i) and states(:,j) is greater in
+        ! states(:,i).
+
+        ! In:
+        !    nstates: number of occupied states.
+        ! In/Out:
+        !    states: 2D array of i0 integers containing the state label for each occupied state.
+        !        Sorted on output.
+        !    pops, dat: population and data arrays for each state.  Sorted by states on output.
+
+        ! Note: the size of the first dimension of states is immaterial, as we do a comparison
+        ! based on the entire slice.  The second dimensions of pops, dat and states must be >= nstates.
+
+        use const, only: int_p, i0, p
+        use bit_utils, only: operator(.bitstrge.), operator(.bitstrgt.)
+
+        integer, intent(in) :: nstates
+        integer(i0), intent(inout) :: states(:,:)
+        integer(int_p), intent(inout) :: pops(:,:)
+        real(p), intent(inout) :: dat(:,:)
+
+        ! Threshold.  When a substates gets to this length, switch to using
+        ! insertion sort to sort the substates.
+        integer, parameter :: switch_threshold = 7
+
+        ! sort needs auxiliary storage of length 2*log_2(n).
+        integer, parameter :: stack_max = 50
+
+        integer :: pivot, lo, hi, i, j
+        integer(i0) :: tmp_state(ubound(states,dim=1))
+        integer(int_p) :: tmp_pop(ubound(pops,dim=1))
+        real(p) :: tmp_dat(ubound(dat,dim=1))
+
+        ! Stack.  This is the auxilliary memory required by quicksort.
+        integer :: stack(2,stack_max), nstack
+
+        hi = nstates
+
+        nstack = 0
+        lo = 1
+
+        do
+            ! If the section/partition we are looking at is smaller than
+            ! switch_threshold then perform an insertion sort.
+            if (hi - lo < switch_threshold) then
+                do j = lo + 1, hi
+                    tmp_state = states(:,j)
+                    tmp_pop = pops(:,j)
+                    tmp_dat = dat(:,j)
+                    do i = j - 1, 1, -1
+                        !if (.not.(tmp_state .bitstrgt. states(:,i))) exit
+                        if (.not.(tmp_state .bitstrgtt. states(:,i))) exit
+                        states(:,i+1) = states(:,i)
+                        pops(:,i+1) = pops(:,i)
+                        dat(:,i+1) = dat(:,i)
+                    end do
+                    states(:,i+1) = tmp_state
+                    pops(:,i+1) = tmp_pop
+                    dat(:,i+1) = tmp_dat
+                end do
+
+                if (nstack == 0) exit
+                hi = stack(2,nstack)
+                lo = stack(1,nstack)
+                nstack = nstack - 1
+
+            else
+                ! Otherwise start partitioning with quicksort.
+
+                ! Pick the pivot element to be the median of states(:,lo), states(:,hi)
+                ! and states(:,(lo+hi)/2).
+                ! This largely overcomes a major problem with quicksort, where it
+                ! degrades if the pivot is always the smallest element.
+                pivot = (lo + hi)/2
+                call swap_states(states(:,pivot), pops(:,pivot), dat(:,pivot), states(:,lo+1), pops(:,lo+1), dat(:,lo+1))
+                !if (.not.(states(:,lo) .bitstrge. states(:,hi))) then
+                if (.not.(states(:,lo) .bitstrget. states(:,hi))) then
+                    call swap_states(states(:,lo), pops(:,lo), dat(:,lo), states(:,hi), pops(:,hi), dat(:,hi))
+                end if
+                !if (.not.(states(:,lo+1) .bitstrge. states(:,hi))) then
+                if (.not.(states(:,lo+1) .bitstrget. states(:,hi))) then
+                    call swap_states(states(:,lo+1), pops(:,lo+1), dat(:,lo+1), states(:,hi), pops(:,hi), dat(:,hi))
+                end if
+                !if (.not.(states(:,lo) .bitstrge. states(:,lo+1))) then
+                if (.not.(states(:,lo) .bitstrget. states(:,lo+1))) then
+                    call swap_states(states(:,lo), pops(:,lo), dat(:,lo), states(:,lo+1), pops(:,lo+1), dat(:,lo+1))
+                end if
+
+                i = lo + 1
+                j = hi
+                tmp_state = states(:,lo+1) ! a is the pivot value
+                tmp_pop = pops(:,lo+1)
+                tmp_dat = dat(:,lo+1)
+                do while (.true.)
+                    ! Scan down states to find element > a.
+                    i = i + 1
+                    !do while (.not.(tmp_state .bitstrge. states(:,i)))
+                    do while (.not.(tmp_state .bitstrget. states(:,i)))
+                        i = i + 1
+                    end do
+
+                    ! Scan down states to find element < a.
+                    j = j - 1
+                    !do while (.not.(states(:,j) .bitstrge. tmp_state))
+                    do while (.not.(states(:,j) .bitstrget. tmp_state))
+                        j = j - 1
+                    end do
+
+                    ! When the pointers crossed, partitioning is complete.
+                    if (j < i) exit
+
+                    ! Swap the elements, so that all elements < a end up
+                    ! in lower indexed variables.
+                    call swap_states(states(:,i), pops(:,i), dat(:,i), states(:,j), pops(:,j), dat(:,j))
+                end do
+
+                ! Insert partitioning element
+                states(:,lo + 1) = states(:,j)
+                pops(:,lo + 1) = pops(:,j)
+                dat(:,lo + 1) = dat(:,j)
+                states(:,j) = tmp_state
+                pops(:,j) = tmp_pop
+                dat(:,j) = tmp_dat
+
+                ! Push the larger of the partitioned sections onto the stack
+                ! of sections to look at later.
+                ! --> need fewest stack elements.
+                nstack = nstack + 1
+
+                ! With a stack_max of 50, we can sort arrays of length
+                ! 1125899906842624.  It is safe to say this will never be
+                ! exceeded, and so this test can be skipped.
+!                if (nstack > stack_max) call stop_all('qsort_int_64_states', "parameter stack_max too small")
+
+                if (hi - i + 1 >= j - lo) then
+                    stack(2,nstack) = hi
+                    stack(1,nstack) = i
+                    hi = j - 1
+                else
+                    stack(2,nstack) = j - 1
+                    stack(1,nstack) = lo
+                    lo = i
+                end if
+
+            end if
+        end do
+
+    contains
+
+        pure subroutine swap_states(s1,p1,d1,s2,p2,d2)
+
+            integer(i0), intent(inout) :: s1(:), s2(:)
+            integer(int_p), intent(inout) :: p1(:), p2(:)
+            real(p), intent(inout) :: d1(:), d2(:)
+            integer(i0) :: tmp_state(ubound(s1,dim=1))
+            integer(int_p) :: tmp_pop(ubound(p1,dim=1))
+            real(p) :: tmp_dat(ubound(d1,dim=1))
+
+            tmp_state = s1
+            s1 = s2
+            s2 = tmp_state
+
+            tmp_pop = p1
+            p1 = p2
+            p2 = tmp_pop
+
+            tmp_dat = d1
+            d1 = d2
+            d2 = tmp_dat
+
+        end subroutine swap_states
+
+    end subroutine qsort_psip_info_trot
+
+      subroutine annihilate_spawn_trot(spawn, start, endp)
+
+        ! Annihilate the list of spawned particles: ie sum the populations of
+        ! particles residing on each location and remove any locations which
+        ! have a zero total.
+
+        ! NOTE: assume the list of spawned particles is sorted by the
+        ! identifying bit string.
+
+        ! In/Out:
+        !    spawn: spawn_t object containing spawned particles.  On output,
+        !        this is compressed so that each location occurs (at most) once
+        !        and locations with a total of zero spawned particles (ie all
+        !        particles cancel out) are removed.
+        ! In:
+        !    start (optional): Starting point in spawn_t object we search from.
+        !    endp (optional): Search spawn_t object until we reach endp.
+
+        use spawn_data, only: spawn_t
+        use const, only: int_s
+
+        type(spawn_t), intent(inout) :: spawn
+        integer, intent(in), optional :: start, endp
+
+        integer :: islot, k, upper_bound
+        integer, parameter :: thread_id = 0
+
+        ! The spawned list is already sorted, so annihilation amounts to
+        ! looping through the list and adding consective populations together if
+        ! they're on the same location.
+
+        ! islot is the current element in the spawned lists.
+        ! k is the current element which is being compressed into islot (if
+        ! k and islot refer to the same determinants).
+
+        if (present(start)) then
+            islot = start
+            k = start
+        else
+            islot = 1
+            k = 1
+        end if
+
+        if (present(endp)) then
+            upper_bound = endp
+        else
+            upper_bound = spawn%head(thread_id,0)
+        end if
+
+        self_annihilate: do
+            ! Set the current free slot to be the next unique spawned location.
+            spawn%sdata(:,islot) = spawn%sdata(:,k)
+            print*, spawn%sdata(:, islot)
+            compress: do
+                k = k + 1
+                if (k > upper_bound) exit self_annihilate
+                if (all(spawn%sdata(:spawn%bit_str_len,k) == spawn%sdata(:spawn%bit_str_len,islot))) then
+                    ! Add the populations of the subsequent identical particles.
+                    spawn%sdata(spawn%bit_str_len+1:,islot) =    &
+                         spawn%sdata(spawn%bit_str_len+1:,islot) &
+                       + spawn%sdata(spawn%bit_str_len+1:,k)
+                else
+                    ! Found the next unique spawned particle.
+                    exit compress
+                end if
+            end do compress
+            ! All done?
+            if (islot == upper_bound) exit self_annihilate
+            ! go to the next slot if the current determinant wasn't completed
+            ! annihilated.
+            if (any(spawn%sdata(spawn%bit_str_len+1:,islot) /= 0_int_s)) islot = islot + 1
+        end do self_annihilate
+
+        ! We didn't check if the population on the last determinant is
+        ! completely annihilated or not.
+        if (all(spawn%sdata(spawn%bit_str_len+1:,islot) == 0_int_s)) islot = islot - 1
+
+        ! update spawn%head(thread_id,0)
+        spawn%head(thread_id,0) = islot
+
+    end subroutine annihilate_spawn_trot
+
+    pure function bit_str_i0_ge_trot(b1, b2) result(ge)
+
+        ! In:
+        !    b1(:), b2(:) bit string.
+        ! Returns:
+        !    True if all(b1 == b2) or the most significant element of b1 which
+        !    is not equal to the corresponding element of b2 is bitwise greater
+        !    than the corresponding element in b2.
+
+        logical :: ge
+        integer(i0), intent(in) :: b1(:), b2(:)
+
+        integer :: i
+
+        ge = .true.
+        do i = ubound(b1,dim=1), 1, -1
+            if (i > 1) then
+                if (bgt(b1(i),b2(i))) then
+                    ge = .true.
+                    exit
+                else if (blt(b1(i),b2(i))) then
+                    ge = .false.
+                    exit
+                end if
+            else
+                if (bgt(b1(i),b2(i))) then
+                    ge = .false.
+                    exit
+                else if (blt(b1(i),b2(i))) then
+                    ge = .true.
+                    exit
+                end if
+            end if
+        end do
+
+    end function bit_str_i0_ge_trot
+
+    pure function bit_str_i0_gt_trot(b1, b2) result(gt)
+
+        ! In:
+        !    b1(:), b2(:) bit string.
+        ! Returns:
+        !    True if the most significant element of b1 which is not equal to
+        !    the corresponding element of b2 is bitwise greater than the
+        !    corresponding element in b2.
+
+        logical :: gt
+        integer(i0), intent(in) :: b1(:), b2(:)
+
+        integer :: i
+
+        gt = .false.
+        do i = ubound(b1,dim=1), 1, -1
+            if (i > 1) then
+                if (bgt(b1(i),b2(i))) then
+                    gt = .true.
+                    exit
+                else if (blt(b1(i),b2(i))) then
+                    gt = .false.
+                    exit
+                end if
+            else
+                if (bgt(b1(i),b2(i))) then
+                    gt = .false.
+                    exit
+                else if (blt(b1(i),b2(i))) then
+                    gt = .true.
+                    exit
+                end if
+            end if
+        end do
+
+    end function bit_str_i0_gt_trot
+
+    pure function bit_str_i0_cmp_trot(b1, b2) result(cmp)
+
+        ! In:
+        !    b1(:), b2(:): bit string.
+        ! Returns:
+        !    0 if b1 and b2 are identical;
+        !    1 if the most significant non-identical element in b1 is bitwise
+        !      less than the corresponding element in b2;
+        !    -1 if the most significant non-identical element in b1 is bitwise
+        !      greater than the corresponding element in b2;
+
+        integer :: cmp
+        integer(i0), intent(in) :: b1(:), b2(:)
+
+        integer :: i
+
+        cmp = 0
+        do i = ubound(b1, dim=1), 1, -1
+            if (i>1) then
+                if (blt(b1(i),b2(i))) then
+                    cmp = -1
+                    exit
+                else if (bgt(b1(i),b2(i))) then
+                    cmp = 1
+                    exit
+                end if
+            else 
+                if (blt(b1(i),b2(i))) then
+                    cmp = 1
+                    exit
+                else if (bgt(b1(i),b2(i))) then
+                    cmp = -1
+                    exit
+                end if
+            end if
+        end do
+
+    end function bit_str_i0_cmp_trot
 end module

@@ -438,7 +438,7 @@ contains
         if (sys%read_in%comp .and. uccmc_in%density_matrices) &
                 call stop_all(this, 'RDMS not yet implemented for complex CCMC.')
 
-        if (sys%basis%info_string_len /= 0) call stop_all(this, &
+        if (.not. (uccmc_in%trot) .and. sys%basis%info_string_len /= 0) call stop_all(this, &
             'Additional space allocated in bit strings for no reason. Something has gone wrong.')
 
         if ((uccmc_in%linked) .and. .not.((qmc_in%excit_gen == excit_gen_no_renorm) .or. &
