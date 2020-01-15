@@ -4,14 +4,6 @@ use const, only: i0, int_p, int_64, p, dp, debug
 
 implicit none
 
-interface operator(.bitstrget.)
-    module procedure bit_str_i0_ge_trot
-end interface
-
-interface operator(.bitstrgtt.)
-    module procedure bit_str_i0_gt_trot
-end interface
-
 contains
 
     subroutine do_trot_uccmc(sys, qmc_in, uccmc_in, restart_in, load_bal_in, reference_in, &
@@ -2293,8 +2285,7 @@ contains
                 do j = lo + 1, hi
                     tmp = list(:,j)
                     do i = j - 1, 1, -1
-                        !if (.not.(tmp(1:ns) .bitstrgt. list(1:ns,i))) exit
-                        if (.not.(tmp(1:ns) .bitstrgtt. list(1:ns,i))) exit
+                        if (.not.(tmp(1:ns) .bitstrgt. list(1:ns,i))) exit
                         list(:,i+1) = list(:,i)
                     end do
                     list(:,i+1) = tmp
@@ -2314,16 +2305,13 @@ contains
                 ! degrades if the pivot is always the smallest element.
                 pivot = (lo + hi)/2
                 call swap_sublist(list(:,pivot), list(:,lo + 1))
-                !if (.not.(list(1:ns,lo) .bitstrge. list(1:ns,hi))) then
-                if (.not.(list(1:ns,lo) .bitstrget. list(1:ns,hi))) then
+                if (.not.(list(1:ns,lo) .bitstrge. list(1:ns,hi))) then
                     call swap_sublist(list(:,lo), list(:,hi))
                 end if
-                !if (.not.(list(1:ns,lo+1) .bitstrge. list(1:ns,hi))) then
-                if (.not.(list(1:ns,lo+1) .bitstrget. list(1:ns,hi))) then
+                if (.not.(list(1:ns,lo+1) .bitstrge. list(1:ns,hi))) then
                     call swap_sublist(list(:,lo+1), list(:,hi))
                 end if
-                !if (.not.(list(1:ns,lo) .bitstrge. list(1:ns,lo+1))) then
-                if (.not.(list(1:ns,lo) .bitstrget. list(1:ns,lo+1))) then
+                if (.not.(list(1:ns,lo) .bitstrge. list(1:ns,lo+1))) then
                     call swap_sublist(list(:,lo), list(:,lo+1))
                 end if
 
@@ -2333,15 +2321,13 @@ contains
                 do while (.true.)
                     ! Scan down list to find element > a.
                     i = i + 1
-                    !do while (.not.(tmp(1:ns) .bitstrge. list(1:ns,i)))
-                    do while (.not.(tmp(1:ns) .bitstrget. list(1:ns,i)))
+                    do while (.not.(tmp(1:ns) .bitstrge. list(1:ns,i)))
                         i = i + 1
                     end do
 
                     ! Scan down list to find element < a.
                     j = j - 1
-                    !do while (.not.(list(1:ns,j) .bitstrge. tmp(1:ns)))
-                    do while (.not.(list(1:ns,j) .bitstrget. tmp(1:ns)))
+                    do while (.not.(list(1:ns,j) .bitstrge. tmp(1:ns)))
                         j = j - 1
                     end do
 
@@ -2747,8 +2733,7 @@ contains
                 ! search algorithm.
                 pos = (hi+lo)/2
 
-                !compare = bit_str_cmp_trot(list(:,pos), item)
-                compare = bit_str_i0_cmp_trot(list(:,pos), item)
+                compare = bit_str_cmp_trot(list(:,pos), item)
                 select case(compare)
                 case (0)
                     ! hit!
@@ -2779,8 +2764,7 @@ contains
             ! element which doesn't exist yet) the binary search can find either
             ! the element before or after where item should be placed.
             if (hi == lo) then
-                !compare = bit_str_cmp_trot(list(:,hi), item)
-                compare = bit_str_i0_cmp_trot(list(:,hi), item)
+                compare = bit_str_cmp_trot(list(:,hi), item)
                 select case(compare)
                 case (0)
                     ! hit!
@@ -2857,8 +2841,7 @@ contains
                     tmp_pop = pops(:,j)
                     tmp_dat = dat(:,j)
                     do i = j - 1, 1, -1
-                        !if (.not.(tmp_state .bitstrgt. states(:,i))) exit
-                        if (.not.(tmp_state .bitstrgtt. states(:,i))) exit
+                        if (.not.(tmp_state .bitstrgt. states(:,i))) exit
                         states(:,i+1) = states(:,i)
                         pops(:,i+1) = pops(:,i)
                         dat(:,i+1) = dat(:,i)
@@ -2882,16 +2865,13 @@ contains
                 ! degrades if the pivot is always the smallest element.
                 pivot = (lo + hi)/2
                 call swap_states(states(:,pivot), pops(:,pivot), dat(:,pivot), states(:,lo+1), pops(:,lo+1), dat(:,lo+1))
-                !if (.not.(states(:,lo) .bitstrge. states(:,hi))) then
-                if (.not.(states(:,lo) .bitstrget. states(:,hi))) then
+                if (.not.(states(:,lo) .bitstrge. states(:,hi))) then
                     call swap_states(states(:,lo), pops(:,lo), dat(:,lo), states(:,hi), pops(:,hi), dat(:,hi))
                 end if
-                !if (.not.(states(:,lo+1) .bitstrge. states(:,hi))) then
-                if (.not.(states(:,lo+1) .bitstrget. states(:,hi))) then
+                if (.not.(states(:,lo+1) .bitstrge. states(:,hi))) then
                     call swap_states(states(:,lo+1), pops(:,lo+1), dat(:,lo+1), states(:,hi), pops(:,hi), dat(:,hi))
                 end if
-                !if (.not.(states(:,lo) .bitstrge. states(:,lo+1))) then
-                if (.not.(states(:,lo) .bitstrget. states(:,lo+1))) then
+                if (.not.(states(:,lo) .bitstrge. states(:,lo+1))) then
                     call swap_states(states(:,lo), pops(:,lo), dat(:,lo), states(:,lo+1), pops(:,lo+1), dat(:,lo+1))
                 end if
 
@@ -2903,15 +2883,13 @@ contains
                 do while (.true.)
                     ! Scan down states to find element > a.
                     i = i + 1
-                    !do while (.not.(tmp_state .bitstrge. states(:,i)))
-                    do while (.not.(tmp_state .bitstrget. states(:,i)))
+                    do while (.not.(tmp_state .bitstrge. states(:,i)))
                         i = i + 1
                     end do
 
                     ! Scan down states to find element < a.
                     j = j - 1
-                    !do while (.not.(states(:,j) .bitstrge. tmp_state))
-                    do while (.not.(states(:,j) .bitstrget. tmp_state))
+                    do while (.not.(states(:,j) .bitstrge. tmp_state))
                         j = j - 1
                     end do
 
@@ -3063,116 +3041,4 @@ contains
 
     end subroutine annihilate_spawn_trot
 
-    pure function bit_str_i0_ge_trot(b1, b2) result(ge)
-
-        ! In:
-        !    b1(:), b2(:) bit string.
-        ! Returns:
-        !    True if all(b1 == b2) or the most significant element of b1 which
-        !    is not equal to the corresponding element of b2 is bitwise greater
-        !    than the corresponding element in b2.
-
-        logical :: ge
-        integer(i0), intent(in) :: b1(:), b2(:)
-
-        integer :: i
-
-        ge = .true.
-        do i = ubound(b1,dim=1), 1, -1
-            if (i > 1) then
-                if (bgt(b1(i),b2(i))) then
-                    ge = .true.
-                    exit
-                else if (blt(b1(i),b2(i))) then
-                    ge = .false.
-                    exit
-                end if
-            else
-                if (bgt(b1(i),b2(i))) then
-                    ge = .false.
-                    exit
-                else if (blt(b1(i),b2(i))) then
-                    ge = .true.
-                    exit
-                end if
-            end if
-        end do
-
-    end function bit_str_i0_ge_trot
-
-    pure function bit_str_i0_gt_trot(b1, b2) result(gt)
-
-        ! In:
-        !    b1(:), b2(:) bit string.
-        ! Returns:
-        !    True if the most significant element of b1 which is not equal to
-        !    the corresponding element of b2 is bitwise greater than the
-        !    corresponding element in b2.
-
-        logical :: gt
-        integer(i0), intent(in) :: b1(:), b2(:)
-
-        integer :: i
-
-        gt = .false.
-        do i = ubound(b1,dim=1), 1, -1
-            if (i > 1) then
-                if (bgt(b1(i),b2(i))) then
-                    gt = .true.
-                    exit
-                else if (blt(b1(i),b2(i))) then
-                    gt = .false.
-                    exit
-                end if
-            else
-                if (bgt(b1(i),b2(i))) then
-                    gt = .false.
-                    exit
-                else if (blt(b1(i),b2(i))) then
-                    gt = .true.
-                    exit
-                end if
-            end if
-        end do
-
-    end function bit_str_i0_gt_trot
-
-    pure function bit_str_i0_cmp_trot(b1, b2) result(cmp)
-
-        ! In:
-        !    b1(:), b2(:): bit string.
-        ! Returns:
-        !    0 if b1 and b2 are identical;
-        !    1 if the most significant non-identical element in b1 is bitwise
-        !      less than the corresponding element in b2;
-        !    -1 if the most significant non-identical element in b1 is bitwise
-        !      greater than the corresponding element in b2;
-
-        integer :: cmp
-        integer(i0), intent(in) :: b1(:), b2(:)
-
-        integer :: i
-
-        cmp = 0
-        do i = ubound(b1, dim=1), 1, -1
-            if (i>1) then
-                if (blt(b1(i),b2(i))) then
-                    cmp = -1
-                    exit
-                else if (bgt(b1(i),b2(i))) then
-                    cmp = 1
-                    exit
-                end if
-            else 
-                if (blt(b1(i),b2(i))) then
-                    cmp = 1
-                    exit
-                else if (bgt(b1(i),b2(i))) then
-                    cmp = -1
-                    exit
-                end if
-            end if
-        end do
-
-    end function bit_str_i0_cmp_trot
 end module
