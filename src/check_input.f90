@@ -430,21 +430,17 @@ contains
             call stop_all(this, "cluster_multispawn_threshold must be positive")
         end if
 
-        if (uccmc_in%density_matrices .and. sys%system /= read_in) then
-            call stop_all(this, "CCMC density matrices not implemented for this system type.")
+        if (uccmc_in%density_matrices) then
+            call stop_all(this, "UCCMC density matrices not implemented for this system type.")
         end if
 
-        if (sys%read_in%comp .and. uccmc_in%linked) call stop_all(this, 'Linked complex CCMC not yet implemented')
-        if (sys%read_in%comp .and. uccmc_in%density_matrices) &
-                call stop_all(this, 'RDMS not yet implemented for complex CCMC.')
+        if (sys%read_in%comp) call stop_all(this, 'Complex UCCMC not yet implemented')
 
         if (.not. (uccmc_in%trot) .and. sys%basis%info_string_len /= 0) call stop_all(this, &
             'Additional space allocated in bit strings for no reason. Something has gone wrong.')
 
-        if ((uccmc_in%linked) .and. .not.((qmc_in%excit_gen == excit_gen_no_renorm) .or. &
-                                         (qmc_in%excit_gen == excit_gen_renorm))) then
-            call stop_all(this, 'Excitation Generators other than no_renorm and renorm not yet implemented for linked CCMC.')
-        end if
+        if (uccmc_in%linked) call stop_all(this, &
+            'Linked UCCMC has not yet been implemented.')
 
     end subroutine check_uccmc_opts
 

@@ -158,6 +158,7 @@ contains
         logical,  intent(out) :: allowed
 
         integer(i0) :: excitor_loc(basis%tot_string_len)
+        integer(i0) :: f0_loc(basis%tot_string_len)
 
         integer :: ibasis, ibit
         integer(i0) :: excitor_excitation(basis%tot_string_len)
@@ -169,16 +170,18 @@ contains
         integer(i0) :: permute_operators(basis%tot_string_len)
 
         excitor_loc = excitor
+        f0_loc = f0
         call reset_extra_info_bit_string(basis, excitor_loc)
+        call reset_extra_info_bit_string(basis, f0_loc)
 
         ! Apply excitor to the cluster of excitors.
 
         ! orbitals involved in excitation from reference
-        excitor_excitation = ieor(f0, excitor_loc)
-        cluster_excitation = ieor(f0, cluster_excitor)
+        excitor_excitation = ieor(f0_loc, excitor_loc)
+        cluster_excitation = ieor(f0_loc, cluster_excitor)
         ! annihilation operators (relative to the reference)
-        excitor_annihilation = iand(excitor_excitation, f0)
-        cluster_annihilation = iand(cluster_excitation, f0)
+        excitor_annihilation = iand(excitor_excitation, f0_loc)
+        cluster_annihilation = iand(cluster_excitation, f0_loc)
         ! creation operators (relative to the reference)
         excitor_creation = iand(excitor_excitation, excitor_loc)
         cluster_creation = iand(cluster_excitation, cluster_excitor)

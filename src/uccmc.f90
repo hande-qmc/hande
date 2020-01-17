@@ -17,13 +17,14 @@ contains
 
         ! In:
         !    sys: system being studied.
+        !    qmc_in: input options relating to QMC methods.
         !    uccmc_in: input options relating to UCCMC.
         !    restart_in: input options for HDF5 restart files.
+        !    load_bal_in: input options for load balancing.
         !    reference_in: current reference determinant.  If not set (ie
         !       components allocated) then a best guess is made based upon the
         !       desired spin/symmetry.
-        !    load_bal_in: input options for load balancing.
-        !    qmc_in: input options relating to QMC methods.
+        !    logging_in: input options for debug logs.
         !    io_unit: input unit to write all output to.
         ! In/Out:
         !    qmc_state_restart (optional): if present, restart from a previous fciqmc calculation.
@@ -43,7 +44,7 @@ contains
                                  write_bloom_report, bloom_stats_warning, update_bloom_threshold_prop
         use ccmc_data
         use ccmc_selection, only: create_null_cluster
-        use ccmc_selection, only: init_selection_data, update_selection_probabilities, set_cluster_selections, &
+        use ccmc_selection, only: init_selection_data, update_selection_probabilities, &
                                   init_amp_psel_accumulation
         use ccmc_utils, only: get_D0_info, init_contrib, dealloc_contrib, cumulative_population, & 
                               regenerate_ex_levels_psip_list
@@ -380,8 +381,7 @@ contains
 
                 !Initially for UCC we will simply use a modification of the original algorithm.
 
-                call ucc_set_cluster_selections(selection_data, qs%estimators(1)%nattempts, min_cluster_size, max_cluster_size, &
-                                            D0_normalisation, tot_abs_real_pop, qs%psip_list%nstates)
+                call ucc_set_cluster_selections(selection_data, qs%estimators(1)%nattempts, min_cluster_size)
                 call zero_ps_stats(ps_stats, qs%excit_gen_data%p_single_double%rep_accum%overflow_loc)
 
                 ! OpenMP chunk size determined completely empirically from a single
@@ -455,7 +455,7 @@ contains
                                             sum_sp_eigenvalues_occ_list(sys, contrib(it)%cdet%occ_list) - qs%ref%fock_sum
 
                         call do_uccmc_accumulation(sys, qs, contrib(it)%cdet, contrib(it)%cluster, logging_info, &
-                                                    D0_population_cycle, proj_energy_cycle, D0_population_ucc_cycle,uccmc_in, ref_det, rdm, selection_data)
+                                                    D0_population_cycle, proj_energy_cycle,uccmc_in, ref_det, rdm, selection_data, D0_population_ucc_cycle)
 
                         call do_stochastic_uccmc_propagation(rng(it), sys, qs, &
                                                                 uccmc_in, logging_info, ms_stats(it), bloom_stats, &
@@ -578,9 +578,17 @@ contains
 
 
         end do
-        print*, 'end coeffs'
-        print*, time_avg_psip_list%states(1,:qs%psip_list%nstates)
-        print*, time_avg_psip_list%pops(1,:qs%psip_list%nstates)
+
+        if (parent) write (io_unit,'()')
+
+        if (parent) then
+            write (io_unit, '(1X, "Time-averaged cluster populations",/)')
+            do i = 1, time_avg_psip_list%nstates
+                call write_qmc_var(io_unit, time_avg_psip_list%states(1,i))
+                call write_qmc_var(io_unit, time_avg_psip_list%pops(1,i))
+                write (io_unit,'()')
+            end do
+        end if
 
         call dSFMT_t_to_dSFMT_state_t(rng(0), qs%rng_state)
 
@@ -646,18 +654,12 @@ contains
     
     end subroutine do_uccmc
 
-    subroutine ucc_set_cluster_selections(selection_data, nattempts, min_cluster_size, max_size, D0_normalisation, tot_abs_pop, &
-                                    nstates)
+    subroutine ucc_set_cluster_selections(selection_data, nattempts, min_cluster_size)
 
         ! Function to set total number of selections of different cluster
         ! types within CCMC. This effectively controls the relative sampling
         ! of different clusters within the CC expansion.
 
-        ! In:
-        !   max_size: maximum cluster size we need to select.
-        !   nstates: total number of occupied states within calculation.
-        !   D0_normalisation: total population on the reference this iteration.
-        !   tot_abs_pop: sum of absolute excip populations on all excitors.
         ! In/Out:
         !   selection_data: derived type containing information on various aspects
         !       of cluster selection.
@@ -674,9 +676,6 @@ contains
         integer(int_64), intent(inout) :: nattempts
         integer, intent(out) :: min_cluster_size
         integer(int_64) :: nselections
-        integer, intent(in) :: max_size, nstates
-        complex(p), intent(in) :: D0_normalisation
-        real(p), intent(in) :: tot_abs_pop
 
         min_cluster_size = 0
         selection_data%nD0_select = 0 ! instead of this number of deterministic selections, these are chosen stochastically
@@ -707,7 +706,6 @@ contains
         !        the Hilbert space.
         !    nattempts: the number of times (on this processor) a random cluster
         !        of excitors is generated in the current timestep.
-        !    linked_ccmc: if true then only sample linked clusters.
         !    normalisation: intermediate normalisation factor, N_0, where we use the
         !       wavefunction ansatz |\Psi_{CC}> = N_0 e^{T/N_0} | D_0 >.
         !    initiator_pop: the population above which a determinant is an initiator.
@@ -836,6 +834,7 @@ contains
             cluster%pselect = cluster%pselect*(1.0_p - psize)
         end if
 
+       
         if(cluster%nexcitors>0) then
               allocate(deexcitation(cluster%nexcitors))
               deexcitation(:) = .false.
@@ -884,16 +883,21 @@ contains
                 ! Select a position in the excitors list.
                 pop(i) = get_rand_close_open(rng)*tot_excip_pop
                 rand = get_rand_close_open(rng)
+                !Decide if this is to be an excitation or deexcitation operator
                 if(i > 1 .and. rand > 0.5) then
                    deexcitation(i) = .true.
                    deexcit_count = deexcit_count + 1
                 end if
             end do
+            !For the sign of the cluster population we are interested only in the parity of
+            !the number of deexcitation operators.
             if (mod(deexcit_count,2)==1) then
                deexcit_count = -1
             else
                deexcit_count = 1
             end if
+            !There are 2^(n-1) possible arrangements of excitation/deexcitation operators for
+            ! a given cluster, so the probability of selecting one must be divided by this.
             cluster%pselect = cluster%pselect/(2**(cluster%nexcitors-1))
             call insert_sort(pop(:cluster%nexcitors))
             prev_pos = 1
@@ -1058,6 +1062,9 @@ contains
         ! orbitals involved in excitation from reference
         excitor_excitation = ieor(f0, excitor_loc)
         cluster_excitation = ieor(f0, cluster_excitor)
+
+        ! Annihilation/creation operators are reversed between excitation/deexcitation operators,
+        ! so they must be found appropriately
         ! annihilation operators (relative to the reference)
         if (conjugate) then
             excitor_annihilation = iand(excitor_excitation, excitor_loc)
@@ -1279,7 +1286,7 @@ contains
     end subroutine ucc_cumulative_population
 
     subroutine do_uccmc_accumulation(sys, qs, cdet, cluster, logging_info, D0_population_cycle, proj_energy_cycle, &
-                                    D0_population_ucc_cycle, uccmc_in, ref_det, rdm, selection_data)
+                                     uccmc_in, ref_det, rdm, selection_data, D0_population_ucc_cycle)
 
 
 
@@ -1314,6 +1321,7 @@ contains
         use hamiltonian_data, only: hmatel_t
         use replica_rdm, only: update_rdm
         use logging, only: logging_t
+        use proc_pointers, only: update_proj_energy_ptr
 
         type(sys_t), intent(in) :: sys
         type(qmc_state_t), intent(in) :: qs
@@ -1322,7 +1330,7 @@ contains
         type(cluster_t), intent(in) :: cluster
         type(logging_t), intent(in) :: logging_info
         complex(p), intent(inout) :: D0_population_cycle, proj_energy_cycle
-        real(p), intent(inout) :: D0_population_ucc_cycle
+        real(p), intent(inout), optional :: D0_population_ucc_cycle
         real(p), allocatable, intent(inout) :: rdm(:,:)
         type(selection_data_t), intent(inout) :: selection_data
         type(excit_t) :: connection
@@ -1343,20 +1351,21 @@ contains
             ! the cluster.
             call zero_estimators_t(estimators_cycle)
             connection = get_excitation(sys%nel, sys%basis, cdet%f, qs%ref%f0)
-            call update_proj_energy_mol_ucc(sys, qs%ref%f0, qs%trial%wfn_dat, cdet, &
+            if (uccmc_in%trot) then
+                call update_proj_energy_ptr(sys, qs%ref%f0, qs%trial%wfn_dat, cdet, &
+                     [real(cluster%amplitude,p),aimag(cluster%amplitude)]*&
+                     cluster%cluster_to_det_sign/cluster%pselect, &
+                     estimators_cycle, connection, hmatel)
+            else
+                call update_proj_energy_mol_ucc(sys, qs%ref%f0, qs%trial%wfn_dat, cdet, &
                      [real(cluster%amplitude,p),aimag(cluster%amplitude)]*&
                      cluster%cluster_to_det_sign/cluster%pselect, &
                      estimators_cycle, connection, hmatel, cluster%nexcitors)
-
-            if (sys%read_in%comp) then
-                D0_population_cycle = D0_population_cycle + estimators_cycle%D0_population_comp
-                proj_energy_cycle = proj_energy_cycle + estimators_cycle%proj_energy_comp
-            else
-
-                D0_population_cycle = D0_population_cycle + estimators_cycle%D0_population
-                D0_population_ucc_cycle = D0_population_ucc_cycle + estimators_cycle%D0_population_ucc
-                proj_energy_cycle = proj_energy_cycle + estimators_cycle%proj_energy
             end if
+
+            D0_population_cycle = D0_population_cycle + estimators_cycle%D0_population
+            proj_energy_cycle = proj_energy_cycle + estimators_cycle%proj_energy
+            if (.not. uccmc_in%trot)  D0_population_ucc_cycle = D0_population_ucc_cycle + estimators_cycle%D0_population_ucc
         end if
 
         if (uccmc_in%density_matrices .and. cluster%excitation_level <= 2 .and. qs%vary_shift(1) &
@@ -1581,35 +1590,139 @@ contains
 
         integer, intent(in) :: nspawnings_total
         type(p_single_double_coll_t), intent(inout) :: ps_stat
-        integer(int_p) :: nspawned, nspawned_im
+        integer(int_p) :: nspawned
         integer(i0) :: fexcit(sys%basis%tot_string_len)
  
-        if (contrib%cluster%excitation_level == huge(0)) then
-            ! When sampling e^-T H e^T, the cluster operators in e^-T
-            ! and e^T can excite to/from the same orbital, requiring
-            ! a different spawning routine
-            call linked_spawner_ccmc(rng, sys, qs, qs%spawn_store%spawn%cutoff, &
-                      contrib%cluster, gen_excit_ptr, nspawned, connection, nspawnings_total, &
-                      fexcit, contrib%cdet, contrib%ldet, contrib%rdet, contrib%left_cluster, contrib%right_cluster, ps_stat)
-            nspawned_im = 0_int_p
-        !else if (sys%read_in%comp) then
-        !    call spawner_complex_ccmc(rng, sys, qs, qs%spawn_store%spawn%cutoff, &
-        !              uccmc_in%linked, contrib%cdet, contrib%cluster, gen_excit_ptr, logging_info,  nspawned, nspawned_im, &
-        !              connection, nspawnings_total, ps_stat)
-        else
-            call spawner_ccmc(rng, sys, qs, qs%spawn_store%spawn%cutoff, &
+        call spawner_ccmc(rng, sys, qs, qs%spawn_store%spawn%cutoff, &
                       uccmc_in%linked, contrib%cdet, contrib%cluster, gen_excit_ptr, logging_info, &
                       nspawned, connection, nspawnings_total, ps_stat)
-            nspawned_im = 0_int_p
-        end if
-        if (nspawned /= 0_int_p) call create_spawned_particle_ccmc(sys%basis, qs%ref, contrib%cdet, connection, &
+        if (nspawned /= 0_int_p) then
+            if(uccmc_in%trot) then
+                ! Must decide if particle is labelled in any way.
+                call create_spawned_particle_uccmc_trot(sys, qs%ref, contrib%cdet, connection, &
+                                            nspawned, 1, contrib%cluster%excitation_level, &
+                                            .true., fexcit, qs%spawn_store%spawn, bloom_stats)
+            else
+                call create_spawned_particle_ccmc(sys%basis, qs%ref, contrib%cdet, connection, &
                                             nspawned, 1, contrib%cluster%excitation_level, &
                                             .false., fexcit, qs%spawn_store%spawn, bloom_stats)
-        !if (nspawned_im /= 0_int_p) call create_spawned_particle_ccmc(sys%basis, qs%ref, contrib%cdet, connection,&
-        !                                    nspawned_im, 2, contrib%cluster%excitation_level, &
-        !                                    .false., fexcit, qs%spawn_store%spawn, bloom_stats)
-
+            end if
+        end if
     end subroutine perform_uccmc_spawning_attempt
+
+    subroutine create_spawned_particle_uccmc_trot(sys, ref, cdet, connection, nspawned, ispace, &
+                                            parent_cluster_ex_level, trot, fexcit, spawn, bloom_stats)
+
+        ! Function to create spawned particle in spawned list for ccmc
+        ! calculations. Performs required manipulations of bit string
+        ! beforehand and accumulation on blooming.
+
+        ! In:
+        !   basis: info on current basis functions.
+        !   reference: info on current reference state.
+        !   cdet: determinant representing state currently spawning
+        !       spawning from.
+        !   connection: connection from state cdet particle has been spawned
+        !       from.
+        !   nspawned: number of (encoded) particles to be created via this spawning.
+        !   ispace: index of space particles are to be added to.
+        !   parent_cluster_ex_level: excitation level of parent cluster.
+        !   fexcit: bit string for state spawned to. Only available for linked
+        !       ccmc, otherwise generated using cdet+connection.
+        !   ex_lvl_sort: true if require states to be sorted by excitation
+        !       level within walker list, false otherwise.
+        ! In/Out:
+        !   spawn: spawn_t type containing information on particles created
+        !       via spawning this iteration. Spawned particles will be added
+        !       to this on exit.
+        !   bloom_stats: information on blooms within a calculation. Will be
+        !       updated if a bloom has occurred.
+
+        use system, only: sys_t
+        use reference_determinant, only: reference_t
+        use spawn_data, only: spawn_t
+        use determinant_data, only: det_info_t
+        use bloom_handler, only: bloom_stats_t, accumulate_bloom_stats
+        use excitations, only: excit_t, create_excited_det
+        use proc_pointers, only: create_spawned_particle_ptr
+        use ccmc_utils, only: add_ex_level_bit_string_calc
+
+        type(sys_t), intent(in) :: sys
+        type(reference_t), intent(in) :: ref
+        type(spawn_t), intent(inout) :: spawn
+        type(det_info_t), intent(in) :: cdet
+        type(bloom_stats_t), intent(inout) :: bloom_stats
+        type(excit_t), intent(in) :: connection
+
+        integer(int_p), intent(in) :: nspawned
+        integer, intent(in) :: ispace, parent_cluster_ex_level
+        integer(i0), intent(in) :: fexcit(:)
+        logical, intent(in) :: trot 
+        integer(i0) :: fexcit_loc(lbound(fexcit,dim=1):ubound(fexcit,dim=1))
+
+        
+        if (parent_cluster_ex_level /= huge(0)) then
+            call create_excited_det(sys%basis, cdet%f, connection, fexcit_loc)
+        else
+            fexcit_loc = fexcit
+        end if
+
+        if (trot) call add_info_str_trot(sys%basis, ref%f0, sys%nel, fexcit_loc)
+
+        
+        call create_spawned_particle_ptr(sys%basis, ref, cdet, connection, nspawned, &
+                                        ispace, spawn, fexcit_loc)
+        call accumulate_bloom_stats(bloom_stats, nspawned)
+
+    end subroutine create_spawned_particle_uccmc_trot
+    
+    pure function earliest_unset(f, nel, basis) result (early)
+        
+         ! Function to find earliest unset bit in a determinant bit string.
+
+         ! In:
+         !    f: bit_string encoding determinant
+         !    nel: number of electrons in the system
+         !    basis: basis_t object with information on one-electron basis in use.
+     
+         use basis_types, only: basis_t
+
+         type(basis_t), intent(in) :: basis
+         integer(i0), intent(in) :: f(basis%tot_string_len)
+         integer, intent(in) :: nel
+         integer :: i, early
+      
+         early = nel
+         do i = 0, nel-1
+             if (.not. btest(f(1),i)) then
+                 early = i
+                 exit
+             end if
+         end do
+    end function
+
+    subroutine add_info_str_trot(basis, f0, nel, f)
+
+        ! Sets bits within bit string to give excitation level at end of bit strings.
+        ! This routine sets ex level from provided reference.
+
+        use basis_types, only: basis_t
+        use excitations, only: get_excitation_level
+        type(basis_t), intent(in) :: basis
+        integer(i0), intent(inout) :: f(:)
+        integer(i0), intent(in) :: f0(:)
+        integer, intent(in) :: nel
+
+        integer(i0) :: counter(basis%tot_string_len)
+
+        if (basis%info_string_len/=0) then
+
+            f(basis%bit_string_len+2) = earliest_unset(f, nel, basis)     
+            f(basis%bit_string_len+1) = get_excitation_level(f(:basis%bit_string_len), f0(:basis%bit_string_len)) 
+
+        end if
+ 
+    end subroutine add_info_str_trot
 
     subroutine update_proj_energy_mol_ucc(sys, f0, wfn_dat, cdet, pop, estimators, excitation, hmatel, cluster_size)
 
@@ -1620,6 +1733,9 @@ contains
         ! where N_i is the population on the i-th determinant, D_i,
         ! and 0 refers to the reference determinant.
         ! During a MC cycle we store N_0 and \sum_{i \neq 0} <D_i|H|D_0> N_i.
+        ! For UCCMC, we store separately the population on the empty cluster D0 and
+        ! the sum of all contributions which land on the reference determinant, as the
+        ! latter is needed to correctly compute E_proj.
         ! This procedure is for molecular systems (i.e. those defined by an
         ! FCIDUMP file).
 
@@ -1733,4 +1849,5 @@ contains
        end do
        var_energy = var_energy/normalisation
    end subroutine var_energy_uccmc
+
 end module
