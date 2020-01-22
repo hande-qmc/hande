@@ -624,6 +624,9 @@ contains
 
         lua_state = flu_copyptr(L)
         call get_sys_t(lua_state, sys)
+
+! [review] - AJWT: This is a copy of lua_ccmc.  Not quite sure why the todo is still here, but perhaps the very 
+! [review] - AJWT: copied parts could be spun off into a separate function which is called from both.
         ! [todo] - do spin polarisation in system setup.
         call set_spin_polarisation(sys%basis%nbasis, sys)
 
@@ -1526,6 +1529,8 @@ contains
 
     end subroutine read_ccmc_in
 
+! [review] - AJWT: Would it be better to include a ccmc table for the uccmc call and just put the ccmc-specific parameters in there, 
+! [review] - AJWT: leaving just uccmc-ey things in the uccmc table?
     subroutine read_uccmc_in(lua_state, opts, uccmc_in, sys)
 
 

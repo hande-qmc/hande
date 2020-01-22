@@ -6,9 +6,12 @@ implicit none
 
 contains
 
+! [review] - AJWT: Put in a brief summary of the differences between this and conventional CC.
     subroutine do_trot_uccmc(sys, qmc_in, uccmc_in, restart_in, load_bal_in, reference_in, &
                         logging_in, io_unit, qs, qmc_state_restart)
 
+! [review] - AJWT: Perhaps note that this is derived from do_ccmc (and similarly in do_ccmc that this derives from it).  Are there any commonalities which can be sensibly shared as a called function?
+! [review] - AJWT: What CCMC features are not present? e.g. blocking, even_selection
         ! Run the Trotterized UCCMC algorithm starting from the initial walker distribution
         ! using the timestep algorithm.
 
@@ -164,7 +167,7 @@ contains
                       uuid_restart, restart_version_restart, qmc_state_restart=qmc_state_restart, &
                       regenerate_info=regenerate_info, uccmc_in=uccmc_in)
 
-        ! Add information strings to the psip_list anf the reference determinant.
+        ! Add information strings to the psip_list and the reference determinant.
         call regenerate_trot_info_psip_list(sys%basis, sys%nel, qs)
         qs%ref%f0(3) = sys%nel
 
@@ -628,7 +631,7 @@ contains
 
     subroutine select_trot_ucc_cluster(rng, sys, psip_list, f0, ex_level, nattempts, normalisation, &
                               initiator_pop, D0_pos, logging_info, cdet, cluster, excit_gen_data)
-
+! [review] - AJWT: Note that this is based on select_cluster
         ! Select a random cluster of excitors from the excitors on the
         ! processor.  A cluster of excitors is itself an excitor.  For clarity
         ! (if not technical accuracy) in comments we shall distinguish between
@@ -742,6 +745,10 @@ contains
         ! Assume cluster is allowed unless collapse_cluster finds out otherwise
         ! when collapsing/combining excitors or if it could never have been
         ! valid
+
+! [review] - AJWT: It may be more sensible eventually to consider a 'base probability' being the probability of not selecting any excips,
+! [review] - AJWT: and then for each excip we do choose, multiply it by pexcip/(1-pexcip).  This would allow us to use a similar algorithm to
+! [review] - AJWT: select_cluster.
         allowed = .true. 
         do i = 1, psip_list%nstates
             if (.not.(i == D0_pos)) then
@@ -821,6 +828,7 @@ contains
                                    nspawn_events, determ)
 
         ! Annihilation algorithm.
+! [review] - AJWT: Based on direct_annihilation routine.
         ! Spawned walkers are added to the main list, by which new walkers are
         ! introduced to the main list and existing walkers can have their
         ! populations either enhanced or diminished.
@@ -875,6 +883,7 @@ contains
 
     subroutine annihilate_wrapper_spawn_t_single_trot(spawn, tinitiator, determ_size)
 
+! [review] - AJWT: based on annihilate_wrapper_spawn_t_single - only difference is a different sort routine_called
         ! Helper procedure for performing annihilation within a spawn_t object.
 
         ! In:
@@ -932,7 +941,7 @@ contains
 
     subroutine annihilate_main_list_wrapper_trot(sys, rng, reference, annihilation_flags, psip_list, spawn, &
                                             lower_bound, determ_flags)
-
+! [review] - AJWT: based on annihilate_main_list_wrapper
         ! This is a wrapper around various utility functions which perform the
         ! different parts of the annihilation process during non-blocking
         ! communications.
@@ -1009,11 +1018,12 @@ contains
     end subroutine annihilate_main_list_wrapper_trot
 
     subroutine annihilate_main_list_trot(psip_list, spawn, sys, ref, lower_bound)
-
+! [review] - AJWT: based on annihilate_main_list
         ! Annihilate particles in the main walker list with those in the spawned
         ! walker list.
 
         ! In:
+![review] -  AJWT: why not pass in tensor_label_len?
         !    sys: system being studied.
         !    ref: current reference determinant.
         ! In/Out:
@@ -1088,7 +1098,7 @@ contains
     end subroutine annihilate_main_list_trot
 
     subroutine insert_new_walkers_trot(sys, psip_list, ref, annihilation_flags, spawn, determ_flags, lower_bound)
-
+! [review] - AJWT: based on insert_new_walkers - just with a different search.
         ! Insert new walkers into the main walker list from the spawned list.
         ! This is done after all particles have been annihilated, so the spawned
         ! list contains only new walkers.
@@ -1195,7 +1205,7 @@ contains
                 ! f should be in slot pos.  Move all determinants above it.
                 do j = iend, pos, -1
                     ! i is the number of determinants that will be inserted below j.
-                    k = j + i -disp
+                    k = j + i - disp
                     psip_list%states(:,k) = psip_list%states(:,j)
                     psip_list%pops(:,k) = psip_list%pops(:,j)
                     psip_list%dat(:,k) = psip_list%dat(:,j)
@@ -1204,7 +1214,7 @@ contains
 
                 ! Insert new walker into pos and shift it to accommodate the number
                 ! of elements that are still to be inserted below it.
-                k = pos + i -1 - disp
+                k = pos + i - 1 - disp
                 ! The encoded spawned walker sign.
                 associate(spawned_population => spawn%sdata(spawn%bit_str_len+1:spawn%bit_str_len+spawn%ntypes, i), &
                         tbl=>sys%basis%tensor_label_len)
@@ -1221,7 +1231,7 @@ contains
                 if (present(determ_flags)) determ_flags(k) = 1
 
                 ! Next walker will be inserted below this one.
-                 iend = pos - 1
+                iend = pos - 1
             end do
 
             ! Update psip_list%nstates.
@@ -1231,6 +1241,8 @@ contains
     end subroutine insert_new_walkers_trot
 
     pure subroutine qsort_i0_list_trot(list, head, nsort)
+! [review] - AJWT: based on sort routines in sort.f90
+! [review] - AJWT: Should probably be in sort.f90 and called qsort_i0_list_rev
 
         ! Sort a 2D array of int_64 integers.
 
@@ -1453,6 +1465,7 @@ contains
     end function bit_str_cmp_trot
 
     pure subroutine binary_search_i0_list_trot(list, item, istart, iend, hit, pos)
+! [review] - AJWT: based on binary_search_i0_list with a different comparator operator.
 
         ! Find where an item resides in a list of such items.
         ! Only elements between istart and iend are examined (use the
@@ -1558,7 +1571,7 @@ contains
     end subroutine binary_search_i0_list_trot
 
     pure subroutine qsort_psip_info_trot(nstates, states, pops, dat)
-
+! [review] - AJWT: based on qsort_psip_info with alternative ordering.
         ! Sort a set of psip information (states, populations and data) in order according
         ! to the state labels.
 

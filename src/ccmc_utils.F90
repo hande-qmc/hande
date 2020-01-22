@@ -158,6 +158,7 @@ contains
         logical,  intent(out) :: allowed
 
         integer(i0) :: excitor_loc(basis%tot_string_len)
+! [review] - AJWT:  Is this copy needed?
         integer(i0) :: f0_loc(basis%tot_string_len)
 
         integer :: ibasis, ibit

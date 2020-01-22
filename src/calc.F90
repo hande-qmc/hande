@@ -24,6 +24,8 @@ type(metadata_t) :: GLOBAL_META
 ! A calculation type is performed if the relevant bit (defined by the subsequent
 ! parameters) is set in calc_type.
 ! This can be easily tested using the doing_calc function.
+
+! [review] - AJWT: This global is a bit worrying as it appears that only one type of calc can happen at a time.  Possibly for long-term thought.
 integer :: calc_type = 0
 ! Flags for doing exact and/or Lanczos diagonalisation.
 integer, parameter :: exact_diag = 2**0

@@ -804,6 +804,10 @@ type estimators_t
     ! processes.
     integer(int_64) :: nattempts = 0_int_64
 
+! [review] - AJWT: It might be safer to refactor all D0_populations to something like D0_contribution, or at least note the difference 
+! [review] - AJWT: with a comment near D0_population (and perhaps put this variable nearby).  
+! [review] - AJWT: I've not yet seen where D0_population and D0_population_ucc are used differently, but it might be worth noting that too.
+! [review] - AJWT: D0_population_ucc might be an overly specific name choice.
     !For UCCMC need to store true D0_population, as well as total D0 contribution to wfn. To simplify
     !compatibility, the latter will be stored in D0_population
     real(p) :: D0_population_ucc = 0.0_p
