@@ -80,7 +80,7 @@ contains
         use particle_t_utils, only: init_particle_t
         use search, only: binary_search
         use uccmc, only: var_energy_uccmc, ucc_set_cluster_selections, add_info_str_trot, do_uccmc_accumulation, &
-                         do_stochastic_uccmc_propagation
+                         do_stochastic_uccmc_propagation, earliest_unset
 
         type(sys_t), intent(in) :: sys
         type(qmc_in_t), intent(in) :: qmc_in
@@ -136,11 +136,18 @@ contains
         character(:), allocatable :: err_msg
  
         type(particle_t) :: time_avg_psip_list_ci, time_avg_psip_list
+        real(p), allocatable :: time_avg_psip_list_sq(:,:)
+        integer :: nstates_sq
         integer :: semi_stoch_it, pos, j, k
         logical :: hit
         integer(i0), allocatable :: state(:)
         integer(int_p), allocatable :: population(:)
         real(p), allocatable :: real_population(:), var_energy(:)
+        logical :: old_vary
+        integer :: avg_start
+
+        old_vary = .false.
+        avg_start = 0
 
         if (parent) then
             write (io_unit,'(1X,"Trotterized UCCMC")')
@@ -166,7 +173,8 @@ contains
 
         ! Add information strings to the psip_list anf the reference determinant.
         call regenerate_trot_info_psip_list(sys%basis, sys%nel, qs)
-        qs%ref%f0(3) = sys%nel
+        qs%ref%f0(3) = earliest_unset(qs%ref%f0, qs%ref%f0, sys%nel, sys%basis) 
+
 
         !Allocate memory for time averaged populations and variational energy computation.
         allocate(state(sys%basis%tot_string_len))
@@ -194,6 +202,12 @@ contains
              time_avg_psip_list%nparticles = qs%psip_list%pops(:,1)/qs%psip_list%pop_real_factor
              time_avg_psip_list%nstates = 1
 
+
+        allocate(time_avg_psip_list_sq(2,size(qs%psip_list%states(1,:))))
+        time_avg_psip_list_sq(1,1) = qs%psip_list%states(1,1)
+        time_avg_psip_list_sq(2,1) = (real(qs%psip_list%pops(1,1))/qs%psip_list%pop_real_factor)**2
+        nstates_sq = 1
+        
         qs%ref%max_ex_level = qs%ref%ex_level
 
         if (debug) call init_logging(logging_in, logging_info, qs%ref%ex_level)
@@ -303,6 +317,17 @@ contains
 
             ! Projected energy from last report loop to correct death
             qs%estimators%proj_energy_old = get_sanitized_projected_energy(qs)
+            if (all(qs%vary_shift) .and. not(old_vary)) then
+                avg_start = iter
+                time_avg_psip_list%pops(:,:) = qs%psip_list%pops(:,:)
+                time_avg_psip_list%states(:,:) = qs%psip_list%states(:,:)
+                time_avg_psip_list%nparticles = sum(abs(qs%psip_list%pops(:,:)))/qs%psip_list%pop_real_factor
+                time_avg_psip_list%nstates = qs%psip_list%nstates
+                time_avg_psip_list_sq(1,:) = qs%psip_list%states(1,:)
+                time_avg_psip_list_sq(2,:) = (real(qs%psip_list%pops(1,:))/qs%psip_list%pop_real_factor)**2
+                nstates_sq = qs%psip_list%nstates
+            end if
+                
             call init_report_loop(qs, bloom_stats)
 
             do icycle = 1, qmc_in%ncycles
@@ -315,13 +340,17 @@ contains
                           time_avg_psip_list_ci%pops(:,:time_avg_psip_list_ci%nstates) =  time_avg_psip_list_ci%pops(:,:time_avg_psip_list_ci%nstates)*(iter-1)
                 end if
 
-                time_avg_psip_list%nparticles = time_avg_psip_list%nparticles*(iter-1)
-                time_avg_psip_list%pops(:,:time_avg_psip_list%nstates) =  time_avg_psip_list%pops(:,:time_avg_psip_list%nstates)*(iter-1)
+                if(all(qs%vary_shift)) then
+                    time_avg_psip_list%nparticles = time_avg_psip_list%nparticles*(iter-avg_start)
+                    time_avg_psip_list%pops(:,:time_avg_psip_list%nstates) =  time_avg_psip_list%pops(:,:time_avg_psip_list%nstates)*(iter - avg_start)
+
+                    time_avg_psip_list_sq(2,:nstates_sq) =  time_avg_psip_list_sq(2,:nstates_sq)*(iter-avg_start)
+                end if
 
                 if (debug) call prep_logging_mc_cycle(iter, logging_in, logging_info, sys%read_in%comp, &
                                                         min(sys%nel, qs%ref%ex_level+2))
 
-                call get_D0_info(qs, sys%read_in%comp, D0_proc, D0_pos, nD0_proc, D0_normalisation)
+                call get_D0_info_trot(qs, sys%read_in%comp, D0_proc, D0_pos, nD0_proc, D0_normalisation)
 
                 ! Update the shift of the excitor locations to be the end of this
                 ! current iteration.
@@ -405,7 +434,6 @@ contains
                     call select_trot_ucc_cluster(rng(it), sys, qs%psip_list, qs%ref%f0, qs%ref%max_ex_level, &
                                             selection_data%nstochastic_clusters, D0_normalisation, qmc_in%initiator_pop, D0_pos, &
                                             logging_info, contrib(it)%cdet, contrib(it)%cluster, qs%excit_gen_data)
-
                     if (uccmc_in%trot) call add_info_str_trot(sys%basis, qs%ref%f0, sys%nel, contrib(it)%cdet%f)
 
                     !Add selected cluster contribution to CI wavefunction estimator.
@@ -491,6 +519,7 @@ contains
                 end if
 
                 ! Add new contributions to time-average cluster populations.
+                if (all(qs%vary_shift)) then
                 do i = 1, qs%psip_list%nstates
                     state = qs%psip_list%states(:,i) 
                     call binary_search_i0_list_trot(time_avg_psip_list%states, state, 1, time_avg_psip_list%nstates, hit, pos)
@@ -498,6 +527,7 @@ contains
                           time_avg_psip_list%nparticles = time_avg_psip_list%nparticles - abs(real(time_avg_psip_list%pops(:,pos))/time_avg_psip_list%pop_real_factor)
                           time_avg_psip_list%pops(:,pos) = time_avg_psip_list%pops(:,pos) + qs%psip_list%pops(:,i) 
                           time_avg_psip_list%nparticles = time_avg_psip_list%nparticles + abs(real(time_avg_psip_list%pops(:,pos))/time_avg_psip_list%pop_real_factor)
+                          time_avg_psip_list_sq(2,pos) = time_avg_psip_list_sq(2,pos) + (real(qs%psip_list%pops(1,i))/qs%psip_list%pop_real_factor)**2 
                        else
                            do j = time_avg_psip_list%nstates, pos, -1
                                ! i is the number of determinants that will be inserted below j.
@@ -505,19 +535,26 @@ contains
                                time_avg_psip_list%states(:,k) = time_avg_psip_list%states(:,j)
                                time_avg_psip_list%pops(:,k) = time_avg_psip_list%pops(:,j)
                                time_avg_psip_list%dat(:,k) = time_avg_psip_list%dat(:,j)
+                               time_avg_psip_list_sq(1,k) = time_avg_psip_list_sq(1,j)
+                               time_avg_psip_list_sq(2,k) = time_avg_psip_list_sq(2,j)
                            end do
                            call insert_new_walker(sys, time_avg_psip_list, annihilation_flags, pos, &
                                state, qs%psip_list%pops(:,i), qs%ref)
                            time_avg_psip_list%nstates = time_avg_psip_list%nstates+1
+                           time_avg_psip_list_sq(1,pos) = qs%psip_list%states(1,i)
+                           time_avg_psip_list_sq(2,pos) = (real(qs%psip_list%pops(1,i))/qs%psip_list%pop_real_factor)**2
+                           nstates_sq = nstates_sq + 1
                            ! Extract the real sign from the encoded sign.
                            real_population = real(time_avg_psip_list%pops(:,pos))/time_avg_psip_list%pop_real_factor
                            time_avg_psip_list%nparticles = time_avg_psip_list%nparticles + abs(real_population)
                        end if
                 end do
                 ! Update time average.
-                time_avg_psip_list%nparticles = time_avg_psip_list%nparticles/(iter)
-                time_avg_psip_list%pops(:,:time_avg_psip_list%nstates) =  time_avg_psip_list%pops(:,:time_avg_psip_list%nstates)/(iter)
+                time_avg_psip_list%nparticles = time_avg_psip_list%nparticles/(iter-avg_start+1)
+                time_avg_psip_list%pops(:,:time_avg_psip_list%nstates) =  time_avg_psip_list%pops(:,:time_avg_psip_list%nstates)/(-avg_start+iter+1)
 
+                time_avg_psip_list_sq(2,:nstates_sq) =  time_avg_psip_list_sq(2,:nstates_sq)/(-avg_start+iter+1)
+                end if
                 call end_mc_cycle(nspawn_events, ndeath_nc, qs%psip_list%pop_real_factor, nattempts_spawn, qs%spawn_store%rspawn)
             end do
 
@@ -529,6 +566,8 @@ contains
             qs%estimators%proj_energy = real(qs%estimators%proj_energy_comp,p)
  
             if (debug) call write_logging_select_ccmc(logging_info, iter, selection_data)
+          
+            old_vary = all(qs%vary_shift) 
 
             call end_report_loop(io_unit, qmc_in, iter, update_tau, qs, nparticles_old, nspawn_events, &
                                  -1, semi_stoch_it, soft_exit=soft_exit, &
@@ -569,6 +608,12 @@ contains
             do i = 1, time_avg_psip_list%nstates
                 call write_qmc_var(io_unit, time_avg_psip_list%states(1,i))
                 call write_qmc_var(io_unit, time_avg_psip_list%pops(1,i))
+                write (io_unit,'()')
+            end do
+            write (io_unit, '(1X, "Time-averaged cluster populations squared",/)')
+            do i = 1, time_avg_psip_list%nstates
+                call write_qmc_var(io_unit, int(time_avg_psip_list_sq(1,i)))
+                call write_qmc_var(io_unit, time_avg_psip_list_sq(2,i))
                 write (io_unit,'()')
             end do
         end if
@@ -1731,4 +1776,109 @@ contains
 
     end subroutine qsort_psip_info_trot
 
+    subroutine find_D0_trot(psip_list, f0, D0_pos)
+
+        ! Find the reference determinant in the list of walkers
+
+        ! In:
+        !    psip_list: particle_t object containing current excip distribution on
+        !       this processor.
+        !    f0: bit string representing the reference.
+        ! In/Out:
+        !    D0_pos: on input, the position of the reference in
+        !       particle_t%states in the previous iteration (or -1 if it was
+        !       not on this processor).  On output, the current position.
+
+        use bit_utils, only: bit_str_cmp
+        use search, only: binary_search
+        use qmc_data, only: particle_t
+        use errors, only: stop_all
+
+        type(particle_t), intent(in) :: psip_list
+        integer(i0), intent(in) :: f0(:)
+        integer, intent(inout) :: D0_pos
+
+        integer :: D0_pos_old
+        logical :: hit
+
+        if (D0_pos == -1) then
+            ! D0 was just moved to this processor.  No idea where it might be...
+            call binary_search_i0_list_trot(psip_list%states, f0, 1, psip_list%nstates, hit, D0_pos)
+        else
+            D0_pos_old = D0_pos
+            select case(bit_str_cmp_trot(f0, psip_list%states(:,D0_pos)))
+            case(0)
+                ! D0 hasn't moved.
+                hit = .true.
+            case(1)
+                ! D0 < psip_list%states(:,D0_pos) -- it has moved to earlier in
+                ! the list and the old D0_pos is an upper bound.
+                call binary_search_i0_list_trot(psip_list%states, f0, 1, D0_pos_old, hit, D0_pos)
+            case(-1)
+                ! D0 > psip_list%states(:,D0_pos) -- it has moved to later in
+                ! the list and the old D0_pos is a lower bound.
+                call binary_search_i0_list_trot(psip_list%states, f0, D0_pos_old, psip_list%nstates, hit, D0_pos)
+            end select
+        end if
+        if (.not.hit) call stop_all('find_D0', 'Cannot find reference!')
+
+    end subroutine find_D0_trot
+
+    subroutine get_D0_info_trot(qs, complx, D0_proc, D0_pos, nD0_proc, D0_normalisation)
+
+        ! In:
+        !    qs: qmc_state_t object describing the current CCMC state.
+        !    complx: true if system has a complex wavefunction (i.e. sys_t%sys_read_in_t%comp).
+        ! Out:
+        !    D0_proc: the processor index on which the reference currently resides.
+        !    D0_pos: the position within the excip list of the reference. Set to -1 if iproc != D0_proc.
+        !    nD0_proc: 1 if iproc == D0_proc and 0 otherwise.
+        !    D0_normalisation: population of the reference.
+
+        use parallel
+        use qmc_data, only: qmc_state_t
+        use spawning, only: assign_particle_processor
+
+        type(qmc_state_t), intent(in) :: qs
+        logical, intent(in) :: complx
+        integer, intent(out) :: D0_proc, D0_pos, nD0_proc
+        complex(p), intent(out) :: D0_normalisation
+        integer :: slot
+#ifdef PARALLEL
+        integer :: ierr
+#endif
+
+        associate(spawn=>qs%spawn_store%spawn, pm=>qs%spawn_store%spawn%proc_map)
+            call assign_particle_processor(qs%ref%f0, spawn%bit_str_nbits, spawn%hash_seed, spawn%hash_shift, &
+                                           spawn%move_freq, nprocs, D0_proc, slot, pm%map, pm%nslots)
+
+        end associate
+
+        if (iproc == D0_proc) then
+
+            ! Population on reference determinant.
+            ! As we might select the reference determinant multiple times in
+            ! a cycle, the running total of D0_population is incorrect (by
+            ! a factor of the number of times it was selected).
+            call find_D0_trot(qs%psip_list, qs%ref%f0, D0_pos)
+            if (complx) then
+                D0_normalisation = cmplx(qs%psip_list%pops(1,D0_pos), qs%psip_list%pops(2,D0_pos), p)/qs%psip_list%pop_real_factor
+            else
+                D0_normalisation = real(qs%psip_list%pops(1,D0_pos),p)/qs%psip_list%pop_real_factor
+            end if
+            nD0_proc = 1
+        else
+
+            ! Can't find D0 on this processor.  (See how D0_pos is used
+            ! in select_cluster.)
+            D0_pos = -1
+            nD0_proc = 0 ! No reference excitor on the processor.
+
+        end if
+
+#ifdef PARALLEL
+        call mpi_bcast(D0_normalisation, 1, mpi_pcomplex, D0_proc, MPI_COMM_WORLD, ierr)
+#endif
+
+    end subroutine get_D0_info_trot
 end module

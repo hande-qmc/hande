@@ -52,7 +52,7 @@ contains
                                 sum_sp_eigenvalues_bit_string, decode_det
         use determinant_data, only: det_info_t
         use excitations, only: excit_t, get_excitation_level, get_excitation
-        use qmc_io, only: write_qmc_report, write_qmc_report_header
+        use qmc_io, only: write_qmc_report, write_qmc_report_header, write_qmc_var
         use qmc, only: init_qmc, init_secondary_reference
         use qmc_common, only: initial_qmc_status, initial_cc_projected_energy, load_balancing_report, init_report_loop, &
                               init_mc_cycle, end_report_loop, end_mc_cycle, redistribute_particles, rescale_tau
@@ -1676,7 +1676,7 @@ contains
 
     end subroutine create_spawned_particle_uccmc_trot
     
-    pure function earliest_unset(f, nel, basis) result (early)
+    function earliest_unset(f, f0, nel, basis) result (early)
         
          ! Function to find earliest unset bit in a determinant bit string.
 
@@ -1686,19 +1686,39 @@ contains
          !    basis: basis_t object with information on one-electron basis in use.
      
          use basis_types, only: basis_t
+         use bit_utils, only: count_set_bits
 
          type(basis_t), intent(in) :: basis
-         integer(i0), intent(in) :: f(basis%tot_string_len)
+         integer(i0), intent(in) :: f(basis%tot_string_len), f0(basis%tot_string_len)
          integer, intent(in) :: nel
          integer :: i, early
-      
-         early = nel
-         do i = 0, nel-1
-             if (.not. btest(f(1),i)) then
-                 early = i
-                 exit
-             end if
-         end do
+         integer(i0) :: diff
+         integer(i0) :: f0_loc
+         
+         early = 0
+         i = 0
+          
+         !if (f(1) == 9) print*, 'aa', f
+         !if (f(1) == 9) print*, 'bb',  f0
+         diff = ieor(f(1),f0(1))
+         !if (f(1) == 9) print*, 'cc', diff 
+         if (diff /= 0) then
+             !if (f(1) == 9) print*, 'dd', f(1), f0(1), diff
+             do 
+                 !if (f(1) == 9) print*, i
+                 if (btest(diff,i)) then
+                     early = i
+                     exit
+                 end if
+                 i = i+1
+             end do
+         else
+             f0_loc = f0(1)
+             do while (f0_loc/=0)
+                 f0_loc = ibclr(f0_loc, early)
+                 early = early + 1
+             end do
+         end if
     end function
 
     subroutine add_info_str_trot(basis, f0, nel, f)
@@ -1714,10 +1734,12 @@ contains
         integer, intent(in) :: nel
 
         integer(i0) :: counter(basis%tot_string_len)
+       
+        !if (f(1) == 9) print*, f
 
         if (basis%info_string_len/=0) then
 
-            f(basis%bit_string_len+2) = earliest_unset(f, nel, basis)     
+            f(basis%bit_string_len+2) = earliest_unset(f, f0, nel, basis)     
             f(basis%bit_string_len+1) = get_excitation_level(f(:basis%bit_string_len), f0(:basis%bit_string_len)) 
 
         end if
