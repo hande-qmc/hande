@@ -6,9 +6,11 @@ implicit none
 
 contains
 
+! [review] - AJWT: Put in a brief summary of the differences between this and conventional CC.
     subroutine do_uccmc(sys, qmc_in, uccmc_in, restart_in, load_bal_in, reference_in, &
                         logging_in, io_unit, qs, qmc_state_restart)
 
+! [review] - AJWT: Perhaps note that this is derived from do_ccmc (and similarly in do_ccmc that this derives from it).  Are there any commonalities which can be sensibly shared as a called function?
         ! Run the UCCMC algorithm starting from the initial walker distribution
         ! using the timestep algorithm.
 
@@ -506,6 +508,7 @@ contains
                           time_avg_psip_list_ci%pops(:,:time_avg_psip_list_ci%nstates) =  time_avg_psip_list_ci%pops(:,:time_avg_psip_list_ci%nstates)/(iter)
                 end if
 
+! [review] - AJWT: Comment on what this block is doing.
                 do i = 1, qs%psip_list%nstates
                     state = qs%psip_list%states(:,i) 
                     call binary_search(time_avg_psip_list%states, state, 1, time_avg_psip_list%nstates, hit, pos)
@@ -655,7 +658,8 @@ contains
     end subroutine do_uccmc
 
     subroutine ucc_set_cluster_selections(selection_data, nattempts, min_cluster_size)
-
+! [review] - AJWT: based on set_cluster_selections with even_selection and full_nc removed.
+! [revuew] - AJWT:  Could this then actually use the original routine (assuming both of those are set to .false.)?
         ! Function to set total number of selections of different cluster
         ! types within CCMC. This effectively controls the relative sampling
         ! of different clusters within the CC expansion.
@@ -691,6 +695,7 @@ contains
                               initiator_pop, D0_pos, cumulative_excip_pop, tot_excip_pop, min_size, max_size, &
                               logging_info, cdet, cluster, excit_gen_data)
 
+! [review] - AJWT: based on select_cluster (without the linked_cluster parts) and with information about de-excitors.
         ! Select a random cluster of excitors from the excitors on the
         ! processor.  A cluster of excitors is itself an excitor.  For clarity
         ! (if not technical accuracy) in comments we shall distinguish between
@@ -742,6 +747,7 @@ contains
         use checking, only: check_deallocate
         use determinant_data, only: det_info_t
         use ccmc_data, only: cluster_t
+! [review] - AJWT: collapse_cluster is no longer used.
         use ccmc_utils, only: convert_excitor_to_determinant, collapse_cluster
         use excitations, only: get_excitation_level
         use dSFMT_interface, only: dSFMT_t, get_rand_close_open
@@ -1008,6 +1014,9 @@ contains
 
     pure subroutine ucc_collapse_cluster(basis, f0, excitor, excitor_population, cluster_excitor, cluster_population, &
                     allowed, conjugate)
+! [review] - AJWT: based on collapse_clustera
+
+! [review] - AJWT: Document 'conjugate'
 
         ! Collapse two excitors.  The result is returned in-place.
 
@@ -1105,7 +1114,7 @@ contains
                 ! a<b).  However t_i^a t_j^b = a^+_a a_i a^+_b a_j.  We thus need to
                 ! permute the creation and annihilation operators.  Each permutation
                 ! incurs a sign change.
-
+! [review] - AJWT: Even if we can't reuse the whole of collapse_cluster, this part looks teh same, so can that be factored out and called?
                 do ibasis = 1, basis%bit_string_len
                     do ibit = 0, i0_end
                         if (btest(excitor_excitation(ibasis),ibit)) then
@@ -1204,6 +1213,8 @@ contains
 
     subroutine ucc_cumulative_population(pops, ex_lvls, nactive, D0_proc, D0_pos, real_factor, complx, &
                                     cumulative_pops, tot_pop)
+! [review] - AJWT: based on cumulative_population
+! [review] - AJWT: is this the same just without calc_dist? and can that be set to .false. and cumulative_population called?
 
         ! Calculate the cumulative population, i.e. the number of psips/excips
         ! residing on a determinant/an excitor and all determinants/excitors which
@@ -1287,6 +1298,9 @@ contains
 
     subroutine do_uccmc_accumulation(sys, qs, cdet, cluster, logging_info, D0_population_cycle, proj_energy_cycle, &
                                      uccmc_in, ref_det, rdm, selection_data, D0_population_ucc_cycle)
+! [review] - AJWT: based on do_ccmc_accumulation
+! [review] - AJWT: If uccmc_in is unfolded from ccmc_in, then can the above be reused by changing what the
+! [review] - AJWT: update_proj_energy_ptr points to?
 
 
 
@@ -1384,6 +1398,8 @@ contains
     subroutine do_stochastic_uccmc_propagation(rng, sys, qs, uccmc_in, &
                                             logging_info, ms_stats, bloom_stats, &
                                             contrib, nattempts_spawn_tot, ndeath, ps_stat)
+! [review] - AJWT: based on do_stochastic_ccmc_propagation.
+! [review] - AJWT: seems to be much the same with multiref .false. and calling  do_ucc_spawning_death.  Could this be function-pointered?
 
         ! Perform stochastic propogation of a cluster in an appropriate manner
         ! for the given inputs. For multireference systems, it allows death for
@@ -1459,6 +1475,7 @@ contains
                                  logging_info, ms_stats, bloom_stats, contrib, &
                                  nattempts_spawn_tot, ndeath, ps_stat, nspawnings_cluster, attempt_death)
 
+! [review] - AJWT: based on do_spawning_death, but calling perform_uccmc_spawning_attempt instead.  Function pointer?
         ! For stochastically selected clusters this
         ! attempts spawning and death, adding any created particles to the
         ! spawned list. For deterministically selected clusters spawning is
@@ -1540,6 +1557,9 @@ contains
     subroutine perform_uccmc_spawning_attempt(rng, sys, qs, uccmc_in, logging_info, bloom_stats, contrib, nspawnings_total, &
                                         ps_stat)
 
+! [review] - AJWT: based on perform_ccmc_spawning_death.
+! [review] - AJWT: but copes with Trotterized spawning. Could that be function-pointered?
+
         ! Performs a single ccmc spawning attempt, as appropriate for a
         ! given setting combination of linked, complex or none of the above.
 
@@ -1613,6 +1633,8 @@ contains
     subroutine create_spawned_particle_uccmc_trot(sys, ref, cdet, connection, nspawned, ispace, &
                                             parent_cluster_ex_level, trot, fexcit, spawn, bloom_stats)
 
+! [review] - AJWT: How does this differ (from what?) for the uccmc_trotterization?
+
         ! Function to create spawned particle in spawned list for ccmc
         ! calculations. Performs required manipulations of bit string
         ! beforehand and accumulation on blooming.
@@ -1676,7 +1698,8 @@ contains
 
     end subroutine create_spawned_particle_uccmc_trot
     
-    function earliest_unset(f, f0, nel, basis) result (early)
+    pure function earliest_unset(f, f0, nel, basis) result (early)
+! [review] - AJWT: probably best in ccmc_utils or the like
         
          ! Function to find earliest unset bit in a determinant bit string.
 
@@ -1748,6 +1771,7 @@ contains
 
     subroutine update_proj_energy_mol_ucc(sys, f0, wfn_dat, cdet, pop, estimators, excitation, hmatel, cluster_size)
 
+! [review] - AJWT: based on update_proj_energy_mol - this might be able to be folded back into this eventually.
         ! Add the contribution of the current determinant to the projected
         ! energy.
         ! The correlation energy given by the projected energy is:
@@ -1837,7 +1861,8 @@ contains
     end subroutine update_proj_energy_mol_ucc
 
     subroutine var_energy_uccmc(sys, time_avg_psip_list, var_energy)
-         
+
+! [review] - AJWT: Documentation...         
        use excitations, only: excit_t, get_excitation
        use hamiltonian, only: get_hmatel
        use energy_evaluation, only: hmatel_t
@@ -1860,6 +1885,7 @@ contains
 
        normalisation = 0.0_p
        var_energy(:) = 0.0_p
+! [review] - AJWT:  Consider real(x, p) which is usually used elsewhere.
        do i = 1, time_avg_psip_list%nstates
            normalisation = normalisation +(real(time_avg_psip_list%pops(:,i))/real(time_avg_psip_list%pops(:,1)))**2
            

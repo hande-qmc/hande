@@ -8,6 +8,7 @@ contains
 
 ! --- Initialisation routines ---
 
+! [review] - AJWT: uccmc_in isn't actually used in the function.  Needs to be included in the header doc blurb.
     subroutine init_qmc(sys, qmc_in, restart_in, load_bal_in, reference_in, io_unit, annihilation_flags, qmc_state, uuid_restart, &
                         restart_version_restart, dmqmc_in, fciqmc_in, qmc_state_restart, regenerate_info, uccmc_in)
 
