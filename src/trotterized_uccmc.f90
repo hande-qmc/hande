@@ -526,6 +526,7 @@ contains
                 do i = 1, qs%psip_list%nstates
                     state = qs%psip_list%states(:,i) 
                     call binary_search_i0_list_trot(time_avg_psip_list%states, state, 1, time_avg_psip_list%nstates, hit, pos)
+                    !call binary_search(time_avg_psip_list%states, state, 1, time_avg_psip_list%nstates, hit, pos)
                     if (hit) then
                           time_avg_psip_list%nparticles = time_avg_psip_list%nparticles - abs(real(time_avg_psip_list%pops(:,pos))/time_avg_psip_list%pop_real_factor)
                           time_avg_psip_list%pops(:,pos) = time_avg_psip_list%pops(:,pos) + qs%psip_list%pops(:,i) 
@@ -948,6 +949,7 @@ contains
         use basis_types, only: basis_t
         use spawn_data, only: compress_threaded_spawn_t, comm_spawn_t, compress_determ_repeats, annihilate_spawn_t, &
                         annihilate_spawn_t_initiator, spawn_t
+        use sort, only: qsort
 
         type(spawn_t), intent(inout) :: spawn
         logical, intent(in) :: tinitiator
@@ -972,6 +974,7 @@ contains
         if (spawn%head(thread_id,0) > 0) then
             ! Have spawned walkers on this processor.
             call qsort_i0_list_trot(spawn%sdata, spawn%head(thread_id,0), spawn%bit_str_len)
+            !call qsort(spawn%sdata, spawn%head(thread_id,0), spawn%bit_str_len)
             ! Annihilate within spawned walkers list.
             ! Compress the remaining spawned walkers list.
 
@@ -1113,6 +1116,7 @@ contains
         do i = spawn_start, spawn%head(thread_id,0)
             f = int(spawn%sdata(:sys%basis%tensor_label_len,i), i0)
             call binary_search_i0_list_trot(psip_list%states, f, istart, iend, hit, pos)
+            !call binary_search(psip_list%states, f, istart, iend, hit, pos)
             if (hit) then
                 ! Annihilate!
                 old_pop = psip_list%pops(:,pos)
@@ -1246,6 +1250,7 @@ contains
 
                 ! spawned det is not in the main walker list.
                 call binary_search_i0_list_trot(psip_list%states, int(spawn%sdata(:sys%basis%tensor_label_len,i), i0), &
+                !call binary_search(psip_list%states, int(spawn%sdata(:sys%basis%tensor_label_len,i), i0), &
                                    istart, iend, hit, pos)
                 ! f should be in slot pos.  Move all determinants above it.
                 do j = iend, pos, -1
@@ -1479,6 +1484,45 @@ contains
         end associate
 
     end subroutine regenerate_trot_info_psip_list
+    subroutine regenerate_trot_info_psip_list_alt(basis, nel, qs)
+
+        ! Regenerates excitation level and lowest unoccupied orbital information
+        ! stored at start of bit string within states in psip list.
+        ! For use when restarting from a restart file
+        ! not containing this information.
+        ! Also sorts the list, as ordering will change.
+        ! Hashing only uses nbasis bits, so should be unaffected by the additional
+        ! information at the start of the bit string.
+        ! [todo] figure out a way to double check this is the case.
+
+        ! In:
+        !   basis: information on single-particle basis in use.
+        !   nel: number of electrons in the system
+        ! In/Out:
+        !   qmc_state: information on current state of calculation. We update and
+        !       reorder the bit strings within the psip list, using the reference
+        !       determinant bit string stored within qs%ref%f0.
+
+        use basis_types, only: basis_t
+        use qmc_data, only: qmc_state_t
+        use sort, only: qsort
+        use uccmc, only: add_info_str_trot_alt
+
+        type(basis_t), intent(in) :: basis
+        type(qmc_state_t), intent(inout) :: qs
+        integer, intent(in) :: nel
+
+        integer :: istate
+
+        do istate = 1, qs%psip_list%nstates
+            call add_info_str_trot_alt(basis, qs%ref%f0, nel, qs%psip_list%states(:,istate))
+        end do
+
+        associate(pl=>qs%psip_list)
+             call qsort(pl%nstates, pl%states, pl%pops, pl%dat)
+        end associate
+
+    end subroutine regenerate_trot_info_psip_list_alt
 
     pure function bit_str_cmp_trot(b1, b2) result(cmp)
 
@@ -1817,6 +1861,7 @@ contains
         if (D0_pos == -1) then
             ! D0 was just moved to this processor.  No idea where it might be...
             call binary_search_i0_list_trot(psip_list%states, f0, 1, psip_list%nstates, hit, D0_pos)
+            !call binary_search(psip_list%states, f0, 1, psip_list%nstates, hit, D0_pos)
         else
             D0_pos_old = D0_pos
             select case(bit_str_cmp_trot(f0, psip_list%states(:,D0_pos)))
@@ -1827,10 +1872,12 @@ contains
                 ! D0 < psip_list%states(:,D0_pos) -- it has moved to earlier in
                 ! the list and the old D0_pos is an upper bound.
                 call binary_search_i0_list_trot(psip_list%states, f0, 1, D0_pos_old, hit, D0_pos)
+                !call binary_search(psip_list%states, f0, 1, D0_pos_old, hit, D0_pos)
             case(-1)
                 ! D0 > psip_list%states(:,D0_pos) -- it has moved to later in
                 ! the list and the old D0_pos is a lower bound.
                 call binary_search_i0_list_trot(psip_list%states, f0, D0_pos_old, psip_list%nstates, hit, D0_pos)
+                !call binary_search(psip_list%states, f0, D0_pos_old, psip_list%nstates, hit, D0_pos)
             end select
         end if
         if (.not.hit) call stop_all('find_D0', 'Cannot find reference!')

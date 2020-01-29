@@ -840,7 +840,6 @@ contains
             cluster%pselect = cluster%pselect*(1.0_p - psize)
         end if
 
-       
         if(cluster%nexcitors>0) then
               allocate(deexcitation(cluster%nexcitors))
               deexcitation(:) = .false.
@@ -1012,7 +1011,7 @@ contains
 
     end subroutine select_ucc_cluster
 
-    pure subroutine ucc_collapse_cluster(basis, f0, excitor, excitor_population, cluster_excitor, cluster_population, &
+    subroutine ucc_collapse_cluster(basis, f0, excitor, excitor_population, cluster_excitor, cluster_population, &
                     allowed, conjugate)
 ! [review] - AJWT: based on collapse_clustera
 
@@ -1069,14 +1068,18 @@ contains
         ! Apply excitor to the cluster of excitors.
 
         ! orbitals involved in excitation from reference
-        excitor_excitation = ieor(f0, excitor_loc)
+        if (conjugate) then
+            excitor_excitation = excitor_loc
+        else
+            excitor_excitation = ieor(f0, excitor_loc)
+        end if
         cluster_excitation = ieor(f0, cluster_excitor)
 
         ! Annihilation/creation operators are reversed between excitation/deexcitation operators,
         ! so they must be found appropriately
         ! annihilation operators (relative to the reference)
         if (conjugate) then
-            excitor_annihilation = iand(excitor_excitation, excitor_loc)
+            excitor_annihilation = excitor_excitation - iand(excitor_excitation, f0)
         else
             excitor_annihilation = iand(excitor_excitation, f0)
         end if
@@ -1096,6 +1099,12 @@ contains
                 do ibit = 0, i0_end
                     if (btest(excitor_annihilation(ibasis),ibit)) then
                         if (.not. btest(cluster_creation(ibasis),ibit)) then
+                           allowed = .false.
+                           exit
+                        end if
+                    end if
+                    if (btest(excitor_creation(ibasis),ibit)) then
+                        if (btest(cluster_excitor(ibasis),ibit)) then
                            allowed = .false.
                            exit
                         end if
@@ -1721,14 +1730,9 @@ contains
          early = 0
          i = 0
           
-         !if (f(1) == 9) print*, 'aa', f
-         !if (f(1) == 9) print*, 'bb',  f0
          diff = ieor(f(1),f0(1))
-         !if (f(1) == 9) print*, 'cc', diff 
          if (diff /= 0) then
-             !if (f(1) == 9) print*, 'dd', f(1), f0(1), diff
              do 
-                 !if (f(1) == 9) print*, i
                  if (btest(diff,i)) then
                      early = i
                      exit
@@ -1758,7 +1762,6 @@ contains
 
         integer(i0) :: counter(basis%tot_string_len)
        
-        !if (f(1) == 9) print*, f
 
         if (basis%info_string_len/=0) then
 
@@ -1768,6 +1771,53 @@ contains
         end if
  
     end subroutine add_info_str_trot
+
+    subroutine add_info_str_trot_alt(basis, f0, nel, f)
+
+        ! Sets bits within bit string to give excitation level at end of bit strings.
+        ! This routine sets ex level from provided reference.
+
+        use basis_types, only: basis_t
+        use excitations, only: get_excitation_level
+        type(basis_t), intent(in) :: basis
+        integer(i0), intent(inout) :: f(:)
+        integer(i0), intent(in) :: f0(:)
+        integer, intent(in) :: nel
+
+        integer(i0) :: counter(basis%tot_string_len)
+       
+
+        if (basis%info_string_len/=0) then
+
+            select case(f(1))
+
+            case(3)
+            f(basis%bit_string_len+2) = 1
+            case(6)
+            f(basis%bit_string_len+2) = 2
+            case(9)
+            f(basis%bit_string_len+2) = 3
+            case(258) 
+            f(basis%bit_string_len+2) = 4
+            case(513)
+            f(basis%bit_string_len+2) = 5
+            case(12)
+            f(basis%bit_string_len+2) = 6
+            case(48)
+            f(basis%bit_string_len+2) = 7
+            case(192)
+            f(basis%bit_string_len+2) = 8
+            case(768)
+            f(basis%bit_string_len+2) = 9
+            case(516)
+            f(basis%bit_string_len+2) = 10
+            case(264)
+            f(basis%bit_string_len+2) = 11
+            
+            end select
+        end if
+ 
+    end subroutine add_info_str_trot_alt
 
     subroutine update_proj_energy_mol_ucc(sys, f0, wfn_dat, cdet, pop, estimators, excitation, hmatel, cluster_size)
 
