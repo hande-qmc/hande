@@ -138,8 +138,9 @@ contains
         integer :: date_values(8)
         character(:), allocatable :: err_msg
  
-        type(particle_t) :: time_avg_psip_list_ci, time_avg_psip_list
-        real(p), allocatable :: time_avg_psip_list_sq(:,:)
+        type(particle_t) :: time_avg_psip_list_ci
+        real(p), allocatable :: time_avg_psip_list_sq(:,:), time_avg_psip_list_pops(:)
+        integer(i0), allocatable :: time_avg_psip_list_states(:,:)
         integer :: nstates_sq
         integer :: semi_stoch_it, pos, j, k
         logical :: hit
@@ -148,6 +149,7 @@ contains
         real(p), allocatable :: real_population(:), var_energy(:)
         logical :: old_vary
         integer :: avg_start
+        real(p) :: p_ref
 
         old_vary = .false.
         avg_start = 0
@@ -198,15 +200,19 @@ contains
              ![todo] deal with restarting
         end if
 
-        call init_particle_t(qmc_in%walker_length, 1, sys%basis%tensor_label_len, qmc_in%real_amplitudes, &
-                             qmc_in%real_amplitude_force_32, time_avg_psip_list, io_unit=io_unit)
-             time_avg_psip_list%pops(:,1) = qs%psip_list%pops(:,1)
-             time_avg_psip_list%states(:,1) = qs%psip_list%states(:,1)
-             time_avg_psip_list%nparticles = qs%psip_list%pops(:,1)/qs%psip_list%pop_real_factor
-             time_avg_psip_list%nstates = 1
+        !call init_particle_t(qmc_in%walker_length, 1, sys%basis%tensor_label_len, qmc_in%real_amplitudes, &
+        !                     qmc_in%real_amplitude_force_32, time_avg_psip_list, io_unit=io_unit)
+        !     time_avg_psip_list%pops(:,1) = qs%psip_list%pops(:,1)
+        !     time_avg_psip_list%states(:,1) = qs%psip_list%states(:,1)
+        !     time_avg_psip_list%nparticles = qs%psip_list%pops(:,1)/qs%psip_list%pop_real_factor
+        !     time_avg_psip_list%nstates = 1
 
 
+        allocate(time_avg_psip_list_states(size(qs%psip_list%states(:,1)),size(qs%psip_list%states(1,:))))
+        allocate(time_avg_psip_list_pops(size(qs%psip_list%states(1,:))))
         allocate(time_avg_psip_list_sq(2,size(qs%psip_list%states(1,:))))
+        time_avg_psip_list_states(:,1) = qs%psip_list%states(:,1)
+        time_avg_psip_list_pops(1) = (real(qs%psip_list%pops(1,1))/qs%psip_list%pop_real_factor)
         time_avg_psip_list_sq(1,1) = qs%psip_list%states(1,1)
         time_avg_psip_list_sq(2,1) = (real(qs%psip_list%pops(1,1))/qs%psip_list%pop_real_factor)**2
         nstates_sq = 1
@@ -322,10 +328,8 @@ contains
             qs%estimators%proj_energy_old = get_sanitized_projected_energy(qs)
             if (all(qs%vary_shift) .and. not(old_vary)) then
                 avg_start = iter
-                time_avg_psip_list%pops(:,:) = qs%psip_list%pops(:,:)
-                time_avg_psip_list%states(:,:) = qs%psip_list%states(:,:)
-                time_avg_psip_list%nparticles = sum(abs(qs%psip_list%pops(:,:)))/qs%psip_list%pop_real_factor
-                time_avg_psip_list%nstates = qs%psip_list%nstates
+                time_avg_psip_list_pops(:qs%psip_list%nstates) = real(qs%psip_list%pops(1,:qs%psip_list%nstates))/qs%psip_list%pop_real_factor
+                time_avg_psip_list_states(:,:qs%psip_list%nstates) = qs%psip_list%states(:,:qs%psip_list%nstates)
                 time_avg_psip_list_sq(1,:) = qs%psip_list%states(1,:)
                 time_avg_psip_list_sq(2,:) = (real(qs%psip_list%pops(1,:))/qs%psip_list%pop_real_factor)**2
                 nstates_sq = qs%psip_list%nstates
@@ -344,8 +348,8 @@ contains
                 end if
 
                 if(all(qs%vary_shift)) then
-                    time_avg_psip_list%nparticles = time_avg_psip_list%nparticles*(iter-avg_start)
-                    time_avg_psip_list%pops(:,:time_avg_psip_list%nstates) =  time_avg_psip_list%pops(:,:time_avg_psip_list%nstates)*(iter - avg_start)
+                    !time_avg_psip_list%nparticles = time_avg_psip_list%nparticles*(iter-avg_start)
+                    time_avg_psip_list_pops(:nstates_sq) =  time_avg_psip_list_pops(:nstates_sq)*(iter - avg_start)
 
                     time_avg_psip_list_sq(2,:nstates_sq) =  time_avg_psip_list_sq(2,:nstates_sq)*(iter-avg_start)
                 end if
@@ -366,7 +370,7 @@ contains
                 if(qs%psip_list%nstates-nD0_proc == 0) then
                     max_cluster_size = 0
                 else
-                    max_cluster_size = uccmc_in%pow_trunc
+                    max_cluster_size = min(sys%nel,qs%ref%max_ex_level+2)
                 end if
 
                 call init_mc_cycle(qs%psip_list, qs%spawn_store%spawn, qs%estimators(1)%nattempts, ndeath, &
@@ -379,6 +383,10 @@ contains
 
                 nattempts_spawn=0
 
+                !call cumulative_population(qs%psip_list%pops, qs%psip_list%states(sys%basis%tot_string_len,:), &
+                !                           qs%psip_list%nstates, D0_proc, D0_pos, qs%psip_list%pop_real_factor, &
+                !                           .false., sys%read_in%comp, cumulative_abs_real_pops, &
+                !                           tot_abs_real_pop, D0_pop = D0_normalisation, p_ref=p_ref)
                 call update_bloom_threshold_prop(bloom_stats, nparticles_old(1))
 
                 ! Three options for evolution:
@@ -434,6 +442,10 @@ contains
                 do iattempt = 1, selection_data%nclusters
                     ! For OpenMP scalability, have this test inside a single loop rather
                     ! than attempt to parallelise over three separate loops.
+                    !call select_trot_cluster(rng(it), sys, qs%psip_list, qs%ref%f0, qs%ref%max_ex_level, &
+                    !          selection_data%nstochastic_clusters, D0_normalisation, &
+                    !          qmc_in%initiator_pop, D0_pos, cumulative_abs_real_pops, tot_abs_real_pop, min_cluster_size, &
+                    !          max_cluster_size, logging_info, contrib(it)%cdet, contrib(it)%cluster, qs%excit_gen_data, p_ref)
                     call select_trot_ucc_cluster(rng(it), sys, qs%psip_list, qs%ref%f0, qs%ref%max_ex_level, &
                                             selection_data%nstochastic_clusters, D0_normalisation, qmc_in%initiator_pop, D0_pos, &
                                             logging_info, contrib(it)%cdet, contrib(it)%cluster, qs%excit_gen_data)
@@ -525,37 +537,39 @@ contains
                 if (all(qs%vary_shift)) then
                 do i = 1, qs%psip_list%nstates
                     state = qs%psip_list%states(:,i) 
-                    call binary_search_i0_list_trot(time_avg_psip_list%states, state, 1, time_avg_psip_list%nstates, hit, pos)
+                    call binary_search_i0_list_trot(time_avg_psip_list_states, state, 1, nstates_sq, hit, pos)
                     !call binary_search(time_avg_psip_list%states, state, 1, time_avg_psip_list%nstates, hit, pos)
                     if (hit) then
-                          time_avg_psip_list%nparticles = time_avg_psip_list%nparticles - abs(real(time_avg_psip_list%pops(:,pos))/time_avg_psip_list%pop_real_factor)
-                          time_avg_psip_list%pops(:,pos) = time_avg_psip_list%pops(:,pos) + qs%psip_list%pops(:,i) 
-                          time_avg_psip_list%nparticles = time_avg_psip_list%nparticles + abs(real(time_avg_psip_list%pops(:,pos))/time_avg_psip_list%pop_real_factor)
+                          !time_avg_psip_list%nparticles = time_avg_psip_list%nparticles - abs(real(time_avg_psip_list%pops(:,pos))/time_avg_psip_list%pop_real_factor)
+                          time_avg_psip_list_pops(pos) = time_avg_psip_list_pops(pos) + (real(qs%psip_list%pops(1,i))/qs%psip_list%pop_real_factor)
+                          !time_avg_psip_list%nparticles = time_avg_psip_list%nparticles + abs(real(time_avg_psip_list%pops(:,pos))/time_avg_psip_list%pop_real_factor)
                           time_avg_psip_list_sq(2,pos) = time_avg_psip_list_sq(2,pos) + (real(qs%psip_list%pops(1,i))/qs%psip_list%pop_real_factor)**2 
                        else
-                           do j = time_avg_psip_list%nstates, pos, -1
+                           do j = nstates_sq, pos, -1
                                ! i is the number of determinants that will be inserted below j.
                                k = j + 1 
-                               time_avg_psip_list%states(:,k) = time_avg_psip_list%states(:,j)
-                               time_avg_psip_list%pops(:,k) = time_avg_psip_list%pops(:,j)
-                               time_avg_psip_list%dat(:,k) = time_avg_psip_list%dat(:,j)
+                               time_avg_psip_list_states(:,k) = time_avg_psip_list_states(:,j)
+                               time_avg_psip_list_pops(k) = time_avg_psip_list_pops(j)
+                               !time_avg_psip_list%dat(:,k) = time_avg_psip_list%dat(:,j)
                                time_avg_psip_list_sq(1,k) = time_avg_psip_list_sq(1,j)
                                time_avg_psip_list_sq(2,k) = time_avg_psip_list_sq(2,j)
                            end do
-                           call insert_new_walker(sys, time_avg_psip_list, annihilation_flags, pos, &
-                               state, qs%psip_list%pops(:,i), qs%ref)
-                           time_avg_psip_list%nstates = time_avg_psip_list%nstates+1
+                           !call insert_new_walker(sys, time_avg_psip_list, annihilation_flags, pos, &
+                           !    state, qs%psip_list%pops(:,i), qs%ref)
+                           time_avg_psip_list_states(:,pos) = qs%psip_list%states(:,i)
+                           time_avg_psip_list_pops(pos) = (real(qs%psip_list%pops(1,i))/qs%psip_list%pop_real_factor)
+                           !time_avg_psip_list%nstates = time_avg_psip_list%nstates+1
                            time_avg_psip_list_sq(1,pos) = qs%psip_list%states(1,i)
                            time_avg_psip_list_sq(2,pos) = (real(qs%psip_list%pops(1,i))/qs%psip_list%pop_real_factor)**2
                            nstates_sq = nstates_sq + 1
                            ! Extract the real sign from the encoded sign.
-                           real_population = real(time_avg_psip_list%pops(:,pos))/time_avg_psip_list%pop_real_factor
-                           time_avg_psip_list%nparticles = time_avg_psip_list%nparticles + abs(real_population)
+                           !real_population = real(time_avg_psip_list%pops(:,pos))/time_avg_psip_list%pop_real_factor
+                           !time_avg_psip_list%nparticles = time_avg_psip_list%nparticles + abs(real_population)
                        end if
                 end do
                 ! Update time average.
-                time_avg_psip_list%nparticles = time_avg_psip_list%nparticles/(iter-avg_start+1)
-                time_avg_psip_list%pops(:,:time_avg_psip_list%nstates) =  time_avg_psip_list%pops(:,:time_avg_psip_list%nstates)/(-avg_start+iter+1)
+                !time_avg_psip_list%nparticles = time_avg_psip_list%nparticles/(iter-avg_start+1)
+                time_avg_psip_list_pops(:nstates_sq) =  time_avg_psip_list_pops(:nstates_sq)/(-avg_start+iter+1)
 
                 time_avg_psip_list_sq(2,:nstates_sq) =  time_avg_psip_list_sq(2,:nstates_sq)/(-avg_start+iter+1)
                 end if
@@ -609,13 +623,13 @@ contains
 
         if (parent) then
             write (io_unit, '(1X, "Time-averaged cluster populations",/)')
-            do i = 1, time_avg_psip_list%nstates
-                call write_qmc_var(io_unit, time_avg_psip_list%states(1,i))
-                call write_qmc_var(io_unit, time_avg_psip_list%pops(1,i))
+            do i = 1, nstates_sq
+                call write_qmc_var(io_unit, time_avg_psip_list_states(1,i))
+                call write_qmc_var(io_unit, time_avg_psip_list_pops(i))
                 write (io_unit,'()')
             end do
             write (io_unit, '(1X, "Time-averaged cluster populations squared",/)')
-            do i = 1, time_avg_psip_list%nstates
+            do i = 1, nstates_sq
                 call write_qmc_var(io_unit, int(time_avg_psip_list_sq(1,i)))
                 call write_qmc_var(io_unit, time_avg_psip_list_sq(2,i))
                 write (io_unit,'()')
@@ -674,6 +688,302 @@ contains
         end if 
     
     end subroutine do_trot_uccmc
+
+    subroutine select_trot_cluster(rng, sys, psip_list, f0, ex_level, nattempts, normalisation, &
+                              initiator_pop, D0_pos, cumulative_excip_pop, tot_excip_pop, min_size, max_size, &
+                              logging_info, cdet, cluster, excit_gen_data, p_no_select)
+
+        ! Select a random cluster of excitors from the excitors on the
+        ! processor.  A cluster of excitors is itself an excitor.  For clarity
+        ! (if not technical accuracy) in comments we shall distinguish between
+        ! the cluster of excitors and a single excitor, from a set of which the
+        ! cluster is formed.
+
+        ! In:
+        !    sys: system being studied
+        !    psip_list: particle_t object containing current excip distribution on
+        !       this processor.
+        !    f0: bit string of the reference.
+        !    ex_level: max number of excitations from the reference to include in
+        !        the Hilbert space.
+        !    nattempts: the number of times (on this processor) a random cluster
+        !        of excitors is generated in the current timestep.
+        !    linked_ccmc: if true then only sample linked clusters.
+        !    normalisation: intermediate normalisation factor, N_0, where we use the
+        !       wavefunction ansatz |\Psi_{CC}> = N_0 e^{T/N_0} | D_0 >.
+        !    initiator_pop: the population above which a determinant is an initiator.
+        !    D0_pos: position in the excip list of the reference.  Must be negative
+        !       if the reference is not on the processor.
+        !    cumulative_excip_population: running cumulative excip population on
+        !        all excitors; i.e. cumulative_excip_population(i) = sum(particle_t%pops(1:i)).
+        !    tot_excip_pop: total excip population.
+        !    min_size: the minimum size cluster to allow.
+        !    max_size: the maximum size cluster to allow.
+        !    logging_info: derived type containing information on currently logging status
+        !    excit_gen_data: information about excitation generators
+
+        ! NOTE: cumulative_excip_pop and tot_excip_pop ignore the population on the
+        ! reference as excips on the reference cannot form a cluster and the rounds the
+        ! population on all other excitors to the nearest integer (for convenience--see
+        ! comments in do_ccmc).  Both these quantities should be generated by
+        ! cumulative_population (or be in the same format).
+
+        ! In/Out:
+        !    rng: random number generator.
+        !    cdet: information about the cluster of excitors applied to the
+        !        reference determinant.  This is a bare det_info_t variable on input
+        !        with only the relevant fields allocated.  On output the
+        !        appropriate (system-specific) fields have been filled by
+        !        decoding the bit string of the determinant formed from applying
+        !        the cluster to the reference determinant.
+        !    cluster:
+        !        Additional information about the cluster of excitors.  On
+        !        input this is a bare cluster_t variable with the excitors array
+        !        allocated to the maximum number of excitors in a cluster.  On
+        !        output all fields in cluster have been set.
+
+        use determinant_data, only: det_info_t
+        use ccmc_data, only: cluster_t
+        use ccmc_utils, only: convert_excitor_to_determinant, collapse_cluster
+        use excitations, only: get_excitation_level
+        use dSFMT_interface, only: dSFMT_t, get_rand_close_open
+        use qmc_data, only: particle_t
+        use proc_pointers, only: decoder_ptr
+        use utils, only: factorial
+        use search, only: binary_search
+        use sort, only: insert_sort
+        use parallel, only: nprocs
+        use system, only: sys_t
+        use logging, only: write_logging_stoch_selection, logging_t
+        use excit_gens, only: excit_gen_data_t
+        use const, only: depsilon
+        use ccmc_selection, only: create_null_cluster
+
+        type(sys_t), intent(in) :: sys
+        type(particle_t), intent(in), target :: psip_list
+        integer(i0), intent(in) :: f0(sys%basis%tot_string_len)
+        integer, intent(in) :: ex_level
+        integer(int_64), intent(in) :: nattempts
+        integer, intent(in) :: D0_pos
+        complex(p), intent(in) :: normalisation
+        real(p), intent(in) :: initiator_pop
+        real(p), intent(in) :: cumulative_excip_pop(:), tot_excip_pop
+        integer :: min_size, max_size
+        type(dSFMT_t), intent(inout) :: rng
+        type(det_info_t), intent(inout) :: cdet
+        type(cluster_t), intent(inout) :: cluster
+        type(logging_t), intent(in) :: logging_info
+        type(excit_gen_data_t), intent(in) :: excit_gen_data
+        real(p), intent(in) :: p_no_select
+
+        real(dp) :: rand
+        real(p) :: psize, pexcit
+        complex(p) :: cluster_population, excitor_pop
+        integer :: i, pos, prev_pos
+        real(p) :: pop(max_size)
+        logical :: hit, allowed
+
+        ! We shall accumulate the factors which comprise cluster%pselect as we go.
+        !   cluster%pselect = n_sel p_size p_clust
+        ! where
+        !   n_sel   is the number of cluster selections made;
+        !   p_size  is the probability of choosing a cluster of that size;
+        !   p_clust is the probability of choosing a specific cluster given
+        !           the choice of size.
+
+        ! Each processor does nattempts.
+        ! However:
+        ! * if min_size=0, then each processor is allowed to select the reference (on
+        !   average) nattempts/2 times.  Hence in order to have selection probabilities
+        !   consistent and independent of the number of processors being used (which
+        !   amounts to a processor-dependent timestep scaling), we need to multiply the
+        !   probability the reference is selected by nprocs.
+        ! * assuming each excitor spends (on average) the same amount of time on each
+        !   processor, the probability that X different excitors are on the same processor
+        !   at a given timestep is 1/nprocs^{X-1).
+        ! The easiest way to handle both of these is to multiply the number of attempts by
+        ! the number of processors here and then deal with additional factors of 1/nprocs
+        ! when creating composite clusters.
+        ! NB within a processor those nattempts can be split amongst OpenMP
+        ! threads though that doesn't affect this probability.
+        !print*, 'p_no_select', p_no_select
+        cluster%pselect = real(nattempts*nprocs, p)*p_no_select
+        !print*, cluster%pselect
+
+        ! Select the cluster size, i.e. the number of excitors in a cluster.
+        ! For a given truncation level, only clusters containing at most
+        ! ex_level+2 excitors.
+        ! Following the process described by Thom in 'Initiator Stochastic
+        ! Coupled Cluster Theory' (unpublished), each size, n_s, has probability
+        ! p(n_s) = 1/2^(n_s+1), n_s=0,ex_level and p(ex_level+2)
+        ! is such that \sum_{n_s=0}^{ex_level+2} p(n_s) = 1.
+
+        ! This procedure is modified so that clusters of size min_size+n_s
+        ! has probability 1/2^(n_s+1), and the max_size picks up the remaining
+        ! probability from the series.
+        rand = get_rand_close_open(rng)
+        psize = 0.0_p
+        cluster%nexcitors = -1
+        do i = 0, max_size-min_size-1
+            psize = psize + 1.0_p/2_int_64**(i+1)
+            if (rand < psize) then
+                ! Found size!
+                cluster%nexcitors = i+min_size
+                cluster%pselect = cluster%pselect/2_int_64**(i+1)
+                exit
+            end if
+        end do
+        ! If not set, then must be the largest possible cluster
+        if (cluster%nexcitors == -1) then
+            cluster%nexcitors = max_size
+            cluster%pselect = cluster%pselect*(1.0_p - psize)
+        end if
+        !print*, 'size', cluster%nexcitors
+        !print*, 'pselect', cluster%pselect
+
+        ! If could be using logging set to easily identifiable nonsense value.
+        if (debug) pop = -1_int_p
+
+        ! Initiator approximation.
+        ! This is sufficiently quick that we'll just do it in all cases, even
+        ! when not using the initiator approximation.  This matches the approach
+        ! used by Alex Thom in 'Initiator Stochastic Coupled Cluster Theory'
+        ! (unpublished).
+        ! Assume all excitors in the cluster are initiators (initiator_flag=0)
+        ! until proven otherwise (initiator_flag=1).
+        cdet%initiator_flag = 0
+
+        ! Assume cluster is allowed unless collapse_cluster finds out otherwise
+        ! when collapsing/combining excitors or if it could never have been
+        ! valid
+        allowed = min_size <= max_size
+        ! For linked coupled cluster we keep building the cluster after a
+        ! disallowed excitation so need to know if there has been a disallowed
+        ! excitation at all
+
+        select case(cluster%nexcitors)
+        case(0)
+            call create_null_cluster(sys, f0, cluster%pselect, normalisation, initiator_pop, &
+                                    cdet, cluster, excit_gen_data)
+        case default
+            ! Select cluster from the excitors on the current processor with
+            ! probability for choosing an excitor proportional to the excip
+            ! population on that excitor.  (For convenience, we use a probability
+            ! proportional to the ceiling(pop), as it makes finding the right excitor
+            ! much easier, especially for the non-composite algorithm, as well as
+            ! selecting excitors with the correct (relative) probability.  The
+            ! additional fractional weight is taken into account in the amplitude.)
+            !
+            ! Rather than selecting one excitor at a time and adding it to the
+            ! cluster, select all excitors and then find their locations and
+            ! apply them.  This allows us to sort by population first (as the
+            ! number of excitors is small) and hence allows for a more efficient
+            ! searching of the cumulative population list.
+
+            do i = 1, cluster%nexcitors
+                ! Select a position in the excitors list.
+                pop(i) = get_rand_close_open(rng)*tot_excip_pop
+            end do
+            call insert_sort(pop(:cluster%nexcitors))
+            prev_pos = 1
+            !print*, 'pop', pop(:cluster%nexcitors)
+            !print*, 'tot', tot_excip_pop
+            !print*, 'cum',cumulative_excip_pop(:psip_list%nstates)
+            do i = 1, cluster%nexcitors
+                call binary_search(cumulative_excip_pop, pop(i), prev_pos, psip_list%nstates, hit, pos)
+                ! Not allowed to select the reference as it is not an excitor.
+                ! Because we treat (for the purposes of the cumulative
+                ! population) the reference to have 0 excips, then
+                ! cumulative_excip_pop(D0_pos) = cumulative_excip_pop(D0_pos-1).
+                ! The binary search algorithm assumes each value in the array
+                ! being searched is unique, which is not true, so we can
+                ! accidentally find D0_pos.  As we want to find pos such that
+                ! cumulative_excip_pop(pos-1) < pop <= cumulative_excip_pop(pos),
+                ! then this means we actually need the slot before D0_pos.
+                ! Correcting for this accident is much easier than producing an
+                ! array explicitly without D0...
+                ! If contain multiple spaces we can have this in a more general
+                ! case, where an excitor has population in another space but not
+                ! that which we're currently concerned with. More general test
+                ! should account for this.
+                do
+                    if (pos == 1) exit 
+                    if (abs(cumulative_excip_pop(pos) - cumulative_excip_pop(pos-1)) > depsilon) exit
+                    pos = pos - 1
+                end do
+                    excitor_pop = real(psip_list%pops(1,pos),p)/psip_list%pop_real_factor
+
+                if (i == 1) then
+                    ! First excitor 'seeds' the cluster:
+                    cdet%f = psip_list%states(:,pos)
+                    cdet%data => psip_list%dat(:,pos) ! Only use if cluster is non-composite!
+                    cluster_population = excitor_pop
+                    ! Counter the additional *nprocs above.
+                    cluster%pselect = cluster%pselect/nprocs
+                else
+                    call collapse_cluster(sys%basis, f0, psip_list%states(:,pos), excitor_pop, cdet%f, &
+                                          cluster_population, allowed)
+                    if (.not.allowed) exit 
+                    ! Each excitor spends the same amount of time on each processor on
+                    ! average.  If this excitor is different from the previous excitor,
+                    ! then the probability this excitor is on the same processor as the
+                    ! previous excitor is 1/nprocs.  (Note choosing the same excitor
+                    ! multiple times is valid in linked CC.)
+                    if (pos /= prev_pos) cluster%pselect = cluster%pselect/nprocs
+                end if
+                ! If the excitor's population is below the initiator threshold, we remove the
+                ! initiator status for the cluster
+                if (abs(excitor_pop) <= initiator_pop) cdet%initiator_flag = 3
+                ! Probability of choosing this excitor = pop/tot_pop.
+                pexcit = abs(excitor_pop)/(abs(excitor_pop)+abs(normalisation)) 
+                cluster%pselect = cluster%pselect*pexcit/(1.0-pexcit)
+                cluster%excitors(i)%f => psip_list%states(:,pos)
+                prev_pos = pos
+            end do
+
+            if (allowed) then
+                cluster%excitation_level = get_excitation_level(f0(:sys%basis%bit_string_len), cdet%f(:sys%basis%bit_string_len))
+                ! To contribute the cluster must be within a double excitation of
+                ! the maximum excitation included in the CC wavefunction.
+                allowed = cluster%excitation_level <= ex_level+2
+            end if
+
+            if (allowed) then
+                ! We chose excitors with a probability proportional to their
+                ! occupation.  However, because (for example) the cluster t_X t_Y
+                ! and t_Y t_X collapse onto the same excitor (where X and Y each
+                ! label an excitor), the probability of selecting a given cluster is
+                ! proportional to the number of ways the cluster could have been
+                ! formed.  (One can view this factorial contribution as the
+                ! factorial prefactors in the series expansion of e^T---see Eq (8)
+                ! in the module-level comments.)
+                ! If two excitors in the cluster are the same, the factorial
+                ! overcounts the number of ways the cluster could have been formed
+                ! but the extra factor(s) of 2 are cancelled by a similar
+                ! overcounting in the calculation of hmatel.
+                !cluster%pselect = cluster%pselect*factorial(cluster%nexcitors)
+
+                ! Sign change due to difference between determinant
+                ! representation and excitors and excitation level.
+                call convert_excitor_to_determinant(cdet%f, cluster%excitation_level, cluster%cluster_to_det_sign, f0)
+                call decoder_ptr(sys, cdet%f, cdet, excit_gen_data)
+
+                ! Normalisation factor for cluster%amplitudes...
+                cluster%amplitude = cluster_population/(normalisation**(cluster%nexcitors-1))
+            else
+                ! Simply set excitation level to a too high (fake) level to avoid
+                ! this cluster being used.
+                cluster%excitation_level = huge(0)
+            end if
+            !print*, 'nexcit', cluster%nexcitors
+            !print*, 'ex level', cluster%excitation_level
+
+        end select
+
+        if (debug) call write_logging_stoch_selection(logging_info, cluster%nexcitors, cluster%excitation_level, pop, &
+                min(sys%nel, ex_level+2), cluster%pselect, cluster%amplitude, allowed)
+
+    end subroutine select_trot_cluster
 
     subroutine select_trot_ucc_cluster(rng, sys, psip_list, f0, ex_level, nattempts, normalisation, &
                               initiator_pop, D0_pos, logging_info, cdet, cluster, excit_gen_data)
