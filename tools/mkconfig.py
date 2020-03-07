@@ -298,7 +298,7 @@ We assume only config files are in config_dir.'''
 
 def parse_config(config_file):
     '''Parse the configuration file config_file.'''
-    parser = configparser.SafeConfigParser()
+    parser = configparser.ConfigParser()
 
     valid_sections = ['main', 'opt', 'dbg']
 
