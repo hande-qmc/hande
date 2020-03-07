@@ -9,6 +9,7 @@
 import numpy
 import pandas as pd
 
+import collections
 import json
 import os
 import re
@@ -276,7 +277,9 @@ Returns
         if iteration_pattern.match(line):
             # Columns are separated by at least two spaces but each
             # column name can contain words separated by just one space.
-            column_names = re.split('   *', line[3:].strip())
+            column_names = _deduplicate_names(
+                    names=re.split('   *', line[3:].strip()),
+                    sep='_')
             # Work around pandas slow and very memory-hungry pure-python parser
             # by converting the data table into CSV format (and removing
             # comment_file whilst we're at it) and reading that in.
@@ -448,6 +451,35 @@ Returns
         data = pd.DataFrame(data)
     data.name = 'Hilbert space'
     return (metadata, data)
+
+def _deduplicate_names(names, sep='.'):
+    '''Deduplicate names in a list.
+
+[N_0, N_0, time] is converted to [N_0.1, N_0.2, time], given sep='.'.
+
+Parameters
+----------
+names: list of strings
+    list of strings possibly containing duplicates.
+sep: string
+    separator to use between original string and the counter.
+
+Returns
+-------
+manged_names: deduplicated list of strings, where each string which occurs
+multiple times is appended with <sep>n, where n is the occurence of that string
+in the list.
+'''
+    count = collections.Counter(names)
+    mangled_names = []
+    seen = collections.Counter()
+    for name in names:
+        if count[name] == 1:
+            mangled_names.append(name)
+        else:
+            seen.update([name])
+            mangled_names.append(f'{name}{sep}{seen[name]}')
+    return mangled_names
 
 def _convert_to_csv(fhandle, comment='#', parse_comments=True):
     '''Convert the HANDE data table in a file to CSV format.
