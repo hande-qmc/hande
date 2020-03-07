@@ -396,7 +396,7 @@ args is the list of arguments which is re-encoded in the make.inc.
 
 @contextlib.contextmanager
 def smart_open(filename=None):
-    if filename and filename is not '-':
+    if filename and filename != '-':
         fh = open(filename, 'w')
     else:
         fh = sys.stdout
