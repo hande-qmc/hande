@@ -213,9 +213,12 @@ contains
 
         ! Quasinewtwon approaches scale this death step, but doing this naively
         ! would break population control.  Instead, we split H-S into
-        ! (H - E_proj) + (E_proj - S).
-        ! The former is scaled and produces the step.  The latter effects the population control.
-! [review] - AJWT: Update with the qn population control parameter.
+        ! (H - E_proj)*invdiagel + (E_proj - S)*gamma.
+        ! The former is scaled by "invdiagel" and produces the step.
+        ! The latter affects the population control, scaled by "gamma", the QN population
+        ! control factor. The purpose of "gamma" is to basically allow two separate
+        ! time steps for the two terms.
+        ! For more details see V. A. Neufeld, A. J. W. Thom, JCTC (2020), 16, 3, 1503-1510.
 
         ! NB This currently only handles non-linked complex amplitudes, not linked complex.
 
@@ -304,6 +307,7 @@ contains
                 KiiAi = ((cdet%data(1) - qs%estimators(1)%proj_energy_old)*invdiagel + &
                     (qs%estimators(1)%proj_energy_old - qs%shift(1))*qs%propagator%quasi_newton_pop_control)*cluster%amplitude
             case default
+                ! [todo] check why no shift here.
                 KiiAi = ((sc0_ptr(sys, cdet%f) - qs%ref%H00) - qs%estimators(1)%proj_energy_old)*invdiagel *cluster%amplitude
             end select
         end if

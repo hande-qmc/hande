@@ -17,7 +17,15 @@ contains
         ! matrix element.
         ! For FCIQMC M_ii = K_ii - S where S is the shift and K_ii is
         !  K_ii =  < D_i | H | D_i > - E_0.
-! [review] - AJWT: comment on quasinewton
+        
+        ! Quasinewtwon approaches scale this death step, but doing this naively
+        ! would break population control.  Instead, we split H-S into
+        ! (H - E_proj)*weight + (E_proj - S)*gamma.
+        ! The former is scaled by "weight" and produces the step.
+        ! The latter affects the population control, scaled by "gamma", the QN population
+        ! control factor. The purpose of "gamma" is to basically allow two separate
+        ! time steps for the two terms.
+        ! For more details see V. A. Neufeld, A. J. W. Thom, JCTC (2020), 16, 3, 1503-1510.
 
         ! In:
         !    sys: the system
