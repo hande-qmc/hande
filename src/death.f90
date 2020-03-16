@@ -20,10 +20,10 @@ contains
         
         ! Quasinewtwon approaches scale this death step, but doing this naively
         ! would break population control.  Instead, we split H-S into
-        ! (H - E_proj)*weight + (E_proj - S)*gamma.
+        ! (H - E_proj)*weight + (E_proj - S)*rho.
         ! The former is scaled by "weight" and produces the step.
-        ! The latter affects the population control, scaled by "gamma", the QN population
-        ! control factor. The purpose of "gamma" is to basically allow two separate
+        ! The latter affects the population control, scaled by "rho", the QN population
+        ! control factor. The purpose of "rho" is to basically allow two separate
         ! time steps for the two terms.
         ! For more details see V. A. Neufeld, A. J. W. Thom, JCTC (2020), 16, 3, 1503-1510.
 
