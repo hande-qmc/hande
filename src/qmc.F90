@@ -223,20 +223,10 @@ contains
             qmc_state%propagator%quasi_newton_value = qmc_in%quasi_newton_value
         end if
         if (qmc_state%propagator%quasi_newton) then
-            if (qmc_state%vary_shift(1)) then
-            ! [todo] - resolve purpose of this if clause
-                if (qmc_in%quasi_newton_pop_control < 0.0_p) then
-                    qmc_state%propagator%quasi_newton_pop_control = 1.0_p/qmc_state%propagator%quasi_newton_threshold
-                else
-                    qmc_state%propagator%quasi_newton_pop_control = qmc_in%quasi_newton_pop_control
-                end if
+            if (qmc_in%quasi_newton_pop_control < 0.0_p) then
+                qmc_state%propagator%quasi_newton_pop_control = 1.0_p/qmc_state%propagator%quasi_newton_threshold
             else
-                ! Set to zero initially before shift starts varying.
-                if (qmc_in%quasi_newton_pop_control < 0.0_p) then
-                    qmc_state%propagator%quasi_newton_pop_control = 1.0_p/qmc_state%propagator%quasi_newton_threshold
-                else
-                    qmc_state%propagator%quasi_newton_pop_control = qmc_in%quasi_newton_pop_control
-                end if
+                qmc_state%propagator%quasi_newton_pop_control = qmc_in%quasi_newton_pop_control
             end if
         else
             ! Set to 1 if not using QN!

@@ -797,10 +797,10 @@ type propagator_t
     ! If true, use a quasiNewton step
     logical :: quasi_newton = .false.
     ! The lower threshold for a quasiNewton enegy difference
-    real(p) :: quasi_newton_threshold = 1.e-5_p
+    real(p) :: quasi_newton_threshold
     ! The value to set the quasiNewton energy difference to if lower than the
     ! threshold
-    real(p) :: quasi_newton_value = 1_p
+    real(p) :: quasi_newton_value
     ! This stores the Fock expectation value <i|f|i> which is equal to sp_eigv in read_in systems.
     ! In the 3D UEG this includes the exchange and Madelung terms.
     ! In other model systems, including the 2D UEG, this is just equal to sp_eigv for now.
@@ -808,7 +808,7 @@ type propagator_t
     ! In death step when using QuasiNewton, scale the difference of inst. projected energy and shift
     ! by time step times quasi_newton_pop_control in equilibrium, zero before shift varies.
     ! Set to 1 if not using quasiNewton.
-    real(p) :: quasi_newton_pop_control = 1.0_p
+    real(p) :: quasi_newton_pop_control
 end type propagator_t
 
 type qmc_state_t

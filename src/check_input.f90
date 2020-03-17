@@ -217,7 +217,11 @@ contains
             call stop_all(this, 'Complex calculations not implemented with Uniform/Heat Bath Cauchy Schwarz yet.')
         end if
 
-        if ((.not. qmc_in%quasi_newton) .and. (abs(qmc_in%quasi_newton_pop_control - 1.0_p) > depsilon)) then
+        if ((.not. qmc_in%quasi_newton) .and. ((abs(qmc_in%quasi_newton_pop_control - 1.0_p) > depsilon) .and. &
+            qmc_in%quasi_newton_pop_control > 0.0_p) then
+            ! quasi_newton_pop_control is 1 for non QN propagation. However, here it was neither left to
+            ! its default nor set to 1, so give warning as it will be set to 1 in the code which might not
+            ! be what the user intended.
             call warning(this, 'Since quasiNewton is not used, quasi_newton_pop_control is set to 1.')
         end if
 
