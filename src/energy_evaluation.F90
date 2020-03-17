@@ -610,9 +610,6 @@ contains
                 do i = 1, qs%psip_list%nspaces, 2
                     if (.not. qs%vary_shift(i) .and. sum(ntot_particles(i:i+1)) > qs%target_particles) then
                         qs%vary_shift(i) = .true.
-                        if (qs%propagator%quasi_newton .and. (.not.(qmc_in%quasi_newton_pop_control < 0.0))) then
-                            qs%propagator%quasi_newton_pop_control = qmc_in%quasi_newton_pop_control 
-                        end if
                         if (qmc_in%vary_shift_from_proje) then
                             ! Set shift to be instantaneous projected energy.
                             qs%shift(i) = real(est(i)%proj_energy_comp/est(i)%D0_population_comp, p)
@@ -625,12 +622,6 @@ contains
             else if (doing_calc(hfs_fciqmc_calc)) then
                 if (.not. qs%vary_shift(1) .and. ntot_particles(1) > qs%target_particles) then
                     qs%vary_shift = .true.
-! [review] - AJWT: Either remove or resolve this.  
-                    ! [todo] - is the following actually used? And does it to auto qn_pop_control, i.e. can that input be left empty
-                    ! [todo] - in input file?
-                    if (qs%propagator%quasi_newton .and. (.not. (qmc_in%quasi_newton_pop_control < 0.0))) then
-                        qs%propagator%quasi_newton_pop_control = qmc_in%quasi_newton_pop_control
-                    end if
                     if (qmc_in%vary_shift_from_proje) then
                         qs%shift(1) = est(1)%proj_energy/est(1)%D0_population
                         qs%shift(2) = est(1)%proj_hf_O_hpsip/est(1)%D0_population + est(1)%proj_hf_H_hfpsip/est(1)%D0_population &
@@ -645,9 +636,6 @@ contains
                         if ((ntot_particles(i) > qs%target_particles .and. .not. qmc_in%target_reference) .or. &
                             (est(i)%D0_population > qs%target_particles .and. qmc_in%target_reference)) then
                             qs%vary_shift(i) = .true.
-                            if (qs%propagator%quasi_newton .and. (.not. (qmc_in%quasi_newton_pop_control < 0.0))) then
-                                qs%propagator%quasi_newton_pop_control = qmc_in%quasi_newton_pop_control
-                            end if
                             if (qmc_in%vary_shift_from_proje) then
                                 ! Set shift to be instantaneous projected energy.
                                 qs%shift(i) = est(i)%proj_energy/est(i)%D0_population
