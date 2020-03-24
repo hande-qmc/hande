@@ -308,7 +308,7 @@ contains
                                 sum_sp_eigenvalues_bit_string, decode_det
         use determinant_data, only: det_info_t
         use excitations, only: excit_t, get_excitation_level, get_excitation
-        use qmc_io, only: write_qmc_report, write_qmc_report_header
+        use qmc_io, only: write_qmc_report, write_qmc_report_header, write_qmc_var
         use qmc, only: init_qmc, init_secondary_reference
         use qmc_common, only: initial_qmc_status, initial_cc_projected_energy, load_balancing_report, init_report_loop, &
                               init_mc_cycle, end_report_loop, end_mc_cycle, redistribute_particles, rescale_tau
@@ -925,6 +925,13 @@ contains
             deallocate(rdm, stat=ierr)
             call check_deallocate('rdm',ierr)
             call dealloc_det_info_t(ref_det)
+        end if
+        if(parent) then
+        do i = 1, qs%psip_list%nstates
+        call write_qmc_var(io_unit, qs%psip_list%states(1,i))
+        call write_qmc_var(io_unit, real(qs%psip_list%pops(1,i))/qs%psip_list%pop_real_factor)
+                write (io_unit,'()')
+        end do
         end if
 
         call dealloc_contrib(contrib, ccmc_in%linked)

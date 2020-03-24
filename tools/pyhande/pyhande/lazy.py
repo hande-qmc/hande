@@ -390,7 +390,7 @@ info : :func:`collections.namedtuple`
         to_block.extend(['W * \sum H_0j N_j', 'W * N_0'])
     if extract_rep_loop_time:
         to_block.append('time')
-    if 'uccmc' in md.keys() and not(md['uccmc']['trot']):
+    if 'uccmc' in md.keys() :#and not(md['uccmc']['trot']):
         to_block.append('N_0 UCCMC')
     mc_data = calc.ix[indx, to_block]
     if mc_data['Shift'].iloc[0] == mc_data['Shift'].iloc[1]:

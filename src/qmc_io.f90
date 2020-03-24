@@ -31,12 +31,11 @@ contains
         !       (for CCMC).
         !    io_unit: io unit to write to.
 
-        use calc, only: doing_calc, hfs_fciqmc_calc, uccmc_calc
+        use calc, only: doing_calc, hfs_fciqmc_calc, uccmc_calc, trot_uccmc_calc
 
         integer, intent(in) :: ntypes
         logical, optional, intent(in) :: cmplx_est, rdm_energy, nattempts
         integer, intent(in), optional :: io_unit
-
         logical :: cmplx_est_set
         integer :: i, nreplicas, iunit
         character(20) :: column_title
@@ -52,9 +51,8 @@ contains
         write (iunit,'(1X,"Shift: the energy offset calculated at the end of the report loop.")')
         write (iunit,'(1X,"H_0j: <D_0|H|D_j>, Hamiltonian matrix element.")')
         write (iunit,'(1X,"N_j: population of Hamiltonian particles on determinant D_j.")')
-        if(doing_calc(uccmc_calc)) & 
+        if(doing_calc(uccmc_calc) .or. doing_calc(trot_uccmc_calc)) & 
             write (iunit,'(1X,"N_j UCCMC: true UCC population of Hamiltonian particles on determinant D_j.")')
-
         if (doing_calc(hfs_fciqmc_calc)) then
             write (iunit,'(1X,"O_0j: <D_0|O|D_j>, operator matrix element.")')
             write (iunit,'(1X,a67)') "N'_j: population of Hellmann--Feynman particles on determinant D_j."
@@ -109,7 +107,8 @@ contains
                 call write_column_title(iunit, 'Shift')
                 call write_column_title(iunit, '\sum H_0j N_j')
                 call write_column_title(iunit, 'N_0')
-                if (doing_calc(uccmc_calc)) call write_column_title(iunit, 'N_0 UCCMC')
+                if(doing_calc(uccmc_calc) .or. doing_calc(trot_uccmc_calc)) & 
+                call write_column_title(iunit, 'N_0 UCCMC')
                 if (doing_calc(hfs_fciqmc_calc)) then
                     call write_column_title(iunit, 'HF shift')
                     call write_column_title(iunit, '\sum O_0j N_j')
@@ -401,7 +400,7 @@ contains
         !    rdm_energy: Print energy calculated from RDM.
         !    nattempts: Print number of selection attempts made. Only used in CCMC.
 
-        use calc, only: doing_calc, uccmc_calc
+        use calc, only: doing_calc, uccmc_calc, trot_uccmc_calc
         use qmc_data, only: qmc_in_t, qmc_state_t
 
         type(qmc_in_t), intent(in) :: qmc_in
@@ -412,7 +411,6 @@ contains
         logical, intent(in) :: comment, non_blocking_comm
         logical, intent(in), optional :: cmplx_est, rdm_energy, nattempts
         integer, intent(in), optional :: io_unit
-
         logical :: cmplx_est_set, nattempts_set
         integer :: mc_cycles, ntypes, i, iunit
 
@@ -455,7 +453,7 @@ contains
                 call write_qmc_var(iunit, qs%shift(i))
                 call write_qmc_var(iunit, qs%estimators(i)%proj_energy)
                 call write_qmc_var(iunit, qs%estimators(i)%D0_population)
-                if (doing_calc(uccmc_calc)) call write_qmc_var(iunit, qs%estimators(i)%D0_population_ucc)
+                if (doing_calc(uccmc_calc) .or. doing_calc(trot_uccmc_calc)) call write_qmc_var(iunit, qs%estimators(i)%D0_population_ucc)
                 call write_qmc_var(iunit, ntot_particles(i))
             end do
         end if
