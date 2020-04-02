@@ -403,7 +403,9 @@ contains
                 !$omp        nattempts_spawn, D0_population_ucc_cycle,&
                 !$omp        uccmc_in, nprocs, ms_stats, ps_stats, qmc_in, load_bal_in, &
                 !$omp        ndeath_nc,   &
-                !$omp        nparticles_change, ndeath, logging_info, time_avg_psip_list_ci)
+                !$omp        nparticles_change, ndeath, logging_info, nstates_ci, & 
+                !$omp        time_avg_psip_list_ci_states, time_avg_psip_list_ci_pops, &
+                !$omp        time_avg_psip_list_states, time_avg_psip_list_pops)
 
                 it = get_thread_id()
                 iexcip_pos = 0
@@ -676,7 +678,7 @@ contains
 
         min_cluster_size = 0
         selection_data%nD0_select = 0 ! instead of this number of deterministic selections, these are chosen stochastically
-        selection_data%nstochastic_clusters = nattempts*10**3
+        selection_data%nstochastic_clusters = nattempts!*10**3
         selection_data%nsingle_excitors = 0
 
         selection_data%nclusters = selection_data%nD0_select + selection_data%nsingle_excitors &

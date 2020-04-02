@@ -299,7 +299,7 @@ contains
 
         if (parent) then
             call write_qmc_report_header(qs%psip_list%nspaces, cmplx_est=sys%read_in%comp, rdm_energy=uccmc_in%density_matrices, &
-                                         nattempts=.true., io_unit=io_unit, variational=variational)
+                                         nattempts=.true., io_unit=io_unit)
         end if
 
         restart_proj_est = present(qmc_state_restart) .or. (restart_in%read_restart .and. restart_version_restart >= 2)
@@ -307,7 +307,7 @@ contains
             call initial_cc_projected_energy(sys, qs, qmc_in%seed+iproc, logging_info, cumulative_abs_real_pops, nparticles_old)
         end if
 
-        call initial_qmc_status(sys, qmc_in, qs, nparticles_old, doing_ccmc=.true., io_unit=io_unit, variational=variational)
+        call initial_qmc_status(sys, qmc_in, qs, nparticles_old, doing_ccmc=.true., io_unit=io_unit)
 
         ! Initialise timer.
         call cpu_time(t1)
@@ -423,10 +423,12 @@ contains
                 !$omp        max_cluster_size, contrib, D0_normalisation, D0_pos, rdm,    &
                 !$omp        qs, sys, bloom_stats, min_cluster_size, ref_det,             &
                 !$omp        proj_energy_cycle, D0_population_cycle, selection_data,      &
-                !$omp        nattempts_spawn, D0_population_ucc_cycle&
+                !$omp        nattempts_spawn, D0_population_ucc_cycle, &
                 !$omp        uccmc_in, nprocs, ms_stats, ps_stats, qmc_in, load_bal_in, &
-                !$omp        ndeath_nc,   &
-                !$omp        nparticles_change, ndeath, logging_info, time_avg_psip_list_ci)
+                !$omp        ndeath_nc,   pcumul, nstates_ci, &
+                !$omp        nparticles_change, ndeath, logging_info, &
+                !$omp        time_avg_psip_list_ci_states, time_avg_psip_list_ci_pops, &
+                !$omp        time_avg_psip_list_states, time_avg_psip_list_pops)
 
                 it = get_thread_id()
                 iexcip_pos = 0
@@ -434,20 +436,14 @@ contains
                 proj_energy_cycle = cmplx(0.0, 0.0, p)
                 D0_population_cycle = cmplx(0.0, 0.0, p)
                 D0_population_ucc_cycle = 0.0_p
-                !$omp do schedule(dynamic,200) reduction(+:D0_population_cycle,proj_energy_cycle, D0_population_ucc_cycle,nattempts_spawn,ndeath)
                 pcumul = (tot_abs_real_pop**(max_cluster_size+1)-1) /(tot_abs_real_pop-1)
-                do iattempt = 1, qs%estimators(1)%nattempts![todo] fix after oversampling selection_data%nclusters
+                !$omp do schedule(dynamic,200) reduction(+:D0_population_cycle,proj_energy_cycle, D0_population_ucc_cycle, nattempts_spawn,ndeath)
+                do iattempt = 1, selection_data%nclusters
                     ! For OpenMP scalability, have this test inside a single loop rather
                     ! than attempt to parallelise over three separate loops.
-                !    call select_trot_cluster(rng(it), sys, qs%psip_list, probabilities, qs%ref%f0, qs%ref%max_ex_level, &
-                !              selection_data%nstochastic_clusters, D0_normalisation, &
-                !              qmc_in%initiator_pop, D0_pos, cumulative_abs_real_pops, tot_abs_real_pop, min_cluster_size, &
-                !              max_cluster_size, logging_info, contrib(it)%cdet, contrib(it)%cluster, qs%excit_gen_data, p_ref, &
-                !              p_avg, p_complement_avg)
                    
                     call select_trot_ucc_cluster(rng(it), sys, qs%psip_list, qs%ref%f0, qs%ref%max_ex_level, &
-                                            qs%estimators(1)%nattempts, D0_normalisation, qmc_in%initiator_pop, D0_pos, &
-                                            ![todo] fix after selection_data%nstochastic_clusters, D0_normalisation, qmc_in%initiator_pop, D0_pos, &
+                                            selection_data%nstochastic_clusters, D0_normalisation, qmc_in%initiator_pop, D0_pos, &
                                             logging_info, contrib(it)%cdet, contrib(it)%cluster, qs%excit_gen_data)
                     if (uccmc_in%trot) call add_info_str_trot(sys%basis, qs%ref%f0, sys%nel, contrib(it)%cdet%f)
                     !Add selected cluster contribution to CI wavefunction estimator.
@@ -578,7 +574,7 @@ contains
             qs%estimators%proj_energy = real(qs%estimators%proj_energy_comp,p)
             if (uccmc_in%variational_energy) then
                 call var_energy_uccmc(sys, time_avg_psip_list_ci_states, time_avg_psip_list_ci_pops, nstates_ci, var_energy)
-                qs%estimators%var_energy = var_energy
+                !qs%estimators%var_energy = var_energy
             end if 
             if (debug) call write_logging_select_ccmc(logging_info, iter, selection_data)
           
@@ -596,7 +592,7 @@ contains
                 if (bloom_stats%nblooms_curr > 0) call bloom_stats_warning(bloom_stats, io_unit=io_unit)
                 call write_qmc_report(qmc_in, qs, ireport, nparticles_old, t2-t1, .false., .false., &
                                         io_unit=io_unit, cmplx_est=sys%read_in%comp, rdm_energy=uccmc_in%density_matrices, &
-                                        nattempts=.true., variational=variational)
+                                        nattempts=.true.)
             end if
 
 
