@@ -391,6 +391,10 @@ metadata : dict
 results : :class:`pandas.DataFrame`
     Analysed DMQMC data.
 '''
+    assert not spline, "spline option is broken! Please set to default "\
+        "(False) or fix."
+    assert calc_number is None, "calc_number option is broken! Please set "\
+        "to default (None) or fix."
 
     (metadata, data) = ([], [])
     for (md, df) in hande_out:

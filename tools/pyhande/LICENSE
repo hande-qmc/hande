@@ -1,4 +1,6 @@
-All files in the pyhande package are under the Modified BSD license.
+All files in the pyhande package and their tests are under the Modified BSD
+license.
+[todo] - Review how to phrase licence of tests!
 
 Copyright (c) 2016 by HANDE developers.
 

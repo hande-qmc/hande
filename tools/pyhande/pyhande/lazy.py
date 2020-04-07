@@ -123,6 +123,9 @@ Returns
 --------
 info : :func:`collections.namedtuple`
     See :func:`std_analysis`.
+
+[todo] - Catch ValueError from statsmodels when there is too little
+[todo] - data.
 '''
 
     if end is None:
@@ -137,7 +140,7 @@ info : :func:`collections.namedtuple`
     #n_data = len(list)
     
     list_org = calc_tr['Proj. Energy'].as_matrix()
-    n_data = len(list_org) / batch_size
+    n_data = len(list_org) // batch_size
     list = [0]*n_data
     for i in range(n_data):
         list[i] = numpy.mean(list_org[i*batch_size:(i+1)*batch_size])
@@ -188,7 +191,7 @@ def std_analysis(datafiles, start=None, end=None, select_function=None,
         extract_psips=False, reweight_history=0, mean_shift=0.0,
         arith_mean=False, calc_inefficiency=False, verbosity = 1, 
         starts_reweighting=None, extract_rep_loop_time=False,
-        analysis_method=None, warmup_detection=None):
+        analysis_method='reblocking', warmup_detection='hande_org'):
     '''Perform a 'standard' analysis of HANDE output files.
 
 Parameters
@@ -267,6 +270,10 @@ References
 Umrigar93
     Umrigar et al., J. Chem. Phys. 99, 2865 (1993).
 '''
+    assert analysis_method == 'reblocking' or analysis_method == 'hybrid',\
+        "'analysis_method' has to be either 'reblocking' or 'hybrid'."
+    assert warmup_detection == 'hande_org' or warmup_detection == 'mser_min',\
+        "'warmup_detection' has to be either 'hande_org' or 'mser_min'."
     (calcs, calcs_md) = zeroT_qmc(datafiles, reweight_history, mean_shift,
                                   arith_mean)
     infos = []
@@ -332,6 +339,8 @@ metadata : list of dict
                 arith_mean=arith_mean)
             df['W * \sum H_0j N_j'] = df['\sum H_0j N_j'] * df['Weight']
             df['W * N_0'] = df['N_0'] * df['Weight']
+        # The next uncommented line is dangerous and possibly very
+        # confusing!  [todo] Fix.
         df['Proj. Energy'] = df['\sum H_0j N_j'] / df['N_0'] 
         data.append(df)
         metadata.append(md)
@@ -618,19 +627,19 @@ starting_iteration: integer
 '''
 
     if frac_screen_interval <= 0:
-        raise RuntimeError("frac_screen_interval <= 0")
+        raise ValueError("frac_screen_interval <= 0")
 
     if number_of_reblocks_to_cut_off < 0:
-        raise RuntimeError("number_of_reblocks_to_cut_off < 0")
+        raise ValueError("number_of_reblocks_to_cut_off < 0")
 
     if pos_min_frac < 0.00001 or pos_min_frac > 1.0:
-        raise RuntimeError("0.00001 < pos_min_frac < 1 not satisfied")
+        raise ValueError("0.00001 < pos_min_frac < 1 not satisfied")
 
     if number_of_reblockings <= 0:
-        raise RuntimeError("number_of_reblockings <= 0")
+        raise ValueError("number_of_reblockings <= 0")
 
     if number_of_reblockings > frac_screen_interval:
-        raise RuntimeError("number_of_reblockings > frac_screen_interval")
+        raise ValueError("number_of_reblockings > frac_screen_interval")
 
     if end is None:
         # Default end is the last iteration.

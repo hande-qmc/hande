@@ -50,6 +50,9 @@ Umrigar93
 Vigor15
     W.A. Vigor, et al., J. Chem. Phys. 142, 104101 (2015).
 '''
+    assert tstep > 0, "QMC time step tstep should be > 0."
+    assert mc_cycles > 0, "#Monte Carlo cycles mc_cycles should be > 0."
+
     weights = []
     to_prod = np.exp(-tstep*mc_cycles*(data[weight_key].values-mean_shift))
     if len(data[weight_key]) > 0:
@@ -70,6 +73,10 @@ Vigor15
     return data
 
 def arith_series(tstep, mc_cycles, weight_now, weight_before):
+    
+    assert tstep > 0, "QMC time step tstep should be > 0."
+    assert mc_cycles > 0, "#Monte Carlo cycles mc_cycles should be > 0."
+    
     # Handle division by zero!!!
     if weight_now != weight_before:
         tdweight = tstep*(weight_before - weight_now)
