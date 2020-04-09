@@ -529,7 +529,8 @@ contains
 
     subroutine cumulative_population_real(pops, ex_lvls, nactive, D0_proc, D0_pos, real_factor, calc_dist, complx, &
                                     cumulative_pops, tot_pop, ex_lvl_dist)
-
+    ! [review] - Verena: Is the only difference to the routine above that pops is real? Refactor?
+    ! [review] - Verena: Would it possibly be clearer to continue using the routine above and converting pops?
         ! Calculate the cumulative population, i.e. the number of psips/excips
         ! residing on a determinant/an excitor and all determinants/excitors which
         ! occur before it in the determinant/excitor list.

@@ -370,6 +370,7 @@ contains
                 rep_loop_loc(D0_pop_imag_replica_ind) = aimag(qs%estimators(3)%D0_population_comp)
             end if
         else
+            ! [review] - Verena: Do you also need to communicate D0_population_ucc?
             rep_loop_loc(proj_energy_ind) = qs%estimators(1)%proj_energy
             rep_loop_loc(D0_pop_ind) = qs%estimators(1)%D0_population
             if (qs%psip_list%nspaces > 1) then
@@ -503,6 +504,7 @@ contains
                                                     rep_loop_sum(D0_pop_imag_replica_ind), p)
         end if
 
+        ! [review] - Verena: Do you also need to communicate D0_population_ucc?
         qs%estimators(1)%proj_energy = real(rep_loop_sum(proj_energy_ind), p)
         qs%estimators(1)%D0_population = real(rep_loop_sum(D0_pop_ind), p)
         if (size(qs%estimators) > 1) then

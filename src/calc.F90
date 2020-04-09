@@ -26,6 +26,7 @@ type(metadata_t) :: GLOBAL_META
 ! This can be easily tested using the doing_calc function.
 
 ! [review] - AJWT: This global is a bit worrying as it appears that only one type of calc can happen at a time.  Possibly for long-term thought.
+! [comment] - Verena: Note that when doing simple FCIQMC, calc_type = simple_fciqmc_calc + fciqmc_calc.
 integer :: calc_type = 0
 ! Flags for doing exact and/or Lanczos diagonalisation.
 integer, parameter :: exact_diag = 2**0
