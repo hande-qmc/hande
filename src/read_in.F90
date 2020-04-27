@@ -455,7 +455,7 @@ contains
 
         sys%read_in%Ecore = 0.0_p
         im_core = 0.0_p
-        if (t_store) then
+        if ((t_store) .and. (parent)) then
             call zero_one_body_int_store(sys%read_in%one_e_h_integrals)
             call zero_two_body_int_store(sys%read_in%coulomb_integrals)
             if (sys%read_in%comp) then
@@ -1032,7 +1032,9 @@ contains
         ! Integrals might be allowed by symmetry (and hence stored) but still
         ! be zero (and so not be included in the integral file).  To protect
         ! ourselves against accessing uninitialised memory:
-        call zero_one_body_int_store(store)
+        if (parent) then
+            call zero_one_body_int_store(store)
+        end if
 
         ! In addition to reading in the integrals, we must also calculate the
         ! contribution from the core (frozen) orbitals.
@@ -1255,10 +1257,8 @@ contains
         end if
 
         call init_two_body_exchange_t(sys, sys%read_in%pg_sym%gamma_sym, .false., sys%read_in%additional_exchange_ints)
-        call zero_two_body_exchange_int_store(sys%read_in%additional_exchange_ints)
         if (sys%read_in%comp) then
             call init_two_body_exchange_t(sys, sys%read_in%pg_sym%gamma_sym, .true., sys%read_in%additional_exchange_ints_imag)
-            call zero_two_body_exchange_int_store(sys%read_in%additional_exchange_ints_imag)
         end if
 
         allocate(seen_ijij((active_basis_offset*(active_basis_offset+1))/2), stat=ierr)
@@ -1269,6 +1269,11 @@ contains
         seen_iaib = 0
 
         if (parent) then
+            call zero_two_body_exchange_int_store(sys%read_in%additional_exchange_ints)
+            if (sys%read_in%comp) then
+                call zero_two_body_exchange_int_store(sys%read_in%additional_exchange_ints_imag)
+            end if
+
             inquire(file=sys%read_in%ex_fcidump, exist=t_exists)
             if (.not.t_exists) call stop_all('read_in_integrals', 'FCIDUMP does not &
                                                                &exist:'//trim(sys%read_in%ex_fcidump))
@@ -1439,8 +1444,9 @@ contains
 
         use molecular_integrals, only: store_one_body_int, get_one_body_int_mol_nonzero, &
                                get_two_body_int_mol_nonzero, get_two_body_exchange_pbc_int_nonzero,&
-                               pbc_ex_int_indx, int_ex_indx
+                               pbc_ex_int_indx, int_ex_indx, broadcast_one_body_t
         use system, only: sys_t
+        use parallel, only: parent, root
         use molecular_integral_types, only: two_body_t, one_body_t, two_body_exchange_t
 
         type(sys_t), intent(in) :: sys
@@ -1450,16 +1456,19 @@ contains
         real(p) :: intgrl
         integer :: i, ierr
         type(int_ex_indx) :: indx
+        
+        if (parent) then
+            do i = 1, sys%basis%nbasis, 2
+                indx = pbc_ex_int_indx(.false., i,i,i,i,sys%basis%basis_fns)
+                intgrl = get_one_body_int_mol_nonzero(one_e_ints, i, i, sys%basis%basis_fns)
 
-        do i = 1, sys%basis%nbasis, 2
-            indx = pbc_ex_int_indx(.false., i,i,i,i,sys%basis%basis_fns)
-            intgrl = get_one_body_int_mol_nonzero(one_e_ints, i, i, sys%basis%basis_fns)
+                intgrl = intgrl + 0.5_p * get_two_body_int_mol_nonzero(two_e_ints, i, i, i, i, sys%basis%basis_fns)
+                intgrl = intgrl - 0.5_p * get_two_body_exchange_pbc_int_nonzero(pbc_ex_ints, i, i, i, i, sys%basis%basis_fns)
 
-            intgrl = intgrl + 0.5_p * get_two_body_int_mol_nonzero(two_e_ints, i, i, i, i, sys%basis%basis_fns)
-            intgrl = intgrl - 0.5_p * get_two_body_exchange_pbc_int_nonzero(pbc_ex_ints, i, i, i, i, sys%basis%basis_fns)
-
-            call store_one_body_int(i, i, intgrl, sys, .false., one_e_ints, ierr)
-        end do
+                call store_one_body_int(i, i, intgrl, sys, .false., one_e_ints, ierr)
+            end do
+        end if
+        call broadcast_one_body_t(one_e_ints, root)
 
     end subroutine modify_one_body_ints
 
