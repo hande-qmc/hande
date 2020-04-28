@@ -12,9 +12,12 @@ submodule for more details.
 
 # For convenience, import all submodules so the user need only import pyhande.
 import pyhande.analysis
+import pyhande.blocker
 import pyhande.canonical
 import pyhande.extract
+import pyhande.extractor
 import pyhande.lazy
+import pyhande.results
 import pyhande.utils
 import pyhande.weight
 import pyhande.dmqmc
