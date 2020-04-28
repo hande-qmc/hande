@@ -112,8 +112,7 @@ class TestAnalyseObservables(unittest.TestCase):
         result = dmqmc.analyse_observables(
             self.data.drop(columns=['alt1']),
             self.cov.drop(
-                columns=['alt1'], index=[[i, 'alt1'] for i in range(3)]),
-            self.nsamples)
+                columns='alt1').drop(index='alt1', level=1), self.nsamples)
         pd.testing.assert_frame_equal(
             result, self.result_dummy, check_exact=False)
 
@@ -132,8 +131,7 @@ class TestAnalyseObservables(unittest.TestCase):
         result = dmqmc.analyse_observables(
             self.data.drop(columns=self.cols),
             self.cov.drop(
-                columns=self.cols,
-                index=[[i, col] for col in self.cols for i in range(3)]),
+                columns=self.cols).drop(index=self.cols, level=1),
             self.nsamples)
         self.cols_dummy.remove('Suu_34')
         self.cols_dummy.remove('Suu_34_error')
@@ -320,8 +318,8 @@ class AnalyseRenyiEntropy(unittest.TestCase):
         cols = ['RDM2 trace 1', 'RDM2 trace 2', 'RDM2 S2']
         self.data.drop(columns=cols, inplace=True)
         self.cov.drop(
-            columns=cols, index=[[i, col] for col in cols for i in range(3)],
-            inplace=True)
+                columns=cols, inplace=True)
+        self.cov.drop(index=cols, level=1, inplace=True)
         results = dmqmc.analyse_renyi_entropy(
             self.data, self.cov, self.nsamples)
         results_dummy = pd.DataFrame([
