@@ -139,7 +139,7 @@ info : :func:`collections.namedtuple`
     #list = calc_tr['Proj. Energy'].as_matrix()
     #n_data = len(list)
     
-    list_org = calc_tr['Proj. Energy'].as_matrix()
+    list_org = calc_tr['Proj. Energy'].values
     n_data = len(list_org) // batch_size
     list = [0]*n_data
     for i in range(n_data):
