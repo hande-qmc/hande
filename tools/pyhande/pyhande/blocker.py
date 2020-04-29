@@ -45,13 +45,12 @@ class Blocking:
             The default is None.
 
         """
-        self._cols: List[str] = cols if cols is not None else [
+        self._cols: List[str] = cols if cols else [
             'Shift', r'\sum H_0j N_j', 'N_0', '# H psips'
             ]
-        self._eval_ratio: Dict[str, str] = (
-            eval_ratio if eval_ratio is not None else {
+        self._eval_ratio: Dict[str, str] = eval_ratio if eval_ratio else {
                 'name': 'Proj. Energy', 'num': r'\sum H_0j N_j', 'denom': 'N_0'
-                })
+                }
         if any([v not in self._cols for v in [self._eval_ratio['num'],
                                               self._eval_ratio['denom']]]):
             raise ValueError(f"'eval_ratio' requires "
@@ -167,15 +166,15 @@ class Blocking:
                              "explicity in another instance of Blocking to "
                              "only contain columns in all of your 'data'.")
         if self.start_its and len(self.start_its) != len(data):
-            raise ValueError("If 'start_its' (here of length {}) is "
-                             "specified, it has to be a list of the same "
-                             "length as 'data' (here of length {}).".format(
-                                 len(self.start_its), len(data)))
+            raise ValueError("If 'start_its' (here of length "
+                             f"{len(self.start_its)}) is specified, it has to "
+                             "be a list of the same length as 'data' (here of "
+                             f"length {len(data)}).")
         if self.end_its and len(self.end_its) != len(data):
-            raise ValueError("If 'end_its' (here of length {}) is "
-                             "specified, it has to be a list of the same "
-                             "length as 'data' (here of length {}).".format(
-                                 len(self.end_its), len(data)))
+            raise ValueError("If 'end_its' (here of length "
+                             f"{len(self.end_its)}) is specified, it has to "
+                             "be a list of the same length as 'data' (here of "
+                             f"length {len(data)}).")
         self._data = data
 
         # Find end and start iteration if required.

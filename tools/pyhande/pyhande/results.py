@@ -69,7 +69,7 @@ class Results:
                     madlist.append([metadat])
                 except KeyError:
                     warnings.warn(
-                        "Metadata #{} has not key {}.".format(ind, madd))
+                        f"Metadata #{ind} has not key {madd}.")
                     madlist.append([None])
             maddf = pd.DataFrame(
                 madlist,
