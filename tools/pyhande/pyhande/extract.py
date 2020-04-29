@@ -478,7 +478,7 @@ in the list.
             mangled_names.append(name)
         else:
             seen.update([name])
-            mangled_names.append(f'{name}{sep}{seen[name]}')
+            mangled_names.append('{}{}{}'.format(name,sep,seen[name]))
     return mangled_names
 
 def _convert_to_csv(fhandle, comment='#', parse_comments=True):
