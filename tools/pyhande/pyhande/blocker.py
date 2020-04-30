@@ -49,8 +49,8 @@ class Blocking:
             'Shift', r'\sum H_0j N_j', 'N_0', '# H psips'
             ]
         self._eval_ratio: Dict[str, str] = eval_ratio if eval_ratio else {
-                'name': 'Proj. Energy', 'num': r'\sum H_0j N_j', 'denom': 'N_0'
-                }
+            'name': 'Proj. Energy', 'num': r'\sum H_0j N_j', 'denom': 'N_0'
+            }
         if any([v not in self._cols for v in [self._eval_ratio['num'],
                                               self._eval_ratio['denom']]]):
             raise ValueError(f"'eval_ratio' requires "
