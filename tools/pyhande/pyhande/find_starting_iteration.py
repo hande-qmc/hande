@@ -1,61 +1,206 @@
 """Functions to find starting iteration for analysis."""
 from typing import List
-import copy
-import warnings
 import math
 import pandas as pd
 import matplotlib.pyplot as plt
+import numpy as np
 import pyblock
-import pyhande.analysis as analysis
 
-def _check_find_starting_iteration_blocking_inputs(
-        number_of_intervals, min_number_of_blockings,
-        number_of_reblocks_to_cut_off, start_position_in_data_max_frac):
-    """Check parameters of find_starting_iteration_blocking."""
-    if number_of_intervals <= 0:
-        raise ValueError("'number_of_intervals' has to be greater than zero!")
 
-    if number_of_reblocks_to_cut_off < 0:
-        raise ValueError("'number_of_reblocks_to_cut_off' can't be negative!")
+def show_starting_iterations_graph(
+        data: pd.DataFrame, it_key: str, col_to_show: str,
+        starting_it: int) -> None:
+    """
+    Show a plot of data of specified column with starting iteration.
 
-    if (start_position_in_data_max_frac < 0.00001 or
-            start_position_in_data_max_frac > 1.0):
-        raise ValueError("0.00001 < start_position_in_data_max_frac < 1 not "
-                         "satisfied!")
+    Parameters
+    ----------
+    data : pd.DataFrame
+        Data where starting iteration was found.
+    it_key : str
+        Key of iteration column.
+    col_to_show : str
+        Key of column to plot here.
+    starting_it : int
+        Suggested/found starting iteration.
+    """
+    plt.xlabel(it_key)
+    plt.ylabel(col_to_show)
+    plt.plot(data[it_key], data[col_to_show], 'b-', label='data')
+    plt.axvline(starting_it, color='r',
+                label='Suggested starting iteration')
+    plt.legend(loc='best')
+    plt.show()
 
-    if min_number_of_blockings <= 0:
-        raise ValueError("'min_number_of_blockings' has to be greater than "
-                         "zero!")
 
-    if min_number_of_blockings > number_of_intervals:
-        raise ValueError("'min_number_of_blockings' can't be greater than "
-                         "'number_of_intervals'!")
+def _get_blocking_loss(start_ind: int, data: pd.DataFrame) -> pd.Series:
+    """
+    Get blocking loss which is to be minimised.
+
+    Loss here is defined as the fractional standard error over the
+    square root of the number of data points used for the blocking.
+
+    Parameters
+    ----------
+    start_ind : int
+        Index where blocking will start.  The blocking loss of that
+        analysis will be found.
+    data : pd.DataFrame
+        Data to be blocked, only including columns that are blocked.
+
+    Returns
+    -------
+    pd.Series
+        Index consists of the columns in `data` considered when finding
+        starting iteration.  Values are the losses for each column
+        respectively.  If loss calculation fails, respective value is
+        NaN.
+    """
+    (_, reblock, _) = pyblock.pd_utils.reblock(data.iloc[start_ind:])
+    opt_block = pyblock.pd_utils.reblock_summary(reblock)
+    if all([col in opt_block.index for col in data.columns]):
+        loss = ((opt_block['standard error error'] /
+                 opt_block['standard error']) /
+                math.sqrt(float(len(data.iloc[start_ind:]))))
+        if not loss.isna().any():
+            return loss.astype('float64')
+    # 'nan' values can easily be ignored by _grid_search.
+    return pd.Series([float('nan')]*len(data.columns), index=data.columns)
+
+
+def _grid_search(data: pd.DataFrame, grid_size: int, min_ind: int,
+                 max_ind: int) -> int:
+    """
+    Do log adaptive grid search between `min_ind` and `max_ind`.
+
+    Parameters
+    ----------
+    data : pd.DataFrame
+         Data to be blocked, only including columns that are blocked.
+    grid_size : int
+        Number of logarithmically spaced grid points per run.
+    min_ind : int
+        Minimum value of to be found `start_ind`.
+    max_ind : int
+        Maximum value of to be found `start_ind`.
+
+    Returns
+    -------
+    int
+        Found `start_ind`, index where blocking will start.
+    """
+    while grid_size > 2:
+        grid_pts = np.logspace(
+            np.log10(min_ind), np.log10(int(max_ind)), grid_size)
+        # The grid points correspond to possible - discrete - start
+        # indices so resolution is 1 at best.
+        while int(grid_pts[0]) == int(grid_pts[1]) and grid_size > 2:
+            grid_pts = np.delete(grid_pts, 0)
+            grid_size -= 1
+        losses = pd.concat(
+            [_get_blocking_loss(int(grid_pt), data) for grid_pt in grid_pts],
+            keys=list(map(int, grid_pts)), axis=1)
+        # idxmin(axis=1) will compare values in each row, giving the
+        # losses column name where the minimum is.  The losses column
+        # names correspond to the grid points.  Of those, we want the
+        # lowest grid point (.min()).
+        poss_min = losses.idxmin(axis=1).min()
+        # Find next minimum if the one above is ignored.  Of the grid
+        # point found, select highest to be most conservative.
+        poss_max = losses.drop(columns=poss_min).idxmin(axis=1).max()
+        # Sort.
+        poss_min, poss_max = ((poss_min, poss_max) if poss_min < poss_max
+                              else (poss_max, poss_min))
+        min_ind = max(min_ind, poss_min)
+        max_ind = min(max_ind, poss_max)
+        if min_ind == int(grid_pts[0]) and max_ind == int(grid_pts[-1]):
+            break
+    return max_ind
+
 
 def find_starting_iteration_blocking(
         data: pd.DataFrame, end_it: int, it_key: str, cols: List[str],
-        number_of_intervals: int = 300, min_number_of_blockings: int = 30,
+        start_position_in_data_max_frac: float = 0.8, grid_size: int = 10,
         number_of_reblocks_to_cut_off: int = 1,
-        start_position_in_data_max_frac: float = 0.8, verbose: int = 0,
         show_graph: bool = False) -> int:
-    '''Find the best iteration to start analysing CCMC/FCIQMC data.
+    """
+    Find the best iteration to start analysing CCMC/FCIQMC data.
 
-    This is a modification of a previous function in pyhande.lazy.py
-    'find_starting_iteration'.
+    It first excludes data before not all data in all columns specified
+    in `cols` are varying and after `end_it`.  Then it searches for the
+    starting iteration using an adaptive grid search on a log scale
+    since we assume that the starting iteration is closer to the
+    beginning than the end of the available data.  During the search, a
+    loss function is minimised.  The loss is the fractional error over
+    number of data involved in the blocking for each data column in
+    `cols`.
+
+    This implementation is based on an older version in pyhande/lazy.py.
 
     .. warning::
 
         Use with caution, check whether output is sensible and adjust
         parameters if necessary.
-    '''
-    # Check inputs
-    _check_find_starting_iteration_blocking_inputs(
-        number_of_intervals, min_number_of_blockings,
-        number_of_reblocks_to_cut_off, start_position_in_data_max_frac)
 
-    data = data[data[it_key] <= end_it]
+    Parameters
+    ----------
+    data : pd.DataFrame
+        QMC data, e.g. as extracted by extract.py.  Has to contain
+        columns with key `it_key` and columns in `cols`, used for
+        blocking.
+    end_it : int
+        Last iteration to be considered in blocking.
+    it_key : str
+        Key of column containing MC iterations.
+    cols : List[str]
+        List of keys of columns involved in blocking.
+    start_position_in_data_max_frac : float, optional
+        The start iterations found has to be in the first
+        `start_position_in_data_max_frac` fraction of the data between
+        the point where all columns in `cols` have started varying and
+        `end_it`.  This prevents finding a starting iteration too close
+        to the end.  Has to be between 0.00001 and 1.0.
+        The default is 0.8.
+    grid_size : int, optional
+        Number of logarithmically spaced grid points per run.
+        The default is 10.
+    number_of_reblocks_to_cut_off : int, optional
+        To be extra sure, cut off a few reblocks to make sure data after
+        starting iteration is truly in equilibrium. Cannot be negative.
+        The default is 1.
+    show_graph : bool, optional
+        If True, show a graph showing the columns with key `cols[0]` as
+        a function of iterations.  The suggested starting iteration is
+        highlighted.  The default is False.
 
-    # Make sure all cols have started varying in dataset and exclude data
+    Raises
+    ------
+    ValueError
+        If `start_position_in_data_max_frac` or
+        `number_of_reblocks_to_cut_off` are out of range.
+    RuntimeError
+        If not all columns with keys in `cols` have started varying in
+        `data` or if suitable starting iteration was not found.
+
+    Returns
+    -------
+    int
+        Suggestion iteration in columns `it_key` where analysis should
+        start.
+    """
+    # Check some inputs.
+    if (start_position_in_data_max_frac < 0.00001 or
+            start_position_in_data_max_frac > 1.0):
+        raise ValueError("0.00001 < start_position_in_data_max_frac < 1 not "
+                         "satisfied!")
+    if number_of_reblocks_to_cut_off < 0:
+        raise ValueError("'number_of_reblocks_to_cut_off' can't be negative!")
+
+    # Data cleaning.
+    # Remove iterations passed the specified end iteration and make
+    # sure all cols have started varying in dataset excluding data
     # before.
+    data = data[data[it_key] <= end_it]
     max_varying_it = end_it
     for col in cols:
         if not any(data[data[col] != data[col].iloc[0]]):
@@ -66,65 +211,23 @@ def find_starting_iteration_blocking(
             data[data[col] != data[col].iloc[0]][it_key].iloc[0])
     data = data[data[it_key] >= max_varying_it]
 
-    # Check we have enough data to screen:
-    if len(data) < number_of_intervals:
-        warnings.warn(f"Length of data to be analysed, {len(data)}, is less "
-                      f"than 'number_of_intervals', {number_of_intervals}. "
-                      "Setting 'number_of_intervals' equal to length of data.")
-        number_of_intervals = len(data)
+    # Finding starting iteration.
+    # Do grid search to find the index of the starting iteration.
+    start_ind = _grid_search(
+        data[cols], grid_size, 1,
+        int(start_position_in_data_max_frac*len(data)) + 1)
+    # Search has failed if index is too close to the end.
+    if start_ind > int(start_position_in_data_max_frac*len(data)):
+        raise RuntimeError(f"Failed to find starting iteration. ")
+    # Discarding number_of_reblocks_to_cut_off reblocks.
+    (_, reblock, _) = pyblock.pd_utils.reblock(data[cols].iloc[start_ind:])
+    opt_ind = pyblock.pd_utils.optimal_block(reblock)
+    discard_indx = 2**opt_ind * number_of_reblocks_to_cut_off
+    # Converting to iteration.
+    starting_it = data['iterations'].iloc[start_ind + discard_indx]
 
-    interval_step = int(len(data)/number_of_intervals)
-    min_index = -1
-    min_error_frac_weighted = pd.Series([float('inf')]*len(cols), index=cols)
-    starting_it_found = False
-    dat_c = copy.copy(data[cols])
-    for k in range(int(number_of_intervals/min_number_of_blockings)):
-        for j in range(
-                k*min_number_of_blockings, (k+1)*min_number_of_blockings):
-            (_, reblock, _) = pyblock.pd_utils.reblock(dat_c)
-            (opt_block, no_opt_block) = analysis.qmc_summary(reblock, cols)
-
-            if not no_opt_block:
-                err_frac_weighted = ((
-                    opt_block.loc['standard error error']/
-                    opt_block.loc['standard error']
-                    )/math.sqrt(float(len(dat_c))))
-                if (err_frac_weighted < min_error_frac_weighted).any():
-                    min_index = j
-                    min_error_frac_weighted = err_frac_weighted.copy()
-                    opt_ind = pyblock.pd_utils.optimal_block(reblock[cols])
-
-            if verbose > 1:
-                print(f"Blocking attempt: {j}. Blocking from: "
-                      f"{dat_c[it_key].iloc[0]}.")
-            dat_c = dat_c.iloc[interval_step:]
-
-        if -1 < min_index < (start_position_in_data_max_frac * j):
-            # Also discard the frst n=number_of_reblocks_to_cut_off of data to
-            # be conservative.  This amounts to removing n autocorrelation
-            # lengths.
-            discard_indx = 2**opt_ind * number_of_reblocks_to_cut_off
-            starting_it = data[it_key].iloc[
-                discard_indx + min_index*interval_step
-                ]
-            if data['iterations'].iloc[-1] <= starting_it:
-                raise ValueError("Too much cut off! Data is not converged or "
-                                 "use a smaller "
-                                 "'number_of_reblocks_to_cut_off'.")
-            starting_it_found = True
-            break
-
-    if not starting_it_found:
-        raise RuntimeError("Failed to find starting iteration. The "
-                           "calculation might not be converged.")
-
+    # Show plot if desired, aiding judgment whether to trust estimate.
     if show_graph:
-        plt.xlabel(it_key)
-        plt.ylabel(cols[0])
-        plt.plot(data[it_key], data[cols[0]], 'b-', label='data')
-        plt.axvline(starting_it, color='r',
-                    label='Suggested starting iteration')
-        plt.legend(loc='best')
-        plt.show()
-
+        # Note that the data has non varying phase cut off!
+        show_starting_iterations_graph(data, it_key, cols[0], starting_it)
     return starting_it
