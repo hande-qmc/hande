@@ -165,10 +165,11 @@ metadata : list of dict
         kN0 = check_key(df, 'N_0')
         kHpsips = check_key(df, '# H psips')
         kH0jNj = check_key(df, '\sum H_0j N_j')
+        kShift = check_key(df, 'Shift')
         if reweight_history > 0:
             df = pyhande.weight.reweight(df, md['qmc']['ncycles'],
                 md['qmc']['tau'], reweight_history, mean_shift,
-                arith_mean=arith_mean)
+                weight_key=kShift, arith_mean=arith_mean)
             df['W * \sum H_0j N_j'] = df[kH0jNj] * df['Weight']
             df['W * N_0'] = df[kN0] * df['Weight']
         data.append(df)
@@ -267,7 +268,9 @@ info : :func:`collections.namedtuple`
 
         # This returns a data frame with inefficiency data from the
         # projected energy estimators if available.
-        ineff = pyhande.analysis.inefficiency(opt_block, dtau, N)
+        ineff = pyhande.analysis.inefficiency(opt_block, dtau, N,
+                                              sum_key=kH0jNj, ref_key=kN0,
+                                              total_key=kHpsips)
         if ineff is not None:
             opt_block = opt_block.append(ineff)
 
