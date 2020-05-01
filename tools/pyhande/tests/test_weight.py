@@ -4,16 +4,16 @@ import warnings
 import numpy as np
 import pandas as pd
 import pyhande.weight as weight
-from create_dummy_df import _CreateDummyDfs
+import create_mock_df
 
 
 class TestReweight(unittest.TestCase):
     """Test weight.reweight."""
 
     def setUp(self):
-        create_dummy = _CreateDummyDfs(248451)
-        self.data = create_dummy.create_qmc_frame(
-            ['Shift', 'Alt'], [-1.3, -1.0], [12.0, 7.0], [0.1, 0.05])
+        rng = np.random.default_rng(248451)
+        self.data = create_mock_df.create_qmc_frame(
+            rng, ['Shift', 'Alt'], [-1.3, -1.0], [12.0, 7.0], [0.1, 0.05])
 
     def test_basic_input(self):
         """Test basic input."""
