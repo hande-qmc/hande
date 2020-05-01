@@ -253,7 +253,8 @@ Shepherd14
 
 
 
-def inefficiency(opt_block, dtau, iterations):
+def inefficiency(opt_block, dtau, iterations, sum_key='\sum H_0j N_j',
+                 ref_key='N_0', total_key='# H psips'):
     '''Estimate the inefficiency of a calculation from the blocked data.
 
 The statistical error of an ideal FCIQMC calculation decreases with the
@@ -287,6 +288,15 @@ dtau : float
     length of an imaginary time timestep.
 iterations : integer
     number of iterations (timeteps) in the reblocked data.
+sum_key : string
+    column name in reblock_data containing :math:`\\sum H_0j N_j`, i.e. the sum
+    of the population weighted by the Hamiltonian matrix element with the trial
+    wavefunction.
+ref_key : string
+    column name in reblock_data containing :math:`N_0`, i.e. the population of
+    the trial wavefunction (often/originally just a single determinant).
+total_key : string
+    column name in reblock_data containing the total number of psips.
 Returns
 -------
 ineff : :class:`pandas.DataFrame`
@@ -302,12 +312,12 @@ Vigor16
          
     try:
         err_proj_e = opt_block['standard error']['Proj. Energy']
-        Np = opt_block['mean']['# H psips']
-        err_Np = opt_block['standard error']['# H psips']
+        Np = opt_block['mean'][total_key]
+        err_Np = opt_block['standard error'][total_key]
         inefficiency = err_proj_e * numpy.sqrt(Np*iterations*dtau)
         # NB We do not know the covariance of the errors of N_0 and \sum H_0j N_j so this is an upper bound on the error estimate.
-        err_err_proj_e = err_proj_e * numpy.sqrt( (opt_block['standard error error']['\sum H_0j N_j'] / opt_block['standard error']['\sum H_0j N_j'] )**2
-                                                 +(opt_block['standard error error']['N_0'] / opt_block['standard error']['N_0'])**2 )
+        err_err_proj_e = err_proj_e * numpy.sqrt( (opt_block['standard error error'][sum_key] / opt_block['standard error'][sum_key] )**2
+                                                 +(opt_block['standard error error'][ref_key] / opt_block['standard error'][ref_key])**2 )
         # In principle the number of iterations is also a variable with error, but we don't have a way to estimate it alas.
         err_ineff = inefficiency * numpy.sqrt(  (err_err_proj_e / err_proj_e)**2
                                               + (0.5 * err_Np / Np)**2 )
