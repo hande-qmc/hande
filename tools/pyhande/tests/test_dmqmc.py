@@ -781,7 +781,7 @@ class TestAnalyseData(unittest.TestCase):
         """Test spline=True option.  BROKEN!"""
         # This option is broken so have added assert statements to code.
         self.assertRaises(
-            AssertionError, dmqmc.analyse_data,
+            ValueError, dmqmc.analyse_data,
             [(self.metadata_dmqmc, self.data[0])], spline=True)
 
     def test_trace(self):
@@ -802,7 +802,7 @@ class TestAnalyseData(unittest.TestCase):
         """Test calc_number option.  BROKEN!"""
         # This option is broken so have added assert statements to code.
         self.assertRaises(
-            AssertionError, dmqmc.analyse_data,
+            ValueError, dmqmc.analyse_data,
             [(self.metadata_dmqmc, self.data[0])], calc_number=1)
 
     def test_unchanged_mutable(self):

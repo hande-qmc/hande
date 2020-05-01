@@ -85,7 +85,7 @@ class TestReweight(unittest.TestCase):
         """tstep == 0."""
         (mc_cycles, tstep, weight_history, mean_shift) = (10, 0.0, 20, -0.1)
         self.assertRaises(
-            AssertionError, weight.reweight, self.data, mc_cycles, tstep,
+            ValueError, weight.reweight, self.data, mc_cycles, tstep,
             weight_history, mean_shift
         )
 
@@ -93,7 +93,7 @@ class TestReweight(unittest.TestCase):
         """mc_cycles < 0."""
         (mc_cycles, tstep, weight_history, mean_shift) = (-10, 0.01, 20, -0.1)
         self.assertRaises(
-            AssertionError, weight.reweight, self.data, mc_cycles, tstep,
+            ValueError, weight.reweight, self.data, mc_cycles, tstep,
             weight_history, mean_shift)
 
     def test_unchanged_mutable(self):
@@ -155,12 +155,12 @@ class TestArithSeries(unittest.TestCase):
         """tstep == 0."""
         (tstep, mc_cycles, weight_now, weight_before) = (0.0, 10, -0.1, 0.2)
         self.assertRaises(
-            AssertionError, weight.arith_series, tstep, mc_cycles, weight_now,
+            ValueError, weight.arith_series, tstep, mc_cycles, weight_now,
             weight_before)
 
     def test_neg_mc_cycles(self):
         """mc_cycles < 0."""
         (tstep, mc_cycles, weight_now, weight_before) = (0.01, -10, -0.1, 0.2)
         self.assertRaises(
-            AssertionError, weight.arith_series, tstep, mc_cycles, weight_now,
+            ValueError, weight.arith_series, tstep, mc_cycles, weight_now,
             weight_before)

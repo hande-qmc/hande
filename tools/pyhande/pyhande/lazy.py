@@ -270,10 +270,12 @@ References
 Umrigar93
     Umrigar et al., J. Chem. Phys. 99, 2865 (1993).
 '''
-    assert analysis_method == 'reblocking' or analysis_method == 'hybrid',\
-        "'analysis_method' has to be either 'reblocking' or 'hybrid'."
-    assert warmup_detection == 'hande_org' or warmup_detection == 'mser_min',\
-        "'warmup_detection' has to be either 'hande_org' or 'mser_min'."
+    if analysis_method not in ['reblocking', 'hybrid']:
+        raise ValueError("'analysis_method' has to be either 'reblocking' or "
+                         f"'hybrid', not '{analysis_method}'.")
+    if warmup_detection not in ['hande_org', 'mser_min']:
+        raise ValueError("'warmup_detection' has to be either 'hande_org' or "
+                         "'mser_min', not '{warmup_detection}'.")
     (calcs, calcs_md) = zeroT_qmc(datafiles, reweight_history, mean_shift,
                                   arith_mean)
     infos = []

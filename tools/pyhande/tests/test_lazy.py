@@ -477,7 +477,7 @@ class TestStdAnalysis(unittest.TestCase):
     def test_analysis_method_error(self):
         """Test analysis_method parameter.  Wrong input."""
         self.assertRaises(
-            AssertionError, lazy.std_analysis,
+            ValueError, lazy.std_analysis,
             ['hande_files/long_calc_ueg.out'], analysis_method='test',
             verbosity=-1)
 
@@ -501,7 +501,7 @@ class TestStdAnalysis(unittest.TestCase):
     def test_warmup_detection_error(self):
         """Test warmup_detection parameter.  Wrong input."""
         self.assertRaises(
-            AssertionError, lazy.std_analysis,
+            ValueError, lazy.std_analysis,
             ['hande_files/long_calc_ueg.out'], warmup_detection='test',
             verbosity=-1)
 
