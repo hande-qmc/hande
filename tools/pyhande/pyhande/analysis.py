@@ -53,8 +53,8 @@ See also
 :func:`pyblock.pd_utils.reblock` for producing the input parameters.
 '''
 
-    proje_sum = reblock_data.ix[:, sum_key]
-    ref_pop = reblock_data.ix[:, ref_key]
+    proje_sum = reblock_data[sum_key]
+    ref_pop = reblock_data[ref_key]
     proje_ref_cov = covariance.xs(ref_key, level=1)[sum_key]
     proje = pyblock.error.ratio(proje_sum, ref_pop, proje_ref_cov, data_length)
     proje.columns = pd.MultiIndex.from_tuples(
@@ -90,7 +90,7 @@ no_opt : list of strings
         (opt_data, no_opt) = ([], [])
     for col in keys:
         if col in data:
-            summary = pyblock.pd_utils.reblock_summary(data.ix[:, col])
+            summary = pyblock.pd_utils.reblock_summary(data[col])
             if summary.empty:
                 no_opt.append(col)
             else:

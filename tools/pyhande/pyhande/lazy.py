@@ -68,7 +68,7 @@ starting_iteration: integer
     if end is None:
         end = data['iterations'].iloc[-1]
     before_end_indx = data['iterations'] <= end
-    data_before_end = data.ix[before_end_indx]
+    data_before_end = data[before_end_indx]
     
     list = data_before_end['Proj. Energy']
     n_data=len(list)
@@ -128,7 +128,7 @@ info : :func:`collections.namedtuple`
     if end is None:
         end = calc['iterations'].iloc[-1]
     before_end_indx = calc['iterations'] <= end
-    data_before_end = calc.ix[before_end_indx]
+    data_before_end = calc[before_end_indx]
     
     after_start_indx = data_before_end['iterations'] >= start
     calc_tr          = data_before_end[after_start_indx]
@@ -136,8 +136,8 @@ info : :func:`collections.namedtuple`
     #list = calc_tr['Proj. Energy'].as_matrix()
     #n_data = len(list)
     
-    list_org = calc_tr['Proj. Energy'].as_matrix()
-    n_data = len(list_org) / batch_size
+    list_org = calc_tr['Proj. Energy'].values
+    n_data = len(list_org) // batch_size
     list = [0]*n_data
     for i in range(n_data):
         list[i] = numpy.mean(list_org[i*batch_size:(i+1)*batch_size])
@@ -427,9 +427,10 @@ info : :func:`collections.namedtuple`
     if extract_rep_loop_time:
         to_block.append('time')
 
-    mc_data = calc.ix[indx, to_block]
+    mc_data = calc.loc[indx, to_block]
     if mc_data[kShift].iloc[0] == mc_data[kShift].iloc[1]:
         if calc[kShift][~indx].iloc[-1] == mc_data[kShift].iloc[0]:
+
             warnings.warn('The blocking analysis starts from before the shift '
                           'begins to vary.')
 
@@ -452,7 +453,7 @@ info : :func:`collections.namedtuple`
     if calc_inefficiency:
         # Calculate quantities needed for the inefficiency.
         dtau = md['qmc']['tau']
-        reblocked_iters = calc.ix[indx, 'iterations']
+        reblocked_iters = calc.loc[indx, 'iterations']
         N = reblocked_iters.iloc[-1] - reblocked_iters.iloc[0]
 
         # This returns a data frame with inefficiency data from the
@@ -678,7 +679,7 @@ starting_iteration: integer
         # Default end is the last iteration.
         end = data['iterations'].iloc[-1]
     before_end_indx = data['iterations'] <= end
-    data_before_end = data.ix[before_end_indx]
+    data_before_end = data[before_end_indx]
 
     # Find the point the shift began to vary.
     variable_shift = data_before_end[kShift] != data_before_end[kShift].iloc[0]
