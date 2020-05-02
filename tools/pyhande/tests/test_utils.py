@@ -35,16 +35,16 @@ class TestGroupbyBetaLoops(unittest.TestCase):
     def test_basic_input(self):
         """Test with basic input."""
         group_by = utils.groupby_beta_loops(self.data)
-        group0_mock = self.data.loc[0:2]
+        group0_exp = self.data.loc[0:2]
         pd.testing.assert_frame_equal(
-            group_by.get_group(0.0), group0_mock, check_exact=False)
+            group_by.get_group(0.0), group0_exp, check_exact=False)
 
     def test_custom_col(self):
         """Test with custom column."""
         group_by = utils.groupby_beta_loops(self.data, name='alt2')
-        group0_mock = self.data.loc[0:1]
+        group0_exp = self.data.loc[0:1]
         pd.testing.assert_frame_equal(
-            group_by.get_group(0.0), group0_mock, check_exact=False)
+            group_by.get_group(0.0), group0_exp, check_exact=False)
 
     def test_unchanged_mutable(self):
         """Check that mutable objects, such as pd DataFrames, don't
@@ -81,9 +81,9 @@ class TestGroupbyIterations(unittest.TestCase):
     def test_basic_input(self):
         """Test with basic input."""
         group_by = utils.groupby_iterations(self.data)
-        group0_mock = self.data.loc[0:1]
+        group0_exp = self.data.loc[0:1]
         pd.testing.assert_frame_equal(
-            group_by.get_group(0.0), group0_mock, check_exact=False)
+            group_by.get_group(0.0), group0_exp, check_exact=False)
 
     def test_unchanged_mutable(self):
         """Check that mutable objects, such as pd DataFrames, don't

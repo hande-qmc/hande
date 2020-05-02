@@ -12,7 +12,7 @@ class ExtractTestData(unittest.TestCase):
     def test_basic_input(self):
         """Test basic input."""
         data = testcode.extract_test_data("hande_files/ueg.out")
-        data_dummy_df = pd.DataFrame([
+        data_exp_df = pd.DataFrame([
             [10, 0.0, -0.378518, 2.70000000e+00, 1.42000000e+02, 79, 50,
              0.4879, 0.0004],
             [20, -1.10017479e-01, -8.20941670e-01, 3.00000000e+00,
@@ -22,7 +22,7 @@ class ExtractTestData(unittest.TestCase):
                     'time'])
         (key, val) = list(data.items())[0]
         self.assertEqual(key, 'FCIQMC [0]')
-        pd.testing.assert_frame_equal(val, data_dummy_df, check_exact=False)
+        pd.testing.assert_frame_equal(val, data_exp_df, check_exact=False)
 
 
 class TestTestcodeData(unittest.TestCase):
@@ -31,57 +31,57 @@ class TestTestcodeData(unittest.TestCase):
     def test_basic_input(self):
         """Test basic input."""
         data = testcode.testcode_data("hande_files/ueg.out")
-        dummy_data = {
+        exp_data = {
             'iterations': [10, 20], 'Shift': [0.0, -0.11001747899],
             '\\sum H_0j N_j': [-0.37851801553000003, -0.82094167005],
             'N_0': [2.7, 3.0], '# H psips': [142.0, 1282.0],
             '# states': [79, 782], '# spawn_events': [50, 463],
             'R_spawn': [0.4879, 0.762], 'time': [0.0004, 0.0008]
         }
-        self.assertDictEqual(data, dummy_data)
+        self.assertDictEqual(data, exp_data)
 
     def test_shortened_input(self):
         """Two qmc data lines have been artifically removed. Test."""
         data = testcode.testcode_data("hande_files/shorten_ueg.out")
-        dummy_data = {
+        exp_data = {
             'iterations': [], 'Shift': [],
             '\\sum H_0j N_j': [],
             'N_0': [], '# H psips': [],
             '# states': [], '# spawn_events': [],
             'R_spawn': [], 'time': []
         }
-        self.assertDictEqual(data, dummy_data)
+        self.assertDictEqual(data, exp_data)
 
     def test_all_shortened_input(self):
         """All QMC table data was artifically removed. Test."""
         data = testcode.testcode_data("hande_files/all_qmc_shorten_ueg.out")
-        dummy_data = {}
-        self.assertDictEqual(data, dummy_data)
+        exp_data = {}
+        self.assertDictEqual(data, exp_data)
 
     def test_hilbert(self):
         """Test MC Hilbert space size estimation extraction."""
         data = testcode.testcode_data("hande_files/hilbert_ueg.out")
-        dummy_data = {
+        exp_data = {
             'iterations': [2, 3], 'space size': [20311600.0, 10155800.0],
             'mean': [17772650.0, 15233700.0],
             'std. err.': [2538951.0, 2931728.0]
         }
-        self.assertDictEqual(data, dummy_data)
+        self.assertDictEqual(data, exp_data)
 
     def test_basic_fci_input(self):
         """Test FCI."""
         data = testcode.testcode_data("hande_files/fci_ueg.out")
-        dummy_data = {
+        exp_data = {
             'eigv 1': [-0.017888297593], 'eigv 2': [9.451775889133],
             'eigv 3': [9.451775889133], 'eigv 4': [9.525116432464],
             'eigv 5': [9.525116432464]
         }
-        self.assertDictEqual(data, dummy_data)
+        self.assertDictEqual(data, exp_data)
 
     def test_multiple_fciqmc(self):
         """Have two calculations in this output."""
         data = testcode.testcode_data("hande_files/multi_ueg.out")
-        dummy_data = {
+        exp_data = {
             'iterations': [10, 20, 10, 20],
             'Shift': [0.0, -0.11001747899, 0.0, -0.11001747899],
             '\\sum H_0j N_j': [
@@ -94,12 +94,12 @@ class TestTestcodeData(unittest.TestCase):
             'R_spawn': [0.4879, 0.762, 0.4879, 0.762],
             'time': [0.0, 0.0004, 0.0004, 0.0004]
         }
-        self.assertDictEqual(data, dummy_data)
+        self.assertDictEqual(data, exp_data)
 
     def test_longer_fciqmc(self):
         """Have run the calculation for 11 report loops."""
         data = testcode.testcode_data("hande_files/longer_ueg.out")
-        dummy_data = {
+        exp_data = {
             'iterations': [10, 20, 50, 80, 110],
             'Shift': [
                 0.0, 0.0, -0.27841254151, -0.47541378501000003, -0.46025762956
@@ -113,4 +113,4 @@ class TestTestcodeData(unittest.TestCase):
             'R_spawn': [0.1058, 0.1286, 0.1651, 0.186, 0.1773],
             'time': [0.0, 0.0, 0.0, 0.0004, 0.0004]
         }
-        self.assertDictEqual(data, dummy_data)
+        self.assertDictEqual(data, exp_data)

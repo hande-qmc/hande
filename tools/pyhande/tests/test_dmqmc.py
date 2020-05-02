@@ -55,8 +55,8 @@ class TestAnalyseObservables(unittest.TestCase):
             rng, self.cols, means, num_mc_its, index_name='Beta')
         self.nsamples = pd.Series([4000.0, 10000.0, 2000.0])
         self.nsamples.index.name = 'Beta'
-        # Some shared mock results
-        self.cols_mock = [
+        # Some shared exp results
+        self.cols_exp = [
             'Tr[Hp]/Tr[p]', 'Tr[Hp]/Tr[p]_error', 'Tr[H2p]/Tr[p]',
             'Tr[H2p]/Tr[p]_error', 'Tr[Sp]/Tr[p]', 'Tr[Sp]/Tr[p]_error',
             'Tr[Mp]/Tr[p]', 'Tr[Mp]/Tr[p]_error', 'Tr[Tp]/Tr[p]',
@@ -69,7 +69,7 @@ class TestAnalyseObservables(unittest.TestCase):
             'Sud_34', 'Sud_34_error', 'Sud_98', 'Sud_98_error', 'Sud_123',
             'Sud_123_error'
         ]
-        self.result_mock = pd.DataFrame([[
+        self.result_exp = pd.DataFrame([[
             1.83810838e+01, 7.80937590e-04, -1.95040347e-01, 3.31649238e-03,
             1.05572002e-01, 1.02076313e-03, 1.14046306e-03, 1.04944497e-05,
             1.85468649e+01, 1.16551505e-01, -1.21724797e+00, 1.26930348e-02,
@@ -105,7 +105,7 @@ class TestAnalyseObservables(unittest.TestCase):
             6.96118155e-03, 6.55752616e-01, 6.31743894e-03, 9.33489265e-04,
             2.14844361e-05, -7.65062946e-04, 7.94781737e-06,
             4.17602440e-04, 1.17137522e-06, 1.12226696e-01, 1.39555634e-03
-        ]], columns=self.cols_mock)
+        ]], columns=self.cols_exp)
 
     def test_basic_input(self):
         """Basic input - Don't include 'alt1' column and index."""
@@ -114,13 +114,13 @@ class TestAnalyseObservables(unittest.TestCase):
             self.cov.drop(
                 columns='alt1').drop(index='alt1', level=1), self.nsamples)
         pd.testing.assert_frame_equal(
-            result, self.result_mock, check_exact=False)
+            result, self.result_exp, check_exact=False)
 
     def test_ignore_col(self):
         """Input with a column which should be ignored."""
         result = dmqmc.analyse_observables(self.data, self.cov, self.nsamples)
         pd.testing.assert_frame_equal(
-            result, self.result_mock, check_exact=False)
+            result, self.result_exp, check_exact=False)
 
     def test_only_two_cols(self):
         """Input with only two columns, 'Trace' and 'Suu_34'.  Have to
@@ -133,11 +133,11 @@ class TestAnalyseObservables(unittest.TestCase):
             self.cov.drop(
                 columns=self.cols).drop(index=self.cols, level=1),
             self.nsamples)
-        self.cols_mock.remove('Suu_34')
-        self.cols_mock.remove('Suu_34_error')
-        self.result_mock.drop(columns=self.cols_mock, inplace=True)
+        self.cols_exp.remove('Suu_34')
+        self.cols_exp.remove('Suu_34_error')
+        self.result_exp.drop(columns=self.cols_exp, inplace=True)
         pd.testing.assert_frame_equal(
-            result, self.result_mock, check_exact=False)
+            result, self.result_exp, check_exact=False)
 
     def test_unchanged_mutable(self):
         """Check that mutable objects, such as pd DataFrames, don't
@@ -163,24 +163,24 @@ class TestAddObservableToDict(unittest.TestCase):
     def test_basic_input(self):
         """Test basic input."""
         dmqmc.add_observable_to_dict(self.observables, self.columns, 'le')
-        result_mock = {
+        result_exp = {
             'obs1': 'test', 'alt2': 'test', 'alt3': 'dd', 'let4': 'let4',
             'let5': 'let5'
         }
-        self.assertDictEqual(self.observables, result_mock)
+        self.assertDictEqual(self.observables, result_exp)
 
     def test_not_matching_label(self):
         """Test label which is not present in columns."""
-        result_mock = self.observables.copy()
+        result_exp = self.observables.copy()
         dmqmc.add_observable_to_dict(self.observables, self.columns, 'x')
-        self.assertDictEqual(self.observables, result_mock)
+        self.assertDictEqual(self.observables, result_exp)
 
     def test_empty_observables(self):
         """Test passing an empty dictionary for observables."""
         self.observables = {}
         dmqmc.add_observable_to_dict(self.observables, self.columns, 'le')
-        result_mock = {'let4': 'let4', 'let5': 'let5'}
-        self.assertDictEqual(self.observables, result_mock)
+        result_exp = {'let4': 'let4', 'let5': 'let5'}
+        self.assertDictEqual(self.observables, result_exp)
 
     def test_unchanged_mutable(self):
         """Check that mutable objects, such as pd DataFrames, don't
@@ -237,7 +237,7 @@ class FreeEnergyErrorAnalysis(unittest.TestCase):
         """Test basic input."""
         dtau = 0.1
         dmqmc.free_energy_error_analysis(self.data, self.results, dtau)
-        results_mock = pd.DataFrame([[
+        results_exp = pd.DataFrame([[
             0.00000000e+00, -3.41640932e-01, 1.19243274e+03, 2.16706665e+04,
             -1.01442958e+04, 4.64565821e+00, 1.00524636e+02, -1.66484484e-01,
             0.00000000e+00, 0.0
@@ -251,7 +251,7 @@ class FreeEnergyErrorAnalysis(unittest.TestCase):
             '# particles', 'alt1', 'f_xc', 'f_xc_error'
         ])
         pd.testing.assert_frame_equal(
-            self.results, results_mock, check_exact=False)
+            self.results, results_exp, check_exact=False)
         self.assertWarnsRegex(
             UserWarning, r'Ratio error of 992.434317 is not insignificant - '
             'check results.', dmqmc.free_energy_error_analysis, self.data,
@@ -323,7 +323,7 @@ class AnalyseRenyiEntropy(unittest.TestCase):
         self.cov.drop(index=cols, level=1, inplace=True)
         results = dmqmc.analyse_renyi_entropy(
             self.data, self.cov, self.nsamples)
-        results_mock = pd.DataFrame([
+        results_exp = pd.DataFrame([
             [4.159087, 0.03201598, 10.984759, 0.04059646],
             [4.211940, 0.04796966, 10.929251, 0.0648403],
             [3.941436, 0.021987599, 11.168785, 0.030056]
@@ -331,14 +331,14 @@ class AnalyseRenyiEntropy(unittest.TestCase):
             'RDM1 S2', 'RDM1 S2 error', 'Full S2', 'Full S2 error'
         ))
         pd.testing.assert_frame_equal(
-            results, results_mock, check_exact=False)
+            results, results_exp, check_exact=False)
 
     def test_input_with2(self):
         """Test input with column names ending with 2."""
         results = dmqmc.analyse_renyi_entropy(
             self.data, self.cov, self.nsamples
         )
-        results_mock = pd.DataFrame([
+        results_exp = pd.DataFrame([
             [4.159087, 0.03201598, 10.984759, 0.04059646, 3.895219,
              0.01661310],
             [4.211940, 0.04796966, 10.929251, 0.0648403, 4.031990, 0.0495852],
@@ -348,7 +348,7 @@ class AnalyseRenyiEntropy(unittest.TestCase):
             'RDM2 S2', 'RDM2 S2 error'
         ))
         pd.testing.assert_frame_equal(
-            results, results_mock, check_exact=False)
+            results, results_exp, check_exact=False)
 
     def test_unchanged_mutable(self):
         """Check that mutable objects, such as pd DataFrames, don't
@@ -403,11 +403,11 @@ class TestCalcS2(unittest.TestCase):
             self.stats_A, self.stats_B, self.stats_C, self.cov_AB, self.cov_AC,
             self.cov_BC, self.data_len
         )
-        mean_mock = pd.Series([13.589915, 14.130696, 13.822791], name='mean')
-        std_err_mock = pd.Series([0.164870, 0.165638, 0.235193])
-        pd.testing.assert_series_equal(mean_mock, mean, check_exact=False)
+        mean_exp = pd.Series([13.589915, 14.130696, 13.822791], name='mean')
+        std_err_exp = pd.Series([0.164870, 0.165638, 0.235193])
+        pd.testing.assert_series_equal(mean_exp, mean, check_exact=False)
         pd.testing.assert_series_equal(
-            std_err_mock, std_err, check_exact=False)
+            std_err_exp, std_err, check_exact=False)
 
     def test_neg_mean(self):
         """Test passing a negative mean."""
@@ -417,11 +417,11 @@ class TestCalcS2(unittest.TestCase):
         mean, std_err = dmqmc.calc_S2(
             self.stats_A, self.stats_B, self.stats_C, self.cov_AB, self.cov_AC,
             self.cov_BC, self.data_len)
-        mean_mock = pd.Series([np.nan, 14.130696, 13.822791], name='mean')
-        std_err_mock = pd.Series([0.159725, 0.165638, 0.235193])
-        pd.testing.assert_series_equal(mean_mock, mean, check_exact=False)
+        mean_exp = pd.Series([np.nan, 14.130696, 13.822791], name='mean')
+        std_err_exp = pd.Series([0.159725, 0.165638, 0.235193])
+        pd.testing.assert_series_equal(mean_exp, mean, check_exact=False)
         pd.testing.assert_series_equal(
-            std_err_mock, std_err, check_exact=False)
+            std_err_exp, std_err, check_exact=False)
 
     def test_unchanged_mutable(self):
         """Check that mutable objects, such as pd DataFrames, don't
@@ -555,7 +555,7 @@ class TestExtractMomentumCorrelationFunction(unittest.TestCase):
             columns=['Beta']
         )
         self.data = pd.concat([betas, self.data], axis=1)
-        full_mock = pd.DataFrame([
+        full_exp = pd.DataFrame([
             [1.00000000e+00, 2.05989953e+03, 3.38085214e+02, 5.21562026e+00,
              3.10943935e-01, 1.15340672e+02, 1.71763584e+01, 7.39238719e+00,
              4.06649786e-01],
@@ -567,12 +567,12 @@ class TestExtractMomentumCorrelationFunction(unittest.TestCase):
             'Suu_k_error', 'Sud_k', 'Sud_k_error'
         ])
         beta = pd.DataFrame([0, 0], columns=['Beta'])
-        self.full_mock = pd.concat([beta, full_mock], axis=1)
+        self.full_exp = pd.concat([beta, full_exp], axis=1)
 
     def test_basic_input(self):
         """Test basic input."""
         full = dmqmc.extract_momentum_correlation_function(self.data, 0)
-        pd.testing.assert_frame_equal(full, self.full_mock)
+        pd.testing.assert_frame_equal(full, self.full_exp)
 
     def test_diff_numbers_in_col_names(self):
         """Rename col names with "_2" to "_7"."""
@@ -583,8 +583,8 @@ class TestExtractMomentumCorrelationFunction(unittest.TestCase):
             to_rename_dict[to_r+str(2)+"_error"] = to_r+str(7)+"_error"
         self.data.rename(columns=to_rename_dict, inplace=True)
         full = dmqmc.extract_momentum_correlation_function(self.data, 0)
-        self.full_mock.at[1, 'k'] = 7.0
-        pd.testing.assert_frame_equal(full, self.full_mock)
+        self.full_exp.at[1, 'k'] = 7.0
+        pd.testing.assert_frame_equal(full, self.full_exp)
 
     def test_unchanged_mutable(self):
         """Check that mutable objects, such as pd DataFrames, don't
@@ -628,7 +628,7 @@ class TestAnalyseData(unittest.TestCase):
         }
         self.metadata_ipdmqmc = copy.deepcopy(self.metadata_dmqmc)
         self.metadata_ipdmqmc['ipdmqmc']['ipdmqmc'] = True
-        self.basic_data_mock = pd.DataFrame([
+        self.basic_data_exp = pd.DataFrame([
             [0.0, -11.374353, 1.325053], [0.1, -11.741264, 2.124244],
             [0.2, -9.134270, 2.904695]
         ], columns=['Beta', 'Tr[Hp]/Tr[p]', 'Tr[Hp]/Tr[p]_error'], index=[
@@ -637,39 +637,39 @@ class TestAnalyseData(unittest.TestCase):
 
     def test_basic_input(self):
         """Test basic DMQMC input."""
-        meta_mock = copy.deepcopy(self.metadata_dmqmc)
+        meta_exp = copy.deepcopy(self.metadata_dmqmc)
         (meta, data) = dmqmc.analyse_data(
             [(self.metadata_dmqmc, self.data[0])])
-        self.assertDictEqual(meta[0], meta_mock)
+        self.assertDictEqual(meta[0], meta_exp)
         pd.testing.assert_frame_equal(
-            data, self.basic_data_mock, check_exact=False)
+            data, self.basic_data_exp, check_exact=False)
 
     def test_basic_ipdmqmc_input(self):
         """Test basic IPDMQMC input."""
-        meta_mock = copy.deepcopy(self.metadata_ipdmqmc)
+        meta_exp = copy.deepcopy(self.metadata_ipdmqmc)
         (meta, data) = dmqmc.analyse_data(
             [(self.metadata_ipdmqmc, self.data[0])])
-        self.assertDictEqual(meta[0], meta_mock)
+        self.assertDictEqual(meta[0], meta_exp)
         pd.testing.assert_frame_equal(
-            data, self.basic_data_mock, check_exact=False)
+            data, self.basic_data_exp, check_exact=False)
 
     def test_multiple_input(self):
         """Test passing more than one calculation."""
-        meta_mock = copy.deepcopy(self.metadata_dmqmc)
+        meta_exp = copy.deepcopy(self.metadata_dmqmc)
         (meta, data) = dmqmc.analyse_data(
             zip(2*[self.metadata_dmqmc], self.data))
-        data_mock = pd.DataFrame([
+        data_exp = pd.DataFrame([
             [0.0, -10.924401, 0.785440], [0.1, -10.679439, 0.998526],
             [0.2, -9.814926, 1.373230]
         ], columns=['Beta', 'Tr[Hp]/Tr[p]', 'Tr[Hp]/Tr[p]_error'], index=[
             0.0, 0.1, 0.2
         ])
-        self.assertDictEqual(meta[0], meta_mock)
-        pd.testing.assert_frame_equal(data, data_mock, check_exact=False)
+        self.assertDictEqual(meta[0], meta_exp)
+        pd.testing.assert_frame_equal(data, data_exp, check_exact=False)
 
     def test_shift(self):
         """Test the shift=True setting."""
-        meta_mock = copy.deepcopy(self.metadata_dmqmc)
+        meta_exp = copy.deepcopy(self.metadata_dmqmc)
         (meta, data) = dmqmc.analyse_data(
             [(self.metadata_dmqmc, self.data[0])], shift=True
         )
@@ -677,33 +677,33 @@ class TestAnalyseData(unittest.TestCase):
             [-0.540397, 0.0136476], [-0.497985, 0.0795454],
             [-0.475570, 0.03676148]
         ], columns=['Shift', 'Shift s.d.'], index=[0.0, 0.1, 0.2])
-        data_mock = pd.concat([self.basic_data_mock, shift_data], axis=1)
-        self.assertDictEqual(meta[0], meta_mock)
+        data_exp = pd.concat([self.basic_data_exp, shift_data], axis=1)
+        self.assertDictEqual(meta[0], meta_exp)
         pd.testing.assert_frame_equal(
-            data, data_mock, check_exact=False)
+            data, data_exp, check_exact=False)
 
     def test_free_energy_dmqmc(self):
         """Test the free_energy=True setting."""
-        meta_mock = copy.deepcopy(self.metadata_dmqmc)
-        data_extra_mock = pd.DataFrame([
+        meta_exp = copy.deepcopy(self.metadata_dmqmc)
+        data_extra_exp = pd.DataFrame([
             [-11.374353, 1.325053, 0.0, 0.0],
             [-11.741264, 2.124244, -57.789041, 8.645126],
             [-9.134270, 2.904695, -109.977876, 21.318641]
         ], columns=['VI', 'VI_error', 'f_xc', 'f_xc_error'], index=[
             0.0, 0.1, 0.2
         ])
-        data_mock = pd.concat(
-            [self.basic_data_mock, data_extra_mock], axis=1)
+        data_exp = pd.concat(
+            [self.basic_data_exp, data_extra_exp], axis=1)
         # Confusingly, in analysis.free_energy_error_analysis which is
         # called when free_energy=True this is done (see below) which
         # seems inconsistent! Fix? [todo] (index was [0.0, 0.1, 0.2],
         # then becomes [0, 1, 2]).
-        data_mock.reset_index(drop=True, inplace=True)
+        data_exp.reset_index(drop=True, inplace=True)
         (meta, data) = dmqmc.analyse_data(
             [(self.metadata_dmqmc, self.data[0])], free_energy=True)
-        self.assertDictEqual(meta[0], meta_mock)
+        self.assertDictEqual(meta[0], meta_exp)
         pd.testing.assert_frame_equal(
-            data, data_mock, check_exact=False)
+            data, data_exp, check_exact=False)
 
     def test_free_energy_ipdmqmc_sym(self):
         """Test free_energy=True for IPDMQMC."""
@@ -719,8 +719,8 @@ class TestAnalyseData(unittest.TestCase):
         data0 = pd.concat([
             data_dropped_Hpsips, extra, self.data[0]['# H psips']
         ], axis=1)
-        meta_mock = copy.deepcopy(self.metadata_ipdmqmc)
-        data_extra_mock = pd.DataFrame([
+        meta_exp = copy.deepcopy(self.metadata_ipdmqmc)
+        data_extra_exp = pd.DataFrame([
             [1.568324, 0.406441, 0.079436, 0.005401544, -1.488888, 0.41184216,
              0.0, 0.0],
             [1.775345, 0.039159, 0.087249, 0.006767349, -1.688096, 0.032391712,
@@ -731,17 +731,17 @@ class TestAnalyseData(unittest.TestCase):
             'Tr[H0p]/Tr[p]', 'Tr[H0p]/Tr[p]_error', 'Tr[HIp]/Tr[p]',
             'Tr[HIp]/Tr[p]_error', 'VI', 'VI_error', 'f_xc', 'f_xc_error'
         ], index=[0.0, 0.1, 0.2])
-        data_mock = pd.concat(
-            [self.basic_data_mock, data_extra_mock], axis=1)
+        data_exp = pd.concat(
+            [self.basic_data_exp, data_extra_exp], axis=1)
         # Confusingly, in analysis.free_energy_error_analysis which is
         # called when free_energy=True this is done (see below) which
         # seems inconsistent! Fix? [todo] (index was [0.0, 0.1, 0.2],
         # then becomes [0, 1, 2]).
-        data_mock.reset_index(drop=True, inplace=True)
+        data_exp.reset_index(drop=True, inplace=True)
         (meta, data) = dmqmc.analyse_data(
             [(self.metadata_ipdmqmc, data0)], free_energy=True)
-        self.assertDictEqual(meta[0], meta_mock)
-        pd.testing.assert_frame_equal(data, data_mock, check_exact=False)
+        self.assertDictEqual(meta[0], meta_exp)
+        pd.testing.assert_frame_equal(data, data_exp, check_exact=False)
 
     def test_free_energy_ipdmqmc_notsym(self):
         """Test free_energy=True for IPDMQMC with symmetric=False."""
@@ -757,7 +757,7 @@ class TestAnalyseData(unittest.TestCase):
         ], axis=1)
         meta_mock = copy.deepcopy(self.metadata_ipdmqmc)
         meta_mock['ipdmqmc']['symmetric'] = False
-        data_extra_mock = pd.DataFrame([
+        data_extra_exp = pd.DataFrame([
             [1.60219598, 0.01637836, -12.97654889, 1.30867505, 0.0, 0.0],
             [1.9349722, 0.42732628, -13.67623586, 2.55157006, -66.63196188,
              9.67689327],
@@ -767,17 +767,17 @@ class TestAnalyseData(unittest.TestCase):
             'Tr[H0p]/Tr[p]', 'Tr[H0p]/Tr[p]_error',
             'VI', 'VI_error', 'f_xc', 'f_xc_error'
         ], index=[0.0, 0.1, 0.2])
-        data_mock = pd.concat(
-            [self.basic_data_mock, data_extra_mock], axis=1)
+        data_exp = pd.concat(
+            [self.basic_data_exp, data_extra_exp], axis=1)
         # Confusingly, in analysis.free_energy_error_analysis which is
         # called when free_energy=True this is done (see below) which
         # seems inconsistent! Fix? [todo] (index was [0.0, 0.1, 0.2],
         # then becomes [0, 1, 2]).
-        data_mock.reset_index(drop=True, inplace=True)
+        data_exp.reset_index(drop=True, inplace=True)
         (meta, data) = dmqmc.analyse_data(
             [(meta_mock, data0)], free_energy=True)
         self.assertDictEqual(meta[0], meta_mock)
-        pd.testing.assert_frame_equal(data, data_mock, check_exact=False)
+        pd.testing.assert_frame_equal(data, data_exp, check_exact=False)
 
     def test_spline(self):
         """Test spline=True option.  BROKEN!"""
@@ -788,17 +788,17 @@ class TestAnalyseData(unittest.TestCase):
 
     def test_trace(self):
         """Test trace=True option."""
-        meta_mock = copy.deepcopy(self.metadata_dmqmc)
+        meta_exp = copy.deepcopy(self.metadata_dmqmc)
         (meta, data) = dmqmc.analyse_data(
             [(self.metadata_dmqmc, self.data[0])], trace=True)
         trace_data = pd.DataFrame([
             [1165.920215, 4.415579], [1135.143442, 102.783344],
             [1220.003334, 179.329455]
         ], columns=['Trace', 'Trace s.d.'], index=[0.0, 0.1, 0.2])
-        data_mock = pd.concat([self.basic_data_mock, trace_data], axis=1)
-        self.assertDictEqual(meta[0], meta_mock)
+        data_exp = pd.concat([self.basic_data_exp, trace_data], axis=1)
+        self.assertDictEqual(meta[0], meta_exp)
         pd.testing.assert_frame_equal(
-            data, data_mock, check_exact=False)
+            data, data_exp, check_exact=False)
 
     def test_calc_number(self):
         """Test calc_number option.  BROKEN!"""
@@ -812,9 +812,9 @@ class TestAnalyseData(unittest.TestCase):
         change when they shouldn't.
         """
         data_copy = self.data.copy()
-        meta_mock = copy.deepcopy(self.metadata_dmqmc)
+        meta_exp = copy.deepcopy(self.metadata_dmqmc)
         _ = dmqmc.analyse_data(zip(2*[self.metadata_dmqmc], self.data))
         for i in range(len(self.data)):
             pd.testing.assert_frame_equal(
                 self.data[i], data_copy[i], check_exact=True)
-        self.assertDictEqual(self.metadata_dmqmc, meta_mock)
+        self.assertDictEqual(self.metadata_dmqmc, meta_exp)

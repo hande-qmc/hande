@@ -17,19 +17,19 @@ class ExtendedTestSetUp():
             'iterations', 'Shift', r'\sum H_0j N_j', 'N_0', '# H psips',
             '# states', '# spawn_events', 'R_spawn', 'time'
         ]
-        self.mock_data1 = pd.DataFrame([
+        self.exp_data1 = pd.DataFrame([
             [10, 0.00000000e+00, -3.78518016e-01, 2.70000000e+00,
              1.42000000e+02, 79, 50, 4.87900000e-01, 4.00000000e-04],
             [20, -1.10017479e-01, -8.20941670e-01, 3.00000000e+00,
              1.28200000e+03, 782, 463, 7.62000000e-01, 8.0000000e-04]
         ], columns=self.columns)
-        self.mock_data2 = pd.DataFrame([
+        self.exp_data2 = pd.DataFrame([
             [10, 0., -0.08311986, 2., 8.11834868, 7, 3, 0.2765, 0.],
             [20, 0., -0.5709596, 2., 73.67254134, 66, 33, 0.3288, 0.],
             [30, -1.40493959e-01, -9.03119184e-01, 2.00000000e+00,
              1.71159164e+02, 162, 104, 3.77400000e-01, 0.0]
         ], columns=self.columns)
-        self.mock_metadata = {
+        self.exp_metadata = {
             'system': {
                 'nbasis': 38, 'nel': 14, 'nvirt': 24, 'Ms': 0, 'nalpha': 7,
                 'nbeta': 7, 'nvirt_alpha': 12, 'nvirt_beta': 12, 'nsym': 19,
@@ -123,26 +123,26 @@ class ExtendedTestSetUp():
             'wall_time': 0.07, 'cpu_time': 0.07, 'calculation_time': 0.07
         }
         # metadata2 is similar:
-        self.mock_metadata2 = copy.deepcopy(self.mock_metadata)
-        self.mock_metadata2['qmc']['rng_seed'] = 389
-        self.mock_metadata2['qmc']['real_amplitudes'] = True
-        self.mock_metadata2['qmc']['tau'] = 0.03
-        self.mock_metadata2['UUID'] = '0a5946bd-e0f6-4971-9d3a-6ae056ea9ca4'
-        self.mock_metadata2['wall_time'] = 0.0
-        self.mock_metadata2['cpu_time'] = 0.0
-        self.mock_metadata2['calculation_time'] = 0.0
-        self.mock_metadata2['input'][2] = \
+        self.exp_metadata2 = copy.deepcopy(self.exp_metadata)
+        self.exp_metadata2['qmc']['rng_seed'] = 389
+        self.exp_metadata2['qmc']['real_amplitudes'] = True
+        self.exp_metadata2['qmc']['tau'] = 0.03
+        self.exp_metadata2['UUID'] = '0a5946bd-e0f6-4971-9d3a-6ae056ea9ca4'
+        self.exp_metadata2['wall_time'] = 0.0
+        self.exp_metadata2['cpu_time'] = 0.0
+        self.exp_metadata2['calculation_time'] = 0.0
+        self.exp_metadata2['input'][2] = \
             '-- $[HANDE DIR]/bin/hande.x ueg2.lua > ueg2.out 2> ueg2.err'
-        self.mock_metadata2['input'][8] = 'cutoff = 1.0,'
-        self.mock_metadata2['input'][14] = 'tau = 0.03,'
-        self.mock_metadata2['input'][15] = 'rng_seed = 389,'
-        self.mock_metadata2['input'][22] = 'real_amplitudes = true,'
-        self.mock_metadata2['input'][23] = '},'
-        self.mock_metadata2['input'][24] = '}'
-        self.mock_metadata2['input'].append('')
-        del self.mock_metadata2['nblooms']
-        del self.mock_metadata2['max_bloom']
-        del self.mock_metadata2['mean_bloom']
+        self.exp_metadata2['input'][8] = 'cutoff = 1.0,'
+        self.exp_metadata2['input'][14] = 'tau = 0.03,'
+        self.exp_metadata2['input'][15] = 'rng_seed = 389,'
+        self.exp_metadata2['input'][22] = 'real_amplitudes = true,'
+        self.exp_metadata2['input'][23] = '},'
+        self.exp_metadata2['input'][24] = '}'
+        self.exp_metadata2['input'].append('')
+        del self.exp_metadata2['nblooms']
+        del self.exp_metadata2['max_bloom']
+        del self.exp_metadata2['mean_bloom']
 
 
 class TestExtractDataSets(unittest.TestCase, ExtendedTestSetUp):
@@ -157,16 +157,16 @@ class TestExtractDataSets(unittest.TestCase, ExtendedTestSetUp):
     def test_basic_input(self):
         """Test basic input."""
         data = extract.extract_data_sets([self.filename1, self.filename2])
-        pd.testing.assert_frame_equal(data[0][1], self.mock_data1)
-        pd.testing.assert_frame_equal(data[1][1], self.mock_data2)
-        self.assertDictEqual(data[0][0], self.mock_metadata)
-        self.assertDictEqual(data[1][0], self.mock_metadata2)
+        pd.testing.assert_frame_equal(data[0][1], self.exp_data1)
+        pd.testing.assert_frame_equal(data[1][1], self.exp_data2)
+        self.assertDictEqual(data[0][0], self.exp_metadata)
+        self.assertDictEqual(data[1][0], self.exp_metadata2)
 
     def test_only_one(self):
         """Only pass one file (in list)."""
         data = extract.extract_data_sets([self.filename1])
-        pd.testing.assert_frame_equal(data[0][1], self.mock_data1)
-        self.assertDictEqual(data[0][0], self.mock_metadata)
+        pd.testing.assert_frame_equal(data[0][1], self.exp_data1)
+        self.assertDictEqual(data[0][0], self.exp_metadata)
 
     def test_compressed(self):
         """Pass a list of a file, differently compressed."""
@@ -174,8 +174,8 @@ class TestExtractDataSets(unittest.TestCase, ExtendedTestSetUp):
             self.filename1+".bz2", self.filename1+".gz", self.filename1+".xz"
         ])
         for i in range(3):
-            pd.testing.assert_frame_equal(data[i][1], self.mock_data1)
-            self.assertDictEqual(data[i][0], self.mock_metadata)
+            pd.testing.assert_frame_equal(data[i][1], self.exp_data1)
+            self.assertDictEqual(data[i][0], self.exp_metadata)
 
     def test_unchanged_mutable(self):
         """Check that mutable objects, such as pd DataFrames, don't
@@ -195,58 +195,58 @@ class TestExtractData(unittest.TestCase, ExtendedTestSetUp):
     def test_basic_fciqmc_input(self):
         """Test basic input."""
         data = extract.extract_data(self.filename1)
-        pd.testing.assert_frame_equal(data[0][1], self.mock_data1)
-        self.assertDictEqual(data[0][0], self.mock_metadata)
+        pd.testing.assert_frame_equal(data[0][1], self.exp_data1)
+        self.assertDictEqual(data[0][0], self.exp_metadata)
 
     def test_bz2_fciqmc(self):
         """Extract a compressed file - .bz2."""
         data = extract.extract_data(self.filename1+".bz2")
-        pd.testing.assert_frame_equal(data[0][1], self.mock_data1)
-        self.assertDictEqual(data[0][0], self.mock_metadata)
+        pd.testing.assert_frame_equal(data[0][1], self.exp_data1)
+        self.assertDictEqual(data[0][0], self.exp_metadata)
 
     def test_gz_fciqmc(self):
         """Extract a compressed file - .gz."""
         data = extract.extract_data(self.filename1+".gz")
-        pd.testing.assert_frame_equal(data[0][1], self.mock_data1)
-        self.assertDictEqual(data[0][0], self.mock_metadata)
+        pd.testing.assert_frame_equal(data[0][1], self.exp_data1)
+        self.assertDictEqual(data[0][0], self.exp_metadata)
 
     def test_xz_fciqmc(self):
         """Extract a compressed file - .xz."""
         data = extract.extract_data(self.filename1+".xz")
-        pd.testing.assert_frame_equal(data[0][1], self.mock_data1)
-        self.assertDictEqual(data[0][0], self.mock_metadata)
+        pd.testing.assert_frame_equal(data[0][1], self.exp_data1)
+        self.assertDictEqual(data[0][0], self.exp_metadata)
 
     def test_multiple_fciqmc(self):
         """Have two calculations in this output."""
         data = extract.extract_data("hande_files/multi_ueg.out")
         # First calculation.
         # Modify some previous data for comparison
-        self.mock_data1.at[0, 'time'] = 0.0
-        self.mock_data1.at[1, 'time'] = 0.0004
-        self.mock_metadata['input'][2] = (
+        self.exp_data1.at[0, 'time'] = 0.0
+        self.exp_data1.at[1, 'time'] = 0.0004
+        self.exp_metadata['input'][2] = (
             '-- $[HANDE DIR]/bin/hande.x multi.ueg.lua > multi.ueg.out 2> '
             'multi.ueg.err'
         )
-        self.mock_metadata['input'].append('')
-        self.mock_metadata['input'][12:] = self.mock_metadata['input'][11:-1]
-        self.mock_metadata['input'][11] = 'for i=1,2 do'
-        self.mock_metadata['input'][-1] = 'end'
-        self.mock_metadata['input'].append('')
-        self.mock_metadata['UUID'] = 'f11d432f-2eec-45e6-801b-56e458b8f3c0'
-        self.mock_metadata['wall_time'] = 0.12
-        self.mock_metadata['cpu_time'] = 0.12
-        self.mock_metadata['calculation_time'] = 0.06
+        self.exp_metadata['input'].append('')
+        self.exp_metadata['input'][12:] = self.exp_metadata['input'][11:-1]
+        self.exp_metadata['input'][11] = 'for i=1,2 do'
+        self.exp_metadata['input'][-1] = 'end'
+        self.exp_metadata['input'].append('')
+        self.exp_metadata['UUID'] = 'f11d432f-2eec-45e6-801b-56e458b8f3c0'
+        self.exp_metadata['wall_time'] = 0.12
+        self.exp_metadata['cpu_time'] = 0.12
+        self.exp_metadata['calculation_time'] = 0.06
         # Test.
-        pd.testing.assert_frame_equal(data[0][1], self.mock_data1)
-        self.assertDictEqual(data[0][0], self.mock_metadata)
+        pd.testing.assert_frame_equal(data[0][1], self.exp_data1)
+        self.assertDictEqual(data[0][0], self.exp_metadata)
         # Second calculation.
         # Modify some previous data for comparison
-        self.mock_data1.at[0, 'time'] = 0.0004
+        self.exp_data1.at[0, 'time'] = 0.0004
         # [todo] This needs to be investigated!!! Why not 0 as before?
-        self.mock_metadata['qmc']['pattempt_parallel'] = 5.28562263e+180
+        self.exp_metadata['qmc']['pattempt_parallel'] = 5.28562263e+180
         # Test.
-        pd.testing.assert_frame_equal(data[1][1], self.mock_data1)
-        self.assertDictEqual(data[1][0], self.mock_metadata)
+        pd.testing.assert_frame_equal(data[1][1], self.exp_data1)
+        self.assertDictEqual(data[1][0], self.exp_metadata)
 
     def test_replica_fciqmc(self):
         """Placeholder warning for replica test."""
@@ -258,31 +258,31 @@ class TestExtractData(unittest.TestCase, ExtendedTestSetUp):
         data = extract.extract_data("hande_files/ccmc_ueg.out")
         self.columns.append(self.columns[-1])
         self.columns[-3:-1] = ['# attempts', 'R_spawn']
-        mock_data = pd.DataFrame([
+        exp_data = pd.DataFrame([
             [10, 0., -0.59349668, 1.86285714, 27., 12, 10, 18, 0.5119, 0.],
             [20, 0., -4.40680439e-01, 2.02475127e+00, 3.90000000e+01, 26,
              19, 42, 4.79900000e-01, 4.00000000e-04],
             [30, -1.53365134e-02, -5.83660200e-01, 2.05614830e+00,
              5.30000000e+01, 34, 12, 55, 3.91400000e-01, 0.0]
         ], columns=self.columns)
-        pd.testing.assert_frame_equal(data[0][1], mock_data)
-        self.mock_metadata['UUID'] = 'acc004f5-bbc6-4b5c-a831-406b90239e98'
-        self.mock_metadata['calc_type'] = 'CCMC'
-        self.mock_metadata['calculation_time'] = 0.0
-        self.mock_metadata['cpu_time'] = 0.01
-        self.mock_metadata['wall_time'] = 0.01
-        self.mock_metadata['reference']['ex_level'] = 3
-        self.mock_metadata['qmc']['target_particles'] = 30.0
-        del self.mock_metadata['fciqmc']
-        del self.mock_metadata['load balancing']
-        self.mock_metadata['ccmc'] = {
+        pd.testing.assert_frame_equal(data[0][1], exp_data)
+        self.exp_metadata['UUID'] = 'acc004f5-bbc6-4b5c-a831-406b90239e98'
+        self.exp_metadata['calc_type'] = 'CCMC'
+        self.exp_metadata['calculation_time'] = 0.0
+        self.exp_metadata['cpu_time'] = 0.01
+        self.exp_metadata['wall_time'] = 0.01
+        self.exp_metadata['reference']['ex_level'] = 3
+        self.exp_metadata['qmc']['target_particles'] = 30.0
+        del self.exp_metadata['fciqmc']
+        del self.exp_metadata['load balancing']
+        self.exp_metadata['ccmc'] = {
             'cluster_multispawn_threshold': 1.79769313e+308,
             'density_matrices': False,
             'density_matrix_file': 'RDM', 'even_selection': False,
             'full_nc': False, 'linked': False, 'move_freq': 5,
             'multiref': False, 'vary_shift_reference': False
         }
-        self.mock_metadata['input'] = [
+        self.exp_metadata['input'] = [
             '', '-- Create output with:',
             '-- $[HANDE DIR]/bin/hande.x ccmc_ueg.lua > ccmc_ueg.out 2> '
             'ccmc_ueg.err',
@@ -294,15 +294,15 @@ class TestExtractData(unittest.TestCase, ExtendedTestSetUp):
             'spawned_state_size = 5000,', '},', 'reference = {',
             'ex_level = 3,', '},', '}', ''
         ]
-        self.mock_metadata['max_bloom'] = 457.0
-        self.mock_metadata['mean_bloom'] = 20.79
-        self.mock_metadata['nblooms'] = 227.0
-        self.assertDictEqual(data[0][0], self.mock_metadata)
+        self.exp_metadata['max_bloom'] = 457.0
+        self.exp_metadata['mean_bloom'] = 20.79
+        self.exp_metadata['nblooms'] = 227.0
+        self.assertDictEqual(data[0][0], self.exp_metadata)
 
     def test_basic_dmqmc_input(self):
         """Test DMQMC."""
         data = extract.extract_data("hande_files/dmqmc_ueg.out")
-        mock_data = pd.DataFrame([
+        exp_data = pd.DataFrame([
             [0, 3.41598425e-01, 0.00000000e+00, 2.00000000e+02, 100, 48,
              2.49500000e-01, 6.00000000e-03],
             [2, 6.10389961e-01, 0.00000000e+00, 1.01000000e+02, 58, 33,
@@ -319,7 +319,7 @@ class TestExtractData(unittest.TestCase, ExtendedTestSetUp):
             'iterations', 'Shift', 'Trace', r'# H psips',
             r'# states', r'# spawn_events', 'R_spawn', 'time'
         ])
-        mock_metadata = {
+        exp_metadata = {
             'system': {
                 'nbasis': 38, 'nel': 14, 'nvirt': 24, 'Ms': 0, 'nalpha': 7,
                 'nbeta': 7, 'nvirt_alpha': 12, 'nvirt_beta': 12, 'nsym': 19,
@@ -406,21 +406,21 @@ class TestExtractData(unittest.TestCase, ExtendedTestSetUp):
             'UUID': '8226e3f0-ee64-4128-9569-225da1f8b913', 'wall_time': 0.03,
             'cpu_time': 0.03, 'calculation_time': 0.03
         }
-        pd.testing.assert_frame_equal(data[0][1], mock_data)
-        self.assertDictEqual(data[0][0], mock_metadata)
+        pd.testing.assert_frame_equal(data[0][1], exp_data)
+        self.assertDictEqual(data[0][0], exp_metadata)
 
     def test_basic_fci_input(self):
         """Test FCI."""
         data = extract.extract_data("hande_files/fci_ueg.out")
-        mock_data = pd.Series([
+        exp_data = pd.Series([
             -1.78882976e-02, 9.45177589e+00, 9.45177589e+00, 9.52511643e+00,
             9.52511643e+00, 9.52511643e+00, 9.88957877e+00, 1.90174844e+01,
             1.90174844e+01, 1.90174844e+01, 1.90320038e+01, 1.90320038e+01,
             1.90827874e+01, 1.90827874e+01, 1.90827874e+01, 1.92329356e+01,
             1.92329356e+01, 1.92329356e+01, 1.97091785e+01
         ], index=list(range(1, 20)), name='FCI (LAPACK)')
-        mock_data.index.name = 'Eigenvalue'
-        mock_metadata = {
+        exp_data.index.name = 'Eigenvalue'
+        exp_metadata = {
             'system': {
                 'nbasis': 38, 'nel': 2, 'nvirt': 36, 'Ms': 0, 'nalpha': 1,
                 'nbeta': 1, 'nvirt_alpha': 18, 'nvirt_beta': 18, 'nsym': 19,
@@ -448,13 +448,13 @@ class TestExtractData(unittest.TestCase, ExtendedTestSetUp):
                 'write_hamiltonian': False
             }
         }
-        pd.testing.assert_series_equal(data[0][1], mock_data)
-        self.assertDictEqual(data[0][0], mock_metadata)
+        pd.testing.assert_series_equal(data[0][1], exp_data)
+        self.assertDictEqual(data[0][0], exp_metadata)
 
     def test_basic_simple_fciqmc_input(self):
         """Test Simple FCIQMC."""
         data = extract.extract_data("hande_files/simple_fciqmc_ueg.out")
-        mock_data = pd.DataFrame([
+        exp_data = pd.DataFrame([
             [10, 0., -4.70181114e-02, 8.00000000e+00, 9.00000000e+00, 0, 0,
              5.00000000e-02, 0.0],
             [20, -8.78004297e-03, -2.29343899e-01, 8.00000000e+00,
@@ -466,8 +466,8 @@ class TestExtractData(unittest.TestCase, ExtendedTestSetUp):
             'max_bloom', 'mean_bloom', 'nblooms', 'semi_stoch'
         ]
         for key in del_keys:
-            del self.mock_metadata[key]
-        mock_metadata = {
+            del self.exp_metadata[key]
+        exp_metadata = {
             'system': {
                 'nbasis': 38, 'nel': 2, 'nvirt': 36, 'Ms': 0, 'nalpha': 1,
                 'nbeta': 1, 'nvirt_alpha': 18, 'nvirt_beta': 18, 'nsym': 19,
@@ -520,18 +520,18 @@ class TestExtractData(unittest.TestCase, ExtendedTestSetUp):
             ], 'UUID': 'c8132a6b-bc15-4586-adf7-80d7c3119e3c',
             'wall_time': 0.0, 'cpu_time': 0.0, 'calculation_time': 0.0
         }
-        pd.testing.assert_frame_equal(data[0][1], mock_data)
-        self.assertDictEqual(data[0][0], mock_metadata)
+        pd.testing.assert_frame_equal(data[0][1], exp_data)
+        self.assertDictEqual(data[0][0], exp_metadata)
 
     def test_hilbert(self):
         """Test MC Hilbert space size estimation extraction."""
         data = extract.extract_data("hande_files/hilbert_ueg.out")
-        mock_data = pd.DataFrame([
+        exp_data = pd.DataFrame([
             [1, 15233700.0, 15233700.0, np.nan],
             [2, 20311600.0, 17772650.0, 2538951.0],
             [3, 10155800.0, 15233700.0, 2931728.0]
         ], columns=['iterations', 'space size', 'mean', 'std. err.'])
-        mock_metadata = {
+        exp_metadata = {
             'system': {
                 'nbasis': 38, 'nel': 14, 'nvirt': 24, 'Ms': 0, 'nalpha': 7,
                 'nbeta': 7, 'nvirt_alpha': 12, 'nvirt_beta': 12, 'nsym': 19,
@@ -556,13 +556,13 @@ class TestExtractData(unittest.TestCase, ExtendedTestSetUp):
             'UUID': '6c228dba-68c9-4051-b47a-5704fe261ad8', 'wall_time': 0.0,
             'cpu_time': 0.0, 'calculation_time': 0.0
         }
-        pd.testing.assert_frame_equal(data[0][1], mock_data)
-        self.assertDictEqual(data[0][0], mock_metadata)
+        pd.testing.assert_frame_equal(data[0][1], exp_data)
+        self.assertDictEqual(data[0][0], exp_metadata)
 
     def test_canonical_estimates(self):
         """Test canonical estimates extraction."""
         data = extract.extract_data("hande_files/cano_ueg.out")
-        mock_data = pd.DataFrame([
+        exp_data = pd.DataFrame([
             [1, 2.7943370015E+01, -1.5740506968E+00, 2.5170736424E+01,
              -1.4249954801E+00, 9.0253160272E-01, 3.4800000000E-02],
             [2, 2.7726172803E+01, -1.5817153286E+00, 2.5010826838E+01,
@@ -571,7 +571,7 @@ class TestExtractData(unittest.TestCase, ExtendedTestSetUp):
             'iterations', '<T>_0', '<V>_0', r'Tr(T\rho_HF)',
             r'Tr(V\rho_HF)', r'Tr(\rho_HF)', 'N_ACC/N_ATT'
         ])
-        mock_metadata = {
+        exp_metadata = {
             'system': {
                 'nbasis': 38, 'nel': 14, 'nvirt': 24, 'Ms': 0, 'nalpha': 7,
                 'nbeta': 7, 'nvirt_alpha': 12, 'nvirt_beta': 12, 'nsym': 19,
@@ -598,5 +598,5 @@ class TestExtractData(unittest.TestCase, ExtendedTestSetUp):
             ], 'UUID': '98db19fc-8ab2-4f5a-82d0-5c4c10340a1c',
             'wall_time': 0.0, 'cpu_time': 0.0, 'calculation_time': 0.0
         }
-        pd.testing.assert_frame_equal(data[0][1], mock_data)
-        self.assertDictEqual(data[0][0], mock_metadata)
+        pd.testing.assert_frame_equal(data[0][1], exp_data)
+        self.assertDictEqual(data[0][0], exp_metadata)

@@ -35,25 +35,25 @@ class TestProjectedEnergy(unittest.TestCase):
         proje = analysis.projected_energy(
             self.reblock_orig, self.cov_orig, self.data_len_orig
         )
-        proje_mock_means = [
+        proje_exp_means = [
             -5.70972199, -4.86906699, -5.33661295, -5.45374545, -5.17632254,
             -4.94604358, -5.03227561, -4.89093308, -4.94371799, -4.90833319
         ]
-        proje_mock_stes = [
+        proje_exp_stes = [
             0.07070339, 0.23508274, 0.38226895, 0.52410126, 0.4916993,
             0.52202386, 1.2421994, 1.82672645, 2.80415653, 3.52565766
         ]
-        proje_mock_optb = ['' if i != 7 else '<---' for i in range(10)]
-        proje_mock_df = pd.DataFrame.from_dict({
-            'mean': proje_mock_means,
-            'standard error': proje_mock_stes,
-            'optimal block': proje_mock_optb
+        proje_exp_optb = ['' if i != 7 else '<---' for i in range(10)]
+        proje_exp_df = pd.DataFrame.from_dict({
+            'mean': proje_exp_means,
+            'standard error': proje_exp_stes,
+            'optimal block': proje_exp_optb
         })
-        proje_mock_df = pd.concat(
-            [proje_mock_df], axis=1, keys=['Proj. Energy']
+        proje_exp_df = pd.concat(
+            [proje_exp_df], axis=1, keys=['Proj. Energy']
         )
-        proje_mock_df.index.name = 'reblock'
-        pd.testing.assert_frame_equal(proje, proje_mock_df, check_exact=False)
+        proje_exp_df.index.name = 'reblock'
+        pd.testing.assert_frame_equal(proje, proje_exp_df, check_exact=False)
 
     def test_custom_cols(self):
         """Test input with different columns and output col_name."""
@@ -61,27 +61,27 @@ class TestProjectedEnergy(unittest.TestCase):
             self.reblock_orig, self.cov_orig, self.data_len_orig,
             sum_key='alt1', ref_key='alt2', col_name='Proje'
         )
-        proje_mock_means = [
+        proje_exp_means = [
             -1276.45810774, -909.18258529, -1061.17358148, -1087.54401339,
             -1108.61543336, -1184.03733717, -1037.86512069, -991.42866714,
             -1024.23417293, -990.97344913
         ]
-        proje_mock_stes = [
+        proje_exp_stes = [
             14.91741087, 43.4508022, 73.18694845, 77.42004437, 95.91400323,
             143.12724715, 187.12002286, 279.46651658, 102.91404468,
             678.55618338
         ]
-        proje_mock_optb = ['' if i != 6 else '<---' for i in range(10)]
-        proje_mock_df = pd.DataFrame.from_dict({
-            'mean': proje_mock_means,
-            'standard error': proje_mock_stes,
-            'optimal block': proje_mock_optb
+        proje_exp_optb = ['' if i != 6 else '<---' for i in range(10)]
+        proje_exp_df = pd.DataFrame.from_dict({
+            'mean': proje_exp_means,
+            'standard error': proje_exp_stes,
+            'optimal block': proje_exp_optb
         })
-        proje_mock_df = pd.concat(
-            [proje_mock_df], axis=1, keys=['Proje']
+        proje_exp_df = pd.concat(
+            [proje_exp_df], axis=1, keys=['Proje']
         )
-        proje_mock_df.index.name = 'reblock'
-        pd.testing.assert_frame_equal(proje, proje_mock_df, check_exact=False)
+        proje_exp_df.index.name = 'reblock'
+        pd.testing.assert_frame_equal(proje, proje_exp_df, check_exact=False)
 
     def test_zero_in_ref(self):
         """Test input with a zero entry in the ref_key ('N_0')."""
@@ -133,23 +133,23 @@ class TestQMCSummary(unittest.TestCase):
         self.reblock_orig = create_mock_df.create_reblock_frame(
             rng, cols, means, it_optbls, num_reblock_its
         )
-        # Also set up some shared mock results.
-        self.summary_mock_0 = pd.DataFrame(
+        # Also set up some shared exp results.
+        self.summary_exp_0 = pd.DataFrame(
             np.asarray([[-243.841, 10.564, 0.258305],
                         [10.0446, 0.347958, 0.0483099],
                         [-2.41226, 0.105098, None]]),
             columns=['mean', 'standard error', 'standard error error'],
             index=[r'\sum H_0j N_j', 'N_0', 'Proj. Energy']
         )
-        self.summary_mock_1 = ['Shift']
+        self.summary_exp_1 = ['Shift']
 
     def test_basic_input(self):
         """Test basic input."""
         summary = analysis.qmc_summary(self.reblock_orig)
         pd.testing.assert_frame_equal(
-            summary[0], self.summary_mock_0, check_exact=False
+            summary[0], self.summary_exp_0, check_exact=False
         )
-        self.assertEqual(summary[1], self.summary_mock_1)
+        self.assertEqual(summary[1], self.summary_exp_1)
 
     def test_custom_cols(self):
         """Use custom values."""
@@ -157,19 +157,19 @@ class TestQMCSummary(unittest.TestCase):
         summary_cus = analysis.qmc_summary(
             self.reblock_orig, keys=['alt1', 'alt2'], summary_tuple=summary
         )
-        summary_mock_0_add = pd.DataFrame(
+        summary_exp_0_add = pd.DataFrame(
             np.asarray([[1.14092e+06, 5010.8, 404.726]]),
             columns=['mean', 'standard error', 'standard error error'],
             index=['alt1']
         )
-        summary_mock_0_add = pd.concat([
-            self.summary_mock_0, summary_mock_0_add
+        summary_exp_0_add = pd.concat([
+            self.summary_exp_0, summary_exp_0_add
         ])
-        self.summary_mock_1.append('alt2')
+        self.summary_exp_1.append('alt2')
         pd.testing.assert_frame_equal(
-            summary_cus[0], summary_mock_0_add, check_exact=False
+            summary_cus[0], summary_exp_0_add, check_exact=False
         )
-        self.assertEqual(summary_cus[1], self.summary_mock_1)
+        self.assertEqual(summary_cus[1], self.summary_exp_1)
 
     def test_unchanged_mutable(self):
         """Check that mutable objects, such as pd DataFrames, don't
@@ -203,12 +203,12 @@ class TestExtractPopGrowth(unittest.TestCase):
         [todo] - Not sure whether this effect is intended!!!
         """
         grow_data = analysis.extract_pop_growth(self.data, min_ref_pop=-199.0)
-        grow_data_mock = pd.DataFrame(
+        grow_data_exp = pd.DataFrame(
             np.asarray([[0.968889], [-1.059212], [-0.984942], [0.99834]]).T,
             columns=self.cols
         )
         pd.testing.assert_frame_equal(
-            grow_data, grow_data_mock, check_exact=False
+            grow_data, grow_data_exp, check_exact=False
         )
 
     def test_basic_input(self):
@@ -217,12 +217,12 @@ class TestExtractPopGrowth(unittest.TestCase):
             self.data['Shift'].loc[0:8].values, 0.0, inplace=True
         )
         grow_data = analysis.extract_pop_growth(self.data)
-        grow_data_mock = pd.DataFrame(
+        grow_data_exp = pd.DataFrame(
             np.asarray([[13.030125], [0.0], [-0.163027], [1.474782]]).T,
             index=[8], columns=self.cols
         )
         pd.testing.assert_frame_equal(
-            grow_data, grow_data_mock, check_exact=False
+            grow_data, grow_data_exp, check_exact=False
         )
 
     def test_custom_input(self):
@@ -234,12 +234,12 @@ class TestExtractPopGrowth(unittest.TestCase):
         grow_data = analysis.extract_pop_growth(
             self.data, ref_key='alt2', shift_key='alt1', min_ref_pop=1.42
         )
-        grow_data_mock = pd.DataFrame(
+        grow_data_exp = pd.DataFrame(
             np.asarray([[13.030125], [0.0], [0.0], [1.474782]]).T,
             index=[8], columns=self.cols
         )
         pd.testing.assert_frame_equal(
-            grow_data, grow_data_mock, check_exact=False
+            grow_data, grow_data_exp, check_exact=False
         )
 
     def test_unchanged_mutable(self):
@@ -272,13 +272,13 @@ class TestPlateauEstimator(unittest.TestCase):
     def test_basic_input(self):
         """Test basic input."""
         shoulder = analysis.plateau_estimator(self.data)
-        shoulder_mock = pd.DataFrame(
+        shoulder_exp = pd.DataFrame(
             np.asarray([[19.278545, 0.928348], [13253.874811, 2095.242403]]),
             columns=['mean', 'standard error'],
             index=['shoulder estimator', 'shoulder height']
         )
         pd.testing.assert_frame_equal(
-            shoulder, shoulder_mock, check_exact=False
+            shoulder, shoulder_exp, check_exact=False
         )
 
     def test_custom_input(self):
@@ -289,13 +289,13 @@ class TestPlateauEstimator(unittest.TestCase):
         )
         # [todo] Note that since pop_data is specified, min_ref_pop and
         # [todo] shift_key have no effect! Is that safe? Not tested for.
-        shoulder_mock = pd.DataFrame(
+        shoulder_exp = pd.DataFrame(
             np.asarray([[12.334566, 0.656519], [11910.146569, 2345.367031]]),
             columns=['mean', 'standard error'],
             index=['shoulder estimator', 'shoulder height']
         )
         pd.testing.assert_frame_equal(
-            shoulder, shoulder_mock, check_exact=False
+            shoulder, shoulder_exp, check_exact=False
         )
 
     def test_unchanged_mutable(self):
@@ -395,12 +395,12 @@ class TestInefficiency(unittest.TestCase):
         """Basic inputs."""
         (dtau, iterations) = (0.1, 10000)
         ineff = analysis.inefficiency(self.opt_block, dtau, iterations)
-        ineff_mock = pd.DataFrame(
+        ineff_exp = pd.DataFrame(
             np.asarray([[106.299756, 15.034506]]),
             columns=['mean', 'standard error'],
             index=['Inefficiency']
         )
-        pd.testing.assert_frame_equal(ineff, ineff_mock, check_exact=False)
+        pd.testing.assert_frame_equal(ineff, ineff_exp, check_exact=False)
 
     def test_zero_division(self):
         """Basic inputs 2 - What happens with a division by zero?"""
@@ -409,12 +409,12 @@ class TestInefficiency(unittest.TestCase):
             self.opt_block['standard error']['N_0'], 0.0, inplace=True
         )
         ineff = analysis.inefficiency(self.opt_block, dtau, iterations)
-        ineff_mock = pd.DataFrame(
+        ineff_exp = pd.DataFrame(
             np.asarray([[106.299756, np.inf]]),
             columns=['mean', 'standard error'],
             index=['Inefficiency']
         )
-        pd.testing.assert_frame_equal(ineff, ineff_mock, check_exact=False)
+        pd.testing.assert_frame_equal(ineff, ineff_exp, check_exact=False)
 
     def test_key_error(self):
         """Key error and associated warning being printed."""

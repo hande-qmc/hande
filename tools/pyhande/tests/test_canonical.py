@@ -23,8 +23,8 @@ class TestAnalyseHFObservables(unittest.TestCase):
         cov_orig = create_mock_df.create_cov_frame(rng, self.cols, means, 1)
         # reblock iterations are not a concept here:
         self.cov_orig = cov_orig.loc[0]
-        # Shared mock results
-        self.result_mock = pd.Series(
+        # Shared exp results
+        self.result_exp = pd.Series(
             [-32.142857, 4.004706, -35.357143, 4.122886, -70.714286, 10.74825],
             index=[
                 'T_HF', 'T_HF_error', 'V_HF', 'V_HF_error', 'U_HF',
@@ -41,7 +41,7 @@ class TestAnalyseHFObservables(unittest.TestCase):
             ), nsamples
         )
         pd.testing.assert_series_equal(
-            result, self.result_mock, check_exact=False
+            result, self.result_exp, check_exact=False
         )
 
     def test_ignore_col(self):
@@ -51,7 +51,7 @@ class TestAnalyseHFObservables(unittest.TestCase):
             self.means_series, self.cov_orig, nsamples
         )
         pd.testing.assert_series_equal(
-            result, self.result_mock, check_exact=False
+            result, self.result_exp, check_exact=False
         )
 
     def test_unchanged_mutable(self):
@@ -108,40 +108,40 @@ class TestEstimates(unittest.TestCase):
     def test_not_ueg(self):
         """Not UEG."""
         result = canonical.estimates(self.metadata1, self.data)
-        ind_mock = [
+        ind_exp = [
             'U_0', 'T_0', 'V_0', 'N_ACC/N_ATT', 'F_0', 'S_0', 'T_HF', 'V_HF',
             'U_HF'
         ]
-        ind_mock_full = []
-        for i in ind_mock:
-            ind_mock_full.extend([i, i+'_error'])
-        ind_mock_full = ['Beta'] + ind_mock_full
-        result_mock = pd.Series([
+        ind_exp_full = []
+        for i in ind_exp:
+            ind_exp_full.extend([i, i+'_error'])
+        ind_exp_full = ['Beta'] + ind_exp_full
+        result_exp = pd.Series([
             4.40000000e-01, -7.45375108e+01, 7.95735784e-01, -3.57175099e+01,
             4.73795670e-01, -3.88200009e+01, 5.72059025e-01, 1.41132320e-01,
             5.98715584e-03, -7.29498696e+01, 9.64142895e-02, 1.63822382e+01,
             2.01610646e-01, -3.18572634e+01, 1.43161978e+00, -3.51519450e+01,
             1.61877967e+00, -6.70092084e+01, 2.98339505e+00
-        ], index=ind_mock_full)
-        pd.testing.assert_series_equal(result, result_mock, check_exact=False)
+        ], index=ind_exp_full)
+        pd.testing.assert_series_equal(result, result_exp, check_exact=False)
 
     def test_ueg(self):
         """UEG."""
         result = canonical.estimates(self.metadata2, self.data)
-        ind_mock = ['U_0', 'T_0', 'V_0', 'N_ACC/N_ATT', 'F_0', 'S_0',
-                    'T_HF', 'V_HF', 'U_HF']
-        ind_mock_full = []
-        for i in ind_mock:
-            ind_mock_full.extend([i, i+'_error'])
-        ind_mock_full = ['Beta'] + ind_mock_full
-        result_mock = pd.Series([
+        ind_exp = ['U_0', 'T_0', 'V_0', 'N_ACC/N_ATT', 'F_0', 'S_0',
+                   'T_HF', 'V_HF', 'U_HF']
+        ind_exp_full = []
+        for i in ind_exp:
+            ind_exp_full.extend([i, i+'_error'])
+        ind_exp_full = ['Beta'] + ind_exp_full
+        result_exp = pd.Series([
             9.00000000e-01, -7.45375108e+01, 7.95735784e-01, -3.57175099e+01,
             4.73795670e-01, -3.88200009e+01, 5.72059025e-01, 1.41132320e-01,
             5.98715584e-03, -19.138018, 0.1508347996, -4.662982060842,
             0.12887270046, -3.18572634e+01, 1.43161978e+00, -3.51519450e+01,
             1.61877967e+00, -6.70092084e+01, 2.98339505e+00
-        ], index=ind_mock_full)
-        pd.testing.assert_series_equal(result, result_mock, check_exact=False)
+        ], index=ind_exp_full)
+        pd.testing.assert_series_equal(result, result_exp, check_exact=False)
 
     def test_not_ueg_no_naccnatt_col(self):
         """No 'N_ACC/N_ATT' in columns (not UEG)
@@ -149,17 +149,17 @@ class TestEstimates(unittest.TestCase):
         """
         self.data.drop(columns=(['N_ACC/N_ATT']), inplace=True)
         result = canonical.estimates(self.metadata1, self.data)
-        ind_mock = ['U_0', 'T_0', 'V_0', 'T_HF', 'V_HF', 'U_HF']
-        ind_mock_full = []
-        for i in ind_mock:
-            ind_mock_full.extend([i, i+'_error'])
-        ind_mock_full = ['Beta'] + ind_mock_full
-        result_mock = pd.Series([
+        ind_exp = ['U_0', 'T_0', 'V_0', 'T_HF', 'V_HF', 'U_HF']
+        ind_exp_full = []
+        for i in ind_exp:
+            ind_exp_full.extend([i, i+'_error'])
+        ind_exp_full = ['Beta'] + ind_exp_full
+        result_exp = pd.Series([
             4.40000000e-01, -74.574386427, 0.78720024, -35.86308032,
             0.46069296, -38.7113061, 0.58596805, -32.23777087, 1.44645184,
             -35.44043608, 1.63181849, -67.67820695, 3.01213831
-        ], index=ind_mock_full)
-        pd.testing.assert_series_equal(result, result_mock, check_exact=False)
+        ], index=ind_exp_full)
+        pd.testing.assert_series_equal(result, result_exp, check_exact=False)
 
     def test_unchanged_mutable(self):
         """Check that mutable objects, such as pd DataFrames, don't

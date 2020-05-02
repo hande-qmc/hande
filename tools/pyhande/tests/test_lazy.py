@@ -16,14 +16,14 @@ class TestFindStartingIterationMserMin(unittest.TestCase):
         rng = np.random.default_rng(769)
         cols = [
             r'\sum H_0j N_j', 'N_0', 'Shift', 'Proj. Energy', 'alt1', 'alt2'
-            ]
+        ]
         means = [-231.0, 10.0, -2.3, -2.3, 1000004, 0.0002]
         sine_periods = [4, 2, 6, 2, 6, 7]
         noise_facs = [0.1*mean for mean in means]
         self.data = create_mock_df.create_qmc_frame(
             rng, cols, means, sine_periods, noise_facs,
             frac_not_convergeds=[0.33333 for _ in range(5)], num_mc_its=300
-            )
+        )
         iterations = pd.DataFrame(list(range(1, 1501, 5)),
                                   columns=['iterations'])
         self.data = pd.concat([iterations, self.data], axis=1)
@@ -85,14 +85,14 @@ class TestLazyHybrid(unittest.TestCase):
         rng = np.random.default_rng(9843)
         cols = [
             r'\sum H_0j N_j', 'N_0', 'Shift', 'Proj. Energy', 'alt1', 'alt2'
-            ]
+        ]
         means = [-231.0, 10.0, -2.3, -2.3, 1000004, 0.0002]
         sine_periods = [4, 2, 6, 2, 6, 7]
         noise_facs = [0.1*mean for mean in means]
         self.data = create_mock_df.create_qmc_frame(
             rng, cols, means, sine_periods, noise_facs,
             frac_not_convergeds=[0.33333 for _ in range(5)], num_mc_its=300
-            )
+        )
         iterations = pd.DataFrame(list(range(1, 1501, 5)),
                                   columns=['iterations'])
         self.data = pd.concat([iterations, self.data], axis=1)
@@ -101,38 +101,38 @@ class TestLazyHybrid(unittest.TestCase):
     def test_basic_input(self):
         """Test basic input."""
         info = lazy.lazy_hybrid(self.data, self.md)
-        opt_block_mock = pd.DataFrame(
+        opt_block_exp = pd.DataFrame(
             [[-1.970565, 0.25349, None, '-2.0(3)']], columns=[
                 'mean', 'standard error', 'standard error error', 'estimate'
-                ], index=['Proj. Energy'])
-        pd.testing.assert_frame_equal(opt_block_mock, info.opt_block)
+            ], index=['Proj. Energy'])
+        pd.testing.assert_frame_equal(opt_block_exp, info.opt_block)
 
     def test_start(self):
         """Test start parameter.  Set to close to one found above."""
         info = lazy.lazy_hybrid(self.data, self.md, start=500)
-        opt_block_mock = pd.DataFrame(
+        opt_block_exp = pd.DataFrame(
             [[-2.25758, 0.0241037, None, '-2.26(2)']], columns=[
                 'mean', 'standard error', 'standard error error', 'estimate'
-                ], index=['Proj. Energy'])
-        pd.testing.assert_frame_equal(opt_block_mock, info.opt_block)
+            ], index=['Proj. Energy'])
+        pd.testing.assert_frame_equal(opt_block_exp, info.opt_block)
 
     def test_end(self):
         """Test end parameter.  Set to close to one found above."""
         info = lazy.lazy_hybrid(self.data, self.md, end=1023)
-        opt_block_mock = pd.DataFrame(
+        opt_block_exp = pd.DataFrame(
             [[-1.81619, 0.314786, None, '-1.8(3)']], columns=[
                 'mean', 'standard error', 'standard error error', 'estimate'
-                ], index=['Proj. Energy'])
-        pd.testing.assert_frame_equal(opt_block_mock, info.opt_block)
+            ], index=['Proj. Energy'])
+        pd.testing.assert_frame_equal(opt_block_exp, info.opt_block)
 
     def test_batch_size(self):
         """Test batch_size parameter."""
         info = lazy.lazy_hybrid(self.data, self.md, batch_size=6)
-        opt_block_mock = pd.DataFrame(
+        opt_block_exp = pd.DataFrame(
             [[-1.970565, 0.30242585, None, '-2.0(3)']], columns=[
                 'mean', 'standard error', 'standard error error', 'estimate'
-                ], index=['Proj. Energy'])
-        pd.testing.assert_frame_equal(opt_block_mock, info.opt_block)
+            ], index=['Proj. Energy'])
+        pd.testing.assert_frame_equal(opt_block_exp, info.opt_block)
 
     def test_unchanged_mutable(self):
         """Check that mutable objects, such as pd DataFrames, don't
@@ -168,7 +168,7 @@ class TestStdAnalysis(unittest.TestCase):
             'non_blocking_comm': False, 'doing_load_balancing': False,
             'trial_function': 'single_basis', 'guiding_function': 'none',
             'quadrature_initiator': True, 'replica_tricks': False
-            }
+        }
         self.assertDictEqual(info.metadata['fciqmc'], meta_fciqmc)
         meta_pyhande = {'reblock_start': 3736}
         self.assertDictEqual(info.metadata['pyhande'], meta_pyhande)
@@ -177,26 +177,26 @@ class TestStdAnalysis(unittest.TestCase):
             4.34000000e+03, -2.42034087e-01, -3.88598174e+01, 1.36800000e+02,
             1.18000000e+04, 1.11860000e+04, 1.21700000e+03, 9.33000000e-02,
             7.60000000e-03, -2.84062993e-01
-            ], index=[
-                'iterations', 'Shift', r'\sum H_0j N_j', 'N_0', '# H psips',
-                '# states', '# spawn_events', 'R_spawn', 'time',
-                'Proj. Energy'
-            ], name=433)
+        ], index=[
+            'iterations', 'Shift', r'\sum H_0j N_j', 'N_0', '# H psips',
+            '# states', '# spawn_events', 'R_spawn', 'time',
+            'Proj. Energy'
+        ], name=433)
         pd.testing.assert_series_equal(info.data.loc[433], data_it_4340)
         # .data_len
-        data_len_mock = pd.Series(
+        data_len_exp = pd.Series(
             [2627, 1313, 656, 328, 164, 82, 41, 20, 10, 5, 2],
             name='data length')
-        data_len_mock.index.name = 'reblock'
-        pd.testing.assert_series_equal(info.data_len, data_len_mock)
+        data_len_exp.index.name = 'reblock'
+        pd.testing.assert_series_equal(info.data_len, data_len_exp)
         # .reblock
         reblock_shift_loc8 = pd.Series([
             -0.2735138312473437, 0.0034409665708355465, 0.0008110435986913453,
             '<---    '
-            ], index=[
-                'mean', 'standard error', 'standard error error',
-                'optimal block'
-            ], name=8)
+        ], index=[
+            'mean', 'standard error', 'standard error error',
+            'optimal block'
+        ], name=8)
         pd.testing.assert_series_equal(
             info.reblock['Shift'].loc[8], reblock_shift_loc8)
         # .covariance
@@ -327,9 +327,9 @@ class TestStdAnalysis(unittest.TestCase):
         opt_block_psips = pd.Series([
             12584.401953125, 85.35691857330413, 20.118818648123774,
             '12580(90)'
-            ], index=[
-                'mean', 'standard error', 'standard error error', 'estimate'
-            ], name='# H psips')
+        ], index=[
+            'mean', 'standard error', 'standard error error', 'estimate'
+        ], name='# H psips')
         pd.testing.assert_series_equal(
             infos[0].opt_block.loc['# H psips'], opt_block_psips)
 
@@ -350,7 +350,7 @@ class TestStdAnalysis(unittest.TestCase):
              -43.852041898078305, 167.62001388833082], index=[
                  r'\sum H_0j N_j', 'N_0', 'Shift', r'W * \sum H_0j N_j',
                  'W * N_0'
-                 ], name=(3, 'W * N_0'))
+            ], name=(3, 'W * N_0'))
         pd.testing.assert_series_equal(
             infos[0].covariance.loc[3, 'W * N_0'], reblock_3_W_N_0)
         # .opt_block
@@ -382,7 +382,7 @@ class TestStdAnalysis(unittest.TestCase):
              -46.46286890224775, 177.66923750972612], index=[
                  r'\sum H_0j N_j', 'N_0', 'Shift', r'W * \sum H_0j N_j',
                  'W * N_0'
-                 ], name=(3, 'W * N_0'))
+            ], name=(3, 'W * N_0'))
         pd.testing.assert_series_equal(
             infos[0].covariance.loc[3, 'W * N_0'], cov_3_W_N_0)
         # .opt_block
@@ -409,7 +409,7 @@ class TestStdAnalysis(unittest.TestCase):
             [1.0337627369749376, 0.34460541317375093, None, '1.0(3)'],
             index=[
                 'mean', 'standard error', 'standard error error', 'estimate'
-                ], name='Inefficiency')
+            ], name='Inefficiency')
         pd.testing.assert_series_equal(
             infos[0].opt_block.loc['Inefficiency'], opt_block_ineff)
 
@@ -452,9 +452,9 @@ class TestStdAnalysis(unittest.TestCase):
         opt_block_psips = pd.Series([
             0.008899375, 0.0002561202535778128, 4.1548191515764066e-05,
             '0.0089(3)'
-            ], index=[
-                'mean', 'standard error', 'standard error error', 'estimate'
-            ], name='time')
+        ], index=[
+            'mean', 'standard error', 'standard error error', 'estimate'
+        ], name='time')
         pd.testing.assert_series_equal(
             infos[0].opt_block.loc['time'], opt_block_psips)
 
@@ -518,14 +518,14 @@ class TestFindStartingIteration(unittest.TestCase):
         cols = [
             r'\sum H_0j N_j', 'N_0', 'Shift', 'Proj. Energy', '# H psips',
             'alt1'
-            ]
+        ]
         means = [-231.0, 10.0, -2.3, -2.3, 1000004, 0.0002]
         sine_periods = [4, 2, 6, 2, 6, 7]
         noise_facs = [0.1*mean for mean in means]
         self.data = create_mock_df.create_qmc_frame(
             rng, cols, means, sine_periods, noise_facs,
             frac_not_convergeds=[0.33333 for _ in range(5)], num_mc_its=300
-            )
+        )
         iterations = pd.DataFrame(list(range(1, 1501, 5)),
                                   columns=['iterations'])
         self.data = pd.concat([iterations, self.data], axis=1)
