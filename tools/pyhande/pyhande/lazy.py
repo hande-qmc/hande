@@ -430,7 +430,6 @@ info : :func:`collections.namedtuple`
     mc_data = calc.loc[indx, to_block]
     if mc_data[kShift].iloc[0] == mc_data[kShift].iloc[1]:
         if calc[kShift][~indx].iloc[-1] == mc_data[kShift].iloc[0]:
-
             warnings.warn('The blocking analysis starts from before the shift '
                           'begins to vary.')
 
