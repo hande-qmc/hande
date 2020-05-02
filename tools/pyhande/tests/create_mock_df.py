@@ -55,7 +55,7 @@ def create_qmc_frame(rng, cols: List[str], means: List[float],
             not_converged_its = min(
                 int(frac_not_converged*num_mc_its + 0.1*num_mc_its*x_stdn),
                 num_mc_its
-                )
+            )
             log_mean = np.log(abs(mean))
             ncits = not_converged_its
             # Model an exponential increase in magnitude.
@@ -63,7 +63,7 @@ def create_qmc_frame(rng, cols: List[str], means: List[float],
                 np.sign(mean) *
                 np.exp(log_mean * (i+0.2*rng.standard_normal())/ncits)
                 for i in range(ncits)
-                ]
+            ]
         else:
             not_converged_its = 0
             qmc_dict[col] = []
@@ -74,7 +74,7 @@ def create_qmc_frame(rng, cols: List[str], means: List[float],
             + 0.1*abs(int(mean))*np.sin(i*np.pi/sine_period)
             + noise_fac*rng.standard_normal()
             for i in range(num_mc_its - not_converged_its)
-            ])
+        ])
     return pd.DataFrame.from_dict(qmc_dict)
 
 
@@ -132,31 +132,31 @@ def create_reblock_frame(rng, cols: List[str], means: List[float],
         reb_means = [
             mean + (n_reb_its+1-i)*0.01*mean*rng.standard_normal()
             for i in range(n_reb_its)
-            ]
+        ]
         reb_stes = (
             [abs((i+1)*0.005*mean + 0.001*mean*rng.standard_normal())
              for i in range(it_optbl-1)]
             + [abs((it_optbl+1)*0.005*mean
                    + 0.001*mean*rng.standard_normal())
                for _ in range(min(n_reb_its-it_optbl+1, n_reb_its))]
-            )
+        )
         # where the min is there for the case optbl=0
         if col != 'Proj. Energy':
             reb_stees = [
                 abs(0.1*reb_ste*(1.0 + rng.standard_normal()))
                 for reb_ste in reb_stes
-                ]
+            ]
         else:
             reb_stees = None
         reb_optb = [
             '' if i != it_optbl else '<---' for i in range(n_reb_its)
-            ]
+        ]
         col_dfs.append(pd.DataFrame.from_dict({
             'mean': reb_means,
             'standard error': reb_stes,
             'standard error error': reb_stees,
             'optimal block': reb_optb
-            }))
+        }))
     reblock_df = pd.concat(col_dfs, axis=1, keys=cols)
     reblock_df.index.name = 'reblock'
     return reblock_df

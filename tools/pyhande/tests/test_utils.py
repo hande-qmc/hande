@@ -26,10 +26,10 @@ class TestGroupbyBetaLoops(unittest.TestCase):
         mc_cycles2 = 3
         iterations = pd.DataFrame.from_dict({
             'iterations': 2*[mc_cycles1*i for i in range(1, num_mc_its//2+1)]
-            })
+        })
         alt2_iterations = pd.DataFrame.from_dict({
             'alt2': 3*[mc_cycles2*i for i in range(1, num_mc_its//3+1)]
-            })
+        })
         self.data = pd.concat([iterations, data, alt2_iterations], axis=1)
 
     def test_basic_input(self):
@@ -69,13 +69,13 @@ class TestGroupbyIterations(unittest.TestCase):
         data = create_mock_df.create_qmc_frame(
             rng, cols, means, sine_periods, noise_facs,
             frac_not_convergeds=[0.5 for _ in range(5)], num_mc_its=num_mc_its
-            )
+        )
         # Need 'iterations' column which increases in steps (mc_cycles)
         # Have two groups of sequences where the iteration increases
         mc_cycles = 10
         iterations = pd.DataFrame.from_dict({
             'iterations': 2*[mc_cycles*i for i in range(1, num_mc_its//2+1)]
-            })
+        })
         self.data = pd.concat([iterations, data], axis=1)
 
     def test_basic_input(self):

@@ -17,9 +17,9 @@ class ExtractTestData(unittest.TestCase):
              0.4879, 0.0004],
             [20, -1.10017479e-01, -8.20941670e-01, 3.00000000e+00,
              1.28200000e+03, 782, 463, 7.62000000e-01, 8.00000000e-04]
-            ], columns=['iterations', 'Shift', r'\sum_H_0j_N_j', 'N_0',
-                        '#_H_psips', '#_states', '#_spawn_events', 'R_spawn',
-                        'time'])
+        ], columns=['iterations', 'Shift', r'\sum_H_0j_N_j', 'N_0',
+                    '#_H_psips', '#_states', '#_spawn_events', 'R_spawn',
+                    'time'])
         (key, val) = list(data.items())[0]
         self.assertEqual(key, 'FCIQMC [0]')
         pd.testing.assert_frame_equal(val, data_dummy_df, check_exact=False)
@@ -37,7 +37,7 @@ class TestTestcodeData(unittest.TestCase):
             'N_0': [2.7, 3.0], '# H psips': [142.0, 1282.0],
             '# states': [79, 782], '# spawn_events': [50, 463],
             'R_spawn': [0.4879, 0.762], 'time': [0.0004, 0.0008]
-            }
+        }
         self.assertDictEqual(data, dummy_data)
 
     def test_shortened_input(self):
@@ -49,7 +49,7 @@ class TestTestcodeData(unittest.TestCase):
             'N_0': [], '# H psips': [],
             '# states': [], '# spawn_events': [],
             'R_spawn': [], 'time': []
-            }
+        }
         self.assertDictEqual(data, dummy_data)
 
     def test_all_shortened_input(self):
@@ -65,7 +65,7 @@ class TestTestcodeData(unittest.TestCase):
             'iterations': [2, 3], 'space size': [20311600.0, 10155800.0],
             'mean': [17772650.0, 15233700.0],
             'std. err.': [2538951.0, 2931728.0]
-            }
+        }
         self.assertDictEqual(data, dummy_data)
 
     def test_basic_fci_input(self):
@@ -75,7 +75,7 @@ class TestTestcodeData(unittest.TestCase):
             'eigv 1': [-0.017888297593], 'eigv 2': [9.451775889133],
             'eigv 3': [9.451775889133], 'eigv 4': [9.525116432464],
             'eigv 5': [9.525116432464]
-            }
+        }
         self.assertDictEqual(data, dummy_data)
 
     def test_multiple_fciqmc(self):
@@ -87,13 +87,13 @@ class TestTestcodeData(unittest.TestCase):
             '\\sum H_0j N_j': [
                 -0.37851801553000003, -0.82094167005, -0.37851801553000003,
                 -0.82094167005
-                ], 'N_0': [2.7, 3.0, 2.7, 3.0],
+            ], 'N_0': [2.7, 3.0, 2.7, 3.0],
             '# H psips': [142.0, 1282.0, 142.0, 1282.0],
             '# states': [79, 782, 79, 782],
             '# spawn_events': [50, 463, 50, 463],
             'R_spawn': [0.4879, 0.762, 0.4879, 0.762],
             'time': [0.0, 0.0004, 0.0004, 0.0004]
-            }
+        }
         self.assertDictEqual(data, dummy_data)
 
     def test_longer_fciqmc(self):
@@ -103,14 +103,14 @@ class TestTestcodeData(unittest.TestCase):
             'iterations': [10, 20, 50, 80, 110],
             'Shift': [
                 0.0, 0.0, -0.27841254151, -0.47541378501000003, -0.46025762956
-                ], '\\sum H_0j N_j': [
-                    -0.11688723712000001, -0.33318324599, -1.2617267184,
-                    -1.1590407344, -0.94329092759
-                ], 'N_0': [2.0, 2.0, 2.5, 3.0, 3.3],
+            ], '\\sum H_0j N_j': [
+                -0.11688723712000001, -0.33318324599, -1.2617267184,
+                -1.1590407344, -0.94329092759
+            ], 'N_0': [2.0, 2.0, 2.5, 3.0, 3.3],
             '# H psips': [8.0, 33.0, 201.0, 442.0, 416.0],
             '# states': [7, 30, 188, 432, 405],
             '# spawn_events': [2, 3, 33, 88, 66],
             'R_spawn': [0.1058, 0.1286, 0.1651, 0.186, 0.1773],
             'time': [0.0, 0.0, 0.0, 0.0004, 0.0004]
-            }
+        }
         self.assertDictEqual(data, dummy_data)

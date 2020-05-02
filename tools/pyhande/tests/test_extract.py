@@ -16,19 +16,19 @@ class ExtendedTestSetUp():
         self.columns = [
             'iterations', 'Shift', r'\sum H_0j N_j', 'N_0', '# H psips',
             '# states', '# spawn_events', 'R_spawn', 'time'
-            ]
+        ]
         self.mock_data1 = pd.DataFrame([
             [10, 0.00000000e+00, -3.78518016e-01, 2.70000000e+00,
              1.42000000e+02, 79, 50, 4.87900000e-01, 4.00000000e-04],
             [20, -1.10017479e-01, -8.20941670e-01, 3.00000000e+00,
              1.28200000e+03, 782, 463, 7.62000000e-01, 8.0000000e-04]
-            ], columns=self.columns)
+        ], columns=self.columns)
         self.mock_data2 = pd.DataFrame([
             [10, 0., -0.08311986, 2., 8.11834868, 7, 3, 0.2765, 0.],
             [20, 0., -0.5709596, 2., 73.67254134, 66, 33, 0.3288, 0.],
             [30, -1.40493959e-01, -9.03119184e-01, 2.00000000e+00,
              1.71159164e+02, 162, 104, 3.77400000e-01, 0.0]
-            ], columns=self.columns)
+        ], columns=self.columns)
         self.mock_metadata = {
             'system': {
                 'nbasis': 38, 'nel': 14, 'nvirt': 24, 'Ms': 0, 'nalpha': 7,
@@ -40,8 +40,8 @@ class ExtendedTestSetUp():
                     'r_s': 1.0, 'ecutoff': 1.0, 'k_fermi': 1.91915829,
                     'E_fermi': 1.84158428, 'ktwist': [0.0, 0.0, 0.0],
                     'L': [3.88512994, 3.88512994, 3.88512994]
-                    }
-                },
+                }
+            },
             'qmc': {
                 'rng_seed': 1472, 'real_amplitudes': False,
                 'real_amplitude_force_32': False, 'spawn_cutoff': 0.01,
@@ -57,26 +57,26 @@ class ExtendedTestSetUp():
                 'nreport': 3, 'power_pitzer_min_weight': 0.01,
                 'quasi_newton': False, 'quasi_newton_threshold': 1e-05,
                 'quasi_newton_value': 1.0, 'use_mpi_barriers': False
-                },
+            },
             'fciqmc': {
                 'select_ref_det_every_nreports': 2147483647,
                 'init_spin_inv_D0': False, 'ref_det_factor': 1.5,
                 'non_blocking_comm': False, 'doing_load_balancing': False,
                 'trial_function': 'single_basis', 'guiding_function': 'none',
                 'quadrature_initiator': True, 'replica_tricks': False
-                },
+            },
             'semi_stoch': {
                 'start_iter': 1, 'shift_iter': -1, 'space_type': 'none',
                 'target_size': 0, 'write_determ_space': False,
                 'projection_mode': 'separate', 'read_id': 2147483647,
                 'write_id': 2147483647, 'ci_space': {'ex_level': -1}
-                },
+            },
             'restart': {
                 'read_restart': False, 'read_id': 2147483647,
                 'write_restart': False, 'write_id': 2147483647,
                 'write_freq': 2147483647, 'write_restart_shift': False,
                 'write_shift_id': 2147483647, 'restart_rng': True
-                },
+            },
             'blocking': {
                 'blocking_on_the_fly': False, 'start_save_frequency': -1,
                 'start_point_number': -1, 'filename': 'BLOCKING',
@@ -84,30 +84,30 @@ class ExtendedTestSetUp():
                 'blocks_used': 2147483647, 'min_blocks_used': 10,
                 'auto_shift_damping': False, 'shift_damping_precision': 2.0,
                 'force_shift_damping_opt': False
-                },
+            },
             'load balancing': {
                 'nslots': 1, 'pop': 1000, 'percent': 0.05, 'max_attempts': 2,
                 'write_info': False
-                },
+            },
             'reference': {
                 'det': [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14],
                 'det_ms': 0, 'det_symmetry': 1, 'H00': 13.60355734,
                 'F0': 15.69278015, 'hilbert_space_det': [
                     1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14
-                    ], 'hilbert_space_det_ms': 0,
+                ], 'hilbert_space_det_ms': 0,
                 'hilbert_space_det_symmetry': 1, 'ex_level': 14
-                },
+            },
             'logging_in': {
                 'calc': 0, 'calc_file': 'CALC', 'spawn': 0,
                 'spawn_file': 'SPAWN', 'death': 0, 'death_file': 'DEATH',
                 'start_iter': 0, 'end_iter': 9223372036854775807
-                },
+            },
             'logging': {
                 'write_highlevel_values': False, 'calc_unit': 2147483647,
                 'write_successful_spawn': False, 'write_failed_spawn': False,
                 'spawn_unit': 2147483647, 'write_successful_death': False,
                 'write_failed_death': False, 'death_unit': 2147483647
-                },
+            },
             'calc_type': 'FCIQMC', 'nblooms': 6253.0, 'max_bloom': 9.0,
             'mean_bloom': 3.93, 'input': [
                 '', '-- Create output with:',
@@ -119,9 +119,9 @@ class ExtendedTestSetUp():
                 'mc_cycles = 10,', 'nreports = 3,', 'target_population = 60,',
                 'state_size = 50000,', 'spawned_state_size = 5000,', '},', '}',
                 ''
-                ], 'UUID': 'c04c1500-cfea-4cc5-a90b-f525b4b36ec5',
+            ], 'UUID': 'c04c1500-cfea-4cc5-a90b-f525b4b36ec5',
             'wall_time': 0.07, 'cpu_time': 0.07, 'calculation_time': 0.07
-            }
+        }
         # metadata2 is similar:
         self.mock_metadata2 = copy.deepcopy(self.mock_metadata)
         self.mock_metadata2['qmc']['rng_seed'] = 389
@@ -172,7 +172,7 @@ class TestExtractDataSets(unittest.TestCase, ExtendedTestSetUp):
         """Pass a list of a file, differently compressed."""
         data = extract.extract_data_sets([
             self.filename1+".bz2", self.filename1+".gz", self.filename1+".xz"
-            ])
+        ])
         for i in range(3):
             pd.testing.assert_frame_equal(data[i][1], self.mock_data1)
             self.assertDictEqual(data[i][0], self.mock_metadata)
@@ -226,7 +226,7 @@ class TestExtractData(unittest.TestCase, ExtendedTestSetUp):
         self.mock_metadata['input'][2] = (
             '-- $[HANDE DIR]/bin/hande.x multi.ueg.lua > multi.ueg.out 2> '
             'multi.ueg.err'
-            )
+        )
         self.mock_metadata['input'].append('')
         self.mock_metadata['input'][12:] = self.mock_metadata['input'][11:-1]
         self.mock_metadata['input'][11] = 'for i=1,2 do'
@@ -264,7 +264,7 @@ class TestExtractData(unittest.TestCase, ExtendedTestSetUp):
              19, 42, 4.79900000e-01, 4.00000000e-04],
             [30, -1.53365134e-02, -5.83660200e-01, 2.05614830e+00,
              5.30000000e+01, 34, 12, 55, 3.91400000e-01, 0.0]
-            ], columns=self.columns)
+        ], columns=self.columns)
         pd.testing.assert_frame_equal(data[0][1], mock_data)
         self.mock_metadata['UUID'] = 'acc004f5-bbc6-4b5c-a831-406b90239e98'
         self.mock_metadata['calc_type'] = 'CCMC'
@@ -281,7 +281,7 @@ class TestExtractData(unittest.TestCase, ExtendedTestSetUp):
             'density_matrix_file': 'RDM', 'even_selection': False,
             'full_nc': False, 'linked': False, 'move_freq': 5,
             'multiref': False, 'vary_shift_reference': False
-            }
+        }
         self.mock_metadata['input'] = [
             '', '-- Create output with:',
             '-- $[HANDE DIR]/bin/hande.x ccmc_ueg.lua > ccmc_ueg.out 2> '
@@ -293,7 +293,7 @@ class TestExtractData(unittest.TestCase, ExtendedTestSetUp):
             'nreports = 3,', 'target_population = 30,', 'state_size = 50000,',
             'spawned_state_size = 5000,', '},', 'reference = {',
             'ex_level = 3,', '},', '}', ''
-            ]
+        ]
         self.mock_metadata['max_bloom'] = 457.0
         self.mock_metadata['mean_bloom'] = 20.79
         self.mock_metadata['nblooms'] = 227.0
@@ -315,10 +315,10 @@ class TestExtractData(unittest.TestCase, ExtendedTestSetUp):
              2.41400000e-01, 0.00000000e+00],
             [4, 4.64434757e-01, 0.00000000e+00, 9.40000000e+01, 79, 36,
              2.50600000e-01, 0.00000000e+00]
-            ], columns=[
-                'iterations', 'Shift', 'Trace', r'# H psips',
-                r'# states', r'# spawn_events', 'R_spawn', 'time'
-                ])
+        ], columns=[
+            'iterations', 'Shift', 'Trace', r'# H psips',
+            r'# states', r'# spawn_events', 'R_spawn', 'time'
+        ])
         mock_metadata = {
             'system': {
                 'nbasis': 38, 'nel': 14, 'nvirt': 24, 'Ms': 0, 'nalpha': 7,
@@ -345,7 +345,7 @@ class TestExtractData(unittest.TestCase, ExtendedTestSetUp):
                 'nreport': 2, 'power_pitzer_min_weight': 0.01,
                 'quasi_newton': False, 'quasi_newton_threshold': 1e-05,
                 'quasi_newton_value': 1.0, 'use_mpi_barriers': False
-                },
+            },
             'dmqmc': {
                 'beta_loops': 2, 'replica_tricks': False, 'start_av_rdm': 0,
                 'weighted_sampling': False, 'vary_weights': False,
@@ -355,43 +355,43 @@ class TestExtractData(unittest.TestCase, ExtendedTestSetUp):
                 'sampling_probs': '[]', 'finish_varying_weights': 0,
                 'fermi_temperature': False, 'target_beta': 1.0,
                 'mom_dist_kmax': 0.0, 'struc_fac_qmax': 0.0
-                },
+            },
             'ipdmqmc': {
                 'ipdmqmc': False, 'initial_matrix': 'hartree_fock',
                 'grand_canonical_initialisation': False, 'symmetric': True,
                 'chem_pot': 0.0, 'metropolis_attempts': 0
-                },
+            },
             'rdm': {
                 'nrdms': 0, 'spawned_length': 0, 'doing_rdm': False,
                 'calc_ground_rdm': False, 'calc_inst_rdm': False,
                 'doing_concurrence': False, 'doing_vn_entropy': False,
                 'output_rdm': False
-                },
+            },
             'operators': {
                 'energy': False, 'energy_squared': False,
                 'kinetic_energy': False, 'potential_energy': False,
                 'H0_energy': False, 'HI_energy': False,
                 'correlation_fn': False, 'staggered_mad_ind': False,
                 'rdm_r2': False, 'full_r2': False, 'mom_dist': False
-                },
+            },
             'restart': {
                 'read_restart': False, 'read_id': 2147483647,
                 'write_restart': False, 'write_id': 2147483647,
                 'write_freq': 2147483647, 'write_restart_shift': False,
                 'write_shift_id': 2147483647, 'restart_rng': True
-                },
+            },
             'load balancing': {
                 'nslots': 1, 'pop': 1000, 'percent': 0.05, 'max_attempts': 2,
                 'write_info': False
-                },
+            },
             'reference': {
                 'det': [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14],
                 'det_ms': 0, 'det_symmetry': 1, 'H00': 13.60355734,
                 'F0': 15.69278015, 'hilbert_space_det': [
                     1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14
-                    ], 'hilbert_space_det_ms': 0,
+                ], 'hilbert_space_det_ms': 0,
                 'hilbert_space_det_symmetry': 1, 'ex_level': 14
-                },
+            },
             'calc_type': 'DMQMC', 'input': [
                 '', '-- Create output with:', '-- $[HANDE DIR]/bin/hande.x '
                 'dmqmc_ueg.lua > dmqmc_ueg.out 2> dmqmc_ueg.err',
@@ -402,10 +402,10 @@ class TestExtractData(unittest.TestCase, ExtendedTestSetUp):
                 'mc_cycles = 2,', 'nreports = 2,', 'target_population = 100,',
                 'state_size = 50000,', 'spawned_state_size = 5000,', '},',
                 'dmqmc = {', 'beta_loops = 2,', '}', '}', ''
-                ],
+            ],
             'UUID': '8226e3f0-ee64-4128-9569-225da1f8b913', 'wall_time': 0.03,
             'cpu_time': 0.03, 'calculation_time': 0.03
-            }
+        }
         pd.testing.assert_frame_equal(data[0][1], mock_data)
         self.assertDictEqual(data[0][0], mock_metadata)
 
@@ -418,7 +418,7 @@ class TestExtractData(unittest.TestCase, ExtendedTestSetUp):
             1.90174844e+01, 1.90174844e+01, 1.90320038e+01, 1.90320038e+01,
             1.90827874e+01, 1.90827874e+01, 1.90827874e+01, 1.92329356e+01,
             1.92329356e+01, 1.92329356e+01, 1.97091785e+01
-            ], index=list(range(1, 20)), name='FCI (LAPACK)')
+        ], index=list(range(1, 20)), name='FCI (LAPACK)')
         mock_data.index.name = 'Eigenvalue'
         mock_metadata = {
             'system': {
@@ -437,7 +437,7 @@ class TestExtractData(unittest.TestCase, ExtendedTestSetUp):
                 '-- Note that these settings are just for testing...',
                 'sys = ueg {', 'dim = 3,', 'nel = 2,', 'ms = 0,',
                 'cutoff = 1,', '}', '', 'fci {', 'sys = sys,', '}', ''
-                ],
+            ],
             'UUID': '7f1b774f-975b-4ec0-a626-185879d0e7a7', 'wall_time': 0.0,
             'cpu_time': 0.0, 'calculation_time': 0.0, 'fci_in': {
                 'analyse_fci_wfn': 0, 'block_size': 64,
@@ -446,8 +446,8 @@ class TestExtractData(unittest.TestCase, ExtendedTestSetUp):
                 'nlanczos_eigv': 5, 'print_fci_wfn': 0,
                 'print_fci_wfn_file': 'FCI_WFN', 'write_determinants': False,
                 'write_hamiltonian': False
-                }
             }
+        }
         pd.testing.assert_series_equal(data[0][1], mock_data)
         self.assertDictEqual(data[0][0], mock_metadata)
 
@@ -460,11 +460,11 @@ class TestExtractData(unittest.TestCase, ExtendedTestSetUp):
             [20, -8.78004297e-03, -2.29343899e-01, 8.00000000e+00,
              1.00000000e+01, 0, 0, 6.67000000e-02, 0.00000000e+00],
             [30, -0.04794701, -0.33774677, 8., 16., 0, 0, 0.08, 0.]
-            ], columns=self.columns)
+        ], columns=self.columns)
         del_keys = [
             'load balancing', 'blocking', 'fciqmc', 'logging', 'logging_in',
             'max_bloom', 'mean_bloom', 'nblooms', 'semi_stoch'
-            ]
+        ]
         for key in del_keys:
             del self.mock_metadata[key]
         mock_metadata = {
@@ -494,17 +494,17 @@ class TestExtractData(unittest.TestCase, ExtendedTestSetUp):
                 'nreport': 3, 'power_pitzer_min_weight': 0.01,
                 'quasi_newton': False, 'quasi_newton_threshold': 1e-05,
                 'quasi_newton_value': 1.0, 'use_mpi_barriers': False
-                },
+            },
             'restart': {
                 'read_restart': False, 'read_id': 2147483647,
                 'write_restart': False, 'write_id': 2147483647,
                 'write_freq': 2147483647, 'write_restart_shift': False,
                 'write_shift_id': 2147483647, 'restart_rng': True
-                },
+            },
             'reference': {
                 'det': [4, 13], 'det_ms': 0, 'det_symmetry': 1, 'H00': 9.57078,
                 'F0': 0.0, 'ex_level': 2
-                },
+            },
             'sparse_hamil': True, 'calc_type': 'Simple FCIQMC',
             'input': [
                 '', '-- Create output with:', '-- $[HANDE DIR]/bin/hande.x '
@@ -517,9 +517,9 @@ class TestExtractData(unittest.TestCase, ExtendedTestSetUp):
                 'nreports = 3,', 'target_population = 8,',
                 'state_size = 50000,', 'spawned_state_size = 5000,', '},', '}',
                 ''
-                ], 'UUID': 'c8132a6b-bc15-4586-adf7-80d7c3119e3c',
+            ], 'UUID': 'c8132a6b-bc15-4586-adf7-80d7c3119e3c',
             'wall_time': 0.0, 'cpu_time': 0.0, 'calculation_time': 0.0
-            }
+        }
         pd.testing.assert_frame_equal(data[0][1], mock_data)
         self.assertDictEqual(data[0][0], mock_metadata)
 
@@ -530,7 +530,7 @@ class TestExtractData(unittest.TestCase, ExtendedTestSetUp):
             [1, 15233700.0, 15233700.0, np.nan],
             [2, 20311600.0, 17772650.0, 2538951.0],
             [3, 10155800.0, 15233700.0, 2931728.0]
-            ], columns=['iterations', 'space size', 'mean', 'std. err.'])
+        ], columns=['iterations', 'space size', 'mean', 'std. err.'])
         mock_metadata = {
             'system': {
                 'nbasis': 38, 'nel': 14, 'nvirt': 24, 'Ms': 0, 'nalpha': 7,
@@ -555,7 +555,7 @@ class TestExtractData(unittest.TestCase, ExtendedTestSetUp):
                       ],
             'UUID': '6c228dba-68c9-4051-b47a-5704fe261ad8', 'wall_time': 0.0,
             'cpu_time': 0.0, 'calculation_time': 0.0
-            }
+        }
         pd.testing.assert_frame_equal(data[0][1], mock_data)
         self.assertDictEqual(data[0][0], mock_metadata)
 
@@ -567,10 +567,10 @@ class TestExtractData(unittest.TestCase, ExtendedTestSetUp):
              -1.4249954801E+00, 9.0253160272E-01, 3.4800000000E-02],
             [2, 2.7726172803E+01, -1.5817153286E+00, 2.5010826838E+01,
              -1.4341367788E+00, 9.0391912264E-01, 3.4700000000E-02]
-            ], columns=[
-                'iterations', '<T>_0', '<V>_0', r'Tr(T\rho_HF)',
-                r'Tr(V\rho_HF)', r'Tr(\rho_HF)', 'N_ACC/N_ATT'
-                ])
+        ], columns=[
+            'iterations', '<T>_0', '<V>_0', r'Tr(T\rho_HF)',
+            r'Tr(V\rho_HF)', r'Tr(\rho_HF)', 'N_ACC/N_ATT'
+        ])
         mock_metadata = {
             'system': {
                 'nbasis': 38, 'nel': 14, 'nvirt': 24, 'Ms': 0, 'nalpha': 7,
@@ -597,6 +597,6 @@ class TestExtractData(unittest.TestCase, ExtendedTestSetUp):
                 '}', ''
             ], 'UUID': '98db19fc-8ab2-4f5a-82d0-5c4c10340a1c',
             'wall_time': 0.0, 'cpu_time': 0.0, 'calculation_time': 0.0
-            }
+        }
         pd.testing.assert_frame_equal(data[0][1], mock_data)
         self.assertDictEqual(data[0][0], mock_metadata)
