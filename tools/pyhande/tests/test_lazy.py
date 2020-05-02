@@ -134,6 +134,12 @@ class TestLazyHybrid(unittest.TestCase):
             ], index=['Proj. Energy'])
         pd.testing.assert_frame_equal(opt_block_exp, info.opt_block)
 
+    def test_no_opt_block_col(self):
+        """Test no opt block - also features replica tricks _1 add."""
+        info = lazy.lazy_hybrid(self.data, self.md)
+        no_opt_exp = ['N_0', 'Shift', '# H psips_1', '\\sum H_0j N_j']
+        self.assertListEqual(no_opt_exp, info.no_opt_block)
+
     def test_unchanged_mutable(self):
         """Check that mutable objects, such as pd DataFrames, don't
         change when they shouldn't.
@@ -265,6 +271,16 @@ class TestStdAnalysis(unittest.TestCase):
             ], name='Proj. Energy')
         pd.testing.assert_series_equal(
             infos[1].opt_block.loc['Proj. Energy'], opt_block_proje)
+
+    def test_replica_tricks(self):
+        """Test analysing file with replica tricks."""
+        infos = lazy.std_analysis(
+            ['tests/hande_files/replica_ueg.out'], verbosity=-1, start=0)
+        # Note that since read in file has very little data, can only compare
+        # no_opt_block and have to specify start.
+        no_opt_block_exp = ['\\sum H_0j N_j_1',
+                            'N_0_1', 'Shift_1', 'Proj. Energy']
+        self.assertListEqual(infos[0].no_opt_block, no_opt_block_exp)
 
     def test_fci(self):
         """Test FCI.  Not to be analysed here!"""

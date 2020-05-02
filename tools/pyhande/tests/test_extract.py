@@ -249,9 +249,28 @@ class TestExtractData(unittest.TestCase, ExtendedTestSetUp):
         self.assertDictEqual(data[1][0], self.exp_metadata)
 
     def test_replica_fciqmc(self):
-        """Placeholder warning for replica test."""
-        # [todo] Once fixed, there should be a test for replica tricks.
-        warnings.warn("Once fixed, add test for replica tricks for extract.py")
+        """Test replica tricks extraction."""
+        data = extract.extract_data("tests/hande_files/replica_ueg.out")
+        exp_data = pd.DataFrame([
+            [10, 0.00000000e+00, -6.72647815e-01, 2.00000000e+00,
+             3.36000000e+02, 0.00000000e+00, -3.13519972e-01, 2.00000000e+00,
+             1.98000000e+02, 302, 193, 7.69100000e-01, 0.00000000e+00],
+            [20, -1.13434177e-01, -5.16707132e-01,  2.00000000e+00,
+             3.24800000e+03, -1.11353877e-01, -4.05281916e-01, 2.00000000e+00,
+             1.83600000e+03,  3081, 1768, 1.35440000e+00, 2.00000000e-03]
+        ], columns=['iterations', 'Shift_1', r'\sum H_0j N_j_1', 'N_0_1',
+                    '# H psips_1', 'Shift_2', r'\sum H_0j N_j_2', 'N_0_2',
+                    '# H psips_2', '# states', '# spawn_events', 'R_spawn',
+                    'time'])
+        keys_to_drop = ['input', 'wall_time', 'cpu_time', 'calculation_time',
+                        'UUID', 'nblooms', 'max_bloom', 'mean_bloom']
+        for key_to_drop in keys_to_drop:
+            # Drop some keys as they'll differ.
+            del data[0][0][key_to_drop]
+            del self.exp_metadata[key_to_drop]
+        self.exp_metadata['fciqmc']['replica_tricks'] = True
+        pd.testing.assert_frame_equal(data[0][1], exp_data)
+        self.assertDictEqual(data[0][0], self.exp_metadata)
 
     def test_basic_ccmc_input(self):
         """Test CCMC."""
