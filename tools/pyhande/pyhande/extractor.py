@@ -75,7 +75,7 @@ class Extractor:
         self._merge = {
             'type': 'uuid', 'md_always': ['qmc:tau'], 'md_shift': [],
             'shift_key': 'Shift', 'it_key': 'iterations'
-            }
+        }
         if merge:
             if any([merge_key not in self._merge.keys() for merge_key in
                     merge.keys()]):
@@ -284,7 +284,7 @@ class Extractor:
             if 'uuid_restart' in self.metadata[i_child][0]['restart']:
                 uuid_r = self.metadata[i_child][0]['restart']['uuid_restart']
                 for i_parent in range(len(self.data)):
-                    if (uuid_r == extra.metadata[i_parent][-1]['UUID']
+                    if (uuid_r == self.metadata[i_parent][-1]['UUID']
                             and self._merge_safe(i_child, i_parent)):
                         self._do_merge(i_child, i_parent)
                         merged = True
@@ -320,7 +320,7 @@ class Extractor:
                 [[md], dat, [i]]
                 for i, out_file in enumerate(self._out_files)
                 for (md, dat) in extract.extract_data(out_file)
-                ]))
+            ]))
 
         # Merging?
         # Are all calculations either CCMC or FCIQMC?  Only then we merge.
@@ -337,4 +337,3 @@ class Extractor:
                 # continuation of iterations.
                 # Only adjacent calcs can be merged!
                 self._merge_legacy()
-

@@ -121,7 +121,7 @@ class ResultsCcmcFciqmc(Results):
         except AttributeError:
             shoulders = [
                 analysis.plateau_estimator(dat) for dat in self.extractor.data
-                ]
+            ]
             # Idea for reshaping from ../../reblock_hande.py.
             self._shoulder = pd.concat(
                 [pd.DataFrame(shoulder.stack()).T for shoulder in shoulders],

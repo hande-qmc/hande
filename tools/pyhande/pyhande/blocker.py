@@ -47,10 +47,10 @@ class Blocking:
         """
         self._cols: List[str] = cols if cols else [
             'Shift', r'\sum H_0j N_j', 'N_0', '# H psips'
-            ]
+        ]
         self._eval_ratio: Dict[str, str] = eval_ratio if eval_ratio else {
             'name': 'Proj. Energy', 'num': r'\sum H_0j N_j', 'denom': 'N_0'
-            }
+        }
         if any([v not in self._cols for v in [self._eval_ratio['num'],
                                               self._eval_ratio['denom']]]):
             raise ValueError(f"'eval_ratio' requires "
@@ -184,7 +184,7 @@ class Blocking:
             # Modify! Don't use lazy.
             self._start_its = [
                 lazy.find_starting_iteration(dat, {}) for dat in self.data
-                ]
+            ]
 
         # Do blocking.
         self._data_len = []
