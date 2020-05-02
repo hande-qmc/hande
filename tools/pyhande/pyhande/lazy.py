@@ -176,7 +176,11 @@ info : :func:`collections.namedtuple`
          'estimate': pyblock.error.pretty_fmt_err(mean, error)},
         columns=['mean', 'standard error', 'standard error error', 'estimate'],
         index=['Proj. Energy'])
-    no_opt_block = ['N_0','Shift','# H psips','\sum H_0j N_j']
+    kN0 = check_key(calc, 'N_0')
+    kHpsips = check_key(calc, '# H psips')
+    kH0jNj = check_key(calc,'\sum H_0j N_j')
+    kShift = check_key(calc, 'Shift')
+    no_opt_block = [kN0, kShift, kHpsips, kH0jNj]
     tuple_fields = ('metadata data data_len reblock covariance opt_block '
                     'no_opt_block'.split())
     info_tuple = collections.namedtuple('HandeInfo', tuple_fields)
@@ -296,6 +300,25 @@ Umrigar93
             infos.append(lazy_hybrid(calc, md, calc_start, calc_end))      # added_by_ichibha
     return infos
 
+def check_key(calc, key):
+    '''Check if this key is present in calc, and if not, append "_1".
+
+Parameters
+----------
+calc : :class:`pandas.DataFrame`
+    Zero-temperature QMC calculation output.
+key : str
+    key name to check in `calc`.
+
+Returns
+--------
+key_ : :str: modified key name.
+'''
+    k=key
+    if not k in calc: k += '_1'
+    return k
+
+
 def zeroT_qmc(datafiles, reweight_history=0, mean_shift=0.0, arith_mean=False):
     '''Extract zero-temperature QMC (i.e. FCIQMC and CCMC) calculations.
 
@@ -322,17 +345,22 @@ metadata : list of dict
 
     hande_out = pyhande.extract.extract_data_sets(datafiles)
 
+
     # Concat all QMC data (We did say 'lazy', so assumptions are being made...)
     data = []
     metadata = []
     for (md, df) in filter_calcs(hande_out, ('FCIQMC', 'CCMC', 'Simple FCIQMC')):
+        kN0 = check_key(df, 'N_0')
+        kHpsips = check_key(df, '# H psips')
+        kH0jNj = check_key(df, '\sum H_0j N_j')
+        kShift = check_key(df, 'Shift')
         if reweight_history > 0:
             df = pyhande.weight.reweight(df, md['qmc']['ncycles'],
                 md['qmc']['tau'], reweight_history, mean_shift,
-                arith_mean=arith_mean)
-            df['W * \sum H_0j N_j'] = df['\sum H_0j N_j'] * df['Weight']
-            df['W * N_0'] = df['N_0'] * df['Weight']
-        df['Proj. Energy'] = df['\sum H_0j N_j'] / df['N_0'] 
+                weight_key=kShift, arith_mean=arith_mean)
+            df['W * \sum H_0j N_j'] = df[kH0jNj] * df['Weight']
+            df['W * N_0'] = df[kN0] * df['Weight']
+        df['Proj. Energy'] = df[kH0jNj] / df[kN0] 
         data.append(df)
         metadata.append(md)
     if data:
@@ -372,6 +400,13 @@ info : :func:`collections.namedtuple`
     info_tuple = collections.namedtuple('HandeInfo', tuple_fields)
     # Reblock Monte Carlo data over desired window.
     reweight_calc = 'W * N_0' in calc
+    # Set up the keys for data, taking into account the situation if there is more than one replica.
+    kN0 = check_key(calc, 'N_0')
+    kHpsips = check_key(calc, '# H psips')
+    kH0jNj = check_key(calc,'\sum H_0j N_j')
+    kShift = check_key(calc, 'Shift')
+
+
     if end is None:
         # Default end is the last iteration.
         end = calc['iterations'].iloc[-1]
@@ -385,22 +420,22 @@ info : :func:`collections.namedtuple`
         indx = select_function(calc)
     to_block = []
     if extract_psips:
-        to_block.append('# H psips')
-    to_block.extend(['\sum H_0j N_j', 'N_0', 'Shift'])
+        to_block.append(kHpsips)
+    to_block.extend([kH0jNj, kN0, kShift])
     if reweight_calc:
         to_block.extend(['W * \sum H_0j N_j', 'W * N_0'])
     if extract_rep_loop_time:
         to_block.append('time')
 
     mc_data = calc.loc[indx, to_block]
-    if mc_data['Shift'].iloc[0] == mc_data['Shift'].iloc[1]:
-        if calc['Shift'][~indx].iloc[-1] == mc_data['Shift'].iloc[0]:
+    if mc_data[kShift].iloc[0] == mc_data[kShift].iloc[1]:
+        if calc[kShift][~indx].iloc[-1] == mc_data[kShift].iloc[0]:
             warnings.warn('The blocking analysis starts from before the shift '
                           'begins to vary.')
 
     (data_len, reblock, covariance) = pyblock.pd_utils.reblock(mc_data)
 
-    proje = pyhande.analysis.projected_energy(reblock, covariance, data_len)
+    proje = pyhande.analysis.projected_energy(reblock, covariance, data_len, kH0jNj, kN0)
     reblock = pd.concat([reblock, proje], axis=1)
     to_block.append('Proj. Energy')
 
@@ -422,7 +457,9 @@ info : :func:`collections.namedtuple`
 
         # This returns a data frame with inefficiency data from the
         # projected energy estimators if available.
-        ineff = pyhande.analysis.inefficiency(opt_block, dtau, N)
+        ineff = pyhande.analysis.inefficiency(opt_block, dtau, N,
+                                              sum_key=kH0jNj, ref_key=kN0,
+                                              total_key=kHpsips)
         if ineff is not None:
             opt_block = opt_block.append(ineff)
 
@@ -632,6 +669,11 @@ starting_iteration: integer
     if number_of_reblockings > frac_screen_interval:
         raise RuntimeError("number_of_reblockings > frac_screen_interval")
 
+    kN0 = check_key(data, 'N_0')
+    kHpsips = check_key(data, '# H psips')
+    kH0jNj = check_key(data,'\sum H_0j N_j')
+    kShift = check_key(data, 'Shift')
+
     if end is None:
         # Default end is the last iteration.
         end = data['iterations'].iloc[-1]
@@ -639,14 +681,14 @@ starting_iteration: integer
     data_before_end = data[before_end_indx]
 
     # Find the point the shift began to vary.
-    variable_shift = data_before_end['Shift'] != data_before_end['Shift'].iloc[0]
+    variable_shift = data_before_end[kShift] != data_before_end[kShift].iloc[0]
     if variable_shift.any():
         shift_variation_indx = data_before_end[variable_shift]['iterations'].index[0]
     else:
         raise RuntimeError("Shift has not started to vary in dataset!")
 
     # Check we have enough data to screen:
-    if data_before_end['Shift'].size - shift_variation_indx < frac_screen_interval:
+    if data_before_end[kShift].size - shift_variation_indx < frac_screen_interval:
         # i.e. data where shift is not equal to initial value is less than
         # frac_screen_interval, i.e. we cannot screen adequately.
         warnings.warn("Calculation contains less data than "
@@ -664,7 +706,7 @@ starting_iteration: integer
             shift_variation_indx)/frac_screen_interval)
 
     min_index = -1
-    err_keys = ['Shift',  'N_0', '\sum H_0j N_j', '# H psips']
+    err_keys = [kShift, kN0, kH0jNj, kHpsips]
     min_error_frac_weighted = pd.Series([float('inf')]*len(err_keys), index=err_keys)
     starting_iteration_found = False
 
@@ -679,12 +721,12 @@ starting_iteration: integer
                 # Don't include, even if the shift is estimated.
                 s_err_frac_weighted = float('inf')
             else:
-                number_of_data_left = data_before_end['Shift'].index[-1] - shift_variation_indx - j*step_indx + 1
+                number_of_data_left = data_before_end[kShift].index[-1] - shift_variation_indx - j*step_indx + 1
                 err_err = info.opt_block.loc[err_keys, 'standard error error']
                 err = info.opt_block.loc[err_keys, 'standard error']
                 err_frac = err_err.divide(err)
                 err_frac_weighted = err_frac.divide(math.sqrt(float(number_of_data_left)))
-                s_err_frac_weighted = err_frac_weighted['Shift']
+                s_err_frac_weighted = err_frac_weighted[kShift]
                 if (err_frac_weighted <= min_error_frac_weighted).any():
                     min_index = j
                     min_error_frac_weighted = err_frac_weighted.copy()
