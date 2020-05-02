@@ -11,7 +11,7 @@ class ExtractTestData(unittest.TestCase):
 
     def test_basic_input(self):
         """Test basic input."""
-        data = testcode.extract_test_data("hande_files/ueg.out")
+        data = testcode.extract_test_data("tests/hande_files/ueg.out")
         data_exp_df = pd.DataFrame([
             [10, 0.0, -0.378518, 2.70000000e+00, 1.42000000e+02, 79, 50,
              0.4879, 0.0004],
@@ -30,7 +30,7 @@ class TestTestcodeData(unittest.TestCase):
 
     def test_basic_input(self):
         """Test basic input."""
-        data = testcode.testcode_data("hande_files/ueg.out")
+        data = testcode.testcode_data("tests/hande_files/ueg.out")
         exp_data = {
             'iterations': [10, 20], 'Shift': [0.0, -0.11001747899],
             '\\sum H_0j N_j': [-0.37851801553000003, -0.82094167005],
@@ -42,7 +42,7 @@ class TestTestcodeData(unittest.TestCase):
 
     def test_shortened_input(self):
         """Two qmc data lines have been artifically removed. Test."""
-        data = testcode.testcode_data("hande_files/shorten_ueg.out")
+        data = testcode.testcode_data("tests/hande_files/shorten_ueg.out")
         exp_data = {
             'iterations': [], 'Shift': [],
             '\\sum H_0j N_j': [],
@@ -54,13 +54,14 @@ class TestTestcodeData(unittest.TestCase):
 
     def test_all_shortened_input(self):
         """All QMC table data was artifically removed. Test."""
-        data = testcode.testcode_data("hande_files/all_qmc_shorten_ueg.out")
+        data = testcode.testcode_data(
+            "tests/hande_files/all_qmc_shorten_ueg.out")
         exp_data = {}
         self.assertDictEqual(data, exp_data)
 
     def test_hilbert(self):
         """Test MC Hilbert space size estimation extraction."""
-        data = testcode.testcode_data("hande_files/hilbert_ueg.out")
+        data = testcode.testcode_data("tests/hande_files/hilbert_ueg.out")
         exp_data = {
             'iterations': [2, 3], 'space size': [20311600.0, 10155800.0],
             'mean': [17772650.0, 15233700.0],
@@ -70,7 +71,7 @@ class TestTestcodeData(unittest.TestCase):
 
     def test_basic_fci_input(self):
         """Test FCI."""
-        data = testcode.testcode_data("hande_files/fci_ueg.out")
+        data = testcode.testcode_data("tests/hande_files/fci_ueg.out")
         exp_data = {
             'eigv 1': [-0.017888297593], 'eigv 2': [9.451775889133],
             'eigv 3': [9.451775889133], 'eigv 4': [9.525116432464],
@@ -80,7 +81,7 @@ class TestTestcodeData(unittest.TestCase):
 
     def test_multiple_fciqmc(self):
         """Have two calculations in this output."""
-        data = testcode.testcode_data("hande_files/multi_ueg.out")
+        data = testcode.testcode_data("tests/hande_files/multi_ueg.out")
         exp_data = {
             'iterations': [10, 20, 10, 20],
             'Shift': [0.0, -0.11001747899, 0.0, -0.11001747899],
@@ -98,7 +99,7 @@ class TestTestcodeData(unittest.TestCase):
 
     def test_longer_fciqmc(self):
         """Have run the calculation for 11 report loops."""
-        data = testcode.testcode_data("hande_files/longer_ueg.out")
+        data = testcode.testcode_data("tests/hande_files/longer_ueg.out")
         exp_data = {
             'iterations': [10, 20, 50, 80, 110],
             'Shift': [

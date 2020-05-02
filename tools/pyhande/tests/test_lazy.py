@@ -157,7 +157,7 @@ class TestStdAnalysis(unittest.TestCase):
     def test_basic_input(self):
         """Test basic input."""
         infos = lazy.std_analysis(
-            ['hande_files/long_calc_ueg.out'], verbosity=-1)
+            ['tests/hande_files/long_calc_ueg.out'], verbosity=-1)
         # Length of list.
         self.assertEqual(len(infos), 1)
         info = infos[0]
@@ -223,10 +223,10 @@ class TestStdAnalysis(unittest.TestCase):
         possibly the time.
         """
         infos_one = lazy.std_analysis(
-            ['hande_files/long_calc_ueg.out'], verbosity=-1)
+            ['tests/hande_files/long_calc_ueg.out'], verbosity=-1)
         infos_two = lazy.std_analysis(
-            ['hande_files/long_calc_split1_ueg.out',
-             'hande_files/long_calc_split2_ueg.out'], verbosity=-1)
+            ['tests/hande_files/long_calc_split1_ueg.out',
+             'tests/hande_files/long_calc_split2_ueg.out'], verbosity=-1)
         self.assertEqual(len(infos_two), 1)
         data_one_notime = infos_one[0].data.drop(columns=['time'])
         data_two_notime = infos_two[0].data.drop(columns=['time'])
@@ -246,8 +246,8 @@ class TestStdAnalysis(unittest.TestCase):
     def test_multiple(self):
         """Test analysing two different calculations at once."""
         infos = lazy.std_analysis(
-            ['hande_files/long_calc_ueg.out',
-             'hande_files/long_calc_split2_ueg.out'], verbosity=-1)
+            ['tests/hande_files/long_calc_ueg.out',
+             'tests/hande_files/long_calc_split2_ueg.out'], verbosity=-1)
         self.assertEqual(len(infos), 2)
         # Sample test the first calculation.
         opt_block_proje = pd.Series(
@@ -269,12 +269,12 @@ class TestStdAnalysis(unittest.TestCase):
     def test_fci(self):
         """Test FCI.  Not to be analysed here!"""
         self.assertRaises(
-            ValueError, lazy.std_analysis, ['hande_files/fci_ueg.out'])
+            ValueError, lazy.std_analysis, ['tests/hande_files/fci_ueg.out'])
 
     def test_start(self):
         """Test start parameter."""
         infos = lazy.std_analysis(
-            ['hande_files/long_calc_ueg.out'], start=12000, verbosity=-1)
+            ['tests/hande_files/long_calc_ueg.out'], start=12000, verbosity=-1)
         # .metadata
         meta_pyhande = {'reblock_start': 12000}
         self.assertDictEqual(infos[0].metadata['pyhande'], meta_pyhande)
@@ -289,7 +289,7 @@ class TestStdAnalysis(unittest.TestCase):
     def test_end(self):
         """Test end parameter."""
         infos = lazy.std_analysis(
-            ['hande_files/long_calc_ueg.out'], end=4400, verbosity=-1)
+            ['tests/hande_files/long_calc_ueg.out'], end=4400, verbosity=-1)
         # .metadata
         meta_pyhande = {'reblock_start': 3579}
         self.assertDictEqual(infos[0].metadata['pyhande'], meta_pyhande)
@@ -301,7 +301,7 @@ class TestStdAnalysis(unittest.TestCase):
         Similar to the example in docstring.
         """
         infos = lazy.std_analysis(
-            ['hande_files/long_calc_ueg.out'],
+            ['tests/hande_files/long_calc_ueg.out'],
             select_function=lambda d: d['iterations'] > 12000, verbosity=-1)
         # .metadata
         warnings.warn(
@@ -318,7 +318,7 @@ class TestStdAnalysis(unittest.TestCase):
     def test_extract_psips(self):
         """Test extract_psips parameter."""
         infos = lazy.std_analysis(
-            ['hande_files/long_calc_ueg.out'], extract_psips=True,
+            ['tests/hande_files/long_calc_ueg.out'], extract_psips=True,
             verbosity=-1)
         # .metadata
         meta_pyhande = {'reblock_start': 3736}
@@ -336,7 +336,7 @@ class TestStdAnalysis(unittest.TestCase):
     def test_reweight_history_mean_shift(self):
         """Test reweight_history and mean_shift parameters."""
         infos = lazy.std_analysis(
-            ['hande_files/long_calc_ueg.out'], reweight_history=3,
+            ['tests/hande_files/long_calc_ueg.out'], reweight_history=3,
             mean_shift=-0.1, verbosity=-1)
         # .reblock
         reblock_wproje_loc8 = pd.Series(
@@ -368,7 +368,7 @@ class TestStdAnalysis(unittest.TestCase):
     def test_reweight_history_arith_mean(self):
         """Test reweight_history and arith_mean parameters."""
         infos = lazy.std_analysis(
-            ['hande_files/long_calc_ueg.out'], reweight_history=3,
+            ['tests/hande_files/long_calc_ueg.out'], reweight_history=3,
             arith_mean=True, verbosity=-1)
         # .reblock
         reblock_wproje_loc8 = pd.Series(
@@ -402,7 +402,7 @@ class TestStdAnalysis(unittest.TestCase):
         Requires extract_psips.
         """
         infos = lazy.std_analysis(
-            ['hande_files/long_calc_ueg.out'], extract_psips=True,
+            ['tests/hande_files/long_calc_ueg.out'], extract_psips=True,
             calc_inefficiency=True, verbosity=-1)
         # .opt_block
         opt_block_ineff = pd.Series(
@@ -420,13 +420,13 @@ class TestStdAnalysis(unittest.TestCase):
         self.assertWarnsRegex(
             UserWarning, "Inefficiency not calculated owing to data "
             "unavailable from '# H psips'", lazy.std_analysis,
-            ['hande_files/long_calc_ueg.out'], extract_psips=False,
+            ['tests/hande_files/long_calc_ueg.out'], extract_psips=False,
             calc_inefficiency=True, verbosity=-1)
 
     def test_starts_reweighting(self):
         """Test starts_reweighting parameter."""
         infos = lazy.std_analysis(
-            ['hande_files/long_calc_ueg.out'],
+            ['tests/hande_files/long_calc_ueg.out'],
             starts_reweighting=[7634, 11000], verbosity=-1)
         # .metadata
         meta_pyhande = {'reblock_start': 7634}
@@ -443,8 +443,8 @@ class TestStdAnalysis(unittest.TestCase):
     def test_extract_rep_loop_time(self):
         """Test extract_rep_loop_time parameter."""
         infos = lazy.std_analysis(
-            ['hande_files/long_calc_ueg.out'], extract_rep_loop_time=True,
-            verbosity=-1)
+            ['tests/hande_files/long_calc_ueg.out'],
+            extract_rep_loop_time=True, verbosity=-1)
         # .metadata
         meta_pyhande = {'reblock_start': 3736}
         self.assertDictEqual(infos[0].metadata['pyhande'], meta_pyhande)
@@ -461,7 +461,7 @@ class TestStdAnalysis(unittest.TestCase):
     def test_analysis_method(self):
         """Test analysis_method parameter."""
         infos = lazy.std_analysis(
-            ['hande_files/long_calc_ueg.out'], analysis_method='hybrid',
+            ['tests/hande_files/long_calc_ueg.out'], analysis_method='hybrid',
             verbosity=-1)
         # .metadata
         meta_pyhande = {'reblock_start': 3736}
@@ -479,14 +479,14 @@ class TestStdAnalysis(unittest.TestCase):
         """Test analysis_method parameter.  Wrong input."""
         self.assertRaises(
             ValueError, lazy.std_analysis,
-            ['hande_files/long_calc_ueg.out'], analysis_method='test',
+            ['tests/hande_files/long_calc_ueg.out'], analysis_method='test',
             verbosity=-1)
 
     def test_warmup_detection(self):
         """Test warmup_detection parameter."""
         infos = lazy.std_analysis(
-            ['hande_files/long_calc_ueg.out'], warmup_detection='mser_min',
-            verbosity=-1)
+            ['tests/hande_files/long_calc_ueg.out'],
+            warmup_detection='mser_min', verbosity=-1)
         # .metadata
         meta_pyhande = {'reblock_start': 1350}
         self.assertDictEqual(infos[0].metadata['pyhande'], meta_pyhande)
@@ -503,7 +503,7 @@ class TestStdAnalysis(unittest.TestCase):
         """Test warmup_detection parameter.  Wrong input."""
         self.assertRaises(
             ValueError, lazy.std_analysis,
-            ['hande_files/long_calc_ueg.out'], warmup_detection='test',
+            ['tests/hande_files/long_calc_ueg.out'], warmup_detection='test',
             verbosity=-1)
 
 

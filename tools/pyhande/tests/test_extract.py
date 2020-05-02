@@ -11,8 +11,8 @@ class ExtendedTestSetUp():
     """Helper for the following classes, initialises common data."""
 
     def __init__(self):
-        self.filename1 = "hande_files/ueg.out"
-        self.filename2 = "hande_files/ueg2.out"
+        self.filename1 = "tests/hande_files/ueg.out"
+        self.filename2 = "tests/hande_files/ueg2.out"
         self.columns = [
             'iterations', 'Shift', r'\sum H_0j N_j', 'N_0', '# H psips',
             '# states', '# spawn_events', 'R_spawn', 'time'
@@ -218,7 +218,7 @@ class TestExtractData(unittest.TestCase, ExtendedTestSetUp):
 
     def test_multiple_fciqmc(self):
         """Have two calculations in this output."""
-        data = extract.extract_data("hande_files/multi_ueg.out")
+        data = extract.extract_data("tests/hande_files/multi_ueg.out")
         # First calculation.
         # Modify some previous data for comparison
         self.exp_data1.at[0, 'time'] = 0.0
@@ -255,7 +255,7 @@ class TestExtractData(unittest.TestCase, ExtendedTestSetUp):
 
     def test_basic_ccmc_input(self):
         """Test CCMC."""
-        data = extract.extract_data("hande_files/ccmc_ueg.out")
+        data = extract.extract_data("tests/hande_files/ccmc_ueg.out")
         self.columns.append(self.columns[-1])
         self.columns[-3:-1] = ['# attempts', 'R_spawn']
         exp_data = pd.DataFrame([
@@ -301,7 +301,7 @@ class TestExtractData(unittest.TestCase, ExtendedTestSetUp):
 
     def test_basic_dmqmc_input(self):
         """Test DMQMC."""
-        data = extract.extract_data("hande_files/dmqmc_ueg.out")
+        data = extract.extract_data("tests/hande_files/dmqmc_ueg.out")
         exp_data = pd.DataFrame([
             [0, 3.41598425e-01, 0.00000000e+00, 2.00000000e+02, 100, 48,
              2.49500000e-01, 6.00000000e-03],
@@ -411,7 +411,7 @@ class TestExtractData(unittest.TestCase, ExtendedTestSetUp):
 
     def test_basic_fci_input(self):
         """Test FCI."""
-        data = extract.extract_data("hande_files/fci_ueg.out")
+        data = extract.extract_data("tests/hande_files/fci_ueg.out")
         exp_data = pd.Series([
             -1.78882976e-02, 9.45177589e+00, 9.45177589e+00, 9.52511643e+00,
             9.52511643e+00, 9.52511643e+00, 9.88957877e+00, 1.90174844e+01,
@@ -453,7 +453,7 @@ class TestExtractData(unittest.TestCase, ExtendedTestSetUp):
 
     def test_basic_simple_fciqmc_input(self):
         """Test Simple FCIQMC."""
-        data = extract.extract_data("hande_files/simple_fciqmc_ueg.out")
+        data = extract.extract_data("tests/hande_files/simple_fciqmc_ueg.out")
         exp_data = pd.DataFrame([
             [10, 0., -4.70181114e-02, 8.00000000e+00, 9.00000000e+00, 0, 0,
              5.00000000e-02, 0.0],
@@ -525,7 +525,7 @@ class TestExtractData(unittest.TestCase, ExtendedTestSetUp):
 
     def test_hilbert(self):
         """Test MC Hilbert space size estimation extraction."""
-        data = extract.extract_data("hande_files/hilbert_ueg.out")
+        data = extract.extract_data("tests/hande_files/hilbert_ueg.out")
         exp_data = pd.DataFrame([
             [1, 15233700.0, 15233700.0, np.nan],
             [2, 20311600.0, 17772650.0, 2538951.0],
@@ -561,7 +561,7 @@ class TestExtractData(unittest.TestCase, ExtendedTestSetUp):
 
     def test_canonical_estimates(self):
         """Test canonical estimates extraction."""
-        data = extract.extract_data("hande_files/cano_ueg.out")
+        data = extract.extract_data("tests/hande_files/cano_ueg.out")
         exp_data = pd.DataFrame([
             [1, 2.7943370015E+01, -1.5740506968E+00, 2.5170736424E+01,
              -1.4249954801E+00, 9.0253160272E-01, 3.4800000000E-02],
