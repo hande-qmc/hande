@@ -1,5 +1,6 @@
 """Functions to find starting iteration for analysis."""
-from typing import List
+from typing import Dict, List
+import warnings
 import math
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -7,7 +8,7 @@ import numpy as np
 import pyblock
 
 
-def show_starting_iterations_graph(
+def _show_starting_iterations_graph(
         data: pd.DataFrame, it_key: str, col_to_show: str,
         starting_it: int) -> None:
     """
@@ -120,8 +121,8 @@ def _grid_search(data: pd.DataFrame, grid_size: int, min_ind: int,
 
 def find_starting_iteration_blocking(
         data: pd.DataFrame, end_it: int, it_key: str, cols: List[str],
-        start_position_in_data_max_frac: float = 0.8, grid_size: int = 10,
-        number_of_reblocks_to_cut_off: int = 1,
+        eval_ratio: Dict[str, str], start_max_frac: float = 0.8,
+        grid_size: int = 10, number_of_reblocks_to_cut_off: int = 1,
         show_graph: bool = False) -> int:
     """
     Find the best iteration to start analysing CCMC/FCIQMC data.
@@ -154,9 +155,11 @@ def find_starting_iteration_blocking(
         Key of column containing MC iterations.
     cols : List[str]
         List of keys of columns involved in blocking.
-    start_position_in_data_max_frac : float, optional
+    eval_ratio: Dict[str, str]
+        Ignored here.  Keep for common interface.
+    start_max_frac : float, optional
         The start iterations found has to be in the first
-        `start_position_in_data_max_frac` fraction of the data between
+        `start_max_frac` fraction of the data between
         the point where all columns in `cols` have started varying and
         `end_it`.  This prevents finding a starting iteration too close
         to the end.  Has to be between 0.00001 and 1.0.
@@ -176,7 +179,7 @@ def find_starting_iteration_blocking(
     Raises
     ------
     ValueError
-        If `start_position_in_data_max_frac` or
+        If `start_max_frac` or
         `number_of_reblocks_to_cut_off` are out of range.
     RuntimeError
         If not all columns with keys in `cols` have started varying in
@@ -189,9 +192,9 @@ def find_starting_iteration_blocking(
         start.
     """
     # Check some inputs.
-    if (start_position_in_data_max_frac < 0.00001 or
-            start_position_in_data_max_frac > 1.0):
-        raise ValueError("0.00001 < start_position_in_data_max_frac < 1 not "
+    if (start_max_frac < 0.00001 or
+            start_max_frac > 1.0):
+        raise ValueError("0.00001 < start_max_frac < 1 not "
                          "satisfied!")
     if number_of_reblocks_to_cut_off < 0:
         raise ValueError("'number_of_reblocks_to_cut_off' can't be negative!")
@@ -214,10 +217,9 @@ def find_starting_iteration_blocking(
     # Finding starting iteration.
     # Do grid search to find the index of the starting iteration.
     start_ind = _grid_search(
-        data[cols], grid_size, 1,
-        int(start_position_in_data_max_frac*len(data)) + 1)
+        data[cols], grid_size, 1, int(start_max_frac*len(data)) + 1)
     # Search has failed if index is too close to the end.
-    if start_ind > int(start_position_in_data_max_frac*len(data)):
+    if start_ind > int(start_max_frac*len(data)):
         raise RuntimeError(f"Failed to find starting iteration. ")
     # Discarding number_of_reblocks_to_cut_off reblocks.
     (_, reblock, _) = pyblock.pd_utils.reblock(data[cols].iloc[start_ind:])
@@ -229,5 +231,85 @@ def find_starting_iteration_blocking(
     # Show plot if desired, aiding judgment whether to trust estimate.
     if show_graph:
         # Note that the data has non varying phase cut off!
-        show_starting_iterations_graph(data, it_key, cols[0], starting_it)
+        _show_starting_iterations_graph(data, it_key, cols[0], starting_it)
+    return starting_it
+
+
+def find_starting_iteration_mser_min(
+        data: pd.DataFrame, end_it: int, it_key: str, cols: List[str],
+        eval_ratio: Dict[str, str], start_max_frac: float = 0.84,
+        n_blocks: int = 100) -> int:
+    '''Estimate starting iteration with MSER minimization scheme.
+
+    .. warning::
+
+        Use with caution, check whether output is sensible and adjust
+        parameters if necessary.
+
+    This function gives an optimal estimation of the starting
+    interations based on MSER minimization heuristics. 
+    This methods decides the starting iterations :math:`d` as minimizing
+    an evaluation function
+    MSER(:math:`d`) =
+    :math:`\Sigma_{i=1}^{n-d} ( X_{i+d} - X_{mean}(d) ) / (n-d)^2`.
+    Here, :math:`n` is length of time-series, :math:`X_i` is
+    `eval_ratio['num']` / `eval_ratio['denom']` of :math:`i`-th step,
+    and :math:`X_{mean}` is the average of :math:`X_i` after the
+    :math:`d`-th step.
+
+    This is a reformatted and altered version of a previous
+    implementation in lazy.py by Tom Ichibha.
+
+    Parameters 
+    ----------
+    data : :class:`pandas.DataFrame`
+        Calculation output of a FCIQMC or CCMC calculation.
+    end_it : int
+        Last iteration to be considered in blocking.
+    it_key : str
+        Key of column containing MC iterations.
+    cols : List[str]
+        Ignored here.  Keep for common interface.
+    eval_ratio: Dict[str, str]
+        Take instanteous ratio of column `eval_ratio['num']` with column
+        '`eval_ratio['denom']` in `data` to find starting iteration.
+    start_max_frac : float
+        MSER(d) may oscillate when become unreanably small 
+        when :math:`n-d` is large. Thus, we calculate MSER(:math:`d`) 
+        for :math:`d` < (:math:`n` * start_max_frac) and 
+        give the optimal estimation of the starting iterations
+        only in this range of :math:`d`.
+        The default is 0.84.
+    n_blocks : int
+        This analysis takes long time when :math:`n` is large.
+        Thus, we pick up :math:`d` for every 'n_blocks'
+        samples, calculate MSER(:math:`d`), and decide the 
+        optimal estimation of the starting iterations only 
+        from these `d`.
+        The default is 100.
+
+    Returns
+    -------
+    starting_it: int
+        Iteration from which to start reblocking analysis for this
+        calculation.
+    '''
+    data = data[data[it_key] <= end_it]
+    inst_ratio = data[eval_ratio['num']]/data[eval_ratio['denom']]
+
+    mser_min = float('inf')
+    for i in range(n_blocks):
+        start_ind = int(i*(len(inst_ratio)*start_max_frac)/n_blocks)
+        mser = (np.var(inst_ratio[start_ind:len(inst_ratio)]) /
+                (len(inst_ratio)-start_ind))
+        if (mser < mser_min):
+            mser_min = mser
+            starting_it = data[it_key].loc[start_ind]
+            final_start_ind = start_ind
+
+    if (final_start_ind > len(inst_ratio)*(start_max_frac**2)):
+        warnings.warn(
+            f"Instantaneous ratio '{eval_ratio['name']}' may not be "
+            "converged.  MSER min. may underestimate the starting iteration.  "
+            "Check!")
     return starting_it

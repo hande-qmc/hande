@@ -72,16 +72,17 @@ class Extractor:
 
     def _set_merge(self, merge):
         """Set and check input for merge parameter."""
+        # First set to default.
         self._merge = {
             'type': 'uuid', 'md_always': ['qmc:tau'], 'md_shift': [],
             'shift_key': 'Shift', 'it_key': 'iterations'
         }
+        # Now update default with user's specifications.
         if merge:
             if any([merge_key not in self._merge.keys() for merge_key in
                     merge.keys()]):
-                raise ValueError(f"Not all {merge.keys()} in passed "
-                                 f"'merge' dictionary are in "
-                                 f"{self._merge.keys()}.")
+                raise ValueError(f"Not all {merge.keys()} in passed 'merge' "
+                                 f"dictionary are in {self._merge.keys()}.")
             self._merge.update(merge)
         if self._merge['type'] not in ['uuid', 'legacy', 'no']:
             raise ValueError("Invalid merge value in 'merge['type']': "
