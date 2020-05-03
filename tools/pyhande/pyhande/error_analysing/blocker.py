@@ -1,11 +1,11 @@
 """Analyse Monte Carlo correlated output using reblocking."""
-from typing import Dict, List
+from typing import Dict, List, Union
 import copy
 import pandas as pd
 import pyblock
 import pyhande.analysis as analysis
-import pyhande.lazy as lazy
 from pyhande.error_analysing.abs_error_analyser import AbsErrorAnalyser
+from pyhande.error_analysing.find_starting_iteration import select_find_start
 
 
 class Blocker(AbsErrorAnalyser):
@@ -17,9 +17,12 @@ class Blocker(AbsErrorAnalyser):
     """
 
     def __init__(
-            self,
-            cols: List[str] = None, eval_ratio: Dict[str, str] = None,
-            start_its: List[int] = None, end_its: List[int] = None) -> None:
+            self, cols: List[str] = None, eval_ratio: Dict[str, str] = None,
+            it_key: str = 'iterations',
+            start_its: Union[List[int], str] = 'blocking',
+            end_its: List[int] = None,
+            find_start_kw_args: Dict[str, Union[bool, float, int]]
+            = None) -> None:
         r"""
         Initialise a Blocking instance.
 
@@ -35,16 +38,32 @@ class Blocker(AbsErrorAnalyser):
             column with name 'name'.
             The default is {'name': 'Proj. Energy', 'num': 'N_0',
                             'denom': '# H psips'}.
-        start_its : List[int]
-            List of start iterations. Has to be of same length as
-            data. If None, estimate starting iterations automatically.
-            The default is None.
+        it_key: str, optional
+            MC iterations columns key.
+            The default is 'iterations'.
+        start_its : Union[List[int], str], optional
+            Either list of start iterations which has to be of same
+            length as data.
+            Or string specifying find starting iteration function to use
+            to estimate starting iterations automatically, either
+            'blocking' (`find_starting_iteration_blocking()`) or
+            'mser', (`find_starting_iteration_mser_min()`).  Note that
+            this choice then applies to all calculations in passed in
+            `data` to `.exe()`.
+            The default is 'blocking'.
         end_its : List[int], optional
             List of end iterations. Has to be of same length as
             data. If None, end iteration is the last iteration for each
             calculation.
             The default is None.
-
+        find_start_kw_args : Dict[str, Union[bool, float, int]],
+                optional
+            Possible extra arguments that can be passed to
+            find_starting_iterations functions.  See their definitions
+            for details.  E. g. {'show_graph' : True} shows a graph
+            highlighting the starting iteration found when
+            start_its = 'blocking'.
+            The default is None, which defaults to an empty dictionary.
         """
         self._cols: List[str] = cols if cols else [
             'Shift', r'\sum H_0j N_j', 'N_0', '# H psips'
@@ -58,10 +77,16 @@ class Blocker(AbsErrorAnalyser):
                              f"'{self._eval_ratio['num']}' and "
                              f"'{self._eval_ratio['denom']}' columns to be "
                              "specified in 'cols'.")
-        self._start_its: List[int] = start_its
+        self._it_key = it_key
+        if isinstance(start_its, list):
+            self._start_its = start_its
+        else:
+            self._start_its = None
+            self._find_starting_it = select_find_start(start_its)
         self._end_its: List[int] = end_its
+        self._find_start_kw_args: Dict[str, Union[bool, float, int]] = (
+            find_start_kw_args if find_start_kw_args else {})
         # These attributes are set later:
-        self._data: List[pd.DataFrame]
         self._reblock: List[pd.DataFrame]
         self._covariance: List[pd.DataFrame]
         self._data_len: List[pd.Series]
@@ -74,36 +99,12 @@ class Blocker(AbsErrorAnalyser):
         return self._cols
 
     @property
-    def eval_ratio(self) -> Dict[str, str]:
-        """Access _eval_ratio attribute, ratio to evaluate."""
-        return self._eval_ratio
-
-    @property
-    def start_its(self) -> List[int]:
-        """Access _start_its attribute, blocking start iterations."""
-        return self._start_its
-
-    @property
-    def end_its(self) -> List[int]:
-        """Access _end_its attribute, blocking end iterations."""
-        return self._end_its
-
-    @property
-    def data(self) -> List[pd.DataFrame]:
-        """Access _data attribute if available. Else raise error."""
-        try:
-            return self._data
-        except AttributeError:
-            print("First pass data to 'exe' instance method.")
-            raise
-
-    @property
     def reblock(self) -> List[pd.DataFrame]:
         """Access _reblock attribute if available. Else raise error."""
         try:
             return self._reblock
         except AttributeError:
-            print("First do reblocking by running 'exe' instance method.")
+            print("First do analysis by running 'exe' instance method.")
             raise
 
     @property
@@ -112,7 +113,7 @@ class Blocker(AbsErrorAnalyser):
         try:
             return self._data_len
         except AttributeError:
-            print("First do reblocking by running 'exe' instance method.")
+            print("First do analysis by running 'exe' instance method.")
             raise
 
     @property
@@ -121,25 +122,7 @@ class Blocker(AbsErrorAnalyser):
         try:
             return self._covariance
         except AttributeError:
-            print("First do reblocking by running 'exe' instance method.")
-            raise
-
-    @property
-    def opt_block(self) -> pd.DataFrame:
-        """Access _opt_block attribute if available. Else error."""
-        try:
-            return self._opt_block
-        except AttributeError:
-            print("First do reblocking by running 'exe' instance method.")
-            raise
-
-    @property
-    def no_opt_block(self) -> List[List[str]]:
-        """Access _no_opt_block attribute if available. Else error."""
-        try:
-            return self._no_opt_block
-        except AttributeError:
-            print("First do reblocking by running 'exe' instance method.")
+            print("First do analysis by running 'exe' instance method.")
             raise
 
     def exe(self, data: List[pd.DataFrame]):
@@ -159,33 +142,8 @@ class Blocker(AbsErrorAnalyser):
             'start_its' or 'end_its' if they are defined.
 
         """
-        # Check and set parameter.
-        if not all([col in dat for dat in data for col in self.cols]):
-            raise ValueError("'cols' parameter must only contain columns "
-                             "names present in all dataframes in 'data'. If "
-                             "you have not specified 'cols', specify it "
-                             "explicity in another instance of Blocking to "
-                             "only contain columns in all of your 'data'.")
-        if self.start_its and len(self.start_its) != len(data):
-            raise ValueError("If 'start_its' (here of length "
-                             f"{len(self.start_its)}) is specified, it has to "
-                             "be a list of the same length as 'data' (here of "
-                             f"length {len(data)}).")
-        if self.end_its and len(self.end_its) != len(data):
-            raise ValueError("If 'end_its' (here of length "
-                             f"{len(self.end_its)}) is specified, it has to "
-                             "be a list of the same length as 'data' (here of "
-                             f"length {len(data)}).")
-        self._data = data
-
-        # Find end and start iteration if required.
-        if not self.end_its:
-            self._end_its = [dat['iterations'].iloc[-1] for dat in self.data]
-        if not self.start_its:
-            # Modify! Don't use lazy.
-            self._start_its = [
-                lazy.find_starting_iteration(dat, {}) for dat in self.data
-            ]
+        self._check_data_input(data)
+        self._set_start_and_end_its(data)
 
         # Do blocking.
         self._data_len = []
@@ -193,11 +151,11 @@ class Blocker(AbsErrorAnalyser):
         self._covariance = []
         self._no_opt_block = []
         self._opt_block = []
-        for dat, start_it, end_it in zip(self._data, self.start_its,
+        for dat, start_it, end_it in zip(data, self.start_its,
                                          self.end_its):
             # Select subset of data to block:
             dat_c = dat.copy()
-            dat_c = dat_c[dat_c['iterations'].between(start_it + 1, end_it)]
+            dat_c = dat_c[dat_c['iterations'].between(start_it, end_it)]
             dat_c = dat_c[self.cols]
             # Block:
             (data_len, reblock, covariance) = pyblock.pd_utils.reblock(dat_c)

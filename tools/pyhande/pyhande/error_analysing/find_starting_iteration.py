@@ -239,7 +239,7 @@ def find_starting_iteration_mser_min(
         data: pd.DataFrame, end_it: int, it_key: str, cols: List[str],
         eval_ratio: Dict[str, str], start_max_frac: float = 0.84,
         n_blocks: int = 100) -> int:
-    '''Estimate starting iteration with MSER minimization scheme.
+    r'''Estimate starting iteration with MSER minimization scheme.
 
     .. warning::
 
@@ -313,3 +313,27 @@ def find_starting_iteration_mser_min(
             "converged.  MSER min. may underestimate the starting iteration.  "
             "Check!")
     return starting_it
+
+
+def select_find_start(key: str):
+    """Select find_starting_iteration function to use.
+
+    todo - improve!
+
+    Parameters
+    ----------
+    key : str
+        Key linked to find_starting_iteration.
+
+    Returns
+    -------
+    Find_starting_iteration function.
+    """
+    # [todo] - Improve
+    if key == 'blocking':
+        return find_starting_iteration_blocking
+    elif key == 'mser':
+        return find_starting_iteration_mser_min
+    else:
+        raise ValueError("The find start iteration selected in 'start_its', "
+                         f"{key}, is not available!")
