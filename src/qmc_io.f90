@@ -453,7 +453,9 @@ contains
                 call write_qmc_var(iunit, qs%shift(i))
                 call write_qmc_var(iunit, qs%estimators(i)%proj_energy)
                 call write_qmc_var(iunit, qs%estimators(i)%D0_population)
-                if (doing_calc(uccmc_calc) .or. doing_calc(trot_uccmc_calc)) call write_qmc_var(iunit, qs%estimators(i)%D0_population_ucc)
+                if (doing_calc(uccmc_calc) .or. doing_calc(trot_uccmc_calc)) then
+                    call write_qmc_var(iunit, qs%estimators(i)%D0_population_ucc)
+                end if
                 call write_qmc_var(iunit, ntot_particles(i))
             end do
         end if

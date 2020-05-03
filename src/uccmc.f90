@@ -554,10 +554,14 @@ contains
                     !        nstates_select = nstates_select + 1
                     !    end if
                     !end if
-                    if (uccmc_in%variational_energy .and. .not. all(contrib(it)%cdet%f==0) .and. contrib(it)%cluster%excitation_level <= qs%ref%ex_level)  then
+                    !print*, 'selected',  contrib(it)%cdet%f
+
+                    if (uccmc_in%variational_energy .and. .not. all(contrib(it)%cdet%f==0) .and. &
+                        contrib(it)%cluster%excitation_level <= qs%ref%ex_level)  then
                        state = contrib(it)%cdet%f 
                        call binary_search(time_avg_psip_list_ci_states, state, 1, nstates_ci, hit, pos)
-                       population = contrib(it)%cluster%amplitude*contrib(it)%cluster%cluster_to_det_sign/contrib(it)%cluster%pselect
+                       population = &
+                           contrib(it)%cluster%amplitude*contrib(it)%cluster%cluster_to_det_sign/contrib(it)%cluster%pselect
                        if (hit) then
                           time_avg_psip_list_ci_pops(pos) = time_avg_psip_list_ci_pops(pos) + population 
                        else
@@ -583,8 +587,10 @@ contains
                                             sum_sp_eigenvalues_occ_list(sys, contrib(it)%cdet%occ_list) - qs%ref%fock_sum
 
                         call do_uccmc_accumulation(sys, qs, contrib(it)%cdet, contrib(it)%cluster, logging_info, &
-                                                    D0_population_cycle, proj_energy_cycle,uccmc_in, ref_det, rdm, selection_data, D0_population_ucc_cycle)
-
+                                                    D0_population_cycle, proj_energy_cycle,uccmc_in, ref_det, rdm, &
+                                                    selection_data, D0_population_ucc_cycle)
+                        ! [review] - Verena: Double check that qs (which is a shared variable) is not altered in a dangerous way by
+                        ! [review] - Verena: routine.
                         call do_stochastic_uccmc_propagation(rng(it), sys, qs, &
                                                                 uccmc_in, logging_info, ms_stats(it), bloom_stats, &
                                                                 contrib(it), nattempts_spawn, ndeath, ps_stats(it))
@@ -638,8 +644,10 @@ contains
                     state = qs%psip_list%states(:,i) 
                     call binary_search(time_avg_psip_list_states, state, 1, nstates_sq, hit, pos)
                     if (hit) then
-                          time_avg_psip_list_pops(pos) = time_avg_psip_list_pops(pos) + (real(qs%psip_list%pops(1,i))/qs%psip_list%pop_real_factor)
-                          time_avg_psip_list_sq(2,pos) = time_avg_psip_list_sq(2,pos) + (real(qs%psip_list%pops(1,i))/qs%psip_list%pop_real_factor)**2 
+                          time_avg_psip_list_pops(pos) = &
+                              time_avg_psip_list_pops(pos) + (real(qs%psip_list%pops(1,i))/qs%psip_list%pop_real_factor)
+                          time_avg_psip_list_sq(2,pos) = &
+                              time_avg_psip_list_sq(2,pos) + (real(qs%psip_list%pops(1,i))/qs%psip_list%pop_real_factor)**2 
                        else
                            do j = nstates_sq, pos, -1
                                ! i is the number of determinants that will be inserted below j.
@@ -786,6 +794,8 @@ contains
         call check_deallocate('ps_stats', ierr)
         deallocate(state, stat=ierr)
         call check_deallocate('state', ierr)
+
+        ! [review] Verena - Consider deallocating some allocated arrays from above.
 
     end subroutine do_uccmc
 
@@ -2115,7 +2125,8 @@ contains
            normalisation = normalisation + (time_avg_psip_list_pops(i)/time_avg_psip_list_pops(1))**2
            do j = 1, nstates
                hmatel = get_hmatel(sys, time_avg_psip_list_states(:,i), time_avg_psip_list_states(:,j))
-               var_energy = var_energy + hmatel%r*time_avg_psip_list_pops(i)/time_avg_psip_list_pops(1)*time_avg_psip_list_pops(j)/time_avg_psip_list_pops(1)
+               var_energy = var_energy + hmatel%r*time_avg_psip_list_pops(i)/time_avg_psip_list_pops(1)*&
+                   time_avg_psip_list_pops(j)/time_avg_psip_list_pops(1)
            end do
        end do
        var_energy = var_energy/normalisation

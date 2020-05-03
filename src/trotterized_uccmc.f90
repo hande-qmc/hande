@@ -6,6 +6,7 @@ implicit none
 
 contains
 
+! [review] - Verena: This should have a *.F90 file ending as the C preprocessors should look at it (for the "ifdef" statements)
 ! [review] - AJWT: Put in a brief summary of the differences between this and conventional CC.
     subroutine do_trot_uccmc(sys, qmc_in, uccmc_in, restart_in, load_bal_in, reference_in, &
                         logging_in, io_unit, qs, qmc_state_restart)
@@ -321,9 +322,12 @@ contains
 
             ! Projected energy from last report loop to correct death
             qs%estimators%proj_energy_old = get_sanitized_projected_energy(qs)
-            if (all(qs%vary_shift) .and. not(old_vary)) then
+            ! [review] Verena: gfortran complained about the "not" so I changed it. Please double check that I have not changed it
+            ! [review] Verena: in a wrong way.
+            if (all(qs%vary_shift) .and. (.not. old_vary)) then
                 avg_start = 1!iter
-                time_avg_psip_list_pops(:qs%psip_list%nstates) = real(qs%psip_list%pops(1,:qs%psip_list%nstates))/qs%psip_list%pop_real_factor
+                time_avg_psip_list_pops(:qs%psip_list%nstates) = &
+                    real(qs%psip_list%pops(1,:qs%psip_list%nstates))/qs%psip_list%pop_real_factor
                 time_avg_psip_list_states(:,:qs%psip_list%nstates) = qs%psip_list%states(:,:qs%psip_list%nstates)
                 time_avg_psip_list_sq(1,:) = qs%psip_list%states(1,:)
                 time_avg_psip_list_sq(2,:) = (real(qs%psip_list%pops(1,:))/qs%psip_list%pop_real_factor)**2
@@ -377,7 +381,8 @@ contains
 
                 nattempts_spawn=0
 
-                call get_probabilities(qs%psip_list%pops, qs%psip_list%nstates, abs(D0_normalisation), D0_pos, qs%psip_list%pop_real_factor, probabilities, p_ref, p_avg, p_complement_avg)
+                call get_probabilities(qs%psip_list%pops, qs%psip_list%nstates, abs(D0_normalisation), D0_pos, &
+                                       qs%psip_list%pop_real_factor, probabilities, p_ref, p_avg, p_complement_avg)
 
                 call cumulative_population(probabilities, qs%psip_list%states(sys%basis%tot_string_len,:), &
                                            qs%psip_list%nstates, D0_proc, D0_pos, qs%psip_list%pop_real_factor, &
@@ -447,10 +452,12 @@ contains
                                             logging_info, contrib(it)%cdet, contrib(it)%cluster, qs%excit_gen_data)
                     if (uccmc_in%trot) call add_info_str_trot(sys%basis, qs%ref%f0, sys%nel, contrib(it)%cdet%f)
                     !Add selected cluster contribution to CI wavefunction estimator.
-                    if (uccmc_in%variational_energy .and. (.not. all(contrib(it)%cdet%f==0)) .and. contrib(it)%cluster%excitation_level <= qs%ref%ex_level)  then
+                    if (uccmc_in%variational_energy .and. (.not. all(contrib(it)%cdet%f==0)) .and. &
+                        contrib(it)%cluster%excitation_level <= qs%ref%ex_level)  then
                        state = contrib(it)%cdet%f 
                        call binary_search_i0_list_trot(time_avg_psip_list_ci_states, state, 1, nstates_ci, hit, pos)
-                       population = contrib(it)%cluster%amplitude*contrib(it)%cluster%cluster_to_det_sign/contrib(it)%cluster%pselect
+                       population = &
+                           contrib(it)%cluster%amplitude*contrib(it)%cluster%cluster_to_det_sign/contrib(it)%cluster%pselect
                        if (hit) then
                           time_avg_psip_list_ci_pops(pos) = time_avg_psip_list_ci_pops(pos) + population 
                        else
@@ -479,6 +486,7 @@ contains
                         call do_uccmc_accumulation(sys, qs, contrib(it)%cdet, contrib(it)%cluster, logging_info, &
                                                     D0_population_cycle, proj_energy_cycle, uccmc_in, ref_det, rdm, selection_data,&
                                                     D0_population_ucc_cycle)
+                        ! [review] Verena: make sure qs is not altered unexpectedly here (it is shared).
                         call do_stochastic_uccmc_propagation(rng(it), sys, qs, &
                                                                 uccmc_in, logging_info, ms_stats(it), bloom_stats, &
                                                                 contrib(it), nattempts_spawn, ndeath, ps_stats(it))
@@ -501,7 +509,11 @@ contains
                 qs%estimators%D0_population_comp = qs%estimators%D0_population_comp + D0_population_cycle
                 qs%estimators%proj_energy_comp = qs%estimators%proj_energy_comp + proj_energy_cycle
                 do j = 1, qs%psip_list%nstates
-                   if (j/=D0_pos)   D0_population_ucc_cycle = D0_population_ucc_cycle/cos(qs%psip_list%pops(1,j)/real(qs%psip_list%pop_real_factor)/D0_normalisation)
+                    if (j/=D0_pos) then
+                        ! [review] Verena: Is this a fraction of the form a/b/c in the cos? Is this correct?
+                        D0_population_ucc_cycle = &
+                            D0_population_ucc_cycle/cos(qs%psip_list%pops(1,j)/real(qs%psip_list%pop_real_factor)/D0_normalisation)
+                    end if
                 end do
                 qs%estimators%D0_population_ucc = qs%estimators%D0_population_ucc + D0_population_ucc_cycle
 
@@ -536,8 +548,10 @@ contains
                     call binary_search_i0_list_trot(time_avg_psip_list_states, state, 1, nstates_sq, hit, pos)
                     !call binary_search(time_avg_psip_list%states, state, 1, time_avg_psip_list%nstates, hit, pos)
                     if (hit) then
-                          time_avg_psip_list_pops(pos) = time_avg_psip_list_pops(pos) + (real(qs%psip_list%pops(1,i))/qs%psip_list%pop_real_factor)
-                          time_avg_psip_list_sq(2,pos) = time_avg_psip_list_sq(2,pos) + (real(qs%psip_list%pops(1,i))/qs%psip_list%pop_real_factor)**2 
+                          time_avg_psip_list_pops(pos) = &
+                              time_avg_psip_list_pops(pos) + (real(qs%psip_list%pops(1,i))/qs%psip_list%pop_real_factor)
+                          time_avg_psip_list_sq(2,pos) = &
+                              time_avg_psip_list_sq(2,pos) + (real(qs%psip_list%pops(1,i))/qs%psip_list%pop_real_factor)**2
                        else
                            do j = nstates_sq, pos, -1
                                ! i is the number of determinants that will be inserted below j.
@@ -674,6 +688,7 @@ contains
         call check_deallocate('ps_stats', ierr)
         deallocate(state, stat=ierr)
         call check_deallocate('state', ierr)
+        ! [review] - Verena: consider further deallocations.
     
     end subroutine do_trot_uccmc
 
@@ -1185,7 +1200,8 @@ contains
                 else
                    conjugate = .false.
                     if (all(iand(ieor(f0(:sys%basis%bit_string_len),psip_list%states(:sys%basis%bit_string_len,i)), &
-                           ieor(f0(:sys%basis%bit_string_len),cdet%f(:sys%basis%bit_string_len))) ==  ieor(f0(:sys%basis%bit_string_len),psip_list%states(:sys%basis%bit_string_len,i)))) then
+                           ieor(f0(:sys%basis%bit_string_len),cdet%f(:sys%basis%bit_string_len))) == &
+                           ieor(f0(:sys%basis%bit_string_len),psip_list%states(:sys%basis%bit_string_len,i)))) then
           !             !print*, 'conjugate'
                        conjugate = .true.
                        if (rand < pexcit) then
