@@ -143,7 +143,11 @@ contains
         integer(i0), allocatable :: state(:)
         real(p) :: population
         real(p) :: real_population, var_energy
+        !integer(i0) :: nstates_select
+        !real(p) ::  selections(3,10000)
 
+        !nstates_select = 0
+        !selections(:,:) = 0
         if (parent) then
             write (io_unit,'(1X,"UCCMC")')
             write (io_unit,'(1X,"----",/)')
@@ -165,6 +169,115 @@ contains
         call init_qmc(sys, qmc_in, restart_in, load_bal_in, reference_in, io_unit, annihilation_flags, qs, &
                       uuid_restart, restart_version_restart, qmc_state_restart=qmc_state_restart, &
                       regenerate_info=regenerate_info, uccmc_in=uccmc_in)
+        !qs%psip_list%nstates = 54 
+        !qs%psip_list%states(1,2) =    3327
+        !qs%psip_list%states(1,3) =    3903
+        !qs%psip_list%states(1,4) =    4047
+        !qs%psip_list%states(1,5) =    4062
+        !qs%psip_list%states(1,6) =    4077
+        !qs%psip_list%states(1,7) =    4083
+        !qs%psip_list%states(1,8) =    4092
+        !qs%psip_list%states(1,9) =    5823
+        !qs%psip_list%states(1,10) =   6591
+        !qs%psip_list%states(1,11) =   6783
+        !qs%psip_list%states(1,12) =    9663
+        !qs%psip_list%states(1,13) =    9855
+        !qs%psip_list%states(1,14) =   10623
+        !qs%psip_list%states(1,15) =   12543
+        !qs%psip_list%states(1,16) =   13119
+        !qs%psip_list%states(1,17) =   13263
+        !qs%psip_list%states(1,18) =   13278
+        !qs%psip_list%states(1,19) =   13293
+        !qs%psip_list%states(1,20) =  13299
+        !qs%psip_list%states(1,21) =  13308
+        !qs%psip_list%states(1,22) =   17403
+        !qs%psip_list%states(1,23) =   18159
+        !qs%psip_list%states(1,24) =   18174
+        !qs%psip_list%states(1,25) =   18927
+        !qs%psip_list%states(1,26) =   18942
+        !qs%psip_list%states(1,27) =   19167
+        !qs%psip_list%states(1,28) =   19197
+        !qs%psip_list%states(1,29) =   21423
+        !qs%psip_list%states(1,30) =  21438
+        !qs%psip_list%states(1,31) =  25455
+        !qs%psip_list%states(1,32) =   25470
+        !qs%psip_list%states(1,33) =   25503
+        !qs%psip_list%states(1,34) =   25533
+        !qs%psip_list%states(1,35) =   33783
+        !qs%psip_list%states(1,36) =   34287
+        !qs%psip_list%states(1,37) =   34302
+        !qs%psip_list%states(1,38) =   34527
+        !qs%psip_list%states(1,39) =   34557
+        !qs%psip_list%states(1,40) =  35295
+        !qs%psip_list%states(1,41) =  35325
+        !qs%psip_list%states(1,42) =   37743
+        !qs%psip_list%states(1,43) =   37758
+        !qs%psip_list%states(1,44) =   37791
+        !qs%psip_list%states(1,45) =   37821
+        !qs%psip_list%states(1,46) =   41823
+        !qs%psip_list%states(1,47) =   41853
+        !qs%psip_list%states(1,48) =   49407
+        !qs%psip_list%states(1,49) =   49983
+        !qs%psip_list%states(1,50) =  50127
+        !qs%psip_list%states(1,51) =  50142
+        !qs%psip_list%states(1,52) =   50157
+        !qs%psip_list%states(1,53) =   50163
+        !qs%psip_list%states(1,54) =   50172
+
+        !qs%psip_list%pops(1,1) =    694  *qs%psip_list%pop_real_factor
+        !qs%psip_list%pops(1,2) =    -132 *qs%psip_list%pop_real_factor
+        !qs%psip_list%pops(1,3) =    16   *qs%psip_list%pop_real_factor
+        !qs%psip_list%pops(1,4) =    -14  *qs%psip_list%pop_real_factor
+        !qs%psip_list%pops(1,5) =    5    *qs%psip_list%pop_real_factor
+        !qs%psip_list%pops(1,6) =    -5   *qs%psip_list%pop_real_factor
+        !qs%psip_list%pops(1,7) =    -33  *qs%psip_list%pop_real_factor
+        !qs%psip_list%pops(1,8) =    -8   *qs%psip_list%pop_real_factor
+        !qs%psip_list%pops(1,9) =    28   *qs%psip_list%pop_real_factor
+        !qs%psip_list%pops(1,10) =   69   *qs%psip_list%pop_real_factor
+        !qs%psip_list%pops(1,11) =   -42  *qs%psip_list%pop_real_factor
+        !qs%psip_list%pops(1,12) =   -41  *qs%psip_list%pop_real_factor
+        !qs%psip_list%pops(1,13) =   69   *qs%psip_list%pop_real_factor
+        !qs%psip_list%pops(1,14) =   28   *qs%psip_list%pop_real_factor
+        !qs%psip_list%pops(1,15) =   -16  *qs%psip_list%pop_real_factor
+        !qs%psip_list%pops(1,16) =   -132 *qs%psip_list%pop_real_factor
+        !qs%psip_list%pops(1,17) =   -14  *qs%psip_list%pop_real_factor
+        !qs%psip_list%pops(1,18) =   5    *qs%psip_list%pop_real_factor
+        !qs%psip_list%pops(1,19) =   -5   *qs%psip_list%pop_real_factor
+        !qs%psip_list%pops(1,20) =   -33  *qs%psip_list%pop_real_factor
+        !qs%psip_list%pops(1,21) =   -8   *qs%psip_list%pop_real_factor
+        !qs%psip_list%pops(1,22) =   12   *qs%psip_list%pop_real_factor
+        !qs%psip_list%pops(1,23) =   24   *qs%psip_list%pop_real_factor
+        !qs%psip_list%pops(1,24) =   5    *qs%psip_list%pop_real_factor
+        !qs%psip_list%pops(1,25) =   30   *qs%psip_list%pop_real_factor
+        !qs%psip_list%pops(1,26) =   21   *qs%psip_list%pop_real_factor
+        !qs%psip_list%pops(1,27) =   -6   *qs%psip_list%pop_real_factor
+        !qs%psip_list%pops(1,28) =   -18  *qs%psip_list%pop_real_factor
+        !qs%psip_list%pops(1,29) =   25   *qs%psip_list%pop_real_factor
+        !qs%psip_list%pops(1,30) =   5    *qs%psip_list%pop_real_factor
+        !qs%psip_list%pops(1,31) =   30   *qs%psip_list%pop_real_factor
+        !qs%psip_list%pops(1,32) =   21   *qs%psip_list%pop_real_factor
+        !qs%psip_list%pops(1,33) =   -7   *qs%psip_list%pop_real_factor
+        !qs%psip_list%pops(1,34) =   17   *qs%psip_list%pop_real_factor
+        !qs%psip_list%pops(1,35) =   12   *qs%psip_list%pop_real_factor
+        !qs%psip_list%pops(1,36) =   -7   *qs%psip_list%pop_real_factor
+        !qs%psip_list%pops(1,37) =   -18  *qs%psip_list%pop_real_factor
+        !qs%psip_list%pops(1,38) =   30   *qs%psip_list%pop_real_factor
+        !qs%psip_list%pops(1,39) =   21   *qs%psip_list%pop_real_factor
+        !qs%psip_list%pops(1,40) =   24   *qs%psip_list%pop_real_factor
+        !qs%psip_list%pops(1,41) =   5    *qs%psip_list%pop_real_factor
+        !qs%psip_list%pops(1,42) =   -6   *qs%psip_list%pop_real_factor
+        !qs%psip_list%pops(1,43) =   -18  *qs%psip_list%pop_real_factor
+        !qs%psip_list%pops(1,44) =   30   *qs%psip_list%pop_real_factor
+        !qs%psip_list%pops(1,45) =   21   *qs%psip_list%pop_real_factor
+        !qs%psip_list%pops(1,46) =   24   *qs%psip_list%pop_real_factor
+        !qs%psip_list%pops(1,47) =   5    *qs%psip_list%pop_real_factor
+        !qs%psip_list%pops(1,48) =   -11  *qs%psip_list%pop_real_factor
+        !qs%psip_list%pops(1,49) =   -10  *qs%psip_list%pop_real_factor
+        !qs%psip_list%pops(1,50) =   -35  *qs%psip_list%pop_real_factor
+        !qs%psip_list%pops(1,51) =   -17  *qs%psip_list%pop_real_factor
+        !qs%psip_list%pops(1,52) =   17   *qs%psip_list%pop_real_factor
+        !qs%psip_list%pops(1,53) =   -15  *qs%psip_list%pop_real_factor
+        !qs%psip_list%pops(1,54) =   -21  *qs%psip_list%pop_real_factor
 
         allocate(state(sys%basis%bit_string_len))
 
@@ -402,7 +515,7 @@ contains
                 !$omp        proj_energy_cycle, D0_population_cycle, selection_data,      &
                 !$omp        nattempts_spawn, D0_population_ucc_cycle,&
                 !$omp        uccmc_in, nprocs, ms_stats, ps_stats, qmc_in, load_bal_in, &
-                !$omp        ndeath_nc,   &
+                !$omp        ndeath_nc,   nstates_select, selections, &
                 !$omp        nparticles_change, ndeath, logging_info, nstates_ci, & 
                 !$omp        time_avg_psip_list_ci_states, time_avg_psip_list_ci_pops, &
                 !$omp        time_avg_psip_list_states, time_avg_psip_list_pops)
@@ -413,7 +526,6 @@ contains
                 proj_energy_cycle = cmplx(0.0, 0.0, p)
                 D0_population_cycle = cmplx(0.0, 0.0, p)
                 D0_population_ucc_cycle = 0.0_p
-
                 !$omp do schedule(dynamic,200) reduction(+:D0_population_cycle,proj_energy_cycle, D0_population_ucc_cycle, nattempts_spawn,ndeath)
                 do iattempt = 1, selection_data%nclusters
                     ! For OpenMP scalability, have this test inside a single loop rather
@@ -422,8 +534,26 @@ contains
                                             selection_data%nstochastic_clusters, D0_normalisation, qmc_in%initiator_pop, D0_pos, &
                                             cumulative_abs_real_pops, tot_abs_real_pop, min_cluster_size, max_cluster_size, &
                                             logging_info, contrib(it)%cdet, contrib(it)%cluster, qs%excit_gen_data)
-                    !print*, 'selected',  contrib(it)%cdet%f
-
+                    !if (contrib(it)%cluster%excitation_level <= qs%ref%max_ex_level) then
+                    !    state = contrib(it)%cdet%f
+                    !    pos = nstates_select+1
+                    !    hit = .false.
+                    !    do j = 1, nstates_select
+                    !        if (selections(1,j) == state(1) .and. selections(2,j) == contrib(it)%cluster%nexcitors) then
+                    !            pos = j
+                    !            hit = .true.
+                    !            exit
+                    !        end if
+                    !    end do
+                    !    if (hit) then
+                    !        selections(3,pos) = selections(3,pos) + 1!real(contrib(it)%cluster%amplitude,p)*contrib(it)%cluster%cluster_to_det_sign/contrib(it)%cluster%pselect 
+                    !    else
+                    !        selections(1,pos) = state(1)
+                    !        selections(2,pos) = contrib(it)%cluster%nexcitors
+                    !        selections(3, pos) = 1!real(contrib(it)%cluster%amplitude,p)*contrib(it)%cluster%cluster_to_det_sign*contrib(it)%cluster%pselect 
+                    !        nstates_select = nstates_select + 1
+                    !    end if
+                    !end if
                     if (uccmc_in%variational_energy .and. .not. all(contrib(it)%cdet%f==0) .and. contrib(it)%cluster%excitation_level <= qs%ref%ex_level)  then
                        state = contrib(it)%cdet%f 
                        call binary_search(time_avg_psip_list_ci_states, state, 1, nstates_ci, hit, pos)
@@ -593,6 +723,13 @@ contains
                 call write_qmc_var(io_unit, time_avg_psip_list_sq(2,i))
                 write (io_unit,'()')
             end do
+            !write (io_unit, '(1X, "Selections",/)')
+            !do i = 1, nstates_select
+            !    call write_qmc_var(io_unit, selections(1,i))
+            !    call write_qmc_var(io_unit, selections(2,i))
+            !    call write_qmc_var(io_unit, selections(3,i))
+            !    write (io_unit,'()')
+            !end do
         end if
 
         call dSFMT_t_to_dSFMT_state_t(rng(0), qs%rng_state)
@@ -678,7 +815,7 @@ contains
 
         min_cluster_size = 0
         selection_data%nD0_select = 0 ! instead of this number of deterministic selections, these are chosen stochastically
-        selection_data%nstochastic_clusters = nattempts!*10**3
+        selection_data%nstochastic_clusters = nattempts*100
         selection_data%nsingle_excitors = 0
 
         selection_data%nclusters = selection_data%nD0_select + selection_data%nsingle_excitors &
@@ -821,11 +958,11 @@ contains
         cluster%nexcitors = -1
         deexcit_count = 0
         do i = 0, max_size-min_size-1
-            psize = psize + 1.0_p/2_int_64**(i+1)
+            psize = psize + 1.0_p/(max_size-min_size+1)!2_int_64**(i+1)
             if (rand < psize) then
                 ! Found size!
                 cluster%nexcitors = i+min_size
-                cluster%pselect = cluster%pselect/2_int_64**(i+1)
+                cluster%pselect = cluster%pselect/(max_size-min_size+1)!2_int_64**(i+1)
                 exit
             end if
         end do
