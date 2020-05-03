@@ -12,10 +12,10 @@ submodule for more details.
 
 # For convenience, import all submodules so the user need only import pyhande.
 import pyhande.analysis
-import pyhande.blocker
 import pyhande.canonical
+import pyhande.error_analysing
 import pyhande.extract
-import pyhande.extractor
+import pyhande.extracting
 import pyhande.lazy
 import pyhande.results
 import pyhande.utils

@@ -5,9 +5,10 @@ import pandas as pd
 import pyblock
 import pyhande.analysis as analysis
 import pyhande.lazy as lazy
+from pyhande.error_analysing.abs_error_analyser import AbsErrorAnalyser
 
 
-class Blocking:
+class Blocker(AbsErrorAnalyser):
     """Reblock specified columns from HANDE output using pyblock.
 
     [todo] - cite Flyberg?

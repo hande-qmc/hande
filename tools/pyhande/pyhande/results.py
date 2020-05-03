@@ -3,8 +3,8 @@ from typing import List
 import warnings
 import pandas as pd
 import matplotlib.pyplot as plt
-from pyhande.extractor import Extractor
-from pyhande.blocker import Blocking
+from pyhande.extracting.extractor import Extractor
+from pyhande.error_analysing.blocker import Blocker
 import pyhande.analysis as analysis
 
 
@@ -81,7 +81,7 @@ class ResultsCcmcFciqmc(Results):
     """Show CCMC and FCIQMC HANDE results and allow further analysis."""
 
     def __init__(
-            self, extractor: Extractor, analyser: Blocking = None) -> None:
+            self, extractor: Extractor, analyser: Blocker = None) -> None:
         """
         Initialise ResultsCcmcFciqmc instance.
 
@@ -91,11 +91,11 @@ class ResultsCcmcFciqmc(Results):
         ----------
         extractor : Extractor
             Extractor instance which has extracted HANDE QMC data.
-        analyser : Blocking
-            If present, information on blocking or another analysis.
+        analyser : Blocker
+            If present, information on Blocker or another analysis.
         """
         super().__init__(extractor)
-        self._analyser: Blocking = analyser
+        self._analyser: Blocker = analyser
         if analyser.opt_block:
             self.summary = self._add_opt_block()
         # To be set later:
@@ -103,7 +103,7 @@ class ResultsCcmcFciqmc(Results):
         self._inefficiency: pd.DataFrame
 
     @property
-    def analyser(self) -> Blocking:
+    def analyser(self) -> Blocker:
         """Access analyser used to supply the analysed results."""
         return self._analyser
 
@@ -138,7 +138,7 @@ class ResultsCcmcFciqmc(Results):
         try:
             return self._inefficiency
         except AttributeError:
-            if isinstance(self._analyser, Blocking):
+            if isinstance(self._analyser, Blocker):
                 ineffs = []
                 for ind in range(len(self.extractor.data)):
                     opt_block = self.analyser.opt_block[ind]
@@ -158,7 +158,7 @@ class ResultsCcmcFciqmc(Results):
                     ignore_index=True)
                 return self._inefficiency
             raise AttributeError("Inefficiency cannot be evaluated. "
-                                 "Blocking info required.")
+                                 "Blocker info required.")
 
     def add_inefficiency(self):
         """Add inefficiency to summary."""
@@ -224,15 +224,15 @@ class ResultsCcmcFciqmc(Results):
             pass
 
 
-def get_results(extractor: Extractor, analyser: Blocking = None):
+def get_results(extractor: Extractor, analyser: Blocker = None):
     """Create Results/ResultsCcmcFciqmc instance.
 
     Parameters
     ----------
     extractor : Extractor
         Extractor instance which has extracted HANDE QMC data.
-    analyser : Blocking
-        If present, information on blocking or another analysis.
+    analyser : Blocker
+        If present, information on Blocker or another analysis.
 
     Returns
     -------

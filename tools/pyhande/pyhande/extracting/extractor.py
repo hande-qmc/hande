@@ -4,9 +4,10 @@ import copy
 import math
 import pandas as pd
 import pyhande.extract as extract
+from pyhande.extracting.abs_extractor import AbsExtractor
 
 
-class Extractor:
+class Extractor(AbsExtractor):
     """Extract data/metadata from HANDE output files and merge.
 
     Merge if desired/sensible, e.g. when calculation was restarted.
