@@ -248,7 +248,7 @@ def find_starting_iteration_mser_min(
         parameters if necessary.
 
     This function gives an optimal estimation of the starting
-    interations based on MSER minimization heuristics. 
+    interations based on MSER minimization heuristics.
     This methods decides the starting iterations :math:`d` as minimizing
     an evaluation function
     MSER(:math:`d`) =
@@ -261,7 +261,7 @@ def find_starting_iteration_mser_min(
     This is a reformatted and altered version of a previous
     implementation in lazy.py by Tom Ichibha.
 
-    Parameters 
+    Parameters
     ----------
     data : :class:`pandas.DataFrame`
         Calculation output of a FCIQMC or CCMC calculation.
@@ -275,18 +275,17 @@ def find_starting_iteration_mser_min(
         Take instanteous ratio of column `eval_ratio['num']` with column
         '`eval_ratio['denom']` in `data` to find starting iteration.
     start_max_frac : float
-        MSER(d) may oscillate when become unreanably small 
-        when :math:`n-d` is large. Thus, we calculate MSER(:math:`d`) 
-        for :math:`d` < (:math:`n` * start_max_frac) and 
+        MSER(d) may oscillate when become unreanably small
+        when :math:`n-d` is large. Thus, we calculate MSER(:math:`d`)
+        for :math:`d` < (:math:`n` * start_max_frac) and
         give the optimal estimation of the starting iterations
         only in this range of :math:`d`.
         The default is 0.84.
     n_blocks : int
         This analysis takes long time when :math:`n` is large.
-        Thus, we pick up :math:`d` for every 'n_blocks'
-        samples, calculate MSER(:math:`d`), and decide the 
-        optimal estimation of the starting iterations only 
-        from these `d`.
+        Thus, we pick up :math:`d` for every 'n_blocks' samples,
+        calculate MSER(:math:`d`), and decide the optimal estimation of
+        the starting iterations only from these `d`.
         The default is 100.
 
     Returns
@@ -303,12 +302,12 @@ def find_starting_iteration_mser_min(
         start_ind = int(i*(len(inst_ratio)*start_max_frac)/n_blocks)
         mser = (np.var(inst_ratio[start_ind:len(inst_ratio)]) /
                 (len(inst_ratio)-start_ind))
-        if (mser < mser_min):
+        if mser < mser_min:
             mser_min = mser
             starting_it = data[it_key].loc[start_ind]
             final_start_ind = start_ind
 
-    if (final_start_ind > len(inst_ratio)*(start_max_frac**2)):
+    if final_start_ind > len(inst_ratio)*(start_max_frac**2):
         warnings.warn(
             f"Instantaneous ratio '{eval_ratio['name']}' may not be "
             "converged.  MSER min. may underestimate the starting iteration.  "

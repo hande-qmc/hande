@@ -55,7 +55,6 @@ class AbsErrorAnalyser(metaclass=abc.ABCMeta):
     @abc.abstractmethod
     def exe(self):
         """Do error analysis."""
-        pass
 
     def _check_data_input(self, data):
         """Check data input."""

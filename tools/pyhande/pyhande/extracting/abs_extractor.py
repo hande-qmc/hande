@@ -8,13 +8,13 @@ class AbsExtractor(metaclass=abc.ABCMeta):
     @property
     @abc.abstractmethod
     def data(self):
-        pass
+        """Should contain data in pandas DataFrame format."""
 
     @property
     @abc.abstractmethod
     def metadata(self):
-        pass
+        """Should contain a dictionary with metadata."""
 
     @abc.abstractmethod
     def exe(self):
-        pass
+        """Do the extraction and possibly merging of calcs."""

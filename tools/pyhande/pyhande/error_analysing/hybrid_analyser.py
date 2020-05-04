@@ -5,8 +5,6 @@ import pandas as pd
 import numpy as np
 import statsmodels.tsa.ar_model as ar_model
 import statsmodels.tsa.stattools as tsastats
-import pyblock
-import pyhande.analysis as analysis
 from pyhande.error_analysing.abs_error_analyser import AbsErrorAnalyser
 from pyhande.error_analysing.find_starting_iteration import select_find_start
 
@@ -73,7 +71,7 @@ class HybridAnalyser(AbsErrorAnalyser):
             The energy time-series is coarse-grained by averaging
             several sequential samples into just one sample and the
             statistic error is calculated for the coarse-grained
-            time-series. This variable designates how many sequential 
+            time-series. This variable designates how many sequential
             samples are averaged together.
             The default is 1.
         find_start_kw_args : Dict[str, Union[bool, float, int]],
@@ -139,7 +137,7 @@ class HybridAnalyser(AbsErrorAnalyser):
         # autocorr
         tau = 1.0
         for i in range(1, n_data-1):
-            if(acf[i] < 0):
+            if acf[i] < 0:
                 break
             tau += 2.0*acf[i]
         error_ac = np.sqrt(var/n_data*tau)
