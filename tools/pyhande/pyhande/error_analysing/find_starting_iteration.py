@@ -6,6 +6,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import numpy as np
 import pyblock
+from pyhande.helpers.simple_callables import RaiseValueError
 
 
 def _show_starting_iterations_graph(
@@ -329,11 +330,8 @@ def select_find_start(key: str):
     -------
     Find_starting_iteration function.
     """
-    # [todo] - Improve
-    if key == 'blocking':
-        return find_starting_iteration_blocking
-    elif key == 'mser':
-        return find_starting_iteration_mser_min
-    else:
-        raise ValueError("The find start iteration selected in 'start_its', "
-                         f"{key}, is not available!")
+    return {'blocking': find_starting_iteration_blocking,
+            'mser': find_starting_iteration_mser_min}.get(
+                key, RaiseValueError("The find start iteration selected in "
+                                     f"'start_its', '{key}', is not "
+                                     "available!"))

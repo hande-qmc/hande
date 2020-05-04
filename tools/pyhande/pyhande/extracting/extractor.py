@@ -1,10 +1,12 @@
 """Extract and merge (meta)data from (multiple) HANDE output files."""
 from typing import Dict, List, Union
 import copy
+import warnings
 import math
 import pandas as pd
 import pyhande.extract as extract
 from pyhande.extracting.abs_extractor import AbsExtractor
+from pyhande.helpers.simple_callables import do_nothing, RaiseValueError
 
 
 class Extractor(AbsExtractor):
@@ -85,10 +87,6 @@ class Extractor(AbsExtractor):
                 raise ValueError(f"Not all {merge.keys()} in passed 'merge' "
                                  f"dictionary are in {self._merge.keys()}.")
             self._merge.update(merge)
-        if self._merge['type'] not in ['uuid', 'legacy', 'no']:
-            raise ValueError("Invalid merge value in 'merge['type']': "
-                             f"'{self._merge['type']}'. Choose from 'uuid', "
-                             "'legacy' and 'no'.")
         # In case user has passed strings instead of list of strings.
         if isinstance(self._merge['md_always'], str):
             self._merge['md_always'] = [self._merge['md_always']]
@@ -253,6 +251,8 @@ class Extractor(AbsExtractor):
                     print(f"Metadata does not contain {meta}! Fix '{to_fix}'!")
                     raise
             if not self._is_equal_value(md_child, md_parent):
+                warnings.warn(f"Not merging some calcs because metadata {meta} "
+                              "differs.")
                 return False
         return True
 
@@ -277,9 +277,11 @@ class Extractor(AbsExtractor):
             self._calc_to_outfile_ind.pop(i_child))
 
     def _merge_uuid(self):
-        """Attempt merging using UUIDs."""
-        # Calculations are potentially merged, using UUID info.
-        # Order of calcs not important.
+        """Attempt merging using UUIDs.
+
+        Calculations are potentially merged, using UUID info.
+        Order of calcs not important.
+        """
         i_child = 0
         while i_child < len(self._data):
             merged = False
@@ -295,9 +297,10 @@ class Extractor(AbsExtractor):
                 i_child += 1
 
     def _merge_legacy(self):
-        # Calculations are potentially merged by checking continuation
-        # of iterations.
-        # Only adjacent calcs can be merged!
+        """Attempt merging checking continuation of iterations.
+
+        Only adjacent calcs can be merged!
+        """
         i_child = 1  # Note order matters so start with second.
         while i_child < len(self._data):
             ncycles = (self.data[i_child][self._merge['it_key']].iloc[1]
@@ -329,13 +332,13 @@ class Extractor(AbsExtractor):
         calc_types = [md[0]['calc_type'] for md in self.metadata]
         self._all_ccmc_fciqmc = all(
             [ct in ['FCIQMC', 'CCMC'] for ct in calc_types])
-        if self._all_ccmc_fciqmc and self._merge != 'no':
-            if self._merge['type'] == 'uuid':
-                # Calculations are potentially merged, using UUID info.
-                # Order of calcs not important.
-                self._merge_uuid()
-            elif self._merge['type'] == 'legacy':
-                # Calculations are potentially merged by checking
-                # continuation of iterations.
-                # Only adjacent calcs can be merged!
-                self._merge_legacy()
+        if self._all_ccmc_fciqmc:
+            select_merge_func = {
+                'uuid': self._merge_uuid, 'legacy': self._merge_legacy,
+                'no': do_nothing
+            }
+            select_merge_func.get(
+                self._merge['type'],
+                RaiseValueError("Invalid merge value in 'merge['type']': "
+                                f"'{self._merge['type']}'. Choose from "
+                                f"'{select_merge_func.keys()}'"))()
