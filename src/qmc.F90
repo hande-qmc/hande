@@ -66,6 +66,8 @@ contains
         use excit_gen_heat_bath_mol, only: init_excit_mol_heat_bath
         use excit_gen_ueg, only: init_excit_ueg_power_pitzer
         use parallel, only: parent
+        use hamiltonian_ueg, only: calc_fock_values_3d_ueg
+        use determinants, only: sum_fock_values_occ_list
 
 
         type(sys_t), intent(in) :: sys
@@ -112,6 +114,18 @@ contains
         else
             call init_reference(sys, reference_in, io_unit, qmc_state%ref)
         end if
+        
+        ! In read-in systems, sp_fock = sp_eigv. This is different in the case of the UEG, where sp_fock is filled with <i|F|i>.
+        ! For the UEG, the Fock values are only implemented for the 3D version!
+        ! [todo] - implement 2D, etc.
+        allocate(qmc_state%propagator%sp_fock(sys%basis%nbasis), stat=ierr)
+        call check_allocate('qmc_state%propagator%sp_fock', sys%basis%nbasis, ierr)
+        qmc_state%propagator%sp_fock = sys%basis%basis_fns%sp_eigv
+        if ((sys%system == ueg) .and. (sys%lattice%ndim == 3)) then
+            call calc_fock_values_3d_ueg(sys, qmc_state%propagator, qmc_state%ref%occ_list0)
+        end if
+        ! [WARNING - TODO] - ref%fock_sum not initialised in init_reference, etc! 
+        qmc_state%ref%fock_sum = sum_fock_values_occ_list(sys, qmc_state%propagator%sp_fock, qmc_state%ref%occ_list0)
 
         ! --- Allocate psip list ---
         if (doing_calc(hfs_fciqmc_calc)) then
@@ -193,7 +207,19 @@ contains
             '(1X, "# Finishing the excitation generator initialisation, time taken:",1X,es17.10)') set_up_time
 
         qmc_state%propagator%quasi_newton = qmc_in%quasi_newton
-        qmc_state%propagator%quasi_newton_threshold = qmc_in%quasi_newton_threshold
+        if (qmc_in%quasi_newton_threshold < 0.0_p) then ! Not set by user, use auto value.
+            ! Assume that fock values are ordered and that the number of basis functions is bigger than the number
+            ! of electrons!
+            qmc_state%propagator%quasi_newton_threshold = &
+                qmc_state%propagator%sp_fock(sys%nel+1) - qmc_state%propagator%sp_fock(sys%nel)
+            if (sys%system == ueg) then
+                ! Know that by symmetry, the sum of Fock values of ref det to next excited det is twice the HOMO LUMO gap.
+                ! Ignore symmetry for the other systems for now...
+                qmc_state%propagator%quasi_newton_threshold = 2.0_p*qmc_state%propagator%quasi_newton_threshold
+            end if
+        else
+            qmc_state%propagator%quasi_newton_threshold = qmc_in%quasi_newton_threshold
+        end if
         qmc_state%propagator%quasi_newton_value = qmc_in%quasi_newton_value
         ! Need to ensure we end up with a sensible value of shift damping to use.
         ! qmc_state%shift_damping will be set to either its default value or one
@@ -992,7 +1018,7 @@ contains
         use calc, only: doing_calc, hfs_fciqmc_calc
         use reference_determinant, only: reference_t, set_reference_det
         use checking, only: check_allocate
-        use determinants, only: encode_det, sum_sp_eigenvalues_occ_list
+        use determinants, only: encode_det
 
         type(sys_t), intent(in) :: sys
         type(reference_t), intent(in) :: reference_in
@@ -1037,7 +1063,7 @@ contains
         reference%H00 = sc0_ptr(sys, reference%f0)
         ! Operators of HFS sampling.
         if (doing_calc(hfs_fciqmc_calc)) reference%O00 = op0_ptr(sys, reference%f0)
-        reference%fock_sum = sum_sp_eigenvalues_occ_list(sys, reference%occ_list0)
+        ! [WARNING - TODO] - ref%fock_sum not initialised here! 
 
     end subroutine init_reference
 
@@ -1053,13 +1079,12 @@ contains
         !   reference: reference selected for the qmc calculation.
 
         use reference_determinant, only: reference_t
-        use system, only: sys_t
+        use system, only: sys_t, ueg
         use restart_hdf5, only: restart_info_t, get_reference_hdf5
         use calc, only: doing_calc, hfs_fciqmc_calc
         use proc_pointers, only: sc0_ptr, op0_ptr
         use checking, only: check_allocate
         use determinants, only: decode_det
-        use determinants, only: sum_sp_eigenvalues_occ_list
 
         type(sys_t), intent(in) :: sys
         type(reference_t), intent(in) :: reference_in
@@ -1084,9 +1109,9 @@ contains
 
         reference%H00 = sc0_ptr(sys, reference%f0)
         if (doing_calc(hfs_fciqmc_calc)) reference%O00 = op0_ptr(sys, reference%f0)
-        reference%fock_sum = sum_sp_eigenvalues_occ_list(sys, reference%occ_list0)
 
         reference%ex_level = reference_in%ex_level
+        ! [WARNING - TODO] - ref%fock_sum not initialised here! 
 
     end subroutine init_reference_restart
 
@@ -1114,7 +1139,7 @@ contains
         call init_reference(sys, reference_in, io_unit, qs%second_ref)
         qs%ref%max_ex_level = qs%ref%ex_level + get_excitation_level(qs%ref%f0(:sys%basis%bit_string_len), &
                                                                   qs%second_ref%f0(:sys%basis%bit_string_len))
-  
+        ! [WARNING - TODO] - ref%fock_sum not initialised here! 
     end subroutine
 
 

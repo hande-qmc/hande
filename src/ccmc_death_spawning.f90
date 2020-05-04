@@ -136,7 +136,7 @@ contains
                     end if
                 end if
             end if
-            invdiagel = calc_qn_spawned_weighting(sys, qs%propagator, cdet%fock_sum, connection)
+            invdiagel = calc_qn_spawned_weighting(qs%propagator, cdet%fock_sum, connection)
         else
             invdiagel = 1
         end if
@@ -566,7 +566,7 @@ contains
         use ccmc_data, only: cluster_t
         use ccmc_linked, only: calc_pgen, partition_cluster, linked_excitation
         use ccmc_utils, only: collapse_cluster, convert_excitor_to_determinant
-        use determinants, only: sum_sp_eigenvalues_bit_string
+        use determinants, only: sum_fock_values_bit_string
         use determinant_data, only: det_info_t
         use dSFMT_interface, only: dSFMT_t
         use excitations, only: excit_t, create_excited_det, get_excitation_level
@@ -708,7 +708,7 @@ contains
             ! apply additional factors to pgen
             pgen = pgen*cluster%pselect*nspawnings_total/npartitions
 
-            fock_sum = sum_sp_eigenvalues_bit_string(sys, fexcit)
+            fock_sum = sum_fock_values_bit_string(sys, qs%propagator%sp_fock, fexcit)
             invdiagel = calc_qn_weighting(qs%propagator, fock_sum - qs%ref%fock_sum)
             ! correct hmatel for cluster amplitude
             hmatel%r = hmatel%r * invdiagel * real(cluster%amplitude)
@@ -860,7 +860,7 @@ contains
                     end if
                 end if
             end if
-            invdiagel = calc_qn_spawned_weighting(sys, qs%propagator, cdet%fock_sum, connection)
+            invdiagel = calc_qn_spawned_weighting(qs%propagator, cdet%fock_sum, connection)
         else
             invdiagel = 1
         end if
