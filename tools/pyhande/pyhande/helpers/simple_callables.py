@@ -1,4 +1,4 @@
-"""Simple, useful callables when selecting."""
+"""Simple, useful callables when selecting.  *args are ignored."""
 
 
 def do_nothing(*args):
@@ -7,7 +7,7 @@ def do_nothing(*args):
 
 
 class RaiseValueError:
-    """Raise ValueError."""
+    """Raise ValueError with message."""
 
     def __init__(self, message):
         self._message = message

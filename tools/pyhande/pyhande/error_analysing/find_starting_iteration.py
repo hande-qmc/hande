@@ -318,8 +318,6 @@ def find_starting_iteration_mser_min(
 def select_find_start(key: str):
     """Select find_starting_iteration function to use.
 
-    todo - improve!
-
     Parameters
     ----------
     key : str

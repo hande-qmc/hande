@@ -1,10 +1,11 @@
 """Access and investigate results from HANDE QMC."""
-from typing import List
+from typing import Dict, List, Union
 import warnings
 import pandas as pd
 import matplotlib.pyplot as plt
 from pyhande.extracting.extractor import Extractor
 from pyhande.error_analysing.blocker import Blocker
+from pyhande.error_analysing.hybrid_analyser import HybridAnalyser
 import pyhande.analysis as analysis
 
 
@@ -45,13 +46,75 @@ class Results:
             raise TypeError("Cannot set summary. It has to be a pd.DataFrame.")
         self._summary = summary
 
-    def add_md(self, meta_add: List[str]):
-        """
-        Add metadata to summary.
+    @staticmethod
+    def _access_meta_and_check(calc_ind: int, metadata: List[Dict],
+                               meta_key: str):
+        """Access value of metadata, returning None if non-existent.
 
         Parameters
         ----------
-        meta_add : List[str]
+        calc_ind : int
+            Index of calculation.
+        metadata : List[Dict]
+            Metadata for one calculation.  Can contain more than one
+            dictionary, if calculation was merged from multiple
+            calculations.
+        meta_key : str
+            'keyOuter:keyInner:...', e.g. ['qmc:tau', 'system:ueg:r_s']
+            adds extractor.metadata[:]['qmc']['tau'] as well as
+            extractor.metadata[:]['system']['ueg']['r_s'].
+
+        Returns
+        -------
+        Tuple or single entry
+            Tuple if requested metadata entries differ in metadata,
+            otherwise collapsed to single value of metadata value.
+            None if value not found.
+        """
+        same_calc_meta_list = []
+        for metadat in metadata:
+            try:
+                for key in meta_key.split(':'):
+                    metadat = metadat[key]
+                same_calc_meta_list.append(metadat)
+            except KeyError:
+                warnings.warn(
+                    f"Metadata for calc #{calc_ind} has no key {meta_key}.")
+                same_calc_meta_list.append(None)
+        # Is this a safe comparison for all datatypes?
+        if all([same_calc_meta_list[i] == same_calc_meta_list[0]
+                for i in range(len(same_calc_meta_list))]):
+            return same_calc_meta_list[0]
+        return tuple(same_calc_meta_list)
+
+    def get_metadata(self, meta_keys: List[str]) -> pd.DataFrame:
+        """Get part(s) of metadata in pandas DataFrame.
+
+        Parameters
+        ----------
+        meta_keys : List[str]
+            List of metadata items to put into DataFrame.  Each item as
+            'keyOuter:keyInner:...', e.g. ['qmc:tau', 'system:ueg:r_s']
+            adds extractor.metadata[:]['qmc']['tau'] as well as
+            extractor.metadata[:]['system']['ueg']['r_s'].
+
+        Returns
+        -------
+        pd.DataFrame
+            Contains metadata requested for all calculations.
+        """
+        return pd.DataFrame([
+            [self._access_meta_and_check(ind, metadata, meta_key)
+             for meta_key in meta_keys]
+            for ind, metadata in enumerate(self.extractor.metadata)],
+            columns=[meta_key.split(':')[-1] for meta_key in meta_keys])
+
+    def add_metadata(self, meta_keys: List[str]):
+        """Add metadata to summary.
+
+        Parameters
+        ----------
+        meta_keys : List[str]
             List of metadata to add in strings where different level
             keys are separated by colons. E.g.
             ['qmc:tau', 'system:ueg:r_s'] adds
@@ -59,29 +122,16 @@ class Results:
             extractor.metadata[:]['system']['ueg']['r_s'] to summary
             (if they exist).
         """
-        for madd in meta_add:
-            keys = madd.split(':')
-            madlist = []
-            for ind, metadat in enumerate(self.extractor.metadata):
-                try:
-                    for key in keys:
-                        metadat = metadat[key]
-                    madlist.append([metadat])
-                except KeyError:
-                    warnings.warn(
-                        f"Metadata #{ind} has not key {madd}.")
-                    madlist.append([None])
-            maddf = pd.DataFrame(
-                madlist,
-                columns=pd.MultiIndex.from_tuples(zip(['meta'], [keys[-1]])))
-            self.summary = pd.concat([self.summary, maddf], axis=1)
+        self.summary = pd.concat(
+            [self.summary, self.get_metadata(meta_keys)], axis=1)
 
 
 class ResultsCcmcFciqmc(Results):
     """Show CCMC and FCIQMC HANDE results and allow further analysis."""
 
     def __init__(
-            self, extractor: Extractor, analyser: Blocker = None) -> None:
+            self, extractor: Extractor,
+            analyser: Union[Blocker, HybridAnalyser] = None) -> None:
         """
         Initialise ResultsCcmcFciqmc instance.
 
@@ -91,11 +141,11 @@ class ResultsCcmcFciqmc(Results):
         ----------
         extractor : Extractor
             Extractor instance which has extracted HANDE QMC data.
-        analyser : Blocker
-            If present, information on Blocker or another analysis.
+        analyser : Union[Blocker, HybridAnalyser]
+            If present, information on Blocker or HybridAnalyser.
         """
         super().__init__(extractor)
-        self._analyser: Blocker = analyser
+        self._analyser: Union[Blocker, HybridAnalyser] = analyser
         if analyser.opt_block:
             self.summary = self._add_opt_block()
         # To be set later:
@@ -103,7 +153,7 @@ class ResultsCcmcFciqmc(Results):
         self._inefficiency: pd.DataFrame
 
     @property
-    def analyser(self) -> Blocker:
+    def analyser(self) -> Union[Blocker, HybridAnalyser]:
         """Access analyser used to supply the analysed results."""
         return self._analyser
 
@@ -224,15 +274,16 @@ class ResultsCcmcFciqmc(Results):
             pass
 
 
-def get_results(extractor: Extractor, analyser: Blocker = None):
+def get_results(extractor: Extractor,
+                analyser: Union[Blocker, HybridAnalyser] = None):
     """Create Results/ResultsCcmcFciqmc instance.
 
     Parameters
     ----------
     extractor : Extractor
         Extractor instance which has extracted HANDE QMC data.
-    analyser : Blocker
-        If present, information on Blocker or another analysis.
+    analyser : Union[Blocker, HybridAnalyser]
+        If present, information on Blocker or HybridAnalyser.
 
     Returns
     -------
