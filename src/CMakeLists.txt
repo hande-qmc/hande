@@ -37,7 +37,7 @@ target_sources(hande-static
     ccmc_linked.f90
     ccmc_selection.f90
     ccmc_utils.F90
-    check_input.f90
+    check_input.F90
     chem_pot.f90
     core.f90
     ct_fciqmc.F90
