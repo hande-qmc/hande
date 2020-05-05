@@ -231,6 +231,11 @@ contains
             end if
         end if
 
+        if ((qmc_in%quasi_newton) .and. .not.(sys%nel < sys%basis%nbasis)) then
+            call stop_all(this, 'Quasi-Newton requires (and only makes sense) when the number of electrons is less than the &
+                &number of spinorbitals.')
+        end if
+
     end subroutine check_qmc_opts
 
     subroutine check_fci_opts(sys, fci_in, lanczos)

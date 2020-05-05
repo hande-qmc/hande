@@ -791,8 +791,9 @@ end type estimators_t
 type propagator_t
     ! If true, use a quasiNewton step
     logical :: quasi_newton = .false.
-    ! The lower threshold for a quasiNewton enegy difference
-    real(p) :: quasi_newton_threshold = 1.e-5_p
+    ! The lower threshold for a quasiNewton enegy difference.
+    ! This default is never used except for printing qmc JSON data when not doing quasi newton.
+    real(p) :: quasi_newton_threshold = 0_p
     ! The value to set the quasiNewton energy difference to if lower than the
     ! threshold
     real(p) :: quasi_newton_value = 1_p
