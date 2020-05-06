@@ -81,6 +81,7 @@ contains
         use excit_gens, only: p_single_double_coll_t
         use particle_t_utils, only: init_particle_t
         use search, only: binary_search
+        use uccmc_utils
 
         type(sys_t), intent(in) :: sys
         type(qmc_in_t), intent(in) :: qmc_in
@@ -143,11 +144,10 @@ contains
         integer(i0), allocatable :: state(:)
         real(p) :: population
         real(p) :: real_population, var_energy
-        !integer(i0) :: nstates_select
-        !real(p) ::  selections(3,10000)
+        logical :: old_vary
+        integer :: avg_start
 
-        !nstates_select = 0
-        !selections(:,:) = 0
+        old_vary=.false.
         if (parent) then
             write (io_unit,'(1X,"UCCMC")')
             write (io_unit,'(1X,"----",/)')
@@ -169,136 +169,18 @@ contains
         call init_qmc(sys, qmc_in, restart_in, load_bal_in, reference_in, io_unit, annihilation_flags, qs, &
                       uuid_restart, restart_version_restart, qmc_state_restart=qmc_state_restart, &
                       regenerate_info=regenerate_info, uccmc_in=uccmc_in)
-        !qs%psip_list%nstates = 54 
-        !qs%psip_list%states(1,2) =    3327
-        !qs%psip_list%states(1,3) =    3903
-        !qs%psip_list%states(1,4) =    4047
-        !qs%psip_list%states(1,5) =    4062
-        !qs%psip_list%states(1,6) =    4077
-        !qs%psip_list%states(1,7) =    4083
-        !qs%psip_list%states(1,8) =    4092
-        !qs%psip_list%states(1,9) =    5823
-        !qs%psip_list%states(1,10) =   6591
-        !qs%psip_list%states(1,11) =   6783
-        !qs%psip_list%states(1,12) =    9663
-        !qs%psip_list%states(1,13) =    9855
-        !qs%psip_list%states(1,14) =   10623
-        !qs%psip_list%states(1,15) =   12543
-        !qs%psip_list%states(1,16) =   13119
-        !qs%psip_list%states(1,17) =   13263
-        !qs%psip_list%states(1,18) =   13278
-        !qs%psip_list%states(1,19) =   13293
-        !qs%psip_list%states(1,20) =  13299
-        !qs%psip_list%states(1,21) =  13308
-        !qs%psip_list%states(1,22) =   17403
-        !qs%psip_list%states(1,23) =   18159
-        !qs%psip_list%states(1,24) =   18174
-        !qs%psip_list%states(1,25) =   18927
-        !qs%psip_list%states(1,26) =   18942
-        !qs%psip_list%states(1,27) =   19167
-        !qs%psip_list%states(1,28) =   19197
-        !qs%psip_list%states(1,29) =   21423
-        !qs%psip_list%states(1,30) =  21438
-        !qs%psip_list%states(1,31) =  25455
-        !qs%psip_list%states(1,32) =   25470
-        !qs%psip_list%states(1,33) =   25503
-        !qs%psip_list%states(1,34) =   25533
-        !qs%psip_list%states(1,35) =   33783
-        !qs%psip_list%states(1,36) =   34287
-        !qs%psip_list%states(1,37) =   34302
-        !qs%psip_list%states(1,38) =   34527
-        !qs%psip_list%states(1,39) =   34557
-        !qs%psip_list%states(1,40) =  35295
-        !qs%psip_list%states(1,41) =  35325
-        !qs%psip_list%states(1,42) =   37743
-        !qs%psip_list%states(1,43) =   37758
-        !qs%psip_list%states(1,44) =   37791
-        !qs%psip_list%states(1,45) =   37821
-        !qs%psip_list%states(1,46) =   41823
-        !qs%psip_list%states(1,47) =   41853
-        !qs%psip_list%states(1,48) =   49407
-        !qs%psip_list%states(1,49) =   49983
-        !qs%psip_list%states(1,50) =  50127
-        !qs%psip_list%states(1,51) =  50142
-        !qs%psip_list%states(1,52) =   50157
-        !qs%psip_list%states(1,53) =   50163
-        !qs%psip_list%states(1,54) =   50172
-
-        !qs%psip_list%pops(1,1) =    694  *qs%psip_list%pop_real_factor
-        !qs%psip_list%pops(1,2) =    -132 *qs%psip_list%pop_real_factor
-        !qs%psip_list%pops(1,3) =    16   *qs%psip_list%pop_real_factor
-        !qs%psip_list%pops(1,4) =    -14  *qs%psip_list%pop_real_factor
-        !qs%psip_list%pops(1,5) =    5    *qs%psip_list%pop_real_factor
-        !qs%psip_list%pops(1,6) =    -5   *qs%psip_list%pop_real_factor
-        !qs%psip_list%pops(1,7) =    -33  *qs%psip_list%pop_real_factor
-        !qs%psip_list%pops(1,8) =    -8   *qs%psip_list%pop_real_factor
-        !qs%psip_list%pops(1,9) =    28   *qs%psip_list%pop_real_factor
-        !qs%psip_list%pops(1,10) =   69   *qs%psip_list%pop_real_factor
-        !qs%psip_list%pops(1,11) =   -42  *qs%psip_list%pop_real_factor
-        !qs%psip_list%pops(1,12) =   -41  *qs%psip_list%pop_real_factor
-        !qs%psip_list%pops(1,13) =   69   *qs%psip_list%pop_real_factor
-        !qs%psip_list%pops(1,14) =   28   *qs%psip_list%pop_real_factor
-        !qs%psip_list%pops(1,15) =   -16  *qs%psip_list%pop_real_factor
-        !qs%psip_list%pops(1,16) =   -132 *qs%psip_list%pop_real_factor
-        !qs%psip_list%pops(1,17) =   -14  *qs%psip_list%pop_real_factor
-        !qs%psip_list%pops(1,18) =   5    *qs%psip_list%pop_real_factor
-        !qs%psip_list%pops(1,19) =   -5   *qs%psip_list%pop_real_factor
-        !qs%psip_list%pops(1,20) =   -33  *qs%psip_list%pop_real_factor
-        !qs%psip_list%pops(1,21) =   -8   *qs%psip_list%pop_real_factor
-        !qs%psip_list%pops(1,22) =   12   *qs%psip_list%pop_real_factor
-        !qs%psip_list%pops(1,23) =   24   *qs%psip_list%pop_real_factor
-        !qs%psip_list%pops(1,24) =   5    *qs%psip_list%pop_real_factor
-        !qs%psip_list%pops(1,25) =   30   *qs%psip_list%pop_real_factor
-        !qs%psip_list%pops(1,26) =   21   *qs%psip_list%pop_real_factor
-        !qs%psip_list%pops(1,27) =   -6   *qs%psip_list%pop_real_factor
-        !qs%psip_list%pops(1,28) =   -18  *qs%psip_list%pop_real_factor
-        !qs%psip_list%pops(1,29) =   25   *qs%psip_list%pop_real_factor
-        !qs%psip_list%pops(1,30) =   5    *qs%psip_list%pop_real_factor
-        !qs%psip_list%pops(1,31) =   30   *qs%psip_list%pop_real_factor
-        !qs%psip_list%pops(1,32) =   21   *qs%psip_list%pop_real_factor
-        !qs%psip_list%pops(1,33) =   -7   *qs%psip_list%pop_real_factor
-        !qs%psip_list%pops(1,34) =   17   *qs%psip_list%pop_real_factor
-        !qs%psip_list%pops(1,35) =   12   *qs%psip_list%pop_real_factor
-        !qs%psip_list%pops(1,36) =   -7   *qs%psip_list%pop_real_factor
-        !qs%psip_list%pops(1,37) =   -18  *qs%psip_list%pop_real_factor
-        !qs%psip_list%pops(1,38) =   30   *qs%psip_list%pop_real_factor
-        !qs%psip_list%pops(1,39) =   21   *qs%psip_list%pop_real_factor
-        !qs%psip_list%pops(1,40) =   24   *qs%psip_list%pop_real_factor
-        !qs%psip_list%pops(1,41) =   5    *qs%psip_list%pop_real_factor
-        !qs%psip_list%pops(1,42) =   -6   *qs%psip_list%pop_real_factor
-        !qs%psip_list%pops(1,43) =   -18  *qs%psip_list%pop_real_factor
-        !qs%psip_list%pops(1,44) =   30   *qs%psip_list%pop_real_factor
-        !qs%psip_list%pops(1,45) =   21   *qs%psip_list%pop_real_factor
-        !qs%psip_list%pops(1,46) =   24   *qs%psip_list%pop_real_factor
-        !qs%psip_list%pops(1,47) =   5    *qs%psip_list%pop_real_factor
-        !qs%psip_list%pops(1,48) =   -11  *qs%psip_list%pop_real_factor
-        !qs%psip_list%pops(1,49) =   -10  *qs%psip_list%pop_real_factor
-        !qs%psip_list%pops(1,50) =   -35  *qs%psip_list%pop_real_factor
-        !qs%psip_list%pops(1,51) =   -17  *qs%psip_list%pop_real_factor
-        !qs%psip_list%pops(1,52) =   17   *qs%psip_list%pop_real_factor
-        !qs%psip_list%pops(1,53) =   -15  *qs%psip_list%pop_real_factor
-        !qs%psip_list%pops(1,54) =   -21  *qs%psip_list%pop_real_factor
 
         allocate(state(sys%basis%bit_string_len))
 
         if(uccmc_in%variational_energy) then
              population = 0
-             allocate(time_avg_psip_list_ci_states(size(qs%psip_list%states(:,1)),size(qs%psip_list%states(1,:))))
-             allocate(time_avg_psip_list_ci_pops(size(qs%psip_list%states(1,:))))
-             time_avg_psip_list_ci_states(:,1) = qs%psip_list%states(:,1)
-             time_avg_psip_list_ci_pops(1) = (real(qs%psip_list%pops(1,1))/qs%psip_list%pop_real_factor)
-             nstates_ci = 1
-             ![todo] deal with restarting
+             call allocate_time_average_lists(qs, time_avg_psip_list_ci_states, time_avg_psip_list_ci_pops, nstates_ci)
         end if
 
-        allocate(time_avg_psip_list_states(size(qs%psip_list%states(:,1)),size(qs%psip_list%states(1,:))))
-        allocate(time_avg_psip_list_pops(size(qs%psip_list%states(1,:))))
+        call allocate_time_average_lists(qs, time_avg_psip_list_states, time_avg_psip_list_pops, nstates_sq)
         allocate(time_avg_psip_list_sq(2,size(qs%psip_list%states(1,:))))
-        time_avg_psip_list_states(:,1) = qs%psip_list%states(:,1)
-        time_avg_psip_list_pops(1) = (real(qs%psip_list%pops(1,1))/qs%psip_list%pop_real_factor)
-        time_avg_psip_list_sq(1,1) = qs%psip_list%states(1,1)
-        time_avg_psip_list_sq(2,1) = (real(qs%psip_list%pops(1,1))/qs%psip_list%pop_real_factor)**2
-        nstates_sq = 1
+        time_avg_psip_list_sq(1,:) = qs%psip_list%states(1,:)
+        time_avg_psip_list_sq(2,:) = (real(qs%psip_list%pops(1,:))/qs%psip_list%pop_real_factor)**2
 
         qs%ref%max_ex_level = qs%ref%ex_level
 
@@ -415,11 +297,26 @@ contains
                 
                 iter = qs%mc_cycles_done + (ireport-1)*qmc_in%ncycles + icycle
 
-                if(uccmc_in%variational_energy) then
-                          time_avg_psip_list_ci_pops(:nstates_ci) =  time_avg_psip_list_ci_pops(:nstates_ci)*(iter-1)
+                !If this is the first iteration where the shift varies, start averaging the
+                !cluster amplitudes.
+                if (all(qs%vary_shift) .and. (.not. old_vary)) then
+                    old_vary = all(qs%vary_shift) 
+                    avg_start = iter
+                    time_avg_psip_list_pops(:qs%psip_list%nstates) = &
+                        real(qs%psip_list%pops(1,:qs%psip_list%nstates))/qs%psip_list%pop_real_factor
+                    time_avg_psip_list_states(:,:qs%psip_list%nstates) = qs%psip_list%states(:,:qs%psip_list%nstates)
+                    time_avg_psip_list_sq(1,:) = qs%psip_list%states(1,:)
+                    time_avg_psip_list_sq(2,:) = (real(qs%psip_list%pops(1,:))/qs%psip_list%pop_real_factor)**2
+                    nstates_sq = qs%psip_list%nstates
                 end if
-                time_avg_psip_list_pops(:nstates_sq) =  time_avg_psip_list_pops(:nstates_sq)*(iter - 1)
-                time_avg_psip_list_sq(2,:nstates_sq) =  time_avg_psip_list_sq(2,:nstates_sq)*(iter - 1)
+
+                if(uccmc_in%variational_energy .and. all(qs%vary_shift)) then
+                          time_avg_psip_list_ci_pops(:nstates_ci) =  time_avg_psip_list_ci_pops(:nstates_ci)*(iter-avg_start)
+                end if
+                if (all(qs%vary_shift)) then
+                    time_avg_psip_list_pops(:nstates_sq) =  time_avg_psip_list_pops(:nstates_sq)*(iter - avg_start)
+                    time_avg_psip_list_sq(2,:nstates_sq) =  time_avg_psip_list_sq(2,:nstates_sq)*(iter - avg_start)
+                end if
 
                 if (debug) call prep_logging_mc_cycle(iter, logging_in, logging_info, sys%read_in%comp, &
                                                         min(sys%nel, qs%ref%ex_level+2))
@@ -475,26 +372,12 @@ contains
                 call update_bloom_threshold_prop(bloom_stats, nparticles_old(1))
 
 
-                ! Three options for evolution:
+                ! Evolution is done via:
 
                 ! * Original CCMC algorithm
                 !       + The number of excips on this processor determines the number
                 !         of cluster generations, each of which can spawn and die.
                 !         non-composite clusters therefore are seldom selected.
-                ! * 'full non-composite' algorithm, where spawning and death are split into two tranches.
-                !       + non-composite clusters (i.e. consisting of a single excitor):
-                !         enumerate explicitly (this is just the list of excitors)
-                !       + composite clusters, which must be selected stochastically (as in
-                !         the original algorithm for all clusters).  We sample the space
-                !         of composite clusters, choosing nattempts samples.  For convenience
-                !         nattempts = # excitors not on the reference (i.e. the number of
-                !         excitors which can actually be involved in a composite cluster).
-                ! * 'even selection' algorithm, where all clusters are selected with probability
-                !         proportional to their contribution to the final wavefunction.
-                !       + non-composite cluster enumerated as in full non-composite algorithm.
-                !       + composite clusters more complicated selection probability required.
-
-                !Initially for UCC we will simply use a modification of the original algorithm.
 
                 call ucc_set_cluster_selections(selection_data, qs%estimators(1)%nattempts, min_cluster_size)
                 call zero_ps_stats(ps_stats, qs%excit_gen_data%p_single_double%rep_accum%overflow_loc)
@@ -515,7 +398,7 @@ contains
                 !$omp        proj_energy_cycle, D0_population_cycle, selection_data,      &
                 !$omp        nattempts_spawn, D0_population_ucc_cycle,&
                 !$omp        uccmc_in, nprocs, ms_stats, ps_stats, qmc_in, load_bal_in, &
-                !$omp        ndeath_nc,   nstates_select, selections, &
+                !$omp        ndeath_nc,   
                 !$omp        nparticles_change, ndeath, logging_info, nstates_ci, & 
                 !$omp        time_avg_psip_list_ci_states, time_avg_psip_list_ci_pops, &
                 !$omp        time_avg_psip_list_states, time_avg_psip_list_pops)
@@ -534,50 +417,12 @@ contains
                                             selection_data%nstochastic_clusters, D0_normalisation, qmc_in%initiator_pop, D0_pos, &
                                             cumulative_abs_real_pops, tot_abs_real_pop, min_cluster_size, max_cluster_size, &
                                             logging_info, contrib(it)%cdet, contrib(it)%cluster, qs%excit_gen_data)
-                    !if (contrib(it)%cluster%excitation_level <= qs%ref%max_ex_level) then
-                    !    state = contrib(it)%cdet%f
-                    !    pos = nstates_select+1
-                    !    hit = .false.
-                    !    do j = 1, nstates_select
-                    !        if (selections(1,j) == state(1) .and. selections(2,j) == contrib(it)%cluster%nexcitors) then
-                    !            pos = j
-                    !            hit = .true.
-                    !            exit
-                    !        end if
-                    !    end do
-                    !    if (hit) then
-                    !        selections(3,pos) = selections(3,pos) + 1!real(contrib(it)%cluster%amplitude,p)*contrib(it)%cluster%cluster_to_det_sign/contrib(it)%cluster%pselect 
-                    !    else
-                    !        selections(1,pos) = state(1)
-                    !        selections(2,pos) = contrib(it)%cluster%nexcitors
-                    !        selections(3, pos) = 1!real(contrib(it)%cluster%amplitude,p)*contrib(it)%cluster%cluster_to_det_sign*contrib(it)%cluster%pselect 
-                    !        nstates_select = nstates_select + 1
-                    !    end if
-                    !end if
-                    !print*, 'selected',  contrib(it)%cdet%f
 
-                    if (uccmc_in%variational_energy .and. .not. all(contrib(it)%cdet%f==0) .and. &
-                        contrib(it)%cluster%excitation_level <= qs%ref%ex_level)  then
-                       state = contrib(it)%cdet%f 
-                       call binary_search(time_avg_psip_list_ci_states, state, 1, nstates_ci, hit, pos)
-                       population = &
-                           contrib(it)%cluster%amplitude*contrib(it)%cluster%cluster_to_det_sign/contrib(it)%cluster%pselect
-                       if (hit) then
-                          time_avg_psip_list_ci_pops(pos) = time_avg_psip_list_ci_pops(pos) + population 
-                       else
-                           do j = nstates_ci, pos, -1
-                               ! i is the number of determinants that will be inserted below j.
-                               k = j + 1 
-                               time_avg_psip_list_ci_states(:,k) = time_avg_psip_list_states(:,j)
-                               time_avg_psip_list_ci_pops(k) = time_avg_psip_list_pops(j)
-                           end do
-
-                           time_avg_psip_list_ci_states(:,pos) = state
-                           time_avg_psip_list_pops(pos) = population
-                           nstates_ci = nstates_ci + 1
-                           ! Extract the real sign from the encoded sign.
-
-                       end if
+                    !Add contribution to average CI wfn
+                    if (uccmc_in%variational_energy .and. all(qs%vary_shift) .and. &
+        contrib(it)%cluster%excitation_level <= qs%ref%ex_level)  then
+                        call add_ci_contribution(contrib(it)%cluster, contrib(it)%cdet, &
+                        time_avg_psip_list_ci_states, time_avg_psip_list_ci_pops, nstates_ci)
                     end if
 
                     if (contrib(it)%cluster%excitation_level <= qs%ref%max_ex_level+2) then
@@ -636,40 +481,17 @@ contains
                                                         selection_data%nsingle_excitors)
 
                 if(uccmc_in%variational_energy) then
-                          time_avg_psip_list_ci_pops(:nstates_ci) =  time_avg_psip_list_ci_pops(:nstates_ci)/(iter)
+                          time_avg_psip_list_ci_pops(:nstates_ci) =  time_avg_psip_list_ci_pops(:nstates_ci)/(iter-avg_start+1)
                 end if
 
 ! [review] - AJWT: Comment on what this block is doing.
-                do i = 1, qs%psip_list%nstates
-                    state = qs%psip_list%states(:,i) 
-                    call binary_search(time_avg_psip_list_states, state, 1, nstates_sq, hit, pos)
-                    if (hit) then
-                          time_avg_psip_list_pops(pos) = &
-                              time_avg_psip_list_pops(pos) + (real(qs%psip_list%pops(1,i))/qs%psip_list%pop_real_factor)
-                          time_avg_psip_list_sq(2,pos) = &
-                              time_avg_psip_list_sq(2,pos) + (real(qs%psip_list%pops(1,i))/qs%psip_list%pop_real_factor)**2 
-                       else
-                           do j = nstates_sq, pos, -1
-                               ! i is the number of determinants that will be inserted below j.
-                               k = j + 1 
-                               time_avg_psip_list_states(:,k) = time_avg_psip_list_states(:,j)
-                               time_avg_psip_list_pops(k) = time_avg_psip_list_pops(j)
-                               time_avg_psip_list_sq(1,k) = time_avg_psip_list_sq(1,j)
-                               time_avg_psip_list_sq(2,k) = time_avg_psip_list_sq(2,j)
-                           end do
-                           time_avg_psip_list_states(:,pos) = qs%psip_list%states(:,i)
-                           time_avg_psip_list_pops(pos) = (real(qs%psip_list%pops(1,i))/qs%psip_list%pop_real_factor)
-                           time_avg_psip_list_sq(1,pos) = qs%psip_list%states(1,i)
-                           time_avg_psip_list_sq(2,pos) = (real(qs%psip_list%pops(1,i))/qs%psip_list%pop_real_factor)**2
-                           nstates_sq = nstates_sq + 1
-                           ! Extract the real sign from the encoded sign.
-                       end if
-                end do
-                ! Update time average.
-                time_avg_psip_list_pops(:nstates_sq) =  time_avg_psip_list_pops(:nstates_sq)/(iter)
+                if(all(qs%vary_shift) .and. old_vary) then
+                    call add_t_contributions(qs, time_avg_psip_list_states, time_avg_psip_list_pops, time_avg_psip_list_sq, nstates_sq)
+                    ! Update time average.
+                    time_avg_psip_list_pops(:nstates_sq) =  time_avg_psip_list_pops(:nstates_sq)/(iter-avg_start+1)
 
-                time_avg_psip_list_sq(2,:nstates_sq) =  time_avg_psip_list_sq(2,:nstates_sq)/(iter)
-            
+                    time_avg_psip_list_sq(2,:nstates_sq) =  time_avg_psip_list_sq(2,:nstates_sq)/(iter-avg_start+1)
+                end if
                 call end_mc_cycle(nspawn_events, ndeath_nc, qs%psip_list%pop_real_factor, nattempts_spawn, qs%spawn_store%rspawn)
             end do
 
@@ -731,13 +553,6 @@ contains
                 call write_qmc_var(io_unit, time_avg_psip_list_sq(2,i))
                 write (io_unit,'()')
             end do
-            !write (io_unit, '(1X, "Selections",/)')
-            !do i = 1, nstates_select
-            !    call write_qmc_var(io_unit, selections(1,i))
-            !    call write_qmc_var(io_unit, selections(2,i))
-            !    call write_qmc_var(io_unit, selections(3,i))
-            !    write (io_unit,'()')
-            !end do
         end if
 
         call dSFMT_t_to_dSFMT_state_t(rng(0), qs%rng_state)
@@ -763,7 +578,7 @@ contains
         end if
 
         if(uccmc_in%variational_energy) then
-            call var_energy_uccmc(sys, time_avg_psip_list_ci_states,time_avg_psip_list_ci_pops,nstates_ci, var_energy)
+            call var_energy_uccmc(sys, time_avg_psip_list_ci_states,time_avg_psip_list_ci_pops,nstates_ci, var_energy, real(D0_normalisation,p))
             print*, 'Variational energy: ', var_energy
         end if 
         
@@ -825,7 +640,7 @@ contains
 
         min_cluster_size = 0
         selection_data%nD0_select = 0 ! instead of this number of deterministic selections, these are chosen stochastically
-        selection_data%nstochastic_clusters = nattempts*100
+        selection_data%nstochastic_clusters = nattempts
         selection_data%nsingle_excitors = 0
 
         selection_data%nclusters = selection_data%nD0_select + selection_data%nsingle_excitors &
@@ -889,8 +704,7 @@ contains
         use checking, only: check_deallocate
         use determinant_data, only: det_info_t
         use ccmc_data, only: cluster_t
-! [review] - AJWT: collapse_cluster is no longer used.
-        use ccmc_utils, only: convert_excitor_to_determinant, collapse_cluster
+        use ccmc_utils, only: convert_excitor_to_determinant
         use excitations, only: get_excitation_level
         use dSFMT_interface, only: dSFMT_t, get_rand_close_open
         use qmc_data, only: particle_t
@@ -968,11 +782,11 @@ contains
         cluster%nexcitors = -1
         deexcit_count = 0
         do i = 0, max_size-min_size-1
-            psize = psize + 1.0_p/(max_size-min_size+1)!2_int_64**(i+1)
+            psize = psize + 1.0_p/2_int_64**(i+1)
             if (rand < psize) then
                 ! Found size!
                 cluster%nexcitors = i+min_size
-                cluster%pselect = cluster%pselect/(max_size-min_size+1)!2_int_64**(i+1)
+                cluster%pselect = cluster%pselect/2_int_64**(i+1)
                 exit
             end if
         end do
@@ -1046,6 +860,7 @@ contains
             !There are 2^(n-1) possible arrangements of excitation/deexcitation operators for
             ! a given cluster, so the probability of selecting one must be divided by this.
             cluster%pselect = cluster%pselect/(2**(cluster%nexcitors-1))
+            ![TODO] decide the fate of the sort
             call insert_sort(pop(:cluster%nexcitors))
             prev_pos = 1
             do i = 1, cluster%nexcitors
@@ -1155,11 +970,11 @@ contains
 
     subroutine ucc_collapse_cluster(basis, f0, excitor, excitor_population, cluster_excitor, cluster_population, &
                     allowed, conjugate)
-! [review] - AJWT: based on collapse_clustera
 
 ! [review] - AJWT: Document 'conjugate'
 
-        ! Collapse two excitors.  The result is returned in-place.
+        ! Collapse two excitors.  The result is returned in-place. Based on collapse_cluster in 
+        ! ccmc_selection
 
         ! In:
         !    basis: information about the single-particle basis.
@@ -1167,6 +982,8 @@ contains
         !    excitor: bit string of the Slater determinant formed by applying
         !        the excitor, e1, to the reference determinant.
         !    excitor_population: number of excips on the excitor e1.
+        !    conjugate : true/false, encodes whether the cluster is to be used as a deexcitor or
+        !        excitor
         ! In/Out:
         !    cluster_excitor: bit string of the Slater determinant formed by applying
         !        the excitor, e2, to the reference determinant.
@@ -1819,6 +1636,7 @@ contains
         use excitations, only: excit_t, create_excited_det
         use proc_pointers, only: create_spawned_particle_ptr
         use ccmc_utils, only: add_ex_level_bit_string_calc
+        use uccmc_utils, only: add_info_str_trot
 
         type(sys_t), intent(in) :: sys
         type(reference_t), intent(in) :: ref
@@ -1849,158 +1667,6 @@ contains
 
     end subroutine create_spawned_particle_uccmc_trot
     
-    pure function earliest_unset(f, f0, nel, basis) result (early)
-! [review] - AJWT: probably best in ccmc_utils or the like
-        
-         ! Function to find earliest unset bit in a determinant bit string.
-
-         ! In:
-         !    f: bit_string encoding determinant
-         !    nel: number of electrons in the system
-         !    basis: basis_t object with information on one-electron basis in use.
-     
-         use basis_types, only: basis_t
-         use bit_utils, only: count_set_bits
-
-         type(basis_t), intent(in) :: basis
-         integer(i0), intent(in) :: f(basis%tot_string_len), f0(basis%tot_string_len)
-         integer, intent(in) :: nel
-         integer :: i, early
-         integer(i0) :: diff
-         integer(i0) :: f0_loc
-         
-         early = 0
-         i = 0
-          
-         diff = ieor(f(1),f0(1))
-         if (diff /= 0) then
-             do 
-                 if (btest(diff,i)) then
-                     early = i
-                     exit
-                 end if
-                 i = i+1
-             end do
-         else
-             f0_loc = f0(1)
-             do while (f0_loc/=0)
-                 f0_loc = ibclr(f0_loc, early)
-                 early = early + 1
-             end do
-         end if
-    end function
-
-    pure function latest_unset(f, f0, nel, basis) result (late)
-! [review] - AJWT: probably best in ccmc_utils or the like
-        
-         ! Function to find earliest unset bit in a determinant bit string.
-
-         ! In:
-         !    f: bit_string encoding determinant
-         !    nel: number of electrons in the system
-         !    basis: basis_t object with information on one-electron basis in use.
-     
-         use basis_types, only: basis_t
-         use bit_utils, only: count_set_bits
-
-         type(basis_t), intent(in) :: basis
-         integer(i0), intent(in) :: f(basis%tot_string_len), f0(basis%tot_string_len)
-         integer, intent(in) :: nel
-         integer :: late
-         integer(i0) :: diff
-         integer(i0) :: f0_loc
-         
-         late = 0
-          
-         diff = ieor(f(1),f0(1))
-         diff = iand(diff, f0(1))
-         if (diff /= 0) then
-             do 
-                 diff = ibclr(diff, late)
-                 if (diff /= 0) then
-                     late = late + 1 
-                 else
-                     exit
-                 end if
-             end do
-         else
-             f0_loc = f0(1)
-             do while (f0_loc/=0)
-                 f0_loc = ibclr(f0_loc, late)
-                 late = late + 1
-             end do
-         end if
-    end function
-    subroutine add_info_str_trot(basis, f0, nel, f)
-
-        ! Sets bits within bit string to give excitation level at end of bit strings.
-        ! This routine sets ex level from provided reference.
-
-        use basis_types, only: basis_t
-        use excitations, only: get_excitation_level
-        type(basis_t), intent(in) :: basis
-        integer(i0), intent(inout) :: f(:)
-        integer(i0), intent(in) :: f0(:)
-        integer, intent(in) :: nel
-
-        integer(i0) :: counter(basis%tot_string_len)
-       
-
-        if (basis%info_string_len/=0) then
-
-            f(basis%bit_string_len+2) = latest_unset(f, f0, nel, basis)     
-            f(basis%bit_string_len+1) = nel - get_excitation_level(f(:basis%bit_string_len), f0(:basis%bit_string_len)) 
-
-        end if
- 
-    end subroutine add_info_str_trot
-
-    subroutine add_info_str_trot_alt(basis, f0, nel, f)
-
-        ! Sets bits within bit string to give excitation level at end of bit strings.
-        ! This routine sets ex level from provided reference.
-
-        use basis_types, only: basis_t
-        use excitations, only: get_excitation_level
-        type(basis_t), intent(in) :: basis
-        integer(i0), intent(inout) :: f(:)
-        integer(i0), intent(in) :: f0(:)
-        integer, intent(in) :: nel
-
-        integer(i0) :: counter(basis%tot_string_len)
-       
-
-        if (basis%info_string_len/=0) then
-
-            select case(f(1))
-
-            case(3)
-            f(basis%bit_string_len+2) = 1
-            case(6)
-            f(basis%bit_string_len+2) = 2
-            case(9)
-            f(basis%bit_string_len+2) = 3
-            case(258) 
-            f(basis%bit_string_len+2) = 4
-            case(513)
-            f(basis%bit_string_len+2) = 5
-            case(12)
-            f(basis%bit_string_len+2) = 6
-            case(48)
-            f(basis%bit_string_len+2) = 7
-            case(192)
-            f(basis%bit_string_len+2) = 8
-            case(768)
-            f(basis%bit_string_len+2) = 9
-            case(516)
-            f(basis%bit_string_len+2) = 10
-            case(264)
-            f(basis%bit_string_len+2) = 11
-            
-            end select
-        end if
- 
-    end subroutine add_info_str_trot_alt
 
     subroutine update_proj_energy_mol_ucc(sys, f0, wfn_dat, cdet, pop, estimators, excitation, hmatel, cluster_size)
 
@@ -2093,9 +1759,22 @@ contains
 
     end subroutine update_proj_energy_mol_ucc
 
-    subroutine var_energy_uccmc(sys, time_avg_psip_list_states, time_avg_psip_list_pops, nstates,var_energy)
+    subroutine var_energy_uccmc(sys, states, pops, nstates, var_energy, D0_pop)
 
-! [review] - AJWT: Documentation...         
+       ! Computes the variational energy of a wavefunction expressed in CI coefficients.
+       !
+       ! IN:
+       !    sys: sys_t object encoding the system
+       !    states: list of determinant labels encoded as integers
+       !    pops: CI population on each determinant
+       !    nstates: number of determinants in the wavefunction
+       !    D0_pop: population on D0 in cluster expansion (different from pops(D0_pos) in
+       !    unitary CC
+       !
+       ! OUT:
+       !    var_energy: total variational energy estimator (NOTE: not just correlation energy)
+
+
        use excitations, only: excit_t, get_excitation
        use hamiltonian, only: get_hmatel
        use energy_evaluation, only: hmatel_t
@@ -2105,9 +1784,9 @@ contains
        use determinants, only: decode_det
 
        type(sys_t), intent(in) :: sys
-       integer(i0), intent(in) :: time_avg_psip_list_states(:,:)
+       integer(i0), intent(in) :: states(:,:)
        integer, intent(in) :: nstates
-       real(p), intent(in) :: time_avg_psip_list_pops(:)
+       real(p), intent(in) :: pops(:), D0_pop
        real(p), intent(out) :: var_energy
        real(p) :: normalisation
 
@@ -2120,13 +1799,11 @@ contains
 
        normalisation = 0.0_p
        var_energy = 0.0_p
-! [review] - AJWT:  Consider real(x, p) which is usually used elsewhere.
        do i = 1, nstates
-           normalisation = normalisation + (time_avg_psip_list_pops(i)/time_avg_psip_list_pops(1))**2
+           normalisation = normalisation + (pops(i)/D0_pop)**2
            do j = 1, nstates
-               hmatel = get_hmatel(sys, time_avg_psip_list_states(:,i), time_avg_psip_list_states(:,j))
-               var_energy = var_energy + hmatel%r*time_avg_psip_list_pops(i)/time_avg_psip_list_pops(1)*&
-                   time_avg_psip_list_pops(j)/time_avg_psip_list_pops(1)
+               hmatel = get_hmatel(sys, states(:,i), states(:,j))
+               var_energy = var_energy + hmatel%r*(pops(i)/D0_pop)*(pops(j)/D0_pop)
            end do
        end do
        var_energy = var_energy/normalisation

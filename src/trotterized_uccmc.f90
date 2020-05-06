@@ -83,9 +83,9 @@ contains
         use excit_gens, only: p_single_double_coll_t
         use particle_t_utils, only: init_particle_t
         use search, only: binary_search
-        use uccmc, only: var_energy_uccmc, ucc_set_cluster_selections, add_info_str_trot, do_uccmc_accumulation, &
-                         do_stochastic_uccmc_propagation, earliest_unset
-
+        use uccmc, only: var_energy_uccmc, ucc_set_cluster_selections, do_uccmc_accumulation, &
+                         do_stochastic_uccmc_propagation
+        use uccmc_utils, only: add_info_str_trot, earliest_unset
         type(sys_t), intent(in) :: sys
         type(qmc_in_t), intent(in) :: qmc_in
         type(uccmc_in_t), intent(in) :: uccmc_in
@@ -587,7 +587,7 @@ contains
             qs%estimators%D0_population = real(qs%estimators%D0_population_comp,p)
             qs%estimators%proj_energy = real(qs%estimators%proj_energy_comp,p)
             if (uccmc_in%variational_energy) then
-                call var_energy_uccmc(sys, time_avg_psip_list_ci_states, time_avg_psip_list_ci_pops, nstates_ci, var_energy)
+                call var_energy_uccmc(sys, time_avg_psip_list_ci_states, time_avg_psip_list_ci_pops, nstates_ci, var_energy, real(D0_normalisation,p))
                 !qs%estimators%var_energy = var_energy
             end if 
             if (debug) call write_logging_select_ccmc(logging_info, iter, selection_data)
@@ -667,7 +667,7 @@ contains
         end if
 
         if(uccmc_in%variational_energy) then
-            call var_energy_uccmc(sys, time_avg_psip_list_ci_states, time_avg_psip_list_ci_pops, nstates_ci, var_energy)
+            call var_energy_uccmc(sys, time_avg_psip_list_ci_states, time_avg_psip_list_ci_pops, nstates_ci, var_energy, real(D0_normalisation,p))
             print*, 'Variational energy: ', var_energy
         end if 
         
@@ -1883,7 +1883,7 @@ contains
         use basis_types, only: basis_t
         use qmc_data, only: qmc_state_t
         use sort, only: qsort
-        use uccmc, only: add_info_str_trot
+        use uccmc_utils, only: add_info_str_trot
 
         type(basis_t), intent(in) :: basis
         type(qmc_state_t), intent(inout) :: qs
@@ -1900,45 +1900,6 @@ contains
         end associate
 
     end subroutine regenerate_trot_info_psip_list
-    subroutine regenerate_trot_info_psip_list_alt(basis, nel, qs)
-
-        ! Regenerates excitation level and lowest unoccupied orbital information
-        ! stored at start of bit string within states in psip list.
-        ! For use when restarting from a restart file
-        ! not containing this information.
-        ! Also sorts the list, as ordering will change.
-        ! Hashing only uses nbasis bits, so should be unaffected by the additional
-        ! information at the start of the bit string.
-        ! [todo] figure out a way to double check this is the case.
-
-        ! In:
-        !   basis: information on single-particle basis in use.
-        !   nel: number of electrons in the system
-        ! In/Out:
-        !   qmc_state: information on current state of calculation. We update and
-        !       reorder the bit strings within the psip list, using the reference
-        !       determinant bit string stored within qs%ref%f0.
-
-        use basis_types, only: basis_t
-        use qmc_data, only: qmc_state_t
-        use sort, only: qsort
-        use uccmc, only: add_info_str_trot_alt
-
-        type(basis_t), intent(in) :: basis
-        type(qmc_state_t), intent(inout) :: qs
-        integer, intent(in) :: nel
-
-        integer :: istate
-
-        do istate = 1, qs%psip_list%nstates
-            call add_info_str_trot_alt(basis, qs%ref%f0, nel, qs%psip_list%states(:,istate))
-        end do
-
-        associate(pl=>qs%psip_list)
-             call qsort(pl%nstates, pl%states, pl%pops, pl%dat)
-        end associate
-
-    end subroutine regenerate_trot_info_psip_list_alt
 
     pure function bit_str_cmp_trot(b1, b2) result(cmp)
 
