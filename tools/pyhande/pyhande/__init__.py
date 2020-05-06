@@ -13,6 +13,7 @@ submodule for more details.
 # For convenience, import all submodules so the user need only import pyhande.
 import pyhande.analysis
 import pyhande.canonical
+import pyhande.data_preparing
 import pyhande.error_analysing
 import pyhande.extract
 import pyhande.extracting
