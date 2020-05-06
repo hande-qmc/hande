@@ -213,10 +213,13 @@ contains
             if (qmc_in%quasi_newton_threshold < 0.0_p) then ! Not set by user, use auto value.
                 ! Assume that fock values are ordered and that the number of basis functions is bigger than the number
                 ! of electrons!
-                write (error_unit,'(1X,"# Warning in init_qmc: Doing quasi_newton with quasi_newton_threshold not supplied. &
-                    &It is now estimated using (a multiple of) the difference in sp_fock energies of spinorbitals &
-                    &at",'//int_fmt(sys%nel,1)//', " and",'//int_fmt(sys%nel+1,1)//', ". If these are not HOMO and LUMO, &
-                    &specify quasi_newton_threshold directly.", /)') sys%nel, sys%nel+1
+                if (parent) then
+                    write (error_unit,'(1X,"# Warning in init_qmc: Doing quasi_newton with quasi_newton_threshold not supplied. &
+                        &It is now estimated using (a multiple of) the difference in sp_fock energies of the basis functions at &
+                        &indices (if CAS specified, then after freezing)",'//int_fmt(sys%nel,1)//', " &
+                        &and",'//int_fmt(sys%nel+1,1)//', ". If these are not HOMO and LUMO, specify quasi_newton_threshold &
+                        &directly.", /)') sys%nel, sys%nel+1
+                end if
                 qmc_state%propagator%quasi_newton_threshold = &
                     qmc_state%propagator%sp_fock(sys%nel+1) - qmc_state%propagator%sp_fock(sys%nel)
                 if (sys%system == ueg) then
