@@ -107,6 +107,12 @@ contains
             call stop_all(this, &
                 'Flipping the reference state will give a state which has a different value of Ms and so cannot be used here.')
         end if
+        
+#ifndef PARALLEL
+        if (fciqmc_in%non_blocking_comm) then
+            call stop_all(this, 'Non-blocking comms can only be used with MPI parallelisation.')
+        end if
+#endif
 
         if (fciqmc_in%non_blocking_comm .and. sys%read_in%comp) then
             call stop_all(this, &
