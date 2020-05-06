@@ -68,6 +68,8 @@ contains
         use parallel, only: parent
         use hamiltonian_ueg, only: calc_fock_values_3d_ueg
         use determinants, only: sum_fock_values_occ_list
+        use, intrinsic :: iso_fortran_env, only: error_unit
+        use utils, only: int_fmt
 
 
         type(sys_t), intent(in) :: sys
@@ -207,18 +209,27 @@ contains
             '(1X, "# Finishing the excitation generator initialisation, time taken:",1X,es17.10)') set_up_time
 
         qmc_state%propagator%quasi_newton = qmc_in%quasi_newton
-        if (qmc_in%quasi_newton_threshold < 0.0_p) then ! Not set by user, use auto value.
-            ! Assume that fock values are ordered and that the number of basis functions is bigger than the number
-            ! of electrons!
-            qmc_state%propagator%quasi_newton_threshold = &
-                qmc_state%propagator%sp_fock(sys%nel+1) - qmc_state%propagator%sp_fock(sys%nel)
-            if (sys%system == ueg) then
-                ! Know that by symmetry, the sum of Fock values of ref det to next excited det is twice the HOMO LUMO gap.
-                ! Ignore symmetry for the other systems for now...
-                qmc_state%propagator%quasi_newton_threshold = 2.0_p*qmc_state%propagator%quasi_newton_threshold
+        if (qmc_in%quasi_newton) then
+            if (qmc_in%quasi_newton_threshold < 0.0_p) then ! Not set by user, use auto value.
+                ! Assume that fock values are ordered and that the number of basis functions is bigger than the number
+                ! of electrons!
+                if (parent) then
+                    write (error_unit,'(1X,"# Warning in init_qmc: Doing quasi_newton with quasi_newton_threshold not supplied. &
+                        &It is now estimated using (a multiple of) the difference in sp_fock energies of the basis functions at &
+                        &indices (if CAS specified, then after freezing)",'//int_fmt(sys%nel,1)//', " &
+                        &and",'//int_fmt(sys%nel+1,1)//', ". If these are not HOMO and LUMO, specify quasi_newton_threshold &
+                        &directly.", /)') sys%nel, sys%nel+1
+                end if
+                qmc_state%propagator%quasi_newton_threshold = &
+                    qmc_state%propagator%sp_fock(sys%nel+1) - qmc_state%propagator%sp_fock(sys%nel)
+                if (sys%system == ueg) then
+                    ! Know that by symmetry, the sum of Fock values of ref det to next excited det is twice the HOMO LUMO gap.
+                    ! Ignore symmetry for the other systems for now...
+                    qmc_state%propagator%quasi_newton_threshold = 2.0_p*qmc_state%propagator%quasi_newton_threshold
+                end if
+            else
+                qmc_state%propagator%quasi_newton_threshold = qmc_in%quasi_newton_threshold
             end if
-        else
-            qmc_state%propagator%quasi_newton_threshold = qmc_in%quasi_newton_threshold
         end if
         qmc_state%propagator%quasi_newton_value = qmc_in%quasi_newton_value
         ! Need to ensure we end up with a sensible value of shift damping to use.
