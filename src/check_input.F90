@@ -107,6 +107,12 @@ contains
             call stop_all(this, &
                 'Flipping the reference state will give a state which has a different value of Ms and so cannot be used here.')
         end if
+        
+#ifndef PARALLEL
+        if (fciqmc_in%non_blocking_comm) then
+            call stop_all(this, 'Non-blocking comms can only be used with MPI parallelisation.')
+        end if
+#endif
 
         if (fciqmc_in%non_blocking_comm .and. sys%read_in%comp) then
             call stop_all(this, &
@@ -138,7 +144,7 @@ contains
         use qmc_data, only: qmc_in_t, qmc_state_t, excit_gen_heat_bath, excit_gen_no_renorm_spin, excit_gen_renorm_spin, &
                             excit_gen_power_pitzer, excit_gen_cauchy_schwarz_occ, excit_gen_cauchy_schwarz_occ_ij, fciqmc_in_t
         use errors, only: stop_all, warning
-        use system, only: sys_t, read_in
+        use system, only: sys_t, chung_landau, hub_k, hub_real, read_in, ringium, ueg
         use const, only: p
 
         type(qmc_in_t), intent(in) :: qmc_in
@@ -215,6 +221,29 @@ contains
         if ((sys%read_in%comp) .and. ((qmc_in%excit_gen == excit_gen_cauchy_schwarz_occ) .or. &
             (qmc_in%excit_gen == excit_gen_cauchy_schwarz_occ_ij))) then
             call stop_all(this, 'Complex calculations not implemented with Uniform/Heat Bath Cauchy Schwarz yet.')
+        end if
+
+        if ((qmc_in%quasi_newton) .and. (sys%system /= read_in)) then
+            if (sys%system == ueg) then
+                if (sys%lattice%ndim /= 3) then
+                    ! Currently only works if 3D!
+                    call stop_all(this, 'Only the 3D UEG and read_in systems may use the proper Fock energies needed for &
+                        &Quasi-Newton currently. Do not use Quasi-Newton for this system.')
+                end if
+            else if ((sys%system == hub_k) .or. (sys%system == hub_real) .or. (sys%system == chung_landau) .or. &
+                (sys%system == ringium)) then
+                ! Probably wrong Fock energies but leave it up to user.
+                call warning(this, 'Only the 3D UEG and read_in systems may use the proper Fock energies needed for &
+                    &Quasi-Newton currently. Do not use Quasi-Newton for this system unless you are sure what you are doing!')
+            else
+                call stop_all(this, 'Quasi-Newton, which needs values of the Fock matrix, probably does not work with the &
+                    &specified system. If you disagree, disable this error for that system.')
+            end if
+        end if
+
+        if ((qmc_in%quasi_newton) .and. .not.(sys%nel < sys%basis%nbasis)) then
+            call stop_all(this, 'Quasi-Newton requires (and only makes sense) when the number of electrons is less than the &
+                &number of spinorbitals.')
         end if
 
     end subroutine check_qmc_opts

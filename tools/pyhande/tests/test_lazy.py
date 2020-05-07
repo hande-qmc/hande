@@ -3,26 +3,27 @@ import unittest
 import warnings
 import copy
 import pandas as pd
+import numpy as np
 import pyhande.lazy as lazy
-from create_dummy_df import _CreateDummyDfs
+import create_mock_df
 
 
 class TestFindStartingIterationMserMin(unittest.TestCase):
     """Test lazy.find_starting_iteration_mser_min."""
 
     def setUp(self):
-        # Create dummy qmc dataframe:
-        create_dummy = _CreateDummyDfs(769)
+        # Create mock qmc dataframe:
+        rng = np.random.default_rng(769)
         cols = [
             r'\sum H_0j N_j', 'N_0', 'Shift', 'Proj. Energy', 'alt1', 'alt2'
-            ]
+        ]
         means = [-231.0, 10.0, -2.3, -2.3, 1000004, 0.0002]
-        sineTs = [4, 2, 6, 2, 6, 7]
+        sine_periods = [4, 2, 6, 2, 6, 7]
         noise_facs = [0.1*mean for mean in means]
-        self.data = create_dummy.create_qmc_frame(
-            cols, means, sineTs, noise_facs,
+        self.data = create_mock_df.create_qmc_frame(
+            rng, cols, means, sine_periods, noise_facs,
             frac_not_convergeds=[0.33333 for _ in range(5)], num_mc_its=300
-            )
+        )
         iterations = pd.DataFrame(list(range(1, 1501, 5)),
                                   columns=['iterations'])
         self.data = pd.concat([iterations, self.data], axis=1)
@@ -80,18 +81,18 @@ class TestLazyHybrid(unittest.TestCase):
     """Test lazy.lazy_hybrid()."""
 
     def setUp(self):
-        # Create dummy reblock dataframe:
-        create_dummy = _CreateDummyDfs(9843)
+        # Create mock reblock dataframe:
+        rng = np.random.default_rng(9843)
         cols = [
             r'\sum H_0j N_j', 'N_0', 'Shift', 'Proj. Energy', 'alt1', 'alt2'
-            ]
+        ]
         means = [-231.0, 10.0, -2.3, -2.3, 1000004, 0.0002]
-        sineTs = [4, 2, 6, 2, 6, 7]
+        sine_periods = [4, 2, 6, 2, 6, 7]
         noise_facs = [0.1*mean for mean in means]
-        self.data = create_dummy.create_qmc_frame(
-            cols, means, sineTs, noise_facs,
+        self.data = create_mock_df.create_qmc_frame(
+            rng, cols, means, sine_periods, noise_facs,
             frac_not_convergeds=[0.33333 for _ in range(5)], num_mc_its=300
-            )
+        )
         iterations = pd.DataFrame(list(range(1, 1501, 5)),
                                   columns=['iterations'])
         self.data = pd.concat([iterations, self.data], axis=1)
@@ -100,38 +101,44 @@ class TestLazyHybrid(unittest.TestCase):
     def test_basic_input(self):
         """Test basic input."""
         info = lazy.lazy_hybrid(self.data, self.md)
-        opt_block_dummy = pd.DataFrame(
+        opt_block_exp = pd.DataFrame(
             [[-1.970565, 0.25349, None, '-2.0(3)']], columns=[
                 'mean', 'standard error', 'standard error error', 'estimate'
-                ], index=['Proj. Energy'])
-        pd.testing.assert_frame_equal(opt_block_dummy, info.opt_block)
+            ], index=['Proj. Energy'])
+        pd.testing.assert_frame_equal(opt_block_exp, info.opt_block)
 
     def test_start(self):
         """Test start parameter.  Set to close to one found above."""
         info = lazy.lazy_hybrid(self.data, self.md, start=500)
-        opt_block_dummy = pd.DataFrame(
+        opt_block_exp = pd.DataFrame(
             [[-2.25758, 0.0241037, None, '-2.26(2)']], columns=[
                 'mean', 'standard error', 'standard error error', 'estimate'
-                ], index=['Proj. Energy'])
-        pd.testing.assert_frame_equal(opt_block_dummy, info.opt_block)
+            ], index=['Proj. Energy'])
+        pd.testing.assert_frame_equal(opt_block_exp, info.opt_block)
 
     def test_end(self):
         """Test end parameter.  Set to close to one found above."""
         info = lazy.lazy_hybrid(self.data, self.md, end=1023)
-        opt_block_dummy = pd.DataFrame(
+        opt_block_exp = pd.DataFrame(
             [[-1.81619, 0.314786, None, '-1.8(3)']], columns=[
                 'mean', 'standard error', 'standard error error', 'estimate'
-                ], index=['Proj. Energy'])
-        pd.testing.assert_frame_equal(opt_block_dummy, info.opt_block)
+            ], index=['Proj. Energy'])
+        pd.testing.assert_frame_equal(opt_block_exp, info.opt_block)
 
     def test_batch_size(self):
         """Test batch_size parameter."""
         info = lazy.lazy_hybrid(self.data, self.md, batch_size=6)
-        opt_block_dummy = pd.DataFrame(
+        opt_block_exp = pd.DataFrame(
             [[-1.970565, 0.30242585, None, '-2.0(3)']], columns=[
                 'mean', 'standard error', 'standard error error', 'estimate'
-                ], index=['Proj. Energy'])
-        pd.testing.assert_frame_equal(opt_block_dummy, info.opt_block)
+            ], index=['Proj. Energy'])
+        pd.testing.assert_frame_equal(opt_block_exp, info.opt_block)
+
+    def test_no_opt_block_col(self):
+        """Test no opt block - also features replica tricks _1 add."""
+        info = lazy.lazy_hybrid(self.data, self.md)
+        no_opt_exp = ['N_0', 'Shift', '# H psips_1', '\\sum H_0j N_j']
+        self.assertListEqual(no_opt_exp, info.no_opt_block)
 
     def test_unchanged_mutable(self):
         """Check that mutable objects, such as pd DataFrames, don't
@@ -156,7 +163,7 @@ class TestStdAnalysis(unittest.TestCase):
     def test_basic_input(self):
         """Test basic input."""
         infos = lazy.std_analysis(
-            ['hande_files/long_calc_ueg.out'], verbosity=-1)
+            ['tests/hande_files/long_calc_ueg.out'], verbosity=-1)
         # Length of list.
         self.assertEqual(len(infos), 1)
         info = infos[0]
@@ -167,7 +174,7 @@ class TestStdAnalysis(unittest.TestCase):
             'non_blocking_comm': False, 'doing_load_balancing': False,
             'trial_function': 'single_basis', 'guiding_function': 'none',
             'quadrature_initiator': True, 'replica_tricks': False
-            }
+        }
         self.assertDictEqual(info.metadata['fciqmc'], meta_fciqmc)
         meta_pyhande = {'reblock_start': 3736}
         self.assertDictEqual(info.metadata['pyhande'], meta_pyhande)
@@ -176,26 +183,26 @@ class TestStdAnalysis(unittest.TestCase):
             4.34000000e+03, -2.42034087e-01, -3.88598174e+01, 1.36800000e+02,
             1.18000000e+04, 1.11860000e+04, 1.21700000e+03, 9.33000000e-02,
             7.60000000e-03, -2.84062993e-01
-            ], index=[
-                'iterations', 'Shift', r'\sum H_0j N_j', 'N_0', '# H psips',
-                '# states', '# spawn_events', 'R_spawn', 'time',
-                'Proj. Energy'
-            ], name=433)
+        ], index=[
+            'iterations', 'Shift', r'\sum H_0j N_j', 'N_0', '# H psips',
+            '# states', '# spawn_events', 'R_spawn', 'time',
+            'Proj. Energy'
+        ], name=433)
         pd.testing.assert_series_equal(info.data.loc[433], data_it_4340)
         # .data_len
-        data_len_dummy = pd.Series(
+        data_len_exp = pd.Series(
             [2627, 1313, 656, 328, 164, 82, 41, 20, 10, 5, 2],
             name='data length')
-        data_len_dummy.index.name = 'reblock'
-        pd.testing.assert_series_equal(info.data_len, data_len_dummy)
+        data_len_exp.index.name = 'reblock'
+        pd.testing.assert_series_equal(info.data_len, data_len_exp)
         # .reblock
         reblock_shift_loc8 = pd.Series([
             -0.2735138312473437, 0.0034409665708355465, 0.0008110435986913453,
             '<---    '
-            ], index=[
-                'mean', 'standard error', 'standard error error',
-                'optimal block'
-            ], name=8)
+        ], index=[
+            'mean', 'standard error', 'standard error error',
+            'optimal block'
+        ], name=8)
         pd.testing.assert_series_equal(
             info.reblock['Shift'].loc[8], reblock_shift_loc8)
         # .covariance
@@ -222,10 +229,10 @@ class TestStdAnalysis(unittest.TestCase):
         possibly the time.
         """
         infos_one = lazy.std_analysis(
-            ['hande_files/long_calc_ueg.out'], verbosity=-1)
+            ['tests/hande_files/long_calc_ueg.out'], verbosity=-1)
         infos_two = lazy.std_analysis(
-            ['hande_files/long_calc_split1_ueg.out',
-             'hande_files/long_calc_split2_ueg.out'], verbosity=-1)
+            ['tests/hande_files/long_calc_split1_ueg.out',
+             'tests/hande_files/long_calc_split2_ueg.out'], verbosity=-1)
         self.assertEqual(len(infos_two), 1)
         data_one_notime = infos_one[0].data.drop(columns=['time'])
         data_two_notime = infos_two[0].data.drop(columns=['time'])
@@ -245,8 +252,8 @@ class TestStdAnalysis(unittest.TestCase):
     def test_multiple(self):
         """Test analysing two different calculations at once."""
         infos = lazy.std_analysis(
-            ['hande_files/long_calc_ueg.out',
-             'hande_files/long_calc_split2_ueg.out'], verbosity=-1)
+            ['tests/hande_files/long_calc_ueg.out',
+             'tests/hande_files/long_calc_split2_ueg.out'], verbosity=-1)
         self.assertEqual(len(infos), 2)
         # Sample test the first calculation.
         opt_block_proje = pd.Series(
@@ -265,15 +272,25 @@ class TestStdAnalysis(unittest.TestCase):
         pd.testing.assert_series_equal(
             infos[1].opt_block.loc['Proj. Energy'], opt_block_proje)
 
+    def test_replica_tricks(self):
+        """Test analysing file with replica tricks."""
+        infos = lazy.std_analysis(
+            ['tests/hande_files/replica_ueg.out'], verbosity=-1, start=0)
+        # Note that since read in file has very little data, can only compare
+        # no_opt_block and have to specify start.
+        no_opt_block_exp = ['\\sum H_0j N_j_1',
+                            'N_0_1', 'Shift_1', 'Proj. Energy']
+        self.assertListEqual(infos[0].no_opt_block, no_opt_block_exp)
+
     def test_fci(self):
         """Test FCI.  Not to be analysed here!"""
         self.assertRaises(
-            ValueError, lazy.std_analysis, ['hande_files/fci_ueg.out'])
+            ValueError, lazy.std_analysis, ['tests/hande_files/fci_ueg.out'])
 
     def test_start(self):
         """Test start parameter."""
         infos = lazy.std_analysis(
-            ['hande_files/long_calc_ueg.out'], start=12000, verbosity=-1)
+            ['tests/hande_files/long_calc_ueg.out'], start=12000, verbosity=-1)
         # .metadata
         meta_pyhande = {'reblock_start': 12000}
         self.assertDictEqual(infos[0].metadata['pyhande'], meta_pyhande)
@@ -288,7 +305,7 @@ class TestStdAnalysis(unittest.TestCase):
     def test_end(self):
         """Test end parameter."""
         infos = lazy.std_analysis(
-            ['hande_files/long_calc_ueg.out'], end=4400, verbosity=-1)
+            ['tests/hande_files/long_calc_ueg.out'], end=4400, verbosity=-1)
         # .metadata
         meta_pyhande = {'reblock_start': 3579}
         self.assertDictEqual(infos[0].metadata['pyhande'], meta_pyhande)
@@ -300,7 +317,7 @@ class TestStdAnalysis(unittest.TestCase):
         Similar to the example in docstring.
         """
         infos = lazy.std_analysis(
-            ['hande_files/long_calc_ueg.out'],
+            ['tests/hande_files/long_calc_ueg.out'],
             select_function=lambda d: d['iterations'] > 12000, verbosity=-1)
         # .metadata
         warnings.warn(
@@ -317,7 +334,7 @@ class TestStdAnalysis(unittest.TestCase):
     def test_extract_psips(self):
         """Test extract_psips parameter."""
         infos = lazy.std_analysis(
-            ['hande_files/long_calc_ueg.out'], extract_psips=True,
+            ['tests/hande_files/long_calc_ueg.out'], extract_psips=True,
             verbosity=-1)
         # .metadata
         meta_pyhande = {'reblock_start': 3736}
@@ -326,16 +343,16 @@ class TestStdAnalysis(unittest.TestCase):
         opt_block_psips = pd.Series([
             12584.401953125, 85.35691857330413, 20.118818648123774,
             '12580(90)'
-            ], index=[
-                'mean', 'standard error', 'standard error error', 'estimate'
-            ], name='# H psips')
+        ], index=[
+            'mean', 'standard error', 'standard error error', 'estimate'
+        ], name='# H psips')
         pd.testing.assert_series_equal(
             infos[0].opt_block.loc['# H psips'], opt_block_psips)
 
     def test_reweight_history_mean_shift(self):
         """Test reweight_history and mean_shift parameters."""
         infos = lazy.std_analysis(
-            ['hande_files/long_calc_ueg.out'], reweight_history=3,
+            ['tests/hande_files/long_calc_ueg.out'], reweight_history=3,
             mean_shift=-0.1, verbosity=-1)
         # .reblock
         reblock_wproje_loc8 = pd.Series(
@@ -346,10 +363,10 @@ class TestStdAnalysis(unittest.TestCase):
         # .covariance
         reblock_3_W_N_0 = pd.Series(
             [-38.69204990933227, 148.59408342412507, -0.27500051571542944,
-              -43.852041898078305, 167.62001388833082], index=[
-                  r'\sum H_0j N_j', 'N_0', 'Shift', r'W * \sum H_0j N_j',
-                  'W * N_0'
-                  ], name=(3, 'W * N_0'))
+             -43.852041898078305, 167.62001388833082], index=[
+                 r'\sum H_0j N_j', 'N_0', 'Shift', r'W * \sum H_0j N_j',
+                 'W * N_0'
+            ], name=(3, 'W * N_0'))
         pd.testing.assert_series_equal(
             infos[0].covariance.loc[3, 'W * N_0'], reblock_3_W_N_0)
         # .opt_block
@@ -367,7 +384,7 @@ class TestStdAnalysis(unittest.TestCase):
     def test_reweight_history_arith_mean(self):
         """Test reweight_history and arith_mean parameters."""
         infos = lazy.std_analysis(
-            ['hande_files/long_calc_ueg.out'], reweight_history=3,
+            ['tests/hande_files/long_calc_ueg.out'], reweight_history=3,
             arith_mean=True, verbosity=-1)
         # .reblock
         reblock_wproje_loc8 = pd.Series(
@@ -378,10 +395,10 @@ class TestStdAnalysis(unittest.TestCase):
         # .covariance
         cov_3_W_N_0 = pd.Series(
             [-39.81896416225519, 152.97450543779814, -0.28322030786266594,
-              -46.46286890224775, 177.66923750972612], index=[
-                  r'\sum H_0j N_j', 'N_0', 'Shift', r'W * \sum H_0j N_j',
-                  'W * N_0'
-                  ], name=(3, 'W * N_0'))
+             -46.46286890224775, 177.66923750972612], index=[
+                 r'\sum H_0j N_j', 'N_0', 'Shift', r'W * \sum H_0j N_j',
+                 'W * N_0'
+            ], name=(3, 'W * N_0'))
         pd.testing.assert_series_equal(
             infos[0].covariance.loc[3, 'W * N_0'], cov_3_W_N_0)
         # .opt_block
@@ -401,14 +418,14 @@ class TestStdAnalysis(unittest.TestCase):
         Requires extract_psips.
         """
         infos = lazy.std_analysis(
-            ['hande_files/long_calc_ueg.out'], extract_psips=True,
+            ['tests/hande_files/long_calc_ueg.out'], extract_psips=True,
             calc_inefficiency=True, verbosity=-1)
         # .opt_block
         opt_block_ineff = pd.Series(
             [1.0337627369749376, 0.34460541317375093, None, '1.0(3)'],
             index=[
                 'mean', 'standard error', 'standard error error', 'estimate'
-                ], name='Inefficiency')
+            ], name='Inefficiency')
         pd.testing.assert_series_equal(
             infos[0].opt_block.loc['Inefficiency'], opt_block_ineff)
 
@@ -419,13 +436,13 @@ class TestStdAnalysis(unittest.TestCase):
         self.assertWarnsRegex(
             UserWarning, "Inefficiency not calculated owing to data "
             "unavailable from '# H psips'", lazy.std_analysis,
-            ['hande_files/long_calc_ueg.out'], extract_psips=False,
+            ['tests/hande_files/long_calc_ueg.out'], extract_psips=False,
             calc_inefficiency=True, verbosity=-1)
 
     def test_starts_reweighting(self):
         """Test starts_reweighting parameter."""
         infos = lazy.std_analysis(
-            ['hande_files/long_calc_ueg.out'],
+            ['tests/hande_files/long_calc_ueg.out'],
             starts_reweighting=[7634, 11000], verbosity=-1)
         # .metadata
         meta_pyhande = {'reblock_start': 7634}
@@ -442,8 +459,8 @@ class TestStdAnalysis(unittest.TestCase):
     def test_extract_rep_loop_time(self):
         """Test extract_rep_loop_time parameter."""
         infos = lazy.std_analysis(
-            ['hande_files/long_calc_ueg.out'], extract_rep_loop_time=True,
-            verbosity=-1)
+            ['tests/hande_files/long_calc_ueg.out'],
+            extract_rep_loop_time=True, verbosity=-1)
         # .metadata
         meta_pyhande = {'reblock_start': 3736}
         self.assertDictEqual(infos[0].metadata['pyhande'], meta_pyhande)
@@ -451,16 +468,16 @@ class TestStdAnalysis(unittest.TestCase):
         opt_block_psips = pd.Series([
             0.008899375, 0.0002561202535778128, 4.1548191515764066e-05,
             '0.0089(3)'
-            ], index=[
-                'mean', 'standard error', 'standard error error', 'estimate'
-            ], name='time')
+        ], index=[
+            'mean', 'standard error', 'standard error error', 'estimate'
+        ], name='time')
         pd.testing.assert_series_equal(
             infos[0].opt_block.loc['time'], opt_block_psips)
 
     def test_analysis_method(self):
         """Test analysis_method parameter."""
         infos = lazy.std_analysis(
-            ['hande_files/long_calc_ueg.out'], analysis_method='hybrid',
+            ['tests/hande_files/long_calc_ueg.out'], analysis_method='hybrid',
             verbosity=-1)
         # .metadata
         meta_pyhande = {'reblock_start': 3736}
@@ -477,15 +494,15 @@ class TestStdAnalysis(unittest.TestCase):
     def test_analysis_method_error(self):
         """Test analysis_method parameter.  Wrong input."""
         self.assertRaises(
-            AssertionError, lazy.std_analysis,
-            ['hande_files/long_calc_ueg.out'], analysis_method='test',
+            ValueError, lazy.std_analysis,
+            ['tests/hande_files/long_calc_ueg.out'], analysis_method='test',
             verbosity=-1)
 
     def test_warmup_detection(self):
         """Test warmup_detection parameter."""
         infos = lazy.std_analysis(
-            ['hande_files/long_calc_ueg.out'], warmup_detection='mser_min',
-            verbosity=-1)
+            ['tests/hande_files/long_calc_ueg.out'],
+            warmup_detection='mser_min', verbosity=-1)
         # .metadata
         meta_pyhande = {'reblock_start': 1350}
         self.assertDictEqual(infos[0].metadata['pyhande'], meta_pyhande)
@@ -501,8 +518,8 @@ class TestStdAnalysis(unittest.TestCase):
     def test_warmup_detection_error(self):
         """Test warmup_detection parameter.  Wrong input."""
         self.assertRaises(
-            AssertionError, lazy.std_analysis,
-            ['hande_files/long_calc_ueg.out'], warmup_detection='test',
+            ValueError, lazy.std_analysis,
+            ['tests/hande_files/long_calc_ueg.out'], warmup_detection='test',
             verbosity=-1)
 
 
@@ -512,19 +529,19 @@ class TestFindStartingIteration(unittest.TestCase):
     """
 
     def setUp(self):
-        # Create dummy qmc dataframe:
-        create_dummy = _CreateDummyDfs(33687)
+        # Create mock qmc dataframe:
+        rng = np.random.default_rng(33687)
         cols = [
             r'\sum H_0j N_j', 'N_0', 'Shift', 'Proj. Energy', '# H psips',
             'alt1'
-            ]
+        ]
         means = [-231.0, 10.0, -2.3, -2.3, 1000004, 0.0002]
-        sineTs = [4, 2, 6, 2, 6, 7]
+        sine_periods = [4, 2, 6, 2, 6, 7]
         noise_facs = [0.1*mean for mean in means]
-        self.data = create_dummy.create_qmc_frame(
-            cols, means, sineTs, noise_facs,
+        self.data = create_mock_df.create_qmc_frame(
+            rng, cols, means, sine_periods, noise_facs,
             frac_not_convergeds=[0.33333 for _ in range(5)], num_mc_its=300
-            )
+        )
         iterations = pd.DataFrame(list(range(1, 1501, 5)),
                                   columns=['iterations'])
         self.data = pd.concat([iterations, self.data], axis=1)

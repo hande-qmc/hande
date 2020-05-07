@@ -44,7 +44,7 @@ contains
 
         use bloom_handler, only: init_bloom_stats_t, bloom_mode_fixedn, bloom_stats_warning, &
                                  bloom_stats_t, accumulate_bloom_stats, write_bloom_report
-        use determinants, only: alloc_det_info_t, dealloc_det_info_t, sum_sp_eigenvalues_occ_list
+        use determinants, only: alloc_det_info_t, dealloc_det_info_t, sum_fock_values_occ_list
         use determinant_data, only: det_info_t
         use excitations, only: excit_t, create_excited_det, get_excitation
         use annihilation, only: direct_annihilation, direct_annihilation_received_list, &
@@ -162,6 +162,7 @@ contains
             qmc_in_loc%pattempt_double = qs%excit_gen_data%pattempt_double
             qmc_in_loc%shift_damping = qs%shift_damping
             qmc_in_loc%pattempt_parallel = qs%excit_gen_data%pattempt_parallel
+            qmc_in_loc%quasi_newton_threshold = qs%propagator%quasi_newton_threshold
             call qmc_in_t_json(js, qmc_in_loc)
             call fciqmc_in_t_json(js, fciqmc_in)
             call semi_stoch_in_t_json(js, semi_stoch_in)
@@ -274,7 +275,7 @@ contains
                     call decoder_ptr(sys, cdet%f, cdet, qs%excit_gen_data)
                     
                     if (qs%propagator%quasi_newton) &
-                        cdet%fock_sum = sum_sp_eigenvalues_occ_list(sys, cdet%occ_list) - qs%ref%fock_sum
+                        cdet%fock_sum = sum_fock_values_occ_list(sys, qs%propagator%sp_fock, cdet%occ_list) - qs%ref%fock_sum
 
                     do ispace = 1, qs%psip_list%nspaces
                         ! Extract the real sign from the encoded sign.
@@ -461,7 +462,7 @@ contains
 
         use proc_pointers, only: sc0_ptr
         use death, only: stochastic_death
-        use determinants, only: sum_sp_eigenvalues_occ_list
+        use determinants, only: sum_fock_values_occ_list
         use determinant_data, only: det_info_t
         use dSFMT_interface, only: dSFMT_t
         use excitations, only: excit_t, get_excitation
@@ -510,7 +511,8 @@ contains
             cdet%data(1) = sc0_ptr(sys, cdet%f) - qs%ref%H00
 
             call decoder_ptr(sys, cdet%f, cdet, qs%excit_gen_data)
-            if (qs%propagator%quasi_newton) cdet%fock_sum = sum_sp_eigenvalues_occ_list(sys, cdet%occ_list) - qs%ref%fock_sum
+            if (qs%propagator%quasi_newton) cdet%fock_sum = sum_fock_values_occ_list(sys, qs%propagator%sp_fock, cdet%occ_list) &
+                - qs%ref%fock_sum
 
             ! Is this determinant an initiator?
             ! [todo] - pass determ_flag rather than 1.

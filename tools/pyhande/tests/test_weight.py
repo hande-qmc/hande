@@ -4,16 +4,16 @@ import warnings
 import numpy as np
 import pandas as pd
 import pyhande.weight as weight
-from create_dummy_df import _CreateDummyDfs
+import create_mock_df
 
 
 class TestReweight(unittest.TestCase):
     """Test weight.reweight."""
 
     def setUp(self):
-        create_dummy = _CreateDummyDfs(248451)
-        self.data = create_dummy.create_qmc_frame(
-            ['Shift', 'Alt'], [-1.3, -1.0], [12.0, 7.0], [0.1, 0.05])
+        rng = np.random.default_rng(248451)
+        self.data = create_mock_df.create_qmc_frame(
+            rng, ['Shift', 'Alt'], [-1.3, -1.0], [12.0, 7.0], [0.1, 0.05])
 
     def test_basic_input(self):
         """Test basic input."""
@@ -85,7 +85,7 @@ class TestReweight(unittest.TestCase):
         """tstep == 0."""
         (mc_cycles, tstep, weight_history, mean_shift) = (10, 0.0, 20, -0.1)
         self.assertRaises(
-            AssertionError, weight.reweight, self.data, mc_cycles, tstep,
+            ValueError, weight.reweight, self.data, mc_cycles, tstep,
             weight_history, mean_shift
         )
 
@@ -93,7 +93,7 @@ class TestReweight(unittest.TestCase):
         """mc_cycles < 0."""
         (mc_cycles, tstep, weight_history, mean_shift) = (-10, 0.01, 20, -0.1)
         self.assertRaises(
-            AssertionError, weight.reweight, self.data, mc_cycles, tstep,
+            ValueError, weight.reweight, self.data, mc_cycles, tstep,
             weight_history, mean_shift)
 
     def test_unchanged_mutable(self):
@@ -155,12 +155,12 @@ class TestArithSeries(unittest.TestCase):
         """tstep == 0."""
         (tstep, mc_cycles, weight_now, weight_before) = (0.0, 10, -0.1, 0.2)
         self.assertRaises(
-            AssertionError, weight.arith_series, tstep, mc_cycles, weight_now,
+            ValueError, weight.arith_series, tstep, mc_cycles, weight_now,
             weight_before)
 
     def test_neg_mc_cycles(self):
         """mc_cycles < 0."""
         (tstep, mc_cycles, weight_now, weight_before) = (0.01, -10, -0.1, 0.2)
         self.assertRaises(
-            AssertionError, weight.arith_series, tstep, mc_cycles, weight_now,
+            ValueError, weight.arith_series, tstep, mc_cycles, weight_now,
             weight_before)
