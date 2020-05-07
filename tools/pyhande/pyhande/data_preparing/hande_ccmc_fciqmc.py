@@ -91,26 +91,41 @@ class PrepareHandeCcmcFciqmc(AbsDataPreparator):
             raise
 
     @staticmethod
-    def _gen_replica_col(col_key: str, replica_id: int) -> str:
-        """Takes column key and replica_id and creates replica column.
+    def _replica_ending(replica_id: int) -> str:
+        """Defines replica's ending.
 
         Parameters
         ----------
-        col_key : str
-            Name of column.
         replica_id : int
             ID of replica, i.e. first one has 0, next 1, etc.
 
         Returns
         -------
         str
-            transformed `col_key` for that replica.
+            replica ending
         """
-        return col_key+"_"+str(replica_id)
+        return "_"+str(replica_id)
 
     @staticmethod
-    def _gen_complex_cols(col_key: str) -> Dict[str, str]:
-        """Parses columns key in, returns real and imag col keys.
+    def _curly_wrapper(string_to_add: str, col_key: str) -> str:
+        """Wrap `col_key` in `string_to_add{col_key}`.
+
+        Parameters
+        ----------
+        string_to_add : str
+            String before curly brackets.
+        col_key : str
+            Name of column.
+
+        Returns
+        -------
+        str
+            Name of wrapped column.
+        """
+        return string_to_add + "{" + col_key + "}"
+
+    def _re_cols(self, col_key: str) -> str:
+        """Wrap `col_key` in `Re{col_key}`.
 
         Parameters
         ----------
@@ -119,10 +134,25 @@ class PrepareHandeCcmcFciqmc(AbsDataPreparator):
 
         Returns
         -------
-        Dict[str, str]
-            Real and imaginary version of `col_key`.
+        str
+            Name of wrapped column.
         """
-        return {'real': 'Re{'+col_key+'}', 'imag': 'Im{'+col_key+'}'}
+        return self._curly_wrapper('Re', col_key)
+
+    def _im_cols(self, col_key: str) -> str:
+        """Wrap `col_key` in `Im{col_key}`.
+
+        Parameters
+        ----------
+        col_key : str
+            Name of column.
+
+        Returns
+        -------
+        str
+            Name of wrapped column.
+        """
+        return self._curly_wrapper('Im', col_key)
 
     def _add_replica_grouping(self, max_replica_id: int) -> None:
         """Add extra column for replica id which can be grouped by.
@@ -143,17 +173,18 @@ class PrepareHandeCcmcFciqmc(AbsDataPreparator):
                     }), self.data[i]
                 ], axis=1)
                 cols_to_drop = [
-                    self._gen_replica_col(col_name, rep_id)
+                    col
                     for rep_id in list(range(1, max_replica_id+1))
-                    for _, col_name in self.observables.items()
-                    if (self._gen_replica_col(col_name, rep_id) in dat and
-                        rep_id != replica_id)
+                    for col in dat.columns
+                    if (rep_id != replica_id and
+                        col.endswith(self._replica_ending(rep_id)))
                 ]
                 dat.drop(columns=cols_to_drop, inplace=True)
                 dat.rename(
                     columns={
-                        self._gen_replica_col(col_name, replica_id): col_name
-                        for _, col_name in self.observables.items()
+                        col: col[:-len(self._replica_ending(replica_id))]
+                        for col in dat.columns
+                        if col.endswith(self._replica_ending(replica_id))
                     }, inplace=True
                 )
                 replica_dats.append(dat)
@@ -171,22 +202,18 @@ class PrepareHandeCcmcFciqmc(AbsDataPreparator):
         gets changed to df with two columns `replica id` and `cols` with
         two rows, one for each of the two replicas.
         """
-        # Assume `ref_key` would be affected and assume
-        # Then add extra column for i so that replicas can be groupedby.
-        if any(self._gen_replica_col(self.observables['ref_key'], 1)
-               in dat for dat in self.data):
+        # If replica:
+        # Add extra column for i so that replicas can be groupedby.
+        if any(col.endswith(self._replica_ending(1)) for dat in self.data
+               for col in dat.columns):
             # Find highest replica_id.
             max_id = 0
-            while (any(
-                self._gen_replica_col(self.observables['ref_key'], max_id+1)
-                in dat for dat in self.data
-            )):
+            while (any(col.endswith(self._replica_ending(max_id+1))
+                       for dat in self.data for col in dat.columns)):
                 max_id += 1
             # Check that this highest replica_id exist in all data.
-            if not all(
-                    self._gen_replica_col(self.observables['ref_key'],
-                                          max_id) in dat for dat in self.data
-            ):
+            if not (all(any(col.endswith(self._replica_ending(max_id))
+                            for col in dat.columns) for dat in self.data)):
                 raise ValueError(f"Some but not all data have {max_id} "
                                  "replicas! Make sure that number of replicas "
                                  "is identical!")
@@ -220,19 +247,17 @@ class PrepareHandeCcmcFciqmc(AbsDataPreparator):
         would expect this to be randomly distributed around zero. This
         will however be at best a biased estimator."
         """
-        comp_sum_key = self._gen_complex_cols(self.observables['sum_key'])
-        comp_ref_key = self._gen_complex_cols(self.observables['ref_key'])
         mag_sum_key = "-|"+self.observables['sum_key']+"|"
         mag_ref_key = "|"+self.observables['ref_key']+"|"
         for i in range(len(self._data)):
-            sum_mag_neg = pd.DataFrame(
-                - (self._data[i][comp_sum_key['real']]**2 +
-                   self._data[i][comp_sum_key['imag']]**2),
-                columns=[mag_sum_key])
-            ref_mag = pd.DataFrame(
-                (self._data[i][comp_ref_key['real']]**2 +
-                 self._data[i][comp_ref_key['imag']]**2),
-                columns=[mag_ref_key])
+            sum_mag_neg = pd.DataFrame(-(
+                self._data[i][self._re_cols(self.observables['sum_key'])]**2
+                + self._data[i][self._im_cols(self.observables['sum_key'])]**2
+            )**0.5, columns=[mag_sum_key])
+            ref_mag = pd.DataFrame((
+                self._data[i][self._re_cols(self.observables['ref_key'])]**2
+                + self._data[i][self._im_cols(self.observables['ref_key'])]**2
+            )**0.5, columns=[mag_ref_key])
             self._data[i] = pd.concat(
                 [self._data[i], sum_mag_neg, ref_mag], axis=1)
         self._observables['sum_key'] = mag_sum_key
@@ -245,14 +270,12 @@ class PrepareHandeCcmcFciqmc(AbsDataPreparator):
         Im{key} format. If complex, take (negative) magnitudes and add
         those as columns to each self._data elements respectively.
         """
-        if any(self._gen_complex_cols(self.observables['ref_key'])['real']
-               in dat for dat in self.data):
+        if any(self._re_cols(self.observables['ref_key']) in dat
+               for dat in self.data):
             # Probably complex calculations!
             # Test that all are complex.
-            if not all(
-                    self._gen_complex_cols(self.observables['ref_key'])['real']
-                    in dat for dat in self.data
-            ):
+            if not all(self._re_cols(self.observables['ref_key']) in dat
+                       for dat in self.data):
                 raise ValueError("Some but not all data is complex! Either "
                                  "pass data where all calculations are either "
                                  "complex or not complex.")
@@ -294,6 +317,11 @@ class PrepareHandeCcmcFciqmc(AbsDataPreparator):
         # Replicas?
         # i.e. do we have some repeated columns, same name expect for
         # "_i" at the end where i is in list(range(1,#replicas+1))?
+        # Then add a column denoting the index of the replica, remove
+        # quasi-duplicate columns (only differing by replica id) so that
+        # each row only contains results for one replica. This implies
+        # that the number of rows in each dataframe will double if there
+        # are two replicas for example.
         self._check_add_replica()
 
         # Complex?
