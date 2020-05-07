@@ -298,7 +298,7 @@ We assume only config files are in config_dir.'''
 
 def parse_config(config_file):
     '''Parse the configuration file config_file.'''
-    parser = configparser.SafeConfigParser()
+    parser = configparser.ConfigParser()
 
     valid_sections = ['main', 'opt', 'dbg']
 
@@ -396,7 +396,7 @@ args is the list of arguments which is re-encoded in the make.inc.
 
 @contextlib.contextmanager
 def smart_open(filename=None):
-    if filename and filename is not '-':
+    if filename and filename != '-':
         fh = open(filename, 'w')
     else:
         fh = sys.stdout

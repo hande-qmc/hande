@@ -24,6 +24,7 @@ ccmc {
         state_size = -500,
         spawned_state_size = -200,
         quasi_newton = true,
+        quasi_newton_threshold = 1e-5, 
         shift_damping = 0.3,
         rng_seed= 5,
     },
