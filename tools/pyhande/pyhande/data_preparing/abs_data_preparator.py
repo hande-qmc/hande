@@ -17,11 +17,6 @@ class AbsDataPreparator(metaclass=abc.ABCMeta):
     def data(self) -> List[pd.DataFrame]:
         pass
 
-    @property
-    @abc.abstractmethod
-    def metadata(self) -> List[List[Dict]]:
-        pass
-
     @abc.abstractmethod
     def exe(self):
         pass

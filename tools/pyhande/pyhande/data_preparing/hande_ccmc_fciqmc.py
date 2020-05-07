@@ -23,7 +23,6 @@ class PrepareHandeCcmcFciqmc(AbsDataPreparator):
 
         # Set by .exe()
         self._data: List[pd.DataFrame]
-        self._metadata: List[List[Dict]]
         self._complex_data: bool
         self._replica_tricks: bool
 
@@ -49,28 +48,6 @@ class PrepareHandeCcmcFciqmc(AbsDataPreparator):
         """
         try:
             return self._data
-        except AttributeError:
-            print(self._not_extracted_message)
-            raise
-
-    @property
-    def metadata(self) -> List[List[Dict]]:
-        """Access (prepared) metadata.
-
-        Raises
-        ------
-        AttributeError
-            If metadata has not been prepared yet.
-
-        Returns
-        -------
-        List[List[Dict]]
-            Copy of metadata.  Outer list over (merged) calculations,
-            inner list over calculations in different output files when
-            merged.
-        """
-        try:
-            return self._metadata
         except AttributeError:
             print(self._not_extracted_message)
             raise
@@ -184,8 +161,7 @@ class PrepareHandeCcmcFciqmc(AbsDataPreparator):
                 columns=['Inst. '+self.observables['proje_key']])
             self._data[i] = pd.concat([self._data[i], inst_proje], axis=1)
 
-    def exe(self, data: List[pd.DataFrame], metadata: List[List[Dict]],
-            make_copy: bool = True):
+    def exe(self, data: List[pd.DataFrame], make_copy: bool = True):
         """Prepare data; deal with complex, replica and add inst. proje.
 
         Parameters
@@ -194,21 +170,15 @@ class PrepareHandeCcmcFciqmc(AbsDataPreparator):
             List of output data.  Should be all of same type
             (complex/non-complex, replica-tricks/no replica tricks,
             calc_type).
-        metadata: List[List[Dict]]
-            metadata.  Outer list over (merged) calculations, inner
-            list over parts of calculation in different output files
-            when merged.
         make_copy: bool, optional
-            If true, deepcopy data and metadata so that passed in data
-            and metadata are not altered by any changes here.
+            If true, deepcopy data so that passed in data are not
+            altered by any changes here.
             The default is True.
         """
         if make_copy:
             self._data = copy.deepcopy(data)
-            self._metadata = copy.deepcopy(metadata)
         else:
             self._data = data
-            self._metadata = metadata
 
         # Complex?
         if (self._gen_complex_cols(self.observables['ref_key'])['real']
