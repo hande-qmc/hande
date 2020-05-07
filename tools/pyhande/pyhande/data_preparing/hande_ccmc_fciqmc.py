@@ -175,16 +175,11 @@ class PrepareHandeCcmcFciqmc(AbsDataPreparator):
             altered by any changes here.
             The default is True.
         """
-        if make_copy:
-            self._data = copy.deepcopy(data)
-        else:
-            self._data = data
+        self._data = copy.deepcopy(data) if make_copy else data
 
         # Complex?
         if (self._gen_complex_cols(self.observables['ref_key'])['real']
                 in data[0]):
-            print("complex!", self._gen_complex_cols(
-                self.observables['ref_key'])['real'])
             # Probably complex calculations!
             # Test that all are complex.
             if not all(
