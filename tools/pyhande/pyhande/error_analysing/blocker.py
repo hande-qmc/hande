@@ -6,6 +6,7 @@ import pyblock
 import pyhande.analysis as analysis
 from pyhande.error_analysing.abs_error_analyser import AbsErrorAnalyser
 from pyhande.error_analysing.find_starting_iteration import select_find_start
+import pyhande.error_analysing.analysis_utils as analysis_utils
 
 
 class Blocker(AbsErrorAnalyser):
@@ -73,6 +74,7 @@ class Blocker(AbsErrorAnalyser):
             highlighting the starting iteration found when
             start_its = 'blocking'.
             The default is None, which defaults to an empty dictionary.
+            it is up to the user to specify correct keys here.
         """
         # Set input.
         Blocker._check_input(it_key, cols, hybrid_col, start_its)
@@ -186,8 +188,13 @@ class Blocker(AbsErrorAnalyser):
             'start_its' or 'end_its' if they are defined.
 
         """
-        self._check_data_input(data)
-        self._set_start_and_end_its(data)
+        analysis_utils.check_data_input(
+            data, self._cols, self._eval_ratio, self._hybrid_col,
+            self._start_its, self._end_its)
+        self._start_its, self._end_its = analysis_utils.set_start_and_end_its(
+            data, self._it_key, self._cols, self._hybrid_col,
+            self._find_starting_it, self._find_start_kw_args, self.start_its,
+            self.end_its)
 
         # Do blocking.
         self._data_len = []

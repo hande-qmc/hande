@@ -58,13 +58,50 @@ def check_data_input(data: List[pd.DataFrame], cols: List[str],
                          f"as 'data' (here of length {len(data)}).")
 
 
-def set_start_and_end_its(data):
-    """Find end and start iteration if required."""
-    if not self.end_its:
-        self._end_its = [dat['iterations'].iloc[-1] for dat in data]
-    if not self.start_its:
-        self._start_its = [
-            self._find_starting_it(
-                dat, end_it, self._it_key, self._cols, self.eval_ratio,
-                **self._find_start_kw_args)
-            for dat, end_it in zip(data, self.end_its)]
+def set_start_and_end_its(data: List[pd.DataFrame], it_key: str,
+                          cols: List[str], hybrid_col: str,
+                          find_starting_it_func, find_start_kw_args: Dict,
+                          start_its: List[int], end_its: List[int]
+                          ) -> (List[int], List[int]):
+    """Find end and start iteration if required.
+
+    If `end_its` is None, the last iteration will be chosen respectively
+    and `end_its` updated.
+    If `start_its` is None, the start iteration is found using
+    `find_starting_it_func`.
+    If not None, they are returned as passed in.
+
+    Parameters
+    ----------
+    data : List[pd.DataFrame]
+        List of data DataFrames with QMC data.
+    it_key : str
+        Name of iteration columns, e.g. 'iterations'.
+    cols : List[str]
+        Columns to be analysed if doing 'blocking' starting it finding.
+    hybrid_col : str
+        Column to be analysed if doing 'mser' starting it finding.
+    find_starting_it_func : Function from find_starting_iteration.py
+        Function to find starting iteration.  Adheres to certain common
+        interface.
+    find_start_kw_args : Dict
+        Extra input parameters for finding starting iteration.
+    start_its : List[int]
+        List of starting iterations if already present.
+    end_its : List[int]
+        List of final iterations if already present.
+
+    Returns
+    -------
+    (List[int], List[int])
+        Lists of start and final iterations.
+    """
+    if not end_its:
+        end_its = [dat[it_key].iloc[-1] for dat in data]
+    if not start_its:
+        start_its = [
+            find_starting_it_func(dat, end_it, it_key, cols, hybrid_col,
+                                  **find_start_kw_args)
+            for dat, end_it in zip(data, end_its)
+        ]
+    return start_its, end_its

@@ -122,7 +122,7 @@ def _grid_search(data: pd.DataFrame, grid_size: int, min_ind: int,
 
 def find_starting_iteration_blocking(
         data: pd.DataFrame, end_it: int, it_key: str, cols: List[str],
-        eval_ratio: Dict[str, str], start_max_frac: float = 0.8,
+        hybrid_col: str, start_max_frac: float = 0.8,
         grid_size: int = 10, number_of_reblocks_to_cut_off: int = 1,
         show_graph: bool = False) -> int:
     """
@@ -156,8 +156,8 @@ def find_starting_iteration_blocking(
         Key of column containing MC iterations.
     cols : List[str]
         List of keys of columns involved in blocking.
-    eval_ratio: Dict[str, str]
-        Ignored here.  Keep for common interface.
+    hybrid_col : str
+        Ignored here, for common interface.
     start_max_frac : float, optional
         The start iterations found has to be in the first
         `start_max_frac` fraction of the data between
@@ -238,7 +238,7 @@ def find_starting_iteration_blocking(
 
 def find_starting_iteration_mser_min(
         data: pd.DataFrame, end_it: int, it_key: str, cols: List[str],
-        eval_ratio: Dict[str, str], start_max_frac: float = 0.84,
+        hybrid_col: str, start_max_frac: float = 0.84,
         n_blocks: int = 100) -> int:
     r'''Estimate starting iteration with MSER minimization scheme.
 
@@ -271,9 +271,8 @@ def find_starting_iteration_mser_min(
         Key of column containing MC iterations.
     cols : List[str]
         Ignored here.  Keep for common interface.
-    eval_ratio: Dict[str, str]
-        Take instanteous ratio of column `eval_ratio['num']` with column
-        '`eval_ratio['denom']` in `data` to find starting iteration.
+    hybrid_col: str
+        Column in data to be analysed here, e.g. 'Inst. Proj. Energy'.
     start_max_frac : float
         MSER(d) may oscillate when become unreanably small
         when :math:`n-d` is large. Thus, we calculate MSER(:math:`d`)
@@ -295,7 +294,7 @@ def find_starting_iteration_mser_min(
         calculation.
     '''
     data = data[data[it_key] <= end_it]
-    inst_ratio = data[eval_ratio['num']]/data[eval_ratio['denom']]
+    inst_ratio = data[hybrid_col]
 
     mser_min = float('inf')
     for i in range(n_blocks):
@@ -309,7 +308,7 @@ def find_starting_iteration_mser_min(
 
     if final_start_ind > len(inst_ratio)*(start_max_frac**2):
         warnings.warn(
-            f"Instantaneous ratio '{eval_ratio['name']}' may not be "
+            f"Instantaneous ratio '{hybrid_col}' may not be "
             "converged.  MSER min. may underestimate the starting iteration.  "
             "Check!")
     return starting_it
