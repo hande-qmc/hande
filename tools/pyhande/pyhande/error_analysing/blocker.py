@@ -13,12 +13,13 @@ from pyhande.error_analysing.analysis_utils import set_start_and_end_its
 class Blocker(AbsErrorAnalyser):
     """Reblock specified columns from HANDE output using pyblock.
 
+    Can be used instead of HybridAnalyser.
+
     This uses pyblock [1] to do reblocking, see Ref. [2] for more
     details on the reblocking algorithm.
-    Can be used instead of Hybrid.
 
     [1] - pyblock, James Spencer, http://github.com/jsspencer/pyblock
-    [2] - Flyvbjerg, H., Petersen, H. G.. J. Chem. Phys. 91, 461, 1989.
+    [2] - Flyvbjerg, H., Petersen, H. G., 1989, J. Chem. Phys. 91, 461.
     """
 
     def __init__(

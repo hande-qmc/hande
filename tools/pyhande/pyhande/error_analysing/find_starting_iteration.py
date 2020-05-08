@@ -230,7 +230,7 @@ def find_starting_iteration_blocking(
     opt_ind = pyblock.pd_utils.optimal_block(reblock)
     discard_indx = 2**opt_ind * number_of_reblocks_to_cut_off
     # Converting to iteration.
-    starting_it = data['iterations'].iloc[start_ind + discard_indx]
+    starting_it = data[it_key].iloc[start_ind + discard_indx]
 
     # Show plot if desired, aiding judgment whether to trust estimate.
     if show_graph:

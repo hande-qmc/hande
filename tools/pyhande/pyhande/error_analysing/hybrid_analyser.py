@@ -7,6 +7,8 @@ import statsmodels.tsa.ar_model as ar_model
 import statsmodels.tsa.stattools as tsastats
 from pyhande.error_analysing.abs_error_analyser import AbsErrorAnalyser
 from pyhande.error_analysing.find_starting_iteration import select_find_start
+from pyhande.error_analysing.analysis_utils import check_data_input
+from pyhande.error_analysing.analysis_utils import set_start_and_end_its
 
 
 class HybridAnalyser(AbsErrorAnalyser):
@@ -22,13 +24,12 @@ class HybridAnalyser(AbsErrorAnalyser):
     methods. The mathematical details of both methods are explained
     in (please cite if you use this):
 
-    Tom Ichibha, Kenta Hongo, Ryo Maezono, Alex J.W. Thom (2019),
+    Ichibha, T., Hongo, K., Maezono, R., Thom, A. J. W., 2019
     arXiv:1904.09934 [physics.comp-ph]
     """
 
     def __init__(
-            self, cols: List[str] = None, eval_ratio: Dict[str, str] = None,
-            it_key: str = 'iterations',
+            self, it_key: str, hybrid_col: str, cols: List[str] = None,
             start_its: Union[List[int], str] = 'mser',
             end_its: List[int] = None, batch_size: int = 1,
             find_start_kw_args: Dict[str, Union[bool, float, int]]
@@ -38,20 +39,16 @@ class HybridAnalyser(AbsErrorAnalyser):
 
         Parameters
         ----------
+        it_key : str
+            Column name of MC iterations, e.g. 'iterations'.
+        hybrid_col : str
+            Column name to be analysed here, e.g. 'Inst. Proj. Energy'.
         cols : List[str], optional
             Columns in QMC data potentially used when finding start
-            iteration (if 'blocking' start_its selected).
-            The default is
+            iteration (if 'blocking' start_its selected), e.g.
             ['Shift', '\sum H_0j N_j', 'N_0', '# H psips'].
-        eval_ratio: Dict, optional
-            Evaluate mean and standard error of ratio of column 'num'
-            with column 'denom'. Add this to the analysis results as
-            column with name 'name'.
-            The default is {'name': 'Proj. Energy', 'num': 'N_0',
-                            'denom': '# H psips'}.
-        it_key: str, optional
-            MC iterations columns key.
-            The default is 'iterations'.
+            The default is None, compulsory when
+            `start_its` = 'blocking' though.
         start_its : Union[List[int], str], optional
             Either list of start iterations which has to be of same
             length as data.
@@ -60,7 +57,7 @@ class HybridAnalyser(AbsErrorAnalyser):
             'blocking' (`find_starting_iteration_blocking()`) or
             'mser', (`find_starting_iteration_mser_min()`).  Note that
             this choice then applies to all calculations in passed in
-            `data` to `.exe()`.
+            `data` to `.exe()`.  'blocking' requires `cols` to be set.
             The default is 'mser'.
         end_its : List[int], optional
             List of end iterations. Has to be of same length as
@@ -80,16 +77,14 @@ class HybridAnalyser(AbsErrorAnalyser):
             find_starting_iterations functions.  See their definitions
             for details.  E. g. {'show_graph' : True} shows a graph
             highlighting the starting iteration found when
-            start_its = 'analysis'.
+            start_its = 'blocking'.
             The default is None, which defaults to an empty dictionary.
         """
-        self._cols: List[str] = cols if cols else [
-            'Shift', r'\sum H_0j N_j', 'N_0', '# H psips'
-        ]
-        self._eval_ratio: Dict[str, str] = eval_ratio if eval_ratio else {
-            'name': 'Proj. Energy', 'num': r'\sum H_0j N_j', 'denom': 'N_0'
-        }
+        # Set input.
+        HybridAnalyser._check_input(it_key, cols, hybrid_col, start_its)
         self._it_key = it_key
+        self._hybrid_col = hybrid_col
+        self._cols = cols
         if isinstance(start_its, list):
             self._start_its = start_its
         else:
@@ -99,9 +94,88 @@ class HybridAnalyser(AbsErrorAnalyser):
         self._batch_size: int = batch_size
         self._find_start_kw_args: Dict[str, Union[bool, float, int]] = (
             find_start_kw_args if find_start_kw_args else {})
+
+        # Set helper attribute.
+        self._pre_exe_error_message = (
+            "First do analysis by running 'exe' instance method."
+        )
+
         # These attributes are set later:
         self._opt_block: pd.DataFrame
         self._no_opt_block: List[List[str]]
+
+    @classmethod
+    def inst_hande_ccmc_fciqmc(
+            cls, observables: Dict[str, str],
+            start_its: Union[List[int], str] = 'mser',
+            end_its: List[int] = None, batch_size: int = 1,
+            find_start_kw_args: Dict[str, Union[bool, float, int]] = None
+    ):
+        """Return HybridAnalyser instance for a HANDE CCMC/FCIQMC calc.
+
+        Parameters
+        ----------
+        observables : Dict[str, str]
+            Maps generic column names, 'it_key', 'shift_key', etc, to
+            their HANDE CCMC/FCIQMC column names, e.g.
+            PrepHandeCcmcFciqmc.observables in data_preparing.
+            'it_key', 'shift_key', 'sum_key', 'ref_key', 'total_key',
+            and 'inst_proje_key' are required here.
+        For the other arguments, see __init__().
+
+        Returns
+        -------
+        HybridAnalyser
+            Instance of the HybridAnalyser class, customised for a HANDE
+            CCMC/FCIQMC calculation.
+        """
+        return HybridAnalyser(
+            observables['it_key'], observables['inst_proje_key'],
+            [observables['shift_key'], observables['sum_key'],
+             observables['ref_key'], observables['total_key']],
+            start_its=start_its, end_its=end_its, batch_size=batch_size,
+            find_start_kw_args=find_start_kw_args)
+
+    @property
+    def start_its(self) -> List[int]:
+        """Access _start_its attribute, analysis start iterations."""
+        return self._start_its
+
+    @property
+    def end_its(self) -> List[int]:
+        """Access _end_its attribute, analysis end iterations."""
+        return self._end_its
+
+    @property
+    def opt_block(self) -> pd.DataFrame:
+        """Access _opt_block attribute if available. Else error."""
+        try:
+            return self._opt_block
+        except AttributeError:
+            print(self._pre_exe_error_message)
+            raise
+
+    @property
+    def no_opt_block(self) -> List[List[str]]:
+        """Access _no_opt_block attribute if available. Else error."""
+        try:
+            return self._no_opt_block
+        except AttributeError:
+            print(self._pre_exe_error_message)
+            raise
+
+    @staticmethod
+    def _check_input(it_key: str, cols: List[str], hybrid_col: str,
+                     start_its: Union[List[int], str]):
+        """Check some input parameters."""
+        if not it_key:
+            raise ValueError("'it_key' must be specified!")
+        if not cols and start_its == 'blocking':
+            raise ValueError("'cols' has to be specified when 'start_its' == "
+                             "'blocking', i.e. 'blocking' find starting point "
+                             "function is used.")
+        if not hybrid_col:
+            raise ValueError("'hybrid_col' has to be specified.")
 
     def _do_hybrid_analysis(self, dat: pd.DataFrame) -> Tuple[
             pd.DataFrame, List[str]]:
@@ -111,8 +185,7 @@ class HybridAnalyser(AbsErrorAnalyser):
         implementation by Tom Ichibha in pyhande.lazy.py.
         """
 
-        ratio_values = (dat[self.eval_ratio['num']] /
-                        dat[self.eval_ratio['denom']].values)
+        ratio_values = dat[self._hybrid_col].values
         n_data = len(ratio_values) // self._batch_size
         means_batch = [0]*n_data
         for i in range(n_data):
@@ -149,11 +222,14 @@ class HybridAnalyser(AbsErrorAnalyser):
              'standard error': error,
              'standard error error': None},
             columns=['mean', 'standard error', 'standard error error'],
-            index=[self.eval_ratio['name']])
-        no_opt_block = copy.copy(self._cols)
-        if self.eval_ratio['name'] in self._cols:
-            # [todo] unnecessary?
-            no_opt_block.remove(self.eval_ratio['name'])
+            index=[self._hybrid_col])
+        if self._cols:
+            no_opt_block = copy.copy(self._cols)
+            if self._hybrid_col in self._cols:
+                # [todo] unnecessary?
+                no_opt_block.remove(self._hybrid_col)
+        else:
+            no_opt_block = []
         return (opt_block, no_opt_block)
 
     def exe(self, data: List[pd.DataFrame]):
@@ -173,18 +249,13 @@ class HybridAnalyser(AbsErrorAnalyser):
             'start_its' or 'end_its' if they are defined.
 
         """
-        self._check_data_input(data)
-        self._set_start_and_end_its(data)
-
-        # Find end and start iteration if required.
-        if not self.end_its:
-            self._end_its = [dat['iterations'].iloc[-1] for dat in data]
-        if not self.start_its:
-            self._start_its = [
-                self._find_starting_it(
-                    dat, end_it, self._it_key, self._cols, self.eval_ratio,
-                    **self._find_start_kw_args)
-                for dat, end_it in zip(data, self.end_its)]
+        check_data_input(
+            data, self._cols, None, self._hybrid_col, self._start_its,
+            self._end_its)
+        self._start_its, self._end_its = set_start_and_end_its(
+            data, self._it_key, self._cols, self._hybrid_col,
+            self._find_starting_it, self._find_start_kw_args, self.start_its,
+            self.end_its)
 
         # Do analysis.
         self._no_opt_block = []
@@ -193,7 +264,7 @@ class HybridAnalyser(AbsErrorAnalyser):
                                          self.end_its):
             # Select subset of data to analyse:
             dat_c = dat.copy()
-            dat_c = dat_c[dat_c['iterations'].between(start_it, end_it)]
+            dat_c = dat_c[dat_c[self._it_key].between(start_it, end_it)]
             (opt_block, no_opt_block) = self._do_hybrid_analysis(dat_c)
             self._no_opt_block.append(no_opt_block)
             self.opt_block.append(opt_block)
