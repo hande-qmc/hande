@@ -16,7 +16,8 @@ class PrepHandeCcmcFciqmc(AbsDataPreparator):
             'sum_key': r'\sum H_0j N_j',
             'ref_key': 'N_0',
             'total_key': '# H psips',
-            'proje_key': 'Proj. Energy'
+            'proje_key': 'Proj. Energy',
+            'inst_proje_key': 'Inst. Proj. Energy'
         }
         self._not_extracted_message: str = (
             'Data not prepared yet. Use the ".exe" method for preparing.')
@@ -300,7 +301,7 @@ class PrepHandeCcmcFciqmc(AbsDataPreparator):
             inst_proje = pd.DataFrame(
                 (self.data[i][self.observables['sum_key']] /
                  self.data[i][self.observables['ref_key']]),
-                columns=['Inst. '+self.observables['proje_key']])
+                columns=[self.observables['inst_proje_key']])
             self._data[i] = pd.concat([self._data[i], inst_proje], axis=1)
 
     def exe(self, data: List[pd.DataFrame], make_copy: bool = True):
