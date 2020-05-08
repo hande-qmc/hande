@@ -6,7 +6,8 @@ import pyblock
 import pyhande.analysis as analysis
 from pyhande.error_analysing.abs_error_analyser import AbsErrorAnalyser
 from pyhande.error_analysing.find_starting_iteration import select_find_start
-import pyhande.error_analysing.analysis_utils as analysis_utils
+from pyhande.error_analysing.analysis_utils import check_data_input
+from pyhande.error_analysing.analysis_utils import set_start_and_end_its
 
 
 class Blocker(AbsErrorAnalyser):
@@ -103,6 +104,41 @@ class Blocker(AbsErrorAnalyser):
         self._opt_block: pd.DataFrame
         self._no_opt_block: List[List[str]]
 
+    @classmethod
+    def inst_hande_ccmc_fciqmc(
+            cls, observables: Dict[str, str],
+            start_its: Union[List[int], str] = 'blocking',
+            end_its: List[int] = None,
+            find_start_kw_args: Dict[str, Union[bool, float, int]] = None
+    ):
+        """Return Blocker instance for a HANDE CCMC/FCIQMC calculation.
+
+        Parameters
+        ----------
+        observables : Dict[str, str]
+            Maps generic column names, 'it_key', 'shift_key', etc, to
+            their HANDE CCMC/FCIQMC column names, e.g.
+            PrepHandeCcmcFciqmc.observables in data_preparing.
+            'it_key', 'shift_key', 'sum_key', 'ref_key', 'total_key',
+            'proje_key' and 'inst_proje_key' are required here.
+        For the other arguments, see __init__().
+
+        Returns
+        -------
+        Blocker
+            Instance of the Blocker class, customised for a HANDE CCMC/
+            FCIQMC calculation.
+        """
+        return Blocker(
+            observables['it_key'],
+            [observables['shift_key'], observables['sum_key'],
+             observables['ref_key'], observables['total_key']],
+            eval_ratio={'name': observables['proje_key'],
+                        'num': observables['sum_key'],
+                        'denom': observables['ref_key']},
+            hybrid_col=observables['inst_proje_key'], start_its=start_its,
+            end_its=end_its, find_start_kw_args=find_start_kw_args)
+
     @staticmethod
     def _check_input(it_key: str, cols: List[str], hybrid_col: str,
                      start_its: Union[List[int], str]):
@@ -113,7 +149,7 @@ class Blocker(AbsErrorAnalyser):
             raise ValueError("'cols' has to be specified.")
         if start_its == 'mser' and not hybrid_col:
             raise ValueError("When starting iterations should be found with "
-                             "'mser', i.e. 'start_its' == 'mser', 'hybrid_col' "
+                             "'mser', i.e. 'start_its' == 'mser', 'hybrid_col'"
                              "has to be specified.")
 
     @property
@@ -188,10 +224,10 @@ class Blocker(AbsErrorAnalyser):
             'start_its' or 'end_its' if they are defined.
 
         """
-        analysis_utils.check_data_input(
+        check_data_input(
             data, self._cols, self._eval_ratio, self._hybrid_col,
             self._start_its, self._end_its)
-        self._start_its, self._end_its = analysis_utils.set_start_and_end_its(
+        self._start_its, self._end_its = set_start_and_end_its(
             data, self._it_key, self._cols, self._hybrid_col,
             self._find_starting_it, self._find_start_kw_args, self.start_its,
             self.end_its)
@@ -212,7 +248,7 @@ class Blocker(AbsErrorAnalyser):
             (data_len, reblock, covariance) = pyblock.pd_utils.reblock(dat_c)
             cols_in_opt = copy.copy(self._cols)
             # Add ratio if required:
-            if self.eval_ratio:
+            if self._eval_ratio:
                 ratio = analysis.projected_energy(
                     reblock, covariance, data_len,
                     sum_key=self._eval_ratio['num'],

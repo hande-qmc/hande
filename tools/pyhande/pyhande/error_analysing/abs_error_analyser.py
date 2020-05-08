@@ -8,11 +8,6 @@ class AbsErrorAnalyser(metaclass=abc.ABCMeta):
     """Define required/common attributes for error analyser objects."""
 
     @property
-    def eval_ratio(self) -> Dict[str, str]:
-        """Access _eval_ratio attribute, ratio to evaluate."""
-        return self._eval_ratio
-
-    @property
     def start_its(self) -> List[int]:
         """Access _start_its attribute, analysis start iterations."""
         return self._start_its

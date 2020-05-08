@@ -99,6 +99,10 @@ def _grid_search(data: pd.DataFrame, grid_size: int, min_ind: int,
         while int(grid_pts[0]) == int(grid_pts[1]) and grid_size > 2:
             grid_pts = np.delete(grid_pts, 0)
             grid_size -= 1
+        if int(grid_pts[0]) == int(grid_pts[1]) and grid_size == 2:
+            # Only two grid points remain and they are identical.
+            # Can stop looping and return their value.
+            return int(grid_pts[0])
         losses = pd.concat(
             [_get_blocking_loss(int(grid_pt), data) for grid_pt in grid_pts],
             keys=list(map(int, grid_pts)), axis=1)
@@ -205,16 +209,15 @@ def find_starting_iteration_blocking(
     # sure all cols have started varying in dataset excluding data
     # before.
     data = data[data[it_key] <= end_it]
-    max_varying_it = end_it
+    max_varying_it = 0
     for col in cols:
         if not any(data[data[col] != data[col].iloc[0]]):
             raise RuntimeError(f"{col} has not started varying in considered "
                                "dataset.")
-        max_varying_it = min(
+        max_varying_it = max(
             max_varying_it,
             data[data[col] != data[col].iloc[0]][it_key].iloc[0])
     data = data[data[it_key] >= max_varying_it]
-
     # Finding starting iteration.
     # Do grid search to find the index of the starting iteration.
     start_ind = _grid_search(

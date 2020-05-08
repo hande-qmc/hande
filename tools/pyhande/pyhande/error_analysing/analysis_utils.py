@@ -58,11 +58,11 @@ def check_data_input(data: List[pd.DataFrame], cols: List[str],
                          f"as 'data' (here of length {len(data)}).")
 
 
-def set_start_and_end_its(data: List[pd.DataFrame], it_key: str,
-                          cols: List[str], hybrid_col: str,
-                          find_starting_it_func, find_start_kw_args: Dict,
-                          start_its: List[int], end_its: List[int]
-                          ) -> (List[int], List[int]):
+def set_start_and_end_its(
+        data: List[pd.DataFrame], it_key: str, cols: List[str],
+        hybrid_col: str, find_starting_it_func,
+        find_start_kw_args: Dict[str, Union[bool, float, int]],
+        start_its: List[int], end_its: List[int]) -> (List[int], List[int]):
     """Find end and start iteration if required.
 
     If `end_its` is None, the last iteration will be chosen respectively
@@ -84,7 +84,7 @@ def set_start_and_end_its(data: List[pd.DataFrame], it_key: str,
     find_starting_it_func : Function from find_starting_iteration.py
         Function to find starting iteration.  Adheres to certain common
         interface.
-    find_start_kw_args : Dict
+    find_start_kw_args : Dict[str, Union[bool, float, int]
         Extra input parameters for finding starting iteration.
     start_its : List[int]
         List of starting iterations if already present.
