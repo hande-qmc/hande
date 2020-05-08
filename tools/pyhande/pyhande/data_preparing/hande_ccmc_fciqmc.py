@@ -5,7 +5,7 @@ import pandas as pd
 from pyhande.data_preparing.abs_data_preparator import AbsDataPreparator
 
 
-class PrepareHandeCcmcFciqmc(AbsDataPreparator):
+class PrepHandeCcmcFciqmc(AbsDataPreparator):
     """Prepare HANDE CCMC/FCIQMC data for analysis."""
 
     def __init__(self):
@@ -107,14 +107,14 @@ class PrepareHandeCcmcFciqmc(AbsDataPreparator):
         return "_"+str(replica_id)
 
     @staticmethod
-    def _curly_wrapper(string_to_add: str, col_key: str) -> str:
-        """Wrap `col_key` in `string_to_add{col_key}`.
+    def _curly_wrapper(string_to_add: str, col_name: str) -> str:
+        """Wrap `col_name` in `string_to_add{col_name}`.
 
         Parameters
         ----------
         string_to_add : str
             String before curly brackets.
-        col_key : str
+        col_name : str
             Name of column.
 
         Returns
@@ -122,10 +122,10 @@ class PrepareHandeCcmcFciqmc(AbsDataPreparator):
         str
             Name of wrapped column.
         """
-        return string_to_add + "{" + col_key + "}"
+        return string_to_add + "{" + col_name + "}"
 
     def _re_cols(self, col_key: str) -> str:
-        """Wrap `col_key` in `Re{col_key}`.
+        """Wrap `col_key` in `Re{self.observables[col_key]}`.
 
         Parameters
         ----------
@@ -137,10 +137,11 @@ class PrepareHandeCcmcFciqmc(AbsDataPreparator):
         str
             Name of wrapped column.
         """
-        return self._curly_wrapper('Re', col_key)
+        return PrepHandeCcmcFciqmc._curly_wrapper(
+            'Re', self.observables[col_key])
 
     def _im_cols(self, col_key: str) -> str:
-        """Wrap `col_key` in `Im{col_key}`.
+        """Wrap `col_key` in `Im{self.observables[col_key]}`.
 
         Parameters
         ----------
@@ -152,7 +153,8 @@ class PrepareHandeCcmcFciqmc(AbsDataPreparator):
         str
             Name of wrapped column.
         """
-        return self._curly_wrapper('Im', col_key)
+        return PrepHandeCcmcFciqmc._curly_wrapper(
+            'Im', self.observables[col_key])
 
     def _add_replica_grouping(self, max_replica_id: int) -> None:
         """Add extra column for replica id which can be grouped by.
@@ -176,15 +178,16 @@ class PrepareHandeCcmcFciqmc(AbsDataPreparator):
                     col
                     for rep_id in list(range(1, max_replica_id+1))
                     for col in dat.columns
-                    if (rep_id != replica_id and
-                        col.endswith(self._replica_ending(rep_id)))
+                    if (rep_id != replica_id and col.endswith(
+                        PrepHandeCcmcFciqmc._replica_ending(rep_id)))
                 ]
                 dat.drop(columns=cols_to_drop, inplace=True)
                 dat.rename(
                     columns={
-                        col: col[:-len(self._replica_ending(replica_id))]
-                        for col in dat.columns
-                        if col.endswith(self._replica_ending(replica_id))
+                        col: col[:-len(
+                            PrepHandeCcmcFciqmc._replica_ending(replica_id))
+                        ] for col in dat.columns if col.endswith(
+                            PrepHandeCcmcFciqmc._replica_ending(replica_id))
                     }, inplace=True
                 )
                 replica_dats.append(dat)
@@ -204,16 +207,20 @@ class PrepareHandeCcmcFciqmc(AbsDataPreparator):
         """
         # If replica:
         # Add extra column for i so that replicas can be groupedby.
-        if any(col.endswith(self._replica_ending(1)) for dat in self.data
-               for col in dat.columns):
+        if any(col.endswith(PrepHandeCcmcFciqmc._replica_ending(1))
+               for dat in self.data for col in dat.columns):
             # Find highest replica_id.
             max_id = 0
-            while (any(col.endswith(self._replica_ending(max_id+1))
-                       for dat in self.data for col in dat.columns)):
+            while (any(
+                col.endswith(PrepHandeCcmcFciqmc._replica_ending(max_id+1))
+                for dat in self.data for col in dat.columns
+            )):
                 max_id += 1
             # Check that this highest replica_id exist in all data.
-            if not (all(any(col.endswith(self._replica_ending(max_id))
-                            for col in dat.columns) for dat in self.data)):
+            if not (all(
+                any(col.endswith(PrepHandeCcmcFciqmc._replica_ending(max_id))
+                    for col in dat.columns) for dat in self.data
+            )):
                 raise ValueError(f"Some but not all data have {max_id} "
                                  "replicas! Make sure that number of replicas "
                                  "is identical!")
@@ -250,14 +257,14 @@ class PrepareHandeCcmcFciqmc(AbsDataPreparator):
         mag_sum_key = "-|"+self.observables['sum_key']+"|"
         mag_ref_key = "|"+self.observables['ref_key']+"|"
         for i in range(len(self._data)):
-            sum_mag_neg = pd.DataFrame(-(
-                self._data[i][self._re_cols(self.observables['sum_key'])]**2
-                + self._data[i][self._im_cols(self.observables['sum_key'])]**2
-            )**0.5, columns=[mag_sum_key])
-            ref_mag = pd.DataFrame((
-                self._data[i][self._re_cols(self.observables['ref_key'])]**2
-                + self._data[i][self._im_cols(self.observables['ref_key'])]**2
-            )**0.5, columns=[mag_ref_key])
+            sum_mag_neg = pd.DataFrame(
+                -(self._data[i][self._re_cols('sum_key')]**2
+                  + self._data[i][self._im_cols('sum_key')]**2)**0.5,
+                columns=[mag_sum_key])
+            ref_mag = pd.DataFrame(
+                (self._data[i][self._re_cols('ref_key')]**2
+                 + self._data[i][self._im_cols('ref_key')]**2)**0.5,
+                columns=[mag_ref_key])
             self._data[i] = pd.concat(
                 [self._data[i], sum_mag_neg, ref_mag], axis=1)
         self._observables['sum_key'] = mag_sum_key
@@ -270,12 +277,10 @@ class PrepareHandeCcmcFciqmc(AbsDataPreparator):
         Im{key} format. If complex, take (negative) magnitudes and add
         those as columns to each self._data elements respectively.
         """
-        if any(self._re_cols(self.observables['ref_key']) in dat
-               for dat in self.data):
+        if any(self._re_cols('ref_key') in dat for dat in self.data):
             # Probably complex calculations!
             # Test that all are complex.
-            if not all(self._re_cols(self.observables['ref_key']) in dat
-                       for dat in self.data):
+            if not all(self._re_cols('ref_key') in dat for dat in self.data):
                 raise ValueError("Some but not all data is complex! Either "
                                  "pass data where all calculations are either "
                                  "complex or not complex.")
