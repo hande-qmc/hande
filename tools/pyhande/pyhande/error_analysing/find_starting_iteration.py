@@ -302,11 +302,11 @@ def find_starting_iteration_mser_min(
     mser_min = float('inf')
     for i in range(n_blocks):
         start_ind = int(i*(len(inst_ratio)*start_max_frac)/n_blocks)
-        mser = (np.var(inst_ratio[start_ind:len(inst_ratio)]) /
+        mser = (np.var(inst_ratio.iloc[start_ind:len(inst_ratio)]) /
                 (len(inst_ratio)-start_ind))
         if mser < mser_min:
             mser_min = mser
-            starting_it = data[it_key].loc[start_ind]
+            starting_it = data[it_key].iloc[start_ind]
             final_start_ind = start_ind
 
     if final_start_ind > len(inst_ratio)*(start_max_frac**2):

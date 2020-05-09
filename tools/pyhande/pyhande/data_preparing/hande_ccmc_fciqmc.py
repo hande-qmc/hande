@@ -17,7 +17,8 @@ class PrepHandeCcmcFciqmc(AbsDataPreparator):
             'ref_key': 'N_0',
             'total_key': '# H psips',
             'proje_key': 'Proj. Energy',
-            'inst_proje_key': 'Inst. Proj. Energy'
+            'inst_proje_key': 'Inst. Proj. Energy',
+            'replica_key': 'replica id'
         }
         self._not_extracted_message: str = (
             'Data not prepared yet. Use the ".exe" method for preparing.')
@@ -172,7 +173,8 @@ class PrepHandeCcmcFciqmc(AbsDataPreparator):
             for replica_id in range(1, max_replica_id+1):
                 dat = pd.concat([
                     pd.DataFrame({
-                        'replica id': len(self.data[i])*[replica_id]
+                        self.observables['replica_key']:
+                            len(self.data[i])*[replica_id]
                     }), self.data[i]
                 ], axis=1)
                 cols_to_drop = [

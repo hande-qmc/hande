@@ -28,7 +28,8 @@ class HybridAnalyser(AbsErrorAnalyser):
     """
 
     def __init__(
-            self, it_key: str, hybrid_col: str, cols: List[str] = None,
+            self, it_key: str, hybrid_col: str, replica_col: str,
+            cols: List[str] = None,
             start_its: Union[List[int], str] = 'mser',
             end_its: List[int] = None, batch_size: int = 1,
             find_start_kw_args: Dict[str, Union[bool, float, int]]
@@ -42,6 +43,8 @@ class HybridAnalyser(AbsErrorAnalyser):
             Column name of MC iterations, e.g. 'iterations'.
         hybrid_col : str
             Column name to be analysed here, e.g. 'Inst. Proj. Energy'.
+        replica_col : str
+            Name of replica columns, e.g. 'replica id'.
         cols : List[str], optional
             Columns in QMC data potentially used when finding start
             iteration (if 'blocking' start_its selected), e.g.
@@ -83,6 +86,7 @@ class HybridAnalyser(AbsErrorAnalyser):
         HybridAnalyser._check_input(it_key, cols, hybrid_col, start_its)
         self._it_key = it_key
         self._hybrid_col = hybrid_col
+        self._replica_col = replica_col
         self._cols = cols
         if isinstance(start_its, list):
             self._start_its = start_its
@@ -119,7 +123,7 @@ class HybridAnalyser(AbsErrorAnalyser):
             their HANDE CCMC/FCIQMC column names, e.g.
             PrepHandeCcmcFciqmc.observables in data_preparing.
             'it_key', 'shift_key', 'sum_key', 'ref_key', 'total_key',
-            and 'inst_proje_key' are required here.
+            'inst_proje_key' and 'replica_key' are required here.
         For the other arguments, see __init__().
 
         Returns
@@ -130,6 +134,7 @@ class HybridAnalyser(AbsErrorAnalyser):
         """
         return HybridAnalyser(
             observables['it_key'], observables['inst_proje_key'],
+            observables['replica_key'],
             [observables['shift_key'], observables['sum_key'],
              observables['ref_key'], observables['total_key']],
             start_its=start_its, end_its=end_its, batch_size=batch_size,
@@ -287,6 +292,19 @@ class HybridAnalyser(AbsErrorAnalyser):
         for i, dat in enumerate(data):
             # Select subset of data to analyse:
             dat_c = dat.copy()
-            (opt_block, no_opt_block) = self._do_hybrid_dat(dat_c, i)
+            if self._replica_col in dat_c:
+                # Have used replica tricks.  Analyse them one by one.
+                dat_c_repl = dat_c.groupby([self._replica_col])
+                no_opt_block, opt_block = [], []
+                for rep_id in range(1, len(dat_c_repl)+1):
+                    (opt_bl, no_opt_bl) = (
+                        self._do_hybrid_dat(dat_c_repl.get_group(rep_id), i)
+                    )
+                    no_opt_block.append(no_opt_bl)
+                    opt_block.append(opt_bl)
+                opt_block = pd.concat(opt_block, keys=dat_c_repl.groups.keys(),
+                                      names=[self._replica_col])
+            else:
+                (opt_block, no_opt_block) = self._do_hybrid_dat(dat_c, i)
             self._no_opt_block.append(no_opt_block)
             self.opt_block.append(opt_block)

@@ -1,5 +1,5 @@
 """Analyse Monte Carlo correlated output using reblocking."""
-from typing import Dict, List, Tuple, Union
+from typing import Dict, List, Union
 import copy
 import pandas as pd
 import pyblock
@@ -22,7 +22,7 @@ class Blocker(AbsErrorAnalyser):
     """
 
     def __init__(
-            self, it_key: str, cols: List[str],
+            self, it_key: str, cols: List[str], replica_col: str,
             eval_ratio: Dict[str, str] = None, hybrid_col: str = None,
             start_its: Union[List[int], str] = 'blocking',
             end_its: List[int] = None,
@@ -38,6 +38,8 @@ class Blocker(AbsErrorAnalyser):
         cols : List[str]
             Columns in QMC data to be reblocked, e.g.
             ['Shift', r'\sum H_0j N_j', 'N_0', '# H psips'].
+        replica_col : str
+            Name of replica columns, e.g. 'replica id'.
         eval_ratio : Dict[str, str], optional
             After blocking, evaluate ratio (e.g. projected energy).
             Contains:
@@ -81,6 +83,7 @@ class Blocker(AbsErrorAnalyser):
         Blocker._check_input(it_key, cols, hybrid_col, start_its)
         self._it_key: str = it_key
         self._cols: List[str] = cols
+        self._replica_col = replica_col
         self._eval_ratio: Dict[str, str] = eval_ratio
         self._hybrid_col: str = hybrid_col
         if isinstance(start_its, list):
@@ -102,7 +105,7 @@ class Blocker(AbsErrorAnalyser):
         self._covariance: List[pd.DataFrame]
         self._data_len: List[pd.Series]
         self._opt_block: pd.DataFrame
-        self._no_opt_block: List[List[str]]
+        self._no_opt_block: Union[List[List[str]], List[List[List[str]]]]
 
     @classmethod
     def inst_hande_ccmc_fciqmc(
@@ -120,7 +123,8 @@ class Blocker(AbsErrorAnalyser):
             their HANDE CCMC/FCIQMC column names, e.g.
             PrepHandeCcmcFciqmc.observables in data_preparing.
             'it_key', 'shift_key', 'sum_key', 'ref_key', 'total_key',
-            'proje_key' and 'inst_proje_key' are required here.
+            'proje_key', 'inst_proje_key' and 'replica_key' are required
+            here.
         For the other arguments, see __init__().
 
         Returns
@@ -133,6 +137,7 @@ class Blocker(AbsErrorAnalyser):
             observables['it_key'],
             [observables['shift_key'], observables['sum_key'],
              observables['ref_key'], observables['total_key']],
+            observables['replica_key'],
             eval_ratio={'name': observables['proje_key'],
                         'num': observables['sum_key'],
                         'denom': observables['ref_key']},
@@ -208,8 +213,8 @@ class Blocker(AbsErrorAnalyser):
             raise
 
     def _do_blocking_dat(self, dat: pd.DataFrame, dat_ind: int
-                         ) -> Tuple(pd.Series, pd.DataFrame, pd.DataFrame,
-                                    List[str], pd.DataFrame):
+                         ) -> (pd.Series, pd.DataFrame, pd.DataFrame,
+                               List[str], pd.DataFrame):
         """Block one QMC calculation, one replica if replica tricks.
 
         Parameters
@@ -276,16 +281,33 @@ class Blocker(AbsErrorAnalyser):
             self._start_its, self._end_its)
 
         # Do blocking.
-        self._data_len = []
-        self._reblock = []
-        self._covariance = []
-        self._no_opt_block = []
-        self._opt_block = []
+        self._data_len, self._reblock, self._covariance = [], [], []
+        self._no_opt_block, self._opt_block = [], []
         for i, dat in enumerate(data):
             dat_c = dat.copy()
-            (data_len, reblock, covariance, no_opt_block, opt_block) = (
-                self._do_blocking_dat(dat_c, i)
-            )
+            if self._replica_col in dat_c:
+                # Have used replica tricks.  Analyse them one by one.
+                dat_c_repl = dat_c.groupby([self._replica_col])
+                data_len, reblock, covariance = [], [], []
+                no_opt_block, opt_block = [], []
+                for rep_id in range(1, len(dat_c_repl)+1):
+                    (data_l, rebl, cov, no_opt_bl, opt_bl) = (
+                        self._do_blocking_dat(dat_c_repl.get_group(rep_id), i)
+                    )
+                    data_len.append(data_l)
+                    reblock.append(rebl)
+                    covariance.append(cov)
+                    no_opt_block.append(no_opt_bl)
+                    opt_block.append(opt_bl)
+                data_len, reblock, covariance, opt_block = (
+                    pd.concat(result_df, keys=dat_c_repl.groups.keys(),
+                              names=[self._replica_col])
+                    for result_df in [data_len, reblock, covariance, opt_block]
+                )
+            else:
+                (data_len, reblock, covariance, no_opt_block, opt_block) = (
+                    self._do_blocking_dat(dat_c, i)
+                )
             self._data_len.append(data_len)
             self._reblock.append(reblock)
             self._covariance.append(covariance)
