@@ -1217,7 +1217,7 @@ contains
                                        get_one_body_int_mol_real, store_one_body_int
         use system, only: sys_t
         use errors, only: stop_all
-        use parallel, only: parent, root
+        use parallel
         use utils, only: tri_ind_reorder
         use checking, only: check_allocate, check_deallocate
         use read_in_symmetry, only: is_gamma_irrep_read_in
@@ -1402,11 +1402,24 @@ contains
                    end select
                end if
             end do
+            ! Same check as above in read_in_integrals.
+            ! If system is sensible, total Ecore including any CAS contribution will be purely real as is just the sum of Ecore
+            ! and single particle energies of core orbitals; if not then either these assumptions are wrong or something's up
+            ! with the extra integrals INTDUMP.
+            ! Either way will want to know.
+            if (abs(im_core) > depsilon) then
+                call stop_all('read_additional_exchange_integrals' ,'Nonzero imaginary core energy found after correcting & 
+                                                                    & for exchange integrals; check your CAS settings.')
+            end if
         end if
         deallocate(seen_ijij, stat=ierr)
         call check_deallocate('seen_ijij', ierr)
         deallocate(seen_iaib, stat=ierr)
         call check_deallocate('seen_iaib', ierr)
+
+#ifdef PARALLEL
+        call MPI_BCast(Ecore, 1, mpi_preal, root, MPI_COMM_WORLD, ierr)
+#endif
 
         call broadcast_two_body_exchange_t(sys%read_in%additional_exchange_ints, root)
         if (sys%read_in%comp) then
