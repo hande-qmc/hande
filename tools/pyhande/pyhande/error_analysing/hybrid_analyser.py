@@ -8,7 +8,6 @@ import statsmodels.tsa.stattools as tsastats
 from pyhande.error_analysing.abs_error_analyser import AbsErrorAnalyser
 from pyhande.error_analysing.find_starting_iteration import select_find_start
 from pyhande.error_analysing.analysis_utils import check_data_input
-from pyhande.error_analysing.analysis_utils import set_start_and_end_its
 
 
 class HybridAnalyser(AbsErrorAnalyser):
@@ -232,6 +231,35 @@ class HybridAnalyser(AbsErrorAnalyser):
             no_opt_block = []
         return (opt_block, no_opt_block)
 
+    def _do_hybrid_dat(self, dat: pd.DataFrame, dat_ind: int
+                       ) -> (pd.DataFrame, List[str]):
+        """Do hybrid analysis for one calc/one replica if replica.
+
+        Parameters
+        ----------
+        dat : pd.DataFrame
+            QMC data for one calculation (of one replica if doing that).
+        dat_in : int
+            Index of `dat` in all `data` passed to .exe().
+
+        Returns
+        -------
+        pd.DataFrame, List[str]
+            opt_block and no_opt_block of analysis.
+        """
+        # Find start and end iteration:
+        end_it = (self._end_its[dat_ind] if self._end_its
+                  else dat[self._it_key].iloc[-1])
+        start_it = (self._start_its[dat_ind] if self._start_its
+                    else self._find_starting_it(dat, end_it, self._it_key,
+                                                self._cols,
+                                                self._hybrid_col,
+                                                **self._find_start_kw_args)
+                    )
+        dat = dat[dat[self._it_key].between(start_it, end_it)]
+        (opt_block, no_opt_block) = self._do_hybrid_analysis(dat)
+        return (opt_block, no_opt_block)
+
     def exe(self, data: List[pd.DataFrame]):
         """
         Do analysis (first finding starting iteration if required).
@@ -252,19 +280,13 @@ class HybridAnalyser(AbsErrorAnalyser):
         check_data_input(
             data, self._cols, None, self._hybrid_col, self._start_its,
             self._end_its)
-        self._start_its, self._end_its = set_start_and_end_its(
-            data, self._it_key, self._cols, self._hybrid_col,
-            self._find_starting_it, self._find_start_kw_args, self.start_its,
-            self.end_its)
 
         # Do analysis.
         self._no_opt_block = []
         self._opt_block = []
-        for dat, start_it, end_it in zip(data, self.start_its,
-                                         self.end_its):
+        for i, dat in enumerate(data):
             # Select subset of data to analyse:
             dat_c = dat.copy()
-            dat_c = dat_c[dat_c[self._it_key].between(start_it, end_it)]
-            (opt_block, no_opt_block) = self._do_hybrid_analysis(dat_c)
+            (opt_block, no_opt_block) = self._do_hybrid_dat(dat_c, i)
             self._no_opt_block.append(no_opt_block)
             self.opt_block.append(opt_block)

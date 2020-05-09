@@ -1,5 +1,5 @@
 """Analyse Monte Carlo correlated output using reblocking."""
-from typing import Dict, List, Union
+from typing import Dict, List, Tuple, Union
 import copy
 import pandas as pd
 import pyblock
@@ -7,7 +7,6 @@ import pyhande.analysis as analysis
 from pyhande.error_analysing.abs_error_analyser import AbsErrorAnalyser
 from pyhande.error_analysing.find_starting_iteration import select_find_start
 from pyhande.error_analysing.analysis_utils import check_data_input
-from pyhande.error_analysing.analysis_utils import set_start_and_end_its
 
 
 class Blocker(AbsErrorAnalyser):
@@ -208,6 +207,53 @@ class Blocker(AbsErrorAnalyser):
             print(self._pre_exe_error_message)
             raise
 
+    def _do_blocking_dat(self, dat: pd.DataFrame, dat_ind: int
+                         ) -> Tuple(pd.Series, pd.DataFrame, pd.DataFrame,
+                                    List[str], pd.DataFrame):
+        """Block one QMC calculation, one replica if replica tricks.
+
+        Parameters
+        ----------
+        dat : pd.DataFrame
+            QMC data for one calculation (of one replica if doing that).
+        dat_in : int
+            Index of `dat` in all `data` passed to .exe().
+
+        Returns
+        -------
+        pd.Series, pd.DataFrame, pd.DataFrame, List[str], pd.DataFrame
+            data_len, reblock, covariance, no_opt_block, opt_block of
+            analysis.
+        """
+        # Find start and end iteration:
+        end_it = (self._end_its[dat_ind] if self._end_its
+                  else dat[self._it_key].iloc[-1])
+        start_it = (self._start_its[dat_ind] if self._start_its
+                    else self._find_starting_it(dat, end_it, self._it_key,
+                                                self._cols,
+                                                self._hybrid_col,
+                                                **self._find_start_kw_args)
+                    )
+        # Select subset of data to block:
+        dat = dat[dat[self._it_key].between(start_it, end_it)]
+        dat = dat[self._cols]
+        # Block:
+        (data_len, reblock, covariance) = pyblock.pd_utils.reblock(dat)
+        cols_in_opt = copy.copy(self._cols)
+        # Add ratio if required:
+        if self._eval_ratio:
+            ratio = analysis.projected_energy(
+                reblock, covariance, data_len,
+                sum_key=self._eval_ratio['num'],
+                ref_key=self._eval_ratio['denom'],
+                col_name=self._eval_ratio['name'])
+            reblock = pd.concat([reblock, ratio], axis=1)
+            cols_in_opt.append(self._eval_ratio['name'])
+        # Get summary of blocking:
+        (opt_block, no_opt_block) = analysis.qmc_summary(reblock,
+                                                         cols_in_opt)
+        return (data_len, reblock, covariance, no_opt_block, opt_block)
+
     def exe(self, data: List[pd.DataFrame]):
         """
         Do reblocking (first finding starting iteration if required).
@@ -228,10 +274,6 @@ class Blocker(AbsErrorAnalyser):
         check_data_input(
             data, self._cols, self._eval_ratio, self._hybrid_col,
             self._start_its, self._end_its)
-        self._start_its, self._end_its = set_start_and_end_its(
-            data, self._it_key, self._cols, self._hybrid_col,
-            self._find_starting_it, self._find_start_kw_args, self.start_its,
-            self.end_its)
 
         # Do blocking.
         self._data_len = []
@@ -239,27 +281,11 @@ class Blocker(AbsErrorAnalyser):
         self._covariance = []
         self._no_opt_block = []
         self._opt_block = []
-        for dat, start_it, end_it in zip(data, self.start_its,
-                                         self.end_its):
-            # Select subset of data to block:
+        for i, dat in enumerate(data):
             dat_c = dat.copy()
-            dat_c = dat_c[dat_c[self._it_key].between(start_it, end_it)]
-            dat_c = dat_c[self._cols]
-            # Block:
-            (data_len, reblock, covariance) = pyblock.pd_utils.reblock(dat_c)
-            cols_in_opt = copy.copy(self._cols)
-            # Add ratio if required:
-            if self._eval_ratio:
-                ratio = analysis.projected_energy(
-                    reblock, covariance, data_len,
-                    sum_key=self._eval_ratio['num'],
-                    ref_key=self._eval_ratio['denom'],
-                    col_name=self._eval_ratio['name'])
-                reblock = pd.concat([reblock, ratio], axis=1)
-                cols_in_opt.append(self._eval_ratio['name'])
-            # Get summary of blocking:
-            (opt_block, no_opt_block) = analysis.qmc_summary(reblock,
-                                                             cols_in_opt)
+            (data_len, reblock, covariance, no_opt_block, opt_block) = (
+                self._do_blocking_dat(dat_c, i)
+            )
             self._data_len.append(data_len)
             self._reblock.append(reblock)
             self._covariance.append(covariance)
