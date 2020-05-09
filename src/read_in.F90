@@ -418,6 +418,14 @@ contains
                 call init_two_body_t(sys, sys%read_in%pg_sym%gamma_sym, .true., sys%read_in%coulomb_integrals_imag)
             end if
         end if
+        if (sys%read_in%extra_exchange_integrals) then
+            ! [todo] - Support t_store as a concept? Delete t_store?
+            call init_two_body_exchange_t(sys, sys%read_in%pg_sym%gamma_sym, .false., sys%read_in%additional_exchange_ints)
+            if (sys%read_in%comp) then
+                call init_two_body_exchange_t(sys, sys%read_in%pg_sym%gamma_sym, .true., &
+                                              sys%read_in%additional_exchange_ints_imag)
+            end if
+        end if            
 
         if (parent) then
             ! Now, read in FCIDUMP again to get the integrals.
@@ -461,6 +469,13 @@ contains
             if (sys%read_in%comp) then
                 call zero_one_body_int_store(sys%read_in%one_e_h_integrals_imag)
                 call zero_two_body_int_store(sys%read_in%coulomb_integrals_imag)
+            end if
+        end if
+        if ((parent) .and. (sys%read_in%extra_exchange_integrals)) then
+            ! [todo] - Keep support for t_store? Add here?
+            call zero_two_body_exchange_int_store(sys%read_in%additional_exchange_ints)
+            if (sys%read_in%comp) then
+                call zero_two_body_exchange_int_store(sys%read_in%additional_exchange_ints_imag)
             end if
         end if
 
@@ -784,6 +799,9 @@ contains
 
         end if
 
+        if (sys%read_in%extra_exchange_integrals) call read_additional_exchange_integrals(sys, sp_fcidump_rank, &
+               active_basis_offset, sys%read_in%Ecore, t_verbose)
+
 #ifdef PARALLEL
         call MPI_BCast(sys%read_in%Ecore, 1, mpi_preal, root, MPI_COMM_WORLD, ierr)
 #endif
@@ -794,8 +812,12 @@ contains
             call broadcast_two_body_t(sys%read_in%coulomb_integrals_imag, root, sys%read_in%max_broadcast_chunk)
         end if
 
-        if (sys%read_in%extra_exchange_integrals) call read_additional_exchange_integrals(sys, sp_fcidump_rank, &
-               active_basis_offset, sys%read_in%Ecore, t_verbose)
+        if (sys%read_in%extra_exchange_integrals) then
+            call broadcast_two_body_exchange_t(sys%read_in%additional_exchange_ints, root)
+            if (sys%read_in%comp) then
+                call broadcast_two_body_exchange_t(sys%read_in%additional_exchange_ints_imag, root)
+            end if
+        end if
 
         if (size(sys%basis%basis_fns) /= size(all_basis_fns) .and. parent .and. t_verbose) then
             ! We froze some orbitals...
@@ -1212,12 +1234,10 @@ contains
         !  This includes the exchange integrals in the appropriate freezing -
         !  code extracted from the main freezing routine mostly.
 
-        use molecular_integrals, only: init_two_body_exchange_t, zero_two_body_exchange_int_store, &
-                                       store_pbc_int_mol, broadcast_two_body_exchange_t, &
-                                       get_one_body_int_mol_real, store_one_body_int
+        use molecular_integrals, only: store_pbc_int_mol, get_one_body_int_mol_real, store_one_body_int
         use system, only: sys_t
         use errors, only: stop_all
-        use parallel
+        use parallel, only: parent
         use utils, only: tri_ind_reorder
         use checking, only: check_allocate, check_deallocate
         use read_in_symmetry, only: is_gamma_irrep_read_in
@@ -1250,29 +1270,21 @@ contains
 
         ios = 0
 
-        if (sys%read_in%uhf) then
-            rhf_fac = 1
-        else
-            rhf_fac = 2  ! need to double count some integrals.
-        end if
-
-        call init_two_body_exchange_t(sys, sys%read_in%pg_sym%gamma_sym, .false., sys%read_in%additional_exchange_ints)
-        if (sys%read_in%comp) then
-            call init_two_body_exchange_t(sys, sys%read_in%pg_sym%gamma_sym, .true., sys%read_in%additional_exchange_ints_imag)
-        end if
-
-        allocate(seen_ijij((active_basis_offset*(active_basis_offset+1))/2), stat=ierr)
-        call check_allocate('seen_ijij', active_basis_offset*(active_basis_offset+1)/2, ierr)
-        allocate(seen_iaib(-active_basis_offset+1:0,(sys%basis%nbasis*(sys%basis%nbasis+1))/2), stat=ierr)
-        call check_allocate('seen_iaib', sys%basis%nbasis*(sys%basis%nbasis+1)/2, ierr)
-        seen_ijij = 0
-        seen_iaib = 0
 
         if (parent) then
-            call zero_two_body_exchange_int_store(sys%read_in%additional_exchange_ints)
-            if (sys%read_in%comp) then
-                call zero_two_body_exchange_int_store(sys%read_in%additional_exchange_ints_imag)
+
+            if (sys%read_in%uhf) then
+                rhf_fac = 1
+            else
+                rhf_fac = 2  ! need to double count some integrals.
             end if
+
+            allocate(seen_ijij((active_basis_offset*(active_basis_offset+1))/2), stat=ierr)
+            call check_allocate('seen_ijij', active_basis_offset*(active_basis_offset+1)/2, ierr)
+            allocate(seen_iaib(-active_basis_offset+1:0,(sys%basis%nbasis*(sys%basis%nbasis+1))/2), stat=ierr)
+            call check_allocate('seen_iaib', sys%basis%nbasis*(sys%basis%nbasis+1)/2, ierr)
+            seen_ijij = 0
+            seen_iaib = 0
 
             inquire(file=sys%read_in%ex_fcidump, exist=t_exists)
             if (.not.t_exists) call stop_all('read_in_integrals', 'FCIDUMP does not &
@@ -1411,19 +1423,11 @@ contains
                 call stop_all('read_additional_exchange_integrals' ,'Nonzero imaginary core energy found after correcting & 
                                                                     & for exchange integrals; check your CAS settings.')
             end if
-        end if
-        deallocate(seen_ijij, stat=ierr)
-        call check_deallocate('seen_ijij', ierr)
-        deallocate(seen_iaib, stat=ierr)
-        call check_deallocate('seen_iaib', ierr)
 
-#ifdef PARALLEL
-        call MPI_BCast(Ecore, 1, mpi_preal, root, MPI_COMM_WORLD, ierr)
-#endif
-
-        call broadcast_two_body_exchange_t(sys%read_in%additional_exchange_ints, root)
-        if (sys%read_in%comp) then
-            call broadcast_two_body_exchange_t(sys%read_in%additional_exchange_ints_imag, root)
+            deallocate(seen_ijij, stat=ierr)
+            call check_deallocate('seen_ijij', ierr)
+            deallocate(seen_iaib, stat=ierr)
+            call check_deallocate('seen_iaib', ierr)
         end if
 
         call modify_one_body_ints(sys, sys%read_in%coulomb_integrals, sys%read_in%additional_exchange_ints, &
@@ -1457,9 +1461,9 @@ contains
 
         use molecular_integrals, only: store_one_body_int, get_one_body_int_mol_nonzero, &
                                get_two_body_int_mol_nonzero, get_two_body_exchange_pbc_int_nonzero,&
-                               pbc_ex_int_indx, int_ex_indx, broadcast_one_body_t
+                               pbc_ex_int_indx, int_ex_indx
         use system, only: sys_t
-        use parallel, only: parent, root
+        use parallel, only: parent
         use molecular_integral_types, only: two_body_t, one_body_t, two_body_exchange_t
 
         type(sys_t), intent(in) :: sys
@@ -1481,7 +1485,6 @@ contains
                 call store_one_body_int(i, i, intgrl, sys, .false., one_e_ints, ierr)
             end do
         end if
-        call broadcast_one_body_t(one_e_ints, root)
 
     end subroutine modify_one_body_ints
 
