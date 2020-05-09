@@ -18,7 +18,7 @@ import pyhande.error_analysing
 import pyhande.extract
 import pyhande.extracting
 import pyhande.lazy
-import pyhande.results
+import pyhande.results_viewer
 import pyhande.utils
 import pyhande.weight
 import pyhande.dmqmc
