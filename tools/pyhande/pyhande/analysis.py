@@ -254,7 +254,8 @@ Shepherd14
 
 
 def inefficiency(opt_block, dtau, iterations, sum_key='\sum H_0j N_j',
-                 ref_key='N_0', total_key='# H psips'):
+                 ref_key='N_0', total_key='# H psips',
+                 proje_key = 'Proj. Energy'):
     '''Estimate the inefficiency of a calculation from the blocked data.
 
 The statistical error of an ideal FCIQMC calculation decreases with the
@@ -280,7 +281,7 @@ Credit to William Vigor for the original pyhande implementation.
 
 Parameters
 ----------
-data : :class:`pandas.DataFrame`
+opt_block : :class:`pandas.DataFrame`
     Optimally blocked HANDE QMC data.
     func:`pyhande.analysis.qmc_summary` can be used to
     extract this from reblocked HANDE data.
@@ -297,6 +298,8 @@ ref_key : string
     the trial wavefunction (often/originally just a single determinant).
 total_key : string
     column name in reblock_data containing the total number of psips.
+proje_key : string
+    key for projected energy index in `opt_block`.
 Returns
 -------
 ineff : :class:`pandas.DataFrame`
@@ -311,7 +314,7 @@ Vigor16
 '''
          
     try:
-        err_proj_e = opt_block['standard error']['Proj. Energy']
+        err_proj_e = opt_block['standard error'][proje_key]
         Np = opt_block['mean'][total_key]
         err_Np = opt_block['standard error'][total_key]
         inefficiency = err_proj_e * numpy.sqrt(Np*iterations*dtau)
