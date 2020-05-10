@@ -70,13 +70,13 @@ starting_iteration: integer
     before_end_indx = data['iterations'] <= end
     data_before_end = data[before_end_indx]
     
-    list = data_before_end['Proj. Energy']
-    n_data=len(list)
+    list_proje = data_before_end['Proj. Energy']
+    n_data=len(list_proje)
 
     mser_min = sys.float_info.max
     for i in range(n_blocks): 
         start_line = int(i*(n_data*start_max_frac)/n_blocks)
-        mser = numpy.var(list[start_line:n_data]) / (n_data-start_line)
+        mser = numpy.var(list_proje[start_line:n_data]) / (n_data-start_line)
         if ( mser < mser_min):
             mser_min = mser
             starting_iteration = start_line * md['qmc']['ncycles']
@@ -136,23 +136,18 @@ info : :func:`collections.namedtuple`
     after_start_indx = data_before_end['iterations'] >= start
     calc_tr          = data_before_end[after_start_indx]
         
-    #list = calc_tr['Proj. Energy'].as_matrix()
-    #n_data = len(list)
-    
     list_org = calc_tr['Proj. Energy'].values
     n_data = len(list_org) // batch_size
-    list = [0]*n_data
+    list_means = [0]*n_data
     for i in range(n_data):
-        list[i] = numpy.mean(list_org[i*batch_size:(i+1)*batch_size])
-    #print list
+        list_means[i] = numpy.mean(list_org[i*batch_size:(i+1)*batch_size])
 
-    #print list    
-    mean = numpy.mean(list)
-    var  = numpy.var(list)
-    acf = tsastats.acf(x=list, unbiased=True, nlags=n_data-1, fft=True)
+    mean = numpy.mean(list_means)
+    var  = numpy.var(list_means)
+    acf = tsastats.acf(x=list_means, unbiased=True, nlags=n_data-1, fft=True)
         
     # ar model
-    ar = ar_model.AR(list)
+    ar = ar_model.AR(list_means)
     model_ar = ar.fit(ic='aic', trend='c', method='cmle')
     params = model_ar.params
     denom = nom = 1
