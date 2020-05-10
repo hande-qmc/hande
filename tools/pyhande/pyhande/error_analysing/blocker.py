@@ -87,11 +87,11 @@ class Blocker(AbsErrorAnalyser):
         self._eval_ratio: Dict[str, str] = eval_ratio
         self._hybrid_col: str = hybrid_col
         if isinstance(start_its, list):
-            self._start_its = start_its
+            self._input_start_its = start_its
         else:
-            self._start_its = None
+            self._input_start_its = None
             self._find_starting_it = select_find_start(start_its)
-        self._end_its: List[int] = end_its
+        self._input_end_its: List[int] = end_its
         self._find_start_kw_args: Dict[str, Union[bool, float, int]] = (
             find_start_kw_args if find_start_kw_args else {})
 
@@ -101,6 +101,8 @@ class Blocker(AbsErrorAnalyser):
         )
 
         # These attributes are set later:
+        self._start_its: List[int]
+        self._end_its: List[int]
         self._reblock: List[pd.DataFrame]
         self._covariance: List[pd.DataFrame]
         self._data_len: List[pd.Series]
@@ -159,13 +161,21 @@ class Blocker(AbsErrorAnalyser):
 
     @property
     def start_its(self) -> List[int]:
-        """Access _start_its attribute, analysis start iterations."""
-        return self._start_its
+        """Access _start_its attribute if available, else error."""
+        try:
+            return self._start_its
+        except AttributeError:
+            print(self._pre_exe_error_message)
+            raise
 
     @property
     def end_its(self) -> List[int]:
-        """Access _end_its attribute, analysis end iterations."""
-        return self._end_its
+        """Access _end_its attribute if available, else error."""
+        try:
+            return self._end_its
+        except AttributeError:
+            print(self._pre_exe_error_message)
+            raise
 
     @property
     def opt_block(self) -> pd.DataFrame:
@@ -231,16 +241,20 @@ class Blocker(AbsErrorAnalyser):
             analysis.
         """
         # Find start and end iteration:
-        end_it = (self._end_its[dat_ind] if self._end_its
-                  else dat[self._it_key].iloc[-1])
-        start_it = (self._start_its[dat_ind] if self._start_its
-                    else self._find_starting_it(dat, end_it, self._it_key,
-                                                self._cols,
-                                                self._hybrid_col,
-                                                **self._find_start_kw_args)
-                    )
+        self._end_its.append(
+            self._input_end_its[dat_ind] if self._input_end_its
+            else dat[self._it_key].iloc[-1]
+        )
+        self._start_its.append(
+            self._input_start_its[dat_ind] if self._input_start_its
+            else self._find_starting_it(dat, self._end_its[-1],
+                                        self._it_key, self._cols,
+                                        self._hybrid_col,
+                                        **self._find_start_kw_args)
+        )
         # Select subset of data to block:
-        dat = dat[dat[self._it_key].between(start_it, end_it)]
+        dat = dat[dat[self._it_key].between(
+            self._start_its[-1], self._end_its[-1])]
         dat = dat[self._cols]
         # Block:
         (data_len, reblock, covariance) = pyblock.pd_utils.reblock(dat)
@@ -278,7 +292,10 @@ class Blocker(AbsErrorAnalyser):
         """
         check_data_input(
             data, self._cols, self._eval_ratio, self._hybrid_col,
-            self._start_its, self._end_its)
+            self._input_start_its, self._input_end_its)
+
+        self._start_its = []
+        self._end_its = []
 
         # Do blocking.
         self._data_len, self._reblock, self._covariance = [], [], []
