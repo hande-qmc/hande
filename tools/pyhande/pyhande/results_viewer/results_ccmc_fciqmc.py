@@ -80,8 +80,16 @@ class ResultsCcmcFciqmc(Results):
         )  # Only one level will be used, depending on whether replica.
 
     def _opt_block(self) -> pd.DataFrame:
+        """Return opt_block in more normalised form."""
         return ResultsCcmcFciqmc._concat_reset_rename(
             self.analyser.opt_block)
+
+    def _add_to_summary(self, df: pd.DataFrame) -> None:
+        """Add data to summary."""
+        self.summary = pd.concat([self.summary, df])
+        self.summary.sort_values(
+            by=['calc id', self.preparator.observables['replica_key']],
+            inplace=True, ignore_index=True)
 
     def _calc_shoulder(self, dat: pd.DataFrame) -> pd.DataFrame:
         """Calculate shoulder using analysis.plateau_estimator."""
@@ -118,10 +126,7 @@ class ResultsCcmcFciqmc(Results):
 
     def add_shoulder(self):
         """Add shoulder to summary. [todo]: allow hist shoulder."""
-        self.summary = pd.concat([self.summary, self.shoulder])
-        self.summary.sort_values(
-            by=['calc id', self.preparator.observables['replica_key']],
-            inplace=True, ignore_index=True)
+        self._add_to_summary(self.shoulder)
 
     def _calc_ineff(self, dat_ind: int, opt_block: pd.DataFrame) -> float:
         """Calculate inefficiency using analysis.inefficiency."""
@@ -143,49 +148,29 @@ class ResultsCcmcFciqmc(Results):
             return self._inefficiency
         except AttributeError:
             # Calculate inefficiency.
-            # Assume all opt_block contain same type of observables.
-            # Have to consider replica tricks. replica ids start with 1.
-            if all((self.preparator.observables[col_key]
-                    in self.analyser.opt_block[0].index) or
-                   ((1, self.preparator.observables[col_key])
-                    in self.analyser.opt_block[0].index)
-                   for col_key in
-                   ['sum_key', 'ref_key', 'total_key', 'proje_key']):
-                self._inefficiency = []
-                for dat_ind in range(len(self.preparator.data)):
-                    if (self.preparator.observables['replica_key'] in
-                            self.preparator.data[dat_ind]):
-                        opt_block = self.analyser.opt_block[dat_ind]
-                        ineff = [
-                            self._calc_ineff(
-                                dat_ind, opt_block.loc[replica_ind])
-                            for replica_ind
-                            in range(1, opt_block.index.max()[0]+1)
-                        ]
-                        ineff = pd.concat(
-                            ineff, keys=list(
-                                range(1, opt_block.index.max()[0]+1)),
-                            names=[self.preparator.observables['replica_key']])
-                    else:
-                        ineff = self._calc_ineff(
-                            dat_ind, self.analyser.opt_block[dat_ind])
-                    self._inefficiency.append(ineff)
-                self._inefficiency = ResultsCcmcFciqmc._concat_reset_rename(
-                    self._inefficiency)
-                return self._inefficiency
-            raise AttributeError(
-                "Inefficiency cannot be evaluated. Analysis info for "
-                f"{self.preparator.observables['sum_key']}, "
-                f"{self.preparator.observables['ref_key']}, "
-                f"{self.preparator.observables['total_key']}, "
-                f"{self.preparator.observables['proje_key']} are required.")
+            self._inefficiency = []
+            for dat_ind in range(len(self.preparator.data)):
+                if (self.preparator.observables['replica_key'] in
+                        self.preparator.data[dat_ind]):
+                    opt_block = self.analyser.opt_block[dat_ind]
+                    ineff = [
+                        self._calc_ineff(dat_ind, opt_block.loc[replica_ind])
+                        for replica_ind in range(1, opt_block.index.max()[0]+1)
+                    ]
+                    ineff = pd.concat(
+                        ineff, keys=list(range(1, opt_block.index.max()[0]+1)),
+                        names=[self.preparator.observables['replica_key']])
+                else:
+                    ineff = self._calc_ineff(
+                        dat_ind, self.analyser.opt_block[dat_ind])
+                self._inefficiency.append(ineff)
+            self._inefficiency = ResultsCcmcFciqmc._concat_reset_rename(
+                self._inefficiency)
+            return self._inefficiency
 
     def add_inefficiency(self):
         """Add inefficiency to summary."""
-        self.summary = pd.concat([self.summary, self.inefficiency])
-        self.summary.sort_values(
-            by=['calc id', self.preparator.observables['replica_key']],
-            inplace=True, ignore_index=True)
+        self._add_to_summary(self.inefficiency)
 
     def plot_shoulder(
             self, inds: List[int] = None, show_shoulder: bool = True,
