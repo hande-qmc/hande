@@ -76,9 +76,10 @@ starting_iteration: integer
     mser_min = sys.float_info.max
     for i in range(n_blocks): 
         start_line = int(i*(n_data*start_max_frac)/n_blocks)
-        mser = numpy.var(list_proje[start_line:n_data]) / (n_data-start_line)
+        mser = numpy.var(list_proje.iloc[start_line:n_data]) / (n_data-start_line)
         if ( mser < mser_min):
             mser_min = mser
+            # [todo] - Shouldn't this be "(1+start_line) * md['qmc']['ncycles']"?
             starting_iteration = start_line * md['qmc']['ncycles']
             final_start_line = start_line
         
