@@ -39,7 +39,7 @@ class ResultsCcmcFciqmc(Results):
         self._preparator = preparator
         self._analyser: Union[Blocker, HybridAnalyser] = analyser
         if analyser.opt_block:
-            self.summary = self._add_opt_block()
+            self.summary = self._opt_block()
         # To be set later:
         self._shoulder: pd.DataFrame
         self._inefficiency: pd.DataFrame
@@ -54,15 +54,41 @@ class ResultsCcmcFciqmc(Results):
         """Access analyser used to supply the analysed results."""
         return self._analyser
 
-    def _add_opt_block(self) -> pd.DataFrame:
-        opt_block = pd.concat(
-            self.analyser.opt_block,
-            keys=list(range(len(self.analyser.opt_block))), names=['calc id'])
-        opt_block.reset_index(inplace=True)
-        return opt_block.rename(
-            columns={'level_1': 'observables', 'level_2': 'observables',
+    @staticmethod
+    def _concat_reset_rename(df: List[pd.DataFrame]) -> pd.DataFrame:
+        """Concat df from diff calcs, reset index, rename new cols.
+
+        Parameters
+        ----------
+        df : List[pd.DataFrame]
+            List of dataframes, length of list is the number of QMC
+            calculations.
+
+        Returns
+        -------
+        pd.DataFrame
+            Concatenated dataframe from df with reset index.  Will then
+            have column 'calc id' corresponding to calculation id and
+            columns 'observables' which used to be the index of each
+            element of passed in df.
+        """
+        df = pd.concat(df, keys=list(range(len(df))), names=['calc id'])
+        df = df.reset_index()
+        return df.rename(
+            columns={'level_1': 'observable', 'level_2': 'observable',
                      'mean': 'value/mean'}
-        )  # only one will be used, depending on if replica.
+        )  # Only one level will be used, depending on whether replica.
+
+    def _opt_block(self) -> pd.DataFrame:
+        return ResultsCcmcFciqmc._concat_reset_rename(
+            self.analyser.opt_block)
+
+    def _calc_shoulder(self, dat: pd.DataFrame) -> pd.DataFrame:
+        """Calculate shoulder using analysis.plateau_estimator."""
+        return analysis.plateau_estimator(
+            dat, total_key=self.preparator.observables['total_key'],
+            ref_key=self.preparator.observables['ref_key'],
+            shift_key=self.preparator.observables['shift_key'])
 
     @property
     def shoulder(self) -> pd.DataFrame:
@@ -70,18 +96,31 @@ class ResultsCcmcFciqmc(Results):
         try:
             return self._shoulder
         except AttributeError:
-            shoulders = [
-                analysis.plateau_estimator(dat) for dat in self.extractor.data
-            ]
-            # Idea for reshaping from ../../reblock_hande.py.
-            self._shoulder = pd.concat(
-                [pd.DataFrame(shoulder.stack()).T for shoulder in shoulders],
-                ignore_index=True)
+            self._shoulder = []
+            for dat in self.preparator.data:
+                if self.preparator.observables['replica_key'] in dat:
+                    datg = dat.groupby(
+                        [self.preparator.observables['replica_key']])
+                    shoulder = [
+                        self._calc_shoulder(datg.get_group(replica_ind))
+                        for replica_ind in range(1, len(datg)+1)
+                    ]
+                    shoulder = pd.concat(
+                        shoulder, keys=list(range(1, len(datg)+1)),
+                        names=[self.preparator.observables['replica_key']])
+                else:
+                    shoulder = self._calc_shoulder(dat)
+                self._shoulder.append(shoulder)
+            self._shoulder = ResultsCcmcFciqmc._concat_reset_rename(
+                self._shoulder)
             return self._shoulder
 
     def add_shoulder(self):
         """Add shoulder to summary. [todo]: allow hist shoulder."""
-        self.summary = pd.concat([self.summary, self.shoulder], axis=1)
+        self.summary = pd.concat([self.summary, self.shoulder])
+        self.summary.sort_values(
+            by=['calc id', self.preparator.observables['replica_key']],
+            inplace=True, ignore_index=True)
 
     @property
     def inefficiency(self) -> pd.DataFrame:
@@ -91,17 +130,12 @@ class ResultsCcmcFciqmc(Results):
         except AttributeError:
             if isinstance(self._analyser, Blocker):
                 ineffs = []
-                for ind in range(len(self.extractor.data)):
-                    opt_block = self.analyser.opt_block[ind]
-                    dtau = self.extractor.metadata[ind]['qmc']['tau']
-                    # [todo] - This is one iteration more than in lazy!
-                    dat_c = self.extractor.data[ind].copy()
-                    dat_c = dat_c[dat_c['iterations'].between(
-                        self.analyser.start_its[ind] + 1,
-                        self.analyser.end_its[ind])]
-                    its = (dat_c['iterations'].iloc[-1] -
-                           dat_c['iterations'].iloc[0])
-                    ineff = analysis.inefficiency(opt_block, dtau, its)
+                for dat_ind in range(len(self.extractor.data)):
+                    opt_block = self.analyser.opt_block[dat_ind]
+                    dtau = self.extractor.metadata[dat_ind][0]['qmc']['tau']
+                    n_its = (self.analyser.end_its[dat_ind]
+                             - self.analyser.start_its[dat_ind])
+                    ineff = analysis.inefficiency(opt_block, dtau, n_its)
                     ineffs.append(ineff)
                 # Idea for reshaping from ../../reblock_hande.py.
                 self._inefficiency = pd.concat(
