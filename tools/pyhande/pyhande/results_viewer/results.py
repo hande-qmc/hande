@@ -42,6 +42,17 @@ class Results:
             raise TypeError("Cannot set summary. It has to be a pd.DataFrame.")
         self._summary = summary
 
+    def _add_to_summary(self, df: pd.DataFrame) -> None:
+        """Add data to summary.  Overwritten in ResultsCcmcFciqmc."""
+        if any(obs in self.summary['observable'].values for obs in
+               df['observable']):
+            warnings.warn("Add attempt failed: summary already contains "
+                          "(some) these observables to be added here.")
+            return
+        self.summary = pd.concat([self.summary, df])
+        self.summary.sort_values(by=['calc id'], inplace=True,
+                                 ignore_index=True)
+
     @staticmethod
     def _access_meta_and_check(calc_ind: int, metadata: List[Dict],
                                meta_key: str):
@@ -99,14 +110,17 @@ class Results:
         pd.DataFrame
             Contains metadata requested for all calculations.
         """
-        return pd.DataFrame([
-            [self._access_meta_and_check(ind, metadata, meta_key)
-             for meta_key in meta_keys]
-            for ind, metadata in enumerate(self.extractor.metadata)],
-            columns=[meta_key.split(':')[-1] for meta_key in meta_keys])
+        # It is easy to pass a string instead of list of strings...
+        meta_keys = [meta_keys] if isinstance(meta_keys, str) else meta_keys
+        return pd.DataFrame(
+            [[ind, meta_key.split(':')[-1],
+              self._access_meta_and_check(ind, metadata, meta_key)]
+             for ind, metadata in enumerate(self.extractor.metadata)
+             for meta_key in meta_keys],
+            columns=['calc id', 'observable', 'value/mean'])
 
     def add_metadata(self, meta_keys: List[str]):
-        """Add metadata to summary.
+        """Add metadata to summary.  Overwritten in ResultsCcmcFciqmc.
 
         Parameters
         ----------
@@ -118,5 +132,4 @@ class Results:
             extractor.metadata[:]['system']['ueg']['r_s'] to summary
             (if they exist).
         """
-        self.summary = pd.concat(
-            [self.summary, self.get_metadata(meta_keys)], axis=1)
+        self._add_to_summary(self.get_metadata(meta_keys))

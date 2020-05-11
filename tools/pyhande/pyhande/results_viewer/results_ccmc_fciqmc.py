@@ -1,8 +1,10 @@
 """Access and investigate CCMC/FCIQMC results from HANDE QMC."""
 from typing import Dict, List, Union
+import warnings
 import copy
 import pandas as pd
 import matplotlib.pyplot as plt
+import pyblock
 from pyhande.data_preparing.hande_ccmc_fciqmc import PrepHandeCcmcFciqmc
 from pyhande.extracting.extractor import Extractor
 from pyhande.error_analysing.blocker import Blocker
@@ -54,6 +56,46 @@ class ResultsCcmcFciqmc(Results):
         """Access analyser used to supply the analysed results."""
         return self._analyser
 
+    @property
+    def summary_pretty(self) -> pd.DataFrame:
+        """Access self._summary but prettify for viewing data.
+
+        Combine value in "value/mean" column with "standard error"
+        columns for easy viewing, e.g. '0.123(4)'.  If not possible,
+        due to type or not present values, fill in value in
+        "value/mean".
+
+        Returns
+        -------
+        pd.DataFrame
+            Prettified summary table for viewing (not further analysis).
+        """
+        pretty_fmt_errs = []
+        for sum_ind in range(len(self.summary)):
+            try:
+                pretty_fmt_err = pyblock.error.pretty_fmt_err(
+                    self._summary.iloc[sum_ind]['value/mean'],
+                    self._summary.iloc[sum_ind]['standard error'])
+            except (ValueError, TypeError):
+                # Not all observables have an error, e.g. some metadata.
+                pretty_fmt_err = self._summary.iloc[sum_ind]['value/mean']
+            pretty_fmt_errs.append(pretty_fmt_err)
+        summary_pretty = pd.concat([self.summary, pd.DataFrame(
+            {'pretty': pretty_fmt_errs})], axis=1)
+        if self.preparator.observables['replica_key'] in summary_pretty:
+            summary_pretty.set_index(
+                ['calc id', self.preparator.observables['replica_key']],
+                inplace=True)
+            n_calcs = len(self.preparator.data)
+            return pd.concat(
+                [summary_pretty.loc[i_calc].pivot(columns='observable',
+                                                  values='pretty')
+                 for i_calc in range(n_calcs)], keys=list(range(n_calcs)),
+                names=['calc id'])
+        else:
+            summary_pretty.set_index(['calc id'], inplace=True)
+            return summary_pretty.pivot(columns='observable', values='pretty')
+
     @staticmethod
     def _concat_reset_rename(df: List[pd.DataFrame]) -> pd.DataFrame:
         """Concat df from diff calcs, reset index, rename new cols.
@@ -86,10 +128,19 @@ class ResultsCcmcFciqmc(Results):
 
     def _add_to_summary(self, df: pd.DataFrame) -> None:
         """Add data to summary."""
+        if any(obs in self.summary['observable'].values for obs in
+               df['observable']):
+            warnings.warn("Add attempt failed: summary already contains "
+                          "(some) these observables to be added here.")
+            return
         self.summary = pd.concat([self.summary, df])
-        self.summary.sort_values(
-            by=['calc id', self.preparator.observables['replica_key']],
-            inplace=True, ignore_index=True)
+        try:
+            self.summary.sort_values(
+                by=['calc id', self.preparator.observables['replica_key']],
+                inplace=True, ignore_index=True)
+        except KeyError:  # no replica tricks
+            self.summary.sort_values(
+                by=['calc id'], inplace=True, ignore_index=True)
 
     def _calc_shoulder(self, dat: pd.DataFrame) -> pd.DataFrame:
         """Calculate shoulder using analysis.plateau_estimator."""
@@ -172,6 +223,32 @@ class ResultsCcmcFciqmc(Results):
         """Add inefficiency to summary."""
         self._add_to_summary(self.inefficiency)
 
+    def add_metadata(self, meta_keys: List[str]):
+        """Overwritten version of Results.add_metadata.
+
+        Parameters
+        ----------
+        meta_keys : List[str]
+            List of metadata to add in strings where different level
+            keys are separated by colons. E.g.
+            ['qmc:tau', 'system:ueg:r_s'] adds
+            extractor.metadata[:]['qmc']['tau'] as well as
+            extractor.metadata[:]['system']['ueg']['r_s'] to summary
+            (if they exist).
+        """
+        metadata = self.get_metadata(meta_keys)
+        replica_key = self.preparator.observables['replica_key']
+        if (replica_key in self.preparator.data[0]):
+            # replica tricks. Assume if doing replica tricks, doing it for all.
+            # Just duplicated metadata for each replica.
+            metadata = pd.concat(
+                [metadata]*int(self.summary[replica_key].max()),
+                keys=list(range(1, int(self.summary[replica_key].max())+1)),
+                names=[replica_key])
+            metadata.reset_index(inplace=True)
+            metadata.drop(columns=['level_1'], inplace=True)
+        self._add_to_summary(metadata)
+
     def plot_shoulder(
             self, inds: List[int] = None, show_shoulder: bool = True,
             log_scale: bool = True,
@@ -194,7 +271,7 @@ class ResultsCcmcFciqmc(Results):
             The default is None.
         """
         if not inds:
-            inds = list(range(len(self.extractor.data)))
+            inds = list(range(len(self.preparator.data)))
         fig = plt.figure()
         # See https://matplotlib.org/3.2.1/gallery/animation/
         # double_pendulum_sgskip.html#sphx-glr-gallery-animation-double-
@@ -204,23 +281,28 @@ class ResultsCcmcFciqmc(Results):
         max_ratio = -1000000
         min_ratio = 1000000
         for ind in inds:
-            tot_part_ref_part = (self.extractor.data[ind]['# H psips'] /
-                                 self.extractor.data[ind]['N_0'])
+            ref_key = self.preparator.observables['ref_key']
+            total_key = self.preparator.observables['total_key']
+            tot_part_ref_part = (self.preparator.data[ind][total_key] /
+                                 self.preparator.data[ind][ref_key])
             if max_ratio < max(tot_part_ref_part):
                 max_ratio = max(tot_part_ref_part)
             if min_ratio > min(tot_part_ref_part):
                 min_ratio = min(tot_part_ref_part)
-            shou_plot.plot(self.extractor.data[ind]['# H psips'],
+            shou_plot.plot(self.preparator.data[ind][total_key],
                            tot_part_ref_part, color='C'+str(ind),
                            label=str(ind))
         if show_shoulder:
+            shoulder_h = (
+                self.shoulder[self.shoulder['observable'] == 'shoulder height']
+            )
             for ind in inds:
                 shou_plot.vlines(
-                    self.shoulder['shoulder height']['mean'].iloc[ind],
+                    shoulder_h[shoulder_h['calc id'] == ind]['value/mean'],
                     0.9*min_ratio, 1.1*max_ratio, color='C'+str(ind),
                     linestyle='--')
-        shou_plot.set_xlabel(r'# Particles')
-        shou_plot.set_ylabel(r'# Particles/# Particles on Reference')
+        shou_plot.set_xlabel(total_key)
+        shou_plot.set_ylabel(total_key+"/"+ref_key)
         if log_scale:
             shou_plot.set_xscale('log')
             shou_plot.set_yscale('log')
