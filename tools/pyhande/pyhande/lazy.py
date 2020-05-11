@@ -471,7 +471,7 @@ info : :func:`collections.namedtuple`
         ineff = pyhande.analysis.inefficiency(opt_block, dtau, N,
                                               sum_key=kH0jNj, ref_key=kN0,
                                               total_key=kHpsips)
-        if ineff is not None:
+        if ineff['mean']['Inefficiency'] is not None:
             opt_block = opt_block.append(ineff)
 
     estimates = []
