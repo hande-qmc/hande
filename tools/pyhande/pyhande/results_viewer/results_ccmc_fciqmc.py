@@ -96,6 +96,37 @@ class ResultsCcmcFciqmc(Results):
             summary_pretty.set_index(['calc id'], inplace=True)
             return summary_pretty.pivot(columns='observable', values='pretty')
 
+    def compare_obs(self, observables: List[str]) -> pd.DataFrame:
+        """Compare observables from .summary where obs are columns.
+
+        Parameters
+        ----------
+        observables : List[str]
+            Observables from .summary to compare.
+
+        Returns
+        -------
+        pd.DataFrame
+            DataFrame where easier comparisons are possible.
+        """
+        comp_df = self.summary.query("observable in @observables")
+        if self.preparator.observables['replica_key'] in comp_df:
+            # replica tricks used
+            comp_df.set_index(
+                ['calc id', self.preparator.observables['replica_key']],
+                inplace=True)
+            n_calcs = len(self.preparator.data)
+            return pd.concat(
+                [comp_df.loc[i_calc].pivot(columns='observable', values=[
+                    'value/mean', 'standard error'])
+                 for i_calc in range(n_calcs)], keys=list(range(n_calcs)),
+                names=['calc id'])
+        else:
+            comp_df.set_index(['calc id'], inplace=True)
+            comp_df = comp_df.pivot(columns='observable',
+                                    values=['value/mean', 'standard error'])
+        return comp_df
+
     @staticmethod
     def _concat_reset_rename(df: List[pd.DataFrame]) -> pd.DataFrame:
         """Concat df from diff calcs, reset index, rename new cols.
@@ -251,8 +282,7 @@ class ResultsCcmcFciqmc(Results):
 
     def plot_shoulder(
             self, inds: List[int] = None, show_shoulder: bool = True,
-            log_scale: bool = True,
-            show: bool = True, savefig: str = None) -> None:
+            log_scale: bool = True) -> None:
         """Plot shoulder.
 
         Parameters
@@ -264,11 +294,6 @@ class ResultsCcmcFciqmc(Results):
             Show positions of shoulder height with vertical lines.
         log_scale : bool
             Set x and y axis on log scale.
-        show : bool
-            If True, show plot. The default is True.
-        savefig : str
-            If not None, save fig to specified path 'savefig'.
-            The default is None.
         """
         if not inds:
             inds = list(range(len(self.preparator.data)))
@@ -280,21 +305,30 @@ class ResultsCcmcFciqmc(Results):
         # [todo] Improve
         max_ratio = -1000000
         min_ratio = 1000000
+        repl_id = self.preparator.observables['replica_key']
         for ind in inds:
+            if repl_id in self.preparator.data[ind]:
+                # doing replica tricks, only show first replica
+                warnings.warn("Only showing shoulder plot of first replica.")
+                data = self.preparator.data[ind].groupby(repl_id).get_group(1)
+            else:
+                data = self.preparator.data[ind]
             ref_key = self.preparator.observables['ref_key']
             total_key = self.preparator.observables['total_key']
-            tot_part_ref_part = (self.preparator.data[ind][total_key] /
-                                 self.preparator.data[ind][ref_key])
+            tot_part_ref_part = data[total_key] / data[ref_key]
             if max_ratio < max(tot_part_ref_part):
                 max_ratio = max(tot_part_ref_part)
             if min_ratio > min(tot_part_ref_part):
                 min_ratio = min(tot_part_ref_part)
-            shou_plot.plot(self.preparator.data[ind][total_key],
-                           tot_part_ref_part, color='C'+str(ind),
-                           label=str(ind))
+            shou_plot.plot(data[total_key], tot_part_ref_part,
+                           color='C'+str(ind), label=str(ind))
         if show_shoulder:
+            if repl_id in self.shoulder:
+                shoulder = self.shoulder.groupby(repl_id).get_group(1)
+            else:
+                shoulder = self.shoulder
             shoulder_h = (
-                self.shoulder[self.shoulder['observable'] == 'shoulder height']
+                shoulder[shoulder['observable'] == 'shoulder height']
             )
             for ind in inds:
                 shou_plot.vlines(
@@ -306,8 +340,5 @@ class ResultsCcmcFciqmc(Results):
         if log_scale:
             shou_plot.set_xscale('log')
             shou_plot.set_yscale('log')
-        if show:
-            plt.show()
-        if savefig:
-            # [todo]
-            pass
+        plt.legend(loc='best')
+        plt.show()
