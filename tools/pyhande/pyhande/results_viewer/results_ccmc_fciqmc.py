@@ -8,7 +8,7 @@ import pyblock
 from pyhande.data_preparing.hande_ccmc_fciqmc import PrepHandeCcmcFciqmc
 from pyhande.extracting.extractor import Extractor
 from pyhande.error_analysing.blocker import Blocker
-from pyhande.error_analysing.hybrid_analyser import HybridAnalyser
+from pyhande.error_analysing.hybrid_ana import HybridAna
 from pyhande.results_viewer.results import Results
 import pyhande.analysis as analysis
 
@@ -19,7 +19,7 @@ class ResultsCcmcFciqmc(Results):
     def __init__(
             self, extractor: Extractor,
             preparator: PrepHandeCcmcFciqmc = None,
-            analyser: Union[Blocker, HybridAnalyser] = None) -> None:
+            analyser: Union[Blocker, HybridAna] = None) -> None:
         """
         Initialise `ResultsCcmcFciqmc` instance.
 
@@ -34,12 +34,12 @@ class ResultsCcmcFciqmc(Results):
             If present, contains prepared data (e.g. dealing with
             complex, replica tricks and adding an inst. projected energy
             column) which might have then be passed to the `analyser`.
-        analyser : Union[Blocker, HybridAnalyser], optional
-            If present, information on Blocker or HybridAnalyser.
+        analyser : Union[Blocker, HybridAna], optional
+            If present, information on Blocker or HybridAna.
         """
         super().__init__(extractor)
         self._preparator = preparator
-        self._analyser: Union[Blocker, HybridAnalyser] = analyser
+        self._analyser: Union[Blocker, HybridAna] = analyser
         if analyser.opt_block:
             self.summary = self._opt_block()
         # To be set later:
@@ -52,7 +52,7 @@ class ResultsCcmcFciqmc(Results):
         return self._preparator
 
     @property
-    def analyser(self) -> Union[Blocker, HybridAnalyser]:
+    def analyser(self) -> Union[Blocker, HybridAna]:
         """Access analyser used to supply the analysed results."""
         return self._analyser
 

@@ -10,7 +10,7 @@ from pyhande.error_analysing.find_starting_iteration import select_find_start
 from pyhande.error_analysing.analysis_utils import check_data_input, set_cols
 
 
-class HybridAnalyser(AbsErrorAnalyser):
+class HybridAna(AbsErrorAnalyser):
     """Analyse ratio observable, such as projected energy.
 
     Can be used instead of Blocker.
@@ -138,7 +138,7 @@ class HybridAnalyser(AbsErrorAnalyser):
             Instance of the HybridAnalyser class, customised for a HANDE
             CCMC/FCIQMC calculation.
         """
-        return HybridAnalyser(
+        return HybridAna(
             'obs:it_key', 'obs:inst_proje_key', 'obs:replica_key',
             ['obs:shift_key', 'obs:sum_key', 'obs:ref_key', 'obs:total_key'],
             start_its=start_its, end_its=end_its, batch_size=batch_size,
