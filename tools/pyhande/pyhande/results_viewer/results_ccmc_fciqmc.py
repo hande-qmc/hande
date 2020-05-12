@@ -159,10 +159,13 @@ class ResultsCcmcFciqmc(Results):
 
     def _add_to_summary(self, df: pd.DataFrame) -> None:
         """Add data to summary."""
-        if any(obs in self.summary['observable'].values for obs in
-               df['observable']):
-            warnings.warn("Add attempt failed: summary already contains "
-                          "(some) these observables to be added here.")
+        for obs in df['observable']:
+            if obs in self.summary['observable'].values:
+                df = df.query('observable != @obs')
+                warnings.warn("Add attempt failed: summary already "
+                              f"contains {obs}.")
+        if df.empty:
+            # all metadata items already were in summary!
             return
         self.summary = pd.concat([self.summary, df])
         try:

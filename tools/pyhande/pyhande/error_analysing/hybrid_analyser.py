@@ -1,5 +1,5 @@
 """Analyse Monte Carlo correlated output with hybrid analyser."""
-from typing import Dict, List, Tuple, Union
+from typing import Dict, List, Optional, Tuple, Union
 import copy
 import pandas as pd
 import numpy as np
@@ -100,7 +100,7 @@ class HybridAnalyser(AbsErrorAnalyser):
         self._input_start_its = start_its
         if not isinstance(start_its, list):
             self._find_starting_it = select_find_start(start_its)
-        self._input_end_its: List[int] = end_its
+        self._input_end_its: Optional[List[int]] = end_its
         self._batch_size: int = batch_size
         self._find_start_kw_args: Dict[str, Union[bool, float, int]] = (
             find_start_kw_args if find_start_kw_args else {})
@@ -181,7 +181,7 @@ class HybridAnalyser(AbsErrorAnalyser):
             raise
 
     @staticmethod
-    def _check_input(it_key: str, cols: List[str], hybrid_col: str,
+    def _check_input(it_key: str, cols: Optional[List[str]], hybrid_col: str,
                      start_its: Union[List[int], str]):
         """Check some input parameters."""
         if not it_key:
@@ -249,7 +249,7 @@ class HybridAnalyser(AbsErrorAnalyser):
         return (opt_block, no_opt_block)
 
     def _do_hybrid_dat(self, dat: pd.DataFrame, dat_ind: int
-                       ) -> (pd.DataFrame, List[str]):
+                       ) -> Tuple[pd.DataFrame, List[str]]:
         """Do hybrid analysis for one calc/one replica if replica.
 
         Parameters

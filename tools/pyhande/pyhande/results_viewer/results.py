@@ -1,5 +1,5 @@
 """Access and investigate generic results from HANDE QMC."""
-from typing import Dict, List
+from typing import Dict, List, Union
 import warnings
 import pandas as pd
 from pyhande.extracting.extractor import Extractor
@@ -94,12 +94,12 @@ class Results:
             return same_calc_meta_list[0]
         return tuple(same_calc_meta_list)
 
-    def get_metadata(self, meta_keys: List[str]) -> pd.DataFrame:
+    def get_metadata(self, meta_keys: Union[str, List[str]]) -> pd.DataFrame:
         """Get part(s) of metadata in pandas DataFrame.
 
         Parameters
         ----------
-        meta_keys : List[str]
+        meta_keys : Union[str, List[str]]
             List of metadata items to put into DataFrame.  Each item as
             'keyOuter:keyInner:...', e.g. ['qmc:tau', 'system:ueg:r_s']
             adds extractor.metadata[:]['qmc']['tau'] as well as

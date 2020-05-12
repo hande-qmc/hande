@@ -66,9 +66,9 @@ class Extractor(AbsExtractor):
             'start extracting.')
         # The following will be set later (by "exe" attribute method):
         self._data: List[pd.DataFrame]
-        self._metadata: List[Dict]
+        self._metadata: List[List[Dict]]
         self._all_ccmc_fciqmc: bool
-        self._calc_to_outfile_ind: List[int]
+        self._calc_to_outfile_ind: List[List[int]]
 
     def _set_merge(self, merge):
         """Set and check input for merge parameter."""
@@ -263,7 +263,7 @@ class Extractor(AbsExtractor):
                 return False
         return True
 
-    def _do_merge(self, i_child: int, i_parent: int) -> bool:
+    def _do_merge(self, i_child: int, i_parent: int):
         """
         Merge two calculations.
 

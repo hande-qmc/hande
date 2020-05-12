@@ -1,5 +1,5 @@
 """Shared helper functions for analysers."""
-from typing import Dict, List, Union
+from typing import Dict, List, Tuple, Union
 import pandas as pd
 
 
@@ -68,7 +68,8 @@ def _set_value(observables: Dict[str, str], col_item: str) -> str:
 
 def set_cols(observables: Dict[str, str], it_key: str, cols: List[str],
              replica_col: str, eval_ratio: Dict[str, str],
-             hybrid_col: str) -> (str, List[str], str, Dict[str, str], str):
+             hybrid_col: str) -> Tuple[str, List[str], str, Dict[str, str],
+                                       str]:
     """Set various columns and observable names.
 
     Either the input is simply returned or set to observables[input] if

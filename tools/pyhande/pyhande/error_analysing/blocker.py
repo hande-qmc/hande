@@ -1,5 +1,5 @@
 """Analyse Monte Carlo correlated output using reblocking."""
-from typing import Dict, List, Union
+from typing import Dict, List, Optional, Tuple, Union
 import copy
 import pandas as pd
 import pyblock
@@ -96,12 +96,12 @@ class Blocker(AbsErrorAnalyser):
         self._input_it_key: str = it_key
         self._input_cols: List[str] = cols
         self._input_replica_col: str = replica_col
-        self._input_eval_ratio: Dict[str, str] = eval_ratio
-        self._input_hybrid_col: str = hybrid_col
-        self._input_start_its = start_its
+        self._input_eval_ratio: Optional[Dict[str, str]] = eval_ratio
+        self._input_hybrid_col: Optional[str] = hybrid_col
+        self._input_start_its: Union[List[int], str] = start_its
         if not isinstance(start_its, list):
             self._find_starting_it = select_find_start(start_its)
-        self._input_end_its: List[int] = end_its
+        self._input_end_its: Optional[List[int]] = end_its
         self._find_start_kw_args: Dict[str, Union[bool, float, int]] = (
             find_start_kw_args if find_start_kw_args else {})
 
@@ -152,7 +152,7 @@ class Blocker(AbsErrorAnalyser):
                        end_its=end_its, find_start_kw_args=find_start_kw_args)
 
     @staticmethod
-    def _check_input(it_key: str, cols: List[str], hybrid_col: str,
+    def _check_input(it_key: str, cols: List[str], hybrid_col: Optional[str],
                      start_its: Union[List[int], str]):
         """Check some input parameters."""
         if not it_key:
@@ -192,7 +192,7 @@ class Blocker(AbsErrorAnalyser):
             raise
 
     @property
-    def no_opt_block(self) -> List[List[str]]:
+    def no_opt_block(self) -> Union[List[List[str]], List[List[List[str]]]]:
         """Access _no_opt_block attribute if available. Else error."""
         try:
             return self._no_opt_block
@@ -228,8 +228,8 @@ class Blocker(AbsErrorAnalyser):
             raise
 
     def _do_blocking_dat(self, dat: pd.DataFrame, dat_ind: int
-                         ) -> (pd.Series, pd.DataFrame, pd.DataFrame,
-                               List[str], pd.DataFrame):
+                         ) -> Tuple[pd.Series, pd.DataFrame, pd.DataFrame,
+                                    List[str], pd.DataFrame]:
         """Block one QMC calculation, one replica if replica tricks.
 
         Parameters
@@ -323,7 +323,8 @@ class Blocker(AbsErrorAnalyser):
 
         # Do blocking.
         self._data_len, self._reblock, self._covariance = [], [], []
-        self._no_opt_block, self._opt_block = [], []
+        self._no_opt_block = []
+        self._opt_block = []
         for i, dat in enumerate(data):
             dat_c = dat.copy()
             if self._replica_col in dat_c:
