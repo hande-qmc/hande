@@ -6,7 +6,7 @@ import pyblock
 import pyhande.analysis as analysis
 from pyhande.error_analysing.abs_error_analyser import AbsErrorAnalyser
 from pyhande.error_analysing.find_starting_iteration import select_find_start
-from pyhande.error_analysing.analysis_utils import check_data_input
+from pyhande.error_analysing.analysis_utils import check_data_input, set_cols
 
 
 class Blocker(AbsErrorAnalyser):
@@ -35,9 +35,15 @@ class Blocker(AbsErrorAnalyser):
         ----------
         it_key : str
             Column name of MC iterations, e.g. 'iterations'.
+            Can be set to 'obs:'+key, so it will be set later in
+            .exe using passed in observables as
+            it_key = observables[key].
         cols : List[str]
             Columns in QMC data to be reblocked, e.g.
             ['Shift', r'\sum H_0j N_j', 'N_0', '# H psips'].
+            All elements can be set to 'obs:'+key, so it will be set
+            later in .exe using passed in observables as
+            obs_key = observables[key].
         replica_col : str
             Name of replica columns, e.g. 'replica id'.
         eval_ratio : Dict[str, str], optional
@@ -46,11 +52,17 @@ class Blocker(AbsErrorAnalyser):
             `num` : Numerator of ratio, e.g. r'\sum H_0j N_j'.
             `denom` : Denominator of ratio, e.g. 'N_0'.
             `name` : Name of ratio, e.g. 'Proj. Energy'.
+            Values can be set to 'obs:'+key, so it will be set later in
+            .exe using passed in observables as
+            obs = observables[key].
             The default is None, in which case no ratio is evaluated.
         hybrid_col : str, optional
             Column to be analysed in a hybrid way, e.g.
             'Inst. Proj. Energy'.  Here, only used if
             `start_its` = 'mser', ignored otherwise.
+            Values can be set to 'obs:'+key, so it will be set later in
+            .exe using passed in observables as
+            hybrid_col = observables[key].
             The default is None.  Has to be specified if `start_its` =
             'mser'.
         start_its : Union[List[int], str], optional
@@ -81,15 +93,13 @@ class Blocker(AbsErrorAnalyser):
         """
         # Set input.
         Blocker._check_input(it_key, cols, hybrid_col, start_its)
-        self._it_key: str = it_key
-        self._cols: List[str] = cols
-        self._replica_col = replica_col
-        self._eval_ratio: Dict[str, str] = eval_ratio
-        self._hybrid_col: str = hybrid_col
-        if isinstance(start_its, list):
-            self._input_start_its = start_its
-        else:
-            self._input_start_its = None
+        self._input_it_key: str = it_key
+        self._input_cols: List[str] = cols
+        self._input_replica_col: str = replica_col
+        self._input_eval_ratio: Dict[str, str] = eval_ratio
+        self._input_hybrid_col: str = hybrid_col
+        self._input_start_its = start_its
+        if not isinstance(start_its, list):
             self._find_starting_it = select_find_start(start_its)
         self._input_end_its: List[int] = end_its
         self._find_start_kw_args: Dict[str, Union[bool, float, int]] = (
@@ -101,6 +111,11 @@ class Blocker(AbsErrorAnalyser):
         )
 
         # These attributes are set later:
+        self._it_key: str
+        self._cols: List[str]
+        self._replica_col: str
+        self._eval_ratio: Dict[str, str]
+        self._hybrid_col: str
         self._start_its: List[int]
         self._end_its: List[int]
         self._reblock: List[pd.DataFrame]
@@ -111,8 +126,7 @@ class Blocker(AbsErrorAnalyser):
 
     @classmethod
     def inst_hande_ccmc_fciqmc(
-            cls, observables: Dict[str, str],
-            start_its: Union[List[int], str] = 'blocking',
+            cls, start_its: Union[List[int], str] = 'blocking',
             end_its: List[int] = None,
             find_start_kw_args: Dict[str, Union[bool, float, int]] = None
     ):
@@ -120,14 +134,7 @@ class Blocker(AbsErrorAnalyser):
 
         Parameters
         ----------
-        observables : Dict[str, str]
-            Maps generic column names, 'it_key', 'shift_key', etc, to
-            their HANDE CCMC/FCIQMC column names, e.g.
-            PrepHandeCcmcFciqmc.observables in data_preparing.
-            'it_key', 'shift_key', 'sum_key', 'ref_key', 'total_key',
-            'proje_key', 'inst_proje_key' and 'replica_key' are required
-            here.
-        For the other arguments, see __init__().
+        See __init__().
 
         Returns
         -------
@@ -135,16 +142,14 @@ class Blocker(AbsErrorAnalyser):
             Instance of the Blocker class, customised for a HANDE CCMC/
             FCIQMC calculation.
         """
-        return Blocker(
-            observables['it_key'],
-            [observables['shift_key'], observables['sum_key'],
-             observables['ref_key'], observables['total_key']],
-            observables['replica_key'],
-            eval_ratio={'name': observables['proje_key'],
-                        'num': observables['sum_key'],
-                        'denom': observables['ref_key']},
-            hybrid_col=observables['inst_proje_key'], start_its=start_its,
-            end_its=end_its, find_start_kw_args=find_start_kw_args)
+        return Blocker('obs:it_key',
+                       ['obs:shift_key', 'obs:sum_key', 'obs:ref_key',
+                        'obs:total_key'], 'obs:replica_key',
+                       eval_ratio={'name': 'obs:proje_key',
+                                   'num': 'obs:sum_key',
+                                   'denom': 'obs:ref_key'},
+                       hybrid_col='obs:inst_proje_key', start_its=start_its,
+                       end_its=end_its, find_start_kw_args=find_start_kw_args)
 
     @staticmethod
     def _check_input(it_key: str, cols: List[str], hybrid_col: str,
@@ -246,7 +251,9 @@ class Blocker(AbsErrorAnalyser):
             else dat[self._it_key].iloc[-1]
         )
         self._start_its.append(
-            self._input_start_its[dat_ind] if self._input_start_its
+            self._input_start_its[dat_ind]
+            if (self._input_start_its and
+                not isinstance(self._input_start_its, str))
             else self._find_starting_it(dat, self._end_its[-1],
                                         self._it_key, self._cols,
                                         self._hybrid_col,
@@ -273,7 +280,8 @@ class Blocker(AbsErrorAnalyser):
                                                          cols_in_opt)
         return (data_len, reblock, covariance, no_opt_block, opt_block)
 
-    def exe(self, data: List[pd.DataFrame]):
+    def exe(self, data: List[pd.DataFrame],
+            observables: Dict[str, str]) -> None:
         """
         Do reblocking (first finding starting iteration if required).
 
@@ -281,6 +289,12 @@ class Blocker(AbsErrorAnalyser):
         ----------
         data : List[pd.DataFrame]
             HANDE calculation Monte Carlo output data.
+        observables : Dict[str, str]
+            Mapping of column key to column name, e.g. 'ref_key': 'N_0'.
+            The default is None.  If any of `it_key`, `cols`,
+            `eval_ratio`, `hybrid_col`, `replica_col` were instantiated
+            as 'obs:key' to be overwritten with observables['key'],
+            observables can't be None and those keys have to be present.
 
         Raises
         ------
@@ -290,6 +304,16 @@ class Blocker(AbsErrorAnalyser):
             'start_its' or 'end_its' if they are defined.
 
         """
+        # Set column keys.  They might have been specified as 'obs:col'
+        # to be set now as observables['col'].  Else, leave as it.
+        (self._it_key, self._cols, self._replica_col, self._eval_ratio,
+         self._hybrid_col) = (
+            set_cols(observables, self._input_it_key,
+                     copy.deepcopy(self._input_cols),
+                     self._input_replica_col,
+                     copy.deepcopy(self._input_eval_ratio),
+                     self._input_hybrid_col)
+        )
         check_data_input(
             data, self._cols, self._eval_ratio, self._hybrid_col,
             self._input_start_its, self._input_end_its)

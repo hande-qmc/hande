@@ -10,7 +10,7 @@ class PrepHandeCcmcFciqmc(AbsDataPreparator):
 
     def __init__(self):
         """Initialise an instance preparing HANDE CCMC/FCIQMC data."""
-        self._observables: Dict[str, str] = {
+        self._observables_init: Dict[str, str] = {
             'it_key': 'iterations',
             'shift_key': 'Shift',
             'sum_key': r'\sum H_0j N_j',
@@ -24,14 +24,30 @@ class PrepHandeCcmcFciqmc(AbsDataPreparator):
             'Data not prepared yet. Use the ".exe" method for preparing.')
 
         # Set by .exe()
+        self._observables: Dict[str, str]
         self._data: List[pd.DataFrame]
         self._complex_data: bool
         self._replica_tricks: bool
 
     @property
     def observables(self) -> Dict[str, str]:
-        """Access observables, key mapping."""
-        return self._observables
+        """Access observables, key mapping.
+
+        Raises
+        ------
+        AttributeError
+            If data has not been prepared yet.
+
+        Returns
+        -------
+        Dict[str,str]
+            Map of observables property to column/observables name.
+        """
+        try:
+            return self._observables
+        except AttributeError:
+            print(self._not_extracted_message)
+            raise
 
     @property
     def data(self) -> List[pd.DataFrame]:
@@ -320,6 +336,8 @@ class PrepHandeCcmcFciqmc(AbsDataPreparator):
             altered by any changes here.
             The default is True.
         """
+        # Copy observables so that a new run of .exe can start fresh.
+        self._observables = copy.deepcopy(self._observables_init)
         self._data = copy.deepcopy(data) if make_copy else data
 
         # Replicas?

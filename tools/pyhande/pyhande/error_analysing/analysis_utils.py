@@ -56,3 +56,51 @@ def check_data_input(data: List[pd.DataFrame], cols: List[str],
         raise ValueError(f"If 'end_its' (here of length {len(end_its)}) is "
                          "specified, it has to be a list of the same length "
                          f"as 'data' (here of length {len(data)}).")
+
+
+def _set_value(observables: Dict[str, str], col_item: str) -> str:
+    """Helper to set value."""
+    return (
+        observables[col_item[4:]] if (col_item and col_item.startswith('obs:'))
+        else col_item
+    )
+
+
+def set_cols(observables: Dict[str, str], it_key: str, cols: List[str],
+             replica_col: str, eval_ratio: Dict[str, str],
+             hybrid_col: str) -> (str, List[str], str, Dict[str, str], str):
+    """Set various columns and observable names.
+
+    Either the input is simply returned or set to observables[input] if
+    input starts with 'obs:'.
+
+    Parameters
+    ----------
+    observables : Dict[str, str]
+        Map of key to column/observable name, e.g. {'ref_key': 'N_0'}
+    it_key : str
+        Key or actual name for iterations.
+    cols : str
+        Keys or actual names of columns/observables to be analysed in
+        blocking.
+    replica_col : str
+        Key or actual name for replica column.
+    eval_ratio : Dict[str, str]
+        Keys or actual names of elements in observable ratio to be
+        evaluated.
+    hybrid_col : str
+        Key or actual name of column/observable to be analysed in hybrid
+        analysis.
+
+    Returns
+    -------
+    (Set) values from above (except `observables`).
+    """
+    it_key = _set_value(observables, it_key)
+    cols = [_set_value(observables, col) for col in cols]
+    replica_col = _set_value(observables, replica_col)
+    if eval_ratio:
+        eval_ratio = {ev_key: _set_value(observables, eval_ratio[ev_key])
+                      for ev_key in eval_ratio.keys()}
+    hybrid_col = _set_value(observables, hybrid_col)
+    return it_key, cols, replica_col, eval_ratio, hybrid_col

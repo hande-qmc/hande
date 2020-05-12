@@ -18,15 +18,13 @@ class Extractor(AbsExtractor):
     """
 
     def __init__(
-            self, out_files: List[str],
+            self,
             merge: Dict[str, Union[List[str], str]] = None) -> None:
         """
         Initialise instance.
 
         Parameters
         ----------
-        out_files : List[str]
-            List of HANDE output filenames to be extracted here.
         merge : Dict[str, Union[List[str], str]], optional
             Allow partial declaration, rest will be defaults.
             merge['type']: str
@@ -61,7 +59,6 @@ class Extractor(AbsExtractor):
                 calculation is the continuation of another for merging.
                 The default is 'iterations'.
         """
-        self._out_files: List[str] = out_files
         self._merge: Dict[str, Union[List[str], str]]
         self._set_merge(merge)
         self._not_extracted_message: str = (
@@ -98,12 +95,22 @@ class Extractor(AbsExtractor):
         """
         Access (read only) out_files property.
 
+        Raises
+        ------
+        AttributeError
+            If data has not been extracted yet, i.e. output files have
+            not been passed yet.
+
         Returns
         -------
         List[str]
             List of `out_files` names the data is extracted from.
         """
-        return self._out_files
+        try:
+            return self._out_files
+        except AttributeError:
+            print(self._not_extracted_message)
+            raise
 
     @property
     def data(self) -> List[pd.DataFrame]:
@@ -312,13 +319,20 @@ class Extractor(AbsExtractor):
             else:
                 i_child += 1
 
-    def exe(self):
+    def exe(self, out_files: List[str]):
         """Extract and merge.
 
         The merge code was inspired by an older implementation in
         deprecated/removed lazy.py file.
         [todo] Test with calc where a file has more then one calc.
+
+        Parameters
+        ----------
+        out_files : List[str]
+            List of HANDE output filenames to be extracted here.
         """
+        self._out_files: List[str] = out_files
+
         # Extract.
         self._metadata, self._data, self._calc_to_outfile_ind = map(
             list, zip(*[

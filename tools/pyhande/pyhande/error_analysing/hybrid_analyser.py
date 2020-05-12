@@ -7,7 +7,7 @@ import statsmodels.tsa.ar_model as ar_model
 import statsmodels.tsa.stattools as tsastats
 from pyhande.error_analysing.abs_error_analyser import AbsErrorAnalyser
 from pyhande.error_analysing.find_starting_iteration import select_find_start
-from pyhande.error_analysing.analysis_utils import check_data_input
+from pyhande.error_analysing.analysis_utils import check_data_input, set_cols
 
 
 class HybridAnalyser(AbsErrorAnalyser):
@@ -41,8 +41,14 @@ class HybridAnalyser(AbsErrorAnalyser):
         ----------
         it_key : str
             Column name of MC iterations, e.g. 'iterations'.
+            Can be set to 'obs:'+key, so it will be set later in
+            .exe using passed in observables as
+            it_key = observables[key].
         hybrid_col : str
             Column name to be analysed here, e.g. 'Inst. Proj. Energy'.
+            Values can be set to 'obs:'+key, so it will be set later in
+            .exe using passed in observables as
+            hybrid_col = observables[key].
         replica_col : str
             Name of replica columns, e.g. 'replica id'.
         cols : List[str], optional
@@ -51,6 +57,9 @@ class HybridAnalyser(AbsErrorAnalyser):
             ['Shift', '\sum H_0j N_j', 'N_0', '# H psips'].
             The default is None, compulsory when
             `start_its` = 'blocking' though.
+            All elements can be set to 'obs:'+key, so it will be set
+            later in .exe using passed in observables as
+            obs_key = observables[key].
         start_its : Union[List[int], str], optional
             Either list of start iterations which has to be of same
             length as data.
@@ -84,16 +93,14 @@ class HybridAnalyser(AbsErrorAnalyser):
         """
         # Set input.
         HybridAnalyser._check_input(it_key, cols, hybrid_col, start_its)
-        self._it_key = it_key
-        self._hybrid_col = hybrid_col
-        self._replica_col = replica_col
-        self._cols = cols
-        if isinstance(start_its, list):
-            self._start_its = start_its
-        else:
-            self._start_its = None
+        self._input_it_key = it_key
+        self._input_hybrid_col = hybrid_col
+        self._input_replica_col = replica_col
+        self._input_cols = cols
+        self._input_start_its = start_its
+        if not isinstance(start_its, list):
             self._find_starting_it = select_find_start(start_its)
-        self._end_its: List[int] = end_its
+        self._input_end_its: List[int] = end_its
         self._batch_size: int = batch_size
         self._find_start_kw_args: Dict[str, Union[bool, float, int]] = (
             find_start_kw_args if find_start_kw_args else {})
@@ -104,13 +111,18 @@ class HybridAnalyser(AbsErrorAnalyser):
         )
 
         # These attributes are set later:
+        self._it_key: str
+        self._cols: List[str]
+        self._replica_col: str
+        self._hybrid_col: str
+        self._start_its: List[int]
+        self._end_its: List[int]
         self._opt_block: pd.DataFrame
         self._no_opt_block: List[List[str]]
 
     @classmethod
     def inst_hande_ccmc_fciqmc(
-            cls, observables: Dict[str, str],
-            start_its: Union[List[int], str] = 'mser',
+            cls, start_its: Union[List[int], str] = 'mser',
             end_its: List[int] = None, batch_size: int = 1,
             find_start_kw_args: Dict[str, Union[bool, float, int]] = None
     ):
@@ -118,13 +130,7 @@ class HybridAnalyser(AbsErrorAnalyser):
 
         Parameters
         ----------
-        observables : Dict[str, str]
-            Maps generic column names, 'it_key', 'shift_key', etc, to
-            their HANDE CCMC/FCIQMC column names, e.g.
-            PrepHandeCcmcFciqmc.observables in data_preparing.
-            'it_key', 'shift_key', 'sum_key', 'ref_key', 'total_key',
-            'inst_proje_key' and 'replica_key' are required here.
-        For the other arguments, see __init__().
+        See __init__().
 
         Returns
         -------
@@ -133,22 +139,28 @@ class HybridAnalyser(AbsErrorAnalyser):
             CCMC/FCIQMC calculation.
         """
         return HybridAnalyser(
-            observables['it_key'], observables['inst_proje_key'],
-            observables['replica_key'],
-            [observables['shift_key'], observables['sum_key'],
-             observables['ref_key'], observables['total_key']],
+            'obs:it_key', 'obs:inst_proje_key', 'obs:replica_key',
+            ['obs:shift_key', 'obs:sum_key', 'obs:ref_key', 'obs:total_key'],
             start_its=start_its, end_its=end_its, batch_size=batch_size,
             find_start_kw_args=find_start_kw_args)
 
     @property
     def start_its(self) -> List[int]:
-        """Access _start_its attribute, analysis start iterations."""
-        return self._start_its
+        """Access _start_its attribute if available, else error."""
+        try:
+            return self._start_its
+        except AttributeError:
+            print(self._pre_exe_error_message)
+            raise
 
     @property
     def end_its(self) -> List[int]:
-        """Access _end_its attribute, analysis end iterations."""
-        return self._end_its
+        """Access _end_its attribute if available, else error."""
+        try:
+            return self._end_its
+        except AttributeError:
+            print(self._pre_exe_error_message)
+            raise
 
     @property
     def opt_block(self) -> pd.DataFrame:
@@ -253,19 +265,26 @@ class HybridAnalyser(AbsErrorAnalyser):
             opt_block and no_opt_block of analysis.
         """
         # Find start and end iteration:
-        end_it = (self._end_its[dat_ind] if self._end_its
-                  else dat[self._it_key].iloc[-1])
-        start_it = (self._start_its[dat_ind] if self._start_its
-                    else self._find_starting_it(dat, end_it, self._it_key,
-                                                self._cols,
-                                                self._hybrid_col,
-                                                **self._find_start_kw_args)
-                    )
-        dat = dat[dat[self._it_key].between(start_it, end_it)]
+        self._end_its.append(
+            self._input_end_its[dat_ind] if self._input_end_its
+            else dat[self._it_key].iloc[-1]
+        )
+        self._start_its.append(
+            self._input_start_its[dat_ind]
+            if (self._input_start_its and
+                not isinstance(self._input_start_its, str))
+            else self._find_starting_it(dat, self._end_its[-1],
+                                        self._it_key, self._cols,
+                                        self._hybrid_col,
+                                        **self._find_start_kw_args)
+        )
+
+        dat = dat[dat[self._it_key].between(
+            self._start_its[-1], self._end_its[-1])]
         (opt_block, no_opt_block) = self._do_hybrid_analysis(dat)
         return (opt_block, no_opt_block)
 
-    def exe(self, data: List[pd.DataFrame]):
+    def exe(self, data: List[pd.DataFrame], observables: Dict[str, str]):
         """
         Do analysis (first finding starting iteration if required).
 
@@ -273,6 +292,12 @@ class HybridAnalyser(AbsErrorAnalyser):
         ----------
         data : List[pd.DataFrame]
             HANDE calculation Monte Carlo output data.
+        observables : Dict[str, str]
+            Mapping of column key to column name, e.g. 'ref_key': 'N_0'.
+            The default is None.  If any of `it_key`, `cols`,
+            `eval_ratio`, `hybrid_col`, `replica_col` were instantiated
+            as 'obs:key' to be overwritten with observables['key'],
+            observables can't be None and those keys have to be present.
 
         Raises
         ------
@@ -282,11 +307,21 @@ class HybridAnalyser(AbsErrorAnalyser):
             'start_its' or 'end_its' if they are defined.
 
         """
+        # Set column keys.  They might have been specified as 'obs:col'
+        # to be set now as observables['col'].  Else, leave as it.
+        (self._it_key, self._cols, self._replica_col, _, self._hybrid_col) = (
+            set_cols(observables, self._input_it_key,
+                     copy.deepcopy(self._input_cols),
+                     self._input_replica_col, None, self._input_hybrid_col)
+        )
+
         check_data_input(
-            data, self._cols, None, self._hybrid_col, self._start_its,
-            self._end_its)
+            data, self._cols, None, self._hybrid_col, self._input_start_its,
+            self._input_end_its)
 
         # Do analysis.
+        self._start_its = []
+        self._end_its = []
         self._no_opt_block = []
         self._opt_block = []
         for i, dat in enumerate(data):
