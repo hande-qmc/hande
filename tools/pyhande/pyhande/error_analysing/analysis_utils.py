@@ -98,10 +98,9 @@ def set_cols(observables: Dict[str, str], it_key: str, cols: List[str],
     (Set) values from above (except `observables`).
     """
     it_key = _set_value(observables, it_key)
-    cols = [_set_value(observables, col) for col in cols]
+    cols = [_set_value(observables, col) for col in cols] if cols else None
     replica_col = _set_value(observables, replica_col)
-    if eval_ratio:
-        eval_ratio = {ev_key: _set_value(observables, eval_ratio[ev_key])
-                      for ev_key in eval_ratio.keys()}
+    eval_ratio = {ev_key: _set_value(observables, eval_ratio[ev_key])
+                  for ev_key in eval_ratio.keys()} if eval_ratio else None
     hybrid_col = _set_value(observables, hybrid_col)
     return it_key, cols, replica_col, eval_ratio, hybrid_col

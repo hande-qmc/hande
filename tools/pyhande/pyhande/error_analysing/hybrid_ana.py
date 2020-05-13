@@ -35,7 +35,7 @@ class HybridAna(AbsErrorAnalyser):
             find_start_kw_args: Dict[str, Union[bool, float, int]]
             = None) -> None:
         r"""
-        Initialise a HybridAnalyser instance.
+        Initialise a HybridAna instance.
 
         Parameters
         ----------
@@ -92,7 +92,7 @@ class HybridAna(AbsErrorAnalyser):
             The default is None, which defaults to an empty dictionary.
         """
         # Set input.
-        HybridAnalyser._check_input(it_key, cols, hybrid_col, start_its)
+        HybridAna._check_input(it_key, cols, hybrid_col, start_its)
         self._input_it_key = it_key
         self._input_hybrid_col = hybrid_col
         self._input_replica_col = replica_col
@@ -126,7 +126,7 @@ class HybridAna(AbsErrorAnalyser):
             end_its: List[int] = None, batch_size: int = 1,
             find_start_kw_args: Dict[str, Union[bool, float, int]] = None
     ):
-        """Return HybridAnalyser instance for a HANDE CCMC/FCIQMC calc.
+        """Return HybridAna instance for a HANDE CCMC/FCIQMC calc.
 
         Parameters
         ----------
@@ -134,8 +134,8 @@ class HybridAna(AbsErrorAnalyser):
 
         Returns
         -------
-        HybridAnalyser
-            Instance of the HybridAnalyser class, customised for a HANDE
+        HybridAna
+            Instance of the HybridAna class, customised for a HANDE
             CCMC/FCIQMC calculation.
         """
         return HybridAna(
