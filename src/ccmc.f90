@@ -927,6 +927,7 @@ contains
             call dealloc_det_info_t(ref_det)
         end if
         if(parent) then
+! [review] - AJWT: It's worth printing a header here at least.
         do i = 1, qs%psip_list%nstates
         call write_qmc_var(io_unit, qs%psip_list%states(1,i))
         call write_qmc_var(io_unit, real(qs%psip_list%pops(1,i))/qs%psip_list%pop_real_factor)

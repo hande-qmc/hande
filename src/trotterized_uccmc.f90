@@ -692,6 +692,7 @@ contains
     
     end subroutine do_trot_uccmc
 
+! [review] - AJWT: How does this differ from select_trot_ucc_cluster?  It doesn't seem to be called from this file.
     subroutine select_trot_cluster(rng, sys, psip_list, probs, f0, ex_level, nattempts, normalisation, &
                               initiator_pop, D0_pos, cumulative_excip_pop, tot_excip_pop, min_size, max_size, &
                               logging_info, cdet, cluster, excit_gen_data, pref, pavg, pcompavg)
@@ -1177,6 +1178,8 @@ contains
                 rand = get_rand_close_open(rng)
                 pop_real = real(psip_list%pops(1, i))/real(psip_list%pop_real_factor)
                 !The probability of selecting a given excitor is given by abs(N_i/(N_i+N_0))
+! [review] - AJWT: Probably worth storing excitor_amp=pop_real/ref_real and sin_amp and cos_amp.
+! [review] - AJWT: Definitely need to comment that sin_amp corresponds to chosing the excitor etc.
                 pexcit = abs(sin(pop_real/ref_real))/(abs(cos(pop_real/ref_real))+ abs(sin(pop_real/ref_real)))
                 if (cluster%nexcitors == 0) then
                    ! print*, 'still 0', rand, pexcit
@@ -1199,6 +1202,8 @@ contains
                     end if
                 else
                    conjugate = .false.
+![review] - AJWT: Comment what this is doing! More generally, and specifically.
+![review] - AJWT: I think these complicated bit_string operations should be in a separate pure function to help readability.
                     if (all(iand(ieor(f0(:sys%basis%bit_string_len),psip_list%states(:sys%basis%bit_string_len,i)), &
                            ieor(f0(:sys%basis%bit_string_len),cdet%f(:sys%basis%bit_string_len))) == &
                            ieor(f0(:sys%basis%bit_string_len),psip_list%states(:sys%basis%bit_string_len,i)))) then

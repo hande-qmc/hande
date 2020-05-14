@@ -531,6 +531,9 @@ contains
                                     cumulative_pops, tot_pop, ex_lvl_dist)
     ! [review] - Verena: Is the only difference to the routine above that pops is real? Refactor?
     ! [review] - Verena: Would it possibly be clearer to continue using the routine above and converting pops?
+! [review] - AJWT: A difficult one.  The lack of generic template programming makes this challenging.  I worry that such a long
+! [review] - AJWT: piece of code might get out of sync between the two versions.  Can any of this be refactored into smaller
+! [review] - AJWT: subroutines in common?
         ! Calculate the cumulative population, i.e. the number of psips/excips
         ! residing on a determinant/an excitor and all determinants/excitors which
         ! occur before it in the determinant/excitor list.
