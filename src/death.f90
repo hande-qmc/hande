@@ -8,8 +8,7 @@ implicit none
 
 contains
 
-    subroutine stochastic_death(rng, sys, qs, dfock, Kii, loc_shift, proj_energy, logging_info, population, &
-                                tot_population, ndeath)
+    subroutine stochastic_death(rng, qs, dfock, Kii, loc_shift, proj_energy, logging_info, population, tot_population, ndeath)
 
         ! Particles will attempt to die with probability
         !  p_d = tau*M_ii
@@ -19,7 +18,6 @@ contains
         !  K_ii =  < D_i | H | D_i > - E_0.
 
         ! In:
-        !    sys: the system
         !    qs: qmc_state_t object. tau, propagator and dmqmc_factor are used.
         !    dfock: \sum_i (f_i - f^0_i), where f_i (f^0_i) is the Fock eigenvalue of the i-th orbital occupied in D_i (D_0).
         !    Kii: < D_i | H | D_i > - E_0, where D_i is the determinant on
@@ -43,12 +41,10 @@ contains
 
         use dSFMT_interface, only: dSFMT_t, get_rand_close_open
         use qmc_data, only: qmc_state_t
-        use system, only: sys_t
         use spawning, only: calc_qn_weighting
         use const, only: debug
         use logging, only: write_logging_death, logging_t
 
-        type(sys_t), intent(in) :: sys
         real(p), intent(in) :: Kii, dfock
         type(qmc_state_t), intent(in) :: qs
         type(dSFMT_t), intent(inout) :: rng

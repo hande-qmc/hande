@@ -360,7 +360,7 @@ contains
             ! Update the shift
             nparticles = real(sum(abs(psip_list%pops(1,:))),p)
             if (qs%vary_shift(1)) then
-                call update_shift(qmc_in, qs, qs%shift(1), nparticles_old, nparticles, qmc_in%ncycles)
+                call update_shift(qs, qs%shift(1), nparticles_old, nparticles, qmc_in%ncycles)
             end if
             nparticles_old = nparticles
             if (nparticles > qs%target_particles .and. .not.qs%vary_shift(1)) then

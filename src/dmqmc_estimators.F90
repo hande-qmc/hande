@@ -360,7 +360,7 @@ contains
         do ireplica = 1, size(loc_totnparticles)
             if (.not.comp_set .or. mod(ireplica, 2) /= 0) then
                 if (qs%vary_shift(ireplica)) then
-                    call update_shift(qmc_in, qs, qs%shift(ireplica), loc_totnparticles_old(ireplica), &
+                    call update_shift(qs, qs%shift(ireplica), loc_totnparticles_old(ireplica), &
                                      &loc_totnparticles(ireplica), qmc_in%ncycles)
                 end if
                 if (loc_totnparticles(ireplica) > qs%target_particles .and. (.not. qs%vary_shift(ireplica))) &

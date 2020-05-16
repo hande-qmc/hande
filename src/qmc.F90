@@ -301,7 +301,6 @@ contains
         use reference_determinant, only: reference_t
 
         ! Procedures to be pointed to.
-        use death, only: stochastic_death
         use determinants
         use determinant_decoders
         use dmqmc_estimators

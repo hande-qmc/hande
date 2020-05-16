@@ -91,7 +91,7 @@ implicit none
 contains
 
     subroutine select_cluster(rng, sys, psip_list, f0, ex_level, linked_ccmc, nattempts, normalisation, &
-                              initiator_pop, D0_pos, cumulative_excip_pop, tot_excip_pop, min_size, max_size, &
+                              initiator_pop, cumulative_excip_pop, tot_excip_pop, min_size, max_size, &
                               logging_info, cdet, cluster, excit_gen_data)
 
         ! Select a random cluster of excitors from the excitors on the
@@ -113,8 +113,6 @@ contains
         !    normalisation: intermediate normalisation factor, N_0, where we use the
         !       wavefunction ansatz |\Psi_{CC}> = N_0 e^{T/N_0} | D_0 >.
         !    initiator_pop: the population above which a determinant is an initiator.
-        !    D0_pos: position in the excip list of the reference.  Must be negative
-        !       if the reference is not on the processor.
         !    cumulative_excip_population: running cumulative excip population on
         !        all excitors; i.e. cumulative_excip_population(i) = sum(particle_t%pops(1:i)).
         !    tot_excip_pop: total excip population.
@@ -164,7 +162,6 @@ contains
         integer, intent(in) :: ex_level
         integer(int_64), intent(in) :: nattempts
         logical, intent(in) :: linked_ccmc
-        integer, intent(in) :: D0_pos
         complex(p), intent(in) :: normalisation
         real(p), intent(in) :: initiator_pop
         real(p), intent(in) :: cumulative_excip_pop(:), tot_excip_pop
