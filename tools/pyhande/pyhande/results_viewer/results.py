@@ -42,20 +42,29 @@ class Results:
             raise TypeError("Cannot set summary. It has to be a pd.DataFrame.")
         self._summary = summary
 
-    def _add_to_summary(self, df: pd.DataFrame) -> None:
-        """Add data to summary.  Overwritten in ResultsCcmcFciqmc."""
+    def _remove_obs_already_in_summary(self, df: pd.DataFrame) -> pd.DataFrame:
+        """Remove observables already in summary from df."""
         for obs in df['observable']:
             if ('observable' in self.summary and
                     obs in self.summary['observable'].values):
                 df = df.query('observable != @obs')
                 warnings.warn("Add attempt failed: summary already "
                               f"contains {obs}.")
-        if df.empty:
-            # all metadata items already were in summary!
-            return
-        self.summary = pd.concat([self.summary, df])
+        return df
+
+    def _sort_summary(self):
+        """Sort summary by `calc id`."""
         self.summary.sort_values(by=['calc id'], inplace=True,
                                  ignore_index=True)
+
+    def _add_to_summary(self, df: pd.DataFrame) -> None:
+        """Add data to summary."""
+        df = self._remove_obs_already_in_summary(df)
+        if df.empty:
+            # all items already were in summary!
+            return
+        self.summary = pd.concat([self.summary, df])
+        self._sort_summary()
 
     @staticmethod
     def _access_meta_and_check(calc_ind: int, metadata: List[Dict],

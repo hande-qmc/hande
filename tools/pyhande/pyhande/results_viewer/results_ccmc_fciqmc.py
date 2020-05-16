@@ -158,17 +158,12 @@ class ResultsCcmcFciqmc(Results):
         return ResultsCcmcFciqmc._concat_reset_rename(
             self.analyser.opt_block)
 
-    def _add_to_summary(self, df: pd.DataFrame) -> None:
-        """Add data to summary."""
-        for obs in df['observable']:
-            if obs in self.summary['observable'].values:
-                df = df.query('observable != @obs')
-                warnings.warn("Add attempt failed: summary already "
-                              f"contains {obs}.")
-        if df.empty:
-            # all metadata items already were in summary!
-            return
-        self.summary = pd.concat([self.summary, df])
+    def _sort_summary(self):
+        """Sort summary by `calc id` and possibly by replica key.
+
+        Overwriting Results._sort_summary() as that does not deal with
+        replica tricks.
+        """
         try:
             self.summary.sort_values(
                 by=['calc id', self.preparator.observables['replica_key']],
