@@ -138,7 +138,7 @@ class HybridAna(AbsErrorAnalyser):
             Instance of the HybridAna class, customised for a HANDE
             CCMC/FCIQMC calculation.
         """
-        return HybridAna(
+        return cls(
             'obs:it_key', 'obs:inst_proje_key', 'obs:replica_key',
             ['obs:shift_key', 'obs:sum_key', 'obs:ref_key', 'obs:total_key'],
             start_its=start_its, end_its=end_its, batch_size=batch_size,

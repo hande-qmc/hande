@@ -142,14 +142,13 @@ class Blocker(AbsErrorAnalyser):
             Instance of the Blocker class, customised for a HANDE CCMC/
             FCIQMC calculation.
         """
-        return Blocker('obs:it_key',
-                       ['obs:shift_key', 'obs:sum_key', 'obs:ref_key',
-                        'obs:total_key'], 'obs:replica_key',
-                       eval_ratio={'name': 'obs:proje_key',
-                                   'num': 'obs:sum_key',
-                                   'denom': 'obs:ref_key'},
-                       hybrid_col='obs:inst_proje_key', start_its=start_its,
-                       end_its=end_its, find_start_kw_args=find_start_kw_args)
+        return cls('obs:it_key',
+                   ['obs:shift_key', 'obs:sum_key', 'obs:ref_key',
+                    'obs:total_key'], 'obs:replica_key',
+                   eval_ratio={'name': 'obs:proje_key', 'num': 'obs:sum_key',
+                               'denom': 'obs:ref_key'},
+                   hybrid_col='obs:inst_proje_key', start_its=start_its,
+                   end_its=end_its, find_start_kw_args=find_start_kw_args)
 
     @staticmethod
     def _check_input(it_key: str, cols: List[str], hybrid_col: Optional[str],
