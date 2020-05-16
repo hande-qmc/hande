@@ -40,8 +40,9 @@ geom_mean: bool
 
 Returns
 -------
-data : :class:`pandas.DataFrame`
-    HANDE QMC data with weights appended
+weight : List[float]
+    List of weights.
+    
 
 References
 ----------
@@ -72,9 +73,7 @@ Vigor15
                                     data[weight_key].values[i-weight_history])
            weights[i] = weights[i]*arith_fac
 
-    data['Weight'] = weights
-
-    return data
+    return weights
 
 def arith_series(tstep, mc_cycles, weight_now, weight_before):
     

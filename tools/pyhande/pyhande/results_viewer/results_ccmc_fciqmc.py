@@ -11,6 +11,7 @@ from pyhande.error_analysing.blocker import Blocker
 from pyhande.error_analysing.hybrid_ana import HybridAna
 from pyhande.results_viewer.results import Results
 import pyhande.analysis as analysis
+import pyhande.weight as weight
 
 
 class ResultsCcmcFciqmc(Results):
@@ -233,6 +234,7 @@ class ResultsCcmcFciqmc(Results):
             return self._inefficiency
         except AttributeError:
             # Calculate inefficiency.
+            # See W. A. Vigor, et al. (2016), J. Chem. Phys. 144, 094110.
             self._inefficiency = []
             for dat_ind in range(len(self.preparator.data)):
                 if (self.preparator.observables['replica_key'] in
@@ -282,6 +284,135 @@ class ResultsCcmcFciqmc(Results):
             metadata.reset_index(inplace=True)
             metadata.drop(columns=['level_1'], inplace=True)
         self._add_to_summary(metadata)
+
+    def do_reweighting(self, max_weight_history: int = 300) -> None:
+        """Do reweighting to check for population bias if done blocking.
+
+        For each independent shift value, this shows a graph of
+        `weight_history` against (weighted) projected energy/
+        `eval_ratio`. If the (weighted) projected energies
+        (`eval_ratio['name']`) do not agree with each other, this is a
+        sign of population control bias.
+        Note that this is only tested if `eval_ratio['name']` contains
+        the projected energy.
+        See references.  Very first implementation credit to Will Vigor.
+
+        Parameters
+        ----------
+        max_weight_history : int, optional
+            The maximum value of weight_history. Weight_history is
+            done in steps of 2**n with 2**n < `max_weight_history.
+            The default is 300.
+
+        Raises
+        ------
+        TypeError
+            If analyser is not the blocking analyser.
+        ValueError
+            `eval_ratio` not specified when analysing.
+
+        References
+        ----------
+        Umrigar93
+            C.J. Umrigar et al. (1993), J. Chem. Phys. 99, 2865.
+        Vigor15
+            W.A. Vigor, et al. (2015), J. Chem. Phys. 142, 104101.
+        """
+        if not isinstance(self.analyser, Blocker):
+            raise TypeError("Reweighting only tested/implemented for"
+                            f"Blocker analyser, not {type(self.analyser)}.")
+        if not self.analyser._eval_ratio:
+            raise ValueError("`eval_ratio` was not analysed!")
+
+        # Set keys to shorter temp variables.
+        replica_key = self.preparator.observables['replica_key']
+        shift_key = self.preparator.observables['shift_key']
+        ref_key = self.analyser._eval_ratio['denom']
+        sum_key = self.analyser._eval_ratio['num']
+        ratio_key = self.analyser._eval_ratio['name']
+        it_key = self.preparator.observables['it_key']
+
+        # Accumulating weight_histories.
+        weight_histories = []
+        weight_history = 1
+        while weight_history < max_weight_history:
+            weight_histories.append(weight_history)
+            weight_history *= 2
+
+        # One reweighting plot per calculation.  Only first replica.
+        for dat_ind in range(len(self.preparator.data)):
+            # Replica tricks?
+            if replica_key in self.summary:
+                # doing replica tricks, only show first replica
+                warnings.warn("Only reweighting first replica.")
+                dat = self.preparator.data[dat_ind].groupby(
+                    replica_key).get_group(1)
+                summary = self.summary.groupby(replica_key).get_group(1)
+            else:
+                dat = self.preparator.data[dat_ind]
+                summary = self.summary
+
+            # Do we have enough information in the summary table?
+            ratio_summary_dat_ind = summary.query("`calc id` == @dat_ind and "
+                                                  "observable == @ratio_key")
+            shift_df = summary.query("`calc id` == @dat_ind and "
+                                     "observable == @shift_key")
+            if ratio_summary_dat_ind.empty:
+                warnings.warn("Not enough blocked information for calculation "
+                              f"{dat_ind}. Skipping.")
+                continue
+            if shift_df.empty:
+                warnings.warn("Mean shift not avaiable for calculation "
+                              f"{dat_ind}.  Skip this calculation.")
+                continue
+
+            # Fill in the weighted ratios.  First one is the one in summary.
+            w_ratios = [ratio_summary_dat_ind['value/mean'].iloc[0]]
+            w_ratio_errs = [ratio_summary_dat_ind['standard error'].iloc[0]]
+            n_cycles = (
+                dat[self.preparator.observables['it_key']][1]
+                - dat[self.preparator.observables['it_key']][0]
+            )
+            tau = self.extractor.metadata[dat_ind][-1]['qmc']['tau']
+
+            # Find weights and analyse for each weight_history.
+            weight_histories_copy = copy.copy(weight_histories)
+            for weight_history in weight_histories:
+                weights = weight.reweight(
+                    dat, n_cycles, tau, weight_history,
+                    shift_df['value/mean'].iloc[0], shift_key)
+                to_block = pd.DataFrame({'W Sum': weights*dat[sum_key],
+                                         'W Ref': weights*dat[ref_key]})
+                to_block = to_block[
+                    dat[it_key].between(self.analyser.start_its[dat_ind],
+                                        self.analyser.end_its[dat_ind])
+                ]
+                (data_len, reblock, cov) = pyblock.pd_utils.reblock(to_block)
+                ratio = analysis.projected_energy(
+                    reblock, cov, data_len, sum_key='W Sum', ref_key='W Ref',
+                    col_name='W Ratio')
+                (opt_block, _) = analysis.qmc_summary(ratio, ['W Ratio'])
+                if opt_block.empty:
+                    warnings.warn("Reweighting failed for weight_history "
+                                  f"{weight_history}.")
+                    weight_histories_copy.remove(weight_history)
+                else:
+                    w_ratios.append(opt_block['mean']['W Ratio'])
+                    w_ratio_errs.append(opt_block['standard error']['W Ratio'])
+
+            # Plot!
+            fig = plt.figure()
+            # See https://matplotlib.org/3.2.1/gallery/animation/
+            # double_pendulum_sgskip.html#sphx-glr-gallery-animation-double-
+            # pendulum-sgskip-py
+            weighted_plot = fig.add_subplot()
+            weighted_plot.set_xscale('log')
+            weighted_plot.errorbar([0]+weight_histories_copy[:len(w_ratios)-1],
+                                   w_ratios, yerr=w_ratio_errs)
+            plt.title("Calculation: "+str(dat_ind))
+            weighted_plot.set_xlabel("Weight history")
+            weighted_plot.set_ylabel("(Weighted) "+ratio_key)
+            plt.show()
 
     def plot_shoulder(
             self, inds: List[int] = None, show_shoulder: bool = True,

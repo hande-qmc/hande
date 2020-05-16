@@ -18,68 +18,65 @@ class TestReweight(unittest.TestCase):
     def test_basic_input(self):
         """Test basic input."""
         (mc_cycles, tstep, weight_history, mean_shift) = (4, 0.1, 10, -1.3)
-        out = weight.reweight(self.data, mc_cycles, tstep, weight_history,
-                              mean_shift)
-        data_copy = self.data.copy()
-        data_copy.drop(columns=['Weight'], inplace=True)
-        data_copy['Weight'] = np.asarray([
-            0.99256485, 0.91661459, 0.9090655, 0.88330944, 0.81232758,
-            0.76941044, 0.68219966, 0.61679495, 0.62527968, 0.59195304,
-            0.5751375, 0.6649207, 0.68626078, 0.71131836, 0.83535056,
-            1.00111087, 1.20945807, 1.34714007, 1.35423976, 1.45681871,
-            1.63262663, 1.59528056, 1.61402654, 1.58127348, 1.45880711,
-            1.31618546, 1.21805526, 1.27076857, 1.16044234, 1.12289736
-        ])
-        pd.testing.assert_frame_equal(self.data, data_copy, check_exact=False)
-        # Note that data and out are identical. Test this just to be
-        # safe.
-        self.assertEqual(id(self.data), id(out))
+        weights = weight.reweight(self.data, mc_cycles, tstep, weight_history,
+                                  mean_shift)
+        weights_exp = [
+            0.9925648521738141, 0.9166145889890867, 0.9090654960602974,
+            0.8833094364811825, 0.8123275817820274, 0.7694104408919243,
+            0.6821996558442511, 0.616794950851474, 0.6252796826000567,
+            0.5919530405088881, 0.5751375025400743, 0.6649207049102872,
+            0.686260779187176, 0.7113183626102892, 0.8353505572867969,
+            1.001110870216326, 1.2094580656366476, 1.3471400723768445,
+            1.3542397576893366, 1.4568187130633774, 1.6326266341297668,
+            1.5952805608339418, 1.6140265447518267, 1.5812734786176506,
+            1.458807107328307, 1.3161854614506716, 1.2180552596788903,
+            1.2707685717179618, 1.1604423403147808, 1.1228973649952922
+        ]
+        self.assertListEqual(weights, weights_exp)
 
     def test_weight_key_input(self):
         """Use custom column in data."""
         (mc_cycles, tstep, weight_history, mean_shift) = (3, 0.02, 8, -1.0)
-        out = weight.reweight(
+        weights = weight.reweight(
             self.data, mc_cycles, tstep, weight_history, mean_shift,
             weight_key='Alt'
         )
-        data_copy = self.data.copy()
-        data_copy.drop(columns=['Weight'], inplace=True)
-        data_copy['Weight'] = np.asarray([
-            1.00178842, 1.00003984, 0.99693812, 0.98701375, 0.97998815,
-            0.97256525, 0.96836244, 0.97286865, 0.97354347, 0.98475152,
-            0.99543395, 1.00728771, 1.02134185, 1.03276738, 1.03521551,
-            1.02923804, 1.02389504, 1.00214499, 0.98853845, 0.98495052,
-            0.97725045, 0.97006702, 0.97514141, 0.98271336, 0.99309255,
-            1.01049107, 1.01578566, 1.02178473, 1.02575039, 1.02785067
-        ])
-        pd.testing.assert_frame_equal(self.data, data_copy, check_exact=False)
-        # Note that data and out are identical. Test this just to be
-        # safe.
-        self.assertEqual(id(self.data), id(out))
+        weights_exp = [
+            1.0017884205082834, 1.0000398418888259, 0.9969381155705571,
+            0.9870137492389269, 0.9799881549626391, 0.972565247591884,
+            0.9683624354090272, 0.9728686476670971, 0.9735434671372174,
+            0.9847515208233709, 0.9954339536983114, 1.0072877088130072,
+            1.0213418528613503, 1.032767375832493, 1.0352155113661938,
+            1.0292380393457086, 1.0238950390664328, 1.0021449886133607,
+            0.9885384533169285, 0.9849505201506198, 0.977250452926066,
+            0.9700670184395724, 0.9751414058334306, 0.9827133605966373,
+            0.993092551463694, 1.01049106979456, 1.015785662792946,
+            1.0217847276206045, 1.0257503886293498, 1.0278506705546948
+        ]
+        self.assertListEqual(weights, weights_exp)
 
     def test_arith_mean_input(self):
         """Use arith_mean == True."""
         (mc_cycles, tstep, weight_history, mean_shift) = (11, 0.9, 11, -1.3)
-        out = weight.reweight(
+        weights = weight.reweight(
             self.data, mc_cycles, tstep, weight_history, mean_shift,
             arith_mean=True
         )
-        data_copy = self.data.copy()
-        data_copy.drop(columns=['Weight'], inplace=True)
-        data_copy['Weight'] = np.asarray([
-            8.31347479e-01, 1.15910410e-01, 9.44562203e-02, 4.63760264e-02,
-            5.83239848e-03, 1.52199199e-03, 7.75013960e-05, 6.39712806e-06,
-            8.97096892e-06, 2.31264822e-06, 9.42175578e-07, 2.87451628e-06,
-            2.96505141e-05, 9.05840759e-05, 5.83190581e-04, 6.42801774e-02,
-            2.01816209e+00, 4.60122716e+01, 9.30598203e+02, 2.71273093e+03,
-            2.56933872e+04, 2.54468154e+05, 3.59230985e+05, 1.57029508e+05,
-            8.71118923e+04, 4.03065068e+04, 5.08904177e+03, 5.62220562e+02,
-            1.79813927e+02, 4.15252329e+01
-        ])
-        pd.testing.assert_frame_equal(self.data, data_copy, check_exact=False)
-        # Note that data and out are identical. Test this just to be
-        # safe.
-        self.assertEqual(id(self.data), id(out))
+        weights_exp = [
+            0.8313474786875108, 0.11591040955136422, 0.09445622025193808,
+            0.04637602636761486, 0.005832398482028505, 0.0015219919861421205,
+            7.750139602393484e-05, 6.397128056893324e-06,
+            8.970968917083546e-06, 2.3126482186771303e-06,
+            9.421755778806896e-07, 2.8745162848403464e-06,
+            2.9650514148203822e-05, 9.058407592615143e-05,
+            0.0005831905811768972, 0.06428017738508572, 2.0181620894355583,
+            46.01227162921362, 930.5982026042395, 2712.7309282780666,
+            25693.387216496238, 254468.15431019024, 359230.9854415301,
+            157029.5083841496, 87111.89230115319, 40306.50676342509,
+            5089.041773979196, 562.2205620794657, 179.8139271806919,
+            41.52523294834481
+        ]
+        self.assertListEqual(weights, weights_exp)
 
     def test_zero_tstep_input(self):
         """tstep == 0."""
@@ -100,14 +97,11 @@ class TestReweight(unittest.TestCase):
         """Check that mutable objects, such as pd DataFrames, don't
         change when they shouldn't.
         """
+        data_copy = self.data.copy()
         (mc_cycles, tstep, weight_history, mean_shift) = (4, 0.1, 10, -1.3)
-        # data_copy = self.data.copy()
         _ = weight.reweight(self.data, mc_cycles, tstep, weight_history,
                             mean_shift)
-        # pd.testing.assert_frame_equal(self.data, data_copy, check_exact=True)
-        # [todo] Is there a better way to do this warning?
-        warnings.warn("TestReweight.test_unchanged_mutable: "
-                      "Mutable data is changed in function! Fix?")
+        pd.testing.assert_frame_equal(self.data, data_copy, check_exact=True)
 
 
 class TestArithSeries(unittest.TestCase):
