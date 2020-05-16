@@ -1806,7 +1806,7 @@ contains
         real(p), intent(in) :: pop
         real(p), intent(inout) :: potential_energy
 
-        potential_energy = potential_energy + pop*potential_energy_ptr(sys, cdet%f, cdet%f2, excitation)
+        potential_energy = potential_energy + pop*potential_energy_ptr(sys, cdet%f, excitation)
 
     end subroutine update_dmqmc_potential_energy
 

@@ -291,7 +291,7 @@ contains
         integer :: i, j, k, nproc_rows, nproc_cols
         integer :: procy, procx, nrows, ncols
         integer :: desc_m(9), desc_v(9)
-#ifdef PARALLEL
+#if defined(PARALLEL) && ! defined(DISABLE_SCALAPACK)
         integer :: numroc ! scalapack function
         integer :: ierr
         integer :: context

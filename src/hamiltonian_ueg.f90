@@ -258,12 +258,12 @@ contains
 
     end subroutine create_weighted_excitation_list_ueg
 
-    pure function potential_energy_ueg(sys, f1, f2, excitation) result (potential_energy)
+    pure function potential_energy_ueg(sys, f1, excitation) result (potential_energy)
 
         ! In:
         !    sys: system of interest.
-        !    f1, f2: bit string representations of two determinants.
-        !    excitation: excit_t object describing the excitation connecting f1 and f2.
+        !    f1: bit string representations of the determinant.
+        !    excitation: excit_t object describing the excitation connecting f1 and the other determinant f2.
         ! Returns:
         !    The potential energy matrix element from a given bra (f1) and
         !    ket(f2), i.e. if H = T + V, then <f2| V |f1>.  This amounts to
@@ -275,7 +275,7 @@ contains
         use determinants, only: decode_det
 
         type(sys_t), intent(in) :: sys
-        integer(i0), intent(in) :: f1(:), f2(:)
+        integer(i0), intent(in) :: f1(:)
         type(excit_t), intent(in) :: excitation
 
         real(p) :: potential_energy

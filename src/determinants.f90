@@ -240,7 +240,7 @@ contains
 
 !--- Decode determinant bit strings ---
 
-    pure subroutine decode_det(basis_set, f, occ_list, excit_gen_data)
+    pure subroutine decode_det(basis_set, f, occ_list)
 
         ! WARNING: This decoder does not initialise flags for a cdet needed for excitation generators!
 
@@ -257,12 +257,10 @@ contains
 
         use basis_types, only: basis_t
         use bit_table_256_m, only: bit_table_256
-        use excit_gens, only: excit_gen_data_t
 
         type(basis_t), intent(in) :: basis_set
         integer(i0), intent(in) :: f(basis_set%tot_string_len)
         integer, intent(out) :: occ_list(:)
-        type(excit_gen_data_t), optional, intent(in) :: excit_gen_data
 
         ! The lookup table contains the list of bits set for all possible integers contained in a given number of bits.
         ! Number of bits in integers in the lookup table (assume a power of 2!).

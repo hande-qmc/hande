@@ -185,11 +185,11 @@ abstract interface
         real(p), intent(inout) :: hmatel
     end subroutine i_trial_fn
 
-    pure function i_operator(sys, f1, f2, connection) result (opmatel)
+    pure function i_operator(sys, f1, connection) result (opmatel)
         use system, only: sys_t
         import :: det_info_t, excit_t, i0, p
         type(sys_t), intent(in) :: sys
-        integer(i0), intent(in) :: f1(:), f2(:)
+        integer(i0), intent(in) :: f1(:)
         type(excit_t), intent(in) :: connection
         real(p) :: opmatel
     end function i_operator
