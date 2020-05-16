@@ -651,8 +651,7 @@ contains
 
                 if (ccmc_in%even_selection) then
                     call update_ex_lvl_dist(ex_lvl_dist)
-                    call update_selection_probabilities(cumulative_abs_real_pops, ex_lvl_dist, &
-                                                    abs(D0_normalisation), tot_abs_real_pop, selection_data)
+                    call update_selection_probabilities(ex_lvl_dist, abs(D0_normalisation), tot_abs_real_pop, selection_data)
                 end if
 
 
@@ -790,12 +789,12 @@ contains
                         if (qs%propagator%quasi_newton) then
                             dfock = sum_sp_eigenvalues_bit_string(sys, qs%psip_list%states(:,iattempt)) - qs%ref%fock_sum
                         end if
-                        call stochastic_ccmc_death_nc(rng(it), ccmc_in%linked, sys, qs, iattempt==D0_pos, dfock, &
+                        call stochastic_ccmc_death_nc(rng(it), ccmc_in%linked, qs, iattempt==D0_pos, dfock, &
                                           qs%psip_list%dat(1,iattempt), qs%estimators(1)%proj_energy_old, &
                                           qs%psip_list%pops(1, iattempt), nparticles_change(1), ndeath_nc, &
                                           logging_info)
                         if (sys%read_in%comp) then
-                            call stochastic_ccmc_death_nc(rng(it), ccmc_in%linked, sys, qs, iattempt==D0_pos, dfock, &
+                            call stochastic_ccmc_death_nc(rng(it), ccmc_in%linked, qs, iattempt==D0_pos, dfock, &
                                               qs%psip_list%dat(1,iattempt), qs%estimators(2)%proj_energy_old, &
                                               qs%psip_list%pops(2, iattempt), nparticles_change(2), ndeath_nc, &
                                               logging_info)
@@ -1349,7 +1348,7 @@ contains
             ! a different spawning routine
             call linked_spawner_ccmc(rng, sys, qs, qs%spawn_store%spawn%cutoff, &
                       contrib%cluster, gen_excit_ptr, nspawned, connection, nspawnings_total, &
-                      fexcit, contrib%cdet, contrib%ldet, contrib%rdet, contrib%left_cluster, contrib%right_cluster, ps_stat)
+                      fexcit, contrib%ldet, contrib%rdet, contrib%left_cluster, contrib%right_cluster, ps_stat)
             nspawned_im = 0_int_p
         else if (sys%read_in%comp) then
             call spawner_complex_ccmc(rng, sys, qs, qs%spawn_store%spawn%cutoff, &

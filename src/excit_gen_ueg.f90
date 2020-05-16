@@ -359,7 +359,7 @@ contains
 
     end function calc_pgen_ueg_no_renorm
 
-    subroutine init_excit_ueg_power_pitzer(sys, ref, pp)
+    subroutine init_excit_ueg_power_pitzer(sys, pp)
 
         ! Initialize the pp data for the gen_excit_ueg_power_pitzer excitation generator.
         ! This creates a random excitation from cdet and calculate both the probability
@@ -376,19 +376,16 @@ contains
 
         ! In:
         !    sys: system object being studied.
-        !    ref: the reference 
         ! Out:
         !    pp: excit_gen_power_pitzer_t which will be initialized with 
         !           the alias tables for the excitations.
 
         use system, only: sys_t
-        use qmc_data, only: reference_t
         use sort, only: qsort
         use excit_gens, only: excit_gen_power_pitzer_t, alloc_alias_table_data_t
         use alias, only: generate_alias_tables
         use hamiltonian_ueg, only: create_weighted_excitation_list_ueg 
         type(sys_t), intent(in) :: sys
-        type(reference_t), intent(in) :: ref
         type(excit_gen_power_pitzer_t), intent(inout) :: pp
 
         integer :: i, j, maxv, nbas
