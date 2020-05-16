@@ -1105,22 +1105,22 @@ contains
                 attempt_death = multiref_check_ex_level(sys,contrib,qs,0)
 
                 call do_spawning_death(rng, sys, qs, ccmc_in, &
-                                 logging_info, ms_stats, bloom_stats, contrib, &
-                                 nattempts_spawn_tot, ndeath, ps_stat, nspawnings_cluster, attempt_death)
+                                 logging_info, bloom_stats, contrib, &
+                                 ndeath, ps_stat, nspawnings_cluster, attempt_death)
             end if
         else
             attempt_death = (contrib%cluster%excitation_level <= qs%ref%ex_level) 
 
             call do_spawning_death(rng, sys, qs, ccmc_in, &
-                             logging_info, ms_stats, bloom_stats, contrib, &
-                             nattempts_spawn_tot, ndeath, ps_stat, nspawnings_cluster, attempt_death)
+                             logging_info, bloom_stats, contrib, &
+                             ndeath, ps_stat, nspawnings_cluster, attempt_death)
         end if
 
     end subroutine do_stochastic_ccmc_propagation  
 
     subroutine do_spawning_death(rng, sys, qs, ccmc_in, &
-                                 logging_info, ms_stats, bloom_stats, contrib, &
-                                 nattempts_spawn_tot, ndeath, ps_stat, nspawnings_cluster, attempt_death)
+                                 logging_info, bloom_stats, contrib, &
+                                 ndeath, ps_stat, nspawnings_cluster, attempt_death)
 
         ! For stochastically selected clusters this
         ! attempts spawning and death, adding any created particles to the
@@ -1140,12 +1140,9 @@ contains
         ! In/Out:
         !   rng: random number generator.
         !   qs: qmc_state_t type, contains information about calculation.
-        !   ms_stats: statistics on multispawn performance.
         !   bloom_stats: statistics on blooms during calculation.
         !   contrib: derived type containing information on the current
         !       wavefunction contribution being considered.
-        !   nattempts_spawn_tot: running total of number of spawning attempts
-        !       made during this mc cycle.
         !   ndeath: total number of particles created via death.
         !   ps_stat: Accumulating the following (and more) on this OpenMP thread:
         !       h_pgen_singles_sum: total of |Hij|/pgen for single excitations attempted.
@@ -1156,7 +1153,7 @@ contains
         use dSFMT_interface, only: dSFMT_t
         use system, only: sys_t
         use qmc_data, only: qmc_state_t, ccmc_in_t
-        use ccmc_data, only: multispawn_stats_t, ms_stats_update, wfn_contrib_t
+        use ccmc_data, only: ms_stats_update, wfn_contrib_t
 
         use ccmc_death_spawning, only: stochastic_ccmc_death
         use bloom_handler, only: bloom_stats_t, accumulate_bloom_stats
@@ -1173,9 +1170,7 @@ contains
         type(bloom_stats_t), intent(inout) :: bloom_stats
         type(logging_t), intent(in) :: logging_info
 
-        integer(int_64), intent(inout) :: nattempts_spawn_tot
         integer(int_p), intent(inout) :: ndeath
-        type(multispawn_stats_t), intent(inout) :: ms_stats
         type(p_single_double_coll_t), intent(inout) :: ps_stat
         integer, intent(in) :: nspawnings_cluster
         logical, intent(in) :: attempt_death

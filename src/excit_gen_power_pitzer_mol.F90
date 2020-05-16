@@ -571,21 +571,19 @@ contains
 
     end subroutine init_excit_mol_power_pitzer_orderN
 
-    subroutine init_excit_mol_power_pitzer_orderM_ij(sys, ref, pp)
+    subroutine init_excit_mol_power_pitzer_orderM_ij(sys, pp)
 
         ! Generate weights for i and j for the gen_excit_mol_power_pitzer_orderM_ij
         ! excitation generator based on heat bath approach (Holmes et al.).
 
         ! In:
         !    sys: system object being studied.
-        !    ref: the reference from which we are exciting.
         ! In/Out:
         !    pp: an empty excit_gen_power_pitzer_t object which gets filled with
         !           the alias tables required to generate excitations.
 
         use checking, only: check_allocate
         use system, only: sys_t
-        use qmc_data, only: reference_t
         use sort, only: qsort
         use proc_pointers, only: create_weighted_excitation_list_ptr, slater_condon2_excit_ptr
         use proc_pointers, only: abs_hmatel_ptr, single_excitation_weight_ptr
@@ -602,7 +600,6 @@ contains
         integer :: ierr
 #endif
         type(sys_t), intent(in) :: sys
-        type(reference_t), intent(in) :: ref
         type(excit_gen_power_pitzer_t), intent(inout) :: pp
 
         integer :: i, j

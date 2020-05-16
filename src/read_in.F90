@@ -780,7 +780,7 @@ contains
             call broadcast_two_body_t(sys%read_in%coulomb_integrals_imag, root, sys%read_in%max_broadcast_chunk)
         end if
 
-        if (sys%read_in%extra_exchange_integrals) call read_additional_exchange_integrals(sys, sp_fcidump_rank, t_verbose)
+        if (sys%read_in%extra_exchange_integrals) call read_additional_exchange_integrals(sys, sp_fcidump_rank)
 
         if (size(sys%basis%basis_fns) /= size(all_basis_fns) .and. parent .and. t_verbose) then
             ! We froze some orbitals...
@@ -1176,7 +1176,7 @@ contains
 
     end subroutine get_sp_eigv
 
-    subroutine read_additional_exchange_integrals(sys, sp_fcidump_rank, verbose)
+    subroutine read_additional_exchange_integrals(sys, sp_fcidump_rank)
 
         ! For periodic bounary conditions we require additional integrals, to be read
         ! in from a separate FCIDUMP to be stored in sys%read_in%additional_exchange_ints{_imag}.
@@ -1199,7 +1199,6 @@ contains
         type(sys_t), intent(inout) :: sys
         integer, intent(in) :: sp_fcidump_rank(0:)
 
-        logical, intent(in), optional :: verbose
         integer :: ir, ierr
         logical  :: t_exists
         integer :: i,j,a,b, ios
