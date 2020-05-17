@@ -113,7 +113,11 @@ def _grid_search(data: pd.DataFrame, grid_size: int, min_ind: int,
         poss_min = losses.idxmin(axis=1).min()
         # Find next minimum if the one above is ignored.  Of the grid
         # point found, select highest to be most conservative.
-        poss_max = losses.drop(columns=poss_min).idxmin(axis=1).max()
+        try:
+            poss_max = losses.drop(columns=poss_min).idxmin(axis=1).max()
+        except KeyError:
+            raise RuntimeError("Failed to find starting iteration. "
+                               "There might not be enough data.")
         # Sort.
         poss_min, poss_max = ((poss_min, poss_max) if poss_min < poss_max
                               else (poss_max, poss_min))
@@ -224,12 +228,18 @@ def find_starting_iteration_blocking(
         data[cols], grid_size, 1, int(start_max_frac*len(data)) + 1)
     # Search has failed if index is too close to the end.
     if start_ind > int(start_max_frac*len(data)):
-        raise RuntimeError(f"Failed to find starting iteration. ")
+        raise RuntimeError("Failed to find starting iteration. "
+                           "Found starting iteration too close to end. "
+                           "Possibly need more data.")
     # Discarding number_of_reblocks_to_cut_off reblocks.
     (_, reblock, _) = pyblock.pd_utils.reblock(data[cols].iloc[start_ind:])
     opt_ind = pyblock.pd_utils.optimal_block(reblock)
     discard_indx = 2**opt_ind * number_of_reblocks_to_cut_off
     # Converting to iteration.
+    if start_ind + discard_indx > len(data) - 1:
+        raise RuntimeError("Failed to find starting iteration. "
+                           "Tried to remove the number of reblocks and "
+                           "left with no data.")
     starting_it = data[it_key].iloc[start_ind + discard_indx]
 
     # Show plot if desired, aiding judgment whether to trust estimate.
