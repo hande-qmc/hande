@@ -200,12 +200,12 @@ const char *report_mpi3() {
 
 const char *report_shmem() {
 /* clang-format off */
-#if ! defined PARALLEL
-  return "PARALLEL not enabled. POSIX shared memory disabled.\n";
-#elif ! defined DISABLE_MPI3 && defined ENABLE_SHMEM_POSIX
-  return "ENABLE_SHMEM_POSIX defined.  POSIX shared memory enabled.\n";
+#if defined PARALLEL && defined ENABLE_SHMEM_POSIX
+  return "PARALLEL and ENABLE_SHMEM_POSIX defined.  POSIX shared memory enabled.\n";
+#elif defined PARALLEL && ! defined DISABLE_MPI3
+  return "PARALLEL defined. DISABLE_MPI3 and ENABLE_SHMEM_POSIX not defined. MPI-3 in use.\n";
 #else
-  return "ENABLE_SHMEM_POSIX not defined or MPI-3 in use.  POSIX shared memory disabled.\n";
+  return "Neither POSIX shared memory nor MPI-3 are in use.\n";
 #endif
   /* clang-format on */
 }
