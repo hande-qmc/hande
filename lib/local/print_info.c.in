@@ -22,6 +22,8 @@ const char *report_popcnt();
 const char *report_mpi_toggle();
 const char *report_omp_toggle();
 const char *report_parallel();
+const char *report_mpi3();
+const char *report_shmem();
 typedef void (*HostWriter)(const char * message, int * io_unit);
 void print_info(HostWriter writer, int * io_unit);
 
@@ -66,6 +68,8 @@ void print_info(HostWriter writer, int * io_unit) {
   writer(report_lanczos(), io_unit);
   writer(report_uuid(), io_unit);
   writer(report_parallel(), io_unit);
+  writer(report_mpi3(), io_unit);
+  writer(report_shmem(), io_unit);
   writer(report_scalapack(), io_unit);
   writer(report_single_precision(), io_unit);
   writer(report_popcnt(), io_unit);
