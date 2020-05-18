@@ -277,11 +277,19 @@ class Extractor(AbsExtractor):
         i_parent : int
             Index of parent/older calculation in e.g. self.data.
         """
-        self._data[i_parent] = pd.concat(
-            [self._data[i_parent], self._data.pop(i_child)], ignore_index=True)
-        self._metadata[i_parent].extend(self._metadata.pop(i_child))
-        self._calc_to_outfile_ind[i_parent].extend(
-            self._calc_to_outfile_ind.pop(i_child))
+        # Note that i_parent == i_child is not possible.
+        # Index of parent calculation has to be reduced by -1 if child
+        # calculation comes before it and is removed.
+        add_to_index = i_parent if i_parent < i_child else i_parent - 1
+        parent_data = self._data[i_parent]
+        child_data = self._data.pop(i_child)
+        self._data[add_to_index] = pd.concat([parent_data, child_data],
+                                             ignore_index=True)
+        child_metadata = self._metadata.pop(i_child)
+        self._metadata[add_to_index].extend(child_metadata)
+        child_calc_to_outfile_ind = self._calc_to_outfile_ind.pop(i_child)
+        self._calc_to_outfile_ind[add_to_index].extend(
+            child_calc_to_outfile_ind)
 
     def _merge_uuid(self):
         """Attempt merging using UUIDs.
