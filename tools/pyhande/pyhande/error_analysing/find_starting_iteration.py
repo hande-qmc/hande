@@ -215,7 +215,7 @@ def find_starting_iteration_blocking(
     data = data[data[it_key] <= end_it]
     max_varying_it = 0
     for col in cols:
-        if not any(data[data[col] != data[col].iloc[0]]):
+        if data[data[col] != data[col].iloc[0]].empty:
             raise RuntimeError(f"{col} has not started varying in considered "
                                "dataset.")
         max_varying_it = max(
