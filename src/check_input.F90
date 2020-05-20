@@ -152,7 +152,7 @@ contains
                             excit_gen_power_pitzer, excit_gen_cauchy_schwarz_occ, excit_gen_cauchy_schwarz_occ_ij, fciqmc_in_t
         use errors, only: stop_all, warning
         use system, only: sys_t, chung_landau, hub_k, hub_real, read_in, ringium, ueg
-        use const, only: p
+        use const, only: p, depsilon
 
         type(qmc_in_t), intent(in) :: qmc_in
         type(sys_t), intent(in) :: sys
@@ -228,6 +228,14 @@ contains
         if ((sys%read_in%comp) .and. ((qmc_in%excit_gen == excit_gen_cauchy_schwarz_occ) .or. &
             (qmc_in%excit_gen == excit_gen_cauchy_schwarz_occ_ij))) then
             call stop_all(this, 'Complex calculations not implemented with Uniform/Heat Bath Cauchy Schwarz yet.')
+        end if
+
+        if ((.not. qmc_in%quasi_newton) .and. ((abs(qmc_in%quasi_newton_pop_control - 1.0_p) > depsilon) .and. &
+            qmc_in%quasi_newton_pop_control > 0.0_p)) then
+            ! quasi_newton_pop_control is 1 for non QN propagation. However, here it was neither left to
+            ! its default nor set to 1, so give warning as it will be set to 1 in the code which might not
+            ! be what the user intended.
+            call warning(this, 'Since quasiNewton is not used, quasi_newton_pop_control is set to 1.')
         end if
 
         if ((qmc_in%quasi_newton) .and. (sys%system /= read_in)) then

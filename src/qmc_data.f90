@@ -221,7 +221,12 @@ type qmc_in_t
 
     ! The value to set the quasiNewton energy difference to if lower than the
     ! threshold
-    real(p) :: quasi_newton_value = 1_p
+    real(p) :: quasi_newton_value = -1.0_p
+
+    ! In death step when using QuasiNewton, scale the difference of inst. projected energy and shift
+    ! by time step times quasi_newton_pop_control in equilibrium, zero before shift varies.
+    ! Set to 1 if not using quasiNewton.
+    real(p) :: quasi_newton_pop_control = -1.0_p
 
 end type qmc_in_t
 
@@ -791,16 +796,20 @@ end type estimators_t
 type propagator_t
     ! If true, use a quasiNewton step
     logical :: quasi_newton = .false.
-    ! The lower threshold for a quasiNewton enegy difference.
+    ! The lower threshold for a quasiNewton enegy difference
     ! This default is never used except for printing qmc JSON data when not doing quasi newton.
     real(p) :: quasi_newton_threshold = 0_p
     ! The value to set the quasiNewton energy difference to if lower than the
     ! threshold
-    real(p) :: quasi_newton_value = 1_p
+    real(p) :: quasi_newton_value
     ! This stores the Fock expectation value <i|f|i> which is equal to sp_eigv in read_in systems.
     ! In the 3D UEG this includes the exchange and Madelung terms.
     ! In other model systems, including the 2D UEG, this is just equal to sp_eigv for now.
     real(p), allocatable :: sp_fock(:) ! (sys%basis%nbasis)
+    ! In death step when using QuasiNewton, scale the difference of inst. projected energy and shift
+    ! by time step times quasi_newton_pop_control in equilibrium, zero before shift varies.
+    ! Set to 1 if not using quasiNewton.
+    real(p) :: quasi_newton_pop_control
 end type propagator_t
 
 type qmc_state_t
@@ -977,6 +986,7 @@ contains
         call json_write_key(js, 'quasi_newton', qmc%quasi_newton)
         call json_write_key(js, 'quasi_newton_threshold', qmc%quasi_newton_threshold)
         call json_write_key(js, 'quasi_newton_value', qmc%quasi_newton_value)
+        call json_write_key(js, 'quasi_newton_pop_control', qmc%quasi_newton_pop_control)
         call json_write_key(js, 'use_mpi_barriers', qmc%use_mpi_barriers, .true.)
         call json_object_end(js, terminal)
 
