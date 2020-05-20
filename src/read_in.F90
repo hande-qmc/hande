@@ -69,7 +69,7 @@ contains
         ! reading in...
         integer :: ir, ios, ierr
         logical :: t_exists
-        integer :: active_basis_offset, rhf_fac
+        integer :: active_basis_offset, rhf_fac, self_coulomb_fac
         integer, allocatable :: seen_ijij(:), seen_iaib(:,:), sp_eigv_rank(:), sp_fcidump_rank(:)
         logical, allocatable :: seen_iha(:)
         real(p), allocatable :: sp_eigv(:)
@@ -223,6 +223,14 @@ contains
         else
             sys%basis%nbasis = 2*norb
             rhf_fac = 2  ! need to double count some integrals.
+        end if
+
+        if (sys%read_in%extra_exchange_integrals) then
+           ! For additional exchange integrals, we add together the Coulombic self-Coulomb (both alpha and beta), and subtract the (different)
+           ! self-exchange later
+           self_coulomb_fac = 2
+        else
+           self_coulomb_fac = 1
         end if
 
         if (sys%nel == 0 .and. sys%Ms == huge(1)) then
@@ -410,6 +418,14 @@ contains
                 call init_two_body_t(sys, sys%read_in%pg_sym%gamma_sym, .true., sys%read_in%coulomb_integrals_imag)
             end if
         end if
+        if (sys%read_in%extra_exchange_integrals) then
+            ! [todo] - Support t_store as a concept? Delete t_store?
+            call init_two_body_exchange_t(sys, sys%read_in%pg_sym%gamma_sym, .false., sys%read_in%additional_exchange_ints)
+            if (sys%read_in%comp) then
+                call init_two_body_exchange_t(sys, sys%read_in%pg_sym%gamma_sym, .true., &
+                                              sys%read_in%additional_exchange_ints_imag)
+            end if
+        end if            
 
         if (parent) then
             ! Now, read in FCIDUMP again to get the integrals.
@@ -447,12 +463,19 @@ contains
 
         sys%read_in%Ecore = 0.0_p
         im_core = 0.0_p
-        if (t_store) then
+        if ((t_store) .and. (parent)) then
             call zero_one_body_int_store(sys%read_in%one_e_h_integrals)
             call zero_two_body_int_store(sys%read_in%coulomb_integrals)
             if (sys%read_in%comp) then
                 call zero_one_body_int_store(sys%read_in%one_e_h_integrals_imag)
                 call zero_two_body_int_store(sys%read_in%coulomb_integrals_imag)
+            end if
+        end if
+        if ((parent) .and. (sys%read_in%extra_exchange_integrals)) then
+            ! [todo] - Keep support for t_store? Add here?
+            call zero_two_body_exchange_int_store(sys%read_in%additional_exchange_ints)
+            if (sys%read_in%comp) then
+                call zero_two_body_exchange_int_store(sys%read_in%additional_exchange_ints_imag)
             end if
         end if
 
@@ -610,9 +633,9 @@ contains
                                     if (.not.sys%read_in%uhf .and. mod(seen_ijij(tri_ind_reorder(i,j)),2) == 0) then
                                         ! RHF calculations: need to include <i,up i,down|i,up i,down>.
 
-                                        sys%read_in%Ecore = sys%read_in%Ecore + x
+                                        sys%read_in%Ecore = sys%read_in%Ecore + x*self_coulomb_fac
                                         if (sys%read_in%comp) then
-                                            im_core = im_core + y
+                                            im_core = im_core + y*self_coulomb_fac
                                         end if
                                         seen_ijij(tri_ind_reorder(i,j)) = seen_ijij(tri_ind_reorder(i,j)) + 1
                                     end if
@@ -644,9 +667,12 @@ contains
                                         ! If RHF, then need to include:
                                         !   <i,up j,up|j,up, i,up>
                                         !   <i,down j,down|j,down, i,down>
-                                        sys%read_in%Ecore = sys%read_in%Ecore - rhf_fac*x
-                                        if (sys%read_in%comp) then
-                                            im_core = im_core - rhf_fac*y
+                                        ! If there are extra exchange integrals, we deal with them later when we read them in.
+                                        if(.not.sys%read_in%extra_exchange_integrals) then
+                                           sys%read_in%Ecore = sys%read_in%Ecore - rhf_fac*x
+                                           if (sys%read_in%comp) then
+                                               im_core = im_core - rhf_fac*y
+                                           end if
                                         end if
                                         seen_ijij(ti) = seen_ijij(ti) + 2
                                     end if
@@ -707,19 +733,22 @@ contains
                                                             sys%basis%basis_fns(active(1))%sym), &
                                                             sys%basis%basis_fns(active(2))%sym))) then
                                             ! Update <j|h|a> with contribution <ij|ai>.
-                                            x = get_one_body_int_mol_real(sys%read_in%one_e_h_integrals, active(1), active(2), &
-                                                                     sys)  - x
-                                            call store_one_body_int(active(1), active(2), x, sys, int_err > max_err_msg, &
-                                                                        sys%read_in%one_e_h_integrals, ierr)
-                                            int_err = int_err + ierr
-                                            if (sys%read_in%comp) then
-                                                ! Possible sign change due to ordering of active(1) & active(2) accounted for in get_one_body...
-                                                ! and store_one_body... function ordering adjustments.
-                                                y = get_one_body_int_mol_real(sys%read_in%one_e_h_integrals_imag, active(1), &
-                                                                        active(2), sys)  - y
-                                                call store_one_body_int(active(1), active(2), y, sys, int_err > max_err_msg, &
-                                                                            sys%read_in%one_e_h_integrals_imag, ierr)
-                                                int_err = int_err + ierr
+                                            ! If there are extra exchange integrals, we deal with them later when we read them in.
+                                            if(.not.sys%read_in%extra_exchange_integrals) then
+                                               x = get_one_body_int_mol_real(sys%read_in%one_e_h_integrals, active(1), active(2), &
+                                                                        sys)  - x
+                                               call store_one_body_int(active(1), active(2), x, sys, int_err > max_err_msg, &
+                                                                           sys%read_in%one_e_h_integrals, ierr)
+                                               int_err = int_err + ierr
+                                               if (sys%read_in%comp) then
+                                                   ! Possible sign change due to ordering of active(1) & active(2) accounted for in get_one_body...
+                                                   ! and store_one_body... function ordering adjustments.
+                                                   y = get_one_body_int_mol_real(sys%read_in%one_e_h_integrals_imag, active(1), &
+                                                                           active(2), sys)  - y
+                                                   call store_one_body_int(active(1), active(2), y, sys, int_err > max_err_msg, &
+                                                                               sys%read_in%one_e_h_integrals_imag, ierr)
+                                                   int_err = int_err + ierr
+                                               end if
                                             end if
                                             seen_iaib(core(1), tri_ind_reorder(active(1),active(2))) = &
                                                 seen_iaib(core(1), tri_ind_reorder(active(1),active(2))) + 2
@@ -770,6 +799,9 @@ contains
 
         end if
 
+        if (sys%read_in%extra_exchange_integrals) call read_additional_exchange_integrals(sys, sp_fcidump_rank, &
+               active_basis_offset, sys%read_in%Ecore, t_verbose)
+
 #ifdef PARALLEL
         call MPI_BCast(sys%read_in%Ecore, 1, mpi_preal, root, MPI_COMM_WORLD, ierr)
 #endif
@@ -780,7 +812,12 @@ contains
             call broadcast_two_body_t(sys%read_in%coulomb_integrals_imag, root, sys%read_in%max_broadcast_chunk)
         end if
 
-        if (sys%read_in%extra_exchange_integrals) call read_additional_exchange_integrals(sys, sp_fcidump_rank, t_verbose)
+        if (sys%read_in%extra_exchange_integrals) then
+            call broadcast_two_body_exchange_t(sys%read_in%additional_exchange_ints, root)
+            if (sys%read_in%comp) then
+                call broadcast_two_body_exchange_t(sys%read_in%additional_exchange_ints_imag, root)
+            end if
+        end if
 
         if (size(sys%basis%basis_fns) /= size(all_basis_fns) .and. parent .and. t_verbose) then
             ! We froze some orbitals...
@@ -1017,7 +1054,9 @@ contains
         ! Integrals might be allowed by symmetry (and hence stored) but still
         ! be zero (and so not be included in the integral file).  To protect
         ! ourselves against accessing uninitialised memory:
-        call zero_one_body_int_store(store)
+        if (parent) then
+            call zero_one_body_int_store(store)
+        end if
 
         ! In addition to reading in the integrals, we must also calculate the
         ! contribution from the core (frozen) orbitals.
@@ -1176,7 +1215,7 @@ contains
 
     end subroutine get_sp_eigv
 
-    subroutine read_additional_exchange_integrals(sys, sp_fcidump_rank, verbose)
+    subroutine read_additional_exchange_integrals(sys, sp_fcidump_rank, active_basis_offset, Ecore, verbose)
 
         ! For periodic bounary conditions we require additional integrals, to be read
         ! in from a separate FCIDUMP to be stored in sys%read_in%additional_exchange_ints{_imag}.
@@ -1187,42 +1226,66 @@ contains
         !         and i is the i-th orbital by energy ordering.
         !         Note: must be 0-indexed and sp_fcidump_rank(0) = 0.  See above
         !         commments about this special case.
+        !    active_basis_offset:  An integer to subtract from the
+        !         spin-orbital-index accounting for the frozen orbitals.  This
+        !         is the number of frozen electrons.
+        !    Ecore: in/out  The core energy - modified if there are frozen orbitals.
 
-        use molecular_integrals, only: init_two_body_exchange_t, zero_two_body_exchange_int_store, &
-                                       store_pbc_int_mol, broadcast_two_body_exchange_t
+        !  This includes the exchange integrals in the appropriate freezing -
+        !  code extracted from the main freezing routine mostly.
+
+        use molecular_integrals, only: store_pbc_int_mol, get_one_body_int_mol_real, store_one_body_int
         use system, only: sys_t
         use errors, only: stop_all
-        use parallel, only: parent, root
+        use parallel, only: parent
+        use utils, only: tri_ind_reorder
+        use checking, only: check_allocate, check_deallocate
+        use read_in_symmetry, only: is_gamma_irrep_read_in
 
         use, intrinsic :: iso_fortran_env, only: iostat_end
 
         type(sys_t), intent(inout) :: sys
         integer, intent(in) :: sp_fcidump_rank(0:)
 
+        integer, intent(in) :: active_basis_offset
+        real(p), intent(inout) :: Ecore
         logical, intent(in), optional :: verbose
+
+        integer :: orbs(4)
         integer :: ir, ierr
-        logical  :: t_exists
-        integer :: i,j,a,b, ios
+        logical :: t_exists
+        integer :: i,j,a,b, ios, ti
+        integer :: ii, jj, aa, bb
         real(p) :: x, y
         complex(p) :: compint
         integer :: rhf_fac
+        real(p) :: im_core
+        integer, allocatable :: seen_ijij(:)
+        integer, allocatable :: seen_iaib(:,:)
+        integer :: ia, ic, core(2), active(2), iorb
+        integer :: int_err, max_err_msg
+        int_err = 0
+        max_err_msg = 10
+        im_core = 0_p
 
         ios = 0
 
-        if (sys%read_in%uhf) then
-            rhf_fac = 1
-        else
-            rhf_fac = 2  ! need to double count some integrals.
-        end if
-
-        call init_two_body_exchange_t(sys, sys%read_in%pg_sym%gamma_sym, .false., sys%read_in%additional_exchange_ints)
-        call zero_two_body_exchange_int_store(sys%read_in%additional_exchange_ints)
-        if (sys%read_in%comp) then
-            call init_two_body_exchange_t(sys, sys%read_in%pg_sym%gamma_sym, .true., sys%read_in%additional_exchange_ints_imag)
-            call zero_two_body_exchange_int_store(sys%read_in%additional_exchange_ints_imag)
-        end if
 
         if (parent) then
+
+            if (sys%read_in%uhf) then
+                rhf_fac = 1
+            else
+                rhf_fac = 2  ! need to double count some integrals.
+            end if
+
+            allocate(seen_ijij((active_basis_offset*(active_basis_offset+1))/2), stat=ierr)
+            call check_allocate('seen_ijij', active_basis_offset*(active_basis_offset+1)/2, ierr)
+            allocate(seen_iaib(-active_basis_offset+1:0,(sys%basis%nbasis*(sys%basis%nbasis+1))/2), stat=ierr)
+            call check_allocate('seen_iaib', sys%basis%nbasis*(sys%basis%nbasis+1)/2, ierr)
+            seen_ijij = 0
+            seen_iaib = 0
+
             inquire(file=sys%read_in%ex_fcidump, exist=t_exists)
             if (.not.t_exists) call stop_all('read_in_integrals', 'FCIDUMP does not &
                                                                &exist:'//trim(sys%read_in%ex_fcidump))
@@ -1248,16 +1311,123 @@ contains
                 a = rhf_fac*sp_fcidump_rank(a)
                 b = rhf_fac*sp_fcidump_rank(b)
 
-                call store_pbc_int_mol(i,j,a,b,x,sys%basis%basis_fns, sys%read_in%additional_exchange_ints, ierr)
-                if (sys%read_in%comp) then
-                    call store_pbc_int_mol(i,j,a,b,y,sys%basis%basis_fns, sys%read_in%additional_exchange_ints_imag, ierr)
-                end if
-            end do
-        end if
+                ! Adjust indices to take into account frozen core orbitals and to
+                ! convert to an energy ordering.
+                ii = i - active_basis_offset
+                jj = j - active_basis_offset
+                aa = a - active_basis_offset
+                bb = b - active_basis_offset
 
-        call broadcast_two_body_exchange_t(sys%read_in%additional_exchange_ints, root)
-        if (sys%read_in%comp) then
-            call broadcast_two_body_exchange_t(sys%read_in%additional_exchange_ints_imag, root)
+                if (max(ii,jj,aa,bb) <= sys%basis%nbasis) then
+                   orbs = (/ ii, jj, aa, bb /)
+                   select case(count(orbs > 0))
+                   case(4)
+                      !all active orbitals, so just store
+                      call store_pbc_int_mol(ii,jj,aa,bb,x,sys%basis%basis_fns, sys%read_in%additional_exchange_ints, ierr)
+                      if (sys%read_in%comp) then
+                          call store_pbc_int_mol(ii,jj,aa,bb,y,sys%basis%basis_fns, sys%read_in%additional_exchange_ints_imag, ierr)
+                      end if
+                   case(2)
+                       ! two core orbitals - might need to include this in a modified 1-e integral
+                       ic = 1
+                       ia = 1
+                       do iorb = 1, 4
+                           if (orbs(iorb) > 0) then
+                               active(ia) = orbs(iorb)
+                               ia = ia +1
+                           else
+                               core(ic) = orbs(iorb)
+                               ic = ic + 1
+                           end if
+                       end do
+                       if (core(1) == core(2)) then
+                           ! Have integral of type < i a | b i >,
+                           ! where i is a core orbital and a and b are
+                           ! active orbitals.
+
+                           if ((.not. sys%read_in%comp) .or. ((ii == core(1) .and. bb == core(2)) &
+                                       .or. (jj == core(1) .and. aa == core(2)))) then
+                               ! < i a | b i > (or allowed permutation thereof)
+                               ! For systems with complex orbitals (but real integrals)
+                               ! it's possible for <ii|ba> to be nonzero, but <ia|bi>=0 so we test sym
+
+                               ! For complex we can only accept <ia|bi> or <ai|ib>, which gives the second two
+                               ! conditions above.
+                               ! For real we can also accept <ii|ab>/<ii|ba> etc, which are all remaining cases
+                               ! of core(1) == core(2) after the inital if statement. As such if real automatically
+                               ! accept.
+                               if (seen_iaib(core(1), tri_ind_reorder(active(1),active(2))) < 2 .and. &
+                                   is_gamma_irrep_read_in(sys%read_in%pg_sym, &
+                                       sys%read_in%cross_product_sym_ptr(sys%read_in, &
+                                                   sys%read_in%sym_conj_ptr(sys%read_in, &
+                                                   sys%basis%basis_fns(active(1))%sym), &
+                                                   sys%basis%basis_fns(active(2))%sym))) then
+                                   ! Update <j|h|a> with contribution <ij|ai>.
+                                   ! If there are extra exchange integrals, we deal with them later when we read them in.
+                                   x = get_one_body_int_mol_real(sys%read_in%one_e_h_integrals, active(1), active(2), &
+                                                            sys)  - x
+                                   call store_one_body_int(active(1), active(2), x, sys, int_err > max_err_msg, &
+                                                               sys%read_in%one_e_h_integrals, ierr)
+                                   int_err = int_err + ierr
+                                   if (sys%read_in%comp) then
+                                       ! Possible sign change due to ordering of active(1) & active(2) accounted for in get_one_body...
+                                       ! and store_one_body... function ordering adjustments.
+                                       y = get_one_body_int_mol_real(sys%read_in%one_e_h_integrals_imag, active(1), &
+                                                               active(2), sys)  - y
+                                       call store_one_body_int(active(1), active(2), y, sys, int_err > max_err_msg, &
+                                                                   sys%read_in%one_e_h_integrals_imag, ierr)
+                                       int_err = int_err + ierr
+                                   end if
+                                   seen_iaib(core(1), tri_ind_reorder(active(1),active(2))) = &
+                                       seen_iaib(core(1), tri_ind_reorder(active(1),active(2))) + 2
+                               end if
+                           end if
+                       end if
+                   case(0)
+                      ! all core - we add to the Ecore
+                      if (ii == bb .and. jj == aa .and. ii /= jj .or. &
+                                         (ii == jj .and. aa == bb .and. ii /= aa .and. .not. sys%read_in%comp)) then
+                         if (ii == jj) then
+                            ti = tri_ind_reorder(i, a)
+                         else
+                            ti = tri_ind_reorder(i, j)
+                         end if
+                         if (seen_ijij(ti) < 2) then
+                            Ecore = Ecore - rhf_fac*x
+                            if (sys%read_in%comp) then
+                                im_core = im_core - rhf_fac*y
+                            end if
+                            seen_ijij(ti) = seen_ijij(ti) + 2
+                         end if
+                      else if (ii == bb .and. jj == aa .and. ii == jj ) then
+                         ti = tri_ind_reorder(i, j)
+                         if (seen_ijij(ti) < 2) then
+                            Ecore = Ecore - x
+                            !we remove the <ii|ii>_x integrals from the core - twice 1/2 <ii|ii> self-interaction
+                            !and the other 
+                            if (sys%read_in%comp) then
+                                im_core = im_core - y
+                            end if
+                            seen_ijij(ti) = seen_ijij(ti) + 2
+                         end if
+                      end if
+                   end select
+               end if
+            end do
+            ! Same check as above in read_in_integrals.
+            ! If system is sensible, total Ecore including any CAS contribution will be purely real as is just the sum of Ecore
+            ! and single particle energies of core orbitals; if not then either these assumptions are wrong or something's up
+            ! with the extra integrals INTDUMP.
+            ! Either way will want to know.
+            if (abs(im_core) > depsilon) then
+                call stop_all('read_additional_exchange_integrals' ,'Nonzero imaginary core energy found after correcting & 
+                                                                    & for exchange integrals; check your CAS settings.')
+            end if
+
+            deallocate(seen_ijij, stat=ierr)
+            call check_deallocate('seen_ijij', ierr)
+            deallocate(seen_iaib, stat=ierr)
+            call check_deallocate('seen_iaib', ierr)
         end if
 
         call modify_one_body_ints(sys, sys%read_in%coulomb_integrals, sys%read_in%additional_exchange_ints, &
@@ -1293,6 +1463,7 @@ contains
                                get_two_body_int_mol_nonzero, get_two_body_exchange_pbc_int_nonzero,&
                                pbc_ex_int_indx, int_ex_indx
         use system, only: sys_t
+        use parallel, only: parent
         use molecular_integral_types, only: two_body_t, one_body_t, two_body_exchange_t
 
         type(sys_t), intent(in) :: sys
@@ -1302,16 +1473,18 @@ contains
         real(p) :: intgrl
         integer :: i, ierr
         type(int_ex_indx) :: indx
+        
+        if (parent) then
+            do i = 1, sys%basis%nbasis, 2
+                indx = pbc_ex_int_indx(.false., i,i,i,i,sys%basis%basis_fns)
+                intgrl = get_one_body_int_mol_nonzero(one_e_ints, i, i, sys%basis%basis_fns)
 
-        do i = 1, sys%basis%nbasis, 2
-            indx = pbc_ex_int_indx(.false., i,i,i,i,sys%basis%basis_fns)
-            intgrl = get_one_body_int_mol_nonzero(one_e_ints, i, i, sys%basis%basis_fns)
+                intgrl = intgrl + 0.5_p * get_two_body_int_mol_nonzero(two_e_ints, i, i, i, i, sys%basis%basis_fns)
+                intgrl = intgrl - 0.5_p * get_two_body_exchange_pbc_int_nonzero(pbc_ex_ints, i, i, i, i, sys%basis%basis_fns)
 
-            intgrl = intgrl + 0.5_p * get_two_body_int_mol_nonzero(two_e_ints, i, i, i, i, sys%basis%basis_fns)
-            intgrl = intgrl - 0.5_p * get_two_body_exchange_pbc_int_nonzero(pbc_ex_ints, i, i, i, i, sys%basis%basis_fns)
-
-            call store_one_body_int(i, i, intgrl, sys, .false., one_e_ints, ierr)
-        end do
+                call store_one_body_int(i, i, intgrl, sys, .false., one_e_ints, ierr)
+            end do
+        end if
 
     end subroutine modify_one_body_ints
 
