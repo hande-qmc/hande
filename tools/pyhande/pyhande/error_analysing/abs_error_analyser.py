@@ -1,6 +1,6 @@
 """Abstract base class for error analyser objects."""
 import abc
-from typing import List
+from typing import List, Dict
 import pandas as pd
 
 
@@ -28,5 +28,6 @@ class AbsErrorAnalyser(metaclass=abc.ABCMeta):
         """Access _no_opt_block attribute if available. Else error."""
 
     @abc.abstractmethod
-    def exe(self):
+    def exe(self, data: List[pd.DataFrame], observables: Dict[str, str]
+            ) -> None:
         """Do error analysis."""

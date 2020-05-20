@@ -37,9 +37,9 @@ def define_objects_common(merge_type: str = 'uuid', analyser: str = 'blocking',
     """
     extra = Extractor(merge={'type': merge_type})
     prep = PrepHandeCcmcFciqmc()
-    ana = {'blocking': Blocker.inst_hande_ccmc_fciqmc,
-           'hybrid': HybridAna.inst_hande_ccmc_fciqmc}
-    ana = ana.get(analyser, RaiseValueError("Choose valid analyser."))(
+    select_ana = {'blocking': Blocker.inst_hande_ccmc_fciqmc,
+                  'hybrid': HybridAna.inst_hande_ccmc_fciqmc}
+    ana = select_ana.get(analyser, RaiseValueError("Choose valid analyser."))(
         start_its=start_its)
     return (extra, prep, ana)
 

@@ -1,5 +1,5 @@
 """Access and investigate CCMC/FCIQMC results from HANDE QMC."""
-from typing import Dict, List, Union
+from typing import Dict, List, Optional, Union
 import warnings
 import copy
 import pandas as pd
@@ -19,8 +19,8 @@ class ResultsCcmcFciqmc(Results):
 
     def __init__(
             self, extractor: Extractor,
-            preparator: PrepHandeCcmcFciqmc = None,
-            analyser: Union[Blocker, HybridAna] = None) -> None:
+            preparator: Optional[PrepHandeCcmcFciqmc] = None,
+            analyser: Optional[Union[Blocker, HybridAna]] = None) -> None:
         """
         Initialise `ResultsCcmcFciqmc` instance.
 
@@ -31,29 +31,31 @@ class ResultsCcmcFciqmc(Results):
         ----------
         extractor : Extractor
             Extractor instance which has extracted HANDE QMC data.
-        preparator : PrepHandeCcmcFciqmc, optional
+        preparator : Optional[PrepHandeCcmcFciqmc], optional
             If present, contains prepared data (e.g. dealing with
             complex, replica tricks and adding an inst. projected energy
             column) which might have then be passed to the `analyser`.
-        analyser : Union[Blocker, HybridAna], optional
+            Needed e.g. for shoulder analysis, inefficiency calc, etc.
+        analyser : Optional[Union[Blocker, HybridAna]], optional
             If present, information on Blocker or HybridAna.
+            Needed for inefficiency analysis, reweighting, etc.
         """
         super().__init__(extractor)
-        self._preparator = preparator
-        self._analyser: Union[Blocker, HybridAna] = analyser
-        if analyser.opt_block:
+        self._preparator: Optional[PrepHandeCcmcFciqmc] = preparator
+        self._analyser: Optional[Union[Blocker, HybridAna]] = analyser
+        if analyser and analyser.opt_block:
             self.summary = self._opt_block()
         # To be set later:
         self._shoulder: pd.DataFrame
         self._inefficiency: pd.DataFrame
 
     @property
-    def preparator(self) -> PrepHandeCcmcFciqmc:
+    def preparator(self) -> Optional[PrepHandeCcmcFciqmc]:
         """Access preparator used to prepare data for analysis."""
         return self._preparator
 
     @property
-    def analyser(self) -> Union[Blocker, HybridAna]:
+    def analyser(self) -> Optional[Union[Blocker, HybridAna]]:
         """Access analyser used to supply the analysed results."""
         return self._analyser
 
@@ -71,6 +73,9 @@ class ResultsCcmcFciqmc(Results):
         pd.DataFrame
             Prettified summary table for viewing (not further analysis).
         """
+        if not self.preparator:
+            raise ValueError("Preparator not defined so cannot transform "
+                             "summary!")
         pretty_fmt_errs = []
         for sum_ind in range(len(self.summary)):
             try:
@@ -111,7 +116,8 @@ class ResultsCcmcFciqmc(Results):
             DataFrame where easier comparisons are possible.
         """
         comp_df = self.summary.query("observable in @observables")
-        if self.preparator.observables['replica_key'] in comp_df:
+        if self.preparator and (self.preparator.observables['replica_key'] in
+                                comp_df):
             # replica tricks used
             comp_df.set_index(
                 ['calc id', self.preparator.observables['replica_key']],
@@ -146,15 +152,18 @@ class ResultsCcmcFciqmc(Results):
             columns 'observables' which used to be the index of each
             element of passed in df.
         """
-        df = pd.concat(df, keys=list(range(len(df))), names=['calc id'])
-        df = df.reset_index()
-        return df.rename(
+        df_re = pd.concat(df, keys=list(range(len(df))), names=['calc id'])
+        df_re = df_re.reset_index()
+        return df_re.rename(
             columns={'level_1': 'observable', 'level_2': 'observable',
                      'mean': 'value/mean'}
         )  # Only one level will be used, depending on whether replica.
 
     def _opt_block(self) -> pd.DataFrame:
         """Return opt_block in more normalised form."""
+        if not self.analyser:
+            raise ValueError("Analyser was not defined so cannot return "
+                             "opt_block")
         return ResultsCcmcFciqmc._concat_reset_rename(
             self.analyser.opt_block)
 
@@ -174,6 +183,10 @@ class ResultsCcmcFciqmc(Results):
 
     def _calc_shoulder(self, dat: pd.DataFrame) -> pd.DataFrame:
         """Calculate shoulder using analysis.plateau_estimator."""
+        if not self.preparator:
+            raise ValueError("Cannot calculate shoulder as mapping of "
+                             "observables is not accessible. Define "
+                             "preparator.observables.")
         return analysis.plateau_estimator(
             dat, total_key=self.preparator.observables['total_key'],
             ref_key=self.preparator.observables['ref_key'],
@@ -182,6 +195,10 @@ class ResultsCcmcFciqmc(Results):
     @property
     def shoulder(self) -> pd.DataFrame:
         """Access shoulder. For now, not hist shoulder [todo]."""
+        if not self.preparator:
+            raise ValueError("Cannot calculate shoulder as mapping of "
+                             "observables is not accessible. Define "
+                             "preparator.observables.")
         try:
             return self._shoulder
         except AttributeError:
@@ -209,8 +226,12 @@ class ResultsCcmcFciqmc(Results):
         """Add shoulder to summary. [todo]: allow hist shoulder."""
         self._add_to_summary(self.shoulder)
 
-    def _calc_ineff(self, dat_ind: int, opt_block: pd.DataFrame) -> float:
+    def _calc_ineff(self, dat_ind: int, opt_block: pd.DataFrame
+                    ) -> pd.DataFrame:
         """Calculate inefficiency using analysis.inefficiency."""
+        if not self.analyser or not self.preparator:
+            raise ValueError("Define analyser and preparator to calculate "
+                             "inefficiency.")
         dtau = self.extractor.metadata[dat_ind][-1]['qmc']['tau']
         n_its = (self.analyser.end_its[dat_ind]
                  - self.analyser.start_its[dat_ind])
@@ -225,12 +246,15 @@ class ResultsCcmcFciqmc(Results):
     @property
     def inefficiency(self) -> pd.DataFrame:
         """Access inefficiency."""
+        if not self.analyser or not self.preparator:
+            raise ValueError("Define analyser and preparator to calculate "
+                             "inefficiency.")
         try:
             return self._inefficiency
         except AttributeError:
             # Calculate inefficiency.
             # See W. A. Vigor, et al. (2016), J. Chem. Phys. 144, 094110.
-            self._inefficiency = []
+            inefficiencies = []
             for dat_ind in range(len(self.preparator.data)):
                 if (self.preparator.observables['replica_key'] in
                         self.preparator.data[dat_ind]):
@@ -245,9 +269,9 @@ class ResultsCcmcFciqmc(Results):
                 else:
                     ineff = self._calc_ineff(
                         dat_ind, self.analyser.opt_block[dat_ind])
-                self._inefficiency.append(ineff)
+                inefficiencies.append(ineff)
             self._inefficiency = ResultsCcmcFciqmc._concat_reset_rename(
-                self._inefficiency)
+                inefficiencies)
             return self._inefficiency
 
     def add_inefficiency(self):
@@ -268,16 +292,18 @@ class ResultsCcmcFciqmc(Results):
             (if they exist).
         """
         metadata = self.get_metadata(meta_keys)
-        replica_key = self.preparator.observables['replica_key']
-        if (replica_key in self.preparator.data[0]):
-            # replica tricks. Assume if doing replica tricks, doing it for all.
-            # Just duplicated metadata for each replica.
-            metadata = pd.concat(
-                [metadata]*int(self.summary[replica_key].max()),
-                keys=list(range(1, int(self.summary[replica_key].max())+1)),
-                names=[replica_key])
-            metadata.reset_index(inplace=True)
-            metadata.drop(columns=['level_1'], inplace=True)
+        if self.preparator:  # replica tricks ignored if preparator not there.
+            replic_key = self.preparator.observables['replica_key']
+            if (replic_key in self.preparator.data[0]):
+                # replica tricks. Assume if doing replica tricks, doing it for
+                # all.
+                # Just duplicated metadata for each replica.
+                metadata = pd.concat(
+                    [metadata]*int(self.summary[replic_key].max()),
+                    keys=list(range(1, int(self.summary[replic_key].max())+1)),
+                    names=[replic_key])
+                metadata.reset_index(inplace=True)
+                metadata.drop(columns=['level_1'], inplace=True)
         self._add_to_summary(metadata)
 
     def do_reweighting(self, max_weight_history: int = 300) -> None:
@@ -313,6 +339,10 @@ class ResultsCcmcFciqmc(Results):
         Vigor15
             W.A. Vigor, et al. (2015), J. Chem. Phys. 142, 104101.
         """
+        if not self.preparator or not self.analyser:
+            raise ValueError("Preparator and analyser are needed for "
+                             "reweighting.")
+
         if not isinstance(self.analyser, Blocker):
             raise TypeError("Reweighting only tested/implemented for"
                             f"Blocker analyser, not {type(self.analyser)}.")
@@ -424,6 +454,11 @@ class ResultsCcmcFciqmc(Results):
         log_scale : bool
             Set x and y axis on log scale.
         """
+        if not self.preparator:
+            raise ValueError("Pass in preparator to find and plot shoulder as"
+                             "the key mapping (e.g. what is ref_key etc) is "
+                             "required.")
+
         if not inds:
             inds = list(range(len(self.preparator.data)))
         fig = plt.figure()

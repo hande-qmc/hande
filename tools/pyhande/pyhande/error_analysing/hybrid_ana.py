@@ -29,7 +29,7 @@ class HybridAna(AbsErrorAnalyser):
 
     def __init__(
             self, it_key: str, hybrid_col: str, replica_col: str,
-            cols: List[str] = None,
+            cols: Optional[List[str]] = None,
             start_its: Union[List[int], str] = 'mser',
             end_its: List[int] = None, batch_size: int = 1,
             find_start_kw_args: Dict[str, Union[bool, float, int]]
@@ -51,7 +51,7 @@ class HybridAna(AbsErrorAnalyser):
             hybrid_col = observables[key].
         replica_col : str
             Name of replica columns, e.g. 'replica id'.
-        cols : List[str], optional
+        cols : Optional[List[str]], optional
             Columns in QMC data potentially used when finding start
             iteration (if 'blocking' start_its selected), e.g.
             ['Shift', '\sum H_0j N_j', 'N_0', '# H psips'].
@@ -112,7 +112,7 @@ class HybridAna(AbsErrorAnalyser):
 
         # These attributes are set later:
         self._it_key: str
-        self._cols: List[str]
+        self._cols: Optional[List[str]]
         self._replica_col: str
         self._hybrid_col: str
         self._start_its: List[int]
@@ -284,7 +284,8 @@ class HybridAna(AbsErrorAnalyser):
         (opt_block, no_opt_block) = self._do_hybrid_analysis(dat)
         return (opt_block, no_opt_block)
 
-    def exe(self, data: List[pd.DataFrame], observables: Dict[str, str]):
+    def exe(self, data: List[pd.DataFrame], observables: Dict[str, str]
+            ) -> None:
         """
         Do analysis (first finding starting iteration if required).
 

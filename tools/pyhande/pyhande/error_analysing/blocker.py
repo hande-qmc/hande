@@ -23,7 +23,8 @@ class Blocker(AbsErrorAnalyser):
 
     def __init__(
             self, it_key: str, cols: List[str], replica_col: str,
-            eval_ratio: Dict[str, str] = None, hybrid_col: str = None,
+            eval_ratio: Optional[Dict[str, str]] = None,
+            hybrid_col: Optional[str] = None,
             start_its: Union[List[int], str] = 'blocking',
             end_its: List[int] = None,
             find_start_kw_args: Dict[str, Union[bool, float, int]]
@@ -46,7 +47,7 @@ class Blocker(AbsErrorAnalyser):
             obs_key = observables[key].
         replica_col : str
             Name of replica columns, e.g. 'replica id'.
-        eval_ratio : Dict[str, str], optional
+        eval_ratio : Optional[Dict[str, str]], optional
             After blocking, evaluate ratio (e.g. projected energy).
             Contains:
             `num` : Numerator of ratio, e.g. r'\sum H_0j N_j'.
@@ -56,7 +57,7 @@ class Blocker(AbsErrorAnalyser):
             .exe using passed in observables as
             obs = observables[key].
             The default is None, in which case no ratio is evaluated.
-        hybrid_col : str, optional
+        hybrid_col : Optional[str], optional
             Column to be analysed in a hybrid way, e.g.
             'Inst. Proj. Energy'.  Here, only used if
             `start_its` = 'mser', ignored otherwise.
@@ -114,8 +115,8 @@ class Blocker(AbsErrorAnalyser):
         self._it_key: str
         self._cols: List[str]
         self._replica_col: str
-        self._eval_ratio: Dict[str, str]
-        self._hybrid_col: str
+        self._eval_ratio: Optional[Dict[str, str]]
+        self._hybrid_col: Optional[str]
         self._start_its: List[int]
         self._end_its: List[int]
         self._reblock: List[pd.DataFrame]

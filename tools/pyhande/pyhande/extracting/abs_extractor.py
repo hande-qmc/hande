@@ -1,5 +1,6 @@
 """Abstract base class for extractor objects."""
 import abc
+from typing import List
 
 
 class AbsExtractor(metaclass=abc.ABCMeta):
@@ -16,5 +17,5 @@ class AbsExtractor(metaclass=abc.ABCMeta):
         """Should contain a dictionary with metadata."""
 
     @abc.abstractmethod
-    def exe(self):
+    def exe(self, out_files: List[str]):
         """Do the extraction and possibly merging of calcs."""

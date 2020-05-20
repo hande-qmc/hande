@@ -1,30 +1,33 @@
 """Shared helper functions for analysers."""
-from typing import Dict, List, Tuple, Union
+from typing import Dict, List, Optional, Tuple, Union
 import pandas as pd
 
 
-def check_data_input(data: List[pd.DataFrame], cols: List[str],
-                     eval_ratio: Dict[str, str], hybrid_col: str,
-                     start_its: Union[List[int], str], end_its: List[int]):
+def check_data_input(data: List[pd.DataFrame],
+                     cols: Union[List[str], Optional[List[str]]],
+                     eval_ratio: Optional[Dict[str, str]],
+                     hybrid_col: Union[Optional[str], str],
+                     start_its: Union[List[int], str],
+                     end_its: Optional[List[int]]) -> None:
     """Check data input against other, previous, input.
 
     Parameters
     ----------
     data : List[pd.DataFrame]
         List of QMC data.
-    cols : List[str]
+    cols : Union[List[str], Optional[List[str]]]
         Columns to be analysed when blocking/ finding starting iteration
         with 'blocking'.
-    eval_ratio : Dict[str, str]
+    eval_ratio : Optional[Dict[str, str]]
         Contains information to evaluate ratio (e.g. projected energy)
         when doing blocking analysis.
-    hybrid_col : str
+    hybrid_col : Union[Optional[str], str]
         Column name when doing hybrid analysis/ finding starting
         iteration with 'mser'.
     start_its : Union[List[int], str]
         Starting iterations for analysis or information on type of
         find_starting_it function.
-    end_its : List[int]
+    end_its : Optional[List[int]]
         Last iterations for analysis.
 
     Raises
@@ -58,7 +61,8 @@ def check_data_input(data: List[pd.DataFrame], cols: List[str],
                          f"as 'data' (here of length {len(data)}).")
 
 
-def _set_value(observables: Dict[str, str], col_item: str) -> str:
+def _set_value(observables: Dict[str, str], col_item: Union[Optional[str], str]
+               ) -> Union[Optional[str], str]:
     """Helper to set value."""
     return (
         observables[col_item[4:]] if (col_item and col_item.startswith('obs:'))
@@ -66,10 +70,12 @@ def _set_value(observables: Dict[str, str], col_item: str) -> str:
     )
 
 
-def set_cols(observables: Dict[str, str], it_key: str, cols: List[str],
-             replica_col: str, eval_ratio: Dict[str, str],
-             hybrid_col: str) -> Tuple[str, List[str], str, Dict[str, str],
-                                       str]:
+def set_cols(observables: Dict[str, str], it_key: str,
+             cols: Union[Optional[List[str]], List[str]], replica_col: str,
+             eval_ratio: Optional[Dict[str, str]],
+             hybrid_col: Union[Optional[str], str]
+             ) -> Tuple[str, Union[Optional[List[str]], List[str]], str,
+                        Optional[Dict[str, str]], str]:
     """Set various columns and observable names.
 
     Either the input is simply returned or set to observables[input] if
@@ -81,15 +87,15 @@ def set_cols(observables: Dict[str, str], it_key: str, cols: List[str],
         Map of key to column/observable name, e.g. {'ref_key': 'N_0'}
     it_key : str
         Key or actual name for iterations.
-    cols : str
+    cols : Union[Optional[List[str]], List[str]]
         Keys or actual names of columns/observables to be analysed in
         blocking.
     replica_col : str
         Key or actual name for replica column.
-    eval_ratio : Dict[str, str]
+    eval_ratio : ptional[Dict[str, str]]
         Keys or actual names of elements in observable ratio to be
         evaluated.
-    hybrid_col : str
+    hybrid_col : Union[Optional[str], str]
         Key or actual name of column/observable to be analysed in hybrid
         analysis.
 

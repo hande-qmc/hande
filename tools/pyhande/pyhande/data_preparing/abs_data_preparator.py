@@ -18,5 +18,5 @@ class AbsDataPreparator(metaclass=abc.ABCMeta):
         pass
 
     @abc.abstractmethod
-    def exe(self):
+    def exe(self, data: List[pd.DataFrame], make_copy: bool):
         pass

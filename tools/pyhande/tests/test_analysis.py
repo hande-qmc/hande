@@ -4,7 +4,7 @@ import warnings
 import numpy as np
 import pandas as pd
 import pyhande.analysis as analysis
-import create_mock_df
+import tests.create_mock_df as create_mock_df
 
 
 class TestProjectedEnergy(unittest.TestCase):
