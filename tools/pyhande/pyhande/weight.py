@@ -50,6 +50,13 @@ Umrigar93
 Vigor15
     W.A. Vigor, et al., J. Chem. Phys. 142, 104101 (2015).
 '''
+    if tstep <= 0.0:
+        raise ValueError("QMC time step tstep should be > 0 and not passed in "
+                         f"value '{tstep}'.")
+    if mc_cycles <= 0:
+        raise ValueError("#Monte Carlo cycles mc_cycles should be > 0 and not"
+                         f"passed in value '{mc_cycles}'.")
+
     weights = []
     to_prod = np.exp(-tstep*mc_cycles*(data[weight_key].values-mean_shift))
     if len(data[weight_key]) > 0:
@@ -70,6 +77,14 @@ Vigor15
     return data
 
 def arith_series(tstep, mc_cycles, weight_now, weight_before):
+    
+    if tstep <= 0.0:
+        raise ValueError("QMC time step tstep should be > 0 and not passed in "
+                         f"value '{tstep}'.")
+    if mc_cycles <= 0:
+        raise ValueError("#Monte Carlo cycles mc_cycles should be > 0 and not"
+                         f"passed in value '{mc_cycles}'.")
+    
     # Handle division by zero!!!
     if weight_now != weight_before:
         tdweight = tstep*(weight_before - weight_now)

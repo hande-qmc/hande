@@ -68,8 +68,15 @@ contains
             call warning(this, 'Not using default max_broadcast_chunk. This option is only intended for testing of &
                 &broadcasting functionality and gives no benefit to functionality.')
 
-        if (sys%read_in%comp .and. sys%read_in%uhf) call warning(this, &
-                            'UHF translational symmetry currently untested. Use with caution!')
+        if (sys%read_in%comp .and. sys%read_in%uhf) then
+            if (all(sys%cas > 0)) then
+                ! Freezing orbitals not compatible with UHF and complex.
+                ! If statement follows test for number of active orbitals in read_in.F90.
+                call stop_all(this,'Freezing orbitals not currently compatible with UHF and complex')
+            else
+                call warning(this, 'UHF translational symmetry currently untested. Use with caution!')
+            end if
+        end if
 
     end subroutine check_sys
 
@@ -107,6 +114,12 @@ contains
             call stop_all(this, &
                 'Flipping the reference state will give a state which has a different value of Ms and so cannot be used here.')
         end if
+        
+#ifndef PARALLEL
+        if (fciqmc_in%non_blocking_comm) then
+            call stop_all(this, 'Non-blocking comms can only be used with MPI parallelisation.')
+        end if
+#endif
 
         if (fciqmc_in%non_blocking_comm .and. sys%read_in%comp) then
             call stop_all(this, &
@@ -138,7 +151,7 @@ contains
         use qmc_data, only: qmc_in_t, qmc_state_t, excit_gen_heat_bath, excit_gen_no_renorm_spin, excit_gen_renorm_spin, &
                             excit_gen_power_pitzer, excit_gen_cauchy_schwarz_occ, excit_gen_cauchy_schwarz_occ_ij, fciqmc_in_t
         use errors, only: stop_all, warning
-        use system, only: sys_t, read_in
+        use system, only: sys_t, chung_landau, hub_k, hub_real, read_in, ringium, ueg
         use const, only: p, depsilon
 
         type(qmc_in_t), intent(in) :: qmc_in
@@ -223,6 +236,29 @@ contains
             ! its default nor set to 1, so give warning as it will be set to 1 in the code which might not
             ! be what the user intended.
             call warning(this, 'Since quasiNewton is not used, quasi_newton_pop_control is set to 1.')
+        end if
+
+        if ((qmc_in%quasi_newton) .and. (sys%system /= read_in)) then
+            if (sys%system == ueg) then
+                if (sys%lattice%ndim /= 3) then
+                    ! Currently only works if 3D!
+                    call stop_all(this, 'Only the 3D UEG and read_in systems may use the proper Fock energies needed for &
+                        &Quasi-Newton currently. Do not use Quasi-Newton for this system.')
+                end if
+            else if ((sys%system == hub_k) .or. (sys%system == hub_real) .or. (sys%system == chung_landau) .or. &
+                (sys%system == ringium)) then
+                ! Probably wrong Fock energies but leave it up to user.
+                call warning(this, 'Only the 3D UEG and read_in systems may use the proper Fock energies needed for &
+                    &Quasi-Newton currently. Do not use Quasi-Newton for this system unless you are sure what you are doing!')
+            else
+                call stop_all(this, 'Quasi-Newton, which needs values of the Fock matrix, probably does not work with the &
+                    &specified system. If you disagree, disable this error for that system.')
+            end if
+        end if
+
+        if ((qmc_in%quasi_newton) .and. .not.(sys%nel < sys%basis%nbasis)) then
+            call stop_all(this, 'Quasi-Newton requires (and only makes sense) when the number of electrons is less than the &
+                &number of spinorbitals.')
         end if
 
     end subroutine check_qmc_opts

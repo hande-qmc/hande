@@ -68,9 +68,11 @@ contains
         use parallel, only: parent
         use hamiltonian_ueg, only: calc_fock_values_3d_ueg
         use determinants, only: sum_fock_values_occ_list
+        use, intrinsic :: iso_fortran_env, only: error_unit
+        use utils, only: int_fmt
 
 
-        type(sys_t), intent(inout) :: sys
+        type(sys_t), intent(in) :: sys
         type(qmc_in_t), intent(in) :: qmc_in
         type(restart_in_t), intent(in) :: restart_in
         type(load_bal_in_t), intent(in) :: load_bal_in
@@ -114,13 +116,17 @@ contains
         else
             call init_reference(sys, reference_in, io_unit, qmc_state%ref)
         end if
-
+        
+        ! In read-in systems, sp_fock = sp_eigv. This is different in the case of the UEG, where sp_fock is filled with <i|F|i>.
+        ! For the UEG, the Fock values are only implemented for the 3D version!
+        ! [todo] - implement 2D, etc.
         allocate(qmc_state%propagator%sp_fock(sys%basis%nbasis), stat=ierr)
         call check_allocate('qmc_state%propagator%sp_fock', sys%basis%nbasis, ierr)
         qmc_state%propagator%sp_fock = sys%basis%basis_fns%sp_eigv
         if ((sys%system == ueg) .and. (sys%lattice%ndim == 3)) then
             call calc_fock_values_3d_ueg(sys, qmc_state%propagator, qmc_state%ref%occ_list0)
         end if
+        ! [WARNING - TODO] - ref%fock_sum not initialised in init_reference, etc! 
         qmc_state%ref%fock_sum = sum_fock_values_occ_list(sys, qmc_state%propagator%sp_fock, qmc_state%ref%occ_list0)
 
         ! --- Allocate psip list ---
@@ -203,18 +209,27 @@ contains
             '(1X, "# Finishing the excitation generator initialisation, time taken:",1X,es17.10)') set_up_time
 
         qmc_state%propagator%quasi_newton = qmc_in%quasi_newton
-        if (qmc_in%quasi_newton_threshold < 0.0_p) then ! Not set by user, use auto value.
-            ! Assume that fock values are ordered and that the number of basis functions is bigger than the number
-            ! of electrons!
-            qmc_state%propagator%quasi_newton_threshold = &
-                qmc_state%propagator%sp_fock(sys%nel+1) - qmc_state%propagator%sp_fock(sys%nel)
-            if (sys%system == ueg) then
-                ! Know that by symmetry, the sum of Fock values of ref det to next excited det is twice the HOMO LUMO gap.
-                ! Ignore symmetry for the other systems for now...
-                qmc_state%propagator%quasi_newton_threshold = 2.0_p*qmc_state%propagator%quasi_newton_threshold
+        if (qmc_in%quasi_newton) then
+            if (qmc_in%quasi_newton_threshold < 0.0_p) then ! Not set by user, use auto value.
+                ! Assume that fock values are ordered and that the number of basis functions is bigger than the number
+                ! of electrons!
+                if (parent) then
+                    write (error_unit,'(1X,"# Warning in init_qmc: Doing quasi_newton with quasi_newton_threshold not supplied. &
+                        &It is now estimated using (a multiple of) the difference in sp_fock energies of the basis functions at &
+                        &indices (if CAS specified, then after freezing)",'//int_fmt(sys%nel,1)//', " &
+                        &and",'//int_fmt(sys%nel+1,1)//', ". If these are not HOMO and LUMO, specify quasi_newton_threshold &
+                        &directly.", /)') sys%nel, sys%nel+1
+                end if
+                qmc_state%propagator%quasi_newton_threshold = &
+                    qmc_state%propagator%sp_fock(sys%nel+1) - qmc_state%propagator%sp_fock(sys%nel)
+                if (sys%system == ueg) then
+                    ! Know that by symmetry, the sum of Fock values of ref det to next excited det is twice the HOMO LUMO gap.
+                    ! Ignore symmetry for the other systems for now...
+                    qmc_state%propagator%quasi_newton_threshold = 2.0_p*qmc_state%propagator%quasi_newton_threshold
+                end if
+            else
+                qmc_state%propagator%quasi_newton_threshold = qmc_in%quasi_newton_threshold
             end if
-        else
-            qmc_state%propagator%quasi_newton_threshold = qmc_in%quasi_newton_threshold
         end if
         if (qmc_in%quasi_newton_value < 0.0_p) then
             ! Default, set equal to quasi_newton_threshold.
@@ -1031,7 +1046,7 @@ contains
         use checking, only: check_allocate
         use determinants, only: encode_det
 
-        type(sys_t), intent(inout) :: sys
+        type(sys_t), intent(in) :: sys
         type(reference_t), intent(in) :: reference_in
         integer, intent(in) :: io_unit
         type(reference_t), intent(out) :: reference
@@ -1074,6 +1089,7 @@ contains
         reference%H00 = sc0_ptr(sys, reference%f0)
         ! Operators of HFS sampling.
         if (doing_calc(hfs_fciqmc_calc)) reference%O00 = op0_ptr(sys, reference%f0)
+        ! [WARNING - TODO] - ref%fock_sum not initialised here! 
 
     end subroutine init_reference
 
@@ -1096,7 +1112,7 @@ contains
         use checking, only: check_allocate
         use determinants, only: decode_det
 
-        type(sys_t), intent(inout) :: sys
+        type(sys_t), intent(in) :: sys
         type(reference_t), intent(in) :: reference_in
         type(restart_info_t), intent(in) :: ri
         type(reference_t), intent(out) :: reference
@@ -1121,6 +1137,7 @@ contains
         if (doing_calc(hfs_fciqmc_calc)) reference%O00 = op0_ptr(sys, reference%f0)
 
         reference%ex_level = reference_in%ex_level
+        ! [WARNING - TODO] - ref%fock_sum not initialised here! 
 
     end subroutine init_reference_restart
 
@@ -1140,7 +1157,7 @@ contains
         use system, only: sys_t
         use qmc_data, only: qmc_state_t 
         use excitations, only: get_excitation_level
-        type(sys_t), intent(inout) :: sys
+        type(sys_t), intent(in) :: sys
         type(reference_t), intent(in) :: reference_in
         integer, intent(in) :: io_unit
         type(qmc_state_t), intent(inout) :: qs
@@ -1148,7 +1165,7 @@ contains
         call init_reference(sys, reference_in, io_unit, qs%second_ref)
         qs%ref%max_ex_level = qs%ref%ex_level + get_excitation_level(qs%ref%f0(:sys%basis%bit_string_len), &
                                                                   qs%second_ref%f0(:sys%basis%bit_string_len))
-  
+        ! [WARNING - TODO] - ref%fock_sum not initialised here! 
     end subroutine
 
 

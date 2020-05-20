@@ -66,7 +66,7 @@ contains
         use hamiltonian_data
         use energy_evaluation, only: get_sanitized_projected_energy
 
-        type(sys_t), intent(inout) :: sys
+        type(sys_t), intent(in) :: sys
         type(qmc_in_t), intent(in) :: qmc_in
         type(restart_in_t), intent(in) :: restart_in
         type(load_bal_in_t), intent(in) :: load_bal_in

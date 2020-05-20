@@ -24,7 +24,8 @@ import pyhande
 def run_hande_blocking(files, start_iteration=None, end_iteration=None,
                         reblock_plot=None, verbose=1, width=0,
                         out_method='to_string', inefficiency=False,
-                        reweight_plot=False, extract_rl_time=False):
+                        reweight_plot=False, extract_rl_time=False,
+                        analysis_method=None, warmup_detection=None):
     '''Run a reblocking analysis on HANDE output and print to STDOUT.
 
 See :func:`pyblock.pd_utils.reblock` and :func:`pyblock.blocking.reblock` for
@@ -119,7 +120,9 @@ opt_block: :class:`pandas.DataFrame`
                                              extract_psips=True,
                                              calc_inefficiency=inefficiency,
                                              verbosity = verbose,
-                                             extract_rep_loop_time=extract_rl_time)
+                                             extract_rep_loop_time=extract_rl_time,
+                                             analysis_method=analysis_method,
+                                             warmup_detection=warmup_detection)
             for (i, i_info) in enumerate(info):
                 if verbose >= v_analysis:
                     msg = 'Analysing file(s): %s.' % (' '.join(calc))
@@ -183,9 +186,10 @@ opt_block: :class:`pandas.DataFrame`
                 except AttributeError:
                     # if there is more than one calculation in the file calc is a tuple
                     fnames = ' in ' + calc[0] + ' ' + str(calc[1])
-            print('WARNING: could not find optimal block size%s.' % (fnames))
-            print('Insufficient statistics collected for the following '
-                  'variables: %s.' % (', '.join(info.no_opt_block)))
+            if (analysis_method != 'hybrid'):
+                print('WARNING: could not find optimal block size%s.' % (fnames))
+                print('Insufficient statistics collected for the following '
+                      'variables: %s.' % (', '.join(info.no_opt_block)))
 
     if reblock_plot:
         for info in infos:
@@ -264,8 +268,18 @@ reblock_plot : string
                         'if possible.')
     parser.add_argument('-t','--extract_rl_time', default=False, action='store_true',
                         help='Find the mean time taken for a report loop.')
+    parser.add_argument('-a','--analysis_method',  dest='analysis_method', 
+                        default='reblocking', choices=['reblocking','hybrid'],
+                        help='Designate the post-analysis method '
+                        'to estimate the statistic error. Default: %(default)s')
+    parser.add_argument('-b','--warmup_detection', dest='warmup_detection', 
+                        default='hande_org', choices=['hande_org','mser_min'],
+                        help='Designate the method to determine '
+                        'the starting iterations to be discarded before calculating '
+                        'the statistic error. Default: %(default)s')
     parser.add_argument('filenames', nargs=argparse.REMAINDER,
                         help='Space-separated list of files to analyse.')
+
 
     options = parser.parse_args(args)
 
@@ -308,7 +322,8 @@ None.
                        options.end_iteration, options.plotfile,
                        options.verbose, options.width, options.output,
                        options.inefficiency, options.reweight_plot,
-                       options.extract_rl_time)
+                       options.extract_rl_time, 
+                       options.analysis_method, options.warmup_detection) 
 
 if __name__ == '__main__':
 

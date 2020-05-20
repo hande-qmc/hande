@@ -476,6 +476,7 @@ algorithms and control the core settings in the algorithms.
     .. note::
 
         Not currently available for DMQMC.
+        Due to Fock value calculations, only supported for read_in systems and the 3D uniform electron gas.
         For semistochastic FCIQMC, determinants in the deterministic space are given weighting 1.
 
 ``quasi_newton_threshold``
