@@ -214,7 +214,8 @@ contains
         ! Quasinewtwon approaches scale this death step, but doing this naively
         ! would break population control.  Instead, we split H-S into
         ! (H - E_proj)*invdiagel + (E_proj - S)*rho.
-        ! The former is scaled by "invdiagel" and produces the step.
+        ! The former is scaled by "invdiagel", related to the inverse of the QN energy
+        ! difference and produces the step.
         ! The latter affects the population control, scaled by "rho", the QN population
         ! control factor. The purpose of "rho" is to basically allow two separate
         ! time steps for the two terms.

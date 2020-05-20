@@ -481,7 +481,7 @@ algorithms and control the core settings in the algorithms.
 ``quasi_newton_threshold``
     type: float.
     
-    Optional. Default: Energy between LUMO and HOMO.
+    Optional. Default: Energy difference between LUMO and HOMO.
 
     Used when ``quasi_newton`` is true.
     The quasi-Newton approach (partially) scales the steps according to the inverse difference in Fock energy to
