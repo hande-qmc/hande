@@ -1,0 +1,350 @@
+
+   HANDE
+
+ ================================================================
+Version information
+-------------------
+Version       | v1.4-25-g4efb802
+Commit hash   | 4efb80270c639ebaf202fe7b326e94a9ccfefafe
+Commit author | Verena Neufeld
+Commit date   | Thu Mar 21 12:08:44 2019 +0000
+Branch        | master
+
+Configuration and build information
+-----------------------------------
+Who compiled             | verena
+Compilation hostname     | verena-Think
+Operating system         | Linux-4.4.0-176-generic
+CMake version            | 3.10.2
+CMake generator          | Unix Makefiles
+Build type               | release
+Configuration time       | 2020-03-31 15:44:09 [UTC]
+Python version           | 3.6.10
+Fortran compiler         | /usr/bin/gfortran
+C compiler               | /usr/bin/gcc
+DET_SIZE set to          | 64
+POP_SIZE set to          | 64
+dSFMT Mersenne exponent  | 19937
+MPI parallelization      | OFF
+OpenMP parallelization   | OFF
+Lua version              | 5.3.5
+HDF5 library version     | 1.10.2
+
+Further components
+------------------
+DISABLE_HDF5 not defined.  HDF5 enabled.
+DISABLE_LANCZOS defined.  Lanczos disabled.
+DISABLE_UUID not defined.  UUID enabled.
+PARALLEL not defined.  MPI parallelization disabled.
+DISABLE_SCALAPACK not defined.  ScaLAPACK enabled.
+SINGLE_PRECISION not defined.  Double precision used throughout.
+USE_POPCNT not defined. Internal POPCNT procedure used.
+
+Runtime information
+-------------------
+Hostname:
+    verena-Think
+Current working dir:
+    /home/verena/code3/hande/tools/pyhande/tests/hande_files
+Started running on 02/05/2020 at 17:44:07
+ Calculation UUID: 1e1b0df8-95fe-42e1-a0d7-b6c2940357b8.
+ ================================================================
+
+ Input options
+ -------------
+
+-- Create output with:
+-- $[HANDE DIR]/bin/hande.x replica_ueg.lua > replica_ueg.out 2> replica_ueg.err
+-- Note that these settings are just for testing...
+sys = ueg {
+    dim = 3,
+    nel = 14,
+    ms = 0,
+    cutoff = 1,
+}
+
+fciqmc {
+    sys = sys,
+    qmc = {
+        tau = 0.1,
+        rng_seed = 1472,
+        init_pop = 2,
+        mc_cycles = 10,
+        nreports = 3,
+        target_population = 60,
+        state_size = 50000,
+        spawned_state_size = 5000,
+    },
+    fciqmc = {
+        replica_tricks = true,
+    },
+}
+
+ -------------
+
+ Basis functions
+ ---------------
+
+ Spin given in units of 1/2.
+ k-points given in terms of the reciprocal lattice vectors of the crystal cell.
+
+ index   k-point            ms       <i|h|i>
+     1   (  0,  0,  0)      1        0.00000000E+00
+     2   (  0,  0,  0)     -1        0.00000000E+00
+     3   (  0,  0, -1)      1        1.30773168E+00
+     4   (  0,  0, -1)     -1        1.30773168E+00
+     5   (  0, -1,  0)      1        1.30773168E+00
+     6   (  0, -1,  0)     -1        1.30773168E+00
+     7   ( -1,  0,  0)      1        1.30773168E+00
+     8   ( -1,  0,  0)     -1        1.30773168E+00
+     9   (  1,  0,  0)      1        1.30773168E+00
+    10   (  1,  0,  0)     -1        1.30773168E+00
+    11   (  0,  1,  0)      1        1.30773168E+00
+    12   (  0,  1,  0)     -1        1.30773168E+00
+    13   (  0,  0,  1)      1        1.30773168E+00
+    14   (  0,  0,  1)     -1        1.30773168E+00
+    15   (  0, -1, -1)      1        2.61546336E+00
+    16   (  0, -1, -1)     -1        2.61546336E+00
+    17   ( -1,  0, -1)      1        2.61546336E+00
+    18   ( -1,  0, -1)     -1        2.61546336E+00
+    19   (  1,  0, -1)      1        2.61546336E+00
+    20   (  1,  0, -1)     -1        2.61546336E+00
+    21   (  0,  1, -1)      1        2.61546336E+00
+    22   (  0,  1, -1)     -1        2.61546336E+00
+    23   ( -1, -1,  0)      1        2.61546336E+00
+    24   ( -1, -1,  0)     -1        2.61546336E+00
+    25   (  1, -1,  0)      1        2.61546336E+00
+    26   (  1, -1,  0)     -1        2.61546336E+00
+    27   ( -1,  1,  0)      1        2.61546336E+00
+    28   ( -1,  1,  0)     -1        2.61546336E+00
+    29   (  1,  1,  0)      1        2.61546336E+00
+    30   (  1,  1,  0)     -1        2.61546336E+00
+    31   (  0, -1,  1)      1        2.61546336E+00
+    32   (  0, -1,  1)     -1        2.61546336E+00
+    33   ( -1,  0,  1)      1        2.61546336E+00
+    34   ( -1,  0,  1)     -1        2.61546336E+00
+    35   (  1,  0,  1)      1        2.61546336E+00
+    36   (  1,  0,  1)     -1        2.61546336E+00
+    37   (  0,  1,  1)      1        2.61546336E+00
+    38   (  0,  1,  1)     -1        2.61546336E+00
+
+ Number of electrons: 14
+ Number of basis functions: 38
+
+ Bit-length of integers used to store determinant bit-strings: 64
+ Number of integers used to store determinant bit-strings: 1
+
+
+ Reference determinant and so symmetry sector selected using the Aufbau principle.
+ Selected symmetry  1.
+
+ FCIQMC
+ ------
+
+ WARNING: renormalised excitation generators not implemented.
+ WARNING: If this upsets you, please send patches.
+
+ Memory allocated per core for main walker list (MB):      2.20
+ Number of elements per core in main walker list: 50000
+ Memory allocated per core for spawned walker lists (MB):      0.24
+ Number of elements per core in spawned walker list: 5000
+
+ # Starting the excitation generator initialisation.
+ # Finishing the excitation generator initialisation, time taken:  0.0000000000E+00
+ -- Start JSON block --
+ {
+     "system": {
+         "nbasis": 38,   
+         "nel": 14,   
+         "nvirt": 24,   
+         "Ms": 0,   
+         "nalpha": 7,   
+         "nbeta": 7,   
+         "nvirt_alpha": 12,   
+         "nvirt_beta": 12,   
+         "nsym": 19,   
+         "sym0": 1,   
+         "sym_max": 19,   
+         "nsym_tot": 19,   
+         "sym0_tot": 1,   
+         "sym_max_tot": 19,   
+         "symmetry": 1,   
+         "tot_sym": false,   
+         "aufbau_sym": true,   
+         "max_number_excitations": 14,   
+         "ueg": {
+             "r_s": 1.00000000,   
+             "ecutoff": 1.00000000,   
+             "k_fermi": 1.91915829,   
+             "E_fermi": 1.84158428,   
+             "ktwist": [0.00000000,0.00000000,0.00000000],
+             "L": [3.88512994,3.88512994,3.88512994]
+         }
+     },
+     "qmc": {
+         "rng_seed": 1472,   
+         "real_amplitudes": false,   
+         "real_amplitude_force_32": false,   
+         "spawn_cutoff": 0.01000000,   
+         "excit_gen":  "renorm",   
+         "pattempt_update": false,   
+         "pattempt_zero_accum_data": false,   
+         "pattempt_single": 0.00000000,   
+         "pattempt_double": 1.00000000,   
+         "pattempt_parallel": 0.00000000,   
+         "tau": 0.10000000,   
+         "tau_search": false,   
+         "vary_shift_from": 0.00000000,   
+         "vary_shift_from_proje": false,   
+         "initial_shift": 0.00000000,   
+         "shift_damping": 0.05000000,   
+         "walker_length": 50000,   
+         "spawned_walker_length": 5000,   
+         "D0_population": 2.00000000,   
+         "target_particles": 60.00000000,   
+         "target_reference": false,   
+         "initiator_approx": false,   
+         "initiator_pop": 3.00000000,   
+         "ncycles": 10,   
+         "nreport": 3,   
+         "power_pitzer_min_weight": 0.01000000,   
+         "quasi_newton": false,   
+         "quasi_newton_threshold": 0.00001000,   
+         "quasi_newton_value": 1.00000000,   
+         "use_mpi_barriers": false    
+     },
+     "fciqmc": {
+         "select_ref_det_every_nreports": 2147483647,   
+         "init_spin_inv_D0": false,   
+         "ref_det_factor": 1.50000000,   
+         "non_blocking_comm": false,   
+         "doing_load_balancing": false,   
+         "trial_function":  "single_basis",   
+         "guiding_function":  "none",   
+         "quadrature_initiator": true,   
+         "replica_tricks": true    
+     },
+     "semi_stoch": {
+         "start_iter": 1,   
+         "shift_iter": -1,   
+         "space_type":  "none",   
+         "target_size": 0,   
+         "write_determ_space": false,   
+         "projection_mode":  "separate",   
+         "read_id": 2147483647,   
+         "write_id": 2147483647,   
+         "ci_space": {
+             "ex_level": -1    
+         }
+     },
+     "restart": {
+         "read_restart": false,   
+         "read_id": 2147483647,   
+         "write_restart": false,   
+         "write_id": 2147483647,   
+         "write_freq": 2147483647,   
+         "write_restart_shift": false,   
+         "write_shift_id": 2147483647,   
+         "restart_rng": true    
+     },
+     "blocking": {
+         "blocking_on_the_fly": false,   
+         "start_save_frequency": -1,   
+         "start_point_number": -1,   
+         "filename":  "BLOCKING",   
+         "start_point": -1,   
+         "error_limit": 0.00000000,   
+         "blocks_used": 2147483647,   
+         "min_blocks_used": 10,   
+         "auto_shift_damping": false,   
+         "shift_damping_precision": 2.00000000,   
+         "force_shift_damping_opt": false    
+     },
+     "load balancing": {
+         "nslots": 1,   
+         "pop": 1000,   
+         "percent": 0.05000000,   
+         "max_attempts": 2,   
+         "write_info": false    
+     },
+     "reference": {
+         "det": [ 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14],
+         "det_ms": 0,   
+         "det_symmetry": 1,   
+         "H00": 13.60355734,   
+         "F0": 15.69278015,   
+         "hilbert_space_det": [ 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14],
+         "hilbert_space_det_ms": 0,   
+         "hilbert_space_det_symmetry": 1,   
+         "ex_level": 14    
+     },
+     "logging_in": {
+         "calc": 0,   
+         "calc_file":  "CALC",   
+         "spawn": 0,   
+         "spawn_file":  "SPAWN",   
+         "death": 0,   
+         "death_file":  "DEATH",   
+         "start_iter": 0,   
+         "end_iter": 9223372036854775807    
+     },
+     "logging": {
+         "write_highlevel_values": false,   
+         "calc_unit": 2147483647,   
+         "write_successful_spawn": false,   
+         "write_failed_spawn": false,   
+         "spawn_unit": 2147483647,   
+         "write_successful_death": false,   
+         "write_failed_death": false,   
+         "death_unit": 2147483647    
+     }
+ }
+ -- End JSON block --
+
+ Information printed out every QMC report loop:
+
+ Shift: the energy offset calculated at the end of the report loop.
+ H_0j: <D_0|H|D_j>, Hamiltonian matrix element.
+ N_j: population of Hamiltonian particles on determinant D_j.
+ # H psips: current total population of Hamiltonian particles.
+ # states: number of many-particle states occupied.
+ spawn_events: number of successful spawning events across all processors.
+ R_spawn: average rate of spawning across all processors.
+ time: average time per Monte Carlo cycle.
+
+ Note that all particle populations are averaged over the report loop.
+
+ #                  Replica 1                                                                               Replica 2                                                                              
+ #     iterations   Shift                 \sum H_0j N_j         N_0                   # H psips             Shift                 \sum H_0j N_j         N_0                   # H psips                  # states  # spawn_events   R_spawn    time    
+ #              0   0.0000000000E+00      0.0000000000E+00      2.0000000000E+00      2.0000000000E+00      0.0000000000E+00      0.0000000000E+00      2.0000000000E+00      2.0000000000E+00                  1               0    0.0000    0.0000  
+ # WARNING: more than 3 particles spawned in a single event 225 times in the last report loop.
+ # Mean number of particles created in blooms:      3.9
+ # This warning only prints  1 time(s). You may wish to reduce the time step.
+               10   0.0000000000E+00     -6.7264781548E-01      2.0000000000E+00      3.3600000000E+02      0.0000000000E+00     -3.1351997246E-01      2.0000000000E+00      1.9800000000E+02                302             193    0.7691    0.0000  
+               20  -1.1343417707E-01     -5.1670713231E-01      2.0000000000E+00      3.2480000000E+03     -1.1135387702E-01     -4.0528191562E-01      2.0000000000E+00      1.8360000000E+03               3081            1768    1.3544    0.0020  
+ # Error: No space left in spawning array on processor 0.
+ # Error: HANDE will exit at the end of this report loop.
+ # Error: Note that spawning until the end of the report loop will be affected and so results from this final loop may be slightly incorrect.
+ # Error: Some reconvergence time should be allowed if continuing from a subsequent restart file.
+
+ Blooming events occured: a more efficent calulation may be possible with a smaller timestep.
+ Total number of blooming events: 16276
+ Maximum number of particles spawned in a blooming event:       9.00
+ Mean number of particles spawned in a blooming event:         3.95
+
+ The spawning array was at least 95% full on 7 iterations.
+
+ Timing breakdown
+ ----------------
+
+ Time for each calculation section (seconds):
+
+ UEG initialisation: .00
+ FCIQMC calculation: .15
+
+ ================================================================
+ Finished running on 02/05/2020 at 17:44:07
+ Wall time (seconds):                           0.15
+ CPU time (per processor, seconds):             0.15
+ ================================================================
+

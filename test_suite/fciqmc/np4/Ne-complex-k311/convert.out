@@ -1,0 +1,227 @@
+
+   HANDE
+
+ ================================================================
+Version information
+-------------------
+Version       | v1.4-69-g088e21e
+Commit hash   | 088e21e9a5c89223c6d9bc248aef2b743eb2af1f
+Commit author | Verena Neufeld
+Commit date   | Sat May 9 17:26:43 2020 +0200
+Branch        | bugfix/pbc_freezing_exchange
+
+Configuration and build information
+-----------------------------------
+Who compiled             | verena
+Compilation hostname     | verena-Think
+Operating system         | Linux-4.15.0-99-generic
+CMake version            | 3.10.2
+CMake generator          | Unix Makefiles
+Build type               | debug
+Configuration time       | 2020-05-10 09:44:35 [UTC]
+Python version           | 3.6.10
+Fortran compiler         | /home/verena/local/bin/mpif90
+C compiler               | /home/verena/local/bin/mpicc
+DET_SIZE set to          | 32
+POP_SIZE set to          | 64
+dSFMT Mersenne exponent  | 19937
+MPI parallelization      | ON
+MPI launcher             | /home/verena/local/bin/mpiexec
+OpenMP parallelization   | OFF
+Lua version              | 5.3.5
+HDF5 library version     | 1.10.2
+
+Further components
+------------------
+DISABLE_HDF5 not defined.  HDF5 enabled.
+DISABLE_LANCZOS defined.  Lanczos disabled.
+DISABLE_UUID not defined.  UUID enabled.
+PARALLEL defined.  MPI parallelization enabled.
+DISABLE_SCALAPACK defined.  ScaLAPACK disabled.
+SINGLE_PRECISION not defined.  Double precision used throughout.
+USE_POPCNT not defined. Internal POPCNT procedure used.
+
+Runtime information
+-------------------
+Hostname:
+    verena-Think
+Current working dir:
+    /home/verena/code3/hande_mix_private_main/test_suite/fciqmc/np4/Ne-complex-k311
+Started running on 15/05/2020 at 18:58:07
+ Calculation UUID: 5fdf9177-7959-4336-90b1-013ee8f4f95c.
+ ================================================================
+
+ Input options
+ -------------
+
+sys = read_in {
+    int_file = "fcidumpfile",
+    complex = true,
+    ex_int_file = "fcidumpfile_X",
+    CAS = {6, 7},
+}
+hdf5_file = write_read_in_system {
+    sys = sys,
+    }
+
+ -------------
+
+ Memory required for all two body integrals (MB) on each processor: 0
+ It is left to the user to ensure that this does not exceed available resources.
+
+ Memory required for all additional exchange integrals (MB) on each processor: 0
+ It is left to the user to ensure that this does not exceed available resources.
+
+ Memory required for all additional exchange integrals (MB) on each processor: 0
+ It is left to the user to ensure that this does not exceed available resources.
+
+ Basis functions
+ ---------------
+
+ Spin given in units of 1/2.
+ k-points given in terms of the reciprocal lattice vectors of the crystal cell.
+
+ index   k-point            ms       <i|h|i>
+     1   (  0,  0,  0)      1       -2.99285340E+00
+     2   (  0,  0,  0)     -1       -2.99285340E+00
+     3   (  2,  0,  0)      1       -2.99271368E+00
+     4   (  2,  0,  0)     -1       -2.99271368E+00
+     5   (  1,  0,  0)      1       -2.99271368E+00
+     6   (  1,  0,  0)     -1       -2.99271368E+00
+     7   (  2,  0,  0)      1       -1.73240631E+00
+     8   (  2,  0,  0)     -1       -1.73240631E+00
+     9   (  1,  0,  0)      1       -1.73240631E+00
+    10   (  1,  0,  0)     -1       -1.73240631E+00
+    11   (  0,  0,  0)      1       -1.73220808E+00
+    12   (  0,  0,  0)     -1       -1.73220808E+00
+    13   (  2,  0,  0)      1       -1.72135599E+00
+    14   (  2,  0,  0)     -1       -1.72135599E+00
+    15   (  1,  0,  0)      1       -1.72135599E+00
+    16   (  1,  0,  0)     -1       -1.72135599E+00
+    17   (  0,  0,  0)      1       -1.72117951E+00
+    18   (  0,  0,  0)     -1       -1.72117951E+00
+    19   (  2,  0,  0)      1       -1.70296489E+00
+    20   (  2,  0,  0)     -1       -1.70296489E+00
+    21   (  1,  0,  0)      1       -1.70296489E+00
+    22   (  1,  0,  0)     -1       -1.70296489E+00
+    23   (  0,  0,  0)      1       -1.70182615E+00
+    24   (  0,  0,  0)     -1       -1.70182615E+00
+    25   (  2,  0,  0)      1        1.26499963E+00
+    26   (  2,  0,  0)     -1        1.26499963E+00
+    27   (  1,  0,  0)      1        1.26499963E+00
+    28   (  1,  0,  0)     -1        1.26499963E+00
+    29   (  0,  0,  0)      1        1.30045179E+00
+    30   (  0,  0,  0)     -1        1.30045179E+00
+    31   (  2,  0,  0)      1        1.30977134E+00
+    32   (  2,  0,  0)     -1        1.30977134E+00
+    33   (  1,  0,  0)      1        1.30977134E+00
+    34   (  1,  0,  0)     -1        1.30977134E+00
+    35   (  0,  0,  0)      1        1.31608741E+00
+    36   (  0,  0,  0)     -1        1.31608741E+00
+    37   (  2,  0,  0)      1        1.33291020E+00
+    38   (  2,  0,  0)     -1        1.33291020E+00
+    39   (  1,  0,  0)      1        1.33291020E+00
+    40   (  1,  0,  0)     -1        1.33291020E+00
+    41   (  0,  0,  0)      1        1.33992822E+00
+    42   (  0,  0,  0)     -1        1.33992822E+00
+    43   (  0,  0,  0)      1        1.60669930E+00
+    44   (  0,  0,  0)     -1        1.60669930E+00
+    45   (  2,  0,  0)      1        1.61481022E+00
+    46   (  2,  0,  0)     -1        1.61481022E+00
+    47   (  1,  0,  0)      1        1.61481022E+00
+    48   (  1,  0,  0)     -1        1.61481022E+00
+    49   (  2,  0,  0)      1        5.24839173E+00
+    50   (  2,  0,  0)     -1        5.24839173E+00
+    51   (  1,  0,  0)      1        5.24839173E+00
+    52   (  1,  0,  0)     -1        5.24839173E+00
+    53   (  0,  0,  0)      1        5.24844861E+00
+    54   (  0,  0,  0)     -1        5.24844861E+00
+    55   (  2,  0,  0)      1        5.24934466E+00
+    56   (  2,  0,  0)     -1        5.24934466E+00
+    57   (  1,  0,  0)      1        5.24934466E+00
+    58   (  1,  0,  0)     -1        5.24934466E+00
+    59   (  0,  0,  0)      1        5.24938577E+00
+    60   (  0,  0,  0)     -1        5.24938577E+00
+    61   (  2,  0,  0)      1        5.28991690E+00
+    62   (  2,  0,  0)     -1        5.28991690E+00
+    63   (  1,  0,  0)      1        5.28991690E+00
+    64   (  1,  0,  0)     -1        5.28991690E+00
+    65   (  0,  0,  0)      1        5.28993964E+00
+    66   (  0,  0,  0)     -1        5.28993964E+00
+    67   (  2,  0,  0)      1        5.30508431E+00
+    68   (  2,  0,  0)     -1        5.30508431E+00
+    69   (  1,  0,  0)      1        5.30508431E+00
+    70   (  1,  0,  0)     -1        5.30508431E+00
+    71   (  0,  0,  0)      1        5.30509512E+00
+    72   (  0,  0,  0)     -1        5.30509512E+00
+    73   (  2,  0,  0)      1        5.32004186E+00
+    74   (  2,  0,  0)     -1        5.32004186E+00
+    75   (  1,  0,  0)      1        5.32004186E+00
+    76   (  1,  0,  0)     -1        5.32004186E+00
+    77   (  0,  0,  0)      1        5.32005480E+00
+    78   (  0,  0,  0)     -1        5.32005480E+00
+
+ Freezing...
+ Using complete active space: (6,7)
+
+ Basis functions
+ ---------------
+
+ Spin given in units of 1/2.
+ k-points given in terms of the reciprocal lattice vectors of the crystal cell.
+
+ index   k-point            ms       <i|h|i>
+     1   (  2,  0,  0)      1       -1.70296489E+00
+     2   (  2,  0,  0)     -1       -1.70296489E+00
+     3   (  1,  0,  0)      1       -1.70296489E+00
+     4   (  1,  0,  0)     -1       -1.70296489E+00
+     5   (  0,  0,  0)      1       -1.70182615E+00
+     6   (  0,  0,  0)     -1       -1.70182615E+00
+     7   (  2,  0,  0)      1        1.26499963E+00
+     8   (  2,  0,  0)     -1        1.26499963E+00
+     9   (  1,  0,  0)      1        1.26499963E+00
+    10   (  1,  0,  0)     -1        1.26499963E+00
+    11   (  0,  0,  0)      1        1.30045179E+00
+    12   (  0,  0,  0)     -1        1.30045179E+00
+    13   (  2,  0,  0)      1        1.30977134E+00
+    14   (  2,  0,  0)     -1        1.30977134E+00
+
+ E_core = -109.018129961741
+ Number of electrons: 6
+ Number of basis functions: 14
+
+ Bit-length of integers used to store determinant bit-strings: 32
+ Number of integers used to store determinant bit-strings: 1
+
+ Symmetry information
+ --------------------
+
+ The table below gives the label and inverse of each wavevector.
+
+ Index    k-point         Inverse
+   1      (  0,  0,  0)        1
+   2      (  1,  0,  0)        3
+   3      (  2,  0,  0)        2
+
+ The matrix below gives the result of k_i+k_j to within a reciprocal lattice vector.
+
+  1  2  3
+  2  3  1
+  3  1  2
+
+ Writing HDF5 system file to fcidumpfile-CAS6,7.H5
+
+ Timing breakdown
+ ----------------
+
+ Time for each calculation section (seconds):
+
+ Generic system initialisation: 1.29
+ HDF5 system file creation    : .00
+
+ ================================================================
+ Finished running on 15/05/2020 at 18:58:08
+ Wall time (seconds):                           1.29
+ CPU time (per processor, seconds):             1.29
+ ================================================================
+

@@ -46,13 +46,12 @@ output : dict
                 # Compare all bar the first entry (which contains a legitimate
                 # NaN in the standard error, which is not handled well by
                 # testcode).
-                indxs = range(len(data))[1:]
-                test_data = data.ix[indxs]
+                test_data = data.iloc[1:]
                 output[metadata['calc_type'] + calc_ind] = test_data
             elif len(data) > 10:
                 # Compare every 1/4 of (non-trivial) QMC calculation...
                 indxs = [0] + [int((i*len(data))/4)-1 for i in range(1,5)]
-                test_data = data.ix[indxs]
+                test_data = data.iloc[indxs]
                 output[metadata['calc_type'] + calc_ind] = test_data
             else:
                 output[metadata['calc_type'] + calc_ind] = data
