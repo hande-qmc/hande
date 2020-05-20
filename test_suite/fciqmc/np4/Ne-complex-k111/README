@@ -1,0 +1,10 @@
+The fcidumpfile and fcidumpfile_X were generated using pyscf with the pyscfdump scripts.
+
+The generation of these was by scripts in the integral_generation subfolder.
+run.sh calls Ne_molcryst_new.py which uses pyscfdump and pyscf to generate and dump the integrals.
+
+The output of Ne_molcryst_new.py is given in ne_111_k500.scf.out and runs through several cell parameters of
+Ne crystal before reaching the one included which corresponds to a=19.5
+
+
+ 
