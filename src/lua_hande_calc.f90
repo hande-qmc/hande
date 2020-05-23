@@ -20,7 +20,6 @@ contains
         !    fci {
         !           sys = system,        -- required
         !           fci = { ... },
-        !           lanczos = { ... },
         !           reference = { ... },
         !    }
 
@@ -28,8 +27,7 @@ contains
         use flu_binding, only: flu_State, flu_copyptr
         use aot_table_module, only: aot_table_top, aot_exists, aot_table_close
 
-        use calc, only: calc_type, exact_diag, lanczos_diag
-        use fci_lanczos, only: do_fci_lanczos
+        use calc, only: calc_type, exact_diag
         use fci_lapack, only: do_fci_lapack
         use fci_utils, only: fci_in_t
         use lua_hande_system, only: get_sys_t
@@ -46,8 +44,7 @@ contains
         type(sys_t), pointer :: sys
         type(fci_in_t) :: fci_in
         type(reference_t) :: ref
-        logical :: use_sparse_hamil, lanczos
-        character(12), parameter :: keys(4) = [character(12) :: 'sys', 'fci', 'lanczos', 'reference']
+        character(12), parameter :: keys(3) = [character(12) :: 'sys', 'fci', 'reference']
 
         call cpu_time(t1)
 
@@ -55,19 +52,13 @@ contains
         call get_sys_t(lua_state, sys)
 
         opts = aot_table_top(lua_state)
-        lanczos = aot_exists(lua_state, opts, 'lanczos')
-        call read_fci_in(lua_state, opts, sys%basis, fci_in, use_sparse_hamil)
+        call read_fci_in(lua_state, opts, sys%basis, fci_in)
         call read_reference_t(lua_state, opts, ref, sys)
         call warn_unused_args(lua_state, keys, opts)
         call aot_table_close(lua_state, opts)
 
-        if (lanczos) then
-            calc_type = lanczos_diag
-            call do_fci_lanczos(sys, fci_in, ref, use_sparse_hamil)
-        else
-            calc_type = exact_diag
-            call do_fci_lapack(sys, fci_in, ref)
-        end if
+        calc_type = exact_diag
+        call do_fci_lapack(sys, fci_in, ref)
 
         nresult = 0
 
@@ -680,9 +671,9 @@ contains
 
     ! --- table-derived type wrappers ---
 
-    subroutine read_fci_in(lua_state, opts, basis, fci_in, use_sparse_hamil)
+    subroutine read_fci_in(lua_state, opts, basis, fci_in)
 
-        ! Read in the fci and (optionally) lanczos tables to a fci_in_t object.
+        ! Read in the fci to a fci_in_t object.
 
         ! fci = {
         !     write_hamiltonian = true/false,
@@ -695,21 +686,14 @@ contains
         !     blacs_block_size = block_size,
         !     rdm = { ... }, -- L-d vector containing the sites to include in subsystem A.
         ! }
-        ! lanczos = {
-        !     neigv = N,
-        !     nbasis = M,
-        !     direct = true/false,
-        !     sparse = true/false, -- default true
-        ! }
 
         ! In/Out:
         !    lua_state: flu/Lua state to which the HANDE API is added.
         ! In:
-        !    opts: handle for the table containing the fci and (optionally) the lanczos table(s).
+        !    opts: handle for the table containing the fci table.
         !    basis: information about the single-particle basis set of the system.
         ! Out:
-        !    fci_in: fci_in_t object containing generic fci/lanczos input options.
-        !    use_sparse_hamil: should the Hamiltonian be stored in a sparse format?
+        !    fci_in: fci_in_t object containing generic fci input options.
 
         use flu_binding, only: flu_State
         use aot_table_module, only: aot_get_val, aot_exists, aot_table_open, aot_table_close
@@ -724,7 +708,6 @@ contains
         integer, intent(in) :: opts
         type(basis_t), intent(in) :: basis
         type(fci_in_t), intent(inout) :: fci_in
-        logical, intent(out) :: use_sparse_hamil
 
         integer :: fci_table, err, fci_nrdms
         integer, allocatable :: err_arr(:)
@@ -732,7 +715,6 @@ contains
         character(18), parameter :: fci_keys(9) = [character(18) :: 'write_hamiltonian', 'hamiltonian_file', &
                                                                     'write_determinants', 'determinant_file', 'write_nwfns', &
                                                                     'wfn_file', 'nanalyse', 'blacs_block_size', 'rdm']
-        character(6), parameter :: lanczos_keys(4) = [character(6) :: 'neigv', 'nbasis', 'direct', 'sparse']
 
         if (aot_exists(lua_state, opts, 'fci')) then
             call aot_table_open(lua_state, opts, fci_table, 'fci')
@@ -761,17 +743,6 @@ contains
 
             call aot_table_close(lua_state, fci_table)
 
-        end if
-
-        ! Lanczos table: optional and indicates doing a Lanczos calculation.
-        if (aot_exists(lua_state, opts, 'lanczos')) then
-            call aot_table_open(lua_state, opts, fci_table, 'lanczos')
-            call aot_get_val(fci_in%nlanczos_eigv, err, lua_state, fci_table, 'neigv')
-            call aot_get_val(fci_in%lanczos_string_len, err, lua_state, fci_table, 'nbasis')
-            call aot_get_val(fci_in%direct_lanczos, err, lua_state, fci_table, 'direct')
-            call aot_get_val(use_sparse_hamil, err, lua_state, fci_table, 'sparse', default=.true.)
-            call warn_unused_args(lua_state, lanczos_keys, fci_table)
-            call aot_table_close(lua_state, fci_table)
         end if
 
     end subroutine read_fci_in

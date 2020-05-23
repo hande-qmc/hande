@@ -263,14 +263,13 @@ contains
 
     end subroutine check_qmc_opts
 
-    subroutine check_fci_opts(sys, fci_in, lanczos)
+    subroutine check_fci_opts(sys, fci_in)
 
         ! Check the input options provided in the fci table.
 
         ! In:
         !   sys: system being studied.
         !   fci_in: input options for FCI.
-        !   lanczos: is this a lanczos or full diagonalisation?
 
         use fci_utils, only: fci_in_t
         use system, only: sys_t, read_in
@@ -279,7 +278,6 @@ contains
 
         type(sys_t), intent(in) :: sys
         type(fci_in_t), intent(in) :: fci_in
-        logical, intent(in) :: lanczos
 
         character(*), parameter :: this = 'check_fci_opts'
 
@@ -289,10 +287,6 @@ contains
             end if
         end if
 
-        if (lanczos) then
-            if (fci_in%lanczos_string_len <= 0) call stop_all(this,'Lanczos basis not positive.')
-            if (fci_in%nlanczos_eigv <= 0) call stop_all(this,'# lanczos eigenvalues not positive.')
-        end if
         if (sys%basis%info_string_len /= 0) call stop_all(this, &
             'FCI is incompatible with additional information being stored in the bit string. Please implement if needed.')
 

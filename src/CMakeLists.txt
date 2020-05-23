@@ -65,7 +65,6 @@ target_sources(hande-static
     excit_gen_ueg.f90
     excit_gen_utils.f90
     excitations.F90
-    fci_lanczos.F90
     fci_lapack.F90
     fci_utils.F90
     fciqmc.f90
