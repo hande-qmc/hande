@@ -38,7 +38,6 @@ modules:
   - source:
     - 'custom/hdf5.cmake'
     - 'custom/uuid.cmake'
-    - 'custom/lanczos.cmake'
     - 'custom/single_precision.cmake'
     - 'custom/backtrace.cmake'
     - 'custom/popcnt.cmake'
