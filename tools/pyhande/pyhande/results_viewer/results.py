@@ -42,7 +42,7 @@ class Results:
             raise TypeError("Cannot set summary. It has to be a pd.DataFrame.")
         self._summary = summary
 
-    def _remove_obs_already_in_summary(self, df: pd.DataFrame) -> pd.DataFrame:
+    def _remove_obs_already_in_summary(self, df: pd.DataFrame):
         """Remove observables already in summary from df."""
         for obs in df['observable']:
             if ('observable' in self.summary and
@@ -50,7 +50,6 @@ class Results:
                 df = df.query('observable != @obs')
                 warnings.warn("Add attempt failed: summary already "
                               f"contains {obs}.")
-        return df
 
     def _sort_summary(self):
         """Sort summary by `calc id`."""
@@ -59,7 +58,7 @@ class Results:
 
     def _add_to_summary(self, df: pd.DataFrame) -> None:
         """Add data to summary."""
-        df = self._remove_obs_already_in_summary(df)
+        self._remove_obs_already_in_summary(df)
         if df.empty:
             # all items already were in summary!
             return

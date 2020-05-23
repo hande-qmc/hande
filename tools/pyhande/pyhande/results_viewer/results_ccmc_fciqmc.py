@@ -173,11 +173,12 @@ class ResultsCcmcFciqmc(Results):
         Overwriting Results._sort_summary() as that does not deal with
         replica tricks.
         """
-        try:
+        if (self.preparator and
+                self.preparator.observables['replica_key'] in self.summary):
             self.summary.sort_values(
                 by=['calc id', self.preparator.observables['replica_key']],
                 inplace=True, ignore_index=True)
-        except KeyError:  # no replica tricks
+        else:  # no replica tricks or no preparator.
             self.summary.sort_values(
                 by=['calc id'], inplace=True, ignore_index=True)
 
