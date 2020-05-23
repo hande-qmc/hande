@@ -48,12 +48,9 @@ contains
         use calc, only: doing_calc, hfs_fciqmc_calc, dmqmc_calc, GLOBAL_META
         use energy_evaluation, only: get_comm_processor_indx, est_buf_data_size, est_buf_n_per_proc
         use load_balancing, only: init_parallel_t
-        use particle_t_utils, only: init_particle_t
         use system
         use restart_hdf5, only: read_restart_hdf5, restart_info_t, init_restart_info_t, get_reference_hdf5
-
-        use qmc_data, only: qmc_in_t, fciqmc_in_t, restart_in_t, load_bal_in_t, annihilation_flags_t, qmc_state_t, &
-                            neel_singlet
+        use qmc_data, only: qmc_in_t, fciqmc_in_t, restart_in_t, load_bal_in_t, annihilation_flags_t, qmc_state_t
         use reference_determinant, only: reference_t
         use dmqmc_data, only: dmqmc_in_t
         use excit_gens, only: dealloc_excit_gen_data_t
@@ -111,30 +108,7 @@ contains
         ! [WARNING - TODO] - ref%fock_sum not initialised in init_reference, etc! 
         qmc_state%ref%fock_sum = sum_fock_values_occ_list(sys, qmc_state%propagator%sp_fock, qmc_state%ref%occ_list0)
 
-        ! --- Allocate psip list ---
-        if (doing_calc(hfs_fciqmc_calc)) then
-            qmc_state%psip_list%nspaces = qmc_state%psip_list%nspaces + 1
-        else if (dmqmc_in_loc%replica_tricks) then
-            qmc_state%psip_list%nspaces = qmc_state%psip_list%nspaces + 1
-        else if (fciqmc_in_loc%replica_tricks) then
-            qmc_state%psip_list%nspaces = qmc_state%psip_list%nspaces * 2
-        end if
-        if (sys%read_in%comp) then
-            qmc_state%psip_list%nspaces = qmc_state%psip_list%nspaces * 2
-        end if
-        ! Each determinant occupies tot_string_len kind=i0 integers,
-        ! qmc_state%psip_list%nspaces kind=int_p integers, qmc_state%psip_list%nspaces kind=p reals and one
-        ! integer. If the Neel singlet state is used as the reference state for
-        ! the projected estimator, then a further 2 reals are used per
-        ! determinant.
-        if (fciqmc_in_loc%trial_function == neel_singlet) qmc_state%psip_list%info_size = 2
-
-        ! Allocate main particle lists.  Include the memory used by semi_stoch_t%determ in the
-        ! calculation of memory occupied by the main particle lists.
-        if (.not. (qmc_state_restart_loc)) then
-            call init_particle_t(qmc_in%walker_length, 1, sys%basis%tensor_label_len, qmc_in%real_amplitudes, &
-                                 qmc_in%real_amplitude_force_32, qmc_state%psip_list, io_unit=io_unit)
-        end if
+        call init_psip_list(sys, dmqmc_in_loc, fciqmc_in_loc, qmc_in, qmc_state_restart_loc, io_unit, qmc_state%psip_list)
 
         call get_comm_processor_indx(qmc_state%psip_list%nspaces, proc_data_info, ntot_proc_data)
         call init_parallel_t(ntot_proc_data, est_buf_data_size, fciqmc_in_loc%non_blocking_comm, &
@@ -754,6 +728,60 @@ contains
         annihilation_flags%symmetric = dmqmc_in%symmetric
 
     end subroutine init_annihilation_flags
+        
+    subroutine init_psip_list(sys, dmqmc_in_loc, fciqmc_in_loc, qmc_in, qmc_state_restart_loc, io_unit, psip_list)
+        
+        ! Initialise components of psip_list.
+
+        ! In:
+        !   sys: system being studied.
+        !   dmqmc_in: input options relating to DMQMC.
+        !   fciqmc_in: input options relating to FCIQMC.
+        !   qmc_in: input options relating to qmc methods.
+        !   qmc_state_restart_loc: true if qmc_state_restart is present.
+        !   io_unit: io unit to write all output to.
+        ! In/Out:
+        !   psip_list: information on particles.
+
+        use calc, only: doing_calc, hfs_fciqmc_calc
+        use dmqmc_data, only: dmqmc_in_t
+        use particle_t_utils, only: init_particle_t
+        use system, only: sys_t
+        use qmc_data, only: fciqmc_in_t, neel_singlet, particle_t, qmc_in_t
+
+        type(sys_t), intent(in) :: sys
+        type(fciqmc_in_t), intent(in) :: fciqmc_in_loc
+        type(dmqmc_in_t), intent(in) :: dmqmc_in_loc
+        type(qmc_in_t), intent(in) :: qmc_in
+        logical, intent(in) :: qmc_state_restart_loc
+        integer, intent(in) :: io_unit
+        type(particle_t), intent(inout) :: psip_list
+
+        if (doing_calc(hfs_fciqmc_calc)) then
+            psip_list%nspaces = psip_list%nspaces + 1
+        else if (dmqmc_in_loc%replica_tricks) then
+            psip_list%nspaces = psip_list%nspaces + 1
+        else if (fciqmc_in_loc%replica_tricks) then
+            psip_list%nspaces = psip_list%nspaces * 2
+        end if
+        if (sys%read_in%comp) then
+            psip_list%nspaces = psip_list%nspaces * 2
+        end if
+        ! Each determinant occupies tot_string_len kind=i0 integers,
+        ! qmc_state%psip_list%nspaces kind=int_p integers, qmc_state%psip_list%nspaces kind=p reals and one
+        ! integer. If the Neel singlet state is used as the reference state for
+        ! the projected estimator, then a further 2 reals are used per
+        ! determinant.
+        if (fciqmc_in_loc%trial_function == neel_singlet) psip_list%info_size = 2
+
+        ! Allocate main particle lists.  Include the memory used by semi_stoch_t%determ in the
+        ! calculation of memory occupied by the main particle lists.
+        if (.not. (qmc_state_restart_loc)) then
+            call init_particle_t(qmc_in%walker_length, 1, sys%basis%tensor_label_len, qmc_in%real_amplitudes, &
+                                 qmc_in%real_amplitude_force_32, psip_list, io_unit=io_unit)
+        end if
+
+    end subroutine init_psip_list
 
     subroutine init_estimators(sys, qmc_in, restart_read_in, qmc_state_restart, fciqmc_non_blocking_comm, qmc_state)
 
