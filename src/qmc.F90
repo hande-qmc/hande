@@ -59,7 +59,6 @@ contains
         use excit_gens, only: dealloc_excit_gen_data_t
         use const, only: p
         use parallel, only: parent
-        use hamiltonian_ueg, only: calc_fock_values_3d_ueg
         use determinants, only: sum_fock_values_occ_list
 
 
@@ -108,15 +107,7 @@ contains
             call init_reference(sys, reference_in, io_unit, qmc_state%ref)
         end if
         
-        ! In read-in systems, sp_fock = sp_eigv. This is different in the case of the UEG, where sp_fock is filled with <i|F|i>.
-        ! For the UEG, the Fock values are only implemented for the 3D version!
-        ! [todo] - implement 2D, etc.
-        allocate(qmc_state%propagator%sp_fock(sys%basis%nbasis), stat=ierr)
-        call check_allocate('qmc_state%propagator%sp_fock', sys%basis%nbasis, ierr)
-        qmc_state%propagator%sp_fock = sys%basis%basis_fns%sp_eigv
-        if ((sys%system == ueg) .and. (sys%lattice%ndim == 3)) then
-            call calc_fock_values_3d_ueg(sys, qmc_state%propagator, qmc_state%ref%occ_list0)
-        end if
+        call init_sp_fock(sys, qmc_state%ref, qmc_state%propagator)
         ! [WARNING - TODO] - ref%fock_sum not initialised in init_reference, etc! 
         qmc_state%ref%fock_sum = sum_fock_values_occ_list(sys, qmc_state%propagator%sp_fock, qmc_state%ref%occ_list0)
 
@@ -996,6 +987,40 @@ contains
         end if
 
     end subroutine init_excit_gen
+    
+    subroutine init_sp_fock(sys, ref, propagator)
+
+        ! Init sp_fock values.
+        
+        ! In:
+        !   sys: system being studied
+        !   ref: reference information
+        ! In/Out:
+        !   propagator: holds information on propagator, e.g. quasi-newton
+        !               information.
+        
+        use checking, only: check_allocate
+        use hamiltonian_ueg, only: calc_fock_values_3d_ueg
+        use qmc_data, only: propagator_t 
+        use reference_determinant, only: reference_t
+        use system, only: sys_t, ueg
+
+        type(sys_t), intent(in) :: sys
+        type(reference_t), intent(in) :: ref
+        type(propagator_t), intent(inout) :: propagator
+        integer :: ierr
+
+        ! In read-in systems, sp_fock = sp_eigv. This is different in the case of the UEG, where sp_fock is filled with <i|F|i>.
+        ! For the UEG, the Fock values are only implemented for the 3D version!
+        ! [todo] - implement 2D, etc.
+        allocate(propagator%sp_fock(sys%basis%nbasis), stat=ierr)
+        call check_allocate('propagator%sp_fock', sys%basis%nbasis, ierr)
+        propagator%sp_fock = sys%basis%basis_fns%sp_eigv
+        if ((sys%system == ueg) .and. (sys%lattice%ndim == 3)) then
+            call calc_fock_values_3d_ueg(sys, propagator, ref%occ_list0)
+        end if
+
+    end subroutine init_sp_fock
     
     subroutine init_quasi_newton(sys, qmc_in, propagator)
 
