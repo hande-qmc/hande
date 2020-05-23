@@ -53,18 +53,11 @@ contains
         use restart_hdf5, only: read_restart_hdf5, restart_info_t, init_restart_info_t, get_reference_hdf5
 
         use qmc_data, only: qmc_in_t, fciqmc_in_t, restart_in_t, load_bal_in_t, annihilation_flags_t, qmc_state_t, &
-                            neel_singlet, &
-                            excit_gen_power_pitzer, excit_gen_power_pitzer_orderN, excit_gen_power_pitzer_occ_ij, &
-                            excit_gen_heat_bath, excit_gen_heat_bath_uniform, excit_gen_heat_bath_single, &
-                            excit_gen_cauchy_schwarz_occ, excit_gen_cauchy_schwarz_occ_ij
+                            neel_singlet
         use reference_determinant, only: reference_t
         use dmqmc_data, only: dmqmc_in_t
         use excit_gens, only: dealloc_excit_gen_data_t
         use const, only: p
-        use excit_gen_power_pitzer_mol, only: init_excit_mol_power_pitzer_occ_ref, init_excit_mol_power_pitzer_orderM_ij, &
-                                              init_excit_mol_power_pitzer_orderN
-        use excit_gen_heat_bath_mol, only: init_excit_mol_heat_bath
-        use excit_gen_ueg, only: init_excit_ueg_power_pitzer
         use parallel, only: parent
         use hamiltonian_ueg, only: calc_fock_values_3d_ueg
         use determinants, only: sum_fock_values_occ_list
@@ -202,7 +195,7 @@ contains
 
         if (parent) write(iunit, '(1X, "# Starting the excitation generator initialisation.")')
         call cpu_time(t1)
-        call init_excit_gen(sys, qmc_in, qmc_state%ref, qmc_state%excit_gen_data)
+        call init_excit_gen(sys, qmc_in, qmc_state%ref, qmc_state%vary_shift(1), qmc_state%excit_gen_data)
         call cpu_time(t2)
         set_up_time = t2 - t1
         if (parent) write(iunit, &
@@ -253,73 +246,6 @@ contains
         if (qmc_in%shift_damping < huge(1.0_p)) then
             ! If we've passed in a specific value to qmc_in use that.
             qmc_state%shift_damping = qmc_in%shift_damping
-        end if
-
-        if (qmc_in%excit_gen==excit_gen_power_pitzer) then
-            if (parent) write(iunit, '(1X, "# Starting the Power Pitzer excitation generator initialisation.")')
-            call cpu_time(t1)
-            if (sys%system == read_in) then
-               qmc_state%excit_gen_data%excit_gen_pp%power_pitzer_min_weight = qmc_in%power_pitzer_min_weight
-               call init_excit_mol_power_pitzer_occ_ref(sys, qmc_state%ref, qmc_state%excit_gen_data%excit_gen_pp)
-            else if (sys%system == ueg) then 
-               call init_excit_ueg_power_pitzer(sys, qmc_state%ref, qmc_state%excit_gen_data%excit_gen_pp)
-            end if
-            call cpu_time(t2)
-            set_up_time = t2 - t1
-            if (parent) write(iunit, &
-                '(1X, "# Finishing the Power Pitzer excitation generator initialisation, time taken:",1X,es17.10)') set_up_time
-        end if
-
-        if (qmc_in%excit_gen==excit_gen_power_pitzer_orderN) then
-            if (parent) write(iunit, '(1X, "# Starting the P.P. Order N excitation generator initialisation.")')
-            call cpu_time(t1)
-            qmc_state%excit_gen_data%excit_gen_pp%power_pitzer_min_weight = qmc_in%power_pitzer_min_weight
-            call init_excit_mol_power_pitzer_orderN(sys, qmc_state%ref, qmc_state%excit_gen_data%excit_gen_pp)
-            call cpu_time(t2)
-            set_up_time = t2 - t1
-            if (parent) write(iunit, &
-                '(1X, "# Finishing the P.P. Order N excitation generator initialisation, time taken:",1X,es17.10)') set_up_time
-        end if
-        
-        if ((qmc_in%excit_gen==excit_gen_power_pitzer_occ_ij) .or. (qmc_in%excit_gen==excit_gen_cauchy_schwarz_occ_ij)) then
-            if (parent) write(iunit, '(1X, "# Starting the P.P./C.S. O(M)ij excitation generator initialisation.")')
-            call cpu_time(t1)
-            call init_excit_mol_power_pitzer_orderM_ij(sys, qmc_state%ref, qmc_state%excit_gen_data%excit_gen_pp)
-            call cpu_time(t2)
-            set_up_time = t2 - t1
-            if (parent) write(iunit, &
-                '(1X, "# Finishing P.P./C.S. O(M)ij excitation generator initialisation, time taken:",1X,es17.10)') set_up_time
-        end if
-
-        if (qmc_in%excit_gen==excit_gen_heat_bath) then
-            if (parent) write(iunit, '(1X, "# Starting the heat bath excitation generator initialisation.")')
-            call cpu_time(t1)
-            call init_excit_mol_heat_bath(sys, qmc_state%excit_gen_data%excit_gen_hb, .true.)
-            call cpu_time(t2)
-            set_up_time = t2 - t1
-            if (parent) write(iunit, &
-                '(1X, "# Finishing the heat bath excitation generator initialisation, time taken:",1X,es17.10)') set_up_time
-        end if
-        if ((qmc_in%excit_gen==excit_gen_heat_bath_uniform) .or. (qmc_in%excit_gen==excit_gen_heat_bath_single)) then
-            if (parent) write(iunit, '(1X, "# Starting the heat bath excitation generator initialisation.")')
-            call cpu_time(t1)
-            call init_excit_mol_heat_bath(sys, qmc_state%excit_gen_data%excit_gen_hb, .false.)
-            call cpu_time(t2)
-            set_up_time = t2 - t1
-            if (parent) write(iunit, &
-                '(1X, "# Finishing the heat bath excitation generator initialisation, time taken:",1X,es17.10)') set_up_time
-        end if
-
-        ! check_input makes sure the pattempt_update cannot be true if we are using the heat bath excitation generator.
-        if (.not. (qmc_state%vary_shift(1)) .and. (qmc_in%pattempt_update)) then
-            ! We sample singles with probability pattempt_single. It therefore makes sense to update pattempt_single 
-            ! [todo] - DMQMC
-            ! for FCIQMC and CCMC on the fly (at least in the beginning of the calculation).
-            qmc_state%excit_gen_data%p_single_double%vary_psingles = .true.
-        else if ((qmc_state%excit_gen_data%p_single_double%vary_psingles) .and. .not.(qmc_in%pattempt_update)) then
-            ! If we are restarting say and vary_psingles is true in the restart file but now pattempt_update is false,
-            ! set vary_psingles to false as well.
-            qmc_state%excit_gen_data%p_single_double%vary_psingles = .false.
         end if
 
         qmc_state%restart_in = restart_in
@@ -956,21 +882,30 @@ contains
 
     end subroutine init_estimators
 
-    subroutine init_excit_gen(sys, qmc_in, ref, excit_gen_data)
+    subroutine init_excit_gen(sys, qmc_in, ref, vary_shift_first_el, excit_gen_data)
 
         ! Initialise pre-computed data for excitation generators
 
         ! In:
         !   sys: system being studied
         !   qmc_in: input options for qmc
+        !   vary_shift_first_el: qmc_state%vary_shift(1), is shift varying in first space?
         !   ref: reference determinant
         ! Out:
         !   excit_gen_data: pre-computed data for fast excitation generation.
 
         use const, only: p
         use system, only: sys_t, ueg, read_in
-        use qmc_data, only: qmc_in_t, excit_gen_renorm_spin, excit_gen_no_renorm_spin
+        use qmc_data, only: qmc_in_t, excit_gen_renorm_spin, excit_gen_no_renorm_spin, &
+                            excit_gen_power_pitzer, excit_gen_power_pitzer_orderN, excit_gen_power_pitzer_occ_ij, &
+                            excit_gen_heat_bath, excit_gen_heat_bath_uniform, excit_gen_heat_bath_single, &
+                            excit_gen_cauchy_schwarz_occ, excit_gen_cauchy_schwarz_occ_ij
+        use excit_gen_power_pitzer_mol, only: init_excit_mol_power_pitzer_occ_ref, init_excit_mol_power_pitzer_orderM_ij, &
+                                              init_excit_mol_power_pitzer_orderN
+        use excit_gen_heat_bath_mol, only: init_excit_mol_heat_bath
+        use excit_gen_ueg, only: init_excit_ueg_power_pitzer
         use excit_gens, only: excit_gen_data_t, zero_p_single_double_coll_t
+        use parallel, only: parent
         use ueg_system, only: init_ternary_conserve
         use qmc_common, only: find_single_double_prob, find_parallel_spin_prob_mol
         use reference_determinant, only: reference_t
@@ -978,7 +913,12 @@ contains
         type(sys_t), intent(in) :: sys
         type(qmc_in_t), intent(in) :: qmc_in
         type(reference_t), intent(in) :: ref
+        logical, intent(in) :: vary_shift_first_el
         type(excit_gen_data_t), intent(inout) :: excit_gen_data
+        real :: tw1, tw2, set_up_timew
+        integer :: iunit
+        
+        iunit = 6
 
         ! Set type of excitation generator to use
         excit_gen_data%excit_gen = qmc_in%excit_gen
@@ -1024,6 +964,75 @@ contains
 
         ! UEG allowed excitations
         if (sys%system == ueg) call init_ternary_conserve(sys, excit_gen_data%ueg_ternary_conserve)
+
+        ! Init weighted excitation generators if required.
+        if (qmc_in%excit_gen==excit_gen_power_pitzer) then
+            if (parent) write(iunit, '(1X, "# Starting the Power Pitzer excitation generator initialisation.")')
+            call cpu_time(tw1)
+            if (sys%system == read_in) then
+               excit_gen_data%excit_gen_pp%power_pitzer_min_weight = qmc_in%power_pitzer_min_weight
+               call init_excit_mol_power_pitzer_occ_ref(sys, ref, excit_gen_data%excit_gen_pp)
+            else if (sys%system == ueg) then 
+               call init_excit_ueg_power_pitzer(sys, ref, excit_gen_data%excit_gen_pp)
+            end if
+            call cpu_time(tw2)
+            set_up_timew = tw2 - tw1
+            if (parent) write(iunit, &
+                '(1X, "# Finishing the Power Pitzer excitation generator initialisation, time taken:",1X,es17.10)') set_up_timew
+        end if
+
+        if (qmc_in%excit_gen==excit_gen_power_pitzer_orderN) then
+            if (parent) write(iunit, '(1X, "# Starting the P.P. Order N excitation generator initialisation.")')
+            call cpu_time(tw1)
+            excit_gen_data%excit_gen_pp%power_pitzer_min_weight = qmc_in%power_pitzer_min_weight
+            call init_excit_mol_power_pitzer_orderN(sys, ref, excit_gen_data%excit_gen_pp)
+            call cpu_time(tw2)
+            set_up_timew = tw2 - tw1
+            if (parent) write(iunit, &
+                '(1X, "# Finishing the P.P. Order N excitation generator initialisation, time taken:",1X,es17.10)') set_up_timew
+        end if
+        
+        if ((qmc_in%excit_gen==excit_gen_power_pitzer_occ_ij) .or. (qmc_in%excit_gen==excit_gen_cauchy_schwarz_occ_ij)) then
+            if (parent) write(iunit, '(1X, "# Starting the P.P./C.S. O(M)ij excitation generator initialisation.")')
+            call cpu_time(tw1)
+            call init_excit_mol_power_pitzer_orderM_ij(sys, ref, excit_gen_data%excit_gen_pp)
+            call cpu_time(tw2)
+            set_up_timew = tw2 - tw1
+            if (parent) write(iunit, &
+                '(1X, "# Finishing P.P./C.S. O(M)ij excitation generator initialisation, time taken:",1X,es17.10)') set_up_timew
+        end if
+
+        if (qmc_in%excit_gen==excit_gen_heat_bath) then
+            if (parent) write(iunit, '(1X, "# Starting the heat bath excitation generator initialisation.")')
+            call cpu_time(tw1)
+            call init_excit_mol_heat_bath(sys, excit_gen_data%excit_gen_hb, .true.)
+            call cpu_time(tw2)
+            set_up_timew = tw2 - tw1
+            if (parent) write(iunit, &
+                '(1X, "# Finishing the heat bath excitation generator initialisation, time taken:",1X,es17.10)') set_up_timew
+        end if
+        if ((qmc_in%excit_gen==excit_gen_heat_bath_uniform) .or. (qmc_in%excit_gen==excit_gen_heat_bath_single)) then
+            if (parent) write(iunit, '(1X, "# Starting the heat bath excitation generator initialisation.")')
+            call cpu_time(tw1)
+            call init_excit_mol_heat_bath(sys, excit_gen_data%excit_gen_hb, .false.)
+            call cpu_time(tw2)
+            set_up_timew = tw2 - tw1
+            if (parent) write(iunit, &
+                '(1X, "# Finishing the heat bath excitation generator initialisation, time taken:",1X,es17.10)') set_up_timew
+        end if
+
+        ! Set vary_psingles.
+        ! check_input makes sure the pattempt_update cannot be true if we are using the heat bath excitation generator.
+        if (.not. (vary_shift_first_el) .and. (qmc_in%pattempt_update)) then
+            ! We sample singles with probability pattempt_single. It therefore makes sense to update pattempt_single 
+            ! [todo] - DMQMC
+            ! for FCIQMC and CCMC on the fly (at least in the beginning of the calculation).
+            excit_gen_data%p_single_double%vary_psingles = .true.
+        else if ((excit_gen_data%p_single_double%vary_psingles) .and. .not.(qmc_in%pattempt_update)) then
+            ! If we are restarting say and vary_psingles is true in the restart file but now pattempt_update is false,
+            ! set vary_psingles to false as well.
+            excit_gen_data%p_single_double%vary_psingles = .false.
+        end if
 
     end subroutine init_excit_gen
 
