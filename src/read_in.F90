@@ -1254,7 +1254,8 @@ contains
         integer :: orbs(4)
         integer :: ir, ierr
         logical :: t_exists
-        integer :: i,j,a,b, ios, ti
+        integer :: i,j,a,b, ios
+        integer(int_64) :: ti
         integer :: ii, jj, aa, bb
         real(p) :: x, y
         complex(p) :: compint
