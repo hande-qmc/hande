@@ -61,8 +61,6 @@ contains
         use parallel, only: parent
         use hamiltonian_ueg, only: calc_fock_values_3d_ueg
         use determinants, only: sum_fock_values_occ_list
-        use, intrinsic :: iso_fortran_env, only: error_unit
-        use utils, only: int_fmt
 
 
         type(sys_t), intent(in) :: sys
@@ -201,45 +199,8 @@ contains
         if (parent) write(iunit, &
             '(1X, "# Finishing the excitation generator initialisation, time taken:",1X,es17.10)') set_up_time
 
-        qmc_state%propagator%quasi_newton = qmc_in%quasi_newton
-        if (qmc_in%quasi_newton) then
-            if (qmc_in%quasi_newton_threshold < 0.0_p) then ! Not set by user, use auto value.
-                ! Assume that fock values are ordered and that the number of basis functions is bigger than the number
-                ! of electrons!
-                if (parent) then
-                    write (error_unit,'(1X,"# Warning in init_qmc: Doing quasi_newton with quasi_newton_threshold not supplied. &
-                        &It is now estimated using (a multiple of) the difference in sp_fock energies of the basis functions at &
-                        &indices (if CAS specified, then after freezing)",'//int_fmt(sys%nel,1)//', " &
-                        &and",'//int_fmt(sys%nel+1,1)//', ". If these are not HOMO and LUMO, specify quasi_newton_threshold &
-                        &directly.", /)') sys%nel, sys%nel+1
-                end if
-                qmc_state%propagator%quasi_newton_threshold = &
-                    qmc_state%propagator%sp_fock(sys%nel+1) - qmc_state%propagator%sp_fock(sys%nel)
-                if (sys%system == ueg) then
-                    ! Know that by symmetry, the sum of Fock values of ref det to next excited det is twice the HOMO LUMO gap.
-                    ! Ignore symmetry for the other systems for now...
-                    qmc_state%propagator%quasi_newton_threshold = 2.0_p*qmc_state%propagator%quasi_newton_threshold
-                end if
-            else
-                qmc_state%propagator%quasi_newton_threshold = qmc_in%quasi_newton_threshold
-            end if
-        end if
-        if (qmc_in%quasi_newton_value < 0.0_p) then
-            ! Default, set equal to quasi_newton_threshold.
-            qmc_state%propagator%quasi_newton_value = qmc_state%propagator%quasi_newton_threshold
-        else
-            qmc_state%propagator%quasi_newton_value = qmc_in%quasi_newton_value
-        end if
-        if (qmc_state%propagator%quasi_newton) then
-            if (qmc_in%quasi_newton_pop_control < 0.0_p) then
-                qmc_state%propagator%quasi_newton_pop_control = 1.0_p/qmc_state%propagator%quasi_newton_threshold
-            else
-                qmc_state%propagator%quasi_newton_pop_control = qmc_in%quasi_newton_pop_control
-            end if
-        else
-            ! Set to 1 if not using QN!
-            qmc_state%propagator%quasi_newton_pop_control = 1.0_p
-        end if
+        call init_quasi_newton(sys, qmc_in, qmc_state%propagator)
+
         ! Need to ensure we end up with a sensible value of shift damping to use.
         ! qmc_state%shift_damping will be set to either its default value or one
         ! read in from a restart file.
@@ -1035,6 +996,69 @@ contains
         end if
 
     end subroutine init_excit_gen
+    
+    subroutine init_quasi_newton(sys, qmc_in, propagator)
+
+        ! Initialise quasi-newton propagator information.
+        
+        ! In:
+        !   sys: system being studied
+        !   qmc_in: input options for qmc
+        ! In/Out:
+        !   propagator: holds information on propagator, e.g. quasi-newton
+        !               information.
+        
+        use const, only: p
+        use parallel, only: parent
+        use qmc_data, only: qmc_in_t, propagator_t
+        use system, only: sys_t, ueg
+        use, intrinsic :: iso_fortran_env, only: error_unit
+        use utils, only: int_fmt
+
+        type(sys_t), intent(in) :: sys
+        type(qmc_in_t), intent(in) :: qmc_in
+        type(propagator_t), intent(inout) :: propagator
+        
+        propagator%quasi_newton = qmc_in%quasi_newton
+        if (qmc_in%quasi_newton) then
+            if (qmc_in%quasi_newton_threshold < 0.0_p) then ! Not set by user, use auto value.
+                ! Assume that fock values are ordered and that the number of basis functions is bigger than the number
+                ! of electrons!
+                if (parent) then
+                    write (error_unit,'(1X,"# Warning in init_qmc: Doing quasi_newton with quasi_newton_threshold not supplied. &
+                        &It is now estimated using (a multiple of) the difference in sp_fock energies of the basis functions at &
+                        &indices (if CAS specified, then after freezing)",'//int_fmt(sys%nel,1)//', " &
+                        &and",'//int_fmt(sys%nel+1,1)//', ". If these are not HOMO and LUMO, specify quasi_newton_threshold &
+                        &directly.", /)') sys%nel, sys%nel+1
+                end if
+                propagator%quasi_newton_threshold = propagator%sp_fock(sys%nel+1) - propagator%sp_fock(sys%nel)
+                if (sys%system == ueg) then
+                    ! Know that by symmetry, the sum of Fock values of ref det to next excited det is twice the HOMO LUMO gap.
+                    ! Ignore symmetry for the other systems for now...
+                    propagator%quasi_newton_threshold = 2.0_p*propagator%quasi_newton_threshold
+                end if
+            else
+                propagator%quasi_newton_threshold = qmc_in%quasi_newton_threshold
+            end if
+        end if
+        if (qmc_in%quasi_newton_value < 0.0_p) then
+            ! Default, set equal to quasi_newton_threshold.
+            propagator%quasi_newton_value = propagator%quasi_newton_threshold
+        else
+            propagator%quasi_newton_value = qmc_in%quasi_newton_value
+        end if
+        if (propagator%quasi_newton) then
+            if (qmc_in%quasi_newton_pop_control < 0.0_p) then
+                propagator%quasi_newton_pop_control = 1.0_p/propagator%quasi_newton_threshold
+            else
+                propagator%quasi_newton_pop_control = qmc_in%quasi_newton_pop_control
+            end if
+        else
+            ! Set to 1 if not using QN!
+            propagator%quasi_newton_pop_control = 1.0_p
+        end if
+
+    end subroutine init_quasi_newton
 
 ! [review] - AJWT: document occlist.  Does any call to this function actually use it?
     subroutine init_reference(sys, reference_in, io_unit, reference, occlist)
