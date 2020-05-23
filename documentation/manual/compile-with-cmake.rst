@@ -69,7 +69,6 @@ The help menu for the ``cmakeconfig.py`` script shows the available options:
      --exe-name=<HANDE_EXE_NAME>            [default: "hande.cmake.x"].
      --hdf5=<HDF5_ROOT>                     Specify the path to the HDF5 installation to use [default: ''].
      --uuid=<UUID>                          Whether to activate UUID generation [default: True].
-     --lanczos=<TRLan_LIBRARIES>            Set TRLan libraries to be linked in [default: ''].
      --single                               Enable usage of single precision, where appropriate [default: False].
      --backtrace                            Enable backtrace functionality [default: False].
      --popcnt                               Enable use of intrinsic popcnt [default: False].
@@ -171,8 +170,6 @@ is a translation guide between the frontend script and "bare" CMake:
   See below for HDF5 detection issues.
 - ``--uuid=<ON/OFF>``/``-DENABLE_UUID=<ON/OFF>``. Enables use of the UUID library.
   By default, this is turned on.
-- ``--lanczos="link-line"``/``-DTRLan_LIBRARIES="link-line"``. Set the TRLan
-  libraries to be linked in. By default empty, thus disabling use of TRLan.
 - ``--single``/``-DENABLE_SINGLE_PRECISION=ON``. Enables use of single
   precision, where appropriate.
 - ``--backtrace``/``-DENABLE_BACKTRACE=ON``. Enables backtrace functionality.
