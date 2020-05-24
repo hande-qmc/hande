@@ -6,7 +6,7 @@ fc = mpif90
 cc = mpicc
 cxx = mpiCC
 ld = impif90
-libs = -ltrlan_mpi -lscalapack -lblacsc -lblacsf77 -lblacsmpi -llapack -lblas -cxxlib -lhdf5_fortran -luuid -llua
+libs = -lscalapack -lblacsc -lblacsf77 -lblacsmpi -llapack -lblas -cxxlib -lhdf5_fortran -luuid -llua
 f90_module_flag = -module
 
 [opt]

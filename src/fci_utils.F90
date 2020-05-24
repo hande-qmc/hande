@@ -36,15 +36,6 @@ type fci_in_t
     ! The block size is critical to performance.  64 seems to be a good value (see
     ! scalapack documentation).
     integer :: block_size = 64
-
-    ! -- Lanczos only settings --
-
-    ! Number of Lanczos eigenpairs to find.
-    integer :: nlanczos_eigv = 5
-    ! Size of Lanczos basis.
-    integer :: lanczos_string_len = 40
-    ! Generate Hamiltonian on the fly (warning: very slow!)
-    logical :: direct_lanczos = .false.
 end type fci_in_t
 
 
@@ -205,9 +196,6 @@ contains
             call subsys_t_json(js, fci_in%subsys_info)
         end if
         call json_write_key(js, 'block_size', fci_in%block_size)
-        call json_write_key(js, 'nlanczos_eigv', fci_in%nlanczos_eigv)
-        call json_write_key(js, 'lanczos_string_len', fci_in%lanczos_string_len)
-        call json_write_key(js, 'direct_lanczos', fci_in%direct_lanczos, .true.)
 
         call json_object_end(js)
         call reference_t_json(js, ref, sys, terminal=.true.)
@@ -221,7 +209,7 @@ contains
         ! Generate a symmetry block of the Hamiltonian matrix, H = < D_i | H | D_j >.
         ! The list of determinants, {D_i}, is grouped by symmetry and contains
         ! only determinants of a specified spin.
-        ! Only generate the upper diagonal for use with (sca)lapack and Lanczos routines.
+        ! Only generate the upper diagonal for use with (sca)lapack routine.
         ! In:
         !    sys: system to be studied.
         !    ndets: number of determinants in the Hilbert space.

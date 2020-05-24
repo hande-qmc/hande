@@ -8,7 +8,7 @@ cc = gcc
 cxx = g++
 ld = gfortran
 ldflags = -L ${HOME}/lib -L $${HDF5_ROOT-/usr}/lib -L/usr/local/lib
-libs = -ltrlan -llapack -lblas -lstdc++ -lhdf5_fortran -lhdf5 -lz -luuid -llua -ldl
+libs = -llapack -lblas -lstdc++ -lhdf5_fortran -lhdf5 -lz -luuid -llua -ldl
 f90_module_flag = -J
 
 [opt]

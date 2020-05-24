@@ -1,5 +1,5 @@
 [DEFAULT]
-cppflags_opt = -DHAVE_SSE2 -DPARALLEL -DDISABLE_LANCZOS -DPOP_SIZE=64
+cppflags_opt = -DHAVE_SSE2 -DPARALLEL -DPOP_SIZE=64
 
 [main]
 fc = mpif90

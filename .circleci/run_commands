@@ -9,15 +9,6 @@ mkdir -p $target_path && \
     rm -rf cmake-${CMAKE_VERSION}-Linux-x86_64.tar.gz
 echo '-- Done with CMake!'
 
-# Install TRLan
-curl -Ls https://codeforge.lbl.gov/frs/download.php/210/trlan-201009.tar.gz | tar -xz && \
-    (cd trlan-201009 && \
-    make lib &> /dev/null && \
-    mkdir -p /opt/trlan/lib &&\
-    cp libtrlan.a /opt/trlan/lib) && \
-    rm -rf trlan-201009
-echo "-- Done with TRLan"
-
 # Install testcode
 git clone git://github.com/jsspencer/testcode.git /opt/testcode &> /dev/null
 echo "-- Done with testcode"

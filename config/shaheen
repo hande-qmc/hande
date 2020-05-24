@@ -1,6 +1,6 @@
 # Requires IBM, xl, bluegene and scalapack modules
 [DEFAULT]
-cppflags_opt = -DPARALLEL -DDISABLE_LANCZOS
+cppflags_opt = -DPARALLEL
 
 [main]
 fc = mpixlf90_r

@@ -14,7 +14,6 @@
 #endif
 
 const char *report_hdf5();
-const char *report_lanczos();
 const char *report_uuid();
 const char *report_scalapack();
 const char *report_single_precision();
@@ -63,7 +62,6 @@ void print_info(HostWriter writer, int * io_unit) {
   writer("Further components\n", io_unit);
   writer("------------------\n", io_unit);
   writer(report_hdf5(), io_unit);
-  writer(report_lanczos(), io_unit);
   writer(report_uuid(), io_unit);
   writer(report_parallel(), io_unit);
   writer(report_scalapack(), io_unit);
@@ -97,16 +95,6 @@ const char *report_hdf5() {
   return "DISABLE_HDF5 defined.  HDF5 disabled.\n";
 #else
   return "DISABLE_HDF5 not defined.  HDF5 enabled.\n";
-#endif
-  /* clang-format on */
-}
-
-const char *report_lanczos() {
-/* clang-format off */
-#ifdef DISABLE_LANCZOS
-  return "DISABLE_LANCZOS defined.  Lanczos disabled.\n";
-#else
-  return "DISABLE_LANCZOS not defined.  Lanczos enabled.\n";
 #endif
   /* clang-format on */
 }
