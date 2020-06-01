@@ -60,13 +60,22 @@ def _get_blocking_loss(start_ind: int, data: pd.DataFrame) -> pd.Series:
     """
     (_, reblock, _) = pyblock.pd_utils.reblock(data.iloc[start_ind:])
     opt_block = pyblock.pd_utils.reblock_summary(reblock)
-    if all([col in opt_block.index for col in data.columns]):
+    try:
+        success = all([col in opt_block.index for col in data.columns])
+        series = False
+    except AttributeError:
+        # data is a Series, not DataFrame.
+        success = data.name in opt_block.index
+        series = True
+    if success:
         loss = ((opt_block['standard error error'] /
                  opt_block['standard error']) /
                 math.sqrt(float(len(data.iloc[start_ind:]))))
         if not loss.isna().any():
             return loss.astype('float64')
     # 'nan' values can easily be ignored by _grid_search.
+    if series:
+        return pd.Series([float('nan')], index=[data.name])
     return pd.Series([float('nan')]*len(data.columns), index=data.columns)
 
 
