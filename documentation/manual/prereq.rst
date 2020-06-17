@@ -115,9 +115,6 @@ scalapack (parallel compilation only)
     Available from http://www.netlib.org/scalapack/ and vendor implementations.  Often
     already installed on HPC systems, included in Intel Maths Kernel Library and can be
     installed from most package managers.
-TRLan
-    Required for (and only for) performing FCI calculations using the Lanczos algorithm.
-    Available from http://crd-legacy.lbl.gov/~kewu/trlan.html.
 
 Compilation and installation notes
 ----------------------------------

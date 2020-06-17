@@ -37,7 +37,7 @@ target_sources(hande-static
     ccmc_linked.f90
     ccmc_selection.f90
     ccmc_utils.F90
-    check_input.f90
+    check_input.F90
     chem_pot.f90
     core.f90
     ct_fciqmc.F90
@@ -65,7 +65,6 @@ target_sources(hande-static
     excit_gen_ueg.f90
     excit_gen_utils.f90
     excitations.F90
-    fci_lanczos.F90
     fci_lapack.F90
     fci_utils.F90
     fciqmc.f90
@@ -131,7 +130,6 @@ target_compile_definitions(hande-static
   PRIVATE
     $<$<BOOL:${USE_INTRINSIC_POPCNT}>:USE_POPCNT>
     $<$<NOT:$<BOOL:${USE_HDF5}>>:DISABLE_HDF5>
-    $<$<NOT:$<BOOL:${USE_LANCZOS}>>:DISABLE_LANCZOS>
     $<$<BOOL:${USE_MPI}>:PARALLEL>
     $<$<NOT:$<BOOL:${HAS_MPI3}>>:DISABLE_MPI3>
     $<$<NOT:$<BOOL:${USE_ScaLAPACK}>>:DISABLE_SCALAPACK>
@@ -145,7 +143,6 @@ target_include_directories(hande-static
   )
 target_link_libraries(hande-static
   PUBLIC
-    "$<$<BOOL:${USE_LANCZOS}>:${TRLan_LIBRARIES}>"
     "${MATH_LIBS}"
     "${EXPLICIT_LIBS}"
     "$<$<BOOL:${USE_MPI}>:${MPI_Fortran_LIBRARIES}>"

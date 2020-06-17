@@ -391,6 +391,12 @@ metadata : dict
 results : :class:`pandas.DataFrame`
     Analysed DMQMC data.
 '''
+    if spline:
+        raise ValueError("spline option is broken! Please set to default "
+                         "(False) or fix code.")
+    if calc_number:
+        raise ValueError("calc_number option is broken! Please set to default "
+                         "(None) or fix code.")
 
     (metadata, data) = ([], [])
     for (md, df) in hande_out:

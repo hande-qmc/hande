@@ -8,7 +8,7 @@ cc = gcc
 cxx = g++
 ld = gfortran
 ldflags = -L ${HOME}/lib -L/usr/local/lib -fsanitize=address
-libs = -ltrlan -llapack -lblas -luuid -llua -ldl -lhdf5 -lhdf5_fortran
+libs = -llapack -lblas -luuid -llua -ldl -lhdf5 -lhdf5_fortran
 f90_module_flag = -J
 
 [opt]

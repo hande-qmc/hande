@@ -25,9 +25,9 @@ type(metadata_t) :: GLOBAL_META
 ! parameters) is set in calc_type.
 ! This can be easily tested using the doing_calc function.
 integer :: calc_type = 0
-! Flags for doing exact and/or Lanczos diagonalisation.
+! Flag for doing exact diagonalisation.
 integer, parameter :: exact_diag = 2**0
-integer, parameter :: lanczos_diag = 2**1
+! 2**1 used to be lanczos diagonalisation which has been removed from HANDE.
 ! Use the incredibly simple and naive FCIQMC or the optimised implementation?
 integer, parameter :: fciqmc_calc = 2**2
 integer, parameter :: simple_fciqmc_calc = 2**3
@@ -146,7 +146,7 @@ contains
 
         ! In:
         !    calc_param: integer corresponding to a type of calculation, e.g.
-        !      lanczos diagonalisation or FCIQMC.
+        !      exact diagonalisation or FCIQMC.
         !      It is possible to test to see if one or more out of a group of
         !      calculation types are being performed by setting calc_param to be
         !      the sum of the group of calculation types.
@@ -164,7 +164,7 @@ contains
 
         ! In:
         !    calc_param: integer corresponding to a type of calculation, e.g.
-        !      lanczos diagonalisation or FCIQMC.
+        !      exact diagonalisation or FCIQMC.
         !      It is possible to test to see if one or more out of a group of
         !      calculation types are being performed by setting calc_param to be
         !      the sum of the group of calculation types.
@@ -190,8 +190,6 @@ contains
         select case(calc_num)
         case(exact_diag)
             calc_name = "exact diagonalisation"
-        case(lanczos_diag)
-            calc_name = "lanczos diagonalisation"
         case(fciqmc_calc)
             calc_name = "FCIQMC"
         case(simple_fciqmc_calc)

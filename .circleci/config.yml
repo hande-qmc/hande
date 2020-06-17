@@ -30,7 +30,6 @@ variables:
                        --type=release \
                        --fc=gfortran \
                        --cc=gcc \
-                       --lanczos="-L/opt/trlan/lib -ltrlan" \
                        --exe-name="hande.circle.serial.linux.cmake.x"
   configure-cmake-mpi: &configure-cmake-mpi
     run:
@@ -44,7 +43,6 @@ variables:
                        --mpi \
                        --mpi-with-scalapack \
                        --scalapack="-L/usr/lib/x86_64-linux-gnu -lscalapack-openmpi" \
-                       --lanczos="-L/opt/trlan/lib -ltrlan" \
                        --exe-name="hande.circle.mpi.linux.cmake.x"
   configure-cmake-hybrid: &configure-cmake-hybrid
     run:
@@ -59,7 +57,6 @@ variables:
                        --omp \
                        --mpi-with-scalapack \
                        --scalapack="-L/usr/lib/x86_64-linux-gnu -lscalapack-openmpi" \
-                       --lanczos="-L/opt/trlan/lib -ltrlan" \
                        --exe-name="hande.circle.hybrid.linux.cmake.x"
   configure-legacy: &configure-legacy
     run:

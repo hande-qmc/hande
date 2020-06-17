@@ -85,7 +85,7 @@ A consequence of this approach is that the wavefunction is normalised with respe
 
 \eref{proje_estimator} can be found from an FCIQMC simulation by accumulating $N_\bz(\beta)$ and $\sum_\bj H_{\bz\bj} N_\bj(\beta)$ separately and then finding the means and standard deviations of the two quantities via a blocking analysis.  The projected energy and associated standard deviation can then be easily found.
 
-I have run test calculations on the 1D Hubbard model with 12 sites, 12 electrons and $U/t=1$.  The size of the determinant space is ~70000 (i.e.\ just too large to do via Lanczos quickly on a single workstation).  I found estimates of the projected energy using FCIQMC via three approaches with varying total numbers of walkers.
+I have run test calculations on the 1D Hubbard model with 12 sites, 12 electrons and $U/t=1$.  The size of the determinant space is ~70000 (i.e.\ just too large to do via Lanczos (old, now removed functionality) quickly on a single workstation).  I found estimates of the projected energy using FCIQMC via three approaches with varying total numbers of walkers.
 \begin{itemize}
 \item Accumulate $\sum_\bj H_{\bz\bj} N_\bj(\beta)/N_\bz(\beta)$ each cycle over the number of cycles between updates to the shift; find the mean of this quantity over the shift update loop and perform a blocking analysis on the latter quantity.  This is denoted as proj.e $\av{N_\bj/N_\bz}$.
 \item Accumulate $\sum_\bj H_{\bz\bj} N_\bj(\beta)$ and $N_\bz(\beta)$ over the shift update loop (consisting of $I$ iterations) and thus find

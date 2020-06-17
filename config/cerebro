@@ -1,5 +1,5 @@
 [DEFAULT]
-cppflags_opt = -DHAVE_SSE2 -DDISABLE_LANCZOS -DDET_SIZE=64
+cppflags_opt = -DHAVE_SSE2 -DDET_SIZE=64
 
 [main]
 fc = ifort

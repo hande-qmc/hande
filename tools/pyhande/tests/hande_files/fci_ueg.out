@@ -1,0 +1,242 @@
+
+   HANDE
+
+ ================================================================
+Version information
+-------------------
+Version       | v1.4-25-g4efb802
+Commit hash   | 4efb80270c639ebaf202fe7b326e94a9ccfefafe
+Commit author | Verena Neufeld
+Commit date   | Thu Mar 21 12:08:44 2019 +0000
+Branch        | master
+
+Configuration and build information
+-----------------------------------
+Who compiled             | verena
+Compilation hostname     | verena-Think
+Operating system         | Linux-4.4.0-176-generic
+CMake version            | 3.10.2
+CMake generator          | Unix Makefiles
+Build type               | release
+Configuration time       | 2020-03-31 15:44:09 [UTC]
+Python version           | 3.6.10
+Fortran compiler         | /usr/bin/gfortran
+C compiler               | /usr/bin/gcc
+DET_SIZE set to          | 64
+POP_SIZE set to          | 64
+dSFMT Mersenne exponent  | 19937
+MPI parallelization      | OFF
+OpenMP parallelization   | OFF
+Lua version              | 5.3.5
+HDF5 library version     | 1.10.2
+
+Further components
+------------------
+DISABLE_HDF5 not defined.  HDF5 enabled.
+DISABLE_LANCZOS defined.  Lanczos disabled.
+DISABLE_UUID not defined.  UUID enabled.
+PARALLEL not defined.  MPI parallelization disabled.
+DISABLE_SCALAPACK not defined.  ScaLAPACK enabled.
+SINGLE_PRECISION not defined.  Double precision used throughout.
+USE_POPCNT not defined. Internal POPCNT procedure used.
+
+Runtime information
+-------------------
+Hostname:
+    verena-Think
+Current working dir:
+    /home/verena/code3/hande/tools/pyhande/pyhande/tests/hande_files
+Started running on 31/03/2020 at 22:00:09
+ Calculation UUID: 7f1b774f-975b-4ec0-a626-185879d0e7a7.
+ ================================================================
+
+ Input options
+ -------------
+
+-- Create output with:
+-- $[HANDE DIR]/bin/hande.x fci_ueg.lua > fci_ueg.out 2> fci_ueg.err
+-- Note that these settings are just for testing...
+sys = ueg {
+    dim = 3,
+    nel = 2,
+    ms = 0,
+    cutoff = 1,
+}
+
+fci {
+    sys = sys,
+}
+
+ -------------
+
+ Basis functions
+ ---------------
+
+ Spin given in units of 1/2.
+ k-points given in terms of the reciprocal lattice vectors of the crystal cell.
+
+ index   k-point            ms       <i|h|i>
+     1   (  0,  0,  0)      1        0.00000000E+00
+     2   (  0,  0,  0)     -1        0.00000000E+00
+     3   (  0,  0, -1)      1        4.78539000E+00
+     4   (  0,  0, -1)     -1        4.78539000E+00
+     5   (  0, -1,  0)      1        4.78539000E+00
+     6   (  0, -1,  0)     -1        4.78539000E+00
+     7   ( -1,  0,  0)      1        4.78539000E+00
+     8   ( -1,  0,  0)     -1        4.78539000E+00
+     9   (  1,  0,  0)      1        4.78539000E+00
+    10   (  1,  0,  0)     -1        4.78539000E+00
+    11   (  0,  1,  0)      1        4.78539000E+00
+    12   (  0,  1,  0)     -1        4.78539000E+00
+    13   (  0,  0,  1)      1        4.78539000E+00
+    14   (  0,  0,  1)     -1        4.78539000E+00
+    15   (  0, -1, -1)      1        9.57078000E+00
+    16   (  0, -1, -1)     -1        9.57078000E+00
+    17   ( -1,  0, -1)      1        9.57078000E+00
+    18   ( -1,  0, -1)     -1        9.57078000E+00
+    19   (  1,  0, -1)      1        9.57078000E+00
+    20   (  1,  0, -1)     -1        9.57078000E+00
+    21   (  0,  1, -1)      1        9.57078000E+00
+    22   (  0,  1, -1)     -1        9.57078000E+00
+    23   ( -1, -1,  0)      1        9.57078000E+00
+    24   ( -1, -1,  0)     -1        9.57078000E+00
+    25   (  1, -1,  0)      1        9.57078000E+00
+    26   (  1, -1,  0)     -1        9.57078000E+00
+    27   ( -1,  1,  0)      1        9.57078000E+00
+    28   ( -1,  1,  0)     -1        9.57078000E+00
+    29   (  1,  1,  0)      1        9.57078000E+00
+    30   (  1,  1,  0)     -1        9.57078000E+00
+    31   (  0, -1,  1)      1        9.57078000E+00
+    32   (  0, -1,  1)     -1        9.57078000E+00
+    33   ( -1,  0,  1)      1        9.57078000E+00
+    34   ( -1,  0,  1)     -1        9.57078000E+00
+    35   (  1,  0,  1)      1        9.57078000E+00
+    36   (  1,  0,  1)     -1        9.57078000E+00
+    37   (  0,  1,  1)      1        9.57078000E+00
+    38   (  0,  1,  1)     -1        9.57078000E+00
+
+ Number of electrons: 2
+ Number of basis functions: 38
+
+ Bit-length of integers used to store determinant bit-strings: 64
+ Number of integers used to store determinant bit-strings: 1
+
+ FCI
+ ---
+
+
+ Reference determinant and so symmetry sector selected using the Aufbau principle.
+ Selected symmetry  1.
+
+ -- Start JSON block --
+ {
+     "system": {
+         "nbasis": 38,   
+         "nel": 2,   
+         "nvirt": 36,   
+         "Ms": 0,   
+         "nalpha": 1,   
+         "nbeta": 1,   
+         "nvirt_alpha": 18,   
+         "nvirt_beta": 18,   
+         "nsym": 19,   
+         "sym0": 1,   
+         "sym_max": 19,   
+         "nsym_tot": 19,   
+         "sym0_tot": 1,   
+         "sym_max_tot": 19,   
+         "symmetry": 1,   
+         "tot_sym": false,   
+         "aufbau_sym": true,   
+         "max_number_excitations": 2,   
+         "ueg": {
+             "r_s": 1.00000000,   
+             "ecutoff": 1.00000000,   
+             "k_fermi": 1.91915829,   
+             "E_fermi": 1.84158428,   
+             "ktwist": [0.00000000,0.00000000,0.00000000],
+             "L": [2.03098260,2.03098260,2.03098260]
+         }
+     },
+     "fci_in": {
+         "write_hamiltonian": false,   
+         "hamiltonian_file":  "HAMIL",   
+         "write_determinants": false,   
+         "determinant_file":  "DETS",   
+         "print_fci_wfn": 0,   
+         "print_fci_wfn_file":  "FCI_WFN",   
+         "analyse_fci_wfn": 0,   
+         "block_size": 64,   
+         "nlanczos_eigv": 5,   
+         "lanczos_string_len": 40,   
+         "direct_lanczos": false    
+     },
+     "reference": {
+         "ex_level": 2    
+     }
+ }
+ -- End JSON block --
+
+ The table below gives the number of determinants for each symmetry with Ms=0.
+
+ Symmetry index      # dets
+         1               19
+         2               10
+         3               10
+         4               10
+         5               10
+         6               10
+         7               10
+         8                8
+         9                8
+        10                8
+        11                8
+        12                8
+        13                8
+        14                8
+        15                8
+        16                8
+        17                8
+        18                8
+        19                8
+
+ Performing exact diagonalisation...
+
+ LAPACK diagonalisation results
+ ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+  State     Energy
+      1    -0.017888297593
+      2     9.451775889133
+      3     9.451775889133
+      4     9.525116432464
+      5     9.525116432464
+      6     9.525116432464
+      7     9.889578768896
+      8    19.017484429575
+      9    19.017484429575
+     10    19.017484429575
+     11    19.032003849129
+     12    19.032003849129
+     13    19.082787362038
+     14    19.082787362038
+     15    19.082787362038
+     16    19.232935622142
+     17    19.232935622142
+     18    19.232935622142
+     19    19.709178532337
+
+ Timing breakdown
+ ----------------
+
+ Time for each calculation section (seconds):
+
+ UEG initialisation: .00
+ FCI calculation   : .00
+
+ ================================================================
+ Finished running on 31/03/2020 at 22:00:09
+ Wall time (seconds):                           0.00
+ CPU time (per processor, seconds):             0.00
+ ================================================================
+

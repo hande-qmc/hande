@@ -16,6 +16,15 @@ contains
         ! matrix element.
         ! For FCIQMC M_ii = K_ii - S where S is the shift and K_ii is
         !  K_ii =  < D_i | H | D_i > - E_0.
+        
+        ! Quasinewtwon approaches scale this death step, but doing this naively
+        ! would break population control.  Instead, we split H-S into
+        ! (H - E_proj)*weight + (E_proj - S)*rho.
+        ! The former is scaled by "weight" and produces the step.
+        ! The latter affects the population control, scaled by "rho", the QN population
+        ! control factor. The purpose of "rho" is to basically allow two separate
+        ! time steps for the two terms.
+        ! For more details see V. A. Neufeld, A. J. W. Thom, JCTC (2020), 16, 3, 1503-1510.
 
         ! In:
         !    qs: qmc_state_t object. tau, propagator and dmqmc_factor are used.
@@ -75,7 +84,7 @@ contains
         ! Hence we have to multiply by an extra factor of 2 to account for the extra 1/2 in tau.
 
         weight = calc_qn_weighting(qs%propagator, dfock)
-        pd = qs%tau*((Kii-proj_energy)*weight+(proj_energy-loc_shift))*qs%dmqmc_factor
+        pd = qs%tau*((Kii-proj_energy)*weight+(proj_energy-loc_shift)*qs%propagator%quasi_newton_pop_control)*qs%dmqmc_factor
 
         pd_saved = pd
 

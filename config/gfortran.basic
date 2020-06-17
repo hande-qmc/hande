@@ -1,5 +1,5 @@
 [DEFAULT]
-cppflags_opt = -DDISABLE_HDF5 -DDISABLE_LANCZOS -DDISABLE_UUID
+cppflags_opt = -DDISABLE_HDF5 -DDISABLE_UUID
 
 [main]
 fc = gfortran

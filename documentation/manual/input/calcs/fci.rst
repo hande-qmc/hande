@@ -8,7 +8,6 @@ Calculate the ground state of a system via a full diagonalisation of the Hamilto
     fci {
         sys = system,
         fci = { ... },
-        lanczos = { ... },
         reference = { ... },
     }
 
@@ -35,14 +34,6 @@ Options
     Optional.  No default.
 
     Further FCI options.  See below.
-``lanczos``
-    type: lua table.
-
-    Optional.  No default.
-
-    Table containing Lanczos-specific options; see below.  If present, the diagonalisation
-    is performed via an iterative Lanczos algorithm.  Otherwise diagonalisation is
-    performed using LAPACK or ScaLAPACK.
 ``reference``
     type: lua table.
 
@@ -123,8 +114,7 @@ The ``fci`` table can take the following options:
 
     .. note::
 
-        The ``rdm`` option is only currently available for Heisenberg systems and cannot
-        be used with the Lanczos algorithm.
+        The ``rdm`` option is only currently available for Heisenberg systems.
 
 .. note::
 
@@ -132,39 +122,3 @@ The ``fci`` table can take the following options:
     calculated in addition to the eigenvalues, which requires additional computational
     time.
 
-lanczos options
----------------
-
-The ``lanczos`` table can take the following options:
-
-``neigv``
-    type: integer.
-
-    Optional.  Default: 5.
-
-    Number of lowest eigenstates to be found.
-``nbasis``
-    type: integer.
-
-    Optional.  Default: 40.
-
-    Number of Lanczos vectors used.   The size of the basis can have an impact on the
-    performance of the Lanczos diagonalisation and which excited eigensolutions are found.
-    See the `TRLan documentation <http://crd.lbl.gov/~kewu/ps/trlan_.html>`_, for more
-    details.
-``direct``
-    type: boolean.
-
-    Optional.  Default: false.
-
-    If true, generate the Hamiltonian matrix on the fly (very slow).  Otherwise generate
-    the Hamiltonian once and store it for use at each Lanczos iteration.  Not implemented
-    with MPI parallelism.
-``sparse``
-    type: boolean.
-
-    Optional.  Default: true.
-
-    If true store the Hamiltonian in a sparse matrix format.  The generation of the
-    Hamiltonian matrix takes longer but requires consequently *much* less memory.  Not
-    implemented with MPI parallelism.

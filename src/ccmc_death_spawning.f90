@@ -136,7 +136,7 @@ contains
                     end if
                 end if
             end if
-            invdiagel = calc_qn_spawned_weighting(sys, qs%propagator, cdet%fock_sum, connection)
+            invdiagel = calc_qn_spawned_weighting(qs%propagator, cdet%fock_sum, connection)
         else
             invdiagel = 1
         end if
@@ -213,8 +213,15 @@ contains
 
         ! Quasinewtwon approaches scale this death step, but doing this naively
         ! would break population control.  Instead, we split H-S into
-        ! (H - E_proj) + (E_proj - S).
-        ! The former is scaled and produces the step.  The latter effects the population control.
+        ! (H - E_proj)*invdiagel + (E_proj - S)*rho.
+        ! The former is scaled by "invdiagel", related to the inverse of the QN energy
+        ! difference and produces the step.
+        ! The latter affects the population control, scaled by "rho", the QN population
+        ! control factor. The purpose of "rho" is to basically allow two separate
+        ! time steps for the two terms.
+        ! For more details see V. A. Neufeld, A. J. W. Thom, JCTC (2020), 16, 3, 1503-1510.
+        ! Note that for composite clusters (more than one excitor), only the first term is used.
+        ! (R. S. T. Franklin et al., JCP (2016), 144, 044111).
 
         ! NB This currently only handles non-linked complex amplitudes, not linked complex.
 
@@ -273,12 +280,13 @@ contains
             case(0)
                 ! Death on the reference has H_ii - E_HF = 0.
                 KiiAi = ((-qs%estimators(1)%proj_energy_old)*invdiagel + &
-                                    (qs%estimators(1)%proj_energy_old - qs%shift(1)))*cluster%amplitude
+                    (qs%estimators(1)%proj_energy_old - qs%shift(1))*qs%propagator%quasi_newton_pop_control)*cluster%amplitude
             case(1)
                 ! Evaluating the commutator gives
                 ! <D1|[H,a1]|D0> = <D1|H|D1> - <D0|H|D0>
                 ! (this is scaled for quasinewton approaches)
-                KiiAi = (cdet%data(1) * invdiagel + qs%estimators(1)%proj_energy_old - qs%shift(1))*cluster%amplitude
+                KiiAi = (cdet%data(1) * invdiagel + &
+                    (qs%estimators(1)%proj_energy_old - qs%shift(1))*qs%propagator%quasi_newton_pop_control)*cluster%amplitude
             case(2)
                 ! Evaluate the commutator
                 ! The cluster operators are a1 and a2 (with a1 D0 = D1, a2 D0 = D2,
@@ -297,11 +305,12 @@ contains
             select case (cluster%nexcitors)
             case(0)
                 KiiAi = ((-qs%estimators(1)%proj_energy_old)*invdiagel + &
-                                (qs%estimators(1)%proj_energy_old - qs%shift(1)))*cluster%amplitude
+                    (qs%estimators(1)%proj_energy_old - qs%shift(1))*qs%propagator%quasi_newton_pop_control)*cluster%amplitude
             case(1)
                 KiiAi = ((cdet%data(1) - qs%estimators(1)%proj_energy_old)*invdiagel + &
-                                (qs%estimators(1)%proj_energy_old - qs%shift(1)))*cluster%amplitude
+                    (qs%estimators(1)%proj_energy_old - qs%shift(1))*qs%propagator%quasi_newton_pop_control)*cluster%amplitude
             case default
+                ! A composite cluster. Death step different to single excitors, see above.
                 KiiAi = ((sc0_ptr(sys, cdet%f) - qs%ref%H00) - qs%estimators(1)%proj_energy_old)*invdiagel *cluster%amplitude
             end select
         end if
@@ -477,12 +486,13 @@ contains
 
         invdiagel = calc_qn_weighting(qs%propagator, dfock)
         if (isD0) then
-            KiiAi = ((- proj_energy)*invdiagel + (proj_energy - qs%shift(1)))*population
+            KiiAi = ((- proj_energy)*invdiagel + (proj_energy - qs%shift(1))*qs%propagator%quasi_newton_pop_control)*population
         else
             if (linked_ccmc) then
-                KiiAi = (Hii*invdiagel + proj_energy - qs%shift(1))*population
+                KiiAi = (Hii*invdiagel + (proj_energy - qs%shift(1))*qs%propagator%quasi_newton_pop_control)*population
             else
-                KiiAi = ((Hii - proj_energy)*invdiagel + (proj_energy - qs%shift(1)))*population
+                KiiAi = ((Hii - proj_energy)*invdiagel + &
+                    (proj_energy - qs%shift(1))*qs%propagator%quasi_newton_pop_control)*population
             end if
         end if
 
@@ -564,7 +574,7 @@ contains
         use ccmc_data, only: cluster_t
         use ccmc_linked, only: calc_pgen, partition_cluster, linked_excitation
         use ccmc_utils, only: collapse_cluster, convert_excitor_to_determinant
-        use determinants, only: sum_sp_eigenvalues_bit_string
+        use determinants, only: sum_fock_values_bit_string
         use determinant_data, only: det_info_t
         use dSFMT_interface, only: dSFMT_t
         use excitations, only: excit_t, create_excited_det, get_excitation_level
@@ -705,7 +715,7 @@ contains
             ! apply additional factors to pgen
             pgen = pgen*cluster%pselect*nspawnings_total/npartitions
 
-            fock_sum = sum_sp_eigenvalues_bit_string(sys, fexcit)
+            fock_sum = sum_fock_values_bit_string(sys, qs%propagator%sp_fock, fexcit)
             invdiagel = calc_qn_weighting(qs%propagator, fock_sum - qs%ref%fock_sum)
             ! correct hmatel for cluster amplitude
             hmatel%r = hmatel%r * invdiagel * real(cluster%amplitude)
@@ -857,7 +867,7 @@ contains
                     end if
                 end if
             end if
-            invdiagel = calc_qn_spawned_weighting(sys, qs%propagator, cdet%fock_sum, connection)
+            invdiagel = calc_qn_spawned_weighting(qs%propagator, cdet%fock_sum, connection)
         else
             invdiagel = 1
         end if
