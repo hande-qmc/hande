@@ -654,8 +654,7 @@ contains
 
                 if (ccmc_in%even_selection) then
                     call update_ex_lvl_dist(ex_lvl_dist)
-                    call update_selection_probabilities(cumulative_abs_real_pops, ex_lvl_dist, &
-                                                    abs(D0_normalisation), tot_abs_real_pop, selection_data)
+                    call update_selection_probabilities(ex_lvl_dist, abs(D0_normalisation), tot_abs_real_pop, selection_data)
                 end if
 
 
@@ -737,7 +736,7 @@ contains
 
                         else
                             call select_cluster(rng(it), sys, qs%psip_list, qs%ref%f0, qs%ref%max_ex_level, ccmc_in%linked, &
-                                            selection_data%nstochastic_clusters, D0_normalisation, qmc_in%initiator_pop, D0_pos, &
+                                            selection_data%nstochastic_clusters, D0_normalisation, qmc_in%initiator_pop, &
                                             cumulative_abs_real_pops, tot_abs_real_pop, min_cluster_size, max_cluster_size, &
                                             logging_info, contrib(it)%cdet, contrib(it)%cluster, qs%excit_gen_data)
                         end if
@@ -797,12 +796,12 @@ contains
                             dfock = sum_fock_values_bit_string(sys, qs%propagator%sp_fock, qs%psip_list%states(:,iattempt)) &
                                 - qs%ref%fock_sum
                         end if
-                        call stochastic_ccmc_death_nc(rng(it), ccmc_in%linked, sys, qs, iattempt==D0_pos, dfock, &
+                        call stochastic_ccmc_death_nc(rng(it), ccmc_in%linked, qs, iattempt==D0_pos, dfock, &
                                           qs%psip_list%dat(1,iattempt), qs%estimators(1)%proj_energy_old, &
                                           qs%psip_list%pops(1, iattempt), nparticles_change(1), ndeath_nc, &
                                           logging_info)
                         if (sys%read_in%comp) then
-                            call stochastic_ccmc_death_nc(rng(it), ccmc_in%linked, sys, qs, iattempt==D0_pos, dfock, &
+                            call stochastic_ccmc_death_nc(rng(it), ccmc_in%linked, qs, iattempt==D0_pos, dfock, &
                                               qs%psip_list%dat(1,iattempt), qs%estimators(2)%proj_energy_old, &
                                               qs%psip_list%pops(2, iattempt), nparticles_change(2), ndeath_nc, &
                                               logging_info)
@@ -1113,22 +1112,22 @@ contains
                 attempt_death = multiref_check_ex_level(sys,contrib,qs,0)
 
                 call do_spawning_death(rng, sys, qs, ccmc_in, &
-                                 logging_info, ms_stats, bloom_stats, contrib, &
-                                 nattempts_spawn_tot, ndeath, ps_stat, nspawnings_cluster, attempt_death)
+                                 logging_info, bloom_stats, contrib, &
+                                 ndeath, ps_stat, nspawnings_cluster, attempt_death)
             end if
         else
             attempt_death = (contrib%cluster%excitation_level <= qs%ref%ex_level) 
 
             call do_spawning_death(rng, sys, qs, ccmc_in, &
-                             logging_info, ms_stats, bloom_stats, contrib, &
-                             nattempts_spawn_tot, ndeath, ps_stat, nspawnings_cluster, attempt_death)
+                             logging_info, bloom_stats, contrib, &
+                             ndeath, ps_stat, nspawnings_cluster, attempt_death)
         end if
 
     end subroutine do_stochastic_ccmc_propagation  
 
     subroutine do_spawning_death(rng, sys, qs, ccmc_in, &
-                                 logging_info, ms_stats, bloom_stats, contrib, &
-                                 nattempts_spawn_tot, ndeath, ps_stat, nspawnings_cluster, attempt_death)
+                                 logging_info, bloom_stats, contrib, &
+                                 ndeath, ps_stat, nspawnings_cluster, attempt_death)
 
         ! For stochastically selected clusters this
         ! attempts spawning and death, adding any created particles to the
@@ -1148,12 +1147,9 @@ contains
         ! In/Out:
         !   rng: random number generator.
         !   qs: qmc_state_t type, contains information about calculation.
-        !   ms_stats: statistics on multispawn performance.
         !   bloom_stats: statistics on blooms during calculation.
         !   contrib: derived type containing information on the current
         !       wavefunction contribution being considered.
-        !   nattempts_spawn_tot: running total of number of spawning attempts
-        !       made during this mc cycle.
         !   ndeath: total number of particles created via death.
         !   ps_stat: Accumulating the following (and more) on this OpenMP thread:
         !       h_pgen_singles_sum: total of |Hij|/pgen for single excitations attempted.
@@ -1164,7 +1160,7 @@ contains
         use dSFMT_interface, only: dSFMT_t
         use system, only: sys_t
         use qmc_data, only: qmc_state_t, ccmc_in_t
-        use ccmc_data, only: multispawn_stats_t, ms_stats_update, wfn_contrib_t
+        use ccmc_data, only: ms_stats_update, wfn_contrib_t
 
         use ccmc_death_spawning, only: stochastic_ccmc_death
         use bloom_handler, only: bloom_stats_t, accumulate_bloom_stats
@@ -1181,9 +1177,7 @@ contains
         type(bloom_stats_t), intent(inout) :: bloom_stats
         type(logging_t), intent(in) :: logging_info
 
-        integer(int_64), intent(inout) :: nattempts_spawn_tot
         integer(int_p), intent(inout) :: ndeath
-        type(multispawn_stats_t), intent(inout) :: ms_stats
         type(p_single_double_coll_t), intent(inout) :: ps_stat
         integer, intent(in) :: nspawnings_cluster
         logical, intent(in) :: attempt_death
@@ -1356,7 +1350,7 @@ contains
             ! a different spawning routine
             call linked_spawner_ccmc(rng, sys, qs, qs%spawn_store%spawn%cutoff, &
                       contrib%cluster, gen_excit_ptr, nspawned, connection, nspawnings_total, &
-                      fexcit, contrib%cdet, contrib%ldet, contrib%rdet, contrib%left_cluster, contrib%right_cluster, ps_stat)
+                      fexcit, contrib%ldet, contrib%rdet, contrib%left_cluster, contrib%right_cluster, ps_stat)
             nspawned_im = 0_int_p
         else if (sys%read_in%comp) then
             call spawner_complex_ccmc(rng, sys, qs, qs%spawn_store%spawn%cutoff, &

@@ -315,7 +315,7 @@ contains
                             ! when running a DMQMC algorithm, stores the average
                             ! of the two diagonal elements corresponding to the
                             ! two indicies of the density matrix.
-                            call stochastic_death(rng, sys, qs, cdet1%fock_sum, qs%psip_list%dat(1, idet), &
+                            call stochastic_death(rng, qs, cdet1%fock_sum, qs%psip_list%dat(1, idet), &
                                                   qs%shift(ireplica), qs%estimators(1)%proj_energy_old, logging_info, &
                                                   qs%psip_list%pops(ireplica,idet), qs%psip_list%nparticles(ireplica), ndeath)
                         end do

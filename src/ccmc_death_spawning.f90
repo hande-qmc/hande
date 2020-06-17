@@ -422,7 +422,7 @@ contains
 
     end subroutine stochastic_death_attempt
 
-    subroutine stochastic_ccmc_death_nc(rng, linked_ccmc,  sys, qs, isD0, dfock, Hii, proj_energy, population, &
+    subroutine stochastic_ccmc_death_nc(rng, linked_ccmc, qs, isD0, dfock, Hii, proj_energy, population, &
                                         tot_population, ndeath, logging_info)
 
         ! Attempt to 'die' (ie create an excip on the current excitor, cdet%f)
@@ -463,11 +463,9 @@ contains
 
         use dSFMT_interface, only: dSFMT_t, get_rand_close_open
         use qmc_data, only: qmc_state_t
-        use system, only: sys_t
         use spawning, only: calc_qn_weighting
         use logging, only: logging_t, write_logging_death
 
-        type(sys_t), intent(in) :: sys
         logical, intent(in) :: linked_ccmc
         type(qmc_state_t), intent(in) :: qs
         logical, intent(in) :: isD0
@@ -530,7 +528,7 @@ contains
     end subroutine stochastic_ccmc_death_nc
 
     subroutine linked_spawner_ccmc(rng, sys, qs, spawn_cutoff, cluster, gen_excit_ptr, nspawn, &
-                            connection, nspawnings_total, fexcit, cdet, ldet, rdet, left_cluster, right_cluster, ps_stat)
+                            connection, nspawnings_total, fexcit, ldet, rdet, left_cluster, right_cluster, ps_stat)
 
         ! When sampling e^-T H e^T, clusters need to be considered where two
         ! operators excite from/to the same orbital (one in the "left cluster"
@@ -601,7 +599,6 @@ contains
         type(excit_t), intent(out) :: connection
         integer(i0), intent(out) :: fexcit(sys%basis%tot_string_len)
         type(det_info_t), intent(inout) :: ldet, rdet
-        type(det_info_t), intent(inout) :: cdet
         type(cluster_t), intent(inout) :: left_cluster, right_cluster
         type(p_single_double_coll_t), intent(inout) :: ps_stat
 

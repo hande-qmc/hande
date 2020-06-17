@@ -800,7 +800,7 @@ contains
         end if
 
         if (sys%read_in%extra_exchange_integrals) call read_additional_exchange_integrals(sys, sp_fcidump_rank, &
-               active_basis_offset, sys%read_in%Ecore, t_verbose)
+               active_basis_offset, sys%read_in%Ecore)
 
 #ifdef PARALLEL
         call MPI_BCast(sys%read_in%Ecore, 1, mpi_preal, root, MPI_COMM_WORLD, ierr)
@@ -1215,7 +1215,7 @@ contains
 
     end subroutine get_sp_eigv
 
-    subroutine read_additional_exchange_integrals(sys, sp_fcidump_rank, active_basis_offset, Ecore, verbose)
+    subroutine read_additional_exchange_integrals(sys, sp_fcidump_rank, active_basis_offset, Ecore)
 
         ! For periodic bounary conditions we require additional integrals, to be read
         ! in from a separate FCIDUMP to be stored in sys%read_in%additional_exchange_ints{_imag}.
@@ -1249,7 +1249,6 @@ contains
 
         integer, intent(in) :: active_basis_offset
         real(p), intent(inout) :: Ecore
-        logical, intent(in), optional :: verbose
 
         integer :: orbs(4)
         integer :: ir, ierr

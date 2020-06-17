@@ -1406,9 +1406,9 @@ contains
         integer :: id, ierr, ndeterm, semi_stoch_version_restart, tensor_label_len_old, nbasis_restart
         integer(HSIZE_T) :: dims(2), maxdims(2)
         logical :: exists
-        integer(i0), allocatable :: dets_by_proc(:,:)
 
 #ifdef PARALLEL
+        integer(i0), allocatable :: dets_by_proc(:,:)
         integer :: i, proc, slot, ndeterm_this_proc, displs(0:nprocs-1)
 #endif
 #endif

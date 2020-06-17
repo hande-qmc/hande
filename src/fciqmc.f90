@@ -321,7 +321,7 @@ contains
 
                         ! Clone or die.
                         if (.not. determ_parent) then
-                            call stochastic_death(rng, sys, qs, cdet%fock_sum, qs%psip_list%dat(1,idet), &
+                            call stochastic_death(rng, qs, cdet%fock_sum, qs%psip_list%dat(1,idet), &
                                             qs%shift(ispace), qs%estimators(ispace)%proj_energy_old, logging_info, &
                                             qs%psip_list%pops(ispace,idet), qs%psip_list%nparticles(ispace), ndeath)
                         end if
@@ -540,7 +540,7 @@ contains
 
                 ! Clone or die.
                 ! list_pop is meaningless as particle_t%nparticles is updated upon annihilation.
-                call stochastic_death(rng, sys, qs, cdet%fock_sum, cdet%data(1), qs%shift(ispace), &
+                call stochastic_death(rng, qs, cdet%fock_sum, cdet%data(1), qs%shift(ispace), &
                                       qs%estimators(ispace)%proj_energy, logging_info, int_pop(ispace), list_pop, ndeath)
 
                 ! Update population of walkers on current determinant.

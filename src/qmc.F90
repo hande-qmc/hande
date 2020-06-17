@@ -152,8 +152,7 @@ contains
 
         call init_annihilation_flags(qmc_in, fciqmc_in_loc, dmqmc_in_loc, annihilation_flags)
         call init_trial(sys, fciqmc_in_loc, qmc_state%trial)
-        call init_estimators(sys, qmc_in, restart_in%read_restart, qmc_state_restart_loc, fciqmc_in_loc%non_blocking_comm, &
-                        qmc_state)
+        call init_estimators(qmc_in, restart_in%read_restart, fciqmc_in_loc%non_blocking_comm, qmc_state)
         if (present(qmc_state_restart)) call dealloc_excit_gen_data_t(qmc_state_restart%excit_gen_data)
 
         if (parent) write(iunit, '(1X, "# Starting the excitation generator initialisation.")')
@@ -205,7 +204,6 @@ contains
         use reference_determinant, only: reference_t
 
         ! Procedures to be pointed to.
-        use death, only: stochastic_death
         use determinants
         use determinant_decoders
         use dmqmc_estimators
@@ -783,28 +781,25 @@ contains
 
     end subroutine init_psip_list
 
-    subroutine init_estimators(sys, qmc_in, restart_read_in, qmc_state_restart, fciqmc_non_blocking_comm, qmc_state)
+    subroutine init_estimators(qmc_in, restart_read_in, fciqmc_non_blocking_comm, qmc_state)
 
         ! Initialise estimators and related components of qmc_state
 
         ! In:
-        !   sys: system being studied
         !   qmc_in: input options relating to qmc methods
         !   restart_read_in : If true, have restarted and have read in restart file
         !   fciqmc_non_blocking_comm : If true, use non blocking communication and fciqmc
         ! In/Out:
         !   qmc_state: current state of qmc calculation
 
-        use system, only: sys_t
         use qmc_data, only: qmc_in_t, qmc_state_t
         use calc, only: doing_calc, hfs_fciqmc_calc
         use parallel
         use energy_evaluation, only: calculate_hf_signed_pop
         use checking, only: check_allocate
 
-        type(sys_t), intent(in) :: sys
         type(qmc_in_t), intent(in) :: qmc_in
-        logical, intent(in) :: restart_read_in, qmc_state_restart, fciqmc_non_blocking_comm
+        logical, intent(in) :: restart_read_in, fciqmc_non_blocking_comm
         type(qmc_state_t), intent(inout) :: qmc_state
 
         logical :: have_tot_nparticles
@@ -953,7 +948,7 @@ contains
                excit_gen_data%excit_gen_pp%power_pitzer_min_weight = qmc_in%power_pitzer_min_weight
                call init_excit_mol_power_pitzer_occ_ref(sys, ref, excit_gen_data%excit_gen_pp)
             else if (sys%system == ueg) then 
-               call init_excit_ueg_power_pitzer(sys, ref, excit_gen_data%excit_gen_pp)
+               call init_excit_ueg_power_pitzer(sys, excit_gen_data%excit_gen_pp)
             end if
             call cpu_time(tw2)
             set_up_timew = tw2 - tw1
@@ -975,7 +970,7 @@ contains
         if ((qmc_in%excit_gen==excit_gen_power_pitzer_occ_ij) .or. (qmc_in%excit_gen==excit_gen_cauchy_schwarz_occ_ij)) then
             if (parent) write(iunit, '(1X, "# Starting the P.P./C.S. O(M)ij excitation generator initialisation.")')
             call cpu_time(tw1)
-            call init_excit_mol_power_pitzer_orderM_ij(sys, ref, excit_gen_data%excit_gen_pp)
+            call init_excit_mol_power_pitzer_orderM_ij(sys, excit_gen_data%excit_gen_pp)
             call cpu_time(tw2)
             set_up_timew = tw2 - tw1
             if (parent) write(iunit, &
