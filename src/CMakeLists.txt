@@ -1,3 +1,8 @@
+# Do not proceed further if BLAS and LAPACK were not found
+if(NOT BLAS_FOUND OR NOT LAPACK_FOUND)
+  message(FATAL_ERROR "HANDE links against BLAS/LAPACK and a valid implementation was not found!")
+endif()
+
 add_library(hande-static STATIC
   $<TARGET_OBJECTS:HANDE::aotus>
   $<TARGET_OBJECTS:HANDE::cephes>
