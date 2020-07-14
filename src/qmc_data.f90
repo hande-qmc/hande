@@ -1118,7 +1118,7 @@ contains
         call json_write_key(js, 'density_matrix_file', ccmc%density_matrix_file)
         call json_write_key(js, 'even_selection', ccmc%even_selection)
         if (ccmc%multiref) then
-            do i=1, size(ccmc%secondary_ref)
+            do i=1, size(ccmc%secondary_refs)
                 if (i<10) then
                     write(string,'(I1)') i
                 else if (i>=10 .and. i<100) then 
@@ -1126,7 +1126,7 @@ contains
                 else
                     write (string,'(I3)') i
                 end if
-                call reference_t_json(js, ccmc%secondary_ref(i), key = 'secondary_ref'//string)
+                call reference_t_json(js, ccmc%secondary_refs(i), key = 'secondary_ref'//string)
             end do
         end if
         call json_write_key(js,'multiref', ccmc%multiref,terminal=.true.)

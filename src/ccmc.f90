@@ -426,8 +426,8 @@ contains
         if (ccmc_in%multiref) then
              qs%multiref = .true.
              qs%n_secondary_ref = ccmc_in%n_secondary_ref
-             allocate (qs%second_ref(qs%n_secondary_ref))
-             call init_secondary_reference(sys,ccmc_in%secondary_ref,io_unit,qs)
+             allocate (qs%second_refs(qs%n_secondary_ref))
+             call init_secondary_reference(sys,ccmc_in%secondary_refs,io_unit,qs)
         else 
             qs%ref%max_ex_level = qs%ref%ex_level
         end if
@@ -1405,9 +1405,9 @@ contains
         integer :: ex_level, i
         logical :: assert1, assert2 = .false.
         
-        do i = 1, size(qs%second_ref)
-           ex_level =   get_excitation_level(det_string(contrib%cdet%f, sys%basis), det_string(qs%second_ref(i)%f0, sys%basis)) 
-           assert2 = (ex_level<=qs%second_ref(i)%ex_level+offset)
+        do i = 1, size(qs%second_refs)
+           ex_level =   get_excitation_level(det_string(contrib%cdet%f, sys%basis), det_string(qs%second_refs(i)%f0, sys%basis)) 
+           assert2 = (ex_level<=qs%second_refs(i)%ex_level+offset)
            if (assert2) exit
         end do
         assert1 = (contrib%cluster%excitation_level <= qs%ref%ex_level+offset .or. assert2)

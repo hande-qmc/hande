@@ -105,7 +105,7 @@ contains
         type(hmatel_t) :: hmatel, hmatel_save
         real(p) :: pgen, spawn_pgen
         integer(i0) :: fexcit(sys%basis%tot_string_len), funlinked(sys%basis%tot_string_len)
-        integer :: excitor_sign, excitor_level, excitor_level_2(size(qs%second_ref))
+        integer :: excitor_sign, excitor_level, excitor_level_2(size(qs%second_refs))
         logical :: linked, single_unlinked, allowed_excitation
         real(p) :: invdiagel
 
@@ -168,11 +168,11 @@ contains
             excitor_level = get_excitation_level(det_string(qs%ref%f0, sys%basis), det_string(fexcit,sys%basis))
             call convert_excitor_to_determinant(fexcit, excitor_level, excitor_sign, qs%ref%f0)
             if (qs%multiref) then
-                do i = 1, size(qs%second_ref)
-                     excitor_level_2(i) = get_excitation_level(det_string(qs%second_ref(i)%f0, sys%basis), &
+                do i = 1, size(qs%second_refs)
+                     excitor_level_2(i) = get_excitation_level(det_string(qs%second_refs(i)%f0, sys%basis), &
                                                                det_string(fexcit,sys%basis))
                 end do
-                if (excitor_level > qs%ref%ex_level .and.  minval(excitor_level_2) > qs%ref%ex_level) nspawn=0
+                if (excitor_level > qs%ref%ex_level .and.  all(excitor_level_2 > qs%second_refs%ex_level)) nspawn=0
             end if
             if (excitor_sign < 0) nspawn = -nspawn
             if (debug) call write_logging_spawn(logging_info, hmatel_save, pgen, invdiagel, [nspawn], &

@@ -1353,7 +1353,7 @@ contains
                     else
                        write (string,'(I3)') i
                     end if                    
-                    call read_reference_t(lua_state, ccmc_table, ccmc_in%secondary_ref(i), sys, 'secondary_ref'//string)
+                    call read_reference_t(lua_state, ccmc_table, ccmc_in%secondary_refs(i), sys, 'secondary_ref'//string)
                          if (.not. allocated(ccmc_in%secondary_refs(i)%occ_list0)) then
                              call stop_all('read_ccmc_in', 'Uninitialised secondary reference determinant.') 
                          end if
