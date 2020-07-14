@@ -508,6 +508,7 @@ contains
         call read_logging_in_t(lua_state, opts, logging_in)
         call read_output_in_t(lua_state, opts, output_in)
 
+
         call get_qmc_state(lua_state, have_restart_state, qmc_state_restart)
         call warn_unused_args(lua_state, keys, opts)
         call aot_table_close(lua_state, opts)
@@ -1292,7 +1293,8 @@ contains
         !     density_matrix_file = filename,
         !     even_selection = true/false,
         !     multiref = true/false,
-	    !     second_ref ={...},
+        !     n_secondary_ref = number of additional references,
+	    !     secondary_refi ={...},
         ! }
 
         ! In/Out:
@@ -1316,11 +1318,12 @@ contains
         type (sys_t), intent(in) :: sys
         type(ccmc_in_t), intent(out) :: ccmc_in
 
-        integer :: ccmc_table, err
-        character(28), parameter :: keys(10) = [character(28) :: 'move_frequency', 'cluster_multispawn_threshold', &
+        integer :: ccmc_table, err, i
+        character(28), parameter :: keys(11) = [character(28) :: 'move_frequency', 'cluster_multispawn_threshold', &
                                                                 'full_non_composite', 'linked', 'vary_shift_reference', &
                                                                 'density_matrices', 'density_matrix_file', 'even_selection', &
-                                                                'multiref', 'second_ref']
+                                                                'multiref', 'n_secondary_ref', 'secondary_ref']
+        character(10) :: string
 
         if (aot_exists(lua_state, opts, 'ccmc')) then
 
@@ -1336,13 +1339,28 @@ contains
             call aot_get_val(ccmc_in%density_matrix_file, err, lua_state, ccmc_table, 'density_matrix_file')
             call aot_get_val(ccmc_in%even_selection, err, lua_state, ccmc_table, 'even_selection')
             call aot_get_val(ccmc_in%multiref, err, lua_state, ccmc_table, 'multiref')
-
-            call read_reference_t(lua_state, ccmc_table, ccmc_in%second_ref, sys, 'second_ref')
-            if (ccmc_in%multiref .and. .not. allocated(ccmc_in%second_ref%occ_list0)) then
-                call stop_all('read_ccmc_in', 'Uninitialised second reference determinant.') 
-            end if
-            if (ccmc_in%multiref .and. (ccmc_in%second_ref%ex_level == -1 .or. ccmc_in%second_ref%ex_level == sys%nel)) then
-                call stop_all('read_ccmc_in', 'Uninitialised second reference excitation level.')
+            if (ccmc_in%multiref) then
+                call aot_get_val(ccmc_in%n_secondary_ref, err, lua_state, ccmc_table, 'n_secondary_ref')
+                if (ccmc_in%n_secondary_ref == 0) then
+                    call stop_all('read_ccmc_in', 'Number of secondary references unspecified.') 
+                end if
+                allocate(ccmc_in%secondary_ref(ccmc_in%n_secondary_ref))
+                do i = 1, ccmc_in%n_secondary_ref
+                    if (i<10) then
+                       write (string,'(I1)') i
+                    else if (i>=10 .and. i<100) then 
+                       write (string,'(I2)') i
+                    else
+                       write (string,'(I3)') i
+                    end if                    
+                    call read_reference_t(lua_state, ccmc_table, ccmc_in%secondary_ref(i), sys, 'secondary_ref'//string)
+                         if (.not. allocated(ccmc_in%secondary_ref(i)%occ_list0)) then
+                             call stop_all('read_ccmc_in', 'Uninitialised secondary reference determinant.') 
+                         end if
+                         if (ccmc_in%secondary_ref(i)%ex_level == -1 .or. ccmc_in%secondary_ref(i)%ex_level == sys%nel) then
+                             call stop_all('read_ccmc_in', 'Uninitialised second reference excitation level.')
+                         end if
+                end do
             end if
             call warn_unused_args(lua_state, keys, ccmc_table)
 
@@ -1752,20 +1770,15 @@ contains
 
         integer :: err, restart_table
         character(15), parameter :: keys(5) = [character(15) :: 'read', 'write', 'write_shift', 'write_frequency', 'rng']
-
         if (aot_exists(lua_state, opts, 'restart')) then
-
             call aot_table_open(lua_state, opts, restart_table, 'restart')
-
             call aot_get_val(restart_in%write_freq, err, lua_state, restart_table, 'write_frequency')
             call aot_get_val(restart_in%restart_rng, err, lua_state, restart_table, 'rng')
-
             associate(r_in=>restart_in)
                 call get_flag_and_id(lua_state, restart_table, r_in%read_restart, r_in%read_id, 'read')
                 call get_flag_and_id(lua_state, restart_table, r_in%write_restart, r_in%write_id, 'write')
                 call get_flag_and_id(lua_state, restart_table, r_in%write_restart_shift, r_in%write_shift_id, 'write_shift')
             end associate
-            
             call warn_unused_args(lua_state, keys, restart_table)
 
             call aot_table_close(lua_state, restart_table)
@@ -1927,7 +1940,6 @@ contains
         type(c_ptr) :: qs_ptr
 
         opts = aot_table_top(lua_state)
-
         have_qmc_state = aot_exists(lua_state, opts, 'qmc_state')
         if (have_qmc_state) then
             ! Get qmc_state object
