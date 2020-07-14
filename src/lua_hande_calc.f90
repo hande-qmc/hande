@@ -1294,7 +1294,7 @@ contains
         !     even_selection = true/false,
         !     multiref = true/false,
         !     n_secondary_ref = number of additional references,
-	    !     secondary_refi ={...},
+	    !     secondary_ref1,...,secondary_ref999 ={...},
         ! }
 
         ! In/Out:
@@ -1344,7 +1344,7 @@ contains
                 if (ccmc_in%n_secondary_ref == 0) then
                     call stop_all('read_ccmc_in', 'Number of secondary references unspecified.') 
                 end if
-                allocate(ccmc_in%secondary_ref(ccmc_in%n_secondary_ref))
+                allocate(ccmc_in%secondary_refs(ccmc_in%n_secondary_ref))
                 do i = 1, ccmc_in%n_secondary_ref
                     if (i<10) then
                        write (string,'(I1)') i
@@ -1354,10 +1354,10 @@ contains
                        write (string,'(I3)') i
                     end if                    
                     call read_reference_t(lua_state, ccmc_table, ccmc_in%secondary_ref(i), sys, 'secondary_ref'//string)
-                         if (.not. allocated(ccmc_in%secondary_ref(i)%occ_list0)) then
+                         if (.not. allocated(ccmc_in%secondary_refs(i)%occ_list0)) then
                              call stop_all('read_ccmc_in', 'Uninitialised secondary reference determinant.') 
                          end if
-                         if (ccmc_in%secondary_ref(i)%ex_level == -1 .or. ccmc_in%secondary_ref(i)%ex_level == sys%nel) then
+                         if (ccmc_in%secondary_refs(i)%ex_level == -1 .or. ccmc_in%secondary_refs(i)%ex_level == sys%nel) then
                              call stop_all('read_ccmc_in', 'Uninitialised second reference excitation level.')
                          end if
                 end do

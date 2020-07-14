@@ -330,7 +330,7 @@ type ccmc_in_t
     ! Number of additional references to use.
     integer :: n_secondary_ref = 0
     ! The secondary references.
-    type(reference_t), allocatable :: secondary_ref(:)
+    type(reference_t), allocatable :: secondary_refs(:)
 end type ccmc_in_t
 
 type restart_in_t
@@ -858,7 +858,7 @@ type qmc_state_t
     ! Flags for multireference CCMC calculations.
     logical :: multiref = .false.
     integer :: n_secondary_ref = 0
-    type(reference_t), allocatable :: second_ref(:)
+    type(reference_t), allocatable :: second_refs(:)
     ! WARNING: par_info is the 'reference/master' (ie correct) version
     ! of parallel_t, in particular of proc_map_t.  However, copies of it
     ! are kept in spawn_t objects, and it is these copies which are used

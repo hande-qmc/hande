@@ -1221,14 +1221,14 @@ contains
 
     end subroutine init_reference_restart
 
-    subroutine init_secondary_reference(sys,reference_in,io_unit,qs)
+    subroutine init_secondary_reference(sys, reference_in, io_unit, qs)
         ! Set the secondary reference determinant from input options
         ! and use it to set up the maximum considered excitation level
         ! for the calculation.
 
         ! In:
         !   sys: system being studied.
-        !   reference_in: secondary reference provided in input.
+        !   reference_in: array of secondary references provided in input.
         !   io_unit: io unit to write any information to.
         ! In/Out:
         !   qs: qmc_state used in the calculation.
