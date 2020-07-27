@@ -12,7 +12,7 @@ HORTON
 MOLPRO
    https://www.molpro.net/
 PSI4
-    http://psicode.org.  Requires the fcidump plugin (https://github.com/hande-qmc/fcidump).
+    http://psicode.org.
 Q-Chem
    http://www.q-chem.com.  FCIDUMP code contributed by Alex Thom.
 
