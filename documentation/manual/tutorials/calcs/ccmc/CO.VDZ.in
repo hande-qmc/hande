@@ -3,16 +3,14 @@ molecule CO {
     O 1 1.12832
 }
 
-plugin_load("fcidump/fcidump.so")
+set {
+    reference rhf
+    e_convergence 1e-12
+    d_convergence 1e-12
+    ints_tolerance 0.0
+    basis cc-pVDZ
+    scf_type pk
+}
 
-set basis cc-pVDZ
-set reference rhf
-set e_convergence 1e-12
-set d_convergence 1e-12
-set ints_tolerance 0.0
-
-set fcidump integrals_file CO.ccpvdz.fcidump
-
-scf()
-
-plugin("fcidump.so")
+e, wfn = energy("SCF", return_wfn=True)
+fcidump(wfn, fname='CO.CCPVDZ.FCIDUMP', oe_ints=['EIGENVALUES'])
