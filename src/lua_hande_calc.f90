@@ -882,6 +882,8 @@ contains
         !     pattempt_parallel = prob,
         !     initial_shift = shift,
         !     shift_damping = damp_factor,
+        !     shift_harmonic_forcing = harmonic_force_factor,
+        !     shift_harmonic_critical_damping = true/false,
         !     initiator = true/false,
         !     initiator_threshold = pop,
         !     use_mpi_barriers = true/false,
@@ -918,13 +920,14 @@ contains
         character(len=30) :: str
         logical :: skip, no_renorm
 
-        character(24), parameter :: keys(32) = [character(24) :: 'tau', 'init_pop', 'mc_cycles', 'nreports', 'state_size', &
+        character(24), parameter :: keys(34) = [character(24) :: 'tau', 'init_pop', 'mc_cycles', 'nreports', 'state_size', &
                                                                  'spawned_state_size', 'rng_seed', 'target_population', &
                                                                  'real_amplitudes', 'spawn_cutoff', 'no_renorm', 'tau_search', &
                                                                  'real_amplitude_force_32', &
                                                                  'pattempt_single', 'pattempt_double', 'pattempt_update', &
                                                                  'pattempt_zero_accum_data', &
                                                                  'pattempt_parallel', 'initial_shift', 'shift_damping', &
+                                                                 'shift_harmonic_forcing', 'shift_harmonic_critical_damping', &
                                                                  'initiator', 'initiator_threshold', 'use_mpi_barriers', &
                                                                  'vary_shift_from', 'excit_gen', 'power_pitzer_min_weight', &
                                                                  'reference_target', 'vary_shift', 'quasi_newton', &
@@ -968,7 +971,16 @@ contains
         call aot_get_val(qmc_in%tau_search, err, lua_state, qmc_table, 'tau_search')
         call aot_get_val(qmc_in%initial_shift, err, lua_state, qmc_table, 'initial_shift')
         call aot_get_val(qmc_in%shift_damping, err, lua_state, qmc_table, 'shift_damping')
+        ! TO-DO Hayley remove write statements eventually!
+        !write(6,*) "(aot, before) Shift Harmonic Forcing is", qmc_in%shift_harmonic_forcing
+        !write(6,*) "(aot, before) Shift Harmonic Critical Damping is", qmc_in%shift_harmonic_critical_damping
+        call aot_get_val(qmc_in%shift_harmonic_forcing, err, lua_state, qmc_table, 'shift_harmonic_forcing')
+        call aot_get_val(qmc_in%shift_harmonic_critical_damping, err, lua_state, qmc_table, 'shift_harmonic_critical_damping')
+        !write(6,*) "(aot, after) Shift Harmonic Forcing is", qmc_in%shift_harmonic_forcing
+        !write(6,*) "(aot, after) Shift Harmonic Critical Damping is", qmc_in%shift_harmonic_critical_damping
+        write(6,*) "(aot, before) target_particles", qmc_in%target_particles
         call aot_get_val(qmc_in%target_particles, err, lua_state, qmc_table, 'target_population')
+        write(6,*) "(aot, after) target_particles", qmc_in%target_particles
         call aot_get_val(qmc_in%initiator_approx, err, lua_state, qmc_table, 'initiator')
         call aot_get_val(qmc_in%initiator_pop, err, lua_state, qmc_table, 'initiator_threshold')
         call aot_get_val(qmc_in%use_mpi_barriers, err, lua_state, qmc_table, 'use_mpi_barriers')

@@ -226,8 +226,14 @@ contains
                                                mu, energy_shift)
 
             ! Allow the shift to vary from the very start of the beta loop, if
+            ! shift_harmonic_forcing is present in input.
+            if (qmc_in%shift_harmonic_forcing .ne. 0.00_p) then
+                qs%vary_shift = .true.
+            else
+            ! Allow the shift to vary from the very start of the beta loop, if
             ! this condition is met.
-            qs%vary_shift = qs%psip_list%tot_nparticles >= qs%target_particles
+                qs%vary_shift = qs%psip_list%tot_nparticles >= qs%target_particles
+            end if 
 
             ! DMQMC quasi-newton not functional, so we artificially set this value to 0 which should not affect non-QN calcs.
             qs%estimators%proj_energy_old = 0_p
