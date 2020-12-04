@@ -14,6 +14,8 @@ stages:
     - BUILD AND TEST INTEL QUICK
     - BUILD AND TEST GCC QUICK
 
+
+
 test-gcc:
     stage: BUILD AND TEST GCC
     tags: 
@@ -27,12 +29,14 @@ test-gcc:
     only:
         - schedules
 
+
 test-gcc-mpi:
     stage: BUILD AND TEST GCC MPI
     tags: 
         - hande-testing
     script:
         - module load anaconda/python3
+        - module load mpi/openmpi/64/gnu/3.1.2
         - ./cmakeconfig.py --mpi --fc=mpif90 --cc=mpicc --mpi-with-scalapack --lua=./local/ --hdf5=./local/hdf5-gnu
         - cd build && make
         - cd ../test_suite
@@ -40,12 +44,14 @@ test-gcc-mpi:
     only:
         - schedules
 
+
 test-gcc-mpi-64:
     stage: BUILD AND TEST GCC MPI POP64
     tags: 
         - hande-testing
     script:
         - module load anaconda/python3
+        - module load mpi/openmpi/64/gnu/3.1.2
         - ./cmakeconfig.py --mpi --fc=mpif90 --cc=mpicc --mpi-with-scalapack --lua=./local/ --hdf5=./local/hdf5-gnu --det-size=64 --pop-size=64
         - cd build && make
         - cd ../test_suite
@@ -66,12 +72,14 @@ test-gcc-dbg:
     only:
         - schedules
 
+
 test-gcc-mpi-dbg:
     stage: BUILD AND TEST GCC MPI dbg
     tags: 
         - hande-testing
     script:
-        - module load anaconda/python3        
+        - module load anaconda/python3 
+        - module load mpi/openmpi/64/gnu/3.1.2       
         - ./cmakeconfig.py --mpi --fc=mpif90 --cc=mpicc --mpi-with-scalapack  --lua=./local/ --hdf5=./local/hdf5-gnu --type=debug
         - cd build && make
         - cd ../test_suite
@@ -79,12 +87,14 @@ test-gcc-mpi-dbg:
     only:
         - schedules
 
+
 test-gcc-mpi-64-dbg:
     stage: BUILD AND TEST GCC MPI POP64 dbg
     tags: 
         - hande-testing
     script:
         - module load anaconda/python3
+        - module load mpi/openmpi/64/gnu/3.1.2
         - ./cmakeconfig.py --mpi --fc=mpif90 --cc=mpicc --mpi-with-scalapack  --lua=./local/ --hdf5=./local/ --det-size=64 --pop-size=64 --type=debug
         - cd build && make
         - cd ../test_suite
@@ -123,7 +133,8 @@ build-lua-hdf5:
         paths:
             - local
             - testcode
-        expire_in: 1 week
+        expire_in: 2 days
+
 
 test-intel:
     stage: BUILD AND TEST INTEL
@@ -245,20 +256,21 @@ test-intel-quick:
         - ls
         - ls local/
         - ls local/lib
-        - ./cmakeconfig.py --fc=ifort --cc=icc --lua=./local/ --hdf5=./local/hdf5-intel --pop-size=64 --det-size=64 
+        - ./cmakeconfig.py --mpi --fc=mpif90 --cc=mpicc --mpi-with-scalapack  --lua=./local/ --hdf5=./local/hdf5-intel  --pop-size=64 --det-size=64
         - cd build && make
         - cd ../test_suite
         - ../testcode/bin/testcode.py -e ../bin/hande.x -c quick --processors=4
     except:
         - schedules
 
-test-gcc:
-    stage: BUILD AND TEST GCC
+test-gcc-quick:
+    stage: BUILD AND TEST GCC QUICK
     tags: 
         - hande-testing
     script:
         - module load anaconda/python3
-        - ./cmakeconfig.py --fc=gfortran --cc=gcc --lua=./local/ --hdf5=./local/hdf5-gnu --det-size=64 --pop-size=64
+        - module load mpi/openmpi/64/gnu/3.1.2
+        - ./cmakeconfig.py --mpi --fc=mpif90 --cc=mpicc --mpi-with-scalapack  --lua=./local/ --hdf5=./local/ --det-size=64 --pop-size=64
         - cd build && make
         - cd ../test_suite
         - ../testcode/bin/testcode.py -e ../bin/hande.x -c quick --processors=4
