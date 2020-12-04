@@ -254,6 +254,7 @@ test-intel-quick:
         - module load icc
         - module load anaconda/python3
         - module load mpi/openmpi/64/intel18/3.1.2
+        - module load mkl
         - ls
         - ls local/
         - ls local/lib
@@ -271,6 +272,7 @@ test-gcc-quick:
     script:
         - module load anaconda/python3
         - module load mpi/openmpi/64/gnu/3.1.2
+        - module load mkl
         - ./cmakeconfig.py --mpi --fc=mpif90 --cc=mpicc --mpi-with-scalapack  --lua=./local/ --hdf5=./local/ --det-size=64 --pop-size=64
         - cd build && make
         - cd ../test_suite
