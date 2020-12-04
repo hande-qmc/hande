@@ -253,6 +253,7 @@ test-intel-quick:
     script:
         - module load icc
         - module load anaconda/python3
+        - module load mpi/openmpi/64/intel18/3.1.2
         - ls
         - ls local/
         - ls local/lib
