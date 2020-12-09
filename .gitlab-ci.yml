@@ -1,16 +1,16 @@
 stages:
-    - BUILD AND TEST INTEL
     - BUILD AND TEST GCC
-    - BUILD AND TEST INTEL MPI 
-    - BUILD AND TEST INTEL MPI POP64
-    - BUILD AND TEST INTEL dbg
-    - BUILD AND TEST INTEL MPI dbg
-    - BUILD AND TEST INTEL MPI POP64 dbg
     - BUILD AND TEST GCC MPI
     - BUILD AND TEST GCC MPI POP64
     - BUILD AND TEST GCC dbg
     - BUILD AND TEST GCC MPI dbg
     - BUILD AND TEST GCC MPI POP64 dbg
+    - BUILD AND TEST INTEL
+    - BUILD AND TEST INTEL MPI 
+    - BUILD AND TEST INTEL MPI POP64
+    - BUILD AND TEST INTEL dbg
+    - BUILD AND TEST INTEL MPI dbg
+    - BUILD AND TEST INTEL MPI POP64 dbg
     - BUILD AND TEST INTEL QUICK
     - BUILD AND TEST GCC QUICK
 
@@ -37,6 +37,7 @@ test-gcc-mpi:
     script:
         - module load anaconda/python3
         - module load mpi/openmpi/64/gnu/3.1.2
+        - module load mkl
         - ./cmakeconfig.py --mpi --fc=mpif90 --cc=mpicc --mpi-with-scalapack --lua=./local/ --hdf5=./local/hdf5-gnu
         - cd build && make
         - cd ../test_suite
@@ -52,6 +53,7 @@ test-gcc-mpi-64:
     script:
         - module load anaconda/python3
         - module load mpi/openmpi/64/gnu/3.1.2
+        - module load mkl
         - ./cmakeconfig.py --mpi --fc=mpif90 --cc=mpicc --mpi-with-scalapack --lua=./local/ --hdf5=./local/hdf5-gnu --det-size=64 --pop-size=64
         - cd build && make
         - cd ../test_suite
@@ -79,7 +81,8 @@ test-gcc-mpi-dbg:
         - hande-testing
     script:
         - module load anaconda/python3 
-        - module load mpi/openmpi/64/gnu/3.1.2       
+        - module load mpi/openmpi/64/gnu/3.1.2
+        - module load mkl       
         - ./cmakeconfig.py --mpi --fc=mpif90 --cc=mpicc --mpi-with-scalapack  --lua=./local/ --hdf5=./local/hdf5-gnu --type=debug
         - cd build && make
         - cd ../test_suite
@@ -95,7 +98,8 @@ test-gcc-mpi-64-dbg:
     script:
         - module load anaconda/python3
         - module load mpi/openmpi/64/gnu/3.1.2
-        - ./cmakeconfig.py --mpi --fc=mpif90 --cc=mpicc --mpi-with-scalapack  --lua=./local/ --hdf5=./local/ --det-size=64 --pop-size=64 --type=debug
+        - module load mkl
+        - ./cmakeconfig.py --mpi --fc=mpif90 --cc=mpicc --mpi-with-scalapack  --lua=./local/ --hdf5=./local/hdf5-gnu --det-size=64 --pop-size=64 --type=debug
         - cd build && make
         - cd ../test_suite
         - ../testcode/bin/testcode.py -e ../bin/hande.x -c pop64_mpi --processors=4
@@ -170,8 +174,8 @@ test-intel-dbg:
     only:
         - schedules
 
-test-intel-mpi:
-    stage: BUILD AND TEST INTEL MPI
+test-intel-mpi-pop64:
+    stage: BUILD AND TEST INTEL MPI POP64
     tags: 
         - hande-testing
     script:
@@ -182,14 +186,14 @@ test-intel-mpi:
         - ls
         - ls local/
         - ls local/lib
-        - ./cmakeconfig.py --mpi --fc=mpif90 --cc=mpicc --mpi-with-scalapack --lua=./local/ --hdf5=./local/hdf5-intel
+        - ./cmakeconfig.py --mpi --fc=mpif90 --cc=mpicc --mpi-with-scalapack --lua=./local/ --hdf5=./local/hdf5-intel --pop-size=64 --det-size=64
         - cd build && make
         - cd ../test_suite
         - ../testcode/bin/testcode.py -e ../bin/hande.x -c mpi --processors=4
     only:
         - schedules
 
-test-intel-mpi-dbg:
+test-intel-mpi-pop64-dbg:
     stage: BUILD AND TEST INTEL MPI POP64 dbg
     tags: 
         - hande-testing
@@ -228,7 +232,7 @@ test-intel-mpi:
         - schedules
 
 test-intel-mpi-dbg:
-    stage: BUILD AND TEST INTEL MPI POP64 dbg
+    stage: BUILD AND TEST INTEL MPI dbg
     tags: 
         - hande-testing
     script:
@@ -239,7 +243,7 @@ test-intel-mpi-dbg:
         - ls
         - ls local/
         - ls local/lib
-        - ./cmakeconfig.py --mpi --fc=mpif90 --cc=mpicc --mpi-with-scalapack  --lua=./local/ --hdf5=./local/hdf5-intel  --type=debug --pop-size=64 --det-size=64
+        - ./cmakeconfig.py --mpi --fc=mpif90 --cc=mpicc --mpi-with-scalapack  --lua=./local/ --hdf5=./local/hdf5-intel  --type=debug 
         - cd build && make
         - cd ../test_suite
         - ../testcode/bin/testcode.py -e ../bin/hande.x -c mpi --processors=4
@@ -252,8 +256,8 @@ test-intel-quick:
         - hande-testing
     script:
         - module load icc
-        - module load anaconda/python3
         - module load mpi/openmpi/64/intel18/3.1.2
+        - module load anaconda/python3
         - module load mkl
         - ls
         - ls local/
@@ -273,7 +277,7 @@ test-gcc-quick:
         - module load anaconda/python3
         - module load mpi/openmpi/64/gnu/3.1.2
         - module load mkl
-        - ./cmakeconfig.py --mpi --fc=mpif90 --cc=mpicc --mpi-with-scalapack  --lua=./local/ --hdf5=./local/ --det-size=64 --pop-size=64
+        - ./cmakeconfig.py --mpi --fc=mpif90 --cc=mpicc --mpi-with-scalapack  --lua=./local/ --hdf5=./local/hdf5-gnu --det-size=64 --pop-size=64
         - cd build && make
         - cd ../test_suite
         - ../testcode/bin/testcode.py -e ../bin/hande.x -c quick --processors=4
