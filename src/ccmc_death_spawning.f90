@@ -167,13 +167,18 @@ contains
 ! [review] - AJWT: get_excitation_level accepts.
             excitor_level = get_excitation_level(det_string(qs%ref%f0, sys%basis), det_string(fexcit,sys%basis))
             call convert_excitor_to_determinant(fexcit, excitor_level, excitor_sign, qs%ref%f0)
-            if (qs%multiref) then
-                do i = 1, size(qs%second_refs)
-                     excitor_level_2(i) = get_excitation_level(det_string(qs%second_refs(i)%f0, sys%basis), &
+            if (excitor_level > qs%ref%ex_level) then
+                if (qs%multiref) then
+                    excitor_level_2(:) = 0
+                    do i = 1, size(qs%second_refs)
+                         excitor_level_2(i) = get_excitation_level(det_string(qs%second_refs(i)%f0, sys%basis), &
                                                                det_string(fexcit,sys%basis))
-                end do
-                if (excitor_level > qs%ref%ex_level .and.  all(excitor_level_2 > qs%second_refs%ex_level)) nspawn=0
-            end if
+                         if (excitor_level_2(i) <= qs%second_ref%ex_level) exit
+                    end do
+                    if (all(excitor_level_2 > qs%second_refs%ex_level)) nspawn=0
+                else
+                    nspawn = 0
+                end if
             if (excitor_sign < 0) nspawn = -nspawn
             if (debug) call write_logging_spawn(logging_info, hmatel_save, pgen, invdiagel, [nspawn], &
                         real(cluster%amplitude,p), sys%read_in%comp, spawn_pgen, cdet%f, fexcit, connection)
