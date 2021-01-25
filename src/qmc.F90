@@ -1245,9 +1245,9 @@ contains
         integer :: i, current_max, total_max = 0
         
         do i = 1, size(reference_in)
-           call init_reference(sys, reference_in(i), io_unit, qs%second_refs(i))
+           call init_reference(sys, reference_in(i), io_unit, qs%secondary_refs(i))
            current_max = qs%ref%ex_level + get_excitation_level(det_string(qs%ref%f0,sys%basis), &
-                                                                 det_string(qs%second_refs(i)%f0,sys%basis)) 
+                                                                 det_string(qs%secondary_refs(i)%f0,sys%basis)) 
            if (current_max > total_max) total_max = current_max
         end do
 

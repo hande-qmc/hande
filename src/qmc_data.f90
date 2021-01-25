@@ -858,7 +858,7 @@ type qmc_state_t
     ! Flags for multireference CCMC calculations.
     logical :: multiref = .false.
     integer :: n_secondary_ref = 0
-    type(reference_t), allocatable :: second_refs(:)
+    type(reference_t), allocatable :: secondary_refs(:)
     ! WARNING: par_info is the 'reference/master' (ie correct) version
     ! of parallel_t, in particular of proc_map_t.  However, copies of it
     ! are kept in spawn_t objects, and it is these copies which are used
@@ -1129,7 +1129,7 @@ contains
                 call reference_t_json(js, ccmc%secondary_refs(i), key = 'secondary_ref'//string)
             end do
         end if
-        call json_write_key(js,'multiref', ccmc%multiref,terminal=.true.)
+        call json_write_key(js, 'multiref', ccmc%multiref,terminal=.true.)
         call json_object_end(js, terminal)
 
     end subroutine ccmc_in_t_json

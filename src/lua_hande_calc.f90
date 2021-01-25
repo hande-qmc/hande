@@ -1319,10 +1319,10 @@ contains
         type(ccmc_in_t), intent(out) :: ccmc_in
 
         integer :: ccmc_table, err, i
-        character(28), parameter :: keys(11) = [character(28) :: 'move_frequency', 'cluster_multispawn_threshold', &
+        character(28), parameter :: keys(10) = [character(28) :: 'move_frequency', 'cluster_multispawn_threshold', &
                                                                 'full_non_composite', 'linked', 'vary_shift_reference', &
                                                                 'density_matrices', 'density_matrix_file', 'even_selection', &
-                                                                'multiref', 'n_secondary_ref', 'secondary_ref']
+                                                                'multiref', 'n_secondary_ref']
         character(10) :: string
 
         if (aot_exists(lua_state, opts, 'ccmc')) then
@@ -1770,15 +1770,20 @@ contains
 
         integer :: err, restart_table
         character(15), parameter :: keys(5) = [character(15) :: 'read', 'write', 'write_shift', 'write_frequency', 'rng']
+
         if (aot_exists(lua_state, opts, 'restart')) then
+
             call aot_table_open(lua_state, opts, restart_table, 'restart')
+
             call aot_get_val(restart_in%write_freq, err, lua_state, restart_table, 'write_frequency')
             call aot_get_val(restart_in%restart_rng, err, lua_state, restart_table, 'rng')
+
             associate(r_in=>restart_in)
                 call get_flag_and_id(lua_state, restart_table, r_in%read_restart, r_in%read_id, 'read')
                 call get_flag_and_id(lua_state, restart_table, r_in%write_restart, r_in%write_id, 'write')
                 call get_flag_and_id(lua_state, restart_table, r_in%write_restart_shift, r_in%write_shift_id, 'write_shift')
             end associate
+
             call warn_unused_args(lua_state, keys, restart_table)
 
             call aot_table_close(lua_state, restart_table)
@@ -1873,7 +1878,7 @@ contains
         type(blocking_in_t), intent(out) :: blocking_in
 
         integer :: err, blocking_table
-        character(24),parameter :: keys(11) = [character(24) ::  'blocking_on_the_fly', 'start_save_frequency',   &
+        character(24), parameter :: keys(11) = [character(24) ::  'blocking_on_the_fly', 'start_save_frequency',   &
                                                                 'start_point_number', 'filename', 'start_point', &
                                                                 'error_limit', 'blocks_used', 'min_blocks_used', &
                                                                 'auto_shift_damping', 'shift_damping_precision', &
@@ -1940,6 +1945,7 @@ contains
         type(c_ptr) :: qs_ptr
 
         opts = aot_table_top(lua_state)
+
         have_qmc_state = aot_exists(lua_state, opts, 'qmc_state')
         if (have_qmc_state) then
             ! Get qmc_state object

@@ -424,10 +424,11 @@ contains
         end if
 
         if (ccmc_in%multiref) then
+             ! Initialise multireference CCMC specific data.
              qs%multiref = .true.
              qs%n_secondary_ref = ccmc_in%n_secondary_ref
-             allocate (qs%second_refs(qs%n_secondary_ref))
-             call init_secondary_reference(sys,ccmc_in%secondary_refs,io_unit,qs)
+             allocate (qs%secondary_refs(qs%n_secondary_ref))
+             call init_secondary_reference(sys, ccmc_in%secondary_refs, io_unit, qs)
         else 
             qs%ref%max_ex_level = qs%ref%ex_level
         end if
@@ -498,7 +499,7 @@ contains
         end if
 
         ! ...and scratch space for calculative cumulative probabilities.
-        allocate(cumulative_abs_real_pops(size(qs%psip_list%states,dim=2)), stat=ierr)
+        allocate(cumulative_abs_real_pops(size(qs%psip_list%states, dim=2)), stat=ierr)
         call check_allocate('cumulative_abs_real_pops', size(qs%psip_list%states, dim=2), ierr)
 
         if (ccmc_in%even_selection) then
@@ -528,7 +529,7 @@ contains
                     if (parent) call warning('do_ccmc', 'move_freq is different from that in the restart file. &
                                             &Reassigning processors. Please check for equilibration effects.')
                     ! Cannot rely on spawn%head being initialised to indicate an empty spawn_t object so reset it before
-                    ! redistributing,.
+                    ! redistributing.
                     spawn%head = spawn%head_start
                     call redistribute_particles(pl%states, pl%pop_real_factor, pl%pops, pl%nstates, pl%nparticles, spawn)
                     call direct_annihilation(sys, rng(0), qs%ref, annihilation_flags, pl, spawn)
@@ -617,7 +618,7 @@ contains
                     ! excitors.
                     ! Can't include the reference in the cluster, so -1 from the
                     ! total number of excitors.
-                    max_cluster_size = min(sys%nel,qs%ref%max_ex_level+2, &
+                    max_cluster_size = min(sys%nel, qs%ref%max_ex_level+2, &
                                                            qs%psip_list%nstates-nD0_proc)
                 end if
 
@@ -802,12 +803,12 @@ contains
                                 - qs%ref%fock_sum
                         end if
                         call stochastic_ccmc_death_nc(rng(it), ccmc_in%linked, qs, iattempt==D0_pos, dfock, &
-                                          qs%psip_list%dat(1,iattempt), qs%estimators(1)%proj_energy_old, &
+                                          qs%psip_list%dat(1, iattempt), qs%estimators(1)%proj_energy_old, &
                                           qs%psip_list%pops(1, iattempt), nparticles_change(1), ndeath_nc, &
                                           logging_info)
                         if (sys%read_in%comp) then
                             call stochastic_ccmc_death_nc(rng(it), ccmc_in%linked, qs, iattempt==D0_pos, dfock, &
-                                              qs%psip_list%dat(1,iattempt), qs%estimators(2)%proj_energy_old, &
+                                              qs%psip_list%dat(1 ,iattempt), qs%estimators(2)%proj_energy_old, &
                                               qs%psip_list%pops(2, iattempt), nparticles_change(2), ndeath_nc, &
                                               logging_info)
                         end if
@@ -909,7 +910,7 @@ contains
         call write_bloom_report(bloom_stats, io_unit=io_unit)
         call multispawn_stats_report(ms_stats, io_unit=io_unit)
 
-        call load_balancing_report(qs%psip_list%nparticles, qs%psip_list%nstates, qmc_in%use_mpi_barriers,&
+        call load_balancing_report(qs%psip_list%nparticles, qs%psip_list%nstates, qmc_in%use_mpi_barriers, &
                                    qs%spawn_store%spawn%mpi_time, io_unit=io_unit)
         if (parent .and. blocking_in%blocking_on_the_fly .and. soft_exit) call write_blocking_report(bl, qs)
         call write_memcheck_report(qs%spawn_store%spawn, io_unit)
@@ -1050,7 +1051,7 @@ contains
 
         ! Perform stochastic propogation of a cluster in an appropriate manner
         ! for the given inputs. For multireference systems, it allows death for
-        ! clusters within the desired truncation level of either reference.
+        ! clusters within the desired truncation level of any reference.
 
         ! In:
         !   sys: information on system under consideration.
@@ -1097,7 +1098,7 @@ contains
         type(multispawn_stats_t), intent(inout) :: ms_stats
         type(p_single_double_coll_t), intent(inout) :: ps_stat
 
-        integer ::  nspawnings_cluster
+        integer :: nspawnings_cluster
         logical :: attempt_death
 
         ! Spawning
@@ -1113,8 +1114,9 @@ contains
         call ms_stats_update(nspawnings_cluster, ms_stats)
         nattempts_spawn_tot = nattempts_spawn_tot + nspawnings_cluster
         if (qs%multiref) then
-            if (multiref_check_ex_level(sys,contrib,qs,2)) then
-                attempt_death = multiref_check_ex_level(sys,contrib,qs,0)
+            ! Checks whether the current contribution is within the considered space.
+            if (multiref_check_ex_level(sys, contrib, qs, 2)) then
+                attempt_death = multiref_check_ex_level(sys, contrib, qs, 0)
 
                 call do_spawning_death(rng, sys, qs, ccmc_in, &
                                  logging_info, bloom_stats, contrib, &
@@ -1371,7 +1373,7 @@ contains
         if (nspawned /= 0_int_p) call create_spawned_particle_ccmc(sys%basis, qs%ref, contrib%cdet, connection, &
                                             nspawned, 1, contrib%cluster%excitation_level, &
                                             ccmc_in%even_selection, fexcit, qs%spawn_store%spawn, bloom_stats)
-        if (nspawned_im /= 0_int_p) call create_spawned_particle_ccmc(sys%basis, qs%ref, contrib%cdet, connection,&
+        if (nspawned_im /= 0_int_p) call create_spawned_particle_ccmc(sys%basis, qs%ref, contrib%cdet, connection, &
                                             nspawned_im, 2, contrib%cluster%excitation_level, &
                                             ccmc_in%even_selection, fexcit, qs%spawn_store%spawn, bloom_stats)
 
@@ -1392,7 +1394,7 @@ contains
         !   offset: changes acceptable excitation level from the calculation truncation level.
         
         !Out:
-        !   assert: true if at least one of the excitation levels is below the threshold. False otherwise.
+        !   assert1: true if at least one of the excitation levels is below the threshold. False otherwise.
         use excitations, only:  get_excitation_level, det_string
         use qmc_data, only: qmc_state_t
         use ccmc_data, only: wfn_contrib_t
@@ -1405,12 +1407,12 @@ contains
         integer :: ex_level, i
         logical :: assert1, assert2 = .false.
         
-        do i = 1, size(qs%second_refs)
-           ex_level =   get_excitation_level(det_string(contrib%cdet%f, sys%basis), det_string(qs%second_refs(i)%f0, sys%basis)) 
-           assert2 = (ex_level<=qs%second_refs(i)%ex_level+offset)
+        do i = 1, size(qs%secondary_refs)
+           ex_level =   get_excitation_level(det_string(contrib%cdet%f, sys%basis), det_string(qs%secondary_refs(i)%f0, sys%basis)) 
+           assert2 = (ex_level <= qs%secondary_refs(i)%ex_level + offset)
            if (assert2) exit
         end do
-        assert1 = (contrib%cluster%excitation_level <= qs%ref%ex_level+offset .or. assert2)
+        assert1 = (contrib%cluster%excitation_level <= qs%ref%ex_level + offset .or. assert2)
 
     end function
 
