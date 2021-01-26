@@ -10,7 +10,7 @@ cc = cc
 cxx = CC
 lua_52 = 1
 ccd = gcc
-cppflags = -DHAVE_SSE2 -DDISABLE_LANCZOS -DPARALLEL -DDISABLE_UUID -DDET_SIZE=64 -DPOP_SIZE=64
+cppflags = -DHAVE_SSE2 -DPARALLEL -DDISABLE_UUID -DDET_SIZE=64 -DPOP_SIZE=64
 ld = ftn
 ldflags = -L${MKLROOT}/lib/intel64
 libs =  -mkl:cluster -lpthread -lm -lhdf5_fortran -lhdf5 -lz -llua

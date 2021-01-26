@@ -1,11 +1,9 @@
 '''Attempt to remove the population control bias by reweighting estimates.'''
 
-import pandas as pd
 import numpy as np
-from math import exp
 
 def reweight(data, mc_cycles, tstep, weight_history, mean_shift,
-             weight_key='Shift', arith_mean=False):
+             weight_key='Shift'):
     '''Reweight using population control to reduce population control bias.
 
 Reweight estimators linear in the number of psips by the factor:
@@ -35,8 +33,6 @@ mean_shift: float
     The mean shift.  Used to prevent weights becoming too big.
 weight_key: string
     Column to generate the reweighting data.
-geom_mean: bool
-    Reweight using the geometric mean
 
 Returns
 -------
@@ -66,12 +62,7 @@ Vigor15
         weights.append(weights[i-1]*to_prod[i])
     for i in range(weight_history, len(data[weight_key])):
         weights.append(weights[i-1]*to_prod[i] / to_prod[i-weight_history])
-    if arith_mean:
-        for i in range(weight_history, len(data[weight_key])):
-           arith_fac = arith_series(tstep, mc_cycles,
-                                    data[weight_key].values[i],
-                                    data[weight_key].values[i-weight_history])
-           weights[i] = weights[i]*arith_fac
+
 
     return weights
 

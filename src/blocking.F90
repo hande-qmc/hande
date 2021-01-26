@@ -203,25 +203,21 @@ contains
 
     end subroutine write_blocking_report_header
 
-    subroutine collect_data(qmc_in, qs, bl, ireport, complx)
+    subroutine collect_data(qs, bl, complx)
 
         ! Collecting data for the reblock analysis
 
         ! In:
-        !   qmc_in: input options relating to QMC methods.
         !   qs: qmc_state where the data for current iteration is taken
-        !   ireport: number of reports
         !   complx: complex wavefunction?
         ! In/Out:
         !   bl: Information needed to peform blocking on the fly. The data is
         !       collected every report and reblock_data and data_product is updated.
 
-        use qmc_data, only: qmc_in_t, qmc_state_t, blocking_t
+        use qmc_data, only: qmc_state_t, blocking_t
         use const, only: int_64
 
-        type(qmc_in_t), intent(in) :: qmc_in
         type(qmc_state_t), intent(in) :: qs
-        integer, intent(in) :: ireport
         logical, intent(in) :: complx
         type(blocking_t), intent(inout) :: bl
         integer :: i
@@ -449,7 +445,7 @@ contains
 
     end subroutine copy_block
 
-    subroutine change_start(bl, ireport, restart)
+    subroutine change_start(bl, restart)
 
         ! Return the reblock_data_2 and data_product_2 from different start
         ! position. If the wanted start point falls within the block, the entire
@@ -457,7 +453,6 @@ contains
         ! position when it is modified.
 
         ! In:
-        !   ireport: Number of reports.
         !   restart: restart * save_fq is the modified point from which the
         !       reblock analysis is carried out from
         ! In/Out:
@@ -470,7 +465,7 @@ contains
 
         type(blocking_t), intent(inout) :: bl
         integer :: i, k
-        integer, intent(in) :: ireport, restart
+        integer, intent(in) :: restart
         logical :: switch
 
         bl%reblock_data_2 = bl%reblock_data
@@ -544,7 +539,7 @@ contains
         do i = 0, bl%n_saved_startpoints
 
             if (bl%n_reports_blocked > bl%save_fq * i) then
-                call change_start(bl, ireport, i)
+                call change_start(bl, i)
                 call mean_std_cov(bl)
                 call find_optimal_block(bl)
 
@@ -621,7 +616,7 @@ contains
 
         if (ireport >= bl%start_ireport .and. bl%start_ireport>=0) then
             bl%n_reports_blocked = ireport - bl%start_ireport + 1
-            call collect_data(qmc_in, qs, bl, ireport, complx)
+            call collect_data(qs, bl, complx)
             call copy_block(bl)
         end if
 
@@ -629,10 +624,10 @@ contains
         ! and the optimal error in error is calculated and printed.
         if (mod(ireport,50) ==0 .and. ireport >= bl%start_ireport .and. &
                     bl%start_ireport>=0) then
-            call change_start(bl, ireport, bl%start_point)
+            call change_start(bl, bl%start_point)
             call mean_std_cov(bl)
             call find_optimal_block(bl)
-            call write_blocking(bl, qmc_in, ireport, iter, iunit)
+            call write_blocking(bl, qmc_in, iter, iunit)
             call check_error(bl, qs, blocking_in, ireport)
         end if
 
@@ -642,14 +637,13 @@ contains
 
     end subroutine do_blocking
 
-    subroutine write_blocking(bl, qmc_in, ireport, iter, iunit)
+    subroutine write_blocking(bl, qmc_in, iter, iunit)
 
         ! Writes the blocking report the a separate output file.
 
         ! In:
         !   bl: Information needed to peform blocking on the fly.
         !   qmc_in: input options relating to QMC methods.
-        !   ireport: Number of reports.
         !   iter: Number of iterations.
         !   iunit: Number identifying the file to which the blocking report is
         !       written out to.
@@ -659,7 +653,7 @@ contains
         integer, intent(in) :: iunit
         type(blocking_t), intent(in) :: bl
         type(qmc_in_t), intent(in) :: qmc_in
-        integer, intent(in) :: ireport, iter
+        integer, intent(in) :: iter
         integer :: i
 
         write(iunit, '(1X, I8)', advance = 'no') iter

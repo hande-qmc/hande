@@ -15,9 +15,8 @@ Spencer).  HANDE can also perform calculations on model Hamiltonians, for which 
 additional integrals are required.  The model Hamiltonians currently available are the
 Hubbard model, Heisenberg model and uniform electron gas.
 
-Configuration interaction (CI) is also implemented using external libraries
-(lapack/scalapack and TRLan respectively) and can be performed in both serial and
-parallel.  Lanczos diagonalisation can also be performed with or without precomputing the
-Hamiltonian matrix.  Note that this is rather slow and intended for debugging purposes
-only.  Most quantum chemistry codes (e.g. PSI4) contain a substantially more powerful and
+Configuration interaction (CI) is also implemented using an external library
+(lapack/scalapack) and can be performed in both serial and parallel.
+Note that this is rather slow and intended for debugging purposes only.
+Most quantum chemistry codes (e.g. PSI4) contain a substantially more powerful and
 optimised CI implementation.

@@ -301,9 +301,9 @@ contains
         end if
         ! Vector to hold the residual weighting for each determinant on this processor
         ! for quasinewton propagation.
-        allocate(determ%one_minus_qn_weight(n_spawnees), stat=ierr)
-        call check_allocate('determ%one_minus_qn_weight', n_spawnees, ierr)
-        determ%one_minus_qn_weight = 0.0_p
+        allocate(determ%rho_minus_qn_weight(n_spawnees), stat=ierr)
+        call check_allocate('determ%rho_minus_qn_weight', n_spawnees, ierr)
+        determ%rho_minus_qn_weight = 0.0_p
 
         ! Vector to hold deterministic amplitudes from all processes.
         if (determ%projection_mode == semi_stoch_separate_annihilation) then
@@ -398,9 +398,9 @@ contains
             deallocate(determ%vector, stat=ierr)
             call check_deallocate('determ%vector', ierr)
         end if
-        if (allocated(determ%one_minus_qn_weight)) then
-            deallocate(determ%one_minus_qn_weight, stat=ierr)
-            call check_deallocate('determ%one_minus_qn_weight', ierr)
+        if (allocated(determ%rho_minus_qn_weight)) then
+            deallocate(determ%rho_minus_qn_weight, stat=ierr)
+            call check_deallocate('determ%rho_minus_qn_weight', ierr)
         end if
         if (allocated(determ%full_vector)) then
             deallocate(determ%full_vector, stat=ierr)
@@ -570,24 +570,24 @@ contains
 #ifdef PARALLEL
         integer :: ierr
 #endif
-        ! Start by evaluating the QN weights.  We store them in one_minus_qn_weight
-        ! and then modify one_minus_qn_weight to be 1-w after calculating H
+        ! Start by evaluating the QN weights.  We store them in rho_minus_qn_weight
+        ! and then modify rho_minus_qn_weight to be rho-w after calculating H
         if (propagator%quasi_newton) then
             if (transp) then 
-                do j = 1, size(determ%one_minus_qn_weight)
+                do j = 1, size(determ%rho_minus_qn_weight)
                     fock_sum = sum_fock_values_bit_string(sys, propagator%sp_fock, dets_this_proc(:,j))
                     weight = calc_qn_weighting(propagator, fock_sum - ref%fock_sum)
-                    determ%one_minus_qn_weight(j) =  weight
+                    determ%rho_minus_qn_weight(j) =  weight
                 end do
             else
-                do j = 1, size(determ%one_minus_qn_weight)
+                do j = 1, size(determ%rho_minus_qn_weight)
                     fock_sum = sum_fock_values_bit_string(sys, propagator%sp_fock, determ%dets(:,j))
                     weight = calc_qn_weighting(propagator, fock_sum - ref%fock_sum)
-                    determ%one_minus_qn_weight(j) =  weight
+                    determ%rho_minus_qn_weight(j) =  weight
                 end do
             end if
         else
-            determ%one_minus_qn_weight = 1.0_p
+            determ%rho_minus_qn_weight = 1.0_p
         end if
         if (print_info) write(io_unit,'(1X,a74)') '# Counting number of non-zero deterministic Hamiltonian elements to store.'
 
@@ -616,12 +616,12 @@ contains
                         if (diag_elem) then
                            hmatel%r = hmatel%r - ref%H00
                         end if
-                        ! Recall one_minus_qn_weight currently contains the actual
+                        ! Recall rho_minus_qn_weight currently contains the actual
                         ! weight
                         if (transp) then
-                            weight = determ%one_minus_qn_weight(j)
+                            weight = determ%rho_minus_qn_weight(j)
                         else
-                            weight = determ%one_minus_qn_weight(i)
+                            weight = determ%rho_minus_qn_weight(i)
                         endif
                         hmatel = weight * hmatel
                         if (abs(hmatel%r) > depsilon) then
@@ -670,8 +670,8 @@ contains
                     hamil%row_ptr(1:determ%tot_size) = 0
                 end if
             end do
-            ! Now actually store 1-w in one_minus_qn_weight
-            determ%one_minus_qn_weight(:) = 1.0_p - determ%one_minus_qn_weight(:)
+            ! Now actually store rho-w in rho_minus_qn_weight
+            determ%rho_minus_qn_weight(:) = propagator%quasi_newton_pop_control - determ%rho_minus_qn_weight(:)
 
         end associate
 
@@ -891,13 +891,14 @@ contains
                         ! contribution from the shift.
                         ! For QuasiNewton the diagonal part is special.
                         !    instead of - tau * H_ii * v_i - tau * S * v_i
-                        ! we will need   - tau *((H_ii - E_proj) *w_i + (E_proj - S)) * v_i
-                        !           so   - tau * (H_ii) * w_i * v_i - tau * (E_proj * (1-w_i) - S) * v_i
+                        ! we will need   - tau *((H_ii - E_proj) *w_i + (E_proj - S)*rho) * v_i
+                        !           so   - tau * (H_ii) * w_i * v_i - tau * (E_proj * (rho-w_i) - S*rho) * v_i
                         !                       (where w_i is the quasi_newton weight).
                         ! w_i is subsumed into H_ii already, so we now just include
                         ! the shift/projE component.
-                        out_vec = -qs%tau * (out_vec + (proj_energy(ispace) * determ%one_minus_qn_weight(row) - qs%shift(ispace)) &
-                            * determ%vector(ispace,i))
+                        ! Note that rho -> qs%propagator%quasi_newton_pop_control.
+                        out_vec = -qs%tau * (out_vec + (proj_energy(ispace) * determ%rho_minus_qn_weight(row) &
+                                - qs%propagator%quasi_newton_pop_control*qs%shift(ispace)) * determ%vector(ispace,i))
                         call create_spawned_particle_determ(determ%dets(:,row), out_vec, qs%psip_list%pop_real_factor, proc, &
                                                             ispace, qmc_in%initiator_approx, rng, spawn)
                     end do
@@ -989,14 +990,13 @@ contains
             ! setting the vector used to store the output to tau*S*v.
 
             ! For QuasiNewton instead of - tau * H_ii * v_i - tau * S * v_i
-            ! we will need   - tau *((H_ii - E_proj) *w_i + (E_proj - S)) * v_i
-            !           so   - tau * (H_ii) * w_i * v_i - tau * (E_proj * (1-w_i) - S) * v_i
+            ! we will need   - tau *((H_ii - E_proj) *w_i + (E_proj - S)*rho) * v_i
+            !           so   - tau * (H_ii) * w_i * v_i - tau * (E_proj * (rho-w_i) - S*rho) * v_i
             !                       (where w_i is the quasi_newton weight).
-            ! w_i is subsumed into H_ii already, so we now just include
-            ! the shift/projE component.
+            ! Note that rho -> qs%propagator%quasi_newton_pop_control.
 
-            determ%vector(ispace,:) = (-qs%tau * (proj_energy(ispace)*determ%one_minus_qn_weight(:)-qs%shift(ispace))) &
-                * determ%vector(ispace,:)
+            determ%vector(ispace,:) = (-qs%tau * (proj_energy(ispace)*determ%rho_minus_qn_weight(:) &
+                - qs%shift(ispace)*qs%propagator%quasi_newton_pop_control)) * determ%vector(ispace,:)
 
             ! Perform the multiplication of the deterministic Hamiltonian on the
             ! full deterministic vector. A factor of minus one is applied to the
@@ -1406,9 +1406,9 @@ contains
         integer :: id, ierr, ndeterm, semi_stoch_version_restart, tensor_label_len_old, nbasis_restart
         integer(HSIZE_T) :: dims(2), maxdims(2)
         logical :: exists
-        integer(i0), allocatable :: dets_by_proc(:,:)
 
 #ifdef PARALLEL
+        integer(i0), allocatable :: dets_by_proc(:,:)
         integer :: i, proc, slot, ndeterm_this_proc, displs(0:nprocs-1)
 #endif
 #endif

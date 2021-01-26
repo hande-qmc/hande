@@ -163,6 +163,8 @@ contains
             qmc_in_loc%shift_damping = qs%shift_damping
             qmc_in_loc%pattempt_parallel = qs%excit_gen_data%pattempt_parallel
             qmc_in_loc%quasi_newton_threshold = qs%propagator%quasi_newton_threshold
+            qmc_in_loc%quasi_newton_value = qs%propagator%quasi_newton_value
+            qmc_in_loc%quasi_newton_pop_control = qs%propagator%quasi_newton_pop_control
             call qmc_in_t_json(js, qmc_in_loc)
             call fciqmc_in_t_json(js, fciqmc_in)
             call semi_stoch_in_t_json(js, semi_stoch_in)
@@ -319,7 +321,7 @@ contains
 
                         ! Clone or die.
                         if (.not. determ_parent) then
-                            call stochastic_death(rng, sys, qs, cdet%fock_sum, qs%psip_list%dat(1,idet), &
+                            call stochastic_death(rng, qs, cdet%fock_sum, qs%psip_list%dat(1,idet), &
                                             qs%shift(ispace), qs%estimators(ispace)%proj_energy_old, logging_info, &
                                             qs%psip_list%pops(ispace,idet), qs%psip_list%nparticles(ispace), ndeath)
                         end if
@@ -488,7 +490,7 @@ contains
         type(excit_t) :: connection
         type(hmatel_t) :: hmatel
         integer :: idet, ispace
-        integer :: nattempts_current_det(qs%psip_list%nspaces)
+        integer :: nattempts_current_det
         integer(int_p) :: int_pop(spawn_recv%ntypes)
         real(p) :: real_pop(spawn_recv%ntypes)
         real(dp) :: list_pop
@@ -518,12 +520,10 @@ contains
             ! [todo] - pass determ_flag rather than 1.
             call set_parent_flag(real_pop, qmc_in%initiator_pop, 1, quadrature_initiator, cdet%initiator_flag)
 
-            do ispace = 1, qs%psip_list%nspaces
-                nattempts_current_det(ispace) = decide_nattempts(rng, real_pop(ispace))
-            end do
 
             do ispace = 1, qs%psip_list%nspaces
 
+                nattempts_current_det = decide_nattempts(rng, real_pop(ispace))
                 imag = sys%read_in%comp .and. mod(ispace,2) == 0
 
                 ! It is much easier to evaluate the projected energy at the
@@ -533,14 +533,14 @@ contains
                 call update_proj_energy_ptr(sys, qs%ref%f0, qs%trial%wfn_dat, cdet, real_pop, qs%estimators(ispace), &
                                             connection, hmatel)
 
-                call do_fciqmc_spawning_attempt(rng, spawn_to_send, bloom_stats, sys, qs, nattempts_current_det(ispace), &
+                call do_fciqmc_spawning_attempt(rng, spawn_to_send, bloom_stats, sys, qs, nattempts_current_det, &
                                             cdet, determ, .false., int_pop(ispace), &
                                             sys%read_in%comp .and. modulo(ispace,2) == 0, &
                                             ispace, logging_info)
 
                 ! Clone or die.
                 ! list_pop is meaningless as particle_t%nparticles is updated upon annihilation.
-                call stochastic_death(rng, sys, qs, cdet%fock_sum, cdet%data(1), qs%shift(ispace), &
+                call stochastic_death(rng, qs, cdet%fock_sum, cdet%data(1), qs%shift(ispace), &
                                       qs%estimators(ispace)%proj_energy, logging_info, int_pop(ispace), list_pop, ndeath)
 
                 ! Update population of walkers on current determinant.

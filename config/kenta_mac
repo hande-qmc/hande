@@ -1,6 +1,5 @@
 [DEFAULT]
 include_f = -I /usr/local/include
-cppflags_opt = -DDISABLE_LANCZOS
 
 [main]
 fc = gfortran

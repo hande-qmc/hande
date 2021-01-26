@@ -1,0 +1,24 @@
+sys = read_in {
+    int_file = "fcidumpfile-CAS6,7.H5",
+}
+hs = hilbert_space {
+    sys=sys,
+    hilbert = {
+        nattempts = 500000,
+        rng_seed= 5,
+    }
+}
+fciqmc {
+    sys = sys,
+    qmc = {
+        tau = 0.07,
+        rng_seed = 13086,
+        mc_cycles = 5,
+        init_pop = 500,
+        nreports = 100,
+        target_population = 2000,
+        state_size = -500,
+        spawned_state_size = -200,
+        shift_damping = 0.01,
+    },
+}

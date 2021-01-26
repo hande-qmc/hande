@@ -170,6 +170,8 @@ contains
             qmc_in_loc%pattempt_parallel = qs%excit_gen_data%pattempt_parallel
             ! Not actually used in DMQMC!
             qmc_in_loc%quasi_newton_threshold = qs%propagator%quasi_newton_threshold
+            qmc_in_loc%quasi_newton_value = qs%propagator%quasi_newton_value
+            qmc_in_loc%quasi_newton_pop_control = qs%propagator%quasi_newton_pop_control
             call qmc_in_t_json(js, qmc_in_loc)
             call dmqmc_in_t_json(js, dmqmc_in)
             dmqmc_in_loc = dmqmc_in
@@ -313,7 +315,7 @@ contains
                             ! when running a DMQMC algorithm, stores the average
                             ! of the two diagonal elements corresponding to the
                             ! two indicies of the density matrix.
-                            call stochastic_death(rng, sys, qs, cdet1%fock_sum, qs%psip_list%dat(1, idet), &
+                            call stochastic_death(rng, qs, cdet1%fock_sum, qs%psip_list%dat(1, idet), &
                                                   qs%shift(ireplica), qs%estimators(1)%proj_energy_old, logging_info, &
                                                   qs%psip_list%pops(ireplica,idet), qs%psip_list%nparticles(ireplica), ndeath)
                         end do

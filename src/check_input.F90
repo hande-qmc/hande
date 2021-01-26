@@ -68,8 +68,15 @@ contains
             call warning(this, 'Not using default max_broadcast_chunk. This option is only intended for testing of &
                 &broadcasting functionality and gives no benefit to functionality.')
 
-        if (sys%read_in%comp .and. sys%read_in%uhf) call warning(this, &
-                            'UHF translational symmetry currently untested. Use with caution!')
+        if (sys%read_in%comp .and. sys%read_in%uhf) then
+            if (all(sys%cas > 0)) then
+                ! Freezing orbitals not compatible with UHF and complex.
+                ! If statement follows test for number of active orbitals in read_in.F90.
+                call stop_all(this,'Freezing orbitals not currently compatible with UHF and complex')
+            else
+                call warning(this, 'UHF translational symmetry currently untested. Use with caution!')
+            end if
+        end if
 
     end subroutine check_sys
 
@@ -145,7 +152,7 @@ contains
                             excit_gen_power_pitzer, excit_gen_cauchy_schwarz_occ, excit_gen_cauchy_schwarz_occ_ij, fciqmc_in_t
         use errors, only: stop_all, warning
         use system, only: sys_t, chung_landau, hub_k, hub_real, read_in, ringium, ueg
-        use const, only: p
+        use const, only: p, depsilon
 
         type(qmc_in_t), intent(in) :: qmc_in
         type(sys_t), intent(in) :: sys
@@ -223,6 +230,14 @@ contains
             call stop_all(this, 'Complex calculations not implemented with Uniform/Heat Bath Cauchy Schwarz yet.')
         end if
 
+        if ((.not. qmc_in%quasi_newton) .and. ((abs(qmc_in%quasi_newton_pop_control - 1.0_p) > depsilon) .and. &
+            qmc_in%quasi_newton_pop_control > 0.0_p)) then
+            ! quasi_newton_pop_control is 1 for non QN propagation. However, here it was neither left to
+            ! its default nor set to 1, so give warning as it will be set to 1 in the code which might not
+            ! be what the user intended.
+            call warning(this, 'Since quasiNewton is not used, quasi_newton_pop_control is set to 1.')
+        end if
+
         if ((qmc_in%quasi_newton) .and. (sys%system /= read_in)) then
             if (sys%system == ueg) then
                 if (sys%lattice%ndim /= 3) then
@@ -248,14 +263,13 @@ contains
 
     end subroutine check_qmc_opts
 
-    subroutine check_fci_opts(sys, fci_in, lanczos)
+    subroutine check_fci_opts(sys, fci_in)
 
         ! Check the input options provided in the fci table.
 
         ! In:
         !   sys: system being studied.
         !   fci_in: input options for FCI.
-        !   lanczos: is this a lanczos or full diagonalisation?
 
         use fci_utils, only: fci_in_t
         use system, only: sys_t, read_in
@@ -264,7 +278,6 @@ contains
 
         type(sys_t), intent(in) :: sys
         type(fci_in_t), intent(in) :: fci_in
-        logical, intent(in) :: lanczos
 
         character(*), parameter :: this = 'check_fci_opts'
 
@@ -274,10 +287,6 @@ contains
             end if
         end if
 
-        if (lanczos) then
-            if (fci_in%lanczos_string_len <= 0) call stop_all(this,'Lanczos basis not positive.')
-            if (fci_in%nlanczos_eigv <= 0) call stop_all(this,'# lanczos eigenvalues not positive.')
-        end if
         if (sys%basis%info_string_len /= 0) call stop_all(this, &
             'FCI is incompatible with additional information being stored in the bit string. Please implement if needed.')
 

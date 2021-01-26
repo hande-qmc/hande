@@ -875,7 +875,7 @@ contains
             else
                 ! Note: even if we're doing linked CC, the clusters contributing to the projected estimator must not contain
                 ! excitors involving the same orbitals so we need only look for unlinked clusters.
-                call select_cluster(rng, sys, qs%psip_list, qs%ref%f0, 2, .false., nattempts, D0_normalisation, 0.0_p, D0_pos, &
+                call select_cluster(rng, sys, qs%psip_list, qs%ref%f0, 2, .false., nattempts, D0_normalisation, 0.0_p, &
                                 cumulative_abs_real_pops, tot_abs_real_pop, 2, 2, logging_info, cdet, cluster, qs%excit_gen_data)
             end if
             if (cluster%excitation_level /= huge(0)) then
@@ -1203,6 +1203,8 @@ contains
             ! number of single/double excitations), stop here and fix pattempt_single.
             call mpi_allreduce(qs%excit_gen_data%p_single_double%rep_accum%overflow_loc, overflow, 1, MPI_LOGICAL, MPI_LAND, &
                             MPI_COMM_WORLD, ierr)
+#else
+            overflow = .false.
 #endif
             
             if ((qs%vary_shift(1)) .or. (overflow)) then

@@ -213,8 +213,15 @@ contains
 
         ! Quasinewtwon approaches scale this death step, but doing this naively
         ! would break population control.  Instead, we split H-S into
-        ! (H - E_proj) + (E_proj - S).
-        ! The former is scaled and produces the step.  The latter effects the population control.
+        ! (H - E_proj)*invdiagel + (E_proj - S)*rho.
+        ! The former is scaled by "invdiagel", related to the inverse of the QN energy
+        ! difference and produces the step.
+        ! The latter affects the population control, scaled by "rho", the QN population
+        ! control factor. The purpose of "rho" is to basically allow two separate
+        ! time steps for the two terms.
+        ! For more details see V. A. Neufeld, A. J. W. Thom, JCTC (2020), 16, 3, 1503-1510.
+        ! Note that for composite clusters (more than one excitor), only the first term is used.
+        ! (R. S. T. Franklin et al., JCP (2016), 144, 044111).
 
         ! NB This currently only handles non-linked complex amplitudes, not linked complex.
 
@@ -273,12 +280,13 @@ contains
             case(0)
                 ! Death on the reference has H_ii - E_HF = 0.
                 KiiAi = ((-qs%estimators(1)%proj_energy_old)*invdiagel + &
-                                    (qs%estimators(1)%proj_energy_old - qs%shift(1)))*cluster%amplitude
+                    (qs%estimators(1)%proj_energy_old - qs%shift(1))*qs%propagator%quasi_newton_pop_control)*cluster%amplitude
             case(1)
                 ! Evaluating the commutator gives
                 ! <D1|[H,a1]|D0> = <D1|H|D1> - <D0|H|D0>
                 ! (this is scaled for quasinewton approaches)
-                KiiAi = (cdet%data(1) * invdiagel + qs%estimators(1)%proj_energy_old - qs%shift(1))*cluster%amplitude
+                KiiAi = (cdet%data(1) * invdiagel + &
+                    (qs%estimators(1)%proj_energy_old - qs%shift(1))*qs%propagator%quasi_newton_pop_control)*cluster%amplitude
             case(2)
                 ! Evaluate the commutator
                 ! The cluster operators are a1 and a2 (with a1 D0 = D1, a2 D0 = D2,
@@ -297,11 +305,12 @@ contains
             select case (cluster%nexcitors)
             case(0)
                 KiiAi = ((-qs%estimators(1)%proj_energy_old)*invdiagel + &
-                                (qs%estimators(1)%proj_energy_old - qs%shift(1)))*cluster%amplitude
+                    (qs%estimators(1)%proj_energy_old - qs%shift(1))*qs%propagator%quasi_newton_pop_control)*cluster%amplitude
             case(1)
                 KiiAi = ((cdet%data(1) - qs%estimators(1)%proj_energy_old)*invdiagel + &
-                                (qs%estimators(1)%proj_energy_old - qs%shift(1)))*cluster%amplitude
+                    (qs%estimators(1)%proj_energy_old - qs%shift(1))*qs%propagator%quasi_newton_pop_control)*cluster%amplitude
             case default
+                ! A composite cluster. Death step different to single excitors, see above.
                 KiiAi = ((sc0_ptr(sys, cdet%f) - qs%ref%H00) - qs%estimators(1)%proj_energy_old)*invdiagel *cluster%amplitude
             end select
         end if
@@ -413,7 +422,7 @@ contains
 
     end subroutine stochastic_death_attempt
 
-    subroutine stochastic_ccmc_death_nc(rng, linked_ccmc,  sys, qs, isD0, dfock, Hii, proj_energy, population, &
+    subroutine stochastic_ccmc_death_nc(rng, linked_ccmc, qs, isD0, dfock, Hii, proj_energy, population, &
                                         tot_population, ndeath, logging_info)
 
         ! Attempt to 'die' (ie create an excip on the current excitor, cdet%f)
@@ -454,11 +463,9 @@ contains
 
         use dSFMT_interface, only: dSFMT_t, get_rand_close_open
         use qmc_data, only: qmc_state_t
-        use system, only: sys_t
         use spawning, only: calc_qn_weighting
         use logging, only: logging_t, write_logging_death
 
-        type(sys_t), intent(in) :: sys
         logical, intent(in) :: linked_ccmc
         type(qmc_state_t), intent(in) :: qs
         logical, intent(in) :: isD0
@@ -479,12 +486,13 @@ contains
 
         invdiagel = calc_qn_weighting(qs%propagator, dfock)
         if (isD0) then
-            KiiAi = ((- proj_energy)*invdiagel + (proj_energy - qs%shift(1)))*population
+            KiiAi = ((- proj_energy)*invdiagel + (proj_energy - qs%shift(1))*qs%propagator%quasi_newton_pop_control)*population
         else
             if (linked_ccmc) then
-                KiiAi = (Hii*invdiagel + proj_energy - qs%shift(1))*population
+                KiiAi = (Hii*invdiagel + (proj_energy - qs%shift(1))*qs%propagator%quasi_newton_pop_control)*population
             else
-                KiiAi = ((Hii - proj_energy)*invdiagel + (proj_energy - qs%shift(1)))*population
+                KiiAi = ((Hii - proj_energy)*invdiagel + &
+                    (proj_energy - qs%shift(1))*qs%propagator%quasi_newton_pop_control)*population
             end if
         end if
 
@@ -520,7 +528,7 @@ contains
     end subroutine stochastic_ccmc_death_nc
 
     subroutine linked_spawner_ccmc(rng, sys, qs, spawn_cutoff, cluster, gen_excit_ptr, nspawn, &
-                            connection, nspawnings_total, fexcit, cdet, ldet, rdet, left_cluster, right_cluster, ps_stat)
+                            connection, nspawnings_total, fexcit, ldet, rdet, left_cluster, right_cluster, ps_stat)
 
         ! When sampling e^-T H e^T, clusters need to be considered where two
         ! operators excite from/to the same orbital (one in the "left cluster"
@@ -591,7 +599,6 @@ contains
         type(excit_t), intent(out) :: connection
         integer(i0), intent(out) :: fexcit(sys%basis%tot_string_len)
         type(det_info_t), intent(inout) :: ldet, rdet
-        type(det_info_t), intent(inout) :: cdet
         type(cluster_t), intent(inout) :: left_cluster, right_cluster
         type(p_single_double_coll_t), intent(inout) :: ps_stat
 

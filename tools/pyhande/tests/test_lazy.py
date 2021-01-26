@@ -381,38 +381,6 @@ class TestStdAnalysis(unittest.TestCase):
             infos[0].opt_block.loc['Weighted Proj. E.'], opt_block_proje,
             check_less_precise=7)
 
-    def test_reweight_history_arith_mean(self):
-        """Test reweight_history and arith_mean parameters."""
-        infos = lazy.std_analysis(
-            ['tests/hande_files/long_calc_ueg.out'], reweight_history=3,
-            arith_mean=True, verbosity=-1)
-        # .reblock
-        reblock_wproje_loc8 = pd.Series(
-            [-0.278843, 0.000569041, '<---    '],
-            index=['mean', 'standard error', 'optimal block'], name=8)
-        pd.testing.assert_series_equal(
-            infos[0].reblock['Weighted Proj. E.'].loc[8], reblock_wproje_loc8)
-        # .covariance
-        cov_3_W_N_0 = pd.Series(
-            [-39.81896416225519, 152.97450543779814, -0.28322030786266594,
-             -46.46286890224775, 177.66923750972612], index=[
-                 r'\sum H_0j N_j', 'N_0', 'Shift', r'W * \sum H_0j N_j',
-                 'W * N_0'
-            ], name=(3, 'W * N_0'))
-        pd.testing.assert_series_equal(
-            infos[0].covariance.loc[3, 'W * N_0'], cov_3_W_N_0)
-        # .opt_block
-        opt_block_proje = pd.Series(
-            [-0.27884176150306245, 0.0005690386058169649, None, '-0.2788(6)'],
-            index=[
-                'mean', 'standard error', 'standard error error', 'estimate'
-            ], name='Weighted Proj. E.')
-        # Check more precise (7 digits instead of default 5) here as
-        # effects are tiny.
-        pd.testing.assert_series_equal(
-            infos[0].opt_block.loc['Weighted Proj. E.'], opt_block_proje,
-            check_less_precise=7)
-
     def test_calc_inefficiency(self):
         """Test calc_inefficiency parameter.
         Requires extract_psips.

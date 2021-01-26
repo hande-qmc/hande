@@ -40,7 +40,6 @@ Options:
   --exe-name=<HANDE_EXE_NAME>            [default: "hande.cmake.x"].
   --hdf5=<HDF5_ROOT>                     Specify the path to the HDF5 installation to use [default: ''].
   --uuid=<UUID>                          Whether to activate UUID generation [default: True].
-  --lanczos=<TRLan_LIBRARIES>            Set TRLan libraries to be linked in [default: ''].
   --single                               Enable usage of single precision, where appropriate [default: False].
   --backtrace                            Enable backtrace functionality [default: False].
   --popcnt                               Enable use of intrinsic popcnt [default: False].
@@ -85,7 +84,6 @@ def gen_cmake_command(options, arguments):
     command.append('-DENABLE_HDF5="{0}"'.format('FALSE' if arguments['--hdf5'] in ['False', 'false', 'OFF', 'off'] else 'TRUE'))
     command.append('-DHDF5_ROOT="{0}"'.format(arguments['--hdf5']))
     command.append('-DENABLE_UUID="{0}"'.format(arguments['--uuid']))
-    command.append('-DTRLan_LIBRARIES="{0}"'.format(arguments['--lanczos']))
     command.append('-DENABLE_SINGLE_PRECISION="{0}"'.format(arguments['--single']))
     command.append('-DENABLE_BACKTRACE="{0}"'.format(arguments['--backtrace']))
     command.append('-DENABLE_INTRINSIC_POPCNT="{0}"'.format(arguments['--popcnt']))

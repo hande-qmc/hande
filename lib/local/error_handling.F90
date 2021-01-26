@@ -43,9 +43,11 @@ contains
         ! It seems that giving STOP a string is far more portable.
         ! mpi_abort requires an integer though.
         character(3), parameter :: error_str='999'
+#ifndef DISABLE_BACKTRACE
         type(c_ptr), target :: buffer(100)
         type(c_ptr) :: c_buf
         integer(c_int) :: btr_size
+#endif
         logical :: print_backtrace_loc
 #ifdef PARALLEL
         integer, parameter :: error_code=999

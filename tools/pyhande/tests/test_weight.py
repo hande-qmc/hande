@@ -55,29 +55,6 @@ class TestReweight(unittest.TestCase):
         ]
         self.assertListEqual(weights, weights_exp)
 
-    def test_arith_mean_input(self):
-        """Use arith_mean == True."""
-        (mc_cycles, tstep, weight_history, mean_shift) = (11, 0.9, 11, -1.3)
-        weights = weight.reweight(
-            self.data, mc_cycles, tstep, weight_history, mean_shift,
-            arith_mean=True
-        )
-        weights_exp = [
-            0.8313474786875108, 0.11591040955136422, 0.09445622025193808,
-            0.04637602636761486, 0.005832398482028505, 0.0015219919861421205,
-            7.750139602393484e-05, 6.397128056893324e-06,
-            8.970968917083546e-06, 2.3126482186771303e-06,
-            9.421755778806896e-07, 2.8745162848403464e-06,
-            2.9650514148203822e-05, 9.058407592615143e-05,
-            0.0005831905811768972, 0.06428017738508572, 2.0181620894355583,
-            46.01227162921362, 930.5982026042395, 2712.7309282780666,
-            25693.387216496238, 254468.15431019024, 359230.9854415301,
-            157029.5083841496, 87111.89230115319, 40306.50676342509,
-            5089.041773979196, 562.2205620794657, 179.8139271806919,
-            41.52523294834481
-        ]
-        self.assertListEqual(weights, weights_exp)
-
     def test_zero_tstep_input(self):
         """tstep == 0."""
         (mc_cycles, tstep, weight_history, mean_shift) = (10, 0.0, 20, -0.1)
@@ -103,58 +80,3 @@ class TestReweight(unittest.TestCase):
                             mean_shift)
         pd.testing.assert_frame_equal(self.data, data_copy, check_exact=True)
 
-
-class TestArithSeries(unittest.TestCase):
-    """Test weight.arith_series."""
-
-    def test_basic_input_wnow_greater_wbefore(self):
-        """weight_now > weight_before."""
-        (tstep, mc_cycles, weight_now, weight_before) = (0.01, 10, 0.1, 0.05)
-        out = weight.arith_series(tstep, mc_cycles, weight_now, weight_before)
-        self.assertAlmostEqual(out, 1.00225357)
-
-    def test_basic_input_wnow_smaller_wbefore(self):
-        """weight_now < weight_before."""
-        (tstep, mc_cycles, weight_now, weight_before) = (0.01, 10, 0.05, 0.1)
-        out = weight.arith_series(tstep, mc_cycles, weight_now, weight_before)
-        self.assertAlmostEqual(out, 0.99775356)
-
-    def test_basic_input_wnow_eq_wbefore(self):
-        """weight_now == weight_before."""
-        (tstep, mc_cycles, weight_now, weight_before) = (0.01, 10, 0.1, 0.1)
-        out = weight.arith_series(tstep, mc_cycles, weight_now, weight_before)
-        self.assertAlmostEqual(out, 1.0)
-
-    def test_basic_input_big_wnow(self):
-        """weight_now >> 1 - cannot be too large though, otherwise exp
-        overflows.
-        """
-        (tstep, mc_cycles, weight_now, weight_before) = (0.01, 10, 100.0, 0.1)
-        out = weight.arith_series(tstep, mc_cycles, weight_now, weight_before)
-        self.assertAlmostEqual(out, 1271.08561912)
-
-    def test_basic_input_big_wbefore(self):
-        """weight_before >> 1."""
-        (tstep, mc_cycles, weight_now, weight_before) = (0.01, 10, 0.1, 100.0)
-        out = weight.arith_series(tstep, mc_cycles, weight_now, weight_before)
-        self.assertAlmostEqual(out, 0.15828258)
-
-    def test_basic_input_neg_wnow(self):
-        """weight_now < 0."""
-        (tstep, mc_cycles, weight_now, weight_before) = (0.01, 10, -0.1, 0.2)
-        out = weight.arith_series(tstep, mc_cycles, weight_now, weight_before)
-        self.assertAlmostEqual(out, 0.98662734)
-
-    def test_zero_tstep(self):
-        """tstep == 0."""
-        (tstep, mc_cycles, weight_now, weight_before) = (0.0, 10, -0.1, 0.2)
-        self.assertRaises(
-            ValueError, weight.arith_series, tstep, mc_cycles, weight_now,
-            weight_before)
-
-    def test_neg_mc_cycles(self):
-        """mc_cycles < 0."""
-        (tstep, mc_cycles, weight_now, weight_before) = (0.01, -10, -0.1, 0.2)
-        self.assertRaises(
-            ValueError, weight.arith_series, tstep, mc_cycles, weight_now,
-            weight_before)

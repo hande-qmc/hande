@@ -1,6 +1,6 @@
 [DEFAULT]
 include_f = -I $${HDF5_ROOT-/usr}/include
-cppflags_opt = -DHAVE_SSE2 -DPARALLEL -DDET_SIZE=32 -DDISABLE_LANCZOS
+cppflags_opt = -DHAVE_SSE2 -DPARALLEL -DDET_SIZE=32
 
 [main]
 fc = mpif90

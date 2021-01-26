@@ -267,7 +267,7 @@ contains
                     ! created don't get an additional death/cloning opportunity.
 
                     ! Clone or die: Hellmann--Feynman walkers.
-                    call stochastic_death(rng, sys, qs, cdet%fock_sum, qs%psip_list%dat(2,idet), qs%shift(1), &
+                    call stochastic_death(rng, qs, cdet%fock_sum, qs%psip_list%dat(2,idet), qs%shift(1), &
                                           qs%estimators(1)%proj_energy_old, logging_info, qs%psip_list%pops(2,idet), &
                                           qs%psip_list%nparticles(2), ndeath)
 
@@ -284,7 +284,7 @@ contains
                     end if
 
                     ! Clone or die: Hamiltonian walkers.
-                    call stochastic_death(rng, sys, qs, cdet%fock_sum, qs%psip_list%dat(1,idet), qs%shift(1), &
+                    call stochastic_death(rng, qs, cdet%fock_sum, qs%psip_list%dat(1,idet), qs%shift(1), &
                                           qs%estimators(1)%proj_energy_old, logging_info, qs%psip_list%pops(1,idet), &
                                           qs%psip_list%nparticles(1), ndeath)
 

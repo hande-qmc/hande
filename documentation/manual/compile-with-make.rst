@@ -192,10 +192,6 @@ DEBUG
     If defined then add additional information in output (e.g. stack traces) that might be
     useful for debugging.  Recommended for developers only.  The format and content of the
     additional debug output should not be relied upon.
-DISABLE_LANCZOS
-    Default: not defined.
-
-    If defined then Lanczos diagonalisation is disabled.  This removes the dependency on the TRLan library.
 DISABLE_MPI3
     Default: not defined.  Only relevant when PARALLEL is defined.
 

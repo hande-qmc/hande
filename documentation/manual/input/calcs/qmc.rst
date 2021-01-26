@@ -468,10 +468,10 @@ algorithms and control the core settings in the algorithms.
     Turn on quasi-Newton steps.  Conventional FCIQMC and related methods take steps which are
     the equivalent of a scaled steepest-descent approach, which results in very long equilibration
     times, and requires smaller values of tau for stability.
-    The quasi-Newton approach scales the steps according to the inverse difference in Fock energy to
+    The quasi-Newton approach (partially) scales the steps according to the inverse difference in Fock energy to
     the reference determinant, reducing the contributions from very high-energy determinants.
-    The population dynamics of this approach are different, and do not show plateaux, but do
-    converge to the same ground state.
+
+    For more details see V. A. Neufeld, A. J. W. Thom, JCTC (2020), 16, 3, 1503-1510.
 
     .. note::
 
@@ -482,19 +482,32 @@ algorithms and control the core settings in the algorithms.
 ``quasi_newton_threshold``
     type: float.
     
-    Optional. Default: 1e-5
+    Optional. Default: Energy difference between LUMO and HOMO.
 
     Used when ``quasi_newton`` is true.
-    The quasi-Newton approach scales the steps according to the inverse difference in Fock energy to
+    The quasi-Newton approach (partially) scales the steps according to the inverse difference in Fock energy to
     the reference determinant (with Fock energy :math:`F_0`) for each determinant.  Any determinant with energy
     less than :math:`F_0 + \Delta_{\mathrm{QN}}`, where :math:`\Delta_{\mathrm{QN}}` is the value
     given to ``quasi_newton_threshold``, will have weighting :math:`v_{\mathrm{QN}}^{-1}`,
     where :math:`v_{\mathrm{QN}}` is the value given by ``quasi_newton_value``.
-    For systems with a small HOMO-LUMO gap, making this larger may stabilize the convergence.
+    The shift containing term in the death step are scaled by ``quasi_newton_pop_control`` instead. This
+    makes sure that that term is scaled by a constant, independent of the determinant/excitor involved,
+    so that the energy does not diverge with fluctuations around the true energy.
+
+    For more details see V. A. Neufeld, A. J. W. Thom, JCTC (2020), 16, 3, 1503-1510.
+
 ``quasi_newton_value``
     type: float.
 
-    Optional. Default: 1.0
+    Optional. Default: ``quasi_newton_threshold``.
+
+    See ``quasi_newton_threshold``.
+
+``quasi_newton_pop_control``
+    type: float
+
+    Set to 1 for original/non quasi-Newton propagation and otherwise for quasi-Newton,
+    the default is 1/``quasi_newton_threshold``.
 
     See ``quasi_newton_threshold``.
 

@@ -20,6 +20,7 @@ fciqmc {
         quasi_newton = true,
         quasi_newton_threshold = 1e-1,
         quasi_newton_value = 5e-1,
+        quasi_newton_pop_control = 1.0,
     },
 }
 

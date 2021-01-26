@@ -70,15 +70,16 @@ starting_iteration: integer
     before_end_indx = data['iterations'] <= end
     data_before_end = data[before_end_indx]
     
-    list = data_before_end['Proj. Energy']
-    n_data=len(list)
+    list_proje = data_before_end['Proj. Energy']
+    n_data=len(list_proje)
 
     mser_min = sys.float_info.max
     for i in range(n_blocks): 
         start_line = int(i*(n_data*start_max_frac)/n_blocks)
-        mser = numpy.var(list[start_line:n_data]) / (n_data-start_line)
+        mser = numpy.var(list_proje.iloc[start_line:n_data]) / (n_data-start_line)
         if ( mser < mser_min):
             mser_min = mser
+            # [todo] - Shouldn't this be "(1+start_line) * md['qmc']['ncycles']"?
             starting_iteration = start_line * md['qmc']['ncycles']
             final_start_line = start_line
         
@@ -136,23 +137,18 @@ info : :func:`collections.namedtuple`
     after_start_indx = data_before_end['iterations'] >= start
     calc_tr          = data_before_end[after_start_indx]
         
-    #list = calc_tr['Proj. Energy'].as_matrix()
-    #n_data = len(list)
-    
     list_org = calc_tr['Proj. Energy'].values
     n_data = len(list_org) // batch_size
-    list = [0]*n_data
+    list_means = [0]*n_data
     for i in range(n_data):
-        list[i] = numpy.mean(list_org[i*batch_size:(i+1)*batch_size])
-    #print list
+        list_means[i] = numpy.mean(list_org[i*batch_size:(i+1)*batch_size])
 
-    #print list    
-    mean = numpy.mean(list)
-    var  = numpy.var(list)
-    acf = tsastats.acf(x=list, unbiased=True, nlags=n_data-1, fft=True)
+    mean = numpy.mean(list_means)
+    var  = numpy.var(list_means)
+    acf = tsastats.acf(x=list_means, unbiased=True, nlags=n_data-1, fft=True)
         
     # ar model
-    ar = ar_model.AR(list)
+    ar = ar_model.AR(list_means)
     model_ar = ar.fit(ic='aic', trend='c', method='cmle')
     params = model_ar.params
     denom = nom = 1
@@ -193,7 +189,7 @@ info : :func:`collections.namedtuple`
 
 def std_analysis(datafiles, start=None, end=None, select_function=None,
         extract_psips=False, reweight_history=0, mean_shift=0.0,
-        arith_mean=False, calc_inefficiency=False, verbosity = 1, 
+        calc_inefficiency=False, verbosity = 1, 
         starts_reweighting=None, extract_rep_loop_time=False,
         analysis_method='reblocking', warmup_detection='hande_org'):
     '''Perform a 'standard' analysis of HANDE output files.
@@ -219,7 +215,6 @@ reweight_history : integer
     [Umrigar93]_ this should be set to be a few correlation times.
 mean_shift : float
     prevent the weights from becoming to large.
-arith_mean : bool
 calc_inefficiency : bool
     determines whether inefficiency should be calculated.
 verbosity : int
@@ -280,8 +275,7 @@ Umrigar93
     if warmup_detection not in ['hande_org', 'mser_min']:
         raise ValueError("'warmup_detection' has to be either 'hande_org' or "
                          "'mser_min', not '{warmup_detection}'.")
-    (calcs, calcs_md) = zeroT_qmc(datafiles, reweight_history, mean_shift,
-                                  arith_mean)
+    (calcs, calcs_md) = zeroT_qmc(datafiles, reweight_history, mean_shift)
     infos = []
     for (calc, md) in zip(calcs, calcs_md):        
         calc_start = start
@@ -328,7 +322,7 @@ key_ : :str: modified key name.
     return k
 
 
-def zeroT_qmc(datafiles, reweight_history=0, mean_shift=0.0, arith_mean=False):
+def zeroT_qmc(datafiles, reweight_history=0, mean_shift=0.0):
     '''Extract zero-temperature QMC (i.e. FCIQMC and CCMC) calculations.
 
 Reweighting information is added to the calculation data if requested.
@@ -340,7 +334,7 @@ Reweighting information is added to the calculation data if requested.
 
 Parameters
 ----------
-datafiles, reweight_history, mean_shift, arith_mean :
+datafiles, reweight_history, mean_shift :
     See :func:`std_analysis`.
 
 Returns
@@ -366,9 +360,9 @@ metadata : list of dict
         if reweight_history > 0:
             weights = pyhande.weight.reweight(df, md['qmc']['ncycles'],
                 md['qmc']['tau'], reweight_history, mean_shift,
-                weight_key=kShift, arith_mean=arith_mean)
             df['W * \sum H_0j N_j'] = df[kH0jNj] * weights
             df['W * N_0'] = df[kN0] * weights
+                weight_key=kShift)
         # The next uncommented line is dangerous and possibly very
         # confusing!  [todo] Fix.
         df['Proj. Energy'] = df[kH0jNj] / df[kN0] 
@@ -776,8 +770,7 @@ starting_iteration: integer
 
     return starting_iteration
 
-def reweighting_graph(datafiles, start=None, verbosity=1, mean_shift=0.0,
-                      arith_mean=False):
+def reweighting_graph(datafiles, start=None, verbosity=1, mean_shift=0.0):
     '''Plot a graph of reweighted projected energy vs. reweighted factor W.
     
 Detecting biases by reweighting is described in [Umrigar93]_ and [Vigor15]_ , 
@@ -804,8 +797,6 @@ verbosity : int
     starting point search.
 mean_shift : float
     prevent the weights from becoming to large.
-arith_mean : bool
-        
 
 References
 ----------
@@ -827,8 +818,8 @@ Thanks to Will Vigor for original implementation.
     for weight in weights:
         infos = std_analysis(datafiles=datafiles, start=start, 
                 extract_psips=True, reweight_history=weight, 
-                mean_shift=mean_shift, arith_mean=arith_mean, 
-                verbosity=verbosity, starts_reweighting=starts)
+                mean_shift=mean_shift, verbosity=verbosity,
+                starts_reweighting=starts)
         infos_collection.append(infos)
     
     for k in range(0, ndiff_calcs):
