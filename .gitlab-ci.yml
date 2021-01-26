@@ -13,98 +13,7 @@ stages:
     - BUILD AND TEST INTEL MPI POP64 dbg
     - BUILD AND TEST INTEL QUICK
     - BUILD AND TEST GCC QUICK
-
-
-
-test-gcc:
-    stage: BUILD AND TEST GCC
-    tags: 
-        - hande-testing
-    script:
-        - module load anaconda/python3
-        - ./cmakeconfig.py --fc=gfortran --cc=gcc --lua=./local/ --hdf5=./local/hdf5-gnu --det-size=64 --pop-size=64
-        - cd build && make
-        - cd ../test_suite
-        - ../testcode/bin/testcode.py -e ../bin/hande.x -c serial --total-processors=6
-    only:
-        - schedules
-
-
-test-gcc-mpi:
-    stage: BUILD AND TEST GCC MPI
-    tags: 
-        - hande-testing
-    script:
-        - module load anaconda/python3
-        - module load mpi/openmpi/64/gnu/3.1.2
-        - module load mkl
-        - ./cmakeconfig.py --mpi --fc=mpif90 --cc=mpicc --mpi-with-scalapack --lua=./local/ --hdf5=./local/hdf5-gnu
-        - cd build && make
-        - cd ../test_suite
-        - ../testcode/bin/testcode.py -e ../bin/hande.x -c mpi --processors=4
-    only:
-        - schedules
-
-
-test-gcc-mpi-64:
-    stage: BUILD AND TEST GCC MPI POP64
-    tags: 
-        - hande-testing
-    script:
-        - module load anaconda/python3
-        - module load mpi/openmpi/64/gnu/3.1.2
-        - module load mkl
-        - ./cmakeconfig.py --mpi --fc=mpif90 --cc=mpicc --mpi-with-scalapack --lua=./local/ --hdf5=./local/hdf5-gnu --det-size=64 --pop-size=64
-        - cd build && make
-        - cd ../test_suite
-        - ../testcode/bin/testcode.py -e ../bin/hande.x -c pop64_mpi --processors=4
-    only:
-        - schedules
-
-test-gcc-dbg:
-    stage: BUILD AND TEST GCC dbg
-    tags: 
-        - hande-testing
-    script:
-        - module load anaconda/python3
-        - ./cmakeconfig.py --fc=gfortran --cc=gcc --lua=./local/ --hdf5=./local/hdf5-gnu --det-size=64 --pop-size=64 --type=debug
-        - cd build && make
-        - cd ../test_suite
-        - ../testcode/bin/testcode.py -e ../bin/hande.x -c serial --total-processors=6
-    only:
-        - schedules
-
-
-test-gcc-mpi-dbg:
-    stage: BUILD AND TEST GCC MPI dbg
-    tags: 
-        - hande-testing
-    script:
-        - module load anaconda/python3 
-        - module load mpi/openmpi/64/gnu/3.1.2
-        - module load mkl       
-        - ./cmakeconfig.py --mpi --fc=mpif90 --cc=mpicc --mpi-with-scalapack  --lua=./local/ --hdf5=./local/hdf5-gnu --type=debug
-        - cd build && make
-        - cd ../test_suite
-        - ../testcode/bin/testcode.py -e ../bin/hande.x -c mpi --processors=4
-    only:
-        - schedules
-
-
-test-gcc-mpi-64-dbg:
-    stage: BUILD AND TEST GCC MPI POP64 dbg
-    tags: 
-        - hande-testing
-    script:
-        - module load anaconda/python3
-        - module load mpi/openmpi/64/gnu/3.1.2
-        - module load mkl
-        - ./cmakeconfig.py --mpi --fc=mpif90 --cc=mpicc --mpi-with-scalapack  --lua=./local/ --hdf5=./local/hdf5-gnu --det-size=64 --pop-size=64 --type=debug
-        - cd build && make
-        - cd ../test_suite
-        - ../testcode/bin/testcode.py -e ../bin/hande.x -c pop64_mpi --processors=4
-    only:
-        - schedules
+    - TEST PYHANDE
 
 build-lua-hdf5:
     stage: .pre
@@ -137,21 +46,117 @@ build-lua-hdf5:
         paths:
             - local
             - testcode
-        expire_in: 2 days
+        expire_in: never
 
+test-gcc:
+    stage: BUILD AND TEST GCC
+    tags: 
+        - hande-testing
+    before_script:
+        - module load anaconda/python3
+    script:
+        - ./cmakeconfig.py --fc=gfortran --cc=gcc --lua=./local/ --hdf5=./local/hdf5-gnu --det-size=64 --pop-size=64
+        - cmake --build build -- VERBOSE=1 -j 6
+    after_script:
+        - cd ../test_suite
+        - ../testcode/bin/testcode.py -e ../bin/hande.x -c serial --total-processors=6
+    only:
+        - schedules
+
+test-gcc-mpi:
+    stage: BUILD AND TEST GCC MPI
+    tags: 
+        - hande-testing
+    before_script:
+        - module load anaconda/python3
+        - module load mpi/openmpi/64/gnu/3.1.2
+        - module load mkl
+    script:
+        - ./cmakeconfig.py --mpi --fc=mpif90 --cc=mpicc --mpi-with-scalapack --lua=./local/ --hdf5=./local/hdf5-gnu
+        - cmake --build build -- VERBOSE=1 -j 6
+    after_script:
+        - cd ../test_suite
+        - ../testcode/bin/testcode.py -e ../bin/hande.x -c mpi --processors=4
+    only:
+        - schedules
+
+test-gcc-mpi-64:
+    stage: BUILD AND TEST GCC MPI POP64
+    tags: 
+        - hande-testing
+    before_script:
+        - module load anaconda/python3
+        - module load mpi/openmpi/64/gnu/3.1.2
+        - module load mkl
+    script:
+        - ./cmakeconfig.py --mpi --fc=mpif90 --cc=mpicc --mpi-with-scalapack --lua=./local/ --hdf5=./local/hdf5-gnu --det-size=64 --pop-size=64
+        - cmake --build build -- VERBOSE=1 -j 6
+    after_script:
+        - cd ../test_suite
+        - ../testcode/bin/testcode.py -e ../bin/hande.x -c pop64_mpi --processors=4
+    only:
+        - schedules
+
+test-gcc-dbg:
+    stage: BUILD AND TEST GCC dbg
+    tags: 
+        - hande-testing
+    before_script:
+        - module load anaconda/python3
+    script:
+        - ./cmakeconfig.py --fc=gfortran --cc=gcc --lua=./local/ --hdf5=./local/hdf5-gnu --det-size=64 --pop-size=64 --type=debug
+        - cmake --build build -- VERBOSE=1 -j 6
+    after_script:
+        - cd ../test_suite
+        - ../testcode/bin/testcode.py -e ../bin/hande.x -c serial --total-processors=6
+    only:
+        - schedules
+
+test-gcc-mpi-dbg:
+    stage: BUILD AND TEST GCC MPI dbg
+    tags: 
+        - hande-testing
+    before_script:
+        - module load anaconda/python3 
+        - module load mpi/openmpi/64/gnu/3.1.2
+        - module load mkl       
+    script:
+        - ./cmakeconfig.py --mpi --fc=mpif90 --cc=mpicc --mpi-with-scalapack  --lua=./local/ --hdf5=./local/hdf5-gnu --type=debug
+        - cmake --build build -- VERBOSE=1 -j 6
+    after_script:
+        - cd ../test_suite
+        - ../testcode/bin/testcode.py -e ../bin/hande.x -c mpi --processors=4
+    only:
+        - schedules
+
+test-gcc-mpi-64-dbg:
+    stage: BUILD AND TEST GCC MPI POP64 dbg
+    tags: 
+        - hande-testing
+    before_script:
+        - module load anaconda/python3
+        - module load mpi/openmpi/64/gnu/3.1.2
+        - module load mkl
+    script:
+        - ./cmakeconfig.py --mpi --fc=mpif90 --cc=mpicc --mpi-with-scalapack  --lua=./local/ --hdf5=./local/hdf5-gnu --det-size=64 --pop-size=64 --type=debug
+        - cmake --build build -- VERBOSE=1 -j 6
+    after_script:
+        - cd ../test_suite
+        - ../testcode/bin/testcode.py -e ../bin/hande.x -c pop64_mpi --processors=4
+    only:
+        - schedules
 
 test-intel:
     stage: BUILD AND TEST INTEL
     tags: 
         - hande-testing
-    script:
+    before_script:
         - module load icc
         - module load anaconda/python3
-        - ls
-        - ls local/
-        - ls local/lib
+    script:
         - ./cmakeconfig.py --fc=ifort --cc=icc --lua=./local/ --hdf5=./local/hdf5-intel --pop-size=64 --det-size=64 
-        - cd build && make
+        - cmake --build build -- VERBOSE=1 -j 6
+    after_script:
         - cd ../test_suite
         - ../testcode/bin/testcode.py -e ../bin/hande.x -c serial --total-processors=6
     only:
@@ -161,14 +166,13 @@ test-intel-dbg:
     stage: BUILD AND TEST INTEL dbg
     tags: 
         - hande-testing
-    script:
+    before_script:
         - module load icc
         - module load anaconda/python3
-        - ls
-        - ls local/
-        - ls local/lib
+    script:
         - ./cmakeconfig.py --fc=ifort --cc=icc --lua=./local/ --hdf5=./local/hdf5-intel --pop-size=64 --det-size=64  --type=debug
-        - cd build && make
+        - cmake --build build -- VERBOSE=1 -j 6
+    after_script:
         - cd ../test_suite
         - ../testcode/bin/testcode.py -e ../bin/hande.x -c serial --total-processors=6
     only:
@@ -178,16 +182,15 @@ test-intel-mpi-pop64:
     stage: BUILD AND TEST INTEL MPI POP64
     tags: 
         - hande-testing
-    script:
+    before_script:
         - module load icc
         - module load anaconda/python3
         - module load mkl
         - module load mpi/openmpi/64/intel18/3.1.2
-        - ls
-        - ls local/
-        - ls local/lib
+    script:
         - ./cmakeconfig.py --mpi --fc=mpif90 --cc=mpicc --mpi-with-scalapack --lua=./local/ --hdf5=./local/hdf5-intel --pop-size=64 --det-size=64
-        - cd build && make
+        - cmake --build build -- VERBOSE=1 -j 6
+    after_script:
         - cd ../test_suite
         - ../testcode/bin/testcode.py -e ../bin/hande.x -c mpi --processors=4
     only:
@@ -197,16 +200,15 @@ test-intel-mpi-pop64-dbg:
     stage: BUILD AND TEST INTEL MPI POP64 dbg
     tags: 
         - hande-testing
-    script:
+    before_script:
         - module load icc
         - module load mpi/openmpi/64/intel18/3.1.2
         - module load mkl
         - module load anaconda/python3
-        - ls
-        - ls local/
-        - ls local/lib
+    script:
         - ./cmakeconfig.py --mpi --fc=mpif90 --cc=mpicc --mpi-with-scalapack  --lua=./local/ --hdf5=./local/hdf5-intel  --type=debug --pop-size=64 --det-size=64
-        - cd build && make
+        - cmake --build build -- VERBOSE=1 -j 6
+    after_script:
         - cd ../test_suite
         - ../testcode/bin/testcode.py -e ../bin/hande.x -c mpi --processors=4
     only:
@@ -216,16 +218,15 @@ test-intel-mpi:
     stage: BUILD AND TEST INTEL MPI
     tags: 
         - hande-testing
-    script:
+    before_script:
         - module load icc
         - module load anaconda/python3
         - module load mkl
         - module load mpi/openmpi/64/intel18/3.1.2
-        - ls
-        - ls local/
-        - ls local/lib
+    script:
         - ./cmakeconfig.py --mpi --fc=mpif90 --cc=mpicc --mpi-with-scalapack --lua=./local/ --hdf5=./local/hdf5-intel
-        - cd build && make
+        - cmake --build build -- VERBOSE=1 -j 6
+    after_script:
         - cd ../test_suite
         - ../testcode/bin/testcode.py -e ../bin/hande.x -c mpi --processors=4
     only:
@@ -235,16 +236,15 @@ test-intel-mpi-dbg:
     stage: BUILD AND TEST INTEL MPI dbg
     tags: 
         - hande-testing
-    script:
+    before_script:
         - module load icc
         - module load mpi/openmpi/64/intel18/3.1.2
         - module load mkl
         - module load anaconda/python3
-        - ls
-        - ls local/
-        - ls local/lib
+    script:
         - ./cmakeconfig.py --mpi --fc=mpif90 --cc=mpicc --mpi-with-scalapack  --lua=./local/ --hdf5=./local/hdf5-intel  --type=debug 
-        - cd build && make
+        - cmake --build build -- VERBOSE=1 -j 6
+    after_script:
         - cd ../test_suite
         - ../testcode/bin/testcode.py -e ../bin/hande.x -c mpi --processors=4
     only:
@@ -254,16 +254,15 @@ test-intel-quick:
     stage: BUILD AND TEST INTEL QUICK
     tags: 
         - hande-testing
-    script:
+    before_script:
         - module load icc
         - module load mpi/openmpi/64/intel18/3.1.2
         - module load anaconda/python3
         - module load mkl
-        - ls
-        - ls local/
-        - ls local/lib
+    script:
         - ./cmakeconfig.py --mpi --fc=mpif90 --cc=mpicc --mpi-with-scalapack  --lua=./local/ --hdf5=./local/hdf5-intel  --pop-size=64 --det-size=64
-        - cd build && make
+        - cmake --build build -- VERBOSE=1 -j 6
+    after_script:
         - cd ../test_suite
         - ../testcode/bin/testcode.py -e ../bin/hande.x -c quick --processors=4
     except:
@@ -273,13 +272,27 @@ test-gcc-quick:
     stage: BUILD AND TEST GCC QUICK
     tags: 
         - hande-testing
-    script:
+    before_script:
         - module load anaconda/python3
         - module load mpi/openmpi/64/gnu/3.1.2
         - module load mkl
+    script:
         - ./cmakeconfig.py --mpi --fc=mpif90 --cc=mpicc --mpi-with-scalapack  --lua=./local/ --hdf5=./local/hdf5-gnu --det-size=64 --pop-size=64
-        - cd build && make
+        - cmake --build build -- VERBOSE=1 -j 6
+    after_script:
         - cd ../test_suite
         - ../testcode/bin/testcode.py -e ../bin/hande.x -c quick --processors=4
+    except:
+        - schedules
+
+test-pyhande:
+    stage: TEST PYHANDE
+    tags:
+        - hande-testing
+    before_script:
+        - module load anaconda/python3
+    script:
+        - cd tools/pyhande
+        - pytest
     except:
         - schedules
