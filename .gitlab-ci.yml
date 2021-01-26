@@ -15,6 +15,7 @@ stages:
     - BUILD AND TEST GCC QUICK
     - TEST PYHANDE
 
+
 build-lua-hdf5:
     stage: .pre
     tags: 
@@ -291,8 +292,11 @@ test-pyhande:
         - hande-testing
     before_script:
         - module load anaconda/python3
+        - conda activate pyhandeenv
+        - export PYTHONPATH=$PYTHONPATH:$pwd/tools/pyhande
     script:
         - cd tools/pyhande
         - pytest
     except:
         - schedules
+
