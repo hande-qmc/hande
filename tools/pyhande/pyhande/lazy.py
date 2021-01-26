@@ -360,9 +360,9 @@ metadata : list of dict
         if reweight_history > 0:
             weights = pyhande.weight.reweight(df, md['qmc']['ncycles'],
                 md['qmc']['tau'], reweight_history, mean_shift,
+                weight_key=kShift)
             df['W * \sum H_0j N_j'] = df[kH0jNj] * weights
             df['W * N_0'] = df[kN0] * weights
-                weight_key=kShift)
         # The next uncommented line is dangerous and possibly very
         # confusing!  [todo] Fix.
         df['Proj. Energy'] = df[kH0jNj] / df[kN0] 
