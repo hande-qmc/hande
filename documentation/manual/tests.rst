@@ -14,7 +14,7 @@ testcode can be run from the test_suite subdirectory:
 As the full test suite is extensive, it can take a long time to run, so the ``quick``
 and even shorter ``vquick`` categories are provided that aim to test most functionality
 but run in a few minutes.  By default the only the ``quick`` tests are run.  The entire test suite is
-run every week in a mirrored GitLab repository(https://gitlab.developers.cam.ac.uk/ch/thom/hande-public-testing), 
+run every week in a mirrored GitLab repository (https://gitlab.developers.cam.ac.uk/ch/thom/hande-public-testing), 
 using the latest GNU and Intel compilers. The ``quick`` tests are also run on every push to the master branch.
 
 Selected data from the HANDE output is compared to known 'good' results
