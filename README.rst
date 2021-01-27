@@ -7,6 +7,9 @@ chemistry code.  For a description of its main features see  `J. Chem. Theory Co
 
 .. image:: https://circleci.com/gh/hande-qmc/hande/tree/master.svg?style=svg
     :target: https://circleci.com/gh/hande-qmc/hande/tree/master
+    
+.. image:: https://gitlab.developers.cam.ac.uk/ch/thom/hande-public-testing/badges/master/pipeline.svg
+    :target: https://gitlab.developers.cam.ac.uk/ch/thom/hande-public-testing/-/commits/master
 
 Documentation
 -------------
