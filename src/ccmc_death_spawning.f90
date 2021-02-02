@@ -181,12 +181,6 @@ contains
                          end if
                     end do
                     if (.not. allowed_multiref) nspawn = 0
-                !MAF: including this else in the single reference case modifies some blooming behaviour (leads to smaller
-                !MAF: blooms) - should it be included? I think it is sound that if an excitor is outside ex_level even in 
-                !a single reference calculation, it should not be spawned to. It seems like currently these spawns are
-                !allowed, but presumably removed when merging the spawned particle list?
-                !else
-                !    nspawn = 0
                 end if
             end if
             if (excitor_sign < 0) nspawn = -nspawn
