@@ -36,8 +36,9 @@ weight_key: string
 
 Returns
 -------
-data : :class:`pandas.DataFrame`
-    HANDE QMC data with weights appended
+weight : List[float]
+    List of weights.
+    
 
 References
 ----------
@@ -62,6 +63,24 @@ Vigor15
     for i in range(weight_history, len(data[weight_key])):
         weights.append(weights[i-1]*to_prod[i] / to_prod[i-weight_history])
 
-    data['Weight'] = weights
 
-    return data
+    return weights
+
+def arith_series(tstep, mc_cycles, weight_now, weight_before):
+    
+    if tstep <= 0.0:
+        raise ValueError("QMC time step tstep should be > 0 and not passed in "
+                         f"value '{tstep}'.")
+    if mc_cycles <= 0:
+        raise ValueError("#Monte Carlo cycles mc_cycles should be > 0 and not"
+                         f"passed in value '{mc_cycles}'.")
+    
+    # Handle division by zero!!!
+    if weight_now != weight_before:
+        tdweight = tstep*(weight_before - weight_now)
+        ratio = ((1 - exp(-mc_cycles*tdweight))/(1 - exp(-tdweight)))
+        series = (1/float(mc_cycles)) * ratio
+    else:
+        series = 1.0
+
+    return series
