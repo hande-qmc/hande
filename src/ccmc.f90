@@ -309,7 +309,7 @@ contains
         use determinant_data, only: det_info_t
         use excitations, only: excit_t, get_excitation_level, get_excitation
         use qmc_io, only: write_qmc_report, write_qmc_report_header
-        use qmc, only: init_qmc, init_secondary_reference
+        use qmc, only: init_qmc, init_secondary_references
         use qmc_common, only: initial_qmc_status, initial_cc_projected_energy, load_balancing_report, init_report_loop, &
                               init_mc_cycle, end_report_loop, end_mc_cycle, redistribute_particles, rescale_tau
         use proc_pointers
@@ -428,7 +428,7 @@ contains
              qs%multiref = .true.
              qs%n_secondary_ref = ccmc_in%n_secondary_ref
              allocate (qs%secondary_refs(qs%n_secondary_ref))
-             call init_secondary_reference(sys, ccmc_in%secondary_refs, io_unit, qs)
+             call init_secondary_references(sys, ccmc_in%secondary_refs, io_unit, qs)
         else 
             qs%ref%max_ex_level = qs%ref%ex_level
         end if

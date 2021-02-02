@@ -1221,14 +1221,14 @@ contains
 
     end subroutine init_reference_restart
 
-    subroutine init_secondary_reference(sys, reference_in, io_unit, qs)
+    subroutine init_secondary_references(sys, references_in, io_unit, qs)
         ! Set the secondary reference determinant from input options
         ! and use it to set up the maximum considered excitation level
         ! for the calculation.
 
         ! In:
         !   sys: system being studied.
-        !   reference_in: array of secondary references provided in input.
+        !   references_in: array of secondary references provided in input.
         !   io_unit: io unit to write any information to.
         ! In/Out:
         !   qs: qmc_state used in the calculation.
@@ -1239,13 +1239,13 @@ contains
         use excitations, only: get_excitation_level, det_string
 
         type(sys_t), intent(in) :: sys
-        type(reference_t), intent(in) :: reference_in(:)
+        type(reference_t), intent(in) :: references_in(:)
         integer, intent(in) :: io_unit
         type(qmc_state_t), intent(inout) :: qs
         integer :: i, current_max, total_max = 0
         
-        do i = 1, size(reference_in)
-           call init_reference(sys, reference_in(i), io_unit, qs%secondary_refs(i))
+        do i = 1, size(references_in)
+           call init_reference(sys, references_in(i), io_unit, qs%secondary_refs(i))
            current_max = qs%ref%ex_level + get_excitation_level(det_string(qs%ref%f0,sys%basis), &
                                                                  det_string(qs%secondary_refs(i)%f0,sys%basis)) 
            if (current_max > total_max) total_max = current_max
@@ -1253,7 +1253,7 @@ contains
 
         qs%ref%max_ex_level = total_max
   
-    end subroutine
+    end subroutine init_secondary_references
 
 
     subroutine init_spawn_store(qmc_in, nspaces, pop_real_factor, basis, non_blocking_comm, proc_map, io_unit, spawn_store)
