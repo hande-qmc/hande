@@ -79,7 +79,8 @@ contains
 
         type(qmc_state_t), intent(in) :: qs
         logical, intent(in) :: complx
-        integer, intent(out) :: D0_proc, D0_pos, nD0_proc
+        integer, intent(out) :: D0_proc, nD0_proc
+        integer, intent(inout) :: D0_pos
         complex(p), intent(out) :: D0_normalisation
         integer :: slot
 #ifdef PARALLEL
