@@ -1199,7 +1199,6 @@ contains
         type(reference_t), intent(out) :: reference
 
         integer :: ierr
-
         allocate(reference%f0(sys%basis%tot_string_len), stat=ierr)
         call check_allocate('reference%f0',sys%basis%tot_string_len,ierr)
         allocate(reference%hs_f0(sys%basis%tot_string_len), stat=ierr)
@@ -1222,14 +1221,14 @@ contains
 
     end subroutine init_reference_restart
 
-    subroutine init_secondary_reference(sys,reference_in,io_unit,qs)
+    subroutine init_secondary_references(sys, references_in, io_unit, qs)
         ! Set the secondary reference determinant from input options
         ! and use it to set up the maximum considered excitation level
         ! for the calculation.
 
         ! In:
         !   sys: system being studied.
-        !   reference_in: secondary reference provided in input.
+        !   references_in: array of secondary references provided in input.
         !   io_unit: io unit to write any information to.
         ! In/Out:
         !   qs: qmc_state used in the calculation.
@@ -1237,17 +1236,24 @@ contains
         use reference_determinant, only: reference_t
         use system, only: sys_t
         use qmc_data, only: qmc_state_t 
-        use excitations, only: get_excitation_level
+        use excitations, only: get_excitation_level, det_string
+
         type(sys_t), intent(in) :: sys
-        type(reference_t), intent(in) :: reference_in
+        type(reference_t), intent(in) :: references_in(:)
         integer, intent(in) :: io_unit
         type(qmc_state_t), intent(inout) :: qs
+        integer :: i, current_max, total_max = 0
+        
+        do i = 1, size(references_in)
+           call init_reference(sys, references_in(i), io_unit, qs%secondary_refs(i))
+           current_max = qs%ref%ex_level + get_excitation_level(det_string(qs%ref%f0,sys%basis), &
+                                                                 det_string(qs%secondary_refs(i)%f0,sys%basis)) 
+           if (current_max > total_max) total_max = current_max
+        end do
 
-        call init_reference(sys, reference_in, io_unit, qs%second_ref)
-        qs%ref%max_ex_level = qs%ref%ex_level + get_excitation_level(qs%ref%f0(:sys%basis%bit_string_len), &
-                                                                  qs%second_ref%f0(:sys%basis%bit_string_len))
-        ! [WARNING - TODO] - ref%fock_sum not initialised here! 
-    end subroutine
+        qs%ref%max_ex_level = total_max
+  
+    end subroutine init_secondary_references
 
 
     subroutine init_spawn_store(qmc_in, nspaces, pop_real_factor, basis, non_blocking_comm, proc_map, io_unit, spawn_store)
