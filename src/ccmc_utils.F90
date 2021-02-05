@@ -70,6 +70,8 @@ contains
         ! Out:
         !    D0_proc: the processor index on which the reference currently resides.
         !    D0_pos: the position within the excip list of the reference. Set to -1 if iproc != D0_proc.
+        !           Otherwise must be set to be <= qs%psip_list%nstates for reasonable behaviour in 
+        !           find_D0.
         !    nD0_proc: 1 if iproc == D0_proc and 0 otherwise.
         !    D0_normalisation: population of the reference.
 
