@@ -298,11 +298,8 @@ ref_key : string
     the trial wavefunction (often/originally just a single determinant).
 total_key : string
     column name in reblock_data containing the total number of psips.
-<<<<<<< HEAD
 proje_key : string
     key for projected energy index in `opt_block`.
-=======
->>>>>>> public/master
 Returns
 -------
 ineff : :class:`pandas.DataFrame`
@@ -317,11 +314,7 @@ Vigor16
 '''
          
     try:
-<<<<<<< HEAD
         err_proj_e = opt_block['standard error'][proje_key]
-=======
-        err_proj_e = opt_block['standard error']['Proj. Energy']
->>>>>>> public/master
         Np = opt_block['mean'][total_key]
         err_Np = opt_block['standard error'][total_key]
         inefficiency = err_proj_e * numpy.sqrt(Np*iterations*dtau)
