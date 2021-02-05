@@ -73,8 +73,9 @@ contains
         !    D0_normalisation: population of the reference.
         ! InOut:
         !    D0_pos: On input set to a guess of where D0_pos is (often from a previous cycle)
-        !            or -1 if not known.  Must be qs%psip_list%nstates (for reasonable behaviour in find_D0).
-        !            On output, set to the position of D0 in the excip list on this processor or -1 if iproc != D0_proc.
+        !            or -1 if not known.  Must be less than or equal to qs%psip_list%nstates 
+        !            (for reasonable behaviour in find_D0). On output, set to the position of 
+        !            D0 in the excip list on this processor or -1 if iproc != D0_proc.
 
         use parallel
         use qmc_data, only: qmc_state_t
