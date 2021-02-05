@@ -203,10 +203,10 @@ class HybridAna(AbsErrorAnalyser):
 
         ratio_values = dat[self._hybrid_col].values
         n_data = len(ratio_values) // self._batch_size
-        means_batch = [0]*n_data
+        means_batch = []
         for i in range(n_data):
-            means_batch[i] = np.mean(
-                ratio_values[i*self._batch_size:(i+1)*self._batch_size])
+            means_batch.append(np.mean(
+                ratio_values[i*self._batch_size:(i+1)*self._batch_size]))
         mean = np.mean(means_batch)
         var = np.var(means_batch)
         acf = tsastats.acf(x=means_batch, unbiased=True,

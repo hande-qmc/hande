@@ -63,7 +63,8 @@ def check_data_input(data: List[pd.DataFrame],
 
 def _set_value(observables: Dict[str, str], col_item: Union[Optional[str], str]
                ) -> Union[Optional[str], str]:
-    """Helper to set value."""
+    """Helper to set value of column names. e.g. if col_item='N_0', return 'N_0'.
+       If col_item='obs:ref_key', return observables['ref_key']"""
     return (
         observables[col_item[4:]] if (col_item and col_item.startswith('obs:'))
         else col_item
@@ -92,7 +93,7 @@ def set_cols(observables: Dict[str, str], it_key: str,
         blocking.
     replica_col : str
         Key or actual name for replica column.
-    eval_ratio : ptional[Dict[str, str]]
+    eval_ratio : optional[Dict[str, str]]
         Keys or actual names of elements in observable ratio to be
         evaluated.
     hybrid_col : Union[Optional[str], str]

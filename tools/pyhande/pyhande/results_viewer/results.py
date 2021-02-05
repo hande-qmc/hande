@@ -43,7 +43,8 @@ class Results:
         self._summary = summary
 
     def _remove_obs_already_in_summary(self, df: pd.DataFrame):
-        """Remove observables already in summary from df."""
+        """Remove observables already in summary from df. Used in
+           _add_to_summary to only add new observables."""
         for obs in df['observable']:
             if ('observable' in self.summary and
                     obs in self.summary['observable'].values):

@@ -181,8 +181,8 @@ class PrepHandeCcmcFciqmc(AbsDataPreparator):
         ----------
         max_replica_id : int
             Highest id of replica.  Assume that replica ids are
-            consecutive.  With two replicas, ids are 1 and 2, so
-            `max_replica_id` would be 2.
+            consecutive.  With two replicas, ids are 0 and 1, so
+            `max_replica_id` would be 1.
         """
         for i in range(len(self.data)):
             replica_dats = []
@@ -300,8 +300,8 @@ class PrepHandeCcmcFciqmc(AbsDataPreparator):
             # Probably complex calculations!
             # Test that all are complex.
             if not all(self._re_cols('ref_key') in dat for dat in self.data):
-                raise ValueError("Some but not all data is complex! Either "
-                                 "pass data where all calculations are either "
+                raise ValueError("Some but not all data is complex! "
+                                 "Pass data where all calculations are either "
                                  "complex or not complex.")
             self._add_complex_obs()
             self._complex_data = True

@@ -241,9 +241,8 @@ class Blocker(AbsErrorAnalyser):
 
         Returns
         -------
+        data_len, reblock, covariance, no_opt_block, opt_block:
         pd.Series, pd.DataFrame, pd.DataFrame, List[str], pd.DataFrame
-            data_len, reblock, covariance, no_opt_block, opt_block of
-            analysis.
         """
         # Find start and end iteration:
         self._end_its.append(
