@@ -1461,9 +1461,13 @@ contains
 
         use molecular_integrals, only: store_one_body_int, get_one_body_int_mol_nonzero, &
                                get_two_body_int_mol_nonzero, get_two_body_exchange_pbc_int_nonzero,&
-                               pbc_ex_int_indx, int_ex_indx
+                               pbc_ex_int_indx, int_ex_indx, broadcast_one_body_t
         use system, only: sys_t
+<<<<<<< HEAD
         use parallel, only: parent
+=======
+        use parallel, only: parent, root
+>>>>>>> public/master
         use molecular_integral_types, only: two_body_t, one_body_t, two_body_exchange_t
 
         type(sys_t), intent(in) :: sys
@@ -1485,6 +1489,10 @@ contains
                 call store_one_body_int(i, i, intgrl, sys, .false., one_e_ints, ierr)
             end do
         end if
+<<<<<<< HEAD
+=======
+        call broadcast_one_body_t(one_e_ints, root)
+>>>>>>> public/master
 
     end subroutine modify_one_body_ints
 

@@ -360,12 +360,18 @@ metadata : list of dict
         if reweight_history > 0:
             weights = pyhande.weight.reweight(df, md['qmc']['ncycles'],
                 md['qmc']['tau'], reweight_history, mean_shift,
+<<<<<<< HEAD
                 weight_key=kShift)
             df['W * \sum H_0j N_j'] = df[kH0jNj] * weights
             df['W * N_0'] = df[kN0] * weights
         # The next uncommented line is dangerous and possibly very
         # confusing!  [todo] Fix.
         df['Proj. Energy'] = df[kH0jNj] / df[kN0] 
+=======
+                weight_key=kShift, arith_mean=arith_mean)
+            df['W * \sum H_0j N_j'] = df[kH0jNj] * df['Weight']
+            df['W * N_0'] = df[kN0] * df['Weight']
+>>>>>>> public/master
         data.append(df)
         metadata.append(md)
     if data:
@@ -465,7 +471,11 @@ info : :func:`collections.namedtuple`
         ineff = pyhande.analysis.inefficiency(opt_block, dtau, N,
                                               sum_key=kH0jNj, ref_key=kN0,
                                               total_key=kHpsips)
+<<<<<<< HEAD
         if ineff['mean']['Inefficiency'] is not None:
+=======
+        if ineff is not None:
+>>>>>>> public/master
             opt_block = opt_block.append(ineff)
 
     estimates = []
@@ -673,6 +683,11 @@ starting_iteration: integer
 
     if number_of_reblockings > frac_screen_interval:
         raise ValueError("number_of_reblockings > frac_screen_interval")
+
+    kN0 = check_key(data, 'N_0')
+    kHpsips = check_key(data, '# H psips')
+    kH0jNj = check_key(data,'\sum H_0j N_j')
+    kShift = check_key(data, 'Shift')
 
     kN0 = check_key(data, 'N_0')
     kHpsips = check_key(data, '# H psips')
