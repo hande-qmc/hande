@@ -11,15 +11,15 @@ Dependencies
 
 Fortran and C compilers
     HANDE is written in (mostly) Fortran 2003 with some C code.  We have tested HANDE
-    using GCC, Intel, Cray and IBM compilers and are interested in hearing of use with
-    other compilers.
+    most recently (as of 2021) using GCC, and Intel compilers and are interested in
+    hearing of use with other compilers.
 
     .. note::
 
         HANDE is relatively aggressive in adopting new language features and hence
         requires a fairly modern Fortran compiler.  In particular, gfortran 5.5 or earlier
-        is unlikely to successfully compile HANDE. We regularly test with gfortran 6 and
-        gfortran 7.
+        is unlikely to successfully compile HANDE.  We regularly test with and gfortran 7
+        and Intel 19.
 
 LAPACK and BLAS
     Available from http://www.netlib.org/lapack/ and http://www.netlib.org/blas/ and
@@ -43,23 +43,23 @@ MPI (parallel compilation only)
     MPI 2 is required.  We have used a variety of implementations (including OpenMPI and
     various vendor implementations).  MPI 3 is **highly** recommended and is used by
     default. MPI 3 shared memory functionality is used if detected.
-python 2.7+ or python 3.2+
+python 3.6+
     Almost all tools packaged with HANDE are written in python.
 
     .. note::
-
-        python 2.6 or earlier python 3 versions **may** be sufficient but will probably
+        python 3 versions **may** be sufficient but will probably
         require additional work.  In particular, the argparse module (included from 2.7
         and 3.2 onwards) is required and installing (especially recent versions of)
         pandas  may be problematic.  Using a recent version of python is highly
         recommended.
+        
 pandas 0.14.1+
     The HANDE data analysis tools build heavily upon the python scientific
     stack.  In particular, pandas (available from http://pandas.pydata.org) is required
     for the ``pyhande`` module and analysis scripts, almost all of which build upon
     ``pyhande``.  pandas is not required for running HANDE but is highly recommended for
     data analysis (though strictly speaking is only required if ``pyhande`` is used,
-    either directly or via analysis scripts).
+    either directly or via analysis scripts).  It has been tested up to pandas 1.2.2
 
 Bundled dependencies
 --------------------
@@ -90,6 +90,7 @@ HDF5
     (i.e. writing and reading restart files) in QMC calculations.
 
     Highly recommended.  Disabling HDF5 removes the ability to perform any checkpointing.
+    It has been tested with up to version 1.12.0
 
     .. note::
 
@@ -150,8 +151,8 @@ example:
 
 .. code-block:: bash
 
-    $ wget -O - https://support.hdfgroup.org/ftp/HDF5/releases/hdf5-1.10/hdf5-1.10.4/src/hdf5-1.10.4.tar.gz | tar xvzf -
-    $ cd hdf5-1.10.4
+    $ wget -O - https://support.hdfgroup.org/ftp/HDF5/releases/hdf5-1.12/hdf5-1.12.0/src/hdf5-1.12.0.tar.gz | tar xvzf -
+    $ cd hdf5-1.12.0
     $ ./configure --prefix=$HOME/local --enable-fortran
     $ make
     $ make install
