@@ -18,7 +18,7 @@ Fortran and C compilers
 
         HANDE is relatively aggressive in adopting new language features and hence
         requires a fairly modern Fortran compiler.  In particular, gfortran 5.5 or earlier
-        is unlikely to successfully compile HANDE.  We regularly test with and gfortran 7
+        is unlikely to successfully compile HANDE.  We regularly test with gfortran 7
         and Intel 19.
 
 LAPACK and BLAS
