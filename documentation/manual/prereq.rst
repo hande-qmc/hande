@@ -61,6 +61,11 @@ pandas 0.14.1+
     data analysis (though strictly speaking is only required if ``pyhande`` is used,
     either directly or via analysis scripts).  It has been tested up to pandas 1.2.2
 
+statsmodels 0.11.0+
+    Required from the latest version (1.5) for the ``pyhande`` module. It has been tested
+    up to 0.12.2.
+    
+
 Bundled dependencies
 --------------------
 
