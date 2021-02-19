@@ -24,6 +24,7 @@
 
 option_with_print(ENABLE_HDF5 "Enable usage of HDF5 (requires Fortran 2003 bindings)" ON)
 set(USE_HDF5 OFF)
+cmake_policy(SET CMP0074 NEW)
 # Just unset the variable if empty
 # This avoids an annoying CMake warning _and_ mucking up the environment variable.
 if(NOT HDF5_ROOT)
