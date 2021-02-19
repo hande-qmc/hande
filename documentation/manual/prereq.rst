@@ -27,7 +27,7 @@ LAPACK and BLAS
     manager.  This is only required for the FCI functionality in HANDE; the performance of
     the QMC algorithms do not depend upon the quality of the LAPACK and BLAS libraries
     used.
-lua 5.3
+lua 5.3 or 5.4
     Lua (available from http://www.lua.org) is required.  HANDE links to the lua library,
     which is used for parsing the input file.  No performance critical code is written in
     lua.
