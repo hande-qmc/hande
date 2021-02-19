@@ -27,17 +27,20 @@ HANDE development team
 | Nick Blunt, University of Cambridge.
 | Fionn Malone, Lawrence Livermore National Laboratory.
 | Matthew Foulkes, Imperial College London.
-| Ruth Franklin, University of Cambridge.
 | Charlie Scott, University of Cambridge.
 | Verena Neufeld, University of Cambridge.
 | James Shepherd, University of Iowa.
 | Roberto Di Remigio, University of Tromsø and Virginia Tech.
 | Maria-Andreea Filip, University of Cambridge.
+| Hayley Petras, University of Iowa.
+| Christopher Bradley, Imperial College London.
+| Tiger Zhang, University of Cambridge.
 
 Some past HANDE developers
 --------------------------
 | James Spencer, Imperial College London.
 | Will Vigor, Imperial College London.
+| Ruth Franklin, University of Cambridge.
 
 LICENCE
 -------
