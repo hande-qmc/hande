@@ -358,11 +358,11 @@ metadata : list of dict
         kH0jNj = check_key(df, '\sum H_0j N_j')
         kShift = check_key(df, 'Shift')
         if reweight_history > 0:
-            df = pyhande.weight.reweight(df, md['qmc']['ncycles'],
+            weights = pyhande.weight.reweight(df, md['qmc']['ncycles'],
                 md['qmc']['tau'], reweight_history, mean_shift,
                 weight_key=kShift)
-            df['W * \sum H_0j N_j'] = df[kH0jNj] * df['Weight']
-            df['W * N_0'] = df[kN0] * df['Weight']
+            df['W * \sum H_0j N_j'] = df[kH0jNj] * weights
+            df['W * N_0'] = df[kN0] * weights
         # The next uncommented line is dangerous and possibly very
         # confusing!  [todo] Fix.
         df['Proj. Energy'] = df[kH0jNj] / df[kN0] 
@@ -465,7 +465,7 @@ info : :func:`collections.namedtuple`
         ineff = pyhande.analysis.inefficiency(opt_block, dtau, N,
                                               sum_key=kH0jNj, ref_key=kN0,
                                               total_key=kHpsips)
-        if ineff is not None:
+        if ineff['mean']['Inefficiency'] is not None:
             opt_block = opt_block.append(ineff)
 
     estimates = []
