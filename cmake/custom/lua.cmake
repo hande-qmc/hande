@@ -15,7 +15,7 @@ option_with_default(LUA_ROOT "Specify the path to the Lua installation to use" "
 if(LUA_ROOT)
   list(APPEND CMAKE_PREFIX_PATH ${LUA_ROOT})
 endif()
-find_package(Lua 5.3 EXACT REQUIRED)
+find_package(Lua 5.3 REQUIRED)
 
 # Append the dl library to the LUA_LIBRARIES list for a statically
 # linked Lua library.
