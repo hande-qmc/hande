@@ -32,7 +32,7 @@ class TestReweight(unittest.TestCase):
             1.458807107328307, 1.3161854614506716, 1.2180552596788903,
             1.2707685717179618, 1.1604423403147808, 1.1228973649952922
         ]
-        self.assertListEqual(weights, weights_exp)
+        assert np.allclose(weights, weights_exp)
 
     def test_weight_key_input(self):
         """Use custom column in data."""
@@ -53,7 +53,7 @@ class TestReweight(unittest.TestCase):
             0.993092551463694, 1.01049106979456, 1.015785662792946,
             1.0217847276206045, 1.0257503886293498, 1.0278506705546948
         ]
-        self.assertListEqual(weights, weights_exp)
+        assert np.allclose(weights, weights_exp)
 
     def test_zero_tstep_input(self):
         """tstep == 0."""
