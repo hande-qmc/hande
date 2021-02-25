@@ -1,9 +1,9 @@
 [hande]
-exe = ../bin/hande.x
+exe = /Shared/informatics_jshepherd/Users/hpetras/hande-dev-popcontrol/bin/hande.x
 inputs_args = ('*.in', '')
 vcs = git
-extract_fn = ../tools/pyhande pyhande.testcode.testcode_data
-extract_program = ../tools/tests/extract_test_data.py
+extract_fn = /Shared/informatics_jshepherd/Users/hpetras/hande-dev-popcontrol/tools/pyhande pyhande.testcode.testcode_data
+extract_program = /Shared/informatics_jshepherd/Users/hpetras/hande-dev-popcontrol/tools/tests/extract_test_data.py
 ignore_fields = time
 skip_program = grep
 skip_args = -i 'disabled at compile-time\|Fatal: not compiled with HDF5 support\|Running with .* threads\|Tried to pass logging options to a non-debug build'
@@ -11,6 +11,6 @@ skip_cmd_template = tc.skip tc.args tc.test tc.error
 
 [user]
 diff = vimdiff
-benchmark = 509dea96 41bb41a 24c29827 dfd0592 96bc831
+benchmark = 4a9859b
 tolerance = (1.e-10, 1.e-10, None, False)
 
