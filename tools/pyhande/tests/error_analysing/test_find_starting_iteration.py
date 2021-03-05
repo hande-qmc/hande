@@ -32,9 +32,9 @@ class TestFindStartingIterationsBlocking(unittest.TestCase):
             self._df_mock,  self._df_mock['iterations'].iloc[-1], 'iterations',
             ['Shift', 'test', 'N_0', r'\sum H_0j N_j', 'alt'], None)
         try:
-            self.assertEqual(analyser.start_its[0], 491)
+            self.assertEqual(start_it, 491)
         except AssertionError:
-          warnings.warn("Starting iteration " + str(analyser.start_its[0]) + 
+          warnings.warn("Starting iteration " + str(start_it) + 
                         " does not match expected value " + str(491) + ". This is"
                         " likely due to a rounding error and should not cause further issues.")
           return 0
@@ -53,9 +53,9 @@ class TestFindStartingIterationsBlocking(unittest.TestCase):
             self._df_mock,  self._df_mock['test_it'].iloc[-1], 'test_it',
             ['Shift', 'test', 'N_0', r'\sum H_0j N_j', 'alt'], None)
         try:
-            self.assertEqual(analyser.start_its[0], 491)
+            self.assertEqual(start_it, 491)
         except AssertionError:
-          warnings.warn("Starting iteration " + str(analyser.start_its[0]) + 
+          warnings.warn("Starting iteration " + str(start_it) + 
                         " does not match expected value " + str(491) + ". This is"
                         " likely due to a rounding error and should not cause further issues.")
           return 0
@@ -74,9 +74,9 @@ class TestFindStartingIterationsBlocking(unittest.TestCase):
             ['Shift', 'test', 'N_0', r'\sum H_0j N_j', 'alt'],
             ['Proj. Energy'])
         try:
-            self.assertEqual(analyser.start_its[0], 491)
+            self.assertEqual(start_it, 491)
         except AssertionError:
-          warnings.warn("Starting iteration " + str(analyser.start_its[0]) + 
+          warnings.warn("Starting iteration " + str(start_it) + 
                         " does not match expected value " + str(491) + ". This is"
                         " likely due to a rounding error and should not cause further issues.")
           return 0
@@ -127,9 +127,9 @@ class TestFindStartingIterationsBlocking(unittest.TestCase):
             ['Shift', 'test', 'N_0', r'\sum H_0j N_j', 'alt'], None,
             grid_size=len(self._df_mock)+2)
         try:
-            self.assertEqual(analyser.start_its[0], 491)
+            self.assertEqual(start_it, 491)
         except AssertionError:
-          warnings.warn("Starting iteration " + str(analyser.start_its[0]) + 
+          warnings.warn("Starting iteration " + str(start_it) + 
                         " does not match expected value " + str(491) + ". This is"
                         " likely due to a rounding error and should not cause further issues.")
           return 0
@@ -173,9 +173,9 @@ class TestFindStartingIterationsBlocking(unittest.TestCase):
             self._df_mock,  self._df_mock['iterations'].iloc[-1], 'iterations',
             ['Shift', 'test', 'N_0', r'\sum H_0j N_j', 'alt'], None)
         try:
-            self.assertEqual(analyser.start_its[0], 491)
+            self.assertEqual(start_it, 491)
         except AssertionError:
-          warnings.warn("Starting iteration " + str(analyser.start_its[0]) + 
+          warnings.warn("Starting iteration " + str(start_it) + 
                         " does not match expected value " + str(491) + ". This is"
                         " likely due to a rounding error and should not cause further issues.")
           return 0
@@ -346,9 +346,9 @@ class TestSelectFindStart(unittest.TestCase):
             self._df_mock,  self._df_mock['iterations'].iloc[-1], 'iterations',
             ['Shift', 'test', 'N_0', r'\sum H_0j N_j', 'alt'], None)
         try:
-            self.assertEqual(analyser.start_its[0], 491)
+            self.assertEqual(start_it, 491)
         except AssertionError:
-          warnings.warn("Starting iteration " + str(analyser.start_its[0]) + 
+          warnings.warn("Starting iteration " + str(start_it) + 
                         " does not match expected value " + str(491) + ". This is"
                         " likely due to a rounding error and should not cause further issues.")
           return 0
