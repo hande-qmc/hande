@@ -371,6 +371,7 @@ contains
             end if
         else
             ! [review] - Verena: Do you also need to communicate D0_population_ucc?
+! [review] - AJWT: Probably worth doing for consistency.
             rep_loop_loc(proj_energy_ind) = qs%estimators(1)%proj_energy
             rep_loop_loc(D0_pop_ind) = qs%estimators(1)%D0_population
             if (qs%psip_list%nspaces > 1) then

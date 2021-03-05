@@ -96,16 +96,23 @@ contains
     pure function earliest_unset(f, f0, nel, basis) result (early)
         
          ! Function to find earliest unset bit in a determinant bit string.
+! [review] - AJWT:  Not really what this does - it finds the earliest different to f0.
+! [review] - AJWT:  Perhaps split into two functions, earliest_unset and earliest_diff?
 
          ! In:
          !    f: bit_string encoding determinant
+! [review] - AJWT:  Explain what f0 is doing here
          !    nel: number of electrons in the system
          !    basis: basis_t object with information on one-electron basis in use.
+         !
+         ! Returns:
+         !    Zero-based index of the earliest unset bit.
      
          use basis_types, only: basis_t
          use bit_utils, only: count_set_bits
 
          type(basis_t), intent(in) :: basis
+! [review] - AJWT: Do we need the whole tot_string_len when we actually only care about the bit_string_len?
          integer(i0), intent(in) :: f(basis%tot_string_len), f0(basis%tot_string_len)
          integer, intent(in) :: nel
          integer :: i, early
@@ -115,16 +122,18 @@ contains
          early = 0
          i = 0
           
-         diff = ieor(f(1),f0(1))
+! [review] - AJWT: This is very dangerous to only take the least significant word - it should be extended to the full bit_string_len
+         diff = ieor(f(1), f0(1))
          if (diff /= 0) then
              do 
-                 if (btest(diff,i)) then
+                 if (btest(diff, i)) then
                      early = i
                      exit
                  end if
-                 i = i+1
+                 i = i + 1
              end do
          else
+! [review] - AJWT: I think this is finding the the highest set bit in f0, but I don't know why.
              f0_loc = f0(1)
              do while (f0_loc/=0)
                  f0_loc = ibclr(f0_loc, early)
@@ -136,9 +145,12 @@ contains
     pure function latest_unset(f, f0, nel, basis) result (late)
         
          ! Function to find earliest unset bit in a determinant bit string.
+! [review] - AJWT:  Not really what this does - it finds the latest different to f0 in the occupied in f0.
+! [review] - AJWT:  Perhaps split into two functions, latest_unset and latest_diff?
 
          ! In:
          !    f: bit_string encoding determinant
+! [review] - AJWT:  Explain what f0 is doing here
          !    nel: number of electrons in the system
          !    basis: basis_t object with information on one-electron basis in use.
      
@@ -154,6 +166,7 @@ contains
          
          late = 0
           
+! [review] - AJWT: This is very dangerous to only take the least significant word - it should be extended to the full bit_string_len
          diff = ieor(f(1),f0(1))
          diff = iand(diff, f0(1))
          if (diff /= 0) then
@@ -166,6 +179,7 @@ contains
                  end if
              end do
          else
+! [review] - AJWT: I think this is finding the the highest set bit in f0, but I don't know why.
              f0_loc = f0(1)
              do while (f0_loc/=0)
                  f0_loc = ibclr(f0_loc, late)
@@ -176,6 +190,7 @@ contains
 
     subroutine add_info_str_trot(basis, f0, nel, f)
 
+! [review] - AJWT: This also stores the 'latest' unset bit.
         ! Sets bits within bit string to give excitation level at end of bit strings.
         ! This routine sets ex level from provided reference.
 
@@ -189,6 +204,8 @@ contains
         integer(i0) :: counter(basis%tot_string_len)
        
 
+
+! [review] - AJWT: Presumable one needs info_string_len >=2.
         if (basis%info_string_len/=0) then
 
             f(basis%bit_string_len+2) = latest_unset(f, f0, nel, basis)     
