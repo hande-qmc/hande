@@ -179,8 +179,8 @@ contains
 
         call allocate_time_average_lists(qs, time_avg_psip_list_states, time_avg_psip_list_pops, nstates_sq)
         allocate(time_avg_psip_list_sq(2,size(qs%psip_list%states(1,:))))
-        time_avg_psip_list_sq(1,:) = qs%psip_list%states(1,:)
-        time_avg_psip_list_sq(2,:) = (real(qs%psip_list%pops(1,:))/qs%psip_list%pop_real_factor)**2
+        time_avg_psip_list_sq(1,:qs%psip_list%nstates) = qs%psip_list%states(1,:qs%psip_list%nstates)
+        time_avg_psip_list_sq(2,:qs%psip_list%nstates) = (real(qs%psip_list%pops(1,:qs%psip_list%nstates))/qs%psip_list%pop_real_factor)**2
 
         qs%ref%max_ex_level = qs%ref%ex_level
 
@@ -297,16 +297,14 @@ contains
                 
                 iter = qs%mc_cycles_done + (ireport-1)*qmc_in%ncycles + icycle
 
-                !If this is the first iteration where the shift varies, start averaging the
-                !cluster amplitudes.
                 if (all(qs%vary_shift) .and. (.not. old_vary)) then
                     old_vary = all(qs%vary_shift) 
                     avg_start = iter
                     time_avg_psip_list_pops(:qs%psip_list%nstates) = &
                         real(qs%psip_list%pops(1,:qs%psip_list%nstates))/qs%psip_list%pop_real_factor
                     time_avg_psip_list_states(:,:qs%psip_list%nstates) = qs%psip_list%states(:,:qs%psip_list%nstates)
-                    time_avg_psip_list_sq(1,:) = qs%psip_list%states(1,:)
-                    time_avg_psip_list_sq(2,:) = (real(qs%psip_list%pops(1,:))/qs%psip_list%pop_real_factor)**2
+                    time_avg_psip_list_sq(1,:qs%psip_list%nstates) = qs%psip_list%states(1,:qs%psip_list%nstates)
+                    time_avg_psip_list_sq(2,:qs%psip_list%nstates) = (real(qs%psip_list%pops(1,:qs%psip_list%nstates))/qs%psip_list%pop_real_factor)**2
                     nstates_sq = qs%psip_list%nstates
                 end if
 
@@ -398,7 +396,7 @@ contains
                 !$omp        proj_energy_cycle, D0_population_cycle, selection_data,      &
                 !$omp        nattempts_spawn, D0_population_ucc_cycle,&
                 !$omp        uccmc_in, nprocs, ms_stats, ps_stats, qmc_in, load_bal_in, &
-                !$omp        ndeath_nc,   
+                !$omp        ndeath_nc, &  
                 !$omp        nparticles_change, ndeath, logging_info, nstates_ci, & 
                 !$omp        time_avg_psip_list_ci_states, time_avg_psip_list_ci_pops, &
                 !$omp        time_avg_psip_list_states, time_avg_psip_list_pops)
@@ -507,6 +505,7 @@ contains
             qs%estimators%proj_energy = real(qs%estimators%proj_energy_comp,p)
  
             if (debug) call write_logging_select_ccmc(logging_info, iter, selection_data)
+             
             call end_report_loop(io_unit, qmc_in, iter, update_tau, qs, nparticles_old, nspawn_events, &
                                  -1, semi_stoch_it, soft_exit=soft_exit, &
                                  load_bal_in=load_bal_in, bloom_stats=bloom_stats, comp=sys%read_in%comp, &
@@ -516,9 +515,18 @@ contains
             call cpu_time(t2)
             if (parent) then
                 if (bloom_stats%nblooms_curr > 0) call bloom_stats_warning(bloom_stats, io_unit=io_unit)
-                call write_qmc_report(qmc_in, qs, ireport, nparticles_old, t2-t1, .false., .false., &
-                                        io_unit=io_unit, cmplx_est=sys%read_in%comp, rdm_energy=uccmc_in%density_matrices, &
-                                        nattempts=.true.)
+                !if (all(qs%vary_shift)) then
+                !write (io_unit, '(1X, "Cluster populations",/)')
+                !do i = 1, qs%psip_list%nstates
+                !    call write_qmc_var(io_unit, qs%psip_list%states(1,i))
+                !    call write_qmc_var(io_unit, qs%psip_list%pops(1, i))
+                !    write (io_unit,'()')
+                !end do
+                !else
+               call write_qmc_report(qmc_in, qs, ireport, nparticles_old, t2-t1, .false., .false., &
+                                       io_unit=io_unit, cmplx_est=sys%read_in%comp, rdm_energy=uccmc_in%density_matrices, &
+                                       nattempts=.true.)
+                !end if
             end if
 
 
@@ -861,7 +869,7 @@ contains
             ! a given cluster, so the probability of selecting one must be divided by this.
             cluster%pselect = cluster%pselect/(2**(cluster%nexcitors-1))
             ![TODO] decide the fate of the sort
-            call insert_sort(pop(:cluster%nexcitors))
+            !call insert_sort(pop(:cluster%nexcitors))
             prev_pos = 1
             do i = 1, cluster%nexcitors
                 call binary_search(cumulative_excip_pop, pop(i), prev_pos, psip_list%nstates, hit, pos)
@@ -912,7 +920,7 @@ contains
                     ! then the probability this excitor is on the same processor as the
                     ! previous excitor is 1/nprocs.  (Note choosing the same excitor
                     ! multiple times is valid in linked CC.)
-                    if (pos /= prev_pos) cluster%pselect = cluster%pselect/nprocs
+                    !if (pos /= prev_pos) cluster%pselect = cluster%pselect/nprocs
                 end if
                 ! If the excitor's population is below the initiator threshold, we remove the
                 ! initiator status for the cluster
@@ -920,7 +928,7 @@ contains
                 ! Probability of choosing this excitor = pop/tot_pop.
                 cluster%pselect = (cluster%pselect*abs(excitor_pop))/tot_excip_pop
                 cluster%excitors(i)%f => psip_list%states(:,pos)
-                prev_pos = pos
+                !prev_pos = pos
             end do
 
             if (allowed) then
@@ -1332,21 +1340,12 @@ contains
             ! the cluster.
             call zero_estimators_t(estimators_cycle)
             connection = get_excitation(sys%nel, sys%basis, cdet%f, qs%ref%f0)
-            !if (uccmc_in%trot) then
-            !    call update_proj_energy_ptr(sys, qs%ref%f0, qs%trial%wfn_dat, cdet, &
-            !         [real(cluster%amplitude,p),aimag(cluster%amplitude)]*&
-            !         cluster%cluster_to_det_sign/cluster%pselect, &
-            !         estimators_cycle, connection, hmatel)
-            !else
-                call update_proj_energy_mol_ucc(sys, qs%ref%f0, qs%trial%wfn_dat, cdet, &
+            call update_proj_energy_mol_ucc(sys, qs%ref%f0, qs%trial%wfn_dat, cdet, &
                      [real(cluster%amplitude,p),aimag(cluster%amplitude)]*&
                      cluster%cluster_to_det_sign/cluster%pselect, &
                      estimators_cycle, connection, hmatel, cluster%nexcitors)
-            !end if
-
             D0_population_cycle = D0_population_cycle + estimators_cycle%D0_population
             proj_energy_cycle = proj_energy_cycle + estimators_cycle%proj_energy
-            !if (.not. uccmc_in%trot)  
             D0_population_ucc_cycle = D0_population_ucc_cycle + estimators_cycle%D0_population_ucc
         end if
 
@@ -1803,6 +1802,7 @@ contains
            normalisation = normalisation + (pops(i)/D0_pop)**2
            do j = 1, nstates
                hmatel = get_hmatel(sys, states(:,i), states(:,j))
+               if (i>=j) print*, states(1,i), states(1, j), hmatel%r
                var_energy = var_energy + hmatel%r*(pops(i)/D0_pop)*(pops(j)/D0_pop)
            end do
        end do
