@@ -679,6 +679,11 @@ starting_iteration: integer
     kH0jNj = check_key(data,'\sum H_0j N_j')
     kShift = check_key(data, 'Shift')
 
+    kN0 = check_key(data, 'N_0')
+    kHpsips = check_key(data, '# H psips')
+    kH0jNj = check_key(data,'\sum H_0j N_j')
+    kShift = check_key(data, 'Shift')
+
     if end is None:
         # Default end is the last iteration.
         end = data['iterations'].iloc[-1]

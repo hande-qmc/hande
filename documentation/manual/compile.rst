@@ -19,3 +19,18 @@ you can find examples in the ``config`` folder.
 
    compile-with-cmake
    compile-with-make
+   
+
+A Docker image is also available to try out our code. After installing Docker
+(https://docs.docker.com/install/) you can run the following command: 
+
+   docker run -it handeqmc/hande_ubuntu18.04:latest
+   
+to start an Ubuntu 18.04 container with the latest version of HANDE installed.
+The Python dependencies of HANDE are also installed in a virtual environment, 
+which you can access with pipenv shell.
+
+To mount your local directory in common with the virtual machine use
+
+   docker run -it -v "$PWD":/home/mightybuilder/work handeqmc/hande_ubuntu18.04:latest
+   
