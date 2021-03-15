@@ -155,6 +155,8 @@ def find_starting_iteration_blocking(
     `cols`.
 
     This implementation is based on an older version in pyhande/lazy.py.
+    V. A. Neufeld thanks the EPSRC CDT CMMS cohort 1 in Cambridge for
+    helpful discussions.
 
     .. warning::
 
@@ -282,6 +284,8 @@ def find_starting_iteration_mser_min(
 
     This is a reformatted and altered version of a previous
     implementation in lazy.py by Tom Ichibha.
+    See Ichibha, T., Hongo, K., Maezono, R., Thom, A. J. W., 2019
+    arXiv:1904.09934 [physics.comp-ph]
 
     Parameters
     ----------
