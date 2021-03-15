@@ -195,7 +195,11 @@ class ResultsCcmcFciqmc(Results):
 
     @property
     def shoulder(self) -> pd.DataFrame:
-        """Access shoulder. For now, not hist shoulder [todo]."""
+        """Access shoulder. For now, not hist shoulder [todo].
+
+        See J. S. Spencer and A. J. W. Thom (2016),
+        J. Chem. Phys. 144, 084108.
+        """
         if not self.preparator:
             raise ValueError("Cannot calculate shoulder as mapping of "
                              "observables is not accessible. Define "
@@ -246,7 +250,10 @@ class ResultsCcmcFciqmc(Results):
 
     @property
     def inefficiency(self) -> pd.DataFrame:
-        """Access inefficiency."""
+        """Access inefficiency.
+
+        See W. A. Vigor et al. (2016), J. Chem. Phys. 144, 094110.
+        """
         if not self.analyser or not self.preparator:
             raise ValueError("Define analyser and preparator to calculate "
                              "inefficiency.")
