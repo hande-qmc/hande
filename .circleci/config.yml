@@ -32,7 +32,7 @@ variables:
       name: Configuring MPI parallel
       shell: /bin/bash
       command: |
-        pipenv run python cmake/update.py && \
+        pipenv run python cmake/update.py --self && \
         pipenv run python cmakeconfig.py \
                        --type=release \
                        --fc=mpifort \
