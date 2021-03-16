@@ -1,11 +1,8 @@
-FROM ubuntu:18.04
+FROM ubuntu:20.04
 
 # Set an encoding to make things work smoothly.
 ENV LANG C.UTF-8
 ENV LC_ALL C.UTF-8
-
-# Add a timestamp for the build. Also, bust the cache.
-ADD https://now.httpbin.org/when/now /opt/docker/etc/timestamp
 
 ARG DEBIAN_FRONTEND=noninteractive
 RUN apt-get --yes -qq update \
@@ -42,7 +39,7 @@ RUN apt-get --yes -qq update \
 COPY run_commands /opt/docker/bin/run_commands
 RUN /opt/docker/bin/run_commands
 
-ENV PATH $PATH:/root/.local/bin:/opt/cmake/bin
+ENV PATH $PATH:/root/.local/bin
 
 ENV LD_LIBRARY_PATH /root/.local/lib${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}
 

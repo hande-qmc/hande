@@ -1,9 +1,9 @@
 version: 2
 
 variables:
-  ubuntu-1804: &ubuntu-1804
+  ubuntu-2004: &ubuntu-2004
     docker:
-      - image: handeqmc/circleci_ubuntu-18.04
+      - image: ghcr.io/handeqmc/circleci_ubuntu-20.04:latest
         name: tsubame
         user: merzbow 
     working_directory: ~/hande
@@ -89,7 +89,7 @@ variables:
 
 jobs:
   cmake-mpi-py3:
-    <<: *ubuntu-1804
+    <<: *ubuntu-2004
     environment:
       - PYTHON_VER: "3"
     steps:
@@ -100,7 +100,7 @@ jobs:
       - *build-cmake
       - *tests
   legacy-mpi-py3:
-    <<: *ubuntu-1804
+    <<: *ubuntu-2004
     environment:
       - PYTHON_VER: "3"
     steps:
