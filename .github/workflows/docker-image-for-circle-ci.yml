@@ -6,12 +6,6 @@ on:
       - .github/workflows/docker-image-for-circle-ci.yml
       - .circleci/Dockerfile
       - .circleci/run_commands
-  pull_request:
-    paths:
-      - .github/workflows/docker-image-for-circle-ci.yml
-      - .circleci/Dockerfile
-      - .circleci/run_commands
-
   workflow_dispatch:
 
 jobs:
