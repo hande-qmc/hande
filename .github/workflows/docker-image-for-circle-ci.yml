@@ -23,7 +23,7 @@ jobs:
         uses: docker/login-action@v1
         with:
           registry: ghcr.io
-          username: ${{ github.CR_USER }}
+          username: ${{ secrets.CR_USER }}
           password: ${{ secrets.CR_PAT }}
       
       - name: Build and push Docker images
@@ -31,4 +31,4 @@ jobs:
         with:
           context: .circleci
           push: true
-          tags: ghcr.io/${{ github.CR_USER }}/hande_circleci:latest
+          tags: ghcr.io/${{ secrets.CR_USER }}/hande_circleci:latest
