@@ -1,5 +1,5 @@
 name: HANDE
-min_cmake_version: 3.6
+min_cmake_version: 3.12
 setup_script: cmakeconfig.py
 url_root: https://github.com/coderefinery/autocmake/raw/master/
 default_build_type: release
