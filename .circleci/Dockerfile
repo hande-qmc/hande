@@ -1,9 +1,12 @@
 FROM ubuntu:20.04
 
-# Set an encoding to make things work smoothly.
+# set an encoding to make things work smoothly.
 ENV LANG C.UTF-8
 ENV LC_ALL C.UTF-8
+# set timezone
+ENV TZ=Europe/London
 
+ARG DEBIAN_FRONTEND=noninteractive
 RUN apt --yes -qq update \
  && apt --yes -qq upgrade \
  && apt --yes -qq install \
@@ -31,7 +34,7 @@ RUN apt --yes -qq update \
                   uuid-dev \
  && rm -rf /var/lib/apt/lists/*
 
-# Run common commands
+# run common commands
 COPY run_commands /opt/docker/bin/run_commands
 RUN /opt/docker/bin/run_commands
 
