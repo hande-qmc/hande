@@ -11,11 +11,7 @@ variables:
     run:
       name: Set Python dependencies
       command: |
-        if [[ "$PYTHON_VER" == "2" ]] ; then
-            pipenv install --two
-        else
-            pipenv install --three
-        fi
+        pipenv install --three
   report: &report
     run:
       name: Report
@@ -92,39 +88,6 @@ variables:
         pipenv run python /opt/testcode/bin/testcode.py -c vquick_serial -v
 
 jobs:
-  cmake-py2:
-    <<: *ubuntu-1804
-    environment:
-      - PYTHON_VER: "2"
-    steps:
-      - checkout
-      - *setup
-      - *report
-      - *configure-cmake
-      - *build-cmake
-      - *tests-serial
-  cmake-mpi-py2:
-    <<: *ubuntu-1804
-    environment:
-      - PYTHON_VER: "2"
-    steps:
-      - checkout
-      - *setup
-      - *report
-      - *configure-cmake-mpi
-      - *build-cmake
-      - *tests
-  legacy-mpi-py2:
-    <<: *ubuntu-1804
-    environment:
-      - PYTHON_VER: "2"
-    steps:
-      - checkout
-      - *setup
-      - *report
-      - *configure-legacy
-      - *build-legacy
-      - *tests
   cmake-mpi-py3:
     <<: *ubuntu-1804
     environment:
@@ -152,8 +115,5 @@ workflows:
   version: 2
   build:
     jobs:
-      - cmake-py2
-      - cmake-mpi-py2
-      - legacy-mpi-py2
       - cmake-mpi-py3
       - legacy-mpi-py3
