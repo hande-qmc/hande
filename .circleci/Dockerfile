@@ -11,6 +11,7 @@ RUN apt --yes -qq update \
  && apt --yes -qq upgrade \
  && apt --yes -qq install \
                   bzip2 \
+                  cmake \
                   cpio \
                   curl \
                   g++ \
