@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 # Install recent CMake
-CMAKE_VERSION="3.6.3"
+CMAKE_VERSION="3.20.0"
 cmake_url="https://cmake.org/files/v${CMAKE_VERSION%.*}/cmake-${CMAKE_VERSION}-Linux-x86_64.tar.gz"
 target_path="/opt/cmake"
 mkdir -p $target_path && \
