@@ -32,7 +32,6 @@ variables:
       name: Configuring MPI parallel
       shell: /bin/bash
       command: |
-        export CMAKE_MODULE_PATH=$pwd/cmake/custom/compilers && echo $CMAKE_MODULE_PATH && \
         pipenv run python cmakeconfig.py \
                        --type=release \
                        --fc=mpifort \
