@@ -1,3 +1,3 @@
-include(GNU.C)
-include(Clang.C)
-include(Intel.C)
+include(GNU.C.cmake)
+include(Clang.C.cmake)
+include(Intel.C.cmake)
