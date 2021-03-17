@@ -71,7 +71,7 @@ variables:
       name: Building
       shell: /bin/bash
       command: |
-        env VERBOSE=1 make
+        pipenv run env VERBOSE=1 make
   tests: &tests
     run:
       name: Testing
