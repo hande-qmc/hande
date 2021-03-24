@@ -25,11 +25,11 @@ build-lua-hdf5:
         - wget -q -O - http://www.lua.org/ftp/lua-5.3.5.tar.gz | tar xvzf -
         - cd lua-5.3.5
         - make linux &>/dev/null
-        - make install INSTALL_TOP=/home/gitlab-runner/builds/oQzesuVK/0/ch/thom/hande-testing/local 
+        - make install INSTALL_TOP=/home/gitlab-runner/builds/oQzesuVK/0/ch/thom/hande-public-testing/local 
         - cd ..
         - wget -q -O - https://support.hdfgroup.org/ftp/HDF5/releases/hdf5-1.10/hdf5-1.10.4/src/hdf5-1.10.4.tar.gz | tar xvzf -
         - cd hdf5-1.10.4
-        - ./configure --prefix=/home/gitlab-runner/builds/oQzesuVK/0/ch/thom/hande-testing/local/hdf5-gnu --enable-fortran --enable-fortran2003 --enable-cxx &> /dev/null
+        - ./configure --prefix=/home/gitlab-runner/builds/oQzesuVK/0/ch/thom/hande-public-testing/local/hdf5-gnu --enable-fortran --enable-fortran2003 --enable-cxx &> /dev/null
         - make &> /dev/null
         - make install &> /dev/null
         - cd .. && rm -r hdf5-1.10.4
@@ -38,7 +38,7 @@ build-lua-hdf5:
         - export FC=ifort
         - export CC=icc
         - export CXX=icpc
-        - ./configure --prefix=/home/gitlab-runner/builds/oQzesuVK/0/ch/thom/hande-testing/local/hdf5-intel --enable-fortran --enable-fortran2003 --enable-cxx  &> /dev/null
+        - ./configure --prefix=/home/gitlab-runner/builds/oQzesuVK/0/ch/thom/hande-public-testing/local/hdf5-intel --enable-fortran --enable-fortran2003 --enable-cxx  &> /dev/null
         - make &> /dev/null
         - make install &> /dev/null
         - cd ..
@@ -55,6 +55,7 @@ test-gcc:
         - hande-testing
     before_script:
         - module load anaconda/python3
+        - module load cmake
     script:
         - ./cmakeconfig.py --fc=gfortran --cc=gcc --lua=./local/ --hdf5=./local/hdf5-gnu --det-size=64 --pop-size=64
         - cmake --build build -- VERBOSE=1 -j 6
@@ -72,6 +73,7 @@ test-gcc-mpi:
         - module load anaconda/python3
         - module load mpi/openmpi/64/gnu/3.1.2
         - module load mkl
+        - module load cmake
     script:
         - ./cmakeconfig.py --mpi --fc=mpif90 --cc=mpicc --mpi-with-scalapack --lua=./local/ --hdf5=./local/hdf5-gnu
         - cmake --build build -- VERBOSE=1 -j 6
@@ -89,6 +91,7 @@ test-gcc-mpi-64:
         - module load anaconda/python3
         - module load mpi/openmpi/64/gnu/3.1.2
         - module load mkl
+        - module load cmake
     script:
         - ./cmakeconfig.py --mpi --fc=mpif90 --cc=mpicc --mpi-with-scalapack --lua=./local/ --hdf5=./local/hdf5-gnu --det-size=64 --pop-size=64
         - cmake --build build -- VERBOSE=1 -j 6
@@ -104,6 +107,7 @@ test-gcc-dbg:
         - hande-testing
     before_script:
         - module load anaconda/python3
+        - module load cmake
     script:
         - ./cmakeconfig.py --fc=gfortran --cc=gcc --lua=./local/ --hdf5=./local/hdf5-gnu --det-size=64 --pop-size=64 --type=debug
         - cmake --build build -- VERBOSE=1 -j 6
@@ -120,7 +124,8 @@ test-gcc-mpi-dbg:
     before_script:
         - module load anaconda/python3 
         - module load mpi/openmpi/64/gnu/3.1.2
-        - module load mkl       
+        - module load mkl 
+        - module load cmake
     script:
         - ./cmakeconfig.py --mpi --fc=mpif90 --cc=mpicc --mpi-with-scalapack  --lua=./local/ --hdf5=./local/hdf5-gnu --type=debug
         - cmake --build build -- VERBOSE=1 -j 6
@@ -138,6 +143,7 @@ test-gcc-mpi-64-dbg:
         - module load anaconda/python3
         - module load mpi/openmpi/64/gnu/3.1.2
         - module load mkl
+        - module load cmake
     script:
         - ./cmakeconfig.py --mpi --fc=mpif90 --cc=mpicc --mpi-with-scalapack  --lua=./local/ --hdf5=./local/hdf5-gnu --det-size=64 --pop-size=64 --type=debug
         - cmake --build build -- VERBOSE=1 -j 6
@@ -154,6 +160,7 @@ test-intel:
     before_script:
         - module load icc
         - module load anaconda/python3
+        - module load cmake
     script:
         - ./cmakeconfig.py --fc=ifort --cc=icc --lua=./local/ --hdf5=./local/hdf5-intel --pop-size=64 --det-size=64 
         - cmake --build build -- VERBOSE=1 -j 6
@@ -170,6 +177,7 @@ test-intel-dbg:
     before_script:
         - module load icc
         - module load anaconda/python3
+        - module load cmake
     script:
         - ./cmakeconfig.py --fc=ifort --cc=icc --lua=./local/ --hdf5=./local/hdf5-intel --pop-size=64 --det-size=64  --type=debug
         - cmake --build build -- VERBOSE=1 -j 6
@@ -188,6 +196,7 @@ test-intel-mpi-pop64:
         - module load anaconda/python3
         - module load mkl
         - module load mpi/openmpi/64/intel18/3.1.2
+        - module load cmake
     script:
         - ./cmakeconfig.py --mpi --fc=mpif90 --cc=mpicc --mpi-with-scalapack --lua=./local/ --hdf5=./local/hdf5-intel --pop-size=64 --det-size=64
         - cmake --build build -- VERBOSE=1 -j 6
@@ -206,6 +215,7 @@ test-intel-mpi-pop64-dbg:
         - module load mpi/openmpi/64/intel18/3.1.2
         - module load mkl
         - module load anaconda/python3
+        - module load cmake
     script:
         - ./cmakeconfig.py --mpi --fc=mpif90 --cc=mpicc --mpi-with-scalapack  --lua=./local/ --hdf5=./local/hdf5-intel  --type=debug --pop-size=64 --det-size=64
         - cmake --build build -- VERBOSE=1 -j 6
@@ -224,6 +234,7 @@ test-intel-mpi:
         - module load anaconda/python3
         - module load mkl
         - module load mpi/openmpi/64/intel18/3.1.2
+        - module load cmake
     script:
         - ./cmakeconfig.py --mpi --fc=mpif90 --cc=mpicc --mpi-with-scalapack --lua=./local/ --hdf5=./local/hdf5-intel
         - cmake --build build -- VERBOSE=1 -j 6
@@ -242,6 +253,7 @@ test-intel-mpi-dbg:
         - module load mpi/openmpi/64/intel18/3.1.2
         - module load mkl
         - module load anaconda/python3
+        - module load cmake
     script:
         - ./cmakeconfig.py --mpi --fc=mpif90 --cc=mpicc --mpi-with-scalapack  --lua=./local/ --hdf5=./local/hdf5-intel  --type=debug 
         - cmake --build build -- VERBOSE=1 -j 6
@@ -260,6 +272,7 @@ test-intel-quick:
         - module load mpi/openmpi/64/intel18/3.1.2
         - module load anaconda/python3
         - module load mkl
+        - module load cmake
     script:
         - ./cmakeconfig.py --mpi --fc=mpif90 --cc=mpicc --mpi-with-scalapack  --lua=./local/ --hdf5=./local/hdf5-intel  --pop-size=64 --det-size=64
         - cmake --build build -- VERBOSE=1 -j 6
@@ -277,6 +290,7 @@ test-gcc-quick:
         - module load anaconda/python3
         - module load mpi/openmpi/64/gnu/3.1.2
         - module load mkl
+        - module load cmake
     script:
         - ./cmakeconfig.py --mpi --fc=mpif90 --cc=mpicc --mpi-with-scalapack  --lua=./local/ --hdf5=./local/hdf5-gnu --det-size=64 --pop-size=64
         - cmake --build build -- VERBOSE=1 -j 6
