@@ -54,13 +54,13 @@ test-gcc:
     tags: 
         - hande-testing
     before_script:
-        - module load anaconda/python3
         - module load cmake
     script:
         - ./cmakeconfig.py --fc=gfortran --cc=gcc --lua=./local/ --hdf5=./local/hdf5-gnu --det-size=64 --pop-size=64
         - cmake --build build -- VERBOSE=1 -j 6
     after_script:
-        - cd ../test_suite
+        - module load anaconda/python3
+        - cd test_suite
         - ../testcode/bin/testcode.py -e ../bin/hande.x -c serial --total-processors=6
     only:
         - schedules
@@ -70,7 +70,6 @@ test-gcc-mpi:
     tags: 
         - hande-testing
     before_script:
-        - module load anaconda/python3
         - module load mpi/openmpi/64/gnu/3.1.2
         - module load mkl
         - module load cmake
@@ -78,7 +77,8 @@ test-gcc-mpi:
         - ./cmakeconfig.py --mpi --fc=mpif90 --cc=mpicc --mpi-with-scalapack --lua=./local/ --hdf5=./local/hdf5-gnu
         - cmake --build build -- VERBOSE=1 -j 6
     after_script:
-        - cd ../test_suite
+        - module load anaconda/python3
+        - cd test_suite
         - ../testcode/bin/testcode.py -e ../bin/hande.x -c mpi --processors=4
     only:
         - schedules
@@ -88,7 +88,6 @@ test-gcc-mpi-64:
     tags: 
         - hande-testing
     before_script:
-        - module load anaconda/python3
         - module load mpi/openmpi/64/gnu/3.1.2
         - module load mkl
         - module load cmake
@@ -96,7 +95,8 @@ test-gcc-mpi-64:
         - ./cmakeconfig.py --mpi --fc=mpif90 --cc=mpicc --mpi-with-scalapack --lua=./local/ --hdf5=./local/hdf5-gnu --det-size=64 --pop-size=64
         - cmake --build build -- VERBOSE=1 -j 6
     after_script:
-        - cd ../test_suite
+        - module load anaconda/python3
+        - cd test_suite
         - ../testcode/bin/testcode.py -e ../bin/hande.x -c pop64_mpi --processors=4
     only:
         - schedules
@@ -106,13 +106,13 @@ test-gcc-dbg:
     tags: 
         - hande-testing
     before_script:
-        - module load anaconda/python3
         - module load cmake
     script:
         - ./cmakeconfig.py --fc=gfortran --cc=gcc --lua=./local/ --hdf5=./local/hdf5-gnu --det-size=64 --pop-size=64 --type=debug
         - cmake --build build -- VERBOSE=1 -j 6
     after_script:
-        - cd ../test_suite
+        - module load anaconda/python3
+        - cd test_suite
         - ../testcode/bin/testcode.py -e ../bin/hande.x -c serial --total-processors=6
     only:
         - schedules
@@ -122,7 +122,6 @@ test-gcc-mpi-dbg:
     tags: 
         - hande-testing
     before_script:
-        - module load anaconda/python3 
         - module load mpi/openmpi/64/gnu/3.1.2
         - module load mkl
         - module load cmake
@@ -130,7 +129,8 @@ test-gcc-mpi-dbg:
         - ./cmakeconfig.py --mpi --fc=mpif90 --cc=mpicc --mpi-with-scalapack  --lua=./local/ --hdf5=./local/hdf5-gnu --type=debug
         - cmake --build build -- VERBOSE=1 -j 6
     after_script:
-        - cd ../test_suite
+        - module load anaconda/python3 
+        - cd test_suite
         - ../testcode/bin/testcode.py -e ../bin/hande.x -c mpi --processors=4
     only:
         - schedules
@@ -140,7 +140,6 @@ test-gcc-mpi-64-dbg:
     tags: 
         - hande-testing
     before_script:
-        - module load anaconda/python3
         - module load mpi/openmpi/64/gnu/3.1.2
         - module load mkl
         - module load cmake
@@ -148,7 +147,8 @@ test-gcc-mpi-64-dbg:
         - ./cmakeconfig.py --mpi --fc=mpif90 --cc=mpicc --mpi-with-scalapack  --lua=./local/ --hdf5=./local/hdf5-gnu --det-size=64 --pop-size=64 --type=debug
         - cmake --build build -- VERBOSE=1 -j 6
     after_script:
-        - cd ../test_suite
+        - module load anaconda/python3
+        - cd test_suite
         - ../testcode/bin/testcode.py -e ../bin/hande.x -c pop64_mpi --processors=4
     only:
         - schedules
@@ -159,13 +159,13 @@ test-intel:
         - hande-testing
     before_script:
         - module load icc
-        - module load anaconda/python3
         - module load cmake
     script:
         - ./cmakeconfig.py --fc=ifort --cc=icc --lua=./local/ --hdf5=./local/hdf5-intel --pop-size=64 --det-size=64 
         - cmake --build build -- VERBOSE=1 -j 6
     after_script:
-        - cd ../test_suite
+        - module load anaconda/python3
+        - cd test_suite
         - ../testcode/bin/testcode.py -e ../bin/hande.x -c serial --total-processors=6
     only:
         - schedules
@@ -176,13 +176,13 @@ test-intel-dbg:
         - hande-testing
     before_script:
         - module load icc
-        - module load anaconda/python3
         - module load cmake
     script:
         - ./cmakeconfig.py --fc=ifort --cc=icc --lua=./local/ --hdf5=./local/hdf5-intel --pop-size=64 --det-size=64  --type=debug
         - cmake --build build -- VERBOSE=1 -j 6
     after_script:
-        - cd ../test_suite
+        - module load anaconda/python3
+        - cd test_suite
         - ../testcode/bin/testcode.py -e ../bin/hande.x -c serial --total-processors=6
     only:
         - schedules
@@ -193,7 +193,6 @@ test-intel-mpi-pop64:
         - hande-testing
     before_script:
         - module load icc
-        - module load anaconda/python3
         - module load mkl
         - module load mpi/openmpi/64/intel18/3.1.2
         - module load cmake
@@ -201,7 +200,8 @@ test-intel-mpi-pop64:
         - ./cmakeconfig.py --mpi --fc=mpif90 --cc=mpicc --mpi-with-scalapack --lua=./local/ --hdf5=./local/hdf5-intel --pop-size=64 --det-size=64
         - cmake --build build -- VERBOSE=1 -j 6
     after_script:
-        - cd ../test_suite
+        - module load anaconda/python3
+        - cd test_suite
         - ../testcode/bin/testcode.py -e ../bin/hande.x -c mpi --processors=4
     only:
         - schedules
@@ -214,13 +214,13 @@ test-intel-mpi-pop64-dbg:
         - module load icc
         - module load mpi/openmpi/64/intel18/3.1.2
         - module load mkl
-        - module load anaconda/python3
         - module load cmake
     script:
         - ./cmakeconfig.py --mpi --fc=mpif90 --cc=mpicc --mpi-with-scalapack  --lua=./local/ --hdf5=./local/hdf5-intel  --type=debug --pop-size=64 --det-size=64
         - cmake --build build -- VERBOSE=1 -j 6
     after_script:
-        - cd ../test_suite
+        - module load anaconda/python3
+        - cd test_suite
         - ../testcode/bin/testcode.py -e ../bin/hande.x -c mpi --processors=4
     only:
         - schedules
@@ -231,7 +231,6 @@ test-intel-mpi:
         - hande-testing
     before_script:
         - module load icc
-        - module load anaconda/python3
         - module load mkl
         - module load mpi/openmpi/64/intel18/3.1.2
         - module load cmake
@@ -239,7 +238,8 @@ test-intel-mpi:
         - ./cmakeconfig.py --mpi --fc=mpif90 --cc=mpicc --mpi-with-scalapack --lua=./local/ --hdf5=./local/hdf5-intel
         - cmake --build build -- VERBOSE=1 -j 6
     after_script:
-        - cd ../test_suite
+        - module load anaconda/python3
+        - cd test_suite
         - ../testcode/bin/testcode.py -e ../bin/hande.x -c mpi --processors=4
     only:
         - schedules
@@ -252,13 +252,13 @@ test-intel-mpi-dbg:
         - module load icc
         - module load mpi/openmpi/64/intel18/3.1.2
         - module load mkl
-        - module load anaconda/python3
         - module load cmake
     script:
         - ./cmakeconfig.py --mpi --fc=mpif90 --cc=mpicc --mpi-with-scalapack  --lua=./local/ --hdf5=./local/hdf5-intel  --type=debug 
         - cmake --build build -- VERBOSE=1 -j 6
     after_script:
-        - cd ../test_suite
+        - module load anaconda/python3
+        - cd test_suite
         - ../testcode/bin/testcode.py -e ../bin/hande.x -c mpi --processors=4
     only:
         - schedules
@@ -270,14 +270,14 @@ test-intel-quick:
     before_script:
         - module load icc
         - module load mpi/openmpi/64/intel18/3.1.2
-        - module load anaconda/python3
         - module load mkl
         - module load cmake
     script:
         - ./cmakeconfig.py --mpi --fc=mpif90 --cc=mpicc --mpi-with-scalapack  --lua=./local/ --hdf5=./local/hdf5-intel  --pop-size=64 --det-size=64
         - cmake --build build -- VERBOSE=1 -j 6
     after_script:
-        - cd ../test_suite
+        - module load anaconda/python3
+        - cd test_suite
         - ../testcode/bin/testcode.py -e ../bin/hande.x -c quick --processors=4
     except:
         - schedules
@@ -287,7 +287,6 @@ test-gcc-quick:
     tags: 
         - hande-testing
     before_script:
-        - module load anaconda/python3
         - module load mpi/openmpi/64/gnu/3.1.2
         - module load mkl
         - module load cmake
@@ -295,7 +294,8 @@ test-gcc-quick:
         - ./cmakeconfig.py --mpi --fc=mpif90 --cc=mpicc --mpi-with-scalapack  --lua=./local/ --hdf5=./local/hdf5-gnu --det-size=64 --pop-size=64
         - cmake --build build -- VERBOSE=1 -j 6
     after_script:
-        - cd ../test_suite
+        - module load anaconda/python3
+        - cd test_suite
         - ../testcode/bin/testcode.py -e ../bin/hande.x -c quick --processors=4
     except:
         - schedules
