@@ -269,6 +269,10 @@ contains
             ! Zero report cycle quantities.
             call init_report_loop(qs, bloom_stats)
 
+            if (accum_rdm) then
+                rdm = 0.0_p
+            end if
+
             ! Should we start accumulating the RDM?
             if (fciqmc_in%density_matrices .and. all(qs%vary_shift) .and. ireport > 3000) then
                 accum_rdm = .true.
