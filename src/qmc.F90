@@ -132,13 +132,7 @@ contains
             allocate(qmc_state%vary_shift(qmc_state%psip_list%nspaces), stat=ierr)
             call check_allocate('qmc_state%vary_shift', qmc_state%psip_list%nspaces, ierr)
             qmc_state%shift = qmc_in%initial_shift
-            ! If shift_harmonic_forcing is not equal to zero, we need to be in variable
-            ! shift mode, so turn on vary_shift. 
-            if (qmc_in%shift_harmonic_forcing .ne. 0.00_p) then
-                qmc_state%vary_shift = .true.
-            else
-                qmc_state%vary_shift = .false.
-            end if 
+            qmc_state%vary_shift =  .false.
 
             allocate(qmc_state%estimators(qmc_state%psip_list%nspaces))
 
@@ -179,19 +173,22 @@ contains
             qmc_state%shift_damping = qmc_in%shift_damping
         end if
 
-        ! If shift_harmonic_critical_damping is set to true, the value
+        ! If shift_harmonic_crit_damp is set to true, the value
         ! of shift_harmonic_forcing needs to be updated so that it follows the
         ! critical damping equation from Yang, Pahl and Brand 
         ! J. Chem. Phys. 153, 174103 (2020) (DOI:10.1063/5.0023088):
         ! shift_harmonic_forcing = (shift_damping^2)/4
-        ! If shift_harmonic_critical_damping is false, the value of
+        ! If shift_harmonic_crit_damp is false, the value of
         ! shift_harmonic_forcing from the input is used. 
-        if (qmc_in%shift_harmonic_critical_damping) then
-            qmc_state%shift_harmonic_forcing = real(qmc_in%shift_damping*qmc_in%shift_damping/4.0_p, p)
-        else 
+        ! If shift_harmonic_forcing is not equal to zero, we need to be in
+        ! variable shift mode, so turn on vary_shift.
+        if (qmc_in%shift_harmonic_crit_damp) then
+            qmc_state%shift_harmonic_forcing = real((qmc_state%shift_damping**2)/4.0_p, p)
+        else if (qmc_state%shift_harmonic_forcing .ne. 0.00_p) then 
             qmc_state%shift_harmonic_forcing = qmc_in%shift_harmonic_forcing
-        end if 
-
+        end if
+        if (qmc_state%shift_harmonic_forcing .ne. 0.00_p) qmc_state%vary_shift = .true. 
+        
         qmc_state%restart_in = restart_in
     end subroutine init_qmc
 

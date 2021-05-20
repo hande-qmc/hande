@@ -588,7 +588,7 @@ algorithms and control the core settings in the algorithms.
         The harmonic population control algorithm will not work with target populations
         less than or equal to zero. 
 
-``shift_harmonic_critical_damping``
+``shift_harmonic_crit_damp``
     type: boolean.
 
     Optional.  Default: false.
