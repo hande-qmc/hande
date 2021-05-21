@@ -10,6 +10,7 @@ Bibliography
 .. [Booth14] G.H. Booth, S.D. Smart, A.Alavi, Linear-scaling and parallelisable algorithms for stochastic quantum chemistry, Mol. Phys. 112, 1855 (2014).
 .. [Cleland10] D. Cleland, G.H. Booth, A. Alavi, Communications: Survival of the fittest: accelerating convergence in full configuration-interaction quantum Monte Carlo. J. Chem. Phys. 132, 041103 (2010).
 .. [Dunning89] Dunning, Thom H., Gaussian basis sets for use in correlated molecular calculations. I. The atoms boron through neon and hydrogen. J. Chem. Phys. 90, 1007 (1989) 
+.. [Filip19] M-A. Filip, C.J.C. Scott and A.J.W. Thom, Multireference Stochastic Coupled Cluster, J. Chem. Theory Comput. 15, 12, 6625-6625 (2019).
 .. [Flyvbjerg89] H. Flyvbjerg, H. G. Petersen, Error estimates on averages of correlated data, J. Chem. Phys. 91, 461 (1989). 
 .. [Franklin16] R.S.T. Franklin, J.S. Spencer, A. Zoccante and A.J.W Thom, Linked coupled cluster Monte Carlo, J Chem. Phys. 144, 044111 (2016).
 .. [Holmes16] A.A. Holmes, H.J. Changlani, C.J. Umrigar, Efficient Heat-Bath Sampling in Fock Space, J. Chem. Theory Comput., 12, 1561–1571 (2016).
@@ -27,9 +28,10 @@ Bibliography
 .. [Smartunpub] S.D. Smart, G.H. Booth, A. Alavi, Excitation generation in full configuration interaction quantum Monte Carlo based on Cauchy-Schwarz distributions (unpublished).
 .. [Shepherd14] J.J. Shepherd, G.E. Scuseria, J.S. Spencer, Sign problem in full configuration interaction quantum Monte Carlo: Linear and sublinear representation regimes for the exact wave function, Phys. Rev. B 90, 155130 (2014).
 .. [Spencer12] J.S. Spencer, N.S. Blunt, W.M.C. Foulkes, The sign problem and population dynamics in the full configuration interaction quantum Monte Carlo method, J. Chem. Phys. 136, 054110 (2012).
-.. [Spencer14] J.S. Spencer, N.S. Blunt, W.A. Vigor, F.D. Malone, W.M.C. Foulkes, J.J. Shepherd, and A.J.W. Thom, The Highly Accurate N-DEterminant (HANDE) quantum Monte Carlo project: Open-source stochastic diagonalisation for quantum chemistry, arXiv:1407.5407 (2014).
+.. [Spencer14] J.S. Spencer, N.S. Blunt, W.A. Vigor, F.D. Malone, W.M.C. Foulkes, J.J. Shepherd, and A.J.W. Thom, Open-Source Development Experiences in Scientific Software: The HANDE Quantum Monte Carlo Project, J. Open Res. Softw., 3, 1, e9 (2015).
 .. [Spencer15] J.S. Spencer, A.J.W. Thom, Developments in Stochastic Coupled Cluster Theory:  The initiator approximation and application to the Uniform Electron Gas, J. Chem. Phys. 144, 084108 (2016), arXiv:1511.05752 [physics.chem-ph].
 .. [Spencer18] J.S. Spencer, V.A. Neufeld, W.A. Vigor, R.S.T. Franklin, A.J.W. Thom, Large Scale Parallelization in Stochastic Coupled Cluster, J. Chem. Phys. 149, 204103 (2018).
+.. [Spencer19] J.S. Spencer, N.S. Blunt, S. Choi, J. Etrych, M-A. Filip, W.M.C. Foulkes, R.S.T. Franklin, W.J. Handley, F.D. Malone, V.A. Neufeld, R. Di Remigio, T.W. Rogers, C.J.C. Scott, J.J. Shepherd, W.A. Vigor, J. Weston, R. Xu, A.J.W. Thom, The HANDE-QMC Project: Open-Source Stochastic Quantum Chemistry from the Ground State Up, J. Chem. Theory Comput. 15, 3, 1728-1742 (2019).
 .. [Sun18] Q. Sun, T. S. Berkelbach, N. S. Blunt, et. al, PYSCF: The Python-based simulations of chemistry framework, WIREs: Computational Molecular Science 8, 1, e1340 (2018).
 .. [Thom10] A.J.W. Thom, Stochastic Coupled Cluster Theory, Phys. Rev. Lett. 105, 236004 (2010).
 .. [Umrigar93] C.J. Umrigar, M.P. Nightingale, K.J. Runge, A diffusion Monte Carlo algorithm with very small time-step errors, J. Chem. Phys. 99, 2865 (1993).

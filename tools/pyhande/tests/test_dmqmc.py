@@ -4,7 +4,7 @@ import copy
 import pandas as pd
 import numpy as np
 import pyhande.dmqmc as dmqmc
-import create_mock_df
+import tests.create_mock_df as create_mock_df
 
 
 class TestAnalyseObservables(unittest.TestCase):

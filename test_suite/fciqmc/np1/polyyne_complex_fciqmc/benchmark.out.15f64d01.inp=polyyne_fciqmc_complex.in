@@ -1,0 +1,408 @@
+
+   HANDE
+
+ ================================================================
+Version information
+-------------------
+Version       | v1.4-283-g15f64d0
+Commit hash   | 15f64d01138a7d4f6c1e788b1e18bc0dff2d1b48
+Commit author | Andreea Filip
+Commit date   | Fri Feb 19 17:28:17 2021 +0000
+Branch        | master
+
+Configuration and build information
+-----------------------------------
+Who compiled             | maf63
+Compilation hostname     | serenity
+Operating system         | Linux-4.15.0-135-generic
+CMake version            | 3.19.1
+CMake generator          | Unix Makefiles
+Build type               | debug
+Configuration time       | 2021-02-22 11:34:16 [UTC]
+Python version           | 3.6.12
+Fortran compiler         | /usr/local/shared/ubuntu-18.04/x86_64/openmpi-3.1.2-intel18/bin/mpif90
+C compiler               | /usr/local/shared/ubuntu-18.04/x86_64/openmpi-3.1.2-intel18/bin/mpicc
+DET_SIZE set to          | 64
+POP_SIZE set to          | 64
+dSFMT Mersenne exponent  | 19937
+MPI parallelization      | ON
+MPI launcher             | /usr/local/shared/ubuntu-18.04/x86_64/openmpi-3.1.2-intel18/bin/mpiexec
+OpenMP parallelization   | OFF
+Lua version              | 5.3.5
+HDF5 library version     | 1.10.4
+
+Further components
+------------------
+DISABLE_HDF5 not defined.  HDF5 enabled.
+DISABLE_UUID not defined.  UUID enabled.
+PARALLEL defined.  MPI parallelization enabled.
+DISABLE_MPI3 not defined.  MPI-3 functionality enabled.
+PARALLEL defined. DISABLE_MPI3 and ENABLE_SHMEM_POSIX not defined. MPI-3 in use.
+DISABLE_SCALAPACK not defined.  ScaLAPACK enabled.
+SINGLE_PRECISION not defined.  Double precision used throughout.
+USE_POPCNT not defined. Internal POPCNT procedure used.
+
+Runtime information
+-------------------
+Hostname:
+    serenity
+Current working dir:
+    /home/maf63/hande-release/test_suite/fciqmc/np1/polyyne_complex_fciqmc
+Started running on 22/02/2021 at 22:22:48
+ Calculation UUID: 1691d8a5-be12-42ae-9193-68f54d693d0b.
+ ================================================================
+
+ Input options
+ -------------
+
+sys = read_in {
+    int_file = "FCIDUMP",
+    nel = 24,
+    ms = 0,
+    sym = "aufbau",
+    complex = true,
+}
+
+fciqmc {
+    sys = sys,
+    qmc = {
+        tau = 1e-4,
+        rng_seed = 23,
+        init_pop = 10,
+        mc_cycles = 20,
+        nreports = 50,
+        target_population = 7500,
+        state_size = 10000,
+        spawned_state_size = 5000,
+    },
+}
+
+ -------------
+
+ Memory required for all two body integrals (MB) on each processor: 0
+ It is left to the user to ensure that this does not exceed available resources.
+
+ Basis functions
+ ---------------
+
+ Spin given in units of 1/2.
+ k-points given in terms of the reciprocal lattice vectors of the crystal cell.
+
+ index   k-point            ms       <i|h|i>
+     1   (  0,  0,  0)      1       -1.00236005E+00
+     2   (  0,  0,  0)     -1       -1.00236005E+00
+     3   (  1,  0,  0)      1       -9.26018339E-01
+     4   (  1,  0,  0)     -1       -9.26018339E-01
+     5   (  2,  0,  0)      1       -9.26018339E-01
+     6   (  2,  0,  0)     -1       -9.26018339E-01
+     7   (  2,  0,  0)      1       -7.28383055E-01
+     8   (  2,  0,  0)     -1       -7.28383055E-01
+     9   (  1,  0,  0)      1       -7.28383055E-01
+    10   (  1,  0,  0)     -1       -7.28383055E-01
+    11   (  0,  0,  0)      1       -5.97827871E-01
+    12   (  0,  0,  0)     -1       -5.97827871E-01
+    13   (  0,  0,  0)      1       -4.42755448E-01
+    14   (  0,  0,  0)     -1       -4.42755448E-01
+    15   (  0,  0,  0)      1       -4.42755446E-01
+    16   (  0,  0,  0)     -1       -4.42755446E-01
+    17   (  1,  0,  0)      1       -2.63091309E-01
+    18   (  1,  0,  0)     -1       -2.63091309E-01
+    19   (  2,  0,  0)      1       -2.63091308E-01
+    20   (  2,  0,  0)     -1       -2.63091308E-01
+    21   (  1,  0,  0)      1       -2.63091308E-01
+    22   (  1,  0,  0)     -1       -2.63091308E-01
+    23   (  2,  0,  0)      1       -2.63091305E-01
+    24   (  2,  0,  0)     -1       -2.63091305E-01
+    25   (  1,  0,  0)      1        4.24212132E-01
+    26   (  1,  0,  0)     -1        4.24212132E-01
+    27   (  1,  0,  0)      1        4.24212136E-01
+    28   (  1,  0,  0)     -1        4.24212136E-01
+    29   (  2,  0,  0)      1        4.24212136E-01
+    30   (  2,  0,  0)     -1        4.24212136E-01
+    31   (  2,  0,  0)      1        4.24212141E-01
+    32   (  2,  0,  0)     -1        4.24212141E-01
+    33   (  0,  0,  0)      1        5.87812296E-01
+    34   (  0,  0,  0)     -1        5.87812296E-01
+    35   (  0,  0,  0)      1        7.92184979E-01
+    36   (  0,  0,  0)     -1        7.92184979E-01
+    37   (  0,  0,  0)      1        7.92184982E-01
+    38   (  0,  0,  0)     -1        7.92184982E-01
+    39   (  2,  0,  0)      1        8.74608188E-01
+    40   (  2,  0,  0)     -1        8.74608188E-01
+    41   (  1,  0,  0)      1        8.74608188E-01
+    42   (  1,  0,  0)     -1        8.74608188E-01
+    43   (  1,  0,  0)      1        1.55775862E+00
+    44   (  1,  0,  0)     -1        1.55775862E+00
+    45   (  2,  0,  0)      1        1.55775862E+00
+    46   (  2,  0,  0)     -1        1.55775862E+00
+    47   (  0,  0,  0)      1        2.00066738E+00
+    48   (  0,  0,  0)     -1        2.00066738E+00
+
+ E_core =  102.892373280773
+ Number of electrons: 24
+ Number of basis functions: 48
+
+ Bit-length of integers used to store determinant bit-strings: 64
+ Number of integers used to store determinant bit-strings: 1
+
+ Symmetry information
+ --------------------
+
+ The table below gives the label and inverse of each wavevector.
+
+ Index    k-point         Inverse
+   1      (  0,  0,  0)        1
+   2      (  1,  0,  0)        3
+   3      (  2,  0,  0)        2
+
+ The matrix below gives the result of k_i+k_j to within a reciprocal lattice vector.
+
+  1  2  3
+  2  3  1
+  3  1  2
+
+
+ Reference determinant and so symmetry sector selected using the Aufbau principle.
+ Selected symmetry  1.
+
+ FCIQMC
+ ------
+
+ Memory allocated per core for main walker list (MB):      0.44
+ Number of elements per core in main walker list: 10000
+ Memory allocated per core for spawned walker lists (MB):      0.24
+ Number of elements per core in spawned walker list: 5000
+
+ # Starting the excitation generator initialisation.
+ # Finishing the excitation generator initialisation, time taken:  5.7995319366E-05
+ -- Start JSON block --
+ {
+     "system": {
+         "nbasis": 48,   
+         "nel": 24,   
+         "nvirt": 24,   
+         "Ms": 0,   
+         "nalpha": 12,   
+         "nbeta": 12,   
+         "nvirt_alpha": 12,   
+         "nvirt_beta": 12,   
+         "nsym": 3,   
+         "sym0": 1,   
+         "sym_max": 3,   
+         "nsym_tot": 3,   
+         "sym0_tot": 1,   
+         "sym_max_tot": 3,   
+         "symmetry": 1,   
+         "tot_sym": false,   
+         "aufbau_sym": true,   
+         "max_number_excitations": 24,   
+         "read_in": {
+             "int_file":  "FCIDUMP",   
+             "uhf": false,   
+             "Ecore": 102.89237328,   
+             "CAS": [ -1, -1],
+             "useLz": false,   
+             "complex": true    
+         }
+     },
+     "qmc": {
+         "rng_seed": 23,   
+         "real_amplitudes": false,   
+         "real_amplitude_force_32": false,   
+         "spawn_cutoff": 0.01000000,   
+         "excit_gen":  "renorm",   
+         "pattempt_update": false,   
+         "pattempt_zero_accum_data": false,   
+         "pattempt_single": 0.00968523,   
+         "pattempt_double": 0.99031477,   
+         "pattempt_parallel": 0.00000000,   
+         "tau": 0.00010000,   
+         "tau_search": false,   
+         "vary_shift_from": 0.00000000,   
+         "vary_shift_from_proje": false,   
+         "initial_shift": 0.00000000,   
+         "shift_damping": 0.05000000,   
+         "walker_length": 10000,   
+         "spawned_walker_length": 5000,   
+         "D0_population": 10.00000000,   
+         "target_particles": 7500.00000000,   
+         "target_reference": false,   
+         "initiator_approx": false,   
+         "initiator_pop": 3.00000000,   
+         "ncycles": 20,   
+         "nreport": 50,   
+         "power_pitzer_min_weight": 0.01000000,   
+         "quasi_newton": false,   
+         "quasi_newton_threshold": 0.00000000,   
+         "quasi_newton_value": 0.00000000,   
+         "quasi_newton_pop_control": 1.00000000,   
+         "use_mpi_barriers": false    
+     },
+     "fciqmc": {
+         "select_ref_det_every_nreports": 2147483647,   
+         "init_spin_inv_D0": false,   
+         "ref_det_factor": 1.50000000,   
+         "non_blocking_comm": false,   
+         "doing_load_balancing": false,   
+         "trial_function":  "single_basis",   
+         "guiding_function":  "none",   
+         "quadrature_initiator": true,   
+         "replica_tricks": false    
+     },
+     "semi_stoch": {
+         "start_iter": 1,   
+         "shift_iter": -1,   
+         "space_type":  "none",   
+         "target_size": 0,   
+         "write_determ_space": false,   
+         "projection_mode":  "separate",   
+         "read_id": 2147483647,   
+         "write_id": 2147483647,   
+         "ci_space": {
+             "ex_level": -1    
+         }
+     },
+     "restart": {
+         "read_restart": false,   
+         "read_id": 2147483647,   
+         "write_restart": false,   
+         "write_id": 2147483647,   
+         "write_freq": 2147483647,   
+         "write_restart_shift": false,   
+         "write_shift_id": 2147483647,   
+         "restart_rng": true    
+     },
+     "blocking": {
+         "blocking_on_the_fly": false,   
+         "start_save_frequency": -1,   
+         "start_point_number": -1,   
+         "filename":  "BLOCKING",   
+         "start_point": -1,   
+         "error_limit": 0.00000000,   
+         "blocks_used": 2147483647,   
+         "min_blocks_used": 10,   
+         "auto_shift_damping": false,   
+         "shift_damping_precision": 2.00000000,   
+         "force_shift_damping_opt": false    
+     },
+     "load balancing": {
+         "nslots": 1,   
+         "pop": 1000,   
+         "percent": 0.05000000,   
+         "max_attempts": 2,   
+         "write_info": false    
+     },
+     "reference": {
+         "det": [ 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24],
+         "det_ms": 0,   
+         "det_symmetry": 1,   
+         "H00": 0.00000000,   
+         "F0": -13.69373366,   
+         "hilbert_space_det": [ 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24],
+         "hilbert_space_det_ms": 0,   
+         "hilbert_space_det_symmetry": 1,   
+         "ex_level": 24    
+     },
+     "logging_in": {
+         "calc": 0,   
+         "calc_file":  "CALC",   
+         "spawn": 0,   
+         "spawn_file":  "SPAWN",   
+         "death": 0,   
+         "death_file":  "DEATH",   
+         "start_iter": 0,   
+         "end_iter": 9223372036854775807    
+     },
+     "logging": {
+         "write_highlevel_values": false,   
+         "calc_unit": 2147483647,   
+         "write_successful_spawn": false,   
+         "write_failed_spawn": false,   
+         "spawn_unit": 2147483647,   
+         "write_successful_death": false,   
+         "write_failed_death": false,   
+         "death_unit": 2147483647    
+     }
+ }
+ -- End JSON block --
+
+ Information printed out every QMC report loop:
+
+ Shift: the energy offset calculated at the end of the report loop.
+ H_0j: <D_0|H|D_j>, Hamiltonian matrix element.
+ N_j: population of Hamiltonian particles on determinant D_j.
+ # H psips: current total population of Hamiltonian particles.
+ # states: number of many-particle states occupied.
+ spawn_events: number of successful spawning events across all processors.
+ R_spawn: average rate of spawning across all processors.
+ time: average time per Monte Carlo cycle.
+
+ Note that all particle populations are averaged over the report loop.
+
+ #     iterations   Shift                 Re{\sum H_0j N_j}     Im{\sum H_0j N_j}     Re{N_0}               Im{N_0}               # H psips                  # states  # spawn_events   R_spawn    time   
+ #              0   0.0000000000E+00      0.0000000000E+00      0.0000000000E+00      1.0000000000E+01      0.0000000000E+00      1.0000000000E+01                  1               0    0.0000    0.0000 
+               20   0.0000000000E+00      0.0000000000E+00      0.0000000000E+00      1.0000000000E+01      0.0000000000E+00      1.0000000000E+01                  1               0    0.0000    0.0001 
+               40   0.0000000000E+00     -2.6536991942E-02     -2.1894776592E-02      1.0000000000E+01      0.0000000000E+00      1.1000000000E+01                  2               0    0.0025    0.0000 
+               60   0.0000000000E+00     -3.5382655923E-02     -2.9193035456E-02      1.0000000000E+01      0.0000000000E+00      1.1000000000E+01                  2               0    0.0000    0.0000 
+               80   0.0000000000E+00     -3.5382655923E-02     -2.9193035456E-02      1.0000000000E+01      0.0000000000E+00      1.1000000000E+01                  2               0    0.0000    0.0000 
+              100   0.0000000000E+00     -3.9448603069E-02     -3.3503254486E-02      1.0000000000E+01      0.0000000000E+00      1.2000000000E+01                  3               0    0.0023    0.0000 
+              120   0.0000000000E+00     -4.4467311788E-02     -3.5622764220E-02      1.0000000000E+01      0.0000000000E+00      1.4000000000E+01                  5               0    0.0040    0.0001 
+              140   0.0000000000E+00     -4.6439908020E-02     -3.5990409635E-02      1.0000000000E+01      0.0000000000E+00      1.5000000000E+01                  6               0    0.0018    0.0001 
+              160   0.0000000000E+00     -6.2209028914E-02     -4.2231372824E-02      1.0000000000E+01      0.0000000000E+00      1.9000000000E+01                 10               0    0.0062    0.0001 
+              180   0.0000000000E+00     -9.1145228500E-02     -5.9414107674E-02      1.0000000000E+01      0.0000000000E+00      2.0000000000E+01                 11               0    0.0013    0.0001 
+              200   0.0000000000E+00     -1.0963338045E-01     -5.1850064749E-02      1.0000000000E+01      0.0000000000E+00      2.2000000000E+01                 13               0    0.0024    0.0001 
+              220   0.0000000000E+00     -1.3171176983E-01     -4.5875415123E-02      1.0000000000E+01      0.0000000000E+00      2.5000000000E+01                 16               0    0.0033    0.0001 
+              240   0.0000000000E+00     -1.3171176983E-01     -4.5875415123E-02      1.0000000000E+01      0.0000000000E+00      2.6000000000E+01                 17               0    0.0010    0.0001 
+              260   0.0000000000E+00     -1.3416479490E-01     -4.8063275388E-02      1.0000000000E+01      0.0000000000E+00      2.8000000000E+01                 19               0    0.0019    0.0001 
+              280   0.0000000000E+00     -1.4397689519E-01     -5.6814716447E-02      1.0000000000E+01      0.0000000000E+00      2.8000000000E+01                 19               0    0.0000    0.0001 
+              300   0.0000000000E+00     -1.4474668598E-01     -5.6038050688E-02      1.0000000000E+01      0.0000000000E+00      3.1000000000E+01                 22               0    0.0026    0.0001 
+              320   0.0000000000E+00     -1.4500328291E-01     -5.5779162102E-02      1.0000000000E+01      0.0000000000E+00      3.4000000000E+01                 25               0    0.0023    0.0002 
+              340   0.0000000000E+00     -1.4500328291E-01     -5.5779162102E-02      1.0000000000E+01      0.0000000000E+00      3.7000000000E+01                 28               0    0.0021    0.0002 
+              360   0.0000000000E+00     -1.4500328291E-01     -5.5779162102E-02      1.0000000000E+01      0.0000000000E+00      4.0000000000E+01                 31               0    0.0020    0.0002 
+              380   0.0000000000E+00     -1.4993688560E-01     -5.7987973016E-02      1.0000000000E+01      0.0000000000E+00      4.6000000000E+01                 37               1    0.0035    0.0002 
+              400   0.0000000000E+00     -1.7653865178E-01     -6.9067828518E-02      1.0000000000E+01      0.0000000000E+00      4.9000000000E+01                 40               0    0.0027    0.0002 
+              420   0.0000000000E+00     -1.7257741761E-01     -6.4893571582E-02      1.0000000000E+01      0.0000000000E+00      5.5000000000E+01                 46               0    0.0029    0.0002 
+              440   0.0000000000E+00     -1.7299626951E-01     -6.5437419958E-02      1.0000000000E+01      0.0000000000E+00      6.0000000000E+01                 51               0    0.0022    0.0003 
+              460   0.0000000000E+00     -2.1682603190E-01     -4.9520708809E-02      1.0000000000E+01      0.0000000000E+00      6.5000000000E+01                 56               1    0.0036    0.0003 
+              480   0.0000000000E+00     -2.7252198449E-01     -6.2742559470E-02      1.0000000000E+01      0.0000000000E+00      7.4000000000E+01                 64               0    0.0040    0.0003 
+              500   0.0000000000E+00     -2.9464523239E-01     -7.2718863109E-02      1.0000000000E+01      0.0000000000E+00      7.9000000000E+01                 69               0    0.0016    0.0004 
+              520   0.0000000000E+00     -3.0376179797E-01     -7.5484132895E-02      1.0000000000E+01      0.0000000000E+00      8.7000000000E+01                 77               0    0.0031    0.0004 
+              540   0.0000000000E+00     -3.7617509302E-01     -8.6545212038E-02      1.0000000000E+01      0.0000000000E+00      9.9000000000E+01                 89               1    0.0033    0.0004 
+              560   0.0000000000E+00     -3.7617509302E-01     -8.6545212038E-02      1.0000000000E+01      0.0000000000E+00      1.0800000000E+02                 98               1    0.0022    0.0005 
+              580   0.0000000000E+00     -3.7617509302E-01     -8.6545212038E-02      1.0000000000E+01      0.0000000000E+00      1.2500000000E+02                114               1    0.0046    0.0006 
+              600   0.0000000000E+00     -3.7617509302E-01     -8.6545212038E-02      1.0000000000E+01      0.0000000000E+00      1.3900000000E+02                128               1    0.0027    0.0006 
+              620   0.0000000000E+00     -3.8416991664E-01     -8.4011508843E-02      1.0000000000E+01      0.0000000000E+00      1.5900000000E+02                148               2    0.0037    0.0007 
+              640   0.0000000000E+00     -3.9901744621E-01     -7.9306060052E-02      1.0000000000E+01      0.0000000000E+00      1.8700000000E+02                176               2    0.0044    0.0009 
+              660   0.0000000000E+00     -3.9901744621E-01     -7.9306060052E-02      1.0000000000E+01      0.0000000000E+00      2.0200000000E+02                191               2    0.0025    0.0009 
+              680   0.0000000000E+00     -3.9901744621E-01     -7.9306060052E-02      1.0000000000E+01      0.0000000000E+00      2.2000000000E+02                209               2    0.0024    0.0010 
+              700   0.0000000000E+00     -3.9901744621E-01     -7.9306060052E-02      1.0000000000E+01      0.0000000000E+00      2.3500000000E+02                224               0    0.0021    0.0010 
+              720   0.0000000000E+00     -3.9901744621E-01     -7.9306060052E-02      1.0000000000E+01      0.0000000000E+00      2.5600000000E+02                245               2    0.0028    0.0011 
+              740   0.0000000000E+00     -4.0258683893E-01     -7.9171058794E-02      1.0000000000E+01      0.0000000000E+00      2.9600000000E+02                285               7    0.0042    0.0014 
+              760   0.0000000000E+00     -4.1136157427E-01     -8.9406394816E-02      1.0000000000E+01      0.0000000000E+00      3.2600000000E+02                314               2    0.0027    0.0014 
+              780   0.0000000000E+00     -4.3764054465E-01     -1.2108346259E-01      1.0000000000E+01      0.0000000000E+00      3.6800000000E+02                356               3    0.0032    0.0017 
+              800   0.0000000000E+00     -4.3557724852E-01     -1.2021084206E-01      1.0000000000E+01      0.0000000000E+00      4.0600000000E+02                393               4    0.0032    0.0018 
+              820   0.0000000000E+00     -4.3446624290E-01     -1.1974096946E-01      1.0000000000E+01      0.0000000000E+00      4.4600000000E+02                434               5    0.0035    0.0020 
+              840   0.0000000000E+00     -4.3446624290E-01     -1.1974096946E-01      1.0000000000E+01      0.0000000000E+00      4.9700000000E+02                484               4    0.0037    0.0022 
+              860   0.0000000000E+00     -4.3446624290E-01     -1.1974096946E-01      1.0000000000E+01      0.0000000000E+00      5.4100000000E+02                527               2    0.0029    0.0024 
+              880   0.0000000000E+00     -4.4962528740E-01     -1.5360523805E-01      1.0000000000E+01      0.0000000000E+00      6.1600000000E+02                600               3    0.0039    0.0028 
+              900   0.0000000000E+00     -4.5042313185E-01     -1.5538756798E-01      1.0000000000E+01      0.0000000000E+00      6.7400000000E+02                656               7    0.0030    0.0030 
+              920   0.0000000000E+00     -4.5676185357E-01     -1.5852899805E-01      1.0000000000E+01      0.0000000000E+00      7.4400000000E+02                725               2    0.0030    0.0033 
+              940   0.0000000000E+00     -4.8086721021E-01     -1.4125559917E-01      1.0000000000E+01      0.0000000000E+00      8.2300000000E+02                804               1    0.0032    0.0037 
+              960   0.0000000000E+00     -5.0816648369E-01     -1.5206310093E-01      1.0000000000E+01      0.0000000000E+00      9.2300000000E+02                901               4    0.0033    0.0041 
+              980   0.0000000000E+00     -5.0816648369E-01     -1.5206310093E-01      1.0000000000E+01      0.0000000000E+00      1.0160000000E+03                994               4    0.0030    0.0046 
+             1000   0.0000000000E+00     -5.0816648369E-01     -1.5206310093E-01      1.0000000000E+01      0.0000000000E+00      1.1600000000E+03               1138               6    0.0041    0.0055 
+
+ Timing breakdown
+ ----------------
+
+ Time for each calculation section (seconds):
+
+ Generic system initialisation: .57
+ FCIQMC calculation           : 1.04
+
+ ================================================================
+ Finished running on 22/02/2021 at 22:22:50
+ Wall time (seconds):                           1.71
+ CPU time (per processor, seconds):             1.61
+ ================================================================
+

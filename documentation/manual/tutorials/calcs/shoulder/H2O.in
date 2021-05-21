@@ -1,5 +1,3 @@
-import fcidump
-
 molecule h2o {
     O
     H 1 0.96
@@ -9,7 +7,9 @@ molecule h2o {
 set {
     basis cc-pVDZ
     scf_type pk
-    integrals_file H2O_INTDUMP
+    e_convergence 1.0e-8
+    d_convergence 1.0e-8
 }
 
-energy('fcidump')
+scf_e, scf_wfn = energy('SCF', return_wfn=True)
+fcidump(scf_wfn, fname='H2O_INTDUMP', oe_ints=['EIGENVALUES'])

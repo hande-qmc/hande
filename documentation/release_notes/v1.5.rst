@@ -1,0 +1,29 @@
+Release notes for v1.5
+====================== 
+
+Added
+-----
+
+* New hybrid analysis of output files implemented in pyhande. (T. Ichibha, K. Hongo, R. Maezono and A. J. W. Thom, arXiv:1904.09934)
+* Unit tests for pyhande.
+* Revised, object-oriented python analysis code for FCIQMC/CCMC/FCI implemented in pyhande. 
+
+Changed
+-------
+
+* pyhande updated for pandas 1.0 compatibility.
+* Multireference CCMC updated to enable use of multiple secondary references (M-A. Filip, 
+  C. J. C. Scott and A. J. W. Thom, J. Chem. Theory Comput., 15, 12, 6625-6635)
+  (2019)
+* Quasi-Newton propagation algorithm updated for compatibility with 3D UEGs. Automatic
+  thresholds have also been added. (V. A. Neufeld and A. J. W. Thom, J. Chem. Theory Comput., 16, 3, 1503-1510)
+
+Removed
+-------
+* Iterative Lanczos algorithm for FCI calculations. 
+
+Bug Fixes
+----------
+
+* Various minor memory and parallelism bugs.
+* Unused variables removed from a series of functions.

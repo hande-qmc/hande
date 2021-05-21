@@ -33,12 +33,13 @@ class TestTestcodeData(unittest.TestCase):
         data = testcode.testcode_data("tests/hande_files/ueg.out")
         exp_data = {
             'iterations': [10, 20], 'Shift': [0.0, -0.11001747899],
-            '\\sum H_0j N_j': [-0.37851801553000003, -0.82094167005],
+            '\\sum H_0j N_j': [-0.37851801553, -0.82094167005],
             'N_0': [2.7, 3.0], '# H psips': [142.0, 1282.0],
             '# states': [79, 782], '# spawn_events': [50, 463],
             'R_spawn': [0.4879, 0.762], 'time': [0.0004, 0.0008]
         }
-        self.assertDictEqual(data, exp_data)
+        pd.testing.assert_frame_equal(pd.DataFrame.from_dict(data),
+                                      pd.DataFrame.from_dict(exp_data))
 
     def test_shortened_input(self):
         """Two qmc data lines have been artifically removed. Test."""
@@ -50,14 +51,16 @@ class TestTestcodeData(unittest.TestCase):
             '# states': [], '# spawn_events': [],
             'R_spawn': [], 'time': []
         }
-        self.assertDictEqual(data, exp_data)
+        pd.testing.assert_frame_equal(pd.DataFrame.from_dict(data),
+                                      pd.DataFrame.from_dict(exp_data))
 
     def test_all_shortened_input(self):
         """All QMC table data was artifically removed. Test."""
         data = testcode.testcode_data(
             "tests/hande_files/all_qmc_shorten_ueg.out")
         exp_data = {}
-        self.assertDictEqual(data, exp_data)
+        pd.testing.assert_frame_equal(pd.DataFrame.from_dict(data),
+                                      pd.DataFrame.from_dict(exp_data))
 
     def test_hilbert(self):
         """Test MC Hilbert space size estimation extraction."""
@@ -67,7 +70,8 @@ class TestTestcodeData(unittest.TestCase):
             'mean': [17772650.0, 15233700.0],
             'std. err.': [2538951.0, 2931728.0]
         }
-        self.assertDictEqual(data, exp_data)
+        pd.testing.assert_frame_equal(pd.DataFrame.from_dict(data),
+                                      pd.DataFrame.from_dict(exp_data))
 
     def test_basic_fci_input(self):
         """Test FCI."""
@@ -77,7 +81,8 @@ class TestTestcodeData(unittest.TestCase):
             'eigv 3': [9.451775889133], 'eigv 4': [9.525116432464],
             'eigv 5': [9.525116432464]
         }
-        self.assertDictEqual(data, exp_data)
+        pd.testing.assert_frame_equal(pd.DataFrame.from_dict(data),
+                                      pd.DataFrame.from_dict(exp_data))
 
     def test_multiple_fciqmc(self):
         """Have two calculations in this output."""
@@ -95,7 +100,8 @@ class TestTestcodeData(unittest.TestCase):
             'R_spawn': [0.4879, 0.762, 0.4879, 0.762],
             'time': [0.0, 0.0004, 0.0004, 0.0004]
         }
-        self.assertDictEqual(data, exp_data)
+        pd.testing.assert_frame_equal(pd.DataFrame.from_dict(data),
+                                      pd.DataFrame.from_dict(exp_data))
 
     def test_longer_fciqmc(self):
         """Have run the calculation for 11 report loops."""
@@ -114,4 +120,5 @@ class TestTestcodeData(unittest.TestCase):
             'R_spawn': [0.1058, 0.1286, 0.1651, 0.186, 0.1773],
             'time': [0.0, 0.0, 0.0, 0.0004, 0.0004]
         }
-        self.assertDictEqual(data, exp_data)
+        pd.testing.assert_frame_equal(pd.DataFrame.from_dict(data),
+                                      pd.DataFrame.from_dict(exp_data))

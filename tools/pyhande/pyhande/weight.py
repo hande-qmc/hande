@@ -36,8 +36,9 @@ weight_key: string
 
 Returns
 -------
-data : :class:`pandas.DataFrame`
-    HANDE QMC data with weights appended
+weight : List[float]
+    List of weights.
+    
 
 References
 ----------
@@ -62,6 +63,5 @@ Vigor15
     for i in range(weight_history, len(data[weight_key])):
         weights.append(weights[i-1]*to_prod[i] / to_prod[i-weight_history])
 
-    data['Weight'] = weights
 
-    return data
+    return weights

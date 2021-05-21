@@ -94,9 +94,9 @@ contains
         integer, intent(in) :: nspawnings_total
         type(gen_excit_ptr_t), intent(in) :: gen_excit_ptr
         type(logging_t), intent(in) :: logging_info
-!        type (ccmc_in_t), intent(in) :: ccmc_in
         integer(int_p), intent(out) :: nspawn
         type(excit_t), intent(out) :: connection
+        integer :: i
 
         ! We incorporate the sign of the amplitude into the Hamiltonian matrix
         ! element, so we 'pretend' to attempt_to_spawn that all excips are
@@ -105,8 +105,8 @@ contains
         type(hmatel_t) :: hmatel, hmatel_save
         real(p) :: pgen, spawn_pgen
         integer(i0) :: fexcit(sys%basis%tot_string_len), funlinked(sys%basis%tot_string_len)
-        integer :: excitor_sign, excitor_level, excitor_level_2
-        logical :: linked, single_unlinked, allowed_excitation
+        integer :: excitor_sign, excitor_level, excitor_level2
+        logical :: linked, single_unlinked, allowed_excitation, allowed_multiref
         real(p) :: invdiagel
 
         ! 1. Generate random excitation.
@@ -163,13 +163,25 @@ contains
             ! This is the same process as excitor to determinant and hence we
             ! can reuse code...
             call create_excited_det(sys%basis, cdet%f, connection, fexcit)
-! [review] - AJWT: Even safer (but perhaps for another day) is to create a det_string derived type which
-! [review] - AJWT: get_excitation_level accepts.
-            excitor_level = get_excitation_level(det_string(qs%ref%f0, sys%basis), det_string(fexcit,sys%basis))
+            !AJWT: Even safer (but perhaps for another day) is to create a det_string derived type which
+            !AJWT: get_excitation_level accepts.
+            excitor_level = get_excitation_level(det_string(qs%ref%f0, sys%basis), det_string(fexcit, sys%basis))
             call convert_excitor_to_determinant(fexcit, excitor_level, excitor_sign, qs%ref%f0)
-            if (qs%multiref) then
-                excitor_level_2 = get_excitation_level(det_string(qs%second_ref%f0, sys%basis), det_string(fexcit,sys%basis))
-                if (excitor_level > qs%ref%ex_level .and.  excitor_level_2 >qs%ref%ex_level) nspawn=0
+            if (excitor_level > qs%ref%ex_level) then
+                if (qs%multiref) then
+                    ! In the multireference case, check whether the determinant is within the accepted number
+                    ! of excitations from any of the secondary references.
+                    allowed_multiref = .false.
+                    do i = 1, size(qs%secondary_refs)
+                         excitor_level2 = get_excitation_level(det_string(qs%secondary_refs(i)%f0, sys%basis), &
+                                                               det_string(fexcit, sys%basis))
+                         if (excitor_level2 <= qs%secondary_refs(i)%ex_level) then
+                             allowed_multiref = .true.
+                             exit
+                         end if
+                    end do
+                    if (.not. allowed_multiref) nspawn = 0
+                end if
             end if
             if (excitor_sign < 0) nspawn = -nspawn
             if (debug) call write_logging_spawn(logging_info, hmatel_save, pgen, invdiagel, [nspawn], &

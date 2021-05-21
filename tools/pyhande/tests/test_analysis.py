@@ -4,7 +4,7 @@ import warnings
 import numpy as np
 import pandas as pd
 import pyhande.analysis as analysis
-import create_mock_df
+import tests.create_mock_df as create_mock_df
 
 
 class TestProjectedEnergy(unittest.TestCase):
@@ -426,7 +426,12 @@ class TestInefficiency(unittest.TestCase):
             'unavailable from \'N_0\'', analysis.inefficiency,
             self.opt_block, dtau, iterations
         )
-        self.assertIsNone(ineff)
+        ineff_exp = pd.DataFrame(
+            np.asarray([[None, None]]),
+            columns=['mean', 'standard error'],
+            index=['Inefficiency']
+        )
+        pd.testing.assert_frame_equal(ineff, ineff_exp, check_exact=True)
 
     def test_unchanged_mutable(self):
         """Check that mutable objects, such as pd DataFrames, don't

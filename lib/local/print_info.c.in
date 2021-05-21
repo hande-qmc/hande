@@ -21,6 +21,8 @@ const char *report_popcnt();
 const char *report_mpi_toggle();
 const char *report_omp_toggle();
 const char *report_parallel();
+const char *report_mpi3();
+const char *report_shmem();
 typedef void (*HostWriter)(const char * message, int * io_unit);
 void print_info(HostWriter writer, int * io_unit);
 
@@ -64,6 +66,8 @@ void print_info(HostWriter writer, int * io_unit) {
   writer(report_hdf5(), io_unit);
   writer(report_uuid(), io_unit);
   writer(report_parallel(), io_unit);
+  writer(report_mpi3(), io_unit);
+  writer(report_shmem(), io_unit);
   writer(report_scalapack(), io_unit);
   writer(report_single_precision(), io_unit);
   writer(report_popcnt(), io_unit);
@@ -173,23 +177,23 @@ const char *report_parallel() {
 const char *report_mpi3() {
 /* clang-format off */
 #if ! defined PARALLEL
-  return "PARALLEL not defined. MPI-3 functionality disabled";
+  return "PARALLEL not defined. MPI-3 functionality disabled.\n";
 #elif defined DISABLE_MPI3
-  return "DISABLE_MPI3 defined.  MPI-3 functionality disabled.";
+  return "DISABLE_MPI3 defined.  MPI-3 functionality disabled.\n";
 #else
-  return "DISABLE_MPI3 not defined.  MPI-3 functionality enabled.";
+  return "DISABLE_MPI3 not defined.  MPI-3 functionality enabled.\n";
 #endif
   /* clang-format on */
 }
 
 const char *report_shmem() {
 /* clang-format off */
-#if ! defined PARALLEL
-  return "PARALLEL not enabled. POSIX shared memory disabled.";
-#elif ! defined DISABLE_MPI3 && defined ENABLE_SHMEM_POSIX
-  return "ENABLE_SHMEM_POSIX defined.  POSIX shared memory enabled.";
+#if defined PARALLEL && defined ENABLE_SHMEM_POSIX
+  return "PARALLEL and ENABLE_SHMEM_POSIX defined.  POSIX shared memory enabled.\n";
+#elif defined PARALLEL && ! defined DISABLE_MPI3
+  return "PARALLEL defined. DISABLE_MPI3 and ENABLE_SHMEM_POSIX not defined. MPI-3 in use.\n";
 #else
-  return "ENABLE_SHMEM_POSIX not defined or MPI-3 in use.  POSIX shared memory disabled.";
+  return "Neither POSIX shared memory nor MPI-3 are in use.\n";
 #endif
   /* clang-format on */
 }

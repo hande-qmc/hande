@@ -216,15 +216,20 @@ ccmc options
 
     Optional. Default: false.
 
-    If true, perform a coupled cluster calculation using multiple references. second_ref must
-    then be defined. Currently only one additional reference can be used.
+    If true, perform a coupled cluster calculation using multiple references.[Filip19]_ n_secondary_ref 
+    and secondary_refX must then be defined.
 
-``second_ref``
-    type: 
+``n_secondary_ref``
+    type: integer.
 
     Optional. 
+
+    Number of secondary references used. Must be in the range 1-999.
  
-    Options to select the secondary reference state used. See :ref:`reference_table`.
-    Must include at least ``det`` and ``ex_level``.
+``secondary_refX``
+
+    Describes the X-th secondary reference state used. See :ref:`reference_table`.
+    Must include at least ``det`` and ``ex_level``. One table must be included for each
+    secondary reference.
  
 

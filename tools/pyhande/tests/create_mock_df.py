@@ -1,12 +1,12 @@
 """Creating mock dataframes/series for testing."""
-from typing import List
+from typing import List, Union
 import numpy as np
 import pandas as pd
 
 
 def create_qmc_frame(rng, cols: List[str], means: List[float],
                      sine_periods: List[float], noise_facs: List[float],
-                     frac_not_convergeds: int = 0,
+                     frac_not_convergeds: Union[int, List[float]] = 0,
                      num_mc_its: int = 30) -> pd.DataFrame:
     """Create correlated time series mock qmc data table.
 
@@ -26,7 +26,7 @@ def create_qmc_frame(rng, cols: List[str], means: List[float],
         qmc_df.
     noise_facs : list of floats
         Prefactor of Gaussian random noise.
-    frac_not_convergeds : list of floats between 0 and 1
+    frac_not_convergeds : Union[int, List[float]]
         What fraction of the correlated time series should still
         increase/decrease.  If =0, then a list with zeros is created
         with lengths of number of columns in qmc_df.
