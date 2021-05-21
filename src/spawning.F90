@@ -629,7 +629,7 @@ contains
         type(qmc_state_t), intent(inout) :: qmc_state
         integer(int_p), intent(in) :: spawn_cutoff
         integer(int_p), intent(in) :: real_factor
-        type(det_info_t), intent(in) :: cdet
+        type(det_info_t), intent(inout) :: cdet
         integer(int_p), intent(in) :: parent_sign
         type(gen_excit_ptr_t), intent(in) :: gen_excit_ptr
         real(p), allocatable, intent(in) :: weights(:)
@@ -645,7 +645,7 @@ contains
         call gen_excit_ptr%full(rng, sys, qmc_state%excit_gen_data, cdet, pgen, connection, hmatel, allowed)
 
         if (allowed) then
-            qn_weight = calc_qn_spawned_weighting(sys, qmc_state%propagator, cdet%fock_sum, connection)
+            qn_weight = calc_qn_spawned_weighting(qmc_state%propagator, cdet%fock_sum, connection)
             hmatel_tmp = hmatel
             hmatel_tmp%r = hmatel%r * qn_weight
             if (qmc_state%excit_gen_data%p_single_double%vary_psingles) then

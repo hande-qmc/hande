@@ -344,8 +344,6 @@ contains
 
                         nattempts_current_det_ispace = decide_nattempts(rng, real_population(ispace))
 
-                        nattempts_current_det = decide_nattempts(rng, real_population(ispace))
-
                         call do_fciqmc_spawning_attempt(rng, qs%spawn_store%spawn, rdm_spawn, bloom_stats, sys, qs, &
                                                         nattempts_current_det_ispace, cdet, determ, determ_parent, &
                                                         qs%psip_list%pops(ispace, idet), &
