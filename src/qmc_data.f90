@@ -783,7 +783,7 @@ type estimators_t
 
     ! Energy calculated from the RDM
     real(p) :: rdm_energy = 0.0_p
-    real(p) :: rdm_trace = 1.0_p
+    real(p) :: rdm_trace = 0.0_p
 
     ! Hellmann--Feynman sampling (several terms must be accumulated and averaged separately):
     ! Signed population of Hellmann--Feynman particles
