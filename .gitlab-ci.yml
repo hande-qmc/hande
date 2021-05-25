@@ -58,7 +58,7 @@ test-gcc:
         - module load cmake
     script:
         - ./cmakeconfig.py --fc=gfortran --cc=gcc --lua=./local/ --hdf5=./local/hdf5-gnu --det-size=64 --pop-size=64
-        - cmake --build build -- VERBOSE=1 -j 6
+        - cd build && make -j 6
         - cd ../test_suite
         - ../testcode/bin/testcode.py -e ../bin/hande.x -c serial --total-processors=6
     only:
@@ -75,7 +75,7 @@ test-gcc-mpi:
         - module load cmake
     script:
         - ./cmakeconfig.py --mpi --fc=mpif90 --cc=mpicc --mpi-with-scalapack --lua=./local/ --hdf5=./local/hdf5-gnu
-        - cmake --build build -- VERBOSE=1 -j 6
+        - cd build && make -j 6
         - cd ../test_suite
         - ../testcode/bin/testcode.py -e ../bin/hande.x -c mpi --processors=4
     only:
@@ -92,7 +92,7 @@ test-gcc-mpi-64:
         - module load cmake
     script:
         - ./cmakeconfig.py --mpi --fc=mpif90 --cc=mpicc --mpi-with-scalapack --lua=./local/ --hdf5=./local/hdf5-gnu --det-size=64 --pop-size=64
-        - cmake --build build -- VERBOSE=1 -j 6
+        - cd build && make -j 6
         - cd ../test_suite
         - ../testcode/bin/testcode.py -e ../bin/hande.x -c pop64_mpi --processors=4
     only:
@@ -107,7 +107,7 @@ test-gcc-dbg:
         - module load cmake
     script:
         - ./cmakeconfig.py --fc=gfortran --cc=gcc --lua=./local/ --hdf5=./local/hdf5-gnu --det-size=64 --pop-size=64 --type=debug
-        - cmake --build build -- VERBOSE=1 -j 6
+        - cd build && make -j 6
         - cd ../test_suite
         - ../testcode/bin/testcode.py -e ../bin/hande.x -c serial --total-processors=6
     only:
@@ -124,7 +124,7 @@ test-gcc-mpi-dbg:
         - module load cmake
     script:
         - ./cmakeconfig.py --mpi --fc=mpif90 --cc=mpicc --mpi-with-scalapack  --lua=./local/ --hdf5=./local/hdf5-gnu --type=debug
-        - cmake --build build -- VERBOSE=1 -j 6
+        - cd build && make -j 6
         - cd ../test_suite
         - ../testcode/bin/testcode.py -e ../bin/hande.x -c mpi --processors=4
     only:
@@ -141,7 +141,7 @@ test-gcc-mpi-64-dbg:
         - module load cmake
     script:
         - ./cmakeconfig.py --mpi --fc=mpif90 --cc=mpicc --mpi-with-scalapack  --lua=./local/ --hdf5=./local/hdf5-gnu --det-size=64 --pop-size=64 --type=debug
-        - cmake --build build -- VERBOSE=1 -j 6
+        - cd build && make -j 6
         - cd ../test_suite
         - ../testcode/bin/testcode.py -e ../bin/hande.x -c pop64_mpi --processors=4
     only:
@@ -157,7 +157,7 @@ test-intel:
         - module load cmake
     script:
         - ./cmakeconfig.py --fc=ifort --cc=icc --lua=./local/ --hdf5=./local/hdf5-intel --pop-size=64 --det-size=64 
-        - cmake --build build -- VERBOSE=1 -j 6
+        - cd build && make -j 6
         - cd ../test_suite
         - ../testcode/bin/testcode.py -e ../bin/hande.x -c serial --total-processors=6
     only:
@@ -173,7 +173,7 @@ test-intel-dbg:
         - module load cmake
     script:
         - ./cmakeconfig.py --fc=ifort --cc=icc --lua=./local/ --hdf5=./local/hdf5-intel --pop-size=64 --det-size=64  --type=debug
-        - cmake --build build -- VERBOSE=1 -j 6
+        - cd build && make -j 6
         - cd ../test_suite
         - ../testcode/bin/testcode.py -e ../bin/hande.x -c serial --total-processors=6
     only:
@@ -191,7 +191,7 @@ test-intel-mpi-pop64:
         - module load cmake
     script:
         - ./cmakeconfig.py --mpi --fc=mpif90 --cc=mpicc --mpi-with-scalapack --lua=./local/ --hdf5=./local/hdf5-intel --pop-size=64 --det-size=64
-        - cmake --build build -- VERBOSE=1 -j 6
+        - cd build && make -j 6
         - cd ../test_suite
         - ../testcode/bin/testcode.py -e ../bin/hande.x -c mpi --processors=4
     only:
@@ -209,7 +209,7 @@ test-intel-mpi-pop64-dbg:
         - module load cmake
     script:
         - ./cmakeconfig.py --mpi --fc=mpif90 --cc=mpicc --mpi-with-scalapack  --lua=./local/ --hdf5=./local/hdf5-intel  --type=debug --pop-size=64 --det-size=64
-        - cmake --build build -- VERBOSE=1 -j 6
+        - cd build && make -j 6
         - cd ../test_suite
         - ../testcode/bin/testcode.py -e ../bin/hande.x -c mpi --processors=4
     only:
@@ -227,7 +227,7 @@ test-intel-mpi:
         - module load cmake
     script:
         - ./cmakeconfig.py --mpi --fc=mpif90 --cc=mpicc --mpi-with-scalapack --lua=./local/ --hdf5=./local/hdf5-intel
-        - cmake --build build -- VERBOSE=1 -j 6
+        - cd build && make -j 6
         - cd ../test_suite
         - ../testcode/bin/testcode.py -e ../bin/hande.x -c mpi --processors=4
     only:
@@ -245,7 +245,7 @@ test-intel-mpi-dbg:
         - module load cmake
     script:
         - ./cmakeconfig.py --mpi --fc=mpif90 --cc=mpicc --mpi-with-scalapack  --lua=./local/ --hdf5=./local/hdf5-intel  --type=debug 
-        - cmake --build build -- VERBOSE=1 -j 6
+        - cd build && make -j 6
         - cd ../test_suite
         - ../testcode/bin/testcode.py -e ../bin/hande.x -c mpi --processors=4
     only:
@@ -263,7 +263,7 @@ test-intel-quick:
         - module load cmake
     script:
         - ./cmakeconfig.py --mpi --fc=mpif90 --cc=mpicc --mpi-with-scalapack  --lua=./local/ --hdf5=./local/hdf5-intel  --pop-size=64 --det-size=64
-        - cmake --build build -- VERBOSE=1 -j 6
+        - cd build && make -j 6
         - cd ../test_suite
         - ../testcode/bin/testcode.py -e ../bin/hande.x -c quick --processors=4
     except:
@@ -280,7 +280,7 @@ test-gcc-quick:
         - module load cmake
     script:
         - ./cmakeconfig.py --mpi --fc=mpif90 --cc=mpicc --mpi-with-scalapack  --lua=./local/ --hdf5=./local/hdf5-gnu --det-size=64 --pop-size=64
-        - cmake --build build -- VERBOSE=1 -j 6
+        - cd build && make -j 6
         - cd ../test_suite
         - ../testcode/bin/testcode.py -e ../bin/hande.x -c quick --processors=4
     except:
