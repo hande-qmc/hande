@@ -58,7 +58,6 @@ test-gcc:
     script:
         - ./cmakeconfig.py --fc=gfortran --cc=gcc --lua=./local/ --hdf5=./local/hdf5-gnu --det-size=64 --pop-size=64
         - cd build && make -j 6 && cd ..
-    after_script:
         - module load anaconda/python3
         - cd test_suite
         - ../testcode/bin/testcode.py -e ../bin/hande.x -c serial --total-processors=6
@@ -76,7 +75,6 @@ test-gcc-mpi:
     script:
         - ./cmakeconfig.py --mpi --fc=mpif90 --cc=mpicc --mpi-with-scalapack --lua=./local/ --hdf5=./local/hdf5-gnu
         - cd build && make -j 6 && cd ..
-    after_script:
         - module load anaconda/python3
         - cd test_suite
         - ../testcode/bin/testcode.py -e ../bin/hande.x -c mpi --processors=4
@@ -94,7 +92,6 @@ test-gcc-mpi-64:
     script:
         - ./cmakeconfig.py --mpi --fc=mpif90 --cc=mpicc --mpi-with-scalapack --lua=./local/ --hdf5=./local/hdf5-gnu --det-size=64 --pop-size=64
         - cd build && make -j 6 && cd ..
-    after_script:
         - module load anaconda/python3
         - cd test_suite
         - ../testcode/bin/testcode.py -e ../bin/hande.x -c pop64_mpi --processors=4
@@ -110,7 +107,6 @@ test-gcc-dbg:
     script:
         - ./cmakeconfig.py --fc=gfortran --cc=gcc --lua=./local/ --hdf5=./local/hdf5-gnu --det-size=64 --pop-size=64 --type=debug
         - cd build && make -j 6 && cd ..
-    after_script:
         - module load anaconda/python3
         - cd test_suite
         - ../testcode/bin/testcode.py -e ../bin/hande.x -c serial --total-processors=6
@@ -128,7 +124,6 @@ test-gcc-mpi-dbg:
     script:
         - ./cmakeconfig.py --mpi --fc=mpif90 --cc=mpicc --mpi-with-scalapack  --lua=./local/ --hdf5=./local/hdf5-gnu --type=debug
         - cd build && make -j 6 && cd ..
-    after_script:
         - module load anaconda/python3 
         - cd test_suite
         - ../testcode/bin/testcode.py -e ../bin/hande.x -c mpi --processors=4
@@ -146,7 +141,6 @@ test-gcc-mpi-64-dbg:
     script:
         - ./cmakeconfig.py --mpi --fc=mpif90 --cc=mpicc --mpi-with-scalapack  --lua=./local/ --hdf5=./local/hdf5-gnu --det-size=64 --pop-size=64 --type=debug
         - cd build && make -j 6 && cd ..
-    after_script:
         - module load anaconda/python3
         - cd test_suite
         - ../testcode/bin/testcode.py -e ../bin/hande.x -c pop64_mpi --processors=4
@@ -163,7 +157,6 @@ test-intel:
     script:
         - ./cmakeconfig.py --fc=ifort --cc=icc --lua=./local/ --hdf5=./local/hdf5-intel --pop-size=64 --det-size=64 
         - cd build && make -j 6 && cd ..
-    after_script:
         - module load anaconda/python3
         - cd test_suite
         - ../testcode/bin/testcode.py -e ../bin/hande.x -c serial --total-processors=6
@@ -180,7 +173,6 @@ test-intel-dbg:
     script:
         - ./cmakeconfig.py --fc=ifort --cc=icc --lua=./local/ --hdf5=./local/hdf5-intel --pop-size=64 --det-size=64  --type=debug
         - cd build && make -j 6 && cd ..
-    after_script:
         - module load anaconda/python3
         - cd test_suite
         - ../testcode/bin/testcode.py -e ../bin/hande.x -c serial --total-processors=6
@@ -199,7 +191,6 @@ test-intel-mpi-pop64:
     script:
         - ./cmakeconfig.py --mpi --fc=mpif90 --cc=mpicc --mpi-with-scalapack --lua=./local/ --hdf5=./local/hdf5-intel --pop-size=64 --det-size=64
         - cd build && make -j 6 && cd ..
-    after_script:
         - module load anaconda/python3
         - cd test_suite
         - ../testcode/bin/testcode.py -e ../bin/hande.x -c mpi --processors=4
@@ -218,7 +209,6 @@ test-intel-mpi-pop64-dbg:
     script:
         - ./cmakeconfig.py --mpi --fc=mpif90 --cc=mpicc --mpi-with-scalapack  --lua=./local/ --hdf5=./local/hdf5-intel  --type=debug --pop-size=64 --det-size=64
         - cd build && make -j 6 && cd ..
-    after_script:
         - module load anaconda/python3
         - cd test_suite
         - ../testcode/bin/testcode.py -e ../bin/hande.x -c mpi --processors=4
@@ -237,7 +227,6 @@ test-intel-mpi:
     script:
         - ./cmakeconfig.py --mpi --fc=mpif90 --cc=mpicc --mpi-with-scalapack --lua=./local/ --hdf5=./local/hdf5-intel
         - cd build && make -j 6 && cd ..
-    after_script:
         - module load anaconda/python3
         - cd test_suite
         - ../testcode/bin/testcode.py -e ../bin/hande.x -c mpi --processors=4
@@ -256,7 +245,6 @@ test-intel-mpi-dbg:
     script:
         - ./cmakeconfig.py --mpi --fc=mpif90 --cc=mpicc --mpi-with-scalapack  --lua=./local/ --hdf5=./local/hdf5-intel  --type=debug 
         - cd build && make -j 6 && cd ..
-    after_script:
         - module load anaconda/python3
         - cd test_suite
         - ../testcode/bin/testcode.py -e ../bin/hande.x -c mpi --processors=4
@@ -275,7 +263,6 @@ test-intel-quick:
     script:
         - ./cmakeconfig.py --mpi --fc=mpif90 --cc=mpicc --mpi-with-scalapack  --lua=./local/ --hdf5=./local/hdf5-intel  --pop-size=64 --det-size=64
         - cd build && make -j 6 && cd ..
-    after_script:
         - module load anaconda/python3
         - cd test_suite
         - ../testcode/bin/testcode.py -e ../bin/hande.x -c quick --processors=4
@@ -293,7 +280,6 @@ test-gcc-quick:
     script:
         - ./cmakeconfig.py --mpi --fc=mpif90 --cc=mpicc --mpi-with-scalapack  --lua=./local/ --hdf5=./local/hdf5-gnu --det-size=64 --pop-size=64
         - cd build && make -j 6 && cd ..
-    after_script:
         - module load anaconda/python3
         - cd test_suite
         - ../testcode/bin/testcode.py -e ../bin/hande.x -c quick --processors=4
