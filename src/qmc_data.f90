@@ -171,7 +171,16 @@ type qmc_in_t
     real(p) :: initial_shift = 0.0_p
     ! Factor by which the changes in the population are damped when updating the
     ! shift. Used to set initial value within qmc_state_t.
-    real(p) :: shift_damping = huge(1.0_p)
+    real(p) :: shift_damping = huge(1.0_p) 
+    ! Restoring force factor in the harmonic damping model from Yang, Pahl and
+    ! Brand (J. Chem. Phys. 153, 174103 (2020) (DOI:10.1063/5.0023088)) 
+    ! used to direct the walker population to the given
+    ! target population. The original population dynamics are obtained if set
+    ! equal to zero. Sets default value within qmc_state_t. 
+    real(p) :: shift_harmonic_forcing = 0.0_p
+    ! If true, the shift_harmonic_forcing term will be set equal to the square
+    ! of the shift_damping term divided by 4 to obtain critial damping.  
+    logical :: shift_harmonic_crit_damp = .false.
 
     logical :: vary_shift
     logical :: vary_shift_present = .false.
@@ -843,6 +852,14 @@ type qmc_state_t
     ! Factor by which the changes in the population are damped when updating the
     ! shift.
     real(p) :: shift_damping = 0.050_p
+    ! Restoring force factor in the harmonic damping population control algorithm
+    ! from Yang, Pahl and Brand (J. Chem. Phys. 153, 174103 (2020)
+    ! (DOI:10.1063/5.0023088)). The original population dynamics are obtained 
+    ! if set equal to zero. 
+    real(p) :: shift_harmonic_forcing = 0.0_p
+    ! If true, the shift_harmonic_forcing term will be set equal to the square
+    ! of the shift_damping value divided by 4 to obtain critical damping.   
+    logical :: shift_harmonic_crit_damp = .false.
     ! Stores information used by the excitation generator
     type(excit_gen_data_t) :: excit_gen_data
     ! Value of beta which we propagate the density matrix to. Only used for DMQMC.
@@ -978,6 +995,8 @@ contains
         if (qmc%vary_shift_present) call json_write_key(js, 'vary_shift', qmc%vary_shift)
         call json_write_key(js, 'initial_shift', qmc%initial_shift)
         call json_write_key(js, 'shift_damping', qmc%shift_damping)
+        call json_write_key(js, 'shift_harmonic_forcing', qmc%shift_harmonic_forcing)
+        call json_write_key(js, 'shift_harmonic_crit_damp', qmc%shift_harmonic_crit_damp)
         call json_write_key(js, 'walker_length', qmc%walker_length)
         call json_write_key(js, 'spawned_walker_length', qmc%spawned_walker_length)
         call json_write_key(js, 'D0_population', qmc%D0_population)

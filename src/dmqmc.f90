@@ -172,6 +172,8 @@ contains
             qmc_in_loc%quasi_newton_threshold = qs%propagator%quasi_newton_threshold
             qmc_in_loc%quasi_newton_value = qs%propagator%quasi_newton_value
             qmc_in_loc%quasi_newton_pop_control = qs%propagator%quasi_newton_pop_control
+            ! Initialize the harmonic shift damping algorithm parameters
+            qmc_in_loc%shift_harmonic_forcing = qs%shift_harmonic_forcing
             call qmc_in_t_json(js, qmc_in_loc)
             call dmqmc_in_t_json(js, dmqmc_in)
             dmqmc_in_loc = dmqmc_in
@@ -226,8 +228,14 @@ contains
                                                mu, energy_shift)
 
             ! Allow the shift to vary from the very start of the beta loop, if
+            ! shift_harmonic_forcing is not equal to zero. 
+            if (qmc_in_loc%shift_harmonic_forcing .ne. 0.00_p) then
+                qs%vary_shift = .true.
+            else
+            ! Allow the shift to vary from the very start of the beta loop, if
             ! this condition is met.
-            qs%vary_shift = qs%psip_list%tot_nparticles >= qs%target_particles
+                qs%vary_shift = qs%psip_list%tot_nparticles >= qs%target_particles 
+            end if
 
             ! DMQMC quasi-newton not functional, so we artificially set this value to 0 which should not affect non-QN calcs.
             qs%estimators%proj_energy_old = 0_p
