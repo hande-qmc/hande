@@ -11,6 +11,7 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+    if: github.event.repository.name == 'hande-dev'
 
     steps:
       - name: Checkout
@@ -27,7 +28,6 @@ jobs:
           password: ${{ secrets.CR_PAT }}
       
       - name: Build and push Docker images
-        if: github.event.repository.name == 'hande-dev'
         uses: docker/build-push-action@v2.3.0
         with:
           context: .circleci
