@@ -172,6 +172,8 @@ contains
             qmc_in_loc%quasi_newton_threshold = qs%propagator%quasi_newton_threshold
             qmc_in_loc%quasi_newton_value = qs%propagator%quasi_newton_value
             qmc_in_loc%quasi_newton_pop_control = qs%propagator%quasi_newton_pop_control
+            ! Initialize the harmonic shift damping algorithm parameters
+            qmc_in_loc%shift_harmonic_forcing = qs%shift_harmonic_forcing
             call qmc_in_t_json(js, qmc_in_loc)
             call fciqmc_in_t_json(js, fciqmc_in)
             call semi_stoch_in_t_json(js, semi_stoch_in)

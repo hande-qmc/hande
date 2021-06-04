@@ -551,3 +551,47 @@ algorithms and control the core settings in the algorithms.
     .. note::
 
         The shift will still be varied when ``target_population``, if set, is reached.
+
+``shift_harmonic_forcing``
+    type: float.
+
+    Optional.  Default: 0.00
+
+    If present, this sets the restoring force factor value in the harmonic population 
+    control algorithm. This differs from the canonical two-step population control by
+    an additional term based on the target population, as follows
+
+    .. math::
+
+        S(t) = S(t-A\tau) - \frac{\xi}{A\tau} log\left( \frac{N_p(t)} {N_p(t-A\tau)} \right)
+            - \frac{\zeta}{A\tau} log\left( \frac{N_p(t)} {N_t} \right)
+
+    where where :math:`S` is the shift, :math:`t` the current imaginary time, :math:`\tau` the
+    timestep, :math:`A` ``mc_cycles``, :math:`\xi` ``shift_damping``, :math:`\zeta` 
+    is the restoring force factor described here, :math:`N_p` the number of particles and
+    :math:`N_t` is the target population. 
+
+    For more details see M. Yang, E. Pahl and J. Brand, J. Chem. Phys. 153, 174103 (2020) 
+    (DOI:10.1063/5.0023088). 
+
+    .. note::
+  
+        The original population control algorithm is obtained if set equal to zero.
+    
+    .. note::
+
+        When used, the shift will vary throughout the entire simulation, even if the 
+        target population has not been reached. 
+        
+    .. note::
+
+        The harmonic population control algorithm will not work with target populations
+        less than or equal to zero. 
+
+``shift_harmonic_crit_damp``
+    type: boolean.
+
+    Optional.  Default: false.
+
+    If set to true, the value of ``shift_harmonic_forcing`` will be set to the square
+    of ``shift_damping`` divided by four to obtain critical damping.  
