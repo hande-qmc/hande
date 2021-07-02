@@ -332,7 +332,7 @@ $(BIN_DIR)/$(PROG): $(BIN_DIR)/$(PROG_VERSION) $(call md5_check, $(BIN_DIR)/$(PR
 	$(LINK_MACRO)
 
 $(BIN_DIR)/$(PROG_VERSION): $(OBJECTS) | $(BIN_DIR)
-	$(LD) -o $@ $(LDFLAGS) -I $(DEST) $(OBJECTS) $(LIBS)
+	$(LD) -o $@ $(LDFLAGS) -I $(DEST) $^ $(LIBS)
 
 # shortcut
 program: $(BIN_DIR)/$(PROG)
