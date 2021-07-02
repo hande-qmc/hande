@@ -307,7 +307,7 @@ contains
         lb%nattempts = lb%nattempts + 1
 
         ! Update spawn%proc_map with the 'master' version.
-        spawn%proc_map = proc_map
+        spawn%proc_map = parallel_info%load%proc_map
 
         if (load_bal_in%write_info .and. parent) &
             call write_load_balancing_info(real(psip_list%nparticles_proc,p), donor_bins%pop)
