@@ -827,7 +827,7 @@ contains
                 if (ccmc_in%density_matrices .and. qs%vary_shift(1) .and. parent .and. .not. sys%read_in%comp) then
                     ! Add in diagonal contribution to RDM (only once per cycle not each time reference
                     ! is selected as this is O(N^2))
-                    call update_rdm(sys, ref_det, ref_det, real(D0_normalisation,p), 1.0_p, 1.0_p, rdm)
+                    call update_rdm(sys, ref_det%f, ref_det%f, ref_det%occ_list, real(D0_normalisation,p), 1.0_p, 1.0_p, rdm)
                 end if
 
                 qs%psip_list%nparticles = qs%psip_list%nparticles + nparticles_change
@@ -1039,7 +1039,7 @@ contains
             ! Add contribution to density matrix
             ! d_pqrs = <HF|a_p^+a_q^+a_sa_r|CC>
             !$omp critical
-            call update_rdm(sys, cdet, ref_det, &
+            call update_rdm(sys, cdet%f, ref_det%f, cdet%occ_list, &
                             real(cluster%amplitude, p)*cluster%cluster_to_det_sign, &
                             1.0_p, cluster%pselect, rdm)
             !$omp end critical
