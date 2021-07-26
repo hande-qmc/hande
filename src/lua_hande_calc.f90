@@ -1329,6 +1329,7 @@ contains
                                                                 'density_matrices', 'density_matrix_file', 'even_selection', &
                                                                 'multiref', 'n_secondary_ref']
         character(10) :: string
+        character(28), dimension(:), allocatable :: keys_concat
 
         if (aot_exists(lua_state, opts, 'ccmc')) then
 
@@ -1349,6 +1350,7 @@ contains
                 if (ccmc_in%n_secondary_ref == 0) then
                     call stop_all('read_ccmc_in', 'Number of secondary references unspecified.') 
                 end if
+                character(16) :: secondary_ref_keys(ccmc_in%n_secondary_ref)
                 allocate(ccmc_in%secondary_refs(ccmc_in%n_secondary_ref))
                 do i = 1, ccmc_in%n_secondary_ref
                     if (i<10) then
@@ -1363,11 +1365,14 @@ contains
                              call stop_all('read_ccmc_in', 'Uninitialised secondary reference determinant.') 
                          end if
                          if (ccmc_in%secondary_refs(i)%ex_level == -1 .or. ccmc_in%secondary_refs(i)%ex_level == sys%nel) then
-                             call stop_all('read_ccmc_in', 'Uninitialised second reference excitation level.')
+                             call stop_all('read_ccmc_in', 'Uninitialised secondary reference excitation level.')
                          end if
+                         secondary_ref_keys(i) = 'secondary_ref'//string
                 end do
             end if
-            call warn_unused_args(lua_state, keys, ccmc_table)
+            keys_concat = [keys,secondary_ref_keys(i)]
+            
+            call warn_unused_args(lua_state, keys_concat, ccmc_table)
 
             call aot_table_close(lua_state, ccmc_table)
 
@@ -1682,7 +1687,7 @@ contains
         !        full space if present.
         !    ref_table_name (optional): name of table holding reference info.  Default: reference.
         ! Out:
-        !    ref: reference_t object contianing the input options describing the
+        !    ref: reference_t object containing the input options describing the
         !        reference.  Note that ex_level is set to the number of electrons
         !        if not provided (incl. if the reference table is not present in
         !        opts) and sys is present and -1 otherwise.
