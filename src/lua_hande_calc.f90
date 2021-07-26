@@ -1328,7 +1328,8 @@ contains
                                                                 'full_non_composite', 'linked', 'vary_shift_reference', &
                                                                 'density_matrices', 'density_matrix_file', 'even_selection', &
                                                                 'multiref', 'n_secondary_ref']
-        character(10) :: string
+        character(72) :: string ! this means 10^59-1 secondary refs now allowed (see below)
+        ! secondary_refX keywords are not hardcoded in, so we dynamically add them into the 
         character(16), dimension(:), allocatable :: secondary_ref_keys
         character(28), dimension(:), allocatable :: keys_concat
 
@@ -1354,21 +1355,17 @@ contains
                 allocate(secondary_ref_keys(ccmc_in%n_secondary_ref))
                 allocate(ccmc_in%secondary_refs(ccmc_in%n_secondary_ref))
                 do i = 1, ccmc_in%n_secondary_ref
-                    if (i<10) then
-                       write (string,'(I1)') i
-                    else if (i>=10 .and. i<100) then 
-                       write (string,'(I2)') i
-                    else
-                       write (string,'(I3)') i
-                    end if                    
-                    call read_reference_t(lua_state, ccmc_table, ccmc_in%secondary_refs(i), sys, 'secondary_ref'//string)
+                    ! I0 makes sure there are no whitespaces around the number string
+                    write (string, '(A13,I0)') 'secondary_ref', i ! 72-13=59, 10^59-1 refs now allowed      
+                    ! trim makes sure there are no trailing whitespaces 
+                    call read_reference_t(lua_state, ccmc_table, ccmc_in%secondary_refs(i), sys, trim(string))
                          if (.not. allocated(ccmc_in%secondary_refs(i)%occ_list0)) then
                              call stop_all('read_ccmc_in', 'Uninitialised secondary reference determinant.') 
                          end if
                          if (ccmc_in%secondary_refs(i)%ex_level == -1 .or. ccmc_in%secondary_refs(i)%ex_level == sys%nel) then
                              call stop_all('read_ccmc_in', 'Uninitialised secondary reference excitation level.')
                          end if
-                         secondary_ref_keys(i) = 'secondary_ref'//string
+                         secondary_ref_keys(i) = trim(string)
                 end do
             end if
             keys_concat = [keys,secondary_ref_keys]
