@@ -1370,8 +1370,8 @@ contains
                          secondary_ref_keys(i) = 'secondary_ref'//string
                 end do
             end if
-            keys_concat = [keys,secondary_ref_keys(i)]
-            
+            keys_concat = [keys,secondary_ref_keys]
+
             call warn_unused_args(lua_state, keys_concat, ccmc_table)
 
             call aot_table_close(lua_state, ccmc_table)
