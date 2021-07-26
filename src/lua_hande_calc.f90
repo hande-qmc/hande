@@ -1329,6 +1329,7 @@ contains
                                                                 'density_matrices', 'density_matrix_file', 'even_selection', &
                                                                 'multiref', 'n_secondary_ref']
         character(10) :: string
+        character(16), dimension(:), allocatable :: secondary_ref_keys
         character(28), dimension(:), allocatable :: keys_concat
 
         if (aot_exists(lua_state, opts, 'ccmc')) then
@@ -1350,7 +1351,7 @@ contains
                 if (ccmc_in%n_secondary_ref == 0) then
                     call stop_all('read_ccmc_in', 'Number of secondary references unspecified.') 
                 end if
-                character(16) :: secondary_ref_keys(ccmc_in%n_secondary_ref)
+                allocate(secondary_ref_keys(ccmc_in%n_secondary_ref))
                 allocate(ccmc_in%secondary_refs(ccmc_in%n_secondary_ref))
                 do i = 1, ccmc_in%n_secondary_ref
                     if (i<10) then
