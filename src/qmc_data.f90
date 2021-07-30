@@ -1155,6 +1155,7 @@ contains
                 end if
                 call reference_t_json(js, ccmc%secondary_refs(i), key = 'secondary_ref'//string)
             end do
+            call json_write_key(js, 'n_secondary_ref', ccmc%n_secondary_ref)
         end if
         call json_write_key(js, 'multiref', ccmc%multiref,terminal=.true.)
         call json_object_end(js, terminal)
