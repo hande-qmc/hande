@@ -9,7 +9,8 @@ implicit none
 
 contains
     subroutine spawner_ccmc(rng, sys, qs, spawn_cutoff, linked_ccmc, cdet, cluster, &
-                            gen_excit_ptr, logging_info, nspawn, connection, nspawnings_total, ps_stat)
+                            gen_excit_ptr, logging_info, nspawn, connection, &
+                            nspawnings_total, ps_stat, secondary_ref_tree)
 
         ! Attempt to spawn a new particle on a connected excitor with
         ! probability
@@ -68,7 +69,7 @@ contains
         !    connection: excitation connection between the current excitor
         !        and the child excitor, on which progeny are spawned.
 
-        use ccmc_data, only: cluster_t
+        use ccmc_data, only: cluster_t, tree_t, node_t, tree_search
         use ccmc_utils, only: convert_excitor_to_determinant
         use ccmc_linked, only: unlinked_commutator, linked_excitation
         use determinant_data, only: det_info_t
@@ -82,6 +83,7 @@ contains
         use hamiltonian_data
         use logging, only: logging_t, write_logging_spawn
         use excit_gens, only: p_single_double_coll_t
+        use errors, only: stop_all
 
         type(sys_t), intent(in) :: sys
         type(qmc_state_t), intent(in) :: qs
@@ -96,7 +98,7 @@ contains
         type(logging_t), intent(in) :: logging_info
         integer(int_p), intent(out) :: nspawn
         type(excit_t), intent(out) :: connection
-        integer :: i
+        type(tree_t), intent(in), optional :: secondary_ref_tree
 
         ! We incorporate the sign of the amplitude into the Hamiltonian matrix
         ! element, so we 'pretend' to attempt_to_spawn that all excips are
@@ -108,6 +110,7 @@ contains
         integer :: excitor_sign, excitor_level, excitor_level2
         logical :: linked, single_unlinked, allowed_excitation, allowed_multiref
         real(p) :: invdiagel
+        integer :: i
 
         ! 1. Generate random excitation.
         ! Note CCMC is not (yet, if ever) compatible with the 'split' excitation
@@ -171,15 +174,19 @@ contains
                 if (qs%multiref) then
                     ! In the multireference case, check whether the determinant is within the accepted number
                     ! of excitations from any of the secondary references.
-                    allowed_multiref = .false.
-                    do i = 1, size(qs%secondary_refs)
-                         excitor_level2 = get_excitation_level(det_string(qs%secondary_refs(i)%f0, sys%basis), &
-                                                               det_string(fexcit, sys%basis))
-                         if (excitor_level2 <= qs%secondary_refs(i)%ex_level) then
-                             allowed_multiref = .true.
-                             exit
-                         end if
-                    end do
+                    if (qs%mr_acceptance_search == 0) then
+                        allowed_multiref = .false.
+                        do i = 1, size(qs%secondary_refs)
+                             excitor_level2 = get_excitation_level(det_string(qs%secondary_refs(i)%f0, sys%basis), &
+                                                                   det_string(fexcit, sys%basis))
+                             if (excitor_level2 <= qs%secondary_refs(i)%ex_level) then
+                                 allowed_multiref = .true.
+                                 exit
+                             end if
+                        end do
+                    else
+                        allowed_multiref = tree_search(secondary_ref_tree, det_string(fexcit, sys%basis), secondary_ref_tree%root)
+                    end if
                     if (.not. allowed_multiref) nspawn = 0
                 end if
             end if

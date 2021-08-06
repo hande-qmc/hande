@@ -1334,15 +1334,16 @@ contains
         type(ccmc_in_t), intent(out) :: ccmc_in
 
         integer :: ccmc_table, err, i
-        character(28), parameter :: keys(10) = [character(28) :: 'move_frequency', 'cluster_multispawn_threshold', &
+        character(28), parameter :: keys(11) = [character(28) :: 'move_frequency', 'cluster_multispawn_threshold', &
                                                                 'full_non_composite', 'linked', 'vary_shift_reference', &
                                                                 'density_matrices', 'density_matrix_file', 'even_selection', &
-                                                                'multiref', 'n_secondary_ref']
+                                                                'multiref', 'n_secondary_ref', 'mr_acceptance_search']
         character(23) :: string ! 32 bit integer has 10 digits, should be more than enough
         ! secondary_refX keywords are not hardcoded in, so we dynamically add them into the
         ! array of allowed keys 
         character(16), dimension(:), allocatable :: secondary_ref_keys
         character(28), dimension(:), allocatable :: keys_concat
+        character(10) :: str
 
         if (aot_exists(lua_state, opts, 'ccmc')) then
 
@@ -1378,6 +1379,13 @@ contains
                          end if
                          secondary_ref_keys(i) = trim(string)
                 end do
+                call aot_get_val(str, err, lua_state, ccmc_table, 'mr_acceptance_search')
+                select case (str)
+                    case ('bk_tree')
+                        ccmc_in%mr_acceptance_search = 1
+                    case default
+                        ccmc_in%mr_acceptance_search = 0
+                end select
             end if
             keys_concat = [keys,secondary_ref_keys]
 

@@ -3,6 +3,7 @@ module ccmc_data
 use const, only: i0, p, dp, int_64, depsilon
 use determinant_data, only: det_info_t
 use base_types, only: alloc_int2d, alloc_rdp1d
+use excitations, only: get_excitation_level
 
 implicit none
 
@@ -97,6 +98,16 @@ type ex_lvl_dist_t
     ! Cumulative population of excips on occupied excitors at each excitation level.
     real(p), allocatable :: cumulative_pop_ex_lvl(:)
 end type ex_lvl_dist_t
+
+type node_t
+  integer(int_64), allocatable :: bstring(:)
+  type(node_t), allocatable :: edges(:)
+end type node_t
+
+type tree_t
+  type(node_t), pointer :: root
+  integer :: n_secondary_ref, ex_lvl, max_excit
+end type tree_t
 
 contains
 
@@ -291,5 +302,105 @@ contains
         end if
 
     end subroutine end_selection_data
+
+    subroutine tree_add(this, next_bstring)
+
+        ! This builds a Hamming-distance BK-tree for k-nearest neighbour search
+        ! A very good explanation can be found here: 
+        ! https://daniel-j-h.github.io/post/nearest-neighbors-in-metric-spaces/
+
+        type(tree_t), intent(inout) :: this
+        integer(int_64), intent(in) :: next_bstring(:)
+        type(node_t), pointer :: curr_node => null()
+        integer(int_64), pointer :: parent(:) => null()
+        type(node_t), pointer :: child(:) => null()
+        integer :: excit_lvl
+
+        if (.not. associated(this%root)) then
+            allocate(this%root)
+        end if
+        curr_node => this%root
+        if (.not. allocated(curr_node%bstring)) then
+            !allocate(curr_node%bstring(size(next_bstring))) 
+            ![TODO]: I think the next line alone is sufficient in F2003, if it is delete the previous line
+            curr_node%bstring = next_bstring
+        else if (.not. allocated(curr_node%edges)) then
+            excit_lvl = get_excitation_level(curr_node%bstring, next_bstring)
+            allocate(curr_node%edges(0:this%max_excit))
+            curr_node%edges(excit_lvl)%bstring = next_bstring
+        else
+            do
+                if (.not. allocated(curr_node%edges)) then
+                  allocate(curr_node%edges(0:this%max_excit))
+                end if
+                parent => curr_node%bstring
+                child => curr_node%edges
+                excit_lvl = get_excitation_level(parent, next_bstring)
+                curr_node => child(excit_lvl)
+                if (.not. allocated(curr_node%bstring)) then
+                    curr_node%bstring = next_bstring
+                    exit
+                end if
+            end do
+        end if
+
+    end subroutine tree_add
+
+    recursive function tree_search(this, new_bstring, curr_node) result(hit)
+        ! This is a recursive, depth-first traversal of a Hamming-distance BK-tree.
+        ! This implementation was in part inspired by the C++ implementation here
+        ! https://www.geeksforgeeks.org/bk-tree-introduction-implementation/ 
+        ! and the Python implementation here
+        ! https://github.com/ahupp/bktree
+        !
+        ! [TODO]: A non-recursive search may improve performance, and an example in Python 
+        ! using deque can be found at https://github.com/benhoyt/pybktree
+
+
+        type(tree_t), intent(in) :: this
+        integer(int_64), intent(in) :: new_bstring(:)
+        integer :: excit_lvl, endlvl, startlvl, lvl
+        type(node_t), pointer, intent(in) :: curr_node
+        logical :: hit
+
+
+        excit_lvl = get_excitation_level(curr_node%bstring, new_bstring)
+        if (excit_lvl <= this%ex_lvl) then
+            hit = .true.
+            return
+        end if
+        startlvl = excit_lvl - this%ex_lvl
+        endlvl = excit_lvl + this%ex_lvl
+        if (startlvl <= this%ex_lvl) then
+            startlvl = this%ex_lvl + 1
+        end if
+        if (endlvl > this%max_excit) then
+            endlvl = this%max_excit
+        end if
+
+        do lvl = startlvl, endlvl
+            if (.not. allocated(curr_node%edges)) then
+                ! reached the bottom, nothing found
+                hit = .false.
+                return
+            end if
+            if (.not. allocated(curr_node%edges(lvl)%bstring)) then
+                continue
+            else
+                hit = tree_search(this, new_bstring, curr_node%edges(lvl))
+                if (hit) then
+                    ! this check makes sure once hit = .true.
+                    ! the result gets propagated to the top level and breaks recursion
+                    hit = .true.
+                    return
+                end if
+            end if
+        end do
+
+        ! nothing found after recursion, return false
+        hit = .false. 
+        return
+
+    end function tree_search
 
 end module ccmc_data

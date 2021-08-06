@@ -346,6 +346,8 @@ type ccmc_in_t
     integer :: n_secondary_ref = 0
     ! The secondary references.
     type(reference_t), allocatable :: secondary_refs(:)
+    ! Acceptance algorithm for mrcc excitations
+    integer :: mr_acceptance_search
 end type ccmc_in_t
 
 type restart_in_t
@@ -882,6 +884,7 @@ type qmc_state_t
     logical :: multiref = .false.
     integer :: n_secondary_ref = 0
     type(reference_t), allocatable :: secondary_refs(:)
+    integer :: mr_acceptance_search
     ! WARNING: par_info is the 'reference/master' (ie correct) version
     ! of parallel_t, in particular of proc_map_t.  However, copies of it
     ! are kept in spawn_t objects, and it is these copies which are used
@@ -1146,16 +1149,11 @@ contains
         call json_write_key(js, 'even_selection', ccmc%even_selection)
         if (ccmc%multiref) then
             do i=1, size(ccmc%secondary_refs)
-                if (i<10) then
-                    write(string,'(I1)') i
-                else if (i>=10 .and. i<100) then 
-                    write (string,'(I2)') i
-                else
-                    write (string,'(I3)') i
-                end if
-                call reference_t_json(js, ccmc%secondary_refs(i), key = 'secondary_ref'//string)
+                write (string, '(A13,I0)') 'secondary_ref', i ! up to 2.15E9 secondary references can be provided
+                call reference_t_json(js, ccmc%secondary_refs(i), key = trim(string))
             end do
             call json_write_key(js, 'n_secondary_ref', ccmc%n_secondary_ref)
+            call json_write_key(js, 'mr_acceptance_search', ccmc%mr_acceptance_search)
         end if
         call json_write_key(js, 'multiref', ccmc%multiref,terminal=.true.)
         call json_object_end(js, terminal)

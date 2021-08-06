@@ -1153,7 +1153,7 @@ contains
         ! Note occ_list could be set and allocated in the input.
         reference = reference_in
 
-    if (present(occlist)) reference%occ_list0 = occlist
+        if (present(occlist)) reference%occ_list0 = occlist
 
         ! Set the reference determinant to be the spin-orbitals with the lowest
         ! single-particle eigenvalues which satisfy the spin polarisation and, if
@@ -1237,7 +1237,7 @@ contains
 
     end subroutine init_reference_restart
 
-    subroutine init_secondary_references(sys, references_in, io_unit, qs)
+    subroutine init_secondary_references(sys, references_in, io_unit, qs, secondary_ref_tree)
         ! Set the secondary reference determinant from input options
         ! and use it to set up the maximum considered excitation level
         ! for the calculation.
@@ -1253,11 +1253,15 @@ contains
         use system, only: sys_t
         use qmc_data, only: qmc_state_t 
         use excitations, only: get_excitation_level, det_string
+        use ccmc_data, only: tree_t, node_t, tree_add
+        ! [TODO]: delete after debugging
+        use errors, only: stop_all
 
         type(sys_t), intent(in) :: sys
         type(reference_t), intent(in) :: references_in(:)
         integer, intent(in) :: io_unit
         type(qmc_state_t), intent(inout) :: qs
+        type(tree_t), intent(out), optional :: secondary_ref_tree
         integer :: i, current_max, total_max = 0
         
         do i = 1, size(references_in)
@@ -1266,6 +1270,17 @@ contains
                                                                  det_string(qs%secondary_refs(i)%f0,sys%basis)) 
            if (current_max > total_max) total_max = current_max
         end do
+
+        if (qs%mr_acceptance_search == 1) then
+            if (.not. present(secondary_ref_tree)) then
+                ! [TODO]: delete after internal debugging, as it's not user-facing
+                call stop_all('qmc', 'secondary_ref_tree not provided as an argument')
+            end if
+            do i = 1, size(qs%secondary_refs)
+                call tree_add(secondary_ref_tree, det_string(qs%secondary_refs(i)%f0,sys%basis))
+            end do
+        end if 
+
 
         qs%ref%max_ex_level = total_max
   
