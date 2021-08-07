@@ -1134,7 +1134,7 @@ contains
 
         type(json_out_t), intent(inout) :: js
         type(ccmc_in_t), intent(in) :: ccmc
-        character(10) :: string
+        character(23) :: string
         integer :: i
         logical, intent(in), optional :: terminal
 

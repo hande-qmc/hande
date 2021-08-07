@@ -707,7 +707,7 @@ contains
                 !$omp        nattempts_spawn, ex_lvl_dist, &
                 !$omp        ccmc_in, nprocs, ms_stats, ps_stats, qmc_in, load_bal_in, &
                 !$omp        ndeath_nc,   &
-                !$omp        nparticles_change, ndeath, logging_info)
+                !$omp        nparticles_change, ndeath, logging_info, secondary_ref_tree)
                 it = get_thread_id()
                 iexcip_pos = 0
                 seen_D0 = .false.
