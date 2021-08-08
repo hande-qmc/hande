@@ -1276,6 +1276,9 @@ contains
                 ! [TODO]: delete after internal debugging, as it's not user-facing
                 call stop_all('qmc', 'secondary_ref_tree not provided as an argument')
             end if
+            secondary_ref_tree%n_secondary_ref = size(qs%secondary_refs)
+            secondary_ref_tree%ex_lvl = qs%ref%ex_level
+            secondary_ref_tree%max_excit = sys%basis%nbasis/2
             do i = 1, size(qs%secondary_refs)
                 call tree_add(secondary_ref_tree, det_string(qs%secondary_refs(i)%f0,sys%basis))
             end do

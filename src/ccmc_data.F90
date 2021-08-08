@@ -100,7 +100,7 @@ type ex_lvl_dist_t
 end type ex_lvl_dist_t
 
 type node_t
-  integer(int_64), allocatable :: bstring(:)
+  integer(i0), allocatable :: bstring(:)
   type(node_t), allocatable :: edges(:)
 end type node_t
 
@@ -310,21 +310,25 @@ contains
         ! https://daniel-j-h.github.io/post/nearest-neighbors-in-metric-spaces/
 
         type(tree_t), intent(inout) :: this
-        integer(int_64), intent(in) :: next_bstring(:)
+        integer(i0), intent(in) :: next_bstring(:)
         type(node_t), pointer :: curr_node => null()
-        integer(int_64), pointer :: parent(:) => null()
+        integer(i0), pointer :: parent(:) => null()
         type(node_t), pointer :: child(:) => null()
         integer :: excit_lvl
 
+        ! Initialises the root node
         if (.not. associated(this%root)) then
             allocate(this%root)
         end if
         curr_node => this%root
         if (.not. allocated(curr_node%bstring)) then
+            ! If the node was initialised but empty, store the bitstring here
             !allocate(curr_node%bstring(size(next_bstring))) 
             ![TODO]: I think the next line alone is sufficient in F2003, if it is delete the previous line
             curr_node%bstring = next_bstring
         else if (.not. allocated(curr_node%edges)) then
+            ! If the node has a bitstring, compare and allocate edges, and store the bitstring at the end 
+            ! of the correct edge
             excit_lvl = get_excitation_level(curr_node%bstring, next_bstring)
             allocate(curr_node%edges(0:this%max_excit))
             curr_node%edges(excit_lvl)%bstring = next_bstring
@@ -358,7 +362,7 @@ contains
 
 
         type(tree_t), intent(in) :: this
-        integer(int_64), intent(in) :: new_bstring(:)
+        integer(i0), intent(in) :: new_bstring(:)
         integer :: excit_lvl, endlvl, startlvl, lvl
         type(node_t), pointer, intent(in) :: curr_node
         logical :: hit
