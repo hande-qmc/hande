@@ -1254,8 +1254,6 @@ contains
         use qmc_data, only: qmc_state_t 
         use excitations, only: get_excitation_level, det_string
         use ccmc_data, only: tree_t, node_t, tree_add
-        ! [TODO]: delete after debugging
-        use errors, only: stop_all
 
         type(sys_t), intent(in) :: sys
         type(reference_t), intent(in) :: references_in(:)
@@ -1271,11 +1269,9 @@ contains
            if (current_max > total_max) total_max = current_max
         end do
 
+        qs%ref%max_ex_level = total_max
+
         if (qs%mr_acceptance_search == 1) then
-            if (.not. present(secondary_ref_tree)) then
-                ! [TODO]: delete after internal debugging, as it's not user-facing
-                call stop_all('qmc', 'secondary_ref_tree not provided as an argument')
-            end if
             secondary_ref_tree%n_secondary_ref = size(qs%secondary_refs)
             secondary_ref_tree%ex_lvl = qs%ref%ex_level
             secondary_ref_tree%max_excit = sys%basis%nbasis/2
@@ -1283,9 +1279,6 @@ contains
                 call tree_add(secondary_ref_tree, det_string(qs%secondary_refs(i)%f0,sys%basis))
             end do
         end if 
-
-
-        qs%ref%max_ex_level = total_max
   
     end subroutine init_secondary_references
 

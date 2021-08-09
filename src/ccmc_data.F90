@@ -105,7 +105,7 @@ type node_t
 end type node_t
 
 type tree_t
-  type(node_t), pointer :: root
+  type(node_t), pointer :: root => null()
   integer :: n_secondary_ref, ex_lvl, max_excit
 end type tree_t
 
@@ -323,19 +323,17 @@ contains
         curr_node => this%root
         if (.not. allocated(curr_node%bstring)) then
             ! If the node was initialised but empty, store the bitstring here
-            !allocate(curr_node%bstring(size(next_bstring))) 
-            ![TODO]: I think the next line alone is sufficient in F2003, if it is delete the previous line
             curr_node%bstring = next_bstring
         else if (.not. allocated(curr_node%edges)) then
             ! If the node has a bitstring, compare and allocate edges, and store the bitstring at the end 
             ! of the correct edge
             excit_lvl = get_excitation_level(curr_node%bstring, next_bstring)
-            allocate(curr_node%edges(0:this%max_excit))
+            allocate(curr_node%edges(this%max_excit))
             curr_node%edges(excit_lvl)%bstring = next_bstring
         else
             do
                 if (.not. allocated(curr_node%edges)) then
-                  allocate(curr_node%edges(0:this%max_excit))
+                  allocate(curr_node%edges(this%max_excit))
                 end if
                 parent => curr_node%bstring
                 child => curr_node%edges
