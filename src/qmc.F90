@@ -1271,10 +1271,13 @@ contains
 
         qs%ref%max_ex_level = total_max
 
+        ! Optionally build the BK tree, see ccmc_data.F90/tree_add and tree_search for further comments
         if (qs%mr_acceptance_search == 1) then
             secondary_ref_tree%n_secondary_ref = size(qs%secondary_refs)
             secondary_ref_tree%ex_lvl = qs%ref%ex_level
-            secondary_ref_tree%max_excit = sys%basis%nbasis/2
+            ! The maximum possible excitation level is the smaller of number of electrons 
+            ! and the number of virtual orbitals
+            secondary_ref_tree%max_excit = min(sys%nel, sys%nvirt)
             do i = 1, size(qs%secondary_refs)
                 call tree_add(secondary_ref_tree, det_string(qs%secondary_refs(i)%f0,sys%basis))
             end do

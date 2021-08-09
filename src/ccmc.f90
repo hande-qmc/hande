@@ -432,6 +432,7 @@ contains
             qs%n_secondary_ref = ccmc_in%n_secondary_ref
             allocate (qs%secondary_refs(qs%n_secondary_ref))
             if (qs%mr_acceptance_search == 1) then
+                ! If BK-tree search is used, additionally get the secondary_ref_tree
                 call init_secondary_references(sys, ccmc_in%secondary_refs, io_unit, qs, secondary_ref_tree)
             else
                 call init_secondary_references(sys, ccmc_in%secondary_refs, io_unit, qs)
