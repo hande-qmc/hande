@@ -227,9 +227,30 @@ ccmc options
     Number of secondary references used. Must be in the range 1-999.
  
 ``secondary_refX``
+    type: lua table.
 
     Describes the X-th secondary reference state used. See :ref:`reference_table`.
     Must include at least ``det`` and ``ex_level``. One table must be included for each
     secondary reference.
  
+``mr_acceptance_search``
+    type: string.
 
+    Optional. Default: 'linear'.
+
+    Possible values are 'linear' and 'bk_tree'.
+
+    Specifies the acceptance algorithm for multireference excitation generation. 
+
+    Linear search iterates through the list of ``secondary_refX`` provided and accepts a proposed excitation
+    upon the first secondary reference that is within ``ex_level`` of it. This is more suitable for when ``n_secondary_ref``
+    is small (:math:`<100`).
+
+    BK tree search first builds a tree made of specified secondary references, and descends into the tree to search.
+    A good explanation can be found `here <https://daniel-j-h.github.io/post/nearest-neighbors-in-metric-spaces/>`_.
+    It should achieve sublinear time complexity, and the advantage over linear search will be more evident the larger the
+    secondary reference space and the smaller the coupled cluster truncation (meaning a smaller subspace of the tree needs to be searched).
+
+    .. warning::
+
+        The BK tree search algorithm is currently being benchmarked and optimised.
