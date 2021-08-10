@@ -1127,7 +1127,7 @@ contains
         type(tree_t), intent(in), optional :: secondary_ref_tree
 
         integer :: nspawnings_cluster
-        logical :: attempt_death
+        logical :: attempt_death, bktree
 
         ! Spawning
         ! This has the potential to create blooms, so we allow for multiple
@@ -1136,6 +1136,7 @@ contains
         ! of cluster%amplitude/cluster%pselect.  If this is
         ! greater than cluster_multispawn_threshold, then nspawnings is
         ! increased to the ratio of these.
+        bktree = present(secondary_ref_tree)
         nspawnings_cluster=max(1,ceiling((abs(contrib%cluster%amplitude)&
                                      /contrib%cluster%pselect)/ ccmc_in%cluster_multispawn_threshold))
 
@@ -1143,18 +1144,22 @@ contains
         nattempts_spawn_tot = nattempts_spawn_tot + nspawnings_cluster
         if (qs%multiref) then
             ! Checks whether the current contribution is within the considered space.
-            if (multiref_check_ex_level(sys, contrib, qs, 2)) then
-                attempt_death = multiref_check_ex_level(sys, contrib, qs, 0)
-                if (.not. present(secondary_ref_tree)) then
+            if (bktree) then
+                if (multiref_check_ex_level(sys, contrib, qs, 2, secondary_ref_tree)) then
+                    attempt_death = multiref_check_ex_level(sys, contrib, qs, 0, secondary_ref_tree)
                     call do_spawning_death(rng, sys, qs, ccmc_in, &
-                                     logging_info, bloom_stats, contrib, &
-                                     ndeath, ps_stat, nspawnings_cluster, attempt_death)
-                else
-                    call do_spawning_death(rng, sys, qs, ccmc_in, &
-                                     logging_info, bloom_stats, contrib, &
-                                     ndeath, ps_stat, nspawnings_cluster, &
-                                     attempt_death, secondary_ref_tree)
+                                         logging_info, bloom_stats, contrib, &
+                                         ndeath, ps_stat, nspawnings_cluster, &
+                                         attempt_death, secondary_ref_tree)
                 end if
+            else
+                if (multiref_check_ex_level(sys, contrib, qs, 2)) then
+                    attempt_death = multiref_check_ex_level(sys, contrib, qs, 0)
+                    call do_spawning_death(rng, sys, qs, ccmc_in, &
+                                         logging_info, bloom_stats, contrib, &
+                                         ndeath, ps_stat, nspawnings_cluster, &
+                                         attempt_death)      
+                end if          
             end if
         else
             attempt_death = (contrib%cluster%excitation_level <= qs%ref%ex_level) 
@@ -1210,7 +1215,6 @@ contains
         use excit_gens, only: p_single_double_coll_t
 
         use excitations, only: get_excitation_level
-        use errors, only: stop_all
         
         type(sys_t), intent(in) :: sys
         type(dSFMT_T), intent(inout) :: rng
@@ -1234,10 +1238,6 @@ contains
                                                    nspawnings_cluster, ps_stat)
             end do
         else
-            ! [TODO] delete after debugging, not user-facing
-            if (.not. present(secondary_ref_tree)) then
-                call stop_all('ccmc/do_spawning_death', 'secondary_ref_tree not provided')
-            end if
             do i = 1, nspawnings_cluster
                 call perform_ccmc_spawning_attempt(rng, sys, qs, ccmc_in, logging_info, bloom_stats, contrib, &
                                                    nspawnings_cluster, ps_stat, secondary_ref_tree)
@@ -1444,7 +1444,7 @@ contains
 
     end subroutine perform_ccmc_spawning_attempt
 
-    function multiref_check_ex_level(sys, contrib, qs, offset) result(assert1)
+    function multiref_check_ex_level(sys, contrib, qs, offset, secondary_ref_tree) result(assert1)
         !Used in mr-CCMC.
         !Checks whether a cluster is within some number of excitations of any of the references supplied.
 
@@ -1457,26 +1457,33 @@ contains
         !       within linked.
         !   qs: information on current state of calculation.
         !   offset: changes acceptable excitation level from the calculation truncation level.
+        !   secondary_ref_tree (optional): a BK tree of all secondary references
         
         !Out:
         !   assert1: true if at least one of the excitation levels is below the threshold. False otherwise.
         use excitations, only:  get_excitation_level, det_string
         use qmc_data, only: qmc_state_t
-        use ccmc_data, only: wfn_contrib_t
+        use ccmc_data, only: wfn_contrib_t, tree_t, tree_search
         use system, only: sys_t
  
         type(qmc_state_t), intent(in) :: qs
         type(wfn_contrib_t), intent(in) :: contrib
         type(sys_t), intent(in) :: sys
         integer, intent(in) :: offset
+        type(tree_t), intent(in), optional :: secondary_ref_tree
         integer :: ex_level, i
         logical :: assert1, assert2 = .false.
         
-        do i = 1, size(qs%secondary_refs)
-           ex_level =   get_excitation_level(det_string(contrib%cdet%f, sys%basis), det_string(qs%secondary_refs(i)%f0, sys%basis)) 
-           assert2 = (ex_level <= qs%secondary_refs(i)%ex_level + offset)
-           if (assert2) exit
-        end do
+        if (qs%mr_acceptance_search == 0) then
+            do i = 1, size(qs%secondary_refs)
+               ex_level = get_excitation_level(det_string(contrib%cdet%f, sys%basis), &
+                                               det_string(qs%secondary_refs(i)%f0, sys%basis)) 
+               assert2 = (ex_level <= qs%secondary_refs(i)%ex_level + offset)
+               if (assert2) exit
+            end do
+        else
+            assert2 = tree_search(secondary_ref_tree, det_string(contrib%cdet%f, sys%basis), secondary_ref_tree%root, offset)
+        end if
         assert1 = (contrib%cluster%excitation_level <= qs%ref%ex_level + offset .or. assert2)
 
     end function

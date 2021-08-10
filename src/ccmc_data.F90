@@ -360,7 +360,7 @@ contains
 
     end subroutine tree_add
 
-    recursive function tree_search(this, new_bstring, curr_node) result(hit)
+    recursive function tree_search(this, new_bstring, curr_node, offset) result(hit)
         ! This is a recursive, depth-first traversal of a Hamming-distance BK-tree.
         ! This implementation was in part inspired by the C++ implementation here
         ! https://www.geeksforgeeks.org/bk-tree-introduction-implementation/ 
@@ -375,21 +375,30 @@ contains
         integer(i0), intent(in) :: new_bstring(:)
         integer :: excit_lvl, endlvl, startlvl, lvl
         type(node_t), pointer, intent(in) :: curr_node
+        integer, intent(in), optional :: offset
         logical :: hit
+        integer :: ex_lvl
 
         excit_lvl = get_excitation_level(curr_node%bstring, new_bstring)
-        if (excit_lvl <= this%ex_lvl) then
+        
+        if (.not. present(offset)) then
+            ex_lvl = this%ex_lvl
+        else
+            ex_lvl = offset
+        end if
+
+        if (excit_lvl <= ex_lvl) then
             ! the current node is within ex_lvl of the new bitstring
             hit = .true.
             return
         end if
         
         ! If not, descend recursively into a subspace of the tree
-        startlvl = excit_lvl - this%ex_lvl
-        endlvl = excit_lvl + this%ex_lvl
-        if (startlvl <= this%ex_lvl) then
+        startlvl = excit_lvl - ex_lvl
+        endlvl = excit_lvl + ex_lvl
+        if (startlvl <= ex_lvl) then
             ! We already establishedd that this bitstring is not within ex_lvl of the current node
-            startlvl = this%ex_lvl + 1
+            startlvl = ex_lvl + 1
         end if
         if (endlvl > this%max_excit) then
             endlvl = this%max_excit
@@ -407,7 +416,11 @@ contains
             else
                 ! If this node has information in it, dig into it
                 ! This is the recursive bit, and it is doing the descending / traversal into the tree
-                hit = tree_search(this, new_bstring, curr_node%edges(lvl))
+                if (.not. present(offset)) then
+                    hit = tree_search(this, new_bstring, curr_node%edges(lvl))
+                else
+                    hit = tree_search(this, new_bstring, curr_node%edges(lvl), offset)
+                end if
                 if (hit) then
                     ! Again might look redundant but this check makes sure once hit = .true.
                     ! the result gets propagated to the top level and breaks recursion

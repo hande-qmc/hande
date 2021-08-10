@@ -237,7 +237,7 @@ contains
                         else
                             ! Exciting into this orbital.
                             cluster_excitor(ibasis) = ibset(cluster_excitor(ibasis),ibit)
-                            ! Need to swap it with every creation operator with
+                            ! Need to swap it with e very creation operator with
                             ! a lower index already in the cluster.
                             permute_operators = iand(not(basis%excit_mask(:,basis%basis_lookup(ibit,ibasis))),cluster_creation)
                             permute_operators(ibasis) = ibclr(permute_operators(ibasis),ibit)

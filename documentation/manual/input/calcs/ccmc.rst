@@ -251,6 +251,6 @@ ccmc options
     It should achieve sublinear time complexity, and the advantage over linear search will be more evident the larger the
     secondary reference space and the smaller the coupled cluster truncation (meaning a smaller subspace of the tree needs to be searched).
 
-    .. warning::
+    .. note::
 
         The BK tree search algorithm is currently being benchmarked and optimised.

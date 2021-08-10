@@ -1253,7 +1253,7 @@ contains
         use system, only: sys_t
         use qmc_data, only: qmc_state_t 
         use excitations, only: get_excitation_level, det_string
-        use ccmc_data, only: tree_t, node_t, tree_add
+        use ccmc_data, only: tree_t, tree_add
 
         type(sys_t), intent(in) :: sys
         type(reference_t), intent(in) :: references_in(:)
