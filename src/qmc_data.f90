@@ -1131,6 +1131,7 @@ contains
         !   terminal (optional): if true, this is the last entry in the enclosing JSON object.  Default: false.
 
         use json_out
+        use errors, only: warning
 
         type(json_out_t), intent(inout) :: js
         type(ccmc_in_t), intent(in) :: ccmc
@@ -1148,10 +1149,12 @@ contains
         call json_write_key(js, 'density_matrix_file', ccmc%density_matrix_file)
         call json_write_key(js, 'even_selection', ccmc%even_selection)
         if (ccmc%multiref) then
-            do i=1, size(ccmc%secondary_refs)
-                write (string, '(A13,I0)') 'secondary_ref', i ! up to 2.15E9 secondary references can be provided
-                call reference_t_json(js, ccmc%secondary_refs(i), key = trim(string))
-            end do
+            
+            !do i=1, size(ccmc%secondary_refs)
+            !    write (string, '(A13,I0)') 'secondary_ref', i ! up to 2.15E9 secondary references can be provided
+            !    call reference_t_json(js, ccmc%secondary_refs(i), key = trim(string))
+            !end do
+                        
             call json_write_key(js, 'n_secondary_ref', ccmc%n_secondary_ref)
             call json_write_key(js, 'mr_acceptance_search', ccmc%mr_acceptance_search)
         end if

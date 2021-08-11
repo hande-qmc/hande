@@ -649,7 +649,7 @@ contains
                 ! a non-zero integer population.)
                 ! Unlike in FCIQMC, where we loop over each determinant and hence can individually decide whether or not to
                 ! stochastically attempt another attempt for a fractional population, in CCMC we select excitors based upon their
-                ! population and the total number of attempts based upon the total population.  In the non-composite algorith, we
+                ! population and the total number of attempts based upon the total population. In the non-composite algorithm, we
                 ! also need to find the determinant of a given excip.  This is painful to do if we use fractional populations
                 ! (as we'd need to keep track of how many fractional populations had been rounded up in order to search the
                 ! cumulative list correctly).  Instead, we base the number of attempts and the probably of selecting a given excitor
@@ -1085,6 +1085,11 @@ contains
         !   ccmc_in: options relating to ccmc passed in to calculation.
         !   logging_info: logging_t object with info about current logging
         !        when debug is true. 
+        !
+        ! In (optional):
+        !   secondary_ref_tree: a BK tree with secondary references for efficient
+        !   acceptance search. Enabled with mr_acceptance_search = 'bk_tree'.
+        !
         ! In/Out:
         !   rng: random number generator.
         !   qs: qmc_state_t type, contains information about calculation.
@@ -1191,6 +1196,11 @@ contains
         !        when debug is true. 
         !   attempt_death = logical variable that encodes whether the selected 
         !        cluster is within the desired CC truncation. 
+        !
+        ! In (optional):
+        !   secondary_ref_tree: a BK tree with secondary references for efficient
+        !   acceptance search. Enabled with mr_acceptance_search = 'bk_tree'.
+        !
         ! In/Out:
         !   rng: random number generator.
         !   qs: qmc_state_t type, contains information about calculation.
@@ -1282,6 +1292,11 @@ contains
         !   ccmc_in: options relating to ccmc passed in to calculation.
         !   logging_info: logging_t object with info about current logging
         !        when debug is true.
+        !
+        ! In (optional):
+        !   secondary_ref_tree: a BK tree with secondary references for efficient
+        !   acceptance search. Enabled with mr_acceptance_search = 'bk_tree'.
+        !
         ! In/Out:
         !   rng: random number generator.
         !   qs: qmc_state_t type, contains information about calculation.
@@ -1368,6 +1383,11 @@ contains
         !   logging_info: input settings related to logging.
         !   nspawnings_total: number of spawning attempts made
         !       from the same cluster if using multispawn.
+        !
+        ! In (optional):
+        !   secondary_ref_tree: a BK tree with secondary references for efficient
+        !   acceptance search. Enabled with mr_acceptance_search = 'bk_tree'.
+        !
         ! In/Out:
         !   rng: random number generator.
         !   qs: information on current state of calculation.
