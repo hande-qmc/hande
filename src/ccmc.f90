@@ -1502,7 +1502,8 @@ contains
                if (assert2) exit
             end do
         else
-            assert2 = tree_search(secondary_ref_tree, det_string(contrib%cdet%f, sys%basis), secondary_ref_tree%root, offset)
+            assert2 = tree_search(secondary_ref_tree, det_string(contrib%cdet%f, sys%basis), &
+                                  secondary_ref_tree%root, offset+secondary_ref_tree%ex_lvl)
         end if
         assert1 = (contrib%cluster%excitation_level <= qs%ref%ex_level + offset .or. assert2)
 

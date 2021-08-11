@@ -1341,7 +1341,7 @@ contains
         character(23) :: string ! 32 bit integer has 10 digits, should be more than enough
         ! secondary_refX keywords are not hardcoded in, so we dynamically add them into the
         ! array of allowed keys 
-        character(16), dimension(:), allocatable :: secondary_ref_keys
+        character(23), dimension(:), allocatable :: secondary_ref_keys
         character(28), dimension(:), allocatable :: keys_concat
         character(10) :: str
 
