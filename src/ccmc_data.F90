@@ -106,7 +106,7 @@ type node_t
     ! possible in the current Fock space
     ! Each of the edges point to another node
     integer(i0), allocatable :: bstring(:)
-    type(node_t), allocatable :: edges(:)
+    type(node_t), pointer :: edges(:)
 end type node_t
 
 type tree_t
@@ -331,7 +331,7 @@ contains
         if (.not. allocated(curr_node%bstring)) then
             ! If the node was initialised but empty, store the bitstring here
             curr_node%bstring = next_bstring
-        else if (.not. allocated(curr_node%edges)) then
+        else if (.not. associated(curr_node%edges)) then
             ! If the node has a bitstring, compare and allocate edges, and store the bitstring at the end 
             ! of the correct edge
             excit_lvl = get_excitation_level(curr_node%bstring, next_bstring)
@@ -344,7 +344,7 @@ contains
 
                 ! This looks redundant but it's not, since the do loop goes on forever
                 ! you'll get to the end of the 'branch' and see a node with unallocated edges
-                if (.not. allocated(curr_node%edges)) then
+                if (.not. associated(curr_node%edges)) then
                   allocate(curr_node%edges(this%max_excit))
                 end if
                 parent => curr_node%bstring
@@ -374,7 +374,7 @@ contains
         type(tree_t), intent(in) :: this
         integer(i0), intent(in) :: new_bstring(:)
         integer :: excit_lvl, endlvl, startlvl, lvl
-        type(node_t), pointer, intent(in) :: curr_node
+        type(node_t), intent(in) :: curr_node
         integer, intent(in), optional :: offset
         logical :: hit
         integer :: ex_lvl
@@ -405,7 +405,7 @@ contains
         end if
 
         do lvl = startlvl, endlvl
-            if (.not. allocated(curr_node%edges)) then
+            if (.not. associated(curr_node%edges)) then
                 ! reached the bottom, nothing found
                 hit = .false.
                 return
