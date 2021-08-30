@@ -348,6 +348,9 @@ type ccmc_in_t
     type(reference_t), allocatable :: secondary_refs(:)
     ! Acceptance algorithm for mrcc excitations
     integer :: mr_acceptance_search
+    character(255) :: mr_secref_file
+    integer :: mr_excit_lvl, mr_n_frozen
+    logical :: mr_read_in = .false.
 end type ccmc_in_t
 
 type restart_in_t

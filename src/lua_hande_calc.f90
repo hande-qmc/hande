@@ -1344,6 +1344,7 @@ contains
         character(23), dimension(:), allocatable :: secondary_ref_keys
         character(28), dimension(:), allocatable :: keys_concat
         character(10) :: str
+        character(40) :: secref_file
 
         if (aot_exists(lua_state, opts, 'ccmc')) then
 
@@ -1366,19 +1367,31 @@ contains
                 end if
                 allocate(secondary_ref_keys(ccmc_in%n_secondary_ref))
                 allocate(ccmc_in%secondary_refs(ccmc_in%n_secondary_ref))
-                do i = 1, ccmc_in%n_secondary_ref
-                    ! I0 makes sure there are no whitespaces around the number string
-                    write (string, '(A13,I0)') 'secondary_ref', i ! up to 2.15E9 secondary references can be provided      
-                    ! trim makes sure there are no trailing whitespaces 
-                    call read_reference_t(lua_state, ccmc_table, ccmc_in%secondary_refs(i), sys, trim(string))
-                         if (.not. allocated(ccmc_in%secondary_refs(i)%occ_list0)) then
-                             call stop_all('read_ccmc_in', 'Uninitialised secondary reference determinant.') 
-                         end if
-                         if (ccmc_in%secondary_refs(i)%ex_level == -1 .or. ccmc_in%secondary_refs(i)%ex_level == sys%nel) then
-                             call stop_all('read_ccmc_in', 'Uninitialised secondary reference excitation level.')
-                         end if
-                         secondary_ref_keys(i) = trim(string)
-                end do
+
+                call aot_get_val(ccmc_in%mr_read_in, err, lua_state, ccmc_table, 'mr_read_in')  
+
+                if (ccmc_in%mr_read_in) then
+                    call aot_get_val(ccmc_in%mr_secref_file, err, lua_state, ccmc_table, 'mr_secref_file')
+                    call aot_get_val(ccmc_in%mr_excit_lvl, err, lua_state, ccmc_table, 'mr_excit_lvl')
+                    call aot_get_val(ccmc_in%mr_n_frozen, err, lua_state, ccmc_table, 'mr_n_frozen')
+                    call read_in_secondary_references(ccmc_in)
+
+                else
+                    do i = 1, ccmc_in%n_secondary_ref
+                        ! I0 makes sure there are no whitespaces around the number string
+                        write (string, '(A13,I0)') 'secondary_ref', i ! up to 2.15E9 secondary references can be provided      
+                        ! trim makes sure there are no trailing whitespaces 
+                        call read_reference_t(lua_state, ccmc_table, ccmc_in%secondary_refs(i), sys, trim(string))
+                             if (.not. allocated(ccmc_in%secondary_refs(i)%occ_list0)) then
+                                 call stop_all('read_ccmc_in', 'Uninitialised secondary reference determinant.') 
+                             end if
+                             if (ccmc_in%secondary_refs(i)%ex_level == -1 .or. ccmc_in%secondary_refs(i)%ex_level == sys%nel) then
+                                 call stop_all('read_ccmc_in', 'Uninitialised secondary reference excitation level.')
+                             end if
+                             secondary_ref_keys(i) = trim(string)
+                    end do
+                endif
+
                 call aot_get_val(str, err, lua_state, ccmc_table, 'mr_acceptance_search')
                 select case (str)
                     case ('bk_tree')
@@ -1762,6 +1775,30 @@ contains
         end if
 
     end subroutine read_reference_t
+
+    subroutine read_in_secondary_references(ccmc_in)
+
+        use bit_utils, only: decode_bit_string
+        use qmc_data, only: ccmc_in_t
+        use const
+
+        type(ccmc_in_t), intent(inout) :: ccmc_in
+        integer :: nlines, i
+        integer(i0) :: secref_bstring, real_bstring, core_bstring
+
+        ! [TODO]: assert that all these parameters exist in ccmc_in
+        core_bstring = 2**(ccmc_in%mr_n_frozen)-1
+
+        open(8,file=ccmc_in%mr_secref_file,status='old',form='formatted',action='read')
+        do i=1,nlines,1
+            read(8,*) secref_bstring
+            real_bstring = ior(lshift(secref_bstring,ccmc_in%mr_n_frozen),core_bstring)
+            call decode_bit_string(real_bstring,ccmc_in%secondary_refs(i)%occ_list0)
+            ccmc_in%secondary_refs(i)%ex_level= ccmc_in%mr_excit_lvl
+        enddo
+        close(8)
+
+    end subroutine read_in_secondary_references
 
     subroutine read_restart_in(lua_state, opts, restart_in)
 
