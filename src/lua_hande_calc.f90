@@ -1384,6 +1384,10 @@ contains
                              end if
                              secondary_ref_keys(i) = trim(string)
                     end do
+                else
+                    call aot_get_val(ccmc_in%mr_secref_file, err, lua_state, ccmc_table, 'mr_secref_file')
+                    call aot_get_val(ccmc_in%mr_n_frozen, err, lua_state, ccmc_table, 'mr_n_frozen')
+                    call aot_get_val(ccmc_in%mr_excit_lvl, err, lua_state, ccmc_table, 'mr_excit_lvl')
                 endif
 
                 call aot_get_val(str, err, lua_state, ccmc_table, 'mr_acceptance_search')
