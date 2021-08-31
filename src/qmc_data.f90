@@ -884,10 +884,11 @@ type qmc_state_t
     type(trial_t) :: trial
     type(restart_in_t) :: restart_in
     ! Flags for multireference CCMC calculations.
-    logical :: multiref = .false.
-    integer :: n_secondary_ref = 0
+    logical :: multiref = .false., mr_read_in = .false.
+    integer :: n_secondary_ref = 0, mr_n_frozen, mr_excit_lvl
     type(reference_t), allocatable :: secondary_refs(:)
     integer :: mr_acceptance_search
+    character(255) :: mr_secref_file
     ! WARNING: par_info is the 'reference/master' (ie correct) version
     ! of parallel_t, in particular of proc_map_t.  However, copies of it
     ! are kept in spawn_t objects, and it is these copies which are used

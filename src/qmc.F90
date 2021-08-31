@@ -1254,6 +1254,7 @@ contains
         use qmc_data, only: qmc_state_t 
         use excitations, only: get_excitation_level, det_string
         use ccmc_data, only: tree_t, tree_add
+        use const
 
         type(sys_t), intent(in) :: sys
         type(reference_t), intent(in) :: references_in(:)
@@ -1261,15 +1262,37 @@ contains
         type(qmc_state_t), intent(inout) :: qs
         type(tree_t), intent(out), optional :: secondary_ref_tree
         integer :: i, current_max, total_max = 0
+        integer(i0) :: core_bstring, secref_bstring, real_bstring
         
-        do i = 1, size(references_in)
-           call init_reference(sys, references_in(i), io_unit, qs%secondary_refs(i))
-           current_max = qs%ref%ex_level + get_excitation_level(det_string(qs%ref%f0,sys%basis), &
-                                                                 det_string(qs%secondary_refs(i)%f0,sys%basis)) 
-           if (current_max > total_max) total_max = current_max
-        end do
+        if (.not.qs%mr_read_in) then
+            do i = 1, size(references_in)
+               call init_reference(sys, references_in(i), io_unit, qs%secondary_refs(i))
+               current_max = qs%ref%ex_level + get_excitation_level(det_string(qs%ref%f0,sys%basis), &
+                                                                     det_string(qs%secondary_refs(i)%f0,sys%basis)) 
+               if (current_max > total_max) total_max = current_max
+            end do
 
-        qs%ref%max_ex_level = total_max
+            qs%ref%max_ex_level = total_max
+        else
+            core_bstring = 2**(qs%mr_n_frozen)-1
+            open(8,file=qs%mr_secref_file,status='old',form='formatted',action='read')
+            do i=1,qs%n_secondary_ref,1
+                read(8,*) secref_bstring
+                real_bstring = ior(lshift(secref_bstring,qs%mr_n_frozen),core_bstring)
+                allocate(qs%secondary_refs(i)%f0(sys%basis%tot_string_len))
+                ! [TODO]: support bitstrings longer than 64 bits
+                qs%secondary_refs(i)%f0(1) = secref_bstring
+                qs%secondary_refs(i)%ex_level= qs%mr_excit_lvl
+
+                current_max = qs%ref%ex_level + get_excitation_level(det_string(qs%ref%f0,sys%basis), &
+                                                                     det_string(qs%secondary_refs(i)%f0,sys%basis)) 
+               if (current_max > total_max) total_max = current_max
+            enddo
+            close(8)
+
+            qs%ref%max_ex_level = total_max
+
+        endif
 
         ! Optionally build the BK tree, see ccmc_data.F90/tree_add and tree_search for further comments
         if (qs%mr_acceptance_search == 1) then
