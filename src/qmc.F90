@@ -1277,7 +1277,11 @@ contains
 
             qs%ref%max_ex_level = total_max
         else
-            core_bstring = 2**(qs%mr_n_frozen)-1
+            if (sys%CAS(1).eq.-1) then
+                core_bstring = 2**(qs%mr_n_frozen)-1
+            else
+                core_bstring = 2**(qs%mr_n_frozen-sys%CAS(1))-1
+            endif
             allocate(real_bstring(sys%basis%tot_string_len))
             allocate(read_in_ref%occ_list0(sys%nel))
             open(8,file=qs%mr_secref_file,status='old',form='formatted',action='read')
