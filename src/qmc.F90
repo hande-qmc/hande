@@ -1255,6 +1255,7 @@ contains
         use excitations, only: get_excitation_level, det_string
         use ccmc_data, only: tree_t, tree_add
         use const
+        use determinants, only: decode_det
 
         type(sys_t), intent(in) :: sys
         type(reference_t), intent(in) :: references_in(:)
@@ -1262,7 +1263,9 @@ contains
         type(qmc_state_t), intent(inout) :: qs
         type(tree_t), intent(out), optional :: secondary_ref_tree
         integer :: i, current_max, total_max = 0
-        integer(i0) :: core_bstring, secref_bstring, real_bstring
+        integer(i0) :: core_bstring, secref_bstring
+        integer(i0), allocatable :: real_bstring(:)
+        type(reference_t) :: read_in_ref
         
         if (.not.qs%mr_read_in) then
             do i = 1, size(references_in)
@@ -1275,14 +1278,16 @@ contains
             qs%ref%max_ex_level = total_max
         else
             core_bstring = 2**(qs%mr_n_frozen)-1
+            allocate(real_bstring(sys%basis%tot_string_len))
+            allocate(read_in_ref%occ_list0(sys%nel))
             open(8,file=qs%mr_secref_file,status='old',form='formatted',action='read')
             do i=1,qs%n_secondary_ref,1
                 read(8,*) secref_bstring
-                real_bstring = ior(lshift(secref_bstring,qs%mr_n_frozen),core_bstring)
-                allocate(qs%secondary_refs(i)%f0(sys%basis%tot_string_len))
-                ! [TODO]: support bitstrings longer than 64 bits
-                qs%secondary_refs(i)%f0(1) = secref_bstring
-                qs%secondary_refs(i)%ex_level= qs%mr_excit_lvl
+                ! [TODO]: Support references of longer than i0 bits
+                real_bstring(1) = ior(lshift(secref_bstring,qs%mr_n_frozen),core_bstring)
+                call decode_det(sys%basis,real_bstring(:),read_in_ref%occ_list0(:))
+                read_in_ref%ex_level= qs%mr_excit_lvl
+                call init_reference(sys, read_in_ref, io_unit, qs%secondary_refs(i))
 
                 current_max = qs%ref%ex_level + get_excitation_level(det_string(qs%ref%f0,sys%basis), &
                                                                      det_string(qs%secondary_refs(i)%f0,sys%basis)) 
