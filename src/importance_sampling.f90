@@ -411,4 +411,53 @@ contains
 
     end subroutine interaction_picture_reweighting_hartree_fock
 
+    subroutine interaction_picture_reweighting_molecular_HF(sys, cdet, connection, trial_func, hmatel)
+
+        ! The same as above but for the read in case where things are
+        ! generally a lot easier. (Though this is not always the case)
+
+        ! In:
+        !    sys: system being studied.
+        !    cdet: info on the current determinant (cdet) that we will spawn
+        !        from.
+        !    connection: excitation connection between the current determinant
+        !        and the child determinant, on which progeny are spawned.
+        !    trial_func: importance sampling weights, used to pass 0.5*(beta-tau)
+        !        in the last element (sys%max_number_excitations+1).
+        ! In/Out:
+        !    hmatel: on input, untransformed matrix element connecting two spin
+        !        functions (kets).  On output, transformed matrix element,
+        !        is e^{-0.5*(beta-tau)(E_i-E_k)} H_{ik}.
+        !        The factors which the Hamiltonian are multiplied by depend
+        !        on the level which we come from, and go to, and so depend on
+        !        the two ends of the bitstring we spawn from, and the new
+        !        bitstring we spawn onto. Note this is not really importance sampling
+        !        in the usual sense.
+
+        use determinant_data, only: det_info_t
+        use excitations, only: excit_t, get_excitation_level, create_excited_det
+        use system, only: sys_t
+        use proc_pointers, only: sc0_ptr
+
+        type(sys_t), intent(in) :: sys
+        type(det_info_t), intent(in) :: cdet
+        type(excit_t), intent(in) :: connection
+        real(p), allocatable, intent(in) :: trial_func(:)
+        real(p), intent(inout) :: hmatel
+
+        integer(i0) :: f_new(sys%basis%tot_string_len)
+        real(p) :: diff_ijab
+
+        if (abs(hmatel) > depsilon) then
+            ! The determinant after excitation
+            ! [Todo] Check the logic here, something isn't quite right
+            ! with how the new det and the old det are being compared.
+            ! Could be that the wrong bitstring is being sent to create det.
+            call create_excited_det(sys%basis, cdet%f, connection, f_new)
+            diff_ijab = (sc0_ptr(sys, cdet%f2) - sc0_ptr(sys, f_new))
+            hmatel = exp(-trial_func(sys%max_number_excitations+1)*diff_ijab) * hmatel
+        end if
+
+    end subroutine interaction_picture_reweighting_molecular_HF
+
 end module importance_sampling

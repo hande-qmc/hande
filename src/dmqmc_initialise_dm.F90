@@ -57,7 +57,7 @@ contains
         type(sys_t), intent(inout) :: sys
         type(qmc_in_t), intent(in) :: qmc_in
         type(dmqmc_in_t), intent(in) :: dmqmc_in
-        type(qmc_state_t), intent(in) :: qmc_state
+        type(qmc_state_t), intent(inout) :: qmc_state
         type(annihilation_flags_t), intent(in) :: annihilation_flags
         integer(int_64), intent(in) :: target_nparticles_tot
         real(p), intent(in) :: chem_pot
@@ -123,7 +123,7 @@ contains
                         if (dmqmc_in%grand_canonical_initialisation) then
                             call init_grand_canonical_ensemble(sys, dmqmc_in, npsips_this_proc, psip_list%pop_real_factor, spawn, &
                                                                energy_shift, qmc_state%target_beta, qmc_in%initiator_approx, & 
-                                                               qmc_in%initiator_pop, rng, chem_pot)
+                                                               qmc_in%initiator_pop, rng, chem_pot, qmc_state%ref%H00)
                         else
                             call random_distribution_electronic(rng, sys, npsips_this_proc, psip_list%pop_real_factor, ireplica, &
                                                                 dmqmc_in%all_sym_sectors, qmc_in%initiator_approx, &
@@ -210,6 +210,17 @@ contains
             if (spawn%error) call stop_all('create_initial_density_matrix', 'Ran out of space in the spawning array while&
                                       & generating the initial density matrix.')
             call direct_annihilation(sys, rng, qmc_state%ref, annihilation_flags, psip_list, spawn)
+        end if
+
+        ! If we are running the scaling procedure of the initial walker
+        ! distribution perform that scaling now.
+        if (dmqmc_in%walker_scale_factor > 0.0_p) then
+            qmc_state%psip_list%tot_nparticles = qmc_state%psip_list%tot_nparticles * real(dmqmc_in%walker_scale_factor, p)
+            qmc_state%psip_list%nparticles = qmc_state%psip_list%nparticles * real(dmqmc_in%walker_scale_factor, p)
+            do ireplica = 1, qmc_state%psip_list%nspaces
+                qmc_state%psip_list%pops(ireplica,:qmc_state%psip_list%nstates) = &
+                    int(dmqmc_in%walker_scale_factor, p)*qmc_state%psip_list%pops(ireplica,:qmc_state%psip_list%nstates)
+            end do
         end if
 
     end subroutine create_initial_density_matrix
@@ -584,7 +595,7 @@ contains
     end subroutine dmqmc_spin_cons_metropolis_move
 
     subroutine init_grand_canonical_ensemble(sys, dmqmc_in, npsips, pop_real_factor, spawn, energy_shift, &
-                                             target_beta, initiator_approx, initiator_pop, rng, chem_pot)
+                                             target_beta, initiator_approx, initiator_pop, rng, chem_pot, H00)
 
         ! Initially distribute psips according to the grand canonical
         ! distribution function.
@@ -624,6 +635,7 @@ contains
         real(p), intent(in) :: chem_pot
         type(spawn_t), intent(inout) :: spawn
         type(dSFMT_t), intent(inout) :: rng
+        real(p), intent(in) :: H00
 
         real(dp) :: p_single(sys%basis%nbasis/2)
         integer :: occ_list(sys%nel)
@@ -680,7 +692,7 @@ contains
             if (dmqmc_in%all_sym_sectors .or. symmetry_orb_list(sys, occ_list) == sys%symmetry) then
                 if (dmqmc_in%initial_matrix /= free_electron_dm .and. dmqmc_in%metropolis_attempts == 0) nspawn = &
                                 & reweight_spawned_particle(sys, occ_list, target_beta, &
-                                                            energy_shift, spawn%cutoff, pop_real_factor, rng)
+                                                            energy_shift, spawn%cutoff, pop_real_factor, rng, H00)
                 call encode_det(sys%basis, occ_list, f)
                 if (initiator_approx) then
                     call create_diagonal_density_matrix_particle_initiator(f, sys%basis%tot_string_len, &
@@ -689,13 +701,23 @@ contains
                     call create_diagonal_density_matrix_particle(f, sys%basis%tot_string_len, sys%basis%tensor_label_len, &
                             nspawn, ireplica, spawn)
                 end if
-                ipsip = ipsip + 1
+
+                if (dmqmc_in%count_reweighted_particles) then
+                    if (pop_real_factor >= 2) then
+                        ipsip = ipsip + (nspawn/pop_real_factor)
+                    else
+                        ipsip = ipsip + nspawn
+                    end if
+                else
+                    ipsip = ipsip + 1
+                end if
+
             end if
         end do
 
         contains
 
-            function reweight_spawned_particle(sys, occ_list, beta, energy_shift, spawn_cutoff, real_factor, rng) result(nspawn)
+            function reweight_spawned_particle(sys, occ_list, beta, energy_shift, spawn_cutoff, real_factor, rng, H00) result(nspawn)
 
                 ! Reweight initial density matrix population so that the desired
                 ! diagonal density matrix is sampled.
@@ -721,6 +743,9 @@ contains
                 use proc_pointers, only: energy_diff_ptr
                 use dSFMT_interface, only: dSFMT_t, get_rand_close_open
                 use stoch_utils, only:  stochastic_round_spawned_particle
+                use hamiltonian_molecular, only: slater_condon0_mol_orb_list 
+                use errors
+                use json_out
 
                 type(sys_t), intent(in) :: sys
                 integer, intent(in) :: occ_list(:)
@@ -729,6 +754,9 @@ contains
                 integer(int_p), intent(in) :: spawn_cutoff
                 integer(int_p), intent(in) :: real_factor
                 type(dSFMT_t), intent(inout) :: rng
+                real(p), intent(in) :: H00
+
+                type(json_out_t) :: js
 
                 integer(int_p) :: nspawn
                 real(p) :: energy_diff, weight
@@ -745,6 +773,14 @@ contains
                 weight = exp(-beta*(energy_diff-energy_shift)) * real_factor
                 ! Integerise.
                 nspawn = stochastic_round_spawned_particle(spawn_cutoff, weight, rng)
+
+                ! Do a simple check to make sure we didn't find a determinant
+                ! lower in energy then the reference.
+                if ((H00 - real(slater_condon0_mol_orb_list(sys, occ_list),p)) > depsilon) then
+                    write(6, '(1X, "# H_{ii}: ", es26.16)') slater_condon0_mol_orb_list(sys, occ_list)
+                    call json_write_key(js, 'det', occ_list)
+                    call stop_all('create_initial_density_matrix', 'diagonal determinant lower in energy than reference found!')
+                end if
 
             end function reweight_spawned_particle
 

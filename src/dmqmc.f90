@@ -66,10 +66,11 @@ contains
         use hash_table, only: free_hash_table
         use chem_pot, only: find_chem_pot
         use errors, only: stop_all
+        use calc, only: doing_dmqmc_calc, dmqmc_ref_proj_energy
 
         type(sys_t), intent(inout) :: sys
         type(qmc_in_t), intent(in) :: qmc_in
-        type(dmqmc_in_t), intent(in) :: dmqmc_in
+        type(dmqmc_in_t), intent(inout) :: dmqmc_in
         type(dmqmc_estimates_t), intent(inout) :: dmqmc_estimates
         type(restart_in_t), intent(in) :: restart_in
         type(load_bal_in_t), intent(in) :: load_bal_in
@@ -78,8 +79,9 @@ contains
         type(qmc_state_t), intent(inout), optional :: qmc_state_restart
         real(p), intent(out), allocatable :: sampling_probs(:)
 
-        integer :: idet, ireport, icycle, iteration, ireplica, ierr
-        integer :: beta_cycle, nreport
+        integer :: idet, ireport, icycle, iteration, ireplica, ierr, ipdet
+        !integer :: idet, ireport, icycle, iteration, ireplica, ierr
+        integer :: beta_cycle, nreport, piecewise_nreport
         integer :: unused_int_1 = -1, unused_int_2 = 0
         integer(int_64) :: init_tot_nparticles
         real(dp), allocatable :: tot_nparticles_old(:)
@@ -89,7 +91,7 @@ contains
         type(det_info_t) :: cdet1, cdet2
         integer(int_p) :: ndeath
         integer :: nspawn_events
-        logical :: imag
+        logical :: imag, calc_ref_proj_energy
         logical :: soft_exit, write_restart_shift, update_tau
         logical :: error, rdm_error, attempt_spawning, restarting
         real :: t1, t2
@@ -135,6 +137,7 @@ contains
         ! time we want to do depends on what value of beta we are seeking. It's
         ! annoying to have to modify this in the input file, so just do it here.
         if (dmqmc_in%ipdmqmc) nreport = int(ceiling(dmqmc_in%target_beta/(qmc_in%ncycles*qmc_in%tau)))
+        if (dmqmc_in%piecewise_beta > 0.0_p) piecewise_nreport = int(ceiling(dmqmc_in%piecewise_beta/(qmc_in%ncycles*qmc_in%tau)))
         ! When we accumulate data throughout a run, we are actually accumulating
         ! results from the psips distribution from the previous iteration.
         ! For example, in the first iteration, the trace calculated will be that
@@ -174,6 +177,11 @@ contains
             qmc_in_loc%quasi_newton_pop_control = qs%propagator%quasi_newton_pop_control
             ! Initialize the harmonic shift damping algorithm parameters
             qmc_in_loc%shift_harmonic_forcing = qs%shift_harmonic_forcing
+            if (dmqmc_in%walker_scale_factor > 0.0_p) then
+                qs%target_particles = qmc_in%target_particles * real(dmqmc_in%walker_scale_factor, p)
+                qmc_in_loc%target_particles = qs%target_particles
+                qmc_in_loc%D0_population = nint(qmc_in%D0_population, int_64) * real(dmqmc_in%walker_scale_factor, p)
+            end if
             call qmc_in_t_json(js, qmc_in_loc)
             call dmqmc_in_t_json(js, dmqmc_in)
             dmqmc_in_loc = dmqmc_in
@@ -215,14 +223,16 @@ contains
         call copy_sys_spin_info(sys, sys_copy)
 
         rdm_error = .false.
+        calc_ref_proj_energy = .false.
+        if (doing_dmqmc_calc(dmqmc_ref_proj_energy)) calc_ref_proj_energy = .true.
 
         outer_loop: do beta_cycle = 1, dmqmc_in%beta_loops
 
             call init_dmqmc_beta_loop(rng, qmc_in, dmqmc_in, dmqmc_estimates, qs, beta_cycle, qs%psip_list%nstates, &
-                                      qs%psip_list%nparticles, qs%spawn_store%spawn, weighted_sampling%probs)
+                                      qs%psip_list%nparticles, qs%spawn_store%spawn, weighted_sampling%probs, &
+                                      annihilation_flags)
 
-            ! Distribute psips uniformly along the diagonal of the density
-            ! matrix.
+            ! Distribute psips uniformly along the diagonal of the density matrix.
             call create_initial_density_matrix(rng, sys, qmc_in, dmqmc_in, qs, annihilation_flags, &
                                                init_tot_nparticles, qs%psip_list, qs%spawn_store%spawn, &
                                                mu, energy_shift)
@@ -242,9 +252,25 @@ contains
 
             do ireport = 1, nreport
 
-                call init_dmqmc_report_loop(dmqmc_in%calc_excit_dist, dmqmc_in%calc_mom_dist, dmqmc_in%calc_struc_fac,&
-                                            &bloom_stats, dmqmc_estimates, qs%spawn_store%rspawn)
+                call init_dmqmc_report_loop(calc_ref_proj_energy, dmqmc_in%calc_excit_dist, dmqmc_in%calc_mom_dist, &
+                                            dmqmc_in%calc_struc_fac, bloom_stats, dmqmc_estimates, qs%spawn_store%rspawn)
                 tot_nparticles_old = qs%psip_list%tot_nparticles
+
+                if (ireport .eq. 1) then
+                    call dmqmc_estimate_comms(dmqmc_in, error, nspawn_events, sys%max_number_excitations, qmc_in%ncycles, &
+                                              qs%psip_list, qs, weighted_sampling%probs_old, dmqmc_estimates)
+                    if (parent) then
+                        write (iunit,'(1X,"# Initial Diagonal Determinants:",1X,I0)') qs%estimators%tot_nstates
+                    end if
+                end if
+
+                ! If we are propagating past IP-DMQMC target beta.
+                ! Change over the appropriate flags and data to asymmetric or symmetric dmqmc 
+                if (dmqmc_in%piecewise_beta > 0.0_p .and. dmqmc_in%ipdmqmc .and. piecewise_nreport + 1 == ireport) then
+                    call propagator_change(sys, qs, dmqmc_in, annihilation_flags, iunit)
+                    ! Need to update the energy pointer here to prevent a cyclic dependency
+                    update_dmqmc_energy_and_trace_ptr => dmqmc_energy_and_trace
+                end if
 
                 do icycle = 1, qmc_in%ncycles
 
@@ -296,7 +322,8 @@ contains
                         ! temperature value per ncycles.
                         if (icycle == 1) then
                             call update_dmqmc_estimators(sys, dmqmc_in, idet, iteration, cdet1, qs%ref%H00, &
-                                                         qs%psip_list, dmqmc_estimates, weighted_sampling, rdm_error)
+                                                         qs%psip_list, dmqmc_estimates, weighted_sampling, rdm_error, &
+                                                         qs%ref%f0)
                         end if
 
                         ! Only attempt spawning if a valid connection exists.
@@ -544,7 +571,7 @@ contains
     end subroutine do_dmqmc_spawning_attempt
 
     subroutine init_dmqmc_beta_loop(rng, qmc_in, dmqmc_in, dmqmc_estimates, qs, beta_cycle, nstates_active, &
-                                    nparticles, spawn, accumulated_probs)
+                                    nparticles, spawn, accumulated_probs, annihilation_flags)
 
         ! Initialise/reset DMQMC data for a new run over the temperature range.
 
@@ -568,15 +595,17 @@ contains
 
         use dSFMT_interface, only: dSFMT_t, dSFMT_init
         use parallel
-        use qmc_data, only: qmc_in_t, qmc_state_t
+        use qmc_data, only: qmc_in_t, qmc_state_t, annihilation_flags_t
         use dmqmc_data, only: dmqmc_in_t, dmqmc_estimates_t
         use spawn_data, only: spawn_t
         use utils, only: int_fmt
+        use dmqmc_estimators, only: dmqmc_energy_and_trace_propagate
+        use dmqmc_procedures, only: propagator_restore
 
         type(dSFMT_t), intent(inout) :: rng
         type(spawn_t), intent(inout) :: spawn
         type(qmc_in_t), intent(in) :: qmc_in
-        type(dmqmc_in_t), intent(in) :: dmqmc_in
+        type(dmqmc_in_t), intent(inout) :: dmqmc_in
         type(dmqmc_estimates_t), intent(inout) :: dmqmc_estimates
         integer, intent(in) :: beta_cycle
         type(qmc_state_t), intent(inout) :: qs
@@ -584,6 +613,7 @@ contains
         real(dp), intent(out) :: nparticles(:)
         real(p), intent(out) :: accumulated_probs(:)
         integer :: new_seed, iunit
+        type(annihilation_flags_t) :: annihilation_flags
 
         iunit = 6
 
@@ -606,13 +636,23 @@ contains
             write (iunit,'(a52,'//int_fmt(new_seed,1)//',a1)') " # Resetting random number generator with a seed of:", new_seed, "."
         end if
 
+        ! If we are running piecewise IP-DMQMC restore the relevant values 
+        ! back to IP-DMQMC.
+        if (beta_cycle /= 1 .and. dmqmc_in%piecewise_beta > 0.0_p) then
+            call propagator_restore(qs, dmqmc_in, annihilation_flags)
+            ! Need to update the energy pointer here to prevent cyclic dependency
+            update_dmqmc_energy_and_trace_ptr => dmqmc_energy_and_trace_propagate
+            if (parent) write (iunit,'(a53)') " # Restoring propagator to the interaction picture..."
+        end if
+
         ! Reset the random number generator with new_seed = old_seed +
         ! nprocs (each beta loop)
         call dSFMT_init(new_seed, 50000, rng)
 
     end subroutine init_dmqmc_beta_loop
 
-    subroutine init_dmqmc_report_loop(calc_excit_dist, calc_mom_dist, calc_struc_fac, bloom_stats, dmqmc_estimates, rspawn)
+    subroutine init_dmqmc_report_loop(calc_ref_proj_energy, calc_excit_dist, calc_mom_dist, &
+                                      calc_struc_fac, bloom_stats, dmqmc_estimates, rspawn)
 
         ! Initialise a report loop (basically zero quantities accumulated over
         ! a report loop).
@@ -633,6 +673,7 @@ contains
         logical, intent(in) :: calc_excit_dist
         logical, intent(in) :: calc_mom_dist
         logical, intent(in) :: calc_struc_fac
+        logical, intent(in) :: calc_ref_proj_energy
         type(bloom_stats_t), intent(inout) :: bloom_stats
         type(dmqmc_estimates_t), intent(inout) :: dmqmc_estimates
         real(p), intent(out) :: rspawn
@@ -645,6 +686,8 @@ contains
         dmqmc_estimates%numerators = 0.0_p
         if (calc_mom_dist) dmqmc_estimates%mom_dist%f_k = 0.0_p
         if (calc_struc_fac) dmqmc_estimates%struc_fac%f_k = 0.0_p
+        if (calc_ref_proj_energy) dmqmc_estimates%ref_trace = 0.0_p
+        if (calc_ref_proj_energy) dmqmc_estimates%ref_Dj0_particles = 0.0_p
 
     end subroutine init_dmqmc_report_loop
 

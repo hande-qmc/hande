@@ -1391,6 +1391,7 @@ contains
         !     find_weights_start = iteration,
         !     symmetrize = true/false,
         !     initiator_level = ilevel,
+        !     symmetric = true/false,
         ! }
         ! ipdmqmc = { -- sets ipdmqmc to true
         !     initial_beta = b,
@@ -1398,6 +1399,7 @@ contains
         !     grand_canonical_initialisation = true/false,
         !     metropolis_attempts = nattempts,
         !     symmetric = true/false,
+        !     piecewise_beta = true/false,
         ! }
         ! operators = {
         !     renyi2 = true/false,
@@ -1413,6 +1415,7 @@ contains
         !     HI_energy = true/false,
         !     mom_dist = kmax,
         !     structure_factor = kmax,
+        !     ref_projected_energy = true/false,
         ! }
         ! rdm = {
         !     spawned_state_size = X,
@@ -1459,17 +1462,20 @@ contains
         logical :: op
         character(len=13) :: str
 
-        character(30), parameter :: dmqmc_keys(11) = [character(30) :: 'replica_tricks', 'fermi_temperature', 'all_sym_sectors', &
+        character(30), parameter :: dmqmc_keys(13) = [character(30) :: 'replica_tricks', 'fermi_temperature', 'all_sym_sectors', &
                                                                       'all_spin_sectors', 'beta_loops', 'sampling_weights',      &
                                                                       'find_weights', 'find_weights_start', 'symmetrize',        &
-                                                                      'vary_weights', 'initiator_level']
-        character(30), parameter :: ip_keys(6)    = [character(30) :: 'target_beta', 'initial_beta', 'initial_matrix',           &
+                                                                      'vary_weights', 'initiator_level', 'symmetric',            &
+                                                                      'walker_scale_factor']
+        character(30), parameter :: ip_keys(11)    = [character(30) :: 'target_beta', 'initial_beta', 'initial_matrix',          &
                                                                       'grand_canonical_initialisation', 'metropolis_attempts',   &
-                                                                      'symmetric']
-        character(30), parameter :: op_keys(12)    = [character(30) :: 'renyi2', 'energy', 'energy2', 'staggered_magnetisation',  &
+                                                                      'symmetric', 'piecewise_beta',                             &
+                                                                      'post_pip_symmetric_propagation',                          &
+                                                                      'count_reweighted_particles', 'adaptive', 'piecewise_shift']
+        character(30), parameter :: op_keys(13)    = [character(30) :: 'renyi2', 'energy', 'energy2', 'staggered_magnetisation',  &
                                                                        'correlation', 'excit_dist', 'kinetic_energy',             &
                                                                        'H0_energy', 'potential_energy', 'HI_energy', 'mom_dist',  &
-                                                                       'structure_factor']
+                                                                       'structure_factor', 'ref_projected_energy']
         character(30), parameter :: rdm_keys(9)   = [character(30) :: 'spawned_state_size', 'rdms', 'ground_state',              &
                                                                       'ground_state_start', 'instantaneous', 'write',              &
                                                                       'concurrence', 'von_neumann', 'renyi2']
@@ -1488,6 +1494,8 @@ contains
             call aot_get_val(dmqmc_in%find_weights, err, lua_state, table, 'find_weights')
             call aot_get_val(dmqmc_in%find_weights_start, err, lua_state, table, 'find_weights_start')
             call aot_get_val(dmqmc_in%half_density_matrix, err, lua_state, table, 'symmetrize')
+            call aot_get_val(dmqmc_in%symmetric, err, lua_state, table, 'symmetric', default=.true.)
+            call aot_get_val(dmqmc_in%walker_scale_factor, err, lua_state, table, 'walker_scale_factor')
             if (aot_exists(lua_state, table, 'sampling_weights')) then
                 dmqmc_in%weighted_sampling = .true.
                 ! Certainly can't have more excitation levels than basis functions, so that's a handy upper-limit.
@@ -1513,6 +1521,10 @@ contains
                 call aot_get_val(dmqmc_in%target_beta, err, lua_state, table, 'initial_beta')
                 if (parent) call warning('read_dmqmc_in', 'initial_beta is deprecated.  Please use target_beta instead.')
             end if
+            if (aot_exists(lua_state, table, 'adaptive')) then
+                call aot_get_val(dmqmc_in%piecewise_beta, err, lua_state, table, 'adaptive')
+                if (parent) call warning('read_dmqmc_in', 'adaptive is deprecated.  Please use piecewise_beta instead.')
+            end if
             call aot_get_val(dmqmc_in%target_beta, err, lua_state, table, 'target_beta')
             if (aot_exists(lua_state, table, 'initial_matrix')) then
                 call aot_get_val(str, err, lua_state, table, 'initial_matrix')
@@ -1528,6 +1540,10 @@ contains
             call aot_get_val(dmqmc_in%symmetric, err, lua_state, table, 'symmetric', default=.true.)
             call aot_get_val(dmqmc_in%grand_canonical_initialisation, err, lua_state, table, 'grand_canonical_initialisation')
             call aot_get_val(dmqmc_in%metropolis_attempts, err, lua_state, table, 'metropolis_attempts')
+            call aot_get_val(dmqmc_in%piecewise_beta, err, lua_state, table, 'piecewise_beta')
+            call aot_get_val(dmqmc_in%piecewise_shift, err, lua_state, table, 'piecewise_shift')
+            call aot_get_val(dmqmc_in%post_pip_symmetric_propagation, err, lua_state, table, 'post_pip_symmetric_propagation', default=.false.)
+            call aot_get_val(dmqmc_in%count_reweighted_particles, err, lua_state, table, 'count_reweighted_particles', default=.true.)
             call warn_unused_args(lua_state, ip_keys, table)
             call aot_table_close(lua_state, table)
         end if
@@ -1550,6 +1566,8 @@ contains
             if (op) dmqmc_calc_type = dmqmc_calc_type + dmqmc_potential_energy
             call aot_get_val(op, err, lua_state, table, 'HI_energy', default=.false.)
             if (op) dmqmc_calc_type = dmqmc_calc_type + dmqmc_HI_energy
+            call aot_get_val(op, err, lua_state, table, 'ref_projected_energy', default=.false.)
+            if (op) dmqmc_calc_type = dmqmc_calc_type + dmqmc_ref_proj_energy
             if (aot_exists(lua_state, table, 'correlation')) then
                 dmqmc_calc_type = dmqmc_calc_type + dmqmc_correlation
                 call aot_get_val(dmqmc_in%correlation_sites, err_arr, nbasis, lua_state, table, 'correlation')

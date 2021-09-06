@@ -403,7 +403,7 @@ contains
         if (dmqmc_in%grand_canonical_initialisation .and. dmqmc_in%replica_tricks) then
             call stop_all(this, 'Grand canonical initialisation is currently incompatible with replica tricks.')
         end if
-        if (dmqmc_in%symmetric .and. dmqmc_in%ipdmqmc .and. sys%system /= ueg) then
+        if (dmqmc_in%symmetric .and. dmqmc_in%ipdmqmc .and. .not. (sys%system /= ueg .or. sys%system /= read_in)) then
             call stop_all(this, 'Symmetric propagation is only implemented for the UEG. Please implement.')
         end if
 
@@ -415,6 +415,10 @@ contains
 
         if (dmqmc_in%metropolis_attempts < 0) then
             call stop_all(this, 'metropolis_attempts must be greater than zero.')
+        end if
+        
+        if (dmqmc_in%half_density_matrix .and. .not. dmqmc_in%symmetric) then
+            call stop_all(this, 'Nonsymmetric propagation does not work with a symmetrized density matrix')
         end if
         
         if (.not.((qmc_in%excit_gen == excit_gen_no_renorm) .or. &

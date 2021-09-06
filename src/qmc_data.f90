@@ -864,6 +864,9 @@ type qmc_state_t
     type(excit_gen_data_t) :: excit_gen_data
     ! Value of beta which we propagate the density matrix to. Only used for DMQMC.
     real(p) :: target_beta = 1.0
+    ! The beta value we propagate to with the interaction picture.
+    ! This is only used when running piecewise IP-DMQMC, otherwise it is zero.
+    real(p) :: piecewise_beta = 0.0
     ! Information about the propagator (currently just quasi_newton)
     type(propagator_t) :: propagator
     ! Convenience handles.

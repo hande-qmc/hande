@@ -145,6 +145,7 @@ contains
         use calc, only: dmqmc_energy, dmqmc_energy_squared, dmqmc_staggered_magnetisation
         use calc, only: dmqmc_correlation, dmqmc_full_r2, dmqmc_rdm_r2, dmqmc_kinetic_energy
         use calc, only: dmqmc_H0_energy, dmqmc_potential_energy, dmqmc_HI_energy
+        use calc, only: dmqmc_ref_proj_energy
         use utils, only: int_fmt
 
         integer, intent(in) :: ntypes
@@ -265,6 +266,19 @@ contains
         end if
         if (doing_dmqmc_calc(dmqmc_kinetic_energy)) then
             call write_column_title(iunit, '\sum\rho_{ij}T_{ji}')
+        end if
+        if (doing_dmqmc_calc(dmqmc_ref_proj_energy)) then
+            if (complx_est_set) then
+                call write_column_title(iunit, 'Re{\sum H_0j D_j0}')
+                call write_column_title(iunit, 'Im{\sum H_0j D_j0}')
+                call write_column_title(iunit, 'Re{D_00}')
+                call write_column_title(iunit, 'Im{D_00}')
+                call write_column_title(iunit, '# Dj0 psips')
+            else
+                call write_column_title(iunit, '\sum H_0j D_j0')
+                call write_column_title(iunit, 'D_00')
+                call write_column_title(iunit, '# Dj0 psips')
+            end if
         end if
         if (doing_dmqmc_calc(dmqmc_H0_energy)) then
             if (complx_est_set) then
@@ -491,6 +505,7 @@ contains
         use calc, only: dmqmc_energy, dmqmc_energy_squared, dmqmc_full_r2, dmqmc_rdm_r2
         use calc, only: dmqmc_correlation, dmqmc_staggered_magnetisation, dmqmc_kinetic_energy
         use calc, only: dmqmc_H0_energy, dmqmc_potential_energy, dmqmc_HI_energy
+        use calc, only: dmqmc_ref_proj_energy
         use qmc_data, only: qmc_in_t, qmc_state_t
         use dmqmc_data
         use system, only: sys_t
@@ -586,7 +601,16 @@ contains
                 call write_qmc_var(iunit, dmqmc_estimates%numerators(H0_imag_ind))
             end if
         end if
-
+        if (doing_dmqmc_calc(dmqmc_ref_proj_energy)) then
+            call write_qmc_var(iunit, dmqmc_estimates%numerators(ref_proj_ind))
+            call write_qmc_var(iunit, dmqmc_estimates%ref_trace(1))
+            call write_qmc_var(iunit, dmqmc_estimates%ref_Dj0_particles(1))
+            if (complx_est_set) then
+                call write_qmc_var(iunit, dmqmc_estimates%numerators(ref_proj_imag_ind))
+                call write_qmc_var(iunit, dmqmc_estimates%ref_trace(2))
+                call write_qmc_var(iunit, dmqmc_estimates%ref_Dj0_particles(2))
+            end if
+        end if
         ! H^I energy, where H^I = exp(-(beta-tau)/2 H^0) H exp(-(beta-tau)/2. H^0).
         if (doing_dmqmc_calc(dmqmc_HI_energy)) then
             call write_qmc_var(iunit, dmqmc_estimates%numerators(HI_ind))
