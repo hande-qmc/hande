@@ -489,9 +489,16 @@ contains
             call init_bloom_stats_t(bloom_stats, mode=bloom_mode_fractionn, encoding_factor=qs%psip_list%pop_real_factor)
         end if
 
-        if (qs%ref%max_ex_level+2 > 12 .and. .not. ccmc_in%linked) then
-            call stop_all('do_ccmc', 'CCMC can currently only handle clusters up to size 12 due to&
-                                     &integer overflow in factorial routines for larger clusters.  &
+        if (qs%ref%max_ex_level+2 > 12 .and. qs%ref%max_ex_level+2 .le. 20 .and. (i0 .eq. int_32)) then
+            call stop_all('do_ccmc', 'HANDE was compiled with 32 bit options, which can only handle &
+                                      &clusters up to size 12 due to integer overflow at &
+                                      &lib/local/utils.F90::factorial. Consider compiling with 64 bit options &
+                                      &which supports up to size 20 clusters.')
+        elseif (qs%ref%max_ex_level+2 > 20 .and. .not. ccmc_in%linked) then
+            call stop_all('do_ccmc', 'CCMC can currently only handle clusters up to size 20 due to &
+                                     &integer overflow in factorial routines for larger clusters. &
+                                     &See lib/local/utils.F90::factorial, called by various subroutines &
+                                     &in src/ccmc_selection.f90. &
                                      &Please implement better factorial routines or use linked-CCMC.')
         end if
 
