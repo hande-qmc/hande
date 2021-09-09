@@ -254,3 +254,27 @@ ccmc options
     .. note::
 
         The BK tree search algorithm is currently being benchmarked and optimised.
+
+``mr_read_in``
+    type: boolean.
+
+    Whether to read in the secondary references from a file. If set to ``true``, then ``mr_secref_file`` must also be specified.
+
+``mr_secref_file``
+    type: string.
+
+    The name of the file with the list of secondary references. Can be generated with ``tools/ccmc/generate_mr_input_file.py``.
+
+``mr_n_frozen``
+    type: integer.
+
+    Number of frozen core electrons, i.e., number of electrons that never move in the secondary references.
+
+``mr_excit_lvl``
+    type: integer.
+
+    The excitation level allowable from every secondary reference.
+
+    .. note::
+
+        This essentially disables the ability to set excitation levels separately for each secondary reference.

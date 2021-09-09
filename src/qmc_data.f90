@@ -349,7 +349,8 @@ type ccmc_in_t
     ! Acceptance algorithm for mrcc excitations
     integer :: mr_acceptance_search
     character(255) :: mr_secref_file
-    integer :: mr_excit_lvl, mr_n_frozen
+    integer :: mr_excit_lvl = -1
+    integer :: mr_n_frozen = 0
     logical :: mr_read_in = .false.
 end type ccmc_in_t
 
