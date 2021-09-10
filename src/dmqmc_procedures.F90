@@ -102,8 +102,9 @@ contains
             qs%piecewise_beta = dmqmc_in%piecewise_beta
         end if
         ! If we are doing the interaction picture algorithm into DMQMC
-        ! we want to have out target_beta value updated for the smaller
-        ! beta value that IP-DMQMC will propagate to.
+        ! we want to have our target_beta value updated for the smaller
+        ! beta value that IP-DMQMC will propagate to so the thermal
+        ! initalization is using the correct beta.
         if (dmqmc_in%piecewise_beta > depsilon .and. dmqmc_in%piecewise_beta < dmqmc_in%target_beta) qs%target_beta = qs%piecewise_beta
 
 
@@ -902,15 +903,19 @@ contains
     subroutine propagator_change(sys, qs, dmqmc_in, annihilation_flags, iunit)
 
         ! In:
-        !    sys: system being studied. This should be left in an unmodified
+        !   sys: system being studied. This should be left in an unmodified
         !       state on output.
-        !    dmqmc_in: Input options relating to DMQMC.
-        !    annihilation_flags: Flags to control the annihilation procedure.
-        !    iunit: The location we are writing data to, to communicate
+        !   iunit: The location we are writing data to, to communicate
         !       information on the propagator switch.
         ! In/Out:
-        !    qs: Updated hamiltonian elements to account for the change in
-        !       propagators.
+        !   qs: Stores the Hamiltonian elements for stochastic death,
+        !       which upon return should be modified to store the correct
+        !       elements for the DMQMC propagator symmetry. As well the
+        !       qmc parameters are adjusted for the propagator symmetry.
+        !   dmqmc_in: Input options relating to DMQMC, upon return the
+        !       symmetryc of the propagator will be stored for use in spawning.
+        !   annihilation_flags: Flags to control the annihilation procedure,
+        !       which should change what is stored for stochastic death.
 
         use parallel
         use system, only: sys_t
@@ -924,20 +929,22 @@ contains
         type(sys_t), intent(in) :: sys
         type(qmc_state_t), intent(inout), target :: qs
         type(dmqmc_in_t), intent(inout) :: dmqmc_in
-        type(annihilation_flags_t) :: annihilation_flags
+        type(annihilation_flags_t), intent(inout) :: annihilation_flags
 
         integer, intent(in) :: iunit
-        integer :: ipdet
+        integer :: ireplica, idet
         integer(i0) :: det_temp1(sys%basis%tot_string_len)
         integer(i0) :: det_temp2(sys%basis%tot_string_len)
 
         ! Take care of some common parameters first
-        annihilation_flags%ipdmqmc = .false.
-        qs%shift(:) = dmqmc_in%piecewise_shift
         dmqmc_in%ipdmqmc = .false.
+        annihilation_flags%ipdmqmc = .false.
+        do ireplica = 1, size(qs%psip_list%tot_nparticles)
+            qs%shift(ireplica) = dmqmc_in%piecewise_shift
+        end do
 
-        ! If we were using the free electron density matrix
-        ! in IP-DMQMC we need to clear h0_ptr
+        ! If using the free electron density matrix in IP-DMQMC
+        ! we need to clear h0_ptr as it is no longer needed.
         if (dmqmc_in%initial_matrix == free_electron_dm) h0_ptr => Null()
 
         ! If we were doing symmetric IP-DMQMC, we don't want
@@ -969,10 +976,10 @@ contains
             ! We also need to update all the current walkers
             ! Hamiltonian element to reflect DMQMC instead
             ! of IP-DMQMC.
-            do ipdet = 1, qs%psip_list%nstates ! loop over walkers/dets
-                det_temp1 = qs%psip_list%states(:sys%basis%tot_string_len,ipdet)
-                det_temp2 = qs%psip_list%states((sys%basis%tot_string_len+1):(2*sys%basis%tot_string_len),ipdet)
-                qs%psip_list%dat(1,ipdet) = ( (sc0_ptr(sys, det_temp1) - qs%ref%H00) + (sc0_ptr(sys, det_temp2) - qs%ref%H00) )/2
+            do idet = 1, qs%psip_list%nstates ! loop over walkers/dets
+                det_temp1 = qs%psip_list%states(:sys%basis%tot_string_len,idet)
+                det_temp2 = qs%psip_list%states((sys%basis%tot_string_len+1):(2*sys%basis%tot_string_len),idet)
+                qs%psip_list%dat(1,idet) = ( (sc0_ptr(sys, det_temp1) - qs%ref%H00) + (sc0_ptr(sys, det_temp2) - qs%ref%H00) )/2
             end do
         else
             if (parent) write(iunit, '(1X,"# Changing propagators from IP-DMQMC to Asymmetric DMQMC!")')
@@ -989,47 +996,75 @@ contains
             ! We also need to update all the current walkers
             ! Hamiltonian element to reflect asymmetric DMQMC
             ! instead of IP-DMQMC.
-            do ipdet = 1, qs%psip_list%nstates ! loop over walkers/dets
-                det_temp1 = qs%psip_list%states(:sys%basis%tot_string_len,ipdet)
-                qs%psip_list%dat(1,ipdet) = sc0_ptr(sys, det_temp1) - qs%ref%H00
+            do idet = 1, qs%psip_list%nstates ! loop over walkers/dets
+                det_temp1 = qs%psip_list%states(:sys%basis%tot_string_len,idet)
+                qs%psip_list%dat(1,idet) = sc0_ptr(sys, det_temp1) - qs%ref%H00
             end do
         end if
 
     end subroutine propagator_change
 
-    subroutine propagator_restore(qs, dmqmc_in, annihilation_flags)
+    subroutine propagator_restore(qs, dmqmc_in, annihilation_flags, iunit)
+
+        ! Restoring the tau, dmqmc_factor and annihilation flags
+        ! to that of IP-DMQMC. The values which are restored are
+        ! based on the symmetry of the IP-DMQMC propagator
+        ! Additionally, to restore the intended qmc parameters
+        ! and annihilation flags, the adjustments are defined by the current
+        ! propagator symmetry and the target IP-DMQMC propagator symmetry.
+        ! Typically, the symmetric propagators have a dmqmc_factor of 2,
+        ! while the asymmetric propagators have a dmqmc_factor of 1.
+        ! The tau will have a factor of 1/2 for a symmetric propagator,
+        ! and a factor of 1 for an asymmetric propagator.
 
         ! In:
-        !    dmqmc_in: Input options relating to DMQMC.
-        !    annihilation_flags: Flags to control the annihilation procedure.
+        !   qmc_in: Input options relating to QMC calculations.
+        !   iunit: The location we are writing data to, to communicate
+        !       information on the propagator switch.
         ! In/Out:
-        !    qs: Updated hamiltonian elements to account for the change in
-        !       propagators.
+        !   qs: Stores the various qmc parameters such as time step which need
+        !       to be adjusted for IP-DMQMC propagator starting a new beta loop.
+        !   dmqmc_in: Input options relating to DMQMC, the symmetry of the
+        !       propagator should be set upon return.
+        !   annihilation_flags: Flags to control the annihilation procedure.
+        !       Should be set to the symmetric of the IP-DMQMC propagator.
 
         use parallel
         use qmc_data, only: qmc_state_t, annihilation_flags_t
         use dmqmc_data, only: dmqmc_in_t
 
+        integer, intent(in) :: iunit
+
         type(qmc_state_t), intent(inout), target :: qs
         type(dmqmc_in_t), intent(inout) :: dmqmc_in
-        type(annihilation_flags_t) :: annihilation_flags
+        type(annihilation_flags_t), intent(inout) :: annihilation_flags
 
-        ! Take care of some common parameters first
+        if (parent) write (iunit,'(a53)') " # Restoring propagator to the interaction picture..."
+        ! Take care of flags which will always be true on the start of
+        ! a beta loop for IP-DMQMC.
         annihilation_flags%ipdmqmc = .true.
         dmqmc_in%ipdmqmc = .true.
 
         if (dmqmc_in%restore_symmetric_piecewise) then
+            ! Restore qmc paramters to symmetric IP-DMQMC propagation
             if (.not. dmqmc_in%symmetric) then
-                qs%tau = qs%tau*2.0_p
-                qs%dmqmc_factor = 1.0_p
+                ! The current propagator is asymmetric so we need a factor of
+                ! 1/2 for tau and dmqmc_factor set to 2.
+                qs%tau = qs%tau*0.5_p
+                qs%dmqmc_factor = 2.0_p
             end if
+            ! Regardless set the annihilation flags and propagator symmetry.
             annihilation_flags%symmetric = .true.
             dmqmc_in%symmetric = .true.
         else
+            ! Restore qmc parameters to asymmetric IP-DMQMC propagation.
             if (dmqmc_in%symmetric) then
+                ! If we are running symmetric DMQMC, the tau needs a factor
+                ! of 2 and dmqmc_factor needs to be set to 1.
                 qs%tau = qs%tau*2.0_p
                 qs%dmqmc_factor = 1.0_p
             end if 
+            ! Regardless set the annihilation flags and propagator symmetry.
             annihilation_flags%symmetric = .false.
             dmqmc_in%symmetric = .false.
         end if

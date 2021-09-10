@@ -79,8 +79,7 @@ contains
         type(qmc_state_t), intent(inout), optional :: qmc_state_restart
         real(p), intent(out), allocatable :: sampling_probs(:)
 
-        integer :: idet, ireport, icycle, iteration, ireplica, ierr, ipdet
-        !integer :: idet, ireport, icycle, iteration, ireplica, ierr
+        integer :: idet, ireport, icycle, iteration, ireplica, ierr
         integer :: beta_cycle, nreport, piecewise_nreport
         integer :: unused_int_1 = -1, unused_int_2 = 0
         integer(int_64) :: init_tot_nparticles
@@ -228,9 +227,9 @@ contains
 
         outer_loop: do beta_cycle = 1, dmqmc_in%beta_loops
 
-            call init_dmqmc_beta_loop(rng, qmc_in, dmqmc_in, dmqmc_estimates, qs, beta_cycle, qs%psip_list%nstates, &
-                                      qs%psip_list%nparticles, qs%spawn_store%spawn, weighted_sampling%probs, &
-                                      annihilation_flags)
+            call init_dmqmc_beta_loop(sys, reference_in, rng, qmc_in, dmqmc_in, dmqmc_estimates, qs, beta_cycle, &
+                                      qs%psip_list%nstates, qs%psip_list%nparticles, qs%spawn_store%spawn, &
+                                      weighted_sampling%probs, annihilation_flags)
 
             ! Distribute psips uniformly along the diagonal of the density matrix.
             call create_initial_density_matrix(rng, sys, qmc_in, dmqmc_in, qs, annihilation_flags, &
@@ -570,8 +569,8 @@ contains
 
     end subroutine do_dmqmc_spawning_attempt
 
-    subroutine init_dmqmc_beta_loop(rng, qmc_in, dmqmc_in, dmqmc_estimates, qs, beta_cycle, nstates_active, &
-                                    nparticles, spawn, accumulated_probs, annihilation_flags)
+    subroutine init_dmqmc_beta_loop(sys, reference_in, rng, qmc_in, dmqmc_in, dmqmc_estimates, qs, beta_cycle, &
+                                    nstates_active, nparticles, spawn, accumulated_probs, annihilation_flags)
 
         ! Initialise/reset DMQMC data for a new run over the temperature range.
 
@@ -584,6 +583,9 @@ contains
         !    qmc_in: input options relating to QMC calculations.
         !    beta_cycle: The index of the beta loop about to be started.
         !    dmqmc_in: input options for DMQMC.
+        !    reference_in: current reference determinant.  If not set (ie
+        !       components allocated) then a best guess is made based upon the
+        !       desired spin/symmetry.
         ! Out:
         !    nparticles: number of particles in each space/of each type on
         !       processor.  Set to 0.
@@ -595,13 +597,18 @@ contains
 
         use dSFMT_interface, only: dSFMT_t, dSFMT_init
         use parallel
+        use system
         use qmc_data, only: qmc_in_t, qmc_state_t, annihilation_flags_t
         use dmqmc_data, only: dmqmc_in_t, dmqmc_estimates_t
         use spawn_data, only: spawn_t
         use utils, only: int_fmt
         use dmqmc_estimators, only: dmqmc_energy_and_trace_propagate
         use dmqmc_procedures, only: propagator_restore
+        use reference_determinant, only: reference_t, reference_t_json
+        use qmc, only: init_proc_pointers
 
+        type(reference_t), intent(in) :: reference_in
+        type(sys_t), intent(inout) :: sys
         type(dSFMT_t), intent(inout) :: rng
         type(spawn_t), intent(inout) :: spawn
         type(qmc_in_t), intent(in) :: qmc_in
@@ -639,10 +646,11 @@ contains
         ! If we are running piecewise IP-DMQMC restore the relevant values 
         ! back to IP-DMQMC.
         if (beta_cycle /= 1 .and. dmqmc_in%piecewise_beta > 0.0_p) then
-            call propagator_restore(qs, dmqmc_in, annihilation_flags)
+            call propagator_restore(qs, dmqmc_in, annihilation_flags, iunit)
             ! Need to update the energy pointer here to prevent cyclic dependency
-            update_dmqmc_energy_and_trace_ptr => dmqmc_energy_and_trace_propagate
-            if (parent) write (iunit,'(a53)') " # Restoring propagator to the interaction picture..."
+            ! update_dmqmc_energy_and_trace_ptr => dmqmc_energy_and_trace_propagate
+            ! Finally, update the pointers for the reset beta loop.
+            call init_proc_pointers(sys, qmc_in, reference_in, iunit, dmqmc_in)
         end if
 
         ! Reset the random number generator with new_seed = old_seed +
