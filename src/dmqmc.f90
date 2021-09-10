@@ -48,7 +48,7 @@ contains
         use dmqmc_procedures
         use dmqmc_initialise_dm, only: create_initial_density_matrix
         use excitations, only: excit_t, connection_exists
-        use qmc, only: init_qmc
+        use qmc, only: init_qmc, init_proc_pointers
         use qmc_common
         use restart_hdf5, only: restart_info_t, dump_restart_hdf5, init_restart_info_t
         use system
@@ -268,7 +268,9 @@ contains
                 if (dmqmc_in%piecewise_beta > 0.0_p .and. dmqmc_in%ipdmqmc .and. piecewise_nreport + 1 == ireport) then
                     call propagator_change(sys, qs, dmqmc_in, annihilation_flags, iunit)
                     ! Need to update the energy pointer here to prevent a cyclic dependency
-                    update_dmqmc_energy_and_trace_ptr => dmqmc_energy_and_trace
+                    ! update_dmqmc_energy_and_trace_ptr => dmqmc_energy_and_trace
+                    ! Finally, update the pointers for the reset beta loop.
+                    call init_proc_pointers(sys, qmc_in, reference_in, iunit, dmqmc_in)
                 end if
 
                 do icycle = 1, qmc_in%ncycles

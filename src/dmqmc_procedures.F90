@@ -932,9 +932,10 @@ contains
         type(annihilation_flags_t), intent(inout) :: annihilation_flags
 
         integer, intent(in) :: iunit
+
         integer :: ireplica, idet
-        integer(i0) :: det_temp1(sys%basis%tot_string_len)
-        integer(i0) :: det_temp2(sys%basis%tot_string_len)
+        integer(i0) :: detf1(sys%basis%tot_string_len)
+        integer(i0) :: detf2(sys%basis%tot_string_len)
 
         ! Take care of some common parameters first
         dmqmc_in%ipdmqmc = .false.
@@ -951,13 +952,13 @@ contains
         ! to include the exponential factors when spawning
         ! in normal DMQMC.
         if (dmqmc_in%symmetric) then
-            spawner_ptr => spawn_standard
+            !spawner_ptr => spawn_standard
             gen_excit_ptr%trial_fn => Null()
             dmqmc_in%restore_symmetric_piecewise = .true.
         end if
 
         ! We do need h0_ptr if we are calculating H0 :)
-        if (doing_dmqmc_calc(dmqmc_H0_energy)) h0_ptr => slater_condon0_ueg
+        !if (doing_dmqmc_calc(dmqmc_H0_energy)) h0_ptr => slater_condon0_ueg
 
         ! Finally, update the stored elements for diagonal death/cloning
         ! to propagate in DMQMC.
@@ -977,9 +978,9 @@ contains
             ! Hamiltonian element to reflect DMQMC instead
             ! of IP-DMQMC.
             do idet = 1, qs%psip_list%nstates ! loop over walkers/dets
-                det_temp1 = qs%psip_list%states(:sys%basis%tot_string_len,idet)
-                det_temp2 = qs%psip_list%states((sys%basis%tot_string_len+1):(2*sys%basis%tot_string_len),idet)
-                qs%psip_list%dat(1,idet) = ( (sc0_ptr(sys, det_temp1) - qs%ref%H00) + (sc0_ptr(sys, det_temp2) - qs%ref%H00) )/2
+                detf1 = qs%psip_list%states(:sys%basis%tot_string_len,idet)
+                detf2 = qs%psip_list%states((sys%basis%tot_string_len+1):(2*sys%basis%tot_string_len),idet)
+                qs%psip_list%dat(1,idet) = ( (sc0_ptr(sys, detf1) - qs%ref%H00) + (sc0_ptr(sys, detf2) - qs%ref%H00) )/2
             end do
         else
             if (parent) write(iunit, '(1X,"# Changing propagators from IP-DMQMC to Asymmetric DMQMC!")')
@@ -997,8 +998,8 @@ contains
             ! Hamiltonian element to reflect asymmetric DMQMC
             ! instead of IP-DMQMC.
             do idet = 1, qs%psip_list%nstates ! loop over walkers/dets
-                det_temp1 = qs%psip_list%states(:sys%basis%tot_string_len,idet)
-                qs%psip_list%dat(1,idet) = sc0_ptr(sys, det_temp1) - qs%ref%H00
+                detf1 = qs%psip_list%states(:sys%basis%tot_string_len,idet)
+                qs%psip_list%dat(1,idet) = sc0_ptr(sys, detf1) - qs%ref%H00
             end do
         end if
 
