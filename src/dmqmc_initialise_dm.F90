@@ -212,11 +212,14 @@ contains
             call direct_annihilation(sys, rng, qmc_state%ref, annihilation_flags, psip_list, spawn)
         end if
 
-        ! If we are running the scaling procedure of the initial walker
-        ! distribution perform that scaling now.
         if (dmqmc_in%walker_scale_factor > 0.0_p) then
-            qmc_state%psip_list%tot_nparticles = qmc_state%psip_list%tot_nparticles * real(dmqmc_in%walker_scale_factor, p)
-            qmc_state%psip_list%nparticles = qmc_state%psip_list%nparticles * real(dmqmc_in%walker_scale_factor, p)
+            ! If we are running the scaling procedure of the initial walker
+            ! distribution perform that scaling now.
+            ! Have to do real(int()) because the walkers are stored in integer
+            ! form but the qmc_state values are real.
+            qmc_state%psip_list%tot_nparticles = qmc_state%psip_list%tot_nparticles * real(int(dmqmc_in%walker_scale_factor, p), p)
+            qmc_state%psip_list%nparticles = qmc_state%psip_list%nparticles * real(int(dmqmc_in%walker_scale_factor, p), p)
+            qmc_state%psip_list%nparticles_proc = qmc_state%psip_list%nparticles_proc * real(int(dmqmc_in%walker_scale_factor, p), p)
             do ireplica = 1, qmc_state%psip_list%nspaces
                 qmc_state%psip_list%pops(ireplica,:qmc_state%psip_list%nstates) = &
                     int(dmqmc_in%walker_scale_factor, p)*qmc_state%psip_list%pops(ireplica,:qmc_state%psip_list%nstates)

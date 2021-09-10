@@ -177,9 +177,11 @@ contains
             ! Initialize the harmonic shift damping algorithm parameters
             qmc_in_loc%shift_harmonic_forcing = qs%shift_harmonic_forcing
             if (dmqmc_in%walker_scale_factor > 0.0_p) then
-                qs%target_particles = qmc_in%target_particles * real(dmqmc_in%walker_scale_factor, p)
+                ! If we are scaling the initial walker population then
+                ! update the reported initial population to be accurate.
+                qs%target_particles = qmc_in%target_particles * real(int(dmqmc_in%walker_scale_factor, p), p)
                 qmc_in_loc%target_particles = qs%target_particles
-                qmc_in_loc%D0_population = nint(qmc_in%D0_population, int_64) * real(dmqmc_in%walker_scale_factor, p)
+                qmc_in_loc%D0_population = nint(qmc_in%D0_population, int_64) * real(int(dmqmc_in%walker_scale_factor, p), p)
             end if
             call qmc_in_t_json(js, qmc_in_loc)
             call dmqmc_in_t_json(js, dmqmc_in)
@@ -258,9 +260,7 @@ contains
                 if (ireport .eq. 1) then
                     call dmqmc_estimate_comms(dmqmc_in, error, nspawn_events, sys%max_number_excitations, qmc_in%ncycles, &
                                               qs%psip_list, qs, weighted_sampling%probs_old, dmqmc_estimates)
-                    if (parent) then
-                        write (iunit,'(1X,"# Initial Diagonal Determinants:",1X,I0)') qs%estimators%tot_nstates
-                    end if
+                    if (parent) write (iunit,'(1X,"# Initial diagonal density matrix element(s):",1X,I0)') qs%estimators%tot_nstates
                 end if
 
                 ! If we are propagating past IP-DMQMC target beta.
@@ -607,13 +607,13 @@ contains
         use reference_determinant, only: reference_t, reference_t_json
         use qmc, only: init_proc_pointers
 
-        type(reference_t), intent(in) :: reference_in
         type(sys_t), intent(inout) :: sys
         type(dSFMT_t), intent(inout) :: rng
         type(spawn_t), intent(inout) :: spawn
-        type(qmc_in_t), intent(in) :: qmc_in
         type(dmqmc_in_t), intent(inout) :: dmqmc_in
         type(dmqmc_estimates_t), intent(inout) :: dmqmc_estimates
+        type(qmc_in_t), intent(in) :: qmc_in
+        type(reference_t), intent(in) :: reference_in
         integer, intent(in) :: beta_cycle
         type(qmc_state_t), intent(inout) :: qs
         integer, intent(out) :: nstates_active
@@ -643,12 +643,10 @@ contains
             write (iunit,'(a52,'//int_fmt(new_seed,1)//',a1)') " # Resetting random number generator with a seed of:", new_seed, "."
         end if
 
-        ! If we are running piecewise IP-DMQMC restore the relevant values 
-        ! back to IP-DMQMC.
         if (beta_cycle /= 1 .and. dmqmc_in%piecewise_beta > 0.0_p) then
+            ! If we are running piecewise IP-DMQMC restore the relevant values 
+            ! back to IP-DMQMC.
             call propagator_restore(qs, dmqmc_in, annihilation_flags, iunit)
-            ! Need to update the energy pointer here to prevent cyclic dependency
-            ! update_dmqmc_energy_and_trace_ptr => dmqmc_energy_and_trace_propagate
             ! Finally, update the pointers for the reset beta loop.
             call init_proc_pointers(sys, qmc_in, reference_in, iunit, dmqmc_in)
         end if

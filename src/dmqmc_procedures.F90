@@ -1007,18 +1007,17 @@ contains
     subroutine propagator_restore(qs, dmqmc_in, annihilation_flags, iunit)
 
         ! Restoring the tau, dmqmc_factor and annihilation flags
-        ! to that of IP-DMQMC. The values which are restored are
-        ! based on the symmetry of the IP-DMQMC propagator
+        ! to that of IP-DMQMC. The values which are restored
+        ! based on the symmetry of the IP-DMQMC propagator.
         ! Additionally, to restore the intended qmc parameters
         ! and annihilation flags, the adjustments are defined by the current
-        ! propagator symmetry and the target IP-DMQMC propagator symmetry.
+        ! propagator symmetry.
         ! Typically, the symmetric propagators have a dmqmc_factor of 2,
         ! while the asymmetric propagators have a dmqmc_factor of 1.
         ! The tau will have a factor of 1/2 for a symmetric propagator,
         ! and a factor of 1 for an asymmetric propagator.
 
         ! In:
-        !   qmc_in: Input options relating to QMC calculations.
         !   iunit: The location we are writing data to, to communicate
         !       information on the propagator switch.
         ! In/Out:
