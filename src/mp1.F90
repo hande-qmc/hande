@@ -37,24 +37,28 @@ contains
         use dSFMT_interface, only: dSFMT_t, dSFMT_init, get_rand_close_open
         use parallel
 
-        use system, only: sys_t, copy_sys_spin_info, set_spin_polarisation, sys_t_json
+        use system, only: sys_t, copy_sys_spin_info, sys_t_json
+        use calc_system_init, only: set_spin_polarisation
         use qmc_data, only: particle_t, reference_t, annihilation_flags_t, load_bal_state_t, reference_t_json
-!        use qmc, only: init_real_encoding_legacy
-        use ccmc_data, only: cluster_t
+        use qmc, only: init_reference
+        use ccmc_data, only: cluster_t, ex_lvl_dist_t
         use determinants, only: det_info_t, alloc_det_info_t
         use spawn_data, only: spawn_t, proc_map_t, alloc_spawn_t, dealloc_spawn_t
 
         use annihilation, only: direct_annihilation, remove_unoccupied_dets
-        use calc, only: init_proc_map_t, GLOBAL_META, gen_seed
-        use ccmc, only: select_cluster, find_D0
-        use determinants, only: encode_det, decode_det_occ
+        use calc, only: GLOBAL_META, gen_seed
+        use load_balancing, only: init_proc_map_t
+        use ccmc_utils, only: cumulative_population, find_D0
+        use ccmc_selection, only: select_cluster
+        use determinants, only: encode_det
+        use determinant_decoders, only: decode_det_occ
         use excitations, only: excit_t, create_excited_det, get_excitation_level
         use hamiltonian, only: get_hmatel
+        use hamiltonian_data
         use particle_t_utils, only: init_particle_t, dealloc_particle_t
         use proc_pointers, only: decoder_ptr
-        use qmc, only: init_sc0_ptr
-        use qmc_common, only: cumulative_population
-        use reference_determinant, only: set_reference_det, copy_reference_t
+!        use qmc, only: init_sc0_ptr
+        use reference_determinant, only: set_reference_det
         use search, only: binary_search
         use stoch_utils, only: stochastic_round_spawned_particle
         use spawning, only: create_spawned_particle, attempt_to_spawn, assign_particle_processor
@@ -80,19 +84,28 @@ contains
         integer(int_64) :: iattempt
         logical :: hit
         integer(int_p) :: nspawn, old_pop
-        real(p) :: amplitude, intgrl, norm, spawn_cutoff
+        real(p) :: norm, spawn_cutoff, amplitude, denom
+        type(hmatel_t) :: intgrl, ampl
         real(dp) :: emp2
-        integer(i0) :: f(sys%basis%string_len)
+        integer(i0) :: f(sys%basis%bit_string_len)
         integer :: excitor_sign, excitor_level
-        integer :: D0_proc, nD0_proc, D0_pos, max_cluster_size, slot
-        integer(int_p), allocatable :: cumulative_abs_nint_pops(:)
-        integer(int_p) :: tot_abs_nint_pop
+        integer :: max_cluster_size, slot
+        real(p), allocatable :: cumulative_abs_real_pops(:)
+        real(p) :: tot_abs_real_pop
         type(json_out_t) :: js
+        integer :: io_unit
+        type(ex_lvl_dist_t) :: ex_lvl_dist
+        integer :: D0_pos, D0_proc, nD0_proc
+        complex(p) :: D0_normalisation
+        type(logging_t) :: logging_info
 
+        io_unit = 6
         if (parent) then
-            write (6,'(1X,"MP1 wavefunction MC")')
-            write (6,'(1X,"-------------------",/)')
+            write (io_unit,'(1X,"MP1 wavefunction MC")')
+            write (io_unit,'(1X,"-------------------",/)')
         end if
+
+        if (debug) call init_logging(logging_in, logging_info, qs%ref%ex_level)
 
         if (present(rng_seed)) then
             seed = rng_seed
@@ -100,21 +113,15 @@ contains
             seed = gen_seed(GLOBAL_META%uuid)
         end if
         call dSFMT_init(seed+iproc, 50000, rng)
+
+
         call copy_sys_spin_info(sys, sys_bak)
         call set_spin_polarisation(sys%basis%nbasis, sys)
 
-        ! Attempt to generate a best guess reference unless one is set.
-        call copy_reference_t(ref_in, ref)
-        if (sys%symmetry < sys%sym_max) then
-            call set_reference_det(sys, ref%occ_list0, .false., sys%symmetry)
-        else
-            call set_reference_det(sys, ref%occ_list0, .false.)
-        end if
-        allocate(ref%f0(sys%basis%string_len))
-        call encode_det(sys%basis, ref%occ_list0, ref%f0)
+        call init_reference(sys, ref_in, io_unit, ref)
 
         ! Legacy global data (boo!) initialisation
-        call init_sc0_ptr(sys)
+!        call init_sc0_ptr(sys)
 
         ! annihilation_flags default to 'off'.  Only feature we might be using is real amplitudes.
         annihilation_flags%real_amplitudes = mp1_in%real_amplitudes
@@ -167,8 +174,8 @@ contains
 
         call alloc_det_info_t(sys, cdet)
         allocate(cluster%excitors(ref%ex_level+2))
-        allocate(cumulative_abs_nint_pops(size(psip_list%states,dim=2)), stat=ierr)
-        call check_allocate('cumulative_abs_nint_pops', size(cumulative_abs_nint_pops), ierr)
+        allocate(cumulative_abs_real_pops(size(psip_list%states,dim=2)), stat=ierr)
+        call check_allocate('cumulative_abs_real_pops', size(cumulative_abs_real_pops), ierr)
 
         if (parent) then
             call json_object_init(js, tag=.true.)
@@ -226,13 +233,15 @@ contains
                         ! NOTE: sp_eigv is not the Hartree--Fock eigenvalues in all cases (e.g. Hubbard model in k-space, UEG!).
                         associate(bf => sys%basis%basis_fns)
                             intgrl = get_hmatel(sys, ref%f0, f)
-                            amplitude = intgrl / (bf(i)%sp_eigv + bf(j)%sp_eigv - bf(a)%sp_eigv - bf(b)%sp_eigv)
-                            emp2 = emp2 + intgrl*amplitude
-                            amplitude = amplitude * mp1_in%D0_norm
+                            denom = (1.0_p / (bf(i)%sp_eigv + bf(j)%sp_eigv - bf(a)%sp_eigv - bf(b)%sp_eigv))
+                            ampl = intgrl * denom
+                            emp2 = emp2 + real(conjg(intgrl%c)*ampl%c)
+                            ampl = ampl * mp1_in%D0_norm
                         end associate
                         ! Note attempt_to_spawn creates particles of opposite sign, hence set parent_sign=-1 to undo this unwanted
                         ! sign change.
-                        nspawn = attempt_to_spawn(rng, 1.0_p, spawn%cutoff, tijab%pop_real_factor, amplitude, 1.0_p, -1_int_p)
+                        ! TODO - cope with complex valued spawns
+                        nspawn = attempt_to_spawn(rng, 1.0_p, spawn%cutoff, tijab%pop_real_factor, ampl%r, 1.0_p, -1_int_p)
                         if (nspawn /= 0_int_p) call create_spawned_particle(sys%basis, ref, cdet, excit, nspawn, 1, spawn, f)
                     end do
                 end do
@@ -261,12 +270,17 @@ contains
             D0_pos = -1
             nD0_proc = 1
             call find_D0(psip_list, ref%f0, D0_pos)
+            D0_normalisation = cmplx(tijab%pops(1,D0_pos), tijab%pops(2,D0_pos), p)/tijab%pop_real_factor
         else
             D0_pos = -1
             nD0_proc = 0 ! No reference excitor on the processor.
         end if
-        call cumulative_population(tijab%pops, tijab%nstates, D0_proc, D0_pos, tijab%pop_real_factor, cumulative_abs_nint_pops, &
-                                   tot_abs_nint_pop)
+#ifdef PARALLEL
+        call mpi_bcast(D0_normalisation, 1, mpi_pcomplex, D0_proc, MPI_COMM_WORLD, ierr)
+#endif
+        call cumulative_population(tijab%pops, tijab%states(sys%basis%tot_string_len, :), tijab%nstates, D0_proc, D0_pos, &
+             tijab%pop_real_factor, .false., sys%read_in%comp, cumulative_abs_real_pops, &
+                                   tot_abs_real_pop, ex_lvl_dist)
         excit = excit_t(0, [0,0], [0,0], .false.)
         max_cluster_size = min(sys%nel, ref%ex_level+2, tijab%nstates-nD0_proc)
 
@@ -278,8 +292,8 @@ contains
                 ! This is pretty crude: we generate clusters in the 1+T_2 space (despite already having that exactly) but also
                 ! generate, with the appropriate weight, higher order terms as well.  It's convenient, despite the redundant work,
                 ! to generate 1+T_2 again to avoid any normalisation issues in the cluster generation probabilities.
-                call select_cluster(rng, sys, tijab, ref%f0, ref%ex_level, .false., mp1_in%nattempts, mp1_in%D0_norm, 0.0_p, &
-                                    D0_pos, cumulative_abs_nint_pops, tot_abs_nint_pop, 0, max_cluster_size, cdet, cluster)
+                call select_cluster(rng, sys, tijab, ref%f0, ref%ex_level, .false., mp1_in%nattempts, D0_normalisation, 0.0_p, &
+                                    cumulative_abs_real_pops, tot_abs_real_pop, 0, max_cluster_size, cdet, cluster)
                 if (cluster%excitation_level <= ref%ex_level) then
                     ! Create a particle with the amplitude of the cluster with the probability of selecting the cluster.
                     amplitude = cluster%amplitude*cluster%cluster_to_det_sign
