@@ -1378,8 +1378,10 @@ contains
                          end if
                          secondary_ref_keys(i) = trim(string)
                 end do
+                keys_concat = [keys,secondary_ref_keys]
+            else
+                keys_concat = keys
             end if
-            keys_concat = [keys,secondary_ref_keys]
 
             call warn_unused_args(lua_state, keys_concat, ccmc_table)
 
