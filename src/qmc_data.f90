@@ -346,11 +346,15 @@ type ccmc_in_t
     integer :: n_secondary_ref = 0
     ! The secondary references.
     type(reference_t), allocatable :: secondary_refs(:)
-    ! Acceptance algorithm for mrcc excitations
+    ! Acceptance algorithm for mrcc excitations.
     integer :: mr_acceptance_search
+    ! Name of the file containing secondary references (only if mr_read_in is true).
     character(255) :: mr_secref_file
+    ! CC level from every secondary reference.
     integer :: mr_excit_lvl = -1
+    ! Number of frozen electrons to add to the secondary references.
     integer :: mr_n_frozen = 0
+    ! Whether to read in a secondary reference file.
     logical :: mr_read_in = .false.
 end type ccmc_in_t
 
@@ -1155,15 +1159,22 @@ contains
         call json_write_key(js, 'even_selection', ccmc%even_selection)
         if (ccmc%multiref) then
             
-            !do i=1, size(ccmc%secondary_refs)
-            !    write (string, '(A13,I0)') 'secondary_ref', i ! up to 2.15E9 secondary references can be provided
-            !    call reference_t_json(js, ccmc%secondary_refs(i), key = trim(string))
-            !end do
-                        
+            call json_write_key(js, 'mr_read_in', ccmc%mr_read_in)            
             call json_write_key(js, 'n_secondary_ref', ccmc%n_secondary_ref)
+            if (ccmc%n_secondary_ref.le.20 .and. .not.ccmc%mr_read_in) then
+                do i=1, size(ccmc%secondary_refs)
+                    write (string, '(A13,I0)') 'secondary_ref', i
+                    call reference_t_json(js, ccmc%secondary_refs(i), key = trim(string))
+                end do
+            elseif (ccmc%mr_read_in) then
+                continue
+            else
+                call warning('ccmc_in_t_json','There are more than 20 secondary references, &
+                &printing suppressed, consider using the mr_read_in functionality.')
+            end if
             call json_write_key(js, 'mr_acceptance_search', ccmc%mr_acceptance_search)
         end if
-        call json_write_key(js, 'multiref', ccmc%multiref,terminal=.true.)
+        call json_write_key(js, 'multiref', ccmc%multiref, terminal=.true.)
         call json_object_end(js, terminal)
 
     end subroutine ccmc_in_t_json

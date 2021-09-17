@@ -324,6 +324,7 @@ contains
         use qmc_data, only: qmc_in_t_json, ccmc_in_t_json, semi_stoch_in_t_json, restart_in_t_json
         use qmc_data, only: blocking_in_t_json, excit_gen_power_pitzer_orderN, excit_gen_heat_bath
         use reference_determinant, only: reference_t, reference_t_json
+        use search, only: tree_t
         use check_input, only: check_qmc_opts, check_ccmc_opts, check_blocking_opts
         use json_out, only: json_out_t, json_object_init, json_object_end
         use hamiltonian_data
@@ -1124,7 +1125,8 @@ contains
         use dSFMT_interface, only: dSFMT_t
         use system, only: sys_t
         use qmc_data, only: qmc_state_t, ccmc_in_t
-        use ccmc_data, only: multispawn_stats_t, ms_stats_update, wfn_contrib_t, tree_t, node_t
+        use ccmc_data, only: multispawn_stats_t, ms_stats_update, wfn_contrib_t
+        use search, only: tree_t
         use bloom_handler, only: bloom_stats_t, accumulate_bloom_stats
         use logging, only: logging_t
         use excit_gens, only: p_single_double_coll_t
@@ -1231,7 +1233,8 @@ contains
         use dSFMT_interface, only: dSFMT_t
         use system, only: sys_t
         use qmc_data, only: qmc_state_t, ccmc_in_t
-        use ccmc_data, only: ms_stats_update, wfn_contrib_t, tree_t, node_t
+        use ccmc_data, only: ms_stats_update, wfn_contrib_t
+        use search, only: tree_t
 
         use ccmc_death_spawning, only: stochastic_ccmc_death
         use bloom_handler, only: bloom_stats_t, accumulate_bloom_stats
@@ -1329,7 +1332,7 @@ contains
         use system, only: sys_t
         use qmc_data, only: qmc_state_t, ccmc_in_t
         use ccmc_data, only: multispawn_stats_t, ms_stats_update, wfn_contrib_t
-        use ccmc_data, only: tree_t, node_t
+        use search, only: tree_t
         use qmc_common, only: decide_nattempts
 
         use ccmc_death_spawning, only: spawner_ccmc, linked_spawner_ccmc, stochastic_ccmc_death
@@ -1418,7 +1421,8 @@ contains
         use dSFMT_interface, only: dSFMT_t
         use system, only: sys_t
         use qmc_data, only: qmc_state_t, ccmc_in_t
-        use ccmc_data, only: wfn_contrib_t, tree_t, node_t
+        use ccmc_data, only: wfn_contrib_t
+        use search, only: tree_t
 
         use excitations, only: excit_t
         use proc_pointers, only: gen_excit_ptr
@@ -1497,7 +1501,8 @@ contains
         !   assert1: true if at least one of the excitation levels is below the threshold. False otherwise.
         use excitations, only:  get_excitation_level, det_string
         use qmc_data, only: qmc_state_t
-        use ccmc_data, only: wfn_contrib_t, tree_t, tree_search
+        use ccmc_data, only: wfn_contrib_t 
+        use search, only: tree_t, tree_search
         use system, only: sys_t
  
         type(qmc_state_t), intent(in) :: qs

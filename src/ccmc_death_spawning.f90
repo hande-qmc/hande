@@ -69,7 +69,8 @@ contains
         !    connection: excitation connection between the current excitor
         !        and the child excitor, on which progeny are spawned.
 
-        use ccmc_data, only: cluster_t, tree_t, node_t, tree_search
+        use ccmc_data, only: cluster_t
+        use search, only: tree_t, tree_search
         use ccmc_utils, only: convert_excitor_to_determinant
         use ccmc_linked, only: unlinked_commutator, linked_excitation
         use determinant_data, only: det_info_t

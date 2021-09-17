@@ -1248,12 +1248,14 @@ contains
         !   io_unit: io unit to write any information to.
         ! In/Out:
         !   qs: qmc_state used in the calculation.
+        ! Out (optional):
+        !   secondary_ref_tree: A BK-tree for secondary reference search to be built here.
     
         use reference_determinant, only: reference_t
         use system, only: sys_t
         use qmc_data, only: qmc_state_t 
         use excitations, only: get_excitation_level, det_string
-        use ccmc_data, only: tree_t, tree_add
+        use search, only: tree_t, tree_add
         use const
         use determinants, only: decode_det
 
@@ -1278,6 +1280,7 @@ contains
             qs%ref%max_ex_level = total_max
         else
             if (sys%CAS(1).eq.-1) then
+                ! -1 is the default (unset) value
                 core_bstring = 2**(qs%mr_n_frozen)-1
             else
                 core_bstring = 2**(qs%mr_n_frozen-sys%CAS(1))-1

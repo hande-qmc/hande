@@ -268,6 +268,8 @@ ccmc options
 ``mr_n_frozen``
     type: integer.
 
+    Optional. Default: 0.
+
     Number of frozen core electrons, i.e., number of electrons that never move in the secondary references.
 
 ``mr_excit_lvl``
