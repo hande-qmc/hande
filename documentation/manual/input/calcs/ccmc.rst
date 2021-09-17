@@ -263,7 +263,23 @@ ccmc options
 ``mr_secref_file``
     type: string.
 
-    The name of the file with the list of secondary references. Can be generated with ``tools/ccmc/generate_mr_input_file.py``.
+    The name of the file with the list of secondary references. Can be generated with ``tools/ccmc/generate_mr_input_file.py``, to see the available options, run
+    .. code_block:: bash
+        $ generate_mr_input_file.py -h
+
+    When the ``compress`` flag is specified, only necessary references (those that are neccessary 
+    to span the active space uniquely) are generated, without the flag every single determinant 
+    in the active space is generated.
+
+    The ``--nfrozen`` option is used to minimize the size of the ``secref`` file, where the frozen 
+    core electrons are not included in the bitstrings, and instead the `mr_n_frozen` option is written into the Lua input file and 
+    passed to HANDE, to be added back in when secondary references are initialised.
+
+    The ``-l`` option is related to the size of the active space, such that a l-fold excitation 
+    can reach the 'middle' determinant (for a :math:`(6e,6o)` active space for 
+    nitrogen molecule, this would be a 
+    three-fold excitation from the ground into all six orbitals being singly occupied 
+    (:math:`M_s = 0` of course).
 
 ``mr_n_frozen``
     type: integer.
