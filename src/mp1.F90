@@ -1,6 +1,7 @@
 module mp1
 
 use const, only: p, int_64
+use qmc_data, only: excit_gen_renorm
 
 implicit none
 
@@ -21,11 +22,20 @@ type mp1_in_t
     integer :: state_size
     logical :: real_amplitudes = .false.
     real(p) :: spawn_cutoff = 0.01_p
+
+    ! Copied from qmc_data.f90::qmc_in_t
+    integer :: excit_gen = excit_gen_renorm
+    real(p) :: pattempt_single = -1, pattempt_double = -1
+    logical :: pattempt_update = .false.
+    logical :: pattempt_zero_accum_data = .false.
+    real(p) :: pattempt_parallel = -1
 end type mp1_in_t
+
+
 
 contains
 
-    subroutine sample_mp1_wfn(sys, mp1_in, ref_in, rng_seed)
+    subroutine sample_mp1_wfn(sys, mp1_in, ref_in, logging_in, rng_seed)
 
         ! [todo] - document
 
@@ -39,8 +49,8 @@ contains
 
         use system, only: sys_t, copy_sys_spin_info, sys_t_json
         use calc_system_init, only: set_spin_polarisation
-        use qmc_data, only: particle_t, reference_t, annihilation_flags_t, load_bal_state_t, reference_t_json
-        use qmc, only: init_reference
+        use qmc_data, only: particle_t, reference_t, annihilation_flags_t, load_bal_state_t, reference_t_json, qmc_in_t
+        use qmc, only: init_reference, init_excit_gen
         use ccmc_data, only: cluster_t, ex_lvl_dist_t
         use determinants, only: det_info_t, alloc_det_info_t
         use spawn_data, only: spawn_t, proc_map_t, alloc_spawn_t, dealloc_spawn_t
@@ -62,10 +72,13 @@ contains
         use search, only: binary_search
         use stoch_utils, only: stochastic_round_spawned_particle
         use spawning, only: create_spawned_particle, attempt_to_spawn, assign_particle_processor
+        use logging, only: logging_t, logging_in_t
+        use excit_gens, only: excit_gen_data_t
 
         type(sys_t), intent(inout) :: sys
         type(mp1_in_t), intent(in) :: mp1_in
         type(reference_t), intent(in), optional :: ref_in
+        type(logging_in_t), intent(in) :: logging_in
         integer, intent(in), optional :: rng_seed
 
         type(particle_t) :: tijab, psip_list
@@ -98,14 +111,14 @@ contains
         integer :: D0_pos, D0_proc, nD0_proc
         complex(p) :: D0_normalisation
         type(logging_t) :: logging_info
+        type(excit_gen_data_t) :: excit_gen_data
+        type(qmc_in_t) :: qmc_in_cast
 
         io_unit = 6
         if (parent) then
             write (io_unit,'(1X,"MP1 wavefunction MC")')
             write (io_unit,'(1X,"-------------------",/)')
         end if
-
-        if (debug) call init_logging(logging_in, logging_info, qs%ref%ex_level)
 
         if (present(rng_seed)) then
             seed = rng_seed
@@ -119,6 +132,15 @@ contains
         call set_spin_polarisation(sys%basis%nbasis, sys)
 
         call init_reference(sys, ref_in, io_unit, ref)
+        if (debug) call init_logging(logging_in, logging_info, ref%ex_level)
+        
+        qmc_in_cast%excit_gen = mp1_in%excit_gen
+        qmc_in_cast%pattempt_single = mp1_in%pattempt_single
+        qmc_in_cast%pattempt_double = mp1_in%pattempt_double
+        qmc_in_cast%pattempt_update = mp1_in%pattempt_update
+        qmc_in_cast%pattempt_zero_accum_data = mp1_in%pattempt_zero_accum_data
+        qmc_in_cast%pattempt_parallel = mp1_in%pattempt_parallel
+        call init_excit_gen(sys, qmc_in_cast, ref, .false., excit_gen_data)
 
         ! Legacy global data (boo!) initialisation
 !        call init_sc0_ptr(sys)
@@ -262,7 +284,7 @@ contains
         ! Sample this by randomly generating clusters from the (1+T_2)|HF> space with the appropriate amplitude.
         ! [todo] - describe in more detail.
 
-        ! Set of amplitudes on reference and doubles are fixed so the the reference position and cumulative population information
+        ! Set of amplitudes on reference and doubles are fixed so the reference position and cumulative population information
         ! won't change for the set of excitors from which we sample clusters...
         call assign_particle_processor(ref%f0, spawn%bit_str_nbits, spawn%hash_seed, spawn%hash_shift, spawn%move_freq, &
                                        nprocs, D0_proc, slot, spawn%proc_map%map, spawn%proc_map%nslots)
@@ -293,7 +315,8 @@ contains
                 ! generate, with the appropriate weight, higher order terms as well.  It's convenient, despite the redundant work,
                 ! to generate 1+T_2 again to avoid any normalisation issues in the cluster generation probabilities.
                 call select_cluster(rng, sys, tijab, ref%f0, ref%ex_level, .false., mp1_in%nattempts, D0_normalisation, 0.0_p, &
-                                    cumulative_abs_real_pops, tot_abs_real_pop, 0, max_cluster_size, cdet, cluster)
+                                    cumulative_abs_real_pops, tot_abs_real_pop, 0, max_cluster_size, &
+                                    logging_info, cdet, cluster, excit_gen_data)
                 if (cluster%excitation_level <= ref%ex_level) then
                     ! Create a particle with the amplitude of the cluster with the probability of selecting the cluster.
                     amplitude = cluster%amplitude*cluster%cluster_to_det_sign
@@ -377,6 +400,7 @@ contains
         use qmc_data, only: particle_t
         use system, only: sys_t
         use hamiltonian, only: get_hmatel
+        use hamiltonian_data, only: hmatel_t
 
         real(dp) :: emp2
         type(sys_t), intent(in) :: sys
@@ -385,11 +409,14 @@ contains
         type(particle_t), intent(in) :: psip_list
 
         integer :: istate
+        type(hmatel_t) :: hmatel
 
         emp2 = 0.0_dp
         do istate = 1, psip_list%nstates
             if (any(psip_list%states(:,istate) /= f0)) then
-                emp2 = emp2 + get_hmatel(sys, f0, psip_list%states(:,istate)) * psip_list%pops(1,istate)
+                !BZ - [warning]: this is assuming the hmatel is real
+                hmatel = get_hmatel(sys, f0, psip_list%states(:,istate))
+                emp2 = emp2 + hmatel%r * psip_list%pops(1,istate)
             end if
         end do
         emp2 = emp2 / (psip_list%pop_real_factor*D0_norm)
