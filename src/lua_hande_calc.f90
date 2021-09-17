@@ -689,11 +689,12 @@ contains
         use aot_table_module, only: aot_table_top, aot_table_close
 
         use lua_hande_system, only: get_sys_t
-        use lua_hande_utils, only: warn_unused_args
+        use lua_hande_utils, only: warn_unused_args, register_timing
 
         use system, only: sys_t
         use qmc_data, only: reference_t
         use mp1, only: mp1_in_t, sample_mp1_wfn
+        use logging, only: logging_in_t
 
         integer(c_int) :: nresult
         type(c_ptr), value :: L
@@ -707,18 +708,28 @@ contains
         integer :: opts, ierr, rng_seed
         logical :: have_seed
 
+        type(logging_in_t) :: logging_in
+        real :: t1, t2
+
+        call cpu_time(t1)
+
         lua_state = flu_copyptr(L)
         call get_sys_t(lua_state, sys)
 
         opts = aot_table_top(lua_state)
         call read_mp1_args(lua_state, opts, mp1_in, rng_seed, have_seed)
-        call read_reference_t(lua_state, opts, sys, ref)
+        call read_reference_t(lua_state, opts, ref, sys)
+
+        call read_logging_in_t(lua_state, opts, logging_in)
 
         if (have_seed) then
-            call sample_mp1_wfn(sys, mp1_in, ref, rng_seed)
+            call sample_mp1_wfn(sys, mp1_in, ref, logging_in, rng_seed)
         else
-            call sample_mp1_wfn(sys, mp1_in, ref)
+            call sample_mp1_wfn(sys, mp1_in, ref, logging_in)
         end if
+        
+        call cpu_time(t2)
+        call register_timing(lua_state, "MP1 initialisation", t2-t1)
 
     end function lua_mp1_mc
 
@@ -915,6 +926,7 @@ contains
         !     real_amplitudes = true/false,
         !     spawn_cutoff = cutoff,
         !     rng_seed = seed,
+        !     excit_gen = string,
         ! }
 
         use flu_binding, only: flu_State
