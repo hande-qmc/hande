@@ -8,13 +8,15 @@ integrals in the FCIDUMP format [Knowles89]_.  Many quantum chemistry packages c
 generate them following Hartree-Fock calculations, including:
 
 HORTON
-   https://theochem.github.io/horton/
+    https://theochem.github.io/horton/
 MOLPRO
-   https://www.molpro.net/
+    https://www.molpro.net
 PSI4
-    http://psicode.org.
+    http://psicode.org
+
+    A short tutorial can be found :ref:`below <psi4_tutorial>`.
 Q-Chem
-   http://www.q-chem.com.  FCIDUMP code contributed by Alex Thom.
+   http://www.q-chem.com  FCIDUMP code contributed by Alex Thom.
 
 We most frequently use PSI4 and Q-Chem and so these tend to be better tested.  Note that
 the computational cost of the calculations in HANDE vastly outweighs the cost of the
@@ -26,6 +28,63 @@ format.
 Please note that not all programs use exactly identical FCIDUMP formats and some may not
 be compatible with HANDE. The differences are typically in the namelist header. It may be
 possible to resolve these differences by hand or a script.
+
+.. _psi4_tutorial:
+
+A short tutorial for generating FCIDUMPs by Psi4
+================================================
+
+Installation
+^^^^^^^^^^^^
+The Psi4 package can be simply installed in an Anaconda environment via
+
+.. code-block:: bash
+   
+   $ conda install psi4 python=3.8 -c psi4
+
+Psi4 provides two APIs to access it, the Psithon interface (:code:`$ psi4 H2.in > H2.out`), or by using it like a Python module. The latter is covered by this tutorial as it is more intuitive to use and renders post-calculation analysis easier. 
+
+Typical usage
+^^^^^^^^^^^^^
+The following examples runs a RHF calculation on carbon dimer at cc-pVDZ at a clamped orbital occupancy, producing a FCIDUMP file at the end.
+
+.. code-block:: python
+
+    import psi4
+    psi4.set_memory('2000 MB')
+
+    dump = 'c2_1.200.FCIDUMP'
+    outfile = 'c2_1.200.psi4out'
+    psi4.core.set_output_file(outfile, False)
+    # There are many ways to specify geometry, see documentation
+    mol = psi4.geometry("""
+    C
+    C 1 r
+    r = 1.200
+    """)
+    # Default SCF_TYPE is density-fitting, which produces slightly different results than other packages like PySCF.
+    psi4.set_options({'SCF_TYPE':'DIRECT','basis':'cc-pvdz','docc':[2,0,0,0,0,2,1,1]})
+    E, wfn = psi4.energy('scf', return_wfn=True)
+    # oe_ints has to be specified exactly like this
+    psi4.fcidump(wfn, fname=dump, oe_ints=['EIGENVALUES'])
+
+Custom basis set
+^^^^^^^^^^^^^^^^
+Sometimes a custom basis set is needed (for example many chromium dimer benchmarks are done with an 'Ahlrich's SV' basis, which requires deleting a diffuse p basis from the def2-SV(P) basis set for Cr). This can be done either in the input file (https://psicode.org/psi4manual/master/basissets.html#user-defined-basis-sets) or by writing a basis set definition in the python module folder (which should be :code:`/home/{user}/anaconda3/envs/{env-name}/share/psi4/basis/`, see the link above for basis set file naming convention).
+
+Post-calculation analysis
+^^^^^^^^^^^^^^^^^^^^^^^^^
+The returned wavefunction object :code:`wfn` can be inspected and analysed. For methods summary see https://psicode.org/psi4manual/master/api/psi4.core.Wavefunction.html#psi4.core.Wavefunction. But most basically you can call
+
+.. code-block:: python
+
+    wfn.epsilon_a().nph
+
+which returns all the HF eigenvalues grouped by symmetry.
+
+Symmetry
+^^^^^^^^
+Psi4 uses 'Cotton ordering' for the irreps of :math:`D_{2h}`, albeit inconsistently (e.g. the :code:`DOCC` option takes in a list of irrep occupation with normal ordering, i.e., :math:`A_{g},\ B_{1g},\ B_{2g},\dots`). But in the &FCI namelist, the symmetry labels are Cotton-ordered, i.e. :math:`[1,2,3,4,5,6,7,8]` means :math:`[A_{1g},B_{3u},B_{2u},B_{1g},B_{1u},B_{2g},B_{3g},A_u]`.
 
 .. _fcidump_format:
 
