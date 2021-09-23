@@ -68,6 +68,13 @@ enum, bind(c)
     enumerator :: excit_gen_heat_bath_single
 end enum
 
+enum, bind(c)
+    ! BZ: [TODO] - document these propagators
+    enumerator :: propagator_linear
+    enumerator :: propagator_wall_ch_5th
+end enum
+
+
 ! Types of semi-stochastic space.
 enum, bind(c)
     ! This option uses an empty deterministic space, and so turns
@@ -237,6 +244,9 @@ type qmc_in_t
     ! by time step times quasi_newton_pop_control in equilibrium, zero before shift varies.
     ! Set to 1 if not using quasiNewton.
     real(p) :: quasi_newton_pop_control = -1.0_p
+
+    ! BZ - [TODO]: document propagators
+    integer :: propagator
 
 end type qmc_in_t
 
