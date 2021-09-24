@@ -679,10 +679,18 @@ contains
         !    L: lua state (bare C pointer).
 
         ! Lua:
-        !    canonical_energy {
-        !       sys = system,      -- required
-        !       canonical_energy = { ... }, -- required
-        !    }
+        ! mp1_mc {
+        !     sys = sys,
+        !     mp1 {
+        !           D0_population = nD0,              -- required
+        !           ncycles = Y,                      -- required
+        !           nattempts = X,                    -- required
+        !           state_size = S,                   -- required
+        !           real_amplitudes = true/false,
+        !           spawn_cutoff = cutoff,
+        !           rng_seed = seed,
+        !     },
+        ! }
 
         use, intrinsic :: iso_c_binding, only: c_ptr, c_int
         use flu_binding, only: flu_State, flu_copyptr
@@ -718,8 +726,8 @@ contains
 
         opts = aot_table_top(lua_state)
         call read_mp1_args(lua_state, opts, mp1_in, rng_seed, have_seed)
-        call read_reference_t(lua_state, opts, ref, sys)
-
+        ref%ex_level = 2
+        !call read_reference_t(lua_state, opts, ref, sys)
         call read_logging_in_t(lua_state, opts, logging_in)
 
         if (have_seed) then

@@ -51,7 +51,7 @@ contains
         use system, only: sys_t, copy_sys_spin_info, sys_t_json
         use calc_system_init, only: set_spin_polarisation
         use qmc_data, only: particle_t, reference_t, annihilation_flags_t, load_bal_state_t, reference_t_json, qmc_in_t
-        use qmc, only: init_reference, init_excit_gen
+        use qmc, only: init_proc_pointers, init_reference, init_excit_gen
         use ccmc_data, only: cluster_t, ex_lvl_dist_t
         use determinants, only: det_info_t, alloc_det_info_t
         use spawn_data, only: spawn_t, proc_map_t, alloc_spawn_t, dealloc_spawn_t
@@ -132,7 +132,6 @@ contains
         call copy_sys_spin_info(sys, sys_bak)
         call set_spin_polarisation(sys%basis%nbasis, sys)
 
-        call init_reference(sys, ref_in, io_unit, ref)
         if (debug) call init_logging(logging_in, logging_info, ref%ex_level)
         
         qmc_in_cast%excit_gen = mp1_in%excit_gen
@@ -141,6 +140,8 @@ contains
         qmc_in_cast%pattempt_update = mp1_in%pattempt_update
         qmc_in_cast%pattempt_zero_accum_data = mp1_in%pattempt_zero_accum_data
         qmc_in_cast%pattempt_parallel = mp1_in%pattempt_parallel
+        call init_proc_pointers(sys, qmc_in_cast, ref, io_unit)
+        call init_reference(sys, ref_in, io_unit, ref)
         call init_excit_gen(sys, qmc_in_cast, ref, .false., excit_gen_data)
 
         ! Legacy global data (boo!) initialisation
@@ -421,9 +422,9 @@ contains
             if (any(psip_list%states(:,istate) /= f0)) then
                 hmatel = get_hmatel(sys, f0, psip_list%states(:,istate))
                 if (sys%read_in%comp) then
-                    emp2 = emp2 + real(hmatel%c)* psip_list%pops(1,istate)
+                    emp2 = emp2 + real(hmatel%c)*psip_list%pops(1,istate)
                 else
-                    emp2 = emp2 + hmatel%r * psip_list%pops(1,istate)
+                    emp2 = emp2 + hmatel%r*psip_list%pops(1,istate)
                 end if
             end if
         end do

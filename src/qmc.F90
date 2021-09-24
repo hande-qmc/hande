@@ -1160,6 +1160,7 @@ contains
             call check_allocate('reference%hs_f0', sys%basis%tot_string_len, ierr)
         end if
 
+
         ! Set hilbert space reference if not given in input
         if (allocated(reference%hs_occ_list0)) then
             call encode_det(sys%basis, reference%hs_occ_list0, reference%hs_f0)
