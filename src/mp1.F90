@@ -400,13 +400,14 @@ contains
 
     end subroutine mp1_status
 
-    pure function calc_emp2(sys, f0, D0_norm, psip_list) result(emp2)
+    function calc_emp2(sys, f0, D0_norm, psip_list) result(emp2)
 
-        use const, only: dp, int_p, i0
+        use const, only: dp, int_p, i0, depsilon
         use qmc_data, only: particle_t
         use system, only: sys_t
         use hamiltonian, only: get_hmatel
         use hamiltonian_data, only: hmatel_t
+        use errors, only: stop_all
 
         real(dp) :: emp2
         type(sys_t), intent(in) :: sys
@@ -422,7 +423,14 @@ contains
             if (any(psip_list%states(:,istate) /= f0)) then
                 hmatel = get_hmatel(sys, f0, psip_list%states(:,istate))
                 if (sys%read_in%comp) then
-                    emp2 = emp2 + real(hmatel%c)*psip_list%pops(1,istate)
+                    if (aimag(hmatel%c*psip_list%pops(2,istate)) > depsilon) then
+                        ! Calling stop_all means we can't make this function pure, 
+                        ! might be worth it for sanity and mp2 isn't the time consuming 
+                        ! part of the calculation anyway
+                        call stop_all('calc_emp2', 'Non-zero complex energy detected')
+                    else
+                        emp2 = emp2 + real(hmatel%c)*psip_list%pops(1,istate) + aimag(hmatel%c)*psip_list%pops(2,istate)
+                    end if
                 else
                     emp2 = emp2 + hmatel%r*psip_list%pops(1,istate)
                 end if
