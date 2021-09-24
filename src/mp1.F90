@@ -24,6 +24,7 @@ type mp1_in_t
     real(p) :: spawn_cutoff = 0.01_p
 
     ! Copied from qmc_data.f90::qmc_in_t
+    ! BZ-[todo]: add actual input options for this for excit_gens other than default.
     integer :: excit_gen = excit_gen_renorm
     real(p) :: pattempt_single = -1, pattempt_double = -1
     logical :: pattempt_update = .false.
@@ -257,7 +258,11 @@ contains
                             intgrl = get_hmatel(sys, ref%f0, f)
                             denom = (1.0_p / (bf(i)%sp_eigv + bf(j)%sp_eigv - bf(a)%sp_eigv - bf(b)%sp_eigv))
                             ampl = intgrl * denom
-                            emp2 = emp2 + real(conjg(intgrl%c)*ampl%c)
+                            if (sys%read_in%comp) then
+                                emp2 = emp2 + real(conjg(intgrl%c)*ampl%c)
+                            else
+                                emp2 = emp2 + intgrl%r*ampl%r
+                            end if
                             ampl = ampl * mp1_in%D0_norm
                         end associate
                         ! Note attempt_to_spawn creates particles of opposite sign, hence set parent_sign=-1 to undo this unwanted
@@ -414,9 +419,12 @@ contains
         emp2 = 0.0_dp
         do istate = 1, psip_list%nstates
             if (any(psip_list%states(:,istate) /= f0)) then
-                !BZ - [warning]: this is assuming the hmatel is real
                 hmatel = get_hmatel(sys, f0, psip_list%states(:,istate))
-                emp2 = emp2 + hmatel%r * psip_list%pops(1,istate)
+                if (sys%read_in%comp) then
+                    emp2 = emp2 + real(hmatel%c)* psip_list%pops(1,istate)
+                else
+                    emp2 = emp2 + hmatel%r * psip_list%pops(1,istate)
+                end if
             end if
         end do
         emp2 = emp2 / (psip_list%pop_real_factor*D0_norm)

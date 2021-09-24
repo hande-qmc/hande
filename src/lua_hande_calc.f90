@@ -926,7 +926,6 @@ contains
         !     real_amplitudes = true/false,
         !     spawn_cutoff = cutoff,
         !     rng_seed = seed,
-        !     excit_gen = string,
         ! }
 
         use flu_binding, only: flu_State
