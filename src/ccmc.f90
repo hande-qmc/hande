@@ -324,7 +324,6 @@ contains
         use qmc_data, only: qmc_in_t_json, ccmc_in_t_json, semi_stoch_in_t_json, restart_in_t_json
         use qmc_data, only: blocking_in_t_json, excit_gen_power_pitzer_orderN, excit_gen_heat_bath
         use reference_determinant, only: reference_t, reference_t_json
-        use search, only: tree_t
         use check_input, only: check_qmc_opts, check_ccmc_opts, check_blocking_opts
         use json_out, only: json_out_t, json_object_init, json_object_end
         use hamiltonian_data
@@ -394,8 +393,6 @@ contains
         integer :: date_values(8)
         character(:), allocatable :: err_msg
 
-        type(tree_t) :: secondary_ref_tree
-
         if (parent) then
             write (io_unit,'(1X,"CCMC")')
             write (io_unit,'(1X,"----",/)')
@@ -439,12 +436,7 @@ contains
             endif
 
             allocate (qs%secondary_refs(qs%n_secondary_ref))
-            if (qs%mr_acceptance_search == 1) then
-                ! If BK-tree search is used, additionally get the secondary_ref_tree
-                call init_secondary_references(sys, ccmc_in%secondary_refs, io_unit, qs, secondary_ref_tree)
-            else
-                call init_secondary_references(sys, ccmc_in%secondary_refs, io_unit, qs)
-            end if
+            call init_secondary_references(sys, ccmc_in%secondary_refs, io_unit, qs)
         else 
             qs%ref%max_ex_level = qs%ref%ex_level
         end if
@@ -723,7 +715,7 @@ contains
                 !$omp        nattempts_spawn, ex_lvl_dist, &
                 !$omp        ccmc_in, nprocs, ms_stats, ps_stats, qmc_in, load_bal_in, &
                 !$omp        ndeath_nc,   &
-                !$omp        nparticles_change, ndeath, logging_info, secondary_ref_tree)
+                !$omp        nparticles_change, ndeath, logging_info)
                 it = get_thread_id()
                 iexcip_pos = 0
                 seen_D0 = .false.
@@ -748,13 +740,8 @@ contains
                             ! [VAN]: according to comments. And logging cannot be used with openmp. Dangerous though.
                             call do_ccmc_accumulation(sys, qs, contrib(it)%cdet, contrib(it)%cluster, logging_info, &
                                                     D0_population_cycle, proj_energy_cycle, ccmc_in, ref_det, rdm, selection_data)
-                            if (qs%mr_acceptance_search == 0) then
-                                call do_nc_ccmc_propagation(rng(it), sys, qs, ccmc_in, logging_info, bloom_stats, &
+                            call do_nc_ccmc_propagation(rng(it), sys, qs, ccmc_in, logging_info, bloom_stats, &
                                                                 contrib(it), nattempts_spawn, ps_stats(it))
-                            else
-                                call do_nc_ccmc_propagation(rng(it), sys, qs, ccmc_in, logging_info, bloom_stats, &
-                                                                contrib(it), nattempts_spawn, ps_stats(it), secondary_ref_tree)
-                            end if
                         end if
 
                     ! For OpenMP scalability, have this test inside a single loop rather
@@ -784,16 +771,9 @@ contains
 
                             call do_ccmc_accumulation(sys, qs, contrib(it)%cdet, contrib(it)%cluster, logging_info, &
                                                     D0_population_cycle, proj_energy_cycle, ccmc_in, ref_det, rdm, selection_data)
-                            if (qs%mr_acceptance_search == 0) then
-                                call do_stochastic_ccmc_propagation(rng(it), sys, qs, &
-                                                                    ccmc_in, logging_info, ms_stats(it), bloom_stats, &
-                                                                    contrib(it), nattempts_spawn, ndeath, ps_stats(it))
-                            else
-                                call do_stochastic_ccmc_propagation(rng(it), sys, qs, &
-                                                                    ccmc_in, logging_info, ms_stats(it), bloom_stats, &
-                                                                    contrib(it), nattempts_spawn, ndeath, ps_stats(it), &
-                                                                    secondary_ref_tree)
-                            end if
+                            call do_stochastic_ccmc_propagation(rng(it), sys, qs, &
+                                                                ccmc_in, logging_info, ms_stats(it), bloom_stats, &
+                                                                contrib(it), nattempts_spawn, ndeath, ps_stats(it))
                         end if
                     else
                         ! We just select the empty cluster.
@@ -818,13 +798,8 @@ contains
                                                 D0_population_cycle, proj_energy_cycle, ccmc_in, ref_det, rdm, selection_data)
                         nattempts_spawn = nattempts_spawn + 1
                        
-                        if (qs%mr_acceptance_search == 0) then
-                            call perform_ccmc_spawning_attempt(rng(it), sys, qs, ccmc_in, logging_info, bloom_stats, &
+                        call perform_ccmc_spawning_attempt(rng(it), sys, qs, ccmc_in, logging_info, bloom_stats, &
                                 contrib(it), 1, ps_stats(it))
-                        else
-                            call perform_ccmc_spawning_attempt(rng(it), sys, qs, ccmc_in, logging_info, bloom_stats, &
-                                contrib(it), 1, ps_stats(it), secondary_ref_tree)
-                        end if
                     end if
                 end do
                 !$omp end do
@@ -1089,7 +1064,7 @@ contains
 
     subroutine do_stochastic_ccmc_propagation(rng, sys, qs, ccmc_in, &
                                             logging_info, ms_stats, bloom_stats, &
-                                            contrib, nattempts_spawn_tot, ndeath, ps_stat, secondary_ref_tree)
+                                            contrib, nattempts_spawn_tot, ndeath, ps_stat)
 
         ! Perform stochastic propogation of a cluster in an appropriate manner
         ! for the given inputs. For multireference systems, it allows death for
@@ -1100,10 +1075,6 @@ contains
         !   ccmc_in: options relating to ccmc passed in to calculation.
         !   logging_info: logging_t object with info about current logging
         !        when debug is true. 
-        !
-        ! In (optional):
-        !   secondary_ref_tree: a BK tree with secondary references for efficient
-        !   acceptance search. Enabled with mr_acceptance_search = 'bk_tree'.
         !
         ! In/Out:
         !   rng: random number generator.
@@ -1126,7 +1097,6 @@ contains
         use system, only: sys_t
         use qmc_data, only: qmc_state_t, ccmc_in_t
         use ccmc_data, only: multispawn_stats_t, ms_stats_update, wfn_contrib_t
-        use search, only: tree_t
         use bloom_handler, only: bloom_stats_t, accumulate_bloom_stats
         use logging, only: logging_t
         use excit_gens, only: p_single_double_coll_t
@@ -1145,7 +1115,6 @@ contains
         integer(int_p), intent(inout) :: ndeath
         type(multispawn_stats_t), intent(inout) :: ms_stats
         type(p_single_double_coll_t), intent(inout) :: ps_stat
-        type(tree_t), intent(in), optional :: secondary_ref_tree
 
         integer :: nspawnings_cluster
         logical :: attempt_death, bktree
@@ -1157,7 +1126,6 @@ contains
         ! of cluster%amplitude/cluster%pselect.  If this is
         ! greater than cluster_multispawn_threshold, then nspawnings is
         ! increased to the ratio of these.
-        bktree = present(secondary_ref_tree)
         nspawnings_cluster=max(1,ceiling((abs(contrib%cluster%amplitude)&
                                      /contrib%cluster%pselect)/ ccmc_in%cluster_multispawn_threshold))
 
@@ -1165,22 +1133,12 @@ contains
         nattempts_spawn_tot = nattempts_spawn_tot + nspawnings_cluster
         if (qs%multiref) then
             ! Checks whether the current contribution is within the considered space.
-            if (bktree) then
-                if (multiref_check_ex_level(sys, contrib, qs, 2, secondary_ref_tree)) then
-                    attempt_death = multiref_check_ex_level(sys, contrib, qs, 0, secondary_ref_tree)
-                    call do_spawning_death(rng, sys, qs, ccmc_in, &
-                                         logging_info, bloom_stats, contrib, &
-                                         ndeath, ps_stat, nspawnings_cluster, &
-                                         attempt_death, secondary_ref_tree)
-                end if
-            else
-                if (multiref_check_ex_level(sys, contrib, qs, 2)) then
+            if (multiref_check_ex_level(sys, contrib, qs, 2)) then
                     attempt_death = multiref_check_ex_level(sys, contrib, qs, 0)
                     call do_spawning_death(rng, sys, qs, ccmc_in, &
                                          logging_info, bloom_stats, contrib, &
                                          ndeath, ps_stat, nspawnings_cluster, &
-                                         attempt_death)      
-                end if          
+                                         attempt_death)
             end if
         else
             attempt_death = (contrib%cluster%excitation_level <= qs%ref%ex_level) 
@@ -1192,10 +1150,8 @@ contains
 
     end subroutine do_stochastic_ccmc_propagation  
 
-    subroutine do_spawning_death(rng, sys, qs, ccmc_in, &
-                                 logging_info, bloom_stats, contrib, &
-                                 ndeath, ps_stat, nspawnings_cluster, &
-                                 attempt_death, secondary_ref_tree)
+    subroutine do_spawning_death(rng, sys, qs, ccmc_in, logging_info, bloom_stats, contrib, &
+                                 ndeath, ps_stat, nspawnings_cluster, attempt_death)
 
         ! For stochastically selected clusters this
         ! attempts spawning and death, adding any created particles to the
@@ -1212,10 +1168,6 @@ contains
         !        when debug is true. 
         !   attempt_death = logical variable that encodes whether the selected 
         !        cluster is within the desired CC truncation. 
-        !
-        ! In (optional):
-        !   secondary_ref_tree: a BK tree with secondary references for efficient
-        !   acceptance search. Enabled with mr_acceptance_search = 'bk_tree'.
         !
         ! In/Out:
         !   rng: random number generator.
@@ -1234,7 +1186,6 @@ contains
         use system, only: sys_t
         use qmc_data, only: qmc_state_t, ccmc_in_t
         use ccmc_data, only: ms_stats_update, wfn_contrib_t
-        use search, only: tree_t
 
         use ccmc_death_spawning, only: stochastic_ccmc_death
         use bloom_handler, only: bloom_stats_t, accumulate_bloom_stats
@@ -1255,22 +1206,14 @@ contains
         type(p_single_double_coll_t), intent(inout) :: ps_stat
         integer, intent(in) :: nspawnings_cluster
         logical, intent(in) :: attempt_death
-        type(tree_t), intent(in), optional :: secondary_ref_tree
 
         integer :: i
 
-        if (qs%mr_acceptance_search == 0) then
-            do i = 1, nspawnings_cluster
-                call perform_ccmc_spawning_attempt(rng, sys, qs, ccmc_in, logging_info, bloom_stats, contrib, &
-                                                   nspawnings_cluster, ps_stat)
-            end do
-        else
-            do i = 1, nspawnings_cluster
-                call perform_ccmc_spawning_attempt(rng, sys, qs, ccmc_in, logging_info, bloom_stats, contrib, &
-                                                   nspawnings_cluster, ps_stat, secondary_ref_tree)
-            end do
-        end if
-
+        do i = 1, nspawnings_cluster
+            call perform_ccmc_spawning_attempt(rng, sys, qs, ccmc_in, logging_info, bloom_stats, contrib, &
+                                               nspawnings_cluster, ps_stat)
+        end do
+        
         ! Does the cluster collapsed onto D0 produce
         ! a determinant is in the truncation space?  If so, also
         ! need to attempt a death/cloning step.
@@ -1288,7 +1231,7 @@ contains
     end subroutine do_spawning_death
  
     subroutine do_nc_ccmc_propagation(rng, sys, qs, ccmc_in, logging_info, bloom_stats, &
-                                            contrib, nattempts_spawn_tot, ps_stat, secondary_ref_tree)
+                                            contrib, nattempts_spawn_tot, ps_stat)
 
         ! Perform stochastic propogation of a cluster selected deterministically
         ! in full non-composite selection. This performs all spawning attempts
@@ -1310,10 +1253,6 @@ contains
         !   logging_info: logging_t object with info about current logging
         !        when debug is true.
         !
-        ! In (optional):
-        !   secondary_ref_tree: a BK tree with secondary references for efficient
-        !   acceptance search. Enabled with mr_acceptance_search = 'bk_tree'.
-        !
         ! In/Out:
         !   rng: random number generator.
         !   qs: qmc_state_t type, contains information about calculation.
@@ -1332,7 +1271,6 @@ contains
         use system, only: sys_t
         use qmc_data, only: qmc_state_t, ccmc_in_t
         use ccmc_data, only: multispawn_stats_t, ms_stats_update, wfn_contrib_t
-        use search, only: tree_t
         use qmc_common, only: decide_nattempts
 
         use ccmc_death_spawning, only: spawner_ccmc, linked_spawner_ccmc, stochastic_ccmc_death
@@ -1351,7 +1289,6 @@ contains
 
         integer(int_64), intent(inout) :: nattempts_spawn_tot
         type(p_single_double_coll_t), intent(inout) :: ps_stat
-        type(tree_t), intent(in), optional :: secondary_ref_tree
 
         integer :: i, nspawnings_cluster
 
@@ -1372,21 +1309,22 @@ contains
 
         contrib%cluster%amplitude = contrib%cluster%amplitude / abs(contrib%cluster%amplitude)
         
-        if (.not. present(secondary_ref_tree)) then
+        call perform_ccmc_spawning_attempt(rng, sys, qs, ccmc_in, logging_info, bloom_stats, contrib, 1, ps_stat)
+        if (qs%mr_acceptance_search==0) then
             do i = 1, nspawnings_cluster
                 call perform_ccmc_spawning_attempt(rng, sys, qs, ccmc_in, logging_info, bloom_stats, contrib, 1, ps_stat)
             end do
         else
             do i = 1, nspawnings_cluster
                 call perform_ccmc_spawning_attempt(rng, sys, qs, ccmc_in, logging_info, &
-                    bloom_stats, contrib, 1, ps_stat, secondary_ref_tree)
+                    bloom_stats, contrib, 1, ps_stat)
             end do
         end if
 
     end subroutine do_nc_ccmc_propagation
 
     subroutine perform_ccmc_spawning_attempt(rng, sys, qs, ccmc_in, logging_info, bloom_stats, contrib, nspawnings_total, &
-                                        ps_stat, secondary_ref_tree)
+                                        ps_stat)
 
         ! Performs a single ccmc spawning attempt, as appropriate for a
         ! given setting combination of linked, complex or none of the above.
@@ -1400,10 +1338,6 @@ contains
         !   logging_info: input settings related to logging.
         !   nspawnings_total: number of spawning attempts made
         !       from the same cluster if using multispawn.
-        !
-        ! In (optional):
-        !   secondary_ref_tree: a BK tree with secondary references for efficient
-        !   acceptance search. Enabled with mr_acceptance_search = 'bk_tree'.
         !
         ! In/Out:
         !   rng: random number generator.
@@ -1422,7 +1356,6 @@ contains
         use system, only: sys_t
         use qmc_data, only: qmc_state_t, ccmc_in_t
         use ccmc_data, only: wfn_contrib_t
-        use search, only: tree_t
 
         use excitations, only: excit_t
         use proc_pointers, only: gen_excit_ptr
@@ -1446,7 +1379,6 @@ contains
         type(p_single_double_coll_t), intent(inout) :: ps_stat
         integer(int_p) :: nspawned, nspawned_im
         integer(i0) :: fexcit(sys%basis%tot_string_len)
-        type(tree_t), intent(in), optional :: secondary_ref_tree
  
         if (contrib%cluster%excitation_level == huge(0)) then
             ! When sampling e^-T H e^T, the cluster operators in e^-T
@@ -1460,11 +1392,6 @@ contains
             call spawner_complex_ccmc(rng, sys, qs, qs%spawn_store%spawn%cutoff, &
                       ccmc_in%linked, contrib%cdet, contrib%cluster, gen_excit_ptr, logging_info,  nspawned, nspawned_im, &
                       connection, nspawnings_total, ps_stat)
-        else if (present(secondary_ref_tree)) then
-            call spawner_ccmc(rng, sys, qs, qs%spawn_store%spawn%cutoff, &
-                      ccmc_in%linked, contrib%cdet, contrib%cluster, gen_excit_ptr, logging_info, &
-                      nspawned, connection, nspawnings_total, ps_stat, secondary_ref_tree)
-            nspawned_im = 0_int_p
         else
             call spawner_ccmc(rng, sys, qs, qs%spawn_store%spawn%cutoff, &
                       ccmc_in%linked, contrib%cdet, contrib%cluster, gen_excit_ptr, logging_info, &
@@ -1482,7 +1409,7 @@ contains
 
     end subroutine perform_ccmc_spawning_attempt
 
-    function multiref_check_ex_level(sys, contrib, qs, offset, secondary_ref_tree) result(assert1)
+    function multiref_check_ex_level(sys, contrib, qs, offset) result(assert1)
         !Used in mr-CCMC.
         !Checks whether a cluster is within some number of excitations of any of the references supplied.
 
@@ -1495,21 +1422,19 @@ contains
         !       within linked.
         !   qs: information on current state of calculation.
         !   offset: changes acceptable excitation level from the calculation truncation level.
-        !   secondary_ref_tree (optional): a BK tree of all secondary references
         
         !Out:
         !   assert1: true if at least one of the excitation levels is below the threshold. False otherwise.
         use excitations, only:  get_excitation_level, det_string
         use qmc_data, only: qmc_state_t
         use ccmc_data, only: wfn_contrib_t 
-        use search, only: tree_t, tree_search
+        use search, only: tree_search
         use system, only: sys_t
  
         type(qmc_state_t), intent(in) :: qs
         type(wfn_contrib_t), intent(in) :: contrib
         type(sys_t), intent(in) :: sys
         integer, intent(in) :: offset
-        type(tree_t), intent(in), optional :: secondary_ref_tree
         integer :: ex_level, i
         logical :: assert1, assert2 = .false.
         
@@ -1521,8 +1446,8 @@ contains
                if (assert2) exit
             end do
         else
-            assert2 = tree_search(secondary_ref_tree, det_string(contrib%cdet%f, sys%basis), &
-                                  secondary_ref_tree%root, offset+secondary_ref_tree%ex_lvl)
+            assert2 = tree_search(qs%secondary_ref_tree, det_string(contrib%cdet%f, sys%basis), &
+                                  qs%secondary_ref_tree%root, offset+qs%secondary_ref_tree%ex_lvl)
         end if
         assert1 = (contrib%cluster%excitation_level <= qs%ref%ex_level + offset .or. assert2)
 

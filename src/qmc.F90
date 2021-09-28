@@ -1237,7 +1237,7 @@ contains
 
     end subroutine init_reference_restart
 
-    subroutine init_secondary_references(sys, references_in, io_unit, qs, secondary_ref_tree)
+    subroutine init_secondary_references(sys, references_in, io_unit, qs)
         ! Set the secondary reference determinant from input options
         ! and use it to set up the maximum considered excitation level
         ! for the calculation.
@@ -1248,14 +1248,12 @@ contains
         !   io_unit: io unit to write any information to.
         ! In/Out:
         !   qs: qmc_state used in the calculation.
-        ! Out (optional):
-        !   secondary_ref_tree: A BK-tree for secondary reference search to be built here.
     
         use reference_determinant, only: reference_t
         use system, only: sys_t
         use qmc_data, only: qmc_state_t 
         use excitations, only: get_excitation_level, det_string
-        use search, only: tree_t, tree_add
+        use search, only: tree_add
         use const
         use determinants, only: decode_det
 
@@ -1263,7 +1261,6 @@ contains
         type(reference_t), intent(in) :: references_in(:)
         integer, intent(in) :: io_unit
         type(qmc_state_t), intent(inout) :: qs
-        type(tree_t), intent(out), optional :: secondary_ref_tree
         integer :: i, current_max, total_max = 0
         integer(i0) :: core_bstring, secref_bstring
         integer(i0), allocatable :: real_bstring(:)
@@ -1306,15 +1303,15 @@ contains
 
         endif
 
-        ! Optionally build the BK tree, see ccmc_data.F90/tree_add and tree_search for further comments
+        ! Optionally build the BK tree, see search.F90::tree_add and tree_search for further comments
         if (qs%mr_acceptance_search == 1) then
-            secondary_ref_tree%n_secondary_ref = size(qs%secondary_refs)
-            secondary_ref_tree%ex_lvl = qs%ref%ex_level
+            qs%secondary_ref_tree%n_secondary_ref = size(qs%secondary_refs)
+            qs%secondary_ref_tree%ex_lvl = qs%ref%ex_level
             ! The maximum possible excitation level is the smaller of number of electrons 
             ! and the number of virtual orbitals
-            secondary_ref_tree%max_excit = min(sys%nel, sys%nvirt)
+            qs%secondary_ref_tree%max_excit = min(sys%nel, sys%nvirt)
             do i = 1, size(qs%secondary_refs)
-                call tree_add(secondary_ref_tree, det_string(qs%secondary_refs(i)%f0,sys%basis))
+                call tree_add(qs%secondary_ref_tree, det_string(qs%secondary_refs(i)%f0,sys%basis))
             end do
         end if 
   

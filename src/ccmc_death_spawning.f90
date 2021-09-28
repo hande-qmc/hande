@@ -10,7 +10,7 @@ implicit none
 contains
     subroutine spawner_ccmc(rng, sys, qs, spawn_cutoff, linked_ccmc, cdet, cluster, &
                             gen_excit_ptr, logging_info, nspawn, connection, &
-                            nspawnings_total, ps_stat, secondary_ref_tree)
+                            nspawnings_total, ps_stat)
 
         ! Attempt to spawn a new particle on a connected excitor with
         ! probability
@@ -70,7 +70,7 @@ contains
         !        and the child excitor, on which progeny are spawned.
 
         use ccmc_data, only: cluster_t
-        use search, only: tree_t, tree_search
+        use search, only: tree_search
         use ccmc_utils, only: convert_excitor_to_determinant
         use ccmc_linked, only: unlinked_commutator, linked_excitation
         use determinant_data, only: det_info_t
@@ -99,7 +99,6 @@ contains
         type(logging_t), intent(in) :: logging_info
         integer(int_p), intent(out) :: nspawn
         type(excit_t), intent(out) :: connection
-        type(tree_t), intent(in), optional :: secondary_ref_tree
 
         ! We incorporate the sign of the amplitude into the Hamiltonian matrix
         ! element, so we 'pretend' to attempt_to_spawn that all excips are
@@ -186,7 +185,8 @@ contains
                              end if
                         end do
                     else
-                        allowed_multiref = tree_search(secondary_ref_tree, det_string(fexcit, sys%basis), secondary_ref_tree%root)
+                        allowed_multiref = tree_search(qs%secondary_ref_tree, det_string(fexcit, sys%basis),&
+                            &qs%secondary_ref_tree%root)
                     end if
                     if (.not. allowed_multiref) nspawn = 0
                 end if

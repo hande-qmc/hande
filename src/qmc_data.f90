@@ -8,6 +8,7 @@ use importance_sampling_data
 use excit_gens, only: excit_gen_data_t
 use reference_determinant, only: reference_t, reference_t_json
 use dSFMT_interface, only: dSFMT_state_t
+use search, only: tree_t
 
 implicit none
 
@@ -910,6 +911,8 @@ type qmc_state_t
     ! String representing state of RNG. Should be set, used and deallocated as quickly as possible as it becomes invalid as soon as
     ! the next random number is drawn -- only present really for a convenient way of handling the RNG state during restarts.
     type(dSFMT_state_t) :: rng_state
+    ! BK tree object for multi-reference searching
+    type(tree_t) :: secondary_ref_tree
 end type qmc_state_t
 
 ! Copies of various settings that are required during annihilation.  This avoids having to pass through lots of different
