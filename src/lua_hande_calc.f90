@@ -429,6 +429,7 @@ contains
         !       output = { ... },
         !       blocking = { ... },
         !       qmc_state = qmc_state,
+        !       psip_list = psip_list,
         !    }
 
         ! Returns a qmc_state.
@@ -446,7 +447,7 @@ contains
         use lua_hande_utils, only: warn_unused_args, register_timing
         use lua_hande_calc_utils, only: init_output_unit, end_output_unit
         use qmc_data, only: qmc_in_t, ccmc_in_t, semi_stoch_in_t, restart_in_t, load_bal_in_t, &
-                            qmc_state_t, output_in_t, blocking_in_t
+                            qmc_state_t, output_in_t, blocking_in_t, particle_t
         use logging, only: logging_in_t
         use reference_determinant, only: reference_t
         use system, only: sys_t
@@ -470,8 +471,9 @@ contains
         type(logging_in_t) :: logging_in
         type(output_in_t) :: output_in
         type(blocking_in_t) :: blocking_in
+        type(particle_t), pointer :: psip_list_in
 
-        logical :: have_restart_state
+        logical :: have_restart_state, have_psip_list
         integer :: opts, io_unit
         real :: t1, t2
         character(10), parameter :: keys(9) = [character(10) :: 'sys', 'qmc', 'ccmc', 'restart', 'reference', 'qmc_state', &
@@ -510,6 +512,7 @@ contains
 
 
         call get_qmc_state(lua_state, have_restart_state, qmc_state_restart)
+        call get_psip_list(lua_state, have_psip_list, psip_list_in)
         call warn_unused_args(lua_state, keys, opts)
         call aot_table_close(lua_state, opts)
 
@@ -522,7 +525,10 @@ contains
 
         if (have_restart_state) then
             call do_ccmc(sys, qmc_in, ccmc_in, semi_stoch_in, restart_in, load_bal_in, reference, logging_in, blocking_in, &
-                            io_unit, qmc_state_out, qmc_state_restart)
+                            io_unit, qmc_state_out, qmc_state_restart=qmc_state_restart)
+        else if (have_psip_list) then
+            call do_ccmc(sys, qmc_in, ccmc_in, semi_stoch_in, restart_in, load_bal_in, reference, logging_in, blocking_in, &
+                            io_unit, qmc_state_out, psip_list_in=psip_list_in)
         else
             call do_ccmc(sys, qmc_in, ccmc_in, semi_stoch_in, restart_in, load_bal_in, reference, logging_in, blocking_in, &
                             io_unit, qmc_state_out)
@@ -690,6 +696,7 @@ contains
         !           spawn_cutoff = cutoff,
         !           rng_seed = seed,
         !     },
+        !     qmc_state = qmc_state
         ! }
 
         use, intrinsic :: iso_c_binding, only: c_ptr, c_int
@@ -700,7 +707,7 @@ contains
         use lua_hande_utils, only: warn_unused_args, register_timing
 
         use system, only: sys_t
-        use qmc_data, only: reference_t
+        use qmc_data, only: reference_t, qmc_state_t, particle_t
         use mp1, only: mp1_in_t, sample_mp1_wfn
         use logging, only: logging_in_t
 
@@ -719,23 +726,29 @@ contains
         type(logging_in_t) :: logging_in
         real :: t1, t2
 
+        type(particle_t), pointer :: psip_list
+
         call cpu_time(t1)
 
         lua_state = flu_copyptr(L)
         call get_sys_t(lua_state, sys)
 
         opts = aot_table_top(lua_state)
-        call read_mp1_args(lua_state, opts, mp1_in, rng_seed, have_seed)
+        call read_mp1_in(lua_state, opts, mp1_in, rng_seed, have_seed)
         ref%ex_level = 2
         !call read_reference_t(lua_state, opts, ref, sys)
         call read_logging_in_t(lua_state, opts, logging_in)
+        call aot_table_close(lua_state, opts)
 
         if (have_seed) then
-            call sample_mp1_wfn(sys, mp1_in, ref, logging_in, rng_seed)
+            call sample_mp1_wfn(sys, mp1_in, ref, logging_in, psip_list, rng_seed)
         else
-            call sample_mp1_wfn(sys, mp1_in, ref, logging_in)
+            call sample_mp1_wfn(sys, mp1_in, ref, logging_in, psip_list)
         end if
-        
+
+        call push_psip_list(lua_state, psip_list)
+        nresult = 1
+
         call cpu_time(t2)
         call register_timing(lua_state, "MP1 initialisation", t2-t1)
 
@@ -924,7 +937,7 @@ contains
 
     end subroutine read_canonical_args
 
-    subroutine read_mp1_args(lua_state, opts, mp1_in, rng_seed, have_seed)
+    subroutine read_mp1_in(lua_state, opts, mp1_in, rng_seed, have_seed)
 
         ! mp1 = {
         !     D0_population = nD0,              -- required
@@ -976,7 +989,7 @@ contains
         call warn_unused_args(lua_state, keys, mp1_table)
         call aot_table_close(lua_state, mp1_table)
 
-    end subroutine read_mp1_args
+    end subroutine read_mp1_in
 
     subroutine read_qmc_in(lua_state, opts, qmc_in, short)
 
@@ -2130,6 +2143,45 @@ contains
 
     end subroutine get_qmc_state
 
+    subroutine get_psip_list(lua_state, have_psip_list, psip_list)
+
+        ! Get (if present) a particle_t object passed in from an MP1 calculation to initialise a FCIQMC/CCMC calculation.
+
+        ! In/Out:
+        !   lua_state: flu/Lua state to which the HANDE API is added.
+        ! Out:
+        !   have_psip_list: true if psip_list was passed in from lua.
+        !   psip_list: the particle_t object passed in if have_psip_list.
+
+        use, intrinsic :: iso_c_binding, only: c_f_pointer, c_ptr
+
+        use flu_binding, only: flu_State
+        use aot_table_module, only: aot_table_top, aot_exists, aot_get_val
+        use aot_table_ops_module, only: aot_table_open, aot_table_close
+
+        use qmc_data, only: particle_t
+        use lua_hande_utils, only: get_userdata
+
+        type(flu_State), intent(inout) :: lua_state
+        logical, intent(out) :: have_psip_list
+        type(particle_t), pointer, intent(out) :: psip_list
+
+        integer :: opts, pl_table
+        type(c_ptr) :: pl_ptr
+
+        opts = aot_table_top(lua_state)
+
+        have_psip_list = aot_exists(lua_state, opts, 'psip_list')
+        if (have_psip_list) then
+            ! Get psip_list object
+            call aot_table_open(lua_state, opts, pl_table, key='psip_list')
+            call get_userdata(lua_state, pl_table, "psip_list", pl_ptr)
+            call aot_table_close(lua_state, pl_table)
+            call c_f_pointer(pl_ptr, psip_list)
+        end if
+
+    end subroutine get_psip_list
+
     subroutine push_qmc_state(lua_state, qmc_state)
 
         ! Add a table containing the passed qmc_state to the lua stack for returning
@@ -2168,6 +2220,44 @@ contains
 
     end subroutine push_qmc_state
 
+    subroutine push_psip_list(lua_state, psip_list)
+
+        ! Add a table containing the passed psip_list to the lua stack for returning
+
+        ! In/Out:
+        !   lua_state: flu/Lua state to which the HANDE API is added.
+        ! In:
+        !   psip_list: the particle_t object to return to lua
+
+        use, intrinsic :: iso_c_binding, only: c_loc
+        use flu_binding, only: flu_State, flu_pushlightuserdata, flu_pushstring, flu_settable, flu_pushcclosure, fluL_setmetatable
+        use aot_table_ops_module, only: aot_table_open, aot_table_close
+
+        use qmc_data, only: particle_t
+
+        type(particle_t), pointer, intent(in) :: psip_list
+        type(flu_state), intent(inout) :: lua_state
+
+        integer :: table
+
+        ! Create table to become psip_list object
+        call aot_table_open(lua_state, thandle=table)
+        
+        ! Add psip_list pointer as t.psip_list
+        call flu_pushstring(lua_state, "psip_list")
+        call flu_pushlightuserdata(lua_state, c_loc(psip_list))
+        call flu_settable(lua_state, table)
+
+        ! Add deallocation function as t:free()
+        call flu_pushstring(lua_state, "free")
+        call flu_pushcclosure(lua_state, lua_dealloc_psip_list, 0) ![todo] make lua_dealloc_psip_list
+        call flu_settable(lua_state, table)
+
+        ! Set metatable to mark for finalisation.  Note metatable is created in register_lua_hande_api.
+        call fluL_setmetatable(lua_state, "psip_list")
+
+    end subroutine push_psip_list
+    
     function lua_dealloc_qmc_state(L) result(nresult) bind(c)
 
         ! Deallocate a qmc_state object.  Expects to be called from lua with a single argument --
@@ -2217,6 +2307,56 @@ contains
         nresult = 0
 
     end function lua_dealloc_qmc_state
+
+    function lua_dealloc_psip_list(L) result(nresult) bind(c)
+
+        ! Deallocate a particle_t object.  Expects to be called from lua with a single argument --
+        ! the particle_t object to be deallocated.
+
+        ! In/Out:
+        !   L: lua state (bare C pointer).
+
+        use, intrinsic :: iso_c_binding, only: c_ptr, c_int, c_f_pointer, c_null_ptr
+        use flu_binding, only: flu_State, flu_copyptr, flu_pushstring, flu_pushlightuserdata, flu_settable, &
+                               flu_getmetatable, flu_pop
+        use aot_table_ops_module, only: aot_table_top
+        use aot_table_module, only: aot_get_val, aot_table_close
+        use aot_top_module, only: aot_top_get_val
+
+        use qmc_data, only: particle_t
+        use particle_t_utils, only: dealloc_particle_t
+        use errors, only: stop_all
+        use lua_hande_utils, only: get_userdata
+
+        integer(c_int) :: nresult
+        type(c_ptr), value :: L
+
+        type(flu_State) :: lua_state
+        integer :: pl_table
+        type(c_ptr) :: pl_ptr
+        type(particle_t), pointer :: pl
+
+        lua_state = flu_copyptr(L)
+
+        pl_table = aot_table_top(lua_state)
+        call get_userdata(lua_state, pl_table, "psip_list", pl_ptr)
+        call c_f_pointer(pl_ptr, pl)
+
+        if (associated(pl)) then
+            call dealloc_particle_t(pl)
+            deallocate(pl)
+        end if
+
+        ! Update table with deallocated pointer.
+        call flu_pushstring(lua_state, "psip_list")
+        call flu_pushlightuserdata(lua_state, c_null_ptr)
+        call flu_settable(lua_state, pl_table)
+
+        call aot_table_close(lua_state, pl_table)
+
+        nresult = 0
+
+    end function lua_dealloc_psip_list
 
     subroutine read_logging_in_t(lua_state, opts, logging_in)
 

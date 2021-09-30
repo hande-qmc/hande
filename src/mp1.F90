@@ -36,9 +36,17 @@ end type mp1_in_t
 
 contains
 
-    subroutine sample_mp1_wfn(sys, mp1_in, ref_in, logging_in, rng_seed)
+    subroutine sample_mp1_wfn(sys, mp1_in, ref_in, logging_in, tijab, rng_seed)
 
-        ! [todo] - document
+        ! Generate the mp1 wavefunction (1+T_2)|HF> exactly and use it as an initial guess for FCIQMC/CCMC
+        ! In:
+        !   sys: system being studied.
+        !   mpi_in: input options relating to mp1.
+        !   ref_in: current reference determinant, set in lua_hande_calc.
+        !   logging_in: (currently untested) logging inputs.
+        !   rng_seed:
+        ! Out:
+        !   tijab: particle_t object for use in FCIQMC/CCMC calculation
 
         use const, only: int_p, i0, depsilon
 
@@ -50,7 +58,8 @@ contains
 
         use system, only: sys_t, copy_sys_spin_info, sys_t_json
         use calc_system_init, only: set_spin_polarisation
-        use qmc_data, only: particle_t, reference_t, annihilation_flags_t, load_bal_state_t, reference_t_json, qmc_in_t
+        use qmc_data, only: particle_t, reference_t, annihilation_flags_t
+        use qmc_data, only: load_bal_state_t, reference_t_json, qmc_in_t, qmc_state_t
         use qmc, only: init_proc_pointers, init_reference, init_excit_gen
         use ccmc_data, only: cluster_t, ex_lvl_dist_t
         use determinants, only: det_info_t, alloc_det_info_t
@@ -80,13 +89,14 @@ contains
         type(mp1_in_t), intent(in) :: mp1_in
         type(reference_t), intent(in), optional :: ref_in
         type(logging_in_t), intent(in) :: logging_in
+        type(particle_t), intent(out) :: tijab
         integer, intent(in), optional :: rng_seed
 
-        type(particle_t) :: tijab, psip_list
         type(spawn_t) :: spawn
         type(reference_t) :: ref
         type(det_info_t) :: cdet
         type(cluster_t) :: cluster
+        type(excit_t), parameter :: null_excit = excit_t(0,[0,0],[0,0],.false.)
         type(excit_t) :: excit
         type(annihilation_flags_t) :: annihilation_flags
         type(proc_map_t) :: proc_map
@@ -143,6 +153,26 @@ contains
         call init_proc_pointers(sys, qmc_in_cast, ref, io_unit)
         call init_reference(sys, ref_in, io_unit, ref)
         call init_excit_gen(sys, qmc_in_cast, ref, .false., excit_gen_data)
+        
+        ! Similarly for particle stores.  We use
+        ! * tijab: exact amplitudes on reference and doubles.
+        state_size = mp1_in%state_size
+        if (state_size < 0) then
+            ! Given in MB.  Convert to elements.
+            ! bit string and population element.
+            psip_element_size = (sys%basis%tensor_label_len*i0_length + int_p_length)/8
+            ! data element
+#ifdef SINGLE_PRECISION
+            psip_element_size = psip_element_size + 4
+#else
+            psip_element_size = psip_element_size + 8
+#endif
+            state_size = -int((real(state_size,p)*10**6)/psip_element_size)
+        end if
+
+        tijab%nspaces = 1
+        tijab%info_size = 0
+        call init_particle_t(state_size, 0, sys%basis%tensor_label_len, .true., .false., tijab) ! Strictly speaking tijab need only hold the double amplitudes.
 
         ! Legacy global data (boo!) initialisation
 !        call init_sc0_ptr(sys)
@@ -159,34 +189,11 @@ contains
         call init_proc_map_t(1, proc_map)
         if (.not. mp1_in%real_amplitudes) spawn_cutoff = 0.0_p
         ! Need at least one spawning slot per attempt so give ourselves a generous amount of breathing room for load inbalance.
-        max_nspawned_states = 2*ceiling(real(mp1_in%nattempts)/nprocs)*nprocs
+        max_nspawned_states = 2*ceiling(real(mp1_in%state_size)/nprocs)*nprocs
         call alloc_spawn_t(sys%basis%tensor_label_len, sys%basis%nbasis, nspaces, .false., max_nspawned_states, spawn_cutoff, &
-                           psip_list%pop_real_factor, proc_map, 7, .false., spawn)
+                           tijab%pop_real_factor, proc_map, 7, .false., spawn)
         ! spawn_t now holds all the processor map/load balancing info required so can safely deallocate proc_map.
         deallocate(proc_map%map)
-
-        ! Similarly for particle stores.  We use
-        ! * tijab: exact amplitudes on reference and doubles.
-        ! * psip_list:  current set of amplitudes based on sampling e^{T2}|HF>.
-        state_size = mp1_in%state_size
-        if (state_size < 0) then
-            ! Given in MB.  Convert to elements.
-            ! bit string and population element.
-            psip_element_size = (sys%basis%tensor_label_len*i0_length + int_p_length)/8
-            ! data element
-#ifdef SINGLE_PRECISION
-            psip_element_size = psip_element_size + 4
-#else
-            psip_element_size = psip_element_size + 8
-#endif
-            state_size = int((real(state_size,p)*10**6)/psip_element_size)
-        end if
-        tijab%nspaces = 1
-        tijab%info_size = 0
-        call init_particle_t(state_size, 0, sys%basis%tensor_label_len, .true., .false., tijab) ! Strictly speaking tijab need only hold the double amplitudes.
-        psip_list%nspaces = 1
-        psip_list%info_size = 0
-        call init_particle_t(state_size, 0, sys%basis%tensor_label_len, mp1_in%real_amplitudes, .false., psip_list) ! [todo] - real_amplitude_force_32 option
 
         ! Start with the reference
         tijab%nstates = 1
@@ -198,8 +205,6 @@ contains
 
         call alloc_det_info_t(sys, cdet)
         allocate(cluster%excitors(ref%ex_level+2))
-        allocate(cumulative_abs_real_pops(size(psip_list%states,dim=2)), stat=ierr)
-        call check_allocate('cumulative_abs_real_pops', size(cumulative_abs_real_pops), ierr)
 
         if (parent) then
             call json_object_init(js, tag=.true.)
@@ -278,94 +283,9 @@ contains
         write (6,*) 'direct MP2 =', emp2
 
         call direct_annihilation(sys, rng, ref, annihilation_flags, tijab, spawn)
-        spawn%head = spawn%head_start
-
-        psip_list%nstates = tijab%nstates
-        psip_list%states(:,1:psip_list%nstates) = tijab%states(:,1:psip_list%nstates)
-        psip_list%pops(:,1:psip_list%nstates) = tijab%pops(:,1:psip_list%nstates)
-        psip_list%dat(:,1:psip_list%nstates) = tijab%dat(:,1:psip_list%nstates)
-        psip_list%nparticles = tijab%nparticles
-
-        ! Exact MP1 wavefunction, e^T_2|HF> = 1 + T_2 + 1/2 T_2^2 + ...|HF>
-        ! Sample this by randomly generating clusters from the (1+T_2)|HF> space with the appropriate amplitude.
-        ! [todo] - describe in more detail.
-
-        ! Set of amplitudes on reference and doubles are fixed so the reference position and cumulative population information
-        ! won't change for the set of excitors from which we sample clusters...
-        call assign_particle_processor(ref%f0, spawn%bit_str_nbits, spawn%hash_seed, spawn%hash_shift, spawn%move_freq, &
-                                       nprocs, D0_proc, slot, spawn%proc_map%map, spawn%proc_map%nslots)
-        if (iproc == D0_proc) then
-            D0_pos = -1
-            nD0_proc = 1
-            call find_D0(psip_list, ref%f0, D0_pos)
-            D0_normalisation = cmplx(tijab%pops(1,D0_pos), tijab%pops(2,D0_pos), p)/tijab%pop_real_factor
-        else
-            D0_pos = -1
-            nD0_proc = 0 ! No reference excitor on the processor.
-        end if
-#ifdef PARALLEL
-        call mpi_bcast(D0_normalisation, 1, mpi_pcomplex, D0_proc, MPI_COMM_WORLD, ierr)
-#endif
-        call cumulative_population(tijab%pops, tijab%states(sys%basis%tot_string_len, :), tijab%nstates, D0_proc, D0_pos, &
-             tijab%pop_real_factor, .false., sys%read_in%comp, cumulative_abs_real_pops, &
-                                   tot_abs_real_pop, ex_lvl_dist)
-        excit = excit_t(0, [0,0], [0,0], .false.)
-        max_cluster_size = min(sys%nel, ref%ex_level+2, tijab%nstates-nD0_proc)
-
-        call mp1_status(sys, ref, mp1_in%D0_norm, 0, psip_list)
-
-        do icycle = 1, mp1_in%ncycles
-            ! Note again minimal attempt at parallelisation.  This bit is meant to be fast compared to an FCIQMC/CCMC calculation!
-            do iattempt = 1, mp1_in%nattempts, nprocs
-                ! This is pretty crude: we generate clusters in the 1+T_2 space (despite already having that exactly) but also
-                ! generate, with the appropriate weight, higher order terms as well.  It's convenient, despite the redundant work,
-                ! to generate 1+T_2 again to avoid any normalisation issues in the cluster generation probabilities.
-                call select_cluster(rng, sys, tijab, ref%f0, ref%ex_level, .false., mp1_in%nattempts, D0_normalisation, 0.0_p, &
-                                    cumulative_abs_real_pops, tot_abs_real_pop, 0, max_cluster_size, &
-                                    logging_info, cdet, cluster, excit_gen_data)
-                if (cluster%excitation_level <= ref%ex_level) then
-                    ! Create a particle with the amplitude of the cluster with the probability of selecting the cluster.
-                    amplitude = cluster%amplitude*cluster%cluster_to_det_sign
-                    nspawn = attempt_to_spawn(rng, 1.0_p, spawn%cutoff, psip_list%pop_real_factor, amplitude, &
-                                              cluster%pselect, -1_int_p)
-                    if (nspawn /= 0_int_p) call create_spawned_particle(sys%basis, ref, cdet, excit, nspawn, 1, spawn, cdet%f)
-                end if
-            end do
-
-            call direct_annihilation(sys, rng, ref, annihilation_flags, psip_list, spawn)
-            spawn%head = spawn%head_start
-
-            ! Internal normalisation: reset N_0 to original value.
-            if (iproc == D0_proc) then
-                D0_pos = -1
-                call find_D0(psip_list, ref%f0, D0_pos)
-                norm = (real(psip_list%pops(1,D0_pos),p)/psip_list%pop_real_factor)/mp1_in%D0_norm
-            end if
-#ifdef PARALLEL
-            call mpi_bcast(norm, 1, mpi_preal, D0_proc, MPI_COMM_WORLD, ierr)
-#endif
-            do istate = 1, psip_list%nstates
-                ! Note: we remain in encoded format.
-                amplitude = real(psip_list%pops(1,istate),p) / norm
-                old_pop = psip_list%pops(1,istate)
-                if (amplitude > 0.0_p) then
-                    psip_list%pops(1,istate) = stochastic_round_spawned_particle(spawn%cutoff, amplitude, rng)
-                else
-                    psip_list%pops(1,istate) = -stochastic_round_spawned_particle(spawn%cutoff, -amplitude, rng)
-                end if
-                psip_list%nparticles(1) = psip_list%nparticles(1) &
-                                              + real(abs(psip_list%pops(1,istate))-abs(old_pop),p)/psip_list%pop_real_factor
-            end do
-            call remove_unoccupied_dets(rng, psip_list, mp1_in%real_amplitudes)
-
-            call mp1_status(sys, ref, mp1_in%D0_norm, icycle, psip_list)
-
-        end do
         if (parent) write (6,'()')
 
         call dealloc_spawn_t(spawn)
-        call dealloc_particle_t(tijab)
-        call dealloc_particle_t(psip_list)
 
         ! Return sys in an unaltered state.
         call copy_sys_spin_info(sys_bak, sys)
@@ -402,6 +322,8 @@ contains
 
     function calc_emp2(sys, f0, D0_norm, psip_list) result(emp2)
 
+        ! Calculatates the projected energy of the system
+        
         use const, only: dp, int_p, i0, depsilon
         use qmc_data, only: particle_t
         use system, only: sys_t
