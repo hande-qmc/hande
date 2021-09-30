@@ -9,7 +9,7 @@ contains
 ! --- Initialisation routines ---
 
     subroutine init_qmc(sys, qmc_in, restart_in, load_bal_in, reference_in, io_unit, annihilation_flags, qmc_state, uuid_restart, &
-                        restart_version_restart, dmqmc_in, fciqmc_in, qmc_state_restart, regenerate_info)
+                        restart_version_restart, dmqmc_in, fciqmc_in, qmc_state_restart, regenerate_info, psip_list_in)
 
         ! Initialisation for fciqmc calculations.
         ! Setup the spin polarisation for the system, initialise the RNG,
@@ -32,6 +32,7 @@ contains
         ! In/Out:
         !    qmc_state_restart (optional): qmc_state_t object from a calculation
         !       to restart. Deallocated on exit.
+        !    psip_list_in (optional): particle_t object from an MP1 calculation. Deallocated on exit.
         ! Out:
         !    annihilation_flags: calculation specific annihilation flags.
         !    qmc_state: qmc_state_t object.  On output the QMC state is
@@ -50,14 +51,14 @@ contains
         use load_balancing, only: init_parallel_t
         use system
         use restart_hdf5, only: read_restart_hdf5, restart_info_t, init_restart_info_t, get_reference_hdf5
-        use qmc_data, only: qmc_in_t, fciqmc_in_t, restart_in_t, load_bal_in_t, annihilation_flags_t, qmc_state_t
+        use qmc_data, only: qmc_in_t, fciqmc_in_t, restart_in_t, load_bal_in_t, annihilation_flags_t, qmc_state_t, particle_t
         use reference_determinant, only: reference_t
         use dmqmc_data, only: dmqmc_in_t
         use excit_gens, only: dealloc_excit_gen_data_t
         use const, only: p
         use parallel, only: parent
         use determinants, only: sum_fock_values_occ_list
-
+        use particle_t_utils, only: move_particle_t
 
         type(sys_t), intent(in) :: sys
         type(qmc_in_t), intent(in) :: qmc_in
@@ -73,12 +74,13 @@ contains
         type(fciqmc_in_t), intent(in), optional :: fciqmc_in
         type(qmc_state_t), intent(inout), optional :: qmc_state_restart
         logical, intent(out), optional :: regenerate_info
+        type(particle_t), intent(inout), optional :: psip_list_in
 
         integer :: ierr, iunit, proc_data_info(2,est_buf_n_per_proc), ntot_proc_data
         type(fciqmc_in_t) :: fciqmc_in_loc
         type(dmqmc_in_t) :: dmqmc_in_loc
         type(restart_info_t) :: ri
-        logical :: regenerate_info_loc, qmc_state_restart_loc
+        logical :: regenerate_info_loc, qmc_state_restart_loc, psip_list_in_loc
         real :: t1, t2, set_up_time
 
         iunit = 6
@@ -86,10 +88,12 @@ contains
         regenerate_info_loc = .false.
         restart_version_restart = 0
         qmc_state_restart_loc = .false.
+        psip_list_in_loc = .false.
 
         if (present(fciqmc_in)) fciqmc_in_loc = fciqmc_in
         if (present(dmqmc_in)) dmqmc_in_loc = dmqmc_in
         if (present(qmc_state_restart)) qmc_state_restart_loc = .true.
+        if (present(psip_list_in)) psip_list_in_loc = .true.        
 
         if (restart_in%read_restart) call init_restart_info_t(ri, read_id=restart_in%read_id)
 
@@ -108,7 +112,13 @@ contains
         ! [WARNING - TODO] - ref%fock_sum not initialised in init_reference, etc! 
         qmc_state%ref%fock_sum = sum_fock_values_occ_list(sys, qmc_state%propagator%sp_fock, qmc_state%ref%occ_list0)
 
-        call init_psip_list(sys, dmqmc_in_loc, fciqmc_in_loc, qmc_in, qmc_state_restart_loc, io_unit, qmc_state%psip_list)
+        if (.not.psip_list_in_loc) then
+            call init_psip_list(sys, dmqmc_in_loc, fciqmc_in_loc, qmc_in, qmc_state_restart_loc, &
+                                io_unit, qmc_state%psip_list)
+        else
+            ! This moves and deallocates psip_list_in
+            call move_particle_t(psip_list_in, qmc_state%psip_list)
+        end if
 
         call get_comm_processor_indx(qmc_state%psip_list%nspaces, proc_data_info, ntot_proc_data)
         call init_parallel_t(ntot_proc_data, est_buf_data_size, fciqmc_in_loc%non_blocking_comm, &
@@ -143,9 +153,12 @@ contains
             else if (doing_calc(dmqmc_calc)) then
                 ! Initial distribution handled later
                 qmc_state%psip_list%nstates = 0
+            else if (psip_list_in_loc) then
+                ! Already set to the MP1 distribution
+                continue
             else
                 call initial_distribution(sys, qmc_state%spawn_store%spawn, qmc_in%D0_population, fciqmc_in_loc, &
-                                          qmc_state%ref, qmc_state%psip_list)
+                                           qmc_state%ref, qmc_state%psip_list)
             end if
         end if
         if (present(regenerate_info)) regenerate_info = regenerate_info_loc

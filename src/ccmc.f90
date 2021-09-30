@@ -262,7 +262,7 @@ implicit none
 contains
 
     subroutine do_ccmc(sys, qmc_in, ccmc_in, semi_stoch_in, restart_in, load_bal_in, reference_in, &
-                        logging_in, blocking_in, io_unit, qs, qmc_state_restart)
+                        logging_in, blocking_in, io_unit, qs, qmc_state_restart, psip_list_in)
 
         ! Run the CCMC algorithm starting from the initial walker distribution
         ! using the timestep algorithm.
@@ -283,6 +283,8 @@ contains
         !    io_unit: input unit to write all output to.
         ! In/Out:
         !    qmc_state_restart (optional): if present, restart from a previous fciqmc calculation.
+        !       Deallocated on exit.
+        !    psip_list_in (optional): if present, initial psip distribution set from a previous MP1 calculation.
         !       Deallocated on exit.
         ! Out:
         !    qs: qmc_state for use if restarting the calculation
@@ -319,8 +321,8 @@ contains
         use replica_rdm, only: update_rdm, calc_rdm_energy, write_final_rdm
 
         use qmc_data, only: qmc_in_t, ccmc_in_t, semi_stoch_in_t, restart_in_t
-        use qmc_data, only: blocking_in_t
-        use qmc_data, only: load_bal_in_t, qmc_state_t, annihilation_flags_t, estimators_t, blocking_t
+        use qmc_data, only: blocking_in_t, load_bal_in_t
+        use qmc_data, only: qmc_state_t, annihilation_flags_t, estimators_t, blocking_t, particle_t
         use qmc_data, only: qmc_in_t_json, ccmc_in_t_json, semi_stoch_in_t_json, restart_in_t_json
         use qmc_data, only: blocking_in_t_json, excit_gen_power_pitzer_orderN, excit_gen_heat_bath
         use reference_determinant, only: reference_t, reference_t_json
@@ -348,6 +350,7 @@ contains
         type(qmc_state_t), target, intent(out) :: qs
         type(qmc_state_t), intent(inout), optional :: qmc_state_restart
         integer, intent(in) :: io_unit
+        type(particle_t), intent(inout), optional :: psip_list_in
 
         integer :: i, ireport, icycle, iter, semi_stoch_iter, it
         integer(int_64) :: iattempt
@@ -414,7 +417,7 @@ contains
         ! Initialise data.
         call init_qmc(sys, qmc_in, restart_in, load_bal_in, reference_in, io_unit, annihilation_flags, qs, &
                       uuid_restart, restart_version_restart, qmc_state_restart=qmc_state_restart, &
-                      regenerate_info=regenerate_info)
+                      regenerate_info=regenerate_info, psip_list_in=psip_list_in)
 
         if (ccmc_in%even_selection .and. regenerate_info) then
             call regenerate_ex_levels_psip_list(sys%basis, qs)
@@ -538,7 +541,7 @@ contains
             ! Initialise hash shift if restarting...
             spawn%hash_shift = qs%mc_cycles_done
             ! NOTE: currently hash_seed is not exposed and so cannot change unless the hard-coded value changes. Therefore, as we
-            ! have not evolved the particles since the were written out (i.e. hash_shift hasn't changed) the only parameter
+            ! have not evolved the particles since they were written out (i.e. hash_shift hasn't changed) the only parameter
             ! which can be altered which can change an excitors location since the restart files were written is move_freq.
             if (ccmc_in%move_freq /= spawn%move_freq .and. nprocs > 1) then
                 spawn%move_freq = ccmc_in%move_freq
