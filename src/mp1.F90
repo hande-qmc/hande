@@ -187,7 +187,7 @@ contains
         call init_proc_map_t(1, proc_map)
         if (.not. mp1_in%real_amplitudes) spawn_cutoff = 0.0_p
         ! Need at least one spawning slot per attempt so give ourselves a generous amount of breathing room for load inbalance.
-        max_nspawned_states = 2*ceiling(real(mp1_in%state_size)/nprocs)*nprocs
+        max_nspawned_states = 2*ceiling(real(state_size)/nprocs)*nprocs
         call alloc_spawn_t(sys%basis%tensor_label_len, sys%basis%nbasis, nspaces, .false., max_nspawned_states, spawn_cutoff, &
                            tijab%pop_real_factor, proc_map, 7, .false., spawn)
         ! spawn_t now holds all the processor map/load balancing info required so can safely deallocate proc_map.

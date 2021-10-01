@@ -476,8 +476,8 @@ contains
         logical :: have_restart_state, have_psip_list
         integer :: opts, io_unit
         real :: t1, t2
-        character(10), parameter :: keys(9) = [character(10) :: 'sys', 'qmc', 'ccmc', 'restart', 'reference', 'qmc_state', &
-                                                                'logging', 'output', 'blocking']
+        character(10), parameter :: keys(10) = [character(10) :: 'sys', 'qmc', 'ccmc', 'restart', 'reference', 'qmc_state', &
+                                                                'logging', 'output', 'blocking', 'psip_list']
 
         call cpu_time(t1)
 
@@ -736,6 +736,8 @@ contains
         !call read_reference_t(lua_state, opts, ref, sys)
         call read_logging_in_t(lua_state, opts, logging_in)
         call aot_table_close(lua_state, opts)
+
+        allocate(psip_list)
 
         if (have_seed) then
             call sample_mp1_wfn(sys, mp1_in, ref, logging_in, psip_list, rng_seed)
@@ -2240,7 +2242,7 @@ contains
 
         ! Add deallocation function as t:free()
         call flu_pushstring(lua_state, "free")
-        call flu_pushcclosure(lua_state, lua_dealloc_psip_list, 0) ![todo] make lua_dealloc_psip_list
+        call flu_pushcclosure(lua_state, lua_dealloc_psip_list, 0)
         call flu_settable(lua_state, table)
 
         ! Set metatable to mark for finalisation.  Note metatable is created in register_lua_hande_api.
