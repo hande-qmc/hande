@@ -7,7 +7,7 @@ implicit none
 
 ! todo
 ! #. test/verify/fix
-!      + MP2 energy
+!      + MP2 energy: usually only agrees to 1dp, might be too big to simply chalk up to numerical precision?
 !      + convergence?
 ! #. fix todos
 ! #. output (pretty table, JSON)
@@ -239,7 +239,7 @@ contains
                 excit%from_orb = [ref%occ_list0(i), ref%occ_list0(j)]
                 ! Trivial approach to parallelisation: split a over processors.
                 ! (Particles are distributed by the annihilation framework anyway.)
-                do ia = 1, sys%basis%nbasis-sys%nel, nprocs
+                do ia = iproc+1, sys%basis%nbasis-sys%nel, nprocs
                     ! Find the next unoccupied orbital.
                     do
                         a = ia + iocc_a
@@ -278,7 +278,15 @@ contains
                 end do
             end do
         end do
-        write (6,*) 'direct MP2 =', emp2
+
+#ifdef PARALLEL
+        if (parent) then
+            call mpi_reduce(mpi_in_place, emp2, 1, mpi_double_precision, mpi_sum, root, mpi_comm_world, ierr)
+        else
+            call mpi_reduce(emp2, 0.0_dp, 1, mpi_double_precision, mpi_sum, root, mpi_comm_world, ierr)
+        end if
+#endif
+        if (parent) write (6,*) 'direct MP2 =', emp2
 
         call direct_annihilation(sys, rng, ref, annihilation_flags, tijab, spawn)
         if (parent) write (6,'()')
@@ -292,7 +300,7 @@ contains
 
     subroutine mp1_in_t_json(js, mp1_in, terminal)
 
-        ! Serialise a mpi_in_t object in JSON format.
+        ! Serialise a mp1_in_t object in JSON format.
 
         ! In/Out:
         !   js: json_out_t controlling the output unit and handling JSON internal state.  Unchanged on output.
