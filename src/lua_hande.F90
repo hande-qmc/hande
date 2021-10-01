@@ -179,6 +179,7 @@ contains
         ! Metatables for objects returned to lua
         call create_metatable(lua_state, "sys", lua_dealloc_sys)
         call create_metatable(lua_state, "qmc_state", lua_dealloc_qmc_state)
+        call create_metatable(lua_state, "psip_list", lua_dealloc_psip_list)
 
         ! Timer table in the registry to give a break down of calculation time
         call flu_pushstring(lua_state, "timer")
