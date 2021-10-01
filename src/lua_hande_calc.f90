@@ -689,14 +689,11 @@ contains
         !     sys = sys,
         !     mp1 {
         !           D0_population = nD0,              -- required
-        !           ncycles = Y,                      -- required
-        !           nattempts = X,                    -- required
         !           state_size = S,                   -- required
         !           real_amplitudes = true/false,
         !           spawn_cutoff = cutoff,
         !           rng_seed = seed,
         !     },
-        !     qmc_state = qmc_state
         ! }
 
         use, intrinsic :: iso_c_binding, only: c_ptr, c_int
@@ -941,8 +938,6 @@ contains
 
         ! mp1 = {
         !     D0_population = nD0,              -- required
-        !     ncycles = Y,                      -- required
-        !     nattempts = X,                    -- required
         !     state_size = S,                   -- required
         !     real_amplitudes = true/false,
         !     spawn_cutoff = cutoff,
@@ -964,7 +959,7 @@ contains
         logical, intent(out) :: have_seed
 
         integer :: mp1_table, err
-        character(15), parameter :: keys(7) = [character(15) :: 'D0_population', 'ncycles', 'nattempts', 'state_size', &
+        character(15), parameter :: keys(5) = [character(15) :: 'D0_population', 'state_size', &
                                                                 'real_amplitudes', 'spawn_cutoff', 'rng_seed']
 
         if (.not. aot_exists(lua_state, opts, 'mp1') .and. parent) call stop_all('read_mp1_args', '"mp1" table not present.')
@@ -972,11 +967,6 @@ contains
 
         call aot_get_val(mp1_in%D0_norm, err, lua_state, mp1_table, 'D0_population')
         if (err /= 0 .and. parent) call stop_all('read_mp1_args', 'D0_population: Internal normalisation not supplied.')
-        call aot_get_val(mp1_in%ncycles, err, lua_state, mp1_table, 'ncycles')
-        if (err /= 0 .and. parent) call stop_all('read_mp1_args', 'ncycles: number of Monte Carlo cycles not supplied.')
-        call aot_get_val(mp1_in%nattempts, err, lua_state, mp1_table, 'nattempts')
-        if (err /= 0 .and. parent) &
-            call stop_all('read_mp1_args', 'nattempts: number of sampling attempts per MC cycle not supplied.')
         call aot_get_val(mp1_in%state_size, err, lua_state, mp1_table, 'state_size')
         if (err /= 0 .and. parent) call stop_all('read_mp1_args', 'state_size not set.')
 

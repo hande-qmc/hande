@@ -17,8 +17,6 @@ implicit none
 ! [todo] - document
 type mp1_in_t
     real(p) :: D0_norm
-    integer(int_64) :: nattempts
-    integer :: ncycles
     integer :: state_size
     logical :: real_amplitudes = .false.
     real(p) :: spawn_cutoff = 0.01_p
@@ -96,7 +94,6 @@ contains
         type(reference_t) :: ref
         type(det_info_t) :: cdet
         type(cluster_t) :: cluster
-        type(excit_t), parameter :: null_excit = excit_t(0,[0,0],[0,0],.false.)
         type(excit_t) :: excit
         type(annihilation_flags_t) :: annihilation_flags
         type(proc_map_t) :: proc_map
@@ -123,7 +120,7 @@ contains
         complex(p) :: D0_normalisation
         type(logging_t) :: logging_info
         type(excit_gen_data_t) :: excit_gen_data
-        type(qmc_in_t) :: qmc_in_cast
+        type(qmc_in_t) :: qmc_in_loc
 
         io_unit = 6
         if (parent) then
@@ -143,16 +140,17 @@ contains
         call set_spin_polarisation(sys%basis%nbasis, sys)
 
         if (debug) call init_logging(logging_in, logging_info, ref%ex_level)
-        
-        qmc_in_cast%excit_gen = mp1_in%excit_gen
-        qmc_in_cast%pattempt_single = mp1_in%pattempt_single
-        qmc_in_cast%pattempt_double = mp1_in%pattempt_double
-        qmc_in_cast%pattempt_update = mp1_in%pattempt_update
-        qmc_in_cast%pattempt_zero_accum_data = mp1_in%pattempt_zero_accum_data
-        qmc_in_cast%pattempt_parallel = mp1_in%pattempt_parallel
-        call init_proc_pointers(sys, qmc_in_cast, ref, io_unit)
+       
+        ! We have to have a qmc_in_t object for init_proc_pointers, as init_reference requires proc_pointers to be properly set.
+        qmc_in_loc%excit_gen = mp1_in%excit_gen
+        qmc_in_loc%pattempt_single = mp1_in%pattempt_single
+        qmc_in_loc%pattempt_double = mp1_in%pattempt_double
+        qmc_in_loc%pattempt_update = mp1_in%pattempt_update
+        qmc_in_loc%pattempt_zero_accum_data = mp1_in%pattempt_zero_accum_data
+        qmc_in_loc%pattempt_parallel = mp1_in%pattempt_parallel
+        call init_proc_pointers(sys, qmc_in_loc, ref, io_unit)
         call init_reference(sys, ref_in, io_unit, ref)
-        call init_excit_gen(sys, qmc_in_cast, ref, .false., excit_gen_data)
+        call init_excit_gen(sys, qmc_in_loc, ref, .false., excit_gen_data)
         
         ! Similarly for particle stores.  We use
         ! * tijab: exact amplitudes on reference and doubles.
@@ -292,76 +290,6 @@ contains
 
     end subroutine sample_mp1_wfn
 
-    subroutine mp1_status(sys, ref, D0_norm, iteration, psip_list)
-
-        use const, only: dp, int_p
-        use qmc_data, only: reference_t, particle_t
-        use system, only: sys_t
-
-        type(sys_t), intent(in) :: sys
-        type(reference_t), intent(in) :: ref
-        real(p), intent(in) :: D0_norm
-        integer, intent(in) :: iteration
-        type(particle_t), intent(in) :: psip_list
-
-        real(dp) :: emp2
-        real(p) :: tot_nparticles
-        integer :: tot_nstates
-
-        tot_nstates = psip_list%nstates
-        tot_nparticles = psip_list%nparticles(1)
-        emp2 = calc_emp2(sys, ref%f0, D0_norm, psip_list)
-#ifdef PARALLEL
-        ! No attempt to optimise comms here.  This should not be done a huge number of times...
-        ! [todo] - MPI
-#endif
-
-        write (6,'(1X,i6,2X,i12,2(2X,f16.8))') iteration, tot_nstates, tot_nparticles, emp2
-
-    end subroutine mp1_status
-
-    function calc_emp2(sys, f0, D0_norm, psip_list) result(emp2)
-
-        ! Calculatates the projected energy of the system
-        
-        use const, only: dp, int_p, i0, depsilon
-        use qmc_data, only: particle_t
-        use system, only: sys_t
-        use hamiltonian, only: get_hmatel
-        use hamiltonian_data, only: hmatel_t
-        use errors, only: stop_all
-
-        real(dp) :: emp2
-        type(sys_t), intent(in) :: sys
-        integer(i0), intent(in) :: f0(:)
-        real(p), intent(in) :: D0_norm
-        type(particle_t), intent(in) :: psip_list
-
-        integer :: istate
-        type(hmatel_t) :: hmatel
-
-        emp2 = 0.0_dp
-        do istate = 1, psip_list%nstates
-            if (any(psip_list%states(:,istate) /= f0)) then
-                hmatel = get_hmatel(sys, f0, psip_list%states(:,istate))
-                if (sys%read_in%comp) then
-                    if (aimag(hmatel%c*psip_list%pops(2,istate)) > depsilon) then
-                        ! Calling stop_all means we can't make this function pure, 
-                        ! might be worth it for sanity and mp2 isn't the time consuming 
-                        ! part of the calculation anyway
-                        call stop_all('calc_emp2', 'Non-zero complex energy detected')
-                    else
-                        emp2 = emp2 + real(hmatel%c)*psip_list%pops(1,istate) + aimag(hmatel%c)*psip_list%pops(2,istate)
-                    end if
-                else
-                    emp2 = emp2 + hmatel%r*psip_list%pops(1,istate)
-                end if
-            end if
-        end do
-        emp2 = emp2 / (psip_list%pop_real_factor*D0_norm)
-
-    end function calc_emp2
-
     subroutine mp1_in_t_json(js, mp1_in, terminal)
 
         ! Serialise a mpi_in_t object in JSON format.
@@ -380,8 +308,6 @@ contains
 
         call json_object_init(js, 'mp1')
         call json_write_key(js, 'D0_norm', mp1_in%D0_norm)
-        call json_write_key(js, 'ncycles', mp1_in%ncycles)
-        call json_write_key(js, 'nattempts', mp1_in%nattempts)
         call json_write_key(js, 'state_size', mp1_in%state_size)
         call json_write_key(js, 'real_amplitudes', mp1_in%real_amplitudes)
         call json_write_key(js, 'spawn_cutoff', mp1_in%spawn_cutoff, terminal=.true.)
