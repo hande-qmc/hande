@@ -231,62 +231,64 @@ contains
 
         ! Start with generating N_0(1+T2) deterministically.
         excit%nexcit = 2
-        iocc_a = 0
-        iocc_b = 0
-        emp2 = 0.0_dp
-        do i = 1, sys%nel
-            do j = i+1, sys%nel
-                excit%from_orb = [ref%occ_list0(i), ref%occ_list0(j)]
-                ! Trivial approach to parallelisation: split a over processors.
-                ! (Particles are distributed by the annihilation framework anyway.)
-                do ia = iproc+1, sys%basis%nbasis-sys%nel, nprocs
-                    ! Find the next unoccupied orbital.
-                    do
-                        a = ia + iocc_a
-                        if (.not.btest(ref%f0(sys%basis%bit_lookup(2,a)), sys%basis%bit_lookup(1,a))) exit
-                        iocc_a = iocc_a + 1
-                    end do
-                    do ib = ia+1, sys%basis%nbasis-sys%nel
-                        ! Find the next unoccupied orbital greater than a.
-                        ! We could optimise this by restricting the choice of b to conserve spin and spatial symmetries...
+        
+        ! MPI temporarily turned off, this is hacky, potentially turn it into an option.
+        ! The reasons are twofold:
+        ! 1. The code below tries to find the next excitation by incrementing iocc_a/b, which creates potential
+        !   duplicates in excitations on different processors. This leads to different exact MP2 energies with different -np
+        ! 2. The code initialises D0_norm number of walkers on the reference on every processor, but we only want 
+        !   D0 on one processor in FCIQMC/CCMC
+        if (parent) then
+            iocc_a = 0
+            iocc_b = 0
+            emp2 = 0.0_dp
+            do i = 1, sys%nel
+                do j = i+1, sys%nel
+                    excit%from_orb = [ref%occ_list0(i), ref%occ_list0(j)]
+                    ! Trivial approach to parallelisation: split a over processors.
+                    ! (Particles are distributed by the annihilation framework anyway.)
+                    do ia = 1, sys%basis%nbasis-sys%nel
+                        ! Find the next unoccupied orbital.
                         do
-                            b = ib + iocc_b
-                            if (.not.btest(ref%f0(sys%basis%bit_lookup(2,b)), sys%basis%bit_lookup(1,b))) exit
-                            iocc_b = iocc_b + 1
+                            a = ia + iocc_a
+                            if (.not.btest(ref%f0(sys%basis%bit_lookup(2,a)), sys%basis%bit_lookup(1,a))) exit
+                            iocc_a = iocc_a + 1
                         end do
-                        excit%to_orb = [a,b]
-                        call create_excited_det(sys%basis, ref%f0, excit, f)
-                        ! t_{ijab} = <ij||ab> / (e_i + e_j - e_a - e_b).
-                        ! NOTE: sp_eigv is not the Hartree--Fock eigenvalues in all cases (e.g. Hubbard model in k-space, UEG!).
-                        associate(bf => sys%basis%basis_fns)
-                            intgrl = get_hmatel(sys, ref%f0, f)
-                            denom = (1.0_p / (bf(i)%sp_eigv + bf(j)%sp_eigv - bf(a)%sp_eigv - bf(b)%sp_eigv))
-                            ampl = intgrl * denom
-                            if (sys%read_in%comp) then
-                                emp2 = emp2 + real(conjg(intgrl%c)*ampl%c)
-                            else
-                                emp2 = emp2 + intgrl%r*ampl%r
-                            end if
-                            ampl = ampl * mp1_in%D0_norm
-                        end associate
-                        ! Note attempt_to_spawn creates particles of opposite sign, hence set parent_sign=-1 to undo this unwanted
-                        ! sign change.
-                        ! TODO - cope with complex valued spawns
-                        nspawn = attempt_to_spawn(rng, 1.0_p, spawn%cutoff, tijab%pop_real_factor, ampl%r, 1.0_p, -1_int_p)
-                        if (nspawn /= 0_int_p) call create_spawned_particle(sys%basis, ref, cdet, excit, nspawn, 1, spawn, f)
+                        do ib = ia+1, sys%basis%nbasis-sys%nel
+                            ! Find the next unoccupied orbital greater than a.
+                            ! We could optimise this by restricting the choice of b to conserve spin and spatial symmetries...
+                            do
+                                b = ib + iocc_b
+                                if (.not.btest(ref%f0(sys%basis%bit_lookup(2,b)), sys%basis%bit_lookup(1,b))) exit
+                                iocc_b = iocc_b + 1
+                            end do
+                            excit%to_orb = [a,b]
+                            call create_excited_det(sys%basis, ref%f0, excit, f)
+                            ! t_{ijab} = <ij||ab> / (e_i + e_j - e_a - e_b).
+                            ! NOTE: sp_eigv is not the Hartree--Fock eigenvalues in all cases (e.g. Hubbard model in k-space, UEG!).
+                            associate(bf => sys%basis%basis_fns)
+                                intgrl = get_hmatel(sys, ref%f0, f)
+                                denom = (1.0_p / (bf(i)%sp_eigv + bf(j)%sp_eigv - bf(a)%sp_eigv - bf(b)%sp_eigv))
+                                ampl = intgrl * denom
+                                if (sys%read_in%comp) then
+                                    emp2 = emp2 + real(conjg(intgrl%c)*ampl%c)
+                                else
+                                    emp2 = emp2 + intgrl%r*ampl%r
+                                end if
+                                ampl = ampl * mp1_in%D0_norm
+                            end associate
+                            ! Note attempt_to_spawn creates particles of opposite sign, hence set parent_sign=-1 to undo this unwanted
+                            ! sign change.
+                            ! TODO - cope with complex valued spawns
+                            nspawn = attempt_to_spawn(rng, 1.0_p, spawn%cutoff, tijab%pop_real_factor, ampl%r, 1.0_p, -1_int_p)
+                            if (nspawn /= 0_int_p) call create_spawned_particle(sys%basis, ref, cdet, excit, nspawn, 1, spawn, f)
+                        end do
                     end do
                 end do
             end do
-        end do
-
-#ifdef PARALLEL
-        if (parent) then
-            call mpi_reduce(mpi_in_place, emp2, 1, mpi_double_precision, mpi_sum, root, mpi_comm_world, ierr)
-        else
-            call mpi_reduce(emp2, 0.0_dp, 1, mpi_double_precision, mpi_sum, root, mpi_comm_world, ierr)
+            write (6,*) 'direct MP2 =', emp2
         end if
-#endif
-        if (parent) write (6,*) 'direct MP2 =', emp2
+
 
         call direct_annihilation(sys, rng, ref, annihilation_flags, tijab, spawn)
         if (parent) write (6,'()')
