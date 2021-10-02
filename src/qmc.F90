@@ -98,7 +98,7 @@ contains
         if (restart_in%read_restart) call init_restart_info_t(ri, read_id=restart_in%read_id)
 
         call init_proc_pointers(sys, qmc_in, reference_in, io_unit, dmqmc_in, fciqmc_in)
-
+        
         ! Note it is not possible to override a reference if restarting.
         if (restart_in%read_restart) then
             call init_reference_restart(sys, reference_in, ri, qmc_state%ref)
@@ -107,7 +107,7 @@ contains
         else
             call init_reference(sys, reference_in, io_unit, qmc_state%ref)
         end if
-        
+       
         call init_sp_fock(sys, qmc_state%ref, qmc_state%propagator)
         ! [WARNING - TODO] - ref%fock_sum not initialised in init_reference, etc! 
         qmc_state%ref%fock_sum = sum_fock_values_occ_list(sys, qmc_state%propagator%sp_fock, qmc_state%ref%occ_list0)
@@ -250,6 +250,7 @@ contains
         use excit_gen_real_lattice
         use excit_gen_ringium
         use excit_gen_ueg, only: gen_excit_ueg_no_renorm
+        use hamiltonian_chung_landau, only: slater_condon0_chung_landau
         use hamiltonian_hub_k, only: slater_condon0_hub_k
         use hamiltonian_hub_real, only: slater_condon0_hub_real
         use hamiltonian_heisenberg, only: diagonal_element_heisenberg, diagonal_element_heisenberg_staggered
@@ -324,6 +325,11 @@ contains
             ! 115115) is contains spinless fermions.
             decoder_ptr => decode_det_occ
             update_proj_energy_ptr => update_proj_energy_hub_real
+            if (sys%system == hub_real) then
+                sc0_ptr => slater_condon0_hub_real
+            else 
+                sc0_ptr => slater_condon0_chung_landau
+            end if
 
             select case(qmc_in%excit_gen)
             case(excit_gen_no_renorm)
@@ -347,6 +353,13 @@ contains
                 case (neel_singlet)
                     update_proj_energy_ptr => update_proj_energy_heisenberg_neel_singlet
                 end select
+            end if
+
+            ! Set whether the applied staggered magnetisation is non-zero.
+            if (abs(sys%heisenberg%staggered_magnetic_field) > depsilon) then
+                sc0_ptr => diagonal_element_heisenberg_staggered
+            else
+                sc0_ptr => diagonal_element_heisenberg
             end if
 
             ! Set which guiding wavefunction to use, if requested.
@@ -445,7 +458,6 @@ contains
 
             update_proj_energy_ptr => update_proj_energy_ueg
             sc0_ptr => slater_condon0_ueg
-            energy_diff_ptr => exchange_energy_ueg
 
             gen_excit_ptr%full => gen_excit_ueg_no_renorm
             decoder_ptr => decode_det_occ
@@ -465,6 +477,7 @@ contains
         case(ringium)
 
             update_proj_energy_ptr => update_proj_energy_ringium
+            sc0_ptr => slater_condon0_ringium
 
             gen_excit_ptr%full => gen_excit_ringium_no_renorm
             decoder_ptr => decode_det_occ
@@ -1161,7 +1174,7 @@ contains
         ! specified, the symmetry.
 
         call set_reference_det(sys, reference%occ_list0, .false., sys%symmetry, io_unit)
-
+        
         if (.not. allocated(reference%f0)) then
             allocate(reference%f0(sys%basis%tot_string_len), stat=ierr)
             call check_allocate('reference%f0',sys%basis%tot_string_len,ierr)
@@ -1172,7 +1185,7 @@ contains
             allocate(reference%hs_f0(sys%basis%tot_string_len), stat=ierr)
             call check_allocate('reference%hs_f0', sys%basis%tot_string_len, ierr)
         end if
-
+        
 
         ! Set hilbert space reference if not given in input
         if (allocated(reference%hs_occ_list0)) then
