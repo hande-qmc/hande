@@ -685,6 +685,7 @@ contains
         !     wfn_file = filename,
         !     nanalyse = N,
         !     blacs_block_size = block_size,
+        !     hamiltonian_diagonal_only = true/false,
         !     rdm = { ... }, -- L-d vector containing the sites to include in subsystem A.
         ! }
 
@@ -713,9 +714,10 @@ contains
         integer :: fci_table, err, fci_nrdms
         integer, allocatable :: err_arr(:)
 
-        character(18), parameter :: fci_keys(9) = [character(18) :: 'write_hamiltonian', 'hamiltonian_file', &
+        character(25), parameter :: fci_keys(10) = [character(25) :: 'write_hamiltonian', 'hamiltonian_file', &
                                                                     'write_determinants', 'determinant_file', 'write_nwfns', &
-                                                                    'wfn_file', 'nanalyse', 'blacs_block_size', 'rdm']
+                                                                    'wfn_file', 'nanalyse', 'blacs_block_size', 'rdm', &
+                                                                    'hamiltonian_diagonal_only']
 
         if (aot_exists(lua_state, opts, 'fci')) then
             call aot_table_open(lua_state, opts, fci_table, 'fci')
@@ -729,6 +731,7 @@ contains
             call aot_get_val(fci_in%print_fci_wfn_file, err, lua_state, fci_table, 'wfn_file')
             call aot_get_val(fci_in%analyse_fci_wfn, err, lua_state, fci_table, 'nanalyse')
             call aot_get_val(fci_in%block_size, err, lua_state, fci_table, 'blacs_block_size')
+            call aot_get_val(fci_in%hamiltonian_diagonal_only, err, lua_state, fci_table, 'hamiltonian_diagonal_only')
 
             ! Optional arguments requiring special care.
             if (aot_exists(lua_state, fci_table, 'rdm')) then

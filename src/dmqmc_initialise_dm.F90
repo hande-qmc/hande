@@ -706,6 +706,8 @@ contains
                 end if
 
                 if (dmqmc_in%count_reweighted_particles) then
+                    ! Count the total number of particles spawned which
+                    ! can very depending on the reweighting step
                     if (pop_real_factor >= 2) then
                         ipsip = ipsip + (nspawn/pop_real_factor)
                     else

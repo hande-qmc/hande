@@ -194,26 +194,27 @@ type dmqmc_in_t
     ! Value of beta which we propagate the density matrix to.
     real(p) :: target_beta = 1.0
     ! The beta value we propagate to with the interaction picture.
-    ! The default is to the target beta, but if it is before the target
-    ! beta we then switch to asymmetric DMQMC propagation at this point.
+    ! There after we change propagators to DMQMC sampling multiple
+    ! inverse temperatures to target_beta.
     real(p) :: piecewise_beta = 0.0_p
     ! The shift used after the propagator is changed in peicewise IP-DMQMC.
     ! The default is zero.
     real(p) :: piecewise_shift = 0.0_p
-    ! A factor to scale the inital walker population by, this allows the initial
-    ! number of rows to be controlled while scaling the walker population to
-    ! resolve these rows well.
+    ! A factor to scale the inital walker population by
     real(p) :: walker_scale_factor = 0.0_p
     ! Should we run symmetric DMQMC prior to PIP IPDMQMC. The default is to
     ! remain with asymmetric propagation.
     logical :: post_pip_symmetric_propagation = .false.
-    ! Controls wether the particles created in the grand canonical initalization
-    ! for IP-DMQMC are added to the spawned walker contribution.
+    ! A boolean used in grand canonical initialization
+    ! If it is true (by default) the walkers generated in the reweighting
+    ! step (if it is performed) are counted towards the total walker number.
+    ! Previously successful attempts at generating elements were counted
+    ! which could lead to over or under initalization of walkers on the trace.
     logical :: count_reweighted_particles = .true.
     ! Number of metropolis attempts (per psip) we use when generating
     ! the trial density matrix.
     integer :: metropolis_attempts = 0
-    ! Do a symmetric version of DMQMC, default true.
+    ! Controls the symmetry of the propagator, default true.
     ! This considerably changes the IP-DMQMC algorithm.
     logical :: symmetric = .true.
     ! Chemical potential used to initialise density matrix.

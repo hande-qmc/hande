@@ -902,6 +902,15 @@ contains
 
     subroutine propagator_change(sys, qs, dmqmc_in, annihilation_flags, iunit)
 
+        ! For piecewise IP-DMQMC, the stored diagonal Hamiltonian elements
+        ! change from IP-DQMMC -> DMQMC. This is furthur altered by the
+        ! symmetry of the propagator. If moving from asymmetric IP-DMQMC
+        ! the stored Hamiltonian elements are (H_{ii}^{0} - H_{jj}).
+        ! These are then modified to be H_{jj} if moving to asymmetric DMQMC
+        ! or (1/2)*(H_{ii} + H_{jj}) if moving to symmetric DMQMC.
+        ! The reference energy (Hartree-Fock in most cases) is removed
+        ! from the Hamiltonian elements in the case of DMQMC (both symmetries).
+
         ! In:
         !   sys: system being studied. This should be left in an unmodified
         !       state on output.
@@ -913,7 +922,7 @@ contains
         !       elements for the DMQMC propagator symmetry. As well the
         !       qmc parameters are adjusted for the propagator symmetry.
         !   dmqmc_in: Input options relating to DMQMC, upon return the
-        !       symmetryc of the propagator will be stored for use in spawning.
+        !       symmetry of the propagator will be stored for use in spawning.
         !   annihilation_flags: Flags to control the annihilation procedure,
         !       which should change what is stored for stochastic death.
 
@@ -947,24 +956,19 @@ contains
         ! If using the free electron density matrix in IP-DMQMC
         ! we need to clear h0_ptr as it is no longer needed.
         if (dmqmc_in%initial_matrix == free_electron_dm) h0_ptr => Null()
-
         ! If we were doing symmetric IP-DMQMC, we don't want
         ! to include the exponential factors when spawning
-        ! in normal DMQMC.
+        ! in normal DMQMC. As well, store our original IP-DMQMC propagator
+        ! symmetry for running multiple beta loops.
         if (dmqmc_in%symmetric) then
-            !spawner_ptr => spawn_standard
             gen_excit_ptr%trial_fn => Null()
             dmqmc_in%restore_symmetric_piecewise = .true.
         end if
-
-        ! We do need h0_ptr if we are calculating H0 :)
-        !if (doing_dmqmc_calc(dmqmc_H0_energy)) h0_ptr => slater_condon0_ueg
 
         ! Finally, update the stored elements for diagonal death/cloning
         ! to propagate in DMQMC.
         if (dmqmc_in%post_pip_symmetric_propagation) then
             if (parent) write(iunit, '(1X,"# Changing propagators from IP-DMQMC to Symmetric DMQMC!")')
-
             ! Change the appropriate flags/parameters, these only
             ! need to change when coming from asymmetric propagation.
             if (.not. dmqmc_in%symmetric) then
@@ -973,7 +977,6 @@ contains
                 qs%tau = qs%tau*0.5_p
                 qs%dmqmc_factor = 2.0_p
             end if
-        
             ! We also need to update all the current walkers
             ! Hamiltonian element to reflect DMQMC instead
             ! of IP-DMQMC.
@@ -984,7 +987,6 @@ contains
             end do
         else
             if (parent) write(iunit, '(1X,"# Changing propagators from IP-DMQMC to Asymmetric DMQMC!")')
-
             ! If we are coming from symmetric IP-DMQMC and going to asymmetric
             ! DMQMC we need to alter these parameters accordingly.
             if (dmqmc_in%symmetric) then
@@ -993,7 +995,6 @@ contains
                 qs%tau = qs%tau*2.0_p
                 qs%dmqmc_factor = 1.0_p
             end if
-
             ! We also need to update all the current walkers
             ! Hamiltonian element to reflect asymmetric DMQMC
             ! instead of IP-DMQMC.

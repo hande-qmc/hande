@@ -497,9 +497,8 @@ contains
                 if (doing_dmqmc_calc(dmqmc_potential_energy)) &
                     call update_dmqmc_potential_energy(sys, cdet, excitation, unweighted_walker_pop(1), &
                                                        est%numerators(potential_ind))
-                ! Stores the projector energy from only considering the first
-                ! row of the density matrix.
-                ! [TODO] WZV Come back to this.
+                ! Stores the projected energy from only considering the
+                ! reference row of the density matrix.
                 if (doing_dmqmc_calc(dmqmc_ref_proj_energy)) &
                     call update_dmqmc_ref_proj_energy(sys, excitation, cdet, H00, unweighted_walker_pop, &
                                                       psip_list%dat(1, idet), est%ref_trace, est%ref_Dj0_particles, &
@@ -1729,10 +1728,12 @@ contains
     subroutine update_dmqmc_ref_proj_energy(sys, excitation, cdet, H00, pop, diagonal_contribution, trace, Dj0, &
                                             energy, ref_f0, complx)
 
-        ! If the current density matrix element is on the reference row/column
+        ! If the current density matrix element is on the reference row
         ! then store the componenant of this element for the projector.
-        ! Otherwise we do not include an element that is not on the reference
-        ! row/column
+        ! Otherwise we do not include an element that is not on the referencei row.
+        ! This is really a wrapper to check the matrix element is on the
+        ! reference row, then uses the normal energy updating procedures
+        ! to update the "trace" and numerator of the energy esitmate on this row.
 
         ! In:
         !    sys: system being studied.
@@ -1746,9 +1747,12 @@ contains
         !    cdet: det_info_t object containing bit strings of densitry matrix
         !        element under consideration.
         !    diagonal_contribution: <D_i|H|D_i>-<D0|H|D0>
+        !    ref_f0: the bitstring of the reference determinant used to check
+        !        if we are on the reference row of the density matrix.
+        !    complx: if we are sampling a complex read_in system.
         ! In/Out:
-        !    ref_proj_energy: current reference projected energy numerator.
-        !    ref_trace: total population on diagonal elements of density matrix
+        !    energy: current reference projected energy numerator.
+        !    trace: total population on diagonal elements of density matrix
         !       reference row.
 
         use determinant_data, only: det_info_t

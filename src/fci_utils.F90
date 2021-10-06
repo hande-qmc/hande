@@ -36,6 +36,11 @@ type fci_in_t
     ! The block size is critical to performance.  64 seems to be a good value (see
     ! scalapack documentation).
     integer :: block_size = 64
+
+    ! A boolean to control whether the diagonal of the FCI Hamiltonian
+    ! is generated. This will override the typical FCI where the entire
+    ! Hamiltonian is generated and diagonalized.
+    logical :: hamiltonian_diagonal_only = .false.
 end type fci_in_t
 
 
@@ -196,6 +201,7 @@ contains
             call subsys_t_json(js, fci_in%subsys_info)
         end if
         call json_write_key(js, 'block_size', fci_in%block_size)
+        call json_write_key(js, 'hamiltonian_diagonal_only', fci_in%hamiltonian_diagonal_only)
 
         call json_object_end(js)
         call reference_t_json(js, ref, sys, terminal=.true.)

@@ -414,7 +414,8 @@ contains
     subroutine interaction_picture_reweighting_molecular_HF(sys, cdet, connection, trial_func, hmatel)
 
         ! The same as above but for the read in case where things are
-        ! generally a lot easier. (Though this is not always the case)
+        ! assumed to generally be a lot easier.
+        ! (Though this is not always the case)
 
         ! In:
         !    sys: system being studied.
@@ -452,7 +453,6 @@ contains
             ! The determinant after excitation
             ! [Todo] Check the logic here, something isn't quite right
             ! with how the new det and the old det are being compared.
-            ! Could be that the wrong bitstring is being sent to create det.
             call create_excited_det(sys%basis, cdet%f, connection, f_new)
             diff_ijab = (sc0_ptr(sys, cdet%f2) - sc0_ptr(sys, f_new))
             hmatel = exp(-trial_func(sys%max_number_excitations+1)*diff_ijab) * hmatel

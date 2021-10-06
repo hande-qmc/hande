@@ -258,6 +258,8 @@ contains
                 tot_nparticles_old = qs%psip_list%tot_nparticles
 
                 if (ireport .eq. 1) then
+                    ! If we have just initalized the density matrix, print out
+                    ! the number of diagonal elemenets that were occupied.
                     call dmqmc_estimate_comms(dmqmc_in, error, nspawn_events, sys%max_number_excitations, qmc_in%ncycles, &
                                               qs%psip_list, qs, weighted_sampling%probs_old, dmqmc_estimates)
                     if (parent) write (iunit,'(1X,"# Initial diagonal density matrix element(s):",1X,I0)') qs%estimators%tot_nstates
@@ -267,9 +269,7 @@ contains
                 ! Change over the appropriate flags and data to asymmetric or symmetric dmqmc 
                 if (dmqmc_in%piecewise_beta > 0.0_p .and. dmqmc_in%ipdmqmc .and. piecewise_nreport + 1 == ireport) then
                     call propagator_change(sys, qs, dmqmc_in, annihilation_flags, iunit)
-                    ! Need to update the energy pointer here to prevent a cyclic dependency
-                    ! update_dmqmc_energy_and_trace_ptr => dmqmc_energy_and_trace
-                    ! Finally, update the pointers for the reset beta loop.
+                    ! Finally, update the pointers for the new propagator.
                     call init_proc_pointers(sys, qmc_in, reference_in, iunit, dmqmc_in)
                 end if
 
