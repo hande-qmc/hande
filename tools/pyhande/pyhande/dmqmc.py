@@ -491,9 +491,35 @@ results : :class:`pandas.DataFrame`
         if 'Trace 2' in columns:
             results['Trace 2'] = means['Trace 2']
             results['Trace 2 s.d.'] = np.sqrt(covariances.xs('Trace 2',level=1)['Trace 2'])
+        if 'Im{Trace}' in columns:
+            results['Im{Trace}'] = means['Im{Trace}']
+            results['Im{Trace} s.d.'] = np.sqrt(covariances.xs('Im{Trace}',level=1)['Im{Trace}'])
 
     # If requested, calculate excess free-energy.
     if free_energy:
         free_energy_error_analysis(estimates, results, cycles*tau)
+
+    # If requested, return the averaged energy numerator profile to the results.
+    if energy_numerator:
+        results['Tr[Hp]'] = means[r'\sum\rho_{ij}H_{ji}']
+        results['Tr[Hp] s.d.'] = np.sqrt(covariances.xs(r'\sum\rho_{ij}H_{ji}',level=1)[r'\sum\rho_{ij}H_{ji}'])
+
+    # If requested, return the averaged walker population profile to the results.
+    if population:
+        results['Nw'] = means['# H psips']
+        results['Nw s.d.'] = np.sqrt(covariances.xs('# H psips',level=1)['# H psips'])
+
+    # If requested, return the number of beta loops in the averaging profile.
+    if beta_loop_count:
+        results['N_beta'] = nsamples
+
+    if '\sum H_0j D_j0' in columns:
+        results['Nw Dj0'] = means['# Dj0 psips']
+        results['Nw Dj0 s.d.'] = np.sqrt(covariances.xs('# Dj0 psips',level=1)['# Dj0 psips'])
+        results['D_00'] = means['D_00']
+        results['D_00 s.d.'] = np.sqrt(covariances.xs('D_00',level=1)['D_00'])
+
+        results[r'Im-Tr(pH)'] = means[r'Im{\sum \rho H}']
+        results[r'Im-Tr(pH) s.d.'] = np.sqrt(covariances.xs(r'Im{\sum \rho H}',level=1)[r'Im{\sum \rho H}'])
 
     return (metadata, results)

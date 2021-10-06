@@ -34,6 +34,8 @@ options : :class:`ArgumentParser`
 '''
 
     parser = argparse.ArgumentParser(usage = __doc__)
+    parser.add_argument('-o', '--output', default='txt', choices=['txt', 'csv'],
+                        help='Format for data table.  Default: %(default)s.')
     parser.add_argument('-s', '--with-shift', action='store_true', dest='with_shift',
                       default=False, help='Output the averaged shift profile and '
                       'the standard deviation of these profiles across beta loops.')
@@ -116,7 +118,12 @@ None.
                                                     if ('S_' in c) or
                                                     ('Suu_' in c) or
                                                     ('Sud_' in c)])
-    print(results.to_string(index=False, columns=columns+momentum_dist+structure_factor))
+    if options.output == 'csv':
+        print(results.to_csv(index=False,
+                                columns=columns+momentum_dist+structure_factor))
+    else:
+        print(results.to_string(index=False,
+                                columns=columns+momentum_dist+structure_factor))
 
 
 if __name__ == '__main__':

@@ -984,6 +984,9 @@ contains
                 detf1 = qs%psip_list%states(:sys%basis%tot_string_len,idet)
                 detf2 = qs%psip_list%states((sys%basis%tot_string_len+1):(2*sys%basis%tot_string_len),idet)
                 qs%psip_list%dat(1,idet) = ( (sc0_ptr(sys, detf1) - qs%ref%H00) + (sc0_ptr(sys, detf2) - qs%ref%H00) )/2
+                if (annihilation_flags%replica_tricks) then
+                    qs%psip_list%dat(2:qs%psip_list%nspaces,idet) = qs%psip_list%dat(1,idet)
+                end if
             end do
         else
             if (parent) write(iunit, '(1X,"# Changing propagators from IP-DMQMC to Asymmetric DMQMC!")')
@@ -1001,6 +1004,9 @@ contains
             do idet = 1, qs%psip_list%nstates ! loop over walkers/dets
                 detf1 = qs%psip_list%states(:sys%basis%tot_string_len,idet)
                 qs%psip_list%dat(1,idet) = sc0_ptr(sys, detf1) - qs%ref%H00
+                if (annihilation_flags%replica_tricks) then
+                    qs%psip_list%dat(2:qs%psip_list%nspaces,idet) = qs%psip_list%dat(1,idet)
+                end if
             end do
         end if
 
