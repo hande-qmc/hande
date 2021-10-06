@@ -391,6 +391,8 @@ contains
 
         real(p), allocatable :: rdm(:,:)
 
+        integer(i0), allocatable :: pl_states_loc(:,:)
+
         type(blocking_t) :: bl
         integer :: iunit, restart_version_restart
         integer :: date_values(8)
@@ -419,7 +421,6 @@ contains
                       uuid_restart, restart_version_restart, qmc_state_restart=qmc_state_restart, &
                       regenerate_info=regenerate_info, psip_list_in=psip_list_in)
         
-        print*,'after init_qmc'
         if (ccmc_in%even_selection .and. regenerate_info) then
             call regenerate_ex_levels_psip_list(sys%basis, qs)
         else if (regenerate_info) then
@@ -438,7 +439,6 @@ contains
                 qs%mr_n_frozen = ccmc_in%mr_n_frozen
                 qs%mr_excit_lvl = ccmc_in%mr_excit_lvl
             endif
-
             allocate (qs%secondary_refs(qs%n_secondary_ref))
             call init_secondary_references(sys, ccmc_in%secondary_refs, io_unit, qs)
         else 
@@ -508,7 +508,6 @@ contains
         call check_allocate('ps_stats', nthreads, ierr)
 
         call init_contrib(sys, qs%ref%max_ex_level+2, ccmc_in%linked, contrib)
-
         do i = 0, nthreads-1
             ! Initialise and allocate RNG store.
             call dSFMT_init(qmc_in%seed+iproc+i*nprocs, 50000, rng(i))
@@ -736,6 +735,9 @@ contains
                                         iattempt, qmc_in%initiator_pop, ccmc_in%even_selection, &
                                         contrib(it)%cdet, contrib(it)%cluster, qs%excit_gen_data)
 
+                            !if (qs%propagator%quasi_newton) contrib(it)%cdet%fock_sum = &
+                            !                sum_fock_values_occ_list(sys, qs%propagator%sp_fock, contrib(it)%cdet%occ_list) &
+                            !                - qs%ref%fock_sum
                             if (qs%propagator%quasi_newton) contrib(it)%cdet%fock_sum = &
                                             sum_fock_values_occ_list(sys, qs%propagator%sp_fock, contrib(it)%cdet%occ_list) &
                                             - qs%ref%fock_sum
