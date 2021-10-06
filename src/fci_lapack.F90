@@ -30,6 +30,7 @@ contains
         use parallel, only: parent, nprocs, blacs_info, get_blacs_info
         use check_input, only: check_fci_opts
         use hamiltonian_data
+        use sort, only: insert_sort
 
         type(sys_t), intent(inout) :: sys
         type(fci_in_t), intent(inout) :: fci_in
@@ -61,6 +62,14 @@ contains
             ! The trivial case seems to trip things up...
             hmatel = get_hmatel(sys, dets(:,1), dets(:,1))
             eigv(1) = hmatel%r
+        else if (fci_in%hamiltonian_diagonal_only) then
+            if (parent) then
+                call generate_hamil(sys, ndets, dets, hamil, diagonal_only=.true.)
+                do i = 1, ndets
+                    eigv(i) = hamil%rmat(i,1)
+                end do
+                call insert_sort(eigv)
+            end if
         else
             if (nprocs == 1) then
                 call generate_hamil(sys, ndets, dets, hamil)
@@ -76,8 +85,13 @@ contains
         end if
 
         if (parent) then
-            write (iunit,'(1X,"LAPACK diagonalisation results")')
-            write (iunit,'(1X,"^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^",/)')
+            if (fci_in%hamiltonian_diagonal_only) then
+                write (iunit,'(1X,"Diagonal elements of the FCI Hamiltonian")')
+                write (iunit,'(1X,"^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^",/)')
+            else
+                write (iunit,'(1X,"LAPACK diagonalisation results")')
+                write (iunit,'(1X,"^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^",/)')
+            end if
             write (iunit,'(1X," State",5X,"Energy")')
             do i = 1, ndets
                 write (iunit,'(1X,i6,1X,f18.12)') i, eigv(i)
@@ -91,6 +105,8 @@ contains
                 if (parent) call warning('diagonalise','RDM eigenvalue calculation is only implemented in serial. Skipping.',3)
             else if (sys%system /= heisenberg) then
                 if (parent) call warning('diagonalise','RDM calculations are only implemented for Heisenberg systems. Skipping.',3)
+            else if (fci_in%hamiltonian_diagonal_only) then
+                if (parent) call warning('diagonalise','RDM calculations are not calculable with the Hamiltonian diagonal. Skipping.',3)
             else
                 write(iunit,'(1x,a46)') "Performing reduced density matrix calculation."
                 call setup_rdm_arrays(sys, .false., fci_in%subsys_info, rdm)
