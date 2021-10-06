@@ -194,6 +194,14 @@ contains
             write (iunit, '(1X, "\sum\rho_{ij}M2{ji}: The numerator of the estimator for the expectation &
                                  &value of the staggered magnetisation.")')
         end if
+        if (doing_dmqmc_calc(dmqmc_ref_proj_energy)) then
+            write (iunit, '(1X, "\sum\rho_{0j}H_{j0}: The numerator of the estimator for the expectation &
+                                 &value of the reference row energy.")')
+            write (iunit, '(1X, "\rho_00: The denominator of the estimator for the expectation &
+                                 &value of the reference row energy.")')
+            write (iunit, '(1X, "# \rho_{0j} psips: The current total population on the reference row of &
+                                 &the density matrix.")')
+        end if
         if (doing_dmqmc_calc(dmqmc_rdm_r2)) then
             write (iunit, '(1x, "RDM(n) S2: The numerator of the estimator for the Renyi entropy of RDM n.")')
         end if
@@ -269,15 +277,15 @@ contains
         end if
         if (doing_dmqmc_calc(dmqmc_ref_proj_energy)) then
             if (complx_est_set) then
-                call write_column_title(iunit, 'Re{\sum H_0j D_j0}')
-                call write_column_title(iunit, 'Im{\sum H_0j D_j0}')
-                call write_column_title(iunit, 'Re{D_00}')
-                call write_column_title(iunit, 'Im{D_00}')
-                call write_column_title(iunit, '# Dj0 psips')
+                call write_column_title(iunit, 'Re{\rho_00}')
+                call write_column_title(iunit, 'Im{\rho_00}')
+                call write_column_title(iunit, 'Re{Sum\rho_0j H_j0}')
+                call write_column_title(iunit, 'Im{Sum\rho_0j H_j0}')
+                call write_column_title(iunit, '# \rho_{0j} psips')
             else
-                call write_column_title(iunit, '\sum H_0j D_j0')
-                call write_column_title(iunit, 'D_00')
-                call write_column_title(iunit, '# Dj0 psips')
+                call write_column_title(iunit, '\rho_00')
+                call write_column_title(iunit, '\sum\rho_{0j}H_{j0}')
+                call write_column_title(iunit, '# \rho_{0j} psips')
             end if
         end if
         if (doing_dmqmc_calc(dmqmc_H0_energy)) then
@@ -602,14 +610,16 @@ contains
             end if
         end if
         if (doing_dmqmc_calc(dmqmc_ref_proj_energy)) then
-            call write_qmc_var(iunit, dmqmc_estimates%numerators(ref_proj_ind))
-            call write_qmc_var(iunit, dmqmc_estimates%ref_trace(1))
-            call write_qmc_var(iunit, dmqmc_estimates%ref_Dj0_particles(1))
             if (complx_est_set) then
-                call write_qmc_var(iunit, dmqmc_estimates%numerators(ref_proj_imag_ind))
+                call write_qmc_var(iunit, dmqmc_estimates%ref_trace(1))
                 call write_qmc_var(iunit, dmqmc_estimates%ref_trace(2))
-                call write_qmc_var(iunit, dmqmc_estimates%ref_Dj0_particles(2))
+                call write_qmc_var(iunit, dmqmc_estimates%numerators(ref_proj_ind))
+                call write_qmc_var(iunit, dmqmc_estimates%numerators(ref_proj_imag_ind))
+            else
+                call write_qmc_var(iunit, dmqmc_estimates%ref_trace(1))
+                call write_qmc_var(iunit, dmqmc_estimates%numerators(ref_proj_ind))
             end if
+            call write_qmc_var(iunit, dmqmc_estimates%ref_Dj0_particles(1))
         end if
         ! H^I energy, where H^I = exp(-(beta-tau)/2 H^0) H exp(-(beta-tau)/2. H^0).
         if (doing_dmqmc_calc(dmqmc_HI_energy)) then
