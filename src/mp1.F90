@@ -20,7 +20,7 @@ type mp1_in_t
     integer :: state_size
     logical :: real_amplitudes = .false.
     real(p) :: spawn_cutoff = 0.01_p
-
+    logical :: even_selection = .false.
     ! Copied from qmc_data.f90::qmc_in_t
     ! BZ-[todo]: add actual input options for this for excit_gens other than default.
     integer :: excit_gen = excit_gen_renorm
@@ -170,7 +170,7 @@ contains
 
         tijab%nspaces = 1
         tijab%info_size = 0
-        call init_particle_t(state_size, 0, sys%basis%tensor_label_len, .true., .false., tijab) ! Strictly speaking tijab need only hold the double amplitudes.
+        call init_particle_t(state_size, 1, sys%basis%tensor_label_len, mp1_in%real_amplitudes, .false., tijab) ! Strictly speaking tijab need only hold the double amplitudes.
 
         ! Legacy global data (boo!) initialisation
 !        call init_sc0_ptr(sys)
@@ -232,12 +232,12 @@ contains
         ! Start with generating N_0(1+T2) deterministically.
         excit%nexcit = 2
         
-        ! MPI temporarily turned off, this is hacky, potentially turn it into an option.
-        ! The reasons are twofold:
+        ! MPI is turned off, the reasons are
         ! 1. The code below tries to find the next excitation by incrementing iocc_a/b, which creates potential
-        !   duplicates in excitations on different processors. This leads to different exact MP2 energies with different -np
+        !   duplicates in excitations on different processors. This leads to different 'exact MP2 energies' with different -np
         ! 2. The code initialises D0_norm number of walkers on the reference on every processor, but we only want 
         !   D0 on one processor in FCIQMC/CCMC
+        ! 3. MP2 is not rate limiting
         if (parent) then
             iocc_a = 0
             iocc_b = 0

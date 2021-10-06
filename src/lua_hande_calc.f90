@@ -693,6 +693,7 @@ contains
         !           real_amplitudes = true/false,
         !           spawn_cutoff = cutoff,
         !           rng_seed = seed,
+        !           even_selection = true/false,
         !     },
         ! }
 
@@ -707,6 +708,7 @@ contains
         use qmc_data, only: reference_t, qmc_state_t, particle_t
         use mp1, only: mp1_in_t, sample_mp1_wfn
         use logging, only: logging_in_t
+        use excitations, only: init_excitations, end_excitations
 
         integer(c_int) :: nresult
         type(c_ptr), value :: L
@@ -736,6 +738,14 @@ contains
         !call read_reference_t(lua_state, opts, ref, sys)
         call read_logging_in_t(lua_state, opts, logging_in)
         call aot_table_close(lua_state, opts)
+
+        if (mp1_in%even_selection) then
+            sys%basis%info_string_len = 1
+            sys%basis%tot_string_len = sys%basis%bit_string_len + sys%basis%info_string_len
+            sys%basis%tensor_label_len = sys%basis%tot_string_len
+            call end_excitations(sys%basis%excit_mask)
+            call init_excitations(sys%basis)
+        end if
 
         allocate(psip_list)
 
@@ -944,6 +954,7 @@ contains
         !     real_amplitudes = true/false,
         !     spawn_cutoff = cutoff,
         !     rng_seed = seed,
+        !     even_selection = true/false,
         ! }
 
         use flu_binding, only: flu_State
@@ -961,8 +972,8 @@ contains
         logical, intent(out) :: have_seed
 
         integer :: mp1_table, err
-        character(15), parameter :: keys(5) = [character(15) :: 'D0_population', 'state_size', &
-                                                                'real_amplitudes', 'spawn_cutoff', 'rng_seed']
+        character(15), parameter :: keys(6) = [character(15) :: 'D0_population', 'state_size', &
+                                                                'real_amplitudes', 'spawn_cutoff', 'rng_seed','even_selection']
 
         if (.not. aot_exists(lua_state, opts, 'mp1') .and. parent) call stop_all('read_mp1_args', '"mp1" table not present.')
         call aot_table_open(lua_state, opts, mp1_table, 'mp1')
@@ -974,6 +985,7 @@ contains
 
         call aot_get_val(mp1_in%real_amplitudes, err, lua_state, mp1_table, 'real_amplitudes')
         call aot_get_val(mp1_in%spawn_cutoff, err, lua_state, mp1_table, 'spawn_cutoff')
+        call aot_get_val(mp1_in%even_selection, err, lua_state, mp1_table, 'even_selection')
 
         have_seed = aot_exists(lua_state, mp1_table, 'rng_seed')
         call aot_get_val(rng_seed, err, lua_state, mp1_table, 'rng_seed')
