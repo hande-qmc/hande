@@ -1470,11 +1470,11 @@ contains
                                                                       'find_weights', 'find_weights_start', 'symmetrize',        &
                                                                       'vary_weights', 'initiator_level', 'symmetric',            &
                                                                       'walker_scale_factor']
-        character(30), parameter :: ip_keys(11)    = [character(30) :: 'target_beta', 'initial_beta', 'initial_matrix',          &
+        character(30), parameter :: ip_keys(10)    = [character(30) :: 'target_beta', 'initial_beta', 'initial_matrix',          &
                                                                       'grand_canonical_initialisation', 'metropolis_attempts',   &
-                                                                      'symmetric', 'piecewise_beta',                             &
+                                                                      'symmetric', 'piecewise_beta', 'piecewise_shift',          &
                                                                       'post_pip_symmetric_propagation',                          &
-                                                                      'count_reweighted_particles', 'adaptive', 'piecewise_shift']
+                                                                      'count_reweighted_particles']
         character(30), parameter :: op_keys(13)    = [character(30) :: 'renyi2', 'energy', 'energy2', 'staggered_magnetisation',  &
                                                                        'correlation', 'excit_dist', 'kinetic_energy',             &
                                                                        'H0_energy', 'potential_energy', 'HI_energy', 'mom_dist',  &
@@ -1523,10 +1523,6 @@ contains
             if (aot_exists(lua_state, table, 'initial_beta')) then
                 call aot_get_val(dmqmc_in%target_beta, err, lua_state, table, 'initial_beta')
                 if (parent) call warning('read_dmqmc_in', 'initial_beta is deprecated.  Please use target_beta instead.')
-            end if
-            if (aot_exists(lua_state, table, 'adaptive')) then
-                call aot_get_val(dmqmc_in%piecewise_beta, err, lua_state, table, 'adaptive')
-                if (parent) call warning('read_dmqmc_in', 'adaptive is deprecated.  Please use piecewise_beta instead.')
             end if
             call aot_get_val(dmqmc_in%target_beta, err, lua_state, table, 'target_beta')
             if (aot_exists(lua_state, table, 'initial_matrix')) then
