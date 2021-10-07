@@ -619,7 +619,7 @@ contains
                 call write_qmc_var(iunit, dmqmc_estimates%ref_trace(1))
                 call write_qmc_var(iunit, dmqmc_estimates%numerators(ref_proj_ind))
             end if
-            call write_qmc_var(iunit, dmqmc_estimates%ref_Dj0_particles(1))
+            call write_qmc_var(iunit, dmqmc_estimates%ref_D0j_particles(1))
         end if
         ! H^I energy, where H^I = exp(-(beta-tau)/2 H^0) H exp(-(beta-tau)/2. H^0).
         if (doing_dmqmc_calc(dmqmc_HI_energy)) then

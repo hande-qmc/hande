@@ -21,7 +21,7 @@ enum, bind(c)
     enumerator :: mom_dist_ind
     enumerator :: struc_fac_ind
     enumerator :: ref_trace_ind
-    enumerator :: ref_Dj0_ind
+    enumerator :: ref_D0j_ind
     enumerator :: final_ind ! ensure this remains the last index.
 end enum
 
@@ -101,10 +101,10 @@ contains
 
         if (doing_dmqmc_calc(dmqmc_ref_proj_energy)) then
             nelems(ref_trace_ind) = psip_list%nspaces
-            nelems(ref_Dj0_ind) = psip_list%nspaces
+            nelems(ref_D0j_ind) = psip_list%nspaces
         else
             nelems(ref_trace_ind) = 0
-            nelems(ref_Dj0_ind) = 0
+            nelems(ref_D0j_ind) = 0
         end if
 
         ! The total number of elements in the array to be communicated.
@@ -212,7 +212,7 @@ contains
         end if
         if (doing_dmqmc_calc(dmqmc_ref_proj_energy)) then
             rep_loop_loc(min_ind(ref_trace_ind):max_ind(ref_trace_ind)) = dmqmc_estimates%ref_trace
-            rep_loop_loc(min_ind(ref_Dj0_ind):max_ind(ref_Dj0_ind)) = dmqmc_estimates%ref_Dj0_particles
+            rep_loop_loc(min_ind(ref_D0j_ind):max_ind(ref_D0j_ind)) = dmqmc_estimates%ref_D0j_particles
         end if
 
     end subroutine local_dmqmc_estimators
@@ -282,7 +282,7 @@ contains
         end if
         if (doing_dmqmc_calc(dmqmc_ref_proj_energy)) then
             dmqmc_estimates%ref_trace = real(rep_loop_sum(min_ind(ref_trace_ind):max_ind(ref_trace_ind)), p)
-            dmqmc_estimates%ref_Dj0_particles = real(rep_loop_sum(min_ind(ref_Dj0_ind):max_ind(ref_Dj0_ind)), p)
+            dmqmc_estimates%ref_D0j_particles = real(rep_loop_sum(min_ind(ref_D0j_ind):max_ind(ref_D0j_ind)), p)
         end if
         ! Average the spawning rate.
         qs%spawn_store%rspawn = qs%spawn_store%rspawn/(ncycles*nprocs)
@@ -501,7 +501,7 @@ contains
                 ! reference row of the density matrix.
                 if (doing_dmqmc_calc(dmqmc_ref_proj_energy)) &
                     call update_dmqmc_ref_proj_energy(sys, excitation, cdet, H00, unweighted_walker_pop, &
-                                                      psip_list%dat(1, idet), est%ref_trace, est%ref_Dj0_particles, &
+                                                      psip_list%dat(1, idet), est%ref_trace, est%ref_D0j_particles, &
                                                       est%numerators(ref_proj_ind:ref_proj_imag_ind), ref_f0, comp)
                 ! H^0 energy, where H^0 = H - V. See subroutines interface
                 ! comments for description.
@@ -1725,7 +1725,7 @@ contains
 
     end subroutine update_dmqmc_H0_energy
 
-    subroutine update_dmqmc_ref_proj_energy(sys, excitation, cdet, H00, pop, diagonal_contribution, trace, Dj0, &
+    subroutine update_dmqmc_ref_proj_energy(sys, excitation, cdet, H00, pop, diagonal_contribution, trace, D0j, &
                                             energy, ref_f0, complx)
 
         ! If the current density matrix element is on the reference row
@@ -1768,7 +1768,7 @@ contains
         integer(i0), intent(in) :: ref_f0(sys%basis%tot_string_len)
         logical, intent(in), optional :: complx
         real(p), intent(inout) :: trace(:)
-        real(p), intent(inout) :: Dj0(:)
+        real(p), intent(inout) :: D0j(:)
         real(p), intent(inout) :: energy(:)
         integer :: row_col_excit_level
 
@@ -1780,7 +1780,7 @@ contains
         row_col_excit_level = get_excitation_level(ref_f0,cdet%f2)
 
         if (row_col_excit_level == 0) then
-            Dj0 = Dj0 + abs(pop(1))
+            D0j = D0j + abs(pop(1))
             call update_dmqmc_energy_and_trace_ptr(sys, excitation, cdet, H00, pop, &
                                                    diagonal_contribution, trace, &
                                                    energy, complx)

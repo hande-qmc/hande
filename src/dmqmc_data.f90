@@ -314,7 +314,7 @@ type dmqmc_estimates_t
     ! This stores the total particles of the reference row/column on the 
     ! density matrix. Only used when the projector of the reference row/column
     ! is being calculated.
-    real(p), allocatable :: ref_Dj0_particles(:) ! (particle_t%nspaces)
+    real(p), allocatable :: ref_D0j_particles(:) ! (particle_t%nspaces)
 
     ! This array is used to hold the number of particles on each excitation
     ! level of the density matrix.

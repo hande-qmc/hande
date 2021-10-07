@@ -49,9 +49,9 @@ contains
             allocate(dmqmc_estimates%ref_trace(nreplicas), stat=ierr)
             call check_allocate('dmqmc_estimates%ref_trace', nreplicas, ierr)
             dmqmc_estimates%ref_trace = 0.0_p
-            allocate(dmqmc_estimates%ref_Dj0_particles(nreplicas), stat=ierr)
-            call check_allocate('dmqmc_estimates%ref_Dj0_particles', nreplicas, ierr)
-            dmqmc_estimates%ref_Dj0_particles = 0.0_p
+            allocate(dmqmc_estimates%ref_D0j_particles(nreplicas), stat=ierr)
+            call check_allocate('dmqmc_estimates%ref_D0j_particles', nreplicas, ierr)
+            dmqmc_estimates%ref_D0j_particles = 0.0_p
         end if
         ! If calculating a correlation function then set up the necessary bit
         ! mask. This has a bit set for each of the two sites/orbitals being

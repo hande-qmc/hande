@@ -695,7 +695,7 @@ contains
         if (calc_mom_dist) dmqmc_estimates%mom_dist%f_k = 0.0_p
         if (calc_struc_fac) dmqmc_estimates%struc_fac%f_k = 0.0_p
         if (calc_ref_proj_energy) dmqmc_estimates%ref_trace = 0.0_p
-        if (calc_ref_proj_energy) dmqmc_estimates%ref_Dj0_particles = 0.0_p
+        if (calc_ref_proj_energy) dmqmc_estimates%ref_D0j_particles = 0.0_p
 
     end subroutine init_dmqmc_report_loop
 

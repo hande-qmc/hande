@@ -43,6 +43,11 @@ None.
         ('Tr[H0p]/Tr[p]','\\sum\\rho_{ij}H0{ji}'),
         ('Tr[HIp]/Tr[p]','\\sum\\rho_{ij}HI{ji}'),
         ('VI', '\\sum\\rho_{ij}VI_{ji}'),
+        ('Re{Tr[Hp]/Tr[p]}', r'Re{\sum \rho H}'),
+        ('Im{Tr[Hp]/Tr[p]}', r'Re{\sum \rho H}'),
+        ('Tr[p0H0]/Tr[p00]', r'\sum\rho_{0j}H_{j0}'),
+        ('Re{Tr[p0H0]/Tr[p00]}', r'Re{Sum\rho_0j H_j0}'),
+        ('Im{Tr[p0H0]/Tr[p00]}', r'Im{Sum\rho_0j H_j0}'),
     ])
 
     # Add momentum distribution to dictionary of observables to be analaysed.
@@ -59,17 +64,49 @@ None.
     num = pd.DataFrame(columns=['mean','standard error'], index=beta_values)
     # DataFrame for the trace from the first replica.
     tr1 = pd.DataFrame(columns=['mean','standard error'], index=beta_values)
+    # A dictionary of alternative trace keys
+    denominators = {}
 
-    tr1['mean'] = means['Trace']
-    tr1['standard error'] = np.sqrt(covariances.xs('Trace',level=1)['Trace']/nsamples)
+    if 'Trace' in columns:
+        tr1['mean'] = means['Trace']
+        tr1['standard error'] = np.sqrt(covariances.xs('Trace',level=1)['Trace']/nsamples)
+    else:
+        retr1 = pd.DataFrame(columns=['mean','standard error'], index=beta_values)
+        imtr1 = pd.DataFrame(columns=['mean','standard error'], index=beta_values)
+        retr1['mean'] = means['Re{Trace}']
+        retr1['standard error'] = np.sqrt(covariances.xs('Re{Trace}',level=1)['Re{Trace}']/nsamples)
+        imtr1['mean'] = means['Im{Trace}']
+        imtr1['standard error'] = np.sqrt(covariances.xs('Im{Trace}',level=1)['Im{Trace}']/nsamples)
+        denominators['Re{Tr[Hp]/Tr[p]}'] = ('Re{Trace}',retr1)
+        denominators['Im{Tr[Hp]/Tr[p]}'] = ('Im{Trace}',imtr1)
+
+    if r'\rho_00' in columns:
+        tr00 = pd.DataFrame(columns=['mean','standard error'], index=beta_values)
+        tr00['mean'] = means[r'\rho_00']
+        tr00['standard error'] = np.sqrt(covariances.xs(r'\rho_00',level=1)[r'\rho_00']/nsamples)
+        denominators['Tr[p0H0]/Tr[p00]'] = (r'\rho_00',tr00)
+    elif r'Re{\rho_00}' in columns:
+        retr00 = pd.DataFrame(columns=['mean','standard error'], index=beta_values)
+        imtr00 = pd.DataFrame(columns=['mean','standard error'], index=beta_values)
+        retr00['mean'] = means[r'Re{\rho_00}']
+        retr00['standard error'] = np.sqrt(covariances.xs(r'Re{\rho_00}',level=1)[r'Re{\rho_00}']/nsamples)
+        imtr00['mean'] = means[r'Im{\rho_00}']
+        imtr00['standard error'] = np.sqrt(covariances.xs(r'Im{\rho_00}',level=1)[r'Im{\rho_00}']/nsamples)
+        denominators['Re{Tr[p0H0]/Tr[p00]}'] = (r'Re{\rho_00}',retr00)
+        denominators['Im{Tr[p0H0]/Tr[p00]}'] = (r'Im{\rho_00}',imtr00)
 
     for (k,v) in observables.items():
         if v in columns:
+            if k in denominators.keys():
+                tr_key, tr_df = denominators[k]
+            else:
+                tr_key, tr_df = 'Trace', tr1
+
             num['mean'] = means[v]
             num['standard error'] = np.sqrt(covariances.xs(v,level=1)[v]/nsamples)
-            cov_AB = covariances.xs('Trace',level=1)[v]
+            cov_AB = covariances.xs(tr_key,level=1)[v]
 
-            stats = pyblock.error.ratio(num, tr1, cov_AB, nsamples)
+            stats = pyblock.error.ratio(num, tr_df, cov_AB, nsamples)
 
             results[k] = stats['mean']
             results[k+'_error'] = stats['standard error']
@@ -361,7 +398,8 @@ full : :class:`pandas.DataFrame`
 
 
 def analyse_data(hande_out, shift=False, free_energy=False, spline=False,
-                 trace=False, calc_number=None):
+                 trace=False, calc_number=None, energy_numerator=False,
+                 population=False, beta_loop_count=False, very_very_loud=False):
     '''Clean up Hande output so that analysis can be performed.
 
 Parameters
@@ -398,6 +436,9 @@ results : :class:`pandas.DataFrame`
         raise ValueError("calc_number option is broken! Please set to default "
                          "(None) or fix code.")
 
+    if very_very_loud:
+        shift,trace,energy_numerator,population,beta_loop_count=[True]*5
+
     (metadata, data) = ([], [])
     for (md, df) in hande_out:
         if 'DMQMC' in md['calc_type'] and not md['dmqmc']['find_weights']:
@@ -432,7 +473,10 @@ results : :class:`pandas.DataFrame`
     # Make the Beta column a MultiIndex.
     data.set_index('Beta', inplace=True, append=True)
     # The number of beta loops contributing to each beta value.
-    nsamples = data['Trace'].groupby(level=1).count()
+    if 'Trace' in data.columns:
+        nsamples = data['Trace'].groupby(level=1).count()
+    else:
+        nsamples = data['Re{Trace}'].groupby(level=1).count()
     beta_values = nsamples.index.values
     # The data that we are going to use.
     estimates = data.loc[:,'Shift':'# H psips']
@@ -484,42 +528,74 @@ results : :class:`pandas.DataFrame`
             if ('Tr[p]' in column or 'S2' in column) and (not 'error' in column):
                 results[column+' spline'] = calc_spline_fit(column, results)
 
-    # If requested, add the averaged trace profiles to results.
-    if trace:
-        results['Trace'] = means['Trace']
-        results['Trace s.d.'] = np.sqrt(covariances.xs('Trace',level=1)['Trace'])
-        if 'Trace 2' in columns:
-            results['Trace 2'] = means['Trace 2']
-            results['Trace 2 s.d.'] = np.sqrt(covariances.xs('Trace 2',level=1)['Trace 2'])
-        if 'Im{Trace}' in columns:
-            results['Im{Trace}'] = means['Im{Trace}']
-            results['Im{Trace} s.d.'] = np.sqrt(covariances.xs('Im{Trace}',level=1)['Im{Trace}'])
-
     # If requested, calculate excess free-energy.
     if free_energy:
         free_energy_error_analysis(estimates, results, cycles*tau)
 
+    # If requested, add the averaged trace profiles to results.
+    if trace:
+        if 'Trace' in columns:
+            results['Trace'] = means['Trace']
+            results['Trace s.d.'] = np.sqrt(covariances.xs('Trace',level=1)['Trace'])
+        if 'Trace 2' in columns:
+            results['Trace 2'] = means['Trace 2']
+            results['Trace 2 s.d.'] = np.sqrt(covariances.xs('Trace 2',level=1)['Trace 2'])
+        if 'Re{Trace}' in columns:
+            results['Re{Trace}'] = means['Re{Trace}']
+            results['Re{Trace} s.d.'] = np.sqrt(covariances.xs('Re{Trace}',level=1)['Re{Trace}'])
+        if 'Im{Trace}' in columns:
+            results['Im{Trace}'] = means['Im{Trace}']
+            results['Im{Trace} s.d.'] = np.sqrt(covariances.xs('Im{Trace}',level=1)['Im{Trace}'])
+        if r'\rho_00' in columns:
+            results[r'\rho_00'] = means[r'\rho_00']
+            results[r'\rho_00 s.d.'] = np.sqrt(covariances.xs(r'\rho_00',level=1)[r'\rho_00'])
+        if r'Re{\rho_00}' in columns:
+            results[r'Re{\rho_00}'] = means[r'Re{\rho_00}']
+            results[r'Re{\rho_00} s.d.'] = \
+                np.sqrt(covariances.xs(r'Re{\rho_00}',level=1)[r'Re{\rho_00}'])
+        if r'Im{\rho_00}' in columns:
+            results[r'Im{\rho_00}'] = means[r'Im{\rho_00}']
+            results[r'Im{\rho_00} s.d.'] = \
+                np.sqrt(covariances.xs(r'Im{\rho_00}',level=1)[r'Im{\rho_00}'])
+
     # If requested, return the averaged energy numerator profile to the results.
     if energy_numerator:
-        results['Tr[Hp]'] = means[r'\sum\rho_{ij}H_{ji}']
-        results['Tr[Hp] s.d.'] = np.sqrt(covariances.xs(r'\sum\rho_{ij}H_{ji}',level=1)[r'\sum\rho_{ij}H_{ji}'])
+        if r'\sum\rho_{ij}H_{ji}' in columns:
+            results['Tr[Hp]'] = means[r'\sum\rho_{ij}H_{ji}']
+            results['Tr[Hp] s.d.'] = \
+                np.sqrt(covariances.xs(r'\sum\rho_{ij}H_{ji}',level=1)[r'\sum\rho_{ij}H_{ji}'])
+        if r'Re{\sum \rho H}' in columns:
+            results['Re{Tr[Hp]}'] = means[r'Re{\sum \rho H}']
+            results['Re{Tr[Hp]} s.d.'] = \
+                np.sqrt(covariances.xs(r'Re{\sum \rho H}',level=1)[r'Re{\sum \rho H}'])
+        if r'Im{\sum \rho H}' in columns:
+            results['Im{Tr[Hp]}'] = means[r'Im{\sum \rho H}']
+            results['Im{Tr[Hp]} s.d.'] = \
+                np.sqrt(covariances.xs(r'Im{\sum \rho H}',level=1)[r'Im{\sum \rho H}'])
+        if r'\sum\rho_{0j}H_{j0}' in columns:
+            results[r'Tr[p0H0]'] = means[r'\sum\rho_{0j}H_{j0}']
+            results[r'Tr[p0H0] s.d.'] = \
+                np.sqrt(covariances.xs(r'\sum\rho_{0j}H_{j0}',level=1)[r'\sum\rho_{0j}H_{j0}'])
+        if r'Re{Sum\rho_0j H_j0}' in columns:
+            results[r'Re{Tr[p0H0]}'] = means[r'Re{Sum\rho_0j H_j0}']
+            results[r'Re{Tr[p0H0]} s.d.'] = \
+                np.sqrt(covariances.xs(r'Re{Sum\rho_0j H_j0}',level=1)[r'Re{Sum\rho_0j H_j0}'])
+        if r'Im{Sum\rho_0j H_j0}' in columns:
+            results[r'Im{Tr[p0H0]}'] = means[r'Im{Sum\rho_0j H_j0}']
+            results[r'Im{Tr[p0H0]} s.d.'] = \
+                np.sqrt(covariances.xs(r'Im{Sum\rho_0j H_j0}',level=1)[r'Im{Sum\rho_0j H_j0}'])
 
     # If requested, return the averaged walker population profile to the results.
     if population:
-        results['Nw'] = means['# H psips']
-        results['Nw s.d.'] = np.sqrt(covariances.xs('# H psips',level=1)['# H psips'])
+        results['# particles'] = means['# H psips']
+        results['# particles s.d.'] = np.sqrt(covariances.xs('# H psips',level=1)['# H psips'])
+        if r'# \rho_{0j} psips' in columns:
+            results[r'# \rho_{0j} psips'] = means[r'# \rho_{0j} psips']
+            results[r'# \rho_{0j} psips s.d.'] = \
+                np.sqrt(covariances.xs(r'# \rho_{0j} psips',level=1)[r'# \rho_{0j} psips'])
 
     # If requested, return the number of beta loops in the averaging profile.
     if beta_loop_count:
         results['N_beta'] = nsamples
-
-    if '\sum H_0j D_j0' in columns:
-        results['Nw Dj0'] = means['# Dj0 psips']
-        results['Nw Dj0 s.d.'] = np.sqrt(covariances.xs('# Dj0 psips',level=1)['# Dj0 psips'])
-        results['D_00'] = means['D_00']
-        results['D_00 s.d.'] = np.sqrt(covariances.xs('D_00',level=1)['D_00'])
-
-        results[r'Im-Tr(pH)'] = means[r'Im{\sum \rho H}']
-        results[r'Im-Tr(pH) s.d.'] = np.sqrt(covariances.xs(r'Im{\sum \rho H}',level=1)[r'Im{\sum \rho H}'])
 
     return (metadata, results)
