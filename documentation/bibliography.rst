@@ -22,6 +22,7 @@ Bibliography
 .. [Malone16a] F.D. Malone, W.M.C. Foulkes, J.S. Spencer, Improved parallel algorithms for full configuration interaction quantum Monte Carlo, in preparation.
 .. [Neufeld19] V.A. Neufeld, A.J.W. Thom, Exciting determinants in Quantum Monte Carlo: Loading the dice with fast, low memory weights, J. Chem. Theory Comput., 15, 1, 127-140 (2019).
 .. [Overy2014] C. Overy, G.H. Booth, N.S. Blunt, J.J. Shepherd, D. Cleland, A. Alavi, Unbiased reduced density matrices and electronic properties from full configuration interaction quantum Monte Carlo, J. Chem. Phys. 141, 244117 (2014).
+.. [Petras21] H.R. Petras, W.Z. Van Benschoten, S.K. Ramadugu, and J.J. Shepherd, The Sign Problem in Density Matrix Quantum Monte Carlo, J. Chem. Theory Comput. (2021).
 .. [Petruzielo12] F.R. Petruzielo, A.A. Holmes, H.J. Changlani, M.P. Nightingale, C. J. Umrigar, Semistochastic projector monte carlo method, Phys. Rev. Lett. 109, 230201 (2012).
 .. [Power74] J.D. Power, R.M. Pitzer, Inequalities for electron repulsion integrals, Chem. Phys. Lett., 478-483 (1974).
 .. [Schwarz] L.R. Schwarz, Projector Quantum Monte Carlo Methods for Linear and Non-linear Wavefunction Ansatzes, PhD Thesis, Cambridge (2017).
@@ -34,6 +35,7 @@ Bibliography
 .. [Spencer19] J.S. Spencer, N.S. Blunt, S. Choi, J. Etrych, M-A. Filip, W.M.C. Foulkes, R.S.T. Franklin, W.J. Handley, F.D. Malone, V.A. Neufeld, R. Di Remigio, T.W. Rogers, C.J.C. Scott, J.J. Shepherd, W.A. Vigor, J. Weston, R. Xu, A.J.W. Thom, The HANDE-QMC Project: Open-Source Stochastic Quantum Chemistry from the Ground State Up, J. Chem. Theory Comput. 15, 3, 1728-1742 (2019).
 .. [Sun18] Q. Sun, T. S. Berkelbach, N. S. Blunt, et. al, PYSCF: The Python-based simulations of chemistry framework, WIREs: Computational Molecular Science 8, 1, e1340 (2018).
 .. [Thom10] A.J.W. Thom, Stochastic Coupled Cluster Theory, Phys. Rev. Lett. 105, 236004 (2010).
+.. [Van_Benschoten21] W.Z. Van Benschoten and J.J. Shepherd, Piecewise Interaction Picture Density Matrix Quantum Monte Carlo, arXiv:2108.06252v1 [physics.chem-ph].
 .. [Umrigar93] C.J. Umrigar, M.P. Nightingale, K.J. Runge, A diffusion Monte Carlo algorithm with very small time-step errors, J. Chem. Phys. 99, 2865 (1993).
 .. [Vigor15] W.A. Vigor, J.S. Spencer, M.J. Bearpark, A.J.W. Thom, Minimising biases in full configuration interaction quantum Monte Carlo, J. Chem. Phys. 142, 104101 (2015).
 .. [Vigor16] W.A. Vigor, J.S. Spencer, M.J. Bearpark, A.J.W. Thom, Understanding and improving the efficiency of full configuration interaction quantum Monte Carlo, J. Chem. Phys. 144, 094110 (2016).

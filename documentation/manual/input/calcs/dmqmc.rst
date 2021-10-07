@@ -235,6 +235,15 @@ dmqmc options
 
     Explicitly symmetrize the density matrix, thus only sampling one triangle of the
     matrix.  This can yield significant improvements in stochastic error in some cases.
+``symmetric``
+    type: boolean.
+
+    Optional.  Default: true.
+
+    Controls the symmetry of the Bloch equation used to propagate the density matrix
+    through temperature. The default is that the symmetrized version of the Bloch
+    equation is used: `\frac{d}{d\beta}=-\frac{1}{2}\{H,\rho\}`. The asymmetric
+    Bloch equation will not work with the **symmetrize** option.
 ``initiator_level``
     type: integer.
 
@@ -248,6 +257,20 @@ dmqmc options
 
     This is experimental and the user should identity when convergence has been
     reached.
+``walker_scale_factor``
+    type: integer.
+
+    Optional. Default: 1.
+
+    Scales the walker population on initial trial density matrix by a constant
+    factor. In addition, the target population is scaled as well. For example,
+    if the initial and target particle populations were 1000, and a scale factor
+    of 2 was used, the new initial and target particle population will be 2000.
+    Currently only accepts values greater than or equal to 2.
+
+    .. warning::
+
+        This feature is experimental, and results should be tested for accuracy.
 
 .. _ipdmqmc_table:
 
@@ -263,6 +286,19 @@ ipdmqmc options
     If fermi_temperature is set to True then target_beta is interpreted as the inverse reduced temperature
     :math:`\tilde{\beta} = 1/\Theta = T_F/T`, where :math:`T_F` is the Fermi temperature. Otherwise target_beta is taken
     to be in atomic units.
+
+``piecewise_beta``
+    type: float.
+
+    Optional.  Default: **target_beta**.
+
+    Controls the beta value where the propagator is switched from the
+    interaction picture to the Bloch equation. The symmetry of the
+    Bloch equation can be controlled with **post_pip_symmetric_propagation**.
+    The remaining temperature range to the value of **target_beta**
+    is sampled with the Bloch equation as the propagator and is exact on average,
+    see [Van_Benschoten21]_ for more details.
+
 ``initial_matrix``
     type: string.
 
@@ -312,6 +348,36 @@ ipdmqmc options
 
         This feature is experimental and only tested for the 3D uniform electron
         gas.
+
+``post_pip_symmetric_propagation``
+    type: boolean.
+
+    Optional. Default: false.
+
+    If true, uses the symmetric version of the Bloch equation to propagate
+    through temperature, otherwise the asymmetric form is used. 
+
+``count_reweighted_particles``
+    type: boolean.
+
+    Optional. Default: true.
+
+    Only relevant for the grand canonical initialization procedure. If true, we 
+    attempt to keep better track of the number of walkers we are adding to the 
+    trial density matrix. Helpful for ensuring the initial population is closer to the
+    desired value in the input. Generally only applicable when **initial_matrix**
+    is set to 'hartree_fock'. 
+
+``piecewise_shift``
+    type: float.
+
+    Optional.  Default: 0.
+
+    Controls the value of the simulation shift when the propagator is changed from the
+    interaction picture to the Bloch equation, only used when **piecewise_beta** is
+    specified. When moving between the interaction picture and the Bloch equation as the
+    propagator the required shift to control the population exactly are in general vastly 
+    different.
 
 .. _operators_table:
 
@@ -561,3 +627,11 @@ Note that the use of RDMs is currently only available with the Heisenberg model.
     triangle of the RDM labelled by their index.
 
     Valid for ``ground_state`` only.
+``ref_projected_energy``
+    type: boolean.
+
+    Optional.  Default: false.
+
+    Calculate the numerator and denominator for the projected energy as well as
+    the total walker population for the reference row (or column) of the density matrix.
+    Currently only available for read in systems.
