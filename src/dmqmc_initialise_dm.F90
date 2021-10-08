@@ -627,6 +627,7 @@ contains
         use dmqmc_data, only: dmqmc_in_t, free_electron_dm
         use dmqmc_procedures, only: create_diagonal_density_matrix_particle, &
                                     create_diagonal_density_matrix_particle_initiator
+        use proc_pointers, only: sc0_ptr
         use errors
 
         type(sys_t), intent(in) :: sys
@@ -701,7 +702,7 @@ contains
             if (dmqmc_in%all_sym_sectors .or. symmetry_orb_list(sys, occ_list) == sys%symmetry) then
                 if (dmqmc_in%initial_matrix /= free_electron_dm .and. dmqmc_in%metropolis_attempts == 0) nspawn = &
                                 & reweight_spawned_particle(sys, occ_list, target_beta, &
-                                                            energy_shift, spawn%cutoff, pop_real_factor, rng, H00)
+                                                            energy_shift, spawn%cutoff, pop_real_factor, rng)
                 call encode_det(sys%basis, occ_list, f)
                 if (initiator_approx) then
                     call create_diagonal_density_matrix_particle_initiator(f, sys%basis%tot_string_len, &
