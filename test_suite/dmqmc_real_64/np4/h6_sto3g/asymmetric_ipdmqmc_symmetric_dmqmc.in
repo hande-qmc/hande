@@ -1,0 +1,30 @@
+dmqmc {
+    sys = read_in {
+        int_file = 'FCIDUMP',
+    },
+    qmc = {
+        tau = 0.001,
+        init_pop = 1E4,
+        mc_cycles = 10,
+        nreports = 1000,
+        target_population = 1E4,
+        state_size = -100,
+        spawned_state_size = -150,
+        real_amplitudes = true,
+        rng_seed = -1887326254,
+    },
+    dmqmc = {
+        beta_loops = 1,
+    },
+    ipdmqmc = {
+        piecewise_beta = 1,
+        target_beta = 3,
+        symmetric = false,
+        grand_canonical_initialisation = true,
+        post_pip_symmetric_propagation = true,
+    },
+    operators = {
+        energy = true,
+        ref_projected_energy = true,
+    },
+}
