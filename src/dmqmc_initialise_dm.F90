@@ -627,6 +627,7 @@ contains
         use dmqmc_data, only: dmqmc_in_t, free_electron_dm
         use dmqmc_procedures, only: create_diagonal_density_matrix_particle, &
                                     create_diagonal_density_matrix_particle_initiator
+        use errors
 
         type(sys_t), intent(in) :: sys
         type(dmqmc_in_t), intent(in) :: dmqmc_in
@@ -646,10 +647,15 @@ contains
         integer :: ireplica, iorb, ipsip
         integer(int_p) :: nspawn
         integer :: nalpha_allowed, nbeta_allowed, ngen
+        logical :: found_lower_reference
+        real(p) :: Hii
 
         ireplica = 1
         ! Default behaviour is we don't reweight populations.
         nspawn = pop_real_factor
+        ! Used for checking the reference determinant.
+        found_lower_reference = .false.
+        Hii = 0.0_p
 
         if (dmqmc_in%all_spin_sectors) then
             nalpha_allowed = sys%nel
@@ -705,13 +711,27 @@ contains
                             nspawn, ireplica, spawn)
                 end if
 
+                ! Do a simple check to make sure we didn't find a determinant
+                ! lower in energy then the reference.
+                if (dmqmc_in%check_reference) Hii = real(sc0_ptr(sys, f),p)
+                if ((H00 - Hii) > depsilon) then
+                    write(6, '(1X, "# H_{ii}: ", f24.12, 1X, "det = {")', advance='no') Hii
+                    do iorb = 1, size(occ_list)
+                        write(6, '(1X,i5,",")', advance='no') occ_list(iorb)
+                    end do
+                    write(6, '("},")')
+                    call warning('create_initial_density_matrix', 'determinant lower in energy than reference &
+                                                                    & found, exiting after initialization completion!')
+                    if (.not.found_lower_reference) found_lower_reference = .true.
+                end if
+
                 if (dmqmc_in%count_reweighted_particles) then
                     ! Count the total number of particles spawned which
                     ! can very depending on the reweighting step
-                    if (pop_real_factor >= 2) then
-                        ipsip = ipsip + (nspawn/pop_real_factor)
+                    if (pop_real_factor >= 2_int_p) then
+                        ipsip = ipsip + abs(nspawn/pop_real_factor)
                     else
-                        ipsip = ipsip + nspawn
+                        ipsip = ipsip + abs(nspawn)
                     end if
                 else
                     ipsip = ipsip + 1
@@ -720,9 +740,11 @@ contains
             end if
         end do
 
+        if (found_lower_reference) call stop_all('create_initial_density_matrix', 'diagonal determinant lower in energy than reference found!')
+
         contains
 
-            function reweight_spawned_particle(sys, occ_list, beta, energy_shift, spawn_cutoff, real_factor, rng, H00) result(nspawn)
+            function reweight_spawned_particle(sys, occ_list, beta, energy_shift, spawn_cutoff, real_factor, rng) result(nspawn)
 
                 ! Reweight initial density matrix population so that the desired
                 ! diagonal density matrix is sampled.
@@ -748,9 +770,6 @@ contains
                 use proc_pointers, only: energy_diff_ptr
                 use dSFMT_interface, only: dSFMT_t, get_rand_close_open
                 use stoch_utils, only:  stochastic_round_spawned_particle
-                use hamiltonian_molecular, only: slater_condon0_mol_orb_list 
-                use errors
-                use json_out
 
                 type(sys_t), intent(in) :: sys
                 integer, intent(in) :: occ_list(:)
@@ -759,9 +778,6 @@ contains
                 integer(int_p), intent(in) :: spawn_cutoff
                 integer(int_p), intent(in) :: real_factor
                 type(dSFMT_t), intent(inout) :: rng
-                real(p), intent(in) :: H00
-
-                type(json_out_t) :: js
 
                 integer(int_p) :: nspawn
                 real(p) :: energy_diff, weight
@@ -778,14 +794,6 @@ contains
                 weight = exp(-beta*(energy_diff-energy_shift)) * real_factor
                 ! Integerise.
                 nspawn = stochastic_round_spawned_particle(spawn_cutoff, weight, rng)
-
-                ! Do a simple check to make sure we didn't find a determinant
-                ! lower in energy then the reference.
-                if ((H00 - real(slater_condon0_mol_orb_list(sys, occ_list),p)) > depsilon) then
-                    write(6, '(1X, "# H_{ii}: ", es26.16)') slater_condon0_mol_orb_list(sys, occ_list)
-                    call json_write_key(js, 'det', occ_list)
-                    call stop_all('create_initial_density_matrix', 'diagonal determinant lower in energy than reference found!')
-                end if
 
             end function reweight_spawned_particle
 

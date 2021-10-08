@@ -1395,6 +1395,7 @@ contains
         !     symmetrize = true/false,
         !     initiator_level = ilevel,
         !     symmetric = true/false,
+        !     walker_scale_factor = factor,
         ! }
         ! ipdmqmc = { -- sets ipdmqmc to true
         !     initial_beta = b,
@@ -1402,7 +1403,10 @@ contains
         !     grand_canonical_initialisation = true/false,
         !     metropolis_attempts = nattempts,
         !     symmetric = true/false,
-        !     piecewise_beta = true/false,
+        !     piecewise_beta = pb,
+        !     piecewise_shift = ps,
+        !     count_reweighted_particles = true/false,
+        !     check_reference = true/false,
         ! }
         ! operators = {
         !     renyi2 = true/false,
@@ -1470,10 +1474,10 @@ contains
                                                                       'find_weights', 'find_weights_start', 'symmetrize',        &
                                                                       'vary_weights', 'initiator_level', 'symmetric',            &
                                                                       'walker_scale_factor']
-        character(30), parameter :: ip_keys(10)    = [character(30) :: 'target_beta', 'initial_beta', 'initial_matrix',          &
+        character(30), parameter :: ip_keys(11)    = [character(30) :: 'target_beta', 'initial_beta', 'initial_matrix',          &
                                                                       'grand_canonical_initialisation', 'metropolis_attempts',   &
                                                                       'symmetric', 'piecewise_beta', 'piecewise_shift',          &
-                                                                      'post_pip_symmetric_propagation',                          &
+                                                                      'post_pip_symmetric_propagation', 'check_reference',       &
                                                                       'count_reweighted_particles']
         character(30), parameter :: op_keys(13)    = [character(30) :: 'renyi2', 'energy', 'energy2', 'staggered_magnetisation',  &
                                                                        'correlation', 'excit_dist', 'kinetic_energy',             &
@@ -1543,6 +1547,7 @@ contains
             call aot_get_val(dmqmc_in%piecewise_shift, err, lua_state, table, 'piecewise_shift')
             call aot_get_val(dmqmc_in%post_pip_symmetric_propagation, err, lua_state, table, 'post_pip_symmetric_propagation', default=.false.)
             call aot_get_val(dmqmc_in%count_reweighted_particles, err, lua_state, table, 'count_reweighted_particles', default=.true.)
+            call aot_get_val(dmqmc_in%check_reference, err, lua_state, table, 'check_reference', default=.true.)
             call warn_unused_args(lua_state, ip_keys, table)
             call aot_table_close(lua_state, table)
         end if

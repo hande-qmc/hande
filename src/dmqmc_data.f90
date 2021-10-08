@@ -219,6 +219,10 @@ type dmqmc_in_t
     logical :: symmetric = .true.
     ! Chemical potential used to initialise density matrix.
     real(p) :: chem_pot = 0.0_p
+    ! Controls whether we check the reference state against the H_{ii} elements
+    ! generated when running IP-DMQMC with the grand canonical initialization
+    ! with the 'hartree--fock' initial mean field density matrix.
+    logical :: check_reference = .true.
 
     ! Input options relating to RDMs in DMQMC.
     type(dmqmc_rdm_in_t) :: rdm
