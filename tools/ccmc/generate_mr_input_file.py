@@ -22,12 +22,12 @@ def k_set_bits_in_n_bits(k,n):
     powers = [1 << e for e in range(n)]
     return [sum(bits) for bits in itertools.combinations(powers, k)]
 
-def interleave(alpha, beta):
+def interleave(abtuple):
     """
-    interleave (1011,1101) = 11011011
+    interleave((1011,1101)) = 11011011
     https://stackoverflow.com/a/39490836
     """
-    
+    alpha, beta = abtuple
     # Works for a max CAS of (8,8)
     #masks = [0x5555,0x3333,0xF0F]
     #powers = [1,2,4]
@@ -181,7 +181,8 @@ if __name__ == "__main__":
     parser.add_argument("-e","--nel", dest='e', help='number of electrons')
     parser.add_argument("-r","--norb", dest='o', help='number of spatial orbitals')
     parser.add_argument("-o", dest='inputname')
-    parser.add_argument("--compress",default=True,type=bool,dest='compress')
+    parser.add_argument("--compress",dest='compress',action='store_true')
+    parser.set_defaults(compress=False)
     parser.add_argument("-f","--nfrozen",dest='nfrozen')
     parser.add_argument("--secref_file",dest='secref_file',help='Name of separate secondary reference file')
     parser.add_argument("--mr_excit_lvl",dest='mr_excit_lvl',help='Allowable excitation level from each reference.')
@@ -193,6 +194,7 @@ if __name__ == "__main__":
     o = int(args.o)
     genlvl = int(args.cclvl)-2
     compress = args.compress
+    print(compress)
     mr_n_frozen = int(args.nfrozen)
     secref_file = args.secref_file
     mr_excit_lvl = int(args.mr_excit_lvl)

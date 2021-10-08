@@ -1385,6 +1385,7 @@ contains
                              end if
                              secondary_ref_keys(i) = trim(string)
                     end do
+                    keys_concat = [keys,secondary_ref_keys]
                 else
                     call aot_get_val(ccmc_in%mr_secref_file, err, lua_state, ccmc_table, 'mr_secref_file')
                     if (err.ne.0) then
@@ -1395,6 +1396,7 @@ contains
                     if (ccmc_in%mr_excit_lvl.eq.-1) then
                         call stop_all('read_ccmc_in','mr_read_in set but mr_excit_lvl unset.')
                     endif
+                    keys_concat = keys
                 endif
 
                 call aot_get_val(str, err, lua_state, ccmc_table, 'mr_acceptance_search')
@@ -1404,8 +1406,9 @@ contains
                     case default
                         ccmc_in%mr_acceptance_search = 0
                 end select
+            else
+                keys_concat = keys
             end if
-            keys_concat = [keys,secondary_ref_keys]
 
             call warn_unused_args(lua_state, keys_concat, ccmc_table)
 
