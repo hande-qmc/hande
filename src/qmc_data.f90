@@ -1076,9 +1076,9 @@ contains
             call json_write_key(js, 'guiding_function', fciqmc%guiding_function)
         end select
         call json_write_key(js, 'quadrature_initiator', fciqmc%quadrature_initiator)
-        call json_write_key(js, 'replica_tricks', fciqmc%replica_tricks, .true.)
-        call json_write_key(js, 'density_matrices', fciqmc%density_matrices, .true.)
-        call json_write_key(js, 'density_matrix_file', fciqmc%density_matrix_file)
+        call json_write_key(js, 'replica_tricks', fciqmc%replica_tricks)
+        call json_write_key(js, 'density_matrices', fciqmc%density_matrices)
+        call json_write_key(js, 'density_matrix_file', fciqmc%density_matrix_file, .true.)
         call json_object_end(js, terminal)
 
     end subroutine fciqmc_in_t_json
