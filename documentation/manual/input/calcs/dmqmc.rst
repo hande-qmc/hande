@@ -334,8 +334,8 @@ ipdmqmc options
 
     Used when performing initialization with **grand_canonical_initialisation**.
     Checks that the diagonal elements `H_{ii}` found are higher in energy than
-    the current reference `H_{00}`. If not, the reweighting step can lead to
-    undesirable behavior such as large walker dumps on single determinants.
+    the current reference `H_{00}`. If not, the reweighting step can possibly lead
+    to undesirable behavior such as large walker dumps on single determinants.
 
     .. warning::
 

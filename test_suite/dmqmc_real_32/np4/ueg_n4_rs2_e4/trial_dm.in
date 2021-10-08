@@ -30,6 +30,7 @@ dmqmc {
         grand_canonical_initialisation = true,
         metropolis_attempts = 100,
         symmetric = false,
+        count_reweighted_particles = false,
     },
     operators = {
         energy = true,

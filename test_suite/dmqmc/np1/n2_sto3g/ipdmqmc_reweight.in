@@ -27,6 +27,8 @@ dmqmc {
         initial_matrix = 'hartree_fock',
         grand_canonical_initialisation = true,
         symmetric = false,
+        check_reference = false,
+        count_reweighted_particles = false,
     },
     operators = {
         energy = true,

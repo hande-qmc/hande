@@ -61,6 +61,15 @@ pop64_mpi = mpi *mc_real_64
 
 _default_ = quick
 
+recheck = dmqmc/np1/n2_sto3g/
+          dmqmc/np1/ueg_n7_rs1_e1_dmqmc/
+          dmqmc/np2/h_cmca4_ks_complex/
+          dmqmc/np4/n2_sto3g/
+          dmqmc_real_32/np2/n2_sto3g/
+          dmqmc_real_32/np4/ueg_n4_rs2_e4/
+          dmqmc_real_64/np4/n2_sto3g/
+          dmqmc_real_64/np4/ueg_n4_rs2_e4/
+          
 # A curated list of short tests (at least each directory contains one test that takes
 # under 10s to run).  The goal is to provide test categories for POP_SIZE=32 and
 # POP_SIZE=64 configurations which take under 5 minutes to run on 4 cores of a decent

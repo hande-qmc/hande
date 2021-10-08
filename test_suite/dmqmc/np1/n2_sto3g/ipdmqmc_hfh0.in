@@ -27,6 +27,7 @@ dmqmc {
         symmetric = false,
         initial_matrix = 'free_electron',
         grand_canonical_initialisation = true,
+        check_reference = false,
     },
     operators = {
         energy = true,

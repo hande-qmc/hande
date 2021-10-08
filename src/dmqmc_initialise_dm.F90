@@ -718,7 +718,7 @@ contains
                 if (dmqmc_in%check_reference) Hii = real(sc0_ptr(sys, f),p)
                 if ((new_H00 - Hii) > depsilon) then
                     new_H00 = Hii
-                    write(6, '(1X, "# H_{ii}: ", f16.12, 1X, "det = {")', advance='no') Hii
+                    write(6, '(1X, "# H_{ii}: ", f22.12, 1X, "det = {")', advance='no') Hii
                     do iorb = 1, size(occ_list)
                         write(6, '(1X,i0,",")', advance='no') occ_list(iorb)
                     end do
