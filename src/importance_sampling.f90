@@ -450,11 +450,20 @@ contains
         real(p) :: diff_ijab
 
         if (abs(hmatel) > depsilon) then
-            ! The determinant after excitation
-            ! [Todo] Check the logic here, something isn't quite right
-            ! with how the new det and the old det are being compared.
+            ! [Todo] Rewrite this to instead calculate the difference based on
+            ! the 1 and 2 particle integrals that differ between the two 
+            ! determinants SC0 to speed it up?
+            ! H_{ii} = \sum_{m}^{N} <m|h|m> + \sum_{m}^{N} \sum_{n>m}^{N} <mn||mn>
+            ! E_i - E_k = <a|h|a> + <b|h|b> - <i|h|i> - <j|h|j>
+            !            + \sum_{a,b} \sum_{j!=a,b,i,j}^{N} <mn||mn>
+            !            + <ab||ab>
+            !            - \sum_{i,j} \sum_{j!=a,b,i,j}^{N} <mn||mn>
+            !            - <ij||ij>
+            ! sys%read_in%one_e_h_integrals%integrals(ispin, isym)%v(indx)
+            ! sys%read_in%coulomb_integrals%integrals(ispin)%v(indx)
+            diff_ijab = 0.0_p
             call create_excited_det(sys%basis, cdet%f, connection, f_new)
-            diff_ijab = (sc0_ptr(sys, cdet%f2) - sc0_ptr(sys, f_new))
+            diff_ijab = (sc0_ptr(sys, f_new) - sc0_ptr(sys, cdet%f))
             hmatel = exp(-trial_func(sys%max_number_excitations+1)*diff_ijab) * hmatel
         end if
 
