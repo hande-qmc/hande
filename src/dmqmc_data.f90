@@ -446,6 +446,7 @@ contains
         end select
         call json_write_key(js, 'grand_canonical_initialisation', dmqmc%grand_canonical_initialisation)
         call json_write_key(js, 'count_reweighted_particles', dmqmc%count_reweighted_particles)
+        call json_write_key(js, 'check_reference', dmqmc%check_reference)
         call json_write_key(js, 'symmetric', dmqmc%symmetric)
         call json_write_key(js, 'chem_pot', dmqmc%chem_pot)
         call json_write_key(js, 'metropolis_attempts', dmqmc%metropolis_attempts, terminal=.true.)

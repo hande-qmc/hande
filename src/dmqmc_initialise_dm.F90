@@ -212,7 +212,7 @@ contains
             call direct_annihilation(sys, rng, qmc_state%ref, annihilation_flags, psip_list, spawn)
         end if
 
-        if (dmqmc_in%walker_scale_factor > 0.0_p) then
+        if (dmqmc_in%walker_scale_factor > 2.0_p) then
             ! If we are running the scaling procedure of the initial walker
             ! distribution perform that scaling now.
             ! Have to do real(int()) because the walkers are stored in integer
