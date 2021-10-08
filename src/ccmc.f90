@@ -1309,17 +1309,9 @@ contains
 
         contrib%cluster%amplitude = contrib%cluster%amplitude / abs(contrib%cluster%amplitude)
         
-        call perform_ccmc_spawning_attempt(rng, sys, qs, ccmc_in, logging_info, bloom_stats, contrib, 1, ps_stat)
-        if (qs%mr_acceptance_search==0) then
-            do i = 1, nspawnings_cluster
-                call perform_ccmc_spawning_attempt(rng, sys, qs, ccmc_in, logging_info, bloom_stats, contrib, 1, ps_stat)
-            end do
-        else
-            do i = 1, nspawnings_cluster
-                call perform_ccmc_spawning_attempt(rng, sys, qs, ccmc_in, logging_info, &
-                    bloom_stats, contrib, 1, ps_stat)
-            end do
-        end if
+        do i = 1, nspawnings_cluster
+            call perform_ccmc_spawning_attempt(rng, sys, qs, ccmc_in, logging_info, bloom_stats, contrib, 1, ps_stat)
+        end do
 
     end subroutine do_nc_ccmc_propagation
 
