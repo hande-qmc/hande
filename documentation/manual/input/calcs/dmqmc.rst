@@ -327,6 +327,21 @@ ipdmqmc options
     requiring a non-zero value of metropolis_attempts to be set for the correct
     distribution to be reached.
 
+``check_reference``
+    type: boolean.
+
+    Optional.  Default: true.
+
+    Used when performing initialization with **grand_canonical_initialisation**.
+    Checks that the diagonal elements `H_{ii}` found are higher in energy than
+    the current reference `H_{00}`. If not, the reweighting step can lead to
+    undesirable behavior such as large walker dumps on single determinants.
+
+    .. warning::
+
+        It is recommended that the orbital single particle eigenvalues in the
+        FCIDUMP are recalculated with the new reference.
+
 ``metropolis_attempts``
     type: integer.
 

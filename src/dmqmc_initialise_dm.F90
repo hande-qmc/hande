@@ -649,7 +649,7 @@ contains
         integer(int_p) :: nspawn
         integer :: nalpha_allowed, nbeta_allowed, ngen
         logical :: found_lower_reference
-        real(p) :: Hii
+        real(p) :: Hii, new_H00
 
         ireplica = 1
         ! Default behaviour is we don't reweight populations.
@@ -657,6 +657,7 @@ contains
         ! Used for checking the reference determinant.
         found_lower_reference = .false.
         Hii = 0.0_p
+        new_H00 = H00
 
         if (dmqmc_in%all_spin_sectors) then
             nalpha_allowed = sys%nel
@@ -715,10 +716,11 @@ contains
                 ! Do a simple check to make sure we didn't find a determinant
                 ! lower in energy then the reference.
                 if (dmqmc_in%check_reference) Hii = real(sc0_ptr(sys, f),p)
-                if ((H00 - Hii) > depsilon) then
-                    write(6, '(1X, "# H_{ii}: ", f24.12, 1X, "det = {")', advance='no') Hii
+                if ((new_H00 - Hii) > depsilon) then
+                    new_H00 = Hii
+                    write(6, '(1X, "# H_{ii}: ", f16.12, 1X, "det = {")', advance='no') Hii
                     do iorb = 1, size(occ_list)
-                        write(6, '(1X,i5,",")', advance='no') occ_list(iorb)
+                        write(6, '(1X,i0,",")', advance='no') occ_list(iorb)
                     end do
                     write(6, '("},")')
                     call warning('create_initial_density_matrix', 'determinant lower in energy than reference &
