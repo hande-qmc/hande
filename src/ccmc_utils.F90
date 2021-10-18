@@ -453,12 +453,12 @@ contains
         if (D0_proc == iproc) then
             ! Let's be a bit faster: unroll loops and skip over the reference
             ! between the loops.
-            do i = 2, d0_pos-1
+            do i = 2, D0_pos-1
                 cumulative_pops(i) = cumulative_pops(i-1) + &
                                         get_pop_contrib(pops(:,i), real_factor, complx)
                 if (calc_dist) then
                     if (ex_lvls(i-1) < ex_lvls(i)) then
-                        ! i-1 is last entry of it's excitation level.
+                        ! i-1 is last entry of its excitation level.
                         ! Need to update all intervening excitation levels
                          do j = ex_lvls(i-1), ex_lvls(i) - 1
                             ex_lvl_dist%cumulative_nstates_ex_lvl(j) = i-1
@@ -471,16 +471,16 @@ contains
             ! Set cumulative on the reference to be the running total merely so we
             ! can continue accessing the running total from the i-1 element in the
             ! loop over excitors in slots above the reference.
-            if (d0_pos == 1) then
-                cumulative_pops(d0_pos) = 0
+            if (D0_pos == 1) then
+                cumulative_pops(D0_pos) = 0
             end if
-            if (d0_pos > 1) cumulative_pops(d0_pos) = cumulative_pops(d0_pos-1)
-            do i = d0_pos+1, nactive
+            if (D0_pos > 1) cumulative_pops(D0_pos) = cumulative_pops(D0_pos-1)
+            do i = D0_pos+1, nactive
                 cumulative_pops(i) = cumulative_pops(i-1) + &
                                         get_pop_contrib(pops(:,i), real_factor, complx)
                 if (calc_dist) then
                     if (ex_lvls(i-1) < ex_lvls(i)) then
-                        ! i-1 is last entry of it's excitation level.
+                        ! i-1 is last entry of its excitation level.
                         ! Need to update all intervening excitation levels
                          do j = ex_lvls(i-1), ex_lvls(i) - 1
                             ex_lvl_dist%cumulative_nstates_ex_lvl(j) = i-1

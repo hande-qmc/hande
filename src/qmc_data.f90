@@ -68,13 +68,6 @@ enum, bind(c)
     enumerator :: excit_gen_heat_bath_single
 end enum
 
-enum, bind(c)
-    ! BZ: [TODO] - document these propagators
-    enumerator :: propagator_linear
-    enumerator :: propagator_wall_ch_5th
-end enum
-
-
 ! Types of semi-stochastic space.
 enum, bind(c)
     ! This option uses an empty deterministic space, and so turns
@@ -246,7 +239,8 @@ type qmc_in_t
     real(p) :: quasi_newton_pop_control = -1.0_p
 
     ! BZ - [TODO]: document propagators
-    integer :: propagator
+    logical :: chebyshev = .false.
+    integer :: chebyshev_order
 
 end type qmc_in_t
 
@@ -853,6 +847,9 @@ type propagator_t
 end type propagator_t
 
 type qmc_state_t
+    
+    use propagators, only: cheb_t
+
     ! When performing dmqmc calculations, dmqmc_factor = 2.0. This factor is
     ! required because in DMQMC calculations, instead of spawning from one end with
     ! the full probability, we spawn from two different ends with half probability each.
@@ -923,6 +920,8 @@ type qmc_state_t
     type(dSFMT_state_t) :: rng_state
     ! BK tree object for multi-reference searching
     type(tree_t) :: secondary_ref_tree
+
+    type(cheb_t) :: cheby_prop
 end type qmc_state_t
 
 ! Copies of various settings that are required during annihilation.  This avoids having to pass through lots of different

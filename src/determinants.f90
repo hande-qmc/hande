@@ -472,5 +472,36 @@ contains
 
     end function sum_fock_values_bit_string
 
+    pure function reflect_bit_string(sys, f) result(f_reflect)
+
+        ! Used to find the highest determinant, for example
+        ! In:
+        ! sys: system being studied.  
+        ! f: bit string to be reflected.
+        ! Returns:
+        !   f_reflect: the reflected bit string.
+
+        use system, only: sys_t
+
+        type(sys_t), intent(in) :: sys
+        integer(i0), intent(in) :: f(:)
+        integer(i0) :: f_reflect(:)
+
+        integer :: i, src(2), dst(2) ! src(index, bit_location)
+
+        allocate(f_reflect(size(f)), source=0_i0)
+
+        do i = 1, sys%basis%nbasis
+            ! Work out the source and the destination
+            src(1) = ceiling(i/i0_length) ! Fortran is 1-indexed
+            src(2) = i%i0_length
+            dst(1) = ceiling((sys%basis%nbasis-i) / i0_length)
+            dst(2) = (sys%basis%nbasis-i)%i0_length
+
+            call mvbits(f(src(1)), src(2), 1, f_reflect(dst(1)), dst(2))
+        end do
+        
+    end function reflect_bit_string
+
 
 end module determinants

@@ -1,0 +1,66 @@
+module propagators
+! For now only includes the wall-Chebyshev propagator
+! [TODO] - Maybe move the quasi-Newton propagator here?
+use const
+
+implicit none
+
+contains
+
+    type cheb_t
+        ! The wall-Chebyshev propagator, where instead of 
+        ! (linearly) approximating e^{-\tau H}, we directly approximate \lim_{\tau -> \inf} e^{-\tau H},
+        ! which is the "wall function", and we expand the wall function in Chebyshev polynomials.
+        ! The Chebyshev polynomials are amenable for use as projectors for the following reasons:
+        !   1. They are bound by [-1,1] in the (estimated) spectral range, becoming small near the upper spectral bound
+        !   2. They diverge to +\inf as E -> -\inf, meaning the lower spectral bound can be an estimate
+        !   3. Sums of up to m-th order Chebyshev polynomials can be written as products of m linear projectors, each involving
+        !       the m-th zero of the the original sum.
+        !   4. Most importantly they kill off non ground states (arbitrarily, by making m large) faster than the linear projector.
+        ! See 10.1021/acs.jctc.6b00639
+        integer :: order = 5 ! Default, same as 10.1021/acs.jctc.6b00639
+        real(p) :: spectral_range
+        real(p), allocatable :: zeroes(:)
+
+    end type cheb_t
+
+    subroutine init_chebyshev(qs, shift)
+        ! This will be called after the shoulder is reached (via the linear propagator)
+
+        ! In:
+        !   shift: estimate of the current correlation energy, either the inst. proj. energy or the shift.
+        ! In/out:
+        !   qs: the qmc_state_t object containing the Chebyshev propagator being initialised.
+
+        ! Initial estimate of the spectral range
+        ! Two options: 
+        !   1. E_{highest determinant} - E_{HF}
+        !   2. Gershgorin circles
+
+        ! Set up initial zeroes
+        use determinants, only: reflect_bit_string
+        use proc_pointers, only: sc0_ptr
+
+        type(cheb_t), intent(inout) :: CHEBPROP
+        real(p), intent(in) :: shift
+        integer(i0), allocatable :: fmax(:)
+
+        allocate(CHEBPROP%zeroes(CHEBPROP%order))
+        call chebyshev_zeroes(CHEBPROP, shift) 
+        fmax = reflect_bit_string(reference%f0)
+        CHEBPROP%spectral_range = sc0_ptr(sys, f_max) - sc0_ptr(sys, reference%f0)
+
+
+    end subroutine init_wall_chebyshev
+
+    subroutine chebyshev_zeroes(CHEBPROP, shift)
+
+        ! S_i = E_0 + R(1 - cos(i/(m + 1/2)*pi))
+
+        do i = 1, CHEBPROP%order
+            CHEBPROP%zeroes(i) = shift + CHEBPROP%spectral_range * (1 - cos(pi*i / (CHEBPROP%order+0.5) ))
+        end do
+
+    end subroutine chebyshev_zeroes
+
+end module propagators
