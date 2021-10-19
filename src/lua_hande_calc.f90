@@ -428,6 +428,7 @@ contains
         !       logging = { ... },
         !       output = { ... },
         !       blocking = { ... },
+        !       semistoch = { ... },
         !       qmc_state = qmc_state,
         !    }
 
@@ -475,7 +476,7 @@ contains
         integer :: opts, io_unit
         real :: t1, t2
         character(10), parameter :: keys(9) = [character(10) :: 'sys', 'qmc', 'ccmc', 'restart', 'reference', 'qmc_state', &
-                                                                'logging', 'output', 'blocking']
+                                                                'logging', 'output', 'blocking', 'semistoch']
 
         call cpu_time(t1)
 
@@ -499,8 +500,8 @@ contains
         end if
 
         call read_blocking_in(lua_state, opts, blocking_in)
-        ! note that semi-stochastic is not (yet) available in CCMC.
-        !call read_semi_stoch_in(lua_state, opts, qmc_in, semi_stoch_in)
+
+        call read_semi_stoch_in(lua_state, opts, qmc_in, semi_stoch_in)
         call read_restart_in(lua_state, opts, restart_in)
         ! load balancing is not available in CCMC; must use default settings.
         call read_reference_t(lua_state, opts, reference, sys)

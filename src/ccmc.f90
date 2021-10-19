@@ -303,7 +303,7 @@ contains
                                   init_amp_psel_accumulation
         use ccmc_death_spawning, only: stochastic_ccmc_death_nc
         use ccmc_utils, only: get_D0_info, init_contrib, dealloc_contrib, cumulative_population, init_ex_lvl_dist_t, &
-                              update_ex_lvl_dist, regenerate_ex_levels_psip_list
+                              update_ex_lvl_dist, regenerate_ex_levels_psip_list, hamil_cc_transform
         use determinants, only: alloc_det_info_t, dealloc_det_info_t, sum_fock_values_bit_string, sum_fock_values_occ_list, &
                                 decode_det
         use determinant_data, only: det_info_t
@@ -319,10 +319,11 @@ contains
         use replica_rdm, only: update_rdm, calc_rdm_energy, write_final_rdm
 
         use qmc_data, only: qmc_in_t, ccmc_in_t, semi_stoch_in_t, restart_in_t
-        use qmc_data, only: blocking_in_t
+        use qmc_data, only: blocking_in_t, semi_stoch_t
         use qmc_data, only: load_bal_in_t, qmc_state_t, annihilation_flags_t, estimators_t, blocking_t
         use qmc_data, only: qmc_in_t_json, ccmc_in_t_json, semi_stoch_in_t_json, restart_in_t_json
         use qmc_data, only: blocking_in_t_json, excit_gen_power_pitzer_orderN, excit_gen_heat_bath
+        use qmc_data, only: empty_determ_space, semi_stoch_separate_annihilation
         use reference_determinant, only: reference_t, reference_t_json
         use check_input, only: check_qmc_opts, check_ccmc_opts, check_blocking_opts
         use json_out, only: json_out_t, json_object_init, json_object_end
@@ -330,6 +331,8 @@ contains
         use energy_evaluation, only: get_sanitized_projected_energy, get_sanitized_projected_energy_cmplx
         use blocking, only: write_blocking_report_header, init_blocking, do_blocking, deallocate_blocking, &
                             write_blocking_report, update_shift_damping
+        use semi_stoch, only: check_if_determ, determ_projection
+        use semi_stoch, only: dealloc_semi_stoch_t, init_semi_stoch_t, init_semi_stoch_t_flags, set_determ_info
 
         use logging, only: init_logging, end_logging, prep_logging_mc_cycle, write_logging_calc_ccmc
         use logging, only: logging_in_t, logging_t, logging_in_t_json, logging_t_json, write_logging_select_ccmc
@@ -514,6 +517,11 @@ contains
         end if
         if (debug) call init_amp_psel_accumulation(qs%ref%max_ex_level+2, logging_info, ccmc_in%linked, selection_data)
 
+        ! Some initial semi-stochastic parameters.
+        call init_semi_stoch_t_flags(determ, size(qs%psip_list%states, dim=2))
+        ! Turn semi-stochastic on immediately unless asked otherwise.
+        semi_stoch_iter = max(semi_stoch_in%start_iter, qs%mc_cycles_done+1)
+
         nparticles_old = qs%psip_list%tot_nparticles
 
         ! Initialise D0_pos to be somewhere (anywhere) in the list.
@@ -552,9 +560,6 @@ contains
 
         ! Initialise timer.
         call cpu_time(t1)
-
-        ! The iteration on which to start performing semi-stochastic.
-        semi_stoch_iter = qs%mc_cycles_done + semi_stoch_in%start_iter
 
         ! Should we dump a restart file just before the shift is turned on?
         dump_restart_shift = restart_in%write_restart_shift

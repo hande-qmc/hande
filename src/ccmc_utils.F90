@@ -875,4 +875,44 @@ contains
 
     end subroutine regenerate_ex_levels_psip_list
 
+    subroutine hamil_cc_transform(hamil, dets, f0)
+
+        ! Each determinant has a unique sign in CCMC (see comments above at convert_excitor_to_determinant)
+        ! this subroutine is called once at semi_stoch_iter to ensure the deterministic space determinants have the correct signs.
+        ! In: 
+        !   dets: list of determinants in the deterministic space.
+        !   f0: the reference determinant.
+        ! In/out:
+        !   hamil: the detministic subspace of the Hamiltonian saved in the CSR format.
+
+
+        ! [todo]
+        ! - linked
+        ! - docs
+
+        use csr, only: csrp_t
+        use excitations, only: get_excitation_level
+
+        type(csrp_t), intent(inout) :: hamil
+        integer(i0), intent(in) :: dets(:,:), f0(:)
+
+        integer :: ndets, idet, jj, jdet, sgn_i, sgn_j, excit_level
+
+        ndets = size(dets, dim=2) ! dets = (sys%basis%tensor_label_len, ndets)
+
+        do idet = 1, ndets 
+            excit_level = get_excitation_level(f0, dets(:,idet))
+            call convert_excitor_to_determinant(dets(:,idet), excit_level, sgn_i, f0)
+            ! loops of the nonzero entries of this row, this is safe because the diagonal element is guaranteed to be nonzero
+            do jj = hamil%row_ptr(idet)+1, hamil%row_ptr(idet+1) 
+                jdet = hamil%col_ind(jj) ! The col_ind of the last entry above the current row
+                excit_level = get_excitation_level(f0, dets(:,jdet))
+                call convert_excitor_to_determinant(dets(:,jdet), excit_level, sgn_j, f0)
+                hamil%mat(jj) = hamil%mat(jj)*sgn_i*sgn_j
+            end do
+        end do
+
+    end subroutine hamil_cc_transform
+
+
 end module ccmc_utils

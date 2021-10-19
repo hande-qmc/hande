@@ -27,6 +27,7 @@ type csrp_t
     ! row_ptr(i) gives the location in mat of the first non-zero element in row
     ! i, i.e. if mat(k) = M_{ij}, then row_ptr(i) <= k < row_ptr(i+1).  By
     ! convention, row_ptr(nrow+1) = nnz+1.
+    ! Alternatively, row_ptr(i) gives the total number of non-zero elements above that row. 
     integer, allocatable :: row_ptr(:) ! (nrow+1)
     ! WARNING: if the matrix is symmetric, it is assumed that the programmer
     ! only stores the uppper *or* lower triangle of the matrix.
