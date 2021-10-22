@@ -95,6 +95,46 @@ label : string
 
     return [c for c in columns if label not in c]
 
+def vvl_sorting(columns):
+    '''Organize observable list to be in a somewhat reasonable order.
+
+Parameters
+----------
+columns : list
+    List of column names.
+'''
+    vvl_columns = [ 
+                'Beta',
+                'Tr[Hp]/Tr[p]',             'Tr[Hp]/Tr[p]_error',
+                'Trace',                    'Trace s.d.',
+                'Re{Tr[Hp]/Tr[p]}',         'Re{Tr[Hp]/Tr[p]}_error',
+                'Re{Trace}',                'Re{Trace} s.d.',
+                'Re{Tr[Hp]}',               'Re{Tr[Hp]} s.d.',
+                'Im{Tr[Hp]/Tr[p]}',         'Im{Tr[Hp]/Tr[p]}_error',
+                'Im{Trace}',                'Im{Trace} s.d.',
+                'Im{Tr[Hp]}',               'Im{Tr[Hp]} s.d.',
+                'Shift',                    'Shift s.d.',
+                '# particles',              '# particles s.d.',
+                'Tr[Hp]',                   'Tr[Hp] s.d.',
+                'Tr[p0H0]/Tr[p00]',         'Tr[p0H0]/Tr[p00]_error',
+                r'\rho_00',                 r'\rho_00 s.d.',
+                'Tr[p0H0]',                 'Tr[p0H0] s.d.',
+                'Re{Tr[p0H0]/Tr[p00]}',     'Re{Tr[p0H0]/Tr[p00]}_error',
+                r'Re{\rho_00}',             r'Re{\rho_00} s.d.',
+                'Re{Tr[p0H0]}',             'Re{Tr[p0H0]} s.d.',
+                'Im{Tr[p0H0]/Tr[p00]}',     'Im{Tr[p0H0]/Tr[p00]}_error',
+                r'Im{\rho_00}',             r'Im{\rho_00} s.d.',
+                'Im{Tr[p0H0]}',             'Im{Tr[p0H0]} s.d.',
+                r'# \rho_{0j} psips',       r'# \rho_{0j} psips s.d.',
+                'N_beta',
+        ]
+    icol = 0
+    for vvlc in vvl_columns:
+        if vvlc in columns:
+            columns.pop(columns.index(vvlc))
+            columns.insert(icol,vvlc)
+            icol += 1
+    return columns
 
 def main(args):
     '''Run data analysis on finite-temperature HANDE output.
@@ -141,23 +181,16 @@ None.
                                                     ('Suu_' in c) or
                                                     ('Sud_' in c)])
     if options.very_very_loud:
-        # Attempt to put new output(s) in a somewhat reasonible order.
-        vvl_columns = [ 'Beta', 'Tr[Hp]/Tr[p]', 'Tr[Hp]/Tr[p]_error', 'Trace',
-        'Trace s.d.', 'Re{Tr[Hp]/Tr[p]}', 'Re{Tr[Hp]/Tr[p]}_error', 'Re{Trace}',
-        'Re{Trace} s.d.', 'Re{Tr[Hp]}', 'Re{Tr[Hp]} s.d.', 'Im{Tr[Hp]/Tr[p]}',
-        'Im{Tr[Hp]/Tr[p]}_error', 'Im{Trace}', 'Im{Trace} s.d.', 'Im{Tr[Hp]}',
-        'Im{Tr[Hp]} s.d.', 'Shift', 'Shift s.d.', '# particles', '# particles s.d.',
-        'Tr[Hp]', 'Tr[Hp] s.d.', 'Tr[p0H0]/Tr[p00]', 'Tr[p0H0]/Tr[p00]_error',
-        r'\rho_00', r'\rho_00 s.d.', 'Tr[p0H0]', 'Tr[p0H0] s.d.', 'Re{Tr[p0H0]/Tr[p00]}',
-        'Re{Tr[p0H0]/Tr[p00]}_error', r'Re{\rho_00}', r'Re{\rho_00} s.d.', 'Re{Tr[p0H0]}',
-        'Re{Tr[p0H0]} s.d.', 'Im{Tr[p0H0]/Tr[p00]}', 'Im{Tr[p0H0]/Tr[p00]}_error',
-        r'Im{\rho_00}', r'Im{\rho_00} s.d.', 'Im{Tr[p0H0]}', 'Im{Tr[p0H0]} s.d.',
-        r'# \rho_{0j} psips', r'# \rho_{0j} psips s.d.', 'N_beta',]
+        # If we are dumping everything from the output, perform some sorting
+        # to make things easier to read.
+        columns = vvl_sorting(columns)
+    else:
+        # At the very least, the beta and energy data should come first.
         icol = 0
-        for vvlc in vvl_columns:
-            if vvlc in columns:
-                columns.pop(columns.index(vvlc))
-                columns.insert(icol,vvlc)
+        for col_name in ['Beta','Tr[Hp]/Tr[p]','Tr[Hp]/Tr[p]_error']:
+            if col_name in columns:
+                columns.pop(columns.index(col_name))
+                columns.insert(icol,col_name)
                 icol += 1
 
     if options.output == 'csv':
