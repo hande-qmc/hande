@@ -520,56 +520,34 @@ results : :class:`pandas.DataFrame`
 
     # If requested, add the averaged trace profiles to results.
     if trace:
-        if 'Trace' in columns:
-            results['Trace'] = means['Trace']
-            results['Trace s.d.'] = np.sqrt(covariances.xs('Trace',level=1)['Trace'])
-        if 'Trace 2' in columns:
-            results['Trace 2'] = means['Trace 2']
-            results['Trace 2 s.d.'] = np.sqrt(covariances.xs('Trace 2',level=1)['Trace 2'])
-        if 'Re{Trace}' in columns:
-            results['Re{Trace}'] = means['Re{Trace}']
-            results['Re{Trace} s.d.'] = np.sqrt(covariances.xs('Re{Trace}',level=1)['Re{Trace}'])
-        if 'Im{Trace}' in columns:
-            results['Im{Trace}'] = means['Im{Trace}']
-            results['Im{Trace} s.d.'] = np.sqrt(covariances.xs('Im{Trace}',level=1)['Im{Trace}'])
-        if r'\rho_00' in columns:
-            results[r'\rho_00'] = means[r'\rho_00']
-            results[r'\rho_00 s.d.'] = np.sqrt(covariances.xs(r'\rho_00',level=1)[r'\rho_00'])
-        if r'Re{\rho_00}' in columns:
-            results[r'Re{\rho_00}'] = means[r'Re{\rho_00}']
-            results[r'Re{\rho_00} s.d.'] = \
-                np.sqrt(covariances.xs(r'Re{\rho_00}',level=1)[r'Re{\rho_00}'])
-        if r'Im{\rho_00}' in columns:
-            results[r'Im{\rho_00}'] = means[r'Im{\rho_00}']
-            results[r'Im{\rho_00} s.d.'] = \
-                np.sqrt(covariances.xs(r'Im{\rho_00}',level=1)[r'Im{\rho_00}'])
+        trace_keys = [
+                'Trace',
+                'Trace 2',
+                'Re{Trace}',
+                'Im{Trace}',
+                r'\rho_00',
+                r'Re{\rho_00}',
+                r'Im{\rho_00}',
+            ]
+        for key in trace_keys:
+            if key in columns:
+                results[key] = means[key]
+                results[key+' s.d.'] = np.sqrt(covariances.xs(key,level=1)[key])
 
     # If requested, return the averaged energy numerator profile to the results.
     if energy_numerator:
-        if r'\sum\rho_{ij}H_{ji}' in columns:
-            results['Tr[Hp]'] = means[r'\sum\rho_{ij}H_{ji}']
-            results['Tr[Hp] s.d.'] = \
-                np.sqrt(covariances.xs(r'\sum\rho_{ij}H_{ji}',level=1)[r'\sum\rho_{ij}H_{ji}'])
-        if r'Re{\sum \rho H}' in columns:
-            results['Re{Tr[Hp]}'] = means[r'Re{\sum \rho H}']
-            results['Re{Tr[Hp]} s.d.'] = \
-                np.sqrt(covariances.xs(r'Re{\sum \rho H}',level=1)[r'Re{\sum \rho H}'])
-        if r'Im{\sum \rho H}' in columns:
-            results['Im{Tr[Hp]}'] = means[r'Im{\sum \rho H}']
-            results['Im{Tr[Hp]} s.d.'] = \
-                np.sqrt(covariances.xs(r'Im{\sum \rho H}',level=1)[r'Im{\sum \rho H}'])
-        if r'\sum\rho_{0j}H_{j0}' in columns:
-            results[r'Tr[p0H0]'] = means[r'\sum\rho_{0j}H_{j0}']
-            results[r'Tr[p0H0] s.d.'] = \
-                np.sqrt(covariances.xs(r'\sum\rho_{0j}H_{j0}',level=1)[r'\sum\rho_{0j}H_{j0}'])
-        if r'Re{Sum\rho_0j H_j0}' in columns:
-            results[r'Re{Tr[p0H0]}'] = means[r'Re{Sum\rho_0j H_j0}']
-            results[r'Re{Tr[p0H0]} s.d.'] = \
-                np.sqrt(covariances.xs(r'Re{Sum\rho_0j H_j0}',level=1)[r'Re{Sum\rho_0j H_j0}'])
-        if r'Im{Sum\rho_0j H_j0}' in columns:
-            results[r'Im{Tr[p0H0]}'] = means[r'Im{Sum\rho_0j H_j0}']
-            results[r'Im{Tr[p0H0]} s.d.'] = \
-                np.sqrt(covariances.xs(r'Im{Sum\rho_0j H_j0}',level=1)[r'Im{Sum\rho_0j H_j0}'])
+        numerator_key_val = {
+                r'\sum\rho_{ij}H_{ji}'  : 'Tr[Hp]',
+                r'Re{\sum \rho H}'      : 'Re{Tr[Hp]}',
+                r'Im{\sum \rho H}'      : 'Im{Tr[Hp]}',
+                r'\sum\rho_{0j}H_{j0}'  : r'Tr[p0H0]',
+                r'Re{Sum\rho_0j H_j0}'  : r'Re{Tr[p0H0]}',
+                r'Im{Sum\rho_0j H_j0}'  : r'Im{Tr[p0H0]}',
+            }
+        for (k,v) in numerator_key_val.items():
+            if k in columns:
+                results[v] = means[k]
+                results[v+' s.d.'] = np.sqrt(covariances.xs(k,level=1)[k])
 
     # If requested, return the averaged walker population profile to the results.
     if population:
