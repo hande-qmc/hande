@@ -49,6 +49,23 @@ None.
         ('Re{Tr[p0H0]/Tr[p00]}', r'Re{Sum\rho_0j H_j0}'),
         ('Im{Tr[p0H0]/Tr[p00]}', r'Im{Sum\rho_0j H_j0}'),
     ])
+    # A dictionary of all trace keys, so alternative keys are accessible
+    denominators = dict([
+        ('Tr[Hp]/Tr[p]','Trace'),
+        ('Tr[H2p]/Tr[p]','Trace'),
+        ('Tr[Sp]/Tr[p]','Trace'),
+        ('Tr[Mp]/Tr[p]','Trace'),
+        ('Tr[Tp]/Tr[p]','Trace'),
+        ('Tr[Up]/Tr[p]','Trace'),
+        ('Tr[H0p]/Tr[p]','Trace'),
+        ('Tr[HIp]/Tr[p]','Trace'),
+        ('VI', 'Trace'),
+        ('Re{Tr[Hp]/Tr[p]}', r'Re{Trace}'),
+        ('Im{Tr[Hp]/Tr[p]}', r'Im{Trace}'),
+        ('Tr[p0H0]/Tr[p00]', r'\rho_00'),
+        ('Re{Tr[p0H0]/Tr[p00]}', r'Re{\rho_00}'),
+        ('Im{Tr[p0H0]/Tr[p00]}', r'Im{\rho_00}'),
+    ])
 
     # Add momentum distribution to dictionary of observables to be analaysed.
     add_observable_to_dict(observables, columns, 'n_')
@@ -64,49 +81,18 @@ None.
     num = pd.DataFrame(columns=['mean','standard error'], index=beta_values)
     # DataFrame for the trace from the first replica.
     tr1 = pd.DataFrame(columns=['mean','standard error'], index=beta_values)
-    # A dictionary of alternative trace keys
-    denominators = {}
-
-    if 'Trace' in columns:
-        tr1['mean'] = means['Trace']
-        tr1['standard error'] = np.sqrt(covariances.xs('Trace',level=1)['Trace']/nsamples)
-    else:
-        retr1 = pd.DataFrame(columns=['mean','standard error'], index=beta_values)
-        imtr1 = pd.DataFrame(columns=['mean','standard error'], index=beta_values)
-        retr1['mean'] = means['Re{Trace}']
-        retr1['standard error'] = np.sqrt(covariances.xs('Re{Trace}',level=1)['Re{Trace}']/nsamples)
-        imtr1['mean'] = means['Im{Trace}']
-        imtr1['standard error'] = np.sqrt(covariances.xs('Im{Trace}',level=1)['Im{Trace}']/nsamples)
-        denominators['Re{Tr[Hp]/Tr[p]}'] = ('Re{Trace}',retr1)
-        denominators['Im{Tr[Hp]/Tr[p]}'] = ('Im{Trace}',imtr1)
-
-    if r'\rho_00' in columns:
-        tr00 = pd.DataFrame(columns=['mean','standard error'], index=beta_values)
-        tr00['mean'] = means[r'\rho_00']
-        tr00['standard error'] = np.sqrt(covariances.xs(r'\rho_00',level=1)[r'\rho_00']/nsamples)
-        denominators['Tr[p0H0]/Tr[p00]'] = (r'\rho_00',tr00)
-    elif r'Re{\rho_00}' in columns:
-        retr00 = pd.DataFrame(columns=['mean','standard error'], index=beta_values)
-        imtr00 = pd.DataFrame(columns=['mean','standard error'], index=beta_values)
-        retr00['mean'] = means[r'Re{\rho_00}']
-        retr00['standard error'] = np.sqrt(covariances.xs(r'Re{\rho_00}',level=1)[r'Re{\rho_00}']/nsamples)
-        imtr00['mean'] = means[r'Im{\rho_00}']
-        imtr00['standard error'] = np.sqrt(covariances.xs(r'Im{\rho_00}',level=1)[r'Im{\rho_00}']/nsamples)
-        denominators['Re{Tr[p0H0]/Tr[p00]}'] = (r'Re{\rho_00}',retr00)
-        denominators['Im{Tr[p0H0]/Tr[p00]}'] = (r'Im{\rho_00}',imtr00)
 
     for (k,v) in observables.items():
         if v in columns:
-            if k in denominators.keys():
-                tr_key, tr_df = denominators[k]
-            else:
-                tr_key, tr_df = 'Trace', tr1
+            den_key = denominators[k]
 
             num['mean'] = means[v]
             num['standard error'] = np.sqrt(covariances.xs(v,level=1)[v]/nsamples)
-            cov_AB = covariances.xs(tr_key,level=1)[v]
+            tr1['mean'] = means[den_key]
+            tr1['standard error'] = np.sqrt(covariances.xs(den_key,level=1)[den_key]/nsamples)
+            cov_AB = covariances.xs(den_key,level=1)[v]
 
-            stats = pyblock.error.ratio(num, tr_df, cov_AB, nsamples)
+            stats = pyblock.error.ratio(num, tr1, cov_AB, nsamples)
 
             results[k] = stats['mean']
             results[k+'_error'] = stats['standard error']
