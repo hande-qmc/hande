@@ -24,10 +24,10 @@ contains
 
     end type cheb_t
 
-    subroutine init_chebyshev(qs, shift)
-        ! This will be called after the shoulder is reached (via the linear propagator)
-
+    subroutine init_chebyshev(sys, qs, shift)
+        ! Initialises parameters to do with the wall-Chebyshev propagator at the start of the simulation.
         ! In:
+        !   sys: system under study.
         !   shift: estimate of the current correlation energy, either the inst. proj. energy or the shift.
         ! In/out:
         !   qs: the qmc_state_t object containing the Chebyshev propagator being initialised.
@@ -38,16 +38,17 @@ contains
         !   2. Gershgorin circles
 
         ! Set up initial zeroes
-        use determinants, only: reflect_bit_string
+        use determinant_enumeration, only: enumerate_determinants
         use proc_pointers, only: sc0_ptr
 
         type(cheb_t), intent(inout) :: CHEBPROP
         real(p), intent(in) :: shift
-        integer(i0), allocatable :: fmax(:)
+        integer, allocatable :: occ_list_max(:)
 
         allocate(CHEBPROP%zeroes(CHEBPROP%order))
+        allocate(occ_list_max(sys%basis%nbasis))
         call chebyshev_zeroes(CHEBPROP, shift) 
-        fmax = reflect_bit_string(reference%f0)
+        occ_list_max = qs%ref%occ_list0(sys%basis%nbasis,1,-1) ! inverts the occ_list
         CHEBPROP%spectral_range = sc0_ptr(sys, f_max) - sc0_ptr(sys, reference%f0)
 
 
