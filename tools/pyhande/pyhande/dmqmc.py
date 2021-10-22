@@ -465,7 +465,9 @@ results : :class:`pandas.DataFrame`
         nsamples = data['Re{Trace}'].groupby(level=1).count()
     beta_values = nsamples.index.values
     # The data that we are going to use.
-    estimates = data.loc[:,'Shift':'# H psips']
+    colnames = [colname for colname in list(data.columns) 
+                if colname not in ['# spawn_events','# states','R_spawn','time']]
+    estimates = data.loc[:,colnames]
 
     if free_energy:
         # Deal with legacy input.

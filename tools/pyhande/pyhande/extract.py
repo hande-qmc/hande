@@ -318,10 +318,10 @@ Returns
                         'Instant shift': 'Shift',
                         '\sum H_0j Nj': '\sum H_0j N_j',
                         '# D0': 'N_0',
+                        '# Dj0 psips' : r'# \rho_{0j} psips',
+                        '\sum H_0j D_j0' : r'\sum\rho_{0j}H_{j0}',
+                        'D_00' : r'\rho_00',
                         '# particles': '# H psips',
-                        '# \\rho_{0j} psips' : '# Dj0 psips',
-                        '\\sum\\rho_{0j}H_{j0}' : '\\sum H_0j D_j0',
-                        '\\rho_00' : 'D_00',
                 })
 
     return (metadata, data, comment_data)
