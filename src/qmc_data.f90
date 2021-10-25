@@ -240,7 +240,7 @@ type qmc_in_t
 
     ! BZ - [TODO]: document propagators
     logical :: chebyshev = .false.
-    integer :: chebyshev_order
+    integer :: chebyshev_order = 5 ! Default as per 10.1021/acs.jctc.6b00639
 
 end type qmc_in_t
 
@@ -846,10 +846,25 @@ type propagator_t
     real(p) :: quasi_newton_pop_control
 end type propagator_t
 
+type cheb_t
+    ! The wall-Chebyshev propagator, where instead of 
+    ! (linearly) approximating e^{-\tau H}, we directly approximate \lim_{\tau -> \inf} e^{-\tau H},
+    ! which is the "wall function", and we expand the wall function in Chebyshev polynomials.
+    ! The Chebyshev polynomials are amenable for use as projectors for the following reasons:
+    !   1. They are bound by [-1,1] in the (estimated) spectral range, becoming small near the upper spectral bound
+    !   2. They diverge to +\inf as E -> -\inf, meaning the lower spectral bound can be an estimate
+    !   3. Sums of up to m-th order Chebyshev polynomials can be written as products of m linear projectors, each involving
+    !       the m-th zero of the the original sum.
+    !   4. Most importantly they kill off non ground states (arbitrarily, by making m large) faster than the linear projector.
+    ! See 10.1021/acs.jctc.6b00639
+    integer :: order = 5 ! Default, same as 10.1021/acs.jctc.6b00639
+    real(p) :: spectral_range(2) = (/0.0_p, 0.0_p/)
+    real(p), allocatable :: zeroes(:)
+
+end type cheb_t
+
 type qmc_state_t
     
-    use propagators, only: cheb_t
-
     ! When performing dmqmc calculations, dmqmc_factor = 2.0. This factor is
     ! required because in DMQMC calculations, instead of spawning from one end with
     ! the full probability, we spawn from two different ends with half probability each.

@@ -107,6 +107,7 @@ target_sources(hande-static
     particle_t_utils.f90
     pg_symmetry.f90
     proc_pointers.f90
+    propagators.f90
     qmc.F90
     qmc_common.F90
     qmc_data.f90

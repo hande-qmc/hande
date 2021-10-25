@@ -1052,7 +1052,6 @@ contains
         use qmc_data, only: excit_gen_power_pitzer, excit_gen_cauchy_schwarz_occ, excit_gen_cauchy_schwarz_occ_ij
         use qmc_data, only: excit_gen_power_pitzer_occ, excit_gen_power_pitzer_occ_ij, excit_gen_power_pitzer_orderN
         use qmc_data, only: excit_gen_heat_bath, excit_gen_heat_bath_uniform, excit_gen_heat_bath_single
-        use qmc_data, only: propagator_linear, propagator_wall_ch_5th
         use lua_hande_utils, only: warn_unused_args, get_rng_seed
         use parallel, only: parent
         use errors, only: stop_all, warning
@@ -1066,7 +1065,7 @@ contains
         character(len=30) :: str
         logical :: skip, no_renorm
 
-        character(24), parameter :: keys(37) = [character(24) :: 'tau', 'init_pop', 'mc_cycles', 'nreports', 'state_size', &
+        character(24), parameter :: keys(36) = [character(24) :: 'tau', 'init_pop', 'mc_cycles', 'nreports', 'state_size', &
                                                                  'spawned_state_size', 'rng_seed', 'target_population', &
                                                                  'real_amplitudes', 'spawn_cutoff', 'no_renorm', 'tau_search', &
                                                                  'real_amplitude_force_32', &
@@ -1078,8 +1077,7 @@ contains
                                                                  'vary_shift_from', 'excit_gen', 'power_pitzer_min_weight', &
                                                                  'reference_target', 'vary_shift', 'quasi_newton', &
                                                                  'quasi_newton_threshold', 'quasi_newton_value', &
-                                                                 'quasi_newton_pop_control', 'propagator', &
-                                                                 'chebyshev', 'chebyshev_order']
+                                                                 'quasi_newton_pop_control', 'chebyshev', 'chebyshev_order']
 
         if (present(short)) then
             skip = short
@@ -1129,11 +1127,8 @@ contains
         call aot_get_val(qmc_in%quasi_newton_threshold, err, lua_state, qmc_table, 'quasi_newton_threshold')
         call aot_get_val(qmc_in%quasi_newton_value, err, lua_state, qmc_table, 'quasi_newton_value')
         call aot_get_val(qmc_in%quasi_newton_pop_control, err, lua_state, qmc_table, 'quasi_newton_pop_control')
-        
         call aot_get_val(qmc_in%chebyshev, err, lua_state, qmc_table, 'chebyshev')
-        if (qmc_in%chebyshev) then
-            call aot_get_val(qmc_in%chebyshev_order, err, lua_state, qmc_table, 'chebyshev_order')
-        end if
+        call aot_get_val(qmc_in%chebyshev_order, err, lua_state, qmc_table, 'chebyshev_order')
 
         if (aot_exists(lua_state, qmc_table, 'reference_target')) then
             qmc_in%target_reference = .true.

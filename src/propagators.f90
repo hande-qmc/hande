@@ -7,24 +7,7 @@ implicit none
 
 contains
 
-    type cheb_t
-        ! The wall-Chebyshev propagator, where instead of 
-        ! (linearly) approximating e^{-\tau H}, we directly approximate \lim_{\tau -> \inf} e^{-\tau H},
-        ! which is the "wall function", and we expand the wall function in Chebyshev polynomials.
-        ! The Chebyshev polynomials are amenable for use as projectors for the following reasons:
-        !   1. They are bound by [-1,1] in the (estimated) spectral range, becoming small near the upper spectral bound
-        !   2. They diverge to +\inf as E -> -\inf, meaning the lower spectral bound can be an estimate
-        !   3. Sums of up to m-th order Chebyshev polynomials can be written as products of m linear projectors, each involving
-        !       the m-th zero of the the original sum.
-        !   4. Most importantly they kill off non ground states (arbitrarily, by making m large) faster than the linear projector.
-        ! See 10.1021/acs.jctc.6b00639
-        integer :: order = 5 ! Default, same as 10.1021/acs.jctc.6b00639
-        real(p) :: spectral_range(2) = (/0.0_p, 0.0_p/)
-        real(p), allocatable :: zeroes(:)
-
-    end type cheb_t
-
-    subroutine init_chebyshev(sys, qs)
+    subroutine init_chebyshev(qs, sys)
         ! Initialises parameters to do with the wall-Chebyshev propagator at the start of the simulation.
         ! In:
         !   sys: system under study.
@@ -37,33 +20,45 @@ contains
         !   2. Gershgorin circles
 
         ! Set up initial zeroes
+        use qmc_data, only: qmc_state_t
+        use system, only: sys_t
         use determinant_enumeration, only: enumerate_determinants
+        use determinants, only: encode_det
         use proc_pointers, only: sc0_ptr
         use hamiltonian, only: get_hmatel
+        use hamiltonian_data, only: hmatel_t
 
         type(qmc_state_t), intent(inout) :: qs
-        real(p), intent(in) :: shift
+        type(sys_t), intent(in) :: sys
+        
         integer, allocatable :: occ_list_max(:), sym_space_size(:)
-        integer(i0), allocatable :: singles_doubles(:,:) ! (tot_string_len,ndets)
+        integer(i0), allocatable :: singles_doubles(:,:), f_max(:)
         integer :: ndets, i
+        real(p) :: e_max
+        type(hmatel_t) :: offdiagel
 
         allocate(qs%cheby_prop%zeroes(qs%cheby_prop%order))
         allocate(occ_list_max(sys%basis%nbasis))
-        call chebyshev_zeroes(qs%cheby_prop, shift) 
+        call chebyshev_zeroes(qs%cheby_prop, qs%shift(1)) 
 
-        occ_list_max = qs%ref%occ_list0(sys%basis%nbasis,1,-1) ! inverts the occ_list
+        occ_list_max = qs%ref%occ_list0(sys%basis%nbasis:1:-1) ! inverts the occ_list
         call enumerate_determinants(sys, .true., .false., 2, sym_space_size, ndets, singles_doubles, 1, occ_list_max) ! init first
         call enumerate_determinants(sys, .false., .false., 2, sym_space_size, ndets, singles_doubles, 1, occ_list_max) ! store determs
         ! BZ [TODO] - Make sure this works with even selection, which has 1 info_string in tot_string_len
+        allocate(f_max(sys%basis%tot_string_len))
+        call encode_det(sys%basis, occ_list_max, f_max)
 
         e_max = sc0_ptr(sys, f_max) + 0.5 ! Arbitrarily shift the upper bound higher to be safe
         do i=1, ndets
-            e_max += get_hmatel(sys, qs%ref%f0, singles_doubles[i])
+            ! BZ [TODO] - Deal with complex systems
+            offdiagel = get_hmatel(sys, qs%ref%f0, singles_doubles(:,i))
+            e_max = e_max + offdiagel%r
         end do
 
-        qs%cheby_prop%spectral_range(2) = e_max - sc0_ptr(sys, reference%f0)
+        qs%cheby_prop%spectral_range(1) = 0.0_p
+        qs%cheby_prop%spectral_range(2) = e_max - sc0_ptr(sys, qs%ref%f0)
 
-    end subroutine init_wall_chebyshev
+    end subroutine init_chebyshev
 
     subroutine update_chebyshev(cheby_prop, shift)
 
@@ -72,6 +67,8 @@ contains
         !   shift: the current shift, needed to update the zeroes.
         ! In/out:
         !   cheby_prop: the cheb_t object containing the Chebyshev propagator.
+        use qmc_data, only: cheb_t
+        
         real(p), intent(in) :: shift
         type(cheb_t), intent(inout) :: cheby_prop
         integer :: i
