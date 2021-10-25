@@ -59,6 +59,7 @@ contains
         use parallel, only: parent
         use determinants, only: sum_fock_values_occ_list
         use particle_t_utils, only: move_particle_t
+        use propagators, only: init_chebyshev
 
         type(sys_t), intent(in) :: sys
         type(qmc_in_t), intent(in) :: qmc_in
@@ -177,6 +178,7 @@ contains
             '(1X, "# Finishing the excitation generator initialisation, time taken:",1X,es17.10)') set_up_time
 
         call init_quasi_newton(sys, qmc_in, qmc_state%propagator)
+        call init_chebyshev(sys, qmc_in, qmc_state)
 
         ! Need to ensure we end up with a sensible value of shift damping to use.
         ! qmc_state%shift_damping will be set to either its default value or one

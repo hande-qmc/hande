@@ -7,7 +7,7 @@ implicit none
 
 contains
 
-    subroutine init_chebyshev(qs, sys)
+    subroutine init_chebyshev(sys, qmc_in, qs)
         ! Initialises parameters to do with the wall-Chebyshev propagator at the start of the simulation.
         ! In:
         !   sys: system under study.
@@ -20,7 +20,7 @@ contains
         !   2. Gershgorin circles
 
         ! Set up initial zeroes
-        use qmc_data, only: qmc_state_t
+        use qmc_data, only: qmc_state_t, qmc_in_t
         use system, only: sys_t
         use determinant_enumeration, only: enumerate_determinants
         use determinants, only: encode_det
@@ -28,8 +28,9 @@ contains
         use hamiltonian, only: get_hmatel
         use hamiltonian_data, only: hmatel_t
 
-        type(qmc_state_t), intent(inout) :: qs
         type(sys_t), intent(in) :: sys
+        type(qmc_in_t), intent(in) :: qmc_in
+        type(qmc_state_t), intent(inout) :: qs
         
         integer, allocatable :: occ_list_max(:), sym_space_size(:)
         integer(i0), allocatable :: singles_doubles(:,:), f_max(:)
@@ -37,26 +38,31 @@ contains
         real(p) :: e_max
         type(hmatel_t) :: offdiagel
 
-        allocate(qs%cheby_prop%zeroes(qs%cheby_prop%order))
-        allocate(occ_list_max(sys%basis%nbasis))
-        call chebyshev_zeroes(qs%cheby_prop, qs%shift(1)) 
+        qs%chebyshev = qmc_in%chebyshev
 
-        occ_list_max = qs%ref%occ_list0(sys%basis%nbasis:1:-1) ! inverts the occ_list
-        call enumerate_determinants(sys, .true., .false., 2, sym_space_size, ndets, singles_doubles, 1, occ_list_max) ! init first
-        call enumerate_determinants(sys, .false., .false., 2, sym_space_size, ndets, singles_doubles, 1, occ_list_max) ! store determs
-        ! BZ [TODO] - Make sure this works with even selection, which has 1 info_string in tot_string_len
-        allocate(f_max(sys%basis%tot_string_len))
-        call encode_det(sys%basis, occ_list_max, f_max)
+        if (qs%chebyshev) then
+            qs%cheby_prop%order = qmc_in%chebyshev_order
+            allocate(qs%cheby_prop%zeroes(qs%cheby_prop%order))
+            allocate(occ_list_max(sys%basis%nbasis))
+            call update_chebyshev(qs%cheby_prop, 0.0_p) 
 
-        e_max = sc0_ptr(sys, f_max) + 0.5 ! Arbitrarily shift the upper bound higher to be safe
-        do i=1, ndets
-            ! BZ [TODO] - Deal with complex systems
-            offdiagel = get_hmatel(sys, qs%ref%f0, singles_doubles(:,i))
-            e_max = e_max + offdiagel%r
-        end do
+            occ_list_max = qs%ref%occ_list0(sys%basis%nbasis:1:-1) ! inverts the occ_list
+            call enumerate_determinants(sys, .true., .false., 2, sym_space_size, ndets, singles_doubles, 1, occ_list_max) ! init first
+            call enumerate_determinants(sys, .false., .false., 2, sym_space_size, ndets, singles_doubles, 1, occ_list_max) ! store determs
+            ! BZ [TODO] - Make sure this works with even selection, which has 1 info_string in tot_string_len
+            allocate(f_max(sys%basis%tot_string_len))
+            call encode_det(sys%basis, occ_list_max, f_max)
 
-        qs%cheby_prop%spectral_range(1) = 0.0_p
-        qs%cheby_prop%spectral_range(2) = e_max - sc0_ptr(sys, qs%ref%f0)
+            e_max = sc0_ptr(sys, f_max) + 0.5 ! Arbitrarily shift the upper bound higher to be safe
+            do i=1, ndets
+                ! BZ [TODO] - Deal with complex systems
+                offdiagel = get_hmatel(sys, qs%ref%f0, singles_doubles(:,i))
+                e_max = e_max + offdiagel%r
+            end do
+
+            qs%cheby_prop%spectral_range(1) = 0.0_p
+            qs%cheby_prop%spectral_range(2) = e_max - sc0_ptr(sys, qs%ref%f0)
+        end if
 
     end subroutine init_chebyshev
 

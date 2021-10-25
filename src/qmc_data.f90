@@ -936,6 +936,8 @@ type qmc_state_t
     ! BK tree object for multi-reference searching
     type(tree_t) :: secondary_ref_tree
 
+    ! True if using the wall-Chebyshev propagator
+    logical :: chebyshev
     type(cheb_t) :: cheby_prop
 end type qmc_state_t
 
