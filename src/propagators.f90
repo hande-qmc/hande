@@ -9,17 +9,12 @@ contains
 
     subroutine init_chebyshev(sys, qmc_in, qs)
         ! Initialises parameters to do with the wall-Chebyshev propagator at the start of the simulation.
+        ! This sets up the initial estimate of the spectral range of the Hamiltonian by Gershgorin circle theorem,
+        ! and consequently sets up the zeroes of the polynomial expansion.
         ! In:
         !   sys: system under study.
         ! In/out:
         !   qs: the qmc_state_t object containing the Chebyshev propagator being initialised.
-
-        ! Initial estimate of the spectral range
-        ! Two options: 
-        !   1. E_{highest determinant} - E_{HF}
-        !   2. Gershgorin circles
-
-        ! Set up initial zeroes
         use qmc_data, only: qmc_state_t, qmc_in_t
         use system, only: sys_t
         use determinant_enumeration, only: enumerate_determinants
@@ -38,9 +33,9 @@ contains
         real(p) :: e_max
         type(hmatel_t) :: offdiagel
 
-        qs%chebyshev = qmc_in%chebyshev
+        qs%cheby_prop%using_chebyshev = qmc_in%chebyshev
 
-        if (qs%chebyshev) then
+        if (qs%cheby_prop%using_chebyshev) then
             qs%cheby_prop%order = qmc_in%chebyshev_order
             allocate(qs%cheby_prop%zeroes(qs%cheby_prop%order))
             allocate(occ_list_max(sys%basis%nbasis))
@@ -67,8 +62,9 @@ contains
     end subroutine init_chebyshev
 
     subroutine update_chebyshev(cheby_prop, shift)
-
+        ! The zeroes, S_i, of the m-th order Chebyshev expansion of the wall function are given by
         ! S_i = E_0 + R(1 - cos(i/(m + 1/2)*pi))
+        ! Where E_0 is the shift (estimate of the lowest eigenvalue).
         ! In:
         !   shift: the current shift, needed to update the zeroes.
         ! In/out:

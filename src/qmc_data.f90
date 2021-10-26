@@ -857,6 +857,7 @@ type cheb_t
     !       the m-th zero of the the original sum.
     !   4. Most importantly they kill off non ground states (arbitrarily, by making m large) faster than the linear projector.
     ! See 10.1021/acs.jctc.6b00639
+    logical :: using_chebyshev = .false.
     integer :: order = 5 ! Default, same as 10.1021/acs.jctc.6b00639
     real(p) :: spectral_range(2) = (/0.0_p, 0.0_p/)
     real(p), allocatable :: zeroes(:)
@@ -936,8 +937,7 @@ type qmc_state_t
     ! BK tree object for multi-reference searching
     type(tree_t) :: secondary_ref_tree
 
-    ! True if using the wall-Chebyshev propagator
-    logical :: chebyshev
+    ! Derived type object containing information on the wall-Chebyshev propagator
     type(cheb_t) :: cheby_prop
 end type qmc_state_t
 
