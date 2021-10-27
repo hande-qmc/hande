@@ -339,8 +339,8 @@ contains
         ! See comments in stochastic_death.
         KiiAi = qs%psip_list%pop_real_factor*KiiAi
 
-        ! Scale by tau and pselect before pass to specific functions.
-        KiiAi = KiiAi * qs%tau / cluster%pselect
+        ! Scale by tau, pselect, and Chebyshev weights before pass to specific functions.
+        KiiAi = KiiAi * qs%tau * qs%cheby_prop%weights(qs%cheby_prop%icheb) / cluster%pselect
 
         if (ex_lvl_sort) call add_ex_level_bit_string_provided(sys%basis, cluster%excitation_level, cdet%f)
         call stochastic_death_attempt(rng, real(KiiAi, p), 1, cdet, qs%ref, sys%basis, spawn, &

@@ -1130,6 +1130,11 @@ contains
         call aot_get_val(qmc_in%chebyshev, err, lua_state, qmc_table, 'chebyshev')
         call aot_get_val(qmc_in%chebyshev_order, err, lua_state, qmc_table, 'chebyshev_order')
 
+        if (qmc_in%chebyshev .and. qmc_in%tau /= 1) then
+            call warning('read_qmc_in', 'Wall-Chebyshev projector used, which is independent of tau. Now setting tau to 1!')
+            qmc_in%tau = 1
+        end if
+
         if (aot_exists(lua_state, qmc_table, 'reference_target')) then
             qmc_in%target_reference = .true.
             call aot_get_val(qmc_in%target_particles, err, lua_state, qmc_table, 'reference_target')
