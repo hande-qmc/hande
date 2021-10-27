@@ -861,7 +861,7 @@ type cheb_t
     logical :: using_chebyshev = .false.
     integer :: order = 5 ! Default, same as 10.1021/acs.jctc.6b00639
     real(p) :: spectral_range(2) = (/0.0_p, 0.0_p/)
-    real(p), allocatable :: zeroes(:)
+    real(p), allocatable :: zeroes(:), weights(:)
 
 end type cheb_t
 

@@ -1393,7 +1393,7 @@ contains
         else
             call spawner_ccmc(rng, sys, qs, qs%spawn_store%spawn%cutoff, &
                       ccmc_in%linked, contrib%cdet, contrib%cluster, gen_excit_ptr, logging_info, &
-                      nspawned, connection, nspawnings_total, ps_stat)
+                      nspawned, connection, nspawnings_total, ps_stat, icheb)
             nspawned_im = 0_int_p
 
         end if

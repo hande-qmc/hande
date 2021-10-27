@@ -9,8 +9,7 @@ implicit none
 
 contains
     subroutine spawner_ccmc(rng, sys, qs, spawn_cutoff, linked_ccmc, cdet, cluster, &
-                            gen_excit_ptr, logging_info, nspawn, connection, &
-                            nspawnings_total, ps_stat)
+                            gen_excit_ptr, logging_info, nspawn, connection, nspawnings_total, ps_stat)
 
         ! Attempt to spawn a new particle on a connected excitor with
         ! probability
@@ -52,6 +51,7 @@ contains
         !        gen_excit_ptr%full *must* be set to a procedure which generates
         !        a complete excitation.
         !    logging_info: logging_t derived type containing information on logging behaviour.
+        !    icheb: index of Chebyshev projector.
         ! In/Out:
         !    rng: random number generator.
         !    nspawnings_total: The total number of spawnings attemped by the current cluster
@@ -99,6 +99,7 @@ contains
         type(logging_t), intent(in) :: logging_info
         integer(int_p), intent(out) :: nspawn
         type(excit_t), intent(out) :: connection
+        integer :: i
 
         ! We incorporate the sign of the amplitude into the Hamiltonian matrix
         ! element, so we 'pretend' to attempt_to_spawn that all excips are
@@ -145,7 +146,7 @@ contains
         end if
         ! 2, Apply additional factors.
         hmatel_save = hmatel
-        hmatel%r = hmatel%r*real(cluster%amplitude)*invdiagel*cluster%cluster_to_det_sign
+        hmatel%r = hmatel%r*real(cluster%amplitude)*invdiagel*cluster%cluster_to_det_sign*qs%cheby_prop%weights(icheb)
         pgen = spawn_pgen*cluster%pselect*nspawnings_total
 
         if (allowed_excitation) then
@@ -208,7 +209,6 @@ contains
                 end if
             end if
         end if
-
 
     end subroutine spawner_ccmc
 
