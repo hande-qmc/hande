@@ -240,7 +240,8 @@ type qmc_in_t
 
     ! BZ - [TODO]: document propagators
     logical :: chebyshev = .false.
-    integer :: chebyshev_order = 5 ! Default as per 10.1021/acs.jctc.6b00639
+    ! Default so the loop over the original qmc cycle code only gets executed once if not using Chebyshev
+    integer :: chebyshev_order = 1 
 
 end type qmc_in_t
 
