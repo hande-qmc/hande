@@ -862,7 +862,8 @@ type cheb_t
     integer :: order = 5 ! Default, same as 10.1021/acs.jctc.6b00639
     real(p) :: spectral_range(2) = (/0.0_p, 0.0_p/)
     real(p), allocatable :: zeroes(:), weights(:)
-
+    ! Saves the current index to save on looping
+    integer :: icheb
 end type cheb_t
 
 type qmc_state_t

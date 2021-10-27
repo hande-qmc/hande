@@ -34,6 +34,7 @@ contains
         type(hmatel_t) :: offdiagel
 
         qs%cheby_prop%using_chebyshev = qmc_in%chebyshev
+        qs%cheby_prop%icheb = 1
 
         if (qs%cheby_prop%using_chebyshev) then
             qs%cheby_prop%order = qmc_in%chebyshev_order

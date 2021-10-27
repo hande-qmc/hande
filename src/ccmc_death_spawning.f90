@@ -51,7 +51,6 @@ contains
         !        gen_excit_ptr%full *must* be set to a procedure which generates
         !        a complete excitation.
         !    logging_info: logging_t derived type containing information on logging behaviour.
-        !    icheb: index of Chebyshev projector.
         ! In/Out:
         !    rng: random number generator.
         !    nspawnings_total: The total number of spawnings attemped by the current cluster
@@ -146,7 +145,8 @@ contains
         end if
         ! 2, Apply additional factors.
         hmatel_save = hmatel
-        hmatel%r = hmatel%r*real(cluster%amplitude)*invdiagel*cluster%cluster_to_det_sign*qs%cheby_prop%weights(icheb)
+        hmatel%r = hmatel%r*real(cluster%amplitude)*invdiagel*cluster%cluster_to_det_sign*&
+                    qs%cheby_prop%weights(qs%cheby_prop%icheb)
         pgen = spawn_pgen*cluster%pselect*nspawnings_total
 
         if (allowed_excitation) then

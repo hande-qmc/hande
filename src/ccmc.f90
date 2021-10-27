@@ -609,7 +609,7 @@ contains
             call init_report_loop(qs, bloom_stats)
 
             do icycle = 1, qmc_in%ncycles
-                do icheb = 1, qs%cheb_prop%order
+                do qs%cheb_prop%icheb = 1, qs%cheb_prop%order
                     iter = qs%mc_cycles_done + (ireport-1)*qmc_in%ncycles + icycle
 
                     if (debug) call prep_logging_mc_cycle(iter, logging_in, logging_info, sys%read_in%comp, &
@@ -1393,7 +1393,7 @@ contains
         else
             call spawner_ccmc(rng, sys, qs, qs%spawn_store%spawn%cutoff, &
                       ccmc_in%linked, contrib%cdet, contrib%cluster, gen_excit_ptr, logging_info, &
-                      nspawned, connection, nspawnings_total, ps_stat, icheb)
+                      nspawned, connection, nspawnings_total, ps_stat)
             nspawned_im = 0_int_p
 
         end if
