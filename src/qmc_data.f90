@@ -859,7 +859,7 @@ type cheb_t
     !   4. Most importantly they kill off non ground states (arbitrarily, by making m large) faster than the linear projector.
     ! See 10.1021/acs.jctc.6b00639
     logical :: using_chebyshev = .false.
-    integer :: order = 5 ! Default, same as 10.1021/acs.jctc.6b00639
+    integer :: order = 1 ! Default, to linear
     real(p) :: spectral_range(2) = (/0.0_p, 0.0_p/)
     real(p), allocatable :: zeroes(:), weights(:)
     ! Saves the current index to save on looping

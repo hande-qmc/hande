@@ -35,16 +35,20 @@ contains
 
         qs%cheby_prop%using_chebyshev = qmc_in%chebyshev
         qs%cheby_prop%icheb = 1
-
+        ! Default is 1
+        qs%cheby_prop%order = qmc_in%chebyshev_order
+        
         if (qs%cheby_prop%using_chebyshev) then
-            qs%cheby_prop%order = qmc_in%chebyshev_order
             allocate(qs%cheby_prop%zeroes(qs%cheby_prop%order))
-            allocate(occ_list_max(sys%basis%nbasis))
+            allocate(qs%cheby_prop%weights(qs%cheby_prop%order))
+            allocate(occ_list_max(sys%nel))
             call update_chebyshev(qs%cheby_prop, 0.0_p) 
 
-            occ_list_max = qs%ref%occ_list0(sys%basis%nbasis:1:-1) ! inverts the occ_list
-            call enumerate_determinants(sys, .true., .false., 2, sym_space_size, ndets, singles_doubles, 1, occ_list_max) ! init first
-            call enumerate_determinants(sys, .false., .false., 2, sym_space_size, ndets, singles_doubles, 1, occ_list_max) ! store determs
+            occ_list_max = qs%ref%occ_list0(sys%nel:1:-1) ! inverts the occ_list
+            call enumerate_determinants(sys, .true., .false., 2, sym_space_size, ndets, singles_doubles,&
+                                        sys%symmetry, occ_list_max) ! init first
+            call enumerate_determinants(sys, .false., .false., 2, sym_space_size, ndets, singles_doubles,&
+                                        sys%symmetry, occ_list_max) ! store determs
             ! BZ [TODO] - Make sure this works with even selection, which has 1 info_string in tot_string_len
             allocate(f_max(sys%basis%tot_string_len))
             call encode_det(sys%basis, occ_list_max, f_max)
