@@ -352,7 +352,7 @@ contains
         integer, intent(in) :: io_unit
         type(particle_t), intent(inout), optional :: psip_list_in
 
-        integer :: i, ireport, icycle, iter, semi_stoch_iter, it
+        integer :: i, ireport, icycle, icheb, iter, semi_stoch_iter, it
         integer(int_64) :: iattempt
         integer(int_64) :: nattempts_spawn
         real(dp), allocatable :: nparticles_old(:), nparticles_change(:)
@@ -609,7 +609,8 @@ contains
             call init_report_loop(qs, bloom_stats)
 
             do icycle = 1, qmc_in%ncycles
-                do qs%cheb_prop%icheb = 1, qs%cheb_prop%order
+                do icheb = 1, qs%cheby_prop%order
+                    qs%cheby_prop%icheb = icheb
                     iter = qs%mc_cycles_done + (ireport-1)*qmc_in%ncycles + icycle
 
                     if (debug) call prep_logging_mc_cycle(iter, logging_in, logging_info, sys%read_in%comp, &

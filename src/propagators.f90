@@ -84,7 +84,7 @@ contains
         do i = 1, cheby_prop%order
             cheby_prop%zeroes(i) = shift + (cheby_prop%spectral_range(2)-cheby_prop%spectral_range(1))/2 &
                                    * (1 - cos(pi*i / (cheby_prop%order+0.5) )) ! BZ [TODO] - explain the factor of 2
-            cheby_prop%weights(i) = 1/(shift-zeroes(i))
+            cheby_prop%weights(i) = 1/(shift-cheby_prop%zeroes(i))
         end do
 
     end subroutine update_chebyshev

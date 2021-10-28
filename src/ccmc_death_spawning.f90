@@ -516,6 +516,8 @@ contains
             end if
         end if
 
+        ! Apply the Chebyshev weights
+        KiiAi = KiiAi * qs%cheby_prop%weights(qs%cheby_prop%icheb)
         ! Death is attempted exactly once on this cluster regardless of pselect.
         ! Population passed in is in the *encoded* form.
         pdeath = qs%tau*abs(KiiAi)
