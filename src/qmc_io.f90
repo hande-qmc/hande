@@ -714,7 +714,7 @@ contains
 
         sep_loc = ' '
         if (present(sep)) sep_loc = sep
-        write (io, '(i14,a1,1X)', advance='no') val, sep_loc
+        write (io, '(i24,a1,1X)', advance='no') val, sep_loc
 
     end subroutine write_qmc_var_int_64
 

@@ -1030,6 +1030,7 @@ contains
         integer(i0) :: cluster_annihilation(basis%tot_string_len)
         integer(i0) :: cluster_creation(basis%tot_string_len)
         integer(i0) :: permute_operators(basis%tot_string_len)
+        integer(i0) :: excit_swap(basis%tot_string_len)
         excitor_loc = excitor
         cluster_loc = cluster_excitor
         f0_loc = f0
@@ -1091,8 +1092,8 @@ contains
                 ! permute the creation and annihilation operators.  Each permutation
                 ! incurs a sign change.
 ! [review] - AJWT: Even if we can't reuse the whole of collapse_cluster, this part looks teh same, so can that be factored out and called?
-                do ibasis = 1, basis%bit_string_len
-                    do ibit = 0, i0_end
+                do ibasis = basis%bit_string_len, 1, -1
+                    do ibit = i0_end, 0, -1
                         if (btest(excitor_excitation(ibasis),ibit)) then
                             if (.not. btest(f0_loc(ibasis),ibit)) then
                                 ! Exciting from this orbital.
@@ -1105,19 +1106,31 @@ contains
                                 ! annihilation operators and the list of creation
                                 ! operators.
                                 ! First annihilation operators:
-                                permute_operators = iand(basis%excit_mask(:,basis%basis_lookup(ibit,ibasis)),cluster_annihilation)
+                                !permute_operators = iand(basis%excit_mask(:,basis%basis_lookup(ibit,ibasis)),cluster_annihilation)
                                 ! Now add the creation operators:
-                                permute_operators = ior(permute_operators,cluster_creation)
+                                !permute_operators = ior(permute_operators,cluster_creation)
+                                permute_operators = iand(not(basis%excit_mask(:,basis%basis_lookup(ibit,ibasis))),cluster_creation)
+                                excit_swap = iand(not(basis%excit_mask(:,basis%basis_lookup(ibit,ibasis))),excitor_annihilation)
+                                permute_operators = ieor(permute_operators, excit_swap)
+                                permute_operators(ibasis) = ibclr(permute_operators(ibasis),ibit)
                             else
                                 ! Exciting into this orbital.
                                 cluster_excitor(ibasis) = ibset(cluster_excitor(ibasis),ibit)
                                 ! Need to swap it with every creation operator with
                                 ! a lower index already in the cluster.
-                                permute_operators = iand(not(basis%excit_mask(:,basis%basis_lookup(ibit,ibasis))),cluster_creation)
-                                permute_operators(ibasis) = ibclr(permute_operators(ibasis),ibit)
+                                !permute_operators = iand(not(basis%excit_mask(:,basis%basis_lookup(ibit,ibasis))),cluster_creation)
+                                !permute_operators(ibasis) = ibclr(permute_operators(ibasis),ibit)
+                                permute_operators = iand(basis%excit_mask(:,basis%basis_lookup(ibit,ibasis)),cluster_annihilation)
+                                permute_operators = ior(permute_operators,cluster_creation)
                             end if
                             if (mod(sum(count_set_bits(permute_operators)),2) == 1) &
                                 cluster_population = -cluster_population
+
+                            cluster_loc = cluster_excitor
+                            call reset_extra_info_bit_string(basis, cluster_loc)
+                            cluster_excitation = ieor(f0_loc, cluster_loc)
+                            cluster_annihilation = iand(cluster_excitation, f0_loc)
+                            cluster_creation = iand(cluster_excitation, cluster_loc)
                         end if
                     end do
                 end do
