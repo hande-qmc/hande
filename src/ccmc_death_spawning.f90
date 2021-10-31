@@ -321,6 +321,18 @@ contains
                 ! part of H so this must be an unlinked cluster
                 KiiAi = cmplx(0.0_p,0.0_p,p)
             end select
+        else if (qs%cheby_prop%using_chebyshev) then
+            ! This is (temporarily) incompatible with quasi_newton during proof of concept testing
+            ! BZ [TODO] - add compatibility with QN
+            select case (cluster%nexcitors)
+            case(0)
+                KiiAi = -qs%cheby_prop%zeroes(qs%cheby_prop%icheb)*cluster%amplitude
+            case(1)
+                KiiAi = (cdet%data(1) - qs%cheby_prop%zeroes(qs%cheby_prop%icheb))*cluster%amplitude
+            case default
+                ! A composite cluster. Death step different to single excitors, see above.
+                KiiAi = ((sc0_ptr(sys, cdet%f) - qs%ref%H00) - qs%cheby_prop%zeroes(qs%cheby_prop%icheb)) * cluster%amplitude
+            end select
         else
             select case (cluster%nexcitors)
             case(0)
@@ -340,7 +352,8 @@ contains
         KiiAi = qs%psip_list%pop_real_factor*KiiAi
 
         ! Scale by tau, pselect, and Chebyshev weights before pass to specific functions.
-        KiiAi = KiiAi * qs%tau * qs%cheby_prop%weights(qs%cheby_prop%icheb) / cluster%pselect
+        KiiAi = KiiAi * qs%tau * qs%cheby_prop%zeroes(qs%cheby_prop%icheb)&
+                * qs%cheby_prop%weights(qs%cheby_prop%icheb) / cluster%pselect
 
         if (ex_lvl_sort) call add_ex_level_bit_string_provided(sys%basis, cluster%excitation_level, cdet%f)
         call stochastic_death_attempt(rng, real(KiiAi, p), 1, cdet, qs%ref, sys%basis, spawn, &

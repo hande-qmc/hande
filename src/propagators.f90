@@ -42,13 +42,15 @@ contains
             allocate(qs%cheby_prop%zeroes(qs%cheby_prop%order))
             allocate(qs%cheby_prop%weights(qs%cheby_prop%order))
             allocate(occ_list_max(sys%nel))
-            call update_chebyshev(qs%cheby_prop, 0.0_p) 
-
-            occ_list_max = qs%ref%occ_list0(sys%nel:1:-1) ! inverts the occ_list
+            ! the highest occ_list is [nbasis-nel:nbasis]
+            do i=1, sys%nel
+                occ_list_max(i) = sys%basis%nbasis - sys%nel + i
+            end do
             call enumerate_determinants(sys, .true., .false., 2, sym_space_size, ndets, singles_doubles,&
                                         sys%symmetry, occ_list_max) ! init first
             call enumerate_determinants(sys, .false., .false., 2, sym_space_size, ndets, singles_doubles,&
                                         sys%symmetry, occ_list_max) ! store determs
+            print*, "Singles_doubles: ", singles_doubles 
             ! BZ [TODO] - Make sure this works with even selection, which has 1 info_string in tot_string_len
             allocate(f_max(sys%basis%tot_string_len))
             call encode_det(sys%basis, occ_list_max, f_max)
@@ -56,12 +58,13 @@ contains
             e_max = sc0_ptr(sys, f_max) + 0.5 ! Arbitrarily shift the upper bound higher to be safe
             do i=1, ndets
                 ! BZ [TODO] - Deal with complex systems
-                offdiagel = get_hmatel(sys, qs%ref%f0, singles_doubles(:,i))
+                offdiagel = get_hmatel(sys, f_max, singles_doubles(:,i))
                 e_max = e_max + offdiagel%r
             end do
 
             qs%cheby_prop%spectral_range(1) = 0.0_p
-            qs%cheby_prop%spectral_range(2) = e_max - sc0_ptr(sys, qs%ref%f0)
+            qs%cheby_prop%spectral_range(2) = e_max - qs%ref%H00
+            call update_chebyshev(qs%cheby_prop, 0.0_p)
         else
             allocate(qs%cheby_prop%weights(1))
             qs%cheby_prop%weights(1) = 1.0_p ! Similar to QN, the hmatel is always scaled to save on too many checks (branching)
