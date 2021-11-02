@@ -872,7 +872,8 @@ contains
                         if (nprocs > 1) call redistribute_particles(pl%states, pl%pop_real_factor, pl%pops, pl%nstates, &
                                                                     pl%nparticles, spawn)
 
-                        call direct_annihilation(sys, rng(0), qs%ref, annihilation_flags, pl, spawn)
+                        call direct_annihilation(sys, rng(0), qs%ref, annihilation_flags, pl, spawn,&
+                                                using_chebyshev=qs%cheby_prop%using_chebyshev)
                     end associate
                     if (debug) call write_logging_calc_ccmc(logging_info, iter, nspawn_events, ndeath + ndeath_nc, &
                                                             selection_data%nD0_select, &

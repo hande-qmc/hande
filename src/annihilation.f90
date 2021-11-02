@@ -7,7 +7,7 @@ implicit none
 contains
 
     subroutine direct_annihilation(sys, rng, reference, annihilation_flags, psip_list, spawn, &
-                                   nspawn_events, determ)
+                                   nspawn_events, determ, using_chebyshev)
 
         ! Annihilation algorithm.
         ! Spawned walkers are added to the main list, by which new walkers are
@@ -21,6 +21,7 @@ contains
         !    sys: system being studied.
         !    reference: current reference determinant.
         !    annihilation_flags: calculation specific annihilation flags.
+        !    using_chebyshev (optional): true if using the wall-Chebyshev propagator.
         ! In/Out:
         !    rng: random number generator.
         !    psip_list: particle_t object containing psip information after the
@@ -48,6 +49,7 @@ contains
         type(spawn_t), intent(inout) :: spawn
         integer, optional, intent(out) :: nspawn_events
         type(semi_stoch_t), intent(inout), optional :: determ
+        logical, intent(in), optional :: using_chebyshev
 
         logical :: doing_semi_stoch
 
@@ -68,10 +70,12 @@ contains
                 call annihilate_wrapper_spawn_t(spawn, annihilation_flags%initiator_approx, determ%sizes(iproc))
             end if
 
-            call annihilate_main_list_wrapper(sys, rng, reference, annihilation_flags, psip_list, spawn, determ_flags=determ%flags)
+            call annihilate_main_list_wrapper(sys, rng, reference, annihilation_flags, psip_list, spawn,&
+                                                determ_flags=determ%flags, using_chebyshev=using_chebyshev)
         else
             call annihilate_wrapper_spawn_t(spawn, annihilation_flags%initiator_approx)
-            call annihilate_main_list_wrapper(sys, rng, reference, annihilation_flags, psip_list, spawn)
+            call annihilate_main_list_wrapper(sys, rng, reference, annihilation_flags, psip_list, spawn,&
+                                                using_chebyshev=using_chebyshev)
         end if
 
     end subroutine direct_annihilation
@@ -209,7 +213,7 @@ contains
     end subroutine direct_annihilation_spawned_list
 
     subroutine annihilate_main_list_wrapper(sys, rng, reference, annihilation_flags, psip_list, spawn, &
-                                            lower_bound, determ_flags)
+                                            lower_bound, determ_flags, using_chebyshev)
 
         ! This is a wrapper around various utility functions which perform the
         ! different parts of the annihilation process during non-blocking
@@ -219,6 +223,7 @@ contains
         !    sys: system being studied.
         !    reference: current reference determinant.
         !    annihilation_flags: calculation specific annihilation flags.
+        !    using_chebyshev (optional): true if the wall-Chebyshev projector is used.
         ! In/Out:
         !    rng: random number generator.
         !    psip_list: particle_t object containing psip information after the
@@ -246,6 +251,7 @@ contains
         type(particle_t), intent(inout) :: psip_list
         type(spawn_t), intent(inout) :: spawn
         integer, intent(inout), optional :: determ_flags(:)
+        logical, intent(in), optional :: using_chebyshev
 
         integer, parameter :: thread_id = 0
         integer :: spawn_start
@@ -261,6 +267,8 @@ contains
 
             if (annihilation_flags%initiator_approx) then
                 call annihilate_main_list_initiator(psip_list, spawn, sys%basis%tensor_label_len, lower_bound)
+            else if (present(using_chebyshev) .and. using_chebyshev) then
+                call annihilate_main_list_chebyshev(psip_list, spawn, sys%basis%tensor_label_len, lower_bound)
             else
                 call annihilate_main_list(psip_list, spawn, sys%basis%tensor_label_len, lower_bound)
             end if
@@ -364,6 +372,85 @@ contains
         spawn%head(thread_id,0) = spawn%head(thread_id,0) - nannihilate
 
     end subroutine annihilate_main_list
+
+    subroutine annihilate_main_list_chebyshev(psip_list, spawn, tensor_label_len, lower_bound)
+
+        ! Annihilate particles in the main walker list with those in the spawned
+        ! walker list. Basically the same as the annihilate_main_list subroutine above, but instead of iteratively
+        ! updating the populations it just replaces the population at every iteration.
+
+        ! In:
+        !    tensor_label_len: number of elements in the bit array describing the position
+        !       of the particle in the space (i.e.  determinant label in vector/pair of
+        !       determinants label in array).
+        ! In/Out:
+        !    psip_list: particle_t object containing psip information.
+        !       On exit the particles spawned onto occupied sites have been
+        !       annihilated with the existing populations.
+        !    spawn: spawn_t obeject containing spawned particles to be annihilated with main
+        !       list.  On exit contains particles spawned onto non-occupied
+        !       sites.
+        ! In (optional):
+        !    lower_bound: starting point we annihiliate from in spawn_t object.
+        !       Default: 1.
+
+        use search, only: binary_search
+        use spawn_data, only: spawn_t
+        use qmc_data, only: particle_t
+
+        type(particle_t), intent(inout) :: psip_list
+        type(spawn_t), intent(inout) :: spawn
+        integer, intent(in) :: tensor_label_len
+        integer, intent(in), optional :: lower_bound
+
+        integer :: i, pos, k, istart, iend, nannihilate, spawn_start
+        integer(int_p) :: old_pop(psip_list%nspaces)
+        integer(i0) :: f(tensor_label_len)
+
+        logical :: hit
+        integer, parameter :: thread_id = 0
+
+        nannihilate = 0
+        if (present(lower_bound)) then
+            spawn_start = lower_bound
+        else
+            spawn_start = 1
+        end if
+        istart = 1
+        iend = psip_list%nstates
+
+        do i = spawn_start, spawn%head(thread_id,0)
+            f = int(spawn%sdata(:tensor_label_len,i), i0)
+            call binary_search(psip_list%states, f, istart, iend, hit, pos)
+            if (hit) then
+                ! Annihilate!
+                old_pop = psip_list%pops(:,pos)
+                ! This is the only line different from annihilate_main_list
+                psip_list%pops(:,pos) = int(spawn%sdata(spawn%bit_str_len+1:spawn%bit_str_len+spawn%ntypes,i), int_p)
+                nannihilate = nannihilate + 1
+                ! The change in the number of particles is a bit subtle.
+                ! We need to take into account:
+                !   i) annihilation enhancing the population on a determinant.
+                !  ii) annihilation diminishing the population on a determinant.
+                ! iii) annihilation changing the sign of the population (i.e.
+                !      killing the population and then some).
+                associate(nparticles=>psip_list%nparticles)
+                    nparticles = nparticles + real(abs(psip_list%pops(:,pos)) - abs(old_pop),p)/psip_list%pop_real_factor
+                end associate
+                ! Next spawned walker cannot annihilate any determinant prior to
+                ! this one as the lists are sorted.
+                istart = pos + 1
+            else
+                ! Compress spawned list.
+                k = i - nannihilate
+                spawn%sdata(:,k) = spawn%sdata(:,i)
+            end if
+        end do
+
+        spawn%head(thread_id,0) = spawn%head(thread_id,0) - nannihilate
+
+    end subroutine annihilate_main_list_chebyshev
+
 
     subroutine annihilate_main_list_initiator(psip_list, spawn, tensor_label_len, lower_bound)
 
