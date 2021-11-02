@@ -50,7 +50,6 @@ contains
                                         sys%symmetry, occ_list_max) ! init first
             call enumerate_determinants(sys, .false., .false., 2, sym_space_size, ndets, singles_doubles,&
                                         sys%symmetry, occ_list_max) ! store determs
-            print*, "Singles_doubles: ", singles_doubles 
             ! BZ [TODO] - Make sure this works with even selection, which has 1 info_string in tot_string_len
             allocate(f_max(sys%basis%tot_string_len))
             call encode_det(sys%basis, occ_list_max, f_max)

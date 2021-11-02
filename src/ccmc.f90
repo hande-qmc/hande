@@ -420,10 +420,6 @@ contains
         call init_qmc(sys, qmc_in, restart_in, load_bal_in, reference_in, io_unit, annihilation_flags, qs, &
                       uuid_restart, restart_version_restart, qmc_state_restart=qmc_state_restart, &
                       regenerate_info=regenerate_info, psip_list_in=psip_list_in)
-        print*, "Cheby order: ", qs%cheby_prop%order
-        print*, "Cheby range: ", qs%cheby_prop%spectral_range
-        print*, "Cheby zeroes: ", qs%cheby_prop%zeroes
-        print*, "Cheby weights: ", qs%cheby_prop%weights
 
         if (ccmc_in%even_selection .and. regenerate_info) then
             call regenerate_ex_levels_psip_list(sys%basis, qs)
