@@ -426,7 +426,7 @@ contains
                 ! Annihilate!
                 old_pop = psip_list%pops(:,pos)
                 ! This is the only line different from annihilate_main_list
-                psip_list%pops(:,pos) = int(spawn%sdata(spawn%bit_str_len+1:spawn%bit_str_len+spawn%ntypes,i), int_p)
+                psip_list%pops(:,pos) = -int(spawn%sdata(spawn%bit_str_len+1:spawn%bit_str_len+spawn%ntypes,i), int_p)
                 nannihilate = nannihilate + 1
                 ! The change in the number of particles is a bit subtle.
                 ! We need to take into account:
@@ -757,7 +757,7 @@ contains
 
     end subroutine round_low_population_spawns
 
-    subroutine insert_new_walkers(sys, psip_list, ref, annihilation_flags, spawn, determ_flags, lower_bound)
+    subroutine insert_new_walkers(sys, psip_list, ref, annihilation_flags, spawn, determ_flags, lower_bound, using_chebyshev)
 
         ! Insert new walkers into the main walker list from the spawned list.
         ! This is done after all particles have been annihilated, so the spawned
@@ -775,6 +775,7 @@ contains
         !    determ_flags: A list of flags specifying whether determinants in
         !        psip_list%states are deterministic or not.
         !    lower_bound: starting point we annihiliate from in spawn_t object.
+        !    using_chebyshev: true if using the wall-Chebyshev propagator.
 
         use errors, only: stop_all
         use parallel, only: iproc
@@ -794,6 +795,7 @@ contains
         type(spawn_t), intent(inout) :: spawn
         integer, intent(inout), optional :: determ_flags(:)
         integer, intent(in), optional :: lower_bound
+        logical, intent(in), optional :: using_chebyshev
 
         integer :: i, istart, iend, j, k, pos, spawn_start, disp
         real(p) :: real_population(psip_list%nspaces)
@@ -801,6 +803,7 @@ contains
         logical :: hit
         integer, parameter :: thread_id = 0
         real :: fill_fraction
+        integer(int_p) :: cheby_sign = 1
 
         ! Merge new walkers into the main list.
 
@@ -827,6 +830,17 @@ contains
             spawn_start = 1
             disp = 0
         end if
+
+        if (present(using_chebyshev)) then
+            if (using_chebyshev) then 
+                cheby_sign = -1
+            else 
+                cheby_sign = 1
+            end if
+        else
+            cheby_sign = 1
+        end if
+
 
         ! Don't bother to perform these checks and print more error messages
         ! if we've run out of memory already.
@@ -879,9 +893,9 @@ contains
                 associate(spawned_population => spawn%sdata(spawn%bit_str_len+1:spawn%bit_str_len+spawn%ntypes, i), &
                         tbl=>sys%basis%tensor_label_len)
                     call insert_new_walker(sys, psip_list, annihilation_flags, k, int(spawn%sdata(:tbl,i), i0), &
-                                           int(spawned_population, int_p), ref)
+                                           cheby_sign*int(spawned_population, int_p), ref)
                     ! Extract the real sign from the encoded sign.
-                    real_population = real(spawned_population,p)/psip_list%pop_real_factor
+                    real_population = cheby_sign*real(spawned_population,p)/psip_list%pop_real_factor
                     psip_list%nparticles = psip_list%nparticles + abs(real_population)
                 end associate
 
