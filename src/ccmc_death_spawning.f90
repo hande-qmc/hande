@@ -516,16 +516,25 @@ contains
         ! a difference in the sign of the determinant formed from applying the
         ! parent excitor to the reference and that formed from applying the
         ! child excitor.
-
-        invdiagel = calc_qn_weighting(qs%propagator, dfock)
-        if (isD0) then
-            KiiAi = ((- proj_energy)*invdiagel + (proj_energy - qs%shift(1))*qs%propagator%quasi_newton_pop_control)*population
-        else
-            if (linked_ccmc) then
-                KiiAi = (Hii*invdiagel + (proj_energy - qs%shift(1))*qs%propagator%quasi_newton_pop_control)*population
+        if (qs%cheby_prop%using_chebyshev) then
+            if (isD0) then
+                ! Note the sign! Chebyshev propagation doesn't have the negative sign in front
+                KiiAi = qs%cheby_prop%zeroes(qs%cheby_prop%icheb)*population
             else
-                KiiAi = ((Hii - proj_energy)*invdiagel + &
-                    (proj_energy - qs%shift(1))*qs%propagator%quasi_newton_pop_control)*population
+                ! Linked CCMC is out of scope for now
+                KiiAi = (Hii - qs%cheby_prop%zeroes(qs%cheby_prop%icheb))*population
+            end if
+        else
+            invdiagel = calc_qn_weighting(qs%propagator, dfock)
+            if (isD0) then
+                KiiAi = ((- proj_energy)*invdiagel + (proj_energy - qs%shift(1))*qs%propagator%quasi_newton_pop_control)*population
+            else
+                if (linked_ccmc) then
+                    KiiAi = (Hii*invdiagel + (proj_energy - qs%shift(1))*qs%propagator%quasi_newton_pop_control)*population
+                else
+                    KiiAi = ((Hii - proj_energy)*invdiagel + &
+                        (proj_energy - qs%shift(1))*qs%propagator%quasi_newton_pop_control)*population
+                end if
             end if
         end if
 
@@ -546,7 +555,7 @@ contains
             if (KiiAi > 0) nkill = -nkill
             ! Kill directly for single excips
             ! This only works in the full non composite algorithm as otherwise the
-            ! population on an excip can still be needed if it as selected as (part of)
+            ! population on an excip can still be needed if it was selected as (part of)
             ! another cluster. It is also necessary that death is not done until after
             ! all spawning attempts from the excip
             old_pop = population
