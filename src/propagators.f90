@@ -22,6 +22,7 @@ contains
         use proc_pointers, only: sc0_ptr
         use hamiltonian, only: get_hmatel
         use hamiltonian_data, only: hmatel_t
+        use parallel, only: parent
 
         type(sys_t), intent(in) :: sys
         type(qmc_in_t), intent(in) :: qmc_in
@@ -32,6 +33,10 @@ contains
         integer :: ndets, i
         real(p) :: e_max
         type(hmatel_t) :: offdiagel
+        integer :: iunit
+        real :: t1, t2
+
+        iunit = 6
 
         qs%cheby_prop%using_chebyshev = qmc_in%chebyshev
         qs%cheby_prop%icheb = 1
@@ -39,6 +44,8 @@ contains
         qs%cheby_prop%order = qmc_in%chebyshev_order
         
         if (qs%cheby_prop%using_chebyshev) then
+            call cpu_time(t1)
+
             allocate(qs%cheby_prop%zeroes(qs%cheby_prop%order))
             allocate(qs%cheby_prop%weights(qs%cheby_prop%order))
             allocate(occ_list_max(sys%nel))
@@ -64,6 +71,22 @@ contains
             qs%cheby_prop%spectral_range(1) = 0.0_p
             qs%cheby_prop%spectral_range(2) = e_max - qs%ref%H00
             call update_chebyshev(qs%cheby_prop, 0.0_p)
+
+            call cpu_time(t2)
+            if (parent) then
+                write(iunit, '(1X, "# Starting the wall-Chebyshev propagator initialisation.")')
+                write(iunit, '(1X, "Chebyshev order:", 1X, I0)') qs%cheby_prop%order
+                write(iunit, '(1X, "Initial estimate of spectral range:", 1X, "[", I0, ",", ES15.8, "]")') &
+                    0, qs%cheby_prop%spectral_range(2)
+                write(iunit, '(1X, "Initial zeroes of the Chebyshev polynomial and weights:")')
+                write(iunit, '(1X, "i", 6X, "S_i", 10X, "1/(E_0-S_i)")')
+                do i = 1, qs%cheby_prop%order
+                    write(iunit, '(1X, I0, 1X, ES15.8, 1X, ES15.8)') &
+                        i, qs%cheby_prop%zeroes(i), qs%cheby_prop%weights(i)
+                end do
+                write(iunit, '(1X, "# Finishing the wall-Chebyshev propgator initialisation, time taken:", 1X, ES15.8)') &
+                    t2-t1
+            end if
         else
             allocate(qs%cheby_prop%weights(1))
             qs%cheby_prop%weights(1) = 1.0_p ! Similar to QN, the hmatel is always scaled to save on too many checks (branching)
