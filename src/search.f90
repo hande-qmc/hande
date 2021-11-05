@@ -15,7 +15,7 @@ type node_t
     ! possible in the current Fock space
     ! Each of the edges point to another node
     integer(i0), allocatable :: bstring(:)
-    type(node_t), pointer :: edges(:)
+    type(node_t), pointer :: edges(:) => null()
 end type node_t
 
 type tree_t
