@@ -87,9 +87,10 @@ all integral values.
 
 ``SYMLZ``
     Array containing :math:`L_z` (angular momentum along the z-axis) for each orbital.
-    For example :math:`d_xz` would have :math:`L=2` and :math:`L_z=1`, and
-    :math:`d_yz L=2`, :math:`L_z=-1`.
-    If not provided in FCIDUMP assume no :math:`L_z` symmetry in system.
+    For example :math:`d_{xz}` would have :math:`L=2` and :math:`L_z=1`, and for
+    :math:`d_{yz}`, :math:`L=2` and :math:`L_z=-1`.
+    If not provided in FCIDUMP assume no :math:`L_z` symmetry in system. 
+    See :ref:`generic_systems` for more detail.
 
 ``NPROP``
     Dimensions of the supercell used in translationally symmetric systems.
@@ -100,7 +101,7 @@ all integral values.
 Integrals
 ^^^^^^^^^
 
-if :math:`i = j = a = b = 0`, :math:`E_{core} = x` , where :math:`E_{core}` contains the
+if :math:`i = j = a = b = 0`, :math:`E_{\text{core}} = x` , where :math:`E_{\text{core}}` contains the
 nuclear-nuclear and other non-electron contributions to the
 Hamiltonian.
 
@@ -108,7 +109,7 @@ if :math:`a = j = b = 0`, :math:`\epsilon_i = x`, the single-particle eigenvalue
 of the i-th orbital.
 
 if :math:`j = b = 0`, :math:`\langle i | h | a \rangle = x`, the one-body Hamiltonian matrix element
-between the i-th and a-th orbitals, where :math:`h = T+V_{ext}`.
+between the i-th and a-th orbitals, where :math:`h = T+V_{\text{ext}}`.
 
 otherwise :math:`\langle i j | 1/r_{12} | a b \rangle = x`, the Coulomb integral between
 the i-a co-density and the j-b codensity.  Note the Coulomb
