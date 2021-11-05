@@ -22,6 +22,8 @@ type tree_t
     ! For use in BK-tree search of secondary references
     ! A tree stores a pointer to the root node, and some of the constants specific to the system
     type(node_t), pointer :: root => null()
+    ! Number of secondary references, allowed excitation from *all* of them (no individual control), 
+    ! maximum excitation from ground state
     integer :: n_secondary_ref, ex_lvl, max_excit
 end type tree_t
 
@@ -458,6 +460,10 @@ contains
         ! This builds a Hamming-distance BK-tree for k-nearest neighbour search
         ! A very good explanation can be found here: 
         ! https://daniel-j-h.github.io/post/nearest-neighbors-in-metric-spaces/
+        ! In:
+        !   next_bstring: the current bitstring to be added to the tree.
+        ! In/out:
+        !   this: the BK-tree object we're adding the bitstring to.
 
         type(tree_t), intent(inout) :: this
         integer(i0), intent(in) :: next_bstring(:)
@@ -504,6 +510,7 @@ contains
     end subroutine tree_add
 
     recursive function tree_search(this, new_bstring, curr_node, offset) result(hit)
+        
         ! This is a recursive, depth-first traversal of a Hamming-distance BK-tree.
         ! This implementation was in part inspired by the C++ implementation here
         ! https://www.geeksforgeeks.org/bk-tree-introduction-implementation/ 
@@ -512,7 +519,13 @@ contains
         !
         ! [TODO]: A non-recursive search may improve performance, and an example in Python 
         ! using deque can be found at https://github.com/benhoyt/pybktree
-
+        ! In:
+        !   this: the BK-tree object we're searching.
+        !   new_bstring: we'd like to know if new_bstring falls within ex_lvl of any of the bitstrings within the tree.
+        !   curr_node: which node are we currently on in the recursive dive into the tree.
+        !   offset: in ccmc.f90::multiref_check_ex_level we need to change ex_lvl essentially so this convenience argument is added
+        ! Returns:
+        !   hit: true if new_bstring is within ex_lvl(+offset) of any of the bistrings stored in the tree.
 
         type(tree_t), intent(in) :: this
         integer(i0), intent(in) :: new_bstring(:)

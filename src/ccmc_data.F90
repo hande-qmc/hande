@@ -3,7 +3,6 @@ module ccmc_data
 use const, only: i0, p, dp, int_64, depsilon
 use determinant_data, only: det_info_t
 use base_types, only: alloc_int2d, alloc_rdp1d
-use excitations, only: get_excitation_level
 
 implicit none
 
