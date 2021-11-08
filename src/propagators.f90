@@ -79,7 +79,7 @@ contains
                 write(iunit, '(1X, "Initial estimate of spectral range:", 1X, "[", I0, ",", ES15.8, "]")') &
                     0, qs%cheby_prop%spectral_range(2)
                 write(iunit, '(1X, "Initial zeroes of the Chebyshev polynomial and weights:")')
-                write(iunit, '(1X, "i", 6X, "S_i", 10X, "1/(E_0-S_i)")')
+                write(iunit, '(1X, "i", 6X, "S_i", 10X, "1/(S_i-E_0)")')
                 do i = 1, qs%cheby_prop%order
                     write(iunit, '(1X, I0, 1X, ES15.8, 1X, ES15.8)') &
                         i, qs%cheby_prop%zeroes(i), qs%cheby_prop%weights(i)
@@ -113,7 +113,8 @@ contains
         do i = 1, cheby_prop%order
             cheby_prop%zeroes(i) = shift + (cheby_prop%spectral_range(2)-cheby_prop%spectral_range(1))/2 &
                                    * (1 - cos(pi*i / (cheby_prop%order+0.5) )) ! BZ [TODO] - explain the factor of 2
-            cheby_prop%weights(i) = 1/(shift-cheby_prop%zeroes(i))
+            ! This takes care of the absence of the minus sign in front of <D_m|g_wall_ch|D_0>
+            cheby_prop%weights(i) = 1/(cheby_prop%zeroes(i)-shift)
         end do
 
     end subroutine update_chebyshev

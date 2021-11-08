@@ -333,6 +333,8 @@ contains
                 ! A composite cluster. Death step different to single excitors, see above.
                 KiiAi = ((sc0_ptr(sys, cdet%f) - qs%ref%H00) - qs%cheby_prop%zeroes(qs%cheby_prop%icheb)) * cluster%amplitude
             end select
+            ! Scale by Chebyshev weights
+            KiiAi = KiiAi * qs%cheby_prop%weights(qs%cheby_prop%icheb)
         else
             select case (cluster%nexcitors)
             case(0)
@@ -351,9 +353,8 @@ contains
         ! See comments in stochastic_death.
         KiiAi = qs%psip_list%pop_real_factor*KiiAi
 
-        ! Scale by tau, pselect, and Chebyshev weights before pass to specific functions.
-        KiiAi = KiiAi * qs%tau * qs%cheby_prop%zeroes(qs%cheby_prop%icheb)&
-                * qs%cheby_prop%weights(qs%cheby_prop%icheb) / cluster%pselect
+        ! Scale by tau and pselect before pass to specific functions.
+        KiiAi = KiiAi * qs%tau / cluster%pselect
 
         if (ex_lvl_sort) call add_ex_level_bit_string_provided(sys%basis, cluster%excitation_level, cdet%f)
         call stochastic_death_attempt(rng, real(KiiAi, p), 1, cdet, qs%ref, sys%basis, spawn, &
@@ -518,12 +519,16 @@ contains
         ! child excitor.
         if (qs%cheby_prop%using_chebyshev) then
             if (isD0) then
-                ! Note the sign! Chebyshev propagation doesn't have the negative sign in front
-                KiiAi = qs%cheby_prop%zeroes(qs%cheby_prop%icheb)*population
+                KiiAi = -qs%cheby_prop%zeroes(qs%cheby_prop%icheb)*population
             else
                 ! Linked CCMC is out of scope for now
                 KiiAi = (Hii - qs%cheby_prop%zeroes(qs%cheby_prop%icheb))*population
             end if
+            ! Apply the Chebyshev weights
+            KiiAi = KiiAi * qs%cheby_prop%weights(qs%cheby_prop%icheb)
+            old_pop = population
+            ! Chebyshev resets population at every iteration
+            population = 0
         else
             invdiagel = calc_qn_weighting(qs%propagator, dfock)
             if (isD0) then
@@ -536,10 +541,9 @@ contains
                         (proj_energy - qs%shift(1))*qs%propagator%quasi_newton_pop_control)*population
                 end if
             end if
+            old_pop = population
         end if
 
-        ! Apply the Chebyshev weights
-        KiiAi = KiiAi * qs%cheby_prop%weights(qs%cheby_prop%icheb)
         ! Death is attempted exactly once on this cluster regardless of pselect.
         ! Population passed in is in the *encoded* form.
         pdeath = qs%tau*abs(KiiAi)
@@ -558,7 +562,6 @@ contains
             ! population on an excip can still be needed if it was selected as (part of)
             ! another cluster. It is also necessary that death is not done until after
             ! all spawning attempts from the excip
-            old_pop = population
             population = population + nkill
             ! Also need to update total population
             tot_population = tot_population + real(abs(population)-abs(old_pop),p)/qs%psip_list%pop_real_factor
