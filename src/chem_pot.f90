@@ -196,7 +196,7 @@ contains
                 end if
             end do
             it = it + 1
-            if (all(conv == .true.)) exit
+            if (conv(1) .and. conv(2)) exit
         end do
 
         if (it == max_it) then
