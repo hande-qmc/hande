@@ -406,6 +406,10 @@ contains
         if (dmqmc_in%symmetric .and. dmqmc_in%ipdmqmc .and. sys%system /= ueg) then
             call stop_all(this, 'Symmetric propagation is only implemented for the UEG. Please implement.')
         end if
+        if (sys%system == ueg .and. dmqmc_in%fermi_temperature .and. sys%Ms /= 0 .and. sys%Ms /= sys%nel) then
+            call stop_all(this, 'The fermi energy, and therefore fermi_temperature &
+                                 is incorrect for the spin polarization. Please implement.')
+        end if
 
         if (dmqmc_in%target_beta < depsilon .and. dmqmc_in%grand_canonical_initialisation) then
             call stop_all(this, 'target_beta must be greater than zero if grand_canonical_initialisation is to be used.')
