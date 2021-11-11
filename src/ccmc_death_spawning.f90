@@ -519,12 +519,15 @@ contains
         ! child excitor.
         if (qs%cheby_prop%using_chebyshev) then
             if (isD0) then
+                ! the zeroes of the chebyshev polynomial is now the effective shift, 
+                ! but it's still scaled nonlinearly by the actual shift, see below
                 KiiAi = -qs%cheby_prop%zeroes(qs%cheby_prop%icheb)*population
             else
                 ! Linked CCMC is out of scope for now
                 KiiAi = (Hii - qs%cheby_prop%zeroes(qs%cheby_prop%icheb))*population
             end if
-            ! Apply the Chebyshev weights
+            ! Apply the Chebyshev weights, 1/(S_i - E_0), always positive before E_0 (the shift) starts varying
+            ! This also means for D0, KiiAi = -D0_normailsation when shift = 0
             KiiAi = KiiAi * qs%cheby_prop%weights(qs%cheby_prop%icheb)
             old_pop = population
             ! Chebyshev resets population at every iteration
