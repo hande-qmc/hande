@@ -66,7 +66,11 @@ contains
             if (parent) then
                 call generate_hamil(sys, ndets, dets, hamil, diagonal_only=.true.)
                 do i = 1, ndets
-                    eigv(i) = hamil%rmat(i,1)
+                    if (hamil%comp) then
+                        eigv(i) = real(hamil%cmat(i,1),p)
+                    else
+                        eigv(i) = hamil%rmat(i,1)
+                    end if
                 end do
                 call insert_sort(eigv)
             end if
