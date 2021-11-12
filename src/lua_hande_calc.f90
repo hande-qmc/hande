@@ -1545,8 +1545,10 @@ contains
             call aot_get_val(dmqmc_in%metropolis_attempts, err, lua_state, table, 'metropolis_attempts')
             call aot_get_val(dmqmc_in%piecewise_beta, err, lua_state, table, 'piecewise_beta')
             call aot_get_val(dmqmc_in%piecewise_shift, err, lua_state, table, 'piecewise_shift')
-            call aot_get_val(dmqmc_in%post_pip_symmetric_propagation, err, lua_state, table, 'post_pip_symmetric_propagation', default=.false.)
-            call aot_get_val(dmqmc_in%count_reweighted_particles, err, lua_state, table, 'count_reweighted_particles', default=.true.)
+            call aot_get_val(dmqmc_in%post_pip_symmetric_propagation, &
+                                err, lua_state, table, 'post_pip_symmetric_propagation', default=.false.)
+            call aot_get_val(dmqmc_in%count_reweighted_particles, &
+                                err, lua_state, table, 'count_reweighted_particles', default=.true.)
             call aot_get_val(dmqmc_in%check_reference, err, lua_state, table, 'check_reference', default=.true.)
             call warn_unused_args(lua_state, ip_keys, table)
             call aot_table_close(lua_state, table)

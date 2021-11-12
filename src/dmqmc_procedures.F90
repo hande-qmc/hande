@@ -105,7 +105,8 @@ contains
         ! we want to have our target_beta value updated for the smaller
         ! beta value that IP-DMQMC will propagate to so the thermal
         ! initalization is using the correct beta.
-        if (dmqmc_in%piecewise_beta > depsilon .and. dmqmc_in%piecewise_beta < dmqmc_in%target_beta) qs%target_beta = qs%piecewise_beta
+        if (dmqmc_in%piecewise_beta > depsilon .and. &
+            dmqmc_in%piecewise_beta < dmqmc_in%target_beta) qs%target_beta = qs%piecewise_beta
 
 
         if (dmqmc_in%weighted_sampling) then

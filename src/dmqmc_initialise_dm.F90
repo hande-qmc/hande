@@ -217,9 +217,12 @@ contains
             ! distribution perform that scaling now.
             ! Have to do real(int()) because the walkers are stored in integer
             ! form but the qmc_state values are real.
-            qmc_state%psip_list%tot_nparticles = qmc_state%psip_list%tot_nparticles * real(int(dmqmc_in%walker_scale_factor, p), p)
-            qmc_state%psip_list%nparticles = qmc_state%psip_list%nparticles * real(int(dmqmc_in%walker_scale_factor, p), p)
-            qmc_state%psip_list%nparticles_proc = qmc_state%psip_list%nparticles_proc * real(int(dmqmc_in%walker_scale_factor, p), p)
+            qmc_state%psip_list%tot_nparticles = qmc_state%psip_list%tot_nparticles * &
+                                                    real(int(dmqmc_in%walker_scale_factor, p), p)
+            qmc_state%psip_list%nparticles = qmc_state%psip_list%nparticles * &
+                                                    real(int(dmqmc_in%walker_scale_factor, p), p)
+            qmc_state%psip_list%nparticles_proc = qmc_state%psip_list%nparticles_proc * &
+                                                    real(int(dmqmc_in%walker_scale_factor, p), p)
             do ireplica = 1, qmc_state%psip_list%nspaces
                 qmc_state%psip_list%pops(ireplica,:qmc_state%psip_list%nstates) = &
                     int(dmqmc_in%walker_scale_factor, p)*qmc_state%psip_list%pops(ireplica,:qmc_state%psip_list%nstates)
@@ -743,7 +746,8 @@ contains
             end if
         end do
 
-        if (found_lower_reference) call stop_all('create_initial_density_matrix', 'diagonal determinant lower in energy than reference found!')
+        if (found_lower_reference) call stop_all('create_initial_density_matrix', &
+                                                 'diagonal determinant lower in energy than reference found!')
 
         contains
 
