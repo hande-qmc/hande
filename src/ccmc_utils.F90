@@ -884,11 +884,7 @@ contains
         !   f0: the reference determinant.
         ! In/out:
         !   hamil: the detministic subspace of the Hamiltonian saved in the CSR format.
-
-
-        ! [todo]
-        ! - linked
-        ! - docs
+        !          upon input it has the bare hamiltonian elements <i|H|j> without correct 'CCMC signs'
 
         use csr, only: csrp_t
         use excitations, only: get_excitation_level
@@ -903,9 +899,11 @@ contains
         do idet = 1, ndets 
             excit_level = get_excitation_level(f0, dets(:,idet))
             call convert_excitor_to_determinant(dets(:,idet), excit_level, sgn_i, f0)
-            ! loops of the nonzero entries of this row, this is safe because the diagonal element is guaranteed to be nonzero
+            ! loops over the nonzero entries of <idet|H|jj> for all jj
+            ! there will be at least one iteration because the diagonal element is guaranteed to be nonzero
             do jj = hamil%row_ptr(idet)+1, hamil%row_ptr(idet+1) 
-                jdet = hamil%col_ind(jj) ! The col_ind of the last entry above the current row
+                ! column index correspond to the position in dets(:,:)
+                jdet = hamil%col_ind(jj)
                 excit_level = get_excitation_level(f0, dets(:,jdet))
                 call convert_excitor_to_determinant(dets(:,jdet), excit_level, sgn_j, f0)
                 hamil%mat(jj) = hamil%mat(jj)*sgn_i*sgn_j

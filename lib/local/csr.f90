@@ -1,6 +1,6 @@
 module csr
 
-! Handling of sparse matrices in CSR format.
+! Handling of sparse matrices in CSR (compressed sparse row) format.
 ! This is not intended to be a complete implementation, but rather only include
 ! procedures as required in HANDE.
 
@@ -20,12 +20,28 @@ type csrp_t
     ! For matrices which will use the symmetric routines, this stores the
     ! non-zero elements of upper *or* lower triangle of matrix.
     ! For general matrices, all of the non-zero elements are stored.
+    ! nnz - number of nonzero elements, nrow - number of rows / dimension of matrix
+
+    ! Example: a sparse 5*5 matrix
+    ! 12  9   1  0  0
+    ! 2   34  0  0  0
+    ! 0   2   15 0  0
+    ! 1   0   0  13 0
+    ! 0   0   3  0  2
+    ! Can be stored in the CSR format as
+    ! mat(11)     = [12,9,1,2,34,2,15,1,13,3,2]
+    ! col_ind(11) = [1,2,3,1,2,2,3,1,4,3,5]
+    ! row_ptr(6)  = [0,3,5,7,9,11]
+    ! This is a poor use of the CSR format as we ended up needing to store 28 numbers instead of 25, 
+    ! but the sparser the matrix the more memory savings we can achieve.
+
+    ! List of nonzero elements in the matrix
     real(p), allocatable :: mat(:) ! (nnz)
     ! Column index of values stored in mat.
     ! If M_{ij} is stored in mat(k), then col_ind(k) = j.
     integer, allocatable :: col_ind(:) ! (nnz)
-    ! row_ptr(i) gives the location in mat of the first non-zero element in row
-    ! i, i.e. if mat(k) = M_{ij}, then row_ptr(i) <= k < row_ptr(i+1).  By
+    ! row_ptr(i) gives the location in mat of the first non-zero element in row i
+    ! i.e. if mat(k) = M_{ij}, then row_ptr(i) <= k < row_ptr(i+1).  By
     ! convention, row_ptr(nrow+1) = nnz+1.
     ! Alternatively, row_ptr(i) gives the total number of non-zero elements above that row. 
     integer, allocatable :: row_ptr(:) ! (nrow+1)
