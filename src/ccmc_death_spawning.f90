@@ -143,7 +143,7 @@ contains
         else
             invdiagel = 1
         end if
-        ! 2, Apply additional factors.
+        ! 2. Apply additional factors.
         hmatel_save = hmatel
         hmatel%r = hmatel%r*real(cluster%amplitude)*invdiagel*cluster%cluster_to_det_sign*&
                     qs%cheby_prop%weights(qs%cheby_prop%icheb)
@@ -321,20 +321,6 @@ contains
                 ! part of H so this must be an unlinked cluster
                 KiiAi = cmplx(0.0_p,0.0_p,p)
             end select
-        else if (qs%cheby_prop%using_chebyshev) then
-            ! This is (temporarily) incompatible with quasi_newton during proof of concept testing
-            ! BZ [TODO] - add compatibility with QN
-            select case (cluster%nexcitors)
-            case(0)
-                KiiAi = -qs%cheby_prop%zeroes(qs%cheby_prop%icheb)*cluster%amplitude
-            case(1)
-                KiiAi = (cdet%data(1) - qs%cheby_prop%zeroes(qs%cheby_prop%icheb))*cluster%amplitude
-            case default
-                ! A composite cluster. Death step different to single excitors, see above.
-                KiiAi = ((sc0_ptr(sys, cdet%f) - qs%ref%H00) - qs%cheby_prop%zeroes(qs%cheby_prop%icheb)) * cluster%amplitude
-            end select
-            ! Scale by Chebyshev weights
-            KiiAi = KiiAi * qs%cheby_prop%weights(qs%cheby_prop%icheb)
         else
             select case (cluster%nexcitors)
             case(0)
@@ -351,7 +337,7 @@ contains
 
         ! Amplitude is the decoded value.  Scale here so death is performed exactly (bar precision).
         ! See comments in stochastic_death.
-        KiiAi = qs%psip_list%pop_real_factor*KiiAi
+        KiiAi = qs%cheby_prop%weights(qs%cheby_prop%icheb)*qs%psip_list%pop_real_factor*KiiAi
 
         ! Scale by tau and pselect before pass to specific functions.
         KiiAi = KiiAi * qs%tau / cluster%pselect
@@ -517,35 +503,20 @@ contains
         ! a difference in the sign of the determinant formed from applying the
         ! parent excitor to the reference and that formed from applying the
         ! child excitor.
-        if (qs%cheby_prop%using_chebyshev) then
-            if (isD0) then
-                ! the zeroes of the chebyshev polynomial is now the effective shift, 
-                ! but it's still scaled nonlinearly by the actual shift, see below
-                KiiAi = -qs%cheby_prop%zeroes(qs%cheby_prop%icheb)*population
-            else
-                ! Linked CCMC is out of scope for now
-                KiiAi = (Hii - qs%cheby_prop%zeroes(qs%cheby_prop%icheb))*population
-            end if
-            ! Apply the Chebyshev weights, 1/(S_i - E_0), always positive before E_0 (the shift) starts varying
-            ! This also means for D0, KiiAi = -D0_normailsation when shift = 0
-            KiiAi = KiiAi * qs%cheby_prop%weights(qs%cheby_prop%icheb)
-            old_pop = population
-            ! Chebyshev resets population at every iteration
-            population = 0
+        invdiagel = calc_qn_weighting(qs%propagator, dfock)
+        if (isD0) then
+            KiiAi = ((- proj_energy)*invdiagel + (proj_energy - qs%shift(1))*qs%propagator%quasi_newton_pop_control)*population
         else
-            invdiagel = calc_qn_weighting(qs%propagator, dfock)
-            if (isD0) then
-                KiiAi = ((- proj_energy)*invdiagel + (proj_energy - qs%shift(1))*qs%propagator%quasi_newton_pop_control)*population
+            if (linked_ccmc) then
+                KiiAi = (Hii*invdiagel + (proj_energy - qs%shift(1))*qs%propagator%quasi_newton_pop_control)*population
             else
-                if (linked_ccmc) then
-                    KiiAi = (Hii*invdiagel + (proj_energy - qs%shift(1))*qs%propagator%quasi_newton_pop_control)*population
-                else
-                    KiiAi = ((Hii - proj_energy)*invdiagel + &
-                        (proj_energy - qs%shift(1))*qs%propagator%quasi_newton_pop_control)*population
-                end if
+                KiiAi = ((Hii - proj_energy)*invdiagel + &
+                    (proj_energy - qs%shift(1))*qs%propagator%quasi_newton_pop_control)*population
             end if
-            old_pop = population
         end if
+        old_pop = population
+        ! Apply Chebyshev weights corresponding to the current iteration
+        KiiAi = KiiAi*qs%cheby_prop%weights(qs%cheby_prop%icheb)
 
         ! Death is attempted exactly once on this cluster regardless of pselect.
         ! Population passed in is in the *encoded* form.

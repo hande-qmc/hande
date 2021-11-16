@@ -11,6 +11,44 @@ contains
         ! Initialises parameters to do with the wall-Chebyshev propagator at the start of the simulation.
         ! This sets up the initial estimate of the spectral range of the Hamiltonian by Gershgorin circle theorem,
         ! and consequently sets up the zeroes of the polynomial expansion.
+
+        ! Here we briefly document the wall-Chebyshev propagator:
+        ! The true projector that turns any trial wavefunction that are nonorthogonal to the ground state wavefunction has action
+        ! g_GS|\psi_trial> ~ |\Psi_CC>
+        ! and has the form of 
+        ! g_GS = \delta(H-E_CC)
+        ! This is the wall function, and the infinite time limit of the exponential projector:
+        ! lim_{t->\infty} e^(-\tau H)
+        ! Knowing the wall function exactly is equivalent to solving the ground state of H, but we can approximate it with a
+        ! suitable polynomial expansion that has the following properties:
+        !   1. It is bound by [-1,1] in the (estimated) spectral range, becoming small near the upper spectral bound
+        !   2. It diverges to +\infty as E -> -\infty, meaning the lower spectral bound can be an estimate
+        ! The Chebyshev polynomials satisfy these conditions, with an additional, very fortunate property
+        ! that the sum of all Chebyshev polynomials from orders 1 through m can be written as a product of m linear functions.
+        ! This means that we can reuse our machinery of linear propagators to exactly reproduce the wall-Chebyshev projection.
+        ! To be exact, the m-th order Chebyshev expansion of the wall function can be written as
+        ! g_wall-Ch^m = \prod_{i=1}^m \frac{H-a_i}{S-a_i}
+        !   where m is a_i's are the zeroes of the polynomial, and S is the arbitrary shift / estimate of the lower bound.
+        ! The zeroes are given in a closed form:
+        !   a_i = S + R(1 - cos(i/(m + 1/2)*pi))
+        !   where R is the spectral radius (E_{N-1} - E_0), E_{N-1} can be estimated with the Gershgorin disc theorem (see below)    
+        !   and E_0 is estimated by S
+        ! The action of the g_wall-Ch(^m) is:
+        !                         g_wall-Ch|\Psi^(n,0)> = |\Psi^(n+1,0)>
+        ! \prod_{i=1}^m \frac{H-a_i}{S-a_i}|\Psi^(n,0)> = |\Psi^(n+1,0)>
+        ! and this can be written iteratively as
+        !               \frac{H-a_1}{S-a_1}|\Psi^(n,0)> = |\Psi^(n,1)>
+        !               \frac{H-a_2}{S-a_2}|\Psi^(n,1)> = |\Psi^(n,2)>
+        !               and so on...
+        ! We project the equations in classic CC fashion:
+        !         <D_m|\Psi> = <D_m|\frac{H-a_i}{S-a_i}|\Psi> 
+        !              t~_m^ = -\frac{1}{a_i-S} (\sum_{n \neq m} H_mn t~_n + (H_mm - a_i)t~_m)
+        !   t~_m - t_m + t_m = -\frac{1}{a_i-S} (\sum_{n \neq m} H_mn t~_n + (H_mm - a_i)t~_m)
+        !                t_m = t_m -\frac{1}{a_i-S} (\sum_{n \neq m} H_mn t~_n + (H_mm - S)t~_m)
+        ! the last equation strongly resembles the original update equation
+        !                t_m = t_m - dt (\sum_{n \neq m) H_mn t~_n + (H_mm - S)t~_m)
+        ! but just with all amplitudes scaled by \frac{1}{a_i-S} (which we term "Chebyshev weights"), and dt (tau) set to unity.
+
         ! In:
         !   sys: system under study.
         ! In/out:
