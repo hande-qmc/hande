@@ -110,7 +110,6 @@ contains
         integer :: excitor_sign, excitor_level, excitor_level2
         logical :: linked, single_unlinked, allowed_excitation, allowed_multiref
         real(p) :: invdiagel
-        integer :: i
 
         ! 1. Generate random excitation.
         ! Note CCMC is not (yet, if ever) compatible with the 'split' excitation
