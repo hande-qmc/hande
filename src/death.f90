@@ -85,6 +85,8 @@ contains
 
         weight = calc_qn_weighting(qs%propagator, dfock)
         pd = qs%tau*((Kii-proj_energy)*weight+(proj_energy-loc_shift)*qs%propagator%quasi_newton_pop_control)*qs%dmqmc_factor
+        ! See propagators.f90 for documentation on the wall-Chebyshev propagator
+        pd = pd * qs%cheby_prop%weights(qs%cheby_prop%icheb)
 
         pd_saved = pd
 
