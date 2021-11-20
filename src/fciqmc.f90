@@ -283,6 +283,7 @@ contains
 
             do icycle = 1, qmc_in%ncycles
                 do icheb = 1, qs%cheby_prop%order
+                    qs%cheby_prop%icheb = icheb
                     iter = qs%mc_cycles_done + (ireport-1)*qmc_in%ncycles + icycle
 
                     if (debug) call prep_logging_mc_cycle(iter, logging_in, logging_info, sys%read_in%comp)
