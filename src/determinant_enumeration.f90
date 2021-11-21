@@ -23,7 +23,7 @@ contains
 
         ! On initialisation the number of determinants in each symmetry block
         ! for the specified spin polarisation is counted and store in
-        ! the module-level variable sym_space_size.  Subseuent calls store
+        ! the module-level variable sym_space_size.  Subsequent calls store
         ! determinants of the desired symmetry in the module-level variable
         ! dets_list array.
 

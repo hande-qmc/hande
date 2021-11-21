@@ -86,11 +86,7 @@ contains
 
             allocate(qs%cheby_prop%zeroes(qs%cheby_prop%order))
             allocate(qs%cheby_prop%weights(qs%cheby_prop%order))
-            allocate(occ_list_max(sys%nel))
-            ! the highest occ_list is [nbasis-nel:nbasis]
-            do i=1, sys%nel
-                occ_list_max(i) = sys%basis%nbasis - sys%nel + i
-            end do
+            call highest_det(sys, occ_list_max)
             call enumerate_determinants(sys, .true., .false., 2, sym_space_size, ndets, singles_doubles,&
                                         sys%symmetry, occ_list_max) ! init first
             call enumerate_determinants(sys, .false., .false., 2, sym_space_size, ndets, singles_doubles,&
@@ -99,9 +95,10 @@ contains
             allocate(f_max(sys%basis%tot_string_len))
             call encode_det(sys%basis, occ_list_max, f_max)
 
-            e_max = sc0_ptr(sys, f_max) + 0.5 ! Arbitrarily shift the upper bound higher to be safe
+            e_max = 0.5 ! Arbitrarily shift the upper bound higher to be safe
             do i=1, ndets
                 ! BZ [TODO] - Deal with complex systems
+                ! Note 'offdiagel' here actually includes the diagonal element, as enumerate_determinant returns it
                 offdiagel = get_hmatel(sys, f_max, singles_doubles(:,i))
                 e_max = e_max + offdiagel%r
             end do
@@ -131,6 +128,36 @@ contains
         end if
 
     end subroutine init_chebyshev
+
+    subroutine highest_det(sys, occ_list_max)
+        ! This returns the occupation list of the highest determinant of the same spin symmetry. Getting the spatial symmetry 
+        ! right too would be nice but wouldn't be necessary for our estimate: we just need an upper bound.
+        ! BZ [TODO] perhaps this belongs in one of the determinant source files
+        ! This currently only supports read_in systems (extension to other systems should be trivial)
+        ! In:
+        !   sys: the system under study. Contains basis set information.
+        ! Out:
+        !   occ_list_max: the occupation list of the highest determinant with the same Ms.
+        !                 e,g. for the H4 molecule in STO-3G this would be (/5,6,7,8/)
+        use system, only: sys_t
+
+        type(sys_t), intent(in) :: sys
+        integer, allocatable, intent(out) :: occ_list_max(:)
+        integer :: i_alpha, i_beta
+        
+        allocate(occ_list_max(sys%nel))
+
+        do i_alpha=1, sys%nalpha
+            ! We assume that # of alpha basis fn is equal to # of beta ones
+            occ_list_max(i_alpha) = sys%basis%nbasis - (i_alpha*2 - 1) ! (/nbasis-1, nbasis-3, nbasis-5, .../)
+        end do
+
+        do i_beta=1, sys%nbeta
+            occ_list_max(sys%nalpha+i_beta) = sys%basis%nbasis - (i_beta-1)*2 ! (/nbasis, nbasis-2, .../)
+        end do
+        ! Note that occ_list_max is not sorted, as this is eventually passed into encode_det where sorting is not necessary
+    end subroutine highest_det
+            
 
     subroutine update_chebyshev(cheby_prop, shift)
         ! The zeroes, S_i, of the m-th order Chebyshev expansion of the wall function are given by
