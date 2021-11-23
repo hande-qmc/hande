@@ -337,6 +337,7 @@ contains
         use logging, only: logging_in_t, logging_t, logging_in_t_json, logging_t_json, write_logging_select_ccmc
         use report, only: write_date_time_close
         use excit_gens, only: p_single_double_coll_t
+        use propagators, only: disable_chebyshev
 
         type(sys_t), intent(in) :: sys
         type(qmc_in_t), intent(in) :: qmc_in
@@ -609,9 +610,13 @@ contains
             call init_report_loop(qs, bloom_stats)
 
             do icycle = 1, qmc_in%ncycles
+                iter = qs%mc_cycles_done + (ireport-1)*qmc_in%ncycles + icycle
+
+                ! Chebyshev projector has hopefully brought us to convergence, now we can collect statistics
+                if (iter == qs%cheby_prop%disable_chebyshev_iter) call disable_chebyshev(qs, qmc_in)
+
                 do icheb = 1, qs%cheby_prop%order
                     qs%cheby_prop%icheb = icheb
-                    iter = qs%mc_cycles_done + (ireport-1)*qmc_in%ncycles + icycle
 
                     if (debug) call prep_logging_mc_cycle(iter, logging_in, logging_info, sys%read_in%comp, &
                                                             min(sys%nel, qs%ref%ex_level+2))

@@ -1129,10 +1129,21 @@ contains
         call aot_get_val(qmc_in%quasi_newton_pop_control, err, lua_state, qmc_table, 'quasi_newton_pop_control')
         call aot_get_val(qmc_in%chebyshev, err, lua_state, qmc_table, 'chebyshev')
         call aot_get_val(qmc_in%chebyshev_order, err, lua_state, qmc_table, 'chebyshev_order')
+        call aot_get_val(qmc_in%disable_chebyshev_iter, err, lua_state, qmc_table, 'disable_chebyshev_iter')        
 
-        if (qmc_in%chebyshev .and. qmc_in%tau /= 1) then
-            call warning('read_qmc_in', 'Wall-Chebyshev projector used, which is independent of tau. Now setting tau to 1!')
+        if (qmc_in%chebyshev) then
+            if (qmc_in%chebyshev_order == 1) then
+                call stop_all('read_qmc_in', 'Chebyshev order must be greater than 1 if using the Chebyshev projector')
+            end if
+
+            call warning('read_qmc_in', 'Wall-Chebyshev projector used, which is independent of tau. Setting tau to 1! '//&
+                'Original tau is saved in qmc_in%tau_save for later use.')
+            qmc_in%tau_save = qmc_in%tau
             qmc_in%tau = 1
+        end if
+
+        if ((qmc_in%disable_chebyshev_iter /= -1) .and. .not. qmc_in%chebyshev) then
+            call stop_all('read_qmc_in', 'disable_chebyshev_iter specified but not using the Chebyshev projector')
         end if
 
         if (aot_exists(lua_state, qmc_table, 'reference_target')) then

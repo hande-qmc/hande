@@ -2,6 +2,7 @@ module propagators
 ! For now only includes the wall-Chebyshev propagator
 ! [TODO] - Maybe move the quasi-Newton propagator here?
 use const
+use checking
 
 implicit none
 
@@ -51,6 +52,7 @@ contains
 
         ! In:
         !   sys: system under study.
+        !   qmc_in_t: the input QMC options.
         ! In/out:
         !   qs: the qmc_state_t object containing the Chebyshev propagator being initialised.
         use qmc_data, only: qmc_state_t, qmc_in_t
@@ -73,6 +75,7 @@ contains
         type(hmatel_t) :: offdiagel
         integer :: iunit
         real :: t1, t2
+        integer :: ierr
 
         iunit = 6
 
@@ -80,28 +83,35 @@ contains
         qs%cheby_prop%icheb = 1
         ! Default is 1
         qs%cheby_prop%order = qmc_in%chebyshev_order
+        qs%cheby_prop%disable_chebyshev_iter = qmc_in%disable_chebyshev_iter
         
         if (qs%cheby_prop%using_chebyshev) then
             call cpu_time(t1)
 
-            allocate(qs%cheby_prop%zeroes(qs%cheby_prop%order))
-            allocate(qs%cheby_prop%weights(qs%cheby_prop%order))
+            allocate(qs%cheby_prop%zeroes(qs%cheby_prop%order), stat=ierr)
+            call check_allocate('qs%cheby_prop%zeroes', qs%cheby_prop%order, ierr)
+            allocate(qs%cheby_prop%weights(qs%cheby_prop%order), stat=ierr)
+            call check_allocate('qs%cheby_prop%weights', qs%cheby_prop%order, ierr)
+
             call highest_det(sys, occ_list_max)
             call enumerate_determinants(sys, .true., .false., 2, sym_space_size, ndets, singles_doubles,&
                                         sys%symmetry, occ_list_max) ! init first
             call enumerate_determinants(sys, .false., .false., 2, sym_space_size, ndets, singles_doubles,&
                                         sys%symmetry, occ_list_max) ! store determs
             ! BZ [TODO] - Make sure this works with even selection, which has 1 info_string in tot_string_len
-            allocate(f_max(sys%basis%tot_string_len))
+            allocate(f_max(sys%basis%tot_string_len), stat=ierr)
+            call check_allocate('f_max', sys%basis%tot_string_len, ierr)
+
             call encode_det(sys%basis, occ_list_max, f_max)
 
-            e_max = 0.5 ! Arbitrarily shift the upper bound higher to be safe
+            e_max = 0.0_p
             do i=1, ndets
                 ! BZ [TODO] - Deal with complex systems
                 ! Note 'offdiagel' here actually includes the diagonal element, as enumerate_determinant returns it
                 offdiagel = get_hmatel(sys, f_max, singles_doubles(:,i))
                 e_max = e_max + offdiagel%r
             end do
+            e_max = e_max * 1.1  ! Arbitrarily shift the upper bound higher to be safe
 
             qs%cheby_prop%spectral_range(1) = 0.0_p
             qs%cheby_prop%spectral_range(2) = e_max - qs%ref%H00
@@ -123,7 +133,8 @@ contains
                     t2-t1
             end if
         else
-            allocate(qs%cheby_prop%weights(1))
+            allocate(qs%cheby_prop%weights(1), stat=ierr)
+            call check_allocate('qs%cheby_prop%weights', 1, ierr)
             qs%cheby_prop%weights(1) = 1.0_p ! Similar to QN, the hmatel is always scaled to save on too many checks (branching)
         end if
 
@@ -144,8 +155,10 @@ contains
         type(sys_t), intent(in) :: sys
         integer, allocatable, intent(out) :: occ_list_max(:)
         integer :: i_alpha, i_beta
+        integer :: ierr
         
-        allocate(occ_list_max(sys%nel))
+        allocate(occ_list_max(sys%nel), stat=ierr)
+        call check_allocate('occ_list_max', sys%nel, ierr)
 
         do i_alpha=1, sys%nalpha
             ! We assume that # of alpha basis fn is equal to # of beta ones
@@ -183,5 +196,38 @@ contains
         end do
 
     end subroutine update_chebyshev
+
+    subroutine disable_chebyshev(qs, qmc_in)
+        ! Called at disable_chebyshev_iter when the ground state energy is reached and more statistics can be collected
+        ! by switching to the linear propagator. Deallocates all arrays in the cheb_t object.
+        ! In:
+        !   qmc_in: input qmc options containing the original tau.
+        ! Inout:
+        !   qs: the qmc_state_t object containing the Chebyshev propagator being deallocated.
+
+        use qmc_data, only: qmc_state_t, qmc_in_t
+
+        type(qmc_state_t), intent(inout) :: qs
+        type(qmc_in_t), intent(in) :: qmc_in
+        integer :: ierr
+
+        associate(cp => qs%cheby_prop)
+            cp%using_chebyshev = .false.
+            cp%order = 1
+            cp%icheb = 1
+            cp%spectral_range(:) = 0.0_p
+            deallocate(cp%zeroes, stat=ierr)
+            call check_deallocate('qs%cheby_prop%zeros', ierr)
+            deallocate(cp%weights, stat=ierr)
+            call check_deallocate('qs%cheby_prop%weights', ierr)
+            allocate(cp%weights(1), stat=ierr)
+            call check_allocate('qs%cheby_prop%weights', 1, ierr)
+            cp%weights(1) = 1.0_p
+        end associate
+        
+        qs%tau = qmc_in%tau_save
+
+    end subroutine disable_chebyshev
+
 
 end module propagators
