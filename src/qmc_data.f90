@@ -238,7 +238,7 @@ type qmc_in_t
     ! Set to 1 if not using quasiNewton.
     real(p) :: quasi_newton_pop_control = -1.0_p
 
-    ! BZ - [TODO]: document propagators
+    ! The wall-Chebyshev propagator, see propagators.f90 for documentation
     logical :: chebyshev = .false.
     ! Default so the loop over the original qmc cycle code only gets executed once if not using Chebyshev
     integer :: chebyshev_order = 1 
