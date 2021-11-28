@@ -244,8 +244,10 @@ type qmc_in_t
     integer :: chebyshev_order = 1 
     ! Saving the original tau to switch back to linear propagation for statistic collection
     real(p) :: tau_save
-    ! The iteration where we start collecting statistics with the linear projector
-    integer :: disable_chebyshev_iter = -1
+    ! Turn off the Chebyshev projector when target population is reached
+    logical :: disable_chebyshev_shoulder = .false.
+    ! The iteration after shoulder is reached where we start collecting statistics with the linear projector
+    integer :: disable_chebyshev_lag = 0    
 
 end type qmc_in_t
 
@@ -868,6 +870,9 @@ type cheb_t
     real(p), allocatable :: zeroes(:), weights(:)
     ! Saves the current index to save on looping
     integer :: icheb
+    logical :: disable_chebyshev_shoulder = .false.
+    integer :: disable_chebyshev_lag = 0
+    ! shoulder_iter + disable_chebyshev_lag
     integer :: disable_chebyshev_iter = -1
 end type cheb_t
 

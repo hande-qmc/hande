@@ -80,6 +80,7 @@ contains
                             write_blocking_report, update_shift_damping
         use report, only: write_date_time_close
         use replica_rdm, only: update_rdm_from_spawns, calc_rdm_energy, write_final_rdm
+        use propagators, only: disable_chebyshev
 
         type(sys_t), intent(in) :: sys
         type(qmc_in_t), intent(in) :: qmc_in
@@ -123,7 +124,7 @@ contains
         logical :: determ_parent, restart_proj_est
 
         real :: t1, t2
-        logical :: update_tau, restarting, imag
+        logical :: update_tau, restarting, imag, reached_shoulder
 
         ! Physical notation: rdm(p,q,r,s) = <Psi|a_p^+a_q^+a_sa_r|Psi>
         real(p), allocatable :: rdm(:,:)
@@ -282,9 +283,20 @@ contains
             end if
 
             do icycle = 1, qmc_in%ncycles
+                iter = qs%mc_cycles_done + (ireport-1)*qmc_in%ncycles + icycle
+                ! qs%vary_shift(nspaces), provided for compatibility with replica tricks
+                if (.not. reached_shoulder) then
+                    ! Check if shoulder has been reached and record the iteration
+                    if (all(qs%vary_shift)) then
+                        reached_shoulder = .true.
+                        qs%cheby_prop%disable_chebyshev_iter = iter + qs%cheby_prop%disable_chebyshev_lag
+                    end if
+                end if
+                ! Chebyshev projector has hopefully brought us to convergence, now we can collect statistics
+                if (iter == qs%cheby_prop%disable_chebyshev_iter) call disable_chebyshev(qs, qmc_in)
+
                 do icheb = 1, qs%cheby_prop%order
                     qs%cheby_prop%icheb = icheb
-                    iter = qs%mc_cycles_done + (ireport-1)*qmc_in%ncycles + icycle
 
                     if (debug) call prep_logging_mc_cycle(iter, logging_in, logging_info, sys%read_in%comp)
 

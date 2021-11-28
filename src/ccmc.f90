@@ -370,7 +370,7 @@ contains
         type(logging_t) :: logging_info
         type(selection_data_t) :: selection_data
 
-        logical :: soft_exit, dump_restart_shift, restarting, restart_proj_est
+        logical :: soft_exit, dump_restart_shift, restarting, restart_proj_est, reached_shoulder
 
         real(p), allocatable :: cumulative_abs_real_pops(:)
         integer :: D0_proc, D0_pos, nD0_proc, min_cluster_size, max_cluster_size, iexcip_pos
@@ -611,7 +611,14 @@ contains
 
             do icycle = 1, qmc_in%ncycles
                 iter = qs%mc_cycles_done + (ireport-1)*qmc_in%ncycles + icycle
-
+                ! qs%vary_shift(nspaces), provided for compatibility with replica tricks
+                if (.not. reached_shoulder) then
+                    ! Check if shoulder has been reached and record the iteration
+                    if (all(qs%vary_shift)) then
+                        reached_shoulder = .true.
+                        qs%cheby_prop%disable_chebyshev_iter = iter + qs%cheby_prop%disable_chebyshev_lag
+                    end if
+                end if
                 ! Chebyshev projector has hopefully brought us to convergence, now we can collect statistics
                 if (iter == qs%cheby_prop%disable_chebyshev_iter) call disable_chebyshev(qs, qmc_in)
 

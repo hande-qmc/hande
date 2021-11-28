@@ -1034,7 +1034,8 @@ contains
         !     vary_shift = true/false,
         !     chebyshev = true/false,
         !     chebyshev_order = order,
-        !     disable_chebyshev_iter = iter,
+        !     disable_chebyshev_shoulder = true/false,
+        !     disable_chebyshev_lag = lag_iter,
         ! }
 
         ! In/Out:
@@ -1066,7 +1067,7 @@ contains
         character(len=30) :: str
         logical :: skip, no_renorm
 
-        character(24), parameter :: keys(37) = [character(24) :: 'tau', 'init_pop', 'mc_cycles', 'nreports', 'state_size', &
+        character(24), parameter :: keys(38) = [character(24) :: 'tau', 'init_pop', 'mc_cycles', 'nreports', 'state_size', &
                                                                  'spawned_state_size', 'rng_seed', 'target_population', &
                                                                  'real_amplitudes', 'spawn_cutoff', 'no_renorm', 'tau_search', &
                                                                  'real_amplitude_force_32', &
@@ -1079,7 +1080,7 @@ contains
                                                                  'reference_target', 'vary_shift', 'quasi_newton', &
                                                                  'quasi_newton_threshold', 'quasi_newton_value', &
                                                                  'quasi_newton_pop_control', 'chebyshev', 'chebyshev_order', &
-                                                                 'disable_chebyshev_iter']
+                                                                 'disable_chebyshev_shoulder', 'disable_chebyshev_lag']
 
         if (present(short)) then
             skip = short
@@ -1131,7 +1132,8 @@ contains
         call aot_get_val(qmc_in%quasi_newton_pop_control, err, lua_state, qmc_table, 'quasi_newton_pop_control')
         call aot_get_val(qmc_in%chebyshev, err, lua_state, qmc_table, 'chebyshev')
         call aot_get_val(qmc_in%chebyshev_order, err, lua_state, qmc_table, 'chebyshev_order')
-        call aot_get_val(qmc_in%disable_chebyshev_iter, err, lua_state, qmc_table, 'disable_chebyshev_iter')        
+        call aot_get_val(qmc_in%disable_chebyshev_shoulder, err, lua_state, qmc_table, 'disable_chebyshev_shoulder')
+        call aot_get_val(qmc_in%disable_chebyshev_lag, err, lua_state, qmc_table, 'disable_chebyshev_lag')
 
         if (qmc_in%chebyshev) then
             if (qmc_in%chebyshev_order == 1) then
@@ -1144,8 +1146,8 @@ contains
             qmc_in%tau = 1
         end if
 
-        if ((qmc_in%disable_chebyshev_iter /= -1) .and. .not. qmc_in%chebyshev) then
-            call stop_all('read_qmc_in', 'disable_chebyshev_iter specified but not using the Chebyshev projector')
+        if ((qmc_in%disable_chebyshev_shoulder) .and. .not. qmc_in%chebyshev) then
+            call stop_all('read_qmc_in', 'disable_chebyshev_shoulder specified but not using the Chebyshev projector')
         end if
 
         if (aot_exists(lua_state, qmc_table, 'reference_target')) then
