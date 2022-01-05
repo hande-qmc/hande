@@ -109,7 +109,17 @@ contains
 
         type(logging_t) :: logging_info
         integer :: iunit, restart_version_restart
-
+        ! HAYLEY variables
+        real(p) :: Nw_current, remainder
+        integer :: exlevel_1,exlevel_2, max_ex_level, ex_1, ex_2
+        real(p), allocatable, dimension(:,:) :: counter_var(:,:), tc(:,:)
+        real(p), allocatable, dimension(:,:,:,:) :: counter_var_ex(:,:,:,:), tc_ex(:,:,:,:)
+        logical :: exist, skip
+        integer :: w, v,  bins_per_decade,exlevel_ref
+        integer :: ymin, ymax, xmin, xmax, min_ex_level
+        integer :: iiunit, iidet, num_bins, z, x, y, x2
+        character(len=1024) :: ffname, fffname, ggname,gggname
+        ! HAYLEY variables end
         iunit = 6
 
         if (parent) then
@@ -131,6 +141,37 @@ contains
         call check_allocate('tot_nparticles_old', qs%psip_list%nspaces, ierr)
         allocate(real_population(qs%psip_list%nspaces), stat=ierr)
         call check_allocate('real_population', qs%psip_list%nspaces, ierr)
+        
+        ! HAYLEY
+        if (reference_in%max_ex_level == -1) then
+            max_ex_level=reference_in%ex_level
+        else
+            max_ex_level=reference_in%max_ex_level
+        end if
+       
+         
+        bins_per_decade = 5
+        ymin = 1
+        ymax = bins_per_decade
+        xmin = 0
+        xmax = floor(log10(qs%target_particles))+3 ! adding three to account for floor and extra particles
+        min_ex_level = 0
+        allocate(counter_var(xmin:xmax, ymin:ymax), stat=ierr)
+        allocate(counter_var_ex(xmin:xmax, ymin:ymax, min_ex_level:max_ex_level,min_ex_level:max_ex_level), stat=ierr)
+        !allocate(total_count(xmin:xmax,ymin:ymax), stat=ierr)
+        allocate(tc(xmin:xmax,ymin:ymax), stat=ierr)
+        allocate(tc_ex(xmin:xmax, ymin:ymax, min_ex_level:max_ex_level,min_ex_level:max_ex_level), stat=ierr)
+        counter_var = 0.0_p
+        counter_var_ex = 0.0_p
+        tc = 0.0_p
+        tc_ex = 0.0_p
+
+        !allocate(reference_in%hs_occ_list0(sys%nel), stat=ierr)
+        !allocate(reference_in%hs_f0(sys%basis%tot_string_len), stat=ierr)
+        !call encode_det(sys%basis, reference_in%hs_occ_list0, reference_in%hs_f0)
+        !HAYLEY
+        !call decode_det(sys%basis, reference_in%hs_f0, qs%ref%occ_list0)
+        !call decode_det(sys%basis, ref_f, qs%ref%occ_list0)
 
         ! It is convenient to setup calculations using a final beta and
         ! target beta instead of calculating the nreports from tau and mc_cycles.
@@ -269,7 +310,7 @@ contains
 
             ! DMQMC quasi-newton not functional, so we artificially set this value to 0 which should not affect non-QN calcs.
             qs%estimators%proj_energy_old = 0_p
-
+            
             do ireport = 1, nreport
 
                 call init_dmqmc_report_loop(calc_ref_proj_energy, dmqmc_in%calc_excit_dist, dmqmc_in%calc_mom_dist, &
@@ -302,6 +343,7 @@ contains
                             & weighted_sampling%probs(sys%max_number_excitations+1) = &
                             & 0.5*(qs%target_beta-(iteration-1)*qs%dmqmc_factor*qs%tau)
 
+
                     do idet = 1, qs%psip_list%nstates ! loop over walkers/dets
 
                         ! f points to the bitstring that is spawning, f2 to the
@@ -319,7 +361,7 @@ contains
                         ! Quasi-Newton not yet implemented -- see also stochastic_death call.
                         cdet1%fock_sum = 1.0_p
                         cdet2%fock_sum = 1.0_p
-
+                        
                         ! If using multiple symmetry sectors then find the
                         ! symmetry labels of this particular det.
                         if (dmqmc_in%all_spin_sectors) call update_sys_spin_info(cdet1, sys)
@@ -345,6 +387,59 @@ contains
                                                          qs%ref%f0)
                         end if
 
+                        ! HAYLEY
+                        if (icycle == 1) then
+                            !exlevel_1 =  get_excitation_level(qs%ref%f0,cdet1%f2)
+                            !exlevel_2 = get_excitation_level(qs%ref%f0,cdet1%f)
+                            !exlevel_1 =  get_excitation_level(cdet1%f,cdet1%f2)
+                            !exlevel_2 = exlevel_1
+                            !!skip = .false.
+                            !!exlevel_ref = get_excitation_level(qs%ref%f0,cdet2%f)
+                            !!if (exlevel_ref == 0) then
+                            !!    exlevel_1 = get_excitation_level(cdet1%f,cdet1%f2)
+                            !!else
+                            !!    exlevel_1 = get_excitation_level(cdet1%f,cdet1%f2)
+                            !!    skip= .true.
+                            !!endif
+                            !!exlevel_2 = exlevel_1
+                            exlevel_1 = get_excitation_level(qs%ref%f0,cdet2%f)
+                            exlevel_2  = get_excitation_level(cdet1%f,cdet1%f2)
+                            Nw_current = abs(real(qs%psip_list%pops(1,idet),p))
+                            x = floor(log10(abs(Nw_current)))
+                            if (x < 0.0_p) then
+                                !call stop_all "not implemented for reals"
+                                write(6,*) "ERROR"
+                            end if
+                            remainder = log10(Nw_current) - x
+                            y = floor(remainder*bins_per_decade) + 1 
+                            !y = floor(abs(real(qs%psip_list%pops(1,idet),p))/(10.0_p**(log10(abs(real(qs%psip_list%pops(1,idet),p))))))
+                            !z = (9*x)+y !should calculate bin number
+                            !write(6,*) x, y, exlevel_1, exlevel_2, exlevel_ref, qs%ref%f0, cdet2%f, cdet1%f
+                            !write(6,*) qs%ref%f0, exlevel_1, exlevel_2
+                            if (x > xmax) then
+                                write(6,*) "ERROR X too large!"
+                            else if (y > bins_per_decade*xmax) then
+                                write(6,*) "ERROR Y too large!" 
+                            end if 
+                            ! TODO Implement array bound checks on x and y. 
+                            !if (.not. skip) counter_var(x,y) = counter_var(x,y) +1.0_p
+                            !write(6,*) x, y, Nw_current
+                            !if (.not. skip) counter_var(x,y) = counter_var(x,y) +1.0_p
+                            !!if (.not. skip) counter_var_ex(x,y,exlevel_1,exlevel_2) = counter_var_ex(x,y,exlevel_1,exlevel_2) +1.0_p
+                            !!if (.not. skip) counter_var(x,y) = counter_var(x,y) +1.0_p
+                            counter_var_ex(x,y,exlevel_1,exlevel_2) = counter_var_ex(x,y,exlevel_1,exlevel_2) +1.0_p
+                            counter_var(x,y) = counter_var(x,y) +1.0_p
+                        end if
+
+                        !HAYLEY-good code
+                        !if (icycle == 1) then
+                        !    exlevel = get_excitation_level(cdet1%f,cdet1%f2)
+                        !    do x = 0, max_ex_level
+                        !        if (exlevel == x) then
+                        !            counter_var(x+1) = counter_var(x+1) + abs(real(qs%psip_list%pops(1,idet),p))
+                        !        end if
+                        !    end do
+                        !end if 
                         ! Only attempt spawning if a valid connection exists.
                         attempt_spawning = connection_exists(sys)
 
@@ -392,6 +487,7 @@ contains
                                                      sys%max_number_excitations, weighted_sampling)
 
                 end do
+ 
 
                 ! Sum all quantities being considered across all MPI processes.
                 error = qs%spawn_store%spawn%error .or. qs%psip_list%error .or. rdm_error
@@ -408,16 +504,145 @@ contains
                                      nspawn_events, unused_int_1, unused_int_2, soft_exit, &
                                      load_bal_in, .false., bloom_stats=bloom_stats)
 
-                call cpu_time(t2)
+                call cpu_time(t2) 
+                ! HAYLEY
+                !call mpi_gather(counter_var, size(counter_var), mpi_real8, total_count, size(counter_var), & 
+                !                      mpi_real8, root, MPI_COMM_WORLD, ierr) 
+                !do x = 1, size(counter_var)
+                !    tc(x) = 0
+                !    do y = 1,  nprocs
+                !        z = x + size(counter_var)*(y-1)
+                !        tc(x) = tc(x) + total_count(z)
+                !    end do
+                !end do
+                call mpi_reduce(counter_var,tc, size(counter_var), mpi_real8, mpi_sum, root, MPI_COMM_WORLD, ierr)
+                call mpi_reduce(counter_var_ex,tc_ex, size(counter_var_ex), mpi_real8, mpi_sum, root, MPI_COMM_WORLD, ierr)
+                !call mpi_gather(counter_var_ex, size(counter_var_ex), mpi_real8, total_count_ex, size(counter_var_ex), & 
+                !                       mpi_real8, root, MPI_COMM_WORLD, ierr) 
+                !do x = 1, 63
+                !    tc(x) = 0
+                !    do y = 0, 28
+                !        z = x + (63*10)*y
+                !        tc_ex(x) = tc_ex(x) + total_count_ex(z)
+                !    end do
+                !end do
+
+                !write(6,*) 'Counter var 6,5:', counter_var(6,5)
+                !write(6,*) 'Total count 6,5:', tc(6,5)
+                !write(6,*) 'Counter var 1,1:', counter_var(1,1)
+                !write(6,*) 'Total count 1,1:', tc(1,1)
+    
+                iiunit = 6
                 if (parent) then
                     if (bloom_stats%nblooms_curr > 0) call bloom_stats_warning(bloom_stats)
                     call write_dmqmc_report(sys, qmc_in, qs, ireport, tot_nparticles_old, t2-t1, .false., &
                                             dmqmc_in, dmqmc_estimates, sys%read_in%comp)
+                    inquire(file=ffname, exist=exist)
+                    if (.not. exist) then
+                        write (ffname, '(A7,I0)') 'DETPOPS', iproc
+                        open(newunit=iiunit, file=ffname, status='unknown')
+                        do x =0, size(tc,1)-1
+                            !write (iiunit, '(A)')
+                            do y =1, size(tc,2)
+                                !write (iiunit, '(2X,A10,I3)', advance='no'), 'Hist. Grp.', 
+                                write (iiunit, '(es18.10)', advance='no'), 10.0_p**(x+1.0_p/bins_per_decade*(y-1.0_p))
+                            end do
+                        end do
+                        write (iiunit, '(A)') 
+                        close(iiunit, status='keep')
+                        !open(newunit=iiunit, file=ffname, status="old", position='append',action='write')
+                        !do x = 1, size(tc)
+                        !    write (iiunit,'(es15.4)',advance='no') tc(x)
+                        !end do
+                    end if
+                    open(newunit=iiunit, file=ffname, status="old", position='append',action='write')
+                    do x = 0, size(tc,1)-1
+                        !write (iiunit, '(A)') 
+                        do y =1, size(tc,2)
+                            write (iiunit,'(es18.10)',advance='no') tc(x,y)
+                        end do
+                    end do
+                    close(iiunit, status='keep')
+                !write(6,*) size(tc,1)
+                !write(6,*) size(tc,2)
                 end if
+
+                counter_var = 0.0_p
+                tc = 0.0_p
+                
+                ! Only want to print the full excitation level spectrums at the
+                ! end of the calculation. 
+                if (parent .and. ireport == nreport) then
+                    !inquire(file=fffname, exist=exist)
+                    !if (exist) then
+                    !    open(newunit=iiunit, file=fffname, status="old", position='append',action='write')
+                    !    do x = 0.0_p, log10(qs%target_particles)
+                    !        do y = 1.0_p, 9.0_p
+                    !            write (iiunit, '(A)')
+                    !            thresh = (10.0_p**x)*y
+                    !            thresh2 = (10.0_p**x)*(y+1)
+                    !            write (iiunit, '(es15.4,es15.4)',advance='no') thresh, thresh2
+                    !            do ex =0, max_ex_level
+                    !                z = ((9*(log10(qs%target_particles)+1)) * ex)+((9*x)+y)
+                    !                write (iiunit,'(es15.4)',advance='no') tc_ex(z)
+                    !            end do
+                    !         end do
+                    !    end do
+                    !else
+                    write (fffname, '(A11)') 'EXLEVELPOPS'
+                    open(newunit=iiunit, file=fffname, status='unknown')
+                    do x =0, max_ex_level
+                        do x2 = 0, max_ex_level
+                        !if (x == 0) then
+                            !write (iiunit, '(6X,A13,6X,A13)', advance='no'), 'Threshold Min', 'Threshold Max'
+                            !write (iiunit, '(6X,A13,I6)', advance='no'), 'Ex. Level', x
+                        !else
+                             write (iiunit, '(6X,A6,I3,I3)', advance='no'), 'Ex.Lvl', int(x), int(x2)
+                        end do
+                        !end if
+                     end do
+                     write (iiunit, '(A)') 
+                     do w = 0, xmax
+                        do v = 1, bins_per_decade
+                            write (iiunit, '(A)')
+                            do ex_1 =0, max_ex_level
+                                do ex_2=0, max_ex_level
+                                !z = (9*w)+v
+                                    write (iiunit,'(es18.10)',advance='no') tc_ex(w,v,ex_1,ex_2)
+                                end do
+                            end do
+                         end do
+                    end do
+                    !end if
+                    close(iiunit, status='keep')
+                    write (ggname, '(A7,I0)') 'INDICES', iproc
+                    open(newunit=iiunit, file=ggname, status='unknown')
+                    do w = 0, xmax
+                        do v = 1, bins_per_decade
+                            write (iiunit, '(A)')
+                            do ex_1=0, max_ex_level
+                                do ex_2 = 0, max_ex_level
+                                    write (iiunit,'(I3,I3,I3,I3)',advance='no') w, v, ex_1,ex_2
+                                end do
+                             end do
+                         end do
+                    end do
+                    write (gggname, '(A14,I0)') 'INDICESDETPOPS', iproc
+                    open(newunit=iiunit, file=gggname, status='unknown')
+                    do x = 0,size(tc,1)-1
+                        do y  = 1,size(tc,2)
+                            write (iiunit,'(I3,I3)',advance='no') x, y
+                            write (iiunit, '(es18.10)', advance='no'), 10.0_p**(x+1.0_p/bins_per_decade*(y-1.0_p))
+                        end do
+                    end do
+                    close(iiunit, status='keep')
+                end if
+ 
+                counter_var_ex = 0.0_p
+                tc_ex = 0.0_p
 
                 ! Update the time for the start of the next iteration.
                 t1 = t2
-
                 if (soft_exit) exit outer_loop
 
             end do
@@ -458,6 +683,7 @@ contains
         call copy_sys_spin_info(sys_copy, sys)
         call dealloc_det_info_t(cdet1, .false.)
         call dealloc_det_info_t(cdet2, .false.)
+
 
         call dSFMT_end(rng)
 
