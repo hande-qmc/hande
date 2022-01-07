@@ -80,7 +80,9 @@ contains
         ! only suitably for 0 <= n <= 12.  Investigating using log(n!) or the
         ! Gamma function if required for larger values.
 
-        integer :: fac
+        use const
+
+        integer(i0) :: fac
         integer, intent(in) :: n
 
         integer :: i
