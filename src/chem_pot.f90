@@ -43,7 +43,9 @@ contains
         !    basis: type containing information on the single-particle basis
         !        set.
         !    beta: inverse temperature.
-        !    mu_init: initial guess for the chemical potential.
+        !    mu: initial guess for the chemical potential.
+        !    ispin: integer to account for odd/even ordering of alpha/beta
+        !       spin orbitals. Set to 1 for alpha spins, 2 for beta spins.
         ! Returns:
         !    nav: expected number of particles.
 
@@ -84,6 +86,8 @@ contains
         !        set.
         !    beta: inverse temperature.
         !    mu: chemical potential.
+        !    ispin: integer to account for odd/even ordering of alpha/beta
+        !       spin orbitals. Set to 1 for alpha spins, 2 for beta spins.
         ! Returns:
         !    nav_deriv: derivative of the N wrt mu.
 
