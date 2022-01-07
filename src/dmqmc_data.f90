@@ -193,7 +193,7 @@ type dmqmc_in_t
     ! This considerably changes the IP-DMQMC algorithm.
     logical :: symmetric = .true.
     ! Chemical potential used to initialise density matrix.
-    real(p) :: chem_pot = 0.0_p
+    real(p) :: chem_pot(1:2) = 0.0_p
 
     ! Input options relating to RDMs in DMQMC.
     type(dmqmc_rdm_in_t) :: rdm
