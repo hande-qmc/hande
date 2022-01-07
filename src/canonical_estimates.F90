@@ -259,8 +259,8 @@ contains
         !    porb: porb(i) gives the probabilty of selecting
         !        the orbital i.
         !    nselect: number of orbitals to select.
-        !    spin_factor: integer to account for odd/even ordering of
-        !        alpha/beta spin orbitals. Set to 1 for alpha spins, 0 for beta spins.
+        !    ispin: integer to account for odd/even ordering of alpha/beta
+        !       spin orbitals. Set to 1 for alpha spins, 2 for beta spins.
         ! In/Out:
         !    rng: random number generator.
         !    ngen: running total number of electrons calculated. Should be zerod
