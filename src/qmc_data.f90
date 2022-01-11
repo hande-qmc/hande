@@ -340,6 +340,7 @@ type uccmc_in_t
     integer :: pow_trunc = 12
     logical :: variational_energy = .false.
     logical :: trot = .false.
+    logical :: full_nc = .false.
 end type uccmc_in_t
 
 type restart_in_t
