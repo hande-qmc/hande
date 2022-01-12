@@ -107,19 +107,18 @@ contains
             call binary_search(states, state, 1, nstates, hit, pos)
             if (hit) then
                   pops(pos) = pops(pos) + (real(psip_list%pops(1,i))/psip_list%pop_real_factor)
-                  sq(2,pos) = sq(2,pos) + (real(psip_list%pops(1,i))/psip_list%pop_real_factor)**2 
+                  sq(size(state) + 1,pos) = sq(size(state) + 1,pos) + (real(psip_list%pops(1,i))/psip_list%pop_real_factor)**2 
                else
                    do j = nstates, pos, -1
                        k = j + 1 
                        states(:,k) = states(:,j)
                        pops(k) = pops(j)
-                       sq(1,k) = sq(1,j)
-                       sq(2,k) = sq(2,j)
+                       sq(:,k) = sq(:,j)
                    end do
                    states(:,pos) = psip_list%states(:,i)
                    pops(pos) = (real(psip_list%pops(1,i))/psip_list%pop_real_factor)
-                   sq(1,pos) = psip_list%states(1,i)
-                   sq(2,pos) = (real(psip_list%pops(1,i))/psip_list%pop_real_factor)**2
+                   sq(:size(state),pos) = psip_list%states(:,i)
+                   sq(size(state) + 1,pos) = (real(psip_list%pops(1,i))/psip_list%pop_real_factor)**2
                    nstates = nstates + 1
                end if
         end do
@@ -260,4 +259,65 @@ contains
  
     end subroutine add_info_str_trot
 
+    pure subroutine collapse_deexcitor_onto_cluster(basis, excitor_excitation, f0, cluster_excitor, &
+                                                  cluster_annihilation, cluster_creation, cluster_population, &
+                                                  excitor_annihilation, cluster_excitation)
+
+        use basis_types, only: basis_t, reset_extra_info_bit_string
+
+        use bit_utils, only: count_set_bits
+        use const, only: i0_end
+
+        type(basis_t), intent(in) :: basis
+        integer(i0), intent(in) :: f0(basis%tot_string_len)
+        integer(i0), intent(inout) :: cluster_excitor(basis%tot_string_len)
+        complex(p), intent(inout) :: cluster_population
+        integer(i0), intent(in) :: excitor_excitation(basis%tot_string_len)
+        integer(i0), intent(inout) :: cluster_annihilation(basis%tot_string_len)
+        integer(i0), intent(inout) :: cluster_creation(basis%tot_string_len)
+        integer(i0), intent(inout) :: cluster_excitation(basis%tot_string_len)
+        integer(i0), intent(in) :: excitor_annihilation(basis%tot_string_len)
+    
+
+        integer :: ibasis, ibit
+        integer(i0) :: permute_operators(basis%tot_string_len)
+        integer(i0) :: cluster_loc(basis%tot_string_len)
+        integer(i0) :: excit_swap(basis%tot_string_len)
+
+        do ibasis = basis%bit_string_len, 1, -1
+            do ibit = i0_end, 0, -1
+                if (btest(excitor_excitation(ibasis),ibit)) then
+                    if (.not. btest(f0(ibasis),ibit)) then
+                        ! Exciting from this orbital.
+                        cluster_excitor(ibasis) = ibclr(cluster_excitor(ibasis),ibit)
+                        ! We must permute it with all creation operators of lower index in the cluster.
+                        permute_operators = iand(not(basis%excit_mask(:,basis%basis_lookup(ibit,ibasis))), cluster_creation)
+                        ! Also permutes with all annihilation operators of lower index in the EXCITOR.
+                        ! e.g. in a_b a_a a_a^+ a_b^+ a_c^+, a_b must permute with a_a in the excitor and a_a^+ in the cluster
+                        ! to reach the correct position to cancel out with a_b^+.
+                        excit_swap = iand(not(basis%excit_mask(:,basis%basis_lookup(ibit,ibasis))), excitor_annihilation)
+                        permute_operators = ieor(permute_operators, excit_swap)
+                        ! Exclude swapping with itself.
+                        permute_operators(ibasis) = ibclr(permute_operators(ibasis),ibit)
+                    else
+                        ! Exciting into this orbital.
+                        cluster_excitor(ibasis) = ibset(cluster_excitor(ibasis),ibit)
+                        ! Need to swap it with every remaining creation operator and 
+                        ! annihilation operators with a higher index already in the cluster.
+                        permute_operators = iand(basis%excit_mask(:,basis%basis_lookup(ibit,ibasis)),cluster_annihilation)
+                        permute_operators = ior(permute_operators, cluster_creation)
+                    end if
+                    if (mod(sum(count_set_bits(permute_operators)),2) == 1) &
+                        cluster_population = -cluster_population
+
+                    cluster_loc = cluster_excitor
+                    call reset_extra_info_bit_string(basis, cluster_loc)
+                    ! Unlike for excitation, must update the cluster at every step to get the correct number of permutations.
+                    cluster_excitation = ieor(f0, cluster_loc)
+                    cluster_annihilation = iand(cluster_excitation, f0)
+                    cluster_creation = iand(cluster_excitation, cluster_loc)
+                end if
+            end do
+        end do
+    end subroutine collapse_deexcitor_onto_cluster
 end module

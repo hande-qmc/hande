@@ -1,16 +1,45 @@
 module uccmc
 
+! Module for performing unitary coupled cluster Monte Carlo (UCCMC) calculations.
+
+! The approach is very similar to conventional CCMC and many routines are shared between the
+! two algorithms. For details of general computational considerations, see comments in ccmc.f90.
+
+! The main difference between unitary and conventional CC stems from the form of the exponential
+! ansatz. In CC, the wavefunction is given by
+!
+!     \Psi_CC = exp(T)|D_0>
+!
+! and the cluster operator, T, is::
+!
+!     T = \sum_{ia} t_i^a(t) a_i^a + 1/2!^2 \sum_{ijab} t_{ij}^{ab}(t) a_{ij}^{ab} + ... 
+!
+! In UCC, the wavefunction becomes:: 
+!
+!     \Psi_CC = exp(T - T^dagger)|D_0>
+!
+! This means the ansatz contains both excitation and deexcitation operators. In consequence,
+! the size of composite clusters is no longer limited to ex_level + 2 and can in principle be
+! infinite. In practice, we truncate at a finite polynomial power in T and find that this
+! converges satisfactorily.
+!
+! Additional care must be taken with the sign of different contributing clusters. See comments
+! in ucc_collapse_cluster.
+!
+! Finally, selection must take into account the different possible orderings of excitation and 
+! deexcitation operators in a given composite cluster.
+
 use const, only: i0, int_p, int_64, p, dp, debug
 
 implicit none
 
 contains
 
-! [review] - AJWT: Put in a brief summary of the differences between this and conventional CC.
     subroutine do_uccmc(sys, qmc_in, uccmc_in, restart_in, load_bal_in, reference_in, &
                         logging_in, io_unit, qs, qmc_state_restart)
 
-! [review] - AJWT: Perhaps note that this is derived from do_ccmc (and similarly in do_ccmc that this derives from it).  Are there any commonalities which can be sensibly shared as a called function?
+        ! This subroutine is derived from do_ccmc in ccmc.f90. [todo] check for possible shared functions
+
         ! Run the UCCMC algorithm starting from the initial walker distribution
         ! using the timestep algorithm.
 
@@ -81,7 +110,7 @@ contains
         use excit_gens, only: p_single_double_coll_t
         use particle_t_utils, only: init_particle_t
         use search, only: binary_search
-        use uccmc_utils
+        use uccmc_utils, only: allocate_time_average_lists, add_ci_contribution, add_t_contributions
 
         type(sys_t), intent(in) :: sys
         type(qmc_in_t), intent(in) :: qmc_in
@@ -141,7 +170,6 @@ contains
         integer(i0), allocatable :: time_avg_psip_list_ci_states(:,:), time_avg_psip_list_states(:,:)
         integer :: semi_stoch_it, pos, j, k, nstates_ci, nstates_sq
         logical :: hit
-        integer(i0), allocatable :: state(:)
         real(p) :: population
         real(p) :: real_population, var_energy
         logical :: old_vary
@@ -170,17 +198,21 @@ contains
                       uuid_restart, restart_version_restart, qmc_state_restart=qmc_state_restart, &
                       regenerate_info=regenerate_info, uccmc_in=uccmc_in)
 
-        allocate(state(sys%basis%bit_string_len))
 
         if(uccmc_in%variational_energy) then
+        ! If calculating a variational estimator (very slow, only for benchmarking purposes),
+        ! store average CI wavefunction.
              population = 0
-             call allocate_time_average_lists(qs, time_avg_psip_list_ci_states, time_avg_psip_list_ci_pops, nstates_ci)
+             call allocate_time_average_lists(qs%psip_list, time_avg_psip_list_ci_states, time_avg_psip_list_ci_pops, nstates_ci)
         end if
 
-        call allocate_time_average_lists(qs, time_avg_psip_list_states, time_avg_psip_list_pops, nstates_sq)
-        allocate(time_avg_psip_list_sq(2,size(qs%psip_list%states(1,:))))
-        time_avg_psip_list_sq(1,:qs%psip_list%nstates) = qs%psip_list%states(1,:qs%psip_list%nstates)
-        time_avg_psip_list_sq(2,:qs%psip_list%nstates) = (real(qs%psip_list%pops(1,:qs%psip_list%nstates))/qs%psip_list%pop_real_factor)**2
+        ! If computing the average wavefunction, allocate arrays to store it.
+        if (uccmc_in%average_wfn) then
+            call allocate_time_average_lists(qs%psip_list, time_avg_psip_list_states, time_avg_psip_list_pops, nstates_sq)
+            allocate(time_avg_psip_list_sq(sys%basis%tot_string_len+1,size(qs%psip_list%states(1,:))))
+            time_avg_psip_list_sq(:sys%basis%tot_string_len,:qs%psip_list%nstates) = qs%psip_list%states(:,:qs%psip_list%nstates)
+            time_avg_psip_list_sq(sys%basis%tot_string_len+1,:qs%psip_list%nstates) = (real(qs%psip_list%pops(1,:qs%psip_list%nstates))/qs%psip_list%pop_real_factor)**2
+        end if
 
         qs%ref%max_ex_level = qs%ref%ex_level
 
@@ -297,23 +329,22 @@ contains
                 
                 iter = qs%mc_cycles_done + (ireport-1)*qmc_in%ncycles + icycle
 
-                if (all(qs%vary_shift) .and. (.not. old_vary)) then
+                if (all(qs%vary_shift) .and. (.not. old_vary) .and. uccmc_in%average_wfn) then
+                    ! On the first iteration after the shift has started varying, begin
+                    ! storing average wavefunction.
                     old_vary = all(qs%vary_shift) 
                     avg_start = iter
                     time_avg_psip_list_pops(:qs%psip_list%nstates) = &
                         real(qs%psip_list%pops(1,:qs%psip_list%nstates))/qs%psip_list%pop_real_factor
                     time_avg_psip_list_states(:,:qs%psip_list%nstates) = qs%psip_list%states(:,:qs%psip_list%nstates)
-                    time_avg_psip_list_sq(1,:qs%psip_list%nstates) = qs%psip_list%states(1,:qs%psip_list%nstates)
-                    time_avg_psip_list_sq(2,:qs%psip_list%nstates) = (real(qs%psip_list%pops(1,:qs%psip_list%nstates))/qs%psip_list%pop_real_factor)**2
+                    time_avg_psip_list_sq(:sys%basis%tot_string_len,:qs%psip_list%nstates) = qs%psip_list%states(:,:qs%psip_list%nstates)
+                    time_avg_psip_list_sq(sys%basis%tot_string_len+1,:qs%psip_list%nstates) = (real(qs%psip_list%pops(1,:qs%psip_list%nstates))/qs%psip_list%pop_real_factor)**2
                     nstates_sq = qs%psip_list%nstates
                 end if
 
                 if(uccmc_in%variational_energy .and. all(qs%vary_shift)) then
+                    ! If computing variational energy, store average CI expansion.
                           time_avg_psip_list_ci_pops(:nstates_ci) =  time_avg_psip_list_ci_pops(:nstates_ci)*(iter-avg_start)
-                end if
-                if (all(qs%vary_shift)) then
-                    time_avg_psip_list_pops(:nstates_sq) =  time_avg_psip_list_pops(:nstates_sq)*(iter - avg_start)
-                    time_avg_psip_list_sq(2,:nstates_sq) =  time_avg_psip_list_sq(2,:nstates_sq)*(iter - avg_start)
                 end if
 
                 if (debug) call prep_logging_mc_cycle(iter, logging_in, logging_info, sys%read_in%comp, &
@@ -376,8 +407,19 @@ contains
                 !       + The number of excips on this processor determines the number
                 !         of cluster generations, each of which can spawn and die.
                 !         non-composite clusters therefore are seldom selected.
+                ! * 'full non-composite' algorithm, where spawning and death are split into two tranches.
+                !       + non-composite clusters (i.e. consisting of a single excitor):
+                !         enumerate explicitly (this is just the list of excitors)
+                !       + composite clusters, which must be selected stochastically (as in
+                !         the original algorithm for all clusters).  We sample the space
+                !         of composite clusters, choosing nattempts samples.  For convenience
+                !         nattempts = # excitors not on the reference (i.e. the number of
+                !         excitors which can actually be involved in a composite cluster).
 
-                call ucc_set_cluster_selections(selection_data, qs%estimators(1)%nattempts, min_cluster_size)
+                ! [todo] implement full_nc for UCCMC.
+                call ucc_set_cluster_selections(selection_data, qs%estimators(1)%nattempts, min_cluster_size, uccmc_in%full_nc, D0_normalisation, qs%psip_list%nstates, tot_abs_real_pop)
+                if (uccmc_in%full_nc) call stop_all('do_uccmc', &
+                                                    'Full NC algorithm not implemented for UCCMC. Please implement...')
                 call zero_ps_stats(ps_stats, qs%excit_gen_data%p_single_double%rep_accum%overflow_loc)
 
                 ! OpenMP chunk size determined completely empirically from a single
@@ -389,7 +431,7 @@ contains
 
                 !$omp parallel default(none) &
                 !$omp private(it, iexcip_pos, i, seen_D0, hit, pos, population, real_population,k, &
-                !$omp state,annihilation_flags) &
+                !$omp annihilation_flags) &
                 !$omp shared(rng, cumulative_abs_real_pops, tot_abs_real_pop,  &
                 !$omp        max_cluster_size, contrib, D0_normalisation, D0_pos, rdm,    &
                 !$omp        qs, sys, bloom_stats, min_cluster_size, ref_det,             &
@@ -416,7 +458,7 @@ contains
                                             cumulative_abs_real_pops, tot_abs_real_pop, min_cluster_size, max_cluster_size, &
                                             logging_info, contrib(it)%cdet, contrib(it)%cluster, qs%excit_gen_data)
 
-                    !Add contribution to average CI wfn
+                    ! Add contribution to average CI wfn
                     if (uccmc_in%variational_energy .and. all(qs%vary_shift) .and. &
         contrib(it)%cluster%excitation_level <= qs%ref%ex_level)  then
                         call add_ci_contribution(contrib(it)%cluster, contrib(it)%cdet, &
@@ -424,16 +466,12 @@ contains
                     end if
 
                     if (contrib(it)%cluster%excitation_level <= qs%ref%max_ex_level+2) then
-                            ! cluster%excitation_level == huge(0) indicates a cluster
-                            ! where two excitors share an elementary operator
                         if (qs%propagator%quasi_newton) contrib(it)%cdet%fock_sum = &
                                             sum_sp_eigenvalues_occ_list(sys, contrib(it)%cdet%occ_list) - qs%ref%fock_sum
 
                         call do_uccmc_accumulation(sys, qs, contrib(it)%cdet, contrib(it)%cluster, logging_info, &
                                                     D0_population_cycle, proj_energy_cycle,uccmc_in, ref_det, rdm, &
                                                     selection_data, D0_population_ucc_cycle)
-                        ! [review] - Verena: Double check that qs (which is a shared variable) is not altered in a dangerous way by
-                        ! [review] - Verena: routine.
                         call do_stochastic_uccmc_propagation(rng(it), sys, qs, &
                                                                 uccmc_in, logging_info, ms_stats(it), bloom_stats, &
                                                                 contrib(it), nattempts_spawn, ndeath, ps_stats(it))
@@ -482,13 +520,11 @@ contains
                           time_avg_psip_list_ci_pops(:nstates_ci) =  time_avg_psip_list_ci_pops(:nstates_ci)/(iter-avg_start+1)
                 end if
 
-! [review] - AJWT: Comment on what this block is doing.
-                if(all(qs%vary_shift) .and. old_vary) then
-                    call add_t_contributions(qs, time_avg_psip_list_states, time_avg_psip_list_pops, time_avg_psip_list_sq, nstates_sq)
-                    ! Update time average.
-                    time_avg_psip_list_pops(:nstates_sq) =  time_avg_psip_list_pops(:nstates_sq)/(iter-avg_start+1)
-
-                    time_avg_psip_list_sq(2,:nstates_sq) =  time_avg_psip_list_sq(2,:nstates_sq)/(iter-avg_start+1)
+                ! If the shift has started before this iteration, add contributions to the average wavefunction and divide by 
+                ! new number of iterations. 
+                if(all(qs%vary_shift) .and. old_vary .and. uccmc_in%average_wfn) then
+                    ! Add current wfn value average.
+                    call add_t_contributions(qs%psip_list, time_avg_psip_list_states, time_avg_psip_list_pops, time_avg_psip_list_sq, nstates_sq)
                 end if
                 call end_mc_cycle(nspawn_events, ndeath_nc, qs%psip_list%pop_real_factor, nattempts_spawn, qs%spawn_store%rspawn)
             end do
@@ -515,18 +551,9 @@ contains
             call cpu_time(t2)
             if (parent) then
                 if (bloom_stats%nblooms_curr > 0) call bloom_stats_warning(bloom_stats, io_unit=io_unit)
-                !if (all(qs%vary_shift)) then
-                !write (io_unit, '(1X, "Cluster populations",/)')
-                !do i = 1, qs%psip_list%nstates
-                !    call write_qmc_var(io_unit, qs%psip_list%states(1,i))
-                !    call write_qmc_var(io_unit, qs%psip_list%pops(1, i))
-                !    write (io_unit,'()')
-                !end do
-                !else
-               call write_qmc_report(qmc_in, qs, ireport, nparticles_old, t2-t1, .false., .false., &
+                call write_qmc_report(qmc_in, qs, ireport, nparticles_old, t2-t1, .false., .false., &
                                        io_unit=io_unit, cmplx_est=sys%read_in%comp, rdm_energy=uccmc_in%density_matrices, &
                                        nattempts=.true.)
-                !end if
             end if
 
 
@@ -538,6 +565,7 @@ contains
                                            rng(0))
 
             qs%psip_list%tot_nparticles = nparticles_old
+            
 
             if (soft_exit) exit
 
@@ -546,19 +574,30 @@ contains
 
         end do
 
+        if (parent .and. uccmc_in%average_wfn) then
+            ! Take average of wavefunction.
+            time_avg_psip_list_pops(:nstates_sq) =  time_avg_psip_list_pops(:nstates_sq)/(iter-avg_start+1)
+            time_avg_psip_list_sq(sys%basis%tot_string_len+1,:nstates_sq) =  time_avg_psip_list_sq(sys%basis%tot_string_len+1,:nstates_sq)/(iter-avg_start+1)
+        end if
+
         if (parent) write (io_unit,'()')
 
-        if (parent) then
+        if (parent .and. uccmc_in%average_wfn) then
             write (io_unit, '(1X, "Time-averaged cluster populations",/)')
             do i = 1, nstates_sq
-                call write_qmc_var(io_unit, time_avg_psip_list_states(1,i))
+                do j = 1, sys%basis%tot_string_len
+                    call write_qmc_var(io_unit, time_avg_psip_list_states(j,i))
+                end do
                 call write_qmc_var(io_unit, time_avg_psip_list_pops(i))
                 write (io_unit,'()')
             end do
+            write (io_unit,'()')
             write (io_unit, '(1X, "Time-averaged cluster populations squared",/)')
             do i = 1, nstates_sq
-                call write_qmc_var(io_unit, int(time_avg_psip_list_sq(1,i)))
-                call write_qmc_var(io_unit, time_avg_psip_list_sq(2,i))
+                do j = 1, sys%basis%tot_string_len
+                    call write_qmc_var(io_unit, int(time_avg_psip_list_sq(j,i),i0))
+                end do
+                call write_qmc_var(io_unit, time_avg_psip_list_sq(sys%basis%tot_string_len + 1,i))
                 write (io_unit,'()')
             end do
         end if
@@ -615,16 +654,29 @@ contains
         call check_deallocate('ms_stats', ierr)
         deallocate(ps_stats, stat=ierr)
         call check_deallocate('ps_stats', ierr)
-        deallocate(state, stat=ierr)
-        call check_deallocate('state', ierr)
 
-        ! [review] Verena - Consider deallocating some allocated arrays from above.
+        if (uccmc_in%variational_energy) then
+            deallocate(time_avg_psip_list_ci_states, stat = ierr)
+            call check_deallocate('time_avg_psip_list_ci_states', ierr)
+            deallocate(time_avg_psip_list_ci_pops, stat = ierr)
+            call check_deallocate('time_avg_psip_list_ci_pops', ierr)
+        end if
+
+        if (uccmc_in%average_wfn) then
+            deallocate(time_avg_psip_list_states, stat = ierr)
+            call check_deallocate('time_avg_psip_list_states', ierr)
+            deallocate(time_avg_psip_list_pops, stat = ierr)
+            call check_deallocate('time_avg_psip_list_pops', ierr)
+            deallocate(time_avg_psip_list_sq, stat = ierr)
+            call check_deallocate('time_avg_psip_list_sq', ierr)
+        end if
 
     end subroutine do_uccmc
 
-    subroutine ucc_set_cluster_selections(selection_data, nattempts, min_cluster_size)
+    subroutine ucc_set_cluster_selections(selection_data, nattempts, min_cluster_size, full_nc, D0_normalisation, nstates, tot_abs_pop)
 ! [review] - AJWT: based on set_cluster_selections with even_selection and full_nc removed.
 ! [revuew] - AJWT:  Could this then actually use the original routine (assuming both of those are set to .false.)?
+! [todo] correctly implement full nc for trotter - to treat both reference and singles and then fold this back into set_cluster_selections
         ! Function to set total number of selections of different cluster
         ! types within CCMC. This effectively controls the relative sampling
         ! of different clusters within the CC expansion.
@@ -645,11 +697,22 @@ contains
         integer(int_64), intent(inout) :: nattempts
         integer, intent(out) :: min_cluster_size
         integer(int_64) :: nselections
+        integer, intent(in) :: nstates
+        complex(p), intent(in) :: D0_normalisation
+        real(p), intent(in) :: tot_abs_pop
+        logical, intent(in) :: full_nc
 
-        min_cluster_size = 0
-        selection_data%nD0_select = 0 ! instead of this number of deterministic selections, these are chosen stochastically
-        selection_data%nstochastic_clusters = nattempts
-        selection_data%nsingle_excitors = 0
+        if (full_nc) then
+            min_cluster_size = 1
+            selection_data%nD0_select = nint(abs(D0_normalisation),kind=int_64)
+            selection_data%nstochastic_clusters = ceiling(tot_abs_pop,kind=int_64)
+            selection_data%nsingle_excitors = int(nstates,kind=int_64) -1
+        else
+            min_cluster_size = 0
+            selection_data%nD0_select = 0 ! instead of this number of deterministic selections, these are chosen stochastically
+            selection_data%nstochastic_clusters = nattempts
+            selection_data%nsingle_excitors = 0
+        end if
 
         selection_data%nclusters = selection_data%nD0_select + selection_data%nsingle_excitors &
                             + selection_data%nstochastic_clusters
@@ -660,8 +723,8 @@ contains
                               initiator_pop, D0_pos, cumulative_excip_pop, tot_excip_pop, min_size, max_size, &
                               logging_info, cdet, cluster, excit_gen_data)
 
-! [review] - AJWT: based on select_cluster (without the linked_cluster parts) and with information about de-excitors.
-        ! Select a random cluster of excitors from the excitors on the
+        ! Based on select_cluster (without the linked_cluster parts) and with information about de-excitors.
+        ! Select a random cluster of excitors and deexcitors from the excitors on the
         ! processor.  A cluster of excitors is itself an excitor.  For clarity
         ! (if not technical accuracy) in comments we shall distinguish between
         ! the cluster of excitors and a single excitor, from a set of which the
@@ -681,7 +744,7 @@ contains
         !    initiator_pop: the population above which a determinant is an initiator.
         !    D0_pos: position in the excip list of the reference.  Must be negative
         !       if the reference is not on the processor.
-        !    cumulative_excip_population: running cumulative excip population on
+        !    cumulative_excip_pop: running cumulative excip population on
         !        all excitors; i.e. cumulative_excip_population(i) = sum(particle_t%pops(1:i)).
         !    tot_excip_pop: total excip population.
         !    min_size: the minimum size cluster to allow.
@@ -842,17 +905,18 @@ contains
             ! selecting excitors with the correct (relative) probability.  The
             ! additional fractional weight is taken into account in the amplitude.)
             !
-            ! Rather than selecting one excitor at a time and adding it to the
-            ! cluster, select all excitors and then find their locations and
-            ! apply them.  This allows us to sort by population first (as the
-            ! number of excitors is small) and hence allows for a more efficient
-            ! searching of the cumulative population list.
+            ! For UCCMC, also consider whether each operator acts as an excitation or
+            ! de-excitation operator. A string of all-excitation operators gives the
+            ! same overall excitor regardless of operator order. This is not true for
+            ! mixed excitation-deexcitation strings, so the operators can no longer be
+            ! sorted before application. 
 
             do i = 1, cluster%nexcitors
                 ! Select a position in the excitors list.
                 pop(i) = get_rand_close_open(rng)*tot_excip_pop
                 rand = get_rand_close_open(rng)
-                !Decide if this is to be an excitation or deexcitation operator
+                ! Decide if this is to be an excitation or deexcitation operator.
+                ! First operator applied must always be an excitor.
                 if(i > 1 .and. rand > 0.5) then
                    deexcitation(i) = .true.
                    deexcit_count = deexcit_count + 1
@@ -868,11 +932,10 @@ contains
             !There are 2^(n-1) possible arrangements of excitation/deexcitation operators for
             ! a given cluster, so the probability of selecting one must be divided by this.
             cluster%pselect = cluster%pselect/(2**(cluster%nexcitors-1))
-            ![TODO] decide the fate of the sort
-            !call insert_sort(pop(:cluster%nexcitors))
+
             prev_pos = 1
             do i = 1, cluster%nexcitors
-                call binary_search(cumulative_excip_pop, pop(i), prev_pos, psip_list%nstates, hit, pos)
+                call binary_search(cumulative_excip_pop, pop(i), 1, psip_list%nstates, hit, pos)
                 ! Not allowed to select the reference as it is not an excitor.
                 ! Because we treat (for the purposes of the cumulative
                 ! population) the reference to have 0 excips, then
@@ -920,7 +983,8 @@ contains
                     ! then the probability this excitor is on the same processor as the
                     ! previous excitor is 1/nprocs.  (Note choosing the same excitor
                     ! multiple times is valid in linked CC.)
-                    !if (pos /= prev_pos) cluster%pselect = cluster%pselect/nprocs
+                    ![todo] MPI has not been considered for UCCMC. Please implement.
+                    if (pos /= prev_pos) cluster%pselect = cluster%pselect/nprocs
                 end if
                 ! If the excitor's population is below the initiator threshold, we remove the
                 ! initiator status for the cluster
@@ -928,7 +992,7 @@ contains
                 ! Probability of choosing this excitor = pop/tot_pop.
                 cluster%pselect = (cluster%pselect*abs(excitor_pop))/tot_excip_pop
                 cluster%excitors(i)%f => psip_list%states(:,pos)
-                !prev_pos = pos
+                prev_pos = pos
             end do
 
             if (allowed) then
@@ -979,8 +1043,6 @@ contains
     subroutine ucc_collapse_cluster(basis, f0, excitor, excitor_population, cluster_excitor, cluster_population, &
                     allowed, conjugate)
 
-! [review] - AJWT: Document 'conjugate'
-
         ! Collapse two excitors.  The result is returned in-place. Based on collapse_cluster in 
         ! ccmc_selection
 
@@ -990,8 +1052,8 @@ contains
         !    excitor: bit string of the Slater determinant formed by applying
         !        the excitor, e1, to the reference determinant.
         !    excitor_population: number of excips on the excitor e1.
-        !    conjugate : true/false, encodes whether the cluster is to be used as a deexcitor or
-        !        excitor
+        !    conjugate : true/false, encodes whether the current excitor is to be used as a 
+        !        deexcitor or excitor.
         ! In/Out:
         !    cluster_excitor: bit string of the Slater determinant formed by applying
         !        the excitor, e2, to the reference determinant.
@@ -1010,6 +1072,8 @@ contains
 
         use bit_utils, only: count_set_bits
         use const, only: i0_end
+        use ccmc_utils, only: collapse_excitor_onto_cluster
+        use uccmc_utils, only: collapse_deexcitor_onto_cluster
 
         type(basis_t), intent(in) :: basis
         integer(i0), intent(in) :: f0(basis%tot_string_len)
@@ -1022,15 +1086,14 @@ contains
 
         integer(i0) :: excitor_loc(basis%tot_string_len), cluster_loc(basis%tot_string_len), f0_loc(basis%tot_string_len)
 
-        integer :: ibasis, ibit
         integer(i0) :: excitor_excitation(basis%tot_string_len)
         integer(i0) :: excitor_annihilation(basis%tot_string_len)
         integer(i0) :: excitor_creation(basis%tot_string_len)
         integer(i0) :: cluster_excitation(basis%tot_string_len)
         integer(i0) :: cluster_annihilation(basis%tot_string_len)
         integer(i0) :: cluster_creation(basis%tot_string_len)
-        integer(i0) :: permute_operators(basis%tot_string_len)
-        integer(i0) :: excit_swap(basis%tot_string_len)
+        integer :: ibasis, ibit
+
         excitor_loc = excitor
         cluster_loc = cluster_excitor
         f0_loc = f0
@@ -1062,6 +1125,7 @@ contains
 
         ! First, let's find out if the excitor is valid...
         if(conjugate) then
+           ! Check deexcitation is possible
            allowed = .true.
            do ibasis = 1, basis%bit_string_len
                 do ibit = 0, i0_end
@@ -1083,57 +1147,18 @@ contains
            if (allowed) then
                 cluster_population = cluster_population*excitor_population
 
-                ! Now apply the excitor to the cluster (which is, in its own right,
+                ! Now apply the deexcitor to the cluster (which is, in its own right,
                 ! an excitor).
-                ! Consider a cluster, e.g. t_i^a = a^+_a a_i (which corresponds to i->a).
-                ! We wish to collapse two excitors, e.g. t_i^a t_j^b, to a single
-                ! excitor, e.g. t_{ij}^{ab} = a^+_a a^+_b a_j a_i (where i<j and
-                ! a<b).  However t_i^a t_j^b = a^+_a a_i a^+_b a_j.  We thus need to
-                ! permute the creation and annihilation operators.  Each permutation
-                ! incurs a sign change.
+                ! Consider a cluster, e.g. t_{ij}^{ab} = a^+_a a^+_b a_j a_i (which 
+                ! corresponds to i,j ->a, b, where i<j and a<b).
+                ! We wish to collapse e.g. (t_i^a)^+ with it to get a single 
+                ! excitor, t_j^b = a^+_b a_j  However (t_i^a)^+ t_{ij}^{ab} = a^+_j a_a a^+_a a^+_b a_j a_i.  
+                ! We thus need to permute the creation and annihilation operators to cancel them out.
+                !  Each permutation incurs a sign change.
 ! [review] - AJWT: Even if we can't reuse the whole of collapse_cluster, this part looks teh same, so can that be factored out and called?
-                do ibasis = basis%bit_string_len, 1, -1
-                    do ibit = i0_end, 0, -1
-                        if (btest(excitor_excitation(ibasis),ibit)) then
-                            if (.not. btest(f0_loc(ibasis),ibit)) then
-                                ! Exciting from this orbital.
-                                cluster_excitor(ibasis) = ibclr(cluster_excitor(ibasis),ibit)
-                                ! We need to swap it with every annihilation
-                                ! operator and every creation operator referring to
-                                ! an orbital with a higher index already in the
-                                ! cluster.
-                                ! Note that an orbital cannot be in the list of
-                                ! annihilation operators and the list of creation
-                                ! operators.
-                                ! First annihilation operators:
-                                !permute_operators = iand(basis%excit_mask(:,basis%basis_lookup(ibit,ibasis)),cluster_annihilation)
-                                ! Now add the creation operators:
-                                !permute_operators = ior(permute_operators,cluster_creation)
-                                permute_operators = iand(not(basis%excit_mask(:,basis%basis_lookup(ibit,ibasis))),cluster_creation)
-                                excit_swap = iand(not(basis%excit_mask(:,basis%basis_lookup(ibit,ibasis))),excitor_annihilation)
-                                permute_operators = ieor(permute_operators, excit_swap)
-                                permute_operators(ibasis) = ibclr(permute_operators(ibasis),ibit)
-                            else
-                                ! Exciting into this orbital.
-                                cluster_excitor(ibasis) = ibset(cluster_excitor(ibasis),ibit)
-                                ! Need to swap it with every creation operator with
-                                ! a lower index already in the cluster.
-                                !permute_operators = iand(not(basis%excit_mask(:,basis%basis_lookup(ibit,ibasis))),cluster_creation)
-                                !permute_operators(ibasis) = ibclr(permute_operators(ibasis),ibit)
-                                permute_operators = iand(basis%excit_mask(:,basis%basis_lookup(ibit,ibasis)),cluster_annihilation)
-                                permute_operators = ior(permute_operators,cluster_creation)
-                            end if
-                            if (mod(sum(count_set_bits(permute_operators)),2) == 1) &
-                                cluster_population = -cluster_population
-
-                            cluster_loc = cluster_excitor
-                            call reset_extra_info_bit_string(basis, cluster_loc)
-                            cluster_excitation = ieor(f0_loc, cluster_loc)
-                            cluster_annihilation = iand(cluster_excitation, f0_loc)
-                            cluster_creation = iand(cluster_excitation, cluster_loc)
-                        end if
-                    end do
-                end do
+                call collapse_deexcitor_onto_cluster(basis, excitor_excitation, f0_loc, cluster_excitor, &
+                                                  cluster_annihilation, cluster_creation, cluster_population, &
+                                                  excitor_annihilation, cluster_excitation)
            end if  
         else 
             if (any(iand(excitor_creation,cluster_creation) /= 0) &
@@ -1155,46 +1180,8 @@ contains
                 ! Might need a sign change as well...see below!
                 cluster_population = cluster_population*excitor_population
 
-                ! Now apply the excitor to the cluster (which is, in its own right,
-                ! an excitor).
-                ! Consider a cluster, e.g. t_i^a = a^+_a a_i (which corresponds to i->a).
-                ! We wish to collapse two excitors, e.g. t_i^a t_j^b, to a single
-                ! excitor, e.g. t_{ij}^{ab} = a^+_a a^+_b a_j a_i (where i<j and
-                ! a<b).  However t_i^a t_j^b = a^+_a a_i a^+_b a_j.  We thus need to
-                ! permute the creation and annihilation operators.  Each permutation
-                ! incurs a sign change.
-
-                do ibasis = 1, basis%bit_string_len
-                    do ibit = 0, i0_end
-                        if (btest(excitor_excitation(ibasis),ibit)) then
-                            if (btest(f0(ibasis),ibit)) then
-                                ! Exciting from this orbital.
-                                cluster_excitor(ibasis) = ibclr(cluster_excitor(ibasis),ibit)
-                                ! We need to swap it with every annihilation
-                                ! operator and every creation operator referring to
-                                ! an orbital with a higher index already in the
-                                ! cluster.
-                                ! Note that an orbital cannot be in the list of
-                                ! annihilation operators and the list of creation
-                                ! operators.
-                                ! First annihilation operators:
-                                permute_operators = iand(basis%excit_mask(:,basis%basis_lookup(ibit,ibasis)),cluster_annihilation)
-                                ! Now add the creation operators:
-                                permute_operators = ior(permute_operators,cluster_creation)
-                            else
-                                ! Exciting into this orbital.
-                                cluster_excitor(ibasis) = ibset(cluster_excitor(ibasis),ibit)
-                                ! Need to swap it with every creation operator with
-                                ! a lower index already in the cluster.
-                                permute_operators = iand(not(basis%excit_mask(:,basis%basis_lookup(ibit,ibasis))),cluster_creation)
-                                permute_operators(ibasis) = ibclr(permute_operators(ibasis),ibit)
-                            end if
-                            if (mod(sum(count_set_bits(permute_operators)),2) == 1) &
-                                cluster_population = -cluster_population
-                        end if
-                    end do
-                end do
-
+                call collapse_excitor_onto_cluster(basis, excitor_excitation, f0, cluster_excitor, &
+                                                  cluster_annihilation, cluster_creation, cluster_population)
             end if
         end if
     end subroutine ucc_collapse_cluster
@@ -1203,6 +1190,7 @@ contains
                                     cumulative_pops, tot_pop)
 ! [review] - AJWT: based on cumulative_population
 ! [review] - AJWT: is this the same just without calc_dist? and can that be set to .false. and cumulative_population called?
+        ![todo] refactor uccmc_in into ccmc_in and push this back into cumulative_population
 
         ! Calculate the cumulative population, i.e. the number of psips/excips
         ! residing on a determinant/an excitor and all determinants/excitors which
@@ -1289,7 +1277,7 @@ contains
 ! [review] - AJWT: based on do_ccmc_accumulation
 ! [review] - AJWT: If uccmc_in is unfolded from ccmc_in, then can the above be reused by changing what the
 ! [review] - AJWT: update_proj_energy_ptr points to?
-
+        ! [todo] move uccmc_in to ccmc_in and refactor into do_ccmc_accumulation
 
 
         ! Performs all accumulation of values required for given ccmc clusters.
@@ -1377,9 +1365,10 @@ contains
 
     subroutine do_stochastic_uccmc_propagation(rng, sys, qs, uccmc_in, &
                                             logging_info, ms_stats, bloom_stats, &
-                                            contrib, nattempts_spawn_tot, ndeath, ps_stat)
+                                            contrib, nattempts_spawn_tot, ndeath, ps_stat, allowed_states)
 ! [review] - AJWT: based on do_stochastic_ccmc_propagation.
 ! [review] - AJWT: seems to be much the same with multiref .false. and calling  do_ucc_spawning_death.  Could this be function-pointered?
+        ![todo] move uccmc_in into ccmc_in and consider refactor here
 
         ! Perform stochastic propogation of a cluster in an appropriate manner
         ! for the given inputs. For multireference systems, it allows death for
@@ -1429,6 +1418,7 @@ contains
         integer(int_p), intent(inout) :: ndeath
         type(multispawn_stats_t), intent(inout) :: ms_stats
         type(p_single_double_coll_t), intent(inout) :: ps_stat
+        integer(i0), intent(in), optional :: allowed_states(:,:)
 
         integer :: nspawnings_cluster
         logical :: attempt_death
@@ -1445,7 +1435,10 @@ contains
         call ms_stats_update(nspawnings_cluster, ms_stats)
         nattempts_spawn_tot = nattempts_spawn_tot + nspawnings_cluster
         attempt_death = (contrib%cluster%excitation_level <= qs%ref%ex_level) 
-        call do_ucc_spawning_death(rng, sys, qs, uccmc_in, &
+        if (present(allowed_states)) call do_ucc_spawning_death(rng, sys, qs, uccmc_in, &
+                             logging_info, ms_stats, bloom_stats, contrib, &
+                             nattempts_spawn_tot, ndeath, ps_stat, nspawnings_cluster, attempt_death, allowed_states)
+        if (not(present(allowed_states))) call do_ucc_spawning_death(rng, sys, qs, uccmc_in, &
                              logging_info, ms_stats, bloom_stats, contrib, &
                              nattempts_spawn_tot, ndeath, ps_stat, nspawnings_cluster, attempt_death)
 
@@ -1453,9 +1446,10 @@ contains
 
     subroutine do_ucc_spawning_death(rng, sys, qs, uccmc_in, &
                                  logging_info, ms_stats, bloom_stats, contrib, &
-                                 nattempts_spawn_tot, ndeath, ps_stat, nspawnings_cluster, attempt_death)
+                                 nattempts_spawn_tot, ndeath, ps_stat, nspawnings_cluster, attempt_death, allowed_states)
 
 ! [review] - AJWT: based on do_spawning_death, but calling perform_uccmc_spawning_attempt instead.  Function pointer?
+        ! [todo] as above
         ! For stochastically selected clusters this
         ! attempts spawning and death, adding any created particles to the
         ! spawned list. For deterministically selected clusters spawning is
@@ -1513,11 +1507,15 @@ contains
         type(p_single_double_coll_t), intent(inout) :: ps_stat
         integer, intent(in) :: nspawnings_cluster
         logical, intent(in) :: attempt_death
+        integer(i0), intent(in), optional :: allowed_states(:,:)
 
         integer :: i
+        integer(int_p) :: ndeath_loc
 
         do i = 1, nspawnings_cluster
-            call perform_uccmc_spawning_attempt(rng, sys, qs, uccmc_in, logging_info, bloom_stats, contrib, &
+            if (present(allowed_states)) call perform_uccmc_spawning_attempt(rng, sys, qs, uccmc_in, logging_info, bloom_stats, contrib, &
+                                               nspawnings_cluster, ps_stat, allowed_states)
+            if (not(present(allowed_states))) call perform_uccmc_spawning_attempt(rng, sys, qs, uccmc_in, logging_info, bloom_stats, contrib, &
                                                nspawnings_cluster, ps_stat)
         end do
 
@@ -1525,21 +1523,26 @@ contains
         ! a determinant is in the truncation space?  If so, also
         ! need to attempt a death/cloning step.
         ! optimisation: call only once per iteration for clusters of size 0 or 1 for ccmc_in%full_nc.
+        ndeath_loc = ndeath
         if (attempt_death) then
            ! Clusters above size 2 can't die in linked ccmc.
             if ((.not. uccmc_in%linked) .or. contrib%cluster%nexcitors <= 2) then
-                call stochastic_ccmc_death(rng, qs%spawn_store%spawn, uccmc_in%linked, .false., sys, &
+                if (present(allowed_states)) call stochastic_ccmc_death(rng, qs%spawn_store%spawn, uccmc_in%linked, .false., sys, &
+                                           qs, contrib%cdet, contrib%cluster, logging_info, ndeath, allowed_states)
+                if (not(present(allowed_states))) call stochastic_ccmc_death(rng, qs%spawn_store%spawn, uccmc_in%linked, .false., sys, &
                                            qs, contrib%cdet, contrib%cluster, logging_info, ndeath)
             end if
+        
         end if
     end subroutine do_ucc_spawning_death
 
     subroutine perform_uccmc_spawning_attempt(rng, sys, qs, uccmc_in, logging_info, bloom_stats, contrib, nspawnings_total, &
-                                        ps_stat)
+                                        ps_stat, allowed_states)
 
 ! [review] - AJWT: based on perform_ccmc_spawning_death.
 ! [review] - AJWT: but copes with Trotterized spawning. Could that be function-pointered?
 
+        ! [todo] consider this
         ! Performs a single ccmc spawning attempt, as appropriate for a
         ! given setting combination of linked, complex or none of the above.
 
@@ -1587,6 +1590,7 @@ contains
         type(excit_t) :: connection
         type(bloom_stats_t), intent(inout) :: bloom_stats
         type(logging_t), intent(in) :: logging_info
+        integer(i0), intent(in), optional :: allowed_states(:,:)
 
         integer, intent(in) :: nspawnings_total
         type(p_single_double_coll_t), intent(inout) :: ps_stat
@@ -1599,9 +1603,10 @@ contains
         if (nspawned /= 0_int_p) then
             if(uccmc_in%trot) then
                 ! Must decide if particle is labelled in any way.
-                call create_spawned_particle_uccmc_trot(sys, qs%ref, contrib%cdet, connection, &
+                if(present(allowed_states)) call create_spawned_particle_uccmc_trot(sys, qs%ref, contrib%cdet, connection, &
                                             nspawned, 1, contrib%cluster%excitation_level, &
-                                            .true., fexcit, qs%spawn_store%spawn, bloom_stats)
+                                            .true., fexcit, qs%spawn_store%spawn, bloom_stats, &
+                                            allowed_states)
             else
                 call create_spawned_particle_ccmc(sys%basis, qs%ref, contrib%cdet, connection, &
                                             nspawned, 1, contrib%cluster%excitation_level, &
@@ -1611,10 +1616,11 @@ contains
     end subroutine perform_uccmc_spawning_attempt
 
     subroutine create_spawned_particle_uccmc_trot(sys, ref, cdet, connection, nspawned, ispace, &
-                                            parent_cluster_ex_level, trot, fexcit, spawn, bloom_stats)
+                                            parent_cluster_ex_level, trot, fexcit, spawn, bloom_stats, allowed_states)
 
 ! [review] - AJWT: How does this differ (from what?) for the uccmc_trotterization?
 
+        ! [todo] function pointer here based on trot flag
         ! Function to create spawned particle in spawned list for ccmc
         ! calculations. Performs required manipulations of bit string
         ! beforehand and accumulation on blooming.
@@ -1662,17 +1668,27 @@ contains
         integer(i0), intent(in) :: fexcit(:)
         logical, intent(in) :: trot 
         integer(i0) :: fexcit_loc(lbound(fexcit,dim=1):ubound(fexcit,dim=1))
-
-        
+        integer(i0), intent(in), optional :: allowed_states(:,:)
+        integer :: i
+        logical :: allowed
         if (parent_cluster_ex_level /= huge(0)) then
             call create_excited_det(sys%basis, cdet%f, connection, fexcit_loc)
         else
             fexcit_loc = fexcit
         end if
-
+        !if (present(allowed_states)) then
+        !    allowed = .false.
+        !    do i = 1, size(allowed_states(:,1))
+        !        if (all(fexcit_loc(:4) == allowed_states(i,:))) then
+        !            allowed = .true.
+        !            exit
+        !        end if
+        !    end do
+        !    if (not(allowed)) return
+        !end if
+        !if (all(fexcit_loc(1) /= allowed_states(:))) return 
         if (trot) call add_info_str_trot(sys%basis, ref%f0, sys%nel, fexcit_loc)
 
-        
         call create_spawned_particle_ptr(sys%basis, ref, cdet, connection, nspawned, &
                                         ispace, spawn, fexcit_loc)
         call accumulate_bloom_stats(bloom_stats, nspawned)
@@ -1682,7 +1698,9 @@ contains
 
     subroutine update_proj_energy_mol_ucc(sys, f0, wfn_dat, cdet, pop, estimators, excitation, hmatel, cluster_size)
 
-! [review] - AJWT: based on update_proj_energy_mol - this might be able to be folded back into this eventually.
+        ! Currently this function takes an extra variable (cluster_size) compared to update_proj_energy_mol in
+        ! energy_evaluation.F90, so it cannot be treated with the same function pointer.
+        !
         ! Add the contribution of the current determinant to the projected
         ! energy.
         ! The correlation energy given by the projected energy is:
@@ -1703,6 +1721,7 @@ contains
         !    cdet: info on the current determinant (cdet) that we will spawn
         !        from.  Only the bit string field needs to be set.
         !    pop: population on current determinant.
+        !    cluster_size: number of excitors in current cluster.
         ! In/Out:
         !    estimators: estimators_t object containing running totals of N_0
         !        and proj energy contribution.
