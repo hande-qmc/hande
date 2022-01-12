@@ -166,14 +166,12 @@ contains
 ! [review] - AJWT:  Is this copy needed?
         integer(i0) :: f0_loc(basis%tot_string_len)
 
-        integer :: ibasis, ibit
         integer(i0) :: excitor_excitation(basis%tot_string_len)
         integer(i0) :: excitor_annihilation(basis%tot_string_len)
         integer(i0) :: excitor_creation(basis%tot_string_len)
         integer(i0) :: cluster_excitation(basis%tot_string_len)
         integer(i0) :: cluster_annihilation(basis%tot_string_len)
         integer(i0) :: cluster_creation(basis%tot_string_len)
-        integer(i0) :: permute_operators(basis%tot_string_len)
 
         excitor_loc = excitor
         f0_loc = f0
@@ -212,49 +210,72 @@ contains
             ! Might need a sign change as well...see below!
             cluster_population = cluster_population*excitor_population
 
-            ! Now apply the excitor to the cluster (which is, in its own right,
-            ! an excitor).
-            ! Consider a cluster, e.g. t_i^a = a^+_a a_i (which corresponds to i->a).
-            ! We wish to collapse two excitors, e.g. t_i^a t_j^b, to a single
-            ! excitor, e.g. t_{ij}^{ab} = a^+_a a^+_b a_j a_i (where i<j and
-            ! a<b).  However t_i^a t_j^b = a^+_a a_i a^+_b a_j.  We thus need to
-            ! permute the creation and annihilation operators.  Each permutation
-            ! incurs a sign change.
-
-            do ibasis = 1, basis%bit_string_len
-                do ibit = 0, i0_end
-                    if (btest(excitor_excitation(ibasis),ibit)) then
-                        if (btest(f0(ibasis),ibit)) then
-                            ! Exciting from this orbital.
-                            cluster_excitor(ibasis) = ibclr(cluster_excitor(ibasis),ibit)
-                            ! We need to swap it with every annihilation
-                            ! operator and every creation operator referring to
-                            ! an orbital with a higher index already in the
-                            ! cluster.
-                            ! Note that an orbital cannot be in the list of
-                            ! annihilation operators and the list of creation
-                            ! operators.
-                            ! First annihilation operators:
-                            permute_operators = iand(basis%excit_mask(:,basis%basis_lookup(ibit,ibasis)),cluster_annihilation)
-                            ! Now add the creation operators:
-                            permute_operators = ior(permute_operators,cluster_creation)
-                        else
-                            ! Exciting into this orbital.
-                            cluster_excitor(ibasis) = ibset(cluster_excitor(ibasis),ibit)
-                            ! Need to swap it with every creation operator with
-                            ! a lower index already in the cluster.
-                            permute_operators = iand(not(basis%excit_mask(:,basis%basis_lookup(ibit,ibasis))),cluster_creation)
-                            permute_operators(ibasis) = ibclr(permute_operators(ibasis),ibit)
-                        end if
-                        if (mod(sum(count_set_bits(permute_operators)),2) == 1) &
-                            cluster_population = -cluster_population
-                    end if
-                end do
-            end do
-
+            call collapse_excitor_onto_cluster(basis, excitor_excitation, f0, cluster_excitor, &
+                                                  cluster_annihilation, cluster_creation, cluster_population)
         end if
 
     end subroutine collapse_cluster
+
+    pure subroutine collapse_excitor_onto_cluster(basis, excitor_excitation, f0, cluster_excitor, &
+                                                  cluster_annihilation, cluster_creation, cluster_population)
+
+        ! Apply the excitor to the cluster (which is, in its own right,
+        ! an excitor).
+        ! Consider a cluster, e.g. t_i^a = a^+_a a_i (which corresponds to i->a).
+        ! We wish to collapse two excitors, e.g. t_i^a t_j^b, to a single
+        ! excitor, e.g. t_{ij}^{ab} = a^+_a a^+_b a_j a_i (where i<j and
+        ! a<b).  However t_i^a t_j^b = a^+_a a_i a^+_b a_j.  We thus need to
+        ! permute the creation and annihilation operators.  Each permutation
+        ! incurs a sign change.
+    
+        use basis_types, only: basis_t
+
+        use bit_utils, only: count_set_bits
+        use const, only: i0_end
+
+        type(basis_t), intent(in) :: basis
+        integer(i0), intent(in) :: f0(basis%tot_string_len)
+        integer(i0), intent(inout) :: cluster_excitor(basis%tot_string_len)
+        complex(p), intent(inout) :: cluster_population
+        integer(i0), intent(in) :: excitor_excitation(basis%tot_string_len)
+        integer(i0), intent(in) :: cluster_annihilation(basis%tot_string_len)
+        integer(i0), intent(in) :: cluster_creation(basis%tot_string_len)
+
+        integer :: ibasis, ibit
+        integer(i0) :: permute_operators(basis%tot_string_len)
+                           
+        do ibasis = 1, basis%bit_string_len
+            do ibit = 0, i0_end
+                if (btest(excitor_excitation(ibasis),ibit)) then
+                    if (btest(f0(ibasis),ibit)) then
+                        ! Exciting from this orbital.
+                        cluster_excitor(ibasis) = ibclr(cluster_excitor(ibasis),ibit)
+                        ! We need to swap it with every annihilation
+                        ! operator and every creation operator referring to
+                        ! an orbital with a higher index already in the
+                        ! cluster.
+                        ! Note that an orbital cannot be in the list of
+                        ! annihilation operators and the list of creation
+                        ! operators.
+                        ! First annihilation operators:
+                        permute_operators = iand(basis%excit_mask(:,basis%basis_lookup(ibit,ibasis)),cluster_annihilation)
+                        ! Now add the creation operators:
+                        permute_operators = ior(permute_operators,cluster_creation)
+                    else
+                        ! Exciting into this orbital.
+                        cluster_excitor(ibasis) = ibset(cluster_excitor(ibasis),ibit)
+                        ! Need to swap it with every creation operator with
+                        ! a lower index already in the cluster.
+                        permute_operators = iand(not(basis%excit_mask(:,basis%basis_lookup(ibit,ibasis))),cluster_creation)
+                        permute_operators(ibasis) = ibclr(permute_operators(ibasis),ibit)
+                    end if
+                    if (mod(sum(count_set_bits(permute_operators)),2) == 1) &
+                        cluster_population = -cluster_population
+                end if
+            end do
+        end do
+
+    end subroutine collapse_excitor_onto_cluster
 
     pure subroutine convert_excitor_to_determinant(excitor, excitor_level, excitor_sign, f)
 
