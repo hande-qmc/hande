@@ -74,9 +74,10 @@ contains
         use bloom_handler, only: init_bloom_stats_t, bloom_stats_t, bloom_mode_fractionn, bloom_mode_fixedn, &
                                  write_bloom_report, bloom_stats_warning, update_bloom_threshold_prop
         use ccmc_data
-        use ccmc_selection, only: create_null_cluster
+        use ccmc_death_spawning, only: stochastic_ccmc_death_nc
+        use ccmc_selection, only: create_null_cluster, select_nc_cluster
         use ccmc_selection, only: init_selection_data, update_selection_probabilities, &
-                                  init_amp_psel_accumulation
+                                  init_amp_psel_accumulation, set_cluster_selections
         use ccmc_utils, only: get_D0_info, init_contrib, dealloc_contrib, cumulative_population, & 
                               regenerate_ex_levels_psip_list
         use determinants, only: alloc_det_info_t, dealloc_det_info_t, sum_sp_eigenvalues_occ_list, &
@@ -417,9 +418,11 @@ contains
                 !         excitors which can actually be involved in a composite cluster).
 
                 ! [todo] implement full_nc for UCCMC.
-                call ucc_set_cluster_selections(selection_data, qs%estimators(1)%nattempts, min_cluster_size, uccmc_in%full_nc, D0_normalisation, qs%psip_list%nstates, tot_abs_real_pop)
-                if (uccmc_in%full_nc) call stop_all('do_uccmc', &
-                                                    'Full NC algorithm not implemented for UCCMC. Please implement...')
+                call set_cluster_selections(selection_data, qs%estimators(1)%nattempts, min_cluster_size, &
+                                            max_cluster_size, D0_normalisation, tot_abs_real_pop, qs%psip_list%nstates, &
+                                            uccmc_in%full_nc, .false.)
+                !if (uccmc_in%full_nc) call stop_all('do_uccmc', &
+                !                                    'Full NC algorithm not implemented for UCCMC. Please implement...')
                 call zero_ps_stats(ps_stats, qs%excit_gen_data%p_single_double%rep_accum%overflow_loc)
 
                 ! OpenMP chunk size determined completely empirically from a single
@@ -453,32 +456,101 @@ contains
                 do iattempt = 1, selection_data%nclusters
                     ! For OpenMP scalability, have this test inside a single loop rather
                     ! than attempt to parallelise over three separate loops.
-                    call select_ucc_cluster(rng(it), sys, qs%psip_list, qs%ref%f0, qs%ref%max_ex_level, &
+                    if (iattempt <= selection_data%nsingle_excitors) then
+                        ! As noncomposite clusters can't be above truncation level or linked-only all can accumulate +
+                        ! propagate. Only need to check not selecting the reference as we treat it separately.
+                        if (iattempt /= D0_pos) then
+                            ! Deterministically select each excip as a non-composite cluster.
+                            call select_nc_cluster(sys, qs%psip_list, qs%ref%f0, &
+                                        iattempt, qmc_in%initiator_pop, .false., &
+                                        contrib(it)%cdet, contrib(it)%cluster, qs%excit_gen_data)
+
+                            if (qs%propagator%quasi_newton) contrib(it)%cdet%fock_sum = &
+                                            sum_sp_eigenvalues_occ_list(sys, contrib(it)%cdet%occ_list) - qs%ref%fock_sum
+                            ! [VAN]: This is quite dangerous when using OpenMP as selection_data is shared but updated here if
+                            ! [VAN]: in debug mode. However, this updated selection_data will only be used if selection logging
+                            ! [VAN]: according to comments. And logging cannot be used with openmp. Dangerous though.
+                            call do_uccmc_accumulation(sys, qs, contrib(it)%cdet, contrib(it)%cluster, logging_info, &
+                                                    D0_population_cycle, proj_energy_cycle, uccmc_in, ref_det, rdm, &
+                                                    selection_data, D0_population_ucc_cycle)
+                            call do_nc_uccmc_propagation(rng(it), sys, qs, uccmc_in, logging_info, bloom_stats, &
+                                                                contrib(it), nattempts_spawn, ps_stats(it))
+                            if (uccmc_in%variational_energy .and. all(qs%vary_shift) .and. & 
+                                contrib(it)%cluster%excitation_level <= qs%ref%ex_level)  then
+                                call add_ci_contribution(contrib(it)%cluster, contrib(it)%cdet, &
+                                time_avg_psip_list_ci_states, time_avg_psip_list_ci_pops, nstates_ci)
+                            end if
+                        end if
+                    else if (iattempt <= selection_data%nsingle_excitors + selection_data%nstochastic_clusters) then
+                        call select_ucc_cluster(rng(it), sys, qs%psip_list, qs%ref%f0, qs%ref%max_ex_level, &
                                             selection_data%nstochastic_clusters, D0_normalisation, qmc_in%initiator_pop, D0_pos, &
                                             cumulative_abs_real_pops, tot_abs_real_pop, min_cluster_size, max_cluster_size, &
                                             logging_info, contrib(it)%cdet, contrib(it)%cluster, qs%excit_gen_data)
 
-                    ! Add contribution to average CI wfn
-                    if (uccmc_in%variational_energy .and. all(qs%vary_shift) .and. &
-        contrib(it)%cluster%excitation_level <= qs%ref%ex_level)  then
-                        call add_ci_contribution(contrib(it)%cluster, contrib(it)%cdet, &
-                        time_avg_psip_list_ci_states, time_avg_psip_list_ci_pops, nstates_ci)
-                    end if
+                        ! Add contribution to average CI wfn
+                        if (uccmc_in%variational_energy .and. all(qs%vary_shift) .and. &
+                            contrib(it)%cluster%excitation_level <= qs%ref%ex_level)  then
+                            call add_ci_contribution(contrib(it)%cluster, contrib(it)%cdet, &
+                            time_avg_psip_list_ci_states, time_avg_psip_list_ci_pops, nstates_ci)
+                        end if
 
-                    if (contrib(it)%cluster%excitation_level <= qs%ref%max_ex_level+2) then
+                        if (contrib(it)%cluster%excitation_level <= qs%ref%max_ex_level+2) then
+                            if (qs%propagator%quasi_newton) contrib(it)%cdet%fock_sum = &
+                                            sum_sp_eigenvalues_occ_list(sys, contrib(it)%cdet%occ_list) - qs%ref%fock_sum
+
+                            call do_uccmc_accumulation(sys, qs, contrib(it)%cdet, contrib(it)%cluster, logging_info, &
+                                                    D0_population_cycle, proj_energy_cycle,uccmc_in, ref_det, rdm, &
+                                                    selection_data, D0_population_ucc_cycle)
+                            call do_stochastic_uccmc_propagation(rng(it), sys, qs, &
+                                                                uccmc_in, logging_info, ms_stats(it), bloom_stats, &
+                                                                contrib(it), nattempts_spawn, ndeath, ps_stats(it))
+                        end if
+                    else
+                        if (.not. seen_D0) then
+                            ! This is the first time this thread is spawning from D0, so it
+                            ! needs to be converted into a det_info_t object for the excitation
+                            ! generators. On subsequent calls, cdet does not need to change.
+                            seen_D0 = .true.
+                            call create_null_cluster(sys, qs%ref%f0, nprocs*real(selection_data%nD0_select,p), D0_normalisation, &
+                                                     qmc_in%initiator_pop, contrib(it)%cdet, contrib(it)%cluster, qs%excit_gen_data)
+                        end if
+                        if (uccmc_in%variational_energy .and. all(qs%vary_shift) .and. &
+                            contrib(it)%cluster%excitation_level <= qs%ref%ex_level)  then
+                            call add_ci_contribution(contrib(it)%cluster, contrib(it)%cdet, &
+                            time_avg_psip_list_ci_states, time_avg_psip_list_ci_pops, nstates_ci)
+                        end if
                         if (qs%propagator%quasi_newton) contrib(it)%cdet%fock_sum = &
                                             sum_sp_eigenvalues_occ_list(sys, contrib(it)%cdet%occ_list) - qs%ref%fock_sum
 
                         call do_uccmc_accumulation(sys, qs, contrib(it)%cdet, contrib(it)%cluster, logging_info, &
-                                                    D0_population_cycle, proj_energy_cycle,uccmc_in, ref_det, rdm, &
-                                                    selection_data, D0_population_ucc_cycle)
-                        call do_stochastic_uccmc_propagation(rng(it), sys, qs, &
-                                                                uccmc_in, logging_info, ms_stats(it), bloom_stats, &
-                                                                contrib(it), nattempts_spawn, ndeath, ps_stats(it))
-                    end if
+                                                    D0_population_cycle, proj_energy_cycle, uccmc_in, ref_det, rdm, selection_data,&
+                                                    D0_population_ucc_cycle)
+                        ! [review] Verena: make sure qs is not altered unexpectedly here (it is shared).
+                        nattempts_spawn = nattempts_spawn + 1
+                       
+                        call perform_uccmc_spawning_attempt(rng(it), sys, qs, uccmc_in, logging_info, bloom_stats, contrib(it), 1, &
+                                                        ps_stats(it))
+                   end if
                 end do
                 !$omp end do
                 ndeath_nc=0
+                if (uccmc_in%full_nc .and. qs%psip_list%nstates > 0) then
+                    ! Do death exactly and directly for non-composite clusters
+                    !$omp do schedule(dynamic,200) private(dfock) reduction(+:ndeath_nc,nparticles_change)
+                    do iattempt = 1, qs%psip_list%nstates
+                        ! Note we use the (encoded) population directly in stochastic_ccmc_death_nc
+                        ! (unlike the stochastic_ccmc_death) to avoid unnecessary decoding/encoding
+                        ! steps (cf comments in stochastic_death for FCIQMC).
+                        if (qs%propagator%quasi_newton) then
+                            dfock = sum_sp_eigenvalues_bit_string(sys, qs%psip_list%states(:,iattempt)) - qs%ref%fock_sum
+                        end if
+                        call stochastic_ccmc_death_nc(rng(it), uccmc_in%linked, sys, qs, iattempt==D0_pos, dfock, &
+                                          qs%psip_list%dat(1,iattempt), qs%estimators(1)%proj_energy_old, &
+                                          qs%psip_list%pops(1, iattempt), nparticles_change(1), ndeath_nc, &
+                                          logging_info)
+                    end do
+                    !$omp end do
+                end if
                 !$omp end parallel
 
                 ! Add the accumulated ps_stats data to qs%excit_gen_data%p_single_double.
@@ -1535,6 +1607,89 @@ contains
         
         end if
     end subroutine do_ucc_spawning_death
+
+    subroutine do_nc_uccmc_propagation(rng, sys, qs, uccmc_in, logging_info, bloom_stats, &
+                                            contrib, nattempts_spawn_tot, ps_stat)
+
+        ! Perform stochastic propogation of a cluster selected deterministically
+        ! in full non-composite selection. This performs all spawning attempts
+        ! for a given noncomposite cluster, adding any created particles to the
+        ! spawned list, while death is performed in-place later.
+
+        ! This is in many ways similar to the approach used in fciqmc except in
+        ! the case of solid-state calculations. In this case, noncomposite CCMC
+        ! spawns from multiple chunks of magnitude one and phase equal to the
+        ! excip population. FCIQMC instead spawns from purely real or imaginary
+        ! parents.
+        ! The CCMC approach is consistent with that used throughout complex CCMC,
+        ! and requires fewer attempts per iteration to sample the same population,
+        ! though the efficacy of the two approaches has not yet been investigated.
+
+        ! In:
+        !   sys: information on system under consideration.
+        !   uccmc_in: options relating to uccmc passed in to calculation.
+        !   logging_info: logging_t object with info about current logging
+        !        when debug is true.
+        ! In/Out:
+        !   rng: random number generator.
+        !   qs: qmc_state_t type, contains information about calculation.
+        !   bloom_stats: statistics on blooms during calculation.
+        !   contrib: derived type containing information on the current
+        !       wavefunction contribution being considered.
+        !   nattempts_spawn: running total of number of spawning attempts
+        !       made during this mc cycle.
+        !   ps_stat: Accumulating the following (and more) on this OpenMP thread:
+        !       h_pgen_singles_sum: total of |Hij|/pgen for single excitations attempted.
+        !       h_pgen_doubles_sum: total on |Hij|/pgen for double excitations attempted.
+        !       excit_gen_singles: counter on number of single excitations attempted.
+        !       excit_gen_doubles: counter on number of double excitations attempted.
+
+        use dSFMT_interface, only: dSFMT_t
+        use system, only: sys_t
+        use qmc_data, only: qmc_state_t, uccmc_in_t
+        use ccmc_data, only: multispawn_stats_t, ms_stats_update, wfn_contrib_t
+        use qmc_common, only: decide_nattempts
+
+        use ccmc_death_spawning, only: spawner_ccmc, linked_spawner_ccmc, stochastic_ccmc_death
+        use ccmc_death_spawning, only: stochastic_ccmc_death_nc, spawner_complex_ccmc
+        use bloom_handler, only: bloom_stats_t, accumulate_bloom_stats
+        use logging, only: logging_t
+        use excit_gens, only: p_single_double_coll_t
+
+        type(sys_t), intent(in) :: sys
+        type(dSFMT_T), intent(inout) :: rng
+        type(qmc_state_t), intent(inout) :: qs
+        type(uccmc_in_t), intent(in) :: uccmc_in
+        type(wfn_contrib_t), intent(inout) :: contrib
+        type(bloom_stats_t), intent(inout) :: bloom_stats
+        type(logging_t), intent(in) :: logging_info
+
+        integer(int_64), intent(inout) :: nattempts_spawn_tot
+        type(p_single_double_coll_t), intent(inout) :: ps_stat
+        integer :: i, nspawnings_cluster
+
+        ! Spawning
+        ! We select each non-composite cluster only once, then perform
+        ! a number of spawning attempts proportional to the excip population
+        ! on the corresponding excitor. This is similar to the previous
+        ! approach but removes the requirement to have a deterministic
+        ! method of deciding upon the number of attempts to make on each
+        ! non-composite cluster previously imposed.
+
+        ! We now use this to decide the number of attempts on each cluster
+        ! stochastically, as in fciqmc.
+
+        nspawnings_cluster = decide_nattempts(rng, abs(contrib%cluster%amplitude)/contrib%cluster%pselect)
+
+        nattempts_spawn_tot = nattempts_spawn_tot + nspawnings_cluster
+
+        contrib%cluster%amplitude = contrib%cluster%amplitude / abs(contrib%cluster%amplitude)
+        
+        do i = 1, nspawnings_cluster
+            call perform_uccmc_spawning_attempt(rng, sys, qs, uccmc_in, logging_info, bloom_stats, contrib, 1, ps_stat)
+        end do
+
+    end subroutine do_nc_uccmc_propagation
 
     subroutine perform_uccmc_spawning_attempt(rng, sys, qs, uccmc_in, logging_info, bloom_stats, contrib, nspawnings_total, &
                                         ps_stat, allowed_states)

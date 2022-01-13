@@ -1587,6 +1587,7 @@ contains
             call aot_get_val(uccmc_in%density_matrix_file, err, lua_state, uccmc_table, 'density_matrix_file')
             call aot_get_val(uccmc_in%pow_trunc, err, lua_state, uccmc_table, 'pow_trunc')
             call aot_get_val(uccmc_in%variational_energy, err, lua_state, uccmc_table, 'variational_energy')
+            call aot_get_val(uccmc_in%average_wfn, err, lua_state, uccmc_table, 'average_wfn')
             call aot_get_val(uccmc_in%trot, err, lua_state, uccmc_table, 'trotterized')
             call aot_get_val(uccmc_in%full_nc, err, lua_state, uccmc_table, 'full_nc')
 

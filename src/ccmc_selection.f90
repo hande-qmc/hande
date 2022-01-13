@@ -919,6 +919,9 @@ contains
                     selection_data%nstochastic_clusters = 0_int_64
                 end if
             end if
+            ![todo, for review] should this be nattempts = selection_data%nsingle_excitors + selection_data%nD0_select + selection_data%nstochastic_clusters?
+            ! Or are the singles considered to be selected proportionally to their population?
+            ! Changing would probably break many tests, since this gets printed.
             nattempts = nint(tot_abs_pop, kind=int_64) + selection_data%nD0_select + selection_data%nstochastic_clusters
         else
             min_cluster_size = 0
