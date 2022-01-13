@@ -80,6 +80,7 @@ contains
                             write_blocking_report, update_shift_damping
         use report, only: write_date_time_close
         use replica_rdm, only: update_rdm_from_spawns, calc_rdm_energy, write_final_rdm
+        use state_histograms
 
         type(sys_t), intent(in) :: sys
         type(qmc_in_t), intent(in) :: qmc_in
@@ -102,6 +103,7 @@ contains
         type(semi_stoch_t) :: determ
         type(json_out_t) :: js
         type(qmc_in_t) :: qmc_in_loc
+        type(state_histograms_data_t) :: state_hist
 
         integer :: idet, ireport, icycle, ideterm, ierr, ispace
         integer :: iter, semi_stoch_iter
@@ -156,7 +158,7 @@ contains
 
         ! Initialise data.
         call init_qmc(sys, qmc_in, restart_in, load_bal_in, reference_in, io_unit, annihilation_flags, qs, uuid_restart, &
-                      restart_version_restart, fciqmc_in=fciqmc_in, qmc_state_restart=qmc_state_restart)
+                      restart_version_restart, fciqmc_in=fciqmc_in, qmc_state_restart=qmc_state_restart, state_hist=state_hist)
 
         if (debug) call init_logging(logging_in, logging_info, 0)
 
@@ -327,6 +329,10 @@ contains
                     call set_parent_flag(real_population, qmc_in%initiator_pop, determ%flags(idet), &
                                          fciqmc_in%quadrature_initiator, cdet%initiator_flag)
 
+                    if (icycle == 1 .and. qmc_in%state_histograms) then
+                        call update_histogram_excitation_distribution(qs, cdet%f, qs%ref%f0, real_population(1), state_hist)
+                    end if
+
                     do ispace = 1, qs%psip_list%nspaces
 
                         imag = sys%read_in%comp .and. mod(ispace,2) == 0
@@ -411,6 +417,29 @@ contains
             if (update_tau) call rescale_tau(qs%tau)
 
             call cpu_time(t2)
+
+            if (qmc_in%state_histograms .and. (mod(ireport - 1, state_hist%histogram_frequency) == 0)) then
+                call comm_and_report_histogram_excitation_distribution(state_hist, qmc_in%seed, ireport - 1, ireport == 1, .true., &
+                                                                        lazy_shift = state_hist%max_ex_level)
+            else if (qmc_in%state_histograms) then
+                call comm_and_report_histogram_excitation_distribution(state_hist, qmc_in%seed, ireport - 1, ireport == 1, .false., &
+                                                                         lazy_shift = state_hist%max_ex_level)
+            end if
+            if (qmc_in%state_histograms .and. (ireport == qmc_in%nreport)) then
+                do idet = 1, qs%psip_list%nstates ! loop over walkers/dets
+                    cdet%f => qs%psip_list%states(:,idet)
+                    cdet%data => qs%psip_list%dat(:,idet)
+                    call decoder_ptr(sys, cdet%f, cdet, qs%excit_gen_data)
+                    do ispace = 1, qs%psip_list%nspaces
+                        ! Extract the real sign from the encoded sign.
+                        real_population(ispace) = real(qs%psip_list%pops(ispace,idet),p)/qs%psip_list%pop_real_factor
+                    end do
+                    call update_histogram_excitation_distribution(qs, cdet%f, qs%ref%f0, real_population(1), state_hist)
+                end do
+                call comm_and_report_histogram_excitation_distribution(state_hist, qmc_in%seed, ireport, .false., .true., &
+                                                                        lazy_shift = state_hist%max_ex_level)
+            end if
+
             if (parent) then
                 if (bloom_stats%nblooms_curr > 0) call bloom_stats_warning(bloom_stats, io_unit=io_unit)
                 call write_qmc_report(qmc_in, qs, ireport, nparticles_old, t2-t1, .false., &
@@ -490,6 +519,8 @@ contains
             deallocate(rdm, stat=ierr)
             call check_deallocate('rdm',ierr)
         end if
+        
+        if (qmc_in%state_histograms) call deallocate_histogram_t(state_hist)
 
         call dSFMT_end(rng)
 

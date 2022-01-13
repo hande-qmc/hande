@@ -924,7 +924,7 @@ contains
         character(len=30) :: str
         logical :: skip, no_renorm
 
-        character(24), parameter :: keys(34) = [character(24) :: 'tau', 'init_pop', 'mc_cycles', 'nreports', 'state_size', &
+        character(24), parameter :: keys(36) = [character(24) :: 'tau', 'init_pop', 'mc_cycles', 'nreports', 'state_size', &
                                                                  'spawned_state_size', 'rng_seed', 'target_population', &
                                                                  'real_amplitudes', 'spawn_cutoff', 'no_renorm', 'tau_search', &
                                                                  'real_amplitude_force_32', &
@@ -936,7 +936,9 @@ contains
                                                                  'vary_shift_from', 'excit_gen', 'power_pitzer_min_weight', &
                                                                  'reference_target', 'vary_shift', 'quasi_newton', &
                                                                  'quasi_newton_threshold', 'quasi_newton_value', &
-                                                                 'quasi_newton_pop_control']
+                                                                 'quasi_newton_pop_control', 'state_histograms', &
+                                                                 'state_histograms_freq', 'state_histograms_bpd', &
+                                                                 'state_histograms_mchk']
 
         if (present(short)) then
             skip = short
@@ -986,6 +988,10 @@ contains
         call aot_get_val(qmc_in%quasi_newton_threshold, err, lua_state, qmc_table, 'quasi_newton_threshold')
         call aot_get_val(qmc_in%quasi_newton_value, err, lua_state, qmc_table, 'quasi_newton_value')
         call aot_get_val(qmc_in%quasi_newton_pop_control, err, lua_state, qmc_table, 'quasi_newton_pop_control')
+        call aot_get_val(qmc_in%state_histograms, err, lua_state, qmc_table, 'state_histograms')
+        call aot_get_val(qmc_in%state_histograms_freq, err, lua_state, qmc_table, 'state_histograms_freq')
+        call aot_get_val(qmc_in%state_histograms_bpd, err, lua_state, qmc_table, 'state_histograms_bpd')
+        call aot_get_val(qmc_in%state_histograms_mchk, err, lua_state, qmc_table, 'state_histograms_mchk')
 
 
         if (aot_exists(lua_state, qmc_table, 'reference_target')) then
