@@ -410,6 +410,7 @@ contains
         !    H00: diagonal Hamiltonian element for the reference.
         !    nload_slots: number of load balancing slots (per processor).
         !    psip_list: particle information/lists.
+        !    ref_f0: the reference bitstring of the system.
         ! In/Out:
         !    cdet: det_info_t object containing information of current density
         !        matrix element.

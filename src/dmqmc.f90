@@ -666,6 +666,8 @@ contains
         ! a report loop).
 
         ! In:
+        !    calc_ref_proj_energy: true if generating the projected energy
+        !        from the reference row (or column) of the density matrix.
         !    calc_excit_dist: true if the excitation distribution is being
         !        calculated at each report loop.
         !    calc_mom_dist: true if the momentum distribution is being calculated.

@@ -1,6 +1,6 @@
 module dmqmc_data
 
-use const, only: p, dp, i0, int_64
+use const, only: p, dp, i0
 use hash_table, only: hash_table_t
 use spawn_data, only: spawn_t
 
@@ -202,8 +202,8 @@ type dmqmc_in_t
     real(p) :: piecewise_shift = 0.0_p
     ! A factor to scale the inital walker population by
     real(p) :: walker_scale_factor = 0.0_p
-    ! Should we run symmetric DMQMC prior to PIP IPDMQMC. The default is to
-    ! remain with asymmetric propagation.
+    ! Should we run symmetric DMQMC following IPDMQMC (PIP-DMQMC).
+    ! The default is to use asymmetric DMQMC after IP-DMQMC.
     logical :: post_pip_symmetric_propagation = .false.
     ! A boolean used in grand canonical initialization
     ! If it is true (by default) the walkers generated in the reweighting
