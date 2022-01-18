@@ -417,7 +417,6 @@ contains
                 !         nattempts = # excitors not on the reference (i.e. the number of
                 !         excitors which can actually be involved in a composite cluster).
 
-                ! [todo] implement full_nc for UCCMC.
                 call set_cluster_selections(selection_data, qs%estimators(1)%nattempts, min_cluster_size, &
                                             max_cluster_size, D0_normalisation, tot_abs_real_pop, qs%psip_list%nstates, &
                                             uccmc_in%full_nc, .false.)
@@ -1437,7 +1436,7 @@ contains
 
     subroutine do_stochastic_uccmc_propagation(rng, sys, qs, uccmc_in, &
                                             logging_info, ms_stats, bloom_stats, &
-                                            contrib, nattempts_spawn_tot, ndeath, ps_stat, allowed_states)
+                                            contrib, nattempts_spawn_tot, ndeath, ps_stat)
 ! [review] - AJWT: based on do_stochastic_ccmc_propagation.
 ! [review] - AJWT: seems to be much the same with multiref .false. and calling  do_ucc_spawning_death.  Could this be function-pointered?
         ![todo] move uccmc_in into ccmc_in and consider refactor here
@@ -1490,7 +1489,6 @@ contains
         integer(int_p), intent(inout) :: ndeath
         type(multispawn_stats_t), intent(inout) :: ms_stats
         type(p_single_double_coll_t), intent(inout) :: ps_stat
-        integer(i0), intent(in), optional :: allowed_states(:,:)
 
         integer :: nspawnings_cluster
         logical :: attempt_death
@@ -1507,10 +1505,7 @@ contains
         call ms_stats_update(nspawnings_cluster, ms_stats)
         nattempts_spawn_tot = nattempts_spawn_tot + nspawnings_cluster
         attempt_death = (contrib%cluster%excitation_level <= qs%ref%ex_level) 
-        if (present(allowed_states)) call do_ucc_spawning_death(rng, sys, qs, uccmc_in, &
-                             logging_info, ms_stats, bloom_stats, contrib, &
-                             nattempts_spawn_tot, ndeath, ps_stat, nspawnings_cluster, attempt_death, allowed_states)
-        if (not(present(allowed_states))) call do_ucc_spawning_death(rng, sys, qs, uccmc_in, &
+        call do_ucc_spawning_death(rng, sys, qs, uccmc_in, &
                              logging_info, ms_stats, bloom_stats, contrib, &
                              nattempts_spawn_tot, ndeath, ps_stat, nspawnings_cluster, attempt_death)
 
@@ -1518,7 +1513,7 @@ contains
 
     subroutine do_ucc_spawning_death(rng, sys, qs, uccmc_in, &
                                  logging_info, ms_stats, bloom_stats, contrib, &
-                                 nattempts_spawn_tot, ndeath, ps_stat, nspawnings_cluster, attempt_death, allowed_states)
+                                 nattempts_spawn_tot, ndeath, ps_stat, nspawnings_cluster, attempt_death)
 
 ! [review] - AJWT: based on do_spawning_death, but calling perform_uccmc_spawning_attempt instead.  Function pointer?
         ! [todo] as above
@@ -1579,15 +1574,12 @@ contains
         type(p_single_double_coll_t), intent(inout) :: ps_stat
         integer, intent(in) :: nspawnings_cluster
         logical, intent(in) :: attempt_death
-        integer(i0), intent(in), optional :: allowed_states(:,:)
 
         integer :: i
         integer(int_p) :: ndeath_loc
 
         do i = 1, nspawnings_cluster
-            if (present(allowed_states)) call perform_uccmc_spawning_attempt(rng, sys, qs, uccmc_in, logging_info, bloom_stats, contrib, &
-                                               nspawnings_cluster, ps_stat, allowed_states)
-            if (not(present(allowed_states))) call perform_uccmc_spawning_attempt(rng, sys, qs, uccmc_in, logging_info, bloom_stats, contrib, &
+            call perform_uccmc_spawning_attempt(rng, sys, qs, uccmc_in, logging_info, bloom_stats, contrib, &
                                                nspawnings_cluster, ps_stat)
         end do
 
@@ -1599,9 +1591,7 @@ contains
         if (attempt_death) then
            ! Clusters above size 2 can't die in linked ccmc.
             if ((.not. uccmc_in%linked) .or. contrib%cluster%nexcitors <= 2) then
-                if (present(allowed_states)) call stochastic_ccmc_death(rng, qs%spawn_store%spawn, uccmc_in%linked, .false., sys, &
-                                           qs, contrib%cdet, contrib%cluster, logging_info, ndeath, allowed_states)
-                if (not(present(allowed_states))) call stochastic_ccmc_death(rng, qs%spawn_store%spawn, uccmc_in%linked, .false., sys, &
+                call stochastic_ccmc_death(rng, qs%spawn_store%spawn, uccmc_in%linked, .false., sys, &
                                            qs, contrib%cdet, contrib%cluster, logging_info, ndeath)
             end if
         
@@ -1692,7 +1682,7 @@ contains
     end subroutine do_nc_uccmc_propagation
 
     subroutine perform_uccmc_spawning_attempt(rng, sys, qs, uccmc_in, logging_info, bloom_stats, contrib, nspawnings_total, &
-                                        ps_stat, allowed_states)
+                                        ps_stat)
 
 ! [review] - AJWT: based on perform_ccmc_spawning_death.
 ! [review] - AJWT: but copes with Trotterized spawning. Could that be function-pointered?
@@ -1745,7 +1735,6 @@ contains
         type(excit_t) :: connection
         type(bloom_stats_t), intent(inout) :: bloom_stats
         type(logging_t), intent(in) :: logging_info
-        integer(i0), intent(in), optional :: allowed_states(:,:)
 
         integer, intent(in) :: nspawnings_total
         type(p_single_double_coll_t), intent(inout) :: ps_stat
@@ -1758,10 +1747,9 @@ contains
         if (nspawned /= 0_int_p) then
             if(uccmc_in%trot) then
                 ! Must decide if particle is labelled in any way.
-                if(present(allowed_states)) call create_spawned_particle_uccmc_trot(sys, qs%ref, contrib%cdet, connection, &
+                call create_spawned_particle_uccmc_trot(sys, qs%ref, contrib%cdet, connection, &
                                             nspawned, 1, contrib%cluster%excitation_level, &
-                                            .true., fexcit, qs%spawn_store%spawn, bloom_stats, &
-                                            allowed_states)
+                                            .true., fexcit, qs%spawn_store%spawn, bloom_stats)
             else
                 call create_spawned_particle_ccmc(sys%basis, qs%ref, contrib%cdet, connection, &
                                             nspawned, 1, contrib%cluster%excitation_level, &
@@ -1771,7 +1759,7 @@ contains
     end subroutine perform_uccmc_spawning_attempt
 
     subroutine create_spawned_particle_uccmc_trot(sys, ref, cdet, connection, nspawned, ispace, &
-                                            parent_cluster_ex_level, trot, fexcit, spawn, bloom_stats, allowed_states)
+                                            parent_cluster_ex_level, trot, fexcit, spawn, bloom_stats)
 
 ! [review] - AJWT: How does this differ (from what?) for the uccmc_trotterization?
 
@@ -1823,7 +1811,6 @@ contains
         integer(i0), intent(in) :: fexcit(:)
         logical, intent(in) :: trot 
         integer(i0) :: fexcit_loc(lbound(fexcit,dim=1):ubound(fexcit,dim=1))
-        integer(i0), intent(in), optional :: allowed_states(:,:)
         integer :: i
         logical :: allowed
         if (parent_cluster_ex_level /= huge(0)) then
@@ -1831,17 +1818,6 @@ contains
         else
             fexcit_loc = fexcit
         end if
-        !if (present(allowed_states)) then
-        !    allowed = .false.
-        !    do i = 1, size(allowed_states(:,1))
-        !        if (all(fexcit_loc(:4) == allowed_states(i,:))) then
-        !            allowed = .true.
-        !            exit
-        !        end if
-        !    end do
-        !    if (not(allowed)) return
-        !end if
-        !if (all(fexcit_loc(1) /= allowed_states(:))) return 
         if (trot) call add_info_str_trot(sys%basis, ref%f0, sys%nel, fexcit_loc)
 
         call create_spawned_particle_ptr(sys%basis, ref, cdet, connection, nspawned, &
