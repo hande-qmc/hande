@@ -321,6 +321,14 @@ type ccmc_in_t
     ! Whether to use a second reference.
     logical :: multiref = .false.
     type(reference_t) :: second_ref
+    ! Polynomial truncation in UCCMC
+    integer :: pow_trunc = 12
+    ! Compute variational UCC energy?
+    logical :: variational_energy = .false.
+    ! Compute average UCC wavefunction?
+    logical :: average_wfn = .false.
+    ! Trotter approximation?
+    logical :: trot = .false.
 end type ccmc_in_t
 
 type uccmc_in_t
@@ -1123,6 +1131,10 @@ contains
         call json_write_key(js, 'density_matrices', ccmc%density_matrices)
         call json_write_key(js, 'density_matrix_file', ccmc%density_matrix_file)
         call json_write_key(js, 'even_selection', ccmc%even_selection)
+        call json_write_key(js, 'pow_trunc', ccmc%pow_trunc)
+        call json_write_key(js, 'variational_energy', ccmc%variational_energy)
+        call json_write_key(js, 'average_wfn', ccmc%average_wfn)
+        call json_write_key(js, 'trot', ccmc%trot)
         if (ccmc%multiref) call reference_t_json(js, ccmc%second_ref, key = 'second_ref')
         call json_write_key(js,'multiref', ccmc%multiref,terminal=.true.)
         call json_object_end(js, terminal)

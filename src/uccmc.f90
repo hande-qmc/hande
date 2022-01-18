@@ -1613,23 +1613,16 @@ contains
                       uccmc_in%linked, contrib%cdet, contrib%cluster, gen_excit_ptr, logging_info, &
                       nspawned, connection, nspawnings_total, ps_stat)
         if (nspawned /= 0_int_p) then
-            if(uccmc_in%trot) then
-                ! Must decide if particle is labelled in any way.
-                call create_spawned_particle_uccmc_trot(sys, qs%ref, contrib%cdet, connection, &
+            call create_spawned_particle_ccmc(sys, qs%ref, contrib%cdet, connection, &
                                             nspawned, 1, contrib%cluster%excitation_level, &
-                                            .true., fexcit, qs%spawn_store%spawn, bloom_stats)
-            else
-                call create_spawned_particle_ccmc(sys%basis, qs%ref, contrib%cdet, connection, &
-                                            nspawned, 1, contrib%cluster%excitation_level, &
-                                            .false., fexcit, qs%spawn_store%spawn, bloom_stats)
-            end if
+                                            .false., fexcit, qs%spawn_store%spawn, bloom_stats, &
+                                            uccmc_in%trot)
         end if
     end subroutine perform_uccmc_spawning_attempt
 
     subroutine create_spawned_particle_uccmc_trot(sys, ref, cdet, connection, nspawned, ispace, &
                                             parent_cluster_ex_level, trot, fexcit, spawn, bloom_stats)
 
-! [review] - AJWT: How does this differ (from what?) for the uccmc_trotterization?
 
         ! [todo] function pointer here based on trot flag
         ! Function to create spawned particle in spawned list for ccmc
@@ -1686,6 +1679,7 @@ contains
         else
             fexcit_loc = fexcit
         end if
+
         if (trot) call add_info_str_trot(sys%basis, ref%f0, sys%nel, fexcit_loc)
 
         call create_spawned_particle_ptr(sys%basis, ref, cdet, connection, nspawned, &

@@ -1370,10 +1370,10 @@ contains
             nspawned_im = 0_int_p
         end if
 
-        if (nspawned /= 0_int_p) call create_spawned_particle_ccmc(sys%basis, qs%ref, contrib%cdet, connection, &
+        if (nspawned /= 0_int_p) call create_spawned_particle_ccmc(sys, qs%ref, contrib%cdet, connection, &
                                             nspawned, 1, contrib%cluster%excitation_level, &
                                             ccmc_in%even_selection, fexcit, qs%spawn_store%spawn, bloom_stats)
-        if (nspawned_im /= 0_int_p) call create_spawned_particle_ccmc(sys%basis, qs%ref, contrib%cdet, connection,&
+        if (nspawned_im /= 0_int_p) call create_spawned_particle_ccmc(sys, qs%ref, contrib%cdet, connection,&
                                             nspawned_im, 2, contrib%cluster%excitation_level, &
                                             ccmc_in%even_selection, fexcit, qs%spawn_store%spawn, bloom_stats)
 
