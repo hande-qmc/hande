@@ -92,10 +92,10 @@ contains
         use spawn_data, only: calc_events_spawn_t, write_memcheck_report, spawn_t, alloc_spawn_t
         use replica_rdm, only: update_rdm, calc_rdm_energy, write_final_rdm
 
-        use qmc_data, only: qmc_in_t, uccmc_in_t, restart_in_t
+        use qmc_data, only: qmc_in_t, ccmc_in_t, restart_in_t
 
         use qmc_data, only: load_bal_in_t, qmc_state_t, annihilation_flags_t, estimators_t, particle_t
-        use qmc_data, only: qmc_in_t_json, uccmc_in_t_json, restart_in_t_json
+        use qmc_data, only: qmc_in_t_json, ccmc_in_t_json, restart_in_t_json
         use qmc_data, only: excit_gen_power_pitzer_orderN, excit_gen_heat_bath
         use reference_determinant, only: reference_t, reference_t_json
         use check_input, only: check_qmc_opts, check_uccmc_opts
@@ -110,11 +110,11 @@ contains
         use particle_t_utils, only: init_particle_t
         use search, only: binary_search
         use uccmc, only: var_energy_uccmc, do_uccmc_accumulation, perform_uccmc_spawning_attempt,&
-                         do_stochastic_uccmc_propagation, ucc_cumulative_population, do_nc_uccmc_propagation
+                         do_stochastic_uccmc_propagation, do_nc_uccmc_propagation
         use uccmc_utils, only: add_info_str_trot, latest_unset, add_ci_contribution, allocate_time_average_lists 
         type(sys_t), intent(in) :: sys
         type(qmc_in_t), intent(in) :: qmc_in
-        type(uccmc_in_t), intent(in) :: uccmc_in
+        type(ccmc_in_t), intent(in) :: uccmc_in
         type(restart_in_t), intent(in) :: restart_in
         type(load_bal_in_t), intent(in) :: load_bal_in
         type(reference_t), intent(in) :: reference_in
@@ -207,7 +207,7 @@ contains
         ! Initialise data.
         call init_qmc(sys, qmc_in, restart_in, load_bal_in, reference_in, io_unit, annihilation_flags, qs, &
                       uuid_restart, restart_version_restart, qmc_state_restart=qmc_state_restart, &
-                      regenerate_info=regenerate_info, uccmc_in=uccmc_in)
+                      regenerate_info=regenerate_info)
 
         ! Add information strings to the psip_list and the reference determinant.
         call regenerate_trot_info_psip_list(sys%basis, sys%nel, qs)
@@ -249,7 +249,7 @@ contains
             qmc_in_loc%shift_damping = qs%shift_damping
             qmc_in_loc%pattempt_parallel = qs%excit_gen_data%pattempt_parallel
             call qmc_in_t_json(js, qmc_in_loc)
-            call uccmc_in_t_json(js, uccmc_in)
+            call ccmc_in_t_json(js, uccmc_in)
             call restart_in_t_json(js, restart_in, uuid_restart)
             call reference_t_json(js, qs%ref, sys)
             call logging_in_t_json(js, logging_in)
@@ -420,9 +420,9 @@ contains
                 !       + composite clusters more complicated selection probability required.
 
                 !Initially for UCC we will simply use a modification of the original algorithm.
-                call ucc_cumulative_population(qs%psip_list%pops, qs%psip_list%states(sys%basis%tot_string_len,:), &
+                call cumulative_population(qs%psip_list%pops, qs%psip_list%states(sys%basis%tot_string_len,:), &
                                            qs%psip_list%nstates, D0_proc, D0_pos, qs%psip_list%pop_real_factor, &
-                                           sys%read_in%comp, cumulative_abs_real_pops, &
+                                           uccmc_in%even_selection, sys%read_in%comp, cumulative_abs_real_pops, &
                                            tot_abs_real_pop)
 
                 call set_cluster_selections(selection_data, qs%estimators(1)%nattempts, min_cluster_size, &

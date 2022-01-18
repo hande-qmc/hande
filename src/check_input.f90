@@ -409,13 +409,13 @@ contains
         !   qmc_in: QMC options
 
 
-        use qmc_data, only: uccmc_in_t, qmc_in_t
+        use qmc_data, only: ccmc_in_t, qmc_in_t
         use qmc_data, only: excit_gen_no_renorm, excit_gen_renorm
         use system, only: sys_t, read_in
         use errors, only: stop_all
 
         type(sys_t), intent(in) :: sys
-        type(uccmc_in_t), intent(in) :: uccmc_in
+        type(ccmc_in_t), intent(in) :: uccmc_in
         type(qmc_in_t), intent(in) :: qmc_in
 
         character(*), parameter :: this = 'check_uccmc_opts'

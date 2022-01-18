@@ -94,10 +94,10 @@ contains
         use spawn_data, only: calc_events_spawn_t, write_memcheck_report
         use replica_rdm, only: update_rdm, calc_rdm_energy, write_final_rdm
 
-        use qmc_data, only: qmc_in_t, uccmc_in_t, restart_in_t
+        use qmc_data, only: qmc_in_t, ccmc_in_t, restart_in_t
 
         use qmc_data, only: load_bal_in_t, qmc_state_t, annihilation_flags_t, estimators_t, particle_t
-        use qmc_data, only: qmc_in_t_json, uccmc_in_t_json, restart_in_t_json
+        use qmc_data, only: qmc_in_t_json, ccmc_in_t_json, restart_in_t_json
         use qmc_data, only: excit_gen_power_pitzer_orderN, excit_gen_heat_bath
         use reference_determinant, only: reference_t, reference_t_json
         use check_input, only: check_qmc_opts, check_uccmc_opts
@@ -115,7 +115,7 @@ contains
 
         type(sys_t), intent(in) :: sys
         type(qmc_in_t), intent(in) :: qmc_in
-        type(uccmc_in_t), intent(in) :: uccmc_in
+        type(ccmc_in_t), intent(in) :: uccmc_in
         type(restart_in_t), intent(in) :: restart_in
         type(load_bal_in_t), intent(in) :: load_bal_in
         type(reference_t), intent(in) :: reference_in
@@ -197,7 +197,7 @@ contains
         ! Initialise data.
         call init_qmc(sys, qmc_in, restart_in, load_bal_in, reference_in, io_unit, annihilation_flags, qs, &
                       uuid_restart, restart_version_restart, qmc_state_restart=qmc_state_restart, &
-                      regenerate_info=regenerate_info, uccmc_in=uccmc_in)
+                      regenerate_info=regenerate_info)
 
 
         if(uccmc_in%variational_energy) then
@@ -230,7 +230,7 @@ contains
             qmc_in_loc%shift_damping = qs%shift_damping
             qmc_in_loc%pattempt_parallel = qs%excit_gen_data%pattempt_parallel
             call qmc_in_t_json(js, qmc_in_loc)
-            call uccmc_in_t_json(js, uccmc_in)
+            call ccmc_in_t_json(js, uccmc_in)
             call restart_in_t_json(js, restart_in, uuid_restart)
             call reference_t_json(js, qs%ref, sys)
             call logging_in_t_json(js, logging_in)
@@ -394,9 +394,9 @@ contains
                 ! Given the contribution to the projected energy is divided by the cluster generation probability and
                 ! multiplied by the actual weight, doing this has absolutely no effect on the projected energy.
 
-                call ucc_cumulative_population(qs%psip_list%pops, qs%psip_list%states(sys%basis%tot_string_len,:), &
+                call cumulative_population(qs%psip_list%pops, qs%psip_list%states(sys%basis%tot_string_len,:), &
                                            qs%psip_list%nstates, D0_proc, D0_pos, qs%psip_list%pop_real_factor, &
-                                           sys%read_in%comp, cumulative_abs_real_pops, &
+                                           uccmc_in%even_selection, sys%read_in%comp, cumulative_abs_real_pops, &
                                            tot_abs_real_pop)
 
                 call update_bloom_threshold_prop(bloom_stats, nparticles_old(1))
@@ -743,52 +743,6 @@ contains
         end if
 
     end subroutine do_uccmc
-
-    subroutine ucc_set_cluster_selections(selection_data, nattempts, min_cluster_size, full_nc, D0_normalisation, nstates, tot_abs_pop)
-! [review] - AJWT: based on set_cluster_selections with even_selection and full_nc removed.
-! [revuew] - AJWT:  Could this then actually use the original routine (assuming both of those are set to .false.)?
-! [todo] correctly implement full nc for trotter - to treat both reference and singles and then fold this back into set_cluster_selections
-        ! Function to set total number of selections of different cluster
-        ! types within CCMC. This effectively controls the relative sampling
-        ! of different clusters within the CC expansion.
-
-        ! In/Out:
-        !   selection_data: derived type containing information on various aspects
-        !       of cluster selection.
-        !   nattempts: total number of selection attempts to make this iteration.
-        !       Initially set to default value in original algorithm, but updated
-        !       otherwise. Used to calculate spawning rate and included in output
-        !       file.
-        ! Out:
-        !   min_cluster_size: minimum cluster size to select stochastically.
-
-        use ccmc_data, only: selection_data_t
-
-        type(selection_data_t), intent(inout) :: selection_data
-        integer(int_64), intent(inout) :: nattempts
-        integer, intent(out) :: min_cluster_size
-        integer(int_64) :: nselections
-        integer, intent(in) :: nstates
-        complex(p), intent(in) :: D0_normalisation
-        real(p), intent(in) :: tot_abs_pop
-        logical, intent(in) :: full_nc
-
-        if (full_nc) then
-            min_cluster_size = 1
-            selection_data%nD0_select = nint(abs(D0_normalisation),kind=int_64)
-            selection_data%nstochastic_clusters = ceiling(tot_abs_pop,kind=int_64)
-            selection_data%nsingle_excitors = int(nstates,kind=int_64) -1
-        else
-            min_cluster_size = 0
-            selection_data%nD0_select = 0 ! instead of this number of deterministic selections, these are chosen stochastically
-            selection_data%nstochastic_clusters = nattempts
-            selection_data%nsingle_excitors = 0
-        end if
-
-        selection_data%nclusters = selection_data%nD0_select + selection_data%nsingle_excitors &
-                            + selection_data%nstochastic_clusters
-
-    end subroutine ucc_set_cluster_selections
 
     subroutine select_ucc_cluster(rng, sys, psip_list, f0, ex_level, nattempts, normalisation, &
                               initiator_pop, D0_pos, cumulative_excip_pop, tot_excip_pop, min_size, max_size, &
@@ -1257,92 +1211,6 @@ contains
         end if
     end subroutine ucc_collapse_cluster
 
-    subroutine ucc_cumulative_population(pops, ex_lvls, nactive, D0_proc, D0_pos, real_factor, complx, &
-                                    cumulative_pops, tot_pop)
-! [review] - AJWT: based on cumulative_population
-! [review] - AJWT: is this the same just without calc_dist? and can that be set to .false. and cumulative_population called?
-        ![todo] refactor uccmc_in into ccmc_in and push this back into cumulative_population
-
-        ! Calculate the cumulative population, i.e. the number of psips/excips
-        ! residing on a determinant/an excitor and all determinants/excitors which
-        ! occur before it in the determinant/excitor list.
-
-        ! This is primarily so in CCMC we can select clusters of excitors with each
-        ! excip being equally likely to be part of a cluster.  (If we just select
-        ! each occupied excitor with equal probability, then we get wildy
-        ! fluctuating selection probabilities and hence large population blooms.)
-        ! As 'excips' on the reference cannot be part of a cluster, then the
-        ! population on the reference is treated as 0 if required.
-
-        ! In:
-        !    pops: list of populations on each determinant/excitor.  Must have
-        !       minimum length of nactive.
-        !    nactive: number of occupied determinants/excitors (ie pops(:,1:nactive)
-        !       contains the population(s) on each currently "active"
-        !       determinant/excitor.
-        !    D0_proc: processor on which the reference resides.
-        !    D0_pos: position in the pops list of the reference.  Only relevant if
-        !       1<=D0_pos<=nactive and the processor holds the reference.
-        !    real_factor: the encoding factor by which the stored populations are multiplied
-        !       to enable non-integer populations.
-        ! Out:
-        !    cumulative_pops: running total of excitor population, i.e.
-        !        cumulative_pops(i) = sum(abs(pops(1:i))), excluding the
-        !        population on the reference if appropriate.
-        !    tot_pop: total population (possibly excluding the population on the
-        !       reference).
-
-        ! NOTE: currently only the populations in the first psip/excip space are
-        ! considered.  This should be changed if we do multiple simulations at
-        ! once/Hellmann-Feynman sampling/etc.
-
-        use parallel, only: iproc
-        use ccmc_utils, only: get_pop_contrib
-
-        integer(int_p), intent(in) :: pops(:,:), real_factor
-        integer, intent(in) :: nactive, D0_proc, D0_pos
-        real(p), allocatable, intent(inout) :: cumulative_pops(:)
-        real(p), intent(out) :: tot_pop
-        logical, intent(in) :: complx
-        integer(i0), intent(in) :: ex_lvls(:)
-
-        integer :: i
-        integer(i0) :: j, ex_lvl
-        ! Need to combine spaces if doing complex; we choose combining in quadrature.
-        cumulative_pops(1) = get_pop_contrib(pops(:,1), real_factor, complx)
-        if (D0_proc == iproc) then
-            ! Let's be a bit faster: unroll loops and skip over the reference
-            ! between the loops.
-            do i = 2, d0_pos-1
-                cumulative_pops(i) = cumulative_pops(i-1) + &
-                                        get_pop_contrib(pops(:,i), real_factor, complx)
-            end do
-            ! Set cumulative on the reference to be the running total merely so we
-            ! can continue accessing the running total from the i-1 element in the
-            ! loop over excitors in slots above the reference.
-            if (d0_pos == 1) then
-                cumulative_pops(d0_pos) = 0
-            end if
-            if (d0_pos > 1) cumulative_pops(d0_pos) = cumulative_pops(d0_pos-1)
-            do i = d0_pos+1, nactive
-                cumulative_pops(i) = cumulative_pops(i-1) + &
-                                        get_pop_contrib(pops(:,i), real_factor, complx)
-            end do
-        else
-            ! V simple on other processors: no reference to get in the way!
-            do i = 2, nactive
-                cumulative_pops(i) = cumulative_pops(i-1) + &
-                                        get_pop_contrib(pops(:,i), real_factor, complx)
-            end do
-        end if
-        if (nactive > 0) then
-            tot_pop = cumulative_pops(nactive)
-        else
-            tot_pop = 0.0_p
-        end if
-
-    end subroutine ucc_cumulative_population
-
     subroutine do_uccmc_accumulation(sys, qs, cdet, cluster, logging_info, D0_population_cycle, proj_energy_cycle, &
                                      uccmc_in, ref_det, rdm, selection_data, D0_population_ucc_cycle)
 ! [review] - AJWT: based on do_ccmc_accumulation
@@ -1372,7 +1240,7 @@ contains
         !   selection_data: info on clsuter selection.
 
         use system, only: sys_t
-        use qmc_data, only: qmc_state_t, uccmc_in_t, estimators_t
+        use qmc_data, only: qmc_state_t, ccmc_in_t, estimators_t
         use determinants, only: det_info_t
         use ccmc_data, only: cluster_t, selection_data_t
         use ccmc_selection, only: update_selection_data
@@ -1386,7 +1254,7 @@ contains
 
         type(sys_t), intent(in) :: sys
         type(qmc_state_t), intent(in) :: qs
-        type(uccmc_in_t), intent(in) :: uccmc_in
+        type(ccmc_in_t), intent(in) :: uccmc_in
         type(det_info_t), intent(in) :: cdet, ref_det
         type(cluster_t), intent(in) :: cluster
         type(logging_t), intent(in) :: logging_info
@@ -1469,7 +1337,7 @@ contains
 
         use dSFMT_interface, only: dSFMT_t
         use system, only: sys_t
-        use qmc_data, only: qmc_state_t, uccmc_in_t
+        use qmc_data, only: qmc_state_t, ccmc_in_t
         use ccmc_data, only: multispawn_stats_t, ms_stats_update, wfn_contrib_t
         use bloom_handler, only: bloom_stats_t, accumulate_bloom_stats
         use logging, only: logging_t
@@ -1480,7 +1348,7 @@ contains
         type(sys_t), intent(in) :: sys
         type(dSFMT_T), intent(inout) :: rng
         type(qmc_state_t), intent(inout) :: qs
-        type(uccmc_in_t), intent(in) :: uccmc_in
+        type(ccmc_in_t), intent(in) :: uccmc_in
         type(wfn_contrib_t), intent(inout) :: contrib
         type(bloom_stats_t), intent(inout) :: bloom_stats
         type(logging_t), intent(in) :: logging_info
@@ -1550,7 +1418,7 @@ contains
 
         use dSFMT_interface, only: dSFMT_t
         use system, only: sys_t
-        use qmc_data, only: qmc_state_t, uccmc_in_t
+        use qmc_data, only: qmc_state_t, ccmc_in_t
         use ccmc_data, only: multispawn_stats_t, ms_stats_update, wfn_contrib_t
 
         use ccmc_death_spawning, only: stochastic_ccmc_death
@@ -1563,7 +1431,7 @@ contains
         type(sys_t), intent(in) :: sys
         type(dSFMT_T), intent(inout) :: rng
         type(qmc_state_t), intent(inout) :: qs
-        type(uccmc_in_t), intent(in) :: uccmc_in
+        type(ccmc_in_t), intent(in) :: uccmc_in
         type(wfn_contrib_t), intent(inout) :: contrib
         type(bloom_stats_t), intent(inout) :: bloom_stats
         type(logging_t), intent(in) :: logging_info
@@ -1636,7 +1504,7 @@ contains
 
         use dSFMT_interface, only: dSFMT_t
         use system, only: sys_t
-        use qmc_data, only: qmc_state_t, uccmc_in_t
+        use qmc_data, only: qmc_state_t, ccmc_in_t
         use ccmc_data, only: multispawn_stats_t, ms_stats_update, wfn_contrib_t
         use qmc_common, only: decide_nattempts
 
@@ -1649,7 +1517,7 @@ contains
         type(sys_t), intent(in) :: sys
         type(dSFMT_T), intent(inout) :: rng
         type(qmc_state_t), intent(inout) :: qs
-        type(uccmc_in_t), intent(in) :: uccmc_in
+        type(ccmc_in_t), intent(in) :: uccmc_in
         type(wfn_contrib_t), intent(inout) :: contrib
         type(bloom_stats_t), intent(inout) :: bloom_stats
         type(logging_t), intent(in) :: logging_info
@@ -1715,7 +1583,7 @@ contains
         !       excit_gen_doubles: counter on number of double excitations attempted.
         use dSFMT_interface, only: dSFMT_t
         use system, only: sys_t
-        use qmc_data, only: qmc_state_t, uccmc_in_t
+        use qmc_data, only: qmc_state_t, ccmc_in_t
         use ccmc_data, only: wfn_contrib_t
 
         use excitations, only: excit_t
@@ -1730,7 +1598,7 @@ contains
         type(sys_t), intent(in) :: sys
         type(dSFMT_T), intent(inout) :: rng
         type(qmc_state_t), intent(inout) :: qs
-        type(uccmc_in_t), intent(in) :: uccmc_in
+        type(ccmc_in_t), intent(in) :: uccmc_in
         type(wfn_contrib_t), intent(inout) :: contrib
         type(excit_t) :: connection
         type(bloom_stats_t), intent(inout) :: bloom_stats

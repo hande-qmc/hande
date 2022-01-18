@@ -462,6 +462,7 @@ contains
 
         use calc, only: calc_type, ccmc_calc
         use calc_system_init, only: set_spin_polarisation, set_symmetry_aufbau
+        use errors, only: warning
         use excitations, only: end_excitations, init_excitations
 
         integer(c_int) :: nresult
@@ -497,6 +498,8 @@ contains
         opts = aot_table_top(lua_state)
         call read_qmc_in(lua_state, opts, qmc_in)
         call read_ccmc_in(lua_state, opts, ccmc_in, sys)
+        if (ccmc_in%trot .or. ccmc_in%variational_energy .or. ccmc_in%average_wfn) &
+            call warning('read_ccmc_in', 'Some UCC options have been set. These will be ignored.')
 
         ! Need to extend bit strings for additional excitation level information if needed.
         if (ccmc_in%even_selection) then
@@ -589,7 +592,7 @@ contains
         use lua_hande_utils, only: warn_unused_args, register_timing
         use lua_hande_calc_utils, only: init_output_unit, end_output_unit
         use qmc_data, only: qmc_in_t, ccmc_in_t, semi_stoch_in_t, restart_in_t, load_bal_in_t, &
-                            qmc_state_t, output_in_t, blocking_in_t, uccmc_in_t
+                            qmc_state_t, output_in_t, blocking_in_t
         use logging, only: logging_in_t
         use reference_determinant, only: reference_t
         use system, only: sys_t
@@ -604,7 +607,7 @@ contains
         type(flu_state) :: lua_state
         type(sys_t), pointer :: sys
         type(qmc_in_t) :: qmc_in
-        type(uccmc_in_t) :: uccmc_in
+        type(ccmc_in_t) :: uccmc_in
         type(semi_stoch_in_t) :: semi_stoch_in
         type(restart_in_t) :: restart_in
         type(load_bal_in_t) :: load_bal_in
@@ -617,7 +620,7 @@ contains
         logical :: have_restart_state
         integer :: opts, io_unit
         real :: t1, t2
-        character(10), parameter :: keys(9) = [character(10) :: 'sys', 'qmc', 'uccmc', 'restart', 'reference', 'qmc_state', &
+        character(10), parameter :: keys(9) = [character(10) :: 'sys', 'qmc', 'ccmc', 'restart', 'reference', 'qmc_state', &
                                                                 'logging', 'output', 'blocking']
 
         call cpu_time(t1)
@@ -625,15 +628,13 @@ contains
         lua_state = flu_copyptr(L)
         call get_sys_t(lua_state, sys)
 
-! [review] - AJWT: This is a copy of lua_ccmc.  Not quite sure why the todo is still here, but perhaps the very 
-! [review] - AJWT: copied parts could be spun off into a separate function which is called from both.
-        ! [todo] - do spin polarisation in system setup.
+        ![todo] can this be merged with lua_ccmc?
         call set_spin_polarisation(sys%basis%nbasis, sys)
 
         ! Get main table.
         opts = aot_table_top(lua_state)
         call read_qmc_in(lua_state, opts, qmc_in)
-        call read_uccmc_in(lua_state, opts, uccmc_in, sys)
+        call read_ccmc_in(lua_state, opts, uccmc_in, sys)
 
         if (uccmc_in%trot) then
             sys%basis%info_string_len = 2
@@ -643,11 +644,7 @@ contains
             call init_excitations(sys%basis)
         end if
 
-        !call read_blocking_in(lua_state, opts, blocking_in)
-        ! note that semi-stochastic is not (yet) available in CCMC.
-        !call read_semi_stoch_in(lua_state, opts, qmc_in, semi_stoch_in)
         call read_restart_in(lua_state, opts, restart_in)
-        ! load balancing is not available in CCMC; must use default settings.
         call read_reference_t(lua_state, opts, reference, sys)
 
         call read_logging_in_t(lua_state, opts, logging_in)
@@ -1494,10 +1491,11 @@ contains
         type(ccmc_in_t), intent(out) :: ccmc_in
 
         integer :: ccmc_table, err
-        character(28), parameter :: keys(10) = [character(28) :: 'move_frequency', 'cluster_multispawn_threshold', &
+        character(28), parameter :: keys(14) = [character(28) :: 'move_frequency', 'cluster_multispawn_threshold', &
                                                                 'full_non_composite', 'linked', 'vary_shift_reference', &
                                                                 'density_matrices', 'density_matrix_file', 'even_selection', &
-                                                                'multiref', 'second_ref']
+                                                                'multiref', 'second_ref', 'pow_trunc', 'variational_energy', &
+                                                                'average_wfn', 'trotterized']
 
         if (aot_exists(lua_state, opts, 'ccmc')) then
 
@@ -1521,6 +1519,10 @@ contains
             if (ccmc_in%multiref .and. (ccmc_in%second_ref%ex_level == -1 .or. ccmc_in%second_ref%ex_level == sys%nel)) then
                 call stop_all('read_ccmc_in', 'Uninitialised second reference excitation level.')
             end if
+            call aot_get_val(ccmc_in%pow_trunc, err, lua_state, ccmc_table, 'pow_trunc')
+            call aot_get_val(ccmc_in%variational_energy, err, lua_state, ccmc_table, 'variational_energy')
+            call aot_get_val(ccmc_in%average_wfn, err, lua_state, ccmc_table, 'average_wfn')
+            call aot_get_val(ccmc_in%trot, err, lua_state, ccmc_table, 'trotterized')
             call warn_unused_args(lua_state, keys, ccmc_table)
 
             call aot_table_close(lua_state, ccmc_table)
