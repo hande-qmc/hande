@@ -21,6 +21,10 @@ type state_histograms_data_t
     character(1024) :: states_per_bin_file
     character(1024) :: states_per_bin_per_exlevel_file
 
+    ! Store the current seed, as in DMQMC this changes per
+    ! beta loop. See 'init_dmqmc_beta_loop' for more information.
+    integer :: current_seed
+
     ! Stores the number of mc cycles between the update
     ! and reporting of histogram data.
     integer :: histogram_frequency = -1
@@ -135,6 +139,7 @@ contains
             end if
         end if
 
+        hist%current_seed = qmc_in%seed
         write(hist%states_per_bin_file, '("DETPOPS_RNG",I0)') qmc_in%seed
         write(hist%states_per_bin_per_exlevel_file, '("EXLEVELPOPS_RNG",I0,"_IREPORT",I0)') qmc_in%seed, 0
 
@@ -218,7 +223,12 @@ contains
         lazy_trunc = 0
         if (present(lazy_shift)) lazy_trunc = lazy_shift
 
-        if (ireport > 1) write(hist%states_per_bin_per_exlevel_file, '("EXLEVELPOPS_RNG",I0,"_IREPORT",I0)') qmc_seed, ireport
+        if (ireport > 0) then
+            write(hist%states_per_bin_per_exlevel_file, '("EXLEVELPOPS_RNG",I0,"_IREPORT",I0)') hist%current_seed, ireport
+        else if (hist%current_seed /= qmc_seed .and. ireport == 0) then
+            write(hist%states_per_bin_file, '("DETPOPS_RNG",I0)') hist%current_seed
+            write(hist%states_per_bin_per_exlevel_file, '("EXLEVELPOPS_RNG",I0,"_IREPORT",I0)') hist%current_seed, 0
+        end if
 
         if (parent) then
             if (start_calc) then

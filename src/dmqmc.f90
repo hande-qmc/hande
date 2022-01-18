@@ -252,7 +252,7 @@ contains
 
             call init_dmqmc_beta_loop(sys, reference_in, rng, qmc_in, dmqmc_in, dmqmc_estimates, qs, beta_cycle, &
                                       qs%psip_list%nstates, qs%psip_list%nparticles, qs%spawn_store%spawn, &
-                                      weighted_sampling%probs, annihilation_flags, piecewise_propagation)
+                                      weighted_sampling%probs, annihilation_flags, piecewise_propagation, state_hist)
 
             ! Distribute psips uniformly along the diagonal of the density matrix.
             call create_initial_density_matrix(rng, sys, qmc_in, dmqmc_in, qs, annihilation_flags, &
@@ -604,7 +604,7 @@ contains
 
     subroutine init_dmqmc_beta_loop(sys, reference_in, rng, qmc_in, dmqmc_in, dmqmc_estimates, qs, beta_cycle, &
                                     nstates_active, nparticles, spawn, accumulated_probs, annihilation_flags, &
-                                    piecewise_propagation)
+                                    piecewise_propagation, state_hist)
 
         ! Initialise/reset DMQMC data for a new run over the temperature range.
 
@@ -613,6 +613,8 @@ contains
         !    spawn: spawn_t object.  Reset on exit.
         !    dmqmc_estimates: type containing dmqmc estimates.
         !    qs: state of QMC calculation. Shift is reset on exit.
+        !    state_hist: The sate_histogram type containing information
+        !       for state histograms
         ! In:
         !    qmc_in: input options relating to QMC calculations.
         !    beta_cycle: The index of the beta loop about to be started.
@@ -642,6 +644,7 @@ contains
         use dmqmc_procedures, only: propagator_restore
         use reference_determinant, only: reference_t, reference_t_json
         use qmc, only: init_proc_pointers
+        use state_histograms
 
         type(sys_t), intent(inout) :: sys
         type(dSFMT_t), intent(inout) :: rng
@@ -652,6 +655,7 @@ contains
         type(reference_t), intent(in) :: reference_in
         integer, intent(in) :: beta_cycle
         type(qmc_state_t), intent(inout) :: qs
+        type(state_histograms_data_t), intent(inout) :: state_hist
         integer, intent(out) :: nstates_active
         real(dp), intent(out) :: nparticles(:)
         real(p), intent(out) :: accumulated_probs(:)
@@ -685,6 +689,10 @@ contains
         if (beta_cycle /= 1 .and. piecewise_propagation) then
             call propagator_restore(qs, dmqmc_in, annihilation_flags, iunit)
             call init_proc_pointers(sys, qmc_in, reference_in, iunit, dmqmc_in)
+        end if
+
+        if (beta_cycle /= 1 .and. qmc_in%state_histograms) then
+            state_hist%current_seed = new_seed
         end if
 
         ! Reset the random number generator with new_seed = old_seed +
