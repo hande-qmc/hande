@@ -951,7 +951,7 @@ contains
     end subroutine do_ccmc
 
     subroutine do_ccmc_accumulation(sys, qs, cdet, cluster, logging_info, D0_population_cycle, proj_energy_cycle, &
-                                    ccmc_in, ref_det, rdm, selection_data)
+                                    ccmc_in, ref_det, rdm, selection_data, D0_population_ucc_cycle)
 
 
 
@@ -987,6 +987,7 @@ contains
         use proc_pointers, only: update_proj_energy_ptr
         use replica_rdm, only: update_rdm
         use logging, only: logging_t
+        use energy_evaluation, only: update_proj_energy_mol_ucc
 
         type(sys_t), intent(in) :: sys
         type(qmc_state_t), intent(in) :: qs
@@ -996,6 +997,7 @@ contains
         type(logging_t), intent(in) :: logging_info
         complex(p), intent(inout) :: D0_population_cycle, proj_energy_cycle
         real(p), allocatable, intent(inout) :: rdm(:,:)
+        real(p), intent(inout), optional :: D0_population_ucc_cycle
         type(selection_data_t), intent(inout) :: selection_data
         type(excit_t) :: connection
         type(hmatel_t) :: hmatel
@@ -1015,10 +1017,18 @@ contains
             ! the cluster.
             call zero_estimators_t(estimators_cycle)
             connection = get_excitation(sys%nel, sys%basis, cdet%f, qs%ref%f0)
-            call update_proj_energy_ptr(sys, qs%ref%f0, qs%trial%wfn_dat, cdet, &
+            if (present(D0_population_ucc_cycle)) then
+                call update_proj_energy_mol_ucc(sys, qs%ref%f0, qs%trial%wfn_dat, cdet, &
+                     [real(cluster%amplitude,p),aimag(cluster%amplitude)]*&
+                     cluster%cluster_to_det_sign/cluster%pselect, &
+                     estimators_cycle, connection, hmatel, cluster%nexcitors)
+                D0_population_ucc_cycle = D0_population_ucc_cycle + estimators_cycle%D0_population_ucc
+            else
+                call update_proj_energy_ptr(sys, qs%ref%f0, qs%trial%wfn_dat, cdet, &
                      [real(cluster%amplitude,p),aimag(cluster%amplitude)]*&
                      cluster%cluster_to_det_sign/cluster%pselect, &
                      estimators_cycle, connection, hmatel)
+            end if
             if (sys%read_in%comp) then
                 D0_population_cycle = D0_population_cycle + estimators_cycle%D0_population_comp
                 proj_energy_cycle = proj_energy_cycle + estimators_cycle%proj_energy_comp
@@ -1372,10 +1382,12 @@ contains
 
         if (nspawned /= 0_int_p) call create_spawned_particle_ccmc(sys, qs%ref, contrib%cdet, connection, &
                                             nspawned, 1, contrib%cluster%excitation_level, &
-                                            ccmc_in%even_selection, fexcit, qs%spawn_store%spawn, bloom_stats)
+                                            ccmc_in%even_selection, fexcit, qs%spawn_store%spawn, bloom_stats, &
+                                            ccmc_in%trot)
         if (nspawned_im /= 0_int_p) call create_spawned_particle_ccmc(sys, qs%ref, contrib%cdet, connection,&
                                             nspawned_im, 2, contrib%cluster%excitation_level, &
-                                            ccmc_in%even_selection, fexcit, qs%spawn_store%spawn, bloom_stats)
+                                            ccmc_in%even_selection, fexcit, qs%spawn_store%spawn, bloom_stats, &
+                                            ccmc_in%trot)
 
     end subroutine perform_ccmc_spawning_attempt
 

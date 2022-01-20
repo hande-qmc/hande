@@ -320,4 +320,55 @@ contains
             end do
         end do
     end subroutine collapse_deexcitor_onto_cluster
+
+    subroutine var_energy_uccmc(sys, states, pops, nstates, var_energy, D0_pop)
+
+       ! Computes the variational energy of a wavefunction expressed in CI coefficients.
+       !
+       ! IN:
+       !    sys: sys_t object encoding the system
+       !    states: list of determinant labels encoded as integers
+       !    pops: CI population on each determinant
+       !    nstates: number of determinants in the wavefunction
+       !    D0_pop: population on D0 in cluster expansion (different from pops(D0_pos) in
+       !    unitary CC
+       !
+       ! OUT:
+       !    var_energy: total variational energy estimator (NOTE: not just correlation energy)
+
+
+       use excitations, only: excit_t, get_excitation
+       use hamiltonian, only: get_hmatel
+       use energy_evaluation, only: hmatel_t
+       use system, only: sys_t
+       use qmc_data, only: particle_t
+       use read_in_symmetry, only: cross_product_basis_read_in
+       use determinants, only: decode_det
+
+       type(sys_t), intent(in) :: sys
+       integer(i0), intent(in) :: states(:,:)
+       integer, intent(in) :: nstates
+       real(p), intent(in) :: pops(:), D0_pop
+       real(p), intent(out) :: var_energy
+       real(p) :: normalisation
+
+       type(excit_t) :: excitation
+       type(hmatel_t) :: hmatel
+       integer :: occ_list(sys%nel)
+
+       integer :: i, j
+       integer :: ij_sym, ab_sym
+
+       normalisation = 0.0_p
+       var_energy = 0.0_p
+       do i = 1, nstates
+           normalisation = normalisation + (pops(i)/D0_pop)**2
+           do j = 1, nstates
+               hmatel = get_hmatel(sys, states(:,i), states(:,j))
+               if (i>=j) print*, states(1,i), states(1, j), hmatel%r
+               var_energy = var_energy + hmatel%r*(pops(i)/D0_pop)*(pops(j)/D0_pop)
+           end do
+       end do
+       var_energy = var_energy/normalisation
+   end subroutine var_energy_uccmc
 end module

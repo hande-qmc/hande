@@ -473,4 +473,32 @@ contains
 
     end function bit_str_64_cmp
 
+    pure function bit_str_cmp_trot(b1, b2) result(cmp)
+
+        ! In:
+        !    b1(:), b2(:): bit string.
+        ! Returns:
+        !    0 if b1 and b2 are identical;
+        !    1 if the most significant non-identical element in b1 is bitwise
+        !      greater than the corresponding element in b2;
+        !    -1 if the most significant non-identical element in b1 is bitwise
+        !      less than the corresponding element in b2;
+
+        integer :: cmp
+        integer(i0), intent(in) :: b1(:), b2(:)
+
+        integer :: i
+
+        cmp = 0
+        do i = ubound(b1, dim=1), 1, -1
+            if (blt(b1(i),b2(i))) then
+                cmp = -1
+                exit
+            else if (bgt(b1(i),b2(i))) then
+                cmp = 1
+                exit
+            end if
+        end do
+
+    end function bit_str_cmp_trot
 end module bit_utils

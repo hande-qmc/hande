@@ -71,6 +71,8 @@ contains
         use annihilation, only: insert_new_walker
         use bloom_handler, only: init_bloom_stats_t, bloom_stats_t, bloom_mode_fractionn, bloom_mode_fixedn, &
                                  write_bloom_report, bloom_stats_warning, update_bloom_threshold_prop
+        use ccmc, only: do_ccmc_accumulation, perform_ccmc_spawning_attempt, do_stochastic_ccmc_propagation, &
+                        do_nc_ccmc_propagation
         use ccmc_data
         use ccmc_death_spawning, only: stochastic_ccmc_death_nc
         use ccmc_selection, only: create_null_cluster
@@ -108,10 +110,9 @@ contains
         use report, only: write_date_time_close
         use excit_gens, only: p_single_double_coll_t
         use particle_t_utils, only: init_particle_t
-        use search, only: binary_search
-        use uccmc, only: var_energy_uccmc, do_uccmc_accumulation, perform_uccmc_spawning_attempt,&
-                         do_stochastic_uccmc_propagation, do_nc_uccmc_propagation
-        use uccmc_utils, only: add_info_str_trot, latest_unset, add_ci_contribution, allocate_time_average_lists 
+        use search, only: binary_search_i0_list_trot
+        use uccmc_utils, only: add_info_str_trot, latest_unset, add_ci_contribution, allocate_time_average_lists, &
+                               var_energy_uccmc
         type(sys_t), intent(in) :: sys
         type(qmc_in_t), intent(in) :: qmc_in
         type(ccmc_in_t), intent(in) :: uccmc_in
@@ -483,10 +484,10 @@ contains
                             ! [VAN]: This is quite dangerous when using OpenMP as selection_data is shared but updated here if
                             ! [VAN]: in debug mode. However, this updated selection_data will only be used if selection logging
                             ! [VAN]: according to comments. And logging cannot be used with openmp. Dangerous though.
-                            call do_uccmc_accumulation(sys, qs, contrib(it)%cdet, contrib(it)%cluster, logging_info, &
+                            call do_ccmc_accumulation(sys, qs, contrib(it)%cdet, contrib(it)%cluster, logging_info, &
                                                     D0_population_cycle, proj_energy_cycle, uccmc_in, ref_det, rdm, &
                                                     selection_data, D0_population_ucc_cycle)
-                            call do_nc_uccmc_propagation(rng(it), sys, qs, uccmc_in, logging_info, bloom_stats, &
+                            call do_nc_ccmc_propagation(rng(it), sys, qs, uccmc_in, logging_info, bloom_stats, &
                                                                 contrib(it), nattempts_spawn, ps_stats(it))
                             if (uccmc_in%variational_energy .and. all(qs%vary_shift) .and. & 
                                 contrib(it)%cluster%excitation_level <= qs%ref%ex_level)  then
@@ -533,10 +534,10 @@ contains
                             if (qs%propagator%quasi_newton) contrib(it)%cdet%fock_sum = &
                                             sum_sp_eigenvalues_occ_list(sys, contrib(it)%cdet%occ_list) - qs%ref%fock_sum
 
-                            call do_uccmc_accumulation(sys, qs, contrib(it)%cdet, contrib(it)%cluster, logging_info, &
+                            call do_ccmc_accumulation(sys, qs, contrib(it)%cdet, contrib(it)%cluster, logging_info, &
                                                     D0_population_cycle, proj_energy_cycle, uccmc_in, ref_det, rdm, selection_data,&
                                                     D0_population_ucc_cycle)
-                            call do_stochastic_uccmc_propagation(rng(it), sys, qs, &
+                            call do_stochastic_ccmc_propagation(rng(it), sys, qs, &
                                                                 uccmc_in, logging_info, ms_stats(it), bloom_stats, &
                                                                 contrib(it), nattempts_spawn, ndeath, ps_stats(it))
                         end if
@@ -557,11 +558,11 @@ contains
                         if (qs%propagator%quasi_newton) contrib(it)%cdet%fock_sum = &
                                             sum_sp_eigenvalues_occ_list(sys, contrib(it)%cdet%occ_list) - qs%ref%fock_sum
 
-                        call do_uccmc_accumulation(sys, qs, contrib(it)%cdet, contrib(it)%cluster, logging_info, &
+                        call do_ccmc_accumulation(sys, qs, contrib(it)%cdet, contrib(it)%cluster, logging_info, &
                                                     D0_population_cycle, proj_energy_cycle, uccmc_in, ref_det, rdm, selection_data,&
                                                     D0_population_ucc_cycle)
                         nattempts_spawn = nattempts_spawn + 1
-                        call perform_uccmc_spawning_attempt(rng(it), sys, qs, uccmc_in, logging_info, bloom_stats, contrib(it), 1, &
+                        call perform_ccmc_spawning_attempt(rng(it), sys, qs, uccmc_in, logging_info, bloom_stats, contrib(it), 1, &
                                                         ps_stats(it))
                    end if
 
@@ -811,248 +812,11 @@ contains
 
     end subroutine do_trot_uccmc
 
-    subroutine select_trot_ucc_cluster(rng, sys, psip_list, f0, ex_level, nattempts, normalisation, &
-                              initiator_pop, D0_pos, logging_info, cdet, cluster, excit_gen_data)
-! [review] - AJWT: Note that this is based on select_cluster
-        ! Select a random cluster of excitors from the excitors on the
-        ! processor.  A cluster of excitors is itself an excitor.  For clarity
-        ! (if not technical accuracy) in comments we shall distinguish between
-        ! the cluster of excitors and a single excitor, from a set of which the
-        ! cluster is formed.
-
-        ! In:
-        !    sys: system being studied
-        !    psip_list: particle_t object containing current excip distribution on
-        !       this processor.
-        !    f0: bit string of the reference.
-        !    ex_level: max number of excitations from the reference to include in
-        !        the Hilbert space.
-        !    nattempts: the number of times (on this processor) a random cluster
-        !        of excitors is generated in the current timestep.
-        !    normalisation: intermediate normalisation factor, N_0, where we use the
-        !       wavefunction ansatz |\Psi_{CC}> = N_0 e^{T/N_0} | D_0 >.
-        !    initiator_pop: the population above which a determinant is an initiator.
-        !    D0_pos: position in the excip list of the reference.  Must be negative
-        !       if the reference is not on the processor.
-        !    logging_info: derived type containing information on currently logging status
-        !    excit_gen_data: information about excitation generators
-
-        ! In/Out:
-        !    rng: random number generator.
-        !    cdet: information about the cluster of excitors applied to the
-        !        reference determinant.  This is a bare det_info_t variable on input
-        !        with only the relevant fields allocated.  On output the
-        !        appropriate (system-specific) fields have been filled by
-        !        decoding the bit string of the determinant formed from applying
-        !        the cluster to the reference determinant.
-        !    cluster:
-        !        Additional information about the cluster of excitors.  On
-        !        input this is a bare cluster_t variable with the excitors array
-        !        allocated to the maximum number of excitors in a cluster.  On
-        !        output all fields in cluster have been set.
-
-        use checking, only: check_deallocate
-        use determinant_data, only: det_info_t
-        use ccmc_data, only: cluster_t
-        use ccmc_utils, only: convert_excitor_to_determinant, collapse_cluster
-        use excitations, only: get_excitation_level
-        use dSFMT_interface, only: dSFMT_t, get_rand_close_open
-        use qmc_data, only: particle_t
-        use proc_pointers, only: decoder_ptr
-        use utils, only: factorial
-        use search, only: binary_search
-        use sort, only: insert_sort
-        use parallel, only: nprocs
-        use system, only: sys_t
-        use logging, only: write_logging_stoch_selection, logging_t
-        use excit_gens, only: excit_gen_data_t
-        use const, only: depsilon
-        use ccmc_selection, only: create_null_cluster
-
-        type(sys_t), intent(in) :: sys
-        type(particle_t), intent(in), target :: psip_list
-        integer(i0), intent(in) :: f0(sys%basis%tot_string_len)
-        integer, intent(in) :: ex_level
-        integer(int_64), intent(in) :: nattempts
-        integer, intent(in) :: D0_pos
-        complex(p), intent(in) :: normalisation
-        real(p), intent(in) :: initiator_pop
-        type(dSFMT_t), intent(inout) :: rng
-        type(det_info_t), intent(inout) :: cdet
-        type(cluster_t), intent(inout) :: cluster
-        type(logging_t), intent(in) :: logging_info
-        type(excit_gen_data_t), intent(in) :: excit_gen_data
-
-        real(dp) :: rand
-        real(p) :: pexcit
-        complex(p) :: cluster_population, excitor_pop
-        integer :: i, j, ierr
-        logical :: allowed, conjugate
-        integer :: order(12)
-        real(p) :: pop_real, ref_real
-
-        !order = (/3, 12, 48, 192, 36, 24, 132, 72, 18, 66, 33, 129/)
-        ! We shall accumulate the factors which comprise cluster%pselect as we go.
-        !   cluster%pselect = n_sel * p_excit(1) * p_excit (2) * ...
-        ! where
-        !   n_sel   is the number of cluster selections made;
-        !   p_excit is the probability of choosing/not choosing a particular excitor to be in the cluster;
-        ! Each processor does nattempts.
-        ! However:
-        ! * if min_size=0, then each processor is allowed to select the reference (on
-        !   average) nattempts/2 times.  Hence in order to have selection probabilities
-        !   consistent and independent of the number of processors being used (which
-        !   amounts to a processor-dependent timestep scaling), we need to multiply the
-        !   probability the reference is selected by nprocs.
-        ! * assuming each excitor spends (on average) the same amount of time on each
-        !   processor, the probability that X different excitors are on the same processor
-        !   at a given timestep is 1/nprocs^{X-1).
-        ! The easiest way to handle both of these is to multiply the number of attempts by
-        ! the number of processors here and then deal with additional factors of 1/nprocs
-        ! when creating composite clusters.
-        ! NB within a processor those nattempts can be split amongst OpenMP
-        ! threads though that doesn't affect this probability.
-
-        ![todo] psize?
-
-        cluster%pselect = real(nattempts*nprocs, p)
-        cluster%nexcitors = 0
-
-        ! Initiator approximation.
-        ! This is sufficiently quick that we'll just do it in all cases, even
-        ! when not using the initiator approximation.  This matches the approach
-        ! used by Alex Thom in 'Initiator Stochastic Coupled Cluster Theory'
-        ! (unpublished).
-        ! Assume all excitors in the cluster are initiators (initiator_flag=0)
-        ! until proven otherwise (initiator_flag=1).
-        cdet%initiator_flag = 0
-        cdet%f = f0
-        cluster_population = 1
-        ! Assume cluster is allowed unless collapse_cluster finds out otherwise
-        ! when collapsing/combining excitors or if it could never have been
-        ! valid
-
-! [review] - AJWT: It may be more sensible eventually to consider a 'base probability' being the probability of not selecting any excips,
-! [review] - AJWT: and then for each excip we do choose, multiply it by pexcip/(1-pexcip).  This would allow us to use a similar algorithm to
-! [review] - AJWT: select_cluster.
-        allowed = .true. 
-        ref_real = real(psip_list%pops(1, D0_pos))/real(psip_list%pop_real_factor)
-        !do j =1, 12
-        do i = 1, psip_list%nstates
-         !   if(psip_list%states(1,i) == order(j)) then
-            if (i /= D0_pos) then
-                rand = get_rand_close_open(rng)
-                pop_real = real(psip_list%pops(1, i))/real(psip_list%pop_real_factor)
-                !The probability of selecting a given excitor is given by abs(N_i/(N_i+N_0))
-! [review] - AJWT: Probably worth storing excitor_amp=pop_real/ref_real and sin_amp and cos_amp.
-! [review] - AJWT: Definitely need to comment that sin_amp corresponds to chosing the excitor etc.
-                pexcit = abs(sin(pop_real/ref_real))/(abs(cos(pop_real/ref_real))+ abs(sin(pop_real/ref_real)))
-                if (cluster%nexcitors == 0) then
-                    if (rand < pexcit) then
-                       cluster%nexcitors = cluster%nexcitors + 1
-                       cluster%pselect = cluster%pselect*pexcit
-                       excitor_pop = sin(pop_real/ref_real)
-                       ! First excitor 'seeds' the cluster:
-                       cdet%f = psip_list%states(:,i)
-                       cdet%data => psip_list%dat(:,i) ! Only use if cluster is non-composite!
-                       cluster_population = cluster_population*excitor_pop
-                       ! Counter the additional *nprocs above.
-                       cluster%pselect = cluster%pselect/nprocs
-                    else
-                       excitor_pop = cos(pop_real/ref_real)
-                       cluster%pselect = cluster%pselect*(1-pexcit)
-                       cluster_population = cluster_population* excitor_pop
-                    end if
-                else
-                   conjugate = .false.
-![review] - AJWT: Comment what this is doing! More generally, and specifically.
-![review] - AJWT: I think these complicated bit_string operations should be in a separate pure function to help readability.
-                    if (all(iand(ieor(f0(:sys%basis%bit_string_len),psip_list%states(:sys%basis%bit_string_len,i)), &
-                           ieor(f0(:sys%basis%bit_string_len),cdet%f(:sys%basis%bit_string_len))) == &
-                           ieor(f0(:sys%basis%bit_string_len),psip_list%states(:sys%basis%bit_string_len,i)))) then
-                       conjugate = .true.
-                       if (rand < pexcit) then
-                          excitor_pop = -sin(pop_real/ref_real)
-                          cluster%nexcitors = cluster%nexcitors + 1
-                          cluster%pselect = cluster%pselect*pexcit
-                          call trot_collapse_cluster(sys%basis, f0, psip_list%states(:,i), excitor_pop, cdet%f, &
-                                          cluster_population, allowed, conjugate)
-                          cluster%excitors(cluster%nexcitors)%f => psip_list%states(:,i)
-                          if (abs(excitor_pop) <= initiator_pop) cdet%initiator_flag = 3
-                       else
-                          excitor_pop = cos(pop_real/ref_real)
-                          cluster%pselect = cluster%pselect*(1-pexcit)
-                          cluster_population = cluster_population*excitor_pop
-                       end if
-                    else if(all(iand(ieor(f0(:sys%basis%bit_string_len),psip_list%states(:sys%basis%bit_string_len,i)), &
-                           ieor(f0(:sys%basis%bit_string_len),cdet%f(:sys%basis%bit_string_len))) == 0)) then
-                       
-                       if (rand < pexcit) then
-                          excitor_pop = sin(pop_real/ref_real)
-                          cluster%nexcitors = cluster%nexcitors + 1
-                          cluster%pselect = cluster%pselect*pexcit
-                          call trot_collapse_cluster(sys%basis, f0, psip_list%states(:,i), excitor_pop, cdet%f, &
-                                          cluster_population, allowed, conjugate)
-                          cluster%excitors(cluster%nexcitors)%f => psip_list%states(:,i)
-                          if (abs(excitor_pop) <= initiator_pop) cdet%initiator_flag = 3
-                       else
-                          excitor_pop = cos(pop_real/ref_real)
-                          cluster%pselect = cluster%pselect*(1-pexcit)
-                          cluster_population = cluster_population*excitor_pop
-                       end if
-                    end if
-                    ! Each excitor spends the same amount of time on each processor on
-                    ! average.  If this excitor is different from the previous excitor,
-                    ! then the probability this excitor is on the same processor as the
-                    ! previous excitor is 1/nprocs.  (Note choosing the same excitor
-                    ! multiple times is valid in linked CC.)
-                    cluster%pselect = cluster%pselect/nprocs
-                   ! If the excitor's population is below the initiator threshold, we remove the
-                   ! initiator status for the cluster
-                end if
-            end if
-         !   end if
-        !end do
-        end do
-        if (cluster%nexcitors == 0) then
-            call create_null_cluster(sys, f0, cluster%pselect, normalisation*cluster_population, initiator_pop, &
-                                    cdet, cluster, excit_gen_data)
-        else 
-
-            if (allowed) then
-                cluster%excitation_level = get_excitation_level(f0(:sys%basis%bit_string_len), cdet%f(:sys%basis%bit_string_len))
-                ! To contribute the cluster must be within a double excitation of
-                ! the maximum excitation included in the CC wavefunction.
-                allowed = cluster%excitation_level <= ex_level+2
-            end if
-
-            if (allowed) then
-
-               ! Sign change due to difference between determinant
-               ! representation and excitors and excitation level.
-               call convert_excitor_to_determinant(cdet%f, cluster%excitation_level, cluster%cluster_to_det_sign, f0)
-               call decoder_ptr(sys, cdet%f, cdet, excit_gen_data)
-
-               ! Normalisation factor for cluster%amplitudes...
-               cluster%amplitude = cluster_population*normalisation
-            else
-                ! Simply set excitation level to a too high (fake) level to avoid
-                ! this cluster being used.
-                cluster%excitation_level = huge(0)
-            end if
-        end if
-
-       ![todo] write logging to account for missing parameters
-       !if (debug) call write_logging_stoch_selection(logging_info, cluster%nexcitors, cluster%excitation_level, pop, &
-        !        max_size, cluster%pselect, cluster%amplitude, allowed)
-
-    end subroutine select_trot_ucc_cluster
-
     subroutine select_ucc_trot_cluster(rng, sys, psip_list, f0, ex_level, nattempts, normalisation, &
                               initiator_pop, D0_pos, cumulative_excip_pop, tot_excip_pop, min_size, max_size, &
                               logging_info, cdet, cluster, excit_gen_data, cluster_pop)
 
-! [review] - AJWT: based on select_cluster (without the linked_cluster parts) and with information about de-excitors.
+        ! Based on select_cluster (without the linked_cluster parts) and with information about de-excitors.
         ! Select a random cluster of excitors from the excitors on the
         ! processor.  A cluster of excitors is itself an excitor.  For clarity
         ! (if not technical accuracy) in comments we shall distinguish between
@@ -1241,7 +1005,7 @@ contains
             ! searching of the cumulative population list.
 
             do i = 1, cluster%nexcitors
-                ! Select a position in the excitors list.
+                ! Select nexcitors different positiona in the excitors list.
                 if (i == 1) then 
                     pop(i) = get_rand_close_open(rng)*tot_excip_pop
                     call binary_search(cumulative_excip_pop, pop(i), 1, psip_list%nstates, hit, poses(i))
@@ -1263,6 +1027,7 @@ contains
                          poses(i) = poses(i) - 1
                      end do
                      if (any(poses(1:i-1)==poses(i))) then
+                        ! Clusters with the same excitor applied multiple times are not allowed.
                         allowed = .false.
                         exit
                      end if
@@ -1273,25 +1038,28 @@ contains
             prev_pos = 1
             current_excit = 1
             if (allowed) then
+                ! For each excitor in psip_list check if it can be applied as an excitation/deexcitation operator and if it is
+                ! in one of the positions selected before.
                 do i = 1, psip_list%nstates
                    if (i /= D0_pos) then
                    pop_real = real(psip_list%pops(1, i))/real(psip_list%pop_real_factor)
                    conjugate = .false.
-![review] -     AJWT: Comment what this is doing! More generally, and specifically.
-![review] -     AJWT: I think these complicated bit_string operations should be in a separate pure function to help readability.
                    if (deexcitation_possible(f0(:sys%basis%bit_string_len),psip_list%states(:sys%basis%bit_string_len,i), cdet%f(:sys%basis%bit_string_len))) then
                            conjugate = .true.
                            if (current_excit <= cluster%nexcitors) then
                               if (pop(current_excit) <= cumulative_excip_pop(i) .and. pop(current_excit) > cumulative_excip_pop(i-1)) then
+                                ! If the excitor can be applied as a de-excitation operator and is in the selected list, apply it to current cluster and multiply
+                                ! population by -sin(pop_real/ref_real) = -sin(t)
                                 excitor_pop = -sin(pop_real/ref_real)
                                 cluster%pselect = cluster%pselect*abs(pop_real)/tot_excip_local
-                                !tot_excip_local = tot_excip_local - abs(pop_real)
-                                call trot_collapse_cluster(sys%basis, f0, psip_list%states(:,i), excitor_pop, cdet%f, &
+                                call ucc_collapse_cluster(sys%basis, f0, psip_list%states(:,i), excitor_pop, cdet%f, &
                                               cluster_population, allowed, conjugate)
                                 cluster%excitors(current_excit)%f => psip_list%states(:,i)
                                 if (abs(excitor_pop) <= initiator_pop) cdet%initiator_flag = 3
                                 current_excit = current_excit + 1
                               else
+                                ! If the excitor can be applied as a de-excitation operator and is NOT in the selected list, multiply
+                                ! population by cos(pop_real/ref_real)
                                 excitor_pop = cos(pop_real/ref_real)
                                 cluster_population = cluster_population*excitor_pop
                               end if
@@ -1302,16 +1070,19 @@ contains
                         else if (excitation_possible(f0(:sys%basis%bit_string_len),psip_list%states(:sys%basis%bit_string_len,i), cdet%f(:sys%basis%bit_string_len))) then
                            if (current_excit <= cluster%nexcitors) then
                               if (pop(current_excit) <= cumulative_excip_pop(i) .and. pop(current_excit) > cumulative_excip_pop(i-1)) then
+                                ! If the excitor can be applied as an excitation operator and is in the selected list, apply it to current cluster and multiply
+                                ! population by sin(pop_real/ref_real) = sin(t)
                                 if (current_excit == 1) cdet%data => psip_list%dat(:,i)
                                 excitor_pop = sin(pop_real/ref_real)
                                 cluster%pselect = cluster%pselect*abs(pop_real)/tot_excip_local
-                                !tot_excip_local = tot_excip_local - abs(pop_real)
-                                call trot_collapse_cluster(sys%basis, f0, psip_list%states(:,i), excitor_pop, cdet%f, &
+                                call ucc_collapse_cluster(sys%basis, f0, psip_list%states(:,i), excitor_pop, cdet%f, &
                                               cluster_population, allowed, conjugate)
                                 cluster%excitors(current_excit)%f => psip_list%states(:,i)
                                 if (abs(excitor_pop) <= initiator_pop) cdet%initiator_flag = 3
                                 current_excit = current_excit + 1
                               else
+                                ! If the excitor can be applied as an excitation operator and is NOT in the selected list, multiply
+                                ! population by cos(pop_real/ref_real)
                                 excitor_pop = cos(pop_real/ref_real)
                                 cluster_population = cluster_population*excitor_pop
                               end if
@@ -1320,6 +1091,7 @@ contains
                               cluster_population = cluster_population*excitor_pop
                            end if
                         else 
+                           ! If excitor CANNOT be applied and is in the list, cluster is not allowed so exit. Otherwise, just move onto next excitor.
                            if (current_excit <= cluster%nexcitors) then
                                if (pop(current_excit) <= cumulative_excip_pop(i)) then
                                 allowed = .false.
@@ -1362,8 +1134,8 @@ contains
     subroutine direct_annihilation_trot(sys, rng, reference, annihilation_flags, psip_list, spawn, &
                                    nspawn_events, determ)
 
-        ! Annihilation algorithm.
-! [review] - AJWT: Based on direct_annihilation routine.
+        ! Annihilation algorithm. Based on direct_annihilation.
+        ! Based on direct_annihilation routine.
         ! Spawned walkers are added to the main list, by which new walkers are
         ! introduced to the main list and existing walkers can have their
         ! populations either enhanced or diminished.
@@ -1418,7 +1190,7 @@ contains
 
     subroutine annihilate_wrapper_spawn_t_single_trot(spawn, tinitiator, determ_size)
 
-! [review] - AJWT: based on annihilate_wrapper_spawn_t_single - only difference is a different sort routine_called
+        ! Based on annihilate_wrapper_spawn_t_single, calling a different sort routine.
         ! Helper procedure for performing annihilation within a spawn_t object.
 
         ! In:
@@ -1438,7 +1210,7 @@ contains
         use basis_types, only: basis_t
         use spawn_data, only: compress_threaded_spawn_t, comm_spawn_t, compress_determ_repeats, annihilate_spawn_t, &
                         annihilate_spawn_t_initiator, spawn_t
-        use sort, only: qsort
+        use sort, only: qsort_i0_list_rev
 
         type(spawn_t), intent(inout) :: spawn
         logical, intent(in) :: tinitiator
@@ -1462,7 +1234,7 @@ contains
         end if
         if (spawn%head(thread_id,0) > 0) then
             ! Have spawned walkers on this processor.
-            call qsort_i0_list_trot(spawn%sdata, spawn%head(thread_id,0), spawn%bit_str_len)
+            call qsort_i0_list_rev(spawn%sdata, spawn%head(thread_id,0), spawn%bit_str_len)
             !call qsort(spawn%sdata, spawn%head(thread_id,0), spawn%bit_str_len)
             ! Annihilate within spawned walkers list.
             ! Compress the remaining spawned walkers list.
@@ -1478,13 +1250,16 @@ contains
 
     subroutine annihilate_main_list_wrapper_trot(sys, rng, reference, annihilation_flags, psip_list, spawn, &
                                             lower_bound, determ_flags)
-! [review] - AJWT: based on annihilate_main_list_wrapper
+
+        ! Based on annihilate_main_list_wrapper
         ! This is a wrapper around various utility functions which perform the
         ! different parts of the annihilation process during non-blocking
         ! communications.
 
         ! In:
-        !    sys: system being studied.
+        !    tensor_label_len: number of elements in the bit array describing the position
+        !       of the particle in the space (i.e.  determinant label in vector/pair of
+        !       determinants label in array).
         !    reference: current reference determinant.
         !    annihilation_flags: calculation specific annihilation flags.
         ! In/Out:
@@ -1528,7 +1303,7 @@ contains
         if (spawn%head(thread_id,0) >= spawn_start) then
             ! Have spawned walkers on this processor.
 
-            call annihilate_main_list_trot(psip_list, spawn, sys, reference, lower_bound)
+            call annihilate_main_list_trot(psip_list, spawn, sys%basis%tensor_label_len, reference, lower_bound)
 
             ! Remove determinants with zero walkers on them from the main
             ! walker list.
@@ -1554,14 +1329,16 @@ contains
 
     end subroutine annihilate_main_list_wrapper_trot
 
-    subroutine annihilate_main_list_trot(psip_list, spawn, sys, ref, lower_bound)
-! [review] - AJWT: based on annihilate_main_list
+    subroutine annihilate_main_list_trot(psip_list, spawn, tensor_label_len, ref, lower_bound)
+
+        ! Based on annihilate_main_list
         ! Annihilate particles in the main walker list with those in the spawned
         ! walker list.
 
         ! In:
-![review] -  AJWT: why not pass in tensor_label_len?
-        !    sys: system being studied.
+        !    tensor_label_len: number of elements in the bit array describing the position
+        !       of the particle in the space (i.e.  determinant label in vector/pair of
+        !       determinants label in array).
         !    ref: current reference determinant.
         ! In/Out:
         !    psip_list: particle_t object containing psip information.
@@ -1574,21 +1351,20 @@ contains
         !    lower_bound: starting point we annihiliate from in spawn_t object.
         !       Default: 1.
 
-        use search, only: binary_search
         use spawn_data, only: spawn_t
         use qmc_data, only: particle_t
-        use system, only: sys_t
         use reference_determinant, only: reference_t
+        use search, only: binary_search_i0_list_trot
 
         type(particle_t), intent(inout) :: psip_list
         type(spawn_t), intent(inout) :: spawn
-        type(sys_t), intent(in) :: sys
+        integer, intent(in) :: tensor_label_len
         type(reference_t), intent(in) :: ref
         integer, intent(in), optional :: lower_bound
 
         integer :: i, pos, k, istart, iend, nannihilate, spawn_start
         integer(int_p) :: old_pop(psip_list%nspaces)
-        integer(i0) :: f(sys%basis%tensor_label_len)
+        integer(i0) :: f(tensor_label_len)
 
         logical :: hit
         integer, parameter :: thread_id = 0
@@ -1603,9 +1379,8 @@ contains
         iend = psip_list%nstates
 
         do i = spawn_start, spawn%head(thread_id,0)
-            f = int(spawn%sdata(:sys%basis%tensor_label_len,i), i0)
+            f = int(spawn%sdata(:tensor_label_len,i), i0)
             call binary_search_i0_list_trot(psip_list%states, f, istart, iend, hit, pos)
-            !call binary_search(psip_list%states, f, istart, iend, hit, pos)
             if (hit) then
                 ! Annihilate!
                 old_pop = psip_list%pops(:,pos)
@@ -1636,7 +1411,8 @@ contains
     end subroutine annihilate_main_list_trot
 
     subroutine insert_new_walkers_trot(sys, psip_list, ref, annihilation_flags, spawn, determ_flags, lower_bound)
-! [review] - AJWT: based on insert_new_walkers - just with a different search.
+
+        ! Based on insert_new_walkers - just with a different search.
         ! Insert new walkers into the main walker list from the spawned list.
         ! This is done after all particles have been annihilated, so the spawned
         ! list contains only new walkers.
@@ -1658,7 +1434,7 @@ contains
         use parallel, only: iproc
         use qmc_data, only: particle_t, annihilation_flags_t
         use reference_determinant, only: reference_t
-        use search, only: binary_search
+        use search, only: binary_search_i0_list_trot
         use spawn_data, only: spawn_t
         use system, only: sys_t
         use utils, only: int_fmt
@@ -1739,7 +1515,6 @@ contains
 
                 ! spawned det is not in the main walker list.
                 call binary_search_i0_list_trot(psip_list%states, int(spawn%sdata(:sys%basis%tensor_label_len,i), i0), &
-                !call binary_search(psip_list%states, int(spawn%sdata(:sys%basis%tensor_label_len,i), i0), &
                                    istart, iend, hit, pos)
                 ! f should be in slot pos.  Move all determinants above it.
                 do j = iend, pos, -1
@@ -1779,160 +1554,6 @@ contains
 
     end subroutine insert_new_walkers_trot
 
-    pure subroutine qsort_i0_list_trot(list, head, nsort)
-! [review] - AJWT: based on sort routines in sort.f90
-! [review] - AJWT: Should probably be in sort.f90 and called qsort_i0_list_rev
-
-        ! Sort a 2D array of int_64 integers.
-
-        ! list(:,i) is regarded as greater than list(:,j) if the first
-        ! non-identical element between list(:,i) and list(:,j) is lower in
-        ! list(:,i).
-
-        ! In/Out:
-        !    list: 2D array of int_64 integers.  Sorted on output.
-        ! In:
-        !    head (optional): sort list up to and including list(:,:head) and
-        !        leave the rest of the array untouched.  Default: sort the
-        !        entire array.
-        !    nsort (optional): sort list only using the first nsort elements in
-        !        each 1D slice to compare entries (ie compare list(:nsort,i) and
-        !        list(:nsort,j), so list is sorted according to list(:nsort,:)).
-        !        Default: use entire slice.
-
-        use bit_utils, only: operator(.bitstrge.), operator(.bitstrgt.)
-
-        integer(i0), intent(inout) :: list(:,:)
-        integer, intent(in), optional :: head, nsort
-
-        ! Threshold.  When a sublist gets to this length, switch to using
-        ! insertion sort to sort the sublist.
-        integer, parameter :: switch_threshold = 7
-
-        ! sort needs auxiliary storage of length 2*log_2(n).
-        integer, parameter :: stack_max = 50
-
-        integer :: pivot, lo, hi, i, j, ns
-        integer(int_64) :: tmp(ubound(list,dim=1))
-
-        ! Stack.  This is the auxilliary memory required by quicksort.
-        integer :: stack(2,stack_max), nstack
-
-        if (present(nsort)) then
-            ns = nsort
-        else
-            ns = ubound(list, dim=1)
-        end if
-
-        nstack = 0
-        lo = 1
-        if (present(head)) then
-            hi = head
-        else
-            hi = ubound(list, dim=2)
-        end if
-        do
-            ! If the section/partition we are looking at is smaller than
-            ! switch_threshold then perform an insertion sort.
-            if (hi - lo < switch_threshold) then
-                do j = lo + 1, hi
-                    tmp = list(:,j)
-                    do i = j - 1, 1, -1
-                        if (.not.(tmp(1:ns) .bitstrgt. list(1:ns,i))) exit
-                        list(:,i+1) = list(:,i)
-                    end do
-                    list(:,i+1) = tmp
-                end do
-
-                if (nstack == 0) exit
-                hi = stack(2,nstack)
-                lo = stack(1,nstack)
-                nstack = nstack - 1
-
-            else
-                ! Otherwise start partitioning with quicksort.
-
-                ! Pick the pivot element to be the median of list(:,lo), list(:,hi)
-                ! and list(:,(lo+hi)/2).
-                ! This largely overcomes a major problem with quicksort, where it
-                ! degrades if the pivot is always the smallest element.
-                pivot = (lo + hi)/2
-                call swap_sublist(list(:,pivot), list(:,lo + 1))
-                if (.not.(list(1:ns,lo) .bitstrge. list(1:ns,hi))) then
-                    call swap_sublist(list(:,lo), list(:,hi))
-                end if
-                if (.not.(list(1:ns,lo+1) .bitstrge. list(1:ns,hi))) then
-                    call swap_sublist(list(:,lo+1), list(:,hi))
-                end if
-                if (.not.(list(1:ns,lo) .bitstrge. list(1:ns,lo+1))) then
-                    call swap_sublist(list(:,lo), list(:,lo+1))
-                end if
-
-                i = lo + 1
-                j = hi
-                tmp = list(:,lo + 1) ! a is the pivot value
-                do while (.true.)
-                    ! Scan down list to find element > a.
-                    i = i + 1
-                    do while (.not.(tmp(1:ns) .bitstrge. list(1:ns,i)))
-                        i = i + 1
-                    end do
-
-                    ! Scan down list to find element < a.
-                    j = j - 1
-                    do while (.not.(list(1:ns,j) .bitstrge. tmp(1:ns)))
-                        j = j - 1
-                    end do
-
-                    ! When the pointers crossed, partitioning is complete.
-                    if (j < i) exit
-
-                    ! Swap the elements, so that all elements < a end up
-                    ! in lower indexed variables.
-                    call swap_sublist(list(:,i), list(:,j))
-                end do
-
-                ! Insert partitioning element
-                list(:,lo + 1) = list(:,j)
-                list(:,j) = tmp
-
-                ! Push the larger of the partitioned sections onto the stack
-                ! of sections to look at later.
-                ! --> need fewest stack elements.
-                nstack = nstack + 1
-
-                ! With a stack_max of 50, we can sort arrays of length
-                ! 1125899906842624.  It is safe to say this will never be
-                ! exceeded, and so this test can be skipped.
-!                if (nstack > stack_max) call stop_all('qsort_int_64_list', "parameter stack_max too small")
-
-                if (hi - i + 1 >= j - lo) then
-                    stack(2,nstack) = hi
-                    stack(1,nstack) = i
-                    hi = j - 1
-                else
-                    stack(2,nstack) = j - 1
-                    stack(1,nstack) = lo
-                    lo = i
-                end if
-
-            end if
-        end do
-
-    contains
-
-        pure subroutine swap_sublist(s1,s2)
-
-            integer(int_64), intent(inout) :: s1(:), s2(:)
-            integer(int_64) :: tmp(ubound(s1,dim=1))
-
-            tmp = s1
-            s1 = s2
-            s2 = tmp
-
-        end subroutine swap_sublist
-
-    end subroutine qsort_i0_list_trot
 
     subroutine regenerate_trot_info_psip_list(basis, nel, qs)
 
@@ -1955,7 +1576,7 @@ contains
 
         use basis_types, only: basis_t
         use qmc_data, only: qmc_state_t
-        use sort, only: qsort
+        use sort, only: qsort_psip_info_trot
         use uccmc_utils, only: add_info_str_trot
 
         type(basis_t), intent(in) :: basis
@@ -1974,318 +1595,9 @@ contains
 
     end subroutine regenerate_trot_info_psip_list
 
-    pure function bit_str_cmp_trot(b1, b2) result(cmp)
-
-        ! In:
-        !    b1(:), b2(:): bit string.
-        ! Returns:
-        !    0 if b1 and b2 are identical;
-        !    1 if the most significant non-identical element in b1 is bitwise
-        !      greater than the corresponding element in b2;
-        !    -1 if the most significant non-identical element in b1 is bitwise
-        !      less than the corresponding element in b2;
-
-        integer :: cmp
-        integer(i0), intent(in) :: b1(:), b2(:)
-
-        integer :: i
-
-        cmp = 0
-        do i = ubound(b1, dim=1), 1, -1
-            if (blt(b1(i),b2(i))) then
-                cmp = -1
-                exit
-            else if (bgt(b1(i),b2(i))) then
-                cmp = 1
-                exit
-            end if
-        end do
-
-    end function bit_str_cmp_trot
-
-    pure subroutine binary_search_i0_list_trot(list, item, istart, iend, hit, pos)
-! [review] - AJWT: based on binary_search_i0_list with a different comparator operator.
-
-        ! Find where an item resides in a list of such items.
-        ! Only elements between istart and iend are examined (use the
-        ! array boundaries in the worst case).
-        !
-        ! In:
-        !    list: a sorted i0 integer 2D list/array; the first dimension
-        !        corresponds to 1D arrays to compare to item.
-        !    item: an i0 integer 1D list/array.
-        !    istart: first position to examine in the list.
-        !    iend: last position to examine in the list.
-        ! Out:
-        !    hit: true if found item in list.
-        !    pos: the position corresponding to item in list.
-        !        If hit is true, then the element in this position is the same
-        !        as item, else this is where item should go to keep the list
-        !        sorted.
-
-        use const, only: i0
-
-        integer(i0), intent(in) :: list(:,:), item(:)
-        integer, intent(in) :: istart, iend
-        logical, intent(out) :: hit
-        integer, intent(out) :: pos
-
-        integer :: hi, lo, compare
-
-        if (istart > iend) then
-
-            ! Already know the element has to be appended to the list.
-            ! This should only occur if istart = iend + 1.
-            pos = istart
-            hit = .false.
-
-        else
-
-            ! Search range.
-            lo = istart
-            hi = iend
-
-            ! Assume item doesn't exist in the list initially.
-            hit = .false.
-
-            do while (hi /= lo)
-                ! Narrow the search range down in steps.
-
-                ! Mid-point.
-                ! We shift one of the search limits to be the mid-point.
-                ! The successive dividing the search range by 2 gives a O[log N]
-                ! search algorithm.
-                pos = (hi+lo)/2
-
-                compare = bit_str_cmp_trot(list(:,pos), item)
-                select case(compare)
-                case (0)
-                    ! hit!
-                    hit = .true.
-                    exit
-                case(1)
-                    ! list(:,pos) is "smaller" than item.
-                    ! The lowest position item can take is hence pos + 1 (i.e. if
-                    ! item is greater than pos by smaller than pos + 1).
-                    lo = pos + 1
-                case(-1)
-                    ! list(:,pos) is "greater" than item.
-                    ! The highest position item can take is hence pos (i.e. if item is
-                    ! smaller than pos but greater than pos - 1).  This is why
-                    ! we differ slightly from a standard binary search (where lo
-                    ! is set to be pos+1 and hi to be pos-1 accordingly), as
-                    ! a standard binary search assumes that the element you are
-                    ! searching for actually appears in the array being
-                    ! searched...
-                    hi = pos
-                end select
-
-            end do
-
-            ! If hi == lo, then we have narrowed the search down to one position but
-            ! not checked if that position is the item we're hunting for.
-            ! Because list can expand (i.e. we might be searching for an
-            ! element which doesn't exist yet) the binary search can find either
-            ! the element before or after where item should be placed.
-            if (hi == lo) then
-                compare = bit_str_cmp_trot(list(:,hi), item)
-                select case(compare)
-                case (0)
-                    ! hit!
-                    hit = .true.
-                    pos = hi
-                case(1)
-                    ! list(:,pos) is "smaller" than item.
-                    ! item should be placed in the next slot.
-                    pos = hi + 1
-                case(-1)
-                    ! list(:,pos) is "greater" than item.
-                    ! item should ber placed here.
-                    pos = hi
-                end select
-            end if
-
-        end if
-
-    end subroutine binary_search_i0_list_trot
-
-    pure subroutine qsort_psip_info_trot(nstates, states, pops, dat)
-! [review] - AJWT: based on qsort_psip_info with alternative ordering.
-        ! Sort a set of psip information (states, populations and data) in order according
-        ! to the state labels.
-
-        ! states(:,i) is regarded as greater than states(:,j) if the first
-        ! non-identical element between states(:,i) and states(:,j) is smaller in
-        ! states(:,i).
-
-        ! In:
-        !    nstates: number of occupied states.
-        ! In/Out:
-        !    states: 2D array of i0 integers containing the state label for each occupied state.
-        !        Sorted on output.
-        !    pops, dat: population and data arrays for each state.  Sorted by states on output.
-
-        ! Note: the size of the first dimension of states is immaterial, as we do a comparison
-        ! based on the entire slice.  The second dimensions of pops, dat and states must be >= nstates.
-
-        use const, only: int_p, i0, p
-        use bit_utils, only: operator(.bitstrge.), operator(.bitstrgt.)
-
-        integer, intent(in) :: nstates
-        integer(i0), intent(inout) :: states(:,:)
-        integer(int_p), intent(inout) :: pops(:,:)
-        real(p), intent(inout) :: dat(:,:)
-
-        ! Threshold.  When a substates gets to this length, switch to using
-        ! insertion sort to sort the substates.
-        integer, parameter :: switch_threshold = 7
-
-        ! sort needs auxiliary storage of length 2*log_2(n).
-        integer, parameter :: stack_max = 50
-
-        integer :: pivot, lo, hi, i, j
-        integer(i0) :: tmp_state(ubound(states,dim=1))
-        integer(int_p) :: tmp_pop(ubound(pops,dim=1))
-        real(p) :: tmp_dat(ubound(dat,dim=1))
-
-        ! Stack.  This is the auxilliary memory required by quicksort.
-        integer :: stack(2,stack_max), nstack
-
-        hi = nstates
-
-        nstack = 0
-        lo = 1
-
-        do
-            ! If the section/partition we are looking at is smaller than
-            ! switch_threshold then perform an insertion sort.
-            if (hi - lo < switch_threshold) then
-                do j = lo + 1, hi
-                    tmp_state = states(:,j)
-                    tmp_pop = pops(:,j)
-                    tmp_dat = dat(:,j)
-                    do i = j - 1, 1, -1
-                        if (.not.(tmp_state .bitstrgt. states(:,i))) exit
-                        states(:,i+1) = states(:,i)
-                        pops(:,i+1) = pops(:,i)
-                        dat(:,i+1) = dat(:,i)
-                    end do
-                    states(:,i+1) = tmp_state
-                    pops(:,i+1) = tmp_pop
-                    dat(:,i+1) = tmp_dat
-                end do
-
-                if (nstack == 0) exit
-                hi = stack(2,nstack)
-                lo = stack(1,nstack)
-                nstack = nstack - 1
-
-            else
-                ! Otherwise start partitioning with quicksort.
-
-                ! Pick the pivot element to be the median of states(:,lo), states(:,hi)
-                ! and states(:,(lo+hi)/2).
-                ! This largely overcomes a major problem with quicksort, where it
-                ! degrades if the pivot is always the smallest element.
-                pivot = (lo + hi)/2
-                call swap_states(states(:,pivot), pops(:,pivot), dat(:,pivot), states(:,lo+1), pops(:,lo+1), dat(:,lo+1))
-                if (.not.(states(:,lo) .bitstrge. states(:,hi))) then
-                    call swap_states(states(:,lo), pops(:,lo), dat(:,lo), states(:,hi), pops(:,hi), dat(:,hi))
-                end if
-                if (.not.(states(:,lo+1) .bitstrge. states(:,hi))) then
-                    call swap_states(states(:,lo+1), pops(:,lo+1), dat(:,lo+1), states(:,hi), pops(:,hi), dat(:,hi))
-                end if
-                if (.not.(states(:,lo) .bitstrge. states(:,lo+1))) then
-                    call swap_states(states(:,lo), pops(:,lo), dat(:,lo), states(:,lo+1), pops(:,lo+1), dat(:,lo+1))
-                end if
-
-                i = lo + 1
-                j = hi
-                tmp_state = states(:,lo+1) ! a is the pivot value
-                tmp_pop = pops(:,lo+1)
-                tmp_dat = dat(:,lo+1)
-                do while (.true.)
-                    ! Scan down states to find element > a.
-                    i = i + 1
-                    do while (.not.(tmp_state .bitstrge. states(:,i)))
-                        i = i + 1
-                    end do
-
-                    ! Scan down states to find element < a.
-                    j = j - 1
-                    do while (.not.(states(:,j) .bitstrge. tmp_state))
-                        j = j - 1
-                    end do
-
-                    ! When the pointers crossed, partitioning is complete.
-                    if (j < i) exit
-
-                    ! Swap the elements, so that all elements < a end up
-                    ! in lower indexed variables.
-                    call swap_states(states(:,i), pops(:,i), dat(:,i), states(:,j), pops(:,j), dat(:,j))
-                end do
-
-                ! Insert partitioning element
-                states(:,lo + 1) = states(:,j)
-                pops(:,lo + 1) = pops(:,j)
-                dat(:,lo + 1) = dat(:,j)
-                states(:,j) = tmp_state
-                pops(:,j) = tmp_pop
-                dat(:,j) = tmp_dat
-
-                ! Push the larger of the partitioned sections onto the stack
-                ! of sections to look at later.
-                ! --> need fewest stack elements.
-                nstack = nstack + 1
-
-                ! With a stack_max of 50, we can sort arrays of length
-                ! 1125899906842624.  It is safe to say this will never be
-                ! exceeded, and so this test can be skipped.
-!                if (nstack > stack_max) call stop_all('qsort_int_64_states', "parameter stack_max too small")
-
-                if (hi - i + 1 >= j - lo) then
-                    stack(2,nstack) = hi
-                    stack(1,nstack) = i
-                    hi = j - 1
-                else
-                    stack(2,nstack) = j - 1
-                    stack(1,nstack) = lo
-                    lo = i
-                end if
-
-            end if
-        end do
-
-    contains
-
-        pure subroutine swap_states(s1,p1,d1,s2,p2,d2)
-
-            integer(i0), intent(inout) :: s1(:), s2(:)
-            integer(int_p), intent(inout) :: p1(:), p2(:)
-            real(p), intent(inout) :: d1(:), d2(:)
-            integer(i0) :: tmp_state(ubound(s1,dim=1))
-            integer(int_p) :: tmp_pop(ubound(p1,dim=1))
-            real(p) :: tmp_dat(ubound(d1,dim=1))
-
-            tmp_state = s1
-            s1 = s2
-            s2 = tmp_state
-
-            tmp_pop = p1
-            p1 = p2
-            p2 = tmp_pop
-
-            tmp_dat = d1
-            d1 = d2
-            d2 = tmp_dat
-
-        end subroutine swap_states
-
-    end subroutine qsort_psip_info_trot
-
     subroutine find_D0_trot(psip_list, f0, D0_pos)
 
-        ! Find the reference determinant in the list of walkers
+        ! Find the reference determinant in the list of walkers labelled for trotterized UCC.
 
         ! In:
         !    psip_list: particle_t object containing current excip distribution on
@@ -2296,8 +1608,8 @@ contains
         !       particle_t%states in the previous iteration (or -1 if it was
         !       not on this processor).  On output, the current position.
 
-        use bit_utils, only: bit_str_cmp
-        use search, only: binary_search
+        use bit_utils, only: bit_str_cmp_trot
+        use search, only: binary_search_i0_list_trot
         use qmc_data, only: particle_t
         use errors, only: stop_all
 
@@ -2311,7 +1623,6 @@ contains
         if (D0_pos == -1) then
             ! D0 was just moved to this processor.  No idea where it might be...
             call binary_search_i0_list_trot(psip_list%states, f0, 1, psip_list%nstates, hit, D0_pos)
-            !call binary_search(psip_list%states, f0, 1, psip_list%nstates, hit, D0_pos)
         else
             D0_pos_old = D0_pos
             select case(bit_str_cmp_trot(f0, psip_list%states(:,D0_pos)))
@@ -2322,12 +1633,10 @@ contains
                 ! D0 < psip_list%states(:,D0_pos) -- it has moved to earlier in
                 ! the list and the old D0_pos is an upper bound.
                 call binary_search_i0_list_trot(psip_list%states, f0, 1, D0_pos_old, hit, D0_pos)
-                !call binary_search(psip_list%states, f0, 1, D0_pos_old, hit, D0_pos)
             case(-1)
                 ! D0 > psip_list%states(:,D0_pos) -- it has moved to later in
                 ! the list and the old D0_pos is a lower bound.
                 call binary_search_i0_list_trot(psip_list%states, f0, D0_pos_old, psip_list%nstates, hit, D0_pos)
-                !call binary_search(psip_list%states, f0, D0_pos_old, psip_list%nstates, hit, D0_pos)
             end select
         end if
         if (.not.hit) call stop_all('find_D0', 'Cannot find reference!')
@@ -2392,322 +1701,6 @@ contains
 
     end subroutine get_D0_info_trot
 
-    subroutine get_probabilities(pops, nstates, D0_pop, D0_pos, real_factor, probs, pref, pavg, pcompavg)
-
-
-    integer(i0), intent(in) :: pops(:,:), real_factor
-    real(p), intent(in) :: D0_pop
-    real(p), intent(out) :: probs(:), pref, pavg, pcompavg
-    integer, intent(in) :: nstates, D0_pos
-
-    integer :: i
-    real(p) :: prob, pop
-
-    pref = 1
-    pavg = 1
-    pcompavg = 1
-
-    if (D0_pos == 1) then
-        probs(1) = 0
-        do i = 2, nstates
-            pop = abs(real(pops(1,i),p)/real(real_factor,p))
-            prob = pop/(pop + D0_pop)
-            probs(i) = prob/(1-prob)
-            pref = pref * (1 - prob)
-            pavg = pavg * prob  
-        end do
-    else
-        do i = 1, nstates
-            if (i == D0_pos) then
-                probs(i) = 0
-            else
-                pop = abs(real(pops(1,i),p)/real(real_factor,p))
-                prob = pop/(pop + D0_pop)
-                probs(i) = prob/(1.0-prob)
-                pref = pref * (1.0 - prob)
-                pavg = pavg * prob  
-            end if
-        end do
-    end if
-    
-    if (nstates > 1) then
-        pavg = pavg ** (1.0/real(nstates-1,p))
-        pcompavg = pref ** (1.0/real(nstates - 1,p))
-    else
-       pref = 1
-       pavg = 0
-       pcompavg = 1
-    end if
-
-    end subroutine
-
-    function binomial_coeff(a,b) result (n)
-
-    integer, intent(in) :: a, b
-    real(dp) :: n
-    integer :: i
-
-    n = 1.0_dp
-    do i = 1, b
-        n = n / real(i,dp)
-        n = n * real(a - i+1, dp)
-    end do
-    end function
-    
-    function binomial_sum(prob, pcomp, max_size, nstates) result(binsum)
-
-    integer, intent(in) :: max_size, nstates
-    real(p), intent(in) :: prob, pcomp
-    real(dp) :: binsum
-    integer :: i
-
-    binsum = 0.0_dp
-    do i = 0, max_size 
-       binsum = binsum + (prob**i)*(pcomp**(nstates-i))*binomial_coeff(nstates,i)
-    end do
-    end function
-
-    function binomial_sum_repeat(prob, pcomp, max_size, nstates) result(binsum)
-
-    integer, intent(in) :: max_size, nstates
-    real(p), intent(in) :: prob, pcomp
-    real(dp) :: binsum
-    integer :: i
-
-    binsum = 0.0_dp
-    do i = 0, max_size 
-       binsum = binsum + (prob**i)*(pcomp**(nstates-i))*binomial_coeff(nstates,i)/prob_no_repeat(nstates, i)
-    end do
-    end function
-
-    function prob_no_repeat(n,i) result(prob)
-
-    integer, intent(in) :: n, i
-    real(dp) :: prob
-    integer :: j 
-
-    prob = 1.0_dp
-    do j = 1, i-1
-        prob = prob * real(n-j,dp)/real(n, dp)
-    end do
-    end function
-    function exp_sum(prob, max_size) result(expsum)
-
-    use utils, only: factorial
-    integer, intent(in) :: max_size 
-    real(p), intent(in) :: prob
-    real(dp) :: expsum
-    integer :: i
-
-    expsum = 0.0_dp
-    do i = 0, max_size 
-       expsum = expsum + prob**i/factorial(i)
-    end do
-    end function
-   subroutine trot_collapse_cluster(basis, f0, excitor, excitor_population, cluster_excitor, cluster_population, allowed, conjugate)
-
-        ! Collapse two excitors.  The result is returned in-place.
-
-        ! In:
-        !    basis: information about the single-particle basis.
-        !    f0: bit string representation of the reference determinant.
-        !    excitor: bit string of the Slater determinant formed by applying
-        !        the excitor, e1, to the reference determinant.
-        !    excitor_population: number of excips on the excitor e1.
-        ! In/Out:
-        !    cluster_excitor: bit string of the Slater determinant formed by applying
-        !        the excitor, e2, to the reference determinant.
-        !    cluster_population: number of excips on the 'cluster' excitor, e2.
-        ! Out:
-        !    allowed: true if excitor e1 can be applied to excitor e2 (i.e. e1
-        !       and e2 do not involve exciting from/to the any identical
-        !       spin-orbitals).
-
-        ! On input, cluster excitor refers to an existing excitor, e2.  On output,
-        ! cluster excitor refers to the excitor formed from applying the excitor
-        ! e1 to the cluster e2.
-        ! ***WARNING***: if allowed is false then cluster_excitor is *not* updated.
-
-        use basis_types, only: basis_t, reset_extra_info_bit_string
-
-        use bit_utils, only: count_set_bits
-        use const, only: i0_end
-
-        type(basis_t), intent(in) :: basis
-        integer(i0), intent(in) :: f0(basis%tot_string_len)
-        integer(i0), intent(in) :: excitor(basis%tot_string_len)
-        complex(p), intent(in) :: excitor_population
-        integer(i0), intent(inout) :: cluster_excitor(basis%tot_string_len)
-        complex(p), intent(inout) :: cluster_population
-        logical,  intent(out) :: allowed
-        logical, intent(in) :: conjugate
-        integer(i0) :: excitor_loc(basis%tot_string_len)
-! [review] - AJWT:  Is this copy needed?
-        integer(i0) :: f0_loc(basis%tot_string_len)
-
-        integer :: ibasis, ibit
-        integer(i0) :: excitor_excitation(basis%tot_string_len)
-        integer(i0) :: excitor_annihilation(basis%tot_string_len)
-        integer(i0) :: excitor_creation(basis%tot_string_len)
-        integer(i0) :: cluster_excitation(basis%tot_string_len)
-        integer(i0) :: cluster_annihilation(basis%tot_string_len)
-        integer(i0) :: cluster_creation(basis%tot_string_len)
-        integer(i0) :: permute_operators(basis%tot_string_len)
-
-        excitor_loc = excitor
-        f0_loc = f0
-        call reset_extra_info_bit_string(basis, excitor_loc)
-        call reset_extra_info_bit_string(basis, f0_loc)
-
-        ! Apply excitor to the cluster of excitors.
-
-        ! orbitals involved in excitation from reference
-        excitor_excitation = ieor(f0_loc, excitor_loc)
-        cluster_excitation = ieor(f0_loc, cluster_excitor)
-        ! annihilation operators (relative to the reference)
-        if (conjugate) then
-            excitor_annihilation = excitor_excitation - iand(excitor_excitation, f0_loc)
-        else
-            excitor_annihilation = iand(excitor_excitation, f0_loc)
-        end if
-        ! creation operators (relative to the reference)
-        if (conjugate) then
-            excitor_creation = iand(excitor_excitation, f0_loc)
-        else
-            excitor_creation = iand(excitor_excitation, excitor_loc)
-        end if
-        ! annihilation operators (relative to the reference)
-        cluster_annihilation = iand(cluster_excitation, f0_loc)
-        ! creation operators (relative to the reference)
-        cluster_creation = iand(cluster_excitation, cluster_excitor)
-
-        if(conjugate) then
-           allowed = .true.
-           do ibasis = 1, basis%bit_string_len
-                do ibit = 0, i0_end
-                    if (btest(excitor_annihilation(ibasis),ibit)) then
-                        if (.not. btest(cluster_creation(ibasis),ibit)) then
-                           allowed = .false.
-                           exit
-                        end if
-                    end if
-                    if (btest(excitor_creation(ibasis),ibit)) then
-                        if (btest(cluster_excitor(ibasis),ibit)) then
-                           allowed = .false.
-                           exit
-                        end if
-                    end if
-                end do
-           end do
-        
-           if (allowed) then
-                cluster_population = cluster_population*excitor_population
-
-                ! Now apply the excitor to the cluster (which is, in its own right,
-                ! an excitor).
-                ! Consider a cluster, e.g. t_i^a = a^+_a a_i (which corresponds to i->a).
-                ! We wish to collapse two excitors, e.g. t_i^a t_j^b, to a single
-                ! excitor, e.g. t_{ij}^{ab} = a^+_a a^+_b a_j a_i (where i<j and
-                ! a<b).  However t_i^a t_j^b = a^+_a a_i a^+_b a_j.  We thus need to
-                ! permute the creation and annihilation operators.  Each permutation
-                ! incurs a sign change.
-! [review] - AJWT: Even if we can't reuse the whole of collapse_cluster, this part looks teh same, so can that be factored out and called?
-                do ibasis = 1, basis%bit_string_len
-                    do ibit = 0, i0_end
-                        if (btest(excitor_excitation(ibasis),ibit)) then
-                            if (.not. btest(f0_loc(ibasis),ibit)) then
-                                ! Exciting from this orbital.
-                                cluster_excitor(ibasis) = ibclr(cluster_excitor(ibasis),ibit)
-                                ! We need to swap it with every annihilation
-                                ! operator and every creation operator referring to
-                                ! an orbital with a higher index already in the
-                                ! cluster.
-                                ! Note that an orbital cannot be in the list of
-                                ! annihilation operators and the list of creation
-                                ! operators.
-                                ! First annihilation operators:
-                                permute_operators = iand(basis%excit_mask(:,basis%basis_lookup(ibit,ibasis)),cluster_annihilation)
-                                ! Now add the creation operators:
-                                permute_operators = ior(permute_operators,cluster_creation)
-                            else
-                                ! Exciting into this orbital.
-                                cluster_excitor(ibasis) = ibset(cluster_excitor(ibasis),ibit)
-                                ! Need to swap it with every creation operator with
-                                ! a lower index already in the cluster.
-                                permute_operators = iand(not(basis%excit_mask(:,basis%basis_lookup(ibit,ibasis))),cluster_creation)
-                                permute_operators(ibasis) = ibclr(permute_operators(ibasis),ibit)
-                            end if
-                            if (mod(sum(count_set_bits(permute_operators)),2) == 1) &
-                                cluster_population = -cluster_population
-                        end if
-                    end do
-                end do
-           end if  
-        else
-        ! First, let's find out if the excitor is valid...
-            if (any(iand(excitor_creation,cluster_creation) /= 0) &
-                    .or. any(iand(excitor_annihilation,cluster_annihilation) /= 0)) then
-                ! excitor attempts to excite from an orbital already excited from by
-                ! the cluster or into an orbital already excited into by the
-                ! cluster.
-                ! => not valid
-                allowed = .false.
-
-                ! We still use the cluster in linked ccmc so need its amplitude
-                cluster_population = cluster_population*excitor_population
-            else
-                ! Applying the excitor to the existing cluster of excitors results
-                ! in a valid cluster.
-                allowed = .true.
-
-                ! Combine amplitudes.
-                ! Might need a sign change as well...see below!
-                cluster_population = cluster_population*excitor_population
-
-                ! Now apply the excitor to the cluster (which is, in its own right,
-                ! an excitor).
-                ! Consider a cluster, e.g. t_i^a = a^+_a a_i (which corresponds to i->a).
-                ! We wish to collapse two excitors, e.g. t_i^a t_j^b, to a single
-                ! excitor, e.g. t_{ij}^{ab} = a^+_a a^+_b a_j a_i (where i<j and
-                ! a<b).  However t_i^a t_j^b = a^+_a a_i a^+_b a_j.  We thus need to
-                ! permute the creation and annihilation operators.  Each permutation
-                ! incurs a sign change.
-
-                do ibasis = 1, basis%bit_string_len
-                    do ibit = 0, i0_end
-                        if (btest(excitor_excitation(ibasis),ibit)) then
-                            if (btest(f0(ibasis),ibit)) then
-                                ! Exciting from this orbital.
-                                cluster_excitor(ibasis) = ibclr(cluster_excitor(ibasis),ibit)
-                                ! We need to swap it with every annihilation
-                                ! operator and every creation operator referring to
-                                ! an orbital with a higher index already in the
-                                ! cluster.
-                                ! Note that an orbital cannot be in the list of
-                                ! annihilation operators and the list of creation
-                                ! operators.
-                                ! First annihilation operators:
-                                permute_operators = iand(basis%excit_mask(:,basis%basis_lookup(ibit,ibasis)),cluster_annihilation)
-                                ! Now add the creation operators:
-                                permute_operators = ior(permute_operators,cluster_creation)
-                            else
-                                ! Exciting into this orbital.
-                                cluster_excitor(ibasis) = ibset(cluster_excitor(ibasis),ibit)
-                                ! Need to swap it with every creation operator with
-                                ! a lower index already in the cluster.
-                                permute_operators = iand(not(basis%excit_mask(:,basis%basis_lookup(ibit,ibasis))),cluster_creation)
-                                permute_operators(ibasis) = ibclr(permute_operators(ibasis),ibit)
-                            end if
-                            if (mod(sum(count_set_bits(permute_operators)),2) == 1) &
-                                cluster_population = -cluster_population
-                        end if
-                    end do
-                end do
-
-            end if
-        end if
-
-    end subroutine trot_collapse_cluster
     pure function deexcitation_possible(f0, excit, cdet_f) result (allowed)
 
         integer(i0), intent(in) :: f0(:), excit(:), cdet_f(:)
@@ -2764,7 +1757,6 @@ contains
         use ccmc_utils, only: convert_excitor_to_determinant
         use excitations, only: get_excitation_level
         use qmc_data, only: particle_t
-        use search, only: binary_search
         use proc_pointers, only: decoder_ptr
         use excit_gens, only: excit_gen_data_t
 
