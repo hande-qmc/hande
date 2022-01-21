@@ -7,7 +7,6 @@
 #   anaconda/python2/4.4.0
 #   mpi/openmpi/intel17/3.0.0   
 #   use.own                     
-#   trlan/201009/ifort2017_5
 #   hdf5/1.8.20/ifort2017_5
 #   lua/5.3.4/icc2017_5         
 #
@@ -21,8 +20,8 @@ fc = mpif90
 cc = mpicc
 cxx = mpicxx
 ld = mpif90
-# As specified by the intel link line advisor.  trlan_mpi needs to be first to pick up the mkl libraries.
-LIBS =-ltrlan_mpi  $(MKLROOT)/lib/intel64/libmkl_blas95_lp64.a $(MKLROOT)/lib/intel64/libmkl_lapack95_lp64.a $(MKLROOT)/lib/intel64/libmkl_scalapack_lp64.a -Wl,--start-group ${MKLROOT}/lib/intel64/libmkl_intel_lp64.a ${MKLROOT}/lib/intel64/libmkl_intel_thread.a ${MKLROOT}/lib/intel64/libmkl_core.a ${MKLROOT}/lib/intel64/libmkl_blacs_openmpi_lp64.a -Wl,--end-group  -liomp5 -lpthread -lm -ldl -cxxlib -lhdf5_fortran -luuid -llua
+# As specified by the intel link line advisor.
+LIBS = $(MKLROOT)/lib/intel64/libmkl_blas95_lp64.a $(MKLROOT)/lib/intel64/libmkl_lapack95_lp64.a $(MKLROOT)/lib/intel64/libmkl_scalapack_lp64.a -Wl,--start-group ${MKLROOT}/lib/intel64/libmkl_intel_lp64.a ${MKLROOT}/lib/intel64/libmkl_intel_thread.a ${MKLROOT}/lib/intel64/libmkl_core.a ${MKLROOT}/lib/intel64/libmkl_blacs_openmpi_lp64.a -Wl,--end-group  -liomp5 -lpthread -lm -ldl -cxxlib -lhdf5_fortran -luuid -llua
 f90_module_flag = -module
 
 [opt]

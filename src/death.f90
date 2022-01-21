@@ -8,8 +8,7 @@ implicit none
 
 contains
 
-    subroutine stochastic_death(rng, sys, qs, dfock, Kii, loc_shift, proj_energy, logging_info, population, &
-                                tot_population, ndeath)
+    subroutine stochastic_death(rng, qs, dfock, Kii, loc_shift, proj_energy, logging_info, population, tot_population, ndeath)
 
         ! Particles will attempt to die with probability
         !  p_d = tau*M_ii
@@ -17,9 +16,17 @@ contains
         ! matrix element.
         ! For FCIQMC M_ii = K_ii - S where S is the shift and K_ii is
         !  K_ii =  < D_i | H | D_i > - E_0.
+        
+        ! Quasinewtwon approaches scale this death step, but doing this naively
+        ! would break population control.  Instead, we split H-S into
+        ! (H - E_proj)*weight + (E_proj - S)*rho.
+        ! The former is scaled by "weight" and produces the step.
+        ! The latter affects the population control, scaled by "rho", the QN population
+        ! control factor. The purpose of "rho" is to basically allow two separate
+        ! time steps for the two terms.
+        ! For more details see V. A. Neufeld, A. J. W. Thom, JCTC (2020), 16, 3, 1503-1510.
 
         ! In:
-        !    sys: the system
         !    qs: qmc_state_t object. tau, propagator and dmqmc_factor are used.
         !    dfock: \sum_i (f_i - f^0_i), where f_i (f^0_i) is the Fock eigenvalue of the i-th orbital occupied in D_i (D_0).
         !    Kii: < D_i | H | D_i > - E_0, where D_i is the determinant on
@@ -43,12 +50,10 @@ contains
 
         use dSFMT_interface, only: dSFMT_t, get_rand_close_open
         use qmc_data, only: qmc_state_t
-        use system, only: sys_t
         use spawning, only: calc_qn_weighting
         use const, only: debug
         use logging, only: write_logging_death, logging_t
 
-        type(sys_t), intent(in) :: sys
         real(p), intent(in) :: Kii, dfock
         type(qmc_state_t), intent(in) :: qs
         type(dSFMT_t), intent(inout) :: rng
@@ -79,7 +84,7 @@ contains
         ! Hence we have to multiply by an extra factor of 2 to account for the extra 1/2 in tau.
 
         weight = calc_qn_weighting(qs%propagator, dfock)
-        pd = qs%tau*((Kii-proj_energy)*weight+(proj_energy-loc_shift))*qs%dmqmc_factor
+        pd = qs%tau*((Kii-proj_energy)*weight+(proj_energy-loc_shift)*qs%propagator%quasi_newton_pop_control)*qs%dmqmc_factor
 
         pd_saved = pd
 

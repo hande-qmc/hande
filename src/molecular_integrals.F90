@@ -549,8 +549,7 @@ contains
 
         if (check_one_body_sym(i, j, sys, store%op_sym) .and. &
                         sys%basis%basis_fns(i)%ms == sys%basis%basis_fns(j)%ms) then
-            call store_one_body_int_nonzero(i, j, intgrl, sys%basis%basis_fns, &
-                                        suppress_err_msg, store)
+            call store_one_body_int_nonzero(i, j, intgrl, sys%basis%basis_fns, store)
 
         else if (abs(intgrl) > depsilon) then
             if (.not.suppress_err_msg) then
@@ -563,7 +562,7 @@ contains
 
     end subroutine store_one_body_int
 
-    subroutine store_one_body_int_nonzero(i, j, intgrl, basis_fns, suppress_err_msg, store)
+    subroutine store_one_body_int_nonzero(i, j, intgrl, basis_fns, store)
 
         ! Store <i|o_1|j> in the appropriate slot in the one-body integral
         ! store.  The store does not have room for non-zero integrals, so it is
@@ -574,7 +573,6 @@ contains
         ! In:
         !    i,j: (indices of) spin-orbitals.
         !    intgrl: <i|o_1|j>, where o_1 is a one-body operator.
-        !    suppress_err_msg: if true, don't print out any error messages.
         !    basis_fns: list of single-particle basis functions.
         ! In/out:
         !    store: one-body integral store.  On exit the <i|o_1|j> is also
@@ -585,7 +583,6 @@ contains
         type(basis_fn_t), intent(in) :: basis_fns(:)
         integer, intent(in) :: i, j
         real(p), intent(in) :: intgrl
-        logical, intent(in) :: suppress_err_msg
         type(one_body_t), intent(inout) :: store
 
         integer :: ii, jj, spin

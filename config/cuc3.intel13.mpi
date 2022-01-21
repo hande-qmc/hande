@@ -1,5 +1,5 @@
 [DEFAULT]
-cppflags_opt = -DHAVE_SSE2 -DPARALLEL -DDISABLE_LANCZOS
+cppflags_opt = -DHAVE_SSE2 -DPARALLEL
 
 [main]
 fc = mpif90

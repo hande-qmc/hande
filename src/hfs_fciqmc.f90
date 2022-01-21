@@ -46,7 +46,7 @@ contains
 
         use annihilation, only: direct_annihilation
         use death, only: stochastic_death, stochastic_hf_cloning
-        use determinants, only: alloc_det_info_t, dealloc_det_info_t, sum_sp_eigenvalues_occ_list
+        use determinants, only: alloc_det_info_t, dealloc_det_info_t, sum_fock_values_occ_list
         use determinant_data, only: det_info_t
         use energy_evaluation, only: update_energy_estimators
         use excitations, only: excit_t, get_excitation
@@ -167,7 +167,7 @@ contains
 
                     call decoder_ptr(sys, cdet%f, cdet)
                     if (qs%propagator%quasi_newton) &
-                        cdet%fock_sum = sum_sp_eigenvalues_occ_list(sys, cdet%occ_list) - qs%ref%fock_sum
+                        cdet%fock_sum = sum_fock_values_occ_list(sys, qs%propagator%sp_fock, cdet%occ_list) - qs%ref%fock_sum
 
                     ! Extract the real sign from the encoded sign.
                     real_population = real(qs%psip_list%pops(1,idet),p)/qs%psip_list%pop_real_factor
@@ -267,7 +267,7 @@ contains
                     ! created don't get an additional death/cloning opportunity.
 
                     ! Clone or die: Hellmann--Feynman walkers.
-                    call stochastic_death(rng, sys, qs, cdet%fock_sum, qs%psip_list%dat(2,idet), qs%shift(1), &
+                    call stochastic_death(rng, qs, cdet%fock_sum, qs%psip_list%dat(2,idet), qs%shift(1), &
                                           qs%estimators(1)%proj_energy_old, logging_info, qs%psip_list%pops(2,idet), &
                                           qs%psip_list%nparticles(2), ndeath)
 
@@ -284,7 +284,7 @@ contains
                     end if
 
                     ! Clone or die: Hamiltonian walkers.
-                    call stochastic_death(rng, sys, qs, cdet%fock_sum, qs%psip_list%dat(1,idet), qs%shift(1), &
+                    call stochastic_death(rng, qs, cdet%fock_sum, qs%psip_list%dat(1,idet), qs%shift(1), &
                                           qs%estimators(1)%proj_energy_old, logging_info, qs%psip_list%pops(1,idet), &
                                           qs%psip_list%nparticles(1), ndeath)
 

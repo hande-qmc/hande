@@ -120,7 +120,8 @@ contains
             end do
         end if
         if (present(rdm_energy)) then
-            if (rdm_energy) call write_column_title(iunit, 'RDM Energy')
+            if (rdm_energy) call write_column_title(iunit, 'RDM energy num.')
+            if (rdm_energy) call write_column_title(iunit, 'RDM trace')
         end if
         call write_column_title(iunit, '# states', int_val=.true., justify=1)
         call write_column_title(iunit, '# spawn_events', int_val=.true., justify=1)
@@ -461,7 +462,8 @@ contains
         end if
 
         if (present(rdm_energy)) then
-            if (rdm_energy) call write_qmc_var(iunit, qs%estimators(1)%rdm_energy/qs%estimators(1)%rdm_trace)
+            if (rdm_energy) call write_qmc_var(iunit, qs%estimators(1)%rdm_energy)
+            if (rdm_energy) call write_qmc_var(iunit, qs%estimators(1)%rdm_trace)
         end if
 
         call write_qmc_var(iunit, qs%estimators(1)%tot_nstates)

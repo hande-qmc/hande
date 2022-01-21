@@ -33,7 +33,7 @@ contains
         !        updated, and the diagagonal matrix elements in psip_list also.
 
         use calc, only: doing_calc, hfs_fciqmc_calc
-        use determinants, only: decode_det, write_det, sum_sp_eigenvalues_occ_list
+        use determinants, only: decode_det, write_det, sum_fock_values_occ_list
         use system, only: sys_t
 
         use parallel
@@ -132,7 +132,7 @@ contains
             ! Now set H00 = <D_0|H|D_0> so that future references to it are
             ! correct.
             qs%ref%H00 = qs%ref%H00 + H00_old
-            qs%ref%fock_sum = sum_sp_eigenvalues_occ_list(sys, qs%ref%occ_list0)
+            qs%ref%fock_sum = sum_fock_values_occ_list(sys, qs%propagator%sp_fock, qs%ref%occ_list0)
             if (doing_calc(hfs_fciqmc_calc)) call stop_all('select_ref_det', 'Not implemented for HFS.')
             if (parent) then
                 write (iunit,'(1X,"#",1X,62("-"))')
@@ -875,7 +875,7 @@ contains
             else
                 ! Note: even if we're doing linked CC, the clusters contributing to the projected estimator must not contain
                 ! excitors involving the same orbitals so we need only look for unlinked clusters.
-                call select_cluster(rng, sys, qs%psip_list, qs%ref%f0, 2, .false., nattempts, D0_normalisation, 0.0_p, D0_pos, &
+                call select_cluster(rng, sys, qs%psip_list, qs%ref%f0, 2, .false., nattempts, D0_normalisation, 0.0_p, &
                                 cumulative_abs_real_pops, tot_abs_real_pop, 2, 2, logging_info, cdet, cluster, qs%excit_gen_data)
             end if
             if (cluster%excitation_level /= huge(0)) then
@@ -1203,6 +1203,8 @@ contains
             ! number of single/double excitations), stop here and fix pattempt_single.
             call mpi_allreduce(qs%excit_gen_data%p_single_double%rep_accum%overflow_loc, overflow, 1, MPI_LOGICAL, MPI_LAND, &
                             MPI_COMM_WORLD, ierr)
+#else
+            overflow = .false.
 #endif
             
             if ((qs%vary_shift(1)) .or. (overflow)) then

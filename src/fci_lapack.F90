@@ -47,7 +47,7 @@ contains
 
         iunit = 6
 
-        if (parent) call check_fci_opts(sys, fci_in, .false.)
+        if (parent) call check_fci_opts(sys, fci_in)
 
         call copy_sys_spin_info(sys, sys_bak)
         ref = ref_in
@@ -133,7 +133,7 @@ contains
         !        On output contains the eigenvectors, if requested, or is
         !        otherwise destroyed.
         ! Out:
-        !    eigv(ndets): Lanczos eigenvalues of the current block of the
+        !    eigv(ndets): Eigenvalues of the current block of the
         !        Hamiltonian matrix.
 
         use checking, only: check_allocate, check_deallocate

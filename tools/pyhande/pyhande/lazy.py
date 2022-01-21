@@ -68,17 +68,18 @@ starting_iteration: integer
     if end is None:
         end = data['iterations'].iloc[-1]
     before_end_indx = data['iterations'] <= end
-    data_before_end = data.ix[before_end_indx]
+    data_before_end = data[before_end_indx]
     
-    list = data_before_end['Proj. Energy']
-    n_data=len(list)
+    list_proje = data_before_end['Proj. Energy']
+    n_data=len(list_proje)
 
     mser_min = sys.float_info.max
     for i in range(n_blocks): 
         start_line = int(i*(n_data*start_max_frac)/n_blocks)
-        mser = numpy.var(list[start_line:n_data]) / (n_data-start_line)
+        mser = numpy.var(list_proje.iloc[start_line:n_data]) / (n_data-start_line)
         if ( mser < mser_min):
             mser_min = mser
+            # [todo] - Shouldn't this be "(1+start_line) * md['qmc']['ncycles']"?
             starting_iteration = start_line * md['qmc']['ncycles']
             final_start_line = start_line
         
@@ -123,33 +124,31 @@ Returns
 --------
 info : :func:`collections.namedtuple`
     See :func:`std_analysis`.
+
+[todo] - Catch ValueError from statsmodels when there is too little
+[todo] - data.
 '''
 
     if end is None:
         end = calc['iterations'].iloc[-1]
     before_end_indx = calc['iterations'] <= end
-    data_before_end = calc.ix[before_end_indx]
+    data_before_end = calc[before_end_indx]
     
     after_start_indx = data_before_end['iterations'] >= start
     calc_tr          = data_before_end[after_start_indx]
         
-    #list = calc_tr['Proj. Energy'].as_matrix()
-    #n_data = len(list)
-    
-    list_org = calc_tr['Proj. Energy'].as_matrix()
-    n_data = len(list_org) / batch_size
-    list = [0]*n_data
+    list_org = calc_tr['Proj. Energy'].values
+    n_data = len(list_org) // batch_size
+    list_means = [0]*n_data
     for i in range(n_data):
-        list[i] = numpy.mean(list_org[i*batch_size:(i+1)*batch_size])
-    #print list
+        list_means[i] = numpy.mean(list_org[i*batch_size:(i+1)*batch_size])
 
-    #print list    
-    mean = numpy.mean(list)
-    var  = numpy.var(list)
-    acf = tsastats.acf(x=list, unbiased=True, nlags=n_data-1, fft=True)
+    mean = numpy.mean(list_means)
+    var  = numpy.var(list_means)
+    acf = tsastats.acf(x=list_means, unbiased=True, nlags=n_data-1, fft=True)
         
     # ar model
-    ar = ar_model.AR(list)
+    ar = ar_model.AR(list_means)
     model_ar = ar.fit(ic='aic', trend='c', method='cmle')
     params = model_ar.params
     denom = nom = 1
@@ -176,7 +175,11 @@ info : :func:`collections.namedtuple`
          'estimate': pyblock.error.pretty_fmt_err(mean, error)},
         columns=['mean', 'standard error', 'standard error error', 'estimate'],
         index=['Proj. Energy'])
-    no_opt_block = ['N_0','Shift','# H psips','\sum H_0j N_j']
+    kN0 = check_key(calc, 'N_0')
+    kHpsips = check_key(calc, '# H psips')
+    kH0jNj = check_key(calc,'\sum H_0j N_j')
+    kShift = check_key(calc, 'Shift')
+    no_opt_block = [kN0, kShift, kHpsips, kH0jNj]
     tuple_fields = ('metadata data data_len reblock covariance opt_block '
                     'no_opt_block'.split())
     info_tuple = collections.namedtuple('HandeInfo', tuple_fields)
@@ -186,9 +189,9 @@ info : :func:`collections.namedtuple`
 
 def std_analysis(datafiles, start=None, end=None, select_function=None,
         extract_psips=False, reweight_history=0, mean_shift=0.0,
-        arith_mean=False, calc_inefficiency=False, verbosity = 1, 
+        calc_inefficiency=False, verbosity = 1, 
         starts_reweighting=None, extract_rep_loop_time=False,
-        analysis_method=None, warmup_detection=None):
+        analysis_method='reblocking', warmup_detection='hande_org'):
     '''Perform a 'standard' analysis of HANDE output files.
 
 Parameters
@@ -212,7 +215,6 @@ reweight_history : integer
     [Umrigar93]_ this should be set to be a few correlation times.
 mean_shift : float
     prevent the weights from becoming to large.
-arith_mean : bool
 calc_inefficiency : bool
     determines whether inefficiency should be calculated.
 verbosity : int
@@ -267,8 +269,13 @@ References
 Umrigar93
     Umrigar et al., J. Chem. Phys. 99, 2865 (1993).
 '''
-    (calcs, calcs_md) = zeroT_qmc(datafiles, reweight_history, mean_shift,
-                                  arith_mean)
+    if analysis_method not in ['reblocking', 'hybrid']:
+        raise ValueError("'analysis_method' has to be either 'reblocking' or "
+                         f"'hybrid', not '{analysis_method}'.")
+    if warmup_detection not in ['hande_org', 'mser_min']:
+        raise ValueError("'warmup_detection' has to be either 'hande_org' or "
+                         "'mser_min', not '{warmup_detection}'.")
+    (calcs, calcs_md) = zeroT_qmc(datafiles, reweight_history, mean_shift)
     infos = []
     for (calc, md) in zip(calcs, calcs_md):        
         calc_start = start
@@ -296,7 +303,26 @@ Umrigar93
             infos.append(lazy_hybrid(calc, md, calc_start, calc_end))      # added_by_ichibha
     return infos
 
-def zeroT_qmc(datafiles, reweight_history=0, mean_shift=0.0, arith_mean=False):
+def check_key(calc, key):
+    '''Check if this key is present in calc, and if not, append "_1".
+
+Parameters
+----------
+calc : :class:`pandas.DataFrame`
+    Zero-temperature QMC calculation output.
+key : str
+    key name to check in `calc`.
+
+Returns
+--------
+key_ : :str: modified key name.
+'''
+    k=key
+    if not k in calc: k += '_1'
+    return k
+
+
+def zeroT_qmc(datafiles, reweight_history=0, mean_shift=0.0):
     '''Extract zero-temperature QMC (i.e. FCIQMC and CCMC) calculations.
 
 Reweighting information is added to the calculation data if requested.
@@ -308,7 +334,7 @@ Reweighting information is added to the calculation data if requested.
 
 Parameters
 ----------
-datafiles, reweight_history, mean_shift, arith_mean :
+datafiles, reweight_history, mean_shift :
     See :func:`std_analysis`.
 
 Returns
@@ -322,17 +348,24 @@ metadata : list of dict
 
     hande_out = pyhande.extract.extract_data_sets(datafiles)
 
+
     # Concat all QMC data (We did say 'lazy', so assumptions are being made...)
     data = []
     metadata = []
     for (md, df) in filter_calcs(hande_out, ('FCIQMC', 'CCMC', 'Simple FCIQMC','UCCMC', 'Trotterized UCCMC')):
+        kN0 = check_key(df, 'N_0')
+        kHpsips = check_key(df, '# H psips')
+        kH0jNj = check_key(df, '\sum H_0j N_j')
+        kShift = check_key(df, 'Shift')
         if reweight_history > 0:
-            df = pyhande.weight.reweight(df, md['qmc']['ncycles'],
+            weights = pyhande.weight.reweight(df, md['qmc']['ncycles'],
                 md['qmc']['tau'], reweight_history, mean_shift,
-                arith_mean=arith_mean)
-            df['W * \sum H_0j N_j'] = df['\sum H_0j N_j'] * df['Weight']
-            df['W * N_0'] = df['N_0'] * df['Weight']
-        df['Proj. Energy'] = df['\sum H_0j N_j'] / df['N_0'] 
+                weight_key=kShift)
+            df['W * \sum H_0j N_j'] = df[kH0jNj] * weights
+            df['W * N_0'] = df[kN0] * weights
+        # The next uncommented line is dangerous and possibly very
+        # confusing!  [todo] Fix.
+        df['Proj. Energy'] = df[kH0jNj] / df[kN0] 
         data.append(df)
         metadata.append(md)
     if data:
@@ -371,6 +404,13 @@ info : :func:`collections.namedtuple`
     info_tuple = collections.namedtuple('HandeInfo', tuple_fields)
     # Reblock Monte Carlo data over desired window.
     reweight_calc = 'W * N_0' in calc
+    # Set up the keys for data, taking into account the situation if there is more than one replica.
+    kN0 = check_key(calc, 'N_0')
+    kHpsips = check_key(calc, '# H psips')
+    kH0jNj = check_key(calc,'\sum H_0j N_j')
+    kShift = check_key(calc, 'Shift')
+
+
     if end is None:
         # Default end is the last iteration.
         end = calc['iterations'].iloc[-1]
@@ -384,8 +424,8 @@ info : :func:`collections.namedtuple`
         indx = select_function(calc)
     to_block = []
     if extract_psips:
-        to_block.append('# H psips')
-    to_block.extend(['\sum H_0j N_j', 'N_0', 'Shift'])
+        to_block.append(kHpsips)
+    to_block.extend([kH0jNj, kN0, kShift])
     if reweight_calc:
         to_block.extend(['W * \sum H_0j N_j', 'W * N_0'])
     if extract_rep_loop_time:
@@ -393,14 +433,15 @@ info : :func:`collections.namedtuple`
     if 'uccmc' in md.keys() :#and not(md['uccmc']['trot']):
         to_block.append('N_0 UCCMC')
     mc_data = calc.ix[indx, to_block]
-    if mc_data['Shift'].iloc[0] == mc_data['Shift'].iloc[1]:
-        if calc['Shift'][~indx].iloc[-1] == mc_data['Shift'].iloc[0]:
+    mc_data = calc.loc[indx, to_block]
+    if mc_data[kShift].iloc[0] == mc_data[kShift].iloc[1]:
+        if calc[kShift][~indx].iloc[-1] == mc_data[kShift].iloc[0]:
             warnings.warn('The blocking analysis starts from before the shift '
                           'begins to vary.')
 
     (data_len, reblock, covariance) = pyblock.pd_utils.reblock(mc_data)
 
-    proje = pyhande.analysis.projected_energy(reblock, covariance, data_len)
+    proje = pyhande.analysis.projected_energy(reblock, covariance, data_len, kH0jNj, kN0)
     reblock = pd.concat([reblock, proje], axis=1)
     to_block.append('Proj. Energy')
 
@@ -417,13 +458,15 @@ info : :func:`collections.namedtuple`
     if calc_inefficiency:
         # Calculate quantities needed for the inefficiency.
         dtau = md['qmc']['tau']
-        reblocked_iters = calc.ix[indx, 'iterations']
+        reblocked_iters = calc.loc[indx, 'iterations']
         N = reblocked_iters.iloc[-1] - reblocked_iters.iloc[0]
 
         # This returns a data frame with inefficiency data from the
         # projected energy estimators if available.
-        ineff = pyhande.analysis.inefficiency(opt_block, dtau, N)
-        if ineff is not None:
+        ineff = pyhande.analysis.inefficiency(opt_block, dtau, N,
+                                              sum_key=kH0jNj, ref_key=kN0,
+                                              total_key=kHpsips)
+        if ineff['mean']['Inefficiency'] is not None:
             opt_block = opt_block.append(ineff)
 
     estimates = []
@@ -618,35 +661,45 @@ starting_iteration: integer
 '''
 
     if frac_screen_interval <= 0:
-        raise RuntimeError("frac_screen_interval <= 0")
+        raise ValueError("frac_screen_interval <= 0")
 
     if number_of_reblocks_to_cut_off < 0:
-        raise RuntimeError("number_of_reblocks_to_cut_off < 0")
+        raise ValueError("number_of_reblocks_to_cut_off < 0")
 
     if pos_min_frac < 0.00001 or pos_min_frac > 1.0:
-        raise RuntimeError("0.00001 < pos_min_frac < 1 not satisfied")
+        raise ValueError("0.00001 < pos_min_frac < 1 not satisfied")
 
     if number_of_reblockings <= 0:
-        raise RuntimeError("number_of_reblockings <= 0")
+        raise ValueError("number_of_reblockings <= 0")
 
     if number_of_reblockings > frac_screen_interval:
-        raise RuntimeError("number_of_reblockings > frac_screen_interval")
+        raise ValueError("number_of_reblockings > frac_screen_interval")
+
+    kN0 = check_key(data, 'N_0')
+    kHpsips = check_key(data, '# H psips')
+    kH0jNj = check_key(data,'\sum H_0j N_j')
+    kShift = check_key(data, 'Shift')
+
+    kN0 = check_key(data, 'N_0')
+    kHpsips = check_key(data, '# H psips')
+    kH0jNj = check_key(data,'\sum H_0j N_j')
+    kShift = check_key(data, 'Shift')
 
     if end is None:
         # Default end is the last iteration.
         end = data['iterations'].iloc[-1]
     before_end_indx = data['iterations'] <= end
-    data_before_end = data.ix[before_end_indx]
+    data_before_end = data[before_end_indx]
 
     # Find the point the shift began to vary.
-    variable_shift = data_before_end['Shift'] != data_before_end['Shift'].iloc[0]
+    variable_shift = data_before_end[kShift] != data_before_end[kShift].iloc[0]
     if variable_shift.any():
         shift_variation_indx = data_before_end[variable_shift]['iterations'].index[0]
     else:
         raise RuntimeError("Shift has not started to vary in dataset!")
 
     # Check we have enough data to screen:
-    if data_before_end['Shift'].size - shift_variation_indx < frac_screen_interval:
+    if data_before_end[kShift].size - shift_variation_indx < frac_screen_interval:
         # i.e. data where shift is not equal to initial value is less than
         # frac_screen_interval, i.e. we cannot screen adequately.
         warnings.warn("Calculation contains less data than "
@@ -664,7 +717,7 @@ starting_iteration: integer
             shift_variation_indx)/frac_screen_interval)
 
     min_index = -1
-    err_keys = ['Shift',  'N_0', '\sum H_0j N_j', '# H psips']
+    err_keys = [kShift, kN0, kH0jNj, kHpsips]
     min_error_frac_weighted = pd.Series([float('inf')]*len(err_keys), index=err_keys)
     starting_iteration_found = False
 
@@ -679,12 +732,12 @@ starting_iteration: integer
                 # Don't include, even if the shift is estimated.
                 s_err_frac_weighted = float('inf')
             else:
-                number_of_data_left = data_before_end['Shift'].index[-1] - shift_variation_indx - j*step_indx + 1
+                number_of_data_left = data_before_end[kShift].index[-1] - shift_variation_indx - j*step_indx + 1
                 err_err = info.opt_block.loc[err_keys, 'standard error error']
                 err = info.opt_block.loc[err_keys, 'standard error']
                 err_frac = err_err.divide(err)
                 err_frac_weighted = err_frac.divide(math.sqrt(float(number_of_data_left)))
-                s_err_frac_weighted = err_frac_weighted['Shift']
+                s_err_frac_weighted = err_frac_weighted[kShift]
                 if (err_frac_weighted <= min_error_frac_weighted).any():
                     min_index = j
                     min_error_frac_weighted = err_frac_weighted.copy()
@@ -723,8 +776,7 @@ starting_iteration: integer
 
     return starting_iteration
 
-def reweighting_graph(datafiles, start=None, verbosity=1, mean_shift=0.0,
-                      arith_mean=False):
+def reweighting_graph(datafiles, start=None, verbosity=1, mean_shift=0.0):
     '''Plot a graph of reweighted projected energy vs. reweighted factor W.
     
 Detecting biases by reweighting is described in [Umrigar93]_ and [Vigor15]_ , 
@@ -751,8 +803,6 @@ verbosity : int
     starting point search.
 mean_shift : float
     prevent the weights from becoming to large.
-arith_mean : bool
-        
 
 References
 ----------
@@ -774,8 +824,8 @@ Thanks to Will Vigor for original implementation.
     for weight in weights:
         infos = std_analysis(datafiles=datafiles, start=start, 
                 extract_psips=True, reweight_history=weight, 
-                mean_shift=mean_shift, arith_mean=arith_mean, 
-                verbosity=verbosity, starts_reweighting=starts)
+                mean_shift=mean_shift, verbosity=verbosity,
+                starts_reweighting=starts)
         infos_collection.append(infos)
     
     for k in range(0, ndiff_calcs):

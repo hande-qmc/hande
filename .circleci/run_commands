@@ -1,23 +1,5 @@
 #!/usr/bin/env bash
 
-# Install recent CMake
-CMAKE_VERSION="3.6.3"
-cmake_url="https://cmake.org/files/v${CMAKE_VERSION%.*}/cmake-${CMAKE_VERSION}-Linux-x86_64.tar.gz"
-target_path="/opt/cmake"
-mkdir -p $target_path && \
-    curl -Ls $cmake_url | tar -xz -C $target_path --strip-components=1 && \
-    rm -rf cmake-${CMAKE_VERSION}-Linux-x86_64.tar.gz
-echo '-- Done with CMake!'
-
-# Install TRLan
-curl -Ls https://codeforge.lbl.gov/frs/download.php/210/trlan-201009.tar.gz | tar -xz && \
-    (cd trlan-201009 && \
-    make lib &> /dev/null && \
-    mkdir -p /opt/trlan/lib &&\
-    cp libtrlan.a /opt/trlan/lib) && \
-    rm -rf trlan-201009
-echo "-- Done with TRLan"
-
 # Install testcode
 git clone git://github.com/jsspencer/testcode.git /opt/testcode &> /dev/null
 echo "-- Done with testcode"

@@ -1,9 +1,9 @@
 version: 2
 
 variables:
-  ubuntu-1804: &ubuntu-1804
+  ubuntu: &ubuntu
     docker:
-      - image: handeqmc/circleci_ubuntu-18.04
+      - image: ghcr.io/robertodr/hande_circleci:latest
         name: tsubame
         user: merzbow 
     working_directory: ~/hande
@@ -11,11 +11,7 @@ variables:
     run:
       name: Set Python dependencies
       command: |
-        if [[ "$PYTHON_VER" == "2" ]] ; then
-            pipenv install --two
-        else
-            pipenv install --three
-        fi
+        pipenv install --three
   report: &report
     run:
       name: Report
@@ -30,7 +26,6 @@ variables:
                        --type=release \
                        --fc=gfortran \
                        --cc=gcc \
-                       --lanczos="-L/opt/trlan/lib -ltrlan" \
                        --exe-name="hande.circle.serial.linux.cmake.x"
   configure-cmake-mpi: &configure-cmake-mpi
     run:
@@ -44,7 +39,6 @@ variables:
                        --mpi \
                        --mpi-with-scalapack \
                        --scalapack="-L/usr/lib/x86_64-linux-gnu -lscalapack-openmpi" \
-                       --lanczos="-L/opt/trlan/lib -ltrlan" \
                        --exe-name="hande.circle.mpi.linux.cmake.x"
   configure-cmake-hybrid: &configure-cmake-hybrid
     run:
@@ -59,7 +53,6 @@ variables:
                        --omp \
                        --mpi-with-scalapack \
                        --scalapack="-L/usr/lib/x86_64-linux-gnu -lscalapack-openmpi" \
-                       --lanczos="-L/opt/trlan/lib -ltrlan" \
                        --exe-name="hande.circle.hybrid.linux.cmake.x"
   configure-legacy: &configure-legacy
     run:
@@ -78,7 +71,7 @@ variables:
       name: Building
       shell: /bin/bash
       command: |
-        env VERBOSE=1 make
+        pipenv run env VERBOSE=1 make
   tests: &tests
     run:
       name: Testing
@@ -95,41 +88,8 @@ variables:
         pipenv run python /opt/testcode/bin/testcode.py -c vquick_serial -v
 
 jobs:
-  cmake-py2:
-    <<: *ubuntu-1804
-    environment:
-      - PYTHON_VER: "2"
-    steps:
-      - checkout
-      - *setup
-      - *report
-      - *configure-cmake
-      - *build-cmake
-      - *tests-serial
-  cmake-mpi-py2:
-    <<: *ubuntu-1804
-    environment:
-      - PYTHON_VER: "2"
-    steps:
-      - checkout
-      - *setup
-      - *report
-      - *configure-cmake-mpi
-      - *build-cmake
-      - *tests
-  legacy-mpi-py2:
-    <<: *ubuntu-1804
-    environment:
-      - PYTHON_VER: "2"
-    steps:
-      - checkout
-      - *setup
-      - *report
-      - *configure-legacy
-      - *build-legacy
-      - *tests
   cmake-mpi-py3:
-    <<: *ubuntu-1804
+    <<: *ubuntu
     environment:
       - PYTHON_VER: "3"
     steps:
@@ -140,7 +100,7 @@ jobs:
       - *build-cmake
       - *tests
   legacy-mpi-py3:
-    <<: *ubuntu-1804
+    <<: *ubuntu
     environment:
       - PYTHON_VER: "3"
     steps:
@@ -155,8 +115,5 @@ workflows:
   version: 2
   build:
     jobs:
-      - cmake-py2
-      - cmake-mpi-py2
-      - legacy-mpi-py2
       - cmake-mpi-py3
       - legacy-mpi-py3

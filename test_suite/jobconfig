@@ -5,13 +5,6 @@
 [fci/*fci_rdm/]
 max_nprocs = 1
 [fci/*complex/]
-[lanczos/*/]
-# Lanczos jobs are fragile and don't like too many processors for small test jobs
-max_nprocs = 2
-[lanczos/*sparse/]
-max_nprocs = 1
-[lanczos/*direct/]
-max_nprocs = 1
 
 # Toy FCIQMC algorithm
 [simple_fciqmc/*/]
@@ -57,7 +50,7 @@ output = HANDE.out
 [categories]
 
 # Serial MC tests (with POP_SIZE=32) + deterministic tests.
-serial = fci lanczos mc_hilbert_space/np1 mc_canonical_estimates/np1 simple_fciqmc *mc/np1 *mc_real_32/np1
+serial = fci mc_hilbert_space/np1 mc_canonical_estimates/np1 simple_fciqmc *mc/np1 *mc_real_32/np1
 
 mpi = serial mc_hilbert_space mc_canonical_estimates *mc *mc_real_32
 
@@ -155,10 +148,6 @@ vquick_serial = ccmc/np1/Ne-RHF-cc-pVDZ-Lz-CCSDTQ5-multispawn-short
            ifciqmc/np1/hubbard_k_nontilted_2d_ifciqmc
            ifciqmc_real_32/np1/hubbard_k_1d_ifciqmc_real_32
            ifciqmc_real_32/np1/hubbard_k_1d_ifciqmc_real_32_SS
-           lanczos/hubbard_k_nontilted_2d_lanczos
-           lanczos/hubbard_k_tilted_2d_sparse
-           lanczos/hubbard_real_nontilted_2d_direct
-           lanczos/hubbard_real_rectangle_2d_lanczos
            mc_canonical_estimates/np1/H2O_ccpvdz_RHF
            mc_hilbert_space/np1/hf_hilbert_space
            mc_hilbert_space/np1/hubbard_k_tilted_2d_mchilbert
@@ -233,11 +222,6 @@ single_precision = dmqmc/np1/heisenberg_3d
                    ifciqmc/np1/ueg_interact
                    ifciqmc/np4/H2O-RHF-cc-pVTZ-non-block
                    ifciqmc_real_32/np4/H2O-RHF-cc-pVTZ-non-block
-                   lanczos/CN-UHF-sto-3g
-                   lanczos/Ne-RHF-cc-pVDZ_sparse
-                   lanczos/hubbard_k_nontilted_2d_lanczos
-                   lanczos/hubbard_k_tilted_2d_sparse
-                   lanczos/hubbard_real_nontilted_2d_direct
                    mc_hilbert_space/np1/hf_hilbert_space
                    mc_hilbert_space/np1/hubbard_k_tilted_2d_mchilbert
                    mc_hilbert_space/np1/ueg_n14_rs1_e3_hilbert_space

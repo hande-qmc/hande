@@ -1,0 +1,252 @@
+cell.h is deprecated.  It is replaced by the (row-based) lattice vectors cell.a:  cell.a = cell.h.T
+From MP
+[[-0.33333333  0.          0.        ]
+ [ 0.          0.          0.        ]
+ [ 0.33333333  0.          0.        ]]
+Moving! True
+Before shifting back
+[[-0.33333333  0.          0.        ]
+ [ 0.          0.          0.        ]
+ [ 0.33333333  0.          0.        ]]
+After shifting back
+[[-0.33333333  0.          0.        ]
+ [ 0.          0.          0.        ]
+ [ 0.33333333  0.          0.        ]]
+
+
+******** <class 'pyscf.pbc.scf.khf.KRHF'> flags ********
+method = KRHF
+initial guess = minao
+damping factor = 0
+level shift factor = 0
+Do DIIS = True
+DIIS start cycle = 1
+DIIS space = 8
+SCF tol = 1e-09
+SCF gradient tol = None
+max. SCF cycles = 50
+direct_scf = False
+chkfile to save SCF result = /tmp/tmpdLSVZV
+max_memory 4000 MB (current use 51 MB)
+
+
+******** PBC SCF flags ********
+N kpts = 3
+kpts = [[ 0.1994662 -0.1994662 -0.1994662]
+ [ 0.         0.         0.       ]
+ [-0.1994662  0.1994662  0.1994662]]
+DF object = <pyscf.pbc.df.fft.FFTDF object at 0x7f6c8a75df90>
+Exchange divergence treatment (exxdiv) = vcut_ws
+Set gradient conv threshold to 3.16228e-05
+Nelec from initial guess = 23.7509
+cond(S) = [ 17.85505004  17.83582001  17.85505004]
+    CPU time for vj and vk    411.62 sec, wall time    308.79 sec
+E_coul = 8.3332193582018
+init E= -38.8613952929292
+    CPU time for initialize scf    450.64 sec, wall time    314.68 sec
+HOMO = -1.76715887702  LUMO = 1.23001004431
+     k-point                  mo_energy
+   0 (-0.333  0.000  0.000)   [-3.02114311 -1.81562971 -1.80170162 -1.76791044] [ 1.23001004  1.26670497  1.29063739  1.56730272  5.15210346  5.15314305
+  5.19320947  5.20865985  5.22368521]
+   1 ( 0.000  0.000  0.000)   [-3.02125987 -1.8155268  -1.8015985  -1.76715888] [ 1.26481881  1.27294804  1.29778533  1.55922256  5.15210476  5.15314262
+  5.19320933  5.20865973  5.22368533]
+   2 ( 0.333  0.000  0.000)   [-3.02114311 -1.81562971 -1.80170162 -1.76791044] [ 1.23001004  1.26670497  1.29063739  1.56730272  5.15210346  5.15314305
+  5.19320947  5.20865985  5.22368521]
+    CPU time for vj and vk    414.74 sec, wall time    308.98 sec
+E_coul = 8.94888465189161
+cycle= 1 E= -39.1143185768651  delta_E= -0.253  |g|= 0.116  |ddm|= 0.538
+    CPU time for cycle= 1    415.63 sec, wall time    309.05 sec
+diis-norm(errvec)=0.10068
+diis-c [-0.01013641+0.j  1.00000000+0.j]
+HOMO = -1.68541463473  LUMO = 1.27236222768
+     k-point                  mo_energy
+   0 (-0.333  0.000  0.000)   [-2.98065957 -1.7205733  -1.70923226 -1.68657452] [ 1.27236223  1.31525647  1.33799742  1.62026513  5.26331164  5.26426812
+  5.30489442  5.32014921  5.33512687]
+   1 ( 0.000  0.000  0.000)   [-2.98079787 -1.72038133 -1.70905904 -1.68541463] [ 1.30782696  1.32158439  1.3450562   1.61214025  5.26336791  5.26430901
+  5.30491659  5.32015952  5.33513942]
+   2 ( 0.333  0.000  0.000)   [-2.98065957 -1.7205733  -1.70923226 -1.68657452] [ 1.27236223  1.31525647  1.33799742  1.62026513  5.26331164  5.26426812
+  5.30489442  5.32014921  5.33512687]
+    CPU time for vj and vk    413.43 sec, wall time    308.97 sec
+E_coul = 8.84550900103404
+cycle= 2 E= -39.114984972179  delta_E= -0.000666  |g|= 0.0152  |ddm|= 0.128
+    CPU time for cycle= 2    414.29 sec, wall time    309.05 sec
+diis-norm(errvec)=0.0144933
+diis-c [ -1.96705810e-04 +0.00000000e+00j  -3.80410689e-02 -3.02012015e-31j
+   1.03804107e+00 +3.02012015e-31j]
+HOMO = -1.70067716379  LUMO = 1.26557029827
+     k-point                  mo_energy
+   0 (-0.333  0.000  0.000)   [-2.99341774 -1.7333161  -1.72215236 -1.70183033] [ 1.2655703   1.30937522  1.33244146  1.61430736  5.24802739  5.24897541
+  5.28952756  5.3047185   5.31967941]
+   1 ( 0.000  0.000  0.000)   [-2.99355754 -1.73311954 -1.72197614 -1.70067716] [ 1.30099991  1.31569159  1.33947834  1.60619253  5.24808522  5.2490171
+  5.28955054  5.30472933  5.31969251]
+   2 ( 0.333  0.000  0.000)   [-2.99341774 -1.7333161  -1.72215236 -1.70183033] [ 1.2655703   1.30937522  1.33244146  1.61430736  5.24802739  5.24897541
+  5.28952756  5.3047185   5.31967941]
+    CPU time for vj and vk    413.14 sec, wall time    308.91 sec
+E_coul = 8.84455362793602
+cycle= 3 E= -39.1150011993295  delta_E= -1.62e-05  |g|= 0.00568  |ddm|= 0.0171
+    CPU time for cycle= 3    414.00 sec, wall time    308.98 sec
+diis-norm(errvec)=0.00547805
+diis-c [ -5.20159975e-06 +0.00000000e+00j   2.04837223e-03 +7.60848128e-30j
+  -5.40901530e-01 -5.07827010e-29j   1.53885316e+00 +4.31742197e-29j]
+HOMO = -1.70167547982  LUMO = 1.26508032304
+     k-point                  mo_energy
+   0 (-0.333  0.000  0.000)   [-2.99261915 -1.73251146 -1.72143452 -1.70281481] [ 1.26508032  1.30973601  1.33284971  1.61484654  5.24840541  5.24935578
+  5.28992206  5.30508622  5.32004785]
+   1 ( 0.000  0.000  0.000)   [-2.99275904 -1.73231392 -1.72125843 -1.70167548] [ 1.30052891  1.31605214  1.33987013  1.60673565  5.24846231  5.24939685
+  5.28994478  5.30509699  5.32006077]
+   2 ( 0.333  0.000  0.000)   [-2.99261915 -1.73251146 -1.72143452 -1.70281481] [ 1.26508032  1.30973601  1.33284971  1.61484654  5.24840541  5.24935578
+  5.28992206  5.30508622  5.32004785]
+    CPU time for vj and vk    416.00 sec, wall time    309.19 sec
+E_coul = 8.84417927477068
+cycle= 4 E= -39.1150042531446  delta_E= -3.05e-06  |g|= 0.000991  |ddm|= 0.00961
+    CPU time for cycle= 4    416.87 sec, wall time    309.26 sec
+diis-norm(errvec)=0.000885111
+diis-c [ -2.65321299e-08 +0.00000000e+00j  -1.06965346e-03 -1.20473981e-29j
+   2.61823896e-01 +2.76871559e-28j  -8.30606820e-01 -6.10555326e-28j
+   1.56985258e+00 +3.45731165e-28j]
+HOMO = -1.70182988923  LUMO = 1.26499621857
+     k-point                  mo_energy
+   0 (-0.333  0.000  0.000)   [-2.99270849 -1.73241517 -1.72135794 -1.70296922] [ 1.26499622  1.30977097  1.33290601  1.61481331  5.24838772  5.24934083
+  5.28991299  5.3050808   5.32003834]
+   1 ( 0.000  0.000  0.000)   [-2.99284823 -1.73221679 -1.72118132 -1.70182989] [ 1.30044863  1.31608706  1.33992417  1.60670228  5.24844464  5.24938198
+  5.28993575  5.30509163  5.32005131]
+   2 ( 0.333  0.000  0.000)   [-2.99270849 -1.73241517 -1.72135794 -1.70296922] [ 1.26499622  1.30977097  1.33290601  1.61481331  5.24838772  5.24934083
+  5.28991299  5.3050808   5.32003834]
+    CPU time for vj and vk    412.65 sec, wall time    308.88 sec
+E_coul = 8.84412642550584
+cycle= 5 E= -39.1150043401802  delta_E= -8.7e-08  |g|= 5.72e-05  |ddm|= 0.00188
+    CPU time for cycle= 5    413.51 sec, wall time    308.95 sec
+diis-norm(errvec)=4.65506e-05
+diis-c [ -3.41404655e-10 +0.00000000e+00j   2.82513288e-04 -2.15484101e-28j
+  -8.56854458e-02 +4.89521065e-26j   2.73519748e-01 -1.54939674e-25j
+  -5.32883499e-01 +2.89632822e-25j   1.34476668e+00 -1.83429771e-25j]
+HOMO = -1.70182652238  LUMO = 1.26499982385
+     k-point                  mo_energy
+   0 (-0.333  0.000  0.000)   [-2.99271365 -1.73240685 -1.72135508 -1.702965  ] [ 1.26499982  1.30977178  1.33290991  1.61481029  5.24839186  5.24934481
+  5.28991702  5.30508443  5.320042  ]
+   1 ( 0.000  0.000  0.000)   [-2.99285338 -1.73220871 -1.72117868 -1.70182652] [ 1.30045181  1.31608783  1.3399279   1.60669943  5.24844873  5.2493859
+  5.28993975  5.30509522  5.32005493]
+   2 ( 0.333  0.000  0.000)   [-2.99271365 -1.73240685 -1.72135508 -1.702965  ] [ 1.26499982  1.30977178  1.33290991  1.61481029  5.24839186  5.24934481
+  5.28991702  5.30508443  5.320042  ]
+    CPU time for vj and vk    412.28 sec, wall time    308.93 sec
+E_coul = 8.84412542242111
+cycle= 6 E= -39.1150043403817  delta_E= -2.01e-10  |g|= 8.24e-06  |ddm|= 9.27e-05
+    CPU time for cycle= 6    413.16 sec, wall time    309.00 sec
+HOMO = -1.70182614684  LUMO = 1.26499962867
+     k-point                  mo_energy
+   0 (-0.333  0.000  0.000)   [-2.99271368 -1.73240631 -1.72135599 -1.70296489] [ 1.26499963  1.30977134  1.3329102   1.61481022  5.24839173  5.24934466
+  5.2899169   5.30508431  5.32004186]
+   1 ( 0.000  0.000  0.000)   [-2.9928534  -1.73220808 -1.72117951 -1.70182615] [ 1.30045179  1.31608741  1.33992822  1.6066993   5.24844861  5.24938577
+  5.28993964  5.30509512  5.3200548 ]
+   2 ( 0.333  0.000  0.000)   [-2.99271368 -1.73240631 -1.72135599 -1.70296489] [ 1.26499963  1.30977134  1.3329102   1.61481022  5.24839173  5.24934466
+  5.2899169   5.30508431  5.32004186]
+    CPU time for scf_cycle   2938.17 sec, wall time   2168.98 sec
+    CPU time for SCF   2938.17 sec, wall time   2168.99 sec
+converged SCF energy = -39.1150043403817
+-39.1150043404
+Max difference in (pq|rs) - (rs|pq) = 1.88737914186277e-15
+    CPU time for CCSD integral transformation    718.29 sec, wall time    351.01 sec
+Init t2, MP2 energy = -0.124589879423652
+    CPU time for init mp2      0.00 sec, wall time      0.00 sec
+    CPU time for update t1 t2      2.42 sec, wall time      0.22 sec
+istep = 0  E(CCSD) = -0.122657336078963  dE = -0.122657336  norm(t1,t2) = 0.0238876
+    CPU time for CCSD iter      2.45 sec, wall time      0.23 sec
+    CPU time for update t1 t2      3.02 sec, wall time      0.25 sec
+DIIS for step 1
+istep = 1  E(CCSD) = -0.123468108157891  dE = -0.000810772079  norm(t1,t2) = 0.0045789
+    CPU time for CCSD iter      3.06 sec, wall time      0.25 sec
+    CPU time for update t1 t2      3.00 sec, wall time      0.25 sec
+diis-c [ -2.58656267e-07+0.j   1.00000000e+00+0.j]
+DIIS for step 2
+istep = 2  E(CCSD) = -0.123391572195429  dE = 7.65359625e-05  norm(t1,t2) = 0.000695147
+    CPU time for CCSD iter      3.05 sec, wall time      0.26 sec
+    CPU time for update t1 t2      3.03 sec, wall time      0.25 sec
+diis-c [ -3.36891892e-09 +0.00000000e+00j   1.43350148e-01 -2.10157823e-15j
+   8.56649852e-01 +2.10157823e-15j]
+DIIS for step 3
+istep = 3  E(CCSD) = -0.123410731917226  dE = -1.91597218e-05  norm(t1,t2) = 0.00014493
+    CPU time for CCSD iter      3.09 sec, wall time      0.26 sec
+    CPU time for update t1 t2      3.02 sec, wall time      0.25 sec
+diis-c [ -2.62428967e-12 +0.00000000e+00j  -3.17346559e-02 +3.74204181e-15j
+  -1.71801771e-01 +3.82826444e-15j   1.20353643e+00 -7.57030624e-15j]
+DIIS for step 4
+istep = 4  E(CCSD) = -0.123411977365244  dE = -1.24544802e-06  norm(t1,t2) = 1.32755e-05
+    CPU time for CCSD iter      3.08 sec, wall time      0.26 sec
+    CPU time for update t1 t2      3.03 sec, wall time      0.25 sec
+diis-c [ -3.16691118e-14 +0.00000000e+00j   3.99980598e-03 -1.26497459e-14j
+   2.05763530e-02 -5.90976127e-14j  -1.53113268e-01 +4.20216567e-13j
+   1.12853711e+00 -3.48469208e-13j]
+DIIS for step 5
+istep = 5  E(CCSD) = -0.123411966612073  dE = 1.07531709e-08  norm(t1,t2) = 3.86077e-07
+    CPU time for CCSD iter      3.09 sec, wall time      0.26 sec
+    CPU time for CCSD     17.82 sec, wall time      1.51 sec
+CCSD converged
+E(CCSD) = -39.23841630699376  E_corr = -0.123411966612073
+Max difference in (pq|rs) - (rs|pq) = 1.94289029309402e-15
+    CPU time for vj and vk    414.71 sec, wall time    311.18 sec
+    CPU time for vj and vk    414.75 sec, wall time    310.97 sec
+    CPU time for vj and vk    418.14 sec, wall time    311.17 sec
+    CPU time for vj and vk    416.65 sec, wall time    311.01 sec
+    CPU time for vj and vk    412.73 sec, wall time    301.62 sec
+    CPU time for vj and vk    400.35 sec, wall time    297.99 sec
+    CPU time for vj and vk    401.52 sec, wall time    298.05 sec
+    CPU time for vj and vk    398.86 sec, wall time    297.98 sec
+    CPU time for vj and vk    416.20 sec, wall time    311.26 sec
+    CPU time for vj and vk    422.12 sec, wall time    311.18 sec
+    CPU time for vj and vk    401.37 sec, wall time    296.76 sec
+    CPU time for vj and vk    403.70 sec, wall time    297.79 sec
+    CPU time for vj and vk    405.65 sec, wall time    298.04 sec
+    CPU time for vj and vk    406.15 sec, wall time    298.10 sec
+    CPU time for vj and vk    399.70 sec, wall time    297.73 sec
+    CPU time for vj and vk    404.38 sec, wall time    297.51 sec
+    CPU time for vj and vk    411.07 sec, wall time    307.46 sec
+    CPU time for vj and vk    406.63 sec, wall time    297.63 sec
+    CPU time for vj and vk    404.72 sec, wall time    297.53 sec
+    CPU time for vj and vk    407.75 sec, wall time    297.81 sec
+    CPU time for vj and vk    402.06 sec, wall time    297.23 sec
+    CPU time for vj and vk    402.46 sec, wall time    297.66 sec
+    CPU time for vj and vk    412.87 sec, wall time    310.96 sec
+    CPU time for vj and vk    418.11 sec, wall time    311.14 sec
+    CPU time for vj and vk    397.51 sec, wall time    297.90 sec
+    CPU time for vj and vk    400.01 sec, wall time    297.69 sec
+    CPU time for vj and vk    411.71 sec, wall time    310.99 sec
+    CPU time for vj and vk    406.83 sec, wall time    301.63 sec
+    CPU time for vj and vk    408.61 sec, wall time    297.97 sec
+    CPU time for vj and vk    403.46 sec, wall time    297.60 sec
+    CPU time for vj and vk    419.44 sec, wall time    311.35 sec
+    CPU time for vj and vk    406.93 sec, wall time    297.87 sec
+    CPU time for vj and vk    399.50 sec, wall time    297.53 sec
+    CPU time for vj and vk    407.06 sec, wall time    298.20 sec
+    CPU time for vj and vk    407.55 sec, wall time    304.27 sec
+    CPU time for vj and vk    414.45 sec, wall time    311.15 sec
+    CPU time for vj and vk    414.84 sec, wall time    311.10 sec
+    CPU time for vj and vk    419.91 sec, wall time    311.16 sec
+    CPU time for vj and vk    405.59 sec, wall time    296.82 sec
+    CPU time for vj and vk    400.96 sec, wall time    297.68 sec
+ WARNING: using the number of electrons in FCIDUMP file: fcidumpfile.
+ FCIDUMP file indicates 24 electrons.
+
+ WARNING: error in check_blocking_opts.
+ Restarting from restart file while using reblocking. No reblocking data from before restart has been saved. If this annoys you send patches.
+
+
+ WARNING: error in check_blocking_opts.
+ Writing a restart file from a calculation using on-the-fly reblocking. No reblocking data has been saved. If this annoys you send patches.
+
+
+ ERROR.
+ HANDE stops in subroutine: accumulate_bloom_stats.
+ Reason: Number of bloom events exceeded the size of an integer: the population may have exploded
+ EXITING...
+--------------------------------------------------------------------------
+MPI_ABORT was invoked on rank 0 in communicator MPI_COMM_WORLD
+with errorcode 999.
+
+NOTE: invoking MPI_ABORT causes Open MPI to kill all MPI processes.
+You may or may not see output from other processes, depending on
+exactly when Open MPI kills them.
+--------------------------------------------------------------------------
+Traceback (most recent call last):
+  File "../Ne_molcryst_new.py", line 129, in <module>
+    fcc.write(x)
+IndexError: list index out of range

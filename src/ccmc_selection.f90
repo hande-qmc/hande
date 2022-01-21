@@ -91,7 +91,7 @@ implicit none
 contains
 
     subroutine select_cluster(rng, sys, psip_list, f0, ex_level, linked_ccmc, nattempts, normalisation, &
-                              initiator_pop, D0_pos, cumulative_excip_pop, tot_excip_pop, min_size, max_size, &
+                              initiator_pop, cumulative_excip_pop, tot_excip_pop, min_size, max_size, &
                               logging_info, cdet, cluster, excit_gen_data)
 
         ! Select a random cluster of excitors from the excitors on the
@@ -113,8 +113,6 @@ contains
         !    normalisation: intermediate normalisation factor, N_0, where we use the
         !       wavefunction ansatz |\Psi_{CC}> = N_0 e^{T/N_0} | D_0 >.
         !    initiator_pop: the population above which a determinant is an initiator.
-        !    D0_pos: position in the excip list of the reference.  Must be negative
-        !       if the reference is not on the processor.
         !    cumulative_excip_population: running cumulative excip population on
         !        all excitors; i.e. cumulative_excip_population(i) = sum(particle_t%pops(1:i)).
         !    tot_excip_pop: total excip population.
@@ -164,7 +162,6 @@ contains
         integer, intent(in) :: ex_level
         integer(int_64), intent(in) :: nattempts
         logical, intent(in) :: linked_ccmc
-        integer, intent(in) :: D0_pos
         complex(p), intent(in) :: normalisation
         real(p), intent(in) :: initiator_pop
         real(p), intent(in) :: cumulative_excip_pop(:), tot_excip_pop
@@ -979,14 +976,12 @@ contains
 
 !---- p_comb and p_size Probability update functions ----
 
-    subroutine update_selection_probabilities(cumulative_excip_pop, ex_lvl_dist, abs_D0_normalisation, tot_abs_pop, &
-                                                cluster_selection)
+    subroutine update_selection_probabilities(ex_lvl_dist, abs_D0_normalisation, tot_abs_pop, cluster_selection)
 
         ! Updates all probabilities for selecting different excitation level combinations within
         ! cluster_selection object in accordance with cumulative population distribution and
         ! number of states per excitation level given.
         ! In:
-        !    cumulative_excip_pop: cumulative excip population distribution.
         !    ex_lvl_dist: derived type containing information on distribution of excip population
         !       between excitation levels.
         !    abs_D0_normalisation: absolute magnitude of D0 normalisation.
@@ -1002,7 +997,6 @@ contains
 
         type(selection_data_t), intent(inout) :: cluster_selection
         type(ex_lvl_dist_t), intent(in) :: ex_lvl_dist
-        real(p), intent(in), allocatable :: cumulative_excip_pop(:)
         real(p), intent(in) :: tot_abs_pop
         real(p), intent(in) :: abs_D0_normalisation
         integer :: i
@@ -1059,7 +1053,7 @@ contains
         !   ex_level: maximum excitation level allowed for stored coefficients in calculation.
         !   max_cluster_size: maximum allowed cluster size.
         ! In/Out:
-        !   cluster_selection: selection_data_t object. On output cluster_sizes_info components
+        !   selection_data: selection_data_t object. On output cluster_sizes_info components
         !       will be allocated and set as appropriate, and cluster_sizes_proportion allocated.
 
         use ccmc_data, only: selection_data_t
@@ -1070,7 +1064,7 @@ contains
 
         call init_possible_clusters(ex_level, max_cluster_size, selection_data)
 
-        call init_psize_data(ex_level, max_cluster_size, selection_data)
+        call init_psize_data(max_cluster_size, selection_data)
 
     end subroutine init_selection_data
 
@@ -1150,12 +1144,11 @@ contains
 
     end subroutine init_possible_clusters
 
-    subroutine init_psize_data(ex_level, max_cluster_size, selection_data)
+    subroutine init_psize_data(max_cluster_size, selection_data)
 
         ! Take cluster selection object and initialise all data required for psize variation.
 
         ! In:
-        !   ex_level: maximum excitation level allowed in calculation.
         !   max_cluster_size: maximum allowed cluster size.
         ! In/Out:
         !   cluster_selection: selection_data_t object. On output cluster_sizes_info components
@@ -1164,7 +1157,7 @@ contains
         use ccmc_data, only: selection_data_t
         use checking, only: check_allocate
 
-        integer, intent(in) :: ex_level, max_cluster_size
+        integer, intent(in) :: max_cluster_size
         type(selection_data_t), intent(inout) :: selection_data
         integer :: ierr, i
 

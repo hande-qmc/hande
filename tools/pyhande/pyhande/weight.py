@@ -1,11 +1,9 @@
 '''Attempt to remove the population control bias by reweighting estimates.'''
 
-import pandas as pd
 import numpy as np
-from math import exp
 
 def reweight(data, mc_cycles, tstep, weight_history, mean_shift,
-             weight_key='Shift', arith_mean=False):
+             weight_key='Shift'):
     '''Reweight using population control to reduce population control bias.
 
 Reweight estimators linear in the number of psips by the factor:
@@ -35,13 +33,12 @@ mean_shift: float
     The mean shift.  Used to prevent weights becoming too big.
 weight_key: string
     Column to generate the reweighting data.
-geom_mean: bool
-    Reweight using the geometric mean
 
 Returns
 -------
-data : :class:`pandas.DataFrame`
-    HANDE QMC data with weights appended
+weight : List[float]
+    List of weights.
+    
 
 References
 ----------
@@ -50,6 +47,13 @@ Umrigar93
 Vigor15
     W.A. Vigor, et al., J. Chem. Phys. 142, 104101 (2015).
 '''
+    if tstep <= 0.0:
+        raise ValueError("QMC time step tstep should be > 0 and not passed in "
+                         f"value '{tstep}'.")
+    if mc_cycles <= 0:
+        raise ValueError("#Monte Carlo cycles mc_cycles should be > 0 and not"
+                         f"passed in value '{mc_cycles}'.")
+
     weights = []
     to_prod = np.exp(-tstep*mc_cycles*(data[weight_key].values-mean_shift))
     if len(data[weight_key]) > 0:
@@ -58,24 +62,6 @@ Vigor15
         weights.append(weights[i-1]*to_prod[i])
     for i in range(weight_history, len(data[weight_key])):
         weights.append(weights[i-1]*to_prod[i] / to_prod[i-weight_history])
-    if arith_mean:
-        for i in range(weight_history, len(data[weight_key])):
-           arith_fac = arith_series(tstep, mc_cycles,
-                                    data[weight_key].values[i],
-                                    data[weight_key].values[i-weight_history])
-           weights[i] = weights[i]*arith_fac
 
-    data['Weight'] = weights
 
-    return data
-
-def arith_series(tstep, mc_cycles, weight_now, weight_before):
-    # Handle division by zero!!!
-    if weight_now != weight_before:
-        tdweight = tstep*(weight_before - weight_now)
-        ratio = ((1 - exp(-mc_cycles*tdweight))/(1 - exp(-tdweight)))
-        series = (1/float(mc_cycles)) * ratio
-    else:
-        series = 1.0
-
-    return series
+    return weights

@@ -74,9 +74,13 @@ contains
         !    complx: true if system has a complex wavefunction (i.e. sys_t%sys_read_in_t%comp).
         ! Out:
         !    D0_proc: the processor index on which the reference currently resides.
-        !    D0_pos: the position within the excip list of the reference. Set to -1 if iproc != D0_proc.
         !    nD0_proc: 1 if iproc == D0_proc and 0 otherwise.
         !    D0_normalisation: population of the reference.
+        ! InOut:
+        !    D0_pos: On input set to a guess of where D0_pos is (often from a previous cycle)
+        !            or -1 if not known.  Must be less than or equal to qs%psip_list%nstates 
+        !            (for reasonable behaviour in find_D0). On output, set to the position of 
+        !            D0 in the excip list on this processor or -1 if iproc != D0_proc.
 
         use parallel
         use qmc_data, only: qmc_state_t
@@ -84,7 +88,8 @@ contains
 
         type(qmc_state_t), intent(in) :: qs
         logical, intent(in) :: complx
-        integer, intent(out) :: D0_proc, D0_pos, nD0_proc
+        integer, intent(out) :: D0_proc, nD0_proc
+        integer, intent(inout) :: D0_pos
         complex(p), intent(out) :: D0_normalisation
         integer :: slot
 #ifdef PARALLEL

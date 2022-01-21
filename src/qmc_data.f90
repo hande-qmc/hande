@@ -8,6 +8,7 @@ use importance_sampling_data
 use excit_gens, only: excit_gen_data_t
 use reference_determinant, only: reference_t, reference_t_json
 use dSFMT_interface, only: dSFMT_state_t
+use search, only: tree_t
 
 implicit none
 
@@ -171,7 +172,16 @@ type qmc_in_t
     real(p) :: initial_shift = 0.0_p
     ! Factor by which the changes in the population are damped when updating the
     ! shift. Used to set initial value within qmc_state_t.
-    real(p) :: shift_damping = huge(1.0_p)
+    real(p) :: shift_damping = huge(1.0_p) 
+    ! Restoring force factor in the harmonic damping model from Yang, Pahl and
+    ! Brand (J. Chem. Phys. 153, 174103 (2020) (DOI:10.1063/5.0023088)) 
+    ! used to direct the walker population to the given
+    ! target population. The original population dynamics are obtained if set
+    ! equal to zero. Sets default value within qmc_state_t. 
+    real(p) :: shift_harmonic_forcing = 0.0_p
+    ! If true, the shift_harmonic_forcing term will be set equal to the square
+    ! of the shift_damping term divided by 4 to obtain critial damping.  
+    logical :: shift_harmonic_crit_damp = .false.
 
     logical :: vary_shift
     logical :: vary_shift_present = .false.
@@ -215,11 +225,18 @@ type qmc_in_t
     logical :: quasi_newton = .false.
 
     ! The lower threshold for a quasiNewton enegy difference
-    real(p) :: quasi_newton_threshold = 1.e-5_p
+    ! Set to non sensible value by default so it is easily detectable if user did not specify it.
+    ! The value is approximated by HOMO-LUMO gap unless user overwrites it.
+    real(p) :: quasi_newton_threshold = -1.0_p
 
     ! The value to set the quasiNewton energy difference to if lower than the
     ! threshold
-    real(p) :: quasi_newton_value = 1_p
+    real(p) :: quasi_newton_value = -1.0_p
+
+    ! In death step when using QuasiNewton, scale the difference of inst. projected energy and shift
+    ! by time step times quasi_newton_pop_control in equilibrium, zero before shift varies.
+    ! Set to 1 if not using quasiNewton.
+    real(p) :: quasi_newton_pop_control = -1.0_p
 
 end type qmc_in_t
 
@@ -261,6 +278,12 @@ type fciqmc_in_t
 
     ! Evolve two copies of the wavefunction to enable unbiased sampling of the RDM
     logical :: replica_tricks = .false.
+
+    ! Stochastically sample the two-body reduced density matrix.
+    logical :: density_matrices = .false.
+
+    ! Filename to write density matrix to
+    character(255) :: density_matrix_file = 'RDM'
 
 end type fciqmc_in_t
 
@@ -318,9 +341,8 @@ type ccmc_in_t
     character(255) :: density_matrix_file = 'RDM'
     ! Whether to use even cluster selection approach.
     logical :: even_selection = .false.
-    ! Whether to use a second reference.
+    ! Whether to use a secondary reference.
     logical :: multiref = .false.
-    type(reference_t) :: second_ref
     ! Polynomial truncation in UCCMC
     integer :: pow_trunc = 12
     ! Compute variational UCC energy?
@@ -329,6 +351,20 @@ type ccmc_in_t
     logical :: average_wfn = .false.
     ! Trotter approximation?
     logical :: trot = .false.
+    ! Number of additional references to use.
+    integer :: n_secondary_ref = 0
+    ! The secondary references.
+    type(reference_t), allocatable :: secondary_refs(:)
+    ! Acceptance algorithm for mrcc excitations.
+    integer :: mr_acceptance_search
+    ! Name of the file containing secondary references (only if mr_read_in is true).
+    character(255) :: mr_secref_file
+    ! CC level from every secondary reference.
+    integer :: mr_excit_lvl = -1
+    ! Number of frozen electrons to add to the secondary references.
+    integer :: mr_n_frozen = 0
+    ! Whether to read in a secondary reference file.
+    logical :: mr_read_in = .false.
 end type ccmc_in_t
 
 type uccmc_in_t
@@ -541,9 +577,10 @@ type semi_stoch_t
     real(p), allocatable :: full_vector(:,:) ! (nspaces,tot_size)
     ! For the quasi_newton approach, each determinant in the deterministic space
     ! takes a weight for being spawned to.  This is included in the Hamiltonian
-    ! directly, but must also be used when modifying the shift.  1-w_i is stored
+    ! directly, but must also be used when modifying the shift.  rho-w_i is stored
     ! for all determinants on this processor in the deterministic space.
-    real(p), allocatable :: one_minus_qn_weight(:) ! sizes(iproc)
+    ! Note that rho is propagator%quasi_newton_pop_control.
+    real(p), allocatable :: rho_minus_qn_weight(:) ! sizes(iproc)
     ! If separate_annihilation is true then this array will hold the indices
     ! of the deterministic states in the main list. This prevents having to
     ! search the whole of the main list for the deterministic states.
@@ -795,7 +832,7 @@ type estimators_t
 
     ! Energy calculated from the RDM
     real(p) :: rdm_energy = 0.0_p
-    real(p) :: rdm_trace = 1.0_p
+    real(p) :: rdm_trace = 0.0_p
 
     ! Hellmann--Feynman sampling (several terms must be accumulated and averaged separately):
     ! Signed population of Hellmann--Feynman particles
@@ -827,10 +864,19 @@ type propagator_t
     ! If true, use a quasiNewton step
     logical :: quasi_newton = .false.
     ! The lower threshold for a quasiNewton enegy difference
-    real(p) :: quasi_newton_threshold = 1.e-5_p
+    ! This default is never used except for printing qmc JSON data when not doing quasi newton.
+    real(p) :: quasi_newton_threshold = 0_p
     ! The value to set the quasiNewton energy difference to if lower than the
     ! threshold
-    real(p) :: quasi_newton_value = 1_p
+    real(p) :: quasi_newton_value
+    ! This stores the Fock expectation value <i|f|i> which is equal to sp_eigv in read_in systems.
+    ! In the 3D UEG this includes the exchange and Madelung terms.
+    ! In other model systems, including the 2D UEG, this is just equal to sp_eigv for now.
+    real(p), allocatable :: sp_fock(:) ! (sys%basis%nbasis)
+    ! In death step when using QuasiNewton, scale the difference of inst. projected energy and shift
+    ! by time step times quasi_newton_pop_control in equilibrium, zero before shift varies.
+    ! Set to 1 if not using quasiNewton.
+    real(p) :: quasi_newton_pop_control
 end type propagator_t
 
 type qmc_state_t
@@ -860,6 +906,14 @@ type qmc_state_t
     ! Factor by which the changes in the population are damped when updating the
     ! shift.
     real(p) :: shift_damping = 0.050_p
+    ! Restoring force factor in the harmonic damping population control algorithm
+    ! from Yang, Pahl and Brand (J. Chem. Phys. 153, 174103 (2020)
+    ! (DOI:10.1063/5.0023088)). The original population dynamics are obtained 
+    ! if set equal to zero. 
+    real(p) :: shift_harmonic_forcing = 0.0_p
+    ! If true, the shift_harmonic_forcing term will be set equal to the square
+    ! of the shift_damping value divided by 4 to obtain critical damping.   
+    logical :: shift_harmonic_crit_damp = .false.
     ! Stores information used by the excitation generator
     type(excit_gen_data_t) :: excit_gen_data
     ! Value of beta which we propagate the density matrix to. Only used for DMQMC.
@@ -873,8 +927,11 @@ type qmc_state_t
     type(trial_t) :: trial
     type(restart_in_t) :: restart_in
     ! Flags for multireference CCMC calculations.
-    logical :: multiref = .false.
-    type(reference_t) :: second_ref
+    logical :: multiref = .false., mr_read_in = .false.
+    integer :: n_secondary_ref = 0, mr_n_frozen, mr_excit_lvl
+    type(reference_t), allocatable :: secondary_refs(:)
+    integer :: mr_acceptance_search
+    character(255) :: mr_secref_file
     ! WARNING: par_info is the 'reference/master' (ie correct) version
     ! of parallel_t, in particular of proc_map_t.  However, copies of it
     ! are kept in spawn_t objects, and it is these copies which are used
@@ -891,6 +948,8 @@ type qmc_state_t
     ! String representing state of RNG. Should be set, used and deallocated as quickly as possible as it becomes invalid as soon as
     ! the next random number is drawn -- only present really for a convenient way of handling the RNG state during restarts.
     type(dSFMT_state_t) :: rng_state
+    ! BK tree object for multi-reference searching
+    type(tree_t) :: secondary_ref_tree
 end type qmc_state_t
 
 ! Copies of various settings that are required during annihilation.  This avoids having to pass through lots of different
@@ -995,6 +1054,8 @@ contains
         if (qmc%vary_shift_present) call json_write_key(js, 'vary_shift', qmc%vary_shift)
         call json_write_key(js, 'initial_shift', qmc%initial_shift)
         call json_write_key(js, 'shift_damping', qmc%shift_damping)
+        call json_write_key(js, 'shift_harmonic_forcing', qmc%shift_harmonic_forcing)
+        call json_write_key(js, 'shift_harmonic_crit_damp', qmc%shift_harmonic_crit_damp)
         call json_write_key(js, 'walker_length', qmc%walker_length)
         call json_write_key(js, 'spawned_walker_length', qmc%spawned_walker_length)
         call json_write_key(js, 'D0_population', qmc%D0_population)
@@ -1008,6 +1069,7 @@ contains
         call json_write_key(js, 'quasi_newton', qmc%quasi_newton)
         call json_write_key(js, 'quasi_newton_threshold', qmc%quasi_newton_threshold)
         call json_write_key(js, 'quasi_newton_value', qmc%quasi_newton_value)
+        call json_write_key(js, 'quasi_newton_pop_control', qmc%quasi_newton_pop_control)
         call json_write_key(js, 'use_mpi_barriers', qmc%use_mpi_barriers, .true.)
         call json_object_end(js, terminal)
 
@@ -1052,7 +1114,9 @@ contains
             call json_write_key(js, 'guiding_function', fciqmc%guiding_function)
         end select
         call json_write_key(js, 'quadrature_initiator', fciqmc%quadrature_initiator)
-        call json_write_key(js, 'replica_tricks', fciqmc%replica_tricks, .true.)
+        call json_write_key(js, 'replica_tricks', fciqmc%replica_tricks)
+        call json_write_key(js, 'density_matrices', fciqmc%density_matrices)
+        call json_write_key(js, 'density_matrix_file', fciqmc%density_matrix_file, .true.)
         call json_object_end(js, terminal)
 
     end subroutine fciqmc_in_t_json
@@ -1117,9 +1181,12 @@ contains
         !   terminal (optional): if true, this is the last entry in the enclosing JSON object.  Default: false.
 
         use json_out
+        use errors, only: warning
 
         type(json_out_t), intent(inout) :: js
         type(ccmc_in_t), intent(in) :: ccmc
+        character(23) :: string
+        integer :: i
         logical, intent(in), optional :: terminal
 
         call json_object_init(js, 'ccmc')
@@ -1135,8 +1202,24 @@ contains
         call json_write_key(js, 'variational_energy', ccmc%variational_energy)
         call json_write_key(js, 'average_wfn', ccmc%average_wfn)
         call json_write_key(js, 'trot', ccmc%trot)
-        if (ccmc%multiref) call reference_t_json(js, ccmc%second_ref, key = 'second_ref')
-        call json_write_key(js,'multiref', ccmc%multiref,terminal=.true.)
+        if (ccmc%multiref) then
+            
+            call json_write_key(js, 'mr_read_in', ccmc%mr_read_in)            
+            call json_write_key(js, 'n_secondary_ref', ccmc%n_secondary_ref)
+            if (ccmc%n_secondary_ref.le.20 .and. .not.ccmc%mr_read_in) then
+                do i=1, size(ccmc%secondary_refs)
+                    write (string, '(A13,I0)') 'secondary_ref', i
+                    call reference_t_json(js, ccmc%secondary_refs(i), key = trim(string))
+                end do
+            elseif (ccmc%mr_read_in) then
+                continue
+            else
+                call warning('ccmc_in_t_json','There are more than 20 secondary references, &
+                &printing suppressed, consider using the mr_read_in functionality.')
+            end if
+            call json_write_key(js, 'mr_acceptance_search', ccmc%mr_acceptance_search)
+        end if
+        call json_write_key(js, 'multiref', ccmc%multiref, terminal=.true.)
         call json_object_end(js, terminal)
 
     end subroutine ccmc_in_t_json

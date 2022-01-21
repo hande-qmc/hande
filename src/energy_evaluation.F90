@@ -579,14 +579,14 @@ contains
 
         if (doing_calc(hfs_fciqmc_calc)) then
             if (qs%vary_shift(1)) then
-                call update_shift(qmc_in, qs, qs%shift(1), ntot_particles_old(1), ntot_particles(1), qmc_in%ncycles)
+                call update_shift(qs, qs%shift(1), ntot_particles_old(1), ntot_particles(1), qmc_in%ncycles)
                 call update_hf_shift(qmc_in, qs, qs%shift(2), ntot_particles_old(1), ntot_particles(1), &
                                      qs%estimators(1)%hf_signed_pop, new_hf_signed_pop, qmc_in%ncycles)
             end if
         else if (comp_param) then
             do i = 1, qs%psip_list%nspaces, 2
                 if (qs%vary_shift(i)) then
-                    call update_shift(qmc_in, qs, qs%shift(i), ntot_particles_old(i) + ntot_particles_old(i+1), &
+                    call update_shift(qs, qs%shift(i), ntot_particles_old(i) + ntot_particles_old(i+1), &
                                         ntot_particles(i) + ntot_particles(i+1), qmc_in%ncycles)
                     qs%shift(i+1) = qs%shift(i)
                 end if
@@ -595,11 +595,10 @@ contains
             do i = 1, qs%psip_list%nspaces
                 if (qs%vary_shift(i)) then
                     if (vary_shift_reference_loc) then
-                        call update_shift(qmc_in, qs, qs%shift(i), real(qs%estimators(i)%D0_population_old, dp), &
+                        call update_shift(qs, qs%shift(i), real(qs%estimators(i)%D0_population_old, dp), &
                                           real(qs%estimators(i)%D0_population, dp), qmc_in%ncycles)
                     else
-                        call update_shift(qmc_in, qs, qs%shift(i), ntot_particles_old(i), &
-                                                        ntot_particles(i), qmc_in%ncycles)
+                        call update_shift(qs, qs%shift(i), ntot_particles_old(i), ntot_particles(i), qmc_in%ncycles)
                     end if
                 end if
             end do
@@ -656,20 +655,26 @@ contains
 
 !--- Shift updates ---
 
-    subroutine update_shift(qmc_in, qs, loc_shift, nparticles_old, nparticles, nupdate_steps)
+    subroutine update_shift(qs, loc_shift, nparticles_old, nparticles, nupdate_steps)
 
-        ! Update the shift according to:
-        !  shift(beta) = shift(beta-A*tau) - xi*log(N_w(tau)/N_w(beta-A*tau))/(A*tau)
+        ! Update the shift according to Yang, Pahl and Brand's harmonic damping
+        ! population control algorithm (J. Chem. Phys. 153, 174103 (2020)
+        ! (DOI:10.1063/5.0023088)):
+        !  shift(beta) = shift(beta-A*tau) - xi*log(N_w(beta)/N_w(beta-A*tau))/(A*tau) 
+        ! - zeta*(log(N_w(beta)/N_t))/(A*tau) 
         ! where
         !  * shift(beta) is the shift at imaginary time beta;
         !  * A*tau is the amount of imaginary time between shift-updates (=# of
         !    Monte Carlo cycles between updating the shift);
         !  * xi is a damping factor (0.05-0.10 is appropriate) to prevent large fluctations;
         !  * N_w(beta) is the total number of particles at imaginary time beta.
+        !  * zeta is a dimensionless forcing strength parameter. 
+        !  * N_t is the target population of the simulation. 
         ! The running average of the shift is also updated.
+        ! Note that when zeta is equal to zero, the original algorithm is
+        ! obtained. 
 
         ! In:
-        !    qmc_in: Input options relating to QMC methods.
         !    qs: qmc state.
         !    nparticles_old: N_w(beta-A*tau).
         !    nparticles: N_w(beta).
@@ -678,8 +683,7 @@ contains
         !    loc_shift: energy shift/offset.  Set to S(beta-A*tau) on input and S(beta) on output.
 
         use qmc_data, only: qmc_in_t, qmc_state_t
-
-        type(qmc_in_t), intent(in) :: qmc_in
+ 
         type(qmc_state_t), intent(in) :: qs
         real(p), intent(inout) :: loc_shift
         real(dp), intent(in) :: nparticles_old, nparticles
@@ -687,8 +691,14 @@ contains
 
         ! dmqmc_factor is included to account for a factor of 1/2 introduced into tau in
         ! DMQMC calculations. In all other calculation types, it is set to 1, and so can be ignored.
-        loc_shift = loc_shift - real(log(nparticles/nparticles_old)*qs%shift_damping/(qs%dmqmc_factor*qs%tau*nupdate_steps) ,p)
-
+        if (qs%target_particles .le. 0.00_p) then
+            loc_shift = loc_shift - real(log(nparticles/nparticles_old)*qs%shift_damping/(qs%dmqmc_factor*qs%tau*nupdate_steps) ,p)
+        else 
+            loc_shift = loc_shift - real(log(nparticles/nparticles_old)*qs%shift_damping/(qs%dmqmc_factor*qs%tau*nupdate_steps),p) & 
+                  - real(log(nparticles/qs%target_particles)*(qs%shift_harmonic_forcing)/ &
+                  (qs%dmqmc_factor*qs%tau*nupdate_steps),p)
+        end if 
+    
     end subroutine update_shift
 
     subroutine update_hf_shift(qmc_in, qs, hf_shift, nparticles_old, nparticles, nhf_particles_old, nhf_particles, nupdate_steps)
@@ -1260,7 +1270,7 @@ contains
 
 
     subroutine update_proj_hfs_hamiltonian(sys, f, fpop, f_hfpop, fdata, excitation, hmatel, &
-                                           D0_hf_pop,proj_hf_O_hpsip, proj_hf_H_hfpsip)
+                                           D0_hf_pop, proj_hf_O_hpsip, proj_hf_H_hfpsip)
 
         ! Add the contribution of the current determinant to the projected
         ! energy in an identical way to update_proj_energy_hub_k.

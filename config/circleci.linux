@@ -12,8 +12,8 @@ fc = mpif90
 cc = mpicc
 cxx = mpiCC
 ld = mpif90
-ldflags = -L/opt/trlan/lib -L%(syslib_root)s/lib -L%(lapack_root)s/lib -L%(hdf5_root)s/lib
-libs = -ltrlan -lscalapack-openmpi -llapack -lblas -lstdc++ -lhdf5_fortran -lhdf5 -luuid -llua5.3 -ldl
+ldflags = -L%(syslib_root)s/lib -L%(lapack_root)s/lib -L%(hdf5_root)s/lib
+libs = -lscalapack-openmpi -llapack -lblas -lstdc++ -lhdf5_fortran -lhdf5 -luuid -llua5.3 -ldl
 f90_module_flag = -J
 
 [opt]

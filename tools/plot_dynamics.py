@@ -1,7 +1,10 @@
 #!/usr/bin/env python
 '''plot_dynamics.py file
 
-Plot the population dynamics and energy profile of a HANDE QMC output file.'''
+Plot the population dynamics and energy profile of a HANDE QMC output file.
+
+WARNING: Does not support replica tricks!
+'''
 
 import argparse
 import os

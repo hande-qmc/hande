@@ -258,12 +258,12 @@ contains
 
     end subroutine create_weighted_excitation_list_ueg
 
-    pure function potential_energy_ueg(sys, f1, f2, excitation) result (potential_energy)
+    pure function potential_energy_ueg(sys, f1, excitation) result (potential_energy)
 
         ! In:
         !    sys: system of interest.
-        !    f1, f2: bit string representations of two determinants.
-        !    excitation: excit_t object describing the excitation connecting f1 and f2.
+        !    f1: bit string representations of the determinant.
+        !    excitation: excit_t object describing the excitation connecting f1 and the other determinant f2.
         ! Returns:
         !    The potential energy matrix element from a given bra (f1) and
         !    ket(f2), i.e. if H = T + V, then <f2| V |f1>.  This amounts to
@@ -275,7 +275,7 @@ contains
         use determinants, only: decode_det
 
         type(sys_t), intent(in) :: sys
-        integer(i0), intent(in) :: f1(:), f2(:)
+        integer(i0), intent(in) :: f1(:)
         type(excit_t), intent(in) :: excitation
 
         real(p) :: potential_energy
@@ -324,5 +324,71 @@ contains
         end do
 
     end function exchange_energy_orb
+
+    function madelung_orb_3D_ueg(sys, ref_occ_list, i) result (mad)
+
+        ! Madelung contribution per electron for a particular orbital for the 3D UEG.
+        ! Expression fitted by Schoof et al., Phys. Rev. Lett. 115, 130402 (2015) using Fraser et al. Phys. Rev. B 53, 1814 (1996).
+        
+        ! In:
+        !    sys: system to be studied.
+        !    ref_occ_list: list of occ. orbitals on the reference.
+        !    i: orbital to calculate Madelung contribution for (either 0.0, if not occupied in the reference, or expression by
+        !       Schoof et al.)
+        ! Returns:
+        !    mad: Madelung contribution to Fock energy per electron on this orbital i.
+
+        use system, only: sys_t
+
+        type(sys_t), intent(in) :: sys
+        integer, intent(in) :: ref_occ_list(:)
+        integer, intent(in) :: i
+
+        real(p) :: mad
+        logical :: in_ref
+        integer :: j
+
+        ! Check whether orbital i is in reference.
+        in_ref = .false.
+        do j = 1, sys%nel
+            if (ref_occ_list(j) == i) then
+                in_ref = .true.
+            end if
+        end do
+
+        if (in_ref) then
+            mad = -2.837297*(0.75_p/(pi * (sys%ueg%r_s**3) * real(sys%nel,p)))**(1.0_p/3.0_p)
+        else
+            mad = 0.0_p
+        end if
+
+
+    end function madelung_orb_3D_ueg
+
+    subroutine calc_fock_values_3d_ueg(sys, propagator, ref_occ_list)
+        
+        ! Calculate Fock energies <i|F|i> for all orbitals i for the 3D UEG.
+        
+        ! In:
+        !    sys: system to be studied.
+        !    propagator: contains information on the propagation (e.g. QN propagation information or sp_fock values). 
+        !    ref_occ_list: list of occ. orbitals on the reference.
+        
+        use system, only: sys_t
+        use qmc_data, only: propagator_t
+
+        type(sys_t), intent(in) :: sys
+        type(propagator_t), intent(inout) :: propagator
+        integer, intent(in) :: ref_occ_list(:)
+        
+        integer :: iorb
+        
+        ! [todo]: Probably does not work properly if there is CAS since some ref det orbs are frozen!
+        do iorb = 1, sys%basis%nbasis
+            propagator%sp_fock(iorb) = propagator%sp_fock(iorb) + exchange_energy_orb(sys, ref_occ_list, iorb) + &
+                0.5_p*madelung_orb_3D_ueg(sys, ref_occ_list, iorb)
+        end do
+
+    end subroutine calc_fock_values_3d_ueg
 
 end module hamiltonian_ueg

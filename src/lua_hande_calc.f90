@@ -20,7 +20,6 @@ contains
         !    fci {
         !           sys = system,        -- required
         !           fci = { ... },
-        !           lanczos = { ... },
         !           reference = { ... },
         !    }
 
@@ -28,8 +27,7 @@ contains
         use flu_binding, only: flu_State, flu_copyptr
         use aot_table_module, only: aot_table_top, aot_exists, aot_table_close
 
-        use calc, only: calc_type, exact_diag, lanczos_diag
-        use fci_lanczos, only: do_fci_lanczos
+        use calc, only: calc_type, exact_diag
         use fci_lapack, only: do_fci_lapack
         use fci_utils, only: fci_in_t
         use lua_hande_system, only: get_sys_t
@@ -46,8 +44,7 @@ contains
         type(sys_t), pointer :: sys
         type(fci_in_t) :: fci_in
         type(reference_t) :: ref
-        logical :: use_sparse_hamil, lanczos
-        character(12), parameter :: keys(4) = [character(12) :: 'sys', 'fci', 'lanczos', 'reference']
+        character(12), parameter :: keys(3) = [character(12) :: 'sys', 'fci', 'reference']
 
         call cpu_time(t1)
 
@@ -55,19 +52,13 @@ contains
         call get_sys_t(lua_state, sys)
 
         opts = aot_table_top(lua_state)
-        lanczos = aot_exists(lua_state, opts, 'lanczos')
-        call read_fci_in(lua_state, opts, sys%basis, fci_in, use_sparse_hamil)
+        call read_fci_in(lua_state, opts, sys%basis, fci_in)
         call read_reference_t(lua_state, opts, ref, sys)
         call warn_unused_args(lua_state, keys, opts)
         call aot_table_close(lua_state, opts)
 
-        if (lanczos) then
-            calc_type = lanczos_diag
-            call do_fci_lanczos(sys, fci_in, ref, use_sparse_hamil)
-        else
-            calc_type = exact_diag
-            call do_fci_lapack(sys, fci_in, ref)
-        end if
+        calc_type = exact_diag
+        call do_fci_lapack(sys, fci_in, ref)
 
         nresult = 0
 
@@ -520,6 +511,7 @@ contains
         call read_logging_in_t(lua_state, opts, logging_in)
         call read_output_in_t(lua_state, opts, output_in)
 
+
         call get_qmc_state(lua_state, have_restart_state, qmc_state_restart)
         call warn_unused_args(lua_state, keys, opts)
         call aot_table_close(lua_state, opts)
@@ -827,9 +819,9 @@ contains
 
     ! --- table-derived type wrappers ---
 
-    subroutine read_fci_in(lua_state, opts, basis, fci_in, use_sparse_hamil)
+    subroutine read_fci_in(lua_state, opts, basis, fci_in)
 
-        ! Read in the fci and (optionally) lanczos tables to a fci_in_t object.
+        ! Read in the fci to a fci_in_t object.
 
         ! fci = {
         !     write_hamiltonian = true/false,
@@ -842,21 +834,14 @@ contains
         !     blacs_block_size = block_size,
         !     rdm = { ... }, -- L-d vector containing the sites to include in subsystem A.
         ! }
-        ! lanczos = {
-        !     neigv = N,
-        !     nbasis = M,
-        !     direct = true/false,
-        !     sparse = true/false, -- default true
-        ! }
 
         ! In/Out:
         !    lua_state: flu/Lua state to which the HANDE API is added.
         ! In:
-        !    opts: handle for the table containing the fci and (optionally) the lanczos table(s).
+        !    opts: handle for the table containing the fci table.
         !    basis: information about the single-particle basis set of the system.
         ! Out:
-        !    fci_in: fci_in_t object containing generic fci/lanczos input options.
-        !    use_sparse_hamil: should the Hamiltonian be stored in a sparse format?
+        !    fci_in: fci_in_t object containing generic fci input options.
 
         use flu_binding, only: flu_State
         use aot_table_module, only: aot_get_val, aot_exists, aot_table_open, aot_table_close
@@ -871,7 +856,6 @@ contains
         integer, intent(in) :: opts
         type(basis_t), intent(in) :: basis
         type(fci_in_t), intent(inout) :: fci_in
-        logical, intent(out) :: use_sparse_hamil
 
         integer :: fci_table, err, fci_nrdms
         integer, allocatable :: err_arr(:)
@@ -879,7 +863,6 @@ contains
         character(18), parameter :: fci_keys(9) = [character(18) :: 'write_hamiltonian', 'hamiltonian_file', &
                                                                     'write_determinants', 'determinant_file', 'write_nwfns', &
                                                                     'wfn_file', 'nanalyse', 'blacs_block_size', 'rdm']
-        character(6), parameter :: lanczos_keys(4) = [character(6) :: 'neigv', 'nbasis', 'direct', 'sparse']
 
         if (aot_exists(lua_state, opts, 'fci')) then
             call aot_table_open(lua_state, opts, fci_table, 'fci')
@@ -908,17 +891,6 @@ contains
 
             call aot_table_close(lua_state, fci_table)
 
-        end if
-
-        ! Lanczos table: optional and indicates doing a Lanczos calculation.
-        if (aot_exists(lua_state, opts, 'lanczos')) then
-            call aot_table_open(lua_state, opts, fci_table, 'lanczos')
-            call aot_get_val(fci_in%nlanczos_eigv, err, lua_state, fci_table, 'neigv')
-            call aot_get_val(fci_in%lanczos_string_len, err, lua_state, fci_table, 'nbasis')
-            call aot_get_val(fci_in%direct_lanczos, err, lua_state, fci_table, 'direct')
-            call aot_get_val(use_sparse_hamil, err, lua_state, fci_table, 'sparse', default=.true.)
-            call warn_unused_args(lua_state, lanczos_keys, fci_table)
-            call aot_table_close(lua_state, fci_table)
         end if
 
     end subroutine read_fci_in
@@ -1058,6 +1030,8 @@ contains
         !     pattempt_parallel = prob,
         !     initial_shift = shift,
         !     shift_damping = damp_factor,
+        !     shift_harmonic_forcing = harmonic_force_factor,
+        !     shift_harmonic_crit_damp = true/false,
         !     initiator = true/false,
         !     initiator_threshold = pop,
         !     use_mpi_barriers = true/false,
@@ -1094,17 +1068,19 @@ contains
         character(len=30) :: str
         logical :: skip, no_renorm
 
-        character(24), parameter :: keys(31) = [character(24) :: 'tau', 'init_pop', 'mc_cycles', 'nreports', 'state_size', &
+        character(24), parameter :: keys(34) = [character(24) :: 'tau', 'init_pop', 'mc_cycles', 'nreports', 'state_size', &
                                                                  'spawned_state_size', 'rng_seed', 'target_population', &
                                                                  'real_amplitudes', 'spawn_cutoff', 'no_renorm', 'tau_search', &
                                                                  'real_amplitude_force_32', &
                                                                  'pattempt_single', 'pattempt_double', 'pattempt_update', &
                                                                  'pattempt_zero_accum_data', &
                                                                  'pattempt_parallel', 'initial_shift', 'shift_damping', &
+                                                                 'shift_harmonic_forcing', 'shift_harmonic_crit_damp', &
                                                                  'initiator', 'initiator_threshold', 'use_mpi_barriers', &
                                                                  'vary_shift_from', 'excit_gen', 'power_pitzer_min_weight', &
                                                                  'reference_target', 'vary_shift', 'quasi_newton', &
-                                                                 'quasi_newton_threshold', 'quasi_newton_value']
+                                                                 'quasi_newton_threshold', 'quasi_newton_value', &
+                                                                 'quasi_newton_pop_control']
 
         if (present(short)) then
             skip = short
@@ -1143,6 +1119,8 @@ contains
         call aot_get_val(qmc_in%tau_search, err, lua_state, qmc_table, 'tau_search')
         call aot_get_val(qmc_in%initial_shift, err, lua_state, qmc_table, 'initial_shift')
         call aot_get_val(qmc_in%shift_damping, err, lua_state, qmc_table, 'shift_damping')
+        call aot_get_val(qmc_in%shift_harmonic_forcing, err, lua_state, qmc_table, 'shift_harmonic_forcing')
+        call aot_get_val(qmc_in%shift_harmonic_crit_damp, err, lua_state, qmc_table, 'shift_harmonic_crit_damp')
         call aot_get_val(qmc_in%target_particles, err, lua_state, qmc_table, 'target_population')
         call aot_get_val(qmc_in%initiator_approx, err, lua_state, qmc_table, 'initiator')
         call aot_get_val(qmc_in%initiator_pop, err, lua_state, qmc_table, 'initiator_threshold')
@@ -1151,6 +1129,7 @@ contains
         call aot_get_val(qmc_in%quasi_newton, err, lua_state, qmc_table, 'quasi_newton')
         call aot_get_val(qmc_in%quasi_newton_threshold, err, lua_state, qmc_table, 'quasi_newton_threshold')
         call aot_get_val(qmc_in%quasi_newton_value, err, lua_state, qmc_table, 'quasi_newton_value')
+        call aot_get_val(qmc_in%quasi_newton_pop_control, err, lua_state, qmc_table, 'quasi_newton_pop_control')
 
 
         if (aot_exists(lua_state, qmc_table, 'reference_target')) then
@@ -1262,6 +1241,8 @@ contains
         !     }
         !     quadrature_initiator = true/false,
         !     replica_tricks = true/false,
+        !     density_matrices = true/false,
+        !     density_matrix_file = filename,
         ! }
 
         ! In/Out:
@@ -1286,10 +1267,10 @@ contains
         integer :: fciqmc_table, ref_det, err
         character(len=12) :: str
         logical :: ref_det_flag
-        character(31), parameter :: keys(8) = [character(31) :: 'non_blocking_comm', 'load_balancing', 'guiding_function', &
-                                                                'init_spin_inverse_reference_det', 'trial_function', &
-                                                                'select_reference_det', 'quadrature_initiator', &
-                                                                'replica_tricks']
+        character(31), parameter :: keys(10) = [character(31) :: 'non_blocking_comm', 'load_balancing', 'guiding_function', &
+                                                                 'init_spin_inverse_reference_det', 'trial_function', &
+                                                                 'select_reference_det', 'quadrature_initiator', &
+                                                                 'replica_tricks', 'density_matrices', 'density_matrix_file']
 
         if (aot_exists(lua_state, opts, 'fciqmc')) then
 
@@ -1301,6 +1282,14 @@ contains
             call aot_get_val(fciqmc_in%init_spin_inv_D0, err, lua_state, fciqmc_table, 'init_spin_inverse_reference_det')
             call aot_get_val(fciqmc_in%quadrature_initiator, err, lua_state, fciqmc_table, 'quadrature_initiator')
             call aot_get_val(fciqmc_in%replica_tricks, err, lua_state, fciqmc_table, 'replica_tricks')
+            call aot_get_val(fciqmc_in%density_matrices, err, lua_state, fciqmc_table, 'density_matrices')
+            call aot_get_val(fciqmc_in%density_matrix_file, err, lua_state, fciqmc_table, 'density_matrix_file')
+
+            ! If the user has asked to calculate an RDM, then replica_tricks
+            ! *must* be on.
+            if (fciqmc_in%density_matrices) then
+                fciqmc_in%replica_tricks = .true.
+            end if
 
             ! Optional arguments requiring special care.
             if (aot_exists(lua_state, fciqmc_table, 'select_reference_det')) then
@@ -1466,7 +1455,8 @@ contains
         !     density_matrix_file = filename,
         !     even_selection = true/false,
         !     multiref = true/false,
-	    !     second_ref ={...},
+        !     n_secondary_ref = number of additional references,
+        !     secondary_ref1,...,secondary_ref999 ={...},
         ! }
 
         ! In/Out:
@@ -1490,12 +1480,20 @@ contains
         type (sys_t), intent(in) :: sys
         type(ccmc_in_t), intent(out) :: ccmc_in
 
-        integer :: ccmc_table, err
-        character(28), parameter :: keys(14) = [character(28) :: 'move_frequency', 'cluster_multispawn_threshold', &
+        integer :: ccmc_table, err, i
+        character(28), parameter :: keys(19) = [character(28) :: 'move_frequency', 'cluster_multispawn_threshold', &
                                                                 'full_non_composite', 'linked', 'vary_shift_reference', &
                                                                 'density_matrices', 'density_matrix_file', 'even_selection', &
-                                                                'multiref', 'second_ref', 'pow_trunc', 'variational_energy', &
-                                                                'average_wfn', 'trotterized']
+                                                                'multiref', 'n_secondary_ref', 'mr_acceptance_search', &
+                                                                'mr_excit_lvl','mr_secref_file','mr_n_frozen','mr_read_in', &
+                                                                'pow_trunc', 'variational_energy', 'average_wfn', 'trotterized']
+        character(23) :: string ! 32 bit integer has 10 digits, should be more than enough
+        ! secondary_refX keywords are not hardcoded in, so we dynamically add them into the
+        ! array of allowed keys 
+        character(23), dimension(:), allocatable :: secondary_ref_keys
+        character(28), dimension(:), allocatable :: keys_concat
+        character(10) :: str
+        character(40) :: secref_file
 
         if (aot_exists(lua_state, opts, 'ccmc')) then
 
@@ -1511,19 +1509,59 @@ contains
             call aot_get_val(ccmc_in%density_matrix_file, err, lua_state, ccmc_table, 'density_matrix_file')
             call aot_get_val(ccmc_in%even_selection, err, lua_state, ccmc_table, 'even_selection')
             call aot_get_val(ccmc_in%multiref, err, lua_state, ccmc_table, 'multiref')
+            if (ccmc_in%multiref) then
+                call aot_get_val(ccmc_in%n_secondary_ref, err, lua_state, ccmc_table, 'n_secondary_ref')
+                if (ccmc_in%n_secondary_ref == 0) then
+                    call stop_all('read_ccmc_in', 'Number of secondary references unspecified.') 
+                end if
+                allocate(secondary_ref_keys(ccmc_in%n_secondary_ref))
+                allocate(ccmc_in%secondary_refs(ccmc_in%n_secondary_ref))
 
-            call read_reference_t(lua_state, ccmc_table, ccmc_in%second_ref, sys, 'second_ref')
-            if (ccmc_in%multiref .and. .not. allocated(ccmc_in%second_ref%occ_list0)) then
-                call stop_all('read_ccmc_in', 'Uninitialised second reference determinant.') 
-            end if
-            if (ccmc_in%multiref .and. (ccmc_in%second_ref%ex_level == -1 .or. ccmc_in%second_ref%ex_level == sys%nel)) then
-                call stop_all('read_ccmc_in', 'Uninitialised second reference excitation level.')
+                call aot_get_val(ccmc_in%mr_read_in, err, lua_state, ccmc_table, 'mr_read_in')  
+
+                if (.not.ccmc_in%mr_read_in) then
+                    do i = 1, ccmc_in%n_secondary_ref
+                        ! I0 makes sure there are no whitespaces around the number string
+                        write (string, '(A13,I0)') 'secondary_ref', i ! up to 2.15E9 secondary references can be provided      
+                        ! trim makes sure there are no trailing whitespaces 
+                        call read_reference_t(lua_state, ccmc_table, ccmc_in%secondary_refs(i), sys, trim(string))
+                             if (.not. allocated(ccmc_in%secondary_refs(i)%occ_list0)) then
+                                 call stop_all('read_ccmc_in', 'Uninitialised secondary reference determinant.') 
+                             end if
+                             if (ccmc_in%secondary_refs(i)%ex_level == -1 .or. ccmc_in%secondary_refs(i)%ex_level == sys%nel) then
+                                 call stop_all('read_ccmc_in', 'Uninitialised secondary reference excitation level.')
+                             end if
+                             secondary_ref_keys(i) = trim(string)
+                    end do
+                    keys_concat = [keys,secondary_ref_keys]
+                else
+                    call aot_get_val(ccmc_in%mr_secref_file, err, lua_state, ccmc_table, 'mr_secref_file')
+                    if (err.ne.0) then
+                        call stop_all('read_ccmc_in','mr_read_in set but mr_secref_file unset.')
+                    endif
+                    call aot_get_val(ccmc_in%mr_n_frozen, err, lua_state, ccmc_table, 'mr_n_frozen')
+                    call aot_get_val(ccmc_in%mr_excit_lvl, err, lua_state, ccmc_table, 'mr_excit_lvl')
+                    if (ccmc_in%mr_excit_lvl.eq.-1) then
+                        call stop_all('read_ccmc_in','mr_read_in set but mr_excit_lvl unset.')
+                    endif
+                    keys_concat = keys
+                endif
+
+                call aot_get_val(str, err, lua_state, ccmc_table, 'mr_acceptance_search')
+                select case (str)
+                    case ('bk_tree')
+                        ccmc_in%mr_acceptance_search = 1
+                    case default
+                        ccmc_in%mr_acceptance_search = 0
+                end select
+            else
+                keys_concat = keys
             end if
             call aot_get_val(ccmc_in%pow_trunc, err, lua_state, ccmc_table, 'pow_trunc')
             call aot_get_val(ccmc_in%variational_energy, err, lua_state, ccmc_table, 'variational_energy')
             call aot_get_val(ccmc_in%average_wfn, err, lua_state, ccmc_table, 'average_wfn')
             call aot_get_val(ccmc_in%trot, err, lua_state, ccmc_table, 'trotterized')
-            call warn_unused_args(lua_state, keys, ccmc_table)
+            call warn_unused_args(lua_state, keys_concat, ccmc_table)
 
             call aot_table_close(lua_state, ccmc_table)
 
@@ -1908,7 +1946,7 @@ contains
         !        full space if present.
         !    ref_table_name (optional): name of table holding reference info.  Default: reference.
         ! Out:
-        !    ref: reference_t object contianing the input options describing the
+        !    ref: reference_t object containing the input options describing the
         !        reference.  Note that ex_level is set to the number of electrons
         !        if not provided (incl. if the reference table is not present in
         !        opts) and sys is present and -1 otherwise.
@@ -2014,7 +2052,7 @@ contains
                 call get_flag_and_id(lua_state, restart_table, r_in%write_restart, r_in%write_id, 'write')
                 call get_flag_and_id(lua_state, restart_table, r_in%write_restart_shift, r_in%write_shift_id, 'write_shift')
             end associate
-            
+
             call warn_unused_args(lua_state, keys, restart_table)
 
             call aot_table_close(lua_state, restart_table)
@@ -2109,7 +2147,7 @@ contains
         type(blocking_in_t), intent(out) :: blocking_in
 
         integer :: err, blocking_table
-        character(24),parameter :: keys(11) = [character(24) ::  'blocking_on_the_fly', 'start_save_frequency',   &
+        character(24), parameter :: keys(11) = [character(24) ::  'blocking_on_the_fly', 'start_save_frequency',   &
                                                                 'start_point_number', 'filename', 'start_point', &
                                                                 'error_limit', 'blocks_used', 'min_blocks_used', &
                                                                 'auto_shift_damping', 'shift_damping_precision', &

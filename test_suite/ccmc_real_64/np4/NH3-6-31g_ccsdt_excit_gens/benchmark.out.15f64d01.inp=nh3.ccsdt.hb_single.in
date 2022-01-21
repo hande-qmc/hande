@@ -1,0 +1,1011 @@
+
+   HANDE
+
+ ================================================================
+Version information
+-------------------
+Version       | v1.4-283-g15f64d0
+Commit hash   | 15f64d01138a7d4f6c1e788b1e18bc0dff2d1b48
+Commit author | Andreea Filip
+Commit date   | Fri Feb 19 17:28:17 2021 +0000
+Branch        | master
+
+Configuration and build information
+-----------------------------------
+Who compiled             | maf63
+Compilation hostname     | serenity
+Operating system         | Linux-4.15.0-135-generic
+CMake version            | 3.19.1
+CMake generator          | Unix Makefiles
+Build type               | debug
+Configuration time       | 2021-02-22 11:34:16 [UTC]
+Python version           | 3.6.12
+Fortran compiler         | /usr/local/shared/ubuntu-18.04/x86_64/openmpi-3.1.2-intel18/bin/mpif90
+C compiler               | /usr/local/shared/ubuntu-18.04/x86_64/openmpi-3.1.2-intel18/bin/mpicc
+DET_SIZE set to          | 64
+POP_SIZE set to          | 64
+dSFMT Mersenne exponent  | 19937
+MPI parallelization      | ON
+MPI launcher             | /usr/local/shared/ubuntu-18.04/x86_64/openmpi-3.1.2-intel18/bin/mpiexec
+OpenMP parallelization   | OFF
+Lua version              | 5.3.5
+HDF5 library version     | 1.10.4
+
+Further components
+------------------
+DISABLE_HDF5 not defined.  HDF5 enabled.
+DISABLE_UUID not defined.  UUID enabled.
+PARALLEL defined.  MPI parallelization enabled.
+DISABLE_MPI3 not defined.  MPI-3 functionality enabled.
+PARALLEL defined. DISABLE_MPI3 and ENABLE_SHMEM_POSIX not defined. MPI-3 in use.
+DISABLE_SCALAPACK not defined.  ScaLAPACK enabled.
+SINGLE_PRECISION not defined.  Double precision used throughout.
+USE_POPCNT not defined. Internal POPCNT procedure used.
+
+Runtime information
+-------------------
+Hostname:
+    serenity
+Current working dir:
+    /home/maf63/hande-release/test_suite/ccmc_real_64/np4/NH3-6-31g_ccsdt_excit_gens
+Started running on 22/02/2021 at 16:53:59
+ Calculation UUID: 59097cb0-fd84-4adf-9bca-00f6a7284e64.
+ ================================================================
+
+ Number of MPI processes running on: 4
+ Running with 1 thread per MPI process.
+
+ Input options
+ -------------
+
+sys = read_in {
+    int_file = "INTDUMP",
+    nel = 10,
+    ms = 0,
+    sym = 0,
+}
+
+ccmc {
+    sys = sys,
+    qmc = {
+        tau = 0.003,
+        rng_seed = 30513,
+        init_pop = 200,
+        mc_cycles = 10,
+        nreports = 450,
+        target_population = 12000,
+        real_amplitudes = true,
+        state_size = -200,
+        spawned_state_size = -200,
+        excit_gen = 'heat_bath_exact_singles',
+        pattempt_update = true,
+    },
+    reference = {
+        ex_level = 3,
+    },
+    blocking = {
+        blocking_on_the_fly = true,
+        auto_shift_damping = true,
+        shift_damping_precision = 1.5,
+    },
+}
+-- Exact CCSDT energy: -0.124920 
+-- Integrals obtained using the following settings in PSI4: 
+-- molecule NH3  { 
+--   X 
+--   N 1 rX 
+--   H 2 rNH 1 aXNH 
+--   H 2 rNH 1 aXNH 3 a1 
+--   H 2 rNH 1 aXNH 4 a1 
+--  
+--   rX = 1.0 
+--   rNH = 0.95 
+--   aXNH = 115.0 
+--   a1 = 120.0 
+-- } 
+-- set globals { 
+--   basis 6-31g* 
+--   freeze_core true 
+-- }
+
+ -------------
+
+ Memory required for all two body integrals (MB) on each processor: 0
+ It is left to the user to ensure that this does not exceed available resources.
+
+ Basis functions
+ ---------------
+
+ Spin given in units of 1/2.
+
+ index  spatial symmetry sym_index lz     ms       <i|h|i>
+     1      1       0       1       0       1       -1.55228086E+01
+     2      1       0       2       0      -1       -1.55228086E+01
+     3      2       0       3       0       1       -1.19393933E+00
+     4      2       0       4       0      -1       -1.19393933E+00
+     5      3       0       5       0       1       -6.47678573E-01
+     6      3       0       6       0      -1       -6.47678573E-01
+     7      4       1       1       0       1       -6.47678573E-01
+     8      4       1       2       0      -1       -6.47678573E-01
+     9      5       0       7       0       1       -4.24645153E-01
+    10      5       0       8       0      -1       -4.24645153E-01
+    11      6       0       9       0       1        2.24027189E-01
+    12      6       0      10       0      -1        2.24027189E-01
+    13      7       0      11       0       1        3.33225645E-01
+    14      7       0      12       0      -1        3.33225645E-01
+    15      8       1       3       0       1        3.33225645E-01
+    16      8       1       4       0      -1        3.33225645E-01
+    17      9       0      13       0       1        8.93741706E-01
+    18      9       0      14       0      -1        8.93741706E-01
+    19     10       1       5       0       1        8.93741706E-01
+    20     10       1       6       0      -1        8.93741706E-01
+    21     11       0      15       0       1        9.77994014E-01
+    22     11       0      16       0      -1        9.77994014E-01
+    23     12       0      17       0       1        1.29876045E+00
+    24     12       0      18       0      -1        1.29876045E+00
+    25     13       1       7       0       1        1.29876045E+00
+    26     13       1       8       0      -1        1.29876045E+00
+    27     14       0      19       0       1        1.36997018E+00
+    28     14       0      20       0      -1        1.36997018E+00
+    29     15       0      21       0       1        1.58081302E+00
+    30     15       0      22       0      -1        1.58081302E+00
+
+ E_core =   12.762142573208
+ Number of electrons: 10
+ Number of basis functions: 30
+
+ Bit-length of integers used to store determinant bit-strings: 64
+ Number of integers used to store determinant bit-strings: 1
+
+ Symmetry information
+ --------------------
+
+ Number of point group symmetries: 2
+ Not using Lz symmetry.
+ Totally symmetric symmetry: 0
+ The matrix below gives the direct products of the irreducible representations.
+
+  0  1
+  1  0
+
+ The table below gives the number of basis functions spanning each irreducible representation.
+
+ irrep  Lz   sym  nbasis  nbasis_up  nbasis_down
+   0     0    0     22      11         11
+   1     0    1      8       4          4
+
+ CCMC
+ ----
+
+ Memory allocated per core for main walker list (MB):    200.00
+ Number of elements per core in main walker list: 7142857
+ Memory allocated per core for spawned walker lists (MB):    200.00
+ Number of elements per core in spawned walker list: 6250000
+
+ # Starting the excitation generator initialisation.
+ # Starting the heat bath excitation generator initialisation.
+ # Finishing the heat bath excitation generator initialisation, time taken:  1.0341900587E-01
+ # Finishing the excitation generator initialisation, time taken:  1.0347199440E-01
+ -- Start JSON block --
+ {
+     "system": {
+         "nbasis": 30,   
+         "nel": 10,   
+         "nvirt": 20,   
+         "Ms": 0,   
+         "nalpha": 5,   
+         "nbeta": 5,   
+         "nvirt_alpha": 10,   
+         "nvirt_beta": 10,   
+         "nsym": 1,   
+         "sym0": 0,   
+         "sym_max": 1,   
+         "nsym_tot": 2,   
+         "sym0_tot": 0,   
+         "sym_max_tot": 1,   
+         "symmetry": 0,   
+         "tot_sym": false,   
+         "aufbau_sym": false,   
+         "max_number_excitations": 10,   
+         "read_in": {
+             "int_file":  "INTDUMP",   
+             "uhf": false,   
+             "Ecore": 12.76214257,   
+             "CAS": [ -1, -1],
+             "useLz": false,   
+             "complex": false    
+         }
+     },
+     "qmc": {
+         "rng_seed": 30513,   
+         "real_amplitudes": true,   
+         "real_amplitude_force_32": false,   
+         "spawn_cutoff": 0.01000000,   
+         "excit_gen":  "heat_bath_exact_singles",   
+         "pattempt_update": true,   
+         "pattempt_zero_accum_data": false,   
+         "pattempt_single": 0.03369565,   
+         "pattempt_double": 0.96630435,   
+         "pattempt_parallel": 0.00000000,   
+         "tau": 0.00300000,   
+         "tau_search": false,   
+         "vary_shift_from": 0.00000000,   
+         "vary_shift_from_proje": false,   
+         "initial_shift": 0.00000000,   
+         "shift_damping": 0.05000000,   
+         "walker_length": -200,   
+         "spawned_walker_length": -200,   
+         "D0_population": 200.00000000,   
+         "target_particles": 12000.00000000,   
+         "target_reference": false,   
+         "initiator_approx": false,   
+         "initiator_pop": 3.00000000,   
+         "ncycles": 10,   
+         "nreport": 450,   
+         "power_pitzer_min_weight": 0.01000000,   
+         "quasi_newton": false,   
+         "quasi_newton_threshold": 0.00000000,   
+         "quasi_newton_value": 0.00000000,   
+         "quasi_newton_pop_control": 1.00000000,   
+         "use_mpi_barriers": false    
+     },
+     "ccmc": {
+         "move_freq": 5,   
+         "cluster_multispawn_threshold": 1.79769313E+308,   
+         "full_nc": false,   
+         "linked": false,   
+         "vary_shift_reference": false,   
+         "density_matrices": false,   
+         "density_matrix_file":  "RDM",   
+         "even_selection": false,   
+         "multiref": false    
+     },
+     "semi_stoch": {
+         "start_iter": 1,   
+         "shift_iter": -1,   
+         "space_type":  "none",   
+         "target_size": 0,   
+         "write_determ_space": false,   
+         "projection_mode":  "separate",   
+         "read_id": 2147483647,   
+         "write_id": 2147483647,   
+         "ci_space": {
+             "ex_level": -1    
+         }
+     },
+     "restart": {
+         "read_restart": false,   
+         "read_id": 2147483647,   
+         "write_restart": false,   
+         "write_id": 2147483647,   
+         "write_freq": 2147483647,   
+         "write_restart_shift": false,   
+         "write_shift_id": 2147483647,   
+         "restart_rng": true    
+     },
+     "reference": {
+         "det": [ 1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
+         "det_ms": 0,   
+         "det_symmetry": 0,   
+         "H00": -56.14711165,   
+         "F0": -36.87350045,   
+         "hilbert_space_det": [ 1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
+         "hilbert_space_det_ms": 0,   
+         "hilbert_space_det_symmetry": 0,   
+         "ex_level": 3    
+     },
+     "blocking": {
+         "blocking_on_the_fly": true,   
+         "start_save_frequency": -1,   
+         "start_point_number": -1,   
+         "filename":  "BLOCKING",   
+         "start_point": -1,   
+         "error_limit": 0.00000000,   
+         "blocks_used": 2147483647,   
+         "min_blocks_used": 10,   
+         "auto_shift_damping": true,   
+         "shift_damping_precision": 1.50000000,   
+         "force_shift_damping_opt": false    
+     },
+     "logging_in": {
+         "calc": 0,   
+         "calc_file":  "CALC",   
+         "spawn": 0,   
+         "spawn_file":  "SPAWN",   
+         "death": 0,   
+         "death_file":  "DEATH",   
+         "start_iter": 0,   
+         "end_iter": 9223372036854775807    
+     },
+     "logging": {
+         "write_highlevel_values": false,   
+         "calc_unit": 2147483647,   
+         "write_successful_spawn": false,   
+         "write_failed_spawn": false,   
+         "spawn_unit": 2147483647,   
+         "write_successful_death": false,   
+         "write_failed_death": false,   
+         "death_unit": 2147483647    
+     }
+ }
+ -- End JSON block --
+
+ Information printed out every QMC report loop:
+
+ Shift: the energy offset calculated at the end of the report loop.
+ H_0j: <D_0|H|D_j>, Hamiltonian matrix element.
+ N_j: population of Hamiltonian particles on determinant D_j.
+ # H psips: current total population of Hamiltonian particles.
+ # states: number of many-particle states occupied.
+ spawn_events: number of successful spawning events across all processors.
+ R_spawn: average rate of spawning across all processors.
+ time: average time per Monte Carlo cycle.
+
+ Note that all particle populations are averaged over the report loop.
+
+ #     iterations   Shift                 \sum H_0j N_j         N_0                   # H psips                  # states  # spawn_events      # attempts   R_spawn    time   
+ #              0   0.0000000000E+00      0.0000000000E+00      2.0000000000E+02      2.0000000000E+02                  1               0             200    0.0000    0.0000 
+               10   0.0000000000E+00     -9.6292499081E-01      1.9663503205E+02      2.8766893951E+02                 85             373             822    0.4716    0.0065 
+               20   0.0000000000E+00     -3.1700934609E+00      2.0299016996E+02      3.7263249208E+02                161             420             835    0.5888    0.0087 
+ # pattempt_single changed to be:  3.9356865312E-02
+               30   0.0000000000E+00     -4.8975791691E+00      2.0087128752E+02      4.8189655575E+02                258             457             860    0.6414    0.0038 
+               40   0.0000000000E+00     -6.4118038711E+00      2.0331317153E+02      5.9740463418E+02                357             463             912    0.6827    0.0044 
+               50   0.0000000000E+00     -8.2631887083E+00      2.0076915709E+02      7.2279568984E+02                468             559             938    0.7075    0.0075 
+ # pattempt_single changed to be:  6.5431779266E-02
+               60   0.0000000000E+00     -9.0479529632E+00      1.9987781890E+02      8.2964253759E+02                557             512             947    0.7002    0.0087 
+               70   0.0000000000E+00     -1.0276679820E+01      2.0370930070E+02      9.5077807732E+02                658             536            1003    0.6841    0.0130 
+ # pattempt_single changed to be:  8.7946358848E-02
+               80   0.0000000000E+00     -1.1344519465E+01      2.0065381247E+02      1.0745372645E+03                762             564            1067    0.6907    0.0130 
+               90   0.0000000000E+00     -1.2686076340E+01      2.0327718782E+02      1.2402201864E+03                904             667            1224    0.6884    0.0166 
+ # pattempt_single changed to be:  1.0103588216E-01
+              100   0.0000000000E+00     -1.3950779859E+01      2.0246412837E+02      1.3620562229E+03               1009             722            1346    0.6897    0.0236 
+              110   0.0000000000E+00     -1.5396919024E+01      2.0214619369E+02      1.5480802379E+03               1165             826            1523    0.6973    0.0220 
+ # pattempt_single changed to be:  1.0189575675E-01
+              120   0.0000000000E+00     -1.6020919629E+01      2.0195056703E+02      1.7007910881E+03               1290             885            1694    0.6986    0.0268 
+ # pattempt_single changed to be:  1.0162228705E-01
+              130   0.0000000000E+00     -1.7037561810E+01      2.0191527324E+02      1.8412378988E+03               1403             933            1820    0.6970    0.0267 
+ # pattempt_single changed to be:  1.0109710010E-01
+              140   0.0000000000E+00     -1.8012482951E+01      2.0207570531E+02      2.0157490521E+03               1545            1061            2002    0.6948    0.0196 
+ # pattempt_single changed to be:  1.0282967150E-01
+              150   0.0000000000E+00     -1.7713677512E+01      2.0349482844E+02      2.1314434410E+03               1636            1198            2118    0.6960    0.0156 
+ # pattempt_single changed to be:  1.0559017187E-01
+              160   0.0000000000E+00     -1.8616551852E+01      2.0485423163E+02      2.2869443352E+03               1776            1223            2275    0.6899    0.0160 
+ # pattempt_single changed to be:  1.0586391494E-01
+              170   0.0000000000E+00     -1.8614035869E+01      2.0611412226E+02      2.4712791867E+03               1911            1285            2441    0.6876    0.0241 
+ # pattempt_single changed to be:  1.0359392780E-01
+              180   0.0000000000E+00     -1.9732939664E+01      2.0813455803E+02      2.6239781726E+03               2040            1407            2599    0.6850    0.0256 
+ # pattempt_single changed to be:  1.0343401555E-01
+              190   0.0000000000E+00     -1.9709836769E+01      2.0495399644E+02      2.8205211689E+03               2192            1460            2790    0.6942    0.0214 
+ # pattempt_single changed to be:  1.0548933744E-01
+              200   0.0000000000E+00     -2.1143947872E+01      2.0755831618E+02      3.0050087743E+03               2327            1550            2980    0.6869    0.0258 
+ # pattempt_single changed to be:  1.0545268939E-01
+              210   0.0000000000E+00     -2.1493280121E+01      2.0911300736E+02      3.1418088984E+03               2446            1675            3132    0.6841    0.0317 
+ # pattempt_single changed to be:  1.0435760702E-01
+              220   0.0000000000E+00     -2.1393837779E+01      2.0834675517E+02      3.3152951797E+03               2590            1744            3300    0.6891    0.0336 
+ # pattempt_single changed to be:  1.0629803793E-01
+              230   0.0000000000E+00     -2.2606215406E+01      2.0773799346E+02      3.4507069572E+03               2709            1768            3426    0.6799    0.0320 
+ # pattempt_single changed to be:  1.0599124298E-01
+              240   0.0000000000E+00     -2.1359864587E+01      2.0992665646E+02      3.6381188235E+03               2826            1883            3617    0.6782    0.0447 
+ # pattempt_single changed to be:  1.0466045901E-01
+              250   0.0000000000E+00     -2.2317974601E+01      2.1032033154E+02      3.8044751549E+03               2929            1959            3788    0.6791    0.0552 
+ # pattempt_single changed to be:  1.0523596432E-01
+              260   0.0000000000E+00     -2.3237492047E+01      2.0966398296E+02      4.0179750824E+03               3068            2037            3985    0.6761    0.0619 
+ # pattempt_single changed to be:  1.0305240459E-01
+              270   0.0000000000E+00     -2.4024726201E+01      2.1097553923E+02      4.1993953530E+03               3183            2120            4175    0.6697    0.0431 
+ # pattempt_single changed to be:  1.0342502758E-01
+              280   0.0000000000E+00     -2.4741205023E+01      2.1214395244E+02      4.3695621812E+03               3321            2148            4369    0.6576    0.0324 
+ # pattempt_single changed to be:  1.0319155075E-01
+              290   0.0000000000E+00     -2.4808521104E+01      2.1265693797E+02      4.5819019512E+03               3492            2264            4551    0.6531    0.0378 
+ # pattempt_single changed to be:  1.0194441185E-01
+              300   0.0000000000E+00     -2.4096722162E+01      2.1430542676E+02      4.7583426996E+03               3568            2345            4758    0.6393    0.0458 
+ # pattempt_single changed to be:  1.0144029321E-01
+              310   0.0000000000E+00     -2.4699298486E+01      2.1455241323E+02      4.8943564389E+03               3668            2392            4876    0.6367    0.0465 
+ # pattempt_single changed to be:  1.0210538906E-01
+              320   0.0000000000E+00     -2.6119042174E+01      2.1575320845E+02      5.0744829863E+03               3787            2369            5069    0.6239    0.0519 
+ # pattempt_single changed to be:  1.0262258339E-01
+              330   0.0000000000E+00     -2.3624546739E+01      2.1477632537E+02      5.2282931453E+03               3837            2395            5228    0.6148    0.0697 
+ # pattempt_single changed to be:  1.0312537637E-01
+              340   0.0000000000E+00     -2.3882488074E+01      2.1514450472E+02      5.3977511535E+03               3950            2500            5363    0.6205    0.0656 
+ # pattempt_single changed to be:  1.0258723897E-01
+              350   0.0000000000E+00     -2.4856875993E+01      2.1537848327E+02      5.5544086943E+03               4010            2533            5550    0.6138    0.0790 
+ # pattempt_single changed to be:  1.0327801065E-01
+              360   0.0000000000E+00     -2.3968145293E+01      2.1732203619E+02      5.7283319747E+03               4098            2548            5703    0.6033    0.0745 
+ # pattempt_single changed to be:  1.0350920718E-01
+              370   0.0000000000E+00     -2.5418605353E+01      2.1628981338E+02      5.8836433736E+03               4199            2727            5851    0.5996    0.0767 
+ # pattempt_single changed to be:  1.0302685276E-01
+              380   0.0000000000E+00     -2.6445395623E+01      2.1853224930E+02      6.0410639344E+03               4330            2761            6047    0.5941    0.0763 
+ # pattempt_single changed to be:  1.0337878843E-01
+              390   0.0000000000E+00     -2.5670466103E+01      2.2126525060E+02      6.1564060715E+03               4420            2838            6140    0.5872    0.0704 
+ # pattempt_single changed to be:  1.0331005826E-01
+              400   0.0000000000E+00     -2.6325070942E+01      2.2105463591E+02      6.3039216360E+03               4510            2830            6281    0.5910    0.0562 
+ # pattempt_single changed to be:  1.0380494291E-01
+              410   0.0000000000E+00     -2.5467746635E+01      2.2119332567E+02      6.3920742288E+03               4585            2977            6400    0.5861    0.0640 
+ # pattempt_single changed to be:  1.0377763531E-01
+              420   0.0000000000E+00     -2.4933418344E+01      2.2216186021E+02      6.4805125164E+03               4661            2867            6487    0.5826    0.0697 
+ # pattempt_single changed to be:  1.0430400888E-01
+              430   0.0000000000E+00     -2.6209382030E+01      2.2232439019E+02      6.5567709491E+03               4711            2946            6537    0.5829    0.0791 
+ # pattempt_single changed to be:  1.0389817311E-01
+              440   0.0000000000E+00     -2.7517140118E+01      2.2173035479E+02      6.9326881873E+03               4797            3026            6945    0.5751    0.0858 
+ # pattempt_single changed to be:  1.0458599791E-01
+              450   0.0000000000E+00     -3.0262038583E+01      2.2400901702E+02      7.1412088090E+03               4926            3112            7131    0.5675    0.0955 
+ # pattempt_single changed to be:  1.0421731514E-01
+              460   0.0000000000E+00     -2.5225999215E+01      2.2644989928E+02      7.3218406453E+03               5026            3038            7294    0.5636    0.0838 
+ # pattempt_single changed to be:  1.0484705480E-01
+              470   0.0000000000E+00     -2.6847247021E+01      2.2596073363E+02      7.4552140517E+03               5114            3216            7432    0.5608    0.0730 
+ # pattempt_single changed to be:  1.0535120519E-01
+              480   0.0000000000E+00     -2.8556101966E+01      2.2745239360E+02      7.5719579425E+03               5171            3242            7561    0.5616    0.0903 
+ # pattempt_single changed to be:  1.0545244325E-01
+              490   0.0000000000E+00     -2.6984594972E+01      2.2708945521E+02      7.7232565723E+03               5263            3306            7714    0.5545    0.0898 
+ # pattempt_single changed to be:  1.0508093992E-01
+              500   0.0000000000E+00     -2.7575302543E+01      2.3046234258E+02      7.8503986421E+03               5336            3340            7861    0.5520    0.0868 
+ # pattempt_single changed to be:  1.0586272968E-01
+              510   0.0000000000E+00     -2.7221384079E+01      2.3128989748E+02      7.9569998672E+03               5410            3343            7933    0.5524    0.0624 
+ # pattempt_single changed to be:  1.0615625589E-01
+              520   0.0000000000E+00     -2.8201093045E+01      2.3239625002E+02      8.1406902513E+03               5528            3458            8131    0.5509    0.0784 
+ # pattempt_single changed to be:  1.0585998647E-01
+              530   0.0000000000E+00     -2.8658813016E+01      2.3362000313E+02      8.4986826756E+03               5543            3419            8244    0.5459    0.0743 
+ # pattempt_single changed to be:  1.0619739592E-01
+              540   0.0000000000E+00     -2.9793579165E+01      2.3319317362E+02      8.6342704968E+03               5605            3474            8652    0.5418    0.1097 
+ # pattempt_single changed to be:  1.0666958735E-01
+              550   0.0000000000E+00     -2.7505361610E+01      2.3289909493E+02      8.8558090414E+03               5693            3559            8847    0.5389    0.1122 
+ # pattempt_single changed to be:  1.0685446882E-01
+              560   0.0000000000E+00     -2.8851506120E+01      2.3544353444E+02      8.9417219103E+03               5765            3667            8950    0.5364    0.1172 
+ # pattempt_single changed to be:  1.0757281127E-01
+              570   0.0000000000E+00     -3.0204662588E+01      2.3438373655E+02      9.0497455264E+03               5795            3752            9033    0.5392    0.1516 
+ # pattempt_single changed to be:  1.0834271134E-01
+              580   0.0000000000E+00     -2.9210072172E+01      2.3684999584E+02      9.1622267933E+03               5852            3687            9139    0.5364    0.1269 
+ # pattempt_single changed to be:  1.0851656752E-01
+              590   0.0000000000E+00     -2.9258132850E+01      2.3711074190E+02      9.2246610542E+03               5930            3752            9227    0.5302    0.0956 
+ # pattempt_single changed to be:  1.0813500069E-01
+              600   0.0000000000E+00     -2.9235228500E+01      2.3750429731E+02      9.1933143932E+03               5939            3717            9189    0.5336    0.1128 
+ # pattempt_single changed to be:  1.0841491219E-01
+              610   0.0000000000E+00     -3.0250437407E+01      2.3856860969E+02      9.2242604469E+03               6017            3748            9249    0.5317    0.1214 
+ # pattempt_single changed to be:  1.0823293234E-01
+              620   0.0000000000E+00     -2.7787601798E+01      2.3893630088E+02      9.2625558421E+03               6026            3675            9240    0.5322    0.1546 
+ # pattempt_single changed to be:  1.0855977574E-01
+              630   0.0000000000E+00     -2.8076630160E+01      2.3915699821E+02      9.3145604460E+03               6058            3741            9321    0.5325    0.1136 
+ # pattempt_single changed to be:  1.0880999629E-01
+              640   0.0000000000E+00     -2.8976120464E+01      2.4012389603E+02      9.2649471121E+03               6070            3780            9262    0.5313    0.0891 
+ # pattempt_single changed to be:  1.0853360998E-01
+              650   0.0000000000E+00     -2.8344522470E+01      2.4279131581E+02      9.3249785836E+03               6102            3841            9328    0.5358    0.0955 
+ # pattempt_single changed to be:  1.0824394235E-01
+              660   0.0000000000E+00     -2.8662737237E+01      2.4237172202E+02      9.4661774050E+03               6179            3835            9467    0.5334    0.0996 
+ # pattempt_single changed to be:  1.0802188322E-01
+              670   0.0000000000E+00     -2.9839394644E+01      2.4377369524E+02      9.4373888090E+03               6189            3908            9440    0.5358    0.1252 
+ # pattempt_single changed to be:  1.0770397859E-01
+              680   0.0000000000E+00     -2.9834492855E+01      2.4360074256E+02      9.3080125769E+03               6098            3857            9320    0.5346    0.0908 
+ # pattempt_single changed to be:  1.0735554088E-01
+              690   0.0000000000E+00     -3.0286761447E+01      2.4446528347E+02      9.3821270872E+03               6132            3811            9350    0.5397    0.1345 
+ # pattempt_single changed to be:  1.0716804595E-01
+              700   0.0000000000E+00     -2.8322176877E+01      2.4600608317E+02      9.3835477131E+03               6180            3857            9381    0.5332    0.1462 
+ # pattempt_single changed to be:  1.0744504753E-01
+              710   0.0000000000E+00     -3.0725330625E+01      2.4727090793E+02      9.3790636401E+03               6178            3865            9401    0.5353    0.1210 
+ # pattempt_single changed to be:  1.0765311169E-01
+              720   0.0000000000E+00     -3.0722976788E+01      2.4745881274E+02      9.4156998408E+03               6143            3816            9427    0.5361    0.0980 
+ # pattempt_single changed to be:  1.0813041352E-01
+              730   0.0000000000E+00     -3.0370466977E+01      2.4709261156E+02      9.3923016728E+03               6103            3807            9365    0.5419    0.0827 
+ # pattempt_single changed to be:  1.0802659732E-01
+              740   0.0000000000E+00     -2.9695276041E+01      2.4813709544E+02      9.4334731763E+03               6134            3825            9439    0.5352    0.1258 
+ # pattempt_single changed to be:  1.0785845642E-01
+              750   0.0000000000E+00     -2.9938555296E+01      2.4888656114E+02      9.5097548013E+03               6166            3931            9539    0.5369    0.1276 
+ # pattempt_single changed to be:  1.0796792417E-01
+              760   0.0000000000E+00     -3.1234611885E+01      2.4945686501E+02      9.8290406265E+03               6228            3871            9859    0.5277    0.1016 
+ # pattempt_single changed to be:  1.0796593659E-01
+              770   0.0000000000E+00     -3.2849382639E+01      2.5104807388E+02      9.8465103868E+03               6207            4030            9829    0.5288    0.1236 
+ # pattempt_single changed to be:  1.0781418046E-01
+              780   0.0000000000E+00     -3.0555786682E+01      2.5165821842E+02      1.0031192423E+04               6269            4105            9961    0.5314    0.1316 
+ # pattempt_single changed to be:  1.0772882276E-01
+              790   0.0000000000E+00     -3.0412864050E+01      2.5243110827E+02      1.0012372000E+04               6303            4059           10008    0.5301    0.0828 
+ # pattempt_single changed to be:  1.0757912323E-01
+              800   0.0000000000E+00     -2.9971023826E+01      2.5458321760E+02      9.9653993350E+03               6327            3948            9913    0.5263    0.1514 
+ # pattempt_single changed to be:  1.0754746855E-01
+              810   0.0000000000E+00     -3.0228142237E+01      2.5375076299E+02      1.0028954747E+04               6327            4087           10047    0.5272    0.1708 
+ # pattempt_single changed to be:  1.0750608988E-01
+              820   0.0000000000E+00     -3.2881659509E+01      2.5473770588E+02      1.0145415644E+04               6356            4098           10151    0.5278    0.2060 
+ # pattempt_single changed to be:  1.0777006604E-01
+              830   0.0000000000E+00     -3.3237489128E+01      2.5506599898E+02      1.0246501466E+04               6423            4187           10226    0.5306    0.1656 
+ # pattempt_single changed to be:  1.0784392077E-01
+              840   0.0000000000E+00     -3.4412967338E+01      2.5636284513E+02      1.0367457905E+04               6535            4245           10376    0.5273    0.0798 
+ # pattempt_single changed to be:  1.0775961152E-01
+              850   0.0000000000E+00     -3.3502912074E+01      2.5854262050E+02      1.0292472884E+04               6519            4210           10283    0.5265    0.0884 
+ # pattempt_single changed to be:  1.0769808261E-01
+              860   0.0000000000E+00     -3.2724382461E+01      2.5738398540E+02      1.0258645887E+04               6499            4052           10288    0.5296    0.1001 
+ # pattempt_single changed to be:  1.0787869078E-01
+              870   0.0000000000E+00     -3.2392068450E+01      2.5930446794E+02      1.0295177924E+04               6493            4073           10308    0.5295    0.0933 
+ # pattempt_single changed to be:  1.0818402569E-01
+              880   0.0000000000E+00     -3.1511009135E+01      2.6002304832E+02      1.0262694527E+04               6472            4215           10269    0.5322    0.1022 
+ # pattempt_single changed to be:  1.0794395401E-01
+              890   0.0000000000E+00     -3.0625594277E+01      2.6356900991E+02      1.0243363096E+04               6484            4079           10239    0.5294    0.0959 
+ # pattempt_single changed to be:  1.0787746492E-01
+              900   0.0000000000E+00     -3.1026314746E+01      2.6276038197E+02      1.0267088259E+04               6487            4161           10250    0.5302    0.0852 
+ # pattempt_single changed to be:  1.0797607231E-01
+              910   0.0000000000E+00     -3.2010040492E+01      2.6290992018E+02      1.0342859507E+04               6548            4126           10338    0.5332    0.1053 
+ # pattempt_single changed to be:  1.0820098923E-01
+              920   0.0000000000E+00     -3.0816332894E+01      2.6538210786E+02      1.0276810358E+04               6503            4147           10311    0.5323    0.1412 
+ # pattempt_single changed to be:  1.0818612421E-01
+              930   0.0000000000E+00     -3.3168658892E+01      2.6596356648E+02      1.0291561832E+04               6521            4105           10239    0.5330    0.0908 
+ # pattempt_single changed to be:  1.0799496367E-01
+              940   0.0000000000E+00     -3.2262584547E+01      2.6566225867E+02      1.0293734449E+04               6588            4181           10312    0.5313    0.0762 
+ # pattempt_single changed to be:  1.0795887077E-01
+              950   0.0000000000E+00     -3.2210818958E+01      2.6533349358E+02      1.0254355860E+04               6556            4134           10251    0.5302    0.0919 
+ # pattempt_single changed to be:  1.0779828700E-01
+              960   0.0000000000E+00     -3.3353818927E+01      2.6564768149E+02      1.0178082146E+04               6550            4188           10204    0.5322    0.1040 
+ # pattempt_single changed to be:  1.0789852309E-01
+              970   0.0000000000E+00     -3.3832821367E+01      2.6554013195E+02      1.0145130661E+04               6533            4209           10119    0.5371    0.1404 
+ # pattempt_single changed to be:  1.0814931598E-01
+              980   0.0000000000E+00     -3.2480445641E+01      2.6886235924E+02      1.0108219771E+04               6537            4073           10143    0.5321    0.1152 
+ # pattempt_single changed to be:  1.0808320122E-01
+              990   0.0000000000E+00     -3.3066663135E+01      2.6802323429E+02      1.0388937588E+04               6517            4294           10362    0.5370    0.0883 
+ # pattempt_single changed to be:  1.0796972907E-01
+             1000   0.0000000000E+00     -3.3096235237E+01      2.7062189744E+02      1.0409816153E+04               6567            4172           10394    0.5335    0.0943 
+ # pattempt_single changed to be:  1.0778772880E-01
+             1010   0.0000000000E+00     -3.2281791259E+01      2.7133190169E+02      1.0480063359E+04               6604            4279           10502    0.5311    0.0728 
+ # pattempt_single changed to be:  1.0793837495E-01
+             1020   0.0000000000E+00     -3.4335641205E+01      2.7094526629E+02      1.0569830340E+04               6663            4309           10531    0.5341    0.1123 
+ # pattempt_single changed to be:  1.0788659740E-01
+             1030   0.0000000000E+00     -3.4499262681E+01      2.7270862658E+02      1.0464988750E+04               6590            4243           10469    0.5294    0.1111 
+ # pattempt_single changed to be:  1.0790705219E-01
+             1040   0.0000000000E+00     -3.4788691521E+01      2.7192328361E+02      1.0566403810E+04               6610            4209           10553    0.5303    0.0972 
+ # pattempt_single changed to be:  1.0781550846E-01
+             1050   0.0000000000E+00     -3.4761051671E+01      2.7273876669E+02      1.0454736444E+04               6598            4271           10466    0.5341    0.0903 
+ # pattempt_single changed to be:  1.0791496059E-01
+             1060   0.0000000000E+00     -3.4319416273E+01      2.7498038755E+02      1.0308597297E+04               6480            4373           10343    0.5379    0.0877 
+ # pattempt_single changed to be:  1.0779468615E-01
+             1070   0.0000000000E+00     -3.5476571428E+01      2.7500871152E+02      1.0374087769E+04               6463            4265           10334    0.5392    0.0823 
+ # pattempt_single changed to be:  1.0765300990E-01
+             1080   0.0000000000E+00     -3.3821286895E+01      2.7698962240E+02      1.0441819020E+04               6519            4300           10473    0.5391    0.0871 
+ # pattempt_single changed to be:  1.0768916046E-01
+             1090   0.0000000000E+00     -3.3953613725E+01      2.7930821999E+02      1.0476118966E+04               6581            4262           10500    0.5378    0.1010 
+ # pattempt_single changed to be:  1.0769609667E-01
+             1100   0.0000000000E+00     -3.3924716825E+01      2.8045093627E+02      1.0433802515E+04               6619            4304           10471    0.5360    0.1328 
+ # pattempt_single changed to be:  1.0766429682E-01
+             1110   0.0000000000E+00     -3.6724313874E+01      2.8063150601E+02      1.0486131568E+04               6591            4362           10505    0.5367    0.1303 
+ # pattempt_single changed to be:  1.0757725006E-01
+             1120   0.0000000000E+00     -3.4390095870E+01      2.8319675379E+02      1.0680938967E+04               6633            4399           10656    0.5336    0.1065 
+ # pattempt_single changed to be:  1.0775765285E-01
+             1130   0.0000000000E+00     -3.6789673722E+01      2.8190484545E+02      1.0783271694E+04               6687            4438           10798    0.5364    0.1140 
+ # pattempt_single changed to be:  1.0783143764E-01
+             1140   0.0000000000E+00     -3.7143240912E+01      2.8355157410E+02      1.0836903185E+04               6729            4413           10833    0.5339    0.1408 
+ # pattempt_single changed to be:  1.0776365109E-01
+             1150   0.0000000000E+00     -3.7597223947E+01      2.8482906262E+02      1.0904243191E+04               6719            4472           10921    0.5337    0.1104 
+ # pattempt_single changed to be:  1.0764490199E-01
+             1160   0.0000000000E+00     -3.5767091229E+01      2.8653726390E+02      1.1289456460E+04               6753            4679           11262    0.5354    0.1210 
+ # pattempt_single changed to be:  1.0778484867E-01
+             1170   0.0000000000E+00     -3.7744417903E+01      2.8822675505E+02      1.1316945005E+04               6806            4642           11336    0.5354    0.1222 
+ # pattempt_single changed to be:  1.0777565628E-01
+             1180   0.0000000000E+00     -3.6453953988E+01      2.9062651522E+02      1.1359184708E+04               6808            4615           11345    0.5324    0.1156 
+ # pattempt_single changed to be:  1.0782913581E-01
+             1190   0.0000000000E+00     -3.6673465110E+01      2.9165099399E+02      1.1266551356E+04               6862            4529           11236    0.5338    0.1187 
+ # pattempt_single changed to be:  1.0776793535E-01
+             1200   0.0000000000E+00     -3.7835349393E+01      2.9054329081E+02      1.1217133260E+04               6827            4648           11214    0.5384    0.1185 
+ # pattempt_single changed to be:  1.0773321550E-01
+             1210   0.0000000000E+00     -3.5046171817E+01      2.9081267730E+02      1.1361733138E+04               6847            4625           11383    0.5331    0.1330 
+ # pattempt_single changed to be:  1.0773924424E-01
+             1220   0.0000000000E+00     -3.6485479174E+01      2.9451333275E+02      1.1381879335E+04               6880            4619           11383    0.5346    0.1068 
+ # pattempt_single changed to be:  1.0775513851E-01
+             1230   0.0000000000E+00     -3.7853698230E+01      2.9533907188E+02      1.1424475878E+04               6894            4610           11449    0.5349    0.0858 
+ # pattempt_single changed to be:  1.0779787161E-01
+             1240   0.0000000000E+00     -3.6867976165E+01      2.9533677770E+02      1.1318578511E+04               6866            4665           11321    0.5349    0.0953 
+ # pattempt_single changed to be:  1.0778404785E-01
+             1250   0.0000000000E+00     -3.6733574213E+01      2.9606699240E+02      1.1415134581E+04               6927            4587           11392    0.5356    0.0762 
+ # pattempt_single changed to be:  1.0768737614E-01
+             1260   0.0000000000E+00     -3.8156078028E+01      2.9622623031E+02      1.1430810179E+04               6952            4692           11472    0.5399    0.1302 
+ # pattempt_single changed to be:  1.0777738712E-01
+             1270   0.0000000000E+00     -3.7947371502E+01      2.9816402082E+02      1.1338747650E+04               6925            4657           11352    0.5369    0.1120 
+ # pattempt_single changed to be:  1.0788790507E-01
+             1280   0.0000000000E+00     -3.5610875345E+01      2.9960896391E+02      1.1235586224E+04               6867            4602           11236    0.5356    0.1186 
+ # pattempt_single changed to be:  1.0778573444E-01
+             1290   0.0000000000E+00     -3.7147329169E+01      2.9993063853E+02      1.0995150393E+04               6797            4557           11013    0.5388    0.1048 
+ # pattempt_single changed to be:  1.0792558841E-01
+             1300   0.0000000000E+00     -3.7644485558E+01      3.0308656395E+02      1.1097239493E+04               6838            4601           11111    0.5393    0.1023 
+ # pattempt_single changed to be:  1.0777353239E-01
+             1310   0.0000000000E+00     -3.7556273546E+01      3.0219720949E+02      1.1051652350E+04               6875            4557           11048    0.5417    0.1002 
+ # pattempt_single changed to be:  1.0780778134E-01
+             1320   0.0000000000E+00     -3.7041694738E+01      3.0175602737E+02      1.1034714241E+04               6868            4673           11019    0.5400    0.0907 
+ # pattempt_single changed to be:  1.0775692542E-01
+             1330   0.0000000000E+00     -3.8019339997E+01      3.0091513836E+02      1.1000036987E+04               6893            4552           10970    0.5445    0.1307 
+ # pattempt_single changed to be:  1.0778796853E-01
+             1340   0.0000000000E+00     -3.9539419272E+01      3.0285144808E+02      1.1091955016E+04               6896            4547           11093    0.5431    0.0817 
+ # pattempt_single changed to be:  1.0781023400E-01
+             1350   0.0000000000E+00     -4.0999838694E+01      3.0510901090E+02      1.0986188914E+04               6875            4570           10964    0.5409    0.0986 
+ # pattempt_single changed to be:  1.0780651909E-01
+             1360   0.0000000000E+00     -3.9316691988E+01      3.0636562997E+02      1.0969263200E+04               6876            4670           10976    0.5448    0.1422 
+ # pattempt_single changed to be:  1.0787668100E-01
+             1370   0.0000000000E+00     -3.9789176946E+01      3.0695127023E+02      1.0972107902E+04               6856            4604           10947    0.5487    0.1293 
+ # pattempt_single changed to be:  1.0789966132E-01
+             1380   0.0000000000E+00     -3.8929096259E+01      3.0933206381E+02      1.1078616503E+04               6900            4593           11077    0.5377    0.1047 
+ # pattempt_single changed to be:  1.0788406578E-01
+             1390   0.0000000000E+00     -4.0676924271E+01      3.0889037426E+02      1.1059488367E+04               6885            4596           11064    0.5441    0.1098 
+ # pattempt_single changed to be:  1.0796688912E-01
+             1400   0.0000000000E+00     -3.9490157009E+01      3.0976154229E+02      1.1084728155E+04               6872            4567           11097    0.5447    0.0951 
+ # pattempt_single changed to be:  1.0798791925E-01
+             1410   0.0000000000E+00     -4.0770114253E+01      3.1077438593E+02      1.1031730386E+04               6855            4530           11042    0.5472    0.0828 
+ # pattempt_single changed to be:  1.0800026784E-01
+             1420   0.0000000000E+00     -4.0996151066E+01      3.1459342311E+02      1.1029608305E+04               6844            4493           11060    0.5438    0.1513 
+ # pattempt_single changed to be:  1.0793448485E-01
+             1430   0.0000000000E+00     -4.2283316862E+01      3.1207635823E+02      1.1113951845E+04               6887            4575           11132    0.5505    0.1634 
+ # pattempt_single changed to be:  1.0786769887E-01
+             1440   0.0000000000E+00     -4.1452895872E+01      3.1309835322E+02      1.1108801632E+04               6897            4605           11083    0.5466    0.1628 
+ # pattempt_single changed to be:  1.0781483775E-01
+             1450   0.0000000000E+00     -4.1871980894E+01      3.1206781419E+02      1.1111323187E+04               6909            4656           11111    0.5520    0.1128 
+ # pattempt_single changed to be:  1.0799878260E-01
+             1460   0.0000000000E+00     -4.1232287010E+01      3.1369072602E+02      1.1140477030E+04               6913            4651           11079    0.5450    0.1355 
+ # pattempt_single changed to be:  1.0793616365E-01
+             1470   0.0000000000E+00     -4.0095688557E+01      3.1587029128E+02      1.1095574923E+04               6895            4515           11101    0.5472    0.0947 
+ # pattempt_single changed to be:  1.0788072555E-01
+             1480   0.0000000000E+00     -3.9574209770E+01      3.1557914592E+02      1.1150636454E+04               6892            4658           11166    0.5504    0.0987 
+ # pattempt_single changed to be:  1.0781387727E-01
+             1490   0.0000000000E+00     -4.1083143235E+01      3.1666636788E+02      1.1218319084E+04               6910            4612           11179    0.5501    0.1407 
+ # pattempt_single changed to be:  1.0780183582E-01
+             1500   0.0000000000E+00     -4.0282638730E+01      3.2033568190E+02      1.1124472542E+04               6910            4735           11134    0.5509    0.1344 
+ # pattempt_single changed to be:  1.0772617579E-01
+             1510   0.0000000000E+00     -3.8200934738E+01      3.2021360066E+02      1.1120102153E+04               6879            4798           11084    0.5486    0.1042 
+ # pattempt_single changed to be:  1.0766189668E-01
+             1520   0.0000000000E+00     -4.0417223326E+01      3.2034179700E+02      1.1104381215E+04               6880            4796           11116    0.5527    0.1026 
+ # pattempt_single changed to be:  1.0774130826E-01
+ # WARNING: more than 5% of the total population spawned in a single event 1 times in the last report loop.
+ # Mean number of particles created in blooms:    561.4
+ # This warning only prints  1 time(s). You may wish to reduce the time step.
+             1530   0.0000000000E+00     -3.9539778147E+01      3.2215731299E+02      1.1444868846E+04               6882            4744           11430    0.5474    0.0936 
+ # pattempt_single changed to be:  1.0780689234E-01
+             1540   0.0000000000E+00     -3.9878374178E+01      3.2315582686E+02      1.1555656068E+04               6918            4886           11559    0.5456    0.1552 
+ # pattempt_single changed to be:  1.0779150742E-01
+             1550   0.0000000000E+00     -4.3371669229E+01      3.2685655947E+02      1.1555044281E+04               6943            4900           11535    0.5513    0.1451 
+ # pattempt_single changed to be:  1.0770327939E-01
+             1560   0.0000000000E+00     -4.2673081493E+01      3.3051712022E+02      1.1551874894E+04               6961            4800           11556    0.5441    0.1356 
+ # pattempt_single changed to be:  1.0766968231E-01
+             1570   0.0000000000E+00     -4.3731220494E+01      3.3089547454E+02      1.1637072202E+04               7056            4906           11611    0.5494    0.1428 
+ # pattempt_single changed to be:  1.0764060509E-01
+             1580   0.0000000000E+00     -4.3173549280E+01      3.3335528314E+02      1.1498919291E+04               7029            4851           11504    0.5497    0.0932 
+ # pattempt_single changed to be:  1.0768192600E-01
+             1590   0.0000000000E+00     -4.3013934694E+01      3.3401250489E+02      1.1431693791E+04               6996            4753           11419    0.5505    0.1264 
+ # pattempt_single changed to be:  1.0759042995E-01
+             1600   0.0000000000E+00     -4.2144707220E+01      3.3607561949E+02      1.1436093329E+04               7055            4896           11440    0.5541    0.1716 
+ # pattempt_single changed to be:  1.0763065056E-01
+             1610   0.0000000000E+00     -4.4162974143E+01      3.3629679715E+02      1.1303900547E+04               7008            4791           11327    0.5571    0.1606 
+ # pattempt_single changed to be:  1.0764731561E-01
+             1620   0.0000000000E+00     -4.2924786095E+01      3.3846602821E+02      1.1318408169E+04               6979            4919           11308    0.5554    0.1934 
+ # pattempt_single changed to be:  1.0762613402E-01
+             1630   0.0000000000E+00     -4.2084143388E+01      3.3994932547E+02      1.1367055192E+04               6962            4823           11328    0.5570    0.0926 
+ # pattempt_single changed to be:  1.0757848996E-01
+             1640   0.0000000000E+00     -4.3865323069E+01      3.4359822961E+02      1.1391589961E+04               6926            4866           11371    0.5575    0.0841 
+ # pattempt_single changed to be:  1.0757189961E-01
+             1650   0.0000000000E+00     -4.2184341880E+01      3.4393731746E+02      1.1367690036E+04               6943            4952           11394    0.5579    0.1043 
+ # pattempt_single changed to be:  1.0754801137E-01
+             1660   0.0000000000E+00     -4.2917011864E+01      3.4475895475E+02      1.1348821093E+04               6961            4944           11332    0.5602    0.1510 
+ # pattempt_single changed to be:  1.0748737170E-01
+             1670   0.0000000000E+00     -4.2711638747E+01      3.4671126232E+02      1.1470946702E+04               7035            5005           11488    0.5586    0.1425 
+ # pattempt_single changed to be:  1.0741857097E-01
+             1680   0.0000000000E+00     -4.2905206441E+01      3.4886428524E+02      1.1348196661E+04               6974            4786           11363    0.5594    0.1492 
+ # pattempt_single changed to be:  1.0739130315E-01
+             1690   0.0000000000E+00     -4.2504944605E+01      3.5016722012E+02      1.1346772045E+04               6950            4809           11340    0.5619    0.1627 
+ # pattempt_single changed to be:  1.0741966225E-01
+             1700   0.0000000000E+00     -4.3925228639E+01      3.5151325338E+02      1.1385908275E+04               6943            4988           11395    0.5587    0.1017 
+ # pattempt_single changed to be:  1.0751317812E-01
+             1710   0.0000000000E+00     -4.3415179216E+01      3.5447524550E+02      1.1427157524E+04               6964            4832           11384    0.5620    0.1003 
+ # pattempt_single changed to be:  1.0756359105E-01
+             1720   0.0000000000E+00     -4.2289906414E+01      3.5492460449E+02      1.1711417762E+04               6957            5060           11695    0.5563    0.1136 
+ # pattempt_single changed to be:  1.0751698417E-01
+             1730   0.0000000000E+00     -4.2933810233E+01      3.5603352706E+02      1.1680930605E+04               6959            4943           11676    0.5565    0.1213 
+ # pattempt_single changed to be:  1.0750273118E-01
+             1740   0.0000000000E+00     -4.3550101594E+01      3.5694745272E+02      1.1717704048E+04               6976            4956           11708    0.5598    0.1102 
+ # pattempt_single changed to be:  1.0762713882E-01
+             1750   0.0000000000E+00     -4.4223267306E+01      3.5816176395E+02      1.1727112409E+04               7006            5034           11725    0.5605    0.1302 
+ # pattempt_single changed to be:  1.0758345863E-01
+             1760   0.0000000000E+00     -4.4401907493E+01      3.5903646698E+02      1.1900032523E+04               7029            5125           11843    0.5612    0.0997 
+ # pattempt_single changed to be:  1.0756298872E-01
+             1770   0.0000000000E+00     -4.3533349339E+01      3.6136566746E+02      1.1962281528E+04               7020            5065           11929    0.5573    0.0925 
+ # pattempt_single chosen to be:  1.0756298872E-01
+             1780   0.0000000000E+00     -4.3403819091E+01      3.6305839870E+02      1.2065969272E+04               7037            5056           12102    0.5558    0.1557 
+             1790  -1.9599364155E-02     -4.2878943667E+01      3.6414500193E+02      1.2208698041E+04               7099            5132           12194    0.5545    0.1102 
+             1800  -1.1049455247E-02     -4.3232666123E+01      3.6241733515E+02      1.2146228457E+04               7142            5219           12166    0.5558    0.1322 
+             1810  -3.6313703692E-03     -4.2568591903E+01      3.6574114552E+02      1.2092287535E+04               7118            5112           12120    0.5558    0.1132 
+             1820  -8.2535134288E-03     -4.3071111837E+01      3.6664320336E+02      1.2125869449E+04               7156            5158           12114    0.5580    0.1070 
+             1830  -2.9303965359E-02     -4.3181316617E+01      3.6823583591E+02      1.2279993735E+04               7165            5276           12310    0.5569    0.1208 
+             1840  -3.5858484517E-02     -4.4289062445E+01      3.6858147797E+02      1.2328382495E+04               7161            5245           12290    0.5580    0.1294 
+             1850  -4.5455154070E-02     -4.5558880525E+01      3.7228758073E+02      1.2399574107E+04               7204            5224           12430    0.5571    0.1279 
+             1860  -6.3448903661E-02     -4.6470868372E+01      3.7334499881E+02      1.2534168255E+04               7281            5405           12575    0.5611    0.1373 
+             1870  -4.1655628481E-02     -4.4211718280E+01      3.7506257621E+02      1.2371338804E+04               7240            5398           12405    0.5565    0.1301 
+             1880  -1.7319942367E-02     -4.5021936396E+01      3.7577967632E+02      1.2192012190E+04               7189            5285           12222    0.5574    0.1144 
+             1890  -8.5441053996E-03     -4.4842972108E+01      3.7949422258E+02      1.2127983842E+04               7146            5249           12151    0.5587    0.1305 
+             1900  -1.0009739780E-02     -4.6459004555E+01      3.7821435000E+02      1.2138653647E+04               7217            5357           12130    0.5635    0.0995 
+             1910  -1.6090160457E-02     -4.8084789649E+01      3.7875902064E+02      1.2183019399E+04               7229            5249           12195    0.5609    0.1025 
+             1920  -3.1167623243E-02     -4.5587970522E+01      3.8083169953E+02      1.2293732840E+04               7291            5295           12240    0.5619    0.1374 
+             1930  -1.1887660827E-02     -4.5620395417E+01      3.8201331317E+02      1.2152338615E+04               7269            5192           12169    0.5637    0.1240 
+             1940  -1.5232894576E-02     -4.8188257995E+01      3.8190626968E+02      1.2176754558E+04               7288            5248           12169    0.5632    0.1232 
+             1950  -4.4839944504E-03     -4.6018726662E+01      3.8317285368E+02      1.2098475223E+04               7238            5202           12130    0.5623    0.1268 
+             1960  -6.9434199620E-03     -4.6495947925E+01      3.8545699527E+02      1.2116341581E+04               7284            5257           12118    0.5644    0.1406 
+             1970  -8.1681823510E-03     -4.6793294511E+01      3.8413632263E+02      1.2125248637E+04               7279            5220           12119    0.5678    0.1380 
+             1980   2.7123437076E-03     -4.8313351219E+01      3.8651400581E+02      1.2046349008E+04               7179            5280           12035    0.5654    0.1588 
+             1990   4.7507491922E-03     -4.9471749352E+01      3.8673185633E+02      1.2031624808E+04               7159            5203           12038    0.5735    0.1186 
+             2000   1.5241070550E-02     -4.8939873891E+01      3.8869437605E+02      1.1956133270E+04               7161            5114           11973    0.5675    0.1277 
+             2010   2.6759274965E-02     -4.9781155201E+01      3.8745395769E+02      1.1873790218E+04               7118            5275           11860    0.5743    0.1144 
+             2020   4.4626350411E-02     -4.8422785382E+01      3.9118475158E+02      1.1747180133E+04               7100            5254           11727    0.5772    0.1228 
+             2030   3.8889465658E-02     -4.9887248299E+01      3.9485924739E+02      1.1787685136E+04               7101            5152           11776    0.5726    0.1279 
+             2040   4.4679381409E-02     -5.1149087037E+01      3.9406332007E+02      1.1746806360E+04               7116            5305           11789    0.5802    0.1562 
+             2050   4.3779525865E-02     -5.0719298838E+01      4.0090349040E+02      1.1753150330E+04               7122            5202           11777    0.5789    0.1536 
+             2060   5.4118113285E-02     -4.7904611658E+01      4.0345785723E+02      1.1680469405E+04               7100            5263           11711    0.5782    0.1277 
+             2070   7.0205074961E-02     -5.1710748504E+01      4.0339453802E+02      1.1568269803E+04               7079            5141           11573    0.5857    0.0875 
+             2080   6.6269244579E-02     -5.1011404224E+01      4.0786951545E+02      1.1595620534E+04               7108            5177           11580    0.5848    0.0936 
+             2090   4.5747471392E-02     -5.1191595751E+01      4.0961418995E+02      1.1739280784E+04               7158            5144           11723    0.5875    0.1002 
+             2100   3.9247726568E-02     -5.3509700302E+01      4.1396012508E+02      1.1785151568E+04               7203            5174           11799    0.5842    0.1214 
+             2110   3.9096940865E-02     -5.0789549744E+01      4.1618265542E+02      1.1786217836E+04               7193            5300           11756    0.5831    0.1056 
+             2120   2.2332107319E-02     -5.3025473246E+01      4.1539234779E+02      1.1905372502E+04               7231            5345           11880    0.5857    0.1094 
+             2130   1.1518304803E-02     -5.2074831446E+01      4.1581780133E+02      1.1982869048E+04               7269            5302           11959    0.5814    0.0916 
+             2140   2.5440280249E-02     -5.5375323954E+01      4.1929210460E+02      1.1883190818E+04               7175            5350           11906    0.5859    0.1010 
+             2150   2.6538817902E-02     -5.3693865290E+01      4.2163072877E+02      1.1875360919E+04               7172            5286           11861    0.5893    0.1018 
+             2160   3.9159611848E-02     -5.6236112255E+01      4.2233487428E+02      1.1785774652E+04               7145            5233           11805    0.5888    0.1432 
+             2170   3.4461436757E-02     -5.4645066613E+01      4.2402605625E+02      1.1819044502E+04               7182            5339           11829    0.5920    0.0992 
+             2180   2.3079134441E-02     -5.3892323085E+01      4.2785130749E+02      1.1900037516E+04               7200            5401           11883    0.5911    0.1108 
+             2190   1.5346240775E-02     -5.4458449182E+01      4.2918084596E+02      1.1955378836E+04               7222            5401           11956    0.5866    0.1106 
+             2200   1.8150644161E-02     -5.4255764866E+01      4.3286315676E+02      1.1935279128E+04               7224            5329           11907    0.5897    0.1252 
+             2210   5.7203607235E-03     -5.4163140363E+01      4.3296673527E+02      1.2024627242E+04               7216            5435           12001    0.5913    0.1348 
+             2220   2.0387694997E-02     -5.6192662195E+01      4.3450634308E+02      1.1919269979E+04               7189            5259           11911    0.5897    0.1446 
+             2230   2.3314396243E-02     -5.5878913269E+01      4.3696241625E+02      1.1898357860E+04               7148            5505           11796    0.5973    0.0960 
+             2240   4.1079438632E-02     -5.3895025712E+01      4.4072286113E+02      1.1772206480E+04               7166            5265           11793    0.5903    0.1011 
+             2250   5.1947614066E-02     -5.4443776455E+01      4.4074660617E+02      1.1695690784E+04               7104            5372           11713    0.5959    0.1130 
+             2260   6.2665762134E-02     -5.7789249851E+01      4.4285298994E+02      1.1620718425E+04               7056            5300           11643    0.5973    0.1304 
+             2270   4.6613544032E-02     -5.6826205637E+01      4.4782507654E+02      1.1733182127E+04               7139            5453           11699    0.5998    0.0992 
+             2280   4.2957477330E-02     -6.1127707870E+01      4.4668800325E+02      1.1758948756E+04               7203            5442           11762    0.6079    0.1350 
+             2290   6.3410354332E-02     -5.7508581914E+01      4.5027898619E+02      1.1615527967E+04               7173            5432           11647    0.6033    0.1548 
+             2300   6.9896764321E-02     -5.8570443540E+01      4.5070638366E+02      1.1570409974E+04               7144            5417           11593    0.6060    0.1339 
+             2310   6.4732671494E-02     -6.0285974606E+01      4.5468599842E+02      1.1606315974E+04               7123            5349           11573    0.6081    0.1372 
+             2320   6.2544085335E-02     -6.0054321343E+01      4.5705161140E+02      1.1621566839E+04               7165            5404           11601    0.6084    0.1048 
+             2330   7.7299450649E-02     -6.0872550182E+01      4.5930640534E+02      1.1519132665E+04               7128            5443           11532    0.6060    0.0932 
+             2340   6.3741575286E-02     -5.8761678252E+01      4.5856432274E+02      1.1613219812E+04               7151            5435           11627    0.6143    0.0848 
+             2350   5.5871967036E-02     -6.0640738032E+01      4.6241102718E+02      1.1668184369E+04               7178            5402           11652    0.6095    0.1500 
+             2360   6.6815215916E-02     -5.9489969695E+01      4.6595570523E+02      1.1591822630E+04               7161            5429           11622    0.6106    0.1320 
+             2370   7.7549570403E-02     -5.9004528670E+01      4.6442409265E+02      1.1517404098E+04               7163            5383           11546    0.6140    0.1044 
+             2380   6.5875577926E-02     -6.0372934356E+01      4.7058660079E+02      1.1598359743E+04               7215            5429           11614    0.6121    0.1072 
+             2390   7.2366091308E-02     -5.7262245563E+01      4.7313451954E+02      1.1553279991E+04               7205            5418           11536    0.6127    0.1129 
+             2400   8.4752429504E-02     -5.9121004579E+01      4.7334201149E+02      1.1467736556E+04               7125            5459           11469    0.6207    0.1275 
+             2410   7.6821963459E-02     -6.1215286218E+01      4.7683831745E+02      1.1522433281E+04               7177            5591           11527    0.6252    0.1176 
+             2420   8.5230882818E-02     -6.0393143991E+01      4.7787843236E+02      1.1464444963E+04               7187            5331           11449    0.6226    0.1187 
+             2430   8.5821291747E-02     -6.1022626982E+01      4.8552787888E+02      1.1460384455E+04               7166            5510           11443    0.6240    0.0985 
+             2440   7.9242108168E-02     -6.0798336959E+01      4.8757860138E+02      1.1505713850E+04               7155            5556           11503    0.6255    0.1411 
+             2450   6.3525113243E-02     -6.0477240734E+01      4.9203619819E+02      1.1614728203E+04               7222            5602           11598    0.6254    0.1094 
+             2460   4.2789276056E-02     -6.2519920304E+01      4.9341075947E+02      1.1760135538E+04               7241            5658           11721    0.6293    0.1229 
+             2470   4.9502408442E-02     -6.1912102615E+01      4.9822834881E+02      1.1712862399E+04               7212            5634           11722    0.6220    0.1671 
+             2480   4.2321159322E-02     -6.4303208754E+01      4.9549030429E+02      1.1763439071E+04               7223            5534           11784    0.6290    0.1366 
+             2490   2.8822808046E-02     -6.2930948317E+01      4.9918942094E+02      1.1859098140E+04               7293            5755           11848    0.6260    0.1516 
+             2500   2.1431212712E-02     -6.3609007703E+01      5.0238659397E+02      1.1911809533E+04               7314            5739           11888    0.6260    0.1404 
+# Auto-Shift-Damping: Attemping shift damping optimisation.
+# Auto-Shift-Damping: Shift damping changed to  6.8384371692E-03
+             2510  -1.2640033401E-01     -6.3368671610E+01      5.0519097175E+02      1.1900666792E+04               7329            5686           11908    0.6223    0.1631 
+             2520  -1.2520027949E-01     -6.3218920518E+01      5.0218228713E+02      1.1838179173E+04               7310            5743           11828    0.6275    0.1242 
+             2530  -1.2330882079E-01     -6.4912839873E+01      5.0280389131E+02      1.1740355138E+04               7244            5671           11753    0.6271    0.1360 
+             2540  -1.2254949243E-01     -6.2583188176E+01      5.0198708282E+02      1.1701311336E+04               7277            5620           11706    0.6266    0.1168 
+             2550  -1.1939217680E-01     -6.2318321508E+01      5.0341120259E+02      1.1540353293E+04               7199            5566           11545    0.6303    0.1471 
+             2560  -1.1800206250E-01     -6.2570468926E+01      5.0070597662E+02      1.1470189924E+04               7134            5576           11511    0.6375    0.1088 
+             2570  -1.1931822399E-01     -6.4472700465E+01      5.0184798756E+02      1.1536609879E+04               7168            5546           11536    0.6368    0.1423 
+             2580  -1.1761541703E-01     -6.2271343048E+01      5.0155015664E+02      1.1450750666E+04               7121            5485           11465    0.6363    0.1229 
+             2590  -1.1618115224E-01     -6.1670230730E+01      5.0546926400E+02      1.1378927905E+04               7129            5603           11382    0.6386    0.1283 
+             2600  -1.1551947140E-01     -6.4345727427E+01      5.0575477441E+02      1.1345945363E+04               7108            5519           11328    0.6360    0.1149 
+             2610  -1.1458632190E-01     -6.3055563287E+01      5.0694306576E+02      1.1299593449E+04               7116            5572           11284    0.6379    0.1161 
+             2620  -1.1180009385E-01     -6.1775312436E+01      5.0848717908E+02      1.1162318160E+04               7062            5559           11182    0.6449    0.1318 
+             2630  -1.1315190057E-01     -6.2874218434E+01      5.0916208983E+02      1.1228711083E+04               7100            5567           11233    0.6442    0.0927 
+             2640  -1.1255403659E-01     -6.2360686640E+01      5.1266731143E+02      1.1199298898E+04               7072            5566           11177    0.6407    0.1062 
+             2650  -1.0999308952E-01     -6.1617268377E+01      5.0958977384E+02      1.1074181267E+04               7006            5436           11082    0.6423    0.1383 
+             2660  -1.0933358644E-01     -6.1607206317E+01      5.1274168687E+02      1.1042187547E+04               6957            5504           11006    0.6448    0.1063 
+             2670  -1.1006931738E-01     -6.2793583276E+01      5.1199518185E+02      1.1077885194E+04               6979            5596           11054    0.6485    0.1092 
+             2680  -1.1051319464E-01     -5.9883378231E+01      5.1152762338E+02      1.1099477899E+04               7030            5455           11069    0.6500    0.1151 
+             2690  -1.1078789767E-01     -6.2246861564E+01      5.1303182389E+02      1.1112862090E+04               7020            5414           11097    0.6447    0.1035 
+             2700  -1.1076407838E-01     -6.2779086236E+01      5.1213350995E+02      1.1111700918E+04               7014            5493           11120    0.6461    0.1165 
+             2710  -1.0835635428E-01     -6.2561037609E+01      5.1411470233E+02      1.0994950073E+04               6918            5557           11006    0.6517    0.0995 
+             2720  -1.0715536815E-01     -6.3355516311E+01      5.1236563204E+02      1.0937173461E+04               6885            5574           10938    0.6518    0.1224 
+             2730  -1.0548885079E-01     -6.4241581795E+01      5.1482916022E+02      1.0857503840E+04               6868            5287           10879    0.6509    0.1030 
+             2740  -1.0649854651E-01     -6.2616982844E+01      5.1427960589E+02      1.0905703849E+04               6841            5436           10885    0.6512    0.1043 
+             2750  -1.0440559312E-01     -6.3299726568E+01      5.1359065191E+02      1.0806029044E+04               6820            5400           10816    0.6548    0.1388 
+             2760  -1.0313864175E-01     -6.2804038347E+01      5.1346685639E+02      1.0746134935E+04               6765            5439           10766    0.6548    0.0782 
+             2770  -1.0479052176E-01     -6.3626400591E+01      5.1008228497E+02      1.0824292270E+04               6792            5349           10806    0.6535    0.0714 
+             2780  -1.0510583205E-01     -6.5270330837E+01      5.1704786624E+02      1.0839275397E+04               6825            5421           10847    0.6534    0.0756 
+             2790  -1.0505905243E-01     -6.4385704185E+01      5.1423119576E+02      1.0837051182E+04               6773            5473           10836    0.6541    0.1077 
+             2800  -1.0331882519E-01     -6.4856046881E+01      5.1242048691E+02      1.0754632671E+04               6701            5325           10795    0.6563    0.1209 
+             2810  -1.0447921803E-01     -6.5705083364E+01      5.1602257467E+02      1.0809519848E+04               6738            5388           10799    0.6588    0.0869 
+             2820  -1.0556863306E-01     -6.5079422205E+01      5.1530206588E+02      1.0861304656E+04               6758            5484           10879    0.6539    0.1392 
+             2830  -1.0773347395E-01     -6.6452168145E+01      5.1855819072E+02      1.0964946772E+04               6769            5337           10938    0.6514    0.1232 
+             2840  -1.0775699354E-01     -6.4425790997E+01      5.1905361302E+02      1.0966078189E+04               6803            5507           11001    0.6523    0.1081 
+             2850  -1.0758745410E-01     -6.5794069079E+01      5.1895281664E+02      1.0957925048E+04               6800            5324           10930    0.6541    0.1314 
+             2860  -1.0625263236E-01     -6.5730475767E+01      5.1954997464E+02      1.0893944930E+04               6796            5487           10891    0.6518    0.1243 
+             2870  -1.0480532183E-01     -6.3153455791E+01      5.1870385120E+02      1.0824995086E+04               6739            5428           10846    0.6514    0.1042 
+             2880  -1.0470942010E-01     -6.6074066271E+01      5.2181822114E+02      1.0820441777E+04               6757            5390           10829    0.6582    0.1204 
+             2890  -1.0423402610E-01     -6.5115037147E+01      5.2253864995E+02      1.0797898850E+04               6789            5370           10805    0.6537    0.1657 
+             2900  -1.0565311147E-01     -6.5837510956E+01      5.1926383624E+02      1.0865330645E+04               6822            5493           10827    0.6585    0.0982 
+             2910  -1.0548904650E-01     -6.4464539064E+01      5.2082456941E+02      1.0857513162E+04               6798            5402           10874    0.6576    0.1034 
+             2920  -1.0596656235E-01     -6.3715971573E+01      5.2066015318E+02      1.0880281825E+04               6784            5445           10898    0.6519    0.1168 
+             2930  -1.0633579190E-01     -6.4952032797E+01      5.2203978101E+02      1.0897919964E+04               6859            5551           10888    0.6520    0.1748 
+             2940  -1.0573079145E-01     -6.3131250167E+01      5.2102774025E+02      1.0869033958E+04               6863            5556           10884    0.6543    0.1306 
+             2950  -1.0434115128E-01     -6.4479791690E+01      5.1778910501E+02      1.0802974566E+04               6832            5464           10773    0.6592    0.0908 
+             2960  -1.0258454798E-01     -6.4035143403E+01      5.2011464685E+02      1.0720045047E+04               6800            5444           10719    0.6589    0.1096 
+             2970  -1.0061710023E-01     -6.5009048949E+01      5.2625943612E+02      1.0627917112E+04               6766            5346           10625    0.6588    0.1309 
+             2980  -1.0263676192E-01     -6.4736064229E+01      5.2332685146E+02      1.0722500871E+04               6787            5432           10716    0.6594    0.1231 
+             2990  -1.0222891834E-01     -6.6329596096E+01      5.2290350994E+02      1.0703333363E+04               6720            5441           10720    0.6564    0.1209 
+             3000  -1.0219888804E-01     -6.4918843533E+01      5.2378959270E+02      1.0701923378E+04               6754            5443           10696    0.6588    0.1261 
+             3010  -1.0217816187E-01     -6.5849236789E+01      5.2087926632E+02      1.0700950349E+04               6730            5329           10651    0.6597    0.1242 
+             3020  -1.0194679755E-01     -6.5235113797E+01      5.1960455699E+02      1.0690094526E+04               6725            5347           10678    0.6601    0.1236 
+             3030  -1.0283784985E-01     -6.5936513454E+01      5.2367777654E+02      1.0731964072E+04               6758            5471           10729    0.6576    0.1412 
+             3040  -1.0324337160E-01     -6.7013525570E+01      5.2466834367E+02      1.0751073343E+04               6730            5337           10737    0.6624    0.1632 
+             3050  -1.0272768417E-01     -6.3975488093E+01      5.2350785116E+02      1.0726778639E+04               6753            5353           10702    0.6583    0.1796 
+             3060  -1.0143444130E-01     -6.6231110496E+01      5.2330455749E+02      1.0666093491E+04               6731            5427           10653    0.6606    0.1582 
+             3070  -1.0271680227E-01     -6.4932976234E+01      5.2270576261E+02      1.0726266571E+04               6763            5330           10692    0.6554    0.1352 
+             3080  -1.0187900712E-01     -6.6173278052E+01      5.2265417648E+02      1.0686915825E+04               6731            5515           10688    0.6615    0.1104 
+             3090  -1.0440118040E-01     -6.5872601433E+01      5.2500574023E+02      1.0805819858E+04               6804            5451           10766    0.6603    0.0832 
+             3100  -1.0443926916E-01     -6.2739768503E+01      5.2339433193E+02      1.0807625598E+04               6794            5370           10797    0.6577    0.1360 
+             3110  -1.0442957630E-01     -6.6840189353E+01      5.2644582862E+02      1.0807166044E+04               6780            5381           10839    0.6548    0.1008 
+             3120  -1.0384686756E-01     -6.7499293864E+01      5.2432428471E+02      1.0779574705E+04               6809            5540           10764    0.6616    0.1123 
+             3130  -1.0198494988E-01     -6.6536703236E+01      5.2346356058E+02      1.0691883910E+04               6730            5478           10690    0.6633    0.1053 
+             3140  -1.0126938719E-01     -6.7346754077E+01      5.2814640973E+02      1.0658373107E+04               6692            5516           10675    0.6587    0.1130 
+             3150  -1.0188884036E-01     -6.5737461903E+01      5.2219340130E+02      1.0687376848E+04               6707            5202           10694    0.6587    0.1006 
+             3160  -1.0294610188E-01     -6.5553889616E+01      5.2293942538E+02      1.0737061871E+04               6732            5412           10744    0.6584    0.0846 
+             3170  -1.0363745699E-01     -6.7224221194E+01      5.2707155836E+02      1.0769676301E+04               6775            5398           10728    0.6554    0.0850 
+             3180  -1.0547949906E-01     -6.5348911629E+01      5.2652651829E+02      1.0857058413E+04               6801            5459           10828    0.6568    0.1336 
+             3190  -1.0497431359E-01     -6.6730694777E+01      5.2710425803E+02      1.0833023295E+04               6779            5519           10843    0.6608    0.1246 
+             3200  -1.0668939733E-01     -6.9168319747E+01      5.2629394667E+02      1.0914838541E+04               6818            5552           10899    0.6618    0.1014 
+             3210  -1.0434988775E-01     -6.6342197569E+01      5.2890211750E+02      1.0803388615E+04               6792            5441           10805    0.6570    0.0984 
+             3220  -1.0457397761E-01     -6.5800863058E+01      5.2473862820E+02      1.0814014377E+04               6769            5360           10798    0.6591    0.1040 
+             3230  -1.0413067243E-01     -6.6197437422E+01      5.3163751868E+02      1.0793004094E+04               6776            5407           10774    0.6582    0.0938 
+             3240  -1.0317720026E-01     -6.5363249901E+01      5.2798392919E+02      1.0747952851E+04               6776            5513           10722    0.6625    0.1097 
+             3250  -1.0414679635E-01     -6.5653635864E+01      5.2867147703E+02      1.0793767565E+04               6785            5484           10799    0.6618    0.0876 
+             3260  -1.0544450255E-01     -6.7597630367E+01      5.3064474839E+02      1.0855391672E+04               6849            5394           10871    0.6616    0.1386 
+             3270  -1.0604497320E-01     -6.6959327202E+01      5.2745168328E+02      1.0884025132E+04               6802            5486           10882    0.6619    0.1396 
+             3280  -1.0708178152E-01     -6.5124201187E+01      5.3088560839E+02      1.0933643269E+04               6816            5428           10946    0.6537    0.0967 
+             3290  -1.0597167971E-01     -6.5363487807E+01      5.2819047065E+02      1.0880526087E+04               6783            5409           10891    0.6565    0.1356 
+             3300  -1.0798475772E-01     -6.6903177284E+01      5.2979254151E+02      1.0977040905E+04               6842            5533           10991    0.6577    0.0861 
+             3310  -1.0740271288E-01     -6.5581682309E+01      5.3103994159E+02      1.0949047755E+04               6836            5505           10934    0.6531    0.1230 
+             3320  -1.0709121632E-01     -6.1908135036E+01      5.3148684959E+02      1.0934095824E+04               6852            5463           10917    0.6571    0.1145 
+             3330  -1.0715716906E-01     -6.5647493685E+01      5.2764430482E+02      1.0937259871E+04               6860            5477           10929    0.6594    0.1039 
+             3340  -1.0728283706E-01     -6.7993414530E+01      5.2875673887E+02      1.0943291260E+04               6868            5537           10935    0.6571    0.0913 
+             3350  -1.0858673630E-01     -6.6046672088E+01      5.2494120066E+02      1.1006068048E+04               6884            5585           10997    0.6623    0.0911 
+             3360  -1.0868421121E-01     -6.4348272544E+01      5.2846418112E+02      1.1010775461E+04               6890            5493           11044    0.6543    0.0999 
+             3370  -1.0649556725E-01     -6.6356772284E+01      5.2641294165E+02      1.0905561313E+04               6827            5612           10936    0.6583    0.1135 
+             3380  -1.0626876362E-01     -6.4312580380E+01      5.2745447984E+02      1.0894715892E+04               6832            5505           10916    0.6553    0.0927 
+             3390  -1.0799551658E-01     -6.7614022563E+01      5.2706711256E+02      1.0977559020E+04               6888            5525           10962    0.6583    0.1128 
+             3400  -1.0816651789E-01     -6.5675608928E+01      5.2764319229E+02      1.0985797224E+04               6875            5508           11004    0.6585    0.1068 
+             3410  -1.0608264307E-01     -6.7095910727E+01      5.2530978771E+02      1.0885823936E+04               6806            5537           10896    0.6585    0.0804 
+             3420  -1.0459568259E-01     -6.4287157671E+01      5.2525956707E+02      1.0815044126E+04               6835            5492           10821    0.6622    0.0779 
+             3430  -1.0519544599E-01     -6.7521077743E+01      5.2551428919E+02      1.0843537516E+04               6839            5448           10851    0.6575    0.1084 
+             3440  -1.0542141397E-01     -6.6124596513E+01      5.2493645327E+02      1.0854292198E+04               6836            5547           10861    0.6624    0.1179 
+             3450  -1.0549006235E-01     -6.6631557235E+01      5.2894082986E+02      1.0857561549E+04               6798            5516           10866    0.6600    0.1207 
+             3460  -1.0756763991E-01     -6.5549353919E+01      5.3079302354E+02      1.0956972580E+04               6821            5653           10961    0.6635    0.1156 
+             3470  -1.0995575899E-01     -6.4484810929E+01      5.2837993854E+02      1.1072367821E+04               6882            5511           11068    0.6595    0.1048 
+             3480  -1.0875293198E-01     -6.6560780365E+01      5.2828574639E+02      1.1014095444E+04               6843            5477           11008    0.6554    0.0912 
+             3490  -1.1072399640E-01     -6.5745316248E+01      5.3084395884E+02      1.1109747227E+04               6897            5643           11109    0.6596    0.1036 
+             3500  -1.1143024933E-01     -6.5374248784E+01      5.3154499087E+02      1.1144222030E+04               6981            5622           11127    0.6547    0.1270 
+# Auto-Shift-Damping: Shift damping optimised; variance within acceptable range.
+             3510  -1.1156498227E-01     -6.6623290464E+01      5.2845391699E+02      1.1150810982E+04               6964            5692           11174    0.6582    0.0866 
+             3520  -1.0854602687E-01     -6.6878108585E+01      5.3597544089E+02      1.1004102640E+04               6856            5607           11020    0.6537    0.1523 
+             3530  -1.1033131200E-01     -6.5781557146E+01      5.3851619581E+02      1.1090625012E+04               6879            5648           11101    0.6580    0.1056 
+             3540  -1.1355932940E-01     -6.5649248450E+01      5.3653508273E+02      1.1248798969E+04               6949            5629           11240    0.6565    0.1429 
+             3550  -1.1219549708E-01     -6.5564337176E+01      5.3891105639E+02      1.1181697355E+04               6928            5613           11163    0.6560    0.1070 
+             3560  -1.1302336477E-01     -6.6418933772E+01      5.3787895111E+02      1.1222381195E+04               6926            5510           11206    0.6536    0.1335 
+             3570  -1.1375770695E-01     -6.6068663817E+01      5.3693139375E+02      1.1258592788E+04               6945            5614           11230    0.6546    0.1396 
+             3580  -1.1398917545E-01     -6.5395367083E+01      5.3362430791E+02      1.1270031072E+04               6974            5719           11266    0.6544    0.0960 
+             3590  -1.1432519456E-01     -6.7784140567E+01      5.3503714084E+02      1.1286656531E+04               7045            5655           11323    0.6585    0.0939 
+             3600  -1.1516715627E-01     -6.5665923588E+01      5.3499097191E+02      1.1328422673E+04               7100            5627           11328    0.6508    0.0960 
+             3610  -1.1362239490E-01     -6.8080704216E+01      5.3170366379E+02      1.1251911563E+04               7064            5546           11251    0.6569    0.0989 
+             3620  -1.1112572758E-01     -6.6608395526E+01      5.3879773021E+02      1.1129344104E+04               6968            5620           11113    0.6545    0.0983 
+             3630  -1.1321679233E-01     -6.6812255712E+01      5.3504260403E+02      1.1231908105E+04               7040            5571           11215    0.6519    0.1119 
+             3640  -1.1070965435E-01     -6.7614961948E+01      5.3125982448E+02      1.1109048245E+04               6984            5591           11121    0.6564    0.0963 
+             3650  -1.0998034460E-01     -6.7544661484E+01      5.3281786649E+02      1.1073562110E+04               6976            5583           11085    0.6584    0.1318 
+             3660  -1.1053994416E-01     -6.5082381405E+01      5.3871848849E+02      1.1100780492E+04               6959            5533           11084    0.6512    0.1428 
+             3670  -1.1044504427E-01     -6.7217435946E+01      5.3162936577E+02      1.1096159946E+04               6925            5669           11097    0.6604    0.1422 
+             3680  -1.1010227729E-01     -6.6819018012E+01      5.3379667984E+02      1.1079487106E+04               6914            5551           11058    0.6594    0.1066 
+             3690  -1.0929126921E-01     -6.7315970009E+01      5.3712292848E+02      1.1040137818E+04               6876            5543           11043    0.6567    0.1187 
+             3700  -1.0973177748E-01     -7.0102195084E+01      5.3290984882E+02      1.1061493461E+04               6854            5577           11038    0.6593    0.0980 
+             3710  -1.0994358042E-01     -6.7758632406E+01      5.3357570948E+02      1.1071776274E+04               6861            5543           11059    0.6588    0.1048 
+             3720  -1.1089008254E-01     -7.0053101906E+01      5.3454969358E+02      1.1117844899E+04               6929            5581           11082    0.6562    0.1042 
+             3730  -1.1294669898E-01     -6.9150661198E+01      5.3482647167E+02      1.1218607403E+04               6986            5602           11219    0.6553    0.1170 
+             3740  -1.1259680384E-01     -6.9465581001E+01      5.3761997530E+02      1.1201400291E+04               6962            5593           11190    0.6529    0.1512 
+             3750  -1.1516870676E-01     -6.7342919613E+01      5.3796498575E+02      1.1328499728E+04               6981            5674           11341    0.6524    0.1053 
+             3760  -1.1619846875E-01     -6.8512297441E+01      5.3630105087E+02      1.1379792361E+04               7054            5702           11386    0.6531    0.1322 
+             3770  -1.1644962891E-01     -6.8344663439E+01      5.3781585128E+02      1.1392337884E+04               7048            5717           11408    0.6518    0.1134 
+             3780  -1.1625888612E-01     -6.8833097007E+01      5.3866713316E+02      1.1382808963E+04               7028            5753           11374    0.6540    0.1028 
+             3790  -1.1310059322E-01     -6.8888118709E+01      5.3778776846E+02      1.1226183967E+04               6974            5569           11243    0.6500    0.1312 
+             3800  -1.1202931053E-01     -6.8777403036E+01      5.3855464469E+02      1.1173548254E+04               6937            5581           11165    0.6580    0.1568 
+             3810  -1.1298000546E-01     -6.8727833980E+01      5.4030077396E+02      1.1220246723E+04               6927            5667           11228    0.6579    0.1276 
+             3820  -1.1238857607E-01     -7.0310887069E+01      5.3898539752E+02      1.1191172614E+04               6914            5606           11165    0.6565    0.1052 
+             3830  -1.1259094184E-01     -6.7816844035E+01      5.3756218277E+02      1.1201112235E+04               6916            5555           11208    0.6571    0.0994 
+             3840  -1.1104926538E-01     -6.8788918173E+01      5.3903436890E+02      1.1125611535E+04               6934            5659           11159    0.6569    0.0984 
+             3850  -1.1036797973E-01     -6.8581262802E+01      5.4382103667E+02      1.1092409195E+04               6922            5463           11075    0.6579    0.1217 
+             3860  -1.1136307161E-01     -6.6442381394E+01      5.3991550070E+02      1.1140938240E+04               6904            5774           11108    0.6602    0.1247 
+             3870  -1.1096325094E-01     -6.6804221098E+01      5.4359541392E+02      1.1121414160E+04               6898            5625           11106    0.6589    0.0831 
+             3880  -1.1028015851E-01     -6.9362271077E+01      5.4174215735E+02      1.1088136459E+04               6872            5692           11078    0.6634    0.1417 
+             3890  -1.1137540924E-01     -6.9211678003E+01      5.4378776663E+02      1.1141541257E+04               6854            5594           11129    0.6608    0.1108 
+             3900  -1.1667481810E-01     -6.8568867961E+01      5.4341743382E+02      1.1403597908E+04               6983            5766           11377    0.6576    0.1099 
+             3910  -1.1542669705E-01     -6.7167283178E+01      5.4103690650E+02      1.1341328525E+04               6988            5672           11326    0.6543    0.1107 
+             3920  -1.1532154146E-01     -6.7617821250E+01      5.4546126512E+02      1.1336097817E+04               6959            5724           11332    0.6542    0.1041 
+             3930  -1.1302970864E-01     -6.8384857728E+01      5.4374536414E+02      1.1222693523E+04               6922            5637           11226    0.6576    0.1248 
+             3940  -1.1154026641E-01     -6.7901286219E+01      5.4457056391E+02      1.1149601991E+04               6916            5569           11149    0.6595    0.1385 
+             3950  -1.1259853504E-01     -6.6340040273E+01      5.4369257542E+02      1.1201485363E+04               6928            5694           11205    0.6582    0.1244 
+             3960  -1.1666965731E-01     -6.7250957011E+01      5.4637767494E+02      1.1403339731E+04               7022            5708           11359    0.6541    0.1281 
+             3970  -1.1574553166E-01     -6.7974991496E+01      5.4706474774E+02      1.1357202934E+04               6999            5691           11371    0.6589    0.1011 
+             3980  -1.1590813001E-01     -7.1173257502E+01      5.4616284362E+02      1.1365307072E+04               7000            5713           11344    0.6565    0.0907 
+             3990  -1.1581433847E-01     -6.7581055257E+01      5.4437220093E+02      1.1360631660E+04               7020            5799           11363    0.6559    0.1079 
+             4000  -1.1579453166E-01     -6.7516322526E+01      5.4645703521E+02      1.1359644556E+04               6988            5631           11356    0.6535    0.1079 
+             4010  -1.1317632641E-01     -6.7792026842E+01      5.4503322712E+02      1.1229914364E+04               6958            5703           11225    0.6571    0.0882 
+             4020  -1.1305477771E-01     -6.9780459225E+01      5.4337842158E+02      1.1223927831E+04               6989            5719           11232    0.6583    0.1150 
+             4030  -1.1318201562E-01     -6.7053661777E+01      5.4399639623E+02      1.1230194647E+04               7032            5819           11198    0.6610    0.1008 
+             4040  -1.1112593648E-01     -6.6197701026E+01      5.4720005966E+02      1.1129354303E+04               6995            5502           11112    0.6568    0.0983 
+             4050  -1.1223808651E-01     -6.6562558244E+01      5.4323279781E+02      1.1183786721E+04               7018            5583           11189    0.6606    0.1213 
+             4060  -1.1230824653E-01     -6.7094256575E+01      5.4696144661E+02      1.1187229505E+04               7041            5677           11171    0.6592    0.1014 
+             4070  -1.0944903439E-01     -6.8397108397E+01      5.4336635808E+02      1.1047781460E+04               6962            5608           11077    0.6597    0.1274 
+             4080  -1.0811686411E-01     -6.9412757965E+01      5.4344643284E+02      1.0983404454E+04               6962            5504           10951    0.6638    0.1476 
+             4090  -1.0770237768E-01     -6.4553668921E+01      5.4377908105E+02      1.0963451054E+04               6942            5527           10950    0.6597    0.1444 
+             4100  -1.0815843879E-01     -6.8505164092E+01      5.4255432532E+02      1.0985407864E+04               6955            5599           10944    0.6669    0.1834 
+             4110  -1.1102964483E-01     -6.6404568101E+01      5.4180015660E+02      1.1124653942E+04               7019            5635           11108    0.6637    0.1718 
+             4120  -1.1164932649E-01     -6.8810575609E+01      5.4270594084E+02      1.1154937716E+04               7049            5727           11171    0.6608    0.1039 
+             4130  -1.1176372971E-01     -6.6132251811E+01      5.4637646387E+02      1.1160537597E+04               6985            5633           11173    0.6610    0.1351 
+             4140  -1.0974726087E-01     -6.8422017698E+01      5.4709596941E+02      1.1062244840E+04               6912            5617           11094    0.6614    0.1713 
+             4150  -1.0946193550E-01     -6.6978236193E+01      5.4681983728E+02      1.1048406746E+04               6889            5624           11058    0.6666    0.1441 
+             4160  -1.0996810174E-01     -6.7956347163E+01      5.5228086506E+02      1.1072967376E+04               6857            5746           11076    0.6612    0.1802 
+             4170  -1.0990978031E-01     -7.0457860833E+01      5.4700273932E+02      1.1070134673E+04               6923            5747           11070    0.6668    0.1012 
+             4180  -1.0864984342E-01     -6.6961922267E+01      5.4987706191E+02      1.1009115488E+04               6860            5650           11001    0.6629    0.0846 
+             4190  -1.0842651995E-01     -6.9351377013E+01      5.4864481007E+02      1.0998334998E+04               6897            5562           11013    0.6652    0.1102 
+             4200  -1.0857336103E-01     -6.7369127475E+01      5.4991363084E+02      1.1005422265E+04               6869            5664           11001    0.6649    0.1458 
+             4210  -1.0906701215E-01     -6.8630703884E+01      5.4678866002E+02      1.1029281779E+04               6905            5606           11028    0.6636    0.1694 
+             4220  -1.0961730038E-01     -6.8816999152E+01      5.4708014810E+02      1.1055939693E+04               6927            5641           11025    0.6670    0.1633 
+             4230  -1.0936979705E-01     -6.7654242738E+01      5.5344914507E+02      1.1043941790E+04               6946            5631           11058    0.6647    0.1172 
+             4240  -1.0888212264E-01     -6.7090514204E+01      5.5481427518E+02      1.1020339509E+04               6934            5680           10975    0.6667    0.1180 
+             4250  -1.0957898147E-01     -6.5568315813E+01      5.5231719472E+02      1.1054081304E+04               6929            5631           11044    0.6656    0.1237 
+             4260  -1.0984054482E-01     -6.5853119088E+01      5.5514442806E+02      1.1066772809E+04               6945            5689           11065    0.6652    0.1015 
+             4270  -1.0845718979E-01     -6.7959882633E+01      5.5619969701E+02      1.0999814898E+04               6918            5610           11005    0.6673    0.1591 
+             4280  -1.0795465395E-01     -6.8908007388E+01      5.5442160414E+02      1.0975591326E+04               6912            5662           10976    0.6643    0.1114 
+             4290  -1.1025111929E-01     -6.7976944460E+01      5.5324744418E+02      1.1086723985E+04               6930            5687           11065    0.6682    0.1018 
+             4300  -1.1078892080E-01     -6.8184914826E+01      5.5253460277E+02      1.1112911969E+04               6957            5657           11098    0.6652    0.1379 
+             4310  -1.1094156723E-01     -6.8595409192E+01      5.5356324227E+02      1.1120356278E+04               6957            5536           11139    0.6625    0.1465 
+             4320  -1.1076755021E-01     -7.0798060302E+01      5.5346935280E+02      1.1111870159E+04               6909            5683           11094    0.6646    0.0902 
+             4330  -1.1115288738E-01     -7.1831067017E+01      5.5081546619E+02      1.1130670235E+04               6938            5664           11133    0.6665    0.1125 
+             4340  -1.0962612174E-01     -6.6753426500E+01      5.5340764205E+02      1.1056367556E+04               6913            5575           11076    0.6633    0.1125 
+             4350  -1.1070385055E-01     -6.9314224310E+01      5.5450914860E+02      1.1108765400E+04               6933            5537           11110    0.6628    0.1244 
+             4360  -1.1025728185E-01     -7.0079456969E+01      5.5690086302E+02      1.1087023718E+04               6919            5696           11085    0.6650    0.0864 
+             4370  -1.1214967540E-01     -7.0495897983E+01      5.5576967277E+02      1.1179449856E+04               6973            5692           11167    0.6629    0.1133 
+             4380  -1.1266216802E-01     -6.9878162341E+01      5.5617870012E+02      1.1204612759E+04               6962            5690           11180    0.6655    0.1700 
+             4390  -1.1311113449E-01     -6.8288144536E+01      5.5512586153E+02      1.1226703125E+04               6980            5802           11244    0.6649    0.1219 
+             4400  -1.1204430369E-01     -6.8790119872E+01      5.5777575944E+02      1.1174283213E+04               6982            5693           11184    0.6640    0.1400 
+             4410  -1.1235580496E-01     -6.7496997756E+01      5.5599469813E+02      1.1189563822E+04               6985            5663           11224    0.6639    0.1024 
+             4420  -1.1337023868E-01     -7.0924721117E+01      5.5670092591E+02      1.1239471568E+04               7020            5791           11211    0.6660    0.1338 
+             4430  -1.1338686282E-01     -6.8655179235E+01      5.6021775847E+02      1.1240291287E+04               7025            5710           11248    0.6610    0.1424 
+             4440  -1.1250798548E-01     -6.9067609098E+01      5.6103041742E+02      1.1197036591E+04               6989            5688           11211    0.6663    0.1320 
+             4450  -1.1360159487E-01     -6.6765730249E+01      5.6373493929E+02      1.1250884883E+04               7032            5745           11242    0.6651    0.1236 
+             4460  -1.1423784010E-01     -6.9986165250E+01      5.6225821457E+02      1.1282332074E+04               7037            5725           11270    0.6642    0.0753 
+             4470  -1.1517099807E-01     -6.9266122107E+01      5.6024518674E+02      1.1328613602E+04               7056            5723           11318    0.6637    0.1185 
+             4480  -1.1534250224E-01     -7.0982480631E+01      5.6022010310E+02      1.1337140267E+04               7046            5782           11351    0.6641    0.1063 
+             4490  -1.1439374451E-01     -6.7246615281E+01      5.6674264554E+02      1.1290051237E+04               7036            5735           11274    0.6625    0.1408 
+             4500  -1.1399383652E-01     -6.9421403949E+01      5.6069400125E+02      1.1270261524E+04               7032            5705           11254    0.6702    0.1399 
+
+ Blooming events occured: a more efficent calulation may be possible with a smaller timestep.
+ Total number of blooming events: 2
+ Maximum number of particles spawned in a blooming event:    3351.43
+ Mean number of particles spawned in a blooming event:      1956.43
+
+ Load balancing
+ ^^^^^^^^^^^^^^
+
+ The final distribution of walkers and determinants across the processors was:
+
+ Min # of particles on a processor:       2.564489E+03
+ Max # of particles on a processor:       3.348504E+03
+ Mean # of particles on a processor:      2.817565E+03
+
+ Min # of determinants on a processor:   1678
+ Max # of determinants on a processor:   1830
+ Mean # of determinants on a processor:   1.758000E+03
+
+ Min time taken by walker communication:       223.43s
+ Max time taken by walker communication:       226.62s
+ Mean time taken by walker communication:      224.74s
+
+ Timing breakdown
+ ----------------
+
+ Time for each calculation section (seconds):
+
+ Generic system initialisation: .04
+ CCMC calculation             : 493.44
+
+ ================================================================
+ Finished running on 22/02/2021 at 17:05:04
+ Wall time (seconds):                         665.08
+ CPU time (per processor, seconds):           493.49
+ ================================================================
+

@@ -3,10 +3,13 @@ HANDE
 
 `HANDE <http://www.hande.org.uk>`_ is an efficient, highly parallel code for stochastic quantum chemistry.  It can be
 used both as a standalone program or (optionally) as a library from an existing quantum
-chemistry code.  For a description of its main features see  `J. Chem. Theory Comput. (in press), 2019 <http://dx.doi.org/10.1021/acs.jctc.8b01217>`_.
+chemistry code.  For a description of its main features see  `J. Chem. Theory Comput. 2019, 15, 3, 1728-1742 <http://dx.doi.org/10.1021/acs.jctc.8b01217>`_.
 
 .. image:: https://circleci.com/gh/hande-qmc/hande/tree/master.svg?style=svg
     :target: https://circleci.com/gh/hande-qmc/hande/tree/master
+    
+.. image:: https://gitlab.developers.cam.ac.uk/ch/thom/hande-public-testing/badges/master/pipeline.svg
+    :target: https://gitlab.developers.cam.ac.uk/ch/thom/hande-public-testing/-/commits/master
 
 Documentation
 -------------
@@ -24,17 +27,20 @@ HANDE development team
 | Nick Blunt, University of Cambridge.
 | Fionn Malone, Lawrence Livermore National Laboratory.
 | Matthew Foulkes, Imperial College London.
-| Ruth Franklin, University of Cambridge.
 | Charlie Scott, University of Cambridge.
 | Verena Neufeld, University of Cambridge.
 | James Shepherd, University of Iowa.
 | Roberto Di Remigio, University of Tromsø and Virginia Tech.
 | Maria-Andreea Filip, University of Cambridge.
+| Hayley Petras, University of Iowa.
+| Christopher Bradley, Imperial College London.
+| Tiger Zhang, University of Cambridge.
 
 Some past HANDE developers
 --------------------------
 | James Spencer, Imperial College London.
 | Will Vigor, Imperial College London.
+| Ruth Franklin, University of Cambridge.
 
 LICENCE
 -------

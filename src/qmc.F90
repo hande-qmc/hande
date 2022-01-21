@@ -48,24 +48,15 @@ contains
         use calc, only: doing_calc, hfs_fciqmc_calc, dmqmc_calc, GLOBAL_META
         use energy_evaluation, only: get_comm_processor_indx, est_buf_data_size, est_buf_n_per_proc
         use load_balancing, only: init_parallel_t
-        use particle_t_utils, only: init_particle_t
         use system
         use restart_hdf5, only: read_restart_hdf5, restart_info_t, init_restart_info_t, get_reference_hdf5
-
-        use qmc_data, only: qmc_in_t, fciqmc_in_t, restart_in_t, load_bal_in_t, annihilation_flags_t, qmc_state_t, &
-                            neel_singlet, &
-                            excit_gen_power_pitzer, excit_gen_power_pitzer_orderN, excit_gen_power_pitzer_occ_ij, &
-                            excit_gen_heat_bath, excit_gen_heat_bath_uniform, excit_gen_heat_bath_single, &
-                            excit_gen_cauchy_schwarz_occ, excit_gen_cauchy_schwarz_occ_ij
+        use qmc_data, only: qmc_in_t, fciqmc_in_t, restart_in_t, load_bal_in_t, annihilation_flags_t, qmc_state_t
         use reference_determinant, only: reference_t
         use dmqmc_data, only: dmqmc_in_t
         use excit_gens, only: dealloc_excit_gen_data_t
         use const, only: p
-        use excit_gen_power_pitzer_mol, only: init_excit_mol_power_pitzer_occ_ref, init_excit_mol_power_pitzer_orderM_ij, &
-                                              init_excit_mol_power_pitzer_orderN
-        use excit_gen_heat_bath_mol, only: init_excit_mol_heat_bath
-        use excit_gen_ueg, only: init_excit_ueg_power_pitzer
         use parallel, only: parent
+        use determinants, only: sum_fock_values_occ_list
 
 
         type(sys_t), intent(in) :: sys
@@ -112,31 +103,12 @@ contains
         else
             call init_reference(sys, reference_in, io_unit, qmc_state%ref)
         end if
+        
+        call init_sp_fock(sys, qmc_state%ref, qmc_state%propagator)
+        ! [WARNING - TODO] - ref%fock_sum not initialised in init_reference, etc! 
+        qmc_state%ref%fock_sum = sum_fock_values_occ_list(sys, qmc_state%propagator%sp_fock, qmc_state%ref%occ_list0)
 
-        ! --- Allocate psip list ---
-        if (doing_calc(hfs_fciqmc_calc)) then
-            qmc_state%psip_list%nspaces = qmc_state%psip_list%nspaces + 1
-        else if (dmqmc_in_loc%replica_tricks) then
-            qmc_state%psip_list%nspaces = qmc_state%psip_list%nspaces + 1
-        else if (fciqmc_in_loc%replica_tricks) then
-            qmc_state%psip_list%nspaces = qmc_state%psip_list%nspaces * 2
-        end if
-        if (sys%read_in%comp) then
-            qmc_state%psip_list%nspaces = qmc_state%psip_list%nspaces * 2
-        end if
-        ! Each determinant occupies tot_string_len kind=i0 integers,
-        ! qmc_state%psip_list%nspaces kind=int_p integers, qmc_state%psip_list%nspaces kind=p reals and one
-        ! integer. If the Neel singlet state is used as the reference state for
-        ! the projected estimator, then a further 2 reals are used per
-        ! determinant.
-        if (fciqmc_in_loc%trial_function == neel_singlet) qmc_state%psip_list%info_size = 2
-
-        ! Allocate main particle lists.  Include the memory used by semi_stoch_t%determ in the
-        ! calculation of memory occupied by the main particle lists.
-        if (.not. (qmc_state_restart_loc)) then
-            call init_particle_t(qmc_in%walker_length, 1, sys%basis%tensor_label_len, qmc_in%real_amplitudes, &
-                                 qmc_in%real_amplitude_force_32, qmc_state%psip_list, io_unit=io_unit)
-        end if
+        call init_psip_list(sys, dmqmc_in_loc, fciqmc_in_loc, qmc_in, qmc_state_restart_loc, io_unit, qmc_state%psip_list)
 
         call get_comm_processor_indx(qmc_state%psip_list%nspaces, proc_data_info, ntot_proc_data)
         call init_parallel_t(ntot_proc_data, est_buf_data_size, fciqmc_in_loc%non_blocking_comm, &
@@ -160,7 +132,7 @@ contains
             allocate(qmc_state%vary_shift(qmc_state%psip_list%nspaces), stat=ierr)
             call check_allocate('qmc_state%vary_shift', qmc_state%psip_list%nspaces, ierr)
             qmc_state%shift = qmc_in%initial_shift
-            qmc_state%vary_shift = .false.
+            qmc_state%vary_shift =  .false.
 
             allocate(qmc_state%estimators(qmc_state%psip_list%nspaces))
 
@@ -180,21 +152,19 @@ contains
 
         call init_annihilation_flags(qmc_in, fciqmc_in_loc, dmqmc_in_loc, annihilation_flags)
         call init_trial(sys, fciqmc_in_loc, qmc_state%trial)
-        call init_estimators(sys, qmc_in, restart_in%read_restart, qmc_state_restart_loc, fciqmc_in_loc%non_blocking_comm, &
-                        qmc_state)
+        call init_estimators(qmc_in, restart_in%read_restart, fciqmc_in_loc%non_blocking_comm, qmc_state)
         if (present(qmc_state_restart)) call dealloc_excit_gen_data_t(qmc_state_restart%excit_gen_data)
 
         if (parent) write(iunit, '(1X, "# Starting the excitation generator initialisation.")')
         call cpu_time(t1)
-        call init_excit_gen(sys, qmc_in, qmc_state%ref, qmc_state%excit_gen_data)
+        call init_excit_gen(sys, qmc_in, qmc_state%ref, qmc_state%vary_shift(1), qmc_state%excit_gen_data)
         call cpu_time(t2)
         set_up_time = t2 - t1
         if (parent) write(iunit, &
             '(1X, "# Finishing the excitation generator initialisation, time taken:",1X,es17.10)') set_up_time
 
-        qmc_state%propagator%quasi_newton = qmc_in%quasi_newton
-        qmc_state%propagator%quasi_newton_threshold = qmc_in%quasi_newton_threshold
-        qmc_state%propagator%quasi_newton_value = qmc_in%quasi_newton_value
+        call init_quasi_newton(sys, qmc_in, qmc_state%propagator)
+
         ! Need to ensure we end up with a sensible value of shift damping to use.
         ! qmc_state%shift_damping will be set to either its default value or one
         ! read in from a restart file.
@@ -203,73 +173,22 @@ contains
             qmc_state%shift_damping = qmc_in%shift_damping
         end if
 
-        if (qmc_in%excit_gen==excit_gen_power_pitzer) then
-            if (parent) write(iunit, '(1X, "# Starting the Power Pitzer excitation generator initialisation.")')
-            call cpu_time(t1)
-            if (sys%system == read_in) then
-               qmc_state%excit_gen_data%excit_gen_pp%power_pitzer_min_weight = qmc_in%power_pitzer_min_weight
-               call init_excit_mol_power_pitzer_occ_ref(sys, qmc_state%ref, qmc_state%excit_gen_data%excit_gen_pp)
-            else if (sys%system == ueg) then 
-               call init_excit_ueg_power_pitzer(sys, qmc_state%ref, qmc_state%excit_gen_data%excit_gen_pp)
-            end if
-            call cpu_time(t2)
-            set_up_time = t2 - t1
-            if (parent) write(iunit, &
-                '(1X, "# Finishing the Power Pitzer excitation generator initialisation, time taken:",1X,es17.10)') set_up_time
+        ! If shift_harmonic_crit_damp is set to true, the value
+        ! of shift_harmonic_forcing needs to be updated so that it follows the
+        ! critical damping equation from Yang, Pahl and Brand 
+        ! J. Chem. Phys. 153, 174103 (2020) (DOI:10.1063/5.0023088):
+        ! shift_harmonic_forcing = (shift_damping^2)/4
+        ! If shift_harmonic_crit_damp is false, the value of
+        ! shift_harmonic_forcing from the input is used. 
+        ! If shift_harmonic_forcing is not equal to zero, we need to be in
+        ! variable shift mode, so turn on vary_shift.
+        if (qmc_in%shift_harmonic_crit_damp) then
+            qmc_state%shift_harmonic_forcing = real((qmc_state%shift_damping**2)/4.0_p, p)
+        else if (qmc_state%shift_harmonic_forcing .ne. 0.00_p) then 
+            qmc_state%shift_harmonic_forcing = qmc_in%shift_harmonic_forcing
         end if
-
-        if (qmc_in%excit_gen==excit_gen_power_pitzer_orderN) then
-            if (parent) write(iunit, '(1X, "# Starting the P.P. Order N excitation generator initialisation.")')
-            call cpu_time(t1)
-            qmc_state%excit_gen_data%excit_gen_pp%power_pitzer_min_weight = qmc_in%power_pitzer_min_weight
-            call init_excit_mol_power_pitzer_orderN(sys, qmc_state%ref, qmc_state%excit_gen_data%excit_gen_pp)
-            call cpu_time(t2)
-            set_up_time = t2 - t1
-            if (parent) write(iunit, &
-                '(1X, "# Finishing the P.P. Order N excitation generator initialisation, time taken:",1X,es17.10)') set_up_time
-        end if
+        if (qmc_state%shift_harmonic_forcing .ne. 0.00_p) qmc_state%vary_shift = .true. 
         
-        if ((qmc_in%excit_gen==excit_gen_power_pitzer_occ_ij) .or. (qmc_in%excit_gen==excit_gen_cauchy_schwarz_occ_ij)) then
-            if (parent) write(iunit, '(1X, "# Starting the P.P./C.S. O(M)ij excitation generator initialisation.")')
-            call cpu_time(t1)
-            call init_excit_mol_power_pitzer_orderM_ij(sys, qmc_state%ref, qmc_state%excit_gen_data%excit_gen_pp)
-            call cpu_time(t2)
-            set_up_time = t2 - t1
-            if (parent) write(iunit, &
-                '(1X, "# Finishing P.P./C.S. O(M)ij excitation generator initialisation, time taken:",1X,es17.10)') set_up_time
-        end if
-
-        if (qmc_in%excit_gen==excit_gen_heat_bath) then
-            if (parent) write(iunit, '(1X, "# Starting the heat bath excitation generator initialisation.")')
-            call cpu_time(t1)
-            call init_excit_mol_heat_bath(sys, qmc_state%excit_gen_data%excit_gen_hb, .true.)
-            call cpu_time(t2)
-            set_up_time = t2 - t1
-            if (parent) write(iunit, &
-                '(1X, "# Finishing the heat bath excitation generator initialisation, time taken:",1X,es17.10)') set_up_time
-        end if
-        if ((qmc_in%excit_gen==excit_gen_heat_bath_uniform) .or. (qmc_in%excit_gen==excit_gen_heat_bath_single)) then
-            if (parent) write(iunit, '(1X, "# Starting the heat bath excitation generator initialisation.")')
-            call cpu_time(t1)
-            call init_excit_mol_heat_bath(sys, qmc_state%excit_gen_data%excit_gen_hb, .false.)
-            call cpu_time(t2)
-            set_up_time = t2 - t1
-            if (parent) write(iunit, &
-                '(1X, "# Finishing the heat bath excitation generator initialisation, time taken:",1X,es17.10)') set_up_time
-        end if
-
-        ! check_input makes sure the pattempt_update cannot be true if we are using the heat bath excitation generator.
-        if (.not. (qmc_state%vary_shift(1)) .and. (qmc_in%pattempt_update)) then
-            ! We sample singles with probability pattempt_single. It therefore makes sense to update pattempt_single 
-            ! [todo] - DMQMC
-            ! for FCIQMC and CCMC on the fly (at least in the beginning of the calculation).
-            qmc_state%excit_gen_data%p_single_double%vary_psingles = .true.
-        else if ((qmc_state%excit_gen_data%p_single_double%vary_psingles) .and. .not.(qmc_in%pattempt_update)) then
-            ! If we are restarting say and vary_psingles is true in the restart file but now pattempt_update is false,
-            ! set vary_psingles to false as well.
-            qmc_state%excit_gen_data%p_single_double%vary_psingles = .false.
-        end if
-
         qmc_state%restart_in = restart_in
     end subroutine init_qmc
 
@@ -301,7 +220,6 @@ contains
         use reference_determinant, only: reference_t
 
         ! Procedures to be pointed to.
-        use death, only: stochastic_death
         use determinants
         use determinant_decoders
         use dmqmc_estimators
@@ -824,29 +742,80 @@ contains
         annihilation_flags%symmetric = dmqmc_in%symmetric
 
     end subroutine init_annihilation_flags
+        
+    subroutine init_psip_list(sys, dmqmc_in_loc, fciqmc_in_loc, qmc_in, qmc_state_restart_loc, io_unit, psip_list)
+        
+        ! Initialise components of psip_list.
 
-    subroutine init_estimators(sys, qmc_in, restart_read_in, qmc_state_restart, fciqmc_non_blocking_comm, qmc_state)
+        ! In:
+        !   sys: system being studied.
+        !   dmqmc_in: input options relating to DMQMC.
+        !   fciqmc_in: input options relating to FCIQMC.
+        !   qmc_in: input options relating to qmc methods.
+        !   qmc_state_restart_loc: true if qmc_state_restart is present.
+        !   io_unit: io unit to write all output to.
+        ! In/Out:
+        !   psip_list: information on particles.
+
+        use calc, only: doing_calc, hfs_fciqmc_calc
+        use dmqmc_data, only: dmqmc_in_t
+        use particle_t_utils, only: init_particle_t
+        use system, only: sys_t
+        use qmc_data, only: fciqmc_in_t, neel_singlet, particle_t, qmc_in_t
+
+        type(sys_t), intent(in) :: sys
+        type(fciqmc_in_t), intent(in) :: fciqmc_in_loc
+        type(dmqmc_in_t), intent(in) :: dmqmc_in_loc
+        type(qmc_in_t), intent(in) :: qmc_in
+        logical, intent(in) :: qmc_state_restart_loc
+        integer, intent(in) :: io_unit
+        type(particle_t), intent(inout) :: psip_list
+
+        if (doing_calc(hfs_fciqmc_calc)) then
+            psip_list%nspaces = psip_list%nspaces + 1
+        else if (dmqmc_in_loc%replica_tricks) then
+            psip_list%nspaces = psip_list%nspaces + 1
+        else if (fciqmc_in_loc%replica_tricks) then
+            psip_list%nspaces = psip_list%nspaces * 2
+        end if
+        if (sys%read_in%comp) then
+            psip_list%nspaces = psip_list%nspaces * 2
+        end if
+        ! Each determinant occupies tot_string_len kind=i0 integers,
+        ! qmc_state%psip_list%nspaces kind=int_p integers, qmc_state%psip_list%nspaces kind=p reals and one
+        ! integer. If the Neel singlet state is used as the reference state for
+        ! the projected estimator, then a further 2 reals are used per
+        ! determinant.
+        if (fciqmc_in_loc%trial_function == neel_singlet) psip_list%info_size = 2
+
+        ! Allocate main particle lists.  Include the memory used by semi_stoch_t%determ in the
+        ! calculation of memory occupied by the main particle lists.
+        if (.not. (qmc_state_restart_loc)) then
+            call init_particle_t(qmc_in%walker_length, 1, sys%basis%tensor_label_len, qmc_in%real_amplitudes, &
+                                 qmc_in%real_amplitude_force_32, psip_list, io_unit=io_unit)
+        end if
+
+    end subroutine init_psip_list
+
+    subroutine init_estimators(qmc_in, restart_read_in, fciqmc_non_blocking_comm, qmc_state)
 
         ! Initialise estimators and related components of qmc_state
 
         ! In:
-        !   sys: system being studied
         !   qmc_in: input options relating to qmc methods
         !   restart_read_in : If true, have restarted and have read in restart file
         !   fciqmc_non_blocking_comm : If true, use non blocking communication and fciqmc
         ! In/Out:
         !   qmc_state: current state of qmc calculation
 
-        use system, only: sys_t
         use qmc_data, only: qmc_in_t, qmc_state_t
         use calc, only: doing_calc, hfs_fciqmc_calc
         use parallel
         use energy_evaluation, only: calculate_hf_signed_pop
         use checking, only: check_allocate
 
-        type(sys_t), intent(in) :: sys
         type(qmc_in_t), intent(in) :: qmc_in
-        logical, intent(in) :: restart_read_in, qmc_state_restart, fciqmc_non_blocking_comm
+        logical, intent(in) :: restart_read_in, fciqmc_non_blocking_comm
         type(qmc_state_t), intent(inout) :: qmc_state
 
         logical :: have_tot_nparticles
@@ -904,21 +873,30 @@ contains
 
     end subroutine init_estimators
 
-    subroutine init_excit_gen(sys, qmc_in, ref, excit_gen_data)
+    subroutine init_excit_gen(sys, qmc_in, ref, vary_shift_first_el, excit_gen_data)
 
         ! Initialise pre-computed data for excitation generators
 
         ! In:
         !   sys: system being studied
         !   qmc_in: input options for qmc
+        !   vary_shift_first_el: qmc_state%vary_shift(1), is shift varying in first space?
         !   ref: reference determinant
         ! Out:
         !   excit_gen_data: pre-computed data for fast excitation generation.
 
         use const, only: p
         use system, only: sys_t, ueg, read_in
-        use qmc_data, only: qmc_in_t, excit_gen_renorm_spin, excit_gen_no_renorm_spin
+        use qmc_data, only: qmc_in_t, excit_gen_renorm_spin, excit_gen_no_renorm_spin, &
+                            excit_gen_power_pitzer, excit_gen_power_pitzer_orderN, excit_gen_power_pitzer_occ_ij, &
+                            excit_gen_heat_bath, excit_gen_heat_bath_uniform, excit_gen_heat_bath_single, &
+                            excit_gen_cauchy_schwarz_occ, excit_gen_cauchy_schwarz_occ_ij
+        use excit_gen_power_pitzer_mol, only: init_excit_mol_power_pitzer_occ_ref, init_excit_mol_power_pitzer_orderM_ij, &
+                                              init_excit_mol_power_pitzer_orderN
+        use excit_gen_heat_bath_mol, only: init_excit_mol_heat_bath
+        use excit_gen_ueg, only: init_excit_ueg_power_pitzer
         use excit_gens, only: excit_gen_data_t, zero_p_single_double_coll_t
+        use parallel, only: parent
         use ueg_system, only: init_ternary_conserve
         use qmc_common, only: find_single_double_prob, find_parallel_spin_prob_mol
         use reference_determinant, only: reference_t
@@ -926,7 +904,12 @@ contains
         type(sys_t), intent(in) :: sys
         type(qmc_in_t), intent(in) :: qmc_in
         type(reference_t), intent(in) :: ref
+        logical, intent(in) :: vary_shift_first_el
         type(excit_gen_data_t), intent(inout) :: excit_gen_data
+        real :: tw1, tw2, set_up_timew
+        integer :: iunit
+        
+        iunit = 6
 
         ! Set type of excitation generator to use
         excit_gen_data%excit_gen = qmc_in%excit_gen
@@ -973,7 +956,173 @@ contains
         ! UEG allowed excitations
         if (sys%system == ueg) call init_ternary_conserve(sys, excit_gen_data%ueg_ternary_conserve)
 
+        ! Init weighted excitation generators if required.
+        if (qmc_in%excit_gen==excit_gen_power_pitzer) then
+            if (parent) write(iunit, '(1X, "# Starting the Power Pitzer excitation generator initialisation.")')
+            call cpu_time(tw1)
+            if (sys%system == read_in) then
+               excit_gen_data%excit_gen_pp%power_pitzer_min_weight = qmc_in%power_pitzer_min_weight
+               call init_excit_mol_power_pitzer_occ_ref(sys, ref, excit_gen_data%excit_gen_pp)
+            else if (sys%system == ueg) then 
+               call init_excit_ueg_power_pitzer(sys, excit_gen_data%excit_gen_pp)
+            end if
+            call cpu_time(tw2)
+            set_up_timew = tw2 - tw1
+            if (parent) write(iunit, &
+                '(1X, "# Finishing the Power Pitzer excitation generator initialisation, time taken:",1X,es17.10)') set_up_timew
+        end if
+
+        if (qmc_in%excit_gen==excit_gen_power_pitzer_orderN) then
+            if (parent) write(iunit, '(1X, "# Starting the P.P. Order N excitation generator initialisation.")')
+            call cpu_time(tw1)
+            excit_gen_data%excit_gen_pp%power_pitzer_min_weight = qmc_in%power_pitzer_min_weight
+            call init_excit_mol_power_pitzer_orderN(sys, ref, excit_gen_data%excit_gen_pp)
+            call cpu_time(tw2)
+            set_up_timew = tw2 - tw1
+            if (parent) write(iunit, &
+                '(1X, "# Finishing the P.P. Order N excitation generator initialisation, time taken:",1X,es17.10)') set_up_timew
+        end if
+        
+        if ((qmc_in%excit_gen==excit_gen_power_pitzer_occ_ij) .or. (qmc_in%excit_gen==excit_gen_cauchy_schwarz_occ_ij)) then
+            if (parent) write(iunit, '(1X, "# Starting the P.P./C.S. O(M)ij excitation generator initialisation.")')
+            call cpu_time(tw1)
+            call init_excit_mol_power_pitzer_orderM_ij(sys, excit_gen_data%excit_gen_pp)
+            call cpu_time(tw2)
+            set_up_timew = tw2 - tw1
+            if (parent) write(iunit, &
+                '(1X, "# Finishing P.P./C.S. O(M)ij excitation generator initialisation, time taken:",1X,es17.10)') set_up_timew
+        end if
+
+        if (qmc_in%excit_gen==excit_gen_heat_bath) then
+            if (parent) write(iunit, '(1X, "# Starting the heat bath excitation generator initialisation.")')
+            call cpu_time(tw1)
+            call init_excit_mol_heat_bath(sys, excit_gen_data%excit_gen_hb, .true.)
+            call cpu_time(tw2)
+            set_up_timew = tw2 - tw1
+            if (parent) write(iunit, &
+                '(1X, "# Finishing the heat bath excitation generator initialisation, time taken:",1X,es17.10)') set_up_timew
+        end if
+        if ((qmc_in%excit_gen==excit_gen_heat_bath_uniform) .or. (qmc_in%excit_gen==excit_gen_heat_bath_single)) then
+            if (parent) write(iunit, '(1X, "# Starting the heat bath excitation generator initialisation.")')
+            call cpu_time(tw1)
+            call init_excit_mol_heat_bath(sys, excit_gen_data%excit_gen_hb, .false.)
+            call cpu_time(tw2)
+            set_up_timew = tw2 - tw1
+            if (parent) write(iunit, &
+                '(1X, "# Finishing the heat bath excitation generator initialisation, time taken:",1X,es17.10)') set_up_timew
+        end if
+
+        ! Set vary_psingles.
+        ! check_input makes sure the pattempt_update cannot be true if we are using the heat bath excitation generator.
+        if (.not. (vary_shift_first_el) .and. (qmc_in%pattempt_update)) then
+            ! We sample singles with probability pattempt_single. It therefore makes sense to update pattempt_single 
+            ! [todo] - DMQMC
+            ! for FCIQMC and CCMC on the fly (at least in the beginning of the calculation).
+            excit_gen_data%p_single_double%vary_psingles = .true.
+        else if ((excit_gen_data%p_single_double%vary_psingles) .and. .not.(qmc_in%pattempt_update)) then
+            ! If we are restarting say and vary_psingles is true in the restart file but now pattempt_update is false,
+            ! set vary_psingles to false as well.
+            excit_gen_data%p_single_double%vary_psingles = .false.
+        end if
+
     end subroutine init_excit_gen
+    
+    subroutine init_sp_fock(sys, ref, propagator)
+
+        ! Init sp_fock values.
+        
+        ! In:
+        !   sys: system being studied
+        !   ref: reference information
+        ! In/Out:
+        !   propagator: holds information on propagator, e.g. quasi-newton
+        !               information.
+        
+        use checking, only: check_allocate
+        use hamiltonian_ueg, only: calc_fock_values_3d_ueg
+        use qmc_data, only: propagator_t 
+        use reference_determinant, only: reference_t
+        use system, only: sys_t, ueg
+
+        type(sys_t), intent(in) :: sys
+        type(reference_t), intent(in) :: ref
+        type(propagator_t), intent(inout) :: propagator
+        integer :: ierr
+
+        ! In read-in systems, sp_fock = sp_eigv. This is different in the case of the UEG, where sp_fock is filled with <i|F|i>.
+        ! For the UEG, the Fock values are only implemented for the 3D version!
+        ! [todo] - implement 2D, etc.
+        allocate(propagator%sp_fock(sys%basis%nbasis), stat=ierr)
+        call check_allocate('propagator%sp_fock', sys%basis%nbasis, ierr)
+        propagator%sp_fock = sys%basis%basis_fns%sp_eigv
+        if ((sys%system == ueg) .and. (sys%lattice%ndim == 3)) then
+            call calc_fock_values_3d_ueg(sys, propagator, ref%occ_list0)
+        end if
+
+    end subroutine init_sp_fock
+    
+    subroutine init_quasi_newton(sys, qmc_in, propagator)
+
+        ! Initialise quasi-newton propagator information.
+        
+        ! In:
+        !   sys: system being studied
+        !   qmc_in: input options for qmc
+        ! In/Out:
+        !   propagator: holds information on propagator, e.g. quasi-newton
+        !               information.
+        
+        use const, only: p
+        use parallel, only: parent
+        use qmc_data, only: qmc_in_t, propagator_t
+        use system, only: sys_t, ueg
+        use, intrinsic :: iso_fortran_env, only: error_unit
+        use utils, only: int_fmt
+
+        type(sys_t), intent(in) :: sys
+        type(qmc_in_t), intent(in) :: qmc_in
+        type(propagator_t), intent(inout) :: propagator
+        
+        propagator%quasi_newton = qmc_in%quasi_newton
+        if (qmc_in%quasi_newton) then
+            if (qmc_in%quasi_newton_threshold < 0.0_p) then ! Not set by user, use auto value.
+                ! Assume that fock values are ordered and that the number of basis functions is bigger than the number
+                ! of electrons!
+                if (parent) then
+                    write (error_unit,'(1X,"# Warning in init_qmc: Doing quasi_newton with quasi_newton_threshold not supplied. &
+                        &It is now estimated using (a multiple of) the difference in sp_fock energies of the basis functions at &
+                        &indices (if CAS specified, then after freezing)",'//int_fmt(sys%nel,1)//', " &
+                        &and",'//int_fmt(sys%nel+1,1)//', ". If these are not HOMO and LUMO, specify quasi_newton_threshold &
+                        &directly.", /)') sys%nel, sys%nel+1
+                end if
+                propagator%quasi_newton_threshold = propagator%sp_fock(sys%nel+1) - propagator%sp_fock(sys%nel)
+                if (sys%system == ueg) then
+                    ! Know that by symmetry, the sum of Fock values of ref det to next excited det is twice the HOMO LUMO gap.
+                    ! Ignore symmetry for the other systems for now...
+                    propagator%quasi_newton_threshold = 2.0_p*propagator%quasi_newton_threshold
+                end if
+            else
+                propagator%quasi_newton_threshold = qmc_in%quasi_newton_threshold
+            end if
+        end if
+        if (qmc_in%quasi_newton_value < 0.0_p) then
+            ! Default, set equal to quasi_newton_threshold.
+            propagator%quasi_newton_value = propagator%quasi_newton_threshold
+        else
+            propagator%quasi_newton_value = qmc_in%quasi_newton_value
+        end if
+        if (propagator%quasi_newton) then
+            if (qmc_in%quasi_newton_pop_control < 0.0_p) then
+                propagator%quasi_newton_pop_control = 1.0_p/propagator%quasi_newton_threshold
+            else
+                propagator%quasi_newton_pop_control = qmc_in%quasi_newton_pop_control
+            end if
+        else
+            ! Set to 1 if not using QN!
+            propagator%quasi_newton_pop_control = 1.0_p
+        end if
+
+    end subroutine init_quasi_newton
 
 ! [review] - AJWT: document occlist.  Does any call to this function actually use it?
     subroutine init_reference(sys, reference_in, io_unit, reference, occlist)
@@ -992,7 +1141,7 @@ contains
         use calc, only: doing_calc, hfs_fciqmc_calc
         use reference_determinant, only: reference_t, set_reference_det
         use checking, only: check_allocate
-        use determinants, only: encode_det, sum_sp_eigenvalues_occ_list
+        use determinants, only: encode_det
 
         type(sys_t), intent(in) :: sys
         type(reference_t), intent(in) :: reference_in
@@ -1004,7 +1153,7 @@ contains
         ! Note occ_list could be set and allocated in the input.
         reference = reference_in
 
-    if (present(occlist)) reference%occ_list0 = occlist
+        if (present(occlist)) reference%occ_list0 = occlist
 
         ! Set the reference determinant to be the spin-orbitals with the lowest
         ! single-particle eigenvalues which satisfy the spin polarisation and, if
@@ -1037,7 +1186,7 @@ contains
         reference%H00 = sc0_ptr(sys, reference%f0)
         ! Operators of HFS sampling.
         if (doing_calc(hfs_fciqmc_calc)) reference%O00 = op0_ptr(sys, reference%f0)
-        reference%fock_sum = sum_sp_eigenvalues_occ_list(sys, reference%occ_list0)
+        ! [WARNING - TODO] - ref%fock_sum not initialised here! 
 
     end subroutine init_reference
 
@@ -1053,13 +1202,12 @@ contains
         !   reference: reference selected for the qmc calculation.
 
         use reference_determinant, only: reference_t
-        use system, only: sys_t
+        use system, only: sys_t, ueg
         use restart_hdf5, only: restart_info_t, get_reference_hdf5
         use calc, only: doing_calc, hfs_fciqmc_calc
         use proc_pointers, only: sc0_ptr, op0_ptr
         use checking, only: check_allocate
         use determinants, only: decode_det
-        use determinants, only: sum_sp_eigenvalues_occ_list
 
         type(sys_t), intent(in) :: sys
         type(reference_t), intent(in) :: reference_in
@@ -1067,7 +1215,6 @@ contains
         type(reference_t), intent(out) :: reference
 
         integer :: ierr
-
         allocate(reference%f0(sys%basis%tot_string_len), stat=ierr)
         call check_allocate('reference%f0',sys%basis%tot_string_len,ierr)
         allocate(reference%hs_f0(sys%basis%tot_string_len), stat=ierr)
@@ -1084,20 +1231,20 @@ contains
 
         reference%H00 = sc0_ptr(sys, reference%f0)
         if (doing_calc(hfs_fciqmc_calc)) reference%O00 = op0_ptr(sys, reference%f0)
-        reference%fock_sum = sum_sp_eigenvalues_occ_list(sys, reference%occ_list0)
 
         reference%ex_level = reference_in%ex_level
+        ! [WARNING - TODO] - ref%fock_sum not initialised here! 
 
     end subroutine init_reference_restart
 
-    subroutine init_secondary_reference(sys,reference_in,io_unit,qs)
+    subroutine init_secondary_references(sys, references_in, io_unit, qs)
         ! Set the secondary reference determinant from input options
         ! and use it to set up the maximum considered excitation level
         ! for the calculation.
 
         ! In:
         !   sys: system being studied.
-        !   reference_in: secondary reference provided in input.
+        !   references_in: array of secondary references provided in input.
         !   io_unit: io unit to write any information to.
         ! In/Out:
         !   qs: qmc_state used in the calculation.
@@ -1105,17 +1252,70 @@ contains
         use reference_determinant, only: reference_t
         use system, only: sys_t
         use qmc_data, only: qmc_state_t 
-        use excitations, only: get_excitation_level
+        use excitations, only: get_excitation_level, det_string
+        use search, only: tree_add
+        use const
+        use determinants, only: decode_det
+
         type(sys_t), intent(in) :: sys
-        type(reference_t), intent(in) :: reference_in
+        type(reference_t), intent(in) :: references_in(:)
         integer, intent(in) :: io_unit
         type(qmc_state_t), intent(inout) :: qs
+        integer :: i, current_max, total_max = 0
+        integer(i0) :: core_bstring, secref_bstring
+        integer(i0), allocatable :: real_bstring(:)
+        type(reference_t) :: read_in_ref
+        
+        if (.not.qs%mr_read_in) then
+            do i = 1, size(references_in)
+               call init_reference(sys, references_in(i), io_unit, qs%secondary_refs(i))
+               current_max = qs%ref%ex_level + get_excitation_level(det_string(qs%ref%f0,sys%basis), &
+                                                                     det_string(qs%secondary_refs(i)%f0,sys%basis)) 
+               if (current_max > total_max) total_max = current_max
+            end do
 
-        call init_reference(sys, reference_in, io_unit, qs%second_ref)
-        qs%ref%max_ex_level = qs%ref%ex_level + get_excitation_level(qs%ref%f0(:sys%basis%bit_string_len), &
-                                                                  qs%second_ref%f0(:sys%basis%bit_string_len))
+            qs%ref%max_ex_level = total_max
+        else
+            if (sys%CAS(1).eq.-1) then
+                ! -1 is the default (unset) value
+                core_bstring = 2**(qs%mr_n_frozen)-1
+            else
+                core_bstring = 2**(qs%mr_n_frozen-sys%CAS(1))-1
+            endif
+            allocate(real_bstring(sys%basis%tot_string_len))
+            allocate(read_in_ref%occ_list0(sys%nel))
+            open(8,file=qs%mr_secref_file,status='old',form='formatted',action='read')
+            do i=1,qs%n_secondary_ref,1
+                read(8,*) secref_bstring
+                ! [TODO]: Support references of longer than i0 bits
+                real_bstring(1) = ior(lshift(secref_bstring,qs%mr_n_frozen),core_bstring)
+                call decode_det(sys%basis,real_bstring(:),read_in_ref%occ_list0(:))
+                read_in_ref%ex_level= qs%mr_excit_lvl
+                call init_reference(sys, read_in_ref, io_unit, qs%secondary_refs(i))
+
+                current_max = qs%ref%ex_level + get_excitation_level(det_string(qs%ref%f0,sys%basis), &
+                                                                     det_string(qs%secondary_refs(i)%f0,sys%basis)) 
+               if (current_max > total_max) total_max = current_max
+            enddo
+            close(8)
+
+            qs%ref%max_ex_level = total_max
+
+        endif
+
+        ! Optionally build the BK tree, see search.F90::tree_add and tree_search for further comments
+        if (qs%mr_acceptance_search == 1) then
+            qs%secondary_ref_tree%n_secondary_ref = size(qs%secondary_refs)
+            qs%secondary_ref_tree%ex_lvl = qs%ref%ex_level
+            ! The maximum possible excitation level is the smaller of number of electrons 
+            ! and the number of virtual orbitals
+            qs%secondary_ref_tree%max_excit = min(sys%nel, sys%nvirt)
+            do i = 1, size(qs%secondary_refs)
+                call tree_add(qs%secondary_ref_tree, det_string(qs%secondary_refs(i)%f0,sys%basis))
+            end do
+        end if 
   
-    end subroutine
+    end subroutine init_secondary_references
 
 
     subroutine init_spawn_store(qmc_in, nspaces, pop_real_factor, basis, non_blocking_comm, proc_map, io_unit, spawn_store)

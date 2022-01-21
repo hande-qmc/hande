@@ -220,10 +220,13 @@ reblock_plot : string
 '''
 
     try:
-        cols = pd.util.terminal.get_terminal_size()[0]
+        cols = pd.core.series.get_terminal_size()[0]
     except AttributeError:
-        # terminal module moved in pandas 0.20
-        cols = pd.io.formats.terminal.get_terminal_size()[0]
+        try:
+            cols = pd.util.terminal.get_terminal_size()[0]
+        except AttributeError:
+            # terminal module moved in pandas 0.20
+            cols = pd.io.formats.terminal.get_terminal_size()[0]
     if not sys.stdout.isatty():
         cols = -1
 

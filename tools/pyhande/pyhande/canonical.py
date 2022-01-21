@@ -100,6 +100,7 @@ results : :class:`pandas.Series`
         beta = metadata['beta']
     else:
         # Hope to find it in the input file...
+        # WARNING: This is not tested for.
         beta = pyhande.legacy.extract_input(metadata, 'beta')
     results = {
         'Beta': beta,

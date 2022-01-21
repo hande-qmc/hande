@@ -1,0 +1,293 @@
+
+   HANDE
+
+ ================================================================
+Version information
+-------------------
+Version       | v1.4-25-g4efb802
+Commit hash   | 4efb80270c639ebaf202fe7b326e94a9ccfefafe
+Commit author | Verena Neufeld
+Commit date   | Thu Mar 21 12:08:44 2019 +0000
+Branch        | master
+
+Configuration and build information
+-----------------------------------
+Who compiled             | verena
+Compilation hostname     | verena-Think
+Operating system         | Linux-4.4.0-176-generic
+CMake version            | 3.10.2
+CMake generator          | Unix Makefiles
+Build type               | release
+Configuration time       | 2020-03-31 15:44:09 [UTC]
+Python version           | 3.6.10
+Fortran compiler         | /usr/bin/gfortran
+C compiler               | /usr/bin/gcc
+DET_SIZE set to          | 64
+POP_SIZE set to          | 64
+dSFMT Mersenne exponent  | 19937
+MPI parallelization      | OFF
+OpenMP parallelization   | OFF
+Lua version              | 5.3.5
+HDF5 library version     | 1.10.2
+
+Further components
+------------------
+DISABLE_HDF5 not defined.  HDF5 enabled.
+DISABLE_LANCZOS defined.  Lanczos disabled.
+DISABLE_UUID not defined.  UUID enabled.
+PARALLEL not defined.  MPI parallelization disabled.
+DISABLE_SCALAPACK not defined.  ScaLAPACK enabled.
+SINGLE_PRECISION not defined.  Double precision used throughout.
+USE_POPCNT not defined. Internal POPCNT procedure used.
+
+Runtime information
+-------------------
+Hostname:
+    verena-Think
+Current working dir:
+    /home/verena/code3/hande/tools/pyhande/pyhande/tests/hande_files
+Started running on 01/04/2020 at 18:01:04
+ Calculation UUID: c8132a6b-bc15-4586-adf7-80d7c3119e3c.
+ ================================================================
+
+ Input options
+ -------------
+
+-- Create output with:
+-- $[HANDE DIR]/bin/hande.x simple_fciqmc_ueg.lua > simple_fciqmc_ueg.out 2> simple_fciqmc_ueg.err
+-- Note that these settings are just for testing...
+sys = ueg {
+    dim = 3,
+    nel = 2,
+    ms = 0,
+    cutoff = 1,
+}
+
+simple_fciqmc {
+    sys = sys,
+    sparse = true,
+    qmc = {
+        tau = 0.06,
+        rng_seed = 1472,
+        init_pop = 8,
+        mc_cycles = 10,
+        nreports = 3,
+        target_population = 8,
+        state_size = 50000,
+        spawned_state_size = 5000,
+    },
+}
+
+ -------------
+
+ Basis functions
+ ---------------
+
+ Spin given in units of 1/2.
+ k-points given in terms of the reciprocal lattice vectors of the crystal cell.
+
+ index   k-point            ms       <i|h|i>
+     1   (  0,  0,  0)      1        0.00000000E+00
+     2   (  0,  0,  0)     -1        0.00000000E+00
+     3   (  0,  0, -1)      1        4.78539000E+00
+     4   (  0,  0, -1)     -1        4.78539000E+00
+     5   (  0, -1,  0)      1        4.78539000E+00
+     6   (  0, -1,  0)     -1        4.78539000E+00
+     7   ( -1,  0,  0)      1        4.78539000E+00
+     8   ( -1,  0,  0)     -1        4.78539000E+00
+     9   (  1,  0,  0)      1        4.78539000E+00
+    10   (  1,  0,  0)     -1        4.78539000E+00
+    11   (  0,  1,  0)      1        4.78539000E+00
+    12   (  0,  1,  0)     -1        4.78539000E+00
+    13   (  0,  0,  1)      1        4.78539000E+00
+    14   (  0,  0,  1)     -1        4.78539000E+00
+    15   (  0, -1, -1)      1        9.57078000E+00
+    16   (  0, -1, -1)     -1        9.57078000E+00
+    17   ( -1,  0, -1)      1        9.57078000E+00
+    18   ( -1,  0, -1)     -1        9.57078000E+00
+    19   (  1,  0, -1)      1        9.57078000E+00
+    20   (  1,  0, -1)     -1        9.57078000E+00
+    21   (  0,  1, -1)      1        9.57078000E+00
+    22   (  0,  1, -1)     -1        9.57078000E+00
+    23   ( -1, -1,  0)      1        9.57078000E+00
+    24   ( -1, -1,  0)     -1        9.57078000E+00
+    25   (  1, -1,  0)      1        9.57078000E+00
+    26   (  1, -1,  0)     -1        9.57078000E+00
+    27   ( -1,  1,  0)      1        9.57078000E+00
+    28   ( -1,  1,  0)     -1        9.57078000E+00
+    29   (  1,  1,  0)      1        9.57078000E+00
+    30   (  1,  1,  0)     -1        9.57078000E+00
+    31   (  0, -1,  1)      1        9.57078000E+00
+    32   (  0, -1,  1)     -1        9.57078000E+00
+    33   ( -1,  0,  1)      1        9.57078000E+00
+    34   ( -1,  0,  1)     -1        9.57078000E+00
+    35   (  1,  0,  1)      1        9.57078000E+00
+    36   (  1,  0,  1)     -1        9.57078000E+00
+    37   (  0,  1,  1)      1        9.57078000E+00
+    38   (  0,  1,  1)     -1        9.57078000E+00
+
+ Number of electrons: 2
+ Number of basis functions: 38
+
+ Bit-length of integers used to store determinant bit-strings: 64
+ Number of integers used to store determinant bit-strings: 1
+
+
+ Reference determinant and so symmetry sector selected using the Aufbau principle.
+ Selected symmetry  1.
+
+ The table below gives the number of determinants for each symmetry with Ms=0.
+
+ Symmetry index      # dets
+         1               19
+         2               10
+         3               10
+         4               10
+         5               10
+         6               10
+         7               10
+         8                8
+         9                8
+        10                8
+        11                8
+        12                8
+        13                8
+        14                8
+        15                8
+        16                8
+        17                8
+        18                8
+        19                8
+
+ Number of non-zero elements in Hamiltonian matrix:     360
+
+ Simple FCIQMC
+ -------------
+
+ Using a simple (but correct) serial FCIQMC algorithm.
+ Enumeration of the determinant list and evaluation of the Hamiltonian matrix for the given symmetry block and spin polarization required.
+ This is slow and memory demanding: consider using the fciqmc option instead of the simple_fciqmc option.
+
+ Considering determinants belonging to symmetry 1 with spin 0.
+
+ Reference determinant, |D0> = |  4 13 >
+ E0 = <D0|H|D0> =      9.570780000627
+
+ Note that FCIQMC calculates the correlation energy relative to |D0>.
+
+ -- Start JSON block --
+ {
+     "system": {
+         "nbasis": 38,   
+         "nel": 2,   
+         "nvirt": 36,   
+         "Ms": 0,   
+         "nalpha": 1,   
+         "nbeta": 1,   
+         "nvirt_alpha": 18,   
+         "nvirt_beta": 18,   
+         "nsym": 19,   
+         "sym0": 1,   
+         "sym_max": 19,   
+         "nsym_tot": 19,   
+         "sym0_tot": 1,   
+         "sym_max_tot": 19,   
+         "symmetry": 1,   
+         "tot_sym": false,   
+         "aufbau_sym": true,   
+         "max_number_excitations": 2,   
+         "ueg": {
+             "r_s": 1.00000000,   
+             "ecutoff": 1.00000000,   
+             "k_fermi": 1.91915829,   
+             "E_fermi": 1.84158428,   
+             "ktwist": [0.00000000,0.00000000,0.00000000],
+             "L": [2.03098260,2.03098260,2.03098260]
+         }
+     },
+     "qmc": {
+         "rng_seed": 1472,   
+         "real_amplitudes": false,   
+         "real_amplitude_force_32": false,   
+         "spawn_cutoff": 0.01000000,   
+         "excit_gen":  "renorm",   
+         "pattempt_update": false,   
+         "pattempt_zero_accum_data": false,   
+         "pattempt_single": -1.00000000,   
+         "pattempt_double": -1.00000000,   
+         "pattempt_parallel": -1.00000000,   
+         "tau": 0.06000000,   
+         "tau_search": false,   
+         "vary_shift_from": 0.00000000,   
+         "vary_shift_from_proje": false,   
+         "initial_shift": 0.00000000,   
+         "shift_damping": 1.79769313E+308,   
+         "walker_length": 0,   
+         "spawned_walker_length": 0,   
+         "D0_population": 8.00000000,   
+         "target_particles": 8.00000000,   
+         "target_reference": false,   
+         "initiator_approx": false,   
+         "initiator_pop": 3.00000000,   
+         "ncycles": 10,   
+         "nreport": 3,   
+         "power_pitzer_min_weight": 0.01000000,   
+         "quasi_newton": false,   
+         "quasi_newton_threshold": 0.00001000,   
+         "quasi_newton_value": 1.00000000,   
+         "use_mpi_barriers": false    
+     },
+     "restart": {
+         "read_restart": false,   
+         "read_id": 2147483647,   
+         "write_restart": false,   
+         "write_id": 2147483647,   
+         "write_freq": 2147483647,   
+         "write_restart_shift": false,   
+         "write_shift_id": 2147483647,   
+         "restart_rng": true    
+     },
+     "reference": {
+         "det": [ 4, 13],
+         "det_ms": 0,   
+         "det_symmetry": 1,   
+         "H00": 9.57078000,   
+         "F0": 0.00000000,   
+         "ex_level": 2    
+     },
+     "sparse_hamil": true    
+ }
+ -- End JSON block --
+
+ Information printed out every QMC report loop:
+
+ Shift: the energy offset calculated at the end of the report loop.
+ H_0j: <D_0|H|D_j>, Hamiltonian matrix element.
+ N_j: population of Hamiltonian particles on determinant D_j.
+ # H psips: current total population of Hamiltonian particles.
+ # states: number of many-particle states occupied.
+ spawn_events: number of successful spawning events across all processors.
+ R_spawn: average rate of spawning across all processors.
+ time: average time per Monte Carlo cycle.
+
+ Note that all particle populations are averaged over the report loop.
+
+ #     iterations   Shift                 \sum H_0j N_j         N_0                   # H psips                  # states  # spawn_events   R_spawn    time    
+               10   0.0000000000E+00     -4.7018111373E-02      8.0000000000E+00      9.0000000000E+00                  0               0    0.0500    0.0000  
+               20  -8.7800429715E-03     -2.2934389881E-01      8.0000000000E+00      1.0000000000E+01                  0               0    0.0667    0.0000  
+               30  -4.7947012075E-02     -3.3774676670E-01      8.0000000000E+00      1.6000000000E+01                  0               0    0.0800    0.0000  
+
+ Timing breakdown
+ ----------------
+
+ Time for each calculation section (seconds):
+
+ UEG initialisation       : .00
+ Simple FCIQMC calculation: .00
+
+ ================================================================
+ Finished running on 01/04/2020 at 18:01:04
+ Wall time (seconds):                           0.00
+ CPU time (per processor, seconds):             0.00
+ ================================================================
+

@@ -53,8 +53,8 @@ See also
 :func:`pyblock.pd_utils.reblock` for producing the input parameters.
 '''
 
-    proje_sum = reblock_data.ix[:, sum_key]
-    ref_pop = reblock_data.ix[:, ref_key]
+    proje_sum = reblock_data[sum_key]
+    ref_pop = reblock_data[ref_key]
     proje_ref_cov = covariance.xs(ref_key, level=1)[sum_key]
     proje = pyblock.error.ratio(proje_sum, ref_pop, proje_ref_cov, data_length)
     proje.columns = pd.MultiIndex.from_tuples(
@@ -90,7 +90,7 @@ no_opt : list of strings
         (opt_data, no_opt) = ([], [])
     for col in keys:
         if col in data:
-            summary = pyblock.pd_utils.reblock_summary(data.ix[:, col])
+            summary = pyblock.pd_utils.reblock_summary(data[col])
             if summary.empty:
                 no_opt.append(col)
             else:
@@ -253,7 +253,9 @@ Shepherd14
 
 
 
-def inefficiency(opt_block, dtau, iterations):
+def inefficiency(opt_block, dtau, iterations, sum_key='\sum H_0j N_j',
+                 ref_key='N_0', total_key='# H psips',
+                 proje_key = 'Proj. Energy'):
     '''Estimate the inefficiency of a calculation from the blocked data.
 
 The statistical error of an ideal FCIQMC calculation decreases with the
@@ -279,7 +281,7 @@ Credit to William Vigor for the original pyhande implementation.
 
 Parameters
 ----------
-data : :class:`pandas.DataFrame`
+opt_block : :class:`pandas.DataFrame`
     Optimally blocked HANDE QMC data.
     func:`pyhande.analysis.qmc_summary` can be used to
     extract this from reblocked HANDE data.
@@ -287,6 +289,17 @@ dtau : float
     length of an imaginary time timestep.
 iterations : integer
     number of iterations (timeteps) in the reblocked data.
+sum_key : string
+    column name in reblock_data containing :math:`\\sum H_0j N_j`, i.e. the sum
+    of the population weighted by the Hamiltonian matrix element with the trial
+    wavefunction.
+ref_key : string
+    column name in reblock_data containing :math:`N_0`, i.e. the population of
+    the trial wavefunction (often/originally just a single determinant).
+total_key : string
+    column name in reblock_data containing the total number of psips.
+proje_key : string
+    key for projected energy index in `opt_block`.
 Returns
 -------
 ineff : :class:`pandas.DataFrame`
@@ -301,18 +314,21 @@ Vigor16
 '''
          
     try:
-        err_proj_e = opt_block['standard error']['Proj. Energy']
-        Np = opt_block['mean']['# H psips']
-        err_Np = opt_block['standard error']['# H psips']
+        err_proj_e = opt_block['standard error'][proje_key]
+        Np = opt_block['mean'][total_key]
+        err_Np = opt_block['standard error'][total_key]
         inefficiency = err_proj_e * numpy.sqrt(Np*iterations*dtau)
         # NB We do not know the covariance of the errors of N_0 and \sum H_0j N_j so this is an upper bound on the error estimate.
-        err_err_proj_e = err_proj_e * numpy.sqrt( (opt_block['standard error error']['\sum H_0j N_j'] / opt_block['standard error']['\sum H_0j N_j'] )**2
-                                                 +(opt_block['standard error error']['N_0'] / opt_block['standard error']['N_0'])**2 )
+        err_err_proj_e = err_proj_e * numpy.sqrt( (opt_block['standard error error'][sum_key] / opt_block['standard error'][sum_key] )**2
+                                                 +(opt_block['standard error error'][ref_key] / opt_block['standard error'][ref_key])**2 )
         # In principle the number of iterations is also a variable with error, but we don't have a way to estimate it alas.
         err_ineff = inefficiency * numpy.sqrt(  (err_err_proj_e / err_proj_e)**2
                                               + (0.5 * err_Np / Np)**2 )
-        d = pd.DataFrame(data={'mean':inefficiency, 'standard error':err_ineff}, index = ['Inefficiency'])
-        return d
     except KeyError as e:
         warnings.warn('Inefficiency not calculated owing to data unavailable from '+str(e))
-        return None
+        inefficiency = None
+        err_ineff = None
+    finally:
+        return pd.DataFrame(
+                data={'mean':inefficiency, 'standard error':err_ineff},
+                index = ['Inefficiency'])

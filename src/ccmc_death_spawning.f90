@@ -9,7 +9,8 @@ implicit none
 
 contains
     subroutine spawner_ccmc(rng, sys, qs, spawn_cutoff, linked_ccmc, cdet, cluster, &
-                            gen_excit_ptr, logging_info, nspawn, connection, nspawnings_total, ps_stat)
+                            gen_excit_ptr, logging_info, nspawn, connection, &
+                            nspawnings_total, ps_stat)
 
         ! Attempt to spawn a new particle on a connected excitor with
         ! probability
@@ -69,6 +70,7 @@ contains
         !        and the child excitor, on which progeny are spawned.
 
         use ccmc_data, only: cluster_t
+        use search, only: tree_search
         use ccmc_utils, only: convert_excitor_to_determinant
         use ccmc_linked, only: unlinked_commutator, linked_excitation
         use determinant_data, only: det_info_t
@@ -82,6 +84,7 @@ contains
         use hamiltonian_data
         use logging, only: logging_t, write_logging_spawn
         use excit_gens, only: p_single_double_coll_t
+        use errors, only: stop_all
 
         type(sys_t), intent(in) :: sys
         type(qmc_state_t), intent(in) :: qs
@@ -94,7 +97,6 @@ contains
         integer, intent(in) :: nspawnings_total
         type(gen_excit_ptr_t), intent(in) :: gen_excit_ptr
         type(logging_t), intent(in) :: logging_info
-!        type (ccmc_in_t), intent(in) :: ccmc_in
         integer(int_p), intent(out) :: nspawn
         type(excit_t), intent(out) :: connection
 
@@ -105,9 +107,10 @@ contains
         type(hmatel_t) :: hmatel, hmatel_save
         real(p) :: pgen, spawn_pgen
         integer(i0) :: fexcit(sys%basis%tot_string_len), funlinked(sys%basis%tot_string_len)
-        integer :: excitor_sign, excitor_level, excitor_level_2
-        logical :: linked, single_unlinked, allowed_excitation
+        integer :: excitor_sign, excitor_level, excitor_level2
+        logical :: linked, single_unlinked, allowed_excitation, allowed_multiref
         real(p) :: invdiagel
+        integer :: i
 
         ! 1. Generate random excitation.
         ! Note CCMC is not (yet, if ever) compatible with the 'split' excitation
@@ -136,7 +139,7 @@ contains
                     end if
                 end if
             end if
-            invdiagel = calc_qn_spawned_weighting(sys, qs%propagator, cdet%fock_sum, connection)
+            invdiagel = calc_qn_spawned_weighting(qs%propagator, cdet%fock_sum, connection)
         else
             invdiagel = 1
         end if
@@ -163,13 +166,30 @@ contains
             ! This is the same process as excitor to determinant and hence we
             ! can reuse code...
             call create_excited_det(sys%basis, cdet%f, connection, fexcit)
-! [review] - AJWT: Even safer (but perhaps for another day) is to create a det_string derived type which
-! [review] - AJWT: get_excitation_level accepts.
-            excitor_level = get_excitation_level(det_string(qs%ref%f0, sys%basis), det_string(fexcit,sys%basis))
+            !AJWT: Even safer (but perhaps for another day) is to create a det_string derived type which
+            !AJWT: get_excitation_level accepts.
+            excitor_level = get_excitation_level(det_string(qs%ref%f0, sys%basis), det_string(fexcit, sys%basis))
             call convert_excitor_to_determinant(fexcit, excitor_level, excitor_sign, qs%ref%f0)
-            if (qs%multiref) then
-                excitor_level_2 = get_excitation_level(det_string(qs%second_ref%f0, sys%basis), det_string(fexcit,sys%basis))
-                if (excitor_level > qs%ref%ex_level .and.  excitor_level_2 >qs%ref%ex_level) nspawn=0
+            if (excitor_level > qs%ref%ex_level) then
+                if (qs%multiref) then
+                    ! In the multireference case, check whether the determinant is within the accepted number
+                    ! of excitations from any of the secondary references.
+                    if (qs%mr_acceptance_search == 0) then
+                        allowed_multiref = .false.
+                        do i = 1, size(qs%secondary_refs)
+                             excitor_level2 = get_excitation_level(det_string(qs%secondary_refs(i)%f0, sys%basis), &
+                                                                   det_string(fexcit, sys%basis))
+                             if (excitor_level2 <= qs%secondary_refs(i)%ex_level) then
+                                 allowed_multiref = .true.
+                                 exit
+                             end if
+                        end do
+                    else
+                        allowed_multiref = tree_search(qs%secondary_ref_tree, det_string(fexcit, sys%basis),&
+                            &qs%secondary_ref_tree%root)
+                    end if
+                    if (.not. allowed_multiref) nspawn = 0
+                end if
             end if
             if (excitor_sign < 0) nspawn = -nspawn
             if (debug) call write_logging_spawn(logging_info, hmatel_save, pgen, invdiagel, [nspawn], &
@@ -213,8 +233,15 @@ contains
 
         ! Quasinewtwon approaches scale this death step, but doing this naively
         ! would break population control.  Instead, we split H-S into
-        ! (H - E_proj) + (E_proj - S).
-        ! The former is scaled and produces the step.  The latter effects the population control.
+        ! (H - E_proj)*invdiagel + (E_proj - S)*rho.
+        ! The former is scaled by "invdiagel", related to the inverse of the QN energy
+        ! difference and produces the step.
+        ! The latter affects the population control, scaled by "rho", the QN population
+        ! control factor. The purpose of "rho" is to basically allow two separate
+        ! time steps for the two terms.
+        ! For more details see V. A. Neufeld, A. J. W. Thom, JCTC (2020), 16, 3, 1503-1510.
+        ! Note that for composite clusters (more than one excitor), only the first term is used.
+        ! (R. S. T. Franklin et al., JCP (2016), 144, 044111).
 
         ! NB This currently only handles non-linked complex amplitudes, not linked complex.
 
@@ -273,12 +300,13 @@ contains
             case(0)
                 ! Death on the reference has H_ii - E_HF = 0.
                 KiiAi = ((-qs%estimators(1)%proj_energy_old)*invdiagel + &
-                                    (qs%estimators(1)%proj_energy_old - qs%shift(1)))*cluster%amplitude
+                    (qs%estimators(1)%proj_energy_old - qs%shift(1))*qs%propagator%quasi_newton_pop_control)*cluster%amplitude
             case(1)
                 ! Evaluating the commutator gives
                 ! <D1|[H,a1]|D0> = <D1|H|D1> - <D0|H|D0>
                 ! (this is scaled for quasinewton approaches)
-                KiiAi = (cdet%data(1) * invdiagel + qs%estimators(1)%proj_energy_old - qs%shift(1))*cluster%amplitude
+                KiiAi = (cdet%data(1) * invdiagel + &
+                    (qs%estimators(1)%proj_energy_old - qs%shift(1))*qs%propagator%quasi_newton_pop_control)*cluster%amplitude
             case(2)
                 ! Evaluate the commutator
                 ! The cluster operators are a1 and a2 (with a1 D0 = D1, a2 D0 = D2,
@@ -297,11 +325,12 @@ contains
             select case (cluster%nexcitors)
             case(0)
                 KiiAi = ((-qs%estimators(1)%proj_energy_old)*invdiagel + &
-                                (qs%estimators(1)%proj_energy_old - qs%shift(1)))*cluster%amplitude
+                    (qs%estimators(1)%proj_energy_old - qs%shift(1))*qs%propagator%quasi_newton_pop_control)*cluster%amplitude
             case(1)
                 KiiAi = ((cdet%data(1) - qs%estimators(1)%proj_energy_old)*invdiagel + &
-                                (qs%estimators(1)%proj_energy_old - qs%shift(1)))*cluster%amplitude
+                    (qs%estimators(1)%proj_energy_old - qs%shift(1))*qs%propagator%quasi_newton_pop_control)*cluster%amplitude
             case default
+                ! A composite cluster. Death step different to single excitors, see above.
                 KiiAi = ((sc0_ptr(sys, cdet%f) - qs%ref%H00) - qs%estimators(1)%proj_energy_old)*invdiagel *cluster%amplitude
             end select
         end if
@@ -413,7 +442,7 @@ contains
 
     end subroutine stochastic_death_attempt
 
-    subroutine stochastic_ccmc_death_nc(rng, linked_ccmc,  sys, qs, isD0, dfock, Hii, proj_energy, population, &
+    subroutine stochastic_ccmc_death_nc(rng, linked_ccmc, qs, isD0, dfock, Hii, proj_energy, population, &
                                         tot_population, ndeath, logging_info)
 
         ! Attempt to 'die' (ie create an excip on the current excitor, cdet%f)
@@ -454,11 +483,9 @@ contains
 
         use dSFMT_interface, only: dSFMT_t, get_rand_close_open
         use qmc_data, only: qmc_state_t
-        use system, only: sys_t
         use spawning, only: calc_qn_weighting
         use logging, only: logging_t, write_logging_death
 
-        type(sys_t), intent(in) :: sys
         logical, intent(in) :: linked_ccmc
         type(qmc_state_t), intent(in) :: qs
         logical, intent(in) :: isD0
@@ -479,12 +506,13 @@ contains
 
         invdiagel = calc_qn_weighting(qs%propagator, dfock)
         if (isD0) then
-            KiiAi = ((- proj_energy)*invdiagel + (proj_energy - qs%shift(1)))*population
+            KiiAi = ((- proj_energy)*invdiagel + (proj_energy - qs%shift(1))*qs%propagator%quasi_newton_pop_control)*population
         else
             if (linked_ccmc) then
-                KiiAi = (Hii*invdiagel + proj_energy - qs%shift(1))*population
+                KiiAi = (Hii*invdiagel + (proj_energy - qs%shift(1))*qs%propagator%quasi_newton_pop_control)*population
             else
-                KiiAi = ((Hii - proj_energy)*invdiagel + (proj_energy - qs%shift(1)))*population
+                KiiAi = ((Hii - proj_energy)*invdiagel + &
+                    (proj_energy - qs%shift(1))*qs%propagator%quasi_newton_pop_control)*population
             end if
         end if
 
@@ -520,7 +548,7 @@ contains
     end subroutine stochastic_ccmc_death_nc
 
     subroutine linked_spawner_ccmc(rng, sys, qs, spawn_cutoff, cluster, gen_excit_ptr, nspawn, &
-                            connection, nspawnings_total, fexcit, cdet, ldet, rdet, left_cluster, right_cluster, ps_stat)
+                            connection, nspawnings_total, fexcit, ldet, rdet, left_cluster, right_cluster, ps_stat)
 
         ! When sampling e^-T H e^T, clusters need to be considered where two
         ! operators excite from/to the same orbital (one in the "left cluster"
@@ -566,7 +594,7 @@ contains
         use ccmc_data, only: cluster_t
         use ccmc_linked, only: calc_pgen, partition_cluster, linked_excitation
         use ccmc_utils, only: collapse_cluster, convert_excitor_to_determinant
-        use determinants, only: sum_sp_eigenvalues_bit_string
+        use determinants, only: sum_fock_values_bit_string
         use determinant_data, only: det_info_t
         use dSFMT_interface, only: dSFMT_t
         use excitations, only: excit_t, create_excited_det, get_excitation_level
@@ -591,7 +619,6 @@ contains
         type(excit_t), intent(out) :: connection
         integer(i0), intent(out) :: fexcit(sys%basis%tot_string_len)
         type(det_info_t), intent(inout) :: ldet, rdet
-        type(det_info_t), intent(inout) :: cdet
         type(cluster_t), intent(inout) :: left_cluster, right_cluster
         type(p_single_double_coll_t), intent(inout) :: ps_stat
 
@@ -708,7 +735,7 @@ contains
             ! apply additional factors to pgen
             pgen = pgen*cluster%pselect*nspawnings_total/npartitions
 
-            fock_sum = sum_sp_eigenvalues_bit_string(sys, fexcit)
+            fock_sum = sum_fock_values_bit_string(sys, qs%propagator%sp_fock, fexcit)
             invdiagel = calc_qn_weighting(qs%propagator, fock_sum - qs%ref%fock_sum)
             ! correct hmatel for cluster amplitude
             hmatel%r = hmatel%r * invdiagel * real(cluster%amplitude)
@@ -860,7 +887,7 @@ contains
                     end if
                 end if
             end if
-            invdiagel = calc_qn_spawned_weighting(sys, qs%propagator, cdet%fock_sum, connection)
+            invdiagel = calc_qn_spawned_weighting(qs%propagator, cdet%fock_sum, connection)
         else
             invdiagel = 1
         end if

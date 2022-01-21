@@ -77,6 +77,7 @@ contains
         type(qmc_state_t), intent(out), target :: qs
         type(qmc_state_t), intent(inout), optional :: qmc_state_restart
         real(p), intent(out), allocatable :: sampling_probs(:)
+        real(p) :: mu(1:2)
 
         integer :: idet, ireport, icycle, iteration, ireplica, ierr
         integer :: beta_cycle, nreport
@@ -93,7 +94,7 @@ contains
         logical :: soft_exit, write_restart_shift, update_tau
         logical :: error, rdm_error, attempt_spawning, restarting
         real :: t1, t2
-        real(p) :: mu, energy_shift
+        real(p) :: energy_shift
         type(dSFMT_t) :: rng
         type(bloom_stats_t) :: bloom_stats
         type(annihilation_flags_t) :: annihilation_flags
@@ -168,6 +169,12 @@ contains
             qmc_in_loc%pattempt_double = qs%excit_gen_data%pattempt_double
             qmc_in_loc%shift_damping = qs%shift_damping
             qmc_in_loc%pattempt_parallel = qs%excit_gen_data%pattempt_parallel
+            ! Not actually used in DMQMC!
+            qmc_in_loc%quasi_newton_threshold = qs%propagator%quasi_newton_threshold
+            qmc_in_loc%quasi_newton_value = qs%propagator%quasi_newton_value
+            qmc_in_loc%quasi_newton_pop_control = qs%propagator%quasi_newton_pop_control
+            ! Initialize the harmonic shift damping algorithm parameters
+            qmc_in_loc%shift_harmonic_forcing = qs%shift_harmonic_forcing
             call qmc_in_t_json(js, qmc_in_loc)
             call dmqmc_in_t_json(js, dmqmc_in)
             dmqmc_in_loc = dmqmc_in
@@ -222,8 +229,14 @@ contains
                                                mu, energy_shift)
 
             ! Allow the shift to vary from the very start of the beta loop, if
+            ! shift_harmonic_forcing is not equal to zero. 
+            if (qmc_in_loc%shift_harmonic_forcing .ne. 0.00_p) then
+                qs%vary_shift = .true.
+            else
+            ! Allow the shift to vary from the very start of the beta loop, if
             ! this condition is met.
-            qs%vary_shift = qs%psip_list%tot_nparticles >= qs%target_particles
+                qs%vary_shift = qs%psip_list%tot_nparticles >= qs%target_particles 
+            end if
 
             ! DMQMC quasi-newton not functional, so we artificially set this value to 0 which should not affect non-QN calcs.
             qs%estimators%proj_energy_old = 0_p
@@ -311,7 +324,7 @@ contains
                             ! when running a DMQMC algorithm, stores the average
                             ! of the two diagonal elements corresponding to the
                             ! two indicies of the density matrix.
-                            call stochastic_death(rng, sys, qs, cdet1%fock_sum, qs%psip_list%dat(1, idet), &
+                            call stochastic_death(rng, qs, cdet1%fock_sum, qs%psip_list%dat(1, idet), &
                                                   qs%shift(ireplica), qs%estimators(1)%proj_energy_old, logging_info, &
                                                   qs%psip_list%pops(ireplica,idet), qs%psip_list%nparticles(ireplica), ndeath)
                         end do
