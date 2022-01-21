@@ -34,9 +34,8 @@ contains
     subroutine do_trot_uccmc(sys, qmc_in, uccmc_in, restart_in, load_bal_in, reference_in, &
                         logging_in, io_unit, qs, qmc_state_restart)
 
-        ! This subroutine is derived from do_ccmc in ccmc.f90. [todo] check for possible shared functions
-        ! Some of the features of CCMC have not yet been implemented for UCCMC: even selection, blocking_in,
-        ! RESTART [todo].
+        ! This subroutine is derived from do_ccmc in ccmc.f90. 
+        ! Some of the features of CCMC have not yet been implemented for UCCMC: even selection, blocking_in etc.
 
         ! Run the Trotterized UCCMC algorithm starting from the initial walker distribution
         ! using the timestep algorithm.
@@ -691,18 +690,9 @@ contains
             
             if (parent) then
                 if (bloom_stats%nblooms_curr > 0) call bloom_stats_warning(bloom_stats, io_unit=io_unit)
-                !if (all(qs%vary_shift)) then
-                !write (io_unit, '(1X, "Cluster populations",/)')
-                !do i = 1, qs%psip_list%nstates
-                !    call write_qmc_var(io_unit, qs%psip_list%states(1,i))
-                !    call write_qmc_var(io_unit, qs%psip_list%pops(1, i))
-                !    write (io_unit,'()')
-                !end do
-                !else
                 call write_qmc_report(qmc_in, qs, ireport, nparticles_old, t2-t1, .false., .false., &
                                         io_unit=io_unit, cmplx_est=sys%read_in%comp, rdm_energy=uccmc_in%density_matrices, &
                                         nattempts=.true.)
-                !end if
             end if
 
 
@@ -1005,7 +995,7 @@ contains
             ! searching of the cumulative population list.
 
             do i = 1, cluster%nexcitors
-                ! Select nexcitors different positiona in the excitors list.
+                ! Select nexcitors different positions in the excitors list.
                 if (i == 1) then 
                     pop(i) = get_rand_close_open(rng)*tot_excip_pop
                     call binary_search(cumulative_excip_pop, pop(i), 1, psip_list%nstates, hit, poses(i))
@@ -1135,7 +1125,6 @@ contains
                                    nspawn_events, determ)
 
         ! Annihilation algorithm. Based on direct_annihilation.
-        ! Based on direct_annihilation routine.
         ! Spawned walkers are added to the main list, by which new walkers are
         ! introduced to the main list and existing walkers can have their
         ! populations either enhanced or diminished.
@@ -1723,7 +1712,7 @@ contains
                                             cdet, cluster, excit_gen_data, D0_normalisation, D0_pos)
 
         ! Select (deterministically) the non-composite cluster containing only
-        ! the single excitor iexcitor and set the same information as select_cluster.
+        ! the single excitor iexcitor and set the same information as select_ucc_trot_cluster.
 
         ! In:
         !    sys: system being studied
@@ -1861,6 +1850,7 @@ contains
     subroutine stochastic_trot_uccmc_death_nc(rng, linked_ccmc,  sys, qs, isD0, dfock, Hii, proj_energy, population, &
                                         trot_population, tot_population, ndeath, logging_info)
 
+        ! Based on stochastic_ccmc_death_nc, accounting for different cluster population definition in tUCCMC.
         ! Attempt to 'die' (ie create an excip on the current excitor, cdet%f)
         ! with probability
         !    \tau |<D_s|H|D_s> A_s|
