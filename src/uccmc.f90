@@ -83,11 +83,11 @@ contains
         use ccmc_utils, only: get_D0_info, init_contrib, dealloc_contrib, cumulative_population, & 
                               regenerate_ex_levels_psip_list
         use determinants, only: alloc_det_info_t, dealloc_det_info_t, sum_sp_eigenvalues_occ_list, &
-                                sum_sp_eigenvalues_bit_string, decode_det
+                                sum_fock_values_bit_string, decode_det
         use determinant_data, only: det_info_t
         use excitations, only: excit_t, get_excitation_level, get_excitation
         use qmc_io, only: write_qmc_report, write_qmc_report_header, write_qmc_var
-        use qmc, only: init_qmc, init_secondary_reference
+        use qmc, only: init_qmc
         use qmc_common, only: initial_qmc_status, initial_cc_projected_energy, load_balancing_report, init_report_loop, &
                               init_mc_cycle, end_report_loop, end_mc_cycle, redistribute_particles, rescale_tau
         use proc_pointers
@@ -543,9 +543,10 @@ contains
                         ! (unlike the stochastic_ccmc_death) to avoid unnecessary decoding/encoding
                         ! steps (cf comments in stochastic_death for FCIQMC).
                         if (qs%propagator%quasi_newton) then
-                            dfock = sum_sp_eigenvalues_bit_string(sys, qs%psip_list%states(:,iattempt)) - qs%ref%fock_sum
+                            dfock = sum_fock_values_bit_string(sys, qs%propagator%sp_fock, qs%psip_list%states(:,iattempt)) &
+                                - qs%ref%fock_sum
                         end if
-                        call stochastic_ccmc_death_nc(rng(it), uccmc_in%linked, sys, qs, iattempt==D0_pos, dfock, &
+                        call stochastic_ccmc_death_nc(rng(it), uccmc_in%linked, qs, iattempt==D0_pos, dfock, &
                                           qs%psip_list%dat(1,iattempt), qs%estimators(1)%proj_energy_old, &
                                           qs%psip_list%pops(1, iattempt), nparticles_change(1), ndeath_nc, &
                                           logging_info)
@@ -562,7 +563,7 @@ contains
                 if (uccmc_in%density_matrices .and. qs%vary_shift(1) .and. parent .and. .not. sys%read_in%comp) then
                     ! Add in diagonal contribution to RDM (only once per cycle not each time reference
                     ! is selected as this is O(N^2))
-                    call update_rdm(sys, ref_det, ref_det, real(D0_normalisation,p), 1.0_p, 1.0_p, rdm)
+                    call update_rdm(sys, ref_det%f, ref_det%f, ref_det%occ_list, real(D0_normalisation,p), 1.0_p, 1.0_p, rdm)
                 end if
 
 
