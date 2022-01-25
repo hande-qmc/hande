@@ -955,13 +955,13 @@ contains
             call check_deallocate('rdm',ierr)
             call dealloc_det_info_t(ref_det)
         end if
-        if(parent) then
-! [review] - AJWT: It's worth printing a header here at least.
-        do i = 1, qs%psip_list%nstates
-        call write_qmc_var(io_unit, qs%psip_list%states(1,i))
-        call write_qmc_var(io_unit, real(qs%psip_list%pops(1,i))/qs%psip_list%pop_real_factor)
-                write (io_unit,'()')
-        end do
+        if (parent) then
+            ! [review] - AJWT: It's worth printing a header here at least.
+            do i = 1, qs%psip_list%nstates
+                call write_qmc_var(io_unit, qs%psip_list%states(1,i))
+                call write_qmc_var(io_unit, real(qs%psip_list%pops(1,i))/qs%psip_list%pop_real_factor)
+                        write (io_unit,'()')
+            end do
         end if
 
         call dealloc_contrib(contrib, ccmc_in%linked)
@@ -982,12 +982,11 @@ contains
     subroutine do_ccmc_accumulation(sys, qs, cdet, cluster, logging_info, D0_population_cycle, proj_energy_cycle, &
                                     ccmc_in, ref_det, rdm, selection_data, D0_population_ucc_cycle)
 
-
-
         ! Performs all accumulation of values required for given ccmc clusters.
         ! Updates projected energy and any RDMs with the contribution from the
         ! current cluster.
 
+        ! [review] Brian: Document D0_population_ucc_cycle
         ! In:
         !   sys: information on system under consideration.
         !   qs: information on current state of qmc calculation.
@@ -1412,12 +1411,10 @@ contains
 
         if (nspawned /= 0_int_p) call create_spawned_particle_ccmc(sys, qs%ref, contrib%cdet, connection, &
                                             nspawned, 1, contrib%cluster%excitation_level, &
-                                            ccmc_in%even_selection, fexcit, qs%spawn_store%spawn, bloom_stats, &
-                                            ccmc_in%trot)
+                                            ccmc_in%even_selection, fexcit, qs%spawn_store%spawn, bloom_stats, ccmc_in%trot)
         if (nspawned_im /= 0_int_p) call create_spawned_particle_ccmc(sys, qs%ref, contrib%cdet, connection,&
                                             nspawned_im, 2, contrib%cluster%excitation_level, &
-                                            ccmc_in%even_selection, fexcit, qs%spawn_store%spawn, bloom_stats, &
-                                            ccmc_in%trot)
+                                            ccmc_in%even_selection, fexcit, qs%spawn_store%spawn, bloom_stats, ccmc_in%trot)
 
     end subroutine perform_ccmc_spawning_attempt
 

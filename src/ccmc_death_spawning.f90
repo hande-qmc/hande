@@ -943,8 +943,7 @@ contains
 ! --- Helper functions ---
 
     subroutine create_spawned_particle_ccmc(sys, ref, cdet, connection, nspawned, ispace, &
-                                            parent_cluster_ex_level, ex_lvl_sort, fexcit, spawn, bloom_stats,&
-                                            trot)
+                                            parent_cluster_ex_level, ex_lvl_sort, fexcit, spawn, bloom_stats, trot)
 
         ! Function to create spawned particle in spawned list for ccmc
         ! calculations. Performs required manipulations of bit string
@@ -981,6 +980,7 @@ contains
         use ccmc_utils, only: add_ex_level_bit_string_calc
         use uccmc_utils, only: add_info_str_trot
 
+        ! [review] Brian: is basis needed?
         !type(basis_t), intent(in) :: basis
         type(sys_t), intent(in) :: sys
         type(reference_t), intent(in) :: ref

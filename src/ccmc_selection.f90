@@ -919,6 +919,8 @@ contains
             ![todo, for review] should this be nattempts = selection_data%nsingle_excitors + selection_data%nD0_select + selection_data%nstochastic_clusters?
             ! Or are the singles considered to be selected proportionally to their population?
             ! Changing would probably break many tests, since this gets printed.
+            ! [review] Brian: purely from a dimensionality point of view, nsingle_excitors would just be the number of states 
+            ! (line 907 above), whereas all the other quantities here are populations. I might be missing your point though.
             nattempts = nint(tot_abs_pop, kind=int_64) + selection_data%nD0_select + selection_data%nstochastic_clusters
         else
             min_cluster_size = 0

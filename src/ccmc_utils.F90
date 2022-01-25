@@ -168,7 +168,8 @@ contains
         logical,  intent(out) :: allowed
 
         integer(i0) :: excitor_loc(basis%tot_string_len)
-! [review] - AJWT:  Is this copy needed?
+        ! [review] - AJWT:  Is this copy needed?
+        ! [review] - Brian: reset_extra_info_bit_string has intent(inout) with f0, so I guess it's necessary
         integer(i0) :: f0_loc(basis%tot_string_len)
 
         integer(i0) :: excitor_excitation(basis%tot_string_len)
@@ -223,6 +224,9 @@ contains
 
     pure subroutine collapse_excitor_onto_cluster(basis, excitor_excitation, f0, cluster_excitor, &
                                                   cluster_annihilation, cluster_creation, cluster_population)
+
+        ! [review] - Brian: document this subroutine, and perhaps distinguish it from / explain its separation from 
+        ! [review] - collapse_cluster, since I saw that the only call to this subroutine is in uccmc.f90
 
         ! Apply the excitor to the cluster (which is, in its own right,
         ! an excitor).
@@ -446,7 +450,7 @@ contains
         !        population on the reference if appropriate.
         !    tot_pop: total population (possibly excluding the population on the
         !       reference).
-        !    ex_lvl_dist: derived types containing distributions of states
+        !    ex_lvl_dist (optional): derived types containing distributions of states
         !       and populations between different excitation levels.
 
         ! NOTE: currently only the populations in the first psip/excip space are
@@ -480,6 +484,7 @@ contains
 
         ! Need to combine spaces if doing complex; we choose combining in quadrature.
         cumulative_pops(1) = get_pop_contrib(pops(:,1), real_factor, complx)
+        ! [review] - Brian: still needed?
         !if (present(p_ref)) print*, 'pref', p_ref
         if (D0_proc == iproc) then
             ! Let's be a bit faster: unroll loops and skip over the reference
@@ -590,7 +595,7 @@ contains
         !        population on the reference if appropriate.
         !    tot_pop: total population (possibly excluding the population on the
         !       reference).
-        !    ex_lvl_dist: derived types containing distributions of states
+        !    ex_lvl_dist (optional): derived types containing distributions of states
         !       and populations between different excitation levels.
 
         ! NOTE: currently only the populations in the first psip/excip space are
@@ -697,6 +702,7 @@ contains
         end if
 
     end subroutine cumulative_population_real
+    
     pure function get_pop_contrib(pops, real_factor, complx) result(contrib)
 
         ! Get contribution from a given position in a population list,

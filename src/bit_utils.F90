@@ -490,6 +490,7 @@ contains
         integer :: i
 
         cmp = 0
+        ! [review] Brian: since b1 is rank 1 I guess dim=1 isn't strictly necessary
         do i = ubound(b1, dim=1), 1, -1
             if (blt(b1(i),b2(i))) then
                 cmp = -1
