@@ -211,7 +211,8 @@ contains
 
         ! Add information strings to the psip_list and the reference determinant.
         call regenerate_trot_info_psip_list(sys%basis, sys%nel, qs)
-        qs%ref%f0(sys%basis%bit_string_len + 2) = latest_unset(qs%ref%f0(:sys%basis%bit_string_len), qs%ref%f0(:sys%basis%bit_string_len), sys%nel, sys%basis) 
+        qs%ref%f0(sys%basis%bit_string_len + 2) = latest_unset(qs%ref%f0(:sys%basis%bit_string_len), &
+                                                               qs%ref%f0(:sys%basis%bit_string_len), sys%nel, sys%basis) 
         qs%ref%f0(sys%basis%bit_string_len + 1) = sys%nel
 
         !Allocate memory for time averaged populations and variational energy computation.
@@ -230,7 +231,8 @@ contains
             call allocate_time_average_lists(qs%psip_list, time_avg_psip_list_states, time_avg_psip_list_pops, nstates_sq)
             allocate(time_avg_psip_list_sq(sys%basis%tot_string_len + 1 ,size(qs%psip_list%states(1,:))))
             time_avg_psip_list_sq(:sys%basis%tot_string_len,:qs%psip_list%nstates) = qs%psip_list%states(:,:qs%psip_list%nstates)
-            time_avg_psip_list_sq(sys%basis%tot_string_len+1,:qs%psip_list%nstates) = (real(qs%psip_list%pops(1,:qs%psip_list%nstates))/qs%psip_list%pop_real_factor)**2
+            time_avg_psip_list_sq(sys%basis%tot_string_len+1,:qs%psip_list%nstates) = &
+                (real(qs%psip_list%pops(1,:qs%psip_list%nstates))/qs%psip_list%pop_real_factor)**2
             nstates_sq = 1
         end if
         
@@ -358,8 +360,10 @@ contains
                     time_avg_psip_list_pops(:qs%psip_list%nstates) = &
                         real(qs%psip_list%pops(1,:qs%psip_list%nstates))/qs%psip_list%pop_real_factor
                     time_avg_psip_list_states(:,:qs%psip_list%nstates) = qs%psip_list%states(:,:qs%psip_list%nstates)
-                    time_avg_psip_list_sq(:sys%basis%tot_string_len,:qs%psip_list%nstates) = qs%psip_list%states(:,:qs%psip_list%nstates)
-                    time_avg_psip_list_sq(sys%basis%tot_string_len+1,:qs%psip_list%nstates) = (real(qs%psip_list%pops(1,:qs%psip_list%nstates))/qs%psip_list%pop_real_factor)**2
+                    time_avg_psip_list_sq(:sys%basis%tot_string_len,:qs%psip_list%nstates) = &
+                        qs%psip_list%states(:,:qs%psip_list%nstates)
+                    time_avg_psip_list_sq(sys%basis%tot_string_len+1,:qs%psip_list%nstates) = &
+                        (real(qs%psip_list%pops(1,:qs%psip_list%nstates))/qs%psip_list%pop_real_factor)**2
                     nstates_sq = qs%psip_list%nstates
                 end if
                   
@@ -461,10 +465,12 @@ contains
                 cluster_pop = 1
                 do i = 1, qs%psip_list%nstates
                 if (i /= D0_pos) &
-                    cluster_pop = cluster_pop * cos((real(qs%psip_list%pops(1, i))/real(qs%psip_list%pop_real_factor))/ real(D0_normalisation,p))                     
+                    cluster_pop = cluster_pop * cos((real(qs%psip_list%pops(1, i))/real(qs%psip_list%pop_real_factor))&
+                                                    /real(D0_normalisation,p))                     
                 end do
 
-                !$omp do schedule(dynamic,200) reduction(+:D0_population_cycle,proj_energy_cycle, D0_population_ucc_cycle, nattempts_spawn,ndeath)
+                !$omp do schedule(dynamic,200) &
+                !$omp reduction(+:D0_population_cycle,proj_energy_cycle, D0_population_ucc_cycle, nattempts_spawn,ndeath)
                 do iattempt = 1, selection_data%nclusters
                     ! For OpenMP scalability, have this test inside a single loop rather
                     ! than attempt to parallelise over three separate loops.
@@ -508,8 +514,8 @@ contains
                                 contrib(it)%cluster%excitation_level <= qs%ref%ex_level)  then
                                 state = contrib(it)%cdet%f 
                                 call binary_search_i0_list_trot(time_avg_psip_list_ci_states, state, 1, nstates_ci, hit, pos)
-                                population = &
-                                    contrib(it)%cluster%amplitude*contrib(it)%cluster%cluster_to_det_sign/contrib(it)%cluster%pselect
+                                population = contrib(it)%cluster%amplitude*contrib(it)%cluster%cluster_to_det_sign &
+                                            /contrib(it)%cluster%pselect
                                 if (hit) then
                                     time_avg_psip_list_ci_pops(pos) = time_avg_psip_list_ci_pops(pos) + population 
                                 else
@@ -546,8 +552,9 @@ contains
                             ! needs to be converted into a det_info_t object for the excitation
                             ! generators. On subsequent calls, cdet does not need to change.
                             seen_D0 = .true.
-                            call create_null_cluster(sys, qs%ref%f0, nprocs*real(selection_data%nD0_select,p), D0_normalisation*cluster_pop, &
-                                                     qmc_in%initiator_pop, contrib(it)%cdet, contrib(it)%cluster, qs%excit_gen_data)
+                            call create_null_cluster(sys, qs%ref%f0, nprocs*real(selection_data%nD0_select,p), &
+                                                     D0_normalisation*cluster_pop, qmc_in%initiator_pop, contrib(it)%cdet, &
+                                                     contrib(it)%cluster, qs%excit_gen_data)
                         end if
                         if (uccmc_in%variational_energy .and. all(qs%vary_shift) .and. &
                             contrib(it)%cluster%excitation_level <= qs%ref%ex_level)  then
@@ -588,9 +595,9 @@ contains
                         else
                             call stochastic_trot_uccmc_death_nc(rng(it), uccmc_in%linked, sys, qs, iattempt==D0_pos, dfock, &
                                             qs%psip_list%dat(1,iattempt), qs%estimators(1)%proj_energy_old, &
-                                            qs%psip_list%pops(1, iattempt), get_cluster_population(sys, qs%psip_list, D0_pos, iattempt, &
-                                            real(D0_normalisation, p), qs%ref%f0) * qs%psip_list%pops(1, D0_pos), nparticles_change(1), &
-                                            ndeath_nc, logging_info)
+                                            qs%psip_list%pops(1, iattempt), get_cluster_population(sys, qs%psip_list, D0_pos, &
+                                            iattempt, real(D0_normalisation, p), qs%ref%f0) * qs%psip_list%pops(1, D0_pos), &
+                                            nparticles_change(1), ndeath_nc, logging_info)
                         end if
                     end do
                     !$omp end do
@@ -676,7 +683,8 @@ contains
             qs%estimators%D0_population = real(qs%estimators%D0_population_comp,p)
             qs%estimators%proj_energy = real(qs%estimators%proj_energy_comp,p)
             if (uccmc_in%variational_energy) then
-                call var_energy_uccmc(sys, time_avg_psip_list_ci_states, time_avg_psip_list_ci_pops, nstates_ci, var_energy, real(D0_normalisation,p))
+                call var_energy_uccmc(sys, time_avg_psip_list_ci_states, time_avg_psip_list_ci_pops, nstates_ci, var_energy, &
+                                      real(D0_normalisation,p))
                 !qs%estimators%var_energy = var_energy
             end if 
             if (debug) call write_logging_select_ccmc(logging_info, iter, selection_data)
@@ -718,7 +726,8 @@ contains
         if (parent .and. uccmc_in%average_wfn) then
             ! Take average of wavefunction.
             time_avg_psip_list_pops(:nstates_sq) =  time_avg_psip_list_pops(:nstates_sq)/(iter-avg_start+1)
-            time_avg_psip_list_sq(sys%basis%tot_string_len+1,:nstates_sq) =  time_avg_psip_list_sq(sys%basis%tot_string_len+1,:nstates_sq)/(iter-avg_start+1)
+            time_avg_psip_list_sq(sys%basis%tot_string_len+1,:nstates_sq) = &
+                time_avg_psip_list_sq(sys%basis%tot_string_len+1,:nstates_sq)/(iter-avg_start+1)
             write (io_unit, '(1X, "Time-averaged cluster populations",/)')
             do i = 1, nstates_sq
                 do j = 1, sys%basis%bit_string_len
@@ -763,7 +772,8 @@ contains
         end if
 
         if(uccmc_in%variational_energy) then
-            call var_energy_uccmc(sys, time_avg_psip_list_ci_states, time_avg_psip_list_ci_pops, nstates_ci, var_energy, real(D0_normalisation,p))
+            call var_energy_uccmc(sys, time_avg_psip_list_ci_states, time_avg_psip_list_ci_pops, nstates_ci, var_energy, &
+                                  real(D0_normalisation,p))
             print*, 'Variational energy: ', var_energy
         end if 
         
@@ -1035,12 +1045,14 @@ contains
                    if (i /= D0_pos) then
                    pop_real = real(psip_list%pops(1, i))/real(psip_list%pop_real_factor)
                    conjugate = .false.
-                   if (deexcitation_possible(f0(:sys%basis%bit_string_len),psip_list%states(:sys%basis%bit_string_len,i), cdet%f(:sys%basis%bit_string_len))) then
+                   if (deexcitation_possible(f0(:sys%basis%bit_string_len),psip_list%states(:sys%basis%bit_string_len,i), &
+                       cdet%f(:sys%basis%bit_string_len))) then
                            conjugate = .true.
                            if (current_excit <= cluster%nexcitors) then
-                              if (pop(current_excit) <= cumulative_excip_pop(i) .and. pop(current_excit) > cumulative_excip_pop(i-1)) then
-                                ! If the excitor can be applied as a de-excitation operator and is in the selected list, apply it to current cluster and multiply
-                                ! population by -sin(pop_real/ref_real) = -sin(t)
+                              if (pop(current_excit) <= cumulative_excip_pop(i) .and. &
+                                  pop(current_excit) > cumulative_excip_pop(i-1)) then
+                                ! If the excitor can be applied as a de-excitation operator and is in the selected list, 
+                                ! apply it to current cluster and multiply population by -sin(pop_real/ref_real) = -sin(t)
                                 excitor_pop = -sin(pop_real/ref_real)
                                 cluster%pselect = cluster%pselect*abs(pop_real)/tot_excip_local
                                 call ucc_collapse_cluster(sys%basis, f0, psip_list%states(:,i), excitor_pop, cdet%f, &
@@ -1049,8 +1061,8 @@ contains
                                 if (abs(excitor_pop) <= initiator_pop) cdet%initiator_flag = 3
                                 current_excit = current_excit + 1
                               else
-                                ! If the excitor can be applied as a de-excitation operator and is NOT in the selected list, multiply
-                                ! population by cos(pop_real/ref_real)
+                                ! If the excitor can be applied as a de-excitation operator and is NOT in the selected list, 
+                                ! multiply population by cos(pop_real/ref_real)
                                 excitor_pop = cos(pop_real/ref_real)
                                 cluster_population = cluster_population*excitor_pop
                               end if
@@ -1058,11 +1070,13 @@ contains
                               excitor_pop = cos(pop_real/ref_real)
                               cluster_population = cluster_population*excitor_pop
                            end if
-                        else if (excitation_possible(f0(:sys%basis%bit_string_len),psip_list%states(:sys%basis%bit_string_len,i), cdet%f(:sys%basis%bit_string_len))) then
+                        else if (excitation_possible(f0(:sys%basis%bit_string_len),psip_list%states(:sys%basis%bit_string_len,i), &
+                                 cdet%f(:sys%basis%bit_string_len))) then
                            if (current_excit <= cluster%nexcitors) then
-                              if (pop(current_excit) <= cumulative_excip_pop(i) .and. pop(current_excit) > cumulative_excip_pop(i-1)) then
-                                ! If the excitor can be applied as an excitation operator and is in the selected list, apply it to current cluster and multiply
-                                ! population by sin(pop_real/ref_real) = sin(t)
+                              if (pop(current_excit) <= cumulative_excip_pop(i) .and. &
+                                  pop(current_excit) > cumulative_excip_pop(i-1)) then
+                                ! If the excitor can be applied as an excitation operator and is in the selected list, 
+                                ! apply it to current cluster and multiply population by sin(pop_real/ref_real) = sin(t)
                                 if (current_excit == 1) cdet%data => psip_list%dat(:,i)
                                 excitor_pop = sin(pop_real/ref_real)
                                 cluster%pselect = cluster%pselect*abs(pop_real)/tot_excip_local
@@ -1082,7 +1096,8 @@ contains
                               cluster_population = cluster_population*excitor_pop
                            end if
                         else 
-                           ! If excitor CANNOT be applied and is in the list, cluster is not allowed so exit. Otherwise, just move onto next excitor.
+                           ! If excitor CANNOT be applied and is in the list, cluster is not allowed so exit. 
+                           ! Otherwise, just move onto next excitor.
                            if (current_excit <= cluster%nexcitors) then
                                if (pop(current_excit) <= cumulative_excip_pop(i)) then
                                 allowed = .false.
@@ -1818,7 +1833,9 @@ contains
 
         type(particle_t), intent(in) :: psip_list
         type(sys_t), intent(in) :: sys
-        integer, intent(in) :: D0_pos, iattempt
+        ! [review] - Brian: should iattempt be int_64? because it seems that all calls are filled by int_64 integers (iexcitor etc)
+        integer, intent(in) :: D0_pos
+        integer(int_64), intent(in) :: iattempt
         integer(i0), intent(in) :: f0(:)
         real(p), intent(in) :: ref_real
 
@@ -1832,10 +1849,12 @@ contains
         do i = 1, psip_list%nstates
             if (i /= D0_pos) then
                 pop_real = real(psip_list%pops(1, i))/real(psip_list%pop_real_factor)
-                if (deexcitation_possible(f0(:sys%basis%bit_string_len),psip_list%states(:sys%basis%bit_string_len,i), f(:sys%basis%bit_string_len))) then
+                if (deexcitation_possible(f0(:sys%basis%bit_string_len),psip_list%states(:sys%basis%bit_string_len,i), &
+                                          f(:sys%basis%bit_string_len))) then
                     excitor_pop = cos(pop_real/ref_real)
                     cluster_population = cluster_population*excitor_pop
-                else if (excitation_possible(f0(:sys%basis%bit_string_len),psip_list%states(:sys%basis%bit_string_len,i), f(:sys%basis%bit_string_len))) then
+                else if (excitation_possible(f0(:sys%basis%bit_string_len),psip_list%states(:sys%basis%bit_string_len,i), &
+                                             f(:sys%basis%bit_string_len))) then
                     if (i == iattempt) then
                         excitor_pop = sin(pop_real/ref_real)
                         f = psip_list%states(:, iattempt)

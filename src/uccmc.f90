@@ -214,7 +214,8 @@ contains
             call allocate_time_average_lists(qs%psip_list, time_avg_psip_list_states, time_avg_psip_list_pops, nstates_sq)
             allocate(time_avg_psip_list_sq(sys%basis%tot_string_len+1,size(qs%psip_list%states(1,:))))
             time_avg_psip_list_sq(:sys%basis%tot_string_len,:qs%psip_list%nstates) = qs%psip_list%states(:,:qs%psip_list%nstates)
-            time_avg_psip_list_sq(sys%basis%tot_string_len+1,:qs%psip_list%nstates) = (real(qs%psip_list%pops(1,:qs%psip_list%nstates))/qs%psip_list%pop_real_factor)**2
+            time_avg_psip_list_sq(sys%basis%tot_string_len+1,:qs%psip_list%nstates) &
+                = (real(qs%psip_list%pops(1,:qs%psip_list%nstates))/qs%psip_list%pop_real_factor)**2
         end if
 
         qs%ref%max_ex_level = qs%ref%ex_level
@@ -340,8 +341,10 @@ contains
                     time_avg_psip_list_pops(:qs%psip_list%nstates) = &
                         real(qs%psip_list%pops(1,:qs%psip_list%nstates))/qs%psip_list%pop_real_factor
                     time_avg_psip_list_states(:,:qs%psip_list%nstates) = qs%psip_list%states(:,:qs%psip_list%nstates)
-                    time_avg_psip_list_sq(:sys%basis%tot_string_len,:qs%psip_list%nstates) = qs%psip_list%states(:,:qs%psip_list%nstates)
-                    time_avg_psip_list_sq(sys%basis%tot_string_len+1,:qs%psip_list%nstates) = (real(qs%psip_list%pops(1,:qs%psip_list%nstates))/qs%psip_list%pop_real_factor)**2
+                    time_avg_psip_list_sq(:sys%basis%tot_string_len,:qs%psip_list%nstates) &
+                        = qs%psip_list%states(:,:qs%psip_list%nstates)
+                    time_avg_psip_list_sq(sys%basis%tot_string_len+1,:qs%psip_list%nstates) &
+                        = (real(qs%psip_list%pops(1,:qs%psip_list%nstates))/qs%psip_list%pop_real_factor)**2
                     nstates_sq = qs%psip_list%nstates
                 end if
 
@@ -453,7 +456,8 @@ contains
                 proj_energy_cycle = cmplx(0.0, 0.0, p)
                 D0_population_cycle = cmplx(0.0, 0.0, p)
                 D0_population_ucc_cycle = 0.0_p
-                !$omp do schedule(dynamic,200) reduction(+:D0_population_cycle,proj_energy_cycle, D0_population_ucc_cycle, nattempts_spawn,ndeath)
+                !$omp do schedule(dynamic,200) &
+                !$omp reduction(+:D0_population_cycle,proj_energy_cycle, D0_population_ucc_cycle, nattempts_spawn,ndeath)
                 do iattempt = 1, selection_data%nclusters
                     ! For OpenMP scalability, have this test inside a single loop rather
                     ! than attempt to parallelise over three separate loops.
@@ -598,7 +602,8 @@ contains
                 ! new number of iterations. 
                 if(all(qs%vary_shift) .and. old_vary .and. uccmc_in%average_wfn) then
                     ! Add current wfn value average.
-                    call add_t_contributions(qs%psip_list, time_avg_psip_list_states, time_avg_psip_list_pops, time_avg_psip_list_sq, nstates_sq)
+                    call add_t_contributions(qs%psip_list, time_avg_psip_list_states, time_avg_psip_list_pops, &
+                                             time_avg_psip_list_sq, nstates_sq)
                 end if
                 call end_mc_cycle(nspawn_events, ndeath_nc, qs%psip_list%pop_real_factor, nattempts_spawn, qs%spawn_store%rspawn)
             end do
@@ -651,7 +656,8 @@ contains
         if (parent .and. uccmc_in%average_wfn) then
             ! Take average of wavefunction.
             time_avg_psip_list_pops(:nstates_sq) =  time_avg_psip_list_pops(:nstates_sq)/(iter-avg_start+1)
-            time_avg_psip_list_sq(sys%basis%tot_string_len+1,:nstates_sq) =  time_avg_psip_list_sq(sys%basis%tot_string_len+1,:nstates_sq)/(iter-avg_start+1)
+            time_avg_psip_list_sq(sys%basis%tot_string_len+1,:nstates_sq) &
+                = time_avg_psip_list_sq(sys%basis%tot_string_len+1,:nstates_sq)/(iter-avg_start+1)
         end if
 
         if (parent) write (io_unit,'()')
@@ -699,7 +705,8 @@ contains
         end if
 
         if(uccmc_in%variational_energy) then
-            call var_energy_uccmc(sys, time_avg_psip_list_ci_states,time_avg_psip_list_ci_pops,nstates_ci, var_energy, real(D0_normalisation,p))
+            call var_energy_uccmc(sys, time_avg_psip_list_ci_states,time_avg_psip_list_ci_pops,nstates_ci, var_energy, &
+                                  real(D0_normalisation,p))
             print*, 'Variational energy: ', var_energy
         end if 
         
