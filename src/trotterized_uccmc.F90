@@ -1648,6 +1648,7 @@ contains
 
     end subroutine find_D0_trot
 
+! [review] - Brian: document this
     subroutine get_D0_info_trot(qs, complx, D0_proc, D0_pos, nD0_proc, D0_normalisation)
 
         ! In:
@@ -1706,6 +1707,7 @@ contains
 
     end subroutine get_D0_info_trot
 
+! [review] - Brian: document this
     pure function deexcitation_possible(f0, excit, cdet_f) result (allowed)
 
         integer(i0), intent(in) :: f0(:), excit(:), cdet_f(:)
@@ -1715,6 +1717,8 @@ contains
                            ieor(f0(:),cdet_f(:))) == &
                            ieor(f0(:),excit(:)))
     end function deexcitation_possible
+
+! [review] - Brian: document this
     pure function excitation_possible(f0, excit, cdet_f) result (allowed)
 
         integer(i0), intent(in) :: f0(:), excit(:), cdet_f(:)
@@ -1826,6 +1830,7 @@ contains
 
     end subroutine select_nc_cluster_trot
 
+! [review] - Brian: document this
     function get_cluster_population(sys, psip_list, D0_pos, iattempt, ref_real, f0) result(cluster_population)
 
         use qmc_data, only: particle_t
@@ -1833,8 +1838,8 @@ contains
 
         type(particle_t), intent(in) :: psip_list
         type(sys_t), intent(in) :: sys
-        ! [review] - Brian: should iattempt be int_64? because it seems that all calls are filled by int_64 integers (iexcitor etc)
         integer, intent(in) :: D0_pos
+        ! [review] - Brian: should iattempt be int_64? because it seems that all calls are filled by int_64 integers (iexcitor etc)
         integer(int_64), intent(in) :: iattempt
         integer(i0), intent(in) :: f0(:)
         real(p), intent(in) :: ref_real

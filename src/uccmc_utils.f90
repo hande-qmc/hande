@@ -259,6 +259,7 @@ contains
  
     end subroutine add_info_str_trot
 
+! [review] - Brian: document this
     pure subroutine collapse_deexcitor_onto_cluster(basis, excitor_excitation, f0, cluster_excitor, &
                                                   cluster_annihilation, cluster_creation, cluster_population, &
                                                   excitor_annihilation, cluster_excitation)
