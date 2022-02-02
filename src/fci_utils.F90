@@ -36,6 +36,17 @@ type fci_in_t
     ! The block size is critical to performance.  64 seems to be a good value (see
     ! scalapack documentation).
     integer :: block_size = 64
+
+    ! -- Davidson only settings --
+
+    ! Number of Davidson eigenpairs to find.
+    integer :: ndavidson_eigv = 4
+    ! Number of trial vectors
+    integer :: ndavidson_trialvec = 8
+    ! Size of Davidson basis.
+    integer :: davidson_maxsize = 50
+    ! Convergence tolerance
+    real(p) :: davidson_tol = 1e-8
 end type fci_in_t
 
 
@@ -196,6 +207,10 @@ contains
             call subsys_t_json(js, fci_in%subsys_info)
         end if
         call json_write_key(js, 'block_size', fci_in%block_size)
+        call json_write_key(js, 'ndavidson_eigv', fci_in%ndavidson_eigv)
+        call json_write_key(js, 'ndavidson_trialvec', fci_in%ndavidson_trialvec)
+        call json_write_key(js, 'davidson_maxsize', fci_in%davidson_maxsize)
+        call json_write_key(js, 'davidson_tol', fci_in%davidson_tol)
 
         call json_object_end(js)
         call reference_t_json(js, ref, sys, terminal=.true.)

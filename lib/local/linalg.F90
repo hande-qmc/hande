@@ -5,8 +5,8 @@ module linalg
 implicit none
 
 private
-public :: syev, heev, geev, psyev, pheev, plaprnt, syev_wrapper, &
-            heev_wrapper, geev_wrapper, psyev_wrapper, pheev_wrapper
+public :: syev, heev, geev, gemm, geqrf, orgqr, psyev, pheev, pgemm, pgeqrf, porgqr, plaprnt, syev_wrapper, &
+            heev_wrapper, geev_wrapper, qr_wrapper, psyev_wrapper, pheev_wrapper, pqr_wrapper
 
 interface syev
     module procedure ssyev_f90
@@ -23,6 +23,21 @@ interface geev
     module procedure dgeev_f90
 end interface geev
 
+interface gemm
+    module procedure sgemm_f90
+    module procedure dgemm_f90
+end interface gemm
+
+interface geqrf
+    module procedure sgeqrf_f90
+    module procedure dgeqrf_f90
+end interface geqrf
+
+interface orgqr
+    module procedure sorgqr_f90
+    module procedure dorgqr_f90
+end interface orgqr
+
 interface psyev
     module procedure pssyev_f90
     module procedure pdsyev_f90
@@ -32,6 +47,21 @@ interface pheev
     module procedure pcheev_f90
     module procedure pzheev_f90
 end interface pheev
+
+interface pgemm
+    module procedure psgemm_f90
+    module procedure pdgemm_f90
+end interface pgemm
+
+interface pgeqrf
+    module procedure psgeqrf_f90
+    module procedure pdgeqrf_f90
+end interface pgeqrf
+
+interface porgqr
+    module procedure psorgqr_f90
+    module procedure pdorgqr_f90
+end interface porgqr
 
 interface plaprnt
     module procedure pslaprnt_f90
@@ -237,6 +267,142 @@ contains
 
     end subroutine geev_wrapper
 
+    subroutine sgemm_f90(transA, transB, M, N, K, alpha, A, lda, B, ldb, beta, C, ldc)
+
+        ! See LAPACK sgemm procedure for details
+
+        use const, only: sp
+
+        character, intent(in) :: transA, transB
+        integer, intent(in) :: M, N, K, lda, ldb, ldc
+        real(sp), intent(in) :: alpha, beta
+        real(sp), intent(in) :: A(lda,*), B(ldb,*)
+        real(sp), intent(inout) :: C(ldc,*)
+
+        call sgemm(transA, transB, M, N, K, alpha, A, lda, B, ldb, beta, C, ldc)
+
+    end subroutine sgemm_f90
+
+    subroutine dgemm_f90(transA, transB, M, N, K, alpha, A, lda, B, ldb, beta, C, ldc)
+
+        ! See LAPACK dgemm procedure for details
+
+        use const, only: dp
+
+        character, intent(in) :: transA, transB
+        integer, intent(in) :: M, N, K, lda, ldb, ldc
+        real(dp), intent(in) :: alpha, beta
+        real(dp), intent(in) :: A(lda,*), B(ldb,*)
+        real(dp), intent(inout) :: C(ldc,*)
+
+        call dgemm(transA, transB, M, N, K, alpha, A, lda, B, ldb, beta, C, ldc)
+        
+    end subroutine dgemm_f90
+
+    subroutine sgeqrf_f90(M, N, A, lda, tau, work, lwork, info)
+
+        ! See LAPACK sgeqrf procedure for details
+
+        use const, only: sp
+
+        integer, intent(in) :: M, N, lda, lwork
+        real(sp), intent(inout) :: A(lda,*)
+        real(sp), intent(out) :: tau(*)
+        real(sp), intent(in) :: work(*)
+        integer, intent(out) :: info
+
+        call sgeqrf(M, N, A, lda, tau, work, lwork, info)
+
+    end subroutine sgeqrf_f90
+
+    subroutine dgeqrf_f90(M, N, A, lda, tau, work, lwork, info)
+
+        ! See LAPACK dgeqrf procedure for details
+
+        use const, only: dp
+
+        integer, intent(in) :: M, N, lda, lwork
+        real(dp), intent(inout) :: A(lda,*)
+        real(dp), intent(out) :: tau(*)
+        real(dp), intent(in) :: work(*)
+        integer, intent(out) :: info
+
+        call dgeqrf(M, N, A, lda, tau, work, lwork, info)
+
+    end subroutine dgeqrf_f90
+
+    subroutine sorgqr_f90(M, N, K, A, lda, tau, work, lwork, info)
+
+        ! See LAPACK sorgqr procedure for details
+
+        use const, only: sp
+
+        integer, intent(in) :: M, N, K, lda, lwork
+        real(sp), intent(inout) :: A(lda,*)
+        real(sp), intent(out) :: tau(*)
+        real(sp), intent(in) :: work(*)
+        integer, intent(out) :: info
+
+        call sorgqr(M, N, K, A, lda, tau, work, lwork, info)
+
+    end subroutine sorgqr_f90
+
+    subroutine dorgqr_f90(M, N, K, A, lda, tau, work, lwork, info)
+
+        ! See LAPACK dorgqr procedure for details
+
+        use const, only: dp
+
+        integer, intent(in) :: M, N, K, lda, lwork
+        real(dp), intent(inout) :: A(lda,*)
+        real(dp), intent(out) :: tau(*)
+        real(dp), intent(in) :: work(*)
+        integer, intent(out) :: info
+
+        call dorgqr(M, N, K, A, lda, tau, work, lwork, info)
+
+    end subroutine dorgqr_f90
+
+    subroutine qr_wrapper(M, N, A, lda, info)
+
+        ! Wrapper around the geqrf (QR decomposition) and orgqr (extracting the Q matrix from the output of geqrf)
+        ! subroutines, which automates using optimal workspace.
+
+        use checking, only: check_allocate, check_deallocate
+        use const, only: p
+
+        integer, intent(in) :: M, N, lda
+        real(p), intent(inout) :: A(lda,*)
+        integer, intent(out) :: info
+
+        integer :: lwork, ierr, i
+        real(p), allocatable :: tau(:), work(:)
+
+        allocate(tau(min(M,N)), stat=ierr)
+        call check_allocate('tau', min(M,N), ierr)
+
+        lwork = -1
+        do i = 1, 2
+            allocate(work(abs(lwork)), stat=ierr)
+            call check_allocate('work', abs(lwork), ierr)
+            call geqrf(M, N, A, lda, tau, work, lwork, info)
+            lwork = nint(work(1))
+            deallocate(work, stat=ierr)
+            call check_deallocate('work', ierr)
+        end do
+
+        lwork = -1
+        do i = 1, 2
+            allocate(work(abs(lwork)), stat=ierr)
+            call check_allocate('work', abs(lwork), ierr)
+            call orgqr(M, N, min(M,N), A, lda, tau, work, lwork, info)
+            lwork = nint(work(1))
+            deallocate(work)
+            call check_deallocate('work', ierr)
+        end do
+
+    end subroutine qr_wrapper
+
     subroutine pssyev_f90(job, uplo, N, A, IA, JA, desca, W, Z, IZ, JZ, descz, work, lwork, info)
 
         ! See ScaLAPACK pdsyev procedure for details.
@@ -406,6 +572,172 @@ contains
         end do
 
     end subroutine pheev_wrapper
+
+    subroutine psgemm_f90(transA, transB, M, N, K, alpha, A, ia, ja, desca, B, ib, jb, descb, beta, C, ic, jc, descc)
+
+        ! See ScaLAPACK psgemm procedure for details
+
+        use errors, only: stop_all
+        use const, only: sp
+
+        character, intent(in) :: transA, transB
+        integer, intent(in) :: M, N, K, ia, ja, ib, jb, ic, jc, desca(:), descb(:), descc(:)
+        real(sp), intent(in) :: alpha, beta
+        real(sp), intent(in) :: A(:,:), B(:,:)
+        real(sp), intent(inout) :: C(:,:)
+
+#if defined(PARALLEL) && ! defined(DISABLE_SCALAPACK)
+        call psgemm(transA, transB, M, N, K, alpha, A, ia, ja, desca, B, ib, jb, descb, beta, C, ic, jc, descc)
+#else
+        call stop_all('psgemm_f90', 'Scalapack disabled at compile-time')
+#endif
+
+    end subroutine psgemm_f90
+
+    subroutine pdgemm_f90(transA, transB, M, N, K, alpha, A, ia, ja, desca, B, ib, jb, descb, beta, C, ic, jc, descc)
+
+        ! See ScaLAPACK pdgemm procedure for details
+
+        use errors, only: stop_all
+        use const, only: dp
+
+        character, intent(in) :: transA, transB
+        integer, intent(in) :: M, N, K, ia, ja, ib, jb, ic, jc, desca(:), descb(:), descc(:)
+        real(dp), intent(in) :: alpha, beta
+        real(dp), intent(in) :: A(:,:), B(:,:)
+        real(dp), intent(inout) :: C(:,:)
+
+#if defined(PARALLEL) && ! defined(DISABLE_SCALAPACK)
+        call pdgemm(transA, transB, M, N, K, alpha, A, ia, ja, desca, B, ib, jb, descb, beta, C, ic, jc, descc)
+#else
+        call stop_all('pdgemm_f90', 'Scalapack disabled at compile-time')
+#endif
+        
+    end subroutine pdgemm_f90
+
+    subroutine psgeqrf_f90(M, N, A, ia, ja, desca, tau, work, lwork, info)
+
+        ! See ScaLAPACK psgeqrf procedure for details
+
+        use errors, only: stop_all
+        use const, only: sp
+
+        integer, intent(in) :: M, N, ia, ja, desca(:), lwork
+        real(sp), intent(inout) :: A(:,:)
+        real(sp), intent(out) :: tau(:)
+        real(sp), intent(in) :: work(:)
+        integer, intent(out) :: info
+
+#if defined(PARALLEL) && ! defined(DISABLE_SCALAPACK)
+        call psgeqrf(M, N, A, ia, ja, desca, tau, work, lwork, info)
+#else
+        call stop_all('psgeqrf_f90', 'Scalapack disabled at compile-time')
+#endif
+
+    end subroutine psgeqrf_f90
+
+    subroutine pdgeqrf_f90(M, N, A, ia, ja, desca, tau, work, lwork, info)
+
+        ! See ScaLAPACK pdgeqrf procedure for details
+
+        use errors, only: stop_all
+        use const, only: dp
+
+        integer, intent(in) :: M, N, ia, ja, desca(:), lwork
+        real(dp), intent(inout) :: A(:,:)
+        real(dp), intent(out) :: tau(:)
+        real(dp), intent(in) :: work(:)
+        integer, intent(out) :: info
+
+#if defined(PARALLEL) && ! defined(DISABLE_SCALAPACK)
+        call pdgeqrf(M, N, A, ia, ja, desca, tau, work, lwork, info)
+#else
+        call stop_all('pdgeqrf_f90', 'Scalapack disabled at compile-time')
+#endif
+
+    end subroutine pdgeqrf_f90
+
+    subroutine psorgqr_f90(M, N, K, A, ia, ja, desca, tau, work, lwork, info)
+
+        ! See ScaLAPACK psorgqr procedure for details
+
+        use errors, only: stop_all
+        use const, only: sp
+
+        integer, intent(in) :: M, N, K, ia, ja, desca(:), lwork
+        real(sp), intent(inout) :: A(:,:)
+        real(sp), intent(out) :: tau(:)
+        real(sp), intent(in) :: work(:)
+        integer, intent(out) :: info
+
+#if defined(PARALLEL) && ! defined(DISABLE_SCALAPACK)
+        call psorgqr(M, N, K, A, ia, ja, desca, tau, work, lwork, info)
+#else
+        call stop_all('psorgqr_f90', 'Scalapack disabled at compile-time')
+#endif
+
+    end subroutine psorgqr_f90
+
+    subroutine pdorgqr_f90(M, N, K, A, ia, ja, desca, tau, work, lwork, info)
+
+        ! See ScaLAPACK pdorgqr procedure for details
+
+        use errors, only: stop_all
+        use const, only: dp
+
+        integer, intent(in) :: M, N, K, ia, ja, desca(:), lwork
+        real(dp), intent(inout) :: A(:,:)
+        real(dp), intent(out) :: tau(:)
+        real(dp), intent(in) :: work(:)
+        integer, intent(out) :: info
+
+#if defined(PARALLEL) && ! defined(DISABLE_SCALAPACK)
+        call pdorgqr(M, N, K, A, ia, ja, desca, tau, work, lwork, info)
+#else
+        call stop_all('pdorgqr_f90', 'Scalapack disabled at compile-time')
+#endif
+
+    end subroutine pdorgqr_f90
+
+    subroutine pqr_wrapper(M, N, A, ia, ja, desca, info)
+
+        ! Wrapper around the pgeqrf (QR decomposition) and porgqr (extracting the Q matrix from the output of pgeqrf)
+        ! subroutines, which automates using optimal workspace.
+
+        use checking, only: check_allocate, check_deallocate
+        use const, only: p
+
+        integer, intent(in) :: M, N, ia, ja, desca(:)
+        real(p), intent(inout) :: A(:,:)
+        integer, intent(out) :: info
+
+        integer :: lwork, ierr, i
+        real(p), allocatable :: tau(:), work(:)
+
+        allocate(tau(min(M,N)), stat=ierr)
+        call check_allocate('tau', min(M,N), ierr)
+
+        lwork = -1
+        do i = 1, 2
+            allocate(work(abs(lwork)), stat=ierr)
+            call check_allocate('work', abs(lwork), ierr)
+            call pgeqrf(M, N, A, ia, ja, desca, tau, work, lwork, info)
+            lwork = nint(work(1))
+            deallocate(work, stat=ierr)
+            call check_deallocate('work', ierr)
+        end do
+
+        lwork = -1
+        do i = 1, 2
+            allocate(work(abs(lwork)), stat=ierr)
+            call check_allocate('work', abs(lwork), ierr)
+            call porgqr(M, N, min(M,N), A, ia, ja, desca, tau, work, lwork, info)
+            lwork = nint(work(1))
+            deallocate(work)
+            call check_deallocate('work', ierr)
+        end do
+
+    end subroutine pqr_wrapper
 
     subroutine pslaprnt_f90(M, N, A, IA, JA, desca, irprnt, icprnt, cmatnm, nout, work)
 

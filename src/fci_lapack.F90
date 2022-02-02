@@ -47,7 +47,7 @@ contains
 
         iunit = 6
 
-        if (parent) call check_fci_opts(sys, fci_in)
+        if (parent) call check_fci_opts(sys, fci_in, .false.)
 
         call copy_sys_spin_info(sys, sys_bak)
         ref = ref_in
