@@ -132,7 +132,7 @@ contains
         integer :: info, ierr, i, j, nwfn, ndets
         character(1) :: job
         integer :: iunit, maxEig
-        real(p), allocatable :: V(:,:), theta(:), theta_old(:), tmp(:,:), tmpV(:,:), eye(:,:), T(:,:), w(:,:)
+        real(p), allocatable :: V(:,:), theta(:), theta_old(:), tmp(:,:), tmpV(:,:), eye(:,:), T(:,:), w(:,:), tmpdiag(:,:)
 
         iunit = 6
 
@@ -178,6 +178,9 @@ contains
         allocate(eye(ndets,ndets),source=0.0_p,stat=ierr)
         call check_allocate('eye',ndets**2,ierr)
 
+        allocate(tmpdiag(ndets,ndets),source=0.0_p,stat=ierr)
+        call check_allocate('tmpdiag',ndets**2,ierr)
+
         do i = 1, ndets
             eye(i,i) = 1.0_p
         end do
@@ -198,12 +201,16 @@ contains
 
             do j = 1, nTrial
                 call gemm('N', 'N', ndets, 1, i, 1.0_p, V, ndets, T, i, 0.0_p, tmpV, ndets)
-                call gemm('N', 'N', ndets, 1, ndets, 1.0_p, (A-theta(j)*eye), ndets, tmpV, ndets, 0.0_p, w, ndets)
+                tmpdiag = A-theta(j)*eye
+                call gemm('N', 'N', ndets, 1, ndets, 1.0_p, tmpdiag, ndets, tmpV, ndets, 0.0_p, w, ndets)
                 w(:,1) = w(:,1)/(theta(j)-A(j,j))
                 V(:,(i+j)) = w(:,1)
             end do
 
-            if (sqrt(sum((theta(1:nEig)-theta_old)**2)) < fci_in%davidson_tol) exit
+            if (sqrt(sum((theta(1:nEig)-theta_old)**2)) < fci_in%davidson_tol) then
+                write(iunit,'(1X, A)') 'Tolerance reached, printing results...'
+                exit
+            end if
             theta_old = theta(1:nEig)
         end do
 

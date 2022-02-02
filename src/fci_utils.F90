@@ -169,6 +169,12 @@ contains
             call enumerate_determinants(sys, .false., spin_flip, ref%ex_level, sym_space_size, ndets, dets, sys%symmetry)
         end if
 
+        if (ndets < fci_in%davidson_maxsize) then
+            write(iunit_out, '(1X,A,I0,A,I0,A)') 'davidson_maxsize ',fci_in%davidson_maxsize,' is larger than the dimension &
+                of the current Hamiltonian spin block, ',ndets,', please decrease it.'
+            call stop_all('init_fci','davidson_maxsize exceeds Hamiltonian dimension, please decrease it.')
+        end if
+
         if (fci_in%write_determinants .and. parent) call print_dets_list(sys, ndets, dets, fci_in%determinant_file)
 
     end subroutine init_fci
