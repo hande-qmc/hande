@@ -113,11 +113,11 @@ contains
         !        Hamiltonian matrix.
 
         use checking, only: check_allocate, check_deallocate
-        use linalg, only: syev_wrapper, heev_wrapper, gemm, qr_wrapper, psyev_wrapper, pheev_wrapper, pgemm, pqr_wrapper
+        use linalg, only: syev_wrapper, heev_wrapper, gemm, gemv, qr_wrapper, psyev_wrapper, pheev_wrapper, pgemm, pqr_wrapper
         use linalg, only: qr_wrapper, pqr_wrapper
         use parallel, only: parent, nprocs, blacs_info
         use system, only: sys_t
-        use errors, only: stop_all
+        use errors, only: stop_all, warning
 
         use fci_utils, only: fci_in_t, hamil_t
         use operators
@@ -130,9 +130,8 @@ contains
         real(p), intent(out) :: eigv(:)
         real(p), allocatable :: rwork(:), eigvec(:,:)
         integer :: info, ierr, i, j, nwfn, ndets
-        character(1) :: job
         integer :: iunit, maxEig, nactive
-        real(p), allocatable :: V(:,:), theta(:), theta_old(:), tmp(:,:), tmpV(:,:), eye(:,:), T(:,:), w(:,:), tmpdiag(:,:)
+        real(p), allocatable :: V(:,:), theta(:), theta_old(:), tmp(:,:), tmpV(:), T(:,:), w(:)
         logical, allocatable :: normconv(:)
         logical :: conv
         real(p) :: norm
@@ -144,9 +143,6 @@ contains
         if (parent) then
             write (iunit,'(1X,A,/)') 'Performing Davidson diagonalisation...'
         end if
-
-        ! Davidson needs the eigenvectors to build the residuals
-        job = 'V'
 
         if (nprocs > 1) then
             call stop_all('davidson_diagonalisation', 'ScaLAPACK not yet supported for Davidson diagonalisation!')
@@ -176,11 +172,19 @@ contains
             allocate(tmp,source=V,stat=ierr)
             call check_allocate('tmp',ndets*maxEig,ierr)
 
-            allocate(tmpV(ndets,1),source=0.0_p,stat=ierr)
+            allocate(tmpV(ndets),source=0.0_p,stat=ierr)
             call check_allocate('tmpV',ndets,ierr)
 
-            allocate(w(ndets,1),source=0.0_p,stat=ierr)
+            allocate(w(ndets),source=0.0_p,stat=ierr)
             call check_allocate('w',ndets,ierr)
+
+            ! For now Davidson requires the full matrix, [todo] - make it compatible with triangulars
+            ! inflate A from upper triangular to full matrix
+            do i = 1, ndets
+                do j = i, ndets
+                    A(j,i) = A(i,j)
+                end do
+            end do
             
             ! Initial guesses are nTrial lowest unit vectors
             do i = 1, nTrial
@@ -189,43 +193,64 @@ contains
             nactive = nTrial
             conv = .false.
 
-            conv_while: do while (conv .eqv. .false.)
-            maxiter_do: do i = 1, maxiter
+            do i = 1, maxiter
+                ! Orthonormalise the current set of guess vectors
                 call qr_wrapper(ndets, nactive, V, ndets, info)
 
-                ! Likewise, tmp is designed to hold the largest tmp matrix but only the relevant slice will be written to
+                ! Form the subspace Hamiltonian / Rayleigh matrix
+                ! T = V^T A V
                 call gemm('N', 'N', ndets, nactive, ndets, 1.0_p, A, ndets, V, ndets, 0.0_p, tmp, ndets)
                 call gemm('T', 'N', nactive, nactive, ndets, 1.0_p, V, ndets, tmp, ndets, 0.0_p, T, nactive)
 
-                call syev_wrapper(job, 'U', nactive, T, nactive, theta, info)
+                ! Diagonalise the subspace Hamiltonian
+                ! T C = C t (T gets overwritten by C in syev, theta is the diagonal of t)
+                call syev_wrapper('V', 'U', nactive, T, nactive, theta, info)
 
+                ! We don't use this norm for convergence checking as after each subspace collapse the change in norm is 
+                ! essentially zero, but we report it nonetheless as during each restart-block it is still 
+                ! a useful measure of convergence.
                 norm = sqrt(sum((theta(1:nEig)-theta_old)**2))
-                write(iunit,'(1X, A, I0, A, I0, A, E15.6)') 'Iteration ', i, ', basis size ', nactive, ', rmsE ', norm
+                write(iunit,'(1X, A, I3, A, I3, A, ES15.6)') 'Iteration ', i, ', basis size ', nactive, ', rmsE ', norm
+                theta_old = theta(1:nEig)
 
                 if (all(normconv)) then
-                    write(iunit,'(1X, A, E10.4, A)') 'Residue tolerance of ', tol,' reached, printing results...'
+                    write(iunit,'(1X, A, ES10.4, A)') 'Residue tolerance of ', tol,' reached, printing results...'
                     conv = .true.
                     exit
                 end if
 
                 if (nactive <= (maxEig-nTrial)) then
+                    ! If the number of guess vectors can be grown by at least another lot of nTrial
                     do j = 1, nTrial
-                        call gemm('N', 'N', ndets, 1, nactive, 1.0_p, V, ndets, T, nactive, 0.0_p, tmpV, ndets)
-                        call gemm('N', 'N', ndets, 1, ndets, 1.0_p, A, ndets, tmpV, ndets, 0.0_p, w, ndets)
-                        w(:,1) = (w(:,1)-theta(j)*tmpV(:,1))/(theta(j)-A(j,j))
-                        if (sqrt(sum(w(:,1)**2)) < tol) normconv(j) = .true.
-                        V(:,(nactive+j)) = w(:,1)
+                        ! Residue vector w = (A-theta(j)*I) V T(:,j)
+                        ! Storing a diagonal matrix as large as A is obviously a bad idea, so we use a tmp vector
+                        ! Technically speaking, tmpV is the 'Ritz vector' and w is the residue vector
+                        call gemv('N', ndets, nactive, 1.0_p, V, ndets, T(:,j), 1, 0.0_p, tmpV, 1)
+                        call gemv('N', ndets, ndets, 1.0_p, A, ndets, tmpV, 1, 0.0_p, w, 1)
+                        w = w - theta(j)*tmpV
+                        if (sqrt(sum(w**2)) < tol) normconv(j) = .true.
+                        ! Precondition the residue vector to form the correction vector,
+                        ! if preconditioner = 1, we recover the Lanczos algorithm.
+                        w = w/(theta(j)-A(j,j))
+                        V(:,(nactive+j)) = w
                     end do
                     nactive = nactive + nTrial
                 else
+                    ! We need to collapse the subspace into nTrial best guesses and restart the iterations
+                    ! V holds the approximate eigenvectors and T holds the CI coefficients,
+                    ! so one call to gemm gives us the actual guess vectors.
                     write(iunit, '(1X, A)') 'Collapsing subspace...'
-                    call gemm('N', 'N', ndets, nTrial, maxEig, 1.0_p, V, ndets, T, maxEig, 0.0_p, V, ndets)
+                    call gemm('N', 'N', ndets, nTrial, maxEig, 1.0_p, V,&
+                              ndets, T, maxEig, 0.0_p, V, ndets)
                     nactive = nTrial
                 end if
 
-                theta_old = theta(1:nEig)
-            end do maxiter_do
-            end do conv_while
+            end do
+
+            if (conv .eqv. .false.) then
+                call warning('davidson_diagonalisation',&
+                    'Davidson diagonalisation did not converge, choose a larger maxiter or tolerance.')
+            end if
 
             eigv = theta(1:nEig)
         else

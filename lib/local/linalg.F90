@@ -5,7 +5,7 @@ module linalg
 implicit none
 
 private
-public :: syev, heev, geev, gemm, geqrf, orgqr, psyev, pheev, pgemm, pgeqrf, porgqr, plaprnt, syev_wrapper, &
+public :: syev, heev, geev, gemm, gemv, geqrf, orgqr, psyev, pheev, pgemm, pgeqrf, porgqr, plaprnt, syev_wrapper, &
             heev_wrapper, geev_wrapper, qr_wrapper, psyev_wrapper, pheev_wrapper, pqr_wrapper
 
 interface syev
@@ -27,6 +27,11 @@ interface gemm
     module procedure sgemm_f90
     module procedure dgemm_f90
 end interface gemm
+
+interface gemv
+    module procedure sgemv_f90
+    module procedure dgemv_f90
+end interface gemv
 
 interface geqrf
     module procedure sgeqrf_f90
@@ -298,6 +303,38 @@ contains
         call dgemm(transA, transB, M, N, K, alpha, A, lda, B, ldb, beta, C, ldc)
         
     end subroutine dgemm_f90
+    
+    subroutine sgemv_f90(trans, M, N, alpha, A, lda, x, incx, beta, y, incy)
+
+        ! See LAPACK sgemv procedure for details
+
+        use const, only: sp
+
+        character, intent(in) :: trans
+        integer, intent(in) :: M, N, incx, incy, lda
+        real(sp), intent(in) :: alpha, beta
+        real(sp), intent(in) :: A(lda,*), x(*)
+        real(sp), intent(inout) :: y(*)
+
+        call sgemv(trans, M, N, alpha, A, lda, x, incx, beta, y, incy)
+
+    end subroutine sgemv_f90
+
+    subroutine dgemv_f90(trans, M, N, alpha, A, lda, x, incx, beta, y, incy)
+
+        ! See LAPACK dgemv procedure for details
+
+        use const, only: dp
+
+        character, intent(in) :: trans
+        integer, intent(in) :: M, N, incx, incy, lda
+        real(dp), intent(in) :: alpha, beta
+        real(dp), intent(in) :: A(lda,*), x(*)
+        real(dp), intent(inout) :: y(*)
+
+        call dgemv(trans, M, N, alpha, A, lda, x, incx, beta, y, incy)
+
+    end subroutine dgemv_f90
 
     subroutine sgeqrf_f90(M, N, A, lda, tau, work, lwork, info)
 
