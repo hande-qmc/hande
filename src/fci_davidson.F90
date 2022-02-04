@@ -131,8 +131,11 @@ contains
         real(p), allocatable :: rwork(:), eigvec(:,:)
         integer :: info, ierr, i, j, nwfn, ndets
         character(1) :: job
-        integer :: iunit, maxEig
+        integer :: iunit, maxEig, nactive
         real(p), allocatable :: V(:,:), theta(:), theta_old(:), tmp(:,:), tmpV(:,:), eye(:,:), T(:,:), w(:,:), tmpdiag(:,:)
+        logical, allocatable :: normconv(:)
+        logical :: conv
+        real(p) :: norm
 
         iunit = 6
 
@@ -153,68 +156,81 @@ contains
             call stop_all('davidson_diagonalisation', 'Complex Hamiltonian not yet supported for Davidson diagonalisation!')
         end if
 
-        associate(nEig=>fci_in%ndavidson_eigv, nTrial=>fci_in%ndavidson_trialvec, maxSize=>fci_in%davidson_maxsize, A=>hamil%rmat)
+        associate(nEig=>fci_in%ndavidson_eigv, nTrial=>fci_in%ndavidson_trialvec, maxSize=>fci_in%davidson_maxsize, A=>hamil%rmat, &
+                  maxiter=>fci_in%davidson_maxiter, tol=>fci_in%davidson_tol)
 
-        allocate(theta_old(nEig), source=0.0_p)
+        if (nprocs == 1) then
 
-        ! Integer division always rounds towards zero, i.e 8*50/8 = 48
-        maxEig = nTrial*(maxSize/nTrial)
-        allocate(theta(maxEig))
-        allocate(V(ndets,maxEig+nTrial),source=0.0_p,stat=ierr)
-        call check_allocate('V',ndets*(maxEig+nTrial),ierr)
+            allocate(theta_old(nEig), source=0.0_p)
+            allocate(normconv(nTrial))
 
-        allocate(T(maxEig,maxEig),source=0.0_p,stat=ierr)
-        call check_allocate('T',maxEig**2,ierr)
+            ! Integer division always rounds towards zero, i.e 8*50/8 = 48
+            maxEig = nTrial*(maxSize/nTrial)
+            allocate(theta(maxEig))
+            allocate(V(ndets,maxEig+nTrial),source=0.0_p,stat=ierr)
+            call check_allocate('V',ndets*(maxEig+nTrial),ierr)
 
-        allocate(tmp,source=V,stat=ierr)
-        call check_allocate('tmp',ndets*maxEig,ierr)
+            allocate(T(maxEig,maxEig),source=0.0_p,stat=ierr)
+            call check_allocate('T',maxEig**2,ierr)
 
-        allocate(tmpV(ndets,1),source=0.0_p,stat=ierr)
-        call check_allocate('tmpV',ndets,ierr)
+            allocate(tmp,source=V,stat=ierr)
+            call check_allocate('tmp',ndets*maxEig,ierr)
 
-        allocate(w(ndets,1),source=0.0_p,stat=ierr)
-        call check_allocate('w',ndets,ierr)
+            allocate(tmpV(ndets,1),source=0.0_p,stat=ierr)
+            call check_allocate('tmpV',ndets,ierr)
 
-        allocate(eye(ndets,ndets),source=0.0_p,stat=ierr)
-        call check_allocate('eye',ndets**2,ierr)
-
-        allocate(tmpdiag(ndets,ndets),source=0.0_p,stat=ierr)
-        call check_allocate('tmpdiag',ndets**2,ierr)
-
-        do i = 1, ndets
-            eye(i,i) = 1.0_p
-        end do
-        
-        ! Initial guesses are nTrial lowest unit vectors
-        do i = 1, nTrial
-            V(i,i) = 1.0_p
-        end do
-
-        do i = nTrial*2, maxSize, nTrial
-            call qr_wrapper(ndets, i, V, ndets, info)
-
-            ! Likewise, tmp is designed to hold the largest tmp matrix but only the relevant slice will be written to
-            call gemm('N', 'N', ndets, i, ndets, 1.0_p, A, ndets, V, ndets, 0.0_p, tmp, ndets)
-            call gemm('T', 'N', i, i, ndets, 1.0_p, V, ndets, tmp, ndets, 0.0_p, T, i)
-
-            call syev_wrapper(job, 'U', i, T, i, theta, info)
-
-            do j = 1, nTrial
-                call gemm('N', 'N', ndets, 1, i, 1.0_p, V, ndets, T, i, 0.0_p, tmpV, ndets)
-                tmpdiag = A-theta(j)*eye
-                call gemm('N', 'N', ndets, 1, ndets, 1.0_p, tmpdiag, ndets, tmpV, ndets, 0.0_p, w, ndets)
-                w(:,1) = w(:,1)/(theta(j)-A(j,j))
-                V(:,(i+j)) = w(:,1)
+            allocate(w(ndets,1),source=0.0_p,stat=ierr)
+            call check_allocate('w',ndets,ierr)
+            
+            ! Initial guesses are nTrial lowest unit vectors
+            do i = 1, nTrial
+                V(i,i) = 1.0_p
             end do
+            nactive = nTrial
+            conv = .false.
 
-            if (sqrt(sum((theta(1:nEig)-theta_old)**2)) < fci_in%davidson_tol) then
-                write(iunit,'(1X, A)') 'Tolerance reached, printing results...'
-                exit
-            end if
-            theta_old = theta(1:nEig)
-        end do
+            conv_while: do while (conv .eqv. .false.)
+            maxiter_do: do i = 1, maxiter
+                call qr_wrapper(ndets, nactive, V, ndets, info)
 
-        eigv = theta(1:nEig)
+                ! Likewise, tmp is designed to hold the largest tmp matrix but only the relevant slice will be written to
+                call gemm('N', 'N', ndets, nactive, ndets, 1.0_p, A, ndets, V, ndets, 0.0_p, tmp, ndets)
+                call gemm('T', 'N', nactive, nactive, ndets, 1.0_p, V, ndets, tmp, ndets, 0.0_p, T, nactive)
+
+                call syev_wrapper(job, 'U', nactive, T, nactive, theta, info)
+
+                norm = sqrt(sum((theta(1:nEig)-theta_old)**2))
+                write(iunit,'(1X, A, I0, A, I0, A, E15.6)') 'Iteration ', i, ', basis size ', nactive, ', rmsE ', norm
+
+                if (all(normconv)) then
+                    write(iunit,'(1X, A, E10.4, A)') 'Residue tolerance of ', tol,' reached, printing results...'
+                    conv = .true.
+                    exit
+                end if
+
+                if (nactive <= (maxEig-nTrial)) then
+                    do j = 1, nTrial
+                        call gemm('N', 'N', ndets, 1, nactive, 1.0_p, V, ndets, T, nactive, 0.0_p, tmpV, ndets)
+                        call gemm('N', 'N', ndets, 1, ndets, 1.0_p, A, ndets, tmpV, ndets, 0.0_p, w, ndets)
+                        w(:,1) = (w(:,1)-theta(j)*tmpV(:,1))/(theta(j)-A(j,j))
+                        if (sqrt(sum(w(:,1)**2)) < tol) normconv(j) = .true.
+                        V(:,(nactive+j)) = w(:,1)
+                    end do
+                    nactive = nactive + nTrial
+                else
+                    write(iunit, '(1X, A)') 'Collapsing subspace...'
+                    call gemm('N', 'N', ndets, nTrial, maxEig, 1.0_p, V, ndets, T, maxEig, 0.0_p, V, ndets)
+                    nactive = nTrial
+                end if
+
+                theta_old = theta(1:nEig)
+            end do maxiter_do
+            end do conv_while
+
+            eigv = theta(1:nEig)
+        else
+            continue
+        end if
         end associate
 
     end subroutine davidson_diagonalisation

@@ -701,6 +701,7 @@ contains
         !     ndavidson_trialvec = int,
         !     davidson_maxsize = int,
         !     davidson_tol = real,
+        !     davidson_maxiter = int,
         ! }
 
         ! In/Out:
@@ -732,8 +733,8 @@ contains
         character(18), parameter :: fci_keys(9) = [character(18) :: 'write_hamiltonian', 'hamiltonian_file', &
                                                                     'write_determinants', 'determinant_file', 'write_nwfns', &
                                                                     'wfn_file', 'nanalyse', 'blacs_block_size', 'rdm']
-        character(18), parameter :: davidson_keys(4) = [character(18) :: 'ndavidson_eigv', 'ndavidson_trialvec', &
-                                                                         'davidson_maxsize', 'davidson_tol']
+        character(18), parameter :: davidson_keys(5) = [character(18) :: 'ndavidson_eigv', 'ndavidson_trialvec', &
+                                                                         'davidson_maxsize', 'davidson_tol', 'davidson_maxiter']
 
         if (aot_exists(lua_state, opts, 'fci')) then
             call aot_table_open(lua_state, opts, fci_table, 'fci')
@@ -777,6 +778,7 @@ contains
                 call stop_all('read_fci_in', 'Max Davidson basis size smaller than number of trial vectors')
             end if
             call aot_get_val(fci_in%davidson_tol, err, lua_state, fci_table, 'davidson_tol')
+            call aot_get_val(fci_in%davidson_maxiter, err, lua_state, fci_table, 'davidson_maxiter')
             call warn_unused_args(lua_state, davidson_keys, fci_table)
             call aot_table_close(lua_state, fci_table)
         end if

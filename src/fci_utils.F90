@@ -45,6 +45,8 @@ type fci_in_t
     integer :: ndavidson_trialvec = 8
     ! Size of Davidson basis.
     integer :: davidson_maxsize = 50
+    ! Maximum iterations
+    integer :: davidson_maxiter = 100
     ! Convergence tolerance
     real(p) :: davidson_tol = 1e-8
 end type fci_in_t
@@ -170,8 +172,8 @@ contains
         end if
 
         if (ndets < fci_in%davidson_maxsize) then
-            write(iunit_out, '(1X,A,I0,A,I0,A)') 'davidson_maxsize ',fci_in%davidson_maxsize,' is larger than the dimension &
-                of the current Hamiltonian spin block, ',ndets,', please decrease it.'
+            write(iunit_out, '(1X,A,I0,A,I0,A)') 'davidson_maxsize ',fci_in%davidson_maxsize, &
+            ' is larger than the dimension of the current Hamiltonian spin block, ',ndets,', please decrease it.'
             call stop_all('init_fci','davidson_maxsize exceeds Hamiltonian dimension, please decrease it.')
         end if
 
