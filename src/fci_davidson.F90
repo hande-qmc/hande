@@ -135,6 +135,8 @@ contains
         logical, allocatable :: normconv(:)
         logical :: conv
         real(p) :: norm
+        integer(8) :: t0, t1, count_rate, count_max, t_qr, t_dgemm1, t_dgemm2, t_diag,t_dgemv1,t_dgemv2, t_collapse, t_start, t_end
+
 
         iunit = 6
 
@@ -192,19 +194,37 @@ contains
             end do
             nactive = nTrial
             conv = .false.
+            
+            t_qr=0; t_dgemm1=0; t_dgemm2=0; t_diag=0; t_dgemv1=0; t_dgemv2=0; t_collapse=0
+            call system_clock(t_start, count_rate, count_max)
 
             do i = 1, maxiter
+                call system_clock(t0)
                 ! Orthonormalise the current set of guess vectors
                 call qr_wrapper(ndets, nactive, V, ndets, info)
+                
+                call system_clock(t1)
+                t_qr = t_qr + t1 - t0
+                t0 = t1
 
+                
                 ! Form the subspace Hamiltonian / Rayleigh matrix
                 ! T = V^T A V
                 call gemm('N', 'N', ndets, nactive, ndets, 1.0_p, A, ndets, V, ndets, 0.0_p, tmp, ndets)
+                call system_clock(t1)
+                t_dgemm1 = t_dgemm1 + t1 - t0
+                t0 = t1
                 call gemm('T', 'N', nactive, nactive, ndets, 1.0_p, V, ndets, tmp, ndets, 0.0_p, T, nactive)
+                call system_clock(t1)
+                t_dgemm2 = t_dgemm2 + t1 - t0
+                t0 = t1
 
                 ! Diagonalise the subspace Hamiltonian
                 ! T C = C t (T gets overwritten by C in syev, theta is the diagonal of t)
                 call syev_wrapper('V', 'U', nactive, T, nactive, theta, info)
+                call system_clock(t1)
+                t_diag = t_diag + t1 - t0
+                t0 = t1
 
                 ! We don't use this norm for convergence checking as after each subspace collapse the change in norm is 
                 ! essentially zero, but we report it nonetheless as during each restart-block it is still 
@@ -226,7 +246,13 @@ contains
                         ! Storing a diagonal matrix as large as A is obviously a bad idea, so we use a tmp vector
                         ! Technically speaking, tmpV is the 'Ritz vector' and w is the residue vector
                         call gemv('N', ndets, nactive, 1.0_p, V, ndets, T(:,j), 1, 0.0_p, tmpV, 1)
+                        call system_clock(t1)
+                        t_dgemv1 = t_dgemv1 + t1 - t0
+                        t0 = t1
                         call gemv('N', ndets, ndets, 1.0_p, A, ndets, tmpV, 1, 0.0_p, w, 1)
+                        call system_clock(t1)
+                        t_dgemv2 = t_dgemv2 + t1 - t0
+                        t0 = t1
                         w = w - theta(j)*tmpV
                         if (sqrt(sum(w**2)) < tol) normconv(j) = .true.
                         ! Precondition the residue vector to form the correction vector,
@@ -242,6 +268,9 @@ contains
                     write(iunit, '(1X, A)') 'Collapsing subspace...'
                     call gemm('N', 'N', ndets, nTrial, maxEig, 1.0_p, V,&
                               ndets, T, maxEig, 0.0_p, V, ndets)
+                    call system_clock(t1)
+                    t_collapse = t_collapse + t1 - t0
+                    t0 = t1
                     nactive = nTrial
                 end if
 
@@ -256,6 +285,15 @@ contains
         else
             continue
         end if
+        call system_clock(t_end)
+        write(iunit, '(1X, A, F16.8)') 'Total runtime: ', real((t_end-t_start),kind=p)/count_rate
+        write(iunit, '(1X, A, F16.8)') 'QR: ', real(t_qr,kind=p)/count_rate
+        write(iunit, '(1X, A, F16.8)') 'dgemm1: ', real(t_dgemm1,kind=p)/count_rate
+        write(iunit, '(1X, A, F16.8)') 'dgemm2: ', real(t_dgemm2,kind=p)/count_rate
+        write(iunit, '(1X, A, F16.8)') 'diag: ', real(t_diag,kind=p)/count_rate
+        write(iunit, '(1X, A, F16.8)') 'dgemv1: ', real(t_dgemv1,kind=p)/count_rate
+        write(iunit, '(1X, A, F16.8)') 'dgemv2: ', real(t_dgemv2,kind=p)/count_rate
+        write(iunit, '(1X, A, F16.8)') 'collapse: ', real(t_collapse,kind=p)/count_rate
         end associate
 
     end subroutine davidson_diagonalisation
