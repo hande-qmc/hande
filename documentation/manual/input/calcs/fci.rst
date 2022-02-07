@@ -1,7 +1,8 @@
 Full Configuration Interaction
 ==============================
 
-Calculate the ground state of a system via a full diagonalisation of the Hamiltonian matrix [Knowles89]_.
+Calculate the ground state of a system via a full diagonalisation of the Hamiltonian matrix [Knowles89]_, or 
+the Davidson iterative diagonalisation scheme [Davidson75]_ if only a few lowest eigenpairs are sought.
 
 .. code-block:: lua
 
@@ -9,6 +10,7 @@ Calculate the ground state of a system via a full diagonalisation of the Hamilto
         sys = system,
         fci = { ... },
         reference = { ... },
+        davidson = { ... },
     }
 
 .. note::
@@ -40,6 +42,13 @@ Options
     Optional.  No default.
 
     If not specified, the entire Hilbert space is used.  See :ref:`reference_table`.
+
+``davidson``
+    type: lua table.
+
+    Optional. No default.
+
+    Davidson diagonalisation options. See below.
 
 fci options
 -----------
@@ -122,3 +131,51 @@ The ``fci`` table can take the following options:
     calculated in addition to the eigenvalues, which requires additional computational
     time.
 
+davidson options
+----------------
+
+.. note::
+Davidson diagonalisation currently only supports real Hamiltonians on a single node. 
+Although multi-threaded BLAS/LAPACK libraries (MKL, OpenBLAS, etc.) are supported. 
+
+The ``davidson`` table can take the following options:
+
+``using_davidson``
+type: boolean. Default: false.
+
+Whether to turn on Davidson diagonalisation.
+
+``ndavidson_eigv``
+type: integer.
+
+Optional. Default: 4.
+
+Number of eigenpairs to solve for.
+
+``ndavidson_trialvec``
+type: integer.
+
+Optional. Default: 8.
+
+Number of trial vectors to use, usually double ``ndavidson_eigv``.
+
+``davidson_maxsize``
+type: integer.
+
+Optional. Default: 50.
+
+Maximum number of guess vectors held at the same time. This should be very small compared to the dimensions of the full Hamiltonian you're trying to diagonalise. If larger an error will be thrown.
+
+``davidson_tol``
+type: float.
+
+Optional. Default: 1e-3.
+
+Tolerance in the norm of the residual vectors. If all ``ntrial`` residual vector norms become smaller than this tolerance, the algorithm will converge.
+
+``davidson_maxiter``
+type: integer.
+
+Optional. Default: 100.
+
+Maximum number of iterations to run, if convergence is not reached a warning will be thrown, and the results will still be printed.

@@ -39,6 +39,8 @@ type fci_in_t
 
     ! -- Davidson only settings --
 
+    ! True if using Davidson diagonalisation
+    logical :: using_davidson = .false.
     ! Number of Davidson eigenpairs to find.
     integer :: ndavidson_eigv = 4
     ! Number of trial vectors
@@ -48,7 +50,7 @@ type fci_in_t
     ! Maximum iterations
     integer :: davidson_maxiter = 100
     ! Convergence tolerance
-    real(p) :: davidson_tol = 1e-8
+    real(p) :: davidson_tol = 1e-3
 end type fci_in_t
 
 

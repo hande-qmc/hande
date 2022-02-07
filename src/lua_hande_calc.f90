@@ -55,13 +55,12 @@ contains
         call get_sys_t(lua_state, sys)
 
         opts = aot_table_top(lua_state)
-        davidson = aot_exists(lua_state, opts, 'davidson')
         call read_fci_in(lua_state, opts, sys%basis, fci_in)
         call read_reference_t(lua_state, opts, ref, sys)
         call warn_unused_args(lua_state, keys, opts)
         call aot_table_close(lua_state, opts)
 
-        if (davidson) then
+        if (fci_in%using_davidson) then
             calc_type = davidson_diag
             call do_fci_davidson(sys, fci_in, ref)
         else
@@ -733,7 +732,7 @@ contains
         character(18), parameter :: fci_keys(9) = [character(18) :: 'write_hamiltonian', 'hamiltonian_file', &
                                                                     'write_determinants', 'determinant_file', 'write_nwfns', &
                                                                     'wfn_file', 'nanalyse', 'blacs_block_size', 'rdm']
-        character(18), parameter :: davidson_keys(5) = [character(18) :: 'ndavidson_eigv', 'ndavidson_trialvec', &
+        character(18), parameter :: davidson_keys(6) = [character(18) :: 'using_davidson', 'ndavidson_eigv', 'ndavidson_trialvec', &
                                                                          'davidson_maxsize', 'davidson_tol', 'davidson_maxiter']
 
         if (aot_exists(lua_state, opts, 'fci')) then
@@ -768,6 +767,7 @@ contains
         ! Davidson table: optional and indicates doing a Davidson calculation.
         if (aot_exists(lua_state, opts, 'davidson')) then
             call aot_table_open(lua_state, opts, fci_table, 'davidson')
+            call aot_get_val(fci_in%using_davidson, err, lua_state, fci_table, 'using_davidson')
             call aot_get_val(fci_in%ndavidson_eigv, err, lua_state, fci_table, 'ndavidson_eigv')
             call aot_get_val(fci_in%ndavidson_trialvec, err, lua_state, fci_table, 'ndavidson_trialvec')
             if (fci_in%ndavidson_trialvec <= fci_in%ndavidson_eigv) then 
