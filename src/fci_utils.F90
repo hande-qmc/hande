@@ -173,7 +173,7 @@ contains
             call enumerate_determinants(sys, .false., spin_flip, ref%ex_level, sym_space_size, ndets, dets, sys%symmetry)
         end if
 
-        if (ndets < fci_in%davidson_maxsize) then
+        if (fci_in%using_davidson .and. (ndets < fci_in%davidson_maxsize)) then
             write(iunit_out, '(1X,A,I0,A,I0,A)') 'davidson_maxsize ',fci_in%davidson_maxsize, &
             ' is larger than the dimension of the current Hamiltonian spin block, ',ndets,', please decrease it.'
             call stop_all('init_fci','davidson_maxsize exceeds Hamiltonian dimension, please decrease it.')
