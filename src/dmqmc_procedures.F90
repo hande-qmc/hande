@@ -96,18 +96,9 @@ contains
         if (dmqmc_in%fermi_temperature) then
             qs%tau = qs%tau / sys%ueg%ef
             qs%target_beta = dmqmc_in%target_beta / sys%ueg%ef
-            qs%piecewise_beta = dmqmc_in%piecewise_beta / sys%ueg%ef
         else
             qs%target_beta = dmqmc_in%target_beta
-            qs%piecewise_beta = dmqmc_in%piecewise_beta
         end if
-        ! If we are doing the interaction picture algorithm into DMQMC
-        ! we want to have our target_beta value updated for the smaller
-        ! beta value that IP-DMQMC will propagate to so the thermal
-        ! initalization is using the correct beta.
-        if (dmqmc_in%piecewise_beta > depsilon .and. &
-            dmqmc_in%piecewise_beta < dmqmc_in%target_beta) qs%target_beta = qs%piecewise_beta
-
 
         if (dmqmc_in%weighted_sampling) then
             ! sampling_probs stores the factors by which probabilities
@@ -959,20 +950,18 @@ contains
         if (dmqmc_in%initial_matrix == free_electron_dm) h0_ptr => Null()
         ! If we were doing symmetric IP-DMQMC, we don't want
         ! to include the exponential factors when spawning
-        ! in normal DMQMC. As well, store our original IP-DMQMC propagator
-        ! symmetry for running multiple beta loops.
+        ! in normal DMQMC.
         if (dmqmc_in%symmetric) then
             gen_excit_ptr%trial_fn => Null()
-            dmqmc_in%restore_symmetric_piecewise = .true.
         end if
 
         ! Finally, update the stored elements for diagonal death/cloning
         ! to propagate in DMQMC.
-        if (dmqmc_in%post_pip_symmetric_propagation) then
-            if (parent) write(iunit, '(1X,"# Changing propagators from IP-DMQMC to Symmetric DMQMC!")')
+        if (dmqmc_in%symmetric_bloch) then
+            if (parent) write(iunit, '(1X,"# Changing the propagator from interaction picture to symmetric Bloch.")')
             ! Change the appropriate flags/parameters, these only
             ! need to change when coming from asymmetric propagation.
-            if (.not. dmqmc_in%symmetric) then
+            if (.not. dmqmc_in%symmetric_interaction_picture) then
                 annihilation_flags%symmetric = .true.
                 dmqmc_in%symmetric = .true.
                 qs%tau = qs%tau*0.5_p
@@ -990,10 +979,10 @@ contains
                 end if
             end do
         else
-            if (parent) write(iunit, '(1X,"# Changing propagators from IP-DMQMC to Asymmetric DMQMC!")')
+            if (parent) write(iunit, '(1X,"# Changing the propagator from interaction picture to asymmetric Bloch.")')
             ! If we are coming from symmetric IP-DMQMC and going to asymmetric
             ! DMQMC we need to alter these parameters accordingly.
-            if (dmqmc_in%symmetric) then
+            if (dmqmc_in%symmetric_interaction_picture) then
                 annihilation_flags%symmetric = .false.
                 dmqmc_in%symmetric = .false.
                 qs%tau = qs%tau*2.0_p
@@ -1047,15 +1036,15 @@ contains
         type(dmqmc_in_t), intent(inout) :: dmqmc_in
         type(annihilation_flags_t), intent(inout) :: annihilation_flags
 
-        if (parent) write (iunit,'(a53)') " # Restoring propagator to the interaction picture..."
         ! Take care of flags which will always be true on the start of
         ! a beta loop for IP-DMQMC.
         annihilation_flags%ipdmqmc = .true.
         dmqmc_in%ipdmqmc = .true.
 
-        if (dmqmc_in%restore_symmetric_piecewise) then
+        if (dmqmc_in%symmetric_interaction_picture) then
+            if (parent) write (iunit,'(a63)') " # Restoring the propagator to symmetric interaction picture..."
             ! Restore qmc paramters to symmetric IP-DMQMC propagation
-            if (.not. dmqmc_in%symmetric) then
+            if (.not. dmqmc_in%symmetric_bloch) then
                 ! The current propagator is asymmetric so we need a factor of
                 ! 1/2 for tau and dmqmc_factor set to 2.
                 qs%tau = qs%tau*0.5_p
@@ -1065,8 +1054,9 @@ contains
             annihilation_flags%symmetric = .true.
             dmqmc_in%symmetric = .true.
         else
+            if (parent) write (iunit,'(a64)') " # Restoring the propagator to asymmetric interaction picture..."
             ! Restore qmc parameters to asymmetric IP-DMQMC propagation.
-            if (dmqmc_in%symmetric) then
+            if (dmqmc_in%symmetric_bloch) then
                 ! If we are running symmetric DMQMC, the tau needs a factor
                 ! of 2 and dmqmc_factor needs to be set to 1.
                 qs%tau = qs%tau*2.0_p

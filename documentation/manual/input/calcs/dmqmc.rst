@@ -120,6 +120,17 @@ Options
 dmqmc options
 -------------
 
+``symmetric_bloch``
+    type: boolean.
+
+    Optional.  Default: true.
+
+    Use the symmetrized form of the Bloch equation,
+    :math: `\frac{d\hat{\rho}}{d\beta}=-\frac{1}{2}\{\hat{H},\hat{\rho}\}`,
+    to propagate the density matrix when true. Otherwise the non-symmetrized form,
+    :math: `\frac{d\hat{\rho}}{d\beta}=-\hat{\rho} \hat{H}`
+    of the Bloch equation is used. The **symmetrize** option only works with
+    the symmetric version of the Bloch equation.
 ``replica_tricks``
     type: boolean.
 
@@ -165,6 +176,17 @@ dmqmc options
         each beta loop is independent, this can be done in separate calculations in an
         embararassingly parallel fashion.
 
+``final_beta``
+    type: float.
+
+    Optional.  Default: 0.0.
+
+    Sets the final inverse temperature the density matrix is propagated to.
+    When not provided in the input, the number of reports and Monte Carlo cycles
+    controls the final temperature instead.
+    If specified while using the interaction picture, the interaction picture
+    and Bloch equation are used in a piecewise fashion to sample a range of 
+    temperatures from **target_beta** to **final_beta**. [VanBenschoten21]_
 ``sampling_weights``
     type: vector of floats.
 
@@ -235,15 +257,6 @@ dmqmc options
 
     Explicitly symmetrize the density matrix, thus only sampling one triangle of the
     matrix.  This can yield significant improvements in stochastic error in some cases.
-``symmetric``
-    type: boolean.
-
-    Optional.  Default: true.
-
-    Controls the symmetry of the Bloch equation used to propagate the density matrix
-    through temperature. The default is that the symmetrized version of the Bloch
-    equation is used: `\frac{d}{d\beta}=-\frac{1}{2}\{H,\rho\}`. The asymmetric
-    Bloch equation will not work with the **symmetrize** option.
 ``initiator_level``
     type: integer.
 
@@ -257,16 +270,20 @@ dmqmc options
 
     This is experimental and the user should identity when convergence has been
     reached.
+``piecewise_shift``
+    type: float.
+
+    Optional.  Default: 0.
+
+    Sets the value of the simulation shift when the propagator change occurs
+    at the **target_beta** when running the piecewise interaction picture method.
 ``walker_scale_factor``
     type: integer.
 
-    Optional. Default: 1.
+    Optional.  Default: 1.
 
-    Scales the walker population on initial trial density matrix by a constant
-    factor. In addition, the target population is scaled as well. For example,
-    if the initial and target particle populations were 1000, and a scale factor
-    of 2 was used, the new initial and target particle population will be 2000.
-    Currently only accepts values greater than or equal to 2.
+    Scales the walker population on the initial trial density matrix by a constant
+    factor. The simulations target population is scaled as well.
 
     .. warning::
 
@@ -287,17 +304,12 @@ ipdmqmc options
     :math:`\tilde{\beta} = 1/\Theta = T_F/T`, where :math:`T_F` is the Fermi temperature. Otherwise target_beta is taken
     to be in atomic units.
 
-``piecewise_beta``
-    type: float.
+    .. note::
 
-    Optional.  Default: **target_beta**.
-
-    Controls the beta value where the propagator is switched from the
-    interaction picture to the Bloch equation. The symmetry of the
-    Bloch equation can be controlled with **post_pip_symmetric_propagation**.
-    The remaining temperature range to the value of **target_beta**
-    is sampled with the Bloch equation as the propagator and is exact on average,
-    see [Van_Benschoten21]_ for more details.
+        If **final_beta** is set to a value greater than **target_beta**, the
+        interaction picture will be used until the **target_beta** has been reached.
+        Thereafter, the Bloch equation will be used to sample continously until
+        the **final_beta** has been reached.
 
 ``initial_matrix``
     type: string.
@@ -351,10 +363,10 @@ ipdmqmc options
     It is up to the user to determine if the desired distribution has been reached,
     i.e. by checking if results are independent of metropolis_attempts.
 
-``symmetric``
+``symmetric_interaction_picture``
     type: boolean.
 
-    Optional. Default: false.
+    Optional. Default: true.
 
     Use symmetric version of ip-dmqmc where now :math:`\hat{f}(\tau) =
     e^{-\frac{1}{2}(\beta-\tau)\hat{H}^0}e^{-\tau\hat{H}}e^{-\frac{1}{2}(\beta-\tau)\hat{H}^0}`.
@@ -382,17 +394,6 @@ ipdmqmc options
     trial density matrix. Helpful for ensuring the initial population is closer to the
     desired value in the input. Generally only applicable when **initial_matrix**
     is set to 'hartree_fock'. 
-
-``piecewise_shift``
-    type: float.
-
-    Optional.  Default: 0.
-
-    Controls the value of the simulation shift when the propagator is changed from the
-    interaction picture to the Bloch equation, only used when **piecewise_beta** is
-    specified. When moving between the interaction picture and the Bloch equation as the
-    propagator the required shift to control the population exactly are in general vastly 
-    different.
 
 .. _operators_table:
 

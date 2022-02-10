@@ -415,10 +415,8 @@ contains
             call stop_all(this, 'target_beta must be non-negative.')
         end if
 
-        if (dmqmc_in%piecewise_beta > dmqmc_in%target_beta) then
-            call stop_all(this, 'piecewise_beta must be less than target_beta')
-        else if (dmqmc_in%piecewise_beta < 0.0_p) then
-            call stop_all(this, 'piecewise_beta must be non-negative')
+        if (dmqmc_in%final_beta > 0.0_p .and. dmqmc_in%final_beta < dmqmc_in%target_beta) then
+            call stop_all(this, 'If using final_beta and taget_beta, final_beta must be greater than target_beta!')
         end if
 
         if (dmqmc_in%metropolis_attempts < 0) then

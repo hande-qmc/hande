@@ -80,7 +80,7 @@ contains
         real(p), intent(out), allocatable :: sampling_probs(:)
 
         integer :: idet, ireport, icycle, iteration, ireplica, ierr
-        integer :: beta_cycle, nreport, piecewise_nreport
+        integer :: beta_cycle, nreport, prop_switch_report
         integer :: unused_int_1 = -1, unused_int_2 = 0
         integer(int_64) :: init_tot_nparticles
         real(dp), allocatable :: tot_nparticles_old(:)
@@ -90,7 +90,7 @@ contains
         type(det_info_t) :: cdet1, cdet2
         integer(int_p) :: ndeath
         integer :: nspawn_events
-        logical :: imag, calc_ref_proj_energy
+        logical :: imag, calc_ref_proj_energy, piecewise_propagation
         logical :: soft_exit, write_restart_shift, update_tau
         logical :: error, rdm_error, attempt_spawning, restarting
         real :: t1, t2
@@ -131,12 +131,30 @@ contains
         allocate(real_population(qs%psip_list%nspaces), stat=ierr)
         call check_allocate('real_population', qs%psip_list%nspaces, ierr)
 
-        nreport = qmc_in%nreport
-        ! When using the ipdmqmc option the number of iterations in imaginary
-        ! time we want to do depends on what value of beta we are seeking. It's
-        ! annoying to have to modify this in the input file, so just do it here.
-        if (dmqmc_in%ipdmqmc) nreport = int(ceiling(dmqmc_in%target_beta/(qmc_in%ncycles*qmc_in%tau)))
-        if (dmqmc_in%piecewise_beta > 0.0_p) piecewise_nreport = int(ceiling(dmqmc_in%piecewise_beta/(qmc_in%ncycles*qmc_in%tau)))
+        ! It is convenient to setup calculations using a final beta and
+        ! target beta instead of calculating the nreports from tau and mc_cycles.
+        ! So we do the nreport calculation here instead.
+        ! Additionally we use piecewise_propagation and prop_switch_report
+        ! when running piecewise ip-dmqmc, this is the report at which the propagator changes.
+        ! Otherwise, if neither beta values are defined we default to
+        ! the standard behavior of using nreport from the input.
+        piecewise_propagation = .false.
+        prop_switch_report = -1
+        if (dmqmc_in%final_beta > 0.0_p) then
+            nreport = int(ceiling(dmqmc_in%final_beta/(qmc_in%ncycles*qmc_in%tau)))
+        else
+            nreport = qmc_in%nreport
+        end if
+
+        if (dmqmc_in%ipdmqmc) then
+            if (dmqmc_in%final_beta < dmqmc_in%target_beta) then
+                nreport = int(ceiling(dmqmc_in%target_beta/(qmc_in%ncycles*qmc_in%tau)))
+            else
+                piecewise_propagation = .true.
+                prop_switch_report = int(ceiling(dmqmc_in%target_beta/(qmc_in%ncycles*qmc_in%tau))) + 1
+            end if
+        end if
+
         ! When we accumulate data throughout a run, we are actually accumulating
         ! results from the psips distribution from the previous iteration.
         ! For example, in the first iteration, the trace calculated will be that
@@ -231,7 +249,7 @@ contains
 
             call init_dmqmc_beta_loop(sys, reference_in, rng, qmc_in, dmqmc_in, dmqmc_estimates, qs, beta_cycle, &
                                       qs%psip_list%nstates, qs%psip_list%nparticles, qs%spawn_store%spawn, &
-                                      weighted_sampling%probs, annihilation_flags)
+                                      weighted_sampling%probs, annihilation_flags, piecewise_propagation)
 
             ! Distribute psips uniformly along the diagonal of the density matrix.
             call create_initial_density_matrix(rng, sys, qmc_in, dmqmc_in, qs, annihilation_flags, &
@@ -266,10 +284,9 @@ contains
                 end if
 
                 ! If we are propagating past IP-DMQMC target beta.
-                ! Change over the appropriate flags and data to asymmetric or symmetric dmqmc 
-                if (dmqmc_in%piecewise_beta > 0.0_p .and. dmqmc_in%ipdmqmc .and. piecewise_nreport + 1 == ireport) then
+                ! Change over the appropriate parameters and pointers to continue on with sampling.
+                if (piecewise_propagation .and. prop_switch_report == ireport) then
                     call propagator_change(sys, qs, dmqmc_in, annihilation_flags, iunit)
-                    ! Finally, update the pointers for the new propagator.
                     call init_proc_pointers(sys, qmc_in, reference_in, iunit, dmqmc_in)
                 end if
 
@@ -572,7 +589,8 @@ contains
     end subroutine do_dmqmc_spawning_attempt
 
     subroutine init_dmqmc_beta_loop(sys, reference_in, rng, qmc_in, dmqmc_in, dmqmc_estimates, qs, beta_cycle, &
-                                    nstates_active, nparticles, spawn, accumulated_probs, annihilation_flags)
+                                    nstates_active, nparticles, spawn, accumulated_probs, annihilation_flags, &
+                                    piecewise_propagation)
 
         ! Initialise/reset DMQMC data for a new run over the temperature range.
 
@@ -588,6 +606,8 @@ contains
         !    reference_in: current reference determinant.  If not set (ie
         !       components allocated) then a best guess is made based upon the
         !       desired spin/symmetry.
+        !    piecewise_propagation: A boolean indiciating if peicewise propagation
+        !       is being used. In this case we may need to reset some parameters/pointers.
         ! Out:
         !    nparticles: number of particles in each space/of each type on
         !       processor.  Set to 0.
@@ -623,6 +643,7 @@ contains
         real(p), intent(out) :: accumulated_probs(:)
         integer :: new_seed, iunit
         type(annihilation_flags_t) :: annihilation_flags
+        logical, intent(in) :: piecewise_propagation
 
         iunit = 6
 
@@ -645,11 +666,10 @@ contains
             write (iunit,'(a52,'//int_fmt(new_seed,1)//',a1)') " # Resetting random number generator with a seed of:", new_seed, "."
         end if
 
-        if (beta_cycle /= 1 .and. dmqmc_in%piecewise_beta > 0.0_p) then
-            ! If we are running piecewise IP-DMQMC restore the relevant values 
-            ! back to IP-DMQMC.
+        ! if we are running piecewise ip-dmqmc restore the relevant values 
+        ! and pointers back to ip-dmqmc.
+        if (beta_cycle /= 1 .and. piecewise_propagation) then
             call propagator_restore(qs, dmqmc_in, annihilation_flags, iunit)
-            ! Finally, update the pointers for the reset beta loop.
             call init_proc_pointers(sys, qmc_in, reference_in, iunit, dmqmc_in)
         end if
 

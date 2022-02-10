@@ -1388,6 +1388,7 @@ contains
         !     all_sym_sectors = true/false,
         !     all_spin_sectors = true/false,
         !     beta_loops = Nb,
+        !     final_beta = bf,
         !     sampling_weights = { ... },
         !     vary_weights = N,
         !     find_weights = true/false,
@@ -1398,12 +1399,11 @@ contains
         !     walker_scale_factor = factor,
         ! }
         ! ipdmqmc = { -- sets ipdmqmc to true
-        !     initial_beta = b,
+        !     target_beta = b,
         !     initial_matrix = 'free_electron'/'hartree_fock',
         !     grand_canonical_initialisation = true/false,
         !     metropolis_attempts = nattempts,
         !     symmetric = true/false,
-        !     piecewise_beta = pb,
         !     piecewise_shift = ps,
         !     count_reweighted_particles = true/false,
         !     check_reference = true/false,
@@ -1466,19 +1466,20 @@ contains
 
         integer :: table, subtable, err, i
         integer, allocatable :: err_arr(:)
-        logical :: op
+        logical :: op, bloch_symmetry_unset
         character(len=13) :: str
 
-        character(30), parameter :: dmqmc_keys(13) = [character(30) :: 'replica_tricks', 'fermi_temperature', 'all_sym_sectors', &
-                                                                      'all_spin_sectors', 'beta_loops', 'sampling_weights',      &
-                                                                      'find_weights', 'find_weights_start', 'symmetrize',        &
-                                                                      'vary_weights', 'initiator_level', 'symmetric',            &
-                                                                      'walker_scale_factor']
-        character(30), parameter :: ip_keys(11)    = [character(30) :: 'target_beta', 'initial_beta', 'initial_matrix',          &
-                                                                      'grand_canonical_initialisation', 'metropolis_attempts',   &
-                                                                      'symmetric', 'piecewise_beta', 'piecewise_shift',          &
-                                                                      'post_pip_symmetric_propagation', 'check_reference',       &
-                                                                      'count_reweighted_particles']
+        character(30), parameter :: dmqmc_keys(16) = [character(30) :: 'replica_tricks', 'fermi_temperature', 'all_sym_sectors',  &
+                                                                       'all_spin_sectors', 'beta_loops', 'sampling_weights',      &
+                                                                       'find_weights', 'find_weights_start', 'symmetrize',        &
+                                                                       'vary_weights', 'initiator_level', 'symmetric',            &
+                                                                       'symmetric_bloch', 'walker_scale_factor', 'final_beta',    &
+                                                                       'piecewise_shift']
+        character(30), parameter :: ip_keys(11)    = [character(30) :: 'target_beta', 'initial_beta', 'initial_matrix',           &
+                                                                       'grand_canonical_initialisation', 'metropolis_attempts',   &
+                                                                       'symmetric', 'symmetric_interaction_picture',              &
+                                                                       'piecewise_beta', 'post_pip_symmetric_propagation',        &
+                                                                       'check_reference', 'count_reweighted_particles']
         character(30), parameter :: op_keys(13)    = [character(30) :: 'renyi2', 'energy', 'energy2', 'staggered_magnetisation',  &
                                                                        'correlation', 'excit_dist', 'kinetic_energy',             &
                                                                        'H0_energy', 'potential_energy', 'HI_energy', 'mom_dist',  &
@@ -1488,6 +1489,7 @@ contains
                                                                       'concurrence', 'von_neumann', 'renyi2']
 
         dmqmc_calc_type = 0
+        bloch_symmetry_unset = .false.
 
         ! All optional and straightfoward except the vector quantities.
 
@@ -1498,11 +1500,20 @@ contains
             call aot_get_val(dmqmc_in%all_sym_sectors, err, lua_state, table, 'all_sym_sectors')
             call aot_get_val(dmqmc_in%all_spin_sectors, err, lua_state, table, 'all_spin_sectors')
             call aot_get_val(dmqmc_in%beta_loops, err, lua_state, table, 'beta_loops')
+            call aot_get_val(dmqmc_in%final_beta, err, lua_state, table, 'final_beta')
+            call aot_get_val(dmqmc_in%piecewise_shift, err, lua_state, table, 'piecewise_shift')
+            call aot_get_val(dmqmc_in%walker_scale_factor, err, lua_state, table, 'walker_scale_factor')
             call aot_get_val(dmqmc_in%find_weights, err, lua_state, table, 'find_weights')
             call aot_get_val(dmqmc_in%find_weights_start, err, lua_state, table, 'find_weights_start')
             call aot_get_val(dmqmc_in%half_density_matrix, err, lua_state, table, 'symmetrize')
-            call aot_get_val(dmqmc_in%symmetric, err, lua_state, table, 'symmetric', default=.true.)
-            call aot_get_val(dmqmc_in%walker_scale_factor, err, lua_state, table, 'walker_scale_factor')
+            if (aot_exists(lua_state, table, 'symmetric')) then
+                call aot_get_val(dmqmc_in%symmetric_bloch, err, lua_state, table, 'symmetric', default=.true.)
+            else if (aot_exists(lua_state, table, 'symmetric_bloch')) then
+                call aot_get_val(dmqmc_in%symmetric_bloch, err, lua_state, table, 'symmetric_bloch', default=.true.)
+            else
+                bloch_symmetry_unset = .true.
+            end if
+            dmqmc_in%symmetric = dmqmc_in%symmetric_bloch
             if (aot_exists(lua_state, table, 'sampling_weights')) then
                 dmqmc_in%weighted_sampling = .true.
                 ! Certainly can't have more excitation levels than basis functions, so that's a handy upper-limit.
@@ -1528,7 +1539,16 @@ contains
                 call aot_get_val(dmqmc_in%target_beta, err, lua_state, table, 'initial_beta')
                 if (parent) call warning('read_dmqmc_in', 'initial_beta is deprecated.  Please use target_beta instead.')
             end if
-            call aot_get_val(dmqmc_in%target_beta, err, lua_state, table, 'target_beta')
+            if (aot_exists(lua_state, table, 'piecewise_beta')) then
+                call aot_get_val(dmqmc_in%target_beta, err, lua_state, table, 'piecewise_beta')
+                call aot_get_val(dmqmc_in%final_beta, err, lua_state, table, 'target_beta')
+                if (parent) call warning('read_dmqmc_in', 'Use of piecewise_beta and target_beta together is deprecated, &
+                                                           falling back to old behavior. This functionality will be removed &
+                                                           in a future version, instead please use target_beta and final_beta &
+                                                           together.')
+            else
+                call aot_get_val(dmqmc_in%target_beta, err, lua_state, table, 'target_beta')
+            end if
             if (aot_exists(lua_state, table, 'initial_matrix')) then
                 call aot_get_val(str, err, lua_state, table, 'initial_matrix')
                 select case(trim(str))
@@ -1540,16 +1560,28 @@ contains
                     if (parent) call stop_all('read_dmqmc_in', 'Unknown  inital density matrix')
                 end select
             end if
-            call aot_get_val(dmqmc_in%symmetric, err, lua_state, table, 'symmetric', default=.true.)
+            if (aot_exists(lua_state, table, 'symmetric')) then
+                call aot_get_val(dmqmc_in%symmetric_interaction_picture, err, lua_state, table, 'symmetric', default=.true.)
+            else
+                call aot_get_val(dmqmc_in%symmetric_interaction_picture, err, lua_state, table, &
+                                    'symmetric_interaction_picture', default=.true.)
+            end if
+            if (bloch_symmetry_unset) dmqmc_in%symmetric_bloch = dmqmc_in%symmetric_interaction_picture
+            if (aot_exists(lua_state, table, 'post_pip_symmetric_propagation')) then
+                call aot_get_val(dmqmc_in%symmetric_bloch, &
+                                    err, lua_state, table, 'post_pip_symmetric_propagation')
+                if (parent) call warning('read_dmqmc_in', 'post_pip_symmetric_propagation is depracated and will&
+                                                           be removed in future versions, use symmetric_interaction_picture &
+                                                           and symmetric_bloch together instead.')
+            end if
+            dmqmc_in%symmetric = dmqmc_in%symmetric_interaction_picture
             call aot_get_val(dmqmc_in%grand_canonical_initialisation, err, lua_state, table, 'grand_canonical_initialisation')
             call aot_get_val(dmqmc_in%metropolis_attempts, err, lua_state, table, 'metropolis_attempts')
-            call aot_get_val(dmqmc_in%piecewise_beta, err, lua_state, table, 'piecewise_beta')
-            call aot_get_val(dmqmc_in%piecewise_shift, err, lua_state, table, 'piecewise_shift')
-            call aot_get_val(dmqmc_in%post_pip_symmetric_propagation, &
-                                err, lua_state, table, 'post_pip_symmetric_propagation', default=.false.)
             call aot_get_val(dmqmc_in%count_reweighted_particles, &
                                 err, lua_state, table, 'count_reweighted_particles', default=.true.)
             call aot_get_val(dmqmc_in%check_reference, err, lua_state, table, 'check_reference', default=.true.)
+            call aot_get_val(dmqmc_in%piecewise_shift, err, lua_state, table, 'piecewise_shift')
+            call aot_get_val(dmqmc_in%walker_scale_factor, err, lua_state, table, 'walker_scale_factor')
             call warn_unused_args(lua_state, ip_keys, table)
             call aot_table_close(lua_state, table)
         end if
