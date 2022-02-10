@@ -168,7 +168,11 @@ contains
         call init_quasi_newton(sys, qmc_in, qmc_state%propagator)
 
         if (qmc_in%state_histograms) then
-            call init_histogram_t(qmc_in, reference_in, state_hist, io_unit)
+            if (doing_calc(dmqmc_calc)) then
+                call init_histogram_t(io_unit, qmc_in, reference_in, state_hist, dmqmc_in)
+            else
+                call init_histogram_t(io_unit, qmc_in, reference_in, state_hist)
+            end if
         end if
 
         ! Need to ensure we end up with a sensible value of shift damping to use.

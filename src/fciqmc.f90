@@ -329,7 +329,8 @@ contains
                     call set_parent_flag(real_population, qmc_in%initiator_pop, determ%flags(idet), &
                                          fciqmc_in%quadrature_initiator, cdet%initiator_flag)
 
-                    if (icycle == 1 .and. qmc_in%state_histograms) then
+                    if (icycle == 1 .and. qmc_in%state_histograms &
+                    .and. (mod(ireport - 1, state_hist%histogram_frequency) == 0)) then
                         call update_histogram_excitation_distribution(qs, cdet%f, qs%ref%f0, real_population(1), state_hist)
                     end if
 
@@ -419,24 +420,16 @@ contains
             call cpu_time(t2)
 
             if (qmc_in%state_histograms .and. (mod(ireport - 1, state_hist%histogram_frequency) == 0)) then
-                call comm_and_report_histogram_excitation_distribution(state_hist, qmc_in%seed, ireport - 1, ireport == 1, .true., &
+                call comm_and_report_histogram_excitation_distribution(state_hist, qmc_in%seed, ireport - 1, &
                                                                         lazy_shift = state_hist%max_ex_level)
-            else if (qmc_in%state_histograms) then
-                call comm_and_report_histogram_excitation_distribution(state_hist, qmc_in%seed, ireport - 1, ireport == 1, .false., &
-                                                                         lazy_shift = state_hist%max_ex_level)
             end if
             if (qmc_in%state_histograms .and. (ireport == qmc_in%nreport)) then
                 do idet = 1, qs%psip_list%nstates ! loop over walkers/dets
                     cdet%f => qs%psip_list%states(:,idet)
-                    cdet%data => qs%psip_list%dat(:,idet)
-                    call decoder_ptr(sys, cdet%f, cdet, qs%excit_gen_data)
-                    do ispace = 1, qs%psip_list%nspaces
-                        ! Extract the real sign from the encoded sign.
-                        real_population(ispace) = real(qs%psip_list%pops(ispace,idet),p)/qs%psip_list%pop_real_factor
-                    end do
-                    call update_histogram_excitation_distribution(qs, cdet%f, qs%ref%f0, real_population(1), state_hist)
+                    call update_histogram_excitation_distribution(qs, cdet%f, qs%ref%f0, &
+                        real(qs%psip_list%pops(1,idet),p)/qs%psip_list%pop_real_factor, state_hist)
                 end do
-                call comm_and_report_histogram_excitation_distribution(state_hist, qmc_in%seed, ireport, .false., .true., &
+                call comm_and_report_histogram_excitation_distribution(state_hist, qmc_in%seed, ireport, &
                                                                         lazy_shift = state_hist%max_ex_level)
             end if
 

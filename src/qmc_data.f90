@@ -241,18 +241,15 @@ type qmc_in_t
     ! A boolean to control if we calculate the state histograms
     ! Only implemented for FCIQMC and DMQMC currently.
     logical :: state_histograms = .false.
-
     ! When state_histograms is true, this controls
     ! the frequency (in report cycles) at which the histograms
     ! are generated and reported. Default is the end of calculation.
     integer :: state_histograms_freq = -1
-
     ! Controls the number of bins per walker decade when
     ! doing a state histograms calculation.
     integer :: state_histograms_bpd = 5
-
     ! A boolean to control if we skip the state histograms memory check.
-    logical :: state_histograms_mchk = .false.
+    logical :: state_histograms_mchk = .true.
 
 end type qmc_in_t
 
