@@ -126,9 +126,9 @@ dmqmc options
     Optional.  Default: true.
 
     Use the symmetrized form of the Bloch equation,
-    :math: `\frac{d\hat{\rho}}{d\beta}=-\frac{1}{2}\{\hat{H},\hat{\rho}\}`,
+    :math:`\frac{d\hat{\rho}}{d\beta}=-\frac{1}{2}\{\hat{H},\hat{\rho}\}`,
     to propagate the density matrix when true. Otherwise the non-symmetrized form,
-    :math: `\frac{d\hat{\rho}}{d\beta}=-\hat{\rho} \hat{H}`
+    :math:`\frac{d\hat{\rho}}{d\beta}=-\hat{\rho} \hat{H}`
     of the Bloch equation is used. The **symmetrize** option only works with
     the symmetric version of the Bloch equation.
 ``replica_tricks``
@@ -345,8 +345,8 @@ ipdmqmc options
     Optional.  Default: true.
 
     Used when performing initialization with **grand_canonical_initialisation**.
-    Checks that the diagonal elements `H_{ii}` found are higher in energy than
-    the current reference `H_{00}`. If not, the reweighting step can possibly lead
+    Checks that the diagonal elements :math:`H_{ii}` found are higher in energy than
+    the current reference :math:`H_{00}`. If not, the reweighting step can possibly lead
     to undesirable behavior such as large walker dumps on single determinants.
 
     .. warning::
