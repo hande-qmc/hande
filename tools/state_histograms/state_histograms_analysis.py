@@ -63,7 +63,7 @@ options : :class:`ArgumentParser`
     return (options.filenames, options)
 
 def main(args):
-    '''Run data analysis on finite-temperature HANDE output.
+    '''Run data analysis on state histogram files from DMQMC or FCIQMC.
 
 Parameters
 ----------

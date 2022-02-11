@@ -29,7 +29,7 @@ mex1 : integer
 mex2 : integer
     The maximum excitation level of the second excitation level.
 '''
-    histogram, mex1, mex2 = {}, 0, 0
+    histogram, allowed_keys, mex1, mex2 = {}, [], 0, 0
 
     with open(histogram_file, 'r') as of:
         for ln, l in enumerate(of):
@@ -42,9 +42,11 @@ mex2 : integer
                     if ex1 > mex1: mex1 = ex1
                     if ex2 > mex2: mex2 = ex2
                     histogram[f'Ex.Lvl {ex1} {ex2}'] = []
+                    allowed_keys.append(f'Ex.Lvl {ex1} {ex2}')
             else:
-                ld = np.array(l.split()).astype(float)[:len(histogram.keys())]
-                for column, ndets in zip(histogram.keys(), ld):
+                ld = np.array(l.split()).astype(float)
+                for column, ndets in zip(list(histogram.keys()), ld):
+                    if column not in allowed_keys: continue
                     histogram[column].append(ndets)
 
     return pd.DataFrame(histogram), mex1, mex2
