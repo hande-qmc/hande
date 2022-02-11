@@ -98,13 +98,7 @@ module state_histograms
 ! indexed by the concatenated labels. We then report histograms for site labels
 ! in set intervals which can be controlled with the input parameters.
 
-! [TODO] - WZV
-!   1) Need to make a seperate readin/lua block for these
-!       parameters probably to make the code more distinct?
-!   2) clean up the various pieces of code to be more readable
-!
-
-use const
+use const, only: p, int_64, i0
 implicit none
 
 type state_histograms_data_t
@@ -114,39 +108,37 @@ type state_histograms_data_t
 
     ! Store the current seed, as in DMQMC this changes per
     ! beta loop. See 'init_dmqmc_beta_loop' for more information.
+    ! We use the seed to label output files.
     integer :: current_seed
 
-    ! Stores the number of mc cycles between the update
-    ! and reporting of histogram data.
+    ! Stores the number of reports between the reporting of histogram data.
     integer :: histogram_frequency = -1
 
     ! Writing the psips (Nw) population as the general form:
     !   Nw = a \times 10^{b}
     ! Then we have a range of 'a' and 'b' values for a given calculation.
-    ! The minimum 'a' is 1, and the minimum 'b' is 0 as a simulation
-    ! will store at least 1 walker on a site in the simulation.
     ! Some variables for tracking the largest 'a' and 'b' used
     ! in the calculation are based on the input target population and
-    ! the max_calc_a. These are set in 'init_histogram_t'.
-    integer :: max_calc_a = 0
-    integer :: max_calc_b = 0
+    ! the number of bins we are using for the calculation.
+    ! See 'init_histogram_t' for the full explaination.
+    integer :: max_calc_a
+    integer :: max_calc_b
 
     ! We want to keep track of the excitation levels psips can
     ! be contained on. So we store the maximum excitation level
-    ! and set it to a value which will cause error's if it is never set.
-    integer :: max_ex_level = -1
+    integer :: max_ex_level
 
     ! This stores the number of psips in a given excitation
-    ! and particle number indexed again by "a" and "b" and the excitation
+    ! and particle number range indexed again by 'a' and 'b' and the excitation
     ! level to the reference, and in DMQMC the excitation level between
     ! the finite basis bitstring labels.
     ! shape = (max_calc_a, max_calc_b, max_ex_level + 1, max_ex_level + 1)
-    real(p), allocatable :: excit_bins(:,:,:,:)
+    integer(int_64), allocatable :: excit_bins(:,:,:,:)
 
     ! Similar to excit_bins, used as the recieving array
     ! from MPI communication of the excit_bins from each proc.
     ! shape = (max_calc_a, max_calc_b, max_ex_level + 1, max_ex_level + 1)
-    real(p), allocatable :: comm_excit_bins(:,:,:,:)
+    integer(int_64), allocatable :: comm_excit_bins(:,:,:,:)
 
 end type state_histograms_data_t
 
@@ -154,9 +146,20 @@ contains
 
     subroutine init_histogram_t(iunit, qmc_in, reference_in, hist, dmqmc_in)
 
-        ! [TODO] WZV - Come back and add useful comments so the code
-        ! can be digested by others and yourself in the future :).
-        ! Don't forget the docstring!
+        ! Set up the parameters and arrays for supporting the
+        ! state histogram data collection and reporting.
+
+        ! In:
+        !    iunit: io unit to print information to.
+        !    qmc_in: input options relating to QMC methods.
+        !    reference_in: current reference determinant, contains information
+        !       about the systems maximum excitation level
+        !    dmqmc_in (optional): if present, beta_loops is used to scale
+        !       the memory estimate of the output files
+        ! In/Out:
+        !    hist: type containing all the state histograms information,
+        !       this will have the system and calculation information as well
+        !       as the arrays set-up upon exiting this routine.
 
         use parallel, only: parent
         use qmc_data, only: qmc_in_t
@@ -178,13 +181,52 @@ contains
 
         ierr = 0
 
+        hist%current_seed = qmc_in%seed
+
+        ! Set the report frequency, i.e. the number of report cycles
+        ! between dumping the state histograms.
         if (qmc_in%state_histograms_freq /= -1) then
-            ! The input file has a report frequency
+            ! The user set report frequency
             hist%histogram_frequency = qmc_in%state_histograms_freq
         else
             ! If not set in the input, default to the end of calculation.
             hist%histogram_frequency = qmc_in%nreport
         end if
+
+        ! We want to write the walker population on states in the form:
+        !     Nw = a \times 10^{b}
+        ! It turns out to be convenient to write a as the remainder of b,
+        ! then we can bin the states based on the values of a and b.
+        !   a: exists in the range [0, 1)
+        !   b: {1, 2, 3, 4, ..., \inf}
+        ! The right edge of a must be non-inclusive as a and b could simply
+        ! be rewritten as b + 1 and a = 0.
+        !
+        ! Then we sub-divide the range of a into bins, hence the histogram bit.
+        ! The number of bins can be controlled via the input, but typically
+        ! 5 bins is reasonable. This results in the following bins for a:
+        !
+        !   [0 -> 0.2), [0.2 -> 0.4), [0.4 -> 0.6], [0.6 -> 0.8), [0.8 -> 1)
+        !
+        ! Then to convert these bin ranges to an integer index, simply
+        ! multiply by 5 and add 1, resulting in:
+        !
+        !   bin index : bin range
+        ! -------------------------
+        !           1 : [0 -> 0.2)
+        !           2 : [0.2 -> 0.4)
+        !           3 : [0.4 -> 0.6)
+        !           4 : [0.6 -> 0.8)
+        !           5 : [0.8 -> 1)
+        !
+        ! Then we can define the values a can take based on the bins per decade
+        ! or value of 'b'. Then the range of possible 'b' values falls within
+        ! the walkers used in the simulation. Typically the maximum number of
+        ! walkers plus three decades is a reasonable estimate.
+        !
+        ! Then along with these values of 'a' and 'b', all that remains to
+        ! define the information for the state histograms are the possible
+        ! excitation levels the exlevel_1 and exlevel_2 can take on.
 
         hist%max_calc_a = qmc_in%state_histograms_bpd
         hist%max_calc_b = floor(log10(qmc_in%target_particles)) + 3
@@ -197,14 +239,13 @@ contains
 
         associate(amax => hist%max_calc_a, bmax => hist%max_calc_b, max_nex => hist%max_ex_level)
 
-            ! Do a simple (and technically incorrect) estimate of the memory
+            ! Do a simple (and technically incorrect) calculation of the memory
             ! requirment to write all the histogram data. Report to the user
             ! the size estimate and if its large exit. This should be an
             ! overestimate on the size. One can skip this check if the user
             ! supplies state_histograms_mchk = false in the lua.
             if (parent) then
                 ! Memory estimates in bytes for the file(s).
-                ! bytes = columns * lines * bytes/(column*line)
                 nfiles = (qmc_in%nreport / hist%histogram_frequency) + 1
                 bytes_est = amax*(bmax+1)*(max_nex+1)*(max_nex+1)*nfiles*18
                 if (present(dmqmc_in)) bytes_est = bytes_est*dmqmc_in%beta_loops
@@ -225,11 +266,11 @@ contains
 
             allocate(hist%excit_bins(1:amax, 0:bmax, 0:max_nex, 0:max_nex), stat=ierr)
             call check_allocate('hist%excit_bins', amax*(bmax+1)*(max_nex+1)*(max_nex+1), ierr)
-            hist%excit_bins = 0.0_p
+            hist%excit_bins = 0_int_64
 
             allocate(hist%comm_excit_bins(1:amax, 0:bmax, 0:max_nex, 0:max_nex), stat=ierr)
             call check_allocate('hist%comm_excit_bins', amax*(bmax+1)*(max_nex+1)*(max_nex+1), ierr)
-            hist%comm_excit_bins = 0.0_p
+            hist%comm_excit_bins = 0_int_64
 
         end associate
 
@@ -237,9 +278,22 @@ contains
 
     subroutine update_histogram_excitation_distribution(qs, f1, f2, real_pops, hist)
 
-        ! [TODO] WZV - Come back and add useful comments so the code
-        ! can be digested by others and yourself in the future :).
-        ! Don't forget the docstring!
+        ! Given the bitstrings and population for our determinant,
+        ! use them to find find the population bin ('a' and 'b' index)
+        ! as well as the excitation level indexes that a determinant belongs to.
+
+        ! In:
+        !   qs: qmc_state_t derived type with information on
+        !       current calculation. Used for the reference bitstring.
+        !    f1: The first bitstring label of \rho_ij (DMQMC) 
+        !       or the bitstring of C_i (FCIQMC)
+        !    f2: The second bitstring label of \rho_ij (DMQMC)
+        !       or the reference bitstring (FCIQMC)
+        !    real_pops: The non-encoded walker population of \rho_ij/C_i
+        ! In/Out:
+        !    hist: type containing all the state histograms information,
+        !       upon exiting, the excitation bins should be updated with
+        !       the location of the current determinant.
 
         use qmc_data, only: qmc_state_t
         use excitations, only: get_excitation_level
@@ -252,42 +306,50 @@ contains
 
         integer(i0), intent(in) :: f1(:), f2(:)
 
-        integer :: exlevel_1, exlevel_2, afac, bpow
+        integer :: exlevel_1, exlevel_2, iafac, ibpow
 
+        ! exlevel_1 is the distance from the ground state row in DMQMC,
+        ! while in FCIQMC we set f2 to qs%ref%f0, thus always results in 0.
         exlevel_1 = get_excitation_level(qs%ref%f0, f2)
+        ! exlevel_2 is the excitation between the two labels of \rho_ij in DMQMC.
+        ! while in FCIQMC it is the excitation from the ground state for C_i.
         exlevel_2 = get_excitation_level(f1, f2)
 
-        ! We want to write the current walker population in the form:
+        ! Expressing the walker population as:
         !     Nw = a \times 10^{b}
-        ! Then we can use a and b to find the histogram bin where this
-        ! determinant belongs.
-        ! The case of b is simple in that we take the floor of the base 10
-        ! logarithm applied to the walker population.
-        ! To get a, we find where a falls in the range (0, 1), and scale by
-        ! the number of bins per decade (max_calc_a) then apply the floor.
-        ! This results in the range [0, max_calc_a - 1], however we want to
-        ! index the range [1, max_calc_a] so we add 1.
-        bpow = floor(log10(abs(real_pops)))
-        afac = floor((log10(abs(real_pops))-bpow)*hist%max_calc_a) + 1
+        ! We can find bin indexes for the population via the following:
+        ! 1) ibpow = |_ log_10( a * 10^{b} ) _|
+        ! 2) iafac = |_ N_bins * 10^{ Nw - b } _| + 1
+        ! See `init_histogram_t` for a more in depth explaination on why this works.
+        ibpow = floor( log10( abs(real_pops)))
+        iafac = floor( (log10( abs(real_pops)) - ibpow) * hist%max_calc_a) + 1
 
-        hist%excit_bins(afac, bpow, exlevel_1, exlevel_2) = hist%excit_bins(afac, bpow, exlevel_1, exlevel_2) + 1.0_p
+        hist%excit_bins(iafac, ibpow, exlevel_1, exlevel_2) = hist%excit_bins(iafac, ibpow, exlevel_1, exlevel_2) + 1_int_64
 
     end subroutine update_histogram_excitation_distribution
 
-    subroutine comm_and_report_histogram_excitation_distribution(hist, qmc_seed, ireport, lazy_shift)
+    subroutine comm_and_report_histogram_excitation_distribution(hist, ireport, lazy_shift)
 
-        ! [TODO] WZV - Come back and add useful comments so the code
-        ! can be digested by others and yourself in the future :).
-        ! Don't forget the docstring!
+        ! Share the histogram data with the root, and write out the information
+        ! then zero the arrays so we can report again.
+
+        ! In:
+        !    ireport: The report cycle we are dumping the histogram data from.
+        !    lazy_shift (optional): Used in FCIQMC, equal to the maximum excitation
+        !       of the simulation. A lazy way to truncate the histogram printing
+        !       to only span those values relevent for FCIQMC.
+        ! In/Out:
+        !    hist: type containing all the state histograms information,
+        !       upon exiting, the excitation bins should be zerod.
 
         use parallel
 
         type(state_histograms_data_t), intent(inout) :: hist
 
-        integer, intent(in) :: qmc_seed, ireport
+        integer, intent(in) :: ireport
         integer, intent(in), optional :: lazy_shift
 
-        integer :: ierr, afac, bpow, ex1, ex2, lazy_trunc
+        integer :: ierr, iafac, ibpow, exlevel_1, exlevel_2, lazy_trunc
         real(p) :: detpop
 
         ierr = 0
@@ -314,26 +376,27 @@ contains
 
                 write(343, '(9X, a9)', advance='no') 'bin_edges'
 
-                do ex1 = 0, hist%max_ex_level - lazy_trunc
-                    do ex2 = 0, hist%max_ex_level
+                do exlevel_1 = 0, hist%max_ex_level - lazy_trunc
+                    do exlevel_2 = 0, hist%max_ex_level
 
-                        write(343, '(4X,A6,I4,I4)', advance='no') 'Ex.Lvl', ex1, ex2
+                        write(343, '(4X,A6,I4,I4)', advance='no') 'Ex.Lvl', exlevel_1, exlevel_2
 
                     end do
                 end do
 
                 write(343, '()')
 
-                do bpow = 0, hist%max_calc_b
-                    do afac = 1, hist%max_calc_a
+                do ibpow = 0, hist%max_calc_b
+                    do iafac = 1, hist%max_calc_a
 
-                        detpop = 10.0_p**(bpow + (1.0_p/bpd)*(afac - 1.0_p))
+                        detpop = 10.0_p**(ibpow + (1.0_p/bpd)*(iafac - 1.0_p))
                         write(343, '(es18.10)', advance='no') detpop
 
-                        do ex1 = 0, hist%max_ex_level - lazy_trunc
-                            do ex2 = 0, hist%max_ex_level
+                        do exlevel_1 = 0, hist%max_ex_level - lazy_trunc
+                            do exlevel_2 = 0, hist%max_ex_level
 
-                                write(343, '(es18.10)', advance='no') comm_exbins(afac, bpow, ex1, ex2)
+                                write(343, '(es18.10)', advance='no') &
+                                    real(comm_exbins(iafac, ibpow, exlevel_1, exlevel_2), p)
 
                             end do
                         end do
@@ -345,8 +408,8 @@ contains
 
             end if
 
-            exbins = 0.0_p
-            comm_exbins = 0.0_p
+            exbins = 0_int_64
+            comm_exbins = 0_int_64
 
         end associate
 
@@ -358,9 +421,12 @@ contains
 
     subroutine deallocate_histogram_t(hist)
 
-        ! [TODO] WZV - Come back and add useful comments so the code
-        ! can be digested by others and yourself in the future :).
-        ! Don't forget the docstring!
+        ! Free the memory allocated for the arrays used to store histogram data.
+
+        ! In/Out:
+        !    hist: type containing all the state histograms information,
+        !       upon exiting the excit_bins and comm_excit_bins should be
+        !       freed from the memory.
 
         use checking, only: check_deallocate
 

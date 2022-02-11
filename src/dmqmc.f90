@@ -417,7 +417,7 @@ contains
                 call cpu_time(t2) 
 
                 if (qmc_in%state_histograms .and. do_state_histogram_report) then
-                    call comm_and_report_histogram_excitation_distribution(state_hist, qmc_in%seed, ireport - 1)
+                    call comm_and_report_histogram_excitation_distribution(state_hist, ireport - 1)
                 end if
 
                 if (parent) then

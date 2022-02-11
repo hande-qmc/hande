@@ -420,7 +420,7 @@ contains
             call cpu_time(t2)
 
             if (qmc_in%state_histograms .and. (mod(ireport - 1, state_hist%histogram_frequency) == 0)) then
-                call comm_and_report_histogram_excitation_distribution(state_hist, qmc_in%seed, ireport - 1, &
+                call comm_and_report_histogram_excitation_distribution(state_hist, ireport - 1, &
                                                                         lazy_shift = state_hist%max_ex_level)
             end if
             if (qmc_in%state_histograms .and. (ireport == qmc_in%nreport)) then
@@ -429,7 +429,7 @@ contains
                     call update_histogram_excitation_distribution(qs, cdet%f, qs%ref%f0, &
                         real(qs%psip_list%pops(1,idet),p)/qs%psip_list%pop_real_factor, state_hist)
                 end do
-                call comm_and_report_histogram_excitation_distribution(state_hist, qmc_in%seed, ireport, &
+                call comm_and_report_histogram_excitation_distribution(state_hist, ireport, &
                                                                         lazy_shift = state_hist%max_ex_level)
             end if
 
