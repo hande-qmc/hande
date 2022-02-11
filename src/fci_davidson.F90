@@ -158,7 +158,7 @@ contains
         real(p), allocatable :: rwork(:), eigvec(:,:)
         integer :: info, ierr, i, j, nwfn, ndets
         integer :: iunit, maxguess, nactive
-        real(p), allocatable :: V(:,:), theta(:), theta_old(:), tmp(:,:), tmpV(:), T(:,:), w(:)
+        real(p), allocatable :: V(:,:), theta(:), theta_old(:), tmp(:,:), tmpV(:), T(:,:), w(:), V_coll(:,:)
         logical, allocatable :: normconv(:)
         logical :: conv
         real(p) :: norm
@@ -192,6 +192,9 @@ contains
             allocate(theta(maxguess))
             allocate(V(ndets,maxguess+ntrial),source=0.0_p,stat=ierr)
             call check_allocate('V',ndets*(maxguess+ntrial),ierr)
+
+            allocate(V_coll(ndets,ntrial),source=0.0_p,stat=ierr)
+            call check_allocate('V',ndets*ntrial,ierr)
 
             allocate(T(maxguess,maxguess),source=0.0_p,stat=ierr)
             call check_allocate('T',maxguess**2,ierr)
@@ -263,19 +266,23 @@ contains
                     ! V holds the approximate eigenvectors and T holds the CI coefficients,
                     ! so one call to gemm gives us the actual guess vectors.
                     write(iunit, '(1X, A)') 'Collapsing subspace...'
+                    ! Matrix multiplication requires the matrices throughout the calculation, so a temporary array is needed
+                    ! to avoid compilers deciding to overwrite the original V array during the multiplication.
                     call gemm('N', 'N', ndets, ntrial, maxguess, 1.0_p, V,&
-                              ndets, T, maxguess, 0.0_p, V, ndets)
+                              ndets, T, maxguess, 0.0_p, V_coll, ndets)
+                    V(:,:ntrial) = V_coll
                     nactive = ntrial
                 end if
 
             end do
 
-            if (conv .eqv. .false.) then
+            if (.not. conv) then
                 call warning('davidson_diagonalisation',&
                     'Davidson diagonalisation did not converge, choose a larger maxiter or tolerance.')
             end if
 
             eigv = theta(1:nEig)
+            deallocate(V, V_coll, T, tmpV, w, tmp, theta)
         end if
         end associate
 
