@@ -4,10 +4,10 @@
  ================================================================
 Version information
 -------------------
-Version       | v1.5-105-g1b51975-dirty
-Commit hash   | 1b5197516e69b6a52f40d0a3b1b3f7a72a3ca138
+Version       | v1.5-112-g9736a0a-dirty
+Commit hash   | 9736a0ad475d80b244f5544c72441a290763d2a4
 Commit author | Brian Zhao
-Commit date   | Mon Feb 7 16:59:17 2022 +0000
+Commit date   | Mon Feb 14 17:12:30 2022 +0000
 Branch        | feature/fci_davidson
 
 Configuration and build information
@@ -18,7 +18,7 @@ Operating system         | Linux-4.15.0-166-generic
 CMake version            | 3.19.1
 CMake generator          | Unix Makefiles
 Build type               | release
-Configuration time       | 2022-02-07 17:50:53 [UTC]
+Configuration time       | 2022-02-14 17:13:26 [UTC]
 Python version           | 3.8.8
 Fortran compiler         | /usr/local/shared/ubuntu-18.04/x86_64/openmpi-3.1.2-intel18/bin/mpifort
 C compiler               | /usr/local/shared/ubuntu-18.04/x86_64/openmpi-3.1.2-intel18/bin/mpicc
@@ -47,9 +47,9 @@ Runtime information
 Hostname:
     gritstone
 Current working dir:
-    /scratch/zz376/code/hande-branches-new/main/test_suite/fci/Ne-RHF-cc-pVDZ_davidson
-Started running on 07/02/2022 at 18:01:12
- Calculation UUID: afa9dc7f-f841-4471-a1f2-439771b22ed1.
+    /scratch/zz376/code/hande-branches-new/feature_fci_davidson/test_suite/fci/Ne-RHF-cc-pVDZ_davidson
+Started running on 14/02/2022 at 17:16:01
+ Calculation UUID: 8ed2a76e-fe03-4170-8ac4-dd28fc2719c8.
  ================================================================
 
  Input options
@@ -71,7 +71,7 @@ fci {
         ndavidson_eigv = 4,
         ndavidson_trialvec = 8,
         davidson_maxsize = 100,
-        davidson_tol = 1e-3,
+        davidson_tol = 1e-4,
         davidson_maxiter = 200,
     },
 }
@@ -197,7 +197,7 @@ fci {
          "ndavidson_eigv": 4,   
          "ndavidson_trialvec": 8,   
          "davidson_maxsize": 100,   
-         "davidson_tol": 0.00100000,   
+         "davidson_tol": 0.00010000,   
      },
      "reference": {
          "det": [ 1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
@@ -247,15 +247,22 @@ fci {
  Iteration  18, basis size  48, rmsE    8.074675E-03
  Iteration  19, basis size  56, rmsE    8.013857E-03
  Iteration  20, basis size  64, rmsE    6.224279E-03
- Residue tolerance of 1.0000E-03 reached, printing results...
+ Iteration  21, basis size  72, rmsE    1.045756E-02
+ Iteration  22, basis size  80, rmsE    4.997280E-03
+ Iteration  23, basis size  88, rmsE    3.625821E-03
+ Iteration  24, basis size  96, rmsE    3.374424E-03
+ Collapsing subspace...
+ Iteration  25, basis size   8, rmsE    1.310176E-13
+ Iteration  26, basis size  16, rmsE    1.406738E-03
+ Residue tolerance of 1.0000E-04 reached, printing results...
  Davidson diagonalisation results
  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
   State     Energy
-      1  -128.676399398189
-      2  -127.034289486934
-      3  -126.883573663868
-      4  -126.865896910203
+      1  -128.676399416725
+      2  -127.037196880562
+      3  -126.905587739908
+      4  -126.871845067351
 
  Timing breakdown
  ----------------
@@ -263,11 +270,11 @@ fci {
  Time for each calculation section (seconds):
 
  Generic system initialisation: .01
- FCI calculation              : 5.55
+ FCI calculation              : 6.94
 
  ================================================================
- Finished running on 07/02/2022 at 18:01:17
- Wall time (seconds):                           5.58
- CPU time (per processor, seconds):             5.56
+ Finished running on 14/02/2022 at 17:16:08
+ Wall time (seconds):                           6.98
+ CPU time (per processor, seconds):             6.95
  ================================================================
 

@@ -14,7 +14,7 @@ fci {
         ndavidson_eigv = 4,
         ndavidson_trialvec = 8,
         davidson_maxsize = 100,
-        davidson_tol = 1e-3,
+        davidson_tol = 1e-4,
         davidson_maxiter = 200,
     },
 }
