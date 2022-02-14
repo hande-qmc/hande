@@ -263,14 +263,13 @@ contains
 
     end subroutine check_qmc_opts
 
-    subroutine check_fci_opts(sys, fci_in, davidson)
+    subroutine check_fci_opts(sys, fci_in)
 
         ! Check the input options provided in the fci table.
 
         ! In:
         !   sys: system being studied.
         !   fci_in: input options for FCI.
-        !   davidson: true if performing Davidson diagonalisation
 
         use fci_utils, only: fci_in_t
         use system, only: sys_t, read_in
@@ -279,7 +278,6 @@ contains
 
         type(sys_t), intent(in) :: sys
         type(fci_in_t), intent(in) :: fci_in
-        logical, intent(in) :: davidson
 
         character(*), parameter :: this = 'check_fci_opts'
 

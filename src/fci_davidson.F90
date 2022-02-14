@@ -47,7 +47,7 @@ contains
 
         iunit = 6
 
-        if (parent) call check_fci_opts(sys, fci_in, .true.)
+        if (parent) call check_fci_opts(sys, fci_in)
 
         call copy_sys_spin_info(sys, sys_bak)
         ref = ref_in
@@ -184,8 +184,10 @@ contains
 
         if (nprocs == 1) then
 
-            allocate(theta_old(nEig), source=0.0_p)
+            allocate(theta_old(nEig), source=0.0_p, stat=ierr)
+            call check_allocate('theta_old', nEig, ierr)
             allocate(normconv(ntrial))
+            call check_allocate('normconv',ntrial, ierr)
 
             ! Integer division always rounds towards zero, i.e 8*50/8 = 48
             maxguess = ntrial*(maxsize/ntrial)
@@ -253,7 +255,7 @@ contains
                         if (sqrt(sum(w**2)) < tol) normconv(j) = .true.
                         ! Precondition the residue vector to form the correction vector,
                         ! if preconditioner = 1, we recover the Lanczos algorithm.
-                        if (abs((theta(j)-A(j,j))) < depsilon) then
+                        if (abs((theta(j)-A(j,j))) < 1e-6) then
                             w = w/(theta(j) - A(j,j) + 0.01)
                         else
                             w = w/(theta(j)-A(j,j))

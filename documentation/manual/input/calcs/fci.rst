@@ -169,7 +169,7 @@ Maximum number of guess vectors held at the same time. This should be very small
 ``davidson_tol``
 type: float.
 
-Optional. Default: 1e-3.
+Optional. Default: 1e-4.
 
 Tolerance in the norm of the residual vectors. If all ``ntrial`` residual vector norms become smaller than this tolerance, the algorithm will converge.
 
