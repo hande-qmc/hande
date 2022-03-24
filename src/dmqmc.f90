@@ -94,7 +94,6 @@ contains
         integer :: nspawn_events
         logical :: imag, calc_ref_proj_energy, piecewise_propagation
         logical :: soft_exit, write_restart_shift, update_tau
-        logical :: soft_exit, write_restart_shift, update_tau, do_state_histogram_report
         logical :: error, rdm_error, attempt_spawning, restarting
         real :: t1, t2
         real(p) :: energy_shift
@@ -293,7 +292,6 @@ contains
                     call propagator_change(sys, qs, dmqmc_in, annihilation_flags, iunit)
                     call init_proc_pointers(sys, qmc_in, reference_in, iunit, dmqmc_in)
                 end if
-                do_state_histogram_report = ((mod(ireport - 1, state_hist%histogram_frequency) == 0) .or. ireport == nreport)
 
                 do icycle = 1, qmc_in%ncycles
 
@@ -344,9 +342,11 @@ contains
                         ! temperature/imaginary time so only get data from one
                         ! temperature value per ncycles.
                         if (icycle == 1) then
-                            if (qmc_in%state_histograms .and. do_state_histogram_report) then
-                                call update_histogram_excitation_distribution(qs, cdet1%f, cdet1%f2, real_population(1), state_hist)
+                            if (qmc_in%state_histograms) then
+                                call update_statehistogram(qs, cdet1%f, cdet1%f2, real_population(1), state_hist, &
+                                                           icycle, ireport, final_report=ireport == nreport)
                             end if
+
                             call update_dmqmc_estimators(sys, dmqmc_in, idet, iteration, cdet1, qs%ref%H00, &
                                                          qs%psip_list, dmqmc_estimates, weighted_sampling, rdm_error, &
                                                          qs%ref%f0)
@@ -416,9 +416,8 @@ contains
 
                 call cpu_time(t2) 
 
-                if (qmc_in%state_histograms .and. do_state_histogram_report) then
-                    call comm_and_report_histogram_excitation_distribution(state_hist, ireport - 1)
-                end if
+                if (qmc_in%state_histograms) call comm_and_report_statehistogram(state_hist, ireport, &
+                                                                                 final_report=ireport == nreport)
 
                 if (parent) then
                     if (bloom_stats%nblooms_curr > 0) call bloom_stats_warning(bloom_stats)

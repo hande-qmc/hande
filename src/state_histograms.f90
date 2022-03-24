@@ -1,18 +1,21 @@
 module state_histograms
 
 ! In this code we consider in general the excitation level
-! between the orthoganol slater determinants used to label states on
+! between the orthogonal Slater determinants used to label states on
 ! the density matrix (DMQMC) or wavefunction (FCIQMC) of a given system.
 ! This is a generalization of the excitation distribution analysis originally
 ! proposed by Cleland et al. See: https://doi.org/10.1021/ct300504f
 !
-! A brief explaination is given using H4/STO-3G in its ground state symmetry 
-! block as an example.  The Hartree--Fock slater determinant bitstring would be:
+! A brief explanation is given using H4/STO-3G in its ground state symmetry 
+! block as an example.  The Hartree--Fock Slater determinant bitstring would be:
 !     | D_0 > = | 0 0 0 0 1 1 1 1 >
-! For the density matrix, sites labeled using the slater determinants are:
+! For the density matrix, sites labeled using the Slater determinants are:
 !     \rho_ij = < D_i | \hat{\rho} | D_j >
-! We can then define a matrix of excitations between those slater
+! We can then define a matrix of excitations between those Slater
 ! determinants < D_i | and | D_j > which would give us the following matrix:
+! (*Note I believe that in the case of DMQMC, this is precisely what 
+!   the excitation distribution calculates when for example doing
+!   Importance Sampling)
 !
 !   0  1  1  2  1  1  2  2  2  2  2  2  2  2  3  3  2  3  3  4
 !   1  0  2  2  2  2  1  3  1  1  3  2  2  3  2  2  2  4  2  3
@@ -37,7 +40,7 @@ module state_histograms
 !
 ! We refer to these excitation labels as exlevel_2 in the code.
 !
-! It is also relevent to consider the excitation between the Hartree--Fock
+! It is also relevant to consider the excitation between the Hartree--Fock
 ! and our site ij. This is useful as it allows us to preserve information
 ! about how far we are from the ground state row of the density matrix.
 ! So we write a matrix of excitations between < D_0 | and < D_i |, giving:
@@ -68,7 +71,7 @@ module state_histograms
 ! Then concatenating matrix two with matrix one, we find
 ! a matrix of excitation labels which label each site on our
 ! density matrix. For the wavefunction (FCIQMC), the same analysis follows
-! but we only consider the ground state "row" of the various matricies.
+! but we only consider the ground state "row" of the various matrices.
 !
 !   0,0  0,1  0,1  0,2  0,1  0,1  0,2  0,2  0,2  0,2  0,2  0,2  0,2  0,2  0,3  0,3  0,2  0,3  0,3  0,4
 !   1,1  1,0  1,2  1,2  1,2  1,2  1,1  1,3  1,1  1,1  1,3  1,2  1,2  1,3  1,2  1,2  1,2  1,4  1,2  1,3
@@ -120,7 +123,7 @@ type state_histograms_data_t
     ! Some variables for tracking the largest 'a' and 'b' used
     ! in the calculation are based on the input target population and
     ! the number of bins we are using for the calculation.
-    ! See 'init_histogram_t' for the full explaination.
+    ! See 'init_histogram_t' for the full explanation.
     integer :: max_calc_a
     integer :: max_calc_b
 
@@ -135,7 +138,7 @@ type state_histograms_data_t
     ! shape = (max_calc_a, max_calc_b, max_ex_level + 1, max_ex_level + 1)
     integer(int_64), allocatable :: excit_bins(:,:,:,:)
 
-    ! Similar to excit_bins, used as the recieving array
+    ! Similar to excit_bins, used as the receiving array
     ! from MPI communication of the excit_bins from each proc.
     ! shape = (max_calc_a, max_calc_b, max_ex_level + 1, max_ex_level + 1)
     integer(int_64), allocatable :: comm_excit_bins(:,:,:,:)
@@ -151,9 +154,9 @@ contains
 
         ! In:
         !    iunit: io unit to print information to.
-        !    qmc_in: input options relating to QMC methods.
-        !    reference_in: current reference determinant, contains information
-        !       about the systems maximum excitation level
+        !    qmc_in: A type containing input options relating to QMC methods.
+        !    reference_in: A type for the reference determinant, contains
+        !       information about the systems maximum excitation level
         !    dmqmc_in (optional): if present, beta_loops is used to scale
         !       the memory estimate of the output files
         ! In/Out:
@@ -171,13 +174,11 @@ contains
         type(qmc_in_t), intent(in) :: qmc_in
         type(reference_t), intent(in) :: reference_in
         type(dmqmc_in_t), intent(in), optional :: dmqmc_in
-
         type(state_histograms_data_t), intent(inout) :: hist
 
         integer, intent(in) :: iunit
 
-        integer :: bytes_est, nfiles
-        integer :: ierr
+        integer :: bytes_est, nfiles, ierr
 
         ierr = 0
 
@@ -195,16 +196,16 @@ contains
 
         ! We want to write the walker population on states in the form:
         !     Nw = a \times 10^{b}
-        ! It turns out to be convenient to write a as the remainder of b,
-        ! then we can bin the states based on the values of a and b.
+        ! It turns out to be convenient to write 'a' as the remainder of 'b',
+        ! then we can bin the states based on the values of 'a' and 'b'.
         !   a: exists in the range [0, 1)
         !   b: {1, 2, 3, 4, ..., \inf}
-        ! The right edge of a must be non-inclusive as a and b could simply
+        ! The right edge of a must be non-inclusive as 'a' and 'b' could simply
         ! be rewritten as b + 1 and a = 0.
         !
-        ! Then we sub-divide the range of a into bins, hence the histogram bit.
+        ! Then we sub-divide the range of 'a' into bins, hence the histogram bit.
         ! The number of bins can be controlled via the input, but typically
-        ! 5 bins is reasonable. This results in the following bins for a:
+        ! 5 bins is reasonable. This results in the following bins for 'a':
         !
         !   [0 -> 0.2), [0.2 -> 0.4), [0.4 -> 0.6], [0.6 -> 0.8), [0.8 -> 1)
         !
@@ -219,7 +220,7 @@ contains
         !           4 : [0.6 -> 0.8)
         !           5 : [0.8 -> 1)
         !
-        ! Then we can define the values a can take based on the bins per decade
+        ! Then we can define the values 'a' can take based on the bins per decade
         ! or value of 'b'. Then the range of possible 'b' values falls within
         ! the walkers used in the simulation. Typically the maximum number of
         ! walkers plus three decades is a reasonable estimate.
@@ -240,7 +241,7 @@ contains
         associate(amax => hist%max_calc_a, bmax => hist%max_calc_b, max_nex => hist%max_ex_level)
 
             ! Do a simple (and technically incorrect) calculation of the memory
-            ! requirment to write all the histogram data. Report to the user
+            ! requirement to write all the histogram data. Report to the user
             ! the size estimate and if its large exit. This should be an
             ! overestimate on the size. One can skip this check if the user
             ! supplies state_histograms_mchk = false in the lua.
@@ -276,7 +277,7 @@ contains
 
     end subroutine init_histogram_t
 
-    subroutine update_histogram_excitation_distribution(qs, f1, f2, real_pops, hist)
+    subroutine update_statehistogram(qs, f1, f2, real_pops, hist, icycle, ireport, final_report)
 
         ! Given the bitstrings and population for our determinant,
         ! use them to find find the population bin ('a' and 'b' index)
@@ -290,6 +291,10 @@ contains
         !    f2: The second bitstring label of \rho_ij (DMQMC)
         !       or the reference bitstring (FCIQMC)
         !    real_pops: The non-encoded walker population of \rho_ij/C_i
+        !    icycle: The current mc cycle of the QMC method
+        !    ireport: The current report cycle of the QMC method
+        !    final_report (optional): A boolean used to ensure an update is
+        !       performed regardless of the current ireport.
         ! In/Out:
         !    hist: type containing all the state histograms information,
         !       upon exiting, the excitation bins should be updated with
@@ -297,16 +302,24 @@ contains
 
         use qmc_data, only: qmc_state_t
         use excitations, only: get_excitation_level
+        use errors, only: stop_all
 
         type(qmc_state_t), intent(in) :: qs
-
         type(state_histograms_data_t), intent(inout) :: hist
 
         real(p), intent(in) :: real_pops
-
         integer(i0), intent(in) :: f1(:), f2(:)
+        integer, intent(in) :: icycle, ireport
+        logical, intent(in), optional :: final_report
 
+        logical :: skip_update_check
         integer :: exlevel_1, exlevel_2, iafac, ibpow
+
+        skip_update_check = .false.
+        if (present(final_report)) skip_update_check = final_report
+
+        ! We only update the state histograms in certain intervals.
+        if ((icycle /= 1 .or. mod(ireport - 1, hist%histogram_frequency) /= 0) .and. .not. skip_update_check) return
 
         ! exlevel_1 is the distance from the ground state row in DMQMC,
         ! while in FCIQMC we set f2 to qs%ref%f0, thus always results in 0.
@@ -315,29 +328,31 @@ contains
         ! while in FCIQMC it is the excitation from the ground state for C_i.
         exlevel_2 = get_excitation_level(f1, f2)
 
-        ! Expressing the walker population as:
-        !     Nw = a \times 10^{b}
-        ! We can find bin indexes for the population via the following:
-        ! 1) ibpow = |_ log_10( a * 10^{b} ) _|
-        ! 2) iafac = |_ N_bins * 10^{ Nw - b } _| + 1
-        ! See `init_histogram_t` for a more in depth explaination on why this works.
+        ! See `init_histogram_t` for a more in depth explanation on why this works.
         ibpow = floor( log10( abs(real_pops)))
         iafac = floor( (log10( abs(real_pops)) - ibpow) * hist%max_calc_a) + 1
 
+        if (ibpow > hist%max_calc_b) then
+            call stop_all('update_statehistogram', 'The walker population has grown several orders &
+                          of magnitude beyond the target population, this will cause a segfault!')
+        end if
+
         hist%excit_bins(iafac, ibpow, exlevel_1, exlevel_2) = hist%excit_bins(iafac, ibpow, exlevel_1, exlevel_2) + 1_int_64
 
-    end subroutine update_histogram_excitation_distribution
+    end subroutine update_statehistogram
 
-    subroutine comm_and_report_histogram_excitation_distribution(hist, ireport, lazy_shift)
+    subroutine comm_and_report_statehistogram(hist, ireport, index_shift, final_report)
 
         ! Share the histogram data with the root, and write out the information
         ! then zero the arrays so we can report again.
 
         ! In:
         !    ireport: The report cycle we are dumping the histogram data from.
-        !    lazy_shift (optional): Used in FCIQMC, equal to the maximum excitation
+        !    index_shift (optional): Used in FCIQMC, equal to the maximum excitation
         !       of the simulation. A lazy way to truncate the histogram printing
         !       to only span those values relevent for FCIQMC.
+        !    final_report (optional): A boolean used to ensure a report is
+        !       performed regardless of the current ireport.
         ! In/Out:
         !    hist: type containing all the state histograms information,
         !       upon exiting, the excitation bins should be zerod.
@@ -347,17 +362,25 @@ contains
         type(state_histograms_data_t), intent(inout) :: hist
 
         integer, intent(in) :: ireport
-        integer, intent(in), optional :: lazy_shift
+        integer, intent(in), optional :: index_shift
+        logical, intent(in), optional :: final_report
 
+        logical :: skip_report_check
         integer :: ierr, iafac, ibpow, exlevel_1, exlevel_2, lazy_trunc
         real(p) :: detpop
 
         ierr = 0
 
         lazy_trunc = 0
-        if (present(lazy_shift)) lazy_trunc = lazy_shift
+        if (present(index_shift)) lazy_trunc = index_shift
 
-        write(hist%state_histograms_output_file, '("EXLEVELPOPS_RNG",I0,"_IREPORT",I0)') hist%current_seed, ireport
+        skip_report_check = .false.
+        if (present(final_report)) skip_report_check = final_report
+
+        ! We only report out the state histograms in certain intervals
+        if (mod(ireport - 1, hist%histogram_frequency) /= 0 .and. .not. skip_report_check) return
+
+        write(hist%state_histograms_output_file, '("EXLEVELPOPS_RNG",I0,"_IREPORT",I0)') hist%current_seed, ireport - 1
 
         if (parent) then
             open(unit=343, file=trim(hist%state_histograms_output_file), action='write')
@@ -417,7 +440,41 @@ contains
             close(343)
         end if
 
-    end subroutine comm_and_report_histogram_excitation_distribution
+    end subroutine comm_and_report_statehistogram
+
+    subroutine fciqmc_statehistogram_final_report(qs, hist, ireport)
+
+        ! For FCIQMC, we do one final update and report at the end of a calculation
+
+        ! In:
+        !    qs: qmc_state_t derived type with information on
+        !        current calculation. Used for the reference bitstring.
+        !    ireport: The current report cycle of the QMC method
+        ! In/Out:
+        !    hist: type containing all the state histograms information,
+        !        upon exiting, the excitation bins should be updated with
+        !        the location of the current determinant.
+
+        use qmc_data, only: qmc_state_t
+
+        type(qmc_state_t), intent(in) :: qs
+        type(state_histograms_data_t), intent(inout) :: hist
+
+        integer, intent(in) :: ireport
+
+        integer :: idet
+        real(p) :: real_pops
+
+        do idet = 1, qs%psip_list%nstates
+            real_pops = real(qs%psip_list%pops(1,idet),p)/qs%psip_list%pop_real_factor
+            call update_statehistogram(qs, qs%psip_list%states(:,idet), qs%ref%f0, &
+                                       real_pops, hist, 1, ireport, final_report=.true.)
+        end do
+
+        call comm_and_report_statehistogram(hist, ireport, index_shift = hist%max_ex_level, &
+                                            final_report=.true.)
+
+    end subroutine fciqmc_statehistogram_final_report
 
     subroutine deallocate_histogram_t(hist)
 

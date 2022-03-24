@@ -329,10 +329,8 @@ contains
                     call set_parent_flag(real_population, qmc_in%initiator_pop, determ%flags(idet), &
                                          fciqmc_in%quadrature_initiator, cdet%initiator_flag)
 
-                    if (icycle == 1 .and. qmc_in%state_histograms &
-                    .and. (mod(ireport - 1, state_hist%histogram_frequency) == 0)) then
-                        call update_histogram_excitation_distribution(qs, cdet%f, qs%ref%f0, real_population(1), state_hist)
-                    end if
+                    if (qmc_in%state_histograms) call update_statehistogram(qs, cdet%f, qs%ref%f0, real_population(1), &
+                                                                            state_hist, icycle, ireport)
 
                     do ispace = 1, qs%psip_list%nspaces
 
@@ -419,18 +417,9 @@ contains
 
             call cpu_time(t2)
 
-            if (qmc_in%state_histograms .and. (mod(ireport - 1, state_hist%histogram_frequency) == 0)) then
-                call comm_and_report_histogram_excitation_distribution(state_hist, ireport - 1, &
-                                                                        lazy_shift = state_hist%max_ex_level)
-            end if
-            if (qmc_in%state_histograms .and. (ireport == qmc_in%nreport)) then
-                do idet = 1, qs%psip_list%nstates ! loop over walkers/dets
-                    cdet%f => qs%psip_list%states(:,idet)
-                    call update_histogram_excitation_distribution(qs, cdet%f, qs%ref%f0, &
-                        real(qs%psip_list%pops(1,idet),p)/qs%psip_list%pop_real_factor, state_hist)
-                end do
-                call comm_and_report_histogram_excitation_distribution(state_hist, ireport, &
-                                                                        lazy_shift = state_hist%max_ex_level)
+            if (qmc_in%state_histograms) then
+                call comm_and_report_statehistogram(state_hist, ireport, index_shift = state_hist%max_ex_level)
+                if (ireport == qmc_in%nreport) call fciqmc_statehistogram_final_report(qs, state_hist, ireport)
             end if
 
             if (parent) then

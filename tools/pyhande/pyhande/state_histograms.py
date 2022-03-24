@@ -29,7 +29,7 @@ mex1 : integer
 mex2 : integer
     The maximum excitation level of the second excitation level.
 '''
-    histogram, allowed_keys, mex1, mex2 = {}, [], 0, 0
+    histogram, allowed_keys, mex1, mex2 = {}, ['bin_edges'], 0, 0
 
     with open(histogram_file, 'r') as of:
         for ln, l in enumerate(of):
