@@ -423,7 +423,7 @@ results : :class:`pandas.DataFrame`
                          "(None) or fix code.")
 
     if very_very_loud:
-        shift,trace,energy_numerator,population,beta_loop_count=[True]*5
+        shift, trace, energy_numerator, population, beta_loop_count = [True]*5
 
     (metadata, data) = ([], [])
     for (md, df) in hande_out:

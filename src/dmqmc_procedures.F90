@@ -1043,7 +1043,7 @@ contains
 
         if (dmqmc_in%symmetric_interaction_picture) then
             if (parent) write (iunit,'(a63)') " # Restoring the propagator to symmetric interaction picture..."
-            ! Restore qmc paramters to symmetric IP-DMQMC propagation
+            ! Restore qmc parameters to symmetric IP-DMQMC propagation
             if (.not. dmqmc_in%symmetric_bloch) then
                 ! The current propagator is asymmetric so we need a factor of
                 ! 1/2 for tau and dmqmc_factor set to 2.
