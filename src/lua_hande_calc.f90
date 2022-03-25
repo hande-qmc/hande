@@ -1474,10 +1474,9 @@ contains
                                                                        'find_weights', 'find_weights_start', 'symmetrize',        &
                                                                        'vary_weights', 'initiator_level', 'symmetric_bloch',      &
                                                                        'walker_scale_factor', 'final_beta', 'piecewise_shift']
-        character(30), parameter :: ip_keys(10)    = [character(30) :: 'target_beta', 'initial_beta', 'initial_matrix',           &
+        character(30), parameter :: ip_keys(9)     = [character(30) :: 'target_beta', 'initial_beta', 'initial_matrix',           &
                                                                        'grand_canonical_initialisation', 'metropolis_attempts',   &
                                                                        'symmetric_interaction_picture', 'piecewise_beta',         &
-                                                                       'post_pip_symmetric_propagation',                          &
                                                                        'skip_gci_reference_check', 'count_diagonal_occupations']
         character(30), parameter :: op_keys(13)    = [character(30) :: 'renyi2', 'energy', 'energy2', 'staggered_magnetisation',  &
                                                                        'correlation', 'excit_dist', 'kinetic_energy',             &
