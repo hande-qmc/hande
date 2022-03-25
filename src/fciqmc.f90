@@ -329,7 +329,7 @@ contains
                     call set_parent_flag(real_population, qmc_in%initiator_pop, determ%flags(idet), &
                                          fciqmc_in%quadrature_initiator, cdet%initiator_flag)
 
-                    if (qmc_in%state_histograms) call update_statehistogram(qs, cdet%f, qs%ref%f0, real_population(1), &
+                    if (qmc_in%state_histograms) call update_state_histogram(qs, cdet%f, qs%ref%f0, real_population(1), &
                                                                             state_hist, icycle, ireport)
 
                     do ispace = 1, qs%psip_list%nspaces
@@ -418,8 +418,8 @@ contains
             call cpu_time(t2)
 
             if (qmc_in%state_histograms) then
-                call comm_and_report_statehistogram(state_hist, ireport, index_shift = state_hist%max_ex_level)
-                if (ireport == qmc_in%nreport) call fciqmc_statehistogram_final_report(qs, state_hist, ireport)
+                call comm_and_report_state_histogram(state_hist, ireport, index_shift = state_hist%max_ex_level)
+                if (ireport == qmc_in%nreport .or. soft_exit) call fciqmc_state_histogram_final_report(qs, state_hist, ireport)
             end if
 
             if (parent) then

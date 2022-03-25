@@ -244,12 +244,12 @@ type qmc_in_t
     ! When state_histograms is true, this controls
     ! the frequency (in report cycles) at which the histograms
     ! are generated and reported. Default is the end of calculation.
-    integer :: state_histograms_freq = -1
+    integer :: state_histograms_nreport = -1
     ! Controls the number of bins per walker decade when
     ! doing a state histograms calculation.
-    integer :: state_histograms_bpd = 5
+    integer :: state_histograms_nbins = 5
     ! A boolean to control if we skip the state histograms memory check.
-    logical :: state_histograms_mchk = .true.
+    logical :: skip_histograms_mem_chk = .false.
 
 end type qmc_in_t
 
@@ -1046,9 +1046,9 @@ contains
         call json_write_key(js, 'quasi_newton_value', qmc%quasi_newton_value)
         call json_write_key(js, 'quasi_newton_pop_control', qmc%quasi_newton_pop_control)
         call json_write_key(js, 'state_histograms', qmc%state_histograms)
-        call json_write_key(js, 'state_histograms_freq', qmc%state_histograms_freq)
-        call json_write_key(js, 'state_histograms_bpd', qmc%state_histograms_bpd)
-        call json_write_key(js, 'state_histograms_mchk', qmc%state_histograms_mchk)
+        call json_write_key(js, 'state_histograms_nreport', qmc%state_histograms_nreport)
+        call json_write_key(js, 'state_histograms_nbins', qmc%state_histograms_nbins)
+        call json_write_key(js, 'skip_histograms_mem_chk', qmc%skip_histograms_mem_chk)
         call json_write_key(js, 'use_mpi_barriers', qmc%use_mpi_barriers, .true.)
         call json_object_end(js, terminal)
 

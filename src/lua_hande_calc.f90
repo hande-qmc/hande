@@ -937,8 +937,8 @@ contains
                                                                  'reference_target', 'vary_shift', 'quasi_newton', &
                                                                  'quasi_newton_threshold', 'quasi_newton_value', &
                                                                  'quasi_newton_pop_control', 'state_histograms', &
-                                                                 'state_histograms_freq', 'state_histograms_bpd', &
-                                                                 'state_histograms_mchk']
+                                                                 'state_histograms_nreport', 'state_histograms_nbins', &
+                                                                 'skip_histograms_mem_chk']
 
         if (present(short)) then
             skip = short
@@ -989,9 +989,9 @@ contains
         call aot_get_val(qmc_in%quasi_newton_value, err, lua_state, qmc_table, 'quasi_newton_value')
         call aot_get_val(qmc_in%quasi_newton_pop_control, err, lua_state, qmc_table, 'quasi_newton_pop_control')
         call aot_get_val(qmc_in%state_histograms, err, lua_state, qmc_table, 'state_histograms')
-        call aot_get_val(qmc_in%state_histograms_freq, err, lua_state, qmc_table, 'state_histograms_freq')
-        call aot_get_val(qmc_in%state_histograms_bpd, err, lua_state, qmc_table, 'state_histograms_bpd')
-        call aot_get_val(qmc_in%state_histograms_mchk, err, lua_state, qmc_table, 'state_histograms_mchk')
+        call aot_get_val(qmc_in%state_histograms_nreport, err, lua_state, qmc_table, 'state_histograms_nreport')
+        call aot_get_val(qmc_in%state_histograms_nbins, err, lua_state, qmc_table, 'state_histograms_nbins')
+        call aot_get_val(qmc_in%skip_histograms_mem_chk, err, lua_state, qmc_table, 'skip_histograms_mem_chk')
 
 
         if (aot_exists(lua_state, qmc_table, 'reference_target')) then

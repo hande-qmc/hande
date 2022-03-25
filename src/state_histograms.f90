@@ -109,6 +109,9 @@ type state_histograms_data_t
     ! File names which will be used to write the data to.
     character(1024) :: state_histograms_output_file
 
+    ! Pad the report cycle in the file name for nice directory sorting
+    character(1024) :: report_formatter
+
     ! Store the current seed, as in DMQMC this changes per
     ! beta loop. See 'init_dmqmc_beta_loop' for more information.
     ! We use the seed to label output files.
@@ -123,7 +126,7 @@ type state_histograms_data_t
     ! Some variables for tracking the largest 'a' and 'b' used
     ! in the calculation are based on the input target population and
     ! the number of bins we are using for the calculation.
-    ! See 'init_histogram_t' for the full explanation.
+    ! See 'init_state_histogram_t' for the full explanation.
     integer :: max_calc_a
     integer :: max_calc_b
 
@@ -147,7 +150,7 @@ end type state_histograms_data_t
 
 contains
 
-    subroutine init_histogram_t(iunit, qmc_in, reference_in, hist, dmqmc_in)
+    subroutine init_state_histogram_t(iunit, qmc_in, reference_in, hist, dmqmc_in)
 
         ! Set up the parameters and arrays for supporting the
         ! state histogram data collection and reporting.
@@ -183,12 +186,13 @@ contains
         ierr = 0
 
         hist%current_seed = qmc_in%seed
+        write(hist%report_formatter, '("(I0.",I0,")")') floor(log10(real(qmc_in%nreport))) + 3
 
         ! Set the report frequency, i.e. the number of report cycles
         ! between dumping the state histograms.
-        if (qmc_in%state_histograms_freq /= -1) then
+        if (qmc_in%state_histograms_nreport /= -1) then
             ! The user set report frequency
-            hist%histogram_frequency = qmc_in%state_histograms_freq
+            hist%histogram_frequency = qmc_in%state_histograms_nreport
         else
             ! If not set in the input, default to the end of calculation.
             hist%histogram_frequency = qmc_in%nreport
@@ -229,7 +233,7 @@ contains
         ! define the information for the state histograms are the possible
         ! excitation levels the exlevel_1 and exlevel_2 can take on.
 
-        hist%max_calc_a = qmc_in%state_histograms_bpd
+        hist%max_calc_a = qmc_in%state_histograms_nbins
         hist%max_calc_b = floor(log10(qmc_in%target_particles)) + 3
 
         if (reference_in%max_ex_level == -1) then
@@ -244,7 +248,7 @@ contains
             ! requirement to write all the histogram data. Report to the user
             ! the size estimate and if its large exit. This should be an
             ! overestimate on the size. One can skip this check if the user
-            ! supplies state_histograms_mchk = false in the lua.
+            ! supplies skip_histograms_mem_chk = false in the lua.
             if (parent) then
                 ! Memory estimates in bytes for the file(s).
                 nfiles = (qmc_in%nreport / hist%histogram_frequency) + 1
@@ -257,10 +261,10 @@ contains
                     0.000001_p*bytes_est
                 write(iunit, '()')
 
-                if (qmc_in%state_histograms_mchk .and. 0.000001_p * bytes_est > 1000.0_p) then
-                    call stop_all('init_histogram_t', 'The memory estimate for the state &
+                if (qmc_in%skip_histograms_mem_chk .and. 0.000001_p * bytes_est > 1000.0_p) then
+                    call stop_all('init_state_histogram_t', 'The memory estimate for the state &
                                    histogram files is over 1000 (MB), if you acknowledge this &
-                                   warning and wish to proceed add "state_histograms_mchk = false," &
+                                   warning and wish to proceed add "skip_histograms_mem_chk = false," &
                                    to the qmc lua block.')
                 end if
             end if
@@ -275,9 +279,9 @@ contains
 
         end associate
 
-    end subroutine init_histogram_t
+    end subroutine init_state_histogram_t
 
-    subroutine update_statehistogram(qs, f1, f2, real_pops, hist, icycle, ireport, final_report)
+    subroutine update_state_histogram(qs, f1, f2, real_pops, hist, icycle, ireport, final_report)
 
         ! Given the bitstrings and population for our determinant,
         ! use them to find find the population bin ('a' and 'b' index)
@@ -328,20 +332,20 @@ contains
         ! while in FCIQMC it is the excitation from the ground state for C_i.
         exlevel_2 = get_excitation_level(f1, f2)
 
-        ! See `init_histogram_t` for a more in depth explanation on why this works.
+        ! See `init_state_histogram_t` for a more in depth explanation on why this works.
         ibpow = floor( log10( abs(real_pops)))
         iafac = floor( (log10( abs(real_pops)) - ibpow) * hist%max_calc_a) + 1
 
         if (ibpow > hist%max_calc_b) then
-            call stop_all('update_statehistogram', 'The walker population has grown several orders &
+            call stop_all('update_state_histogram', 'The walker population has grown several orders &
                           of magnitude beyond the target population, this will cause a segfault!')
         end if
 
         hist%excit_bins(iafac, ibpow, exlevel_1, exlevel_2) = hist%excit_bins(iafac, ibpow, exlevel_1, exlevel_2) + 1_int_64
 
-    end subroutine update_statehistogram
+    end subroutine update_state_histogram
 
-    subroutine comm_and_report_statehistogram(hist, ireport, index_shift, final_report)
+    subroutine comm_and_report_state_histogram(hist, ireport, index_shift, final_report)
 
         ! Share the histogram data with the root, and write out the information
         ! then zero the arrays so we can report again.
@@ -368,6 +372,7 @@ contains
         logical :: skip_report_check
         integer :: ierr, iafac, ibpow, exlevel_1, exlevel_2, lazy_trunc
         real(p) :: detpop
+        character(1024) :: ireport_string
 
         ierr = 0
 
@@ -380,7 +385,8 @@ contains
         ! We only report out the state histograms in certain intervals
         if (mod(ireport - 1, hist%histogram_frequency) /= 0 .and. .not. skip_report_check) return
 
-        write(hist%state_histograms_output_file, '("EXLEVELPOPS_RNG",I0,"_IREPORT",I0)') hist%current_seed, ireport - 1
+        write(ireport_string, fmt=hist%report_formatter) ireport - 1
+        write(hist%state_histograms_output_file, '("EXLEVELPOPS-RNG",I0,"-IREPORT",A)') hist%current_seed, trim(ireport_string)
 
         if (parent) then
             open(unit=343, file=trim(hist%state_histograms_output_file), action='write')
@@ -440,11 +446,13 @@ contains
             close(343)
         end if
 
-    end subroutine comm_and_report_statehistogram
+    end subroutine comm_and_report_state_histogram
 
-    subroutine fciqmc_statehistogram_final_report(qs, hist, ireport)
+    subroutine fciqmc_state_histogram_final_report(qs, hist, ireport)
 
-        ! For FCIQMC, we do one final update and report at the end of a calculation
+        ! For FCIQMC, we do one final update and report at the end of a calculation.
+        ! This makes FCIQMC and DMQMC report state histograms in a similar fashion.
+        ! Normally they would not due to DMQMC reporting data for the previous cycle.
 
         ! In:
         !    qs: qmc_state_t derived type with information on
@@ -467,14 +475,14 @@ contains
 
         do idet = 1, qs%psip_list%nstates
             real_pops = real(qs%psip_list%pops(1,idet),p)/qs%psip_list%pop_real_factor
-            call update_statehistogram(qs, qs%psip_list%states(:,idet), qs%ref%f0, &
+            call update_state_histogram(qs, qs%psip_list%states(:,idet), qs%ref%f0, &
                                        real_pops, hist, 1, ireport, final_report=.true.)
         end do
 
-        call comm_and_report_statehistogram(hist, ireport, index_shift = hist%max_ex_level, &
+        call comm_and_report_state_histogram(hist, ireport, index_shift = hist%max_ex_level, &
                                             final_report=.true.)
 
-    end subroutine fciqmc_statehistogram_final_report
+    end subroutine fciqmc_state_histogram_final_report
 
     subroutine deallocate_histogram_t(hist)
 

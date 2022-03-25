@@ -342,8 +342,10 @@ contains
                         ! temperature/imaginary time so only get data from one
                         ! temperature value per ncycles.
                         if (icycle == 1) then
+                            ! If we are accumulating state histogram data, update
+                            ! the walker/det count from this state.
                             if (qmc_in%state_histograms) then
-                                call update_statehistogram(qs, cdet1%f, cdet1%f2, real_population(1), state_hist, &
+                                call update_state_histogram(qs, cdet1%f, cdet1%f2, real_population(1), state_hist, &
                                                            icycle, ireport, final_report=ireport == nreport)
                             end if
 
@@ -416,8 +418,9 @@ contains
 
                 call cpu_time(t2) 
 
-                if (qmc_in%state_histograms) call comm_and_report_statehistogram(state_hist, ireport, &
-                                                                                 final_report=ireport == nreport)
+                if (qmc_in%state_histograms) then
+                    call comm_and_report_state_histogram(state_hist, ireport, final_report=ireport == nreport .or. soft_exit)
+                end if
 
                 if (parent) then
                     if (bloom_stats%nblooms_curr > 0) call bloom_stats_warning(bloom_stats)
@@ -612,7 +615,7 @@ contains
         !    spawn: spawn_t object.  Reset on exit.
         !    dmqmc_estimates: type containing dmqmc estimates.
         !    qs: state of QMC calculation. Shift is reset on exit.
-        !    state_hist: The sate_histogram type containing information
+        !    state_hist: A type containing information
         !       for state histograms
         ! In:
         !    qmc_in: input options relating to QMC calculations.

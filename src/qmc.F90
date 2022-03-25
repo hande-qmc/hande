@@ -171,9 +171,9 @@ contains
 
         if (qmc_in%state_histograms) then
             if (doing_calc(dmqmc_calc)) then
-                call init_histogram_t(io_unit, qmc_in, reference_in, state_hist, dmqmc_in)
+                call init_state_histogram_t(io_unit, qmc_in, reference_in, state_hist, dmqmc_in)
             else
-                call init_histogram_t(io_unit, qmc_in, reference_in, state_hist)
+                call init_state_histogram_t(io_unit, qmc_in, reference_in, state_hist)
             end if
         end if
 
