@@ -24,10 +24,10 @@ dmqmc {
     },
     ipdmqmc = {
         target_beta = 1.0,
-        symmetric = false,
+        symmetric_interaction_picture = false,
         initial_matrix = 'free_electron',
         grand_canonical_initialisation = true,
-        check_reference = false,
+        skip_gci_reference_check = true,
     },
     operators = {
         energy = true,

@@ -68,13 +68,13 @@ None.
     ])
 
     # Add momentum distribution to dictionary of observables to be analaysed.
-    add_observable_to_dict(observables, columns, 'n_')
+    add_observable_to_dict(observables, columns, 'n_', denominators, 'Trace')
     # Add spin-averaged static structure factor to dict of observables to be analaysed.
-    add_observable_to_dict(observables, columns, 'S_')
+    add_observable_to_dict(observables, columns, 'S_', denominators, 'Trace')
     # Add spin up static structure factor to dict of observables to be analaysed.
-    add_observable_to_dict(observables, columns, 'Suu_')
+    add_observable_to_dict(observables, columns, 'Suu_', denominators, 'Trace')
     # Add spin down static structure factor to dict of observables to be analaysed.
-    add_observable_to_dict(observables, columns, 'Sud_')
+    add_observable_to_dict(observables, columns, 'Sud_', denominators, 'Trace')
     # DataFrame to hold the final mean and error estimates.
     results = pd.DataFrame(index=beta_values)
     # DataFrame for the numerator.
@@ -100,7 +100,8 @@ None.
     return results
 
 
-def add_observable_to_dict(observables, columns, label):
+def add_observable_to_dict(observables, columns, label,
+                           denominators=None, denominator_label=None):
     '''Add observable to dictionary of analysed data.
 
     This sets the value to be the same as the key specified by label variable.
@@ -113,10 +114,17 @@ columns : list
     Columns in hande output.
 label : string
     regex to search for in list of columns.
+denominators : dict, optional
+    Dictionary of observables corresponding denominators for analysis.
+denominator_label : str, optional
+    The denominator label for the new observable
 '''
 
     new_obs = [c for c in columns if label in c]
     observables.update(dict(zip(new_obs, new_obs)))
+    if denominators is not None:
+        new_den_zip = zip(new_obs, [denominator_label]*len(new_obs))
+        denominators.update(dict(new_den_zip))
 
 
 def free_energy_error_analysis(data, results, dtau):
@@ -478,7 +486,12 @@ results : :class:`pandas.DataFrame`
         # Set up estimator we need to integrate wrt time/temperature to evaluate
         # free energy difference.
         if ipdmqmc:
-            if metadata[0]['ipdmqmc']['symmetric']:
+            # Deal with legacy input.
+            if 'symmetric' in metadata[0]['ipdmqmc']:
+                symmetric = metadata[0]['ipdmqmc']['symmetric']
+            else:
+                symmetric = metadata[0]['ipdmqmc']['symmetric_interaction_picture']
+            if symmetric:
                 estimates[r'\sum\rho_{ij}VI_{ji}'] = (
                                                  data[r'\sum\rho_{ij}HI{ji}'] -
                                                  data[r'\sum\rho_{ij}H0{ji}']
@@ -539,12 +552,12 @@ results : :class:`pandas.DataFrame`
     # If requested, return the averaged energy numerator profile to the results.
     if energy_numerator:
         numerator_key_val = {
-                r'\sum\rho_{ij}H_{ji}'  : 'Tr[Hp]',
-                r'Re{\sum \rho H}'      : 'Re{Tr[Hp]}',
-                r'Im{\sum \rho H}'      : 'Im{Tr[Hp]}',
-                r'\sum\rho_{0j}H_{j0}'  : r'Tr[p0H0]',
-                r'Re{Sum\rho_0j H_j0}'  : r'Re{Tr[p0H0]}',
-                r'Im{Sum\rho_0j H_j0}'  : r'Im{Tr[p0H0]}',
+                r'\sum\rho_{ij}H_{ji}': 'Tr[Hp]',
+                r'Re{\sum \rho H}': 'Re{Tr[Hp]}',
+                r'Im{\sum \rho H}': 'Im{Tr[Hp]}',
+                r'\sum\rho_{0j}H_{j0}': r'Tr[p0H0]',
+                r'Re{Sum\rho_0j H_j0}': r'Re{Tr[p0H0]}',
+                r'Im{Sum\rho_0j H_j0}': r'Im{Tr[p0H0]}',
             }
         for (k,v) in numerator_key_val.items():
             if k in columns:

@@ -718,7 +718,7 @@ contains
 
                 ! Do a simple check to make sure we didn't find a determinant
                 ! lower in energy then the reference.
-                if (dmqmc_in%check_reference) Hii = real(sc0_ptr(sys, f),p)
+                if (.not. dmqmc_in%skip_gci_reference_check) Hii = real(sc0_ptr(sys, f),p)
                 if ((new_H00 - Hii) > depsilon) then
                     new_H00 = Hii
                     write(6, '(1X, "# H_{ii}: ", f22.12, 1X, "det = {")', advance='no') Hii
@@ -728,10 +728,12 @@ contains
                     write(6, '("},")')
                     call warning('create_initial_density_matrix', 'determinant lower in energy than reference &
                                                                     & found, exiting after initialization completion!')
-                    if (.not.found_lower_reference) found_lower_reference = .true.
+                    if (.not. found_lower_reference) found_lower_reference = .true.
                 end if
 
-                if (dmqmc_in%count_reweighted_particles) then
+                if (dmqmc_in%count_diagonal_occupations) then
+                    ipsip = ipsip + 1
+                else
                     ! Count the total number of particles spawned which
                     ! can very depending on the reweighting step
                     if (pop_real_factor >= 2_int_p) then
@@ -739,8 +741,6 @@ contains
                     else
                         ipsip = ipsip + abs(nspawn)
                     end if
-                else
-                    ipsip = ipsip + 1
                 end if
 
             end if

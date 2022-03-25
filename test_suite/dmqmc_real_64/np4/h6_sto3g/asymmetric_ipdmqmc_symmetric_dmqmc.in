@@ -14,14 +14,14 @@ dmqmc {
         rng_seed = -1887326254,
     },
     dmqmc = {
+        final_beta = 3,
         beta_loops = 1,
+        symmetric_bloch = true,
     },
     ipdmqmc = {
-        piecewise_beta = 1,
-        target_beta = 3,
-        symmetric = false,
+        target_beta = 1,
+        symmetric_interaction_picture = false,
         grand_canonical_initialisation = true,
-        post_pip_symmetric_propagation = true,
     },
     operators = {
         energy = true,

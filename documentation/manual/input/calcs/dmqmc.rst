@@ -339,15 +339,16 @@ ipdmqmc options
     requiring a non-zero value of metropolis_attempts to be set for the correct
     distribution to be reached.
 
-``check_reference``
+``skip_gci_reference_check``
     type: boolean.
 
-    Optional.  Default: true.
+    Optional.  Default: false.
 
-    Used when performing initialization with **grand_canonical_initialisation**.
-    Checks that the diagonal elements :math:`H_{ii}` found are higher in energy than
-    the current reference :math:`H_{00}`. If not, the reweighting step can possibly lead
-    to undesirable behavior such as large walker dumps on single determinants.
+    When performing **grand_canonical_initialisation**, we check that :math:`H_{ii}`
+    is not lower in energy than :math:`H_{00}`. If a lower energy :math:`H_{ii}` is
+    found this can cause many spawns to occur with a weight lower than 1.0 which
+    is undesirable, and so the simulation exits with information to update the reference.
+    Setting this flag to true will ignore the lower energy :math:`H_{ii}`.
 
     .. warning::
 
@@ -376,24 +377,17 @@ ipdmqmc options
         This feature is experimental and only tested for the 3D uniform electron
         gas.
 
-``post_pip_symmetric_propagation``
+``count_diagonal_occupations``
     type: boolean.
 
     Optional. Default: false.
 
-    If true, uses the symmetric version of the Bloch equation to propagate
-    through temperature, otherwise the asymmetric form is used. 
-
-``count_reweighted_particles``
-    type: boolean.
-
-    Optional. Default: true.
-
-    Only relevant for the grand canonical initialization procedure. If true, we 
-    attempt to keep better track of the number of walkers we are adding to the 
-    trial density matrix. Helpful for ensuring the initial population is closer to the
-    desired value in the input. Generally only applicable when **initial_matrix**
-    is set to 'hartree_fock'. 
+    When performing **grand_canonical_initialisation**, instead of accumulating
+    the number of walkers being added to the trace count the number of diagonal
+    elements that are occupied. The original **grand_canonical_initialisation**
+    would count the number of successful occupations which could lead to substantially
+    more particles being added then the provided initial population.  Generally
+    only applicable when **initial_matrix** is set to 'hartree_fock'. 
 
 .. _operators_table:
 

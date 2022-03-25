@@ -14,7 +14,7 @@ dmqmc {
     },
     dmqmc = {
         beta_loops = 3,
-        symmetric = false,
+        symmetric_bloch = false,
         walker_scale_factor = 250,
     },
     operators = {

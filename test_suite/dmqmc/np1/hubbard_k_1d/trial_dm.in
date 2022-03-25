@@ -24,7 +24,7 @@ dmqmc {
         target_beta = 0.5,
         initial_matrix = 'hartree_fock',
         metropolis_attempts = 1000,
-        symmetric = false,
+        symmetric_interaction_picture = false,
     },
     operators = {
         energy = true,

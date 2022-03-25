@@ -217,14 +217,14 @@ type dmqmc_in_t
     real(p) :: chem_pot = 0.0_p
     ! Controls whether we check the reference state against the H_{ii} elements
     ! generated when running IP-DMQMC with the grand canonical initialization
-    ! with the 'hartree--fock' initial mean field density matrix.
-    logical :: check_reference = .true.
+    ! using the 'hartree--fock' initial mean field density matrix.
+    logical :: skip_gci_reference_check = .false.
     ! A boolean used in grand canonical initialization
     ! If it is true (by default) the walkers generated in the reweighting
     ! step (if it is performed) are counted towards the total walker number.
     ! Previously successful attempts at generating elements were counted
     ! which could lead to over or under initalization of walkers on the trace.
-    logical :: count_reweighted_particles = .true.
+    logical :: count_diagonal_occupations = .false.
 
     ! Input options relating to RDMs in DMQMC.
     type(dmqmc_rdm_in_t) :: rdm
@@ -447,8 +447,8 @@ contains
             call json_write_key(js, 'initial_matrix', dmqmc%initial_matrix)
         end select
         call json_write_key(js, 'grand_canonical_initialisation', dmqmc%grand_canonical_initialisation)
-        call json_write_key(js, 'count_reweighted_particles', dmqmc%count_reweighted_particles)
-        call json_write_key(js, 'check_reference', dmqmc%check_reference)
+        call json_write_key(js, 'count_diagonal_occupations', dmqmc%count_diagonal_occupations)
+        call json_write_key(js, 'skip_gci_reference_check', dmqmc%skip_gci_reference_check)
         call json_write_key(js, 'symmetric_interaction_picture', dmqmc%symmetric_interaction_picture)
         call json_write_key(js, 'chem_pot', dmqmc%chem_pot)
         call json_write_key(js, 'metropolis_attempts', dmqmc%metropolis_attempts, terminal=.true.)

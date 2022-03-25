@@ -15,12 +15,12 @@ dmqmc {
     },
     dmqmc = {
         beta_loops = 2,
+        final_beta = 4,
     },
     ipdmqmc = {
-        piecewise_beta = 1,
-        target_beta = 4,
+        target_beta = 1,
         grand_canonical_initialisation = true,
-        symmetric = false,
+        symmetric_interaction_picture = false,
     },
     operators = {
         energy = true,

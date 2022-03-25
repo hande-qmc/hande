@@ -27,9 +27,9 @@ dmqmc {
         target_beta = 1.0,
         initial_matrix = 'hartree_fock',
         grand_canonical_initialisation = true,
-        symmetric  = false,
-        check_reference = false,
-        count_reweighted_particles = false,
+        symmetric_interaction_picture = false,
+        skip_gci_reference_check = true,
+        count_diagonal_occupations = true,
     },
     operators = {
         energy = true,
