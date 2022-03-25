@@ -405,7 +405,7 @@ contains
         end if
         if (dmqmc_in%symmetric .and. dmqmc_in%ipdmqmc .and. .not. (sys%system /= ueg .or. sys%system /= read_in)) then
             call stop_all(this, 'Symmetric propagation is only implemented for the UEG and read_in. Please implement.')
-        else if (dmqmc_in%symmetric .and. dmqmc_in%ipdmqmc .and. (sys%system /= read_in)) then
+        else if (dmqmc_in%symmetric .and. dmqmc_in%ipdmqmc .and. (sys%system == read_in)) then
             call warning(this, 'Symmetric IP-DMQMC propagation is experimental for read_in.')
         end if
 
