@@ -152,8 +152,8 @@ test-intel:
     tags: 
         - hande-testing
     before_script:
-        - module load icc
         - module load anaconda/python3
+        - module load icc
         - module load cmake
     script:
         - ./cmakeconfig.py --fc=ifort --cc=icc --lua=./local/ --hdf5=./local/hdf5-intel --pop-size=64 --det-size=64 
@@ -168,8 +168,8 @@ test-intel-dbg:
     tags: 
         - hande-testing
     before_script:
-        - module load icc
         - module load anaconda/python3
+        - module load icc
         - module load cmake
     script:
         - ./cmakeconfig.py --fc=ifort --cc=icc --lua=./local/ --hdf5=./local/hdf5-intel --pop-size=64 --det-size=64  --type=debug
@@ -184,8 +184,8 @@ test-intel-mpi-pop64:
     tags: 
         - hande-testing
     before_script:
-        - module load icc
         - module load anaconda/python3
+        - module load icc
         - module load mkl
         - module load mpi/openmpi/64/intel18/3.1.2
         - module load cmake
@@ -202,10 +202,10 @@ test-intel-mpi-pop64-dbg:
     tags: 
         - hande-testing
     before_script:
+        - module load anaconda/python3
         - module load icc
         - module load mpi/openmpi/64/intel18/3.1.2
         - module load mkl
-        - module load anaconda/python3
         - module load cmake
     script:
         - ./cmakeconfig.py --mpi --fc=mpif90 --cc=mpicc --mpi-with-scalapack  --lua=./local/ --hdf5=./local/hdf5-intel  --type=debug --pop-size=64 --det-size=64
@@ -220,8 +220,8 @@ test-intel-mpi:
     tags: 
         - hande-testing
     before_script:
-        - module load icc
         - module load anaconda/python3
+        - module load icc
         - module load mkl
         - module load mpi/openmpi/64/intel18/3.1.2
         - module load cmake
@@ -238,10 +238,10 @@ test-intel-mpi-dbg:
     tags: 
         - hande-testing
     before_script:
+        - module load anaconda/python3
         - module load icc
         - module load mpi/openmpi/64/intel18/3.1.2
         - module load mkl
-        - module load anaconda/python3
         - module load cmake
     script:
         - ./cmakeconfig.py --mpi --fc=mpif90 --cc=mpicc --mpi-with-scalapack  --lua=./local/ --hdf5=./local/hdf5-intel  --type=debug 
@@ -256,9 +256,9 @@ test-intel-quick:
     tags: 
         - hande-testing
     before_script:
+        - module load anaconda/python3
         - module load icc
         - module load mpi/openmpi/64/intel18/3.1.2
-        - module load anaconda/python3
         - module load mkl
         - module load cmake
     script:
