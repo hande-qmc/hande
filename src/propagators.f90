@@ -110,8 +110,11 @@ contains
                 ! BZ [TODO] - Deal with complex systems
                 ! Note 'offdiagel' here actually includes the diagonal element, as enumerate_determinant returns it
                 offdiagel = get_hmatel(sys, f_max, singles_doubles(:,i))
-                e_max = e_max + offdiagel%r
+                e_max = e_max + abs(offdiagel%r)
             end do
+            ! Just in case the highest diagonal element is negative, we need its actual value not the absolute
+            offdiagel = get_hmatel(sys, f_max, f_max)
+            e_max = e_max - abs(offdiagel%r) + offdiagel%r
             e_max = e_max * 1.1  ! Arbitrarily shift the upper bound higher to be safe
 
             qs%cheby_prop%spectral_range(1) = 0.0_p
