@@ -561,29 +561,29 @@ contains
         end associate
 
         ! average energy quantities over report loop.
-        qs%estimators%proj_energy = qs%estimators%proj_energy/qmc_in%ncycles
-        qs%estimators%D0_population = qs%estimators%D0_population/qmc_in%ncycles
+        qs%estimators%proj_energy = qs%estimators%proj_energy/(qmc_in%ncycles*qs%cheby_prop%order)
+        qs%estimators%D0_population = qs%estimators%D0_population/(qmc_in%ncycles*qs%cheby_prop%order)
         ! Similarly for the HFS estimator
-        qs%estimators%D0_hf_population = qs%estimators%D0_hf_population/qmc_in%ncycles
-        qs%estimators%proj_hf_O_hpsip = qs%estimators%proj_hf_O_hpsip/qmc_in%ncycles
-        qs%estimators%proj_hf_H_hfpsip = qs%estimators%proj_hf_H_hfpsip/qmc_in%ncycles
+        qs%estimators%D0_hf_population = qs%estimators%D0_hf_population/(qmc_in%ncycles*qs%cheby_prop%order)
+        qs%estimators%proj_hf_O_hpsip = qs%estimators%proj_hf_O_hpsip/(qmc_in%ncycles*qs%cheby_prop%order)
+        qs%estimators%proj_hf_H_hfpsip = qs%estimators%proj_hf_H_hfpsip/(qmc_in%ncycles*qs%cheby_prop%order)
         ! Similarly for complex quantities.
-        qs%estimators%proj_energy_comp = qs%estimators%proj_energy_comp/qmc_in%ncycles
-        qs%estimators%D0_population_comp = qs%estimators%D0_population_comp/qmc_in%ncycles
+        qs%estimators%proj_energy_comp = qs%estimators%proj_energy_comp/(qmc_in%ncycles*qs%cheby_prop%order)
+        qs%estimators%D0_population_comp = qs%estimators%D0_population_comp/(qmc_in%ncycles*qs%cheby_prop%order)
         ! average spawning rate over report loop and processor.
-        qs%spawn_store%rspawn = qs%spawn_store%rspawn/(qmc_in%ncycles*nprocs)
+        qs%spawn_store%rspawn = qs%spawn_store%rspawn/((qmc_in%ncycles*qs%cheby_prop%order)*nprocs)
 
         if (doing_calc(hfs_fciqmc_calc)) then
             if (qs%vary_shift(1)) then
-                call update_shift(qs, qs%shift(1), ntot_particles_old(1), ntot_particles(1), qmc_in%ncycles)
+                call update_shift(qs, qs%shift(1), ntot_particles_old(1), ntot_particles(1), (qmc_in%ncycles*qs%cheby_prop%order))
                 call update_hf_shift(qmc_in, qs, qs%shift(2), ntot_particles_old(1), ntot_particles(1), &
-                                     qs%estimators(1)%hf_signed_pop, new_hf_signed_pop, qmc_in%ncycles)
+                                     qs%estimators(1)%hf_signed_pop, new_hf_signed_pop, (qmc_in%ncycles*qs%cheby_prop%order))
             end if
         else if (comp_param) then
             do i = 1, qs%psip_list%nspaces, 2
                 if (qs%vary_shift(i)) then
                     call update_shift(qs, qs%shift(i), ntot_particles_old(i) + ntot_particles_old(i+1), &
-                                        ntot_particles(i) + ntot_particles(i+1), qmc_in%ncycles)
+                                        ntot_particles(i) + ntot_particles(i+1), (qmc_in%ncycles*qs%cheby_prop%order))
                     qs%shift(i+1) = qs%shift(i)
                 end if
             end do
@@ -592,9 +592,10 @@ contains
                 if (qs%vary_shift(i)) then
                     if (vary_shift_reference_loc) then
                         call update_shift(qs, qs%shift(i), real(qs%estimators(i)%D0_population_old, dp), &
-                                          real(qs%estimators(i)%D0_population, dp), qmc_in%ncycles)
+                                          real(qs%estimators(i)%D0_population, dp), (qmc_in%ncycles*qs%cheby_prop%order))
                     else
-                        call update_shift(qs, qs%shift(i), ntot_particles_old(i), ntot_particles(i), qmc_in%ncycles)
+                        call update_shift(qs, qs%shift(i), ntot_particles_old(i), ntot_particles(i), &
+                                          (qmc_in%ncycles*qs%cheby_prop%order))
                     end if
                 end if
             end do
