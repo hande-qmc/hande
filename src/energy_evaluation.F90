@@ -686,15 +686,34 @@ contains
         real(dp), intent(in) :: nparticles_old, nparticles
         integer, intent(in) :: nupdate_steps
 
+        real(p) :: tau_eff
+
         ! dmqmc_factor is included to account for a factor of 1/2 introduced into tau in
         ! DMQMC calculations. In all other calculation types, it is set to 1, and so can be ignored.
-        if (qs%target_particles .le. 0.00_p) then
-            loc_shift = loc_shift - real(log(nparticles/nparticles_old)*qs%shift_damping/(qs%dmqmc_factor*qs%tau*nupdate_steps) ,p)
-        else 
-            loc_shift = loc_shift - real(log(nparticles/nparticles_old)*qs%shift_damping/(qs%dmqmc_factor*qs%tau*nupdate_steps),p) & 
-                  - real(log(nparticles/qs%target_particles)*(qs%shift_harmonic_forcing)/ &
-                  (qs%dmqmc_factor*qs%tau*nupdate_steps),p)
-        end if 
+
+        if (qs%cheby_prop%using_chebyshev) then
+            ! qs%tau = 1 in wall-Chebyshev, but the effective tau for shift updating purposes is the average of chebyshev weights
+            tau_eff = sum(qs%cheby_prop%weights)/qs%cheby_prop%order
+            if (qs%target_particles .le. 0.00_p) then
+                loc_shift = loc_shift - real(log(nparticles/nparticles_old)*qs%shift_damping/ &
+                                             (qs%dmqmc_factor*tau_eff*nupdate_steps),p)
+            else 
+                loc_shift = loc_shift - real(log(nparticles/nparticles_old)*qs%shift_damping/ &
+                                             (qs%dmqmc_factor*tau_eff*nupdate_steps),p) & 
+                      - real(log(nparticles/qs%target_particles)*(qs%shift_harmonic_forcing)/ &
+                      (qs%dmqmc_factor*tau_eff*nupdate_steps),p)
+            end if
+        else
+            if (qs%target_particles .le. 0.00_p) then
+                loc_shift = loc_shift - real(log(nparticles/nparticles_old)*qs%shift_damping/ &
+                                             (qs%dmqmc_factor*qs%tau*nupdate_steps),p)
+            else 
+                loc_shift = loc_shift - real(log(nparticles/nparticles_old)*qs%shift_damping/ &
+                                             (qs%dmqmc_factor*qs%tau*nupdate_steps),p) & 
+                      - real(log(nparticles/qs%target_particles)*(qs%shift_harmonic_forcing)/ &
+                      (qs%dmqmc_factor*qs%tau*nupdate_steps),p)
+            end if
+        end if
     
     end subroutine update_shift
 
