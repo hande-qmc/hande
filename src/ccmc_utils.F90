@@ -884,7 +884,7 @@ contains
         !   f0: the reference determinant.
         ! In/out:
         !   hamil: the detministic subspace of the Hamiltonian saved in the CSR format.
-        !          upon input it has the bare hamiltonian elements <i|H|j> without correct 'CCMC signs'
+        !          upon input it has the bare hamiltonian elements <i|H|j> without correct 'CC signs'
 
         use csr, only: csrp_t
         use excitations, only: get_excitation_level
@@ -911,6 +911,5 @@ contains
         end do
 
     end subroutine hamil_cc_transform
-
 
 end module ccmc_utils

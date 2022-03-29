@@ -368,6 +368,7 @@ contains
         type(qmc_in_t) :: qmc_in_loc
         type(logging_t) :: logging_info
         type(selection_data_t) :: selection_data
+        type(semi_stoch_t) :: determ
 
         logical :: soft_exit, dump_restart_shift, restarting, restart_proj_est
 
@@ -627,6 +628,14 @@ contains
                     ! total number of excitors.
                     max_cluster_size = min(sys%nel, qs%ref%max_ex_level+2, &
                                                            qs%psip_list%nstates-nD0_proc)
+                end if
+
+                ! Should we turn on semistochastic CCMC?
+                if (iter == semi_stoch_iter .and. semi_stoch_in%space_type /= empty_determ_space) then
+                    determ%doing_semi_stoch = .true.
+                    call init_semi_stoch_t(determ, semi_stoch_in, sys, qs%propagator, qs%psip_list, qs%ref, annihilation_flags, &
+                                           qs%spawn_store%spawn, qmc_in%use_mpi_barriers, io_unit)
+                    call hamil_cc_transform(determ, determ%dets, qs%ref%f0)
                 end if
 
                 ! Note that 'death' in CCMC creates particles in the spawned
