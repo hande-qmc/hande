@@ -595,3 +595,54 @@ algorithms and control the core settings in the algorithms.
 
     If set to true, the value of ``shift_harmonic_forcing`` will be set to the square
     of ``shift_damping`` divided by four to obtain critical damping.  
+
+``state_histograms``
+    type: boolean.
+
+    Optional. Default: false.
+
+    If set to true, calculate the state histograms based on the walker populations
+    of various excitation levels.
+
+    This is a generalization of the state histograms original proposed by
+    Cleland and coworkers for FCIQMC: [Cleland12]_. The generalization is to treat
+    DMQMC in addition to FCIQMC. In the case of FCIQMC the behavior is almost
+    identical to that of the original algorithm.
+
+    .. note::
+
+        Currently only implemented for FCIQMC and DMQMC. In FCIQMC, the
+        histograms are calculate based on the excitation levels relative
+        to the reference determinant. In DMQMC, we add an additional excitation
+        index based on the excitation level between the two determinants used
+        to label the density matrix site.
+
+``state_histograms_nreport``
+    type: integer.
+
+    Optional. Default: ``nreports``
+
+    The frequency in report cycles to calculate and report the state histograms.
+    A histogram is always reported at the beginning and end of a calculation
+    regardless of whether it falls within the frequency provided.
+
+``state_histograms_nbins``
+    type: integer.
+
+    Optional. Default: 5
+
+    The number of histogram bins to use per decade of walker population.
+    As an example, if we have a walker population 10 to 100, there are bins
+    from: :math:`\left[10, \sim 15.85\right)`, :math:`\left[15.85, \sim 25.12\right)`,
+    :math:`\left[25.12, \sim 39.81\right)`, :math:`\left[39.81, \sim 63.10\right)`, and
+    :math:`\left[63.10, \sim 100\right)`.
+
+``skip_histograms_mem_chk``
+    type: boolean.
+
+    Optional. Default: false.
+
+    Controls the memory check performed when collecting state histograms.
+    Normally an estimate is made for the memory cost to store all the state
+    histogram files, if the estimate exceeds 1 gigabyte the calculation will
+    halt. Setting this flag to true will ignore the memory check.
