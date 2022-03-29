@@ -1,9 +1,31 @@
 module search
 
+use const
+use excitations, only: get_excitation_level
+
 implicit none
 
 private
-public :: binary_search
+public :: binary_search, tree_t, node_t, tree_add, tree_search
+
+type node_t
+    ! For use in BK-tree search of secondary references
+    ! See also comments below under tree_add and tree_search
+    ! A node contains a bitstring, and an array of edges, which go from 1 to the maximum excitation level
+    ! possible in the current Fock space
+    ! Each of the edges point to another node
+    integer(i0), allocatable :: bstring(:)
+    type(node_t), pointer :: edges(:) => null()
+end type node_t
+
+type tree_t
+    ! For use in BK-tree search of secondary references
+    ! A tree stores a pointer to the root node, and some of the constants specific to the system
+    type(node_t), pointer :: root => null()
+    ! Number of secondary references, allowed excitation from *all* of them (no individual control), 
+    ! maximum excitation from ground state
+    integer :: n_secondary_ref, ex_lvl, max_excit
+end type tree_t
 
 interface binary_search
     ! All binary search procedures work in essentially the same way with the
@@ -433,4 +455,140 @@ contains
 
     end subroutine binary_search_real_p
 
+    subroutine tree_add(this, next_bstring)
+
+        ! This builds a Hamming-distance BK-tree for k-nearest neighbour search
+        ! A very good explanation can be found here: 
+        ! https://daniel-j-h.github.io/post/nearest-neighbors-in-metric-spaces/
+        ! In:
+        !   next_bstring: the current bitstring to be added to the tree.
+        ! In/out:
+        !   this: the BK-tree object we're adding the bitstring to.
+
+        type(tree_t), intent(inout) :: this
+        integer(i0), intent(in) :: next_bstring(:)
+        type(node_t), pointer :: curr_node => null()
+        integer(i0), pointer :: parent(:) => null()
+        type(node_t), pointer :: child(:) => null()
+        integer :: excit_lvl
+
+        ! Initialises the root node
+        if (.not. associated(this%root)) then
+            allocate(this%root)
+        end if
+        curr_node => this%root
+        if (.not. allocated(curr_node%bstring)) then
+            ! If the node was initialised but empty, store the bitstring here
+            curr_node%bstring = next_bstring
+        else if (.not. associated(curr_node%edges)) then
+            ! If the node has a bitstring, compare and allocate edges, and store the bitstring at the end 
+            ! of the correct edge
+            excit_lvl = get_excitation_level(curr_node%bstring, next_bstring)
+            allocate(curr_node%edges(this%max_excit))
+            curr_node%edges(excit_lvl)%bstring = next_bstring
+        else
+            do
+                ! If the node has both a bitstring and allocated edges, that means
+                ! you have a descend another level
+
+                ! This looks redundant but it's not, since the do loop goes on forever
+                ! you'll get to the end of the 'branch' and see a node with unallocated edges
+                if (.not. associated(curr_node%edges)) then
+                  allocate(curr_node%edges(this%max_excit))
+                end if
+                parent => curr_node%bstring
+                child => curr_node%edges
+                excit_lvl = get_excitation_level(parent, next_bstring)
+                curr_node => child(excit_lvl)
+                if (.not. allocated(curr_node%bstring)) then
+                    curr_node%bstring = next_bstring
+                    exit
+                end if
+            end do
+        end if
+
+    end subroutine tree_add
+
+    recursive function tree_search(this, new_bstring, curr_node, offset) result(hit)
+        
+        ! This is a recursive, depth-first traversal of a Hamming-distance BK-tree.
+        ! This implementation was in part inspired by the C++ implementation here
+        ! https://www.geeksforgeeks.org/bk-tree-introduction-implementation/ 
+        ! and the Python implementation here
+        ! https://github.com/ahupp/bktree
+        !
+        ! [TODO]: A non-recursive search may improve performance, and an example in Python 
+        ! using deque can be found at https://github.com/benhoyt/pybktree
+        ! In:
+        !   this: the BK-tree object we're searching.
+        !   new_bstring: we'd like to know if new_bstring falls within ex_lvl of any of the bitstrings within the tree.
+        !   curr_node: which node are we currently on in the recursive dive into the tree.
+        !   offset: in ccmc.f90::multiref_check_ex_level we need to change ex_lvl essentially so this convenience argument is added
+        ! Returns:
+        !   hit: true if new_bstring is within ex_lvl(+offset) of any of the bistrings stored in the tree.
+
+        type(tree_t), intent(in) :: this
+        integer(i0), intent(in) :: new_bstring(:)
+        integer :: excit_lvl, endlvl, startlvl, lvl
+        type(node_t), intent(in) :: curr_node
+        integer, intent(in), optional :: offset
+        logical :: hit
+        integer :: ex_lvl
+
+        excit_lvl = get_excitation_level(curr_node%bstring, new_bstring)
+        
+        if (.not. present(offset)) then
+            ex_lvl = this%ex_lvl
+        else
+            ex_lvl = offset
+        end if
+
+        if (excit_lvl <= ex_lvl) then
+            ! the current node is within ex_lvl of the new bitstring
+            hit = .true.
+            return
+        end if
+        
+        ! If not, descend recursively into a subspace of the tree
+        startlvl = excit_lvl - ex_lvl
+        endlvl = excit_lvl + ex_lvl
+        if (startlvl <= ex_lvl) then
+            ! We already establishedd that this bitstring is not within ex_lvl of the current node
+            startlvl = ex_lvl + 1
+        end if
+        if (endlvl > this%max_excit) then
+            endlvl = this%max_excit
+        end if
+
+        do lvl = startlvl, endlvl
+            if (.not. associated(curr_node%edges)) then
+                ! reached the bottom, nothing found
+                hit = .false.
+                return
+            end if
+            if (.not. allocated(curr_node%edges(lvl)%bstring)) then
+                ! Empty node, look into the neighbour now
+                continue
+            else
+                ! If this node has information in it, dig into it
+                ! This is the recursive bit, and it is doing the descending / traversal into the tree
+                if (.not. present(offset)) then
+                    hit = tree_search(this, new_bstring, curr_node%edges(lvl))
+                else
+                    hit = tree_search(this, new_bstring, curr_node%edges(lvl), offset)
+                end if
+                if (hit) then
+                    ! Again might look redundant but this check makes sure once hit = .true.
+                    ! the result gets propagated to the top level and breaks recursion
+                    hit = .true.
+                    return
+                end if
+            end if
+        end do
+
+        ! nothing found after recursion, return false
+        hit = .false. 
+        return
+
+    end function tree_search
 end module search

@@ -1153,7 +1153,7 @@ contains
         ! Note occ_list could be set and allocated in the input.
         reference = reference_in
 
-    if (present(occlist)) reference%occ_list0 = occlist
+        if (present(occlist)) reference%occ_list0 = occlist
 
         ! Set the reference determinant to be the spin-orbitals with the lowest
         ! single-particle eigenvalues which satisfy the spin polarisation and, if
@@ -1253,21 +1253,67 @@ contains
         use system, only: sys_t
         use qmc_data, only: qmc_state_t 
         use excitations, only: get_excitation_level, det_string
+        use search, only: tree_add
+        use const
+        use determinants, only: decode_det
 
         type(sys_t), intent(in) :: sys
         type(reference_t), intent(in) :: references_in(:)
         integer, intent(in) :: io_unit
         type(qmc_state_t), intent(inout) :: qs
         integer :: i, current_max, total_max = 0
+        integer(i0) :: core_bstring, secref_bstring
+        integer(i0), allocatable :: real_bstring(:)
+        type(reference_t) :: read_in_ref
         
-        do i = 1, size(references_in)
-           call init_reference(sys, references_in(i), io_unit, qs%secondary_refs(i))
-           current_max = qs%ref%ex_level + get_excitation_level(det_string(qs%ref%f0,sys%basis), &
-                                                                 det_string(qs%secondary_refs(i)%f0,sys%basis)) 
-           if (current_max > total_max) total_max = current_max
-        end do
+        if (.not.qs%mr_read_in) then
+            do i = 1, size(references_in)
+               call init_reference(sys, references_in(i), io_unit, qs%secondary_refs(i))
+               current_max = qs%ref%ex_level + get_excitation_level(det_string(qs%ref%f0,sys%basis), &
+                                                                     det_string(qs%secondary_refs(i)%f0,sys%basis)) 
+               if (current_max > total_max) total_max = current_max
+            end do
 
-        qs%ref%max_ex_level = total_max
+            qs%ref%max_ex_level = total_max
+        else
+            if (sys%CAS(1).eq.-1) then
+                ! -1 is the default (unset) value
+                core_bstring = 2**(qs%mr_n_frozen)-1
+            else
+                core_bstring = 2**(qs%mr_n_frozen-sys%CAS(1))-1
+            endif
+            allocate(real_bstring(sys%basis%tot_string_len))
+            allocate(read_in_ref%occ_list0(sys%nel))
+            open(8,file=qs%mr_secref_file,status='old',form='formatted',action='read')
+            do i=1,qs%n_secondary_ref,1
+                read(8,*) secref_bstring
+                ! [TODO]: Support references of longer than i0 bits
+                real_bstring(1) = ior(lshift(secref_bstring,qs%mr_n_frozen),core_bstring)
+                call decode_det(sys%basis,real_bstring(:),read_in_ref%occ_list0(:))
+                read_in_ref%ex_level= qs%mr_excit_lvl
+                call init_reference(sys, read_in_ref, io_unit, qs%secondary_refs(i))
+
+                current_max = qs%ref%ex_level + get_excitation_level(det_string(qs%ref%f0,sys%basis), &
+                                                                     det_string(qs%secondary_refs(i)%f0,sys%basis)) 
+               if (current_max > total_max) total_max = current_max
+            enddo
+            close(8)
+
+            qs%ref%max_ex_level = total_max
+
+        endif
+
+        ! Optionally build the BK tree, see search.F90::tree_add and tree_search for further comments
+        if (qs%mr_acceptance_search == 1) then
+            qs%secondary_ref_tree%n_secondary_ref = size(qs%secondary_refs)
+            qs%secondary_ref_tree%ex_lvl = qs%ref%ex_level
+            ! The maximum possible excitation level is the smaller of number of electrons 
+            ! and the number of virtual orbitals
+            qs%secondary_ref_tree%max_excit = min(sys%nel, sys%nvirt)
+            do i = 1, size(qs%secondary_refs)
+                call tree_add(qs%secondary_ref_tree, det_string(qs%secondary_refs(i)%f0,sys%basis))
+            end do
+        end if 
   
     end subroutine init_secondary_references
 

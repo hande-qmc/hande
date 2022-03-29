@@ -55,10 +55,10 @@ test-gcc:
         - hande-testing
     before_script:
         - module load cmake
+        - module load anaconda/python3
     script:
         - ./cmakeconfig.py --fc=gfortran --cc=gcc --lua=./local/ --hdf5=./local/hdf5-gnu --det-size=64 --pop-size=64
         - cd build && make -j 6 && cd ..
-        - module load anaconda/python3
         - cd test_suite
         - ../testcode/bin/testcode.py -e ../bin/hande.x -c serial --total-processors=6
     only:
@@ -69,13 +69,13 @@ test-gcc-mpi:
     tags: 
         - hande-testing
     before_script:
+        - module load anaconda/python3
         - module load mpi/openmpi/64/gnu/3.1.2
         - module load mkl
         - module load cmake
     script:
         - ./cmakeconfig.py --mpi --fc=mpif90 --cc=mpicc --mpi-with-scalapack --lua=./local/ --hdf5=./local/hdf5-gnu
         - cd build && make -j 6 && cd ..
-        - module load anaconda/python3
         - cd test_suite
         - ../testcode/bin/testcode.py -e ../bin/hande.x -c mpi --processors=4
     only:
@@ -86,13 +86,13 @@ test-gcc-mpi-64:
     tags: 
         - hande-testing
     before_script:
+        - module load anaconda/python3
         - module load mpi/openmpi/64/gnu/3.1.2
         - module load mkl
         - module load cmake
     script:
         - ./cmakeconfig.py --mpi --fc=mpif90 --cc=mpicc --mpi-with-scalapack --lua=./local/ --hdf5=./local/hdf5-gnu --det-size=64 --pop-size=64
         - cd build && make -j 6 && cd ..
-        - module load anaconda/python3
         - cd test_suite
         - ../testcode/bin/testcode.py -e ../bin/hande.x -c pop64_mpi --processors=4
     only:
@@ -103,11 +103,11 @@ test-gcc-dbg:
     tags: 
         - hande-testing
     before_script:
+        - module load anaconda/python3
         - module load cmake
     script:
         - ./cmakeconfig.py --fc=gfortran --cc=gcc --lua=./local/ --hdf5=./local/hdf5-gnu --det-size=64 --pop-size=64 --type=debug
         - cd build && make -j 6 && cd ..
-        - module load anaconda/python3
         - cd test_suite
         - ../testcode/bin/testcode.py -e ../bin/hande.x -c serial --total-processors=6
     only:
@@ -118,13 +118,13 @@ test-gcc-mpi-dbg:
     tags: 
         - hande-testing
     before_script:
+        - module load anaconda/python3
         - module load mpi/openmpi/64/gnu/3.1.2
         - module load mkl
         - module load cmake
     script:
         - ./cmakeconfig.py --mpi --fc=mpif90 --cc=mpicc --mpi-with-scalapack  --lua=./local/ --hdf5=./local/hdf5-gnu --type=debug
         - cd build && make -j 6 && cd ..
-        - module load anaconda/python3 
         - cd test_suite
         - ../testcode/bin/testcode.py -e ../bin/hande.x -c mpi --processors=4
     only:
@@ -135,13 +135,13 @@ test-gcc-mpi-64-dbg:
     tags: 
         - hande-testing
     before_script:
+        - module load anaconda/python3 
         - module load mpi/openmpi/64/gnu/3.1.2
         - module load mkl
         - module load cmake
     script:
         - ./cmakeconfig.py --mpi --fc=mpif90 --cc=mpicc --mpi-with-scalapack  --lua=./local/ --hdf5=./local/hdf5-gnu --det-size=64 --pop-size=64 --type=debug
         - cd build && make -j 6 && cd ..
-        - module load anaconda/python3
         - cd test_suite
         - ../testcode/bin/testcode.py -e ../bin/hande.x -c pop64_mpi --processors=4
     only:
@@ -152,12 +152,12 @@ test-intel:
     tags: 
         - hande-testing
     before_script:
+        - module load anaconda/python3
         - module load icc
         - module load cmake
     script:
         - ./cmakeconfig.py --fc=ifort --cc=icc --lua=./local/ --hdf5=./local/hdf5-intel --pop-size=64 --det-size=64 
         - cd build && make -j 6 && cd ..
-        - module load anaconda/python3
         - cd test_suite
         - ../testcode/bin/testcode.py -e ../bin/hande.x -c serial --total-processors=6
     only:
@@ -168,12 +168,12 @@ test-intel-dbg:
     tags: 
         - hande-testing
     before_script:
+        - module load anaconda/python3
         - module load icc
         - module load cmake
     script:
         - ./cmakeconfig.py --fc=ifort --cc=icc --lua=./local/ --hdf5=./local/hdf5-intel --pop-size=64 --det-size=64  --type=debug
         - cd build && make -j 6 && cd ..
-        - module load anaconda/python3
         - cd test_suite
         - ../testcode/bin/testcode.py -e ../bin/hande.x -c serial --total-processors=6
     only:
@@ -184,6 +184,7 @@ test-intel-mpi-pop64:
     tags: 
         - hande-testing
     before_script:
+        - module load anaconda/python3
         - module load icc
         - module load mkl
         - module load mpi/openmpi/64/intel18/3.1.2
@@ -191,7 +192,6 @@ test-intel-mpi-pop64:
     script:
         - ./cmakeconfig.py --mpi --fc=mpif90 --cc=mpicc --mpi-with-scalapack --lua=./local/ --hdf5=./local/hdf5-intel --pop-size=64 --det-size=64
         - cd build && make -j 6 && cd ..
-        - module load anaconda/python3
         - cd test_suite
         - ../testcode/bin/testcode.py -e ../bin/hande.x -c mpi --processors=4
     only:
@@ -202,6 +202,7 @@ test-intel-mpi-pop64-dbg:
     tags: 
         - hande-testing
     before_script:
+        - module load anaconda/python3
         - module load icc
         - module load mpi/openmpi/64/intel18/3.1.2
         - module load mkl
@@ -209,7 +210,6 @@ test-intel-mpi-pop64-dbg:
     script:
         - ./cmakeconfig.py --mpi --fc=mpif90 --cc=mpicc --mpi-with-scalapack  --lua=./local/ --hdf5=./local/hdf5-intel  --type=debug --pop-size=64 --det-size=64
         - cd build && make -j 6 && cd ..
-        - module load anaconda/python3
         - cd test_suite
         - ../testcode/bin/testcode.py -e ../bin/hande.x -c mpi --processors=4
     only:
@@ -220,6 +220,7 @@ test-intel-mpi:
     tags: 
         - hande-testing
     before_script:
+        - module load anaconda/python3
         - module load icc
         - module load mkl
         - module load mpi/openmpi/64/intel18/3.1.2
@@ -227,7 +228,6 @@ test-intel-mpi:
     script:
         - ./cmakeconfig.py --mpi --fc=mpif90 --cc=mpicc --mpi-with-scalapack --lua=./local/ --hdf5=./local/hdf5-intel
         - cd build && make -j 6 && cd ..
-        - module load anaconda/python3
         - cd test_suite
         - ../testcode/bin/testcode.py -e ../bin/hande.x -c mpi --processors=4
     only:
@@ -238,6 +238,7 @@ test-intel-mpi-dbg:
     tags: 
         - hande-testing
     before_script:
+        - module load anaconda/python3
         - module load icc
         - module load mpi/openmpi/64/intel18/3.1.2
         - module load mkl
@@ -245,7 +246,6 @@ test-intel-mpi-dbg:
     script:
         - ./cmakeconfig.py --mpi --fc=mpif90 --cc=mpicc --mpi-with-scalapack  --lua=./local/ --hdf5=./local/hdf5-intel  --type=debug 
         - cd build && make -j 6 && cd ..
-        - module load anaconda/python3
         - cd test_suite
         - ../testcode/bin/testcode.py -e ../bin/hande.x -c mpi --processors=4
     only:
@@ -256,6 +256,7 @@ test-intel-quick:
     tags: 
         - hande-testing
     before_script:
+        - module load anaconda/python3
         - module load icc
         - module load mpi/openmpi/64/intel18/3.1.2
         - module load mkl
@@ -263,7 +264,6 @@ test-intel-quick:
     script:
         - ./cmakeconfig.py --mpi --fc=mpif90 --cc=mpicc --mpi-with-scalapack  --lua=./local/ --hdf5=./local/hdf5-intel  --pop-size=64 --det-size=64
         - cd build && make -j 6 && cd ..
-        - module load anaconda/python3
         - cd test_suite
         - ../testcode/bin/testcode.py -e ../bin/hande.x -c quick --processors=4
     except:
@@ -274,13 +274,13 @@ test-gcc-quick:
     tags: 
         - hande-testing
     before_script:
+        - module load anaconda/python3
         - module load mpi/openmpi/64/gnu/3.1.2
         - module load mkl
         - module load cmake
     script:
         - ./cmakeconfig.py --mpi --fc=mpif90 --cc=mpicc --mpi-with-scalapack  --lua=./local/ --hdf5=./local/hdf5-gnu --det-size=64 --pop-size=64
         - cd build && make -j 6 && cd ..
-        - module load anaconda/python3
         - cd test_suite
         - ../testcode/bin/testcode.py -e ../bin/hande.x -c quick --processors=4
     except:

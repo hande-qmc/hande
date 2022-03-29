@@ -77,6 +77,7 @@ contains
         type(qmc_state_t), intent(out), target :: qs
         type(qmc_state_t), intent(inout), optional :: qmc_state_restart
         real(p), intent(out), allocatable :: sampling_probs(:)
+        real(p) :: mu(1:2)
 
         integer :: idet, ireport, icycle, iteration, ireplica, ierr
         integer :: beta_cycle, nreport
@@ -93,7 +94,7 @@ contains
         logical :: soft_exit, write_restart_shift, update_tau
         logical :: error, rdm_error, attempt_spawning, restarting
         real :: t1, t2
-        real(p) :: mu, energy_shift
+        real(p) :: energy_shift
         type(dSFMT_t) :: rng
         type(bloom_stats_t) :: bloom_stats
         type(annihilation_flags_t) :: annihilation_flags
