@@ -436,8 +436,7 @@ contains
 
         integer :: i
         integer(i0) :: j, ex_lvl
-
-
+        
         ! First need to set values to account for reference correctly in ex_lvl_dist.
         if (calc_dist) then
             if (D0_proc==iproc) then
