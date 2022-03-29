@@ -58,7 +58,7 @@ def collect_state_histogram_data(state_histogram_outputs):
 
     Returns
     -------
-    grouped : tuple of OrderedDicts
+    grouped : tuple of :class:`collections.OrderedDict`
         Stores OrderdDicts for the files, data set data-frames,
         and maximum excitation indices indexed by the report the data
         was generated at.
@@ -152,7 +152,7 @@ def average_histograms(grouped):
 
     Parameters
     ----------
-    grouped : tuple of OrderedDicts
+    grouped : tuple of :class:`collections.OrderedDict`
         Stores OrderdDicts for the files, data set data-frames,
         and maximum excitation indices indexed by the report the data
         was generated at.
@@ -205,11 +205,17 @@ def average_histograms(grouped):
         # bin = \sum_y Sum Col y
         bin_sum = np.sum(ex2_sum, axis=0)
         bin_sem = np.sum(np.power(ex2_sem, 2.0), axis=0)**0.5
+
+        # Now increase the bin count on smaller bin edges
+        # from the larger bin edges. I.E. a determinant with 10^3 particles
+        # should contribute to the total determinant count
+        # for smaller population bins
+        bin_sum = np.cumsum(bin_sum[::-1])[::-1]
+        bin_sem = np.cumsum(np.power(bin_sem[::-1], 2.0))[::-1]**0.5
         averaged[f'{ireport} \\sum'] = bin_sum
         averaged[f'{ireport} sem'] = bin_sem
 
-    averaged = pd.DataFrame(averaged)
-    return averaged
+    return pd.DataFrame(averaged)
 
 
 def analyse_state_histograms(state_histogram_outputs):

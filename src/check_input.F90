@@ -512,6 +512,10 @@ contains
             call stop_all(this, 'Excitation Generators other than no_renorm and renorm not yet implemented for linked CCMC.')
         end if
 
+        if (qmc_in%state_histograms) then
+            call stop_all(this, 'State histograms are not implemented for CCMC.')
+        end if
+
     end subroutine check_ccmc_opts
 
     subroutine check_blocking_opts(sys, blocking_in, restart_in)
