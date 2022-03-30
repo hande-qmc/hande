@@ -337,7 +337,7 @@ contains
         use logging, only: logging_in_t, logging_t, logging_in_t_json, logging_t_json, write_logging_select_ccmc
         use report, only: write_date_time_close
         use excit_gens, only: p_single_double_coll_t
-        use propagators, only: disable_chebyshev
+        use propagators, only: disable_chebyshev, update_chebyshev
 
         type(sys_t), intent(in) :: sys
         type(qmc_in_t), intent(in) :: qmc_in
@@ -716,6 +716,10 @@ contains
                                                 D0_normalisation, tot_abs_real_pop, qs%psip_list%nstates, ccmc_in%full_nc, &
                                                 ccmc_in%even_selection)
                     call zero_ps_stats(ps_stats, qs%excit_gen_data%p_single_double%rep_accum%overflow_loc)
+
+                    proj_energy_cycle = cmplx(0.0, 0.0, p)
+                    D0_population_cycle = cmplx(0.0, 0.0, p)
+
                     ! OpenMP chunk size determined completely empirically from a single
                     ! test.  Please feel free to improve...
                     ! NOTE: we can't refer to procedure pointers in shared blocks so
@@ -727,17 +731,17 @@ contains
                     !$omp shared(rng, cumulative_abs_real_pops, tot_abs_real_pop,  &
                     !$omp        max_cluster_size, contrib, D0_normalisation, D0_pos, rdm,    &
                     !$omp        qs, sys, bloom_stats, min_cluster_size, ref_det,             &
-                    !$omp        proj_energy_cycle, D0_population_cycle, selection_data,      &
-                    !$omp        nattempts_spawn, ex_lvl_dist, &
+                    !$omp        selection_data,      &
+                    !$omp        ex_lvl_dist, &
                     !$omp        ccmc_in, nprocs, ms_stats, ps_stats, qmc_in, load_bal_in, &
                     !$omp        ndeath_nc,   &
-                    !$omp        nparticles_change, ndeath, logging_info)
+                    !$omp        nparticles_change, logging_info) &
+                    !$omp reduction(+:D0_population_cycle,proj_energy_cycle,nattempts_spawn,ndeath)
                     it = get_thread_id()
                     iexcip_pos = 0
                     seen_D0 = .false.
-                    proj_energy_cycle = cmplx(0.0, 0.0, p)
-                    D0_population_cycle = cmplx(0.0, 0.0, p)
-                    !$omp do schedule(dynamic,200) reduction(+:D0_population_cycle,proj_energy_cycle,nattempts_spawn,ndeath)
+                    
+                    !$omp do schedule(dynamic,200) 
                     do iattempt = 1, selection_data%nclusters
                         if (iattempt <= selection_data%nsingle_excitors) then
                             ! As noncomposite clusters can't be above truncation level or linked-only all can accumulate +
@@ -882,6 +886,12 @@ contains
 
                         call direct_annihilation(sys, rng(0), qs%ref, annihilation_flags, pl, spawn)
                     end associate
+
+                    if (qs%cheby_prop%using_chebyshev) then
+                        ! Chebyshev is not yet compatible with complex systems
+                        qs%cheby_prop%nparticles_cheb(icycle, icheb) = qs%psip_list%nparticles(1)
+                    end if
+
                     if (debug) call write_logging_calc_ccmc(logging_info, iter, nspawn_events, ndeath + ndeath_nc, &
                                                             selection_data%nD0_select, &
                                                             selection_data%nclusters, selection_data%nstochastic_clusters, &
@@ -909,6 +919,9 @@ contains
                                  load_bal_in, bloom_stats=bloom_stats, comp=sys%read_in%comp, &
                                  error=error, vary_shift_reference=ccmc_in%vary_shift_reference)
             if (error) exit
+
+            ! Chebyshev only works with real read-in systems for now (nspaces=1)
+            call update_chebyshev(qs%cheby_prop, qs%shift(1))
 
             call cpu_time(t2)
             if (parent) then

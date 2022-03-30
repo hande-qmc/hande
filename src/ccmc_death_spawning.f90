@@ -144,8 +144,7 @@ contains
         end if
         ! 2. Apply additional factors.
         hmatel_save = hmatel
-        hmatel%r = hmatel%r*real(cluster%amplitude)*invdiagel*cluster%cluster_to_det_sign*&
-                    qs%cheby_prop%weights(qs%cheby_prop%icheb)
+        hmatel%r = hmatel%r*real(cluster%amplitude)*invdiagel*cluster%cluster_to_det_sign
         pgen = spawn_pgen*cluster%pselect*nspawnings_total
 
         if (allowed_excitation) then
@@ -157,7 +156,12 @@ contains
             end if
         end if
         ! 3. Attempt spawning.
-        nspawn = attempt_to_spawn(rng, qs%tau, spawn_cutoff, qs%psip_list%pop_real_factor, hmatel%r, pgen, parent_sign)
+        if (qs%cheby_prop%using_chebyshev) then
+            nspawn = attempt_to_spawn(rng, qs%cheby_prop%weights(qs%cheby_prop%icheb), spawn_cutoff, &
+                                  qs%psip_list%pop_real_factor, hmatel%r, pgen, parent_sign)
+        else
+            nspawn = attempt_to_spawn(rng, qs%tau, spawn_cutoff, qs%psip_list%pop_real_factor, hmatel%r, pgen, parent_sign)
+        end if
 
         if (nspawn /= 0_int_p) then
             ! 4. Convert the random excitation from a determinant into an

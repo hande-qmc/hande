@@ -874,6 +874,7 @@ type cheb_t
     integer :: disable_chebyshev_lag = 0
     ! shoulder_iter + disable_chebyshev_lag
     integer :: disable_chebyshev_iter = -1
+    real(dp), allocatable :: nparticles_cheb(:,:) ! qmc_in%ncycles, chebyshev_order
 end type cheb_t
 
 type qmc_state_t

@@ -564,26 +564,26 @@ contains
         qs%estimators%proj_energy = qs%estimators%proj_energy/(qmc_in%ncycles*qs%cheby_prop%order)
         qs%estimators%D0_population = qs%estimators%D0_population/(qmc_in%ncycles*qs%cheby_prop%order)
         ! Similarly for the HFS estimator
-        qs%estimators%D0_hf_population = qs%estimators%D0_hf_population/(qmc_in%ncycles*qs%cheby_prop%order)
-        qs%estimators%proj_hf_O_hpsip = qs%estimators%proj_hf_O_hpsip/(qmc_in%ncycles*qs%cheby_prop%order)
-        qs%estimators%proj_hf_H_hfpsip = qs%estimators%proj_hf_H_hfpsip/(qmc_in%ncycles*qs%cheby_prop%order)
+        qs%estimators%D0_hf_population = qs%estimators%D0_hf_population/qmc_in%ncycles
+        qs%estimators%proj_hf_O_hpsip = qs%estimators%proj_hf_O_hpsip/qmc_in%ncycles
+        qs%estimators%proj_hf_H_hfpsip = qs%estimators%proj_hf_H_hfpsip/qmc_in%ncycles
         ! Similarly for complex quantities.
-        qs%estimators%proj_energy_comp = qs%estimators%proj_energy_comp/(qmc_in%ncycles*qs%cheby_prop%order)
-        qs%estimators%D0_population_comp = qs%estimators%D0_population_comp/(qmc_in%ncycles*qs%cheby_prop%order)
+        qs%estimators%proj_energy_comp = qs%estimators%proj_energy_comp/qmc_in%ncycles
+        qs%estimators%D0_population_comp = qs%estimators%D0_population_comp/qmc_in%ncycles
         ! average spawning rate over report loop and processor.
-        qs%spawn_store%rspawn = qs%spawn_store%rspawn/((qmc_in%ncycles*qs%cheby_prop%order)*nprocs)
+        qs%spawn_store%rspawn = qs%spawn_store%rspawn/(qmc_in%ncycles*qs%cheby_prop%order*nprocs)
 
         if (doing_calc(hfs_fciqmc_calc)) then
             if (qs%vary_shift(1)) then
-                call update_shift(qs, qs%shift(1), ntot_particles_old(1), ntot_particles(1), (qmc_in%ncycles*qs%cheby_prop%order))
+                call update_shift(qs, qs%shift(1), ntot_particles_old(1), ntot_particles(1), qmc_in%ncycles)
                 call update_hf_shift(qmc_in, qs, qs%shift(2), ntot_particles_old(1), ntot_particles(1), &
-                                     qs%estimators(1)%hf_signed_pop, new_hf_signed_pop, (qmc_in%ncycles*qs%cheby_prop%order))
+                                     qs%estimators(1)%hf_signed_pop, new_hf_signed_pop, qmc_in%ncycles)
             end if
         else if (comp_param) then
             do i = 1, qs%psip_list%nspaces, 2
                 if (qs%vary_shift(i)) then
                     call update_shift(qs, qs%shift(i), ntot_particles_old(i) + ntot_particles_old(i+1), &
-                                        ntot_particles(i) + ntot_particles(i+1), (qmc_in%ncycles*qs%cheby_prop%order))
+                                        ntot_particles(i) + ntot_particles(i+1), qmc_in%ncycles)
                     qs%shift(i+1) = qs%shift(i)
                 end if
             end do
@@ -592,10 +592,9 @@ contains
                 if (qs%vary_shift(i)) then
                     if (vary_shift_reference_loc) then
                         call update_shift(qs, qs%shift(i), real(qs%estimators(i)%D0_population_old, dp), &
-                                          real(qs%estimators(i)%D0_population, dp), (qmc_in%ncycles*qs%cheby_prop%order))
+                                          real(qs%estimators(i)%D0_population, dp), qmc_in%ncycles)
                     else
-                        call update_shift(qs, qs%shift(i), ntot_particles_old(i), ntot_particles(i), &
-                                          (qmc_in%ncycles*qs%cheby_prop%order))
+                        call update_shift(qs, qs%shift(i), ntot_particles_old(i), ntot_particles(i), qmc_in%ncycles)
                     end if
                 end if
             end do
@@ -686,23 +685,44 @@ contains
         real(dp), intent(in) :: nparticles_old, nparticles
         integer, intent(in) :: nupdate_steps
 
-        real(p) :: tau_eff
+        real(p) :: tau_update
+        integer :: icycle, icheb
 
         ! dmqmc_factor is included to account for a factor of 1/2 introduced into tau in
         ! DMQMC calculations. In all other calculation types, it is set to 1, and so can be ignored.
 
-        if (qs%cheby_prop%using_chebyshev) then
+        associate(cp=>qs%cheby_prop)
+        !if (cp%using_chebyshev) then
+        if (.false.) then
             ! qs%tau = 1 in wall-Chebyshev, but the effective tau for shift updating purposes is the average of chebyshev weights
-            tau_eff = sum(qs%cheby_prop%weights)/qs%cheby_prop%order
-            if (qs%target_particles .le. 0.00_p) then
-                loc_shift = loc_shift - real(log(nparticles/nparticles_old)*qs%shift_damping/ &
-                                             (qs%dmqmc_factor*tau_eff*nupdate_steps),p)
-            else 
-                loc_shift = loc_shift - real(log(nparticles/nparticles_old)*qs%shift_damping/ &
-                                             (qs%dmqmc_factor*tau_eff*nupdate_steps),p) & 
-                      - real(log(nparticles/qs%target_particles)*(qs%shift_harmonic_forcing)/ &
-                      (qs%dmqmc_factor*tau_eff*nupdate_steps),p)
-            end if
+            tau_update = 0.0_p
+            
+            do icycle = 1, nupdate_steps
+                do icheb = 1, cp%order
+                    if (icycle == 1 .and. icheb == 1) then
+                        tau_update = (cp%zeroes(1)-loc_shift)*log(cp%nparticles_cheb(1,1)/nparticles_old)
+                    else if (icheb == 1) then
+                        tau_update = tau_update + (cp%zeroes(icheb)-loc_shift)*log(cp%nparticles_cheb(icycle,icheb)/ &
+                                                                               cp%nparticles_cheb(icycle-1,cp%order))
+                    else
+                        tau_update = tau_update + (cp%zeroes(icheb)-loc_shift)*log(cp%nparticles_cheb(icycle,icheb)/ &
+                                                                               cp%nparticles_cheb(icycle,icheb-1))
+                    end if
+                    print*, tau_update
+                end do
+            end do
+
+            ! Chebyshev currently doesn't work with shift_harmonic_forcing
+            loc_shift = loc_shift - real(tau_update*qs%shift_damping/(qs%dmqmc_factor*nupdate_steps*qs%cheby_prop%order),p)
+
+            ! DELETE AFTER DEBUGGING
+            print*, 'Cheb intermediate populations'
+            print*, cp%nparticles_cheb
+            print*, 'Cheb zeroes'
+            print*, cp%zeroes
+            print*, 'nparticles_old: ', nparticles_old
+            print*, 'nparticles: ', nparticles
+            
         else
             if (qs%target_particles .le. 0.00_p) then
                 loc_shift = loc_shift - real(log(nparticles/nparticles_old)*qs%shift_damping/ &
@@ -714,6 +734,7 @@ contains
                       (qs%dmqmc_factor*qs%tau*nupdate_steps),p)
             end if
         end if
+        end associate
     
     end subroutine update_shift
 

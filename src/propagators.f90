@@ -93,6 +93,8 @@ contains
             call check_allocate('qs%cheby_prop%zeroes', qs%cheby_prop%order, ierr)
             allocate(qs%cheby_prop%weights(qs%cheby_prop%order), stat=ierr)
             call check_allocate('qs%cheby_prop%weights', qs%cheby_prop%order, ierr)
+            allocate(qs%cheby_prop%nparticles_cheb(qmc_in%ncycles, qs%cheby_prop%order), stat=ierr)
+            call check_allocate('qs%cheby_prop%nparticles_cheb', qmc_in%ncycles*qs%cheby_prop%order, ierr)
 
             call highest_det(sys, occ_list_max)
             call enumerate_determinants(sys, .true., .false., 2, sym_space_size, ndets, singles_doubles,&
@@ -194,8 +196,7 @@ contains
 
         do i = 1, cheby_prop%order
             cheby_prop%zeroes(i) = shift + (cheby_prop%spectral_range(2)-cheby_prop%spectral_range(1))/2 &
-                                   * (1 - cos(pi*i / (cheby_prop%order+0.5) )) ! BZ [TODO] - explain the factor of 2
-            ! This takes care of the absence of the minus sign in front of <D_m|g_wall_ch|D_0>
+                                   * (1 - cos(pi*i / (cheby_prop%order+0.5)))
             cheby_prop%weights(i) = 1/(cheby_prop%zeroes(i)-shift)
         end do
 
