@@ -189,6 +189,8 @@ contains
                             &qs%secondary_ref_tree%root)
                     end if
                     if (.not. allowed_multiref) nspawn = 0
+                else
+                    nspawn = 0
                 end if
             end if
             if (excitor_sign < 0) nspawn = -nspawn
@@ -980,8 +982,6 @@ contains
         use ccmc_utils, only: add_ex_level_bit_string_calc
         use uccmc_utils, only: add_info_str_trot
 
-        ! [review] Brian: is basis needed?
-        !type(basis_t), intent(in) :: basis
         type(sys_t), intent(in) :: sys
         type(reference_t), intent(in) :: ref
         type(spawn_t), intent(inout) :: spawn
@@ -1008,6 +1008,7 @@ contains
         end if
         call create_spawned_particle_ptr(sys%basis, ref, cdet, connection, nspawned, &
                                         ispace, spawn, fexcit_loc)
+
         call accumulate_bloom_stats(bloom_stats, nspawned)
 
     end subroutine create_spawned_particle_ccmc

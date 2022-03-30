@@ -592,6 +592,7 @@ contains
         use calc, only: calc_type, uccmc_calc, trot_uccmc_calc
         use calc_system_init, only: set_spin_polarisation, set_symmetry_aufbau
         use excitations, only: end_excitations, init_excitations
+        use errors, only: stop_all
 
         integer(c_int) :: nresult
         type(c_ptr), value :: L
@@ -627,6 +628,8 @@ contains
         opts = aot_table_top(lua_state)
         call read_qmc_in(lua_state, opts, qmc_in)
         call read_ccmc_in(lua_state, opts, uccmc_in, sys)
+        if (uccmc_in%even_selection) &
+            call stop_all('lua_uccmc', 'Even selection is not compatible with UCCMC.')
 
         if (uccmc_in%trot) then
             sys%basis%info_string_len = 2
@@ -1481,12 +1484,12 @@ contains
         type(ccmc_in_t), intent(out) :: ccmc_in
 
         integer :: ccmc_table, err, i
-        character(28), parameter :: keys(19) = [character(28) :: 'move_frequency', 'cluster_multispawn_threshold', &
+        character(28), parameter :: keys(20) = [character(28) :: 'move_frequency', 'cluster_multispawn_threshold', &
                                                                 'full_non_composite', 'linked', 'vary_shift_reference', &
                                                                 'density_matrices', 'density_matrix_file', 'even_selection', &
                                                                 'multiref', 'n_secondary_ref', 'mr_acceptance_search', &
                                                                 'mr_excit_lvl','mr_secref_file','mr_n_frozen','mr_read_in', &
-                                                                'pow_trunc', 'variational_energy', 'average_wfn', 'trotterized']
+                                                                'pow_trunc', 'variational_energy', 'average_wfn', 'trotterized', 'threshold']
         character(23) :: string ! 32 bit integer has 10 digits, should be more than enough
         ! secondary_refX keywords are not hardcoded in, so we dynamically add them into the
         ! array of allowed keys 
@@ -1561,6 +1564,7 @@ contains
             call aot_get_val(ccmc_in%variational_energy, err, lua_state, ccmc_table, 'variational_energy')
             call aot_get_val(ccmc_in%average_wfn, err, lua_state, ccmc_table, 'average_wfn')
             call aot_get_val(ccmc_in%trot, err, lua_state, ccmc_table, 'trotterized')
+            call aot_get_val(ccmc_in%threshold, err, lua_state, ccmc_table, 'threshold')
             call warn_unused_args(lua_state, keys_concat, ccmc_table)
 
             call aot_table_close(lua_state, ccmc_table)
@@ -1568,76 +1572,6 @@ contains
         end if
 
     end subroutine read_ccmc_in
-
-! [review] - AJWT: Would it be better to include a ccmc table for the uccmc call and just put the ccmc-specific parameters in there, 
-! [review] - AJWT: leaving just uccmc-ey things in the uccmc table?
-    subroutine read_uccmc_in(lua_state, opts, uccmc_in, sys)
-
-
-        ! Read in an uccmc table (if it exists) to an uccmc_in object.
-
-        ! uccmc = {
-        !     move_frequency = frequency,
-        !     cluster_multispawn_threshold = threshold,
-        !     linked = true/false,
-        !     vary_shift_reference = true/false,
-        !     density_matrices = true/false,
-        !     density_matrix_file = filename,
-        !     pow_trunc = trunc,
-        !     variational_energy = true/false,
-        ! }
-
-        ! In/Out:
-        !    lua_state: flu/Lua state to which the HANDE API is added.
-        ! In:
-        !    opts: handle for the table containing the ccmc table.
-        !    sys:  sys_t object containing information of current system. 
-        ! Out:
-        !    uccmc_in: uccmc_in_t object containing uccmc-specific input options.
-
-        use flu_binding, only: flu_State
-        use aot_table_module, only: aot_get_val, aot_exists, aot_table_open, aot_table_close
-
-        use qmc_data, only: uccmc_in_t
-        use lua_hande_utils, only: warn_unused_args
-        use system, only: sys_t
-        use errors, only: stop_all
-
-        type(flu_State), intent(inout) :: lua_state
-        integer, intent(in) :: opts
-        type (sys_t), intent(in) :: sys
-        type(uccmc_in_t), intent(out) :: uccmc_in
-
-        integer :: uccmc_table, err
-        character(28), parameter :: keys(9) = [character(28) :: 'move_frequency', 'cluster_multispawn_threshold', &
-                                                                'linked', 'vary_shift_reference', &
-                                                                'density_matrices', 'density_matrix_file', 'pow_trunc', &
-                                                                'variational_energy', 'trotterized']
-
-        if (aot_exists(lua_state, opts, 'uccmc')) then
-
-            call aot_table_open(lua_state, opts, uccmc_table, 'uccmc')
-
-            ! Optional arguments (defaults set in derived type).
-            call aot_get_val(uccmc_in%move_freq, err, lua_state, uccmc_table, 'move_frequency')
-            call aot_get_val(uccmc_in%cluster_multispawn_threshold, err, lua_state, uccmc_table, 'cluster_multispawn_threshold')
-            call aot_get_val(uccmc_in%linked, err, lua_state, uccmc_table, 'linked')
-            call aot_get_val(uccmc_in%vary_shift_reference, err, lua_state, uccmc_table, 'vary_shift_reference')
-            call aot_get_val(uccmc_in%density_matrices, err, lua_state, uccmc_table, 'density_matrices')
-            call aot_get_val(uccmc_in%density_matrix_file, err, lua_state, uccmc_table, 'density_matrix_file')
-            call aot_get_val(uccmc_in%pow_trunc, err, lua_state, uccmc_table, 'pow_trunc')
-            call aot_get_val(uccmc_in%variational_energy, err, lua_state, uccmc_table, 'variational_energy')
-            call aot_get_val(uccmc_in%average_wfn, err, lua_state, uccmc_table, 'average_wfn')
-            call aot_get_val(uccmc_in%trot, err, lua_state, uccmc_table, 'trotterized')
-            call aot_get_val(uccmc_in%full_nc, err, lua_state, uccmc_table, 'full_nc')
-
-            call warn_unused_args(lua_state, keys, uccmc_table)
-
-            call aot_table_close(lua_state, uccmc_table)
-
-        end if
-
-    end subroutine read_uccmc_in
 
     subroutine read_dmqmc_in(lua_state, nbasis, opts, system_name, dmqmc_in, subsys_info)
 

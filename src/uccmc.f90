@@ -87,7 +87,7 @@ contains
         use determinant_data, only: det_info_t
         use excitations, only: excit_t, get_excitation_level, get_excitation
         use qmc_io, only: write_qmc_report, write_qmc_report_header, write_qmc_var
-        use qmc, only: init_qmc
+        use qmc, only: init_qmc, init_secondary_references
         use qmc_common, only: initial_qmc_status, initial_cc_projected_energy, load_balancing_report, init_report_loop, &
                               init_mc_cycle, end_report_loop, end_mc_cycle, redistribute_particles, rescale_tau
         use proc_pointers
@@ -177,7 +177,9 @@ contains
         real(p) :: real_population, var_energy
         logical :: old_vary
         integer :: avg_start
+        integer :: count_discard
 
+        count_discard = 0
         old_vary=.false.
         if (parent) then
             write (io_unit,'(1X,"UCCMC")')
@@ -218,7 +220,23 @@ contains
                 = (real(qs%psip_list%pops(1,:qs%psip_list%nstates))/qs%psip_list%pop_real_factor)**2
         end if
 
-        qs%ref%max_ex_level = qs%ref%ex_level
+        if (uccmc_in%multiref) then
+            ! Initialise multireference CCMC specific data.
+            qs%multiref = .true.
+            qs%mr_acceptance_search = uccmc_in%mr_acceptance_search
+            qs%n_secondary_ref = uccmc_in%n_secondary_ref
+            if(uccmc_in%mr_read_in) then
+                qs%mr_read_in = uccmc_in%mr_read_in
+                qs%mr_secref_file = uccmc_in%mr_secref_file
+                qs%mr_n_frozen = uccmc_in%mr_n_frozen
+                qs%mr_excit_lvl = uccmc_in%mr_excit_lvl
+            endif
+
+            allocate (qs%secondary_refs(qs%n_secondary_ref))
+            call init_secondary_references(sys, uccmc_in%secondary_refs, io_unit, qs)
+        else 
+            qs%ref%max_ex_level = qs%ref%ex_level
+        end if
 
         if (debug) call init_logging(logging_in, logging_info, qs%ref%ex_level)
 
@@ -436,32 +454,31 @@ contains
                 ! default(none) on when making changes and ensure that the only
                 ! errors relate to the procedure pointers...
 
+                proj_energy_cycle = cmplx(0.0, 0.0, p)
+                D0_population_cycle = cmplx(0.0, 0.0, p)
+                D0_population_ucc_cycle = 0.0_p
                 !$omp parallel default(none) &
                 !$omp private(it, iexcip_pos, i, seen_D0, hit, pos, population, real_population,k, &
                 !$omp annihilation_flags) &
                 !$omp shared(rng, cumulative_abs_real_pops, tot_abs_real_pop,  &
                 !$omp        max_cluster_size, contrib, D0_normalisation, D0_pos, rdm,    &
                 !$omp        qs, sys, bloom_stats, min_cluster_size, ref_det,             &
-                !$omp        proj_energy_cycle, D0_population_cycle, selection_data,      &
-                !$omp        nattempts_spawn, D0_population_ucc_cycle,&
+                !$omp        selection_data,      &
                 !$omp        uccmc_in, nprocs, ms_stats, ps_stats, qmc_in, load_bal_in, &
-                !$omp        ndeath_nc, &  
-                !$omp        nparticles_change, ndeath, logging_info, nstates_ci, & 
+                !$omp        ndeath_nc, count_discard, &  
+                !$omp        nparticles_change, logging_info, nstates_ci, & 
                 !$omp        time_avg_psip_list_ci_states, time_avg_psip_list_ci_pops, &
-                !$omp        time_avg_psip_list_states, time_avg_psip_list_pops)
-
+                !$omp        time_avg_psip_list_states, time_avg_psip_list_pops) &
+                !$omp reduction(+:D0_population_cycle,proj_energy_cycle, D0_population_ucc_cycle, nattempts_spawn,ndeath)
                 it = get_thread_id()
                 iexcip_pos = 0
                 seen_D0 = .false.
-                proj_energy_cycle = cmplx(0.0, 0.0, p)
-                D0_population_cycle = cmplx(0.0, 0.0, p)
-                D0_population_ucc_cycle = 0.0_p
-                !$omp do schedule(dynamic,200) &
-                !$omp reduction(+:D0_population_cycle,proj_energy_cycle, D0_population_ucc_cycle, nattempts_spawn,ndeath)
-                do iattempt = 1, selection_data%nclusters
+
+                !$omp do schedule(dynamic,200) 
+                do iattempt = 1, selection_data%nsingle_excitors!clusters
                     ! For OpenMP scalability, have this test inside a single loop rather
                     ! than attempt to parallelise over three separate loops.
-                    if (iattempt <= selection_data%nsingle_excitors) then
+                    !if (iattempt <= selection_data%nsingle_excitors) then
                         ! As noncomposite clusters can't be above truncation level or linked-only all can accumulate +
                         ! propagate. Only need to check not selecting the reference as we treat it separately.
                         if (iattempt /= D0_pos) then
@@ -486,11 +503,17 @@ contains
                                 time_avg_psip_list_ci_states, time_avg_psip_list_ci_pops, nstates_ci)
                             end if
                         end if
-                    else if (iattempt <= selection_data%nsingle_excitors + selection_data%nstochastic_clusters) then
+                end do
+                !$omp end do
+                !$omp do schedule(dynamic,200) &
+                !$omp reduction(+:D0_population_cycle,proj_energy_cycle, D0_population_ucc_cycle, nattempts_spawn,ndeath)
+                do iattempt = 1, selection_data%nstochastic_clusters
+                    !else if (iattempt <= selection_data%nsingle_excitors + selection_data%nstochastic_clusters) then
                         call select_ucc_cluster(rng(it), sys, qs%psip_list, qs%ref%f0, qs%ref%max_ex_level, &
                                             selection_data%nstochastic_clusters, D0_normalisation, qmc_in%initiator_pop, D0_pos, &
                                             cumulative_abs_real_pops, tot_abs_real_pop, min_cluster_size, max_cluster_size, &
-                                            logging_info, contrib(it)%cdet, contrib(it)%cluster, qs%excit_gen_data)
+                                            logging_info, contrib(it)%cdet, contrib(it)%cluster, qs%excit_gen_data, uccmc_in%threshold, &
+                                            count_discard)
 
                         ! Add contribution to average CI wfn
                         if (uccmc_in%variational_energy .and. all(qs%vary_shift) .and. &
@@ -510,7 +533,11 @@ contains
                                                                 uccmc_in, logging_info, ms_stats(it), bloom_stats, &
                                                                 contrib(it), nattempts_spawn, ndeath, ps_stats(it))
                         end if
-                    else
+                end do
+                !$omp end do
+                !$omp do schedule(dynamic,200) &
+                !$omp reduction(+:D0_population_cycle,proj_energy_cycle, D0_population_ucc_cycle, nattempts_spawn,ndeath)
+                do iattempt = 1, selection_data%nD0_select
                         if (.not. seen_D0) then
                             ! This is the first time this thread is spawning from D0, so it
                             ! needs to be converted into a det_info_t object for the excitation
@@ -530,12 +557,10 @@ contains
                         call do_ccmc_accumulation(sys, qs, contrib(it)%cdet, contrib(it)%cluster, logging_info, &
                                                     D0_population_cycle, proj_energy_cycle, uccmc_in, ref_det, rdm, selection_data,&
                                                     D0_population_ucc_cycle)
-                        ! [review] Verena: make sure qs is not altered unexpectedly here (it is shared).
                         nattempts_spawn = nattempts_spawn + 1
                        
                         call perform_ccmc_spawning_attempt(rng(it), sys, qs, uccmc_in, logging_info, bloom_stats, contrib(it), 1, &
                                                         ps_stats(it))
-                   end if
                 end do
                 !$omp end do
                 ndeath_nc=0
@@ -574,7 +599,7 @@ contains
                 qs%psip_list%nparticles = qs%psip_list%nparticles + nparticles_change
                 qs%estimators%D0_population_comp = qs%estimators%D0_population_comp + D0_population_cycle
                 qs%estimators%proj_energy_comp = qs%estimators%proj_energy_comp + proj_energy_cycle
-                qs%estimators%D0_population_ucc = qs%estimators%D0_population_ucc + D0_population_ucc_cycle
+                qs%estimators%D0_noncomposite_population = qs%estimators%D0_noncomposite_population + D0_population_ucc_cycle
 
                 ! Calculate the number of spawning events before the particles are redistributed,
                 ! otherwise sending particles to other processors is counted as a spawning event.
@@ -723,6 +748,8 @@ contains
             call dealloc_det_info_t(ref_det)
         end if
 
+        if (uccmc_in%threshold > 0 .and. parent) print*, 'Number of discard events: ', count_discard
+
         call dealloc_contrib(contrib, uccmc_in%linked)
         do i = 0, nthreads-1
             call dSFMT_end(rng(i))
@@ -756,7 +783,7 @@ contains
 
     subroutine select_ucc_cluster(rng, sys, psip_list, f0, ex_level, nattempts, normalisation, &
                               initiator_pop, D0_pos, cumulative_excip_pop, tot_excip_pop, min_size, max_size, &
-                              logging_info, cdet, cluster, excit_gen_data)
+                              logging_info, cdet, cluster, excit_gen_data, threshold, counter)
 
         ! Based on select_cluster (without the linked_cluster parts) and with information about de-excitors.
         ! Select a random cluster of excitors and deexcitors from the excitors on the
@@ -840,6 +867,8 @@ contains
         type(cluster_t), intent(inout) :: cluster
         type(logging_t), intent(in) :: logging_info
         type(excit_gen_data_t), intent(in) :: excit_gen_data
+        real(p), intent(in) :: threshold
+        integer, intent(inout) :: counter
 
         real(dp) :: rand
         real(p) :: psize
@@ -848,6 +877,7 @@ contains
         real(p) :: pop(max_size)
         logical :: hit, allowed
         logical, allocatable :: deexcitation(:)
+        real(p) :: normal
        
         ! We shall accumulate the factors which comprise cluster%pselect as we go.
         !   cluster%pselect = n_sel p_size p_clust
@@ -887,12 +917,20 @@ contains
         psize = 0.0_p
         cluster%nexcitors = -1
         deexcit_count = 0
+
+!        normal= 0
+!        do i = min_size, max_size
+!            normal = normal + ((2.0_p**(i-1))/factorial(i))*(tot_excip_pop/real(normalisation, p))**(i-1)
+!        end do
         do i = 0, max_size-min_size-1
             psize = psize + 1.0_p/2_int_64**(i+1)
+!        do i = min_size, max_size-1
+!            psize = psize + ((2.0_p**(i-1))/factorial(i))*(tot_excip_pop/real(normalisation, p))**(i-1)
             if (rand < psize) then
                 ! Found size!
-                cluster%nexcitors = i+min_size
+                cluster%nexcitors = min_size + i
                 cluster%pselect = cluster%pselect/2_int_64**(i+1)
+!                cluster%pselect = cluster%pselect*(((2.0_p**(i-1))/factorial(i))*(tot_excip_pop/real(normalisation, p))**(i-1))/normal
                 exit
             end if
         end do
@@ -906,7 +944,6 @@ contains
               allocate(deexcitation(cluster%nexcitors))
               deexcitation(:) = .false.
         end if 
-
         ! If could be using logging set to easily identifiable nonsense value.
         if (debug) pop = -1_int_p
 
@@ -1059,6 +1096,15 @@ contains
 
                 ! Normalisation factor for cluster%amplitudes...
                 cluster%amplitude = cluster_population/(normalisation**(cluster%nexcitors-1))
+                if (cluster%pselect/abs(cluster%amplitude) < threshold) then
+                    !if (get_rand_close_open(rng) < cluster%pselect/abs(cluster%amplitude)/1e-2) then
+                !    !   cluster%pselect = 1e-2*cluster%amplitude
+                !    !else
+                        allowed = .false.
+                        cluster%excitation_level = huge(0)
+                        counter = counter + 1
+                !    !end if
+                end if
             else
                 ! Simply set excitation level to a too high (fake) level to avoid
                 ! this cluster being used.

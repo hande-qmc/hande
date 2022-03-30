@@ -115,7 +115,6 @@ contains
             iel2 = 0
             perm = 0
 
-! [review] - AJWT: Good catch.  Do you think this affects any other calculations?
             ! Excitation level...
             excitation%nexcit = sum(count_set_bits(ieor(f1(:basis%bit_string_len),f2(:basis%bit_string_len))))/2
 

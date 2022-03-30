@@ -706,24 +706,26 @@ contains
                 ! can't use default(none).  I *strongly* recommend turning
                 ! default(none) on when making changes and ensure that the only
                 ! errors relate to the procedure pointers...
+                proj_energy_cycle = cmplx(0.0, 0.0, p)
+                D0_population_cycle = cmplx(0.0, 0.0, p)
                 !$omp parallel default(none) &
-                !$omp private(it, iexcip_pos, i, seen_D0) &
+                !$omp private(it, seen_D0, iexcip_pos, i) &
                 !$omp shared(rng, cumulative_abs_real_pops, tot_abs_real_pop,  &
                 !$omp        max_cluster_size, contrib, D0_normalisation, D0_pos, rdm,    &
                 !$omp        qs, sys, bloom_stats, min_cluster_size, ref_det,             &
-                !$omp        proj_energy_cycle, D0_population_cycle, selection_data,      &
-                !$omp        nattempts_spawn, ex_lvl_dist, &
+                !$omp        selection_data,      &
+                !$omp        ex_lvl_dist, &
                 !$omp        ccmc_in, nprocs, ms_stats, ps_stats, qmc_in, load_bal_in, &
                 !$omp        ndeath_nc,   &
-                !$omp        nparticles_change, ndeath, logging_info)
+                !$omp        nparticles_change, logging_info) &
+                !$omp reduction(+:D0_population_cycle,proj_energy_cycle,nattempts_spawn,ndeath)
                 it = get_thread_id()
                 iexcip_pos = 0
                 seen_D0 = .false.
-                proj_energy_cycle = cmplx(0.0, 0.0, p)
-                D0_population_cycle = cmplx(0.0, 0.0, p)
-                !$omp do schedule(dynamic,200) reduction(+:D0_population_cycle,proj_energy_cycle,nattempts_spawn,ndeath)
-                do iattempt = 1, selection_data%nclusters
-                    if (iattempt <= selection_data%nsingle_excitors) then
+
+                !$omp do schedule(dynamic,200) 
+                do iattempt = 1, selection_data%nsingle_excitors
+                    !if (iattempt <= selection_data%nsingle_excitors) then
                         ! As noncomposite clusters can't be above truncation level or linked-only all can accumulate +
                         ! propagate. Only need to check not selecting the reference as we treat it separately.
                         if (iattempt /= D0_pos) then
@@ -746,7 +748,11 @@ contains
 
                     ! For OpenMP scalability, have this test inside a single loop rather
                     ! than attempt to parallelise over three separate loops.
-                    else if (iattempt <= selection_data%nsingle_excitors + selection_data%nstochastic_clusters) then
+                end do
+                !$omp end do
+                !$omp do schedule(dynamic,200) 
+                do iattempt = 1, selection_data%nstochastic_clusters
+                    !else if (iattempt <= selection_data%nsingle_excitors + selection_data%nstochastic_clusters) then
                         if (ccmc_in%even_selection) then
                             call select_cluster_truncated(rng(it), sys, qs%psip_list, qs%ref%f0, &
                                                         ccmc_in%linked, selection_data%nstochastic_clusters, D0_normalisation, &
@@ -775,7 +781,11 @@ contains
                                                                 ccmc_in, logging_info, ms_stats(it), bloom_stats, &
                                                                 contrib(it), nattempts_spawn, ndeath, ps_stats(it))
                         end if
-                    else
+                    end do
+                !$omp end do
+                !$omp do schedule(dynamic,200) 
+                do iattempt = 1, selection_data%nD0_select
+                    !else
                         ! We just select the empty cluster.
                         ! As in the original algorithm, allow this to happen on
                         ! each processor and hence scale the selection
@@ -800,7 +810,7 @@ contains
                        
                         call perform_ccmc_spawning_attempt(rng(it), sys, qs, ccmc_in, logging_info, bloom_stats, &
                                 contrib(it), 1, ps_stats(it))
-                    end if
+                    !end if
                 end do
                 !$omp end do
 
@@ -955,14 +965,6 @@ contains
             call check_deallocate('rdm',ierr)
             call dealloc_det_info_t(ref_det)
         end if
-        if (parent) then
-            ! [review] - AJWT: It's worth printing a header here at least.
-            do i = 1, qs%psip_list%nstates
-                call write_qmc_var(io_unit, qs%psip_list%states(1,i))
-                call write_qmc_var(io_unit, real(qs%psip_list%pops(1,i))/qs%psip_list%pop_real_factor)
-                        write (io_unit,'()')
-            end do
-        end if
 
         call dealloc_contrib(contrib, ccmc_in%linked)
         do i = 0, nthreads-1
@@ -986,7 +988,6 @@ contains
         ! Updates projected energy and any RDMs with the contribution from the
         ! current cluster.
 
-        ! [review] Brian: Document D0_population_ucc_cycle
         ! In:
         !   sys: information on system under consideration.
         !   qs: information on current state of qmc calculation.
@@ -998,10 +999,11 @@ contains
         !   logging_info: current logging settings in use.
 
         ! In/Out:
-        !   D0_population_cycle: running total of reference population.
+        !   D0_population_cycle: running total of reference population from any size cluster.
         !   proj_energy_cycle: running total of projected energy contributions.
         !   rdm: array containing reduced density matrix.
         !   selection_data: info on clsuter selection.
+        !   D0_population_ucc_cycle: running total of reference population from size 0 clusters (only used in UCC).
 
         use system, only: sys_t
         use qmc_data, only: qmc_state_t, ccmc_in_t, estimators_t
@@ -1050,7 +1052,7 @@ contains
                      [real(cluster%amplitude,p),aimag(cluster%amplitude)]*&
                      cluster%cluster_to_det_sign/cluster%pselect, &
                      estimators_cycle, connection, hmatel, cluster%nexcitors)
-                D0_population_ucc_cycle = D0_population_ucc_cycle + estimators_cycle%D0_population_ucc
+                D0_population_ucc_cycle = D0_population_ucc_cycle + estimators_cycle%D0_noncomposite_population
             else
                 call update_proj_energy_ptr(sys, qs%ref%f0, qs%trial%wfn_dat, cdet, &
                      [real(cluster%amplitude,p),aimag(cluster%amplitude)]*&

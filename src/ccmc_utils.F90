@@ -168,8 +168,6 @@ contains
         logical,  intent(out) :: allowed
 
         integer(i0) :: excitor_loc(basis%tot_string_len)
-        ! [review] - AJWT:  Is this copy needed?
-        ! [review] - Brian: reset_extra_info_bit_string has intent(inout) with f0, so I guess it's necessary
         integer(i0) :: f0_loc(basis%tot_string_len)
 
         integer(i0) :: excitor_excitation(basis%tot_string_len)
@@ -225,8 +223,19 @@ contains
     pure subroutine collapse_excitor_onto_cluster(basis, excitor_excitation, f0, cluster_excitor, &
                                                   cluster_annihilation, cluster_creation, cluster_population)
 
-        ! [review] - Brian: document this subroutine, and perhaps distinguish it from / explain its separation from 
-        ! [review] - collapse_cluster, since I saw that the only call to this subroutine is in uccmc.f90
+
+        ! General subroutine for applying an excitor to a cluster. Used in collapse_cluster and ucc_collapse_cluster.
+        ! In:
+        !    basis: information about the single-particle basis.
+        !    f0: bit string representation of the reference determinant.
+        !    excitor_excitation: bit string of the excitor excitation operator.
+        !    cluster_annihilation: bit string of the annihilation operator in the cluster excitor.
+        !    cluster_creation: bit string of the creationion operator in the cluster excitor.
+        !    excitor_excitation: bit string of the excitor excitation operator.
+        ! In/Out:
+        !    cluster_excitor: bit string of the Slater determinant formed by applying
+        !        the excitor, e2, to the reference determinant.
+        !    cluster_population: number of excips on the 'cluster' excitor, e2.
 
         ! Apply the excitor to the cluster (which is, in its own right,
         ! an excitor).
@@ -484,8 +493,6 @@ contains
 
         ! Need to combine spaces if doing complex; we choose combining in quadrature.
         cumulative_pops(1) = get_pop_contrib(pops(:,1), real_factor, complx)
-        ! [review] - Brian: still needed?
-        !if (present(p_ref)) print*, 'pref', p_ref
         if (D0_proc == iproc) then
             ! Let's be a bit faster: unroll loops and skip over the reference
             ! between the loops.
@@ -514,7 +521,6 @@ contains
             do i = d0_pos+1, nactive
                 cumulative_pops(i) = cumulative_pops(i-1) + &
                                         get_pop_contrib(pops(:,i), real_factor, complx)
-                !if (present(p_ref)) print*, 'pref', p_ref
                 if (calc_dist) then
                     if (ex_lvls(i-1) < ex_lvls(i)) then
                         ! i-1 is last entry of it's excitation level.
@@ -630,7 +636,6 @@ contains
 
         ! Need to combine spaces if doing complex; we choose combining in quadrature.
         cumulative_pops(1) = pops(1)
-        !if (present(p_ref)) print*, 'pref', p_ref
         if (D0_proc == iproc) then
             ! Let's be a bit faster: unroll loops and skip over the reference
             ! between the loops.
@@ -659,7 +664,6 @@ contains
             do i = d0_pos+1, nactive
                 cumulative_pops(i) = cumulative_pops(i-1) + &
                                         pops(i)
-                !if (present(p_ref)) print*, 'pref', p_ref
                 if (calc_dist) then
                     if (ex_lvls(i-1) < ex_lvls(i)) then
                         ! i-1 is last entry of it's excitation level.
