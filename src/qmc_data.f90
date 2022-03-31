@@ -8,6 +8,7 @@ use importance_sampling_data
 use excit_gens, only: excit_gen_data_t
 use reference_determinant, only: reference_t, reference_t_json
 use dSFMT_interface, only: dSFMT_state_t
+use search, only: tree_t
 
 implicit none
 
@@ -278,6 +279,12 @@ type fciqmc_in_t
     ! Evolve two copies of the wavefunction to enable unbiased sampling of the RDM
     logical :: replica_tricks = .false.
 
+    ! Stochastically sample the two-body reduced density matrix.
+    logical :: density_matrices = .false.
+
+    ! Filename to write density matrix to
+    character(255) :: density_matrix_file = 'RDM'
+
 end type fciqmc_in_t
 
 type semi_stoch_in_t
@@ -340,6 +347,16 @@ type ccmc_in_t
     integer :: n_secondary_ref = 0
     ! The secondary references.
     type(reference_t), allocatable :: secondary_refs(:)
+    ! Acceptance algorithm for mrcc excitations.
+    integer :: mr_acceptance_search
+    ! Name of the file containing secondary references (only if mr_read_in is true).
+    character(255) :: mr_secref_file
+    ! CC level from every secondary reference.
+    integer :: mr_excit_lvl = -1
+    ! Number of frozen electrons to add to the secondary references.
+    integer :: mr_n_frozen = 0
+    ! Whether to read in a secondary reference file.
+    logical :: mr_read_in = .false.
 end type ccmc_in_t
 
 type restart_in_t
@@ -786,7 +803,7 @@ type estimators_t
 
     ! Energy calculated from the RDM
     real(p) :: rdm_energy = 0.0_p
-    real(p) :: rdm_trace = 1.0_p
+    real(p) :: rdm_trace = 0.0_p
 
     ! Hellmann--Feynman sampling (several terms must be accumulated and averaged separately):
     ! Signed population of Hellmann--Feynman particles
@@ -873,9 +890,11 @@ type qmc_state_t
     type(trial_t) :: trial
     type(restart_in_t) :: restart_in
     ! Flags for multireference CCMC calculations.
-    logical :: multiref = .false.
-    integer :: n_secondary_ref = 0
+    logical :: multiref = .false., mr_read_in = .false.
+    integer :: n_secondary_ref = 0, mr_n_frozen, mr_excit_lvl
     type(reference_t), allocatable :: secondary_refs(:)
+    integer :: mr_acceptance_search
+    character(255) :: mr_secref_file
     ! WARNING: par_info is the 'reference/master' (ie correct) version
     ! of parallel_t, in particular of proc_map_t.  However, copies of it
     ! are kept in spawn_t objects, and it is these copies which are used
@@ -892,6 +911,8 @@ type qmc_state_t
     ! String representing state of RNG. Should be set, used and deallocated as quickly as possible as it becomes invalid as soon as
     ! the next random number is drawn -- only present really for a convenient way of handling the RNG state during restarts.
     type(dSFMT_state_t) :: rng_state
+    ! BK tree object for multi-reference searching
+    type(tree_t) :: secondary_ref_tree
 end type qmc_state_t
 
 ! Copies of various settings that are required during annihilation.  This avoids having to pass through lots of different
@@ -1055,7 +1076,9 @@ contains
             call json_write_key(js, 'guiding_function', fciqmc%guiding_function)
         end select
         call json_write_key(js, 'quadrature_initiator', fciqmc%quadrature_initiator)
-        call json_write_key(js, 'replica_tricks', fciqmc%replica_tricks, .true.)
+        call json_write_key(js, 'replica_tricks', fciqmc%replica_tricks)
+        call json_write_key(js, 'density_matrices', fciqmc%density_matrices)
+        call json_write_key(js, 'density_matrix_file', fciqmc%density_matrix_file, .true.)
         call json_object_end(js, terminal)
 
     end subroutine fciqmc_in_t_json
@@ -1120,10 +1143,11 @@ contains
         !   terminal (optional): if true, this is the last entry in the enclosing JSON object.  Default: false.
 
         use json_out
+        use errors, only: warning
 
         type(json_out_t), intent(inout) :: js
         type(ccmc_in_t), intent(in) :: ccmc
-        character(10) :: string
+        character(23) :: string
         integer :: i
         logical, intent(in), optional :: terminal
 
@@ -1137,18 +1161,23 @@ contains
         call json_write_key(js, 'density_matrix_file', ccmc%density_matrix_file)
         call json_write_key(js, 'even_selection', ccmc%even_selection)
         if (ccmc%multiref) then
-            do i=1, size(ccmc%secondary_refs)
-                if (i<10) then
-                    write(string,'(I1)') i
-                else if (i>=10 .and. i<100) then 
-                    write (string,'(I2)') i
-                else
-                    write (string,'(I3)') i
-                end if
-                call reference_t_json(js, ccmc%secondary_refs(i), key = 'secondary_ref'//string)
-            end do
+            
+            call json_write_key(js, 'mr_read_in', ccmc%mr_read_in)            
+            call json_write_key(js, 'n_secondary_ref', ccmc%n_secondary_ref)
+            if (ccmc%n_secondary_ref.le.20 .and. .not.ccmc%mr_read_in) then
+                do i=1, size(ccmc%secondary_refs)
+                    write (string, '(A13,I0)') 'secondary_ref', i
+                    call reference_t_json(js, ccmc%secondary_refs(i), key = trim(string))
+                end do
+            elseif (ccmc%mr_read_in) then
+                continue
+            else
+                call warning('ccmc_in_t_json','There are more than 20 secondary references, &
+                &printing suppressed, consider using the mr_read_in functionality.')
+            end if
+            call json_write_key(js, 'mr_acceptance_search', ccmc%mr_acceptance_search)
         end if
-        call json_write_key(js, 'multiref', ccmc%multiref,terminal=.true.)
+        call json_write_key(js, 'multiref', ccmc%multiref, terminal=.true.)
         call json_object_end(js, terminal)
 
     end subroutine ccmc_in_t_json

@@ -170,7 +170,7 @@ contains
             case(hub_real, heisenberg, chung_landau)
                 write(io,'()')
             case default
-                write(io,'(7X,a7)') '<i|h|i>'
+                write(io,'(7X,a7)') '<i|f|i>'
             end select
         else
             write (io,'()')

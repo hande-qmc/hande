@@ -103,7 +103,7 @@ contains
             hmatel_tmp = hmatel
             hmatel_tmp%r = hmatel%r * qn_weight
             if (qmc_state%excit_gen_data%p_single_double%vary_psingles) then
-                associate(exdat=>qmc_state%excit_gen_data) 
+                associate(exdat=>qmc_state%excit_gen_data)
                     call update_p_single_double_data(connection%nexcit, hmatel_tmp, pgen, exdat%pattempt_single, &
                         exdat%pattempt_double, sys%read_in%comp, exdat%p_single_double%rep_accum)
                 end associate
@@ -111,6 +111,7 @@ contains
         else
             qn_weight = 1.0_p
         end if
+
         ! 2. Attempt spawning.
         nspawn = attempt_to_spawn(rng, qmc_state%tau, spawn_cutoff, real_factor, hmatel%r * qn_weight, pgen, &
                                 parent_sign)
@@ -580,6 +581,96 @@ contains
         end if
 
     end subroutine spawn_complex
+
+    subroutine spawn_rdm(rng, sys, qmc_state, spawn_cutoff, real_factor, cdet, parent_sign, &
+                              gen_excit_ptr, weights, logging_info, nspawn, nspawn_rdm, connection)
+
+        ! Attempt to spawn a new particle on a connected determinant.
+
+        ! Also spawn particles for replica sampling of RDMs
+
+        ! In/Out:
+        !    rng: random number generator.
+        ! In:
+        !    sys: system being studied.
+        !    qmc_state: input options relating to QMC methods.
+        !    spawn_cutoff: The size of the minimum spawning event allowed, in
+        !        the encoded representation. Events smaller than this will be
+        !        stochastically rounded up to this value or down to zero.
+        !    real_factor: The factor by which populations are multiplied to
+        !        enable non-integer populations.
+        !    cdet: info on the current determinant (cdet) that we will spawn
+        !        from.
+        !    parent_sign: sign of the population on the parent determinant (i.e.
+        !        either a positive or negative integer).
+        !    gen_excit_ptr: procedure pointer to excitation generators.
+        !        gen_excit_ptr%full *must* be set to a procedure which generates
+        !        a complete excitation.
+        !    weights: importance sampling weights.
+        ! Out:
+        !    nspawn: number of particles spawned, in the encoded representation.
+        !        0 indicates the spawning attempt was unsuccessful.
+        !    nspawn_rdm: number of rdm particles spawned, in the encoded representation.
+        !        0 indicates the spawning attempt was unsuccessful.
+        !    connection: excitation connection between the current determinant
+        !        and the child determinant, on which progeny are spawned.
+
+        use determinants, only: det_info_t
+        use excitations, only: excit_t
+        use qmc_data, only: qmc_state_t
+        use system, only: sys_t
+        use proc_pointers, only: gen_excit_ptr_t
+        use dSFMT_interface, only: dSFMT_t
+        use hamiltonian_data
+        use logging, only: write_logging_spawn, logging_t
+
+        type(dSFMT_t), intent(inout) :: rng
+        type(sys_t), intent(in) :: sys
+        type(qmc_state_t), intent(inout) :: qmc_state
+        integer(int_p), intent(in) :: spawn_cutoff
+        integer(int_p), intent(in) :: real_factor
+        type(det_info_t), intent(inout) :: cdet
+        integer(int_p), intent(in) :: parent_sign
+        type(gen_excit_ptr_t), intent(in) :: gen_excit_ptr
+        real(p), allocatable, intent(in) :: weights(:)
+        type(logging_t), intent(in) :: logging_info
+        integer(int_p), intent(out) :: nspawn, nspawn_rdm
+        type(excit_t), intent(out) :: connection
+
+        real(p) :: pgen, qn_weight
+        type(hmatel_t) :: hmatel, hmatel_tmp
+        logical :: allowed
+
+        ! 1. Generate random excitation.
+        call gen_excit_ptr%full(rng, sys, qmc_state%excit_gen_data, cdet, pgen, connection, hmatel, allowed)
+
+        if (allowed) then
+            qn_weight = calc_qn_spawned_weighting(qmc_state%propagator, cdet%fock_sum, connection)
+            hmatel_tmp = hmatel
+            hmatel_tmp%r = hmatel%r * qn_weight
+            if (qmc_state%excit_gen_data%p_single_double%vary_psingles) then
+                associate(exdat=>qmc_state%excit_gen_data)
+                    call update_p_single_double_data(connection%nexcit, hmatel_tmp, pgen, exdat%pattempt_single, &
+                        exdat%pattempt_double, sys%read_in%comp, exdat%p_single_double%rep_accum)
+                end associate
+            end if
+        else
+            qn_weight = 1.0_p
+        end if
+
+        if (allowed) then
+            ! 2. Attempt spawning.
+            nspawn = attempt_to_spawn(rng, qmc_state%tau, spawn_cutoff, real_factor, hmatel%r * qn_weight, pgen, &
+                                    parent_sign)
+
+            ! Also attempt spawning unweighted by Hij for sampling the RDM.
+            nspawn_rdm = attempt_to_spawn(rng, 1.0_p, spawn_cutoff, real_factor, -1.0_p, pgen, parent_sign)
+        else
+            nspawn = 0_int_p
+            nspawn_rdm = 0_int_p
+        end if
+
+    end subroutine spawn_rdm
 
 !--- Attempt spawning based upon random excitation ---
 
@@ -1921,6 +2012,50 @@ contains
         end associate
 
     end subroutine create_spawned_particle_rdm
+
+    subroutine create_spawned_particle_replica_rdm(f_parent, f_child, nspawn, particle_type, spawn)
+
+        ! Create a spawned walker in the spawned walkers lists, for replica sampling of RDMs.
+        ! The current position in the spawning array is updated.
+
+        ! In:
+        !    f_parent: the first bitstring label, representing the first density
+        !        matrix index.
+        !    f_child: the second bitstring label, representing the second density
+        !        matrix index.
+        !    nspawn: the (signed) number of particles to create on the
+        !        spawned determinant.
+        !    particle_type: the index of particle type to be created.
+        ! In/Out:
+        !    rdm_spawn: rdm_spawn_t object to which the spawned particle
+        !        will be added.
+
+        use spawn_data, only: spawn_t
+        use parallel, only: nprocs
+
+        integer(i0), intent(in) :: f_parent(:), f_child(:)
+        integer(int_p), intent(in) :: nspawn
+        integer, intent(in) :: particle_type
+        type(spawn_t), intent(inout) :: spawn
+
+        integer(i0) :: f_new_tot(2*size(f_child))
+        integer :: iproc_spawn, slot, rdm_bl
+
+        rdm_bl = size(f_child)
+
+        f_new_tot = 0_i0
+
+        ! Combine the two determinants to label the particle.
+        f_new_tot(:rdm_bl) = f_parent
+        f_new_tot(rdm_bl+1:2*rdm_bl) = f_child
+
+        ! Assign processor based on child determinant only
+        call assign_particle_processor(f_child, spawn%bit_str_nbits, spawn%hash_seed, spawn%hash_shift, spawn%move_freq, &
+                                      nprocs, iproc_spawn, slot, spawn%proc_map%map, spawn%proc_map%nslots)
+
+        call add_spawned_particle(f_new_tot, nspawn, particle_type, iproc_spawn, spawn)
+
+    end subroutine create_spawned_particle_replica_rdm
 
     pure function calc_qn_spawned_weighting(propagator, spawner_dfock, connection) result(weight)
 

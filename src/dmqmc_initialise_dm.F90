@@ -60,8 +60,7 @@ contains
         type(qmc_state_t), intent(inout) :: qmc_state
         type(annihilation_flags_t), intent(in) :: annihilation_flags
         integer(int_64), intent(in) :: target_nparticles_tot
-        real(p), intent(in) :: chem_pot
-        real(p), intent(in) :: energy_shift
+        real(p), intent(in) :: energy_shift, chem_pot(1:2)
         type(particle_t), intent(inout) :: psip_list
         type(spawn_t), intent(inout) :: spawn
 
@@ -621,6 +620,7 @@ contains
         !    spawn: spawned list.
         !    rng: random number generator.
 
+        use parallel
         use system, only: sys_t
         use spawn_data, only: spawn_t
         use symmetry, only: symmetry_orb_list
@@ -640,12 +640,13 @@ contains
         real(p), intent(in) :: energy_shift, target_beta
         logical, intent(in) :: initiator_approx
         real(p), intent(in) :: initiator_pop
-        real(p), intent(in) :: chem_pot
+        real(p), intent(in) :: chem_pot(1:2)
         type(spawn_t), intent(inout) :: spawn
         type(dSFMT_t), intent(inout) :: rng
         real(p), intent(in) :: H00
 
-        real(dp) :: p_single(sys%basis%nbasis/2)
+        real(dp) :: p_single(sys%basis%nbasis)
+        real(p) :: mu
         integer :: occ_list(sys%nel)
         integer(i0) :: f(sys%basis%tot_string_len)
         integer :: ireplica, iorb, ipsip
@@ -671,12 +672,11 @@ contains
         end if
 
         ! Calculate orbital occupancies.
-        ! * Warning *: We assume that we are dealing with a system without
-        ! magnetic fields or other funny stuff, so the probabilty of occupying
-        ! an alpha spin orbital is equal to that of occupying a beta spin
-        ! orbital.
-        forall(iorb=1:sys%basis%nbasis:2) p_single(iorb/2+1) = 1.0_p / &
-                                          (1+exp(target_beta*(sys%basis%basis_fns(iorb)%sp_eigv-chem_pot)))
+        p_single = 0.0_p
+        do iorb=1, sys%basis%nbasis
+            mu = chem_pot(2 - mod(iorb,2))
+            p_single(iorb) = 1.0_p/(1+exp(target_beta*(sys%basis%basis_fns(iorb)%sp_eigv-mu)))
+        end do
 
         ! In the grand canoical ensemble the probability of occupying a
         ! determinant, |D_i>, is given by \prod_i^N p_i, where the p_i's are the
@@ -700,7 +700,7 @@ contains
                 cycle
             end if
             if (nbeta_allowed > 0) call generate_allowed_orbital_list(sys, rng, p_single, &
-                                                        sys%nel-ngen, 0, occ_list, ngen)
+                                                        sys%nel-ngen, 2, occ_list, ngen)
             if (ngen /= sys%nel) cycle
             ! Create the determinant.
             if (dmqmc_in%all_sym_sectors .or. symmetry_orb_list(sys, occ_list) == sys%symmetry) then

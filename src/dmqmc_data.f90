@@ -214,7 +214,7 @@ type dmqmc_in_t
     ! This considerably changes the IP-DMQMC algorithm.
     logical :: symmetric_interaction_picture = .true.
     ! Chemical potential used to initialise density matrix.
-    real(p) :: chem_pot = 0.0_p
+    real(p) :: chem_pot(1:2) = 0.0_p
     ! Controls whether we check the reference state against the H_{ii} elements
     ! generated when running IP-DMQMC with the grand canonical initialization
     ! using the 'hartree--fock' initial mean field density matrix.

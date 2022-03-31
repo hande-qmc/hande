@@ -1050,7 +1050,7 @@ contains
         !   ex_level: maximum excitation level allowed for stored coefficients in calculation.
         !   max_cluster_size: maximum allowed cluster size.
         ! In/Out:
-        !   cluster_selection: selection_data_t object. On output cluster_sizes_info components
+        !   selection_data: selection_data_t object. On output cluster_sizes_info components
         !       will be allocated and set as appropriate, and cluster_sizes_proportion allocated.
 
         use ccmc_data, only: selection_data_t

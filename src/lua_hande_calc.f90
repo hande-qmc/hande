@@ -1097,6 +1097,8 @@ contains
         !     }
         !     quadrature_initiator = true/false,
         !     replica_tricks = true/false,
+        !     density_matrices = true/false,
+        !     density_matrix_file = filename,
         ! }
 
         ! In/Out:
@@ -1121,10 +1123,10 @@ contains
         integer :: fciqmc_table, ref_det, err
         character(len=12) :: str
         logical :: ref_det_flag
-        character(31), parameter :: keys(8) = [character(31) :: 'non_blocking_comm', 'load_balancing', 'guiding_function', &
-                                                                'init_spin_inverse_reference_det', 'trial_function', &
-                                                                'select_reference_det', 'quadrature_initiator', &
-                                                                'replica_tricks']
+        character(31), parameter :: keys(10) = [character(31) :: 'non_blocking_comm', 'load_balancing', 'guiding_function', &
+                                                                 'init_spin_inverse_reference_det', 'trial_function', &
+                                                                 'select_reference_det', 'quadrature_initiator', &
+                                                                 'replica_tricks', 'density_matrices', 'density_matrix_file']
 
         if (aot_exists(lua_state, opts, 'fciqmc')) then
 
@@ -1136,6 +1138,14 @@ contains
             call aot_get_val(fciqmc_in%init_spin_inv_D0, err, lua_state, fciqmc_table, 'init_spin_inverse_reference_det')
             call aot_get_val(fciqmc_in%quadrature_initiator, err, lua_state, fciqmc_table, 'quadrature_initiator')
             call aot_get_val(fciqmc_in%replica_tricks, err, lua_state, fciqmc_table, 'replica_tricks')
+            call aot_get_val(fciqmc_in%density_matrices, err, lua_state, fciqmc_table, 'density_matrices')
+            call aot_get_val(fciqmc_in%density_matrix_file, err, lua_state, fciqmc_table, 'density_matrix_file')
+
+            ! If the user has asked to calculate an RDM, then replica_tricks
+            ! *must* be on.
+            if (fciqmc_in%density_matrices) then
+                fciqmc_in%replica_tricks = .true.
+            end if
 
             ! Optional arguments requiring special care.
             if (aot_exists(lua_state, fciqmc_table, 'select_reference_det')) then
@@ -1302,7 +1312,7 @@ contains
         !     even_selection = true/false,
         !     multiref = true/false,
         !     n_secondary_ref = number of additional references,
-	    !     secondary_ref1,...,secondary_ref999 ={...},
+        !     secondary_ref1,...,secondary_ref999 ={...},
         ! }
 
         ! In/Out:
@@ -1327,11 +1337,18 @@ contains
         type(ccmc_in_t), intent(out) :: ccmc_in
 
         integer :: ccmc_table, err, i
-        character(28), parameter :: keys(10) = [character(28) :: 'move_frequency', 'cluster_multispawn_threshold', &
+        character(28), parameter :: keys(15) = [character(28) :: 'move_frequency', 'cluster_multispawn_threshold', &
                                                                 'full_non_composite', 'linked', 'vary_shift_reference', &
                                                                 'density_matrices', 'density_matrix_file', 'even_selection', &
-                                                                'multiref', 'n_secondary_ref']
-        character(10) :: string
+                                                                'multiref', 'n_secondary_ref', 'mr_acceptance_search', &
+                                                                'mr_excit_lvl','mr_secref_file','mr_n_frozen','mr_read_in']
+        character(23) :: string ! 32 bit integer has 10 digits, should be more than enough
+        ! secondary_refX keywords are not hardcoded in, so we dynamically add them into the
+        ! array of allowed keys 
+        character(23), dimension(:), allocatable :: secondary_ref_keys
+        character(28), dimension(:), allocatable :: keys_concat
+        character(10) :: str
+        character(40) :: secref_file
 
         if (aot_exists(lua_state, opts, 'ccmc')) then
 
@@ -1352,25 +1369,51 @@ contains
                 if (ccmc_in%n_secondary_ref == 0) then
                     call stop_all('read_ccmc_in', 'Number of secondary references unspecified.') 
                 end if
+                allocate(secondary_ref_keys(ccmc_in%n_secondary_ref))
                 allocate(ccmc_in%secondary_refs(ccmc_in%n_secondary_ref))
-                do i = 1, ccmc_in%n_secondary_ref
-                    if (i<10) then
-                       write (string,'(I1)') i
-                    else if (i>=10 .and. i<100) then 
-                       write (string,'(I2)') i
-                    else
-                       write (string,'(I3)') i
-                    end if                    
-                    call read_reference_t(lua_state, ccmc_table, ccmc_in%secondary_refs(i), sys, 'secondary_ref'//string)
-                         if (.not. allocated(ccmc_in%secondary_refs(i)%occ_list0)) then
-                             call stop_all('read_ccmc_in', 'Uninitialised secondary reference determinant.') 
-                         end if
-                         if (ccmc_in%secondary_refs(i)%ex_level == -1 .or. ccmc_in%secondary_refs(i)%ex_level == sys%nel) then
-                             call stop_all('read_ccmc_in', 'Uninitialised second reference excitation level.')
-                         end if
-                end do
+
+                call aot_get_val(ccmc_in%mr_read_in, err, lua_state, ccmc_table, 'mr_read_in')  
+
+                if (.not.ccmc_in%mr_read_in) then
+                    do i = 1, ccmc_in%n_secondary_ref
+                        ! I0 makes sure there are no whitespaces around the number string
+                        write (string, '(A13,I0)') 'secondary_ref', i ! up to 2.15E9 secondary references can be provided      
+                        ! trim makes sure there are no trailing whitespaces 
+                        call read_reference_t(lua_state, ccmc_table, ccmc_in%secondary_refs(i), sys, trim(string))
+                             if (.not. allocated(ccmc_in%secondary_refs(i)%occ_list0)) then
+                                 call stop_all('read_ccmc_in', 'Uninitialised secondary reference determinant.') 
+                             end if
+                             if (ccmc_in%secondary_refs(i)%ex_level == -1 .or. ccmc_in%secondary_refs(i)%ex_level == sys%nel) then
+                                 call stop_all('read_ccmc_in', 'Uninitialised secondary reference excitation level.')
+                             end if
+                             secondary_ref_keys(i) = trim(string)
+                    end do
+                    keys_concat = [keys,secondary_ref_keys]
+                else
+                    call aot_get_val(ccmc_in%mr_secref_file, err, lua_state, ccmc_table, 'mr_secref_file')
+                    if (err.ne.0) then
+                        call stop_all('read_ccmc_in','mr_read_in set but mr_secref_file unset.')
+                    endif
+                    call aot_get_val(ccmc_in%mr_n_frozen, err, lua_state, ccmc_table, 'mr_n_frozen')
+                    call aot_get_val(ccmc_in%mr_excit_lvl, err, lua_state, ccmc_table, 'mr_excit_lvl')
+                    if (ccmc_in%mr_excit_lvl.eq.-1) then
+                        call stop_all('read_ccmc_in','mr_read_in set but mr_excit_lvl unset.')
+                    endif
+                    keys_concat = keys
+                endif
+
+                call aot_get_val(str, err, lua_state, ccmc_table, 'mr_acceptance_search')
+                select case (str)
+                    case ('bk_tree')
+                        ccmc_in%mr_acceptance_search = 1
+                    case default
+                        ccmc_in%mr_acceptance_search = 0
+                end select
+            else
+                keys_concat = keys
             end if
-            call warn_unused_args(lua_state, keys, ccmc_table)
+
+            call warn_unused_args(lua_state, keys_concat, ccmc_table)
 
             call aot_table_close(lua_state, ccmc_table)
 
@@ -1713,7 +1756,7 @@ contains
         !        full space if present.
         !    ref_table_name (optional): name of table holding reference info.  Default: reference.
         ! Out:
-        !    ref: reference_t object contianing the input options describing the
+        !    ref: reference_t object containing the input options describing the
         !        reference.  Note that ex_level is set to the number of electrons
         !        if not provided (incl. if the reference table is not present in
         !        opts) and sys is present and -1 otherwise.
