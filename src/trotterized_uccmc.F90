@@ -84,7 +84,7 @@ contains
         use determinant_data, only: det_info_t
         use excitations, only: excit_t, get_excitation_level, get_excitation
         use qmc_io, only: write_qmc_report, write_qmc_report_header, write_qmc_var
-        use qmc, only: init_qmc
+        use qmc, only: init_qmc, init_secondary_references
         use qmc_common, only: initial_qmc_status, initial_cc_projected_energy, load_balancing_report, init_report_loop, &
                               init_mc_cycle, end_report_loop, end_mc_cycle, redistribute_particles, rescale_tau
         use proc_pointers
@@ -236,7 +236,23 @@ contains
             nstates_sq = 1
         end if
         
-        qs%ref%max_ex_level = qs%ref%ex_level
+        if (uccmc_in%multiref) then
+            ! Initialise multireference CCMC specific data.
+            qs%multiref = .true.
+            qs%mr_acceptance_search = uccmc_in%mr_acceptance_search
+            qs%n_secondary_ref = uccmc_in%n_secondary_ref
+            if(uccmc_in%mr_read_in) then
+                qs%mr_read_in = uccmc_in%mr_read_in
+                qs%mr_secref_file = uccmc_in%mr_secref_file
+                qs%mr_n_frozen = uccmc_in%mr_n_frozen
+                qs%mr_excit_lvl = uccmc_in%mr_excit_lvl
+            endif
+
+            allocate (qs%secondary_refs(qs%n_secondary_ref))
+            call init_secondary_references(sys, uccmc_in%secondary_refs, io_unit, qs)
+        else 
+            qs%ref%max_ex_level = qs%ref%ex_level
+        end if
 
         if (debug) call init_logging(logging_in, logging_info, qs%ref%ex_level)
 
@@ -345,8 +361,6 @@ contains
 
             ! Projected energy from last report loop to correct death
             qs%estimators%proj_energy_old = get_sanitized_projected_energy(qs)
-            ! [review] Verena: gfortran complained about the "not" so I changed it. Please double check that I have not changed it
-            ! [review] Verena: in a wrong way.
                 
             call init_report_loop(qs, bloom_stats)
 
@@ -441,26 +455,26 @@ contains
                 ! default(none) on when making changes and ensure that the only
                 ! errors relate to the procedure pointers...
 
+                proj_energy_cycle = cmplx(0.0, 0.0, p)
+                D0_population_cycle = cmplx(0.0, 0.0, p)
+                D0_population_ucc_cycle = 0.0_p
                 !$omp parallel default(none) &
                 !$omp private(it, iexcip_pos, i, seen_D0, hit, pos, population, real_population,k, cluster_pop, &
                 !$omp state,annihilation_flags) &
                 !$omp shared(rng, cumulative_abs_real_pops, tot_abs_real_pop,  &
                 !$omp        max_cluster_size, contrib, D0_normalisation, D0_pos, rdm,    &
                 !$omp        qs, sys, bloom_stats, min_cluster_size, ref_det,             &
-                !$omp        proj_energy_cycle, D0_population_cycle, selection_data,      &
-                !$omp        nattempts_spawn, D0_population_ucc_cycle, &
+                !$omp         selection_data,      &
                 !$omp        uccmc_in, nprocs, ms_stats, ps_stats, qmc_in, load_bal_in, &
                 !$omp        ndeath_nc,   pcumul, nstates_ci, &
-                !$omp        nparticles_change, ndeath, logging_info, &
+                !$omp        nparticles_change,logging_info, &
                 !$omp        time_avg_psip_list_ci_states, time_avg_psip_list_ci_pops, &
-                !$omp        time_avg_psip_list_states, time_avg_psip_list_pops)
+                !$omp        time_avg_psip_list_states, time_avg_psip_list_pops) &
+                !$omp reduction(+:D0_population_cycle,proj_energy_cycle, D0_population_ucc_cycle, nattempts_spawn,ndeath)
 
                 it = get_thread_id()
                 iexcip_pos = 0
                 seen_D0 = .false.
-                proj_energy_cycle = cmplx(0.0, 0.0, p)
-                D0_population_cycle = cmplx(0.0, 0.0, p)
-                D0_population_ucc_cycle = 0.0_p
                 pcumul = (tot_abs_real_pop**(max_cluster_size+1)-1) /(tot_abs_real_pop-1)
                 cluster_pop = 1
                 do i = 1, qs%psip_list%nstates
@@ -469,13 +483,12 @@ contains
                                                     /real(D0_normalisation,p))                     
                 end do
 
-                !$omp do schedule(dynamic,200) &
-                !$omp reduction(+:D0_population_cycle,proj_energy_cycle, D0_population_ucc_cycle, nattempts_spawn,ndeath)
-                do iattempt = 1, selection_data%nclusters
+                !$omp do schedule(dynamic,200) 
+                do iattempt = 1, selection_data%nsingle_excitors
                     ! For OpenMP scalability, have this test inside a single loop rather
                     ! than attempt to parallelise over three separate loops.
                    
-                   if (iattempt <= selection_data%nsingle_excitors) then
+                   !if (iattempt <= selection_data%nsingle_excitors) then
                         ! As noncomposite clusters can't be above truncation level or linked-only all can accumulate +
                         ! propagate. Only need to check not selecting the reference as we treat it separately.
                         if (iattempt /= D0_pos) then
@@ -500,7 +513,12 @@ contains
                                 time_avg_psip_list_ci_states, time_avg_psip_list_ci_pops, nstates_ci)
                             end if
                         end if
-                   else if (iattempt <= selection_data%nsingle_excitors + selection_data%nstochastic_clusters) then
+                end do
+                !$omp end do
+                !$omp do schedule(dynamic,200) 
+                do iattempt = 1, selection_data%nstochastic_clusters
+
+                   !else if (iattempt <= selection_data%nsingle_excitors + selection_data%nstochastic_clusters) then
                         call select_ucc_trot_cluster(rng(it), sys, qs%psip_list, qs%ref%f0, qs%ref%max_ex_level, &
                                             selection_data%nstochastic_clusters, &
                                             D0_normalisation, qmc_in%initiator_pop, D0_pos, cumulative_abs_real_pops,&
@@ -546,7 +564,12 @@ contains
                                                                 uccmc_in, logging_info, ms_stats(it), bloom_stats, &
                                                                 contrib(it), nattempts_spawn, ndeath, ps_stats(it))
                         end if
-                   else
+                end do
+                !$omp end do
+
+                !$omp do schedule(dynamic,200) 
+                do iattempt = 1, selection_data%nD0_select
+                  ! else
                         if (.not. seen_D0) then
                             ! This is the first time this thread is spawning from D0, so it
                             ! needs to be converted into a det_info_t object for the excitation
@@ -570,7 +593,7 @@ contains
                         nattempts_spawn = nattempts_spawn + 1
                         call perform_ccmc_spawning_attempt(rng(it), sys, qs, uccmc_in, logging_info, bloom_stats, contrib(it), 1, &
                                                         ps_stats(it))
-                   end if
+                   !end if
 
                 end do
                 !$omp end do
@@ -615,12 +638,11 @@ contains
                 qs%estimators%proj_energy_comp = qs%estimators%proj_energy_comp + proj_energy_cycle
                 do j = 1, qs%psip_list%nstates
                     if (j/=D0_pos) then
-                        ! [review] Verena: Is this a fraction of the form a/b/c in the cos? Is this correct?
                         D0_population_ucc_cycle = &
-                            D0_population_ucc_cycle/cos(qs%psip_list%pops(1,j)/real(qs%psip_list%pop_real_factor)/D0_normalisation)
+                            D0_population_ucc_cycle/cos((qs%psip_list%pops(1,j)/real(qs%psip_list%pop_real_factor))/D0_normalisation)
                     end if
                 end do
-                qs%estimators%D0_population_ucc = qs%estimators%D0_population_ucc + D0_population_ucc_cycle
+                qs%estimators%D0_noncomposite_population = qs%estimators%D0_noncomposite_population + D0_population_ucc_cycle
 
                 ! Calculate the number of spawning events before the particles are redistributed,
                 ! otherwise sending particles to other processors is counted as a spawning event.
@@ -1846,7 +1868,7 @@ contains
 
         integer(i0) :: f(size(f0))
         real(p) :: cluster_population, pop_real, excitor_pop
-        integer :: i
+        integer(int_64) :: i
         cluster_population = 1.0_p
 
         f = f0

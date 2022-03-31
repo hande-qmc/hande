@@ -473,8 +473,7 @@ contains
         end if
 
         if (uccmc_in%density_matrices) then
-            ! [review] - Verena: Is there currently a system type for which they are implemented?
-            call stop_all(this, "UCCMC density matrices not implemented for this system type.")
+            call stop_all(this, "UCCMC density matrices not implemented.")
         end if
 
         if (sys%read_in%comp) call stop_all(this, 'Complex UCCMC not yet implemented')

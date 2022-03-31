@@ -365,6 +365,8 @@ type ccmc_in_t
     integer :: mr_n_frozen = 0
     ! Whether to read in a secondary reference file.
     logical :: mr_read_in = .false.
+    ! UCC ratio discard threshold
+    real(p) :: threshold = -1.0_p
 end type ccmc_in_t
 
 type uccmc_in_t
@@ -802,6 +804,9 @@ type estimators_t
     real(p) :: D0_population = 0.0_p
     ! Population of walkers on reference determinant/trace of density matrix at previous timestep.
     real(p) :: D0_population_old = 0.0_p
+    ! For UCCMC need to store true D0_population (which acts as the intermediate normalisation factor), 
+    ! as well as total D0 contribution to wfn. To simplify compatibility, the latter will be stored in D0_population
+    real(p) :: D0_noncomposite_population = 0.0_p
     ! projected energy
     ! This stores during an FCIQMC report loop
     !   \sum_{i/=0} <D_0|H|D_i> N_i
@@ -851,13 +856,6 @@ type estimators_t
     ! processes.
     integer(int_64) :: nattempts = 0_int_64
 
-! [review] - AJWT: It might be safer to refactor all D0_populations to something like D0_contribution, or at least note the difference 
-! [review] - AJWT: with a comment near D0_population (and perhaps put this variable nearby).  
-! [review] - AJWT: I've not yet seen where D0_population and D0_population_ucc are used differently, but it might be worth noting that too.
-! [review] - AJWT: D0_population_ucc might be an overly specific name choice.
-    !For UCCMC need to store true D0_population, as well as total D0 contribution to wfn. To simplify
-    !compatibility, the latter will be stored in D0_population
-    real(p) :: D0_population_ucc = 0.0_p
 end type estimators_t
 
 type propagator_t
@@ -983,7 +981,7 @@ contains
         type(estimators_t), intent(inout) :: estimators
 
         estimators%D0_population = 0.0_p
-        estimators%D0_population_ucc = 0.0_p
+        estimators%D0_noncomposite_population = 0.0_p
         estimators%proj_energy = 0.0_p
         estimators%D0_population_comp = cmplx(0.0, 0.0, p)
         estimators%proj_energy_comp = cmplx(0.0, 0.0, p)

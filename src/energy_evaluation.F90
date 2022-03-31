@@ -14,6 +14,7 @@ implicit none
 enum, bind(c)
     enumerator :: proj_energy_ind = 1
     enumerator :: D0_pop_ind
+    enumerator :: D0_noncomp_pop_ind
     ! [todo] - having a separate index for each space is not very general.
     enumerator :: proj_energy_replica_ind
     enumerator :: D0_pop_replica_ind
@@ -370,10 +371,9 @@ contains
                 rep_loop_loc(D0_pop_imag_replica_ind) = aimag(qs%estimators(3)%D0_population_comp)
             end if
         else
-            ! [review] - Verena: Do you also need to communicate D0_population_ucc?
-! [review] - AJWT: Probably worth doing for consistency.
             rep_loop_loc(proj_energy_ind) = qs%estimators(1)%proj_energy
             rep_loop_loc(D0_pop_ind) = qs%estimators(1)%D0_population
+            rep_loop_loc(D0_noncomp_pop_ind) = qs%estimators(1)%D0_noncomposite_population
             if (qs%psip_list%nspaces > 1) then
                 rep_loop_loc(proj_energy_replica_ind) = qs%estimators(2)%proj_energy
                 rep_loop_loc(D0_pop_replica_ind) = qs%estimators(2)%D0_population
@@ -505,9 +505,9 @@ contains
                                                     rep_loop_sum(D0_pop_imag_replica_ind), p)
         end if
 
-        ! [review] - Verena: Do you also need to communicate D0_population_ucc?
         qs%estimators(1)%proj_energy = real(rep_loop_sum(proj_energy_ind), p)
         qs%estimators(1)%D0_population = real(rep_loop_sum(D0_pop_ind), p)
+        qs%estimators(1)%D0_noncomposite_population = real(rep_loop_sum(D0_noncomp_pop_ind), p)
         if (size(qs%estimators) > 1) then
             qs%estimators(2)%proj_energy = real(rep_loop_sum(proj_energy_replica_ind), p)
             qs%estimators(2)%D0_population = real(rep_loop_sum(D0_pop_replica_ind), p)
@@ -566,7 +566,7 @@ contains
         ! average energy quantities over report loop.
         qs%estimators%proj_energy = qs%estimators%proj_energy/qmc_in%ncycles
         qs%estimators%D0_population = qs%estimators%D0_population/qmc_in%ncycles
-        qs%estimators%D0_population_ucc = qs%estimators%D0_population_ucc/qmc_in%ncycles
+        qs%estimators%D0_noncomposite_population = qs%estimators%D0_noncomposite_population/qmc_in%ncycles
         ! Similarly for the HFS estimator
         qs%estimators%D0_hf_population = qs%estimators%D0_hf_population/qmc_in%ncycles
         qs%estimators%proj_hf_O_hpsip = qs%estimators%proj_hf_O_hpsip/qmc_in%ncycles
@@ -1038,7 +1038,7 @@ contains
             ! Have reference determinant.
             estimators%D0_population = estimators%D0_population + pop(1)
             if (cluster_size == 0) then
-                estimators%D0_population_ucc = estimators%D0_population_ucc + pop(1)
+                estimators%D0_noncomposite_population = estimators%D0_noncomposite_population + pop(1)
             end if
         case(1)
             ! Have a determinant connected to the reference determinant by
