@@ -57,7 +57,7 @@ contains
         type(sys_t), intent(inout) :: sys
         type(qmc_in_t), intent(in) :: qmc_in
         type(dmqmc_in_t), intent(in) :: dmqmc_in
-        type(qmc_state_t), intent(in) :: qmc_state
+        type(qmc_state_t), intent(inout) :: qmc_state
         type(annihilation_flags_t), intent(in) :: annihilation_flags
         integer(int_64), intent(in) :: target_nparticles_tot
         real(p), intent(in) :: energy_shift, chem_pot(1:2)
@@ -122,7 +122,7 @@ contains
                         if (dmqmc_in%grand_canonical_initialisation) then
                             call init_grand_canonical_ensemble(sys, dmqmc_in, npsips_this_proc, psip_list%pop_real_factor, spawn, &
                                                                energy_shift, qmc_state%target_beta, qmc_in%initiator_approx, & 
-                                                               qmc_in%initiator_pop, rng, chem_pot)
+                                                               qmc_in%initiator_pop, rng, chem_pot, qmc_state%ref%H00)
                         else
                             call random_distribution_electronic(rng, sys, npsips_this_proc, psip_list%pop_real_factor, ireplica, &
                                                                 dmqmc_in%all_sym_sectors, qmc_in%initiator_approx, &
@@ -209,6 +209,23 @@ contains
             if (spawn%error) call stop_all('create_initial_density_matrix', 'Ran out of space in the spawning array while&
                                       & generating the initial density matrix.')
             call direct_annihilation(sys, rng, qmc_state%ref, annihilation_flags, psip_list, spawn)
+        end if
+
+        if (dmqmc_in%walker_scale_factor > 2.0_p) then
+            ! If we are running the scaling procedure of the initial walker
+            ! distribution perform that scaling now.
+            ! Have to do real(int()) because the walkers are stored in integer
+            ! form but the qmc_state values are real.
+            qmc_state%psip_list%tot_nparticles = qmc_state%psip_list%tot_nparticles * &
+                                                    real(int(dmqmc_in%walker_scale_factor, p), p)
+            qmc_state%psip_list%nparticles = qmc_state%psip_list%nparticles * &
+                                                    real(int(dmqmc_in%walker_scale_factor, p), p)
+            qmc_state%psip_list%nparticles_proc = qmc_state%psip_list%nparticles_proc * &
+                                                    real(int(dmqmc_in%walker_scale_factor, p), p)
+            do ireplica = 1, qmc_state%psip_list%nspaces
+                qmc_state%psip_list%pops(ireplica,:qmc_state%psip_list%nstates) = &
+                    int(dmqmc_in%walker_scale_factor, p)*qmc_state%psip_list%pops(ireplica,:qmc_state%psip_list%nstates)
+            end do
         end if
 
     end subroutine create_initial_density_matrix
@@ -583,7 +600,7 @@ contains
     end subroutine dmqmc_spin_cons_metropolis_move
 
     subroutine init_grand_canonical_ensemble(sys, dmqmc_in, npsips, pop_real_factor, spawn, energy_shift, &
-                                             target_beta, initiator_approx, initiator_pop, rng, chem_pot)
+                                             target_beta, initiator_approx, initiator_pop, rng, chem_pot, H00)
 
         ! Initially distribute psips according to the grand canonical
         ! distribution function.
@@ -613,6 +630,8 @@ contains
         use dmqmc_data, only: dmqmc_in_t, free_electron_dm
         use dmqmc_procedures, only: create_diagonal_density_matrix_particle, &
                                     create_diagonal_density_matrix_particle_initiator
+        use proc_pointers, only: sc0_ptr
+        use errors
 
         type(sys_t), intent(in) :: sys
         type(dmqmc_in_t), intent(in) :: dmqmc_in
@@ -624,6 +643,7 @@ contains
         real(p), intent(in) :: chem_pot(1:2)
         type(spawn_t), intent(inout) :: spawn
         type(dSFMT_t), intent(inout) :: rng
+        real(p), intent(in) :: H00
 
         real(dp) :: p_single(sys%basis%nbasis)
         real(p) :: mu
@@ -632,10 +652,16 @@ contains
         integer :: ireplica, iorb, ipsip
         integer(int_p) :: nspawn
         integer :: nalpha_allowed, nbeta_allowed, ngen
+        logical :: found_lower_reference
+        real(p) :: Hii, new_H00
 
         ireplica = 1
         ! Default behaviour is we don't reweight populations.
         nspawn = pop_real_factor
+        ! Used for checking the reference determinant.
+        found_lower_reference = .false.
+        Hii = 0.0_p
+        new_H00 = H00
 
         if (dmqmc_in%all_spin_sectors) then
             nalpha_allowed = sys%nel
@@ -689,9 +715,39 @@ contains
                     call create_diagonal_density_matrix_particle(f, sys%basis%tot_string_len, sys%basis%tensor_label_len, &
                             nspawn, ireplica, spawn)
                 end if
-                ipsip = ipsip + 1
+
+                ! Do a simple check to make sure we didn't find a determinant
+                ! lower in energy then the reference.
+                if (.not. dmqmc_in%skip_gci_reference_check) Hii = real(sc0_ptr(sys, f),p)
+                if ((new_H00 - Hii) > depsilon) then
+                    new_H00 = Hii
+                    write(6, '(1X, "# H_{ii}: ", f22.12, 1X, "det = {")', advance='no') Hii
+                    do iorb = 1, size(occ_list)
+                        write(6, '(1X,i0,",")', advance='no') occ_list(iorb)
+                    end do
+                    write(6, '("},")')
+                    call warning('create_initial_density_matrix', 'determinant lower in energy than reference &
+                                                                    & found, exiting after initialization completion!')
+                    if (.not. found_lower_reference) found_lower_reference = .true.
+                end if
+
+                if (dmqmc_in%count_diagonal_occupations) then
+                    ipsip = ipsip + 1
+                else
+                    ! Count the total number of particles spawned which
+                    ! can very depending on the reweighting step
+                    if (pop_real_factor >= 2_int_p) then
+                        ipsip = ipsip + abs(nspawn/pop_real_factor)
+                    else
+                        ipsip = ipsip + abs(nspawn)
+                    end if
+                end if
+
             end if
         end do
+
+        if (found_lower_reference) call stop_all('create_initial_density_matrix', &
+                                                 'diagonal determinant lower in energy than reference found!')
 
         contains
 

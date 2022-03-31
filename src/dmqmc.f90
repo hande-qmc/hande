@@ -48,7 +48,7 @@ contains
         use dmqmc_procedures
         use dmqmc_initialise_dm, only: create_initial_density_matrix
         use excitations, only: excit_t, connection_exists
-        use qmc, only: init_qmc
+        use qmc, only: init_qmc, init_proc_pointers
         use qmc_common
         use restart_hdf5, only: restart_info_t, dump_restart_hdf5, init_restart_info_t
         use system
@@ -66,10 +66,11 @@ contains
         use hash_table, only: free_hash_table
         use chem_pot, only: find_chem_pot
         use errors, only: stop_all
+        use calc, only: doing_dmqmc_calc, dmqmc_ref_proj_energy
 
         type(sys_t), intent(inout) :: sys
         type(qmc_in_t), intent(in) :: qmc_in
-        type(dmqmc_in_t), intent(in) :: dmqmc_in
+        type(dmqmc_in_t), intent(inout) :: dmqmc_in
         type(dmqmc_estimates_t), intent(inout) :: dmqmc_estimates
         type(restart_in_t), intent(in) :: restart_in
         type(load_bal_in_t), intent(in) :: load_bal_in
@@ -80,7 +81,7 @@ contains
         real(p) :: mu(1:2)
 
         integer :: idet, ireport, icycle, iteration, ireplica, ierr
-        integer :: beta_cycle, nreport
+        integer :: beta_cycle, nreport, prop_switch_report
         integer :: unused_int_1 = -1, unused_int_2 = 0
         integer(int_64) :: init_tot_nparticles
         real(dp), allocatable :: tot_nparticles_old(:)
@@ -90,7 +91,7 @@ contains
         type(det_info_t) :: cdet1, cdet2
         integer(int_p) :: ndeath
         integer :: nspawn_events
-        logical :: imag
+        logical :: imag, calc_ref_proj_energy, piecewise_propagation
         logical :: soft_exit, write_restart_shift, update_tau
         logical :: error, rdm_error, attempt_spawning, restarting
         real :: t1, t2
@@ -131,11 +132,30 @@ contains
         allocate(real_population(qs%psip_list%nspaces), stat=ierr)
         call check_allocate('real_population', qs%psip_list%nspaces, ierr)
 
-        nreport = qmc_in%nreport
-        ! When using the ipdmqmc option the number of iterations in imaginary
-        ! time we want to do depends on what value of beta we are seeking. It's
-        ! annoying to have to modify this in the input file, so just do it here.
-        if (dmqmc_in%ipdmqmc) nreport = int(ceiling(dmqmc_in%target_beta/(qmc_in%ncycles*qmc_in%tau)))
+        ! It is convenient to setup calculations using a final beta and
+        ! target beta instead of calculating the nreports from tau and mc_cycles.
+        ! So we do the nreport calculation here instead.
+        ! Additionally we use piecewise_propagation and prop_switch_report
+        ! when running piecewise ip-dmqmc, this is the report at which the propagator changes.
+        ! Otherwise, if neither beta values are defined we default to
+        ! the standard behavior of using nreport from the input.
+        piecewise_propagation = .false.
+        prop_switch_report = -1
+        if (dmqmc_in%final_beta > 0.0_p) then
+            nreport = int(ceiling(dmqmc_in%final_beta/(qmc_in%ncycles*qmc_in%tau)))
+        else
+            nreport = qmc_in%nreport
+        end if
+
+        if (dmqmc_in%ipdmqmc) then
+            if (dmqmc_in%final_beta < dmqmc_in%target_beta) then
+                nreport = int(ceiling(dmqmc_in%target_beta/(qmc_in%ncycles*qmc_in%tau)))
+            else
+                piecewise_propagation = .true.
+                prop_switch_report = int(ceiling(dmqmc_in%target_beta/(qmc_in%ncycles*qmc_in%tau))) + 1
+            end if
+        end if
+
         ! When we accumulate data throughout a run, we are actually accumulating
         ! results from the psips distribution from the previous iteration.
         ! For example, in the first iteration, the trace calculated will be that
@@ -175,6 +195,13 @@ contains
             qmc_in_loc%quasi_newton_pop_control = qs%propagator%quasi_newton_pop_control
             ! Initialize the harmonic shift damping algorithm parameters
             qmc_in_loc%shift_harmonic_forcing = qs%shift_harmonic_forcing
+            if (dmqmc_in%walker_scale_factor > 0.0_p) then
+                ! If we are scaling the initial walker population then
+                ! update the reported initial population to be accurate.
+                qs%target_particles = qmc_in%target_particles * real(int(dmqmc_in%walker_scale_factor, p), p)
+                qmc_in_loc%target_particles = qs%target_particles
+                qmc_in_loc%D0_population = nint(qmc_in%D0_population, int_64) * real(int(dmqmc_in%walker_scale_factor, p), p)
+            end if
             call qmc_in_t_json(js, qmc_in_loc)
             call dmqmc_in_t_json(js, dmqmc_in)
             dmqmc_in_loc = dmqmc_in
@@ -216,14 +243,16 @@ contains
         call copy_sys_spin_info(sys, sys_copy)
 
         rdm_error = .false.
+        calc_ref_proj_energy = .false.
+        if (doing_dmqmc_calc(dmqmc_ref_proj_energy)) calc_ref_proj_energy = .true.
 
         outer_loop: do beta_cycle = 1, dmqmc_in%beta_loops
 
-            call init_dmqmc_beta_loop(rng, qmc_in, dmqmc_in, dmqmc_estimates, qs, beta_cycle, qs%psip_list%nstates, &
-                                      qs%psip_list%nparticles, qs%spawn_store%spawn, weighted_sampling%probs)
+            call init_dmqmc_beta_loop(sys, reference_in, rng, qmc_in, dmqmc_in, dmqmc_estimates, qs, beta_cycle, &
+                                      qs%psip_list%nstates, qs%psip_list%nparticles, qs%spawn_store%spawn, &
+                                      weighted_sampling%probs, annihilation_flags, piecewise_propagation)
 
-            ! Distribute psips uniformly along the diagonal of the density
-            ! matrix.
+            ! Distribute psips uniformly along the diagonal of the density matrix.
             call create_initial_density_matrix(rng, sys, qmc_in, dmqmc_in, qs, annihilation_flags, &
                                                init_tot_nparticles, qs%psip_list, qs%spawn_store%spawn, &
                                                mu, energy_shift)
@@ -243,9 +272,24 @@ contains
 
             do ireport = 1, nreport
 
-                call init_dmqmc_report_loop(dmqmc_in%calc_excit_dist, dmqmc_in%calc_mom_dist, dmqmc_in%calc_struc_fac,&
-                                            &bloom_stats, dmqmc_estimates, qs%spawn_store%rspawn)
+                call init_dmqmc_report_loop(calc_ref_proj_energy, dmqmc_in%calc_excit_dist, dmqmc_in%calc_mom_dist, &
+                                            dmqmc_in%calc_struc_fac, bloom_stats, dmqmc_estimates, qs%spawn_store%rspawn)
                 tot_nparticles_old = qs%psip_list%tot_nparticles
+
+                if (ireport .eq. 1) then
+                    ! If we have just initalized the density matrix, print out
+                    ! the number of diagonal elemenets that were occupied.
+                    call dmqmc_estimate_comms(dmqmc_in, error, nspawn_events, sys%max_number_excitations, qmc_in%ncycles, &
+                                              qs%psip_list, qs, weighted_sampling%probs_old, dmqmc_estimates)
+                    if (parent) write (iunit,'(1X,"# Initial diagonal density matrix element(s):",1X,I0)') qs%estimators%tot_nstates
+                end if
+
+                ! If we are propagating past IP-DMQMC target beta.
+                ! Change over the appropriate parameters and pointers to continue on with sampling.
+                if (piecewise_propagation .and. prop_switch_report == ireport) then
+                    call propagator_change(sys, qs, dmqmc_in, annihilation_flags, iunit)
+                    call init_proc_pointers(sys, qmc_in, reference_in, iunit, dmqmc_in)
+                end if
 
                 do icycle = 1, qmc_in%ncycles
 
@@ -297,7 +341,8 @@ contains
                         ! temperature value per ncycles.
                         if (icycle == 1) then
                             call update_dmqmc_estimators(sys, dmqmc_in, idet, iteration, cdet1, qs%ref%H00, &
-                                                         qs%psip_list, dmqmc_estimates, weighted_sampling, rdm_error)
+                                                         qs%psip_list, dmqmc_estimates, weighted_sampling, rdm_error, &
+                                                         qs%ref%f0)
                         end if
 
                         ! Only attempt spawning if a valid connection exists.
@@ -544,8 +589,9 @@ contains
 
     end subroutine do_dmqmc_spawning_attempt
 
-    subroutine init_dmqmc_beta_loop(rng, qmc_in, dmqmc_in, dmqmc_estimates, qs, beta_cycle, nstates_active, &
-                                    nparticles, spawn, accumulated_probs)
+    subroutine init_dmqmc_beta_loop(sys, reference_in, rng, qmc_in, dmqmc_in, dmqmc_estimates, qs, beta_cycle, &
+                                    nstates_active, nparticles, spawn, accumulated_probs, annihilation_flags, &
+                                    piecewise_propagation)
 
         ! Initialise/reset DMQMC data for a new run over the temperature range.
 
@@ -558,6 +604,11 @@ contains
         !    qmc_in: input options relating to QMC calculations.
         !    beta_cycle: The index of the beta loop about to be started.
         !    dmqmc_in: input options for DMQMC.
+        !    reference_in: current reference determinant.  If not set (ie
+        !       components allocated) then a best guess is made based upon the
+        !       desired spin/symmetry.
+        !    piecewise_propagation: A boolean indiciating if peicewise propagation
+        !       is being used. In this case we may need to reset some parameters/pointers.
         ! Out:
         !    nparticles: number of particles in each space/of each type on
         !       processor.  Set to 0.
@@ -569,22 +620,31 @@ contains
 
         use dSFMT_interface, only: dSFMT_t, dSFMT_init
         use parallel
-        use qmc_data, only: qmc_in_t, qmc_state_t
+        use system
+        use qmc_data, only: qmc_in_t, qmc_state_t, annihilation_flags_t
         use dmqmc_data, only: dmqmc_in_t, dmqmc_estimates_t
         use spawn_data, only: spawn_t
         use utils, only: int_fmt
+        use dmqmc_estimators, only: dmqmc_energy_and_trace_propagate
+        use dmqmc_procedures, only: propagator_restore
+        use reference_determinant, only: reference_t, reference_t_json
+        use qmc, only: init_proc_pointers
 
+        type(sys_t), intent(inout) :: sys
         type(dSFMT_t), intent(inout) :: rng
         type(spawn_t), intent(inout) :: spawn
-        type(qmc_in_t), intent(in) :: qmc_in
-        type(dmqmc_in_t), intent(in) :: dmqmc_in
+        type(dmqmc_in_t), intent(inout) :: dmqmc_in
         type(dmqmc_estimates_t), intent(inout) :: dmqmc_estimates
+        type(qmc_in_t), intent(in) :: qmc_in
+        type(reference_t), intent(in) :: reference_in
         integer, intent(in) :: beta_cycle
         type(qmc_state_t), intent(inout) :: qs
         integer, intent(out) :: nstates_active
         real(dp), intent(out) :: nparticles(:)
         real(p), intent(out) :: accumulated_probs(:)
         integer :: new_seed, iunit
+        type(annihilation_flags_t) :: annihilation_flags
+        logical, intent(in) :: piecewise_propagation
 
         iunit = 6
 
@@ -607,18 +667,28 @@ contains
             write (iunit,'(a52,'//int_fmt(new_seed,1)//',a1)') " # Resetting random number generator with a seed of:", new_seed, "."
         end if
 
+        ! if we are running piecewise ip-dmqmc restore the relevant values 
+        ! and pointers back to ip-dmqmc.
+        if (beta_cycle /= 1 .and. piecewise_propagation) then
+            call propagator_restore(qs, dmqmc_in, annihilation_flags, iunit)
+            call init_proc_pointers(sys, qmc_in, reference_in, iunit, dmqmc_in)
+        end if
+
         ! Reset the random number generator with new_seed = old_seed +
         ! nprocs (each beta loop)
         call dSFMT_init(new_seed, 50000, rng)
 
     end subroutine init_dmqmc_beta_loop
 
-    subroutine init_dmqmc_report_loop(calc_excit_dist, calc_mom_dist, calc_struc_fac, bloom_stats, dmqmc_estimates, rspawn)
+    subroutine init_dmqmc_report_loop(calc_ref_proj_energy, calc_excit_dist, calc_mom_dist, &
+                                      calc_struc_fac, bloom_stats, dmqmc_estimates, rspawn)
 
         ! Initialise a report loop (basically zero quantities accumulated over
         ! a report loop).
 
         ! In:
+        !    calc_ref_proj_energy: true if generating the projected energy
+        !        from the reference row (or column) of the density matrix.
         !    calc_excit_dist: true if the excitation distribution is being
         !        calculated at each report loop.
         !    calc_mom_dist: true if the momentum distribution is being calculated.
@@ -634,6 +704,7 @@ contains
         logical, intent(in) :: calc_excit_dist
         logical, intent(in) :: calc_mom_dist
         logical, intent(in) :: calc_struc_fac
+        logical, intent(in) :: calc_ref_proj_energy
         type(bloom_stats_t), intent(inout) :: bloom_stats
         type(dmqmc_estimates_t), intent(inout) :: dmqmc_estimates
         real(p), intent(out) :: rspawn
@@ -646,6 +717,8 @@ contains
         dmqmc_estimates%numerators = 0.0_p
         if (calc_mom_dist) dmqmc_estimates%mom_dist%f_k = 0.0_p
         if (calc_struc_fac) dmqmc_estimates%struc_fac%f_k = 0.0_p
+        if (calc_ref_proj_energy) dmqmc_estimates%ref_trace = 0.0_p
+        if (calc_ref_proj_energy) dmqmc_estimates%ref_D0j_particles = 0.0_p
 
     end subroutine init_dmqmc_report_loop
 
