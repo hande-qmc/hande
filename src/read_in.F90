@@ -392,6 +392,8 @@ contains
         deallocate(sp_eigv, stat=ierr)
         call check_deallocate('sp_eigv', ierr)
 
+        !PySCF FCIDUMPS for linear molecules are not automatically reduced to D2h, leading to symmetries HANDE
+        !is not prepared to handle. These can be folded back into D2h by transforming 1x, 2x etc -> x.
         if (any(sys%basis%basis_fns(:)%sym > 9))then
             do i=1, sys%basis%nbasis
                 if (sys%basis%basis_fns(i)%sym > 9) sys%basis%basis_fns(i)%sym = sys%basis%basis_fns(i)%sym - 10
