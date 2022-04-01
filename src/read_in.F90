@@ -392,6 +392,12 @@ contains
         deallocate(sp_eigv, stat=ierr)
         call check_deallocate('sp_eigv', ierr)
 
+        if (any(sys%basis%basis_fns(:)%sym > 9))then
+            do i=1, sys%basis%nbasis
+                if (sys%basis%basis_fns(i)%sym > 9) sys%basis%basis_fns(i)%sym = sys%basis%basis_fns(i)%sym - 10
+            end do
+            call warning('read_in_integrals', "Symmetry labels > 10 found. Folded back into D2h.", 1)
+        end if
         ! Was a symmetry found for all basis functions?  If not, then we must
         ! turn symmetry off.
         if (.not. momentum_sym .and. minval(sys%basis%basis_fns(:)%sym) < 0) then
