@@ -15,12 +15,12 @@ import matplotlib.pyplot as plt
 from matplotlib.backends.backend_pdf import PdfPages
 
 try:
-    import pyhande
+    from pyhande.state_histograms import analyse_state_histograms
 except ModuleNotFoundError:
     _script_dir = os.path.dirname(os.path.abspath(__file__))
     if not pkgutil.find_loader('pyhande'):
         sys.path.append(os.path.join(_script_dir, '../pyhande'))
-    import pyhande
+    from pyhande.state_histograms import analyse_state_histograms
 
 
 def parse_arguments(arguments):
@@ -61,7 +61,12 @@ def parse_arguments(arguments):
                         'example, 12 would round the final data report '
                         '(after analysis) to the 12th decimal place before '
                         'reporting. Only used for the "csv" format.')
-    parser.add_argument('-f', '--file', type=str, nargs='+', action='append',
+    parser.add_argument('-fci', '--fciqmc-data', action='store_true',
+                        dest='fciqmc', default=False, help='Average '
+                        'calculations across iterations which can be more '
+                        'appropriate for data from an FCIQMC simulation which '
+                        'has reached the ground state.')
+    parser.add_argument('-f', '--files', type=str, nargs='+', action='append',
                         dest='list_of_filenames', help='EXLEVEL files to '
                         'analyse. For multiple analysis separate sets of '
                         'files with the -f flag.')
@@ -202,7 +207,7 @@ def main(arguments):
     list_of_results = []
     for ifiles, files in enumerate(list_of_filenames):
         ifiles += 1
-        results = pyhande.state_histograms.analyse_state_histograms(files)
+        results = analyse_state_histograms(files, options.fciqmc)
         list_of_results.append(results)
 
         if options.output_file is not None:

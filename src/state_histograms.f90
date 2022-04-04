@@ -479,7 +479,7 @@ contains
                                        real_pops, hist, 1, ireport, final_report=.true.)
         end do
 
-        call comm_and_report_state_histogram(hist, ireport, index_shift = hist%max_ex_level, &
+        call comm_and_report_state_histogram(hist, ireport + 1, index_shift = hist%max_ex_level, &
                                             final_report=.true.)
 
     end subroutine fciqmc_state_histogram_final_report

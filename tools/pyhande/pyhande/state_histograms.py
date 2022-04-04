@@ -46,7 +46,7 @@ def read_state_histogram_file(histogram_file):
     return pd.DataFrame(histogram), mex1, mex2
 
 
-def collect_state_histogram_data(state_histogram_outputs):
+def collect_state_histogram_data(state_histogram_outputs, fciqmc):
     ''' Collect all the state histograms data and store in an ordered
     dictionary based on the report (time/temperature) the data was
     generated at. Additionally perform some basic sanity checks on the data.
@@ -55,6 +55,9 @@ def collect_state_histogram_data(state_histogram_outputs):
     ----------
     state_histogram_outputs : list of strings
         The state histogram output files which are to be analysed.
+    fciqmc : boolean
+        A boolean indicating we are performing analysis on an
+        FCIQMC calculation
 
     Returns
     -------
@@ -96,7 +99,7 @@ def collect_state_histogram_data(state_histogram_outputs):
 
         updated_state_histogram_outputs = state_histogram_outputs.copy()
         for hist_file in state_histogram_outputs:
-            if 'IREPORT' + ireport in hist_file:
+            if 'IREPORT' + ireport in hist_file or fciqmc:
                 grouped_files[ireport].append(hist_file)
 
                 df, mex1, mex2 = read_state_histogram_file(hist_file)
@@ -109,6 +112,10 @@ def collect_state_histogram_data(state_histogram_outputs):
         # A minor performance gain: We don't need to loop through
         # files we have already stored.
         state_histogram_outputs = updated_state_histogram_outputs
+
+        if fciqmc:
+            unique_reports = unique_reports[:1]
+            break
 
     # Do a couple simple sanity checks on our data
     report_shapes, report_mex1s, report_mex2s = [], [], []
@@ -218,7 +225,7 @@ def average_histograms(grouped):
     return pd.DataFrame(averaged)
 
 
-def analyse_state_histograms(state_histogram_outputs):
+def analyse_state_histograms(state_histogram_outputs, fciqmc):
     ''' Perform analysis on the state histograms from a DMQMC or FCIQMC
     calculation.
 
@@ -226,6 +233,9 @@ def analyse_state_histograms(state_histogram_outputs):
     ----------
     state_histogram_outputs : list
         The state histogram output files which are to be analysed.
+    fciqmc : boolean
+        A boolean indicating we are performing analysis on an
+        FCIQMC calculation
 
     Returns
     -------
@@ -234,7 +244,7 @@ def analyse_state_histograms(state_histogram_outputs):
         bin for a given temperature/imaginary time.
     '''
 
-    grouped = collect_state_histogram_data(state_histogram_outputs)
+    grouped = collect_state_histogram_data(state_histogram_outputs, fciqmc)
 
     averaged = average_histograms(grouped)
 
