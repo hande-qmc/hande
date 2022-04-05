@@ -14,11 +14,10 @@ fci {
         hamiltonian_file = "hamil.hfq",
     },
     davidson = {
-        using_davidson = true,
         ndavidson_eigv = 4,
         ndavidson_trialvec = 8,
         davidson_maxsize = 80,
-        davidson_tol = 1e-4,
+        davidson_tol = 1e-8,
         davidson_maxiter = 200,
     },
 }

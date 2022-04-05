@@ -10,11 +10,10 @@ fci {
         ex_level = 3,
     },
     davidson = {
-        using_davidson = true,
         ndavidson_eigv = 4,
         ndavidson_trialvec = 8,
         davidson_maxsize = 100,
-        davidson_tol = 1e-4,
+        davidson_tol = 1e-8,
         davidson_maxiter = 200,
     },
 }
