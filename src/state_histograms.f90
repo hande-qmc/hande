@@ -345,13 +345,14 @@ contains
 
     end subroutine update_state_histogram
 
-    subroutine comm_and_report_state_histogram(hist, ireport, index_shift, final_report)
+    subroutine comm_and_report_state_histogram(hist, ireport, iunit, index_shift, final_report)
 
         ! Share the histogram data with the root, and write out the information
         ! then zero the arrays so we can report again.
 
         ! In:
         !    ireport: The report cycle we are dumping the histogram data from.
+        !    iunit: io unit to write all output to.
         !    index_shift (optional): Used in FCIQMC, equal to the maximum excitation
         !       of the simulation. A lazy way to truncate the histogram printing
         !       to only span those values relevent for FCIQMC.
@@ -365,14 +366,14 @@ contains
 
         type(state_histograms_data_t), intent(inout) :: hist
 
-        integer, intent(in) :: ireport
+        integer, intent(in) :: ireport, iunit
         integer, intent(in), optional :: index_shift
         logical, intent(in), optional :: final_report
 
-        logical :: skip_report_check
-        integer :: ierr, iafac, ibpow, exlevel_1, exlevel_2, lazy_trunc
+        logical :: skip_report_check, file_exists
+        integer :: ierr, iafac, ibpow, exlevel_1, exlevel_2, lazy_trunc, ifile
         real(p) :: detpop
-        character(1024) :: ireport_string
+        character(1024) :: ireport_string, tmp_output_file
 
         ierr = 0
 
@@ -388,7 +389,21 @@ contains
         write(ireport_string, fmt=hist%report_formatter) ireport - 1
         write(hist%state_histograms_output_file, '("EXLEVELPOPS-RNG",I0,"-IREPORT",A)') hist%current_seed, trim(ireport_string)
 
+        ifile = 0
+        file_exists = .true.
+        tmp_output_file = trim(hist%state_histograms_output_file)
+        do while (file_exists)
+            inquire(file=tmp_output_file, exist=file_exists)
+            if (file_exists) then
+                ifile = ifile + 1
+                write(tmp_output_file, '(A, "-", I0)') trim(hist%state_histograms_output_file), ifile
+            else
+                hist%state_histograms_output_file = trim(tmp_output_file)
+            end if
+        end do
+
         if (parent) then
+            write(iunit, '(1X,"# Writing state histogram to: ", A)') trim(hist%state_histograms_output_file)
             open(unit=343, file=trim(hist%state_histograms_output_file), action='write')
         end if
 
@@ -448,7 +463,7 @@ contains
 
     end subroutine comm_and_report_state_histogram
 
-    subroutine fciqmc_state_histogram_final_report(qs, hist, ireport)
+    subroutine fciqmc_state_histogram_final_report(qs, hist, ireport, iunit)
 
         ! For FCIQMC, we do one final update and report at the end of a calculation.
         ! This makes FCIQMC and DMQMC report state histograms in a similar fashion.
@@ -458,6 +473,7 @@ contains
         !    qs: qmc_state_t derived type with information on
         !        current calculation. Used for the reference bitstring.
         !    ireport: The current report cycle of the QMC method
+        !    iunit: io unit to write all output to.
         ! In/Out:
         !    hist: type containing all the state histograms information,
         !        upon exiting, the excitation bins should be updated with
@@ -468,7 +484,7 @@ contains
         type(qmc_state_t), intent(in) :: qs
         type(state_histograms_data_t), intent(inout) :: hist
 
-        integer, intent(in) :: ireport
+        integer, intent(in) :: ireport, iunit
 
         integer :: idet
         real(p) :: real_pops
@@ -479,8 +495,8 @@ contains
                                        real_pops, hist, 1, ireport, final_report=.true.)
         end do
 
-        call comm_and_report_state_histogram(hist, ireport + 1, index_shift = hist%max_ex_level, &
-                                            final_report=.true.)
+        call comm_and_report_state_histogram(hist, ireport + 1, iunit, &
+                                             index_shift = hist%max_ex_level, final_report=.true.)
 
     end subroutine fciqmc_state_histogram_final_report
 

@@ -419,7 +419,8 @@ contains
                 call cpu_time(t2) 
 
                 if (qmc_in%state_histograms) then
-                    call comm_and_report_state_histogram(state_hist, ireport, final_report=ireport == nreport .or. soft_exit)
+                    call comm_and_report_state_histogram(state_hist, ireport, iunit, &
+                                                         final_report=ireport == nreport .or. soft_exit)
                 end if
 
                 if (parent) then

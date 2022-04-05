@@ -418,8 +418,9 @@ contains
             call cpu_time(t2)
 
             if (qmc_in%state_histograms) then
-                call comm_and_report_state_histogram(state_hist, ireport, index_shift = state_hist%max_ex_level)
-                if (ireport == qmc_in%nreport .or. soft_exit) call fciqmc_state_histogram_final_report(qs, state_hist, ireport)
+                call comm_and_report_state_histogram(state_hist, ireport, io_unit, index_shift = state_hist%max_ex_level)
+                if (ireport == qmc_in%nreport .or. soft_exit) call fciqmc_state_histogram_final_report(qs, state_hist, &
+                                                                                                       ireport, io_unit)
             end if
 
             if (parent) then

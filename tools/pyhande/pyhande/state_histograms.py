@@ -80,7 +80,10 @@ def collect_state_histogram_data(state_histogram_outputs, fciqmc):
     # Where yyy is an rng seed and zzz is a report cycle.
     unique_reports = []
     for hist_file in state_histogram_outputs:
-        ireport = hist_file.split('-')[-1].replace('IREPORT', '')
+        for name_slc in hist_file.split('-'):
+            if 'IREPORT' in name_slc:
+                ireport = name_slc.replace('IREPORT', '')
+                break
         if ireport not in unique_reports:
             unique_reports.append(ireport)
 
