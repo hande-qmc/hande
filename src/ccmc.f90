@@ -645,11 +645,7 @@ contains
                 call init_mc_cycle(qs%psip_list, qs%spawn_store%spawn, qs%estimators(1)%nattempts, ndeath, &
                                    min_attempts=nint(abs(D0_normalisation), kind=int_64), &
                                    complx=sys%read_in%comp)
-                nparticles_change = 0.0_p
 
-                ! We need to count spawning attempts differently as there may be multiple spawns
-                ! per cluster
-                nattempts_spawn=0
                 ! Find cumulative population...
                 ! NOTE: for simplicity we only consider the integer part of the population on each excitor.
                 ! (Populations under 1 are stochastically rounded in the annihilation process, so each excitor in the list has
@@ -700,6 +696,15 @@ contains
                                             D0_normalisation, tot_abs_real_pop, qs%psip_list%nstates, ccmc_in%full_nc, &
                                             ccmc_in%even_selection)
                 call zero_ps_stats(ps_stats, qs%excit_gen_data%p_single_double%rep_accum%overflow_loc)
+
+                ! Initialise reduction variables outside the parallel region
+                ! We need to count spawning attempts differently as there may be multiple spawns per cluster
+                nattempts_spawn = 0
+                proj_energy_cycle = cmplx(0.0, 0.0, p)
+                D0_population_cycle = cmplx(0.0, 0.0, p)
+                ndeath_nc = 0
+                nparticles_change = 0.0_p
+
                 ! OpenMP chunk size determined completely empirically from a single
                 ! test.  Please feel free to improve...
                 ! NOTE: we can't refer to procedure pointers in shared blocks so
@@ -707,21 +712,20 @@ contains
                 ! default(none) on when making changes and ensure that the only
                 ! errors relate to the procedure pointers...
                 !$omp parallel default(none) &
-                !$omp private(it, iexcip_pos, i, seen_D0) &
+                !$omp private(it, iexcip_pos, i, seen_D0, dfock) &
                 !$omp shared(rng, cumulative_abs_real_pops, tot_abs_real_pop,  &
                 !$omp        max_cluster_size, contrib, D0_normalisation, D0_pos, rdm,    &
                 !$omp        qs, sys, bloom_stats, min_cluster_size, ref_det,             &
-                !$omp        proj_energy_cycle, D0_population_cycle, selection_data,      &
-                !$omp        nattempts_spawn, ex_lvl_dist, &
-                !$omp        ccmc_in, nprocs, ms_stats, ps_stats, qmc_in, load_bal_in, &
-                !$omp        ndeath_nc,   &
-                !$omp        nparticles_change, ndeath, logging_info)
+                !$omp        selection_data, ex_lvl_dist, ccmc_in, nprocs, ms_stats, &
+                !$omp        ps_stats, qmc_in, load_bal_in, logging_info) &
+                !$omp reduction(+:D0_population_cycle,proj_energy_cycle,nattempts_spawn,ndeath,nparticles_change,ndeath_nc)
+                
+                ! Initialise private variables inside the parallel region
                 it = get_thread_id()
                 iexcip_pos = 0
                 seen_D0 = .false.
-                proj_energy_cycle = cmplx(0.0, 0.0, p)
-                D0_population_cycle = cmplx(0.0, 0.0, p)
-                !$omp do schedule(dynamic,200) reduction(+:D0_population_cycle,proj_energy_cycle,nattempts_spawn,ndeath)
+                
+                !$omp do schedule(dynamic,200) 
                 do iattempt = 1, selection_data%nclusters
                     if (iattempt <= selection_data%nsingle_excitors) then
                         ! As noncomposite clusters can't be above truncation level or linked-only all can accumulate +
@@ -804,13 +808,12 @@ contains
                 end do
                 !$omp end do
 
-                ndeath_nc = 0
                 if (ccmc_in%full_nc .and. qs%psip_list%nstates > 0) then
                     ! Do death exactly and directly for non-composite clusters
                     ! Ordering in reduction between ndeath_nc and nparticles_change has been
                     ! changed which stops a problem with intel compilers v17-v19.
                     ! See https://software.intel.com/en-us/forums/intel-fortran-compiler/topic/806597
-                    !$omp do schedule(dynamic,200) private(dfock) reduction(+:nparticles_change, ndeath_nc)
+                    !$omp do schedule(dynamic,200)
                     do iattempt = 1, qs%psip_list%nstates
                         ! Note we use the (encoded) population directly in stochastic_ccmc_death_nc
                         ! (unlike the stochastic_ccmc_death) to avoid unnecessary decoding/encoding
