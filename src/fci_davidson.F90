@@ -231,8 +231,8 @@ contains
             write(iunit, '(1X, A, 1X, F8.6, A)') 'Time taken for Davidson initialisation', real(t1-t0, kind=dp)/c_rate, " s"
             t0=t1
             write(iunit, *)
-            write(iunit, '(1X, A, 3X, A, 3X, A, 3X, A, 3X, A, 3X, A)') &
-                    'Iteration', 'Basis size', ' delta rmsE ', '-lg(max(res))', '# conv. res.', '  Time  '
+            write(iunit, '(1X, A, 3X, A, 3X, A, 3X, A)') &
+                    'Iteration', 'Basis size', ' delta rmsE ', '  Time  '
 
             do i = 1, maxiter
                 ! Orthonormalise the current set of guess vectors
