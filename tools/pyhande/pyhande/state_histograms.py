@@ -185,6 +185,12 @@ def average_histograms(grouped):
             averaged[kbe] = dfs[0][kbe]
 
         # Sanity check our data frames bins agree with one another
+        if any(k[kbe].shape != dfs[0][kbe].shape for k in dfs):
+            raise RuntimeError('The bin shapes for files in '
+                               f'IREPORT{ireport} do not agree!')
+        if any(k[kbe].shape != averaged[kbe].shape for k in dfs):
+            raise RuntimeError('The bin shapes for files across '
+                               'all IREPORT do not agree!')
         if any(np.count_nonzero(k[kbe] != dfs[0][kbe]) > 0 for k in dfs):
             raise RuntimeError('The bin edges for files in '
                                f'IREPORT{ireport} do not agree!')
@@ -219,8 +225,8 @@ def average_histograms(grouped):
         # for smaller population bins
         bin_sum = np.cumsum(bin_sum[::-1])[::-1]
         bin_sem = np.cumsum(np.power(bin_sem[::-1], 2.0))[::-1]**0.5
-        averaged[f'{ireport} \\sum'] = bin_sum
-        averaged[f'{ireport} sem'] = bin_sem
+        averaged[f'ndets_{ireport}'] = bin_sum
+        averaged[f'ndets_{ireport}_error'] = bin_sem
 
     return pd.DataFrame(averaged)
 
