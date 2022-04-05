@@ -774,8 +774,8 @@ contains
                 call stop_all('read_fci_in', 'Number of trial vectors smaller than number of eigenvalues solving for')
             end if
             call aot_get_val(fci_in%davidson_maxsize, err, lua_state, fci_table, 'davidson_maxsize')
-            if (fci_in%davidson_maxsize <= fci_in%ndavidson_trialvec) then 
-                call stop_all('read_fci_in', 'Max Davidson basis size smaller than number of trial vectors')
+            if (fci_in%davidson_maxsize <= fci_in%ndavidson_trialvec*2) then 
+                call stop_all('read_fci_in', 'Max Davidson basis size smaller than twice the number of trial vectors')
             end if
             call aot_get_val(fci_in%davidson_tol, err, lua_state, fci_table, 'davidson_tol')
             call aot_get_val(fci_in%davidson_maxiter, err, lua_state, fci_table, 'davidson_maxiter')

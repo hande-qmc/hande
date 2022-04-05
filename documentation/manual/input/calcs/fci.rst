@@ -138,12 +138,7 @@ davidson options
 Davidson diagonalisation currently only supports real Hamiltonians on a single node. 
 Although multi-threaded BLAS/LAPACK libraries (MKL, OpenBLAS, etc.) are supported. 
 
-The ``davidson`` table can take the following options:
-
-``using_davidson``
-type: boolean. Default: false.
-
-Whether to turn on Davidson diagonalisation.
+The ``davidson`` table can take the following options (specifying the table automatically enables Davidson diagonalisation):
 
 ``ndavidson_eigv``
 type: integer.
@@ -164,14 +159,15 @@ type: integer.
 
 Optional. Default: 50.
 
-Maximum number of guess vectors held at the same time. This should be very small compared to the dimensions of the full Hamiltonian you're trying to diagonalise. If larger an error will be thrown.
+Maximum number of guess vectors held at the same time. This should be very small compared to the dimensions of the full Hamiltonian you're trying to diagonalise. 
+If larger an error will be thrown. It also has to be at least double ``ndavidson_trialvec``, as the first iteration after each subspace collapse produces a very small change in eigenvalues and hence cannot be used for convergence testing. 
 
 ``davidson_tol``
 type: float.
 
-Optional. Default: 1e-4.
+Optional. Default: 1e-7.
 
-Tolerance in the norm of the residual vectors. If all ``ntrial`` residual vector norms become smaller than this tolerance, the algorithm will converge.
+Tolerance in the norm of the changes in all eigenvalues.
 
 ``davidson_maxiter``
 type: integer.

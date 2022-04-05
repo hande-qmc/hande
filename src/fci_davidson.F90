@@ -160,12 +160,18 @@ contains
         integer :: iunit, maxguess, nactive
         real(p), allocatable :: V(:,:), theta(:), theta_old(:), tmp(:,:), tmpV(:), T(:,:), w(:), V_coll(:,:)
         logical, allocatable :: normconv(:)
-        logical :: conv
+        real(p), allocatable :: res_norm(:)
+        logical :: conv, just_collapsed
         real(p) :: norm
+        integer(i0) :: c_max, c_rate, t0, t1
+
+        call system_clock(count=t0, count_rate=c_rate, count_max=c_max)
 
         iunit = 6
 
         ndets = ubound(dets, dim=2)
+        
+        just_collapsed = .false.
 
         if (parent) then
             write (iunit,'(1X,A,/)') 'Performing Davidson diagonalisation...'
@@ -186,8 +192,10 @@ contains
 
             allocate(theta_old(nEig), source=0.0_p, stat=ierr)
             call check_allocate('theta_old', nEig, ierr)
-            allocate(normconv(ntrial))
-            call check_allocate('normconv',ntrial, ierr)
+            allocate(normconv(ntrial),source=.false.)
+            call check_allocate('normconv', ntrial, ierr)
+            allocate(res_norm(ntrial),source=1.0_p)
+            call check_allocate('res_norm', ntrial, ierr)
 
             ! Integer division always rounds towards zero, i.e 8*50/8 = 48
             maxguess = ntrial*(maxsize/ntrial)
@@ -217,7 +225,15 @@ contains
 
             nactive = ntrial
             conv = .false.
-            
+
+            call system_clock(t1)
+            write(iunit, '(1X, A)') 'Davidson initialisation done!'
+            write(iunit, '(1X, A, 1X, F8.6, A)') 'Time taken for Davidson initialisation', real(t1-t0, kind=dp)/c_rate, " s"
+            t0=t1
+            write(iunit, *)
+            write(iunit, '(1X, A, 3X, A, 3X, A, 3X, A, 3X, A, 3X, A)') &
+                    'Iteration', 'Basis size', ' delta rmsE ', '-lg(max(res))', '# conv. res.', '  Time  '
+
             do i = 1, maxiter
                 ! Orthonormalise the current set of guess vectors
                 call qr_wrapper(ndets, nactive, V, ndets, info)
@@ -234,11 +250,15 @@ contains
                 ! essentially zero, but we report it nonetheless as during each restart-block it is still 
                 ! a useful measure of convergence.
                 norm = sqrt(sum((theta(1:nEig)-theta_old)**2))
-                write(iunit,'(1X, A, I3, A, I3, A, ES15.6)') 'Iteration ', i, ', basis size ', nactive, ', rmsE ', norm
-                theta_old = theta(1:nEig)
+                
+                call system_clock(t1)
+                write(iunit,'(1X,I9,3X,I10,3X,ES12.6,3X,F9.6)')&
+                    i,nactive,norm,real(t1-t0,kind=dp)/c_rate
+                t0=t1
 
-                if (all(normconv)) then
-                    write(iunit,'(1X, A, ES10.4, A)') 'Residue tolerance of ', tol,' reached, printing results...'
+                theta_old = theta(1:nEig)
+                if (.not. just_collapsed .and. norm < tol) then
+                    write(iunit,'(1X, A, ES10.4, A)') 'Eigenvalue tolerance of ', tol,' reached, printing results...'
                     conv = .true.
                     exit
                 end if
@@ -252,7 +272,6 @@ contains
                         call gemv('N', ndets, nactive, 1.0_p, V, ndets, T(:,j), 1, 0.0_p, tmpV, 1)
                         call gemv('N', ndets, ndets, 1.0_p, A, ndets, tmpV, 1, 0.0_p, w, 1)
                         w = w - theta(j)*tmpV
-                        if (sqrt(sum(w**2)) < tol) normconv(j) = .true.
                         ! Precondition the residue vector to form the correction vector,
                         ! if preconditioner = 1, we recover the Lanczos algorithm.
                         if (abs((theta(j)-A(j,j))) < 1e-6) then
@@ -263,6 +282,7 @@ contains
                         V(:,(nactive+j)) = w
                     end do
                     nactive = nactive + ntrial
+                    just_collapsed = .false.
                 else
                     ! We need to collapse the subspace into ntrial best guesses and restart the iterations
                     ! V holds the approximate eigenvectors and T holds the CI coefficients,
@@ -274,6 +294,7 @@ contains
                               ndets, T, maxguess, 0.0_p, V_coll, ndets)
                     V(:,:ntrial) = V_coll
                     nactive = ntrial
+                    just_collapsed = .true.
                 end if
 
             end do

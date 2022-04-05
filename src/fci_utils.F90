@@ -50,7 +50,7 @@ type fci_in_t
     ! Maximum iterations
     integer :: davidson_maxiter = 100
     ! Convergence tolerance
-    real(p) :: davidson_tol = 1e-4
+    real(p) :: davidson_tol = 1e-7
 end type fci_in_t
 
 
