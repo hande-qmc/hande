@@ -1,0 +1,21 @@
+fciqmc {
+    sys = read_in {
+        int_file = 'FCIDUMP',
+        nel = 12,
+        ms = 2,
+        sym = 3,
+    },
+    qmc = {
+        tau = 0.001,
+        init_pop = 1E4,
+        mc_cycles = 10,
+        nreports = 250,
+        target_population = 1E2,
+        state_size = -400,
+        spawned_state_size = -500,
+        real_amplitudes = true,
+        rng_seed = 127,
+        state_histograms = true,
+        state_histograms_nreport = 200,
+    },
+}

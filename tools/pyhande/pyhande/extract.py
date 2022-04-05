@@ -384,7 +384,7 @@ Returns
 data : :class:`pandas.DataFrame`
     Data contained in the histogram files
 '''
-    data = {'histogram': []}
+    data = {}
     hist_comment_str = 'Writing state histogram to:'
     f = open(comment_file)
     found_data = False
@@ -396,16 +396,15 @@ data : :class:`pandas.DataFrame`
             df.drop(columns='bin_edges', inplace=True)
             ndet_maxs = numpy.array(df.max(axis=1))[:5]
             for imax, ndet_max in enumerate(ndet_maxs):
-                key = f'bin {imax} max ndets'
+                key = f'bin_{imax}_max_ndets'
                 if key not in data.keys():
                     data[key] = []
                 data[key].append(ndet_max)
-            data['histogram'].append(histogram_file)
     f.close()
     if not found_data:
         return None
     data = pd.DataFrame(data)
-    data.set_index('histogram')
+    data.index.name = 'N_histogram'
     return data
 
 def _extract_fci_data(fhandle, title_line):
