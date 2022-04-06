@@ -100,10 +100,10 @@ algorithms and control the core settings in the algorithms.
 
     .. math::
 
-        S(\tau) = S(\tau-A\delta\tau) - \frac{\xi}{A\delta\tau} \ln\left( \frac{N_{\text{w}}(\tau)} {N_{\text{w}}(\tau-A\delta\tau)} \right)
+        S(\tau) = S(\tau-A\delta\tau) - \frac{\zeta}{A\delta\tau} \ln\left( \frac{N_{\text{w}}(\tau)} {N_{\text{w}}(\tau-A\delta\tau)} \right)
 
     where :math:`S` is the shift, :math:`\tau` the current imaginary time, :math:`\delta\tau` the
-    timestep, :math:`A` ``mc_cycles``, :math:`\xi` ``shift_damping``, and :math:`N_{\text{w}}` the
+    timestep, :math:`A` ``mc_cycles``, :math:`\zeta` ``shift_damping``, and :math:`N_{\text{w}}` the
     number of particles (walkers).
 ``reference_target``
     type: float.
@@ -394,7 +394,7 @@ algorithms and control the core settings in the algorithms.
 
     Optional.  Default: 0.05.
 
-    The shift damping factor, :math:`\xi`. This can be optimised using the
+    The shift damping factor, :math:`\zeta`. This can be optimised using the
     ``auto_shift_damping`` keyword (see :ref:`blocking_table`).
     On restarting the final value in the previous calculation will replace
     the usual default value if ``shift_damping`` is not specified.
@@ -404,12 +404,13 @@ algorithms and control the core settings in the algorithms.
 
     Optional. Default: 0.0.
 
-    The restoring force factor :math:`\zeta` in the improved shift update procedure from [Yang20]_: 
+    The restoring force factor :math:`\xi` in the improved shift update procedure from [Yang20]_: 
+
     .. math::
 
-        S(\tau) = S(\tau-A\delta\tau) - \frac{\xi}{A\delta\tau} \ln\left( \frac{N_{\text{w}}(\tau)} {N_{\text{w}}(\tau-A\delta\tau)} \right) - \frac{\zeta}{A\delta\tau}\ln\left(\frac{N_{\text{w}}(\tau)}{N_{\text{t}}} \right)
+        S(\tau) = S(\tau-A\delta\tau) - \frac{\zeta}{A\delta\tau} \ln\left( \frac{N_{\text{w}}(\tau)} {N_{\text{w}}(\tau-A\delta\tau)} \right) - \frac{\xi}{A\delta\tau}\ln\left(\frac{N_{\text{w}}(\tau)}{N_{\text{t}}} \right)
 
-    where :math:`\N_{\text{t}}` is the target population.
+    where :math:`N_{\text{t}}` is the target population.
 
 ``shift_harmonic_crit_damp``
     type: boolean.
