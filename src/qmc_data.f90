@@ -178,6 +178,8 @@ type qmc_in_t
     ! used to direct the walker population to the given
     ! target population. The original population dynamics are obtained if set
     ! equal to zero. Sets default value within qmc_state_t. 
+    ! Turn on harmonic forcing only after target population is reached?
+    logical :: shift_harmonic_forcing_two_stage = .false.
     real(p) :: shift_harmonic_forcing = 0.0_p
     ! If true, the shift_harmonic_forcing term will be set equal to the square
     ! of the shift_damping term divided by 4 to obtain critial damping.  
