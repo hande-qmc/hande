@@ -394,9 +394,14 @@ contains
 
         !PySCF FCIDUMPS for linear molecules are not automatically reduced to D2h, leading to symmetries HANDE
         !is not prepared to handle. These can be folded back into D2h by transforming 1x, 2x etc -> x.
-        if (any(sys%basis%basis_fns(:)%sym > 9))then
+        !e.g. for N2 in cc-pVQZ
+        !&FCI NORB= 110,NELEC=14,MS2=0,
+        !ORBSYM=0,5,0,5,0,6,7,2,3,5,5,0,6,7,0,2,3,5,10,11,6,7,14,15,0,2,3,5,6,7,0,2,3,10,11,6,7,5,0,16,
+        !17,0,12,13,5,14,15,10,11,14,15,2,3,6,7,5,2,3,0,5,6,7,0,10,11,16,17,20,21,24,25,12,13,14,15,2,3,
+        !5,6,7,2,3,0,5,10,11,16,17,12,13,6,7,14,15,0,10,11,5,14,15,6,7,2,3,2,3,0,5,0,5
+        if (any(sys%basis%basis_fns(:)%sym > 7))then
             do i=1, sys%basis%nbasis
-                if (sys%basis%basis_fns(i)%sym > 9) sys%basis%basis_fns(i)%sym = sys%basis%basis_fns(i)%sym - 10
+                sys%basis%basis_fns(i)%sym = mod(sys%basis%basis_fns(i)%sym, 10)
             end do
             call warning('read_in_integrals', "Symmetry labels > 10 found. Folded back into D2h.", 1)
         end if
