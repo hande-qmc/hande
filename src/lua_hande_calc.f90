@@ -1067,12 +1067,13 @@ contains
         character(len=30) :: str
         logical :: skip, no_renorm
 
-        character(24), parameter :: keys(38) = [character(24) :: 'tau', 'init_pop', 'mc_cycles', 'nreports', 'state_size', &
+        character(24), parameter :: keys(39) = [character(32) :: 'tau', 'init_pop', 'mc_cycles', 'nreports', 'state_size', &
                                                                  'spawned_state_size', 'rng_seed', 'target_population', &
                                                                  'real_amplitudes', 'spawn_cutoff', 'no_renorm', 'tau_search', &
                                                                  'real_amplitude_force_32', &
                                                                  'pattempt_single', 'pattempt_double', 'pattempt_update', &
                                                                  'pattempt_zero_accum_data', &
+                                                                 'shift_harmonic_forcing_two_stage', &
                                                                  'pattempt_parallel', 'initial_shift', 'shift_damping', &
                                                                  'shift_harmonic_forcing', 'shift_harmonic_crit_damp', &
                                                                  'initiator', 'initiator_threshold', 'use_mpi_barriers', &
@@ -1119,6 +1120,7 @@ contains
         call aot_get_val(qmc_in%tau_search, err, lua_state, qmc_table, 'tau_search')
         call aot_get_val(qmc_in%initial_shift, err, lua_state, qmc_table, 'initial_shift')
         call aot_get_val(qmc_in%shift_damping, err, lua_state, qmc_table, 'shift_damping')
+        call aot_get_val(qmc_in%shift_harmonic_forcing_two_stage, err, lua_state, qmc_table, 'shift_harmonic_forcing_two_stage')
         call aot_get_val(qmc_in%shift_harmonic_forcing, err, lua_state, qmc_table, 'shift_harmonic_forcing')
         call aot_get_val(qmc_in%shift_harmonic_crit_damp, err, lua_state, qmc_table, 'shift_harmonic_crit_damp')
         call aot_get_val(qmc_in%target_particles, err, lua_state, qmc_table, 'target_population')

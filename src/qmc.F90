@@ -195,14 +195,18 @@ contains
         ! shift_harmonic_forcing = (shift_damping^2)/4
         ! If shift_harmonic_crit_damp is false, the value of
         ! shift_harmonic_forcing from the input is used. 
-        ! If shift_harmonic_forcing is not equal to zero, we need to be in
-        ! variable shift mode, so turn on vary_shift.
+        ! With harmonic forcing, we *could* turn vary_shift on from the start of the calculation, 
+        ! but it can take longer to reach the target population due to increased death events. 
+        ! So, we only turn it on from the start if shift_harmonic_forcing_two_stage is false.
         if (qmc_in%shift_harmonic_crit_damp) then
             qmc_state%shift_harmonic_forcing = real((qmc_state%shift_damping**2)/4.0_p, p)
         else if (qmc_state%shift_harmonic_forcing .ne. 0.00_p) then 
             qmc_state%shift_harmonic_forcing = qmc_in%shift_harmonic_forcing
         end if
-        if (qmc_state%shift_harmonic_forcing .ne. 0.00_p) qmc_state%vary_shift = .true. 
+        if (qmc_state%shift_harmonic_forcing .ne. 0.00_p) then
+            ! Turn on harmonic forcing right now or only when target population is reached?
+            if (.not. qmc_in%shift_harmonic_forcing_two_stage) qmc_state%vary_shift = .true. 
+        end if
         
         qmc_state%restart_in = restart_in
     end subroutine init_qmc
