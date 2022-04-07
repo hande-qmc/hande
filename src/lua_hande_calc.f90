@@ -883,6 +883,7 @@ contains
         !     pattempt_parallel = prob,
         !     initial_shift = shift,
         !     shift_damping = damp_factor,
+        !     shift_harmonic_forcing_vary_shift = true/false,
         !     shift_harmonic_forcing = harmonic_force_factor,
         !     shift_harmonic_crit_damp = true/false,
         !     initiator = true/false,
@@ -1091,11 +1092,17 @@ contains
         !     select_reference_det = {
         !        update_every = mc_cycles,
         !        pop_factor = factor,
-        !     }
+        !     },
         !     quadrature_initiator = true/false,
         !     replica_tricks = true/false,
         !     density_matrices = true/false,
         !     density_matrix_file = filename,
+        !     mrcc_model_space_selection = {
+        !        target_ndets = integer,
+        !        max_ndets = integer,
+        !        info_iters = integer,
+        !        dets_file = filename,
+        !     },
         ! }
 
         ! In/Out:
@@ -1117,13 +1124,14 @@ contains
         integer, intent(in) :: opts
         type(fciqmc_in_t), intent(out) :: fciqmc_in
 
-        integer :: fciqmc_table, ref_det, err
+        integer :: fciqmc_table, ref_det, mrcc_selection, err
         character(len=12) :: str
         logical :: ref_det_flag
-        character(31), parameter :: keys(10) = [character(31) :: 'non_blocking_comm', 'load_balancing', 'guiding_function', &
+        character(31), parameter :: keys(11) = [character(31) :: 'non_blocking_comm', 'load_balancing', 'guiding_function', &
                                                                  'init_spin_inverse_reference_det', 'trial_function', &
                                                                  'select_reference_det', 'quadrature_initiator', &
-                                                                 'replica_tricks', 'density_matrices', 'density_matrix_file']
+                                                                 'replica_tricks', 'density_matrices', 'density_matrix_file', &
+                                                                 'mrcc_model_space_selection']
 
         if (aot_exists(lua_state, opts, 'fciqmc')) then
 
@@ -1157,6 +1165,7 @@ contains
                     call aot_table_close(lua_state, ref_det)
                 end if
             end if
+
             if (aot_exists(lua_state, fciqmc_table, 'guiding_function')) then
                 call aot_get_val(str, err, lua_state, fciqmc_table, 'guiding_function')
                 select case(trim(str))
@@ -1169,6 +1178,7 @@ contains
                     if (parent) call stop_all('read_fciqmc_in', 'Unknown guiding function')
                 end select
             end if
+
             if (aot_exists(lua_state, fciqmc_table, 'trial_function')) then
                 call aot_get_val(str, err, lua_state, fciqmc_table, 'trial_function')
                 select case(trim(str))
@@ -1180,6 +1190,18 @@ contains
                     if (parent) call stop_all('read_fciqmc_in', 'Unknown trial wavefunction')
                 end select
             end if
+
+            if (aot_exists(lua_state, fciqmc_table, 'mrcc_model_space_selection')) then
+                fciqmc_in%doing_fciqmc_tailored_mrccmc = .true.
+                call aot_table_open(lua_state, fciqmc_table, mrcc_selection, 'mrcc_model_space_selection')
+
+                call aot_get_val(fciqmc_in%mrcc_selection_target_ndets, err, lua_state, mrcc_selection, 'target_ndets')
+                call aot_get_val(fciqmc_in%mrcc_selection_max_ndets, err, lua_state, mrcc_selection, 'max_ndets')
+                call aot_get_val(fciqmc_in%mrcc_selection_nreports, err, lua_state, mrcc_selection, 'nreports')
+                call aot_get_val(fciqmc_in%mrcc_selection_dets_file, err, lua_state, mrcc_selection, 'dets_file')
+
+                call aot_table_close(lua_state, mrcc_selection)
+            end if 
 
             call warn_unused_args(lua_state, keys, fciqmc_table)
 

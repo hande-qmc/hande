@@ -177,7 +177,9 @@ type qmc_in_t
     ! Brand (J. Chem. Phys. 153, 174103 (2020) (DOI:10.1063/5.0023088)) 
     ! used to direct the walker population to the given
     ! target population. The original population dynamics are obtained if set
-    ! equal to zero. Sets default value within qmc_state_t. 
+    ! equal to zero. Sets default value within qmc_state_t.
+    ! Turn on shift_harmonic_forcing only when target population is reached? 
+    logical :: shift_harmonic_forcing_two_stage = .false.
     real(p) :: shift_harmonic_forcing = 0.0_p
     ! If true, the shift_harmonic_forcing term will be set equal to the square
     ! of the shift_damping term divided by 4 to obtain critial damping.  
@@ -284,6 +286,15 @@ type fciqmc_in_t
 
     ! Filename to write density matrix to
     character(255) :: density_matrix_file = 'RDM'
+
+    ! Are we performing FCIQMC-tailored multi-reference CCMC? 
+    ! This means accumulating a list of highly occupied determinants, with the parameters that follow
+    logical :: doing_fciqmc_tailored_mrccmc = .false.
+    ! The final number of highest occupied determinants to keep
+    integer :: mrcc_selection_target_ndets = -1
+    integer :: mrcc_selection_max_ndets = -1
+    integer :: mrcc_selection_nreports = -1
+    character(255) :: mrcc_selection_dets_file = 'fciqmc.secref'
 
 end type fciqmc_in_t
 
@@ -842,6 +853,32 @@ type propagator_t
     real(p) :: quasi_newton_pop_control
 end type propagator_t
 
+type highest_dets_t
+    ! Derived type containing a list of (cumulatively) highest occupied determinants, and parameters about this list.
+    ! Number of reports over which information is accumulated
+    integer :: nreports = -1
+    ! Number of reports collected
+    integer :: ireport = 0
+    ! Maximum number of determinants that can be held by this list.
+    integer :: max_ndets = -1
+    ! Current number of determinant in the main list
+    integer :: ndets = -1
+    ! The final number of highest occupied determinants to keep
+    integer :: target_ndets = -1
+    ! The name of the output determinant file
+    character(255) :: det_file = 'fciqmc.secref'
+    ! Holds the highest determinants and their absolute populations. 
+    ! int_s is used as a result (which is 64 bit if one of det_size and pop_size is 64 bit)
+    ! det_list(:,i) stores information of the i-th highest occupied determinant, with the first element the population, and the 
+    ! remaining bit_string_len elements contain the bitstring.
+    ! This list is sorted by (absolute) population
+    integer(int_s), allocatable :: det_list_main(:,:) ! (1+bit_string_len, max_ndets)
+    ! Holds the highest occupied determinant for the current report loop
+    integer(int_s), allocatable :: det_list_new(:,:)
+    ! Holds the sorted determinant list only, to speed up searching
+    integer(i0), allocatable :: det_only_list_main(:,:) ! (bit_string_len, max_ndets)
+end type highest_dets_t
+
 type qmc_state_t
     ! When performing dmqmc calculations, dmqmc_factor = 2.0. This factor is
     ! required because in DMQMC calculations, instead of spawning from one end with
@@ -913,6 +950,13 @@ type qmc_state_t
     type(dSFMT_state_t) :: rng_state
     ! BK tree object for multi-reference searching
     type(tree_t) :: secondary_ref_tree
+
+    ! Are we performing FCIQMC-tailored multi-reference CCMC? 
+    ! This means accumulating a list of highly occupied determinants (see below)
+    logical :: doing_fciqmc_tailored_mrccmc = .false.
+    ! Contains a list of (cumulatively) highest occupied determinants, and parameters about this list, 
+    ! used in a FCIQMC-tailored multi-reference CCMC run, where a short FCIQMC run is performed to determine the reference space.
+    type(highest_dets_t) :: highest_dets
 end type qmc_state_t
 
 ! Copies of various settings that are required during annihilation.  This avoids having to pass through lots of different

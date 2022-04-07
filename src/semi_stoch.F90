@@ -1239,7 +1239,7 @@ contains
         !        dets_out and pops_out may be garbage.
         ! Out:
         !    dets_out: List of most populated determinants.
-        !    pops_out: Populations corresponding to the determinants in dets_out.
+        !    pops_out: Absolute populations corresponding to the determinants in dets_out.
 
         ! dets_in(:,i) holds determinant i.
         integer(i0), intent(in) :: dets_in(:,:) 
@@ -1248,7 +1248,7 @@ contains
         integer, intent(in) :: ndets_in, ndets_out
         ! dets_out(:,i) holds determinant i.
         integer(i0), intent(out) :: dets_out(:,:)
-        ! pops_in(j,i) holds the population of particle type j on determinant i.
+        ! pops_out(i) holds the sum of absolute populations of all particle types on determinant i.
         integer(int_p), intent(out) :: pops_out(:)
 
         integer :: i, j, min_ind
