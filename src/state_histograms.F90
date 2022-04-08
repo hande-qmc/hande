@@ -411,7 +411,7 @@ contains
 
 #ifdef PARALLEL
             call mpi_reduce(exbins, comm_exbins, size(exbins), &
-                            mpi_preal, mpi_sum, root, MPI_COMM_WORLD, ierr)
+                            mpi_pop_integer, mpi_sum, root, MPI_COMM_WORLD, ierr)
 #else
             comm_exbins = exbins
 #endif
