@@ -158,7 +158,7 @@ contains
         logical :: seen_D0, regenerate_info
         real(p) :: dfock
         complex(p) :: D0_population_cycle, proj_energy_cycle
-        real(p) :: D0_population_ucc_cycle
+        real(p) :: D0_population_noncomp_cycle
 
         real(p), allocatable :: rdm(:,:)
 
@@ -457,7 +457,7 @@ contains
 
                 proj_energy_cycle = cmplx(0.0, 0.0, p)
                 D0_population_cycle = cmplx(0.0, 0.0, p)
-                D0_population_ucc_cycle = 0.0_p
+                D0_population_noncomp_cycle = 0.0_p
                 !$omp parallel default(none) &
                 !$omp private(it, iexcip_pos, i, seen_D0, hit, pos, population, real_population,k, cluster_pop, &
                 !$omp state,annihilation_flags) &
@@ -470,7 +470,7 @@ contains
                 !$omp        nparticles_change,logging_info, &
                 !$omp        time_avg_psip_list_ci_states, time_avg_psip_list_ci_pops, &
                 !$omp        time_avg_psip_list_states, time_avg_psip_list_pops) &
-                !$omp reduction(+:D0_population_cycle,proj_energy_cycle, D0_population_ucc_cycle, nattempts_spawn,ndeath)
+                !$omp reduction(+:D0_population_cycle,proj_energy_cycle, D0_population_noncomp_cycle, nattempts_spawn,ndeath)
 
                 it = get_thread_id()
                 iexcip_pos = 0
@@ -504,7 +504,7 @@ contains
                             ! [VAN]: according to comments. And logging cannot be used with openmp. Dangerous though.
                             call do_ccmc_accumulation(sys, qs, contrib(it)%cdet, contrib(it)%cluster, logging_info, &
                                                     D0_population_cycle, proj_energy_cycle, uccmc_in, ref_det, rdm, &
-                                                    selection_data, D0_population_ucc_cycle)
+                                                    selection_data, D0_population_noncomp_cycle)
                             call do_nc_ccmc_propagation(rng(it), sys, qs, uccmc_in, logging_info, bloom_stats, &
                                                                 contrib(it), nattempts_spawn, ps_stats(it))
                             if (uccmc_in%variational_energy .and. all(qs%vary_shift) .and. & 
@@ -525,7 +525,7 @@ contains
                                             tot_abs_real_pop, min_cluster_size, qs%psip_list%nstates-1, &
                                             logging_info, contrib(it)%cdet, contrib(it)%cluster, qs%excit_gen_data, cluster_pop)
 
-                        if (uccmc_in%trot) call add_info_str_trot(sys%basis, qs%ref%f0, sys%nel, contrib(it)%cdet%f)
+                        call add_info_str_trot(sys%basis, qs%ref%f0, sys%nel, contrib(it)%cdet%f)
 
                             !Add selected cluster contribution to CI wavefunction estimator.
                             if (uccmc_in%variational_energy .and. (.not. all(contrib(it)%cdet%f==0)) .and. &
@@ -559,7 +559,7 @@ contains
 
                             call do_ccmc_accumulation(sys, qs, contrib(it)%cdet, contrib(it)%cluster, logging_info, &
                                                     D0_population_cycle, proj_energy_cycle, uccmc_in, ref_det, rdm, selection_data,&
-                                                    D0_population_ucc_cycle)
+                                                    D0_population_noncomp_cycle)
                             call do_stochastic_ccmc_propagation(rng(it), sys, qs, &
                                                                 uccmc_in, logging_info, ms_stats(it), bloom_stats, &
                                                                 contrib(it), nattempts_spawn, ndeath, ps_stats(it))
@@ -589,7 +589,7 @@ contains
 
                         call do_ccmc_accumulation(sys, qs, contrib(it)%cdet, contrib(it)%cluster, logging_info, &
                                                     D0_population_cycle, proj_energy_cycle, uccmc_in, ref_det, rdm, selection_data,&
-                                                    D0_population_ucc_cycle)
+                                                    D0_population_noncomp_cycle)
                         nattempts_spawn = nattempts_spawn + 1
                         call perform_ccmc_spawning_attempt(rng(it), sys, qs, uccmc_in, logging_info, bloom_stats, contrib(it), 1, &
                                                         ps_stats(it))
@@ -638,11 +638,11 @@ contains
                 qs%estimators%proj_energy_comp = qs%estimators%proj_energy_comp + proj_energy_cycle
                 do j = 1, qs%psip_list%nstates
                     if (j/=D0_pos) then
-                        D0_population_ucc_cycle = &
-                            D0_population_ucc_cycle/cos((qs%psip_list%pops(1,j)/real(qs%psip_list%pop_real_factor))/D0_normalisation)
+                        D0_population_noncomp_cycle = &
+                            D0_population_noncomp_cycle/cos((qs%psip_list%pops(1,j)/real(qs%psip_list%pop_real_factor))/D0_normalisation)
                     end if
                 end do
-                qs%estimators%D0_noncomposite_population = qs%estimators%D0_noncomposite_population + D0_population_ucc_cycle
+                qs%estimators%D0_noncomposite_population = qs%estimators%D0_noncomposite_population + D0_population_noncomp_cycle
 
                 ! Calculate the number of spawning events before the particles are redistributed,
                 ! otherwise sending particles to other processors is counted as a spawning event.
@@ -860,7 +860,7 @@ contains
         !    initiator_pop: the population above which a determinant is an initiator.
         !    D0_pos: position in the excip list of the reference.  Must be negative
         !       if the reference is not on the processor.
-        !    cumulative_excip_population: running cumulative excip population on
+        !    cumulative_excip_pop: running cumulative excip population on
         !        all excitors; i.e. cumulative_excip_population(i) = sum(particle_t%pops(1:i)).
         !    tot_excip_pop: total excip population.
         !    min_size: the minimum size cluster to allow.
@@ -1635,7 +1635,7 @@ contains
         !       particle_t%states in the previous iteration (or -1 if it was
         !       not on this processor).  On output, the current position.
 
-        use bit_utils, only: bit_str_cmp_trot
+        use bit_utils, only: bit_str_cmp
         use search, only: binary_search_i0_list_trot
         use qmc_data, only: particle_t
         use errors, only: stop_all
@@ -1652,7 +1652,7 @@ contains
             call binary_search_i0_list_trot(psip_list%states, f0, 1, psip_list%nstates, hit, D0_pos)
         else
             D0_pos_old = D0_pos
-            select case(bit_str_cmp_trot(f0, psip_list%states(:,D0_pos)))
+            select case(-bit_str_cmp(f0, psip_list%states(:,D0_pos)))
             case(0)
                 ! D0 hasn't moved.
                 hit = .true.
@@ -1731,6 +1731,14 @@ contains
 
 ! [review] - Brian: document this
     pure function deexcitation_possible(f0, excit, cdet_f) result (allowed)
+        ! Function to check whether it is possible to apply a particular
+        ! deexcitation operator to the current cluster.
+
+        ! In:
+        ! f0: bit string corresponding to the reference determinant.
+        ! excit: bit string corresponding to the effect of applying a given excitor
+        ! to the reference.
+        ! cdet_f: bit string corresponding to the current cluter.
 
         integer(i0), intent(in) :: f0(:), excit(:), cdet_f(:)
         logical :: allowed
@@ -1742,6 +1750,14 @@ contains
 
 ! [review] - Brian: document this
     pure function excitation_possible(f0, excit, cdet_f) result (allowed)
+        ! Function to check whether it is possible to apply a particular
+        ! excitation operator to the current cluster.
+
+        ! In:
+        ! f0: bit string corresponding to the reference determinant.
+        ! excit: bit string corresponding to the effect of applying a given excitor
+        ! to the reference.
+        ! cdet_f: bit string corresponding to the current cluter.
 
         integer(i0), intent(in) :: f0(:), excit(:), cdet_f(:)
         logical :: allowed
@@ -1854,6 +1870,17 @@ contains
 
 ! [review] - Brian: document this
     function get_cluster_population(sys, psip_list, D0_pos, iattempt, ref_real, f0) result(cluster_population)
+        ! Function to obtain the effective cluster population of a non-composite cluster in tUCCMC.
+        ! The excitor the cluster corresponds to contributes sin(Ni/N0). Every other excitor that
+        ! could be applied (but is not) corresponds cos(Ni/N0).
+
+        ! In:
+        ! sys: sys_t object for the system studied.
+        ! psip_list: particle_t object encoding the current wavefunction.
+        ! D0_pos: position of D0 in psip_list.
+        ! iattempt: current excitor considered.
+        ! ref_real: real population on the reference.
+        ! f0: bit string of the reference determinant.
 
         use qmc_data, only: particle_t
         use system, only: sys_t
@@ -1928,6 +1955,7 @@ contains
         !       reference.
         !    proj_energy: projected energy.  This should be the average value from the last
         !        report loop, not the running total in qs%estimators.
+        !    trot_population: the effective tUCCMC population on the current excip, as computed from get_cluster_population.
         ! In/Out:
         !    rng: random number generator.
         !    ndeath: running (encoded) total of number of particles killed/cloned.

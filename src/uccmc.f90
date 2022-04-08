@@ -161,7 +161,7 @@ contains
         logical :: seen_D0, regenerate_info
         real(p) :: dfock
         complex(p) :: D0_population_cycle, proj_energy_cycle
-        real(p) :: D0_population_ucc_cycle
+        real(p) :: D0_population_noncomp_cycle
 
         real(p), allocatable :: rdm(:,:)
 
@@ -456,7 +456,7 @@ contains
 
                 proj_energy_cycle = cmplx(0.0, 0.0, p)
                 D0_population_cycle = cmplx(0.0, 0.0, p)
-                D0_population_ucc_cycle = 0.0_p
+                D0_population_noncomp_cycle = 0.0_p
                 !$omp parallel default(none) &
                 !$omp private(it, iexcip_pos, i, seen_D0, hit, pos, population, real_population,k, &
                 !$omp annihilation_flags) &
@@ -469,7 +469,7 @@ contains
                 !$omp        nparticles_change, logging_info, nstates_ci, & 
                 !$omp        time_avg_psip_list_ci_states, time_avg_psip_list_ci_pops, &
                 !$omp        time_avg_psip_list_states, time_avg_psip_list_pops) &
-                !$omp reduction(+:D0_population_cycle,proj_energy_cycle, D0_population_ucc_cycle, nattempts_spawn,ndeath)
+                !$omp reduction(+:D0_population_cycle,proj_energy_cycle, D0_population_noncomp_cycle, nattempts_spawn,ndeath)
                 it = get_thread_id()
                 iexcip_pos = 0
                 seen_D0 = .false.
@@ -494,7 +494,7 @@ contains
                             ! [VAN]: according to comments. And logging cannot be used with openmp. Dangerous though.
                             call do_ccmc_accumulation(sys, qs, contrib(it)%cdet, contrib(it)%cluster, logging_info, &
                                                     D0_population_cycle, proj_energy_cycle, uccmc_in, ref_det, rdm, &
-                                                    selection_data, D0_population_ucc_cycle)
+                                                    selection_data, D0_population_noncomp_cycle)
                             call do_nc_ccmc_propagation(rng(it), sys, qs, uccmc_in, logging_info, bloom_stats, &
                                                                 contrib(it), nattempts_spawn, ps_stats(it))
                             if (uccmc_in%variational_energy .and. all(qs%vary_shift) .and. & 
@@ -506,7 +506,7 @@ contains
                 end do
                 !$omp end do
                 !$omp do schedule(dynamic,200) &
-                !$omp reduction(+:D0_population_cycle,proj_energy_cycle, D0_population_ucc_cycle, nattempts_spawn,ndeath)
+                !$omp reduction(+:D0_population_cycle,proj_energy_cycle, D0_population_noncomp_cycle, nattempts_spawn,ndeath)
                 do iattempt = 1, selection_data%nstochastic_clusters
                     !else if (iattempt <= selection_data%nsingle_excitors + selection_data%nstochastic_clusters) then
                         call select_ucc_cluster(rng(it), sys, qs%psip_list, qs%ref%f0, qs%ref%max_ex_level, &
@@ -528,7 +528,7 @@ contains
 
                             call do_ccmc_accumulation(sys, qs, contrib(it)%cdet, contrib(it)%cluster, logging_info, &
                                                     D0_population_cycle, proj_energy_cycle,uccmc_in, ref_det, rdm, &
-                                                    selection_data, D0_population_ucc_cycle)
+                                                    selection_data, D0_population_noncomp_cycle)
                             call do_stochastic_ccmc_propagation(rng(it), sys, qs, &
                                                                 uccmc_in, logging_info, ms_stats(it), bloom_stats, &
                                                                 contrib(it), nattempts_spawn, ndeath, ps_stats(it))
@@ -536,7 +536,7 @@ contains
                 end do
                 !$omp end do
                 !$omp do schedule(dynamic,200) &
-                !$omp reduction(+:D0_population_cycle,proj_energy_cycle, D0_population_ucc_cycle, nattempts_spawn,ndeath)
+                !$omp reduction(+:D0_population_cycle,proj_energy_cycle, D0_population_noncomp_cycle, nattempts_spawn,ndeath)
                 do iattempt = 1, selection_data%nD0_select
                         if (.not. seen_D0) then
                             ! This is the first time this thread is spawning from D0, so it
@@ -556,7 +556,7 @@ contains
 
                         call do_ccmc_accumulation(sys, qs, contrib(it)%cdet, contrib(it)%cluster, logging_info, &
                                                     D0_population_cycle, proj_energy_cycle, uccmc_in, ref_det, rdm, selection_data,&
-                                                    D0_population_ucc_cycle)
+                                                    D0_population_noncomp_cycle)
                         nattempts_spawn = nattempts_spawn + 1
                        
                         call perform_ccmc_spawning_attempt(rng(it), sys, qs, uccmc_in, logging_info, bloom_stats, contrib(it), 1, &
@@ -599,7 +599,7 @@ contains
                 qs%psip_list%nparticles = qs%psip_list%nparticles + nparticles_change
                 qs%estimators%D0_population_comp = qs%estimators%D0_population_comp + D0_population_cycle
                 qs%estimators%proj_energy_comp = qs%estimators%proj_energy_comp + proj_energy_cycle
-                qs%estimators%D0_noncomposite_population = qs%estimators%D0_noncomposite_population + D0_population_ucc_cycle
+                qs%estimators%D0_noncomposite_population = qs%estimators%D0_noncomposite_population + D0_population_noncomp_cycle
 
                 ! Calculate the number of spawning events before the particles are redistributed,
                 ! otherwise sending particles to other processors is counted as a spawning event.

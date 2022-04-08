@@ -965,6 +965,7 @@ contains
         !       ccmc, otherwise generated using cdet+connection.
         !   ex_lvl_sort: true if require states to be sorted by excitation
         !       level within walker list, false otherwise.
+        !   trot: is this a trotterized UCCMC calculation.
         ! In/Out:
         !   spawn: spawn_t type containing information on particles created
         !       via spawning this iteration. Spawned particles will be added

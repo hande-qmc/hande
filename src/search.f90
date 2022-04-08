@@ -477,7 +477,7 @@ contains
         !        as item, else this is where item should go to keep the list
         !        sorted.
 
-        use bit_utils, only: bit_str_cmp_trot
+        use bit_utils, only: bit_str_cmp
         use const, only: i0
 
         integer(i0), intent(in) :: list(:,:), item(:)
@@ -512,8 +512,8 @@ contains
                 ! search algorithm.
                 pos = (hi+lo)/2
 
-! [review] - Brian: maybe just use compare = -bit_str_cmp(list(:,pos), item)?
-                compare = bit_str_cmp_trot(list(:,pos), item)
+
+                compare = -bit_str_cmp(list(:,pos), item)
                 select case(compare)
                 case (0)
                     ! hit!
@@ -544,7 +544,7 @@ contains
             ! element which doesn't exist yet) the binary search can find either
             ! the element before or after where item should be placed.
             if (hi == lo) then
-                compare = bit_str_cmp_trot(list(:,hi), item)
+                compare = -bit_str_cmp(list(:,hi), item)
                 select case(compare)
                 case (0)
                     ! hit!

@@ -982,7 +982,7 @@ contains
     end subroutine do_ccmc
 
     subroutine do_ccmc_accumulation(sys, qs, cdet, cluster, logging_info, D0_population_cycle, proj_energy_cycle, &
-                                    ccmc_in, ref_det, rdm, selection_data, D0_population_ucc_cycle)
+                                    ccmc_in, ref_det, rdm, selection_data, D0_population_noncomp_cycle)
 
         ! Performs all accumulation of values required for given ccmc clusters.
         ! Updates projected energy and any RDMs with the contribution from the
@@ -1003,7 +1003,7 @@ contains
         !   proj_energy_cycle: running total of projected energy contributions.
         !   rdm: array containing reduced density matrix.
         !   selection_data: info on clsuter selection.
-        !   D0_population_ucc_cycle: running total of reference population from size 0 clusters (only used in UCC).
+        !   D0_population_noncomp_cycle: running total of reference population from size 0 clusters (only used in UCC).
 
         use system, only: sys_t
         use qmc_data, only: qmc_state_t, ccmc_in_t, estimators_t
@@ -1017,7 +1017,6 @@ contains
         use proc_pointers, only: update_proj_energy_ptr
         use replica_rdm, only: update_rdm
         use logging, only: logging_t
-        use energy_evaluation, only: update_proj_energy_mol_ucc
 
         type(sys_t), intent(in) :: sys
         type(qmc_state_t), intent(in) :: qs
@@ -1027,12 +1026,12 @@ contains
         type(logging_t), intent(in) :: logging_info
         complex(p), intent(inout) :: D0_population_cycle, proj_energy_cycle
         real(p), allocatable, intent(inout) :: rdm(:,:)
-        real(p), intent(inout), optional :: D0_population_ucc_cycle
+        real(p), intent(inout), optional :: D0_population_noncomp_cycle
         type(selection_data_t), intent(inout) :: selection_data
         type(excit_t) :: connection
         type(hmatel_t) :: hmatel
         type(estimators_t) :: estimators_cycle
-
+        real(p) :: pop
         if (debug) call update_selection_data(selection_data, cluster, logging_info)
 
         if (cluster%excitation_level /= huge(0)) then
@@ -1047,17 +1046,14 @@ contains
             ! the cluster.
             call zero_estimators_t(estimators_cycle)
             connection = get_excitation(sys%nel, sys%basis, cdet%f, qs%ref%f0)
-            if (present(D0_population_ucc_cycle)) then
-                call update_proj_energy_mol_ucc(sys, qs%ref%f0, qs%trial%wfn_dat, cdet, &
-                     [real(cluster%amplitude,p),aimag(cluster%amplitude)]*&
-                     cluster%cluster_to_det_sign/cluster%pselect, &
-                     estimators_cycle, connection, hmatel, cluster%nexcitors)
-                D0_population_ucc_cycle = D0_population_ucc_cycle + estimators_cycle%D0_noncomposite_population
-            else
-                call update_proj_energy_ptr(sys, qs%ref%f0, qs%trial%wfn_dat, cdet, &
+            call update_proj_energy_ptr(sys, qs%ref%f0, qs%trial%wfn_dat, cdet, &
                      [real(cluster%amplitude,p),aimag(cluster%amplitude)]*&
                      cluster%cluster_to_det_sign/cluster%pselect, &
                      estimators_cycle, connection, hmatel)
+            if (present(D0_population_noncomp_cycle) .and. cluster%nexcitors == 0) then
+                pop = real(cluster%amplitude,p) * cluster%cluster_to_det_sign/cluster%pselect
+                estimators_cycle%D0_noncomposite_population = estimators_cycle%D0_noncomposite_population + pop
+                D0_population_noncomp_cycle = D0_population_noncomp_cycle + estimators_cycle%D0_noncomposite_population
             end if
             if (sys%read_in%comp) then
                 D0_population_cycle = D0_population_cycle + estimators_cycle%D0_population_comp
