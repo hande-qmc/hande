@@ -655,6 +655,9 @@ contains
 
     end subroutine qsort_psip_info
 
+! [review]: Brian - might be good for compactness and ease of maintenance to have a flag in the main qsort interface like reverse=.true./.false.
+! [review]: Brian - and replace the .not.'s here with integer operations: abs(x - reverse) is x when reverse=.false.
+! [review]: Brian - and .not. x when reverse = .true.
     pure subroutine qsort_i0_list_rev(list, head, nsort)
 
         ! Sort a 2D array of int_64 integers.
@@ -808,6 +811,7 @@ contains
 
     end subroutine qsort_i0_list_rev
 
+! [review] - Brian: ditto above
     pure subroutine qsort_psip_info_trot(nstates, states, pops, dat)
 
         ! Based on qsort_psip_info with alternative ordering.
@@ -958,6 +962,7 @@ contains
 
     contains
 
+! [review] - Brian: document this subroutine
         pure subroutine swap_states(s1,p1,d1,s2,p2,d2)
 
             integer(i0), intent(inout) :: s1(:), s2(:)

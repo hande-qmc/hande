@@ -512,6 +512,7 @@ contains
                 ! search algorithm.
                 pos = (hi+lo)/2
 
+
                 compare = -bit_str_cmp(list(:,pos), item)
                 select case(compare)
                 case (0)
@@ -563,6 +564,7 @@ contains
         end if
 
     end subroutine binary_search_i0_list_trot
+
     subroutine tree_add(this, next_bstring)
 
         ! This builds a Hamming-distance BK-tree for k-nearest neighbour search
