@@ -1635,7 +1635,7 @@ contains
         !       particle_t%states in the previous iteration (or -1 if it was
         !       not on this processor).  On output, the current position.
 
-        use bit_utils, only: bit_str_cmp_trot
+        use bit_utils, only: bit_str_cmp
         use search, only: binary_search_i0_list_trot
         use qmc_data, only: particle_t
         use errors, only: stop_all
@@ -1652,7 +1652,7 @@ contains
             call binary_search_i0_list_trot(psip_list%states, f0, 1, psip_list%nstates, hit, D0_pos)
         else
             D0_pos_old = D0_pos
-            select case(bit_str_cmp_trot(f0, psip_list%states(:,D0_pos)))
+            select case(-bit_str_cmp(f0, psip_list%states(:,D0_pos)))
             case(0)
                 ! D0 hasn't moved.
                 hit = .true.
