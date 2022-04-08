@@ -6,14 +6,14 @@ module state_histograms
 ! This is a generalization of the excitation distribution analysis originally
 ! proposed by Cleland et al. See: https://doi.org/10.1021/ct300504f
 !
-! A brief explanation is given using H4/STO-3G in its ground state symmetry 
+! A brief explanation is given using H4/STO-3G in its ground state symmetry
 ! block as an example.  The Hartree--Fock Slater determinant bitstring would be:
 !     | D_0 > = | 0 0 0 0 1 1 1 1 >
 ! For the density matrix, sites labeled using the Slater determinants are:
 !     \rho_ij = < D_i | \hat{\rho} | D_j >
 ! We can then define a matrix of excitations between those Slater
 ! determinants < D_i | and | D_j > which would give us the following matrix:
-! (*Note I believe that in the case of DMQMC, this is precisely what 
+! (*Note I believe that in the case of DMQMC, this is precisely what
 !   the excitation distribution calculates when for example doing
 !   Importance Sampling)
 !
@@ -290,7 +290,7 @@ contains
         ! In:
         !   qs: qmc_state_t derived type with information on
         !       current calculation. Used for the reference bitstring.
-        !    f1: The first bitstring label of \rho_ij (DMQMC) 
+        !    f1: The first bitstring label of \rho_ij (DMQMC)
         !       or the bitstring of C_i (FCIQMC)
         !    f2: The second bitstring label of \rho_ij (DMQMC)
         !       or the reference bitstring (FCIQMC)

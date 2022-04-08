@@ -354,6 +354,7 @@ contains
                                                          qs%ref%f0)
                         end if
 
+                        ! Only attempt spawning if a valid connection exists.
                         attempt_spawning = connection_exists(sys)
 
                         do ireplica = 1, qs%psip_list%nspaces
@@ -416,7 +417,7 @@ contains
                                      nspawn_events, unused_int_1, unused_int_2, soft_exit, &
                                      load_bal_in, .false., bloom_stats=bloom_stats)
 
-                call cpu_time(t2) 
+                call cpu_time(t2)
 
                 if (qmc_in%state_histograms) then
                     call comm_and_report_state_histogram(state_hist, ireport, iunit, &

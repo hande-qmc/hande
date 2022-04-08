@@ -502,7 +502,7 @@ contains
             deallocate(rdm, stat=ierr)
             call check_deallocate('rdm',ierr)
         end if
-        
+
         if (qmc_in%state_histograms) call deallocate_histogram_t(state_hist)
 
         call dSFMT_end(rng)
