@@ -1032,7 +1032,7 @@ contains
         type(excit_t) :: connection
         type(hmatel_t) :: hmatel
         type(estimators_t) :: estimators_cycle
-
+        real(p) :: pop
         if (debug) call update_selection_data(selection_data, cluster, logging_info)
 
         if (cluster%excitation_level /= huge(0)) then
@@ -1047,17 +1047,14 @@ contains
             ! the cluster.
             call zero_estimators_t(estimators_cycle)
             connection = get_excitation(sys%nel, sys%basis, cdet%f, qs%ref%f0)
-            if (present(D0_population_noncomp_cycle)) then
-                call update_proj_energy_mol_ucc(sys, qs%ref%f0, qs%trial%wfn_dat, cdet, &
-                     [real(cluster%amplitude,p),aimag(cluster%amplitude)]*&
-                     cluster%cluster_to_det_sign/cluster%pselect, &
-                     estimators_cycle, connection, hmatel, cluster%nexcitors)
-                D0_population_noncomp_cycle = D0_population_noncomp_cycle + estimators_cycle%D0_noncomposite_population
-            else
-                call update_proj_energy_ptr(sys, qs%ref%f0, qs%trial%wfn_dat, cdet, &
+            call update_proj_energy_ptr(sys, qs%ref%f0, qs%trial%wfn_dat, cdet, &
                      [real(cluster%amplitude,p),aimag(cluster%amplitude)]*&
                      cluster%cluster_to_det_sign/cluster%pselect, &
                      estimators_cycle, connection, hmatel)
+            if (present(D0_population_noncomp_cycle) .and. cluster%nexcitors == 0) then
+                pop = real(cluster%amplitude,p) * cluster%cluster_to_det_sign/cluster%pselect
+                estimators_cycle%D0_noncomposite_population = estimators_cycle%D0_noncomposite_population + pop
+                D0_population_noncomp_cycle = D0_population_noncomp_cycle + estimators_cycle%D0_noncomposite_population
             end if
             if (sys%read_in%comp) then
                 D0_population_cycle = D0_population_cycle + estimators_cycle%D0_population_comp
