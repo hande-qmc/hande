@@ -780,6 +780,7 @@ contains
                                                                 ccmc_in, logging_info, ms_stats(it), bloom_stats, &
                                                                 contrib(it), nattempts_spawn, ndeath, ps_stats(it))
                         end if
+                        ! The necessity of this assignment is explained in the comments labelled (*) below.
                         seen_D0 = .false.
                     else
                         ! We just select the empty cluster.
@@ -795,11 +796,14 @@ contains
                             ! (*) - It is possible a thread first gets assigned a block of iterations containing D0 populations,
                             ! which will set seen_D0 to true, and then gets assigned some stochastic iterations, which 
                             ! can result in excitation_level == huge(0) (in select_cluster); 
-                            ! and then again gets assigned D0 iterations,
-                            ! which would skip this if block if we don't check for if excitation_level==huge(0), 
-                            ! and go to perform_ccmc_spawning_attempt below with 
-                            ! contrib(it)%cluster%excitation_level==huge(0), which will get shunted into 
-                            ! linked_ccmc routines, causing a segfault.
+                            ! and then again gets assigned D0 iterations, which would skip this if block 
+                            ! and go to perform_ccmc_spawning_attempt below,
+                            ! with contrib(it)%cluster%excitation_level == huge(0), 
+                            ! which will get shunted into linked_ccmc routines, causing a segfault.
+                            ! Setting seen_D0 = .false. after every stochastic iteration 
+                            ! will make sure **if** the next iteration is a D0 iteration, 
+                            ! which **will** definitely be the first time this thread is spawning from 
+                            ! D0 in **this block of iterations**, the null cluster is selected and initialised appropriately.
                             
                             seen_D0 = .true.
                             call create_null_cluster(sys, qs%ref%f0, nprocs*real(selection_data%nD0_select,p), D0_normalisation, &
