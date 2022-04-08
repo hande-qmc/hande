@@ -712,7 +712,7 @@ contains
                 ! default(none) on when making changes and ensure that the only
                 ! errors relate to the procedure pointers...
                 !$omp parallel default(none) &
-                !$omp private(it, iexcip_pos, i, seen_D0, dfock) &
+                !$omp private(it, iexcip_pos, i, seen_D0) &
                 !$omp shared(rng, cumulative_abs_real_pops, tot_abs_real_pop,  &
                 !$omp        max_cluster_size, contrib, D0_normalisation, D0_pos, rdm,    &
                 !$omp        qs, sys, bloom_stats, min_cluster_size, ref_det,             &
@@ -820,7 +820,7 @@ contains
                     ! Ordering in reduction between ndeath_nc and nparticles_change has been
                     ! changed which stops a problem with intel compilers v17-v19.
                     ! See https://software.intel.com/en-us/forums/intel-fortran-compiler/topic/806597
-                    !$omp do schedule(dynamic,200)
+                    !$omp do schedule(dynamic,200) private(dfock)
                     do iattempt = 1, qs%psip_list%nstates
                         ! Note we use the (encoded) population directly in stochastic_ccmc_death_nc
                         ! (unlike the stochastic_ccmc_death) to avoid unnecessary decoding/encoding
