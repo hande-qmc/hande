@@ -721,6 +721,7 @@ contains
                 !$omp reduction(+:D0_population_cycle,proj_energy_cycle,nattempts_spawn,ndeath,nparticles_change,ndeath_nc)
                 
                 ! Initialise private variables inside the parallel region
+
                 it = get_thread_id()
                 iexcip_pos = 0
                 seen_D0 = .false.
@@ -785,10 +786,20 @@ contains
                         ! each processor and hence scale the selection
                         ! probability by nprocs.  See comments in select_cluster
                         ! for more details.
-                        if (.not. seen_D0) then
-                            ! This is the first time this thread is spawning from D0, so it
-                            ! needs to be converted into a det_info_t object for the excitation
+                        if (.not. seen_D0 .or. contrib(it)%cluster%excitation_level==huge(0)) then
+                            ! This is the first time this thread is spawning from D0 in this block of iterations (*)
+                            ! so it needs to be converted into a det_info_t object for the excitation
                             ! generators. On subsequent calls, cdet does not need to change.
+
+                            ! (*) - It is possible a thread first gets assigned a block of iterations containing D0 populations,
+                            ! which will set seen_D0 to true, and then gets assigned some stochastic iterations, which 
+                            ! can result in excitation_level == huge(0) (in select_cluster); 
+                            ! and then again gets assigned D0 iterations,
+                            ! which would skip this if block if we don't check for if excitation_level==huge(0), 
+                            ! and go to perform_ccmc_spawning_attempt below with 
+                            ! contrib(it)%cluster%excitation_level==huge(0), which will get shunted into 
+                            ! linked_ccmc routines, causing a segfault.
+                            
                             seen_D0 = .true.
                             call create_null_cluster(sys, qs%ref%f0, nprocs*real(selection_data%nD0_select,p), D0_normalisation, &
                                                      qmc_in%initiator_pop, contrib(it)%cdet, contrib(it)%cluster, qs%excit_gen_data)
