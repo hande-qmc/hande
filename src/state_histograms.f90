@@ -261,7 +261,7 @@ contains
                     0.000001_p*bytes_est
                 write(iunit, '()')
 
-                if (qmc_in%skip_histograms_mem_chk .and. 0.000001_p * bytes_est > 1000.0_p) then
+                if (.not. qmc_in%skip_histograms_mem_chk .and. 0.000001_p * bytes_est > 1000.0_p) then
                     call stop_all('init_state_histogram_t', 'The memory estimate for the state &
                                    histogram files is over 1000 (MB), if you acknowledge this &
                                    warning and wish to proceed add "skip_histograms_mem_chk = false," &
