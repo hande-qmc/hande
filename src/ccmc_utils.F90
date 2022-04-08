@@ -231,7 +231,6 @@ contains
         !    excitor_excitation: bit string of the excitor excitation operator.
         !    cluster_annihilation: bit string of the annihilation operator in the cluster excitor.
         !    cluster_creation: bit string of the creationion operator in the cluster excitor.
-        !    excitor_excitation: bit string of the excitor excitation operator.
         ! In/Out:
         !    cluster_excitor: bit string of the Slater determinant formed by applying
         !        the excitor, e2, to the reference determinant.

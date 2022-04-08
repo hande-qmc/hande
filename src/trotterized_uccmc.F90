@@ -525,7 +525,7 @@ contains
                                             tot_abs_real_pop, min_cluster_size, qs%psip_list%nstates-1, &
                                             logging_info, contrib(it)%cdet, contrib(it)%cluster, qs%excit_gen_data, cluster_pop)
 
-                        if (uccmc_in%trot) call add_info_str_trot(sys%basis, qs%ref%f0, sys%nel, contrib(it)%cdet%f)
+                        call add_info_str_trot(sys%basis, qs%ref%f0, sys%nel, contrib(it)%cdet%f)
 
                             !Add selected cluster contribution to CI wavefunction estimator.
                             if (uccmc_in%variational_energy .and. (.not. all(contrib(it)%cdet%f==0)) .and. &
@@ -860,7 +860,7 @@ contains
         !    initiator_pop: the population above which a determinant is an initiator.
         !    D0_pos: position in the excip list of the reference.  Must be negative
         !       if the reference is not on the processor.
-        !    cumulative_excip_population: running cumulative excip population on
+        !    cumulative_excip_pop: running cumulative excip population on
         !        all excitors; i.e. cumulative_excip_population(i) = sum(particle_t%pops(1:i)).
         !    tot_excip_pop: total excip population.
         !    min_size: the minimum size cluster to allow.
@@ -1729,6 +1729,14 @@ contains
     end subroutine get_D0_info_trot
 
     pure function deexcitation_possible(f0, excit, cdet_f) result (allowed)
+        ! Function to check whether it is possible to apply a particular
+        ! deexcitation operator to the current cluster.
+
+        ! In:
+        ! f0: bit string corresponding to the reference determinant.
+        ! excit: bit string corresponding to the effect of applying a given excitor
+        ! to the reference.
+        ! cdet_f: bit string corresponding to the current cluter.
 
         integer(i0), intent(in) :: f0(:), excit(:), cdet_f(:)
         logical :: allowed
@@ -1738,6 +1746,14 @@ contains
                            ieor(f0(:),excit(:)))
     end function deexcitation_possible
     pure function excitation_possible(f0, excit, cdet_f) result (allowed)
+        ! Function to check whether it is possible to apply a particular
+        ! excitation operator to the current cluster.
+
+        ! In:
+        ! f0: bit string corresponding to the reference determinant.
+        ! excit: bit string corresponding to the effect of applying a given excitor
+        ! to the reference.
+        ! cdet_f: bit string corresponding to the current cluter.
 
         integer(i0), intent(in) :: f0(:), excit(:), cdet_f(:)
         logical :: allowed
@@ -1849,6 +1865,17 @@ contains
     end subroutine select_nc_cluster_trot
 
     function get_cluster_population(sys, psip_list, D0_pos, iattempt, ref_real, f0) result(cluster_population)
+        ! Function to obtain the effective cluster population of a non-composite cluster in tUCCMC.
+        ! The excitor the cluster corresponds to contributes sin(Ni/N0). Every other excitor that
+        ! could be applied (but is not) corresponds cos(Ni/N0).
+
+        ! In:
+        ! sys: sys_t object for the system studied.
+        ! psip_list: particle_t object encoding the current wavefunction.
+        ! D0_pos: position of D0 in psip_list.
+        ! iattempt: current excitor considered.
+        ! ref_real: real population on the reference.
+        ! f0: bit string of the reference determinant.
 
         use qmc_data, only: particle_t
         use system, only: sys_t
@@ -1922,6 +1949,7 @@ contains
         !       reference.
         !    proj_energy: projected energy.  This should be the average value from the last
         !        report loop, not the running total in qs%estimators.
+        !    trot_population: the effective tUCCMC population on the current excip, as computed from get_cluster_population.
         ! In/Out:
         !    rng: random number generator.
         !    ndeath: running (encoded) total of number of particles killed/cloned.
