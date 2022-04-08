@@ -724,9 +724,10 @@ contains
 
                 it = get_thread_id()
                 iexcip_pos = 0
+                seen_D0 = .false.
                 
                 !$omp do schedule(dynamic,200) 
-                do iattempt = 1, selection_data%nclusters
+                do iattempt = 1, selection_data%nsingle_excitors + selection_data%nstochastic_clusters
                     if (iattempt <= selection_data%nsingle_excitors) then
                         ! As noncomposite clusters can't be above truncation level or linked-only all can accumulate +
                         ! propagate. Only need to check not selecting the reference as we treat it separately.
@@ -749,8 +750,8 @@ contains
                         end if
 
                     ! For OpenMP scalability, have this test inside a single loop rather
-                    ! than attempt to parallelise over three separate loops.
-                    else if (iattempt <= selection_data%nsingle_excitors + selection_data%nstochastic_clusters) then
+                    ! than attempt to parallelise over two separate loops.
+                    else
                         if (ccmc_in%even_selection) then
                             call select_cluster_truncated(rng(it), sys, qs%psip_list, qs%ref%f0, &
                                                         ccmc_in%linked, selection_data%nstochastic_clusters, D0_normalisation, &
@@ -783,8 +784,9 @@ contains
                 end do
                 !$omp end do
 
-                seen_D0 = .false.
-
+                ! See comments below 'if (.not. seen_D0) then' on why this loop needs to be separate from above.
+                ! If noncomposite is turned off, this loop will be 'do i = nclusters+1, nclusters', which will be a null 
+                ! loop and ignored (as strides at +1 by default)
                 !$omp do schedule(dynamic, 200)
                 do iattempt = selection_data%nsingle_excitors + selection_data%nstochastic_clusters+1, selection_data%nclusters
                     ! We just select the empty cluster.
@@ -793,7 +795,7 @@ contains
                     ! probability by nprocs.  See comments in select_cluster
                     ! for more details.
                     if (.not. seen_D0) then
-                        ! This is the first time this thread is spawning from D0 in this block of iterations (*)
+                        ! This is the first time this thread is spawning from D0 in this block of iterations
                         ! so it needs to be converted into a det_info_t object for the excitation
                         ! generators. On subsequent calls, cdet does not need to change.
                         
