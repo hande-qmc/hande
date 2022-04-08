@@ -1017,7 +1017,6 @@ contains
         use proc_pointers, only: update_proj_energy_ptr
         use replica_rdm, only: update_rdm
         use logging, only: logging_t
-        use energy_evaluation, only: update_proj_energy_mol_ucc
 
         type(sys_t), intent(in) :: sys
         type(qmc_state_t), intent(in) :: qs
