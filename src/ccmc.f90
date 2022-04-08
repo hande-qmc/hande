@@ -780,13 +780,14 @@ contains
                                                                 ccmc_in, logging_info, ms_stats(it), bloom_stats, &
                                                                 contrib(it), nattempts_spawn, ndeath, ps_stats(it))
                         end if
+                        seen_D0 = .false.
                     else
                         ! We just select the empty cluster.
                         ! As in the original algorithm, allow this to happen on
                         ! each processor and hence scale the selection
                         ! probability by nprocs.  See comments in select_cluster
                         ! for more details.
-                        if (.not. seen_D0 .or. contrib(it)%cluster%excitation_level==huge(0)) then
+                        if (.not. seen_D0) then
                             ! This is the first time this thread is spawning from D0 in this block of iterations (*)
                             ! so it needs to be converted into a det_info_t object for the excitation
                             ! generators. On subsequent calls, cdet does not need to change.
