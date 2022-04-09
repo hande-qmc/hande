@@ -36,6 +36,11 @@ type fci_in_t
     ! The block size is critical to performance.  64 seems to be a good value (see
     ! scalapack documentation).
     integer :: block_size = 64
+
+    ! A boolean to control whether the diagonal of the FCI Hamiltonian
+    ! is generated. This will override the typical FCI where the entire
+    ! Hamiltonian is generated and diagonalized.
+    logical :: hamiltonian_diagonal_only = .false.
 end type fci_in_t
 
 
@@ -196,6 +201,7 @@ contains
             call subsys_t_json(js, fci_in%subsys_info)
         end if
         call json_write_key(js, 'block_size', fci_in%block_size)
+        call json_write_key(js, 'hamiltonian_diagonal_only', fci_in%hamiltonian_diagonal_only)
 
         call json_object_end(js)
         call reference_t_json(js, ref, sys, terminal=.true.)
@@ -204,7 +210,7 @@ contains
 
     end subroutine fci_json
 
-    subroutine generate_hamil(sys, ndets, dets, hamil, proc_blacs_info, full_mat, use_sparse_hamil)
+    subroutine generate_hamil(sys, ndets, dets, hamil, proc_blacs_info, full_mat, use_sparse_hamil, diagonal_only)
 
         ! Generate a symmetry block of the Hamiltonian matrix, H = < D_i | H | D_j >.
         ! The list of determinants, {D_i}, is grouped by symmetry and contains
@@ -219,6 +225,8 @@ contains
         !        just storing one triangle.
         !    use_sparse_hamil (optional): if present and true generate a sparse matrix format, as
         !        described in csr.
+        !    diagonal_only (optional): if present and true, generate only the
+        !        diagonal elements < D_i | H | D_i >
         ! Out:
         !    hamil: hamil_t derived type, containing Hamiltonian matrix in a square array of appropriate
         !        format for system and settings given (real, complex or sparse). In a complex system only
@@ -240,7 +248,7 @@ contains
         integer(i0), intent(in) :: dets(:,:)
         type(hamil_t), intent(out) :: hamil
         type(blacs_info), intent(in), optional :: proc_blacs_info
-        logical, intent(in), optional :: full_mat, use_sparse_hamil
+        logical, intent(in), optional :: full_mat, use_sparse_hamil, diagonal_only
         integer :: ierr
         integer :: i, j, ii, jj, ilocal, iglobal, jlocal, jglobal, nnz, imode
         logical :: sparse_mode
@@ -265,7 +273,7 @@ contains
                 &If this is disagreeable to you, please contribute patches resolving this situation.')
         end if
 
-        if (.not.hamil%sparse) then
+        if (.not.hamil%sparse .and. .not.present(diagonal_only)) then
             ilocal = ndets
             jlocal = ndets
             if (present(proc_blacs_info)) then
@@ -278,6 +286,14 @@ contains
             else
                 allocate(hamil%rmat(ilocal, jlocal), stat=ierr)
                 call check_allocate('hamil_comp%rmat', ilocal*jlocal, ierr)
+            end if
+        else if (.not.hamil%sparse .and. present(diagonal_only)) then
+            if (hamil%comp) then
+                allocate(hamil%cmat(ndets,1), stat=ierr)
+                call check_allocate('hamil_comp%cmat', ndets*1, ierr)
+            else
+                allocate(hamil%rmat(ndets,1), stat=ierr)
+                call check_allocate('hamil_comp%rmat', ndets*1, ierr)
             end if
         end if
 
@@ -364,6 +380,18 @@ contains
                         end do
                     end if
                 end do
+        else if (present(diagonal_only)) then
+            do i = 1, ndets
+                if (hamil%comp) then
+                    hmatel = get_hmatel_complex(sys,dets(:,i),dets(:,i))
+                    hamil%cmat(i,1) = hmatel%c
+
+                else
+                    hmatel = get_hmatel(sys,dets(:,i),dets(:,i))
+                    hamil%rmat(i,1) = hmatel%r
+
+                end if
+            end do
         else
             !$omp parallel
             do i = 1, ndets

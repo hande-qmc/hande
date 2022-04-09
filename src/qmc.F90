@@ -611,6 +611,10 @@ contains
                 end if
             case(read_in)
                 if (dmqmc_in%ipdmqmc) then
+                    if (dmqmc_in%symmetric) then
+                        spawner_ptr => spawn_importance_sampling
+                        gen_excit_ptr%trial_fn => interaction_picture_reweighting_molecular_HF
+                    end if
                     if (dmqmc_in%initial_matrix == free_electron_dm) then
                         h0_ptr => hf_hamiltonian_energy_mol
                     else

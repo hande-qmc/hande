@@ -123,7 +123,7 @@ data_pairs : list of (dict, :class:`pandas.DataFrame` or :class:`pandas.Series`)
     calc_types = '(FCI|FCIQMC|CCMC|DMQMC|Simple FCIQMC|'\
                             'Hilbert space|Canonical energy)'
     calc_block = re.compile('^ '+calc_types+'$')
-    fci_block = re.compile('Exact|Lanczos|LAPACK|LANCZOS|RDM')
+    fci_block = re.compile('Exact|Lanczos|LAPACK|LANCZOS|RDM|elements')
     timing_pattern = re.compile('^ '+calc_types+
                                 ' (?:estimation|calculation) *: ([0-9.]+)$')
 
@@ -318,6 +318,9 @@ Returns
                         'Instant shift': 'Shift',
                         '\sum H_0j Nj': '\sum H_0j N_j',
                         '# D0': 'N_0',
+                        '# Dj0 psips' : r'# \rho_{0j} psips',
+                        '\sum H_0j D_j0' : r'\sum\rho_{0j}H_{j0}',
+                        'D_00' : r'\rho_00',
                         '# particles': '# H psips',
                 })
 
@@ -381,6 +384,8 @@ data : :class:`pandas.Series`
         title = 'FCI (Lanczos)'
     elif 'RDM' in title_line:
         title = 'FCI RDM'
+    elif 'Hamiltonian' in title_line:
+        title = 'H_{ii} Spectrum'
     for line in fhandle:
         if 'State' in line:
             break
