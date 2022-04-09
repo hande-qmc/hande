@@ -648,11 +648,7 @@ contains
                 call init_mc_cycle(qs%psip_list, qs%spawn_store%spawn, qs%estimators(1)%nattempts, ndeath, &
                                    min_attempts=nint(abs(D0_normalisation), kind=int_64), &
                                    complx=sys%read_in%comp)
-                nparticles_change = 0.0_p
 
-                ! We need to count spawning attempts differently as there may be multiple spawns
-                ! per cluster
-                nattempts_spawn=0
                 ! Find cumulative population...
                 ! NOTE: for simplicity we only consider the integer part of the population on each excitor.
                 ! (Populations under 1 are stochastically rounded in the annihilation process, so each excitor in the list has
@@ -703,6 +699,15 @@ contains
                                             D0_normalisation, tot_abs_real_pop, qs%psip_list%nstates, ccmc_in%full_nc, &
                                             ccmc_in%even_selection)
                 call zero_ps_stats(ps_stats, qs%excit_gen_data%p_single_double%rep_accum%overflow_loc)
+
+                ! Initialise reduction variables outside the parallel region. (ndeath was initialised in init_mc_cycle above)
+                ! We need to count spawning attempts differently as there may be multiple spawns per cluster.
+                nattempts_spawn = 0
+                proj_energy_cycle = cmplx(0.0, 0.0, p)
+                D0_population_cycle = cmplx(0.0, 0.0, p)
+                ndeath_nc = 0
+                nparticles_change = 0.0_p
+
                 ! OpenMP chunk size determined completely empirically from a single
                 ! test.  Please feel free to improve...
                 ! NOTE: we can't refer to procedure pointers in shared blocks so
@@ -714,18 +719,18 @@ contains
                 !$omp shared(rng, cumulative_abs_real_pops, tot_abs_real_pop,  &
                 !$omp        max_cluster_size, contrib, D0_normalisation, D0_pos, rdm,    &
                 !$omp        qs, sys, bloom_stats, min_cluster_size, ref_det,             &
-                !$omp        proj_energy_cycle, D0_population_cycle, selection_data,      &
-                !$omp        nattempts_spawn, ex_lvl_dist, &
-                !$omp        ccmc_in, nprocs, ms_stats, ps_stats, qmc_in, load_bal_in, &
-                !$omp        ndeath_nc,   &
-                !$omp        nparticles_change, ndeath, logging_info)
+                !$omp        selection_data, ex_lvl_dist, ccmc_in, nprocs, ms_stats, &
+                !$omp        ps_stats, qmc_in, load_bal_in, logging_info) &
+                !$omp reduction(+:D0_population_cycle,proj_energy_cycle,nattempts_spawn,ndeath,nparticles_change,ndeath_nc)
+                
+                ! Initialise private variables inside the parallel region
+
                 it = get_thread_id()
                 iexcip_pos = 0
                 seen_D0 = .false.
-                proj_energy_cycle = cmplx(0.0, 0.0, p)
-                D0_population_cycle = cmplx(0.0, 0.0, p)
-                !$omp do schedule(dynamic,200) reduction(+:D0_population_cycle,proj_energy_cycle,nattempts_spawn,ndeath)
-                do iattempt = 1, selection_data%nclusters
+                
+                !$omp do schedule(dynamic,200) 
+                do iattempt = 1, selection_data%nsingle_excitors + selection_data%nstochastic_clusters
                     if (iattempt <= selection_data%nsingle_excitors) then
                         ! As noncomposite clusters can't be above truncation level or linked-only all can accumulate +
                         ! propagate. Only need to check not selecting the reference as we treat it separately.
@@ -751,8 +756,8 @@ contains
                         end if
 
                     ! For OpenMP scalability, have this test inside a single loop rather
-                    ! than attempt to parallelise over three separate loops.
-                    else if (iattempt <= selection_data%nsingle_excitors + selection_data%nstochastic_clusters) then
+                    ! than attempt to parallelise over two separate loops.
+                    else
                         if (ccmc_in%even_selection) then
                             call select_cluster_truncated(rng(it), sys, qs%psip_list, qs%ref%f0, &
                                                         ccmc_in%linked, selection_data%nstochastic_clusters, D0_normalisation, &
@@ -781,42 +786,49 @@ contains
                                                                 ccmc_in, logging_info, ms_stats(it), bloom_stats, &
                                                                 contrib(it), nattempts_spawn, ndeath, ps_stats(it))
                         end if
-                    else
-                        ! We just select the empty cluster.
-                        ! As in the original algorithm, allow this to happen on
-                        ! each processor and hence scale the selection
-                        ! probability by nprocs.  See comments in select_cluster
-                        ! for more details.
-                        if (.not. seen_D0) then
-                            ! This is the first time this thread is spawning from D0, so it
-                            ! needs to be converted into a det_info_t object for the excitation
-                            ! generators. On subsequent calls, cdet does not need to change.
-                            seen_D0 = .true.
-                            call create_null_cluster(sys, qs%ref%f0, nprocs*real(selection_data%nD0_select,p), D0_normalisation, &
-                                                     qmc_in%initiator_pop, contrib(it)%cdet, contrib(it)%cluster, qs%excit_gen_data)
-                        end if
-
-                        if (qs%propagator%quasi_newton) contrib(it)%cdet%fock_sum = &
-                                        sum_fock_values_occ_list(sys, qs%propagator%sp_fock, contrib(it)%cdet%occ_list) &
-                                        - qs%ref%fock_sum
-
-                        call do_ccmc_accumulation(sys, qs, contrib(it)%cdet, contrib(it)%cluster, logging_info, &
-                                                D0_population_cycle, proj_energy_cycle, ccmc_in, ref_det, rdm, selection_data)
-                        nattempts_spawn = nattempts_spawn + 1
-                       
-                        call perform_ccmc_spawning_attempt(rng(it), sys, qs, ccmc_in, logging_info, bloom_stats, &
-                                contrib(it), 1, ps_stats(it))
                     end if
                 end do
                 !$omp end do
 
-                ndeath_nc = 0
+                ! See comments below 'if (.not. seen_D0) then' on why this loop needs to be separate from above.
+                ! If noncomposite is turned off, this loop will be 'do i = nclusters+1, nclusters', which will be a null 
+                ! loop and ignored (as strides at +1 by default)
+                !$omp do schedule(dynamic, 200)
+                do iattempt = selection_data%nsingle_excitors + selection_data%nstochastic_clusters+1, selection_data%nclusters
+                    ! We just select the empty cluster.
+                    ! As in the original algorithm, allow this to happen on
+                    ! each processor and hence scale the selection
+                    ! probability by nprocs.  See comments in select_cluster
+                    ! for more details.
+                    if (.not. seen_D0) then
+                        ! This is the first time this thread is spawning from D0 in this block of iterations
+                        ! so it needs to be converted into a det_info_t object for the excitation
+                        ! generators. On subsequent calls, cdet does not need to change.
+                        
+                        seen_D0 = .true.
+                        call create_null_cluster(sys, qs%ref%f0, nprocs*real(selection_data%nD0_select,p), D0_normalisation, &
+                                                 qmc_in%initiator_pop, contrib(it)%cdet, contrib(it)%cluster, qs%excit_gen_data)
+                    end if
+
+                    if (qs%propagator%quasi_newton) contrib(it)%cdet%fock_sum = &
+                                    sum_fock_values_occ_list(sys, qs%propagator%sp_fock, contrib(it)%cdet%occ_list) &
+                                    - qs%ref%fock_sum
+
+                    call do_ccmc_accumulation(sys, qs, contrib(it)%cdet, contrib(it)%cluster, logging_info, &
+                                            D0_population_cycle, proj_energy_cycle, ccmc_in, ref_det, rdm, selection_data)
+                    nattempts_spawn = nattempts_spawn + 1
+                   
+                    call perform_ccmc_spawning_attempt(rng(it), sys, qs, ccmc_in, logging_info, bloom_stats, &
+                            contrib(it), 1, ps_stats(it))
+                end do
+                !$omp end do
+
                 if (ccmc_in%full_nc .and. qs%psip_list%nstates > 0) then
                     ! Do death exactly and directly for non-composite clusters
                     ! Ordering in reduction between ndeath_nc and nparticles_change has been
                     ! changed which stops a problem with intel compilers v17-v19.
                     ! See https://software.intel.com/en-us/forums/intel-fortran-compiler/topic/806597
-                    !$omp do schedule(dynamic,200) private(dfock) reduction(+:nparticles_change, ndeath_nc)
+                    !$omp do schedule(dynamic,200) private(dfock)
                     do iattempt = 1, qs%psip_list%nstates
                         ! Note we use the (encoded) population directly in stochastic_ccmc_death_nc
                         ! (unlike the stochastic_ccmc_death) to avoid unnecessary decoding/encoding
