@@ -446,7 +446,7 @@ contains
                     qs%highest_dets%ireport = qs%highest_dets%ireport + 1
                 else
                     call update_highest_dets(qs)
-                    call write_out_highest_dets(sys, qs%highest_dets, trim(qs%highest_dets%det_file))
+                    call write_out_highest_dets(qs, sys, qs%highest_dets, trim(qs%highest_dets%det_file))
                     soft_exit = .true.
                 end if
             end if

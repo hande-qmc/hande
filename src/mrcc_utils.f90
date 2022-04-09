@@ -99,7 +99,7 @@ contains
         ! Merge det_list_new with det_list_main, the former containing target_ndets determinants, and the latter containing 
         ! (max_ndets >=) ndets (>= target_ndets) determinants, which is larger.
 
-        use search, only: linear_search, binary_search
+        use search, only: linear_search
         use sort, only: qsort
 
         type(highest_dets_t), intent(inout) :: hd
@@ -141,23 +141,49 @@ contains
 
     end subroutine merge_highest_dets
 
-    subroutine write_out_highest_dets(sys, hd, filename)
+    subroutine write_out_highest_dets(qs, sys, hd, filename)
 
         use parallel
+        use errors, only: warning
         use system, only: sys_t
+        use bit_utils, only: bit_str_cmp
 
+        type(qmc_state_t), intent(in) :: qs
         type(sys_t), intent(in) :: sys
         type(highest_dets_t), intent(in) :: hd
         character(*), intent(in) :: filename
 
-        integer :: fileunit, i
+        integer :: det_unit, det_pop_unit, i
+        logical :: done_ref
+
+        done_ref = .false.
 
         if (parent) then
-            open(file=filename, newunit=fileunit, action='write', status='replace')
+            open(file=filename, newunit=det_unit, action='write', status='replace')
+            open(file=filename//'.pop', newunit=det_pop_unit, action='write', status='replace')
+            
             do i = hd%max_ndets, hd%max_ndets-hd%target_ndets+1, -1
-                write(fileunit, '(I0, 1X, I0)') hd%det_list_main(2:,i), hd%det_list_main(1,i)
+                if (.not. done_ref) then
+                    ! We can't have the reference determinant in the list of secondary references, 
+                    ! so actively check if the current determinant is the reference, and do not write out if it is
+                    done_ref = (bit_str_cmp(hd%det_list_main(2:,i),qs%ref%f0) == 0)
+                    if (i == hd%max_ndets .and. .not. done_ref) then
+                        ! Warn the user if the highest occupied determinant is not the reference
+                        call warning('write_out_highest_dets','The reference is not the highest occupied determinant!',1)
+                    end if
+                    if (.not. done_ref) then
+                        ! Not reference and haven't seen reference yet, write out current list and keep an eye out still
+                        write(det_unit, '(I0, 1X, I0)') hd%det_list_main(2:,i)
+                        write(det_pop_unit, '(I0, 1X, I0)') hd%det_list_main(2:,i), hd%det_list_main(1,i)
+                    end if
+                else
+                    ! Don't need to check if this is the reference as we've seen it already.
+                    write(det_unit, '(I0, 1X, I0)') hd%det_list_main(2:,i)
+                    write(det_pop_unit, '(I0, 1X, I0)') hd%det_list_main(2:,i), hd%det_list_main(1,i)
+                end if
             end do
-            close(fileunit)
+            close(det_pop_unit)
+            close(det_unit)
         end if
         
     end subroutine
