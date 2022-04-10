@@ -245,7 +245,7 @@ type qmc_in_t
     ! Default so the loop over the original qmc cycle code only gets executed once if not using Chebyshev
     integer :: chebyshev_order = 1 
     ! Saving the original tau to switch back to linear propagation for statistic collection
-    real(p) :: tau_save
+    real(p) :: tau_save = 0.0_p
     ! Turn off the Chebyshev projector when target population is reached
     logical :: disable_chebyshev_shoulder = .false.
     ! The iteration after shoulder is reached where we start collecting statistics with the linear projector
@@ -1073,7 +1073,12 @@ contains
         call json_write_key(js, 'quasi_newton_threshold', qmc%quasi_newton_threshold)
         call json_write_key(js, 'quasi_newton_value', qmc%quasi_newton_value)
         call json_write_key(js, 'quasi_newton_pop_control', qmc%quasi_newton_pop_control)
-        call json_write_key(js, 'use_mpi_barriers', qmc%use_mpi_barriers, .true.)
+        call json_write_key(js, 'chebyshev', qmc%chebyshev)
+        call json_write_key(js, 'chebyshev_order', qmc%chebyshev_order)
+        call json_write_key(js, 'tau_save', qmc%tau_save)
+        call json_write_key(js, 'disable_chebyshev_shoulder', qmc%disable_chebyshev_shoulder)
+        call json_write_key(js, 'disable_chebyshev_lag', qmc%disable_chebyshev_lag, .true.)
+
         call json_object_end(js, terminal)
 
     end subroutine qmc_in_t_json

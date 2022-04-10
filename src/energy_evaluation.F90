@@ -561,6 +561,8 @@ contains
         end associate
 
         ! average energy quantities over report loop.
+        ! The number of cycles is multiplied by chebyshev order as an m-th order chebyshev propagator
+        ! creates m sub-loops per cycle.
         qs%estimators%proj_energy = qs%estimators%proj_energy/(qmc_in%ncycles*qs%cheby_prop%order)
         qs%estimators%D0_population = qs%estimators%D0_population/(qmc_in%ncycles*qs%cheby_prop%order)
         ! Similarly for the HFS estimator

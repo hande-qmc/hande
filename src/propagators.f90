@@ -81,13 +81,16 @@ contains
 
         qs%cheby_prop%using_chebyshev = qmc_in%chebyshev
         qs%cheby_prop%icheb = 1
-        ! Default is 1
-        qs%cheby_prop%order = qmc_in%chebyshev_order
-        qs%cheby_prop%disable_chebyshev_shoulder = qmc_in%disable_chebyshev_shoulder
-        qs%cheby_prop%disable_chebyshev_lag = qmc_in%disable_chebyshev_lag
+        qs%cheby_prop%order = 1
+        
         
         if (qs%cheby_prop%using_chebyshev) then
             call cpu_time(t1)
+
+            qs%cheby_prop%order = qmc_in%chebyshev_order
+
+            qs%cheby_prop%disable_chebyshev_shoulder = qmc_in%disable_chebyshev_shoulder
+            qs%cheby_prop%disable_chebyshev_lag = qmc_in%disable_chebyshev_lag
 
             allocate(qs%cheby_prop%zeroes(qs%cheby_prop%order), stat=ierr)
             call check_allocate('qs%cheby_prop%zeroes', qs%cheby_prop%order, ierr)
