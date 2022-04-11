@@ -68,6 +68,17 @@ The ``fci`` table can take the following options:
     Optional. Default: 'HAMIL'.
 
     Filename to which the Hamiltonian matrix is written.
+``hamiltonian_diagonal_only``
+    type: boolean.
+
+    Optional.  Default: false.
+
+    Overrides traditional exact diagonalization of the full system Hamiltonian
+    and instead prints out the diagonal elements of the Hamiltonian matrix.
+    The diagonal eigenspectrum can be used for generating exact THF comparison
+    data for the grand canonical initialization in IP-DMQMC by performing a
+    sum over thermal weights (See "propagate_fci.py" within the hande tools folder)
+    [Malone15]_.
 ``write_determinants``
     type: boolean.
 
