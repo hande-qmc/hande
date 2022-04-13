@@ -769,8 +769,8 @@ contains
 
         ! Davidson table: optional and indicates doing a Davidson calculation.
         if (aot_exists(lua_state, opts, 'davidson')) then
+            fci_in%using_davidson = .true.
             call aot_table_open(lua_state, opts, fci_table, 'davidson')
-            call aot_get_val(fci_in%using_davidson, err, lua_state, fci_table, 'using_davidson')
             call aot_get_val(fci_in%ndavidson_eigv, err, lua_state, fci_table, 'ndavidson_eigv')
             call aot_get_val(fci_in%ndavidson_trialvec, err, lua_state, fci_table, 'ndavidson_trialvec')
             if (fci_in%ndavidson_trialvec <= fci_in%ndavidson_eigv) then 
