@@ -4,11 +4,11 @@
  ================================================================
 Version information
 -------------------
-Version       | v1.5-115-g2e4d298-dirty
-Commit hash   | 2e4d298162eb9131e0b327fb18b4c98604cef472
+Version       | v1.5-157-g50d23db
+Commit hash   | 50d23db59f60dc0b4486af7e3fc059b0174cada9
 Commit author | Brian Zhao
-Commit date   | Tue Apr 5 18:18:34 2022 +0100
-Branch        | feature/fci_davidson
+Commit date   | Wed Apr 13 12:35:42 2022 +0100
+Branch        | bug_fix/davidson_benchmarks
 
 Configuration and build information
 -----------------------------------
@@ -18,15 +18,14 @@ Operating system         | Linux-4.15.0-171-generic
 CMake version            | 3.19.1
 CMake generator          | Unix Makefiles
 Build type               | release
-Configuration time       | 2022-04-05 17:19:40 [UTC]
+Configuration time       | 2022-04-13 11:36:41 [UTC]
 Python version           | 3.8.8
-Fortran compiler         | /usr/local/shared/ubuntu-18.04/x86_64/openmpi-3.1.2-intel18/bin/mpifort
-C compiler               | /usr/local/shared/ubuntu-18.04/x86_64/openmpi-3.1.2-intel18/bin/mpicc
+Fortran compiler         | /usr/local/shared/oneapi/compiler/2022.0.1/linux/bin/intel64/ifort
+C compiler               | /usr/local/shared/oneapi/compiler/2022.0.1/linux/bin/intel64/icc
 DET_SIZE set to          | 64
 POP_SIZE set to          | 64
 dSFMT Mersenne exponent  | 19937
-MPI parallelization      | ON
-MPI launcher             | /usr/local/shared/ubuntu-18.04/x86_64/openmpi-3.1.2-intel18/bin/mpiexec
+MPI parallelization      | OFF
 OpenMP parallelization   | ON
 Lua version              | 5.4.3
 HDF5 library version     | 1.10.8
@@ -35,9 +34,9 @@ Further components
 ------------------
 DISABLE_HDF5 not defined.  HDF5 enabled.
 DISABLE_UUID not defined.  UUID enabled.
-PARALLEL defined.  MPI parallelization enabled.
-DISABLE_MPI3 not defined.  MPI-3 functionality enabled.
-PARALLEL defined. DISABLE_MPI3 and ENABLE_SHMEM_POSIX not defined. MPI-3 in use.
+PARALLEL not defined.  MPI parallelization disabled.
+PARALLEL not defined. MPI-3 functionality disabled.
+Neither POSIX shared memory nor MPI-3 are in use.
 DISABLE_SCALAPACK not defined.  ScaLAPACK enabled.
 SINGLE_PRECISION not defined.  Double precision used throughout.
 USE_POPCNT not defined. Internal POPCNT procedure used.
@@ -47,9 +46,9 @@ Runtime information
 Hostname:
     gritstone
 Current working dir:
-    /scratch/zz376/code/hande-branches-new/feature_fci_davidson/test_suite/fci/H2-RHF-cc-pVTZ-Lz_davidson
-Started running on 05/04/2022 at 18:30:04
- Calculation UUID: b15264ac-66ed-469e-9379-08e416c2dfe4.
+    /scratch/zz376/code/hande-branches-new/main/test_suite/fci/H2-RHF-cc-pVTZ-Lz_davidson
+Started running on 13/04/2022 at 12:40:46
+ Calculation UUID: e70c0995-dcdb-4aef-a10a-45b91dc6f251.
  ================================================================
 
  Input options
@@ -233,6 +232,7 @@ fci {
          "ndavidson_trialvec": 8,   
          "davidson_maxsize": 50,   
          "davidson_tol": 0.00000001,   
+         "hamiltonian_diagonal_only": false,   
      },
      "reference": {
          "ex_level": 2    
@@ -273,32 +273,32 @@ fci {
  Performing Davidson diagonalisation...
 
  Davidson initialisation done!
- Time taken for Davidson initialisation 0.000068 s
+ Time taken for Davidson initialisation 0.000055 s
  
  Iteration   Basis size    delta rmsE      Time  
-         1            8   1.279287E+00    0.008333
-         2           16   4.035889E-01    0.000131
-         3           24   3.571042E-02    0.000151
-         4           32   1.505639E-02    0.000195
-         5           40   1.127360E-02    0.000402
-         6           48   4.154376E-03    0.000465
+         1            8   1.279287E+00    0.000189
+         2           16   4.035889E-01    0.000113
+         3           24   3.571042E-02    0.000189
+         4           32   1.505639E-02    0.000290
+         5           40   1.127360E-02    0.000470
+         6           48   4.154376E-03    0.000673
  Collapsing subspace...
-         7            8   7.143705E-15    0.000064
-         8           16   1.910264E-03    0.000086
-         9           24   4.463168E-04    0.000132
-        10           32   1.155592E-04    0.000189
-        11           40   2.825781E-05    0.000307
-        12           48   6.982884E-06    0.000397
+         7            8   6.155483E-15    0.000058
+         8           16   1.910264E-03    0.000109
+         9           24   4.463168E-04    0.000190
+        10           32   1.155592E-04    0.000306
+        11           40   2.825781E-05    0.000487
+        12           48   6.982884E-06    0.000682
  Collapsing subspace...
-        13            8   3.397083E-15    0.000053
-        14           16   1.253481E-06    0.000085
-        15           24   6.081517E-07    0.000134
-        16           32   2.122679E-07    0.000196
-        17           40   6.705586E-08    0.000292
-        18           48   2.496858E-08    0.000381
+        13            8   4.432905E-15    0.000051
+        14           16   1.253481E-06    0.000111
+        15           24   6.081517E-07    0.000199
+        16           32   2.122679E-07    0.000302
+        17           40   6.705586E-08    0.000485
+        18           48   2.496243E-08    0.000666
  Collapsing subspace...
-        19            8   1.698315E-15    0.000059
-        20           16   6.298623E-09    0.000086
+        19            8   2.192515E-15    0.000051
+        20           16   6.300996E-09    0.000110
  Eigenvalue tolerance of 1.0000E-08 reached, printing results...
  Davidson diagonalisation results
  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -306,8 +306,8 @@ fci {
   State     Energy
       1    -1.145758846665
       2    -0.622330308093
-      3    -0.538417004193
-      4    -0.365633761260
+      3    -0.538417004192
+      4    -0.365633761256
 
  Timing breakdown
  ----------------
@@ -318,7 +318,7 @@ fci {
  FCI calculation              : .01
 
  ================================================================
- Finished running on 05/04/2022 at 18:30:04
+ Finished running on 13/04/2022 at 12:40:46
  Wall time (seconds):                           0.06
  CPU time (per processor, seconds):             0.06
  ================================================================
