@@ -20,6 +20,7 @@ contains
         !    fci {
         !           sys = system,        -- required
         !           fci = { ... },
+        !           davidson = { ... },
         !           reference = { ... },
         !    }
 
@@ -27,8 +28,9 @@ contains
         use flu_binding, only: flu_State, flu_copyptr
         use aot_table_module, only: aot_table_top, aot_exists, aot_table_close
 
-        use calc, only: calc_type, exact_diag
+        use calc, only: calc_type, exact_diag, davidson_diag
         use fci_lapack, only: do_fci_lapack
+        use fci_davidson, only: do_fci_davidson
         use fci_utils, only: fci_in_t
         use lua_hande_system, only: get_sys_t
         use lua_hande_utils, only: warn_unused_args, register_timing
@@ -44,7 +46,8 @@ contains
         type(sys_t), pointer :: sys
         type(fci_in_t) :: fci_in
         type(reference_t) :: ref
-        character(12), parameter :: keys(3) = [character(12) :: 'sys', 'fci', 'reference']
+        logical :: davidson
+        character(12), parameter :: keys(4) = [character(12) :: 'sys', 'fci', 'davidson', 'reference']
 
         call cpu_time(t1)
 
@@ -57,8 +60,13 @@ contains
         call warn_unused_args(lua_state, keys, opts)
         call aot_table_close(lua_state, opts)
 
-        calc_type = exact_diag
-        call do_fci_lapack(sys, fci_in, ref)
+        if (fci_in%using_davidson) then
+            calc_type = davidson_diag
+            call do_fci_davidson(sys, fci_in, ref)
+        else
+            calc_type = exact_diag
+            call do_fci_lapack(sys, fci_in, ref)
+        end if
 
         nresult = 0
 
@@ -767,7 +775,7 @@ contains
 
     subroutine read_fci_in(lua_state, opts, basis, fci_in)
 
-        ! Read in the fci to a fci_in_t object.
+        ! Read in the fci and (optionally) davidson tables to a fci_in_t object.
 
         ! fci = {
         !     write_hamiltonian = true/false,
@@ -781,14 +789,21 @@ contains
         !     hamiltonian_diagonal_only = true/false,
         !     rdm = { ... }, -- L-d vector containing the sites to include in subsystem A.
         ! }
+        ! davidson = {
+        !     ndavidson_eigv = int,
+        !     ndavidson_trialvec = int,
+        !     davidson_maxsize = int,
+        !     davidson_tol = real,
+        !     davidson_maxiter = int,
+        ! }
 
         ! In/Out:
         !    lua_state: flu/Lua state to which the HANDE API is added.
         ! In:
-        !    opts: handle for the table containing the fci table.
+        !    opts: handle for the table containing the fci and (optionally) davidson tables.
         !    basis: information about the single-particle basis set of the system.
         ! Out:
-        !    fci_in: fci_in_t object containing generic fci input options.
+        !    fci_in: fci_in_t object containing generic fci/davidson input options.
 
         use flu_binding, only: flu_State
         use aot_table_module, only: aot_get_val, aot_exists, aot_table_open, aot_table_close
@@ -798,6 +813,7 @@ contains
         use basis_types, only: basis_t
         use checking, only: check_allocate
         use fci_utils, only: fci_in_t
+        use errors, only: stop_all
 
         type(flu_State), intent(inout) :: lua_state
         integer, intent(in) :: opts
@@ -811,6 +827,8 @@ contains
                                                                     'write_determinants', 'determinant_file', 'write_nwfns', &
                                                                     'wfn_file', 'nanalyse', 'blacs_block_size', 'rdm', &
                                                                     'hamiltonian_diagonal_only']
+        character(18), parameter :: davidson_keys(6) = [character(18) :: 'using_davidson', 'ndavidson_eigv', 'ndavidson_trialvec', &
+                                                                         'davidson_maxsize', 'davidson_tol', 'davidson_maxiter']
 
         if (aot_exists(lua_state, opts, 'fci')) then
             call aot_table_open(lua_state, opts, fci_table, 'fci')
@@ -840,6 +858,25 @@ contains
 
             call aot_table_close(lua_state, fci_table)
 
+        end if
+
+        ! Davidson table: optional and indicates doing a Davidson calculation.
+        if (aot_exists(lua_state, opts, 'davidson')) then
+            fci_in%using_davidson = .true.
+            call aot_table_open(lua_state, opts, fci_table, 'davidson')
+            call aot_get_val(fci_in%ndavidson_eigv, err, lua_state, fci_table, 'ndavidson_eigv')
+            call aot_get_val(fci_in%ndavidson_trialvec, err, lua_state, fci_table, 'ndavidson_trialvec')
+            if (fci_in%ndavidson_trialvec <= fci_in%ndavidson_eigv) then 
+                call stop_all('read_fci_in', 'Number of trial vectors smaller than number of eigenvalues solving for')
+            end if
+            call aot_get_val(fci_in%davidson_maxsize, err, lua_state, fci_table, 'davidson_maxsize')
+            if (fci_in%davidson_maxsize <= fci_in%ndavidson_trialvec*2) then 
+                call stop_all('read_fci_in', 'Max Davidson basis size smaller than twice the number of trial vectors')
+            end if
+            call aot_get_val(fci_in%davidson_tol, err, lua_state, fci_table, 'davidson_tol')
+            call aot_get_val(fci_in%davidson_maxiter, err, lua_state, fci_table, 'davidson_maxiter')
+            call warn_unused_args(lua_state, davidson_keys, fci_table)
+            call aot_table_close(lua_state, fci_table)
         end if
 
     end subroutine read_fci_in
