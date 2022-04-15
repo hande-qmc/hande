@@ -5,15 +5,6 @@ use qmc_data, only: excit_gen_renorm
 
 implicit none
 
-! todo
-! #. test/verify/fix
-!      + MP2 energy: usually only agrees to 1dp, might be too big to simply chalk up to numerical precision?
-!      + convergence?
-! #. fix todos
-! #. output (pretty table, JSON)
-! #. write restart file
-! #. document
-
 ! [todo] - document
 type mp1_in_t
     real(p) :: D0_norm
@@ -21,13 +12,6 @@ type mp1_in_t
     logical :: real_amplitudes = .false.
     real(p) :: spawn_cutoff = 0.01_p
     logical :: even_selection = .false.
-    ! Copied from qmc_data.f90::qmc_in_t
-    ! BZ-[todo]: add actual input options for this for excit_gens other than default.
-    integer :: excit_gen = excit_gen_renorm
-    real(p) :: pattempt_single = -1, pattempt_double = -1
-    logical :: pattempt_update = .false.
-    logical :: pattempt_zero_accum_data = .false.
-    real(p) :: pattempt_parallel = -1
 end type mp1_in_t
 
 
@@ -124,8 +108,8 @@ contains
 
         io_unit = 6
         if (parent) then
-            write (io_unit,'(1X,"MP1 wavefunction MC")')
-            write (io_unit,'(1X,"-------------------",/)')
+            write (io_unit,'(1X,"Deterministic MP1 wavefunction initialisation")')
+            write (io_unit,'(1X, 45("-"))')
         end if
 
         if (present(rng_seed)) then
@@ -141,13 +125,13 @@ contains
 
         if (debug) call init_logging(logging_in, logging_info, ref%ex_level)
        
-        ! We have to have a qmc_in_t object for init_proc_pointers, as init_reference requires proc_pointers to be properly set.
-        qmc_in_loc%excit_gen = mp1_in%excit_gen
-        qmc_in_loc%pattempt_single = mp1_in%pattempt_single
-        qmc_in_loc%pattempt_double = mp1_in%pattempt_double
-        qmc_in_loc%pattempt_update = mp1_in%pattempt_update
-        qmc_in_loc%pattempt_zero_accum_data = mp1_in%pattempt_zero_accum_data
-        qmc_in_loc%pattempt_parallel = mp1_in%pattempt_parallel
+        ! We have to have a qmc_in_t object for init_proc_pointers, as init_reference requires proc_pointers to be properly set. Copied from qmc_data.f90::qmc_in_t
+        qmc_in_loc%excit_gen = excit_gen_renorm
+        qmc_in_loc%pattempt_single = -1
+        qmc_in_loc%pattempt_double = -1
+        qmc_in_loc%pattempt_update = .false.
+        qmc_in_loc%pattempt_zero_accum_data = .false.
+        qmc_in_loc%pattempt_parallel = -1
         call init_proc_pointers(sys, qmc_in_loc, ref, io_unit)
         call init_reference(sys, ref_in, io_unit, ref)
         call init_excit_gen(sys, qmc_in_loc, ref, .false., excit_gen_data)
@@ -168,12 +152,11 @@ contains
             state_size = -int((real(state_size,p)*10**6)/psip_element_size)
         end if
 
+        ! These must be set before passing into init_particle_t
         tijab%nspaces = 1
         tijab%info_size = 0
-        call init_particle_t(state_size, 1, sys%basis%tensor_label_len, mp1_in%real_amplitudes, .false., tijab) ! Strictly speaking tijab need only hold the double amplitudes.
 
-        ! Legacy global data (boo!) initialisation
-!        call init_sc0_ptr(sys)
+        call init_particle_t(state_size, 1, sys%basis%tensor_label_len, mp1_in%real_amplitudes, .false., tijab) ! Strictly speaking tijab need only hold the double amplitudes.
 
         ! annihilation_flags default to 'off'.  Only feature we might be using is real amplitudes.
         annihilation_flags%real_amplitudes = mp1_in%real_amplitudes
@@ -219,9 +202,9 @@ contains
             do i = 2, sys%basis%nbasis
                 if (btest(ref%f0(bl(2,i)), bl(1,i))) then
                     ! Occupied
-                    if (bfns(i)%sp_eigv  > bfns(homo)%sp_eigv) homo = i
+                    if (bfns(i)%sp_eigv > bfns(homo)%sp_eigv) homo = i
                 else
-                        if (bfns(i)%sp_eigv  < bfns(lumo)%sp_eigv) homo = i
+                        if (bfns(i)%sp_eigv < bfns(lumo)%sp_eigv) homo = i
                 end if
             end do
             if (abs(bfns(lumo)%sp_eigv-bfns(homo)%sp_eigv) < depsilon) then
@@ -229,7 +212,7 @@ contains
             end if
         end associate
 
-        ! Start with generating N_0(1+T2) deterministically.
+        ! Generate N_0(1+T2) deterministically.
         excit%nexcit = 2
         
         ! MPI is turned off, the reasons are
@@ -238,6 +221,9 @@ contains
         ! 2. The code initialises D0_norm number of walkers on the reference on every processor, but we only want 
         !   D0 on one processor in FCIQMC/CCMC
         ! 3. MP2 is not rate limiting
+
+        ! [todo] - OpenMP parallelisation: care is needed to make sure threading and spawning work together (see ccmc.f90)
+
         if (parent) then
             iocc_a = 0
             iocc_b = 0
@@ -245,30 +231,18 @@ contains
             do i = 1, sys%nel
                 do j = i+1, sys%nel
                     excit%from_orb = [ref%occ_list0(i), ref%occ_list0(j)]
-                    ! Trivial approach to parallelisation: split a over processors.
-                    ! (Particles are distributed by the annihilation framework anyway.)
-                    do ia = 1, sys%basis%nbasis-sys%nel
-                        ! Find the next unoccupied orbital.
-                        do
-                            a = ia + iocc_a
-                            if (.not.btest(ref%f0(sys%basis%bit_lookup(2,a)), sys%basis%bit_lookup(1,a))) exit
-                            iocc_a = iocc_a + 1
-                        end do
-                        do ib = ia+1, sys%basis%nbasis-sys%nel
-                            ! Find the next unoccupied orbital greater than a.
-                            ! We could optimise this by restricting the choice of b to conserve spin and spatial symmetries...
-                            do
-                                b = ib + iocc_b
-                                if (.not.btest(ref%f0(sys%basis%bit_lookup(2,b)), sys%basis%bit_lookup(1,b))) exit
-                                iocc_b = iocc_b + 1
-                            end do
+                    do a = sys%nel+1, sys%basis%nbasis
+                        do b = a+1, sys%basis%nbasis
                             excit%to_orb = [a,b]
                             call create_excited_det(sys%basis, ref%f0, excit, f)
+
+                            ! Calculate deterministically the t2 amplitudes and the MP2 energy contributions
+
                             ! t_{ijab} = <ij||ab> / (e_i + e_j - e_a - e_b).
-                            ! NOTE: sp_eigv is not the Hartree--Fock eigenvalues in all cases (e.g. Hubbard model in k-space, UEG!).
-                            associate(bf => sys%basis%basis_fns)
+                            ! NOTE: sp_eigv is not the Hartree-Fock eigenvalues in all cases (e.g. Hubbard model in k-space, UEG!).
                                 intgrl = get_hmatel(sys, ref%f0, f)
-                                denom = (1.0_p / (bf(i)%sp_eigv + bf(j)%sp_eigv - bf(a)%sp_eigv - bf(b)%sp_eigv))
+                                denom = (1.0_p / (sys%basis%basis_fns(i)%sp_eigv + sys%basis%basis_fns(j)%sp_eigv &
+                                                - sys%basis%basis_fns(a)%sp_eigv - sys%basis%basis_fns(b)%sp_eigv))
                                 ampl = intgrl * denom
                                 if (sys%read_in%comp) then
                                     emp2 = emp2 + real(conjg(intgrl%c)*ampl%c)
@@ -276,17 +250,21 @@ contains
                                     emp2 = emp2 + intgrl%r*ampl%r
                                 end if
                                 ampl = ampl * mp1_in%D0_norm
-                            end associate
+
+                            ! Stochastically coarse-grain the MP1 wavefunction by randomly rounding small amplitudes
+
                             ! Note attempt_to_spawn creates particles of opposite sign, hence set parent_sign=-1 to undo this unwanted
                             ! sign change.
+                            ! pgen is always 1 as this is a deterministic calculation
                             ! TODO - cope with complex valued spawns
                             nspawn = attempt_to_spawn(rng, 1.0_p, spawn%cutoff, tijab%pop_real_factor, ampl%r, 1.0_p, -1_int_p)
+                            ! cdet is not set, but since we're passing in f (the 'fexcit' argument), cdet is not required
                             if (nspawn /= 0_int_p) call create_spawned_particle(sys%basis, ref, cdet, excit, nspawn, 1, spawn, f)
                         end do
                     end do
                 end do
             end do
-            write (6,*) 'direct MP2 =', emp2
+            write (6,'(1X, A, ES17.10)') 'Deterministic MP2 correction energy: ', emp2
         end if
 
 
