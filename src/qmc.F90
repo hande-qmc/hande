@@ -1275,17 +1275,20 @@ contains
         use search, only: tree_add
         use const
         use determinants, only: decode_det
+        use bit_utils, only: count_set_bits
 
         type(sys_t), intent(in) :: sys
         type(reference_t), intent(in) :: references_in(:)
         integer, intent(in) :: io_unit
         type(qmc_state_t), intent(inout) :: qs
-        integer :: i, current_max, total_max = 0
-        integer(i0) :: core_bstring, secref_bstring
-        integer(i0), allocatable :: real_bstring(:)
+        integer :: i, current_max, total_max, ir, iel, n_rshift
+        integer(i0) :: core_bstring, overflow_bstring
+        integer(i0) :: secref_bstring(sys%basis%bit_string_len), real_bstring(sys%basis%tot_string_len)
         type(reference_t) :: read_in_ref
         
-        if (.not.qs%mr_read_in) then
+        total_max = 0
+
+        if (.not. qs%mr_read_in) then
             do i = 1, size(references_in)
                call init_reference(sys, references_in(i), io_unit, qs%secondary_refs(i))
                current_max = qs%ref%ex_level + get_excitation_level(det_string(qs%ref%f0,sys%basis), &
@@ -1295,32 +1298,46 @@ contains
 
             qs%ref%max_ex_level = total_max
         else
-            if (sys%CAS(1).eq.-1) then
+            if (sys%CAS(1) == -1) then
                 ! -1 is the default (unset) value
-                core_bstring = 2**(qs%mr_n_frozen)-1
+                core_bstring = 2**(qs%mr_n_frozen) - 1
             else
-                core_bstring = 2**(qs%mr_n_frozen-sys%CAS(1))-1
-            endif
-            allocate(real_bstring(sys%basis%tot_string_len))
+                core_bstring = 2**(qs%mr_n_frozen-sys%CAS(1)) - 1
+            end if
+            
             allocate(read_in_ref%occ_list0(sys%nel))
-            open(8,file=qs%mr_secref_file,status='old',form='formatted',action='read')
-            do i=1,qs%n_secondary_ref,1
-                read(8,*) secref_bstring
-                ! [TODO]: Support references of longer than i0 bits
-                real_bstring(1) = ior(lshift(secref_bstring,qs%mr_n_frozen),core_bstring)
-                call decode_det(sys%basis,real_bstring(:),read_in_ref%occ_list0(:))
+            open(newunit=ir, file=qs%mr_secref_file, status='old', form='formatted', action='read')
+            do i = 1, qs%n_secondary_ref
+                secref_bstring(:) = 0_i0
+                real_bstring(:) = 0_i0
+
+                ! [warning] - We are assuming that the secondary references are only ever within 64 bits
+                ! Here we pad the higher elements with 0's. If we ever need more than one 64-bit integer
+                ! to store a secondary reference, we need to take care of reading in variable number of columns.
+                read(ir, *) secref_bstring(1)
+
+                ! We need to move push mr_n_frozen bits of bitstrings around, proceed from the highest element 
+                ! (guaranteed no overflow). When bit_string_len == 1 the do loop is skipped.
+                n_rshift = i0_length - qs%mr_n_frozen
+                do iel = sys%basis%bit_string_len, 2, -1
+                    real_bstring(iel) = ior(lshift(secref_bstring(iel), qs%mr_n_frozen), &
+                                            rshift(secref_bstring(iel-1), n_rshift))
+                end do
+                real_bstring(1) = ior(lshift(secref_bstring(1), qs%mr_n_frozen), core_bstring)
+
+                call decode_det(sys%basis, real_bstring(:), read_in_ref%occ_list0(:))
                 read_in_ref%ex_level= qs%mr_excit_lvl
                 call init_reference(sys, read_in_ref, io_unit, qs%secondary_refs(i))
 
                 current_max = qs%ref%ex_level + get_excitation_level(det_string(qs%ref%f0,sys%basis), &
                                                                      det_string(qs%secondary_refs(i)%f0,sys%basis)) 
                if (current_max > total_max) total_max = current_max
-            enddo
-            close(8)
+            end do
+            close(ir)
 
             qs%ref%max_ex_level = total_max
 
-        endif
+        end if
 
         ! Optionally build the BK tree, see search.F90::tree_add and tree_search for further comments
         if (qs%mr_acceptance_search == 1) then
