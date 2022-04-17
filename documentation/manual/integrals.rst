@@ -51,6 +51,8 @@ The following examples runs a RHF calculation on carbon dimer at cc-pVDZ at a cl
 .. code-block:: python
 
     import psi4
+
+    psi4.core.clean() # Clean local scratch files
     psi4.set_memory('2000 MB')
 
     dump = 'c2_1.200.FCIDUMP'
@@ -62,8 +64,9 @@ The following examples runs a RHF calculation on carbon dimer at cc-pVDZ at a cl
     C 1 r
     r = 1.200
     """)
-    # Default SCF_TYPE is density-fitting, which produces slightly different results than other packages like PySCF.
-    psi4.set_options({'SCF_TYPE':'DIRECT','basis':'cc-pvdz','docc':[2,0,0,0,0,2,1,1]})
+    # Default SCF_TYPE is density fitting, which produces slightly different results than other packages like PySCF.
+    # Provide 'SCF_TYPE':'DIRECT' in the option dictionary if it's concerning
+    psi4.set_options({'basis':'cc-pvdz','docc':[2,0,0,0,0,2,1,1]})
     E, wfn = psi4.energy('scf', return_wfn=True)
     # oe_ints has to be specified exactly like this
     psi4.fcidump(wfn, fname=dump, oe_ints=['EIGENVALUES'])
@@ -74,7 +77,7 @@ Sometimes a custom basis set is needed (for example many chromium dimer benchmar
 
 Post-calculation analysis
 ^^^^^^^^^^^^^^^^^^^^^^^^^
-The returned wavefunction object :code:`wfn` can be inspected and analysed. For methods summary see https://psicode.org/psi4manual/master/api/psi4.core.Wavefunction.html#psi4.core.Wavefunction. But most basically you can call
+The returned wavefunction object :code:`wfn` can be inspected and analysed. For methods summary see `here <https://psicode.org/psi4manual/master/api/psi4.core.Wavefunction.html#psi4.core.Wavefunction>`_. But most basically you can call
 
 .. code-block:: python
 
@@ -85,6 +88,11 @@ which returns all the HF eigenvalues grouped by symmetry.
 Symmetry
 ^^^^^^^^
 Psi4 uses 'Cotton ordering' for the irreps of :math:`D_{2h}`, albeit inconsistently (e.g. the :code:`DOCC` option takes in a list of irrep occupation with normal ordering, i.e., :math:`A_{g},\ B_{1g},\ B_{2g},\dots`). But in the &FCI namelist, the symmetry labels are Cotton-ordered, i.e. :math:`[1,2,3,4,5,6,7,8]` means :math:`[A_{1g},B_{3u},B_{2u},B_{1g},B_{1u},B_{2g},B_{3g},A_u]`.
+
+Freezing orbitals
+^^^^^^^^^^^^^^^^^
+For large systems, if you're already planning on freezing electrons in the HANDE calculation, it might be sensible to freeze them in the FCIDUMP. 
+Psi4 can do this for you by just adding :code:`'freeze_core':True` in the options dictionary above (more precise control is available, see `here <https://psicode.org/psi4manual/1.5.0/autodir_options_c/globals__freeze_core.html>`_), and export FCIDUMP in exactly the same way.
 
 .. _fcidump_format:
 
