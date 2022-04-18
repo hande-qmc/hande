@@ -15,7 +15,8 @@ fciqmc {
         spawned_state_size = -500,
         real_amplitudes = true,
         rng_seed = 127,
-        state_histograms = true,
-        state_histograms_nreport = 200,
+    },
+    state_histogram = {
+        report_frequency = 200,
     },
 }
