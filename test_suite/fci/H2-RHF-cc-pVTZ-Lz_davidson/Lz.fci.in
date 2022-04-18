@@ -1,0 +1,22 @@
+sys = read_in {
+    int_file = "FCIDUMP",
+    nel = 2,
+    ms = 0,
+    sym = 0,
+    Lz = true,
+}
+
+fci {
+    sys = sys,
+    reference = {
+        ex_level = 2,
+    },
+    davidson = {
+        using_davidson = true,
+        ndavidson_eigv = 4,
+        ndavidson_trialvec = 8,
+        davidson_maxsize = 50,
+        davidson_tol = 1e-8,
+        davidson_maxiter = 200,
+    },
+}

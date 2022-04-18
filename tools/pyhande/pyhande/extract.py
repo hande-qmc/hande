@@ -124,7 +124,7 @@ data_pairs : list of (dict, :class:`pandas.DataFrame` or :class:`pandas.Series`)
     calc_types = '(FCI|FCIQMC|CCMC|DMQMC|Simple FCIQMC|'\
                             'Hilbert space|Canonical energy)'
     calc_block = re.compile('^ '+calc_types+'$')
-    fci_block = re.compile('Exact|Lanczos|LAPACK|LANCZOS|RDM|elements')
+    fci_block = re.compile('Exact|Davidson|LAPACK|RDM|elements')
     timing_pattern = re.compile('^ '+calc_types+
                                 ' (?:estimation|calculation) *: ([0-9.]+)$')
 
@@ -431,8 +431,8 @@ data : :class:`pandas.Series`
 
     if 'Exact' in title_line or 'LAPACK' in title_line:
         title = 'FCI (LAPACK)'
-    elif 'Lanczos' in title_line or 'LANCZOS' in title_line:
-        title = 'FCI (Lanczos)'
+    elif 'Davidson' in title_line:
+        title = 'FCI (Davidson)'
     elif 'RDM' in title_line:
         title = 'FCI RDM'
     elif 'Hamiltonian' in title_line:

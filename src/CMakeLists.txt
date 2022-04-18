@@ -71,6 +71,7 @@ target_sources(hande-static
     excit_gen_utils.f90
     excitations.F90
     fci_lapack.F90
+    fci_davidson.F90
     fci_utils.F90
     fciqmc.f90
     hamiltonian.f90
