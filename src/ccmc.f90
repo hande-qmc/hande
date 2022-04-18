@@ -599,6 +599,9 @@ contains
         if (blocking_in%blocking_on_the_fly) &
                     call init_blocking(qmc_in, blocking_in, bl, qs%shift_damping_status)
 
+        ! Used for turning off the Chebyshev propagator
+        reached_shoulder = .false.
+
         do ireport = 1, qmc_in%nreport
 
             ! Projected energy from last report loop to correct death
@@ -612,7 +615,7 @@ contains
             do icycle = 1, qmc_in%ncycles
                 iter = qs%mc_cycles_done + (ireport-1)*qmc_in%ncycles + icycle
                 ! qs%vary_shift(nspaces), provided for compatibility with replica tricks
-                if (.not. reached_shoulder) then
+                if (qs%cheby_prop%disable_chebyshev_shoulder .and. .not. reached_shoulder) then
                     ! Check if shoulder has been reached and record the iteration
                     if (all(qs%vary_shift)) then
                         reached_shoulder = .true.
@@ -620,7 +623,9 @@ contains
                     end if
                 end if
                 ! Chebyshev projector has hopefully brought us to convergence, now we can collect statistics
-                if (iter == qs%cheby_prop%disable_chebyshev_iter) call disable_chebyshev(qs, qmc_in)
+                if (qs%cheby_prop%disable_chebyshev_shoulder .and. iter == qs%cheby_prop%disable_chebyshev_iter) then
+                    call disable_chebyshev(qs, qmc_in)
+                end if
 
                 do icheb = 1, qs%cheby_prop%order
                     qs%cheby_prop%icheb = icheb
@@ -927,7 +932,7 @@ contains
             if (error) exit
 
             ! Chebyshev only works with real read-in systems for now (nspaces=1)
-            call update_chebyshev(qs%cheby_prop, qs%shift(1))
+            if (qs%cheby_prop%using_chebyshev) call update_chebyshev(qs%cheby_prop, qs%shift(1))
 
             call cpu_time(t2)
             if (parent) then

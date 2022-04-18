@@ -234,6 +234,8 @@ contains
         end associate
         
         qs%tau = qmc_in%tau_save
+        qs%shift_damping = 0.050_p
+        qs%shift_harmonic_forcing = 0.0_p
 
     end subroutine disable_chebyshev
 
