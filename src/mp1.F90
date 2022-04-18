@@ -204,7 +204,7 @@ contains
                     ! Occupied
                     if (bfns(i)%sp_eigv > bfns(homo)%sp_eigv) homo = i
                 else
-                        if (bfns(i)%sp_eigv < bfns(lumo)%sp_eigv) homo = i
+                    if (bfns(i)%sp_eigv < bfns(lumo)%sp_eigv) homo = i
                 end if
             end do
             if (abs(bfns(lumo)%sp_eigv-bfns(homo)%sp_eigv) < depsilon) then
@@ -225,14 +225,28 @@ contains
         ! [todo] - OpenMP parallelisation: care is needed to make sure threading and spawning work together (see ccmc.f90)
 
         if (parent) then
-            iocc_a = 0
-            iocc_b = 0
             emp2 = 0.0_dp
             do i = 1, sys%nel
                 do j = i+1, sys%nel
                     excit%from_orb = [ref%occ_list0(i), ref%occ_list0(j)]
-                    do a = sys%nel+1, sys%basis%nbasis
-                        do b = a+1, sys%basis%nbasis
+                    iocc_a = 0
+                    iocc_b = 0
+                    do ia = 1, sys%basis%nbasis-sys%nel
+                        ! Find the next unoccupied orbital (necessary for arbitrary references)
+                        ! There should definitely only be (nbasis-nel) virtuals, but we don't assume they're ordered.
+                        do
+                            ! iocc_a stores the location of the last visited virtual (initialised at 0)
+                            a = ia + iocc_a
+                            if (.not. btest(ref%f0(sys%basis%bit_lookup(2,a)), sys%basis%bit_lookup(1,a))) exit
+                            iocc_a = iocc_a + 1
+                        end do
+                        do ib = ia, sys%basis%nbasis-sys%nel
+                            do
+                                b = ib + iocc_b
+                                if (.not. btest(ref%f0(sys%basis%bit_lookup(2,b)), sys%basis%bit_lookup(1,b))) exit
+                                iocc_b = iocc_b + 1
+                            end do
+
                             excit%to_orb = [a,b]
                             call create_excited_det(sys%basis, ref%f0, excit, f)
 
