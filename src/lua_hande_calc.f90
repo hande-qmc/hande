@@ -341,6 +341,7 @@ contains
         use logging, only: logging_in_t
         use reference_determinant, only: reference_t
         use system, only: sys_t
+        use state_histograms, only: state_histogram_in_t
 
         use calc, only: calc_type, fciqmc_calc
         use calc_system_init, only: set_spin_polarisation, set_symmetry_aufbau
@@ -360,14 +361,15 @@ contains
         type(logging_in_t) :: logging_in
         type(output_in_t) :: output_in
         type(blocking_in_t) :: blocking_in
+        type(state_histogram_in_t) :: state_hist_in
 
         logical :: have_restart_state
 
         integer :: opts, io_unit
         real :: t1, t2
-        character(10), parameter :: keys(11) = [character(10) :: 'sys', 'qmc', 'fciqmc', 'semi_stoch', 'restart', &
+        character(15), parameter :: keys(12) = [character(15) :: 'sys', 'qmc', 'fciqmc', 'semi_stoch', 'restart', &
                                                                 'load_bal', 'reference', 'qmc_state', 'logging', &
-                                                                'output', 'blocking']
+                                                                'output', 'blocking', 'state_histogram']
 
         call cpu_time(t1)
 
@@ -388,6 +390,7 @@ contains
         call read_reference_t(lua_state, opts, reference, sys)
         call read_logging_in_t(lua_state, opts, logging_in)
         call read_output_in_t(lua_state, opts, output_in)
+        call read_state_histogram_in(lua_state, opts, state_hist_in)
 
         call get_qmc_state(lua_state, have_restart_state, qmc_state_restart)
 
@@ -404,10 +407,10 @@ contains
 
         if (have_restart_state) then
             call do_fciqmc(sys, qmc_in, fciqmc_in, semi_stoch_in, restart_in, load_bal_in, io_unit, reference, logging_in, &
-                           blocking_in, qmc_state_out, qmc_state_restart)
+                           blocking_in, qmc_state_out, state_hist_in, qmc_state_restart)
         else
             call do_fciqmc(sys, qmc_in, fciqmc_in, semi_stoch_in, restart_in, load_bal_in, io_unit, reference, logging_in, &
-                           blocking_in, qmc_state_out)
+                           blocking_in, qmc_state_out, state_hist_in)
         end if
 
         call end_output_unit(output_in%out_filename, io_unit)
@@ -589,6 +592,7 @@ contains
         use qmc_data, only: qmc_in_t, restart_in_t, load_bal_in_t, qmc_state_t
         use reference_determinant, only: reference_t
         use system, only: sys_t, heisenberg, read_in, ueg
+        use state_histograms, only: state_histogram_in_t
 
         use const, only: p
         use calc, only: calc_type, dmqmc_calc, doing_dmqmc_calc, dmqmc_energy_squared
@@ -608,13 +612,14 @@ contains
         type(load_bal_in_t) :: load_bal_in
         type(reference_t) :: reference
         type(qmc_state_t), pointer :: qmc_state_out, qmc_state_restart
+        type(state_histogram_in_t) :: state_hist_in
 
         logical :: have_restart_state
         integer :: opts, ierr
         real :: t1, t2
         real(p), allocatable :: sampling_probs(:)
-        character(10), parameter :: keys(9) = [character(10) :: 'sys', 'qmc', 'dmqmc', 'ipdmqmc', 'operators', 'rdm', &
-                                                                'restart', 'reference', 'qmc_state']
+        character(15), parameter :: keys(10) = [character(15) :: 'sys', 'qmc', 'dmqmc', 'ipdmqmc', 'operators', 'rdm', &
+                                                                'restart', 'reference', 'qmc_state', 'state_histogram']
 
         call cpu_time(t1)
 
@@ -651,6 +656,7 @@ contains
         call read_restart_in(lua_state, opts, restart_in)
         call read_reference_t(lua_state, opts, reference, sys)
         call get_qmc_state(lua_state, have_restart_state, qmc_state_restart)
+        call read_state_histogram_in(lua_state, opts, state_hist_in)
         ! load balancing not implemented in DMQMC--just use defaults.
         call warn_unused_args(lua_state, keys, opts)
         call aot_table_close(lua_state, opts)
@@ -659,9 +665,10 @@ contains
         allocate(qmc_state_out)
         if (have_restart_state) then
             call do_dmqmc(sys, qmc_in, dmqmc_in, dmqmc_estimates, restart_in, load_bal_in, reference, qmc_state_out, &
-                          sampling_probs, qmc_state_restart)
+                          sampling_probs, state_hist_in, qmc_state_restart)
         else
-            call do_dmqmc(sys, qmc_in, dmqmc_in, dmqmc_estimates, restart_in, load_bal_in, reference, qmc_state_out, sampling_probs)
+            call do_dmqmc(sys, qmc_in, dmqmc_in, dmqmc_estimates, restart_in, load_bal_in, reference, qmc_state_out, &
+                          sampling_probs, state_hist_in)
         end if
 
         sys%basis%tensor_label_len = sys%basis%tot_string_len
@@ -2033,6 +2040,58 @@ contains
         end if
 
     end subroutine read_blocking_in
+
+    subroutine read_state_histogram_in(lua_state, opts, state_hist_in)
+
+        ! Read in a state_histogram table to a state_histogram_in_t object.
+
+        ! state_histogram = {
+        !     report_frequency = nreports,
+        !     decades = decades_to_bin,
+        !     nbins = bins_per_decade,
+        !     skip_memory_check = true/false,
+        ! }
+
+        ! In/Out:
+        !    lua_state: flu/Lua state to which the HANDE API is added.
+        ! In:
+        !    opts: handle for the table containing the qmc table.
+        ! Out:
+        !    state_hist_in: Derived type object containing read in
+        !        state histogram input options.
+
+        use flu_binding, only: flu_State
+        use aot_table_module, only: aot_get_val, aot_exists, aot_table_open, aot_table_close
+        use state_histograms, only: state_histogram_in_t
+        use lua_hande_utils, only: warn_unused_args
+        use errors, only: stop_all, warning
+
+        type(flu_State), intent(inout) :: lua_state
+        integer, intent(in) :: opts
+        type(state_histogram_in_t), intent(out) :: state_hist_in
+
+        integer :: state_hist_table, err
+
+        character(24), parameter :: keys(4) = [character(24) :: 'report_frequency', 'decades', 'nbins', &
+                                                                'skip_memory_check']
+
+        if (aot_exists(lua_state, opts, 'state_histogram')) then
+            state_hist_in%state_histograms = .true.
+
+            call aot_table_open(lua_state, opts, state_hist_table, 'state_histogram')
+
+            ! Optional arguments (defaults set in derived type).
+            call aot_get_val(state_hist_in%report_frequency, err, lua_state, state_hist_table, 'report_frequency')
+            call aot_get_val(state_hist_in%decades, err, lua_state, state_hist_table, 'decades')
+            call aot_get_val(state_hist_in%nbins, err, lua_state, state_hist_table, 'nbins')
+            call aot_get_val(state_hist_in%skip_memory_check, err, lua_state, state_hist_table, 'skip_memory_check')
+
+            call warn_unused_args(lua_state, keys, state_hist_table)
+
+            call aot_table_close(lua_state, state_hist_table)
+        end if
+
+    end subroutine read_state_histogram_in
 
     subroutine get_qmc_state(lua_state, have_qmc_state, qmc_state)
 
