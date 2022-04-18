@@ -1018,6 +1018,7 @@ contains
         if (qmc%vary_shift_present) call json_write_key(js, 'vary_shift', qmc%vary_shift)
         call json_write_key(js, 'initial_shift', qmc%initial_shift)
         call json_write_key(js, 'shift_damping', qmc%shift_damping)
+        call json_write_key(js, 'shift_harmonic_forcing_two_stage', qmc%shift_harmonic_forcing_two_stage)
         call json_write_key(js, 'shift_harmonic_forcing', qmc%shift_harmonic_forcing)
         call json_write_key(js, 'shift_harmonic_crit_damp', qmc%shift_harmonic_crit_damp)
         call json_write_key(js, 'walker_length', qmc%walker_length)
