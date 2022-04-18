@@ -85,23 +85,14 @@ contains
         type(sys_t) :: sys_bak
 
         integer :: seed, max_nspawned_states, nspaces, state_size, psip_element_size, homo, lumo
-        integer :: i, j, a, b, ia, ib, iocc_a, iocc_b, ierr, pos, istate, icycle
-        integer(int_64) :: iattempt
-        logical :: hit
-        integer(int_p) :: nspawn, old_pop
-        real(p) :: norm, spawn_cutoff, amplitude, denom
+        integer :: i, j, a, b, ia, ib, iocc_a, iocc_b
+        integer(int_p) :: nspawn
+        real(p) :: spawn_cutoff, denom
         type(hmatel_t) :: intgrl, ampl
         real(dp) :: emp2
         integer(i0) :: f(sys%basis%bit_string_len)
-        integer :: excitor_sign, excitor_level
-        integer :: max_cluster_size, slot
-        real(p), allocatable :: cumulative_abs_real_pops(:)
-        real(p) :: tot_abs_real_pop
         type(json_out_t) :: js
         integer :: io_unit
-        type(ex_lvl_dist_t) :: ex_lvl_dist
-        integer :: D0_pos, D0_proc, nD0_proc
-        complex(p) :: D0_normalisation
         type(logging_t) :: logging_info
         type(excit_gen_data_t) :: excit_gen_data
         type(qmc_in_t) :: qmc_in_loc
