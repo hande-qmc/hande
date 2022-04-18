@@ -29,6 +29,7 @@ contains
         !    qmc_in: input options relating to QMC methods.
         !    load_bal_in: input options for load balancing.
         !    io_unit: io unit to write all calculation output to.
+        !    state_hist_in: input options related to state_histograms.
         ! In/Out:
         !    qmc_state_restart (optional): if present, restart from a previous fciqmc calculation.
         !       Deallocated on exit.

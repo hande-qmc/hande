@@ -25,6 +25,7 @@ contains
         !    reference_in: current reference determinant.  If not set (ie
         !       components allocated) then a best guess is made based upon the
         !       desired spin/symmetry.
+        !    state_hist_in: input options related to state_histograms.
         ! In/Out:
         !    qmc_state_restart (optional): if present, restart from a previous fciqmc calculation.
         !       Deallocated on exit.

@@ -180,6 +180,7 @@ contains
         !    qmc_in: A type containing input options relating to QMC methods.
         !    reference_in: A type for the reference determinant, contains
         !       information about the systems maximum excitation level
+        !    state_hist_in: input options related to state_histograms.
         !    dmqmc_in (optional): if present, beta_loops is used to scale
         !       the memory estimate of the output files
         ! In/Out:
