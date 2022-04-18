@@ -104,7 +104,27 @@ module state_histograms
 use const, only: p, int_64, i0
 implicit none
 
-type state_histograms_data_t
+type state_histogram_in_t
+
+    ! A boolean to control if we calculate the state histograms
+    ! Only implemented for FCIQMC and DMQMC currently.
+    logical :: state_histograms = .false.
+    ! When state_histograms is true, this controls
+    ! the frequency (in report cycles) at which the histograms
+    ! are generated and reported. Default is the end of calculation.
+    integer :: report_frequency = -1
+    ! Controls the number of population decades past the floor of the
+    ! target population decades that are stored when calculating the histogram.
+    integer :: decades = 3
+    ! Controls the number of bins per walker decade when
+    ! doing a state histograms calculation.
+    integer :: nbins = 5
+    ! A boolean to control if we skip the state histograms memory check.
+    logical :: skip_memory_check = .false.
+
+end type state_histogram_in_t
+
+type state_histogram_t
 
     ! File names which will be used to write the data to.
     character(1024) :: state_histograms_output_file
@@ -146,11 +166,11 @@ type state_histograms_data_t
     ! shape = (max_calc_a, max_calc_b, max_ex_level + 1, max_ex_level + 1)
     integer(int_64), allocatable :: comm_excit_bins(:,:,:,:)
 
-end type state_histograms_data_t
+end type state_histogram_t
 
 contains
 
-    subroutine init_state_histogram_t(iunit, qmc_in, reference_in, hist, dmqmc_in)
+    subroutine init_state_histogram_t(iunit, qmc_in, reference_in, hist, hist_in, dmqmc_in)
 
         ! Set up the parameters and arrays for supporting the
         ! state histogram data collection and reporting.
@@ -176,8 +196,9 @@ contains
 
         type(qmc_in_t), intent(in) :: qmc_in
         type(reference_t), intent(in) :: reference_in
+        type(state_histogram_in_t), intent(in) :: hist_in
+        type(state_histogram_t), intent(inout) :: hist
         type(dmqmc_in_t), intent(in), optional :: dmqmc_in
-        type(state_histograms_data_t), intent(inout) :: hist
 
         integer, intent(in) :: iunit
 
@@ -186,13 +207,13 @@ contains
         ierr = 0
 
         hist%current_seed = qmc_in%seed
-        write(hist%report_formatter, '("(I0.",I0,")")') floor(log10(real(qmc_in%nreport))) + 3
+        write(hist%report_formatter, '("(I0.",I0,")")') floor(log10(real(qmc_in%nreport))) + hist_in%decades
 
         ! Set the report frequency, i.e. the number of report cycles
         ! between dumping the state histograms.
-        if (qmc_in%state_histograms_nreport /= -1) then
+        if (hist_in%report_frequency /= -1) then
             ! The user set report frequency
-            hist%histogram_frequency = qmc_in%state_histograms_nreport
+            hist%histogram_frequency = hist_in%report_frequency
         else
             ! If not set in the input, default to the end of calculation.
             hist%histogram_frequency = qmc_in%nreport
@@ -233,8 +254,8 @@ contains
         ! define the information for the state histograms are the possible
         ! excitation levels the exlevel_1 and exlevel_2 can take on.
 
-        hist%max_calc_a = qmc_in%state_histograms_nbins
-        hist%max_calc_b = floor(log10(qmc_in%target_particles)) + 3
+        hist%max_calc_a = hist_in%nbins
+        hist%max_calc_b = floor(log10(qmc_in%target_particles)) + hist_in%decades
 
         if (reference_in%max_ex_level == -1) then
             hist%max_ex_level = reference_in%ex_level
@@ -248,7 +269,7 @@ contains
             ! requirement to write all the histogram data. Report to the user
             ! the size estimate and if its large exit. This should be an
             ! overestimate on the size. One can skip this check if the user
-            ! supplies skip_histograms_mem_chk = false in the lua.
+            ! supplies skip_memory_check = true in the lua block.
             if (parent) then
                 ! Memory estimates in bytes for the file(s).
                 nfiles = (qmc_in%nreport / hist%histogram_frequency) + 1
@@ -261,11 +282,11 @@ contains
                     0.000001_p*bytes_est
                 write(iunit, '()')
 
-                if (.not. qmc_in%skip_histograms_mem_chk .and. 0.000001_p * bytes_est > 1000.0_p) then
+                if (.not. hist_in%skip_memory_check .and. 0.000001_p * bytes_est > 1000.0_p) then
                     call stop_all('init_state_histogram_t', 'The memory estimate for the state &
                                    histogram files is over 1000 (MB), if you acknowledge this &
-                                   warning and wish to proceed add "skip_histograms_mem_chk = false," &
-                                   to the qmc lua block.')
+                                   warning and wish to proceed add "skip_memory_check = true," &
+                                   to the state_histogram lua block.')
                 end if
             end if
 
@@ -309,7 +330,7 @@ contains
         use errors, only: stop_all
 
         type(qmc_state_t), intent(in) :: qs
-        type(state_histograms_data_t), intent(inout) :: hist
+        type(state_histogram_t), intent(inout) :: hist
 
         real(p), intent(in) :: real_pops
         integer(i0), intent(in) :: f1(:), f2(:)
@@ -337,8 +358,8 @@ contains
         iafac = floor( (log10( abs(real_pops)) - ibpow) * hist%max_calc_a) + 1
 
         if (ibpow > hist%max_calc_b) then
-            call stop_all('update_state_histogram', 'The walker population has grown several orders &
-                          of magnitude beyond the target population, this will cause a segfault!')
+            call stop_all('update_state_histogram', 'The walker population exceeds the max state histogram '&
+                          'bin population, increase the bin population with the `decade` parameter!')
         end if
 
         hist%excit_bins(iafac, ibpow, exlevel_1, exlevel_2) = hist%excit_bins(iafac, ibpow, exlevel_1, exlevel_2) + 1_int_64
@@ -364,21 +385,21 @@ contains
 
         use parallel
 
-        type(state_histograms_data_t), intent(inout) :: hist
+        type(state_histogram_t), intent(inout) :: hist
 
         integer, intent(in) :: ireport, iunit
         integer, intent(in), optional :: index_shift
         logical, intent(in), optional :: final_report
 
         logical :: skip_report_check, file_exists
-        integer :: ierr, iafac, ibpow, exlevel_1, exlevel_2, lazy_trunc, ifile
+        integer :: ierr, iafac, ibpow, exlevel_1, exlevel_2, idx_shift, ifile
         real(p) :: detpop
         character(1024) :: ireport_string, tmp_output_file
 
         ierr = 0
 
-        lazy_trunc = 0
-        if (present(index_shift)) lazy_trunc = index_shift
+        idx_shift = 0
+        if (present(index_shift)) idx_shift = index_shift
 
         skip_report_check = .false.
         if (present(final_report)) skip_report_check = final_report
@@ -402,12 +423,8 @@ contains
             end if
         end do
 
-        if (parent) then
-            write(iunit, '(1X,"# Writing state histogram to: ", A)') trim(hist%state_histograms_output_file)
-            open(unit=343, file=trim(hist%state_histograms_output_file), action='write')
-        end if
-
-        associate(exbins => hist%excit_bins, comm_exbins => hist%comm_excit_bins, bpd => hist%max_calc_a)
+        associate(exbins => hist%excit_bins, comm_exbins => hist%comm_excit_bins, bpd => hist%max_calc_a, &
+                  output_file => hist%state_histograms_output_file)
 
 #ifdef PARALLEL
             call mpi_reduce(exbins, comm_exbins, size(exbins), &
@@ -417,10 +434,12 @@ contains
 #endif
 
             if (parent) then
+                write(iunit, '(1X,"# Writing state histogram to: ", A)') trim(output_file)
+                open(unit=343, file=trim(output_file), action='write')
 
                 write(343, '(9X, a9)', advance='no') 'bin_edges'
 
-                do exlevel_1 = 0, hist%max_ex_level - lazy_trunc
+                do exlevel_1 = 0, hist%max_ex_level - idx_shift
                     do exlevel_2 = 0, hist%max_ex_level
 
                         write(343, '(4X,A6,I4,I4)', advance='no') 'Ex.Lvl', exlevel_1, exlevel_2
@@ -436,7 +455,7 @@ contains
                         detpop = 10.0_p**(ibpow + (1.0_p/bpd)*(iafac - 1.0_p))
                         write(343, '(es18.10)', advance='no') detpop
 
-                        do exlevel_1 = 0, hist%max_ex_level - lazy_trunc
+                        do exlevel_1 = 0, hist%max_ex_level - idx_shift
                             do exlevel_2 = 0, hist%max_ex_level
 
                                 write(343, '(es18.10)', advance='no') &
@@ -450,16 +469,13 @@ contains
                     end do
                 end do
 
+                close(343)
             end if
 
             exbins = 0_int_64
             comm_exbins = 0_int_64
 
         end associate
-
-        if (parent) then
-            close(343)
-        end if
 
     end subroutine comm_and_report_state_histogram
 
@@ -482,7 +498,7 @@ contains
         use qmc_data, only: qmc_state_t
 
         type(qmc_state_t), intent(in) :: qs
-        type(state_histograms_data_t), intent(inout) :: hist
+        type(state_histogram_t), intent(inout) :: hist
 
         integer, intent(in) :: ireport, iunit
 
@@ -511,7 +527,7 @@ contains
 
         use checking, only: check_deallocate
 
-        type(state_histograms_data_t), intent(inout) :: hist
+        type(state_histogram_t), intent(inout) :: hist
 
         integer :: ierr
 
@@ -524,5 +540,34 @@ contains
         call check_deallocate('hist%comm_excit_bins', ierr)
 
     end subroutine deallocate_histogram_t
+
+    subroutine state_histogram_in_t_json(js, state_hist_in, terminal)
+
+        ! Serialise a state_histogram_in_t object in JSON format.
+
+        ! In/Out:
+        !   js: json_out_t controlling the output unit and handling JSON internal
+        !        state. Unchanged on output.
+        ! In:
+        !   state_hist_in: state_histogram_in_t object containing state histogram
+        !        input values (including any defaults set).
+        !   terminal (optional): if true, this is the last entry in the
+        !        enclosing JSON object. Default: false.
+        use json_out
+
+        type(json_out_t), intent(inout) :: js
+        type(state_histogram_in_t), intent(in) :: state_hist_in
+        logical, intent(in), optional :: terminal
+
+        if (state_hist_in%state_histograms) then
+            call json_object_init(js, 'state_histogram')
+            call json_write_key(js, 'report_frequency', state_hist_in%report_frequency)
+            call json_write_key(js, 'decades', state_hist_in%decades)
+            call json_write_key(js, 'nbins', state_hist_in%nbins)
+            call json_write_key(js, 'skip_memory_check', state_hist_in%skip_memory_check, .true.)
+            call json_object_end(js, terminal)
+        end if
+
+    end subroutine state_histogram_in_t_json
 
 end module state_histograms

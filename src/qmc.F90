@@ -9,7 +9,7 @@ contains
 ! --- Initialisation routines ---
 
     subroutine init_qmc(sys, qmc_in, restart_in, load_bal_in, reference_in, io_unit, annihilation_flags, qmc_state, uuid_restart, &
-                        restart_version_restart, dmqmc_in, fciqmc_in, qmc_state_restart, state_hist, regenerate_info)
+                        restart_version_restart, dmqmc_in, fciqmc_in, qmc_state_restart, regenerate_info)
 
         ! Initialisation for fciqmc calculations.
         ! Setup the spin polarisation for the system, initialise the RNG,
@@ -59,7 +59,6 @@ contains
         use const, only: p
         use parallel, only: parent
         use determinants, only: sum_fock_values_occ_list
-        use state_histograms
 
 
         type(sys_t), intent(in) :: sys
@@ -75,7 +74,6 @@ contains
         type(dmqmc_in_t), intent(in), optional :: dmqmc_in
         type(fciqmc_in_t), intent(in), optional :: fciqmc_in
         type(qmc_state_t), intent(inout), optional :: qmc_state_restart
-        type(state_histograms_data_t), intent(inout), optional :: state_hist
         logical, intent(out), optional :: regenerate_info
 
         integer :: ierr, iunit, proc_data_info(2,est_buf_n_per_proc), ntot_proc_data
@@ -168,14 +166,6 @@ contains
             '(1X, "# Finishing the excitation generator initialisation, time taken:",1X,es17.10)') set_up_time
 
         call init_quasi_newton(sys, qmc_in, qmc_state%propagator)
-
-        if (qmc_in%state_histograms) then
-            if (doing_calc(dmqmc_calc)) then
-                call init_state_histogram_t(io_unit, qmc_in, reference_in, state_hist, dmqmc_in)
-            else
-                call init_state_histogram_t(io_unit, qmc_in, reference_in, state_hist)
-            end if
-        end if
 
         ! Need to ensure we end up with a sensible value of shift damping to use.
         ! qmc_state%shift_damping will be set to either its default value or one

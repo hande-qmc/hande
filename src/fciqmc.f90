@@ -10,7 +10,7 @@ implicit none
 contains
 
     subroutine do_fciqmc(sys, qmc_in, fciqmc_in, semi_stoch_in, restart_in, load_bal_in, io_unit, &
-                         reference_in, logging_in, blocking_in, qs, qmc_state_restart)
+                         reference_in, logging_in, blocking_in, qs, state_hist_in, qmc_state_restart)
 
         ! Run the FCIQMC or initiator-FCIQMC algorithm starting from the initial walker
         ! distribution using the timestep algorithm.
@@ -89,6 +89,7 @@ contains
         type(restart_in_t), intent(in) :: restart_in
         type(load_bal_in_t), intent(in) :: load_bal_in
         type(reference_t), intent(in) :: reference_in
+        type(state_histogram_in_t), intent(in) :: state_hist_in
         type(qmc_state_t), intent(inout), optional :: qmc_state_restart
         type(qmc_state_t), intent(out), target :: qs
         type(blocking_in_t), intent(in) :: blocking_in
@@ -103,7 +104,7 @@ contains
         type(semi_stoch_t) :: determ
         type(json_out_t) :: js
         type(qmc_in_t) :: qmc_in_loc
-        type(state_histograms_data_t) :: state_hist
+        type(state_histogram_t) :: state_hist
 
         integer :: idet, ireport, icycle, ideterm, ierr, ispace
         integer :: iter, semi_stoch_iter
@@ -157,8 +158,11 @@ contains
         end if
 
         ! Initialise data.
+        if (state_hist_in%state_histograms) then
+            call init_state_histogram_t(iunit, qmc_in, reference_in, state_hist, state_hist_in)
+        end if
         call init_qmc(sys, qmc_in, restart_in, load_bal_in, reference_in, io_unit, annihilation_flags, qs, uuid_restart, &
-                      restart_version_restart, fciqmc_in=fciqmc_in, qmc_state_restart=qmc_state_restart, state_hist=state_hist)
+                      restart_version_restart, fciqmc_in=fciqmc_in, qmc_state_restart=qmc_state_restart)
 
         if (debug) call init_logging(logging_in, logging_info, 0)
 
@@ -182,6 +186,7 @@ contains
             call restart_in_t_json(js, restart_in, uuid_restart)
             call blocking_in_t_json(js, blocking_in)
             call load_bal_in_t_json(js, load_bal_in)
+            call state_histogram_in_t_json(js, state_hist_in)
             call reference_t_json(js, qs%ref, sys)
             call logging_in_t_json(js, logging_in)
             call logging_t_json(js, logging_info, terminal=.true.)
@@ -329,7 +334,7 @@ contains
                     call set_parent_flag(real_population, qmc_in%initiator_pop, determ%flags(idet), &
                                          fciqmc_in%quadrature_initiator, cdet%initiator_flag)
 
-                    if (qmc_in%state_histograms) call update_state_histogram(qs, cdet%f, qs%ref%f0, real_population(1), &
+                    if (state_hist_in%state_histograms) call update_state_histogram(qs, cdet%f, qs%ref%f0, real_population(1), &
                                                                             state_hist, icycle, ireport)
 
                     do ispace = 1, qs%psip_list%nspaces
@@ -417,7 +422,7 @@ contains
 
             call cpu_time(t2)
 
-            if (qmc_in%state_histograms) then
+            if (state_hist_in%state_histograms) then
                 call comm_and_report_state_histogram(state_hist, ireport, io_unit, index_shift = state_hist%max_ex_level)
                 if (ireport == qmc_in%nreport .or. soft_exit) call fciqmc_state_histogram_final_report(qs, state_hist, &
                                                                                                        ireport, io_unit)
@@ -503,7 +508,7 @@ contains
             call check_deallocate('rdm',ierr)
         end if
 
-        if (qmc_in%state_histograms) call deallocate_histogram_t(state_hist)
+        if (state_hist_in%state_histograms) call deallocate_histogram_t(state_hist)
 
         call dSFMT_end(rng)
 
