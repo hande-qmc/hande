@@ -1053,7 +1053,7 @@ contains
         end do
 
         associate(pl=>qs%psip_list)
-             call qsort(pl%nstates, pl%states, pl%pops, pl%dat)
+             call qsort(pl%nstates, pl%states, pl%pops, pl%dat, .false.)
         end associate
 
 

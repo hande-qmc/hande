@@ -401,7 +401,7 @@ contains
 
             ! Have spawned walkers on this processor.
 
-            call qsort(spawn%sdata, spawn%head(thread_id,0), spawn%bit_str_len)
+            call qsort(spawn%sdata, .false., spawn%head(thread_id,0), spawn%bit_str_len)
 
             ! Annihilate within spawned walkers list.
             ! Compress the remaining spawned walkers list.
@@ -507,7 +507,7 @@ contains
         end if
 
         if (endp > spawn_zero) then
-            call qsort(spawn%sdata(:,start:endp), endp-spawn_zero, spawn%bit_str_len)
+            call qsort(spawn%sdata(:,start:endp), .false., endp-spawn_zero, spawn%bit_str_len)
             ! Annihilate within spawned walkers list.
             ! Compress the remaining spawned walkers list.
             if (tinitiator) then

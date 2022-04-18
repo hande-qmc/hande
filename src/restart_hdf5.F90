@@ -795,7 +795,7 @@ module restart_hdf5
                 end if
 
                 associate(pl=>qs%psip_list)
-                    if (resort) call qsort(pl%nstates, pl%states, pl%pops, pl%dat)
+                    if (resort) call qsort(pl%nstates, pl%states, pl%pops, pl%dat, .false.)
                 end associate
 
                 call h5gclose_f(subgroup_id, ierr)

@@ -7,7 +7,6 @@ implicit none
 private
 public :: qsort
 public :: insert_sort
-public :: qsort_i0_list_rev
 public :: qsort_psip_info_trot
 
 ! Quicksort...
@@ -29,7 +28,7 @@ contains
 
 !--- In-place quicksort.  Uses the sample code in Numerical Recipies as a base.  ---
 
-    pure subroutine qsort_int_32_list(list, head, nsort)
+    pure subroutine qsort_int_32_list(list, reverse, head, nsort)
 
         ! Sort a 2D array of int_32 integers.
 
@@ -40,6 +39,7 @@ contains
         ! In/Out:
         !    list: 2D array of int_32 integers.  Sorted on output.
         ! In:
+        !    reverse: sort in descending order instead.
         !    head (optional): sort list up to and including list(:,:head) and
         !        leave the rest of the array untouched.  Default: sort the
         !        entire array.
@@ -48,10 +48,10 @@ contains
         !        list(:nsort,j), so list is sorted according to list(:nsort,:)).
         !        Default: use entire slice.
 
-        use bit_utils, only: operator(.bitstrge.), operator(.bitstrgt.)
 
         integer(int_32), intent(inout) :: list(:,:)
         integer, intent(in), optional :: head, nsort
+        logical, intent(in) :: reverse
 
         ! Threshold.  When a sublist gets to this length, switch to using
         ! insertion sort to sort the sublist.
@@ -86,7 +86,7 @@ contains
                 do j = lo + 1, hi
                     tmp = list(:,j)
                     do i = j - 1, 1, -1
-                        if (tmp(1:ns) .bitstrge. list(1:ns,i)) exit
+                        if (qsort_comp_ge(tmp(1:ns), list(1:ns,i), reverse)) exit
                         list(:,i+1) = list(:,i)
                     end do
                     list(:,i+1) = tmp
@@ -106,13 +106,13 @@ contains
                 ! degrades if the pivot is always the smallest element.
                 pivot = (lo + hi)/2
                 call swap_sublist(list(:,pivot), list(:,lo + 1))
-                if (list(1:ns,lo) .bitstrgt. list(1:ns,hi)) then
+                if (qsort_comp_gt(list(1:ns,lo), list(1:ns,hi), reverse)) then
                     call swap_sublist(list(:,lo), list(:,hi))
                 end if
-                if (list(1:ns,lo+1) .bitstrgt. list(1:ns,hi)) then
+                if (qsort_comp_gt(list(1:ns,lo+1), list(1:ns,hi), reverse)) then
                     call swap_sublist(list(:,lo+1), list(:,hi))
                 end if
-                if (list(1:ns,lo) .bitstrgt. list(1:ns,lo+1)) then
+                if (qsort_comp_gt(list(1:ns,lo), list(1:ns,lo+1), reverse)) then
                     call swap_sublist(list(:,lo), list(:,lo+1))
                 end if
 
@@ -122,13 +122,13 @@ contains
                 do while (.true.)
                     ! Scan down list to find element > a.
                     i = i + 1
-                    do while (tmp(1:ns) .bitstrgt. list(1:ns,i))
+                    do while (qsort_comp_gt(tmp(1:ns), list(1:ns,i), reverse))
                         i = i + 1
                     end do
 
                     ! Scan down list to find element < a.
                     j = j - 1
-                    do while (list(1:ns,j) .bitstrgt. tmp(1:ns))
+                    do while (qsort_comp_gt(list(1:ns,j), tmp(1:ns), reverse))
                         j = j - 1
                     end do
 
@@ -179,10 +179,39 @@ contains
             s2 = tmp
 
         end subroutine swap_sublist
+        pure function qsort_comp_ge(elem1, elem2, reverse) result(comp_result)
+    
+            use bit_utils, only: operator(.bitstrge.), operator(.bitstrgt.)
 
+            integer(int_32), intent(in) :: elem1(:), elem2(:)
+            logical, intent(in) :: reverse
+            logical :: comp_result
+
+            if (reverse) then
+                comp_result = not(elem1(:) .bitstrgt. elem2(:))
+            else
+                comp_result = elem1(:) .bitstrge. elem2(:)
+            end if
+        end function qsort_comp_ge
+
+        pure function qsort_comp_gt(elem1, elem2, reverse) result(comp_result)
+    
+            use bit_utils, only: operator(.bitstrge.), operator(.bitstrgt.)
+
+            integer(int_32), intent(in) :: elem1(:), elem2(:)
+            logical, intent(in) :: reverse
+            logical :: comp_result
+
+            if (reverse) then
+                comp_result = not(elem1(:) .bitstrge. elem2(:))
+            else
+                comp_result = elem1(:) .bitstrgt. elem2(:)
+            end if
+        end function qsort_comp_gt
+    
     end subroutine qsort_int_32_list
 
-    pure subroutine qsort_int_64_list(list, head, nsort)
+    pure subroutine qsort_int_64_list(list, reverse, head, nsort)
 
         ! Sort a 2D array of int_64 integers.
 
@@ -201,10 +230,10 @@ contains
         !        list(:nsort,j), so list is sorted according to list(:nsort,:)).
         !        Default: use entire slice.
 
-        use bit_utils, only: operator(.bitstrge.), operator(.bitstrgt.)
 
         integer(int_64), intent(inout) :: list(:,:)
         integer, intent(in), optional :: head, nsort
+        logical, intent(in) :: reverse
 
         ! Threshold.  When a sublist gets to this length, switch to using
         ! insertion sort to sort the sublist.
@@ -239,7 +268,7 @@ contains
                 do j = lo + 1, hi
                     tmp = list(:,j)
                     do i = j - 1, 1, -1
-                        if (tmp(1:ns) .bitstrge. list(1:ns,i)) exit
+                        if (qsort_comp_ge(tmp(1:ns), list(1:ns,i), reverse)) exit
                         list(:,i+1) = list(:,i)
                     end do
                     list(:,i+1) = tmp
@@ -259,13 +288,13 @@ contains
                 ! degrades if the pivot is always the smallest element.
                 pivot = (lo + hi)/2
                 call swap_sublist(list(:,pivot), list(:,lo + 1))
-                if (list(1:ns,lo) .bitstrgt. list(1:ns,hi)) then
+                if (qsort_comp_gt(list(1:ns,lo), list(1:ns,hi), reverse)) then
                     call swap_sublist(list(:,lo), list(:,hi))
                 end if
-                if (list(1:ns,lo+1) .bitstrgt. list(1:ns,hi)) then
+                if (qsort_comp_gt(list(1:ns,lo+1), list(1:ns,hi), reverse)) then
                     call swap_sublist(list(:,lo+1), list(:,hi))
                 end if
-                if (list(1:ns,lo) .bitstrgt. list(1:ns,lo+1)) then
+                if (qsort_comp_gt(list(1:ns,lo), list(1:ns,lo+1), reverse)) then
                     call swap_sublist(list(:,lo), list(:,lo+1))
                 end if
 
@@ -275,13 +304,13 @@ contains
                 do while (.true.)
                     ! Scan down list to find element > a.
                     i = i + 1
-                    do while (tmp(1:ns) .bitstrgt. list(1:ns,i))
+                    do while (qsort_comp_gt(tmp(1:ns), list(1:ns,i), reverse))
                         i = i + 1
                     end do
 
                     ! Scan down list to find element < a.
                     j = j - 1
-                    do while (list(1:ns,j) .bitstrgt. tmp(1:ns))
+                    do while (qsort_comp_gt(list(1:ns,j), tmp(1:ns), reverse))
                         j = j - 1
                     end do
 
@@ -333,10 +362,40 @@ contains
 
         end subroutine swap_sublist
 
+        pure function qsort_comp_ge(elem1, elem2, reverse) result(comp_result)
+    
+            use bit_utils, only: operator(.bitstrge.), operator(.bitstrgt.)
+
+            integer(int_64), intent(in) :: elem1(:), elem2(:)
+            logical, intent(in) :: reverse
+            logical :: comp_result
+
+            if (reverse) then
+                comp_result = not(elem1(:) .bitstrgt. elem2(:))
+            else
+                comp_result = elem1(:) .bitstrge. elem2(:)
+            end if
+        end function qsort_comp_ge
+
+        pure function qsort_comp_gt(elem1, elem2, reverse) result(comp_result)
+    
+            use bit_utils, only: operator(.bitstrge.), operator(.bitstrgt.)
+
+            integer(int_64), intent(in) :: elem1(:), elem2(:)
+            logical, intent(in) :: reverse
+            logical :: comp_result
+
+            if (reverse) then
+                comp_result = not(elem1(:) .bitstrge. elem2(:))
+            else
+                comp_result = elem1(:) .bitstrgt. elem2(:)
+            end if
+        end function qsort_comp_gt
+
     end subroutine qsort_int_64_list
 !--- In-place quicksort.  Uses the sample code in Numerical Recipies as a base.  ---
 
-    pure subroutine qsort_integer(list, head, nsort)
+    pure subroutine qsort_integer(list, reverse, head, nsort)
 
         ! Sort a 1D array of integer integers.
 
@@ -352,10 +411,9 @@ contains
         !        list(:nsort,j), so list is sorted according to list(:nsort,:)).
         !        Default: use entire slice.
 
-        use bit_utils, only: operator(.bitstrge.), operator(.bitstrgt.)
-
         integer, intent(inout) :: list(:)
         integer, intent(in), optional :: head, nsort
+        logical, intent(in) :: reverse
 
         ! Threshold.  When a sublist gets to this length, switch to using
         ! insertion sort to sort the sublist.
@@ -385,7 +443,7 @@ contains
                 do j = lo + 1, hi
                     tmp = list(j)
                     do i = j - 1, 1, -1
-                        if (tmp .ge. list(i)) exit
+                        if (qsort_comp_ge(tmp, list(i), reverse)) exit
                         list(i+1) = list(i)
                     end do
                     list(i+1) = tmp
@@ -405,13 +463,13 @@ contains
                 ! degrades if the pivot is always the smallest element.
                 pivot = (lo + hi)/2
                 call swap_sublist(list(pivot), list(lo + 1))
-                if (list(lo) .gt. list(hi)) then
+                if (qsort_comp_gt(list(lo), list(hi), reverse)) then
                     call swap_sublist(list(lo), list(hi))
                 end if
-                if (list(lo+1) .gt. list(hi)) then
+                if (qsort_comp_gt(list(lo+1), list(hi), reverse)) then
                     call swap_sublist(list(lo+1), list(hi))
                 end if
-                if (list(lo) .gt. list(lo+1)) then
+                if (qsort_comp_gt(list(lo), list(lo+1), reverse)) then
                     call swap_sublist(list(lo), list(lo+1))
                 end if
 
@@ -421,13 +479,13 @@ contains
                 do while (.true.)
                     ! Scan down list to find element > a.
                     i = i + 1
-                    do while (tmp .gt. list(i))
+                    do while (qsort_comp_gt(tmp, list(i), reverse))
                         i = i + 1
                     end do
 
                     ! Scan down list to find element < a.
                     j = j - 1
-                    do while (list(j) .gt. tmp)
+                    do while (qsort_comp_gt(list(j), tmp,reverse))
                         j = j - 1
                     end do
 
@@ -479,9 +537,35 @@ contains
 
         end subroutine swap_sublist
 
+        pure function qsort_comp_ge(elem1, elem2, reverse) result(comp_result)
+    
+
+            integer, intent(in) :: elem1, elem2
+            logical, intent(in) :: reverse
+            logical :: comp_result
+
+            if (reverse) then
+                comp_result = not(elem1 .gt. elem2)
+            else
+                comp_result = elem1 .ge. elem2
+            end if
+        end function qsort_comp_ge
+
+        pure function qsort_comp_gt(elem1, elem2, reverse) result(comp_result)
+    
+            integer, intent(in) :: elem1, elem2
+            logical, intent(in) :: reverse
+            logical :: comp_result
+
+            if (reverse) then
+                comp_result = not(elem1 .ge. elem2)
+            else
+                comp_result = elem1 .gt. elem2
+            end if
+        end function qsort_comp_gt
     end subroutine qsort_integer
 
-    pure subroutine qsort_psip_info(nstates, states, pops, dat)
+    pure subroutine qsort_psip_info(nstates, states, pops, dat, reverse)
 
         ! Sort a set of psip information (states, populations and data) in order according
         ! to the state labels.
@@ -507,6 +591,7 @@ contains
         integer(i0), intent(inout) :: states(:,:)
         integer(int_p), intent(inout) :: pops(:,:)
         real(p), intent(inout) :: dat(:,:)
+        logical, intent(in) :: reverse
 
         ! Threshold.  When a substates gets to this length, switch to using
         ! insertion sort to sort the substates.
@@ -653,163 +738,37 @@ contains
 
         end subroutine swap_states
 
-    end subroutine qsort_psip_info
+        pure function qsort_comp_ge(elem1, elem2, reverse) result(comp_result)
+    
+            use bit_utils, only: operator(.bitstrge.), operator(.bitstrgt.)
 
-! [review]: Brian - might be good for compactness and ease of maintenance to have a flag in the main qsort interface like reverse=.true./.false.
-! [review]: Brian - and replace the .not.'s here with integer operations: abs(x - reverse) is x when reverse=.false.
-! [review]: Brian - and .not. x when reverse = .true.
-    pure subroutine qsort_i0_list_rev(list, head, nsort)
+            integer(i0), intent(in) :: elem1(:), elem2(:)
+            logical, intent(in) :: reverse
+            logical :: comp_result
 
-        ! Sort a 2D array of int_64 integers.
-
-        ! list(:,i) is regarded as greater than list(:,j) if the first
-        ! non-identical element between list(:,i) and list(:,j) is lower in
-        ! list(:,i).
-
-        ! In/Out:
-        !    list: 2D array of int_64 integers.  Sorted on output.
-        ! In:
-        !    head (optional): sort list up to and including list(:,:head) and
-        !        leave the rest of the array untouched.  Default: sort the
-        !        entire array.
-        !    nsort (optional): sort list only using the first nsort elements in
-        !        each 1D slice to compare entries (ie compare list(:nsort,i) and
-        !        list(:nsort,j), so list is sorted according to list(:nsort,:)).
-        !        Default: use entire slice.
-
-        use bit_utils, only: operator(.bitstrge.), operator(.bitstrgt.)
-
-        integer(i0), intent(inout) :: list(:,:)
-        integer, intent(in), optional :: head, nsort
-
-        ! Threshold.  When a sublist gets to this length, switch to using
-        ! insertion sort to sort the sublist.
-        integer, parameter :: switch_threshold = 7
-
-        ! sort needs auxiliary storage of length 2*log_2(n).
-        integer, parameter :: stack_max = 50
-
-        integer :: pivot, lo, hi, i, j, ns
-        integer(i0) :: tmp(ubound(list,dim=1))
-
-        ! Stack.  This is the auxilliary memory required by quicksort.
-        integer :: stack(2,stack_max), nstack
-
-        if (present(nsort)) then
-            ns = nsort
-        else
-            ns = ubound(list, dim=1)
-        end if
-
-        nstack = 0
-        lo = 1
-        if (present(head)) then
-            hi = head
-        else
-            hi = ubound(list, dim=2)
-        end if
-        do
-            ! If the section/partition we are looking at is smaller than
-            ! switch_threshold then perform an insertion sort.
-            if (hi - lo < switch_threshold) then
-                do j = lo + 1, hi
-                    tmp = list(:,j)
-                    do i = j - 1, 1, -1
-                        if (.not.(tmp(1:ns) .bitstrgt. list(1:ns,i))) exit
-                        list(:,i+1) = list(:,i)
-                    end do
-                    list(:,i+1) = tmp
-                end do
-
-                if (nstack == 0) exit
-                hi = stack(2,nstack)
-                lo = stack(1,nstack)
-                nstack = nstack - 1
-
+            if (reverse) then
+                comp_result = not(elem1(:) .bitstrgt. elem2(:))
             else
-                ! Otherwise start partitioning with quicksort.
-
-                ! Pick the pivot element to be the median of list(:,lo), list(:,hi)
-                ! and list(:,(lo+hi)/2).
-                ! This largely overcomes a major problem with quicksort, where it
-                ! degrades if the pivot is always the smallest element.
-                pivot = (lo + hi)/2
-                call swap_sublist(list(:,pivot), list(:,lo + 1))
-                if (.not.(list(1:ns,lo) .bitstrge. list(1:ns,hi))) then
-                    call swap_sublist(list(:,lo), list(:,hi))
-                end if
-                if (.not.(list(1:ns,lo+1) .bitstrge. list(1:ns,hi))) then
-                    call swap_sublist(list(:,lo+1), list(:,hi))
-                end if
-                if (.not.(list(1:ns,lo) .bitstrge. list(1:ns,lo+1))) then
-                    call swap_sublist(list(:,lo), list(:,lo+1))
-                end if
-
-                i = lo + 1
-                j = hi
-                tmp = list(:,lo + 1) ! a is the pivot value
-                do while (.true.)
-                    ! Scan down list to find element > a.
-                    i = i + 1
-                    do while (.not.(tmp(1:ns) .bitstrge. list(1:ns,i)))
-                        i = i + 1
-                    end do
-
-                    ! Scan down list to find element < a.
-                    j = j - 1
-                    do while (.not.(list(1:ns,j) .bitstrge. tmp(1:ns)))
-                        j = j - 1
-                    end do
-
-                    ! When the pointers crossed, partitioning is complete.
-                    if (j < i) exit
-
-                    ! Swap the elements, so that all elements < a end up
-                    ! in lower indexed variables.
-                    call swap_sublist(list(:,i), list(:,j))
-                end do
-
-                ! Insert partitioning element
-                list(:,lo + 1) = list(:,j)
-                list(:,j) = tmp
-
-                ! Push the larger of the partitioned sections onto the stack
-                ! of sections to look at later.
-                ! --> need fewest stack elements.
-                nstack = nstack + 1
-
-                ! With a stack_max of 50, we can sort arrays of length
-                ! 1125899906842624.  It is safe to say this will never be
-                ! exceeded, and so this test can be skipped.
-!                if (nstack > stack_max) call stop_all('qsort_int_64_list', "parameter stack_max too small")
-
-                if (hi - i + 1 >= j - lo) then
-                    stack(2,nstack) = hi
-                    stack(1,nstack) = i
-                    hi = j - 1
-                else
-                    stack(2,nstack) = j - 1
-                    stack(1,nstack) = lo
-                    lo = i
-                end if
-
+                comp_result = elem1(:) .bitstrge. elem2(:)
             end if
-        end do
+        end function qsort_comp_ge
 
-    contains
+        pure function qsort_comp_gt(elem1, elem2, reverse) result(comp_result)
+    
+            use bit_utils, only: operator(.bitstrge.), operator(.bitstrgt.)
 
-        pure subroutine swap_sublist(s1,s2)
+            integer(i0), intent(in) :: elem1(:), elem2(:)
+            logical, intent(in) :: reverse
+            logical :: comp_result
 
-            integer(i0), intent(inout) :: s1(:), s2(:)
-            integer(int_64) :: tmp(ubound(s1,dim=1))
+            if (reverse) then
+                comp_result = not(elem1(:) .bitstrge. elem2(:))
+            else
+                comp_result = elem1(:) .bitstrgt. elem2(:)
+            end if
+        end function qsort_comp_gt
 
-            tmp = s1
-            s1 = s2
-            s2 = tmp
-
-        end subroutine swap_sublist
-
-    end subroutine qsort_i0_list_rev
+    end subroutine qsort_psip_info
 
 ! [review] - Brian: ditto above
     pure subroutine qsort_psip_info_trot(nstates, states, pops, dat)
@@ -1069,5 +1028,6 @@ contains
         end do
 
     end subroutine insert_sort_real_p
+    
 
 end module sort

@@ -1240,7 +1240,7 @@ contains
         use basis_types, only: basis_t
         use spawn_data, only: compress_threaded_spawn_t, comm_spawn_t, compress_determ_repeats, annihilate_spawn_t, &
                         annihilate_spawn_t_initiator, spawn_t
-        use sort, only: qsort_i0_list_rev
+        use sort, only: qsort
 
         type(spawn_t), intent(inout) :: spawn
         logical, intent(in) :: tinitiator
@@ -1264,7 +1264,7 @@ contains
         end if
         if (spawn%head(thread_id,0) > 0) then
             ! Have spawned walkers on this processor.
-            call qsort_i0_list_rev(spawn%sdata, spawn%head(thread_id,0), spawn%bit_str_len)
+            call qsort(spawn%sdata, .true., spawn%head(thread_id,0), spawn%bit_str_len)
             !call qsort(spawn%sdata, spawn%head(thread_id,0), spawn%bit_str_len)
             ! Annihilate within spawned walkers list.
             ! Compress the remaining spawned walkers list.

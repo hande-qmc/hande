@@ -316,7 +316,7 @@ contains
             determ%indices = 0
         end if
 
-        call qsort(dets_this_proc, determ%sizes(iproc)) 
+        call qsort(dets_this_proc, .false.,determ%sizes(iproc)) 
 
         ! If we're reusing the deterministic space then we don't need to
         ! allocate the dets array. It's already allocated to the correct size.
