@@ -441,7 +441,7 @@ contains
 
     end subroutine check_dmqmc_opts
 
-    subroutine check_uccmc_opts(sys, uccmc_in, qmc_in)
+    subroutine check_uccmc_opts(sys, ccmc_in, uccmc_in, qmc_in)
 
         ! Check the UCCMC input options
 
@@ -451,28 +451,29 @@ contains
         !   qmc_in: QMC options
 
 
-        use qmc_data, only: ccmc_in_t, qmc_in_t
+        use qmc_data, only: ccmc_in_t, uccmc_in_t, qmc_in_t
         use qmc_data, only: excit_gen_no_renorm, excit_gen_renorm
         use system, only: sys_t, read_in
         use errors, only: stop_all
 
         type(sys_t), intent(in) :: sys
-        type(ccmc_in_t), intent(in) :: uccmc_in
+        type(ccmc_in_t), intent(in) :: ccmc_in
+        type(uccmc_in_t), intent(in) :: uccmc_in
         type(qmc_in_t), intent(in) :: qmc_in
 
         character(*), parameter :: this = 'check_uccmc_opts'
 
-        if (uccmc_in%move_freq >= 32) then
+        if (ccmc_in%move_freq >= 32) then
             call stop_all(this, "move_frequency must be less than 32")
-        else if (uccmc_in%move_freq < 0) then
+        else if (ccmc_in%move_freq < 0) then
             call stop_all(this, "move_frequency must be non-negative")
         end if
 
-        if (uccmc_in%cluster_multispawn_threshold <= 0) then
+        if (ccmc_in%cluster_multispawn_threshold <= 0) then
             call stop_all(this, "cluster_multispawn_threshold must be positive")
         end if
 
-        if (uccmc_in%density_matrices) then
+        if (ccmc_in%density_matrices) then
             call stop_all(this, "UCCMC density matrices not implemented.")
         end if
 
@@ -481,7 +482,7 @@ contains
         if (.not. (uccmc_in%trot) .and. sys%basis%info_string_len /= 0) call stop_all(this, &
             'Additional space allocated in bit strings for no reason. Something has gone wrong.')
 
-        if (uccmc_in%linked) call stop_all(this, &
+        if (ccmc_in%linked) call stop_all(this, &
             'Linked UCCMC has not yet been implemented.')
 
     end subroutine check_uccmc_opts

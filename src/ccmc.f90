@@ -1079,7 +1079,7 @@ contains
 
     subroutine do_stochastic_ccmc_propagation(rng, sys, qs, ccmc_in, &
                                             logging_info, ms_stats, bloom_stats, &
-                                            contrib, nattempts_spawn_tot, ndeath, ps_stat)
+                                            contrib, nattempts_spawn_tot, ndeath, ps_stat, uccmc_in)
 
         ! Perform stochastic propogation of a cluster in an appropriate manner
         ! for the given inputs. For multireference systems, it allows death for
@@ -1110,7 +1110,7 @@ contains
 
         use dSFMT_interface, only: dSFMT_t
         use system, only: sys_t
-        use qmc_data, only: qmc_state_t, ccmc_in_t
+        use qmc_data, only: qmc_state_t, ccmc_in_t, uccmc_in_t
         use ccmc_data, only: multispawn_stats_t, ms_stats_update, wfn_contrib_t
         use bloom_handler, only: bloom_stats_t, accumulate_bloom_stats
         use logging, only: logging_t
@@ -1122,6 +1122,7 @@ contains
         type(dSFMT_T), intent(inout) :: rng
         type(qmc_state_t), intent(inout) :: qs
         type(ccmc_in_t), intent(in) :: ccmc_in
+        type(uccmc_in_t), intent(in), optional :: uccmc_in
         type(wfn_contrib_t), intent(inout) :: contrib
         type(bloom_stats_t), intent(inout) :: bloom_stats
         type(logging_t), intent(in) :: logging_info
@@ -1150,23 +1151,37 @@ contains
             ! Checks whether the current contribution is within the considered space.
             if (multiref_check_ex_level(sys, contrib, qs, 2)) then
                     attempt_death = multiref_check_ex_level(sys, contrib, qs, 0)
-                    call do_spawning_death(rng, sys, qs, ccmc_in, &
+                    if (present(uccmc_in)) then
+                        call do_spawning_death(rng, sys, qs, ccmc_in, &
+                                         logging_info, bloom_stats, contrib, &
+                                         ndeath, ps_stat, nspawnings_cluster, &
+                                         attempt_death, uccmc_in)
+                    else
+                        call do_spawning_death(rng, sys, qs, ccmc_in, &
                                          logging_info, bloom_stats, contrib, &
                                          ndeath, ps_stat, nspawnings_cluster, &
                                          attempt_death)
+                    end if
             end if
         else
             attempt_death = (contrib%cluster%excitation_level <= qs%ref%ex_level) 
 
-            call do_spawning_death(rng, sys, qs, ccmc_in, &
-                             logging_info, bloom_stats, contrib, &
-                             ndeath, ps_stat, nspawnings_cluster, attempt_death)
+            if (present(uccmc_in)) then
+                call do_spawning_death(rng, sys, qs, ccmc_in, &
+                                 logging_info, bloom_stats, contrib, &
+                                 ndeath, ps_stat, nspawnings_cluster, attempt_death, uccmc_in)
+            else
+                call do_spawning_death(rng, sys, qs, ccmc_in, &
+                                 logging_info, bloom_stats, contrib, &
+                                 ndeath, ps_stat, nspawnings_cluster, attempt_death)
+            end if
+
         end if
 
     end subroutine do_stochastic_ccmc_propagation  
 
     subroutine do_spawning_death(rng, sys, qs, ccmc_in, logging_info, bloom_stats, contrib, &
-                                 ndeath, ps_stat, nspawnings_cluster, attempt_death)
+                                 ndeath, ps_stat, nspawnings_cluster, attempt_death, uccmc_in)
 
         ! For stochastically selected clusters this
         ! attempts spawning and death, adding any created particles to the
@@ -1179,6 +1194,7 @@ contains
         ! In:
         !   sys: information on system under consideration.
         !   ccmc_in: options relating to ccmc passed in to calculation.
+        !   uccmc_in: options relating to uccmc passed in to calculation.
         !   logging_info: logging_t object with info about current logging
         !        when debug is true. 
         !   attempt_death = logical variable that encodes whether the selected 
@@ -1199,7 +1215,7 @@ contains
 
         use dSFMT_interface, only: dSFMT_t
         use system, only: sys_t
-        use qmc_data, only: qmc_state_t, ccmc_in_t
+        use qmc_data, only: qmc_state_t, ccmc_in_t, uccmc_in_t
         use ccmc_data, only: ms_stats_update, wfn_contrib_t
 
         use ccmc_death_spawning, only: stochastic_ccmc_death
@@ -1213,6 +1229,7 @@ contains
         type(dSFMT_T), intent(inout) :: rng
         type(qmc_state_t), intent(inout) :: qs
         type(ccmc_in_t), intent(in) :: ccmc_in
+        type(uccmc_in_t), intent(in), optional :: uccmc_in
         type(wfn_contrib_t), intent(inout) :: contrib
         type(bloom_stats_t), intent(inout) :: bloom_stats
         type(logging_t), intent(in) :: logging_info
@@ -1225,8 +1242,13 @@ contains
         integer :: i
 
         do i = 1, nspawnings_cluster
-            call perform_ccmc_spawning_attempt(rng, sys, qs, ccmc_in, logging_info, bloom_stats, contrib, &
+            if (present(uccmc_in)) then
+                call perform_ccmc_spawning_attempt(rng, sys, qs, ccmc_in, logging_info, bloom_stats, contrib, &
+                                               nspawnings_cluster, ps_stat, uccmc_in)
+            else
+                call perform_ccmc_spawning_attempt(rng, sys, qs, ccmc_in, logging_info, bloom_stats, contrib, &
                                                nspawnings_cluster, ps_stat)
+            end if
         end do
         
         ! Does the cluster collapsed onto D0 produce
@@ -1246,7 +1268,7 @@ contains
     end subroutine do_spawning_death
  
     subroutine do_nc_ccmc_propagation(rng, sys, qs, ccmc_in, logging_info, bloom_stats, &
-                                            contrib, nattempts_spawn_tot, ps_stat)
+                                            contrib, nattempts_spawn_tot, ps_stat, uccmc_in)
 
         ! Perform stochastic propogation of a cluster selected deterministically
         ! in full non-composite selection. This performs all spawning attempts
@@ -1265,6 +1287,7 @@ contains
         ! In:
         !   sys: information on system under consideration.
         !   ccmc_in: options relating to ccmc passed in to calculation.
+        !   uccmc_in: options relating to uccmc passed in to calculation.
         !   logging_info: logging_t object with info about current logging
         !        when debug is true.
         !
@@ -1284,7 +1307,7 @@ contains
 
         use dSFMT_interface, only: dSFMT_t
         use system, only: sys_t
-        use qmc_data, only: qmc_state_t, ccmc_in_t
+        use qmc_data, only: qmc_state_t, ccmc_in_t, uccmc_in_t
         use ccmc_data, only: multispawn_stats_t, ms_stats_update, wfn_contrib_t
         use qmc_common, only: decide_nattempts
 
@@ -1298,6 +1321,7 @@ contains
         type(dSFMT_T), intent(inout) :: rng
         type(qmc_state_t), intent(inout) :: qs
         type(ccmc_in_t), intent(in) :: ccmc_in
+        type(uccmc_in_t), intent(in), optional :: uccmc_in
         type(wfn_contrib_t), intent(inout) :: contrib
         type(bloom_stats_t), intent(inout) :: bloom_stats
         type(logging_t), intent(in) :: logging_info
@@ -1325,13 +1349,17 @@ contains
         contrib%cluster%amplitude = contrib%cluster%amplitude / abs(contrib%cluster%amplitude)
         
         do i = 1, nspawnings_cluster
-            call perform_ccmc_spawning_attempt(rng, sys, qs, ccmc_in, logging_info, bloom_stats, contrib, 1, ps_stat)
+            if (present(uccmc_in)) then
+                call perform_ccmc_spawning_attempt(rng, sys, qs, ccmc_in, logging_info, bloom_stats, contrib, 1, ps_stat, uccmc_in)
+            else
+                call perform_ccmc_spawning_attempt(rng, sys, qs, ccmc_in, logging_info, bloom_stats, contrib, 1, ps_stat)
+            end if
         end do
 
     end subroutine do_nc_ccmc_propagation
 
     subroutine perform_ccmc_spawning_attempt(rng, sys, qs, ccmc_in, logging_info, bloom_stats, contrib, nspawnings_total, &
-                                        ps_stat)
+                                        ps_stat, uccmc_in)
 
         ! Performs a single ccmc spawning attempt, as appropriate for a
         ! given setting combination of linked, complex or none of the above.
@@ -1345,6 +1373,7 @@ contains
         !   logging_info: input settings related to logging.
         !   nspawnings_total: number of spawning attempts made
         !       from the same cluster if using multispawn.
+        !   uccmc_in: input settings related to uccmc.
         !
         ! In/Out:
         !   rng: random number generator.
@@ -1361,7 +1390,7 @@ contains
         !       excit_gen_doubles: counter on number of double excitations attempted.
         use dSFMT_interface, only: dSFMT_t
         use system, only: sys_t
-        use qmc_data, only: qmc_state_t, ccmc_in_t
+        use qmc_data, only: qmc_state_t, ccmc_in_t, uccmc_in_t
         use ccmc_data, only: wfn_contrib_t
 
         use excitations, only: excit_t
@@ -1377,6 +1406,7 @@ contains
         type(dSFMT_T), intent(inout) :: rng
         type(qmc_state_t), intent(inout) :: qs
         type(ccmc_in_t), intent(in) :: ccmc_in
+        type(uccmc_in_t), intent(in), optional :: uccmc_in
         type(wfn_contrib_t), intent(inout) :: contrib
         type(excit_t) :: connection
         type(bloom_stats_t), intent(inout) :: bloom_stats
@@ -1386,6 +1416,13 @@ contains
         type(p_single_double_coll_t), intent(inout) :: ps_stat
         integer(int_p) :: nspawned, nspawned_im
         integer(i0) :: fexcit(sys%basis%tot_string_len)
+        logical :: trot
+
+        if (present(uccmc_in)) then
+            trot = uccmc_in%trot
+        else
+            trot = .false.
+        end if
  
         if (contrib%cluster%excitation_level == huge(0)) then
             ! When sampling e^-T H e^T, the cluster operators in e^-T
@@ -1409,10 +1446,10 @@ contains
 
         if (nspawned /= 0_int_p) call create_spawned_particle_ccmc(sys, qs%ref, contrib%cdet, connection, &
                                             nspawned, 1, contrib%cluster%excitation_level, &
-                                            ccmc_in%even_selection, fexcit, qs%spawn_store%spawn, bloom_stats, ccmc_in%trot)
+                                            ccmc_in%even_selection, fexcit, qs%spawn_store%spawn, bloom_stats, trot)
         if (nspawned_im /= 0_int_p) call create_spawned_particle_ccmc(sys, qs%ref, contrib%cdet, connection,&
                                             nspawned_im, 2, contrib%cluster%excitation_level, &
-                                            ccmc_in%even_selection, fexcit, qs%spawn_store%spawn, bloom_stats, ccmc_in%trot)
+                                            ccmc_in%even_selection, fexcit, qs%spawn_store%spawn, bloom_stats, trot)
 
     end subroutine perform_ccmc_spawning_attempt
 

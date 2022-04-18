@@ -343,14 +343,6 @@ type ccmc_in_t
     logical :: even_selection = .false.
     ! Whether to use a secondary reference.
     logical :: multiref = .false.
-    ! Polynomial truncation in UCCMC
-    integer :: pow_trunc = 12
-    ! Compute variational UCC energy?
-    logical :: variational_energy = .false.
-    ! Compute average UCC wavefunction?
-    logical :: average_wfn = .false.
-    ! Trotter approximation?
-    logical :: trot = .false.
     ! Number of additional references to use.
     integer :: n_secondary_ref = 0
     ! The secondary references.
@@ -365,29 +357,19 @@ type ccmc_in_t
     integer :: mr_n_frozen = 0
     ! Whether to read in a secondary reference file.
     logical :: mr_read_in = .false.
-    ! UCC ratio discard threshold
-    real(p) :: threshold = -1.0_p
 end type ccmc_in_t
 
 type uccmc_in_t
-    ! How frequently (in log_2) an excitor can be moved to a different processor.
-    ! See comments in spawn_t and assign_particle_processor.
-    integer :: move_freq = 5
-    ! Value of cluster%amplitude/cluster%pselect above which spawns are split up
-    ! The default value corresponds to off.
-    real(p) :: cluster_multispawn_threshold = huge(1.0_p)
-    ! If true, vary shift to control reference, not total, population
-    logical :: vary_shift_reference = .false.
-    ! Calculate the (unrelaxed) density matrices?
-    logical :: density_matrices = .false.
-    ! Filename to write density matrix to
-    character(255) :: density_matrix_file = 'RDM'
-    logical :: linked = .false.
+    ! Polynomial truncation in UCCMC
     integer :: pow_trunc = 12
+    ! Compute variational UCC energy?
     logical :: variational_energy = .false.
+    ! Compute average UCC wavefunction?
     logical :: average_wfn = .false.
+    ! Trotter approximation?
     logical :: trot = .false.
-    logical :: full_nc = .false.
+    ! UCC ratio discard threshold
+    real(p) :: threshold = -1.0_p
 end type uccmc_in_t
 
 type restart_in_t
@@ -1196,10 +1178,6 @@ contains
         call json_write_key(js, 'density_matrices', ccmc%density_matrices)
         call json_write_key(js, 'density_matrix_file', ccmc%density_matrix_file)
         call json_write_key(js, 'even_selection', ccmc%even_selection)
-        call json_write_key(js, 'pow_trunc', ccmc%pow_trunc)
-        call json_write_key(js, 'variational_energy', ccmc%variational_energy)
-        call json_write_key(js, 'average_wfn', ccmc%average_wfn)
-        call json_write_key(js, 'trot', ccmc%trot)
         if (ccmc%multiref) then
             
             call json_write_key(js, 'mr_read_in', ccmc%mr_read_in)            
@@ -1239,16 +1217,11 @@ contains
         logical, intent(in), optional :: terminal
 
         call json_object_init(js, 'uccmc')
-        call json_write_key(js, 'move_freq', uccmc%move_freq)
-        call json_write_key(js, 'cluster_multispawn_threshold', uccmc%cluster_multispawn_threshold)
-        call json_write_key(js, 'linked', uccmc%linked)
-        call json_write_key(js, 'vary_shift_reference', uccmc%vary_shift_reference)
-        call json_write_key(js, 'density_matrices', uccmc%density_matrices)
-        call json_write_key(js, 'density_matrix_file', uccmc%density_matrix_file)
         call json_write_key(js, 'pow_trunc', uccmc%pow_trunc)
         call json_write_key(js, 'variational_energy', uccmc%variational_energy)
         call json_write_key(js, 'average_wfn', uccmc%average_wfn)
-        call json_write_key(js, 'trot', uccmc%trot,terminal=.true.)
+        call json_write_key(js, 'trotterized', uccmc%trot)
+        call json_write_key(js, 'threshold', uccmc%threshold,terminal=.true.)
         call json_object_end(js, terminal)
 
     end subroutine uccmc_in_t_json

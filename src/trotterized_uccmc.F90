@@ -31,7 +31,7 @@ implicit none
 
 contains
 
-    subroutine do_trot_uccmc(sys, qmc_in, uccmc_in, restart_in, load_bal_in, reference_in, &
+    subroutine do_trot_uccmc(sys, qmc_in, ccmc_in, uccmc_in, restart_in, load_bal_in, reference_in, &
                         logging_in, io_unit, qs, qmc_state_restart)
 
         ! This subroutine is derived from do_ccmc in ccmc.f90. 
@@ -46,6 +46,7 @@ contains
         ! In:
         !    sys: system being studied.
         !    qmc_in: input options relating to QMC methods.
+        !    ccmc_in: input options relating to CCMC.
         !    uccmc_in: input options relating to UCCMC.
         !    restart_in: input options for HDF5 restart files.
         !    load_bal_in: input options for load balancing.
@@ -93,10 +94,10 @@ contains
         use spawn_data, only: calc_events_spawn_t, write_memcheck_report, spawn_t, alloc_spawn_t
         use replica_rdm, only: update_rdm, calc_rdm_energy, write_final_rdm
 
-        use qmc_data, only: qmc_in_t, ccmc_in_t, restart_in_t
+        use qmc_data, only: qmc_in_t, ccmc_in_t, uccmc_in_t, restart_in_t
 
         use qmc_data, only: load_bal_in_t, qmc_state_t, annihilation_flags_t, estimators_t, particle_t
-        use qmc_data, only: qmc_in_t_json, ccmc_in_t_json, restart_in_t_json
+        use qmc_data, only: qmc_in_t_json, ccmc_in_t_json, uccmc_in_t_json, restart_in_t_json
         use qmc_data, only: excit_gen_power_pitzer_orderN, excit_gen_heat_bath
         use reference_determinant, only: reference_t, reference_t_json
         use check_input, only: check_qmc_opts, check_uccmc_opts
@@ -114,7 +115,8 @@ contains
                                var_energy_uccmc
         type(sys_t), intent(in) :: sys
         type(qmc_in_t), intent(in) :: qmc_in
-        type(ccmc_in_t), intent(in) :: uccmc_in
+        type(ccmc_in_t), intent(in) :: ccmc_in
+        type(uccmc_in_t), intent(in) :: uccmc_in
         type(restart_in_t), intent(in) :: restart_in
         type(load_bal_in_t), intent(in) :: load_bal_in
         type(reference_t), intent(in) :: reference_in
@@ -202,7 +204,7 @@ contains
             else
                 call check_qmc_opts(qmc_in, sys, .not.present(qmc_state_restart), restarting)
             end if
-            call check_uccmc_opts(sys, uccmc_in, qmc_in)
+            call check_uccmc_opts(sys, ccmc_in, uccmc_in, qmc_in)
         end if
         ! Initialise data.
         call init_qmc(sys, qmc_in, restart_in, load_bal_in, reference_in, io_unit, annihilation_flags, qs, &
@@ -236,20 +238,20 @@ contains
             nstates_sq = 1
         end if
         
-        if (uccmc_in%multiref) then
+        if (ccmc_in%multiref) then
             ! Initialise multireference CCMC specific data.
             qs%multiref = .true.
-            qs%mr_acceptance_search = uccmc_in%mr_acceptance_search
-            qs%n_secondary_ref = uccmc_in%n_secondary_ref
-            if(uccmc_in%mr_read_in) then
-                qs%mr_read_in = uccmc_in%mr_read_in
-                qs%mr_secref_file = uccmc_in%mr_secref_file
-                qs%mr_n_frozen = uccmc_in%mr_n_frozen
-                qs%mr_excit_lvl = uccmc_in%mr_excit_lvl
+            qs%mr_acceptance_search = ccmc_in%mr_acceptance_search
+            qs%n_secondary_ref = ccmc_in%n_secondary_ref
+            if(ccmc_in%mr_read_in) then
+                qs%mr_read_in = ccmc_in%mr_read_in
+                qs%mr_secref_file = ccmc_in%mr_secref_file
+                qs%mr_n_frozen = ccmc_in%mr_n_frozen
+                qs%mr_excit_lvl = ccmc_in%mr_excit_lvl
             endif
 
             allocate (qs%secondary_refs(qs%n_secondary_ref))
-            call init_secondary_references(sys, uccmc_in%secondary_refs, io_unit, qs)
+            call init_secondary_references(sys, ccmc_in%secondary_refs, io_unit, qs)
         else 
             qs%ref%max_ex_level = qs%ref%ex_level
         end if
@@ -267,7 +269,8 @@ contains
             qmc_in_loc%shift_damping = qs%shift_damping
             qmc_in_loc%pattempt_parallel = qs%excit_gen_data%pattempt_parallel
             call qmc_in_t_json(js, qmc_in_loc)
-            call ccmc_in_t_json(js, uccmc_in)
+            call ccmc_in_t_json(js, ccmc_in)
+            call uccmc_in_t_json(js, uccmc_in)
             call restart_in_t_json(js, restart_in, uuid_restart)
             call reference_t_json(js, qs%ref, sys)
             call logging_in_t_json(js, logging_in)
@@ -292,7 +295,7 @@ contains
         allocate(ps_stats(0:nthreads-1), stat=ierr)
         call check_allocate('ps_stats', nthreads, ierr)
 
-        call init_contrib(sys, uccmc_in%pow_trunc, uccmc_in%linked, contrib)
+        call init_contrib(sys, uccmc_in%pow_trunc, ccmc_in%linked, contrib)
 
         do i = 0, nthreads-1
             ! Initialise and allocate RNG store.
@@ -310,7 +313,7 @@ contains
         allocate(cumulative_abs_real_pops(size(qs%psip_list%states,dim=2)), stat=ierr)
         call check_allocate('cumulative_abs_real_pops', size(qs%psip_list%states, dim=2), ierr)
 
-        if (debug) call init_amp_psel_accumulation(qs%ref%max_ex_level+2, logging_info, uccmc_in%linked, selection_data)
+        if (debug) call init_amp_psel_accumulation(qs%ref%max_ex_level+2, logging_info, ccmc_in%linked, selection_data)
 
         nparticles_old = qs%psip_list%tot_nparticles
 
@@ -323,8 +326,8 @@ contains
             ! NOTE: currently hash_seed is not exposed and so cannot change unless the hard-coded value changes. Therefore, as we
             ! have not evolved the particles since the were written out (i.e. hash_shift hasn't changed) the only parameter
             ! which can be altered which can change an excitors location since the restart files were written is move_freq.
-            if (uccmc_in%move_freq /= spawn%move_freq .and. nprocs > 1) then
-                spawn%move_freq = uccmc_in%move_freq
+            if (ccmc_in%move_freq /= spawn%move_freq .and. nprocs > 1) then
+                spawn%move_freq = ccmc_in%move_freq
                 if (restarting) then
                     if (parent) call warning('do_trot_uccmc', 'move_freq is different from that in the restart file. &
                                             &Reassigning processors. Please check for equilibration effects.')
@@ -338,7 +341,7 @@ contains
         end associate
 
         if (parent) then
-            call write_qmc_report_header(qs%psip_list%nspaces, cmplx_est=sys%read_in%comp, rdm_energy=uccmc_in%density_matrices, &
+            call write_qmc_report_header(qs%psip_list%nspaces, cmplx_est=sys%read_in%comp, rdm_energy=ccmc_in%density_matrices, &
                                          nattempts=.true., io_unit=io_unit)
         end if
 
@@ -440,12 +443,12 @@ contains
                 !Initially for UCC we will simply use a modification of the original algorithm.
                 call cumulative_population(qs%psip_list%pops, qs%psip_list%states(sys%basis%tot_string_len,:), &
                                            qs%psip_list%nstates, D0_proc, D0_pos, qs%psip_list%pop_real_factor, &
-                                           uccmc_in%even_selection, sys%read_in%comp, cumulative_abs_real_pops, &
+                                           ccmc_in%even_selection, sys%read_in%comp, cumulative_abs_real_pops, &
                                            tot_abs_real_pop)
 
                 call set_cluster_selections(selection_data, qs%estimators(1)%nattempts, min_cluster_size, &
                                             max_cluster_size, D0_normalisation, tot_abs_real_pop, qs%psip_list%nstates, &
-                                            uccmc_in%full_nc, .false.)
+                                            ccmc_in%full_nc, .false.)
                 call zero_ps_stats(ps_stats, qs%excit_gen_data%p_single_double%rep_accum%overflow_loc)
 
                 ! OpenMP chunk size determined completely empirically from a single
@@ -465,7 +468,7 @@ contains
                 !$omp        max_cluster_size, contrib, D0_normalisation, D0_pos, rdm,    &
                 !$omp        qs, sys, bloom_stats, min_cluster_size, ref_det,             &
                 !$omp         selection_data,      &
-                !$omp        uccmc_in, nprocs, ms_stats, ps_stats, qmc_in, load_bal_in, &
+                !$omp        uccmc_in, ccmc_in, nprocs, ms_stats, ps_stats, qmc_in, load_bal_in, &
                 !$omp        ndeath_nc,   pcumul, nstates_ci, &
                 !$omp        nparticles_change,logging_info, &
                 !$omp        time_avg_psip_list_ci_states, time_avg_psip_list_ci_pops, &
@@ -503,10 +506,10 @@ contains
                             ! [VAN]: in debug mode. However, this updated selection_data will only be used if selection logging
                             ! [VAN]: according to comments. And logging cannot be used with openmp. Dangerous though.
                             call do_ccmc_accumulation(sys, qs, contrib(it)%cdet, contrib(it)%cluster, logging_info, &
-                                                    D0_population_cycle, proj_energy_cycle, uccmc_in, ref_det, rdm, &
+                                                    D0_population_cycle, proj_energy_cycle, ccmc_in, ref_det, rdm, &
                                                     selection_data, D0_population_noncomp_cycle)
-                            call do_nc_ccmc_propagation(rng(it), sys, qs, uccmc_in, logging_info, bloom_stats, &
-                                                                contrib(it), nattempts_spawn, ps_stats(it))
+                            call do_nc_ccmc_propagation(rng(it), sys, qs, ccmc_in, logging_info, bloom_stats, &
+                                                                contrib(it), nattempts_spawn, ps_stats(it), uccmc_in)
                             if (uccmc_in%variational_energy .and. all(qs%vary_shift) .and. & 
                                 contrib(it)%cluster%excitation_level <= qs%ref%ex_level)  then
                                 call add_ci_contribution(contrib(it)%cluster, contrib(it)%cdet, &
@@ -558,11 +561,11 @@ contains
                                             sum_sp_eigenvalues_occ_list(sys, contrib(it)%cdet%occ_list) - qs%ref%fock_sum
 
                             call do_ccmc_accumulation(sys, qs, contrib(it)%cdet, contrib(it)%cluster, logging_info, &
-                                                    D0_population_cycle, proj_energy_cycle, uccmc_in, ref_det, rdm, selection_data,&
+                                                    D0_population_cycle, proj_energy_cycle, ccmc_in, ref_det, rdm, selection_data,&
                                                     D0_population_noncomp_cycle)
                             call do_stochastic_ccmc_propagation(rng(it), sys, qs, &
-                                                                uccmc_in, logging_info, ms_stats(it), bloom_stats, &
-                                                                contrib(it), nattempts_spawn, ndeath, ps_stats(it))
+                                                                ccmc_in, logging_info, ms_stats(it), bloom_stats, &
+                                                                contrib(it), nattempts_spawn, ndeath, ps_stats(it), uccmc_in)
                         end if
                 end do
                 !$omp end do
@@ -588,18 +591,18 @@ contains
                                             sum_sp_eigenvalues_occ_list(sys, contrib(it)%cdet%occ_list) - qs%ref%fock_sum
 
                         call do_ccmc_accumulation(sys, qs, contrib(it)%cdet, contrib(it)%cluster, logging_info, &
-                                                    D0_population_cycle, proj_energy_cycle, uccmc_in, ref_det, rdm, selection_data,&
+                                                    D0_population_cycle, proj_energy_cycle, ccmc_in, ref_det, rdm, selection_data,&
                                                     D0_population_noncomp_cycle)
                         nattempts_spawn = nattempts_spawn + 1
-                        call perform_ccmc_spawning_attempt(rng(it), sys, qs, uccmc_in, logging_info, bloom_stats, contrib(it), 1, &
-                                                        ps_stats(it))
+                        call perform_ccmc_spawning_attempt(rng(it), sys, qs, ccmc_in, logging_info, bloom_stats, contrib(it), 1, &
+                                                        ps_stats(it), uccmc_in)
                    !end if
 
                 end do
                 !$omp end do
 
                 ndeath_nc=0
-                if (uccmc_in%full_nc .and. qs%psip_list%nstates > 0) then
+                if (ccmc_in%full_nc .and. qs%psip_list%nstates > 0) then
                     ! Do death exactly and directly for non-composite clusters
                     !$omp do schedule(dynamic,200) private(dfock) reduction(+:ndeath_nc,nparticles_change)
                     do iattempt = 1, qs%psip_list%nstates
@@ -611,12 +614,12 @@ contains
                                 - qs%ref%fock_sum
                         end if
                         if (iattempt == D0_pos) then
-                            call stochastic_trot_uccmc_death_nc(rng(it), uccmc_in%linked, sys, qs, iattempt==D0_pos, dfock, &
+                            call stochastic_trot_uccmc_death_nc(rng(it), ccmc_in%linked, sys, qs, iattempt==D0_pos, dfock, &
                                             qs%psip_list%dat(1,iattempt), qs%estimators(1)%proj_energy_old, &
                                             qs%psip_list%pops(1, iattempt), qs%psip_list%pops(1, iattempt) * cluster_pop, & 
                                             nparticles_change(1), ndeath_nc, logging_info)
                         else
-                            call stochastic_trot_uccmc_death_nc(rng(it), uccmc_in%linked, sys, qs, iattempt==D0_pos, dfock, &
+                            call stochastic_trot_uccmc_death_nc(rng(it), ccmc_in%linked, sys, qs, iattempt==D0_pos, dfock, &
                                             qs%psip_list%dat(1,iattempt), qs%estimators(1)%proj_energy_old, &
                                             qs%psip_list%pops(1, iattempt), get_cluster_population(sys, qs%psip_list, D0_pos, &
                                             iattempt, real(D0_normalisation, p), qs%ref%f0) * qs%psip_list%pops(1, D0_pos), &
@@ -714,7 +717,7 @@ contains
             call end_report_loop(io_unit, qmc_in, iter, update_tau, qs, nparticles_old, nspawn_events, &
                                  -1, semi_stoch_it, soft_exit=soft_exit, &
                                  load_bal_in=load_bal_in, bloom_stats=bloom_stats, comp=sys%read_in%comp, &
-                                 error=error, vary_shift_reference=uccmc_in%vary_shift_reference)
+                                 error=error, vary_shift_reference=ccmc_in%vary_shift_reference)
             if (error) exit
 
             call cpu_time(t2)
@@ -722,7 +725,7 @@ contains
             if (parent) then
                 if (bloom_stats%nblooms_curr > 0) call bloom_stats_warning(bloom_stats, io_unit=io_unit)
                 call write_qmc_report(qmc_in, qs, ireport, nparticles_old, t2-t1, .false., .false., &
-                                        io_unit=io_unit, cmplx_est=sys%read_in%comp, rdm_energy=uccmc_in%density_matrices, &
+                                        io_unit=io_unit, cmplx_est=sys%read_in%comp, rdm_energy=ccmc_in%density_matrices, &
                                         nattempts=.true.)
             end if
 
@@ -802,7 +805,7 @@ contains
         if (debug) call end_logging(logging_info)
         if (debug) call end_selection_data(selection_data)
 
-        call dealloc_contrib(contrib, uccmc_in%linked)
+        call dealloc_contrib(contrib, ccmc_in%linked)
         do i = 0, nthreads-1
             call dSFMT_end(rng(i))
         end do
