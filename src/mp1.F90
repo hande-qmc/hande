@@ -33,7 +33,7 @@ contains
         use const, only: int_p, i0, depsilon
 
         use checking, only: check_allocate
-        use errors, only: stop_all
+        use errors, only: stop_all, warning
         use json_out
         use dSFMT_interface, only: dSFMT_t, dSFMT_init, get_rand_close_open
         use parallel
@@ -187,21 +187,26 @@ contains
             write (js%io,'()')
         end if
 
-        homo = 1
-        lumo = sys%basis%nbasis
-        associate(bl=>sys%basis%bit_lookup, bfns=>sys%basis%basis_fns)
-            do i = 2, sys%basis%nbasis
-                if (btest(ref%f0(bl(2,i)), bl(1,i))) then
-                    ! Occupied
-                    if (bfns(i)%sp_eigv > bfns(homo)%sp_eigv) homo = i
-                else
-                    if (bfns(i)%sp_eigv < bfns(lumo)%sp_eigv) homo = i
+        if (sys%aufbau_sym) then
+            homo = 1
+            lumo = sys%basis%nbasis
+            associate(bl=>sys%basis%bit_lookup, bfns=>sys%basis%basis_fns)
+                do i = 2, sys%basis%nbasis
+                    if (btest(ref%f0(bl(2,i)), bl(1,i))) then
+                        ! Occupied
+                        if (bfns(i)%sp_eigv >= bfns(homo)%sp_eigv) homo = i
+                    else
+                        ! Unoccupied
+                        if (bfns(i)%sp_eigv < bfns(lumo)%sp_eigv) lumo = i
+                    end if
+                end do
+                if (abs(bfns(lumo)%sp_eigv-bfns(homo)%sp_eigv) < depsilon) then
+                    call stop_all('sample_mp1_wfn', 'Cannot generate MP1 wavefunction for a system with a zero HOMO-LUMO gap.')
                 end if
-            end do
-            if (abs(bfns(lumo)%sp_eigv-bfns(homo)%sp_eigv) < depsilon) then
-                call stop_all('sample_mp1_wfn', 'Cannot generate MP1 wavefunction for a system with a zero HOMO-LUMO gap.')
-            end if
-        end associate
+            end associate
+        else
+            call warning('sample_mp1_wfn', 'Not using aufbau principle, we do not check that the system is gapless.')
+        end if
 
         ! Generate N_0(1+T2) deterministically.
         excit%nexcit = 2
