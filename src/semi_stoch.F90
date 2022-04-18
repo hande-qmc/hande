@@ -718,7 +718,7 @@ contains
         istart = 1
         iend = psip_list%nstates
         do i = 1, determ%sizes(iproc)
-            call binary_search(psip_list%states, dets_this_proc(:,i), istart, iend, hit, pos)
+            call binary_search(psip_list%states, dets_this_proc(:,i), istart, iend, hit, pos, .false.)
             if (.not. hit) then
                 ! This deterministic state is not in states. Move all
                 ! determinants with index pos or greater down one and insert

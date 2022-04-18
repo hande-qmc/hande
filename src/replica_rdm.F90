@@ -118,7 +118,7 @@ contains
             do i = 1, rdm_spawn%head(thread_id, 0)
                 f_parent = int(rdm_spawn%sdata(:bsl,i), i0)
                 f_child = int(rdm_spawn%sdata(bsl+1:2*bsl,i), i0)
-                call binary_search(psip_list%states, f_child, istart, iend, hit, pos)
+                call binary_search(psip_list%states, f_child, istart, iend, hit, pos, .false.)
                 ! Can ignore spawning if child not present in psip_list (population 0)
                 if (hit) then
                     nspawned = int(rdm_spawn%sdata(bsl+1:bsl+psip_list%nspaces,i), int_p)

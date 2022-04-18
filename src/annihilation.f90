@@ -335,7 +335,7 @@ contains
 
         do i = spawn_start, spawn%head(thread_id,0)
             f = int(spawn%sdata(:tensor_label_len,i), i0)
-            call binary_search(psip_list%states, f, istart, iend, hit, pos)
+            call binary_search(psip_list%states, f, istart, iend, hit, pos, .false.)
             if (hit) then
                 ! Annihilate!
                 old_pop = psip_list%pops(:,pos)
@@ -412,7 +412,7 @@ contains
         iend = psip_list%nstates
         do i = spawn_start, spawn%head(thread_id,0)
             f = int(spawn%sdata(:tensor_label_len,i), i0)
-            call binary_search(psip_list%states, f, istart, iend, hit, pos)
+            call binary_search(psip_list%states, f, istart, iend, hit, pos, .false.)
             if (hit) then
                 old_pop = psip_list%pops(:,pos)
                 ! Need to take into account that the determinant might not have
@@ -773,7 +773,7 @@ contains
 
                 ! spawned det is not in the main walker list.
                 call binary_search(psip_list%states, int(spawn%sdata(:sys%basis%tensor_label_len,i), i0), &
-                                   istart, iend, hit, pos)
+                                   istart, iend, hit, pos, .false.)
                 ! f should be in slot pos.  Move all determinants above it.
                 do j = iend, pos, -1
                     ! i is the number of determinants that will be inserted below j.

@@ -110,7 +110,7 @@ contains
         use report, only: write_date_time_close
         use excit_gens, only: p_single_double_coll_t
         use particle_t_utils, only: init_particle_t
-        use search, only: binary_search_i0_list_trot
+        use search, only: binary_search
         use uccmc_utils, only: add_info_str_trot, latest_unset, add_ci_contribution, allocate_time_average_lists, &
                                var_energy_uccmc
         type(sys_t), intent(in) :: sys
@@ -534,7 +534,7 @@ contains
                             if (uccmc_in%variational_energy .and. (.not. all(contrib(it)%cdet%f==0)) .and. &
                                 contrib(it)%cluster%excitation_level <= qs%ref%ex_level)  then
                                 state = contrib(it)%cdet%f 
-                                call binary_search_i0_list_trot(time_avg_psip_list_ci_states, state, 1, nstates_ci, hit, pos)
+                                call binary_search(time_avg_psip_list_ci_states, state, 1, nstates_ci, hit, pos, .true.)
                                 population = contrib(it)%cluster%amplitude*contrib(it)%cluster%cluster_to_det_sign &
                                             /contrib(it)%cluster%pselect
                                 if (hit) then
@@ -675,7 +675,7 @@ contains
                 if (all(qs%vary_shift) .and. old_vary .and. uccmc_in%average_wfn) then
                 do i = 1, qs%psip_list%nstates
                     state = qs%psip_list%states(:,i) 
-                    call binary_search_i0_list_trot(time_avg_psip_list_states, state, 1, nstates_sq, hit, pos)
+                    call binary_search(time_avg_psip_list_states, state, 1, nstates_sq, hit, pos, .true.)
                     if (hit) then
                           time_avg_psip_list_pops(pos) = &
                               time_avg_psip_list_pops(pos) + (real(qs%psip_list%pops(1,i))/qs%psip_list%pop_real_factor)
@@ -1384,7 +1384,7 @@ contains
         use spawn_data, only: spawn_t
         use qmc_data, only: particle_t
         use reference_determinant, only: reference_t
-        use search, only: binary_search_i0_list_trot
+        use search, only: binary_search
 
         type(particle_t), intent(inout) :: psip_list
         type(spawn_t), intent(inout) :: spawn
@@ -1410,7 +1410,7 @@ contains
 
         do i = spawn_start, spawn%head(thread_id,0)
             f = int(spawn%sdata(:tensor_label_len,i), i0)
-            call binary_search_i0_list_trot(psip_list%states, f, istart, iend, hit, pos)
+            call binary_search(psip_list%states, f, istart, iend, hit, pos, .true.)
             if (hit) then
                 ! Annihilate!
                 old_pop = psip_list%pops(:,pos)
@@ -1464,7 +1464,7 @@ contains
         use parallel, only: iproc
         use qmc_data, only: particle_t, annihilation_flags_t
         use reference_determinant, only: reference_t
-        use search, only: binary_search_i0_list_trot
+        use search, only: binary_search
         use spawn_data, only: spawn_t
         use system, only: sys_t
         use utils, only: int_fmt
@@ -1544,8 +1544,8 @@ contains
             do i = spawn%head(thread_id,0), spawn_start, -1
 
                 ! spawned det is not in the main walker list.
-                call binary_search_i0_list_trot(psip_list%states, int(spawn%sdata(:sys%basis%tensor_label_len,i), i0), &
-                                   istart, iend, hit, pos)
+                call binary_search(psip_list%states, int(spawn%sdata(:sys%basis%tensor_label_len,i), i0), &
+                                   istart, iend, hit, pos,.true.)
                 ! f should be in slot pos.  Move all determinants above it.
                 do j = iend, pos, -1
                     ! i is the number of determinants that will be inserted below j.
@@ -1606,7 +1606,7 @@ contains
 
         use basis_types, only: basis_t
         use qmc_data, only: qmc_state_t
-        use sort, only: qsort_psip_info_trot
+        use sort, only: qsort
         use uccmc_utils, only: add_info_str_trot
 
         type(basis_t), intent(in) :: basis
@@ -1620,7 +1620,7 @@ contains
         end do
 
         associate(pl=>qs%psip_list)
-             call qsort_psip_info_trot(pl%nstates, pl%states, pl%pops, pl%dat)
+             call qsort(pl%nstates, pl%states, pl%pops, pl%dat, .true.)
         end associate
 
     end subroutine regenerate_trot_info_psip_list
@@ -1639,7 +1639,7 @@ contains
         !       not on this processor).  On output, the current position.
 
         use bit_utils, only: bit_str_cmp
-        use search, only: binary_search_i0_list_trot
+        use search, only: binary_search
         use qmc_data, only: particle_t
         use errors, only: stop_all
 
@@ -1652,7 +1652,7 @@ contains
 
         if (D0_pos == -1) then
             ! D0 was just moved to this processor.  No idea where it might be...
-            call binary_search_i0_list_trot(psip_list%states, f0, 1, psip_list%nstates, hit, D0_pos)
+            call binary_search(psip_list%states, f0, 1, psip_list%nstates, hit, D0_pos, .true.)
         else
             D0_pos_old = D0_pos
             select case(-bit_str_cmp(f0, psip_list%states(:,D0_pos)))
@@ -1662,18 +1662,17 @@ contains
             case(1)
                 ! D0 < psip_list%states(:,D0_pos) -- it has moved to earlier in
                 ! the list and the old D0_pos is an upper bound.
-                call binary_search_i0_list_trot(psip_list%states, f0, 1, D0_pos_old, hit, D0_pos)
+                call binary_search(psip_list%states, f0, 1, D0_pos_old, hit, D0_pos, .true.)
             case(-1)
                 ! D0 > psip_list%states(:,D0_pos) -- it has moved to later in
                 ! the list and the old D0_pos is a lower bound.
-                call binary_search_i0_list_trot(psip_list%states, f0, D0_pos_old, psip_list%nstates, hit, D0_pos)
+                call binary_search(psip_list%states, f0, D0_pos_old, psip_list%nstates, hit, D0_pos, .true.)
             end select
         end if
         if (.not.hit) call stop_all('find_D0', 'Cannot find reference!')
 
     end subroutine find_D0_trot
 
-! [review] - Brian: document this
     subroutine get_D0_info_trot(qs, complx, D0_proc, D0_pos, nD0_proc, D0_normalisation)
 
         ! In:
@@ -1732,7 +1731,6 @@ contains
 
     end subroutine get_D0_info_trot
 
-! [review] - Brian: document this
     pure function deexcitation_possible(f0, excit, cdet_f) result (allowed)
         ! Function to check whether it is possible to apply a particular
         ! deexcitation operator to the current cluster.
@@ -1751,7 +1749,6 @@ contains
                            ieor(f0(:),excit(:)))
     end function deexcitation_possible
 
-! [review] - Brian: document this
     pure function excitation_possible(f0, excit, cdet_f) result (allowed)
         ! Function to check whether it is possible to apply a particular
         ! excitation operator to the current cluster.

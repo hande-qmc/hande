@@ -7,7 +7,6 @@ implicit none
 
 private
 public :: binary_search, tree_t, node_t, tree_add, tree_search
-public :: binary_search_i0_list_trot
 
 type node_t
     ! For use in BK-tree search of secondary references
@@ -39,7 +38,7 @@ end interface binary_search
 
 contains
 
-    pure subroutine binary_search_i0_list(list, item, istart, iend, hit, pos)
+    pure subroutine binary_search_i0_list(list, item, istart, iend, hit, pos, reverse)
 
         ! Find where an item resides in a list of such items.
         ! Only elements between istart and iend are examined (use the
@@ -65,6 +64,7 @@ contains
         integer, intent(in) :: istart, iend
         logical, intent(out) :: hit
         integer, intent(out) :: pos
+        logical, intent(in) :: reverse
 
         integer :: hi, lo, compare
 
@@ -93,7 +93,7 @@ contains
                 ! search algorithm.
                 pos = (hi+lo)/2
 
-                compare = bit_str_cmp(list(:,pos), item)
+                compare = bit_str_cmp_internal(list(:,pos), item, reverse)
                 select case(compare)
                 case (0)
                     ! hit!
@@ -124,7 +124,7 @@ contains
             ! element which doesn't exist yet) the binary search can find either
             ! the element before or after where item should be placed.
             if (hi == lo) then
-                compare = bit_str_cmp(list(:,hi), item)
+                compare = bit_str_cmp_internal(list(:,hi), item, reverse)
                 select case(compare)
                 case (0)
                     ! hit!
@@ -142,6 +142,24 @@ contains
             end if
 
         end if
+    
+        contains
+        
+        pure function bit_str_cmp_internal(b1, b2, reverse) result (cmp)
+
+            use bit_utils, only: bit_str_cmp
+
+            integer(i0), intent(in) :: b1(:), b2(:)
+            logical, intent(in) :: reverse
+            integer :: cmp
+
+            if (reverse) then
+                cmp = -bit_str_cmp(b1, b2)
+            else
+                cmp = bit_str_cmp(b1, b2)
+            end if
+
+        end function bit_str_cmp_internal
 
     end subroutine binary_search_i0_list
 
@@ -455,115 +473,6 @@ contains
         end if
 
     end subroutine binary_search_real_p
-
-    pure subroutine binary_search_i0_list_trot(list, item, istart, iend, hit, pos)
-
-        ! Based on binary_search_i0_list with a different comparator operator.
-
-        ! Find where an item resides in a list of such items.
-        ! Only elements between istart and iend are examined (use the
-        ! array boundaries in the worst case).
-        !
-        ! In:
-        !    list: a sorted i0 integer 2D list/array; the first dimension
-        !        corresponds to 1D arrays to compare to item.
-        !    item: an i0 integer 1D list/array.
-        !    istart: first position to examine in the list.
-        !    iend: last position to examine in the list.
-        ! Out:
-        !    hit: true if found item in list.
-        !    pos: the position corresponding to item in list.
-        !        If hit is true, then the element in this position is the same
-        !        as item, else this is where item should go to keep the list
-        !        sorted.
-
-        use bit_utils, only: bit_str_cmp
-        use const, only: i0
-
-        integer(i0), intent(in) :: list(:,:), item(:)
-        integer, intent(in) :: istart, iend
-        logical, intent(out) :: hit
-        integer, intent(out) :: pos
-
-        integer :: hi, lo, compare
-
-        if (istart > iend) then
-
-            ! Already know the element has to be appended to the list.
-            ! This should only occur if istart = iend + 1.
-            pos = istart
-            hit = .false.
-
-        else
-
-            ! Search range.
-            lo = istart
-            hi = iend
-
-            ! Assume item doesn't exist in the list initially.
-            hit = .false.
-
-            do while (hi /= lo)
-                ! Narrow the search range down in steps.
-
-                ! Mid-point.
-                ! We shift one of the search limits to be the mid-point.
-                ! The successive dividing the search range by 2 gives a O[log N]
-                ! search algorithm.
-                pos = (hi+lo)/2
-
-
-                compare = -bit_str_cmp(list(:,pos), item)
-                select case(compare)
-                case (0)
-                    ! hit!
-                    hit = .true.
-                    exit
-                case(1)
-                    ! list(:,pos) is "smaller" than item.
-                    ! The lowest position item can take is hence pos + 1 (i.e. if
-                    ! item is greater than pos by smaller than pos + 1).
-                    lo = pos + 1
-                case(-1)
-                    ! list(:,pos) is "greater" than item.
-                    ! The highest position item can take is hence pos (i.e. if item is
-                    ! smaller than pos but greater than pos - 1).  This is why
-                    ! we differ slightly from a standard binary search (where lo
-                    ! is set to be pos+1 and hi to be pos-1 accordingly), as
-                    ! a standard binary search assumes that the element you are
-                    ! searching for actually appears in the array being
-                    ! searched...
-                    hi = pos
-                end select
-
-            end do
-
-            ! If hi == lo, then we have narrowed the search down to one position but
-            ! not checked if that position is the item we're hunting for.
-            ! Because list can expand (i.e. we might be searching for an
-            ! element which doesn't exist yet) the binary search can find either
-            ! the element before or after where item should be placed.
-            if (hi == lo) then
-                compare = -bit_str_cmp(list(:,hi), item)
-                select case(compare)
-                case (0)
-                    ! hit!
-                    hit = .true.
-                    pos = hi
-                case(1)
-                    ! list(:,pos) is "smaller" than item.
-                    ! item should be placed in the next slot.
-                    pos = hi + 1
-                case(-1)
-                    ! list(:,pos) is "greater" than item.
-                    ! item should ber placed here.
-                    pos = hi
-                end select
-            end if
-
-        end if
-
-    end subroutine binary_search_i0_list_trot
 
     subroutine tree_add(this, next_bstring)
 

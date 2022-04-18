@@ -46,7 +46,7 @@ contains
 
         if (D0_pos == -1) then
             ! D0 was just moved to this processor.  No idea where it might be...
-            call binary_search(psip_list%states, f0, 1, psip_list%nstates, hit, D0_pos)
+            call binary_search(psip_list%states, f0, 1, psip_list%nstates, hit, D0_pos, .false.)
         else
             D0_pos_old = D0_pos
             select case(bit_str_cmp(f0, psip_list%states(:,D0_pos)))
@@ -56,11 +56,11 @@ contains
             case(1)
                 ! D0 < psip_list%states(:,D0_pos) -- it has moved to earlier in
                 ! the list and the old D0_pos is an upper bound.
-                call binary_search(psip_list%states, f0, 1, D0_pos_old, hit, D0_pos)
+                call binary_search(psip_list%states, f0, 1, D0_pos_old, hit, D0_pos, .false.)
             case(-1)
                 ! D0 > psip_list%states(:,D0_pos) -- it has moved to later in
                 ! the list and the old D0_pos is a lower bound.
-                call binary_search(psip_list%states, f0, D0_pos_old, psip_list%nstates, hit, D0_pos)
+                call binary_search(psip_list%states, f0, D0_pos_old, psip_list%nstates, hit, D0_pos, .false.)
             end select
         end if
         if (.not.hit) call stop_all('find_D0', 'Cannot find reference!')

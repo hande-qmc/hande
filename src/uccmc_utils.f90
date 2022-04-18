@@ -104,7 +104,7 @@ contains
 
         do i = 1, psip_list%nstates
             state = psip_list%states(:,i) 
-            call binary_search(states, state, 1, nstates, hit, pos)
+            call binary_search(states, state, 1, nstates, hit, pos, .false.)
             if (hit) then
                   pops(pos) = pops(pos) + (real(psip_list%pops(1,i))/psip_list%pop_real_factor)
                   sq(size(state) + 1,pos) = sq(size(state) + 1,pos) + (real(psip_list%pops(1,i))/psip_list%pop_real_factor)**2 
