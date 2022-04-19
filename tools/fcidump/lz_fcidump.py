@@ -241,79 +241,85 @@ with open(filename, 'r') as f:
         if '&END' in line:
             read = True
 
-# Start writing out the Lz-transformed FCIDUMP
-with open(f'lz_{filename}','w') as f:
-    # Compatible fornmat with Psi4
-    f.write(f'&FCI\nNORB={int(norb)},\nNELEC={int(nelec)},\nMS2=0,\nORBSYM=')
-    for i in orbsym:
-        f.write(f'{int(i)},')
-    f.write('\n')
-    f.write('ISYM=1,\nUHF=.FALSE.,\nSYML=')
-    for i in syml:
-        f.write(f'{int(i)},')
-    f.write('\nSYMLZ=')
-    for i in symlz:
-        f.write(f'{int(i)},')
-    f.write('\n&END\n')
+if __name___ == '__main__':
+    # Start writing out the Lz-transformed FCIDUMP
+    with open(f'lz_{filename}','w') as f:
+        # Compatible fornmat with Psi4
+        f.write(f'&FCI\nNORB={int(norb)},\nNELEC={int(nelec)},\nMS2=0,\nORBSYM=')
+        for i in orbsym:
+            f.write(f'{int(i)},')
+        f.write('\n')
+        f.write('ISYM=1,\nUHF=.FALSE.,\nSYML=')
+        for i in syml:
+            f.write(f'{int(i)},')
+        f.write('\nSYMLZ=')
+        for i in symlz:
+            f.write(f'{int(i)},')
+        f.write('\n&END\n')
 
-    for i in range(norb):
-        # For the given Lz, find out which two (if Lz is 0 then only one component)
-        # orbitals contribute, and then get their complex coefficients
-        # E.g. C(1,+1) \propto -1/sqrt(2) * (x+iy)
-        # And remember in Chemists' notation, (ij|kl) means i and k are complex conjugated
-        i1, i2, i1c, i2c = get_lz_idx_and_coeff(symlz[i],i+1,lzpairs[i]+1,-1) # Conjugate
-        for j in range(norb):
-            ij = (i*(i+1))/2+j
-            j1, j2, j1c, j2c = get_lz_idx_and_coeff(symlz[j],j+1,lzpairs[j]+1,1)
-            for k in range(norb):
-                k1, k2, k1c, k2c = get_lz_idx_and_coeff(symlz[k],k+1,lzpairs[k]+1,-1) # Conjugate
-                
-                for l in range(norb):
-                    kl = (k*(k+1))/2+l
-                    if (kl<ij):
-                        continue
-                    if (i<j) and (k<l):
-                        continue
-                    if (i>j) and (k<l):
-                        continue
-                    l1, l2, l1c, l2c = get_lz_idx_and_coeff(symlz[l],l+1,lzpairs[l]+1,1)
-
-                    lzintgrl =i1c*j1c*k1c*l1c*teint[eri_ind(i1,j1,k1,l1)]
-                    lzintgrl+=i2c*j1c*k1c*l1c*teint[eri_ind(i2,j1,k1,l1)]
-                    lzintgrl+=i1c*j2c*k1c*l1c*teint[eri_ind(i1,j2,k1,l1)]
-                    lzintgrl+=i2c*j2c*k1c*l1c*teint[eri_ind(i2,j2,k1,l1)]
-                    lzintgrl+=i1c*j1c*k2c*l1c*teint[eri_ind(i1,j1,k2,l1)]
-                    lzintgrl+=i2c*j1c*k2c*l1c*teint[eri_ind(i2,j1,k2,l1)]
-                    lzintgrl+=i1c*j2c*k2c*l1c*teint[eri_ind(i1,j2,k2,l1)]
-                    lzintgrl+=i2c*j2c*k2c*l1c*teint[eri_ind(i2,j2,k2,l1)]
-                    lzintgrl+=i1c*j1c*k1c*l2c*teint[eri_ind(i1,j1,k1,l2)]
-                    lzintgrl+=i2c*j1c*k1c*l2c*teint[eri_ind(i2,j1,k1,l2)]
-                    lzintgrl+=i1c*j2c*k1c*l2c*teint[eri_ind(i1,j2,k1,l2)]
-                    lzintgrl+=i2c*j2c*k1c*l2c*teint[eri_ind(i2,j2,k1,l2)]
-                    lzintgrl+=i1c*j1c*k2c*l2c*teint[eri_ind(i1,j1,k2,l2)]
-                    lzintgrl+=i2c*j1c*k2c*l2c*teint[eri_ind(i2,j1,k2,l2)]
-                    lzintgrl+=i1c*j2c*k2c*l2c*teint[eri_ind(i1,j2,k2,l2)]
-                    lzintgrl+=i2c*j2c*k2c*l2c*teint[eri_ind(i2,j2,k2,l2)]
+        for i in range(norb):
+            # For the given Lz, find out which two (if Lz is 0 then only one component)
+            # orbitals contribute, and then get their complex coefficients
+            # E.g. C(1,+1) \propto -1/sqrt(2) * (x+iy)
+            # And remember in Chemists' notation, (ij|kl) means i and k are complex conjugated
+            i1, i2, i1c, i2c = get_lz_idx_and_coeff(symlz[i],i+1,lzpairs[i]+1,-1) # Conjugate
+            for j in range(norb):
+                ij = (i*(i+1))/2+j
+                j1, j2, j1c, j2c = get_lz_idx_and_coeff(symlz[j],j+1,lzpairs[j]+1,1)
+                for k in range(norb):
+                    k1, k2, k1c, k2c = get_lz_idx_and_coeff(symlz[k],k+1,lzpairs[k]+1,-1) # Conjugate
                     
-                    if (abs(lzintgrl.real)>1e-12):
-                        f.write(f'{lzintgrl.real:28.20E}{(i+1):4d}{(j+1):4d}{(k+1):4d}{(l+1):4d}\n')
-    # 1e integrals
-    for i in range(norb):
-        for j in range(i,norb):
-            i1, i2, i1c, i2c = get_lz_idx_and_coeff(symlz[i],i,lzpairs[i],-1) # Conjugate
-            j1, j2, j1c, j2c = get_lz_idx_and_coeff(symlz[j],j,lzpairs[j],1)
+                    for l in range(norb):
+                        kl = (k*(k+1))/2+l
+                        if (kl<ij):
+                            continue
+                        if (i<j) and (k<l):
+                            continue
+                        if (i>j) and (k<l):
+                            continue
+                        l1, l2, l1c, l2c = get_lz_idx_and_coeff(symlz[l],l+1,lzpairs[l]+1,1)
 
-            lzintgrl =i1c*j1c*oeint[i1,j1]
-            lzintgrl+=i2c*j1c*oeint[i2,j1]
-            lzintgrl+=i1c*j2c*oeint[i1,j2]
-            lzintgrl+=i2c*j2c*oeint[i2,j2]
-            
-            if (abs(lzintgrl.real)>1e-12):
-                f.write(f'{lzintgrl.real:28.20E}{(i+1):4d}{(j+1):4d}{0:4d}{0:4d}\n')
-    
-    # Eigenvalues
-    for i in range(norb):
-        f.write(f'{eigval[i]:28.20E}{(i+1):4d}{0:4d}{0:4d}{0:4d}\n')
-    
-    # Nuclear repulsion + frozen core energy
-    f.write(f'{e_nuc:28.20E}{0:4d}{0:4d}{0:4d}{0:4d}')
+                        # Since every orbital is made up of up to 2 +- Ml components,
+                        # we're going to get up to 16 contributions to the 2e integral.
+                        # The zero integrals are taken care of by the zeroth element
+                        # of 'teint', and the fact that eri_ind returns a zero 
+                        # if any argument is zero.
+                        lzintgrl =i1c*j1c*k1c*l1c*teint[eri_ind(i1,j1,k1,l1)]
+                        lzintgrl+=i2c*j1c*k1c*l1c*teint[eri_ind(i2,j1,k1,l1)]
+                        lzintgrl+=i1c*j2c*k1c*l1c*teint[eri_ind(i1,j2,k1,l1)]
+                        lzintgrl+=i2c*j2c*k1c*l1c*teint[eri_ind(i2,j2,k1,l1)]
+                        lzintgrl+=i1c*j1c*k2c*l1c*teint[eri_ind(i1,j1,k2,l1)]
+                        lzintgrl+=i2c*j1c*k2c*l1c*teint[eri_ind(i2,j1,k2,l1)]
+                        lzintgrl+=i1c*j2c*k2c*l1c*teint[eri_ind(i1,j2,k2,l1)]
+                        lzintgrl+=i2c*j2c*k2c*l1c*teint[eri_ind(i2,j2,k2,l1)]
+                        lzintgrl+=i1c*j1c*k1c*l2c*teint[eri_ind(i1,j1,k1,l2)]
+                        lzintgrl+=i2c*j1c*k1c*l2c*teint[eri_ind(i2,j1,k1,l2)]
+                        lzintgrl+=i1c*j2c*k1c*l2c*teint[eri_ind(i1,j2,k1,l2)]
+                        lzintgrl+=i2c*j2c*k1c*l2c*teint[eri_ind(i2,j2,k1,l2)]
+                        lzintgrl+=i1c*j1c*k2c*l2c*teint[eri_ind(i1,j1,k2,l2)]
+                        lzintgrl+=i2c*j1c*k2c*l2c*teint[eri_ind(i2,j1,k2,l2)]
+                        lzintgrl+=i1c*j2c*k2c*l2c*teint[eri_ind(i1,j2,k2,l2)]
+                        lzintgrl+=i2c*j2c*k2c*l2c*teint[eri_ind(i2,j2,k2,l2)]
+                        
+                        if (abs(lzintgrl.real)>1e-12):
+                            f.write(f'{lzintgrl.real:28.20E}{(i+1):4d}{(j+1):4d}{(k+1):4d}{(l+1):4d}\n')
+        # 1e integrals
+        for i in range(norb):
+            for j in range(i,norb):
+                i1, i2, i1c, i2c = get_lz_idx_and_coeff(symlz[i],i,lzpairs[i],-1) # Conjugate
+                j1, j2, j1c, j2c = get_lz_idx_and_coeff(symlz[j],j,lzpairs[j],1)
+
+                lzintgrl =i1c*j1c*oeint[i1,j1]
+                lzintgrl+=i2c*j1c*oeint[i2,j1]
+                lzintgrl+=i1c*j2c*oeint[i1,j2]
+                lzintgrl+=i2c*j2c*oeint[i2,j2]
+                
+                if (abs(lzintgrl.real)>1e-12):
+                    f.write(f'{lzintgrl.real:28.20E}{(i+1):4d}{(j+1):4d}{0:4d}{0:4d}\n')
+        
+        # Eigenvalues
+        for i in range(norb):
+            f.write(f'{eigval[i]:28.20E}{(i+1):4d}{0:4d}{0:4d}{0:4d}\n')
+        
+        # Nuclear repulsion + frozen core energy
+        f.write(f'{e_nuc:28.20E}{0:4d}{0:4d}{0:4d}{0:4d}')
