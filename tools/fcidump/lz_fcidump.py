@@ -177,71 +177,71 @@ def get_lz_idx_and_coeff(_lz,_i,_pair,_conj):
                 _a2c = complex(0,NORM*_conj)   
     return _a1, _a2, _a1c, _a2c
 
-# PySCF FCIDUMP name
-filename = 'tz-dev.FCIDUMP'
+if __name__ == '__main__':
+    # PySCF FCIDUMP name
+    filename = 'dz-dev.FCIDUMP'
 
-# Define molecule
-c2_lz = gto.M(atom="""
-C
-C 1 2.0""",
-basis='cc-pvtz', symmetry='Dooh')
+    # Define molecule
+    c2_lz = gto.M(atom="""
+    C
+    C 1 2.0""",
+    basis='cc-pvdz', symmetry='Dooh')
 
-# Run RHF
-mf = scf.RHF(c2_lz)
-# Clamp occupancy to improve convergence (tracking is another option)
-mf.irrep_nelec = {'A1g':4,'A1u':4,'E1ux':2,'E1uy':2}
-mf.kernel()
+    # Run RHF
+    mf = scf.RHF(c2_lz)
+    # Clamp occupancy to improve convergence (tracking is another option)
+    mf.irrep_nelec = {'A1g':4,'A1u':4,'E1ux':2,'E1uy':2}
+    mf.kernel()
 
-# Dump out FCIDUMP, format string is such that it produces the same output as Psi4
-tools.fcidump.from_scf(mf, filename, tol=1e-12, float_format='%28.20E')
+    # Dump out FCIDUMP, format string is such that it produces the same output as Psi4
+    tools.fcidump.from_scf(mf, filename, tol=1e-12, float_format='%28.20E')
 
-# PySCF doesn't print out HF eigenvalues, so we do it ourselves
-eigval = mf.mo_energy
-e_nuc = mf.energy_nuc()
+    # PySCF doesn't print out HF eigenvalues, so we do it ourselves
+    eigval = mf.mo_energy
+    e_nuc = mf.energy_nuc()
 
-# Read the Fortran namelist, we can also get these variables from the mf object
-nml = f90nml.read(filename)
-norb = int(nml['fci']['norb'])
-nelec = int(nml['fci']['nelec'])
-pyscf_orbsym = np.array(nml['fci']['orbsym'],dtype='int')
+    # Read the Fortran namelist, we can also get these variables from the mf object
+    nml = f90nml.read(filename)
+    norb = int(nml['fci']['norb'])
+    nelec = int(nml['fci']['nelec'])
+    pyscf_orbsym = np.array(nml['fci']['orbsym'],dtype='int')
 
-# Process orbsym to get Lz information, and then only keep inversion
-# symmetry in orbsym (1 for gerade and 2 for ungerade)
-orbsym, syml, symlz = orbsym_lz_transform(pyscf_orbsym)
+    # Process orbsym to get Lz information, and then only keep inversion
+    # symmetry in orbsym (1 for gerade and 2 for ungerade)
+    orbsym, syml, symlz = orbsym_lz_transform(pyscf_orbsym)
 
-# Find out which orbitals are degenerate
-lzpairs = pair_lz(symlz, eigval)
+    # Find out which orbitals are degenerate
+    lzpairs = pair_lz(symlz, eigval)
 
-# Allocate arrays
-pair = int((norb*(norb+1))/2)
-size = int((pair*(pair+1))/2)
-print(f'Max size of 2e integrals: {size}')
-# zero-indexed
-oeint = np.zeros((norb,norb))
-# zeroth element is zero, so the rest of the array is Fortran style/1-indexed
-teint = np.zeros(size+1)
+    # Allocate arrays
+    pair = int((norb*(norb+1))/2)
+    size = int((pair*(pair+1))/2)
+    print(f'Max size of 2e integrals: {size}')
+    # zero-indexed
+    oeint = np.zeros((norb,norb))
+    # zeroth element is zero, so the rest of the array is Fortran style/1-indexed
+    teint = np.zeros(size+1)
 
-# Read the FCIDUMP in, skipping the namelist
-read = False
-with open(filename, 'r') as f:
-    # Read the namelist first
-    contents = [line.strip() for line in f.readlines()]
-    for line in contents:
-        if read:
-            data = line.split()
-            intgrl = float(data[0])
-            i = int(data[1])
-            j = int(data[2])
-            k = int(data[3])
-            l = int(data[4])
-            if i!=0 and j!=0 and k!=0 and l!=0:
-                teint[eri_ind(i,j,k,l)] = intgrl
-            elif i!=0 and j!=0 and k==0 and l==0:
-                oeint[i-1,j-1] = oeint[j-1,i-1] = intgrl
-        if '&END' in line:
-            read = True
+    # Read the FCIDUMP in, skipping the namelist
+    read = False
+    with open(filename, 'r') as f:
+        # Read the namelist first
+        contents = [line.strip() for line in f.readlines()]
+        for line in contents:
+            if read:
+                data = line.split()
+                intgrl = float(data[0])
+                i = int(data[1])
+                j = int(data[2])
+                k = int(data[3])
+                l = int(data[4])
+                if i!=0 and j!=0 and k!=0 and l!=0:
+                    teint[eri_ind(i,j,k,l)] = intgrl
+                elif i!=0 and j!=0 and k==0 and l==0:
+                    oeint[i-1,j-1] = oeint[j-1,i-1] = intgrl
+            if '&END' in line:
+                read = True
 
-if __name___ == '__main__':
     # Start writing out the Lz-transformed FCIDUMP
     with open(f'lz_{filename}','w') as f:
         # Compatible fornmat with Psi4
