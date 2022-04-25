@@ -70,7 +70,6 @@ from pyscf import gto, scf, mcscf, tools
 
 import numpy as np
 import f90nml
-import fileinput
 
 # Global constant for the coefficients
 NORM = 1/np.sqrt(2)
@@ -329,6 +328,15 @@ if __name__ == '__main__':
 					
 					for l in range(norb):
 						kl = (k*(k+1))/2+l
+                                                # We have four-fold permutational symmetry here:
+                                                # (ij|kl) = (ji|lk) = (kl|ij) = (lk|ji) 
+                                                # instead of the usual 8-fold symmetry, as the Lz-transformed orbitals are complex.
+                                                # (Note that this is also not the usual 4-fold symmetry of i<j and k<l, and 
+                                                # is instead a symmetry under simultaneous transpotition)
+                                                # The following checks will produce the correct indices, but does not quite take
+                                                # care of simultaneous transpositions (which would be quite verbose to achieve)
+                                                # so we're producing a superset of the permutationally unique indices.
+                                                # E.g. the following checks will allow both (11|21) and (11|12)
 						if (kl<ij):
 							continue
 						if (i<j) and (k<l):
@@ -380,6 +388,7 @@ if __name__ == '__main__':
 						if (abs(lzintgrl.real)>1e-12):
 							f.write(f'{lzintgrl.real:28.20E}{(i+1):4d}{(j+1):4d}{(k+1):4d}{(l+1):4d}\n')
 		# 1e integrals
+                # We store the full matrix so don't care about permutational symmetry
 		for i in range(norb):
 			for j in range(i,norb):
 				i1, i2, i1c, i2c = get_lz_idx_and_coeff(symlz[i],i,lzpairs[i],-1) # Conjugate
