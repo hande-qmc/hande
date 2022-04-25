@@ -1,43 +1,43 @@
 #!/usr/bin/env python
 
 # Irreps ID maps
-# Dooh     ->  D2h        |   Coov      -> C2v
-# A1g   0      Ag    0    |   A1    0      A1    0
-# A2g   1      B1g   1    |   A2    1      A2    1
-# A1u   5      B1u   5    |   E1x   2      B1    2
-# A2u   4      Au    4    |   E1y   3      B2    3
-# E1gx  2      B2g   2    |   E2x   10     A1    0
-# E1gy  3      B3g   3    |   E2y   11     A2    1
-# E1ux  7      B3u   7    |   E3x   12     B1    2
-# E1uy  6      B2u   6    |   E3y   13     B2    3
-# E2gx  10     Ag    0    |   E4x   20     A1    0
-# E2gy  11     B1g   1    |   E4y   21     A2    1
-# E2ux  15     B1u   5    |   E5x   22     B1    2
-# E2uy  14     Au    4    |   E5y   23     B2    3
-# E3gx  12     B2g   2    |
-# E3gy  13     B3g   3    |
-# E3ux  17     B3u   7    |
-# E3uy  16     B2u   6    |
-# E4gx  20     Ag    0    |
-# E4gy  21     B1g   1    |
-# E4ux  25     B1u   5    |
-# E4uy  24     Au    4    |
-# E5gx  22     B2g   2    |
-# E5gy  23     B3g   3    |
-# E5ux  27     B3u   7    |
-# E5uy  26     B2u   6    |
+# Dooh	->  D2h				|		Coov	-> C2v
+# A1g	0		Ag	 0		|		A1		0		 A1		 0
+# A2g	1		B1g	 1		|		A2		1		 A2		 1
+# A1u	5		B1u	 5		|		E1x		2		 B1		 2
+# A2u	4		Au	 4		|		E1y		3		 B2		 3
+# E1gx	2		B2g	 2		|		E2x		10		 A1		 0
+# E1gy	3		B3g	 3		|		E2y		11		 A2		 1
+# E1ux	7		B3u	 7		|		E3x		12		 B1		 2
+# E1uy	6		B2u	 6		|		E3y		13		 B2		 3
+# E2gx	10		Ag	 0		|		E4x		20		 A1		 0
+# E2gy	11		B1g	 1		|		E4y		21		 A2		 1
+# E2ux	15		B1u	 5		|		E5x		22		 B1		 2
+# E2uy	14		Au	 4		|		E5y		23		 B2		 3
+# E3gx	12		B2g	 2		|
+# E3gy	13		B3g	 3		|
+# E3ux	17		B3u	 7		|
+# E3uy	16		B2u	 6		|
+# E4gx	20		Ag	 0		|
+# E4gy	21		B1g	 1		|
+# E4ux	25		B1u	 5		|
+# E4uy	24		Au	 4		|
+# E5gx	22		B2g	 2		|
+# E5gy	23		B3g	 3		|
+# E5ux	27		B3u	 7		|
+# E5uy	26		B2u	 6		|
 
 #Psi4 (Cotton) to PySCF
 #D2h
 #Irrep PySCF Psi4
-#Ag    0     1
-#B1g   1     4
-#B2g   2     6
-#B3g   3     7
-#Au    4     8
-#B1u   5     5
-#B2u   6     3
-#B3u   7     2
+#Ag		 0		 1
+#B1g	 1		 4
+#B2g	 2		 6
+#B3g	 3		 7
+#Au		 4		 8
+#B1u	 5		 5
+#B2u	 6		 3
+#B3u	 7		 2
 
 # This is a utility that outputs Lz-transformed FCIDUMP integral files from a PySCF calculation.
 
@@ -49,10 +49,10 @@
 
 # Example:
 # We know the standard spherical harmonic coefficients: 
-# 			C(1,+1) \propto -(x+iy)/sqrt(2)
+#			C(1,+1) \propto -(x+iy)/sqrt(2)
 #			C(1,-1) \propto +(x-iy)/sqrt(2)
 # which means (-1,-1|+1,+1) = 1/2 * \iint [(x+iy)*(x-iy)] 1/r12 [-(x-iy)*-(x+iy)] dr1 dr2 (remember to take complex conjugates for the 1st and 3rd functions)
-# 							= 1/2 * [(xx+yy|xx+yy)]
+#							= 1/2 * [(xx+yy|xx+yy)]
 #							= 1/2 * [(xx|xx) + (yy|yy) + 2(xx|yy)]
 # A general function for obtaining these coefficients for arbitrary Ml is in get_lz_idx_and_coeff below.
 
@@ -177,13 +177,13 @@ def get_lz_idx_and_coeff(_lz,_i,_pair,_conj):
 	and their coefficients.
 	In:
 		_lz: The signed Ml value.
-		_i: The (1-indexed) index of the current real orbital
-		_pair: The (1-indexed) index of the Lz-paired orbital of the current real orbital/
+		_i: The (0-indexed) index of the current real orbital
+		_pair: The (0-indexed) index of the Lz-paired orbital of the current real orbital/
 		_conj: whether we should conjugate this Lz-transformed orbital: 1 for no, -1 for yes
 
 	Return:
-		_a1: The (1-indexed) index of the x-like (positive Ml) contributing orbital.
-		_a2: The (1-indexed) index of the y-like (negative Ml) contributing orbital, zero if _lz=0.
+		_a1: The (0-indexed) index of the x-like (positive Ml) contributing orbital.
+		_a2: The (0-indexed) index of the y-like (negative Ml) contributing orbital, zero if _lz=0.
 		_a1c: The coefficient of _a1.
 		_a2c: The coefficient of _a2.
 	"""
@@ -210,34 +210,31 @@ def get_lz_idx_and_coeff(_lz,_i,_pair,_conj):
 			else:
 				# Evem Ml
 				_a1c = complex(NORM,0)
-				_a2c = complex(0,NORM*_conj)   
+				_a2c = complex(0,NORM*_conj)	 
 	return _a1, _a2, _a1c, _a2c
 
-if __name__ == '__main__':
-	# PySCF FCIDUMP name
-	filename = 'dz-dev'
-
-	# Define molecule
-	c2_lz = gto.M(atom="""
-	C
-	C 1 2.0""",
-	basis='cc-pvdz', symmetry='Dooh')
-
+def run_pyscf(_mol, _occ=None):
 	# Run RHF
-	mf = scf.RHF(c2_lz)
-	# Clamp occupancy to improve convergence (tracking is another option)
-	mf.irrep_nelec = {'A1g':4,'A1u':4,'E1ux':2,'E1uy':2}
-	mf.kernel()
+	_mf = scf.RHF(_mol)
+	if (_occ is not None):
+		# Clamp occupancy to improve convergence (tracking is another option)
+		_mf.irrep_nelec = _occ
+	_mf.kernel()
 
+	return _mf
+
+def make_fcidumps(_mf, _filename):
 	# Dump out FCIDUMP, format string is such that it produces the same output as Psi4
-	tools.fcidump.from_scf(mf, f'{filename}-pyscf.FCIDUMP', tol=1e-12, float_format='%28.20E')
+	print(f'Generating untransformed PySCF FCIDUMP in {_filename}-pyscf.FCIDUMP...')
+	tools.fcidump.from_scf(_mf, f'{_filename}-pyscf.FCIDUMP', tol=1e-12, float_format='%28.20E')
+	print('Done!')
 
 	# PySCF doesn't print out HF eigenvalues, so we do it ourselves
-	eigval = mf.mo_energy
-	e_nuc = mf.energy_nuc()
+	eigval = _mf.mo_energy
+	e_nuc = _mf.energy_nuc()
 
 	# Read the Fortran namelist, we can also get these variables from the mf object
-	nml = f90nml.read(f'{filename}-pyscf.FCIDUMP')
+	nml = f90nml.read(f'{_filename}-pyscf.FCIDUMP')
 	norb = int(nml['fci']['norb'])
 	nelec = int(nml['fci']['nelec'])
 	pyscf_orbsym = np.array(nml['fci']['orbsym'],dtype='int')
@@ -263,7 +260,8 @@ if __name__ == '__main__':
 
 	# Read the FCIDUMP in, skipping the namelist
 	read = False
-	with open(f'{filename}-pyscf.FCIDUMP', 'r') as infile, open(f'{filename}.FCIDUMP', 'w') as outfile:
+	print(f'Reading PySCF FCIDUMP and writing the Psi4-compatible FCIDUMP (with Cotton D2h irrep ordering and HF eigenvalues) in {_filename}-pyscf.FCIDUMP')
+	with open(f'{_filename}-pyscf.FCIDUMP', 'r') as infile, open(f'{_filename}.FCIDUMP', 'w') as outfile:
 		# Read the namelist first
 		contents = infile.readlines()
 		for line in contents:
@@ -298,9 +296,11 @@ if __name__ == '__main__':
 				outfile.write('\n')
 			else:
 				outfile.write(line)
+	print('Done!')
 
 	# Start writing out the Lz-transformed FCIDUMP
-	with open(f'{filename}-lz.FCIDUMP','w') as f:
+	print(f'Starting the Lz transformation, writing out to {_filename}-lz.FCIDUMP')
+	with open(f'{_filename}-lz.FCIDUMP','w') as f:
 		# Compatible fornmat with Psi4
 		f.write(f'&FCI\nNORB={int(norb)},\nNELEC={int(nelec)},\nMS2=0,\nORBSYM=')
 		for i in orbsym:
@@ -314,6 +314,7 @@ if __name__ == '__main__':
 			f.write(f'{int(i)},')
 		f.write('\n&END\n')
 
+		print('2e integrals...')
 		for i in range(norb):
 			# For the given Lz, find out which two (if Lz is 0 then only one component)
 			# orbitals contribute, and then get their complex coefficients
@@ -328,15 +329,15 @@ if __name__ == '__main__':
 					
 					for l in range(norb):
 						kl = (k*(k+1))/2+l
-                                                # We have four-fold permutational symmetry here:
-                                                # (ij|kl) = (ji|lk) = (kl|ij) = (lk|ji) 
-                                                # instead of the usual 8-fold symmetry, as the Lz-transformed orbitals are complex.
-                                                # (Note that this is also not the usual 4-fold symmetry of i<j and k<l, and 
-                                                # is instead a symmetry under simultaneous transpotition)
-                                                # The following checks will produce the correct indices, but does not quite take
-                                                # care of simultaneous transpositions (which would be quite verbose to achieve)
-                                                # so we're producing a superset of the permutationally unique indices.
-                                                # E.g. the following checks will allow both (11|21) and (11|12)
+						# We have four-fold permutational symmetry here:
+						# (ij|kl) = (ji|lk) = (kl|ij) = (lk|ji) 
+						# instead of the usual 8-fold symmetry, as the Lz-transformed orbitals are complex.
+						# (Note that this is also not the usual 4-fold symmetry of i<j and k<l, and 
+						# is instead a symmetry under simultaneous transpotition)
+						# The following checks will produce the correct indices, but does not quite take
+						# care of simultaneous transpositions (which would be quite verbose to achieve)
+						# so we're producing a superset of the permutationally unique indices.
+						# E.g. the following checks will allow both (11|21) and (11|12)
 						if (kl<ij):
 							continue
 						if (i<j) and (k<l):
@@ -388,7 +389,8 @@ if __name__ == '__main__':
 						if (abs(lzintgrl.real)>1e-12):
 							f.write(f'{lzintgrl.real:28.20E}{(i+1):4d}{(j+1):4d}{(k+1):4d}{(l+1):4d}\n')
 		# 1e integrals
-                # We store the full matrix so don't care about permutational symmetry
+		# We store the full matrix so don't care about permutational symmetry
+		print('1e integrals...')
 		for i in range(norb):
 			for j in range(i,norb):
 				i1, i2, i1c, i2c = get_lz_idx_and_coeff(symlz[i],i,lzpairs[i],-1) # Conjugate
@@ -423,3 +425,28 @@ if __name__ == '__main__':
 		
 		# Nuclear repulsion + frozen core energy
 		f.write(f'{e_nuc:28.20E}{0:4d}{0:4d}{0:4d}{0:4d}')
+
+	print('All done!')
+
+
+if __name__ == '__main__':
+	for bl in np.linspace(2,7,11):
+
+		# PySCF FCIDUMP name
+		filename = f'be-ccpvdz-{bl:.1f}'
+
+		print('='*30+'\n'+f'Doing {filename}\n'+'='*30)
+
+		# Define molecule
+		mol = gto.M(atom=f"""
+		Be
+		Be 1 {bl:.1f}""",
+		basis='cc-pvdz', symmetry='Dooh')
+
+		# Clamp occupancy for better convergence / converging to the same RHF solution across a binding curve
+		# Restarting from previous geometry (ie tracking) works too.
+		occ = {'A1g':4,'A1u':4}
+
+		mf = run_pyscf(mol, occ)
+
+		make_fcidumps(mf, filename)
