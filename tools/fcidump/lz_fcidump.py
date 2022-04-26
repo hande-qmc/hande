@@ -40,6 +40,11 @@
 #B3u	 7		 2
 
 # This is a utility that outputs Lz-transformed FCIDUMP integral files from a PySCF calculation.
+# Currently only supports linear D_infh molecules. The system can be specified at the bottom of this script.
+# For each single-point calculation this script will output three files:
+# 1. Original untransformed PySCF output (filename-pyscf.FCIDUMP)
+# 2. Untransformed output with Psi4 symmetry ordering and HF eigenvalues added (filename.FCIDUMP)
+# 3. Lz-transformed output (filename-lz.FCIDUMP)
 
 # Unlike other QC programs, PySCF is uniquely capable of handling (subsets of) the infinite point groups (up to E5) and 
 # it is also capable of separating the x- and y-like component of the degenerate (E) irreps, giving
@@ -64,7 +69,6 @@
 # 1e integrals are processed identically.
 
 # PySCF uses the sensible numbering system for D2h (see above), for now we convert this to the (less sensible) Cotton's ordering used in Psi4 (see above) for the untransformed FCIDUMP.
-
 
 from pyscf import gto, scf, mcscf, tools
 
