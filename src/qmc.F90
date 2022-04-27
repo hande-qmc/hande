@@ -1281,6 +1281,7 @@ contains
         type(reference_t), intent(in) :: references_in(:)
         integer, intent(in) :: io_unit
         type(qmc_state_t), intent(inout) :: qs
+
         integer :: i, current_max, total_max, ir, iel, n_rshift
         integer(i0) :: core_bstring, overflow_bstring
         integer(i0) :: secref_bstring(sys%basis%bit_string_len), real_bstring(sys%basis%tot_string_len)

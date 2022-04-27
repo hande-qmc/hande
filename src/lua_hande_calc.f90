@@ -1502,6 +1502,7 @@ contains
         ! Out:
         !    ccmc_in: ccmc_in_t object containing ccmc-specific input options.
 
+        use, intrinsic :: iso_fortran_env, only: iostat_end
         use flu_binding, only: flu_State
         use aot_table_module, only: aot_get_val, aot_exists, aot_table_open, aot_table_close
 
@@ -1515,7 +1516,7 @@ contains
         type (sys_t), intent(in) :: sys
         type(ccmc_in_t), intent(out) :: ccmc_in
 
-        integer :: ccmc_table, err, i
+        integer :: ccmc_table, err, i, ir, ios
         character(28), parameter :: keys(15) = [character(28) :: 'move_frequency', 'cluster_multispawn_threshold', &
                                                                 'full_non_composite', 'linked', 'vary_shift_reference', &
                                                                 'density_matrices', 'density_matrix_file', 'even_selection', &
@@ -1528,6 +1529,7 @@ contains
         character(28), dimension(:), allocatable :: keys_concat
         character(10) :: str
         character(40) :: secref_file
+        logical :: secref_exist
 
         if (aot_exists(lua_state, opts, 'ccmc')) then
 
@@ -1544,16 +1546,43 @@ contains
             call aot_get_val(ccmc_in%even_selection, err, lua_state, ccmc_table, 'even_selection')
             call aot_get_val(ccmc_in%multiref, err, lua_state, ccmc_table, 'multiref')
             if (ccmc_in%multiref) then
+                call aot_get_val(ccmc_in%mr_read_in, err, lua_state, ccmc_table, 'mr_read_in')
+
                 call aot_get_val(ccmc_in%n_secondary_ref, err, lua_state, ccmc_table, 'n_secondary_ref')
-                if (ccmc_in%n_secondary_ref == 0) then
+                if (ccmc_in%n_secondary_ref == 0 .and. .not. ccmc_in%mr_read_in) then
                     call stop_all('read_ccmc_in', 'Number of secondary references unspecified.') 
                 end if
+
+                if (ccmc_in%mr_read_in) then
+                    call aot_get_val(ccmc_in%mr_secref_file, err, lua_state, ccmc_table, 'mr_secref_file')
+                    if (err.ne.0) then
+                        call stop_all('read_ccmc_in','mr_read_in set but mr_secref_file unset.')
+                    end if
+                    inquire(file=ccmc_in%mr_secref_file, exist=secref_exist)
+                    if (.not. secref_exist) call stop_all('read_ccmc_in','mr_secref_file not found!')
+
+                    ! Find out how many secondary references are in the file
+                    open(newunit=ir, file=ccmc_in%mr_secref_file, status='old', form='formatted', action='read')
+                    ccmc_in%n_secondary_ref = 0
+                    do
+                        read(ir, *, iostat=ios)
+                        if (ios==iostat_end) exit
+                        ccmc_in%n_secondary_ref = ccmc_in%n_secondary_ref + 1
+                    end do
+                    close(ir)
+
+                    call aot_get_val(ccmc_in%mr_n_frozen, err, lua_state, ccmc_table, 'mr_n_frozen')
+                    call aot_get_val(ccmc_in%mr_excit_lvl, err, lua_state, ccmc_table, 'mr_excit_lvl')
+                    if (ccmc_in%mr_excit_lvl.eq.-1) then
+                        call stop_all('read_ccmc_in','mr_read_in set but mr_excit_lvl unset.')
+                    endif
+                    keys_concat = keys
+                end if
+
                 allocate(secondary_ref_keys(ccmc_in%n_secondary_ref))
-                allocate(ccmc_in%secondary_refs(ccmc_in%n_secondary_ref))
 
-                call aot_get_val(ccmc_in%mr_read_in, err, lua_state, ccmc_table, 'mr_read_in')  
-
-                if (.not.ccmc_in%mr_read_in) then
+                if (.not. ccmc_in%mr_read_in) then
+                    allocate(ccmc_in%secondary_refs(ccmc_in%n_secondary_ref))
                     do i = 1, ccmc_in%n_secondary_ref
                         ! I0 makes sure there are no whitespaces around the number string
                         write (string, '(A13,I0)') 'secondary_ref', i ! up to 2.15E9 secondary references can be provided      
@@ -1568,18 +1597,7 @@ contains
                              secondary_ref_keys(i) = trim(string)
                     end do
                     keys_concat = [keys,secondary_ref_keys]
-                else
-                    call aot_get_val(ccmc_in%mr_secref_file, err, lua_state, ccmc_table, 'mr_secref_file')
-                    if (err.ne.0) then
-                        call stop_all('read_ccmc_in','mr_read_in set but mr_secref_file unset.')
-                    endif
-                    call aot_get_val(ccmc_in%mr_n_frozen, err, lua_state, ccmc_table, 'mr_n_frozen')
-                    call aot_get_val(ccmc_in%mr_excit_lvl, err, lua_state, ccmc_table, 'mr_excit_lvl')
-                    if (ccmc_in%mr_excit_lvl.eq.-1) then
-                        call stop_all('read_ccmc_in','mr_read_in set but mr_excit_lvl unset.')
-                    endif
-                    keys_concat = keys
-                endif
+                end if
 
                 call aot_get_val(str, err, lua_state, ccmc_table, 'mr_acceptance_search')
                 select case (str)

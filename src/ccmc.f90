@@ -438,7 +438,7 @@ contains
                 qs%mr_secref_file = ccmc_in%mr_secref_file
                 qs%mr_n_frozen = ccmc_in%mr_n_frozen
                 qs%mr_excit_lvl = ccmc_in%mr_excit_lvl
-            endif
+            end if
             allocate (qs%secondary_refs(qs%n_secondary_ref))
             call init_secondary_references(sys, ccmc_in%secondary_refs, io_unit, qs)
         else 
