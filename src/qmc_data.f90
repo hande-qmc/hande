@@ -869,8 +869,9 @@ type highest_dets_t
     character(255) :: det_file = 'fciqmc.secref'
     ! Holds the highest determinants and their absolute populations. 
     ! int_s is used as a result (which is 64 bit if one of det_size and pop_size is 64 bit)
-    ! det_list(:,i) stores information of the i-th highest occupied determinant, with the first element the population, and the 
-    ! remaining bit_string_len elements contain the bitstring.
+    ! det_list(:,i) stores information of the i-th highest occupied determinant, 
+    ! with the first element being the cumulative squared FCI coefficient,  
+    ! and the remaining bit_string_len elements contain the bitstring.
     ! This list is sorted by (absolute) population
     integer(int_s), allocatable :: det_list_main(:,:) ! (1+bit_string_len, max_ndets)
     ! Holds the highest occupied determinant for the current report loop

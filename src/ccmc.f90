@@ -435,7 +435,7 @@ contains
                 qs%mr_excit_lvl = ccmc_in%mr_excit_lvl
             endif
 
-            allocate (qs%secondary_refs(qs%n_secondary_ref))
+            allocate(qs%secondary_refs(qs%n_secondary_ref))
             call init_secondary_references(sys, ccmc_in%secondary_refs, io_unit, qs)
         else 
             qs%ref%max_ex_level = qs%ref%ex_level

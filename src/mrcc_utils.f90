@@ -94,6 +94,106 @@ contains
 
     end subroutine get_highest_occupied_dets
 
+    subroutine accumulate_population(sys, hd)
+
+        use errors, only: stop_all
+        use system, only: sys_t
+        use search, only: binary_search
+        use sort, only: qsort
+
+        type(sys_t), intent(in) :: sys
+        type(highest_dets_t), intent(inout) :: hd
+
+        integer :: i, j, k, istart, iend, nhit, pos, spawn_start, spawn_head, spawn_end
+        integer(i0) :: f(sys%basis%bit_string_len)
+        logical :: hit
+        real(p) :: fill_fraction
+
+
+        ! Accumulate the populations on all occupied determinants
+        ! This is algorithmically similar to annihilation :: insert_new_walkers, and some of the code is copied over.
+
+        istart = 1
+        iend = hd%ndets
+        nhit = 0
+
+        ! First we merge the populations of existing determinants
+        do i = spawn_start, spawn_end
+            f = int(hd%det_list_new(:sys%basis%bit_string_len,i), i0)
+            call binary_search(hd%det_list_main(2:,:), f, istart, iend, hit, pos)
+            if (hit) then
+                ! Augment the population                    
+                hd%det_list_main(1,pos) = hd%det_list_main(1,pos) + hd%det_list_new(1,i)
+                ! Next spawned walker cannot annihilate any determinant prior to this one as the lists are sorted.
+                istart = pos + 1
+                nhit = nhit + 1
+            else
+                ! Compress the list: shuffle down to make sure a continuous block remains at the end
+                k = i - nhit
+                hd%det_list_new(:,k) = hd%det_list_new(:,i)
+            end if
+        end do
+        spawn_head = spawn_end - nhit
+
+        fill_fraction = real(hd%ndets+spawn_head)/size(hd%det_list_main,2)
+        if (fill_fraction > 1.00) then
+            ! This will only be true if spawn_head > 0, i.e. there are things to add to the list.
+            ! Will overflow, but if the list is sensibly large, we'll hopefully have captured more than the 
+            ! required percentage of the wavefunction so we can truncate.
+            ! To do this we sort the main list by absolute population and merge the remaining spawn list with the tail end 
+            ! of the main list.
+            ! This is quite expensive as it involves two quicksorts, so it'd be best to warn the user.
+            !write(error_unit,'(1X,"# Warning: ***FILL THIS IN***",'//int_fmt(iproc,1)&
+            !              //',".")') iproc
+            ! FILL ME WITH GOOD CODE
+            !call qsort(main)
+            !call qsort(spawn(start:head))
+            !min_pop = abs(min(main))
+            !do i = spawn_start, spawn_head
+            !    if (abs(spawnpop) > min_pop) then
+            !        !insert
+            !        !increment counter
+            !    else if (counter < full)
+            !        !insert bottom
+            !        !update min_pop
+            !        !increment counter
+            !    else
+            !        exit
+            !    end if
+            !end do
+            call stop_all('accumulate_population', 'Cumulative population list full!')
+        end if
+
+        ! Then we insert the unseen determinants (which should get rarer and rarer)
+        istart = 1
+        iend = hd%ndets
+        ! The do loop will be skipped if head < start, meaning there's nothing to insert
+        do i = spawn_head, spawn_start, -1
+            f = int(hd%det_list_new(:sys%basis%bit_string_len,i), i0)
+            call binary_search(hd%det_list_main(2:,:), f, istart, iend, hit, pos)
+            ! f should be in slot pos.  Move all determinants above it.
+            do j = iend, pos, -1
+                ! i is the number of determinants that will be inserted below j.
+                k = j + i
+                hd%det_list_main(:,k) = hd%det_list_main(:,j)
+            end do
+
+            ! Insert new walker into pos and shift it to accommodate the number
+            ! of elements that are still to be inserted below it.
+            k = pos + i - 1
+
+            ! Insert the new determinant.
+            hd%det_list_main(:,k) = hd%det_list_new(:,i)
+
+            ! Next walker will be inserted below this one.
+            iend = pos - 1
+        end do
+
+        ! Update hd%ndets.
+        hd%ndets = hd%ndets + spawn_head
+
+    end subroutine accumulate_population
+
     subroutine merge_highest_dets(hd)
 
         ! Merge det_list_new with det_list_main, the former containing target_ndets determinants, and the latter containing 
@@ -147,14 +247,16 @@ contains
         use errors, only: warning
         use system, only: sys_t
         use bit_utils, only: bit_str_cmp
+        use search, only: linear_search
 
         type(qmc_state_t), intent(in) :: qs
         type(sys_t), intent(in) :: sys
         type(highest_dets_t), intent(in) :: hd
         character(*), intent(in) :: filename
 
-        integer :: det_unit, det_pop_unit, i
-        logical :: done_ref
+        integer :: det_unit, det_pop_unit, i, pos
+        logical :: done_ref, hit
+        integer(i0) :: bs_flipped(sys%basis%bit_string_len)
 
         done_ref = .false.
 
@@ -181,11 +283,34 @@ contains
                     write(det_unit, '(I0, 1X, I0)') hd%det_list_main(2:,i)
                     write(det_pop_unit, '(I0, 1X, I0)') hd%det_list_main(2:,i), hd%det_list_main(1,i)
                 end if
+
+                call get_spin_flipped_bstring(hd%det_list_main(2:,i), bs_flipped, sys)
+                call linear_search(hd%det_list_main(2:,:), bs_flipped, hd%max_ndets-hd%target_ndets+1, hd%max_ndets, hit, pos)
+                if (.not. hit) then
+                    write(det_unit, '(I0, 1X, I0)') bs_flipped
+                end if
             end do
             close(det_pop_unit)
             close(det_unit)
         end if
         
     end subroutine
+
+    pure subroutine get_spin_flipped_bstring(bs_in, bs_out, sys)
+
+        use system, only: sys_t
+
+        type(sys_t), intent(in) :: sys
+        integer(i0), intent(in) :: bs_in(sys%basis%bit_string_len)
+        integer(i0), intent(out) :: bs_out(sys%basis%bit_string_len)
+
+        integer(i0), dimension(sys%basis%bit_string_len) :: bs_alpha, bs_beta
+
+        bs_alpha = iand(bs_in, sys%basis%alpha_mask)
+        bs_beta = iand(bs_in,sys%basis%beta_mask)
+
+        bs_out = ior(ishft(bs_alpha, 1), ishft(bs_beta, -1))
+
+    end subroutine get_spin_flipped_bstring
 
 end module mrcc_utils

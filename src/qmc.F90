@@ -1265,10 +1265,12 @@ contains
         type(reference_t), intent(in) :: references_in(:)
         integer, intent(in) :: io_unit
         type(qmc_state_t), intent(inout) :: qs
-        integer :: i, current_max, total_max = 0
+        integer :: i, current_max, ir, total_max
         integer(i0) :: core_bstring, secref_bstring
         integer(i0), allocatable :: real_bstring(:)
         type(reference_t) :: read_in_ref
+
+        total_max = 0
         
         if (.not.qs%mr_read_in) then
             do i = 1, size(references_in)
@@ -1288,9 +1290,9 @@ contains
             endif
             allocate(real_bstring(sys%basis%tot_string_len))
             allocate(read_in_ref%occ_list0(sys%nel))
-            open(8,file=qs%mr_secref_file,status='old',form='formatted',action='read')
+            open(newunit=ir,file=qs%mr_secref_file,status='old',form='formatted',action='read')
             do i=1,qs%n_secondary_ref,1
-                read(8,*) secref_bstring
+                read(ir,*) secref_bstring
                 ! [TODO]: Support references of longer than i0 bits
                 real_bstring(1) = ior(lshift(secref_bstring,qs%mr_n_frozen),core_bstring)
                 call decode_det(sys%basis,real_bstring(:),read_in_ref%occ_list0(:))
@@ -1301,7 +1303,7 @@ contains
                                                                      det_string(qs%secondary_refs(i)%f0,sys%basis)) 
                if (current_max > total_max) total_max = current_max
             enddo
-            close(8)
+            close(ir)
 
             qs%ref%max_ex_level = total_max
 
