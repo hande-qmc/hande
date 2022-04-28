@@ -1299,11 +1299,16 @@ contains
 
             qs%ref%max_ex_level = total_max
         else
+            core_bstring = 0_i0
             if (sys%CAS(1) == -1) then
                 ! -1 is the default (unset) value
-                core_bstring = 2**(qs%mr_n_frozen) - 1
+                do i = 0, qs%mr_n_frozen-1
+                    core_bstring = ibset(core_bstring, i)
+                end do
             else
-                core_bstring = 2**(qs%mr_n_frozen-sys%CAS(1)) - 1
+                do i = 0, qs%mr_n_frozen-sys%cas(1)-1
+                    core_bstring = ibset(core_bstring, i)
+                end do
             end if
             
             allocate(read_in_ref%occ_list0(sys%nel))
@@ -1317,16 +1322,25 @@ contains
                 ! to store a secondary reference, we need to take care of reading in variable number of columns.
                 read(ir, *) secref_bstring(1)
 
+                print*, secref_bstring
+
                 ! We need to move push mr_n_frozen bits of bitstrings around, proceed from the highest element 
                 ! (guaranteed no overflow). When bit_string_len == 1 the do loop is skipped.
                 n_rshift = i0_length - qs%mr_n_frozen
                 do iel = sys%basis%bit_string_len, 2, -1
-                    real_bstring(iel) = ior(lshift(secref_bstring(iel), qs%mr_n_frozen), &
-                                            rshift(secref_bstring(iel-1), n_rshift))
+                    real_bstring(iel) = ior(ishft(secref_bstring(iel), qs%mr_n_frozen), &
+                                            ishft(secref_bstring(iel-1), -n_rshift))
                 end do
-                real_bstring(1) = ior(lshift(secref_bstring(1), qs%mr_n_frozen), core_bstring)
+                real_bstring(1) = ior(ishft(secref_bstring(1), qs%mr_n_frozen), core_bstring)
+
+                print*, core_bstring
+                print*, qs%mr_n_frozen
+                print*, real_bstring
 
                 call decode_det(sys%basis, real_bstring(:), read_in_ref%occ_list0(:))
+
+                print*, read_in_ref%occ_list0
+
                 read_in_ref%ex_level= qs%mr_excit_lvl
                 call init_reference(sys, read_in_ref, io_unit, qs%secondary_refs(i))
 
