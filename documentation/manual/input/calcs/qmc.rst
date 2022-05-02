@@ -427,7 +427,7 @@ algorithms and control the core settings in the algorithms.
     Optional. Default: false.
 
     A non-zero ``shift_harmonic_forcing`` factor allows the shift to be varied from the start 
-    of the calcaultion. However this would mean the target population is reached more slowly 
+    of the calculation. However this would mean the target population is reached more slowly 
     as more death events occur. If false, shift is varied from the start of the calculation, 
     otherwise shift is only varied (with harmonic forcing turned on) when target population is reached.
 
