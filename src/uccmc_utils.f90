@@ -77,7 +77,7 @@ contains
         end if
     end subroutine add_ci_contribution
 
-    subroutine add_t_contributions(psip_list, states, pops, sq, nstates)
+    subroutine add_t_contributions(psip_list, states, pops, sq, nstates, reverse)
 
         ! Add contributions to UCC wavefunction.
 
@@ -97,6 +97,7 @@ contains
         integer(i0), intent(inout) :: states(:,:)
         real(p), intent(inout) :: pops(:), sq(:,:)
         integer, intent(inout) :: nstates
+        logical, intent(in) :: reverse
 
         integer :: i, j, k, pos
         logical :: hit
@@ -104,7 +105,7 @@ contains
 
         do i = 1, psip_list%nstates
             state = psip_list%states(:,i) 
-            call binary_search(states, state, 1, nstates, hit, pos, .false.)
+            call binary_search(states, state, 1, nstates, hit, pos, reverse)
             if (hit) then
                   pops(pos) = pops(pos) + (real(psip_list%pops(1,i))/psip_list%pop_real_factor)
                   sq(size(state) + 1,pos) = sq(size(state) + 1,pos) + (real(psip_list%pops(1,i))/psip_list%pop_real_factor)**2 
@@ -372,4 +373,94 @@ contains
        end do
        var_energy = var_energy/normalisation
    end subroutine var_energy_uccmc
+
+    subroutine initialise_average_wfn(sys, psip_list, time_avg_psip_list_states, time_avg_psip_list_pops, time_avg_psip_list_sq, nstates_sq, avg_start, iter)
+
+        use qmc_data, only: particle_t
+        use system, only: sys_t
+ 
+        type(sys_t), intent(in) :: sys
+        type(particle_t), intent(in) :: psip_list
+        real(p), intent(inout) :: time_avg_psip_list_pops(:), time_avg_psip_list_sq(:,:)
+        integer(i0), intent(inout) :: time_avg_psip_list_states(:,:)
+        integer, intent(inout) :: nstates_sq, avg_start
+        integer, intent(in) :: iter
+
+        avg_start = iter
+        time_avg_psip_list_pops(:psip_list%nstates) = &
+            real(psip_list%pops(1,:psip_list%nstates))/psip_list%pop_real_factor
+        time_avg_psip_list_states(:,:psip_list%nstates) = psip_list%states(:,:psip_list%nstates)
+        time_avg_psip_list_sq(:sys%basis%tot_string_len,:psip_list%nstates) = &
+            psip_list%states(:,:psip_list%nstates)
+        time_avg_psip_list_sq(sys%basis%tot_string_len+1,:psip_list%nstates) = &
+            (real(psip_list%pops(1,:psip_list%nstates))/psip_list%pop_real_factor)**2
+        nstates_sq = psip_list%nstates
+    end subroutine initialise_average_wfn
+
+    subroutine write_average_wfn(sys, time_avg_psip_list_pops, time_avg_psip_list_sq, io_unit, time_avg_psip_list_states, nstates_sq)
+
+        use system, only: sys_t
+        use qmc_io, only: write_qmc_var
+ 
+        type(sys_t), intent(in) :: sys
+        real(p), intent(in) :: time_avg_psip_list_pops(:), time_avg_psip_list_sq(:,:)
+        integer(i0), intent(in) :: time_avg_psip_list_states(:,:)
+        integer, intent(in) :: nstates_sq
+        integer, intent(in) :: io_unit
+
+        integer :: i, j
+
+        write (io_unit, '(1X, "Time-averaged cluster populations",/)')
+        do i = 1, nstates_sq
+            do j = 1, sys%basis%tot_string_len
+                call write_qmc_var(io_unit, time_avg_psip_list_states(j,i))
+            end do
+            call write_qmc_var(io_unit, time_avg_psip_list_pops(i))
+            write (io_unit,'()')
+        end do
+        write (io_unit,'()')
+        write (io_unit, '(1X, "Time-averaged cluster populations squared",/)')
+        do i = 1, nstates_sq
+            do j = 1, sys%basis%tot_string_len
+                call write_qmc_var(io_unit, int(time_avg_psip_list_sq(j,i),i0))
+            end do
+            call write_qmc_var(io_unit, time_avg_psip_list_sq(sys%basis%tot_string_len + 1,i))
+            write (io_unit,'()')
+        end do
+    end subroutine write_average_wfn
+
+    subroutine write_average_wfn_trot(sys, time_avg_psip_list_pops, time_avg_psip_list_sq, io_unit, time_avg_psip_list_states, nstates_sq)
+
+        use system, only: sys_t
+        use qmc_io, only: write_qmc_var
+ 
+        type(sys_t), intent(in) :: sys
+        real(p), intent(in) :: time_avg_psip_list_pops(:), time_avg_psip_list_sq(:,:)
+        integer(i0), intent(in) :: time_avg_psip_list_states(:,:)
+        integer, intent(in) :: nstates_sq
+        integer, intent(in) :: io_unit
+
+        integer :: i, j
+
+        write (io_unit, '(1X, "Time-averaged cluster populations",/)')
+        do i = 1, nstates_sq
+            do j = 1, sys%basis%bit_string_len
+                call write_qmc_var(io_unit, time_avg_psip_list_states(j,i))
+            end do
+            call write_qmc_var(io_unit, time_avg_psip_list_states(sys%basis%bit_string_len + 1,i))
+            call write_qmc_var(io_unit, time_avg_psip_list_states(sys%basis%bit_string_len + 2,i))
+
+            call write_qmc_var(io_unit, time_avg_psip_list_pops(i))
+            write (io_unit,'()')
+        end do
+        write (io_unit, '(1X, "Time-averaged cluster populations squared",/)')
+        do i = 1, nstates_sq
+            do j = 1, sys%basis%bit_string_len
+                call write_qmc_var(io_unit, int(time_avg_psip_list_sq(j,i), i0))
+            end do
+
+            call write_qmc_var(io_unit, time_avg_psip_list_sq(2,i))
+            write (io_unit,'()')
+        end do
+    end subroutine write_average_wfn_trot
 end module

@@ -1603,7 +1603,7 @@ contains
         integer :: uccmc_table, err, i
         character(28), parameter :: keys(5) = [character(28) :: 'pow_trunc', 'variational_energy', 'average_wfn', 'trotterized', 'threshold']
 
-        if (aot_exists(lua_state, opts, 'ccmc')) then
+        if (aot_exists(lua_state, opts, 'uccmc')) then
 
             call aot_table_open(lua_state, opts, uccmc_table, 'uccmc')
 

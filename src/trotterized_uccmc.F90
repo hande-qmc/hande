@@ -111,8 +111,8 @@ contains
         use excit_gens, only: p_single_double_coll_t
         use particle_t_utils, only: init_particle_t
         use search, only: binary_search
-        use uccmc_utils, only: add_info_str_trot, latest_unset, add_ci_contribution, allocate_time_average_lists, &
-                               var_energy_uccmc
+        use uccmc_utils, only: add_info_str_trot, add_ci_contribution, allocate_time_average_lists, &
+                               var_energy_uccmc, initialise_average_wfn, write_average_wfn_trot, add_t_contributions
         type(sys_t), intent(in) :: sys
         type(qmc_in_t), intent(in) :: qmc_in
         type(ccmc_in_t), intent(in) :: ccmc_in
@@ -186,6 +186,8 @@ contains
 
         variational = .false.
         if (uccmc_in%variational_energy) variational = .true.
+        ! old_vary encodes whether the shift started varying before the current iteration. Used to determine when
+        ! to start taking averages of the wavefunction.
         old_vary = .false.
         avg_start = 0
         count_select = 0
@@ -213,9 +215,7 @@ contains
 
         ! Add information strings to the psip_list and the reference determinant.
         call regenerate_trot_info_psip_list(sys%basis, sys%nel, qs)
-        qs%ref%f0(sys%basis%bit_string_len + 2) = latest_unset(qs%ref%f0(:sys%basis%bit_string_len), &
-                                                               qs%ref%f0(:sys%basis%bit_string_len), sys%nel, sys%basis) 
-        qs%ref%f0(sys%basis%bit_string_len + 1) = sys%nel
+        call add_trot_info_reference(qs%ref%f0, sys)
 
         !Allocate memory for time averaged populations and variational energy computation.
         allocate(state(sys%basis%tot_string_len))
@@ -371,16 +371,20 @@ contains
 
                 iter = qs%mc_cycles_done + (ireport-1)*qmc_in%ncycles + icycle
 
-                if (all(qs%vary_shift) .and. (.not. old_vary) .and. uccmc_in%average_wfn) then
+                if (all(qs%vary_shift) .and. (.not. old_vary) .and. (uccmc_in%average_wfn .or. uccmc_in%variational_energy)) then
+                    ! On the first iteration after the shift has started varying, begin
+                    ! storing average wavefunction.
+                    old_vary = all(qs%vary_shift) 
                     avg_start = iter
-                    old_vary = .true.
+                end if
+                if (all(qs%vary_shift) .and. (.not. old_vary) .and. uccmc_in%average_wfn) then
                     time_avg_psip_list_pops(:qs%psip_list%nstates) = &
                         real(qs%psip_list%pops(1,:qs%psip_list%nstates))/qs%psip_list%pop_real_factor
                     time_avg_psip_list_states(:,:qs%psip_list%nstates) = qs%psip_list%states(:,:qs%psip_list%nstates)
-                    time_avg_psip_list_sq(:sys%basis%tot_string_len,:qs%psip_list%nstates) = &
-                        qs%psip_list%states(:,:qs%psip_list%nstates)
-                    time_avg_psip_list_sq(sys%basis%tot_string_len+1,:qs%psip_list%nstates) = &
-                        (real(qs%psip_list%pops(1,:qs%psip_list%nstates))/qs%psip_list%pop_real_factor)**2
+                    time_avg_psip_list_sq(:sys%basis%tot_string_len,:qs%psip_list%nstates) &
+                        = qs%psip_list%states(:,:qs%psip_list%nstates)
+                    time_avg_psip_list_sq(sys%basis%tot_string_len+1,:qs%psip_list%nstates) &
+                        = (real(qs%psip_list%pops(1,:qs%psip_list%nstates))/qs%psip_list%pop_real_factor)**2
                     nstates_sq = qs%psip_list%nstates
                 end if
                   
@@ -491,7 +495,6 @@ contains
                     ! For OpenMP scalability, have this test inside a single loop rather
                     ! than attempt to parallelise over three separate loops.
                    
-                   !if (iattempt <= selection_data%nsingle_excitors) then
                         ! As noncomposite clusters can't be above truncation level or linked-only all can accumulate +
                         ! propagate. Only need to check not selecting the reference as we treat it separately.
                         if (iattempt /= D0_pos) then
@@ -508,20 +511,19 @@ contains
                             call do_ccmc_accumulation(sys, qs, contrib(it)%cdet, contrib(it)%cluster, logging_info, &
                                                     D0_population_cycle, proj_energy_cycle, ccmc_in, ref_det, rdm, &
                                                     selection_data, D0_population_noncomp_cycle)
-                            call do_nc_ccmc_propagation(rng(it), sys, qs, ccmc_in, logging_info, bloom_stats, &
-                                                                contrib(it), nattempts_spawn, ps_stats(it), uccmc_in)
                             if (uccmc_in%variational_energy .and. all(qs%vary_shift) .and. & 
                                 contrib(it)%cluster%excitation_level <= qs%ref%ex_level)  then
                                 call add_ci_contribution(contrib(it)%cluster, contrib(it)%cdet, &
                                 time_avg_psip_list_ci_states, time_avg_psip_list_ci_pops, nstates_ci)
                             end if
+                            call do_nc_ccmc_propagation(rng(it), sys, qs, ccmc_in, logging_info, bloom_stats, &
+                                                                contrib(it), nattempts_spawn, ps_stats(it), uccmc_in)
                         end if
                 end do
                 !$omp end do
                 !$omp do schedule(dynamic,200) 
                 do iattempt = 1, selection_data%nstochastic_clusters
 
-                   !else if (iattempt <= selection_data%nsingle_excitors + selection_data%nstochastic_clusters) then
                         call select_ucc_trot_cluster(rng(it), sys, qs%psip_list, qs%ref%f0, qs%ref%max_ex_level, &
                                             selection_data%nstochastic_clusters, &
                                             D0_normalisation, qmc_in%initiator_pop, D0_pos, cumulative_abs_real_pops,&
@@ -532,25 +534,10 @@ contains
 
                             !Add selected cluster contribution to CI wavefunction estimator.
                             if (uccmc_in%variational_energy .and. (.not. all(contrib(it)%cdet%f==0)) .and. &
+                                all(qs%vary_shift).and. &
                                 contrib(it)%cluster%excitation_level <= qs%ref%ex_level)  then
-                                state = contrib(it)%cdet%f 
-                                call binary_search(time_avg_psip_list_ci_states, state, 1, nstates_ci, hit, pos, .true.)
-                                population = contrib(it)%cluster%amplitude*contrib(it)%cluster%cluster_to_det_sign &
-                                            /contrib(it)%cluster%pselect
-                                if (hit) then
-                                    time_avg_psip_list_ci_pops(pos) = time_avg_psip_list_ci_pops(pos) + population 
-                                else
-                                    do j = nstates_ci, pos, -1
-                                        ! i is the number of determinants that will be inserted below j.
-                                        k = j + 1 
-                                        time_avg_psip_list_ci_states(:,k) = time_avg_psip_list_ci_states(:,j)
-                                        time_avg_psip_list_ci_pops(k) = time_avg_psip_list_ci_pops(j)
-                                    end do
-
-                                    time_avg_psip_list_ci_states(:,pos) = state
-                                    time_avg_psip_list_ci_pops(pos) = population
-                                    nstates_ci = nstates_ci + 1
-                                end if
+                                call add_ci_contribution(contrib(it)%cluster, contrib(it)%cdet, &
+                                time_avg_psip_list_ci_states, time_avg_psip_list_ci_pops, nstates_ci)
                             end if
                     
 
@@ -572,7 +559,6 @@ contains
 
                 !$omp do schedule(dynamic,200) 
                 do iattempt = 1, selection_data%nD0_select
-                  ! else
                         if (.not. seen_D0) then
                             ! This is the first time this thread is spawning from D0, so it
                             ! needs to be converted into a det_info_t object for the excitation
@@ -596,7 +582,6 @@ contains
                         nattempts_spawn = nattempts_spawn + 1
                         call perform_ccmc_spawning_attempt(rng(it), sys, qs, ccmc_in, logging_info, bloom_stats, contrib(it), 1, &
                                                         ps_stats(it), uccmc_in)
-                   !end if
 
                 end do
                 !$omp end do
@@ -667,36 +652,14 @@ contains
                                                        selection_data%nsingle_excitors)
 
                 !Take updated time average of CI wavefunction.
-                if(uccmc_in%variational_energy) then
-                          time_avg_psip_list_ci_pops(:nstates_ci) =  time_avg_psip_list_ci_pops(:nstates_ci)/(iter)
+                if(uccmc_in%variational_energy .and. all(qs%vary_shift)) then
+                          time_avg_psip_list_ci_pops(:nstates_ci) =  time_avg_psip_list_ci_pops(:nstates_ci)/(iter-avg_start+1)
                 end if
 
                 ! Add new contributions to time-average cluster populations.
                 if (all(qs%vary_shift) .and. old_vary .and. uccmc_in%average_wfn) then
-                do i = 1, qs%psip_list%nstates
-                    state = qs%psip_list%states(:,i) 
-                    call binary_search(time_avg_psip_list_states, state, 1, nstates_sq, hit, pos, .true.)
-                    if (hit) then
-                          time_avg_psip_list_pops(pos) = &
-                              time_avg_psip_list_pops(pos) + (real(qs%psip_list%pops(1,i))/qs%psip_list%pop_real_factor)
-                          time_avg_psip_list_sq(2,pos) = &
-                              time_avg_psip_list_sq(2,pos) + (real(qs%psip_list%pops(1,i))/qs%psip_list%pop_real_factor)**2
-                       else
-                           do j = nstates_sq, pos, -1
-                               ! i is the number of determinants that will be inserted below j.
-                               k = j + 1 
-                               time_avg_psip_list_states(:,k) = time_avg_psip_list_states(:,j)
-                               time_avg_psip_list_pops(k) = time_avg_psip_list_pops(j)
-                               time_avg_psip_list_sq(1,k) = time_avg_psip_list_sq(1,j)
-                               time_avg_psip_list_sq(2,k) = time_avg_psip_list_sq(2,j)
-                           end do
-                           time_avg_psip_list_states(:,pos) = qs%psip_list%states(:,i)
-                           time_avg_psip_list_pops(pos) = (real(qs%psip_list%pops(1,i))/qs%psip_list%pop_real_factor)
-                           time_avg_psip_list_sq(1,pos) = qs%psip_list%states(1,i)
-                           time_avg_psip_list_sq(2,pos) = (real(qs%psip_list%pops(1,i))/qs%psip_list%pop_real_factor)**2
-                           nstates_sq = nstates_sq + 1
-                       end if
-                end do
+                    call add_t_contributions(qs%psip_list, time_avg_psip_list_states, time_avg_psip_list_pops, &
+                                             time_avg_psip_list_sq, nstates_sq, .true.)
                 end if
                 call end_mc_cycle(nspawn_events, ndeath_nc, qs%psip_list%pop_real_factor, nattempts_spawn, qs%spawn_store%rspawn)
             end do
@@ -753,26 +716,7 @@ contains
             time_avg_psip_list_pops(:nstates_sq) =  time_avg_psip_list_pops(:nstates_sq)/(iter-avg_start+1)
             time_avg_psip_list_sq(sys%basis%tot_string_len+1,:nstates_sq) = &
                 time_avg_psip_list_sq(sys%basis%tot_string_len+1,:nstates_sq)/(iter-avg_start+1)
-            write (io_unit, '(1X, "Time-averaged cluster populations",/)')
-            do i = 1, nstates_sq
-                do j = 1, sys%basis%bit_string_len
-                    call write_qmc_var(io_unit, time_avg_psip_list_states(j,i))
-                end do
-                call write_qmc_var(io_unit, time_avg_psip_list_states(sys%basis%bit_string_len + 1,i))
-                call write_qmc_var(io_unit, time_avg_psip_list_states(sys%basis%bit_string_len + 2,i))
-
-                call write_qmc_var(io_unit, time_avg_psip_list_pops(i))
-                write (io_unit,'()')
-            end do
-            write (io_unit, '(1X, "Time-averaged cluster populations squared",/)')
-            do i = 1, nstates_sq
-                do j = 1, sys%basis%bit_string_len
-                    call write_qmc_var(io_unit, int(time_avg_psip_list_sq(j,i), i0))
-                end do
-
-                call write_qmc_var(io_unit, time_avg_psip_list_sq(2,i))
-                write (io_unit,'()')
-            end do
+            call write_average_wfn_trot(sys, time_avg_psip_list_pops, time_avg_psip_list_sq, io_unit, time_avg_psip_list_states, nstates_sq)
         end if
 
         call dSFMT_t_to_dSFMT_state_t(rng(0), qs%rng_state)
@@ -1587,6 +1531,10 @@ contains
 
     subroutine regenerate_trot_info_psip_list(basis, nel, qs)
 
+        ! To obtain an ordering consisten with https://doi.org/10.1063/1.5133059
+        ! the psip_list is ordered in descending order, 
+        ! first by highest orbital excited from(relative to f0), then by (nelec - excitation level).
+        ! e.g. D0, t_2^4, t_12^34, t_1^4 
         ! Regenerates excitation level and lowest unoccupied orbital information
         ! stored at start of bit string within states in psip list.
         ! For use when restarting from a restart file
@@ -2025,4 +1973,17 @@ contains
                                             real(population,p)/qs%psip_list%pop_real_factor)
 
     end subroutine stochastic_trot_uccmc_death_nc
+
+    subroutine add_trot_info_reference(f0, sys)
+
+        use system, only: sys_t
+        use uccmc_utils, only: latest_unset
+
+        integer(i0), intent(inout) :: f0(:)
+        type(sys_t), intent(in) :: sys
+ 
+        f0(sys%basis%bit_string_len + 2) = latest_unset(f0(:sys%basis%bit_string_len), &
+                                                               f0(:sys%basis%bit_string_len), sys%nel, sys%basis) 
+        f0(sys%basis%bit_string_len + 1) = sys%nel
+    end subroutine add_trot_info_reference
 end module

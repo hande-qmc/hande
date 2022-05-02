@@ -114,7 +114,8 @@ contains
         use excit_gens, only: p_single_double_coll_t
         use particle_t_utils, only: init_particle_t
         use search, only: binary_search
-        use uccmc_utils, only: allocate_time_average_lists, add_ci_contribution, add_t_contributions, var_energy_uccmc
+        use uccmc_utils, only: allocate_time_average_lists, add_ci_contribution, add_t_contributions, var_energy_uccmc, &
+                               initialise_average_wfn, write_average_wfn
 
         type(sys_t), intent(in) :: sys
         type(qmc_in_t), intent(in) :: qmc_in
@@ -177,6 +178,8 @@ contains
         logical :: hit
         real(p) :: population
         real(p) :: real_population, var_energy
+        ! old_vary encodes whether the shift started varying before the current iteration. Used to determine when
+        ! to start taking averages of the wavefunction.
         logical :: old_vary
         integer :: avg_start
         integer :: count_discard
@@ -354,11 +357,13 @@ contains
                 
                 iter = qs%mc_cycles_done + (ireport-1)*qmc_in%ncycles + icycle
 
-                if (all(qs%vary_shift) .and. (.not. old_vary) .and. uccmc_in%average_wfn) then
+                if (all(qs%vary_shift) .and. (.not. old_vary) .and. (uccmc_in%average_wfn .or. uccmc_in%variational_energy)) then
                     ! On the first iteration after the shift has started varying, begin
                     ! storing average wavefunction.
                     old_vary = all(qs%vary_shift) 
                     avg_start = iter
+                end if
+                if (all(qs%vary_shift) .and. (.not. old_vary) .and. uccmc_in%average_wfn) then
                     time_avg_psip_list_pops(:qs%psip_list%nstates) = &
                         real(qs%psip_list%pops(1,:qs%psip_list%nstates))/qs%psip_list%pop_real_factor
                     time_avg_psip_list_states(:,:qs%psip_list%nstates) = qs%psip_list%states(:,:qs%psip_list%nstates)
@@ -476,10 +481,9 @@ contains
                 seen_D0 = .false.
 
                 !$omp do schedule(dynamic,200) 
-                do iattempt = 1, selection_data%nsingle_excitors!clusters
+                do iattempt = 1, selection_data%nsingle_excitors
                     ! For OpenMP scalability, have this test inside a single loop rather
                     ! than attempt to parallelise over three separate loops.
-                    !if (iattempt <= selection_data%nsingle_excitors) then
                         ! As noncomposite clusters can't be above truncation level or linked-only all can accumulate +
                         ! propagate. Only need to check not selecting the reference as we treat it separately.
                         if (iattempt /= D0_pos) then
@@ -496,20 +500,19 @@ contains
                             call do_ccmc_accumulation(sys, qs, contrib(it)%cdet, contrib(it)%cluster, logging_info, &
                                                     D0_population_cycle, proj_energy_cycle, ccmc_in, ref_det, rdm, &
                                                     selection_data, D0_population_noncomp_cycle)
-                            call do_nc_ccmc_propagation(rng(it), sys, qs, ccmc_in, logging_info, bloom_stats, &
-                                                                contrib(it), nattempts_spawn, ps_stats(it), uccmc_in)
                             if (uccmc_in%variational_energy .and. all(qs%vary_shift) .and. & 
                                 contrib(it)%cluster%excitation_level <= qs%ref%ex_level)  then
                                 call add_ci_contribution(contrib(it)%cluster, contrib(it)%cdet, &
                                 time_avg_psip_list_ci_states, time_avg_psip_list_ci_pops, nstates_ci)
                             end if
+                            call do_nc_ccmc_propagation(rng(it), sys, qs, ccmc_in, logging_info, bloom_stats, &
+                                                                contrib(it), nattempts_spawn, ps_stats(it), uccmc_in)
                         end if
                 end do
                 !$omp end do
                 !$omp do schedule(dynamic,200) &
                 !$omp reduction(+:D0_population_cycle,proj_energy_cycle, D0_population_noncomp_cycle, nattempts_spawn,ndeath)
                 do iattempt = 1, selection_data%nstochastic_clusters
-                    !else if (iattempt <= selection_data%nsingle_excitors + selection_data%nstochastic_clusters) then
                         call select_ucc_cluster(rng(it), sys, qs%psip_list, qs%ref%f0, qs%ref%max_ex_level, &
                                             selection_data%nstochastic_clusters, D0_normalisation, qmc_in%initiator_pop, D0_pos, &
                                             cumulative_abs_real_pops, tot_abs_real_pop, min_cluster_size, max_cluster_size, &
@@ -620,7 +623,7 @@ contains
                                                         selection_data%nclusters, selection_data%nstochastic_clusters, &
                                                         selection_data%nsingle_excitors)
 
-                if(uccmc_in%variational_energy) then
+                if(uccmc_in%variational_energy .and. all(qs%vary_shift)) then
                           time_avg_psip_list_ci_pops(:nstates_ci) =  time_avg_psip_list_ci_pops(:nstates_ci)/(iter-avg_start+1)
                 end if
 
@@ -629,7 +632,7 @@ contains
                 if(all(qs%vary_shift) .and. old_vary .and. uccmc_in%average_wfn) then
                     ! Add current wfn value average.
                     call add_t_contributions(qs%psip_list, time_avg_psip_list_states, time_avg_psip_list_pops, &
-                                             time_avg_psip_list_sq, nstates_sq)
+                                             time_avg_psip_list_sq, nstates_sq, .false.)
                 end if
                 call end_mc_cycle(nspawn_events, ndeath_nc, qs%psip_list%pop_real_factor, nattempts_spawn, qs%spawn_store%rspawn)
             end do
@@ -689,23 +692,7 @@ contains
         if (parent) write (io_unit,'()')
 
         if (parent .and. uccmc_in%average_wfn) then
-            write (io_unit, '(1X, "Time-averaged cluster populations",/)')
-            do i = 1, nstates_sq
-                do j = 1, sys%basis%tot_string_len
-                    call write_qmc_var(io_unit, time_avg_psip_list_states(j,i))
-                end do
-                call write_qmc_var(io_unit, time_avg_psip_list_pops(i))
-                write (io_unit,'()')
-            end do
-            write (io_unit,'()')
-            write (io_unit, '(1X, "Time-averaged cluster populations squared",/)')
-            do i = 1, nstates_sq
-                do j = 1, sys%basis%tot_string_len
-                    call write_qmc_var(io_unit, int(time_avg_psip_list_sq(j,i),i0))
-                end do
-                call write_qmc_var(io_unit, time_avg_psip_list_sq(sys%basis%tot_string_len + 1,i))
-                write (io_unit,'()')
-            end do
+            call write_average_wfn(sys, time_avg_psip_list_pops, time_avg_psip_list_sq,io_unit,time_avg_psip_list_states,nstates_sq)
         end if
 
         call dSFMT_t_to_dSFMT_state_t(rng(0), qs%rng_state)

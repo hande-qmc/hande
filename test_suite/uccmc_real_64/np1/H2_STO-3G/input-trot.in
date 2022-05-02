@@ -20,7 +20,7 @@ uccmc {
     reference = {
         ex_level = 2,
     },
-    ccmc = {
+    uccmc = {
         trotterized = true,
     },
 }

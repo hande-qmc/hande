@@ -21,8 +21,10 @@ uccmc {
         ex_level = 2,
     },
     ccmc = {
-        trotterized = true,
         full_non_composite = true,
+    },
+    uccmc = {
+        trotterized = true,
     },
 }
 
