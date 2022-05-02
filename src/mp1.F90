@@ -263,8 +263,8 @@ contains
 
                             ! Stochastically coarse-grain the MP1 wavefunction by randomly rounding small amplitudes
 
-                            ! Note attempt_to_spawn creates particles of opposite sign, hence set parent_sign=-1 to undo this unwanted
-                            ! sign change.
+                            ! Note attempt_to_spawn creates particles of opposite sign, hence set parent_sign = -1 
+                            ! to undo this unwanted sign change.
                             ! pgen is always 1 as this is a deterministic calculation
                             ! TODO - cope with complex valued spawns
                             nspawn = attempt_to_spawn(rng, 1.0_p, spawn%cutoff, tijab%pop_real_factor, ampl%r, 1.0_p, -1_int_p)

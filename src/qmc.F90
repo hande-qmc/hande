@@ -112,12 +112,12 @@ contains
         ! [WARNING - TODO] - ref%fock_sum not initialised in init_reference, etc! 
         qmc_state%ref%fock_sum = sum_fock_values_occ_list(sys, qmc_state%propagator%sp_fock, qmc_state%ref%occ_list0)
 
-        if (.not.psip_list_in_loc) then
+        if (.not. psip_list_in_loc) then
             call init_psip_list(sys, dmqmc_in_loc, fciqmc_in_loc, qmc_in, qmc_state_restart_loc, &
                                 io_unit, qmc_state%psip_list)
         else
-            ! This moves and deallocates psip_list_in
-            call move_particle_t(psip_list_in, qmc_state%psip_list)
+            ! We move psip_list later but for now just fill in this one field needed in get_comm_processor_indx
+            qmc_state%psip_list%nspaces = psip_list_in%nspaces
         end if
 
         call get_comm_processor_indx(qmc_state%psip_list%nspaces, proc_data_info, ntot_proc_data)
@@ -132,7 +132,9 @@ contains
             ! Prevent pattempt_single to be overwritten by default value in init_excit_gen.
             ! It is only overwritten if user specifies pattempt_single by qmc_in.
             qmc_state%excit_gen_data%p_single_double%pattempt_restart_store = .true.
+            if (psip_list_in_loc) call move_particle_t(psip_list_in, qmc_state%psip_list)
         else
+            if (psip_list_in_loc) call move_particle_t(psip_list_in, qmc_state%psip_list)
             call init_spawn_store(qmc_in, qmc_state%psip_list%nspaces, qmc_state%psip_list%pop_real_factor, sys%basis, &
                                   fciqmc_in_loc%non_blocking_comm, qmc_state%par_info%load%proc_map, io_unit, &
                                   qmc_state%spawn_store)
@@ -1283,8 +1285,7 @@ contains
         type(qmc_state_t), intent(inout) :: qs
 
         integer :: i, current_max, total_max, ir, iel, n_rshift
-        integer(i0) :: core_bstring, overflow_bstring
-        integer(i0) :: secref_bstring(sys%basis%bit_string_len), real_bstring(sys%basis%tot_string_len)
+        integer(i0) :: secref_bstring(sys%basis%bit_string_len), real_bstring(sys%basis%tot_string_len), core_bstring
         type(reference_t) :: read_in_ref
         
         total_max = 0
@@ -1317,12 +1318,10 @@ contains
                 secref_bstring(:) = 0_i0
                 real_bstring(:) = 0_i0
 
-                ! [warning] - We are assuming that the secondary references are only ever within 64 bits
+                ! [warning] - We are assuming that the secondary references are only ever within 64 bits (i.e., )
                 ! Here we pad the higher elements with 0's. If we ever need more than one 64-bit integer
                 ! to store a secondary reference, we need to take care of reading in variable number of columns.
                 read(ir, *) secref_bstring(1)
-
-                print*, secref_bstring
 
                 ! We need to move push mr_n_frozen bits of bitstrings around, proceed from the highest element 
                 ! (guaranteed no overflow). When bit_string_len == 1 the do loop is skipped.
@@ -1333,13 +1332,7 @@ contains
                 end do
                 real_bstring(1) = ior(ishft(secref_bstring(1), qs%mr_n_frozen), core_bstring)
 
-                print*, core_bstring
-                print*, qs%mr_n_frozen
-                print*, real_bstring
-
                 call decode_det(sys%basis, real_bstring(:), read_in_ref%occ_list0(:))
-
-                print*, read_in_ref%occ_list0
 
                 read_in_ref%ex_level= qs%mr_excit_lvl
                 call init_reference(sys, read_in_ref, io_unit, qs%secondary_refs(i))

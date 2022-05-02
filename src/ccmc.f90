@@ -391,8 +391,6 @@ contains
 
         real(p), allocatable :: rdm(:,:)
 
-        integer(i0), allocatable :: pl_states_loc(:,:)
-
         type(blocking_t) :: bl
         integer :: iunit, restart_version_restart
         integer :: date_values(8)
