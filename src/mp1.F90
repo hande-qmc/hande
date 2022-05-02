@@ -18,15 +18,14 @@ end type mp1_in_t
 
 contains
 
-    subroutine sample_mp1_wfn(sys, mp1_in, ref_in, logging_in, tijab, rng_seed)
+    subroutine sample_mp1_wfn(sys, mp1_in, ref_in, tijab, rng_seed)
 
         ! Generate the mp1 wavefunction (1+T_2)|HF> exactly and use it as an initial guess for FCIQMC/CCMC
         ! In:
         !   sys: system being studied.
         !   mpi_in: input options relating to mp1.
         !   ref_in: current reference determinant, set in lua_hande_calc.
-        !   logging_in: (currently untested) logging inputs.
-        !   rng_seed:
+        !   rng_seed (optional): the integer rng seed used in coarse-graining the wavefunction
         ! Out:
         !   tijab: particle_t object for use in FCIQMC/CCMC calculation
 
@@ -59,18 +58,14 @@ contains
         use hamiltonian_data
         use particle_t_utils, only: init_particle_t, dealloc_particle_t
         use proc_pointers, only: decoder_ptr
-!        use qmc, only: init_sc0_ptr
         use reference_determinant, only: set_reference_det
-        use search, only: binary_search
         use stoch_utils, only: stochastic_round_spawned_particle
         use spawning, only: create_spawned_particle, attempt_to_spawn, assign_particle_processor
-        use logging, only: logging_t, logging_in_t
         use excit_gens, only: excit_gen_data_t
 
         type(sys_t), intent(inout) :: sys
         type(mp1_in_t), intent(in) :: mp1_in
         type(reference_t), intent(in), optional :: ref_in
-        type(logging_in_t), intent(in) :: logging_in
         type(particle_t), intent(out) :: tijab
         integer, intent(in), optional :: rng_seed
 
@@ -93,7 +88,6 @@ contains
         integer(i0) :: f(sys%basis%bit_string_len)
         type(json_out_t) :: js
         integer :: io_unit
-        type(logging_t) :: logging_info
         type(excit_gen_data_t) :: excit_gen_data
         type(qmc_in_t) :: qmc_in_loc
 
@@ -110,11 +104,8 @@ contains
         end if
         call dSFMT_init(seed+iproc, 50000, rng)
 
-
         call copy_sys_spin_info(sys, sys_bak)
         call set_spin_polarisation(sys%basis%nbasis, sys)
-
-        if (debug) call init_logging(logging_in, logging_info, ref%ex_level)
        
         ! We have to have a qmc_in_t object for init_proc_pointers, as init_reference requires proc_pointers to be properly set. Copied from qmc_data.f90::qmc_in_t
         qmc_in_loc%excit_gen = excit_gen_renorm
@@ -147,7 +138,7 @@ contains
         tijab%nspaces = 1
         tijab%info_size = 0
 
-        call init_particle_t(state_size, 1, sys%basis%tensor_label_len, mp1_in%real_amplitudes, .false., tijab) ! Strictly speaking tijab need only hold the double amplitudes.
+        call init_particle_t(state_size, 1, sys%basis%tensor_label_len, mp1_in%real_amplitudes, .false., tijab)
 
         ! annihilation_flags default to 'off'.  Only feature we might be using is real amplitudes.
         annihilation_flags%real_amplitudes = mp1_in%real_amplitudes

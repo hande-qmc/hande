@@ -46,7 +46,6 @@ contains
         type(sys_t), pointer :: sys
         type(fci_in_t) :: fci_in
         type(reference_t) :: ref
-        logical :: davidson
         character(12), parameter :: keys(4) = [character(12) :: 'sys', 'fci', 'davidson', 'reference']
 
         call cpu_time(t1)
@@ -715,7 +714,6 @@ contains
         use system, only: sys_t
         use qmc_data, only: reference_t, qmc_state_t, particle_t
         use mp1, only: mp1_in_t, sample_mp1_wfn
-        use logging, only: logging_in_t
         use excitations, only: init_excitations, end_excitations
 
         integer(c_int) :: nresult
@@ -727,10 +725,9 @@ contains
         type(mp1_in_t) :: mp1_in
         type(reference_t) :: ref
 
-        integer :: opts, ierr, rng_seed
+        integer :: opts, rng_seed
         logical :: have_seed
 
-        type(logging_in_t) :: logging_in
         real :: t1, t2
 
         type(particle_t), pointer :: psip_list
@@ -743,8 +740,6 @@ contains
         opts = aot_table_top(lua_state)
         call read_mp1_in(lua_state, opts, mp1_in, rng_seed, have_seed)
         ref%ex_level = 2
-        !call read_reference_t(lua_state, opts, ref, sys)
-        call read_logging_in_t(lua_state, opts, logging_in)
         call aot_table_close(lua_state, opts)
 
         if (mp1_in%even_selection) then
@@ -758,9 +753,9 @@ contains
         allocate(psip_list)
 
         if (have_seed) then
-            call sample_mp1_wfn(sys, mp1_in, ref, logging_in, psip_list, rng_seed)
+            call sample_mp1_wfn(sys, mp1_in, ref, psip_list, rng_seed)
         else
-            call sample_mp1_wfn(sys, mp1_in, ref, logging_in, psip_list)
+            call sample_mp1_wfn(sys, mp1_in, ref, psip_list)
         end if
 
         call push_psip_list(lua_state, psip_list)
@@ -1528,7 +1523,6 @@ contains
         character(23), dimension(:), allocatable :: secondary_ref_keys
         character(28), dimension(:), allocatable :: keys_concat
         character(10) :: str
-        character(40) :: secref_file
         logical :: secref_exist
 
         if (aot_exists(lua_state, opts, 'ccmc')) then
