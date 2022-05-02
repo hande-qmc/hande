@@ -47,6 +47,8 @@ contains
 
         use determinant_data, only: det_info_t
         use ccmc_data, only: cluster_t
+        use errors, only: stop_all
+
 
         type(det_info_t), intent(in) :: cdet
         type(cluster_t), intent(in) :: cluster
@@ -71,6 +73,8 @@ contains
         if (hit) then
            pops(pos) = pops(pos) + population 
         else
+            if (nstates + 1 > size(pops)) &
+                call stop_all('add_ci_contribution', 'CI array overflow.')
             states(:,nstates+1) = state
             pops(nstates+1) = population
             nstates = nstates + 1
