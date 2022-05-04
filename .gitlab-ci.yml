@@ -81,6 +81,7 @@ test-gcc-mpi:
     only:
         - schedules
     artifacts:
+        when: always
         paths:
             - test_suite
         expire_in: never
