@@ -152,6 +152,7 @@ contains
         !        load balancing before semi-stochastic communication.
 
         use checking, only: check_allocate, check_deallocate
+        use calc, only: doing_calc, dmqmc_calc
         use qmc_data, only: empty_determ_space, high_pop_determ_space, read_determ_space, reuse_determ_space, ci_determ_space, &
                             semi_stoch_separate_annihilation, particle_t, annihilation_flags_t, semi_stoch_in_t, propagator_t
         use parallel
@@ -174,7 +175,7 @@ contains
 
         integer :: i, ierr, determ_dets_mem, max_nstates, n_spawnees
         integer :: displs(0:nprocs-1)
-        ! dtes_this_proc will hold deterministic states on this processor only.
+        ! dets_this_proc will hold deterministic states on this processor only.
         ! This is only needed during initialisation.
         integer(i0), allocatable :: dets_this_proc(:,:)
         logical :: print_info, write_determ
@@ -343,10 +344,16 @@ contains
 
         call create_determ_hash_table(determ, print_info, io_unit=io_unit)
 
-        ! separate_annihilation applies the transpose of H, so the 6th arg tells us 
-        ! if we need to qn-weight the column rather than the row of H.
-        call create_determ_hamil(determ, sys, propagator, reference, displs,    &
-                determ%projection_mode == semi_stoch_separate_annihilation , dets_this_proc, print_info, io_unit)
+        if (doing_calc(dmqmc_calc)) then 
+            call create_dense_determ_hamil(determ, sys, propagator, reference, displs, &
+                                           determ%projection_mode == semi_stoch_separate_annihilation, &
+                                           dets_this_proc, print_info, io_unit)
+        else
+            ! separate_annihilation applies the transpose of H, so the 6th arg tells us 
+            ! if we need to qn-weight the column rather than the row of H.
+            call create_determ_hamil(determ, sys, propagator, reference, displs,    &
+                    determ%projection_mode == semi_stoch_separate_annihilation , dets_this_proc, print_info, io_unit)
+        end if
 
         ! All deterministic states on this processor are always stored in
         ! particle_t%states, even if they have a population of zero, so they are
@@ -677,6 +684,47 @@ contains
 
     end subroutine create_determ_hamil
 
+    subroutine create_dense_determ_hamil(determ, sys, propagator, ref, displs, transp, dets_this_proc, print_info, io_unit)
+
+        ! This routine is for a memory intensive version of semi-stochastic.
+        ! Primarily intended for use in DMQMC.
+
+        ! In/Out:
+        !    determ: Deterministic space being used. On input, determ%sizes,
+        !        determ%tot_size and determ%dets should be created and set. On
+        !        output, determ%hamil will have been created.
+        ! In:
+        !    sys: system being studied
+        !    propagator: propagator_t containing information about the quasinewton parameter.
+        !    ref: reference_t for the reference determinant
+        !    displs: displs(i) holds the cumulative sum of the number of
+        !        deterministic states belonging to processor numbers 0 to i-1.
+        !    transp: Should we apply the qn weighting to the j of Hij rather than the i?
+        !    dets_this_proc: The deterministic states belonging to this
+        !        processor.
+        !    print_info: Should we print information to the screen?
+
+        use parallel
+        use system, only: sys_t
+        use qmc_data, only: propagator_t
+        use reference_determinant, only: reference_t
+        use errors, only: stop_all
+
+        type(semi_stoch_t), intent(inout) :: determ
+        type(sys_t), intent(in) :: sys
+        type(propagator_t), intent(in) :: propagator
+        type(reference_t), intent(in) :: ref
+        logical, intent(in) :: transp
+        integer, intent(in) :: displs(0:nprocs-1), io_unit
+        integer(i0), intent(in) :: dets_this_proc(:,:)
+        logical, intent(in) :: print_info
+
+        call stop_all("create_dense_determ_hamil", &
+                      "This subroutine has not been implemented. &
+                      Please, implement or check back in future releases.")
+
+    end subroutine create_dense_determ_hamil
+
     subroutine add_determ_dets_to_psip_list(determ, psip_list, sys, reference, annihilation_flags, dets_this_proc)
 
         ! Also set the deterministic flags of any deterministic states already
@@ -825,6 +873,7 @@ contains
         use qmc_data, only: qmc_in_t, qmc_state_t
         use qmc_data, only: semi_stoch_separate_annihilation, semi_stoch_combined_annihilation
         use spawn_data, only: spawn_t
+        use calc, only: doing_calc, dmqmc_calc
 
         type(dSFMT_t), intent(inout) :: rng
         type(qmc_in_t), intent(in) :: qmc_in
@@ -836,7 +885,11 @@ contains
         case(semi_stoch_separate_annihilation)
             call determ_proj_separate_annihil(determ, qs, qs%estimators%proj_energy_old)
         case(semi_stoch_combined_annihilation)
-            call determ_proj_combined_annihil(rng, qmc_in, qs, qs%estimators%proj_energy_old, spawn, determ)
+            if (doing_calc(dmqmc_calc)) then 
+                call dense_determ_proj_combined_annihil(rng, qmc_in, qs, qs%estimators%proj_energy_old, spawn, determ)
+            else
+                call determ_proj_combined_annihil(rng, qmc_in, qs, qs%estimators%proj_energy_old, spawn, determ)
+            end if
         end select
 
     end subroutine determ_projection
@@ -920,6 +973,38 @@ contains
         end do
 
     end subroutine determ_proj_combined_annihil
+
+    subroutine dense_determ_proj_combined_annihil(rng, qmc_in, qs, proj_energy, spawn, determ)
+
+        ! Memory intensive projection mode for semi-stochastic. Primarily
+        ! intended for use in DMQMC.
+
+        ! In/Out:
+        !    rng: random number generator.
+        !    spawn: spawn_t object to which deterministic spawning will occur.
+        ! In:
+        !    qmc_in: input options relating to QMC methods.
+        !    qs: state of the QMC calculation. Timestep and shift are used.
+        !    proj_energy: the projected energy used for quasinewton spawning
+        !    determ: deterministic space being used.
+
+        use dSFMT_interface, only: dSFMT_t, get_rand_close_open
+        use qmc_data, only: qmc_in_t, qmc_state_t
+        use spawn_data, only: spawn_t
+        use errors, only: stop_all
+
+        type(dSFMT_t), intent(inout) :: rng
+        type(qmc_in_t), intent(in) :: qmc_in
+        type(qmc_state_t), intent(in) :: qs
+        real(p), intent(in) :: proj_energy(:)
+        type(spawn_t), intent(inout) :: spawn
+        type(semi_stoch_t), intent(in) :: determ
+
+        call stop_all("dense_determ_proj_combined_annihil", &
+                      "This subroutine has not been implemented. &
+                      Please, implement or check back in future releases.")
+
+    end subroutine dense_determ_proj_combined_annihil
 
     subroutine determ_proj_separate_annihil(determ, qs, proj_energy)
 
@@ -1060,7 +1145,7 @@ contains
 
     end subroutine create_spawned_particle_determ
 
-    subroutine add_det_to_determ_space(determ_size_this_proc, dets_this_proc, spawn, f, check_proc)
+    subroutine add_det_to_determ_space(determ_size_this_proc, dets_this_proc, spawn, f, check_proc, info_string_len)
 
         ! In/Out:
         !    determ_size_this_proc: Size of the deterministic space being
@@ -1076,20 +1161,27 @@ contains
         use parallel, only: iproc, nprocs
         use spawn_data, only: spawn_t
         use spawning, only: assign_particle_processor
+        use calc, only: doing_calc, dmqmc_calc
 
         integer, intent(inout) :: determ_size_this_proc
         integer(i0), intent(inout) :: dets_this_proc(:,:)
         type(spawn_t), intent(in) :: spawn
         integer(i0), intent(in) :: f(:)
         logical, intent(in) :: check_proc
+        integer, intent(in), optional :: info_string_len
 
         integer :: proc, slot
 
         ! If check_proc is true then make sure that the determinant does belong
         ! to this processor. If it doesn't, don't add it and return.
         if (check_proc) then
-            call assign_particle_processor(f, spawn%bit_str_nbits, spawn%hash_seed, spawn%hash_shift, spawn%move_freq, nprocs, &
-                                           proc, slot, spawn%proc_map%map, spawn%proc_map%nslots)
+            if (doing_calc(dmqmc_calc)) then 
+                call assign_particle_processor_dmqmc(f, spawn%bit_str_nbits, info_string_len, spawn%hash_seed, spawn%hash_shift, &
+                                                     spawn%move_freq, nprocs, proc, slot, spawn%proc_map%map, spawn%proc_map%nslots)
+            else
+                call assign_particle_processor(f, spawn%bit_str_nbits, spawn%hash_seed, spawn%hash_shift, spawn%move_freq, nprocs, &
+                                               proc, slot, spawn%proc_map%map, spawn%proc_map%nslots)
+            end if
         else
             proc = iproc
         end if
@@ -1719,7 +1811,8 @@ contains
         determ%sizes(iproc) = 0
 
         do i = 1, determ%tot_size
-            call add_det_to_determ_space(determ%sizes(iproc), dets_this_proc, spawn, determ_dets(:,i), .true.)
+            call add_det_to_determ_space(determ%sizes(iproc), dets_this_proc, spawn, determ_dets(:,i), .true., &
+                                         sys%basis%info_string_len)
         end do
 
         deallocate(determ_dets, stat=ierr)
