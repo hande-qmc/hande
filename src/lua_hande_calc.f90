@@ -1102,8 +1102,9 @@ contains
         !     density_matrix_file = filename,
         !     mrcc_model_space_selection = {
         !        target_ndets = integer,
+        !        wfn_weightage = float,
         !        max_ndets = integer,
-        !        info_iters = integer,
+        !        nreports = integer,
         !        dets_file = filename,
         !     },
         ! }
@@ -1198,7 +1199,21 @@ contains
                 fciqmc_in%doing_fciqmc_tailored_mrccmc = .true.
                 call aot_table_open(lua_state, fciqmc_table, mrcc_selection, 'mrcc_model_space_selection')
 
+                if (aot_exists(lua_state, mrcc_selection, 'target_ndets') .and. & 
+                    aot_exists(lua_state, mrcc_selection, 'wfn_weightage')) then
+                    call stop_all('read_fciqmc_in', 'Both target_ndets and wfn_weightage are provided, choose one!')
+                else if (.not. aot_exists(lua_state, mrcc_selection, 'target_ndets') .and. & 
+                         .not. aot_exists(lua_state, mrcc_selection, 'wfn_weightage')) then
+                    call stop_all('read_fciqmc_in', 'One of target_ndets and wfn_weightage needs to be provided!')
+                end if
+
+                if (aot_exists(lua_state, mrcc_selection, 'wfn_weightage')) then
+                    call aot_get_val(fciqmc_in%mrcc_selection_det_list_new_size, err, lua_state, mrcc_selection, &
+                                     'det_list_new_size')
+                end if
+
                 call aot_get_val(fciqmc_in%mrcc_selection_target_ndets, err, lua_state, mrcc_selection, 'target_ndets')
+                call aot_get_val(fciqmc_in%mrcc_selection_wfn_weightage, err, lua_state, mrcc_selection, 'wfn_weightage')
                 call aot_get_val(fciqmc_in%mrcc_selection_max_ndets, err, lua_state, mrcc_selection, 'max_ndets')
                 call aot_get_val(fciqmc_in%mrcc_selection_nreports, err, lua_state, mrcc_selection, 'nreports')
                 call aot_get_val(fciqmc_in%mrcc_selection_dets_file, err, lua_state, mrcc_selection, 'dets_file')

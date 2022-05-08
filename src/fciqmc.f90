@@ -442,10 +442,14 @@ contains
             if (all(qs%vary_shift) .and. qs%doing_fciqmc_tailored_mrccmc) then
                 ! Accumulate highest occupied determinants
                 if (qs%highest_dets%ireport < qs%highest_dets%nreports) then
-                    call update_highest_dets(qs)
+                    call update_highest_dets(qs, sys)
+                    if (qs%highest_dets%error) then
+                        call write_out_highest_dets(qs, sys, qs%highest_dets, trim(qs%highest_dets%det_file))
+                        soft_exit = .true.
+                    end if
                     qs%highest_dets%ireport = qs%highest_dets%ireport + 1
                 else
-                    call update_highest_dets(qs)
+                    call update_highest_dets(qs, sys)
                     call write_out_highest_dets(qs, sys, qs%highest_dets, trim(qs%highest_dets%det_file))
                     soft_exit = .true.
                 end if

@@ -170,7 +170,7 @@ contains
                     pos = hi + 1
                 case(-1)
                     ! list(:,pos) is "greater" than item.
-                    ! item should ber placed here.
+                    ! item should be placed here.
                     pos = hi
                 end select
             end if
