@@ -10,7 +10,7 @@ implicit none
 contains
     subroutine spawner_ccmc(rng, sys, qs, spawn_cutoff, linked_ccmc, cdet, cluster, &
                             gen_excit_ptr, logging_info, nspawn, connection, &
-                            nspawnings_total, ps_stat)
+                            nspawnings_total, ps_stat, determ, determ_child)
 
         ! Attempt to spawn a new particle on a connected excitor with
         ! probability
@@ -52,6 +52,7 @@ contains
         !        gen_excit_ptr%full *must* be set to a procedure which generates
         !        a complete excitation.
         !    logging_info: logging_t derived type containing information on logging behaviour.
+        !    determ: the semi_stoch_t object holding information relevant to semi-stochastic CCMC.
         ! In/Out:
         !    rng: random number generator.
         !    nspawnings_total: The total number of spawnings attemped by the current cluster
@@ -68,6 +69,7 @@ contains
         !        0 indicates the spawning attempt was unsuccessful.
         !    connection: excitation connection between the current excitor
         !        and the child excitor, on which progeny are spawned.
+        !    determ_child: true if the bra-excitor belongs to the deterministic space
 
         use ccmc_data, only: cluster_t
         use search, only: tree_search
@@ -80,11 +82,12 @@ contains
         use spawning, only: attempt_to_spawn, calc_qn_spawned_weighting, update_p_single_double_data
         use system, only: sys_t
         use const, only: depsilon, debug
-        use qmc_data, only: qmc_state_t, ccmc_in_t
+        use qmc_data, only: qmc_state_t, ccmc_in_t, semi_stoch_t
         use hamiltonian_data
         use logging, only: logging_t, write_logging_spawn
         use excit_gens, only: p_single_double_coll_t
         use errors, only: stop_all
+        use semi_stoch, only: check_if_determ
 
         type(sys_t), intent(in) :: sys
         type(qmc_state_t), intent(in) :: qs
@@ -97,8 +100,10 @@ contains
         integer, intent(in) :: nspawnings_total
         type(gen_excit_ptr_t), intent(in) :: gen_excit_ptr
         type(logging_t), intent(in) :: logging_info
+        type(semi_stoch_t), intent(in) :: determ
         integer(int_p), intent(out) :: nspawn
         type(excit_t), intent(out) :: connection
+        logical, intent(out) :: determ_child
 
         ! We incorporate the sign of the amplitude into the Hamiltonian matrix
         ! element, so we 'pretend' to attempt_to_spawn that all excips are
@@ -111,6 +116,8 @@ contains
         logical :: linked, single_unlinked, allowed_excitation, allowed_multiref
         real(p) :: invdiagel
         integer :: i
+
+        determ_child = .false.
 
         ! 1. Generate random excitation.
         ! Note CCMC is not (yet, if ever) compatible with the 'split' excitation
@@ -191,6 +198,11 @@ contains
                     if (.not. allowed_multiref) nspawn = 0
                 end if
             end if
+
+            if (determ%doing_semi_stoch) then
+                determ_child = check_if_determ(determ%hash_table, determ%dets, det_string(fexcit, sys%basis))
+            end if
+
             if (excitor_sign < 0) nspawn = -nspawn
             if (debug) call write_logging_spawn(logging_info, hmatel_save, pgen, invdiagel, [nspawn], &
                         real(cluster%amplitude,p), sys%read_in%comp, spawn_pgen, cdet%f, fexcit, connection)

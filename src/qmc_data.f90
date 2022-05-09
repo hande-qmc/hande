@@ -87,6 +87,8 @@ enum, bind(c)
     ! This option means we use a generated deterministic space from a (truncated)
     ! CI space.
     enumerator :: ci_determ_space
+    ! This option uses a MP1 wavefunction to generate the deterministic space.
+    enumerator :: mp1_determ_space
 end enum
 
 enum, bind(c)

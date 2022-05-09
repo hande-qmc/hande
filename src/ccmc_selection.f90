@@ -92,7 +92,7 @@ contains
 
     subroutine select_cluster(rng, sys, psip_list, f0, ex_level, linked_ccmc, nattempts, normalisation, &
                               initiator_pop, cumulative_excip_pop, tot_excip_pop, min_size, max_size, &
-                              logging_info, cdet, cluster, excit_gen_data)
+                              logging_info, cdet, cluster, excit_gen_data, determ, determ_parent)
 
         ! Select a random cluster of excitors from the excitors on the
         ! processor.  A cluster of excitors is itself an excitor.  For clarity
@@ -120,6 +120,8 @@ contains
         !    max_size: the maximum size cluster to allow.
         !    logging_info: derived type containing information on currently logging status
         !    excit_gen_data: information about excitation generators
+        !    determ: the semi_stoch_t object holding information relevant to semi-stochastic CCMC.
+
 
         ! NOTE: cumulative_excip_pop and tot_excip_pop ignore the population on the
         ! reference as excips on the reference cannot form a cluster and the rounds the
@@ -141,12 +143,15 @@ contains
         !        allocated to the maximum number of excitors in a cluster.  On
         !        output all fields in cluster have been set.
 
+        ! Out:
+        !    determ_parent: true if the excitor formed from the cluster is in the deterministic space (for semistochastic CCMC).
+
         use determinant_data, only: det_info_t
         use ccmc_data, only: cluster_t
         use ccmc_utils, only: convert_excitor_to_determinant, collapse_cluster
         use excitations, only: get_excitation_level
         use dSFMT_interface, only: dSFMT_t, get_rand_close_open
-        use qmc_data, only: particle_t
+        use qmc_data, only: particle_t, semi_stoch_t
         use proc_pointers, only: decoder_ptr
         use utils, only: factorial
         use search, only: binary_search
@@ -155,6 +160,7 @@ contains
         use system, only: sys_t
         use logging, only: write_logging_stoch_selection, logging_t
         use excit_gens, only: excit_gen_data_t
+        use semi_stoch, only: check_if_determ
 
         type(sys_t), intent(in) :: sys
         type(particle_t), intent(in), target :: psip_list
@@ -171,6 +177,8 @@ contains
         type(cluster_t), intent(inout) :: cluster
         type(logging_t), intent(in) :: logging_info
         type(excit_gen_data_t), intent(in) :: excit_gen_data
+        type(semi_stoch_t), intent(in) :: determ
+        logical, intent(out) :: determ_parent
 
         real(dp) :: rand
         real(p) :: psize
@@ -178,6 +186,8 @@ contains
         integer :: i, pos, prev_pos
         real(p) :: pop(max_size)
         logical :: hit, allowed, all_allowed
+
+        determ_parent = .false.
 
         ! We shall accumulate the factors which comprise cluster%pselect as we go.
         !   cluster%pselect = n_sel p_size p_clust
@@ -258,6 +268,8 @@ contains
         case(0)
             call create_null_cluster(sys, f0, cluster%pselect, normalisation, initiator_pop, &
                                     cdet, cluster, excit_gen_data)
+            ! The reference is always in deterministic space
+            if (determ%doing_semi_stoch) determ_parent = .true.
         case default
             ! Select cluster from the excitors on the current processor with
             ! probability for choosing an excitor proportional to the excip
@@ -312,11 +324,15 @@ contains
                     cdet%data => psip_list%dat(:,pos) ! Only use if cluster is non-composite!
                     cluster_population = excitor_pop
                     ! Counter the additional *nprocs above.
-                    cluster%pselect = cluster%pselect/nprocs
+                    ! The current ss-CCMC implementation has deterministic states replicated on all MPI processes,
+                    ! which means deterministic excitors do not contribute the 1/nprocs factor. 
+                    ! The line below is modified to reduce branching (i.e. if statements)
+                    ! if flag=1 (not deterministic), denominator=nprocs, if flag=0 (deterministic), denominator=1
+                    cluster%pselect = cluster%pselect/((nprocs-1)*determ%flags(pos)+1)
                 else
                     call collapse_cluster(sys%basis, f0, psip_list%states(:,pos), excitor_pop, cdet%f, &
                                           cluster_population, allowed)
-                    if (.not.allowed) then
+                    if (.not. allowed) then
                         if (.not. linked_ccmc) exit
                         all_allowed = .false.
                     end if
@@ -325,7 +341,7 @@ contains
                     ! then the probability this excitor is on the same processor as the
                     ! previous excitor is 1/nprocs.  (Note choosing the same excitor
                     ! multiple times is valid in linked CC.)
-                    if (pos /= prev_pos) cluster%pselect = cluster%pselect/nprocs
+                    if (pos /= prev_pos) cluster%pselect = cluster%pselect/((nprocs-1)*determ%flags(pos)+1)
                 end if
                 ! If the excitor's population is below the initiator threshold, we remove the
                 ! initiator status for the cluster
@@ -343,7 +359,7 @@ contains
                 allowed = cluster%excitation_level <= ex_level+2
             end if
 
-            if (allowed.or.linked_ccmc) then
+            if (allowed .or. linked_ccmc) then
                 ! We chose excitors with a probability proportional to their
                 ! occupation.  However, because (for example) the cluster t_X t_Y
                 ! and t_Y t_X collapse onto the same excitor (where X and Y each
@@ -365,13 +381,15 @@ contains
 
                 ! Normalisation factor for cluster%amplitudes...
                 cluster%amplitude = cluster_population/(normalisation**(cluster%nexcitors-1))
+
+                if (determ%doing_semi_stoch) determ_parent = check_if_determ(determ%hash_table, determ%dets, cdet%f)
             else
                 ! Simply set excitation level to a too high (fake) level to avoid
                 ! this cluster being used.
                 cluster%excitation_level = huge(0)
             end if
 
-            if (.not.all_allowed) cluster%excitation_level = huge(0)
+            if (.not. all_allowed) cluster%excitation_level = huge(0)
 
         end select
 
@@ -449,7 +467,7 @@ contains
     end subroutine create_null_cluster
 
     subroutine select_nc_cluster(sys, psip_list, f0, iexcitor, initiator_pop, ex_lvl_sort, &
-                                            cdet, cluster, excit_gen_data)
+                                            cdet, cluster, excit_gen_data, determ, determ_parent)
 
         ! Select (deterministically) the non-composite cluster containing only
         ! the single excitor iexcitor and set the same information as select_cluster.
@@ -465,6 +483,7 @@ contains
         !       information about the excitation level also encoded in their bit string
         !       that should be removed before being passed on.
         !    excit_gen_data: data for excitation generators.
+        !    determ: the semi_stoch_t object holding information relevant to semi-stochastic CCMC.
 
         ! In/Out:
         !    cdet: information about the cluster of excitors applied to the
@@ -479,16 +498,20 @@ contains
         !        allocated to the maximum number of excitors in a cluster.  On
         !        output all fields in cluster have been set.
 
+        ! Out:
+        !    determ_parent: true if the excitor formed from the cluster is in the deterministic space (for semistochastic CCMC).
+
         use system, only: sys_t
         use determinant_data, only: det_info_t
         use basis_types, only: reset_extra_info_bit_string
         use ccmc_data, only: cluster_t
         use ccmc_utils, only: convert_excitor_to_determinant
         use excitations, only: get_excitation_level
-        use qmc_data, only: particle_t
+        use qmc_data, only: particle_t, semi_stoch_t
         use search, only: binary_search
         use proc_pointers, only: decoder_ptr
         use excit_gens, only: excit_gen_data_t
+        use semi_stoch, only: check_if_determ
 
         type(sys_t), intent(in) :: sys
         type(particle_t), intent(in), target :: psip_list
@@ -497,9 +520,13 @@ contains
         real(p), intent(in) :: initiator_pop
         logical, intent(in) :: ex_lvl_sort
         type(excit_gen_data_t), intent(in) :: excit_gen_data
+        type(semi_stoch_t), intent(in) :: determ
         type(det_info_t), intent(inout) :: cdet
         type(cluster_t), intent(inout) :: cluster
+        logical, intent(out) :: determ_parent
         complex(p) :: excitor_pop
+
+        determ_parent = .false.
 
         ! Rather than looping over individual excips we loop over different sites. This is
         ! because we want to stochastically set the number of spawning attempts such that
@@ -541,6 +568,9 @@ contains
 
         cluster%excitation_level = get_excitation_level(f0, cdet%f)
         cluster%amplitude = excitor_pop
+
+        ! Check if this cluster is in deterministic space
+        if (determ%doing_semi_stoch) determ_parent = (determ%flags(iexcitor) == 0)
 
         ! Sign change due to difference between determinant
         ! representation and excitors and excitation level.
