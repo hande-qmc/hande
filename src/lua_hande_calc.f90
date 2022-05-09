@@ -428,7 +428,7 @@ contains
         !       logging = { ... },
         !       output = { ... },
         !       blocking = { ... },
-        !       semistoch = { ... },
+        !       semi_stoch = { ... },
         !       qmc_state = qmc_state,
         !       psip_list = psip_list,
         !    }

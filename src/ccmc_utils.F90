@@ -900,7 +900,7 @@ contains
             call convert_excitor_to_determinant(dets(:,idet), excit_level, sgn_i, f0)
             ! loops over the nonzero entries of <idet|H|jj> for all jj
             ! there will be at least one iteration because the diagonal element is guaranteed to be nonzero
-            do jj = hamil%row_ptr(idet)+1, hamil%row_ptr(idet+1) 
+            do jj = hamil%row_ptr(idet), hamil%row_ptr(idet+1)-1
                 ! column index correspond to the position in dets(:,:)
                 jdet = hamil%col_ind(jj)
                 excit_level = get_excitation_level(f0, dets(:,jdet))

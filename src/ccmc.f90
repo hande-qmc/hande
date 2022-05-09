@@ -663,6 +663,11 @@ contains
                     determ%doing_semi_stoch = .true.
                     call init_semi_stoch_t(determ, semi_stoch_in, sys, qs%propagator, qs%psip_list, qs%ref, annihilation_flags, &
                                            qs%spawn_store%spawn, qmc_in%use_mpi_barriers, io_unit)
+                    if (nD0_proc == 1 .and. determ%flags(D0_pos) /= 0) then
+                        ! If for some reason D0 is not in the deterministic space, stop all
+                        ! Brian: [todo] - quietly add it in
+                        call stop_all('do_ccmc', 'D0 not in the deterministic space, something may have gone wrong.')
+                    end if
                     call hamil_cc_transform(determ%hamil, determ%dets, qs%ref%f0)
                 end if
 

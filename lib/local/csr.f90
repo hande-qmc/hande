@@ -29,9 +29,9 @@ type csrp_t
     ! 1   0   0  13 0
     ! 0   0   3  0  2
     ! Can be stored in the CSR format as
-    ! mat(11)     = [12,9,1,2,34,2,15,1,13,3,2]
-    ! col_ind(11) = [1,2,3,1,2,2,3,1,4,3,5]
-    ! row_ptr(6)  = [0,3,5,7,9,11]
+    ! mat     (11) = [12,9,1,2,34,2,15,1,13,3,2]
+    ! col_ind (11) = [ 1,2,3,1, 2,2, 3,1, 4,3,5]
+    ! row_ptr (6)  = [1,4,6,8,10,12]
     ! This is a poor use of the CSR format as we ended up needing to store 28 numbers instead of 25, 
     ! but the sparser the matrix the more memory savings we can achieve.
 
@@ -40,10 +40,10 @@ type csrp_t
     ! Column index of values stored in mat.
     ! If M_{ij} is stored in mat(k), then col_ind(k) = j.
     integer, allocatable :: col_ind(:) ! (nnz)
-    ! row_ptr(i) gives the location in mat of the first non-zero element in row i
-    ! i.e. if mat(k) = M_{ij}, then row_ptr(i) <= k < row_ptr(i+1).  By
-    ! convention, row_ptr(nrow+1) = nnz+1.
-    ! Alternatively, row_ptr(i) gives the total number of non-zero elements above that row. 
+    ! row_ptr(i) gives the location in mat of the first non-zero element in row i (1-indexed)
+    ! i.e. if mat(k) = M_{ij}, then row_ptr(i) <= k < row_ptr(i+1).
+    ! By convention, row_ptr(nrow+1) = nnz+1.
+    ! Alternatively, row_ptr(i) gives the total number of non-zero elements above that row, plus 1. 
     integer, allocatable :: row_ptr(:) ! (nrow+1)
     ! WARNING: if the matrix is symmetric, it is assumed that the programmer
     ! only stores the uppper *or* lower triangle of the matrix.
