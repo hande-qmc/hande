@@ -126,7 +126,7 @@ module bloom_handler
 
                 ! Not thread safe (unless each thread has its own bloom_stats_t object,
                 ! but blooms should not be frequent!
-                !$omp critical
+                !$omp critical (bloom_crit)
 
                 ! Remove the encoding factor to create the true population, to be
                 ! printed to the user.
@@ -145,7 +145,7 @@ module bloom_handler
                     bloom_stats%max_bloom_proc = abs(true_nspawn)
                 end if
 
-                !$omp end critical
+                !$omp end critical (bloom_crit)
             end if
 
         end subroutine accumulate_bloom_stats

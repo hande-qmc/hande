@@ -333,7 +333,7 @@ contains
         use energy_evaluation, only: get_sanitized_projected_energy, get_sanitized_projected_energy_cmplx
         use blocking, only: write_blocking_report_header, init_blocking, do_blocking, deallocate_blocking, &
                             write_blocking_report, update_shift_damping
-        use semi_stoch, only: check_if_determ, determ_projection
+        use semi_stoch, only: check_if_determ, determ_projection, set_determ_info_ccmc, set_determ_info
         use semi_stoch, only: dealloc_semi_stoch_t, init_semi_stoch_t, init_semi_stoch_t_flags, set_determ_info
 
         use logging, only: init_logging, end_logging, prep_logging_mc_cycle, write_logging_calc_ccmc
@@ -362,7 +362,7 @@ contains
         type(det_info_t) :: ref_det
 
         integer(int_p) :: ndeath, ndeath_nc
-        integer :: nspawn_events, ierr
+        integer :: nspawn_events, ierr, ndeterm_found
         type(wfn_contrib_t), allocatable :: contrib(:)
         type(multispawn_stats_t), allocatable :: ms_stats(:)
         type(p_single_double_coll_t), allocatable :: ps_stats(:)
@@ -376,7 +376,7 @@ contains
 
         logical :: soft_exit, dump_restart_shift, restarting, restart_proj_est
 
-        real(p), allocatable :: cumulative_abs_real_pops(:)
+        real(p), allocatable :: cumulative_abs_real_pops(:), real_population(:)
         integer :: D0_proc, D0_pos, nD0_proc, min_cluster_size, max_cluster_size, iexcip_pos
         real(p) :: tot_abs_real_pop
         complex(p) :: D0_normalisation
@@ -491,6 +491,8 @@ contains
         call check_allocate('nparticles_old', qs%psip_list%nspaces, ierr)
         allocate(nparticles_change(qs%psip_list%nspaces), stat=ierr)
         call check_allocate('nparticles_change', qs%psip_list%nspaces, ierr)
+        allocate(real_population(qs%psip_list%nspaces), stat=ierr)
+        call check_allocate('real_population', qs%psip_list%nspaces, ierr)
 
         ! Initialise bloom_stats components to the following parameters.
         if (ccmc_in%even_selection) then
@@ -736,6 +738,19 @@ contains
                 proj_energy_cycle = cmplx(0.0, 0.0, p)
                 D0_population_cycle = cmplx(0.0, 0.0, p)
 
+                ndeterm_found = 0
+                if (iproc == D0_proc) then
+                    ! We call set_determ_info instead of set_determ_info_ccmc here as the latter needs to be called inside 
+                    ! an OpenMP parallel region.
+                    if (sys%read_in%comp) then
+                        call set_determ_info(D0_pos, [real((D0_normalisation),p),aimag(D0_normalisation)], &
+                                             ndeterm_found, determ, determ_parent)
+                    else
+                        call set_determ_info(D0_pos, [real((D0_normalisation),p)], &
+                                             ndeterm_found, determ, determ_parent)
+                    end if
+                end if
+
                 ! OpenMP chunk size determined completely empirically from a single
                 ! test.  Please feel free to improve...
                 ! NOTE: we can't refer to procedure pointers in shared blocks so
@@ -750,13 +765,14 @@ contains
                 !$omp        selection_data,      &
                 !$omp        ex_lvl_dist, &
                 !$omp        ccmc_in, nprocs, ms_stats, ps_stats, qmc_in, load_bal_in, &
-                !$omp        ndeath_nc, determ,  &
-                !$omp        nparticles_change, logging_info) &
+                !$omp        ndeath_nc, determ, nD0_proc, &
+                !$omp        nparticles_change, logging_info, ndeterm_found) &
                 !$omp reduction(+:D0_population_cycle,proj_energy_cycle,nattempts_spawn,ndeath)
                 
                 it = get_thread_id()
                 iexcip_pos = 0
                 seen_D0 = .false.
+                determ_parent = .false.
                 
                 !$omp do schedule(dynamic,200) 
                 do iattempt = 1, selection_data%nclusters
@@ -768,6 +784,9 @@ contains
                             call select_nc_cluster(sys, qs%psip_list, qs%ref%f0, &
                                         iattempt, qmc_in%initiator_pop, ccmc_in%even_selection, &
                                         contrib(it)%cdet, contrib(it)%cluster, qs%excit_gen_data, determ, determ_parent)
+                            
+                            if (determ_parent) call set_determ_info_ccmc(iattempt, contrib(it)%cluster%amplitude, &
+                                                                         ndeterm_found, determ, sys%read_in%comp)
 
                             !if (qs%propagator%quasi_newton) contrib(it)%cdet%fock_sum = &
                             !                sum_fock_values_occ_list(sys, qs%propagator%sp_fock, contrib(it)%cdet%occ_list) &
@@ -815,7 +834,7 @@ contains
                             call do_stochastic_ccmc_propagation(rng(it), sys, qs, &
                                                                 ccmc_in, logging_info, ms_stats(it), bloom_stats, &
                                                                 contrib(it), nattempts_spawn, ndeath, ps_stats(it), &
-                                                                determ, determ_parent)
+                                                                determ, .false.) ! determ_parent temporarily set to false
                         end if
                     else
                         ! We just select the empty cluster.
@@ -841,7 +860,7 @@ contains
                         nattempts_spawn = nattempts_spawn + 1
                        
                         call perform_ccmc_spawning_attempt(rng(it), sys, qs, ccmc_in, logging_info, bloom_stats, &
-                                contrib(it), 1, ps_stats(it), determ, .true.)
+                                contrib(it), 1, ps_stats(it), determ, (nD0_proc == 0))
                     end if
                 end do
                 !$omp end do
@@ -905,6 +924,8 @@ contains
                 ! the current hash shift, so it's just those in the main list
                 ! that we need to deal with.
                 associate(pl=>qs%psip_list, spawn=>qs%spawn_store%spawn)
+                    if (determ%doing_semi_stoch) call determ_projection(rng(0), qmc_in, qs, spawn, determ)
+
                     if (nprocs > 1) call redistribute_particles(pl%states, pl%pop_real_factor, pl%pops, pl%nstates, &
                                                                 pl%nparticles, spawn)
 
@@ -1100,11 +1121,11 @@ contains
             .and. cluster%excitation_level /= 0 .and. .not. sys%read_in%comp) then
             ! Add contribution to density matrix
             ! d_pqrs = <HF|a_p^+a_q^+a_sa_r|CC>
-            !$omp critical
+            !$omp critical (ccmc_rdm_crit)
             call update_rdm(sys, cdet%f, ref_det%f, cdet%occ_list, &
                             real(cluster%amplitude, p)*cluster%cluster_to_det_sign, &
                             1.0_p, cluster%pselect, rdm)
-            !$omp end critical
+            !$omp end critical (ccmc_rdm_crit)
         end if
 
     end subroutine do_ccmc_accumulation

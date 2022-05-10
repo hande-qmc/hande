@@ -783,7 +783,7 @@ contains
         !    real_pop: (decoded) population on the determinant.
         ! In/Out:
         !    ndeterm_found: number of determinants in the deterministic space found.
-        !        Incrememted if idet corresponds to a determinant in the deterministic space.
+        !        Incremented if idet corresponds to a determinant in the deterministic space.
         !    determ: semi_stoch_t object.  vector and indices components are updated if the
         !        determinant is in the deterministic space.
         ! Out:
@@ -791,7 +791,7 @@ contains
 
         use qmc_data, only: semi_stoch_separate_annihilation
 
-        integer, intent(in) ::idet
+        integer, intent(in) :: idet
         real(p), intent(in) :: real_pop(:)
         integer, intent(inout) :: ndeterm_found
         type(semi_stoch_t), intent(inout) :: determ
@@ -807,6 +807,41 @@ contains
         end if
 
     end subroutine set_determ_info
+
+    subroutine set_determ_info_ccmc(idet, real_pop, ndeterm_found, determ, cmplx)
+
+        ! In:
+        !    idet: index of the determinant (in determ%flags, also matches that in the main
+        !        determinant list).
+        !    real_pop: (decoded) population on the determinant.
+        ! In/Out:
+        !    ndeterm_found: number of determinants in the deterministic space found.
+        !        Incremented if idet corresponds to a determinant in the deterministic space.
+        !    determ: semi_stoch_t object.  vector and indices components are updated if the
+        !        determinant is in the deterministic space.
+        ! Out:
+        !    determ_parent: true if the determinant is in the deterministic space.
+
+        use qmc_data, only: semi_stoch_separate_annihilation
+
+        integer(int_64), intent(in) ::idet
+        complex(p), intent(in) :: real_pop
+        integer, intent(inout) :: ndeterm_found
+        type(semi_stoch_t), intent(inout) :: determ
+        logical, intent(in) :: cmplx
+
+        if (determ%flags(idet) == 0) then
+            !$omp critical (ss_ccmc_crit)
+            ndeterm_found = ndeterm_found + 1
+            determ%vector(1,ndeterm_found) = real(real_pop, p)
+            if (cmplx) determ%vector(2,ndeterm_found) = aimag(real_pop)
+            if (determ%projection_mode == semi_stoch_separate_annihilation) then
+                determ%indices(ndeterm_found) = idet
+            end if
+            !$omp end critical (ss_ccmc_crit)
+        end if
+
+    end subroutine set_determ_info_ccmc
 
     subroutine determ_projection(rng, qmc_in, qs, spawn, determ)
 

@@ -58,7 +58,7 @@ contains
                 call binary_search(psip_list%states, f0, D0_pos_old, psip_list%nstates, hit, D0_pos)
             end select
         end if
-        if (.not.hit) call stop_all('find_D0', 'Cannot find reference!')
+        if (.not. hit) call stop_all('find_D0', 'Cannot find reference!')
 
     end subroutine find_D0
 
