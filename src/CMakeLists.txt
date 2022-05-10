@@ -71,6 +71,7 @@ target_sources(hande-static
     excit_gen_utils.f90
     excitations.F90
     fci_lapack.F90
+    fci_davidson.F90
     fci_utils.F90
     fciqmc.f90
     hamiltonian.f90
@@ -89,6 +90,7 @@ target_sources(hande-static
     hfs_data.f90
     hfs_fciqmc.f90
     hilbert_space.F90
+    state_histograms.F90
     hubbard_k.f90
     idmqmc.f90
     ifciqmc.f90

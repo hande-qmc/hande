@@ -1,0 +1,259 @@
+
+   HANDE
+
+ ================================================================
+Version information
+-------------------
+Version       | v1.5-157-g50d23db
+Commit hash   | 50d23db59f60dc0b4486af7e3fc059b0174cada9
+Commit author | Brian Zhao
+Commit date   | Wed Apr 13 12:35:42 2022 +0100
+Branch        | bug_fix/davidson_benchmarks
+
+Configuration and build information
+-----------------------------------
+Who compiled             | zz376
+Compilation hostname     | gritstone
+Operating system         | Linux-4.15.0-171-generic
+CMake version            | 3.19.1
+CMake generator          | Unix Makefiles
+Build type               | release
+Configuration time       | 2022-04-13 11:36:41 [UTC]
+Python version           | 3.8.8
+Fortran compiler         | /usr/local/shared/oneapi/compiler/2022.0.1/linux/bin/intel64/ifort
+C compiler               | /usr/local/shared/oneapi/compiler/2022.0.1/linux/bin/intel64/icc
+DET_SIZE set to          | 64
+POP_SIZE set to          | 64
+dSFMT Mersenne exponent  | 19937
+MPI parallelization      | OFF
+OpenMP parallelization   | ON
+Lua version              | 5.4.3
+HDF5 library version     | 1.10.8
+
+Further components
+------------------
+DISABLE_HDF5 not defined.  HDF5 enabled.
+DISABLE_UUID not defined.  UUID enabled.
+PARALLEL not defined.  MPI parallelization disabled.
+PARALLEL not defined. MPI-3 functionality disabled.
+Neither POSIX shared memory nor MPI-3 are in use.
+DISABLE_SCALAPACK not defined.  ScaLAPACK enabled.
+SINGLE_PRECISION not defined.  Double precision used throughout.
+USE_POPCNT not defined. Internal POPCNT procedure used.
+
+Runtime information
+-------------------
+Hostname:
+    gritstone
+Current working dir:
+    /scratch/zz376/code/hande-branches-new/main/test_suite/fci/ueg_n4_rs2_e1_fci_davidson
+Started running on 13/04/2022 at 12:40:25
+ Calculation UUID: c7f2f3f2-6022-452b-a832-eeaa059ecd90.
+ ================================================================
+
+ Input options
+ -------------
+
+sys = ueg {
+    nel = 4,
+    ms = 0,
+    sym = 1,
+    dim = 3,
+    cutoff = 1,
+    rs = 2,
+}
+
+fci {
+    sys = sys,
+    fci = {
+        write_hamiltonian = true,
+        hamiltonian_file = "hamil.hfq",
+    },
+    davidson = {
+        ndavidson_eigv = 4,
+        ndavidson_trialvec = 8,
+        davidson_maxsize = 80,
+        davidson_tol = 1e-8,
+        davidson_maxiter = 200,
+    },
+}
+
+ -------------
+
+ Basis functions
+ ---------------
+
+ Spin given in units of 1/2.
+ k-points given in terms of the reciprocal lattice vectors of the crystal cell.
+
+ index   k-point            ms       <i|f|i>
+     1   (  0,  0,  0)      1        0.00000000E+00
+     2   (  0,  0,  0)     -1        0.00000000E+00
+     3   (  0,  0, -1)      1        7.53651699E-01
+     4   (  0,  0, -1)     -1        7.53651699E-01
+     5   (  0, -1,  0)      1        7.53651699E-01
+     6   (  0, -1,  0)     -1        7.53651699E-01
+     7   ( -1,  0,  0)      1        7.53651699E-01
+     8   ( -1,  0,  0)     -1        7.53651699E-01
+     9   (  1,  0,  0)      1        7.53651699E-01
+    10   (  1,  0,  0)     -1        7.53651699E-01
+    11   (  0,  1,  0)      1        7.53651699E-01
+    12   (  0,  1,  0)     -1        7.53651699E-01
+    13   (  0,  0,  1)      1        7.53651699E-01
+    14   (  0,  0,  1)     -1        7.53651699E-01
+    15   (  0, -1, -1)      1        1.50730340E+00
+    16   (  0, -1, -1)     -1        1.50730340E+00
+    17   ( -1,  0, -1)      1        1.50730340E+00
+    18   ( -1,  0, -1)     -1        1.50730340E+00
+    19   (  1,  0, -1)      1        1.50730340E+00
+    20   (  1,  0, -1)     -1        1.50730340E+00
+    21   (  0,  1, -1)      1        1.50730340E+00
+    22   (  0,  1, -1)     -1        1.50730340E+00
+    23   ( -1, -1,  0)      1        1.50730340E+00
+    24   ( -1, -1,  0)     -1        1.50730340E+00
+    25   (  1, -1,  0)      1        1.50730340E+00
+    26   (  1, -1,  0)     -1        1.50730340E+00
+    27   ( -1,  1,  0)      1        1.50730340E+00
+    28   ( -1,  1,  0)     -1        1.50730340E+00
+    29   (  1,  1,  0)      1        1.50730340E+00
+    30   (  1,  1,  0)     -1        1.50730340E+00
+    31   (  0, -1,  1)      1        1.50730340E+00
+    32   (  0, -1,  1)     -1        1.50730340E+00
+    33   ( -1,  0,  1)      1        1.50730340E+00
+    34   ( -1,  0,  1)     -1        1.50730340E+00
+    35   (  1,  0,  1)      1        1.50730340E+00
+    36   (  1,  0,  1)     -1        1.50730340E+00
+    37   (  0,  1,  1)      1        1.50730340E+00
+    38   (  0,  1,  1)     -1        1.50730340E+00
+
+ Number of electrons: 4
+ Number of basis functions: 38
+
+ Bit-length of integers used to store determinant bit-strings: 64
+ Number of integers used to store determinant bit-strings: 1
+
+ FCI
+ ---
+
+ -- Start JSON block --
+ {
+     "system": {
+         "nbasis": 38,   
+         "nel": 4,   
+         "nvirt": 34,   
+         "Ms": 0,   
+         "nalpha": 2,   
+         "nbeta": 2,   
+         "nvirt_alpha": 17,   
+         "nvirt_beta": 17,   
+         "nsym": 19,   
+         "sym0": 1,   
+         "sym_max": 19,   
+         "nsym_tot": 19,   
+         "sym0_tot": 1,   
+         "sym_max_tot": 19,   
+         "symmetry": 1,   
+         "tot_sym": false,   
+         "aufbau_sym": false,   
+         "max_number_excitations": 4,   
+         "ueg": {
+             "r_s": 2.00000000,   
+             "ecutoff": 1.00000000,   
+             "k_fermi": 0.95957915,   
+             "E_fermi": 0.46039607,   
+             "ktwist": [0.00000000,0.00000000,0.00000000],
+             "L": [5.11775545,5.11775545,5.11775545]
+         }
+     },
+     "fci_in": {
+         "write_hamiltonian": true,   
+         "hamiltonian_file":  "hamil.hfq",   
+         "write_determinants": false,   
+         "determinant_file":  "DETS",   
+         "print_fci_wfn": 0,   
+         "print_fci_wfn_file":  "FCI_WFN",   
+         "analyse_fci_wfn": 0,   
+         "block_size": 64,   
+         "ndavidson_eigv": 4,   
+         "ndavidson_trialvec": 8,   
+         "davidson_maxsize": 80,   
+         "davidson_tol": 0.00000001,   
+         "hamiltonian_diagonal_only": false,   
+     },
+     "reference": {
+         "ex_level": 4    
+     }
+ }
+ -- End JSON block --
+
+ The table below gives the number of determinants for each symmetry with Ms=0.
+
+ Symmetry index      # dets
+         1              567
+         2              454
+         3              454
+         4              454
+         5              454
+         6              454
+         7              454
+         8              372
+         9              372
+        10              372
+        11              372
+        12              372
+        13              372
+        14              372
+        15              372
+        16              372
+        17              372
+        18              372
+        19              372
+
+ Performing Davidson diagonalisation...
+
+ Davidson initialisation done!
+ Time taken for Davidson initialisation 0.000317 s
+ 
+ Iteration   Basis size    delta rmsE      Time  
+         1            8   4.523455E+00    0.000746
+         2           16   2.078521E+00    0.001290
+         3           24   7.291299E-02    0.001502
+         4           32   6.423939E-02    0.001821
+         5           40   1.171451E-02    0.002247
+         6           48   1.004771E-02    0.002607
+         7           56   1.417751E-02    0.003113
+         8           64   2.252562E-03    0.003734
+         9           72   1.318508E-03    0.004321
+        10           80   2.291481E-04    0.005161
+ Collapsing subspace...
+        11            8   7.758863E-15    0.000517
+        12           16   3.549744E-04    0.001369
+        13           24   6.587233E-05    0.001603
+        14           32   7.527907E-06    0.001958
+        15           40   3.210475E-07    0.002403
+        16           48   4.384906E-08    0.002819
+        17           56   2.563732E-09    0.003412
+ Eigenvalue tolerance of 1.0000E-08 reached, printing results...
+ Davidson diagonalisation results
+ ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+  State     Energy
+      1     1.285524498812
+      2     1.285524498922
+      3     1.323763083930
+      4     1.323763084072
+
+ Timing breakdown
+ ----------------
+
+ Time for each calculation section (seconds):
+
+ UEG initialisation: .00
+ FCI calculation   : .09
+
+ ================================================================
+ Finished running on 13/04/2022 at 12:40:25
+ Wall time (seconds):                           0.09
+ CPU time (per processor, seconds):             0.09
+ ================================================================
+

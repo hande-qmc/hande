@@ -58,6 +58,7 @@ type det_info_t
     ! i-FCIQMC). The i-th bit is set if the determinant is not an initiator in
     ! space i.
     integer :: initiator_flag
+    ! 
     ! \sum_i F_i - F_0, where F_i is the single-particle eigenvalue of the i-th occupied orbital 
     ! and F_0 is the corresponding sum for the reference determinant.
     ! Initialize this as a signalling nan just in case

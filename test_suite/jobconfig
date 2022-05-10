@@ -5,6 +5,8 @@
 [fci/*fci_rdm/]
 max_nprocs = 1
 [fci/*complex/]
+[fci/*davidson/]
+max_nprocs = 1
 
 # Toy FCIQMC algorithm
 [simple_fciqmc/*/]
@@ -79,6 +81,7 @@ quick =   vquick
           dmqmc/np2/hubbard_k_1d/
           dmqmc/np2/n2_sto3g/
           dmqmc/np4/ueg_n7_rs1_e1_dmqmc/
+          dmqmc/np4/h6_sto3g/
           dmqmc_real_32/np4/ueg_n4_rs2_e4/
           fci/Ne-RHF-cc-pVDZ/
           fciqmc/np1/H2-RHF-cc-pVTZ-Lz/
@@ -105,6 +108,7 @@ quick64 = quick
           dmqmc_real_64/np4/heisenberg_4x4_replica/
           dmqmc_real_64/np4/n2_sto3g/
           dmqmc_real_64/np4/ueg_n4_rs2_e4/
+          dmqmc_real_64/np4/h6_sto3g/
           fciqmc_real_64/np1/He2-aug-cc-pVDZ_real_64_restart_replica_legacyv1/
           fciqmc_real_64/np4/He2-aug-cc-pVDZ_real_64_SS/
 
@@ -127,6 +131,7 @@ vquick_serial = ccmc/np1/Ne-RHF-cc-pVDZ-Lz-CCSDTQ5-multispawn-short
            fci/hubbard_k_tilted_2d_fci
            fci/ringium
            fci/ueg_n4_rs2_e1_fci
+           fci/h6_sto3g
            fciqmc/np1/Ne-RHF-cc-pVDZ_softexit
            fciqmc/np1/heisenberg_1d_ferro_field_fciqmc
            fciqmc/np1/heisenberg_1d_neel_ref_fciqmc

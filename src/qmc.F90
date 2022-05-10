@@ -33,6 +33,8 @@ contains
         !    qmc_state_restart (optional): qmc_state_t object from a calculation
         !       to restart. Deallocated on exit.
         !    psip_list_in (optional): particle_t object from an MP1 calculation. Deallocated on exit.
+        !    state_hist (optional): type containing all the state histograms
+        !       information, if present call the setup routine for state histograms.
         ! Out:
         !    annihilation_flags: calculation specific annihilation flags.
         !    qmc_state: qmc_state_t object.  On output the QMC state is
@@ -625,6 +627,10 @@ contains
                 end if
             case(read_in)
                 if (dmqmc_in%ipdmqmc) then
+                    if (dmqmc_in%symmetric) then
+                        spawner_ptr => spawn_importance_sampling
+                        gen_excit_ptr%trial_fn => interaction_picture_reweighting_molecular_HF
+                    end if
                     if (dmqmc_in%initial_matrix == free_electron_dm) then
                         h0_ptr => hf_hamiltonian_energy_mol
                     else

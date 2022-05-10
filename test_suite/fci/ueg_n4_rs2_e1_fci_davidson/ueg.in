@@ -1,0 +1,23 @@
+sys = ueg {
+    nel = 4,
+    ms = 0,
+    sym = 1,
+    dim = 3,
+    cutoff = 1,
+    rs = 2,
+}
+
+fci {
+    sys = sys,
+    fci = {
+        write_hamiltonian = true,
+        hamiltonian_file = "hamil.hfq",
+    },
+    davidson = {
+        ndavidson_eigv = 4,
+        ndavidson_trialvec = 8,
+        davidson_maxsize = 80,
+        davidson_tol = 1e-8,
+        davidson_maxiter = 200,
+    },
+}
