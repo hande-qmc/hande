@@ -376,7 +376,7 @@ contains
 
         logical :: soft_exit, dump_restart_shift, restarting, restart_proj_est
 
-        real(p), allocatable :: cumulative_abs_real_pops(:), real_population(:)
+        real(p), allocatable :: cumulative_abs_real_pops(:)
         integer :: D0_proc, D0_pos, nD0_proc, min_cluster_size, max_cluster_size, iexcip_pos
         real(p) :: tot_abs_real_pop
         complex(p) :: D0_normalisation
@@ -491,8 +491,6 @@ contains
         call check_allocate('nparticles_old', qs%psip_list%nspaces, ierr)
         allocate(nparticles_change(qs%psip_list%nspaces), stat=ierr)
         call check_allocate('nparticles_change', qs%psip_list%nspaces, ierr)
-        allocate(real_population(qs%psip_list%nspaces), stat=ierr)
-        call check_allocate('real_population', qs%psip_list%nspaces, ierr)
 
         ! Initialise bloom_stats components to the following parameters.
         if (ccmc_in%even_selection) then
@@ -740,7 +738,7 @@ contains
                 nparticles_change = 0.0_p
 
                 ndeterm_found = 0
-                if (iproc == D0_proc) then
+                if (determ%doing_semi_stoch .and. iproc == D0_proc) then
                     ! We call set_determ_info instead of set_determ_info_ccmc here as the latter needs to be called inside 
                     ! an OpenMP parallel region.
                     if (sys%read_in%comp) then
@@ -763,12 +761,10 @@ contains
                 !$omp shared(rng, cumulative_abs_real_pops, tot_abs_real_pop,  &
                 !$omp        max_cluster_size, contrib, D0_normalisation, D0_pos, rdm,    &
                 !$omp        qs, sys, bloom_stats, min_cluster_size, ref_det,             &
-                !$omp        selection_data,      &
-                !$omp        ex_lvl_dist, &
-                !$omp        ccmc_in, nprocs, ms_stats, ps_stats, qmc_in, load_bal_in, &
-                !$omp        ndeath_nc, determ, nD0_proc, &
-                !$omp        nparticles_change, logging_info, ndeterm_found) &
-                !$omp reduction(+:D0_population_cycle,proj_energy_cycle,nattempts_spawn,ndeath)
+                !$omp        selection_data, ex_lvl_dist, ccmc_in, nprocs, ms_stats, &
+                !$omp        ps_stats, qmc_in, load_bal_in, logging_info, &
+                !$omp        nD0_proc, determ, ndeterm_found) &
+                !$omp reduction(+:D0_population_cycle,proj_energy_cycle,nattempts_spawn,ndeath,nparticles_change,ndeath_nc)
                 
                 ! Initialise private variables inside the parallel region
 
@@ -778,7 +774,7 @@ contains
                 determ_parent = .false.
                 
                 !$omp do schedule(dynamic,200) 
-                do iattempt = 1, selection_data%nclusters
+                do iattempt = 1, selection_data%nsingle_excitors + selection_data%nstochastic_clusters
                     if (iattempt <= selection_data%nsingle_excitors) then
                         ! As noncomposite clusters can't be above truncation level or linked-only all can accumulate +
                         ! propagate. Only need to check not selecting the reference as we treat it separately.
@@ -872,7 +868,7 @@ contains
                         nattempts_spawn = nattempts_spawn + 1
                        
                         call perform_ccmc_spawning_attempt(rng(it), sys, qs, ccmc_in, logging_info, bloom_stats, &
-                                contrib(it), 1, ps_stats(it), determ, (nD0_proc == 0))
+                                contrib(it), 1, ps_stats(it), determ, (nD0_proc == 1))
                 end do
                 !$omp end do
 
