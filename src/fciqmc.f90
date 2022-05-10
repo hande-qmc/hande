@@ -259,7 +259,7 @@ contains
         if (fciqmc_in%non_blocking_comm) then
             call init_non_blocking_comm(qs, req_data_s, send_counts, qmc_in%ncycles, restart_in%read_restart, restart_proj_est)
         else
-            call initial_qmc_status(sys, qmc_in, qs, nparticles_old, .false., io_unit)
+            call initial_qmc_status(sys, qmc_in, qs, nparticles_old, .false., io_unit, rdm_energy=fciqmc_in%density_matrices)
         end if
 
         ! Initialise timer.
