@@ -1467,6 +1467,8 @@ contains
         integer(int_p) :: nspawned, nspawned_im
         integer(i0) :: fexcit(sys%basis%tot_string_len)
         logical :: determ_child
+
+        determ_child = .false.
  
         if (contrib%cluster%excitation_level == huge(0)) then
             ! When sampling e^-T H e^T, the cluster operators in e^-T
