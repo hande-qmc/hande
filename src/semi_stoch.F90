@@ -160,6 +160,7 @@ contains
         use system, only: sys_t
         use utils, only: int_fmt
         use reference_determinant, only: reference_t, dealloc_reference_t
+        use basis_types, only: reset_extra_info_bit_string
 
         type(semi_stoch_t), intent(inout) :: determ
         type(semi_stoch_in_t), intent(in) :: ss_in
@@ -316,6 +317,9 @@ contains
             determ%indices = 0
         end if
 
+        do i = 1, determ%sizes(iproc)
+            call reset_extra_info_bit_string(sys%basis, dets_this_proc(:,i))
+        end do
         call qsort(dets_this_proc, determ%sizes(iproc)) 
 
         ! If we're reusing the deterministic space then we don't need to
@@ -551,6 +555,7 @@ contains
         use qmc_data, only: propagator_t
         use spawning, only: calc_qn_weighting
         use reference_determinant, only: reference_t
+        use excitations, only: det_string
 
         type(semi_stoch_t), intent(inout) :: determ
         type(sys_t), intent(in) :: sys
@@ -610,6 +615,7 @@ contains
                         ! j (only this proc) to i (all deterministics)
                         ! The spawnee is i so this gets the quasinewton weight.
                         
+                        ! The extra calls to det_string is to take care of even selection in CCMC when doing ss-CCMC
                         hmatel = get_hmatel(sys, determ%dets(:,i), dets_this_proc(:,j))
                         diag_elem = i == j + displs(iproc)
                         ! Take the Hartree-Fock energy off the diagonal elements.

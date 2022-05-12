@@ -489,7 +489,7 @@ contains
         integer :: opts, io_unit
         real :: t1, t2
         character(10), parameter :: keys(11) = [character(10) :: 'sys', 'qmc', 'ccmc', 'restart', 'reference', 'qmc_state', &
-                                                                'logging', 'output', 'blocking', 'semistoch', 'psip_list']
+                                                                'logging', 'output', 'blocking', 'semi_stoch', 'psip_list']
 
         call cpu_time(t1)
 

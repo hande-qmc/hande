@@ -200,7 +200,7 @@ contains
             end if
 
             if (determ%doing_semi_stoch) then
-                determ_child = check_if_determ(determ%hash_table, determ%dets, det_string(fexcit, sys%basis))
+                determ_child = check_if_determ(determ%hash_table, determ%dets, fexcit)
             end if
 
             if (excitor_sign < 0) nspawn = -nspawn
