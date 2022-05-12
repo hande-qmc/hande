@@ -96,8 +96,6 @@ contains
             call check_allocate('qs%cheby_prop%zeroes', qs%cheby_prop%order, ierr)
             allocate(qs%cheby_prop%weights(qs%cheby_prop%order), stat=ierr)
             call check_allocate('qs%cheby_prop%weights', qs%cheby_prop%order, ierr)
-            allocate(qs%cheby_prop%nparticles_cheb(qmc_in%ncycles, qs%cheby_prop%order), stat=ierr)
-            call check_allocate('qs%cheby_prop%nparticles_cheb', qmc_in%ncycles*qs%cheby_prop%order, ierr)
 
             call highest_det(sys, occ_list_max)
             call enumerate_determinants(sys, .true., .false., 2, sym_space_size, ndets, singles_doubles,&
@@ -169,12 +167,12 @@ contains
         allocate(occ_list_max(sys%nel), stat=ierr)
         call check_allocate('occ_list_max', sys%nel, ierr)
 
-        do i_alpha=1, sys%nalpha
+        do i_alpha = 1, sys%nalpha
             ! We assume that # of alpha basis fn is equal to # of beta ones
             occ_list_max(i_alpha) = sys%basis%nbasis - (i_alpha*2 - 1) ! (/nbasis-1, nbasis-3, nbasis-5, .../)
         end do
 
-        do i_beta=1, sys%nbeta
+        do i_beta = 1, sys%nbeta
             occ_list_max(sys%nalpha+i_beta) = sys%basis%nbasis - (i_beta-1)*2 ! (/nbasis, nbasis-2, .../)
         end do
         ! Note that occ_list_max is not sorted, as this is eventually passed into encode_det where sorting is not necessary

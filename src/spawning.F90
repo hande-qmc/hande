@@ -114,7 +114,6 @@ contains
 
         ! 2. Attempt spawning.
         ! See propagators.f90 for documentation on the wall-Chebyshev projector
-        ! BZ [TODO] - figure out if update_p_single_double_data above needs to be weighted, and why it's different from CCMC
         associate (cheby_weight => qmc_state%cheby_prop%weights(qmc_state%cheby_prop%icheb))
             nspawn = attempt_to_spawn(rng, qmc_state%tau, spawn_cutoff, real_factor, hmatel%r*qn_weight*cheby_weight, pgen, &
                                 parent_sign)

@@ -694,47 +694,14 @@ contains
         ! DMQMC calculations. In all other calculation types, it is set to 1, and so can be ignored.
 
         associate(cp=>qs%cheby_prop)
-        !if (cp%using_chebyshev) then
-        if (.false.) then
-            ! qs%tau = 1 in wall-Chebyshev, but the effective tau for shift updating purposes is the average of chebyshev weights
-            tau_update = 0.0_p
-            
-            do icycle = 1, nupdate_steps
-                do icheb = 1, cp%order
-                    if (icycle == 1 .and. icheb == 1) then
-                        tau_update = (cp%zeroes(1)-loc_shift)*log(cp%nparticles_cheb(1,1)/nparticles_old)
-                    else if (icheb == 1) then
-                        tau_update = tau_update + (cp%zeroes(icheb)-loc_shift)*log(cp%nparticles_cheb(icycle,icheb)/ &
-                                                                               cp%nparticles_cheb(icycle-1,cp%order))
-                    else
-                        tau_update = tau_update + (cp%zeroes(icheb)-loc_shift)*log(cp%nparticles_cheb(icycle,icheb)/ &
-                                                                               cp%nparticles_cheb(icycle,icheb-1))
-                    end if
-                    print*, tau_update
-                end do
-            end do
-
-            ! Chebyshev currently doesn't work with shift_harmonic_forcing
-            loc_shift = loc_shift - real(tau_update*qs%shift_damping/(qs%dmqmc_factor*nupdate_steps*qs%cheby_prop%order),p)
-
-            ! DELETE AFTER DEBUGGING
-            print*, 'Cheb intermediate populations'
-            print*, cp%nparticles_cheb
-            print*, 'Cheb zeroes'
-            print*, cp%zeroes
-            print*, 'nparticles_old: ', nparticles_old
-            print*, 'nparticles: ', nparticles
-            
-        else
-            if (qs%target_particles .le. 0.00_p) then
-                loc_shift = loc_shift - real(log(nparticles/nparticles_old)*qs%shift_damping/ &
-                                             (qs%dmqmc_factor*qs%tau*nupdate_steps),p)
-            else 
-                loc_shift = loc_shift - real(log(nparticles/nparticles_old)*qs%shift_damping/ &
-                                             (qs%dmqmc_factor*qs%tau*nupdate_steps),p) & 
-                      - real(log(nparticles/qs%target_particles)*(qs%shift_harmonic_forcing)/ &
-                      (qs%dmqmc_factor*qs%tau*nupdate_steps),p)
-            end if
+        if (qs%target_particles .le. 0.00_p) then
+            loc_shift = loc_shift - real(log(nparticles/nparticles_old)*qs%shift_damping/ &
+                                         (qs%dmqmc_factor*qs%tau*nupdate_steps),p)
+        else 
+            loc_shift = loc_shift - real(log(nparticles/nparticles_old)*qs%shift_damping/ &
+                                         (qs%dmqmc_factor*qs%tau*nupdate_steps),p) & 
+                  - real(log(nparticles/qs%target_particles)*(qs%shift_harmonic_forcing)/ &
+                  (qs%dmqmc_factor*qs%tau*nupdate_steps),p)
         end if
         end associate
     

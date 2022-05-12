@@ -80,7 +80,7 @@ contains
                             write_blocking_report, update_shift_damping
         use report, only: write_date_time_close
         use replica_rdm, only: update_rdm_from_spawns, calc_rdm_energy, write_final_rdm
-        use propagators, only: disable_chebyshev
+        use propagators, only: update_chebyshev, disable_chebyshev
 
         type(sys_t), intent(in) :: sys
         type(qmc_in_t), intent(in) :: qmc_in
@@ -265,6 +265,9 @@ contains
             call write_blocking_report_header(iunit, sys%read_in%comp)
         end if
 
+        ! Used for turning off the Chebyshev propagator
+        reached_shoulder = .false.
+
         do ireport = 1, qmc_in%nreport
 
             qs%estimators%proj_energy_old = get_sanitized_projected_energy(qs)
@@ -423,6 +426,9 @@ contains
             if (error) exit
 
             if (update_tau) call rescale_tau(qs%tau)
+
+            ! Chebyshev only works with real read-in systems for now (nspaces=1)
+            if (qs%cheby_prop%using_chebyshev) call update_chebyshev(qs%cheby_prop, qs%shift(1))
 
             call cpu_time(t2)
             if (parent) then

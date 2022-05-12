@@ -898,11 +898,6 @@ contains
                         call direct_annihilation(sys, rng(0), qs%ref, annihilation_flags, pl, spawn)
                     end associate
 
-                    if (qs%cheby_prop%using_chebyshev) then
-                        ! Chebyshev is not yet compatible with complex systems
-                        qs%cheby_prop%nparticles_cheb(icycle, icheb) = qs%psip_list%nparticles(1)
-                    end if
-
                     if (debug) call write_logging_calc_ccmc(logging_info, iter, nspawn_events, ndeath + ndeath_nc, &
                                                             selection_data%nD0_select, &
                                                             selection_data%nclusters, selection_data%nstochastic_clusters, &
