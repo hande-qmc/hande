@@ -459,7 +459,7 @@ contains
         use lua_hande_utils, only: warn_unused_args, register_timing
         use lua_hande_calc_utils, only: init_output_unit, end_output_unit
         use qmc_data, only: qmc_in_t, ccmc_in_t, semi_stoch_in_t, restart_in_t, load_bal_in_t, &
-                            qmc_state_t, output_in_t, blocking_in_t, particle_t
+                            qmc_state_t, output_in_t, blocking_in_t, particle_t, empty_determ_space
         use logging, only: logging_in_t
         use reference_determinant, only: reference_t
         use system, only: sys_t
@@ -467,6 +467,8 @@ contains
         use calc, only: calc_type, ccmc_calc
         use calc_system_init, only: set_spin_polarisation, set_symmetry_aufbau
         use excitations, only: end_excitations, init_excitations
+
+        use errors, only: stop_all
 
         integer(c_int) :: nresult
         type(c_ptr), value :: L
@@ -527,6 +529,10 @@ contains
         call get_psip_list(lua_state, have_psip_list, psip_list_in)
         call warn_unused_args(lua_state, keys, opts)
         call aot_table_close(lua_state, opts)
+
+        if (semi_stoch_in%space_type /= empty_determ_space .and. .not. ccmc_in%full_nc) then
+            call stop_all('lua_ccmc', 'Full noncomposite needed for semi-stochastic CCMC')
+        end if
 
         calc_type = ccmc_calc
         allocate(qmc_state_out)

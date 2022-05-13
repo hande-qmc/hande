@@ -686,7 +686,7 @@ contains
     subroutine add_determ_dets_to_psip_list(determ, psip_list, sys, reference, annihilation_flags, dets_this_proc)
 
         ! Also set the deterministic flags of any deterministic states already
-        ! in particle_t%states, and add deterministic data to particle_t%popss and
+        ! in particle_t%states, and add deterministic data to particle_t%pops and
         ! particle_t%dat. All deterministic states not already in particle_t%states are
         ! set to have an initial sign of zero.
 
@@ -814,7 +814,7 @@ contains
 
     end subroutine set_determ_info
 
-    subroutine set_determ_info_ccmc(idet, real_pop, ndeterm_found, determ, cmplx)
+    subroutine set_determ_info_ccmc(idet, contrib, ndeterm_found, determ, cmplx)
 
         ! In:
         !    idet: index of the determinant (in determ%flags, also matches that in the main
@@ -829,25 +829,103 @@ contains
         !    determ_parent: true if the determinant is in the deterministic space.
 
         use qmc_data, only: semi_stoch_separate_annihilation
+        use search, only: binary_search
+        use ccmc_data, only: wfn_contrib_t
+        use parallel, only: iproc
 
-        integer(int_64), intent(in) ::idet
-        complex(p), intent(in) :: real_pop
+        integer(int_64), intent(in) :: idet
+        type(wfn_contrib_t), intent(in) :: contrib
         integer, intent(inout) :: ndeterm_found
         type(semi_stoch_t), intent(inout) :: determ
         logical, intent(in) :: cmplx
 
+        integer :: pos, i, istart, iend
+        logical :: hit
+
+        ! With OpenMP the noncomposite loop iterations won't be gone through deterministically, 
+        ! so instead of relying on idet, we have to do a binary search over (a small number of) deterministic states.
+
         if (determ%flags(idet) == 0) then
-            !$omp critical (ss_ccmc_crit)
-            ndeterm_found = ndeterm_found + 1
-            determ%vector(1,ndeterm_found) = real(real_pop, p)
-            if (cmplx) determ%vector(2,ndeterm_found) = aimag(real_pop)
+            istart = 1
+            do i = 0, iproc-1
+                istart = istart + determ%sizes(i)
+            end do
+
+            iend = istart + determ%sizes(iproc) - 1
+
+            call binary_search(determ%dets, contrib%cdet%f, istart, iend, hit, pos) 
+
+            ! With OpenMP the noncomposite loop iterations are not absolutely guaranteed to come first, 
+            ! so make sure we don't accidentally overwrite. Also no need to reweight by pgen as they're all 1.0_p for nc clusters.
+            determ%vector(1,pos-istart+1) = determ%vector(1,pos-istart+1) + real(contrib%cluster%amplitude, p)
+            if (cmplx) determ%vector(2,pos-istart+1) = aimag(contrib%cluster%amplitude)
             if (determ%projection_mode == semi_stoch_separate_annihilation) then
-                determ%indices(ndeterm_found) = idet
+                determ%indices(pos-istart+1) = idet
             end if
-            !$omp end critical (ss_ccmc_crit)
         end if
 
     end subroutine set_determ_info_ccmc
+
+    subroutine set_determ_info_ccmc_stochastic(contrib, determ, cmplx, spawn)
+
+        ! In:
+        !    idet: index of the determinant (in determ%flags, also matches that in the main
+        !        determinant list).
+        !    real_pop: (decoded) population on the determinant.
+        ! In/Out:
+        !    ndeterm_found: number of determinants in the deterministic space found.
+        !        Incremented if idet corresponds to a determinant in the deterministic space.
+        !    determ: semi_stoch_t object.  vector and indices components are updated if the
+        !        determinant is in the deterministic space.
+        ! Out:
+        !    determ_parent: true if the determinant is in the deterministic space.
+
+        use qmc_data, only: semi_stoch_separate_annihilation
+        use ccmc_data, only: wfn_contrib_t
+        use search, only: binary_search
+        use sort, only: qsort
+        use parallel, only: iproc, nprocs
+        use spawn_data, only: spawn_t
+        use spawning, only: assign_particle_processor
+
+        type(wfn_contrib_t), intent(in) :: contrib
+        type(semi_stoch_t), intent(inout) :: determ
+        logical, intent(in) :: cmplx
+        type(spawn_t), intent(in) :: spawn
+
+        integer :: pos, cdet_proc, cdet_slot_pos, i, istart, iend, idet
+        logical :: hit
+
+        ! Check if this composite deterministic cluster is already on this processor, and only augment the deterministic 
+        ! population if it is, because otherwise it'll entail MPI communications, 
+        ! which could be added in the future, espcially for sepparate annihilation (full vector collected).
+        call assign_particle_processor(contrib%cdet%f, spawn%bit_str_nbits, spawn%hash_seed, spawn%hash_shift, spawn%move_freq, &
+                                       nprocs, cdet_proc, cdet_slot_pos, spawn%proc_map%map, spawn%proc_map%nslots)
+
+        if (cdet_proc == iproc) then
+            istart = 1
+            do i = 0, iproc-1
+                istart = istart + determ%sizes(i)
+            end do
+
+            iend = istart + determ%sizes(iproc) - 1
+
+            call binary_search(determ%dets, contrib%cdet%f, istart, iend, hit, pos)
+            ! It's possible multiple threads will be writing to pos at the same time, hence the atomic
+            !$omp atomic
+            determ%vector(1,pos-istart+1) = determ%vector(1,pos-istart+1) + &
+                                            real(contrib%cluster%amplitude/contrib%cluster%pselect, p)
+            !$omp end atomic
+
+            if (cmplx) then
+                !$omp atomic
+                determ%vector(2,pos-istart+1) = determ%vector(2,pos-istart+1) + &
+                                                aimag(contrib%cluster%amplitude/contrib%cluster%pselect)
+                !$omp end atomic
+            end if
+        end if
+            
+    end subroutine set_determ_info_ccmc_stochastic
 
     subroutine determ_projection(rng, qmc_in, qs, spawn, determ)
 

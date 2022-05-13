@@ -333,7 +333,7 @@ contains
         use energy_evaluation, only: get_sanitized_projected_energy, get_sanitized_projected_energy_cmplx
         use blocking, only: write_blocking_report_header, init_blocking, do_blocking, deallocate_blocking, &
                             write_blocking_report, update_shift_damping
-        use semi_stoch, only: check_if_determ, determ_projection, set_determ_info_ccmc, set_determ_info
+        use semi_stoch, only: check_if_determ, determ_projection, set_determ_info_ccmc, set_determ_info_ccmc_stochastic
         use semi_stoch, only: dealloc_semi_stoch_t, init_semi_stoch_t, init_semi_stoch_t_flags, set_determ_info
 
         use logging, only: init_logging, end_logging, prep_logging_mc_cycle, write_logging_calc_ccmc
@@ -784,7 +784,7 @@ contains
                                         iattempt, qmc_in%initiator_pop, ccmc_in%even_selection, &
                                         contrib(it)%cdet, contrib(it)%cluster, qs%excit_gen_data, determ, determ_parent)
                             
-                            if (determ_parent) call set_determ_info_ccmc(iattempt, contrib(it)%cluster%amplitude, &
+                            if (determ_parent) call set_determ_info_ccmc(iattempt, contrib(it), &
                                                                          ndeterm_found, determ, sys%read_in%comp)
 
                             !if (qs%propagator%quasi_newton) contrib(it)%cdet%fock_sum = &
@@ -820,6 +820,9 @@ contains
                                             determ, determ_parent)
                         end if
 
+                        if (determ_parent) call set_determ_info_ccmc_stochastic(contrib(it), determ, sys%read_in%comp, &
+                                                                                qs%spawn_store%spawn)
+
                         if (contrib(it)%cluster%excitation_level <= qs%ref%max_ex_level+2 .or. &
                                 (ccmc_in%linked .and. contrib(it)%cluster%excitation_level == huge(0))) then
                             ! cluster%excitation_level == huge(0) indicates a cluster
@@ -833,7 +836,7 @@ contains
                             call do_stochastic_ccmc_propagation(rng(it), sys, qs, &
                                                                 ccmc_in, logging_info, ms_stats(it), bloom_stats, &
                                                                 contrib(it), nattempts_spawn, ndeath, ps_stats(it), &
-                                                                determ, .false.) ! determ_parent temporarily set to false
+                                                                determ, determ_parent) ! determ_parent temporarily set to false
                         end if
                     end if
                 end do
@@ -1150,7 +1153,7 @@ contains
         !   logging_info: logging_t object with info about current logging
         !        when debug is true. 
         !   determ: the semi_stoch_t object holding information relevant to semi-stochastic CCMC.
-        !   determ_parent: true if the excitor formed from the cluster is in the deterministic space (for semistochastic CCMC).
+        !   determ_parent: true if the excitor formed from the cluster is in the deterministic space (for semi-stochastic CCMC).
 
         !
         ! In/Out:
