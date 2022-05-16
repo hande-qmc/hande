@@ -56,7 +56,8 @@
 # We know the standard spherical harmonic coefficients: 
 #			C(1,+1) \propto -(x+iy)/sqrt(2)
 #			C(1,-1) \propto +(x-iy)/sqrt(2)
-# which means (-1,-1|+1,+1) = 1/2 * \iint [(x+iy)*(x-iy)] 1/r12 [-(x-iy)*-(x+iy)] dr1 dr2 (remember to take complex conjugates for the 1st and 3rd functions)
+# which means (-1,-1|+1,+1) = 1/2 * \iint [(x+iy)*(x-iy)] 1/r12 [-(x-iy)*-(x+iy)] dr1 dr2 
+#									(remember to take complex conjugates for the 1st and 3rd functions)
 #							= 1/2 * [(xx+yy|xx+yy)]
 #							= 1/2 * [(xx|xx) + (yy|yy) + 2(xx|yy)]
 # A general function for obtaining these coefficients for arbitrary Ml is in get_lz_idx_and_coeff below.
@@ -64,11 +65,13 @@
 # This script first calls PySCF to generate the untransformed FCIDUMP. We then proceed to process the ORBSYM information, 
 # For an 'irrep' of En(g/u)(x/y), we give the MO a 'destination' Ml label of + (for x)/ - (for y) n, and 0 otherwise.
 # After which we overwrite the ORBSYM to only reflect the inversion symmetry, with +1 for g and -1 for u.
-# We can now begin the transformation of the integrals. In general, for a 2e integral we will get at most 16 contributions to an Lz-transformed integral,
-# if all 4 functions were previously degenerate. We simply collect all 16 of these contributory integrals and their coefficients and add them up. 
-# 1e integrals are processed identically.
+# We can now begin the transformation of the integrals. In general, for a 2e integral we will get 
+# at most 16 contributions to an Lz-transformed integral,
+# if all 4 functions were previously degenerate. We simply collect all 16 of these contributory integrals 
+# and their coefficients and add them up. 1e integrals are processed identically.
 
-# PySCF uses the sensible numbering system for D2h (see above), for now we convert this to the (less sensible) Cotton's ordering used in Psi4 (see above) for the untransformed FCIDUMP.
+# PySCF uses the sensible numbering system for D2h (see above), for now we convert this to the (less sensible) 
+# Cotton's ordering used in Psi4 (see above) for the untransformed FCIDUMP.
 
 from pyscf import gto, scf, mcscf, tools
 
@@ -264,7 +267,8 @@ def make_fcidumps(_mf, _filename):
 
 	# Read the FCIDUMP in, skipping the namelist
 	read = False
-	print(f'Reading PySCF FCIDUMP and writing the Psi4-compatible FCIDUMP (with Cotton D2h irrep ordering and HF eigenvalues) in {_filename}-pyscf.FCIDUMP')
+	print(f'''Reading PySCF FCIDUMP and writing the Psi4-compatible FCIDUMP 
+		(with Cotton D2h irrep ordering and HF eigenvalues) in {_filename}-pyscf.FCIDUMP''')
 	with open(f'{_filename}-pyscf.FCIDUMP', 'r') as infile, open(f'{_filename}.FCIDUMP', 'w') as outfile:
 		# Read the namelist first
 		contents = infile.readlines()
@@ -376,18 +380,22 @@ def make_fcidumps(_mf, _filename):
 						# i.e. <ac|bd>, meaning transition from ac->bd, so Ml(a)+Ml(c) must be equal to Ml(b)+Ml(d)
 						if (symlz[i]+symlz[k] != symlz[j]+symlz[l]) and abs(lzintgrl) > 1e-12:
 							if abs(lzintgrl) < 1e-8:
-								print(f'({i} {j}|{k} | {l}) should be zero by conservation of angular momentum, but has value {lzintgrl}, which is within machine precision, setting to zero!')
+								print(f'''({i} {j}|{k} | {l}) should be zero by conservation of angular momentum, 
+									but has value {lzintgrl}, which is within machine precision, setting to zero!''')
 								lzintgrl = 0
 							else:
-								raise ValueError(f'({i} {j}|{k} | {l}) should be zero by conservation of angular momentum, but has value {lzintgrl}, which is outside machine precision, aborting!')
+								raise ValueError(f'''({i} {j}|{k} | {l}) should be zero by conservation of angular momentum, 
+									but has value {lzintgrl}, which is outside machine precision, aborting!''')
 
 						# Check whether the integral is strictly real
 						if (abs(lzintgrl.imag) > 1e-12):
 							if abs(lzintgrl.imag) < 1e-8:
-								print(f'({i} {j}|{k} | {l}), like all other integrals, should have zero imaginary part, but has imaginary part {lzintgrl.imag}, which is within machine precision, setting to zero!')
+								print(f'''({i} {j}|{k} | {l}), like all other integrals, should have zero imaginary part, 
+									but has imaginary part {lzintgrl.imag}, which is within machine precision, setting to zero!''')
 								lzintgrl.imag = 0
 							else:
-								raise ValueError(f'({i} {j}|{k} | {l}), like all other integrals, should have zero imaginary part, but has imaginary part {lzintgrl.imag}, which is outside machine precision, aborting!')
+								raise ValueError(f'''({i} {j}|{k} | {l}), like all other integrals, should have zero imaginary part, 
+									but has imaginary part {lzintgrl.imag}, which is outside machine precision, aborting!''')
 
 						# Print out if larger than threshold
 						if (abs(lzintgrl.real)>1e-12):
@@ -407,18 +415,22 @@ def make_fcidumps(_mf, _filename):
 
 				if (symlz[i] != symlz[j]) and abs(lzintgrl) > 1e-12:
 					if abs(lzintgrl) < 1e-8:
-						print(f'({i} | {j}) should be zero by conservation of angular momentum, but has value {lzintgrl}, which is within machine precision, setting to zero!')
+						print(f'''({i} | {j}) should be zero by conservation of angular momentum, 
+							but has value {lzintgrl}, which is within machine precision, setting to zero!''')
 						lzintgrl = 0
 					else:
-						raise ValueError(f'({i} | {j}) should be zero by conservation of angular momentum, but has value {lzintgrl}, which is outside machine precision, aborting!')
+						raise ValueError(f'''({i} | {j}) should be zero by conservation of angular momentum, 
+							but has value {lzintgrl}, which is outside machine precision, aborting!''')
 
 				# Check whether the integral is strictly real
 				if (abs(lzintgrl.imag) > 1e-12):
 					if abs(lzintgrl.imag) < 1e-8:
-						print(f'({i} | {j}), like all other integrals, should have zero imaginary part, but has imaginary part {lzintgrl.imag}, which is within machine precision, setting to zero!')
+						print(f'''({i} | {j}), like all other integrals, should have zero imaginary part, 
+							but has imaginary part {lzintgrl.imag}, which is within machine precision, setting to zero!''')
 						lzintgrl.imag = 0
 					else:
-						raise ValueError(f'({i} | {j}), like all other integrals, should have zero imaginary part, but has imaginary part {lzintgrl.imag}, which is outside machine precision, aborting!')
+						raise ValueError(f'''({i} | {j}), like all other integrals, should have zero imaginary part, 
+							but has imaginary part {lzintgrl.imag}, which is outside machine precision, aborting!''')
 				
 				if (abs(lzintgrl.real)>1e-12):
 					f.write(f'{lzintgrl.real:28.20E}{(i+1):4d}{(j+1):4d}{0:4d}{0:4d}\n')
