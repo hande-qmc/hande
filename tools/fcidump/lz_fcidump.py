@@ -240,8 +240,19 @@ def make_fcidumps(_mf, _filename):
 	eigval = _mf.mo_energy
 	e_nuc = _mf.energy_nuc()
 
+	# f90nml by default reads the whole FCIDUMP in, which can be slow, 
+	# here we just 'grep' the namelist bit and pass to f90nml
+	nmlstr = ''
+	with open(f'{_filename}-pyscf.FCIDUMP','r') as f:	
+		while True:
+			line = f.readline()
+			nmlstr += line
+			if ('&END' in line):
+				break
+
 	# Read the Fortran namelist, we can also get these variables from the mf object
-	nml = f90nml.read(f'{_filename}-pyscf.FCIDUMP')
+	#nml = f90nml.read(f'{_filename}-pyscf.FCIDUMP')
+	nml = f90nml.reads(nmlstr)
 	norb = int(nml['fci']['norb'])
 	nelec = int(nml['fci']['nelec'])
 	pyscf_orbsym = np.array(nml['fci']['orbsym'],dtype='int')
