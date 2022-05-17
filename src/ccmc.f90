@@ -1144,11 +1144,13 @@ contains
         call ms_stats_update(nspawnings_cluster, ms_stats)
         nattempts_spawn_tot = nattempts_spawn_tot + nspawnings_cluster
         if (qs%multiref) then
-            attempt_death = multiref_check_ex_level(sys, contrib, qs, 0)
-            call do_spawning_death(rng, sys, qs, ccmc_in, &
-                                 logging_info, bloom_stats, contrib, &
-                                 ndeath, ps_stat, nspawnings_cluster, &
-                                 attempt_death)
+            if (multiref_check_ex_level(sys, contrib, qs, 2)) then
+                attempt_death = multiref_check_ex_level(sys, contrib, qs, 0)
+                call do_spawning_death(rng, sys, qs, ccmc_in, &
+                                       logging_info, bloom_stats, contrib, &
+                                       ndeath, ps_stat, nspawnings_cluster, &
+                                       attempt_death)
+            end if
         else
             attempt_death = (contrib%cluster%excitation_level <= qs%ref%ex_level) 
 
