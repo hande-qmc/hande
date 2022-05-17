@@ -104,7 +104,7 @@ contains
 
         logical :: hit
         integer, parameter :: thread_id = 0
-        integer :: i, pos, istart, iend
+        integer :: i, pos, istart, iend, ispace
         integer(i0) :: f_parent(sys%basis%bit_string_len), f_child(sys%basis%bit_string_len)
         integer :: occ_list(sys%nel)
         integer(int_p) :: nspawned(psip_list%nspaces)
@@ -121,13 +121,13 @@ contains
                 call binary_search(psip_list%states, f_child, istart, iend, hit, pos)
                 ! Can ignore spawning if child not present in psip_list (population 0)
                 if (hit) then
-                    nspawned = int(rdm_spawn%sdata(bsl+1:bsl+psip_list%nspaces,i), int_p)
+                    nspawned = int(rdm_spawn%sdata(2*bsl+1:2*bsl+psip_list%nspaces,i), int_p)
                     call decode_det(sys%basis, f_child, occ_list)
-                    ! [todo] - use both sets of spawnings to update the rdm.  It should be a trivial change...
-                    ! [review] - JSS: do i = 1,2; pops(i,pos) and nspawned(3-i)?
-                    call update_rdm(sys, f_child, f_parent, occ_list, &
-                                    real(psip_list%pops(1,pos),p)/psip_list%pop_real_factor, &
-                                    real(nspawned(2),p)/psip_list%pop_real_factor, 1.0_p, rdm)
+                    do ispace = 1, 2
+                        call update_rdm(sys, f_child, f_parent, occ_list, &
+                                        real(psip_list%pops(ispace,pos),p)/psip_list%pop_real_factor, &
+                                        real(nspawned(3-ispace),p)/psip_list%pop_real_factor, 2.0_p, rdm)
+                    end do
                 end if
                 ! Next spawn can't be to an earlier determinant (but can be to the same one from a
                 ! different parent)
@@ -304,12 +304,13 @@ contains
             call check_hermiticity(rdm, comment_unit)
 
             open(file=filename, newunit=fileunit)
+
             do i = 1, nbasis
                 do j = i+1, nbasis
                     do k = 1, nbasis
                         do l = k+1, nbasis
                             if (abs(rdm(tri_ind_distinct_reorder(i,j),tri_ind_distinct_reorder(k,l))) > depsilon) then
-                                write (fileunit, '(4i4,2x,es13.6)') i, j, k, l, &
+                                write (fileunit, '(4i4,2x,es24.12)') i, j, k, l, &
                                     rdm(tri_ind_distinct_reorder(i,j),tri_ind_distinct_reorder(k,l))
                             end if
                         end do
