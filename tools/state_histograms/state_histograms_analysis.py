@@ -112,8 +112,9 @@ def plot_state_histograms(list_of_results, pdf_name):
     bkey = 'bin_edges'
     sum_keys, sem_keys, xmins, xmaxs, ymins = [], [], [], [], []
     for results in list_of_results:
-        sum_columns = [c for c in results.columns if '\\sum' in c]
-        sem_columns = [c.replace('\\sum', 'sem') for c in sum_columns]
+        tmp_columns = [c for c in results.columns if 'bin_edges' not in c]
+        sum_columns = [c for c in tmp_columns if '_error' not in c]
+        sem_columns = [c + '_error' for c in sum_columns]
         sum_keys.append(sum_columns)
         sem_keys.append(sem_columns)
 
@@ -152,7 +153,7 @@ def plot_state_histograms(list_of_results, pdf_name):
                 these_data = these_data[these_data[sum_key] != 0.0]
                 these_data[bkey] /= these_data[bkey].max()
 
-                ireport = int(sem_key.strip("sem"))
+                ireport = int(sem_key.split('_')[1])
 
                 plt.plot(
                         these_data[sum_key],
