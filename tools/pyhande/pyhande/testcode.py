@@ -39,6 +39,12 @@ output : dict
             else:
                 select_data.rename(columns=lambda x: 'eigv %s' % (x,), inplace=True)
             output[data.name + calc_ind] = select_data
+        elif metadata['calc_type'] == 'State histogram':
+            if underscore:
+                data.rename(columns=lambda x: x.replace(' ', '_'), inplace=True)
+            if len(data) > 10:
+                data = data.iloc[::5]
+            output[metadata['calc_type'] + calc_ind] = data
         else:
             if underscore:
                 data.rename(columns=lambda x: x.replace(' ', '_'), inplace=True)

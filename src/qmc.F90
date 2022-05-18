@@ -33,6 +33,8 @@ contains
         !    qmc_state_restart (optional): qmc_state_t object from a calculation
         !       to restart. Deallocated on exit.
         !    psip_list_in (optional): particle_t object from an MP1 calculation. Deallocated on exit.
+        !    state_hist (optional): type containing all the state histograms
+        !       information, if present call the setup routine for state histograms.
         ! Out:
         !    annihilation_flags: calculation specific annihilation flags.
         !    qmc_state: qmc_state_t object.  On output the QMC state is
@@ -1353,7 +1355,7 @@ contains
             qs%secondary_ref_tree%ex_lvl = qs%ref%ex_level
             ! The maximum possible excitation level is the smaller of number of electrons 
             ! and the number of virtual orbitals
-            qs%secondary_ref_tree%max_excit = min(sys%nel, sys%nvirt)
+            qs%secondary_ref_tree%max_excit = min(total_max-qs%ref%ex_level, min(sys%nel, sys%nvirt))
             do i = 1, size(qs%secondary_refs)
                 call tree_add(qs%secondary_ref_tree, det_string(qs%secondary_refs(i)%f0,sys%basis))
             end do

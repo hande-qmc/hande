@@ -80,6 +80,11 @@ test-gcc-mpi:
         - ../testcode/bin/testcode.py -e ../bin/hande.x -c mpi --processors=4
     only:
         - schedules
+    artifacts:
+        when: always
+        paths:
+            - test_suite
+        expire_in: never
 
 test-gcc-mpi-64:
     stage: BUILD AND TEST GCC MPI POP64

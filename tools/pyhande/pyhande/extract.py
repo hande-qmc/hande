@@ -25,6 +25,7 @@ except ImportError:
     pass
 
 import pyhande.legacy
+from pyhande.state_histograms import read_state_histogram_file
 
 def extract_data_sets(filenames):
     '''Extract QMC data tables from multiple HANDE calculations.
@@ -153,7 +154,9 @@ data_pairs : list of (dict, :class:`pandas.DataFrame` or :class:`pandas.Series`)
                 metadata['calc_type'] = calc_type
                 data_pairs.append((metadata, data))
             else:
-                (metadata, data, comment_data) = _extract_mc_calc(f, calc_type)
+                (tmp_md, tmp_d, tmp_cd, tmp_sd) = _extract_mc_calc(f, calc_type)
+                metadata, data, comment_data = tmp_md, tmp_d, tmp_cd
+                state_histogram_data = tmp_sd
                 metadata['calc_type'] = calc_type
                 data_pairs.append((metadata, data))
                 if calc_type == 'DMQMC' and not comment_data.empty:
@@ -161,6 +164,11 @@ data_pairs : list of (dict, :class:`pandas.DataFrame` or :class:`pandas.Series`)
                     metadata_rdm = metadata.copy()
                     metadata_rdm['calc_type'] = 'DMQMC (RDM)'
                     data_pairs.append((metadata_rdm, comment_data))
+                if calc_type == 'DMQMC' or calc_type == 'FCIQMC':
+                    if state_histogram_data is not None:
+                        metadata_hist = metadata.copy()
+                        metadata_hist['calc_type'] = 'State histogram'
+                        data_pairs.append((metadata_hist, state_histogram_data))
         elif calc_type == 'FCI' and fci_block.search(line):
             data = _extract_fci_data(f, line)
             data_pairs.append((metadata, data))
@@ -261,7 +269,8 @@ calc_type : string
 
 Returns
 -------
-(metadata, data, comment_data) : (dict, :class:`pandas.DataFrame`, :class:`pandas.DataFrame`)
+(metadata, data, comment_data, state_histogram_data) : (dict, :class:`pandas.DataFrame`,
+                                :class:`pandas.DataFrame`, :class:`pandas.DataFrame`)
     Dictionary of calculation metadata (input values, defaults, etc), the QMC
     data table obtained from the output file and any data extracted from the
     comment lines.
@@ -271,6 +280,7 @@ Returns
     metadata = {}
     data = pd.DataFrame()
     comment_data = None
+    state_histogram_data = None
     data_csv = None
     iteration_pattern = re.compile('^ #  *iterations')
     for line in fhandle:
@@ -294,6 +304,8 @@ Returns
         data = pd.io.parsers.read_csv(data_csv, names=column_names)
         if calc_type == 'DMQMC':
             comment_data = _extract_dmqmc_data(comment_file)
+        if calc_type == 'DMQMC' or calc_type == 'FCIQMC':
+            state_histogram_data = _extract_state_histogram_data(comment_file)
 
         os.remove(data_csv)
         os.remove(comment_file)
@@ -324,7 +336,7 @@ Returns
                         '# particles': '# H psips',
                 })
 
-    return (metadata, data, comment_data)
+    return (metadata, data, comment_data, state_histogram_data)
 
 def _extract_dmqmc_data(comment_file):
     '''Extract data from comments produced by a DMQMC calculation.
@@ -354,6 +366,45 @@ data : :class:`pandas.DataFrame`
     f.close()
     data = pd.DataFrame(data)
     data.index.name = 'beta loop'
+    return data
+
+def _extract_state_histogram_data(comment_file):
+    '''Extract data from state histogram files given in comments produced
+    by a state histogram calculation. This function exists solely for
+    the purpose of running the test suite on state histogram calculations.
+
+Parameters
+----------
+comment_file : string
+    Name of file containing the comment lines, as produced by
+    :func:`_convert_to_csv`.
+
+Returns
+-------
+data : :class:`pandas.DataFrame`
+    Data contained in the histogram files
+'''
+    data = {}
+    hist_comment_str = 'Writing state histogram to:'
+    f = open(comment_file)
+    found_data = False
+    for line in f:
+        if hist_comment_str in line:
+            found_data = True
+            histogram_file = line.split()[-1]
+            df, mex1, mex2 = read_state_histogram_file(histogram_file)
+            df.drop(columns='bin_edges', inplace=True)
+            ndet_maxs = numpy.array(df.max(axis=1))[:5]
+            for imax, ndet_max in enumerate(ndet_maxs):
+                key = f'bin_{imax}_max_ndets'
+                if key not in data.keys():
+                    data[key] = []
+                data[key].append(ndet_max)
+    f.close()
+    if not found_data:
+        return None
+    data = pd.DataFrame(data)
+    data.index.name = 'N_histogram'
     return data
 
 def _extract_fci_data(fhandle, title_line):

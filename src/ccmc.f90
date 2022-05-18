@@ -1133,7 +1133,7 @@ contains
         type(p_single_double_coll_t), intent(inout) :: ps_stat
 
         integer :: nspawnings_cluster
-        logical :: attempt_death, bktree
+        logical :: attempt_death
 
         ! Spawning
         ! This has the potential to create blooms, so we allow for multiple
@@ -1148,13 +1148,12 @@ contains
         call ms_stats_update(nspawnings_cluster, ms_stats)
         nattempts_spawn_tot = nattempts_spawn_tot + nspawnings_cluster
         if (qs%multiref) then
-            ! Checks whether the current contribution is within the considered space.
             if (multiref_check_ex_level(sys, contrib, qs, 2)) then
-                    attempt_death = multiref_check_ex_level(sys, contrib, qs, 0)
-                    call do_spawning_death(rng, sys, qs, ccmc_in, &
-                                         logging_info, bloom_stats, contrib, &
-                                         ndeath, ps_stat, nspawnings_cluster, &
-                                         attempt_death)
+                attempt_death = multiref_check_ex_level(sys, contrib, qs, 0)
+                call do_spawning_death(rng, sys, qs, ccmc_in, &
+                                       logging_info, bloom_stats, contrib, &
+                                       ndeath, ps_stat, nspawnings_cluster, &
+                                       attempt_death)
             end if
         else
             attempt_death = (contrib%cluster%excitation_level <= qs%ref%ex_level) 
@@ -1182,7 +1181,7 @@ contains
         !   ccmc_in: options relating to ccmc passed in to calculation.
         !   logging_info: logging_t object with info about current logging
         !        when debug is true. 
-        !   attempt_death = logical variable that encodes whether the selected 
+        !   attempt_death: logical variable that encodes whether the selected 
         !        cluster is within the desired CC truncation. 
         !
         ! In/Out:
@@ -1417,11 +1416,12 @@ contains
 
     end subroutine perform_ccmc_spawning_attempt
 
-    function multiref_check_ex_level(sys, contrib, qs, offset) result(assert1)
-        !Used in mr-CCMC.
-        !Checks whether a cluster is within some number of excitations of any of the references supplied.
+    function multiref_check_ex_level(sys, contrib, qs, offset) result(assert)
 
-        !In:
+        ! Used in mr-CCMC.
+        ! Checks whether a cluster is within some number of excitations of any of the references supplied.
+
+        ! In:
         !   sys: system being studied.
         !   contrib: information on contribution to wavefunction
         !       currently under consideration. Contains both the
@@ -1431,8 +1431,9 @@ contains
         !   qs: information on current state of calculation.
         !   offset: changes acceptable excitation level from the calculation truncation level.
         
-        !Out:
-        !   assert1: true if at least one of the excitation levels is below the threshold. False otherwise.
+        ! Out:
+        !   assert: true if at least one of the excitation levels is below the threshold. False otherwise.
+
         use excitations, only:  get_excitation_level, det_string
         use qmc_data, only: qmc_state_t
         use ccmc_data, only: wfn_contrib_t 
@@ -1444,20 +1445,26 @@ contains
         type(sys_t), intent(in) :: sys
         integer, intent(in) :: offset
         integer :: ex_level, i
-        logical :: assert1, assert2 = .false.
-        
+        logical :: assert
+
+        assert = .false.
+
+        if (contrib%cluster%excitation_level <= qs%ref%ex_level + offset) then
+            assert = .true.
+            return
+        end if
+
         if (qs%mr_acceptance_search == 0) then
             do i = 1, size(qs%secondary_refs)
                ex_level = get_excitation_level(det_string(contrib%cdet%f, sys%basis), &
                                                det_string(qs%secondary_refs(i)%f0, sys%basis)) 
-               assert2 = (ex_level <= qs%secondary_refs(i)%ex_level + offset)
-               if (assert2) exit
+               assert = (ex_level <= qs%secondary_refs(i)%ex_level + offset)
+               if (assert) return
             end do
         else
-            assert2 = tree_search(qs%secondary_ref_tree, det_string(contrib%cdet%f, sys%basis), &
+            assert = tree_search(qs%secondary_ref_tree, det_string(contrib%cdet%f, sys%basis), &
                                   qs%secondary_ref_tree%root, offset+qs%secondary_ref_tree%ex_lvl)
         end if
-        assert1 = (contrib%cluster%excitation_level <= qs%ref%ex_level + offset .or. assert2)
 
     end function
 
