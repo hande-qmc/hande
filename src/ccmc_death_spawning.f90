@@ -189,8 +189,6 @@ contains
                             &qs%secondary_ref_tree%root)
                     end if
                     if (.not. allowed_multiref) nspawn = 0
-                else
-                    nspawn = 0
                 end if
             end if
             if (excitor_sign < 0) nspawn = -nspawn

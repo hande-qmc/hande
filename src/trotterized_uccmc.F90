@@ -336,7 +336,7 @@ contains
                     ! redistributing,.
                     spawn%head = spawn%head_start
                     call redistribute_particles(pl%states, pl%pop_real_factor, pl%pops, pl%nstates, pl%nparticles, spawn)
-                    call direct_annihilation(sys, rng(0), qs%ref, annihilation_flags, pl, spawn, trot=.true.)
+                    call direct_annihilation(sys, rng(0), qs%ref, annihilation_flags, pl, spawn)
                 end if
             end if
         end associate
@@ -644,7 +644,7 @@ contains
 
                     if (nprocs > 1) call redistribute_particles(pl%states, pl%pop_real_factor, pl%pops, pl%nstates, &
                                                                 pl%nparticles, spawn)
-                    call direct_annihilation(sys, rng(0), qs%ref, annihilation_flags, pl, spawn, trot=.true.)
+                    call direct_annihilation(sys, rng(0), qs%ref, annihilation_flags, pl, spawn)
                 end associate
 
                 if (debug) call write_logging_calc_ccmc(logging_info, iter, nspawn_events, ndeath + ndeath_nc, &
