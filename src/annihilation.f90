@@ -65,10 +65,12 @@ contains
                 call deterministic_annihilation(rng, psip_list, determ)
                 call annihilate_wrapper_spawn_t(spawn, annihilation_flags%initiator_approx, psip_list%descending)
             else
-                call annihilate_wrapper_spawn_t(spawn, annihilation_flags%initiator_approx, psip_list%descending, determ%sizes(iproc))
+                call annihilate_wrapper_spawn_t(spawn, annihilation_flags%initiator_approx, psip_list%descending, &
+                    determ%sizes(iproc))
             end if
 
-            call annihilate_main_list_wrapper(sys, rng, reference, annihilation_flags, psip_list, spawn, determ_flags=determ%flags)
+            call annihilate_main_list_wrapper(sys, rng, reference, annihilation_flags, psip_list, spawn, &
+                    determ_flags=determ%flags)
         else
             call annihilate_wrapper_spawn_t(spawn, annihilation_flags%initiator_approx, psip_list%descending)
             call annihilate_main_list_wrapper(sys, rng, reference, annihilation_flags, psip_list, spawn)
@@ -198,7 +200,8 @@ contains
         ! Perform annihilation within the spawned walker list.
         ! This involves locating, compressing and sorting the section of the spawned
         ! list which needs to be annihilated with the main list on this processor.
-        call annihilate_wrapper_non_blocking_spawn(spawn, annihilation_flags%initiator_approx, psip_list%descending, iproc)
+        call annihilate_wrapper_non_blocking_spawn(spawn, annihilation_flags%initiator_approx, &
+                                                    psip_list%descending, iproc)
         ! Annihilate portion of spawned list with main list.
         call annihilate_main_list_wrapper(sys, rng, reference, annihilation_flags, psip_list, spawn, &
                                           spawn%head_start(thread_id, iproc)+nthreads)
