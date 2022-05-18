@@ -952,7 +952,7 @@ contains
         ! beforehand and accumulation on blooming.
 
         ! In:
-        !   basis: info on current basis functions.
+        !   sys: info on system being studied.
         !   reference: info on current reference state.
         !   cdet: determinant representing state currently spawning
         !       spawning from.

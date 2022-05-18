@@ -1088,6 +1088,7 @@ contains
         ! In:
         !   sys: information on system under consideration.
         !   ccmc_in: options relating to ccmc passed in to calculation.
+        !   uccmc_in (optional): options relating to uccmc passed in to calculation.
         !   logging_info: logging_t object with info about current logging
         !        when debug is true. 
         !

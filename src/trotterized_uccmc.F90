@@ -215,6 +215,7 @@ contains
 
         ! Add information strings to the psip_list and the reference determinant.
         call regenerate_trot_info_psip_list(sys%basis, sys%nel, qs)
+        qs%psip_list%descending=.true.
         call add_trot_info_reference(qs%ref%f0, sys)
 
         !Allocate memory for time averaged populations and variational energy computation.
@@ -1125,7 +1126,7 @@ contains
         !   basis: information on single-particle basis in use.
         !   nel: number of electrons in the system
         ! In/Out:
-        !   qmc_state: information on current state of calculation. We update and
+        !   qs: qmc_state_t object with information on current state of calculation. We update and
         !       reorder the bit strings within the psip list, using the reference
         !       determinant bit string stored within qs%ref%f0.
 

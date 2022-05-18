@@ -655,6 +655,8 @@ type particle_t
     logical :: warn = .true.
     ! Number of memory warnings
     integer :: warning_count = 0
+    ! Ascending/descending psip_list order
+    logical :: descending = .false.
 end type particle_t
 
 type spawned_particle_t

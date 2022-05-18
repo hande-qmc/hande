@@ -311,7 +311,7 @@ contains
         ! The explicit loop is also meant to be more efficient anyway, as it
         ! prevents any chance of copy-in/copy-out...
         do irdm = 1, nrdms
-            call annihilate_wrapper_spawn_t(inst_rdms%spawn(irdm)%spawn, .false.)
+            call annihilate_wrapper_spawn_t(inst_rdms%spawn(irdm)%spawn, .false., .false.)
             ! Now is also a good time to reset the hash table (otherwise we
             ! attempt to lookup non-existent data in the next cycle!).
             call reset_hash_table(inst_rdms%spawn(irdm)%ht)

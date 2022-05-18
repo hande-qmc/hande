@@ -356,7 +356,7 @@ contains
 
 !--- Helper procedures ---
 
-    subroutine annihilate_wrapper_spawn_t_single(spawn, tinitiator, determ_size)
+    subroutine annihilate_wrapper_spawn_t_single(spawn, tinitiator, reverse, determ_size)
 
         ! Helper procedure for performing annihilation within a spawn_t object.
 
@@ -366,6 +366,7 @@ contains
         !       use, on this process. If input then the deterministic states
         !       received from the various processes will be combined in a
         !       separate call to compress_determ_repeats.
+        !    reverse: true if psip_list is stored in descending order
         ! In/Out:
         !    spawn: spawn_t object containing spawned particles.  On output, the
         !        spawned particles are sent to the processor which 'owns' the
@@ -379,6 +380,7 @@ contains
         type(spawn_t), intent(inout) :: spawn
         logical, intent(in) :: tinitiator
         integer, intent(in), optional :: determ_size
+        logical, intent(in) :: reverse
 
         integer :: nstates_received(0:nprocs-1)
         integer, parameter :: thread_id = 0
@@ -401,7 +403,7 @@ contains
 
             ! Have spawned walkers on this processor.
 
-            call qsort(spawn%sdata, .false., spawn%head(thread_id,0), spawn%bit_str_len)
+            call qsort(spawn%sdata, reverse, spawn%head(thread_id,0), spawn%bit_str_len)
 
             ! Annihilate within spawned walkers list.
             ! Compress the remaining spawned walkers list.
@@ -415,13 +417,14 @@ contains
 
     end subroutine annihilate_wrapper_spawn_t_single
 
-    subroutine annihilate_wrapper_spawn_t_arr(spawn_arr, tinitiator)
+    subroutine annihilate_wrapper_spawn_t_arr(spawn_arr, tinitiator, reverse)
 
         ! Helper procedure for performing annihilation for an array of
         ! spawn_t objects.
 
         ! In:
         !    tinitiator: true if the initiator approximation is being used.
+        !    reverse: true if psip_list stored in descending order.
         ! In/Out:
         !    spawn_arr: array of spawn_t objects.  See
         !        annihilate_wrapper_spawn_t_single, which is called for each
@@ -429,11 +432,12 @@ contains
 
         type(spawn_t), intent(inout) :: spawn_arr(:)
         logical, intent(in) :: tinitiator
+        logical, intent(in) :: reverse
 
         integer :: i
 
         do i = 1, ubound(spawn_arr,dim=1)
-            call annihilate_wrapper_spawn_t_single(spawn_arr(i), tinitiator)
+            call annihilate_wrapper_spawn_t_single(spawn_arr(i), tinitiator, reverse)
         end do
 
     end subroutine annihilate_wrapper_spawn_t_arr

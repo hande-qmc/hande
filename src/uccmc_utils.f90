@@ -264,10 +264,24 @@ contains
  
     end subroutine add_info_str_trot
 
-! [review] - Brian: document this
     pure subroutine collapse_deexcitor_onto_cluster(basis, excitor_excitation, f0, cluster_excitor, &
                                                   cluster_annihilation, cluster_creation, cluster_population, &
                                                   excitor_annihilation, cluster_excitation)
+        ! Collapses a deexcitation operator onto a cluster.
+
+        ! In:
+        !
+        !   basis: basis_t object with information on one-electron basis in use.
+        !   excitor_excitation: bit string encoding excitation caused by excitor (NOT resulting determinant).
+        !   f0: bit string encoding reference determinant.
+        !   excitor_annihilation: bit string encoding annihilation operations in the deexcitor.
+        ! In/Out:
+        !
+        !   cluster_excitor: bit string encoding effect of current cluster excitation onto reference.
+        !   cluster_annihilation: bit string encoding current cluster annihilation operators.
+        !   cluster_creation: bit string encoding current cluster creation operators.
+        !   cluster_population: current cluster population.
+        !   cluster_excitation: bit string encoding excitation caused by cluster (NOT resulting determinant).
 
         use basis_types, only: basis_t, reset_extra_info_bit_string
 
@@ -380,6 +394,19 @@ contains
 
     subroutine initialise_average_wfn(sys, psip_list, time_avg_psip_list_states, time_avg_psip_list_pops, time_avg_psip_list_sq, nstates_sq, avg_start, iter)
 
+        ! Initialises average wavefunction to the current psip_list values.
+        
+        ! In:
+        !   sys: system being studied.
+        !   psip_list: particle_t object storing current wavefunction.
+        !   iter: current_iteration
+        ! In/Out:
+        !   time_avg_psip_list_states: states in time-average wavefunction.
+        !   time_avg_psip_list_pops: population in time-average wavefunction.
+        !   time_avg_psip_list_sq: time-average squared population.
+        !   nstates_sq: number of states in time-average.
+        !   avg_start: iteration average starts on.
+
         use qmc_data, only: particle_t
         use system, only: sys_t
  
@@ -402,6 +429,16 @@ contains
     end subroutine initialise_average_wfn
 
     subroutine write_average_wfn(sys, time_avg_psip_list_pops, time_avg_psip_list_sq, io_unit, time_avg_psip_list_states, nstates_sq)
+
+        ! Prints out average wavefunction obtained from a UCCMC calculation.
+
+        ! In:
+        !   sys: system being studied.
+        !   time_avg_psip_listpops: population in time-average wavefunction.
+        !   time_avg_psip_list_sq: time-average squared population.
+        !   time_avg_psip_list_states: states in time-average wavefunction.
+        !   nstates_sq: number of states in time-average.
+        !   io_unit: I/O unit.
 
         use system, only: sys_t
         use qmc_io, only: write_qmc_var
@@ -435,6 +472,15 @@ contains
 
     subroutine write_average_wfn_trot(sys, time_avg_psip_list_pops, time_avg_psip_list_sq, io_unit, time_avg_psip_list_states, nstates_sq)
 
+        ! Prints out average wavefunction obtained from a tUCCMC calculation.
+
+        ! In:
+        !   sys: system being studied.
+        !   time_avg_psip_listpops: population in time-average wavefunction.
+        !   time_avg_psip_list_sq: time-average squared population.
+        !   time_avg_psip_list_states: states in time-average wavefunction.
+        !   nstates_sq: number of states in time-average.
+        !   io_unit: I/O unit.
         use system, only: sys_t
         use qmc_io, only: write_qmc_var
  

@@ -21,6 +21,7 @@ contains
         !    sys: system being studied.
         !    reference: current reference determinant.
         !    annihilation_flags: calculation specific annihilation flags.
+        !    trot (optional): tUCCMC calculation flag.
         ! In/Out:
         !    rng: random number generator.
         !    psip_list: particle_t object containing psip information after the
@@ -66,17 +67,17 @@ contains
         if (doing_semi_stoch) then
             if (determ%projection_mode == semi_stoch_separate_annihilation) then
                 call deterministic_annihilation(rng, psip_list, determ)
-                call annihilate_wrapper_spawn_t(spawn, annihilation_flags%initiator_approx)
+                call annihilate_wrapper_spawn_t(spawn, annihilation_flags%initiator_approx, psip_list%descending)
             else
-                call annihilate_wrapper_spawn_t(spawn, annihilation_flags%initiator_approx, determ%sizes(iproc))
+                call annihilate_wrapper_spawn_t(spawn, annihilation_flags%initiator_approx, psip_list%descending, determ%sizes(iproc))
             end if
 
             call annihilate_main_list_wrapper(sys, rng, reference, annihilation_flags, psip_list, spawn, determ_flags=determ%flags)
-        else if (doing_trot) then
-            call annihilate_wrapper_spawn_t_single_trot(spawn, annihilation_flags%initiator_approx)
-            call annihilate_main_list_wrapper_trot(sys, rng, reference, annihilation_flags, psip_list, spawn)
+!        else if (doing_trot) then
+!            call annihilate_wrapper_spawn_t(spawn, annihilation_flags%initiator_approx, psip_list%descending)
+!            call annihilate_main_list_wrapper_trot(sys, rng, reference, annihilation_flags, psip_list, spawn)
         else
-            call annihilate_wrapper_spawn_t(spawn, annihilation_flags%initiator_approx)
+            call annihilate_wrapper_spawn_t(spawn, annihilation_flags%initiator_approx, psip_list%descending)
             call annihilate_main_list_wrapper(sys, rng, reference, annihilation_flags, psip_list, spawn)
         end if
 
@@ -341,7 +342,7 @@ contains
 
         do i = spawn_start, spawn%head(thread_id,0)
             f = int(spawn%sdata(:tensor_label_len,i), i0)
-            call binary_search(psip_list%states, f, istart, iend, hit, pos, .false.)
+            call binary_search(psip_list%states, f, istart, iend, hit, pos, psip_list%descending)
             if (hit) then
                 ! Annihilate!
                 old_pop = psip_list%pops(:,pos)
@@ -779,7 +780,7 @@ contains
 
                 ! spawned det is not in the main walker list.
                 call binary_search(psip_list%states, int(spawn%sdata(:sys%basis%tensor_label_len,i), i0), &
-                                   istart, iend, hit, pos, .false.)
+                                   istart, iend, hit, pos, psip_list%descending)
                 ! f should be in slot pos.  Move all determinants above it.
                 do j = iend, pos, -1
                     ! i is the number of determinants that will be inserted below j.
@@ -972,6 +973,7 @@ contains
         ! communications.
 
         ! In:
+        !    sys: system being studied
         !    tensor_label_len: number of elements in the bit array describing the position
         !       of the particle in the space (i.e.  determinant label in vector/pair of
         !       determinants label in array).
@@ -1030,7 +1032,7 @@ contains
             end if
 
             ! Insert new walkers into main walker list.
-            call insert_new_walkers_trot(sys, psip_list, reference, annihilation_flags, spawn, determ_flags, lower_bound)
+            call insert_new_walkers(sys, psip_list, reference, annihilation_flags, spawn, determ_flags, lower_bound)
 
             call remove_unoccupied_dets(rng, psip_list, annihilation_flags%real_amplitudes, determ_flags)
         else

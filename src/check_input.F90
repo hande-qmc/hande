@@ -447,6 +447,7 @@ contains
 
         ! In:
         !   sys: system being studied.
+        !   ccmc_in: CCMC options
         !   uccmc_in: UCCMC options
         !   qmc_in: QMC options
 

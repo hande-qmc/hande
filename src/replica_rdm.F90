@@ -112,7 +112,7 @@ contains
         istart = 1
         iend = psip_list%nstates
 
-        call annihilate_wrapper_spawn_t(rdm_spawn, .false.)
+        call annihilate_wrapper_spawn_t(rdm_spawn, .false., .false.)
 
         associate(bsl=>sys%basis%bit_string_len)
             do i = 1, rdm_spawn%head(thread_id, 0)

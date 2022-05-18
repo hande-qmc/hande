@@ -557,6 +557,7 @@ contains
         !    uccmc{
         !       sys = system,         --  required
         !       qmc = { ... },        --  required
+        !       ccmc = { ... },
         !       uccmc = { ... }
         !       restart = { ... },
         !       reference = { ... },
