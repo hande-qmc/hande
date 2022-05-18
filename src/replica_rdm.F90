@@ -112,13 +112,13 @@ contains
         istart = 1
         iend = psip_list%nstates
 
-        call annihilate_wrapper_spawn_t(rdm_spawn, .false., .false.)
+        call annihilate_wrapper_spawn_t(rdm_spawn, .false., psip_list%descending)
 
         associate(bsl=>sys%basis%bit_string_len)
             do i = 1, rdm_spawn%head(thread_id, 0)
                 f_parent = int(rdm_spawn%sdata(:bsl,i), i0)
                 f_child = int(rdm_spawn%sdata(bsl+1:2*bsl,i), i0)
-                call binary_search(psip_list%states, f_child, istart, iend, hit, pos, .false.)
+                call binary_search(psip_list%states, f_child, istart, iend, hit, pos, psip_list%descending)
                 ! Can ignore spawning if child not present in psip_list (population 0)
                 if (hit) then
                     nspawned = int(rdm_spawn%sdata(bsl+1:bsl+psip_list%nspaces,i), int_p)

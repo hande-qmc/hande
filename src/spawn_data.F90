@@ -464,13 +464,14 @@ contains
 
     end function calc_events_spawn_t
     
-    subroutine annihilate_wrapper_non_blocking_spawn(spawn, tinitiator, proc)
+    subroutine annihilate_wrapper_non_blocking_spawn(spawn, tinitiator, reverse, proc)
 
         ! Helper procedure for performing annihilation within the two spawned
         ! lists required for non blocking communications.
 
         ! In:
         !    tinitiator: true if the initiator approximation is being used.
+        !    reverse: whether psip_list is stored in descending order.
         ! In/Out:
         !    spawn: spawn_t object containing spawned particles.
         !        On output subsection of spawn_t object which contains information
@@ -489,6 +490,7 @@ contains
 
         type(spawn_t), intent(inout) :: spawn
         logical, intent(in) :: tinitiator
+        logical, intent(in) :: reverse 
         integer, optional, intent(in) :: proc
 
         integer, parameter :: thread_id = 0
@@ -511,7 +513,7 @@ contains
         end if
 
         if (endp > spawn_zero) then
-            call qsort(spawn%sdata(:,start:endp), .false., endp-spawn_zero, spawn%bit_str_len)
+            call qsort(spawn%sdata(:,start:endp), reverse, endp-spawn_zero, spawn%bit_str_len)
             ! Annihilate within spawned walkers list.
             ! Compress the remaining spawned walkers list.
             if (tinitiator) then

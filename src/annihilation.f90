@@ -128,7 +128,7 @@ contains
         ! (not including the current processor) from  the previous iteration.
         ! They have since been evolved so they can be annihilated with the main list.
         ! First annihilate within spawn_recv.
-        call annihilate_wrapper_non_blocking_spawn(spawn_recv, annihilation_flags%initiator_approx)
+        call annihilate_wrapper_non_blocking_spawn(spawn_recv, annihilation_flags%initiator_approx, psip_list%descending)
         ! Annihilate with main list.
         call annihilate_main_list_wrapper(sys, rng, reference, annihilation_flags, psip_list, spawn_recv)
 
@@ -198,7 +198,7 @@ contains
         ! Perform annihilation within the spawned walker list.
         ! This involves locating, compressing and sorting the section of the spawned
         ! list which needs to be annihilated with the main list on this processor.
-        call annihilate_wrapper_non_blocking_spawn(spawn, annihilation_flags%initiator_approx, iproc)
+        call annihilate_wrapper_non_blocking_spawn(spawn, annihilation_flags%initiator_approx, psip_list%descending, iproc)
         ! Annihilate portion of spawned list with main list.
         call annihilate_main_list_wrapper(sys, rng, reference, annihilation_flags, psip_list, spawn, &
                                           spawn%head_start(thread_id, iproc)+nthreads)
