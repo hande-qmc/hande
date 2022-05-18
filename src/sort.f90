@@ -187,7 +187,7 @@ contains
             logical :: comp_result
 
             if (reverse) then
-                comp_result = not(elem1(:) .bitstrgt. elem2(:))
+                comp_result = .not. (elem1(:) .bitstrgt. elem2(:))
             else
                 comp_result = elem1(:) .bitstrge. elem2(:)
             end if
@@ -202,7 +202,7 @@ contains
             logical :: comp_result
 
             if (reverse) then
-                comp_result = not(elem1(:) .bitstrge. elem2(:))
+                comp_result = .not. (elem1(:) .bitstrge. elem2(:))
             else
                 comp_result = elem1(:) .bitstrgt. elem2(:)
             end if
@@ -370,7 +370,7 @@ contains
             logical :: comp_result
 
             if (reverse) then
-                comp_result = not(elem1(:) .bitstrgt. elem2(:))
+                comp_result = .not. (elem1(:) .bitstrgt. elem2(:))
             else
                 comp_result = elem1(:) .bitstrge. elem2(:)
             end if
@@ -385,7 +385,7 @@ contains
             logical :: comp_result
 
             if (reverse) then
-                comp_result = not(elem1(:) .bitstrge. elem2(:))
+                comp_result = .not. (elem1(:) .bitstrge. elem2(:))
             else
                 comp_result = elem1(:) .bitstrgt. elem2(:)
             end if
