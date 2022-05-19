@@ -1172,7 +1172,7 @@ contains
                                                                  'init_spin_inverse_reference_det', 'trial_function', &
                                                                  'select_reference_det', 'quadrature_initiator', &
                                                                  'replica_tricks', 'density_matrices', 'density_matrix_file', &
-                                                                 'density_matrix_file']
+                                                                 'density_matrix_report']
 
         if (aot_exists(lua_state, opts, 'fciqmc')) then
 
