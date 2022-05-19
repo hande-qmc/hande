@@ -193,8 +193,8 @@ def read_dump_file(dump, bcomplex):
              '\n to check this is correct!\n', stacklevel=2)
 
         ei = []
-        occ = [i for i in range(1, na + 1, 2)]
-        occ += [i for i in range(2, nb + 1, 2)]
+        occ = [i for i in range(1, 1 + na, 2)]
+        occ += [i for i in range(2, 2 + nb, 2)]
         for i in range(1, norb + 1, 2):
             ei.append(0.0)
             ei[-1] += integrals[i, 0, i, 0]
@@ -425,8 +425,8 @@ def calculate_density_matrix_energy(gamma, integrals, nel, norb, Mfrozen,
     '''
     numerator, trace = 0.0, 0.0
 
-    for ij in range(1, norb + 1):
-        for ab in range(1, norb + 1):
+    for ij in range(1, int(norb*(norb+1)/2) + 1):
+        for ab in range(1, int(norb*(norb+1)/2) + 1):
 
             i, j = orbital_index_from_pair_index(ij)
             a, b = orbital_index_from_pair_index(ab)
