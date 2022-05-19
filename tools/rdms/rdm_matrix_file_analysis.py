@@ -11,6 +11,8 @@ import sys
 import pkgutil
 import argparse
 import pandas as pd
+from numpy import argsort
+from warnings import warn
 
 try:
     from pyhande.extract import extract_data
@@ -75,7 +77,7 @@ def parse_arguments(arguments):
     return options.filenames, options
 
 
-def read_dump_file(dump):
+def read_dump_file(dump, bcomplex):
     ''' A very basic function for reading and storing the integrals from an
     FCIDUMP. We assume that the format for the FCIDUMP file follows that of:
     https://hande.readthedocs.io/en/latest/manual/integrals.html#fcidump-format
@@ -87,10 +89,12 @@ def read_dump_file(dump):
     dump : str
         The filename of the FCIDUMP to read in
         system information and integrals.
+    bcomplex : boolean
+        True if the integrals have a 4-permutation symmetry.
 
     Returns
     -------
-    integrals : dictionary
+    sorted_integrals : dictionary
         The integrals for the system, we store each spin symmetry in
         physicists notation.
     nel : int
@@ -104,16 +108,21 @@ def read_dump_file(dump):
     Raises
     ------
     RuntimeError
+        If the system has an uneven number of alpha and beta electrons.
+    RuntimeError
         If the integrals are found to be in the form z = x + iy.
     RuntimeError
         If the FCIDUMP file has the integrals and orbital indices contained
         on multiple lines.
     RuntimeError
-        If one of nel or norb where not identified.
+        If one of nel, norb, or ms2 where not identified.
+    UserWarning
+        If the single-particle eigenvalues are not found in the FCIDUMP
     '''
     integrals = {}
     nel = None
     norb = None
+    ms2 = None
     uhf = False
     header_complete = False
 
@@ -124,19 +133,23 @@ def read_dump_file(dump):
 
             if 'END' in line:
                 header_complete = True
+                na = int((nel - ms2)/2) + ms2
+                nb = int((nel - ms2)/2)
                 if not uhf:
                     norb += norb
                     rhf_fac = 2
                 else:
                     rhf_fac = 1
             elif not header_complete:
-                line = 'LINE_PAD ' + line.replace('=', '')
+                line = 'LINE_PAD ' + line.replace('=', '') + ','
                 if 'NEL' in line:
                     nel = int(line.split('NEL')[1].split(',')[0])
                 if 'NORB' in line:
                     norb = int(line.split('NORB')[1].split(',')[0])
                 if 'UHF' in line:
                     uhf = 'TRUE' in line
+                if 'MS2' in line:
+                    ms2 = int(line.split('MS2')[1].split(',')[0])
             elif header_complete:
                 if '(' in line and ')' in line:
                     raise RuntimeError('Complex integral values are not '
@@ -164,11 +177,54 @@ def read_dump_file(dump):
                 elif i != 0:
                     integrals[i-1, j, a, b] = integrals[i, j, a, b]
 
-    if nel is None or norb is None:
-        raise RuntimeError('The number of electrons or number of orbitals '
+    if any(k is None for k in (nel, norb, ms2)):
+        raise RuntimeError('The number of electrons, orbitals, or spin '
                            'was not found in the FCIDUMP, send patches!')
 
-    return integrals, nel, norb, uhf
+    # HANDE orders orbitals/integrals by the energy of the i 0 0 0 integrals,
+    # so we must do the same. If we don't have these we will calculate
+    # them making some assumptions and generate a warning for the user.
+    if (1, 0, 0, 0) in integrals.keys():
+        ei = [integrals[i, 0, 0, 0] for i in range(1, norb + 1, 2)]
+    else:
+        warn('\n No single-particle eigenvalues found in the FCIDUMP, '
+             f'\n we will generate these assuming the first {na} alpha '
+             f'\n and {nb} beta orbitals are occupied! It is up to the user '
+             '\n to check this is correct!\n', stacklevel=2)
+
+        ei = []
+        occ = [i for i in range(1, na + 1, 2)]
+        occ += [i for i in range(2, nb + 1, 2)]
+        for i in range(1, norb + 1, 2):
+            ei.append(0.0)
+            ei[-1] += integrals[i, 0, i, 0]
+            for j in occ:
+                v_ijij = get_two_particle(integrals, i, j, i, j, bcomplex)
+                v_ijji = get_two_particle(integrals, i, j, j, i, bcomplex)
+                ei[-1] += (v_ijij - v_ijji)*(i != j)
+
+    isort = argsort(ei)
+
+    sorted_orbitals = [0]
+    for i in isort:
+        i = int(1 + 2*i)
+        sorted_orbitals.append(i)
+        sorted_orbitals.append(i+1)
+
+    sorted_integrals = {}
+    for key, val in integrals.items():
+        i, j, a, b = key
+
+        ii = sorted_orbitals.index(i)
+        jj = sorted_orbitals.index(j)
+        aa = sorted_orbitals.index(a)
+        bb = sorted_orbitals.index(b)
+
+        sorted_integrals[ii, jj, aa, bb] = integrals[i, j, a, b]
+
+    del integrals
+
+    return sorted_integrals, nel, norb, uhf
 
 
 def read_density_matrix_file(rdm):
@@ -542,7 +598,7 @@ def main(arguments):
             path += s + '/'
         int_file = path + int_file
 
-    integrals, nel, norb, uhf = read_dump_file(int_file)
+    integrals, nel, norb, uhf = read_dump_file(int_file, bcomplex)
 
     if cas[0] > 0:
         N = cas[1]
