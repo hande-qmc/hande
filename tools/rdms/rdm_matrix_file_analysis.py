@@ -115,7 +115,6 @@ def read_dump_file(dump):
     RuntimeError
         If one of nel or norb where not identified.
     '''
-
     integrals = {}
     nel = None
     norb = None
@@ -295,7 +294,6 @@ def search_twofold(integrals, i, a):
         Zero if no value is found, otherwise the non-zero value
         corresponding to the 2 orbitals provided is returned.
     '''
-
     if (i, 0, a, 0) in integrals.keys():
         return integrals[i, 0, a, 0]
     elif (a, 0, i, 0) in integrals.keys():
@@ -329,7 +327,6 @@ def get_one_particle(integrals, a, b, Nfrozen, bcomplex):
     hab : float
         The one-particle Hamiltonian element.
     '''
-
     hab = search_twofold(integrals, a, b)
 
     if Nfrozen == 0:
@@ -355,11 +352,12 @@ def calculate_density_matrix_energy(gamma, integrals, nel, norb, Mfrozen,
     integrals : dictionary
         A rank 4 dictionary containing the integral values for the system.
     nel : int
-        The number of electrons in the system.
+        The number of electrons in the system, which can be less than the true
+        number of electrons if a CAS is being used.
     norb : int
         The number of spin orbitals in the system.
     Nfrozen : int
-        The number of frozen orbitals for the CAS, zero if not CAS is being
+        The number of frozen orbitals for the CAS, zero if no CAS is being
         used in the calculation.
     det : list of int
         The occupied spin orbitals for the system.
@@ -373,9 +371,7 @@ def calculate_density_matrix_energy(gamma, integrals, nel, norb, Mfrozen,
     trace : float
         The denominator for the energy expression from the RDM.
     '''
-
-    numerator = 0.0
-    trace = 0.0
+    numerator, trace = 0.0, 0.0
 
     for ij in range(1, norb + 1):
         for ab in range(1, norb + 1):
@@ -497,11 +493,10 @@ def stdout_average_energy(estimates):
     -------
     None.
     '''
-    df = pd.DataFrame(estimates)
-    ave = df.mean()
-    sem = df.sem()
-    cov = df.cov()
-    N = df.count()['trace']
+    ave = estimates.mean()
+    sem = estimates.sem()
+    cov = estimates.cov()
+    N = estimates.count()['trace']
 
     num = pd.DataFrame()
     num['mean'] = [ave['numerator']]
@@ -530,7 +525,6 @@ def main(arguments):
     -------
     None.
     '''
-
     filenames, options = parse_arguments(arguments)
 
     int_file = options.int_file
