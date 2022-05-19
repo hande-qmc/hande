@@ -37,10 +37,6 @@ def parse_arguments(arguments):
         list HANDE RDM files from an FCIQMC calculation.
     options : :class:`ArgumentParser`
         Options read in from command line.
-
-    Raises
-    ------
-    UserWarning
     '''
 
     parser = argparse.ArgumentParser(usage=__doc__)
@@ -470,7 +466,7 @@ def stdout_average_gamma(gamma):
     print()
     print('Averaged RDM profile:')
     print(f' {"i":>5} {"j":>5} {"a":>5} {"b":>5} '
-          f'{"gamma_kl":>24} {"gamma_kl_error":>24}')
+          f'{"gamma_{ij,ab}":>24} {"gamma_{ij,ab}_error":>24}')
     for ijab in out.index:
         ave, err = out.loc[ijab, 'gamma'], out.loc[ijab, 'gamma_error']
         i, j, a, b = ijab.split()
@@ -509,7 +505,7 @@ def stdout_average_energy(estimates):
     energy = ratio(num, tr, covAB, N)
     print()
     print('Energy estimate from the averaged RDM profile:')
-    print(energy.to_string(float_format='%16.12E'))
+    print(energy.to_string(float_format='%16.12E', index=False))
 
 
 def main(arguments):
