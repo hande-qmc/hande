@@ -16,14 +16,15 @@ type node_t
     ! Each of the edges point to another node
     integer(i0), allocatable :: bstring(:)
     type(node_t), pointer :: edges(:) => null()
-    logical :: init = .false.
+    logical :: bstring_init = .false.
+    logical :: edge_init = .false.
 end type node_t
 
 type tree_t
     ! For use in BK-tree search of secondary references
     ! A tree stores a pointer to the root node, and some of the constants specific to the system
     type(node_t), pointer :: root => null()
-    logical :: init = .false.
+    logical :: root_init = .false.
     ! Number of secondary references, allowed excitation from *all* of them (no individual control), 
     ! maximum excitation from ground state
     integer :: n_secondary_ref, ex_lvl, max_excit
@@ -475,37 +476,40 @@ contains
         integer :: excit_lvl
 
         ! Initialises the root node
-        if (.not. this%init) then
-            this%init = .true.
+        if (.not. this%root_init) then
+            this%root_init = .true.
             allocate(this%root)
         end if
         curr_node => this%root
-        if (.not. allocated(curr_node%bstring)) then
+        if (.not. curr_node%bstring_init .and. .not. curr_node%edge_init) then
             ! If the node was initialised but empty, store the bitstring here
+            curr_node%bstring_init = .true.
             allocate(curr_node%bstring, source=next_bstring)
-        else if (.not. curr_node%init) then
+        else if (curr_node%bstring_init .and. .not. curr_node%edge_init) then
             ! If the node has a bitstring, compare and allocate edges, and store the bitstring at the end 
             ! of the correct edge
-            curr_node%init = .true.
+            curr_node%edge_init = .true.
             excit_lvl = get_excitation_level(curr_node%bstring, next_bstring)
             allocate(curr_node%edges(this%max_excit))
+            curr_node%edges(excit_lvl)%bstring_init = .true.
             allocate(curr_node%edges(excit_lvl)%bstring, source=next_bstring)
-        else
+        else if (curr_node%bstring_init .and. curr_node%edge_init) then
             do
                 ! If the node has both a bitstring and allocated edges, that means
                 ! you have a descend another level
 
                 ! This looks redundant but it's not, since the do loop goes on forever
                 ! you'll get to the end of the 'branch' and see a node with unallocated edges
-                if (.not. curr_node%init) then
-                    curr_node%init = .true.
+                if (.not. curr_node%edge_init) then
+                    curr_node%edge_init = .true.
                     allocate(curr_node%edges(this%max_excit))
                 end if
                 parent => curr_node%bstring
                 child => curr_node%edges
                 excit_lvl = get_excitation_level(parent, next_bstring)
                 curr_node => child(excit_lvl)
-                if (.not. allocated(curr_node%bstring)) then
+                if (.not. curr_node%bstring_init) then
+                    curr_node%bstring_init = .true.
                     allocate(curr_node%bstring, source=next_bstring)
                     exit
                 end if
@@ -572,12 +576,12 @@ contains
         end if
 
         do lvl = startlvl, endlvl
-            if (.not. curr_node%init) then
+            if (.not. curr_node%edge_init) then
                 ! reached the bottom, nothing found
                 hit = .false.
                 return
             end if
-            if (.not. allocated(curr_node%edges(lvl)%bstring)) then
+            if (.not. curr_node%edges(lvl)%bstring_init) then
                 ! Empty node, look into the neighbour now
                 continue
             else
