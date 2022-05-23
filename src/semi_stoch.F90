@@ -721,7 +721,7 @@ contains
 
         call stop_all("create_dense_determ_hamil", &
                       "This subroutine has not been implemented. &
-                      Please, implement or check back in future releases.")
+                      Please, check back in future releases.")
 
     end subroutine create_dense_determ_hamil
 
@@ -1002,7 +1002,7 @@ contains
 
         call stop_all("dense_determ_proj_combined_annihil", &
                       "This subroutine has not been implemented. &
-                      Please, implement or check back in future releases.")
+                      Please, check back in future releases.")
 
     end subroutine dense_determ_proj_combined_annihil
 
@@ -1160,7 +1160,7 @@ contains
 
         use parallel, only: iproc, nprocs
         use spawn_data, only: spawn_t
-        use spawning, only: assign_particle_processor
+        use spawning, only: assign_particle_processor, assign_particle_processor_dmqmc
         use calc, only: doing_calc, dmqmc_calc
 
         integer, intent(inout) :: determ_size_this_proc
