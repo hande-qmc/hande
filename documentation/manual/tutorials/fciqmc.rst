@@ -263,7 +263,10 @@ the wall time of the calculation:
 
     # todo - legend, axis labels
     (fig, ax1) = plt.subplots()
-    lines1 = ax1.plot(results.index, 10**5*results['standard error'], 'x-', label='standard error')
+    
+    sorted_errs = list(zip( *sorted(zip(results.index, 10**5*results['standard error'])))) #* [* for vim highlighting]
+
+    lines1 = ax1.plot(sorted_errs[0], sorted_errs[1] , 'x-', label='standard error')
     ax1.set_xlabel('spawn cutoff')
     ax1.set_ylabel(r'standard error / $10^{-5}$ [$U/t$]')
 
@@ -272,7 +275,8 @@ the wall time of the calculation:
         ax2._get_lines.color_cycle.next()
     except AttributeError:
         next(ax2._get_lines.prop_cycler)
-    lines2 = ax2.plot(results.index, results['wall_time'], 'x-', label='wall time')
+    sorted_walls = list(zip( *sorted(zip(results.index, results['wall_time'])))) #* [* for vim highlighting]
+    lines2 = ax2.plot(sorted_walls[0], sorted_walls[1], 'x-', label='wall time')
     ax2.set_yticks(np.linspace(ax2.get_yticks()[0],ax2.get_yticks()[-1],len(ax1.get_yticks())))
     ax2.set_ylabel('wall time [s]')
 
