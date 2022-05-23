@@ -18,6 +18,8 @@ type mp1_in_t
     real(p) :: spawn_cutoff = 0.01_p
     ! If a CCMC calculation follows, whether that CCMC calculation has even selection enabled.
     logical :: even_selection = .false.
+    ! Seed used to initialise the dSFMT random number generator.
+    integer :: seed
 end type mp1_in_t
 
 
@@ -113,7 +115,8 @@ contains
         call copy_sys_spin_info(sys, sys_bak)
         call set_spin_polarisation(sys%basis%nbasis, sys)
        
-        ! We have to have a qmc_in_t object for init_proc_pointers, as init_reference requires proc_pointers to be properly set. Copied from qmc_data.f90::qmc_in_t
+        ! We have to have a qmc_in_t object for init_proc_pointers, as init_reference requires proc_pointers to be properly set. 
+        ! Copied from qmc_data.f90::qmc_in_t
         qmc_in_loc%excit_gen = excit_gen_renorm
         qmc_in_loc%pattempt_single = -1
         qmc_in_loc%pattempt_double = -1
@@ -175,39 +178,7 @@ contains
         call alloc_det_info_t(sys, cdet)
         allocate(cluster%excitors(ref%ex_level+2))
 
-        if (parent) then
-            call json_object_init(js, tag=.true.)
-            call sys_t_json(js, sys)
-            call mp1_in_t_json(js, mp1_in)
-            call reference_t_json(js, ref, terminal=.true.)
-            call json_object_end(js, terminal=.true., tag=.true.)
-            write (js%io,'()')
-        end if
 
-        if (sys%aufbau_sym) then
-            homo = 1
-            lumo = sys%basis%nbasis
-            associate(bl=>sys%basis%bit_lookup, bfns=>sys%basis%basis_fns)
-                do i = 2, sys%basis%nbasis
-                    if (btest(ref%f0(bl(2,i)), bl(1,i))) then
-                        ! Occupied
-                        if (bfns(i)%sp_eigv >= bfns(homo)%sp_eigv) homo = i
-                    else
-                        ! Unoccupied
-                        if (bfns(i)%sp_eigv < bfns(lumo)%sp_eigv) lumo = i
-                    end if
-                end do
-                if (abs(bfns(lumo)%sp_eigv-bfns(homo)%sp_eigv) < depsilon) then
-                    call stop_all('sample_mp1_wfn', 'Cannot generate MP1 wavefunction for a system with a zero HOMO-LUMO gap.')
-                end if
-            end associate
-        else
-            call warning('sample_mp1_wfn', 'Not using aufbau principle, we do not check that the system is gapless.')
-        end if
-
-        ! Generate N_0(1+T2) deterministically.
-        excit%nexcit = 2
-        
         ! MPI is turned off, the reasons are
         ! 1. The code below tries to find the next excitation by incrementing iocc_a/b, which creates potential
         !   duplicates in excitations on different processors. This leads to different 'exact MP2 energies' with different -np
@@ -218,6 +189,37 @@ contains
         ! [todo] - OpenMP parallelisation: care is needed to make sure threading and spawning work together (see ccmc.f90)
 
         if (parent) then
+            call json_object_init(js, tag=.true.)
+            call sys_t_json(js, sys)
+            call mp1_in_t_json(js, mp1_in)
+            call reference_t_json(js, ref, terminal=.true.)
+            call json_object_end(js, terminal=.true., tag=.true.)
+            write (js%io,'()')
+
+            if (sys%aufbau_sym) then
+                homo = 1
+                lumo = sys%basis%nbasis
+                associate(bl=>sys%basis%bit_lookup, bfns=>sys%basis%basis_fns)
+                    do i = 2, sys%basis%nbasis
+                        if (btest(ref%f0(bl(2,i)), bl(1,i))) then
+                            ! Occupied
+                            if (bfns(i)%sp_eigv >= bfns(homo)%sp_eigv) homo = i
+                        else
+                            ! Unoccupied
+                            if (bfns(i)%sp_eigv < bfns(lumo)%sp_eigv) lumo = i
+                        end if
+                    end do
+                    if (abs(bfns(lumo)%sp_eigv-bfns(homo)%sp_eigv) < depsilon) then
+                        call stop_all('sample_mp1_wfn', 'Cannot generate MP1 wavefunction for a system with a zero HOMO-LUMO gap.')
+                    end if
+                end associate
+            else
+                call warning('sample_mp1_wfn', 'Not using aufbau principle, we do not check that the system is gapless.')
+            end if
+
+            ! Generate N_0(1+T2) deterministically.
+            excit%nexcit = 2   
+
             emp2 = 0.0_dp
             do i = 1, sys%nel
                 do j = i+1, sys%nel
@@ -274,7 +276,7 @@ contains
             write (6,'(1X, A, ES17.10)') 'Deterministic MP2 correlation energy: ', emp2
         end if
 
-
+        ! Direct annihilation here will scatter the states onto correct destination processors, as defined in spawn%proc_map
         call direct_annihilation(sys, rng, ref, annihilation_flags, tijab, spawn)
         if (parent) write (6,'()')
 
@@ -305,7 +307,8 @@ contains
         call json_write_key(js, 'D0_norm', mp1_in%D0_norm)
         call json_write_key(js, 'state_size', mp1_in%state_size)
         call json_write_key(js, 'real_amplitudes', mp1_in%real_amplitudes)
-        call json_write_key(js, 'spawn_cutoff', mp1_in%spawn_cutoff, terminal=.true.)
+        call json_write_key(js, 'spawn_cutoff', mp1_in%spawn_cutoff)
+        call json_write_key(js, 'seed', mp1_in%seed, terminal=.true.)
         call json_object_end(js, terminal)
 
     end subroutine mp1_in_t_json

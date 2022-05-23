@@ -6,6 +6,8 @@ MP1 wavefunction
     psip_list = mp1_mc {
         sys = system,
         mp1 = {...},
+        qmc = {...},
+        ccmc = {...},
     }
 
 Returns:
@@ -32,6 +34,46 @@ Options
 
     Further options controlling the calculation.
 
+``qmc``
+    type: lua table.
+
+    Optional.
+
+    If provided, will override the ``mp1`` input options where relevant. 
+``ccmc``
+    type: lua table.
+
+    Optional.
+
+    If provided, will override the ``mp1`` input options where relevant. 
+
+.. note::
+
+    If you wish to chain together a MP1 calculation and a CCMC calculation, one way to do it would be:
+
+    .. code-block:: lua
+
+        sys = {...}
+        qmc_opt = {...}
+        ccmc_opt = {...}
+
+        psip_list = mp1_mc{
+            sys = sys,
+            qmc = qmc_opts,
+            ccmc = ccmc_opts,
+        }
+
+        ccmc {
+            sys = sys,
+            qmc = qmc_opts,
+            ccmc = ccmc_opts,
+            psip_list = psip_list,
+            reference = {...},
+        }
+
+    Note the lack of commas after the main tables.
+
+
 MP1 options
 -----------
 ``D0_population``
@@ -39,7 +81,11 @@ MP1 options
 
     Required.
 
-    Set the initial population on the reference determinant. This will overwrite the value given in the ``qmc`` table.
+    Set the initial population on the reference determinant. 
+
+    .. note::
+
+        This will overwrite the value given in the ``qmc`` table.
 
 ``state_size``
     type: integer.
@@ -50,7 +96,9 @@ MP1 options
 
     If negative, then the absolute value is used as the maximum amount of memory in MB to use for this information.
 
-    This will overwrite the value given in the ``qmc`` table.
+    .. note::
+
+        This will overwrite the value given in the ``qmc`` table.
 
 ``real_amplitudes``
     type: boolean.
@@ -60,7 +108,9 @@ MP1 options
     Allow amplitudes to take non-integer weights. This will often significantly reduce the stochastic noise 
     in the Monte Carlo estimates.
 
-    This should be the same as the subsequent calculation.
+    .. note::
+
+        This should be the same as the subsequent calculation.
 
 ``spawn_cutoff``
     type: float.
@@ -81,5 +131,6 @@ MP1 options
 
     Optional. Default: false.
 
-    Must be true if true in the subsequent CCMC calculation.
+    .. note::
 
+        Must be true if true in the subsequent CCMC calculation.

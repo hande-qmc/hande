@@ -709,6 +709,8 @@ contains
         !           rng_seed = seed,
         !           even_selection = true/false,
         !     },
+        !     qmc = {...},
+        !     ccmc = {...},
         ! }
 
         use, intrinsic :: iso_c_binding, only: c_ptr, c_int
@@ -720,9 +722,11 @@ contains
         use lua_hande_utils, only: warn_unused_args, register_timing
 
         use system, only: sys_t
-        use qmc_data, only: reference_t, qmc_state_t, particle_t
+        use qmc_data, only: reference_t, qmc_state_t, particle_t, qmc_in_t, ccmc_in_t
         use mp1, only: mp1_in_t, sample_mp1_wfn
         use excitations, only: init_excitations, end_excitations
+
+        use errors, only: warning
 
         integer(c_int) :: nresult
         type(c_ptr), value :: L
@@ -733,12 +737,16 @@ contains
         type(mp1_in_t) :: mp1_in
         type(reference_t) :: ref
 
-        integer :: opts, rng_seed
+        integer :: opts
         logical :: have_seed
 
         real :: t1, t2
 
         type(particle_t), pointer :: psip_list
+
+        type(qmc_in_t) :: qmc_in
+        type(ccmc_in_t) :: ccmc_in
+        logical :: qmc_exists, ccmc_exists
 
         call cpu_time(t1)
 
@@ -746,8 +754,32 @@ contains
         call get_sys_t(lua_state, sys)
 
         opts = aot_table_top(lua_state)
-        call read_mp1_in(lua_state, opts, mp1_in, rng_seed, have_seed)
+
+        qmc_exists = aot_exists(lua_state, opts, 'qmc')
+        ccmc_exists = aot_exists(lua_state, opts, 'ccmc')
+
+        if (qmc_exists) call read_qmc_in(lua_state, opts, qmc_in)
+        if (ccmc_exists) call read_ccmc_in(lua_state, opts, ccmc_in, sys)
+        call read_mp1_in(lua_state, opts, mp1_in, have_seed, qmc_exists)
+
         ref%ex_level = 2
+
+        if (qmc_exists) then
+            call warning('lua_mp1_mc', &
+                'qmc table provided, overriding D0_normlisation, state_size, real_amplitudes, and rng_seed!')
+            mp1_in%D0_norm = qmc_in%D0_population
+            mp1_in%state_size = qmc_in%walker_length
+            mp1_in%real_amplitudes = qmc_in%real_amplitudes
+            ! Calling read_qmc_in fetches the seed provided in lua, or else generates a random seed
+            mp1_in%seed = qmc_in%seed
+            have_seed = .true.
+            mp1_in%spawn_cutoff = qmc_in%spawn_cutoff
+        end if
+
+        if (ccmc_exists) then
+            mp1_in%even_selection = ccmc_in%even_selection
+        end if
+
         call aot_table_close(lua_state, opts)
 
         if (mp1_in%even_selection) then
@@ -761,7 +793,7 @@ contains
         allocate(psip_list)
 
         if (have_seed) then
-            call sample_mp1_wfn(sys, mp1_in, ref, psip_list, rng_seed)
+            call sample_mp1_wfn(sys, mp1_in, ref, psip_list, mp1_in%seed)
         else
             call sample_mp1_wfn(sys, mp1_in, ref, psip_list)
         end if
@@ -989,7 +1021,7 @@ contains
 
     end subroutine read_canonical_args
 
-    subroutine read_mp1_in(lua_state, opts, mp1_in, rng_seed, have_seed)
+    subroutine read_mp1_in(lua_state, opts, mp1_in, have_seed, qmc_exists)
 
         ! mp1 = {
         !     D0_population = nD0,              -- required
@@ -1011,30 +1043,36 @@ contains
         type(flu_State), intent(inout) :: lua_state
         integer, intent(in) :: opts
         type(mp1_in_t), intent(out) :: mp1_in
-        integer, intent(out) :: rng_seed
         logical, intent(out) :: have_seed
+        logical, intent(in) :: qmc_exists
 
         integer :: mp1_table, err
         character(15), parameter :: keys(6) = [character(15) :: 'D0_population', 'state_size', &
                                                                 'real_amplitudes', 'spawn_cutoff', 'rng_seed','even_selection']
 
-        if (.not. aot_exists(lua_state, opts, 'mp1') .and. parent) call stop_all('read_mp1_args', '"mp1" table not present.')
-        call aot_table_open(lua_state, opts, mp1_table, 'mp1')
+        if (.not. aot_exists(lua_state, opts, 'mp1') .and. .not. qmc_exists) then
+            if (parent) call stop_all('read_mp1_args', '"mp1" table not present.')
+        end if
 
-        call aot_get_val(mp1_in%D0_norm, err, lua_state, mp1_table, 'D0_population')
-        if (err /= 0 .and. parent) call stop_all('read_mp1_args', 'D0_population: Internal normalisation not supplied.')
-        call aot_get_val(mp1_in%state_size, err, lua_state, mp1_table, 'state_size')
-        if (err /= 0 .and. parent) call stop_all('read_mp1_args', 'state_size not set.')
+        if (aot_exists(lua_state, opts, 'mp1')) then
+            call aot_table_open(lua_state, opts, mp1_table, 'mp1')
 
-        call aot_get_val(mp1_in%real_amplitudes, err, lua_state, mp1_table, 'real_amplitudes')
-        call aot_get_val(mp1_in%spawn_cutoff, err, lua_state, mp1_table, 'spawn_cutoff')
-        call aot_get_val(mp1_in%even_selection, err, lua_state, mp1_table, 'even_selection')
+            call aot_get_val(mp1_in%D0_norm, err, lua_state, mp1_table, 'D0_population')
+            if (err /= 0 .and. parent .and. .not. qmc_exists) &
+                call stop_all('read_mp1_args', 'D0_population: Internal normalisation not supplied.')
+            call aot_get_val(mp1_in%state_size, err, lua_state, mp1_table, 'state_size')
+            if (err /= 0 .and. parent .and. .not. qmc_exists) call stop_all('read_mp1_args', 'state_size not set.')
 
-        have_seed = aot_exists(lua_state, mp1_table, 'rng_seed')
-        call aot_get_val(rng_seed, err, lua_state, mp1_table, 'rng_seed')
+            call aot_get_val(mp1_in%real_amplitudes, err, lua_state, mp1_table, 'real_amplitudes')
+            call aot_get_val(mp1_in%spawn_cutoff, err, lua_state, mp1_table, 'spawn_cutoff')
+            call aot_get_val(mp1_in%even_selection, err, lua_state, mp1_table, 'even_selection')
 
-        call warn_unused_args(lua_state, keys, mp1_table)
-        call aot_table_close(lua_state, mp1_table)
+            have_seed = aot_exists(lua_state, mp1_table, 'rng_seed')
+            if (have_seed) call aot_get_val(mp1_in%seed, err, lua_state, mp1_table, 'rng_seed')
+
+            call warn_unused_args(lua_state, keys, mp1_table)
+            call aot_table_close(lua_state, mp1_table)
+        end if
 
     end subroutine read_mp1_in
 
