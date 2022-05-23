@@ -100,11 +100,11 @@ algorithms and control the core settings in the algorithms.
 
     .. math::
 
-        S(t) = S(t-A\tau) - \frac{\xi}{A\tau} log\left( \frac{N_p(t)} {N_p(t-A\tau)} \right)
+        S(\tau) = S(\tau-A\delta\tau) - \frac{\zeta}{A\delta\tau} \ln\left( \frac{N_{\text{w}}(\tau)} {N_{\text{w}}(\tau-A\delta\tau)} \right)
 
-    where :math:`S` is the shift, :math:`t` the current imaginary time, :math:`\tau` the
-    timestep, :math:`A` ``mc_cycles``, :math:`\xi` ``shift_damping``, and :math:`N_p` the
-    number of particles.
+    where :math:`S` is the shift, :math:`\tau` the current imaginary time, :math:`\delta\tau` the
+    timestep, :math:`A` ``mc_cycles``, :math:`\zeta` ``shift_damping``, and :math:`N_{\text{w}}` the
+    number of particles (walkers).
 ``reference_target``
     type: float.
 
@@ -365,9 +365,9 @@ algorithms and control the core settings in the algorithms.
         minimum value for these is 0.0001. If that is too high, consider setting them manually by
         specifying both (only one is not sufficient) in the input file.
 ``pattempt_zero_accum_data``
-    type: boolean
+    type: boolean.
 
-    Optional. Default: False.
+    Optional. Default: false.
 
     If true and restarting a calculation, accumulated data needed to update ``pattempt_single``
     and ``pattempt_double`` is reset (set to zero, overflow boolean is set to false).
@@ -394,10 +394,42 @@ algorithms and control the core settings in the algorithms.
 
     Optional.  Default: 0.05.
 
-    The shift damping factor, :math:`\xi`. This can be optimised using the
+    The shift damping factor, :math:`\zeta`. This can be optimised using the
     ``auto_shift_damping`` keyword (see :ref:`blocking_table`).
     On restarting the final value in the previous calculation will replace
     the usual default value if ``shift_damping`` is not specified.
+
+``shift_harmonic_forcing``
+    type: float.
+
+    Optional. Default: 0.0.
+
+    The restoring force factor :math:`\xi` in the improved shift update procedure from [Yang20]_: 
+
+    .. math::
+
+        S(\tau) = S(\tau-A\delta\tau) - \frac{\zeta}{A\delta\tau} \ln\left( \frac{N_{\text{w}}(\tau)} {N_{\text{w}}(\tau-A\delta\tau)} \right) - \frac{\xi}{A\delta\tau}\ln\left(\frac{N_{\text{w}}(\tau)}{N_{\text{t}}} \right)
+
+    where :math:`N_{\text{t}}` is the target population.
+
+``shift_harmonic_crit_damp``
+    type: boolean.
+
+    Optional. Default: false.
+
+    If true, the shift_harmonic_forcing term will be set equal to the square 
+    of the ``shift_damping`` term divided by 4 to obtain critial damping. 
+    If true, ``shift_harmonic_forcing`` will be ignored.
+
+``shift_harmonic_forcing_two_stage``
+    type: boolean.
+
+    Optional. Default: false.
+
+    A non-zero ``shift_harmonic_forcing`` factor allows the shift to be varied from the start 
+    of the calculation. However this would mean the target population is reached more slowly 
+    as more death events occur. If false, shift is varied from the start of the calculation, 
+    otherwise shift is only varied (with harmonic forcing turned on) when target population is reached.
 
 ``vary_shift_from``
     type: float or string.
