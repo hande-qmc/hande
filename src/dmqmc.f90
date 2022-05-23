@@ -10,7 +10,7 @@ implicit none
 contains
 
     subroutine do_dmqmc(sys, qmc_in, dmqmc_in, dmqmc_estimates, restart_in, load_bal_in, reference_in, qs, sampling_probs, &
-                        qmc_state_restart)
+                        state_hist_in, qmc_state_restart)
 
         ! Run DMQMC calculation. We run from a beta=0 to a value of beta
         ! specified by the user and then repeat this main loop beta_loops
@@ -25,6 +25,7 @@ contains
         !    reference_in: current reference determinant.  If not set (ie
         !       components allocated) then a best guess is made based upon the
         !       desired spin/symmetry.
+        !    state_hist_in: input options related to state_histograms.
         ! In/Out:
         !    qmc_state_restart (optional): if present, restart from a previous fciqmc calculation.
         !       Deallocated on exit.
@@ -67,6 +68,7 @@ contains
         use chem_pot, only: find_chem_pot
         use errors, only: stop_all
         use calc, only: doing_dmqmc_calc, dmqmc_ref_proj_energy
+        use state_histograms
 
         type(sys_t), intent(inout) :: sys
         type(qmc_in_t), intent(in) :: qmc_in
@@ -76,6 +78,7 @@ contains
         type(load_bal_in_t), intent(in) :: load_bal_in
         type(reference_t), intent(in) :: reference_in
         type(qmc_state_t), intent(out), target :: qs
+        type(state_histogram_in_t), intent(in) :: state_hist_in
         type(qmc_state_t), intent(inout), optional :: qmc_state_restart
         real(p), intent(out), allocatable :: sampling_probs(:)
         real(p) :: mu(1:2)
@@ -105,6 +108,7 @@ contains
         type(json_out_t) :: js
         type(qmc_in_t) :: qmc_in_loc
         type(dmqmc_in_t) :: dmqmc_in_loc
+        type(state_histogram_t) :: state_hist
         character(36) :: uuid_restart
 
         type(logging_t) :: logging_info
@@ -124,6 +128,9 @@ contains
         end if
 
         ! Initialise data.
+        if (state_hist_in%state_histograms) then
+            call init_state_histogram_t(iunit, qmc_in, reference_in, state_hist, state_hist_in, dmqmc_in)
+        end if
         call init_qmc(sys, qmc_in, restart_in, load_bal_in, reference_in, 6, annihilation_flags, qs, uuid_restart, &
                       restart_version_restart, dmqmc_in=dmqmc_in, qmc_state_restart=qmc_state_restart)
 
@@ -211,6 +218,7 @@ contains
             call operators_in_t_json(js, dmqmc_in)
             call restart_in_t_json(js, restart_in, uuid_restart)
             call load_bal_in_t_json(js, load_bal_in)
+            call state_histogram_in_t_json(js, state_hist_in)
             call reference_t_json(js, qs%ref, sys, terminal=.true.)
             call json_object_end(js, terminal=.true., tag=.true.)
             write (js%io, '()')
@@ -250,7 +258,8 @@ contains
 
             call init_dmqmc_beta_loop(sys, reference_in, rng, qmc_in, dmqmc_in, dmqmc_estimates, qs, beta_cycle, &
                                       qs%psip_list%nstates, qs%psip_list%nparticles, qs%spawn_store%spawn, &
-                                      weighted_sampling%probs, annihilation_flags, piecewise_propagation)
+                                      weighted_sampling%probs, annihilation_flags, piecewise_propagation, &
+                                      state_hist%current_seed)
 
             ! Distribute psips uniformly along the diagonal of the density matrix.
             call create_initial_density_matrix(rng, sys, qmc_in, dmqmc_in, qs, annihilation_flags, &
@@ -340,6 +349,13 @@ contains
                         ! temperature/imaginary time so only get data from one
                         ! temperature value per ncycles.
                         if (icycle == 1) then
+                            ! If we are accumulating state histogram data, update
+                            ! the walker/det count from this state.
+                            if (state_hist_in%state_histograms) then
+                                call update_state_histogram(qs, cdet1%f, cdet1%f2, real_population(1), state_hist, &
+                                                           icycle, ireport, final_report=ireport == nreport)
+                            end if
+
                             call update_dmqmc_estimators(sys, dmqmc_in, idet, iteration, cdet1, qs%ref%H00, &
                                                          qs%psip_list, dmqmc_estimates, weighted_sampling, rdm_error, &
                                                          qs%ref%f0)
@@ -409,6 +425,12 @@ contains
                                      load_bal_in, .false., bloom_stats=bloom_stats)
 
                 call cpu_time(t2)
+
+                if (state_hist_in%state_histograms) then
+                    call comm_and_report_state_histogram(state_hist, ireport, iunit, &
+                                                         final_report=ireport == nreport .or. soft_exit)
+                end if
+
                 if (parent) then
                     if (bloom_stats%nblooms_curr > 0) call bloom_stats_warning(bloom_stats)
                     call write_dmqmc_report(sys, qmc_in, qs, ireport, tot_nparticles_old, t2-t1, .false., &
@@ -458,6 +480,8 @@ contains
         call copy_sys_spin_info(sys_copy, sys)
         call dealloc_det_info_t(cdet1, .false.)
         call dealloc_det_info_t(cdet2, .false.)
+
+        if (state_hist_in%state_histograms) call deallocate_histogram_t(state_hist)
 
         call dSFMT_end(rng)
 
@@ -591,7 +615,7 @@ contains
 
     subroutine init_dmqmc_beta_loop(sys, reference_in, rng, qmc_in, dmqmc_in, dmqmc_estimates, qs, beta_cycle, &
                                     nstates_active, nparticles, spawn, accumulated_probs, annihilation_flags, &
-                                    piecewise_propagation)
+                                    piecewise_propagation, state_hist_current_seed)
 
         ! Initialise/reset DMQMC data for a new run over the temperature range.
 
@@ -600,6 +624,9 @@ contains
         !    spawn: spawn_t object.  Reset on exit.
         !    dmqmc_estimates: type containing dmqmc estimates.
         !    qs: state of QMC calculation. Shift is reset on exit.
+        !    state_hist_current_seed: The current seed that the state histogram
+        !        is using for the name of the histogram file. Updated to the
+        !        new seed of the beta loop.
         ! In:
         !    qmc_in: input options relating to QMC calculations.
         !    beta_cycle: The index of the beta loop about to be started.
@@ -639,6 +666,7 @@ contains
         type(reference_t), intent(in) :: reference_in
         integer, intent(in) :: beta_cycle
         type(qmc_state_t), intent(inout) :: qs
+        integer, intent(inout) :: state_hist_current_seed
         integer, intent(out) :: nstates_active
         real(dp), intent(out) :: nparticles(:)
         real(p), intent(out) :: accumulated_probs(:)
@@ -672,6 +700,10 @@ contains
         if (beta_cycle /= 1 .and. piecewise_propagation) then
             call propagator_restore(qs, dmqmc_in, annihilation_flags, iunit)
             call init_proc_pointers(sys, qmc_in, reference_in, iunit, dmqmc_in)
+        end if
+
+        if (beta_cycle /= 1) then
+            state_hist_current_seed = new_seed
         end if
 
         ! Reset the random number generator with new_seed = old_seed +

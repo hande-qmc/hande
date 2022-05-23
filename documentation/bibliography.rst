@@ -9,6 +9,7 @@ Bibliography
 .. [Booth13] G.H. Booth, A. Grüneis, G. Kresse, A. Alavi, Towards an exact description of electronic wavefunctions in real solids: Nature 493, 365-370 (2013).
 .. [Booth14] G.H. Booth, S.D. Smart, A.Alavi, Linear-scaling and parallelisable algorithms for stochastic quantum chemistry, Mol. Phys. 112, 1855 (2014).
 .. [Cleland10] D. Cleland, G.H. Booth, A. Alavi, Communications: Survival of the fittest: accelerating convergence in full configuration-interaction quantum Monte Carlo. J. Chem. Phys. 132, 041103 (2010).
+.. [Cleland12] D. Cleland, G. H. Booth, C. Overy, and A. Alavi, Taming the First-Row Diatomics: A Full Configuration Interaction Quantum Monte Carlo Study, J. Chem. Theory Comput. 8, 4138 (2012).
 .. [Dunning89] Dunning, Thom H., Gaussian basis sets for use in correlated molecular calculations. I. The atoms boron through neon and hydrogen. J. Chem. Phys. 90, 1007 (1989) 
 .. [Filip19] M-A. Filip, C.J.C. Scott and A.J.W. Thom, Multireference Stochastic Coupled Cluster, J. Chem. Theory Comput. 15, 12, 6625-6625 (2019).
 .. [Flyvbjerg89] H. Flyvbjerg, H. G. Petersen, Error estimates on averages of correlated data, J. Chem. Phys. 91, 461 (1989). 
@@ -40,3 +41,4 @@ Bibliography
 .. [Vigor15] W.A. Vigor, J.S. Spencer, M.J. Bearpark, A.J.W. Thom, Minimising biases in full configuration interaction quantum Monte Carlo, J. Chem. Phys. 142, 104101 (2015).
 .. [Vigor16] W.A. Vigor, J.S. Spencer, M.J. Bearpark, A.J.W. Thom, Understanding and improving the efficiency of full configuration interaction quantum Monte Carlo, J. Chem. Phys. 144, 094110 (2016).
 .. [Yang20] M. Yang, E. Pahl, J. Brand, Improved walker population control for full configuration interaction quantum Monte Carlo, J. Chem. Phys. 153, 174103 (2020).
+.. [Davidson75] E.R. Davidson, The iterative calculation of a few of the lowest eigenvalues and corresponding eigenvectors of large real-symmetric matrices, J. Comp. Phys. 17, 1 (1975)

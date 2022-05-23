@@ -32,6 +32,8 @@ contains
         ! In/Out:
         !    qmc_state_restart (optional): qmc_state_t object from a calculation
         !       to restart. Deallocated on exit.
+        !    state_hist (optional): type containing all the state histograms
+        !       information, if present call the setup routine for state histograms.
         ! Out:
         !    annihilation_flags: calculation specific annihilation flags.
         !    qmc_state: qmc_state_t object.  On output the QMC state is

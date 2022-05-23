@@ -37,6 +37,20 @@ type fci_in_t
     ! scalapack documentation).
     integer :: block_size = 64
 
+    ! -- Davidson only settings --
+
+    ! True if using Davidson diagonalisation
+    logical :: using_davidson = .false.
+    ! Number of Davidson eigenpairs to find.
+    integer :: ndavidson_eigv = 4
+    ! Number of trial vectors
+    integer :: ndavidson_trialvec = 8
+    ! Size of Davidson basis.
+    integer :: davidson_maxsize = 50
+    ! Maximum iterations
+    integer :: davidson_maxiter = 100
+    ! Convergence tolerance
+    real(p) :: davidson_tol = 1e-7
     ! A boolean to control whether the diagonal of the FCI Hamiltonian
     ! is generated. This will override the typical FCI where the entire
     ! Hamiltonian is generated and diagonalized.
@@ -163,6 +177,12 @@ contains
             call enumerate_determinants(sys, .false., spin_flip, ref%ex_level, sym_space_size, ndets, dets, sys%symmetry)
         end if
 
+        if (fci_in%using_davidson .and. (ndets < fci_in%davidson_maxsize)) then
+            write(iunit_out, '(1X,A,I0,A,I0,A)') 'davidson_maxsize ',fci_in%davidson_maxsize, &
+            ' is larger than the dimension of the current Hamiltonian spin block, ',ndets,', please decrease it.'
+            call stop_all('init_fci','davidson_maxsize exceeds Hamiltonian dimension, please decrease it.')
+        end if
+
         if (fci_in%write_determinants .and. parent) call print_dets_list(sys, ndets, dets, fci_in%determinant_file)
 
     end subroutine init_fci
@@ -201,6 +221,10 @@ contains
             call subsys_t_json(js, fci_in%subsys_info)
         end if
         call json_write_key(js, 'block_size', fci_in%block_size)
+        call json_write_key(js, 'ndavidson_eigv', fci_in%ndavidson_eigv)
+        call json_write_key(js, 'ndavidson_trialvec', fci_in%ndavidson_trialvec)
+        call json_write_key(js, 'davidson_maxsize', fci_in%davidson_maxsize)
+        call json_write_key(js, 'davidson_tol', fci_in%davidson_tol)
         call json_write_key(js, 'hamiltonian_diagonal_only', fci_in%hamiltonian_diagonal_only)
 
         call json_object_end(js)

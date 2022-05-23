@@ -5,6 +5,8 @@
 [fci/*fci_rdm/]
 max_nprocs = 1
 [fci/*complex/]
+[fci/*davidson/]
+max_nprocs = 1
 
 # Toy FCIQMC algorithm
 [simple_fciqmc/*/]
