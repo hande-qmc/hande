@@ -1394,7 +1394,6 @@ contains
         character(23), dimension(:), allocatable :: secondary_ref_keys
         character(28), dimension(:), allocatable :: keys_concat
         character(10) :: str
-        character(40) :: secref_file
 
         if (aot_exists(lua_state, opts, 'ccmc')) then
 
