@@ -1031,6 +1031,15 @@ contains
         !     rng_seed = seed,
         !     even_selection = true/false,
         ! }
+        ! In:
+        !   opts: handle to the table which is input to the Lua canonical_estimates
+        !        routine.
+        !   qmc_exists: whether a qmc table is passed into mp1_mc. If yes, some options will be overwritten with those
+        !        in the qmc table.
+        ! In/Out:
+        !   lua_state: flu/Lua state to which the HANDE API is added.
+        ! Out:
+        !   mp1_in: mp1_in_t object containing mp1 options.
 
         use flu_binding, only: flu_State
         use aot_table_module, only: aot_get_val, aot_exists, aot_table_open, aot_table_close

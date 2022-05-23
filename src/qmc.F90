@@ -100,7 +100,7 @@ contains
         if (restart_in%read_restart) call init_restart_info_t(ri, read_id=restart_in%read_id)
 
         call init_proc_pointers(sys, qmc_in, reference_in, io_unit, dmqmc_in, fciqmc_in)
-        
+
         ! Note it is not possible to override a reference if restarting.
         if (restart_in%read_restart) then
             call init_reference_restart(sys, reference_in, ri, qmc_state%ref)
@@ -109,7 +109,7 @@ contains
         else
             call init_reference(sys, reference_in, io_unit, qmc_state%ref)
         end if
-       
+
         call init_sp_fock(sys, qmc_state%ref, qmc_state%propagator)
         ! [WARNING - TODO] - ref%fock_sum not initialised in init_reference, etc! 
         qmc_state%ref%fock_sum = sum_fock_values_occ_list(sys, qmc_state%propagator%sp_fock, qmc_state%ref%occ_list0)
@@ -1351,6 +1351,9 @@ contains
 
         ! Optionally build the BK tree, see search.F90::tree_add and tree_search for further comments
         if (qs%mr_acceptance_search == 1) then
+            ! We choose to include the (primary) reference as the node.
+            ! This may help balance the topology of the tree, and on small-scale tests 
+            ! does not appear to affect the performance of the search. Remove if found otherwise.
             qs%secondary_ref_tree%n_secondary_ref = size(qs%secondary_refs) + 1
             qs%secondary_ref_tree%ex_lvl = qs%ref%ex_level
             ! The maximum possible excitation level is the smaller of number of electrons 
