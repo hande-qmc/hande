@@ -878,7 +878,7 @@ contains
                     pl%dat(1,pos) = -0.5_p*((h0_ptr(sys, det)+h0_ptr(sys, pl%states((bl+1):(2*bl),pos))) - &
                                      (pl%dat(1,pos) + ref%H00 + sc0_ptr(sys, pl%states((bl+1):(2*bl),pos))))
                 end associate
-            else
+            else if (annihilation_flags%symmetric) then
                 ! Set the energy to be the average of the two induvidual energies.
                 associate(bl=>sys%basis%tot_string_len, pl=>psip_list)
                     pl%dat(1,pos) = (pl%dat(1,pos) + sc0_ptr(sys, pl%states((bl+1):(2*bl),pos)) - ref%H00)/2

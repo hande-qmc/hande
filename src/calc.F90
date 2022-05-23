@@ -25,9 +25,9 @@ type(metadata_t) :: GLOBAL_META
 ! parameters) is set in calc_type.
 ! This can be easily tested using the doing_calc function.
 integer :: calc_type = 0
-! Flag for doing exact diagonalisation.
+! Flag for doing exact or Davidson diagonalisation.
 integer, parameter :: exact_diag = 2**0
-! 2**1 used to be lanczos diagonalisation which has been removed from HANDE.
+integer, parameter :: davidson_diag = 2**1
 ! Use the incredibly simple and naive FCIQMC or the optimised implementation?
 integer, parameter :: fciqmc_calc = 2**2
 integer, parameter :: simple_fciqmc_calc = 2**3
@@ -65,6 +65,7 @@ integer, parameter :: dmqmc_kinetic_energy = 2**6
 integer, parameter :: dmqmc_H0_energy = 2**7
 integer, parameter :: dmqmc_potential_energy = 2**8
 integer, parameter :: dmqmc_HI_energy = 2**9
+integer, parameter :: dmqmc_ref_proj_energy = 2**10
 
 !--- global data (to deal with in HANDE 1.1)
 
@@ -190,6 +191,8 @@ contains
         select case(calc_num)
         case(exact_diag)
             calc_name = "exact diagonalisation"
+        case(davidson_diag)
+            calc_name = "davidson diagonalisation"
         case(fciqmc_calc)
             calc_name = "FCIQMC"
         case(simple_fciqmc_calc)

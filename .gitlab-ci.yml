@@ -55,135 +55,176 @@ test-gcc:
         - hande-testing
     before_script:
         - module load cmake
+        - module load anaconda/python3/5.3.1
     script:
         - ./cmakeconfig.py --fc=gfortran --cc=gcc --lua=./local/ --hdf5=./local/hdf5-gnu --det-size=64 --pop-size=64
         - cd build && make -j 6 && cd ..
-        - module load anaconda/python3
         - cd test_suite
         - ../testcode/bin/testcode.py -e ../bin/hande.x -c serial --total-processors=6
     only:
         - schedules
+    artifacts:
+        when: always
+        paths:
+            - test_suite
+        expire_in: never
 
 test-gcc-mpi:
     stage: BUILD AND TEST GCC MPI
     tags: 
         - hande-testing
     before_script:
+        - module load anaconda/python3/5.3.1
         - module load mpi/openmpi/64/gnu/3.1.2
         - module load mkl
         - module load cmake
     script:
         - ./cmakeconfig.py --mpi --fc=mpif90 --cc=mpicc --mpi-with-scalapack --lua=./local/ --hdf5=./local/hdf5-gnu
         - cd build && make -j 6 && cd ..
-        - module load anaconda/python3
         - cd test_suite
         - ../testcode/bin/testcode.py -e ../bin/hande.x -c mpi --processors=4
     only:
         - schedules
+    artifacts:
+        when: always
+        paths:
+            - test_suite
+        expire_in: never
 
 test-gcc-mpi-64:
     stage: BUILD AND TEST GCC MPI POP64
     tags: 
         - hande-testing
     before_script:
+        - module load anaconda/python3/5.3.1
         - module load mpi/openmpi/64/gnu/3.1.2
         - module load mkl
         - module load cmake
     script:
         - ./cmakeconfig.py --mpi --fc=mpif90 --cc=mpicc --mpi-with-scalapack --lua=./local/ --hdf5=./local/hdf5-gnu --det-size=64 --pop-size=64
         - cd build && make -j 6 && cd ..
-        - module load anaconda/python3
         - cd test_suite
         - ../testcode/bin/testcode.py -e ../bin/hande.x -c pop64_mpi --processors=4
     only:
         - schedules
+    artifacts:
+        when: always
+        paths:
+            - test_suite
+        expire_in: never
 
 test-gcc-dbg:
     stage: BUILD AND TEST GCC dbg
     tags: 
         - hande-testing
     before_script:
+        - module load anaconda/python3/5.3.1
         - module load cmake
     script:
         - ./cmakeconfig.py --fc=gfortran --cc=gcc --lua=./local/ --hdf5=./local/hdf5-gnu --det-size=64 --pop-size=64 --type=debug
         - cd build && make -j 6 && cd ..
-        - module load anaconda/python3
         - cd test_suite
         - ../testcode/bin/testcode.py -e ../bin/hande.x -c serial --total-processors=6
     only:
         - schedules
+    artifacts:
+        when: always
+        paths:
+            - test_suite
+        expire_in: never
 
 test-gcc-mpi-dbg:
     stage: BUILD AND TEST GCC MPI dbg
     tags: 
         - hande-testing
     before_script:
+        - module load anaconda/python3/5.3.1
         - module load mpi/openmpi/64/gnu/3.1.2
         - module load mkl
         - module load cmake
     script:
         - ./cmakeconfig.py --mpi --fc=mpif90 --cc=mpicc --mpi-with-scalapack  --lua=./local/ --hdf5=./local/hdf5-gnu --type=debug
         - cd build && make -j 6 && cd ..
-        - module load anaconda/python3 
         - cd test_suite
         - ../testcode/bin/testcode.py -e ../bin/hande.x -c mpi --processors=4
     only:
         - schedules
+    artifacts:
+        when: always
+        paths:
+            - test_suite
+        expire_in: never
 
 test-gcc-mpi-64-dbg:
     stage: BUILD AND TEST GCC MPI POP64 dbg
     tags: 
         - hande-testing
     before_script:
+        - module load anaconda/python3/5.3.1 
         - module load mpi/openmpi/64/gnu/3.1.2
         - module load mkl
         - module load cmake
     script:
         - ./cmakeconfig.py --mpi --fc=mpif90 --cc=mpicc --mpi-with-scalapack  --lua=./local/ --hdf5=./local/hdf5-gnu --det-size=64 --pop-size=64 --type=debug
         - cd build && make -j 6 && cd ..
-        - module load anaconda/python3
         - cd test_suite
         - ../testcode/bin/testcode.py -e ../bin/hande.x -c pop64_mpi --processors=4
     only:
         - schedules
+    artifacts:
+        when: always
+        paths:
+            - test_suite
+        expire_in: never
 
 test-intel:
     stage: BUILD AND TEST INTEL
     tags: 
         - hande-testing
     before_script:
+        - module load anaconda/python3/5.3.1
         - module load icc
         - module load cmake
     script:
         - ./cmakeconfig.py --fc=ifort --cc=icc --lua=./local/ --hdf5=./local/hdf5-intel --pop-size=64 --det-size=64 
         - cd build && make -j 6 && cd ..
-        - module load anaconda/python3
         - cd test_suite
         - ../testcode/bin/testcode.py -e ../bin/hande.x -c serial --total-processors=6
     only:
         - schedules
+    artifacts:
+        when: always
+        paths:
+            - test_suite
+        expire_in: never
 
 test-intel-dbg:
     stage: BUILD AND TEST INTEL dbg
     tags: 
         - hande-testing
     before_script:
+        - module load anaconda/python3/5.3.1
         - module load icc
         - module load cmake
     script:
         - ./cmakeconfig.py --fc=ifort --cc=icc --lua=./local/ --hdf5=./local/hdf5-intel --pop-size=64 --det-size=64  --type=debug
         - cd build && make -j 6 && cd ..
-        - module load anaconda/python3
         - cd test_suite
         - ../testcode/bin/testcode.py -e ../bin/hande.x -c serial --total-processors=6
     only:
         - schedules
+    artifacts:
+        when: always
+        paths:
+            - test_suite
+        expire_in: never
 
 test-intel-mpi-pop64:
     stage: BUILD AND TEST INTEL MPI POP64
     tags: 
         - hande-testing
     before_script:
+        - module load anaconda/python3/5.3.1
         - module load icc
         - module load mkl
         - module load mpi/openmpi/64/intel18/3.1.2
@@ -191,17 +232,22 @@ test-intel-mpi-pop64:
     script:
         - ./cmakeconfig.py --mpi --fc=mpif90 --cc=mpicc --mpi-with-scalapack --lua=./local/ --hdf5=./local/hdf5-intel --pop-size=64 --det-size=64
         - cd build && make -j 6 && cd ..
-        - module load anaconda/python3
         - cd test_suite
         - ../testcode/bin/testcode.py -e ../bin/hande.x -c mpi --processors=4
     only:
         - schedules
+    artifacts:
+        when: always
+        paths:
+            - test_suite
+        expire_in: never
 
 test-intel-mpi-pop64-dbg:
     stage: BUILD AND TEST INTEL MPI POP64 dbg
     tags: 
         - hande-testing
     before_script:
+        - module load anaconda/python3/5.3.1
         - module load icc
         - module load mpi/openmpi/64/intel18/3.1.2
         - module load mkl
@@ -209,17 +255,22 @@ test-intel-mpi-pop64-dbg:
     script:
         - ./cmakeconfig.py --mpi --fc=mpif90 --cc=mpicc --mpi-with-scalapack  --lua=./local/ --hdf5=./local/hdf5-intel  --type=debug --pop-size=64 --det-size=64
         - cd build && make -j 6 && cd ..
-        - module load anaconda/python3
         - cd test_suite
         - ../testcode/bin/testcode.py -e ../bin/hande.x -c mpi --processors=4
     only:
         - schedules
+    artifacts:
+        when: always
+        paths:
+            - test_suite
+        expire_in: never
         
 test-intel-mpi:
     stage: BUILD AND TEST INTEL MPI
     tags: 
         - hande-testing
     before_script:
+        - module load anaconda/python3/5.3.1
         - module load icc
         - module load mkl
         - module load mpi/openmpi/64/intel18/3.1.2
@@ -227,17 +278,22 @@ test-intel-mpi:
     script:
         - ./cmakeconfig.py --mpi --fc=mpif90 --cc=mpicc --mpi-with-scalapack --lua=./local/ --hdf5=./local/hdf5-intel
         - cd build && make -j 6 && cd ..
-        - module load anaconda/python3
         - cd test_suite
         - ../testcode/bin/testcode.py -e ../bin/hande.x -c mpi --processors=4
     only:
         - schedules
+    artifacts:
+        when: always
+        paths:
+            - test_suite
+        expire_in: never
 
 test-intel-mpi-dbg:
     stage: BUILD AND TEST INTEL MPI dbg
     tags: 
         - hande-testing
     before_script:
+        - module load anaconda/python3/5.3.1
         - module load icc
         - module load mpi/openmpi/64/intel18/3.1.2
         - module load mkl
@@ -245,17 +301,22 @@ test-intel-mpi-dbg:
     script:
         - ./cmakeconfig.py --mpi --fc=mpif90 --cc=mpicc --mpi-with-scalapack  --lua=./local/ --hdf5=./local/hdf5-intel  --type=debug 
         - cd build && make -j 6 && cd ..
-        - module load anaconda/python3
         - cd test_suite
         - ../testcode/bin/testcode.py -e ../bin/hande.x -c mpi --processors=4
     only:
         - schedules
+    artifacts:
+        when: always
+        paths:
+            - test_suite
+        expire_in: never
 
 test-intel-quick:
     stage: BUILD AND TEST INTEL QUICK
     tags: 
         - hande-testing
     before_script:
+        - module load anaconda/python3/5.3.1
         - module load icc
         - module load mpi/openmpi/64/intel18/3.1.2
         - module load mkl
@@ -263,35 +324,44 @@ test-intel-quick:
     script:
         - ./cmakeconfig.py --mpi --fc=mpif90 --cc=mpicc --mpi-with-scalapack  --lua=./local/ --hdf5=./local/hdf5-intel  --pop-size=64 --det-size=64
         - cd build && make -j 6 && cd ..
-        - module load anaconda/python3
         - cd test_suite
         - ../testcode/bin/testcode.py -e ../bin/hande.x -c quick --processors=4
     except:
         - schedules
+    artifacts:
+        when: always
+        paths:
+            - test_suite
+        expire_in: never
 
 test-gcc-quick:
     stage: BUILD AND TEST GCC QUICK
     tags: 
         - hande-testing
     before_script:
+        - module load anaconda/python3/5.3.1
         - module load mpi/openmpi/64/gnu/3.1.2
         - module load mkl
         - module load cmake
     script:
         - ./cmakeconfig.py --mpi --fc=mpif90 --cc=mpicc --mpi-with-scalapack  --lua=./local/ --hdf5=./local/hdf5-gnu --det-size=64 --pop-size=64
         - cd build && make -j 6 && cd ..
-        - module load anaconda/python3
         - cd test_suite
         - ../testcode/bin/testcode.py -e ../bin/hande.x -c quick --processors=4
     except:
         - schedules
+    artifacts:
+        when: always
+        paths:
+            - test_suite
+        expire_in: never
 
 test-pyhande:
     stage: TEST PYHANDE
     tags:
         - hande-testing
     before_script:
-        - module load anaconda/python3
+        - module load anaconda/python3/5.3.1
         - conda activate pyhandeenv
         - export PYTHONPATH=$PYTHONPATH:$pwd/tools/pyhande
     script:

@@ -28,7 +28,8 @@ dmqmc {
         initial_matrix = 'hartree_fock',
         grand_canonical_initialisation = true,
         metropolis_attempts = 100,
-        symmetric = false,
+        symmetric_interaction_picture = false,
+        count_diagonal_occupations = true,
     },
     operators = {
         energy = true,

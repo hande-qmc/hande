@@ -10,7 +10,7 @@ implicit none
 contains
 
     subroutine do_fciqmc(sys, qmc_in, fciqmc_in, semi_stoch_in, restart_in, load_bal_in, io_unit, &
-                         reference_in, logging_in, blocking_in, qs, qmc_state_restart)
+                         reference_in, logging_in, blocking_in, qs, state_hist_in, qmc_state_restart)
 
         ! Run the FCIQMC or initiator-FCIQMC algorithm starting from the initial walker
         ! distribution using the timestep algorithm.
@@ -29,6 +29,7 @@ contains
         !    qmc_in: input options relating to QMC methods.
         !    load_bal_in: input options for load balancing.
         !    io_unit: io unit to write all calculation output to.
+        !    state_hist_in: input options related to state_histograms.
         ! In/Out:
         !    qmc_state_restart (optional): if present, restart from a previous fciqmc calculation.
         !       Deallocated on exit.
@@ -81,6 +82,7 @@ contains
         use report, only: write_date_time_close
         use replica_rdm, only: update_rdm_from_spawns, calc_rdm_energy, write_final_rdm
         use propagators, only: update_chebyshev, disable_chebyshev
+        use state_histograms
 
         type(sys_t), intent(in) :: sys
         type(qmc_in_t), intent(in) :: qmc_in
@@ -89,6 +91,7 @@ contains
         type(restart_in_t), intent(in) :: restart_in
         type(load_bal_in_t), intent(in) :: load_bal_in
         type(reference_t), intent(in) :: reference_in
+        type(state_histogram_in_t), intent(in) :: state_hist_in
         type(qmc_state_t), intent(inout), optional :: qmc_state_restart
         type(qmc_state_t), intent(out), target :: qs
         type(blocking_in_t), intent(in) :: blocking_in
@@ -103,6 +106,7 @@ contains
         type(semi_stoch_t) :: determ
         type(json_out_t) :: js
         type(qmc_in_t) :: qmc_in_loc
+        type(state_histogram_t) :: state_hist
 
         integer :: idet, ireport, icycle, icheb, ideterm, ierr, ispace
         integer :: iter, semi_stoch_iter
@@ -156,6 +160,9 @@ contains
         end if
 
         ! Initialise data.
+        if (state_hist_in%state_histograms) then
+            call init_state_histogram_t(iunit, qmc_in, reference_in, state_hist, state_hist_in)
+        end if
         call init_qmc(sys, qmc_in, restart_in, load_bal_in, reference_in, io_unit, annihilation_flags, qs, uuid_restart, &
                       restart_version_restart, fciqmc_in=fciqmc_in, qmc_state_restart=qmc_state_restart)
 
@@ -181,6 +188,7 @@ contains
             call restart_in_t_json(js, restart_in, uuid_restart)
             call blocking_in_t_json(js, blocking_in)
             call load_bal_in_t_json(js, load_bal_in)
+            call state_histogram_in_t_json(js, state_hist_in)
             call reference_t_json(js, qs%ref, sys)
             call logging_in_t_json(js, logging_in)
             call logging_t_json(js, logging_info, terminal=.true.)
@@ -298,11 +306,10 @@ contains
                 ! Chebyshev projector has hopefully brought us to convergence, now we can collect statistics
                 if (iter == qs%cheby_prop%disable_chebyshev_iter) call disable_chebyshev(qs, qmc_in)
 
+                if (debug) call prep_logging_mc_cycle(iter, logging_in, logging_info, sys%read_in%comp)
+
                 do icheb = 1, qs%cheby_prop%order
                     qs%cheby_prop%icheb = icheb
-
-                    if (debug) call prep_logging_mc_cycle(iter, logging_in, logging_info, sys%read_in%comp)
-
                     ! Should we turn semi-stochastic on now?
                     if (iter == semi_stoch_iter .and. semi_stoch_in%space_type /= empty_determ_space) then
                         determ%doing_semi_stoch = .true.
@@ -319,7 +326,6 @@ contains
                     ideterm = 0
 
                     do idet = 1, qs%psip_list%nstates ! loop over walkers/dets
-
                         cdet%f => qs%psip_list%states(:,idet)
                         cdet%data => qs%psip_list%dat(:,idet)
 
@@ -342,6 +348,9 @@ contains
                         ! Is this determinant an initiator?
                         call set_parent_flag(real_population, qmc_in%initiator_pop, determ%flags(idet), &
                                              fciqmc_in%quadrature_initiator, cdet%initiator_flag)
+
+                        if (state_hist_in%state_histograms) call update_state_histogram(qs, cdet%f, qs%ref%f0, real_population(1), &
+                                                                                state_hist, icycle, ireport)
 
                         do ispace = 1, qs%psip_list%nspaces
 
@@ -431,6 +440,13 @@ contains
             if (qs%cheby_prop%using_chebyshev) call update_chebyshev(qs%cheby_prop, qs%shift(1))
 
             call cpu_time(t2)
+
+            if (state_hist_in%state_histograms) then
+                call comm_and_report_state_histogram(state_hist, ireport, io_unit, index_shift = state_hist%max_ex_level)
+                if (ireport == qmc_in%nreport .or. soft_exit) call fciqmc_state_histogram_final_report(qs, state_hist, &
+                                                                                                       ireport, io_unit)
+            end if
+
             if (parent) then
                 if (bloom_stats%nblooms_curr > 0) call bloom_stats_warning(bloom_stats, io_unit=io_unit)
                 call write_qmc_report(qmc_in, qs, ireport, nparticles_old, t2-t1, .false., &
@@ -510,6 +526,8 @@ contains
             deallocate(rdm, stat=ierr)
             call check_deallocate('rdm',ierr)
         end if
+
+        if (state_hist_in%state_histograms) call deallocate_histogram_t(state_hist)
 
         call dSFMT_end(rng)
 

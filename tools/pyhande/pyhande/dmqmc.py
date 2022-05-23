@@ -43,16 +43,38 @@ None.
         ('Tr[H0p]/Tr[p]','\\sum\\rho_{ij}H0{ji}'),
         ('Tr[HIp]/Tr[p]','\\sum\\rho_{ij}HI{ji}'),
         ('VI', '\\sum\\rho_{ij}VI_{ji}'),
+        ('Re{Tr[Hp]/Tr[p]}', r'Re{\sum \rho H}'),
+        ('Im{Tr[Hp]/Tr[p]}', r'Re{\sum \rho H}'),
+        ('Tr[p0H0]/Tr[p00]', r'\sum\rho_{0j}H_{j0}'),
+        ('Re{Tr[p0H0]/Tr[p00]}', r'Re{Sum\rho_0j H_j0}'),
+        ('Im{Tr[p0H0]/Tr[p00]}', r'Im{Sum\rho_0j H_j0}'),
+    ])
+    # A dictionary of all trace keys, so alternative keys are accessible
+    denominators = dict([
+        ('Tr[Hp]/Tr[p]','Trace'),
+        ('Tr[H2p]/Tr[p]','Trace'),
+        ('Tr[Sp]/Tr[p]','Trace'),
+        ('Tr[Mp]/Tr[p]','Trace'),
+        ('Tr[Tp]/Tr[p]','Trace'),
+        ('Tr[Up]/Tr[p]','Trace'),
+        ('Tr[H0p]/Tr[p]','Trace'),
+        ('Tr[HIp]/Tr[p]','Trace'),
+        ('VI', 'Trace'),
+        ('Re{Tr[Hp]/Tr[p]}', r'Re{Trace}'),
+        ('Im{Tr[Hp]/Tr[p]}', r'Im{Trace}'),
+        ('Tr[p0H0]/Tr[p00]', r'\rho_00'),
+        ('Re{Tr[p0H0]/Tr[p00]}', r'Re{\rho_00}'),
+        ('Im{Tr[p0H0]/Tr[p00]}', r'Im{\rho_00}'),
     ])
 
     # Add momentum distribution to dictionary of observables to be analaysed.
-    add_observable_to_dict(observables, columns, 'n_')
+    add_observable_to_dict(observables, columns, 'n_', denominators, 'Trace')
     # Add spin-averaged static structure factor to dict of observables to be analaysed.
-    add_observable_to_dict(observables, columns, 'S_')
+    add_observable_to_dict(observables, columns, 'S_', denominators, 'Trace')
     # Add spin up static structure factor to dict of observables to be analaysed.
-    add_observable_to_dict(observables, columns, 'Suu_')
+    add_observable_to_dict(observables, columns, 'Suu_', denominators, 'Trace')
     # Add spin down static structure factor to dict of observables to be analaysed.
-    add_observable_to_dict(observables, columns, 'Sud_')
+    add_observable_to_dict(observables, columns, 'Sud_', denominators, 'Trace')
     # DataFrame to hold the final mean and error estimates.
     results = pd.DataFrame(index=beta_values)
     # DataFrame for the numerator.
@@ -60,14 +82,15 @@ None.
     # DataFrame for the trace from the first replica.
     tr1 = pd.DataFrame(columns=['mean','standard error'], index=beta_values)
 
-    tr1['mean'] = means['Trace']
-    tr1['standard error'] = np.sqrt(covariances.xs('Trace',level=1)['Trace']/nsamples)
-
     for (k,v) in observables.items():
         if v in columns:
+            den_key = denominators[k]
+
             num['mean'] = means[v]
             num['standard error'] = np.sqrt(covariances.xs(v,level=1)[v]/nsamples)
-            cov_AB = covariances.xs('Trace',level=1)[v]
+            tr1['mean'] = means[den_key]
+            tr1['standard error'] = np.sqrt(covariances.xs(den_key,level=1)[den_key]/nsamples)
+            cov_AB = covariances.xs(den_key,level=1)[v]
 
             stats = pyblock.error.ratio(num, tr1, cov_AB, nsamples)
 
@@ -77,7 +100,8 @@ None.
     return results
 
 
-def add_observable_to_dict(observables, columns, label):
+def add_observable_to_dict(observables, columns, label,
+                           denominators=None, denominator_label=None):
     '''Add observable to dictionary of analysed data.
 
     This sets the value to be the same as the key specified by label variable.
@@ -90,10 +114,17 @@ columns : list
     Columns in hande output.
 label : string
     regex to search for in list of columns.
+denominators : dict, optional
+    Dictionary of observables corresponding denominators for analysis.
+denominator_label : str, optional
+    The denominator label for the new observable
 '''
 
     new_obs = [c for c in columns if label in c]
     observables.update(dict(zip(new_obs, new_obs)))
+    if denominators is not None:
+        new_den_zip = zip(new_obs, [denominator_label]*len(new_obs))
+        denominators.update(dict(new_den_zip))
 
 
 def free_energy_error_analysis(data, results, dtau):
@@ -361,7 +392,8 @@ full : :class:`pandas.DataFrame`
 
 
 def analyse_data(hande_out, shift=False, free_energy=False, spline=False,
-                 trace=False, calc_number=None):
+                 trace=False, calc_number=None, energy_numerator=False,
+                 population=False, beta_loop_count=False, very_very_loud=False):
     '''Clean up Hande output so that analysis can be performed.
 
 Parameters
@@ -398,6 +430,9 @@ results : :class:`pandas.DataFrame`
         raise ValueError("calc_number option is broken! Please set to default "
                          "(None) or fix code.")
 
+    if very_very_loud:
+        shift, trace, energy_numerator, population, beta_loop_count = [True]*5
+
     (metadata, data) = ([], [])
     for (md, df) in hande_out:
         if 'DMQMC' in md['calc_type'] and not md['dmqmc']['find_weights']:
@@ -432,10 +467,15 @@ results : :class:`pandas.DataFrame`
     # Make the Beta column a MultiIndex.
     data.set_index('Beta', inplace=True, append=True)
     # The number of beta loops contributing to each beta value.
-    nsamples = data['Trace'].groupby(level=1).count()
+    if 'Trace' in data.columns:
+        nsamples = data['Trace'].groupby(level=1).count()
+    else:
+        nsamples = data['Re{Trace}'].groupby(level=1).count()
     beta_values = nsamples.index.values
     # The data that we are going to use.
-    estimates = data.loc[:,'Shift':'# H psips']
+    colnames = [colname for colname in list(data.columns) 
+                if colname not in ['# spawn_events','# states','R_spawn','time']]
+    estimates = data.loc[:,colnames]
 
     if free_energy:
         # Deal with legacy input.
@@ -446,7 +486,12 @@ results : :class:`pandas.DataFrame`
         # Set up estimator we need to integrate wrt time/temperature to evaluate
         # free energy difference.
         if ipdmqmc:
-            if metadata[0]['ipdmqmc']['symmetric']:
+            # Deal with legacy input.
+            if 'symmetric' in metadata[0]['ipdmqmc']:
+                symmetric = metadata[0]['ipdmqmc']['symmetric']
+            else:
+                symmetric = metadata[0]['ipdmqmc']['symmetric_interaction_picture']
+            if symmetric:
                 estimates[r'\sum\rho_{ij}VI_{ji}'] = (
                                                  data[r'\sum\rho_{ij}HI{ji}'] -
                                                  data[r'\sum\rho_{ij}H0{ji}']
@@ -484,16 +529,52 @@ results : :class:`pandas.DataFrame`
             if ('Tr[p]' in column or 'S2' in column) and (not 'error' in column):
                 results[column+' spline'] = calc_spline_fit(column, results)
 
-    # If requested, add the averaged trace profiles to results.
-    if trace:
-        results['Trace'] = means['Trace']
-        results['Trace s.d.'] = np.sqrt(covariances.xs('Trace',level=1)['Trace'])
-        if 'Trace 2' in columns:
-            results['Trace 2'] = means['Trace 2']
-            results['Trace 2 s.d.'] = np.sqrt(covariances.xs('Trace 2',level=1)['Trace 2'])
-
     # If requested, calculate excess free-energy.
     if free_energy:
         free_energy_error_analysis(estimates, results, cycles*tau)
+
+    # If requested, add the averaged trace profiles to results.
+    if trace:
+        trace_keys = [
+                'Trace',
+                'Trace 2',
+                'Re{Trace}',
+                'Im{Trace}',
+                r'\rho_00',
+                r'Re{\rho_00}',
+                r'Im{\rho_00}',
+            ]
+        for key in trace_keys:
+            if key in columns:
+                results[key] = means[key]
+                results[key+' s.d.'] = np.sqrt(covariances.xs(key,level=1)[key])
+
+    # If requested, return the averaged energy numerator profile to the results.
+    if energy_numerator:
+        numerator_key_val = {
+                r'\sum\rho_{ij}H_{ji}': 'Tr[Hp]',
+                r'Re{\sum \rho H}': 'Re{Tr[Hp]}',
+                r'Im{\sum \rho H}': 'Im{Tr[Hp]}',
+                r'\sum\rho_{0j}H_{j0}': r'Tr[p0H0]',
+                r'Re{Sum\rho_0j H_j0}': r'Re{Tr[p0H0]}',
+                r'Im{Sum\rho_0j H_j0}': r'Im{Tr[p0H0]}',
+            }
+        for (k,v) in numerator_key_val.items():
+            if k in columns:
+                results[v] = means[k]
+                results[v+' s.d.'] = np.sqrt(covariances.xs(k,level=1)[k])
+
+    # If requested, return the averaged walker population profile to the results.
+    if population:
+        results['# particles'] = means['# H psips']
+        results['# particles s.d.'] = np.sqrt(covariances.xs('# H psips',level=1)['# H psips'])
+        if r'# \rho_{0j} psips' in columns:
+            results[r'# \rho_{0j} psips'] = means[r'# \rho_{0j} psips']
+            results[r'# \rho_{0j} psips s.d.'] = \
+                np.sqrt(covariances.xs(r'# \rho_{0j} psips',level=1)[r'# \rho_{0j} psips'])
+
+    # If requested, return the number of beta loops in the averaging profile.
+    if beta_loop_count:
+        results['N_beta'] = nsamples
 
     return (metadata, results)

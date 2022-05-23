@@ -33,6 +33,8 @@ contains
         !    qmc_state_restart (optional): qmc_state_t object from a calculation
         !       to restart. Deallocated on exit.
         !    psip_list_in (optional): particle_t object from an MP1 calculation. Deallocated on exit.
+        !    state_hist (optional): type containing all the state histograms
+        !       information, if present call the setup routine for state histograms.
         ! Out:
         !    annihilation_flags: calculation specific annihilation flags.
         !    qmc_state: qmc_state_t object.  On output the QMC state is
@@ -99,7 +101,7 @@ contains
         if (restart_in%read_restart) call init_restart_info_t(ri, read_id=restart_in%read_id)
 
         call init_proc_pointers(sys, qmc_in, reference_in, io_unit, dmqmc_in, fciqmc_in)
-        
+
         ! Note it is not possible to override a reference if restarting.
         if (restart_in%read_restart) then
             call init_reference_restart(sys, reference_in, ri, qmc_state%ref)
@@ -108,17 +110,17 @@ contains
         else
             call init_reference(sys, reference_in, io_unit, qmc_state%ref)
         end if
-       
+
         call init_sp_fock(sys, qmc_state%ref, qmc_state%propagator)
         ! [WARNING - TODO] - ref%fock_sum not initialised in init_reference, etc! 
         qmc_state%ref%fock_sum = sum_fock_values_occ_list(sys, qmc_state%propagator%sp_fock, qmc_state%ref%occ_list0)
 
-        if (.not.psip_list_in_loc) then
+        if (.not. psip_list_in_loc) then
             call init_psip_list(sys, dmqmc_in_loc, fciqmc_in_loc, qmc_in, qmc_state_restart_loc, &
                                 io_unit, qmc_state%psip_list)
         else
-            ! This moves and deallocates psip_list_in
-            call move_particle_t(psip_list_in, qmc_state%psip_list)
+            ! We move psip_list later but for now just fill in this one field needed in get_comm_processor_indx
+            qmc_state%psip_list%nspaces = psip_list_in%nspaces
         end if
 
         call get_comm_processor_indx(qmc_state%psip_list%nspaces, proc_data_info, ntot_proc_data)
@@ -133,7 +135,9 @@ contains
             ! Prevent pattempt_single to be overwritten by default value in init_excit_gen.
             ! It is only overwritten if user specifies pattempt_single by qmc_in.
             qmc_state%excit_gen_data%p_single_double%pattempt_restart_store = .true.
+            if (psip_list_in_loc) call move_particle_t(psip_list_in, qmc_state%psip_list)
         else
+            if (psip_list_in_loc) call move_particle_t(psip_list_in, qmc_state%psip_list)
             call init_spawn_store(qmc_in, qmc_state%psip_list%nspaces, qmc_state%psip_list%pop_real_factor, sys%basis, &
                                   fciqmc_in_loc%non_blocking_comm, qmc_state%par_info%load%proc_map, io_unit, &
                                   qmc_state%spawn_store)
@@ -333,7 +337,7 @@ contains
             update_proj_energy_ptr => update_proj_energy_hub_real
             if (sys%system == hub_real) then
                 sc0_ptr => slater_condon0_hub_real
-            else 
+            else
                 sc0_ptr => slater_condon0_chung_landau
             end if
 
@@ -631,6 +635,10 @@ contains
                 end if
             case(read_in)
                 if (dmqmc_in%ipdmqmc) then
+                    if (dmqmc_in%symmetric) then
+                        spawner_ptr => spawn_importance_sampling
+                        gen_excit_ptr%trial_fn => interaction_picture_reweighting_molecular_HF
+                    end if
                     if (dmqmc_in%initial_matrix == free_electron_dm) then
                         h0_ptr => hf_hamiltonian_energy_mol
                     else
@@ -1180,7 +1188,7 @@ contains
         ! specified, the symmetry.
 
         call set_reference_det(sys, reference%occ_list0, .false., sys%symmetry, io_unit)
-        
+
         if (.not. allocated(reference%f0)) then
             allocate(reference%f0(sys%basis%tot_string_len), stat=ierr)
             call check_allocate('reference%f0',sys%basis%tot_string_len,ierr)
@@ -1277,17 +1285,20 @@ contains
         use search, only: tree_add
         use const
         use determinants, only: decode_det
+        use bit_utils, only: count_set_bits
 
         type(sys_t), intent(in) :: sys
         type(reference_t), intent(in) :: references_in(:)
         integer, intent(in) :: io_unit
         type(qmc_state_t), intent(inout) :: qs
-        integer :: i, current_max, total_max = 0
-        integer(i0) :: core_bstring, secref_bstring
-        integer(i0), allocatable :: real_bstring(:)
+
+        integer :: i, current_max, total_max, ir, iel, n_rshift
+        integer(i0) :: secref_bstring(sys%basis%bit_string_len), real_bstring(sys%basis%tot_string_len), core_bstring
         type(reference_t) :: read_in_ref
         
-        if (.not.qs%mr_read_in) then
+        total_max = 0
+
+        if (.not. qs%mr_read_in) then
             do i = 1, size(references_in)
                call init_reference(sys, references_in(i), io_unit, qs%secondary_refs(i))
                current_max = qs%ref%ex_level + get_excitation_level(det_string(qs%ref%f0,sys%basis), &
@@ -1297,40 +1308,64 @@ contains
 
             qs%ref%max_ex_level = total_max
         else
-            if (sys%CAS(1).eq.-1) then
+            core_bstring = 0_i0
+            if (sys%CAS(1) == -1) then
                 ! -1 is the default (unset) value
-                core_bstring = 2**(qs%mr_n_frozen)-1
+                do i = 0, qs%mr_n_frozen-1
+                    core_bstring = ibset(core_bstring, i)
+                end do
             else
-                core_bstring = 2**(qs%mr_n_frozen-sys%CAS(1))-1
-            endif
-            allocate(real_bstring(sys%basis%tot_string_len))
+                do i = 0, qs%mr_n_frozen-sys%cas(1)-1
+                    core_bstring = ibset(core_bstring, i)
+                end do
+            end if
+            
             allocate(read_in_ref%occ_list0(sys%nel))
-            open(8,file=qs%mr_secref_file,status='old',form='formatted',action='read')
-            do i=1,qs%n_secondary_ref,1
-                read(8,*) secref_bstring
-                ! [TODO]: Support references of longer than i0 bits
-                real_bstring(1) = ior(lshift(secref_bstring,qs%mr_n_frozen),core_bstring)
-                call decode_det(sys%basis,real_bstring(:),read_in_ref%occ_list0(:))
+            open(newunit=ir, file=qs%mr_secref_file, status='old', form='formatted', action='read')
+            do i = 1, qs%n_secondary_ref
+                secref_bstring(:) = 0_i0
+                real_bstring(:) = 0_i0
+
+                ! [warning] - We are assuming that the secondary references are only ever within 64 bits (i.e., )
+                ! Here we pad the higher elements with 0's. If we ever need more than one 64-bit integer
+                ! to store a secondary reference, we need to take care of reading in variable number of columns.
+                read(ir, *) secref_bstring(1)
+
+                ! We need to move push mr_n_frozen bits of bitstrings around, proceed from the highest element 
+                ! (guaranteed no overflow). When bit_string_len == 1 the do loop is skipped.
+                n_rshift = i0_length - qs%mr_n_frozen
+                do iel = sys%basis%bit_string_len, 2, -1
+                    real_bstring(iel) = ior(ishft(secref_bstring(iel), qs%mr_n_frozen), &
+                                            ishft(secref_bstring(iel-1), -n_rshift))
+                end do
+                real_bstring(1) = ior(ishft(secref_bstring(1), qs%mr_n_frozen), core_bstring)
+
+                call decode_det(sys%basis, real_bstring(:), read_in_ref%occ_list0(:))
+
                 read_in_ref%ex_level= qs%mr_excit_lvl
                 call init_reference(sys, read_in_ref, io_unit, qs%secondary_refs(i))
 
                 current_max = qs%ref%ex_level + get_excitation_level(det_string(qs%ref%f0,sys%basis), &
                                                                      det_string(qs%secondary_refs(i)%f0,sys%basis)) 
                if (current_max > total_max) total_max = current_max
-            enddo
-            close(8)
+            end do
+            close(ir)
 
             qs%ref%max_ex_level = total_max
 
-        endif
+        end if
 
         ! Optionally build the BK tree, see search.F90::tree_add and tree_search for further comments
         if (qs%mr_acceptance_search == 1) then
-            qs%secondary_ref_tree%n_secondary_ref = size(qs%secondary_refs)
+            ! We choose to include the (primary) reference as the node.
+            ! This may help balance the topology of the tree, and on small-scale tests 
+            ! does not appear to affect the performance of the search. Remove if found otherwise.
+            qs%secondary_ref_tree%n_secondary_ref = size(qs%secondary_refs) + 1
             qs%secondary_ref_tree%ex_lvl = qs%ref%ex_level
             ! The maximum possible excitation level is the smaller of number of electrons 
             ! and the number of virtual orbitals
             qs%secondary_ref_tree%max_excit = min(sys%nel, sys%nvirt)
+            call tree_add(qs%secondary_ref_tree, det_string(qs%ref%f0,sys%basis))
             do i = 1, size(qs%secondary_refs)
                 call tree_add(qs%secondary_ref_tree, det_string(qs%secondary_refs(i)%f0,sys%basis))
             end do

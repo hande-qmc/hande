@@ -21,6 +21,8 @@ enum, bind(c)
     enumerator :: H0_imag_ind
     enumerator :: HI_ind
     enumerator :: HI_imag_ind
+    enumerator :: ref_proj_ind
+    enumerator :: ref_proj_imag_ind
     enumerator :: terminator ! unused except in num_dmqmc_operators
    ! NOTE: if you add a new estimator then you must insert it before terminator.
 end enum
@@ -105,8 +107,27 @@ type dmqmc_rdm_in_t
 end type dmqmc_rdm_in_t
 
 type dmqmc_in_t
+    ! Used when setting various flags for the propagators symmetry.
+    ! Will be updated based on symmetric_bloch, when running DMQMC, or
+    ! symmetric_interaction_picture, when running IP-DMQMC or both when
+    ! running piecewise IP-DMQMC.
+    logical :: symmetric = .true.
+
     ! The number of times the program will loop over each value of beta in the main loop.
     integer :: beta_loops = 100
+    ! The final value of beta which we propagate the density matrix to.
+    ! If final_beta is not set (i.e. remains -1), then the nreports from the
+    ! input controls the final beta that is sampled.
+    real(p) :: final_beta = -1.0_p
+    ! Controls the symmetry of the dmqmc propagator. When true, we used
+    ! the symmetrized version of the Bloch equation, otherwise the asymmetric
+    ! Bloch equation is used.
+    logical :: symmetric_bloch = .true.
+    ! The shift used after the propagator is changed in peicewise IP-DMQMC.
+    ! The default is zero.
+    real(p) :: piecewise_shift = 0.0_p
+    ! A factor to scale the inital walker population by
+    real(p) :: walker_scale_factor = 0.0_p
 
     ! Calculate replicas (ie evolve two wavefunctions/density matrices at once)?
     ! Currently only implemented for DMQMC.
@@ -185,15 +206,25 @@ type dmqmc_in_t
     ! Interpret input target_beta as the inverse reduced temperature, i.e., Beta = 1\Theta = T_F/T.
     logical :: fermi_temperature = .false.
     ! Value of beta which we propagate the density matrix to.
-    real(p) :: target_beta = 1.0
+    real(p) :: target_beta = 1.0_p
     ! Number of metropolis attempts (per psip) we use when generating
     ! the trial density matrix.
     integer :: metropolis_attempts = 0
-    ! Do a symmetric version of DMQMC, default true and only changeable for the ip-dmqmc algorithm.
+    ! Controls the symmetry of the propagator, default true.
     ! This considerably changes the IP-DMQMC algorithm.
-    logical :: symmetric = .true.
+    logical :: symmetric_interaction_picture = .true.
     ! Chemical potential used to initialise density matrix.
-    real(p) :: chem_pot = 0.0_p
+    real(p) :: chem_pot(1:2) = 0.0_p
+    ! Controls whether we check the reference state against the H_{ii} elements
+    ! generated when running IP-DMQMC with the grand canonical initialization
+    ! using the 'hartree--fock' initial mean field density matrix.
+    logical :: skip_gci_reference_check = .false.
+    ! A boolean used in grand canonical initialization
+    ! If it is true (by default) the walkers generated in the reweighting
+    ! step (if it is performed) are counted towards the total walker number.
+    ! Previously successful attempts at generating elements were counted
+    ! which could lead to over or under initalization of walkers on the trace.
+    logical :: count_diagonal_occupations = .false.
 
     ! Input options relating to RDMs in DMQMC.
     type(dmqmc_rdm_in_t) :: rdm
@@ -282,6 +313,15 @@ type dmqmc_estimates_t
     ! the DMQMC algorithm calculates stochastically.
     real(p), allocatable :: trace(:) ! (particle_t%nspaces)
 
+    ! This stores the trace of the reference row/column on the density matrix.
+    ! This is used to estimate the energy for the reference row in DMQMC.
+    real(p), allocatable :: ref_trace(:) ! (particle_t%nspaces)
+
+    ! This stores the total particles of the reference row/column on the 
+    ! density matrix. Only used when the projector of the reference row/column
+    ! is being calculated.
+    real(p), allocatable :: ref_D0j_particles(:) ! (particle_t%nspaces)
+
     ! This array is used to hold the number of particles on each excitation
     ! level of the density matrix.
     real(p), allocatable :: excit_dist(:) ! (0:max_number_excitations)
@@ -361,6 +401,7 @@ contains
         call json_write_key(js, 'all_sym_sectors', dmqmc%all_sym_sectors)
         call json_write_key(js, 'all_spin_sectors', dmqmc%all_spin_sectors)
         call json_write_key(js, 'initiator_level', dmqmc%initiator_level)
+        call json_write_key(js, 'symmetric_bloch', dmqmc%symmetric_bloch)
         if (allocated(dmqmc%sampling_probs)) then
             call json_write_key(js, 'sampling_probs', dmqmc%sampling_probs)
         else
@@ -369,6 +410,9 @@ contains
         call json_write_key(js, 'finish_varying_weights', dmqmc%finish_varying_weights)
         call json_write_key(js, 'fermi_temperature', dmqmc%fermi_temperature)
         call json_write_key(js, 'target_beta', dmqmc%target_beta)
+        call json_write_key(js, 'final_beta', dmqmc%final_beta)
+        call json_write_key(js, 'piecewise_shift', dmqmc%piecewise_shift)
+        call json_write_key(js, 'walker_scale_factor', dmqmc%walker_scale_factor)
         call json_write_key(js, 'mom_dist_kmax', dmqmc%mom_dist_kmax)
         call json_write_key(js, 'struc_fac_qmax', dmqmc%struc_fac_qmax, terminal=.true.)
         call json_object_end(js, terminal)
@@ -403,7 +447,9 @@ contains
             call json_write_key(js, 'initial_matrix', dmqmc%initial_matrix)
         end select
         call json_write_key(js, 'grand_canonical_initialisation', dmqmc%grand_canonical_initialisation)
-        call json_write_key(js, 'symmetric', dmqmc%symmetric)
+        call json_write_key(js, 'count_diagonal_occupations', dmqmc%count_diagonal_occupations)
+        call json_write_key(js, 'skip_gci_reference_check', dmqmc%skip_gci_reference_check)
+        call json_write_key(js, 'symmetric_interaction_picture', dmqmc%symmetric_interaction_picture)
         call json_write_key(js, 'chem_pot', dmqmc%chem_pot)
         call json_write_key(js, 'metropolis_attempts', dmqmc%metropolis_attempts, terminal=.true.)
         call json_object_end(js, terminal)
@@ -454,7 +500,7 @@ contains
         use json_out
         use calc, only: doing_dmqmc_calc, dmqmc_energy, dmqmc_energy_squared, dmqmc_correlation, &
                         dmqmc_staggered_magnetisation, dmqmc_rdm_r2, dmqmc_full_r2, dmqmc_kinetic_energy, &
-                        dmqmc_potential_energy, dmqmc_H0_energy, dmqmc_HI_energy
+                        dmqmc_potential_energy, dmqmc_H0_energy, dmqmc_HI_energy, dmqmc_ref_proj_energy
 
         type(json_out_t), intent(inout) :: js
         type(dmqmc_in_t), intent(in) :: dmqmc
@@ -467,6 +513,7 @@ contains
         call json_write_key(js, 'potential_energy', doing_dmqmc_calc(dmqmc_potential_energy))
         call json_write_key(js, 'H0_energy', doing_dmqmc_calc(dmqmc_H0_energy))
         call json_write_key(js, 'HI_energy', doing_dmqmc_calc(dmqmc_HI_energy))
+        call json_write_key(js, 'ref_projected_energy', doing_dmqmc_calc(dmqmc_ref_proj_energy))
         call json_write_key(js, 'correlation_fn', doing_dmqmc_calc(dmqmc_correlation))
         call json_write_key(js, 'staggered_mad_ind', doing_dmqmc_calc(dmqmc_staggered_magnetisation))
         call json_write_key(js, 'rdm_r2', doing_dmqmc_calc(dmqmc_rdm_r2))

@@ -26,7 +26,7 @@ dmqmc {
     ipdmqmc = {
         target_beta = 1.0,
         metropolis_attempts = 100,
-        symmetric  = false,
+        symmetric_interaction_picture = false,
     },
     operators = {
         energy = true,
