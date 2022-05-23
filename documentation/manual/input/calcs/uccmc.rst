@@ -21,7 +21,7 @@ Unitary Coupled Cluster Monte Carlo
 Returns:
     a qmc_state object.
 
-``ccmc`` performs a coupled cluster Monte Carlo (CCMC) calculation [Filip21]_ on a system.
+``uccmc`` performs a coupled cluster Monte Carlo (CCMC) calculation [Filip20]_ on a system.
 
 Options
 -------

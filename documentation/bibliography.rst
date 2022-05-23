@@ -10,7 +10,8 @@ Bibliography
 .. [Booth14] G.H. Booth, S.D. Smart, A.Alavi, Linear-scaling and parallelisable algorithms for stochastic quantum chemistry, Mol. Phys. 112, 1855 (2014).
 .. [Cleland10] D. Cleland, G.H. Booth, A. Alavi, Communications: Survival of the fittest: accelerating convergence in full configuration-interaction quantum Monte Carlo. J. Chem. Phys. 132, 041103 (2010).
 .. [Dunning89] Dunning, Thom H., Gaussian basis sets for use in correlated molecular calculations. I. The atoms boron through neon and hydrogen. J. Chem. Phys. 90, 1007 (1989) 
-.. [Filip19] M-A. Filip, C.J.C. Scott and A.J.W. Thom, Multireference Stochastic Coupled Cluster, J. Chem. Theory Comput. 15, 12, 6625-6625 (2019).
+.. [Filip19] M-A. Filip, C.J.C. Scott and A.J.W. Thom, Multireference Stochastic Coupled Cluster, J. Chem. Theory Comput. 15, 12, 6625-6635 (2019).
+.. [Filip20] M-A. Filip and A.J.W. Thom, A stochastic approach to unitary coupled cluster, J. Chem. Phys. 153, 214106 (2020).
 .. [Flyvbjerg89] H. Flyvbjerg, H. G. Petersen, Error estimates on averages of correlated data, J. Chem. Phys. 91, 461 (1989). 
 .. [Franklin16] R.S.T. Franklin, J.S. Spencer, A. Zoccante and A.J.W Thom, Linked coupled cluster Monte Carlo, J Chem. Phys. 144, 044111 (2016).
 .. [Holmes16] A.A. Holmes, H.J. Changlani, C.J. Umrigar, Efficient Heat-Bath Sampling in Fock Space, J. Chem. Theory Comput., 12, 1561–1571 (2016).
