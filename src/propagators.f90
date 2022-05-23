@@ -108,6 +108,8 @@ contains
 
             call encode_det(sys%basis, occ_list_max, f_max)
 
+            ! The Gershgorin circle theorem gives us the upper bound on the highest eigenvalue (in the current symmetry sector): 
+            ! E_{N-1} \leq H_{N-1, N-1} + \sum_{i \neq N-1} abs(H_{i, N-1})
             e_max = 0.0_p
             do i=1, ndets
                 ! BZ [TODO] - Deal with complex systems
@@ -115,13 +117,14 @@ contains
                 offdiagel = get_hmatel(sys, f_max, singles_doubles(:,i))
                 e_max = e_max + abs(offdiagel%r)
             end do
-            ! Just in case the highest diagonal element is negative, we need its actual value not the absolute
+
             offdiagel = get_hmatel(sys, f_max, f_max)
-            e_max = e_max - abs(offdiagel%r) + offdiagel%r
+            ! In HANDE we set E_HF to zero
+            e_max = e_max - abs(offdiagel%r) + offdiagel%r - qs%ref%H00
             e_max = e_max * 1.1  ! Arbitrarily shift the upper bound higher to be safe
 
             qs%cheby_prop%spectral_range(1) = 0.0_p
-            qs%cheby_prop%spectral_range(2) = e_max - qs%ref%H00
+            qs%cheby_prop%spectral_range(2) = e_max
             call update_chebyshev(qs%cheby_prop, 0.0_p)
 
             call cpu_time(t2)
