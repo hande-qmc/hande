@@ -82,7 +82,7 @@ def reblock_rdm(filename):
         The estimates for the RDM energy numerator, RDM trace and RDM Energy
         based on the reblocking analysis.
     rdm : :class:`pandas.DataFrame`
-        Reblockign data for RDM energy num. and RDM trace in a csv
+        Reblocking data for RDM energy num. and RDM trace in a csv
         friendlier format.
     block_info : :class:`pandas.DataFrame`
         Reblocking data for RDM energy num. and RDM trace, used when

@@ -124,6 +124,11 @@ contains
                     nspawned = int(rdm_spawn%sdata(2*bsl+1:2*bsl+psip_list%nspaces,i), int_p)
                     call decode_det(sys%basis, f_child, occ_list)
                     do ispace = 1, 2
+                        ! Use ispace for the pops and 3-ispace for nspawned which results in
+                        ! pops(1)*nspawned(2) and pops(2)*nspawned(1) being used to update
+                        ! the RDM. This is the desired behavior for an unbiased RDM sampling.
+                        ! Then because there are two pops lists contributing to the RDM,
+                        ! we adjust the probability of contributing to 2.0_p (the penultimate argument).
                         call update_rdm(sys, f_child, f_parent, occ_list, &
                                         real(psip_list%pops(ispace,pos),p)/psip_list%pop_real_factor, &
                                         real(nspawned(3-ispace),p)/psip_list%pop_real_factor, 2.0_p, rdm)

@@ -26,3 +26,88 @@ fciqmc {
         density_matrices = true,
     },
 }
+--[[ QCHEM INPUT for this pathological LiH3 non-canonical orbitals
+$molecule
+0 1
+Li 0 0 0
+H  4 0 0
+H  0 1 1
+H  0 -2 1
+$end
+$rem
+basis sto-3g
+jobtype sp
+correlation none
+exchange hf
+symmetry off
+sym_ignore true
+$end
+@@@
+$molecule
+read
+$end
+$rem
+scf_guess read
+basis sto-3g
+jobtype sp
+correlation none
+exchange gen
+mom_start 1
+symmetry off
+sym_ignore true
+$end
+
+$xc_functional
+X S 0.1
+K 0.9
+$end
+@@@
+$molecule
+read
+$end
+$rem
+scf_guess read
+basis sto-3g
+jobtype sp
+skip_scfman true
+correlation ccsd
+symmetry off
+sym_ignore true
+n_frozen_core 2
+n_frozen_virtual 4
+cc_print 7
+cc_diis_start 1
+!ccman2 false
+$end
+@@@
+$molecule
+read
+$end
+$rem
+scf_guess read
+basis sto-3g
+jobtype sp
+skip_scfman true
+correlation idump
+symmetry off
+sym_ignore true
+cc_print 7
+cc_diis_start 1
+!ccman2 false
+$end
+@@@
+$molecule
+read
+$end
+$rem
+scf_guess read
+basis sto-3g
+skip_scfman true
+correlation qcisd
+exchange hf
+symmetry off
+n_frozen_core 2
+n_frozen_virtual 4
+sym_ignore true
+$end
+]]

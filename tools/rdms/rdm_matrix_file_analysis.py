@@ -506,7 +506,7 @@ def stdout_average_gamma(gamma):
 
     Parameters
     ----------
-    gamma : :class:`pandas.DatFrame`
+    gamma : :class:`pandas.DataFrame`
         A data frame containing the 4 spin orbitals labeling the
         matrix elements of the RDM, along with the matrix element sampled
         in an FCIQMC simulation.
@@ -537,7 +537,7 @@ def stdout_average_energy(estimates):
 
     Parameters
     ----------
-    estimates : :class:`pandas.DatFrame`
+    estimates : :class:`pandas.DataFrame`
         A data frame containing the numerators and denominators calculated
         with the read in RDM files.
 
