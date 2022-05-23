@@ -613,8 +613,8 @@ contains
         logical :: have_restart_state
         integer :: opts, io_unit
         real :: t1, t2
-        character(10), parameter :: keys(10) = [character(10) :: 'sys', 'qmc', 'ccmc', 'uccmc', 'restart', 'reference', 'qmc_state', &
-                                                                'logging', 'output', 'blocking']
+        character(10), parameter :: keys(10) = [character(10) :: 'sys', 'qmc', 'ccmc', 'uccmc', 'restart', &
+                                                'reference', 'qmc_state', 'logging', 'output', 'blocking']
 
         call cpu_time(t1)
 
@@ -1602,7 +1602,8 @@ contains
         type(uccmc_in_t), intent(out) :: uccmc_in
 
         integer :: uccmc_table, err, i
-        character(28), parameter :: keys(5) = [character(28) :: 'pow_trunc', 'variational_energy', 'average_wfn', 'trotterized', 'threshold']
+        character(28), parameter :: keys(5) = [character(28) :: 'pow_trunc', 'variational_energy', &
+                                                           'average_wfn', 'trotterized', 'threshold']
 
         if (aot_exists(lua_state, opts, 'uccmc')) then
 

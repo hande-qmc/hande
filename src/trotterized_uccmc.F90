@@ -628,7 +628,8 @@ contains
                 do j = 1, qs%psip_list%nstates
                     if (j/=D0_pos) then
                         D0_population_noncomp_cycle = &
-                            D0_population_noncomp_cycle/cos((qs%psip_list%pops(1,j)/real(qs%psip_list%pop_real_factor))/D0_normalisation)
+                            D0_population_noncomp_cycle/cos((qs%psip_list%pops(1,&
+                                j)/real(qs%psip_list%pop_real_factor))/D0_normalisation)
                     end if
                 end do
                 qs%estimators%D0_noncomposite_population = qs%estimators%D0_noncomposite_population + D0_population_noncomp_cycle
@@ -717,7 +718,8 @@ contains
             time_avg_psip_list_pops(:nstates_sq) =  time_avg_psip_list_pops(:nstates_sq)/(iter-avg_start+1)
             time_avg_psip_list_sq(sys%basis%tot_string_len+1,:nstates_sq) = &
                 time_avg_psip_list_sq(sys%basis%tot_string_len+1,:nstates_sq)/(iter-avg_start+1)
-            call write_average_wfn_trot(sys, time_avg_psip_list_pops, time_avg_psip_list_sq, io_unit, time_avg_psip_list_states, nstates_sq)
+            call write_average_wfn_trot(sys, time_avg_psip_list_pops, time_avg_psip_list_sq, io_unit, &
+                    time_avg_psip_list_states, nstates_sq)
         end if
 
         call dSFMT_t_to_dSFMT_state_t(rng(0), qs%rng_state)

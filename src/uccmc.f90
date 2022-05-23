@@ -516,8 +516,8 @@ contains
                         call select_ucc_cluster(rng(it), sys, qs%psip_list, qs%ref%f0, qs%ref%max_ex_level, &
                                             selection_data%nstochastic_clusters, D0_normalisation, qmc_in%initiator_pop, D0_pos, &
                                             cumulative_abs_real_pops, tot_abs_real_pop, min_cluster_size, max_cluster_size, &
-                                            logging_info, contrib(it)%cdet, contrib(it)%cluster, qs%excit_gen_data, uccmc_in%threshold, &
-                                            count_discard)
+                                            logging_info, contrib(it)%cdet, contrib(it)%cluster, qs%excit_gen_data, &
+                                            uccmc_in%threshold, count_discard)
 
                         ! Add contribution to average CI wfn
                         if (uccmc_in%variational_energy .and. all(qs%vary_shift) .and. &

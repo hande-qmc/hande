@@ -1152,30 +1152,17 @@ contains
             ! Checks whether the current contribution is within the considered space.
             if (multiref_check_ex_level(sys, contrib, qs, 2)) then
                     attempt_death = multiref_check_ex_level(sys, contrib, qs, 0)
-                    if (present(uccmc_in)) then
                         call do_spawning_death(rng, sys, qs, ccmc_in, &
                                          logging_info, bloom_stats, contrib, &
                                          ndeath, ps_stat, nspawnings_cluster, &
                                          attempt_death, uccmc_in)
-                    else
-                        call do_spawning_death(rng, sys, qs, ccmc_in, &
-                                         logging_info, bloom_stats, contrib, &
-                                         ndeath, ps_stat, nspawnings_cluster, &
-                                         attempt_death)
-                    end if
             end if
         else
             attempt_death = (contrib%cluster%excitation_level <= qs%ref%ex_level) 
 
-            if (present(uccmc_in)) then
                 call do_spawning_death(rng, sys, qs, ccmc_in, &
                                  logging_info, bloom_stats, contrib, &
                                  ndeath, ps_stat, nspawnings_cluster, attempt_death, uccmc_in)
-            else
-                call do_spawning_death(rng, sys, qs, ccmc_in, &
-                                 logging_info, bloom_stats, contrib, &
-                                 ndeath, ps_stat, nspawnings_cluster, attempt_death)
-            end if
 
         end if
 
@@ -1243,13 +1230,8 @@ contains
         integer :: i
 
         do i = 1, nspawnings_cluster
-            if (present(uccmc_in)) then
                 call perform_ccmc_spawning_attempt(rng, sys, qs, ccmc_in, logging_info, bloom_stats, contrib, &
                                                nspawnings_cluster, ps_stat, uccmc_in)
-            else
-                call perform_ccmc_spawning_attempt(rng, sys, qs, ccmc_in, logging_info, bloom_stats, contrib, &
-                                               nspawnings_cluster, ps_stat)
-            end if
         end do
         
         ! Does the cluster collapsed onto D0 produce
@@ -1350,11 +1332,7 @@ contains
         contrib%cluster%amplitude = contrib%cluster%amplitude / abs(contrib%cluster%amplitude)
         
         do i = 1, nspawnings_cluster
-            if (present(uccmc_in)) then
                 call perform_ccmc_spawning_attempt(rng, sys, qs, ccmc_in, logging_info, bloom_stats, contrib, 1, ps_stat, uccmc_in)
-            else
-                call perform_ccmc_spawning_attempt(rng, sys, qs, ccmc_in, logging_info, bloom_stats, contrib, 1, ps_stat)
-            end if
         end do
 
     end subroutine do_nc_ccmc_propagation

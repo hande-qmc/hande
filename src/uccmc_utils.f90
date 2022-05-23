@@ -392,7 +392,8 @@ contains
        var_energy = var_energy/normalisation
    end subroutine var_energy_uccmc
 
-    subroutine initialise_average_wfn(sys, psip_list, time_avg_psip_list_states, time_avg_psip_list_pops, time_avg_psip_list_sq, nstates_sq, avg_start, iter)
+    subroutine initialise_average_wfn(sys, psip_list, time_avg_psip_list_states, time_avg_psip_list_pops, &
+                                        time_avg_psip_list_sq, nstates_sq, avg_start, iter)
 
         ! Initialises average wavefunction to the current psip_list values.
         
@@ -428,7 +429,8 @@ contains
         nstates_sq = psip_list%nstates
     end subroutine initialise_average_wfn
 
-    subroutine write_average_wfn(sys, time_avg_psip_list_pops, time_avg_psip_list_sq, io_unit, time_avg_psip_list_states, nstates_sq)
+    subroutine write_average_wfn(sys, time_avg_psip_list_pops, time_avg_psip_list_sq, io_unit, &
+                                    time_avg_psip_list_states, nstates_sq)
 
         ! Prints out average wavefunction obtained from a UCCMC calculation.
 
@@ -470,7 +472,8 @@ contains
         end do
     end subroutine write_average_wfn
 
-    subroutine write_average_wfn_trot(sys, time_avg_psip_list_pops, time_avg_psip_list_sq, io_unit, time_avg_psip_list_states, nstates_sq)
+    subroutine write_average_wfn_trot(sys, time_avg_psip_list_pops, time_avg_psip_list_sq, io_unit, &
+                                        time_avg_psip_list_states, nstates_sq)
 
         ! Prints out average wavefunction obtained from a tUCCMC calculation.
 
