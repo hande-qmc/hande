@@ -65,7 +65,7 @@ MP1 options
 ``spawn_cutoff``
     type: float.
 
-    Optional, default: 0.01.
+    Optional. Default: 0.01.
 
     The threshold for stochastic rounding.
 

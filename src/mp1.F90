@@ -5,12 +5,18 @@ use qmc_data, only: excit_gen_renorm
 
 implicit none
 
-! [todo] - document
 type mp1_in_t
+    ! The population on the reference determinant
     real(p) :: D0_norm
+    ! If positive, number of states that can be stored in the psip_list produced,
+    ! if negative, size of psip_list in MB. 
     integer :: state_size
+    ! Whether to use real amplitudes.
     logical :: real_amplitudes = .false.
+    ! The size of the minimum spawning event allowed. 
+    ! Events smaller than this will be stochastically rounded up to this value or down to zero.
     real(p) :: spawn_cutoff = 0.01_p
+    ! If a CCMC calculation follows, whether that CCMC calculation has even selection enabled.
     logical :: even_selection = .false.
 end type mp1_in_t
 
@@ -265,7 +271,7 @@ contains
                     end do
                 end do
             end do
-            write (6,'(1X, A, ES17.10)') 'Deterministic MP2 correction energy: ', emp2
+            write (6,'(1X, A, ES17.10)') 'Deterministic MP2 correlation energy: ', emp2
         end if
 
 

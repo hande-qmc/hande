@@ -418,7 +418,7 @@ contains
         call init_qmc(sys, qmc_in, restart_in, load_bal_in, reference_in, io_unit, annihilation_flags, qs, &
                       uuid_restart, restart_version_restart, qmc_state_restart=qmc_state_restart, &
                       regenerate_info=regenerate_info, psip_list_in=psip_list_in)
-        
+
         if (ccmc_in%even_selection .and. regenerate_info) then
             call regenerate_ex_levels_psip_list(sys%basis, qs)
         else if (regenerate_info) then
@@ -738,9 +738,6 @@ contains
                                         iattempt, qmc_in%initiator_pop, ccmc_in%even_selection, &
                                         contrib(it)%cdet, contrib(it)%cluster, qs%excit_gen_data)
 
-                            !if (qs%propagator%quasi_newton) contrib(it)%cdet%fock_sum = &
-                            !                sum_fock_values_occ_list(sys, qs%propagator%sp_fock, contrib(it)%cdet%occ_list) &
-                            !                - qs%ref%fock_sum
                             if (qs%propagator%quasi_newton) contrib(it)%cdet%fock_sum = &
                                             sum_fock_values_occ_list(sys, qs%propagator%sp_fock, contrib(it)%cdet%occ_list) &
                                             - qs%ref%fock_sum

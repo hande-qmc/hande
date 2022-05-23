@@ -331,7 +331,7 @@ contains
             update_proj_energy_ptr => update_proj_energy_hub_real
             if (sys%system == hub_real) then
                 sc0_ptr => slater_condon0_hub_real
-            else 
+            else
                 sc0_ptr => slater_condon0_chung_landau
             end if
 
@@ -1182,7 +1182,7 @@ contains
         ! specified, the symmetry.
 
         call set_reference_det(sys, reference%occ_list0, .false., sys%symmetry, io_unit)
-        
+
         if (.not. allocated(reference%f0)) then
             allocate(reference%f0(sys%basis%tot_string_len), stat=ierr)
             call check_allocate('reference%f0',sys%basis%tot_string_len,ierr)

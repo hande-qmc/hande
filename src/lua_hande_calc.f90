@@ -692,16 +692,16 @@ contains
 
     function lua_mp1_mc(L) result(nresult) bind(c)
 
-        ! Run a Monte Carlo calculation to estimate various mean-field energies of a
-        ! system in the canonical ensemble.
+        ! Run a deterministic MP1 wavefunction calculation and produce the 
+        ! exact MP2 energy, and return a stochastically coarse-grained psip_list object.
 
         ! In/Out:
         !    L: lua state (bare C pointer).
 
         ! Lua:
-        ! mp1_mc {
+        ! psip_list = mp1_mc {
         !     sys = sys,
-        !     mp1 {
+        !     mp1 = {
         !           D0_population = nD0,              -- required
         !           state_size = S,                   -- required
         !           real_amplitudes = true/false,
@@ -713,7 +713,8 @@ contains
 
         use, intrinsic :: iso_c_binding, only: c_ptr, c_int
         use flu_binding, only: flu_State, flu_copyptr
-        use aot_table_module, only: aot_table_top, aot_table_close
+        use aot_table_module, only: aot_table_top, aot_table_close, aot_exists, aot_table_open, aot_get_val
+        use aot_vector_module, only: aot_get_val
 
         use lua_hande_system, only: get_sys_t
         use lua_hande_utils, only: warn_unused_args, register_timing
