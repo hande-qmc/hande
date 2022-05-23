@@ -1157,6 +1157,8 @@ contains
         !    f: det to be added to the determ object.
         !    check_proc: If true then first check if f belongs to this
         !        processor. If not then don't add it.
+        !    info_string_len (option): The number of additional integers used
+        !        to store additional information in the bit strings
 
         use parallel, only: iproc, nprocs
         use spawn_data, only: spawn_t
