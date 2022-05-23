@@ -63,6 +63,11 @@ test-gcc:
         - ../testcode/bin/testcode.py -e ../bin/hande.x -c serial --total-processors=6
     only:
         - schedules
+    artifacts:
+        when: always
+        paths:
+            - test_suite
+        expire_in: never
 
 test-gcc-mpi:
     stage: BUILD AND TEST GCC MPI
@@ -102,6 +107,11 @@ test-gcc-mpi-64:
         - ../testcode/bin/testcode.py -e ../bin/hande.x -c pop64_mpi --processors=4
     only:
         - schedules
+    artifacts:
+        when: always
+        paths:
+            - test_suite
+        expire_in: never
 
 test-gcc-dbg:
     stage: BUILD AND TEST GCC dbg
@@ -117,6 +127,11 @@ test-gcc-dbg:
         - ../testcode/bin/testcode.py -e ../bin/hande.x -c serial --total-processors=6
     only:
         - schedules
+    artifacts:
+        when: always
+        paths:
+            - test_suite
+        expire_in: never
 
 test-gcc-mpi-dbg:
     stage: BUILD AND TEST GCC MPI dbg
@@ -134,6 +149,11 @@ test-gcc-mpi-dbg:
         - ../testcode/bin/testcode.py -e ../bin/hande.x -c mpi --processors=4
     only:
         - schedules
+    artifacts:
+        when: always
+        paths:
+            - test_suite
+        expire_in: never
 
 test-gcc-mpi-64-dbg:
     stage: BUILD AND TEST GCC MPI POP64 dbg
@@ -151,6 +171,11 @@ test-gcc-mpi-64-dbg:
         - ../testcode/bin/testcode.py -e ../bin/hande.x -c pop64_mpi --processors=4
     only:
         - schedules
+    artifacts:
+        when: always
+        paths:
+            - test_suite
+        expire_in: never
 
 test-intel:
     stage: BUILD AND TEST INTEL
@@ -167,6 +192,11 @@ test-intel:
         - ../testcode/bin/testcode.py -e ../bin/hande.x -c serial --total-processors=6
     only:
         - schedules
+    artifacts:
+        when: always
+        paths:
+            - test_suite
+        expire_in: never
 
 test-intel-dbg:
     stage: BUILD AND TEST INTEL dbg
@@ -183,6 +213,11 @@ test-intel-dbg:
         - ../testcode/bin/testcode.py -e ../bin/hande.x -c serial --total-processors=6
     only:
         - schedules
+    artifacts:
+        when: always
+        paths:
+            - test_suite
+        expire_in: never
 
 test-intel-mpi-pop64:
     stage: BUILD AND TEST INTEL MPI POP64
@@ -201,6 +236,11 @@ test-intel-mpi-pop64:
         - ../testcode/bin/testcode.py -e ../bin/hande.x -c mpi --processors=4
     only:
         - schedules
+    artifacts:
+        when: always
+        paths:
+            - test_suite
+        expire_in: never
 
 test-intel-mpi-pop64-dbg:
     stage: BUILD AND TEST INTEL MPI POP64 dbg
@@ -219,6 +259,11 @@ test-intel-mpi-pop64-dbg:
         - ../testcode/bin/testcode.py -e ../bin/hande.x -c mpi --processors=4
     only:
         - schedules
+    artifacts:
+        when: always
+        paths:
+            - test_suite
+        expire_in: never
         
 test-intel-mpi:
     stage: BUILD AND TEST INTEL MPI
@@ -237,6 +282,11 @@ test-intel-mpi:
         - ../testcode/bin/testcode.py -e ../bin/hande.x -c mpi --processors=4
     only:
         - schedules
+    artifacts:
+        when: always
+        paths:
+            - test_suite
+        expire_in: never
 
 test-intel-mpi-dbg:
     stage: BUILD AND TEST INTEL MPI dbg
@@ -255,6 +305,11 @@ test-intel-mpi-dbg:
         - ../testcode/bin/testcode.py -e ../bin/hande.x -c mpi --processors=4
     only:
         - schedules
+    artifacts:
+        when: always
+        paths:
+            - test_suite
+        expire_in: never
 
 test-intel-quick:
     stage: BUILD AND TEST INTEL QUICK
@@ -273,6 +328,11 @@ test-intel-quick:
         - ../testcode/bin/testcode.py -e ../bin/hande.x -c quick --processors=4
     except:
         - schedules
+    artifacts:
+        when: always
+        paths:
+            - test_suite
+        expire_in: never
 
 test-gcc-quick:
     stage: BUILD AND TEST GCC QUICK
@@ -290,6 +350,11 @@ test-gcc-quick:
         - ../testcode/bin/testcode.py -e ../bin/hande.x -c quick --processors=4
     except:
         - schedules
+    artifacts:
+        when: always
+        paths:
+            - test_suite
+        expire_in: never
 
 test-pyhande:
     stage: TEST PYHANDE

@@ -16,6 +16,8 @@ type node_t
     ! Each of the edges point to another node
     integer(i0), allocatable :: bstring(:)
     type(node_t), pointer :: edges(:) => null()
+    ! We *could* achieve the same by checking allocated(bstring) and associated(edges)
+    ! but these logicals are used to improve readability.
     logical :: bstring_init = .false.
     logical :: edge_init = .false.
 end type node_t
@@ -24,6 +26,7 @@ type tree_t
     ! For use in BK-tree search of secondary references
     ! A tree stores a pointer to the root node, and some of the constants specific to the system
     type(node_t), pointer :: root => null()
+    ! Likewise, we could check for (associated(root)) but this is used to improve readability.
     logical :: root_init = .false.
     ! Number of secondary references, allowed excitation from *all* of them (no individual control), 
     ! maximum excitation from ground state
