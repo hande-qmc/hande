@@ -262,7 +262,7 @@ implicit none
 contains
 
     subroutine do_ccmc(sys, qmc_in, ccmc_in, semi_stoch_in, restart_in, load_bal_in, reference_in, &
-                        logging_in, blocking_in, io_unit, qs, qmc_state_restart)
+                        logging_in, blocking_in, io_unit, qs, qmc_state_restart, psip_list_in)
 
         ! Run the CCMC algorithm starting from the initial walker distribution
         ! using the timestep algorithm.
@@ -283,6 +283,8 @@ contains
         !    io_unit: input unit to write all output to.
         ! In/Out:
         !    qmc_state_restart (optional): if present, restart from a previous fciqmc calculation.
+        !       Deallocated on exit.
+        !    psip_list_in (optional): if present, initial psip distribution set from a previous MP1 calculation.
         !       Deallocated on exit.
         ! Out:
         !    qs: qmc_state for use if restarting the calculation
@@ -319,8 +321,8 @@ contains
         use replica_rdm, only: update_rdm, calc_rdm_energy, write_final_rdm
 
         use qmc_data, only: qmc_in_t, ccmc_in_t, semi_stoch_in_t, restart_in_t
-        use qmc_data, only: blocking_in_t
-        use qmc_data, only: load_bal_in_t, qmc_state_t, annihilation_flags_t, estimators_t, blocking_t
+        use qmc_data, only: blocking_in_t, load_bal_in_t
+        use qmc_data, only: qmc_state_t, annihilation_flags_t, estimators_t, blocking_t, particle_t
         use qmc_data, only: qmc_in_t_json, ccmc_in_t_json, semi_stoch_in_t_json, restart_in_t_json
         use qmc_data, only: blocking_in_t_json, excit_gen_power_pitzer_orderN, excit_gen_heat_bath
         use reference_determinant, only: reference_t, reference_t_json
@@ -348,6 +350,7 @@ contains
         type(qmc_state_t), target, intent(out) :: qs
         type(qmc_state_t), intent(inout), optional :: qmc_state_restart
         integer, intent(in) :: io_unit
+        type(particle_t), intent(inout), optional :: psip_list_in
 
         integer :: i, ireport, icycle, iter, semi_stoch_iter, it
         integer(int_64) :: iattempt
@@ -414,7 +417,7 @@ contains
         ! Initialise data.
         call init_qmc(sys, qmc_in, restart_in, load_bal_in, reference_in, io_unit, annihilation_flags, qs, &
                       uuid_restart, restart_version_restart, qmc_state_restart=qmc_state_restart, &
-                      regenerate_info=regenerate_info)
+                      regenerate_info=regenerate_info, psip_list_in=psip_list_in)
 
         if (ccmc_in%even_selection .and. regenerate_info) then
             call regenerate_ex_levels_psip_list(sys%basis, qs)
@@ -433,8 +436,7 @@ contains
                 qs%mr_secref_file = ccmc_in%mr_secref_file
                 qs%mr_n_frozen = ccmc_in%mr_n_frozen
                 qs%mr_excit_lvl = ccmc_in%mr_excit_lvl
-            endif
-
+            end if
             allocate (qs%secondary_refs(qs%n_secondary_ref))
             call init_secondary_references(sys, ccmc_in%secondary_refs, io_unit, qs)
         else 
@@ -504,7 +506,6 @@ contains
         call check_allocate('ps_stats', nthreads, ierr)
 
         call init_contrib(sys, qs%ref%max_ex_level+2, ccmc_in%linked, contrib)
-
         do i = 0, nthreads-1
             ! Initialise and allocate RNG store.
             call dSFMT_init(qmc_in%seed+iproc+i*nprocs, 50000, rng(i))
@@ -538,7 +539,7 @@ contains
             ! Initialise hash shift if restarting...
             spawn%hash_shift = qs%mc_cycles_done
             ! NOTE: currently hash_seed is not exposed and so cannot change unless the hard-coded value changes. Therefore, as we
-            ! have not evolved the particles since the were written out (i.e. hash_shift hasn't changed) the only parameter
+            ! have not evolved the particles since they were written out (i.e. hash_shift hasn't changed) the only parameter
             ! which can be altered which can change an excitors location since the restart files were written is move_freq.
             if (ccmc_in%move_freq /= spawn%move_freq .and. nprocs > 1) then
                 spawn%move_freq = ccmc_in%move_freq
@@ -1129,7 +1130,7 @@ contains
         type(p_single_double_coll_t), intent(inout) :: ps_stat
 
         integer :: nspawnings_cluster
-        logical :: attempt_death, bktree
+        logical :: attempt_death
 
         ! Spawning
         ! This has the potential to create blooms, so we allow for multiple
@@ -1144,13 +1145,12 @@ contains
         call ms_stats_update(nspawnings_cluster, ms_stats)
         nattempts_spawn_tot = nattempts_spawn_tot + nspawnings_cluster
         if (qs%multiref) then
-            ! Checks whether the current contribution is within the considered space.
             if (multiref_check_ex_level(sys, contrib, qs, 2)) then
-                    attempt_death = multiref_check_ex_level(sys, contrib, qs, 0)
-                    call do_spawning_death(rng, sys, qs, ccmc_in, &
-                                         logging_info, bloom_stats, contrib, &
-                                         ndeath, ps_stat, nspawnings_cluster, &
-                                         attempt_death)
+                attempt_death = multiref_check_ex_level(sys, contrib, qs, 0)
+                call do_spawning_death(rng, sys, qs, ccmc_in, &
+                                       logging_info, bloom_stats, contrib, &
+                                       ndeath, ps_stat, nspawnings_cluster, &
+                                       attempt_death)
             end if
         else
             attempt_death = (contrib%cluster%excitation_level <= qs%ref%ex_level) 
@@ -1178,7 +1178,7 @@ contains
         !   ccmc_in: options relating to ccmc passed in to calculation.
         !   logging_info: logging_t object with info about current logging
         !        when debug is true. 
-        !   attempt_death = logical variable that encodes whether the selected 
+        !   attempt_death: logical variable that encodes whether the selected 
         !        cluster is within the desired CC truncation. 
         !
         ! In/Out:
@@ -1413,11 +1413,12 @@ contains
 
     end subroutine perform_ccmc_spawning_attempt
 
-    function multiref_check_ex_level(sys, contrib, qs, offset) result(assert1)
-        !Used in mr-CCMC.
-        !Checks whether a cluster is within some number of excitations of any of the references supplied.
+    function multiref_check_ex_level(sys, contrib, qs, offset) result(assert)
 
-        !In:
+        ! Used in mr-CCMC.
+        ! Checks whether a cluster is within some number of excitations of any of the references supplied.
+
+        ! In:
         !   sys: system being studied.
         !   contrib: information on contribution to wavefunction
         !       currently under consideration. Contains both the
@@ -1427,8 +1428,9 @@ contains
         !   qs: information on current state of calculation.
         !   offset: changes acceptable excitation level from the calculation truncation level.
         
-        !Out:
-        !   assert1: true if at least one of the excitation levels is below the threshold. False otherwise.
+        ! Out:
+        !   assert: true if at least one of the excitation levels is below the threshold. False otherwise.
+
         use excitations, only:  get_excitation_level, det_string
         use qmc_data, only: qmc_state_t
         use ccmc_data, only: wfn_contrib_t 
@@ -1440,20 +1442,26 @@ contains
         type(sys_t), intent(in) :: sys
         integer, intent(in) :: offset
         integer :: ex_level, i
-        logical :: assert1, assert2 = .false.
-        
+        logical :: assert
+
+        assert = .false.
+
+        if (contrib%cluster%excitation_level <= qs%ref%ex_level + offset) then
+            assert = .true.
+            return
+        end if
+
         if (qs%mr_acceptance_search == 0) then
             do i = 1, size(qs%secondary_refs)
                ex_level = get_excitation_level(det_string(contrib%cdet%f, sys%basis), &
                                                det_string(qs%secondary_refs(i)%f0, sys%basis)) 
-               assert2 = (ex_level <= qs%secondary_refs(i)%ex_level + offset)
-               if (assert2) exit
+               assert = (ex_level <= qs%secondary_refs(i)%ex_level + offset)
+               if (assert) return
             end do
         else
-            assert2 = tree_search(qs%secondary_ref_tree, det_string(contrib%cdet%f, sys%basis), &
+            assert = tree_search(qs%secondary_ref_tree, det_string(contrib%cdet%f, sys%basis), &
                                   qs%secondary_ref_tree%root, offset+qs%secondary_ref_tree%ex_lvl)
         end if
-        assert1 = (contrib%cluster%excitation_level <= qs%ref%ex_level + offset .or. assert2)
 
     end function
 

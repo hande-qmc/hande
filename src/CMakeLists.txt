@@ -103,6 +103,7 @@ target_sources(hande-static
     molecular_integrals.F90
     momentum_sym_read_in.f90
     momentum_symmetry.f90
+    mp1.F90
     non_blocking_comm.F90
     operators.F90
     particle_t_utils.f90
