@@ -1,0 +1,609 @@
+
+   HANDE
+
+ ================================================================
+Version information
+-------------------
+Version       | v1.5-253-g45bbd21-dirty
+Commit hash   | 45bbd21aa0744e8ff9a723a4ce83345d659a7221
+Commit author | Brian Zhao
+Commit date   | Mon May 23 17:34:44 2022 +0100
+Branch        | feature/mp1_init_mrcc_rebase
+
+Configuration and build information
+-----------------------------------
+Who compiled             | brianz98
+Compilation hostname     | Legion5
+Operating system         | Linux-5.10.60.1-microsoft-standard-WSL2
+CMake version            | 3.16.3
+CMake generator          | Unix Makefiles
+Build type               | release
+Configuration time       | 2022-05-23 16:35:36 [UTC]
+Python version           | 3.8.8
+Fortran compiler         | /usr/bin/mpif90
+C compiler               | /usr/bin/mpicc
+DET_SIZE set to          | 64
+POP_SIZE set to          | 64
+dSFMT Mersenne exponent  | 19937
+MPI parallelization      | ON
+MPI launcher             | /usr/bin/mpiexec
+OpenMP parallelization   | ON
+Lua version              | 5.3.3
+HDF5 library version     | 1.8.22
+
+Further components
+------------------
+DISABLE_HDF5 not defined.  HDF5 enabled.
+DISABLE_UUID not defined.  UUID enabled.
+PARALLEL defined.  MPI parallelization enabled.
+DISABLE_MPI3 not defined.  MPI-3 functionality enabled.
+PARALLEL defined. DISABLE_MPI3 and ENABLE_SHMEM_POSIX not defined. MPI-3 in use.
+DISABLE_SCALAPACK defined.  ScaLAPACK disabled.
+SINGLE_PRECISION not defined.  Double precision used throughout.
+USE_POPCNT not defined. Internal POPCNT procedure used.
+
+Runtime information
+-------------------
+Hostname:
+    Legion5
+Current working dir:
+    /mnt/c/Users/zdj51/Documents/code/hande-branches/feature_mp1_init_mrcc_rebase/test_suite/ccmc_real_64/np4/C2-cc-pVDZ_ccsd_multiref_mp1_init
+Started running on 23/05/2022 at 17:42:12
+ Calculation UUID: 493854b2-2b4c-4cba-9ebb-0912edf20cf5.
+ ================================================================
+
+ Number of MPI processes running on: 4
+ Running with 1 thread per MPI process.
+
+ Input options
+ -------------
+
+sys = read_in {
+    int_file = "INTDUMP",
+    sym = 'aufbau',
+    Lz = true,
+}
+
+qmc_opt = {
+    rng_seed = 12345,
+    tau = 0.01,
+    real_amplitudes = true,
+    init_pop = 2000,
+    mc_cycles = 1,
+    nreports = 100,
+    target_population = 5e6,
+    state_size = -500,
+    spawned_state_size = -500,
+    vary_shift = false,
+    vary_shift_from = 'proje',
+    shift_damping = 0.01,
+    excit_gen = 'heat_bath',
+    quasi_newton = true,
+}
+
+ccmc_opt = {
+    full_non_composite = true,
+    even_selection = false,
+    cluster_multispawn_threshold = 5,
+    multiref = true,
+    mr_acceptance_search = 'bk_tree',
+    n_secondary_ref = 4899,
+    mr_read_in = true,
+    mr_n_frozen = 4,
+    mr_excit_lvl = 2,
+    mr_secref_file = 'secondary_references'
+}
+
+psip_list = mp1_mc {
+    sys = sys,
+--    mp1 = {
+--        rng_seed = 12345,
+--        D0_population = 2000,
+--        state_size = -2000,
+--        real_amplitudes = true,
+--        spawn_cutoff = 0.001,
+--    },
+    qmc = qmc_opt,
+    ccmc = ccmc_opt,
+}
+
+ccmc {
+    sys = sys,
+    psip_list = psip_list,
+    qmc = qmc_opt,
+    ccmc = ccmc_opt,
+    reference = {
+        ex_level = 2,
+        },
+}
+
+-- INTDUMP generated with tools/fcidump/lz_fcidump.py, with clamped occupancy as:
+-- mf.irrep_nelec = {'A1g':4,'A1u':4,'E1ux':2,'E1uy':2}
+-- Energies: 
+-- HF:  -75.167851021500766
+-- MP2: -75.527301295217299
+-- MP2 correlation energy: -0.359450273716533
+
+ -------------
+
+ Memory required for all two body integrals (MB) on each processor: 0
+ It is left to the user to ensure that this does not exceed available resources.
+
+ Basis functions
+ ---------------
+
+ Spin given in units of 1/2.
+
+ index  spatial symmetry sym_index lz     ms       <i|f|i>
+     1      1      12       1       0       1       -1.14579150E+01
+     2      1      12       2       0      -1       -1.14579150E+01
+     3      2      13       1       0       1       -1.14577449E+01
+     4      2      13       2       0      -1       -1.14577449E+01
+     5      3      12       3       0       1       -8.61061791E-01
+     6      3      12       4       0      -1       -8.61061791E-01
+     7      4      13       3       0       1       -6.80954764E-01
+     8      4      13       4       0      -1       -6.80954764E-01
+     9      5      11       1      -1       1       -3.39932050E-01
+    10      5      11       2      -1      -1       -3.39932050E-01
+    11      6      15       1       1       1       -3.39932050E-01
+    12      6      15       2       1      -1       -3.39932050E-01
+    13      7      12       5       0       1       -6.82240981E-02
+    14      7      12       6       0      -1       -6.82240981E-02
+    15      8      14       1       1       1       -9.05772342E-03
+    16      8      14       2       1      -1       -9.05772342E-03
+    17      9      10       1      -1       1       -9.05772342E-03
+    18      9      10       2      -1      -1       -9.05772342E-03
+    19     10      13       5       0       1        2.00082138E-01
+    20     10      13       6       0      -1        2.00082138E-01
+    21     11      13       7       0       1        6.28675275E-01
+    22     11      13       8       0      -1        6.28675275E-01
+    23     12      11       3      -1       1        6.60837698E-01
+    24     12      11       4      -1      -1        6.60837698E-01
+    25     13      15       3       1       1        6.60837698E-01
+    26     13      15       4       1      -1        6.60837698E-01
+    27     14      12       7       0       1        6.73871266E-01
+    28     14      12       8       0      -1        6.73871266E-01
+    29     15      14       3       1       1        7.16416756E-01
+    30     15      14       4       1      -1        7.16416756E-01
+    31     16      10       3      -1       1        7.16416756E-01
+    32     16      10       4      -1      -1        7.16416756E-01
+    33     17      12       9       0       1        7.89327027E-01
+    34     17      12      10       0      -1        7.89327027E-01
+    35     18      13       9       0       1        9.97671933E-01
+    36     18      13      10       0      -1        9.97671933E-01
+    37     19      11       5      -1       1        1.19213962E+00
+    38     19      11       6      -1      -1        1.19213962E+00
+    39     20      15       5       1       1        1.19213962E+00
+    40     20      15       6       1      -1        1.19213962E+00
+    41     21      16       1       2       1        1.32480313E+00
+    42     21      16       2       2      -1        1.32480313E+00
+    43     22       8       1      -2       1        1.32480313E+00
+    44     22       8       2      -2      -1        1.32480313E+00
+    45     23      12      11       0       1        1.34266000E+00
+    46     23      12      12       0      -1        1.34266000E+00
+    47     24       9       1      -2       1        1.41694031E+00
+    48     24       9       2      -2      -1        1.41694031E+00
+    49     25      17       1       2       1        1.41694031E+00
+    50     25      17       2       2      -1        1.41694031E+00
+    51     26      14       5       1       1        1.63373558E+00
+    52     26      14       6       1      -1        1.63373558E+00
+    53     27      10       5      -1       1        1.63373558E+00
+    54     27      10       6      -1      -1        1.63373558E+00
+    55     28      13      11       0       1        2.05003844E+00
+    56     28      13      12       0      -1        2.05003844E+00
+
+ E_core =    9.525189792060
+ Number of electrons: 12
+ Number of basis functions: 56
+
+ Bit-length of integers used to store determinant bit-strings: 64
+ Number of integers used to store determinant bit-strings: 1
+
+ Symmetry information
+ --------------------
+
+ Number of point group symmetries: 2
+ Maximum Lz found: 2
+ Lz offset (corresponds to Lz=0): 12
+ Totally symmetric symmetry: 12
+ The matrix below gives the direct products of the irreducible representations.
+
+  4  5  6  7  8  9 10 11 12 13
+  5  4  7  6  9  8 11 10 13 12
+  6  7  8  9 10 11 12 13 14 15
+  7  6  9  8 11 10 13 12 15 14
+  8  9 10 11 12 13 14 15 16 17
+  9  8 11 10 13 12 15 14 17 16
+ 10 11 12 13 14 15 16 17 18 19
+ 11 10 13 12 15 14 17 16 19 18
+ 12 13 14 15 16 17 18 19 20 21
+ 13 12 15 14 17 16 19 18 21 20
+
+ The table below gives the number of basis functions spanning each irreducible representation.
+
+ irrep  Lz   sym  nbasis  nbasis_up  nbasis_down
+   8    -2    0      2       1          1
+   9    -2    1      2       1          1
+  10    -1    0      6       3          3
+  11    -1    1      6       3          3
+  12     0    0     12       6          6
+  13     0    1     12       6          6
+  14     1    0      6       3          3
+  15     1    1      6       3          3
+  16     2    0      2       1          1
+  17     2    1      2       1          1
+
+ Deterministic MP1 wavefunction initialisation
+ ---------------------------------------------
+
+ Reference determinant and so symmetry sector selected using the Aufbau principle.
+ Selected symmetry 12.
+
+ Memory allocated per core for main walker list (MB):    583.33
+ Number of elements per core in main walker list: 20833333
+ -- Start JSON block --
+ {
+     "system": {
+         "nbasis": 56,   
+         "nel": 12,   
+         "nvirt": 44,   
+         "Ms": 0,   
+         "nalpha": 6,   
+         "nbeta": 6,   
+         "nvirt_alpha": 22,   
+         "nvirt_beta": 22,   
+         "nsym": 9,   
+         "sym0": 8,   
+         "sym_max": 17,   
+         "nsym_tot": 26,   
+         "sym0_tot": 0,   
+         "sym_max_tot": 25,   
+         "symmetry": 2147483647,   
+         "tot_sym": false,   
+         "aufbau_sym": true,   
+         "max_number_excitations": 12,   
+         "read_in": {
+             "int_file":  "INTDUMP",   
+             "uhf": false,   
+             "Ecore": 9.52518979,   
+             "CAS": [ -1, -1],
+             "useLz": true,   
+             "complex": false    
+         }
+     },
+     "mp1": {
+         "D0_norm": 2000.00000000,   
+         "state_size": -500,   
+         "real_amplitudes": true,   
+         "spawn_cutoff": 0.01000000,   
+         "seed": 12345    
+     },
+     "reference": {
+         "det": [ 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12],
+         "H00": -75.16785102,   
+         "F0": 0.00000000,   
+         "hilbert_space_det": [ 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12],
+         "ex_level": 2    
+     }
+ }
+ -- End JSON block --
+
+ Deterministic MP2 correlation energy: -3.5945020759E-01
+
+
+ Reference determinant and so symmetry sector selected using the Aufbau principle.
+ Selected symmetry 12.
+
+ CCMC
+ ----
+
+ Memory allocated per core for spawned walker lists (MB):    500.00
+ Number of elements per core in spawned walker list: 15625000
+
+ # Starting the excitation generator initialisation.
+ # Starting the heat bath excitation generator initialisation.
+ # Finishing the heat bath excitation generator initialisation, time taken:  2.2522997856E-01
+ # Finishing the excitation generator initialisation, time taken:  2.2544500232E-01
+ -- Start JSON block --
+ {
+     "system": {
+         "nbasis": 56,   
+         "nel": 12,   
+         "nvirt": 44,   
+         "Ms": 0,   
+         "nalpha": 6,   
+         "nbeta": 6,   
+         "nvirt_alpha": 22,   
+         "nvirt_beta": 22,   
+         "nsym": 9,   
+         "sym0": 8,   
+         "sym_max": 17,   
+         "nsym_tot": 26,   
+         "sym0_tot": 0,   
+         "sym_max_tot": 25,   
+         "symmetry": 12,   
+         "tot_sym": false,   
+         "aufbau_sym": true,   
+         "max_number_excitations": 12,   
+         "read_in": {
+             "int_file":  "INTDUMP",   
+             "uhf": false,   
+             "Ecore": 9.52518979,   
+             "CAS": [ -1, -1],
+             "useLz": true,   
+             "complex": false    
+         }
+     },
+     "qmc": {
+         "rng_seed": 12345,   
+         "real_amplitudes": true,   
+         "real_amplitude_force_32": false,   
+         "spawn_cutoff": 0.01000000,   
+         "excit_gen":  "heat_bath",   
+         "pattempt_update": false,   
+         "pattempt_zero_accum_data": false,   
+         "pattempt_single": 0.01450326,   
+         "pattempt_double": 0.98549674,   
+         "pattempt_parallel": -2.59614860E+035,   
+         "tau": 0.01000000,   
+         "tau_search": false,   
+         "vary_shift_from": 0.00000000,   
+         "vary_shift_from_proje": true,   
+         "vary_shift": false,   
+         "initial_shift": 0.00000000,   
+         "shift_damping": 0.01000000,   
+         "shift_harmonic_forcing": 0.00000000,   
+         "shift_harmonic_crit_damp": false,   
+         "walker_length": -500,   
+         "spawned_walker_length": -500,   
+         "D0_population": 2000.00000000,   
+         "target_particles": 5000000.00000000,   
+         "target_reference": false,   
+         "initiator_approx": false,   
+         "initiator_pop": 3.00000000,   
+         "ncycles": 1,   
+         "nreport": 100,   
+         "power_pitzer_min_weight": 0.01000000,   
+         "quasi_newton": true,   
+         "quasi_newton_threshold": 0.27170795,   
+         "quasi_newton_value": 0.27170795,   
+         "quasi_newton_pop_control": 3.68042228,   
+         "use_mpi_barriers": false    
+     },
+     "ccmc": {
+         "move_freq": 5,   
+         "cluster_multispawn_threshold": 5.00000000,   
+         "full_nc": true,   
+         "linked": false,   
+         "vary_shift_reference": false,   
+         "density_matrices": false,   
+         "density_matrix_file":  "RDM",   
+         "even_selection": false,   
+         "mr_read_in": true,   
+         "n_secondary_ref": 4899,   
+         "mr_acceptance_search": 1,   
+         "multiref": true    
+     },
+     "semi_stoch": {
+         "start_iter": 1,   
+         "shift_iter": -1,   
+         "space_type":  "none",   
+         "target_size": 0,   
+         "write_determ_space": false,   
+         "projection_mode":  "separate",   
+         "read_id": 2147483647,   
+         "write_id": 2147483647,   
+         "ci_space": {
+             "ex_level": -1    
+         }
+     },
+     "restart": {
+         "read_restart": false,   
+         "read_id": 2147483647,   
+         "write_restart": false,   
+         "write_id": 2147483647,   
+         "write_freq": 2147483647,   
+         "write_restart_shift": false,   
+         "write_shift_id": 2147483647,   
+         "restart_rng": true    
+     },
+     "reference": {
+         "det": [ 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12],
+         "det_ms": 0,   
+         "det_symmetry": 12,   
+         "H00": -75.16785102,   
+         "F0": -50.27508106,   
+         "hilbert_space_det": [ 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12],
+         "hilbert_space_det_ms": 0,   
+         "hilbert_space_det_symmetry": 12,   
+         "ex_level": 2    
+     },
+     "blocking": {
+         "blocking_on_the_fly": false,   
+         "start_save_frequency": -1,   
+         "start_point_number": -1,   
+         "filename":  "BLOCKING",   
+         "start_point": -1,   
+         "error_limit": 0.00000000,   
+         "blocks_used": 2147483647,   
+         "min_blocks_used": 10,   
+         "auto_shift_damping": false,   
+         "shift_damping_precision": 2.00000000,   
+         "force_shift_damping_opt": false    
+     },
+     "logging_in": {
+         "calc": 0,   
+         "calc_file":  "CALC",   
+         "spawn": 0,   
+         "spawn_file":  "SPAWN",   
+         "death": 0,   
+         "death_file":  "DEATH",   
+         "start_iter": 0,   
+         "end_iter": 9223372036854775807    
+     },
+     "logging": {
+         "write_highlevel_values": false,   
+         "calc_unit": 2147483647,   
+         "write_successful_spawn": false,   
+         "write_failed_spawn": false,   
+         "spawn_unit": 2147483647,   
+         "write_successful_death": false,   
+         "write_failed_death": false,   
+         "death_unit": 2147483647    
+     }
+ }
+ -- End JSON block --
+
+ Information printed out every QMC report loop:
+
+ Shift: the energy offset calculated at the end of the report loop.
+ H_0j: <D_0|H|D_j>, Hamiltonian matrix element.
+ N_j: population of Hamiltonian particles on determinant D_j.
+ # H psips: current total population of Hamiltonian particles.
+ # states: number of many-particle states occupied.
+ spawn_events: number of successful spawning events across all processors.
+ R_spawn: average rate of spawning across all processors.
+ time: average time per Monte Carlo cycle.
+
+ Note that all particle populations are averaged over the report loop.
+
+ #     iterations   Shift                 \sum H_0j N_j         N_0                   # H psips                  # states  # spawn_events      # attempts   R_spawn    time    
+ #              0   0.0000000000E+00     -1.1923419179E+03      2.0000000000E+03      2.4488652376E+04               1742               0            2000    0.0000    0.0000  
+                1   0.0000000000E+00     -1.8106682960E+03      1.2221541905E+04      3.1185657973E+04               7548           30874           52980    0.2715    0.1511  
+                2   0.0000000000E+00     -4.0240146758E+02      7.9967242177E+03      3.2100026447E+04               8103           19575           78367    0.3294    0.0465  
+                3   0.0000000000E+00     -4.2723819920E+02      8.0061936613E+03      3.2976584234E+04               8643           20185           80213    0.3354    0.0467  
+                4   0.0000000000E+00     -4.5221719852E+02      8.0306984190E+03      3.3895910677E+04               9212           20135           82018    0.3287    0.0619  
+                5   0.0000000000E+00     -4.7866954744E+02      8.0475632798E+03      3.4800293035E+04               9745           20594           83890    0.3307    0.0568  
+                6   0.0000000000E+00     -5.0517109564E+02      8.0618998800E+03      3.5758248585E+04              10327           20675           85727    0.3263    0.0762  
+                7   0.0000000000E+00     -5.2999427695E+02      8.0803753810E+03      3.6639275407E+04              10872           21039           87678    0.3271    0.0512  
+                8   0.0000000000E+00     -5.5440493453E+02      8.0948718228E+03      3.7648841073E+04              11473           21414           89471    0.3270    0.0540  
+                9   0.0000000000E+00     -5.8116679981E+02      8.1135356267E+03      3.8666295300E+04              12083           21617           91528    0.3251    0.0539  
+               10   0.0000000000E+00     -6.0681599778E+02      8.1279703012E+03      3.9713433614E+04              12725           21851           93591    0.3233    0.0534  
+               11   0.0000000000E+00     -6.3099799351E+02      8.1378690405E+03      4.0829452974E+04              13362           22085           95706    0.3200    0.0583  
+               12   0.0000000000E+00     -6.5713399873E+02      8.1810997154E+03      4.1885701451E+04              13990           22237           98023    0.3168    0.0553  
+               13   0.0000000000E+00     -6.8142649115E+02      8.1968652938E+03      4.2967779802E+04              14629           22787          100168    0.3189    0.0561  
+               14   0.0000000000E+00     -7.0469521098E+02      8.2054813897E+03      4.4073793523E+04              15266           22769          102346    0.3132    0.0599  
+               15   0.0000000000E+00     -7.3112554770E+02      8.2300892176E+03      4.5209314462E+04              15935           23099          104609    0.3122    0.0635  
+               16   0.0000000000E+00     -7.5610018775E+02      8.2522945988E+03      4.6393234653E+04              16639           23414          106924    0.3117    0.0717  
+               17   0.0000000000E+00     -7.8025955344E+02      8.2733158087E+03      4.7566156072E+04              17289           23739          109334    0.3047    0.0691  
+               18   0.0000000000E+00     -8.0419514651E+02      8.3060802463E+03      4.8790709158E+04              17988           24410          111746    0.3079    0.0723  
+               19   0.0000000000E+00     -8.3003887196E+02      8.3349020816E+03      5.0055463019E+04              18721           24758          114253    0.3059    0.0768  
+               20   0.0000000000E+00     -8.5428171817E+02      8.3773561917E+03      5.1294321730E+04              19418           24961          116867    0.3033    0.0794  
+               21   0.0000000000E+00     -8.7888508240E+02      8.4119842035E+03      5.2564263523E+04              20114           25545          119415    0.3035    0.0830  
+               22   0.0000000000E+00     -9.0499457288E+02      8.4368754259E+03      5.3984037188E+04              20941           25930          122004    0.2986    0.0838  
+               23   0.0000000000E+00     -9.3214499753E+02      8.4744212792E+03      5.5401352461E+04              21714           26438          124917    0.2943    0.0890  
+               24   0.0000000000E+00     -9.5779008904E+02      8.4928135300E+03      5.6827774103E+04              22455           26605          127791    0.2873    0.0888  
+               25   0.0000000000E+00     -9.8300364822E+02      8.5384481760E+03      5.8281504625E+04              23228           27072          130733    0.2857    0.0997  
+               26   0.0000000000E+00     -1.0097527895E+03      8.5648337601E+03      5.9798560695E+04              24031           27684          133695    0.2865    0.1009  
+               27   0.0000000000E+00     -1.0357344250E+03      8.6115137863E+03      6.1371765952E+04              24890           27891          136823    0.2817    0.0963  
+               28   0.0000000000E+00     -1.0616953307E+03      8.6577600253E+03      6.2993653982E+04              25760           28295          140062    0.2791    0.1002  
+               29   0.0000000000E+00     -1.0880091246E+03      8.6951162079E+03      6.4656930160E+04              26643           29034          143379    0.2818    0.1004  
+               30   0.0000000000E+00     -1.1135441896E+03      8.7363863420E+03      6.6419384646E+04              27557           29272          146787    0.2785    0.1064  
+               31   0.0000000000E+00     -1.1387832731E+03      8.7809203221E+03      6.8202365701E+04              28488           29728          150403    0.2782    0.1069  
+               32   0.0000000000E+00     -1.1640832390E+03      8.8173481845E+03      6.9982232612E+04              29393           30305          154039    0.2764    0.1490  
+               33   0.0000000000E+00     -1.1908215148E+03      8.8547172331E+03      7.1826156913E+04              30342           30863          157677    0.2767    0.1122  
+               34   0.0000000000E+00     -1.2158241273E+03      8.8878564459E+03      7.3740166014E+04              31329           31276          161430    0.2743    0.1413  
+               35   0.0000000000E+00     -1.2408274523E+03      8.9272571611E+03      7.5629670521E+04              32284           31572          165335    0.2717    0.1216  
+               36   0.0000000000E+00     -1.2661116793E+03      8.9844014034E+03      7.7544526662E+04              33222           32321          169229    0.2727    0.1165  
+               37   0.0000000000E+00     -1.2928846427E+03      9.0356014848E+03      7.9547966202E+04              34245           32957          173164    0.2725    0.1187  
+               38   0.0000000000E+00     -1.3183772608E+03      9.0682910631E+03      8.1576528963E+04              35230           33045          177234    0.2673    0.1222  
+               39   0.0000000000E+00     -1.3483880687E+03      9.1199968013E+03      8.3667093091E+04              36238           34143          181396    0.2710    0.1194  
+               40   0.0000000000E+00     -1.3755286934E+03      9.1854167145E+03      8.5703932486E+04              37213           34691          185705    0.2686    0.1257  
+               41   0.0000000000E+00     -1.4045362665E+03      9.2368023255E+03      8.7910392000E+04              38290           35258          189884    0.2673    0.1254  
+               42   0.0000000000E+00     -1.4327360044E+03      9.3008214142E+03      9.0111502337E+04              39366           35459          194425    0.2643    0.1256  
+               43   0.0000000000E+00     -1.4607124538E+03      9.3437726051E+03      9.2333647602E+04              40475           36164          198913    0.2640    0.1336  
+               44   0.0000000000E+00     -1.4882334026E+03      9.3865628208E+03      9.4531116668E+04              41553           36810          203445    0.2638    0.1415  
+               45   0.0000000000E+00     -1.5134318975E+03      9.4560093926E+03      9.6959757607E+04              42768           37306          207977    0.2617    0.1376  
+               46   0.0000000000E+00     -1.5404977882E+03      9.5064772320E+03      9.9324610006E+04              43893           37833          212932    0.2597    0.1410  
+               47   0.0000000000E+00     -1.5670820453E+03      9.5639494862E+03      1.0185744595E+05              45159           39130          217780    0.2583    0.1499  
+               48   0.0000000000E+00     -1.5971711660E+03      9.6150550800E+03      1.0421545827E+05              46285           39690          222947    0.2534    0.1528  
+               49   0.0000000000E+00     -1.6235928731E+03      9.6818340733E+03      1.0675874601E+05              47541           40655          227798    0.2538    0.1546  
+               50   0.0000000000E+00     -1.6526875540E+03      9.7586570684E+03      1.0924323143E+05              48783           41215          233038    0.2523    0.1560  
+               51   0.0000000000E+00     -1.6787623959E+03      9.8091957705E+03      1.1173005394E+05              49997           41774          238106    0.2510    0.1624  
+               52   0.0000000000E+00     -1.7070550578E+03      9.8380266005E+03      1.1443526664E+05              51289           42878          243138    0.2528    0.1724  
+               53   0.0000000000E+00     -1.7389049746E+03      9.9010383902E+03      1.1707204615E+05              52582           43437          248675    0.2499    0.1751  
+               54   0.0000000000E+00     -1.7646637326E+03      9.9692238162E+03      1.1983517858E+05              53881           43992          254084    0.2463    0.1766  
+               55   0.0000000000E+00     -1.7957019370E+03      1.0051181779E+04      1.2262746870E+05              55228           44832          259775    0.2439    0.1808  
+               56   0.0000000000E+00     -1.8262189495E+03      1.0118920654E+04      1.2558246634E+05              56644           45655          265495    0.2434    0.1867  
+               57   0.0000000000E+00     -1.8606681796E+03      1.0179230686E+04      1.2852526623E+05              58002           46552          271524    0.2425    0.1957  
+               58   0.0000000000E+00     -1.8970009235E+03      1.0247726092E+04      1.3154932003E+05              59506           47463          277548    0.2432    0.2051  
+               59   0.0000000000E+00     -1.9293003899E+03      1.0318740707E+04      1.3444686804E+05              60903           47814          283739    0.2400    0.2365  
+               60   0.0000000000E+00     -1.9591828467E+03      1.0411018820E+04      1.3737667602E+05              62208           49182          289717    0.2412    0.2263  
+               61   0.0000000000E+00     -1.9916142896E+03      1.0494592494E+04      1.4050374486E+05              63758           49739          295747    0.2397    0.2828  
+               62   0.0000000000E+00     -2.0236167531E+03      1.0558987083E+04      1.4358239884E+05              65234           50362          302128    0.2380    0.2189  
+               63   0.0000000000E+00     -2.0543043725E+03      1.0654544249E+04      1.4656577246E+05              66634           51254          308478    0.2378    0.2239  
+               64   0.0000000000E+00     -2.0865520830E+03      1.0712458095E+04      1.4980585486E+05              68121           51907          314557    0.2366    0.2222  
+               65   0.0000000000E+00     -2.1202429082E+03      1.0795591273E+04      1.5305811205E+05              69610           53193          321205    0.2384    0.2655  
+               66   0.0000000000E+00     -2.1510937957E+03      1.0857728684E+04      1.5628685186E+05              71095           53737          327835    0.2353    0.2286  
+               67   0.0000000000E+00     -2.1815201698E+03      1.0930352687E+04      1.5977212799E+05              72761           54853          334435    0.2370    0.2414  
+               68   0.0000000000E+00     -2.2189696941E+03      1.1000596704E+04      1.6313960953E+05              74307           55551          341550    0.2340    0.2428  
+               69   0.0000000000E+00     -2.2483935302E+03      1.1097002313E+04      1.6668106925E+05              75942           56697          348475    0.2348    0.2506  
+               70   0.0000000000E+00     -2.2807888652E+03      1.1194290161E+04      1.7021157314E+05              77562           57969          355752    0.2332    0.2596  
+               71   0.0000000000E+00     -2.3184812760E+03      1.1271973774E+04      1.7366799223E+05              79124           58435          362969    0.2294    0.2615  
+               72   0.0000000000E+00     -2.3520979962E+03      1.1352844477E+04      1.7737689703E+05              80834           59914          370044    0.2317    0.2765  
+               73   0.0000000000E+00     -2.3888495375E+03      1.1454556939E+04      1.8103121454E+05              82557           61051          377667    0.2297    0.2724  
+               74   0.0000000000E+00     -2.4223503121E+03      1.1507728795E+04      1.8475078002E+05              84227           61940          385082    0.2265    0.2878  
+               75   0.0000000000E+00     -2.4588312803E+03      1.1595178558E+04      1.8858729240E+05              85909           63104          392693    0.2282    0.2913  
+               76   0.0000000000E+00     -2.4965007113E+03      1.1702300568E+04      1.9239098605E+05              87616           64044          400580    0.2271    0.3221  
+               77   0.0000000000E+00     -2.5320499927E+03      1.1778943760E+04      1.9619289974E+05              89272           65001          408342    0.2261    0.3162  
+               78   0.0000000000E+00     -2.5725168448E+03      1.1847250939E+04      2.0013334724E+05              90987           66095          416081    0.2262    0.3322  
+               79   0.0000000000E+00     -2.6127705563E+03      1.1939785441E+04      2.0410015263E+05              92752           67264          424150    0.2268    0.3661  
+               80   0.0000000000E+00     -2.6504710202E+03      1.2020775746E+04      2.0809336294E+05              94452           68164          432246    0.2237    0.3411  
+               81   0.0000000000E+00     -2.6876586504E+03      1.2125775560E+04      2.1212338368E+05              96228           69415          440441    0.2213    0.3761  
+               82   0.0000000000E+00     -2.7235056882E+03      1.2210065863E+04      2.1644216070E+05              98115           70927          448668    0.2213    0.3632  
+               83   0.0000000000E+00     -2.7660855496E+03      1.2305181674E+04      2.2085982048E+05              99994           71769          457496    0.2207    0.3543  
+               84   0.0000000000E+00     -2.8062099672E+03      1.2411111312E+04      2.2517703900E+05             101787           72518          466543    0.2205    0.3590  
+               85   0.0000000000E+00     -2.8466480833E+03      1.2530034795E+04      2.2954154938E+05             103677           74018          475415    0.2184    0.3672  
+               86   0.0000000000E+00     -2.8835819898E+03      1.2624712404E+04      2.3401750016E+05             105606           75413          484336    0.2196    0.3531  
+               87   0.0000000000E+00     -2.9225661430E+03      1.2719007460E+04      2.3859382510E+05             107616           76406          493475    0.2183    0.3492  
+               88   0.0000000000E+00     -2.9650049977E+03      1.2804447644E+04      2.4302432073E+05             109415           77744          502797    0.2185    0.3614  
+               89   0.0000000000E+00     -3.0063656940E+03      1.2935256535E+04      2.4775876145E+05             111387           78752          511920    0.2190    0.5216  
+               90   0.0000000000E+00     -3.0500040199E+03      1.3066117150E+04      2.5229434508E+05             113195           79732          521652    0.2174    0.4969  
+               91   0.0000000000E+00     -3.0920613159E+03      1.3160542586E+04      2.5699946045E+05             115093           80773          530914    0.2154    0.3946  
+               92   0.0000000000E+00     -3.1374114751E+03      1.3251652774E+04      2.6180640706E+05             117023           82084          540506    0.2162    0.3893  
+               93   0.0000000000E+00     -3.1782513724E+03      1.3368454846E+04      2.6660474778E+05             118990           83629          550350    0.2178    0.3942  
+               94   0.0000000000E+00     -3.2239362272E+03      1.3473356346E+04      2.7145299399E+05             120913           84334          560158    0.2153    0.4036  
+               95   0.0000000000E+00     -3.2634847618E+03      1.3614643893E+04      2.7631814126E+05             122801           85850          570139    0.2146    0.4758  
+               96   0.0000000000E+00     -3.3078184515E+03      1.3707072926E+04      2.8132509257E+05             124871           87004          580052    0.2150    0.4389  
+               97   0.0000000000E+00     -3.3522075096E+03      1.3847449424E+04      2.8629326462E+05             126889           88224          590344    0.2135    0.4560  
+               98   0.0000000000E+00     -3.3953310842E+03      1.3996934067E+04      2.9130039500E+05             128880           89914          600582    0.2115    0.4676  
+               99   0.0000000000E+00     -3.4350679173E+03      1.4125315152E+04      2.9640444719E+05             130865           91477          610852    0.2136    0.4987  
+              100   0.0000000000E+00     -3.4786370904E+03      1.4241694792E+04      3.0151658475E+05             132931           92535          621295    0.2122    0.4730  
+
+ Multiple spawning events occurred.
+ Number of multiple spawning events: 897988
+ Mean number of multiple spawning attempts per event:         3.99
+ Largest multiple spawning in a single event: 766
+
+ Load balancing
+ ^^^^^^^^^^^^^^
+
+ The final distribution of walkers and determinants across the processors was:
+
+ Min # of particles on a processor:       7.015149E+04
+ Max # of particles on a processor:       8.620169E+04
+ Mean # of particles on a processor:      7.537915E+04
+
+ Min # of determinants on a processor:   32969
+ Max # of determinants on a processor:   33380
+ Mean # of determinants on a processor:   3.323275E+04
+
+ Min time taken by walker communication:         0.55s
+ Max time taken by walker communication:         3.07s
+ Mean time taken by walker communication:        1.79s
+
+ Timing breakdown
+ ----------------
+
+ Time for each calculation section (seconds):
+
+ Generic system initialisation: .05
+ MP1 initialisation           : .27
+ CCMC calculation             : 20.89
+
+ ================================================================
+ Finished running on 23/05/2022 at 17:42:33
+ Wall time (seconds):                          21.29
+ CPU time (per processor, seconds):            21.21
+ ================================================================
+

@@ -396,8 +396,6 @@ contains
 
         real(p), allocatable :: rdm(:,:)
 
-        integer(i0), allocatable :: pl_states_loc(:,:)
-
         type(blocking_t) :: bl
         integer :: iunit, restart_version_restart
         integer :: date_values(8)
@@ -433,7 +431,7 @@ contains
         call init_qmc(sys, qmc_in, restart_in, load_bal_in, reference_in, io_unit, annihilation_flags, qs, &
                       uuid_restart, restart_version_restart, qmc_state_restart=qmc_state_restart, &
                       regenerate_info=regenerate_info, psip_list_in=psip_list_in)
-        
+
         if (ccmc_in%even_selection .and. regenerate_info) then
             call regenerate_ex_levels_psip_list(sys%basis, qs)
         else if (regenerate_info) then
@@ -451,7 +449,7 @@ contains
                 qs%mr_secref_file = ccmc_in%mr_secref_file
                 qs%mr_n_frozen = ccmc_in%mr_n_frozen
                 qs%mr_excit_lvl = ccmc_in%mr_excit_lvl
-            endif
+            end if
             allocate (qs%secondary_refs(qs%n_secondary_ref))
             call init_secondary_references(sys, ccmc_in%secondary_refs, io_unit, qs)
         else 
@@ -787,9 +785,6 @@ contains
                             if (determ_parent) call set_determ_info_ccmc(iattempt, contrib(it), &
                                                                          ndeterm_found, determ, sys%read_in%comp)
 
-                            !if (qs%propagator%quasi_newton) contrib(it)%cdet%fock_sum = &
-                            !                sum_fock_values_occ_list(sys, qs%propagator%sp_fock, contrib(it)%cdet%occ_list) &
-                            !                - qs%ref%fock_sum
                             if (qs%propagator%quasi_newton) contrib(it)%cdet%fock_sum = &
                                             sum_fock_values_occ_list(sys, qs%propagator%sp_fock, contrib(it)%cdet%occ_list) &
                                             - qs%ref%fock_sum

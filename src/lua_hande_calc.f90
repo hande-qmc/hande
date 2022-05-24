@@ -46,7 +46,6 @@ contains
         type(sys_t), pointer :: sys
         type(fci_in_t) :: fci_in
         type(reference_t) :: ref
-        logical :: davidson
         character(12), parameter :: keys(4) = [character(12) :: 'sys', 'fci', 'davidson', 'reference']
 
         call cpu_time(t1)
@@ -700,16 +699,16 @@ contains
 
     function lua_mp1_mc(L) result(nresult) bind(c)
 
-        ! Run a Monte Carlo calculation to estimate various mean-field energies of a
-        ! system in the canonical ensemble.
+        ! Run a deterministic MP1 wavefunction calculation and produce the 
+        ! exact MP2 energy, and return a stochastically coarse-grained psip_list object.
 
         ! In/Out:
         !    L: lua state (bare C pointer).
 
         ! Lua:
-        ! mp1_mc {
+        ! psip_list = mp1_mc {
         !     sys = sys,
-        !     mp1 {
+        !     mp1 = {
         !           D0_population = nD0,              -- required
         !           state_size = S,                   -- required
         !           real_amplitudes = true/false,
@@ -717,20 +716,24 @@ contains
         !           rng_seed = seed,
         !           even_selection = true/false,
         !     },
+        !     qmc = {...},
+        !     ccmc = {...},
         ! }
 
         use, intrinsic :: iso_c_binding, only: c_ptr, c_int
         use flu_binding, only: flu_State, flu_copyptr
-        use aot_table_module, only: aot_table_top, aot_table_close
+        use aot_table_module, only: aot_table_top, aot_table_close, aot_exists, aot_table_open, aot_get_val
+        use aot_vector_module, only: aot_get_val
 
         use lua_hande_system, only: get_sys_t
         use lua_hande_utils, only: warn_unused_args, register_timing
 
         use system, only: sys_t
-        use qmc_data, only: reference_t, qmc_state_t, particle_t
+        use qmc_data, only: reference_t, qmc_state_t, particle_t, qmc_in_t, ccmc_in_t
         use mp1, only: mp1_in_t, sample_mp1_wfn
-        use logging, only: logging_in_t
         use excitations, only: init_excitations, end_excitations
+
+        use errors, only: warning
 
         integer(c_int) :: nresult
         type(c_ptr), value :: L
@@ -741,13 +744,16 @@ contains
         type(mp1_in_t) :: mp1_in
         type(reference_t) :: ref
 
-        integer :: opts, ierr, rng_seed
+        integer :: opts
         logical :: have_seed
 
-        type(logging_in_t) :: logging_in
         real :: t1, t2
 
         type(particle_t), pointer :: psip_list
+
+        type(qmc_in_t) :: qmc_in
+        type(ccmc_in_t) :: ccmc_in
+        logical :: qmc_exists, ccmc_exists
 
         call cpu_time(t1)
 
@@ -755,10 +761,32 @@ contains
         call get_sys_t(lua_state, sys)
 
         opts = aot_table_top(lua_state)
-        call read_mp1_in(lua_state, opts, mp1_in, rng_seed, have_seed)
+
+        qmc_exists = aot_exists(lua_state, opts, 'qmc')
+        ccmc_exists = aot_exists(lua_state, opts, 'ccmc')
+
+        if (qmc_exists) call read_qmc_in(lua_state, opts, qmc_in)
+        if (ccmc_exists) call read_ccmc_in(lua_state, opts, ccmc_in, sys)
+        call read_mp1_in(lua_state, opts, mp1_in, have_seed, qmc_exists)
+
         ref%ex_level = 2
-        !call read_reference_t(lua_state, opts, ref, sys)
-        call read_logging_in_t(lua_state, opts, logging_in)
+
+        if (qmc_exists) then
+            call warning('lua_mp1_mc', &
+                'qmc table provided, overriding D0_normlisation, state_size, real_amplitudes, and rng_seed!')
+            mp1_in%D0_norm = qmc_in%D0_population
+            mp1_in%state_size = qmc_in%walker_length
+            mp1_in%real_amplitudes = qmc_in%real_amplitudes
+            ! Calling read_qmc_in fetches the seed provided in lua, or else generates a random seed
+            mp1_in%seed = qmc_in%seed
+            have_seed = .true.
+            mp1_in%spawn_cutoff = qmc_in%spawn_cutoff
+        end if
+
+        if (ccmc_exists) then
+            mp1_in%even_selection = ccmc_in%even_selection
+        end if
+
         call aot_table_close(lua_state, opts)
 
         if (mp1_in%even_selection) then
@@ -772,9 +800,9 @@ contains
         allocate(psip_list)
 
         if (have_seed) then
-            call sample_mp1_wfn(sys, mp1_in, ref, logging_in, psip_list, rng_seed)
+            call sample_mp1_wfn(sys, mp1_in, ref, psip_list, mp1_in%seed)
         else
-            call sample_mp1_wfn(sys, mp1_in, ref, logging_in, psip_list)
+            call sample_mp1_wfn(sys, mp1_in, ref, psip_list)
         end if
 
         call push_psip_list(lua_state, psip_list)
@@ -1000,7 +1028,7 @@ contains
 
     end subroutine read_canonical_args
 
-    subroutine read_mp1_in(lua_state, opts, mp1_in, rng_seed, have_seed)
+    subroutine read_mp1_in(lua_state, opts, mp1_in, have_seed, qmc_exists)
 
         ! mp1 = {
         !     D0_population = nD0,              -- required
@@ -1010,6 +1038,15 @@ contains
         !     rng_seed = seed,
         !     even_selection = true/false,
         ! }
+        ! In:
+        !   opts: handle to the table which is input to the Lua canonical_estimates
+        !        routine.
+        !   qmc_exists: whether a qmc table is passed into mp1_mc. If yes, some options will be overwritten with those
+        !        in the qmc table.
+        ! In/Out:
+        !   lua_state: flu/Lua state to which the HANDE API is added.
+        ! Out:
+        !   mp1_in: mp1_in_t object containing mp1 options.
 
         use flu_binding, only: flu_State
         use aot_table_module, only: aot_get_val, aot_exists, aot_table_open, aot_table_close
@@ -1022,30 +1059,36 @@ contains
         type(flu_State), intent(inout) :: lua_state
         integer, intent(in) :: opts
         type(mp1_in_t), intent(out) :: mp1_in
-        integer, intent(out) :: rng_seed
         logical, intent(out) :: have_seed
+        logical, intent(in) :: qmc_exists
 
         integer :: mp1_table, err
         character(15), parameter :: keys(6) = [character(15) :: 'D0_population', 'state_size', &
                                                                 'real_amplitudes', 'spawn_cutoff', 'rng_seed','even_selection']
 
-        if (.not. aot_exists(lua_state, opts, 'mp1') .and. parent) call stop_all('read_mp1_args', '"mp1" table not present.')
-        call aot_table_open(lua_state, opts, mp1_table, 'mp1')
+        if (.not. aot_exists(lua_state, opts, 'mp1') .and. .not. qmc_exists) then
+            if (parent) call stop_all('read_mp1_args', '"mp1" table not present.')
+        end if
 
-        call aot_get_val(mp1_in%D0_norm, err, lua_state, mp1_table, 'D0_population')
-        if (err /= 0 .and. parent) call stop_all('read_mp1_args', 'D0_population: Internal normalisation not supplied.')
-        call aot_get_val(mp1_in%state_size, err, lua_state, mp1_table, 'state_size')
-        if (err /= 0 .and. parent) call stop_all('read_mp1_args', 'state_size not set.')
+        if (aot_exists(lua_state, opts, 'mp1')) then
+            call aot_table_open(lua_state, opts, mp1_table, 'mp1')
 
-        call aot_get_val(mp1_in%real_amplitudes, err, lua_state, mp1_table, 'real_amplitudes')
-        call aot_get_val(mp1_in%spawn_cutoff, err, lua_state, mp1_table, 'spawn_cutoff')
-        call aot_get_val(mp1_in%even_selection, err, lua_state, mp1_table, 'even_selection')
+            call aot_get_val(mp1_in%D0_norm, err, lua_state, mp1_table, 'D0_population')
+            if (err /= 0 .and. parent .and. .not. qmc_exists) &
+                call stop_all('read_mp1_args', 'D0_population: Internal normalisation not supplied.')
+            call aot_get_val(mp1_in%state_size, err, lua_state, mp1_table, 'state_size')
+            if (err /= 0 .and. parent .and. .not. qmc_exists) call stop_all('read_mp1_args', 'state_size not set.')
 
-        have_seed = aot_exists(lua_state, mp1_table, 'rng_seed')
-        call aot_get_val(rng_seed, err, lua_state, mp1_table, 'rng_seed')
+            call aot_get_val(mp1_in%real_amplitudes, err, lua_state, mp1_table, 'real_amplitudes')
+            call aot_get_val(mp1_in%spawn_cutoff, err, lua_state, mp1_table, 'spawn_cutoff')
+            call aot_get_val(mp1_in%even_selection, err, lua_state, mp1_table, 'even_selection')
 
-        call warn_unused_args(lua_state, keys, mp1_table)
-        call aot_table_close(lua_state, mp1_table)
+            have_seed = aot_exists(lua_state, mp1_table, 'rng_seed')
+            if (have_seed) call aot_get_val(mp1_in%seed, err, lua_state, mp1_table, 'rng_seed')
+
+            call warn_unused_args(lua_state, keys, mp1_table)
+            call aot_table_close(lua_state, mp1_table)
+        end if
 
     end subroutine read_mp1_in
 
@@ -1518,6 +1561,7 @@ contains
         ! Out:
         !    ccmc_in: ccmc_in_t object containing ccmc-specific input options.
 
+        use, intrinsic :: iso_fortran_env, only: iostat_end
         use flu_binding, only: flu_State
         use aot_table_module, only: aot_get_val, aot_exists, aot_table_open, aot_table_close
 
@@ -1531,7 +1575,7 @@ contains
         type (sys_t), intent(in) :: sys
         type(ccmc_in_t), intent(out) :: ccmc_in
 
-        integer :: ccmc_table, err, i
+        integer :: ccmc_table, err, i, ir, ios
         character(28), parameter :: keys(15) = [character(28) :: 'move_frequency', 'cluster_multispawn_threshold', &
                                                                 'full_non_composite', 'linked', 'vary_shift_reference', &
                                                                 'density_matrices', 'density_matrix_file', 'even_selection', &
@@ -1543,6 +1587,7 @@ contains
         character(23), dimension(:), allocatable :: secondary_ref_keys
         character(28), dimension(:), allocatable :: keys_concat
         character(10) :: str
+        logical :: secref_exist
 
         if (aot_exists(lua_state, opts, 'ccmc')) then
 
@@ -1559,16 +1604,43 @@ contains
             call aot_get_val(ccmc_in%even_selection, err, lua_state, ccmc_table, 'even_selection')
             call aot_get_val(ccmc_in%multiref, err, lua_state, ccmc_table, 'multiref')
             if (ccmc_in%multiref) then
+                call aot_get_val(ccmc_in%mr_read_in, err, lua_state, ccmc_table, 'mr_read_in')
+
                 call aot_get_val(ccmc_in%n_secondary_ref, err, lua_state, ccmc_table, 'n_secondary_ref')
-                if (ccmc_in%n_secondary_ref == 0) then
+                if (ccmc_in%n_secondary_ref == 0 .and. .not. ccmc_in%mr_read_in) then
                     call stop_all('read_ccmc_in', 'Number of secondary references unspecified.') 
                 end if
+
+                if (ccmc_in%mr_read_in) then
+                    call aot_get_val(ccmc_in%mr_secref_file, err, lua_state, ccmc_table, 'mr_secref_file')
+                    if (err.ne.0) then
+                        call stop_all('read_ccmc_in','mr_read_in set but mr_secref_file unset.')
+                    end if
+                    inquire(file=ccmc_in%mr_secref_file, exist=secref_exist)
+                    if (.not. secref_exist) call stop_all('read_ccmc_in','mr_secref_file not found!')
+
+                    ! Find out how many secondary references are in the file
+                    open(newunit=ir, file=ccmc_in%mr_secref_file, status='old', form='formatted', action='read')
+                    ccmc_in%n_secondary_ref = 0
+                    do
+                        read(ir, *, iostat=ios)
+                        if (ios==iostat_end) exit
+                        ccmc_in%n_secondary_ref = ccmc_in%n_secondary_ref + 1
+                    end do
+                    close(ir)
+
+                    call aot_get_val(ccmc_in%mr_n_frozen, err, lua_state, ccmc_table, 'mr_n_frozen')
+                    call aot_get_val(ccmc_in%mr_excit_lvl, err, lua_state, ccmc_table, 'mr_excit_lvl')
+                    if (ccmc_in%mr_excit_lvl.eq.-1) then
+                        call stop_all('read_ccmc_in','mr_read_in set but mr_excit_lvl unset.')
+                    endif
+                    keys_concat = keys
+                end if
+
                 allocate(secondary_ref_keys(ccmc_in%n_secondary_ref))
-                allocate(ccmc_in%secondary_refs(ccmc_in%n_secondary_ref))
 
-                call aot_get_val(ccmc_in%mr_read_in, err, lua_state, ccmc_table, 'mr_read_in')  
-
-                if (.not.ccmc_in%mr_read_in) then
+                if (.not. ccmc_in%mr_read_in) then
+                    allocate(ccmc_in%secondary_refs(ccmc_in%n_secondary_ref))
                     do i = 1, ccmc_in%n_secondary_ref
                         ! I0 makes sure there are no whitespaces around the number string
                         write (string, '(A13,I0)') 'secondary_ref', i ! up to 2.15E9 secondary references can be provided      
@@ -1583,18 +1655,7 @@ contains
                              secondary_ref_keys(i) = trim(string)
                     end do
                     keys_concat = [keys,secondary_ref_keys]
-                else
-                    call aot_get_val(ccmc_in%mr_secref_file, err, lua_state, ccmc_table, 'mr_secref_file')
-                    if (err.ne.0) then
-                        call stop_all('read_ccmc_in','mr_read_in set but mr_secref_file unset.')
-                    endif
-                    call aot_get_val(ccmc_in%mr_n_frozen, err, lua_state, ccmc_table, 'mr_n_frozen')
-                    call aot_get_val(ccmc_in%mr_excit_lvl, err, lua_state, ccmc_table, 'mr_excit_lvl')
-                    if (ccmc_in%mr_excit_lvl.eq.-1) then
-                        call stop_all('read_ccmc_in','mr_read_in set but mr_excit_lvl unset.')
-                    endif
-                    keys_concat = keys
-                endif
+                end if
 
                 call aot_get_val(str, err, lua_state, ccmc_table, 'mr_acceptance_search')
                 select case (str)
