@@ -287,6 +287,10 @@ type fciqmc_in_t
     ! Filename to write density matrix to
     character(255) :: density_matrix_file = 'RDM'
 
+    ! Controls the report when we begin accumulating reduced
+    ! density matrix statistics
+    integer :: density_matrix_report = 3000
+
 end type fciqmc_in_t
 
 type semi_stoch_in_t

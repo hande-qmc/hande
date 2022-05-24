@@ -1330,6 +1330,7 @@ contains
         !     replica_tricks = true/false,
         !     density_matrices = true/false,
         !     density_matrix_file = filename,
+        !     density_matrix_report = report,
         ! }
 
         ! In/Out:
@@ -1354,10 +1355,11 @@ contains
         integer :: fciqmc_table, ref_det, err
         character(len=12) :: str
         logical :: ref_det_flag
-        character(31), parameter :: keys(10) = [character(31) :: 'non_blocking_comm', 'load_balancing', 'guiding_function', &
+        character(31), parameter :: keys(11) = [character(31) :: 'non_blocking_comm', 'load_balancing', 'guiding_function', &
                                                                  'init_spin_inverse_reference_det', 'trial_function', &
                                                                  'select_reference_det', 'quadrature_initiator', &
-                                                                 'replica_tricks', 'density_matrices', 'density_matrix_file']
+                                                                 'replica_tricks', 'density_matrices', 'density_matrix_file', &
+                                                                 'density_matrix_report']
 
         if (aot_exists(lua_state, opts, 'fciqmc')) then
 
@@ -1371,6 +1373,7 @@ contains
             call aot_get_val(fciqmc_in%replica_tricks, err, lua_state, fciqmc_table, 'replica_tricks')
             call aot_get_val(fciqmc_in%density_matrices, err, lua_state, fciqmc_table, 'density_matrices')
             call aot_get_val(fciqmc_in%density_matrix_file, err, lua_state, fciqmc_table, 'density_matrix_file')
+            call aot_get_val(fciqmc_in%density_matrix_report, err, lua_state, fciqmc_table, 'density_matrix_report')
 
             ! If the user has asked to calculate an RDM, then replica_tricks
             ! *must* be on.

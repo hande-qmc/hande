@@ -259,7 +259,7 @@ contains
         if (fciqmc_in%non_blocking_comm) then
             call init_non_blocking_comm(qs, req_data_s, send_counts, qmc_in%ncycles, restart_in%read_restart, restart_proj_est)
         else
-            call initial_qmc_status(sys, qmc_in, qs, nparticles_old, .false., io_unit)
+            call initial_qmc_status(sys, qmc_in, qs, nparticles_old, .false., io_unit, rdm_energy=fciqmc_in%density_matrices)
         end if
 
         ! Initialise timer.
@@ -284,7 +284,7 @@ contains
             end if
 
             ! Should we start accumulating the RDM?
-            if (fciqmc_in%density_matrices .and. all(qs%vary_shift) .and. ireport > 3000) then
+            if (fciqmc_in%density_matrices .and. all(qs%vary_shift) .and. ireport > fciqmc_in%density_matrix_report) then
                 accum_rdm = .true.
                 spawner_ptr => spawn_rdm 
             end if
