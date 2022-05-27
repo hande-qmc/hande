@@ -65,9 +65,11 @@ test-gcc:
         - schedules
     artifacts:
         when: always
+        name: "$CI_JOB_NAME-$CI_COMMIT_REF_NAME"
         paths:
-            - test_suite
-        expire_in: never
+            - test_suite/**/test.err*
+            - test_suite/**/test.out*
+        expire_in: 1 week
 
 test-gcc-mpi:
     stage: BUILD AND TEST GCC MPI
@@ -87,9 +89,11 @@ test-gcc-mpi:
         - schedules
     artifacts:
         when: always
+        name: "$CI_JOB_NAME-$CI_COMMIT_REF_NAME"
         paths:
-            - test_suite
-        expire_in: never
+            - test_suite/**/test.err*
+            - test_suite/**/test.out*
+        expire_in: 1 week
 
 test-gcc-mpi-64:
     stage: BUILD AND TEST GCC MPI POP64
@@ -109,9 +113,11 @@ test-gcc-mpi-64:
         - schedules
     artifacts:
         when: always
+        name: "$CI_JOB_NAME-$CI_COMMIT_REF_NAME"
         paths:
-            - test_suite
-        expire_in: never
+            - test_suite/**/test.err*
+            - test_suite/**/test.out*
+        expire_in: 1 week
 
 test-gcc-dbg:
     stage: BUILD AND TEST GCC dbg
@@ -129,9 +135,11 @@ test-gcc-dbg:
         - schedules
     artifacts:
         when: always
+        name: "$CI_JOB_NAME-$CI_COMMIT_REF_NAME"
         paths:
-            - test_suite
-        expire_in: never
+            - test_suite/**/test.err*
+            - test_suite/**/test.out*
+        expire_in: 1 week
 
 test-gcc-mpi-dbg:
     stage: BUILD AND TEST GCC MPI dbg
@@ -151,9 +159,11 @@ test-gcc-mpi-dbg:
         - schedules
     artifacts:
         when: always
+        name: "$CI_JOB_NAME-$CI_COMMIT_REF_NAME"
         paths:
-            - test_suite
-        expire_in: never
+            - test_suite/**/test.err*
+            - test_suite/**/test.out*
+        expire_in: 1 week
 
 test-gcc-mpi-64-dbg:
     stage: BUILD AND TEST GCC MPI POP64 dbg
@@ -173,9 +183,11 @@ test-gcc-mpi-64-dbg:
         - schedules
     artifacts:
         when: always
+        name: "$CI_JOB_NAME-$CI_COMMIT_REF_NAME"
         paths:
-            - test_suite
-        expire_in: never
+            - test_suite/**/test.err*
+            - test_suite/**/test.out*
+        expire_in: 1 week
 
 test-intel:
     stage: BUILD AND TEST INTEL
@@ -194,9 +206,11 @@ test-intel:
         - schedules
     artifacts:
         when: always
+        name: "$CI_JOB_NAME-$CI_COMMIT_REF_NAME"
         paths:
-            - test_suite
-        expire_in: never
+            - test_suite/**/test.err*
+            - test_suite/**/test.out*
+        expire_in: 1 week
 
 test-intel-dbg:
     stage: BUILD AND TEST INTEL dbg
@@ -215,9 +229,11 @@ test-intel-dbg:
         - schedules
     artifacts:
         when: always
+        name: "$CI_JOB_NAME-$CI_COMMIT_REF_NAME"
         paths:
-            - test_suite
-        expire_in: never
+            - test_suite/**/test.err*
+            - test_suite/**/test.out*
+        expire_in: 1 week
 
 test-intel-mpi-pop64:
     stage: BUILD AND TEST INTEL MPI POP64
@@ -238,9 +254,11 @@ test-intel-mpi-pop64:
         - schedules
     artifacts:
         when: always
+        name: "$CI_JOB_NAME-$CI_COMMIT_REF_NAME"
         paths:
-            - test_suite
-        expire_in: never
+            - test_suite/**/test.err*
+            - test_suite/**/test.out*
+        expire_in: 1 week
 
 test-intel-mpi-pop64-dbg:
     stage: BUILD AND TEST INTEL MPI POP64 dbg
@@ -261,9 +279,11 @@ test-intel-mpi-pop64-dbg:
         - schedules
     artifacts:
         when: always
+        name: "$CI_JOB_NAME-$CI_COMMIT_REF_NAME"
         paths:
-            - test_suite
-        expire_in: never
+            - test_suite/**/test.err*
+            - test_suite/**/test.out*
+        expire_in: 1 week
         
 test-intel-mpi:
     stage: BUILD AND TEST INTEL MPI
@@ -284,9 +304,11 @@ test-intel-mpi:
         - schedules
     artifacts:
         when: always
+        name: "$CI_JOB_NAME-$CI_COMMIT_REF_NAME"
         paths:
-            - test_suite
-        expire_in: never
+            - test_suite/**/test.err*
+            - test_suite/**/test.out*
+        expire_in: 1 week
 
 test-intel-mpi-dbg:
     stage: BUILD AND TEST INTEL MPI dbg
@@ -307,9 +329,11 @@ test-intel-mpi-dbg:
         - schedules
     artifacts:
         when: always
+        name: "$CI_JOB_NAME-$CI_COMMIT_REF_NAME"
         paths:
-            - test_suite
-        expire_in: never
+            - test_suite/**/test.err*
+            - test_suite/**/test.out*
+        expire_in: 1 week
 
 test-intel-quick:
     stage: BUILD AND TEST INTEL QUICK
@@ -330,9 +354,11 @@ test-intel-quick:
         - schedules
     artifacts:
         when: always
+        name: "$CI_JOB_NAME-$CI_COMMIT_REF_NAME"
         paths:
-            - test_suite
-        expire_in: never
+            - test_suite/**/test.err*
+            - test_suite/**/test.out*
+        expire_in: 1 week
 
 test-gcc-quick:
     stage: BUILD AND TEST GCC QUICK
@@ -352,9 +378,11 @@ test-gcc-quick:
         - schedules
     artifacts:
         when: always
+        name: "$CI_JOB_NAME-$CI_COMMIT_REF_NAME"
         paths:
-            - test_suite
-        expire_in: never
+            - test_suite/**/test.err*
+            - test_suite/**/test.out*
+        expire_in: 1 week
 
 test-pyhande:
     stage: TEST PYHANDE
