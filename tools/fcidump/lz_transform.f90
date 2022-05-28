@@ -5,23 +5,14 @@ module lz_transform
 
    integer, parameter :: i0 = selected_int_kind(15)
    integer, parameter :: p = selected_real_kind(15,307)
-   real(p), parameter :: depsilon = 1.e-10_p
+   real(p), parameter :: print_thres = 1.e-8_p ! Print integrals with real parts larger than this
+   real(p), parameter :: zero_thres = 1.e-10_p ! Warn about integrals that shouldn't exist when they're larger than this
+   real(p), parameter :: allow_thres = print_thres ! Set the above to zero instead of aborting if they're less than this
    real(p), parameter :: NORM = 1.0_p/sqrt(2.0_p)
 
    integer, parameter :: bignum = 1000
-   integer :: istart(bignum)
 
    contains
-
-      subroutine init_istart()
-         integer :: i
-
-         istart(1) = 0
-         do i = 2, bignum
-            istart(i) = istart(i-1) + i-1
-         end do
-
-      end subroutine init_istart
 
       elemental function eri_ind(i, j) result(ind)
          ! This function can be a general version for i,j,a,b, but 
@@ -31,10 +22,15 @@ module lz_transform
          integer, intent(in) :: i, j
          integer :: ind
 
+         if (i == 0 .or. j == 0) then
+             ind = 0
+             return
+         end if
+
          if (i >= j) then
-            ind = istart(i) + j
+            ind = i*(i-1)/2 + j
          else
-            ind = istart(j) + i
+            ind = j*(j-1)/2 + i
          end if
 
       end function eri_ind
@@ -103,8 +99,6 @@ module lz_transform
 
          write(stdout, *) 'Reading in '//trim(filename)
 
-         call init_istart()
-
          open(newunit=ir, file=trim(filename), status='old', form='formatted')
          ! Read the namelist and advance to the line after the namelist
          read(ir, FCI)
@@ -112,13 +106,15 @@ module lz_transform
          size = NORB*(NORB+1)/2
          size = size*(size+1)/2
 
+         ! If an 0 index is given as any of i,j,k,l, zero is returned
          allocate(tei_store(0:size), source=0.0_p, stat=ierr)
          if (ierr /= 0) then
             write(stderr, *)'Cannot allocate tei_store of size ',size+1,' aborting!'
             stop
          end if
 
-         allocate(oei_store(NORB, NORB), source=0.0_p, stat=ierr)
+         ! If an 0 index is given as any of i,j, zero is returned
+         allocate(oei_store(0:NORB, 0:NORB), source=0.0_p, stat=ierr)
          if (ierr /= 0) then
             write(stderr, *)'Cannot allocate oei_store of size ',NORB**2,' aborting!'
             stop
@@ -240,8 +236,8 @@ module lz_transform
 
                      ! Check for conservation of angular momentum: \iint a*(1)b(1) 1/r12 c*(2)d(2) dr1 dr2
                      ! i.e. <ac|bd>, meaning transition from ac->bd, so Ml(a)+Ml(c) must be equal to Ml(b)+Ml(d)
-                     if (((symlz(i) + symlz(k)) /= (symlz(j)+symlz(l))) .and. (abs(lzintgrl) > depsilon)) then
-                        if (abs(lzintgrl) < 1.e-8_p) then
+                     if (((symlz(i) + symlz(k)) /= (symlz(j)+symlz(l))) .and. (abs(lzintgrl) > zero_thres)) then
+                        if (abs(lzintgrl) < allow_thres) then
                            write(stderr, *) i,j,k,l,' should be zero by conservation of angular momentum, ',&
                               'but has value ',lzintgrl,', which is within machine precision, setting to zero!'
                            lzintgrl = cmplx(0.0_p, 0.0_p)
@@ -253,14 +249,14 @@ module lz_transform
                      end if
 
                      ! Check whether the integral is strictly real
-                     if (abs(aimag(lzintgrl)) > 1.e-8_p) then
+                     if (abs(aimag(lzintgrl)) > allow_thres) then
                         write(stderr, *)i,j,k,l,', like all other integrals, should have zero imaginary part, ',&
                            'but has imaginary part ',aimag(lzintgrl),', which is beyond machine precision, aborting!'
                         stop
                      end if
 
                      ! Print out if larger than threshold
-                     if (abs(real(lzintgrl, kind=p)) > depsilon) then
+                     if (abs(real(lzintgrl, kind=p)) > print_thres) then
                         write(ir, '(1X, ES28.20, 4I4)') real(lzintgrl,kind=p), i, j, k, l
                      end if
                   end do
@@ -280,8 +276,8 @@ module lz_transform
                lzintgrl = lzintgrl + i2c*j2c*oei_store(i2,j2)
 
                ! Check for conservation of angular momentum
-               if ((symlz(i) /= symlz(j)) .and. (abs(lzintgrl) > depsilon)) then
-                  if (abs(lzintgrl) < 1.e-8_p) then
+               if ((symlz(i) /= symlz(j)) .and. (abs(lzintgrl) > zero_thres)) then
+                  if (abs(lzintgrl) < allow_thres) then
                      write(stderr, *) i,j,' should be zero by conservation of angular momentum, ',&
                         'but has value ',lzintgrl,', which is within machine precision, setting to zero!'
                      lzintgrl = cmplx(0.0_p, 0.0_p)
@@ -293,14 +289,14 @@ module lz_transform
                end if
 
                ! Check whether the integral is strictly real
-               if (abs(aimag(lzintgrl)) > 1.e-8_p) then
+               if (abs(aimag(lzintgrl)) > allow_thres) then
                   write(stderr, *) i,j,', like all other integrals, should have zero imaginary part, ',&
                      'but has imaginary part ',aimag(lzintgrl),', which is beyond machine precision, aborting!'
                   stop
                end if
 
                ! Print out if larger than threshold
-               if (abs(real(lzintgrl, kind=p)) > depsilon) then
+               if (abs(real(lzintgrl, kind=p)) > print_thres) then
                   write(ir, '(1X, ES28.20, 4I4)') real(lzintgrl,kind=p), i, j, 0, 0
                end if
             end do

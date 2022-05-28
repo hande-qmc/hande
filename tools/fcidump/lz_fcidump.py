@@ -347,14 +347,16 @@ def make_fcidumps(_mf, _filename):
 
 if __name__ == '__main__':
 
+	molname = 'be2'
+	basis = 'cc-pvtz'
+
 	if not os.path.exists('./lz_transform.x'):
 		raise OSError('lz_transform.x does not exist, please compile lz_transform.f90!')
 
-	#for bl in np.linspace(2,7,11):
-	for bl in [2.5]:
+	for bl in np.linspace(2,7,11):
 
 		# PySCF FCIDUMP name
-		filename = f'be-ccpvdz-{bl:.1f}'
+		filename = f'{molname}-{basis}-{bl:.1f}'
 
 		print('='*30+'\n'+f'Doing {filename}\n'+'='*30)
 
@@ -362,7 +364,7 @@ if __name__ == '__main__':
 		mol = gto.M(atom=f"""
 		Be
 		Be 1 {bl:.1f}""",
-		basis='cc-pvdz', symmetry='Dooh')
+		basis=basis, symmetry='Dooh')
 
 		# Clamp occupancy for better convergence / converging to the same RHF solution across a binding curve
 		# Restarting from previous geometry (ie tracking) works too.
