@@ -348,12 +348,15 @@ def make_fcidumps(_mf, _filename):
 if __name__ == '__main__':
 
 	molname = 'be2'
-	basis = 'cc-pvtz'
+	basis = 'cc-pvqz'
 
 	if not os.path.exists('./lz_transform.x'):
 		raise OSError('lz_transform.x does not exist, please compile lz_transform.f90!')
 
-	for bl in np.linspace(2,7,11):
+	bls = np.concatenate([np.linspace(2,4,21),np.linspace(4.5,8,8)])
+	rhf_energy = np.zeros_like(bls)
+
+	for idx, bl in enumerate(bls):
 
 		# PySCF FCIDUMP name
 		filename = f'{molname}-{basis}-{bl:.1f}'
@@ -371,5 +374,9 @@ if __name__ == '__main__':
 		occ = {'A1g':4,'A1u':4}
 
 		mf = run_pyscf(mol, occ)
+		rhf_energy[idx] = mf.e_tot
 
 		make_fcidumps(mf, filename)
+
+	
+	np.savetxt('rhf-energies.dat', rhf_energy)
