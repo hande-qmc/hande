@@ -432,7 +432,6 @@ info : :func:`collections.namedtuple`
         to_block.append('time')
     if 'uccmc' in md.keys() :#and not(md['uccmc']['trot']):
         to_block.append('N_0 UCCMC')
-    mc_data = calc.ix[indx, to_block]
     mc_data = calc.loc[indx, to_block]
     if mc_data[kShift].iloc[0] == mc_data[kShift].iloc[1]:
         if calc[kShift][~indx].iloc[-1] == mc_data[kShift].iloc[0]:
