@@ -243,6 +243,13 @@ fciqmc options
     The name of the output file that the final 2-RDM is printed to.
     The (normalised, Hermitian part of) the 2-RDM is given in physical notation.
 
+``density_matrix_report``
+    type: int.
+
+    Optional. Default: 3000
+
+    The minimum report cycle the 2-RDM statistics are collected after.
+
 .. _load_bal_table:
 
 load_bal options

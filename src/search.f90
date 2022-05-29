@@ -16,12 +16,18 @@ type node_t
     ! Each of the edges point to another node
     integer(i0), allocatable :: bstring(:)
     type(node_t), pointer :: edges(:) => null()
+    ! We *could* achieve the same by checking allocated(bstring) and associated(edges)
+    ! but these logicals are used to improve readability.
+    logical :: bstring_init = .false.
+    logical :: edge_init = .false.
 end type node_t
 
 type tree_t
     ! For use in BK-tree search of secondary references
     ! A tree stores a pointer to the root node, and some of the constants specific to the system
     type(node_t), pointer :: root => null()
+    ! Likewise, we could check for (associated(root)) but this is used to improve readability.
+    logical :: root_init = .false.
     ! Number of secondary references, allowed excitation from *all* of them (no individual control), 
     ! maximum excitation from ground state
     integer :: n_secondary_ref, ex_lvl, max_excit
@@ -492,35 +498,41 @@ contains
         integer :: excit_lvl
 
         ! Initialises the root node
-        if (.not. associated(this%root)) then
+        if (.not. this%root_init) then
+            this%root_init = .true.
             allocate(this%root)
         end if
         curr_node => this%root
-        if (.not. allocated(curr_node%bstring)) then
+        if (.not. curr_node%bstring_init .and. .not. curr_node%edge_init) then
             ! If the node was initialised but empty, store the bitstring here
-            curr_node%bstring = next_bstring
-        else if (.not. associated(curr_node%edges)) then
+            curr_node%bstring_init = .true.
+            allocate(curr_node%bstring, source=next_bstring)
+        else if (curr_node%bstring_init .and. .not. curr_node%edge_init) then
             ! If the node has a bitstring, compare and allocate edges, and store the bitstring at the end 
             ! of the correct edge
+            curr_node%edge_init = .true.
             excit_lvl = get_excitation_level(curr_node%bstring, next_bstring)
             allocate(curr_node%edges(this%max_excit))
-            curr_node%edges(excit_lvl)%bstring = next_bstring
-        else
+            curr_node%edges(excit_lvl)%bstring_init = .true.
+            allocate(curr_node%edges(excit_lvl)%bstring, source=next_bstring)
+        else if (curr_node%bstring_init .and. curr_node%edge_init) then
             do
                 ! If the node has both a bitstring and allocated edges, that means
                 ! you have a descend another level
 
                 ! This looks redundant but it's not, since the do loop goes on forever
                 ! you'll get to the end of the 'branch' and see a node with unallocated edges
-                if (.not. associated(curr_node%edges)) then
-                  allocate(curr_node%edges(this%max_excit))
+                if (.not. curr_node%edge_init) then
+                    curr_node%edge_init = .true.
+                    allocate(curr_node%edges(this%max_excit))
                 end if
                 parent => curr_node%bstring
                 child => curr_node%edges
                 excit_lvl = get_excitation_level(parent, next_bstring)
                 curr_node => child(excit_lvl)
-                if (.not. allocated(curr_node%bstring)) then
-                    curr_node%bstring = next_bstring
+                if (.not. curr_node%bstring_init) then
+                    curr_node%bstring_init = .true.
+                    allocate(curr_node%bstring, source=next_bstring)
                     exit
                 end if
             end do
@@ -551,11 +563,12 @@ contains
         integer :: excit_lvl, endlvl, startlvl, lvl
         type(node_t), intent(in) :: curr_node
         integer, intent(in), optional :: offset
+
         logical :: hit
         integer :: ex_lvl
 
         excit_lvl = get_excitation_level(curr_node%bstring, new_bstring)
-        
+
         if (.not. present(offset)) then
             ex_lvl = this%ex_lvl
         else
@@ -571,21 +584,26 @@ contains
         ! If not, descend recursively into a subspace of the tree
         startlvl = excit_lvl - ex_lvl
         endlvl = excit_lvl + ex_lvl
-        if (startlvl <= ex_lvl) then
-            ! We already establishedd that this bitstring is not within ex_lvl of the current node
-            startlvl = ex_lvl + 1
+        if (startlvl < 1) then
+            ! We can't exclude the sub-trees with excitation level less than truncation despite establishing 
+            ! above that excit_lvl > ex_lvl. This is because not all nodes in these subtrees are guaranteed to have 
+            ! excitation levels greater than truncation w.r.t. the new bit-string. 
+            ! Let's call new_bstring A, and reference determinant B, and a node in one of these subtrees C,
+            ! We only know that excit_lvl(A,B) > exlvl, and excit_lvl(B,C) <= exlvl, but according the the triangle inequality, 
+            ! excit_lvl(A,C) <= excit_lvl(A,B) + excit_lvl(B,C), which can be lower than exlvl, so we must consider them.
+            startlvl = 1
         end if
         if (endlvl > this%max_excit) then
             endlvl = this%max_excit
         end if
 
         do lvl = startlvl, endlvl
-            if (.not. associated(curr_node%edges)) then
+            if (.not. curr_node%edge_init) then
                 ! reached the bottom, nothing found
                 hit = .false.
                 return
             end if
-            if (.not. allocated(curr_node%edges(lvl)%bstring)) then
+            if (.not. curr_node%edges(lvl)%bstring_init) then
                 ! Empty node, look into the neighbour now
                 continue
             else
@@ -596,18 +614,13 @@ contains
                 else
                     hit = tree_search(this, new_bstring, curr_node%edges(lvl), offset)
                 end if
-                if (hit) then
-                    ! Again might look redundant but this check makes sure once hit = .true.
-                    ! the result gets propagated to the top level and breaks recursion
-                    hit = .true.
-                    return
-                end if
+
+                if (hit) return
             end if
         end do
 
         ! nothing found after recursion, return false
         hit = .false. 
-        return
 
     end function tree_search
 end module search

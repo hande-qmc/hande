@@ -64,6 +64,10 @@ pandas 0.14.1+
 statsmodels 0.11.0+
     Required from the latest version (1.5) for the ``pyhande`` module. It has been tested
     up to 0.12.2.
+
+    .. note::
+        statsmodels 0.13.0+ will not work due to a change in the namespace of
+        various functions. This will be addressed in a later version.
     
 
 Bundled dependencies

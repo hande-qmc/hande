@@ -22,7 +22,8 @@ dmqmc {
     ipdmqmc = {
         target_beta = 5.0,
         grand_canonical_initialisation = true,
-        symmetric  = false,
+        symmetric_interaction_picture = false,
+        count_diagonal_occupations = true,
     },
     operators = {
         energy = true,

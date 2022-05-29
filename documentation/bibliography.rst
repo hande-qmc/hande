@@ -9,6 +9,7 @@ Bibliography
 .. [Booth13] G.H. Booth, A. Grüneis, G. Kresse, A. Alavi, Towards an exact description of electronic wavefunctions in real solids: Nature 493, 365-370 (2013).
 .. [Booth14] G.H. Booth, S.D. Smart, A.Alavi, Linear-scaling and parallelisable algorithms for stochastic quantum chemistry, Mol. Phys. 112, 1855 (2014).
 .. [Cleland10] D. Cleland, G.H. Booth, A. Alavi, Communications: Survival of the fittest: accelerating convergence in full configuration-interaction quantum Monte Carlo. J. Chem. Phys. 132, 041103 (2010).
+.. [Cleland12] D. Cleland, G. H. Booth, C. Overy, and A. Alavi, Taming the First-Row Diatomics: A Full Configuration Interaction Quantum Monte Carlo Study, J. Chem. Theory Comput. 8, 4138 (2012).
 .. [Dunning89] Dunning, Thom H., Gaussian basis sets for use in correlated molecular calculations. I. The atoms boron through neon and hydrogen. J. Chem. Phys. 90, 1007 (1989) 
 .. [Filip19] M-A. Filip, C.J.C. Scott and A.J.W. Thom, Multireference Stochastic Coupled Cluster, J. Chem. Theory Comput. 15, 12, 6625-6635 (2019).
 .. [Filip20] M-A. Filip and A.J.W. Thom, A stochastic approach to unitary coupled cluster, J. Chem. Phys. 153, 214106 (2020).
@@ -23,6 +24,7 @@ Bibliography
 .. [Malone16a] F.D. Malone, W.M.C. Foulkes, J.S. Spencer, Improved parallel algorithms for full configuration interaction quantum Monte Carlo, in preparation.
 .. [Neufeld19] V.A. Neufeld, A.J.W. Thom, Exciting determinants in Quantum Monte Carlo: Loading the dice with fast, low memory weights, J. Chem. Theory Comput., 15, 1, 127-140 (2019).
 .. [Overy2014] C. Overy, G.H. Booth, N.S. Blunt, J.J. Shepherd, D. Cleland, A. Alavi, Unbiased reduced density matrices and electronic properties from full configuration interaction quantum Monte Carlo, J. Chem. Phys. 141, 244117 (2014).
+.. [Petras21] H.R. Petras, W.Z. Van Benschoten, S.K. Ramadugu, and J.J. Shepherd, The Sign Problem in Density Matrix Quantum Monte Carlo, J. Chem. Theory Comput. (2021).
 .. [Petruzielo12] F.R. Petruzielo, A.A. Holmes, H.J. Changlani, M.P. Nightingale, C. J. Umrigar, Semistochastic projector monte carlo method, Phys. Rev. Lett. 109, 230201 (2012).
 .. [Power74] J.D. Power, R.M. Pitzer, Inequalities for electron repulsion integrals, Chem. Phys. Lett., 478-483 (1974).
 .. [Schwarz] L.R. Schwarz, Projector Quantum Monte Carlo Methods for Linear and Non-linear Wavefunction Ansatzes, PhD Thesis, Cambridge (2017).
@@ -35,6 +37,9 @@ Bibliography
 .. [Spencer19] J.S. Spencer, N.S. Blunt, S. Choi, J. Etrych, M-A. Filip, W.M.C. Foulkes, R.S.T. Franklin, W.J. Handley, F.D. Malone, V.A. Neufeld, R. Di Remigio, T.W. Rogers, C.J.C. Scott, J.J. Shepherd, W.A. Vigor, J. Weston, R. Xu, A.J.W. Thom, The HANDE-QMC Project: Open-Source Stochastic Quantum Chemistry from the Ground State Up, J. Chem. Theory Comput. 15, 3, 1728-1742 (2019).
 .. [Sun18] Q. Sun, T. S. Berkelbach, N. S. Blunt, et. al, PYSCF: The Python-based simulations of chemistry framework, WIREs: Computational Molecular Science 8, 1, e1340 (2018).
 .. [Thom10] A.J.W. Thom, Stochastic Coupled Cluster Theory, Phys. Rev. Lett. 105, 236004 (2010).
+.. [VanBenschoten21] W.Z. Van Benschoten and J.J. Shepherd, Piecewise Interaction Picture Density Matrix Quantum Monte Carlo, arXiv:2108.06252v1 [physics.chem-ph].
 .. [Umrigar93] C.J. Umrigar, M.P. Nightingale, K.J. Runge, A diffusion Monte Carlo algorithm with very small time-step errors, J. Chem. Phys. 99, 2865 (1993).
 .. [Vigor15] W.A. Vigor, J.S. Spencer, M.J. Bearpark, A.J.W. Thom, Minimising biases in full configuration interaction quantum Monte Carlo, J. Chem. Phys. 142, 104101 (2015).
 .. [Vigor16] W.A. Vigor, J.S. Spencer, M.J. Bearpark, A.J.W. Thom, Understanding and improving the efficiency of full configuration interaction quantum Monte Carlo, J. Chem. Phys. 144, 094110 (2016).
+.. [Yang20] M. Yang, E. Pahl, J. Brand, Improved walker population control for full configuration interaction quantum Monte Carlo, J. Chem. Phys. 153, 174103 (2020).
+.. [Davidson75] E.R. Davidson, The iterative calculation of a few of the lowest eigenvalues and corresponding eigenvectors of large real-symmetric matrices, J. Comp. Phys. 17, 1 (1975)

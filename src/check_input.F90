@@ -403,8 +403,10 @@ contains
         if (dmqmc_in%grand_canonical_initialisation .and. dmqmc_in%replica_tricks) then
             call stop_all(this, 'Grand canonical initialisation is currently incompatible with replica tricks.')
         end if
-        if (dmqmc_in%symmetric .and. dmqmc_in%ipdmqmc .and. sys%system /= ueg) then
-            call stop_all(this, 'Symmetric propagation is only implemented for the UEG. Please implement.')
+        if (dmqmc_in%symmetric .and. dmqmc_in%ipdmqmc .and. .not. (sys%system /= ueg .or. sys%system /= read_in)) then
+            call stop_all(this, 'Symmetric propagation is only implemented for the UEG and read_in. Please implement.')
+        else if (dmqmc_in%symmetric .and. dmqmc_in%ipdmqmc .and. (sys%system == read_in)) then
+            call warning(this, 'Symmetric IP-DMQMC propagation is experimental for read_in.')
         end if
         if (sys%system == ueg .and. dmqmc_in%fermi_temperature .and. sys%Ms /= 0 .and. sys%Ms /= sys%nel) then
             call stop_all(this, 'The fermi energy, and therefore fermi_temperature &
@@ -417,10 +419,28 @@ contains
             call stop_all(this, 'target_beta must be non-negative.')
         end if
 
+        if (dmqmc_in%final_beta > 0.0_p .and. dmqmc_in%final_beta < dmqmc_in%target_beta) then
+            call stop_all(this, 'If using final_beta and taget_beta, final_beta must be greater than target_beta!')
+        end if
+
         if (dmqmc_in%metropolis_attempts < 0) then
             call stop_all(this, 'metropolis_attempts must be greater than zero.')
         end if
         
+        if (dmqmc_in%half_density_matrix .and. .not. dmqmc_in%symmetric) then
+            call stop_all(this, 'asymmetric propagation does not work with a symmetrized density matrix')
+        end if
+        
+        if (sys%basis%info_string_len /= 0) call stop_all(this, &
+            'DMQMC is incompatible with additional information being stored in the bit string. Please implement if needed.')
+
+        if ((dmqmc_in%walker_scale_factor > 0.0_p .and. dmqmc_in%walker_scale_factor < 2.0_p) &
+                                                    & .or. dmqmc_in%walker_scale_factor < 0.0_p) then
+            call stop_all(this, 'walker_scale_factor must be greater than or equal to 2.')
+        else if (dmqmc_in%walker_scale_factor .ge. 2.0_p) then
+            call warning(this, 'walker_scale_factor is experimental, results should be tested for convergence!')
+        end if
+
         if (.not.((qmc_in%excit_gen == excit_gen_no_renorm) .or. &
                                          (qmc_in%excit_gen == excit_gen_renorm))) then
             call stop_all(this, 'Excitation Generators other than no_renorm and renorm not yet tested for DMQMC.')
@@ -435,9 +455,6 @@ contains
                 call stop_all(this, 'Weighted sampling is not supported in complex DMQMC. Please implement.')
             call warning(this, 'Complex DMQMC is experimental.')
         end if
-
-        if (sys%basis%info_string_len /= 0) call stop_all(this, &
-            'DMQMC is incompatible with additional information being stored in the bit string. Please implement if needed.')
 
     end subroutine check_dmqmc_opts
 

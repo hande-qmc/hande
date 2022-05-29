@@ -178,6 +178,8 @@ type qmc_in_t
     ! used to direct the walker population to the given
     ! target population. The original population dynamics are obtained if set
     ! equal to zero. Sets default value within qmc_state_t. 
+    ! Turn on harmonic forcing only after target population is reached?
+    logical :: shift_harmonic_forcing_two_stage = .false.
     real(p) :: shift_harmonic_forcing = 0.0_p
     ! If true, the shift_harmonic_forcing term will be set equal to the square
     ! of the shift_damping term divided by 4 to obtain critial damping.  
@@ -284,6 +286,10 @@ type fciqmc_in_t
 
     ! Filename to write density matrix to
     character(255) :: density_matrix_file = 'RDM'
+
+    ! Controls the report when we begin accumulating reduced
+    ! density matrix statistics
+    integer :: density_matrix_report = 3000
 
 end type fciqmc_in_t
 
@@ -1036,6 +1042,7 @@ contains
         if (qmc%vary_shift_present) call json_write_key(js, 'vary_shift', qmc%vary_shift)
         call json_write_key(js, 'initial_shift', qmc%initial_shift)
         call json_write_key(js, 'shift_damping', qmc%shift_damping)
+        call json_write_key(js, 'shift_harmonic_forcing_two_stage', qmc%shift_harmonic_forcing_two_stage)
         call json_write_key(js, 'shift_harmonic_forcing', qmc%shift_harmonic_forcing)
         call json_write_key(js, 'shift_harmonic_crit_damp', qmc%shift_harmonic_crit_damp)
         call json_write_key(js, 'walker_length', qmc%walker_length)
