@@ -259,14 +259,11 @@ the wall time of the calculation:
             results[out.metadata['qmc']['spawn_cutoff']] = res
         else:
             results[1.0] = res
-    results = pd.DataFrame(results).T
+    results = pd.DataFrame(results).T.sort_index()
 
     # todo - legend, axis labels
     (fig, ax1) = plt.subplots()
-    
-    sorted_errs = list(zip( *sorted(zip(results.index, 10**5*results['standard error'])))) #* [* for vim highlighting]
-
-    lines1 = ax1.plot(sorted_errs[0], sorted_errs[1] , 'x-', label='standard error')
+    lines1 = ax1.plot(results.index, 10**5*results['standard error'], 'x-', label='standard error')
     ax1.set_xlabel('spawn cutoff')
     ax1.set_ylabel(r'standard error / $10^{-5}$ [$U/t$]')
 
@@ -275,14 +272,14 @@ the wall time of the calculation:
         ax2._get_lines.color_cycle.next()
     except AttributeError:
         next(ax2._get_lines.prop_cycler)
-    sorted_walls = list(zip( *sorted(zip(results.index, results['wall_time'])))) #* [* for vim highlighting]
-    lines2 = ax2.plot(sorted_walls[0], sorted_walls[1], 'x-', label='wall time')
+    lines2 = ax2.plot(results.index, results['wall_time'], 'x-', label='wall time')
     ax2.set_yticks(np.linspace(ax2.get_yticks()[0],ax2.get_yticks()[-1],len(ax1.get_yticks())))
     ax2.set_ylabel('wall time [s]')
 
     lines = lines1 + lines2
     labels = [l.get_label() for l in lines]
     ax1.legend(lines, labels, loc='center right')
+    plt.tight_layout()
 
 For convenience, the integer amplitude calculation is shown as having a ``spawn_cutoff``
 of 1. Clearly there is a playoff between the computational cost and the desired stochastic
