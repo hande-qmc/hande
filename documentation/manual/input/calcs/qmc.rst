@@ -584,6 +584,12 @@ algorithms and control the core settings in the algorithms.
 
         The shift will still be varied when ``target_population``, if set, is reached.
 
+    .. warning::
+
+        If reading in from a restart file and ``vary_shift = false``, the shift will be set to
+        ``initial_shift`` for the first iteration, which defaults to zero. 
+        Leave it unset if this is not intended.
+
 ``shift_harmonic_forcing``
     type: float.
 
