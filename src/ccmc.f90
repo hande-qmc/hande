@@ -415,9 +415,16 @@ contains
         end if
 
         ! Initialise data.
-        call init_qmc(sys, qmc_in, restart_in, load_bal_in, reference_in, io_unit, annihilation_flags, qs, &
+        if (restart_in%read_restart) then
+            ! Ignore MP1 wavefunction if reading in
+            call init_qmc(sys, qmc_in, restart_in, load_bal_in, reference_in, io_unit, annihilation_flags, qs, &
+                      uuid_restart, restart_version_restart, qmc_state_restart=qmc_state_restart, &
+                      regenerate_info=regenerate_info)
+        else
+            call init_qmc(sys, qmc_in, restart_in, load_bal_in, reference_in, io_unit, annihilation_flags, qs, &
                       uuid_restart, restart_version_restart, qmc_state_restart=qmc_state_restart, &
                       regenerate_info=regenerate_info, psip_list_in=psip_list_in)
+        end if
 
         if (ccmc_in%even_selection .and. regenerate_info) then
             call regenerate_ex_levels_psip_list(sys%basis, qs)

@@ -15,7 +15,8 @@ Returns:
 
 
 ``mp1_mc`` creates a deterministic MP1 wavefunction and stochastically coarse-grains (rounds down small amplitudes) 
-it into a ``particle_t`` object that can be used to initialise subsequent calculations.
+it into a ``particle_t`` object that can be used to initialise a subsequent CCMC calculation. The MP1 wavefunction will be ignored 
+if restarting from a restart file.
 
 Options
 -------
@@ -71,7 +72,8 @@ Options
             reference = {...},
         }
 
-    Note the lack of commas after the main tables.
+    Note the lack of commas after the main tables. This makes sure the MP1 wavefunction (the ``psip_list`` object) is compatible 
+    with the subsequent CCMC calculation.
 
 
 MP1 options
