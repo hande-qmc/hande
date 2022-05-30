@@ -9,7 +9,8 @@ implicit none
 
 contains
     subroutine spawner_ccmc(rng, sys, qs, spawn_cutoff, linked_ccmc, cdet, cluster, &
-                            gen_excit_ptr, logging_info, nspawn, connection, nspawnings_total, ps_stat)
+                            gen_excit_ptr, logging_info, nspawn, connection, &
+                            nspawnings_total, ps_stat)
 
         ! Attempt to spawn a new particle on a connected excitor with
         ! probability
@@ -69,6 +70,7 @@ contains
         !        and the child excitor, on which progeny are spawned.
 
         use ccmc_data, only: cluster_t
+        use search, only: tree_search
         use ccmc_utils, only: convert_excitor_to_determinant
         use ccmc_linked, only: unlinked_commutator, linked_excitation
         use determinant_data, only: det_info_t
@@ -82,6 +84,7 @@ contains
         use hamiltonian_data
         use logging, only: logging_t, write_logging_spawn
         use excit_gens, only: p_single_double_coll_t
+        use errors, only: stop_all
 
         type(sys_t), intent(in) :: sys
         type(qmc_state_t), intent(in) :: qs
@@ -96,7 +99,6 @@ contains
         type(logging_t), intent(in) :: logging_info
         integer(int_p), intent(out) :: nspawn
         type(excit_t), intent(out) :: connection
-        integer :: i
 
         ! We incorporate the sign of the amplitude into the Hamiltonian matrix
         ! element, so we 'pretend' to attempt_to_spawn that all excips are
@@ -108,6 +110,7 @@ contains
         integer :: excitor_sign, excitor_level, excitor_level2
         logical :: linked, single_unlinked, allowed_excitation, allowed_multiref
         real(p) :: invdiagel
+        integer :: i
 
         ! 1. Generate random excitation.
         ! Note CCMC is not (yet, if ever) compatible with the 'split' excitation
@@ -171,15 +174,20 @@ contains
                 if (qs%multiref) then
                     ! In the multireference case, check whether the determinant is within the accepted number
                     ! of excitations from any of the secondary references.
-                    allowed_multiref = .false.
-                    do i = 1, size(qs%secondary_refs)
-                         excitor_level2 = get_excitation_level(det_string(qs%secondary_refs(i)%f0, sys%basis), &
-                                                               det_string(fexcit, sys%basis))
-                         if (excitor_level2 <= qs%secondary_refs(i)%ex_level) then
-                             allowed_multiref = .true.
-                             exit
-                         end if
-                    end do
+                    if (qs%mr_acceptance_search == 0) then
+                        allowed_multiref = .false.
+                        do i = 1, size(qs%secondary_refs)
+                             excitor_level2 = get_excitation_level(det_string(qs%secondary_refs(i)%f0, sys%basis), &
+                                                                   det_string(fexcit, sys%basis))
+                             if (excitor_level2 <= qs%secondary_refs(i)%ex_level) then
+                                 allowed_multiref = .true.
+                                 exit
+                             end if
+                        end do
+                    else
+                        allowed_multiref = tree_search(qs%secondary_ref_tree, det_string(fexcit, sys%basis),&
+                            &qs%secondary_ref_tree%root)
+                    end if
                     if (.not. allowed_multiref) nspawn = 0
                 end if
             end if
@@ -934,15 +942,15 @@ contains
 
 ! --- Helper functions ---
 
-    subroutine create_spawned_particle_ccmc(basis, ref, cdet, connection, nspawned, ispace, &
-                                            parent_cluster_ex_level, ex_lvl_sort, fexcit, spawn, bloom_stats)
+    subroutine create_spawned_particle_ccmc(sys, ref, cdet, connection, nspawned, ispace, &
+                                            parent_cluster_ex_level, ex_lvl_sort, fexcit, spawn, bloom_stats, trot)
 
         ! Function to create spawned particle in spawned list for ccmc
         ! calculations. Performs required manipulations of bit string
         ! beforehand and accumulation on blooming.
 
         ! In:
-        !   basis: info on current basis functions.
+        !   sys: info on system being studied.
         !   reference: info on current reference state.
         !   cdet: determinant representing state currently spawning
         !       spawning from.
@@ -955,6 +963,7 @@ contains
         !       ccmc, otherwise generated using cdet+connection.
         !   ex_lvl_sort: true if require states to be sorted by excitation
         !       level within walker list, false otherwise.
+        !   trot: is this a trotterized UCCMC calculation.
         ! In/Out:
         !   spawn: spawn_t type containing information on particles created
         !       via spawning this iteration. Spawned particles will be added
@@ -962,7 +971,7 @@ contains
         !   bloom_stats: information on blooms within a calculation. Will be
         !       updated if a bloom has occurred.
 
-        use basis_types, only: basis_t
+        use system, only: sys_t
         use reference_determinant, only: reference_t
         use spawn_data, only: spawn_t
         use determinant_data, only: det_info_t
@@ -970,8 +979,9 @@ contains
         use excitations, only: excit_t, create_excited_det
         use proc_pointers, only: create_spawned_particle_ptr
         use ccmc_utils, only: add_ex_level_bit_string_calc
+        use uccmc_utils, only: add_info_str_trot
 
-        type(basis_t), intent(in) :: basis
+        type(sys_t), intent(in) :: sys
         type(reference_t), intent(in) :: ref
         type(spawn_t), intent(inout) :: spawn
         type(det_info_t), intent(in) :: cdet
@@ -982,17 +992,22 @@ contains
         integer, intent(in) :: ispace, parent_cluster_ex_level
         integer(i0), intent(in) :: fexcit(:)
         logical, intent(in) :: ex_lvl_sort
+        logical, intent(in), optional :: trot
         integer(i0) :: fexcit_loc(lbound(fexcit,dim=1):ubound(fexcit,dim=1))
 
         if (parent_cluster_ex_level /= huge(0)) then
-            call create_excited_det(basis, cdet%f, connection, fexcit_loc)
+            call create_excited_det(sys%basis, cdet%f, connection, fexcit_loc)
         else
             fexcit_loc = fexcit
         end if
 
-        if (ex_lvl_sort) call add_ex_level_bit_string_calc(basis, ref%f0, fexcit_loc)
-        call create_spawned_particle_ptr(basis, ref, cdet, connection, nspawned, &
+        if (ex_lvl_sort) call add_ex_level_bit_string_calc(sys%basis, ref%f0, fexcit_loc)
+        if (present(trot)) then
+            if (trot) call add_info_str_trot(sys%basis, ref%f0, sys%nel, fexcit_loc)
+        end if
+        call create_spawned_particle_ptr(sys%basis, ref, cdet, connection, nspawned, &
                                         ispace, spawn, fexcit_loc)
+
         call accumulate_bloom_stats(bloom_stats, nspawned)
 
     end subroutine create_spawned_particle_ccmc

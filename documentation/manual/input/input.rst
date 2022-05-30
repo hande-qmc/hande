@@ -33,7 +33,7 @@ this variable as an argument.
 Calculations
 ^^^^^^^^^^^^
 
-All QMC methods (FCIQMC, CCMC, DMQMC and the simple FCIQMC implementation)
+All QMC methods (FCIQMC, CCMC, UCCMC, DMQMC and the simple FCIQMC implementation)
 return a pointer to a :code:`qmc_state` object (which cannot be directly manipulated or
 inspected from lua) as the first return value.  They also accept such an object as an
 optional argument to resume a previous QMC calculation.  Additional,
@@ -48,6 +48,7 @@ section.
    calcs/canonical_energy
    calcs/fciqmc
    calcs/ccmc
+   calcs/uccmc
    calcs/dmqmc
    calcs/simple_fciqmc
    calcs/common

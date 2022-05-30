@@ -63,14 +63,16 @@ contains
         if (doing_semi_stoch) then
             if (determ%projection_mode == semi_stoch_separate_annihilation) then
                 call deterministic_annihilation(rng, psip_list, determ)
-                call annihilate_wrapper_spawn_t(spawn, annihilation_flags%initiator_approx)
+                call annihilate_wrapper_spawn_t(spawn, annihilation_flags%initiator_approx, psip_list%descending)
             else
-                call annihilate_wrapper_spawn_t(spawn, annihilation_flags%initiator_approx, determ%sizes(iproc))
+                call annihilate_wrapper_spawn_t(spawn, annihilation_flags%initiator_approx, psip_list%descending, &
+                    determ%sizes(iproc))
             end if
 
-            call annihilate_main_list_wrapper(sys, rng, reference, annihilation_flags, psip_list, spawn, determ_flags=determ%flags)
+            call annihilate_main_list_wrapper(sys, rng, reference, annihilation_flags, psip_list, spawn, &
+                    determ_flags=determ%flags)
         else
-            call annihilate_wrapper_spawn_t(spawn, annihilation_flags%initiator_approx)
+            call annihilate_wrapper_spawn_t(spawn, annihilation_flags%initiator_approx, psip_list%descending)
             call annihilate_main_list_wrapper(sys, rng, reference, annihilation_flags, psip_list, spawn)
         end if
 
@@ -128,7 +130,7 @@ contains
         ! (not including the current processor) from  the previous iteration.
         ! They have since been evolved so they can be annihilated with the main list.
         ! First annihilate within spawn_recv.
-        call annihilate_wrapper_non_blocking_spawn(spawn_recv, annihilation_flags%initiator_approx)
+        call annihilate_wrapper_non_blocking_spawn(spawn_recv, annihilation_flags%initiator_approx, psip_list%descending)
         ! Annihilate with main list.
         call annihilate_main_list_wrapper(sys, rng, reference, annihilation_flags, psip_list, spawn_recv)
 
@@ -198,7 +200,8 @@ contains
         ! Perform annihilation within the spawned walker list.
         ! This involves locating, compressing and sorting the section of the spawned
         ! list which needs to be annihilated with the main list on this processor.
-        call annihilate_wrapper_non_blocking_spawn(spawn, annihilation_flags%initiator_approx, iproc)
+        call annihilate_wrapper_non_blocking_spawn(spawn, annihilation_flags%initiator_approx, &
+                                                    psip_list%descending, iproc)
         ! Annihilate portion of spawned list with main list.
         call annihilate_main_list_wrapper(sys, rng, reference, annihilation_flags, psip_list, spawn, &
                                           spawn%head_start(thread_id, iproc)+nthreads)
@@ -335,7 +338,7 @@ contains
 
         do i = spawn_start, spawn%head(thread_id,0)
             f = int(spawn%sdata(:tensor_label_len,i), i0)
-            call binary_search(psip_list%states, f, istart, iend, hit, pos)
+            call binary_search(psip_list%states, f, istart, iend, hit, pos, psip_list%descending)
             if (hit) then
                 ! Annihilate!
                 old_pop = psip_list%pops(:,pos)
@@ -412,7 +415,7 @@ contains
         iend = psip_list%nstates
         do i = spawn_start, spawn%head(thread_id,0)
             f = int(spawn%sdata(:tensor_label_len,i), i0)
-            call binary_search(psip_list%states, f, istart, iend, hit, pos)
+            call binary_search(psip_list%states, f, istart, iend, hit, pos, .false.)
             if (hit) then
                 old_pop = psip_list%pops(:,pos)
                 ! Need to take into account that the determinant might not have
@@ -773,7 +776,7 @@ contains
 
                 ! spawned det is not in the main walker list.
                 call binary_search(psip_list%states, int(spawn%sdata(:sys%basis%tensor_label_len,i), i0), &
-                                   istart, iend, hit, pos)
+                                   istart, iend, hit, pos, psip_list%descending)
                 ! f should be in slot pos.  Move all determinants above it.
                 do j = iend, pos, -1
                     ! i is the number of determinants that will be inserted below j.
@@ -876,7 +879,7 @@ contains
                     pl%dat(1,pos) = -0.5_p*((h0_ptr(sys, det)+h0_ptr(sys, pl%states((bl+1):(2*bl),pos))) - &
                                      (pl%dat(1,pos) + ref%H00 + sc0_ptr(sys, pl%states((bl+1):(2*bl),pos))))
                 end associate
-            else
+            else if (annihilation_flags%symmetric) then
                 ! Set the energy to be the average of the two induvidual energies.
                 associate(bl=>sys%basis%tot_string_len, pl=>psip_list)
                     pl%dat(1,pos) = (pl%dat(1,pos) + sc0_ptr(sys, pl%states((bl+1):(2*bl),pos)) - ref%H00)/2

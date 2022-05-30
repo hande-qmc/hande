@@ -8,6 +8,7 @@ use importance_sampling_data
 use excit_gens, only: excit_gen_data_t
 use reference_determinant, only: reference_t, reference_t_json
 use dSFMT_interface, only: dSFMT_state_t
+use search, only: tree_t
 
 implicit none
 
@@ -177,6 +178,8 @@ type qmc_in_t
     ! used to direct the walker population to the given
     ! target population. The original population dynamics are obtained if set
     ! equal to zero. Sets default value within qmc_state_t. 
+    ! Turn on harmonic forcing only after target population is reached?
+    logical :: shift_harmonic_forcing_two_stage = .false.
     real(p) :: shift_harmonic_forcing = 0.0_p
     ! If true, the shift_harmonic_forcing term will be set equal to the square
     ! of the shift_damping term divided by 4 to obtain critial damping.  
@@ -284,6 +287,10 @@ type fciqmc_in_t
     ! Filename to write density matrix to
     character(255) :: density_matrix_file = 'RDM'
 
+    ! Controls the report when we begin accumulating reduced
+    ! density matrix statistics
+    integer :: density_matrix_report = 3000
+
 end type fciqmc_in_t
 
 type semi_stoch_in_t
@@ -346,7 +353,30 @@ type ccmc_in_t
     integer :: n_secondary_ref = 0
     ! The secondary references.
     type(reference_t), allocatable :: secondary_refs(:)
+    ! Acceptance algorithm for mrcc excitations.
+    integer :: mr_acceptance_search
+    ! Name of the file containing secondary references (only if mr_read_in is true).
+    character(255) :: mr_secref_file
+    ! CC level from every secondary reference.
+    integer :: mr_excit_lvl = -1
+    ! Number of frozen electrons to add to the secondary references.
+    integer :: mr_n_frozen = 0
+    ! Whether to read in a secondary reference file.
+    logical :: mr_read_in = .false.
 end type ccmc_in_t
+
+type uccmc_in_t
+    ! Polynomial truncation in UCCMC
+    integer :: pow_trunc = 12
+    ! Compute variational UCC energy?
+    logical :: variational_energy = .false.
+    ! Compute average UCC wavefunction?
+    logical :: average_wfn = .false.
+    ! Trotter approximation?
+    logical :: trot = .false.
+    ! UCC ratio discard threshold
+    real(p) :: threshold = -1.0_p
+end type uccmc_in_t
 
 type restart_in_t
     ! Restart calculation from file.
@@ -631,6 +661,8 @@ type particle_t
     logical :: warn = .true.
     ! Number of memory warnings
     integer :: warning_count = 0
+    ! Ascending/descending psip_list order
+    logical :: descending = .false.
 end type particle_t
 
 type spawned_particle_t
@@ -762,6 +794,9 @@ type estimators_t
     real(p) :: D0_population = 0.0_p
     ! Population of walkers on reference determinant/trace of density matrix at previous timestep.
     real(p) :: D0_population_old = 0.0_p
+    ! For UCCMC need to store true D0_population (which acts as the intermediate normalisation factor), 
+    ! as well as total D0 contribution to wfn. To simplify compatibility, the latter will be stored in D0_population
+    real(p) :: D0_noncomposite_population = 0.0_p
     ! projected energy
     ! This stores during an FCIQMC report loop
     !   \sum_{i/=0} <D_0|H|D_i> N_i
@@ -810,6 +845,7 @@ type estimators_t
     ! The total number of attempts made to select cluster from current distribution, across all
     ! processes.
     integer(int_64) :: nattempts = 0_int_64
+
 end type estimators_t
 
 type propagator_t
@@ -879,9 +915,11 @@ type qmc_state_t
     type(trial_t) :: trial
     type(restart_in_t) :: restart_in
     ! Flags for multireference CCMC calculations.
-    logical :: multiref = .false.
-    integer :: n_secondary_ref = 0
+    logical :: multiref = .false., mr_read_in = .false.
+    integer :: n_secondary_ref = 0, mr_n_frozen, mr_excit_lvl
     type(reference_t), allocatable :: secondary_refs(:)
+    integer :: mr_acceptance_search
+    character(255) :: mr_secref_file
     ! WARNING: par_info is the 'reference/master' (ie correct) version
     ! of parallel_t, in particular of proc_map_t.  However, copies of it
     ! are kept in spawn_t objects, and it is these copies which are used
@@ -898,6 +936,8 @@ type qmc_state_t
     ! String representing state of RNG. Should be set, used and deallocated as quickly as possible as it becomes invalid as soon as
     ! the next random number is drawn -- only present really for a convenient way of handling the RNG state during restarts.
     type(dSFMT_state_t) :: rng_state
+    ! BK tree object for multi-reference searching
+    type(tree_t) :: secondary_ref_tree
 end type qmc_state_t
 
 ! Copies of various settings that are required during annihilation.  This avoids having to pass through lots of different
@@ -931,6 +971,7 @@ contains
         type(estimators_t), intent(inout) :: estimators
 
         estimators%D0_population = 0.0_p
+        estimators%D0_noncomposite_population = 0.0_p
         estimators%proj_energy = 0.0_p
         estimators%D0_population_comp = cmplx(0.0, 0.0, p)
         estimators%proj_energy_comp = cmplx(0.0, 0.0, p)
@@ -1001,6 +1042,7 @@ contains
         if (qmc%vary_shift_present) call json_write_key(js, 'vary_shift', qmc%vary_shift)
         call json_write_key(js, 'initial_shift', qmc%initial_shift)
         call json_write_key(js, 'shift_damping', qmc%shift_damping)
+        call json_write_key(js, 'shift_harmonic_forcing_two_stage', qmc%shift_harmonic_forcing_two_stage)
         call json_write_key(js, 'shift_harmonic_forcing', qmc%shift_harmonic_forcing)
         call json_write_key(js, 'shift_harmonic_crit_damp', qmc%shift_harmonic_crit_damp)
         call json_write_key(js, 'walker_length', qmc%walker_length)
@@ -1128,10 +1170,11 @@ contains
         !   terminal (optional): if true, this is the last entry in the enclosing JSON object.  Default: false.
 
         use json_out
+        use errors, only: warning
 
         type(json_out_t), intent(inout) :: js
         type(ccmc_in_t), intent(in) :: ccmc
-        character(10) :: string
+        character(23) :: string
         integer :: i
         logical, intent(in), optional :: terminal
 
@@ -1145,22 +1188,52 @@ contains
         call json_write_key(js, 'density_matrix_file', ccmc%density_matrix_file)
         call json_write_key(js, 'even_selection', ccmc%even_selection)
         if (ccmc%multiref) then
-            do i=1, size(ccmc%secondary_refs)
-                if (i<10) then
-                    write(string,'(I1)') i
-                else if (i>=10 .and. i<100) then 
-                    write (string,'(I2)') i
-                else
-                    write (string,'(I3)') i
-                end if
-                call reference_t_json(js, ccmc%secondary_refs(i), key = 'secondary_ref'//string)
-            end do
+            
+            call json_write_key(js, 'mr_read_in', ccmc%mr_read_in)            
             call json_write_key(js, 'n_secondary_ref', ccmc%n_secondary_ref)
+            if (ccmc%n_secondary_ref.le.20 .and. .not.ccmc%mr_read_in) then
+                do i=1, size(ccmc%secondary_refs)
+                    write (string, '(A13,I0)') 'secondary_ref', i
+                    call reference_t_json(js, ccmc%secondary_refs(i), key = trim(string))
+                end do
+            elseif (ccmc%mr_read_in) then
+                continue
+            else
+                call warning('ccmc_in_t_json','There are more than 20 secondary references, &
+                &printing suppressed, consider using the mr_read_in functionality.')
+            end if
+            call json_write_key(js, 'mr_acceptance_search', ccmc%mr_acceptance_search)
         end if
-        call json_write_key(js, 'multiref', ccmc%multiref,terminal=.true.)
+        call json_write_key(js, 'multiref', ccmc%multiref, terminal=.true.)
         call json_object_end(js, terminal)
 
     end subroutine ccmc_in_t_json
+
+    subroutine uccmc_in_t_json(js, uccmc, terminal)
+
+        ! Serialise a uccmc_in_t object in JSON format.
+
+        ! In/Out:
+        !   js: json_out_t controlling the output unit and handling JSON internal state.  Unchanged on output.
+        ! In:
+        !   uccmc: uccmc_in_t object containing uccmc input values (including any defaults set).
+        !   terminal (optional): if true, this is the last entry in the enclosing JSON object.  Default: false.
+
+        use json_out
+
+        type(json_out_t), intent(inout) :: js
+        type(uccmc_in_t), intent(in) :: uccmc
+        logical, intent(in), optional :: terminal
+
+        call json_object_init(js, 'uccmc')
+        call json_write_key(js, 'pow_trunc', uccmc%pow_trunc)
+        call json_write_key(js, 'variational_energy', uccmc%variational_energy)
+        call json_write_key(js, 'average_wfn', uccmc%average_wfn)
+        call json_write_key(js, 'trotterized', uccmc%trot)
+        call json_write_key(js, 'threshold', uccmc%threshold,terminal=.true.)
+        call json_object_end(js, terminal)
+
+    end subroutine uccmc_in_t_json
 
     subroutine restart_in_t_json(js, restart, uuid_restart, terminal)
 

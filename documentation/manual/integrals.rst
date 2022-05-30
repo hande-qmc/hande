@@ -154,10 +154,10 @@ all integral values.
 
 ``SYMLZ``
     Array containing :math:`L_z` (angular momentum along the z-axis) for each orbital.
-    For example :math:`d_xz` would have :math:`L=2` and :math:`L_z=1`, and
+    For example :math:`d_{xz}` would have :math:`L=2` and :math:`L_z=1`, and
     :math:`d_{yz} L=2`, :math:`L_z=-1`.
     If not provided in FCIDUMP assume no :math:`L_z` symmetry in system. 
-    See :ref:`systems <generic_systems>` for more details on how to generate an :math:`L_z`-transformed FCIDUMP.
+    See :ref:`generic_systems` for more details, and also on how to generate :math:`L_z`-transformed FCIDUMPs.
 
 ``NPROP``
     Dimensions of the supercell used in translationally symmetric systems.

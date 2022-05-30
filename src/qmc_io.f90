@@ -31,12 +31,11 @@ contains
         !       (for CCMC).
         !    io_unit: io unit to write to.
 
-        use calc, only: doing_calc, hfs_fciqmc_calc
+        use calc, only: doing_calc, hfs_fciqmc_calc, uccmc_calc, trot_uccmc_calc
 
         integer, intent(in) :: ntypes
         logical, optional, intent(in) :: cmplx_est, rdm_energy, nattempts
         integer, intent(in), optional :: io_unit
-
         logical :: cmplx_est_set
         integer :: i, nreplicas, iunit
         character(20) :: column_title
@@ -52,6 +51,8 @@ contains
         write (iunit,'(1X,"Shift: the energy offset calculated at the end of the report loop.")')
         write (iunit,'(1X,"H_0j: <D_0|H|D_j>, Hamiltonian matrix element.")')
         write (iunit,'(1X,"N_j: population of Hamiltonian particles on determinant D_j.")')
+        if(doing_calc(uccmc_calc) .or. doing_calc(trot_uccmc_calc)) & 
+            write (iunit,'(1X,"N_j UCCMC: true UCC population of Hamiltonian particles on determinant D_j.")')
         if (doing_calc(hfs_fciqmc_calc)) then
             write (iunit,'(1X,"O_0j: <D_0|O|D_j>, operator matrix element.")')
             write (iunit,'(1X,a67)') "N'_j: population of Hellmann--Feynman particles on determinant D_j."
@@ -106,6 +107,8 @@ contains
                 call write_column_title(iunit, 'Shift')
                 call write_column_title(iunit, '\sum H_0j N_j')
                 call write_column_title(iunit, 'N_0')
+                if(doing_calc(uccmc_calc) .or. doing_calc(trot_uccmc_calc)) & 
+                call write_column_title(iunit, 'N_0 UCCMC')
                 if (doing_calc(hfs_fciqmc_calc)) then
                     call write_column_title(iunit, 'HF shift')
                     call write_column_title(iunit, '\sum O_0j N_j')
@@ -146,6 +149,7 @@ contains
         use calc, only: dmqmc_energy, dmqmc_energy_squared, dmqmc_staggered_magnetisation
         use calc, only: dmqmc_correlation, dmqmc_full_r2, dmqmc_rdm_r2, dmqmc_kinetic_energy
         use calc, only: dmqmc_H0_energy, dmqmc_potential_energy, dmqmc_HI_energy
+        use calc, only: dmqmc_ref_proj_energy
         use utils, only: int_fmt
 
         integer, intent(in) :: ntypes
@@ -193,6 +197,14 @@ contains
         if (doing_dmqmc_calc(dmqmc_staggered_magnetisation)) then
             write (iunit, '(1X, "\sum\rho_{ij}M2{ji}: The numerator of the estimator for the expectation &
                                  &value of the staggered magnetisation.")')
+        end if
+        if (doing_dmqmc_calc(dmqmc_ref_proj_energy)) then
+            write (iunit, '(1X, "\sum\rho_{0j}H_{j0}: The numerator of the estimator for the expectation &
+                                 &value of the reference row energy.")')
+            write (iunit, '(1X, "\rho_00: The denominator of the estimator for the expectation &
+                                 &value of the reference row energy.")')
+            write (iunit, '(1X, "# \rho_{0j} psips: The current total population on the reference row of &
+                                 &the density matrix.")')
         end if
         if (doing_dmqmc_calc(dmqmc_rdm_r2)) then
             write (iunit, '(1x, "RDM(n) S2: The numerator of the estimator for the Renyi entropy of RDM n.")')
@@ -266,6 +278,19 @@ contains
         end if
         if (doing_dmqmc_calc(dmqmc_kinetic_energy)) then
             call write_column_title(iunit, '\sum\rho_{ij}T_{ji}')
+        end if
+        if (doing_dmqmc_calc(dmqmc_ref_proj_energy)) then
+            if (complx_est_set) then
+                call write_column_title(iunit, 'Re{\rho_00}')
+                call write_column_title(iunit, 'Im{\rho_00}')
+                call write_column_title(iunit, 'Re{Sum\rho_0j H_j0}')
+                call write_column_title(iunit, 'Im{Sum\rho_0j H_j0}')
+                call write_column_title(iunit, '# \rho_{0j} psips')
+            else
+                call write_column_title(iunit, '\rho_00')
+                call write_column_title(iunit, '\sum\rho_{0j}H_{j0}')
+                call write_column_title(iunit, '# \rho_{0j} psips')
+            end if
         end if
         if (doing_dmqmc_calc(dmqmc_H0_energy)) then
             if (complx_est_set) then
@@ -398,7 +423,7 @@ contains
         !    rdm_energy: Print energy calculated from RDM.
         !    nattempts: Print number of selection attempts made. Only used in CCMC.
 
-        use calc, only: doing_calc
+        use calc, only: doing_calc, uccmc_calc, trot_uccmc_calc
         use qmc_data, only: qmc_in_t, qmc_state_t
 
         type(qmc_in_t), intent(in) :: qmc_in
@@ -409,7 +434,6 @@ contains
         logical, intent(in) :: comment, non_blocking_comm
         logical, intent(in), optional :: cmplx_est, rdm_energy, nattempts
         integer, intent(in), optional :: io_unit
-
         logical :: cmplx_est_set, nattempts_set
         integer :: mc_cycles, ntypes, i, iunit
 
@@ -452,6 +476,9 @@ contains
                 call write_qmc_var(iunit, qs%shift(i))
                 call write_qmc_var(iunit, qs%estimators(i)%proj_energy)
                 call write_qmc_var(iunit, qs%estimators(i)%D0_population)
+                if (doing_calc(uccmc_calc) .or. doing_calc(trot_uccmc_calc)) then
+                    call write_qmc_var(iunit, qs%estimators(i)%D0_noncomposite_population)
+                end if
                 call write_qmc_var(iunit, ntot_particles(i))
             end do
         end if
@@ -493,6 +520,7 @@ contains
         use calc, only: dmqmc_energy, dmqmc_energy_squared, dmqmc_full_r2, dmqmc_rdm_r2
         use calc, only: dmqmc_correlation, dmqmc_staggered_magnetisation, dmqmc_kinetic_energy
         use calc, only: dmqmc_H0_energy, dmqmc_potential_energy, dmqmc_HI_energy
+        use calc, only: dmqmc_ref_proj_energy
         use qmc_data, only: qmc_in_t, qmc_state_t
         use dmqmc_data
         use system, only: sys_t
@@ -588,7 +616,18 @@ contains
                 call write_qmc_var(iunit, dmqmc_estimates%numerators(H0_imag_ind))
             end if
         end if
-
+        if (doing_dmqmc_calc(dmqmc_ref_proj_energy)) then
+            if (complx_est_set) then
+                call write_qmc_var(iunit, dmqmc_estimates%ref_trace(1))
+                call write_qmc_var(iunit, dmqmc_estimates%ref_trace(2))
+                call write_qmc_var(iunit, dmqmc_estimates%numerators(ref_proj_ind))
+                call write_qmc_var(iunit, dmqmc_estimates%numerators(ref_proj_imag_ind))
+            else
+                call write_qmc_var(iunit, dmqmc_estimates%ref_trace(1))
+                call write_qmc_var(iunit, dmqmc_estimates%numerators(ref_proj_ind))
+            end if
+            call write_qmc_var(iunit, dmqmc_estimates%ref_D0j_particles(1))
+        end if
         ! H^I energy, where H^I = exp(-(beta-tau)/2 H^0) H exp(-(beta-tau)/2. H^0).
         if (doing_dmqmc_calc(dmqmc_HI_energy)) then
             call write_qmc_var(iunit, dmqmc_estimates%numerators(HI_ind))
@@ -711,7 +750,7 @@ contains
 
         sep_loc = ' '
         if (present(sep)) sep_loc = sep
-        write (io, '(i14,a1,1X)', advance='no') val, sep_loc
+        write (io, '(i24,a1,1X)', advance='no') val, sep_loc
 
     end subroutine write_qmc_var_int_64
 

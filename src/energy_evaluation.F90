@@ -14,6 +14,7 @@ implicit none
 enum, bind(c)
     enumerator :: proj_energy_ind = 1
     enumerator :: D0_pop_ind
+    enumerator :: D0_noncomp_pop_ind
     ! [todo] - having a separate index for each space is not very general.
     enumerator :: proj_energy_replica_ind
     enumerator :: D0_pop_replica_ind
@@ -372,6 +373,7 @@ contains
         else
             rep_loop_loc(proj_energy_ind) = qs%estimators(1)%proj_energy
             rep_loop_loc(D0_pop_ind) = qs%estimators(1)%D0_population
+            rep_loop_loc(D0_noncomp_pop_ind) = qs%estimators(1)%D0_noncomposite_population
             if (qs%psip_list%nspaces > 1) then
                 rep_loop_loc(proj_energy_replica_ind) = qs%estimators(2)%proj_energy
                 rep_loop_loc(D0_pop_replica_ind) = qs%estimators(2)%D0_population
@@ -505,6 +507,7 @@ contains
 
         qs%estimators(1)%proj_energy = real(rep_loop_sum(proj_energy_ind), p)
         qs%estimators(1)%D0_population = real(rep_loop_sum(D0_pop_ind), p)
+        qs%estimators(1)%D0_noncomposite_population = real(rep_loop_sum(D0_noncomp_pop_ind), p)
         if (size(qs%estimators) > 1) then
             qs%estimators(2)%proj_energy = real(rep_loop_sum(proj_energy_replica_ind), p)
             qs%estimators(2)%D0_population = real(rep_loop_sum(D0_pop_replica_ind), p)
@@ -563,6 +566,7 @@ contains
         ! average energy quantities over report loop.
         qs%estimators%proj_energy = qs%estimators%proj_energy/qmc_in%ncycles
         qs%estimators%D0_population = qs%estimators%D0_population/qmc_in%ncycles
+        qs%estimators%D0_noncomposite_population = qs%estimators%D0_noncomposite_population/qmc_in%ncycles
         ! Similarly for the HFS estimator
         qs%estimators%D0_hf_population = qs%estimators%D0_hf_population/qmc_in%ncycles
         qs%estimators%proj_hf_O_hpsip = qs%estimators%proj_hf_O_hpsip/qmc_in%ncycles

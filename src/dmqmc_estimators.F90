@@ -20,6 +20,8 @@ enum, bind(c)
     enumerator :: rdm_r2_ind
     enumerator :: mom_dist_ind
     enumerator :: struc_fac_ind
+    enumerator :: ref_trace_ind
+    enumerator :: ref_D0j_ind
     enumerator :: final_ind ! ensure this remains the last index.
 end enum
 
@@ -53,6 +55,7 @@ contains
         use qmc_data, only: particle_t, qmc_state_t
         use parallel
         use dmqmc_data, only: dmqmc_in_t, dmqmc_estimates_t, num_dmqmc_operators
+        use calc, only: doing_dmqmc_calc, dmqmc_ref_proj_energy
 
         type(dmqmc_in_t), intent(in) :: dmqmc_in
         logical, intent(inout) :: error
@@ -94,6 +97,14 @@ contains
             nelems(struc_fac_ind) = size(dmqmc_estimates%struc_fac%f_k)
         else
             nelems(struc_fac_ind) = 0
+        end if
+
+        if (doing_dmqmc_calc(dmqmc_ref_proj_energy)) then
+            nelems(ref_trace_ind) = psip_list%nspaces
+            nelems(ref_D0j_ind) = psip_list%nspaces
+        else
+            nelems(ref_trace_ind) = 0
+            nelems(ref_D0j_ind) = 0
         end if
 
         ! The total number of elements in the array to be communicated.
@@ -155,7 +166,7 @@ contains
         ! Out:
         !    rep_loop_loc: array containing local quantities to be communicated.
 
-        use calc, only: doing_dmqmc_calc, dmqmc_rdm_r2
+        use calc, only: doing_dmqmc_calc, dmqmc_rdm_r2, dmqmc_ref_proj_energy
         use dmqmc_data, only: dmqmc_in_t, dmqmc_estimates_t
 
         type(dmqmc_in_t), intent(in) :: dmqmc_in
@@ -199,6 +210,10 @@ contains
         if (dmqmc_in%calc_struc_fac) then
             rep_loop_loc(min_ind(struc_fac_ind):max_ind(struc_fac_ind)) = dmqmc_estimates%struc_fac%f_k
         end if
+        if (doing_dmqmc_calc(dmqmc_ref_proj_energy)) then
+            rep_loop_loc(min_ind(ref_trace_ind):max_ind(ref_trace_ind)) = dmqmc_estimates%ref_trace
+            rep_loop_loc(min_ind(ref_D0j_ind):max_ind(ref_D0j_ind)) = dmqmc_estimates%ref_D0j_particles
+        end if
 
     end subroutine local_dmqmc_estimators
 
@@ -226,7 +241,7 @@ contains
         !       processors.
         !    error: whether an error occured on any processor.
 
-        use calc, only: doing_dmqmc_calc, dmqmc_rdm_r2
+        use calc, only: doing_dmqmc_calc, dmqmc_rdm_r2, dmqmc_ref_proj_energy
         use dmqmc_data, only: dmqmc_in_t, dmqmc_estimates_t
         use parallel, only: nprocs
         use qmc_data, only: qmc_state_t
@@ -265,7 +280,10 @@ contains
         if (dmqmc_in%calc_struc_fac) then
             dmqmc_estimates%struc_fac%f_k = real(rep_loop_sum(min_ind(struc_fac_ind):max_ind(struc_fac_ind)), p)
         end if
-
+        if (doing_dmqmc_calc(dmqmc_ref_proj_energy)) then
+            dmqmc_estimates%ref_trace = real(rep_loop_sum(min_ind(ref_trace_ind):max_ind(ref_trace_ind)), p)
+            dmqmc_estimates%ref_D0j_particles = real(rep_loop_sum(min_ind(ref_D0j_ind):max_ind(ref_D0j_ind)), p)
+        end if
         ! Average the spawning rate.
         qs%spawn_store%rspawn = qs%spawn_store%rspawn/(ncycles*nprocs)
 
@@ -311,7 +329,7 @@ contains
         ! The explicit loop is also meant to be more efficient anyway, as it
         ! prevents any chance of copy-in/copy-out...
         do irdm = 1, nrdms
-            call annihilate_wrapper_spawn_t(inst_rdms%spawn(irdm)%spawn, .false.)
+            call annihilate_wrapper_spawn_t(inst_rdms%spawn(irdm)%spawn, .false., .false.)
             ! Now is also a good time to reset the hash table (otherwise we
             ! attempt to lookup non-existent data in the next cycle!).
             call reset_hash_table(inst_rdms%spawn(irdm)%ht)
@@ -375,7 +393,7 @@ contains
     end subroutine update_shift_dmqmc
 
     subroutine update_dmqmc_estimators(sys, dmqmc_in, idet, iteration, cdet, H00, psip_list, &
-                                       dmqmc_estimates, weighted_sampling, rdm_error)
+                                       dmqmc_estimates, weighted_sampling, rdm_error, ref_f0)
 
         ! This function calls the processes to update the estimators which have
         ! been requested by the user to be calculated. First, calculate the
@@ -392,6 +410,7 @@ contains
         !    H00: diagonal Hamiltonian element for the reference.
         !    nload_slots: number of load balancing slots (per processor).
         !    psip_list: particle information/lists.
+        !    ref_f0: the reference bitstring of the system.
         ! In/Out:
         !    cdet: det_info_t object containing information of current density
         !        matrix element.
@@ -403,6 +422,7 @@ contains
         use calc, only: doing_dmqmc_calc, dmqmc_energy, dmqmc_staggered_magnetisation
         use calc, only: dmqmc_energy_squared, dmqmc_correlation, dmqmc_full_r2, dmqmc_kinetic_energy
         use calc, only: dmqmc_H0_energy, dmqmc_potential_energy, dmqmc_HI_energy
+        use calc, only: dmqmc_ref_proj_energy
         use excitations, only: get_excitation, excit_t
         use proc_pointers, only:  update_dmqmc_energy_and_trace_ptr, update_dmqmc_stag_mag_ptr
         use proc_pointers, only: update_dmqmc_energy_squared_ptr, update_dmqmc_correlation_ptr
@@ -412,11 +432,12 @@ contains
         use qmc_data, only: particle_t
         use dmqmc_data, only: dmqmc_in_t, dmqmc_estimates_t, energy_ind, energy_imag_ind, energy_squared_ind, &
                               correlation_fn_ind, staggered_mag_ind, full_r2_ind, full_r2_imag_ind, dmqmc_weighted_sampling_t, &
-                              kinetic_ind, potential_ind, H0_ind, H0_imag_ind, HI_ind, HI_imag_ind
+                              kinetic_ind, potential_ind, H0_ind, H0_imag_ind, HI_ind, HI_imag_ind, ref_proj_ind, ref_proj_imag_ind
 
         type(sys_t), intent(in) :: sys
         type(dmqmc_in_t), intent(in) :: dmqmc_in
         integer, intent(in) :: idet, iteration
+        integer(i0), intent(in) :: ref_f0(sys%basis%tot_string_len)
         type(det_info_t), intent(inout) :: cdet
         real(p), intent(in) :: H00
         type(particle_t), intent(in) :: psip_list
@@ -477,6 +498,12 @@ contains
                 if (doing_dmqmc_calc(dmqmc_potential_energy)) &
                     call update_dmqmc_potential_energy(sys, cdet, excitation, unweighted_walker_pop(1), &
                                                        est%numerators(potential_ind))
+                ! Stores the projected energy from only considering the
+                ! reference row of the density matrix.
+                if (doing_dmqmc_calc(dmqmc_ref_proj_energy)) &
+                    call update_dmqmc_ref_proj_energy(sys, excitation, cdet, H00, unweighted_walker_pop, &
+                                                      psip_list%dat(1, idet), est%ref_trace, est%ref_D0j_particles, &
+                                                      est%numerators(ref_proj_ind:ref_proj_imag_ind), ref_f0, comp)
                 ! H^0 energy, where H^0 = H - V. See subroutines interface
                 ! comments for description.
                 if (doing_dmqmc_calc(dmqmc_H0_energy)) &
@@ -1698,6 +1725,69 @@ contains
         end if
 
     end subroutine update_dmqmc_H0_energy
+
+    subroutine update_dmqmc_ref_proj_energy(sys, excitation, cdet, H00, pop, diagonal_contribution, trace, D0j, &
+                                            energy, ref_f0, complx)
+
+        ! If the current density matrix element is on the reference row
+        ! then store the componenant of this element for the projector.
+        ! Otherwise we do not include an element that is not on the referencei row.
+        ! This is really a wrapper to check the matrix element is on the
+        ! reference row, then uses the normal energy updating procedures
+        ! to update the "trace" and numerator of the energy esitmate on this row.
+
+        ! In:
+        !    sys: system being studied.
+        !    excitation: excit_t type variable which stores information on
+        !        the excitation between the two bitstring ends, corresponding
+        !        to the two labels for the density matrix element.
+        !    H00: diagonal Hamiltonian element for the reference.
+        !    pop: number of particles on the current density matrix
+        !        element.
+        !    pop_im: imaginary population, not used here.
+        !    cdet: det_info_t object containing bit strings of densitry matrix
+        !        element under consideration.
+        !    diagonal_contribution: <D_i|H|D_i>-<D0|H|D0>
+        !    ref_f0: the bitstring of the reference determinant used to check
+        !        if we are on the reference row of the density matrix.
+        !    complx: if we are sampling a complex read_in system.
+        ! In/Out:
+        !    energy: current reference projected energy numerator.
+        !    trace: total population on diagonal elements of density matrix
+        !       reference row.
+
+        use determinant_data, only: det_info_t
+        use system, only: sys_t
+        use excitations, only: get_excitation_level, excit_t
+        use proc_pointers, only: update_dmqmc_energy_and_trace_ptr
+
+        type(sys_t), intent(in) :: sys
+        type(excit_t), intent(inout) :: excitation
+        type(det_info_t), intent(in) :: cdet
+        real(p), intent(in) :: H00, diagonal_contribution
+        real(p), intent(in) :: pop(:)
+        integer(i0), intent(in) :: ref_f0(sys%basis%tot_string_len)
+        logical, intent(in), optional :: complx
+        real(p), intent(inout) :: trace(:)
+        real(p), intent(inout) :: D0j(:)
+        real(p), intent(inout) :: energy(:)
+        integer :: row_col_excit_level
+
+        logical :: complx_set
+        ! Importance sampling (in the FCIQMC-sense) isn't used in DMQMC...
+        real(p) :: trial_wfn_dat(0)
+
+        if (present(complx)) complx_set = complx
+        row_col_excit_level = get_excitation_level(ref_f0,cdet%f2)
+
+        if (row_col_excit_level == 0) then
+            D0j = D0j + abs(pop(1))
+            call update_dmqmc_energy_and_trace_ptr(sys, excitation, cdet, H00, pop, &
+                                                   diagonal_contribution, trace, &
+                                                   energy, complx)
+        end if
+
+    end subroutine update_dmqmc_ref_proj_energy
 
     subroutine update_dmqmc_HI_energy(sys, cdet, excitation, pop, tdiff, HI_energy, complx)
 

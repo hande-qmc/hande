@@ -12,6 +12,10 @@ interface update_noncumulative_dist_int
     module procedure update_noncumulative_dist_int_64
 end interface
 
+interface cumulative_population 
+    module procedure cumulative_population_int
+end interface
+
 contains
 
     subroutine find_D0(psip_list, f0, D0_pos)
@@ -41,7 +45,7 @@ contains
 
         if (D0_pos == -1) then
             ! D0 was just moved to this processor.  No idea where it might be...
-            call binary_search(psip_list%states, f0, 1, psip_list%nstates, hit, D0_pos)
+            call binary_search(psip_list%states, f0, 1, psip_list%nstates, hit, D0_pos, psip_list%descending)
         else
             D0_pos_old = D0_pos
             select case(bit_str_cmp(f0, psip_list%states(:,D0_pos)))
@@ -51,11 +55,11 @@ contains
             case(1)
                 ! D0 < psip_list%states(:,D0_pos) -- it has moved to earlier in
                 ! the list and the old D0_pos is an upper bound.
-                call binary_search(psip_list%states, f0, 1, D0_pos_old, hit, D0_pos)
+                call binary_search(psip_list%states, f0, 1, D0_pos_old, hit, D0_pos, psip_list%descending)
             case(-1)
                 ! D0 > psip_list%states(:,D0_pos) -- it has moved to later in
                 ! the list and the old D0_pos is a lower bound.
-                call binary_search(psip_list%states, f0, D0_pos_old, psip_list%nstates, hit, D0_pos)
+                call binary_search(psip_list%states, f0, D0_pos_old, psip_list%nstates, hit, D0_pos, psip_list%descending)
             end select
         end if
         if (.not.hit) call stop_all('find_D0', 'Cannot find reference!')
@@ -163,27 +167,28 @@ contains
         logical,  intent(out) :: allowed
 
         integer(i0) :: excitor_loc(basis%tot_string_len)
+        integer(i0) :: f0_loc(basis%tot_string_len)
 
-        integer :: ibasis, ibit
         integer(i0) :: excitor_excitation(basis%tot_string_len)
         integer(i0) :: excitor_annihilation(basis%tot_string_len)
         integer(i0) :: excitor_creation(basis%tot_string_len)
         integer(i0) :: cluster_excitation(basis%tot_string_len)
         integer(i0) :: cluster_annihilation(basis%tot_string_len)
         integer(i0) :: cluster_creation(basis%tot_string_len)
-        integer(i0) :: permute_operators(basis%tot_string_len)
 
         excitor_loc = excitor
+        f0_loc = f0
         call reset_extra_info_bit_string(basis, excitor_loc)
+        call reset_extra_info_bit_string(basis, f0_loc)
 
         ! Apply excitor to the cluster of excitors.
 
         ! orbitals involved in excitation from reference
-        excitor_excitation = ieor(f0, excitor_loc)
-        cluster_excitation = ieor(f0, cluster_excitor)
+        excitor_excitation = ieor(f0_loc, excitor_loc)
+        cluster_excitation = ieor(f0_loc, cluster_excitor)
         ! annihilation operators (relative to the reference)
-        excitor_annihilation = iand(excitor_excitation, f0)
-        cluster_annihilation = iand(cluster_excitation, f0)
+        excitor_annihilation = iand(excitor_excitation, f0_loc)
+        cluster_annihilation = iand(cluster_excitation, f0_loc)
         ! creation operators (relative to the reference)
         excitor_creation = iand(excitor_excitation, excitor_loc)
         cluster_creation = iand(cluster_excitation, cluster_excitor)
@@ -208,49 +213,85 @@ contains
             ! Might need a sign change as well...see below!
             cluster_population = cluster_population*excitor_population
 
-            ! Now apply the excitor to the cluster (which is, in its own right,
-            ! an excitor).
-            ! Consider a cluster, e.g. t_i^a = a^+_a a_i (which corresponds to i->a).
-            ! We wish to collapse two excitors, e.g. t_i^a t_j^b, to a single
-            ! excitor, e.g. t_{ij}^{ab} = a^+_a a^+_b a_j a_i (where i<j and
-            ! a<b).  However t_i^a t_j^b = a^+_a a_i a^+_b a_j.  We thus need to
-            ! permute the creation and annihilation operators.  Each permutation
-            ! incurs a sign change.
-
-            do ibasis = 1, basis%bit_string_len
-                do ibit = 0, i0_end
-                    if (btest(excitor_excitation(ibasis),ibit)) then
-                        if (btest(f0(ibasis),ibit)) then
-                            ! Exciting from this orbital.
-                            cluster_excitor(ibasis) = ibclr(cluster_excitor(ibasis),ibit)
-                            ! We need to swap it with every annihilation
-                            ! operator and every creation operator referring to
-                            ! an orbital with a higher index already in the
-                            ! cluster.
-                            ! Note that an orbital cannot be in the list of
-                            ! annihilation operators and the list of creation
-                            ! operators.
-                            ! First annihilation operators:
-                            permute_operators = iand(basis%excit_mask(:,basis%basis_lookup(ibit,ibasis)),cluster_annihilation)
-                            ! Now add the creation operators:
-                            permute_operators = ior(permute_operators,cluster_creation)
-                        else
-                            ! Exciting into this orbital.
-                            cluster_excitor(ibasis) = ibset(cluster_excitor(ibasis),ibit)
-                            ! Need to swap it with every creation operator with
-                            ! a lower index already in the cluster.
-                            permute_operators = iand(not(basis%excit_mask(:,basis%basis_lookup(ibit,ibasis))),cluster_creation)
-                            permute_operators(ibasis) = ibclr(permute_operators(ibasis),ibit)
-                        end if
-                        if (mod(sum(count_set_bits(permute_operators)),2) == 1) &
-                            cluster_population = -cluster_population
-                    end if
-                end do
-            end do
-
+            call collapse_excitor_onto_cluster(basis, excitor_excitation, f0, cluster_excitor, &
+                                                  cluster_annihilation, cluster_creation, cluster_population)
         end if
 
     end subroutine collapse_cluster
+
+    pure subroutine collapse_excitor_onto_cluster(basis, excitor_excitation, f0, cluster_excitor, &
+                                                  cluster_annihilation, cluster_creation, cluster_population)
+
+
+        ! General subroutine for applying an excitor to a cluster. Used in collapse_cluster and ucc_collapse_cluster.
+        ! In:
+        !    basis: information about the single-particle basis.
+        !    f0: bit string representation of the reference determinant.
+        !    excitor_excitation: bit string of the excitor excitation operator.
+        !    cluster_annihilation: bit string of the annihilation operator in the cluster excitor.
+        !    cluster_creation: bit string of the creationion operator in the cluster excitor.
+        ! In/Out:
+        !    cluster_excitor: bit string of the Slater determinant formed by applying
+        !        the excitor, e2, to the reference determinant.
+        !    cluster_population: number of excips on the 'cluster' excitor, e2.
+
+        ! Apply the excitor to the cluster (which is, in its own right,
+        ! an excitor).
+        ! Consider a cluster, e.g. t_i^a = a^+_a a_i (which corresponds to i->a).
+        ! We wish to collapse two excitors, e.g. t_i^a t_j^b, to a single
+        ! excitor, e.g. t_{ij}^{ab} = a^+_a a^+_b a_j a_i (where i<j and
+        ! a<b).  However t_i^a t_j^b = a^+_a a_i a^+_b a_j.  We thus need to
+        ! permute the creation and annihilation operators.  Each permutation
+        ! incurs a sign change.
+    
+        use basis_types, only: basis_t
+
+        use bit_utils, only: count_set_bits
+        use const, only: i0_end
+
+        type(basis_t), intent(in) :: basis
+        integer(i0), intent(in) :: f0(basis%tot_string_len)
+        integer(i0), intent(inout) :: cluster_excitor(basis%tot_string_len)
+        complex(p), intent(inout) :: cluster_population
+        integer(i0), intent(in) :: excitor_excitation(basis%tot_string_len)
+        integer(i0), intent(in) :: cluster_annihilation(basis%tot_string_len)
+        integer(i0), intent(in) :: cluster_creation(basis%tot_string_len)
+
+        integer :: ibasis, ibit
+        integer(i0) :: permute_operators(basis%tot_string_len)
+                           
+        do ibasis = 1, basis%bit_string_len
+            do ibit = 0, i0_end
+                if (btest(excitor_excitation(ibasis),ibit)) then
+                    if (btest(f0(ibasis),ibit)) then
+                        ! Exciting from this orbital.
+                        cluster_excitor(ibasis) = ibclr(cluster_excitor(ibasis),ibit)
+                        ! We need to swap it with every annihilation
+                        ! operator and every creation operator referring to
+                        ! an orbital with a higher index already in the
+                        ! cluster.
+                        ! Note that an orbital cannot be in the list of
+                        ! annihilation operators and the list of creation
+                        ! operators.
+                        ! First annihilation operators:
+                        permute_operators = iand(basis%excit_mask(:,basis%basis_lookup(ibit,ibasis)),cluster_annihilation)
+                        ! Now add the creation operators:
+                        permute_operators = ior(permute_operators,cluster_creation)
+                    else
+                        ! Exciting into this orbital.
+                        cluster_excitor(ibasis) = ibset(cluster_excitor(ibasis),ibit)
+                        ! Need to swap it with every creation operator with
+                        ! a lower index already in the cluster.
+                        permute_operators = iand(not(basis%excit_mask(:,basis%basis_lookup(ibit,ibasis))),cluster_creation)
+                        permute_operators(ibasis) = ibclr(permute_operators(ibasis),ibit)
+                    end if
+                    if (mod(sum(count_set_bits(permute_operators)),2) == 1) &
+                        cluster_population = -cluster_population
+                end if
+            end do
+        end do
+
+    end subroutine collapse_excitor_onto_cluster
 
     pure subroutine convert_excitor_to_determinant(excitor, excitor_level, excitor_sign, f)
 
@@ -383,7 +424,7 @@ contains
 
     end subroutine zero_estimators_t
 
-    subroutine cumulative_population(pops, ex_lvls, nactive, D0_proc, D0_pos, real_factor, calc_dist, complx, &
+    subroutine cumulative_population_int(pops, ex_lvls, nactive, D0_proc, D0_pos, real_factor, calc_dist, complx, &
                                     cumulative_pops, tot_pop, ex_lvl_dist)
 
         ! Calculate the cumulative population, i.e. the number of psips/excips
@@ -416,7 +457,7 @@ contains
         !        population on the reference if appropriate.
         !    tot_pop: total population (possibly excluding the population on the
         !       reference).
-        !    ex_lvl_dist: derived types containing distributions of states
+        !    ex_lvl_dist (optional): derived types containing distributions of states
         !       and populations between different excitation levels.
 
         ! NOTE: currently only the populations in the first psip/excip space are
@@ -430,13 +471,12 @@ contains
         integer, intent(in) :: nactive, D0_proc, D0_pos
         real(p), allocatable, intent(inout) :: cumulative_pops(:)
         real(p), intent(out) :: tot_pop
-        type(ex_lvl_dist_t), intent(inout) :: ex_lvl_dist
+        type(ex_lvl_dist_t), optional, intent(inout) :: ex_lvl_dist
         logical, intent(in) :: complx, calc_dist
         integer(i0), intent(in) :: ex_lvls(:)
 
         integer :: i
         integer(i0) :: j, ex_lvl
-
 
         ! First need to set values to account for reference correctly in ex_lvl_dist.
         if (calc_dist) then
@@ -520,7 +560,7 @@ contains
             ex_lvl_dist%cumulative_pop_ex_lvl(ex_lvl:) = tot_pop
         end if
 
-    end subroutine cumulative_population
+    end subroutine cumulative_population_int
 
     pure function get_pop_contrib(pops, real_factor, complx) result(contrib)
 
@@ -869,7 +909,7 @@ contains
         end do
 
         associate(pl=>qs%psip_list)
-             call qsort(pl%nstates, pl%states, pl%pops, pl%dat)
+             call qsort(pl%nstates, pl%states, pl%pops, pl%dat, .false.)
         end associate
 
 

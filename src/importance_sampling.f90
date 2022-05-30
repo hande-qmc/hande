@@ -411,4 +411,62 @@ contains
 
     end subroutine interaction_picture_reweighting_hartree_fock
 
+    subroutine interaction_picture_reweighting_molecular_HF(sys, cdet, connection, trial_func, hmatel)
+
+        ! The same as above but for the read in case where things are
+        ! assumed to generally be a lot easier.
+        ! (Though this is not always the case)
+
+        ! In:
+        !    sys: system being studied.
+        !    cdet: info on the current determinant (cdet) that we will spawn
+        !        from.
+        !    connection: excitation connection between the current determinant
+        !        and the child determinant, on which progeny are spawned.
+        !    trial_func: importance sampling weights, used to pass 0.5*(beta-tau)
+        !        in the last element (sys%max_number_excitations+1).
+        ! In/Out:
+        !    hmatel: on input, untransformed matrix element connecting two spin
+        !        functions (kets).  On output, transformed matrix element,
+        !        is e^{-0.5*(beta-tau)(E_i-E_k)} H_{ik}.
+        !        The factors which the Hamiltonian are multiplied by depend
+        !        on the level which we come from, and go to, and so depend on
+        !        the two ends of the bitstring we spawn from, and the new
+        !        bitstring we spawn onto. Note this is not really importance sampling
+        !        in the usual sense.
+
+        use determinant_data, only: det_info_t
+        use excitations, only: excit_t, get_excitation_level, create_excited_det
+        use system, only: sys_t
+        use proc_pointers, only: sc0_ptr
+
+        type(sys_t), intent(in) :: sys
+        type(det_info_t), intent(in) :: cdet
+        type(excit_t), intent(in) :: connection
+        real(p), allocatable, intent(in) :: trial_func(:)
+        real(p), intent(inout) :: hmatel
+
+        integer(i0) :: f_new(sys%basis%tot_string_len)
+        real(p) :: diff_ijab
+
+        if (abs(hmatel) > depsilon) then
+            ! [Todo] Rewrite this to instead calculate the difference based on
+            ! the 1 and 2 particle integrals that differ between the two 
+            ! determinants SC0 to speed it up?
+            ! H_{ii} = \sum_{m}^{N} <m|h|m> + \sum_{m}^{N} \sum_{n>m}^{N} <mn||mn>
+            ! E_i - E_k = <a|h|a> + <b|h|b> - <i|h|i> - <j|h|j>
+            !            + \sum_{a,b} \sum_{j!=a,b,i,j}^{N} <mn||mn>
+            !            + <ab||ab>
+            !            - \sum_{i,j} \sum_{j!=a,b,i,j}^{N} <mn||mn>
+            !            - <ij||ij>
+            ! sys%read_in%one_e_h_integrals%integrals(ispin, isym)%v(indx)
+            ! sys%read_in%coulomb_integrals%integrals(ispin)%v(indx)
+            diff_ijab = 0.0_p
+            call create_excited_det(sys%basis, cdet%f, connection, f_new)
+            diff_ijab = (sc0_ptr(sys, f_new) - sc0_ptr(sys, cdet%f))
+            hmatel = exp(-trial_func(sys%max_number_excitations+1)*diff_ijab) * hmatel
+        end if
+
+    end subroutine interaction_picture_reweighting_molecular_HF
+
 end module importance_sampling

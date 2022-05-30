@@ -65,7 +65,7 @@ contains
         pp%occ_list = ref%occ_list0
         
         ! Now sort this, just in case we have an old restart file and the reference was not sorted then.
-        call qsort(pp%occ_list,sys%nel)
+        call qsort(pp%occ_list,.false., sys%nel)
 
         ! Make the unocc list.
         j = 1     ! The next occ to look at
@@ -276,7 +276,7 @@ contains
         pp%occ_list = ref%occ_list0
 
         ! Now sort this, just in case we have an old restart file and the reference was not sorted then.
-        call qsort(pp%occ_list,sys%nel)
+        call qsort(pp%occ_list,.false., sys%nel)
 
 #ifdef PARALLEL
         ! Initialise do-loop range for each processor, e.g. [iproc_nel_start,iproc_nel_end], in the case for
