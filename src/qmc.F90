@@ -839,6 +839,7 @@ contains
         use parallel
         use energy_evaluation, only: calculate_hf_signed_pop
         use checking, only: check_allocate
+        use errors, only: warning
 
         type(qmc_in_t), intent(in) :: qmc_in
         logical, intent(in) :: restart_read_in, fciqmc_non_blocking_comm
@@ -881,7 +882,13 @@ contains
         if (qmc_in%vary_shift_present) then
             ! User input overrides other factors determining whether to vary shift
             qmc_state%vary_shift = qmc_in%vary_shift
-            if (.not. qmc_in%vary_shift) qmc_state%shift = qmc_in%initial_shift
+            if (.not. qmc_in%vary_shift) then
+                qmc_state%shift = qmc_in%initial_shift
+                if (restart_read_in) then
+                    call warning('init_estimators', &
+                        'Reading in restart file, but vary_shift is false, setting initial shift to qmc_in%initial_shift!')
+                end if
+            end if
         end if
 
         if (doing_calc(hfs_fciqmc_calc)) then
