@@ -77,6 +77,9 @@ from pyscf import gto, scf, mcscf, tools
 
 import numpy as np
 import f90nml
+import subprocess as sp
+import sys
+import os
 
 # Global constant for the coefficients
 NORM = 1/np.sqrt(2)
@@ -146,6 +149,7 @@ def pair_lz(_symlz, _eigval):
 				if _symlz[i] == -_symlz[j] and abs(_eigval[i] - _eigval[j])<1e-10:
 					_lzpairs[i] = j
 					_lzpairs[j] = i
+					break
 	if any(_lzpairs==-1):
 		print(_lzpairs)
 		raise ValueError('Orbitals not paired correctly!')
@@ -279,30 +283,47 @@ def make_fcidumps(_mf, _filename):
 	# Read the FCIDUMP in, skipping the namelist
 	read = False
 	print(f'''Reading PySCF FCIDUMP and writing the Psi4-compatible FCIDUMP 
-		(with Cotton D2h irrep ordering and HF eigenvalues) in {_filename}-pyscf.FCIDUMP''')
-	with open(f'{_filename}-pyscf.FCIDUMP', 'r') as infile, open(f'{_filename}.FCIDUMP', 'w') as outfile:
-		# Read the namelist first
+		(with Cotton D2h irrep ordering and HF eigenvalues) in {_filename}.FCIDUMP''')
+	with open(f'{_filename}-pyscf.FCIDUMP', 'r') as infile, open(f'{_filename}.FCIDUMP', 'w') as outfile, open(f'{_filename}-temp.FCIDUMP', 'w') as tempfile:
+		# Write tempfile namelist
+
+		# Compatible format with Psi4
+		tempfile.write(f'&FCI\nNORB={int(norb)},\nNELEC={int(nelec)},\nMS2=0,\nORBSYM=')
+		for i in orbsym:
+			tempfile.write(f'{int(i)},')
+		tempfile.write('\n')
+		tempfile.write('ISYM=1,\nUHF=.FALSE.,\nSYML=')
+		for i in syml:
+			tempfile.write(f'{int(i)},')
+		tempfile.write('\nSYMLZ=')
+		for i in symlz:
+			tempfile.write(f'{int(i)},')
+		tempfile.write('\nPAIR=')
+		for i in lzpairs:
+			# lzpairs are 0-indexed, make it Fortran-compatible
+			tempfile.write(f'{int(i+1)},')
+		tempfile.write('\n&END\n')
+
 		contents = infile.readlines()
 		for line in contents:
 			if read:
 				data = line.strip().split()
-				intgrl = float(data[0])
 				i = int(data[1])
 				j = int(data[2])
 				k = int(data[3])
 				l = int(data[4])
-				if i!=0 and j!=0 and k!=0 and l!=0:
-					teint[eri_ind(i,j,k,l)] = intgrl
-				elif i!=0 and j!=0 and k==0 and l==0:
-					oeint[i-1,j-1] = oeint[j-1,i-1] = intgrl
 
-				# Add HF eigenvalues as PySCF doesn't supprot writing them out
+				# Add HF eigenvalues as PySCF doesn't support writing them out
 				if i==0 and j==0 and k==0 and l==0:
 					for i in range(norb):
 						outfile.write(f'{eigval[i]:28.20E}{(i+1):4d}{0:4d}{0:4d}{0:4d}\n')
+						tempfile.write(f'{eigval[i]:28.20E}{(i+1):4d}{0:4d}{0:4d}{0:4d}\n')
 					# Don't forget E_core
 					outfile.write(line)
+					tempfile.write(line)
 					break
+				else:
+					tempfile.write(line)
 
 			if '&END' in line:
 				read = True
@@ -315,152 +336,30 @@ def make_fcidumps(_mf, _filename):
 				outfile.write('\n')
 			else:
 				outfile.write(line)
+
+	print('Handing over to Fortran for the Lz transform...')
+
+	sp.run(['./lz_transform.x', f'{_filename}-temp.FCIDUMP'], stderr=sys.stderr, stdout=sys.stdout)
+	sp.call(f'rm {_filename}-temp.FCIDUMP', shell=True)
+	sp.call(f'mv lz-{_filename}-temp.FCIDUMP {_filename}-lz.FCIDUMP', shell=True)
+
 	print('Done!')
 
-	# Start writing out the Lz-transformed FCIDUMP
-	print(f'Starting the Lz transformation, writing out to {_filename}-lz.FCIDUMP')
-	with open(f'{_filename}-lz.FCIDUMP','w') as f:
-		# Compatible fornmat with Psi4
-		f.write(f'&FCI\nNORB={int(norb)},\nNELEC={int(nelec)},\nMS2=0,\nORBSYM=')
-		for i in orbsym:
-			f.write(f'{int(i)},')
-		f.write('\n')
-		f.write('ISYM=1,\nUHF=.FALSE.,\nSYML=')
-		for i in syml:
-			f.write(f'{int(i)},')
-		f.write('\nSYMLZ=')
-		for i in symlz:
-			f.write(f'{int(i)},')
-		f.write('\n&END\n')
-
-		print('2e integrals...')
-		for i in range(norb):
-			# For the given Lz, find out which two (if Lz is 0 then only one component)
-			# orbitals contribute, and then get their complex coefficients
-			# E.g. C(1,+1) \propto -1/sqrt(2) * (x+iy)
-			# And remember in Chemists' notation, (ij|kl) means i and k are complex conjugated
-			i1, i2, i1c, i2c = get_lz_idx_and_coeff(symlz[i],i+1,lzpairs[i]+1,-1) # Conjugate
-			for j in range(norb):
-				ij = (i*(i+1))/2+j
-				j1, j2, j1c, j2c = get_lz_idx_and_coeff(symlz[j],j+1,lzpairs[j]+1,1)
-				for k in range(norb):
-					k1, k2, k1c, k2c = get_lz_idx_and_coeff(symlz[k],k+1,lzpairs[k]+1,-1) # Conjugate
-					
-					for l in range(norb):
-						kl = (k*(k+1))/2+l
-						# We have four-fold permutational symmetry here:
-						# (ij|kl) = (ji|lk) = (kl|ij) = (lk|ji) 
-						# instead of the usual 8-fold symmetry, as the Lz-transformed orbitals are complex.
-						# (Note that this is also not the usual 4-fold symmetry of i<j and k<l, and 
-						# is instead a symmetry under simultaneous transpotition)
-						# The following checks will produce the correct indices, but does not quite take
-						# care of simultaneous transpositions (which would be quite verbose to achieve)
-						# so we're producing a superset of the permutationally unique indices.
-						# E.g. the following checks will allow both (11|21) and (11|12)
-						if (kl<ij):
-							continue
-						if (i<j) and (k<l):
-							continue
-						if (i>j) and (k<l):
-							continue
-						l1, l2, l1c, l2c = get_lz_idx_and_coeff(symlz[l],l+1,lzpairs[l]+1,1)
-
-						# Since every orbital is made up of up to 2 +- Ml components,
-						# we're going to get up to 16 contributions to the 2e integral.
-						# The zero integrals are taken care of by the zeroth element
-						# of 'teint', and the fact that eri_ind returns a zero 
-						# if any argument is zero.
-						lzintgrl =i1c*j1c*k1c*l1c*teint[eri_ind(i1,j1,k1,l1)]
-						lzintgrl+=i2c*j1c*k1c*l1c*teint[eri_ind(i2,j1,k1,l1)]
-						lzintgrl+=i1c*j2c*k1c*l1c*teint[eri_ind(i1,j2,k1,l1)]
-						lzintgrl+=i2c*j2c*k1c*l1c*teint[eri_ind(i2,j2,k1,l1)]
-						lzintgrl+=i1c*j1c*k2c*l1c*teint[eri_ind(i1,j1,k2,l1)]
-						lzintgrl+=i2c*j1c*k2c*l1c*teint[eri_ind(i2,j1,k2,l1)]
-						lzintgrl+=i1c*j2c*k2c*l1c*teint[eri_ind(i1,j2,k2,l1)]
-						lzintgrl+=i2c*j2c*k2c*l1c*teint[eri_ind(i2,j2,k2,l1)]
-						lzintgrl+=i1c*j1c*k1c*l2c*teint[eri_ind(i1,j1,k1,l2)]
-						lzintgrl+=i2c*j1c*k1c*l2c*teint[eri_ind(i2,j1,k1,l2)]
-						lzintgrl+=i1c*j2c*k1c*l2c*teint[eri_ind(i1,j2,k1,l2)]
-						lzintgrl+=i2c*j2c*k1c*l2c*teint[eri_ind(i2,j2,k1,l2)]
-						lzintgrl+=i1c*j1c*k2c*l2c*teint[eri_ind(i1,j1,k2,l2)]
-						lzintgrl+=i2c*j1c*k2c*l2c*teint[eri_ind(i2,j1,k2,l2)]
-						lzintgrl+=i1c*j2c*k2c*l2c*teint[eri_ind(i1,j2,k2,l2)]
-						lzintgrl+=i2c*j2c*k2c*l2c*teint[eri_ind(i2,j2,k2,l2)]
-						
-						# Check for conservation of angular momentum: \iint a*(1)b(1) 1/r12 c*(2)d(2) dr1 dr2
-						# i.e. <ac|bd>, meaning transition from ac->bd, so Ml(a)+Ml(c) must be equal to Ml(b)+Ml(d)
-						if (symlz[i]+symlz[k] != symlz[j]+symlz[l]) and abs(lzintgrl) > 1e-12:
-							if abs(lzintgrl) < 1e-8:
-								print(f'''({i} {j}|{k} | {l}) should be zero by conservation of angular momentum, 
-									but has value {lzintgrl}, which is within machine precision, setting to zero!''')
-								lzintgrl = 0
-							else:
-								raise ValueError(f'''({i} {j}|{k} | {l}) should be zero by conservation of angular momentum, 
-									but has value {lzintgrl}, which is outside machine precision, aborting!''')
-
-						# Check whether the integral is strictly real
-						if (abs(lzintgrl.imag) > 1e-12):
-							if abs(lzintgrl.imag) < 1e-8:
-								print(f'''({i} {j}|{k} | {l}), like all other integrals, should have zero imaginary part, 
-									but has imaginary part {lzintgrl.imag}, which is within machine precision, setting to zero!''')
-								lzintgrl.imag = 0
-							else:
-								raise ValueError(f'''({i} {j}|{k} | {l}), like all other integrals, should have zero imaginary part, 
-									but has imaginary part {lzintgrl.imag}, which is outside machine precision, aborting!''')
-
-						# Print out if larger than threshold
-						if (abs(lzintgrl.real)>1e-12):
-							f.write(f'{lzintgrl.real:28.20E}{(i+1):4d}{(j+1):4d}{(k+1):4d}{(l+1):4d}\n')
-		# 1e integrals
-		# We store the full matrix so don't care about permutational symmetry
-		print('1e integrals...')
-		for i in range(norb):
-			for j in range(i,norb):
-				i1, i2, i1c, i2c = get_lz_idx_and_coeff(symlz[i],i,lzpairs[i],-1) # Conjugate
-				j1, j2, j1c, j2c = get_lz_idx_and_coeff(symlz[j],j,lzpairs[j],1)
-
-				lzintgrl =i1c*j1c*oeint[i1,j1]
-				lzintgrl+=i2c*j1c*oeint[i2,j1]
-				lzintgrl+=i1c*j2c*oeint[i1,j2]
-				lzintgrl+=i2c*j2c*oeint[i2,j2]
-
-				if (symlz[i] != symlz[j]) and abs(lzintgrl) > 1e-12:
-					if abs(lzintgrl) < 1e-8:
-						print(f'''({i} | {j}) should be zero by conservation of angular momentum, 
-							but has value {lzintgrl}, which is within machine precision, setting to zero!''')
-						lzintgrl = 0
-					else:
-						raise ValueError(f'''({i} | {j}) should be zero by conservation of angular momentum, 
-							but has value {lzintgrl}, which is outside machine precision, aborting!''')
-
-				# Check whether the integral is strictly real
-				if (abs(lzintgrl.imag) > 1e-12):
-					if abs(lzintgrl.imag) < 1e-8:
-						print(f'''({i} | {j}), like all other integrals, should have zero imaginary part, 
-							but has imaginary part {lzintgrl.imag}, which is within machine precision, setting to zero!''')
-						lzintgrl.imag = 0
-					else:
-						raise ValueError(f'''({i} | {j}), like all other integrals, should have zero imaginary part, 
-							but has imaginary part {lzintgrl.imag}, which is outside machine precision, aborting!''')
-				
-				if (abs(lzintgrl.real)>1e-12):
-					f.write(f'{lzintgrl.real:28.20E}{(i+1):4d}{(j+1):4d}{0:4d}{0:4d}\n')
-		
-		# Eigenvalues
-		for i in range(norb):
-			f.write(f'{eigval[i]:28.20E}{(i+1):4d}{0:4d}{0:4d}{0:4d}\n')
-		
-		# Nuclear repulsion + frozen core energy
-		f.write(f'{e_nuc:28.20E}{0:4d}{0:4d}{0:4d}{0:4d}')
-
-	print('All done!')
-
-
 if __name__ == '__main__':
-	for bl in np.linspace(2,7,11):
+
+	molname = 'be2'
+	basis = 'cc-pvqz'
+
+	if not os.path.exists('./lz_transform.x'):
+		raise OSError('lz_transform.x does not exist, please compile lz_transform.f90!')
+
+	bls = np.concatenate([np.linspace(2,4,21),np.linspace(4.5,8,8)])
+	rhf_energy = np.zeros_like(bls)
+
+	for idx, bl in enumerate(bls):
 
 		# PySCF FCIDUMP name
-		filename = f'be-ccpvdz-{bl:.1f}'
+		filename = f'{molname}-{basis}-{bl:.1f}'
 
 		print('='*30+'\n'+f'Doing {filename}\n'+'='*30)
 
@@ -468,12 +367,16 @@ if __name__ == '__main__':
 		mol = gto.M(atom=f"""
 		Be
 		Be 1 {bl:.1f}""",
-		basis='cc-pvdz', symmetry='Dooh')
+		basis=basis, symmetry='Dooh')
 
 		# Clamp occupancy for better convergence / converging to the same RHF solution across a binding curve
 		# Restarting from previous geometry (ie tracking) works too.
 		occ = {'A1g':4,'A1u':4}
 
 		mf = run_pyscf(mol, occ)
+		rhf_energy[idx] = mf.e_tot
 
 		make_fcidumps(mf, filename)
+
+	
+	np.savetxt('rhf-energies.dat', rhf_energy)
