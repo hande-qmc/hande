@@ -474,11 +474,12 @@ contains
                 !$omp        qs, sys, bloom_stats, min_cluster_size, ref_det,             &
                 !$omp         selection_data,      &
                 !$omp        uccmc_in, ccmc_in, nprocs, ms_stats, ps_stats, qmc_in, load_bal_in, &
-                !$omp        ndeath_nc,   pcumul, nstates_ci, &
-                !$omp        nparticles_change,logging_info, &
+                !$omp        pcumul, nstates_ci, &
+                !$omp        logging_info, &
                 !$omp        time_avg_psip_list_ci_states, time_avg_psip_list_ci_pops, &
                 !$omp        time_avg_psip_list_states, time_avg_psip_list_pops) &
-                !$omp reduction(+:D0_population_cycle,proj_energy_cycle, D0_population_noncomp_cycle, nattempts_spawn,ndeath)
+                !$omp reduction(+:D0_population_cycle,proj_energy_cycle,D0_population_noncomp_cycle, &
+                !$omp nattempts_spawn,ndeath,nparticles_change,ndeath_nc)
 
                 it = get_thread_id()
                 iexcip_pos = 0
@@ -492,7 +493,8 @@ contains
                 end do
 
                 !$omp do schedule(dynamic,200) 
-                do iattempt = 1, selection_data%nsingle_excitors
+                do iattempt = 1, selection_data%nsingle_excitors + selection_data%nstochastic_clusters
+                    if (iattempt <= selection_data%nsingle_excitors) then
                     ! For OpenMP scalability, have this test inside a single loop rather
                     ! than attempt to parallelise over three separate loops.
                    
@@ -520,10 +522,7 @@ contains
                             call do_nc_ccmc_propagation(rng(it), sys, qs, ccmc_in, logging_info, bloom_stats, &
                                                                 contrib(it), nattempts_spawn, ps_stats(it), uccmc_in)
                         end if
-                end do
-                !$omp end do
-                !$omp do schedule(dynamic,200) 
-                do iattempt = 1, selection_data%nstochastic_clusters
+                else
 
                         call select_ucc_trot_cluster(rng(it), sys, qs%psip_list, qs%ref%f0, qs%ref%max_ex_level, &
                                             selection_data%nstochastic_clusters, &
@@ -555,6 +554,7 @@ contains
                                                                 ccmc_in, logging_info, ms_stats(it), bloom_stats, &
                                                                 contrib(it), nattempts_spawn, ndeath, ps_stats(it), uccmc_in)
                         end if
+                    end if
                 end do
                 !$omp end do
 
@@ -590,7 +590,7 @@ contains
                 ndeath_nc=0
                 if (ccmc_in%full_nc .and. qs%psip_list%nstates > 0) then
                     ! Do death exactly and directly for non-composite clusters
-                    !$omp do schedule(dynamic,200) private(dfock) reduction(+:ndeath_nc,nparticles_change)
+                    !$omp do schedule(dynamic,200) private(dfock) 
                     do iattempt = 1, qs%psip_list%nstates
                         ! Note we use the (encoded) population directly in stochastic_ccmc_death_nc
                         ! (unlike the stochastic_ccmc_death) to avoid unnecessary decoding/encoding
