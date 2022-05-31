@@ -121,7 +121,8 @@ contains
             offdiagel = get_hmatel(sys, f_max, f_max)
             ! In HANDE we set E_HF to zero
             e_max = e_max - abs(offdiagel%r) + offdiagel%r - qs%ref%H00
-            e_max = e_max * 1.1  ! Arbitrarily shift the upper bound higher to be safe
+            ! Fudge factors: E_max = (E_max + shift) * scale
+            e_max = (e_max + qmc_in%chebyshev_shift) * qmc_in%chebyshev_scale
 
             qs%cheby_prop%spectral_range(1) = 0.0_p
             qs%cheby_prop%spectral_range(2) = e_max

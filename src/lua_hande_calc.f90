@@ -1251,8 +1251,11 @@ contains
             qmc_in%tau_save = qmc_in%tau
             qmc_in%tau = 1
 
-            call aot_get_val(qmc_in%disable_chebyshev_shoulder, err, lua_state, chebyshev_table, 'disable_chebyshev_shoulder')
-            call aot_get_val(qmc_in%disable_chebyshev_lag, err, lua_state, chebyshev_table, 'disable_chebyshev_lag')
+            call aot_get_val(qmc_in%chebyshev_shift, err, lua_state, chebyshev_table, 'chebyshev_shift')
+            call aot_get_val(qmc_in%chebyshev_scale, err, lua_state, chebyshev_table, 'chebyshev_scale')
+
+            !call aot_get_val(qmc_in%disable_chebyshev_shoulder, err, lua_state, chebyshev_table, 'disable_chebyshev_shoulder')
+            !call aot_get_val(qmc_in%disable_chebyshev_lag, err, lua_state, chebyshev_table, 'disable_chebyshev_lag')
         end if
 
         if (aot_exists(lua_state, qmc_table, 'reference_target')) then
