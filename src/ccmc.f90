@@ -337,7 +337,7 @@ contains
         use logging, only: logging_in_t, logging_t, logging_in_t_json, logging_t_json, write_logging_select_ccmc
         use report, only: write_date_time_close
         use excit_gens, only: p_single_double_coll_t
-        use propagators, only: disable_chebyshev, update_chebyshev
+        use propagators, only: update_chebyshev
 
         type(sys_t), intent(in) :: sys
         type(qmc_in_t), intent(in) :: qmc_in
@@ -612,18 +612,6 @@ contains
 
             do icycle = 1, qmc_in%ncycles
                 iter = qs%mc_cycles_done + (ireport-1)*qmc_in%ncycles + icycle
-                ! qs%vary_shift(nspaces), provided for compatibility with replica tricks
-                if (qs%cheby_prop%disable_chebyshev_shoulder .and. .not. reached_shoulder) then
-                    ! Check if shoulder has been reached and record the iteration
-                    if (all(qs%vary_shift)) then
-                        reached_shoulder = .true.
-                        qs%cheby_prop%disable_chebyshev_iter = iter + qs%cheby_prop%disable_chebyshev_lag
-                    end if
-                end if
-                ! Chebyshev projector has hopefully brought us to convergence, now we can collect statistics
-                if (qs%cheby_prop%disable_chebyshev_shoulder .and. iter == qs%cheby_prop%disable_chebyshev_iter) then
-                    call disable_chebyshev(qs, qmc_in)
-                end if
 
                 do icheb = 1, qs%cheby_prop%order
                     qs%cheby_prop%icheb = icheb

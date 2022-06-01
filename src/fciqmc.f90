@@ -81,7 +81,7 @@ contains
                             write_blocking_report, update_shift_damping
         use report, only: write_date_time_close
         use replica_rdm, only: update_rdm_from_spawns, calc_rdm_energy, write_final_rdm
-        use propagators, only: update_chebyshev, disable_chebyshev
+        use propagators, only: update_chebyshev
         use state_histograms
 
         type(sys_t), intent(in) :: sys
@@ -295,16 +295,6 @@ contains
 
             do icycle = 1, qmc_in%ncycles
                 iter = qs%mc_cycles_done + (ireport-1)*qmc_in%ncycles + icycle
-                ! qs%vary_shift(nspaces), provided for compatibility with replica tricks
-                if (.not. reached_shoulder) then
-                    ! Check if shoulder has been reached and record the iteration
-                    if (all(qs%vary_shift)) then
-                        reached_shoulder = .true.
-                        qs%cheby_prop%disable_chebyshev_iter = iter + qs%cheby_prop%disable_chebyshev_lag
-                    end if
-                end if
-                ! Chebyshev projector has hopefully brought us to convergence, now we can collect statistics
-                if (iter == qs%cheby_prop%disable_chebyshev_iter) call disable_chebyshev(qs, qmc_in)
 
                 if (debug) call prep_logging_mc_cycle(iter, logging_in, logging_info, sys%read_in%comp)
 
