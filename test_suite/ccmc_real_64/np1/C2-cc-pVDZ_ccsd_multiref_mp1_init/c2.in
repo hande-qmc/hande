@@ -14,7 +14,6 @@ qmc_opt = {
     target_population = 5e6,
     state_size = -500,
     spawned_state_size = -500,
-    vary_shift = false,
     vary_shift_from = 'proje',
     shift_damping = 0.01,
     excit_gen = 'heat_bath',
@@ -27,22 +26,13 @@ ccmc_opt = {
     cluster_multispawn_threshold = 5,
     multiref = true,
     mr_acceptance_search = 'bk_tree',
-    n_secondary_ref = 4899,
     mr_read_in = true,
-    mr_n_frozen = 4,
     mr_excit_lvl = 2,
     mr_secref_file = 'secondary_references'
 }
 
 psip_list = mp1_mc {
     sys = sys,
---    mp1 = {
---        rng_seed = 12345,
---        D0_population = 2000,
---        state_size = -2000,
---        real_amplitudes = true,
---        spawn_cutoff = 0.001,
---    },
     qmc = qmc_opt,
     ccmc = ccmc_opt,
 }

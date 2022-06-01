@@ -1327,6 +1327,7 @@ contains
             
             allocate(read_in_ref%occ_list0(sys%nel))
             open(newunit=ir, file=qs%mr_secref_file, status='old', form='formatted', action='read')
+
             do i = 1, qs%n_secondary_ref
                 secref_bstring(:) = 0_i0
                 real_bstring(:) = 0_i0

@@ -878,6 +878,7 @@ contains
         use excitations, only: init_excitations, end_excitations
 
         use errors, only: warning
+        use parallel, only: parent
 
         integer(c_int) :: nresult
         type(c_ptr), value :: L
@@ -916,7 +917,7 @@ contains
         ref%ex_level = 2
 
         if (qmc_exists) then
-            call warning('lua_mp1_mc', &
+            if (parent) call warning('lua_mp1_mc', &
                 'qmc table provided, overriding D0_normlisation, state_size, real_amplitudes, and rng_seed!')
             mp1_in%D0_norm = qmc_in%D0_population
             mp1_in%state_size = qmc_in%walker_length
@@ -1709,6 +1710,9 @@ contains
         !    ccmc_in: ccmc_in_t object containing ccmc-specific input options.
 
         use, intrinsic :: iso_fortran_env, only: iostat_end
+        use const
+        use bit_utils, only: count_set_bits
+        use utils, only: int_fmt
         use flu_binding, only: flu_State
         use aot_table_module, only: aot_get_val, aot_exists, aot_table_open, aot_table_close
 
@@ -1722,12 +1726,14 @@ contains
         type (sys_t), intent(in) :: sys
         type(ccmc_in_t), intent(out) :: ccmc_in
 
-        integer :: ccmc_table, err, i, ir, ios
-        character(28), parameter :: keys(15) = [character(28) :: 'move_frequency', 'cluster_multispawn_threshold', &
+        integer :: ccmc_table, err, i, ir, ios, nel, iel
+        integer(i0) :: bstring
+        character(255) :: err_msg
+        character(28), parameter :: keys(14) = [character(28) :: 'move_frequency', 'cluster_multispawn_threshold', &
                                                                 'full_non_composite', 'linked', 'vary_shift_reference', &
                                                                 'density_matrices', 'density_matrix_file', 'even_selection', &
                                                                 'multiref', 'n_secondary_ref', 'mr_acceptance_search', &
-                                                                'mr_excit_lvl','mr_secref_file','mr_n_frozen','mr_read_in']
+                                                                'mr_excit_lvl','mr_secref_file','mr_read_in']
         character(23) :: string ! 32 bit integer has 10 digits, should be more than enough
         ! secondary_refX keywords are not hardcoded in, so we dynamically add them into the
         ! array of allowed keys 
@@ -1770,13 +1776,45 @@ contains
                     open(newunit=ir, file=ccmc_in%mr_secref_file, status='old', form='formatted', action='read')
                     ccmc_in%n_secondary_ref = 0
                     do
-                        read(ir, *, iostat=ios)
+                        read(ir, *, iostat=ios) bstring
+
+                        ! Make sure all of them have the same number of electrons as the first one, which we assume to be correct.
+                        iel = count_set_bits(bstring)
+                        ! Check that the bitstrings are sensible..
+                        if (ccmc_in%n_secondary_ref == 0) then
+                            nel = iel
+                            if (sys%CAS(1) /= -1) then
+                                if (nel > sys%CAS(1)) then
+                                    call stop_all('read_ccmc_in', &
+                                        'More electrons in first secondary reference than active electrons!')
+                                end if
+                            else
+                                if (nel > sys%nel) then
+                                    call stop_all('read_ccmc_in', &
+                                        'More electrons in first secondary reference than number of electrons!')
+                                end if
+                            end if
+                        end if
+
+                        if (iel /= nel) then
+                            write(err_msg, '(1X, A,'//int_fmt(bstring,1)//',A)') 'Secondary reference ',&
+                                bstring,' does not contain the same number of electrons as the first reference!'
+                            call stop_all('read_ccmc_in', trim(err_msg))
+                        end if
+
                         if (ios==iostat_end) exit
                         ccmc_in%n_secondary_ref = ccmc_in%n_secondary_ref + 1
                     end do
+
+                    ! Automatically deduce the number of electrons we need to pad to each of the bitstrings
+                    if (sys%CAS(1) /= -1) then
+                        ccmc_in%mr_n_frozen = sys%CAS(1) - nel
+                    else
+                        ccmc_in%mr_n_frozen = sys%nel - nel
+                    end if
+
                     close(ir)
 
-                    call aot_get_val(ccmc_in%mr_n_frozen, err, lua_state, ccmc_table, 'mr_n_frozen')
                     call aot_get_val(ccmc_in%mr_excit_lvl, err, lua_state, ccmc_table, 'mr_excit_lvl')
                     if (ccmc_in%mr_excit_lvl.eq.-1) then
                         call stop_all('read_ccmc_in','mr_read_in set but mr_excit_lvl unset.')

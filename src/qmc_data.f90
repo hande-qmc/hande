@@ -1188,21 +1188,23 @@ contains
         call json_write_key(js, 'density_matrix_file', ccmc%density_matrix_file)
         call json_write_key(js, 'even_selection', ccmc%even_selection)
         if (ccmc%multiref) then
-            
             call json_write_key(js, 'mr_read_in', ccmc%mr_read_in)            
             call json_write_key(js, 'n_secondary_ref', ccmc%n_secondary_ref)
-            if (ccmc%n_secondary_ref.le.20 .and. .not.ccmc%mr_read_in) then
+            if (ccmc%n_secondary_ref .le. 20 .and. .not. ccmc%mr_read_in) then
                 do i=1, size(ccmc%secondary_refs)
                     write (string, '(A13,I0)') 'secondary_ref', i
                     call reference_t_json(js, ccmc%secondary_refs(i), key = trim(string))
                 end do
-            elseif (ccmc%mr_read_in) then
+            else if (ccmc%mr_read_in) then
                 continue
             else
                 call warning('ccmc_in_t_json','There are more than 20 secondary references, &
                 &printing suppressed, consider using the mr_read_in functionality.')
             end if
+            call json_write_key(js, 'mr_secref_file', ccmc%mr_secref_file)
             call json_write_key(js, 'mr_acceptance_search', ccmc%mr_acceptance_search)
+            call json_write_key(js, 'mr_excit_lvl', ccmc%mr_excit_lvl)
+            call json_write_key(js, 'mr_n_frozen', ccmc%mr_n_frozen)
         end if
         call json_write_key(js, 'multiref', ccmc%multiref, terminal=.true.)
         call json_object_end(js, terminal)
