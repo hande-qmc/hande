@@ -598,8 +598,8 @@ contains
         use lua_hande_system, only: get_sys_t
         use lua_hande_utils, only: warn_unused_args, register_timing
         use lua_hande_calc_utils, only: init_output_unit, end_output_unit
-        use qmc_data, only: qmc_in_t, ccmc_in_t, uccmc_in_t, semi_stoch_in_t, restart_in_t, load_bal_in_t, &
-                            qmc_state_t, output_in_t, blocking_in_t
+        use qmc_data, only: qmc_in_t, ccmc_in_t, uccmc_in_t, restart_in_t, load_bal_in_t, &
+                            qmc_state_t, output_in_t
         use logging, only: logging_in_t
         use reference_determinant, only: reference_t
         use system, only: sys_t
@@ -617,14 +617,12 @@ contains
         type(qmc_in_t) :: qmc_in
         type(ccmc_in_t) :: ccmc_in
         type(uccmc_in_t) :: uccmc_in
-        type(semi_stoch_in_t) :: semi_stoch_in
         type(restart_in_t) :: restart_in
         type(load_bal_in_t) :: load_bal_in
         type(reference_t) :: reference
         type(qmc_state_t), pointer :: qmc_state_restart, qmc_state_out
         type(logging_in_t) :: logging_in
         type(output_in_t) :: output_in
-        type(blocking_in_t) :: blocking_in
 
         logical :: have_restart_state
         integer :: opts, io_unit
@@ -644,7 +642,7 @@ contains
         opts = aot_table_top(lua_state)
         call read_qmc_in(lua_state, opts, qmc_in)
         call read_ccmc_in(lua_state, opts, ccmc_in, sys)
-        call read_uccmc_in(lua_state, opts, uccmc_in, sys)
+        call read_uccmc_in(lua_state, opts, uccmc_in)
         if (ccmc_in%even_selection) &
             call stop_all('lua_uccmc', 'Even selection is not compatible with UCCMC.')
 
@@ -1822,7 +1820,7 @@ contains
 
     end subroutine read_ccmc_in
 
-    subroutine read_uccmc_in(lua_state, opts, uccmc_in, sys)
+    subroutine read_uccmc_in(lua_state, opts, uccmc_in)
 
         ! Read in an ccmc table (if it exists) to an ccmc_in object.
 
@@ -1838,7 +1836,6 @@ contains
         !    lua_state: flu/Lua state to which the HANDE API is added.
         ! In:
         !    opts: handle for the table containing the ccmc table.
-        !    sys:  sys_t object containing information of current system. 
         ! Out:
         !    ccmc_in: ccmc_in_t object containing ccmc-specific input options.
 
@@ -1847,15 +1844,13 @@ contains
 
         use qmc_data, only: uccmc_in_t
         use lua_hande_utils, only: warn_unused_args
-        use system, only: sys_t
         use errors, only: stop_all
 
         type(flu_State), intent(inout) :: lua_state
         integer, intent(in) :: opts
-        type (sys_t), intent(in) :: sys
         type(uccmc_in_t), intent(out) :: uccmc_in
 
-        integer :: uccmc_table, err, i
+        integer :: uccmc_table, err
         character(28), parameter :: keys(5) = [character(28) :: 'pow_trunc', 'variational_energy', &
                                                            'average_wfn', 'trotterized', 'threshold']
 

@@ -38,8 +38,8 @@ contains
         type(sys_t) :: sys_bak
         type(reference_t) :: ref
         integer(i0), allocatable :: dets(:,:)
-        real(p), allocatable :: eigv(:), rdm_eigv(:), rdm(:,:)
-        integer :: ndets, ierr, i, rdm_size
+        real(p), allocatable :: eigv(:)
+        integer :: ndets, ierr, i
         type(blacs_info) :: proc_blacs_info
         type(hamil_t) :: hamil
         type(hmatel_t) :: hmatel
@@ -72,7 +72,7 @@ contains
             if (fci_in%write_hamiltonian) then
                 call write_hamil(fci_in%hamiltonian_file, ndets, proc_blacs_info, hamil)
             end if
-            call davidson_diagonalisation(sys, fci_in, dets, proc_blacs_info, hamil, eigv)
+            call davidson_diagonalisation(fci_in, dets, hamil, eigv)
         end if
 
         if (parent) then
@@ -90,7 +90,7 @@ contains
 
     end subroutine do_fci_davidson
 
-    subroutine davidson_diagonalisation(sys, fci_in, dets, proc_blacs_info, hamil, eigv)
+    subroutine davidson_diagonalisation(fci_in, dets, hamil, eigv)
 
         ! Perform a Davidson diagonalisation of the current (spin) block of the
         ! Hamiltonian matrix.
@@ -140,23 +140,19 @@ contains
         !        Hamiltonian matrix.
 
         use checking, only: check_allocate, check_deallocate
-        use linalg, only: syev_wrapper, heev_wrapper, gemm, gemv, qr_wrapper, psyev_wrapper, pheev_wrapper, pgemm, pqr_wrapper
-        use linalg, only: qr_wrapper, pqr_wrapper
-        use parallel, only: parent, nprocs, blacs_info
-        use system, only: sys_t
+        use linalg, only: syev_wrapper, heev_wrapper, gemm, gemv, qr_wrapper
+        use linalg, only: qr_wrapper
+        use parallel, only: parent, nprocs
         use errors, only: stop_all, warning
 
         use fci_utils, only: fci_in_t, hamil_t
         use operators
 
-        type(sys_t), intent(in) :: sys
         type(fci_in_t), intent(in) :: fci_in
         integer(i0), intent(in) :: dets(:,:)
-        type(blacs_info), intent(in) :: proc_blacs_info
         type(hamil_t), intent(inout) :: hamil
         real(p), intent(out) :: eigv(:)
-        real(p), allocatable :: rwork(:), eigvec(:,:)
-        integer :: info, ierr, i, j, nwfn, ndets
+        integer :: info, ierr, i, j, ndets
         integer :: iunit, maxguess, nactive
         real(p), allocatable :: V(:,:), theta(:), theta_old(:), tmp(:,:), tmpV(:), T(:,:), w(:), V_coll(:,:)
         logical, allocatable :: normconv(:)

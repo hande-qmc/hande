@@ -168,13 +168,12 @@ contains
 
         real(p), allocatable :: rdm(:,:)
 
-        integer :: iunit, restart_version_restart
-        integer :: date_values(8)
+        integer :: restart_version_restart
         character(:), allocatable :: err_msg
  
         real(p), allocatable :: time_avg_psip_list_ci_pops(:), time_avg_psip_list_pops(:),time_avg_psip_list_sq(:,:)
         integer(i0), allocatable :: time_avg_psip_list_ci_states(:,:), time_avg_psip_list_states(:,:)
-        integer :: semi_stoch_it, pos, j, k, nstates_ci, nstates_sq
+        integer :: semi_stoch_it, pos, k, nstates_ci, nstates_sq
         logical :: hit
         real(p) :: population
         real(p) :: real_population, var_energy
@@ -200,7 +199,7 @@ contains
             else
                 call check_qmc_opts(qmc_in, sys, .not.present(qmc_state_restart), restarting)
             end if
-            call check_uccmc_opts(sys, ccmc_in, uccmc_in, qmc_in)
+            call check_uccmc_opts(sys, ccmc_in, uccmc_in)
         end if
 
         ! Initialise data.
@@ -222,7 +221,7 @@ contains
             allocate(time_avg_psip_list_sq(sys%basis%tot_string_len+1,size(qs%psip_list%states(1,:))))
             time_avg_psip_list_sq(:sys%basis%tot_string_len,:qs%psip_list%nstates) = qs%psip_list%states(:,:qs%psip_list%nstates)
             time_avg_psip_list_sq(sys%basis%tot_string_len+1,:qs%psip_list%nstates) &
-                = (real(qs%psip_list%pops(1,:qs%psip_list%nstates))/qs%psip_list%pop_real_factor)**2
+                = (real(qs%psip_list%pops(1,:qs%psip_list%nstates),p)/qs%psip_list%pop_real_factor)**2
         end if
 
         if (ccmc_in%multiref) then
@@ -347,6 +346,9 @@ contains
         call init_restart_info_t(ri, write_id=restart_in%write_id)
         call init_restart_info_t(ri_shift, write_id=restart_in%write_shift_id)
 
+        ! Initialise avg_start to a flagging integer
+        avg_start = huge(0)
+
         do ireport = 1, qmc_in%nreport
 
             ! Projected energy from last report loop to correct death
@@ -365,18 +367,18 @@ contains
                 end if
                 if (all(qs%vary_shift) .and. (.not. old_vary) .and. uccmc_in%average_wfn) then
                     time_avg_psip_list_pops(:qs%psip_list%nstates) = &
-                        real(qs%psip_list%pops(1,:qs%psip_list%nstates))/qs%psip_list%pop_real_factor
+                        real(qs%psip_list%pops(1,:qs%psip_list%nstates),p)/qs%psip_list%pop_real_factor
                     time_avg_psip_list_states(:,:qs%psip_list%nstates) = qs%psip_list%states(:,:qs%psip_list%nstates)
                     time_avg_psip_list_sq(:sys%basis%tot_string_len,:qs%psip_list%nstates) &
                         = qs%psip_list%states(:,:qs%psip_list%nstates)
                     time_avg_psip_list_sq(sys%basis%tot_string_len+1,:qs%psip_list%nstates) &
-                        = (real(qs%psip_list%pops(1,:qs%psip_list%nstates))/qs%psip_list%pop_real_factor)**2
+                        = (real(qs%psip_list%pops(1,:qs%psip_list%nstates),p)/qs%psip_list%pop_real_factor)**2
                     nstates_sq = qs%psip_list%nstates
                 end if
 
-                if(uccmc_in%variational_energy .and. all(qs%vary_shift)) then
+                if (uccmc_in%variational_energy .and. all(qs%vary_shift)) then
                     ! If computing variational energy, store average CI expansion.
-                          time_avg_psip_list_ci_pops(:nstates_ci) =  time_avg_psip_list_ci_pops(:nstates_ci)*(iter-avg_start)
+                    time_avg_psip_list_ci_pops(:nstates_ci) =  time_avg_psip_list_ci_pops(:nstates_ci)*(iter-avg_start)
                 end if
 
                 if (debug) call prep_logging_mc_cycle(iter, logging_in, logging_info, sys%read_in%comp, &
@@ -392,7 +394,7 @@ contains
                 ! If only the reference is populated, we can only generate clusters of size 0.
                 ! Otherwise we can generate clusters up to our chosen truncation level.
 
-                if(qs%psip_list%nstates-nD0_proc == 0) then
+                if (qs%psip_list%nstates-nD0_proc == 0) then
                     max_cluster_size = 0
                 else
                     max_cluster_size = uccmc_in%pow_trunc
@@ -464,8 +466,7 @@ contains
                 D0_population_cycle = cmplx(0.0, 0.0, p)
                 D0_population_noncomp_cycle = 0.0_p
                 !$omp parallel default(none) &
-                !$omp private(it, iexcip_pos, i, seen_D0, hit, pos, population, real_population,k, &
-                !$omp annihilation_flags) &
+                !$omp private(it, iexcip_pos, i, seen_D0, hit, pos, population, real_population, k, annihilation_flags) &
                 !$omp shared(rng, cumulative_abs_real_pops, tot_abs_real_pop,  &
                 !$omp        max_cluster_size, contrib, D0_normalisation, D0_pos, rdm,    &
                 !$omp        qs, sys, bloom_stats, min_cluster_size, ref_det,             &
@@ -512,7 +513,7 @@ contains
                         end if
                         else
                         call select_ucc_cluster(rng(it), sys, qs%psip_list, qs%ref%f0, qs%ref%max_ex_level, &
-                                            selection_data%nstochastic_clusters, D0_normalisation, qmc_in%initiator_pop, D0_pos, &
+                                            selection_data%nstochastic_clusters, D0_normalisation, qmc_in%initiator_pop, &
                                             cumulative_abs_real_pops, tot_abs_real_pop, min_cluster_size, max_cluster_size, &
                                             logging_info, contrib(it)%cdet, contrib(it)%cluster, qs%excit_gen_data, &
                                             uccmc_in%threshold, count_discard)
@@ -629,13 +630,13 @@ contains
                                                         selection_data%nclusters, selection_data%nstochastic_clusters, &
                                                         selection_data%nsingle_excitors)
 
-                if(uccmc_in%variational_energy .and. all(qs%vary_shift)) then
-                          time_avg_psip_list_ci_pops(:nstates_ci) =  time_avg_psip_list_ci_pops(:nstates_ci)/(iter-avg_start+1)
+                if (uccmc_in%variational_energy .and. all(qs%vary_shift)) then
+                    time_avg_psip_list_ci_pops(:nstates_ci) =  time_avg_psip_list_ci_pops(:nstates_ci)/(iter-avg_start+1)
                 end if
 
                 ! If the shift has started before this iteration, add contributions to the average wavefunction and divide by 
                 ! new number of iterations. 
-                if(all(qs%vary_shift) .and. old_vary .and. uccmc_in%average_wfn) then
+                if (all(qs%vary_shift) .and. old_vary .and. uccmc_in%average_wfn) then
                     ! Add current wfn value average.
                     call add_t_contributions(qs%psip_list, time_avg_psip_list_states, time_avg_psip_list_pops, &
                                              time_avg_psip_list_sq, nstates_sq, .false.)
@@ -688,7 +689,7 @@ contains
 
         end do
 
-        if (parent .and. uccmc_in%average_wfn) then
+        if (parent .and. uccmc_in%average_wfn .and. avg_start /= huge(0)) then
             ! Take average of wavefunction.
             time_avg_psip_list_pops(:nstates_sq) =  time_avg_psip_list_pops(:nstates_sq)/(iter-avg_start+1)
             time_avg_psip_list_sq(sys%basis%tot_string_len+1,:nstates_sq) &
@@ -776,7 +777,7 @@ contains
     end subroutine do_uccmc
 
     subroutine select_ucc_cluster(rng, sys, psip_list, f0, ex_level, nattempts, normalisation, &
-                              initiator_pop, D0_pos, cumulative_excip_pop, tot_excip_pop, min_size, max_size, &
+                              initiator_pop, cumulative_excip_pop, tot_excip_pop, min_size, max_size, &
                               logging_info, cdet, cluster, excit_gen_data, threshold, counter)
 
         ! Based on select_cluster (without the linked_cluster parts) and with information about de-excitors.
@@ -798,8 +799,6 @@ contains
         !    normalisation: intermediate normalisation factor, N_0, where we use the
         !       wavefunction ansatz |\Psi_{CC}> = N_0 e^{T/N_0} | D_0 >.
         !    initiator_pop: the population above which a determinant is an initiator.
-        !    D0_pos: position in the excip list of the reference.  Must be negative
-        !       if the reference is not on the processor.
         !    cumulative_excip_pop: running cumulative excip population on
         !        all excitors; i.e. cumulative_excip_population(i) = sum(particle_t%pops(1:i)).
         !    tot_excip_pop: total excip population.
@@ -851,7 +850,6 @@ contains
         integer(i0), intent(in) :: f0(sys%basis%tot_string_len)
         integer, intent(in) :: ex_level
         integer(int_64), intent(in) :: nattempts
-        integer, intent(in) :: D0_pos
         complex(p), intent(in) :: normalisation
         real(p), intent(in) :: initiator_pop
         real(p), intent(in) :: cumulative_excip_pop(:), tot_excip_pop
@@ -871,7 +869,6 @@ contains
         real(p) :: pop(max_size)
         logical :: hit, allowed
         logical, allocatable :: deexcitation(:)
-        real(p) :: normal
        
         ! We shall accumulate the factors which comprise cluster%pselect as we go.
         !   cluster%pselect = n_sel p_size p_clust
@@ -912,19 +909,12 @@ contains
         cluster%nexcitors = -1
         deexcit_count = 0
 
-!        normal= 0
-!        do i = min_size, max_size
-!            normal = normal + ((2.0_p**(i-1))/factorial(i))*(tot_excip_pop/real(normalisation, p))**(i-1)
-!        end do
         do i = 0, max_size-min_size-1
             psize = psize + 1.0_p/2_int_64**(i+1)
-!        do i = min_size, max_size-1
-!            psize = psize + ((2.0_p**(i-1))/factorial(i))*(tot_excip_pop/real(normalisation, p))**(i-1)
             if (rand < psize) then
                 ! Found size!
                 cluster%nexcitors = min_size + i
                 cluster%pselect = cluster%pselect/2_int_64**(i+1)
-!                cluster%pselect = cluster%pselect*(((2.0_p**(i-1))/factorial(i))*(tot_excip_pop/real(normalisation, p))**(i-1))/normal
                 exit
             end if
         end do

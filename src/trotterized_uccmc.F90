@@ -164,25 +164,14 @@ contains
 
         real(p), allocatable :: rdm(:,:)
 
-        integer :: iunit, restart_version_restart
-        integer :: date_values(8)
+        integer :: restart_version_restart
         character(:), allocatable :: err_msg
  
         real(p), allocatable :: time_avg_psip_list_sq(:,:), time_avg_psip_list_pops(:), time_avg_psip_list_ci_pops(:)
-        integer(i0), allocatable :: time_avg_psip_list_states(:,:), time_avg_psip_list_ci_states(:,:)
-        integer :: nstates_sq, nstates_ci
-        integer :: semi_stoch_it, pos, j, k
-        logical :: hit
-        integer(i0), allocatable :: state(:)
-        real(p) :: population
-        real(p) :: real_population, var_energy
-        logical :: old_vary
-        integer :: avg_start
-        real(p) :: p_ref, pcumul
-        real(p) :: p_avg, p_complement_avg
-        integer :: count_select
-        logical :: variational
-        real(p) :: cluster_pop
+        integer(i0), allocatable :: time_avg_psip_list_states(:,:), time_avg_psip_list_ci_states(:,:), state(:)
+        integer :: nstates_sq, nstates_ci, semi_stoch_it, pos, j, k, avg_start, count_select
+        logical :: hit, old_vary, variational
+        real(p) :: population, pcumul, cluster_pop, real_population, var_energy
 
         variational = .false.
         if (uccmc_in%variational_energy) variational = .true.
@@ -206,7 +195,7 @@ contains
             else
                 call check_qmc_opts(qmc_in, sys, .not.present(qmc_state_restart), restarting)
             end if
-            call check_uccmc_opts(sys, ccmc_in, uccmc_in, qmc_in)
+            call check_uccmc_opts(sys, ccmc_in, uccmc_in)
         end if
         ! Initialise data.
         call init_qmc(sys, qmc_in, restart_in, load_bal_in, reference_in, io_unit, annihilation_flags, qs, &
@@ -225,7 +214,7 @@ contains
              population = 0
              call allocate_time_average_lists(qs%psip_list, time_avg_psip_list_ci_states, time_avg_psip_list_ci_pops, nstates_ci)
              time_avg_psip_list_ci_states(:,1) = qs%psip_list%states(:,1)
-             time_avg_psip_list_ci_pops(1) = (real(qs%psip_list%pops(1,1))/qs%psip_list%pop_real_factor)
+             time_avg_psip_list_ci_pops(1) = (real(qs%psip_list%pops(1,1),p)/qs%psip_list%pop_real_factor)
              nstates_ci = 1
              ![todo] deal with restarting
         end if
@@ -235,7 +224,7 @@ contains
             allocate(time_avg_psip_list_sq(sys%basis%tot_string_len + 1 ,size(qs%psip_list%states(1,:))))
             time_avg_psip_list_sq(:sys%basis%tot_string_len,:qs%psip_list%nstates) = qs%psip_list%states(:,:qs%psip_list%nstates)
             time_avg_psip_list_sq(sys%basis%tot_string_len+1,:qs%psip_list%nstates) = &
-                (real(qs%psip_list%pops(1,:qs%psip_list%nstates))/qs%psip_list%pop_real_factor)**2
+                (real(qs%psip_list%pops(1,:qs%psip_list%nstates),p)/qs%psip_list%pop_real_factor)**2
             nstates_sq = 1
         end if
         
@@ -380,12 +369,12 @@ contains
                 end if
                 if (all(qs%vary_shift) .and. (.not. old_vary) .and. uccmc_in%average_wfn) then
                     time_avg_psip_list_pops(:qs%psip_list%nstates) = &
-                        real(qs%psip_list%pops(1,:qs%psip_list%nstates))/qs%psip_list%pop_real_factor
+                        real(qs%psip_list%pops(1,:qs%psip_list%nstates),p)/qs%psip_list%pop_real_factor
                     time_avg_psip_list_states(:,:qs%psip_list%nstates) = qs%psip_list%states(:,:qs%psip_list%nstates)
                     time_avg_psip_list_sq(:sys%basis%tot_string_len,:qs%psip_list%nstates) &
                         = qs%psip_list%states(:,:qs%psip_list%nstates)
                     time_avg_psip_list_sq(sys%basis%tot_string_len+1,:qs%psip_list%nstates) &
-                        = (real(qs%psip_list%pops(1,:qs%psip_list%nstates))/qs%psip_list%pop_real_factor)**2
+                        = (real(qs%psip_list%pops(1,:qs%psip_list%nstates),p)/qs%psip_list%pop_real_factor)**2
                     nstates_sq = qs%psip_list%nstates
                 end if
                   
@@ -626,10 +615,9 @@ contains
                 qs%estimators%D0_population_comp = qs%estimators%D0_population_comp + D0_population_cycle
                 qs%estimators%proj_energy_comp = qs%estimators%proj_energy_comp + proj_energy_cycle
                 do j = 1, qs%psip_list%nstates
-                    if (j/=D0_pos) then
-                        D0_population_noncomp_cycle = &
-                            D0_population_noncomp_cycle/cos((qs%psip_list%pops(1,&
-                                j)/real(qs%psip_list%pop_real_factor))/D0_normalisation)
+                    if (j /= D0_pos) then
+                        D0_population_noncomp_cycle = D0_population_noncomp_cycle / &
+                    cos(real(qs%psip_list%pops(1,j),p)/(real(qs%psip_list%pop_real_factor,p)*real(D0_normalisation,p)))
                     end if
                 end do
                 qs%estimators%D0_noncomposite_population = qs%estimators%D0_noncomposite_population + D0_population_noncomp_cycle
@@ -651,7 +639,7 @@ contains
                 if (debug) call write_logging_calc_ccmc(logging_info, iter, nspawn_events, ndeath + ndeath_nc, &
                                                         selection_data%nD0_select, &
                                                         selection_data%nclusters, selection_data%nstochastic_clusters, &
-                                                       selection_data%nsingle_excitors)
+                                                        selection_data%nsingle_excitors)
 
                 !Take updated time average of CI wavefunction.
                 if(uccmc_in%variational_energy .and. all(qs%vary_shift)) then
@@ -877,7 +865,7 @@ contains
         real(dp) :: rand
         real(p) :: psize, tot_excip_local
         complex(p) :: cluster_population, excitor_pop
-        integer :: i, pos, prev_pos, ierr, current_excit
+        integer :: i, prev_pos, current_excit
         real(p) :: pop(max_size), ref_real, pop_real
         integer :: poses(max_size)
         logical :: hit, allowed
@@ -1396,19 +1384,19 @@ contains
 
     end subroutine select_nc_cluster_trot
 
-! [review] - Brian: document this
     function get_cluster_population(sys, psip_list, D0_pos, iattempt, ref_real, f0) result(cluster_population)
+
         ! Function to obtain the effective cluster population of a non-composite cluster in tUCCMC.
         ! The excitor the cluster corresponds to contributes sin(Ni/N0). Every other excitor that
         ! could be applied (but is not) corresponds cos(Ni/N0).
 
         ! In:
-        ! sys: sys_t object for the system studied.
-        ! psip_list: particle_t object encoding the current wavefunction.
-        ! D0_pos: position of D0 in psip_list.
-        ! iattempt: current excitor considered.
-        ! ref_real: real population on the reference.
-        ! f0: bit string of the reference determinant.
+        !   sys: sys_t object for the system studied.
+        !   psip_list: particle_t object encoding the current wavefunction.
+        !   D0_pos: position of D0 in psip_list.
+        !   iattempt: current excitor considered.
+        !   ref_real: real population on the reference.
+        !   f0: bit string of the reference determinant.
 
         use qmc_data, only: particle_t
         use system, only: sys_t
@@ -1449,7 +1437,7 @@ contains
         end do
     end function get_cluster_population
 
-    subroutine stochastic_trot_uccmc_death_nc(rng, linked_ccmc,  sys, qs, isD0, dfock, Hii, proj_energy, population, &
+    subroutine stochastic_trot_uccmc_death_nc(rng, linked_ccmc, sys, qs, isD0, dfock, Hii, proj_energy, population, &
                                         trot_population, tot_population, ndeath, logging_info)
 
         ! Based on stochastic_ccmc_death_nc, accounting for different cluster population definition in tUCCMC.
@@ -1474,6 +1462,7 @@ contains
         ! particles on the reference).
 
         ! In:
+        !    sys: sys_t object for the system studied.
         !    linked_ccmc: if true then only sample linked clusters.
         !    qs: qmc_state_t object. The shift and timestep are used.
         !    isD0: true if the current excip is the null (reference) excitor
@@ -1563,7 +1552,7 @@ contains
         type(sys_t), intent(in) :: sys
  
         f0(sys%basis%bit_string_len + 2) = latest_unset(f0(:sys%basis%bit_string_len), &
-                                                               f0(:sys%basis%bit_string_len), sys%nel, sys%basis) 
+                                                               f0(:sys%basis%bit_string_len), sys%basis) 
         f0(sys%basis%bit_string_len + 1) = sys%nel
     end subroutine add_trot_info_reference
 end module

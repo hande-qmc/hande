@@ -29,7 +29,7 @@ contains
         allocate(states(size(psip_list%states(:,1)),size(psip_list%states(1,:))))
         allocate(pops(size(psip_list%states(1,:))))
         states(:,:psip_list%nstates)  = psip_list%states(:,:psip_list%nstates)
-        pops(:) = (real(psip_list%pops(1,:))/psip_list%pop_real_factor)
+        pops(:) = (real(psip_list%pops(1,:),p)/psip_list%pop_real_factor)
         nstates = psip_list%nstates
     end subroutine allocate_time_average_lists
 
@@ -69,7 +69,7 @@ contains
                 exit
             end if
         end do
-        population = cluster%amplitude*cluster%cluster_to_det_sign/cluster%pselect
+        population = real(cluster%amplitude,p)*cluster%cluster_to_det_sign/cluster%pselect
         if (hit) then
            pops(pos) = pops(pos) + population 
         else
@@ -111,8 +111,8 @@ contains
             state = psip_list%states(:,i) 
             call binary_search(states, state, 1, nstates, hit, pos, reverse)
             if (hit) then
-                  pops(pos) = pops(pos) + (real(psip_list%pops(1,i))/psip_list%pop_real_factor)
-                  sq(size(state) + 1,pos) = sq(size(state) + 1,pos) + (real(psip_list%pops(1,i))/psip_list%pop_real_factor)**2 
+                  pops(pos) = pops(pos) + (real(psip_list%pops(1,i),p)/psip_list%pop_real_factor)
+                  sq(size(state) + 1,pos) = sq(size(state) + 1,pos) + (real(psip_list%pops(1,i),p)/psip_list%pop_real_factor)**2 
                else
                    do j = nstates, pos, -1
                        k = j + 1 
@@ -121,77 +121,74 @@ contains
                        sq(:,k) = sq(:,j)
                    end do
                    states(:,pos) = psip_list%states(:,i)
-                   pops(pos) = (real(psip_list%pops(1,i))/psip_list%pop_real_factor)
+                   pops(pos) = (real(psip_list%pops(1,i),p)/psip_list%pop_real_factor)
                    sq(:size(state),pos) = psip_list%states(:,i)
-                   sq(size(state) + 1,pos) = (real(psip_list%pops(1,i))/psip_list%pop_real_factor)**2
+                   sq(size(state) + 1,pos) = (real(psip_list%pops(1,i),p)/psip_list%pop_real_factor)**2
                    nstates = nstates + 1
                end if
         end do
     end subroutine add_t_contributions
     
-    pure function earliest_unset(f, f0, nel, basis) result (early)
+    pure function earliest_unset(f, f0, basis) result(early)
         
-         ! Function to find earliest unset bit different to reference 
-         ! Currently not in use. Reverses the order of some parameters in the trotter expansion of the 
-         ! UCCMC function relative to using earliest_unset. [todo] implement switch?
+        ! Function to find earliest unset bit different to reference 
+        ! Currently not in use. Reverses the order of some parameters in the trotter expansion of the 
+        ! UCCMC function relative to using earliest_unset. [todo] implement switch?
 
-         ! f0 in a determinant bit string.
+        ! f0 in a determinant bit string.
 
-         ! In:
-         !    f: bit string encoding determinant.
-         !    f0: bit string encoding reference determinant.
-         !    nel: number of electrons in the system.
-         !    basis: basis_t object with information on one-electron basis in use.
-         !
-         ! Returns:
-         !    Zero-based index of the earliest unset bit.
-     
-         use basis_types, only: basis_t
-         use bit_utils, only: count_set_bits
-         use const, only: i0_end
+        ! In:
+        !    f: bit string encoding determinant.
+        !    f0: bit string encoding reference determinant.
+        !    basis: basis_t object with information on one-electron basis in use.
+        !
+        ! Returns:
+        !    Zero-based index of the earliest unset bit.
 
-         type(basis_t), intent(in) :: basis
-         integer(i0), intent(in) :: f(basis%bit_string_len), f0(basis%bit_string_len)
-         integer, intent(in) :: nel
-         integer :: i, early, ibasis
-         integer(i0) :: diff(basis%bit_string_len)
-         integer(i0) :: f0_loc(basis%bit_string_len)
+        use basis_types, only: basis_t
+        use bit_utils, only: count_set_bits
+        use const, only: i0_end
+
+        type(basis_t), intent(in) :: basis
+        integer(i0), intent(in) :: f(basis%bit_string_len), f0(basis%bit_string_len)
+        integer :: i, early, ibasis
+        integer(i0) :: diff(basis%bit_string_len)
+        integer(i0) :: f0_loc(basis%bit_string_len)
          
-         early = 0
-         i = 0
+        early = 0
+        i = 0
           
-         diff = ieor(f, f0)
-         ! If f is different from f0, find earliest different unset bit.
-         if (any(diff /= 0)) then
-             basis_loop: do ibasis = 1, basis%bit_string_len
-                 do i = 0, i0_end
-                    if (btest(diff(ibasis), i)) then
-                        early = i + (i0_end + 1) * (ibasis - 1)
-                        exit basis_loop
-                    end if
-                 end do
-             end do basis_loop
-         else
-         ! Else find latest set bit in the reference + 1. This is not necessarily the first
-         ! unset bit in f0. This will always be higher than the value for any other f.
-             f0_loc = f0
-             do while (any(f0_loc/=0))
-                 ibasis = early/(i0_end + 1) + 1
-                 i = early - (i0_end + 1)*(ibasis - 1)
-                 f0_loc = ibclr(f0_loc(ibasis), i)
-                 early = early + 1
-             end do
-         end if
-    end function
+        diff = ieor(f, f0)
+        ! If f is different from f0, find earliest different unset bit.
+        if (any(diff /= 0)) then
+            basis_loop: do ibasis = 1, basis%bit_string_len
+                do i = 0, i0_end
+                   if (btest(diff(ibasis), i)) then
+                       early = i + (i0_end + 1) * (ibasis - 1)
+                       exit basis_loop
+                   end if
+                end do
+            end do basis_loop
+        else
+        ! Else find latest set bit in the reference + 1. This is not necessarily the first
+        ! unset bit in f0. This will always be higher than the value for any other f.
+            f0_loc = f0
+            do while (any(f0_loc/=0))
+                ibasis = early/(i0_end + 1) + 1
+                i = early - (i0_end + 1)*(ibasis - 1)
+                f0_loc = ibclr(f0_loc(ibasis), i)
+                early = early + 1
+            end do
+        end if
+    end function earliest_unset
 
-    pure function latest_unset(f, f0, nel, basis) result (late)
+    pure function latest_unset(f, f0, basis) result(late)
         
          ! Function to find latest unset bit in a determinant bit string which is set in the reference f0.
 
          ! In:
          !    f: bit string encoding determinant
          !    f0: bit string encoding reference determinant.
-         !    nel: number of electrons in the system
          !    basis: basis_t object with information on one-electron basis in use.
      
          use basis_types, only: basis_t
@@ -200,7 +197,6 @@ contains
 
          type(basis_t), intent(in) :: basis
          integer(i0), intent(in) :: f(basis%bit_string_len), f0(basis%bit_string_len)
-         integer, intent(in) :: nel
          integer :: late, ibasis, i
          integer(i0) :: diff(basis%bit_string_len)
          integer(i0) :: f0_loc(basis%bit_string_len)
@@ -229,7 +225,7 @@ contains
                  late = late + 1
              end do
          end if
-    end function
+    end function latest_unset
 
     subroutine add_info_str_trot(basis, f0, nel, f)
 
@@ -251,12 +247,10 @@ contains
         integer(i0), intent(inout) :: f(:)
         integer(i0), intent(in) :: f0(:)
         integer, intent(in) :: nel
-
-        integer(i0) :: counter(basis%tot_string_len)
        
         if (basis%info_string_len>=0) then
 
-            f(basis%bit_string_len+2) = latest_unset(f, f0, nel, basis)     
+            f(basis%bit_string_len+2) = latest_unset(f, f0, basis)     
             f(basis%bit_string_len+1) = nel - get_excitation_level(f(:basis%bit_string_len), f0(:basis%bit_string_len)) 
         else
             call stop_all('add_info_str_trot', 'Determinant bit string does not have room for information bits.')
@@ -357,7 +351,7 @@ contains
        !    var_energy: total variational energy estimator (NOTE: not just correlation energy)
 
 
-       use excitations, only: excit_t, get_excitation
+       use excitations, only: get_excitation
        use hamiltonian, only: get_hmatel
        use energy_evaluation, only: hmatel_t
        use system, only: sys_t
@@ -372,12 +366,9 @@ contains
        real(p), intent(out) :: var_energy
        real(p) :: normalisation
 
-       type(excit_t) :: excitation
        type(hmatel_t) :: hmatel
-       integer :: occ_list(sys%nel)
 
        integer :: i, j
-       integer :: ij_sym, ab_sym
 
        normalisation = 0.0_p
        var_energy = 0.0_p
@@ -420,12 +411,12 @@ contains
 
         avg_start = iter
         time_avg_psip_list_pops(:psip_list%nstates) = &
-            real(psip_list%pops(1,:psip_list%nstates))/psip_list%pop_real_factor
+            real(psip_list%pops(1,:psip_list%nstates),p)/psip_list%pop_real_factor
         time_avg_psip_list_states(:,:psip_list%nstates) = psip_list%states(:,:psip_list%nstates)
         time_avg_psip_list_sq(:sys%basis%tot_string_len,:psip_list%nstates) = &
             psip_list%states(:,:psip_list%nstates)
         time_avg_psip_list_sq(sys%basis%tot_string_len+1,:psip_list%nstates) = &
-            (real(psip_list%pops(1,:psip_list%nstates))/psip_list%pop_real_factor)**2
+            (real(psip_list%pops(1,:psip_list%nstates),p)/psip_list%pop_real_factor)**2
         nstates_sq = psip_list%nstates
     end subroutine initialise_average_wfn
 

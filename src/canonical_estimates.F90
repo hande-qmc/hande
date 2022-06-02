@@ -115,7 +115,7 @@ contains
         ! Check that fermi_temperature is only used in cases which it is correct.
         if (sys%system == ueg .and. fermi_temperature .and. sys%Ms /= 0 .and. sys%Ms /= sys%nel) then
             call stop_all('check_canonical_opts', 'The fermi energy, and therefore fermi_temperature &
-                                 is incorrect for the spin polarization. Please implement.')
+                               &is incorrect for the spin polarization. Please implement.')
         end if
 
         beta_loc = beta
