@@ -393,6 +393,7 @@ contains
         logical :: seen_D0, regenerate_info
         real(p) :: dfock
         complex(p) :: D0_population_cycle, proj_energy_cycle
+        real(p) :: proj_energy_cycle_determ, proj_energy_cycle_stoch
 
         real(p), allocatable :: rdm(:,:)
 
@@ -547,6 +548,8 @@ contains
         call init_semi_stoch_t_flags(determ, size(qs%psip_list%states, dim=2))
         ! Turn semi-stochastic on immediately unless asked otherwise.
         semi_stoch_iter = max(semi_stoch_in%start_iter, qs%mc_cycles_done+1)
+        ! Accumulate deterministic and stochastic contributions to E_proj separately
+        if (semi_stoch_in%separate_stats) qs%estimators%semi_stoch_sep_stats = .true.
 
         nparticles_old = qs%psip_list%tot_nparticles
 
@@ -575,7 +578,8 @@ contains
 
         if (parent) then
             call write_qmc_report_header(qs%psip_list%nspaces, cmplx_est=sys%read_in%comp, rdm_energy=ccmc_in%density_matrices, &
-                                         nattempts=.true., io_unit=io_unit)
+                                         nattempts=.true., io_unit=io_unit, &
+                                         semi_stoch_sep_stats=semi_stoch_in%separate_stats)
         end if
 
         restart_proj_est = present(qmc_state_restart) .or. (restart_in%read_restart .and. restart_version_restart >= 2)
@@ -732,6 +736,8 @@ contains
                 nattempts_spawn = 0
                 proj_energy_cycle = cmplx(0.0, 0.0, p)
                 D0_population_cycle = cmplx(0.0, 0.0, p)
+                proj_energy_cycle_determ = 0.0_p
+                proj_energy_cycle_stoch = 0.0_p
                 ndeath_nc = 0
                 nparticles_change = 0.0_p
 
@@ -761,8 +767,9 @@ contains
                 !$omp        qs, sys, bloom_stats, min_cluster_size, ref_det,             &
                 !$omp        selection_data, ex_lvl_dist, ccmc_in, nprocs, ms_stats, &
                 !$omp        ps_stats, qmc_in, load_bal_in, logging_info, &
-                !$omp        nD0_proc, determ, ndeterm_found) &
-                !$omp reduction(+:D0_population_cycle,proj_energy_cycle,nattempts_spawn,ndeath,nparticles_change,ndeath_nc)
+                !$omp        nD0_proc, determ, ndeterm_found, semi_stoch_in) &
+                !$omp reduction(+:D0_population_cycle,proj_energy_cycle,nattempts_spawn,ndeath,nparticles_change,ndeath_nc, &
+                !$omp             proj_energy_cycle_determ, proj_energy_cycle_stoch)
                 
                 ! Initialise private variables inside the parallel region
 
@@ -792,7 +799,10 @@ contains
                             ! [VAN]: in debug mode. However, this updated selection_data will only be used if selection logging
                             ! [VAN]: according to comments. And logging cannot be used with openmp. Dangerous though.
                             call do_ccmc_accumulation(sys, qs, contrib(it)%cdet, contrib(it)%cluster, logging_info, &
-                                                    D0_population_cycle, proj_energy_cycle, ccmc_in, ref_det, rdm, selection_data)
+                                                    D0_population_cycle, proj_energy_cycle, &
+                                                    proj_energy_cycle_determ, proj_energy_cycle_stoch, &
+                                                    ccmc_in, ref_det, rdm, selection_data, &
+                                                    determ, determ_parent, semi_stoch_in%separate_stats)
                             call do_nc_ccmc_propagation(rng(it), sys, qs, ccmc_in, logging_info, bloom_stats, &
                                                                 contrib(it), nattempts_spawn, ps_stats(it), determ, determ_parent)
                         end if
@@ -827,7 +837,10 @@ contains
                                             - qs%ref%fock_sum
 
                             call do_ccmc_accumulation(sys, qs, contrib(it)%cdet, contrib(it)%cluster, logging_info, &
-                                                    D0_population_cycle, proj_energy_cycle, ccmc_in, ref_det, rdm, selection_data)
+                                                    D0_population_cycle, proj_energy_cycle, &
+                                                    proj_energy_cycle_determ, proj_energy_cycle_stoch, &
+                                                    ccmc_in, ref_det, rdm, selection_data, &
+                                                    determ, determ_parent, semi_stoch_in%separate_stats)
                             call do_stochastic_ccmc_propagation(rng(it), sys, qs, &
                                                                 ccmc_in, logging_info, ms_stats(it), bloom_stats, &
                                                                 contrib(it), nattempts_spawn, ndeath, ps_stats(it), &
@@ -862,7 +875,10 @@ contains
                                     - qs%ref%fock_sum
 
                         call do_ccmc_accumulation(sys, qs, contrib(it)%cdet, contrib(it)%cluster, logging_info, &
-                                                D0_population_cycle, proj_energy_cycle, ccmc_in, ref_det, rdm, selection_data)
+                                                D0_population_cycle, proj_energy_cycle, &
+                                                proj_energy_cycle_determ, proj_energy_cycle_stoch, &
+                                                ccmc_in, ref_det, rdm, selection_data, &
+                                                determ, determ_parent, semi_stoch_in%separate_stats)
                         nattempts_spawn = nattempts_spawn + 1
                        
                         call perform_ccmc_spawning_attempt(rng(it), sys, qs, ccmc_in, logging_info, bloom_stats, &
@@ -918,6 +934,11 @@ contains
                 qs%psip_list%nparticles = qs%psip_list%nparticles + nparticles_change
                 qs%estimators%D0_population_comp = qs%estimators%D0_population_comp + D0_population_cycle
                 qs%estimators%proj_energy_comp = qs%estimators%proj_energy_comp + proj_energy_cycle
+                if (semi_stoch_in%separate_stats) then
+                    qs%estimators%proj_energy_determ = qs%estimators%proj_energy_determ + proj_energy_cycle_determ
+                    qs%estimators%proj_energy_stoch = qs%estimators%proj_energy_stoch + proj_energy_cycle_stoch
+                end if
+
 
                 ! Calculate the number of spawning events before the particles are redistributed,
                 ! otherwise sending particles to other processors is counted as a spawning event.
@@ -966,7 +987,7 @@ contains
                 if (bloom_stats%nblooms_curr > 0) call bloom_stats_warning(bloom_stats, io_unit=io_unit)
                 call write_qmc_report(qmc_in, qs, ireport, nparticles_old, t2-t1, .false., .false., &
                                         io_unit=io_unit, cmplx_est=sys%read_in%comp, rdm_energy=ccmc_in%density_matrices, &
-                                        nattempts=.true.)
+                                        nattempts=.true., semi_stoch_sep_stats=semi_stoch_in%separate_stats)
                 if (blocking_in%blocking_on_the_fly) then
                     call do_blocking(bl, qs, qmc_in, ireport, iter, iunit, blocking_in, sys%read_in%comp)
                 end if
@@ -1044,9 +1065,8 @@ contains
     end subroutine do_ccmc
 
     subroutine do_ccmc_accumulation(sys, qs, cdet, cluster, logging_info, D0_population_cycle, proj_energy_cycle, &
-                                    ccmc_in, ref_det, rdm, selection_data)
-
-
+                                    proj_energy_cycle_determ, proj_energy_cycle_stoch, &
+                                    ccmc_in, ref_det, rdm, selection_data, determ, determ_parent, semi_stoch_sep_stats)
 
         ! Performs all accumulation of values required for given ccmc clusters.
         ! Updates projected energy and any RDMs with the contribution from the
@@ -1061,10 +1081,16 @@ contains
         !   ref_det: reference determinant information.
         !   cluster: information on cluster currently under consideration.
         !   logging_info: current logging settings in use.
+        !   determ: the semi_stoch_t object holding information relevant to semi-stochastic CCMC.
+        !   determ_parent: true if the excitor formed from the cluster is in the deterministic space (for semistochastic CCMC).
+        !   semi_stoch_sep_stats: True if doing semi-stochastic and report 
+        !       deterministic and stochastic contributions to E_proj separately.
 
         ! In/Out:
         !   D0_population_cycle: running total of reference population.
         !   proj_energy_cycle: running total of projected energy contributions.
+        !   proj_energy_cycle_determ: running total of projected energy contributions.
+        !   proj_energy_cycle_stoch: running total of projected energy contributions.
         !   rdm: array containing reduced density matrix.
         !   selection_data: info on clsuter selection.
 
@@ -1073,7 +1099,7 @@ contains
         use determinants, only: det_info_t
         use ccmc_data, only: cluster_t, selection_data_t
         use ccmc_selection, only: update_selection_data
-        use qmc_data, only: zero_estimators_t
+        use qmc_data, only: zero_estimators_t, semi_stoch_t
 
         use excitations, only: excit_t, get_excitation
         use hamiltonian_data, only: hmatel_t
@@ -1088,8 +1114,12 @@ contains
         type(cluster_t), intent(in) :: cluster
         type(logging_t), intent(in) :: logging_info
         complex(p), intent(inout) :: D0_population_cycle, proj_energy_cycle
+        real(p), intent(inout) :: proj_energy_cycle_determ, proj_energy_cycle_stoch
         real(p), allocatable, intent(inout) :: rdm(:,:)
         type(selection_data_t), intent(inout) :: selection_data
+        type(semi_stoch_t), intent(in) :: determ
+        logical, intent(in) :: determ_parent, semi_stoch_sep_stats
+
         type(excit_t) :: connection
         type(hmatel_t) :: hmatel
         type(estimators_t) :: estimators_cycle
@@ -1107,6 +1137,7 @@ contains
             ! must divide through by the probability of selecting
             ! the cluster.
             call zero_estimators_t(estimators_cycle)
+            estimators_cycle%semi_stoch_sep_stats = semi_stoch_sep_stats
             connection = get_excitation(sys%nel, sys%basis, cdet%f, qs%ref%f0)
             call update_proj_energy_ptr(sys, qs%ref%f0, qs%trial%wfn_dat, cdet, &
                      [real(cluster%amplitude,p),aimag(cluster%amplitude)]*&
@@ -1118,6 +1149,10 @@ contains
             else
                 D0_population_cycle = D0_population_cycle + estimators_cycle%D0_population
                 proj_energy_cycle = proj_energy_cycle + estimators_cycle%proj_energy
+                if (semi_stoch_sep_stats) then
+                    proj_energy_cycle_determ = proj_energy_cycle_determ + estimators_cycle%proj_energy_determ
+                    proj_energy_cycle_stoch = proj_energy_cycle_stoch + estimators_cycle%proj_energy_stoch
+                end if
             end if
         end if
 

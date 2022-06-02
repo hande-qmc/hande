@@ -324,6 +324,8 @@ type semi_stoch_in_t
     ! space_type == ci_determ_space.
     ! Only ref%ex_level and ref%occ_list are used.
     type(reference_t) :: ci_space
+    ! If true, report the deteministic and stochastic contributions to E_proj separately.
+    logical :: separate_stats = .false.
 end type semi_stoch_in_t
 
 type ccmc_in_t
@@ -825,6 +827,12 @@ type estimators_t
     ! The total number of attempts made to select cluster from current distribution, across all
     ! processes.
     integer(int_64) :: nattempts = 0_int_64
+
+    ! For semi-stochastic calculations, we can collect the deterministic and stochastic contributions 
+    ! to the projected energy separately.
+    logical :: semi_stoch_sep_stats = .false.
+    real(p) :: proj_energy_determ = 0.0_p
+    real(p) :: proj_energy_stoch = 0.0_p
 end type estimators_t
 
 type propagator_t
@@ -953,6 +961,8 @@ contains
         estimators%proj_energy = 0.0_p
         estimators%D0_population_comp = cmplx(0.0, 0.0, p)
         estimators%proj_energy_comp = cmplx(0.0, 0.0, p)
+        estimators%proj_energy_determ = 0.0_p
+        estimators%proj_energy_stoch = 0.0_p
 
     end subroutine zero_estimators_t
 
@@ -1132,7 +1142,8 @@ contains
         end select
         call json_write_key(js, 'read_id', semi_stoch%read_id)
         call json_write_key(js, 'write_id', semi_stoch%write_id)
-        call reference_t_json(js, semi_stoch%ci_space, key='ci_space', terminal=.true.)
+        call reference_t_json(js, semi_stoch%ci_space, key='ci_space')
+        call json_write_key(js, 'separate_stats', semi_stoch%separate_stats, terminal=.true.)
         call json_object_end(js, terminal)
 
     end subroutine semi_stoch_in_t_json

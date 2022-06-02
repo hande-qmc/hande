@@ -563,6 +563,8 @@ contains
         ! average energy quantities over report loop.
         qs%estimators%proj_energy = qs%estimators%proj_energy/qmc_in%ncycles
         qs%estimators%D0_population = qs%estimators%D0_population/qmc_in%ncycles
+        qs%estimators%proj_energy_determ = qs%estimators%proj_energy_determ/qmc_in%ncycles
+        qs%estimators%proj_energy_stoch = qs%estimators%proj_energy_stoch/qmc_in%ncycles
         ! Similarly for the HFS estimator
         qs%estimators%D0_hf_population = qs%estimators%D0_hf_population/qmc_in%ncycles
         qs%estimators%proj_hf_O_hpsip = qs%estimators%proj_hf_O_hpsip/qmc_in%ncycles
@@ -952,6 +954,13 @@ contains
                 hmatel = slater_condon1_mol_excit(sys, cdet%occ_list, excitation%from_orb(1), excitation%to_orb(1), &
                                                   excitation%perm)
                 estimators%proj_energy = estimators%proj_energy + hmatel%r*pop(1)
+                if (estimators%semi_stoch_sep_stats) then
+                    if (cdet%determ) then
+                        estimators%proj_energy_determ = estimators%proj_energy_determ + hmatel%r*pop(1)
+                    else
+                        estimators%proj_energy_stoch = estimators%proj_energy_stoch + hmatel%r*pop(1)
+                    end if
+                end if
             end if
         case(2)
             ! Have a determinant connected to the reference determinant by
@@ -966,6 +975,13 @@ contains
                                                       excitation%to_orb(1), excitation%to_orb(2),     &
                                                       excitation%perm)
                     estimators%proj_energy = estimators%proj_energy + hmatel%r*pop(1)
+                    if (estimators%semi_stoch_sep_stats) then
+                        if (cdet%determ) then
+                            estimators%proj_energy_determ = estimators%proj_energy_determ + hmatel%r*pop(1)
+                        else
+                            estimators%proj_energy_stoch = estimators%proj_energy_stoch + hmatel%r*pop(1)
+                        end if
+                    end if
                 end if
             end if
         end select

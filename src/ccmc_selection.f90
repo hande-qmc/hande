@@ -188,6 +188,7 @@ contains
         logical :: hit, allowed, all_allowed
 
         determ_parent = .false.
+        cdet%determ = .false.
 
         ! We shall accumulate the factors which comprise cluster%pselect as we go.
         !   cluster%pselect = n_sel p_size p_clust
@@ -382,7 +383,10 @@ contains
                 ! Normalisation factor for cluster%amplitudes...
                 cluster%amplitude = cluster_population/(normalisation**(cluster%nexcitors-1))
 
-                if (determ%doing_semi_stoch) determ_parent = check_if_determ(determ%hash_table, determ%dets, cdet%f)
+                if (determ%doing_semi_stoch) then
+                    determ_parent = check_if_determ(determ%hash_table, determ%dets, cdet%f)
+                    cdet%determ = determ_parent
+                end if
             else
                 ! Simply set excitation level to a too high (fake) level to avoid
                 ! this cluster being used.
@@ -527,6 +531,7 @@ contains
         complex(p) :: excitor_pop
 
         determ_parent = .false.
+        cdet%determ = .false.
 
         ! Rather than looping over individual excips we loop over different sites. This is
         ! because we want to stochastically set the number of spawning attempts such that
@@ -570,7 +575,10 @@ contains
         cluster%amplitude = excitor_pop
 
         ! Check if this cluster is in deterministic space
-        if (determ%doing_semi_stoch) determ_parent = (determ%flags(iexcitor) == 0)
+        if (determ%doing_semi_stoch) then
+            determ_parent = (determ%flags(iexcitor) == 0)
+            cdet%determ = determ_parent
+        end if
 
         ! Sign change due to difference between determinant
         ! representation and excitors and excitation level.

@@ -1443,6 +1443,7 @@ contains
         !     write = true/false/id,
         !     read = id,
         !     ci_space = { ... },               -- required if space == 'ci'.  Reference table.
+        !     separate_stats = true/false, 
         ! }
 
         ! In/Out:
@@ -1471,9 +1472,9 @@ contains
         integer :: semi_stoch_table, err
         character(len=10) :: str
         logical :: separate_annihilation
-        character(21), parameter :: keys(9) = [character(21) :: 'space', 'size', 'start_iteration', 'separate_annihilation', &
+        character(21), parameter :: keys(10) = [character(21) :: 'space', 'size', 'start_iteration', 'separate_annihilation', &
                                                                 'shift_start_iteration', 'write_determ_space', 'write', 'read', &
-                                                                'ci_space']
+                                                                'ci_space', 'separate_stats']
 
         if (aot_exists(lua_state, opts, 'semi_stoch')) then
 
@@ -1516,6 +1517,7 @@ contains
             else
                 semi_stoch_in%projection_mode = semi_stoch_combined_annihilation
             end if
+            call aot_get_val(semi_stoch_in%separate_stats, err, lua_state, semi_stoch_table, 'separate_stats')
 
             ! Optional arguments requiring special care.
             if (aot_exists(lua_state, semi_stoch_table, 'write_determ_space')) then
