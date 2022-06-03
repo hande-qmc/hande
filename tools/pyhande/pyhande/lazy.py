@@ -356,6 +356,10 @@ metadata : list of dict
         kN0 = check_key(df, 'N_0')
         kHpsips = check_key(df, '# H psips')
         kH0jNj = check_key(df, '\sum H_0j N_j')
+        semi_stoch_sep_stats = 'D{\sum H_0j N_j}' in df
+        if semi_stoch_sep_stats:
+            kH0jNj_D = check_key(df, 'D{\sum H_0j N_j}')
+            kH0jNj_S= check_key(df, 'S{\sum H_0j N_j}')
         kShift = check_key(df, 'Shift')
         if reweight_history > 0:
             weights = pyhande.weight.reweight(df, md['qmc']['ncycles'],
@@ -365,7 +369,10 @@ metadata : list of dict
             df['W * N_0'] = df[kN0] * weights
         # The next uncommented line is dangerous and possibly very
         # confusing!  [todo] Fix.
-        df['Proj. Energy'] = df[kH0jNj] / df[kN0] 
+        df['Proj. Energy'] = df[kH0jNj] / df[kN0]
+        if semi_stoch_sep_stats:
+            df['Proj. Energy, determ'] = df[kH0jNj_D] / df[kN0]
+            df['Proj. Energy, stoch'] = df[kH0jNj_S] / df[kN0]
         data.append(df)
         metadata.append(md)
     if data:
@@ -405,10 +412,15 @@ info : :func:`collections.namedtuple`
     info_tuple = collections.namedtuple('HandeInfo', tuple_fields)
     # Reblock Monte Carlo data over desired window.
     reweight_calc = 'W * N_0' in calc
+    # Separate reporting of determ and stoch contributions to E_proj requires a little care.
+    semi_stoch_sep_stats = 'D{\sum H_0j N_j}' in calc
     # Set up the keys for data, taking into account the situation if there is more than one replica.
     kN0 = check_key(calc, 'N_0')
     kHpsips = check_key(calc, '# H psips')
     kH0jNj = check_key(calc,'\sum H_0j N_j')
+    if semi_stoch_sep_stats:
+        kH0jNj_D = 'D{\sum H_0j N_j}'
+        kH0jNj_S= 'S{\sum H_0j N_j}'
     kShift = check_key(calc, 'Shift')
 
 
@@ -427,6 +439,8 @@ info : :func:`collections.namedtuple`
     if extract_psips:
         to_block.append(kHpsips)
     to_block.extend([kH0jNj, kN0, kShift])
+    if semi_stoch_sep_stats:
+        to_block.extend([kH0jNj_D, kH0jNj_S])
     if reweight_calc:
         to_block.extend(['W * \sum H_0j N_j', 'W * N_0'])
     if extract_rep_loop_time:
@@ -443,6 +457,15 @@ info : :func:`collections.namedtuple`
     proje = pyhande.analysis.projected_energy(reblock, covariance, data_len, kH0jNj, kN0)
     reblock = pd.concat([reblock, proje], axis=1)
     to_block.append('Proj. Energy')
+
+    if semi_stoch_sep_stats:
+        proje_D = pyhande.analysis.projected_energy(reblock, covariance, data_len, kH0jNj_D, kN0, col_name='Proj. Energy, determ')
+        reblock = pd.concat([reblock, proje_D], axis=1)
+        to_block.append('Proj. Energy, determ')
+
+        proje_S = pyhande.analysis.projected_energy(reblock, covariance, data_len, kH0jNj_S, kN0, col_name='Proj. Energy, stoch')
+        reblock = pd.concat([reblock, proje_S], axis=1)
+        to_block.append('Proj. Energy, stoch')
 
     if reweight_calc:
         proje = pyhande.analysis.projected_energy(reblock, covariance,
@@ -677,6 +700,10 @@ starting_iteration: integer
     kN0 = check_key(data, 'N_0')
     kHpsips = check_key(data, '# H psips')
     kH0jNj = check_key(data,'\sum H_0j N_j')
+    semi_stoch_sep_stats = 'D{\sum H_0j N_j}' in data
+    if semi_stoch_sep_stats:
+        kH0jNj_D = 'D{\sum H_0j N_j}'
+        kH0jNj_S = 'S{\sum H_0j N_j}'
     kShift = check_key(data, 'Shift')
 
     kN0 = check_key(data, 'N_0')
@@ -717,6 +744,9 @@ starting_iteration: integer
 
     min_index = -1
     err_keys = [kShift, kN0, kH0jNj, kHpsips]
+    if semi_stoch_sep_stats:
+        err_keys.append(kH0jNj_D)
+        err_keys.append(kH0jNj_S)
     min_error_frac_weighted = pd.Series([float('inf')]*len(err_keys), index=err_keys)
     starting_iteration_found = False
 

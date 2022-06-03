@@ -154,7 +154,7 @@ opt_block: :class:`pandas.DataFrame`
                 pyhande.lazy.reweighting_graph(calc, start=start_iteration,
                         verbosity=verbose)
 
-        except ValueError:
+        except ValueError as ve:
             print('WARNING: No data found in file '+' '.join(calc)+'.')
         except RuntimeError as err:
             print('WARNING: Reblocking failed for file '+' '.join(calc)+' with error '+format(err)+'.')
