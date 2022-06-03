@@ -59,8 +59,8 @@ contains
         write (iunit,'(1X,"H_0j: <D_0|H|D_j>, Hamiltonian matrix element.")')
         write (iunit,'(1X,"N_j: population of Hamiltonian particles on determinant D_j.")')
         if (semi_stoch_sep_stats_loc) then
-            write (iunit,'(1X,"D{\sum H_0j N_j}: deterministic contribution")')
-            write (iunit,'(1X,"S{\sum H_0j N_j}: stochastic contribution")')
+            write (iunit,'(1X,"D{\sum H_0j N_j}: deterministic contribution to E_proj.")')
+            write (iunit,'(1X,"S{\sum H_0j N_j}: stochastic contribution to E_proj.")')
         end if
         if (doing_calc(hfs_fciqmc_calc)) then
             write (iunit,'(1X,"O_0j: <D_0|O|D_j>, operator matrix element.")')
