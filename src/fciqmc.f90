@@ -235,6 +235,9 @@ contains
 
         call init_semi_stoch_t_flags(determ, size(qs%psip_list%states, dim=2))
 
+        ! Accumulate deterministic and stochastic contributions to E_proj separately
+        if (semi_stoch_in%separate_stats) qs%estimators%semi_stoch_sep_stats = .true.
+
         ! from restart
         nparticles_old = qs%psip_list%tot_nparticles
 
@@ -253,7 +256,8 @@ contains
 
         ! Main fciqmc loop.
         if (parent) call write_qmc_report_header(qs%psip_list%nspaces, cmplx_est=sys%read_in%comp, &
-                                                 rdm_energy=fciqmc_in%density_matrices, io_unit=io_unit)
+                                                 rdm_energy=fciqmc_in%density_matrices, io_unit=io_unit, &
+                                                 semi_stoch_sep_stats=semi_stoch_in%separate_stats)
         restart_proj_est = present(qmc_state_restart) .or. (restart_in%read_restart .and. restart_version_restart >= 2)
         if (.not.restart_proj_est) call initial_ci_projected_energy(sys, qs, fciqmc_in%non_blocking_comm, nparticles_old)
         if (fciqmc_in%non_blocking_comm) then
@@ -330,6 +334,7 @@ contains
                     ! across to the determ%vector array. (Both replicas use the
                     ! same deterministic space.)
                     call set_determ_info(idet, real_population, ideterm, determ, determ_parent)
+                    cdet%determ = determ_parent
 
                     ! Is this determinant an initiator?
                     call set_parent_flag(real_population, qmc_in%initiator_pop, determ%flags(idet), &
@@ -433,7 +438,8 @@ contains
                 if (bloom_stats%nblooms_curr > 0) call bloom_stats_warning(bloom_stats, io_unit=io_unit)
                 call write_qmc_report(qmc_in, qs, ireport, nparticles_old, t2-t1, .false., &
                                         fciqmc_in%non_blocking_comm, io_unit=io_unit, &
-                                        cmplx_est=sys%read_in%comp, rdm_energy=fciqmc_in%density_matrices)
+                                        cmplx_est=sys%read_in%comp, rdm_energy=fciqmc_in%density_matrices, &
+                                        semi_stoch_sep_stats=semi_stoch_in%separate_stats)
                 if (blocking_in%blocking_on_the_fly) then
                     call do_blocking(bl, qs, qmc_in, ireport, iter, iunit, blocking_in, sys%read_in%comp)
                 end if

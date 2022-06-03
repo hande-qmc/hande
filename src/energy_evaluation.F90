@@ -13,6 +13,8 @@ implicit none
 ! comments below).
 enum, bind(c)
     enumerator :: proj_energy_ind = 1
+    enumerator :: proj_energy_determ_ind
+    enumerator :: proj_energy_stoch_ind
     enumerator :: D0_pop_ind
     ! [todo] - having a separate index for each space is not very general.
     enumerator :: proj_energy_replica_ind
@@ -376,6 +378,10 @@ contains
                 rep_loop_loc(proj_energy_replica_ind) = qs%estimators(2)%proj_energy
                 rep_loop_loc(D0_pop_replica_ind) = qs%estimators(2)%D0_population
             end if
+            if (qs%estimators(1)%semi_stoch_sep_stats) then
+                rep_loop_loc(proj_energy_determ_ind) = qs%estimators(1)%proj_energy_determ
+                rep_loop_loc(proj_energy_stoch_ind) = qs%estimators(1)%proj_energy_stoch
+            end if
         end if
         rep_loop_loc(rspawn_ind) = qs%spawn_store%rspawn
         if (present(update_tau)) then
@@ -505,6 +511,10 @@ contains
 
         qs%estimators(1)%proj_energy = real(rep_loop_sum(proj_energy_ind), p)
         qs%estimators(1)%D0_population = real(rep_loop_sum(D0_pop_ind), p)
+        if (qs%estimators(1)%semi_stoch_sep_stats) then
+            qs%estimators(1)%proj_energy_determ = real(rep_loop_sum(proj_energy_determ_ind), p)
+            qs%estimators(1)%proj_energy_stoch = real(rep_loop_sum(proj_energy_stoch_ind), p)
+        end if
         if (size(qs%estimators) > 1) then
             qs%estimators(2)%proj_energy = real(rep_loop_sum(proj_energy_replica_ind), p)
             qs%estimators(2)%D0_population = real(rep_loop_sum(D0_pop_replica_ind), p)
