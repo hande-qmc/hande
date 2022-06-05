@@ -806,7 +806,7 @@ type estimators_t
     !   <D_0|H|D_0> + \sum_{i/=0} <D_0|H|D_i> N_i/N_0
     ! and so proj_energy must be 'normalised' and averaged over the report loops
     ! accordingly.
-    ! See comment for developers above for D0_population which holds similary for proj_energy.
+    ! See comment for developers above for D0_population which holds similarly for proj_energy.
     real(p) :: proj_energy = 0.0_p
     ! The instantaneous projected energy of the previous iteration is required for
     ! various purposes.

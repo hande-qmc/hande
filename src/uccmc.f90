@@ -705,7 +705,7 @@ contains
         call dSFMT_t_to_dSFMT_state_t(rng(0), qs%rng_state)
 
 
-        if (parent) write (io_unit,'()')
+        if (parent) write(io_unit,'()')
         call write_bloom_report(bloom_stats, io_unit=io_unit)
         call multispawn_stats_report(ms_stats, io_unit=io_unit)
 
@@ -727,7 +727,7 @@ contains
         if(uccmc_in%variational_energy) then
             call var_energy_uccmc(sys, time_avg_psip_list_ci_states,time_avg_psip_list_ci_pops,nstates_ci, var_energy, &
                                   real(D0_normalisation,p))
-            print*, 'Variational energy: ', var_energy
+            if (parent) write (io_unit,'(1X,A,ES17.10)') 'Variational energy: ', var_energy
         end if 
         
         if (debug) call end_logging(logging_info)
@@ -743,7 +743,7 @@ contains
             call dealloc_det_info_t(ref_det)
         end if
 
-        if (uccmc_in%threshold > 0 .and. parent) print*, 'Number of discard events: ', count_discard
+        if (uccmc_in%threshold > 0 .and. parent) write (io_unit,'(1X,A,I0)') 'Number of discard events: ', count_discard
 
         call dealloc_contrib(contrib, ccmc_in%linked)
         do i = 0, nthreads-1

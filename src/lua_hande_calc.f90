@@ -635,6 +635,8 @@ contains
         lua_state = flu_copyptr(L)
         call get_sys_t(lua_state, sys)
 
+        if (sys%read_in%comp) call stop_all('lua_uccmc', 'UCCMC does not support complex read-in systems.')
+
         ![todo] can this be merged with lua_ccmc?
         call set_spin_polarisation(sys%basis%nbasis, sys)
 
