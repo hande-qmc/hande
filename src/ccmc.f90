@@ -719,8 +719,7 @@ contains
                 ! can't use default(none).  I *strongly* recommend turning
                 ! default(none) on when making changes and ensure that the only
                 ! errors relate to the procedure pointers...
-                proj_energy_cycle = cmplx(0.0, 0.0, p)
-                D0_population_cycle = cmplx(0.0, 0.0, p)
+
                 !$omp parallel default(none) &
                 !$omp private(it, seen_D0, iexcip_pos, i) &
                 !$omp shared(rng, cumulative_abs_real_pops, tot_abs_real_pop,  &
@@ -829,9 +828,6 @@ contains
 
                 if (ccmc_in%full_nc .and. qs%psip_list%nstates > 0) then
                     ! Do death exactly and directly for non-composite clusters
-                    ! Ordering in reduction between ndeath_nc and nparticles_change has been
-                    ! changed which stops a problem with intel compilers v17-v19.
-                    ! See https://software.intel.com/en-us/forums/intel-fortran-compiler/topic/806597
                     !$omp do schedule(dynamic,200) private(dfock)
                     do iattempt = 1, qs%psip_list%nstates
                         ! Note we use the (encoded) population directly in stochastic_ccmc_death_nc

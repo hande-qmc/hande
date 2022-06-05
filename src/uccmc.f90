@@ -404,12 +404,6 @@ contains
                                    min_attempts=nint(abs(D0_normalisation), kind=int_64), &
                                    complx=sys%read_in%comp)
 
-                nparticles_change = 0.0_p
-
-                ! We need to count spawning attempts differently as there may be multiple spawns
-                ! per cluster
-
-                nattempts_spawn=0
 
                 ! Find cumulative population...
                 ! NOTE: for simplicity we only consider the integer part of the population on each excitor.
@@ -455,6 +449,16 @@ contains
                                             ccmc_in%full_nc, .false.)
                 call zero_ps_stats(ps_stats, qs%excit_gen_data%p_single_double%rep_accum%overflow_loc)
 
+                ! Initialise reduction variables outside the parallel region. (ndeath was initialised in init_mc_cycle above)
+                ! We need to count spawning attempts differently as there may be multiple spawns
+                ! per cluster
+                nattempts_spawn = 0
+                proj_energy_cycle = cmplx(0.0, 0.0, p)
+                D0_population_cycle = cmplx(0.0, 0.0, p)
+                D0_population_noncomp_cycle = 0.0_p
+                ndeath_nc = 0
+                nparticles_change = 0.0_p
+
                 ! OpenMP chunk size determined completely empirically from a single
                 ! test.  Please feel free to improve...
                 ! NOTE: we can't refer to procedure pointers in shared blocks so
@@ -462,22 +466,18 @@ contains
                 ! default(none) on when making changes and ensure that the only
                 ! errors relate to the procedure pointers...
 
-                proj_energy_cycle = cmplx(0.0, 0.0, p)
-                D0_population_cycle = cmplx(0.0, 0.0, p)
-                D0_population_noncomp_cycle = 0.0_p
                 !$omp parallel default(none) &
                 !$omp private(it, iexcip_pos, i, seen_D0, hit, pos, population, real_population, k, annihilation_flags) &
-                !$omp shared(rng, cumulative_abs_real_pops, tot_abs_real_pop,  &
-                !$omp        max_cluster_size, contrib, D0_normalisation, D0_pos, rdm,    &
-                !$omp        qs, sys, bloom_stats, min_cluster_size, ref_det,             &
-                !$omp        selection_data,      &
-                !$omp        uccmc_in, ccmc_in, nprocs, ms_stats, ps_stats, qmc_in, load_bal_in, &
-                !$omp        count_discard, &  
-                !$omp        logging_info, nstates_ci, & 
-                !$omp        time_avg_psip_list_ci_states, time_avg_psip_list_ci_pops, &
+                !$omp shared(rng, cumulative_abs_real_pops, tot_abs_real_pop &
+                !$omp        max_cluster_size, contrib, D0_normalisation, D0_pos, rdm, &
+                !$omp        qs, sys, bloom_stats, min_cluster_size, ref_det, selection_data, &
+                !$omp        uccmc_in, ccmc_in, nprocs, ms_stats, ps_stats, qmc_in, load_bal_in, count_discard, &  
+                !$omp        logging_info, nstates_ci, time_avg_psip_list_ci_states, time_avg_psip_list_ci_pops, &
                 !$omp        time_avg_psip_list_states, time_avg_psip_list_pops) &
                 !$omp reduction(+:D0_population_cycle,proj_energy_cycle,D0_population_noncomp_cycle, &
-                !$omp nattempts_spawn,ndeath,nparticles_change,ndeath_nc)
+                !$omp             nattempts_spawn,ndeath,nparticles_change,ndeath_nc)
+
+                ! Initialise private variables inside the parallel region
                 it = get_thread_id()
                 iexcip_pos = 0
                 seen_D0 = .false.
@@ -487,8 +487,8 @@ contains
                     if (iattempt <= selection_data%nsingle_excitors) then
                     ! For OpenMP scalability, have this test inside a single loop rather
                     ! than attempt to parallelise over three separate loops.
-                        ! As noncomposite clusters can't be above truncation level or linked-only all can accumulate +
-                        ! propagate. Only need to check not selecting the reference as we treat it separately.
+                    ! As noncomposite clusters can't be above truncation level or linked-only all can accumulate +
+                    ! propagate. Only need to check not selecting the reference as we treat it separately.
                         if (iattempt /= D0_pos) then
                             ! Deterministically select each excip as a non-composite cluster.
                             call select_nc_cluster(sys, qs%psip_list, qs%ref%f0, &
@@ -511,7 +511,7 @@ contains
                             call do_nc_ccmc_propagation(rng(it), sys, qs, ccmc_in, logging_info, bloom_stats, &
                                                                 contrib(it), nattempts_spawn, ps_stats(it), uccmc_in)
                         end if
-                        else
+                    else
                         call select_ucc_cluster(rng(it), sys, qs%psip_list, qs%ref%f0, qs%ref%max_ex_level, &
                                             selection_data%nstochastic_clusters, D0_normalisation, qmc_in%initiator_pop, &
                                             cumulative_abs_real_pops, tot_abs_real_pop, min_cluster_size, max_cluster_size, &
@@ -539,6 +539,7 @@ contains
                     end if
                 end do
                 !$omp end do
+
                 ! See comments below 'if (.not. seen_D0) then' on why this loop needs to be separate from above.
                 ! If noncomposite is turned off, this loop will be 'do i = nclusters+1, nclusters', which will be a null 
                 ! loop and ignored (as strides at +1 by default)
@@ -574,7 +575,7 @@ contains
                                                         ps_stats(it), uccmc_in)
                 end do
                 !$omp end do
-                ndeath_nc=0
+
                 if (ccmc_in%full_nc .and. qs%psip_list%nstates > 0) then
                     ! Do death exactly and directly for non-composite clusters
                     !$omp do schedule(dynamic,200) private(dfock) 
@@ -1080,14 +1081,13 @@ contains
 
                 ! Normalisation factor for cluster%amplitudes...
                 cluster%amplitude = cluster_population/(normalisation**(cluster%nexcitors-1))
+
                 if (cluster%pselect/abs(cluster%amplitude) < threshold) then
-                    !if (get_rand_close_open(rng) < cluster%pselect/abs(cluster%amplitude)/1e-2) then
-                !    !   cluster%pselect = 1e-2*cluster%amplitude
-                !    !else
                         allowed = .false.
                         cluster%excitation_level = huge(0)
+                        !$omp atomic update
                         counter = counter + 1
-                !    !end if
+                        !$omp end atomic
                 end if
             else
                 ! Simply set excitation level to a too high (fake) level to avoid
