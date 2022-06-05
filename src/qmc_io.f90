@@ -126,7 +126,7 @@ contains
         call write_column_title(iunit, '# states', int_val=.true., justify=1)
         call write_column_title(iunit, '# spawn_events', int_val=.true., justify=1)
         if (present(nattempts)) then
-            if (nattempts) call write_column_title(iunit, '# attempts', int_val=.true., justify=1)
+            if (nattempts) call write_column_title(iunit, '# attempts', int_64_val=.true., justify=1)
         end if
         call write_column_title(iunit, 'R_spawn', low_prec_val=.true.)
         call write_column_title(iunit, '  time', low_prec_val=.true., justify=2)
@@ -351,7 +351,7 @@ contains
 
     end subroutine write_dmqmc_report_header
 
-    subroutine write_column_title(io, key, int_val, low_prec_val, justify, sep)
+    subroutine write_column_title(io, key, int_val, int_64_val, low_prec_val, justify, sep)
 
         ! Write column headers using the same column width as write_qmc_var.
 
@@ -365,19 +365,21 @@ contains
 
         integer, intent(in) :: io
         character(*), intent(in) :: key
-        logical, intent(in), optional :: int_val, low_prec_val
+        logical, intent(in), optional :: int_val, int_64_val, low_prec_val
         integer, intent(in), optional :: justify
         character(1), intent(in), optional :: sep
-        logical :: int_val_loc, low_prec_val_loc
+        logical :: int_val_loc, int_64_val_loc, low_prec_val_loc
         character(20) :: key_str
         integer :: justify_loc, str_len
         character(1) :: sep_loc
 
         int_val_loc = .false.
+        int_64_val_loc = .false.
         low_prec_val_loc = .false.
         justify_loc = 0
         sep_loc = ' '
         if (present(int_val)) int_val_loc = int_val
+        if (present(int_64_val)) int_64_val_loc = int_64_val
         if (present(low_prec_val)) low_prec_val_loc = low_prec_val
         if (present(justify)) justify_loc = justify
         if (present(sep)) sep_loc = sep
@@ -386,6 +388,9 @@ contains
         str_len = len(key_str)
         if (int_val_loc) then
             str_len = 14
+        end if
+        if (int_64_val_loc) then
+            str_len = 20
         end if
         if (low_prec_val_loc) str_len = 8
         select case(justify_loc)
@@ -750,7 +755,7 @@ contains
 
         sep_loc = ' '
         if (present(sep)) sep_loc = sep
-        write (io, '(i24,a1,1X)', advance='no') val, sep_loc
+        write (io, '(i20,a1,1X)', advance='no') val, sep_loc
 
     end subroutine write_qmc_var_int_64
 
