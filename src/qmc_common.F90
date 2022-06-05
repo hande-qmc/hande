@@ -796,7 +796,7 @@ contains
 
     end subroutine initial_ci_projected_energy
 
-    subroutine initial_cc_projected_energy(sys, qs, rng_seed, logging_info, cumulative_abs_real_pops, ntot_particles)
+    subroutine initial_cc_projected_energy(sys, qs, rng_seed, logging_info, cumulative_abs_real_pops, ntot_particles, ccmc_in)
 
         ! Calculate the projected energy based upon the initial walker
         ! distribution for a CC wavefunction ansatz.
@@ -828,7 +828,7 @@ contains
         use hamiltonian_data, only: hmatel_t
         use logging, only: logging_t
         use proc_pointers, only: update_proj_energy_ptr
-        use qmc_data, only: qmc_state_t, zero_estimators_t
+        use qmc_data, only: qmc_state_t, zero_estimators_t, ccmc_in_t
         use system, only: sys_t
 
         type(sys_t), intent(in) :: sys
@@ -837,6 +837,7 @@ contains
         type(logging_t), intent(in) :: logging_info
         real(p), intent(inout), allocatable :: cumulative_abs_real_pops(:)
         real(dp), intent(out) :: ntot_particles(qs%psip_list%nspaces)
+        type(ccmc_in_t), intent(in) :: ccmc_in
 
         type(det_info_t) :: cdet
         type(cluster_t) :: cluster
@@ -848,6 +849,7 @@ contains
         integer(int_64) :: iattempt, nattempts
         integer :: D0_pos, D0_proc, nD0_proc
         complex(p) :: D0_normalisation
+        integer(i0) :: count_discard
 #ifdef PARALLEL
         integer :: ierr
         real(p) :: proj_energy_sum(qs%psip_list%nspaces)
@@ -857,6 +859,8 @@ contains
         call zero_estimators_t(qs%estimators)
 
         call dSFMT_init(rng_seed, 50000, rng)
+
+        count_discard = 0_i0
         
         D0_pos = 1
         call get_D0_info(qs, sys%read_in%comp, D0_proc, D0_pos, nD0_proc, D0_normalisation)
@@ -878,7 +882,8 @@ contains
                 ! Note: even if we're doing linked CC, the clusters contributing to the projected estimator must not contain
                 ! excitors involving the same orbitals so we need only look for unlinked clusters.
                 call select_cluster(rng, sys, qs%psip_list, qs%ref%f0, 2, .false., nattempts, D0_normalisation, 0.0_p, &
-                                cumulative_abs_real_pops, tot_abs_real_pop, 2, 2, logging_info, cdet, cluster, qs%excit_gen_data)
+                                cumulative_abs_real_pops, tot_abs_real_pop, 2, 2, logging_info, cdet, cluster, qs%excit_gen_data, &
+                                ccmc_in%discard_threshold, count_discard)
             end if
             if (cluster%excitation_level /= huge(0)) then
 

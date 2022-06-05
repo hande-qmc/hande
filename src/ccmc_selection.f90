@@ -92,7 +92,7 @@ contains
 
     subroutine select_cluster(rng, sys, psip_list, f0, ex_level, linked_ccmc, nattempts, normalisation, &
                               initiator_pop, cumulative_excip_pop, tot_excip_pop, min_size, max_size, &
-                              logging_info, cdet, cluster, excit_gen_data)
+                              logging_info, cdet, cluster, excit_gen_data, discard_threshold, count_discard)
 
         ! Select a random cluster of excitors from the excitors on the
         ! processor.  A cluster of excitors is itself an excitor.  For clarity
@@ -171,6 +171,8 @@ contains
         type(cluster_t), intent(inout) :: cluster
         type(logging_t), intent(in) :: logging_info
         type(excit_gen_data_t), intent(in) :: excit_gen_data
+        real(p), intent(in) :: discard_threshold
+        integer(i0), intent(inout) :: count_discard
 
         real(dp) :: rand
         real(p) :: psize
@@ -365,6 +367,15 @@ contains
 
                 ! Normalisation factor for cluster%amplitudes...
                 cluster%amplitude = cluster_population/(normalisation**(cluster%nexcitors-1))
+
+                ! If the ratio of pselect/amplitude is too small, discard
+                if (discard_threshold > 0.0_p .and. cluster%pselect/abs(cluster%amplitude) < discard_threshold) then
+                    allowed = .false.
+                    cluster%excitation_level = huge(0)
+                    !$omp atomic update
+                    count_discard = count_discard + 1
+                    !$omp end atomic
+                end if
             else
                 ! Simply set excitation level to a too high (fake) level to avoid
                 ! this cluster being used.

@@ -1695,6 +1695,7 @@ contains
         !     density_matrices = true/false,
         !     density_matrix_file = filename,
         !     even_selection = true/false,
+        !     discard_threshold = float,
         !     multiref = true/false,
         !     n_secondary_ref = number of additional references,
         !     secondary_ref1,...,secondary_ref999 ={...},
@@ -1711,6 +1712,7 @@ contains
         use, intrinsic :: iso_fortran_env, only: iostat_end
         use flu_binding, only: flu_State
         use aot_table_module, only: aot_get_val, aot_exists, aot_table_open, aot_table_close
+        use const, only: p
 
         use qmc_data, only: ccmc_in_t
         use lua_hande_utils, only: warn_unused_args
@@ -1723,11 +1725,12 @@ contains
         type(ccmc_in_t), intent(out) :: ccmc_in
 
         integer :: ccmc_table, err, i, ir, ios
-        character(28), parameter :: keys(15) = [character(28) :: 'move_frequency', 'cluster_multispawn_threshold', &
+        character(28), parameter :: keys(16) = [character(28) :: 'move_frequency', 'cluster_multispawn_threshold', &
                                                                 'full_non_composite', 'linked', 'vary_shift_reference', &
                                                                 'density_matrices', 'density_matrix_file', 'even_selection', &
                                                                 'multiref', 'n_secondary_ref', 'mr_acceptance_search', &
-                                                                'mr_excit_lvl','mr_secref_file','mr_n_frozen','mr_read_in']
+                                                                'mr_excit_lvl','mr_secref_file','mr_n_frozen','mr_read_in', &
+                                                                'discard_thres']
         character(23) :: string ! 32 bit integer has 10 digits, should be more than enough
         ! secondary_refX keywords are not hardcoded in, so we dynamically add them into the
         ! array of allowed keys 
@@ -1749,6 +1752,10 @@ contains
             call aot_get_val(ccmc_in%density_matrices, err, lua_state, ccmc_table, 'density_matrices')
             call aot_get_val(ccmc_in%density_matrix_file, err, lua_state, ccmc_table, 'density_matrix_file')
             call aot_get_val(ccmc_in%even_selection, err, lua_state, ccmc_table, 'even_selection')
+            call aot_get_val(ccmc_in%discard_threshold, err, lua_state, ccmc_table, 'discard_threshold')
+            if (err == 0 .and. ccmc_in%discard_threshold <= 0.0_p) then
+                call stop_all('read_ccmc_in', 'discard_threshold must be greater than 0!') 
+            end if
             call aot_get_val(ccmc_in%multiref, err, lua_state, ccmc_table, 'multiref')
             if (ccmc_in%multiref) then
                 call aot_get_val(ccmc_in%mr_read_in, err, lua_state, ccmc_table, 'mr_read_in')
@@ -1844,6 +1851,7 @@ contains
 
         use flu_binding, only: flu_State
         use aot_table_module, only: aot_get_val, aot_exists, aot_table_open, aot_table_close
+        use const, only: p
 
         use qmc_data, only: uccmc_in_t
         use lua_hande_utils, only: warn_unused_args
@@ -1869,6 +1877,9 @@ contains
             call aot_get_val(uccmc_in%average_wfn, err, lua_state, uccmc_table, 'average_wfn')
             call aot_get_val(uccmc_in%trot, err, lua_state, uccmc_table, 'trotterized')
             call aot_get_val(uccmc_in%threshold, err, lua_state, uccmc_table, 'threshold')
+            if (err == 0 .and. uccmc_in%threshold <= 0.0_p) then
+                call stop_all('read_uccmc_in', 'threshold must be greater than 0!') 
+            end if
             call warn_unused_args(lua_state, keys, uccmc_table)
 
             call aot_table_close(lua_state, uccmc_table)
